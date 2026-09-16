@@ -1,0 +1,358 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20241010T092117.826 GMT</pzDocumentKey>
+<pxMoveFromSystem/>
+<pyInterface/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyTemplate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportDateTime>20241013T093119.710 GMT</pxMoveImportDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxCreateOperator>FRANSISCOJUNIUSA</pxCreateOperator>
+<pyRuleFormStatusTime>20260721T040617.047 GMT</pyRuleFormStatusTime>
+<pyMemo>ok\</pyMemo>
+<pyUsage/>
+<pyDeleteSQL/>
+<pxOriginalCreateOperator/>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pyRuleParamsStreamName/>
+<pyWindowTitle/>
+<pyDocumentTitle/>
+<pyLabel>CheckPolicyStatusActive</pyLabel>
+<pyShowJavaWindowName>GeneratedJava20260721T040617.074 GMT</pyShowJavaWindowName>
+<pySPRuleSetName>FRANSISCOJUNIUSA@</pySPRuleSetName>
+<pxOriginalCreateOpName/>
+<pyTemplateInputBox/>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20241010T092253.242 GMT</pxUpdateDateTime>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKPOLICYSTATUSACTIVE</pxInsName>
+<pxTabLabel>ASM-FW-GISFW-int-policyjson ASM CheckPolicyStatusActive</pxTabLabel>
+<pyCircumstanceDate/>
+<pyFormPost/>
+<pxHostId>jboss10234</pxHostId>
+<pyCircumstanceProp/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyRuleName>ASM-FW-GISFW-int-policyjson ASM CheckPolicyStatusActive</pyRuleName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20240321T041811.365 GMT</pzOriginalInstanceKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20241013T093119.000 GMT</pxCommitDateTime>
+<pyRuleSetVersion>01-04-88</pyRuleSetVersion>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyMethodStatus/>
+<pxInstanceLockedBy/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRelativePath/>
+<pyRuleStarts/>
+<pyLabelOld>CheckPolicyStatusActive</pyLabelOld>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyHandlerFlow/>
+<pyTempText>saved</pyTempText>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyStreamName/>
+<pyCircumstanceVal/>
+<pyIsFromManageChangeLP/>
+<pyDeletedObject/>
+<pxSaveDateTime>20241010T092253.250 GMT</pxSaveDateTime>
+<pxCreateDateTime>20241010T092117.826 GMT</pxCreateDateTime>
+<pyBrowseSQL>select 
+(       CASE
+           WHEN A.STS_KONVERSI = '999'
+               THEN
+                  'Tidak Aktif'
+              WHEN getcountdataJSON(a.NOPOLIS)='1'
+                    THEN
+                             CASE
+                        WHEN getIsEDMCancelation(a.NOPOLIS) &lt;&gt; to_number('1')
+                        THEN
+                              CASE 
+                                  WHEN
+                                         trunc(StartDate)  &lt;= trunc(sysdate)
+                                         and  trunc(EndDate) &gt;= trunc(sysdate) 
+                                         THEN
+                                               'Aktif'
+                                  WHEN 
+                                        trunc(StartDate)  &gt;= trunc(sysdate) 
+                                        OR
+                                        trunc(EndDate)  &lt;= trunc(sysdate)
+                                        THEN
+                                            'Tidak Aktif'    
+                              END  
+                       WHEN getIsEDMCancelation(a.NOPOLIS) = to_number('1')
+                       THEN
+                            'Tidak Aktif'
+                     END
+               WHEN getcountdataJSON(a.NOPOLIS) &gt; '1' 
+                and tg.StatusBusiness = '3'
+                    THEN
+                        CASE WHEN tg.EdmType &lt;&gt; '7'
+                        THEN
+                               CASE WHEN tg.EdmDate is not null then
+                                    CASE
+                                        WHEN getIsEDMCancelation(a.NOPOLIS) &lt;&gt; to_number('1')
+                                        THEN
+                                                     CASE 
+                                                         WHEN
+                                                             to_date(tg.EdmDate,'dd-mm-yyyy') &lt;= trunc(sysdate)
+                                                             and  trunc(tg.StartDate) &gt;= trunc(sysdate) 
+                                                           THEN 'Aktif'
+                                                         WHEN
+                                                             to_date(tg.EdmDate,'dd-mm-yyyy') &lt;= trunc(sysdate)
+                                                             and  trunc(tg.enddate) &lt;= trunc(sysdate) 
+                                                           THEN ' tidak  Aktif'
+                                                         WHEN
+                                                             to_date(tg.EdmDate,'dd-mm-yyyy') &lt;= trunc(sysdate)
+                                                             and  trunc(tg.enddate) &gt;= trunc(sysdate) 
+                                                           THEN ' Aktif'
+                                                        WHEN 
+                                                            to_date(tg.EdmDate,'dd-mm-yyyy') &gt;= trunc(sysdate) 
+                                                            OR
+                                                             trunc(tg.EndDate) &lt;= trunc(sysdate)
+                                                        THEN 'Tidak Aktif'    
+                                                     END
+                                        WHEN getIsEDMCancelation(a.NOPOLIS) = to_number('1')
+                                        THEN
+                                            'Tidak Aktif'
+                                    END
+                               END  
+                        WHEN tg.EdmType = '7'
+                        THEN
+                            CASE WHEN getIsEDMCancelation(a.NOPOLIS) = to_number('1') THEN
+                            'Tidak Aktif'
+                            WHEN getIsEDMCancelation(a.NOPOLIS) = to_number('0') THEN
+                            'Aktif'
+                            END
+                        END        
+              WHEN getcountdataJSON(a.NOPOLIS) &gt; '1' 
+              and tg.StatusBusiness = '1' or tg.StatusBusiness = '2'
+                 THEN
+                     CASE
+                        WHEN getIsEDMCancelation(a.NOPOLIS) &lt;&gt; to_number('1')
+                        THEN
+                              CASE 
+                                  WHEN
+                                          trunc(tg.StartDate) &lt;= trunc(sysdate)
+                                         and  trunc(tg.EndDate) &gt;= trunc(sysdate) 
+                                         THEN
+                                               'Aktif'
+                                  WHEN 
+                                         trunc(tg.StartDate)  &gt;= trunc(sysdate) 
+                                        OR
+                                         trunc(tg.EndDate) &lt;= trunc(sysdate)
+                                        THEN
+                                            'Tidak Aktif'    
+                              END  
+                       WHEN getIsEDMCancelation(a.NOPOLIS) = to_number('1')
+                       THEN
+                            'Tidak Aktif'
+                     END                                       
+        END) as HASIL1
+from JSON_POLIS a, t_general tg
+where a.idpega=tg.idpega
+and a.nopolis = tg.nopolis
+and a.prodke = tg.prodke
+and a.NOPOLIS = '{ASIS:InputData.CARI1}' AND a.PRODKE = '{ASIS:InputData.CARI2}'</pyBrowseSQL>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRequestType>CheckPolicyStatusActive</pyRequestType>
+<pyRuleEnds/>
+<pyCircumstanceTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKPOLICYSTATUSACTIVE</pxInsId>
+<pyStatus/>
+<pyWorkKey/>
+<pyDescription/>
+<pySaveSQL/>
+<pxInstanceLockedKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzChecksum>1015972314</pzChecksum>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOpName>FRANSISCO JUNIUS</pxUpdateOpName>
+<pyCircumstanceType/>
+<pyClassName>ASM-FW-GISFW-int-policyjson</pyClassName>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pxInstanceLockedDateTime/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20241010T092117.826 GMT</pzInsKey>
+<pyCircumstanceDateProp/>
+<pxUpdateOperator>FRANSISCOJUNIUSA</pxUpdateOperator>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-04-88 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20241010T092117.826 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20240321T041811.365 GMT</pzInsKey>
+<pyLabel>01-04-61 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20240105T082923.275 GMT</pzInsKey>
+<pyLabel>01-04-47 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20231110T030552.490 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-04-34 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>5</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20200717T082021.458 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-02-67 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20191016T070805.287 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>6</pxListSubscript>
+<pyLabel>01-02-23 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180809T034439.771 GMT</pzInsKey>
+<pyLabel>01-01-69 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>8</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180723T033734.110 GMT</pzInsKey>
+<pyLabel>01-01-68 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-66 (Available)</pyLabel>
+<pxListSubscript>9</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180619T071005.176 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxListSubscript>10</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180604T102707.298 GMT</pzInsKey>
+<pyLabel>01-01-65 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180212T103524.076 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>11</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyMenuTooltip/>
+<pxListSubscript>12</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKPOLICYSTATUSACTIVE #20180103T090712.256 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-62 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

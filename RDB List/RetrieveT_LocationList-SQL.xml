@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyShowJavaWindowName>GeneratedJava20260721T043233.740 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyOpenSQL/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyBrowseSQL>SELECT TO_CLOB (LOCATIONLIST) AS HASIL1
+  FROM POOLDATA.t_locationlist
+ WHERE idpega = {InputData.CARI1}
+{ASIS:InputData.CARI9}
+order by INDEXOBJECT asc</pyBrowseSQL>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyHandlerFlow/>
+<pyBaseRule>false</pyBaseRule>
+<pyDocumentTitle/>
+<pxCommitDateTime>20200731T134641.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDefinition/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM RetrieveT_LocationList</pyRuleName>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRequestType>RetrieveT_LocationList</pyRequestType>
+<pxSiblingCount/>
+<pyRuleEnds/>
+<pyMethodStatus/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyUsage/>
+<pyJavaStream/>
+<pyIsFromManageChangeLP/>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVET_LOCATIONLIST</pxInsName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyRuleFormStatusTime>20260721T043233.723 GMT</pyRuleFormStatusTime>
+<pyDeleteSQL/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyCircumstanceDate/>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzChecksum>805435031</pzChecksum>
+<pyTemplate/>
+<pxHostId>jboss2132</pxHostId>
+<pyDeletedObject/>
+<pyStreamName/>
+<pyRelativePath/>
+<pyDeleteMemo>tambah inputdata cari 9</pyDeleteMemo>
+<pyFormPost/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_LOCATIONLIST #20200716T092033.143 GMT</pzDocumentKey>
+<pyCircumstanceType/>
+<pyInterface/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_LOCATIONLIST #20200716T092033.143 GMT</pzInsKey>
+<pxMoveFromSystem/>
+<pyHistoryObject/>
+<pyWindowTitle/>
+<pyCircumstanceDateProp/>
+<pxUpdateDateTime>20200722T093921.751 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_LOCATIONLIST #20200716T092033.143 GMT</pzOriginalInstanceKey>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-02-67</pyRuleSetVersion>
+<pyMemo>add ASIS</pyMemo>
+<pyRuleParamsStreamName/>
+<pyWorkKey/>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedRuleSet/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzRuleSetVersionPatch>67</pzRuleSetVersionPatch>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM RetrieveT_LocationList</pxTabLabel>
+<pyLabelOld>RetrieveT_LocationList</pyLabelOld>
+<pxInstanceLockedKey/>
+<pxCreateSystemID>ASMPegaSystem</pxCreateSystemID>
+<pxMoveImportDateTime>20200731T134641.018 GMT</pxMoveImportDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStatus/>
+<pySaveSQL/>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyCircumstanceProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleStarts/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxCreateDateTime>20200716T092033.143 GMT</pxCreateDateTime>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVET_LOCATIONLIST</pxInsId>
+<pyCircumstanceVal/>
+<pxSaveDateTime>20200722T093921.849 GMT</pxSaveDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyLabel>RetrieveT_LocationList</pyLabel>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_LOCATIONLIST #20200716T092033.143 GMT</pzInsKey>
+<pyLabel>01-02-67 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+</pagedata>

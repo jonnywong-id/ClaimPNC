@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pyBaseRule>false</pyBaseRule>
+<pyBrowseSQL>SELECT NOTES AS "Notes"
+  FROM occupation
+ WHERE id = {InputData.CARI1}</pyBrowseSQL>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pyTemplateInputBox/>
+<pxSiblingCount/>
+<pxOriginalCreateOpName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceType/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pxOriginalCreateSystemID/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-OCCUPATION GCNM!GETOCCUPATIONNAME #20260522T092400.607 GMT</pzInsKey>
+<pySPRuleSetName>MICHELLEWILLIAM@</pySPRuleSetName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportDateTime>20260803T102321.845 GMT</pxMoveImportDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-OCCUPATION GCNM!GETOCCUPATIONNAME #20260507T070806.048 GMT</pzOriginalInstanceKey>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveFromSystem/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzChecksum>-1505252154</pzChecksum>
+<pyCircumstanceDateProp/>
+<pyDeleteSQL/>
+<pxTabLabel>ASM-FW-GISFW-Int-OCCUPATION GCNM GetOccupationName</pxTabLabel>
+<pyDeletedObject/>
+<pxCommitDateTime>20260803T102321.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pyCircumstanceVal/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyMethodStatus/>
+<pyTaskID/>
+<pxUpdateDateTime>20260522T092400.607 GMT</pxUpdateDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedCreateDateTime>20260507T070805.726 GMT</pxInstanceLockedCreateDateTime>
+<pxInstanceLockedDateTime/>
+<pyOpenSQL/>
+<pyCircumstanceTemplate/>
+<pyTempText/>
+<pyInterface/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleStarts/>
+<pyTemplate/>
+<pxInstanceLockedBy/>
+<pyDocumentTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormStatusTime>20260901T041549.906 GMT</pyRuleFormStatusTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyShowJavaWindowName>GeneratedJava20260901T041549.937 GMT</pyShowJavaWindowName>
+<pyRuleName>ASM-FW-GISFW-Int-OCCUPATION GCNM GetOccupationName</pyRuleName>
+<pyUsage/>
+<pyMemo>update</pyMemo>
+<pyCircumstanceDate/>
+<pyDescription/>
+<pyRuleParamsStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRelativePath/>
+<pxOriginalCreateDateTime/>
+<pyClassName>ASM-FW-GISFW-Int-OCCUPATION</pyClassName>
+<pxHostId>jboss10372</pxHostId>
+<pyJavaStream/>
+<pxOriginalCreateOperator/>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pxSaveDateTime>20260522T092400.617 GMT</pxSaveDateTime>
+<pyLabelOld>GetOccupationName</pyLabelOld>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateDateTime>20260522T092400.607 GMT</pxCreateDateTime>
+<pyStreamName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-OCCUPATION GCNM!GETOCCUPATIONNAME #20260522T092400.607 GMT</pzDocumentKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInsName>ASM-FW-GISFW-INT-OCCUPATION!GCNM!GETOCCUPATIONNAME</pxInsName>
+<pxInstanceLockedRuleSet/>
+<pyFormPost/>
+<pxInsId>ASM-FW-GISFW-INT-OCCUPATION!GCNM!GETOCCUPATIONNAME</pxInsId>
+<pxInstanceLockedKey/>
+<pySpecialtyComponentData/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyLabel>GetOccupationName</pyLabel>
+<pyRequestType>GetOccupationName</pyRequestType>
+<pyCircumstanceDefinition/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut/>
+<pyRuleSetVersion>01-03-19</pyRuleSetVersion>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWindowTitle/>
+<pyWorkKey/>
+<pyIsFromManageChangeLP/>
+<pyHandlerFlow/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pxInstanceLockedRuleSetVersion/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-OCCUPATION GCNM!GETOCCUPATIONNAME #20260522T092400.607 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-19 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-OCCUPATION GCNM!GETOCCUPATIONNAME #20260511T033817.677 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyPreview>false</pyPreview>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>false</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyDelete>true</pyDelete>
+<pyRecover>false</pyRecover>
+<pyVersionRequiresApproval>false</pyVersionRequiresApproval>
+<pyApprovalClass>Work-RuleCheckIn</pyApprovalClass>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

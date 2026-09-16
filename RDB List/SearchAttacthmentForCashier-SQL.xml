@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM SearchAttacthmentForCashier</pyRuleName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateDateTime>20210523T232849.103 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxOriginalCreateSystemID/>
+<pyUsage/>
+<pyMemo>done</pyMemo>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pxCreateDateTime>20210511T112724.056 GMT</pxCreateDateTime>
+<pxOriginalCreateDateTime/>
+<pxOriginalCreateOpName/>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!SEARCHATTACTHMENTFORCASHIER</pxInsName>
+<pyFormPost/>
+<pxSaveDateTime>20210523T232849.126 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pyDocumentTitle/>
+<pyTemporaryObject/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SEARCHATTACTHMENTFORCASHIER #20210511T112724.056 GMT</pzInsKey>
+<pyTemplate/>
+<pyLabelOld>Search Attacthment for cashier</pyLabelOld>
+<pyRelativePath/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!SEARCHATTACTHMENTFORCASHIER</pxInsId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-01-92</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SEARCHATTACTHMENTFORCASHIER #20210511T112724.056 GMT</pzDocumentKey>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pyWindowTitle/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxOriginalCreateOperator/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pxMoveFromSystem/>
+<pzChecksum>-550240715</pzChecksum>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyHandlerFlow/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM SearchAttacthmentForCashier</pxTabLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDate/>
+<pyTemplateInputBox/>
+<pyDeletedObject/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCommitDateTime>20210627T055933.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SEARCHATTACTHMENTFORCASHIER #20210407T021217.480 GMT</pzOriginalInstanceKey>
+<pyStreamName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatusTime>20260904T032022.696 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionPatch>92</pzRuleSetVersionPatch>
+<pxHostId>jboss208</pxHostId>
+<pyOpenSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceVal/>
+<pyCircumstanceDateProp/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyShowJavaWindowName>GeneratedJava20260904T032022.717 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyBrowseSQL>SELECT pooldata.base64encode(ATTACHFILE) AS "CityID", ATTACHNAME AS "City", ATTACHMIMETYPE AS "District", ATTACHNOTE AS "DistrictID" FROM POOLDATA.DATA_ATTACHFILE WHERE DATAID = {TempPage12.CaseID}</pyBrowseSQL>
+<pyCircumstanceType/>
+<pyTempText>saved</pyTempText>
+<pyDeleteSQL/>
+<pyStatus/>
+<pyDescription/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRequestType>SearchAttacthmentForCashier</pyRequestType>
+<pxMoveImportDateTime>20210627T055928.082 GMT</pxMoveImportDateTime>
+<pySaveSQL/>
+<pyCheckInRuleSet/>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyLabel>Search Attacthment for cashier</pyLabel>
+<pyCircumstanceTemplate/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SEARCHATTACTHMENTFORCASHIER #20210511T112724.056 GMT</pzInsKey>
+<pyLabel>01-01-92 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SEARCHATTACTHMENTFORCASHIER #20210407T021217.480 GMT</pzInsKey>
+<pyLabel>01-01-91 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

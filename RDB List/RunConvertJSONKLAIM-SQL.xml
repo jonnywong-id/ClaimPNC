@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedCreateDateTime/>
+<pxTabLabel>@baseclass GCNM RunConvertJSONKLAIM</pxTabLabel>
+<pyInterface/>
+<pxMoveFromSystem/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxSiblingCount/>
+<pySaveSQL/>
+<pyRuleStarts/>
+<pxHostId>jboss2165</pxHostId>
+<pyRequestType>RunConvertJSONKLAIM</pyRequestType>
+<pxCommitDateTime>20210424T075602.000 GMT</pxCommitDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLISTDATALOGIN #20210329T034138.072 GMT</pzOriginalInstanceKey>
+<pyRelativePath/>
+<pyShowJavaWindowName>GeneratedJava20260720T142435.834 GMT</pyShowJavaWindowName>
+<pxMoveImportDateTime>20210424T075602.041 GMT</pxMoveImportDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyFormPost/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!RUNCONVERTJSONKLAIM #20210422T091909.050 GMT</pzInsKey>
+<pxOriginalCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsId>@BASECLASS!GCNM!RUNCONVERTJSONKLAIM</pxInsId>
+<pyWindowTitle/>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pyLabelOld>RunConvertJSONKLAIM</pyLabelOld>
+<pyRuleName>@baseclass GCNM RunConvertJSONKLAIM</pyRuleName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDeleteSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceProp/>
+<pyTemplate/>
+<pxInstanceLockedBy/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedKey/>
+<pzChecksum>2030499184</pzChecksum>
+<pyDescription/>
+<pxInstanceLockedRuleSet/>
+<pxInsName>@BASECLASS!GCNM!RUNCONVERTJSONKLAIM</pxInsName>
+<pzRuleSetVersionPatch>91</pzRuleSetVersionPatch>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyCircumstanceTemplate/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyHandlerFlow/>
+<pyMethodStatus/>
+<pyCircumstanceType/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleSetVersion>01-01-91</pyRuleSetVersion>
+<pyStreamName/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyStatus/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyBrowseSQL>BEGIN 
+  POOLDATA.PEGA_CONVERT_JSONKLAIM_PNC ({TempIns.pzInsKey}, {TempIns.pyID out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSaveDateTime>20210422T091948.577 GMT</pxSaveDateTime>
+<pyDocumentTitle/>
+<pyJavaStream/>
+<pyRuleFormStatusTime>20260720T142435.761 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedDateTime/>
+<pyUsage/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOpName/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pySpecialtyComponentData/>
+<pyClassName>@baseclass</pyClassName>
+<pyOpenSQL/>
+<pyCircumstanceVal/>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pyMemo>done</pyMemo>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateDateTime>20210422T091948.485 GMT</pxUpdateDateTime>
+<pyIsFromManageChangeLP/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20210422T091909.050 GMT</pxCreateDateTime>
+<pyDeletedObject/>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!RUNCONVERTJSONKLAIM #20210422T091909.050 GMT</pzDocumentKey>
+<pyTemplateInputBox/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyLabel>RunConvertJSONKLAIM</pyLabel>
+<pyWorkKey/>
+<pyCircumstanceDate/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!RUNCONVERTJSONKLAIM #20210422T091909.050 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-91 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

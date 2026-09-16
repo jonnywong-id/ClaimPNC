@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyMemo>done add grouppanel and kode cabang</pyMemo>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDate/>
+<pxHostId>jboss10402</pxHostId>
+<pyLabel>InsertToClaimArchive</pyLabel>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pxOriginalCreateOpName/>
+<pyFormPost/>
+<pyUsage/>
+<pzChecksum>1071100336</pzChecksum>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveFromSystem/>
+<pyTemplateInputBox/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSet/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyIsFromManageChangeLP/>
+<pxMergeSynchronized>20240505T101424.774 GMT</pxMergeSynchronized>
+<pyStatus/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedKey/>
+<pyRuleFormStatusTime>20260901T063020.621 GMT</pyRuleFormStatusTime>
+<pyDeleteSQL/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyCircumstanceVal/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedDateTime/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDeletedObject/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplate/>
+<pyHandlerFlow/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTTOCLAIMARCHIVE</pxInsId>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyShowJavaWindowName>GeneratedJava20260901T063020.651 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyInterface/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertToClaimArchive</pyRuleName>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTTOCLAIMARCHIVE</pxInsName>
+<pxSiblingCount/>
+<pxCreateDateTime>20240729T015227.542 GMT</pxCreateDateTime>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyTemporaryObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRelativePath/>
+<pyWorkKey/>
+<pyMethodStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTTOCLAIMARCHIVE #20240729T015227.542 GMT</pzDocumentKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTTOCLAIMARCHIVE #20240729T015227.542 GMT</pzInsKey>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pySpecialtyComponentData/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleStarts/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxMoveImportDateTime>20240824T090406.500 GMT</pxMoveImportDateTime>
+<pySaveSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyOpenSQL/>
+<pyDocumentTitle/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyCircumstanceTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDefinition/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!ARCHIVEINSERTDATAKODEDESC #20240504T091059.655 GMT</pzOriginalInstanceKey>
+<pyRequestType>InsertToClaimArchive</pyRequestType>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pxCommitDateTime>20240824T090406.000 GMT</pxCommitDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStreamName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pxSaveDateTime>20240729T021640.238 GMT</pxSaveDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyBaseRule>false</pyBaseRule>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pxUpdateDateTime>20240729T021639.912 GMT</pxUpdateDateTime>
+<pyCircumstanceType/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertToClaimArchive</pxTabLabel>
+<pyJavaStream/>
+<pyBrowseSQL>DECLARE 
+  FLAGS VARCHAR2(32767);
+  TID_ARCHIVE NUMBER;
+  TNOKLAIM VARCHAR2(32767);
+  TNOPOLIS VARCHAR2(32767);
+  TTERTANGGUNG VARCHAR2(32767);
+  TDOL DATE;
+  TPICTEKNIK VARCHAR2(32767);
+  TTGLTERIMADOK DATE;
+  TTGLINPUT DATE;
+  TJUMLAHLEMBAR NUMBER;
+  TTIPEDOK VARCHAR2(32767);
+  TJENISDOK VARCHAR2(32767);
+  TNAMABOX VARCHAR2(32767);
+  TKODEFILLING VARCHAR2(32767);
+  User_input VARCHAR2(1000);
+  TKODECABANG VARCHAR2(100);
+  TGROUPPANEL VARCHAR2(100);
+  ERRMSG VARCHAR2(32767);
+
+
+BEGIN 
+  FLAGS := {InsertDataAI.HideKTP};
+  TID_ARCHIVE := {InsertDataAI.IDMasterTONP Integer};
+  TNOKLAIM := {InsertDataAI.CaseID};
+  TNOPOLIS := {InsertDataAI.PolicyNo};
+  TTERTANGGUNG := {InsertDataAI.NIK};
+  TDOL := {InsertDataAI.DateOfLoss DateTime};
+  TPICTEKNIK := {InsertDataAI.UserTeknis};
+  User_input := {InsertDataAI.UserName};
+  TTGLTERIMADOK := {InsertDataAI.TanggalCetakDLA DateTime};
+  TTGLINPUT := sysdate;
+  TJUMLAHLEMBAR := {InsertDataAI.AgingAmount};
+  TTIPEDOK := {InsertDataAI.RWID};
+  TJENISDOK := {InsertDataAI.TelpTertanggung};
+  TNAMABOX := {InsertDataAI.CABANG};
+  TKODEFILLING := {InsertDataAI.KodeCabang};
+  TKODECABANG :={TempCabang.KodeCabang};
+  TGROUPPANEL :={InsertDataAI.EffortClose};
+  ERRMSG := NULL;
+
+  POOLDATA.INSERTDATASFILLINGARCHIVE ( FLAGS, TID_ARCHIVE, TNOKLAIM, TNOPOLIS, TTERTANGGUNG, TDOL, TPICTEKNIK, User_input,TTGLTERIMADOK, TTGLINPUT, TJUMLAHLEMBAR, TTIPEDOK, TJENISDOK, TNAMABOX, TKODEFILLING,TKODECABANG, TGROUPPANEL ,{InsertDataAI.CauseOfLoss out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyLabelOld>InsertToClaimArchive</pyLabelOld>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRecover>false</pyRecover>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTTOCLAIMARCHIVE #20240729T015227.542 GMT</pzInsKey>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTTOCLAIMARCHIVE #20240505T050722.145 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

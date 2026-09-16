@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBrowseSQL>DECLARE 
+  VCASEID VARCHAR2(32767);
+  NIK VARCHAR2(32767);
+  JSONIN CLOB;
+  JSONOUT CLOB;
+  DONESTATUS VARCHAR2(32767);
+  ERRMSG VARCHAR2(32767);
+
+BEGIN 
+  VCASEID := {InsertCIF.VCASEID};
+  NIK := {InsertCIF.NIK};
+  DBMS_LOB.CREATETEMPORARY (JSONIN , true);
+  JSONIN := {InsertCIF.JSONIN};
+  DBMS_LOB.CREATETEMPORARY (JSONOUT , true);
+  JSONOUT := {InsertCIF.JSONOUT};
+  DONESTATUS := {InsertCIF.STATUS};
+
+  POOLDATA.LOGDUKCAPILKLAIMMBUNEW ( VCASEID, NIK, JSONIN, JSONOUT, DONESTATUS, {OutputCIF.ERRMSG});
+END;</pyBrowseSQL>
+<pxCommitDateTime>20210114T045907.000 GMT</pxCommitDateTime>
+<pyCircumstanceDateProp/>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI ASM InsertLogDukcapil_SQL</pxTabLabel>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI!ASM!INSERTLOGDUKCAPIL_SQL</pxInsId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyFormPost/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyDeleteMemo>cek</pyDeleteMemo>
+<pyOpenSQL/>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI</pyClassName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyJavaStream/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20210113T064131.050 GMT</pzDocumentKey>
+<pxOriginalCreateDateTime/>
+<pyLabel>InsertLogDukcapil_SQL</pyLabel>
+<pyUsage/>
+<pyRuleSet>GKM</pyRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20191008T043013.694 GMT</pzOriginalInstanceKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStatus/>
+<pyCircumstanceDate/>
+<pxUpdateDateTime>20210114T042008.075 GMT</pxUpdateDateTime>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperName>Roby</pxMoveImportOperName>
+<pyMethodStatus/>
+<pyDocumentTitle/>
+<pyRuleParamsStreamName/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzChecksum>69454409</pzChecksum>
+<pyRelativePath/>
+<pxMoveFromSystem/>
+<pyRuleSetVersion>01-02-40</pyRuleSetVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceProp/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pyStreamName/>
+<pyCircumstanceTemplate/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxHostId>jboss2166</pxHostId>
+<pyMemo>cek</pyMemo>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWorkKey/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateOperator/>
+<pxSiblingCount/>
+<pxInstanceLockedKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleEnds/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedBy/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceType/>
+<pxUpdateOperator>roby_t@sinarmas.co.id</pxUpdateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOpName>Roby</pxCreateOpName>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI ASM InsertLogDukcapil_SQL</pyRuleName>
+<pzRuleSetVersionPatch>40</pzRuleSetVersionPatch>
+<pySPRuleSetName>GKM</pySPRuleSetName>
+<pxMoveImportOperId>roby_t@sinarmas.co.id</pxMoveImportOperId>
+<pySaveSQL>INSERT INTO POOLDATA.LOG_DUKCAPIL
+VALUES ({InputKonversi.VCASEID},{InputKonversi.NIK},{InputKonversi.JSONIN},{InputKonversi.JSONOUT})</pySaveSQL>
+<pyDeleteSQL/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20210113T064131.050 GMT</pzInsKey>
+<pyRequestType>InsertLogDukcapil_SQL</pyRequestType>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleStarts/>
+<pxCreateOperator>roby_t@sinarmas.co.id</pxCreateOperator>
+<pyTemplateInputBox/>
+<pyShowJavaWindowName>GeneratedJava20260908T065043.472 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pyInterface/>
+<pyWindowTitle/>
+<pyRuleFormStatusTime>20260908T065043.451 GMT</pyRuleFormStatusTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportDateTime>20210114T045907.643 GMT</pxMoveImportDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20210113T064131.050 GMT</pxCreateDateTime>
+<pxSaveDateTime>20210114T042008.095 GMT</pxSaveDateTime>
+<pyDeletedObject/>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI!ASM!INSERTLOGDUKCAPIL_SQL</pxInsName>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pyHandlerFlow/>
+<pyCircumstanceVal/>
+<pyLabelOld>InsertLogDukcapil_SQL</pyLabelOld>
+<pyCircumstanceDefinition/>
+<pxUpdateOpName>Roby</pxUpdateOpName>
+<pxOriginalRuleSet>GKM</pxOriginalRuleSet>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyDelegates>false</pyDelegates>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckIn>false</pyCheckIn>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20210113T064131.050 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-02-40 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20191008T043013.694 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-01-39 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!INSERTLOGDUKCAPIL_SQL #20191004T082215.284 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-36 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

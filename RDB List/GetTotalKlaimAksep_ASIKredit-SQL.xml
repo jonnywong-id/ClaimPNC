@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDeleteSQL/>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateOpName/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyHandlerFlow/>
+<pyWindowTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyLabelOld>GetTotalKlaimAksep_ASIKredit</pyLabelOld>
+<pxOriginalCreateSystemID/>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMAKSEP_ASIKREDIT #20240610T070653.881 GMT</pzDocumentKey>
+<pyDescription/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pyRequestType>GetTotalKlaimAksep_ASIKredit</pyRequestType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyMethodStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemplateInputBox/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSiblingCount/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetTotalKlaimAksep_ASIKredit</pyRuleName>
+<pyCircumstanceProp/>
+<pyCircumstanceTemplate/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInsName>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETTOTALKLAIMAKSEP_ASIKREDIT</pxInsName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySaveSQL/>
+<pxCreateDateTime>20240610T070653.881 GMT</pxCreateDateTime>
+<pyIsFromManageChangeLP/>
+<pyMemo>dones</pyMemo>
+<pySpecialtyComponentData/>
+<pzChecksum>1086415254</pzChecksum>
+<pyRuleStarts/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyClassName>
+<pyCheckInRuleSet/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxOriginalCreateDateTime/>
+<pyFormPost/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260901T101430.874 GMT</pyShowJavaWindowName>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxHostId>jboss10362</pxHostId>
+<pxMoveImportDateTime>20240715T114352.589 GMT</pxMoveImportDateTime>
+<pxInstanceLockedKey/>
+<pyRuleFormStatusTime>20260901T101430.854 GMT</pyRuleFormStatusTime>
+<pyStatus/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceType/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetTotalKlaimAksep_ASIKredit</pxTabLabel>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateDateTime>20240610T072947.665 GMT</pxUpdateDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyJavaStream/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceVal/>
+<pyLabel>GetTotalKlaimAksep_ASIKredit</pyLabel>
+<pyWorkKey/>
+<pyRuleEnds/>
+<pxSaveDateTime>20240610T072947.672 GMT</pxSaveDateTime>
+<pyInterface/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyOpenSQL/>
+<pxInstanceLockedBy/>
+<pyDeletedObject/>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxInstanceLockedRuleSetVersion/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStreamName/>
+<pyBrowseSQL>select sum(Value*KursValue) as "LSC_ID" from OS_AKSEPTASI_KLAIM a,JSON_TABLE(data_json,'$' columns(pxObjClass varchar2 path '$.pxObjClass',
+nested path '$.osAkseptasiList[*]' columns(ObjectNote varchar2 path '$.ObjectNote',AcceptedNo varchar2 path '$.AcceptedNo',Value number path '$.Value',KursValue number path '$.KursValue')))
+ where a.NOPOLIS in (select nopolis from pooldata.t_general gl where GL.BUSINESSCODE={TempServices.CaseIDCN} and SOBLEADER2 in 
+(select ID from pooldata.agent where leader2 =  (select sobleader2 from pooldata.t_general where nopolis={TempServices.CabId} and rownum='1'))) and STS_REJECT='2'</pyBrowseSQL>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pxInsId>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETTOTALKLAIMAKSEP_ASIKREDIT</pxInsId>
+<pyTemplate/>
+<pxMoveFromSystem/>
+<pyTemporaryObject/>
+<pyValueChanged>false</pyValueChanged>
+<pyRelativePath/>
+<pyCircumstanceDateProp/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMAKSEP_ASIKREDIT #20240610T070653.881 GMT</pzInsKey>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_APIAKSEPTASIW #20240403T080839.403 GMT</pzOriginalInstanceKey>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMAKSEP_ASIKREDIT #20240610T070653.881 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-06 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

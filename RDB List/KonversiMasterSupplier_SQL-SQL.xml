@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyUsage/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceVal/>
+<pyRelativePath/>
+<pxUpdateOperator>MADEANDREW</pxUpdateOperator>
+<pySPRuleSetName>MADEANDREW@</pySPRuleSetName>
+<pyBrowseSQL>DECLARE 
+  DATAPEGA CLOB;
+  IDPEGA VARCHAR2(32767);
+  ERRMSG VARCHAR2(32767);
+  IDPEGAOUT  VARCHAR2(32767);
+  STSSIMPAN NUMBER;
+
+BEGIN 
+  DATAPEGA := {InputKonversi.JSONDATA};
+  IDPEGA := {InputKonversi.ID};
+
+  POOLDATA.PEGA_M_SUPPLIER(DATAPEGA,IDPEGA,{OutputKonversi.ERRMSG out},{OutputKonversi.ID out},{OutputKonversi.STS_SIMPAN out});
+END;</pyBrowseSQL>
+<pyRuleFormStatusTime>20260827T021717.168 GMT</pyRuleFormStatusTime>
+<pxMoveImportOperId>MADEANDREW</pxMoveImportOperId>
+<pxOriginalCreateSystemID/>
+<pyRuleSet>GKM</pyRuleSet>
+<pyValueChanged>false</pyValueChanged>
+<pyDeleteSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStreamName/>
+<pyOpenSQL/>
+<pyCircumstanceDateProp/>
+<pzChecksum>1473025792</pzChecksum>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI</pyClassName>
+<pyDescription/>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI ASM KonversiMasterSupplier_SQL</pyRuleName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleSetVersion>01-02-36</pyRuleSetVersion>
+<pxOriginalCreateOpName/>
+<pyRequestType>KonversiMasterSupplier_SQL</pyRequestType>
+<pyDocumentTitle/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHistoryObject>false</pyHistoryObject>
+<pyMemo>done</pyMemo>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedBy/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSaveDateTime>20201221T224646.613 GMT</pxSaveDateTime>
+<pxMoveImportOperName>Made Andrew Yuda Dimas Satria</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!KONVERSIMASTERSUPPLIER_SQL #20201221T221409.800 GMT</pzDocumentKey>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxMoveImportDateTime>20210104T080348.746 GMT</pxMoveImportDateTime>
+<pySpecialtyComponentData/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pyInterface/>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI!ASM!KONVERSIMASTERSUPPLIER_SQL</pxInsName>
+<pyTemplateInputBox/>
+<pyCircumstanceType/>
+<pyHandlerFlow/>
+<pySaveSQL/>
+<pxOriginalRuleSet>GKM</pxOriginalRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyWindowTitle/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyCircumstanceTemplate/>
+<pyMethodStatus/>
+<pyLabel>KonversiMasterSupplier_SQL</pyLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedKey/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!KONVERSIDETAILBPKB_SQL #20201116T101538.231 GMT</pzOriginalInstanceKey>
+<pyTemplate/>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI!ASM!KONVERSIMASTERSUPPLIER_SQL</pxInsId>
+<pxCreateDateTime>20201221T221409.800 GMT</pxCreateDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!KONVERSIMASTERSUPPLIER_SQL #20201221T221409.800 GMT</pzInsKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleParamsStreamName/>
+<pxCreateOperator>MADEANDREW</pxCreateOperator>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionPatch>36</pzRuleSetVersionPatch>
+<pxCreateOpName>Made Andrew Yuda Dimas Satria</pxCreateOpName>
+<pxSiblingCount/>
+<pyStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabelOld>KonversiMasterSupplier_SQL</pyLabelOld>
+<pxUpdateOpName>Made Andrew Yuda Dimas Satria</pxUpdateOpName>
+<pyRWAccess>ASM</pyRWAccess>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI ASM KonversiMasterSupplier_SQL</pxTabLabel>
+<pyShowJavaWindowName>GeneratedJava20260827T021717.191 GMT</pyShowJavaWindowName>
+<pxUpdateDateTime>20201221T224646.505 GMT</pxUpdateDateTime>
+<pyRuleStarts/>
+<pxHostId>jboss2146</pxHostId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyFormPost/>
+<pxInstanceLockedCreateDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pxOriginalCreateOperator/>
+<pyBaseRule>false</pyBaseRule>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDefinition/>
+<pyWorkKey/>
+<pxCommitDateTime>20210104T080348.000 GMT</pxCommitDateTime>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pyCompareVersion/>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!KONVERSIMASTERSUPPLIER_SQL #20201221T221409.800 GMT</pzInsKey>
+<pyLabel>01-02-36 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

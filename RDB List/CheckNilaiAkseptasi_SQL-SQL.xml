@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKNILAIAKSEPTASI_SQL #20260626T033721.293 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedBy/>
+<pxSaveDateTime>20260626T033753.532 GMT</pxSaveDateTime>
+<pyShowJavaWindowName>GeneratedJava20260908T084128.937 GMT</pyShowJavaWindowName>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyOpenSQL/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!CHECKNILAIAKSEPTASI_SQL</pxInsId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHistoryObject/>
+<pyWorkKey/>
+<pyCircumstanceTemplate/>
+<pyDeletedObject/>
+<pyStreamName/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!CHECKNILAIAKSEPTASI_SQL</pxInsName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKNILAIAKSEPTASI_SQL #20260626T033721.293 GMT</pzDocumentKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM CheckNilaiAkseptasi_SQL</pxTabLabel>
+<pyTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyLabel>CheckNilaiAkseptasi_SQL</pyLabel>
+<pxSiblingCount/>
+<pxMoveImportOperName/>
+<pyBrowseSQL>BEGIN
+     POOLDATA.PKG_KONVERSI_JSONKLAIM.Cek_Nilai_Akseptasi_PNC ( {InputCheck.ClaimID}, {InputCheck.NoAkseptasi}, {InputCheck.ClaimAmount}, {InputCheck.ClaimAmountAdjust}, {InputCheck.ErrorNotesAkseptasi out} );
+END;</pyBrowseSQL>
+<pxCommitDateTime>20260626T033753.000 GMT</pxCommitDateTime>
+<pzChecksum>426330950</pzChecksum>
+<pyRuleStarts/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKNILAIAKSEPTASI_SQL #20260626T033721.293 GMT</pzInsKey>
+<pyValueChanged>false</pyValueChanged>
+<pyJavaStream/>
+<pyHandlerFlow/>
+<pyCircumstanceVal/>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportDateTime/>
+<pyCircumstanceType/>
+<pyTemplateInputBox/>
+<pyWindowTitle/>
+<pyRuleEnds/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM CheckNilaiAkseptasi_SQL</pyRuleName>
+<pyRuleFormStatusTime>20260908T084128.918 GMT</pyRuleFormStatusTime>
+<pyDocumentTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxHostId>jboss10402</pxHostId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyMethodStatus/>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pxCreateDateTime>20260626T033721.293 GMT</pxCreateDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsFromManageChangeLP/>
+<pyRequestType>CheckNilaiAkseptasi_SQL</pyRequestType>
+<pxMoveFromSystem/>
+<pyUsage/>
+<pySPRuleSetName/>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceProp/>
+<pxMoveImportOperId/>
+<pxUpdateDateTime>20260626T033753.463 GMT</pxUpdateDateTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedRuleSetVersion/>
+<pyInterface/>
+<pyDescription/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyStatus/>
+<pyFormPost/>
+<pzIsPrivateCheckOut/>
+<pxInstanceLockedKey/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>false</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>true</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKNILAIAKSEPTASI_SQL #20260626T033721.293 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pyBrowseSQL>select claimid as "CaseID",noakseptasi as "ClaimNo",to_char(A.TRANSFER_CASHIER_DATE,'dd/mm/yyyy') as "CityID" from pooldata.T_CLAIM_ADJUSTMENT a where A.NOAKSEPTASI is not null and A.TRANSFER_CASHIER_DATE is not null
+and trunc(A.TRANSFER_CASHIER_DATE)&gt;=to_date('01/01/2023','dd/mm/yyyy')and tglbayar is null and 
+to_number(sysdate - to_date(TRANSFER_CASHIER_DATE)) &gt;=30</pyBrowseSQL>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzChecksum>1529741827</pzChecksum>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM BrowseAkseptasiNotTransferForNotifToPIC</pxTabLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDateProp/>
+<pyRuleParamsStreamName/>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pyHandlerFlow/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyLabelOld>Browse Akseptasi not transfer for notif to PIC</pyLabelOld>
+<pyShowJavaWindowName>GeneratedJava20260908T064815.163 GMT</pyShowJavaWindowName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyTemplateInputBox/>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pxHostId>jboss10362</pxHostId>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDate/>
+<pyRelativePath/>
+<pyTemplate/>
+<pxOriginalCreateOperator/>
+<pyMemo>dones</pyMemo>
+<pyInterface/>
+<pxCreateDateTime>20231212T071307.850 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyWindowTitle/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM BrowseAkseptasiNotTransferForNotifToPIC</pyRuleName>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!BROWSEAKSEPTASINOTTRANSFERFORNOTIFTOPIC</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceTemplate/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyLabel>Browse Akseptasi not transfer for notif to PIC</pyLabel>
+<pyUsage/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyCircumstanceVal/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyCircumstanceType/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedDateTime/>
+<pxSaveDateTime>20231220T014740.173 GMT</pxSaveDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedBy/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleEnds/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!BROWSEAKSEPTASINOTTRANSFERFORNOTIFTOPIC #20231212T071307.850 GMT</pzInsKey>
+<pyFormPost/>
+<pyRuleFormStatusTime>20260908T064815.143 GMT</pyRuleFormStatusTime>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyJavaStream/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!BROWSEAKSEPTASINOTTRANSFERFORNOTIFTOPIC #20231212T071307.850 GMT</pzDocumentKey>
+<pySpecialtyComponentData/>
+<pxMoveImportDateTime>20240116T113039.764 GMT</pxMoveImportDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceProp/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyDescription/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStatus/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxCommitDateTime>20240116T113040.000 GMT</pxCommitDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWorkKey/>
+<pxUpdateDateTime>20231220T014740.166 GMT</pxUpdateDateTime>
+<pxMoveFromSystem/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!BROWSEAKSEPTASINOTTRANSFERFORNOTIFTOPIC</pxInsName>
+<pyStreamName/>
+<pyIsFromManageChangeLP/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxSiblingCount/>
+<pySaveSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!BROWSECASENOTASSIGNED #20210304T070736.104 GMT</pzOriginalInstanceKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyOpenSQL/>
+<pxOriginalCreateSystemID/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRequestType>BrowseAkseptasiNotTransferForNotifToPIC</pyRequestType>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!BROWSEAKSEPTASINOTTRANSFERFORNOTIFTOPIC #20231212T071307.850 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

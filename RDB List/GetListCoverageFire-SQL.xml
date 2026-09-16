@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateDateTime>20250327T033901.458 GMT</pxUpdateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-CLAIM_SERVICE_LOG GCNM!GETLISTCOVERAGEFIRE #20200804T020651.274 GMT</pzOriginalInstanceKey>
+<pzChecksum>656581610</pzChecksum>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleFormStatusTime>20260720T130613.296 GMT</pyRuleFormStatusTime>
+<pyShowJavaWindowName>GeneratedJava20260720T130613.320 GMT</pyShowJavaWindowName>
+<pxHostId>jboss1040</pxHostId>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedRuleSet/>
+<pyTemporaryObject/>
+<pyCircumstanceDateProp/>
+<pyUsage/>
+<pyCircumstanceVal/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pyStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceTemplate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEFIRE #20250327T033742.435 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyBrowseSQL>SELECT
+to_clob(coveragelist) AS "PRODKE"
+from pooldata.t_propertylist
+where
+nopolis={TempPolis.POLICY_NO}
+and prodke={TempPolis.CURRENCY}
+and indexobject={TempPolis.BRANCH_NAME}</pyBrowseSQL>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pyRelativePath/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCheckInRuleSet/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyJavaStream/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetListCoverageFire</pxTabLabel>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20250327T033742.435 GMT</pxCreateDateTime>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleStarts/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetListCoverageFire</pyRuleName>
+<pxSaveDateTime>20250327T033901.577 GMT</pxSaveDateTime>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyFormPost/>
+<pyMethodStatus/>
+<pxMergeSynchronized>20200818T071545.304 GMT</pxMergeSynchronized>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>Get List Coverage Fire</pyLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyDescription/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInstanceLockedBy/>
+<pzIsPrivateCheckOut/>
+<pxMoveImportDateTime>20200821T133255.560 GMT</pxMoveImportDateTime>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyWorkKey/>
+<pyStreamName/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETLISTCOVERAGEFIRE</pxInsId>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETLISTCOVERAGEFIRE</pxInsName>
+<pxCommitDateTime>20250327T033901.000 GMT</pxCommitDateTime>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOperator/>
+<pyRuleEnds/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pyRequestType>GetListCoverageFire</pyRequestType>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxSiblingCount/>
+<pySaveSQL/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleParamsStreamName/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyDocumentTitle/>
+<pyLabelOld>Get List Coverage Fire</pyLabelOld>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyIsFromManageChangeLP/>
+<pyMemo>ubah objectno =  indexobject</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEFIRE #20250327T033742.435 GMT</pzDocumentKey>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyOpenSQL/>
+<pySpecialtyComponentData/>
+<pyTemplate/>
+<pyCircumstanceProp/>
+<pyHandlerFlow/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEFIRE #20250327T033742.435 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEFIRE #20200818T071240.495 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-87 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>true</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

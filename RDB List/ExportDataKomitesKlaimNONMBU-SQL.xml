@@ -1,0 +1,338 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyUsage/>
+<pyDeletedObject/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!EXPORTDATACLOSEKLAIMNONMBU #20241101T065033.808 GMT</pzOriginalInstanceKey>
+<pyDescription/>
+<pyShowJavaWindowName>GeneratedJava20260901T085903.473 GMT</pyShowJavaWindowName>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportDateTime>20241223T123621.939 GMT</pxMoveImportDateTime>
+<pxOriginalCreateSystemID/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyJavaStream/>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pyCircumstanceDateProp/>
+<pyTemplate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTempText/>
+<pzChecksum>-2112630339</pzChecksum>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveFromSystem/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDate/>
+<pyLabel>ExportDataKomitesKlaimNONMBU</pyLabel>
+<pyDocumentTitle/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pyHandlerFlow/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyCheckInRuleSet/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalCreateOpName/>
+<pyCircumstanceProp/>
+<pyRelativePath/>
+<pyWorkKey/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRequestType>ExportDataKomitesKlaimNONMBU</pyRequestType>
+<pyBrowseSQL>SELECT b.claimno AS "CaseID",
+       b.nopolis AS "NoKTP",
+       b.qqname AS "ClaimID",
+       b.picteknik AS "ConsultantName",
+       (select businessgroupname from POOLDATA.BUSINESS where id=B.BUSINESSCODE) AS "ClaimNo",
+       b.businessname AS "Resources",
+       b.sobname as "IsPLA",
+       c.nama_mo AS "IsSendPremi",
+       b.leader_member AS "UserTeknisEmail",
+       b.NOREFBROKER as "NoReffBroker", 
+       b.STS_BANDING as "Banding", 
+       b.STS_KEPUASAN as "SurveyKepuasan", 
+       b.EFFORT_CLOSE as "EffortClose", 
+       b.KENDALA_CLOSE as "KendalaClose", 
+       b.STS_PAPERLESS as "Paperless", 
+       b.USULAN as "Usulan", 
+       (select causeofloss from pooldata.t_claim_objectcoverage where claimid=b.claimid and objectid=a.objectid and objectcoverageid=a.objectcoverageid) as "InsuredName",
+       (select coveragename from pooldata.t_claim_objectcoverage where claimid=b.claimid and objectid=a.objectid and objectcoverageid=a.objectcoverageid) as "TelpTertanggung",
+       (DECODE (b.exgratia,  '0', 'NO',  NULL, 'NO','1','YES')) AS "AnalystRemaksInvestigator",
+       CASE WHEN b.grouppanel in ('003','009') 
+                THEN (select occupationid from pooldata.t_anekalist where nopolis=b.nopolis and prodke=b.prodke and indexobject=a.objectid and rownum=1) 
+            WHEN b.grouppanel='006' 
+                THEN (SELECT cc.OccupationCode  FROM  pooldata.t_propertylist z,
+                    JSON_TABLE (z.OCCUPATIONLIST, '$' COLUMNS (NESTED PATH '$.OccupationList[*]' COLUMNS (OccupationCode varchar2 path '$.OccupationCode'))) cc   
+                    WHERE  z.nopolis=b.nopolis and z.INDEXOBJECT=a.objectid and z.prodke=b.prodke and rownum='1')
+            ELSE (select goodsid from pooldata.t_cargolist where nopolis=b.nopolis and prodke=b.prodke and goodsid=a.objectid and rownum='1')
+       END AS "UserTeknis",
+       CASE WHEN b.grouppanel in ('003','009') 
+                THEN (select occupationname from pooldata.t_anekalist where nopolis=b.nopolis and prodke=b.prodke and indexobject=a.objectid and rownum=1) 
+            WHEN b.grouppanel='006' 
+                THEN (SELECT dd.OccupationName  FROM  pooldata.t_propertylist x,  JSON_TABLE (x.OCCUPATIONLIST, '$' COLUMNS (NESTED PATH '$.OccupationList[*]'
+                        COLUMNS (OccupationName varchar2 path '$.OccupationName'))) dd   
+                    WHERE  x.nopolis=b.nopolis and x.INDEXOBJECT=a.objectid and x.prodke=b.prodke and rownum='1')
+            ELSE (select goodsname from pooldata.t_cargolist where nopolis=b.nopolis and prodke=b.prodke and goodsid=a.objectid and rownum='1')
+       END AS "UserName",
+       to_char(c.begindate,'rrrr') as "Remark",
+       to_char(c.begindate,'dd/mm/yyyy') as "RCV_ID",
+       to_char(c.enddate,'dd/mm/yyyy') as "RW",
+       to_char(b.dateofloss,'dd/mm/yyyy') AS "CountryID",
+       to_char(b.dateofloss, 'mm') AS "AreaClaimId",
+       to_char(b.dateofloss, 'yyyy') AS "ContractNo",
+       to_char(b.registerdate,'dd/mm/yyyy') AS "Country",
+       to_char(a.analyst_tfkomitedate,'dd/mm/yyyy') AS "Email",
+       to_char(A.ACCEPTANCE_DATECOMITEE,'dd/mm/yyyy') AS "District",
+       to_char(a.tglakseptasi,'dd/mm/yyyy') AS "AlasanKlaim",
+       to_char(d.CLOSECLAIMDATE_1,'dd/mm/yyyy') AS "Conveyance",
+       to_char(d.CLOSECLAIMDATE_1,'mm') AS "month CopyFrom",
+       to_char(d.CLOSECLAIMDATE_1,'yyyy') AS "year CreateFrom",
+       to_char(b.ANALYST_TRANSFERDATE,'dd/mm/yyyy') AS "EmailTertanggung",
+       round(datamining.get_working_hours@asmd.sinarmas.co.id(b.registerdate, b.closeclaimdate) / 28800,0) as "ExGratiaNote",
+       round(datamining.get_working_hours@asmd.sinarmas.co.id(a.receivedatelod, a.transfer_cashier_date) / 28800,0) as "FlagASO",
+       CASE 
+            WHEN d.SURVEYORTYPE_1 IN ('2','3','4')  THEN d.Adjusterpic_1  ELSE '' 
+       END AS "FlagNOLL",
+       CASE 
+            WHEN d.SURVEYORTYPE_1 = '1' AND  b.businessname ='MARINE HULL' THEN d.SURVEYORNAME_1  
+            WHEN d.SURVEYORTYPE_1 = '2' AND  b.businessname ='MARINE HULL' THEN d.SURVEYORNAMEMARINE_1  
+            ELSE '' 
+       END  AS "FlagReject",
+       (SELECT CURRENCY
+          FROM POOLDATA.CURRENCY
+         WHERE ID = A.CURRENCY)
+          AS "NPWP",
+       CASE WHEN a.paymenttype in ('1','2','5') THEN (SELECT SUM (ESTIMATIONVALUE)
+              FROM POOLDATA.T_CLAIM_ESTIMASI
+             WHERE     claimid = a.claimid
+                   AND estimationtype = '1'
+                   AND kursid = a.currency and a.objectid=objectid and a.objectcoverageid=objectcoverageid and cfsdate&lt;=trunc(a.ANALYST_TFKOMITEDATE))
+            WHEN a.paymenttype ='4' THEN (SELECT SUM (ESTIMATIONVALUE)
+              FROM POOLDATA.T_CLAIM_ESTIMASI
+             WHERE     claimid = a.claimid
+                   AND estimationtype = '2'
+                   AND kursid = a.currency and a.objectid=objectid and a.objectcoverageid=objectcoverageid and cfsdate&lt;=trunc(a.ANALYST_TFKOMITEDATE))
+            ELSE 0
+       END  AS "ProdKe",
+       a.noakseptasi AS "DistrictID",
+       a.ASM_SHARE AS "ASMShare",
+       a.LOSS_ADJUSTER_FEE as "LDR_NOTE",
+       a.LOSS_ADJUSTER_FEE*(a.ASM_SHARE/100) as "LDR_ID",
+       a.ASM_SHARE_VALUE AS "KomiteStatus",
+       a.PROPOSE_VALUE AS "OldNoHp",
+       a.LOSS_ADJUSTER_FEE as "LOSS_ADJUSTER_FEE",
+       a.LOSS_ADJUSTER_FEE*(a.ASM_SHARE/100) as "LOSS_ADJUSTER_FEE",
+       DECODE(a.paymenttype,'1','Final','2','Interim','3','Salvage','4','Adjuster Fee','5','Adjustment','6','Tolak Klaim') as "IBNR",
+       a.GROSSVALUE AS "Currency",
+       CASE WHEN ASM_SHARE = 100 THEN 'N' ELSE 'Y' END AS "Status",
+       a.ASM_SHARE_VALUE * c.PRSN_BPPDAN AS "LossCoverage",
+       a.ASM_SHARE_VALUE * c.PRSN_FAC_OUT AS "LokasiSurveyor",
+       a.ASM_SHARE_VALUE * c.PRSN_QS_RI AS "IsTransferPIC",
+       a.ASM_SHARE_VALUE * c.PRSN_FSPL as "AnaylstRemarks",
+       a.ASM_SHARE_VALUE * c.PRSN_PSRSPL as "AnalystDoctorRemaks",
+       a.ASM_SHARE_VALUE * c.PRSN_PSPLNSRI AS "NIK",
+       a.ASM_SHARE_VALUE * c.PRSN_PSRQS_RI as "BranchID",
+       a.ASM_SHARE_VALUE * c.PRSN_FESPL AS "IsAnalisTransfer",
+       a.ASM_SHARE_VALUE * c.PRSN_FAC_OBL as "BranchName",
+       a.ASM_SHARE_VALUE * c.PRSN_FACOBSRB as "BusinessID",
+       a.ASM_SHARE_VALUE * c.PRSN_FACOBINDT as "CASEDB",
+       a.ASM_SHARE_VALUE * c.PRSN_ER1 as "CauseOfLoss",
+       a.ASM_SHARE_VALUE * c.PRSN_ER2 as "CauseOfLossID",
+       a.ASM_SHARE_VALUE * c.PRSN_PSS AS "City",
+       a.ASM_SHARE_VALUE * c.PRSN_PRGBI AS "CityID",
+       a.ASM_SHARE_VALUE * c.PRSN_PFRA AS "ClientID",
+       a.ASM_SHARE_VALUE * c.PRSN_XL AS "ClientName",
+       CASE WHEN a.paymenttype in ('1','2','5') THEN ((select sum(estimationvalue) from  t_claim_estimasi 
+                                                        where a.claimid=claimid and a.objectid=objectid and a.objectcoverageid=objectcoverageid
+                                                        and estimationtype='1' and kursid = a.currency
+                                                        and cfsdate&lt;=trunc(a.ANALYST_TFKOMITEDATE)) - a.nilaiakseptasi)
+            WHEN a.paymenttype in ('4') THEN ((select sum(estimationvalue) from  t_claim_estimasi 
+                                                        where a.claimid=claimid and a.objectid=objectid and a.objectcoverageid=objectcoverageid
+                                                        and estimationtype='2' and kursid = a.currency
+                                                        and cfsdate&lt;=trunc(a.ANALYST_TFKOMITEDATE)) - a.nilaiakseptasi)
+            ELSE 0
+       END  as "IDMaster",
+       c.TSI AS "IdxSurveyResults",
+       b.leader_member AS "DaftarObjek",
+       (SELECT I.STS_PROGRESS1 FROM POOLDATA.GCNM_PROGRESS_CLAIM G , POOLDATA.GCNM_MST_PROGRESS_KLAIM I 
+        WHERE G.STATUS_PROGRESS1 = I.ID_PROGRESS
+        AND G.PNCCASEID = c.NOKLAIM
+        AND  ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE PNCCASEID = c.NOKLAIM  and STATUS_PROGRESS2 not in ('2','24','60','59'))) AS "AgingAmount",
+ (select POOLDATA.GET_POSISI_PROGRESS2(G.PNCCASEID,G.ID_UPDATE,G.JSONSTATUS_PROGRESS2 ) from POOLDATA.GCNM_PROGRESS_CLAIM  G
+        where c.NOKLAIM = G.PNCCASEID
+        AND  ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE PNCCASEID = c.NOKLAIM  and STATUS_PROGRESS2 not in ('2','24','60','59'))) AS "AlasanTerlambat",
+    (SELECT TO_CHAR(G.TGL_INPUT,'DD/MM/YY') FROM POOLDATA.GCNM_PROGRESS_CLAIM G 
+        WHERE G.PNCCASEID = c.NOKLAIM 
+        AND  ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE PNCCASEID = c.NOKLAIM  
+        and STATUS_PROGRESS2 not in ('2','24','60','59'))) AS "ReceiverClaim",
+    (SELECT G.KETERANGAN FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+        WHERE G.PNCCASEID = c.NOKLAIM
+        AND  ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE PNCCASEID = c.NOKLAIM  
+        and STATUS_PROGRESS2 not in ('2','24','60','59'))) AS "pyNote",
+    (SELECT TO_CHAR(G.NEXT_FOLLOWUP,'DD/MM/YYYY') FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+        WHERE G.PNCCASEID = c.NOKLAIM
+        AND  ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE PNCCASEID = c.NOKLAIM  
+        and STATUS_PROGRESS2 not in ('2','24','60','59'))) AS "StatusReceiver",
+         B.COINSNAME as "OwnRisk",
+         (select NOTE_ST from POOLDATA.MST_PENOLAKAN_KLAIM_2 where ID_ST=A.IDPENOLAKANST and ID_ND=A.IDPENOLAKANDUA) as "KodeCabang",
+         (select NOTE_ND from POOLDATA.MST_PENOLAKAN_KLAIM_2 where ID_ST=A.IDPENOLAKANST and ID_ND=A.IDPENOLAKANDUA) as "KodeKBRU",
+         case when K.STATUSAPPROVE='1' then 'Approved' when K.STATUSAPPROVE='2' then 'Rejected' else 'Waiting' end as "StatusApprove",
+         K.KOMITE_ID as "ClaimNoExt",
+         k.NAMAKOMITE as "NamaPrincipal",
+         K.NOTEKOMITE as "KomiteAccepted"
+  FROM pooldata.t_claim_adjustment a,
+       pooldata.t_claim_pnc b,
+       pooldata.pega_dashboardpnc c,
+       datapega.pc_asm_fw_gcnmfw_work d,
+       POOLDATA.T_CLAIM_KOMITE_LIST k
+ WHERE a.claimid = b.claimid
+       AND b.claimno = c.noklaim
+       AND b.claimid=d.pzinskey
+       and D.PYID=K.NO_KLAIM
+       and A.CASEIDKOMITE=K.KOMITE_ID
+       AND b.branchname != 'ASNET'
+       AND b.grouppanel IN ('003', '004', '006', '009')
+       AND b.businesscode NOT IN ('10145', '10168', '10165', '10164', '10053', '10075', '10126', '10011', '10077', '10007')
+       and K.KOMITE_ID in (select f.komite_id from POOLDATA.T_CLAIM_KOMITE_LIST f where F.STATUSAPPROVE={TempDataPending.StatusApprove} and F.NO_KLAIM=D.PYID)
+       {ASIS:TempDataPending.NoteKasir}          
+AND TRUNC (d.CLOSECLAIMDATE_1) &gt;= TO_DATE ({TempLaporan.AnalystTransferDate}, 'dd/mm/yyyy') 
+AND TRUNC (d.CLOSECLAIMDATE_1) &lt;= TO_DATE ({TempLaporan.DateOfLoss}, 'dd/mm/yyyy') 
+ORDER BY d.CLOSECLAIMDATE_1 ASC</pyBrowseSQL>
+<pyRuleStarts/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyBaseRule>false</pyBaseRule>
+<pyInterface/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyMemo>dones</pyMemo>
+<pyCircumstanceVal/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!EXPORTDATAKOMITESKLAIMNONMBU #20241115T042220.288 GMT</pzDocumentKey>
+<pyRuleFormStatusTime>20260901T085903.454 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pyStatus/>
+<pxOriginalCreateDateTime/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20241115T043145.543 GMT</pxUpdateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsFromManageChangeLP/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyWindowTitle/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyOpenSQL/>
+<pxSiblingCount/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyCircumstanceType/>
+<pyLabelOld>ExportDataKomitesKlaimNONMBU</pyLabelOld>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!EXPORTDATAKOMITESKLAIMNONMBU #20241115T042220.288 GMT</pzInsKey>
+<pxOriginalCreateOperator/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyTemplateInputBox/>
+<pxCreateDateTime>20241115T042220.288 GMT</pxCreateDateTime>
+<pyMethodStatus/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxHostId>jboss10372</pxHostId>
+<pxInstanceLockedKey/>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!EXPORTDATAKOMITESKLAIMNONMBU</pxInsName>
+<pyTemporaryObject/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxSaveDateTime>20241115T043145.550 GMT</pxSaveDateTime>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!EXPORTDATAKOMITESKLAIMNONMBU</pxInsId>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM ExportDataKomitesKlaimNONMBU</pyRuleName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM ExportDataKomitesKlaimNONMBU</pxTabLabel>
+<pyCircumstanceDefinition/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyDeleteSQL/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!EXPORTDATAKOMITESKLAIMNONMBU #20241115T042220.288 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

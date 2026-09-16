@@ -1,0 +1,567 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyOpenSQL/>
+<pyJavaStream/>
+<pxUpdateDateTime>20240610T072858.340 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHandlerFlow/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyBrowseSQL>SELECT
+    sum((PREMI * CO_SHARE * PLUS_MINUS * EXCHANGE) + (DISC * CO_SHARE * PLUS_MINUS * EXCHANGE * -1) + (DISC2 * CO_SHARE * PLUS_MINUS * EXCHANGE * -1) + (COMM * CO_SHARE * PLUS_MINUS * EXCHANGE * -1) + (PPN * CO_SHARE * EXCHANGE * -1) + (OC * CO_SHARE * PLUS_MINUS * EXCHANGE * -1)) AS "LSC_ID"
+FROM
+    (
+        SELECT
+            TRUNC(MDS.MDS_TGL_PROD) AS TGL_PROD,
+            MDS.LBU_ID AS LBU_ID,
+            DATAMINING.GET_CABANG@simasnet(MDS.LDC_ID, MDS.LMO_ID) AS LDC_ID,
+            MDS.LJP_ID AS LJP_ID,
+            MDS.MDS_NO_POLIS AS NO_POLIS,
+            MDS.MDS_PROD_KE AS PROD_KE,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '2',
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '0',
+                    1,
+                    REINSURANCE.GET_PCT_ASM_COAS@simasnet(MDS.MSP_NO_SPAK, MDS.MDS_PROD_KE)
+                ),
+                1
+            ) AS CO_SHARE,
+            CASE
+                WHEN MDS.LJP_ID IN ('4', '5') THEN -1
+                ELSE 1
+            END AS PLUS_MINUS,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '2',
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_SUM_TSI, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'a'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'a'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'a'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'a'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) AS TSI,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    CASE
+                        WHEN MDS.MDS_NO_POLIS IN (
+                            SELECT
+                                NO_POLIS
+                            FROM
+                                COLLECTION.T_ADJUSTMENT_COAS@simasnet
+                        ) THEN '1'
+                        ELSE '2'
+                    END,
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_SUM_PREMI, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'b'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) AS PREMI,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '2',
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_DISC, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'c'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) AS DISC,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '2',
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_DISC2, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'd'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) AS DISC2,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    CASE
+                        WHEN MDS.MDS_NO_POLIS IN (
+                            SELECT
+                                NO_POLIS
+                            FROM
+                                COLLECTION.T_ADJUSTMENT_COAS@simasnet
+                        ) THEN '1'
+                        ELSE '2'
+                    END,
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_COMM, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'g'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'g'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) + CASE
+                WHEN MDS.LBU_ID IN ('B2', 'B3', 'B4', 'B5', 'B6', 'B7') THEN MDS.MDS_SUM_PREMI * NVL(
+                    (
+                        SELECT
+                            PCT_KOMISI_FAC_IN
+                        FROM
+                            ANEKA.T_POLIS_ANEKA@simasnet TPA
+                        WHERE
+                            TPA.NO_SPPA = MDS.MSP_NO_SPAK
+                            AND TPA.PROD_ID = MDS.MDS_PROD_KE
+                    ),
+                    0
+                )
+                ELSE 0
+            END + CASE
+                WHEN MDS.LBU_ID IN (
+                    SELECT
+                        LB.LBU_ID
+                    FROM
+                        LST_BUSINESS@simasnet LB
+                    WHERE
+                        LB.LGB_ID IN ('01')
+                ) THEN MDS.MDS_SUM_PREMI * NVL(
+                    (
+                        SELECT
+                            TFAC.RI_COMM / 100
+                        FROM
+                            FIRE.T_FACIN@simasnet TFAC
+                        WHERE
+                            TFAC.TFIN_SPPA_NO = MDS.MSP_NO_SPAK
+                            AND TO_CHAR(TFAC.PROFILE_NO, '00009') = TO_CHAR(MDS.MDS_PROD_KE, '00009')
+                    ),
+                    0
+                )
+                ELSE 0
+            END AS COMM,
+            DECODE(
+                DECODE(
+                    MDS.MDS_JN_COAS,
+                    '2',
+                    COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                    0
+                ),
+                '0',
+                NVL(MDS.MDS_OC, 0),
+                CASE
+                    WHEN MDS.LJP_ID IN ('4', '5') THEN TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) - 1
+                        )
+                    ) * -1
+                    ELSE TO_NUMBER(
+                        SUBSTR(
+                            COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) + 1,
+                            INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'f'
+                            ) - INSTR(
+                                COLLECTION.GET_COAS_ENDORS_SHARE@simasnet(MDS.MDS_NO_POLIS, MDS.MDS_PROD_KE),
+                                'e'
+                            ) - 1
+                        )
+                    ) * 1
+                END
+            ) AS OC,
+            CASE
+                WHEN TRUNC(MDS.MDS_TGL_PROD) &gt;= TO_DATE('01/08/2019', 'DD/MM/RRRR') THEN NVL(
+                    (
+                        SELECT
+                            SUM(PAYCOC_PPN)
+                        FROM
+                            MST_PAY_COC@simasnet B,
+                            MST_COMM@simasnet C
+                        WHERE
+                            B.COMMKWI_ID = C.COMMKWI_ID
+                            AND C.MSP_NO_SPAK = MDS.MSP_NO_SPAK
+                            AND C.MDS_PROD_KE = MDS.MDS_PROD_KE
+                            AND PTYPE_JN = '1'
+                    ),
+                    0
+                ) + NVL(
+                    (
+                        SELECT
+                            SUM(CDN_VAL_PPN)
+                        FROM
+                            MST_CDNOTE@simasnet B
+                        WHERE
+                            B.MSP_NO_SPAK = MDS.MSP_NO_SPAK
+                            AND B.MDS_PROD_KE = MDS.MDS_PROD_KE
+                            AND LDB_ID = '3'
+                    ),
+                    0
+                )
+                ELSE 0
+            END AS PPN,
+            MDS.LKU_ID,
+            DATAMINING.GET_KURS_STANDARD@simasnet(MDS.LKU_ID, TRUNC(MDS.MDS_TGL_PROD)) AS EXCHANGE
+        FROM
+            COLLECTION.MST_SALES@simasnet S
+            JOIN COLLECTION.MST_DET_SALES@simasnet MDS ON S.MSP_NO_SPAK = MDS.MSP_NO_SPAK
+        WHERE
+            MDS.MDS_NO_POLIS  in (select nopolis from pooldata.t_general gl where GL.BUSINESSCODE={TempServices.CaseIDCN} and SOBLEADER2 in 
+(select ID from pooldata.agent where leader2 =  (select sobleader2 from pooldata.t_general where nopolis={TempServices.CabId} and rownum='1')))
+    )</pyBrowseSQL>
+<pyTemplate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyCircumstanceTemplate/>
+<pyTemporaryObject/>
+<pxInstanceLockedKey/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetTotalKlaimCreditValue_NGPW</pxTabLabel>
+<pxInstanceLockedBy/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyFormPost/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_NGPW #20240610T071741.416 GMT</pzDocumentKey>
+<pxHostId>jboss10362</pxHostId>
+<pyRequestType>GetTotalKlaimCreditValue_NGPW</pyRequestType>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetTotalKlaimCreditValue_NGPW</pyRuleName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_NGPW #20240610T071741.416 GMT</pzInsKey>
+<pxSaveDateTime>20240610T072858.347 GMT</pxSaveDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_APIAKSEPTASIW #20240403T080839.403 GMT</pzOriginalInstanceKey>
+<pyStatus/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETTOTALKLAIMCREDITVALUE_NGPW</pxInsName>
+<pyLabelOld>GetTotalKlaimCreditValue_NGPW</pyLabelOld>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxInstanceLockedDateTime/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETTOTALKLAIMCREDITVALUE_NGPW</pxInsId>
+<pyBaseRule>false</pyBaseRule>
+<pySpecialtyComponentData/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyDeleteSQL/>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMergeSynchronized>20240417T075019.553 GMT</pxMergeSynchronized>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyIsFromManageChangeLP/>
+<pyDeletedObject/>
+<pySaveSQL/>
+<pzChecksum>-1266528624</pzChecksum>
+<pyStreamName/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyLabel>GetTotalKlaimCreditValue_NGPW</pyLabel>
+<pxOriginalCreateOpName/>
+<pyCircumstanceVal/>
+<pyCircumstanceDefinition/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRelativePath/>
+<pxMoveImportDateTime>20240715T114352.593 GMT</pxMoveImportDateTime>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyUsage/>
+<pyMemo>dones</pyMemo>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveFromSystem/>
+<pyDocumentTitle/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleFormStatusTime>20260908T081548.380 GMT</pyRuleFormStatusTime>
+<pxCreateDateTime>20240610T071741.416 GMT</pxCreateDateTime>
+<pxSiblingCount/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalCreateOperator/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateInputBox/>
+<pyDescription/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCheckInRuleSet/>
+<pyCircumstanceProp/>
+<pyRuleStarts/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDateProp/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyClassName>
+<pxInstanceLockedRuleSet/>
+<pyWindowTitle/>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceType/>
+<pyShowJavaWindowName>GeneratedJava20260908T081548.398 GMT</pyShowJavaWindowName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalCreateDateTime/>
+<pyRuleParamsStreamName/>
+<pyInterface/>
+<pxOriginalCreateSystemID/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>false</pyRun>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_NGPW #20240610T071741.416 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-04 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETTOTALKLAIMCREDITVALUE_NGPW #20240417T064432.732 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

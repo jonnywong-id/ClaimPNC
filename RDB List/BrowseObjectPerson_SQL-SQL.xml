@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDescription/>
+<pyTemplate/>
+<pyUsage/>
+<pxOriginalCreateOpName/>
+<pxCreateOperator>JELLYKUSTINAS</pxCreateOperator>
+<pxUpdateDateTime>20260511T102357.575 GMT</pxUpdateDateTime>
+<pxOriginalCreateDateTime/>
+<pxSaveDateTime>20260511T102357.639 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOpName>Jelly Kustina S</pxUpdateOpName>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceDefinition/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDate/>
+<pyStatus/>
+<pxMoveImportDateTime>20260606T145855.781 GMT</pxMoveImportDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabelOld>BrowseObjectPerson_SQL</pyLabelOld>
+<pyMethodStatus/>
+<pyCircumstanceVal/>
+<pxInstanceLockedRuleSetVersion/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceTemplate/>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDateProp/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyRuleSetVersion>01-05-77</pyRuleSetVersion>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInsName>DATA-PARTY-PERSON!ASM!BROWSEOBJECTPERSON_SQL</pxInsName>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20260511T101603.014 GMT</pxCreateDateTime>
+<pyShowJavaWindowName>GeneratedJava20260827T085257.212 GMT</pyShowJavaWindowName>
+<pyTemplateInputBox/>
+<pxHostId>jboss10362</pxHostId>
+<pyJavaStream/>
+<pyFormPost/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleName>Data-Party-Person ASM BrowseObjectPerson_SQL</pyRuleName>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTempText>saved</pyTempText>
+<pyClassName>Data-Party-Person</pyClassName>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxUpdateOperator>JELLYKUSTINAS</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInsId>DATA-PARTY-PERSON!ASM!BROWSEOBJECTPERSON_SQL</pxInsId>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyRelativePath/>
+<pyRuleParamsStreamName/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCommitDateTime>20260606T145855.000 GMT</pxCommitDateTime>
+<pyMemo>check total personlist</pyMemo>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzDocumentKey>RULE-CONNECT-SQL DATA-PARTY-PERSON ASM!BROWSEOBJECTPERSON_SQL #20260511T101603.014 GMT</pzDocumentKey>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSet/>
+<pyRuleEnds/>
+<pyWorkKey/>
+<pxCreateSystemID>ASMPegaSystem</pxCreateSystemID>
+<pyHandlerFlow/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL DATA-PARTY-PERSON ASM!BROWSEDATAOLDPERSONESTIMASI_SQL #20250306T030943.201 GMT</pzOriginalInstanceKey>
+<pyBrowseSQL>SELECT COUNT(1) AS HASIL1 FROM POOLDATA.T_PERSONLIST A
+WHERE A.IDPEGA ={InObjectPerson.CARI1}</pyBrowseSQL>
+<pxTabLabel>Data-Party-Person ASM BrowseObjectPerson_SQL</pxTabLabel>
+<pxCreateOpName>Jelly Kustina S</pxCreateOpName>
+<pySpecialtyComponentData/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzChecksum>1887851246</pzChecksum>
+<pyRuleStarts/>
+<pyRequestType>BrowseObjectPerson_SQL</pyRequestType>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedKey/>
+<pyLabel>BrowseObjectPerson_SQL</pyLabel>
+<pyRuleFormStatusTime>20260827T085257.190 GMT</pyRuleFormStatusTime>
+<pzInsKey>RULE-CONNECT-SQL DATA-PARTY-PERSON ASM!BROWSEOBJECTPERSON_SQL #20260511T101603.014 GMT</pzInsKey>
+<pySPRuleSetName>JELLYKUSTINAS@</pySPRuleSetName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pyStreamName/>
+<pyDeleteSQL/>
+<pyInterface/>
+<pyOpenSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceType/>
+<pyDeletedObject/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyDelete>false</pyDelete>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL DATA-PARTY-PERSON ASM!BROWSEOBJECTPERSON_SQL #20260511T101603.014 GMT</pzInsKey>
+<pyLabel>01-05-77 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

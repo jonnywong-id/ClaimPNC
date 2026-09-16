@@ -1,0 +1,2946 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyShowJavaWindowName>GeneratedJava20260723T070553.909 GMT</pyShowJavaWindowName>
+<pyActivityName>SaveAllAttachments</pyActivityName>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxInstanceLockedDateTime/>
+<pxMoveOriginalRuleSet>Pega-EndUserUI</pxMoveOriginalRuleSet>
+<pyWindowTitle/>
+<pySelected>false</pySelected>
+<pyProjectIDLabel/>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyDocumentTitle/>
+<pyProjectID/>
+<pxUpdateDateTime>20190503T130518.072 GMT</pxUpdateDateTime>
+<pxCreateSystemID>SLSV722c</pxCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceVal/>
+<pxInstanceLockedSaveDateTime/>
+<pyUsage>used as PostActivity by various FlowActions to add attachments, e.g. AttachAFile, AttachANote, etc.</pyUsage>
+<pyRuleSet>Pega-EndUserUI</pyRuleSet>
+<pxInsId>!SAVEALLATTACHMENTS</pxInsId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxTabLabel>SaveAllAttachments</pxTabLabel>
+<pyRuleSearchQuery/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20180713T134903.997 GMT</pzOriginalInstanceKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pyIsFromManageChangeLP/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20170627T053419.081 GMT</pxMoveOriginalKey>
+<pyRuleStarts/>
+<pyReloadForm>true</pyReloadForm>
+<pyRuleName>SaveAllAttachments</pyRuleName>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pxOriginalCreateOpName/>
+<pyCircumstanceType/>
+<pyTemplateDisplayText/>
+<pyDeleteMemo>Calling pzClearParameterisedD_AttachmentList DT in step 13. Updated precondition for step12</pyDeleteMemo>
+<pyDeletedObject/>
+<pxMoveImportDateTime>20170627T083450.989 GMT</pxMoveImportDateTime>
+<pxSiblingCount/>
+<pxOriginalCreateOperator/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pyJavaGenerateTime>20190404T095446.632 GMT</pyJavaGenerateTime>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedKey/>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pyStreamName/>
+<pyStatus/>
+<pyTemplateInputBox/>
+<pyRelativePath/>
+<pxUpdateOperator>azhar27</pxUpdateOperator>
+<pxOriginalCreateSystemID/>
+<pxSaveDateTime>20190503T130518.072 GMT</pxSaveDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyInterface/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pySPRuleSetName>Pega-EndUserUI_Branch_BUG-428383</pySPRuleSetName>
+<pyRuleEnds/>
+<pxCommitDateTime>20191015T081638.000 GMT</pxCommitDateTime>
+<pyWorkKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pyClassName>Work-</pyClassName>
+<pxMoveOriginalRuleSetVersion>07-10-33</pxMoveOriginalRuleSetVersion>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pyCheckInRuleSet/>
+<pyRuleFormStatusTime>20260723T070553.888 GMT</pyRuleFormStatusTime>
+<pySpecialtyComponentData/>
+<pyMethodStatus/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyLabel>SaveAllAttachments</pyLabel>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190503T130518.072 GMT</pzInsKey>
+<pyJavaStream/>
+<pxRuleOpenedInPopUp>false</pxRuleOpenedInPopUp>
+<pxUpdateSystemID>sls-envcam83</pxUpdateSystemID>
+<pyJavaClassName>Rule_Obj_Activity_Work__SaveAllAttachments_Action_20190404T095425_306_GMT</pyJavaClassName>
+<pzInvalidateCss/>
+<pyLabelOld>SaveAllAttachments</pyLabelOld>
+<pxHostId>10.1.6.10_envcam83-web-2</pxHostId>
+<pzIndexCount>28</pzIndexCount>
+<pxCreateDateTime>20190503T130518.072 GMT</pxCreateDateTime>
+<pyAssociatedImage/>
+<pyBaseRule>false</pyBaseRule>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>08-03-01</pyRuleSetVersion>
+<pyCircumstanceProp/>
+<pyRuleParamsStreamName/>
+<pxInsName>WORK-!SAVEALLATTACHMENTS</pxInsName>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pyMemo>updated step13</pyMemo>
+<pxOriginalCreateDateTime/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyDescription>Delegates saving an attachment to SaveAttachment activity of class of which AttachmentPageName is an instance</pyDescription>
+<pyFormPost/>
+<pxUpdateOpName>azhar27</pxUpdateOpName>
+<pyCircumstanceDate/>
+<pyInputMayStart>true</pyInputMayStart>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;PageName DESCRIPTION= "" TYPE= "PAGE" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;AttachmentPageName DESCRIPTION= "Name of the Data-WorkAttach-XXX Page used. Default page name is pyWorkAttach which is used by HistoryAndAttachments. Other usage need to specify." TYPE= "PAGE" REQUIRED= "-1" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;Purpose DESCRIPTION= "" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;FromModal DESCRIPTION= "" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;ModalCommit DESCRIPTION= "specify to SubmitModalFlowAction Activity whether this activity commits the current txn from a modal window" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "OUT" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;AvoidShowHarness DESCRIPTION= "specify if container harness need not be shown again as may required by FlowActions which refresh themselves" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;RefreshContentGadgetFilesOnly DESCRIPTION= "Set from Content Gadget. Removes the D_AttachmentList data page with parameter IncludeDocAttachments: false" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pzDocumentKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190503T130518.072 GMT</pzDocumentKey>
+<pzChecksum>-1111517559</pzChecksum>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyCircumstanceDefinition/>
+<pzStatus>false</pzStatus>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepActivityDescription/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyExpanded>true</pyExpanded>
+<pyOnException/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsTransition/>
+<pzStepExpanded/>
+<pyStepsDescription>If not set, default the AttachmentPageName to pyWorkAttach for HistoryAndAttachments</pyStepsDescription>
+<pxSubscript>pyTempModalPage</pxSubscript>
+<pyStepsJavaSource/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsBlockName/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pyPropRef/>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhen/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachProperty/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyForEachClass/>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyStepsParamUIRemoved/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesName>Param.AttachmentPageName</PropertiesName>
+<PropertiesValue>pyWorkAttach</PropertiesValue>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen>Param.AttachmentPageName==""</pyStepsPreCondParamsWhen>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsDescription>Setting the page name and class param</pyStepsDescription>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyOnException/>
+<pyTemplateInputBox/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pxInsName/>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyExpanded>true</pyExpanded>
+<pxCreateSystemID>slsv717h</pxCreateSystemID>
+<pxCreateOpName>Karthik Veerlapati</pxCreateOpName>
+<pzStepExpanded/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsPreCondition/>
+<pyPropRef/>
+<pyStepsObjectName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsJavaSource>tools.putParamValue("PageName",myStepPage.getReference());
+tools.putParamValue("pxRefObjectClass",myStepPage.getString(".pxObjClass"));</pyStepsJavaSource>
+<pxCreateDateTime>20141015T120838.599 GMT</pxCreateDateTime>
+<pyStepsBlockName/>
+<pxCreateOperator>veerk</pxCreateOperator>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsTransition/>
+<pyStepActivityDescription/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20141015T120838.606 GMT</pxCreateDateTime>
+<pxCreateSystemID>slsv717h</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>veerk</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>Karthik Veerlapati</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen/>
+<pxCreateOperator>veerk</pxCreateOperator>
+<pxCreateSystemID>slsv717h</pxCreateSystemID>
+<pxCreateDateTime>20141015T120838.613 GMT</pxCreateDateTime>
+<pxCreateOpName>Karthik Veerlapati</pxCreateOpName>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pxCreateOperator>veerk</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateSystemID>slsv717h</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pxCreateOpName>Karthik Veerlapati</pxCreateOpName>
+<pxCreateDateTime>20141015T120838.616 GMT</pxCreateDateTime>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachProperty/>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20141015T120838.618 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>veerk</pxCreateOperator>
+<pxCreateOpName>Karthik Veerlapati</pxCreateOpName>
+<pxCreateSystemID>slsv717h</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyTemplateInputBox/>
+<pxStepDefaultDescription>Page-Clear-Messages</pxStepDefaultDescription>
+<pyStepsTransition/>
+<pyStepsJavaSource/>
+<pyStepsActivityNameUC>PAGE-CLEAR-MESSAGES</pyStepsActivityNameUC>
+<pyStepsPreCondition/>
+<pyStepActivityDescription/>
+<pyExpanded>true</pyExpanded>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pxSubscript/>
+<pyStepsActivityName>Page-Clear-Messages</pyStepsActivityName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzStepExpanded/>
+<pyStepPageReference>RH_1.pySteps(3)</pyStepPageReference>
+<pyStepsDescription>Clear Any messages on AttachmentPageName</pyStepsDescription>
+<pyStepsObjectName>Param.AttachmentPageName</pyStepsObjectName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyOnException/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse/>
+<pxSubscript/>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyForEachProperty/>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyForEachClass/>
+<pxSubscript/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxSubscript/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder/>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityName>Property-Validate</pyStepsActivityName>
+<pyStepsActivityNameUC>PROPERTY-VALIDATE</pyStepsActivityNameUC>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxStepDefaultDescription>Property-Validate</pxStepDefaultDescription>
+<pyStepsJavaSource/>
+<pyStepActivityDescription/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyPropRef/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsBlockName/>
+<pyStepsObjectName>Param.AttachmentPageName</pyStepsObjectName>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1.pySteps(4)</pyStepPageReference>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pzStepExpanded/>
+<pyOnException/>
+<pyStepsDescription>Validate pyNote</pyStepsDescription>
+<pxSubscript>pyTempModalPage</pxSubscript>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen>@hasMessages(myStepPage)</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms>PS1</pyStepsTransParamsWhenTruePrms>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxCreateOpName>azhar27</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+<pyStepsParamUIRemoved/>
+<pyStepsParamUI/>
+</pyStepsCallParams>
+<pyStepsRepeatDef>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxSubscript/>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<Continue>false</Continue>
+<Default/>
+<ErrorMessage/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertyName>.pyNote</PropertyName>
+<Required>true</Required>
+<OnlyIfChanged>false</OnlyIfChanged>
+<ValidateAs/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay/>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pyShowCustomPages>true</pyShowCustomPages>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName>PropertyName</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>The name of the property to edit.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSize>20</pyParametersParamSize>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ValidateAs</pyParametersParamName>
+<pyParametersParamSize>20</pyParametersParamSize>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>The literal key to a Rule-Edit-Validate object; or a java expression.  Provides edit rule for property.</pyParametersParamDesc>
+<pyParametersParamIntelliRule>Rule-Edit-Validate</pyParametersParamIntelliRule>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>Continue</pyParametersParamName>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamSize>5</pyParametersParamSize>
+<pyParametersParamDesc>Continue validation activity on validation error, Y or N.</pyParametersParamDesc>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDesc>Default</pyParametersParamDesc>
+<pyParametersParamSize>20</pyParametersParamSize>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>Default</pyParametersParamName>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>false</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamName>Required</pyParametersParamName>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamDesc>Is the property required to have a value. Y or N.</pyParametersParamDesc>
+<pyParametersParamSize>5</pyParametersParamSize>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamDesc>Supports a double quoted string, or a java expression that will return a string.</pyParametersParamDesc>
+<pyParametersParamName>ErrorMessage</pyParametersParamName>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamReq>false</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyParametersParamSize>5</pyParametersParamSize>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamDesc>Only validate if the property has changed</pyParametersParamDesc>
+<pyParametersParamName>OnlyIfChanged</pyParametersParamName>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen>param.hiddenFilePath==""</pyStepsPreCondParamsWhen>
+<pxSubscript/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>azhar27</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyStepActivityDescription/>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepsJavaSource/>
+<pyOnException/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepPageReference>RH_1.pySteps(5)</pyStepPageReference>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pzStepExpanded/>
+<pyTemplateInputBox/>
+<pyStepsObjectName>Param.AttachmentPageName</pyStepsObjectName>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyPropRef/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsTransition/>
+<pyStepsBlockName/>
+<pyStepsDescription>Check if there are drag/drop files and set local variable to true</pyStepsDescription>
+<pxCreateDateTime>20170615T120252.467 GMT</pxCreateDateTime>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateDateTime>20170615T120252.479 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>.pxObjClass=="Data-WorkAttach-File"</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20170615T120252.474 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyExpressionGadget>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20170615T120327.444 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen>@PageExists("dragDropFileUpload")</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyResult/>
+<pyShowParameters>true</pyShowParameters>
+<pyExpression>PageExists("dragDropFilePage")</pyExpression>
+<pyEditable>true</pyEditable>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyResultOfSelection/>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyWindowTitle/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyResultError/>
+<pyTemplateInputBox/>
+<pyFormPost/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pyStepsPreCondParamsWhen">PageExists("dragDropFilePage")</rowdata>
+</pyExpressionMapNew>
+<pyExpressionBulderFields REPEATINGTYPE="PageList"/>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20170615T120419.521 GMT</pxCreateDateTime>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhen>@SizeOfPropertyList(dragDropFileUpload.pxResults) &gt; 0</pyStepsPreCondParamsWhen>
+<pyExpressionGadget>
+<pyResultOfSelection/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyEditable>true</pyEditable>
+<pyResultError/>
+<pyTemplateInputBox/>
+<pyFormPost/>
+<pyShowParameters>true</pyShowParameters>
+<pyWindowTitle/>
+<pyResult/>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyExpression>SizeOfPropertyList(.pxResults)</pyExpression>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pyStepsPreCondParamsWhen">SizeOfPropertyList(.pxResults)</rowdata>
+</pyExpressionMapNew>
+<pyExpressionBulderFields REPEATINGTYPE="PageList"/>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesName>Local.doDragDrop</PropertiesName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>true</PropertiesValue>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+<pyStepsParamUI/>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxCreateDateTime>20170615T120252.481 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateDateTime>20170615T120252.482 GMT</pxCreateDateTime>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxCreateDateTime>20170615T120631.619 GMT</pxCreateDateTime>
+<pyExpanded>true</pyExpanded>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyTemplateInputBox/>
+<pyStepsBlockName/>
+<pyStepsJavaSource/>
+<pzStepExpanded/>
+<pyPropRef/>
+<pxStepDefaultDescription>Property-Set-Messages</pxStepDefaultDescription>
+<pyStepsActivityNameUC>PROPERTY-SET-MESSAGES</pyStepsActivityNameUC>
+<pyStepsTransition>true</pyStepsTransition>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsDescription>validate for hidden file path, set messages on pxAttachName</pyStepsDescription>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsObjectName>Param.AttachmentPageName</pyStepsObjectName>
+<pyStepPageReference>RH_1.pySteps(6)</pyStepPageReference>
+<pyOnException/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pyStepActivityDescription/>
+<pyStepsActivityName>Property-Set-Messages</pyStepsActivityName>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyStepsCallParams>
+<Field>.pxAttachName</Field>
+<Message>ValueRequired</Message>
+<pxObjClass/>
+<ContainingClassOfProperty>Work-</ContainingClassOfProperty>
+<Category>pyMessageLabel</Category>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliRule>Rule-Message</pyParametersParamIntelliRule>
+<pyParametersParamName>Message</pyParametersParamName>
+<pyParametersParamDesc>Literal text string or Rule-Message instance for the message</pyParametersParamDesc>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>Field</pyParametersParamName>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>The property on which the message is set</pyParametersParamDesc>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamDefaultValue>pyMessageLabel</pyParametersParamDefaultValue>
+<pyParametersParamDesc>Name of 'Field' for Field Value translation</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>Category</pyParametersParamName>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20170615T120631.620 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pyStepsPreCondParamsWhen>Local.doDragDrop==true</pyStepsPreCondParamsWhen>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyTemplateInputBox/>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhen>.pyNote != "" &amp;&amp; Param.hiddenFilePath == ""</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxCreateDateTime>20170615T120716.953 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pxCreateDateTime>20170615T120631.622 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateDateTime>20170615T120631.623 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhen>true</pyStepsTransParamsWhen>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateDateTime>20170615T120631.621 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTruePrms>PS1</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalsePrms>PS1</pyStepsTransParamsWhenFalsePrms>
+<pxCreateOperator>nakkg</pxCreateOperator>
+<pxCreateOpName>Gopi Kiran</pxCreateOpName>
+<pyExpressionGadget>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyStepActivityDescription/>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	pzSaveAllAttachmentsDD</pxStepDefaultDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityName>Call pzSaveAllAttachmentsDD</pyStepsActivityName>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsDescription>attach drag/drop files</pyStepsDescription>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pyStepsJavaSource/>
+<pxSubscript>pyTempModalPage</pxSubscript>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsActivityNameUC>CALL PZSAVEALLATTACHMENTSDD</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepPageReference>RH_1.pySteps(7)</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyOnException/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyPassCurrentParameterPage>true</pyPassCurrentParameterPage>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsObjectName/>
+<pyStepsRepeatDef>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachProperty/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<AttachmentPageName/>
+<AvoidShowHarness/>
+<PageName/>
+<FromModal/>
+<ModalCommit/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUIRemoved/>
+<Purpose/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTruePrms>PS1</pyStepsTransParamsWhenTruePrms>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxSubscript/>
+<pyStepsTransParamsWhen>@PageExistsWithClass(dragDropFileUpload, tools)</pyStepsTransParamsWhen>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOperator>azhar27</pxCreateOperator>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTruePrms>PS</pyStepsTransParamsWhenTruePrms>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxSubscript/>
+<pyStepsTransParamsWhen>param.hiddenFilePath==""</pyStepsTransParamsWhen>
+</rowdata>
+</pyStepsTransParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder/>
+<pxSubscript>1</pxSubscript>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen>local.doDragDrop</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyStepsBlockName/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepActivityDescription/>
+<pyExpanded>true</pyExpanded>
+<pyStepPageReference>RH_1.pySteps(8)</pyStepPageReference>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyOnException/>
+<pyStepsJavaSource/>
+<pyStepsTransition/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsDescription>Reset "called from drag and drop" param</pyStepsDescription>
+<pyStepsPreCondition/>
+<pyStepsObjectName/>
+<pyTemplateInputBox/>
+<pzStepExpanded/>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pxSubscript>3</pxSubscript>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyPropRef/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesName>param.CalledFromDD</PropertiesName>
+<PropertiesValue>"false"</PropertiesValue>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowParameters>true</pyShowParameters>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI/>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyForEachProperty/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyForEachClass/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyPropRef/>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>false</pyStepsPreCondition>
+<pyPassCurrentParameterPage>true</pyPassCurrentParameterPage>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsDescription>call save attachment based on the pxobjclass</pyStepsDescription>
+<pyStepsObjectName>AttachmentPageName</pyStepsObjectName>
+<pyOnException/>
+<pyTemplateInputBox/>
+<pyStepActivityDescription/>
+<pyStepsJavaSource/>
+<pyStepsClassName>Data-WorkAttach-</pyStepsClassName>
+<pyStepsActivityNameUC>CALL SAVEATTACHMENT</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepsActivityName>Call SaveAttachment</pyStepsActivityName>
+<pyStepPageReference>RH_1.pySteps(9)</pyStepPageReference>
+<pxSubscript>6</pxSubscript>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	SaveAttachment</pxStepDefaultDescription>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsBlockName/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsCallParams>
+<pyStepsParamUIRemoved/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20131105T113130.651 GMT</pxCreateDateTime>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyStepsPreCondParamsWhen/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsTransParamsWhenFalsePrms>PS</pyStepsTransParamsWhenFalsePrms>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhen>@hasMessages(myStepPage)</pyStepsTransParamsWhen>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyForEachProperty/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsActivityName>Page-Set-Messages</pyStepsActivityName>
+<pyStepsActivityNameUC>PAGE-SET-MESSAGES</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pyExpanded>true</pyExpanded>
+<pyOnException/>
+<pyStepsObjectName/>
+<pyStepPageReference>RH_1.pySteps(10)</pyStepPageReference>
+<pyPropRef/>
+<pzStepExpanded/>
+<pyStepActivityDescription/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsTransition>true</pyStepsTransition>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsDescription>add message to primary page if primary page does not already have message</pyStepsDescription>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxSubscript>pyTempModalPage</pxSubscript>
+<pyStepsBlockName>PS1</pyStepsBlockName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyTemplateInputBox/>
+<pxStepDefaultDescription>Page-Set-Messages</pxStepDefaultDescription>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>@getMessagesAll(myStepPage) == ""</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pyExpressionGadget>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<Message>@getMessagesAll(Param.AttachmentPageName)</Message>
+<Page/>
+<pxObjClass/>
+<Category>pyMessageLabel</Category>
+<ClassOfPage>Work-</ClassOfPage>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName>Page</pyParametersParamName>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>Page name to add message.  The page can also be specified as the Object Page of the activity step.</pyParametersParamDesc>
+<pyParametersParamReq>false</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamDesc>Name of 'Field' for Field Value translation</pyParametersParamDesc>
+<pyParametersParamDefaultValue>pyMessageLabel</pyParametersParamDefaultValue>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>Category</pyParametersParamName>
+<pyParametersParamReq>false</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>Message</pyParametersParamName>
+<pyParametersParamIntelliRule>Rule-Message</pyParametersParamIntelliRule>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamDesc>Literal text string or Rule-Message instance to associate message with a property</pyParametersParamDesc>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhen>true</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTruePrms>Modal</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalsePrms>Modal</pyStepsTransParamsWhenFalsePrms>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+</rowdata>
+</pyStepsTransParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefIteration/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pyForEachClass/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>pauls</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyStepsDescription>reset Selected Attachment Type to blank;HistoryAndAttachments specific step</pyStepsDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepPageReference>RH_1.pySteps(11)</pyStepPageReference>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsTransition/>
+<pzStepExpanded/>
+<pyTemplateInputBox/>
+<pxSubscript>8</pxSubscript>
+<pyStepsBlockName>PS</pyStepsBlockName>
+<pyStepsJavaSource/>
+<pyPropRef/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepActivityDescription/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyOnException/>
+<pyStepsObjectName>PageName</pyStepsObjectName>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesName>.pyAttachmentType</PropertiesName>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesValue>""</PropertiesValue>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyTemplateInputBox/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen>Param.AttachmentPageName=="pyWorkAttach"</pyStepsPreCondParamsWhen>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI/>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsJavaSource/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	pzRemoveAttachments</pxStepDefaultDescription>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pyStepsActivityName>Call pzRemoveAttachments</pyStepsActivityName>
+<pzStepExpanded/>
+<pyStepActivityDescription/>
+<pyStepsActivityNameUC>CALL PZREMOVEATTACHMENTS</pyStepsActivityNameUC>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsDescription/>
+<pyExpanded>true</pyExpanded>
+<pyPropRef/>
+<pyStepsObjectName/>
+<pxCreateDateTime>20150518T113558.657 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyOnException/>
+<pyStepPageReference>RH_1.pySteps(12)</pyStepPageReference>
+<pyStepsTransition/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxCreateOperator>penjc</pxCreateOperator>
+<pyStepsBlockName/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pxCreateOperator>penjc</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pxCreateDateTime>20150518T113558.668 GMT</pxCreateDateTime>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20150518T113558.672 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxCreateOperator>penjc</pxCreateOperator>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>penjc</pxCreateOperator>
+<pxCreateDateTime>20150518T113558.661 GMT</pxCreateDateTime>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>Param.RefreshContentGadgetFilesOnly</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20150518T113558.665 GMT</pxCreateDateTime>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOperator>penjc</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+<WorkInskey>.pzInsKey</WorkInskey>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName>WorkInskey</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>false</pyParametersParamReq>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyExpanded>true</pyExpanded>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(13)</pyStepPageReference>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pyOnException/>
+<pyStepsTransition/>
+<pxInsName/>
+<pyStepsJavaSource>ParameterPage paramPage = tools.getParameterPage();
+paramPage.putString("LinkRefFrom",myStepPage.getString("pzInsKey")); 
+paramPage.putString("IncludeDocAttachments","false"); 
+tools.applyModel(myStepPage, paramPage, "pzClearParameterisedD_AttachmentList");
+paramPage.remove("LinkRefFrom"); 
+paramPage.remove("IncludeDocAttachments");</pyStepsJavaSource>
+<pyStepsDescription>Call pzClearParameterisedD_AttachmentList DT</pyStepsDescription>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyTemplateInputBox/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyForEachProperty/>
+<pyStepsRepeatDefStop/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateDateTime>20190404T090655.829 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20190404T090655.829 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateOperator>azhar27</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20190404T090655.828 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateDateTime>20190404T090655.827 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhen>Param.RefreshContentGadgetFilesOnly</pyStepsPreCondParamsWhen>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyEditable>true</pyEditable>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsObjectName/>
+<pzStepExpanded/>
+<pyStepsTransition/>
+<pyStepsBlockName>//</pyStepsBlockName>
+<pyStepsDescription>remove Attachment page</pyStepsDescription>
+<pyStepPageReference>RH_1.pySteps(14)</pyStepPageReference>
+<pyStepsJavaSource/>
+<pyOnException/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepActivityDescription/>
+<pxSubscript>9</pxSubscript>
+<pyStepsActivityNameUC>PAGE-REMOVE</pyStepsActivityNameUC>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Page-Remove</pyStepsActivityName>
+<pxStepDefaultDescription>Page-Remove</pxStepDefaultDescription>
+<pyStepsPreCondition>0</pyStepsPreCondition>
+<pyPropRef/>
+<pyExpanded>true</pyExpanded>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>azhar27</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<Page>param.AttachmentPageName</Page>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pzStepExpanded/>
+<pyStepsObjectName/>
+<pyStepsTransition/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxSubscript>10</pxSubscript>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1.pySteps(15)</pyStepPageReference>
+<pyStepsDescription>set the ModalCommit to true to indicate that this activity commits the Txn in modal window</pyStepsDescription>
+<pyStepsPreCondition/>
+<pyPropRef/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepActivityDescription/>
+<pyStepsBlockName>Modal</pyStepsBlockName>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyOnException/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen/>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateOperator>azhar27</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+<pyStepsParamUI/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesName>Param.ModalCommit</PropertiesName>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesValue>"true"</PropertiesValue>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pyForEachProperty/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyForEachClass/>
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pyExpanded>true</pyExpanded>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepActivityDescription/>
+<pyStepsBlockName/>
+<pyOnException/>
+<pyPropRef/>
+<pyTemplateInputBox/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pxSubscript>11</pxSubscript>
+<pyStepsDescription>get the name of the harness to show</pyStepsDescription>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pzStepExpanded/>
+<pyStepsTransition/>
+<pyStepsObjectName>PageName</pyStepsObjectName>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepPageReference>RH_1.pySteps(16)</pyStepPageReference>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsJavaSource/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pyStepsRepeatDef>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachProperty/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyForEachClass/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesName>Param.Purpose</PropertiesName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>Param.HarnessPurpose</PropertiesValue>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>=Lib(Pega-RULES:String).equals(param.AvoidShowHarness,"true")</pyStepsPreCondParamsWhen>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>6</pyStepsPreCondParamsWhenTrue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsPreCondParamsWhenFalse>6</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen>Param.FromModal!="true"</pyStepsPreCondParamsWhen>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pxSubscript>2</pxSubscript>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyStepsTransition/>
+<pyStepsBlockName/>
+<pyStepsDescription>show the harness</pyStepsDescription>
+<pyStepsActivityName>Call Show-Harness</pyStepsActivityName>
+<pyStepsActivityNameUC>CALL SHOW-HARNESS</pyStepsActivityNameUC>
+<pyStepPageReference>RH_1.pySteps(17)</pyStepPageReference>
+<pyStepActivityDescription/>
+<pyTemplateInputBox/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxSubscript>12</pxSubscript>
+<pyStepsObjectName>PageName</pyStepsObjectName>
+<pyExpanded>true</pyExpanded>
+<pzStepExpanded/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsPreCondition>0</pyStepsPreCondition>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	Show-Harness</pxStepDefaultDescription>
+<pyOnException/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsJavaSource/>
+<pyPassCurrentParameterPage>true</pyPassCurrentParameterPage>
+<pyPropRef/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen/>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenFalse/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pxCreateDateTime>20190404T090431.740 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pxCreateDateTime>20131105T105809.167 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>pauls</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxCreateOpName>Saikat Paul</pxCreateOpName>
+<pxCreateDateTime>20131105T105809.168 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pxCreateDateTime>20190404T090431.739 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse/>
+<pyStepsPreCondParamsWhen/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<FrameName/>
+<HarnessType/>
+<ReadOnly/>
+<DraftMode/>
+<Purpose/>
+<SkipFlowDebuggerOverride>FALSE</SkipFlowDebuggerOverride>
+<pyStepsParamUIRemoved/>
+<HTMLClass/>
+<HarnessMode/>
+<PerformPreProcessing/>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyAutomationPage>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+</pyAutomationPage>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+</pySteps>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pyActivityRole/>
+</rowdata>
+</pyActivityRolesList>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>Work-</pyPrivilegeClass>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyActivityPrivilegeList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxRuleFamilyName>PZSAVEALLATTACHMENTSDD</pxRuleFamilyName>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pzSaveAllAttachmentsDD</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>STRING!EQUALS--(STRING,STRING)</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyRuleName>String equals--(String,String)</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pyRuleName>Property-Set-Messages</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleFamilyName>PROPERTY-SET-MESSAGES</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMethodStatus>API</pyMethodStatus>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PAGE-SET-MESSAGES</pxRuleFamilyName>
+<pyRuleName>Page-Set-Messages</pyRuleName>
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyMethodStatus>API</pyMethodStatus>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pyRuleName>Page-Clear-Messages</pyRuleName>
+<pxRuleFamilyName>PAGE-CLEAR-MESSAGES</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyRuleName>pyAttachmentType</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleFamilyName>PYATTACHMENTTYPE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>DATA-WORKATTACH-</pxRuleFamilyName>
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Data-WorkAttach-</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleFamilyName>UTILITIES!SIZEOFPROPERTYLIST--(CLIPBOARDPROPERTY)</pxRuleFamilyName>
+<pyRuleName>Utilities SizeOfPropertyList--(ClipboardProperty)</pyRuleName>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyRuleName>Property-Validate</pyRuleName>
+<pxRuleClassName/>
+<pxRuleFamilyName>PROPERTY-VALIDATE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pyRuleName>pzRemoveAttachments</pyRuleName>
+<pxRuleFamilyName>PZREMOVEATTACHMENTS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyRuleName>SaveAttachment</pyRuleName>
+<pxRuleFamilyName>SAVEATTACHMENT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Rule-Obj-Class</pyRuleName>
+<pxRuleFamilyName>RULE-OBJ-CLASS</pxRuleFamilyName>
+<pxRuleClassName>Rule-Obj-Class</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyRuleName>Default hasMessages--(Page)</pyRuleName>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DEFAULT!HASMESSAGES--(PAGE)</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxRuleFamilyName>DEFAULT!PAGEEXISTS--(STRING)</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pyRuleName>Default PageExists--(String)</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PXRESULTS</pxRuleFamilyName>
+<pyRuleName>pxResults</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleClassName>$ANY</pxRuleClassName>
+<pyRuleName>$ANY</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>$ANY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxObjClass</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pxRuleFamilyName>PXOBJCLASS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>-</pxRuleClassName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>-</pyRuleName>
+<pxRuleFamilyName>-</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pyRuleName>Property-Set</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleFamilyName>PAGE!PAGEEXISTSWITHCLASS--(STRING,PUBLICAPI)</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pyRuleName>Page PageExistsWithClass--(String,PublicAPI)</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pyRuleName>pyNote</pyRuleName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PYNOTE</pxRuleFamilyName>
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxRuleFamilyName>PYMESSAGELABEL!VALUEREQUIRED</pxRuleFamilyName>
+<pyRuleName>pyMessageLabel ValueRequired</pyRuleName>
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleFamilyName>WORK-</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pyRuleName>Work-</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="24">
+<pyRuleName>pxAttachName</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXATTACHNAME</pxRuleFamilyName>
+<pxRuleClassName>Data-WorkAttach-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="25">
+<pyMethodStatus>API</pyMethodStatus>
+<pyRuleName>Show-Harness</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleFamilyName>SHOW-HARNESS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="26">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pyRuleName>pzInsKey</pyRuleName>
+<pxRuleFamilyName>PZINSKEY</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="27">
+<pyRuleName>Default getMessagesAll--(Page)</pyRuleName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DEFAULT!GETMESSAGESALL--(PAGE)</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="28">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190404T090451.361 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRestore>false</pyRestore>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyShowJava>true</pyShowJava>
+<pyBack>true</pyBack>
+<pyPreview>true</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>true</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>Data-WorkAttach-</pyPagesAndClassesClass>
+<pyPagesAndClassesMode/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>AttachmentPageName</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pxSubscript>2</pxSubscript>
+<pyPagesAndClassesPage>PageName</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Work-</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>doDragDrop</pyParametersParamName>
+<pyParametersParamDesc/>
+<pyParametersParamType>boolean</pyParametersParamType>
+</rowdata>
+</pyLocalParameters>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-03-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190503T130518.072 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDefaultValue/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc/>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>PageName</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>PAGE</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>Name of the Data-WorkAttach-XXX Page used. Default page name is pyWorkAttach which is used by HistoryAndAttachments. Other usage need to specify.</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>AttachmentPageName</pyParametersParamName>
+<pyParametersParamType>PAGE</pyParametersParamType>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamReq>-1</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliRule/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>Purpose</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDefaultValue/>
+<pxSubscript>3</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc/>
+<pxSubscript>4</pxSubscript>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>FromModal</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDesc>specify to SubmitModalFlowAction Activity whether this activity commits the current txn from a modal window</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamName>ModalCommit</pyParametersParamName>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass/>
+<pxSubscript>5</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamDefaultValue/>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxSubscript>6</pxSubscript>
+<pyParametersParamName>AvoidShowHarness</pyParametersParamName>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamDesc>specify if container harness need not be shown again as may required by FlowActions which refresh themselves</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliValidateAs/>
+<pxCreateDateTime>20190404T090459.214 GMT</pxCreateDateTime>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateOperator>azhar27</pxCreateOperator>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxCreateOpName>azhar27</pxCreateOpName>
+<pxCreateSystemID>sls-envcam83</pxCreateSystemID>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>Set from Content Gadget. Removes the D_AttachmentList data page with parameter IncludeDocAttachments: false</pyParametersParamDesc>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamName>RefreshContentGadgetFilesOnly</pyParametersParamName>
+</rowdata>
+</pyParameters>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-03-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- SAVEALLATTACHMENTS #20190503T130518.072 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>flowType</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxSubscript>3</pxSubscript>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pxSubscript>4</pxSubscript>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>5</pxSubscript>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pxSubscript>6</pxSubscript>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+</rowdata>
+</pySystemParameters>
+</pagedata>

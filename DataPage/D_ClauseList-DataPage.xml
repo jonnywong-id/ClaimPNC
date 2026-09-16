@@ -1,0 +1,408 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDateProp/>
+<pySourceCount>1</pySourceCount>
+<pyCircumstanceVal/>
+<pyTimeoutSS/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyWhen/>
+<pyFormPost/>
+<pyClassName>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pyClassName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveFromSystem/>
+<pyValueChanged>false</pyValueChanged>
+<pyInterface/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxCreateOpName>Revian Palpialy</pxCreateOpName>
+<pyEnableRetrievePageByKey>false</pyEnableRetrievePageByKey>
+<pyRuleEnds/>
+<pyEnableLoadOnlyPage>true</pyEnableLoadOnlyPage>
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pyPostActivity/>
+<pyCircumstanceTemplate/>
+<pzChecksum>1622737399</pzChecksum>
+<pyAsync>false</pyAsync>
+<pyReportDefinitionClass/>
+<pyDescription/>
+<pyMethodStatus/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxSaveDateTime>20190207T062452.538 GMT</pxSaveDateTime>
+<pxCreateDateTime>20190204T083836.380 GMT</pxCreateDateTime>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzIndexCount>12</pzIndexCount>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateOpName/>
+<pyDeletedObject/>
+<pyUsage/>
+<pyEditable>true</pyEditable>
+<pyPageType>normal</pyPageType>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyKeepOneCopy>false</pyKeepOneCopy>
+<pyPageContextClass/>
+<pyRuleSetVersion>01-01-91</pyRuleSetVersion>
+<pyUseNewGenPageForEditableDataPage/>
+<pyTemplate/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyAllowOverride>false</pyAllowOverride>
+<pyStatus/>
+<pyUseTimeout/>
+<pyTimeoutDD/>
+<pxMergeSynchronized>20170407T081314.309 GMT</pxMergeSynchronized>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveImportDateTime>20191226T024847.717 GMT</pxMoveImportDateTime>
+<pyCircumstanceDate/>
+<pyPageContext/>
+<pyIsFromManageChangeLP/>
+<pyTimeoutMM/>
+<pyType>normal</pyType>
+<pxHostId>jboss2058</pxHostId>
+<pyTimeoutHH/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsDataSet/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyAllowIdle>true</pyAllowIdle>
+<pxOriginalCreateDateTime/>
+<pyWorkKey/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRelativePath/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pxOriginalCreateSystemID/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyUseWhen/>
+<pxInstanceLockedBy/>
+<pyIsSavable>false</pyIsSavable>
+<pyRuleName>D_ClauseList</pyRuleName>
+<pyWindowTitle/>
+<pySelected>false</pySelected>
+<pyRuleStarts/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxSavedInPegaVersion>7.2.2</pxSavedInPegaVersion>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyScope>node</pyScope>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pyLoadOnlyPageEnabled>true</pyLoadOnlyPageEnabled>
+<pxOriginalCreateOperator/>
+<pyStreamName/>
+<pyCircumstanceDefinition/>
+<pyUseNewClipboard/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyPageName>D_ClauseList</pyPageName>
+<pyRuleParamsStreamName/>
+<pzInsKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzInsKey>
+<pzDocumentKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzDocumentKey>
+<pyDeclarePagesDataSource/>
+<pyRuleFormStatusTime>20260819T085209.177 GMT</pyRuleFormStatusTime>
+<pyShowJavaWindowName>GeneratedJava20260819T085209.202 GMT</pyShowJavaWindowName>
+<pyReloadForm>true</pyReloadForm>
+<pyCheckInRuleSet/>
+<pxCreateOperator>revianpalpialy</pxCreateOperator>
+<pyCircumstanceProp/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20200312T080244.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsSimulated>false</pyIsSimulated>
+<pyRefreshStrategy>never</pyRefreshStrategy>
+<pyLabel>D_ClauseList</pyLabel>
+<pyRefreshOncePerInteraction>false</pyRefreshOncePerInteraction>
+<pyLabelOld>D_ClauseList</pyLabelOld>
+<pyAllowDuplicates>false</pyAllowDuplicates>
+<pyLoadActivity/>
+<pxUpdateDateTime>20190204T083923.520 GMT</pxUpdateDateTime>
+<pzOriginalInstanceKey>RULE-DECLARE-PAGES D_CLAUSELIST #20170407T081229.980 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOperator>revianpalpialy</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLoadReportDefinition/>
+<pyIsClassFieldEditable>false</pyIsClassFieldEditable>
+<pyDocumentTitle/>
+<pyStructure>list</pyStructure>
+<pxInsId>D_CLAUSELIST</pxInsId>
+<pyObjClassLabel>Data Page</pyObjClassLabel>
+<pyAccessGroup>GISFW:Administrators</pyAccessGroup>
+<pyMemo>edir</pyMemo>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyKeyPageReference/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionPatch>91</pzRuleSetVersionPatch>
+<pyAllowExternalExpiration>true</pyAllowExternalExpiration>
+<pxInsName>D_CLAUSELIST</pxInsName>
+<pxUpdateOpName>Revian Palpialy</pxUpdateOpName>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pzIsThreadFamilyEnabled>false</pzIsThreadFamilyEnabled>
+<pxTabLabel>D_ClauseList</pxTabLabel>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningType>Functionality</pxWarningType>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Duplicate data page with different type</pxWarningName>
+<pxWarningSeverity>1</pxWarningSeverity>
+<pxWarningCreatedTime>20190204T083838.820 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-Declare-Pages)pxDupPageType</pxWarningMessage>
+<pxWarningCreateOperator>julianto_t@sinarmas.co.id</pxWarningCreateOperator>
+<pxWarningDetails>(Rule-Declare-Pages)pxDupPageType</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningDetails>(Embed-DeclarePageSource)pxEmptySystemName	report definition	1</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pyWarningJustifiedMessage/>
+<pxWarningName>Empty System Name</pxWarningName>
+<pxWarningJustifiedTime/>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20190204T083838.824 GMT</pxWarningCreatedTime>
+<pxIsWarningJustified/>
+<pxWarningMessage>(Embed-DeclarePageSource)pxEmptySystemName	report definition	1</pxWarningMessage>
+<pxWarningCreateOperator>kevinsetiadi</pxWarningCreateOperator>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>1</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>1</pxUnjustifiedHSWarningCount>
+</pxMessageSummary>
+<pyDataPageSaveOptionList REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesKey/>
+<pyPagesAndClassesDescription/>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRun>true</pyRun>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyTableList REPEATINGTYPE="PropertyList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName>ClientType</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+</rowdata>
+</pyParameters>
+<pyPostActivityParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyName/>
+</rowdata>
+</pyPostActivityParams>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyDataSourceList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyModalTitle>BrowseJMKlausulMED_RD</pyModalTitle>
+<pyEditable>true</pyEditable>
+<pyReportDefinitionClass>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pyReportDefinitionClass>
+<pyPageListPropClassName>Code-Pega-List</pyPageListPropClassName>
+<pyLoadReportDefinition>BrowseJMKlausulMED_RD</pyLoadReportDefinition>
+<pxCreateOperator>julianto_t@sinarmas.co.id</pxCreateOperator>
+<pySkipSummaryProcessing>false</pySkipSummaryProcessing>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pxCreateOpName>Julianto Tanoto</pxCreateOpName>
+<pxListSubscript>1</pxListSubscript>
+<pyConnectorClassName/>
+<pyDTName/>
+<pyConnectorList>Rule-Connect-SOAP</pyConnectorList>
+<pyExecuteOnDataPage>true</pyExecuteOnDataPage>
+<pyConnectorName/>
+<pySQLOption>false</pySQLOption>
+<pyConnectorDisplayProp>pyServiceName</pyConnectorDisplayProp>
+<pyDeclarePagesDataSource>ReportDefinition</pyDeclarePagesDataSource>
+<pyRuleOpenerKey/>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pyRuleSetName/>
+<pyDataSourceHolder>BrowseJMKlausulMED_RD</pyDataSourceHolder>
+<pyIsSimulated>false</pyIsSimulated>
+<pyIsRDExists>false</pyIsRDExists>
+<pyLoadActivity>pxCallRetrieveReportData</pyLoadActivity>
+<pyDescription>Report Definition • ASM-FW-GISFW-Int-VJ_M_KLAUSUL • BrowseJMKlausulMED_RD</pyDescription>
+<pyIsRequired>false</pyIsRequired>
+<pyDSSystemName/>
+<pyStructure>list</pyStructure>
+<pyClassName>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pyClassName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pySourceWhen>Always</pySourceWhen>
+<pySQLAccess/>
+<pxCreateDateTime>20151211T040319.115 GMT</pxCreateDateTime>
+<pyPassCurrentParamPageForActivity>true</pyPassCurrentParamPageForActivity>
+<pyTemplateInputBox/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyDisabledSource>
+<pyDeclarePagesDataSource>DataTransform</pyDeclarePagesDataSource>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyDescription>Data Transform</pyDescription>
+</pyDisabledSource>
+<pyLoadActivityParameters>
+<pySavedInPegaVersion>"7.2.2"</pySavedInPegaVersion>
+<pyPageName/>
+<ClauseType/>
+<pyReportName>BrowseJMKlausulMED_RD</pyReportName>
+<pySkipSummaryProcessing>false</pySkipSummaryProcessing>
+<pyPassCurrentParamPageForRespDT/>
+<pyExecuteOnDataPage>true</pyExecuteOnDataPage>
+<pyReportClass>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pyReportClass>
+<pyResDataTransform/>
+<pyClassName>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pyClassName>
+</pyLoadActivityParameters>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+<pyDTParamList REPEATINGTYPE="PageList"/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzDataSources">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pyDataSourceList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningMessage>A data page with this name already exists with a different type.  This may result in unexpected behavior at run-time.  Consider renaming this data page.</pxWarningMessage>
+<pxWarningName>Duplicate data page with different type</pxWarningName>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>julianto_t@sinarmas.co.id</pxWarningCreateOperator>
+<pxWarningDetails>(Rule-Declare-Pages)pxDupPageType</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>1</pxWarningSeverity>
+<pxWarningType>Functionality</pxWarningType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20190204T083838.820 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyWarningJustifiedMessage/>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pxWarningName>Empty System Name</pxWarningName>
+<pxIsWarningJustified/>
+<pxWarningCreateOperator>kevinsetiadi</pxWarningCreateOperator>
+<pxWarningJustifiedOperator/>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20190204T083838.824 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Embed-DeclarePageSource)pxEmptySystemName	report definition	1</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>Please enter a system name for the report definition data source (data source 1).</pxWarningMessage>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyKeysForPageList REPEATINGTYPE="PropertyList"/>
+<pyLoadActivityParameters>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLoadActivityParameters>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pzInsKey>RULE-DECLARE-PAGES D_CLAUSELIST #20170407T081229.980 GMT</pzInsKey>
+<pyLabel>01-01-52 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyAdditionalDependencies REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyAdditionalDependencies>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleFamilyName>BROWSEJMKLAUSULMED_RD</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-VJ_M_KLAUSUL</pxRuleClassName>
+<pyMethodStatus/>
+<pyRuleName>BrowseJMKlausulMED_RD</pyRuleName>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_CLAUSELIST #20190204T083836.380 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Report-Definition</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+</pagedata>

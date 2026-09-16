@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedRuleSetVersion/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM GetDataSlinkAllFOG</pxTabLabel>
+<pySpecialtyComponentData/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateDateTime>20250710T043504.740 GMT</pxCreateDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceDateProp/>
+<pxHostId>jboss10-42</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pxUpdateDateTime>20250710T043511.960 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalCreateDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETDATASLINKALLFOG #20250710T043504.740 GMT</pzDocumentKey>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pyFormPost/>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pyRelativePath/>
+<pyDeletedObject/>
+<pyUsage/>
+<pyDescription/>
+<pyMethodStatus/>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETDATASLINKALLFOG</pxInsName>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyStreamName/>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pyTemplate/>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETDATASLINKALLFOG</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleParamsStreamName/>
+<pyDocumentTitle/>
+<pxInstanceLockedDateTime/>
+<pyWorkKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETDATASLINKALLFOG #20250117T014138.332 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyShowJavaWindowName>GeneratedJava20260901T080433.515 GMT</pyShowJavaWindowName>
+<pxOriginalCreateSystemID/>
+<pxMoveImportDateTime>20250710T070605.524 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyDeleteSQL/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pyHandlerFlow/>
+<pySaveSQL/>
+<pyWindowTitle/>
+<pyCircumstanceDefinition/>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySPRuleSetName>NICKSONTICHANDRA@</pySPRuleSetName>
+<pyRuleStarts/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplateInputBox/>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pzChecksum>-1506969609</pzChecksum>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pxSaveDateTime>20250710T043511.967 GMT</pxSaveDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStatus/>
+<pyBrowseSQL>select pyid as "ClaimID",A.CONTRACTNO as "ContractNo",
+A.OBJECTNAME as "ObjectName",
+A.NOMORREKENINGFASILITAS as "NOMORREKENINGFASILITAS",
+A.NOMORCIFDEBITUR as "NOMORCIFDEBITUR",
+a.KODEJENISFASILITAS as "KodeJenisFasilitas",
+a.SUMBERDANA as "SumberDana",
+to_char((select max(startdate) from pooldata.T_GENERAL g where G.NOPOLIS = B.POLICYNO and rownum=1),'dd/mm/yyyy') as "AwalPolis",
+to_char((select max(G.ENDDATE) from pooldata.T_GENERAL g where G.NOPOLIS = B.POLICYNO and rownum=1),'dd/mm/yyyy') as "AkhirPolis",
+a.SUKUBUNGA as "SukuBunga",
+(select pnc.CURRENCY from POOLDATA.T_CLAIM_PNC pnc where pnc.claimid=b.pzinskey and pnc.nopolis=b.policyno) as "KODEVALUTA",
+to_char((select max(AD.TGLAKSEPTASI) from POOLDATA.T_CLAIM_ADJUSTMENT ad where ad.claimid=A.CLAIMID and AD.OBJECTID=A.OBJECTID and AD.CONTRACTNO=A.CONTRACTNO),'dd/mm/yyyy') as "TanggalPembayaran",
+(select case when cc.CURRENCY='IDR' then cc.CURRENCY else cc.CURRENCY end from POOLDATA.CURRENCY cc where id=(select max(C.CURRENCY) from POOLDATA.T_CLAIM_OBJECTCOVERAGE c where C.CLAIMID=A.CLAIMID and C.OBJECTID=A.OBJECTID and C.CONTRACTNO=A.CONTRACTNO)) ||' '||
+(select max(C.SUMTSI) from POOLDATA.T_CLAIM_OBJECTCOVERAGE c where C.CLAIMID=A.CLAIMID and C.OBJECTID=A.OBJECTID and C.CONTRACTNO=A.CONTRACTNO) as "NilaiMataUangAsal",
+A.KODEKOLEKTIBILITAS as "KodeKolektibilitas",
+to_char((select pnc.REGISTERDATE from POOLDATA.T_CLAIM_PNC pnc where pnc.claimid=b.pzinskey and pnc.nopolis=b.policyno),'dd/mm/yyyy') as "TanggalMacet",
+A.KODESEBABMACET as "KodeSebabMacet",
+(select sum(NILAIAKSEPTASI) from POOLDATA.T_CLAIM_ADJUSTMENT ad where ad.claimid=A.CLAIMID and AD.OBJECTID=A.OBJECTID and AD.CONTRACTNO=A.CONTRACTNO) as "TUNGGAKAN",
+(select max(C.SUMTSI) from POOLDATA.T_CLAIM_OBJECTCOVERAGE c where C.CLAIMID=A.CLAIMID and C.OBJECTID=A.OBJECTID and C.CONTRACTNO=A.CONTRACTNO) as "JUMLAHKEWAJIBAN",
+A.KODEKONDISI as "KodeKondisi",
+a.KETERANGAN as "Keterangan",
+to_char((select pnc.REGISTERDATE from POOLDATA.T_CLAIM_PNC pnc where pnc.claimid=b.pzinskey and pnc.nopolis=b.policyno),'dd/mm/yyyy') as "TanggalKondisi",
+'001' as "KodeKantorCabang",
+case when ((select max(gl.IDPEGA) from pooldata.T_GENERAL gl where GL.NOPOLIS = B.POLICYNO and GL.PRODKE = 
+case when (select pnc.prodke from POOLDATA.T_CLAIM_PNC pnc where pnc.claimid=b.pzinskey and pnc.nopolis=b.policyno) is null then
+(select max(G.prodke) from pooldata.T_GENERAL g where G.NOPOLIS = B.POLICYNO and rownum=1) else
+ (select pnc.prodke from POOLDATA.T_CLAIM_PNC pnc where pnc.claimid=b.pzinskey and pnc.nopolis=b.policyno) end)) like '%EDM%' then 'U'
+else 'C' end as "OperasiData",
+CUSTOMERTYPE as "CustomerType",
+OBJECTGENDER as "ObjectGender",
+DATEOFBIRTH as "DateOfBirth",
+ASMZIPCODE as "ASMZipCode",
+ASMADDRESS as "ASMAddress",
+TELFAXNUMBER as "TelfaxNumber",
+rownum as "JumlahHariTunggakan"
+from DATAPEGA.PC_ASM_FW_GCNMFW_WORK b,POOLDATA.T_CLAIM_OBJECTLIST a
+where B.PZINSKEY=A.CLAIMID 
+{ASIS:DetailTempSlink.NoteKasir}</pyBrowseSQL>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMemo>Pindah ruleset</pyMemo>
+<pyInterface/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETDATASLINKALLFOG #20250710T043504.740 GMT</pzInsKey>
+<pyRuleFormStatusTime>20260901T080433.498 GMT</pyRuleFormStatusTime>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceTemplate/>
+<pxCommitDateTime>20250710T070605.000 GMT</pxCommitDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceVal/>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateOperator/>
+<pyLabelOld>GetDataSlinkAllFOG</pyLabelOld>
+<pyCircumstanceDate/>
+<pyRuleEnds/>
+<pxInstanceLockedBy/>
+<pzIsPrivateCheckOut/>
+<pyLabel>GetDataSlinkAllFOG</pyLabel>
+<pyRequestType>GetDataSlinkAllFOG</pyRequestType>
+<pyJavaStream/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM GetDataSlinkAllFOG</pyRuleName>
+<pxSiblingCount/>
+<pxMoveFromSystem/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyOpenSQL/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>true</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETDATASLINKALLFOG #20250710T043504.740 GMT</pzInsKey>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

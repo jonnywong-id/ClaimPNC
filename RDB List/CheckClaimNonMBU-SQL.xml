@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyStreamName/>
+<pyLabelOld>CheckClaimNonMBU</pyLabelOld>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyRelativePath/>
+<pyRuleStarts/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInstanceLockedRuleSetVersion/>
+<pyJavaStream/>
+<pyWorkKey/>
+<pxMoveImportDateTime>20220107T160709.032 GMT</pxMoveImportDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM CheckClaimNonMBU</pxTabLabel>
+<pyRuleSet>GISFW</pyRuleSet>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalCreateDateTime/>
+<pySaveSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateSystemID/>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKCLAIMNONMBU #20220105T015002.609 GMT</pzDocumentKey>
+<pyBrowseSQL>SELECT COUNT (1)  as HASIL1
+  FROM DATAPEGA.pc_ASM_FW_GCNMFW_Work "PC0"
+ WHERE     policyno = {InputPolis.CARI1}
+       AND "PC0"."PYSTATUSWORK" LIKE 'New'
+       AND "PC0"."PXOBJCLASS" = 'ASM-FW-GCNMFW-Work-PNC'</pyBrowseSQL>
+<pySpecialtyComponentData/>
+<pxMoveFromSystem/>
+<pxCreateOpName>RIXTUS KUSUMA</pxCreateOpName>
+<pxOriginalCreateOperator/>
+<pyDescription/>
+<pxInstanceLockedKey/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOpName>RIXTUS KUSUMA</pxUpdateOpName>
+<pyDeletedObject/>
+<pxCommitDateTime>20220107T160709.000 GMT</pxCommitDateTime>
+<pxInstanceLockedBy/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormStatusTime>20260901T041342.926 GMT</pyRuleFormStatusTime>
+<pyTemplate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKCLAIMNONMBU #20200730T042252.172 GMT</pzOriginalInstanceKey>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM CheckClaimNonMBU</pyRuleName>
+<pxHostId>jboss1036</pxHostId>
+<pyRuleEnds/>
+<pyRuleSetVersion>01-03-36</pyRuleSetVersion>
+<pyTemplateInputBox/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzRuleSetVersionPatch>36</pzRuleSetVersionPatch>
+<pyUsage/>
+<pyOpenSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceType/>
+<pxOriginalCreateOpName/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKCLAIMNONMBU #20220105T015002.609 GMT</pzInsKey>
+<pxSaveDateTime>20220105T015053.979 GMT</pxSaveDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDeleteSQL/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyWindowTitle/>
+<pyCircumstanceDefinition/>
+<pyFormPost/>
+<pyLabel>CheckClaimNonMBU</pyLabel>
+<pxInstanceLockedRuleSet/>
+<pyHandlerFlow/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKCLAIMNONMBU</pxInsName>
+<pyCircumstanceVal/>
+<pyMethodStatus/>
+<pzChecksum>93028454</pzChecksum>
+<pyRWAccess>ASM</pyRWAccess>
+<pyCircumstanceDateProp/>
+<pyCircumstanceTemplate/>
+<pyDocumentTitle/>
+<pyStatus/>
+<pyMemo>non mbu</pyMemo>
+<pyCircumstanceProp/>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKCLAIMNONMBU</pxInsId>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxInstanceLockedDateTime/>
+<pxSiblingCount/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyShowJavaWindowName>GeneratedJava20260901T041342.947 GMT</pyShowJavaWindowName>
+<pyRequestType>CheckClaimNonMBU</pyRequestType>
+<pyIsFromManageChangeLP/>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySPRuleSetName>RIXTUSBAGUSRESA@</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateDateTime>20220105T015053.972 GMT</pxUpdateDateTime>
+<pxCreateDateTime>20220105T015002.609 GMT</pxCreateDateTime>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-03-36 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKCLAIMNONMBU #20220105T015002.609 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKCLAIMNONMBU #20200730T042252.172 GMT</pzInsKey>
+<pyLabel>01-02-67 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

@@ -1,0 +1,214 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyWorkKey/>
+<pyCheckInRuleSet/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceType/>
+<pyMemo>dones</pyMemo>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleStarts/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pyDocumentTitle/>
+<pxMoveImportDateTime>20230714T104251.078 GMT</pxMoveImportDateTime>
+<pzIsPrivateCheckOut/>
+<pxMoveFromSystem/>
+<pyDeletedObject/>
+<pxMergeSynchronized>20230714T084534.050 GMT</pxMergeSynchronized>
+<pyInterface/>
+<pxSiblingCount/>
+<pxInstanceLockedCreateDateTime/>
+<pxCommitDateTime>20250109T102122.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleEnds/>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyCircumstanceDateProp/>
+<pyDeleteSQL/>
+<pyCircumstanceProp/>
+<pyUsage/>
+<pxInstanceLockedBy/>
+<pzChecksum>-237717311</pzChecksum>
+<pyDescription/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateInputBox/>
+<pyRuleFormStatusTime>20260901T021506.782 GMT</pyRuleFormStatusTime>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedDateTime/>
+<pxUpdateDateTime>20250109T102122.262 GMT</pxUpdateDateTime>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOpName/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BroswseKlaimByBirthDate</pyRuleName>
+<pyLabel>Ambil Data Klaim dengan Tanggal Lahir</pyLabel>
+<pyCircumstanceTemplate/>
+<pyRuleParamsStreamName/>
+<pyTemporaryObject/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BroswseKlaimByBirthDate</pxTabLabel>
+<pyWindowTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20190423T101427.249 GMT</pzOriginalInstanceKey>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20250109T101025.780 GMT</pzDocumentKey>
+<pxCreateDateTime>20250109T101025.780 GMT</pxCreateDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceDefinition/>
+<pyStreamName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceDate/>
+<pxOriginalCreateSystemID/>
+<pyLabelOld>Ambil Data Klaim dengan Tanggal Lahir</pyLabelOld>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pyShowJavaWindowName>GeneratedJava20260901T021506.807 GMT</pyShowJavaWindowName>
+<pyRelativePath/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxSaveDateTime>20250109T102122.326 GMT</pxSaveDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20250109T101025.780 GMT</pzInsKey>
+<pxOriginalCreateDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxOriginalCreateOperator/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBrowseSQL>SELECT a.CLAIMID AS "IDPEGA", a.NOPOLIS, a.CLAIMNO AS "EDMNO", a.QQNAME, b.FullName as "SOBLEADER1", to_date(b.ASMDateOfBirth, 'dd/mm/yyyy') as "EDMDATE", 
+a.DATEOFLOSS AS "STARTDATE" , a.BUSINESSNAME, a.BRANCHNAME, STATUSWORK AS "STATUSBUSINESS", 
+(select c.lsc_note from v_sts_claim c where a.StatusClaim = c.LSC_ID) as "THEINSURED", 
+a.CLOSECLAIMDATE AS "ENDDATE", a.CLOSECLAIMNOTE AS "FLAGEDMBATAL", PICTEKNIK AS "SOBNAME"
+FROM pooldata.T_CLAIM_PNC a, pooldata.t_person b, pooldata.t_claim_objectlist d
+where a.nopolis = b.nopolis and a.claimid=d.claimid and d.objectid=to_char(b.indexcount)
+and trunc(b.ASMDateOfBirth) = to_date({InputData.CARI4},'dd/mm/yyyy') {ASIS:InputData.CARI103}</pyBrowseSQL>
+<pySpecialtyComponentData/>
+<pyHandlerFlow/>
+<pyMethodStatus/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxHostId>jboss1040</pxHostId>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceVal/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyFormPost/>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pyIsFromManageChangeLP/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pySaveSQL/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROSWSEKLAIMBYBIRTHDATE</pxInsId>
+<pyOpenSQL/>
+<pyRequestType>BroswseKlaimByBirthDate</pyRequestType>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROSWSEKLAIMBYBIRTHDATE</pxInsName>
+<pyJavaStream/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyDelete>true</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyVersionSecure>false</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pyPreview>false</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20250109T101025.780 GMT</pzInsKey>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20230714T084100.581 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-65 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20191112T065250.640 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-01-51 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-41 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20190423T101427.249 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyLabel>01-01-37 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>5</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYBIRTHDATE #20190225T035628.285 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

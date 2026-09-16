@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyUsage/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETIDDOCUMENTSALVAGE_ACT #20211222T093900.643 GMT</pzInsKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemporaryObject/>
+<pxInstanceLockedBy/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pySpecialtyComponentData/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStatus/>
+<pyCircumstanceVal/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETIDDOCUMENTSALVAGE_ACT #20211222T093900.643 GMT</pzDocumentKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportDateTime>20220126T101718.744 GMT</pxMoveImportDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyCircumstanceProp/>
+<pyOpenSQL/>
+<pyShowJavaWindowName>GeneratedJava20260901T083513.670 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyBrowseSQL>select IDDOC as "ClaimID",NAMADOC as "CityID",USERINPUT as "NamaDokumen", TGLINS as "DateOfLoss" from POOLDATA.SALAVAGEDOCUMENT where NOKLAIM = {TempForGet.ClaimID} and IDSALVAGE = {TempForGet.CityID}</pyBrowseSQL>
+<pxInstanceLockedDateTime/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetIDDocumentSalvage_act</pyRuleName>
+<pxMoveFromSystem/>
+<pyFormPost/>
+<pyHandlerFlow/>
+<pzChecksum>-2084182926</pzChecksum>
+<pxOriginalCreateOpName/>
+<pyDescription/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxHostId>jboss10362</pxHostId>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySaveSQL/>
+<pyMethodStatus/>
+<pxSaveDateTime>20220113T081611.101 GMT</pxSaveDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETIDDOCUMENTSALVAGE_ACT</pxInsId>
+<pxSiblingCount/>
+<pyJavaStream/>
+<pyDeleteSQL/>
+<pyCircumstanceTemplate/>
+<pyRelativePath/>
+<pyCheckInRuleSet/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxInstanceLockedRuleSet/>
+<pyStreamName/>
+<pyCircumstanceDate/>
+<pyTemplate/>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20211222T093900.643 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pyLabel>GetIDDocumentSalvage_act</pyLabel>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDefinition/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRequestType>GetIDDocumentSalvage_act</pyRequestType>
+<pxOriginalCreateDateTime/>
+<pyDeletedObject/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleStarts/>
+<pyRuleFormStatusTime>20260901T083513.648 GMT</pyRuleFormStatusTime>
+<pxUpdateDateTime>20220113T081611.094 GMT</pxUpdateDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyInterface/>
+<pyValueChanged>false</pyValueChanged>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyWorkKey/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETIDDOCUMENTSALVAGE_ACT</pxInsName>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPENUNJANGLOD #20210427T020821.206 GMT</pzOriginalInstanceKey>
+<pyIsFromManageChangeLP/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceType/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleEnds/>
+<pyDocumentTitle/>
+<pxInstanceLockedKey/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWindowTitle/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabelOld>GetIDDocumentSalvage_act</pyLabelOld>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyMemo>untuk mendapatkan id document salage dari tabel documentsalvage</pyMemo>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetIDDocumentSalvage_act</pxTabLabel>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETIDDOCUMENTSALVAGE_ACT #20211222T093900.643 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

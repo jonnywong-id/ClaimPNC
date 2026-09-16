@@ -1,0 +1,168 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMethodStatus/>
+<pyHistoryObject/>
+<pySaveSQL/>
+<pxInstanceLockedBy/>
+<pyShowJavaWindowName>GeneratedJava20260828T015656.655 GMT</pyShowJavaWindowName>
+<pyRuleEnds/>
+<pyStatus/>
+<pyStreamName/>
+<pyUsage/>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedKey/>
+<pyCircumstanceVal/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleStarts/>
+<pyDocumentTitle/>
+<pyMemo>change to Premi</pyMemo>
+<pxTabLabel>ASM-FW-GISFW-Work ASM GetDataPetInsurance</pxTabLabel>
+<pyIsFromManageChangeLP/>
+<pxSiblingCount/>
+<pyCircumstanceDateProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleName>ASM-FW-GISFW-Work ASM GetDataPetInsurance</pyRuleName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyFormPost/>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pyRelativePath/>
+<pyDeleteMemo>change to premium</pyDeleteMemo>
+<pyDeletedObject/>
+<pxHostId>jboss2058</pxHostId>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxSaveDateTime>20180724T102440.531 GMT</pxSaveDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyDeleteSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplate/>
+<pxMoveImportDateTime>20191226T024815.531 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyClassName>ASM-FW-GISFW-Work</pyClassName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyCircumstanceType/>
+<pyCircumstanceTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!GETDATAPETINSURANCE #20180724T101739.867 GMT</pzDocumentKey>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyJavaStream/>
+<pyLabel>GetDataPetInsurance</pyLabel>
+<pyRequestType>GetDataPetInsurance</pyRequestType>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionPatch>68</pzRuleSetVersionPatch>
+<pxInsId>ASM-FW-GISFW-WORK!ASM!GETDATAPETINSURANCE</pxInsId>
+<pyRuleFormStatusTime>20260828T015656.625 GMT</pyRuleFormStatusTime>
+<pySpecialtyComponentData/>
+<pyOpenSQL/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!GETDATAPETINSURANCE #20180724T101739.867 GMT</pzInsKey>
+<pyCircumstanceDate/>
+<pyBaseRule>false</pyBaseRule>
+<pzChecksum>-1864141514</pzChecksum>
+<pyWindowTitle/>
+<pyHandlerFlow/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxUpdateDateTime>20180724T102440.498 GMT</pxUpdateDateTime>
+<pyDescription/>
+<pyInterface/>
+<pxInstanceLockedRuleSetVersion/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!GETDATAPETINSURANCE #20180724T101739.867 GMT</pzOriginalInstanceKey>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-01-68</pyRuleSetVersion>
+<pxInsName>ASM-FW-GISFW-WORK!ASM!GETDATAPETINSURANCE</pxInsName>
+<pyBrowseSQL>SELECT TO_NUMBER (TSI) AS HASIL1, TO_NUMBER (Premi) AS HASIL2
+  FROM POOLDATA.m_petpacket
+ WHERE CoverageID = {InputPetInsurance.CARI1} AND Packet = {InputPetInsurance.CARI2}</pyBrowseSQL>
+<pyCircumstanceProp/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pxCreateDateTime>20180724T101739.867 GMT</pxCreateDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!GETDATAPETINSURANCE #20180724T101739.867 GMT</pzInsKey>
+<pyLabel>01-01-68 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateDateTime>20240614T113246.210 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20240614T113246.210 GMT</pzDocumentKey>
+<pxUpdateDateTime>20240614T113253.423 GMT</pxUpdateDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInstanceLockedKey/>
+<pxHostId>jboss10362</pxHostId>
+<pyCircumstanceVal/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceDateProp/>
+<pyStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormStatusTime>20260720T142555.118 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyTemplateInputBox/>
+<pxSiblingCount/>
+<pyLabel>InsertStatusProgress</pyLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM InsertStatusProgress</pxTabLabel>
+<pyWindowTitle/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyMemo>dones</pyMemo>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pyShowJavaWindowName>GeneratedJava20260720T142555.142 GMT</pyShowJavaWindowName>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedBy/>
+<pyCircumstanceDate/>
+<pyDescription/>
+<pyRuleParamsStreamName/>
+<pyDocumentTitle/>
+<pxMoveFromSystem/>
+<pxOriginalCreateOpName/>
+<pyLabelOld>InsertStatusProgress</pyLabelOld>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM InsertStatusProgress</pyRuleName>
+<pyBrowseSQL>BEGIN 
+  
+  POOLDATA.PROGRESS_CLAIM_PNC({tempinsertprogress.pzInsKey}, {tempinsertprogress.CaseID}, {tempinsertprogress.CountryID}, {tempinsertprogress.CloseClaimNote}, {tempinsertprogress.UserName}, {tempinsertprogress.AnalystTransferDate DateTime}, {tempinsertprogress.AnalystDoctorRemaks}, {tempinsertprogress.DistrictID}, {tempinsertprogress.RWID}, {tempinsertprogress.Location}, {tempinsertprogress.CityID},{tempinsertprogress.Currency}, {tempinsertprogress.City}, {tempinsertprogress.NIK out}, {tempinsertprogress.KTP out},{tempinsertprogress.pyNote out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pyOpenSQL/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxInstanceLockedRuleSet/>
+<pxMergeSynchronized>20230613T094320.761 GMT</pxMergeSynchronized>
+<pyIsFromManageChangeLP/>
+<pyTemplate/>
+<pyHandlerFlow/>
+<pyJavaStream/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDefinition/>
+<pyDeleteSQL/>
+<pySaveSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateDateTime/>
+<pyRequestType>InsertStatusProgress</pyRequestType>
+<pyUsage/>
+<pyFormPost/>
+<pyRelativePath/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyInterface/>
+<pyTemporaryObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pySpecialtyComponentData/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pxSaveDateTime>20240614T113253.431 GMT</pxSaveDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyStreamName/>
+<pyWorkKey/>
+<pyDeletedObject/>
+<pyCircumstanceProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleEnds/>
+<pxOriginalCreateOperator/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceTemplate/>
+<pyCircumstanceType/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!INSERTSTATUSPROGRESS</pxInsId>
+<pyCheckInRuleSet/>
+<pzChecksum>-954607276</pzChecksum>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20240614T113246.210 GMT</pzInsKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxMoveImportDateTime>20240715T114352.633 GMT</pxMoveImportDateTime>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20200212T024928.284 GMT</pzOriginalInstanceKey>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!INSERTSTATUSPROGRESS</pxInsName>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20240614T113246.210 GMT</pzInsKey>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20230613T093236.594 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20201117T054520.410 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20201109T023553.358 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20200212T024928.284 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

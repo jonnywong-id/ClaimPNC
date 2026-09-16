@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyShowJavaWindowName>GeneratedJava20260908T032851.194 GMT</pyShowJavaWindowName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRequestType>GetDataLODAutoJobKlaim</pyRequestType>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!SEARCHDATAARCHIVEFILLINGCASE #20240729T074328.664 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportDateTime>20240824T090406.460 GMT</pxMoveImportDateTime>
+<pyJavaStream/>
+<pxInstanceLockedDateTime/>
+<pyDocumentTitle/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pxUpdateDateTime>20240812T025308.604 GMT</pxUpdateDateTime>
+<pyRuleStarts/>
+<pyTemplateInputBox/>
+<pxSiblingCount/>
+<pyMemo>dones</pyMemo>
+<pxOriginalCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATALODAUTOJOBKLAIM #20240729T111044.639 GMT</pzInsKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceType/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataLODAutoJobKlaim</pyRuleName>
+<pyStatus/>
+<pxCreateDateTime>20240729T111044.639 GMT</pxCreateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsFromManageChangeLP/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemporaryObject/>
+<pyCircumstanceDate/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>select claimid as "CaseID",komiteid as "CABANG",nopolis as "PolicyNo",FLAGBISNIS as "NIK",IDJOB as "RWID",NAMAOBJECT as "UserName",NOS as "IDMasterTONP",rownum as "NoKTP" from POOLDATA.T_CLAIM_JOB_PERSONALACCIDENT
+where STATUSLOD='0' {ASIS:BisnisKlaimTemps.NoteKasir}</pyBrowseSQL>
+<pxCommitDateTime>20240824T090406.000 GMT</pxCommitDateTime>
+<pyStreamName/>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedBy/>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOpName/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyRuleFormStatusTime>20260908T032851.175 GMT</pyRuleFormStatusTime>
+<pyDeleteSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pzChecksum>671389571</pzChecksum>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxSaveDateTime>20240812T025308.616 GMT</pxSaveDateTime>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATALODAUTOJOBKLAIM</pxInsId>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDateProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLabel>GetData LOD Auto JobKlaim</pyLabel>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedKey/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATALODAUTOJOBKLAIM #20240729T111044.639 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pyRuleEnds/>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyCircumstanceDefinition/>
+<pyWindowTitle/>
+<pxHostId>jboss10402</pxHostId>
+<pyCircumstanceProp/>
+<pyDescription/>
+<pyHandlerFlow/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDeletedObject/>
+<pyWorkKey/>
+<pyInterface/>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pySaveSQL>update  POOLDATA.T_CLAIM_JOB_PERSONALACCIDENT set STATUSLOD='1',TANGGALPROSESLOD=SYSDATE where NOS={BisnisKlaimTemps.TOTAL}</pySaveSQL>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pyRuleParamsStreamName/>
+<pyUsage/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataLODAutoJobKlaim</pxTabLabel>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceVal/>
+<pyLabelOld>GetData LOD Auto JobKlaim</pyLabelOld>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATALODAUTOJOBKLAIM</pxInsName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyOpenSQL/>
+<pyFormPost/>
+<pyRelativePath/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+<pyV2/>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATALODAUTOJOBKLAIM #20240729T111044.639 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

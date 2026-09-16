@@ -1,0 +1,1635 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzDocumentKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzDocumentKey>
+<pzChecksum>-2147142518</pzChecksum>
+<pxMoveImportDateTime>20200630T113337.288 GMT</pxMoveImportDateTime>
+<pxInsId>!BROWSECITY_RD</pxInsId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCommitDateTime>20200630T113337.000 GMT</pxCommitDateTime>
+<pxInsName>ASM-FW-GISFW-INT-CITY!BROWSECITY_RD</pxInsName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateOperator>HERISKRISTIAWAN</pxCreateOperator>
+<pyReportTitle>BrowseCity_RD</pyReportTitle>
+<pyRuleFormStatusTime>20260827T021135.180 GMT</pyRuleFormStatusTime>
+<pxUpdateOpName>Gerardo Adrian</pxUpdateOpName>
+<pyRuleName>BrowseCity_RD</pyRuleName>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyObjClassLabel>Report Definition</pyObjClassLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzReportExpressHideEditButton>false</pzReportExpressHideEditButton>
+<pzOriginalInstanceKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20190815T073623.484 GMT</pzOriginalInstanceKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabelOld>BrowseCity_RD</pyLabelOld>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateDateTime>20200616T093036.250 GMT</pxCreateDateTime>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyClassName>ASM-FW-GISFW-Int-CITY</pyClassName>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxTabLabel>BrowseCity_RD</pxTabLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTempText>saved</pyTempText>
+<pyShowJavaWindowName>GeneratedJava20260827T021135.212 GMT</pyShowJavaWindowName>
+<pxHostId>jboss214</pxHostId>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzInsKey>
+<pyStreamName>BrowseCity_RD</pyStreamName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOperator>GERARDOADRIAN</pxUpdateOperator>
+<pzRuleSetVersionPatch>64</pzRuleSetVersionPatch>
+<pyLabel>BrowseCity_RD</pyLabel>
+<pyJavaClassName>Rule_Obj_Report_Definition_ASM_FW_GISFW_Int_CITY_BrowseCity_RD_Action_20200622T070741_786_GMT</pyJavaClassName>
+<pySelected>false</pySelected>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxReportVersion>6.2</pxReportVersion>
+<pyMemo>recheckin</pyMemo>
+<pxSaveDateTime>20200622T070841.720 GMT</pxSaveDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOpName>HERIS KRISTIAWAN</pxCreateOpName>
+<pzIndexCount>54</pzIndexCount>
+<pxObjClass>Rule-Obj-Report-Definition</pxObjClass>
+<pxUpdateSystemID>ASMPegaSystem</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySPRuleSetName>GERARDOADRIAN@</pySPRuleSetName>
+<pxUpdateDateTime>20200622T070841.637 GMT</pxUpdateDateTime>
+<pyRuleSetVersion>01-02-64</pyRuleSetVersion>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyCompact>false</pyCompact>
+<pyHistoryObject>false</pyHistoryObject>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GISFW-Int-CITY</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningJustifiedTime>20200616T094504.424 GMT</pxWarningJustifiedTime>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningDetails>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningJustifiedOperator>HERISKRISTIAWAN</pxWarningJustifiedOperator>
+<pxWarningCreateOperator>HERISKRISTIAWAN</pxWarningCreateOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20200622T070841.610 GMT</pxWarningCreatedTime>
+<pxWarningType>Performance</pxWarningType>
+<pyWarningJustifiedMessage>act</pyWarningJustifiedMessage>
+<pxWarningMessage>Some of your filters are using a parameter with the "Use null if empty" option NOT selected. Please ensure that you do pass the parameter. Otherwise, the filter will be dropped entirely and execution of the report will result in very poor performance. If you do not want this behavior, select the "Use null if empty" option.</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningName>ParamReferenceInFilter</pxWarningName>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningCreateOperator>FRANSISCOJUNIUS</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>Using the 'Ignore Case' configuration may result in poor performance since database indexes will not be used to optimize the query.</pxWarningMessage>
+<pxWarningName>Using ignore case</pxWarningName>
+<pxWarningType>Performance</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20200622T070841.609 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxIgnoreCaseConfiguration</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20200622T070841.629 GMT</pxWarningCreatedTime>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxWarningCreateOperator>HERISKRISTIAWAN</pxWarningCreateOperator>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxWarningMessage>Setting the Maximum Rows To Retrieve limit to 0 may result in poor query performance, because all rows will be fetched.  Consider using paging.</pxWarningMessage>
+<pxWarningName>All rows fetched</pxWarningName>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxAllRowsFetched</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Performance</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>YOHANESAJIPRIAMBODO</pxWarningCreateOperator>
+<pxWarningCreatedTime>20200622T070841.630 GMT</pxWarningCreatedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">30</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyContent>
+<pyContentPageName>pyReportContentPage</pyContentPageName>
+<pyQueryTimeoutValue>30</pyQueryTimeoutValue>
+<ValidationMap mode="J">rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVz
+aG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeA==</ValidationMap>
+<pyReportContentPageName>pyReportContentPage</pyReportContentPageName>
+<pyMaxRecords>0</pyMaxRecords>
+<pyGetDistinctRows>true</pyGetDistinctRows>
+<pxIsSummary>false</pxIsSummary>
+<pyGetCachedDistinctValues>false</pyGetCachedDistinctValues>
+<pyClassName>ASM-FW-GISFW-Int-CITY</pyClassName>
+<pxObjClass>Embed-ReportContent</pxObjClass>
+<pyDoNotUseSortOrderForGrouping>false</pyDoNotUseSortOrderForGrouping>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+<pyReportRank>
+<pxObjClass>Embed-ReportRank</pxObjClass>
+<pyRankField>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</pyRankField>
+</pyReportRank>
+<pyFields>
+<pxObjClass>Embed-ReportFields</pxObjClass>
+<pyAggregate REPEATINGTYPE="PageList"/>
+<pyGroupBy REPEATINGTYPE="PageList"/>
+<pyListFields REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>ID</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.ID</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.ProvinceID</pyFieldName>
+<pyFieldLabel>ProvinceID</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortType>ASC</pySortType>
+<pyFieldName>.Note</pyFieldName>
+<pySortOrder>1</pySortOrder>
+<pyFieldLabel>Note</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>BranchID</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.BranchID</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyFieldName>.Email</pyFieldName>
+<pyFieldLabel>Email</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.MOID</pyFieldName>
+<pyFieldLabel>MOID</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyFieldName>.JABODETABEKStatus</pyFieldName>
+<pyFieldLabel>JABODETABEKStatus</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.ProvinceName</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldLabel>ProvinceName</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.BranchName</pyFieldName>
+<pyFieldLabel>BranchName</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyFieldName>.EQZone</pyFieldName>
+<pyFieldLabel>EQZone</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+</pyListFields>
+</pyFields>
+<pySource>
+<pxObjClass>Embed-ReportSource</pxObjClass>
+<pyAllowApproximation>false</pyAllowApproximation>
+<pyForceUseStandardDB>false</pyForceUseStandardDB>
+<pyUseAlternateDB>true</pyUseAlternateDB>
+<pyIncludeAllDescendantclasses>true</pyIncludeAllDescendantclasses>
+<pyUseImplementationClass>true</pyUseImplementationClass>
+<pyAssociations REPEATINGTYPE="PageList"/>
+<pyJoinInfo REPEATINGTYPE="PageList"/>
+<pyRowKeyInfo>
+<pxObjClass>Embed-ReportRowKeyInfo</pxObjClass>
+<pyGetRowKey>false</pyGetRowKey>
+<pyRowKeys REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">.pzInsKey</rowdata>
+</pyRowKeys>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>.pzInsKey</pyLabel>
+</rowdata>
+</pxResults>
+</pyRowKeyInfo>
+<pySubReportInfo REPEATINGTYPE="PageList"/>
+<pySetQueries>
+<pxObjClass>Embed-ReportSetQueries</pxObjClass>
+<pySetQueryInfo REPEATINGTYPE="PageList"/>
+</pySetQueries>
+<pyIndexInfo REPEATINGTYPE="PageList"/>
+<pySubReportFrom>
+<pxObjClass>Embed-SubReportInfo</pxObjClass>
+<pyColumns REPEATINGTYPE="PageList"/>
+<pyFilters>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyFilter REPEATINGTYPE="PageList"/>
+</pyFilters>
+</pySubReportFrom>
+</pySource>
+<pyReportStatsInfo>
+<pxObjClass>Embed-ReportStatisticsInfo</pxObjClass>
+</pyReportStatsInfo>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GISFW-Int-CITY</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyFilters>
+<pyGetDistinctRows>true</pyGetDistinctRows>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyFilterLogic>A OR B OR C OR D</pyFilterLogic>
+<pyShowLabels>true</pyShowLabels>
+<pyFilter REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyFilterOperation>=</pyFilterOperation>
+<pyFilterValue>Param.ID</pyFilterValue>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pyLogicLabel>A</pyLogicLabel>
+<pySkipValidation>false</pySkipValidation>
+<pyFilterName>.ID</pyFilterName>
+<pyFilterUICaption>ID</pyFilterUICaption>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOperator>FRANSISCOJUNIUS</pxCreateOperator>
+<pyFilterValue>Param.ID2</pyFilterValue>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pySkipValidation>false</pySkipValidation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pyFilterOperation>=</pyFilterOperation>
+<pyFieldLabel>ProvinceID</pyFieldLabel>
+<pyLogicLabel>B</pyLogicLabel>
+<pxCreateDateTime>20170505T033911.652 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterUICaption>ID2</pyFilterUICaption>
+<pyPromptType>AllAccess</pyPromptType>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyFilterName>.ProvinceID</pyFilterName>
+<pyDataType>Text</pyDataType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPromptType>AllAccess</pyPromptType>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pxCreateOperator>ESTERCAROLINA</pxCreateOperator>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyCaseInsensitive>true</pyCaseInsensitive>
+<pxCreateOpName>ESTERCAROLINA</pxCreateOpName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyLogicLabel>C</pyLogicLabel>
+<pyFilterValue>Param.Note</pyFilterValue>
+<pxCreateDateTime>20170614T031158.334 GMT</pxCreateDateTime>
+<pyFilterUICaption>Note</pyFilterUICaption>
+<pyFilterOperation>StartsWith</pyFilterOperation>
+<pyFilterName>.Note</pyFilterName>
+<pySkipValidation>false</pySkipValidation>
+<pyDataType>Text</pyDataType>
+<pyFieldLabel>Note</pyFieldLabel>
+<pyUseNullIfEmpty>false</pyUseNullIfEmpty>
+<pxCreateSystemID>pega</pxCreateSystemID>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyFilterOperation>=</pyFilterOperation>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyLogicLabel>D</pyLogicLabel>
+<pyFilterName>.BranchID</pyFilterName>
+<pxCreateOpName>Jekry</pxCreateOpName>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyFieldLabel>BranchID</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pyFilterValue>Param.BranchID</pyFilterValue>
+<pyPromptType>AllAccess</pyPromptType>
+<pxCreateOperator>JEKRY</pxCreateOperator>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyFilterUICaption>BranchID</pyFilterUICaption>
+<pxCreateDateTime>20190815T073635.943 GMT</pxCreateDateTime>
+<pySkipValidation>false</pySkipValidation>
+</rowdata>
+</pyFilter>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+</pyFilters>
+<pyHavingFilters>
+<pxObjClass>Embed-ReportFilters-Having</pxObjClass>
+<pyFilter REPEATINGTYPE="PageList"/>
+</pyHavingFilters>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ID</pyParametersParamName>
+<pyParametersParamType>Text</pyParametersParamType>
+<pyParametersParamDesc>ID</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>Text</pyParametersParamType>
+<pyParametersParamDesc>ID2</pyParametersParamDesc>
+<pyParametersParamName>ID2</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>Note</pyParametersParamName>
+<pyParametersParamType>Text</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamType>Text</pyParametersParamType>
+<pyParametersParamDesc>BranchID</pyParametersParamDesc>
+<pyParametersParamName>BranchID</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParameters>
+<pyPaging>
+<pyPosition>Top</pyPosition>
+<pyAlignment>Right</pyAlignment>
+<pyWindowSize>10</pyWindowSize>
+<pySortMode>dataset</pySortMode>
+<pxObjClass>Embed-ReportPaging</pxObjClass>
+<pxMorePages>false</pxMorePages>
+<pyPageSize>50</pyPageSize>
+<pyPagingEnabled>false</pyPagingEnabled>
+<pyPageMode>Numeric</pyPageMode>
+</pyPaging>
+<pySecurity>
+<pxObjClass>Embed-ReportSecurity</pxObjClass>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyPrivilegeList>
+</pySecurity>
+<pyInsertInfo>
+<pySecurity>
+</pySecurity>
+</pyInsertInfo>
+</pyContent>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-02-64 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20190815T073623.484 GMT</pzInsKey>
+<pyLabel>01-02-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-73 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20180913T072755.584 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyLabel>01-01-64 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20180511T144212.379 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20180306T090715.915 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20171227T030833.129 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-62 (Available)</pyLabel>
+<pxListSubscript>6</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyValue>3</pyValue>
+<pyLabel>01-01-52 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20170405T090237.942 GMT</pzInsKey>
+<pxListSubscript>7</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20170315T042525.700 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>8</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-49 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyUI>
+<pzIsSummary>false</pzIsSummary>
+<pyReportContentPageName>pyReportContentPage</pyReportContentPageName>
+<pyShowUnExposedProperties>false</pyShowUnExposedProperties>
+<pyCategory>pyWorkAnalysis</pyCategory>
+<pyUseAlternateDb>false</pyUseAlternateDb>
+<pySplitTableWithPageBreak>false</pySplitTableWithPageBreak>
+<pyMaxRecords>0</pyMaxRecords>
+<pyIsCertified>false</pyIsCertified>
+<pxObjClass>Embed-ReportUI</pxObjClass>
+<pySplitPDFExport>false</pySplitPDFExport>
+<pyReportingDbDropdown>Alternate</pyReportingDbDropdown>
+<pyIgnoreSkinPDFExport>true</pyIgnoreSkinPDFExport>
+<pyIgnoreFormattingExcelExport>false</pyIgnoreFormattingExcelExport>
+<pyIgnoreFormattingPDFExport>false</pyIgnoreFormattingPDFExport>
+<pyChart>
+<pyIs3D>false</pyIs3D>
+<pyMaxSubTypeIcons>1</pyMaxSubTypeIcons>
+<pyShowAllGridLines>true</pyShowAllGridLines>
+<pyOptionsToEdit>Format</pyOptionsToEdit>
+<pySize>Large</pySize>
+<pyMin>1</pyMin>
+<pyUseSolidColorsFor2D>true</pyUseSolidColorsFor2D>
+<pxCreateOperator>FRANSISCOJUNIUS</pxCreateOperator>
+<pyChartOutputType>Flash</pyChartOutputType>
+<pxCreateDateTime>20170315T042525.709 GMT</pxCreateDateTime>
+<pyTitleEnabled>true</pyTitleEnabled>
+<pyShowAllLabelsSS>false</pyShowAllLabelsSS>
+<pyDisableDrillDown>false</pyDisableDrillDown>
+<pyClassName>ASM-FW-GISFW-Int-CITY</pyClassName>
+<pyTitleFontStyle>regular</pyTitleFontStyle>
+<pzChartAllowed>false</pzChartAllowed>
+<pyLegendDirection>horizontal</pyLegendDirection>
+<pyEnableChart>false</pyEnableChart>
+<pyTimeOut>0</pyTimeOut>
+<pyUseFusionChart>true</pyUseFusionChart>
+<pyMax>2</pyMax>
+<pyUseJavaScript>true</pyUseJavaScript>
+<pySubType>clustered</pySubType>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pyShowAllLabelsMS>true</pyShowAllLabelsMS>
+<pyShowDataTips>true</pyShowDataTips>
+<pyWidth>400</pyWidth>
+<pyShowSVButton>true</pyShowSVButton>
+<pyLegendPlacement>bottom</pyLegendPlacement>
+<pyUseV6Chart>true</pyUseV6Chart>
+<pyLegendEnable>true</pyLegendEnable>
+<pySubChartIndex>1</pySubChartIndex>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyValueOfChart>0</pyValueOfChart>
+<pyEnable2D3D>false</pyEnable2D3D>
+<pyShowMaxButton>true</pyShowMaxButton>
+<pyHeight>300</pyHeight>
+<pySliderGroupCount>0</pySliderGroupCount>
+<pySliderWidth>200</pySliderWidth>
+<pyShowNewWindow>true</pyShowNewWindow>
+<pyGraphType>Column</pyGraphType>
+<pxObjClass>Embed-ReportGraph</pxObjClass>
+<pyTitleFontSize>14</pyTitleFontSize>
+<pySliderEnabled>false</pySliderEnabled>
+<pyCategoryAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-Axis</pxObjClass>
+</rowdata>
+</pyCategoryAxis>
+<pyPie>
+<pyLabelField>false</pyLabelField>
+<pyNumberPrecision>2</pyNumberPrecision>
+<pyInnerRadius>0.1</pyInnerRadius>
+<pyDateTimeFormat>dd:hh:mm:ss</pyDateTimeFormat>
+<pyNumberCurrencySymbol>$</pyNumberCurrencySymbol>
+<pyExplodeRadius>0.1</pyExplodeRadius>
+<pyDateTimeInput>milliseconds</pyDateTimeInput>
+<pyLabelPercent>false</pyLabelPercent>
+<pyLabelEnabled>false</pyLabelEnabled>
+<pyNumberThouSeperator>true</pyNumberThouSeperator>
+<pxObjClass>Embed-ReportGraph-Pie</pxObjClass>
+<pyLabelNameField>false</pyLabelNameField>
+<pyNumberNegativeSign>false</pyNumberNegativeSign>
+<pyNameFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyNameFieldHTMLParams>
+<pyFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyFieldHTMLParams>
+</pyPie>
+<pyGauge>
+<pyNumberFormat>general</pyNumberFormat>
+<pyBorderThickness>1</pyBorderThickness>
+<pyTickLocation>Inside</pyTickLocation>
+<pyMajorTicks>0</pyMajorTicks>
+<pxObjClass>Embed-ReportGraph-Gauge</pxObjClass>
+<pyNumberNegativeSign>false</pyNumberNegativeSign>
+<pyValueIndex>1</pyValueIndex>
+<pyCoverAlpha>1</pyCoverAlpha>
+<pyCoverRadius>0</pyCoverRadius>
+<pyMinorTickLength>5</pyMinorTickLength>
+<pyDateTimeFormat>dd:hh:mm:ss</pyDateTimeFormat>
+<pyNeedleAlpha>1</pyNeedleAlpha>
+<pyNeedleTopWidth>0</pyNeedleTopWidth>
+<pyBorderAlpha>1</pyBorderAlpha>
+<pyMajorTickLength>10</pyMajorTickLength>
+<pyMajorTickThickness>3</pyMajorTickThickness>
+<pyNumberPrecision>2</pyNumberPrecision>
+<pyMinorTicks>0</pyMinorTicks>
+<pyShowValue>true</pyShowValue>
+<pyNeedleThickness>3</pyNeedleThickness>
+<pyNeedleBaseWidth>0</pyNeedleBaseWidth>
+<pyDateTimeInput>milliseconds</pyDateTimeInput>
+<pyMinorTickThickness>1</pyMinorTickThickness>
+<pyNumberThouSeperator>true</pyNumberThouSeperator>
+<pyNumberCurrencySymbol>$</pyNumberCurrencySymbol>
+<pyFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyFieldHTMLParams>
+</pyGauge>
+<pyBackgroundColor REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-BGColor</pxObjClass>
+</rowdata>
+</pyBackgroundColor>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexCount>1</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>ID</pyLabel>
+<pyTargetProperty>.ID</pyTargetProperty>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexCount>2</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pySelected>false</pySelected>
+<pyTargetProperty>.ProvinceID</pyTargetProperty>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyLabel>ProvinceID</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexCount>3</pzIndexCount>
+<pyLabel>Note</pyLabel>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pySelected>false</pySelected>
+<pyTargetProperty>.Note</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.BranchID</pyTargetProperty>
+<pyLabel>BranchID</pyLabel>
+<pySelected>false</pySelected>
+<pzIndexCount>4</pzIndexCount>
+<pyStringType>Text</pyStringType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexCount>5</pzIndexCount>
+<pyLabel>Email</pyLabel>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyStringType>Text</pyStringType>
+<pyTargetProperty>.Email</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.MOID</pyTargetProperty>
+<pySelected>false</pySelected>
+<pzIndexCount>6</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>MOID</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.JABODETABEKStatus</pyTargetProperty>
+<pyLabel>JABODETABEKStatus</pyLabel>
+<pySelected>false</pySelected>
+<pyStringType>Text</pyStringType>
+<pzIndexCount>7</pzIndexCount>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyStringType>Text</pyStringType>
+<pyLabel>ProvinceName</pyLabel>
+<pzIndexCount>8</pzIndexCount>
+<pySelected>false</pySelected>
+<pyTargetProperty>.ProvinceName</pyTargetProperty>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyStringType>Text</pyStringType>
+<pyLabel>BranchName</pyLabel>
+<pzIndexCount>9</pzIndexCount>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.BranchName</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pzIndexCount>10</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>EQZone</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.EQZone</pyTargetProperty>
+<pySelected>false</pySelected>
+</rowdata>
+</pxResults>
+<pyDataAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-Axis</pxObjClass>
+</rowdata>
+</pyDataAxis>
+<pyXY>
+<pyUseColorRanges>false</pyUseColorRanges>
+<pyUniformMinor>true</pyUniformMinor>
+<pyTitleFontSize>8</pyTitleFontSize>
+<pySwapSeries>false</pySwapSeries>
+<pyInterpolateValues>true</pyInterpolateValues>
+<pxObjClass>Embed-ReportGraph-XY</pxObjClass>
+<pyTitleFontStyle>regular</pyTitleFontStyle>
+<pyLine>
+<pyLineWeight>3</pyLineWeight>
+<pyDropShadow>true</pyDropShadow>
+<pxObjClass>Embed-ReportGraph-XY-Line</pxObjClass>
+</pyLine>
+<pyColumn>
+<pyMaxColWidth>0</pyMaxColWidth>
+<pxObjClass>Embed-ReportGraph-XY-Column</pxObjClass>
+</pyColumn>
+<pyBar>
+<pxObjClass>Embed-ReportGraph-XY-Bar</pxObjClass>
+<pyMaxBarWidth>0</pyMaxBarWidth>
+</pyBar>
+<pyArea>
+<pxObjClass>Embed-ReportGraph-XY-Area</pxObjClass>
+</pyArea>
+<pyGroupAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyShowLabels>true</pyShowLabels>
+<pyAxisScale>Category</pyAxisScale>
+<pxObjClass>Embed-ReportGraph-XY-GroupAxis</pxObjClass>
+<pyShowGridLines>true</pyShowGridLines>
+<pyAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyAxisHTMLParams>
+<pyGroupAxisList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-XY-Axis</pxObjClass>
+<pyFieldIndex>0</pyFieldIndex>
+</rowdata>
+</pyGroupAxisList>
+<pySubGrpAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pySubGrpAxisHTMLParams>
+</rowdata>
+</pyGroupAxis>
+<pyBubble>
+<pxObjClass>Embed-ReportGraph-XY-Bubble</pxObjClass>
+</pyBubble>
+<pyDataAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyAxisDateTimeInput>milliseconds</pyAxisDateTimeInput>
+<pyAxisNegativeSign>false</pyAxisNegativeSign>
+<pyNumberFormat>general</pyNumberFormat>
+<pyShowLabels>true</pyShowLabels>
+<pyAxisThouSeperator>true</pyAxisThouSeperator>
+<pyAxisPrecision>2</pyAxisPrecision>
+<pyAxisDecimalSeperator>true</pyAxisDecimalSeperator>
+<pyAxisCurrencySymbol>$</pyAxisCurrencySymbol>
+<pyAxisScale>Linear</pyAxisScale>
+<pxObjClass>Embed-ReportGraph-XY-DataAxis</pxObjClass>
+<pyAxisDateTimeFormat>dd:hh:mm:ss</pyAxisDateTimeFormat>
+<pyShowGridLines>true</pyShowGridLines>
+<pyMissingsAsZero>true</pyMissingsAsZero>
+<pyAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyAxisHTMLParams>
+<pyDataAxisList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyFieldIndex>0</pyFieldIndex>
+<pxObjClass>Embed-ReportGraph-XY-Axis</pxObjClass>
+</rowdata>
+</pyDataAxisList>
+</rowdata>
+</pyDataAxis>
+</pyXY>
+</pyChart>
+<pyHeader>
+<pxObjClass>Embed-ReportHeader</pxObjClass>
+<pyButtons>
+<pxObjClass>Embed-ReportButtons</pxObjClass>
+<pyButtonList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyImage>report_save</pyImage>
+<pyButtonToolTip>Save</pyButtonToolTip>
+<pyButtonCaption>Save</pyButtonCaption>
+<pyType>Icon</pyType>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyFunction>"showSaveAsDialog(this, event);"</pyFunction>
+<pyButtonToolTip>Save As</pyButtonToolTip>
+<pyImage>report_saveas</pyImage>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonCaption>Save As</pyButtonCaption>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyFunction>window.print()</pyFunction>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonCaption>Print</pyButtonCaption>
+<pyButtonToolTip>Print</pyButtonToolTip>
+<pyImage>report_print</pyImage>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonToolTip>Edit Columns To Include</pyButtonToolTip>
+<pyImage>report_colsmry</pyImage>
+<pyFunction>columnSummary(this,event)</pyFunction>
+<pyType>Icon</pyType>
+<pyButtonCaption>Column Summary</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonToolTip>Append Column</pyButtonToolTip>
+<pyImage>report_plus</pyImage>
+<pyType>Icon</pyType>
+<pyFunction>AppendColumn(this,event)</pyFunction>
+<pyButtonCaption>Append Column</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyButtonToolTip>Edit Report Title</pyButtonToolTip>
+<pyFunction>"changeReportTitle(this,event);"</pyFunction>
+<pyButtonCaption>RepTtitle</pyButtonCaption>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyImage>report_title</pyImage>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyType>Icon</pyType>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyImage>report_bar</pyImage>
+<pyButtonCaption>Chart</pyButtonCaption>
+<pyLabel>manager</pyLabel>
+<pyButtonToolTip>Add Or Edit Chart</pyButtonToolTip>
+<pyFunction>"showChartOptions(this, event);"</pyFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyType>Icon</pyType>
+<pyButtonToolTip>Export To Excel</pyButtonToolTip>
+<pyImage>report_excel</pyImage>
+<pyFunction>"exportToExcel(this,event);"</pyFunction>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonCaption>ExpExcel</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyButtonToolTip>Export To PDF</pyButtonToolTip>
+<pyFunction>"exportToPDF(this,event);"</pyFunction>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyType>Icon</pyType>
+<pyImage>report_pdf</pyImage>
+<pyButtonCaption>ExpPDF</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyButtonCaption>Filtering</pyButtonCaption>
+<pyType>Icon</pyType>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyFunction>"advancedFiltering(this,event);"</pyFunction>
+<pyButtonToolTip>Advanced Filtering</pyButtonToolTip>
+<pyImage>report_filtering</pyImage>
+</rowdata>
+</pyButtonList>
+</pyButtons>
+</pyHeader>
+<pySource>
+<pyUseImplementationClass>true</pyUseImplementationClass>
+<pyAllowApproximation>false</pyAllowApproximation>
+<pxObjClass>Embed-ReportSource</pxObjClass>
+<pyIncludeAllDescendantclasses>true</pyIncludeAllDescendantclasses>
+<pyJoinInfo REPEATINGTYPE="PageList"/>
+<pyRowKeyInfo>
+<pyGetRowKey>false</pyGetRowKey>
+<pxObjClass>Embed-ReportRowKeyInfo</pxObjClass>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>.pzInsKey</pyLabel>
+</rowdata>
+</pxResults>
+<pyRowKeys REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">.pzInsKey</rowdata>
+</pyRowKeys>
+</pyRowKeyInfo>
+<pySubReportInfo REPEATINGTYPE="PageList"/>
+<pyAssociations REPEATINGTYPE="PageList"/>
+<pyIndexInfo REPEATINGTYPE="PageList"/>
+</pySource>
+<pyPromptSectionParams>
+<pzDisplayFilterPrompt>true</pzDisplayFilterPrompt>
+<pxObjClass>Embed-ReportPromptSection</pxObjClass>
+</pyPromptSectionParams>
+<pyUserInteractions>
+<pxObjClass>Embed-ReportUserInteractions</pxObjClass>
+<pyExpandAllGroupBy>true</pyExpandAllGroupBy>
+<pyDisableDrillDown>false</pyDisableDrillDown>
+<pyFixedHeader>false</pyFixedHeader>
+<pyShowDataOnly>false</pyShowDataOnly>
+<pyPromptForFilters>false</pyPromptForFilters>
+<pyDrillDownReportName>pyDefaultReport</pyDrillDownReportName>
+<pyEnableAddFilters>true</pyEnableAddFilters>
+<pyDesignModeActualResults>true</pyDesignModeActualResults>
+<pyPagingParams>
+<pyPageMode>Numeric</pyPageMode>
+<pyAlignment>Right</pyAlignment>
+<pySortMode>dataset</pySortMode>
+<pyPosition>Top</pyPosition>
+<pxMorePages>false</pxMorePages>
+<pyPageSize>50</pyPageSize>
+<pxObjClass>Embed-ReportPaging</pxObjClass>
+<pyPagingEnabled>false</pyPagingEnabled>
+<pyWindowSize>10</pyWindowSize>
+</pyPagingParams>
+<pyReportToolbarOptions>
+<pyEnableEditReportTitle>true</pyEnableEditReportTitle>
+<pyEnableExportToPDF>true</pyEnableExportToPDF>
+<pyEnableEditing>true</pyEnableEditing>
+<pyEnableAppendColumn>true</pyEnableAppendColumn>
+<pyEnableEditColumns>true</pyEnableEditColumns>
+<pxObjClass>Embed-ReportViewerCommands</pxObjClass>
+<pyDisplayReportHeader>true</pyDisplayReportHeader>
+<pyEnableSummarize>true</pyEnableSummarize>
+<pyEnableSave>true</pyEnableSave>
+<pyEnableConvertToList>true</pyEnableConvertToList>
+<pyEnablePrint>true</pyEnablePrint>
+<pyEnableAdvancedFiltering>true</pyEnableAdvancedFiltering>
+<pyEnableSaveAs>true</pyEnableSaveAs>
+<pyEnableExportToExcel>true</pyEnableExportToExcel>
+<pyEnableEditChart>true</pyEnableEditChart>
+<pyEnableFilters>true</pyEnableFilters>
+<pyDisplayCommandMenu>true</pyDisplayCommandMenu>
+<pyDisplayCommandRibbon>true</pyDisplayCommandRibbon>
+</pyReportToolbarOptions>
+</pyUserInteractions>
+<pyBody>
+<pyGroupingSortNumber>1</pyGroupingSortNumber>
+<pyCustomGroupingEnabled>false</pyCustomGroupingEnabled>
+<pyGroupingEnabled>false</pyGroupingEnabled>
+<pyExportGroupingToExcel>false</pyExportGroupingToExcel>
+<pyCustomRowEnabled>false</pyCustomRowEnabled>
+<pyHeaderDisplay>Default</pyHeaderDisplay>
+<pxObjClass>Embed-ReportBody</pxObjClass>
+<pySpreadSheetStyle>false</pySpreadSheetStyle>
+<pyRows>
+<pxObjClass>Embed-ReportRows</pxObjClass>
+<pyEvents>
+<pxObjClass>Embed-ReportEvents</pxObjClass>
+<pyEventList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportEvent</pxObjClass>
+</rowdata>
+</pyEventList>
+</pyEvents>
+</pyRows>
+<pyCustomFiltering>
+<pxObjClass>Embed-ReportCustomPrompt</pxObjClass>
+<pyEnableCustomFiltering>false</pyEnableCustomFiltering>
+<pyPromptPageName>CustomFilter</pyPromptPageName>
+</pyCustomFiltering>
+<pyUIFields REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pySelected>false</pySelected>
+<pyEchoFieldName>.ID</pyEchoFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldName>.ID</pyFieldName>
+<pyHide>false</pyHide>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pySelected>false</pySelected>
+<pyEchoFieldName>.ProvinceID</pyEchoFieldName>
+<pyFieldName>.ProvinceID</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>ProvinceID</pyFieldLabel>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyEchoFieldName>.Note</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pyFieldLabel>Note</pyFieldLabel>
+<pyFieldName>.Note</pyFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pySortType>ASC</pySortType>
+<pySortOrder>1</pySortOrder>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyFieldName>.BranchID</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.BranchID</pyEchoFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pySelected>false</pySelected>
+<pyFieldLabel>BranchID</pyFieldLabel>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldName>.Email</pyFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.Email</pyEchoFieldName>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>Email</pyFieldLabel>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>MOID</pyFieldLabel>
+<pyFieldName>.MOID</pyFieldName>
+<pyEchoFieldName>.MOID</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pyDataType>Text</pyDataType>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDataType>Text</pyDataType>
+<pyEchoFieldName>.JABODETABEKStatus</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pyFieldLabel>JABODETABEKStatus</pyFieldLabel>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldName>.JABODETABEKStatus</pyFieldName>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyFieldName>.ProvinceName</pyFieldName>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyEchoFieldName>.ProvinceName</pyEchoFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldLabel>ProvinceName</pyFieldLabel>
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyEchoFieldName>.BranchName</pyEchoFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>BranchName</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pyFieldName>.BranchName</pyFieldName>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyFieldName>.EQZone</pyFieldName>
+<pySelected>false</pySelected>
+<pyFieldLabel>EQZone</pyFieldLabel>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.EQZone</pyEchoFieldName>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+</pyUIFields>
+<pyReportRank>
+<pxObjClass>Embed-ReportRank</pxObjClass>
+<pyPartitionType>All</pyPartitionType>
+<pyRankUIField>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+</pyRankUIField>
+</pyReportRank>
+<pyUIFilters>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyGetDistinctRows>true</pyGetDistinctRows>
+<pyShowLabels>true</pyShowLabels>
+<pyFilterLogic>A OR B OR C OR D</pyFilterLogic>
+<pyFilter REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyFilterUICaption>ID</pyFilterUICaption>
+<pyLogicLabel>A</pyLogicLabel>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyFilterName>.ID</pyFilterName>
+<pySkipValidation>false</pySkipValidation>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyFilterOperation>=</pyFilterOperation>
+<pyFilterValue>Param.ID</pyFilterValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPromptType>AllAccess</pyPromptType>
+<pySkipValidation>false</pySkipValidation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pxCreateDateTime>20170505T033911.652 GMT</pxCreateDateTime>
+<pyFieldLabel>ProvinceID</pyFieldLabel>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterUICaption>ID2</pyFilterUICaption>
+<pyDataType>Text</pyDataType>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFilterName>.ProvinceID</pyFilterName>
+<pxCreateOperator>FRANSISCOJUNIUS</pxCreateOperator>
+<pyFilterValue>Param.ID2</pyFilterValue>
+<pyFilterOperation>=</pyFilterOperation>
+<pyLogicLabel>B</pyLogicLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyFilterName>.Note</pyFilterName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFilterUICaption>Note</pyFilterUICaption>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyPromptType>AllAccess</pyPromptType>
+<pxCreateDateTime>20170614T031158.334 GMT</pxCreateDateTime>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterOperation>StartsWith</pyFilterOperation>
+<pyUseNullIfEmpty>false</pyUseNullIfEmpty>
+<pySkipValidation>false</pySkipValidation>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyLogicLabel>C</pyLogicLabel>
+<pyFilterValue>Param.Note</pyFilterValue>
+<pyFieldLabel>Note</pyFieldLabel>
+<pyCaseInsensitive>true</pyCaseInsensitive>
+<pxCreateOperator>ESTERCAROLINA</pxCreateOperator>
+<pxCreateOpName>ESTERCAROLINA</pxCreateOpName>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxCreateOperator>JEKRY</pxCreateOperator>
+<pxCreateOpName>Jekry</pxCreateOpName>
+<pxCreateDateTime>20190815T073635.943 GMT</pxCreateDateTime>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFilterValue>Param.BranchID</pyFilterValue>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyFilterOperation>=</pyFilterOperation>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterName>.BranchID</pyFilterName>
+<pyFilterUICaption>BranchID</pyFilterUICaption>
+<pyFieldLabel>BranchID</pyFieldLabel>
+<pySkipValidation>false</pySkipValidation>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyDataType>Text</pyDataType>
+<pyPromptType>AllAccess</pyPromptType>
+<pyLogicLabel>D</pyLogicLabel>
+</rowdata>
+</pyFilter>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+</pyUIFilters>
+</pyBody>
+<pySecurity>
+<pxObjClass>Embed-ReportSecurity</pxObjClass>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyPrivilegeList>
+</pySecurity>
+<pySmartInfo>
+<pxObjClass>Embed-ReportSmartInfo</pxObjClass>
+<pySingleClickSInfo>
+<pyEnabled>false</pyEnabled>
+<pxObjClass>Embed-ReportSingleClickInfo</pxObjClass>
+<pySmartInfoHeader>Additional Information</pySmartInfoHeader>
+</pySingleClickSInfo>
+</pySmartInfo>
+</pyUI>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>pyCaption JABODETABEKStatus</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYCAPTION!JABODETABEKSTATUS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">31</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>MOID</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pyRuleName>MOID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">32</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption ProvinceID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!PROVINCEID</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">33</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!MOID</pxRuleFamilyName>
+<pyRuleName>pyCaption MOID</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">34</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption Note</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!NOTE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">35</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!EMAIL</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption Email</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">36</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>JABODETABEKStatus</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>JABODETABEKSTATUS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">37</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleFamilyName>PROVINCEID</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>ProvinceID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">38</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption ID2</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!ID2</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">39</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!ID</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption ID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">40</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ID</pyRuleName>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleFamilyName>ID</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">41</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pyRuleName>ASM-FW-GISFW-Int-CITY</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GISFW-INT-CITY</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">42</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyRuleName>pyCaption BranchName</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!BRANCHNAME</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">43</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pyRuleName>Note</pyRuleName>
+<pxRuleFamilyName>NOTE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">44</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!BRANCHID</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption BranchID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">45</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>EMAIL</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Email</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">46</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!PROVINCENAME</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption ProvinceName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">47</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pyRuleName>BranchID</pyRuleName>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>BRANCHID</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">48</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption EQZone</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!EQZONE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">49</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleFamilyName>PROVINCENAME</pxRuleFamilyName>
+<pyRuleName>ProvinceName</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">50</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>BRANCHNAME</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>BranchName</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">51</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxRuleClassName>ASM-FW-GISFW-Int-CITY</pxRuleClassName>
+<pxRuleFamilyName>EQZONE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>EQZone</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">52</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!BROWSECITY_RD</pxRuleFamilyName>
+<pyRuleName>pyCaption BrowseCity_RD</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">53</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pySource>
+</pySource>
+<pyReportMetaData>
+<pxIsSummary>false</pxIsSummary>
+<pxObjClass>Embed-ReportMetaDataInfo</pxObjClass>
+</pyReportMetaData>
+<pxMessageSummary>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>0</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>3</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+</pxMessageSummary>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>Text</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>ID</pyParametersParamDesc>
+<pyParametersParamName>ID</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>Text</pyParametersParamType>
+<pyParametersParamDesc>ID2</pyParametersParamDesc>
+<pyParametersParamName>ID2</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>Note</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>Text</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDesc>BranchID</pyParametersParamDesc>
+<pyParametersParamName>BranchID</pyParametersParamName>
+<pyParametersParamType>Text</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParameters>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyRun>true</pyRun>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyShowJava>true</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-report-/rule-obj-report-definition/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-report-/rule-obj-report-definition/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningDetails>
+<pxWarningJustifiedOperator>HERISKRISTIAWAN</pxWarningJustifiedOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningMessage>
+<pxWarningCreateOperator>HERISKRISTIAWAN</pxWarningCreateOperator>
+<pxWarningType>Performance</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningJustifiedTime>20200616T094504.424 GMT</pxWarningJustifiedTime>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningName>ParamReferenceInFilter</pxWarningName>
+<pxWarningCreatedTime>20200622T070841.610 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage>act</pyWarningJustifiedMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningCreatedTime>20200622T070841.609 GMT</pxWarningCreatedTime>
+<pxWarningMessage>(Rule-Obj-Report-Definition)pxIgnoreCaseConfiguration</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningName>Using ignore case</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreateOperator>FRANSISCOJUNIUS</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningType>Performance</pxWarningType>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxIgnoreCaseConfiguration</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningCreateOperator>HERISKRISTIAWAN</pxWarningCreateOperator>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20200622T070841.629 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GISFW-INT-CITY BROWSECITY_RD #20200616T093036.250 GMT</pzIndexOwnerKey>
+<pxWarningMessage>(Rule-Obj-Report-Definition)pxAllRowsFetched</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreateOperator>YOHANESAJIPRIAMBODO</pxWarningCreateOperator>
+<pxWarningName>All rows fetched</pxWarningName>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxAllRowsFetched</pxWarningDetails>
+<pxWarningCreatedTime>20200622T070841.630 GMT</pxWarningCreatedTime>
+<pxWarningType>Performance</pxWarningType>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">30</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyDrillDown>
+<pxObjClass>Embed-ReportDrillDown</pxObjClass>
+<pzDrillDownFilters>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+</pzDrillDownFilters>
+</pyDrillDown>
+<pyContentSource>
+<pxObjClass>Embed-SummaryParams</pxObjClass>
+</pyContentSource>
+</pagedata>

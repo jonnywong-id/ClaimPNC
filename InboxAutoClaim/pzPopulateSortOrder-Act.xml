@@ -1,0 +1,1007 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHistoryObject>false</pyHistoryObject>
+<pzDocumentKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzDocumentKey>
+<pyTemplate/>
+<pyStatus/>
+<pzUnjustifiedWarningList/>
+<pxCreateOpName>Srikanth</pxCreateOpName>
+<pzRuleFormKeysAndDescription/>
+<pzRuleFormToolbarCheckout/>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pzChecksum>-1392674794</pzChecksum>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20150326T065334.556 GMT</pxMoveOriginalKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySPRuleSetName>chals1@</pySPRuleSetName>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyTemplateDisplayText/>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyProjectIDLabel> ( )</pyProjectIDLabel>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyRuleName>pzPopulateSortOrder</pyRuleName>
+<pxJustifiedWarningCount/>
+<pyRuleSearchQuery/>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pxInsName>RULE-OBJ-REPORT-DEFINITION!PZPOPULATESORTORDER</pxInsName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateOpName>Srikanth</pxOriginalCreateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pySpecialtyComponentData/>
+<pyDescription/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleFormToolbarCheckin/>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeletedObject/>
+<pzRuleFormToolbar/>
+<pyStreamName/>
+<pzIndexCount>16</pzIndexCount>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyInputMayStart>false</pyInputMayStart>
+<pxInstanceLockedDateTime/>
+<pzRuleFormRuleset/>
+<pyDocumentTitle/>
+<pyCircumstanceDefinition/>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<RuleFormSettings/>
+<pyCircumstanceType/>
+<pyAssociatedImage/>
+<pyRelativePath/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pxOriginalCreateSystemID>SLSHYD</pxOriginalCreateSystemID>
+<pxUpdateOperator>chals1</pxUpdateOperator>
+<pxCommitDateTime>20191015T081635.000 GMT</pxCommitDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateDateTime>20180713T134217.526 GMT</pxUpdateDateTime>
+<pyRuleParamsStreamName/>
+<pxMoveImportDateTime>20140602T053218.762 GMT</pxMoveImportDateTime>
+<pyWorkKey/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyJavaGenerateTime>20150324T111522.490 GMT</pyJavaGenerateTime>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportOperId>varap2</pxMoveImportOperId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<RuleFormHistory_Description/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsId>!PZPOPULATESORTORDER</pxInsId>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyUsage/>
+<pyActivityName>pzPopulateSortOrder</pyActivityName>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pxMoveOriginalRuleSet>Pega-Reporting</pxMoveOriginalRuleSet>
+<pxCreateDateTime>20180713T134217.526 GMT</pxCreateDateTime>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxMoveImportOperName>Pavan Kumar Varanasi</pxMoveImportOperName>
+<pyLabelOld>pzPopulateSortOrder</pyLabelOld>
+<pzPrivileges/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20150324T111427.544 GMT</pzOriginalInstanceKey>
+<pyRuleStarts/>
+<pyCheckInRuleSet/>
+<pxOriginalCreateOperator>chals1</pxOriginalCreateOperator>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pyRuleEnds/>
+<pzRuleFormToolbarDelete/>
+<pyRuleFormStatusTime>20260723T072022.052 GMT</pyRuleFormStatusTime>
+<pyCircumstanceVal/>
+<pzRuleFormToolbarLockedIcon/>
+<RuleFormHistory_CustomFields/>
+<pxCreatedInPRPCVersion>05-05-01</pxCreatedInPRPCVersion>
+<pySelected>false</pySelected>
+<pxUpdateSystemID>sdev718</pxUpdateSystemID>
+<pxMoveOriginalRuleSetVersion>07-10-17</pxMoveOriginalRuleSetVersion>
+<pyProjectID/>
+<pzRuleFormToolbarSave/>
+<pyLabel>pzPopulateSortOrder</pyLabel>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pzRuleFormToolbarHotKeys/>
+<pxUpdateOpName>Srikanth</pxUpdateOpName>
+<pzInsKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzInsKey>
+<pxInstanceLockedKey/>
+<pyMemo>BUG-195823: set sort type when it is empty</pyMemo>
+<pyCircumstanceProp/>
+<pyTaskGroup/>
+<pyDirtyModalCon/>
+<pyClassName>Rule-Obj-Report-Definition</pyClassName>
+<pyWindowTitle/>
+<pzRuleFormToolbarSaveAs/>
+<pyTemplateInputBox/>
+<pxTabLabel>pzPopulateSortOrder</pxTabLabel>
+<pxCreateOperator>chals1</pxCreateOperator>
+<pyShowJavaWindowName>GeneratedJava20260723T072022.070 GMT</pyShowJavaWindowName>
+<pzRuleFormErrorHeader/>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyJavaStream/>
+<pzRuleFormStatus/>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyRuleSet>Pega-Reporting</pyRuleSet>
+<pxOriginalCreateDateTime>20180713T134217.526 GMT</pxOriginalCreateDateTime>
+<pyInterface/>
+<pzAddRuleFormHistoryCustomFields/>
+<pyJavaClassName>rule_obj_report_definition_pzpopulatesortorder_20180713_134217_526</pyJavaClassName>
+<pyCircumstanceDateProp/>
+<pzRuleFormWarningsHeader/>
+<pxInstanceLockedBy/>
+<pxSaveDateTime>20180713T134217.526 GMT</pxSaveDateTime>
+<pyCircumstanceDate/>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pzStatus>false</pzStatus>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTemplateInputBox/>
+<pyParametersParamName/>
+<pyParametersParamDesc/>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+</pyLocalParameters>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>true</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyRun>true</pyRun>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyPreview>true</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+</pxMessageSummary>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pyTemplateInputBox/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepActivityDescription/>
+<pyStepsBlockName/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyOnException/>
+<pyStepsObjectName/>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pxInsName/>
+<pyTemplateInputBox/>
+<pyStepsParentClass>Rule-Obj-Report-Definition</pyStepsParentClass>
+<pyStepsTransition/>
+<pyStepsJavaSource>ClipboardPage pg_pyBody = tools.findPage(".pyUI.pyBody");
+
+int aggCnt=0;
+int grpCnt=0;
+
+java.util.TreeMap hmGroups = new java.util.TreeMap();
+java.util.HashMap hmCombo = new java.util.HashMap();
+				
+ClipboardPage pg_UIFields = null;	
+
+ClipboardProperty cpLimit = tools.getPrimaryPage().getProperty(".pyUI.pyChart.pyLimitValue");
+boolean bEnableChart = tools.getPrimaryPage().getBoolean(".pyUI.pyChart.pyEnableChart");
+String strLimit = "";
+if (cpLimit != null)
+	strLimit = cpLimit.getStringValue();
+boolean bUseLimit = false;
+ClipboardProperty UIFields = pg_pyBody.getProperty(".pyUIFields");
+java.util.Iterator itr_fields = UIFields.iterator();
+int iTemp = 0;
+java.util.List list = new java.util.ArrayList();
+while (itr_fields.hasNext())
+{
+	ClipboardProperty cp_aResult = (ClipboardProperty) itr_fields.next();
+	ClipboardPage pg_aResult = cp_aResult.getPageValue();
+      	pg_aResult.getProperty(".pyGroupOrder").setValue("");
+	String strOrder = pg_aResult.getString(".pySortOrder");
+	
+	/* Fix for BUG-38186 to specify a Sort Order, if Sort Type is defined and not an aggregated column */
+	String strFunction = pg_aResult.getString(".pyFunction");
+	String strType = pg_aResult.getString(".pySortType");
+	if(strFunction.equals("") &amp;&amp; !strType.equals("") &amp;&amp; strOrder.equals("")){   
+		strOrder = "998";
+	}
+	
+	Integer IntOrder;
+	iTemp++;
+	
+	if(!pg_aResult.getString(".pyFunction").equals(""))
+	{
+		aggCnt++;
+		if (!strOrder.equals(""))
+		{
+			IntOrder = new Integer(strOrder);
+			if (!hmCombo.containsKey(IntOrder)) 
+			{
+			     list = new java.util.ArrayList();
+			     list.add(new Integer(iTemp));
+			     java.util.Collections.sort(list);
+			}
+			else {
+			     list = (List) hmCombo.get(IntOrder);
+			     list.add(new Integer(iTemp));
+			     java.util.Collections.sort(list);
+			}
+			hmCombo.put(IntOrder, list);	
+		}
+	}
+	else
+	{
+		if (strOrder.equals("")) strOrder = "999";
+		IntOrder = new Integer(strOrder);
+		if (!hmGroups.containsKey(IntOrder)) 
+		{
+			list = new java.util.ArrayList();
+			list.add(new Integer(iTemp));
+			java.util.Collections.sort(list);
+            }
+            else {
+                 list = (List) hmGroups.get(IntOrder);
+                 list.add(new Integer(iTemp));
+                 java.util.Collections.sort(list);
+            }
+		hmGroups.put(IntOrder, list);
+		grpCnt++;
+	}
+       
+}
+
+
+
+if(aggCnt == 0)
+{
+   tools.getPrimaryPage().getProperty(".pyContent.pxIsSummary").setValue(false);
+}
+else
+{
+   tools.getPrimaryPage().getProperty(".pyContent.pxIsSummary").setValue(true);
+}
+
+
+if (bEnableChart &amp;&amp; (!strLimit.equals("") &amp;&amp; !strLimit.equals("0")) &amp;&amp; aggCnt == 1 &amp;&amp; grpCnt == 1)
+    bUseLimit = true;
+java.util.SortedSet sortedset= new  java.util.TreeSet(hmGroups.keySet());
+Iterator it_sorted = sortedset.iterator();
+
+	
+int iSortOrder = 1;
+
+while (it_sorted.hasNext())
+{
+	Integer IntTemp = (Integer) it_sorted.next();
+	java.util.List list_temp = (List) hmGroups.get(IntTemp);
+	
+	for(int j=0 ; j &lt; list_temp.size() ; j++)
+	{
+		
+		int iOrder = IntTemp.intValue();
+		if (aggCnt == 0 &amp;&amp; iOrder == 999)
+			continue;
+		
+		Integer IntIndex = (Integer) list_temp.get(j);
+		int iIndex = IntIndex.intValue();
+	
+		pg_UIFields = tools.findPage(".pyUI.pyBody.pyUIFields(" + iIndex + ")" );	
+		if( pg_UIFields != null)
+		{
+			if(aggCnt &gt; 0) //summary
+			{
+				pg_UIFields.getProperty(".pyGroupOrder").setValue(iSortOrder);
+			
+				if (iSortOrder &lt; grpCnt) {
+					pg_UIFields.getProperty(".pySortOrder").setValue(iSortOrder);
+                  if(pg_UIFields.getString(".pySortType").equals("")) {
+                 pg_UIFields.getProperty(".pySortType").setValue("ASC");
+                  }
+                }
+				else
+				{
+					String strOrder = pg_UIFields.getString(".pySortOrder");
+					if (strOrder.equals("")) strOrder = "999";
+					Integer IntOrder = new Integer(strOrder);
+					if (!hmCombo.containsKey(IntOrder)) 
+					{
+						list = new java.util.ArrayList();
+						list.add(new Integer(900+iIndex));
+						java.util.Collections.sort(list);
+					}
+					else 
+					{
+					     list = (List) hmCombo.get(IntOrder);
+					     list.add(new Integer(900+iIndex));
+					     java.util.Collections.sort(list);
+					}
+					hmCombo.put(IntOrder, list);	
+				}
+			}
+			else //list
+				pg_UIFields.getProperty(".pySortOrder").setValue(iSortOrder);
+		
+          iSortOrder++;
+			
+		}
+		
+	}
+}
+	
+
+
+
+sortedset= new  java.util.TreeSet(hmCombo.keySet());
+it_sorted = sortedset.iterator();
+iSortOrder--;
+
+while (it_sorted.hasNext())
+{
+	Integer IntTemp = (Integer) it_sorted.next();
+	java.util.List list_temp = (List) hmCombo.get(IntTemp);
+	
+	for(int j=0 ; j &lt; list_temp.size() ; j++)
+	{
+		Integer IntIndex = (Integer) list_temp.get(j);
+		int iIndex = IntIndex.intValue();
+		if (iIndex &gt; 900) iIndex = iIndex-900;
+	
+		pg_UIFields = tools.findPage(".pyUI.pyBody.pyUIFields(" + iIndex + ")" );	
+		if( pg_UIFields != null)
+		{
+			pg_UIFields.getProperty(".pySortOrder").setValue(iSortOrder);
+          if(pg_UIFields.getString(".pySortType").equals("")) {
+                 pg_UIFields.getProperty(".pySortType").setValue("ASC");
+                  }
+		}
+		iSortOrder++;
+	}
+}
+
+if (bUseLimit)
+{
+         java.util.Iterator itr_fields1 = UIFields.iterator();
+
+	while (itr_fields1.hasNext())
+	{
+		ClipboardProperty cp_aResult = (ClipboardProperty) itr_fields1.next();
+		ClipboardPage pg_aResult = cp_aResult.getPageValue();
+		String strFunction = pg_aResult.getString(".pyFunction");
+		if (!strFunction.equals(""))
+		{
+			pg_aResult.getProperty(".pySortOrder").setValue(1);
+			pg_aResult.getProperty(".pySortType").setValue("DESC");
+		}
+		else
+			pg_aResult.getProperty(".pySortOrder").setValue(2);
+	}
+}</pyStepsJavaSource>
+<pyExpanded>true</pyExpanded>
+<pzStepExpanded/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsDescription>For non-spreadsheetstyle</pyStepsDescription>
+<pyPropRef/>
+<pzActivityStep/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsClassName>Rule-Obj-Report-Definition</pyStepsClassName>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20260723T072022.046 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateDateTime>20260723T072022.043 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>.pyUI.pyBody.pySpreadSheetStyle</pyStepsPreCondParamsWhen>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>kopps</pxCreateOperator>
+<pxCreateOpName>suresh Koppada</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pxCreateSystemID>SDEV72</pxCreateSystemID>
+<pyForEachProperty/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefStart/>
+<pxCreateDateTime>20140416T061018.774 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>kopps</pxCreateOperator>
+<pxCreateDateTime>20140416T061018.775 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOpName>suresh Koppada</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>SDEV72</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzEditActivityStepJavaExternally/>
+<pyStepsTransition/>
+<pxInsName/>
+<pzActivityStep/>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyOnException/>
+<pyTemplateInputBox/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyExpanded>true</pyExpanded>
+<pyStepsBlockName/>
+<pyStepsObjectName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsDescription>For spreadsheetstyle</pyStepsDescription>
+<pyStepsParentClass>Rule-Obj-Report-Definition</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pyStepsJavaSource>ClipboardPage pg_pyBody = tools.findPage(".pyUI.pyBody");
+
+int aggCnt=0;
+int grpCnt=0;
+boolean bSetGroupOrders=false;
+
+java.util.TreeMap hmGroups = new java.util.TreeMap();
+java.util.HashMap hmCombo = new java.util.HashMap();
+				
+ClipboardPage pg_UIFields = null;	
+
+ClipboardProperty cpLimit = tools.getPrimaryPage().getProperty(".pyUI.pyChart.pyLimitValue");
+boolean bEnableChart = tools.getPrimaryPage().getBoolean(".pyUI.pyChart.pyEnableChart");
+String strLimit = "";
+if (cpLimit != null)
+	strLimit = cpLimit.getStringValue();
+boolean bUseLimit = false;
+ClipboardProperty UIFields = pg_pyBody.getProperty(".pyUIFields");
+java.util.Iterator itr_fields = UIFields.iterator();
+int iTemp = 0;
+java.util.List list = new java.util.ArrayList();
+while (itr_fields.hasNext())
+{
+	ClipboardProperty cp_aResult = (ClipboardProperty) itr_fields.next();
+	ClipboardPage pg_aResult = cp_aResult.getPageValue();
+      	pg_aResult.getProperty(".pyGroupOrder").setValue("");
+	String strOrder = pg_aResult.getString(".pySortOrder");
+	
+	/* Fix for BUG-38186 to specify a Sort Order, if Sort Type is defined and not an aggregated column */
+	String strFunction = pg_aResult.getString(".pyFunction");
+	String strType = pg_aResult.getString(".pySortType");
+	if(strFunction.equals("") &amp;&amp; !strType.equals("") &amp;&amp; strOrder.equals("")){   
+		strOrder = "998";
+	}
+	
+	Integer IntOrder;
+	iTemp++;
+	
+	if(!pg_aResult.getString(".pyFunction").equals(""))
+	{
+		aggCnt++;
+		if (!strOrder.equals(""))
+		{
+			IntOrder = new Integer(strOrder);
+			if (!hmCombo.containsKey(IntOrder)) 
+			{
+			     list = new java.util.ArrayList();
+			     list.add(new Integer(iTemp));
+			     java.util.Collections.sort(list);
+			}
+			else {
+			     list = (List) hmCombo.get(IntOrder);
+			     list.add(new Integer(iTemp));
+			     java.util.Collections.sort(list);
+			}
+			hmCombo.put(IntOrder, list);	
+		}
+	}
+	else
+	{
+		if (strOrder.equals("")) strOrder = "999";
+		IntOrder = new Integer(strOrder);
+		if (!hmGroups.containsKey(IntOrder)) 
+		{
+			list = new java.util.ArrayList();
+			list.add(new Integer(iTemp));
+			java.util.Collections.sort(list);
+            }
+            else {
+                 list = (List) hmGroups.get(IntOrder);
+                 list.add(new Integer(iTemp));
+                 java.util.Collections.sort(list);
+            }
+		hmGroups.put(IntOrder, list);
+		grpCnt++;
+	}
+       
+}
+
+
+
+if(aggCnt == 0)
+{
+   tools.getPrimaryPage().getProperty(".pyContent.pxIsSummary").setValue(false);
+}
+else
+{
+   tools.getPrimaryPage().getProperty(".pyContent.pxIsSummary").setValue(true);
+}
+
+
+if (bEnableChart &amp;&amp; (!strLimit.equals("") &amp;&amp; !strLimit.equals("0")) &amp;&amp; aggCnt == 1 &amp;&amp; grpCnt == 1)
+    bUseLimit = true;
+java.util.SortedSet sortedset= new  java.util.TreeSet(hmGroups.keySet());
+Iterator it_sorted = sortedset.iterator();
+
+	
+int iSortOrder = 1;
+
+while (it_sorted.hasNext())
+{
+	Integer IntTemp = (Integer) it_sorted.next();
+	java.util.List list_temp = (List) hmGroups.get(IntTemp);
+	
+	for(int j=0 ; j &lt; list_temp.size() ; j++)
+	{
+		
+		int iOrder = IntTemp.intValue();
+		if (aggCnt == 0 &amp;&amp; iOrder == 999)
+			continue;
+		
+		Integer IntIndex = (Integer) list_temp.get(j);
+		int iIndex = IntIndex.intValue();
+	
+		pg_UIFields = tools.findPage(".pyUI.pyBody.pyUIFields(" + iIndex + ")" );	
+		if( pg_UIFields != null)
+		{
+			if(aggCnt &gt; 0) //summary
+			{
+			bSetGroupOrders = true;			
+				}
+			else //list
+				pg_UIFields.getProperty(".pySortOrder").setValue(iSortOrder);
+			iSortOrder++;
+			
+		}
+		
+	}
+}
+if (bUseLimit)
+{
+         java.util.Iterator itr_fields1 = UIFields.iterator();
+
+	while (itr_fields1.hasNext())
+	{
+		ClipboardProperty cp_aResult = (ClipboardProperty) itr_fields1.next();
+		ClipboardPage pg_aResult = cp_aResult.getPageValue();
+		String strFunction = pg_aResult.getString(".pyFunction");
+		if (!strFunction.equals(""))
+		{
+			pg_aResult.getProperty(".pySortOrder").setValue(1);
+			pg_aResult.getProperty(".pySortType").setValue("DESC");
+		}
+		else{
+			pg_aResult.getProperty(".pySortOrder").setValue(2);
+                                                         pg_aResult.getProperty(".pyGroupOrder").setValue(1);
+                                        }
+	}
+} else if(bSetGroupOrders){
+
+         java.util.Iterator itr_fields1 = UIFields.iterator();
+         int grpCounter =0;
+	while (itr_fields1.hasNext())
+	{
+		ClipboardProperty cp_aResult = (ClipboardProperty) itr_fields1.next();
+		ClipboardPage pg_aResult = cp_aResult.getPageValue();
+		String strFunction = pg_aResult.getString(".pyFunction");
+		if (strFunction.equals(""))
+		{
+                          grpCounter++;
+			pg_aResult.getProperty(".pyGroupOrder").setValue(grpCounter);		
+                   }
+	}
+
+
+}</pyStepsJavaSource>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pzStepExpanded/>
+<pyStepsClassName>Rule-Obj-Report-Definition</pyStepsClassName>
+<pyPropRef/>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOpName>suresh Koppada</pxCreateOpName>
+<pxCreateSystemID>SDEV72</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>kopps</pxCreateOperator>
+<pyForEachProperty/>
+<pxCreateDateTime>20140416T061018.774 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOperator>kopps</pxCreateOperator>
+<pxCreateSystemID>SDEV72</pxCreateSystemID>
+<pxCreateDateTime>20140416T061018.775 GMT</pxCreateDateTime>
+<pxCreateOpName>suresh Koppada</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260723T072022.043 GMT</pxCreateDateTime>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen>.pyUI.pyBody.pySpreadSheetStyle</pyStepsPreCondParamsWhen>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20260723T072022.046 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+</pySteps>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>Rule-Obj-Report-Definition</pxRuleClassName>
+<pxRuleFamilyName>PYUI</pxRuleFamilyName>
+<pyRuleName>pyUI</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYSPREADSHEETSTYLE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pySpreadSheetStyle</pyRuleName>
+<pyMethodStatus/>
+<pxRuleClassName>Embed-ReportBody</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYBODY</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Embed-ReportUI</pxRuleClassName>
+<pyRuleName>pyBody</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>Embed-ReportUI</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>EMBED-REPORTUI</pxRuleFamilyName>
+<pyRuleName>Embed-ReportUI</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleClassName>Rule-Obj-Report-Definition</pxRuleClassName>
+<pyRuleName>Rule-Obj-Report-Definition</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>RULE-OBJ-REPORT-DEFINITION</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Embed-ReportBody</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pyRuleName>Embed-ReportBody</pyRuleName>
+<pxRuleFamilyName>EMBED-REPORTBODY</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	370 lines</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreatedTime>20150324T111459.554 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>chals1</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pyWarningJustifiedMessage/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningJustifiedTime/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>chals1</pxWarningCreateOperator>
+<pxIsWarningJustified/>
+<pxWarningCreatedTime>20150324T111459.555 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20150324T111459.554 GMT</pxWarningCreatedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>chals1</pxWarningCreateOperator>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep	370 lines</pxWarningMessage>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	370 lines</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20150324T111459.555 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningJustifiedOperator/>
+<pxWarningCreateOperator>chals1</pxWarningCreateOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY RULE-OBJ-REPORT-DEFINITION PZPOPULATESORTORDER #20180713T134217.526 GMT</pzIndexOwnerKey>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningJustifiedTime/>
+<pxIsWarningJustified/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>flowType</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+</pySystemParameters>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliValidateAs/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyTemplateInputBox/>
+<pyParametersParamDesc/>
+</rowdata>
+</pyParameters>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeName/>
+<pyPrivilegeClass>Rule-Obj-Report-Definition</pyPrivilegeClass>
+<pyTemplateInputBox/>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyActivityPrivilegeList>
+</pagedata>

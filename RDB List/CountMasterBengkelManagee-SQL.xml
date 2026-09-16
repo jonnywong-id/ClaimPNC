@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHandlerFlow/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pxSaveDateTime>20240627T013318.528 GMT</pxSaveDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleStarts/>
+<pyCircumstanceTemplate/>
+<pxSiblingCount/>
+<pyCircumstanceVal/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyHistoryObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDate/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxMoveImportDateTime>20240715T114352.441 GMT</pxMoveImportDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pyDeletedObject/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyLabel>CountMasterBengkelManagee</pyLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWindowTitle/>
+<pxCreateDateTime>20240627T013157.889 GMT</pxCreateDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyUsage/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM CountMasterBengkelManagee</pyRuleName>
+<pyFormPost/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM CountMasterBengkelManagee</pxTabLabel>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySPRuleSetName/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRequestType>CountMasterBengkelManagee</pyRequestType>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTMASTERBENGKELMANAGEE #20240627T013157.889 GMT</pzInsKey>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTMASTERBENGKELMANAGEE #20240627T013157.889 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyOpenSQL/>
+<pyDocumentTitle/>
+<pySaveSQL/>
+<pyInterface/>
+<pyTemplate/>
+<pxInstanceLockedDateTime/>
+<pyDeleteSQL/>
+<pyRuleFormStatusTime>20260831T081445.225 GMT</pyRuleFormStatusTime>
+<pxHostId>jboss10362</pxHostId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedBy/>
+<pyCircumstanceProp/>
+<pyIsFromManageChangeLP/>
+<pyDescription/>
+<pyMethodStatus/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceType/>
+<pyCircumstanceDefinition/>
+<pyStreamName/>
+<pxMoveFromSystem/>
+<pyWorkKey/>
+<pzChecksum>1582898308</pzChecksum>
+<pyRuleParamsStreamName/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSetVersion/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateDateTime>20240627T013318.526 GMT</pxUpdateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTMASTERBENGKELMANAGEE #20240627T013157.889 GMT</pzDocumentKey>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pyTemplateInputBox/>
+<pySpecialtyComponentData/>
+<pyJavaStream/>
+<pyBrowseSQL>SELECT COUNT(ID_BENGKEL) AS "City" FROM POOLDATA.BENGKEL_HE WHERE APPROVAL = '0' ORDER BY 1 DESC</pyBrowseSQL>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTMASTERBENGKELMANAGEE</pxInsName>
+<pyStatus/>
+<pyShowJavaWindowName>GeneratedJava20260831T081445.247 GMT</pyShowJavaWindowName>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pxInstanceLockedKey/>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTMASTERBENGKELMANAGEE</pxInsId>
+<pxInstanceLockedRuleSet/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTMASTERBENGKELMANAGEE #20240627T013157.889 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

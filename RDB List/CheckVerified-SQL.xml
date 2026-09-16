@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSaveDateTime>20231205T024514.586 GMT</pxSaveDateTime>
+<pyUsage/>
+<pxCreateDateTime>20231205T024446.375 GMT</pxCreateDateTime>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionPatch>40</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceVal/>
+<pySpecialtyComponentData/>
+<pxInsId>ASM-FW-GISFW-INT-CLIENT!ASM!CHECKVERIFIED</pxInsId>
+<pyRuleEnds/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInstanceLockedKey/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceProp/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleStarts/>
+<pyValueChanged>false</pyValueChanged>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxTabLabel>ASM-FW-GISFW-Int-CLIENT ASM CheckVerified</pxTabLabel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceType/>
+<pyWorkKey/>
+<pyMemo>encryptdata(</pyMemo>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pxOriginalCreateSystemID/>
+<pxUpdateDateTime>20231205T024514.579 GMT</pxUpdateDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20231205T024446.375 GMT</pzInsKey>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxUpdateOpName>Yafia Samuel</pxUpdateOpName>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyRuleSetVersion>01-04-40</pyRuleSetVersion>
+<pyClassName>ASM-FW-GISFW-Int-CLIENT</pyClassName>
+<pxHostId>jboss10-42</pxHostId>
+<pySaveSQL/>
+<pyDocumentTitle/>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pyRequestType>CheckVerified</pyRequestType>
+<pxMoveImportDateTime>20231206T111440.906 GMT</pxMoveImportDateTime>
+<pzChecksum>7772335</pzChecksum>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateOpName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMergeSynchronized>20231201T074018.951 GMT</pxMergeSynchronized>
+<pyBrowseSQL>SELECT verificationstatus AS HASIL1,
+       verifieddate AS HASIL2,
+       VerificationSource AS HASIL3,
+       NVL(MarketingName,
+       (SELECT pxcreateoperator FROM datapega.crm_ASM_SalesAuto_Work_C_2b1af b
+       WHERE B.PZINSKEY = CLIENTID))
+        AS HASIL4,
+       NVL(MARKETINGBRANCHCODE,
+       (SELECT BRANCHCODE FROM DATAPEGA.PR_OPERATORS WHERE PYUSERIDENTIFIER = (
+       SELECT PXCREATEOPERATOR FROM datapega.crm_ASM_SalesAuto_Work_C_2b1af b
+       WHERE B.PZINSKEY = CLIENTID))) AS HASIL5,
+       TGL_INPUT AS HASIL6
+FROM POOLDATA.t_mclienttelfax
+ WHERE clientid = {InputData.CARI6} 
+ and (TELFAXNUMBER = {InputData.CARI5} OR TELFAXNUMBER = encryptdata({InputData.CARI5}))
+AND RANDOMKEY = {InputData.CARI7}
+and TELFAXTYPE IN (3, 4)</pyBrowseSQL>
+<pyRuleName>ASM-FW-GISFW-Int-CLIENT ASM CheckVerified</pyRuleName>
+<pxOriginalCreateOperator/>
+<pxUpdateOperator>YAFIASAMUEL</pxUpdateOperator>
+<pyCircumstanceDateProp/>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveFromSystem/>
+<pyDescription/>
+<pxInsName>ASM-FW-GISFW-INT-CLIENT!ASM!CHECKVERIFIED</pxInsName>
+<pyLabel>CheckVerified</pyLabel>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20231205T024446.375 GMT</pzDocumentKey>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyShowJavaWindowName>GeneratedJava20260901T040400.402 GMT</pyShowJavaWindowName>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyTemplate/>
+<pyStreamName/>
+<pyRelativePath/>
+<pyHistoryObject>false</pyHistoryObject>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedBy/>
+<pxSiblingCount/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230811T031037.397 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatusTime>20260901T040400.379 GMT</pyRuleFormStatusTime>
+<pyTemporaryObject/>
+<pyMethodStatus/>
+<pyLabelOld>CheckVerified</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStatus/>
+<pxInstanceLockedRuleSet/>
+<pxCreateOpName>Yafia Samuel</pxCreateOpName>
+<pyOpenSQL/>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyDeleteSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOperator>YAFIASAMUEL</pxCreateOperator>
+<pyDeletedObject/>
+<pxCommitDateTime>20231206T111441.000 GMT</pxCommitDateTime>
+<pyCheckInRuleSet/>
+<pyCircumstanceDate/>
+<pyIsFromManageChangeLP/>
+<pyFormPost/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHandlerFlow/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyShowJava>false</pyShowJava>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelete>false</pyDelete>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20231205T024446.375 GMT</pzInsKey>
+<pyLabel>01-04-40 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyLabel>01-04-39 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20231201T073457.701 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-04-16 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230818T090232.596 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-04-15 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230811T031037.397 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyMenuTooltip/>
+<pxListSubscript>5</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-04-13 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230807T063107.485 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyValue>3</pyValue>
+<pxListSubscript>6</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230731T040158.757 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-04-11 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyValue>3</pyValue>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFIED #20230609T082141.689 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-03-96 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

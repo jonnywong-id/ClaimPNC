@@ -1,0 +1,322 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetDataOutstandingperCabangExport</pyRuleName>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxOriginalCreateOpName/>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyRuleFormStatusTime>20260901T041246.673 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDateProp/>
+<pyLabelOld>GetDataOutstandingperCabangExport</pyLabelOld>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleParamsStreamName/>
+<pyMethodStatus/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<pyMemo>checkin</pyMemo>
+<pxInstanceLockedKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETDATAOUTSTANDINGPERCABANGEXPORT #20260701T100726.663 GMT</pzInsKey>
+<pxInstanceLockedRuleSet/>
+<pyTemplate/>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRelativePath/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDescription/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETDATAOUTSTANDINGPERCABANGEXPORT</pxInsName>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pxSiblingCount/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pyCircumstanceType/>
+<pyRuleEnds/>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateOperator/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pzIsPrivateCheckOut/>
+<pxInstanceLockedBy/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETDATAOUTSTANDINGPERCABANGEXPORT #20260701T100726.663 GMT</pzDocumentKey>
+<pyHistoryObject>false</pyHistoryObject>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateDateTime/>
+<pxSaveDateTime>20260710T082829.322 GMT</pxSaveDateTime>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pyHandlerFlow/>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pyUsage/>
+<pyCircumstanceDate/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETDATAOUTSTANDINGPERCABANG #20260701T031950.108 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETDATAOUTSTANDINGPERCABANGEXPORT</pxInsId>
+<pyShowJavaWindowName>GeneratedJava20260901T041246.695 GMT</pyShowJavaWindowName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBrowseSQL>SELECT c.branchname AS CABANG,
+       c.sobname AS "Sources",
+       CASE
+          WHEN c.grouppanel = '002' THEN 'PA'
+          WHEN c.grouppanel = '003' THEN 'Aneka'
+          WHEN c.grouppanel = '004' THEN 'Marine Cargo'
+          WHEN c.grouppanel = '005' THEN 'Travel'
+          WHEN c.grouppanel = '006' THEN 'Fire'
+          ELSE c.grouppanel
+       END
+          AS "BusinessName",
+       (  SELECT t.businessname
+            FROM pooldata.t_general t
+           WHERE t.nopolis = c.nopolis
+        ORDER BY TO_NUMBER (t.prodke) DESC          
+         FETCH FIRST 1 ROW ONLY
+       ) AS "District",          
+       c.nopolis AS "PolicyNo",
+       (  SELECT t.theinsured
+            FROM pooldata.t_general t
+           WHERE t.nopolis = c.nopolis
+        ORDER BY TO_NUMBER (t.prodke) DESC          
+         FETCH FIRST 1 ROW ONLY
+       ) AS "InsuredName",
+       c.claimno AS "ClaimNo",
+       c.registerdate AS "RegisterDate",
+       c.dateofloss AS "DateOfLoss",
+       c.remarkrecomendation AS "RemarkRecommendation",
+       (NVL(E.RESERVES2, 0)) AS "ReserveClaimFull",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100)) AS "ReserveClaimASM",
+       (NVL(E.RESERVES, 0) * ((100 - C.SHAREASM) / 100)) AS "Coins",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_OR, 0)) AS "OR",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FAC_OUT, 0)) AS "FACOUT",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FACOB, 0)) AS "FACOB",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_QS, 0)) AS "QS",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FSPL, 0)) AS "FSPL",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_SSPL, 0)) AS "SSPL",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_ER1, 0)) AS "ER1",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_ER2, 0)) AS "ER2",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_BPPDAN, 0)) AS "BPPDAN",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSRQS, 0)) AS "PSRQS",    
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSRSPL, 0)) AS "PSRSPL",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_ORS, 0)) AS "ORS",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_XL, 0)) AS "XL",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSROR, 0)) AS "PSROR",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_QSOR, 0)) AS "QSOR",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSS, 0)) AS "PSS",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PRGBI, 0)) AS "PRGBI",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PFRA, 0)) AS "PFRA",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FSPLNSRI, 0)) AS "FSPLNSRI",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSPLNSRI, 0)) AS "PSPLNSRI",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FSPLNSOR, 0)) AS "FSPLNSOR",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_PSPLNSOR, 0)) AS "PSPLNSOR",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FACOBSRB, 0)) AS "FACOBSRB",
+       (NVL(E.RESERVES, 0) * (C.SHAREASM / 100) * NVL(TL.CLAIM_FACOBINDT, 0)) AS "FACOBINDT",
+       p.tgl_input AS "TanggalTerlambat",
+       m1.sts_progress1 AS "StatusProgress1",
+       m2.sts_progress2 AS "StatusProgress2",
+       c.picteknik AS "PICRekanan",
+       p.keterangan AS "Keterangan",
+       TRUNC(SYSDATE) - TRUNC(c.registerdate) AS "AgingKlaim",
+       c.branchcode,
+       s.surveyor_name AS "NamaSurveyor",
+       col.causeofloss AS "CauseOfLoss",
+       (
+        SELECT NVL(
+                   LISTAGG(m.name, ', ')
+                   WITHIN GROUP (ORDER BY t.idx_dominanfactor),
+                   '-'
+               )
+        FROM POOLDATA.T_CLAIM_DOMINANFACTOR t
+        JOIN POOLDATA.M_DOMINAN_FACTOR m
+          ON m.id = t.id_dominanfactor
+        WHERE t.claimid = c.claimid
+        ) AS "DominanName",
+       c.kronologi AS "Kronologis"
+FROM pooldata.t_claim_pnc c
+JOIN datapega.pc_asm_fw_gcnmfw_work w
+  ON c.claimid = w.pzinskey
+ AND w.pystatuswork NOT IN ('Resolved-Rejected', 'Resolved-Completed')
+ AND w.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+LEFT JOIN (
+    SELECT *
+    FROM (
+        SELECT p.pnccaseid,
+               p.tgl_input,
+               p.status_progress1,
+               p.status_progress2,
+               p.keterangan,
+               ROW_NUMBER() OVER (
+                   PARTITION BY p.pnccaseid
+                   ORDER BY p.tgl_input DESC
+               ) rn
+        FROM POOLDATA.GCNM_PROGRESS_CLAIM p
+        WHERE p.status_progress1 IS NOT NULL
+    )
+    WHERE rn = 1
+) p
+ON p.pnccaseid = c.claimno
+LEFT JOIN (
+    SELECT id_progress, MAX(sts_progress1) AS sts_progress1
+    FROM POOLDATA.GCNM_MST_PROGRESS
+    GROUP BY id_progress
+) m1
+ON m1.id_progress = p.status_progress1
+LEFT JOIN (
+    SELECT id_mst, MAX(sts_progress2) AS sts_progress2
+    FROM POOLDATA.GCNM_MST_PROGRESS
+    GROUP BY id_mst
+) m2
+ON m2.id_mst = p.status_progress2
+LEFT JOIN (
+    SELECT claimid,
+           SUM(estimationvalue * NVL(kursvalue, 1)) AS RESERVES,
+           SUM(estimationvalue) AS RESERVES2
+    FROM pooldata.T_CLAIM_ESTIMASI
+    GROUP BY claimid
+) E
+ON e.claimid = c.claimid
+LEFT JOIN (
+    SELECT pnccaseid,
+           MAX(surveyor_name) AS surveyor_name
+    FROM POOLDATA.T_SURVEYORLIST
+    WHERE SURVEYTYPE = '2'
+    GROUP BY pnccaseid
+) s
+ON s.pnccaseid = c.claimid
+LEFT JOIN (
+    SELECT claimid,
+           MAX(causeofloss)
+              KEEP (DENSE_RANK LAST ORDER BY createdatetime) AS causeofloss
+    FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE
+    GROUP BY claimid
+) col
+ON col.claimid = c.claimid
+LEFT JOIN (
+    SELECT *
+    FROM (
+        SELECT tr.*,
+               ROW_NUMBER() OVER (
+                   PARTITION BY tr.no_klaim
+                   ORDER BY tr.no_spk DESC
+               ) rn
+        FROM treaty_loss@asmd.sinarmas.co.id tr
+        WHERE tr.no_klaim LIKE 'PNC-%'
+    )
+    WHERE rn = 1
+) tl
+ON tl.no_klaim = c.claimno
+   WHERE c.registerdate IS NOT NULL
+    AND c.branchcode = {OperatorID.pyTelephone}
+ORDER BY "AgingKlaim" DESC</pyBrowseSQL>
+<pyDeletedObject/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWindowTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyOpenSQL/>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>01-03-19</pyRuleSetVersion>
+<pyCircumstanceDefinition/>
+<pyInterface/>
+<pxMoveImportDateTime>20260803T102321.808 GMT</pxMoveImportDateTime>
+<pyJavaStream/>
+<pyStreamName/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pzChecksum>400824201</pzChecksum>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pxCommitDateTime>20260803T102321.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyTemplateInputBox/>
+<pyStatus/>
+<pySaveSQL/>
+<pxCreateDateTime>20260701T100726.663 GMT</pxCreateDateTime>
+<pyDocumentTitle/>
+<pyRuleStarts/>
+<pyRequestType>GetDataOutstandingperCabangExport</pyRequestType>
+<pxUpdateDateTime>20260710T082829.313 GMT</pxUpdateDateTime>
+<pySpecialtyComponentData/>
+<pxInstanceLockedDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLabel>GetDataOutstandingperCabangExport</pyLabel>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetDataOutstandingperCabangExport</pxTabLabel>
+<pxHostId>jboss10372</pxHostId>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceVal/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedCreateDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyWorkKey/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETDATAOUTSTANDINGPERCABANGEXPORT #20260701T100726.663 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-19 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelete>true</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>false</pyVersionSecure>
+</pyToolBarSettings>
+</pagedata>

@@ -1,0 +1,343 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsName>D_BANKGROUP</pxInsName>
+<pyAsync>false</pyAsync>
+<pxInstanceLockedCreateDateTime/>
+<pyAllowOverride>false</pyAllowOverride>
+<pyLoadReportDefinition/>
+<pyCircumstanceDefinition/>
+<pyEditedName/>
+<pzChecksum>-731647909</pzChecksum>
+<pxTabLabel>D_BankGroup</pxTabLabel>
+<pySelectedApplicationVersion>01.01.01</pySelectedApplicationVersion>
+<pyWindowTitle/>
+<pyPageContext/>
+<pyRAOriginalClassName/>
+<pyUseTimeout/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedKey/>
+<pyTemplate/>
+<pyJavaStream/>
+<pyLoadActivity/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyCircumstanceVal/>
+<pyCircumstanceType/>
+<pySPRuleSetName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRefToFocusKeyLabel>Page Name</pyRefToFocusKeyLabel>
+<pyTimeoutMM/>
+<pyRuleStarts/>
+<pyDeclarePagesDataSource/>
+<pyIsClassFieldEditable>false</pyIsClassFieldEditable>
+<pxCreateOpName>Dwienita Naga Lilie</pxCreateOpName>
+<pxHostId>jboss2058</pxHostId>
+<pyEnableLoadOnlyPage>false</pyEnableLoadOnlyPage>
+<pyPostActivity/>
+<pyPageContextClass/>
+<pyKeyPageReference/>
+<pxUpdateOpName>Dwienita Naga Lilie</pxUpdateOpName>
+<pyDescription/>
+<pyTimeoutDD/>
+<pyEditable>true</pyEditable>
+<pyKeepOneCopy>false</pyKeepOneCopy>
+<pyObjClassLabel>Data Page</pyObjClassLabel>
+<pxUpdateOperator>dwienita_n@sinarmas.co.id</pxUpdateOperator>
+<pyTimeoutHH/>
+<pyReportDefinitionClass/>
+<pyAccessGroup>GISFW:Administrators</pyAccessGroup>
+<pySelectedBranchIdentifier>---</pySelectedBranchIdentifier>
+<pyIsFromManageChangeLP/>
+<pyAppliesToChangedBySystem>false</pyAppliesToChangedBySystem>
+<pyAllowExternalExpiration>true</pyAllowExternalExpiration>
+<pyIsSimulated>false</pyIsSimulated>
+<pyShowJavaWindowName>GeneratedJava20260826T021245.836 GMT</pyShowJavaWindowName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>D_BankGroup</pyLabel>
+<pyUsage/>
+<pyReloadForm>true</pyReloadForm>
+<pzIndexCount>8</pzIndexCount>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyDeletedObject/>
+<pyRefreshStrategy>never</pyRefreshStrategy>
+<pyIsDataSet/>
+<pyCircumstanceTemplate/>
+<pySelectedApplicationName>GISFW</pySelectedApplicationName>
+<pyInterface/>
+<pyWhen/>
+<pyTimeoutSS/>
+<pyClassName>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyClassName>
+<pyEnableRetrievePageByKey>false</pyEnableRetrievePageByKey>
+<pyWorkKey/>
+<pxSavedInPegaVersion>7.1.9</pxSavedInPegaVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySpecialtyComponentData/>
+<pyFocusKeyRemoveSpaces>false</pyFocusKeyRemoveSpaces>
+<pzInsKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzInsKey>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRAOriginalRuleSet/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyAllowIdle>false</pyAllowIdle>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzDocumentKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzDocumentKey>
+<pyStreamName/>
+<pyRAOriginalRuleSetVersion/>
+<pyRuleEnds/>
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pyScope>node</pyScope>
+<pyRuleSetVersion>01-01-13</pyRuleSetVersion>
+<pyBaseRule>false</pyBaseRule>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyTemplateInputBox/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20200312T080245.000 GMT</pxCommitDateTime>
+<pyRuleFormStatusTime>20260826T021245.806 GMT</pyRuleFormStatusTime>
+<pyPageName>D_BankGroup</pyPageName>
+<pyFocusKey>pyPageName</pyFocusKey>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyUseWhen/>
+<pyAllowDuplicates>false</pyAllowDuplicates>
+<pyCircumstanceProp/>
+<pyType>normal</pyType>
+<pyMethodStatus/>
+<pyLabelOld>D_BankGroup</pyLabelOld>
+<pyDocumentTitle/>
+<pyHistoryObject/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxUpdateDateTime>20160427T162914.106 GMT</pxUpdateDateTime>
+<pyLastClassName/>
+<pxInsId>D_BANKGROUP</pxInsId>
+<pyFormPost/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOperator>dwienita_n@sinarmas.co.id</pxCreateOperator>
+<pxMoveImportDateTime>20191226T024847.403 GMT</pxMoveImportDateTime>
+<pyHasKeyFocusKey>true</pyHasKeyFocusKey>
+<pyLoadOnlyPageEnabled>true</pyLoadOnlyPageEnabled>
+<pzOriginalInstanceKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzOriginalInstanceKey>
+<pyHasAccessToPegaRULES>false</pyHasAccessToPegaRULES>
+<pyRuleName>D_BankGroup</pyRuleName>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzIsThreadFamilyEnabled>false</pzIsThreadFamilyEnabled>
+<pyMessageLabel/>
+<pxCreateDateTime>20160427T113654.318 GMT</pxCreateDateTime>
+<pyApplicationInsName>GISFW!01.01.01</pyApplicationInsName>
+<pySourceCount>1</pySourceCount>
+<pxSaveDateTime>20160427T162914.125 GMT</pxSaveDateTime>
+<pyUseNewClipboard/>
+<pyCircumstanceDate/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedDateTime/>
+<pyUseNewGenPageForEditableDataPage/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDateProp/>
+<pySelected>false</pySelected>
+<pyValueChanged>false</pyValueChanged>
+<pyStructure>list</pyStructure>
+<pxInstanceLockedBy/>
+<pyPageType>normal</pyPageType>
+<pyRefreshOncePerInteraction>false</pyRefreshOncePerInteraction>
+<pxInstanceLockedRuleSet/>
+<pyIsSavable>false</pyIsSavable>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyRun>true</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+<pyAdditionalDependencies REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyAdditionalDependencies>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDefaultValue/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliValidateAs/>
+</rowdata>
+</pyParameters>
+<pyKeysForPageList REPEATINGTYPE="PropertyList"/>
+<pyPostActivityParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyName/>
+</rowdata>
+</pyPostActivityParams>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyPagesAndClassesClass>
+<pyPagesAndClassesDescription/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesKey/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyDataSourceList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLoadActivity>pxCallRetrieveReportData</pyLoadActivity>
+<pxListSubscript>1</pxListSubscript>
+<pyStructure>list</pyStructure>
+<pyDescription>Report Definition • ASM-FW-GISFW-Int-LST_BANK_GROUP • BrowseBankGroup</pyDescription>
+<pyRuleOpenerKey/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyMaxRecords/>
+<pyIsAutoCompleteUsed>yes</pyIsAutoCompleteUsed>
+<pyPageListPropertyName/>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzIndexOwnerKey>
+<pyReportDefinitionClass>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyReportDefinitionClass>
+<pyPageListPropClassName>Code-Pega-List</pyPageListPropClassName>
+<pyEditable>true</pyEditable>
+<pyIsRequired>false</pyIsRequired>
+<pxCreateDateTime>20160427T113654.331 GMT</pxCreateDateTime>
+<pyEndPointURL/>
+<pyConnectorClassName/>
+<pyRunDataTransformOnError>true</pyRunDataTransformOnError>
+<pyReqDataTransform/>
+<pyWaitSeconds/>
+<pySQLAccess/>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyIsSimulated>false</pyIsSimulated>
+<pyDTName/>
+<pyDataSourceHolder>BrowseBankGroup</pyDataSourceHolder>
+<pxCreateOpName>Dwienita Naga Lilie</pxCreateOpName>
+<pyConnectorDisplayProp>pyServiceName</pyConnectorDisplayProp>
+<pyResDataTransform/>
+<pySQLOption>false</pySQLOption>
+<pxCreateOperator>dwienita_n@sinarmas.co.id</pxCreateOperator>
+<pyLoadReportDefinition>BrowseBankGroup</pyLoadReportDefinition>
+<pySourceWhen>Always</pySourceWhen>
+<pyClassName>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyClassName>
+<pyConnectorName/>
+<pyTemplateInputBox/>
+<pyExecuteOnDataPage>true</pyExecuteOnDataPage>
+<pyDeclarePagesDataSource>ReportDefinition</pyDeclarePagesDataSource>
+<pyConnectorList>Rule-Connect-SOAP</pyConnectorList>
+<pyIsRDExists>true</pyIsRDExists>
+<pyRuleSetName/>
+<pyActivityParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDescription/>
+<pyIsActivityParameter>true</pyIsActivityParameter>
+<pyParameterType>Text</pyParameterType>
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyValue/>
+<pyParameterRequired/>
+<pyName>BankName</pyName>
+<pyParameterInOut/>
+</rowdata>
+</pyActivityParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyDTParamList REPEATINGTYPE="PageList"/>
+<pyClassKeyValueList REPEATINGTYPE="PageList"/>
+<pyDisabledSource>
+<pyDescription>Data Transform</pyDescription>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyDeclarePagesDataSource>DataTransform</pyDeclarePagesDataSource>
+</pyDisabledSource>
+<pyLoadActivityParameters>
+<pyClassName>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyClassName>
+<pySavedInPegaVersion>"7.1.9"</pySavedInPegaVersion>
+<pySkipSummaryProcessing/>
+<pyReportClass>ASM-FW-GISFW-Int-LST_BANK_GROUP</pyReportClass>
+<pyExecuteOnDataPage>true</pyExecuteOnDataPage>
+<pyPassCurrentParamPageForRespDT/>
+<pyPageName/>
+<pyReportName>BrowseBankGroup</pyReportName>
+<pyResDataTransform/>
+</pyLoadActivityParameters>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzDataSources">6</rowdata>
+</pzIndexes>
+</rowdata>
+</pyDataSourceList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzInsKey>
+<pyLabel>01-01-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyDataPageSaveOptionList REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pyRuleName>BrowseBankGroup</pyRuleName>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_BANKGROUP #20160427T113654.318 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Report-Definition</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Int-LST_BANK_GROUP</pxRuleClassName>
+<pxRuleFamilyName>BROWSEBANKGROUP</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyLoadActivityParameters>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLoadActivityParameters>
+<pyTableList REPEATINGTYPE="PropertyList"/>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+</pagedata>

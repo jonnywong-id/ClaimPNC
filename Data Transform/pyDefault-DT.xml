@@ -1,0 +1,449 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyObjClassLabel>Data Transform</pyObjClassLabel>
+<pzOriginalInstanceKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20080804T171924.535 GMT</pzOriginalInstanceKey>
+<pzIndexCount>16</pzIndexCount>
+<pxUpdateDateTime>20180713T132410.266 GMT</pxUpdateDateTime>
+<pySelected>false</pySelected>
+<pyJavaClassName>link__pydefault_20180713_132410_266</pyJavaClassName>
+<pyRuleStarts/>
+<pxObjClass>Rule-Obj-Model</pxObjClass>
+<pyCircumstanceType/>
+<pyIsFromManageChangeLP/>
+<pxOriginalCreateOpName>Ken Marin</pxOriginalCreateOpName>
+<pxCommitDateTime>20191015T081547.000 GMT</pxCommitDateTime>
+<pyCircumstanceProp/>
+<pyRuleFormStatusTime>20260723T095709.836 GMT</pyRuleFormStatusTime>
+<pyTemplateInputBox/>
+<pzChecksum>-50585423</pzChecksum>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyModelName>pyDefault</pyModelName>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pyDataModelFormat>Clipboard</pyDataModelFormat>
+<pxTabLabel>pyDefault</pxTabLabel>
+<pyWorkKey/>
+<pzDocumentKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzDocumentKey>
+<pxInstanceLockedDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateDateTime>20180713T132410.266 GMT</pxCreateDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleEnds/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyLabel>Model pyDefault for class Link-</pyLabel>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportDateTime>20130919T002942.908 GMT</pxMoveImportDateTime>
+<pxSiblingCount/>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyRuleParamsStreamName/>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyStatus/>
+<pyDeletedObject/>
+<pyRuleName>pyDefault</pyRuleName>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyCircumstanceVal/>
+<pyClassName>Link-</pyClassName>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSaveDateTime>20180713T132410.266 GMT</pxSaveDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceTemplate/>
+<pxMoveOriginalRuleSetVersion>07-10-01</pxMoveOriginalRuleSetVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDescription>Model pyDefault for class Link-Doc</pyDescription>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pxCreateOpName>Ken Marin</pxCreateOpName>
+<pyJavaGenerateTime>20020715T193251.171 GMT</pyJavaGenerateTime>
+<pxOriginalCreateDateTime>20180713T132410.266 GMT</pxOriginalCreateDateTime>
+<pxInsName>LINK-!PYDEFAULT</pxInsName>
+<pyFormPost/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyBaseRule>false</pyBaseRule>
+<pyJavaStream/>
+<pyCircumstanceDefinition/>
+<pyShowJavaWindowName>GeneratedJava20260723T095709.860 GMT</pyShowJavaWindowName>
+<pxUpdateOpName>Ken Marin</pxUpdateOpName>
+<pyMethodStatus/>
+<pzImplVersion>06.02.01</pzImplVersion>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pyDocumentTitle/>
+<pyCircumstanceDate/>
+<pxMoveOriginalRuleSet>Pega-ProCom</pxMoveOriginalRuleSet>
+<pyJavaFUAVersion/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabelOld>Model pyDefault for class Link-</pyLabelOld>
+<pzQuickConfigure>true</pzQuickConfigure>
+<pxInstanceLockedRuleSet/>
+<pxMoveOriginalKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20130919T002942.908 GMT</pxMoveOriginalKey>
+<pyCallSuperClassModel>true</pyCallSuperClassModel>
+<pyWindowTitle/>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyRuleSet>Pega-ProCom</pyRuleSet>
+<pxInsId>!PYDEFAULT</pxInsId>
+<pyUsage>Model pyDefault for class Link-Doc</pyUsage>
+<pxServerReqURI>/pr3web/PRServlet/xl9SPmeCw6K4PW6FFwrsWA%5B%5B*/!Developer</pxServerReqURI>
+<pzInsKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzInsKey>
+<pxUpdateOperator>marik@pegasystems.com</pxUpdateOperator>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedBy/>
+<pyRuleSearchQuery/>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pxCreateOperator>marik@pegasystems.com</pxCreateOperator>
+<pyCircumstanceDateProp/>
+<pySPRuleSetName/>
+<pxOriginalCreateOperator>marik@pegasystems.com</pxOriginalCreateOperator>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxInstanceLockedKey/>
+<pyInterface/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzStatus>false</pzStatus>
+<pyParameters REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxRuleObjClass>Rule-Obj-Model</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYDEFAULT</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyDefault</pyRuleName>
+<pxListSubscript>1</pxListSubscript>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>Code-Pega-Thread</pxRuleClassName>
+<pxRuleFamilyName>PXCURRENTAPPLICATIONNAME</pxRuleFamilyName>
+<pyRuleName>pxCurrentApplicationName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxSubscript>2</pxSubscript>
+<pxListSubscript>2</pxListSubscript>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Utility-Function</pxRuleObjClass>
+<pyRuleName>DateTime CurrentDateTime</pyRuleName>
+<pxRuleClassName/>
+<pxRuleFamilyName>DATETIME!CURRENTDATETIME</pxRuleFamilyName>
+<pxSubscript>3</pxSubscript>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PXAPPLICATION</pxRuleFamilyName>
+<pyRuleName>pxApplication</pyRuleName>
+<pxSubscript>4</pxSubscript>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pxListSubscript>4</pxListSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXCREATESYSTEMID</pxRuleFamilyName>
+<pxListSubscript>5</pxListSubscript>
+<pxSubscript>5</pxSubscript>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxCreateSystemID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>Code-Pega-Process</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pyRuleName>Code-Pega-Process</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxListSubscript>6</pxListSubscript>
+<pxRuleFamilyName>CODE-PEGA-PROCESS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxSubscript>6</pxSubscript>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxSubscript>7</pxSubscript>
+<pxListSubscript>7</pxListSubscript>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>CODE-PEGA-REQUESTOR</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Code-Pega-Requestor</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pyRuleName>Code-Pega-Requestor</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Code-Pega-Requestor</pxRuleClassName>
+<pxRuleFamilyName>PYUSERIDENTIFIER</pxRuleFamilyName>
+<pxListSubscript>8</pxListSubscript>
+<pxSubscript>8</pxSubscript>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pyRuleName>pyUserIdentifier</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxListSubscript>9</pxListSubscript>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXSYSTEMNAME</pxRuleFamilyName>
+<pxSubscript>9</pxSubscript>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxSystemName</pyRuleName>
+<pxRuleClassName>Code-Pega-Process</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxRuleFamilyName>LINK-</pxRuleFamilyName>
+<pxListSubscript>10</pxListSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxSubscript>10</pxSubscript>
+<pyRuleName>Link-</pyRuleName>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleFamilyName>PXCREATEOPERATOR</pxRuleFamilyName>
+<pxSubscript>11</pxSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxListSubscript>11</pxListSubscript>
+<pyRuleName>pxCreateOperator</pyRuleName>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxListSubscript>12</pxListSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxSubscript>12</pxSubscript>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYUSERNAME</pxRuleFamilyName>
+<pyRuleName>pyUserName</pyRuleName>
+<pxRuleClassName>Code-Pega-Requestor</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxSubscript>13</pxSubscript>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYMEMO</pxRuleFamilyName>
+<pyRuleName>pyMemo</pyRuleName>
+<pxListSubscript>13</pxListSubscript>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pyRuleName>pxCreateOpName</pyRuleName>
+<pxListSubscript>14</pxListSubscript>
+<pxRuleFamilyName>PXCREATEOPNAME</pxRuleFamilyName>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pxSubscript>14</pxSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyRuleName>pxCreateDateTime</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXCREATEDATETIME</pxRuleFamilyName>
+<pxSubscript>15</pxSubscript>
+<pxRuleClassName>Link-</pxRuleClassName>
+<pxListSubscript>15</pxListSubscript>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pyRuleName>Code-Pega-Thread</pyRuleName>
+<pxRuleClassName>Code-Pega-Thread</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzIndexOwnerKey>
+<pxListSubscript>16</pxListSubscript>
+<pxRuleFamilyName>CODE-PEGA-THREAD</pxRuleFamilyName>
+<pxSubscript>16</pxSubscript>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pxSubscript>1</pxSubscript>
+<pyPagesAndClassesPage>pxThread</pyPagesAndClassesPage>
+<pxListSubscript>1</pxListSubscript>
+<pyPagesAndClassesClass>Code-Pega-Thread</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>true</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>true</pyRun>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyProperties REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropertyStepId>1</pyPropertyStepId>
+<pxSubscript>1</pxSubscript>
+<pyDisabled/>
+<pyClassName/>
+<pyPropertiesValue>""</pyPropertiesValue>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyPropertiesName>.pyMemo</pyPropertiesName>
+<pyActionName>SET</pyActionName>
+<pxListSubscript>1</pxListSubscript>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pxSubscript>2</pxSubscript>
+<pyActionName>SET</pyActionName>
+<pyDisabled/>
+<pyClassName/>
+<pyPropertyStepId>2</pyPropertyStepId>
+<pyPropertiesName>.pxApplication</pyPropertiesName>
+<pxListSubscript>2</pxListSubscript>
+<pyPropertiesValue>pxThread.pxCurrentApplicationName</pyPropertiesValue>
+<pyExpressionGadget>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowParameters>true</pyShowParameters>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyProperties>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-MODEL LINK- PYDEFAULT #20180713T132410.266 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>08-01-01 (Available)</pyLabel>
+</rowdata>
+</pyRuleCompareList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+</pagedata>

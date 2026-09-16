@@ -1,0 +1,359 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRAApplication/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pySPRuleSetName>Pega-EndUserUI_Branch_UC-Data-Pages</pySPRuleSetName>
+<pyRefreshStrategy>never</pyRefreshStrategy>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyAllowOverride>false</pyAllowOverride>
+<pyProductType>ORACLE</pyProductType>
+<pyDescription>D_Worklist data page gets the assignments of the requestor. This is a requestor scope read-only page. The default is to display assignments from all work pools of the current application for the logged-in operator.</pyDescription>
+<pyMemo>Filled in history and usage</pyMemo>
+<pzInsKey>RULE-DECLARE-PAGES D_WORKLIST #20180713T134707.971 GMT</pzInsKey>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDeletedObject/>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyPageType>normal</pyPageType>
+<pyRuleStarts/>
+<pySelected>false</pySelected>
+<pyShowJavaWindowName>GeneratedJava20260823T135026.344 GMT</pyShowJavaWindowName>
+<pyTemplateInputBox/>
+<pyClassName>Assign-Worklist</pyClassName>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pyRuleEnds/>
+<pyTaskGroup/>
+<pxMoveImportDateTime>20140522T172928.594 GMT</pxMoveImportDateTime>
+<pxCreateOperator>soman</pxCreateOperator>
+<pyReloadForm>true</pyReloadForm>
+<pzRARulePrefix/>
+<pyRuleSet>Pega-EndUserUI</pyRuleSet>
+<pyTimeoutDD/>
+<pxUpdateOpName>Naveen Soma</pxUpdateOpName>
+<RMHeaderAction/>
+<pzRuleFormKeysAndDescription/>
+<pyAccessGroup/>
+<pzRuleFormToolbarCheckin/>
+<pyWindowTitle/>
+<pyUseTimeout/>
+<pxSaveDateTime>20180713T134707.972 GMT</pxSaveDateTime>
+<pyMethodStatus/>
+<pyPageContextClass/>
+<pzApplyToPromptPegaDeveloper/>
+<pxMoveOriginalKey>RULE-DECLARE-PAGES D_WORKLIST #20140521T152758.568 GMT</pxMoveOriginalKey>
+<pxMoveImportOperId>System</pxMoveImportOperId>
+<pyAllowExternalExpiration>true</pyAllowExternalExpiration>
+<pyCircumstanceDateProp/>
+<pxMoveFromSystem/>
+<pzRuleFormToolbarCheckout/>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pzIsThreadFamilyEnabled>false</pzIsThreadFamilyEnabled>
+<pyUsage>This is used in the Work list gadget on the case manager portal. This is also available for users to display worklist on any gadget. This takes two optional parameters 
+
+OperatorID and WorkGroup.
+
+If WorkGroup is supplied, it displays assignments of all operators in the work group. 
+If both supplied, data page ignores the OperatorID</pyUsage>
+<pxInsId>D_WORKLIST</pxInsId>
+<pyTimeoutHH/>
+<pxMoveImportOperName>Agent(System-Queue-ServiceLevel.ProcessEvent)</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabelOld>Get worklist</pyLabelOld>
+<pyStatus/>
+<pyFormPost/>
+<pxCreateOpName>Naveen Soma</pxCreateOpName>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxMoveOriginalRuleSetVersion>07-10-13</pxMoveOriginalRuleSetVersion>
+<pyUseNewClipboard/>
+<pzRARecordConfiguration/>
+<pyJavaStream/>
+<pyAllowDuplicates>false</pyAllowDuplicates>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyType>normal</pyType>
+<pzRARecordContext/>
+<pyEnableLoadOnlyPage>true</pyEnableLoadOnlyPage>
+<pxOriginalCreateSystemID>SLSV72</pxOriginalCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pxUpdateSystemID>SLSV72</pxUpdateSystemID>
+<pyLoadReportDefinition/>
+<RuleFormHistory_CustomFields/>
+<pxOriginalCreateDateTime>20180713T134707.971 GMT</pxOriginalCreateDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pzRuleFormRuleset/>
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pyCircumstanceVal/>
+<pyStreamName/>
+<pyCircumstanceTemplate/>
+<pxCommitDateTime>20191015T081333.000 GMT</pxCommitDateTime>
+<pzRuleFormToolbar/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateDateTime>20180713T134707.971 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pyTemplate/>
+<pyRefreshOncePerInteraction>true</pyRefreshOncePerInteraction>
+<pyTimeoutSS/>
+<pySourceCount>1</pySourceCount>
+<pzRuleFormErrorHeader/>
+<pyIsFromManageChangeLP/>
+<pzRuleFormToolbarHotKeys/>
+<pzRABranchSelection/>
+<pyUseWhen/>
+<pxInsName>D_WORKLIST</pxInsName>
+<pzOriginalInstanceKey>RULE-DECLARE-PAGES D_WORKLIST #20140221T191004.162 GMT</pzOriginalInstanceKey>
+<pzChangeRuleset/>
+<pzRuleFormStatus/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedDateTime/>
+<pyRelativePath/>
+<pyReportDefinitionClass/>
+<pyObjClassLabel>Data Page</pyObjClassLabel>
+<pyIsClassFieldEditable>false</pyIsClassFieldEditable>
+<RuleFormHistory_Description/>
+<pxTabLabel>D_Worklist</pxTabLabel>
+<pzRuleFormToolbarDelete/>
+<pxInstanceLockedCreateDateTime/>
+<pzDocumentKey>RULE-DECLARE-PAGES D_WORKLIST #20180713T134707.971 GMT</pzDocumentKey>
+<pzRAAppliesTo/>
+<pxOriginalCreateOpName>Naveen Soma</pxOriginalCreateOpName>
+<pyInterface/>
+<pyWorkKey/>
+<pyRuleFormStatusTime>20260823T135026.335 GMT</pyRuleFormStatusTime>
+<pyLabel>Get worklist</pyLabel>
+<pzRuleFormToolbarSave/>
+<pyUseNewGenPageForEditableDataPage/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedBy/>
+<pyKeepOneCopy>true</pyKeepOneCopy>
+<pxMoveOriginalRuleSet>Pega-EndUserUI</pxMoveOriginalRuleSet>
+<pyEditable>true</pyEditable>
+<pySpecialtyComponentData/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedKey/>
+<pyAllowIdle>true</pyAllowIdle>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyEnableRetrievePageByKey>false</pyEnableRetrievePageByKey>
+<pzPageDefinition/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzIndexCount>4</pzIndexCount>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsDataSet/>
+<pyPostActivity/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceProp/>
+<pxUpdateOperator>soman</pxUpdateOperator>
+<pzChecksum>601855248</pzChecksum>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsSimulated>false</pyIsSimulated>
+<pyCircumstanceDefinition/>
+<pxCreateDateTime>20180713T134707.971 GMT</pxCreateDateTime>
+<pyLoadOnlyPageEnabled>true</pyLoadOnlyPageEnabled>
+<pzRuleFormToolbarLockedIcon/>
+<pxOriginalCreateOperator>soman</pxOriginalCreateOperator>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyPageContext/>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyKeyPageReference/>
+<pyIsSavable>false</pyIsSavable>
+<pzRuleFormToolbarSaveAs/>
+<pyRuleName>D_Worklist</pyRuleName>
+<pyStructure>list</pyStructure>
+<pyValueChanged>false</pyValueChanged>
+<pyPageName>D_Worklist</pyPageName>
+<pyAsync>false</pyAsync>
+<pzKeys/>
+<pyScope>requestor</pyScope>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWhen/>
+<pyTimeoutMM/>
+<pxOriginalRuleSet>Pega-EndUserUI</pxOriginalRuleSet>
+<pyLoadActivity/>
+<pyDeclarePagesDataSource/>
+<pzStatus>false</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyDataSourceList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLoadActivity>pzGetWorklist</pyLoadActivity>
+<pyLoadReportDefinition/>
+<pySQLOption>false</pySQLOption>
+<pyConnectorDisplayProp>pyServiceName</pyConnectorDisplayProp>
+<pyDTName/>
+<pzViewDataSourcesCreateNew/>
+<pxCreateOpName>Naveen Soma</pxCreateOpName>
+<pyIsSimulated>false</pyIsSimulated>
+<pyConnectorClassName/>
+<pxListSubscript>1</pxListSubscript>
+<pyIsRequired>true</pyIsRequired>
+<pzDisplayDeleteIcon/>
+<pySQLAccess/>
+<pySourceWhen>Always</pySourceWhen>
+<pzViewDataSources/>
+<pyRuleOpenerKey/>
+<pyTemplateInputBox/>
+<pyDSSystemName>Pega</pyDSSystemName>
+<pzViewDataSourcesOpenReport/>
+<pyDeclarePagesDataSource>LoadActivity</pyDeclarePagesDataSource>
+<pyPassCurrentParamPageForActivity>true</pyPassCurrentParamPageForActivity>
+<pxCreateDateTime>20140130T180946.148 GMT</pxCreateDateTime>
+<pyConnectorList>Rule-Connect-SOAP</pyConnectorList>
+<pxCreateOperator>soman</pxCreateOperator>
+<pyPageListPropClassName>Code-Pega-List</pyPageListPropClassName>
+<pyDataSourceHolder>pzGetWorklist</pyDataSourceHolder>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pzRDResponseDT/>
+<pyModalTitle>pzGetWorklist</pyModalTitle>
+<pyClassName>Assign-Worklist</pyClassName>
+<pyTemplateGeneric/>
+<pyEditable>true</pyEditable>
+<pyDescription>Activity • Assign-Worklist • pzGetWorklist</pyDescription>
+<pyConnectorName/>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_WORKLIST #20180713T134707.971 GMT</pzIndexOwnerKey>
+<pyReportDefinitionClass/>
+<pxCreateSystemID>SLSVTABL</pxCreateSystemID>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyDTParamList REPEATINGTYPE="PageList"/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzDataSources">2</rowdata>
+</pzIndexes>
+<pyLoadActivityParameters>
+</pyLoadActivityParameters>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+<pyDisabledSource>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyDescription>Data Transform</pyDescription>
+<pyDeclarePagesDataSource>DataTransform</pyDeclarePagesDataSource>
+</pyDisabledSource>
+</rowdata>
+</pyDataSourceList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesDescription/>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesKey/>
+</rowdata>
+</pyPagesAndClasses>
+<pyDataPageSaveOptionList REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPostActivityParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyName/>
+</rowdata>
+</pyPostActivityParams>
+<pyTableList REPEATINGTYPE="PropertyList"/>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_WORKLIST #20180713T134707.971 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pyRuleName>pzGetWorklist</pyRuleName>
+<pxRuleFamilyName>PZGETWORKLIST</pxRuleFamilyName>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyLoadActivityParameters>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLoadActivityParameters>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pyRun>true</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamName>OperatorID</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc/>
+<pyTemplateInputBox/>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamName>WorkGroup</pyParametersParamName>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pyTemplateInputBox/>
+<pyParametersParamDesc>If WorkGroup is supplied, OperatorID is ignored</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParameters>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyAdditionalDependencies REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyAdditionalDependencies>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyKeysForPageList REPEATINGTYPE="PropertyList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-DECLARE-PAGES D_WORKLIST #20180713T134707.971 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDeletedObject/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedKey/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyCircumstanceType/>
+<pxSiblingCount/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETCLIENTNAME2 #20220422T031614.913 GMT</pzDocumentKey>
+<pxMoveFromSystem/>
+<pyCircumstanceTemplate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStatus/>
+<pySpecialtyComponentData/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260826T022357.716 GMT</pyShowJavaWindowName>
+<pyTemporaryObject/>
+<pyWorkKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleSetVersion>01-01-97</pyRuleSetVersion>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pxSaveDateTime>20220428T015825.070 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateDateTime/>
+<pyHandlerFlow/>
+<pyInterface/>
+<pxUpdateDateTime>20220428T015825.057 GMT</pxUpdateDateTime>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzChecksum>-1757583024</pzChecksum>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetClientName2</pyRuleName>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETCLIENTNAME2</pxInsName>
+<pyDescription/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyUsage/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetClientName2</pxTabLabel>
+<pxInstanceLockedBy/>
+<pyBrowseSQL>select id as "Country", name as "CountryID" from pooldata.client where replace(name,'.','') like '%{ASIS:TempDcol.ATASAN}%' or id ={TempDcol.ATASAN}</pyBrowseSQL>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pyCircumstanceProp/>
+<pxHostId>jboss1036</pxHostId>
+<pyLabelOld>Get Client Name 2</pyLabelOld>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleStarts/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRequestType>GetClientName2</pyRequestType>
+<pyLabel>Get Client Name 2</pyLabel>
+<pzRuleSetVersionPatch>97</pzRuleSetVersionPatch>
+<pyFormPost/>
+<pxInstanceLockedRuleSet/>
+<pyDeleteSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleEnds/>
+<pxInstanceLockedDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDateProp/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pxMoveImportDateTime>20220610T100601.381 GMT</pxMoveImportDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETCLIENTNAME2 #20220422T031614.913 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pxCommitDateTime>20220610T100602.000 GMT</pxCommitDateTime>
+<pyMethodStatus/>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETCLIENTNAME #20220106T021432.416 GMT</pzOriginalInstanceKey>
+<pyTemplate/>
+<pyRuleFormStatusTime>20260826T022357.698 GMT</pyRuleFormStatusTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalCreateOpName/>
+<pyWindowTitle/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETCLIENTNAME2</pxInsId>
+<pyMemo>done</pyMemo>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateDateTime>20220422T031614.913 GMT</pxCreateDateTime>
+<pyStreamName/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySaveSQL/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxInstanceLockedRuleSetVersion/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRestore>false</pyRestore>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyCompareVersion/>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pyPreview>false</pyPreview>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETCLIENTNAME2 #20220422T031614.913 GMT</pzInsKey>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

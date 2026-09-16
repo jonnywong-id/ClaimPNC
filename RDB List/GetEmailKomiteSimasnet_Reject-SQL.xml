@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleStarts/>
+<pyTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILKOMITESIMASNET_REJECT #20220916T063951.021 GMT</pzDocumentKey>
+<pyCircumstanceVal/>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStatus/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETEMAILKOMITESIMASNET_REJECT</pxInsName>
+<pyRelativePath/>
+<pxCommitDateTime>20220922T043549.000 GMT</pxCommitDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>2009404826</pzChecksum>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDeletedObject/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedDateTime/>
+<pySaveSQL/>
+<pyStreamName/>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateOpName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILKOMITESIMASNET_REJECT #20210816T072557.177 GMT</pzOriginalInstanceKey>
+<pyCircumstanceType/>
+<pyCircumstanceTemplate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pxUpdateDateTime>20220916T064053.635 GMT</pxUpdateDateTime>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyMemo>done</pyMemo>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyCheckInRuleSet/>
+<pxSaveDateTime>20220916T064053.642 GMT</pxSaveDateTime>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWorkKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILKOMITESIMASNET_REJECT #20220916T063951.021 GMT</pzInsKey>
+<pyRequestType>GetEmailKomiteSimasnet_Reject</pyRequestType>
+<pxInstanceLockedKey/>
+<pyRuleSetVersion>01-01-98</pyRuleSetVersion>
+<pyLabelOld>getEmailKomiteSimasnet_Reject</pyLabelOld>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260901T104455.548 GMT</pyShowJavaWindowName>
+<pyDeleteSQL/>
+<pyFormPost/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabel>getEmailKomiteSimasnet_Reject</pyLabel>
+<pyCircumstanceDateProp/>
+<pyDescription/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBrowseSQL>SELECT * FROM (SELECT EMAIL as BRANCH_NAME,  OPERATOR_ID as CUSTOMER, CC as BUSINESS_NAME
+FROM POOLDATA.EMAILKOMITE WHERE STS_REJECT = '1' AND STS_AKTIF = '1' AND trim(TYPE_BUSINESS) = trim({tempAdj.pyMemo}) AND LIMIT_BOTTOM &lt;= {tempAdj.ConvertAdjustmentValue} 
+{ASIS:tempAdj.UploadLOD}
+ORDER BY DEGREE,dbms_random.value) 
+{ASIS:tempAdj.IsDLA}</pyBrowseSQL>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleFormStatusTime>20260901T104455.316 GMT</pyRuleFormStatusTime>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxInstanceLockedBy/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetEmailKomiteSimasnet_Reject</pxTabLabel>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionPatch>98</pzRuleSetVersionPatch>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETEMAILKOMITESIMASNET_REJECT</pxInsId>
+<pyInterface/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxSiblingCount/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyWindowTitle/>
+<pxInstanceLockedRuleSet/>
+<pyIsFromManageChangeLP/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pxHostId>jboss10372</pxHostId>
+<pxMoveImportDateTime>20220922T043548.803 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyMethodStatus/>
+<pxCreateDateTime>20220916T063951.021 GMT</pxCreateDateTime>
+<pyRuleEnds/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyTemporaryObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateDateTime/>
+<pyTemplateInputBox/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetEmailKomiteSimasnet_Reject</pyRuleName>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pySpecialtyComponentData/>
+<pyHandlerFlow/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyRuleData>true</pyRuleData>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILKOMITESIMASNET_REJECT #20220916T063951.021 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-98 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILKOMITESIMASNET_REJECT #20210816T072557.177 GMT</pzInsKey>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

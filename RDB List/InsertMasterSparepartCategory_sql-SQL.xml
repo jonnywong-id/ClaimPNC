@@ -1,0 +1,172 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTMASTERSPAREPARTCATEGORY_SQL #20201015T033437.643 GMT</pzDocumentKey>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxMoveImportDateTime>20201111T105224.238 GMT</pxMoveImportDateTime>
+<pyShowJavaWindowName>GeneratedJava20260827T070124.381 GMT</pyShowJavaWindowName>
+<pzChecksum>-317186331</pzChecksum>
+<pyTemplateInputBox/>
+<pyCircumstanceType/>
+<pyMethodStatus/>
+<pxInstanceLockedKey/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceTemplate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTMASTERSPAREPARTCATEGORY_SQL #20201015T033437.643 GMT</pzInsKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDescription/>
+<pyCircumstanceDateProp/>
+<pySaveSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pySpecialtyComponentData/>
+<pyCircumstanceProp/>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyInterface/>
+<pyCircumstanceDate/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM InsertMasterSparepartCategory_sql</pyRuleName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeletedObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRelativePath/>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateDateTime>20201015T033437.643 GMT</pxCreateDateTime>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pyWindowTitle/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRequestType>InsertMasterSparepartCategory_sql</pyRequestType>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyOpenSQL/>
+<pxSaveDateTime>20201021T012419.946 GMT</pxSaveDateTime>
+<pxOriginalCreateOperator/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyStreamName/>
+<pyLabel>InsertMasterSparepartCategory_sql</pyLabel>
+<pxOriginalCreateDateTime/>
+<pxMoveFromSystem/>
+<pyBaseRule>false</pyBaseRule>
+<pyIsFromManageChangeLP/>
+<pyJavaStream/>
+<pyRuleFormStatusTime>20260827T070124.347 GMT</pyRuleFormStatusTime>
+<pyUsage/>
+<pxHostId>jboss2145</pxHostId>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleParamsStreamName/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM InsertMasterSparepartCategory_sql</pxTabLabel>
+<pxCommitDateTime>20201111T105224.000 GMT</pxCommitDateTime>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!INSERTMASTERSPAREPARTCATEGORY_SQL</pxInsName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyHandlerFlow/>
+<pxSiblingCount/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyLabelOld>InsertMasterSparepartCategory_sql</pyLabelOld>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pyDeleteMemo>add nospak</pyDeleteMemo>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!UPDATEMASTERSPAREPARTCATEGORY_SQL2 #20201015T024803.524 GMT</pzOriginalInstanceKey>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pyBrowseSQL>insert into POOLDATA.gcnm_m_sparepart_category  (PART_CATEGORY_ID,PART_CATEGORY_NAME,APPROVAL)
+Values ((select nvl(max(PART_CATEGORY_ID),0)+1 from POOLDATA.gcnm_m_sparepart_category ),{InputKategori.CITY_ID},{InputKategori.LOGIN_APLIKASI})</pyBrowseSQL>
+<pyMemo>ubah inputan untuk kolom approval</pyMemo>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!INSERTMASTERSPAREPARTCATEGORY_SQL</pxInsId>
+<pyWorkKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateDateTime>20201021T012419.924 GMT</pxUpdateDateTime>
+<pyFormPost/>
+<pyDocumentTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyAvailability>false</pyAvailability>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTMASTERSPAREPARTCATEGORY_SQL #20201015T033437.643 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

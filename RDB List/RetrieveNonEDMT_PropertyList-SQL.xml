@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVENONEDMT_PROPERTYLIST</pxInsId>
+<pyShowJavaWindowName>GeneratedJava20260721T042945.352 GMT</pyShowJavaWindowName>
+<pyCircumstanceProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedKey/>
+<pzRuleSetVersionPatch>68</pzRuleSetVersionPatch>
+<pyCircumstanceType/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateDateTime/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pyStreamName/>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleSetVersion>01-02-68</pyRuleSetVersion>
+<pyCircumstanceTemplate/>
+<pyLabel>RetrieveNonEDMT_PropertyList</pyLabel>
+<pxSiblingCount/>
+<pyRuleFormStatusTime>20260721T042945.324 GMT</pyRuleFormStatusTime>
+<pyLabelOld>RetrieveNonEDMT_PropertyList</pyLabelOld>
+<pySaveSQL/>
+<pxInstanceLockedRuleSetVersion/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVENONEDMT_PROPERTYLIST #20200716T080853.082 GMT</pzOriginalInstanceKey>
+<pyCircumstanceVal/>
+<pySPRuleSetName>CALVINJOE@</pySPRuleSetName>
+<pxCreateSystemID>ASMPegaSystem</pxCreateSystemID>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVENONEDMT_PROPERTYLIST</pxInsName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20200805T034305.316 GMT</pxCreateDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVENONEDMT_PROPERTYLIST #20200805T034305.316 GMT</pzInsKey>
+<pxCommitDateTime>20200813T163032.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleStarts/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleEnds/>
+<pyInterface/>
+<pyDocumentTitle/>
+<pxHostId>jboss2163</pxHostId>
+<pxOriginalCreateOperator/>
+<pxUpdateDateTime>20200805T035408.050 GMT</pxUpdateDateTime>
+<pyRelativePath/>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM RetrieveNonEDMT_PropertyList</pxTabLabel>
+<pyJavaStream/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pyBrowseSQL>WITH SHOWPROPERTY as (
+ SELECT MergeJSONObjectToAdopt_PROPERTY(PROPERTYLIST,COVERAGELIST,PROPERTYITEMLIST,OCCUPATIONLIST,FEALIST,LISTCAUSEOFLOSS) AS HASIL1,
+        indexobject
+  FROM T_PROPERTYLIST
+ WHERE idpega = {InputData.CARI1})
+select HASIL1 from SHOWPROPERTY
+order by to_number(indexobject) asc</pyBrowseSQL>
+<pyWorkKey/>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pyStatus/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyMemo>done tambah to _number</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVENONEDMT_PROPERTYLIST #20200805T034305.316 GMT</pzDocumentKey>
+<pySpecialtyComponentData/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pxSaveDateTime>20200805T035408.072 GMT</pxSaveDateTime>
+<pyCircumstanceDateProp/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyFormPost/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRequestType>RetrieveNonEDMT_PropertyList</pyRequestType>
+<pxMoveFromSystem/>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyCircumstanceDate/>
+<pxOriginalCreateSystemID/>
+<pyDeleteSQL/>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pxMoveImportDateTime>20200813T163032.522 GMT</pxMoveImportDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyDeletedObject/>
+<pyHandlerFlow/>
+<pxInstanceLockedBy/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM RetrieveNonEDMT_PropertyList</pyRuleName>
+<pyDescription/>
+<pzChecksum>693624148</pzChecksum>
+<pyRuleParamsStreamName/>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pyWindowTitle/>
+<pyTemplateInputBox/>
+<pyIsFromManageChangeLP/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVENONEDMT_PROPERTYLIST #20200805T034305.316 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-68 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVENONEDMT_PROPERTYLIST #20200716T080853.082 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-02-67 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

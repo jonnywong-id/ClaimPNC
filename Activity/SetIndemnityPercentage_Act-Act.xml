@@ -1,0 +1,843 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>SetIndemnityPercentage_Act</pyRuleName>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyWorkKey/>
+<pxUpdateDateTime>20180219T041909.746 GMT</pxUpdateDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxInstanceLockedBy/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyJavaStream/>
+<pyCircumstanceDate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreatedInPRPCVersion>07-01-07</pxCreatedInPRPCVersion>
+<pyStreamName/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzDocumentKey>
+<pxTabLabel>SetIndemnityPercentage_Act</pxTabLabel>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pxMoveFromSystem/>
+<pyDeleteMemo>add for step 2</pyDeleteMemo>
+<pxInsName>ASM-FW-GISFW-DATA-COVERAGE!SETINDEMNITYPERCENTAGE_ACT</pxInsName>
+<pySelected>false</pySelected>
+<pxInstanceLockedDateTime/>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyShowJavaWindowName>GeneratedJava20260828T014442.508 GMT</pyShowJavaWindowName>
+<pyInputMayStart>false</pyInputMayStart>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMemo>add condition for MB business only</pyMemo>
+<pxHostId>jboss2058</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pyStatus/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyActivityName>SetIndemnityPercentage_Act</pyActivityName>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleSearchQuery/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyWindowTitle/>
+<pxSaveDateTime>20180219T041909.787 GMT</pxSaveDateTime>
+<pzChecksum>1177290695</pzChecksum>
+<pyJavaClassName>Rule_Obj_Activity_ASM_FW_GISFW_Data_Coverage_SetIndemnityPercentage_Act_Action_20180219T041721_741_GMT</pyJavaClassName>
+<pyMethodStatus/>
+<pyLabel>SetIndemnityPercentage_Act</pyLabel>
+<pxOriginalCreateSystemID/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyCircumstanceDateProp/>
+<pyCircumstanceType/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyTemplateInputBox/>
+<pzIndexCount>24</pzIndexCount>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyFormPost/>
+<pxMoveImportDateTime>20191226T030728.862 GMT</pxMoveImportDateTime>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pxInstanceLockedCreateDateTime/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pxOriginalCreateOperator/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceDefinition/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyDeletedObject/>
+<pyCircumstanceTemplate/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20171127T111724.119 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pyInterface/>
+<pyRuleFormStatusTime>20260828T014442.459 GMT</pyRuleFormStatusTime>
+<pxSiblingCount/>
+<pxOriginalCreateDateTime/>
+<pxCreateDateTime>20180219T041256.282 GMT</pxCreateDateTime>
+<pyDocumentTitle/>
+<pyDescription/>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyTemplate/>
+<pyIsFromManageChangeLP/>
+<pxInsId>!SETINDEMNITYPERCENTAGE_ACT</pxInsId>
+<pzInsKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzInsKey>
+<pyAssociatedImage/>
+<pyRuleParamsStreamName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabelOld>SetIndemnityPercentage_Act</pyLabelOld>
+<pyJavaGenerateTime>20180219T041909.706 GMT</pyJavaGenerateTime>
+<pyRuleEnds/>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pyRuleSetVersion>01-01-63</pyRuleSetVersion>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleStarts/>
+<pySPRuleSetName>YOHANESBAPTISTA@</pySPRuleSetName>
+<pyClassName>ASM-FW-GISFW-Data-Coverage</pyClassName>
+<pxInstanceLockedRuleSet/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pzRuleSetVersionPatch>63</pzRuleSetVersionPatch>
+<pySpecialtyComponentData/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyUsage/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCommitDateTime>20200312T080309.000 GMT</pxCommitDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceVal/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pzStatus>valid</pzStatus>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>1</pxUnjustifiedHSWarningCount>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+</pxMessageSummary>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamName/>
+</rowdata>
+</pyParameters>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pxRuleFamilyName>PROPERTY-MAP-DECISIONTABLE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pyRuleName>Property-Map-DecisionTable</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Coverage</pxRuleClassName>
+<pxRuleFamilyName>INDEMNITYPERCENTAGE</pxRuleFamilyName>
+<pyRuleName>IndemnityPercentage</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pyRuleName>Property-Set</pyRuleName>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>ASM-FW-GISFW-Data-Coverage</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GISFW-Data-Coverage</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-COVERAGE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-Obj-When</pxRuleObjClass>
+<pxRuleFamilyName>ISMBBUSINESS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>IsMBBusiness</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Coverage</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleFamilyName>INDEMNITYMONTH</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>IndemnityMonth</pyRuleName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Coverage</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>MapIndemnityPercentage</pyRuleName>
+<pxRuleFamilyName>MAPINDEMNITYPERCENTAGE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Coverage</pxRuleClassName>
+<pxRuleObjClass>Rule-Declare-DecisionTable</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyShowJava>true</pyShowJava>
+<pyPreview>true</pyPreview>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>true</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-63 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyLabel>01-01-55 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20171127T111724.119 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreatedTime>20180219T041256.285 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningCreateOperator>YOHANESBAPTISTA</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">16</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20180219T041256.285 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>YOHANESBAPTISTA</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzIndexOwnerKey>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">16</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+<pyPrivilegeClass>ASM-FW-GISFW-Data-Coverage</pyPrivilegeClass>
+</rowdata>
+</pyActivityPrivilegeList>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyStepsParentClass>ASM-FW-GISFW-Data-Coverage</pyStepsParentClass>
+<pyStepsActivityNameUC/>
+<pyStepsObjectName/>
+<pxCreateDateTime>20180219T041723.822 GMT</pxCreateDateTime>
+<pyStepsBlockName/>
+<pyStepsJavaSource/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsTransition/>
+<pzStepExpanded/>
+<pyStepsActivityName/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pyStepsDescription/>
+<pyStepsClassName>ASM-FW-GISFW-Data-Coverage</pyStepsClassName>
+<pyOnException/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxStepDefaultDescription/>
+<pyPropRef/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyStepActivityDescription/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsParentClass>ASM-FW-GISFW-Data-Coverage</pyStepsParentClass>
+<pyStepPageReference>RH_1.pySteps(1).pySteps(1)</pyStepPageReference>
+<pzStepExpanded/>
+<pyStepsClassName>ASM-FW-GISFW-Data-Coverage</pyStepsClassName>
+<pyStepsBlockName/>
+<pyStepActivityDescription/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyPropRef/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyTemplateInputBox/>
+<pyStepsJavaSource/>
+<pyStepsActivityNameUC>PROPERTY-MAP-DECISIONTABLE</pyStepsActivityNameUC>
+<pyStepsDescription/>
+<pxCreateDateTime>20171127T111842.861 GMT</pxCreateDateTime>
+<pyOnException/>
+<pxStepDefaultDescription>Property-Map-DecisionTable</pxStepDefaultDescription>
+<pyStepsActivityName>Property-Map-DecisionTable</pyStepsActivityName>
+<pyStepsTransition/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsPreCondition>false</pyStepsPreCondition>
+<pyExpanded>true</pyExpanded>
+<pyStepsObjectName/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20171127T111842.866 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<AllowMissingProperties>false</AllowMissingProperties>
+<DecisionTableName>MapIndemnityPercentage</DecisionTableName>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+<PropertyName>Local.PersenIndemnity</PropertyName>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>PropertyName</pyParametersParamName>
+<pyParametersParamDesc>Result in</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>DecisionTableName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule>Rule-Declare-DecisionTable</pyParametersParamIntelliRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamDesc>name of the Rule-Declare-DecisionTable</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>AllowMissingProperties</pyParametersParamName>
+<pyParametersParamDesc>if false (or not set), a missing property will halt execution</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateDateTime>20171127T111842.864 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20171127T111842.869 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefLimit/>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefIteration/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateDateTime>20171127T111842.872 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPropRef/>
+<pyStepPageReference>RH_1.pySteps(1).pySteps(2)</pyStepPageReference>
+<pxCreateDateTime>20171127T112738.138 GMT</pxCreateDateTime>
+<pyStepActivityDescription/>
+<pyStepsPreCondition>false</pyStepsPreCondition>
+<pzStepExpanded/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName/>
+<pyStepsParentClass>ASM-FW-GISFW-Data-Coverage</pyStepsParentClass>
+<pyTemplateInputBox/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pyStepsJavaSource/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyStepsClassName>ASM-FW-GISFW-Data-Coverage</pyStepsClassName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsDescription/>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyOnException/>
+<pyStepsTransition/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pyForEachProperty/>
+<pxCreateDateTime>20171127T112738.146 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxCreateDateTime>20171127T112738.149 GMT</pxCreateDateTime>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20171127T112738.141 GMT</pxCreateDateTime>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>.IndemnityMonth!=""</pyStepsPreCondParamsWhen>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsCallParams>
+<pyStepsParamUI/>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20171127T112738.143 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTruePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>Local.PersenIndemnity</PropertiesValue>
+<PropertiesName>.IndemnityPercentage</PropertiesName>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamReq>true</pyParametersParamReq>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyTemplateInputBox/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyEditable>true</pyEditable>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyParamArray>
+</rowdata>
+</pySteps>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20180219T041723.843 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyForEachProperty/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart>1</pyStepsRepeatDefStart>
+<pyStepsRepeatDefHasRepeat>REPEAT</pyStepsRepeatDefHasRepeat>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyStepsRepeatDefLimit>1</pyStepsRepeatDefLimit>
+<pyStepsRepeatDefIteration>1</pyStepsRepeatDefIteration>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20180219T041723.846 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20180219T041723.826 GMT</pxCreateDateTime>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhen>IsMBBusiness</pyStepsPreCondParamsWhen>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pyExpressionGadget>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxCreateDateTime>20180219T041818.238 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen>.IndemnityMonth!=""</pyStepsPreCondParamsWhen>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyExpressionGadget>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyTemplateInputBox/>
+<pyEditable>true</pyEditable>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20180219T041723.841 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+</pySteps>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>PersenIndemnity</pyParametersParamName>
+<pyParametersParamDesc/>
+</rowdata>
+</pyLocalParameters>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>flowType</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+</rowdata>
+</pySystemParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20180219T041256.282 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-55 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-OBJ-ACTIVITY ASM-FW-GISFW-DATA-COVERAGE SETINDEMNITYPERCENTAGE_ACT #20171127T111724.119 GMT</pzInsKey>
+</rowdata>
+</pyRuleCompareList>
+</pagedata>

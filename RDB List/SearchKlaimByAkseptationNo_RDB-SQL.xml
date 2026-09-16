@@ -1,0 +1,195 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC GCNMFW SearchKlaimByAkseptationNo_RDB</pxTabLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyWorkKey/>
+<pyTemplateInputBox/>
+<pyOpenSQL/>
+<pySaveSQL/>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHandlerFlow/>
+<pyTemplate/>
+<pyRWAccess>GCNMFW</pyRWAccess>
+<pyCircumstanceType/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDeleteSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pyDescription/>
+<pyRuleSetVersion>01-01-28</pyRuleSetVersion>
+<pyCircumstanceDate/>
+<pyShowJavaWindowName>GeneratedJava20260901T021841.829 GMT</pyShowJavaWindowName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pzChecksum>1597064842</pzChecksum>
+<pxUpdateDateTime>20180307T101242.289 GMT</pxUpdateDateTime>
+<pyWindowTitle/>
+<pyUsage/>
+<pyCircumstanceDefinition/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC GCNMFW SearchKlaimByAkseptationNo_RDB</pyRuleName>
+<pyBrowseSQL>SELECT DISTINCT (CASE 
+        WHEN (JSON_VALUE ("DATA_JSON" FORMAT JSON, '$.PolicyData.CIFData.Customer_P.ASMClientID' RETURNING VARCHAR2(4000) NULL ON ERROR)&lt;&gt;''
+            OR JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.ASMClientID' ) IS NOT NULL) 
+        THEN JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.pyFirstName' )||' '||JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.pyLastName' ) 
+        WHEN (JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany' ) IS NOT NULL 
+            OR JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany' )&lt;&gt;'') 
+        THEN JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany') 
+        END ) AS "DETAIL_DOCUMENT",
+        a.IDPEGA as "ID",
+        a.nopolis as "OLD_ID",
+        JSON_VALUE (DATA_JSON, '$.DateOfLoss') AS "TGL_EDIT",
+        get_name_agent (
+             getnewid (
+                JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.SourceOfBusiness'),
+                'm_agent'))
+        AS "DOC_COL_INFO",
+        (SELECT b.JSONDATA.Name
+             FROM m_branch b
+            WHERE b.ID =
+                     getnewid (
+                        JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.BranchCode'),
+                        'M_BRANCH'))
+         AS "DOC_COL_ID",
+         GET_BUSINESS_NAME (
+             getnewid (JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.BusinessCode'),
+                       'M_BUSINESS'))
+         AS "DOC_TYPE_ID"
+FROM json_klaim a 
+,json_table (DATA_JSON, '$.ObjectList[*]' COLUMNS (ObjectID  VARCHAR2(200) PATH '$.ObjectID')) AS "JT"
+,json_table (DATA_JSON, '$.ObjectList[*].ObjectCoverageList[*]' COLUMNS (CauseOfLossID  VARCHAR2(200) PATH '$.CauseOfLossID')) AS "JT2"
+,json_table (DATA_JSON, '$.ObjectList[*].ObjectCoverageList[*].AdjustmentList[*]' COLUMNS (pxListSubscript VARCHAR2(200) PATH '$.pxListSubscript')) AS "JT3"
+,json_table (DATA_JSON, '$.ObjectList[*].ObjectCoverageList[*].AdjustmentList[*]' COLUMNS (AcceptedNo VARCHAR2(200) PATH '$.AcceptedNo')) AS "JT4"
+where AcceptedNo LIKE '%{ASIS:InputData.CARI4}%'</pyBrowseSQL>
+<pyFormPost/>
+<pxMoveFromSystem/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionPatch>28</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC!GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB</pxInsName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateOperator>NANDA_M_NGEFAK</pxUpdateOperator>
+<pyLabel>SearchKlaimByAkseptationNo_RDB</pyLabel>
+<pyRequestType>SearchKlaimByAkseptationNo_RDB</pyRequestType>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOperator>NANDA_M_NGEFAK</pxCreateOperator>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyDocumentTitle/>
+<pxSiblingCount/>
+<pyInterface/>
+<pyRuleFormStatusTime>20260901T021841.807 GMT</pyRuleFormStatusTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSaveDateTime>20180307T101242.314 GMT</pxSaveDateTime>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDateProp/>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySpecialtyComponentData/>
+<pyRuleStarts/>
+<pxHostId>jboss2058</pxHostId>
+<pyDeletedObject/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB #20180307T101038.620 GMT</pzDocumentKey>
+<pyCircumstanceTemplate/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC</pyClassName>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxMoveImportDateTime>20191231T041908.659 GMT</pxMoveImportDateTime>
+<pyMethodStatus/>
+<pxUpdateOpName>NANDA NGEFAK</pxUpdateOpName>
+<pyHistoryObject/>
+<pyCircumstanceVal/>
+<pxCreateDateTime>20180307T101038.620 GMT</pxCreateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedDateTime/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOpName>NANDA NGEFAK</pxCreateOpName>
+<pySPRuleSetName/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSetVersion/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB #20180307T101038.620 GMT</pzOriginalInstanceKey>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB #20180307T101038.620 GMT</pzInsKey>
+<pyCircumstanceProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC!GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB</pxInsId>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyLaunch>true</pyLaunch>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNMFW!SEARCHKLAIMBYAKSEPTATIONNO_RDB #20180307T101038.620 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-28 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

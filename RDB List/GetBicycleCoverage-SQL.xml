@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyStreamName/>
+<pyFormPost/>
+<pzChecksum>-631635706</pzChecksum>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-BICYCLEPACKAGERATE ASM!GETBICYCLECOVERAGE #20180927T055300.955 GMT</pzDocumentKey>
+<pxCreateDateTime>20180927T055300.955 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxTabLabel>ASM-FW-GISFW-Int-BICYCLEPACKAGERATE ASM GetBicycleCoverage</pxTabLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRelativePath/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-BICYCLEPACKAGERATE ASM!GETBICYCLECOVERAGE #20180927T055300.955 GMT</pzInsKey>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-BICYCLEPACKAGERATE ASM!GETBICYCLECOVERAGE #20180927T055300.955 GMT</pzOriginalInstanceKey>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyDescription/>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pyDocumentTitle/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyShowJavaWindowName>GeneratedJava20260828T015257.719 GMT</pyShowJavaWindowName>
+<pyCircumstanceProp/>
+<pxSaveDateTime>20180927T074657.472 GMT</pxSaveDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyClassName>ASM-FW-GISFW-Int-BICYCLEPACKAGERATE</pyClassName>
+<pyRuleFormStatusTime>20260828T015257.695 GMT</pyRuleFormStatusTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyTemplate/>
+<pyWorkKey/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyCircumstanceType/>
+<pxInsId>ASM-FW-GISFW-INT-BICYCLEPACKAGERATE!ASM!GETBICYCLECOVERAGE</pxInsId>
+<pyValueChanged>false</pyValueChanged>
+<pyInterface/>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHandlerFlow/>
+<pyRuleStarts/>
+<pzRuleSetVersionPatch>74</pzRuleSetVersionPatch>
+<pyRuleEnds/>
+<pyUsage/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleName>ASM-FW-GISFW-Int-BICYCLEPACKAGERATE ASM GetBicycleCoverage</pyRuleName>
+<pxInstanceLockedRuleSetVersion/>
+<pyHistoryObject/>
+<pyDeleteSQL/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pyCircumstanceTemplate/>
+<pyCircumstanceVal/>
+<pyBaseRule>false</pyBaseRule>
+<pyRequestType>GetBicycleCoverage</pyRequestType>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySpecialtyComponentData/>
+<pyMethodStatus/>
+<pyIsFromManageChangeLP/>
+<pyRuleParamsStreamName/>
+<pyMemo>done</pyMemo>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-74</pyRuleSetVersion>
+<pxInstanceLockedKey/>
+<pyBrowseSQL>select coverage as HASIL1 from pooldata.bicyclepackage where package =  {InputBicycle.CARI1}</pyBrowseSQL>
+<pxHostId>jboss2058</pxHostId>
+<pxInsName>ASM-FW-GISFW-INT-BICYCLEPACKAGERATE!ASM!GETBICYCLECOVERAGE</pxInsName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyWindowTitle/>
+<pxInstanceLockedDateTime/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyDeletedObject/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyLabel>GetBicycleCoverage</pyLabel>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateDateTime>20180927T074657.389 GMT</pxUpdateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pxMoveImportDateTime>20191226T024653.593 GMT</pxMoveImportDateTime>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-74 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-BICYCLEPACKAGERATE ASM!GETBICYCLECOVERAGE #20180927T055300.955 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

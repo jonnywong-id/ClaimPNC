@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyOpenSQL/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedBy/>
+<pxInstanceLockedCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pyDeleteSQL/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxCreateDateTime>20201019T062717.243 GMT</pxCreateDateTime>
+<pyDeletedObject/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportDateTime>20201111T105224.155 GMT</pxMoveImportDateTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyClassName>ASM-FW-GCNMFW-Int-PANEL_HE</pyClassName>
+<pyCircumstanceDateProp/>
+<pyRuleFormStatusTime>20260827T043345.846 GMT</pyRuleFormStatusTime>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pySaveSQL/>
+<pxCommitDateTime>20201111T105224.000 GMT</pxCommitDateTime>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pyDescription/>
+<pyRequestType>GetDataSisiPanel</pyRequestType>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyJavaStream/>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PANEL_HE GCNM GetDataSisiPanel</pxTabLabel>
+<pxInstanceLockedRuleSet/>
+<pyBrowseSQL>select sisi_panel AS "NAME" from pooldata.lokasi_panel_he where id_panel={TempSparepart.MIN_STOCK} and nama={TempSparepart.PANJANG}</pyBrowseSQL>
+<pzChecksum>1122518321</pzChecksum>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateDateTime>20201019T063302.260 GMT</pxUpdateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!GETDATASISIPANEL #20201019T062717.243 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedKey/>
+<pyRuleStarts/>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss2145</pxHostId>
+<pySpecialtyComponentData/>
+<pyWindowTitle/>
+<pySPRuleSetName/>
+<pyStatus/>
+<pyDocumentTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!GETDATASISIPANEL #20201019T062717.243 GMT</pzDocumentKey>
+<pyLabel>GetDataSisiPanel</pyLabel>
+<pyCircumstanceDate/>
+<pyTemplateInputBox/>
+<pxSaveDateTime>20201019T063302.367 GMT</pxSaveDateTime>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHistoryObject/>
+<pxInstanceLockedDateTime/>
+<pyRuleName>ASM-FW-GCNMFW-Int-PANEL_HE GCNM GetDataSisiPanel</pyRuleName>
+<pyInterface/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!GETDATASISIPANEL #20201019T062717.243 GMT</pzInsKey>
+<pyStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260827T043345.901 GMT</pyShowJavaWindowName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceType/>
+<pxInsName>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!GETDATASISIPANEL</pxInsName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyWorkKey/>
+<pyUsage/>
+<pyFormPost/>
+<pxInsId>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!GETDATASISIPANEL</pxInsId>
+<pyHandlerFlow/>
+<pyTemplate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveFromSystem/>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!GETDATASISIPANEL #20201019T062717.243 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

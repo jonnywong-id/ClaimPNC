@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CEKDATAPROPERTYLIST_SQL #20260604T080622.157 GMT</pzDocumentKey>
+<pyRuleFormStatusTime>20260827T085105.626 GMT</pyRuleFormStatusTime>
+<pyCircumstanceProp/>
+<pxSiblingCount/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyCircumstanceDefinition/>
+<pyFormPost/>
+<pySaveSQL/>
+<pyWindowTitle/>
+<pyCircumstanceDateProp/>
+<pyTemplate/>
+<pyInterface/>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDescription/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20260604T080806.051 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceType/>
+<pyLabelOld>CekDataPropertyList_SQL</pyLabelOld>
+<pyTemplateInputBox/>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pxInstanceLockedRuleSet/>
+<pyRelativePath/>
+<pxUpdateOpName>Albert</pxUpdateOpName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBrowseSQL>select count(1) as "HASIL1" from pooldata.t_propertylist
+where idpega = {InputData.CARI1}</pyBrowseSQL>
+<pyUsage/>
+<pxInstanceLockedKey/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeleteMemo>add outgo sum dari vehiclelist</pyDeleteMemo>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETOUTGOVEHICLELIST_SQL #20260512T014907.782 GMT</pzOriginalInstanceKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyLabel>CekDataPropertyList_SQL</pyLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>ALBERT</pxUpdateOperator>
+<pyOpenSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pxCommitDateTime>20260606T145854.000 GMT</pxCommitDateTime>
+<pySpecialtyComponentData/>
+<pyRequestType>CekDataPropertyList_SQL</pyRequestType>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxOriginalCreateOpName/>
+<pyShowJavaWindowName>GeneratedJava20260827T085105.655 GMT</pyShowJavaWindowName>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportDateTime>20260606T145853.477 GMT</pxMoveImportDateTime>
+<pyClassName>ASM-FW-GISFW-Int-Pooldata</pyClassName>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyRuleName>ASM-FW-GISFW-Int-Pooldata ASM CekDataPropertyList_SQL</pyRuleName>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOperator/>
+<pyStatus/>
+<pyCircumstanceDate/>
+<pyWorkKey/>
+<pxInstanceLockedDateTime/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyCircumstanceTemplate/>
+<pyHandlerFlow/>
+<pzChecksum>-1064525918</pzChecksum>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMemo>add cek ke propertylist</pyMemo>
+<pyRuleParamsStreamName/>
+<pxCreateOperator>ALBERT</pxCreateOperator>
+<pyDocumentTitle/>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceVal/>
+<pxTabLabel>ASM-FW-GISFW-Int-Pooldata ASM CekDataPropertyList_SQL</pxTabLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyMethodStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CEKDATAPROPERTYLIST_SQL #20260604T080622.157 GMT</pzInsKey>
+<pxCreateOpName>Albert</pxCreateOpName>
+<pyJavaStream/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyValueChanged>false</pyValueChanged>
+<pySPRuleSetName>ALBERT@</pySPRuleSetName>
+<pxCreateDateTime>20260604T080622.157 GMT</pxCreateDateTime>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!CEKDATAPROPERTYLIST_SQL</pxInsName>
+<pyDeletedObject/>
+<pxHostId>jboss10362</pxHostId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>01-05-77</pyRuleSetVersion>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!CEKDATAPROPERTYLIST_SQL</pxInsId>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateDateTime>20260604T080806.038 GMT</pxUpdateDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-05-77 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CEKDATAPROPERTYLIST_SQL #20260604T080622.157 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

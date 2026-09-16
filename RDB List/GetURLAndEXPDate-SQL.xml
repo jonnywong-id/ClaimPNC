@@ -1,0 +1,172 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyFormPost/>
+<pxInstanceLockedCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20260820T030550.040 GMT</pyShowJavaWindowName>
+<pyMemo>check in RS 12</pyMemo>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!GETURLANDEXPDATE #20250616T072828.402 GMT</pzInsKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pxInstanceLockedRuleSet/>
+<pyIsFromManageChangeLP/>
+<pyHandlerFlow/>
+<pyRequestType>GetURLAndEXPDate</pyRequestType>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pyLabel>GetURLAndEXPDate</pyLabel>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateDateTime/>
+<pzChecksum>-2139917763</pzChecksum>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pxHostId>jboss10372</pxHostId>
+<pxMoveImportDateTime>20250617T114318.783 GMT</pxMoveImportDateTime>
+<pyStatus/>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyWindowTitle/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!GETURLANDEXPDATE #20250410T084246.666 GMT</pzOriginalInstanceKey>
+<pyDescription/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleStarts/>
+<pxSiblingCount/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCreateDateTime>20250616T072828.402 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!GETURLANDEXPDATE #20250616T072828.402 GMT</pzDocumentKey>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleSetVersion>01-03-12</pyRuleSetVersion>
+<pyRuleFormStatusTime>20260820T030550.018 GMT</pyRuleFormStatusTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pyCircumstanceType/>
+<pyStreamName/>
+<pxCommitDateTime>20250617T114318.000 GMT</pxCommitDateTime>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDate/>
+<pyRuleEnds/>
+<pyBrowseSQL>select urlpublic AS "URLImage",EXPDATE AS "exp", APPFOLDER AS "appfolder", FILENAME AS "NamaFile" from general.t_storage_image WHERE IMAGEID = {ImageID.CARI1}</pyBrowseSQL>
+<pxUpdateDateTime>20250616T072835.432 GMT</pxUpdateDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceProp/>
+<pyDeletedObject/>
+<pxInstanceLockedKey/>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzIsPrivateCheckOut/>
+<pyTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pyCircumstanceTemplate/>
+<pxSaveDateTime>20250616T072835.446 GMT</pxSaveDateTime>
+<pyWorkKey/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInstanceLockedDateTime/>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI2!ASM!GETURLANDEXPDATE</pxInsId>
+<pyOpenSQL/>
+<pxOriginalCreateSystemID/>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI2</pyClassName>
+<pyCircumstanceVal/>
+<pyRuleParamsStreamName/>
+<pyJavaStream/>
+<pyUsage/>
+<pyRelativePath/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pySpecialtyComponentData/>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI2 ASM GetURLAndEXPDate</pxTabLabel>
+<pxOriginalCreateOperator/>
+<pyLabelOld>GetURLAndEXPDate</pyLabelOld>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDefinition/>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pzRuleSetVersionPatch>12</pzRuleSetVersionPatch>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI2 ASM GetURLAndEXPDate</pyRuleName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySaveSQL/>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI2!ASM!GETURLANDEXPDATE</pxInsName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-12 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!GETURLANDEXPDATE #20250616T072828.402 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyDelete>true</pyDelete>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+</pagedata>

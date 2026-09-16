@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pxOriginalCreateDateTime/>
+<pyStatus/>
+<pyTemplate/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOperator>nicksontichandra</pxUpdateOperator>
+<pyCircumstanceVal/>
+<pyRuleEnds/>
+<pyValueChanged>false</pyValueChanged>
+<pyDeletedObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateSystemID/>
+<pyCheckInRuleSet/>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pyTemplateInputBox/>
+<pyLabel>DeleteKasirKlaimFail</pyLabel>
+<pyCircumstanceProp/>
+<pyStreamName/>
+<pxCreateSystemID>pegaprdsimasinsurtech</pxCreateSystemID>
+<pyOpenSQL/>
+<pxSaveDateTime>20250930T042430.295 GMT</pxSaveDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyTemporaryObject/>
+<pxHostId>jboss26</pxHostId>
+<pxMergeSynchronized>20250804T082807.245 GMT</pxMergeSynchronized>
+<pyJavaStream/>
+<pyRelativePath/>
+<pxInstanceLockedBy/>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-03-07</pyRuleSetVersion>
+<pyWorkKey/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzChecksum>1212888348</pzChecksum>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!DELETEKASIRKLAIMFAIL #20250804T041625.690 GMT</pzOriginalInstanceKey>
+<pyCircumstanceType/>
+<pxInstanceLockedCreateDateTime/>
+<pyFormPost/>
+<pyCircumstanceTemplate/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!DELETEKASIRKLAIMFAIL</pxInsId>
+<pxOriginalCreateOpName/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM DeleteKasirKlaimFail</pxTabLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateDateTime>20250930T042430.209 GMT</pxUpdateDateTime>
+<pySpecialtyComponentData/>
+<pyLabelOld>DeleteKasirKlaimFail</pyLabelOld>
+<pyMethodStatus/>
+<pxMoveImportDateTime>20250804T085818.254 GMT</pxMoveImportDateTime>
+<pyCircumstanceDateProp/>
+<pyDeleteSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMemo>Buat package baru</pyMemo>
+<pxInstanceLockedDateTime/>
+<pxCommitDateTime>20250930T042430.000 GMT</pxCommitDateTime>
+<pyBrowseSQL>DECLARE 
+  POLISNO VARCHAR2(32767);
+  PEGAID VARCHAR2(32767);
+  ERRMSG VARCHAR2(32767);
+
+BEGIN 
+  POLISNO := {TempJsonKlaim.POLICY_NO};
+  PEGAID := {TempJsonKlaim.BUSINESS_CODE};
+
+  POOLDATA.JSONKLAIMTEMP1.DELETEKASIRKLAIMFAIL ( {TempJsonKlaim.POLICY_NO}, {TempJsonKlaim.BUSINESS_CODE}, {TempJsonKlaim.IDMASTER OUT});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyWindowTitle/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatusTime>20260903T025112.682 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateOperator/>
+<pyDescription/>
+<pxSiblingCount/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM DeleteKasirKlaimFail</pyRuleName>
+<pyShowJavaWindowName>GeneratedJava20260903T025112.728 GMT</pyShowJavaWindowName>
+<pxInstanceLockedKey/>
+<pySaveSQL/>
+<pyCircumstanceDefinition/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCircumstanceDate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!DELETEKASIRKLAIMFAIL</pxInsName>
+<pxInstanceLockedRuleSet/>
+<pxMoveFromSystem/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pxUpdateSystemID>pegaprdsimasinsurtech</pxUpdateSystemID>
+<pxCreateOperator>nicksontichandra</pxCreateOperator>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyRuleParamsStreamName/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!DELETEKASIRKLAIMFAIL #20250930T042414.734 GMT</pzInsKey>
+<pyRuleStarts/>
+<pxCreateDateTime>20250930T042414.734 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!DELETEKASIRKLAIMFAIL #20250930T042414.734 GMT</pzDocumentKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyInterface/>
+<pyRequestType>DeleteKasirKlaimFail</pyRequestType>
+<pzRuleSetVersionPatch>07</pzRuleSetVersionPatch>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzIsPrivateCheckOut/>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pyUsage/>
+<pyHandlerFlow/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pyIsFromManageChangeLP/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pyDelete>true</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>false</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!DELETEKASIRKLAIMFAIL #20250804T082758.132 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-07 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!DELETEKASIRKLAIMFAIL #20250930T042414.734 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

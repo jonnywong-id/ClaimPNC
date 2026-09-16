@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxSiblingCount/>
+<pxInstanceLockedCreateDateTime/>
+<pyDescription/>
+<pyMemo>done</pyMemo>
+<pyCircumstanceDefinition/>
+<pyShowJavaWindowName>GeneratedJava20260831T022508.047 GMT</pyShowJavaWindowName>
+<pyIsFromManageChangeLP/>
+<pyRuleEnds/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAXOLPERBUSINESS #20221103T104431.900 GMT</pzOriginalInstanceKey>
+<pyCircumstanceVal/>
+<pxMoveImportDateTime>20230112T100628.878 GMT</pxMoveImportDateTime>
+<pxMoveFromSystem/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyInterface/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataTrytyInwardFromUploadData</pyRuleName>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedBy/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateDateTime>20221125T055853.812 GMT</pxUpdateDateTime>
+<pyTemplateInputBox/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceType/>
+<pyTemplate/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataTrytyInwardFromUploadData</pxTabLabel>
+<pyBrowseSQL>SELECT COUNT (distinct(A.COMPANYNAME)) AS "IsDLA",
+         SUM (TO_NUMBER (REPLACE (REPLACE (CLAIMAMOUNT, '.', ''), ',', '.'))*POOLDATA.GETCURRENCYSTANDARD(A.CURRENCYID,to_date(A.DATEOFLOSS,'dd/mm/yyyy'))/POOLDATA.GETCURRENCYSTANDARD('10001',to_date(A.DATEOFLOSS,'dd/mm/yyyy')))
+            AS "DLAShare",
+         SUM (
+            TO_NUMBER (
+               REPLACE (REPLACE (PAIDCLAIMAMOUNTSHARE, '.', ''), ',', '.'))*POOLDATA.GETCURRENCYSTANDARD(A.CURRENCYID,to_date(A.DATEOFLOSS,'dd/mm/yyyy'))/POOLDATA.GETCURRENCYSTANDARD('10001',to_date(A.DATEOFLOSS,'dd/mm/yyyy')))
+            AS "KlaimAmount",
+         'Treaty Inward' AS "Country",
+         a.DATEOFLOSS AS "DLAType"
+    FROM POOLDATA.T_CLAIM_INWARD_XOL a
+ WHERE     TO_CHAR (TO_DATE (a.dateofloss, 'dd/mm/yyyy'),'dd/mm/yyyy') = {TempMst.ObjectName}
+       AND A.CAUSEOFLOSS = {TempMst.NameOfBank}
+       group by  dateofloss</pyBrowseSQL>
+<pyWorkKey/>
+<pyFormPost/>
+<pyRuleStarts/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATATRYTYINWARDFROMUPLOADDATA #20221125T055842.929 GMT</pzDocumentKey>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pxCreateDateTime>20221125T055842.929 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyMethodStatus/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDateProp/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyUsage/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyOpenSQL/>
+<pyDeletedObject/>
+<pyLabelOld>Get Data Tryty Inward From upload Data</pyLabelOld>
+<pyDeleteSQL/>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatusTime>20260831T022508.027 GMT</pyRuleFormStatusTime>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATATRYTYINWARDFROMUPLOADDATA</pxInsName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCheckInRuleSet/>
+<pySpecialtyComponentData/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyStreamName/>
+<pyStatus/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxHostId>jboss10362</pxHostId>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATATRYTYINWARDFROMUPLOADDATA #20221125T055842.929 GMT</pzInsKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateSystemID/>
+<pySaveSQL/>
+<pxInstanceLockedRuleSet/>
+<pyRuleParamsStreamName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20230112T100629.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalCreateDateTime/>
+<pxSaveDateTime>20221125T055853.835 GMT</pxSaveDateTime>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATATRYTYINWARDFROMUPLOADDATA</pxInsId>
+<pyCircumstanceProp/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateOperator/>
+<pzChecksum>-668247644</pzChecksum>
+<pyRelativePath/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionPatch>02</pzRuleSetVersionPatch>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHandlerFlow/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyJavaStream/>
+<pyDocumentTitle/>
+<pyTemporaryObject/>
+<pyWindowTitle/>
+<pyLabel>Get Data Tryty Inward From upload Data</pyLabel>
+<pxMergeSynchronized>20221108T043718.811 GMT</pxMergeSynchronized>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleSetVersion>01-02-02</pyRuleSetVersion>
+<pyRequestType>GetDataTrytyInwardFromUploadData</pyRequestType>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATATRYTYINWARDFROMUPLOADDATA #20221125T055842.929 GMT</pzInsKey>
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-01 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATATRYTYINWARDFROMUPLOADDATA #20221104T070319.302 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

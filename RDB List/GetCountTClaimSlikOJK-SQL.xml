@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyLabel>GetCountTClaimSlikOJK</pyLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETCOUNTTCLAIMSLIKOJK #20250707T091549.921 GMT</pzOriginalInstanceKey>
+<pxCommitDateTime>20250710T070605.000 GMT</pxCommitDateTime>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDefinition/>
+<pyRelativePath/>
+<pyMemo>Pindah ruleset</pyMemo>
+<pyShowJavaWindowName>GeneratedJava20260901T080939.914 GMT</pyShowJavaWindowName>
+<pzIsPrivateCheckOut/>
+<pxInstanceLockedRuleSet/>
+<pxSiblingCount/>
+<pyFormPost/>
+<pyDocumentTitle/>
+<pxUpdateDateTime>20250710T043607.870 GMT</pxUpdateDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsFromManageChangeLP/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatusTime>20260901T080939.899 GMT</pyRuleFormStatusTime>
+<pyTemplate/>
+<pzChecksum>2112054524</pzChecksum>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM GetCountTClaimSlikOJK</pxTabLabel>
+<pySPRuleSetName>NICKSONTICHANDRA@</pySPRuleSetName>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pyCircumstanceVal/>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pyLabelOld>GetCountTClaimSlikOJK</pyLabelOld>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETCOUNTTCLAIMSLIKOJK #20250710T043557.471 GMT</pzDocumentKey>
+<pxHostId>jboss10-42</pxHostId>
+<pyStatus/>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETCOUNTTCLAIMSLIKOJK</pxInsId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyUsage/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETCOUNTTCLAIMSLIKOJK</pxInsName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pyMethodStatus/>
+<pyHandlerFlow/>
+<pyStreamName/>
+<pyCircumstanceDate/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL/>
+<pyDeleteSQL/>
+<pxSaveDateTime>20250710T043607.878 GMT</pxSaveDateTime>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceType/>
+<pxInstanceLockedKey/>
+<pxOriginalCreateOpName/>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pyRuleEnds/>
+<pySpecialtyComponentData/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBrowseSQL>select count(1) as "CityID" from pooldata.t_claim_slik_ojk where claimid = {TempDataSlinkD01.ClaimID}</pyBrowseSQL>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pyRuleParamsStreamName/>
+<pxMoveImportDateTime>20250710T070605.522 GMT</pxMoveImportDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETCOUNTTCLAIMSLIKOJK #20250710T043557.471 GMT</pzInsKey>
+<pyRequestType>GetCountTClaimSlikOJK</pyRequestType>
+<pyRuleStarts/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM GetCountTClaimSlikOJK</pyRuleName>
+<pyInterface/>
+<pyWindowTitle/>
+<pyOpenSQL/>
+<pxCreateDateTime>20250710T043557.471 GMT</pxCreateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDescription/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyLaunch>true</pyLaunch>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyDelegates>false</pyDelegates>
+<pyDelete>true</pyDelete>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>false</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETCOUNTTCLAIMSLIKOJK #20250710T043557.471 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,167 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM GetAdd1MonthSLIK</pyRuleName>
+<pxUpdateSystemID>pegasimaspenjaminanprod</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateDateTime>20251022T064309.432 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyUsage/>
+<pyMemo>Memindahkan ke browsesql</pyMemo>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pxCreateDateTime>20251022T063943.740 GMT</pxCreateDateTime>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETADD1MONTHSLIK</pxInsName>
+<pyFormPost/>
+<pxSaveDateTime>20251022T064309.457 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pyDocumentTitle/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETADD1MONTHSLIK #20251022T063943.740 GMT</pzInsKey>
+<pyTemplate/>
+<pyLabelOld>GetAdd1MonthSLIK</pyLabelOld>
+<pyRelativePath/>
+<pzIsPrivateCheckOut/>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETADD1MONTHSLIK</pxInsId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETADD1MONTHSLIK #20251022T063943.740 GMT</pzDocumentKey>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyWindowTitle/>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pxMoveFromSystem/>
+<pzChecksum>350575987</pzChecksum>
+<pxMoveImportOperId/>
+<pyHandlerFlow/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM GetAdd1MonthSLIK</pxTabLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDate/>
+<pyTemplateInputBox/>
+<pyDeletedObject/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pegasimaspenjaminanprod</pxCreateSystemID>
+<pxCommitDateTime>20251022T064309.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETADD1MONTHSLIK #20251022T063943.740 GMT</pzOriginalInstanceKey>
+<pyStreamName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pxMoveImportOperName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatusTime>20260904T030107.790 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pxHostId>jboss10125</pxHostId>
+<pyOpenSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceVal/>
+<pyCircumstanceDateProp/>
+<pyDeleteMemo>Tambah property</pyDeleteMemo>
+<pyShowJavaWindowName>GeneratedJava20260904T030107.811 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyBrowseSQL>select add_months(sysdate,1) as "City" from dual</pyBrowseSQL>
+<pyCircumstanceType/>
+<pyDeleteSQL/>
+<pyStatus/>
+<pyDescription/>
+<pyHistoryObject/>
+<pyRequestType>GetAdd1MonthSLIK</pyRequestType>
+<pxMoveImportDateTime/>
+<pySaveSQL/>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyLabel>GetAdd1MonthSLIK</pyLabel>
+<pyCircumstanceTemplate/>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETADD1MONTHSLIK #20251022T063943.740 GMT</pzInsKey>
+<pyLabel>01-02-08 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyDelete>true</pyDelete>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportDateTime>20201111T105224.234 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyIsFromManageChangeLP/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pyJavaStream/>
+<pxInstanceLockedBy/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyUsage/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyCircumstanceDateProp/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleEnds/>
+<pyShowJavaWindowName>GeneratedJava20260827T043526.572 GMT</pyShowJavaWindowName>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxHostId>jboss2145</pxHostId>
+<pySaveSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTMASTERSPAREPARTTYPE_SQL #20201015T084922.976 GMT</pzOriginalInstanceKey>
+<pxOriginalCreateOperator/>
+<pyCircumstanceProp/>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDocumentTitle/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>select to_number(nvl(max(NO_GROUP_RANGKA),0)+1)  AS "ID"  from POOLDATA.sparepart_he_vin_key</pyBrowseSQL>
+<pyCircumstanceType/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyRuleFormStatusTime>20260827T043526.129 GMT</pyRuleFormStatusTime>
+<pyOpenSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pyLabel>GetNewNoGroup</pyLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxMoveFromSystem/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyFormPost/>
+<pyInterface/>
+<pyLabelOld>GetNewNoGroup</pyLabelOld>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateDateTime>20201020T022332.027 GMT</pxCreateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetNewNoGroup</pyRuleName>
+<pxOriginalCreateOpName/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetNewNoGroup</pxTabLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedKey/>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSet/>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETNEWNOGROUP</pxInsId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRelativePath/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyWorkKey/>
+<pyDeleteMemo>add nospak</pyDeleteMemo>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETNEWNOGROUP #20201020T022332.027 GMT</pzDocumentKey>
+<pyHandlerFlow/>
+<pyRuleParamsStreamName/>
+<pyRequestType>GetNewNoGroup</pyRequestType>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pxOriginalCreateSystemID/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyWindowTitle/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pyMemo>done</pyMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyMethodStatus/>
+<pyCircumstanceDate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETNEWNOGROUP</pxInsName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETNEWNOGROUP #20201020T022332.027 GMT</pzInsKey>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxCommitDateTime>20201111T105224.000 GMT</pxCommitDateTime>
+<pxSaveDateTime>20201020T084453.760 GMT</pxSaveDateTime>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pyDescription/>
+<pzChecksum>1014276269</pzChecksum>
+<pxUpdateDateTime>20201020T084453.741 GMT</pxUpdateDateTime>
+<pxInstanceLockedDateTime/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETNEWNOGROUP #20201020T022332.027 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleData>true</pyRuleData>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+</pyToolBarSettings>
+</pagedata>

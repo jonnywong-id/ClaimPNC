@@ -1,0 +1,484 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceVal/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyLabel>pxGetCompareLabelParams</pyLabel>
+<pyRuleSearchQuery/>
+<pyDocumentTitle/>
+<pyCircumstanceDateProp/>
+<pzOriginalInstanceKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20160912T172451.662 GMT</pzOriginalInstanceKey>
+<pyUsage/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyWorkKey/>
+<pyReloadForm>true</pyReloadForm>
+<pyIsFromManageChangeLP/>
+<pxMoveOriginalRuleSetVersion>07-10-27</pxMoveOriginalRuleSetVersion>
+<pyDescription/>
+<pyJavaClassName>embed_compare_change__pxgetcomparelabelparams_20180713_135514_313</pyJavaClassName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyValueChanged>false</pyValueChanged>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveFromSystem/>
+<pxInstanceLockedSaveDateTime/>
+<pyObjClassLabel>Data Transform</pyObjClassLabel>
+<pyModelName>pxGetCompareLabelParams</pyModelName>
+<pzDocumentKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzDocumentKey>
+<pxCommitDateTime>20191015T081546.000 GMT</pxCommitDateTime>
+<pxInsName>EMBED-COMPARE-CHANGE-!PXGETCOMPARELABELPARAMS</pxInsName>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pxUpdateOpName>David Picariello</pxUpdateOpName>
+<pyRuleName>pxGetCompareLabelParams</pyRuleName>
+<pxOriginalCreateDateTime>20180713T135514.313 GMT</pxOriginalCreateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxObjClass>Rule-Obj-Model</pxObjClass>
+<pyShowJavaWindowName>GeneratedJava20260724T075837.193 GMT</pyShowJavaWindowName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pxInsId>!PXGETCOMPARELABELPARAMS</pxInsId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pxSaveDateTime>20180713T135514.313 GMT</pxSaveDateTime>
+<pzChecksum>2058090842</pzChecksum>
+<pxCreateDateTime>20180713T135514.313 GMT</pxCreateDateTime>
+<pyStreamName/>
+<pySpecialtyComponentData/>
+<pyRuleFormStatusTime>20260724T075837.165 GMT</pyRuleFormStatusTime>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSet/>
+<pySPRuleSetName>picada@</pySPRuleSetName>
+<pyCircumstanceTemplate/>
+<pyRuleStarts/>
+<pyMethodStatus/>
+<pxUpdateOperator>picada</pxUpdateOperator>
+<pyCircumstanceProp/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHistoryObject/>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyWindowTitle/>
+<pxInstanceLockedKey/>
+<pzInsKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzInsKey>
+<pySelected>false</pySelected>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyJavaStream/>
+<pyClassName>Embed-Compare-Change-</pyClassName>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pxMoveImportOperName>Ryan Feeney</pxMoveImportOperName>
+<pxMoveOriginalKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20160930T080634.311 GMT</pxMoveOriginalKey>
+<pxOriginalCreateOperator>picada</pxOriginalCreateOperator>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyTemplateInputBox/>
+<pyFormPost/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRelativePath/>
+<pyMemo>Greatly simplifed. Moved logic into Embed-Compare-Change-String</pyMemo>
+<pzImplVersion>06.02.01</pzImplVersion>
+<pzQuickConfigure>true</pzQuickConfigure>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleSet>Pega-Desktop</pyRuleSet>
+<pyCircumstanceType/>
+<pxMoveImportDateTime>20160929T152540.262 GMT</pxMoveImportDateTime>
+<pxMoveImportOperId>feenr</pxMoveImportOperId>
+<pxCreateOperator>picada</pxCreateOperator>
+<pxInstanceLockedBy/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStatus/>
+<pyDataModelFormat>Clipboard</pyDataModelFormat>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pzIndexCount>28</pzIndexCount>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateOpName>David Picariello</pxOriginalCreateOpName>
+<pyCircumstanceDefinition/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pyInterface/>
+<pxMoveOriginalRuleSet>Pega-Desktop</pxMoveOriginalRuleSet>
+<pxUpdateDateTime>20180713T135514.313 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pyTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxTabLabel>pxGetCompareLabelParams</pxTabLabel>
+<pyCallSuperClassModel>true</pyCallSuperClassModel>
+<pzStatus>false</pzStatus>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleCompareList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyShowJava>true</pyShowJava>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pySiblings>true</pySiblings>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyRefresh>true</pyRefresh>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pyRun>true</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxRuleFamilyName>PZDESKTOP!PXDETERMINECOMPAREPAGEINDEX--(STRING)</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyRuleName>pzDesktop pxDetermineComparePageIndex--(String)</pyRuleName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>Embed-Compare-Change-</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pxRuleFamilyName>EMBED-COMPARE-CHANGE-</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXPROPERTYLABEL</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pyRuleName>pxPropertyLabel</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyRuleName>pxCurrentReference</pyRuleName>
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXCURRENTREFERENCE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXPREVIOUSREFERENCE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxPreviousReference</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxChangeType</pyRuleName>
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXCHANGETYPE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleClassName>Embed-Compare-Change-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-MODEL EMBED-COMPARE-CHANGE- PXGETCOMPARELABELPARAMS #20180713T135514.313 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxPageLabel</pyRuleName>
+<pyMethodStatus/>
+<pxRuleFamilyName>PXPAGELABEL</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyParameters REPEATINGTYPE="PageList"/>
+<pyProperties REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyExpanded>true</pyExpanded>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyActionName>WHEN</pyActionName>
+<pyPropRef/>
+<pyRelationNameWhen/>
+<pyPropertiesName>.pxChangeType=="Removed"</pyPropertiesName>
+<pyDisabled/>
+<pyPropertyStepId>1</pyPropertyStepId>
+<pxCreateDateTime>20160913T183311.701 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyRelationNameUpdatepage/>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyRelationNameAppend/>
+<pyPropertiesValue/>
+<pyTemplateInputBox/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyTemplateRichTextEditor/>
+<pyProperties REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropertyStepId>1.1</pyPropertyStepId>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyClassName/>
+<pyPropertiesName>param.PageIndex</pyPropertiesName>
+<pyPropertiesValue>@pxDetermineComparePageIndex(.pxPreviousReference)</pyPropertiesValue>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyActionName>SET</pyActionName>
+<pyExpanded>true</pyExpanded>
+<pyRelationNameAppend/>
+<pxCreateDateTime>20160913T183316.526 GMT</pxCreateDateTime>
+<pyRelationNameUpdatepage/>
+<pyRelationNameWhen/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyDisabled/>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyTemplateInputBox/>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyProperties REPEATINGTYPE="PageList"/>
+</rowdata>
+</pyProperties>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyTemplateInputBox/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPropertyStepId>2</pyPropertyStepId>
+<pyPropertiesName/>
+<pyTemplateInputBox/>
+<pyExpanded>true</pyExpanded>
+<pxCreateDateTime>20160913T183451.050 GMT</pxCreateDateTime>
+<pyTemplateRichTextEditor/>
+<pyActionName>OTHERWISE</pyActionName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyRelationNameAppend/>
+<pyRelationNameUpdatepage/>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyPropertiesValue/>
+<pyRelationNameWhen/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyDisabled/>
+<pyPropRef/>
+<pyProperties REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRelationNameAppend/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyRelationNameWhen/>
+<pyActionName>SET</pyActionName>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyRelationNameUpdatepage/>
+<pyPropertiesName>param.PageIndex</pyPropertiesName>
+<pyExpanded>true</pyExpanded>
+<pyDisabled/>
+<pyPropertiesValue>@pxDetermineComparePageIndex(.pxCurrentReference)</pyPropertiesValue>
+<pxCreateDateTime>20160913T183455.082 GMT</pxCreateDateTime>
+<pyPropertyStepId>2.1</pyPropertyStepId>
+<pyClassName/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyShowParameters>true</pyShowParameters>
+<pyTemplateInputBox/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyProperties REPEATINGTYPE="PageList"/>
+</rowdata>
+</pyProperties>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRelationNameWhen/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyExpanded>true</pyExpanded>
+<pyRelationNameUpdatepage/>
+<pyPropertiesValue/>
+<pyPropRef/>
+<pyTemplateInputBox/>
+<pyPropertyStepId>3</pyPropertyStepId>
+<pyDisabled/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRelationNameAppend/>
+<pyPropertiesName>The following two steps could be overridden in subclasses</pyPropertiesName>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyActionName>COMMENT</pyActionName>
+<pxCreateDateTime>20160926T170732.194 GMT</pxCreateDateTime>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyExpressionGadget>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyProperties REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyRelationNameWhen/>
+<pyRelationNameAppend/>
+<pyClassName/>
+<pyExpanded>true</pyExpanded>
+<pyPropRef/>
+<pyPropertiesValue>.pxPropertyLabel</pyPropertiesValue>
+<pyRelationNameUpdatepage/>
+<pyPropertiesName>param.PropertyLabel</pyPropertiesName>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pxCreateOperator>picada</pxCreateOperator>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pxCreateDateTime>20160912T182741.747 GMT</pxCreateDateTime>
+<pyActionName>SET</pyActionName>
+<pyDisabled/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyPropertyStepId>4</pyPropertyStepId>
+<pyExpressionGadget>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyEditable>true</pyEditable>
+<pyShowParameters>true</pyShowParameters>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyProperties REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPropertyStepId>5</pyPropertyStepId>
+<pyActionName>SET</pyActionName>
+<pyClassName/>
+<pyPropertiesValue>.pxPageLabel</pyPropertiesValue>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyPropertiesName>param.PageLabel</pyPropertiesName>
+<pyDragDropMessage/>
+<pyDisabled/>
+<pyExpressionGadget>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyProperties>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

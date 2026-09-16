@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionPatch>56</pzRuleSetVersionPatch>
+<pxCreateDateTime>20200826T022018.335 GMT</pxCreateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pyInterface/>
+<pyLabelOld>GetExportDataPreDLA</pyLabelOld>
+<pyCircumstanceVal/>
+<pyCircumstanceDate/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetExportDataPreDLA</pxTabLabel>
+<pxSaveDateTime>20200826T023226.300 GMT</pxSaveDateTime>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOperator>WILLYYAKOBUSTANDRA</pxUpdateOperator>
+<pyWorkKey/>
+<pxOriginalCreateOperator/>
+<pyRuleSetVersion>01-01-56</pyRuleSetVersion>
+<pyDeletedObject/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyFormPost/>
+<pyMemo>done</pyMemo>
+<pyHandlerFlow/>
+<pyRuleStarts/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyWindowTitle/>
+<pxMoveFromSystem/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyBrowseSQL>select claimno AS "CaseID", nopolis AS "TKI", picteknik AS "AnaylstRemarks", nodla AS "City", nilaidla AS "CityID", TO_CHAR (tgldla, 'dd/mm/yyyy')AS "StatusWork", dlareinsurer AS "CloseClaimNote" ,tipedla AS "Location" from t_predlalist a,t_claim_pnc b where a.claimid=b.claimid order by claimno,tgldla,tipedla</pyBrowseSQL>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleEnds/>
+<pxOriginalCreateDateTime/>
+<pyDescription/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pyUsage/>
+<pyRequestType>GetExportDataPreDLA</pyRequestType>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedRuleSetVersion/>
+<pyShowJavaWindowName>GeneratedJava20260827T040001.635 GMT</pyShowJavaWindowName>
+<pzChecksum>-519633473</pzChecksum>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedKey/>
+<pyStreamName/>
+<pyRuleFormStatusTime>20260827T040001.583 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pxSiblingCount/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxMoveImportDateTime>20201111T102239.700 GMT</pxMoveImportDateTime>
+<pyDeleteSQL/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATAPREDLA #20200826T022018.335 GMT</pzInsKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyLabel>GetExportDataPreDLA</pyLabel>
+<pyTemplateInputBox/>
+<pyOpenSQL/>
+<pxHostId>jboss2145</pxHostId>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETEXPORTDATAPREDLA</pxInsId>
+<pyStatus/>
+<pxInstanceLockedCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyMethodStatus/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATAPREDLA #20200826T022018.335 GMT</pzDocumentKey>
+<pxUpdateOpName>WILLY YAKOBUS TANDRA</pxUpdateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetExportDataPreDLA</pyRuleName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceProp/>
+<pxUpdateDateTime>20200826T023226.278 GMT</pxUpdateDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETEXPORTDATAPREDLA</pxInsName>
+<pyJavaStream/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedBy/>
+<pyTemplate/>
+<pxCommitDateTime>20201111T102239.000 GMT</pxCommitDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBaseRule>false</pyBaseRule>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20200527T070746.313 GMT</pzOriginalInstanceKey>
+<pyRelativePath/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pyDocumentTitle/>
+<pySPRuleSetName>WILLYYAKOBUSTANDRA@</pySPRuleSetName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDateProp/>
+<pyCircumstanceTemplate/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+</pyToolBarSettings>
+<pyRMAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATAPREDLA #20200826T022018.335 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-56 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

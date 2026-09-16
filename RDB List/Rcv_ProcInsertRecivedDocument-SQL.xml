@@ -1,0 +1,241 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateDateTime>20260106T112644.633 GMT</pxUpdateDateTime>
+<pyIsFromManageChangeLP/>
+<pxMergeSynchronized>20241031T083413.912 GMT</pxMergeSynchronized>
+<pyCircumstanceDefinition/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCommitDateTime>20260106T112644.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateSystemID/>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedBy/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormStatusTime>20260902T022502.285 GMT</pyRuleFormStatusTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!RCV_PROCINSERTRECIVEDDOCUMENT #20260106T112618.420 GMT</pzDocumentKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!RCV_PROCINSERTRECIVEDDOCUMENT #20260106T112618.420 GMT</pzInsKey>
+<pyDeletedObject/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportDateTime>20241223T123625.096 GMT</pxMoveImportDateTime>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pyMethodStatus/>
+<pyStreamName/>
+<pyCircumstanceProp/>
+<pxOriginalCreateOperator/>
+<pyDescription/>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pyLabel>Rcv_ProcInsertRecivedDocument</pyLabel>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyTemporaryObject/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!INSERTSTATUSPROGRESS #20240614T113246.210 GMT</pzOriginalInstanceKey>
+<pyJavaStream/>
+<pyRelativePath/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyBaseRule>false</pyBaseRule>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!RCV_PROCINSERTRECIVEDDOCUMENT</pxInsId>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyUsage/>
+<pxSiblingCount/>
+<pyCircumstanceType/>
+<pyRuleParamsStreamName/>
+<pySaveSQL/>
+<pyFormPost/>
+<pzIsPrivateCheckOut/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyDeleteSQL/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pxSaveDateTime>20260106T112644.718 GMT</pxSaveDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM Rcv_ProcInsertRecivedDocument</pxTabLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>DECLARE 
+  TCLAIMID VARCHAR2(32767);
+  TTANGGALINPUTDOKUMEN DATE;
+  TTANGGALTERIMADOKUMEN VARCHAR2(32767);
+  TNAMAPELAPOR VARCHAR2(32767);
+  TEMAILPENGIRIM VARCHAR2(32767);
+  TTLPPENGIRIM VARCHAR2(32767);
+  TNAMAKURIRASM VARCHAR2(32767);
+  TNAMATERTANGGUNG VARCHAR2(32767);
+  TNOPOLIS VARCHAR2(32767);
+  TBUSINESSCODE VARCHAR2(32767);
+  TGROUPPANEL VARCHAR2(32767);
+  TNOREFERENSI VARCHAR2(32767);
+  TEMAILTERTANGGUNG VARCHAR2(32767);
+  TLOKASIKEJADIAN VARCHAR2(32767);
+  TSIMPENGENDARA VARCHAR2(32767);
+  TKRONOLOGIKEJADIAN VARCHAR2(32767);
+  TRINCIANKERUSAKAN VARCHAR2(32767);
+  TALASANBLMTRANSFER VARCHAR2(32767);
+  TSUBJECTEMAIL VARCHAR2(32767);
+  TKETERANGANBLMREGIST VARCHAR2(32767);
+  TNOKLAIM VARCHAR2(32767);
+  TDOL DATE;
+  TTRANSFERASM DATE;
+  TREGISTDATE DATE;
+  TKODECABANG VARCHAR2(3200);
+  TUSERINPUTS VARCHAR2(2000);
+
+BEGIN 
+  TCLAIMID :={TampunganPages.pzInsKey};
+  TTANGGALINPUTDOKUMEN :={TampunganPages.pxCreateDateTime DateTime};
+  TTANGGALTERIMADOKUMEN :={TampunganPages.ReferenceId};
+  TNAMAPELAPOR := {TampunganPages.UserAdmin};
+  TEMAILPENGIRIM := {TampunganPages.Email};
+  TTLPPENGIRIM := {TampunganPages.Telephone};
+  TNAMAKURIRASM := {TampunganPages.NamaSurveyor};
+  TNAMATERTANGGUNG := {TampunganPages.UserTeknis};
+  TNOPOLIS := {TampunganPages.PolicyNo};
+  TBUSINESSCODE := {TampunganPages.BusinessID};
+  TGROUPPANEL := {TampunganPages.CityID};
+  TNOREFERENSI := {TampunganPages.RefNo};
+  TEMAILTERTANGGUNG := {TampunganPages.EmailLOD};
+  TLOKASIKEJADIAN := {TampunganPages.LokasiSurveyor};
+  TSIMPENGENDARA := {TampunganPages.SIM};
+  TKRONOLOGIKEJADIAN := {TampunganPages.KronologiTerpakai};
+  TRINCIANKERUSAKAN := {TampunganPages.Keterangan};
+  TALASANBLMTRANSFER := {TampunganPages.AlasanKlaim};
+  TSUBJECTEMAIL := {TampunganPages.SubjectEmail};
+  TKETERANGANBLMREGIST := {TampunganPages.Remark};
+  TNOKLAIM := {TampunganPages.NoClaim};
+  TDOL := {TampunganPages.DateOfLoss DateTime};
+  TTRANSFERASM := {TampunganPages.TransferToInvestDateTime DateTime};
+  TREGISTDATE := {TampunganPages.TanggalSelesaiRawatInap DateTime};
+  TKODECABANG :={TampunganPages.KodeCabang};
+  TUSERINPUTS :={TampunganPages.TelpTertanggung};
+
+  POOLDATA.PROCINSERTDATARECIVEDKLAIM ( TCLAIMID, TTANGGALINPUTDOKUMEN, TTANGGALTERIMADOKUMEN, TNAMAPELAPOR, TEMAILPENGIRIM, TTLPPENGIRIM, TNAMAKURIRASM, TNAMATERTANGGUNG, TNOPOLIS, TBUSINESSCODE, TGROUPPANEL, TNOREFERENSI, TEMAILTERTANGGUNG, TLOKASIKEJADIAN, TSIMPENGENDARA, TKRONOLOGIKEJADIAN, TRINCIANKERUSAKAN, TALASANBLMTRANSFER, TSUBJECTEMAIL, TKETERANGANBLMREGIST, TNOKLAIM, TDOL, TTRANSFERASM, TREGISTDATE,TKODECABANG,TUSERINPUTS, {TampunganPages.pyNote out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyRuleEnds/>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pyTemplate/>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pxHostId>jboss1040</pxHostId>
+<pyMemo>Kebanyakan parameter</pyMemo>
+<pyWindowTitle/>
+<pyStatus/>
+<pxCreateDateTime>20260106T112618.420 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceVal/>
+<pxInstanceLockedKey/>
+<pyLabelOld>Rcv_ProcInsertRecivedDocument</pyLabelOld>
+<pyRuleStarts/>
+<pyRequestType>Rcv_ProcInsertRecivedDocument</pyRequestType>
+<pyValueChanged>false</pyValueChanged>
+<pyShowJavaWindowName>GeneratedJava20260902T022502.307 GMT</pyShowJavaWindowName>
+<pyOpenSQL/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM Rcv_ProcInsertRecivedDocument</pyRuleName>
+<pxInstanceLockedCreateDateTime/>
+<pyInterface/>
+<pyDocumentTitle/>
+<pzChecksum>2088215898</pzChecksum>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!RCV_PROCINSERTRECIVEDDOCUMENT</pxInsName>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCheckInRuleSet/>
+<pxOriginalCreateDateTime/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyHandlerFlow/>
+<pxMoveFromSystem/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyDelete>true</pyDelete>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!RCV_PROCINSERTRECIVEDDOCUMENT #20260106T112618.420 GMT</pzInsKey>
+<pyLabel>01-03-13 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!RCV_PROCINSERTRECIVEDDOCUMENT #20240917T070358.129 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

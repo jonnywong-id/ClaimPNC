@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeleteMemo>ok\'</pyDeleteMemo>
+<pyTempText>saved</pyTempText>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKDATAPAYMENTPA_TRAVEL</pxInsName>
+<pxUpdateOperator>FRANSISCOJUNIUSA</pxUpdateOperator>
+<pyRuleEnds/>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss10234</pxHostId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPAYMENTPA_TRAVEL #20240715T170920.265 GMT</pzInsKey>
+<pxInstanceLockedRuleSet/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxUpdateDateTime>20240715T171108.363 GMT</pxUpdateDateTime>
+<pyBrowseSQL>select CheckDataPayment_PA_Travel( {InputCheckPayment.CARI1} )  as "InputCheckPayment.HASIL1" from dual</pyBrowseSQL>
+<pxInstanceLockedBy/>
+<pxOriginalCreateSystemID/>
+<pyFormPost/>
+<pyIsFromManageChangeLP/>
+<pyDocumentTitle/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyMemo>ok</pyMemo>
+<pxCommitDateTime>20240804T070137.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionPatch>76</pzRuleSetVersionPatch>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveFromSystem/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySaveSQL/>
+<pyLabelOld>CheckDataPaymentPA_TRAVEL</pyLabelOld>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportDateTime>20240804T070137.157 GMT</pxMoveImportDateTime>
+<pyTemplateInputBox/>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaStream/>
+<pxInstanceLockedKey/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyWindowTitle/>
+<pySPRuleSetName>FRANSISCOJUNIUSA@</pySPRuleSetName>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM CheckDataPaymentPA_TRAVEL</pyRuleName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPAYMENTPA_TRAVEL #20240715T170920.265 GMT</pzDocumentKey>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyInterface/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHandlerFlow/>
+<pyDeleteSQL/>
+<pyCircumstanceVal/>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyCircumstanceDateProp/>
+<pxCreateOperator>FRANSISCOJUNIUSA</pxCreateOperator>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pyMethodStatus/>
+<pyRuleFormStatusTime>20260827T085010.664 GMT</pyRuleFormStatusTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWorkKey/>
+<pyRuleStarts/>
+<pyDeletedObject/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20260827T085010.686 GMT</pyShowJavaWindowName>
+<pxCreateDateTime>20240715T170920.265 GMT</pxCreateDateTime>
+<pyCircumstanceType/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyOpenSQL/>
+<pyRelativePath/>
+<pzChecksum>-1534634365</pzChecksum>
+<pyStreamName/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStatus/>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM CheckDataPaymentPA_TRAVEL</pxTabLabel>
+<pyRWAccess>ASM</pyRWAccess>
+<pxSaveDateTime>20240715T171108.822 GMT</pxSaveDateTime>
+<pyLabel>CheckDataPaymentPA_TRAVEL</pyLabel>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCheckInRuleSet/>
+<pyCircumstanceDefinition/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateOperator/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleSetVersion>01-04-76</pyRuleSetVersion>
+<pxSiblingCount/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240712T033130.524 GMT</pzOriginalInstanceKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRequestType>CheckDataPaymentPA_TRAVEL</pyRequestType>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateOpName>FRANSISCO JUNIUS</pxUpdateOpName>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKDATAPAYMENTPA_TRAVEL</pxInsId>
+<pyCircumstanceDate/>
+<pyDescription/>
+<pyCircumstanceProp/>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyUsage/>
+<pxInstanceLockedRuleSetVersion/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPAYMENTPA_TRAVEL #20240715T170920.265 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-04-76 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

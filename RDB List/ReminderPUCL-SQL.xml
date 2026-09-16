@@ -1,0 +1,206 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyWorkKey/>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pyDocumentTitle/>
+<pxInstanceLockedKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyFormPost/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM ReminderPUCL</pxTabLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsFromManageChangeLP/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM ReminderPUCL</pyRuleName>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pxInstanceLockedRuleSet/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDate/>
+<pyMethodStatus/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedCreateDateTime/>
+<pyJavaStream/>
+<pyCircumstanceProp/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDefinition/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyDeleteSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWindowTitle/>
+<pxInstanceLockedBy/>
+<pyRuleStarts/>
+<pyCircumstanceDateProp/>
+<pyLabelOld>ReminderPUCL</pyLabelOld>
+<pyRequestType>ReminderPUCL</pyRequestType>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!REMINDERPUCL</pxInsId>
+<pyRelativePath/>
+<pyBrowseSQL>SELECT "PC0"."POLICYNO" AS "POLICY_NO",
+         "PC0"."BUSINESSNAME" AS "Policy.Quotation.BusinessName",
+         "PC0"."BRANCHNAME" AS "Policy.Quotation.BranchName",
+         "PC0"."SOBNAME" AS "Policy.Quotation.SobName",
+         "PC0"."PXCREATEDATETIME" AS "pxCreateDateTime",
+         "PC0"."PZINSKEY" AS "pzInsKey",
+         "PC0"."PYID" AS "pyID",
+         "PC0"."QQNAME" AS "CABANG",
+         "PC0"."USERTEKNIS_1" AS "ClaimData.UserTeknis",
+         "PC0"."PYORIGUSERID" AS "pyOrigUserID",
+         "PC0"."PXCREATEDATETIME" AS "pxCreateDateTime",
+         "PC0"."PYSTATUSWORK" AS "pyStatusWork",
+         "PC0"."PNCSTATUS_1" AS "ClaimData.PNCStatus",
+         "PC0"."STATUSCLAIM_1" AS "ClaimData.StatusClaim",
+         "PC0"."KOMENTARANALISATOR_1" AS "LOGSEARCH",
+         "AssignBasket"."PXASSIGNEDOPERATORID" AS "pxAssignedOperatorID",
+         "PC0"."KOMENTARPUCL_1" AS "ClaimData.PUCLStatus.Kome17L",
+         Case
+              when "PC0"."RCL_PUCL_1" = 1 then 'RCL'
+              when "PC0"."RCL_PUCL_1" = 2 then 'PUCL'
+          End AS "STS_AKTF",
+         "PC0"."LAMAKLAIM_1" AS "MODUL",
+         "PC0"."STATUSKLAIM_1" AS "STS_EMAIL",
+         "PC0"."TANGGALSELESAIRAWATINAP_1" AS "ClaimData.TanggalSelesaiR21L",
+         "PC0"."DATEOFLOSS_1" AS "ClaimData.DateOfLoss",
+         "PC0"."TANGGALCETAKDOKUMENPUCL_1" AS "TglCetak",
+         "PC0"."TANGGALKIRIMPUCL_1" AS "DateOfSendInputor",
+         "PC0"."STATUSCASE_1" AS "ClaimData.PUCLStatus.Stat25L"
+    FROM    DATAPEGA.pc_ASM_FW_GCNMFW_Work "PC0"
+         INNER JOIN
+            DATAPEGA.pc_assign_workbasket "AssignBasket"
+         ON (    ("AssignBasket"."PXREFOBJECTKEY" = "PC0"."PZINSKEY")
+             AND "AssignBasket"."PXOBJCLASS" = 'Assign-WorkBasket'
+             AND "PC0"."PXOBJCLASS" = 'ASM-FW-GCNMFW-Work-PNC')
+   WHERE (    "PC0"."PYSTATUSWORK" &lt;&gt; 'Resolved-Completed'
+          AND "AssignBasket"."PXASSIGNEDOPERATORID" = 'RCLPUCL'
+          AND "PC0"."TANGGALCETAKDOKUMENPUCL_1" IS NOT NULL
+          AND "PC0"."PUCLAPPROVE_1" &lt;&gt; 1
+          AND "PC0"."MSIG_1" IS NULL)
+ORDER BY 5 DESC, 7 DESC</pyBrowseSQL>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!REMINDERPUCL</pxInsName>
+<pyHandlerFlow/>
+<pyOpenSQL/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyBaseRule>false</pyBaseRule>
+<pxCreateDateTime>20241129T101602.620 GMT</pxCreateDateTime>
+<pyInterface/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxHostId>jboss10372</pxHostId>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyRuleFormStatusTime>20260831T032357.403 GMT</pyRuleFormStatusTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyDeletedObject/>
+<pxInstanceLockedRuleSetVersion/>
+<pyHistoryObject/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!REMINDERPUCL #20241129T101602.620 GMT</pzDocumentKey>
+<pyUsage/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pySaveSQL/>
+<pyReloadForm>true</pyReloadForm>
+<pxSiblingCount/>
+<pyLabel>ReminderPUCL</pyLabel>
+<pxMoveFromSystem/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxCommitDateTime>20241223T123625.000 GMT</pxCommitDateTime>
+<pxSaveDateTime>20241204T032450.951 GMT</pxSaveDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>-1484194548</pzChecksum>
+<pyCircumstanceType/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceVal/>
+<pyTemplate/>
+<pyDescription/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxUpdateDateTime>20241204T032450.942 GMT</pxUpdateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!REMINDERPUCL #20241129T101602.620 GMT</pzOriginalInstanceKey>
+<pyShowJavaWindowName>GeneratedJava20260831T032357.427 GMT</pyShowJavaWindowName>
+<pxMoveImportDateTime>20241223T123625.099 GMT</pxMoveImportDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!REMINDERPUCL #20241129T101602.620 GMT</pzInsKey>
+<pyStreamName/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyMemo>doen</pyMemo>
+<pyStatus/>
+<pyRuleEnds/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!REMINDERPUCL #20241129T101602.620 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

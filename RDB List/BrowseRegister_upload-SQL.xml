@@ -1,0 +1,211 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateDateTime/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyTemporaryObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateDateTime>20211216T090420.895 GMT</pxCreateDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyRuleFormStatusTime>20260720T141932.118 GMT</pyRuleFormStatusTime>
+<pyDescription/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRelativePath/>
+<pyInterface/>
+<pyTemplateInputBox/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedBy/>
+<pxMoveFromSystem/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxInstanceLockedRuleSetVersion/>
+<pyRequestType>BrowseRegister_upload</pyRequestType>
+<pyDeleteSQL/>
+<pyMemo>doc wajib per objectitemgroup</pyMemo>
+<pySaveSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceProp/>
+<pxMergeSynchronized>20200304T073257.967 GMT</pxMergeSynchronized>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleParamsStreamName/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20211216T090420.895 GMT</pzInsKey>
+<pyStatus/>
+<pyWorkKey/>
+<pxHostId>jboss1040</pxHostId>
+<pxCommitDateTime>20211221T124224.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20171120T042240.690 GMT</pzOriginalInstanceKey>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM BrowseRegister_upload</pyRuleName>
+<pxSaveDateTime>20211216T091812.665 GMT</pxSaveDateTime>
+<pyDeletedObject/>
+<pyCircumstanceDate/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleStarts/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM BrowseRegister_upload</pxTabLabel>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyRuleEnds/>
+<pxMoveImportDateTime>20211221T124224.680 GMT</pxMoveImportDateTime>
+<pyCircumstanceVal/>
+<pyCheckInRuleSet/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyShowJavaWindowName>GeneratedJava20260720T141932.143 GMT</pyShowJavaWindowName>
+<pxUpdateDateTime>20211216T091812.652 GMT</pxUpdateDateTime>
+<pyFormPost/>
+<pyBaseRule>false</pyBaseRule>
+<pyBrowseSQL>SELECT BUSINESSID as OLD_ID,
+         DOCUMENT_TYPE_ID as DOC_TYPE_ID,
+         OBJECT_DOC_ID as OBJ_DOC,
+         DOC_TYPE_DT_ID as ID,
+         DETAIL_DOKUMEN as DETAIL_DOCUMENT,
+         CASE
+            WHEN sts_wajib = '0' THEN 'Tidak'
+            WHEN sts_wajib = '1' and object_doc_id in ({ASIS:TempParam.BRANCH_NAME}) THEN 'Ya'
+            WHEN sts_wajib = '1' and (object_doc_id not in ({ASIS:TempParam.BRANCH_NAME}) or object_doc_id is null) THEN 'Tidak'
+         END
+            AS sts_wajib,
+         0 AS RISK,
+         MIN_DOC as MIN_DOC
+    FROM lst_type_doc_business b
+   WHERE b.BUSINESSID = {TempParam.BUSINESS_CODE}
+         AND (SELECT a.type_document
+                FROM v_lst_doc_type a
+               WHERE a.id = b.DOCUMENT_TYPE_ID AND a.type_document = 'REGISTER')
+                IS NOT NULL
+         AND (b.DETAIL_DOKUMEN != '-')
+ORDER BY b.DETAIL_DOKUMEN ASC</pyBrowseSQL>
+<pyIsFromManageChangeLP/>
+<pyHandlerFlow/>
+<pxOriginalCreateOperator/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyValueChanged>false</pyValueChanged>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!BROWSEREGISTER_UPLOAD</pxInsName>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pyTemplate/>
+<pyLabelOld>BrowseRegister_upload</pyLabelOld>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyDocumentTitle/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20211216T090420.895 GMT</pzDocumentKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pzChecksum>1486408476</pzChecksum>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDefinition/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCircumstanceDateProp/>
+<pyWindowTitle/>
+<pxInstanceLockedDateTime/>
+<pySpecialtyComponentData/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceType/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!BROWSEREGISTER_UPLOAD</pxInsId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabel>BrowseRegister_upload</pyLabel>
+<pxOriginalCreateOpName/>
+<pzRuleSetVersionPatch>63</pzRuleSetVersionPatch>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyUsage/>
+<pyRuleSetVersion>01-01-63</pyRuleSetVersion>
+<pxInstanceLockedKey/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxInstanceLockedCreateDateTime/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelegates>false</pyDelegates>
+<pyAvailability>false</pyAvailability>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyCheckOut>true</pyCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20211216T090420.895 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20200228T032810.952 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!BROWSEREGISTER_UPLOAD #20171120T042240.690 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-03 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

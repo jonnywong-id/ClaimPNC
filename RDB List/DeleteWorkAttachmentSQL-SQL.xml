@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabelOld>DeleteWorkAttachmentSQL</pyLabelOld>
+<pxCreateDateTime>20180521T145021.957 GMT</pxCreateDateTime>
+<pyJavaStream/>
+<pxInstanceLockedCreateDateTime/>
+<pzChecksum>-488456039</pzChecksum>
+<pyRelativePath/>
+<pyDocumentTitle/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeleteSQL>Delete from datapega.pc_data_workattach
+where pzinskey={InputData.CARI3}</pyDeleteSQL>
+<pxInstanceLockedKey/>
+<pxCreateOpName>Rixtus Kusuma</pxCreateOpName>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDescription/>
+<pyHandlerFlow/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyInterface/>
+<pyTemplateInputBox/>
+<pyRequestType>DeleteWorkAttachmentSQL</pyRequestType>
+<pxInsId>LINK-ATTACHMENT!ASM!DELETEWORKATTACHMENTSQL</pxInsId>
+<pyIsFromManageChangeLP/>
+<pyFormPost/>
+<pxSiblingCount/>
+<pyRuleEnds/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!DELETEATTACHMENTSQL #20171227T045322.576 GMT</pzOriginalInstanceKey>
+<pyClassName>Link-Attachment</pyClassName>
+<pyWorkKey/>
+<pySpecialtyComponentData/>
+<pyCircumstanceType/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMergeSynchronized>20180104T100059.614 GMT</pxMergeSynchronized>
+<pxInstanceLockedBy/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveFromSystem/>
+<pyLabel>DeleteWorkAttachmentSQL</pyLabel>
+<pyWindowTitle/>
+<pyDeletedObject/>
+<pySPRuleSetName>RIXTUSBAGUSRESA@</pySPRuleSetName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSetVersion>01-01-64</pyRuleSetVersion>
+<pxHostId>jboss2058</pxHostId>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!DELETEWORKATTACHMENTSQL #20180521T145021.957 GMT</pzDocumentKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleName>Link-Attachment ASM DeleteWorkAttachmentSQL</pyRuleName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyMemo>set cari 3</pyMemo>
+<pyCircumstanceDate/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplate/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStreamName/>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateSystemID/>
+<pyStatus/>
+<pxMoveImportDateTime>20191226T024822.859 GMT</pxMoveImportDateTime>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateDateTime>20180523T130655.650 GMT</pxUpdateDateTime>
+<pyUsage/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleStarts/>
+<pxTabLabel>Link-Attachment ASM DeleteWorkAttachmentSQL</pxTabLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>Rixtus Kusuma</pxUpdateOpName>
+<pyShowJavaWindowName>GeneratedJava20260902T084151.600 GMT</pyShowJavaWindowName>
+<pxInsName>LINK-ATTACHMENT!ASM!DELETEWORKATTACHMENTSQL</pxInsName>
+<pyRuleFormStatusTime>20260902T084151.578 GMT</pyRuleFormStatusTime>
+<pyCircumstanceTemplate/>
+<pyCircumstanceProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDefinition/>
+<pyCheckInRuleSet/>
+<pyRuleParamsStreamName/>
+<pyMethodStatus/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pzRuleSetVersionPatch>64</pzRuleSetVersionPatch>
+<pySaveSQL/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxSaveDateTime>20180523T130655.723 GMT</pxSaveDateTime>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pyBrowseSQL/>
+<pyOpenSQL/>
+<pzInsKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!DELETEWORKATTACHMENTSQL #20180521T145021.957 GMT</pzInsKey>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyNew>true</pyNew>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-64 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!DELETEWORKATTACHMENTSQL #20180521T145021.957 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!DELETEWORKATTACHMENTSQL #20180104T095949.429 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-62 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

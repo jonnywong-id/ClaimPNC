@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyStreamName/>
+<pyCircumstanceType/>
+<pyWorkKey/>
+<pzChecksum>-1556097782</pzChecksum>
+<pyTemplate/>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pyJavaStream/>
+<pyDocumentTitle/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMethodStatus/>
+<pxMoveImportDateTime>20221116T100636.693 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleFormStatusTime>20260901T073919.958 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETSURVEYDATEADJUSTER</pxInsId>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateDateTime>20221025T090317.834 GMT</pxUpdateDateTime>
+<pyBrowseSQL>select asmclientid_1 as "SurveyName", to_char(APPOINTMENTDATE_1,'dd/mm/yyyy') AS "AppointmentDate",
+       to_char(RescheduleDate_1,'dd/mm/yyyy') AS "RescheduleDate",
+       to_char(surveydate_1,'dd/mm/yyyy') as "SurveyDate"
+from datapega.pc_asm_fw_gcnmfw_work
+where pxobjclass='ASM-FW-GCNMFW-Work-SurveyClaim'
+and pzinskey={TempAdjuster.ClaimNo}</pyBrowseSQL>
+<pxCreateDateTime>20221020T020551.912 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyOpenSQL/>
+<pyDeleteSQL/>
+<pyCircumstanceProp/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabelOld>Get Survey Date Adjuster</pyLabelOld>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleEnds/>
+<pySpecialtyComponentData/>
+<pyWindowTitle/>
+<pyUsage/>
+<pyTemplateInputBox/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedRuleSet/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetSurveyDateAdjuster</pyRuleName>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20221020T020551.912 GMT</pzDocumentKey>
+<pxCommitDateTime>20221116T100637.000 GMT</pxCommitDateTime>
+<pyCircumstanceVal/>
+<pyRelativePath/>
+<pyMemo>done</pyMemo>
+<pyIsFromManageChangeLP/>
+<pyBaseRule>false</pyBaseRule>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedBy/>
+<pyCircumstanceTemplate/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyRuleParamsStreamName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDescription/>
+<pyValueChanged>false</pyValueChanged>
+<pxSaveDateTime>20221025T090317.842 GMT</pxSaveDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyCheckInRuleSet/>
+<pyHandlerFlow/>
+<pxInstanceLockedKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetSurveyDateAdjuster</pxTabLabel>
+<pyLabel>Get Survey Date Adjuster</pyLabel>
+<pxOriginalCreateSystemID/>
+<pyShowJavaWindowName>GeneratedJava20260901T073919.975 GMT</pyShowJavaWindowName>
+<pyRequestType>GetSurveyDateAdjuster</pyRequestType>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyStatus/>
+<pyDeletedObject/>
+<pyInterface/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20220902T025710.829 GMT</pzOriginalInstanceKey>
+<pyTemporaryObject/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxMoveFromSystem/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOperator/>
+<pxHostId>jboss10373</pxHostId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateOpName/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETSURVEYDATEADJUSTER</pxInsName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceDateProp/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleStarts/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20221020T020551.912 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pySaveSQL/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20221020T020551.912 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-99 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-98 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20220902T025710.829 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETSURVEYDATEADJUSTER #20220401T020518.367 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-01-97 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

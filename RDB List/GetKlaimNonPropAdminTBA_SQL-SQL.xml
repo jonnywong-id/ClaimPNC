@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyMemo>done</pyMemo>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyLabel>GetKlaimNonPropAdminTBA_SQL</pyLabel>
+<pyCircumstanceTemplate/>
+<pxInsName>ASSIGN-WORKBASKET!ASM!GETKLAIMNONPROPADMINTBA_SQL</pxInsName>
+<pxHostId>jboss1037</pxHostId>
+<pxInstanceLockedKey/>
+<pxMoveFromSystem/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET ASM!GETKLAIMNONPROPADMIN_SQL #20240124T081253.716 GMT</pzOriginalInstanceKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyOpenSQL/>
+<pyInterface/>
+<pzDocumentKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET ASM!GETKLAIMNONPROPADMINTBA_SQL #20240124T081622.218 GMT</pzDocumentKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyCircumstanceProp/>
+<pxInsId>ASSIGN-WORKBASKET!ASM!GETKLAIMNONPROPADMINTBA_SQL</pxInsId>
+<pySaveSQL/>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleSetVersion>01-02-99</pyRuleSetVersion>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxSiblingCount/>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateInputBox/>
+<pxOriginalCreateSystemID/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalCreateDateTime/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxTabLabel>Assign-WorkBasket ASM GetKlaimNonPropAdminTBA_SQL</pxTabLabel>
+<pyRuleParamsStreamName/>
+<pzChecksum>235938854</pzChecksum>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyHandlerFlow/>
+<pyStatus/>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalCreateOperator/>
+<pyDeleteSQL/>
+<pySpecialtyComponentData/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyCircumstanceDate/>
+<pyWorkKey/>
+<pyDeletedObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyCircumstanceDefinition/>
+<pyShowJavaWindowName>GeneratedJava20260831T023542.671 GMT</pyShowJavaWindowName>
+<pyCircumstanceVal/>
+<pyDescription/>
+<pyRequestType>GetKlaimNonPropAdminTBA_SQL</pyRequestType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyUsage/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxSaveDateTime>20240124T081640.593 GMT</pxSaveDateTime>
+<pyBrowseSQL>SELECT a.PXREFOBJECTINSNAME AS CARI11,
+       a.PZINSKEY           AS CARI10,
+       a.PXCREATEOPNAME     AS CARI12,
+        b.PXUPDATEOPERATOR                               AS CARI24,
+       'Estimation'         AS CARI13,
+       b.SOBNAME            AS CARI14,
+       b.BUSINESSNAME       AS CARI15,
+       b.CEDINGCONAME       AS CARI16,
+       b.INSUREDNAME        AS CARI17,
+       c.NOPOLIS            AS CARI18,
+       b.MASTERID           AS CARI19,
+       (trunc(sysdate)-trunc(b.PXCREATEDATETIME)) AS CARI20,
+        c.data_json.DateOfLoss AS CARI22,
+      c.data_json.IDMaster AS CARI23
+   FROM DATAPEGA.pc_assign_worklist a, DATAPEGA.pc_ASM_FW_GCNMFW_Work b, pooldata.json_klaim c
+  WHERE     a.PXREFOBJECTKEY = b.pzinskey AND a.PXREFOBJECTKEY = c.IDPEGA
+       AND (a.PXREFOBJECTINSNAME LIKE 'CLMNP-%') AND c.NOPOLIS IS NULL</pyBrowseSQL>
+<pyWindowTitle/>
+<pyRuleName>Assign-WorkBasket ASM GetKlaimNonPropAdminTBA_SQL</pyRuleName>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pyDocumentTitle/>
+<pyRuleStarts/>
+<pyStreamName/>
+<pyRuleFormStatusTime>20260831T023542.650 GMT</pyRuleFormStatusTime>
+<pxCreateDateTime>20240124T081622.218 GMT</pxCreateDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET ASM!GETKLAIMNONPROPADMINTBA_SQL #20240124T081622.218 GMT</pzInsKey>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInstanceLockedDateTime/>
+<pxUpdateDateTime>20240124T081640.587 GMT</pxUpdateDateTime>
+<pyFormPost/>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedRuleSetVersion/>
+<pyClassName>Assign-WorkBasket</pyClassName>
+<pyCircumstanceType/>
+<pxCommitDateTime>20240207T113205.000 GMT</pxCommitDateTime>
+<pxMoveImportDateTime>20240207T113205.192 GMT</pxMoveImportDateTime>
+<pyMethodStatus/>
+<pyTemplate/>
+<pyRelativePath/>
+<pyJavaStream/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyLabelOld>GetKlaimNonPropAdminTBA_SQL</pyLabelOld>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateOpName/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-99 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET ASM!GETKLAIMNONPROPADMINTBA_SQL #20240124T081622.218 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

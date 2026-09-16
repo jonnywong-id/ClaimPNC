@@ -1,0 +1,1020 @@
+<pagedata>
+<pyMemo>add tiket</pyMemo>
+<pyShowROIcon>false</pyShowROIcon>
+<pyValueChanged>false</pyValueChanged>
+<pyStructureType>Simple</pyStructureType>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pySpecialtyComponentData/>
+<pxOriginalCreateDateTime/>
+<pyPostVisio2000Saved>false</pyPostVisio2000Saved>
+<pxSaveDateTime>20201023T070857.011 GMT</pxSaveDateTime>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySelected>false</pySelected>
+<pxOriginalCreateOperator/>
+<pyModelerGuideModeON>true</pyModelerGuideModeON>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzCaseTypeExistsInCoverClass/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBaseRule>false</pyBaseRule>
+<pyModelerGridModeON>false</pyModelerGridModeON>
+<pyRuleParamsStreamName/>
+<pyModifiers/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStatus/>
+<pzCaseTypeExistsInClass>true</pzCaseTypeExistsInClass>
+<pxTabLabel>ReceiveDocument_Flow</pxTabLabel>
+<pyCircumstanceDate/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pySubCategory/>
+<pyDeferErrors>false</pyDeferErrors>
+<pyDeletedObject/>
+<pyPurpose>false</pyPurpose>
+<pyVisioJpegName>asm_fw_gcnmfw_work_receivedocumentreceivedocument_flow20201023t070130_402_gmt.jpg</pyVisioJpegName>
+<pySLAName/>
+<pyAcceptConversion>true</pyAcceptConversion>
+<pyStartingModel>pyDefault</pyStartingModel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyModelerDefaultClickMode>Pan</pyModelerDefaultClickMode>
+<pyCanCreateWorkObjectOld>false</pyCanCreateWorkObjectOld>
+<pxCreateDateTime>20201023T070129.937 GMT</pxCreateDateTime>
+<pyLabelOld>Receive Document</pyLabelOld>
+<pxOriginalCreateSystemID/>
+<pzDocumentKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzDocumentKey>
+<pyLabel>Receive Document</pyLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRelativePath/>
+<pyIsShapeSelected>true</pyIsShapeSelected>
+<pyShowLikelihoods>Hide</pyShowLikelihoods>
+<pyConfirmChoice>Harness</pyConfirmChoice>
+<pyVisioDocVersion/>
+<pyCanCreateWorkObject>false</pyCanCreateWorkObject>
+<pyJavaStream/>
+<pyReloadForm>true</pyReloadForm>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyWorkClass>ASM-FW-GCNMFW-Work-ReceiveDocument</pyWorkClass>
+<pyWindowTitle/>
+<pyRuleName>ReceiveDocument_Flow</pyRuleName>
+<pyJavaClassName>Rule_Obj_Flow_ASM_FW_GCNMFW_Work_ReceiveDocument_ReceiveDocument_Flow_Action_20201023T070131_804_GMT</pyJavaClassName>
+<pyProcessModel/>
+<pyModifiedWithPM>true</pyModifiedWithPM>
+<pyCircumstanceDefinition/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCurrentViewMode>modeler</pyCurrentViewMode>
+<pyCoveredByCount>0</pyCoveredByCount>
+<pyAssociatedImage/>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pyStartingModelOld>pyDefault</pyStartingModelOld>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pxUpdateDateTime>20201023T070856.537 GMT</pxUpdateDateTime>
+<pyVisioScaleFactor>100</pyVisioScaleFactor>
+<pyVisioJpeg/>
+<pyObjClassLabel>Flow</pyObjClassLabel>
+<pyNextAssignmentWorkBasket>false</pyNextAssignmentWorkBasket>
+<pyOriginalRFB>RULE-FILE-BINARY WEBWB ASM_FW_GCNMFW_WORK_RECEIVEDOCUMENTRECEIVEDOCUMENT_FLOW20200611T034624_185_GMT!JPG #20200611T034624.106 GMT</pyOriginalRFB>
+<pySystemFlow>false</pySystemFlow>
+<pyCategory>FlowStandard</pyCategory>
+<pyCircumstanceProp/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyNextAssignmentAdhoc>true</pyNextAssignmentAdhoc>
+<pyXMLSignature><?xml version="1.0"?><methodSignature><pyStepsCallParams></pyStepsCallParams><pyParamArray><rowdata></rowdata></pyParamArray></methodSignature></pyXMLSignature>
+<pyUsage/>
+<pyFormPost/>
+<pyConfirmHarness>Confirm</pyConfirmHarness>
+<pyStartingHarness>New</pyStartingHarness>
+<pyCreatesTemporaryObject>false</pyCreatesTemporaryObject>
+<pyInterface/>
+<pyPageOrientation>Landscape</pyPageOrientation>
+<pyWorkPartiesRule>Default</pyWorkPartiesRule>
+<pyStreamName/>
+<pyDocumentTitle/>
+<pyRuleFormStatusTime>20260716T070710.056 GMT</pyRuleFormStatusTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateInputBox/>
+<pxHostId>jboss2145</pxHostId>
+<pyStartingHarnessOld>New</pyStartingHarnessOld>
+<pyWorkKey/>
+<pxInstanceLockedBy/>
+<pyIsReadOnly>true</pyIsReadOnly>
+<pyOverlayView>None</pyOverlayView>
+<pyRegenStartingFlows>3</pyRegenStartingFlows>
+<pxInsName>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT!RECEIVEDOCUMENT_FLOW</pxInsName>
+<pzIndexCount>44</pzIndexCount>
+<pyTaskStatusXml><pagedata><TaskStatus></TaskStatus></pagedata></pyTaskStatusXml>
+<pzInsKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzInsKey>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pyVisioCompatFlag>false</pyVisioCompatFlag>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceDateProp/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pzImplVersion>06.02.01</pzImplVersion>
+<pyJavaGenerateVersion>5.5</pyJavaGenerateVersion>
+<pyDoHarvesting>true</pyDoHarvesting>
+<pyVisioRFB>RULE-FILE-BINARY WEBWB ASM_FW_GCNMFW_WORK_RECEIVEDOCUMENTRECEIVEDOCUMENT_FLOW20201023T070130_402_GMT!JPG #20201023T070130.376 GMT</pyVisioRFB>
+<pxMoveImportDateTime>20201111T105248.342 GMT</pxMoveImportDateTime>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pxOriginalCreateOpName/>
+<pyFlowType>ReceiveDocument_Flow</pyFlowType>
+<pxInstanceLockedDateTime/>
+<pzOriginalInstanceKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20200611T034622.243 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSet/>
+<pyStartActivity>Start1</pyStartActivity>
+<pyRuleEnds/>
+<pzIsAutoGenerated>false</pzIsAutoGenerated>
+<pyRuleStarts/>
+<pyScreenFlowHarness/>
+<pyDescription/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyShowGrid>true</pyShowGrid>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHideLockIcon>true</pyHideLockIcon>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedKey/>
+<pyAlphaSortLocalActions>false</pyAlphaSortLocalActions>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyPlaceGlobalLocalsAtTop>false</pyPlaceGlobalLocalsAtTop>
+<pxInsId>!RECEIVEDOCUMENT_FLOW</pxInsId>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySkipNewHarness>true</pySkipNewHarness>
+<pyForecasterAvailable>unavailable</pyForecasterAvailable>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceType/>
+<pyDeferCommit>false</pyDeferCommit>
+<pyCircumstanceTemplate/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxObjClass>Rule-Obj-Flow</pxObjClass>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDraftModeON>false</pyDraftModeON>
+<pzChecksum>2013479357</pzChecksum>
+<pyCanStartInteractively>false</pyCanStartInteractively>
+<pyNextAssignmentWorkBasketAdhoc>false</pyNextAssignmentWorkBasketAdhoc>
+<pyShowJavaWindowName>GeneratedJava20260716T070710.078 GMT</pyShowJavaWindowName>
+<pxCommitDateTime>20201111T105248.000 GMT</pxCommitDateTime>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyNextAssignment>true</pyNextAssignment>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzStatus>valid</pzStatus>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+<pyPrivilegeClass>ASM-FW-GCNMFW-Work-OpenProtection</pyPrivilegeClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Privileges">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pyPrivilegeList>
+<pxDataReferences REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSize/>
+<pyParametersParamInOut/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParameters>
+<pyWhensList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyWhenName/>
+<pxObjClass>Embed-Rule-Whens</pxObjClass>
+</rowdata>
+</pyWhensList>
+<pyEndingActivities REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">END52</rowdata>
+</pyEndingActivities>
+<pyCoveredBy REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pySubTaskModel/>
+<pxObjClass>Embed-Rule-Obj-Flow-CoveredBy</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyCoveringWorkClass/>
+<pySubTaskHarness/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="AddWorkProcesses">22</rowdata>
+</pzIndexes>
+</rowdata>
+</pyCoveredBy>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyUseCaseLinks REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTaskName/>
+<pyLabel>Application Link</pyLabel>
+<pyFlowType>ReceiveDocument_Flow</pyFlowType>
+<pxLinkedRefTo>New</pxLinkedRefTo>
+<pyWorkTypeName>By</pyWorkTypeName>
+<pyLinkedClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyLinkedClassName>
+<pyApplicationName>RaniRApp</pyApplicationName>
+<pyUseCaseName>pzStubStep_StartingScreen</pyUseCaseName>
+<pyFlowKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070131.804 GMT</pyFlowKey>
+<pyImplementationType/>
+<pxObjClass>Link-UseCase</pxObjClass>
+<pyTaskID>Start1</pyTaskID>
+<pxLinkedClassTo>Rule-HTML-Harness</pxLinkedClassTo>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyTaskName>InputReceiveDocument</pyTaskName>
+<pyWorkTypeName>ReceiveDocument</pyWorkTypeName>
+<pxLinkedRefTo>InputReceiveDocument</pxLinkedRefTo>
+<pyLinkedClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyLinkedClassName>
+<pyFlowType>ReceiveDocument_Flow</pyFlowType>
+<pyTaskID>Assignment1</pyTaskID>
+<pyLabel>Application Link</pyLabel>
+<pxLinkedClassTo>Data-MO-Activity-Assignment</pxLinkedClassTo>
+<pyImplementationType/>
+<pyUseCaseName>InputProtection</pyUseCaseName>
+<pyApplicationName>GCNMFW</pyApplicationName>
+<pxObjClass>Link-UseCase</pxObjClass>
+<pyFlowKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070131.804 GMT</pyFlowKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyUseCaseName>InputProtection</pyUseCaseName>
+<pyFlowType>ReceiveDocument_Flow</pyFlowType>
+<pyTaskName>InputReceiveDocument</pyTaskName>
+<pyImplementationType/>
+<pyLinkedClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyLinkedClassName>
+<pyTaskID>Transition2</pyTaskID>
+<pxObjClass>Link-UseCase</pxObjClass>
+<pyApplicationName>GCNMFW</pyApplicationName>
+<pyWorkTypeName>ReceiveDocument</pyWorkTypeName>
+<pxLinkedRefTo>InputReceiveDocument</pxLinkedRefTo>
+<pxLinkedClassTo>Rule-Obj-FlowAction</pxLinkedClassTo>
+<pyFlowKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070131.804 GMT</pyFlowKey>
+<pyLabel>Application Link</pyLabel>
+</rowdata>
+</pyUseCaseLinks>
+<pyPreviousValues>
+<pxObjClass>Rule-Obj-Flow</pxObjClass>
+<pyLabel>Receive Document</pyLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCanCreateWorkObject>false</pyCanCreateWorkObject>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>ASM-FW-GCNMFW-Work-OpenProtection</pyPrivilegeClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Privileges">33</rowdata>
+</pzIndexes>
+</rowdata>
+</pyPrivilegeList>
+</pyPreviousValues>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-FlowAction</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyMethodStatus/>
+<pyRuleName>InputReceiveDocument</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>INPUTRECEIVEDOCUMENT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>pyActionPrompt InputReceiveDocument</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PYACTIONPROMPT!INPUTRECEIVEDOCUMENT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYLABEL!RECEIVE DOCUMENT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>pyLabel Receive Document</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pyRuleName>PNCAdminRouterRCV</pyRuleName>
+<pyMethodStatus/>
+<pxRuleFamilyName>PNCADMINROUTERRCV</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCONFIRMATIONNOTE</pxRuleFamilyName>
+<pyRuleName>pyConfirmationNote</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyRuleName>pyCaption InputReceiveDocument</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!INPUTRECEIVEDOCUMENT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">30</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyMethodStatus/>
+<pyRuleName>pyCaption Receive Document</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!RECEIVE DOCUMENT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">31</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyButtonLabel InputReceiveDocument</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PYBUTTONLABEL!INPUTRECEIVEDOCUMENT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">32</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyButtonLabel Receive Document</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxRuleFamilyName>PYBUTTONLABEL!RECEIVE DOCUMENT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">33</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyRuleName>PerformFlow</pyRuleName>
+<pyMethodStatus/>
+<pxRuleFamilyName>PERFORMFLOW</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Harness</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">34</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!INPUTRECEIVEDOCUMENT</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyRuleName>pyCaption InputReceiveDocument</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">35</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyRuleName>pyConfirmationNote pyStepRoutedConfirmation</pyRuleName>
+<pxRuleFamilyName>PYCONFIRMATIONNOTE!PYSTEPROUTEDCONFIRMATION</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">36</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxRuleClassName/>
+<pxRuleFamilyName>GCNMFW!RECEIVEDOCUMENT!INPUTPROTECTION</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Application-UseCase</pxRuleObjClass>
+<pyRuleName>GCNMFW ReceiveDocument InputProtection</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">37</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxRuleFamilyName>PYACTIONPROMPT![END]</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyActionPrompt [End]</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">38</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyRuleName>pyButtonLabel [End]</pyRuleName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxRuleFamilyName>PYBUTTONLABEL![END]</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">39</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxRuleFamilyName>PYCAPTION![END]</pxRuleFamilyName>
+<pyRuleName>pyCaption [End]</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">40</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT</pxRuleFamilyName>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">41</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pyRuleName>WorkList</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyMethodStatus>API</pyMethodStatus>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pxRuleFamilyName>WORKLIST</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">42</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>@baseclass</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">43</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyModelProcess>
+<pyRefreshViewHint>true</pyRefreshViewHint>
+<pxObjClass>Embed-Rule-Obj-Flow-ProcessModel</pxObjClass>
+<pyConnectors REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="Transition2">
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyLane/>
+<pyUseCaseWorkType>ReceiveDocument</pyUseCaseWorkType>
+<pyFrom>Assignment1</pyFrom>
+<pyCategory>FlowStandard</pyCategory>
+<pxCreateOpName>SANDY</pxCreateOpName>
+<pyDisplayLink>false</pyDisplayLink>
+<pyWidth/>
+<pyHeight/>
+<pyShouldReload>No</pyShouldReload>
+<pyUseCaseApplication>GCNMFW</pyUseCaseApplication>
+<pyFromMODefName>Transition</pyFromMODefName>
+<pyExpression>InputReceiveDocument</pyExpression>
+<pyFromClass>Data-MO-Activity-Assignment</pyFromClass>
+<pxCreateDateTime>20171127T021233.816 GMT</pxCreateDateTime>
+<pyConnectorType>Transition</pyConnectorType>
+<pyConditionType>Action</pyConditionType>
+<pxSubscript>Transition2</pxSubscript>
+<pyUseCaseName>InputProtection</pyUseCaseName>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pyCoordY/>
+<pxObjClass>Data-MO-Connector-Transition</pxObjClass>
+<pyLikelihood>100</pyLikelihood>
+<pxCreateOperator>SANDY</pxCreateOperator>
+<pyContainerRef/>
+<pyCoordX/>
+<pyWorkStatus/>
+<pyShapeDisplayName/>
+<pyDisableLinkWhen/>
+<pyPropertiesOrModel>Set Properties</pyPropertiesOrModel>
+<pyMOName>InputReceiveDocument</pyMOName>
+<pyTypeMismatch>false</pyTypeMismatch>
+<pyTo>END52</pyTo>
+<pyFAProcessOnJump>false</pyFAProcessOnJump>
+<pyIsFork>false</pyIsFork>
+<pyShapeType>Data-MO-Connector-Transition</pyShapeType>
+<pyPreviousRule>InputReceiveDocument</pyPreviousRule>
+<pyMONameOrig>InputProtectionFlow</pyMONameOrig>
+<pyMOId>Transition2</pyMOId>
+<pyAuditNote/>
+<pyPropertyAssigns REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropertiesName/>
+<pyPropertiesValue/>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+</rowdata>
+</pyPropertyAssigns>
+<pySourceConstraintPoint>
+<pyPointX>1</pyPointX>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+<pyPointY>0.5</pyPointY>
+</pySourceConstraintPoint>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup"> </pyModifierRefs>
+</rowdata>
+<rowdata REPEATINGINDEX="Transition1">
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyContainerRef/>
+<pyLane/>
+<pyFrom>Start1</pyFrom>
+<pyIsFork>false</pyIsFork>
+<pyAuditNote/>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pxCreateOpName>Venkat</pxCreateOpName>
+<pyConnectorType>Transition</pyConnectorType>
+<pyCoordY/>
+<pyHeight/>
+<pyConditionType>Always</pyConditionType>
+<pxCreateDateTime>20130611T102831.329 GMT</pxCreateDateTime>
+<pxObjClass>Data-MO-Connector-Transition</pxObjClass>
+<pyWidth/>
+<pyFromMODefName>Transition</pyFromMODefName>
+<pxSubscript>Transition1</pxSubscript>
+<pyShapeDisplayName/>
+<pyUseCaseApplication/>
+<pyFAProcessOnJump>false</pyFAProcessOnJump>
+<pyCategory>FlowStandard</pyCategory>
+<pyTo>Assignment1</pyTo>
+<pyDisplayLink>false</pyDisplayLink>
+<pyMOName>[Always]</pyMOName>
+<pyMOId>Transition1</pyMOId>
+<pyUseCaseName/>
+<pyDisableLinkWhen/>
+<pyFromClass>Data-MO-Event-Start</pyFromClass>
+<pyUseCaseWorkType/>
+<pyCoordX/>
+<pxCreateOperator>kotil</pxCreateOperator>
+<pyExpression/>
+<pyLikelihood>100</pyLikelihood>
+<pySourceConstraintPoint>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+</pySourceConstraintPoint>
+<pyTargetConstraintPoint>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+</pyTargetConstraintPoint>
+<pyPropertyAssigns REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropertiesName/>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyPropertiesValue/>
+</rowdata>
+</pyPropertyAssigns>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup"> </pyModifierRefs>
+<pyConnectorPoints REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPointY>140</pyPointY>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+<pyPointX>70</pyPointX>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPointX>135</pyPointX>
+<pyPointY>140</pyPointY>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPointY>42</pyPointY>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+<pyPointX>135</pyPointX>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPointX>200</pyPointX>
+<pxObjClass>Embed-MO-Coordinates</pxObjClass>
+<pyPointY>42</pyPointY>
+</rowdata>
+</pyConnectorPoints>
+</rowdata>
+</pyConnectors>
+<pyAnnotationShapes REPEATINGTYPE="PageGroup"> </pyAnnotationShapes>
+<pyShapes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="Assignment1">
+<pyUseCaseName>InputProtection</pyUseCaseName>
+<pyUseCaseWorkType>ReceiveDocument</pyUseCaseWorkType>
+<pyBaseClass>ASM-FW-GCNMFW-Work-OpenProtection</pyBaseClass>
+<pyUseCaseApplication>GCNMFW</pyUseCaseApplication>
+<pxObjClass>Data-MO-Activity-Assignment</pxObjClass>
+<pyAuditNote/>
+<pyDisplayLink>true</pyDisplayLink>
+<pyTemplateInputBox/>
+<pyWorkClass/>
+<pySkipAssignment>false</pySkipAssignment>
+<pyHeight/>
+<pyWorkStatus/>
+<pyOperator/>
+<pyLocalActionsString>(0)</pyLocalActionsString>
+<pyFromMODefName>Assignment</pyFromMODefName>
+<pyRouteToType>Custom</pyRouteToType>
+<D_pyPMAssignmentType/>
+<pyWidth/>
+<pyEffortCost/>
+<pyCategory>FlowStandard</pyCategory>
+<pyTypeMismatch>true</pyTypeMismatch>
+<pyLane/>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pyMOName>InputReceiveDocument</pyMOName>
+<pyShouldReload>No</pyShouldReload>
+<pySLA/>
+<pyMOId>Assignment1</pyMOId>
+<pyBusinessLogicDecisionTree/>
+<pyDisableLinkWhen/>
+<pyTicketString>(1)</pyTicketString>
+<pyCoordY>0.096</pyCoordY>
+<pyCoordX>2.08</pyCoordX>
+<pyFAProcessOnJump>false</pyFAProcessOnJump>
+<pyShapeType>Data-MO-Activity-Assignment</pyShapeType>
+<pyWorkBasket/>
+<pyHarnessPurpose>PerformFlow</pyHarnessPurpose>
+<pyRouteTo>Custom</pyRouteTo>
+<pyContainerRef/>
+<pxSubscript>Assignment1</pxSubscript>
+<pyShapeDisplayName/>
+<pyDoNotPerform>false</pyDoNotPerform>
+<pySLAType>Custom</pySLAType>
+<pyImplementation>WorkList</pyImplementation>
+<pyTicketShapes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>Ticket1</pxSubscript>
+<pyMOId>Ticket1</pyMOId>
+<pxObjClass>Data-MO-Event-Exception</pxObjClass>
+<pyMOName>SendToReceiveDocument</pyMOName>
+<pyShapeDisplayName>SendToReceiveDocument</pyShapeDisplayName>
+</rowdata>
+</pyTicketShapes>
+<pyNotifyProp>
+<pyMOName/>
+<pxObjClass>Data-MO-Activity-Notify</pxObjClass>
+<pyImplementation/>
+<pySendNotification>USE_CASE_POLICY</pySendNotification>
+<pyCallParams> </pyCallParams>
+<pzRuleParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pzRuleParameters>
+</pyNotifyProp>
+<pyRouterProp>
+<pyInLane>false</pyInLane>
+<pyMOName/>
+<pyIsCustomRouter>false</pyIsCustomRouter>
+<pxObjClass>Data-MO-Activity-Router</pxObjClass>
+<pyImplementation>PNCAdminRouterRCV</pyImplementation>
+<pyRuleParamsStreamName/>
+<pzRuleParametersShowSkills>false</pzRuleParametersShowSkills>
+<pyCallParams> </pyCallParams>
+<pzRuleParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+</pzRuleParameters>
+<pySkills REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pySkillName/>
+<pxObjClass>Embed-Rule-Obj-Flow-RoutingSkills</pxObjClass>
+<pySkillRequired>true</pySkillRequired>
+<pySkillLevel>1</pySkillLevel>
+</rowdata>
+</pySkills>
+<pyPageAliases> </pyPageAliases>
+</pyRouterProp>
+<pyCallParams>
+<DoNotPerform/>
+<StatusAssign/>
+<StatusWork/>
+<Instructions/>
+<HarnessPurpose>PerformFlow</HarnessPurpose>
+<ConfirmationNote>pyStepRoutedConfirmation</ConfirmationNote>
+</pyCallParams>
+<pyContextRefs REPEATINGTYPE="PageList"/>
+<pyLocalActionsPL REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyProductName/>
+<pxObjClass>Embed-Pega-AssignAction</pxObjClass>
+<pyActionName/>
+<pyUseCaseName/>
+<pyOwner/>
+</rowdata>
+</pyLocalActionsPL>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Ticket1">Data-MO-Event-Exception</rowdata>
+</pyModifierRefs>
+<pySkipAssignmentParams REPEATINGTYPE="PageList"/>
+<pzOptimizationAttributes REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="Start1">
+<pyDisplayLink>false</pyDisplayLink>
+<pxObjClass>Data-MO-Event-Start</pxObjClass>
+<pyShapeDisplayName/>
+<pyMOName/>
+<pxCreateOperator>kotil</pxCreateOperator>
+<pyUseCaseWorkType>By</pyUseCaseWorkType>
+<pyMOId>Start1</pyMOId>
+<pxCreateDateTime>20130611T102826.736 GMT</pxCreateDateTime>
+<pyTriggerType>None</pyTriggerType>
+<pyTypeMismatch>false</pyTypeMismatch>
+<pyUseCaseApplication>RaniRApp</pyUseCaseApplication>
+<pyCoordY>0.096</pyCoordY>
+<pyShapeType>Data-MO-Event-Start</pyShapeType>
+<pyFromMODefName>Start</pyFromMODefName>
+<pyDisableLinkWhen/>
+<pyAuditNote/>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pyContainerRef/>
+<pyWorkStatus/>
+<pyCategory>FlowStandard</pyCategory>
+<pyStartingHarness>NewSample</pyStartingHarness>
+<pxCreateOpName>Venkat</pxCreateOpName>
+<pxSubscript>Start1</pxSubscript>
+<pyWidth>0.48</pyWidth>
+<pyLane/>
+<pyFAProcessOnJump>false</pyFAProcessOnJump>
+<pyHeight>0.48</pyHeight>
+<pyCoordX>0.08</pyCoordX>
+<pyUseCaseName>pzStubStep_StartingScreen</pyUseCaseName>
+<pxCreateSystemID>SLSHYD</pxCreateSystemID>
+<pyContextRefs REPEATINGTYPE="PageList"/>
+<pyRouterProp>
+<pxObjClass>Data-MO-Activity-Router</pxObjClass>
+</pyRouterProp>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup"> </pyModifierRefs>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCallParams> </pyCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="END52">
+<pyMOId>END52</pyMOId>
+<pyFromMODefName>End</pyFromMODefName>
+<pyCoordY>0.096</pyCoordY>
+<pxObjClass>Data-MO-Event-End</pxObjClass>
+<pyAuditNote/>
+<pyWidth>0.48</pyWidth>
+<pyDisplayLink>false</pyDisplayLink>
+<pyContainerRef/>
+<pyShouldReload>No</pyShouldReload>
+<pyUseCaseWorkType>OpenProtection</pyUseCaseWorkType>
+<pyStatus/>
+<pyTriggerType>None</pyTriggerType>
+<pyDisableLinkWhen/>
+<pyMOName/>
+<pyWorkStatus>Resolved-Completed</pyWorkStatus>
+<pyHeight>0.48</pyHeight>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pxSubscript>END52</pxSubscript>
+<pyCoordX>4.08</pyCoordX>
+<pyCategory>FlowStandard</pyCategory>
+<pyTicketShapes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyShapeDisplayName/>
+<pxObjClass>Data-MO-Event-Exception</pxObjClass>
+<pyMOName/>
+</rowdata>
+</pyTicketShapes>
+<pyContextRefs REPEATINGTYPE="PageList"/>
+<pyRouterProp>
+<pxObjClass>Data-MO-Activity-Router</pxObjClass>
+</pyRouterProp>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup"> </pyModifierRefs>
+<pyCallParams> </pyCallParams>
+</rowdata>
+</pyShapes>
+<pyModifiers REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="Ticket1">
+<pyShapeDisplayName/>
+<pyLane/>
+<pyUseCaseApplication/>
+<pyCoordY/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyContainerRef/>
+<pyFromMODefName>Ticket</pyFromMODefName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxObjClass>Data-MO-Event-Exception</pxObjClass>
+<pyMOId>Ticket1</pyMOId>
+<pyDisableLinkWhen/>
+<pyUseCaseWorkType/>
+<pxSubscript>Ticket1</pxSubscript>
+<pyHeight/>
+<pyAuditNote/>
+<pyMOName>SendToReceiveDocument</pyMOName>
+<pzIndexOwnerKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzIndexOwnerKey>
+<pyUseCaseName/>
+<pxCreateDateTime>20201023T070156.021 GMT</pxCreateDateTime>
+<pyFAProcessOnJump>false</pyFAProcessOnJump>
+<pyDisplayLink>false</pyDisplayLink>
+<pyWidth/>
+<pyImplementation/>
+<pyCoordX/>
+<pyModifierRefs REPEATINGTYPE="PropertyGroup"> </pyModifierRefs>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="WorkBasket">24</rowdata>
+</pzIndexes>
+</rowdata>
+</pyModifiers>
+<pyContexts REPEATINGTYPE="PageGroup"> </pyContexts>
+</pyModelProcess>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20201023T070129.937 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20200611T034622.243 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-OBJ-FLOW ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT RECEIVEDOCUMENT_FLOW #20190516T062458.029 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-70 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyFromTasks REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-Obj-Flow-FromTasks</pxObjClass>
+<pyFromTaskName>Assignment1</pyFromTaskName>
+<pyToTasks REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="END52">
+<pyID>Transition2</pyID>
+<pyTaskStatusOrWhen>STATUS</pyTaskStatusOrWhen>
+<pyHistoryText/>
+<pxSubscript>END52</pxSubscript>
+<pyTaskWhen>InputReceiveDocument</pyTaskWhen>
+<pyLikelihood>100</pyLikelihood>
+<pxObjClass>Embed-Rule-Obj-Flow-FromToTask</pxObjClass>
+<pyTaskStatus>InputReceiveDocument</pyTaskStatus>
+<pyPropertySet REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropertiesName/>
+<pyPropertiesValue/>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+</rowdata>
+</pyPropertySet>
+</rowdata>
+</pyToTasks>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Rule-Obj-Flow-FromTasks</pxObjClass>
+<pyFromTaskName>Start1</pyFromTaskName>
+<pyToTasks REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="Assignment1">
+<pxSubscript>Assignment1</pxSubscript>
+<pyHistoryText/>
+<pyTaskStatus/>
+<pyLikelihood>100</pyLikelihood>
+<pyTaskStatusOrWhen>ALWAYS</pyTaskStatusOrWhen>
+<pxObjClass>Embed-Rule-Obj-Flow-FromToTask</pxObjClass>
+<pyTaskWhen/>
+<pyID>Transition1</pyID>
+<pyPropertySet REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pyPropertiesName/>
+<pyPropertiesValue/>
+</rowdata>
+</pyPropertySet>
+</rowdata>
+</pyToTasks>
+</rowdata>
+</pyFromTasks>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyStencils REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyStencils>
+<pyLocalActions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActionName/>
+<pyUseCaseName/>
+<pyUseCaseApplication/>
+<pxObjClass>Embed-Pega-AssignAction</pxObjClass>
+<pyUseCaseWorkType/>
+</rowdata>
+</pyLocalActions>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-flow/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>true</pyShowJava>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-flow/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyStandardUser>false</pyStandardUser>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyRuleData>true</pyRuleData>
+<pySiblings>true</pySiblings>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyUsesInheritance>true</pyUsesInheritance>
+</pyToolBarSettings>
+<pyTaskInfo REPEATINGTYPE="PageGroup"> </pyTaskInfo>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+</pagedata>

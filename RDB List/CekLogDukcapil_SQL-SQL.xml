@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSiblingCount/>
+<pxOriginalCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pxUpdateDateTime>20191008T035431.937 GMT</pxUpdateDateTime>
+<pyRuleSetVersion>01-01-39</pyRuleSetVersion>
+<pxHostId>jboss2165</pxHostId>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInstanceLockedRuleSet/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!CEKLOGDUKCAPIL_SQL #20191008T035354.246 GMT</pzDocumentKey>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDate/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRequestType>CekLogDukcapil_SQL</pyRequestType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateOperator>ASWINDEWASTAWA</pxUpdateOperator>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pyCircumstanceProp/>
+<pyLabelOld>CekLogDukcapil_SQL</pyLabelOld>
+<pyHandlerFlow/>
+<pxMoveImportOperName>Roby</pxMoveImportOperName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyBrowseSQL>select count(1) as "JMLDATA"
+  from log_dukcapil
+ where no_klaim = {InputCek.VCASEID}
+     and status  = '1'</pyBrowseSQL>
+<pySPRuleSetName>ASWINDEWASTAWA@</pySPRuleSetName>
+<pyStreamName/>
+<pzChecksum>539680811</pzChecksum>
+<pyCircumstanceType/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleParamsStreamName/>
+<pyRelativePath/>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI ASM CekLogDukcapil_SQL</pyRuleName>
+<pyJavaStream/>
+<pxSaveDateTime>20191008T035431.959 GMT</pxSaveDateTime>
+<pxInstanceLockedDateTime/>
+<pyWorkKey/>
+<pyRuleSet>GKM</pyRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateOpName>I WAYAN ASWIN DEW ASTAWA</pxCreateOpName>
+<pxMoveImportOperId>roby_t@sinarmas.co.id</pxMoveImportOperId>
+<pyDocumentTitle/>
+<pyDescription/>
+<pyRuleStarts/>
+<pxUpdateOpName>I WAYAN ASWIN DEW ASTAWA</pxUpdateOpName>
+<pxOriginalCreateOperator/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyOpenSQL/>
+<pyDeleteSQL/>
+<pyCircumstanceDefinition/>
+<pxMoveImportDateTime>20200824T042219.669 GMT</pxMoveImportDateTime>
+<pyRuleFormStatusTime>20260908T065020.712 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedKey/>
+<pxInstanceLockedBy/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateOperator>ASWINDEWASTAWA</pxCreateOperator>
+<pyLabel>CekLogDukcapil_SQL</pyLabel>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!CEKLOGDUKCAPIL_SQL #20191007T090441.650 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateSystemID/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI</pyClassName>
+<pxOriginalRuleSet>GKM</pxOriginalRuleSet>
+<pySpecialtyComponentData/>
+<pyInterface/>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI ASM CekLogDukcapil_SQL</pxTabLabel>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI!ASM!CEKLOGDUKCAPIL_SQL</pxInsId>
+<pyUsage/>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI!ASM!CEKLOGDUKCAPIL_SQL</pxInsName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDateProp/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyCircumstanceTemplate/>
+<pyMethodStatus/>
+<pyWindowTitle/>
+<pxCreateDateTime>20191008T035354.246 GMT</pxCreateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyStatus/>
+<pyFormPost/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!CEKLOGDUKCAPIL_SQL #20191008T035354.246 GMT</pzInsKey>
+<pyMemo>up</pyMemo>
+<pyRuleEnds/>
+<pyDeleteMemo>ubah</pyDeleteMemo>
+<pzRuleSetVersionPatch>39</pzRuleSetVersionPatch>
+<pxCommitDateTime>20200824T042219.000 GMT</pxCommitDateTime>
+<pyShowJavaWindowName>GeneratedJava20260908T065020.737 GMT</pyShowJavaWindowName>
+<pyTemplate/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!CEKLOGDUKCAPIL_SQL #20191008T035354.246 GMT</pzInsKey>
+<pyLabel>01-01-39 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-36 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!CEKLOGDUKCAPIL_SQL #20191007T090441.650 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+</pagedata>

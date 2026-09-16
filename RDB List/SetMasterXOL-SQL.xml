@@ -1,0 +1,230 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMergeSynchronized>20220719T083109.546 GMT</pxMergeSynchronized>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceVal/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleFormStatusTime>20260822T084946.199 GMT</pyRuleFormStatusTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-PANEL_HE GCNM SetMasterXOL</pyRuleName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplate/>
+<pxHostId>jboss10372</pxHostId>
+<pyClassName>ASM-FW-GCNMFW-Int-PANEL_HE</pyClassName>
+<pyFormPost/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceType/>
+<pyStreamName/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxInstanceLockedBy/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceDateProp/>
+<pxUpdateDateTime>20240820T101817.157 GMT</pxUpdateDateTime>
+<pyMemo>dones</pyMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyBrowseSQL>DECLARE 
+  TTIPE VARCHAR2(32767);
+  IDMST VARCHAR2(32767);
+  TTAHUN VARCHAR2(32767);
+  TNAMAMST VARCHAR2(32767);
+  TKURS NUMBER;
+  TBISNIS VARCHAR2(32767);
+  TIDBISNIS VARCHAR2(32767);
+  TIDLAYER VARCHAR2(32767);
+  TLAYER VARCHAR2(32767);
+  TLIMIT NUMBER;
+  TEXCESS NUMBER;
+  TREAS VARCHAR2(32767);
+  TIDREAS VARCHAR2(32767);
+  TSHARE NUMBER;
+  ERRMSG VARCHAR2(32767);
+  IDMST2 VARCHAR2(32767);
+  TCONVERT VARCHAR2(32767);
+  Ttypess VARCHAR(32767);
+
+BEGIN 
+  TTIPE := {InputData.BranchName};
+  IDMST := {TempXOL.BranchID};
+  TTAHUN := {TempXOL.TreatyYear};
+  TNAMAMST := {TempXOL.UserName};
+  TKURS := {TempXOL.Amount};
+  TBISNIS := {TempXOL.Province};
+  TIDBISNIS := {TempXOL.ProvinceID};
+  TIDLAYER := {InputData.ClaimID};
+  TLAYER := {InputData.BusinessID};
+  TLIMIT := {InputData.BusinessName};
+  TEXCESS := {InputData.CaseID};
+  TREAS := {InputData.City};
+  TIDREAS := {InputData.CityID};
+  TSHARE := {InputData.ClientID};
+  TCONVERT := {InputData.Country};
+   Ttypess := {TempXOL.CNPSupportDoc};
+
+  POOLDATA.INSERT_UPDATE_MST_XOL ( TTIPE, IDMST, TTAHUN, TNAMAMST, TKURS, TBISNIS, TIDBISNIS, TIDLAYER, TLAYER, TLIMIT, TEXCESS, TREAS, TIDREAS, TSHARE, TCONVERT, Ttypess ,{OutputData.ResponseNote out},{OutputData.IDMaster OUT});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pyCircumstanceTemplate/>
+<pyInterface/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyBaseRule>false</pyBaseRule>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportDateTime>20241223T123621.929 GMT</pxMoveImportDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemporaryObject/>
+<pyDescription/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyCircumstanceDate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!SETMASTERXOL #20240820T101410.500 GMT</pzInsKey>
+<pyMethodStatus/>
+<pyRuleStarts/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCheckInRuleSet/>
+<pxInstanceLockedRuleSet/>
+<pxCreateDateTime>20240820T101410.500 GMT</pxCreateDateTime>
+<pySaveSQL/>
+<pyStatus/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!UPDATEPANEL_HE #20200908T033728.746 GMT</pzOriginalInstanceKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedCreateDateTime/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyOpenSQL/>
+<pyCircumstanceProp/>
+<pyUsage/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyShowJavaWindowName>GeneratedJava20260822T084946.219 GMT</pyShowJavaWindowName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSaveDateTime>20240820T101817.170 GMT</pxSaveDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleEnds/>
+<pyIsFromManageChangeLP/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateDateTime/>
+<pxMoveFromSystem/>
+<pyWindowTitle/>
+<pyCircumstanceDefinition/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!SETMASTERXOL #20240820T101410.500 GMT</pzDocumentKey>
+<pyRequestType>SetMasterXOL</pyRequestType>
+<pxInstanceLockedDateTime/>
+<pxInsName>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!SETMASTERXOL</pxInsName>
+<pyWorkKey/>
+<pyHandlerFlow/>
+<pxInstanceLockedKey/>
+<pxOriginalCreateSystemID/>
+<pyJavaStream/>
+<pyDeletedObject/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInsId>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!SETMASTERXOL</pxInsId>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyLabel>Set Master XOL</pyLabel>
+<pxSiblingCount/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pzChecksum>-696123943</pzChecksum>
+<pyDocumentTitle/>
+<pyLabelOld>Set Master XOL</pyLabelOld>
+<pyRuleParamsStreamName/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PANEL_HE GCNM SetMasterXOL</pxTabLabel>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyDeleteSQL/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxOriginalCreateOperator/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySpecialtyComponentData/>
+<pyTemplateInputBox/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!SETMASTERXOL #20240820T101410.500 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!SETMASTERXOL #20240626T124939.874 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!SETMASTERXOL #20220629T035621.111 GMT</pzInsKey>
+<pyLabel>01-01-98 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

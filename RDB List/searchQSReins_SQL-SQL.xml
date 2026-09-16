@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSetVersion>01-01-03</pyRuleSetVersion>
+<pyMethodStatus/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedDateTime/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyIsFromManageChangeLP/>
+<pyFormPost/>
+<pyWindowTitle/>
+<pyTemplateInputBox/>
+<pyOpenSQL/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pxSiblingCount/>
+<pyHandlerFlow/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDescription/>
+<pyBaseRule>false</pyBaseRule>
+<pyDocumentTitle/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!SEARCHQSREINS_SQL</pxInsName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDate/>
+<pxHostId>jboss2058</pxHostId>
+<pyDeleteSQL/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM searchQSReins_SQL</pyRuleName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedCreateDateTime/>
+<pyLabel>searchQSReins_SQL</pyLabel>
+<pyCircumstanceType/>
+<pyJavaStream/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRelativePath/>
+<pyStreamName/>
+<pyHistoryObject/>
+<pyCircumstanceDateProp/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pzChecksum>80097160</pzChecksum>
+<pyTemplate/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>SANDY</pxUpdateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pyUsage/>
+<pxCreateOpName>SANDY</pxCreateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyShowJavaWindowName>GeneratedJava20260831T073159.814 GMT</pyShowJavaWindowName>
+<pxSaveDateTime>20171204T031054.263 GMT</pxSaveDateTime>
+<pyWorkKey/>
+<pxUpdateDateTime>20171204T031054.237 GMT</pxUpdateDateTime>
+<pxMoveImportDateTime>20191231T031847.827 GMT</pxMoveImportDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM searchQSReins_SQL</pxTabLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSetVersion/>
+<pyInterface/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!SEARCHQSREINS_SQL #20171204T030257.490 GMT</pzOriginalInstanceKey>
+<pxCreateOperator>SANDY</pxCreateOperator>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyCircumstanceTemplate/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pyCircumstanceProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!SEARCHQSREINS_SQL</pxInsId>
+<pxCreateDateTime>20171204T030257.490 GMT</pxCreateDateTime>
+<pyRequestType>searchQSReins_SQL</pyRequestType>
+<pySaveSQL/>
+<pyRuleFormStatusTime>20260831T073159.794 GMT</pyRuleFormStatusTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDefinition/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pyMemo>done</pyMemo>
+<pxUpdateOperator>SANDY</pxUpdateOperator>
+<pyBrowseSQL>select TREATYGROUPID as BRANCH_CODE from treatybusiness where bizcode = {tempQS.BLNumber} and reinstypeid = {tempQS.AccountNo} and treatyyear= {tempQS.AgingAmount}</pyBrowseSQL>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!SEARCHQSREINS_SQL #20171204T030257.490 GMT</pzInsKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceVal/>
+<pzRuleSetVersionPatch>03</pzRuleSetVersionPatch>
+<pySpecialtyComponentData/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!SEARCHQSREINS_SQL #20171204T030257.490 GMT</pzDocumentKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-03 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!SEARCHQSREINS_SQL #20171204T030257.490 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+</pagedata>

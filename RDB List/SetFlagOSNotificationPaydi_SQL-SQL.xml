@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHandlerFlow/>
+<pyCheckInRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRequestType>SetFlagOSNotificationPaydi_SQL</pyRequestType>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pxInstanceLockedRuleSetVersion/>
+<pyStreamName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedDateTime/>
+<pySpecialtyComponentData/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDocumentTitle/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemplateInputBox/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>01-04-77</pyRuleSetVersion>
+<pyInterface/>
+<pyRuleFormStatusTime>20260827T065512.252 GMT</pyRuleFormStatusTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceTemplate/>
+<pyRuleEnds/>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUsage/>
+<pyTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pyMemo>OK</pyMemo>
+<pyLabel>SetFlagOSNotificationPaydi_SQL</pyLabel>
+<pyHistoryObject>false</pyHistoryObject>
+<pyValueChanged>false</pyValueChanged>
+<pyDeleteSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRWAccess>ASM</pyRWAccess>
+<pxMoveImportDateTime>20240818T101840.634 GMT</pxMoveImportDateTime>
+<pyMethodStatus/>
+<pyWindowTitle/>
+<pyDeletedObject/>
+<pxOriginalCreateSystemID/>
+<pyJavaStream/>
+<pyCircumstanceType/>
+<pxOriginalCreateOpName/>
+<pzChecksum>296459773</pzChecksum>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM SetFlagOSNotificationPaydi_SQL</pxTabLabel>
+<pyCircumstanceDate/>
+<pxOriginalCreateDateTime/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRelativePath/>
+<pxCreateOpName>Yafia Samuel</pxCreateOpName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyBrowseSQL/>
+<pyRuleStarts/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyBaseRule>false</pyBaseRule>
+<pyLabelOld>SetFlagOSNotificationPaydi_SQL</pyLabelOld>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pxUpdateOpName>Yafia Samuel</pxUpdateOpName>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!SEARCHOSNOTIFICATIONPAYDI_SQL #20240802T112938.902 GMT</pzOriginalInstanceKey>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL #20240805T090305.034 GMT</pzInsKey>
+<pxHostId>jboss10402</pxHostId>
+<pyDescription/>
+<pxSaveDateTime>20240805T090408.793 GMT</pxSaveDateTime>
+<pxCommitDateTime>20240818T101841.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL</pxInsId>
+<pyTemporaryObject/>
+<pxOriginalRuleSet/>
+<pxMergeSynchronized>20240802T114145.884 GMT</pxMergeSynchronized>
+<pyCircumstanceDefinition/>
+<pxUpdateDateTime>20240805T090408.786 GMT</pxUpdateDateTime>
+<pyOpenSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedKey/>
+<pxInstanceLockedBy/>
+<pxCreateOperator>YAFIASAMUEL</pxCreateOperator>
+<pxSiblingCount/>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM SetFlagOSNotificationPaydi_SQL</pyRuleName>
+<pyFormPost/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOperator>YAFIASAMUEL</pxUpdateOperator>
+<pxMoveFromSystem/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL #20240805T090305.034 GMT</pzDocumentKey>
+<pxOriginalCreateOperator/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStatus/>
+<pyWorkKey/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyShowJavaWindowName>GeneratedJava20260827T065512.279 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsFromManageChangeLP/>
+<pySaveSQL>UPDATE  t_notification_paydi SET Sts_kirim ='1', TGL_KIRIM_NOTIF = SYSDATE
+where IDPEGA = {InputDataOSNotification.IDPEGA}</pySaveSQL>
+<pyRuleParamsStreamName/>
+<pyCircumstanceVal/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL</pxInsName>
+<pxCreateDateTime>20240805T090305.034 GMT</pxCreateDateTime>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-04-77 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL #20240805T090305.034 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!SETFLAGOSNOTIFICATIONPAYDI_SQL #20240802T114026.340 GMT</pzInsKey>
+<pyLabel>01-04-76 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

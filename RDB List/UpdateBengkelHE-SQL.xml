@@ -1,0 +1,182 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxHostId>jboss2145</pxHostId>
+<pyCircumstanceDateProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyClassName>ASM-FW-GCNMFW-Int-BENGKEL_HE</pyClassName>
+<pxOriginalCreateDateTime/>
+<pxInsName>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!UPDATEBENGKELHE</pxInsName>
+<pyMemo>done</pyMemo>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHistoryObject>false</pyHistoryObject>
+<pyJavaStream/>
+<pyHandlerFlow/>
+<pyRuleEnds/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedKey/>
+<pxUpdateDateTime>20200908T081221.802 GMT</pxUpdateDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxOriginalCreateOpName/>
+<pxOriginalCreateOperator/>
+<pyDeleteSQL/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyCircumstanceProp/>
+<pzChecksum>-1136316026</pzChecksum>
+<pyRuleStarts/>
+<pxInstanceLockedBy/>
+<pyRequestType>UpdateBengkelHE</pyRequestType>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyTemplateInputBox/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxSaveDateTime>20200908T081221.825 GMT</pxSaveDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedDateTime/>
+<pyDescription/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSet/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleName>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM UpdateBengkelHE</pyRuleName>
+<pzRuleSetVersionPatch>56</pzRuleSetVersionPatch>
+<pyDocumentTitle/>
+<pyLabelOld>UpdateBengkelHE</pyLabelOld>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!UPDATEBENGKELHE #20200908T033246.795 GMT</pzDocumentKey>
+<pxCreateDateTime>20200908T033246.795 GMT</pxCreateDateTime>
+<pxOriginalCreateSystemID/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!UPDATESTSCLAIM #20170330T072344.846 GMT</pzOriginalInstanceKey>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pySpecialtyComponentData/>
+<pyCircumstanceType/>
+<pxMoveImportDateTime>20201111T102239.694 GMT</pxMoveImportDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyWorkKey/>
+<pyUsage/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!UPDATEBENGKELHE #20200908T033246.795 GMT</pzInsKey>
+<pyCircumstanceTemplate/>
+<pyWindowTitle/>
+<pyShowJavaWindowName>GeneratedJava20260826T072839.864 GMT</pyShowJavaWindowName>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyTemplate/>
+<pyMethodStatus/>
+<pyStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyOpenSQL/>
+<pyIsFromManageChangeLP/>
+<pyBrowseSQL>DECLARE 
+  IDPega VARCHAR2(32767);
+  Datapega CLOB;
+
+BEGIN 
+  IDPega := {InputBengkel.ID_BENGKEL};
+  DBMS_LOB.CREATETEMPORARY(Datapega, true);
+  Datapega :=  {InputBengkel.ACCOUNT_ID};
+  POOLDATA.PEGA_M_BENGKEL_HE (Datapega, IDPega , {OutputBengkel.ID_BENGKEL out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStreamName/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM UpdateBengkelHE</pxTabLabel>
+<pyRuleFormStatusTime>20260826T072839.822 GMT</pyRuleFormStatusTime>
+<pxCommitDateTime>20201111T102239.000 GMT</pxCommitDateTime>
+<pySaveSQL/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyBaseRule>false</pyBaseRule>
+<pxInsId>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!UPDATEBENGKELHE</pxInsId>
+<pyInterface/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyLabel>UpdateBengkelHE</pyLabel>
+<pyRuleSetVersion>01-01-56</pyRuleSetVersion>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pyFormPost/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!UPDATEBENGKELHE #20200908T033246.795 GMT</pzInsKey>
+<pyLabel>01-01-56 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+</pagedata>

@@ -1,0 +1,289 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedRuleSet/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyTemplateInputBox/>
+<pyLabelOld>GetReportprogressKlaim KPI PIC</pyLabelOld>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pyCircumstanceType/>
+<pyCircumstanceProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatusTime>20260901T073408.389 GMT</pyRuleFormStatusTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetReportprogressKlaimKPIPIC</pyRuleName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetReportprogressKlaimKPIPIC</pxTabLabel>
+<pyRelativePath/>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pxUpdateDateTime>20260415T084138.708 GMT</pxUpdateDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleEnds/>
+<pxSaveDateTime>20260415T084138.775 GMT</pxSaveDateTime>
+<pyDescription/>
+<pyCircumstanceTemplate/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETREPORTPROGRESSKLAIMKPIPIC</pxInsId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportDateTime>20241223T123621.973 GMT</pxMoveImportDateTime>
+<pyDeletedObject/>
+<pxHostId>jboss10372</pxHostId>
+<pyBrowseSQL>select (select A.CLAIMID from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "POLICYDECLARATIONNO",
+          B.NOKLAIM as "IDPEGA",
+         TO_CHAR (B.NOPOLIS) AS "EDMNO",
+         (select REPLACE (a.QQNAME, ',', ' ') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "QQNAME",
+         (select a.BUSINESSNAME from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "NOPOLIS",
+         (select a.leader_member from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "BUSINESSTYPE",
+         TO_CHAR (B.DATEOFLOSS, 'YYYY') AS "ENDDATE",
+         (select x.RECEIVEDDATE_1 from datapega.pc_asm_fw_gcnmfw_work x where x.pzinskey='ASM-FW-GCNMFW-WORK '||B.NOKLAIM) AS "PRODKE",
+         (select TO_CHAR (a.FINISHREGISTERDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "ACCUMCODE",
+         (select TO_CHAR (a.CLOSECLAIMDATE, 'dd/mm/yyyy')  from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS)AS "TABLEOBJECTNAME",
+         (select TO_CHAR (a.REGISTERDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "REGISTERID",
+         (select TO_CHAR (a.transferpic_date, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "WARRANTYNO",
+         (SELECT TO_CHAR (MIN (tanggal + 12 / 24), 'dd/mm/yyyy')
+            FROM os_akseptasi_klaim
+           WHERE caseid = 'ASM-FW-GCNMFW-WORK '||B.NOKLAIM)
+            AS "pyCountry",
+         (select TO_CHAR (a.DATEOFREQUESTDOCUMENT, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "THEINSURED",
+         (select TO_CHAR (a.SURVEYDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "BUSINESSCODE",
+         B.PIC AS "OLDPOLICYNO",
+         (select REPLACE (a.closeclaimnote, CHR (10), ' ') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "GROUPPANEL",
+         (select TO_CHAR (a.investigator_tf_date, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "SOBLEADER1",
+         (select TO_CHAR (a.ANALYSTTORCLPUCL_DATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "SOBLEADER2",
+         (select TO_CHAR (a.RCLPUCL_TF_TOANALYST, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "SOBLEADER0",
+         (select a.RCLPUCL from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "SOBNAME",
+         (select TO_CHAR (a.COMPLIANCE_CREATEDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "SOURCEOFBUSINESS",
+         (select TO_CHAR (a.CPLVALID_DATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "ISMAINFOLLOWING",
+         (select TO_CHAR (a.POSTAUDIT_TF_ANALYSTDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "STATUSBUSINESS",
+         (select TO_CHAR (a.CPLPOSTAUDIT_VALIDDATE, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "EDMTYPE",
+         (select a.ALASANKETERLAMBATAN from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "MARKETINGCODE",
+         (select a.businesscode from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "BUSINESSNAME",
+         (SELECT b.lsc_note
+            FROM v_sts_claim b
+           WHERE (select a.StatusClaim from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) = b.LSC_ID)
+            AS "CLIENTID",
+         (select a.SOBNAME from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "ISFOLLOWINGCHILD",
+         B.NOKLAIM AS "pyNote",
+         (select x.pxcreateoperator from datapega.pc_asm_fw_gcnmfw_work x where x.pzinskey='ASM-FW-GCNMFW-WORK '||B.NOKLAIM) AS "pyLabel",
+         (select TO_CHAR (a.TGLDOKLENGKAP, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "pyGroup",
+         (select TO_CHAR (a.trf_to_investigator, 'dd/mm/yyyy') from POOLDATA.T_CLAIM_PNC a where A.CLAIMNO='ASM-FW-GCNMFW-WORK '||B.NOKLAIM and A.NOPOLIS=B.NOPOLIS) AS "pzInsKey",
+         (select SUBSTR (X.REPORTDATE_1, 0, 8) from datapega.pc_asm_fw_gcnmfw_work x where x.pyid=B.NOKLAIM) AS "IndexSpreading",
+         (SELECT posisi
+            FROM POOLDATA.GCNM_PROGRESS_POSISI_PNC z
+           WHERE     z.caseid = B.NOKLAIM
+                 AND id = (SELECT MAX (id)
+                             FROM POOLDATA.GCNM_PROGRESS_POSISI_PNC
+                            WHERE caseid = z.caseid))
+            AS "pyIssue",
+         (SELECT TO_CHAR (startdate, 'dd/mm/yyyy')
+            FROM t_general
+           WHERE nopolis = B.NOPOLIS AND prodke = B.PROD_KE)
+            AS "PlatNo",
+         (SELECT TO_CHAR (enddate, 'dd/mm/yyyy')
+            FROM t_general
+           WHERE nopolis = B.NOPOLIS AND prodke = B.PROD_KE)
+            AS "Position",
+            to_char(C.TGL_INPUT,'dd/mm/yyyy') as "DISC",
+            to_char(NEXT_FOLLOWUP,'dd/mm/yyyy') as "DISC2",
+             CASE
+                  WHEN
+                           (
+                                    SELECT   t.tgl_input
+                                    FROM     pooldata.gcnm_progress_claim t
+                                    WHERE    t.pnccaseid = c.pnccaseid
+                                    AND      t.id_update &gt; c.id_update
+                                    ORDER BY t.id_update ASC FETCH next 1 row only) IS NULL THEN 'Tercapai'
+                  ELSE
+                           CASE
+                                    WHEN trunc(c.next_followup)+1 &gt;=
+                                             (
+                                                      SELECT   trunc(t.tgl_input)
+                                                      FROM     pooldata.gcnm_progress_claim t
+                                                      WHERE    t.pnccaseid=c.pnccaseid
+                                                      AND      t.id_update&gt;c.id_update
+                                                      ORDER BY t.id_update ASC FETCH next 1 row only) THEN 'Tercapai'
+                                    ELSE 'Tidak Tercapai'
+                           END
+         END as "ASMCityId",
+            C.KETERANGAN as "CARI6",
+(select STS_PROGRESS1 from  POOLDATA.GCNM_MST_PROGRESS x where X.ID_PROGRESS = C.STATUS_PROGRESS1 fetch next 1 row only) AS "AidaAlamat",
+            (select SerialNo from POOLDATA.GCNM_PROGRESS_CLAIM  G,JSON_TABLE(G.JSONSTATUS_PROGRESS2,'$' columns(nested path '$.ObjectList[*]' COLUMNS (SerialNo varchar2 path '$.SerialNo')))
+        where G.PNCCASEID = c.PNCCASEID
+        AND  G.ID_UPDATE = C.ID_UPDATE  and STATUS_PROGRESS2 not in ('2','24','60','59') fetch next 1 row only)  AS "AidaNama"
+   FROM pooldata.GCNM_PROGRESS_CLAIM c, pooldata.PEGA_DASHBOARDPNC b
+           WHERE     c.pnccaseid = b.noklaim and b.STSKLAIM not in ('1','2','3')
+                 AND    upper(keterangan) NOT LIKE '%AUTO%'
+                and upper(keterangan) NOT LIKE '%SYSTEM%'
+                 AND b.pic = c.USER_INPUT and b.pic IN {ASIS:TempDateReport.UserTeknis}
+                 AND b.pic != 'ASNET'
+                 AND TRUNC (TGL_INPUT) &gt;= TO_DATE ({TempDateReport.NoteKasir}, 'dd/mm/yyyy')
+                 AND TRUNC (TGL_INPUT) &lt;= TO_DATE ({TempDateReport.AnaylstRemarks}, 'dd/mm/yyyy')
+                {ASIS:TempLaporan.UserTeknis}</pyBrowseSQL>
+<pyIsFromManageChangeLP/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pxOriginalCreateDateTime/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxOriginalCreateSystemID/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyDocumentTitle/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pxMoveFromSystem/>
+<pzIsPrivateCheckOut/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETREPORTPROGRESSKLAIMKPIPIC</pxInsName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyUsage/>
+<pyHandlerFlow/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>GetReportprogressKlaim KPI PIC</pyLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyFormPost/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCheckInRuleSet/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemporaryObject/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxCommitDateTime>20260415T084138.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20250114T085430.649 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyWindowTitle/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyMemo>edit TempDateReport.UserTeknis</pyMemo>
+<pyCircumstanceDateProp/>
+<pySaveSQL/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyCircumstanceDefinition/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMergeSynchronized>20250114T085438.429 GMT</pxMergeSynchronized>
+<pxInstanceLockedDateTime/>
+<pyRequestType>GetReportprogressKlaimKPIPIC</pyRequestType>
+<pyStreamName/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyOpenSQL/>
+<pyRuleParamsStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260901T073408.407 GMT</pyShowJavaWindowName>
+<pzChecksum>-542593032</pzChecksum>
+<pyCircumstanceDate/>
+<pxCreateDateTime>20250114T085430.649 GMT</pxCreateDateTime>
+<pxOriginalCreateOpName/>
+<pyMethodStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20250114T085430.649 GMT</pzInsKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyValueChanged>false</pyValueChanged>
+<pxSiblingCount/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20230714T020042.963 GMT</pzOriginalInstanceKey>
+<pyCircumstanceVal/>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateOperator/>
+<pyWorkKey/>
+<pxInstanceLockedKey/>
+<pySPRuleSetName>ARLEXYVARIAN@</pySPRuleSetName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>true</pyDelete>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20250114T085430.649 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20240925T083852.682 GMT</pzInsKey>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-03-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20240322T123514.946 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyLabel>01-03-01 (Available)</pyLabel>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETREPORTPROGRESSKLAIMKPIPIC #20240307T060831.133 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

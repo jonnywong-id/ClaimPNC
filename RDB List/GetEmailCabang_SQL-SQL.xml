@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySPRuleSetName>CALVINJOE@</pySPRuleSetName>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyOpenSQL/>
+<pySaveSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedCreateDateTime/>
+<pyWorkKey/>
+<pyDescription/>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETEMAILCABANGPUSAT_SQL #20240419T095933.672 GMT</pzOriginalInstanceKey>
+<pyStatus/>
+<pyRuleStarts/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedDateTime/>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pyInterface/>
+<pyDocumentTitle/>
+<pzChecksum>-414381334</pzChecksum>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pxInstanceLockedBy/>
+<pyRelativePath/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDateProp/>
+<pyBrowseSQL>select id as "HASIL1" from branch where branchparentid &lt;&gt; '100081' and status = '1' and branchname not like 'MP%' and branchname not like 'MPA%'</pyBrowseSQL>
+<pyRuleSetVersion>01-04-64</pyRuleSetVersion>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!GETEMAILCABANG_SQL</pxInsId>
+<pyRWAccess>ASM</pyRWAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyUsage/>
+<pyWindowTitle/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMemo>Check in sementara buat up</pyMemo>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM GetEmailCabang_SQL</pyRuleName>
+<pyHandlerFlow/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETEMAILCABANG_SQL #20240419T100002.327 GMT</pzInsKey>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pyLabel>GetEmailCabang_SQL</pyLabel>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateDateTime>20240421T081033.542 GMT</pxUpdateDateTime>
+<pyCircumstanceVal/>
+<pyRuleFormStatusTime>20260720T142122.183 GMT</pyRuleFormStatusTime>
+<pyCircumstanceType/>
+<pxCommitDateTime>20240421T140912.000 GMT</pxCommitDateTime>
+<pyDeleteSQL/>
+<pyRequestType>GetEmailCabang_SQL</pyRequestType>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pxOriginalCreateDateTime/>
+<pyTemplate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStreamName/>
+<pyCircumstanceDate/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxInstanceLockedRuleSet/>
+<pxMoveFromSystem/>
+<pyShowJavaWindowName>GeneratedJava20260720T142122.201 GMT</pyShowJavaWindowName>
+<pxCreateDateTime>20240419T100002.327 GMT</pxCreateDateTime>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyDeletedObject/>
+<pxHostId>jboss10422</pxHostId>
+<pxOriginalCreateOpName/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedKey/>
+<pySpecialtyComponentData/>
+<pyFormPost/>
+<pxSaveDateTime>20240421T081033.552 GMT</pxSaveDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceDefinition/>
+<pyLabelOld>GetEmailCabang_SQL</pyLabelOld>
+<pxOriginalCreateOperator/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!GETEMAILCABANG_SQL</pxInsName>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveImportDateTime>20240421T140912.221 GMT</pxMoveImportDateTime>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETEMAILCABANG_SQL #20240419T100002.327 GMT</pzDocumentKey>
+<pyBaseRule>false</pyBaseRule>
+<pyIsFromManageChangeLP/>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM GetEmailCabang_SQL</pxTabLabel>
+<pxOriginalCreateSystemID/>
+<pzRuleSetVersionPatch>64</pzRuleSetVersionPatch>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETEMAILCABANG_SQL #20240419T100002.327 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-04-64 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

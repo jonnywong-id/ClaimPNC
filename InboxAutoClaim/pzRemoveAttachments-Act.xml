@@ -1,0 +1,645 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedCreateDateTime/>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyCircumstanceDateProp/>
+<pxSaveDateTime>20180713T133007.865 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pxInstanceLockedKey/>
+<pyDeletedObject/>
+<pyAssociatedImage/>
+<pyPreviousApplicationName>PenjcTest</pyPreviousApplicationName>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateSystemID>sls-envhyd2</pxOriginalCreateSystemID>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;WorkInskey DESCRIPTION= "" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyActivityName>pzRemoveAttachments</pyActivityName>
+<pyInterface/>
+<pxCommitDateTime>20191015T081610.000 GMT</pxCommitDateTime>
+<pyDescription>This activity removed pyAttachments and removed data page. This is to ensure re population of fresh attachments on next reference.</pyDescription>
+<pyRelativePath/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180330T100657.352 GMT</pxMoveOriginalKey>
+<pxInsName>@BASECLASS!PZREMOVEATTACHMENTS</pxInsName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreatedInPRPCVersion>07-01-07</pxCreatedInPRPCVersion>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyValueChanged>false</pyValueChanged>
+<pyStreamName/>
+<pyDeleteMemo>BUG-349859: Adjusted the dp param value from Categroy to CategoryName</pyDeleteMemo>
+<pyClassName>@baseclass</pyClassName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveOriginalRuleSetVersion>07-10-37</pxMoveOriginalRuleSetVersion>
+<pyLabelOld>pzRemoveAttachments</pyLabelOld>
+<pyTemplate/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzDocumentKey>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pxUpdateDateTime>20180713T133007.862 GMT</pxUpdateDateTime>
+<pzChecksum>370218695</pzChecksum>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pxInstanceLockedBy/>
+<pyRuleSearchQuery/>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pxUpdateOpName>Deepika Angala</pxUpdateOpName>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyCheckInRuleSet/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pySelected>false</pySelected>
+<pxOriginalCreateDateTime>20180713T133007.862 GMT</pxOriginalCreateDateTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleParamsStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260723T070620.385 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOpName>Pramod Dharbhashayanam</pxOriginalCreateOpName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWindowTitle/>
+<pyReloadForm>true</pyReloadForm>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedDateTime/>
+<pxTabLabel>pzRemoveAttachments</pxTabLabel>
+<pyRuleStarts/>
+<pxUpdateOperator>angad</pxUpdateOperator>
+<pxMoveOriginalRuleSet>Pega-ProcessEngine</pxMoveOriginalRuleSet>
+<pyCircumstanceProp/>
+<pyInputMayStart>false</pyInputMayStart>
+<pxInstanceLockedRuleSetVersion/>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyDocumentTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleFormStatusTime>20260723T070620.367 GMT</pyRuleFormStatusTime>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pxCreateDateTime>20180713T133007.862 GMT</pxCreateDateTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyFormPost/>
+<pyCircumstanceType/>
+<pxOriginalCreateOperator>dharp</pxOriginalCreateOperator>
+<pyJavaClassName>_baseclass_pzremoveattachments_20180713_133007_862</pyJavaClassName>
+<pyCircumstanceTemplate/>
+<pyMemo>BUG-349859: Adjusted the dp param value from Categroy to CategoryName</pyMemo>
+<pxMoveFromSystem/>
+<pzIndexCount>10</pzIndexCount>
+<pyCircumstanceVal/>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pyUsage>This is called from below scenarios attachments added\deleted\Refresh harness via Refresh action</pyUsage>
+<pyJavaStream/>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pxInstanceLockedSaveDateTime/>
+<pxUpdateSystemID>sls-envhyd2</pxUpdateSystemID>
+<pxCreateOperator>dharp</pxCreateOperator>
+<pyTemplateInputBox/>
+<pyIsFromManageChangeLP/>
+<pyJavaGenerateTime>20180516T120728.731 GMT</pyJavaGenerateTime>
+<pxSiblingCount/>
+<pySPRuleSetName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleSet>Pega-ProcessEngine</pyRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyWorkKey/>
+<pyRuleEnds/>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyCircumstanceDefinition/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleName>pzRemoveAttachments</pyRuleName>
+<pyLabel>pzRemoveAttachments</pyLabel>
+<pxInsId>!PZREMOVEATTACHMENTS</pxInsId>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyStatus/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20150518T150137.225 GMT</pzOriginalInstanceKey>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzInsKey>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceDate/>
+<pxMoveImportDateTime>20180330T180550.484 GMT</pxMoveImportDateTime>
+<pzStatus>false</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzInsKey>
+<pyLabel>08-01-01 (Final)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass>@baseclass</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>Wp</pyPagesAndClassesPage>
+</rowdata>
+</pyPagesAndClasses>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyLocalParameters>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzInsKey>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20180516T120400.854 GMT</pxWarningCreatedTime>
+<pxWarningSeverity>1</pxWarningSeverity>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Java step</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>dharp</pxWarningCreateOperator>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>penjc</pxWarningCreateOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningJustifiedTime/>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20180516T120400.855 GMT</pxWarningCreatedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pyWarningJustifiedMessage/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningJustifiedOperator/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20180516T120400.865 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>dharp</pxWarningCreateOperator>
+<pxIsWarningJustified/>
+<pxWarningJustifiedTime/>
+<pyWarningJustifiedMessage/>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningJustifiedOperator/>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">7</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxPageClass>@baseclass</pxPageClass>
+<pxPageName>Wp</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyParametersParamName>flowName</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>flowType</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+</pySystemParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxLowSeverityWarningCount>1</pxLowSeverityWarningCount>
+</pxMessageSummary>
+<pyToolBarSettings>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>true</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyPreview>true</pyPreview>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRun>true</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pyRuleName>@baseclass</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>WorkInskey</pyParametersParamName>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDefaultValue/>
+</rowdata>
+</pyParameters>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsObjectName/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyOnException/>
+<pyStepsDescription>remove the data page and remove attachments</pyStepsDescription>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsBlockName/>
+<pyTemplateInputBox/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pzStepExpanded/>
+<pxInsName/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsJavaSource>if(tools.findPageByHandle(tools.getParamValue("WorkInskey")) != null){
+ClipboardProperty attachments = tools.findPageByHandle(tools.getParamValue("WorkInskey")).getIfPresent(".pyAttachments");
+    try {
+       if (attachments != null) 
+       attachments.removeFromClipboard();
+       tools.getParameterPage().putString("LinkRefFrom",tools.getParamValue("WorkInskey"));
+       tools.removeDataPage("D_AttachmentList",tools.getParameterPage());
+        tools.getPrimaryPage().putString("pyIsDataPageRefreshed","true");
+       
+        }catch(Exception e){
+       
+    }
+}</pyStepsJavaSource>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyPropRef/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsTransition/>
+<pyExpanded>true</pyExpanded>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>penjc</pxCreateOperator>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxCreateDateTime>20150518T111347.592 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>penjc</pxCreateOperator>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20150518T111347.602 GMT</pxCreateDateTime>
+<pxCreateOpName>Chandrasekhar Penjarla</pxCreateOpName>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateDateTime>20260723T070620.356 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>Param.WorkInskey != ""</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20260723T070620.358 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsTransition/>
+<pyStepsPreCondition/>
+<pyStepActivityDescription/>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pxInsName/>
+<pyStepsDescription>scan for any attachment fields and remove their datapage references to resolve sync issues</pyStepsDescription>
+<pxCreateOperator>dharp</pxCreateOperator>
+<pyExpanded>true</pyExpanded>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxCreateDateTime>20180317T130740.480 GMT</pxCreateDateTime>
+<pyStepsJavaSource>if(tools.findPageByHandle(tools.getParamValue("WorkInskey")) != null){
+	ClipboardPage pyWorkPage=tools.findPageByHandle(tools.getParamValue("WorkInskey"));
+	try {
+		    
+		//BUG-349859:check for attachment fields which are need to be refreshed 
+		ClipboardProperty fields = pyWorkPage.getIfPresent(".pyFields");
+		if(fields!=null){
+      tools.getParameterPage().putString("LinkRefFrom",tools.getParamValue("WorkInskey"));
+		  tools.getParameterPage().putString("CaseID",pyWorkPage.getString("pxInsName"));
+	  	tools.getParameterPage().putString("ClassName",pyWorkPage.getString("pxObjClass"));
+			java.util.Iterator iter_fields=fields.iterator();
+			ClipboardProperty thisField;
+			ClipboardPage thisFieldPage;
+      String streamTypAttachment="Attachment";
+			while(iter_fields.hasNext()){
+				thisField = (ClipboardProperty)iter_fields.next();
+				thisFieldPage = thisField.getPageValue();
+        //Scan through attachment fields and remove corresponding datapage
+				if(streamTypAttachment.equals(thisFieldPage.getString("pyStreamName"))){
+					tools.getParameterPage().putString("AttachmentCategory",thisFieldPage.getString("pyCategoryName"));
+					tools.getParameterPage().putString("AttachmentFieldName",thisFieldPage.getString("pyPropertyName"));
+          //remove the datapage to get latest
+					tools.removeDataPage("D_AttachmentFieldInfo",tools.getParameterPage());              
+				}
+			}
+		}
+	}catch(Exception e){
+  }
+}</pyStepsJavaSource>
+<pzStepExpanded/>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pyStepsBlockName/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyPropRef/>
+<pyOnException/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsObjectName/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>dharp</pxCreateOperator>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20180317T130740.485 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>dharp</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pxCreateDateTime>20180317T130740.491 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>dharp</pxCreateOperator>
+<pxCreateDateTime>20180317T130740.492 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateDateTime>20180317T130740.490 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOpName>Pramod Dharbhashayanam</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>dharp</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+</pySteps>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pyActivityRole/>
+</rowdata>
+</pyActivityRolesList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>1</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningCreatedTime>20180516T120400.854 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep</pxWarningDetails>
+<pxWarningCreateOperator>dharp</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxIsWarningJustified/>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningCreatedTime>20180516T120400.855 GMT</pxWarningCreatedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedOperator/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningName>Activity use</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pyWarningJustifiedMessage/>
+<pxWarningCreateOperator>penjc</pxWarningCreateOperator>
+<pxWarningJustifiedTime/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pyWarningJustifiedMessage/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningJustifiedTime/>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningCreatedTime>20180516T120400.865 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedOperator/>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxWarningCreateOperator>dharp</pxWarningCreateOperator>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PZREMOVEATTACHMENTS #20180713T133007.862 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">7</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+<pyPrivilegeClass>@baseclass</pyPrivilegeClass>
+</rowdata>
+</pyActivityPrivilegeList>
+</pagedata>

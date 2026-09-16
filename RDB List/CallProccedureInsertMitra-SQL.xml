@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateDateTime/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRuleFormStatusTime>20260720T142750.072 GMT</pyRuleFormStatusTime>
+<pyDeletedObject/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyFormPost/>
+<pyTemplate/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxTabLabel>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM CallProccedureInsertMitra</pxTabLabel>
+<pxInstanceLockedRuleSet/>
+<pyShowJavaWindowName>GeneratedJava20260720T142750.094 GMT</pyShowJavaWindowName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateDateTime>20241227T032450.026 GMT</pxUpdateDateTime>
+<pyTemporaryObject/>
+<pxCommitDateTime>20241227T032450.000 GMT</pxCommitDateTime>
+<pxMoveFromSystem/>
+<pyTemplateInputBox/>
+<pyMemo>donee</pyMemo>
+<pyCircumstanceVal/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceProp/>
+<pyDocumentTitle/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyHandlerFlow/>
+<pxCreateDateTime>20241223T103934.499 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyCheckInRuleSet/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsName>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!CALLPROCCEDUREINSERTMITRA</pxInsName>
+<pyDeleteSQL/>
+<pxInstanceLockedKey/>
+<pzIsPrivateCheckOut/>
+<pxOriginalCreateOperator/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pxInstanceLockedBy/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInsId>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!CALLPROCCEDUREINSERTMITRA</pxInsId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!CALLPROCCEDUREINSERTMITRA #20241223T103934.499 GMT</pzInsKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyClassName>ASM-FW-GCNMFW-Int-BENGKEL_HE</pyClassName>
+<pyUsage/>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!CALLPROCCEDUREINSERTMITRA #20241223T103934.499 GMT</pzDocumentKey>
+<pxMoveImportDateTime>20210424T080922.432 GMT</pxMoveImportDateTime>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pySaveSQL>INSERT INTO POOLDATA.PNC_CHRONOLOGYTAT (IDPEGA, POSITION, USERASSIGN, TIMEIN, TIMEOUT, AGING, INSERTDATE, BISNISID, JENIS_KLAIM,NOKLAIM,NOTE)
+VALUES({InsertChronologyTAT.ClaimID}, 'INVESTIGASI PA', {InsertChronologyTAT.UserAdmin}, sysdate, sysdate, 0,sysdate, '10028', 'PERSONAL ACCIDENT',{InsertChronologyTAT.NoKlaim},{InsertChronologyTAT.OccupationCode})</pySaveSQL>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!UPDATEBENGKELHE #20200908T033246.795 GMT</pzOriginalInstanceKey>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleName>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM CallProccedureInsertMitra</pyRuleName>
+<pyLabelOld>CallProccedureInsertMitra</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyLabel>CallProccedureInsertMitra</pyLabel>
+<pyIsFromManageChangeLP/>
+<pyRequestType>CallProccedureInsertMitra</pyRequestType>
+<pyRelativePath/>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDateProp/>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzChecksum>592114990</pzChecksum>
+<pxOriginalCreateSystemID/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRuleEnds/>
+<pyInterface/>
+<pyWorkKey/>
+<pyStatus/>
+<pyRuleStarts/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pyMethodStatus/>
+<pyCircumstanceDefinition/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDescription/>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxSiblingCount/>
+<pyJavaStream/>
+<pxInstanceLockedCreateDateTime/>
+<pxMergeSynchronized>20210401T100710.421 GMT</pxMergeSynchronized>
+<pxHostId>jboss1040</pxHostId>
+<pyBrowseSQL>BEGIN 
+  POOLDATA.INSERT_PNCCHRONOLOGYTAT ({insertmitra.ACCOUNT_ID}, {insertmitra.ALASAN_STS_BGKL}, {insertmitra.LOGIN_APLIKASI}, {insertmitra.ALM_BENGKEL}, {insertmitra.BANK_ID}, {insertmitra.CABANG_ID}, {insertmitra.pxCreateDateTime DateTime}, {insertmitra.pxCommitDateTime DateTime}, {insertmitra.CITY_ID}, {insertmitra.NAMA_CABANG}, {insertmitra.pxOriginalCreateDateTime DateTime}, {insertmitra.pyID},{insertmitra.pyNote out});
+END;</pyBrowseSQL>
+<pyCircumstanceDate/>
+<pxSaveDateTime>20241227T032450.091 GMT</pxSaveDateTime>
+<pyOpenSQL/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>true</pyDelete>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>false</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!CALLPROCCEDUREINSERTMITRA #20241223T103934.499 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!CALLPROCCEDUREINSERTMITRA #20210401T083440.862 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-01-59 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!CALLPROCCEDUREINSERTMITRA #20200924T061938.928 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-01-56 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

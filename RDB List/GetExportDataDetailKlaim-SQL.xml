@@ -1,0 +1,893 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyTemplateInputBox/>
+<pyRelativePath/>
+<pyDocumentTitle/>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETEXPORTDATADETAILKLAIM</pxInsId>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>SELECT 
+  C.GROUPPANEL_1, 
+  C.PYSTATUSWORK as "pyStatusMessage",
+  C.SOBNAME as "UserBusinessPA", 
+  (
+      CASE WHEN C.SURVEYORTYPE_1 IN ('2', '3', '4') THEN C.Adjusterpic_1 ELSE '' END 
+  ) AS "StatusAnalystRemarks", 
+  (
+      CASE WHEN C.SURVEYORTYPE_1 = '1' THEN c.SURVEYORNAME_1 WHEN C.SURVEYORTYPE_1 = '2' 
+      AND c.businessname = 'MARINE HULL' THEN C.SURVEYORNAMEMARINE_1 ELSE '' END 
+  ) AS "SuspiciousComment", 
+  C.PYID AS "CaseID", 
+  a.lgb_note AS "AlasanDokterRejectRCL", 
+  c.policyno AS "TKI",
+  (Select D.BRANCHNAME from pooldata.t_claim_pnc D where d.claimid = c.pzinskey) AS "Usulan", 
+  (
+    select 
+      kanwil 
+    from 
+      pooldata.branch 
+    where 
+      id = (select D.BRANCHCODE from pooldata.t_claim_pnc D where d.claimid = c.pzinskey)
+  ) as "ResponseMsg",  
+  a.clientname AS "AnalystDoctorRemaks", 
+  a.nama_mo AS "AnalystRemaksInvestigator", 
+  a.occupation AS "AnaylstRemarks", 
+  a.noaksep AS "City", 
+  a.col_desc AS "CauseOfLoss", 
+  a.coveragename AS "CityID",
+  (Select D.REPORTERNAME from pooldata.t_claim_pnc D where d.claimid = c.pzinskey) AS "ReportType", 
+  (
+    DECODE (
+      a.sts_exgratia, '0', 'NO', NULL, 'YES'
+    )
+  ) AS "ClaimEstimate", 
+  TO_CHAR (a.dateofloss, 'dd/mm/yyyy') AS "StatusWork", 
+  TO_CHAR (a.dateofloss, 'mm') AS "ClaimNo", 
+  TO_CHAR (a.dateofloss, 'yyyy') AS "CloseClaimNote", 
+  TO_CHAR (a.tgl_proses, 'dd/mm/yyyy') AS "UserTeknisEmail", 
+  a.thnregis AS "CommentKomiteClosecase", 
+  TO_CHAR (a.begindate, 'yyyy') AS "RefNo", 
+  TO_CHAR (a.tgl_aksep, 'dd/mm/yyyy') AS "DollarCurrencyVal", 
+  TO_CHAR (a.tgl_aksep, 'mm') AS "CompliancePosAuditByr", 
+  TO_CHAR (a.tgl_aksep, 'yyyy') AS "ComplianceRemark", 
+  TO_CHAR (a.tgl_reject, 'dd/mm/yyyy') AS "UserTeknis", 
+  TO_CHAR (a.tgl_reject, 'mm') AS "Conveyance", 
+  TO_CHAR (a.tgl_reject, 'yyyy') AS "Country", 
+  TO_CHAR (a.begindate, 'dd/mm/yyyy') AS "UserTeknisGroup", 
+  TO_CHAR (a.enddate, 'dd/mm/yyyy') AS "RemarkRecommendation", 
+  TO_DATE (
+    TO_CHAR (a.tgl_proses, 'dd/mm/yyyy'), 
+    'dd/mm/yyyy'
+  ) - TO_DATE (
+    TO_CHAR (a.tgl_aksep, 'dd/mm/yyyy'), 
+    'dd/mm/yyyy'
+  ) AS "UserName", 
+  a.TSI AS "ProvinceID", 
+  a.ttlaksep AS "CountryID", 
+  a.ttlos AS "Currency", 
+(
+    DECODE (
+      NVL(a.reinsurer, (SELECT d.leader_member FROM pooldata.t_claim_pnc d WHERE d.claimid = c.pzinskey)),
+      '1',      'LEADER',
+      'LEADER', 'LEADER',
+      '2',      'MEMBER',
+      'MEMBER', 'MEMBER',
+      'F',      'FAC-IN',
+      'FAC IN', 'FAC-IN'
+    )
+) AS "DaftarObjek",
+  a.risk_loc AS "Location", 
+  a.risk_loc_klaim AS "pyID", 
+  a.PIC AS "DistrictID", 
+  (
+    CASE WHEN (a.ttlaksep &lt; 100000000) THEN 'YES' ELSE 'NO' END
+  ) AS "DokumenLengkap", 
+  a.own_retension AS "ExGratiaNote", 
+  a.coins AS "FlagReject", 
+  a.psrspl AS "InsuredRelationship", 
+  a.qs_ri AS "PolicyObjectLocationRWNote", 
+  a.er1 AS "IsBackCFS", 
+  a.er2 AS "IsCFS", 
+  a.surplus1 AS "isComplianceTransfer", 
+  a.surplus2 AS "IsTransferAnalisator", 
+  a.psrqs_ri AS "IsTransferPIC", 
+  a.psrqs_or AS "InsuredRelationshipOthers", 
+  a.ors AS "KomiteStatus", 
+  a.facultative AS "District", 
+  a.facobl AS "LokasiSurveyor", 
+  a.bppdan AS "LossCoverage", 
+  a.xl AS "NamaDokumen", 
+  a.pss AS "NamaSurveyor", 
+  a.prgbi AS "NIK", 
+  a.fespl AS "NoKTP", 
+ (Select D.REPORTERNAME from pooldata.t_claim_pnc D where d.claimid = c.pzinskey) AS "Resources", 
+  a.pfra AS "ProdKe", 
+  (
+    CASE WHEN a.stsklaim = '3' THEN a.ttlos ELSE 0 END
+  ) AS "Province", 
+  (
+    select 
+      sum(
+        z.PROPOSE_VALUE * z.currencyvalue
+      ) 
+    from 
+      pooldata.t_claim_adjustment z 
+    where 
+      z.claimid = 'ASM-FW-GCNMFW-WORK ' || A.NOKLAIM 
+      and statusakseptasi = '1' 
+      and (
+        statusakseptasilod = '1' 
+        or statusakseptasilod is null
+      )
+  ) as "Password", 
+  (
+      CASE WHEN C.SURVEYORTYPE_1 IN ('2', '3', '4') THEN (
+        select 
+          sum (
+            CASE WHEN paymenttype != '4' THEN (z.grossvalue * z.currencyvalue) ELSE 0 END
+          ) 
+        from 
+          pooldata.t_claim_adjustment z 
+        where 
+          z.claimid = C.PZINSKEY 
+          and statusakseptasi = '1' 
+          and (
+            statusakseptasilod = '1' 
+            or statusakseptasilod is null
+          ) 
+        GROUP BY 
+          a.noklaim
+      ) ELSE 0 END 
+  ) as "ReportAddress", 
+  (
+      CASE WHEN C.SURVEYORTYPE_1 IN ('2', '3', '4') THEN 0 ELSE (
+        select 
+          sum (
+            CASE WHEN paymenttype != '4' THEN (z.grossvalue * z.currencyvalue) ELSE 0 END
+          ) 
+        from 
+          pooldata.t_claim_adjustment z 
+        where 
+          z.claimid = C.PZINSKEY 
+          and statusakseptasi = '1' 
+          and (
+            statusakseptasilod = '1' 
+            or statusakseptasilod is null
+          ) 
+        GROUP BY 
+          a.noklaim
+      ) END 
+  ) as "RCV_ID", 
+  ( 
+      CASE WHEN C.SURVEYORTYPE_1 IN ('2', '3', '4') THEN (
+        (
+          select 
+            sum(
+              z.PROPOSE_VALUE * z.currencyvalue
+            ) 
+          from 
+            pooldata.t_claim_adjustment z 
+          where 
+            z.claimid = C.PZINSKEY 
+            and statusakseptasi = '1' 
+            and (
+              statusakseptasilod = '1' 
+              or statusakseptasilod is null
+            )
+        )-(
+          select 
+            sum (
+              CASE WHEN paymenttype != '4' THEN (z.grossvalue * z.currencyvalue) ELSE 0 END
+            ) 
+          from 
+            pooldata.t_claim_adjustment z 
+          where 
+            z.claimid = C.PZINSKEY 
+            and statusakseptasi = '1' 
+            and (
+              statusakseptasilod = '1' 
+              or statusakseptasilod is null
+            ) 
+          GROUP BY 
+            a.noklaim
+        )
+      ) ELSE 0 END 
+  ) as "Remark", 
+  (
+      CASE WHEN C.SURVEYORTYPE_1 IN ('2', '3', '4') THEN 0 ELSE (
+        (
+          select 
+            sum(
+              z.PROPOSE_VALUE * z.currencyvalue
+            ) 
+          from 
+            pooldata.t_claim_adjustment z 
+          where 
+            z.claimid = C.PZINSKEY 
+            and statusakseptasi = '1' 
+            and (
+              statusakseptasilod = '1' 
+              or statusakseptasilod is null
+            )
+        )-(
+          select 
+            sum (
+              CASE WHEN paymenttype != '4' THEN (z.grossvalue * z.currencyvalue) ELSE 0 END
+            ) 
+          from 
+            pooldata.t_claim_adjustment z 
+          where 
+            z.claimid = C.PZINSKEY 
+            and statusakseptasi = '1' 
+            and (
+              statusakseptasilod = '1' 
+              or statusakseptasilod is null
+            ) 
+          GROUP BY 
+            a.noklaim
+        )
+      ) END 
+  ) as "StatusEkonomis", 
+  (
+    select 
+      sum (
+        CASE WHEN paymenttype = '4' THEN (grossvalue * currencyvalue) ELSE (
+          select 
+            POOLDATA.Get_InterpolasiPNC(
+              sum(TOTAL_CLAIM)
+            ) 
+          from 
+            pooldata.T_CLAIM_ADJUSTMENT 
+          where 
+            claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+            and statusakseptasi = '1' 
+            and (
+              statusakseptasilod = '1' 
+              or statusakseptasilod is null
+            )
+        ) END
+      ) 
+    from 
+      pooldata.t_claim_adjustment 
+    where 
+      claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+      and statusakseptasi = '1' 
+      and (
+        statusakseptasilod = '1' 
+        or statusakseptasilod is null
+      ) 
+    GROUP BY 
+      a.noklaim
+  ) AS "ReporterName", 
+  (
+    (
+      select 
+        ASM_SHARE 
+      from 
+        pooldata.t_claim_adjustment z 
+      where 
+        claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+        and statusakseptasi = '1' 
+        and (
+          statusakseptasilod = '1' 
+          or statusakseptasilod is null
+        ) fetch next 1 row only
+    )*(
+      PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+    )/ 100
+  ) as "ReportDescription", 
+  (
+    (
+      select 
+        ASM_SHARE 
+      from 
+        pooldata.t_claim_adjustment z 
+      where 
+        claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+        and statusakseptasi = '1' 
+        and (
+          statusakseptasilod = '1' 
+          or statusakseptasilod is null
+        ) fetch next 1 row only
+    )*(
+      PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+    )/ 100
+  ) as "StatusClaim", 
+  (
+    (
+      select 
+        ASM_SHARE 
+      from 
+        pooldata.t_claim_adjustment z 
+      where 
+        claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+        and statusakseptasi = '1' 
+        and (
+          statusakseptasilod = '1' 
+          or statusakseptasilod is null
+        ) fetch next 1 row only
+    )*(
+      PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+    )/ 100
+  ) as "TelpTertanggung", 
+  (
+    (
+      select 
+        ASM_SHARE 
+      from 
+        pooldata.t_claim_adjustment z 
+      where 
+        claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+        and statusakseptasi = '1' 
+        and (
+          statusakseptasilod = '1' 
+          or statusakseptasilod is null
+        ) fetch next 1 row only
+    )*(
+      PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+    )/ 100
+  ) as "UserAdmin", 
+  (
+    (
+      select 
+        ASM_SHARE 
+      from 
+        pooldata.t_claim_adjustment z 
+      where 
+        claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+        and statusakseptasi = '1' 
+        and (
+          statusakseptasilod = '1' 
+          or statusakseptasilod is null
+        ) fetch next 1 row only
+    )*(
+      PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+    )/ 100
+  ) as "OldAddress", 
+  (
+    select 
+      sum(
+        z.NILAI_SALVAGE_A * z.currencyvalue
+      ) 
+    from 
+      pooldata.t_claim_adjustment z 
+    where 
+      z.claimid = 'ASM-FW-GCNMFW-WORK ' || A.NOKLAIM 
+      and statusakseptasi = '1' 
+      and (
+        statusakseptasilod = '1' 
+        or statusakseptasilod is null
+      )
+  ) as "RWID", 
+  (
+    SELECT 
+      I.STS_PROGRESS1 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G, 
+      POOLDATA.GCNM_MST_PROGRESS_KLAIM I 
+    WHERE 
+      G.STATUS_PROGRESS1 = I.ID_PROGRESS 
+      AND G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "AgingAmount", 
+  (
+    select 
+      POOLDATA.GET_POSISI_PROGRESS2(
+        G.PNCCASEID, G.ID_UPDATE, G.JSONSTATUS_PROGRESS2
+      ) 
+    from 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    where 
+      A.NOKLAIM = G.PNCCASEID 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "AlasanTerlambat", 
+  (
+    select 
+      doctype 
+    from 
+      pooldata.GCNM_PROGRESS_CLAIM o 
+    where 
+      o.pnccaseid = a.noklaim 
+      and id_update =(
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) as "ReporterTelp", 
+  (
+    SELECT 
+      TO_CHAR(G.TGL_INPUT, 'DD/MM/YY') 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    WHERE 
+      G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "ReceiverClaim", 
+  (
+    SELECT 
+      G.KETERANGAN 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    WHERE 
+      G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "pyNote", 
+  (
+    SELECT 
+      TO_CHAR(G.NEXT_FOLLOWUP, 'DD/MM/YYYY') 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    WHERE 
+      G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "StatusReceiver", 
+  (
+    SELECT 
+      SUM(TERLAMBAT) AS RESPONSENOTE 
+    FROM 
+      (
+        SELECT 
+          (
+            CASE WHEN (
+              TRUNC(NEXT_FOLLOWUP)
+            ) &lt; (
+              SELECT 
+                TRUNC(TGL_INPUT) 
+              FROM 
+                POOLDATA.GCNM_PROGRESS_CLAIM 
+              WHERE 
+                PNCCASEID = X.PNCCASEID 
+                AND ID_UPDATE = X.ID_UPDATE + 1
+            ) 
+            OR (
+              TRUNC(NEXT_FOLLOWUP) &lt; TRUNC(SYSDATE) 
+              AND (
+                SELECT 
+                  COUNT(ID_UPDATE) 
+                FROM 
+                  POOLDATA.GCNM_PROGRESS_CLAIM 
+                WHERE 
+                  PNCCASEID = X.PNCCASEID
+              )= X.ID_UPDATE
+            ) THEN 1 ELSE 0 END
+          ) AS TERLAMBAT 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM X 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and X.STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "RESPONSENOTE", 
+  (
+    SELECT 
+      SUM(TIDAKTERLAMBAT) AS RESPONSENOTE 
+    FROM 
+      (
+        SELECT 
+          (
+            CASE WHEN (
+              TRUNC(NEXT_FOLLOWUP)
+            ) &gt;= (
+              SELECT 
+                TRUNC(TGL_INPUT) 
+              FROM 
+                POOLDATA.GCNM_PROGRESS_CLAIM 
+              WHERE 
+                PNCCASEID = Z.PNCCASEID 
+                AND ID_UPDATE = Z.ID_UPDATE + 1
+            ) 
+            OR (
+              TRUNC(NEXT_FOLLOWUP) &gt;= TRUNC(SYSDATE) 
+              AND (
+                SELECT 
+                  COUNT(ID_UPDATE) 
+                FROM 
+                  POOLDATA.GCNM_PROGRESS_CLAIM 
+                WHERE 
+                  PNCCASEID = Z.PNCCASEID
+              )= Z.ID_UPDATE
+            ) THEN 1 ELSE 0 END
+          ) AS TIDAKTERLAMBAT 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM Z 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and Z.STATUS_PROGRESS2 not in ('2', '24', '60', '59')
+      )
+  ) AS "STATUSKOMUNIKASI", 
+  (
+    select 
+      COINSNAME 
+    from 
+      POOLDATA.T_CLAIM_PNC 
+    where 
+      claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim
+  ) as "OwnRisk", 
+  substr(K.OBJECTNAME, 0, 100) as "TypeOfAddress", 
+  (
+    SELECT 
+      TO_CHAR(G.TGL_INPUT, 'DD/MM/YYYY') 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    WHERE 
+      G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS1 in ('017', '018')
+      )
+  ) AS "view_email", 
+  (
+    SELECT 
+      TO_CHAR(G.NEXT_FOLLOWUP, 'DD/MM/YYYY') 
+    FROM 
+      POOLDATA.GCNM_PROGRESS_CLAIM G 
+    WHERE 
+      G.PNCCASEID = A.NOKLAIM 
+      AND ID_UPDATE = (
+        SELECT 
+          MAX(ID_UPDATE) 
+        FROM 
+          POOLDATA.GCNM_PROGRESS_CLAIM 
+        WHERE 
+          PNCCASEID = A.NOKLAIM 
+          and STATUS_PROGRESS1 in ('017', '018')
+      )
+  ) AS "view_ktp", 
+  A.NOPOLIS || '/' || A.NOKLAIM as "viewnotelp", 
+  (
+    select 
+      PINWILKLAIM 
+    from 
+      POOLDATA.BRANCHKLAIMPNC 
+    where 
+      ID = (Select D.BRANCHCODE from pooldata.t_claim_pnc D where d.claimid = c.pzinskey)
+  ) as "HideKTP", 
+  (
+    select 
+      KANWILKLAIM 
+    from 
+      POOLDATA.BRANCHKLAIMPNC 
+    where 
+      ID =  (Select D.BRANCHCODE from pooldata.t_claim_pnc D where d.claimid = c.pzinskey)
+  ) as "HidePelapor",
+  (
+    select 
+      alasantolak 
+    from 
+      pooldata.t_claim_adjustment 
+    where 
+      claimid = 'ASM-FW-GCNMFW-WORK ' || a.noklaim 
+      and objectid = k.objectid 
+      and alasantolak is not null fetch next 1 row only
+  ) as "TypeOldNoHp" 
+FROM
+  datapega.pc_asm_fw_gcnmfw_work c
+    JOIN    datapega.pc_assign_worklist b
+           ON      c.pzInsKey = b.pxrefobjectkey
+    JOIN    pooldata.business f
+           ON      c.BUSINESSCODE_1 = f.id
+    JOIN    pooldata.businessgroup e
+           ON      f.businessgroupid = e.id
+    LEFT JOIN    pooldata.T_CLAIM_OBJECTLIST k
+          ON      k.claimid = c.pzinskey
+    LEFT JOIN pooldata.pega_dashboardpnc a
+          ON a.noklaim = c.pyid 
+WHERE 
+  c.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+  AND c.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+  AND b.pxflowname NOT IN ('FixCorrespondence', 'Register_Flow_1')
+  AND b.PXTASKLABEL NOT IN ('FixCorrespondence')
+  AND (c.ISPENDINGCLOSE != 'true' or c.ISPENDINGCLOSE IS NULL)
+  {ASIS:TempBisnis.BUSINESSTYPE}
+  {ASIS:TempBisnis.REGISTERID}</pyBrowseSQL>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyHandlerFlow/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetExportDataDetailKlaim</pyRuleName>
+<pyCircumstanceDate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceProp/>
+<pyIsFromManageChangeLP/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20260615T041930.934 GMT</pzDocumentKey>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pxMoveFromSystem/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRuleStarts/>
+<pyCircumstanceType/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateDateTime>20260615T041930.934 GMT</pxCreateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleEnds/>
+<pzChecksum>-1790953360</pzChecksum>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyOpenSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20220401T091123.290 GMT</pzOriginalInstanceKey>
+<pyBaseRule>false</pyBaseRule>
+<pyDeletedObject/>
+<pyMethodStatus/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDescription/>
+<pyTemporaryObject/>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyWorkKey/>
+<pySaveSQL/>
+<pxUpdateDateTime>20260716T093306.988 GMT</pxUpdateDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateOpName/>
+<pyRuleParamsStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceVal/>
+<pySpecialtyComponentData/>
+<pxHostId>jboss10422</pxHostId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pxSiblingCount/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyDeleteSQL/>
+<pyTemplate/>
+<pyShowJavaWindowName>GeneratedJava20260831T093446.861 GMT</pyShowJavaWindowName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20260615T041930.934 GMT</pzInsKey>
+<pyStatus/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxInstanceLockedCreateDateTime/>
+<pyWindowTitle/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pyJavaStream/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetExportDataDetailKlaim</pxTabLabel>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyStreamName/>
+<pyLabel>GetExportDataDetailKlaim</pyLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pyMemo>mengubah alias a ke c untuk pendingclose</pyMemo>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyUsage/>
+<pxMergeSynchronized>20240902T073718.419 GMT</pxMergeSynchronized>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETEXPORTDATADETAILKLAIM</pxInsName>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyLabelOld>GetExportDataDetailKlaim</pyLabelOld>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedKey/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pxInstanceLockedRuleSet/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxSaveDateTime>20260716T093307.047 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pyFormPost/>
+<pzIsPrivateCheckOut/>
+<pxCommitDateTime>20260716T093307.000 GMT</pxCommitDateTime>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDefinition/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyRuleFormStatusTime>20260831T093446.836 GMT</pyRuleFormStatusTime>
+<pxMoveImportDateTime>20240116T113039.813 GMT</pxMoveImportDateTime>
+<pyRequestType>GetExportDataDetailKlaim</pyRequestType>
+<pyCheckInRuleSet/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>true</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>false</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20260615T041930.934 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20240902T073656.448 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20240118T020146.781 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-02-09 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20231109T062404.268 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20230731T073856.433 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20230615T030325.434 GMT</pzInsKey>
+<pxListSubscript>6</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20220401T091123.290 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20210806T011352.567 GMT</pzInsKey>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>8</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>9</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20201113T085605.068 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>10</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20201105T081814.863 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>11</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20200527T070746.313 GMT</pzInsKey>
+<pyLabel>01-01-86 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20200519T064250.352 GMT</pzInsKey>
+<pyLabel>01-01-85 (Available)</pyLabel>
+<pxListSubscript>12</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETEXPORTDATADETAILKLAIM #20200511T035833.446 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>13</pxListSubscript>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

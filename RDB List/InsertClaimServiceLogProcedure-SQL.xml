@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertClaimServiceLogProcedure</pyRuleName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSaveDateTime>20251129T111331.378 GMT</pxSaveDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatusTime>20260903T024945.348 GMT</pyRuleFormStatusTime>
+<pxCommitDateTime>20251130T125344.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxOriginalCreateOpName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedBy/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleParamsStreamName/>
+<pyLabelOld>InsertClaimServiceLogProcedure</pyLabelOld>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTCLAIMSERVICELOGPROCEDURE #20251129T111039.157 GMT</pzInsKey>
+<pyUsage/>
+<pyStreamName/>
+<pzChecksum>1511240834</pzChecksum>
+<pxMoveImportOperName>jonnywong@sinarmas.co.id</pxMoveImportOperName>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateDateTime/>
+<pxUpdateOpName>JONNY WONG</pxUpdateOpName>
+<pySPRuleSetName>jonnywong@sinarmas.co.id</pySPRuleSetName>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDescription/>
+<pxOriginalCreateSystemID/>
+<pyMemo>Add parameter IsOsOnly</pyMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyWindowTitle/>
+<pyOpenSQL/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTCLAIMSERVICELOGPROCEDURE</pxInsId>
+<pxMoveImportDateTime>20251130T125344.199 GMT</pxMoveImportDateTime>
+<pyWorkKey/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTCLAIMSERVICELOGPROCEDURE</pxInsName>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyIsFromManageChangeLP/>
+<pyLabel>InsertClaimServiceLogProcedure</pyLabel>
+<pxUpdateSystemID>pegadevsimasnet83</pxUpdateSystemID>
+<pyHandlerFlow/>
+<pxHostId>jboss26</pxHostId>
+<pyTemplate/>
+<pxSiblingCount/>
+<pyBaseRule>false</pyBaseRule>
+<pySpecialtyComponentData/>
+<pyCircumstanceDate/>
+<pyStatus/>
+<pxMoveImportOperId>jonnywong@sinarmas.co.id</pxMoveImportOperId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceProp/>
+<pySaveSQL/>
+<pxUpdateOperator>jonnywong@sinarmas.co.id</pxUpdateOperator>
+<pyTemplateInputBox/>
+<pxCreateOperator>jonnywong@sinarmas.co.id</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pyDeletedObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleStarts/>
+<pzIsPrivateCheckOut/>
+<pyRequestType>InsertClaimServiceLogProcedure</pyRequestType>
+<pxCreateDateTime>20251129T111039.157 GMT</pxCreateDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyShowJavaWindowName>GeneratedJava20260903T024945.368 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOperator/>
+<pxMoveFromSystem/>
+<pyCircumstanceVal/>
+<pxUpdateDateTime>20251129T111331.368 GMT</pxUpdateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTCLAIMSERVICELOGPROCEDURE #20251129T111039.157 GMT</pzDocumentKey>
+<pyDeleteMemo>Buat procedure untuk insert claim service log via procedure</pyDeleteMemo>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTCLAIMSERVICELOGPROCEDURE #20250804T082445.477 GMT</pzOriginalInstanceKey>
+<pyBrowseSQL>DECLARE 
+  POLISNO VARCHAR2(32767);
+  REFNO VARCHAR2(32767);
+  KODESTRING VARCHAR2(32767);
+  CLAIMNO VARCHAR2(32767);
+  STATUS VARCHAR2(32767);
+  ACCOUNTNAME VARCHAR2(32767);
+  CONTRACTNO VARCHAR2(32767);
+  BANKACCOUNT VARCHAR2(32767);
+  EMAIL VARCHAR2(32767);
+  DEDUCTIBLEVALUE NUMBER;
+  CLAIMAMOUNT NUMBER;
+  ACCOUNTNO VARCHAR2(32767);
+  ACCEPTEDNOFIXED VARCHAR2(32767);
+  ERRMSG VARCHAR2(32767);
+
+BEGIN 
+  POLISNO := {TempJsonKlaim.POLICY_NO};
+  REFNO := {TempJsonKlaim.BRANCH_NAME};
+  KODESTRING := {TempJsonKlaim.BRANCH_CODE};
+  CLAIMNO := {TempJsonKlaim.No_Klaim};
+  STATUS := {TempJsonKlaim.STATUSWORK};
+  ACCOUNTNAME := {TempJsonKlaim.BUSINESS_NAME};
+  CONTRACTNO := {TempJsonKlaim.START_DATE};
+  BANKACCOUNT := {TempJsonKlaim.CURRENCY};
+  EMAIL := {TempJsonKlaim.END_DATE};
+  DEDUCTIBLEVALUE := {TempJsonKlaim.MARKETING};
+  CLAIMAMOUNT := {TempJsonKlaim.DATEOFLOSS};
+  ACCOUNTNO := {TempJsonKlaim.ACCOUNT_NO};  
+
+  POOLDATA.JSONKLAIMTEMP.INSERTCLAIMSERVICELOG ( {TempJsonKlaim.POLICY_NO}, {TempJsonKlaim.BRANCH_NAME}, {TempJsonKlaim.BRANCH_CODE}, {TempJsonKlaim.No_Klaim}, {TempJsonKlaim.STATUSWORK}, {TempJsonKlaim.BUSINESS_NAME}, {TempJsonKlaim.START_DATE}, {TempJsonKlaim.CURRENCY}, {TempJsonKlaim.END_DATE}, {TempJsonKlaim.MARKETING}, {TempJsonKlaim.DATEOFLOSS}, {TempJsonKlaim.ACCOUNT_NO}, {TempJsonKlaim.IS_OS_ONLY}, {TempJsonKlaim.IDMASTER OUT});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedDateTime/>
+<pyJavaStream/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyInterface/>
+<pyFormPost/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDocumentTitle/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertClaimServiceLogProcedure</pxTabLabel>
+<pyValueChanged>false</pyValueChanged>
+<pyRelativePath/>
+<pxCreateSystemID>pegadevsimasnet83</pxCreateSystemID>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDeleteSQL/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTCLAIMSERVICELOGPROCEDURE #20251129T111039.157 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTCLAIMSERVICELOGPROCEDURE #20250804T082445.477 GMT</pzInsKey>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyDelete>true</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCompareVersion/>
+</pyToolBarSettings>
+</pagedata>

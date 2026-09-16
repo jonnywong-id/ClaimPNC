@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetListKlaimKredit</pyRuleName>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxSaveDateTime>20220103T095821.530 GMT</pxSaveDateTime>
+<pyFormPost/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETLISTKLAIMKREDIT</pxInsName>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pxMoveFromSystem/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyIsFromManageChangeLP/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyLabel>GetListKlaimKredit</pyLabel>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20211231T085607.759 GMT</pxCreateDateTime>
+<pyCircumstanceProp/>
+<pyShowJavaWindowName>GeneratedJava20260908T070915.433 GMT</pyShowJavaWindowName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDefinition/>
+<pyRuleEnds/>
+<pyBaseRule>false</pyBaseRule>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyStatus/>
+<pyHistoryObject/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleStarts/>
+<pyDeletedObject/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLISTKLAIMKREDIT #20211231T085607.759 GMT</pzDocumentKey>
+<pyStreamName/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyOpenSQL/>
+<pyDescription/>
+<pxInstanceLockedKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetListKlaimKredit</pxTabLabel>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pyCircumstanceVal/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyInterface/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLISTKLAIMKREDIT #20211231T085607.759 GMT</pzOriginalInstanceKey>
+<pyMemo>done</pyMemo>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzChecksum>-1159987301</pzChecksum>
+<pySaveSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUsage/>
+<pxInstanceLockedDateTime/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportDateTime>20220126T101718.749 GMT</pxMoveImportDateTime>
+<pyLabelOld>GetListKlaimKredit</pyLabelOld>
+<pyMethodStatus/>
+<pyBrowseSQL>select idpega AS "ClaimNo" from pooldata.tmp_batch_claim_kredit where agenid={DataBatch.CaseID} and batch={DataBatch.City}
+and tmp_message='Sukses Klaim'
+and idpega is not null
+and acceptno is not null
+group by idpega</pyBrowseSQL>
+<pxHostId>jboss10362</pxHostId>
+<pyJavaStream/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRequestType>GetListKlaimKredit</pyRequestType>
+<pyCircumstanceDateProp/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLISTKLAIMKREDIT #20211231T085607.759 GMT</pzInsKey>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETLISTKLAIMKREDIT</pxInsId>
+<pyTemplate/>
+<pyWorkKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20220103T095821.524 GMT</pxUpdateDateTime>
+<pyCircumstanceType/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pyRuleFormStatusTime>20260908T070915.393 GMT</pyRuleFormStatusTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWindowTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyHandlerFlow/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pyRelativePath/>
+<pxSiblingCount/>
+<pyTemplateInputBox/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLISTKLAIMKREDIT #20211231T085607.759 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelete>false</pyDelete>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

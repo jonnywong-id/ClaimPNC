@@ -1,0 +1,524 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInsId>!DOWNLOADFILE</pxInsId>
+<pxInstanceLockedDateTime/>
+<pxTabLabel>DownloadFile</pxTabLabel>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20130918T235146.162 GMT</pzOriginalInstanceKey>
+<pxUpdateDateTime>20180713T131340.604 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pxInstanceLockedSaveDateTime/>
+<pyWorkKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyActivityName>DownloadFile</pyActivityName>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pxCreateOperator>almam</pxCreateOperator>
+<pxInstanceLockedRuleSet/>
+<pyDescription>R-18704 Use PegaRULES-Default.downloadFile to download a file from the service export directory.</pyDescription>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInsName>@BASECLASS!DOWNLOADFILE</pxInsName>
+<pyClassName>@baseclass</pyClassName>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20170731T200630.536 GMT</pxMoveOriginalKey>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pySPRuleSetName>Pega-RULES_Branch_BUG-317613</pySPRuleSetName>
+<pyJavaGenerateTime>20170731T172244.028 GMT</pyJavaGenerateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxMoveImportDateTime>20170803T021357.985 GMT</pxMoveImportDateTime>
+<pxOriginalCreateOperator>almam</pxOriginalCreateOperator>
+<pyLabelOld>DownloadFile</pyLabelOld>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pyCircumstanceProp/>
+<pyAssociatedImage/>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pxUpdateOpName>almam</pxUpdateOpName>
+<pyRuleParamsStreamName/>
+<pyStatus/>
+<pyLabel>DownloadFile</pyLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pyInterface/>
+<pyInputMayStart>true</pyInputMayStart>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pzIndexCount>15</pzIndexCount>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyWindowTitle/>
+<pyTemplateInputBox/>
+<pySpecialtyComponentData/>
+<pyCircumstanceDefinition/>
+<pxMoveOriginalRuleSet>Pega-RULES</pxMoveOriginalRuleSet>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyBaseRule>false</pyBaseRule>
+<pyJavaStream/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;FileName DESCRIPTION= "FileName from service export to dowload  to client" TYPE= "STRING" REQUIRED= "-1" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;DeleteFile DESCRIPTION= "should the file be delete after the is dowloaded" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyRuleName>DownloadFile</pyRuleName>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pxCreateOpName>almam</pxCreateOpName>
+<pxCommitDateTime>20191015T081607.000 GMT</pxCommitDateTime>
+<pyRuleFormStatusTime>20260724T033807.304 GMT</pyRuleFormStatusTime>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveOriginalRuleSetVersion>07-10-33</pxMoveOriginalRuleSetVersion>
+<pyRelativePath/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzDocumentKey>
+<pyUsage>R-18704 Use PegaRULES-Default.downloadFile to download a file from the service export directory.</pyUsage>
+<pySelected>false</pySelected>
+<pyShowJavaWindowName>GeneratedJava20260724T033807.324 GMT</pyShowJavaWindowName>
+<pyCircumstanceType/>
+<pxOriginalCreateOpName>almam</pxOriginalCreateOpName>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pzChecksum>-112505547</pzChecksum>
+<pyRuleSearchQuery/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzInsKey>
+<pyIsFromManageChangeLP/>
+<pyTemplateDisplayText/>
+<pxSaveDateTime>20180713T131340.604 GMT</pxSaveDateTime>
+<pxInstanceLockedBy/>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyRuleSet>Pega-RULES</pyRuleSet>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pyDocumentTitle/>
+<pxUpdateOperator>almam</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFormPost/>
+<pxUpdateSystemID>prpc</pxUpdateSystemID>
+<pxCreateDateTime>20180713T131340.604 GMT</pxCreateDateTime>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceVal/>
+<pyStreamName/>
+<pyJavaClassName>_baseclass_downloadfile_20180713_131340_604</pyJavaClassName>
+<pxSiblingCount/>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pxOriginalCreateDateTime>20180713T131340.604 GMT</pxOriginalCreateDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyMemo>BUG-317613</pyMemo>
+<pzStatus>false</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreateOperator/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep	10 lines</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreatedTime>20170728T160706.862 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	10 lines</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>almam</pxWarningCreateOperator>
+<pxWarningCreatedTime>20170728T160706.863 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>almam</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20170728T160706.879 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">12</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+</rowdata>
+</pyLocalParameters>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pxMessageSummary>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxLowSeverityWarningCount>1</pxLowSeverityWarningCount>
+</pxMessageSummary>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>zipMoveExport</pyRuleName>
+<pxRuleObjClass>Rule-Access-Privilege</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ZIPMOVEEXPORT</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pyRuleName>@baseclass</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyMethodStatus/>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	10 lines</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreatedTime>20170728T160706.862 GMT</pxWarningCreatedTime>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreateOperator/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreatedTime>20170728T160706.863 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>almam</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>almam</pxWarningCreateOperator>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningCreatedTime>20170728T160706.879 GMT</pxWarningCreatedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">12</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>flowType</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pxSubscript>2</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>3</pxSubscript>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>4</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pxSubscript>5</pxSubscript>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pxSubscript>6</pxSubscript>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+</pySystemParameters>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>@baseclass</pyPrivilegeClass>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName>zipMoveExport</pyPrivilegeName>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyActivityPrivilegeList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxSubscript>1</pxSubscript>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyShowJava>true</pyShowJava>
+<pyDelete>false</pyDelete>
+<pySave>false</pySave>
+<pyPreview>true</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyRun>true</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS DOWNLOADFILE #20180713T131340.604 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleCompareList>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPropRef/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsDescription>Download file from service export</pyStepsDescription>
+<pyStepsPreCondition/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepsObjectName/>
+<pzStepExpanded/>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pxSubscript>1</pxSubscript>
+<pyOnException/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyExpanded>true</pyExpanded>
+<pyStepActivityDescription/>
+<pyStepsJavaSource>String fileName = tools.getParamValue("FileName");
+if (fileName == null || fileName.length() == 0) {
+    return true; // Nothing to download
+}
+
+boolean bDeletefile = Boolean.valueOf(tools.getParamValue("DeleteFile")).booleanValue();		
+// String filePath = tools.findPage("pxProcess").getString("pxServiceExportPath");
+String filePath = pega.getStaticContentUtils().getServiceExportRoot();
+// filePath = "file://default:" + filePath;
+pega_rules_default.downloadFile(com.pega.pegarules.pub.util.StringUtils.concat(com.pega.pegarules.pub.util.StringUtils.ASIS, filePath, fileName), tools, bDeletefile);</pyStepsJavaSource>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsTransition/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyTemplateInputBox/>
+<pyStepsBlockName/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20260724T033807.298 GMT</pxCreateDateTime>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pxCreateOpName>almam</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>almam</pxCreateOperator>
+<pxCreateDateTime>20170728T160634.450 GMT</pxCreateDateTime>
+<pxCreateSystemID>prpc</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefStart/>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>almam</pxCreateOpName>
+<pxCreateOperator>almam</pxCreateOperator>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>prpc</pxCreateSystemID>
+<pxCreateDateTime>20170728T160634.451 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20260724T033807.295 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+</rowdata>
+</pySteps>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>FileName from service export to dowload  to client</pyParametersParamDesc>
+<pyParametersParamName>FileName</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>-1</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamDesc>should the file be delete after the is dowloaded</pyParametersParamDesc>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamName>DeleteFile</pyParametersParamName>
+</rowdata>
+</pyParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+</pagedata>

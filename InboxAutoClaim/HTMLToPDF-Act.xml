@@ -1,0 +1,1853 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsId>!HTMLTOPDF</pxInsId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pyProjectIDLabel/>
+<pyCircumstanceType/>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyCircumstanceDateProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T093214.494 GMT</pzDocumentKey>
+<pyLabelOld>Activity to convert HTML stream to PDF .</pyLabelOld>
+<pyTemplate/>
+<pyCircumstanceDefinition/>
+<pxMoveImportDateTime>20171103T162649.912 GMT</pxMoveImportDateTime>
+<pxCommitDateTime>20191015T081607.000 GMT</pxCommitDateTime>
+<pzChecksum>769805436</pzChecksum>
+<pyClassName>@baseclass</pyClassName>
+<pxRuleOpenedInPopUp>false</pxRuleOpenedInPopUp>
+<pxCreateOperator>tails</pxCreateOperator>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxSaveDateTime>20181127T093214.494 GMT</pxSaveDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyWindowTitle/>
+<pxOriginalCreateOperator/>
+<pyProjectID/>
+<pyRuleParamsStreamName/>
+<pyMethodStatus/>
+<pyJavaGenerateTime>20181127T092410.543 GMT</pyJavaGenerateTime>
+<pxCreateOpName>Sandeep Tailor</pxCreateOpName>
+<pyAssociatedImage/>
+<pyJavaClassName>Rule_Obj_Activity__baseclass_HTMLToPDF_Action_20181127T092256_303_GMT</pyJavaClassName>
+<pyWorkKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20180713T135929.427 GMT</pzOriginalInstanceKey>
+<pxMoveOriginalRuleSet>Pega-IntegrationArchitect</pxMoveOriginalRuleSet>
+<pyActivityName>HTMLToPDF</pyActivityName>
+<pySelected>false</pySelected>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyRelativePath/>
+<pyStatus/>
+<pyMemo>BUG-409422; corrected Exception string.</pyMemo>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pyCEReset>true</pyCEReset>
+<pxTabLabel>HTMLToPDF</pxTabLabel>
+<pyDocumentTitle/>
+<pyDeleteMemo>moved "Reading from DS" logic to htmltopdf activity</pyDeleteMemo>
+<pyRuleFormStatusTime>20260721T033924.840 GMT</pyRuleFormStatusTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;Markup DESCRIPTION= "HTML markup to convert to PDF. Use this or StreamName" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;StreamName DESCRIPTION= "HTML rule stream name to use if Markup is not populated." TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFPageOrientation DESCRIPTION= "Optional page orientation(portrait/landscape), Default landscape" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFPageSize DESCRIPTION= "Optional page size (A4/LETTER/LEGAL), Default A4" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;PDFDocument DESCRIPTION= "PDF Bytes" TYPE= "JAVAOBJECT" REQUIRED= "0" INOUT= "OUT" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFEnableHyperlinks DESCRIPTION= "Enable Hyperlinks(true/false). Default is false" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFFontsDirectory DESCRIPTION= "The path to the local directory where fonts are located" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFEmbedFont DESCRIPTION= "Enable embedding the font(s) from pyPDFFontsDirectory into the PDF document" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFPropsDirectory DESCRIPTION= "Optional directory to use at runtime for the PDF generation library&amp;#39;s Properties file. Setting this parameter will disable the removal of the properties file at the end of use." TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFHeaderHTMLTemplate DESCRIPTION= "Optional pdf header HTML template ." TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFFooterHTMLTemplate DESCRIPTION= "Optional pdf footer HTML template" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyKeepPropsFile DESCRIPTION= "Optional setting to keep the generated property file." TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;HaltOnHTMLWarning DESCRIPTION= "Strict HTML validation: Optional flag that will cause an exception if tidy reports any &amp;quot;Warning and/or &amp;quot;Error&amp;quot; level issues in HTML stream." TYPE= "TrueFalse" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;HaltOnHTMLError DESCRIPTION= "Moderate HTML validation: Optional flag that will cause an exception if tidy reports any &amp;quot;Error&amp;quot; level issues in HTML stream." TYPE= "TrueFalse" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyGenerateToolTips DESCRIPTION= "Generate Tool Tips" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyEnableSmartTableBreaks DESCRIPTION= "Enable Smart Table break" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;isClearCache DESCRIPTION= "Set to true for clearing the cache after getting the pdf bytes for an input markup, to avoid memory leak with huge TTF &amp;amp; TTC files." TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyHTMLDisableProcessing DESCRIPTION= "Set to true to avoid processing the HTML input for conformance" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;startPage DESCRIPTION= "Optional for setting the initial page number of the PDF document" TYPE= "INTEGER" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyEnableOutlines DESCRIPTION= "enable support for PDF Bookmarks and Outlines" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyPDFGeneratePDFA DESCRIPTION= "generate PDF in PDF/A format" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyShowWarning DESCRIPTION= "Optional for log warning while Tidy parsing" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;UseCompactStylesforPDF DESCRIPTION= "Ignore skin while exporting to PDF and use minimal skin" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;pyEditablePDF DESCRIPTION= "pyEditablePDF" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyCircumstanceProp/>
+<pyCircumstanceDate/>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pzIndexCount>10</pzIndexCount>
+<pxHostId>10.225.70.138_envhyd82-web-2</pxHostId>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleSet>Pega-IntegrationArchitect</pyRuleSet>
+<pyDescription>Activity to convert HTML to PDF .The input can be a markup or HTMLStream which is used for PDF generation. Returns the PDF bytes.
+
+Please Note: 
+* When using this activity to produce a PDF version of information that is displayed in PRPC, make sure that the HTML is being obtained in a way such that the HEAD element includes the styles from the correct skin.
+
+*Simply piping the HTML stream of a Section rule to this activity will not have the desired effect.
+
+* The "Preview" action of Section rules applies styles that are not actually referenced in the HTML source of the Section. A PDF produced from the source of a section will not match the Preview!</pyDescription>
+<pyTaskGroup/>
+<pyRuleSearchQuery/>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pyAdviceText/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedSaveDateTime/>
+<pxUpdateOpName>Sandeep Tailor</pxUpdateOpName>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyInputMayStart>true</pyInputMayStart>
+<pyReloadForm>true</pyReloadForm>
+<pyLabel>Activity to convert HTML stream to PDF .</pyLabel>
+<pyFormPost/>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyRuleName>HTMLToPDF</pyRuleName>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pxUpdateSystemID>sls-envhyd82</pxUpdateSystemID>
+<pxUpdateDateTime>20181127T093214.494 GMT</pxUpdateDateTime>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSet/>
+<pySpecialtyComponentData/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyBaseRule>false</pyBaseRule>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyCheckInRuleSet/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pyInterface/>
+<pxUpdateOperator>tails</pxUpdateOperator>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pySPRuleSetName>tails@</pySPRuleSetName>
+<pxCreateDateTime>20181127T093214.494 GMT</pxCreateDateTime>
+<pyRuleStarts/>
+<pyUsage>1. Obtain or compile an HTML stream that represents the content for a PDF document, or obtain the name of an HTML Stream rule that shares the applies-to class of the work page.
+
+2. If possible, inject references to required CSS documents into the "head" element of the HTML stream (this is a REQUIREMENT when HTML has been obtained directly from a Section rule or any other source that does not explicitly define styles. )
+
+3. Add PDF formatting parameters to the current parameter page.
+
+4. Call this activity, making sure to pass the current parameter page to it, as the document will be placed onto the parameter page.
+
+5. Consume the "PDFDocument" parameter, which is of java type byte[] (byte array), and contains the PDF 
+document:
+* The bytes of the PDF can be used as the first parameter when calling "tools.sendFile" to send the PDF to the client's browser.
+
+* The PDF can be saved to the server using a File Connector
+
+* The PDF can be stored in the database in a Rule-File-eForm record or Rule-File-Binary record.</pyUsage>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyRuleSetVersion>08-02-01</pyRuleSetVersion>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyCircumstanceVal/>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pxOriginalCreateDateTime/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyTemplateDisplayText/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T093214.494 GMT</pzInsKey>
+<pxOriginalCreateSystemID/>
+<pyIsFromManageChangeLP/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20180319T122327.201 GMT</pxMoveOriginalKey>
+<pyEditable/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedBy/>
+<pxCreateSystemID>prpc</pxCreateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260721T033924.858 GMT</pyShowJavaWindowName>
+<pxMoveOriginalRuleSetVersion>07-10-37</pxMoveOriginalRuleSetVersion>
+<pyDeletedObject/>
+<pxInsName>@BASECLASS!HTMLTOPDF</pxInsName>
+<pxSiblingCount/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaStream/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceTemplate/>
+<pyRuleEnds/>
+<pzStatus>false</pzStatus>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamName>flowType</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxSubscript>3</pxSubscript>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pxSubscript>4</pxSubscript>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pxSubscript>5</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>6</pxSubscript>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+</pySystemParameters>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>HTMLStream</pyParametersParamName>
+<pyParametersParamDesc>local var to hold HTML stream</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+</pyLocalParameters>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsJavaSource>tools.getParameterPage().remove("PDFDocument");</pyStepsJavaSource>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsPreCondition/>
+<pyExpanded>true</pyExpanded>
+<pyPropRef/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pxInsName/>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyTemplateInputBox/>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pzStepExpanded/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyOnException/>
+<pxCreateDateTime>20150129T213659.305 GMT</pxCreateDateTime>
+<pyStepsBlockName/>
+<pyStepsDescription>Clear any stale PDFDocument parameter value</pyStepsDescription>
+<pyStepsTransition/>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepActivityDescription/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20150129T213659.306 GMT</pxCreateDateTime>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateDateTime>20150129T213659.307 GMT</pxCreateDateTime>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pyForEachProperty/>
+<pxCreateDateTime>20150129T213659.308 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefIteration/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20150129T213659.309 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsObjectName/>
+<pyStepsDescription>Set DSS setting UseCompactStylesforPDF</pyStepsDescription>
+<pyTemplateInputBox/>
+<pzStepExpanded/>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepActivityDescription/>
+<pyPropRef/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyStepsTransition/>
+<pyOnException/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName/>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pxCreateDateTime>20170830T131807.942 GMT</pxCreateDateTime>
+<pyExpanded>true</pyExpanded>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesValue>@getDataSystemSetting("Pega-UIEngine", "UseCompactStylesforPDF")=="true"?"true":"false"</PropertiesValue>
+<PropertiesName>param.UseCompactStylesforPDF</PropertiesName>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyExpression>@getDataSystemSetting("Pega-IntegrationArchitect", "ExportSectionToPdfStyles")</pyExpression>
+<pyResultOfSelection/>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyEditable>true</pyEditable>
+<pyResult/>
+<pyResultError/>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="PropertiesValue">@getDataSystemSetting("Pega-IntegrationArchitect", "ExportSectionToPdfStyles")</rowdata>
+</pyExpressionMapNew>
+<pyExpressionBulderFields REPEATINGTYPE="PageList"/>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pxCreateDateTime>20170830T131807.944 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateDateTime>20170830T131807.945 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateDateTime>20170830T131807.943 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen>Param.UseCompactStylesforPDF==""</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyExpressionGadget>
+<pyResultError/>
+<pyTemplateInputBox/>
+<pyResultOfSelection/>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyResult/>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpression>!"true".equalsIgnoreCase(Param.ignoreSkin) &amp;</pyExpression>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pyStepsPreCondParamsWhen">!"true".equalsIgnoreCase(Param.ignoreSkin) &amp;</rowdata>
+</pyExpressionMapNew>
+<pyExpressionBulderFields REPEATINGTYPE="PageList"/>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI/>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateDateTime>20170830T131807.944 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepActivityDescription/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyPropRef/>
+<pyStepPageReference>RH_1.pySteps(3)</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyStepsDescription>If Markup param is empty, attempt setting it using stream rule named by StreamName param</pyStepsDescription>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepsObjectName/>
+<pyStepsTransition>false</pyStepsTransition>
+<pyStepsJavaSource>//Get stream
+StringMap keys = new HashStringMap();
+keys.putString("pxObjClass", "Rule-Obj-HTML");
+keys.putString("pyStreamName",tools.getParamValue("StreamName"));
+if (myStepPage == null
+    || myStepPage.getClassName().length() == 0) {
+  keys.putString("pyClassName", "@baseclass");
+}
+tools.putParamValue("Markup", tools.getStream(keys, null));
+tools.putParamValue("UseCompactStylesforPDF", "false");</pyStepsJavaSource>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsBlockName/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyExpanded>true</pyExpanded>
+<pyOnException/>
+<pxSubscript>pyTempModalPage</pxSubscript>
+<pxInsName/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsPreCondParamsWhen>@(Pega-RULES:String).trim(Param.Markup)==""</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateDateTime>20150129T210602.400 GMT</pxCreateDateTime>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260721T033924.831 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>@(Pega-RULES:String).trim(Param.StreamName)==""</pyStepsPreCondParamsWhen>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateDateTime>20170908T093326.413 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateSystemID>prpc</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>mohaa5</pxCreateOperator>
+<pxCreateOpName>Arif</pxCreateOpName>
+<pyExpressionGadget>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowParameters>true</pyShowParameters>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyTemplateInputBox/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyExpressionGadget>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</pyStepsCallParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>SLSAPPC</pxCreateSystemID>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateDateTime>20131113T201827.938 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pyForEachProperty/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateSystemID>SLSAPPC</pxCreateSystemID>
+<pxCreateDateTime>20131113T201828.205 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyStepsJavaSource/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyTemplateInputBox/>
+<pxStepDefaultDescription>Property-Set-Stream</pxStepDefaultDescription>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyExpanded>true</pyExpanded>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsDescription>Get css related to DSS UseCompactStylesforPDF</pyStepsDescription>
+<pyStepsObjectName/>
+<pyPropRef/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsActivityNameUC>PROPERTY-SET-STREAM</pyStepsActivityNameUC>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pzStepExpanded/>
+<pyStepActivityDescription/>
+<pyStepsTransition/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepPageReference>RH_1.pySteps(4)</pyStepPageReference>
+<pyStepsBlockName/>
+<pxCreateDateTime>20170830T134633.669 GMT</pxCreateDateTime>
+<pyOnException/>
+<pyStepsActivityName>Property-Set-Stream</pyStepsActivityName>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhen>param.UseCompactStylesforPDF=="true"</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateDateTime>20170830T134633.670 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyExpressionGadget>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyTemplateInputBox/>
+<pyEditable>true</pyEditable>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20170830T134633.671 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyForEachProperty/>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pxCreateDateTime>20170830T134633.672 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateDateTime>20170830T134633.673 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pxObjClass/>
+<StreamType/>
+<StreamName>pzCompactPDFStyles</StreamName>
+<StreamClass>Rule-HTML-Fragment</StreamClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertyName>Param.MarkupStyles</PropertyName>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyEditable>true</pyEditable>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>PropertyName</pyParametersParamName>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>Name of the Rule-Obj-Property to populate with the Rule-HTML-Stream below</pyParametersParamDesc>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamDesc>Object class of Stream to render</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>StreamClass</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliRule>Rule-Obj-HTML</pyParametersParamIntelliRule>
+<pyParametersParamDesc>Stream Name to put into the PropertyName above</pyParametersParamDesc>
+<pyParametersParamName>StreamName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamName>StreamType</pyParametersParamName>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamDesc>Stream Type (XML &amp; Corr only)</pyParametersParamDesc>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateDateTime>20170830T123744.786 GMT</pxCreateDateTime>
+<pyStepPageReference>RH_1.pySteps(5)</pyStepPageReference>
+<pyStepsJavaSource>String Markup=tools.getParamValue("Markup");
+String styles=tools.getParamValue("MarkupStyles");
+String stylePlaceHolder = "&lt;!--Styles Removed by ExportToPDF--&gt;";
+String pattern ="&lt;link(\\s)rel=\"stylesheet\"(\\s)type=\"text/css\"(\\s)href=\"webwb/(.*?)&gt;";
+Markup=Markup.replaceAll(pattern,stylePlaceHolder);
+Markup=Markup.replaceFirst(stylePlaceHolder,styles);
+tools.putParamValue("Markup",Markup);</pyStepsJavaSource>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepActivityDescription/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pxInsName/>
+<pyStepsBlockName/>
+<pzStepExpanded/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyPropRef/>
+<pyOnException/>
+<pyStepsTransition/>
+<pyStepsDescription>Strip the css if markup is already provided</pyStepsDescription>
+<pyTemplateInputBox/>
+<pyStepsObjectName/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyForEachProperty/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20170830T123744.790 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20170830T123744.791 GMT</pxCreateDateTime>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20170830T123744.789 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhen>Param.UseCompactStylesforPDF=="true"</pyStepsPreCondParamsWhen>
+<pxCreateOperator>sangn</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse>3</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOpName>Nagaraju Sangam</pxCreateOpName>
+<pxCreateDateTime>20170830T123744.787 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyExpressionGadget>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyResultOfSelection/>
+<pyResultError/>
+<pyEditable>true</pyEditable>
+<pyExpression>Param.ignoreSkin = "true"</pyExpression>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyTemplateInputBox/>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyResult/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pyStepsPreCondParamsWhen">Param.ignoreSkin = "true"</rowdata>
+</pyExpressionMapNew>
+<pyExpressionBulderFields REPEATINGTYPE="PageList"/>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyStepActivityDescription/>
+<pyStepsPreCondition>false</pyStepsPreCondition>
+<pxInsName/>
+<pyExpanded>true</pyExpanded>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepsDescription>Copy Markup param to HTMLStream  local variable. Throws exception if stream is empty.</pyStepsDescription>
+<pyStepPageReference>RH_1.pySteps(6)</pyStepPageReference>
+<pyStepsObjectName/>
+<pzStepExpanded/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsJavaSource>HTMLStream = tools.getParamValue("Markup").trim();
+
+
+if (HTMLStream.length() == 0)
+{
+  throw new IllegalArgumentException("Parameter page is not set up correctly for HTMLtoPDF. You MUST populate \"Markup\" parameter with HTML content or set \"StreamName\" parameter to the key of a valid, non-empty HTML Record. ");
+}</pyStepsJavaSource>
+<pyPropRef/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyTemplateInputBox/>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepsBlockName/>
+<pxCreateDateTime>20150129T210503.996 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsTransition/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyOnException/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateDateTime>20150129T210503.998 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20150129T212702.322 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateOperator>houlj</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20150129T210503.999 GMT</pxCreateDateTime>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachProperty/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyForEachClass/>
+<pxCreateDateTime>20150129T210504.000 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV718c</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyStepPageReference>RH_1.pySteps(7)</pyStepPageReference>
+<pyStepActivityDescription/>
+<pyStepsJavaSource/>
+<pxCreateOpName>Rekha Tavvala</pxCreateOpName>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOperator>tavvr</pxCreateOperator>
+<pyStepsPreCondition/>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepsDescription/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsTransition/>
+<pxCreateDateTime>20170908T115319.792 GMT</pxCreateDateTime>
+<pyOnException/>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pzStepExpanded/>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsObjectName/>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>tavvr</pxCreateOperator>
+<pxCreateOpName>Rekha Tavvala</pxCreateOpName>
+<pxCreateDateTime>20170908T115319.793 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pyForEachProperty/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20170908T115319.795 GMT</pxCreateDateTime>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOpName>Rekha Tavvala</pxCreateOpName>
+<pxCreateOperator>tavvr</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOpName>Rekha Tavvala</pxCreateOpName>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pxCreateOperator>tavvr</pxCreateOperator>
+<pxCreateDateTime>20170908T115319.796 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesValue>""</PropertiesValue>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesName>param.UseCompactStylesforPDF</PropertiesName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyExpressionGadget>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyTemplateInputBox/>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowParameters>true</pyShowParameters>
+<pyEditable>true</pyEditable>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20170908T115319.794 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOperator>tavvr</pxCreateOperator>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateSystemID>sls-envhyd2</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>Rekha Tavvala</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+<pyStepsParamUI/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyPropRef/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsTransition/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsJavaSource>//Get the PDF generation utility class
+PDFUtils pdfUtil=tools.getPDFUtils();
+
+//BUG- 32651 Back-Ported HFix-2932
+//Get the PDF bytes.
+byte[] byteArray = pdfUtil.generatePDF(HTMLStream,tools.getParameterPage());
+
+if (byteArray == null || byteArray.length == 0)
+{
+    oLog.error("PDFUtils did not return any content for HTMLtoPDF");
+}
+else
+{
+    //Put the byte array in a parameter
+    tools.putParamValue("PDFDocument",byteArray);
+}</pyStepsJavaSource>
+<pyJavaSource/>
+<pyExpanded>true</pyExpanded>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsPreCondition/>
+<pyStepsDescription>Generate the PDF bytes using public API and HTMLStream local variable.</pyStepsDescription>
+<pyStepsObjectName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepActivityDescription/>
+<pyOnException/>
+<pxInsName/>
+<pyTemplateInputBox/>
+<pxSubscript>3</pxSubscript>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsBlockName/>
+<pyStepPageReference>RH_1.pySteps(8)</pyStepPageReference>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pzStepExpanded/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20260721T033924.831 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefIteration/>
+<pxCreateDateTime>20131113T201827.938 GMT</pxCreateDateTime>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pxCreateSystemID>SLSAPPC</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20131113T201828.205 GMT</pxCreateDateTime>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>SLSAPPC</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateDateTime>20260721T033924.833 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTrue/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsTransParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+</pySteps>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>08-02-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T093214.494 GMT</pzInsKey>
+</rowdata>
+</pyRuleCompareList>
+<pyMappingModel>
+</pyMappingModel>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxSubscript>1</pxSubscript>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>2</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+</pxMessageSummary>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>@baseclass</pyPrivilegeClass>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyPrivilegeName/>
+</rowdata>
+</pyActivityPrivilegeList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T093214.494 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>08-02-01 (Final)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>HTML markup to convert to PDF. Use this or StreamName</pyParametersParamDesc>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>Markup</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamDefaultValue/>
+<pyParametersParamName>StreamName</pyParametersParamName>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>HTML rule stream name to use if Markup is not populated.</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass/>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>3</pxSubscript>
+<pyParametersParamDesc>Optional page orientation(portrait/landscape), Default landscape</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamName>pyPDFPageOrientation</pyParametersParamName>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDefaultValue/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pxSubscript>4</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>Optional page size (A4/LETTER/LEGAL), Default A4</pyParametersParamDesc>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>pyPDFPageSize</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamDesc>PDF Bytes</pyParametersParamDesc>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamName>PDFDocument</pyParametersParamName>
+<pxSubscript>5</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>JAVAOBJECT</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc>Enable Hyperlinks(true/false). Default is false</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>pyPDFEnableHyperlinks</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxSubscript/>
+<pyParametersParamIntelliRule/>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>pyPDFFontsDirectory</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDesc>The path to the local directory where fonts are located</pyParametersParamDesc>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDefaultValue/>
+<pxSubscript/>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>Enable embedding the font(s) from pyPDFFontsDirectory into the PDF document</pyParametersParamDesc>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName>pyPDFEmbedFont</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyParametersParamDesc>Optional directory to use at runtime for the PDF generation library's Properties file. Setting this parameter will disable the removal of the properties file at the end of use.</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pxSubscript/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>pyPDFPropsDirectory</pyParametersParamName>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamIntelliValidateAs/>
+<pxSubscript/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc>Optional pdf header HTML template .</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamName>pyPDFHeaderHTMLTemplate</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyParametersParamDefaultValue/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>Optional pdf footer HTML template</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript/>
+<pyParametersParamName>pyPDFFooterHTMLTemplate</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyParametersParamName>pyKeepPropsFile</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDesc>Optional setting to keep the generated property file.</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxSubscript/>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamName>HaltOnHTMLWarning</pyParametersParamName>
+<pyParametersParamDesc>Strict HTML validation: Optional flag that will cause an exception if tidy reports any "Warning and/or "Error" level issues in HTML stream.</pyParametersParamDesc>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pxSubscript/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>HaltOnHTMLError</pyParametersParamName>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamDesc>Moderate HTML validation: Optional flag that will cause an exception if tidy reports any "Error" level issues in HTML stream.</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxSubscript/>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamName>pyGenerateToolTips</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>Generate Tool Tips</pyParametersParamDesc>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>pyEnableSmartTableBreaks</pyParametersParamName>
+<pyParametersParamDesc>Enable Smart Table break</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyParametersParamIntelliRule/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>Set to true for clearing the cache after getting the pdf bytes for an input markup, to avoid memory leak with huge TTF &amp; TTC files.</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>isClearCache</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>pyHTMLDisableProcessing</pyParametersParamName>
+<pyParametersParamDesc>Set to true to avoid processing the HTML input for conformance</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliValidateAs/>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pyParametersParamType>INTEGER</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc>Optional for setting the initial page number of the PDF document</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>startPage</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pyParametersParamName>pyEnableOutlines</pyParametersParamName>
+<pyParametersParamDesc>enable support for PDF Bookmarks and Outlines</pyParametersParamDesc>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pyParametersParamDesc>generate PDF in PDF/A format</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamName>pyPDFGeneratePDFA</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamName>pyShowWarning</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc>Optional for log warning while Tidy parsing</pyParametersParamDesc>
+<pyParametersParamIntelliRule/>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDesc>Ignore skin while exporting to PDF and use minimal skin</pyParametersParamDesc>
+<pyParametersParamName>UseCompactStylesforPDF</pyParametersParamName>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="24">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>pyEditablePDF</pyParametersParamDesc>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>pyEditablePDF</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateOpName>Admin.PDF</pxCreateOpName>
+<pyParametersParamDefaultValue/>
+<pxCreateSystemID>prpc</pxCreateSystemID>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pxCreateDateTime>20180316T120413.754 GMT</pxCreateDateTime>
+<pxCreateOperator>Admin.PDF</pxCreateOperator>
+</rowdata>
+</pyParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyShowJava>true</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>true</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>true</pyRun>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>Property-Set-Stream</pyRuleName>
+<pxRuleFamilyName>PROPERTY-SET-STREAM</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleClassName/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxRuleClassName/>
+<pyRuleName>String trim--(String)</pyRuleName>
+<pxRuleFamilyName>STRING!TRIM--(STRING)</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>Property-Set</pyRuleName>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleClassName/>
+<pyRuleName>Utilities getDataSystemSetting--(String,String)</pyRuleName>
+<pxRuleFamilyName>UTILITIES!GETDATASYSTEMSETTING--(STRING,STRING)</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>@baseclass</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pyRuleName>pzCompactPDFStyles</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Fragment</pxRuleObjClass>
+<pxRuleFamilyName>PZCOMPACTPDFSTYLES</pxRuleFamilyName>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningSeverity>1</pxWarningSeverity>
+<pxWarningCreatedTime>20181127T092410.625 GMT</pxWarningCreatedTime>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningJustifiedTime/>
+<pxWarningCreateOperator>mulpk</pxWarningCreateOperator>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep</pxWarningDetails>
+<pxWarningJustifiedOperator/>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningType>Maintainability</pxWarningType>
+<pyWarningJustifiedMessage/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>mulpk</pxWarningCreateOperator>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningName>Activity use</pxWarningName>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pyWarningJustifiedMessage/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreatedTime>20181127T092410.626 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedOperator/>
+<pxWarningJustifiedTime/>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-)pzPreventSensitiveDataInLogs</pxWarningDetails>
+<pxWarningType>Security</pxWarningType>
+<pxWarningName>pzPreventSensitiveDataInLogs</pxWarningName>
+<pxWarningJustifiedOperator/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pyWarningJustifiedMessage/>
+<pxWarningMessage>Be careful not to write sensitive or confidential information, including encrypted properties and any properties from encrypted BLOBs, to logs.</pxWarningMessage>
+<pxWarningCreatedTime>20181127T092410.624 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>Admin.PDF</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxWarningCreatedTime>20181127T092410.638 GMT</pxWarningCreatedTime>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>sangn</pxWarningCreateOperator>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedTime/>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningCreateOperator>mulpk</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep</pxWarningMessage>
+<pxWarningSeverity>1</pxWarningSeverity>
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedTime/>
+<pxWarningCreatedTime>20181127T092410.625 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedOperator/>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pyWarningJustifiedMessage/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>mulpk</pxWarningCreateOperator>
+<pxWarningJustifiedOperator/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningJustifiedTime/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningName>Activity use</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20181127T092410.626 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20181127T092410.624 GMT</pxWarningCreatedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-)pzPreventSensitiveDataInLogs</pxWarningMessage>
+<pxWarningType>Security</pxWarningType>
+<pxWarningDetails>(Rule-)pzPreventSensitiveDataInLogs</pxWarningDetails>
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedOperator/>
+<pxWarningJustifiedTime/>
+<pxWarningName>pzPreventSensitiveDataInLogs</pxWarningName>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningCreateOperator>Admin.PDF</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningCreateOperator>sangn</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningJustifiedTime/>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS HTMLTOPDF #20181127T092254.885 GMT</pzIndexOwnerKey>
+<pxWarningJustifiedOperator/>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningCreatedTime>20181127T092410.638 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+</pagedata>

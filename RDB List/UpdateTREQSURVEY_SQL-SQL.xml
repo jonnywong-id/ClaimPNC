@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pyValueChanged>false</pyValueChanged>
+<pyRequestType>UpdateTREQSURVEY_SQL</pyRequestType>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss10362</pxHostId>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pySaveSQL>update t_reqsurvey set sts_polis = {InputSurvey.CARI3}, note = {InputSurvey.CARI4} where id_survey = {InputSurvey.CARI1}</pySaveSQL>
+<pyTemplateInputBox/>
+<pyHandlerFlow/>
+<pyMethodStatus/>
+<pyCircumstanceProp/>
+<pyFormPost/>
+<pyCircumstanceDateProp/>
+<pyBrowseSQL/>
+<pxCommitDateTime>20240929T102156.000 GMT</pxCommitDateTime>
+<pyHistoryObject/>
+<pyRuleEnds/>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pyDeleteMemo>doen ganti jadi page utuk set stst_polis</pyDeleteMemo>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDefinition/>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20240923T102715.268 GMT</pzOriginalInstanceKey>
+<pxMoveImportDateTime>20240929T102156.536 GMT</pxMoveImportDateTime>
+<pzChecksum>-846478815</pzChecksum>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260827T070817.810 GMT</pyShowJavaWindowName>
+<pyInterface/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyJavaStream/>
+<pyMemo>doen tambah untuk update note</pyMemo>
+<pxInstanceLockedKey/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleStarts/>
+<pxInstanceLockedBy/>
+<pyCircumstanceType/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20240923T102715.268 GMT</pzDocumentKey>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxSaveDateTime>20240924T030652.168 GMT</pxSaveDateTime>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!UPDATETREQSURVEY_SQL</pxInsId>
+<pyDeleteSQL/>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM UpdateTREQSURVEY_SQL</pxTabLabel>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pxCreateDateTime>20240923T102715.268 GMT</pxCreateDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDescription/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20240923T102715.268 GMT</pzInsKey>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM UpdateTREQSURVEY_SQL</pyRuleName>
+<pyRuleSetVersion>01-04-85</pyRuleSetVersion>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionPatch>85</pzRuleSetVersionPatch>
+<pyRuleFormStatusTime>20260827T070817.785 GMT</pyRuleFormStatusTime>
+<pyDocumentTitle/>
+<pyLabel>UpdateTREQSURVEY_SQL</pyLabel>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyTemplate/>
+<pyWindowTitle/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!UPDATETREQSURVEY_SQL</pxInsName>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pxInstanceLockedRuleSet/>
+<pyIsFromManageChangeLP/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pyStatus/>
+<pxUpdateDateTime>20240924T030652.151 GMT</pxUpdateDateTime>
+<pyLabelOld>UpdateTREQSURVEY_SQL</pyLabelOld>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pyBack>true</pyBack>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20250206T080120.184 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-05-12 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20240930T030859.712 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-04-86 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!UPDATETREQSURVEY_SQL #20240923T102715.268 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-04-85 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

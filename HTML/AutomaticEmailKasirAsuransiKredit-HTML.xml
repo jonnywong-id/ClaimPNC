@@ -1,0 +1,342 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyReloadForm>true</pyReloadForm>
+<pxInsId>!AUTOMATICEMAILKASIRASURANSIKREDIT</pxInsId>
+<pzRuleSetVersionPatch>07</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyLabel>AutomaticEmailKasirAsuransiKredit</pyLabel>
+<pyShowJavaWindowName>GeneratedJava20260908T073556.152 GMT</pyShowJavaWindowName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!AUTOMATICEMAILKASIRASURANSIKREDIT</pxInsName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pxUpdateDateTime>20230925T035404.653 GMT</pxUpdateDateTime>
+<pxHostId>jboss10422</pxHostId>
+<pyStreamName>AutomaticEmailKasirAsuransiKredit</pyStreamName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzDocumentKey>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxSaveDateTime>20230925T035404.668 GMT</pxSaveDateTime>
+<pyMemo>done</pyMemo>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySourceStream>&lt;html&gt;
+  &lt;body&gt;
+    &lt;table&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Dear,&lt;/td&gt;
+      &lt;/tr&gt;  
+      &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+      &lt;!--&lt;tr&gt;
+        &lt;td&gt;No Ref Bank&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="OutputKasir2.NO_REF_BANK"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No Pre&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="OutputKasir2.REG_KLAIM_NO"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No SPT&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="OutputKasir2.NO_POLIS"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;--&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No Batch&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="OutputKasir2.NO_AKSEP"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Jumlah&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="OutputKasir2.BANK_NO_ACCOUNT"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/body&gt;
+ &lt;/html&gt;</pySourceStream>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzChecksum>1066090936</pzChecksum>
+<pyRuleFormStatusTime>20260908T073556.007 GMT</pyRuleFormStatusTime>
+<pxMoveImportDateTime>20231027T123038.472 GMT</pxMoveImportDateTime>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyCompact>false</pyCompact>
+<pyRuleName>AutomaticEmailKasirAsuransiKredit</pyRuleName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxTabLabel>AutomaticEmailKasirAsuransiKredit</pxTabLabel>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxCommitDateTime>20231027T123039.000 GMT</pxCommitDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSetVersion>01-02-07</pyRuleSetVersion>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20190808T023408.678 GMT</pzOriginalInstanceKey>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzInsKey>
+<pxCreateDateTime>20230925T033107.374 GMT</pxCreateDateTime>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyLabelOld>AutomaticEmailKasirAsuransiKredit</pyLabelOld>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIndexCount>18</pzIndexCount>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTempText>saved</pyTempText>
+<pyDeleteMemo>testing 4</pyDeleteMemo>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_AutomaticEmailKasirAsuransiKredit_Stream_20230925T033108_925_GMT</pyJavaClassName>
+<pzStatus>valid</pzStatus>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20190808T023408.678 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-75 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-01-74 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20190723T102634.877 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20181121T091922.032 GMT</pzInsKey>
+<pyLabel>01-01-57 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20181115T094626.918 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-01-55 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>Default</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>DEFAULT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-T_CLAIM_ASURANSI_CREDIT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleFamilyName>NO_POLIS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pyRuleName>NO_POLIS</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NO_AKSEP</pxRuleFamilyName>
+<pyRuleName>NO_AKSEP</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>BANK_NO_ACCOUNT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pyRuleName>BANK_NO_ACCOUNT</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NO_REF_BANK</pxRuleFamilyName>
+<pyRuleName>NO_REF_BANK</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxRuleClassName>
+<pxRuleFamilyName>REG_KLAIM_NO</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pyRuleName>REG_KLAIM_NO</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageName>OutputKasir2</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyShowJava>true</pyShowJava>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyPreview>true</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20230925T033107.374 GMT</pzInsKey>
+<pyLabel>01-02-07 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-75 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20190808T023408.678 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20190723T102634.877 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-74 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20181121T091922.032 GMT</pzInsKey>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-01-57 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-55 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC AUTOMATICEMAILKASIRASURANSIKREDIT #20181115T094626.918 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>OutputKasir2</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-T_CLAIM_ASURANSI_CREDIT</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

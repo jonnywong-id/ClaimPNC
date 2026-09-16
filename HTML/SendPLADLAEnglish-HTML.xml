@@ -1,0 +1,638 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsId>!SENDPLADLAENGLISH</pxInsId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pxMoveImportDateTime>20241223T123705.740 GMT</pxMoveImportDateTime>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyRuleFormStatusTime>20260908T080138.259 GMT</pyRuleFormStatusTime>
+<pxHostId>jboss1036</pxHostId>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzInsKey>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateDateTime>20250106T042927.694 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyShowJavaWindowName>GeneratedJava20260908T080138.280 GMT</pyShowJavaWindowName>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyLabel>SendPLADLAEnglish</pyLabel>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyTempText>saved</pyTempText>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMergeSynchronized>20240918T094039.682 GMT</pxMergeSynchronized>
+<pxSaveDateTime>20250106T042935.178 GMT</pxSaveDateTime>
+<pzChecksum>1365340001</pzChecksum>
+<pyMemo>dones</pyMemo>
+<pxTabLabel>SendPLADLAEnglish</pxTabLabel>
+<pyRuleName>SendPLADLAEnglish</pyRuleName>
+<pzOriginalInstanceKey>RULE-OBJ-HTML @BASECLASS SENDPLADLA #20210519T094314.796 GMT</pzOriginalInstanceKey>
+<pzIndexCount>24</pzIndexCount>
+<pyStreamName>SendPLADLAEnglish</pyStreamName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+    &lt;style&gt;
+      .poinned {
+        margin-left: 30px;
+      }
+      .link-button{
+        background-color: white;
+        border: 2px solid #e7e7e7;
+        border-radius: 12px;
+        color: black;
+        font-color: black;
+        padding: 5px 10px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 12px;
+        margin: 4px 2px;
+        cursor: pointer;
+        }
+      .salam {
+        margin-top: 30px;
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;pega:when test="NOTIFEMAILSBUKTI.FlagASO=='1'"&gt;
+     &lt;table&gt;
+       &lt;tr&gt;
+        &lt;td&gt;Send : &lt;pega:reference name="NOTIFEMAILSBUKTI.NoteKasir"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;From : &lt;pega:reference name="NOTIFEMAILSBUKTI.ExGratiaNote"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;To : &lt;pega:reference name="NOTIFEMAILSBUKTI.TelpMasking"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+       &lt;tr&gt;
+        &lt;td&gt;Subject : &lt;pega:reference name="NOTIFEMAILSBUKTI.SubjectEmail"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+     &lt;/table&gt;
+     &lt;/pega:when&gt;
+    &lt;table&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Dear Messr.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Referring to the above claim mentioned, herewith we enclosed the supporting documents:&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+         &lt;pega:when test="SendPLADLA.CityID=='PLA'"&gt;
+        &lt;td&gt;&lt;li class="poinned"&gt;PLA : &lt;pega:reference name="TempData.ClaimData.ClaimNo"&gt;&lt;/pega:reference&gt;&lt;/li&gt;&lt;/td&gt;
+         &lt;/pega:when&gt;
+        &lt;pega:when test="SendPLADLA.CityID=='DLA'"&gt;
+        &lt;td&gt;&lt;li class="poinned"&gt;DLA : &lt;pega:reference name="TempData.ClaimData.ClaimNo"&gt;&lt;/pega:reference&gt;&lt;/li&gt;&lt;/td&gt;
+         &lt;/pega:when&gt;
+      &lt;/tr&gt;
+      &lt;!--&lt;tr&gt;
+        &lt;td&gt;&lt;li class="poinned"&gt;Claim Notification&lt;/li&gt;&lt;/td&gt;
+      &lt;/tr&gt;--&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;This claim was handled by &lt;pega:reference name="SendPLADLA.UserTeknis"&gt;&lt;/pega:reference&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;pega:when test="SendPLADLA.CityID=='PLA'"&gt;
+          &lt;td&gt;
+            &lt;b&gt;*This PLA Printed by System and Valid without &lt;pega:reference name="TempGetApp.LSC_NOTE"&gt;&lt;/pega:reference&gt; official stamp.&lt;/b&gt;
+          &lt;/td&gt;
+        &lt;/pega:when&gt;
+        &lt;pega:when test="SendPLADLA.CityID=='DLA'"&gt;
+          &lt;td&gt;
+            &lt;b&gt;*This DLA Printed by System and Valid without &lt;pega:reference name="TempGetApp.LSC_NOTE"&gt;&lt;/pega:reference&gt; official stamp.&lt;/b&gt;
+          &lt;/td&gt;
+        &lt;/pega:when&gt;
+        &lt;br /&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;br/&gt;
+       &lt;tr&gt;&lt;td&gt; &lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt; &lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt; &lt;/td&gt;&lt;/tr&gt;
+         &lt;td&gt; To see the details can be accessed via the link &lt;b&gt;&lt;a href="http://pega.sinarmas.co.id/prweb/"&gt;PEGA SITE&lt;/a&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;tr&gt;
+         &lt;td&gt;&lt;b&gt;Login : &lt;pega:reference name="SendPLADLA.UserName"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;  
+         &lt;br/&gt;
+       &lt;tr&gt;&lt;td&gt; &lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt; &lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;i&gt;
+            &lt;b&gt; Note: - This email substitutes the original document sent by courier.&lt;/b&gt;
+           &lt;/i&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Thank you and looking forward to receiving your confirmation whether you receive the same or not.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;p class="salam"&gt;Regards, &lt;/p&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;&lt;pega:reference name="TempDataNoPLA.ProvinceID"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pzDocumentKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzDocumentKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyReloadForm>true</pyReloadForm>
+<pxCommitDateTime>20250106T042935.000 GMT</pxCommitDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyLabelOld>SendPLADLAEnglish</pyLabelOld>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInsName>@BASECLASS!SENDPLADLAENGLISH</pxInsName>
+<pyValueChanged>false</pyValueChanged>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxUpdateDateTime>20250106T042935.145 GMT</pxUpdateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyClassName>@baseclass</pyClassName>
+<pyCompact>false</pyCompact>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyJavaClassName>Rule_Obj_HTML__baseclass_SendPLADLAEnglish_Stream_20250106T042927_694_GMT</pyJavaClassName>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-11 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20240918T093953.916 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210927T080858.407 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210916T150404.804 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210723T022551.876 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-93 (Available)</pyLabel>
+<pxListSubscript>5</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Comitee</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempKomiteEmail</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>SendPLADLA</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempDataNoPLA</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempData</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPagesAndClassesPage>TempGetApp</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>NOTIFEMAILSBUKTI</pyPagesAndClassesPage>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxSelectorName>.link-button</pxSelectorName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">0</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>Default</pyRuleName>
+<pxRuleFamilyName>DEFAULT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>ClaimNo</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>CLAIMNO</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PROVINCEID</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pyRuleName>ProvinceID</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>SUBJECTEMAIL</pxRuleFamilyName>
+<pyRuleName>SubjectEmail</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>UserName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>USERNAME</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>TELPMASKING</pxRuleFamilyName>
+<pyRuleName>TelpMasking</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyRuleName>LSC_NOTE</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pxRuleClassName>
+<pxRuleFamilyName>LSC_NOTE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyRuleName>ExGratiaNote</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>EXGRATIANOTE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyRuleName>UserTeknis</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>USERTEKNIS</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyRuleName>ASM-FW-GCNMFW-Data-Comitee</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-COMITEE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NOTEKASIR</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pyRuleName>NoteKasir</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-V_STS_CLAIM</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>CLAIMDATA</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pyRuleName>ClaimData</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20240918T093953.916 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210927T080858.407 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-95 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxListSubscript>4</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210916T150404.804 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-93 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20210723T022551.876 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>false</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyPreview>true</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyDelete>true</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyRun>false</pyRun>
+<pyShowJava>true</pyShowJava>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>NOTIFEMAILSBUKTI</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Data-Comitee</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxPageName>TempKomiteEmail</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxPageName>TempDataNoPLA</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxPageName>SendPLADLA</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>TempData</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxPageClass>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDPLADLAENGLISH #20250106T042927.694 GMT</pzIndexOwnerKey>
+<pxPageName>TempGetApp</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pyPageTable REPEATINGTYPE="PageList"/>
+</pagedata>

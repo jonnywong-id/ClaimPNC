@@ -1,0 +1,2139 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyClassName>
+<pxCreateDateTime>20201012T074814.260 GMT</pxCreateDateTime>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxMoveImportDateTime>20201111T105251.275 GMT</pxMoveImportDateTime>
+<pyRuleFormStatusTime>20260826T063728.034 GMT</pyRuleFormStatusTime>
+<pxSaveDateTime>20201102T025907.576 GMT</pxSaveDateTime>
+<pzChecksum>-1520400512</pzChecksum>
+<pxObjClass>Rule-Obj-Report-Definition</pxObjClass>
+<pzIndexCount>148</pzIndexCount>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyLabelOld>BrowseSparepartHE_RD</pyLabelOld>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzInsKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyBaseRule>false</pyBaseRule>
+<pyReloadForm>true</pyReloadForm>
+<pxUpdateDateTime>20201021T075637.738 GMT</pxUpdateDateTime>
+<pzDocumentKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzDocumentKey>
+<pxServerReqURI>/prweb/E8h2Bskc6m8Byiv959_pwiBJKJ5INSvN*/!TABTHREAD3</pxServerReqURI>
+<pyMemo>done</pyMemo>
+<pxInsName>ASM-FW-GCNMFW-INT-SPAREPART_HE!BROWSESPAREPARTHE_RD</pxInsName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleName>BrowseSparepartHE_RD</pyRuleName>
+<pxInsId>!BROWSESPAREPARTHE_RD</pxInsId>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pyCompact>false</pyCompact>
+<pxReportVersion>6.2</pxReportVersion>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxCommitDateTime>20201111T105251.000 GMT</pxCommitDateTime>
+<pyObjClassLabel>Report Definition</pyObjClassLabel>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxTabLabel>BrowseSparepartHE_RD</pxTabLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaClassName>Rule_Obj_Report_Definition_ASM_FW_GCNMFW_Int_SPAREPART_HE_BrowseSparepartHE_RD_Action_20201012T074814_260_GMT</pyJavaClassName>
+<pyStreamName>BrowseSparepartHE_RD</pyStreamName>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyReportTitle>BrowseBengkel_HE_RD</pyReportTitle>
+<pySelected>false</pySelected>
+<pxHostId>jboss2145</pxHostId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzOriginalInstanceKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzOriginalInstanceKey>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pzReportExpressHideEditButton>false</pzReportExpressHideEditButton>
+<pyLabel>BrowseSparepartHE_RD</pyLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyShowJavaWindowName>GeneratedJava20260826T063728.076 GMT</pyShowJavaWindowName>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>1</pxLowSeverityWarningCount>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>0</pxUnjustifiedHSWarningCount>
+</pxMessageSummary>
+<pyDrillDown>
+<pxObjClass>Embed-ReportDrillDown</pxObjClass>
+<pzDrillDownFilters>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+</pzDrillDownFilters>
+</pyDrillDown>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-report-/rule-obj-report-definition/main.htm</pyHelpRef>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>true</pyShowJava>
+<pyRun>true</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-report-/rule-obj-report-definition/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelete>false</pyDelete>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>IDPart</pyParametersParamName>
+<pyParametersParamType>Text</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>StatusAktif</pyParametersParamName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyParametersParamType>Text</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateDateTime>20201012T075527.346 GMT</pxCreateDateTime>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxCreateDateTime>20201013T014338.465 GMT</pxCreateDateTime>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyParametersParamName>Approval</pyParametersParamName>
+<pyParametersParamType>Text</pyParametersParamType>
+</rowdata>
+</pyParameters>
+<pySource>
+</pySource>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyContentSource>
+<pxObjClass>Embed-SummaryParams</pxObjClass>
+<pyFromClasses REPEATINGTYPE="PageList"/>
+</pyContentSource>
+<pyReportMetaData>
+<pxObjClass>Embed-ReportMetaDataInfo</pxObjClass>
+<pxIsSummary>false</pxIsSummary>
+</pyReportMetaData>
+<pyUI>
+<pxObjClass>Embed-ReportUI</pxObjClass>
+<pyIgnoreSkinPDFExport>true</pyIgnoreSkinPDFExport>
+<pyCategory>pyPerformanceAnalysis</pyCategory>
+<pyReportingDbDropdown>Standard</pyReportingDbDropdown>
+<pyIgnoreFormattingExcelExport>false</pyIgnoreFormattingExcelExport>
+<pzIsSummary>false</pzIsSummary>
+<pySplitPDFExport>false</pySplitPDFExport>
+<pyShowUnExposedProperties>false</pyShowUnExposedProperties>
+<pyIsCertified>false</pyIsCertified>
+<pyReportContentPageName>pyReportContentPage</pyReportContentPageName>
+<pySplitTableWithPageBreak>false</pySplitTableWithPageBreak>
+<pyIgnoreFormattingPDFExport>false</pyIgnoreFormattingPDFExport>
+<pyBody>
+<pySpreadSheetStyle>false</pySpreadSheetStyle>
+<pyGroupingEnabled>false</pyGroupingEnabled>
+<pyCustomGroupingEnabled>false</pyCustomGroupingEnabled>
+<pyHeaderDisplay>Default</pyHeaderDisplay>
+<pyGroupingSortNumber>1</pyGroupingSortNumber>
+<pxObjClass>Embed-ReportBody</pxObjClass>
+<pyCustomRowEnabled>false</pyCustomRowEnabled>
+<pyExportGroupingToExcel>false</pyExportGroupingToExcel>
+<pyUIFilters>
+<pyShowLabels>true</pyShowLabels>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyGetDistinctRows>false</pyGetDistinctRows>
+<pyFilterLogic>F1 AND F2 AND F3</pyFilterLogic>
+<pyFilter REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyPromptType>AllAccess</pyPromptType>
+<pySkipValidation>false</pySkipValidation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyFilterValue>Param.IDPart</pyFilterValue>
+<pyFilterName>.ID</pyFilterName>
+<pyFilterOperation>=</pyFilterOperation>
+<pyDataType>Text</pyDataType>
+<pyLogicLabel>F1</pyLogicLabel>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyFilterValue>Param.StatusAktif</pyFilterValue>
+<pySkipValidation>false</pySkipValidation>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyLogicLabel>F2</pyLogicLabel>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterName>.STS_AKTIF</pyFilterName>
+<pyFieldLabel>STS_AKTIF</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pyFilterOperation>=</pyFilterOperation>
+<pxCreateDateTime>20201012T075534.232 GMT</pxCreateDateTime>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyPromptType>AllAccess</pyPromptType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyFilterName>.APPROVAL</pyFilterName>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pySkipValidation>false</pySkipValidation>
+<pyPromptType>AllAccess</pyPromptType>
+<pyLogicLabel>F3</pyLogicLabel>
+<pyFilterOperation>=</pyFilterOperation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>APPROVAL</pyFieldLabel>
+<pyFilterValue>Param.Approval</pyFilterValue>
+<pyDataType>Text</pyDataType>
+<pxCreateDateTime>20201013T014353.197 GMT</pxCreateDateTime>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+</rowdata>
+</pyFilter>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+</pyUIFilters>
+<pyReportRank>
+<pxObjClass>Embed-ReportRank</pxObjClass>
+<pyPartitionType>All</pyPartitionType>
+<pyRankUIField>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+</pyRankUIField>
+</pyReportRank>
+<pyUIFields REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyEchoFieldName>.ID</pyEchoFieldName>
+<pyFieldName>.ID</pyFieldName>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pySelected>false</pySelected>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldName>.NAMA_SPART</pyFieldName>
+<pyFieldLabel>NAMA_SPART</pyFieldLabel>
+<pyEchoFieldName>.NAMA_SPART</pyEchoFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyFieldLabel>NO_SPART</pyFieldLabel>
+<pyEchoFieldName>.NO_SPART</pyEchoFieldName>
+<pyFieldName>.NO_SPART</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDisplayValues>false</pyDisplayValues>
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldName>.SATUAN</pyFieldName>
+<pySelected>false</pySelected>
+<pyDataType>Text</pyDataType>
+<pyEchoFieldName>.SATUAN</pyEchoFieldName>
+<pyFieldLabel>SATUAN</pyFieldLabel>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyEchoFieldName>.HARGA_JUAL</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldLabel>HARGA_JUAL</pyFieldLabel>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDataType>Text</pyDataType>
+<pyFieldName>.HARGA_JUAL</pyFieldName>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pySelected>false</pySelected>
+<pyFieldLabel>MIN_STOCK</pyFieldLabel>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyEchoFieldName>.MIN_STOCK</pyEchoFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldName>.MIN_STOCK</pyFieldName>
+<pyDataType>Text</pyDataType>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldName>.MAX_STOCK</pyFieldName>
+<pyEchoFieldName>.MAX_STOCK</pyEchoFieldName>
+<pyFieldLabel>MAX_STOCK</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyFieldLabel>QTY_PESAN</pyFieldLabel>
+<pyEchoFieldName>.QTY_PESAN</pyEchoFieldName>
+<pyFieldName>.QTY_PESAN</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pySelected>false</pySelected>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldName>.JENIS_SPART</pyFieldName>
+<pyFieldLabel>JENIS_SPART</pyFieldLabel>
+<pyEchoFieldName>.JENIS_SPART</pyEchoFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pyDataType>Text</pyDataType>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyEchoFieldName>.TGL_UPDATE_HARGA</pyEchoFieldName>
+<pyDataType>Text</pyDataType>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldLabel>TGL_UPDATE_HARGA</pyFieldLabel>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldName>.TGL_UPDATE_HARGA</pyFieldName>
+<pySelected>false</pySelected>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyFieldName>.STS_AKTIF</pyFieldName>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldLabel>STS_AKTIF</pyFieldLabel>
+<pyDisplayValues>false</pyDisplayValues>
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyEchoFieldName>.STS_AKTIF</pyEchoFieldName>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyFieldName>.STS_PART</pyFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldLabel>STS_PART</pyFieldLabel>
+<pyEchoFieldName>.STS_PART</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pyDataType>Text</pyDataType>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>USER_UPDATE</pyFieldLabel>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.USER_UPDATE</pyEchoFieldName>
+<pyDataType>Text</pyDataType>
+<pyFieldName>.USER_UPDATE</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pySelected>false</pySelected>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyEchoFieldName>.APPROVAL</pyEchoFieldName>
+<pyFieldLabel>APPROVAL</pyFieldLabel>
+<pyFieldName>.APPROVAL</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pySelected>false</pySelected>
+<pyDisplayValues>false</pyDisplayValues>
+<pyDataType>Text</pyDataType>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldName>.TINGGI</pyFieldName>
+<pyFieldLabel>TINGGI</pyFieldLabel>
+<pyEchoFieldName>.TINGGI</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>LEBAR</pyFieldLabel>
+<pyEchoFieldName>.LEBAR</pyEchoFieldName>
+<pyDataType>Text</pyDataType>
+<pySelected>false</pySelected>
+<pyFieldName>.LEBAR</pyFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pySelected>false</pySelected>
+<pyDataType>Text</pyDataType>
+<pyFieldLabel>PANJANG</pyFieldLabel>
+<pyFieldName>.PANJANG</pyFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.PANJANG</pyEchoFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pySelected>false</pySelected>
+<pyEchoFieldName>.BERAT</pyEchoFieldName>
+<pyFieldName>.BERAT</pyFieldName>
+<pyFieldLabel>BERAT</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDisplayValues>false</pyDisplayValues>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pyFieldLabel>KATEGORI_SPART</pyFieldLabel>
+<pySelected>false</pySelected>
+<pyDisplayValues>false</pyDisplayValues>
+<pyFieldName>.KATEGORI_SPART</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyEchoFieldName>.KATEGORI_SPART</pyEchoFieldName>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDataType>Text</pyDataType>
+<pyFieldLabel>TIPE_SPART</pyFieldLabel>
+<pyFieldName>.TIPE_SPART</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDisplayValues>false</pyDisplayValues>
+<pySelected>false</pySelected>
+<pyEchoFieldName>.TIPE_SPART</pyEchoFieldName>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pyFieldName>.KODE_SPART</pyFieldName>
+<pyEchoFieldName>.KODE_SPART</pyEchoFieldName>
+<pySelected>false</pySelected>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>KODE_SPART</pyFieldLabel>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pyDataType>Text</pyDataType>
+<pyDisplayValues>false</pyDisplayValues>
+<pyEchoFieldName>.PROD_DATE</pyEchoFieldName>
+<pyFieldName>.PROD_DATE</pyFieldName>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFieldLabel>PROD_DATE</pyFieldLabel>
+<pySelected>false</pySelected>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyFieldLabel>SUBSTITUSI_SPART</pyFieldLabel>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyDataType>Text</pyDataType>
+<pyFieldName>.SUBSTITUSI_SPART</pyFieldName>
+<pxObjClass>Embed-ReportUIFields</pxObjClass>
+<pySelected>false</pySelected>
+<pyEchoFieldName>.SUBSTITUSI_SPART</pyEchoFieldName>
+<pyDisplayValues>false</pyDisplayValues>
+<pySQLFunction>
+<pxObjClass>Embed-UserFunction</pxObjClass>
+</pySQLFunction>
+<pyFieldFormat>
+<pxObjClass>Embed-ReportHtmlProp</pxObjClass>
+</pyFieldFormat>
+</rowdata>
+</pyUIFields>
+<pyRows>
+<pxObjClass>Embed-ReportRows</pxObjClass>
+<pyEvents>
+<pxObjClass>Embed-ReportEvents</pxObjClass>
+<pyEventList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportEvent</pxObjClass>
+</rowdata>
+</pyEventList>
+</pyEvents>
+</pyRows>
+<pyCustomFiltering>
+<pxObjClass>Embed-ReportCustomPrompt</pxObjClass>
+<pyEnableCustomFiltering>false</pyEnableCustomFiltering>
+<pyPromptPageName>CustomFilter</pyPromptPageName>
+</pyCustomFiltering>
+</pyBody>
+<pyUserInteractions>
+<pxObjClass>Embed-ReportUserInteractions</pxObjClass>
+<pyExpandAllGroupBy>true</pyExpandAllGroupBy>
+<pyDrillDownReportName>pyDefaultReport</pyDrillDownReportName>
+<pyShowDataOnly>false</pyShowDataOnly>
+<pyDisableDrillDown>false</pyDisableDrillDown>
+<pyEnableAddFilters>true</pyEnableAddFilters>
+<pyFixedHeader>false</pyFixedHeader>
+<pyDesignModeActualResults>true</pyDesignModeActualResults>
+<pyPromptForFilters>false</pyPromptForFilters>
+<pyReportToolbarOptions>
+<pyEnableSave>true</pyEnableSave>
+<pyDisplayCommandMenu>true</pyDisplayCommandMenu>
+<pyEnablePrint>true</pyEnablePrint>
+<pyEnableFilters>true</pyEnableFilters>
+<pyEnableExportToPDF>true</pyEnableExportToPDF>
+<pxObjClass>Embed-ReportViewerCommands</pxObjClass>
+<pyEnableSummarize>true</pyEnableSummarize>
+<pyEnableSaveAs>true</pyEnableSaveAs>
+<pyEnableExportToExcel>true</pyEnableExportToExcel>
+<pyEnableAdvancedFiltering>true</pyEnableAdvancedFiltering>
+<pyDisplayReportHeader>true</pyDisplayReportHeader>
+<pyEnableConvertToList>true</pyEnableConvertToList>
+<pyDisplayCommandRibbon>true</pyDisplayCommandRibbon>
+<pyEnableEditing>true</pyEnableEditing>
+<pyEnableEditReportTitle>true</pyEnableEditReportTitle>
+<pyEnableAppendColumn>true</pyEnableAppendColumn>
+<pyEnableEditChart>true</pyEnableEditChart>
+<pyEnableEditColumns>true</pyEnableEditColumns>
+</pyReportToolbarOptions>
+<pyPagingParams>
+<pyPageSize>50</pyPageSize>
+<pxObjClass>Embed-ReportPaging</pxObjClass>
+<pyPosition>Top</pyPosition>
+<pyPagingEnabled>true</pyPagingEnabled>
+<pyPageMode>Numeric</pyPageMode>
+<pyAlignment>Right</pyAlignment>
+<pxMorePages>false</pxMorePages>
+<pyWindowSize>10</pyWindowSize>
+<pySortMode>dataset</pySortMode>
+</pyPagingParams>
+</pyUserInteractions>
+<pySource>
+<pxObjClass>Embed-ReportSource</pxObjClass>
+<pyAllowApproximation>false</pyAllowApproximation>
+<pyUseImplementationClass>true</pyUseImplementationClass>
+<pyIncludeAllDescendantclasses>true</pyIncludeAllDescendantclasses>
+<pyIndexInfo REPEATINGTYPE="PageList"/>
+<pyAssociations REPEATINGTYPE="PageList"/>
+<pyRowKeyInfo>
+<pxObjClass>Embed-ReportRowKeyInfo</pxObjClass>
+<pyGetRowKey>true</pyGetRowKey>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>.pzInsKey</pyLabel>
+</rowdata>
+</pxResults>
+<pyRowKeys REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">.pzInsKey</rowdata>
+</pyRowKeys>
+</pyRowKeyInfo>
+<pySubReportInfo REPEATINGTYPE="PageList"/>
+<pyJoinInfo REPEATINGTYPE="PageList"/>
+</pySource>
+<pySecurity>
+<pxObjClass>Embed-ReportSecurity</pxObjClass>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyPrivilegeList>
+</pySecurity>
+<pyPromptSectionParams>
+<pzDisplayFilterPrompt>true</pzDisplayFilterPrompt>
+<pxObjClass>Embed-ReportPromptSection</pxObjClass>
+</pyPromptSectionParams>
+<pyHeader>
+<pxObjClass>Embed-ReportHeader</pxObjClass>
+<pyButtons>
+<pxObjClass>Embed-ReportButtons</pxObjClass>
+<pyButtonList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyType>Icon</pyType>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyImage>report_save</pyImage>
+<pyButtonToolTip>Save</pyButtonToolTip>
+<pyButtonCaption>Save</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyImage>report_saveas</pyImage>
+<pyButtonToolTip>Save As</pyButtonToolTip>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyFunction>"showSaveAsDialog(this, event);"</pyFunction>
+<pyButtonCaption>Save As</pyButtonCaption>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyType>Icon</pyType>
+<pyButtonCaption>Print</pyButtonCaption>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyImage>report_print</pyImage>
+<pyFunction>window.print()</pyFunction>
+<pyButtonToolTip>Print</pyButtonToolTip>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyButtonToolTip>Edit Columns To Include</pyButtonToolTip>
+<pyImage>report_colsmry</pyImage>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyFunction>columnSummary(this,event)</pyFunction>
+<pyButtonCaption>Column Summary</pyButtonCaption>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyFunction>AppendColumn(this,event)</pyFunction>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyType>Icon</pyType>
+<pyButtonCaption>Append Column</pyButtonCaption>
+<pyImage>report_plus</pyImage>
+<pyButtonToolTip>Append Column</pyButtonToolTip>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyFunction>"changeReportTitle(this,event);"</pyFunction>
+<pyButtonToolTip>Edit Report Title</pyButtonToolTip>
+<pyImage>report_title</pyImage>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonCaption>RepTtitle</pyButtonCaption>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyButtonCaption>Chart</pyButtonCaption>
+<pyFunction>"showChartOptions(this, event);"</pyFunction>
+<pyLabel>manager</pyLabel>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonToolTip>Add Or Edit Chart</pyButtonToolTip>
+<pyImage>report_bar</pyImage>
+<pyType>Icon</pyType>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyImage>report_excel</pyImage>
+<pyButtonCaption>ExpExcel</pyButtonCaption>
+<pyType>Icon</pyType>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyFunction>"exportToExcel(this,event);"</pyFunction>
+<pyButtonToolTip>Export To Excel</pyButtonToolTip>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyImage>report_pdf</pyImage>
+<pyFunction>"exportToPDF(this,event);"</pyFunction>
+<pyButtonToolTip>Export To PDF</pyButtonToolTip>
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyType>Icon</pyType>
+<pyButtonCaption>ExpPDF</pyButtonCaption>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-ReportButton</pxObjClass>
+<pyButtonCaption>Filtering</pyButtonCaption>
+<pyImage>report_filtering</pyImage>
+<pyType>Icon</pyType>
+<pyFunction>"advancedFiltering(this,event);"</pyFunction>
+<pyButtonToolTip>Advanced Filtering</pyButtonToolTip>
+</rowdata>
+</pyButtonList>
+</pyButtons>
+</pyHeader>
+<pySmartInfo>
+<pxObjClass>Embed-ReportSmartInfo</pxObjClass>
+<pySingleClickSInfo>
+<pyEnabled>false</pyEnabled>
+<pxObjClass>Embed-ReportSingleClickInfo</pxObjClass>
+<pySmartInfoHeader>Additional Information</pySmartInfoHeader>
+</pySingleClickSInfo>
+</pySmartInfo>
+<pyChart>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyEnable2D3D>false</pyEnable2D3D>
+<pyIs3D>false</pyIs3D>
+<pyDisableDrillDown>false</pyDisableDrillDown>
+<pyShowAllGridLines>true</pyShowAllGridLines>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyTitleFontSize>14</pyTitleFontSize>
+<pyUseFusionChart>true</pyUseFusionChart>
+<pyLegendPlacement>bottom</pyLegendPlacement>
+<pyValueOfChart>0</pyValueOfChart>
+<pyTitleFontStyle>regular</pyTitleFontStyle>
+<pyShowNewWindow>true</pyShowNewWindow>
+<pySize>Large</pySize>
+<pyLegendDirection>horizontal</pyLegendDirection>
+<pyOptionsToEdit>Format</pyOptionsToEdit>
+<pySliderWidth>200</pySliderWidth>
+<pyEnableChart>false</pyEnableChart>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzChartAllowed>false</pzChartAllowed>
+<pyTimeOut>0</pyTimeOut>
+<pyHeight>300</pyHeight>
+<pyShowSVButton>true</pyShowSVButton>
+<pxCreateDateTime>20200907T100440.566 GMT</pxCreateDateTime>
+<pyWidth>400</pyWidth>
+<pySliderGroupCount>0</pySliderGroupCount>
+<pyGraphType>Column</pyGraphType>
+<pyLegendEnable>true</pyLegendEnable>
+<pyShowMaxButton>true</pyShowMaxButton>
+<pyTitleEnabled>true</pyTitleEnabled>
+<pySubChartIndex>1</pySubChartIndex>
+<pySliderEnabled>false</pySliderEnabled>
+<pyClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyClassName>
+<pyShowAllLabelsMS>true</pyShowAllLabelsMS>
+<pyUseJavaScript>true</pyUseJavaScript>
+<pyUseV6Chart>true</pyUseV6Chart>
+<pyMaxSubTypeIcons>1</pyMaxSubTypeIcons>
+<pySubType>clustered</pySubType>
+<pyChartOutputType>Flash</pyChartOutputType>
+<pyUseSolidColorsFor2D>true</pyUseSolidColorsFor2D>
+<pyShowDataTips>true</pyShowDataTips>
+<pyMin>1</pyMin>
+<pxObjClass>Embed-ReportGraph</pxObjClass>
+<pyMax>2</pyMax>
+<pyShowAllLabelsSS>false</pyShowAllLabelsSS>
+<pyPie>
+<pyLabelField>false</pyLabelField>
+<pyDateTimeInput>milliseconds</pyDateTimeInput>
+<pyNumberThouSeperator>true</pyNumberThouSeperator>
+<pyLabelEnabled>false</pyLabelEnabled>
+<pyDateTimeFormat>dd:hh:mm:ss</pyDateTimeFormat>
+<pyNumberCurrencySymbol>$</pyNumberCurrencySymbol>
+<pyLabelPercent>false</pyLabelPercent>
+<pyNumberPrecision>2</pyNumberPrecision>
+<pyLabelNameField>false</pyLabelNameField>
+<pxObjClass>Embed-ReportGraph-Pie</pxObjClass>
+<pyExplodeRadius>0.1</pyExplodeRadius>
+<pyInnerRadius>0.1</pyInnerRadius>
+<pyNumberNegativeSign>false</pyNumberNegativeSign>
+<pyFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyFieldHTMLParams>
+<pyNameFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyNameFieldHTMLParams>
+</pyPie>
+<pyBackgroundColor REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-BGColor</pxObjClass>
+</rowdata>
+</pyBackgroundColor>
+<pyCategoryAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-Axis</pxObjClass>
+</rowdata>
+</pyCategoryAxis>
+<pyXY>
+<pyInterpolateValues>true</pyInterpolateValues>
+<pySwapSeries>false</pySwapSeries>
+<pyTitleFontSize>8</pyTitleFontSize>
+<pxObjClass>Embed-ReportGraph-XY</pxObjClass>
+<pyUseColorRanges>false</pyUseColorRanges>
+<pyUniformMinor>true</pyUniformMinor>
+<pyTitleFontStyle>regular</pyTitleFontStyle>
+<pyLine>
+<pyLineWeight>3</pyLineWeight>
+<pxObjClass>Embed-ReportGraph-XY-Line</pxObjClass>
+<pyDropShadow>true</pyDropShadow>
+</pyLine>
+<pyArea>
+<pxObjClass>Embed-ReportGraph-XY-Area</pxObjClass>
+</pyArea>
+<pyDataAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyAxisThouSeperator>true</pyAxisThouSeperator>
+<pyAxisCurrencySymbol>$</pyAxisCurrencySymbol>
+<pyAxisPrecision>2</pyAxisPrecision>
+<pxObjClass>Embed-ReportGraph-XY-DataAxis</pxObjClass>
+<pyNumberFormat>general</pyNumberFormat>
+<pyAxisDecimalSeperator>true</pyAxisDecimalSeperator>
+<pyAxisDateTimeInput>milliseconds</pyAxisDateTimeInput>
+<pyShowGridLines>true</pyShowGridLines>
+<pyAxisNegativeSign>false</pyAxisNegativeSign>
+<pyAxisDateTimeFormat>dd:hh:mm:ss</pyAxisDateTimeFormat>
+<pyShowLabels>true</pyShowLabels>
+<pyAxisScale>Linear</pyAxisScale>
+<pyMissingsAsZero>true</pyMissingsAsZero>
+<pyAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyAxisHTMLParams>
+<pyDataAxisList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyFieldIndex>0</pyFieldIndex>
+<pxObjClass>Embed-ReportGraph-XY-Axis</pxObjClass>
+</rowdata>
+</pyDataAxisList>
+</rowdata>
+</pyDataAxis>
+<pyGroupAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyShowLabels>true</pyShowLabels>
+<pyAxisScale>Category</pyAxisScale>
+<pyShowGridLines>true</pyShowGridLines>
+<pxObjClass>Embed-ReportGraph-XY-GroupAxis</pxObjClass>
+<pyAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyAxisHTMLParams>
+<pyGroupAxisList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-XY-Axis</pxObjClass>
+<pyFieldIndex>0</pyFieldIndex>
+</rowdata>
+</pyGroupAxisList>
+<pySubGrpAxisHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pySubGrpAxisHTMLParams>
+</rowdata>
+</pyGroupAxis>
+<pyBubble>
+<pxObjClass>Embed-ReportGraph-XY-Bubble</pxObjClass>
+</pyBubble>
+<pyColumn>
+<pyMaxColWidth>0</pyMaxColWidth>
+<pxObjClass>Embed-ReportGraph-XY-Column</pxObjClass>
+</pyColumn>
+<pyBar>
+<pyMaxBarWidth>0</pyMaxBarWidth>
+<pxObjClass>Embed-ReportGraph-XY-Bar</pxObjClass>
+</pyBar>
+</pyXY>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTargetProperty>.ID</pyTargetProperty>
+<pySelected>false</pySelected>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>1</pzIndexCount>
+<pyLabel>ID</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pySelected>false</pySelected>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyLabel>NAMA_SPART</pyLabel>
+<pyTargetProperty>.NAMA_SPART</pyTargetProperty>
+<pzIndexCount>2</pzIndexCount>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyTargetProperty>.NO_SPART</pyTargetProperty>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pySelected>false</pySelected>
+<pzIndexCount>3</pzIndexCount>
+<pyLabel>NO_SPART</pyLabel>
+<pyStringType>Text</pyStringType>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzIndexCount>4</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>SATUAN</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.SATUAN</pyTargetProperty>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyTargetProperty>.HARGA_JUAL</pyTargetProperty>
+<pySelected>false</pySelected>
+<pyStringType>Text</pyStringType>
+<pyLabel>HARGA_JUAL</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>5</pzIndexCount>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyTargetProperty>.MIN_STOCK</pyTargetProperty>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>6</pzIndexCount>
+<pyLabel>MIN_STOCK</pyLabel>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.MAX_STOCK</pyTargetProperty>
+<pySelected>false</pySelected>
+<pyLabel>MAX_STOCK</pyLabel>
+<pyStringType>Text</pyStringType>
+<pzIndexCount>7</pzIndexCount>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyTargetProperty>.QTY_PESAN</pyTargetProperty>
+<pySelected>false</pySelected>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>8</pzIndexCount>
+<pyLabel>QTY_PESAN</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyLabel>JENIS_SPART</pyLabel>
+<pyStringType>Text</pyStringType>
+<pyTargetProperty>.JENIS_SPART</pyTargetProperty>
+<pzIndexCount>9</pzIndexCount>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyTargetProperty>.TGL_UPDATE_HARGA</pyTargetProperty>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>10</pzIndexCount>
+<pyLabel>TGL_UPDATE_HARGA</pyLabel>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pzIndexCount>11</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyLabel>STS_AKTIF</pyLabel>
+<pySelected>false</pySelected>
+<pyTargetProperty>.STS_AKTIF</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pySelected>false</pySelected>
+<pyTargetProperty>.STS_PART</pyTargetProperty>
+<pyLabel>STS_PART</pyLabel>
+<pzIndexCount>12</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyStringType>Text</pyStringType>
+<pyLabel>USER_UPDATE</pyLabel>
+<pyTargetProperty>.USER_UPDATE</pyTargetProperty>
+<pzIndexCount>13</pzIndexCount>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyLabel>APPROVAL</pyLabel>
+<pzIndexCount>14</pzIndexCount>
+<pyTargetProperty>.APPROVAL</pyTargetProperty>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyLabel>TINGGI</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyStringType>Text</pyStringType>
+<pySelected>false</pySelected>
+<pzIndexCount>15</pzIndexCount>
+<pyTargetProperty>.TINGGI</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pzIndexCount>16</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyLabel>LEBAR</pyLabel>
+<pyTargetProperty>.LEBAR</pyTargetProperty>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTargetProperty>.PANJANG</pyTargetProperty>
+<pySelected>false</pySelected>
+<pzIndexCount>17</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>PANJANG</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pyTargetProperty>.BERAT</pyTargetProperty>
+<pyLabel>BERAT</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>18</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pzIndexCount>19</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pyLabel>KATEGORI_SPART</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pySelected>false</pySelected>
+<pyTargetProperty>.KATEGORI_SPART</pyTargetProperty>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pyStringType>Text</pyStringType>
+<pyTargetProperty>.TIPE_SPART</pyTargetProperty>
+<pyLabel>TIPE_SPART</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pySelected>false</pySelected>
+<pzIndexCount>20</pzIndexCount>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pyStringType>Text</pyStringType>
+<pyLabel>KODE_SPART</pyLabel>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>21</pzIndexCount>
+<pyTargetProperty>.KODE_SPART</pyTargetProperty>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pyStringType>Text</pyStringType>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>22</pzIndexCount>
+<pyTargetProperty>.PROD_DATE</pyTargetProperty>
+<pyLabel>PROD_DATE</pyLabel>
+<pySelected>false</pySelected>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyTargetProperty>.SUBSTITUSI_SPART</pyTargetProperty>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyLabel>SUBSTITUSI_SPART</pyLabel>
+<pzIndexCount>23</pzIndexCount>
+<pyStringType>Text</pyStringType>
+<pySelected>false</pySelected>
+</rowdata>
+</pxResults>
+<pyDataAxis REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ReportGraph-Axis</pxObjClass>
+</rowdata>
+</pyDataAxis>
+<pyGauge>
+<pyMinorTicks>0</pyMinorTicks>
+<pyBorderThickness>1</pyBorderThickness>
+<pyShowValue>true</pyShowValue>
+<pyNeedleBaseWidth>0</pyNeedleBaseWidth>
+<pxObjClass>Embed-ReportGraph-Gauge</pxObjClass>
+<pyMinorTickLength>5</pyMinorTickLength>
+<pyNeedleAlpha>1</pyNeedleAlpha>
+<pyCoverRadius>0</pyCoverRadius>
+<pyMajorTickLength>10</pyMajorTickLength>
+<pyCoverAlpha>1</pyCoverAlpha>
+<pyNumberNegativeSign>false</pyNumberNegativeSign>
+<pyDateTimeInput>milliseconds</pyDateTimeInput>
+<pyValueIndex>1</pyValueIndex>
+<pyBorderAlpha>1</pyBorderAlpha>
+<pyDateTimeFormat>dd:hh:mm:ss</pyDateTimeFormat>
+<pyNeedleTopWidth>0</pyNeedleTopWidth>
+<pyNumberPrecision>2</pyNumberPrecision>
+<pyNumberCurrencySymbol>$</pyNumberCurrencySymbol>
+<pyNumberThouSeperator>true</pyNumberThouSeperator>
+<pyNumberFormat>general</pyNumberFormat>
+<pyMinorTickThickness>1</pyMinorTickThickness>
+<pyMajorTicks>0</pyMajorTicks>
+<pyMajorTickThickness>3</pyMajorTickThickness>
+<pyNeedleThickness>3</pyNeedleThickness>
+<pyTickLocation>Inside</pyTickLocation>
+<pyFieldHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyFieldHTMLParams>
+</pyGauge>
+</pyChart>
+</pyUI>
+<pyContent>
+<pyQueryTimeoutValue>30</pyQueryTimeoutValue>
+<ValidationMap mode="J">rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVz
+aG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeA==</ValidationMap>
+<pxIsSummary>false</pxIsSummary>
+<pyMaxRecords>500</pyMaxRecords>
+<pyContentPageName>pyReportContentPage</pyContentPageName>
+<pyClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyClassName>
+<pyDoNotUseSortOrderForGrouping>false</pyDoNotUseSortOrderForGrouping>
+<pxObjClass>Embed-ReportContent</pxObjClass>
+<pyGetDistinctRows>false</pyGetDistinctRows>
+<pyReportContentPageName>pyReportContentPage</pyReportContentPageName>
+<pyGetCachedDistinctValues>false</pyGetCachedDistinctValues>
+<pyReportRank>
+<pxObjClass>Embed-ReportRank</pxObjClass>
+<pyRankField>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</pyRankField>
+</pyReportRank>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyReportStatsInfo>
+<pxObjClass>Embed-ReportStatisticsInfo</pxObjClass>
+</pyReportStatsInfo>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>Text</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>IDPart</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>Text</pyParametersParamType>
+<pyParametersParamName>StatusAktif</pyParametersParamName>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateDateTime>20201012T075527.346 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxCreateDateTime>20201013T014338.465 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyParametersParamType>Text</pyParametersParamType>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>Approval</pyParametersParamName>
+</rowdata>
+</pyParameters>
+<pyFields>
+<pxObjClass>Embed-ReportFields</pxObjClass>
+<pyAggregate REPEATINGTYPE="PageList"/>
+<pyListFields REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyFieldLabel>ID</pyFieldLabel>
+<pyFieldName>.ID</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.NAMA_SPART</pyFieldName>
+<pyFieldLabel>NAMA_SPART</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyFieldName>.NO_SPART</pyFieldName>
+<pyFieldLabel>NO_SPART</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>SATUAN</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.SATUAN</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.HARGA_JUAL</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldLabel>HARGA_JUAL</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.MIN_STOCK</pyFieldName>
+<pyFieldLabel>MIN_STOCK</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyFieldName>.MAX_STOCK</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>MAX_STOCK</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyFieldLabel>QTY_PESAN</pyFieldLabel>
+<pyFieldName>.QTY_PESAN</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyFieldLabel>JENIS_SPART</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.JENIS_SPART</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyFieldLabel>TGL_UPDATE_HARGA</pyFieldLabel>
+<pyFieldName>.TGL_UPDATE_HARGA</pyFieldName>
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyFieldLabel>STS_AKTIF</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.STS_AKTIF</pyFieldName>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.STS_PART</pyFieldName>
+<pyFieldLabel>STS_PART</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyFieldName>.USER_UPDATE</pyFieldName>
+<pyFieldLabel>USER_UPDATE</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>APPROVAL</pyFieldLabel>
+<pyFieldName>.APPROVAL</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyFieldLabel>TINGGI</pyFieldLabel>
+<pyFieldName>.TINGGI</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldLabel>LEBAR</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.LEBAR</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyFieldName>.PANJANG</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldLabel>PANJANG</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>BERAT</pyFieldLabel>
+<pyFieldName>.BERAT</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pyFieldName>.KATEGORI_SPART</pyFieldName>
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldLabel>KATEGORI_SPART</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.TIPE_SPART</pyFieldName>
+<pyFieldLabel>TIPE_SPART</pyFieldLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pyFieldLabel>KODE_SPART</pyFieldLabel>
+<pySortOrder>99999</pySortOrder>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pyFieldName>.KODE_SPART</pyFieldName>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pySortOrder>99999</pySortOrder>
+<pyFieldName>.PROD_DATE</pyFieldName>
+<pyFieldLabel>PROD_DATE</pyFieldLabel>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyFieldName>.SUBSTITUSI_SPART</pyFieldName>
+<pxObjClass>Embed-ReportListFields</pxObjClass>
+<pySortOrder>99999</pySortOrder>
+<pyFieldLabel>SUBSTITUSI_SPART</pyFieldLabel>
+</rowdata>
+</pyListFields>
+<pyGroupBy REPEATINGTYPE="PageList"/>
+</pyFields>
+<pyInsertInfo>
+<pySecurity>
+</pySecurity>
+</pyInsertInfo>
+<pySecurity>
+<pxObjClass>Embed-ReportSecurity</pxObjClass>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyPrivilegeList>
+</pySecurity>
+<pyHavingFilters>
+<pxObjClass>Embed-ReportFilters-Having</pxObjClass>
+<pyFilter REPEATINGTYPE="PageList"/>
+</pyHavingFilters>
+<pyPaging>
+<pxMorePages>false</pxMorePages>
+<pyPosition>Top</pyPosition>
+<pyPageSize>50</pyPageSize>
+<pyWindowSize>10</pyWindowSize>
+<pyPageMode>Numeric</pyPageMode>
+<pyAlignment>Right</pyAlignment>
+<pyPagingEnabled>true</pyPagingEnabled>
+<pyReturnTotalResultCount>true</pyReturnTotalResultCount>
+<pyPageIndex>1</pyPageIndex>
+<pySortMode>dataset</pySortMode>
+<pxObjClass>Embed-ReportPaging</pxObjClass>
+</pyPaging>
+<pyFilters>
+<pyGetDistinctRows>false</pyGetDistinctRows>
+<pyFilterLogic>F1 AND F2 AND F3</pyFilterLogic>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyShowLabels>true</pyShowLabels>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+<pyFilter REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyFilterValue>Param.IDPart</pyFilterValue>
+<pyLogicLabel>F1</pyLogicLabel>
+<pyFilterName>.ID</pyFilterName>
+<pyPromptType>AllAccess</pyPromptType>
+<pyDataType>Text</pyDataType>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pySkipValidation>false</pySkipValidation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFilterOperation>=</pyFilterOperation>
+<pyFieldLabel>ID</pyFieldLabel>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPromptType>AllAccess</pyPromptType>
+<pyDataType>Text</pyDataType>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyFilterValue>Param.StatusAktif</pyFilterValue>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pySkipValidation>false</pySkipValidation>
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyFilterName>.STS_AKTIF</pyFilterName>
+<pyLogicLabel>F2</pyLogicLabel>
+<pyFieldLabel>STS_AKTIF</pyFieldLabel>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyFilterOperation>=</pyFilterOperation>
+<pxCreateDateTime>20201012T075534.232 GMT</pxCreateDateTime>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyACIsAssoc>false</pyACIsAssoc>
+<pyIsRightOperandAFunction>false</pyIsRightOperandAFunction>
+<pxObjClass>Embed-ReportFilter</pxObjClass>
+<pyFilterOperation>=</pyFilterOperation>
+<pyDataType>Text</pyDataType>
+<pyLogicLabel>F3</pyLogicLabel>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyFilterName>.APPROVAL</pyFilterName>
+<pyIsLeftOperandAFunction>false</pyIsLeftOperandAFunction>
+<pyFieldLabel>APPROVAL</pyFieldLabel>
+<pyPromptType>AllAccess</pyPromptType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateDateTime>20201013T014353.197 GMT</pxCreateDateTime>
+<pySkipValidation>false</pySkipValidation>
+<pyFilterValue>Param.Approval</pyFilterValue>
+</rowdata>
+</pyFilter>
+</pyFilters>
+<pyAppContextInfo>
+<pxObjClass>Embed-AppContextInfo</pxObjClass>
+</pyAppContextInfo>
+<pySource>
+<pyAllowApproximation>false</pyAllowApproximation>
+<pyUseImplementationClass>true</pyUseImplementationClass>
+<pyUseAlternateDB>false</pyUseAlternateDB>
+<pxObjClass>Embed-ReportSource</pxObjClass>
+<pyForceUseStandardDB>true</pyForceUseStandardDB>
+<pyIncludeAllDescendantclasses>true</pyIncludeAllDescendantclasses>
+<pySubReportInfo REPEATINGTYPE="PageList"/>
+<pyRowKeyInfo>
+<pyGetRowKey>true</pyGetRowKey>
+<pxObjClass>Embed-ReportRowKeyInfo</pxObjClass>
+<pxResults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>.pzInsKey</pyLabel>
+</rowdata>
+</pxResults>
+<pyRowKeys REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">.pzInsKey</rowdata>
+</pyRowKeys>
+</pyRowKeyInfo>
+<pyAssociations REPEATINGTYPE="PageList"/>
+<pySetQueries>
+<pxObjClass>Embed-ReportSetQueries</pxObjClass>
+<pySetQueryInfo REPEATINGTYPE="PageList"/>
+</pySetQueries>
+<pyJoinInfo REPEATINGTYPE="PageList"/>
+<pySubReportFrom>
+<pxObjClass>Embed-SubReportInfo</pxObjClass>
+<pyColumns REPEATINGTYPE="PageList"/>
+<pyFilters>
+<pxObjClass>Embed-ReportFilters</pxObjClass>
+<pyFilter REPEATINGTYPE="PageList"/>
+</pyFilters>
+</pySubReportFrom>
+<pyIndexInfo REPEATINGTYPE="PageList"/>
+</pySource>
+</pyContent>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pyRuleName>BERAT</pyRuleName>
+<pxRuleFamilyName>BERAT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">100</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyRuleName>pyCaption SUBSTITUSI_SPART</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!SUBSTITUSI_SPART</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">101</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>pyCaption USER_UPDATE</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!USER_UPDATE</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">102</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>STS_AKTIF</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>STS_AKTIF</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">103</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>TIPE_SPART</pxRuleFamilyName>
+<pyRuleName>TIPE_SPART</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">104</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-SPAREPART_HE</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">105</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>pyCaption TIPE_SPART</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!TIPE_SPART</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">106</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>KODE_SPART</pxRuleFamilyName>
+<pyRuleName>KODE_SPART</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">107</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleFamilyName>PYCAPTION!SATUAN</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption SATUAN</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">108</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!BROWSEBENGKEL_HE_RD</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption BrowseBengkel_HE_RD</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">109</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption NO_SPART</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!NO_SPART</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">110</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyRuleName>pyCaption JENIS_SPART</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!JENIS_SPART</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">111</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxRuleFamilyName>NAMA_SPART</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>NAMA_SPART</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">112</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>KATEGORI_SPART</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>KATEGORI_SPART</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">113</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyRuleName>pyCaption TINGGI</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYCAPTION!TINGGI</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">114</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pyRuleName>QTY_PESAN</pyRuleName>
+<pxRuleFamilyName>QTY_PESAN</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">115</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxRuleFamilyName>USER_UPDATE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>USER_UPDATE</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">116</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxRuleFamilyName>JENIS_SPART</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>JENIS_SPART</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">117</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption STS_PART</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!STS_PART</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">118</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption LEBAR</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!LEBAR</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">119</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!PROD_DATE</pxRuleFamilyName>
+<pyRuleName>pyCaption PROD_DATE</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">120</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>MIN_STOCK</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>MIN_STOCK</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">121</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pxRuleFamilyName>STS_PART</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>STS_PART</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">122</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="24">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYCAPTION!NAMA_SPART</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption NAMA_SPART</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">123</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="25">
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYCAPTION!TGL_UPDATE_HARGA</pxRuleFamilyName>
+<pyRuleName>pyCaption TGL_UPDATE_HARGA</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">124</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="26">
+<pyRuleName>pyCaption APPROVAL</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!APPROVAL</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">125</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="27">
+<pyRuleName>pyCaption PANJANG</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!PANJANG</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">126</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="28">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption MAX_STOCK</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!MAX_STOCK</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">127</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="29">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!STS_AKTIF</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption STS_AKTIF</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">128</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="30">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption KATEGORI_SPART</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!KATEGORI_SPART</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">129</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="31">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>PANJANG</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PANJANG</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">130</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="32">
+<pyRuleName>pyCaption HARGA_JUAL</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!HARGA_JUAL</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">131</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="33">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>HARGA_JUAL</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>HARGA_JUAL</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">132</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="34">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption ID</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!ID</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">133</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="35">
+<pxRuleFamilyName>SATUAN</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pyRuleName>SATUAN</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">134</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="36">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ID</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>ID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">135</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="37">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pyRuleName>LEBAR</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>LEBAR</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">136</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="38">
+<pyRuleName>pyCaption MIN_STOCK</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!MIN_STOCK</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">137</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="39">
+<pxRuleFamilyName>APPROVAL</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>APPROVAL</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">138</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="40">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pyRuleName>MAX_STOCK</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>MAX_STOCK</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">139</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="41">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCAPTION!QTY_PESAN</pxRuleFamilyName>
+<pyRuleName>pyCaption QTY_PESAN</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">140</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="42">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PROD_DATE</pxRuleFamilyName>
+<pyRuleName>PROD_DATE</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">141</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="43">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pyRuleName>pyCaption KODE_SPART</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!KODE_SPART</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">142</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="44">
+<pxRuleFamilyName>TINGGI</pxRuleFamilyName>
+<pyRuleName>TINGGI</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">143</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="45">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCAPTION!BERAT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>pyCaption BERAT</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">144</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="46">
+<pyRuleName>NO_SPART</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>NO_SPART</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">145</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="47">
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>TGL_UPDATE_HARGA</pyRuleName>
+<pxRuleFamilyName>TGL_UPDATE_HARGA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">146</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="48">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>SUBSTITUSI_SPART</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-SPAREPART_HE</pxRuleClassName>
+<pxRuleFamilyName>SUBSTITUSI_SPART</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">147</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>ParamReferenceInFilter</pxWarningName>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxWarningCreatedTime>20201012T074814.377 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage>done</pyWarningJustifiedMessage>
+<pxWarningJustifiedTime>20200908T080626.874 GMT</pxWarningJustifiedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningDetails>
+<pxWarningMessage>Some of your filters are using a parameter with the "Use null if empty" option NOT selected. Please ensure that you do pass the parameter. Otherwise, the filter will be dropped entirely and execution of the report will result in very poor performance. If you do not want this behavior, select the "Use null if empty" option.</pxWarningMessage>
+<pxWarningType>Performance</pxWarningType>
+<pxWarningJustifiedOperator>INTANHENNY</pxWarningJustifiedOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">98</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningCreatedTime>20201012T074814.406 GMT</pxWarningCreatedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">99</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningJustifiedOperator>INTANHENNY</pxWarningJustifiedOperator>
+<pxWarningMessage>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningMessage>
+<pxWarningType>Performance</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-Obj-Report-Definition)pxParamReferenceInFilter</pxWarningDetails>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pyWarningJustifiedMessage>done</pyWarningJustifiedMessage>
+<pxWarningName>ParamReferenceInFilter</pxWarningName>
+<pxWarningCreatedTime>20201012T074814.377 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningJustifiedTime>20200908T080626.874 GMT</pxWarningJustifiedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">98</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-REPORT-DEFINITION ASM-FW-GCNMFW-INT-SPAREPART_HE BROWSESPAREPARTHE_RD #20201012T074814.260 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningCreatedTime>20201012T074814.406 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">99</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

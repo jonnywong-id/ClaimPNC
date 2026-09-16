@@ -1,0 +1,274 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRuleSetVersion>01-02-06</pyRuleSetVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230516T034936.234 GMT</pzInsKey>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOpName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedRuleSet/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCircumstanceProp/>
+<pyHandlerFlow/>
+<pxMoveImportDateTime>20230714T104512.961 GMT</pxMoveImportDateTime>
+<pyUsage/>
+<pyInterface/>
+<pyBaseRule>false</pyBaseRule>
+<pyWorkKey/>
+<pyTemporaryObject/>
+<pxUpdateDateTime>20230712T095142.197 GMT</pxUpdateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230516T034936.234 GMT</pzDocumentKey>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyJavaStream/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzChecksum>712970935</pzChecksum>
+<pySaveSQL/>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pyRelativePath/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetOSBlmKomiteNonMBU</pyRuleName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedKey/>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedRuleSetVersion/>
+<pyOpenSQL/>
+<pxInstanceLockedBy/>
+<pyCircumstanceTemplate/>
+<pyShowJavaWindowName>GeneratedJava20260901T085811.830 GMT</pyShowJavaWindowName>
+<pyWindowTitle/>
+<pyMethodStatus/>
+<pySpecialtyComponentData/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyDescription/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCheckInRuleSet/>
+<pyRequestType>GetOSBlmKomiteNonMBU</pyRequestType>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplate/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStreamName/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxInstanceLockedDateTime/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETOSBLMKOMITENONMBU</pxInsName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETOSBLMKOMITENONMBU</pxInsId>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyLabel>Get OS Blm Komite Non MBU</pyLabel>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyIsFromManageChangeLP/>
+<pxSiblingCount/>
+<pxSaveDateTime>20230712T095142.212 GMT</pxSaveDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetOSBlmKomiteNonMBU</pxTabLabel>
+<pyRuleFormStatusTime>20260901T085811.810 GMT</pyRuleFormStatusTime>
+<pyFormPost/>
+<pxMergeSynchronized>20230428T014741.423 GMT</pxMergeSynchronized>
+<pyTemplateInputBox/>
+<pyRuleParamsStreamName/>
+<pyLabelOld>Get OS Blm Komite Non MBU</pyLabelOld>
+<pyCircumstanceVal/>
+<pyStatus/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxHostId>jboss1036</pxHostId>
+<pyBrowseSQL>SELECT a.claimno AS "CaseID",
+       a.nopolis AS "NoKTP",
+       a.qqname AS "ClaimID",
+       a.picteknik AS "Conveyance",
+       a.businessname AS "ClaimNo",
+       a.leader_member AS "UserTeknisEmail",
+       CASE WHEN a.grouppanel in ('003','009') 
+                THEN (select occupationid from pooldata.t_anekalist where nopolis=a.nopolis and prodke=a.prodke and indexobject=e.objectid and rownum=1) 
+            WHEN a.grouppanel='006' 
+                THEN (SELECT cc.OccupationCode  FROM  pooldata.t_propertylist z,
+                    JSON_TABLE (z.OCCUPATIONLIST, '$' COLUMNS (NESTED PATH '$.OccupationList[*]' COLUMNS (OccupationCode varchar2 path '$.OccupationCode'))) cc   
+                    WHERE  z.nopolis=a.nopolis and z.INDEXOBJECT=e.objectid and z.prodke=a.prodke and rownum='1')
+            ELSE (select goodsid from pooldata.t_cargolist where nopolis=a.nopolis and prodke=a.prodke and goodsid=e.objectid and rownum='1')
+       END AS "UserTeknis",
+       CASE WHEN a.grouppanel in ('003','009') 
+                THEN (select occupationname from pooldata.t_anekalist where nopolis=a.nopolis and prodke=a.prodke and indexobject=e.objectid and rownum=1) 
+            WHEN a.grouppanel='006' 
+                THEN (SELECT dd.OccupationName  FROM  pooldata.t_propertylist x,  JSON_TABLE (x.OCCUPATIONLIST, '$' COLUMNS (NESTED PATH '$.OccupationList[*]'
+                        COLUMNS (OccupationName varchar2 path '$.OccupationName'))) dd   
+                    WHERE  x.nopolis=a.nopolis and x.INDEXOBJECT=e.objectid and x.prodke=a.prodke and rownum='1')
+            ELSE e.objectname
+       END AS "UserName",
+       to_char(b.begindate,'rrrr') as "Remark",
+       to_char(b.begindate,'dd/mm/yyyy') as "RCV_ID",
+       to_char(b.enddate,'dd/mm/yyyy') as "RW",
+       to_char(a.dateofloss,'dd/mm/yyyy') AS "CountryID",
+       to_char(a.registerdate,'dd/mm/yyyy') AS "Country",
+       c.CURRENCY AS "NPWP",
+       c.TTLOS AS "ProdKe",
+       a.shareasm AS "ASMShare",
+       CASE WHEN a.shareasm = 100 THEN 'N' ELSE 'Y' END AS "Status", 
+       a.shareasm / 100 * c.TTLOS AS "KomiteStatus",      
+       a.shareasm / 100 * c.TTLOS * b.PRSN_BPPDAN AS "LossCoverage",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FAC_OUT AS "LokasiSurveyor",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_QS_RI AS "IsTransferPIC",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FSPL AS "AnaylstRemarks",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PSRSPL AS "AnalystDoctorRemaks",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PSPLNSRI AS "NIK",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PSRQS_RI AS "BranchID",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FESPL AS "IsAnalisTransfer",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FAC_OBL AS "BranchName",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FACOBSRB AS "BusinessID",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_FACOBINDT AS "CASEDB",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_ER1 AS "CauseOfLoss",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_ER2 AS "CauseOfLossID",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PSS AS "City",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PRGBI AS "CityID",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_PFRA AS "ClientID",
+       a.shareasm / 100 * c.TTLOS * b.PRSN_XL AS "ClientName"
+  FROM pooldata.t_claim_pnc A,
+       pooldata.pega_dashboardpnc B,
+       pooldata.t_claim_objectlist e,
+       datapega.pc_asm_fw_gcnmfw_work f,
+       (  SELECT CLAIMID,
+                 SUM (ESTIMATIONVALUE) AS TTLOS,
+                 (SELECT CURRENCY
+                    FROM pooldata.CURRENCY
+                   WHERE ID = d.KURSID)
+                    AS CURRENCY
+            FROM pooldata.T_CLAIM_ESTIMASI d
+        GROUP BY CLAIMID, KURSID) C
+ WHERE     a.claimno = b.noklaim
+       AND a.claimid = c.claimid
+       AND a.claimid=e.claimid
+       AND a.claimid=f.pzinskey
+       AND (f.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR f.ISPENDINGCLOSE ='true')
+       AND a.branchname != 'ASNET'
+       AND a.grouppanel IN ('003', '004', '006', '009')
+       AND a.businesscode NOT IN
+              ('10145', '10168', '10165', '10164', '10053', '10075', '10126', '10011', '10077', '10007')
+       AND NOT EXISTS
+              (SELECT *
+                 FROM pooldata.t_claim_adjustment
+                WHERE claimid = a.claimid)                
+      {ASIS:TempLaporan.UserName}</pyBrowseSQL>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSKOMITENONMBU #20230120T035510.037 GMT</pzOriginalInstanceKey>
+<pxCommitDateTime>20230714T104513.000 GMT</pxCommitDateTime>
+<pyMemo>done</pyMemo>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCreateDateTime>20230516T034936.234 GMT</pxCreateDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveFromSystem/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230516T034936.234 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230428T014627.989 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230127T024243.886 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-02-04 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOSBLMKOMITENONMBU #20230124T031702.431 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-02-03 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+</pagedata>

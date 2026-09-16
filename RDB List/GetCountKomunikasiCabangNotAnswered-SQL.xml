@@ -1,0 +1,178 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetCountKomunikasiCabangNotAnswered</pyRuleName>
+<pxInstanceLockedBy/>
+<pyRequestType>GetCountKomunikasiCabangNotAnswered</pyRequestType>
+<pyValueChanged>false</pyValueChanged>
+<pyInterface/>
+<pyCircumstanceTemplate/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETCOUNTKOMUNIKASICABANGNOTANSWERED</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETCOUNTKOMUNIKASICABANGNOTANSWERED #20210427T000517.205 GMT</pzDocumentKey>
+<pyDeletedObject/>
+<pyCircumstanceProp/>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedKey/>
+<pyWindowTitle/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCommitDateTime>20210627T052623.000 GMT</pxCommitDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleEnds/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETCOUNTKOMUNIKASICABANGNOTANSWERED</pxInsId>
+<pyCircumstanceDateProp/>
+<pxMoveFromSystem/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetCountKomunikasiCabangNotAnswered</pxTabLabel>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxOriginalCreateDateTime/>
+<pxHostId>jboss2146</pxHostId>
+<pxOriginalCreateOperator/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDescription/>
+<pyRuleStarts/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceVal/>
+<pySaveSQL/>
+<pyShowJavaWindowName>GeneratedJava20260901T073535.448 GMT</pyShowJavaWindowName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETCOUNTKOMUNIKASICABANGNOTANSWERED #20210427T000517.205 GMT</pzInsKey>
+<pyOpenSQL/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxCreateDateTime>20210427T000517.205 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedRuleSet/>
+<pyJavaStream/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pyCircumstanceDefinition/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteSQL/>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pyWorkKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyRuleFormStatusTime>20260901T073535.426 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateOpName/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionPatch>92</pzRuleSetVersionPatch>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyLabelOld>GetCountKomunikasiCabangNotAnswered</pyLabelOld>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyFormPost/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzChecksum>470576928</pzChecksum>
+<pyHandlerFlow/>
+<pxMoveImportDateTime>20210627T052623.646 GMT</pxMoveImportDateTime>
+<pyLabel>GetCountKomunikasiCabangNotAnswered</pyLabel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyStreamName/>
+<pySpecialtyComponentData/>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pyRelativePath/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-01-92</pyRuleSetVersion>
+<pyTemplateInputBox/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETCOUNTKOMUNIKASICABANGANSWERED #20210427T000500.470 GMT</pzOriginalInstanceKey>
+<pxSaveDateTime>20210623T044640.303 GMT</pxSaveDateTime>
+<pyRuleParamsStreamName/>
+<pyStatus/>
+<pyCircumstanceDate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyBrowseSQL>SELECT COUNT (*) AS "ClaimNo"
+  FROM pooldata.m_komunikasi_pnc
+ WHERE     CASEID = 'CABANG'
+and {ASIS:TempView.CaseID}
+       AND REPLYFROM IS  NULL
+       AND REPLYMESSAGE IS  NULL</pyBrowseSQL>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyMemo>done</pyMemo>
+<pxOriginalCreateSystemID/>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateDateTime>20210623T044640.237 GMT</pxUpdateDateTime>
+<pyUsage/>
+<pyTemplate/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETCOUNTKOMUNIKASICABANGNOTANSWERED #20210427T000517.205 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

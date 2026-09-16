@@ -1,0 +1,202 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedRuleSet/>
+<pyShowJavaWindowName>GeneratedJava20260901T083356.729 GMT</pyShowJavaWindowName>
+<pySpecialtyComponentData/>
+<pyTemplate/>
+<pyCircumstanceType/>
+<pySaveSQL/>
+<pxUpdateDateTime>20230703T072329.543 GMT</pxUpdateDateTime>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATASALVAGE_INSURTECH</pxInsName>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataSalvage_Insurtech</pyRuleName>
+<pyMemo>dones</pyMemo>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRequestType>GetDataSalvage_Insurtech</pyRequestType>
+<pyRuleStarts/>
+<pyHandlerFlow/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATASALVAGE_INSURTECH</pxInsId>
+<pyDescription/>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-02-06</pyRuleSetVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportDateTime>20230714T104512.851 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxSaveDateTime>20230703T072329.574 GMT</pxSaveDateTime>
+<pyStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemporaryObject/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyBrowseSQL>SELECT b.NOKLAIM AS "CaseID",
+       b.TGLINPUT AS "AdminTransferDate",
+       b.JENISSALVAGE AS "AnaylstRemarks",
+       b.QUANTITYSALVAGE AS "AreaClaimId",
+       b.ESTIMASINILAI AS "CauseOfLoss",
+       b.LOKASISALVAGE AS "City",
+       b.TGLTRANSFERGA AS "AnalystTransferDate",
+       b.STSTRANSFER AS "CityID",
+       b.TGLAKSEPTASI AS "CPLPostAuditValidDate",
+       b.NOAKSEPTASI AS "NIK",
+       b.REMARK AS "ClaimID",
+       b.CURRENCY AS "Currency",
+       b.OBJECTNAME AS "NoKTP",
+       b.IDOBJECT AS "NewNoKTP",
+       b.COVERAGENAME AS "TelpTertanggung",
+       b.IDCOVERAGE AS "NewTelpTertanggung",
+       b.NILAIAKSEP AS "OwnRisk",
+       b.IDSALVAGE AS "ClaimNo",
+       b.EMAIL AS "Email",
+       B.IDSIMASBID as "IBNR",
+       b.NILAIPENAWARAN as "Resources",
+       (SELECT BUSINESSNAME
+          FROM POOLDATA.T_CLAIM_PNC a
+         WHERE a.CLAIMID = 'ASM-FW-GCNMFW-WORK ' || b.NOKLAIM)
+          AS "ChronologicalOfIncodent"
+  FROM POOLDATA.PNC_SALVAGE b  where {ASIS:tempQuery.NewEmail}</pyBrowseSQL>
+<pxInstanceLockedKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATASALVAGE_INSURTECH #20230613T024232.277 GMT</pzDocumentKey>
+<pyIsFromManageChangeLP/>
+<pyTempText>saved</pyTempText>
+<pyInterface/>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyCircumstanceProp/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyLabelOld>Get Data Salvage_Insurtech</pyLabelOld>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveFromSystem/>
+<pyFormPost/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOpName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDate/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATASALVAGE_INSURTECH #20230613T024232.277 GMT</pzInsKey>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pyDocumentTitle/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataSalvage_Insurtech</pxTabLabel>
+<pyUsage/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWindowTitle/>
+<pyCircumstanceVal/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyTemplateInputBox/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzChecksum>-516091504</pzChecksum>
+<pxCreateDateTime>20230613T024232.277 GMT</pxCreateDateTime>
+<pyRuleFormStatusTime>20260901T083356.709 GMT</pyRuleFormStatusTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRelativePath/>
+<pxOriginalCreateSystemID/>
+<pyOpenSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCheckInRuleSet/>
+<pyStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxHostId>jboss1036</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pyJavaStream/>
+<pxCommitDateTime>20230714T104513.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>Get Data Salvage_Insurtech</pyLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATASALVAGEFROMPNC_SALVAGE #20220413T080428.991 GMT</pzOriginalInstanceKey>
+<pyRuleEnds/>
+<pxOriginalCreateOperator/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRulePage>
+</pyRulePage>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATASALVAGE_INSURTECH #20230613T024232.277 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

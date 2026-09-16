@@ -1,0 +1,393 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20230426T025242.057 GMT</pzOriginalInstanceKey>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20260325T085338.819 GMT</pzInsKey>
+<pySaveSQL/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceProp/>
+<pySpecialtyComponentData/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsFromManageChangeLP/>
+<pxHostId>jboss10372</pxHostId>
+<pyDeletedObject/>
+<pyRuleFormStatusTime>20260831T065333.368 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pyLabelOld>CountClaimRegist</pyLabelOld>
+<pyCircumstanceDefinition/>
+<pyTempText>saved</pyTempText>
+<pyRuleName>ASM-FW-GCNMFW-Work-ReceiveDocument GCNM CountClaimRegist</pyRuleName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsId>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT!GCNM!COUNTCLAIMREGIST</pxInsId>
+<pyTemplateInputBox/>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveFromSystem/>
+<pyStatus/>
+<pyBrowseSQL>SELECT SUM (
+          CASE
+             WHEN (    A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                   AND b.pxtasklabel IN
+                          ('Input Register', 'Input Estimasi', 'Estimation'))
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "ClaimNo",
+       SUM (
+          CASE
+             WHEN (    A.pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
+                   AND A.PNCCASEID IS NULL
+                   AND A.STATUSLOCK_1 = '1'
+                   AND (A.KURIR IS NULL OR A.KURIR != 'Auto Service'))
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "Country",
+       SUM (CASE
+               WHEN (SELECT COUNT (1)
+                       FROM pooldata.BUSINESSNEW c
+                      WHERE  c.id = A.BUSINESSCODE_1
+                            AND A.pxobjclass ='ASM-FW-GCNMFW-Work-ReceiveDocument'
+                            AND A.PNCCASEID IS NULL
+                            AND A.STATUSLOCK_1 = '1'
+                            AND A.KURIR = 'Auto Service') &gt; 0
+               THEN
+                  1
+               ELSE
+                  0
+            END)
+          AS "RCV_ID",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.t_req_survey f
+                    WHERE     f.claimid = a.pzinskey
+                          AND REQUESTSURVEY_1 = '1'
+                          AND b.pxassignedoperatorid = {TempOperator.City}
+                          AND a.PYSTATUSWORK NOT IN
+                                 ('Resolved-Completed', 'Resolved-Rejected')
+                          AND NOT EXISTS
+                                     (SELECT *
+                                        FROM pooldata.t_claim_adjustment ad
+                                       WHERE     ad.claimid = a.pzinskey
+                                             AND ad.paymenttype != '3')) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "Currency",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid = A.PNCCASEID
+                          AND kom.KOMUNIKASISTATUS = '0'
+                          AND kom.sender != {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                          AND B.pxAssignedOperatorID = {TempOperator.City}) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "CaseID",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid = A.PNCCASEID
+                          AND kom.KOMUNIKASISTATUS = '0'
+                          AND kom.sender = {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                          AND B.pxAssignedOperatorID = {TempOperator.City}) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "City",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid = A.PNCCASEID
+                          AND kom.KOMUNIKASISTATUS = '1'
+                          AND kom.sender = {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                          AND B.pxAssignedOperatorID = {TempOperator.City}) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "District",
+       SUM (CASE
+               WHEN (SELECT COUNT (1)
+                       FROM pooldata.t_claim_pnc e
+                      WHERE     e.claimno = a.pyid
+                            AND a.PXCREATEOPNAME = {TempOperator.City}
+                            AND a.pyid IN
+                                   (SELECT communicate_to
+                                      FROM pooldata.m_komunikasi_pnc f
+                                     WHERE     f.communicate_to = a.pyid
+                                           AND komunikasistatus = '0')) &gt; 0
+               THEN
+                  1
+               ELSE
+                  0
+            END)
+          AS "BranchName",
+       SUM (CASE
+               WHEN (SELECT COUNT (1)
+                       FROM pooldata.t_claim_pnc e
+                      WHERE     e.CLAIMID = A.PZINSKEY
+                            AND e.CLAIMID = B.PXREFOBJECTKEY
+                            AND a.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                            AND a.pyStatusWork NOT IN
+                                   ('Resolved-Completed', 'Resolved-Rejected')
+                            AND a.PXCREATEOPNAME = {TempOperator.City}) &gt; 0
+               THEN
+                  1
+               ELSE
+                  0
+            END)
+          AS "BranchID"
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A,
+       DATAPEGA.PC_ASSIGN_WORKLIST B,
+       POOLDATA.BUSINESSNEW c,
+       pooldata.businessgroup d
+ WHERE     B.PXREFOBJECTINSNAME = A.PYID
+        AND A.BUSINESSCODE_1 = c.id
+        AND c.businessgroupid = d.id
+       AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+       AND b.pxflowname NOT LIKE '%FixCorrespondence%'
+       AND a.branchname !='ASNET'
+      {ASIS:tempQuery.Remark}
+{ASIS:tempQuery.NoKTP}
+{ASIS:tempQuery.pyNote}</pyBrowseSQL>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWindowTitle/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCheckInRuleSet/>
+<pyValueChanged>false</pyValueChanged>
+<pyLabel>CountClaimRegist</pyLabel>
+<pyRuleStarts/>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxOriginalCreateDateTime/>
+<pyRuleParamsStreamName/>
+<pyWorkKey/>
+<pxInstanceLockedCreateDateTime/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceVal/>
+<pyInterface/>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260831T065333.391 GMT</pyShowJavaWindowName>
+<pzChecksum>664508100</pzChecksum>
+<pxSiblingCount/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCommitDateTime>20260325T085642.000 GMT</pxCommitDateTime>
+<pxUpdateDateTime>20260325T085642.530 GMT</pxUpdateDateTime>
+<pxInstanceLockedKey/>
+<pxMergeSynchronized>20240822T114406.389 GMT</pxMergeSynchronized>
+<pyRequestType>CountClaimRegist</pyRequestType>
+<pxSaveDateTime>20260325T085642.604 GMT</pxSaveDateTime>
+<pxCreateDateTime>20260325T085338.819 GMT</pxCreateDateTime>
+<pyJavaStream/>
+<pyMethodStatus/>
+<pzIsPrivateCheckOut/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20260325T085338.819 GMT</pzDocumentKey>
+<pyTemporaryObject/>
+<pyFormPost/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDate/>
+<pyUsage/>
+<pyRelativePath/>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportDateTime>20241223T123625.104 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT!GCNM!COUNTCLAIMREGIST</pxInsName>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceTemplate/>
+<pyTemplate/>
+<pyStreamName/>
+<pyHandlerFlow/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceDateProp/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyCircumstanceType/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDescription/>
+<pyMemo>operatorid pakai TempOperator.City</pyMemo>
+<pyOpenSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-ReceiveDocument GCNM CountClaimRegist</pxTabLabel>
+<pxInstanceLockedBy/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyRun>false</pyRun>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyDelete>true</pyDelete>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20260325T085338.819 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20240822T114022.550 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20240822T113749.859 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-03-08 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20240709T101307.495 GMT</pzInsKey>
+<pxListSubscript>4</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyValue>3</pyValue>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pxListSubscript>5</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20230801T031634.346 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>6</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20230426T025242.057 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20210217T090345.440 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>8</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20210121T045858.173 GMT</pzInsKey>
+<pyLabel>01-01-90 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20201110T022056.779 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>9</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyMenuTooltip/>
+<pxListSubscript>10</pxListSubscript>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGIST #20200123T031809.765 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,296 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzChecksum>1914169035</pzChecksum>
+<pyTemplate/>
+<pyDeletedObject/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormStatusTime>20260831T065359.360 GMT</pyRuleFormStatusTime>
+<pyShowJavaWindowName>GeneratedJava20260831T065359.383 GMT</pyShowJavaWindowName>
+<pxSiblingCount/>
+<pyLabel>CountClaimRegistTravelClaim</pyLabel>
+<pyStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pyBrowseSQL>SELECT SUM (
+          CASE
+             WHEN (A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                   AND b.pxtasklabel in ('Input Register','Input Estimasi','Estimation'))
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "ClaimNo",
+       SUM (CASE
+               WHEN (A.pxobjclass ='ASM-FW-GCNMFW-Work-ReceiveDocument' AND A.PNCCASEID IS NULL
+             AND A.STATUSLOCK_1 = '1' and A.KURIR != 'Auto Service')
+             THEN
+                1
+             ELSE
+                0
+            END)
+          AS "Country",
+       SUM (CASE
+               WHEN (SELECT COUNT (1)
+                     FROM pooldata.business c, pooldata.businessgroup d
+                    WHERE c.businessgroupid = d.id                            
+                          AND  c.id = A.BUSINESSCODE_1
+                          AND A.pxobjclass ='ASM-FW-GCNMFW-Work-ReceiveDocument'
+                          AND A.PNCCASEID IS NULL
+                          AND A.STATUSLOCK_1 = '1'
+                          AND A.KURIR = 'Auto Service'
+                         ) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+            END)
+          AS "RCV_ID",   
+       0
+          AS "Currency",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid=A.PNCCASEID 
+                          AND kom.KOMUNIKASISTATUS = '0'
+                          AND kom.sender != {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                           {ASIS:tempQuery.UserAdmin}) &gt; 0 THEN 1
+             ELSE 0
+          END)
+          AS "CaseID",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid=A.PNCCASEID
+                          AND kom.KOMUNIKASISTATUS = '0'
+                          AND kom.sender = {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                           {ASIS:tempQuery.UserAdmin}) &gt; 0 THEN 1
+             ELSE 0
+          END)
+          AS "City",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.m_komunikasi_pnc kom
+                    WHERE     kom.caseid=A.PNCCASEID
+                          AND kom.KOMUNIKASISTATUS = '1'
+                          AND kom.sender = {TempOperator.City}
+                          AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+                           {ASIS:tempQuery.UserAdmin}) &gt; 0 THEN 1
+             ELSE 0
+          END)
+          AS "District",
+       SUM (
+          CASE
+             WHEN (SELECT COUNT (1)
+                     FROM pooldata.t_claim_pnc e
+                    WHERE     e.claimno = a.pyid AND GROUPPANEL='002'
+                          AND a.PXCREATEOPNAME = {TempOperator.City}
+                          AND a.pyid IN (SELECT communicate_to
+                                           FROM pooldata.m_komunikasi_pnc f
+                                          WHERE f.communicate_to = a.pyid
+                                          and komunikasistatus='0')) &gt; 0
+             THEN
+                1
+             ELSE
+                0
+          END)
+          AS "BranchName",
+        SUM (CASE
+               WHEN (SELECT COUNT (1)
+                       from pooldata.t_claim_pnc e 
+        where B.PXREFOBJECTKEY = e.CLAIMID AND E.CLAIMID = A.PZINSKEY
+            and A.PZINSKEY = B.PXREFOBJECTKEY 
+            and a.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC' 
+            AND a.pyStatusWork not in ('Resolved-Completed','Resolved-Rejected') 
+            and a.PXCREATEOPNAME={TempOperator.City}) &gt; 0
+               THEN
+                  1
+               ELSE
+                  0
+            END)
+          AS "BranchID"
+ FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A, DATAPEGA.PC_ASSIGN_WORKLIST B, pooldata.business c
+ WHERE     A.PYID=B.PXREFOBJECTINSNAME
+        AND A.BUSINESSCODE_1 = c.id
+        and A.GROUPPANEL_1= C.GROUPPANEL
+       AND upper(A.PYSTATUSWORK) NOT IN ('RESOLVED-COMPLETED', 'RESOLVED-REJECTED')
+       AND upper(b.pxflowname) NOT LIKE '%FIXCORRESPONDENCE%'
+       AND upper(a.branchname) not like '%ASNET%'
+      {ASIS:tempQuery.Remark}
+{ASIS:tempQuery.NoKTP}
+{ASIS:tempQuery.pyNote}</pyBrowseSQL>
+<pyDeleteSQL/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCircumstanceDefinition/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGISTTRAVPA #20240903T110743.831 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSet/>
+<pySpecialtyComponentData/>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pyRelativePath/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxOriginalCreateSystemID/>
+<pyHandlerFlow/>
+<pyCircumstanceDateProp/>
+<pxCommitDateTime>20260325T085757.000 GMT</pxCommitDateTime>
+<pxMoveImportDateTime>20241223T123625.107 GMT</pxMoveImportDateTime>
+<pyCircumstanceProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySaveSQL/>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pyCircumstanceType/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStatus/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyFormPost/>
+<pxSaveDateTime>20260325T085757.277 GMT</pxSaveDateTime>
+<pyJavaStream/>
+<pxInstanceLockedBy/>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Work-ReceiveDocument GCNM CountClaimRegistTravelClaim</pyRuleName>
+<pyTemplateInputBox/>
+<pxHostId>jboss10372</pxHostId>
+<pxInsName>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT!GCNM!COUNTCLAIMREGISTTRAVELCLAIM</pxInsName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyUsage/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGISTTRAVELCLAIM #20260325T085745.469 GMT</pzDocumentKey>
+<pxOriginalCreateOperator/>
+<pyRequestType>CountClaimRegistTravelClaim</pyRequestType>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyBaseRule>false</pyBaseRule>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxUpdateDateTime>20260325T085757.201 GMT</pxUpdateDateTime>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzIsPrivateCheckOut/>
+<pyCheckInRuleSet/>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyMemo>OperatorID.pyUserIdentifier ganti TempOperator.City</pyMemo>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyLabelOld>CountClaimRegistTravelClaim</pyLabelOld>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pxInstanceLockedKey/>
+<pyRuleParamsStreamName/>
+<pxInsId>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT!GCNM!COUNTCLAIMREGISTTRAVELCLAIM</pxInsId>
+<pyOpenSQL/>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pyInterface/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateOpName/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-ReceiveDocument GCNM CountClaimRegistTravelClaim</pxTabLabel>
+<pyDescription/>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateDateTime/>
+<pyWorkKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyTemporaryObject/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyCircumstanceVal/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGISTTRAVELCLAIM #20260325T085745.469 GMT</pzInsKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsFromManageChangeLP/>
+<pxMoveFromSystem/>
+<pyCircumstanceDate/>
+<pyRuleEnds/>
+<pyClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyClassName>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pxMergeSynchronized>20240927T073340.542 GMT</pxMergeSynchronized>
+<pxCreateDateTime>20260325T085745.469 GMT</pxCreateDateTime>
+<pyWindowTitle/>
+<pyTempText>saved</pyTempText>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelete>true</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGISTTRAVELCLAIM #20260325T085745.469 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT GCNM!COUNTCLAIMREGISTTRAVELCLAIM #20240927T073207.807 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

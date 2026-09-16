@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleFormStatusTime>20260908T071253.070 GMT</pyRuleFormStatusTime>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!ADDTJOBCOUNTERPIC_SQL_22</pxInsId>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabelOld>AddTJobCounterPIC_SQL_22</pyLabelOld>
+<pySpecialtyComponentData/>
+<pxInstanceLockedRuleSet/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySaveSQL/>
+<pxInstanceLockedBy/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxUpdateDateTime>20240514T103010.780 GMT</pxUpdateDateTime>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCOUNTERPIC_SQL #20210910T022549.274 GMT</pzOriginalInstanceKey>
+<pyUsage/>
+<pyDocumentTitle/>
+<pyCircumstanceDate/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM AddTJobCounterPIC_SQL_22</pyRuleName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCOUNTERPIC_SQL_22 #20240514T102954.334 GMT</pzInsKey>
+<pxInstanceLockedCreateDateTime/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceType/>
+<pyCheckInRuleSet/>
+<pzChecksum>721679032</pzChecksum>
+<pyStatus/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyShowJavaWindowName>GeneratedJava20260908T071253.092 GMT</pyShowJavaWindowName>
+<pyRuleEnds/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxInstanceLockedKey/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyTemplate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyValueChanged>false</pyValueChanged>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxSiblingCount/>
+<pyDescription/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateDateTime>20240514T102954.334 GMT</pxCreateDateTime>
+<pyRelativePath/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCOUNTERPIC_SQL_22 #20240514T102954.334 GMT</pzDocumentKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceProp/>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyTemplateInputBox/>
+<pyMemo>dones</pyMemo>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedDateTime/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM AddTJobCounterPIC_SQL_22</pxTabLabel>
+<pyJavaStream/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!ADDTJOBCOUNTERPIC_SQL_22</pxInsName>
+<pyBaseRule>false</pyBaseRule>
+<pyHandlerFlow/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pxMoveImportDateTime>20240715T114352.569 GMT</pxMoveImportDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>AddTJobCounterPIC_SQL_22</pyLabel>
+<pyOpenSQL/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyInterface/>
+<pyTemporaryObject/>
+<pyWindowTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSaveDateTime>20240514T103010.786 GMT</pxSaveDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyIsFromManageChangeLP/>
+<pyRuleParamsStreamName/>
+<pyRuleStarts/>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveFromSystem/>
+<pyRequestType>AddTJobCounterPIC_SQL_22</pyRequestType>
+<pxOriginalCreateOpName/>
+<pyDeleteSQL/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxHostId>jboss10362</pxHostId>
+<pyCircumstanceTemplate/>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pyBrowseSQL>update pooldata.mst_user_teknik set counter_quota2=counter_quota2+1 where operator_id = {TempNoPolis.EdmRev}</pyBrowseSQL>
+<pyCircumstanceDefinition/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!ADDTJOBCOUNTERPIC_SQL_22 #20240514T102954.334 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-06 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+</pagedata>

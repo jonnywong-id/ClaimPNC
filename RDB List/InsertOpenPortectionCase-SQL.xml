@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyInterface/>
+<pxInstanceLockedDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleParamsStreamName/>
+<pyTemporaryObject/>
+<pyRelativePath/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASE #20260114T093508.919 GMT</pzDocumentKey>
+<pySpecialtyComponentData/>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyMethodStatus/>
+<pyStreamName/>
+<pxCommitDateTime>20260114T093800.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTOPENPORTECTIONCASE</pxInsId>
+<pxSaveDateTime>20260114T093800.423 GMT</pxSaveDateTime>
+<pxOriginalCreateOpName/>
+<pzChecksum>1542236078</pzChecksum>
+<pyStatus/>
+<pxUpdateDateTime>20260114T093800.344 GMT</pxUpdateDateTime>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pyShowJavaWindowName>GeneratedJava20260718T091348.420 GMT</pyShowJavaWindowName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDeletedObject/>
+<pyLabel>InsertOpenPortectionCase</pyLabel>
+<pxInstanceLockedBy/>
+<pyCircumstanceVal/>
+<pyCircumstanceProp/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyUsage/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTOPENPORTECTIONCASE</pxInsName>
+<pyBrowseSQL/>
+<pySaveSQL>DECLARE
+   vCount NUMBER(2,0);
+
+BEGIN
+
+SELECT COUNT(1)
+  INTO vCount
+  FROM general.mst_buka_proteksi@simasnet
+ WHERE mbp_id = {TempInsertOPC.BRANCH_CODE} ;
+
+IF vCount = 0 THEN
+INSERT INTO general.mst_buka_proteksi@simasnet (MBP_ID, MBP_NO_POLIS, MBP_NO_REF, PROTEKSI_ID, LUS_ID, MBP_TGL_INPUT, MBP_ALASAN, MBP_PERSETUJUAN, KETERANGAN) 
+values( {TempInsertOPC.BRANCH_CODE}, {TempInsertOPC.POLICY_NO}, (select NO_SPK from v_klaim@simasnet where no_klaim={TempInsertOPC.BRANCH_NAME} and no_polis={TempInsertOPC.POLICY_NO} fetch next 1 rows only), {TempInsertOPC.BUSINESS_NAME}, '00000', sysdate, {TempInsertOPC.CUSTOMER}, {TempInsertOPC.MARKETING}, {TempInsertOPC.CUSTOMER}) ;
+
+COMMIT;
+END IF;
+END;</pySaveSQL>
+<pyRuleEnds/>
+<pzIsPrivateCheckOut/>
+<pyCircumstanceDate/>
+<pxInstanceLockedRuleSet/>
+<pyDescription/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOpName>Jonny Wong</pxCreateOpName>
+<pxUpdateOpName>Jonny Wong</pxUpdateOpName>
+<pxCreateDateTime>20260114T093508.919 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedKey/>
+<pyRuleFormStatusTime>20260718T091348.401 GMT</pyRuleFormStatusTime>
+<pxMoveFromSystem/>
+<pxHostId>jboss10372</pxHostId>
+<pyWindowTitle/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyCheckInRuleSet/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertOpenPortectionCase</pxTabLabel>
+<pxMoveImportDateTime>20210627T053136.139 GMT</pxMoveImportDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertOpenPortectionCase</pyRuleName>
+<pxCreateOperator>jonnywong@sinarmas.co.id</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyWorkKey/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDateProp/>
+<pyLabelOld>InsertOpenPortectionCase</pyLabelOld>
+<pyRequestType>InsertOpenPortectionCase</pyRequestType>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyIsFromManageChangeLP/>
+<pxUpdateOperator>jonnywong@sinarmas.co.id</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyFormPost/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySPRuleSetName>jonnywong@sinarmas.co.id</pySPRuleSetName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateDateTime/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyHandlerFlow/>
+<pyCircumstanceType/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaStream/>
+<pyMemo>Cek belum ada baru insert</pyMemo>
+<pxSiblingCount/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASE #20210528T085601.068 GMT</pzOriginalInstanceKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyHistoryObject>false</pyHistoryObject>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceTemplate/>
+<pyOpenSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASE #20260114T093508.919 GMT</pzInsKey>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyDelete>true</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASE #20260114T093508.919 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySaveSQL/>
+<pyMethodStatus/>
+<pzChecksum>-149669398</pzChecksum>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatusTime>20260908T060302.647 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedDateTime/>
+<pyUsage/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStatus/>
+<pxInstanceLockedKey/>
+<pyFormPost/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxOriginalCreateOpName/>
+<pxMoveImportDateTime>20241223T123621.109 GMT</pxMoveImportDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLASTPROGRESSSURATDEADLINE #20241104T044531.610 GMT</pzDocumentKey>
+<pyBrowseSQL>select NEXT_FOLLOWUP as "DateOfLoss" from pooldata.GCNM_PROGRESS_CLAIM x
+where PNCCASEID={NoTempKlaims.CaseID} and upper(KETERANGAN) like '%AUTO SURAT DEADLINE%'
+order by tgl_input desc fetch next 1 row only</pyBrowseSQL>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedRuleSet/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>GetLastProgressSuratDeadline</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLASTPROGRESSSURATDEADLINE #20241104T044531.610 GMT</pzInsKey>
+<pxHostId>jboss10372</pxHostId>
+<pxCreateDateTime>20241104T044531.610 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pySpecialtyComponentData/>
+<pyDocumentTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyIsFromManageChangeLP/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pxOriginalCreateDateTime/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetLastProgressSuratDeadline</pxTabLabel>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETLASTPROGRESSSURATDEADLINE</pxInsName>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyHandlerFlow/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteSQL/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyMemo>dones</pyMemo>
+<pxInstanceLockedCreateDateTime/>
+<pxSaveDateTime>20241104T044847.633 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetLastProgressSuratDeadline</pyRuleName>
+<pyCircumstanceTemplate/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyJavaStream/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETLASTPROGRESSSURATDEADLINE</pxInsId>
+<pyRelativePath/>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveFromSystem/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyInterface/>
+<pyTemplateInputBox/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETALLDATATEMPORARYCLOSE #20241031T094011.819 GMT</pzOriginalInstanceKey>
+<pxUpdateDateTime>20241104T044847.620 GMT</pxUpdateDateTime>
+<pyWindowTitle/>
+<pyStreamName/>
+<pyOpenSQL/>
+<pyCircumstanceVal/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceProp/>
+<pyLabelOld>GetLastProgressSuratDeadline</pyLabelOld>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedBy/>
+<pyDescription/>
+<pyRequestType>GetLastProgressSuratDeadline</pyRequestType>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pyTemplate/>
+<pyRuleParamsStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDateProp/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceType/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateOperator/>
+<pyShowJavaWindowName>GeneratedJava20260908T060302.667 GMT</pyShowJavaWindowName>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETLASTPROGRESSSURATDEADLINE #20241104T044531.610 GMT</pzInsKey>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

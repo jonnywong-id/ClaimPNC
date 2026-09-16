@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxUpdateOperator>SANDY</pxUpdateOperator>
+<pyDeletedObject/>
+<pxCreateDateTime>20180117T084604.981 GMT</pxCreateDateTime>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-01-11</pyRuleSetVersion>
+<pxOriginalCreateOpName/>
+<pxUpdateOpName>SANDY</pxUpdateOpName>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pyRuleStarts/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyFormPost/>
+<pyMemo>done</pyMemo>
+<pyRuleEnds/>
+<pxInstanceLockedKey/>
+<pyLabel>SearchKlaimByNoPolis_RDB</pyLabel>
+<pyCircumstanceProp/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNM!SEARCHKLAIMBYNOPOLIS_RDB #20180105T032135.325 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pySpecialtyComponentData/>
+<pyLabelOld>SearchKlaimByNoPolis_RDB</pyLabelOld>
+<pxInstanceLockedCreateDateTime/>
+<pzChecksum>1059686741</pzChecksum>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC!GCNM!SEARCHKLAIMBYNOPOLIS_RDB</pxInsName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeleteSQL/>
+<pyHandlerFlow/>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-CNMFW-INT-V_LST_DET_TYPE_DOC CNM!UPDATEDETTYPEDOC #20170327T074251.030 GMT</pxMoveOriginalKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWindowTitle/>
+<pySaveSQL/>
+<pyShowJavaWindowName>GeneratedJava20260901T021636.730 GMT</pyShowJavaWindowName>
+<pyTemplateInputBox/>
+<pxOriginalCreateDateTime/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC</pyClassName>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyJavaStream/>
+<pxInstanceLockedRuleSet/>
+<pyWorkKey/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveOriginalRuleSet>CNMFWInt</pxMoveOriginalRuleSet>
+<pxCreateOperator>SANDY</pxCreateOperator>
+<pyBrowseSQL>SELECT (CASE 
+        WHEN (JSON_VALUE ("DATA_JSON" FORMAT JSON, '$.PolicyData.CIFData.Customer_P.ASMClientID' RETURNING VARCHAR2(4000) NULL ON ERROR)&lt;&gt;''
+            OR JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.ASMClientID' ) IS NOT NULL) 
+        THEN JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.pyFirstName' )||' '||JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_P.pyLastName' ) 
+        WHEN (JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany' ) IS NOT NULL 
+            OR JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany' )&lt;&gt;'') 
+        THEN JSON_VALUE("DATA_JSON" FORMAT JSON , '$.PolicyData.CIFData.Customer_C.pyCompany') 
+        END ) AS "DETAIL_DOCUMENT",
+        a.IDPEGA as "ID",
+        a.nopolis as "OLD_ID",
+        JSON_VALUE (DATA_JSON, '$.DateOfLoss') AS "TGL_EDIT",
+        get_name_agent (
+             getnewid (
+                JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.SourceOfBusiness'),
+                'm_agent'))
+        AS "DOC_COL_INFO",
+        (SELECT b.JSONDATA.Name
+             FROM m_branch b
+            WHERE b.ID =
+                     getnewid (
+                        JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.BranchCode'),
+                        'M_BRANCH'))
+         AS "DOC_COL_ID",
+         GET_BUSINESS_NAME (
+             getnewid (JSON_VALUE (DATA_JSON, '$.PolicyData.Quotation.BusinessCode'),
+                       'M_BUSINESS'))
+         AS "DOC_TYPE_ID"
+FROM json_klaim a 
+where  a.nopolis like '{ASIS:InputData.CARI1}%'</pyBrowseSQL>
+<pxSaveDateTime>20180117T091556.689 GMT</pxSaveDateTime>
+<pxMoveFromSystem/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDescription/>
+<pyMethodStatus/>
+<pxMoveImportDateTime>20191231T035739.058 GMT</pxMoveImportDateTime>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyIsFromManageChangeLP/>
+<pyRelativePath/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedBy/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC GCNM SearchKlaimByNoPolis_RDB</pyRuleName>
+<pyCircumstanceDateProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateDateTime>20180117T091556.673 GMT</pxUpdateDateTime>
+<pyUsage/>
+<pxSiblingCount/>
+<pyOpenSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNM!SEARCHKLAIMBYNOPOLIS_RDB #20180117T084604.981 GMT</pzDocumentKey>
+<pyRuleParamsStreamName/>
+<pyRuleFormStatusTime>20260901T021636.704 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDefinition/>
+<pyCircumstanceVal/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC!GCNM!SEARCHKLAIMBYNOPOLIS_RDB</pxInsId>
+<pyRequestType>SearchKlaimByNoPolis_RDB</pyRequestType>
+<pxHostId>jboss2058</pxHostId>
+<pxCreateOpName>SANDY</pxCreateOpName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceType/>
+<pyInterface/>
+<pyBaseRule>false</pyBaseRule>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNM!SEARCHKLAIMBYNOPOLIS_RDB #20180117T084604.981 GMT</pzInsKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyValueChanged>false</pyValueChanged>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC GCNM SearchKlaimByNoPolis_RDB</pxTabLabel>
+<pxMoveOriginalRuleSetVersion>01-01-01</pxMoveOriginalRuleSetVersion>
+<pyCircumstanceDate/>
+<pyStatus/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DET_TYPE_DOC GCNM!SEARCHKLAIMBYNOPOLIS_RDB #20180117T084604.981 GMT</pzInsKey>
+<pyLabel>01-01-11 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

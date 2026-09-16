@@ -1,0 +1,190 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateOpName/>
+<pyHandlerFlow/>
+<pyMemo>dones</pyMemo>
+<pxMoveImportDateTime>20240716T024141.974 GMT</pxMoveImportDateTime>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RW GCNM!BROWSERW_GCNM #20240708T041216.532 GMT</pzDocumentKey>
+<pxOriginalCreateSystemID/>
+<pyTemplateInputBox/>
+<pyRuleFormStatusTime>20260721T040014.843 GMT</pyRuleFormStatusTime>
+<pyClassName>ASM-FW-GISFW-Int-RW</pyClassName>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pyUsage/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxCreateDateTime>20240708T041216.532 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOperator/>
+<pxHostId>jboss1037</pxHostId>
+<pyCheckInRuleSet/>
+<pxInsId>ASM-FW-GISFW-INT-RW!GCNM!BROWSERW_GCNM</pxInsId>
+<pzChecksum>-1374377491</pzChecksum>
+<pxTabLabel>ASM-FW-GISFW-Int-RW GCNM BrowseRW_GCNM</pxTabLabel>
+<pxMergeSynchronized>20171018T071450.767 GMT</pxMergeSynchronized>
+<pyRuleEnds/>
+<pyTemplate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStatus/>
+<pyMethodStatus/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxInstanceLockedDateTime/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyCircumstanceDate/>
+<pySaveSQL/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyShowJavaWindowName>GeneratedJava20260721T040014.886 GMT</pyShowJavaWindowName>
+<pxMoveFromSystem/>
+<pxInstanceLockedBy/>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pyRuleStarts/>
+<pyStreamName/>
+<pyLabel>Browse RW GCNM</pyLabel>
+<pyOpenSQL/>
+<pzIsPrivateCheckOut/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RW GCNM!BROWSERW_GCNM #20171018T025103.739 GMT</pzOriginalInstanceKey>
+<pyWindowTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pyFormPost/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyLabelOld>Browse RW GCNM</pyLabelOld>
+<pxUpdateDateTime>20240708T041224.837 GMT</pxUpdateDateTime>
+<pyIsFromManageChangeLP/>
+<pxSiblingCount/>
+<pyJavaStream/>
+<pyWorkKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDefinition/>
+<pyTempText>saved</pyTempText>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RW GCNM!BROWSERW_GCNM #20240708T041216.532 GMT</pzInsKey>
+<pxInstanceLockedRuleSet/>
+<pySpecialtyComponentData/>
+<pyRequestType>BrowseRW_GCNM</pyRequestType>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBrowseSQL>select 
+    id,
+    Note as TERITORYNAME  ,
+   districtname as IDDISTRICT,
+    (select b.Note from City b where b.id=a.cityid and b.zipcode=a.zipcode and rownum=1)as CITYNAME,
+    zipcode
+from RW a where a.zipcode={TempRWInput.ZipCode}</pyBrowseSQL>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxSaveDateTime>20240708T041224.849 GMT</pxSaveDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleName>ASM-FW-GISFW-Int-RW GCNM BrowseRW_GCNM</pyRuleName>
+<pyCircumstanceType/>
+<pyTemporaryObject/>
+<pyRuleParamsStreamName/>
+<pyDeleteSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDescription/>
+<pyCircumstanceTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pxInsName>ASM-FW-GISFW-INT-RW!GCNM!BROWSERW_GCNM</pxInsName>
+<pyBaseRule>false</pyBaseRule>
+<pxCommitDateTime>20240716T024142.000 GMT</pxCommitDateTime>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDateProp/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RW GCNM!BROWSERW_GCNM #20240708T041216.532 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-03 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RW GCNM!BROWSERW_GCNM #20171018T030931.582 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>false</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>true</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckIn>false</pyCheckIn>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pySiblings>true</pySiblings>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

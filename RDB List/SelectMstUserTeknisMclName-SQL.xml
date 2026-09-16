@@ -1,0 +1,199 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxHostId>jboss10363</pxHostId>
+<pyUsage/>
+<pxInstanceLockedDateTime/>
+<pyRuleStarts/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceProp/>
+<pxUpdateOpName>TeresiaArdika</pxUpdateOpName>
+<pxMoveImportDateTime>20240331T080619.413 GMT</pxMoveImportDateTime>
+<pyMethodStatus/>
+<pyStreamName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOperator/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS GCNM SelectMstUserTeknisMclName</pxTabLabel>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateDateTime>20230718T064324.278 GMT</pxUpdateDateTime>
+<pxCommitDateTime>20240331T080619.000 GMT</pxCommitDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabelOld>SelectMstUserTeknisMclName</pyLabelOld>
+<pyCircumstanceType/>
+<pyStatus/>
+<pxCreateDateTime>20230718T064016.482 GMT</pxCreateDateTime>
+<pxSiblingCount/>
+<pyLabel>SelectMstUserTeknisMclName</pyLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOperator>TERESIAARDIKA</pxUpdateOperator>
+<pxMoveFromSystem/>
+<pyCheckInRuleSet/>
+<pyOpenSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemporaryObject/>
+<pyDocumentTitle/>
+<pyCircumstanceDateProp/>
+<pyHandlerFlow/>
+<pyTemplate/>
+<pxInstanceLockedCreateDateTime/>
+<pyIsFromManageChangeLP/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyDescription/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20230718T064016.482 GMT</pzDocumentKey>
+<pxOriginalCreateDateTime/>
+<pyRuleFormStatusTime>20260821T015757.341 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzChecksum>1144148198</pzChecksum>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyClassName>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS</pyClassName>
+<pxCreateOperator>TERESIAARDIKA</pxCreateOperator>
+<pyShowJavaWindowName>GeneratedJava20260821T015757.371 GMT</pyShowJavaWindowName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>TeresiaArdika</pxCreateOpName>
+<pxMergeSynchronized>20201118T105150.952 GMT</pxMergeSynchronized>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceTemplate/>
+<pyDeleteMemo>DONE</pyDeleteMemo>
+<pyBrowseSQL>select pyusername as "MCL_NAME",pyuseridentifier as "OPERATOR_ID" from datapega.pr_operators where upper(pyuseridentifier)=upper({InputMclName.OPERATOR_ID})</pyBrowseSQL>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS!GCNM!SELECTMSTUSERTEKNISMCLNAME</pxInsName>
+<pyCircumstanceVal/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyDeletedObject/>
+<pyWindowTitle/>
+<pyRuleSetVersion>01-01-66</pyRuleSetVersion>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxSaveDateTime>20230718T064324.285 GMT</pxSaveDateTime>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyMemo>Done</pyMemo>
+<pxInstanceLockedBy/>
+<pyRelativePath/>
+<pyInterface/>
+<pyDeleteSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedKey/>
+<pzRuleSetVersionPatch>66</pzRuleSetVersionPatch>
+<pyCircumstanceDefinition/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxOriginalCreateOpName/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRequestType>SelectMstUserTeknisMclName</pyRequestType>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20230718T064016.482 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pyJavaStream/>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pyFormPost/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS GCNM SelectMstUserTeknisMclName</pyRuleName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20171123T083357.069 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDate/>
+<pyWorkKey/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS!GCNM!SELECTMSTUSERTEKNISMCLNAME</pxInsId>
+<pyValueChanged>false</pyValueChanged>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleEnds/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-66 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20230718T064016.482 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-57 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20201118T104900.204 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20171123T083357.069 GMT</pzInsKey>
+<pyLabel>01-01-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SELECTMSTUSERTEKNISMCLNAME #20170406T015958.288 GMT</pzInsKey>
+<pyLabel>01-01-01 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -1,0 +1,321 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalCreateOperator/>
+<pyDeleteSQL/>
+<pxInstanceLockedRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyInterface/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA #20231110T123812.377 GMT</pzDocumentKey>
+<pyOpenSQL/>
+<pyLabelOld>GetDataKPIAdminPA</pyLabelOld>
+<pyUsage/>
+<pxInstanceLockedBy/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyRuleFormStatusTime>20260901T073156.261 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedCreateDateTime/>
+<pzChecksum>1741484889</pzChecksum>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdminPA</pyRuleName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxHostId>jboss1037</pxHostId>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdminPA</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceDate/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyCircumstanceType/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA #20231110T123812.377 GMT</pzInsKey>
+<pyShowJavaWindowName>GeneratedJava20260901T073156.286 GMT</pyShowJavaWindowName>
+<pyBrowseSQL>SELECT 'KLAIM PA' AS "UserTeknis",
+       'YUNIARPAMORSUARI' AS "Remark",
+       'KOORDINASI PA' AS "Country",
+       '11908020' as "Email",
+       total_klaim as "BusinessName",
+       {TempLaporan.AnalystTransferDate}|| ' - ' || {TempLaporan.DateOfLoss} AS "ClaimNo",
+       pembayaran_klaim_pa as "CountryID",
+       regist_klaim_pa as "NoteKasir",total_pembayaran_pa as "ClientName",total_klaim as "ClientID", 
+       CASE
+          WHEN (regist_klaim_pa / total_klaim) * 100 &lt; 0.5
+          THEN
+             5
+          WHEN (regist_klaim_pa / total_klaim) * 100 BETWEEN 0.5
+                                                                     AND 1
+          THEN
+             4
+          WHEN (regist_klaim_pa / total_klaim) * 100 = 1
+          THEN
+             3
+          WHEN (regist_klaim_pa / total_klaim) * 100 BETWEEN 1
+                                                                     AND 1.5
+          THEN
+             2
+          WHEN (regist_klaim_pa / total_klaim) * 100 BETWEEN 1.5
+                                                                     AND 2
+          THEN
+             1
+          ELSE
+             0
+       END
+          AS "City",
+          CASE
+          WHEN (pembayaran_klaim_pa / total_klaim) * 100 &lt; 0.5
+          THEN
+             5
+          WHEN (pembayaran_klaim_pa / total_klaim) * 100 BETWEEN 0.5
+                                                                     AND 1
+          THEN
+             4
+          WHEN (pembayaran_klaim_pa / total_klaim) * 100 = 1
+          THEN
+             3
+          WHEN (pembayaran_klaim_pa / total_klaim) * 100 BETWEEN 1
+                                                                     AND 1.5
+          THEN
+             2
+          WHEN (pembayaran_klaim_pa / total_klaim) * 100 BETWEEN 1.5
+                                                                     AND 2
+          THEN
+             1
+          ELSE
+             0
+       END
+          AS "CityID"
+from (
+select 
+(SELECT COUNT (CLAIMNO)
+                  FROM (SELECT B.CLAIMNO,
+                               b.receivedate AS tgl_terima_dokumen,
+                               B.REGISTERDATE AS tgl_trf_ke_teknik,
+                                 datamining.get_working_hours@asmd.sinarmas.co.id (
+                                    b.receivedate,
+                                    b.REGISTERDATE)
+                               / 28800
+                                  AS tat_regis
+                         FROM pooldata.t_claim_pnc b,
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE b.claimid = d.pzinskey and B.STATUSWORK !='Resolved-Rejected'
+                               AND pxcreateoperator IN
+                                      ('IRMANOPITAPURBA_1',
+                                       'IRMANOPITAPURBA',
+                                       'YUNIARPAMORSUARI')
+                               AND B.GROUPPANEL IN
+                                      ('002') {ASIS:TempLaporan.BranchID})where tat_regis &gt;0) as regist_klaim_pa,
+(SELECT COUNT (distinct(CLAIMNO))
+                  FROM (SELECT B.CLAIMNO,
+                               C.RECEIVEDATELOD AS tgl_terima_dokumen,
+                               C.TGLAKSEPTASI AS tgl_trf_ke_teknik,
+                                 datamining.get_working_hours@asmd.sinarmas.co.id (
+                                    c.RECEIVEDATELOD,
+                                    c.TGLAKSEPTASI)
+                               / 28800
+                                  AS tat_pembayaran
+                         FROM pooldata.t_claim_pnc b,POOLDATA.T_CLAIM_ADJUSTMENT c,
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE B.CLAIMID =C.CLAIMID and b.claimid = d.pzinskey and B.STATUSWORK !='Resolved-Rejected' and C.NOAKSEPTASI is not null
+                               AND pxcreateoperator IN
+                                      ('IRMANOPITAPURBA_1',
+                                       'IRMANOPITAPURBA',
+                                       'YUNIARPAMORSUARI')
+                               AND B.GROUPPANEL IN
+                                      ('002')
+ {ASIS:TempLaporan.BranchID} ) where tat_pembayaran &gt;0) as pembayaran_klaim_pa,
+(SELECT LISTAGG(CLAIMNO, ',') WITHIN GROUP (ORDER BY CLAIMNO)
+                  FROM (SELECT B.CLAIMNO
+                         FROM pooldata.t_claim_pnc b,
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE b.claimid = d.pzinskey
+                               AND pxcreateoperator IN
+                                      ('IRMANOPITAPURBA_1',
+                                       'IRMANOPITAPURBA',
+                                       'YUNIARPAMORSUARI')
+                               AND B.GROUPPANEL IN
+                                      ('002')  {ASIS:TempLaporan.BranchID}) group by claimno)  as Klaim_PA,
+(SELECT COUNT (CLAIMNO)
+                  FROM (SELECT B.CLAIMNO,
+                               b.receivedate AS tgl_terima_dokumen,
+                               B.REGISTERDATE AS tgl_trf_ke_teknik,
+                                 datamining.get_working_hours@asmd.sinarmas.co.id (
+                                    b.receivedate,
+                                    b.REGISTERDATE)
+                               / 28800
+                                  AS tat_regis
+                         FROM pooldata.t_claim_pnc b,
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE b.claimid = d.pzinskey and B.STATUSWORK !='Resolved-Rejected'
+                               AND pxcreateoperator IN
+                                      ('IRMANOPITAPURBA_1',
+                                       'IRMANOPITAPURBA',
+                                       'YUNIARPAMORSUARI')
+                               AND B.GROUPPANEL IN
+                                      ('002')
+                                {ASIS:TempLaporan.BranchID})) as total_klaim,
+(SELECT COUNT (distinct(CLAIMNO))
+                  FROM (SELECT B.CLAIMNO,
+                               C.RECEIVEDATELOD AS tgl_terima_dokumen,
+                               C.TGLAKSEPTASI AS tgl_trf_ke_teknik,
+                                 datamining.get_working_hours@asmd.sinarmas.co.id (
+                                    c.RECEIVEDATELOD,
+                                    c.TGLAKSEPTASI)
+                               / 28800
+                                  AS tat_pembayaran
+                         FROM pooldata.t_claim_pnc b,POOLDATA.T_CLAIM_ADJUSTMENT c,
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE B.CLAIMID =C.CLAIMID and b.claimid = d.pzinskey and B.STATUSWORK !='Resolved-Rejected' and C.NOAKSEPTASI is not null
+                               AND pxcreateoperator IN
+                                      ('IRMANOPITAPURBA_1',
+                                       'IRMANOPITAPURBA',
+                                       'YUNIARPAMORSUARI')
+                               AND B.GROUPPANEL IN
+                                      ('002')
+                               AND TRUNC (b.receivedate) BETWEEN TO_DATE (
+                                                                     '01/01/2023',
+                                                                     'dd/mm/yyyy')
+                                                              AND TO_DATE (
+                                                                     '10/11/2023',
+                                                                     'dd/mm/yyyy')) where tat_pembayaran &gt;0) as total_pembayaran_pa from dual)</pyBrowseSQL>
+<pxOriginalCreateDateTime/>
+<pxMoveImportDateTime>20231027T122925.315 GMT</pxMoveImportDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceTemplate/>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pxOriginalCreateSystemID/>
+<pxSiblingCount/>
+<pyRequestType>GetDataKPIAdminPA</pyRequestType>
+<pyWorkKey/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleParamsStreamName/>
+<pyTemplate/>
+<pyMethodStatus/>
+<pxCommitDateTime>20231113T013047.000 GMT</pxCommitDateTime>
+<pyDescription/>
+<pyIsFromManageChangeLP/>
+<pyCheckInRuleSet/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMINPA</pxInsName>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMINPA</pxInsId>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzRuleSetVersionPatch>07</pzRuleSetVersionPatch>
+<pyRelativePath/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHandlerFlow/>
+<pxUpdateDateTime>20231113T013046.969 GMT</pxUpdateDateTime>
+<pyWindowTitle/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceProp/>
+<pyRuleStarts/>
+<pyStatus/>
+<pyFormPost/>
+<pxMoveFromSystem/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMIN #20230804T074013.190 GMT</pzOriginalInstanceKey>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedKey/>
+<pyJavaStream/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDateProp/>
+<pyCircumstanceVal/>
+<pySaveSQL/>
+<pyDeletedObject/>
+<pyStreamName/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyRuleEnds/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateDateTime>20231110T123812.377 GMT</pxCreateDateTime>
+<pxSaveDateTime>20231113T013047.026 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDefinition/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateOpName/>
+<pyRuleSetVersion>01-02-07</pyRuleSetVersion>
+<pyLabel>GetDataKPIAdminPA</pyLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyTemporaryObject/>
+<pyMemo>dones</pyMemo>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyFavorites>true</pyFavorites>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA #20231110T123812.377 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-02-07 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

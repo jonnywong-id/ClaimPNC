@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionPatch>97</pzRuleSetVersionPatch>
+<pyMemo>membuat query untuk get data ocr ktp</pyMemo>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSetVersion/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCommitDateTime>20220610T100602.000 GMT</pxCommitDateTime>
+<pxInstanceLockedKey/>
+<pyStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleSetVersion>01-01-97</pyRuleSetVersion>
+<pyDeletedObject/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateDateTime>20220407T060023.807 GMT</pxCreateDateTime>
+<pyMethodStatus/>
+<pyRequestType>GetdataOCRKTPtoDatabasePNC</pyRequestType>
+<pyTemporaryObject/>
+<pxOriginalCreateSystemID/>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAOCRKTPTODATABASEPNC #20220407T060023.807 GMT</pzInsKey>
+<pyRuleFormStatusTime>20260720T130500.796 GMT</pyRuleFormStatusTime>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAOCRKTPTODATABASEPNC</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDocumentTitle/>
+<pyDescription/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedCreateDateTime/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyTemplate/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetdataOCRKTPtoDatabasePNC</pyRuleName>
+<pySaveSQL/>
+<pyCircumstanceDate/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetdataOCRKTPtoDatabasePNC</pxTabLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyWindowTitle/>
+<pyWorkKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabelOld>getdataOCRKTPtoDatabasePNC</pyLabelOld>
+<pyStatus/>
+<pxMoveImportDateTime>20220610T100601.214 GMT</pxMoveImportDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceTemplate/>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateOperator/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDeleteSQL/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceType/>
+<pyCircumstanceVal/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalCreateDateTime/>
+<pyHandlerFlow/>
+<pxHostId>jboss1036</pxHostId>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyLabel>getdataOCRKTPtoDatabasePNC</pyLabel>
+<pyOpenSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAOCRKTPTODATABASEPNC #20220407T060023.807 GMT</pzDocumentKey>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyRuleStarts/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyShowJavaWindowName>GeneratedJava20260720T130500.817 GMT</pyShowJavaWindowName>
+<pyUsage/>
+<pyJavaStream/>
+<pyCircumstanceDateProp/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAOCRKTPTODATABASEPNC</pxInsName>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceProp/>
+<pyFormPost/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceDefinition/>
+<pxSiblingCount/>
+<pyTempText>saved</pyTempText>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRelativePath/>
+<pxUpdateDateTime>20220407T073510.850 GMT</pxUpdateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTOCRKTPTODATABASEPNC #20220406T072246.695 GMT</pzOriginalInstanceKey>
+<pxSaveDateTime>20220407T073510.858 GMT</pxSaveDateTime>
+<pyBrowseSQL>select A.CITYID as "CARI1",
+A.CITYNAME as "CARI2",
+A.DISTRICTID as "CARI3",
+A.DISTRICTNAME as "CARI4",
+A.PROVINCEID as "CARI5",
+A.PROVINCENAME as "CARI6",
+A.ID as "CARI7",
+A.NOTE as "CARI8",
+A.ZIPCODE as "CARI9",
+B.ALAMAT as "CARI10"
+from POOLDATA.RW a,POOLDATA.PNC_OCRKTP b where NIK = {pyWorkPage.ClaimData.NoKTP} and 'PROVINSI ' || A.PROVINCENAME = B.PROVINSI 
+and A.NOTE = B.KECAMATAN</pyBrowseSQL>
+<pyCheckInRuleSet/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDeleteMemo>membuat quey untuk get data ocr</pyDeleteMemo>
+<pxInstanceLockedDateTime/>
+<pyInterface/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzChecksum>879619522</pzChecksum>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAOCRKTPTODATABASEPNC #20220407T060023.807 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

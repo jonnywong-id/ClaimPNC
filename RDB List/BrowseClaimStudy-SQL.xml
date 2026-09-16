@@ -1,0 +1,237 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleFormStatusTime>20260902T014232.654 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pxHostId>jboss10362</pxHostId>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDate/>
+<pyTemplate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDeletedObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pyDescription/>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSTUDY</pxInsId>
+<pyRuleEnds/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateSystemID/>
+<pySpecialtyComponentData/>
+<pyRequestType>BrowseClaimStudy</pyRequestType>
+<pyUsage/>
+<pyMemo>menambahkan filter perbisnis</pyMemo>
+<pxCreateDateTime>20211229T074454.726 GMT</pxCreateDateTime>
+<pyCircumstanceProp/>
+<pzChecksum>-1535597222</pzChecksum>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHandlerFlow/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyValueChanged>false</pyValueChanged>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedBy/>
+<pxSiblingCount/>
+<pyWindowTitle/>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pyRuleParamsStreamName/>
+<pxMoveImportDateTime>20220126T101718.894 GMT</pxMoveImportDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20211229T074454.726 GMT</pzInsKey>
+<pyTempText>saved</pyTempText>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20200611T024947.894 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyTemporaryObject/>
+<pxInstanceLockedDateTime/>
+<pxSaveDateTime>20211229T075645.914 GMT</pxSaveDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimStudy</pxTabLabel>
+<pyCircumstanceTemplate/>
+<pyRelativePath/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyInterface/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyOpenSQL/>
+<pyFormPost/>
+<pyWorkKey/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyStatus/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDocumentTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxInstanceLockedKey/>
+<pyBrowseSQL>select A.NOPOLIS AS "NoKTP", A.NOKLAIM  AS "CaseID", A.THNREGIS AS "AnalystTransferDate" ,A.COL_DESC as "Country", 
+A.CABANG as "AnalystRemaksInvestigator", to_char(A.DATEOFLOSS,'dd/mm/yyyy') AS "DateOfLoss",to_char(b.REGISTERDATE,'mm') as "Email",A.TSI as "AlasanDokterRejectRCL",
+CASE when a.stsklaim = '0' then 'Claim On Progress' 
+     when a.stsklaim = '1' then 'Accepted'
+     when a.stsklaim = '3' then 'Ditolak'
+     else '-'
+end as "ClaimNo",
+case when a.reinsurer='2' then 'Member' 
+    when a.reinsurer='F' then 'Fac In' 
+    when a.reinsurer='1' then 'Leader' 
+    else '-'
+end AS "AgingAmount", B.QQNAME  as "NamaSurveyor", B.SOBNAME as "CityID", 
+B.REMARKRECOMENDATION as "AnaylstRemarks", D.NOTE as"City",b.KRONOLOGI as "LokasiSurveyor",
+(select max(ASM_SHARE) from pooldata.t_claim_adjustment where claimid = b.claimid)as "AlasanTerlambat",
+(select sum(TOTAL_CLAIM* CURRENCYVALUE) from pooldata.t_claim_adjustment where claimid = b.claimid )as "ComplianceRemark",
+(select sum(GROSSVALUE* CURRENCYVALUE) from pooldata.t_claim_adjustment where claimid = b.claimid )as "Conveyance",
+(select sum(INDIVIDUAL_RISK_VALUE* CURRENCYVALUE) from pooldata.t_claim_adjustment where claimid = b.claimid )as "CloseClaimNote",
+(select sum((TOTAL_CLAIM* CURRENCYVALUE) * (ASM_SHARE/100)) from pooldata.t_claim_adjustment where claimid = b.claimid )as "CommentKomiteClosecase",
+(select sum((nvl(LOC,0)/100)* TOTAL_CLAIM* CURRENCYVALUE) + sum(nvl(NILAI_SALVAGE_A* CURRENCYVALUE,0)) from pooldata.t_claim_adjustment where claimid = b.claimid )as "CompliancePosAuditByr",
+(select sum(TOTAL_CLAIM* CURRENCYVALUE)-sum(INDIVIDUAL_RISK_VALUE* CURRENCYVALUE)-sum((nvl(LOC,0)/100)* TOTAL_CLAIM* CURRENCYVALUE) + sum(nvl(NILAI_SALVAGE_A* CURRENCYVALUE,0))-sum(GROSSVALUE*CURRENCYVALUE) from pooldata.t_claim_adjustment where claimid = b.claimid )as "UserName",
+(select to_number(sum(TOTAL_CLAIM* CURRENCYVALUE)-sum(INDIVIDUAL_RISK_VALUE* CURRENCYVALUE)-sum((nvl(LOC,0)/100)* TOTAL_CLAIM* CURRENCYVALUE) + sum(nvl(NILAI_SALVAGE_A* CURRENCYVALUE,0))-sum(GROSSVALUE* CURRENCYVALUE)) * max(ASM_SHARE/100) from pooldata.t_claim_adjustment where claimid = b.claimid )as "UserTeknis"
+from POOLDATA.PEGA_DASHBOARDPNC a, POOLDATA.T_CLAIM_PNC b, pooldata.business d
+where EXISTS (select substr(claimid,20,29) from pooldata.t_claim_adjustment where total_claim*currencyvalue&gt;5000000000 and claimid=b.claimid) 
+and A.THNREGIS
+BETWEEN to_char(to_date({TempSearch.TelpTertanggung},'dd/mm/yyyy'), 'yyyy') 
+AND to_char(to_date({TempSearch.UserTeknisEmail},'dd/mm/yyyy'),'yyyy')
+and a.noklaim=b.claimno
+and b.claimno IS NOT NULL
+and B.BUSINESSCODE= D.ID
+{ASIS:TempView.City} {ASIS:TempSearch.UserTeknis}</pyBrowseSQL>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDeleteSQL/>
+<pyShowJavaWindowName>GeneratedJava20260902T014232.681 GMT</pyShowJavaWindowName>
+<pyIsFromManageChangeLP/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceVal/>
+<pyCircumstanceType/>
+<pxUpdateDateTime>20211229T075645.906 GMT</pxUpdateDateTime>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSTUDY</pxInsName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStreamName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabelOld>BrowseClaimStudy</pyLabelOld>
+<pxMoveFromSystem/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20211229T074454.726 GMT</pzDocumentKey>
+<pyLabel>BrowseClaimStudy</pyLabel>
+<pxOriginalCreateOperator/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimStudy</pyRuleName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateDateTime/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCheckInRuleSet/>
+<pyJavaStream/>
+<pyCircumstanceDateProp/>
+<pyTemplateInputBox/>
+<pxMergeSynchronized>20201218T104204.700 GMT</pxMergeSynchronized>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDefinition/>
+<pyMethodStatus/>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleStarts/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20211229T074454.726 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20201120T092602.871 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20200611T024947.894 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMenuTooltip/>
+<pxListSubscript>4</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-85 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20200518T081726.996 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20200219T044457.346 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+</pagedata>

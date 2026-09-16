@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateDateTime>20210216T062755.425 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWorkKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!EDMRETRIEVET_ANEKALIST #20210216T062744.278 GMT</pzInsKey>
+<pyRelativePath/>
+<pyHistoryObject>false</pyHistoryObject>
+<pySPRuleSetName>YOHANESBAPTISTA@</pySPRuleSetName>
+<pyRuleEnds/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzChecksum>824725297</pzChecksum>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!EDMRETRIEVET_ANEKALIST</pxInsName>
+<pyDeletedObject/>
+<pxOriginalCreateSystemID/>
+<pyBaseRule>false</pyBaseRule>
+<pyStreamName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!EDMRETRIEVET_ANEKALIST</pxInsId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleStarts/>
+<pxSaveDateTime>20210216T062755.449 GMT</pxSaveDateTime>
+<pyFormPost/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pxCommitDateTime>20210219T101555.000 GMT</pxCommitDateTime>
+<pyCircumstanceProp/>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedCreateDateTime/>
+<pyMemo>add or idpega</pyMemo>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!EDMRETRIEVET_ANEKALIST #20200722T015605.257 GMT</pzOriginalInstanceKey>
+<pyShowJavaWindowName>GeneratedJava20260828T015735.507 GMT</pyShowJavaWindowName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyBrowseSQL>SELECT TO_CLOB (ANEKALIST) AS HASIL2,
+       TO_CLOB (COVERAGELIST) AS HASIL3
+  FROM pooldata.t_anekalist
+ WHERE (IDPEGA= {BrowseObjEDM.CARI1} OR IDPEGA = {tempEDM.pzInsKey})
+AND INDEXOBJECTLOCATION = {BrowseObjEDM.CARI2}
+AND INDEXOBJECT = {BrowseObjEDM.CARI3}
+order by INDEXOBJECT asc</pyBrowseSQL>
+<pxMoveImportDateTime>20210219T101555.262 GMT</pxMoveImportDateTime>
+<pyLabel>EDMRetrieveT_AnekaList</pyLabel>
+<pxInstanceLockedDateTime/>
+<pyDeleteSQL/>
+<pyDescription/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySpecialtyComponentData/>
+<pxOriginalCreateDateTime/>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM EDMRetrieveT_AnekaList</pxTabLabel>
+<pxHostId>jboss2163</pxHostId>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDefinition/>
+<pyWindowTitle/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM EDMRetrieveT_AnekaList</pyRuleName>
+<pyDocumentTitle/>
+<pyHandlerFlow/>
+<pxInstanceLockedBy/>
+<pxCreateDateTime>20210216T062744.278 GMT</pxCreateDateTime>
+<pyIsFromManageChangeLP/>
+<pyJavaStream/>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxOriginalCreateOpName/>
+<pyLabelOld>EDMRetrieveT_AnekaList</pyLabelOld>
+<pyRequestType>EDMRetrieveT_AnekaList</pyRequestType>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveFromSystem/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!EDMRETRIEVET_ANEKALIST #20210216T062744.278 GMT</pzDocumentKey>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyOpenSQL/>
+<pyInterface/>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDateProp/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleSetVersion>01-02-95</pyRuleSetVersion>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyUsage/>
+<pyCircumstanceVal/>
+<pxInstanceLockedKey/>
+<pxOriginalCreateOperator/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyTemplate/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDate/>
+<pyRuleFormStatusTime>20260828T015735.478 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!EDMRETRIEVET_ANEKALIST #20210216T062744.278 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-02-95 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!EDMRETRIEVET_ANEKALIST #20200722T015605.257 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-02-67 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

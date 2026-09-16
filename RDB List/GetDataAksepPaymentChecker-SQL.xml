@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataAksepPaymentChecker</pxTabLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSaveDateTime>20240828T101438.594 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyLabel>GetDataAksepPaymentChecker</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAAKSEPPAYMENTCHECKER #20240828T034352.888 GMT</pzInsKey>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceType/>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyTemplateInputBox/>
+<pyBrowseSQL>select noakseptasi as "AcceptedNo", stsapp as "BatasUmur", noteapprove as "BatasLapor", IDKASIR as "CaseIDCashier" from POOLDATA.T_CLAIM_AKSEPTASI_CHECKER where noakseptasi= {TempAdjustment.AcceptedNo} order by tglapprove desc fetch next 1 row only</pyBrowseSQL>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyRequestType>GetDataAksepPaymentChecker</pyRequestType>
+<pyCircumstanceDate/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyIsFromManageChangeLP/>
+<pyStatus/>
+<pyCircumstanceVal/>
+<pyDocumentTitle/>
+<pxCreateDateTime>20240828T034352.888 GMT</pxCreateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxHostId>jboss10372</pxHostId>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyCircumstanceProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyShowJavaWindowName>GeneratedJava20260720T142957.191 GMT</pyShowJavaWindowName>
+<pyWindowTitle/>
+<pyRuleEnds/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATAAKSEPPAYMENTCHECKER</pxInsId>
+<pxSiblingCount/>
+<pyInterface/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveFromSystem/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDeletedObject/>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus/>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyJavaStream/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceDateProp/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAAKSEPPAYMENTCHECKER #20240828T034352.888 GMT</pzOriginalInstanceKey>
+<pyFormPost/>
+<pyDeleteSQL/>
+<pyMemo>dones</pyMemo>
+<pyOpenSQL/>
+<pyRuleFormStatusTime>20260720T142957.173 GMT</pyRuleFormStatusTime>
+<pxMoveImportDateTime>20241223T123621.002 GMT</pxMoveImportDateTime>
+<pxUpdateDateTime>20240828T101438.570 GMT</pxUpdateDateTime>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyCircumstanceDefinition/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyLabelOld>GetDataAksepPaymentChecker</pyLabelOld>
+<pyCircumstanceTemplate/>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUsage/>
+<pyHistoryObject/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleStarts/>
+<pxInstanceLockedBy/>
+<pyWorkKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyHandlerFlow/>
+<pzChecksum>1515212662</pzChecksum>
+<pyStreamName/>
+<pySPRuleSetName>MARIATRIELSA@</pySPRuleSetName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySaveSQL/>
+<pyRelativePath/>
+<pyTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAAKSEPPAYMENTCHECKER #20240828T034352.888 GMT</pzDocumentKey>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataAksepPaymentChecker</pyRuleName>
+<pyDescription/>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATAAKSEPPAYMENTCHECKER</pxInsName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAAKSEPPAYMENTCHECKER #20240828T034352.888 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -1,0 +1,350 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxTabLabel>NotificationKelengkapanTKA</pxTabLabel>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyJavaClassName>Rule_Obj_HTML__baseclass_NotificationKelengkapanTKA_Stream_20230512T090615_662_GMT</pyJavaClassName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyBaseRule>false</pyBaseRule>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateOperator>ANDREWHANDOKO</pxUpdateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzOriginalInstanceKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONSERVICECENTER #20230505T040433.561 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyMemo>Done</pyMemo>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyStreamName>NotificationKelengkapanTKA</pyStreamName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxHostId>jboss10403</pxHostId>
+<pyReloadForm>true</pyReloadForm>
+<pyShowJavaWindowName>GeneratedJava20260831T013845.623 GMT</pyShowJavaWindowName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pzDocumentKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzDocumentKey>
+<pyClassName>@baseclass</pyClassName>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzInsKey>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOpName>ANDREW HANDOKO</pxCreateOpName>
+<pxCommitDateTime>20230512T104429.000 GMT</pxCommitDateTime>
+<pxInsName>@BASECLASS!NOTIFICATIONKELENGKAPANTKA</pxInsName>
+<pySPRuleSetName>ANDREWHANDOKO@</pySPRuleSetName>
+<pyRuleSetVersion>01-02-05</pyRuleSetVersion>
+<pxMoveImportDateTime>20230512T104429.451 GMT</pxMoveImportDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateDateTime>20230512T075831.395 GMT</pxCreateDateTime>
+<pyCompact>false</pyCompact>
+<pyRuleFormStatusTime>20260831T013845.571 GMT</pyRuleFormStatusTime>
+<pyLabelOld>NotificationKelengkapanTKA</pyLabelOld>
+<pxUpdateOpName>ANDREW HANDOKO</pxUpdateOpName>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+ &lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  font-color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+     &lt;table&gt;
+       &lt;tr&gt;
+         &lt;td&gt;Dear,&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;td&gt;Berikut detail klaim TKA yang sudah diinput tanggal terima dokumen asli  :  &lt;/td&gt;
+       &lt;/tr&gt; 
+       &lt;tr&gt;
+       &lt;/tr&gt;
+       &lt;table&gt;
+       &lt;tr&gt;
+         &lt;td&gt;No Klaim &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;
+         &lt;td&gt; &lt;pega:reference name="TempHTML.ClaimNo"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;td&gt;No Polis &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;         
+         &lt;td&gt; &lt;pega:reference name="TempHTML.PolicyNo"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;td&gt;Nama Tertanggung &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;         
+         &lt;td&gt; &lt;pega:reference name="TempHTML.District"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;td&gt;Nama Peserta &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;         
+         &lt;td&gt; &lt;pega:reference name="TempHTML.DistrictID"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;       
+       &lt;tr&gt;
+         &lt;td&gt;Date Of Loss &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;         
+         &lt;td&gt; &lt;pega:reference name="TempHTML.Country"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;       
+       &lt;tr&gt;
+         &lt;td&gt;Tanggal Kelengkapan Dokumen &lt;/td&gt;
+         &lt;td&gt;: &lt;/td&gt;         
+         &lt;td&gt; &lt;pega:reference name="TempHTML.CountryID"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+       &lt;/tr&gt;  
+       &lt;/table&gt;
+     &lt;/table&gt;&lt;br&gt;
+     Terima Kasih.
+	&lt;br&gt;&lt;br&gt;
+   
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyRuleName>NotificationKelengkapanTKA</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInsId>!NOTIFICATIONKELENGKAPANTKA</pxInsId>
+<pzChecksum>184122142</pzChecksum>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateDateTime>20230512T090749.660 GMT</pxUpdateDateTime>
+<pxSaveDateTime>20230512T090749.788 GMT</pxSaveDateTime>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pzIndexCount>24</pzIndexCount>
+<pyTempText>saved</pyTempText>
+<pxCreateOperator>ANDREWHANDOKO</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionPatch>05</pzRuleSetVersionPatch>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyLabel>NotificationKelengkapanTKA</pyLabel>
+<pzStatus>valid</pzStatus>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzInsKey>
+</rowdata>
+</pyRuleCompareList>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pxSelectorName>.link-button</pxSelectorName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">12</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxPageName>TempHTML</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>true</pyShowJava>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyPreview>true</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage>TempHTML</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>COUNTRYID</pxRuleFamilyName>
+<pyRuleName>CountryID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>CLAIMNO</pxRuleFamilyName>
+<pyRuleName>ClaimNo</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>POLICYNO</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>PolicyNo</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyRuleName>pxInteger</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PXINTEGER</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>Country</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>COUNTRY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleFamilyName>DISTRICTID</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>DistrictID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyRuleName>District</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>DISTRICT</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS NOTIFICATIONKELENGKAPANTKA #20230512T075831.395 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

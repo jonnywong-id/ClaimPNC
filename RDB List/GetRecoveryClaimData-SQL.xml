@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pySPRuleSetName/>
+<pyRuleStarts/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyJavaStream/>
+<pyUsage/>
+<pyBrowseSQL>select a.lbu_id as "BusinessID", a.ldc_id as "BranchID", a.lag_agen_id as "AgentID", a.lmo_id as "MarketingID"
+from mst_det_sales@asmd.sinarmas.co.id a
+where a.mds_no_polis = {TempRecovery.PolicyNo}</pyBrowseSQL>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStreamName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedBy/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETRECOVERYCLAIMDATA</pxInsId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyInterface/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateDateTime>20250506T082054.604 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyShowJavaWindowName>GeneratedJava20260822T063318.914 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleParamsStreamName/>
+<pzChecksum>1492026635</pzChecksum>
+<pyStatus/>
+<pyCircumstanceDateProp/>
+<pyHandlerFlow/>
+<pyRequestType>GetRecoveryClaimData</pyRequestType>
+<pyRuleFormStatusTime>20260822T063318.891 GMT</pyRuleFormStatusTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETRECOVERYCLAIMDATA #20250506T082054.604 GMT</pzDocumentKey>
+<pxUpdateDateTime>20250506T082140.150 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pxInstanceLockedDateTime/>
+<pxSiblingCount/>
+<pyDocumentTitle/>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETRECOVERYCLAIMDATA #20250506T082054.604 GMT</pzInsKey>
+<pyMethodStatus/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCommitDateTime>20250506T082140.000 GMT</pxCommitDateTime>
+<pzIsPrivateCheckOut/>
+<pxMoveImportOperId/>
+<pxHostId>jboss1036</pxHostId>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETRECOVERYCLAIMDATA #20250506T082054.604 GMT</pzOriginalInstanceKey>
+<pyDeleteSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetRecoveryClaimData</pxTabLabel>
+<pxMoveImportOperName/>
+<pyRuleEnds/>
+<pyTemplateInputBox/>
+<pyLabel>GetRecoveryClaimData</pyLabel>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetRecoveryClaimData</pyRuleName>
+<pyCircumstanceDefinition/>
+<pyOpenSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeletedObject/>
+<pyCircumstanceProp/>
+<pxMoveImportDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySaveSQL/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSet/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxSaveDateTime>20250506T082140.215 GMT</pxSaveDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pyCircumstanceTemplate/>
+<pyHistoryObject/>
+<pyCircumstanceVal/>
+<pyCircumstanceType/>
+<pySpecialtyComponentData/>
+<pyWindowTitle/>
+<pyIsFromManageChangeLP/>
+<pyTemplate/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETRECOVERYCLAIMDATA</pxInsName>
+<pyDescription/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETRECOVERYCLAIMDATA #20250506T082054.604 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-11 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyDelete>true</pyDelete>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyRecover>false</pyRecover>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>false</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

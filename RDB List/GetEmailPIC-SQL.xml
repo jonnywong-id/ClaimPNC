@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateInputBox/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetEmailPIC</pyRuleName>
+<pyBaseRule>false</pyBaseRule>
+<pyShowJavaWindowName>GeneratedJava20260820T042318.530 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOpName/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETEMAILPIC</pxInsId>
+<pxSaveDateTime>20210312T092113.002 GMT</pxSaveDateTime>
+<pxUpdateDateTime>20210312T092112.971 GMT</pxUpdateDateTime>
+<pyDeletedObject/>
+<pyMemo>done</pyMemo>
+<pyRequestType>GetEmailPIC</pyRequestType>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!UPDATETOTALJOB_SQL #20210219T020959.549 GMT</pzOriginalInstanceKey>
+<pyOpenSQL/>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetEmailPIC</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILPIC #20210312T064906.867 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20210424T075602.000 GMT</pxCommitDateTime>
+<pzChecksum>-851868893</pzChecksum>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxOriginalCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleStarts/>
+<pyRuleSetVersion>01-01-91</pyRuleSetVersion>
+<pyMethodStatus/>
+<pyCircumstanceDateProp/>
+<pyLabelOld>GetEmailPIC</pyLabelOld>
+<pyRelativePath/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyWindowTitle/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxMoveImportDateTime>20210424T075602.161 GMT</pxMoveImportDateTime>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyLabel>GetEmailPIC</pyLabel>
+<pyDocumentTitle/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pyRuleParamsStreamName/>
+<pySaveSQL>UPDATE pega_dashboardpnc set pic ={TempIns.pyID} where noklaim={PNCWorkPage.pyID}</pySaveSQL>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyTemplate/>
+<pxOriginalCreateSystemID/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyJavaStream/>
+<pxMoveFromSystem/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETEMAILPIC</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILPIC #20210312T064906.867 GMT</pzDocumentKey>
+<pyHandlerFlow/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionPatch>91</pzRuleSetVersionPatch>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleFormStatusTime>20260820T042318.509 GMT</pyRuleFormStatusTime>
+<pxSiblingCount/>
+<pyDescription/>
+<pyInterface/>
+<pxOriginalCreateOperator/>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pyDeleteSQL/>
+<pxHostId>jboss2165</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateDateTime>20210312T064906.867 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceType/>
+<pyStreamName/>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDefinition/>
+<pyCircumstanceProp/>
+<pyIsFromManageChangeLP/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSet/>
+<pyBrowseSQL>select email as "Email" from pooldata.mst_user_teknik where operator_id={TempIns.pyID}</pyBrowseSQL>
+<pyCircumstanceTemplate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pyRuleEnds/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETEMAILPIC #20210312T064906.867 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-91 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateOperator>SANDY</pxCreateOperator>
+<pyCircumstanceDateProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyHistoryObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxUpdateDateTime>20170503T022807.627 GMT</pxUpdateDateTime>
+<pyMethodStatus/>
+<pyWorkKey/>
+<pyLabel>SetTotalJobMstUserTeknis</pyLabel>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxHostId>jboss2058</pxHostId>
+<pyRuleSetVersion>01-01-01</pyRuleSetVersion>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS GCNM SetTotalJobMstUserTeknis</pxTabLabel>
+<pyStreamName/>
+<pyDeletedObject/>
+<pyMemo>done</pyMemo>
+<pzChecksum>-1285988659</pzChecksum>
+<pyRelativePath/>
+<pyOpenSQL/>
+<pySaveSQL/>
+<pyValueChanged>false</pyValueChanged>
+<pySpecialtyComponentData/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS GCNM SetTotalJobMstUserTeknis</pyRuleName>
+<pxSiblingCount/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleEnds/>
+<pxMoveImportDateTime>20191231T032634.062 GMT</pxMoveImportDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOpName>SANDY</pxUpdateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pxSaveDateTime>20170503T022807.673 GMT</pxSaveDateTime>
+<pxMoveFromSystem/>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOperator>SANDY</pxUpdateOperator>
+<pyUsage/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SETTOTALJOBMSTUSERTEKNIS #20170503T014525.770 GMT</pzInsKey>
+<pyBrowseSQL>select sum(total_job) AS OLD_OPERATOR_ID
+from new_general.m_user_job@opjava.sinarmas.co.id a,
+new_general.m_user@opjava.sinarmas.co.id b,
+hrdasm.v_hrd_mst@asmd.sinarmas.co.id c
+WHERE a.USER_ID = b.USER_ID AND b.LOGIN_ID = c.NIK AND NIK = {TempNIK.OLD_OPERATOR_ID}</pyBrowseSQL>
+<pyInterface/>
+<pyCircumstanceType/>
+<pyHandlerFlow/>
+<pxCreateOpName>SANDY</pxCreateOpName>
+<pyWindowTitle/>
+<pyDocumentTitle/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SETTOTALJOBMSTUSERTEKNIS #20170503T014525.770 GMT</pzDocumentKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteSQL/>
+<pyTemplate/>
+<pyIsFromManageChangeLP/>
+<pyRuleFormStatusTime>20260821T015914.239 GMT</pyRuleFormStatusTime>
+<pyDescription/>
+<pyCircumstanceDate/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SETTOTALJOBMSTUSERTEKNIS #20170503T014525.770 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDefinition/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS</pyClassName>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxCreateDateTime>20170503T014525.770 GMT</pxCreateDateTime>
+<pxInstanceLockedKey/>
+<pyShowJavaWindowName>GeneratedJava20260821T015914.263 GMT</pyShowJavaWindowName>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceVal/>
+<pyRequestType>SetTotalJobMstUserTeknis</pyRequestType>
+<pyCircumstanceTemplate/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxInsId>ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS!GCNM!SETTOTALJOBMSTUSERTEKNIS</pxInsId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pyCircumstanceProp/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsName>ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS!GCNM!SETTOTALJOBMSTUSERTEKNIS</pxInsName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyFormPost/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!SETTOTALJOBMSTUSERTEKNIS #20170503T014525.770 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-01 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

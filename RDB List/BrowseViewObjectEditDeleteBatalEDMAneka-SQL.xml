@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyLabelOld>BrowseViewObjectEditDeleteBatalEDMAneka</pyLabelOld>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateInputBox/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pxInstanceLockedBy/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleParamsStreamName/>
+<pxSiblingCount/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalCreateSystemID/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pxHostId>jboss2132</pxHostId>
+<pyHandlerFlow/>
+<pxInsName>ASM-FW-GISFW-DATA-ANEKA!ASM!BROWSEVIEWOBJECTEDITDELETEBATALEDMANEKA</pxInsName>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyLabel>BrowseViewObjectEditDeleteBatalEDMAneka</pyLabel>
+<pxUpdateDateTime>20200728T081736.613 GMT</pxUpdateDateTime>
+<pySpecialtyComponentData/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxCommitDateTime>20200731T134641.000 GMT</pxCommitDateTime>
+<pyInterface/>
+<pyWorkKey/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDefinition/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaStream/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyDeleteSQL/>
+<pyShowJavaWindowName>GeneratedJava20260828T014211.974 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateOpName/>
+<pyRuleEnds/>
+<pxInstanceLockedCreateDateTime/>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pyRuleFormStatusTime>20260828T014211.953 GMT</pyRuleFormStatusTime>
+<pyStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyUsage/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateSystemID>ASMPegaSystem</pxCreateSystemID>
+<pyRuleSetVersion>01-02-67</pyRuleSetVersion>
+<pyRuleStarts/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-ANEKA ASM!BROWSEVIEWOBJECTEDITDELETEBATALEDMANEKA #20200728T080028.769 GMT</pzDocumentKey>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-ANEKA ASM!BROWSEVIEWOBJECTEDITDELETEANEKA #20200721T095134.726 GMT</pzOriginalInstanceKey>
+<pxMoveFromSystem/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyCircumstanceVal/>
+<pyDeletedObject/>
+<pySaveSQL/>
+<pxMoveImportDateTime>20200731T134640.896 GMT</pxMoveImportDateTime>
+<pyDescription/>
+<pzRuleSetVersionPatch>67</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSetVersion/>
+<pxSaveDateTime>20200728T081736.641 GMT</pxSaveDateTime>
+<pxCreateDateTime>20200728T080028.769 GMT</pxCreateDateTime>
+<pyWindowTitle/>
+<pzChecksum>-1111768172</pzChecksum>
+<pyCircumstanceProp/>
+<pxOriginalCreateOperator/>
+<pyStatus/>
+<pyMethodStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-ANEKA ASM!BROWSEVIEWOBJECTEDITDELETEBATALEDMANEKA #20200728T080028.769 GMT</pzInsKey>
+<pyRequestType>BrowseViewObjectEditDeleteBatalEDMAneka</pyRequestType>
+<pyClassName>ASM-FW-GISFW-Data-Aneka</pyClassName>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyTempText>saved</pyTempText>
+<pxInsId>ASM-FW-GISFW-DATA-ANEKA!ASM!BROWSEVIEWOBJECTEDITDELETEBATALEDMANEKA</pxInsId>
+<pxInstanceLockedKey/>
+<pyCircumstanceType/>
+<pyRelativePath/>
+<pyFormPost/>
+<pyOpenSQL/>
+<pyMemo>done</pyMemo>
+<pyTemplate/>
+<pyRuleName>ASM-FW-GISFW-Data-Aneka ASM BrowseViewObjectEditDeleteBatalEDMAneka</pyRuleName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxTabLabel>ASM-FW-GISFW-Data-Aneka ASM BrowseViewObjectEditDeleteBatalEDMAneka</pxTabLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pyBrowseSQL>/* Formatted on 21/Jul/20 4:54:40 PM (QP5 v5.215.12089.38647) */
+SELECT 
+       INDEXOBJECTLOCATION AS "IndexObjectLocation",
+       ASMADDRESS AS "ASMAddress",
+       OCCUPATIONNAME AS "OccupationName",
+       INDEXOBJECT AS "IndexObject",
+       OBJECTNAME AS "ObjectName"
+  FROM POOLDATA.T_ANEKALIST
+WHERE IDPEGA = {InputLocation.CARI1}
+ORDER BY INDEXOBJECTLOCATION</pyBrowseSQL>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-ANEKA ASM!BROWSEVIEWOBJECTEDITDELETEBATALEDMANEKA #20200728T080028.769 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-67 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

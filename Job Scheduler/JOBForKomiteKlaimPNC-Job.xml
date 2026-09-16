@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20240818T060158.314 GMT</pzInsKey>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyApplicableTo>Cluster</pyApplicableTo>
+<pyShowJavaWindowName>GeneratedJava20260908T040129.610 GMT</pyShowJavaWindowName>
+<pyBaseClass>ASM-FW-GCNMFW-Work-Komite</pyBaseClass>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyRuleFormStatusTime>20260908T040129.600 GMT</pyRuleFormStatusTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyObjClassLabel>Job Scheduler</pyObjClassLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyBaseRule>false</pyBaseRule>
+<pyLabel>JOBForKomiteKlaimPNC</pyLabel>
+<pxInsId>JOBFORKOMITEKLAIMPNC</pxInsId>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzChecksum>-1940130540</pzChecksum>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDescription>job jalan 2 menit</pyDescription>
+<pxCommitDateTime>20240824T090435.000 GMT</pxCommitDateTime>
+<pyAccessGroupContext>false</pyAccessGroupContext>
+<pxTabLabel>JOBForKomiteKlaimPNC</pxTabLabel>
+<pyUsage>job jalan 2 menit</pyUsage>
+<pxInsName>JOBFORKOMITEKLAIMPNC</pxInsName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxSaveDateTime>20240818T060404.269 GMT</pxSaveDateTime>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pyMemo>dones</pyMemo>
+<pxCreateDateTime>20240818T060158.314 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleName>JOBForKomiteKlaimPNC</pyRuleName>
+<pyValueChanged>false</pyValueChanged>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pxObjClass>Rule-Async-JobScheduler</pxObjClass>
+<pyReloadForm>true</pyReloadForm>
+<pzOriginalInstanceKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20240726T054137.054 GMT</pzOriginalInstanceKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDeleteMemo>wip</pyDeleteMemo>
+<pyPurpose>JOBForKomiteKlaimPNC</pyPurpose>
+<pyActivityName>AutoAcceptKomite</pyActivityName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxMoveImportDateTime>20240824T090435.402 GMT</pxMoveImportDateTime>
+<pyIsResolvable>false</pyIsResolvable>
+<pzDocumentKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20240818T060158.314 GMT</pzDocumentKey>
+<pyMode>Daily</pyMode>
+<pyAccessGroup>GCNMFW:Authors</pyAccessGroup>
+<pyRuleHarness>pzRuleFormNew</pyRuleHarness>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyNodeBasedFrequencies>Startup</pyNodeBasedFrequencies>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyLabelOld>JOBForKomiteKlaimPNC</pyLabelOld>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyHistoryObject>false</pyHistoryObject>
+<pxHostId>jboss10402</pxHostId>
+<pyClusterBasedFrequencies>Daily</pyClusterBasedFrequencies>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateDateTime>20240818T060404.255 GMT</pxUpdateDateTime>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pzIndexCount>4</pzIndexCount>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyIsEnabled>true</pyIsEnabled>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRecurrencePattern>
+<pyYearlyMonth>0</pyYearlyMonth>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyDailyInterval>1</pyDailyInterval>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyStartTime>060000</pyStartTime>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyDayFrequency>Daily-EveryNDays</pyDayFrequency>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pxObjClass>Embed-Data-Event-Schedule-Pattern</pxObjClass>
+<pyYearlyMonthSelection>0</pyYearlyMonthSelection>
+<pyTimeUnitOptions>Hours</pyTimeUnitOptions>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+</pyRecurrencePattern>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpRef>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>AutoAcceptKomite</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Komite</pxRuleClassName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20240818T060158.314 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>AUTOACCEPTKOMITE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>ASM-FW-GCNMFW-Work-Komite</pyRuleName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20240818T060158.314 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-KOMITE</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Komite</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20260107T033300.236 GMT</pzInsKey>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBFORKOMITEKLAIMPNC #20240818T060158.314 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pxSubscript>BackgroundProcessing</pxSubscript>
+<pyNodeType>BackgroundProcessing</pyNodeType>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+</rowdata>
+</pyNodeTypes>
+</pagedata>

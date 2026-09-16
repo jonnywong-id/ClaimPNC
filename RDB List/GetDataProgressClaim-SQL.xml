@@ -1,0 +1,261 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateDateTime>20201215T090206.818 GMT</pxUpdateDateTime>
+<pyStatus/>
+<pyRelativePath/>
+<pyFormPost/>
+<pyRuleEnds/>
+<pzRuleSetVersionPatch>89</pzRuleSetVersionPatch>
+<pyLabelOld>GetDataProgressClaim</pyLabelOld>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataProgressClaim</pyRuleName>
+<pyLabel>GetDataProgressClaim</pyLabel>
+<pyCircumstanceProp/>
+<pyCircumstanceDate/>
+<pyIsFromManageChangeLP/>
+<pySaveSQL/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>-1630642066</pzChecksum>
+<pxHostId>jboss215</pxHostId>
+<pxInstanceLockedBy/>
+<pyMethodStatus/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateOpName/>
+<pxOriginalCreateSystemID/>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pyMemo>tidak memunculkan auto</pyMemo>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeletedObject/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPROGRESSCLAIM #20201215T085500.388 GMT</pzInsKey>
+<pyRWAccess>GCNM</pyRWAccess>
+<pySpecialtyComponentData/>
+<pxCreateDateTime>20201215T085500.388 GMT</pxCreateDateTime>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyRuleStarts/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyBrowseSQL>SELECT
+        a.noklaim AS "ClaimNo",
+        a.nopolis AS "NoKTP",
+        a.dateofloss AS "DateOfLoss",
+        a.tglklaim AS "RegisterDate",
+        c.qqname AS "NamaDokumen",
+        to_date(to_char(sysdate,'dd/mm/yyyy'),'dd/mm/yyyy') - to_date(to_char(a.tglklaim,'dd/mm/yyyy'),'dd/mm/yyyy') AS "ProdKe",
+        a.pic AS "City",
+        a.cabang AS "CityID",
+        a.lgb_note AS "AnaylstRemarks",
+        a.sobname AS "AnalystDoctorRemaks",
+        a.col_desc AS "CauseOfLoss",
+        d.currency AS "Currency",
+        b.grossvalue AS "Country",
+        b.asm_share_value AS "CountryID",
+        c.SURVEYORNAME_1 AS "Conveyance",
+        c.adjusterpic_1 AS "District",
+        z.DistrictID AS "DistrictID",
+        z.ExGratiaNote AS "ExGratiaNote",
+        z.CPLValidDate AS "CPLValidDate",
+        z.DateReceived AS "DateReceived",
+        z.FlagReject AS "FlagReject",
+        x.Province AS "Province",
+        x.ProvinceID AS "ProvinceID",
+        z.POSISI AS "Email",
+        (SELECT COUNT(ID_UPDATE) 
+            FROM POOLDATA.GCNM_PROGRESS_CLAIM 
+            WHERE pnccaseid=a.noklaim
+            group by PNCCASEID) AS "DokumenLengkap"
+from pooldata.pega_dashboardpnc a,
+pooldata.t_claim_adjustment b,datapega.PC_ASM_FW_GCNMFW_WORK c, pooldata.currency d, 
+    (SELECT 
+            G.KETERANGAN as FlagReject,
+            I.STS_PROGRESS1 as DistrictID, 
+            H.STS_PROGRESS2 as ExGratiaNote, 
+            G.TGL_INPUT as CPLValidDate, 
+            G.NEXT_FOLLOWUP as DateReceived,
+            y.noklaim as CaseID,
+            j.posisi AS POSISI
+            FROM POOLDATA.GCNM_PROGRESS_CLAIM G,POOLDATA.GCNM_MST_PROGRESS H , POOLDATA.GCNM_MST_PROGRESS_KLAIM I, 
+            POOLDATA.GCNM_PROGRESS_POSISI_PNC j, pooldata.pega_dashboardpnc y
+            WHERE G.STATUS_PROGRESS1 = I.ID_PROGRESS
+        AND G.STATUS_PROGRESS2 = H.ID_MST
+        AND G.PNCCASEID = y.NOKLAIM 
+        and g.pnccaseid=j.caseid
+        and G.STATUS_PROGRESS2 not in ('2','24','60')
+        AND ID_UPDATE = (SELECT MAX(ID_UPDATE)FROM POOLDATA.GCNM_PROGRESS_CLAIM
+        WHERE PNCCASEID = y.NOKLAIM 
+        AND POSISIID = (SELECT MAX(POSISIID) FROM POOLDATA.GCNM_PROGRESS_CLAIM WHERE PNCCASEID = y.NOKLAIM ))) z,
+    (select sum(Province) as Province, sum(ProvinceID) as ProvinceID, caseid
+    from (
+        select tgl_input,next_followup, pnccaseid as caseid,
+            (case 
+                when (trunc(next_followup)&lt; (select 
+                                                (case
+                                                    when trunc(tgl_input) is not null
+                                                    then tgl_input
+                                                    else trunc(sysdate)
+                                                end) from pooldata.gcnm_progress_claim where pnccaseid=t.pnccaseid and id_update=t.id_update+1))
+                then 1 
+                else 0 
+            end) as Province,
+            (case 
+                when (trunc(next_followup)&gt;= (select 
+                                                (case
+                                                    when trunc(tgl_input) is not null
+                                                    then tgl_input
+                                                    else trunc(sysdate)
+                                                end) from pooldata.gcnm_progress_claim where pnccaseid=t.pnccaseid and id_update=t.id_update+1))
+                then 1 
+                else 0 
+            end) as ProvinceID 
+        from pooldata.gcnm_progress_claim t order by id_update) group by caseid) x
+where substr(b.claimid,20,27)=a.noklaim
+and substr(c.pzinskey,20,27)=a.noklaim
+and c.pxobjclass='ASM-FW-GCNMFW-Work-PNC'
+and z.CaseID=a.noklaim
+and b.currency=d.id
+and x.caseid=a.noklaim
+and a.stsklaim NOT IN ('1','2','3')
+and {ASIS:TipeBisnis.BUSINESSTYPE}</pyBrowseSQL>
+<pyRuleSetVersion>01-01-89</pyRuleSetVersion>
+<pyCircumstanceDefinition/>
+<pyCircumstanceType/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyStreamName/>
+<pyJavaStream/>
+<pxSaveDateTime>20201215T090206.843 GMT</pxSaveDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPROGRESSCLAIM #20201215T085500.388 GMT</pzDocumentKey>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceTemplate/>
+<pyDeleteSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pyDocumentTitle/>
+<pyOpenSQL/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260831T084421.307 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDescription/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAPROGRESSCLAIM</pxInsName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPROGRESSCLAIM #20200618T031007.373 GMT</pzOriginalInstanceKey>
+<pyHandlerFlow/>
+<pyCircumstanceVal/>
+<pxCommitDateTime>20210112T001551.000 GMT</pxCommitDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyWorkKey/>
+<pxOriginalCreateDateTime/>
+<pyRequestType>GetDataProgressClaim</pyRequestType>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyTemplate/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyUsage/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataProgressClaim</pxTabLabel>
+<pyWindowTitle/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportDateTime>20210112T001551.530 GMT</pxMoveImportDateTime>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAPROGRESSCLAIM</pxInsId>
+<pyRuleFormStatusTime>20260831T084421.214 GMT</pyRuleFormStatusTime>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateOperator/>
+<pyInterface/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPROGRESSCLAIM #20201215T085500.388 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPROGRESSCLAIM #20200618T031007.373 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

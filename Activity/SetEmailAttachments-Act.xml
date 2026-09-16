@@ -1,0 +1,1117 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>SetEmailAttachments</pyRuleName>
+<pyRuleSet>Pega-ProCom</pyRuleSet>
+<pyActivityName>SetEmailAttachments</pyActivityName>
+<pyCircumstanceDefinition/>
+<pyBaseRule>false</pyBaseRule>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedSaveDateTime/>
+<pyRuleEnds/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzInsKey>
+<pyNamespace/>
+<pxUpdateOperator>houlj</pxUpdateOperator>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxInstanceLockedBy/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyCircumstanceVal/>
+<pyCircumstanceDate/>
+<pxSaveDateTime>20180713T132052.426 GMT</pxSaveDateTime>
+<pyWorkKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyInterface/>
+<pyFormPost/>
+<pxTabLabel>SetEmailAttachments</pxTabLabel>
+<pxUpdateOpName>Jeff Houle</pxUpdateOpName>
+<pyTemplateDisplayText/>
+<pyRuleFormStatusTime>20260827T083944.665 GMT</pyRuleFormStatusTime>
+<pyAssociatedImage/>
+<pzIndexCount>40</pzIndexCount>
+<pyCircumstanceDateProp/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyMemo>BUG-346194 - deprecated</pyMemo>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pxSiblingCount/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyIsFromManageChangeLP/>
+<pyShowJavaWindowName>GeneratedJava20260827T083944.685 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOperator>houlj</pxOriginalCreateOperator>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyClassName>@baseclass</pyClassName>
+<pyTemplateInputBox/>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pxOriginalCreateOpName>Jeff Houle</pxOriginalCreateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pySpecialtyComponentData/>
+<pxUpdateSystemID>sls-envcam1</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyDocumentTitle/>
+<pyJavaClassName>_baseclass_setemailattachments_20180713_132052_426</pyJavaClassName>
+<pyDescription>DEPRECATED: The functionality included in this Activity was moved to an internal area of the Pega Platform. This Activity no longer needs to be run in order to include Work Attachments in outbound email correspondence.
+
+==================================
+Sends Email with all attachments of a referenced page</pyDescription>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleParamsStreamName/>
+<pyMethodStatus>Deprecated</pyMethodStatus>
+<pyJavaStream/>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabelOld>Sends Email with attachments specified in pyAttachmentCategories</pyLabelOld>
+<pxInstanceLockedDateTime/>
+<pxCommitDateTime>20191015T081610.000 GMT</pxCommitDateTime>
+<pyDeletedObject/>
+<pyJavaGenerateTime>20180110T223619.526 GMT</pyJavaGenerateTime>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;CurrentCategory DESCRIPTION= "current attachment category being sent" TYPE= "STRING" REQUIRED= "-1" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;ReferenceKey DESCRIPTION= "" TYPE= "STRING" REQUIRED= "-1" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyRuleSearchQuery/>
+<pyStatus/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20130919T002154.005 GMT</pzOriginalInstanceKey>
+<pyInputMayStart>true</pyInputMayStart>
+<pyRelativePath/>
+<pxInstanceLockedKey/>
+<pxInsName>@BASECLASS!SETEMAILATTACHMENTS</pxInsName>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pySPRuleSetName/>
+<pyWindowTitle/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pyStreamName/>
+<pyCircumstanceTemplate/>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pyUsage>DEPRECATED.
+
+This activity basically gathers all the parameters for email and passes them to send email function.
+
+This activity is similar to @baseclass.SendEmailNotification.  It has an additional parameter: ReferencePage.  Reference page should contain the name of a clipboardpage whose attachments (Data-WorkAttach-*) you want to send with the email.  This activity calls SendEmailNotificationWithAttachments pasing in the AttachmentPage name reference.</pyUsage>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180110T223819.331 GMT</pxMoveOriginalKey>
+<pxUpdateDateTime>20180713T132052.426 GMT</pxUpdateDateTime>
+<pyBaseRuleHolder>false</pyBaseRuleHolder>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pxMoveOriginalRuleSet>Pega-ProCom</pxMoveOriginalRuleSet>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzChecksum>-75990601</pzChecksum>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzDocumentKey>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateDateTime>20180713T132052.426 GMT</pxOriginalCreateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaFUAVersion/>
+<pxMoveImportDateTime>20130919T002154.005 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pxCreateDateTime>20180713T132052.426 GMT</pxCreateDateTime>
+<pxMoveOriginalRuleSetVersion>07-10-35</pxMoveOriginalRuleSetVersion>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pySelected>false</pySelected>
+<pyLabel>Sends Email with attachments specified in pyAttachmentCategories</pyLabel>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pxInsId>!SETEMAILATTACHMENTS</pxInsId>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pzStatus>false</pzStatus>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyLocalParameters>
+<pxAllChangeList REPEATINGTYPE="PropertyList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	44 lines</pxWarningDetails>
+<pxIsWarningJustified/>
+<pxWarningJustifiedTime/>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20180110T223619.587 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator/>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningCreatedTime>20180110T223619.588 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pyWarningJustifiedMessage/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxIsWarningJustified/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxWarningJustifiedTime/>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningDetails>(Rule-)pxDeprecatedRule	DEPRECATED.
+
+This activity basically gathers all the parameters for email and passes them to send email function.
+
+This activity is similar to @baseclass.SendEmailNotification.  It has an additional parameter: ReferencePage.  Reference page should contain the name of a clipboardpage whose attachments (Data-WorkAttach-*) you want to send with the email.  This activity calls SendEmailNotificationWithAttachments pasing in the AttachmentPage name reference.</pxWarningDetails>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningName>Deprecated rule</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified/>
+<pxWarningMessage>DEPRECATED.
+
+This activity basically gathers all the parameters for email and passes them to send email function.
+
+This activity is similar to @baseclass.SendEmailNotification.  It has an additional parameter: ReferencePage.  Reference page should contain the name of a clipboardpage whose attachments (Data-WorkAttach-*) you want to send with the email.  This activity calls SendEmailNotificationWithAttachments pasing in the AttachmentPage name reference.</pxWarningMessage>
+<pxWarningCreatedTime>20180110T223619.566 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pyWarningJustifiedMessage/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxWarningJustifiedOperator/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxIsWarningJustified/>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20180110T223619.601 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pxWarningJustifiedTime/>
+<pyWarningJustifiedMessage/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreatedTime>20180110T223619.587 GMT</pxWarningCreatedTime>
+<pxWarningName>Java step</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep	44 lines</pxWarningMessage>
+<pxWarningJustifiedOperator/>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	44 lines</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pxIsWarningJustified/>
+<pxWarningCreateOperator/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pyWarningJustifiedMessage/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxIsWarningJustified/>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxWarningJustifiedOperator/>
+<pxWarningCreatedTime>20180110T223619.588 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxWarningJustifiedTime/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pyWarningJustifiedMessage/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified/>
+<pxWarningJustifiedTime/>
+<pxWarningCreatedTime>20180110T223619.566 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningDetails>(Rule-)pxDeprecatedRule	DEPRECATED.
+
+This activity basically gathers all the parameters for email and passes them to send email function.
+
+This activity is similar to @baseclass.SendEmailNotification.  It has an additional parameter: ReferencePage.  Reference page should contain the name of a clipboardpage whose attachments (Data-WorkAttach-*) you want to send with the email.  This activity calls SendEmailNotificationWithAttachments pasing in the AttachmentPage name reference.</pxWarningDetails>
+<pyWarningJustifiedMessage/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningMessage>(Rule-)pxDeprecatedRule	DEPRECATED.
+
+This activity basically gathers all the parameters for email and passes them to send email function.
+
+This activity is similar to @baseclass.SendEmailNotification.  It has an additional parameter: ReferencePage.  Reference page should contain the name of a clipboardpage whose attachments (Data-WorkAttach-*) you want to send with the email.  This activity calls SendEmailNotificationWithAttachments pasing in the AttachmentPage name reference.</pxWarningMessage>
+<pxWarningJustifiedOperator/>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningName>Deprecated rule</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyWarningJustifiedMessage/>
+<pxIsWarningJustified/>
+<pxWarningJustifiedTime/>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningJustifiedOperator/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>houlj</pxWarningCreateOperator>
+<pxWarningCreatedTime>20180110T223619.601 GMT</pxWarningCreatedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXLINKEDREFFROM</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Link-Attachment</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxLinkedRefFrom</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>PXRESULTS</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxResults</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>Link-Attachment</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pyCategory</pyRuleName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYCATEGORY</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>-</pxRuleFamilyName>
+<pxRuleClassName>-</pxRuleClassName>
+<pyRuleName>-</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">30</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxResultCount</pyRuleName>
+<pxRuleFamilyName>PXRESULTCOUNT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">31</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pxRuleFamilyName>OBJ-SORT</pxRuleFamilyName>
+<pyRuleName>Obj-Sort</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">32</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>Page-Remove</pyRuleName>
+<pxRuleClassName/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pxRuleFamilyName>PAGE-REMOVE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">33</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleFamilyName>OBJ-LIST</pxRuleFamilyName>
+<pyRuleName>Obj-List</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pyMethodStatus>Deprecated</pyMethodStatus>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">34</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>Link-Attachment</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Link-Attachment</pyRuleName>
+<pxRuleFamilyName>LINK-ATTACHMENT</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">35</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyMethodStatus/>
+<pxRuleFamilyName>CODE-PEGA-LIST</pxRuleFamilyName>
+<pyRuleName>Code-Pega-List</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">36</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>DATA-EMAILATTACHMENTS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Data-EmailAttachments</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pyRuleName>Data-EmailAttachments</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">37</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">38</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxRuleFamilyName>PXCREATEDATETIME</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>pxCreateDateTime</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Link-Attachment</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">39</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>2</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+</pxMessageSummary>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamName>flowType</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+</rowdata>
+</pySystemParameters>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>Data-EmailAttachments</pyPagesAndClassesClass>
+<pxSubscript>1</pxSubscript>
+<pyPagesAndClassesPage>AttachmentPage</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>Attachments.pyAttachments</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pxSubscript>2</pxSubscript>
+<pyPagesAndClassesClass>Embed-EmailAttachment</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage>AttachmentLinks</pyPagesAndClassesPage>
+<pxSubscript>3</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>AttachmentLinksOpened</pyPagesAndClassesPage>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxSubscript>4</pxSubscript>
+</rowdata>
+</pyPagesAndClasses>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pyActivityRole/>
+</rowdata>
+</pyActivityRolesList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeClass/>
+<pyPrivilegeName/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyActivityPrivilegeList>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyParametersParamReq>-1</pyParametersParamReq>
+<pyParametersParamDesc>current attachment category being sent</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamName>CurrentCategory</pyParametersParamName>
+<pyParametersParamSize/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>-1</pyParametersParamReq>
+<pyParametersParamSize/>
+<pyParametersParamName>ReferenceKey</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliRule/>
+</rowdata>
+</pyParameters>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxPageName>AttachmentLinks</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>Data-EmailAttachments</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxPageName>AttachmentPage</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzIndexOwnerKey>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxPageName>AttachmentLinksOpened</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsJavaSource/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsActivityName>Obj-List</pyStepsActivityName>
+<pyStepsActivityNameUC>OBJ-LIST</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepsClassName>Code-Pega-List</pyStepsClassName>
+<pyOnException/>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyStepActivityDescription/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxSubscript>1</pxSubscript>
+<pyStepsObjectName>AttachmentLinks</pyStepsObjectName>
+<pyStepsPreCondition/>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsDescription/>
+<pyStepsBlockName/>
+<pyTemplateInputBox/>
+<pyPropRef/>
+<pyExpanded>true</pyExpanded>
+<pxStepDefaultDescription>Obj-List</pxStepDefaultDescription>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<SelectFrom>Param.ReferenceKey</SelectFrom>
+<SelectionProperty>.pxLinkedRefFrom</SelectionProperty>
+<pxSubscript>1</pxSubscript>
+<Like/>
+<SelectTo>Param.ReferenceKey</SelectTo>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<SelectionProperty>.pyCategory</SelectionProperty>
+<SelectFrom>param.CurrentCategory</SelectFrom>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<Like/>
+<pxSubscript>2</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<SelectTo>param.CurrentCategory</SelectTo>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhen>AttachmentLinks.pxResultCount&gt;0</pyStepsTransParamsWhen>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pxCreateDateTime>20260827T083944.656 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenTrue>5</pyStepsTransParamsWhenTrue>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pyForEachProperty/>
+<pxCreateDateTime>20180110T223257.102 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateDateTime>20180110T223257.103 GMT</pxCreateDateTime>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20260827T083944.653 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<RuleObjList/>
+<LightweightResults/>
+<ObjClass>Link-Attachment</ObjClass>
+<PageName>AttachmentLinks</PageName>
+<MaxRecords/>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsActivityNameUC>OBJ-SORT</pyStepsActivityNameUC>
+<pyStepsObjectName>AttachmentLinks</pyStepsObjectName>
+<pyStepsPreCondition/>
+<pyStepsActivityName>Obj-Sort</pyStepsActivityName>
+<pyStepsTransition/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsDescription/>
+<pyTemplateInputBox/>
+<pyStepsBlockName/>
+<pyStepsClassName>Code-Pega-List</pyStepsClassName>
+<pyStepActivityDescription/>
+<pxStepDefaultDescription>Obj-Sort</pxStepDefaultDescription>
+<pyStepsJavaSource/>
+<pxSubscript>2</pxSubscript>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyOnException/>
+<pyPropRef/>
+<pyExpanded>true</pyExpanded>
+<pzStepExpanded/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalse/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260827T083944.653 GMT</pxCreateDateTime>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhen/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<Descending>-1</Descending>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<SortProperty>.pxCreateDateTime</SortProperty>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PageListProperty>.pxResults</PageListProperty>
+<Class>Link-Attachment</Class>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20260827T083944.656 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTrue/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyForEachProperty/>
+<pxCreateDateTime>20180110T223257.102 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pxCreateDateTime>20180110T223257.103 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsJavaSource>Database db_inf = tools.getDatabase();
+String strClass = null;
+boolean bDecode = false,
+        bXML = false;
+ 
+ClipboardPage page_Attachment = null,
+              page_EmbedAttachment = null,
+              page_AttachmentPage = tools.findPage("AttachmentPage"),
+              page_OpenAttachments = tools.findPage("AttachmentLinksOpened");
+ClipboardProperty prop_pxResults = page_OpenAttachments.getProperty("pxResults"),
+                  prop_pyAttachment = null;
+
+try {
+
+   page_Attachment = db_inf.open(myStepPage.getString(".pxLinkedRefTo"),true);
+
+   if ( page_Attachment != null ) {
+      prop_pxResults.add(page_Attachment);
+
+      strClass = page_Attachment.getString("pxObjClass");
+
+      prop_pyAttachment = page_AttachmentPage.getProperty(".pyAttachments(&lt;append&gt;)");
+      page_EmbedAttachment = prop_pyAttachment.getPageValue();
+
+
+      bDecode= true;
+      bXML=false;
+
+      String strfilename = null;
+      strfilename = page_Attachment.getString(".pxAttachName");
+      strfilename =  (new java.io.File(strfilename)).getName();
+
+      page_EmbedAttachment.putString(".pyReference","AttachmentLinksOpened.pxResults("+prop_pyAttachment.indexOf() +").pyAttachStream");
+      page_EmbedAttachment.putString(".pyName",strfilename );
+      page_EmbedAttachment.putString(".pyDecode","true"); 
+      page_EmbedAttachment.putString(".pyRemoveXML","false");          	
+
+    }
+
+} catch (DatabaseException dbe) {
+
+  tools.getPrimaryPage().addMessage( dbe.getMessage() );
+
+}
+</pyStepsJavaSource>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepPageReference>RH_1.pySteps(3)</pyStepPageReference>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsDescription/>
+<pzStepExpanded/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyExpanded>true</pyExpanded>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsTransition/>
+<pyTemplateInputBox/>
+<pyStepActivityDescription/>
+<pyStepsObjectName>AttachmentLinks.pxResults(1)</pyStepsObjectName>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxSubscript>3</pxSubscript>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsPreCondition/>
+<pyOnException/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateDateTime>20180110T223257.102 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyStepsRepeatDefStart/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateDateTime>20180110T223257.103 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20260827T083944.656 GMT</pxCreateDateTime>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue/>
+<pyStepsTransParamsWhen/>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder/>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pxCreateDateTime>20260827T083944.653 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenTruePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzStepExpanded/>
+<pyStepPageReference>RH_1.pySteps(4)</pyStepPageReference>
+<pyPropRef/>
+<pyStepsJavaSource/>
+<pyStepsPreCondition/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsClassName>Code-Pega-List</pyStepsClassName>
+<pxStepDefaultDescription>Page-Remove</pxStepDefaultDescription>
+<pyTemplateInputBox/>
+<pyStepsActivityNameUC>PAGE-REMOVE</pyStepsActivityNameUC>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsObjectName>AttachmentLinks</pyStepsObjectName>
+<pyStepsBlockName/>
+<pyStepsTransition/>
+<pyStepsActivityName>Page-Remove</pyStepsActivityName>
+<pyOnException/>
+<pxSubscript>4</pxSubscript>
+<pyExpanded>true</pyExpanded>
+<pyStepsDescription/>
+<pyStepActivityDescription/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachProperty/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateDateTime>20180110T223257.102 GMT</pxCreateDateTime>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sls-envcam1</pxCreateSystemID>
+<pxCreateDateTime>20180110T223257.103 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<Page/>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateDateTime>20260827T083944.653 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateDateTime>20260827T083944.656 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateOpName>FRANCESCO STEFANO</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOperator>FRANCESCOSTEFANO89@GMAIL.COM</pxCreateOperator>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+</pySteps>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS SETEMAILATTACHMENTS #20180713T132052.426 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyBranchOut>false</pyBranchOut>
+<pyRun>true</pyRun>
+<pyPreview>true</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyRuleData>true</pyRuleData>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>true</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckIn>false</pyCheckIn>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+</pagedata>

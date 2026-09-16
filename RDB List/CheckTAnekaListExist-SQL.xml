@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyShowJavaWindowName>GeneratedJava20260721T040750.867 GMT</pyShowJavaWindowName>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyRuleFormStatusTime>20260721T040750.840 GMT</pyRuleFormStatusTime>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pyHistoryObject/>
+<pyCircumstanceType/>
+<pxInstanceLockedRuleSet/>
+<pyWindowTitle/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM CheckTAnekaListExist</pyRuleName>
+<pxMoveImportDateTime>20200813T163032.503 GMT</pxMoveImportDateTime>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pxInstanceLockedBy/>
+<pyRelativePath/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceDate/>
+<pyInterface/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyLabelOld>CheckTAnekaListExist</pyLabelOld>
+<pyJavaStream/>
+<pxSaveDateTime>20200813T062632.709 GMT</pxSaveDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionPatch>68</pzRuleSetVersionPatch>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplate/>
+<pyWorkKey/>
+<pyRuleStarts/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKTANEKALISTEXIST</pxInsName>
+<pyFormPost/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDocumentTitle/>
+<pyRWAccess>ASM</pyRWAccess>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxHostId>jboss2163</pxHostId>
+<pyRuleSetVersion>01-02-68</pyRuleSetVersion>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!CHECKTANEKALISTEXIST</pxInsId>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM CheckTAnekaListExist</pxTabLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKTANEKALISTEXIST #20200813T062527.497 GMT</pzInsKey>
+<pxCommitDateTime>20200813T163032.000 GMT</pxCommitDateTime>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyCircumstanceVal/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleSet>GISFW</pyRuleSet>
+<pySpecialtyComponentData/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyLabel>CheckTAnekaListExist</pyLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyStatus/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDeletedObject/>
+<pyRuleEnds/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKTANEKALISTEXIST #20200813T062527.497 GMT</pzOriginalInstanceKey>
+<pyHandlerFlow/>
+<pyUsage/>
+<pyDescription/>
+<pyValueChanged>false</pyValueChanged>
+<pySaveSQL/>
+<pyCircumstanceTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKTANEKALISTEXIST #20200813T062527.497 GMT</pzDocumentKey>
+<pyOpenSQL/>
+<pzChecksum>782230732</pzChecksum>
+<pxUpdateDateTime>20200813T062632.686 GMT</pxUpdateDateTime>
+<pyMemo>ganti jadi t_anekalist</pyMemo>
+<pyBrowseSQL>/* Formatted on 05/Aug/20 1:36:21 AM (QP5 v5.215.12089.38647) */
+SELECT COUNT (1) AS "HASIL1"
+  FROM POOLDATA.t_anekalist
+ WHERE IDPEGA = {InputData.CARI1}</pyBrowseSQL>
+<pyIsFromManageChangeLP/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyDeleteSQL/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20200813T062527.497 GMT</pxCreateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDefinition/>
+<pyTemplateInputBox/>
+<pyRequestType>CheckTAnekaListExist</pyRequestType>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-68 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!CHECKTANEKALISTEXIST #20200813T062527.497 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

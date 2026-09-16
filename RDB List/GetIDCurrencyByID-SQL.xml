@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20210119T065908.246 GMT</pxCreateDateTime>
+<pyRuleSetVersion>01-01-90</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!GETIDCURRENCYBYID #20210119T065908.246 GMT</pzDocumentKey>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyRuleName>ASM-FW-GISFW-Int-CURRENCY ASM GetIDCurrencyByID</pyRuleName>
+<pxSiblingCount/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxOriginalCreateDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxMoveImportDateTime>20210216T112707.307 GMT</pxMoveImportDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveFromSystem/>
+<pyCircumstanceVal/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!GETIDCURRENCYBYNOTE #20190325T091119.411 GMT</pzOriginalInstanceKey>
+<pxOriginalCreateOpName/>
+<pyWorkKey/>
+<pxInsId>ASM-FW-GISFW-INT-CURRENCY!ASM!GETIDCURRENCYBYID</pxInsId>
+<pxSaveDateTime>20210119T071534.931 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pyBrowseSQL>select currency AS "Note" from pooldata.currency where id={TempCurrency.Note}</pyBrowseSQL>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pxHostId>jboss2156</pxHostId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRelativePath/>
+<pyRuleStarts/>
+<pyCircumstanceDateProp/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxInstanceLockedRuleSet/>
+<pyTemplate/>
+<pyRuleParamsStreamName/>
+<pyClassName>ASM-FW-GISFW-Int-CURRENCY</pyClassName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyShowJavaWindowName>GeneratedJava20260831T065928.049 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHandlerFlow/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTaskID/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleEnds/>
+<pyLabelOld>Get ID Currency By ID</pyLabelOld>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzRuleSetVersionPatch>90</pzRuleSetVersionPatch>
+<pyRequestType>GetIDCurrencyByID</pyRequestType>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyValueChanged>false</pyValueChanged>
+<pyJavaStream/>
+<pxInsName>ASM-FW-GISFW-INT-CURRENCY!ASM!GETIDCURRENCYBYID</pxInsName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleFormStatusTime>20260831T065928.029 GMT</pyRuleFormStatusTime>
+<pyTemplateInputBox/>
+<pyCircumstanceDefinition/>
+<pyWindowTitle/>
+<pyDocumentTitle/>
+<pyCircumstanceType/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedDateTime/>
+<pxCommitDateTime>20210216T112710.000 GMT</pxCommitDateTime>
+<pyUsage/>
+<pxOriginalCreateOperator/>
+<pyStreamName/>
+<pyStatus/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!GETIDCURRENCYBYID #20210119T065908.246 GMT</pzInsKey>
+<pxTabLabel>ASM-FW-GISFW-Int-CURRENCY ASM GetIDCurrencyByID</pxTabLabel>
+<pyOpenSQL/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySpecialtyComponentData/>
+<pyCircumstanceProp/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySaveSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedKey/>
+<pzChecksum>100466064</pzChecksum>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyMemo>done</pyMemo>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateDateTime>20210119T071534.909 GMT</pxUpdateDateTime>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyIsFromManageChangeLP/>
+<pyInterface/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxInstanceLockedBy/>
+<pyMethodStatus/>
+<pyFormPost/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDate/>
+<pyLabel>Get ID Currency By ID</pyLabel>
+<pyDeleteSQL/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!GETIDCURRENCYBYID #20210119T065908.246 GMT</pzInsKey>
+<pyLabel>01-01-90 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

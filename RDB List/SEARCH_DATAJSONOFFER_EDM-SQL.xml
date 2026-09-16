@@ -1,0 +1,201 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20260711T013430.538 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pxInstanceLockedDateTime/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleName>ASM-FW-GISFW-Int-GET_DATA_DETAIL_EDM ASM SEARCH_DATAJSONOFFER_EDM</pyRuleName>
+<pxUpdateOperator>RUTHDIANPUTRI</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySPRuleSetName>RUTHDIANPUTRI@</pySPRuleSetName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20260711T013430.538 GMT</pzDocumentKey>
+<pxCreateOpName>RUTH DIAN PUTRI</pxCreateOpName>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceVal/>
+<pyInterface/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20260711T013430.538 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyCircumstanceDate/>
+<pyUsage/>
+<pyMethodStatus/>
+<pyClassName>ASM-FW-GISFW-Int-GET_DATA_DETAIL_EDM</pyClassName>
+<pxOriginalCreateOpName/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDefinition/>
+<pxUpdateDateTime>20260711T013506.829 GMT</pxUpdateDateTime>
+<pyDeletedObject/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedRuleSetVersion/>
+<pyRelativePath/>
+<pyWindowTitle/>
+<pzChecksum>1363843566</pzChecksum>
+<pyDeleteSQL/>
+<pxCommitDateTime>20260712T145756.000 GMT</pxCommitDateTime>
+<pyRuleSetVersion>01-05-80</pyRuleSetVersion>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyMemo>update query untuk get data json</pyMemo>
+<pyHandlerFlow/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxMoveImportDateTime>20260712T145756.106 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20171115T042739.959 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatusTime>20260901T040012.905 GMT</pyRuleFormStatusTime>
+<pyLabel>SEARCH_DATAJSONOFFER_EDM</pyLabel>
+<pyIsFromManageChangeLP/>
+<pyDescription/>
+<pxInsName>ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM!ASM!SEARCH_DATAJSONOFFER_EDM</pxInsName>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyRuleParamsStreamName/>
+<pxCreateOperator>RUTHDIANPUTRI</pxCreateOperator>
+<pyRuleStarts/>
+<pyTemplate/>
+<pyJavaStream/>
+<pxSaveDateTime>20260711T013506.871 GMT</pxSaveDateTime>
+<pyDocumentTitle/>
+<pxOriginalCreateDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateOpName>RUTH DIAN PUTRI</pxUpdateOpName>
+<pxInstanceLockedRuleSet/>
+<pxTabLabel>ASM-FW-GISFW-Int-GET_DATA_DETAIL_EDM ASM SEARCH_DATAJSONOFFER_EDM</pxTabLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedKey/>
+<pzRuleSetVersionPatch>80</pzRuleSetVersionPatch>
+<pxHostId>jboss10372</pxHostId>
+<pyStatus/>
+<pxInsId>ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM!ASM!SEARCH_DATAJSONOFFER_EDM</pxInsId>
+<pyWorkKey/>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pyShowJavaWindowName>GeneratedJava20260901T040012.930 GMT</pyShowJavaWindowName>
+<pyCircumstanceDateProp/>
+<pyRequestType>SEARCH_DATAJSONOFFER_EDM</pyRequestType>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>select jsondata as DATAJSON 
+from pooldata.JSON_OFFER a
+where (a.COVERNO = {InputDataEdm.POLICYNO} OR a.POLICYDECLARATIONNO = {InputDataEdm.POLICYNO})
+and a.PRODKE = (select MAX(to_number(PRODKE)) from json_offer b 
+                where (b.COVERNO = a.COVERNO OR b.POLICYDECLARATIONNO = a.POLICYDECLARATIONNO))</pyBrowseSQL>
+<pyCircumstanceType/>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pyDeleteMemo>pooldata</pyDeleteMemo>
+<pyLabelOld>SEARCH_DATAJSONOFFER_EDM</pyLabelOld>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyHistoryObject>false</pyHistoryObject>
+<pyFormPost/>
+<pxSiblingCount/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySaveSQL/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20260711T013430.538 GMT</pzInsKey>
+<pyLabel>01-05-80 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20171115T042739.959 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-54 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20171102T113209.774 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-53 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyLabel>01-01-52 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-GET_DATA_DETAIL_EDM ASM!SEARCH_DATAJSONOFFER_EDM #20170809T080427.042 GMT</pzInsKey>
+<pxListSubscript>4</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

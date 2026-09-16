@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOperator/>
+<pyRuleParamsStreamName/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pyInterface/>
+<pyShowJavaWindowName>GeneratedJava20260902T014259.185 GMT</pyShowJavaWindowName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDocumentTitle/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!SAVEREMARKSRECOMMENDATION_SQL</pxInsName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStreamName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SAVEREMARKSRECOMMENDATION_SQL #20201218T024029.375 GMT</pzInsKey>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!SAVEREMARKSRECOMMENDATION_SQL</pxInsId>
+<pxCommitDateTime>20210112T001552.000 GMT</pxCommitDateTime>
+<pyIsFromManageChangeLP/>
+<pyStatus/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyOpenSQL/>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pyWindowTitle/>
+<pyHandlerFlow/>
+<pxInstanceLockedRuleSet/>
+<pyMemo>done</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SAVEREMARKSRECOMMENDATION_SQL #20201218T024029.375 GMT</pzDocumentKey>
+<pyDescription/>
+<pyDeleteMemo>menambahkan perhitungan</pyDeleteMemo>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyRelativePath/>
+<pyRuleEnds/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySpecialtyComponentData/>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>SaveRemarksRecommendation_sql</pyLabel>
+<pyDeletedObject/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCheckInRuleSet/>
+<pxHostId>jboss215</pxHostId>
+<pyBrowseSQL>update POOLDATA.T_CLAIM_PNC
+set REMARKRECOMENDATION={TEMPSaveRemark.City}
+where claimno = {TEMPSaveRemark.CaseID}</pyBrowseSQL>
+<pyFormPost/>
+<pxOriginalCreateDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pzChecksum>281095681</pzChecksum>
+<pxSaveDateTime>20201218T091857.936 GMT</pxSaveDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSTUDY #20201217T110613.863 GMT</pzOriginalInstanceKey>
+<pyTemplateInputBox/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteSQL/>
+<pyRuleFormStatusTime>20260902T014259.161 GMT</pyRuleFormStatusTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxSiblingCount/>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM SaveRemarksRecommendation_sql</pxTabLabel>
+<pyRequestType>SaveRemarksRecommendation_sql</pyRequestType>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTempText>saved</pyTempText>
+<pyRuleStarts/>
+<pzRuleSetVersionPatch>89</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM SaveRemarksRecommendation_sql</pyRuleName>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxUpdateDateTime>20201218T091857.898 GMT</pxUpdateDateTime>
+<pyCircumstanceDateProp/>
+<pySaveSQL/>
+<pxInstanceLockedDateTime/>
+<pxMoveImportDateTime>20210112T001551.817 GMT</pxMoveImportDateTime>
+<pyRuleSetVersion>01-01-89</pyRuleSetVersion>
+<pyCircumstanceVal/>
+<pyMethodStatus/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyWorkKey/>
+<pyCircumstanceType/>
+<pyTemplate/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabelOld>SaveRemarksRecommendation_sql</pyLabelOld>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateDateTime>20201218T024029.375 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyUsage/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!SAVEREMARKSRECOMMENDATION_SQL #20201218T024029.375 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

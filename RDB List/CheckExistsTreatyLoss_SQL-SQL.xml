@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM CheckExistsTreatyLoss_SQL</pyRuleName>
+<pxUpdateSystemID>pegasimaspenjaminanprod</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pxUpdateDateTime>20260110T152608.250 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxMoveImportOperName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUsage/>
+<pyRuleFormStatusTime>20260904T030027.839 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pxCreateDateTime>20260110T152503.578 GMT</pxCreateDateTime>
+<pxHostId>jboss101252</pxHostId>
+<pyOpenSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyCircumstanceVal/>
+<pyCircumstanceDateProp/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!CHECKEXISTSTREATYLOSS_SQL</pxInsName>
+<pyShowJavaWindowName>GeneratedJava20260904T030027.861 GMT</pyShowJavaWindowName>
+<pyFormPost/>
+<pxSaveDateTime>20260110T152608.260 GMT</pxSaveDateTime>
+<pyMethodStatus/>
+<pyCircumstanceProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKEXISTSTREATYLOSS_SQL #20260110T152503.578 GMT</pzInsKey>
+<pyTemplate/>
+<pySPRuleSetName/>
+<pzIsPrivateCheckOut/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!CHECKEXISTSTREATYLOSS_SQL</pxInsId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyRuleParamsStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKEXISTSTREATYLOSS_SQL #20260110T152503.578 GMT</pzDocumentKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOpName>JONNY</pxUpdateOpName>
+<pyWindowTitle/>
+<pyBrowseSQL>BEGIN
+     POOLDATA.PKG_KONVERSI_JSONKLAIM.Proteksi_PNC_TBI_Kasir ( {TempTransferKasir.CountryID}, {TempTransferKasir.ErrorNotesAkseptasi out} );
+END;</pyBrowseSQL>
+<pxUpdateOperator>jonnywong@sinarmas.co.id</pxUpdateOperator>
+<pyCircumstanceType/>
+<pyDeleteSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyStatus/>
+<pxMoveFromSystem/>
+<pzChecksum>815338930</pzChecksum>
+<pyDescription/>
+<pyHistoryObject/>
+<pxMoveImportOperId/>
+<pyRequestType>CheckExistsTreatyLoss_SQL</pyRequestType>
+<pyHandlerFlow/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM CheckExistsTreatyLoss_SQL</pxTabLabel>
+<pxMoveImportDateTime/>
+<pySaveSQL/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateOperator>jonnywong@sinarmas.co.id</pxCreateOperator>
+<pyCircumstanceDate/>
+<pyTemplateInputBox/>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pyDeletedObject/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pegasimaspenjaminanprod</pxCreateSystemID>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCommitDateTime>20260110T152608.000 GMT</pxCommitDateTime>
+<pyLabel>CheckExistsTreatyLoss_SQL</pyLabel>
+<pyCircumstanceTemplate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKEXISTSTREATYLOSS_SQL #20260110T152503.578 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>JONNY</pxCreateOpName>
+<pyStreamName/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!CHECKEXISTSTREATYLOSS_SQL #20260110T152503.578 GMT</pzInsKey>
+<pyLabel>01-02-08 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyDelete>true</pyDelete>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportDateTime>20240818T101840.562 GMT</pxMoveImportDateTime>
+<pyShowJavaWindowName>GeneratedJava20260827T085033.740 GMT</pyShowJavaWindowName>
+<pyCircumstanceDefinition/>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-04-77</pyRuleSetVersion>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOpName>FRANSISCO JUNIUS</pxUpdateOpName>
+<pyDeletedObject/>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pyFormPost/>
+<pyRelativePath/>
+<pyWorkKey/>
+<pzChecksum>-544892785</pzChecksum>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveFromSystem/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyTemplate/>
+<pyUsage/>
+<pxCommitDateTime>20240818T101841.000 GMT</pxCommitDateTime>
+<pyWindowTitle/>
+<pyCircumstanceVal/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceProp/>
+<pyDescription/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleParamsStreamName/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxSaveDateTime>20240805T013728.469 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedKey/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxInstanceLockedBy/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedRuleSet/>
+<pyLabelOld>CheckDataPersonPA_TRAVEL</pyLabelOld>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPERSONPA_TRAVEL #20240805T013520.456 GMT</pzInsKey>
+<pxUpdateOperator>FRANSISCOJUNIUSA</pxUpdateOperator>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM CheckDataPersonPA_TRAVEL</pxTabLabel>
+<pyStreamName/>
+<pyRWAccess>ASM</pyRWAccess>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pyMethodStatus/>
+<pyTemplateInputBox/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPERSONPA_TRAVEL #20240805T013520.456 GMT</pzDocumentKey>
+<pyHandlerFlow/>
+<pxHostId>jboss10402</pxHostId>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPERSONPA_TRAVEL #20240805T013520.456 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatusTime>20260827T085033.715 GMT</pyRuleFormStatusTime>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKDATAPERSONPA_TRAVEL</pxInsId>
+<pxCreateDateTime>20240805T013520.456 GMT</pxCreateDateTime>
+<pxCreateOperator>FRANSISCOJUNIUSA</pxCreateOperator>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleEnds/>
+<pySaveSQL/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKDATAPERSONPA_TRAVEL</pxInsName>
+<pyMemo>ok</pyMemo>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyOpenSQL/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyHistoryObject/>
+<pyCircumstanceType/>
+<pyJavaStream/>
+<pyCircumstanceDateProp/>
+<pyInterface/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBrowseSQL>select CheckDataPerson_PA_Travel({InputCheckOutgo.CARI1}) as "ResultsOutgo.HASIL1" from dual</pyBrowseSQL>
+<pyLabel>CheckDataPersonPA_TRAVEL</pyLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRequestType>CheckDataPersonPA_TRAVEL</pyRequestType>
+<pyDeleteSQL/>
+<pxUpdateDateTime>20240805T013728.461 GMT</pxUpdateDateTime>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM CheckDataPersonPA_TRAVEL</pyRuleName>
+<pxInstanceLockedDateTime/>
+<pyRuleStarts/>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKDATAPERSONPA_TRAVEL #20240805T013520.456 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-04-77 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

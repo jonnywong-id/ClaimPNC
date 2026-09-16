@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySaveSQL/>
+<pyInterface/>
+<pyCircumstanceType/>
+<pxCommitDateTime>20200813T090238.000 GMT</pxCommitDateTime>
+<pxSaveDateTime>20200507T073257.201 GMT</pxSaveDateTime>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyLabel>Get Sum Business Dashboard Produktivitas</pyLabel>
+<pyCircumstanceDate/>
+<pxOriginalCreateOperator/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSetVersion>01-01-53</pyRuleSetVersion>
+<pxInstanceLockedKey/>
+<pyDeleteSQL/>
+<pyRequestType>GetSumBusinessDashboardProduktivitas_SQL</pyRequestType>
+<pzChecksum>276852143</pzChecksum>
+<pyFormPost/>
+<pyWorkKey/>
+<pyUsage/>
+<pxInstanceLockedRuleSet/>
+<pyRuleEnds/>
+<pxUpdateDateTime>20200507T073257.167 GMT</pxUpdateDateTime>
+<pyDocumentTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceTemplate/>
+<pyMemo>select COB where total nilai kolom != 0</pyMemo>
+<pyStreamName/>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETSUMBUSINESSDASHBOARDPRODUKTIVITAS_SQL</pxInsName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETSUMBUSINESSDASHBOARDPRODUKTIVITAS_SQL #20200424T135322.361 GMT</pzInsKey>
+<pyDeletedObject/>
+<pxMoveImportDateTime>20200813T090238.360 GMT</pxMoveImportDateTime>
+<pyOpenSQL/>
+<pyMethodStatus/>
+<pxMoveFromSystem/>
+<pxSiblingCount/>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyShowJavaWindowName>GeneratedJava20260831T093954.702 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionPatch>53</pzRuleSetVersionPatch>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateOpName>YENI YENI</pxUpdateOpName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETSUMBUSINESSDASHBOARDPRODUKTIVITAS_SQL #20200424T135322.361 GMT</pzDocumentKey>
+<pyJavaStream/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETBISNISGROUPDASHBOARDOS #20200424T095143.915 GMT</pzOriginalInstanceKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplateInputBox/>
+<pyCircumstanceVal/>
+<pxInstanceLockedDateTime/>
+<pyRelativePath/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleStarts/>
+<pxOriginalCreateSystemID/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateDateTime/>
+<pxUpdateOperator>YENIHULU2</pxUpdateOperator>
+<pyStatus/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHandlerFlow/>
+<pyTemplate/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyBrowseSQL>select z.* from (
+    SELECT lgb_note AS "ACCUMCODE", 
+       COUNT (case when {ASIS:TempLaporan.LokasiSurveyor} then 1 else null end ) AS "BRANCHNAME",
+        COUNT (case when {ASIS:TempLaporan.NamaSurveyor} then 1 else null end ) AS "BUSINESSCODE",
+        COUNT (case when stsklaim = '1' and {ASIS:TempLaporan.LokasiSurveyor} then 1 else null end ) AS "BUSINESSNAME",
+        COUNT (case when stsklaim = '1' and {ASIS:TempLaporan.NamaSurveyor} then 1 else null end ) AS "CLIENTID",
+        COUNT (case when stsklaim = '3' and {ASIS:TempLaporan.LokasiSurveyor} then 1 else null end ) AS "EDMNO",
+        COUNT (case when stsklaim = '3' and {ASIS:TempLaporan.NamaSurveyor} then 1 else null end ) AS "FLAGEDMBATAL",
+        COUNT (case when stsklaim NOT IN ('1', '2', '3') and {ASIS:TempLaporan.LokasiSurveyor} then 1 else null end ) AS "FOLLOWEDPOLICY",
+        COUNT (case when stsklaim NOT IN ('1', '2', '3') and {ASIS:TempLaporan.NamaSurveyor} then 1 else null end ) AS "IDPEGA"
+    FROM PEGA_DASHBOARDPNC
+   WHERE  pic IS NOT NULL 
+        {ASIS:TempLaporan.ClaimNo}
+GROUP BY lgb_note
+ORDER BY LGB_NOTE ASC
+) z where (BRANCHNAME + BUSINESSCODE + BUSINESSNAME + CLIENTID + EDMNO + FLAGEDMBATAL + FOLLOWEDPOLICY + IDPEGA) != 0</pyBrowseSQL>
+<pxCreateDateTime>20200424T135322.361 GMT</pxCreateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxHostId>jboss2145</pxHostId>
+<pxCreateOperator>YENIHULU2</pxCreateOperator>
+<pxInstanceLockedBy/>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetSumBusinessDashboardProduktivitas_SQL</pyRuleName>
+<pyLabelOld>Get Sum Business Dashboard Produktivitas</pyLabelOld>
+<pyDescription/>
+<pyRuleParamsStreamName/>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETSUMBUSINESSDASHBOARDPRODUKTIVITAS_SQL</pxInsId>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCreateOpName>YENI YENI</pxCreateOpName>
+<pyCircumstanceProp/>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatusTime>20260831T093954.672 GMT</pyRuleFormStatusTime>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxOriginalCreateOpName/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetSumBusinessDashboardProduktivitas_SQL</pxTabLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pyBaseRule>false</pyBaseRule>
+<pyWindowTitle/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETSUMBUSINESSDASHBOARDPRODUKTIVITAS_SQL #20200424T135322.361 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateDateTime>20170330T043026.972 GMT</pxCreateDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRequestType>UpdateLstDocType</pyRequestType>
+<pyTemplate/>
+<pyWorkKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySaveSQL/>
+<pyTempText/>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyBrowseSQL>DECLARE 
+  IDPega VARCHAR2(32767);
+  Datapega CLOB;
+
+BEGIN 
+  IDPega := {InputData.ID};
+  DBMS_LOB.CREATETEMPORARY(Datapega, true);
+  Datapega :=  {InputData.OLD_ID};
+  POOLDATA.PEGA_LST_DOC_TYPE( Datapega, IDPega , {OutputData.USER_EDIT out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxSaveDateTime>20170330T043148.996 GMT</pxSaveDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOpName>Willy Tandra</pxUpdateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDeleteSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pyRuleSetVersion>01-01-01</pyRuleSetVersion>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyValueChanged>false</pyValueChanged>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DOC_TYPE!GCNM!UPDATELSTDOCTYPE</pxInsName>
+<pxInstanceLockedRuleSet/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-CNMFW-INT-V_LST_DOC_TYPE CNM!UPDATELSTDOCTYPE #20170330T040021.445 GMT</pzOriginalInstanceKey>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE</pyClassName>
+<pxInstanceLockedBy/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDefinition/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRelativePath/>
+<pxMoveOriginalRuleSet>CNMFWInt</pxMoveOriginalRuleSet>
+<pxSiblingCount/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyCircumstanceType/>
+<pyInterface/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE GCNM UpdateLstDocType</pxTabLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveFromSystem/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleParamsStreamName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportDateTime>20191231T032634.045 GMT</pxMoveImportDateTime>
+<pxCreateOpName>Willy Tandra</pxCreateOpName>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySPRuleSetName/>
+<pyLabel>UpdateLstDocType</pyLabel>
+<pyDeletedObject/>
+<pyOpenSQL/>
+<pyUsage/>
+<pzChecksum>-1102175445</pzChecksum>
+<pyShowJavaWindowName>GeneratedJava20260826T014545.854 GMT</pyShowJavaWindowName>
+<pxUpdateDateTime>20170330T043148.989 GMT</pxUpdateDateTime>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DOC_TYPE!GCNM!UPDATELSTDOCTYPE</pxInsId>
+<pyHandlerFlow/>
+<pyMemo>Done Insert Update</pyMemo>
+<pyLabelOld>UpdateLstDocType</pyLabelOld>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStreamName/>
+<pyJavaStream/>
+<pxHostId>jboss2058</pxHostId>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateDateTime/>
+<pyWindowTitle/>
+<pyCircumstanceDate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TYPE GCNM!UPDATELSTDOCTYPE #20170330T043026.972 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TYPE GCNM!UPDATELSTDOCTYPE #20170330T043026.972 GMT</pzDocumentKey>
+<pyRuleEnds/>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-CNMFW-INT-V_LST_DOC_TYPE CNM!UPDATELSTDOCTYPE #20170324T042334.784 GMT</pxMoveOriginalKey>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatusTime>20260826T014545.777 GMT</pyRuleFormStatusTime>
+<pxUpdateOperator>willy_tandra@sinarmas.co.id</pxUpdateOperator>
+<pyRuleStarts/>
+<pyIsFromManageChangeLP/>
+<pxMoveOriginalRuleSetVersion>01-01-01</pxMoveOriginalRuleSetVersion>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedKey/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyDescription/>
+<pyFormPost/>
+<pyStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE GCNM UpdateLstDocType</pyRuleName>
+<pyBaseRule>false</pyBaseRule>
+<pxCreateOperator>willy_tandra@sinarmas.co.id</pxCreateOperator>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-01 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TYPE GCNM!UPDATELSTDOCTYPE #20170330T043026.972 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+</pagedata>

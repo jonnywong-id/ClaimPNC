@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeletedObject/>
+<pzRuleSetVersionPatch>93</pzRuleSetVersionPatch>
+<pyWorkKey/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-ASMD ASM!BROWSEDATAREFUND #20230530T040929.633 GMT</pzOriginalInstanceKey>
+<pxInsName>ASM-FW-GISFW-INT-ASMD!ASM!BROWSEDATAREFUND</pxInsName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceDefinition/>
+<pyClassName>ASM-FW-GISFW-Int-ASMD</pyClassName>
+<pyMemo>add browse refund</pyMemo>
+<pxHostId>jboss10-42</pxHostId>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20230530T040929.633 GMT</pxCreateDateTime>
+<pySpecialtyComponentData/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHistoryObject/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pySaveSQL/>
+<pyStatus/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleStarts/>
+<pxMoveImportDateTime>20230530T191218.472 GMT</pxMoveImportDateTime>
+<pyRequestType>BrowseDataRefund</pyRequestType>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleSetVersion>01-03-93</pyRuleSetVersion>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pyRuleName>ASM-FW-GISFW-Int-ASMD ASM BrowseDataRefund</pyRuleName>
+<pxUpdateDateTime>20230530T075552.101 GMT</pxUpdateDateTime>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxSiblingCount/>
+<pySPRuleSetName>YAFIASAMUEL@</pySPRuleSetName>
+<pyMethodStatus/>
+<pyLabelOld>BrowseDataRefund</pyLabelOld>
+<pyInterface/>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pxInstanceLockedRuleSet/>
+<pyTemplate/>
+<pyCircumstanceType/>
+<pyLabel>BrowseDataRefund</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-ASMD ASM!BROWSEDATAREFUND #20230530T040929.633 GMT</pzInsKey>
+<pyRuleFormStatusTime>20260901T101229.416 GMT</pyRuleFormStatusTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInsId>ASM-FW-GISFW-INT-ASMD!ASM!BROWSEDATAREFUND</pxInsId>
+<pzChecksum>-1803174952</pzChecksum>
+<pxTabLabel>ASM-FW-GISFW-Int-ASMD ASM BrowseDataRefund</pxTabLabel>
+<pyStreamName/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRelativePath/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceProp/>
+<pxUpdateOperator>YAFIASAMUEL</pxUpdateOperator>
+<pyCircumstanceVal/>
+<pyDescription/>
+<pyShowJavaWindowName>GeneratedJava20260901T101229.433 GMT</pyShowJavaWindowName>
+<pyBrowseSQL>/* Formatted on 30/05/2023 09:20:44 (QP5 v5.215.12089.38647) */
+DECLARE
+BEGIN
+   collection.P_GET_DATA_REFUND ({InputRefund.CARI1},
+                                 {InputRefund.HASIL1 out},
+                                 {InputRefund.HASIL2 out},
+                                 {InputRefund.HASIL3 out},
+                                 {InputRefund.HASILD1 out});
+END;</pyBrowseSQL>
+<pyRuleEnds/>
+<pxMoveFromSystem/>
+<pyDeleteSQL/>
+<pyJavaStream/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSaveDateTime>20230530T075552.118 GMT</pxSaveDateTime>
+<pyUsage/>
+<pxCreateOpName>Yafia Samuel</pxCreateOpName>
+<pyOpenSQL/>
+<pyCircumstanceDate/>
+<pxUpdateOpName>Yafia Samuel</pxUpdateOpName>
+<pyHandlerFlow/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCommitDateTime>20230530T191218.000 GMT</pxCommitDateTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedRuleSetVersion/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDateProp/>
+<pyBaseRule>false</pyBaseRule>
+<pyFormPost/>
+<pxCreateOperator>YAFIASAMUEL</pxCreateOperator>
+<pyCircumstanceTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-ASMD ASM!BROWSEDATAREFUND #20230530T040929.633 GMT</pzDocumentKey>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-93 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-ASMD ASM!BROWSEDATAREFUND #20230530T040929.633 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

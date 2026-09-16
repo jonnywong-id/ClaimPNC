@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyBrowseSQL>WITH progress
+     AS (  SELECT b2.pnccaseid, MAX (c.sts_progress1) AS sts_progress1
+             FROM pooldata.gcnm_progress_posisi_pnc e
+                  JOIN pooldata.gcnm_progress_claim b2
+                     ON e.caseid = b2.pnccaseid
+                  JOIN pooldata.gcnm_mst_progress_klaim c
+                     ON b2.status_progress1 = c.id_progress
+            WHERE e.statusposisi = 'On Progress'
+         GROUP BY b2.pnccaseid)
+  SELECT p.sts_progress1 AS "ParamLogic2",
+         DECODE (NVL (d.reinsurer, g.leader_member),
+                 '1', 'LEADER',
+                 'LEADER', 'LEADER',
+                 '2', 'MEMBER',
+                 'MEMBER', 'MEMBER',
+                 'F', 'FAC-IN',
+                 'FAC IN', 'FAC-IN')
+            AS "ParamLogic3",
+         COUNT (*) AS "ParamLogic4",
+       {ASIS:tempQuery.OLD_OPERATOR_ID}
+    FROM datapega.pc_asm_fw_gcnmfw_work a
+         JOIN datapega.pc_assign_worklist b
+            ON a.pzinskey = b.pxrefobjectkey
+         JOIN pooldata.t_claim_pnc g
+            ON g.claimid = a.pzinskey
+         JOIN pooldata.business f
+            ON a.businesscode_1 = f.id
+         LEFT JOIN pooldata.t_claim_objectlist k
+            ON k.claimid = a.pzinskey
+         LEFT JOIN pooldata.PEGA_DASHBOARDPNC d
+            ON a.pyid = d.noklaim
+         JOIN progress p
+            ON p.pnccaseid = a.pyid
+   WHERE     a.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+         AND b.pxflowname NOT IN ('FixCorrespondence', 'Register_Flow_1')
+         AND b.pxtasklabel NOT IN ('FixCorrespondence')
+         AND a.userteknis_1 IS NOT NULL
+         AND NVL (d.reinsurer, g.leader_member) IS NOT NULL
+         {ASIS:tempQuery.TEAM_GROUP}
+         {ASIS:tempQuery.EMAIL}
+ {ASIS:tempFilter.District}
+ {ASIS:tempFilter.Currency}
+GROUP BY p.sts_progress1,
+         DECODE (NVL (d.reinsurer, g.leader_member),
+                 '1', 'LEADER',
+                 'LEADER', 'LEADER',
+                 '2', 'MEMBER',
+                 'MEMBER', 'MEMBER',
+                 'F', 'FAC-IN',
+                 'FAC IN', 'FAC-IN')
+ORDER BY p.sts_progress1,
+         DECODE (NVL (d.reinsurer, g.leader_member),
+                 '1', 'LEADER',
+                 'LEADER', 'LEADER',
+                 '2', 'MEMBER',
+                 'MEMBER', 'MEMBER',
+                 'F', 'FAC-IN',
+                 'FAC IN', 'FAC-IN')</pyBrowseSQL>
+<pyDocumentTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySpecialtyComponentData/>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pyFormPost/>
+<pyTemplate/>
+<pyDescription/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetProgressAllYearDashboarOS</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pyTemplateInputBox/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pyCircumstanceTemplate/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pxMoveImportDateTime>20200813T090238.359 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pxCommitDateTime>20260619T093310.000 GMT</pxCommitDateTime>
+<pySaveSQL/>
+<pyJavaStream/>
+<pzIsPrivateCheckOut/>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyDeletedObject/>
+<pyBaseRule>false</pyBaseRule>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRelativePath/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleEnds/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxOriginalCreateSystemID/>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETPROGRESSALLYEARDASHBOAROS</pxInsId>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETPROGRESSALLYEARDASHBOAROS</pxInsName>
+<pyCircumstanceDefinition/>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetProgressAllYearDashboarOS</pyRuleName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSALLYEARDASHBOAROS #20260618T091753.870 GMT</pzDocumentKey>
+<pyHandlerFlow/>
+<pyCheckInRuleSet/>
+<pyUsage/>
+<pyTemporaryObject/>
+<pyCircumstanceProp/>
+<pyCircumstanceDateProp/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyLabelOld>GetProgressAllYearDashboarOS</pyLabelOld>
+<pyCircumstanceType/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyValueChanged>false</pyValueChanged>
+<pyWorkKey/>
+<pxInstanceLockedKey/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_MST_USER_TEKNIS GCNM!GETPROGRESSALLYEARDASHBOAROS #20200423T073840.280 GMT</pzOriginalInstanceKey>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pxInstanceLockedRuleSetVersion/>
+<pySPRuleSetName>MICHELLEWILLIAM@</pySPRuleSetName>
+<pxOriginalCreateDateTime/>
+<pyInterface/>
+<pxOriginalCreateOpName/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRequestType>GetProgressAllYearDashboarOS</pyRequestType>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzChecksum>-368253547</pzChecksum>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyDeleteMemo>memperbaiki where</pyDeleteMemo>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleFormStatusTime>20260831T093930.769 GMT</pyRuleFormStatusTime>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSALLYEARDASHBOAROS #20260618T091753.870 GMT</pzInsKey>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyWindowTitle/>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateDateTime>20260618T091753.870 GMT</pxCreateDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMergeSynchronized>20200505T015235.055 GMT</pxMergeSynchronized>
+<pyMethodStatus/>
+<pyOpenSQL/>
+<pyShowJavaWindowName>GeneratedJava20260831T093930.796 GMT</pyShowJavaWindowName>
+<pyStatus/>
+<pyLabel>GetProgressAllYearDashboarOS</pyLabel>
+<pyCircumstanceDate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxSaveDateTime>20260619T093310.941 GMT</pxSaveDateTime>
+<pyMemo>per 19/06/2026 ganti sumber data ke datapega</pyMemo>
+<pxUpdateDateTime>20260619T093310.873 GMT</pxUpdateDateTime>
+<pyRuleParamsStreamName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceVal/>
+<pxMoveFromSystem/>
+<pyStreamName/>
+<pxHostId>jboss10362</pxHostId>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSALLYEARDASHBOAROS #20260618T091753.870 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSALLYEARDASHBOAROS #20200427T065923.646 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>true</pyDelete>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+</pagedata>

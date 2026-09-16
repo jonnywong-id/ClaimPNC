@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIndexCount>2</pzIndexCount>
+<pxInsName>PNCMYREPORTKLAIM3</pxInsName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyObjClassLabel>Job Scheduler</pyObjClassLabel>
+<pxHostId>jboss10363</pxHostId>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyIsResolvable>false</pyIsResolvable>
+<pzOriginalInstanceKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzOriginalInstanceKey>
+<pyBaseRule>false</pyBaseRule>
+<pyStepPageReference>RH_2</pyStepPageReference>
+<pyApplicableTo>Cluster</pyApplicableTo>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInsId>PNCMYREPORTKLAIM3</pxInsId>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzChecksum>-161264429</pzChecksum>
+<pyLabelOld>PNCMyReportKlaim3</pyLabelOld>
+<pyLabel>PNCMyReportKlaim3</pyLabel>
+<pxCreateDateTime>20240520T025402.706 GMT</pxCreateDateTime>
+<pyRuleName>PNCMyReportKlaim3</pyRuleName>
+<pxSaveDateTime>20240604T052116.554 GMT</pxSaveDateTime>
+<pyRuleHarness>pzRuleFormNew</pyRuleHarness>
+<pyBaseClass>ASM-FW-GCNMFW-Data-ClaimData</pyBaseClass>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzInsKey>
+<pxUpdateDateTime>20240604T052116.444 GMT</pxUpdateDateTime>
+<pyActivityName>ReportAI_Act</pyActivityName>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyMemo>done</pyMemo>
+<pyRuleFormStatusTime>20260908T025549.234 GMT</pyRuleFormStatusTime>
+<pyMode>Daily</pyMode>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyShowJavaWindowName>GeneratedJava20260908T025549.250 GMT</pyShowJavaWindowName>
+<pyAccessGroupContext>false</pyAccessGroupContext>
+<pyNodeBasedFrequencies>Startup</pyNodeBasedFrequencies>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyPurpose>PNCMyReportKlaim3</pyPurpose>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyIsEnabled>true</pyIsEnabled>
+<pyAccessGroup>GCNMFW:Authors</pyAccessGroup>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Rule-Async-JobScheduler</pxObjClass>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pxCommitDateTime>20240604T052116.000 GMT</pxCommitDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxTabLabel>PNCMyReportKlaim3</pxTabLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyClusterBasedFrequencies>Daily</pyClusterBasedFrequencies>
+<pzDocumentKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzDocumentKey>
+<pzStatus>valid</pzStatus>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240926T065652.041 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-07 (Available)</pyLabel>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240716T071543.475 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>ReportAI_Act</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>REPORTAI_ACT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240520T025402.706 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyRecurrencePattern>
+<pyDailyInterval>1</pyDailyInterval>
+<pyStartTime>080000</pyStartTime>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyYearlyMonth>0</pyYearlyMonth>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyDayFrequency>Daily-EveryNDays</pyDayFrequency>
+<pxObjClass>Embed-Data-Event-Schedule-Pattern</pxObjClass>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyTimeUnitOptions>Hours</pyTimeUnitOptions>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyYearlyMonthSelection>0</pyYearlyMonthSelection>
+</pyRecurrencePattern>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pxSubscript>BackgroundProcessing</pxSubscript>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pyNodeType>BackgroundProcessing</pyNodeType>
+</rowdata>
+</pyNodeTypes>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

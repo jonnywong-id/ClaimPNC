@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyValueChanged>false</pyValueChanged>
+<pyHistoryObject>false</pyHistoryObject>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL>update POOLDATA.LST_ACCOUNT set APPROVAL={TempCariBank.Kepada} where ACCOUNT_NO={TempCariBank.NoAccount} and BANKID={TempCariBank.IDBank}</pySaveSQL>
+<pxMoveFromSystem/>
+<pyFormPost/>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pxSiblingCount/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleEnds/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Int-PANEL_HE GCNM DelDataRejectMasterRekening</pyRuleName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyInterface/>
+<pxInsId>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!DELDATAREJECTMASTERREKENING</pxInsId>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateOperator/>
+<pyStatus/>
+<pzChecksum>-1439603754</pzChecksum>
+<pxInstanceLockedKey/>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceDefinition/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemplate/>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pxCommitDateTime>20251224T080946.000 GMT</pxCommitDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PANEL_HE GCNM DelDataRejectMasterRekening</pxTabLabel>
+<pxOriginalCreateDateTime/>
+<pyStreamName/>
+<pxOriginalCreateSystemID/>
+<pyCheckInRuleSet/>
+<pyLabelOld>DelDataRejectMasterRekening</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemplateInputBox/>
+<pyRuleStarts/>
+<pxInstanceLockedCreateDateTime/>
+<pyHandlerFlow/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyOpenSQL/>
+<pyRuleFormStatusTime>20260820T024357.979 GMT</pyRuleFormStatusTime>
+<pzIsPrivateCheckOut/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyBrowseSQL>DELETE FROM LST_ACCOUNT where {ASIS:TempDataBank.City}</pyBrowseSQL>
+<pyCircumstanceTemplate/>
+<pySPRuleSetName>ARLEXYVARIAN@</pySPRuleSetName>
+<pyDeleteSQL/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyClassName>ASM-FW-GCNMFW-Int-PANEL_HE</pyClassName>
+<pxInstanceLockedDateTime/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyUsage/>
+<pxCreateDateTime>20251224T080219.352 GMT</pxCreateDateTime>
+<pyWindowTitle/>
+<pxMoveImportDateTime>20240824T090406.540 GMT</pxMoveImportDateTime>
+<pyCircumstanceDateProp/>
+<pyCircumstanceType/>
+<pyDescription/>
+<pxUpdateDateTime>20251224T080945.938 GMT</pxUpdateDateTime>
+<pxInsName>ASM-FW-GCNMFW-INT-PANEL_HE!GCNM!DELDATAREJECTMASTERREKENING</pxInsName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!GETDATAMASTERREKENING #20240816T102443.435 GMT</pzOriginalInstanceKey>
+<pyCircumstanceProp/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!DELDATAREJECTMASTERREKENING #20251224T080219.352 GMT</pzInsKey>
+<pyDeletedObject/>
+<pyRuleParamsStreamName/>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemporaryObject/>
+<pyLabel>DelDataRejectMasterRekening</pyLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pxSaveDateTime>20251224T080946.044 GMT</pxSaveDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedRuleSet/>
+<pyMemo>save new sql</pyMemo>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceVal/>
+<pxOriginalCreateOpName/>
+<pySpecialtyComponentData/>
+<pyShowJavaWindowName>GeneratedJava20260820T024358.000 GMT</pyShowJavaWindowName>
+<pyRequestType>DelDataRejectMasterRekening</pyRequestType>
+<pyRelativePath/>
+<pyMethodStatus/>
+<pxHostId>jboss10402</pxHostId>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pyWorkKey/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!DELDATAREJECTMASTERREKENING #20251224T080219.352 GMT</pzDocumentKey>
+<pyJavaStream/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pyRun>false</pyRun>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>false</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyDelete>true</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PANEL_HE GCNM!DELDATAREJECTMASTERREKENING #20251224T080219.352 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

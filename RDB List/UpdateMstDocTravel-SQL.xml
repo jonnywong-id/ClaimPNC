@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM UpdateMstDocTravel</pyRuleName>
+<pxUpdateOpName>YENI YENI</pxUpdateOpName>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedDateTime/>
+<pyBrowseSQL>BEGIN 
+  POOLDATA.DOCTRAVEL_CVG({InputData.NAMADOKUMEN}, {InputData.DOCID}, {OutputData.DOCID out},{OutputData.NAMADOKUMEN out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStatus/>
+<pyCircumstanceDateProp/>
+<pyRuleSetVersion>01-01-42</pyRuleSetVersion>
+<pyCircumstanceTemplate/>
+<pxUpdateOperator>YENIHULU2</pxUpdateOperator>
+<pxCreateOperator>YENIHULU2</pxCreateOperator>
+<pyDeleteMemo>selesai</pyDeleteMemo>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveFromSystem/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedKey/>
+<pxMoveImportDateTime>20191231T041908.455 GMT</pxMoveImportDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyMethodStatus/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pyWorkKey/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyMemo>done</pyMemo>
+<pyLabel>UpdateMstDocTravel</pyLabel>
+<pyCircumstanceType/>
+<pxOriginalCreateOpName/>
+<pyDocumentTitle/>
+<pxMoveOriginalRuleSet>CNMFW</pxMoveOriginalRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyClassName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL</pyClassName>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxTabLabel>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM UpdateMstDocTravel</pxTabLabel>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-CNMFW-INT-V_M_SURVEYORS CNM!UPDATEMSURVEYORS #20170324T084359.033 GMT</pxMoveOriginalKey>
+<pxCreateOpName>YENI YENI</pxCreateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStreamName/>
+<pxOriginalCreateSystemID/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateDateTime/>
+<pyInterface/>
+<pyTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!UPDATEMSTDOCTRAVEL #20180523T015918.342 GMT</pzDocumentKey>
+<pySaveSQL/>
+<pySpecialtyComponentData/>
+<pyDeleteSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDeletedObject/>
+<pxInsName>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!UPDATEMSTDOCTRAVEL</pxInsName>
+<pxOriginalCreateOperator/>
+<pxHostId>jboss2058</pxHostId>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxInsId>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!UPDATEMSTDOCTRAVEL</pxInsId>
+<pyRequestType>UpdateMstDocTravel</pyRequestType>
+<pyTemplateInputBox/>
+<pyCircumstanceDate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!UPDATEMSTDOCTRAVEL #20180523T015918.342 GMT</pzInsKey>
+<pyRuleFormStatusTime>20260823T112419.900 GMT</pyRuleFormStatusTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxSaveDateTime>20180523T093548.447 GMT</pxSaveDateTime>
+<pyShowJavaWindowName>GeneratedJava20260823T112419.936 GMT</pyShowJavaWindowName>
+<pyFormPost/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHandlerFlow/>
+<pyOpenSQL/>
+<pyRuleParamsStreamName/>
+<pxSiblingCount/>
+<pzChecksum>357460307</pzChecksum>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyIsFromManageChangeLP/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleStarts/>
+<pxMoveOriginalRuleSetVersion>01-01-01</pxMoveOriginalRuleSetVersion>
+<pyCircumstanceProp/>
+<pyDescription/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_M_SURVEYORS GCNM!UPDATEMSURVEYORS #20170330T043717.287 GMT</pzOriginalInstanceKey>
+<pyUsage/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyWindowTitle/>
+<pyJavaStream/>
+<pzRuleSetVersionPatch>42</pzRuleSetVersionPatch>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRelativePath/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyLabelOld>UpdateMstDocTravel</pyLabelOld>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateDateTime>20180523T015918.342 GMT</pxCreateDateTime>
+<pxUpdateDateTime>20180523T093548.419 GMT</pxUpdateDateTime>
+<pyCircumstanceVal/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelete>false</pyDelete>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-42 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!UPDATEMSTDOCTRAVEL #20180523T015918.342 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

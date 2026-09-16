@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyWorkKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRequestType>CountCoverageResikoB</pyRequestType>
+<pxInstanceLockedRuleSet/>
+<pyLabel>CountCoverageResikoB</pyLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyFormPost/>
+<pxOriginalCreateOpName/>
+<pxMoveFromSystem/>
+<pyInterface/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountCoverageResikoB</pxTabLabel>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyIsFromManageChangeLP/>
+<pxSaveDateTime>20191121T074546.897 GMT</pxSaveDateTime>
+<pyCircumstanceType/>
+<pxSiblingCount/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyShowJavaWindowName>GeneratedJava20260901T085134.064 GMT</pyShowJavaWindowName>
+<pyDeleteSQL/>
+<pyLabelOld>CountCoverageResikoB</pyLabelOld>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTCOVERAGERESIKOB</pxInsId>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20190919T083421.818 GMT</pzOriginalInstanceKey>
+<pyTemplateInputBox/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDeletedObject/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxUpdateDateTime>20191121T074546.885 GMT</pxUpdateDateTime>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTCOVERAGERESIKOB</pxInsName>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountCoverageResikoB</pyRuleName>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionPatch>81</pzRuleSetVersionPatch>
+<pxOriginalCreateDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDefinition/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss2058</pxHostId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyMemo>menambahkan order by</pyMemo>
+<pxInstanceLockedDateTime/>
+<pyMethodStatus/>
+<pyRuleEnds/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyRuleSetVersion>01-01-81</pyRuleSetVersion>
+<pxCreateDateTime>20191112T080724.574 GMT</pxCreateDateTime>
+<pySaveSQL/>
+<pyCircumstanceProp/>
+<pyCircumstanceDate/>
+<pyJavaStream/>
+<pyBaseRule>false</pyBaseRule>
+<pzChecksum>-1794036316</pzChecksum>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedKey/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyDescription/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pyOpenSQL/>
+<pyDocumentTitle/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleParamsStreamName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGERESIKOB #20191112T080724.574 GMT</pzDocumentKey>
+<pyUsage/>
+<pyRuleFormStatusTime>20260901T085134.044 GMT</pyRuleFormStatusTime>
+<pyRuleStarts/>
+<pySpecialtyComponentData/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyValueChanged>false</pyValueChanged>
+<pyHandlerFlow/>
+<pxMoveImportDateTime>20191231T041908.529 GMT</pxMoveImportDateTime>
+<pyStreamName/>
+<pyWindowTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pyBrowseSQL>SELECT TO_CHAR (A.CREATEDATETIME, 'YYYY-MM') AS "EDMNO",
+         COUNT (A.COVERAGEID) AS "MARKETINGNAME",
+         SUM(B.GROSSVALUE) AS "FLAGEDMBATAL"
+    FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE A, POOLDATA.T_CLAIM_ADJUSTMENT B
+   WHERE A.CLAIMID = B.CLAIMID AND A.COVERAGEID = '10004'
+         AND to_char(a.CREATEDATETIME, 'yyyy-mm') 
+BETWEEN to_char(to_date({TempLaporan.TelpTertanggung},'dd/mm/yyyy'), 'yyyy-mm') 
+AND to_char(to_date({TempLaporan.UserTeknisEmail},'dd/mm/yyyy'),'yyyy-mm')
+GROUP BY TO_CHAR (A.CREATEDATETIME, 'YYYY-MM') ORDER BY TO_CHAR(A.CREATEDATETIME,'YYYY-MM')</pyBrowseSQL>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGERESIKOB #20191112T080724.574 GMT</pzInsKey>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-81 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGERESIKOB #20191112T080724.574 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pySaveAs>true</pySaveAs>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

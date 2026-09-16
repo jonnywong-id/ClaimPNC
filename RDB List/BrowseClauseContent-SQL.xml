@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLAUSE ASM!BROWSECLAUSECONTENT #20200505T070444.034 GMT</pzOriginalInstanceKey>
+<pyDocumentTitle/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateSystemID>ASMPegaSystem</pxCreateSystemID>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDateProp/>
+<pyJavaStream/>
+<pyLabel>BrowseClauseContent</pyLabel>
+<pyRuleName>ASM-FW-GISFW-Int-CLAUSE ASM BrowseClauseContent</pyRuleName>
+<pyCircumstanceTemplate/>
+<pzRuleSetVersionPatch>58</pzRuleSetVersionPatch>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pyMemo>edit page</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLAUSE ASM!BROWSECLAUSECONTENT #20200505T070444.034 GMT</pzDocumentKey>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyShowJavaWindowName>GeneratedJava20260828T020231.321 GMT</pyShowJavaWindowName>
+<pxSaveDateTime>20200505T074232.082 GMT</pxSaveDateTime>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pxCreateOpName>YOHANES AJI</pxCreateOpName>
+<pxUpdateDateTime>20200505T074232.018 GMT</pxUpdateDateTime>
+<pxHostId>jboss2165</pxHostId>
+<pxInstanceLockedCreateDateTime/>
+<pyRelativePath/>
+<pyHistoryObject/>
+<pyHandlerFlow/>
+<pyFormPost/>
+<pyCircumstanceProp/>
+<pxSiblingCount/>
+<pxInstanceLockedKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUsage/>
+<pxUpdateOperator>YOHANESAJI</pxUpdateOperator>
+<pyClassName>ASM-FW-GISFW-Int-CLAUSE</pyClassName>
+<pyTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsName>ASM-FW-GISFW-INT-CLAUSE!ASM!BROWSECLAUSECONTENT</pxInsName>
+<pyInterface/>
+<pyOpenSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyBrowseSQL>SELECT clausecontent as "InputClauseContent.ClauseContent"
+  FROM m_clause
+ WHERE ID = {InputClause.ID}</pyBrowseSQL>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyIsFromManageChangeLP/>
+<pyBaseRule>false</pyBaseRule>
+<pxCommitDateTime>20200508T133552.000 GMT</pxCommitDateTime>
+<pxInstanceLockedBy/>
+<pyDeleteMemo>create new</pyDeleteMemo>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedDateTime/>
+<pxMoveImportDateTime>20200508T133552.075 GMT</pxMoveImportDateTime>
+<pxTabLabel>ASM-FW-GISFW-Int-CLAUSE ASM BrowseClauseContent</pxTabLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDescription/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDeleteSQL/>
+<pyRuleEnds/>
+<pyWorkKey/>
+<pyDeletedObject/>
+<pyRequestType>BrowseClauseContent</pyRequestType>
+<pyMethodStatus/>
+<pySaveSQL/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLAUSE ASM!BROWSECLAUSECONTENT #20200505T070444.034 GMT</pzInsKey>
+<pyCircumstanceType/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzChecksum>-2085637038</pzChecksum>
+<pyWindowTitle/>
+<pyCircumstanceVal/>
+<pyRuleSetVersion>01-02-58</pyRuleSetVersion>
+<pxCreateDateTime>20200505T070444.034 GMT</pxCreateDateTime>
+<pyLabelOld>BrowseClauseContent</pyLabelOld>
+<pxUpdateSystemID>ASMPegaSystem</pxUpdateSystemID>
+<pyCircumstanceDate/>
+<pxCreateOperator>YOHANESAJI</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pxInsId>ASM-FW-GISFW-INT-CLAUSE!ASM!BROWSECLAUSECONTENT</pxInsId>
+<pxMoveFromSystem/>
+<pyRuleFormStatusTime>20260828T020231.287 GMT</pyRuleFormStatusTime>
+<pyRWAccess>ASM</pyRWAccess>
+<pxUpdateOpName>YOHANES AJI</pxUpdateOpName>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pySave>false</pySave>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-02-58 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLAUSE ASM!BROWSECLAUSECONTENT #20200505T070444.034 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

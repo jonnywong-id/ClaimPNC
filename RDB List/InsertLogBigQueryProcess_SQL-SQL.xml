@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedKey/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGBIGQUERYPROCESS_SQL #20250424T080114.923 GMT</pzDocumentKey>
+<pyDocumentTitle/>
+<pyLabelOld>InsertLogBigQueryProcess_SQL</pyLabelOld>
+<pxOriginalCreateOperator/>
+<pyCircumstanceTemplate/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGBIGQUERYPROCESS_SQL #20250424T080114.923 GMT</pzInsKey>
+<pxSaveDateTime>20250424T081930.849 GMT</pxSaveDateTime>
+<pyWindowTitle/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyIsFromManageChangeLP/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedBy/>
+<pxTabLabel>ASM-FW-GISFW-Int-Pooldata ASM InsertLogBigQueryProcess_SQL</pxTabLabel>
+<pyShowJavaWindowName>GeneratedJava20260827T072928.144 GMT</pyShowJavaWindowName>
+<pxCommitDateTime>20250427T154253.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateDateTime>20250424T081930.824 GMT</pxUpdateDateTime>
+<pyRelativePath/>
+<pyRWAccess>ASM</pyRWAccess>
+<pzChecksum>-1502603362</pzChecksum>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedCreateDateTime/>
+<pyWorkKey/>
+<pyRuleSetVersion>01-05-24</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDateProp/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyClassName>ASM-FW-GISFW-Int-Pooldata</pyClassName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!BROWSEALLPURPOSEJOB_SQL1 #20250411T033043.509 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyBaseRule>false</pyBaseRule>
+<pyDescription/>
+<pyMethodStatus/>
+<pySpecialtyComponentData/>
+<pxOriginalCreateSystemID/>
+<pyDeletedObject/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleStarts/>
+<pySaveSQL>INSERT INTO T_LOG_BIGQUERY (BIGQUERY_SQLINPUT, APIRESULTS, TGL_FINISH)
+VALUES ({PageLogBigQuery.CARI1}, {PageLogBigQuery.CARI2} , sysdate)</pySaveSQL>
+<pyRuleName>ASM-FW-GISFW-Int-Pooldata ASM InsertLogBigQueryProcess_SQL</pyRuleName>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pyTemplateInputBox/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceVal/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyFormPost/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxInstanceLockedRuleSetVersion/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!INSERTLOGBIGQUERYPROCESS_SQL</pxInsName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormStatusTime>20260827T072928.118 GMT</pyRuleFormStatusTime>
+<pyInterface/>
+<pzRuleSetVersionPatch>24</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyStatus/>
+<pyJavaStream/>
+<pyMemo>ok</pyMemo>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyLabel>InsertLogBigQueryProcess_SQL</pyLabel>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!INSERTLOGBIGQUERYPROCESS_SQL</pxInsId>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxHostId>jboss1040</pxHostId>
+<pxUpdateOpName>FRANSISCO JUNIUS</pxUpdateOpName>
+<pyCircumstanceDate/>
+<pyValueChanged>false</pyValueChanged>
+<pyDeleteSQL/>
+<pxCreateOperator>FRANSISCOJUNIUSA</pxCreateOperator>
+<pyRuleEnds/>
+<pyRuleParamsStreamName/>
+<pyStreamName/>
+<pyHandlerFlow/>
+<pyRequestType>InsertLogBigQueryProcess_SQL</pyRequestType>
+<pyTemplate/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyUsage/>
+<pxOriginalCreateOpName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateOperator>FRANSISCOJUNIUSA</pxUpdateOperator>
+<pyCircumstanceProp/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyOpenSQL/>
+<pyCircumstanceDefinition/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportDateTime>20250427T154253.517 GMT</pxMoveImportDateTime>
+<pxCreateDateTime>20250424T080114.923 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyBrowseSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pyCircumstanceType/>
+<pxSiblingCount/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyPreview>false</pyPreview>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGBIGQUERYPROCESS_SQL #20250424T080114.923 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-05-24 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

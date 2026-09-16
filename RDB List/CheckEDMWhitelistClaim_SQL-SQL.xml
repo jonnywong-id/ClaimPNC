@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplate/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWorkKey/>
+<pxInstanceLockedDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxHostId>jboss1036</pxHostId>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKEDMWHITELISTCLAIM_SQL</pxInsId>
+<pyHistoryObject/>
+<pyLabel>CheckEDMWhitelistClaim_SQL</pyLabel>
+<pxInstanceLockedKey/>
+<pyTemplateInputBox/>
+<pyCircumstanceDateProp/>
+<pyRequestType>CheckEDMWhitelistClaim_SQL</pyRequestType>
+<pxMoveFromSystem/>
+<pxSaveDateTime>20250506T174014.118 GMT</pxSaveDateTime>
+<pyRuleStarts/>
+<pyInterface/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyUsage/>
+<pyIsFromManageChangeLP/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pySPRuleSetName/>
+<pzChecksum>-2088394557</pzChecksum>
+<pyShowJavaWindowName>GeneratedJava20260827T085942.209 GMT</pyShowJavaWindowName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateDateTime>20250506T174014.116 GMT</pxUpdateDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSetVersion>01-05-26</pyRuleSetVersion>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyWindowTitle/>
+<pyDeletedObject/>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM CheckEDMWhitelistClaim_SQL</pyRuleName>
+<pyCircumstanceType/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKEDMWHITELISTCLAIM_SQL #20250506T173524.215 GMT</pzDocumentKey>
+<pyDescription/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM CheckEDMWhitelistClaim_SQL</pxTabLabel>
+<pxCreateOpName>RIXTUS KUSUMA</pxCreateOpName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKEDMWHITELISTCLAIM_SQL #20250506T173524.215 GMT</pzOriginalInstanceKey>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pxMoveImportDateTime>20250506T181501.259 GMT</pxMoveImportDateTime>
+<pySaveSQL/>
+<pyHandlerFlow/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pyJavaStream/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyBrowseSQL>SELECT COUNT(1) AS HASIL1 from POOLDATA.M_EDMWHITELIST
+WHERE NOPOLIS = {InputSearchClaim.CARI1}
+AND TIPE = '6'
+AND STATUS = '1'</pyBrowseSQL>
+<pyRWAccess>ASM</pyRWAccess>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyOpenSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKEDMWHITELISTCLAIM_SQL #20250506T173524.215 GMT</pzInsKey>
+<pyDocumentTitle/>
+<pyStatus/>
+<pyRuleFormStatusTime>20260827T085942.181 GMT</pyRuleFormStatusTime>
+<pyMethodStatus/>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20250506T173524.215 GMT</pxCreateDateTime>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pyStreamName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedCreateDateTime/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!CHECKEDMWHITELISTCLAIM_SQL</pxInsName>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20250506T181501.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionPatch>26</pzRuleSetVersionPatch>
+<pyCircumstanceDate/>
+<pyDeleteSQL/>
+<pxUpdateOpName>RIXTUS KUSUMA</pxUpdateOpName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxSiblingCount/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!CHECKEDMWHITELISTCLAIM_SQL #20250506T173524.215 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-05-26 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

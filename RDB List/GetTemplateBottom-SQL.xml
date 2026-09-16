@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSaveDateTime>20170915T085529.624 GMT</pxSaveDateTime>
+<pyRuleStarts/>
+<pyBaseRule>false</pyBaseRule>
+<pyTempText/>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOpName>Rixtus</pxUpdateOpName>
+<pyJavaStream/>
+<pyCircumstanceVal/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleEnds/>
+<pyOpenSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveFromSystem/>
+<pxInsName>ASM-FW-GISFW-INT-TEMPLATE!ASM!GETTEMPLATEBOTTOM</pxInsName>
+<pxInsId>ASM-FW-GISFW-INT-TEMPLATE!ASM!GETTEMPLATEBOTTOM</pxInsId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceType/>
+<pyRequestType>GetTemplateBottom</pyRequestType>
+<pyHandlerFlow/>
+<pyDeleteSQL/>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyDescription/>
+<pxInstanceLockedCreateDateTime/>
+<pyTaskID/>
+<pyShowJavaWindowName>GeneratedJava20260827T073056.823 GMT</pyShowJavaWindowName>
+<pxInstanceLockedDateTime/>
+<pyStatus/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeletedObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormStatusTime>20260827T073056.804 GMT</pyRuleFormStatusTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceProp/>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyIsFromManageChangeLP/>
+<pyBrowseSQL>SELECT a.JSONDATA AS HASIL1
+  FROM m_template a
+ WHERE id = (SELECT b.JSONDATA.TemplateBottom
+               FROM m_template b
+              WHERE id = {SearchTemplateInput.CARI1})</pyBrowseSQL>
+<pyCircumstanceDate/>
+<pyFormPost/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStreamName/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxSiblingCount/>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedBy/>
+<pyRuleSetVersion>01-01-52</pyRuleSetVersion>
+<pzChecksum>1911240124</pzChecksum>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedKey/>
+<pyTemplate/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleName>ASM-FW-GISFW-Int-Template ASM GetTemplateBottom</pyRuleName>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyWorkKey/>
+<pzRuleSetVersionPatch>52</pzRuleSetVersionPatch>
+<pySaveSQL/>
+<pyInterface/>
+<pySpecialtyComponentData/>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateDateTime>20170915T085529.606 GMT</pxUpdateDateTime>
+<pyCircumstanceTemplate/>
+<pxCreateDateTime>20170823T093224.148 GMT</pxCreateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyClassName>ASM-FW-GISFW-Int-Template</pyClassName>
+<pyLabel>GetTemplateBottom</pyLabel>
+<pyUsage/>
+<pyTemplateInputBox/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxTabLabel>ASM-FW-GISFW-Int-Template ASM GetTemplateBottom</pxTabLabel>
+<pxHostId>jboss2058</pxHostId>
+<pyRelativePath/>
+<pxMoveImportDateTime>20191226T024800.346 GMT</pxMoveImportDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-TEMPLATE ASM!GETTEMPLATEBOTTOM #20170823T093224.148 GMT</pzInsKey>
+<pxOriginalCreateOperator/>
+<pyMemo>update query</pyMemo>
+<pxCreateOperator>GERARDOADRIAN</pxCreateOperator>
+<pxCreateOpName>GERARDO ADRIAN</pxCreateOpName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDocumentTitle/>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-TEMPLATE ASM!GETTEMPLATEDATABYTEMPLATENO #20170802T031307.806 GMT</pzOriginalInstanceKey>
+<pyMethodStatus/>
+<pyLabelOld>GetTemplateBottom</pyLabelOld>
+<pxInstanceLockedRuleSet/>
+<pyWindowTitle/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxOriginalCreateSystemID/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-TEMPLATE ASM!GETTEMPLATEBOTTOM #20170823T093224.148 GMT</pzDocumentKey>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-52 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-TEMPLATE ASM!GETTEMPLATEBOTTOM #20170823T093224.148 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

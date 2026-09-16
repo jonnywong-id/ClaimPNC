@@ -1,0 +1,178 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeleteSQL/>
+<pxHostId>jboss1040</pxHostId>
+<pyTemporaryObject/>
+<pyClassName>ASM-FW-GCNMFW-Work-SurveyClaim</pyClassName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETDOCUMENTSURVEYPNC #20211210T094531.922 GMT</pzInsKey>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySaveSQL>insert into POOLDATA.T_DOC_SURVEY
+(caseid,indexsurvey,dokumenid,tipeid)
+values
+({docSurvey.pzInsKey},{docSurvey.IDSurvey},{docSurvey.IDIndex},{docSurvey.TransferNote})</pySaveSQL>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20211221T124059.000 GMT</pxCommitDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Work-SurveyClaim GCNM GetDocumentSurveyPNC</pyRuleName>
+<pyRuleFormStatusTime>20260720T142053.262 GMT</pyRuleFormStatusTime>
+<pyMethodStatus/>
+<pyCircumstanceProp/>
+<pyCircumstanceDate/>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedRuleSet/>
+<pyStatus/>
+<pxCreateDateTime>20211210T094531.922 GMT</pxCreateDateTime>
+<pxInstanceLockedDateTime/>
+<pxMoveImportDateTime>20211221T124058.845 GMT</pxMoveImportDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyRequestType>GetDocumentSurveyPNC</pyRequestType>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleSetVersion>01-01-95</pyRuleSetVersion>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabel>Get Document Survey PNC</pyLabel>
+<pxUpdateDateTime>20211210T104624.415 GMT</pxUpdateDateTime>
+<pyTemplateInputBox/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCircumstanceDateProp/>
+<pyDocumentTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInstanceLockedCreateDateTime/>
+<pyUsage/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyRuleEnds/>
+<pxInstanceLockedKey/>
+<pyCircumstanceType/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxOriginalCreateOpName/>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyLabelOld>Get Document Survey PNC</pyLabelOld>
+<pyDescription/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyInterface/>
+<pyRuleParamsStreamName/>
+<pyOpenSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-SurveyClaim GCNM GetDocumentSurveyPNC</pxTabLabel>
+<pxInsId>ASM-FW-GCNMFW-WORK-SURVEYCLAIM!GCNM!GETDOCUMENTSURVEYPNC</pxInsId>
+<pyCircumstanceVal/>
+<pyRuleStarts/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyHandlerFlow/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDefinition/>
+<pyFormPost/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETDOCUMENTSURVEYLIST #20211210T015957.459 GMT</pzOriginalInstanceKey>
+<pxOriginalCreateSystemID/>
+<pyDeletedObject/>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pxMoveFromSystem/>
+<pyWorkKey/>
+<pzChecksum>-708695293</pzChecksum>
+<pxInstanceLockedBy/>
+<pyRelativePath/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyBrowseSQL>SELECT a.tipeid AS "IDObject"
+FROM POOLDATA.t_doc_survey a
+WHERE a.caseid = {temp.SearchName}</pyBrowseSQL>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyWindowTitle/>
+<pxOriginalCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20260720T142053.285 GMT</pyShowJavaWindowName>
+<pxSiblingCount/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyJavaStream/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETDOCUMENTSURVEYPNC #20211210T094531.922 GMT</pzDocumentKey>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsName>ASM-FW-GCNMFW-WORK-SURVEYCLAIM!GCNM!GETDOCUMENTSURVEYPNC</pxInsName>
+<pyTemplate/>
+<pyMemo>done</pyMemo>
+<pxSaveDateTime>20211210T104624.429 GMT</pxSaveDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStreamName/>
+<pyCheckInRuleSet>GCNMFW</pyCheckInRuleSet>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETDOCUMENTSURVEYPNC #20211210T094531.922 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

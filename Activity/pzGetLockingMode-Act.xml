@@ -1,0 +1,730 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyLabelOld>ProCom activity to check locking mode of a work object</pyLabelOld>
+<pyIsFromManageChangeLP/>
+<pxCreateDateTime>20180713T132203.349 GMT</pxCreateDateTime>
+<pxInstanceLockedBy/>
+<pyDeleteMemo>Task-Test1</pyDeleteMemo>
+<pyCircumstanceType/>
+<pxCommitDateTime>20191015T081638.000 GMT</pxCommitDateTime>
+<pyInputMayStart>false</pyInputMayStart>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOperator>inuma</pxOriginalCreateOperator>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pyShowJavaWindowName>GeneratedJava20260724T030913.089 GMT</pyShowJavaWindowName>
+<pyCircumstanceDate/>
+<pyCircumstanceVal/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyJavaClassName>work__pzgetlockingmode_20180713_132203_349</pyJavaClassName>
+<pyNamespace/>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxSaveDateTime>20180713T132203.350 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pxMoveOriginalRuleSetVersion>07-10-31</pxMoveOriginalRuleSetVersion>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pxCreateOpName>I Anand Kishore</pxCreateOpName>
+<pyWindowTitle/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyDeletedObject/>
+<pzIndexCount>52</pzIndexCount>
+<pyCircumstanceDefinition/>
+<pzChecksum>-1322798007</pzChecksum>
+<pyTemplateInputBox/>
+<pyRuleName>pzGetLockingMode</pyRuleName>
+<pyCircumstanceDateProp/>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyClassName>Work-</pyClassName>
+<pySelected>false</pySelected>
+<pyTemplateDisplayText/>
+<pyCircumstanceTemplate/>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzInsKey>
+<pyRuleSet>Pega-ProCom</pyRuleSet>
+<pyJavaStream/>
+<pyLabel>ProCom activity to check locking mode of a work object</pyLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzDocumentKey>
+<pyUsage>this activity can be used if we want to set caseupdateinfo page on primary page.</pyUsage>
+<pyRuleFormStatusTime>20260724T030913.062 GMT</pyRuleFormStatusTime>
+<pyDescription>This activity will set the caseupdateinfo page on Primary page. It will not get fresh primary page where as pxCheckLockingMode will return fresh page with locking mode set.</pyDescription>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pxInstanceLockedSaveDateTime/>
+<pyStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pyShowJavaURL/>
+<pyTaskGroup/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyRelativePath/>
+<pxMoveOriginalRuleSet>Pega-ProCom</pxMoveOriginalRuleSet>
+<pyMemo>BUG-299779</pyMemo>
+<pxOriginalCreateOpName>I Anand Kishore</pxOriginalCreateOpName>
+<pxUpdateOperator>gupts11</pxUpdateOperator>
+<pxUpdateSystemID>sls-pochyd</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportDateTime>20170420T140630.789 GMT</pxMoveImportDateTime>
+<pxInstanceLockedKey/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20170420T114047.910 GMT</pxMoveOriginalKey>
+<pyRuleStarts/>
+<pxOriginalCreateSystemID>sls-pochyd</pxOriginalCreateSystemID>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxSiblingCount/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pyDocumentTitle/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleSearchQuery/>
+<pyProjectID/>
+<pxUpdateDateTime>20180713T132203.349 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyCheckInRuleSet/>
+<pxCreateOperator>inuma</pxCreateOperator>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalCreateDateTime>20180713T132203.349 GMT</pxOriginalCreateDateTime>
+<pyInterface/>
+<pyFormPost/>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedDateTime/>
+<pyActivityName>pzGetLockingMode</pyActivityName>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyBaseRule>false</pyBaseRule>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20130408T110847.973 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>Pega-ProCom_Branch_BUG-299779</pySPRuleSetName>
+<pxInsName>WORK-!PZGETLOCKINGMODE</pxInsName>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyJavaGenerateTime>20170418T082203.407 GMT</pyJavaGenerateTime>
+<pyWorkKey/>
+<pyProjectIDLabel/>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyAssociatedImage/>
+<pxInstanceLockedRuleSet/>
+<pyRuleParamsStreamName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsId>!PZGETLOCKINGMODE</pxInsId>
+<pxTabLabel>pzGetLockingMode</pxTabLabel>
+<pxUpdateOpName>Sandesh Gupta</pxUpdateOpName>
+<pyRuleEnds/>
+<pzStatus>false</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningName>Java step</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20170417T120905.944 GMT</pxWarningCreatedTime>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	32 lines</pxWarningDetails>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">39</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreateOperator>inuma</pxWarningCreateOperator>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningCreatedTime>20170417T120905.945 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">40</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleFamilyName>WORK-</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pyRuleName>Work-</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">42</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>STRING!EQUALS--(STRING,STRING)</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pyRuleName>String equals--(String,String)</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">43</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>pyReleaseLockManually</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Embed-CaseUpdate</pxRuleClassName>
+<pxRuleFamilyName>PYRELEASELOCKMANUALLY</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">44</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>System-Locks</pxRuleClassName>
+<pyRuleName>System-Locks</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleFamilyName>SYSTEM-LOCKS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">45</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRuleName>Embed-CaseUpdate</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>EMBED-CASEUPDATE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleClassName>Embed-CaseUpdate</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">46</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyMethodStatus/>
+<pxRuleFamilyName>PYLOCKINGMODE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Embed-CaseUpdate</pxRuleClassName>
+<pyRuleName>pyLockingMode</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">47</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>String equalsIgnoreCase--(String,String)</pyRuleName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>STRING!EQUALSIGNORECASE--(STRING,STRING)</pxRuleFamilyName>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">48</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pyRuleName>Property-Set</pyRuleName>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">49</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">50</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PYCASEUPDATEINFO</pxRuleFamilyName>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pyCaseUpdateInfo</pyRuleName>
+<pyMethodStatus>Extension</pyMethodStatus>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">51</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxAllChangeList REPEATINGTYPE="PropertyList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzInsKey>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyExpanded>true</pyExpanded>
+<pyPropRef/>
+<pyStepsTransition>0</pyStepsTransition>
+<pyStepsObjectName/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsJavaSource>ClipboardPage primaryPage=tools.getPrimaryPage();
+ClipboardPage coverPage=tools.findPage(tools.getParamValue("coverPage"));
+
+boolean isTopLevel = primaryPage.getString("pxCoverInsKey").equals("")?true:false;
+String topCaseCls="";
+StringMap tmpMap;
+
+if(!isTopLevel){
+   String insKey = tools.getPrimaryPage().getString("pzInsKey");
+   String workCls = tools.getPrimaryPage().getString("pxObjClass");
+   tmpMap= pega_processengine_workutilities.pxGetTopLevelCoverKeyAndClass(workCls,insKey);
+   topCaseCls = tmpMap.getString("pxObjClass");
+   if(topCaseCls==null || topCaseCls.length()==0)
+   		topCaseCls =  primaryPage.getString("pxObjClass");
+
+}else
+topCaseCls =  primaryPage.getString("pxObjClass");
+
+tmpMap= new HashStringMap();
+tmpMap.putString("pxObjClass", "Rule-Obj-CaseType");
+tmpMap.putString("pyPurpose", "pyDefault");
+tmpMap.putString("pyClassName", topCaseCls);
+ParameterPage pp = new ParameterPage();
+pp.putString("pyCaseTypePurpose", "GETLOCKINGMODE");
+
+try{
+	tools.doAction(tmpMap, primaryPage, pp);
+	lockingMode = pp.getString("LockingMode");
+         if(lockingMode.equalsIgnoreCase("Default")) nextBlock="***";
+}catch(Exception e){
+
+}</pyStepsJavaSource>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepActivityDescription/>
+<pyStepsBlockName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxSubscript/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyTemplateInputBox/>
+<pzStepExpanded/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyOnException/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsDescription>check if optimistic do not acquire lock and freshley reopen work object</pyStepsDescription>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pxInsName/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhen/>
+<pxCreateDateTime>20260724T030913.053 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxSubscript/>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20170417T114741.670 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>inuma</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>I Anand Kishore</pxCreateOpName>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateDateTime>20170417T114741.671 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOpName>I Anand Kishore</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>inuma</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>6</pyStepsPreCondParamsWhenTrue>
+<pxCreateDateTime>20260724T030913.051 GMT</pxCreateDateTime>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>@(Pega-RULES:String).equalsIgnoreCase(.pyCaseUpdateInfo.pyLockingMode, Optimistic) || @(Pega-RULES:String).equalsIgnoreCase(.pyCaseUpdateInfo.pyLockingMode, Default)</pyStepsPreCondParamsWhen>
+<pxSubscript/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyStepActivityDescription/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsObjectName>Primary.pyCaseUpdateInfo</pyStepsObjectName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyOnException/>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyStepsJavaSource/>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsPreCondition/>
+<pxSubscript/>
+<pyPropRef/>
+<pzStepExpanded/>
+<pyStepsBlockName/>
+<pyStepsTransition>0</pyStepsTransition>
+<pyStepsDescription>update pyCaseUpdateInfo page</pyStepsDescription>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T030913.053 GMT</pxCreateDateTime>
+<pxSubscript/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue/>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateDateTime>20260724T030913.051 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxSubscript/>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesName>.pyLockingMode</PropertiesName>
+<PropertiesValue>Local.lockingMode</PropertiesValue>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<PropertiesValue>@(Pega-RULES:String).equals(Param.releaseLockManually , "") || @(Pega-RULES:String).equalsIgnoreCase(Param.releaseLockManually , "false")? false: true</PropertiesValue>
+<PropertiesName>.pyReleaseLockManually</PropertiesName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pxCreateOpName>I Anand Kishore</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20170417T114741.670 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOperator>inuma</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20170417T114741.671 GMT</pxCreateDateTime>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOpName>I Anand Kishore</pxCreateOpName>
+<pxCreateOperator>inuma</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+</rowdata>
+</pySteps>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowName</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>flowType</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pySystemParameters>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>Work-</pyPrivilegeClass>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeName/>
+</rowdata>
+</pyActivityPrivilegeList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliValidateAs/>
+<pxSubscript/>
+<pyParametersParamDesc/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+</rowdata>
+</pyParameters>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+</pxMessageSummary>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyPreview>true</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyShowJava>true</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>true</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>System-Locks</pxPageClass>
+<pxPageName>LockInfo</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">41</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreateOperator/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep	32 lines</pxWarningMessage>
+<pxWarningCreatedTime>20170417T120905.944 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	32 lines</pxWarningDetails>
+<pxWarningName>Java step</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">39</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxWarningCreateOperator>inuma</pxWarningCreateOperator>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PZGETLOCKINGMODE #20180713T132203.349 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Activity use</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningCreatedTime>20170417T120905.945 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">40</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Work-</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>Local.workPage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>Param.coverPage</pyPagesAndClassesPage>
+<pxSubscript>2</pxSubscript>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Work-Cover-</pyPagesAndClassesClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesPage>LockInfo</pyPagesAndClassesPage>
+<pxSubscript/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass>System-Locks</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesPage>Primary.pyCaseUpdate</pyPagesAndClassesPage>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Embed-CaseUpdate</pyPagesAndClassesClass>
+<pxSubscript/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>lockingMode</pyParametersParamName>
+<pxSubscript/>
+<pyParametersParamDesc>locking mode of wo</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+</pyLocalParameters>
+</pagedata>

@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceDefinition/>
+<pyWorkKey/>
+<pxInstanceLockedRuleSet/>
+<pySPRuleSetName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetOperatorID</pyRuleName>
+<pxMoveImportDateTime>20260803T102321.812 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStreamName/>
+<pySaveSQL/>
+<pyHandlerFlow/>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETOPERATORID</pxInsId>
+<pyTemplate/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyRequestType>GetOperatorID</pyRequestType>
+<pxInstanceLockedDateTime/>
+<pxHostId>jboss10372</pxHostId>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedBy/>
+<pyRuleSetVersion>01-03-19</pyRuleSetVersion>
+<pyDeleteSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyInterface/>
+<pyMethodStatus/>
+<pyShowJavaWindowName>GeneratedJava20260826T022653.030 GMT</pyShowJavaWindowName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOPERATORID #20260730T072912.754 GMT</pzDocumentKey>
+<pyLabel>GetOperatorID</pyLabel>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETOPERATORID</pxInsName>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetOperatorID</pxTabLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzIsPrivateCheckOut/>
+<pyRuleEnds/>
+<pyCircumstanceDateProp/>
+<pyStatus/>
+<pxUpdateDateTime>20260730T073012.195 GMT</pxUpdateDateTime>
+<pxMoveFromSystem/>
+<pyCircumstanceVal/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyHistoryObject/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedCreateDateTime/>
+<pxCommitDateTime>20260803T102321.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOPERATORID #20260730T072912.754 GMT</pzOriginalInstanceKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyOpenSQL/>
+<pzChecksum>-2033032046</pzChecksum>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySpecialtyComponentData/>
+<pxSiblingCount/>
+<pyCircumstanceTemplate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCreateDateTime>20260730T072912.754 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceType/>
+<pyBrowseSQL>SELECT OLD_OPERATOR_ID AS "City" FROM POOLDATA.T_ACCESS_GROUP_PNC WHERE OPERATOR_ID = {OperatorID.pyUserIdentifier} AND STS_AKTIF = '1' {Asis:TempOperator.AlasanKlaim}</pyBrowseSQL>
+<pyDocumentTitle/>
+<pyUsage/>
+<pyRuleFormStatusTime>20260826T022653.006 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDate/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyTemplateInputBox/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyDescription/>
+<pyJavaStream/>
+<pyWindowTitle/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOPERATORID #20260730T072912.754 GMT</pzInsKey>
+<pxSaveDateTime>20260730T073012.284 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pyRuleStarts/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyPreview>false</pyPreview>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>true</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-03-19 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOPERATORID #20260730T072912.754 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETOPERATORID #20260325T025905.507 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

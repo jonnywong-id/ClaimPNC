@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceVal/>
+<pySPRuleSetName/>
+<pyCircumstanceProp/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateDateTime>20241112T073102.209 GMT</pxUpdateDateTime>
+<pxInsName>ASM-FW-GCNMFW-WORK-OPENPROTECTION!TC_PNCINPUTPROTECTION</pxInsName>
+<pyFormPost/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTicketName>TC_PNCInputProtection</pyTicketName>
+<pyWorkKey/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxTabLabel>TC_PNCInputProtection</pxTabLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInsId>!TC_PNCINPUTPROTECTION</pxInsId>
+<pxInstanceLockedDateTime/>
+<pzChecksum>-604009647</pzChecksum>
+<pxMoveFromSystem/>
+<pyCircumstanceType/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxSaveDateTime>20241112T073102.212 GMT</pxSaveDateTime>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleFormStatusTime>20260721T024726.318 GMT</pyRuleFormStatusTime>
+<pyHistoryObject/>
+<pxCreateDateTime>20241112T073026.405 GMT</pxCreateDateTime>
+<pyClassName>ASM-FW-GCNMFW-Work-OpenProtection</pyClassName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleStarts/>
+<pyJavaStream/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxCommitDateTime>20241223T123707.000 GMT</pxCommitDateTime>
+<pxInstanceLockedBy/>
+<pyTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDescription/>
+<pzOriginalInstanceKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-OPENPROTECTION TC_PNCINPUTPROTECTION #20241112T073026.405 GMT</pzOriginalInstanceKey>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxObjClass>Rule-Obj-Ticket</pxObjClass>
+<pyLabel>TC_PNCInputProtection</pyLabel>
+<pyDeletedObject/>
+<pyDocumentTitle/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-OPENPROTECTION TC_PNCINPUTPROTECTION #20241112T073026.405 GMT</pzInsKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDefinition/>
+<pyIsFromManageChangeLP/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxMoveImportDateTime>20241223T123707.199 GMT</pxMoveImportDateTime>
+<pxHostId>jboss10372</pxHostId>
+<pyCircumstanceDateProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyTemplateInputBox/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzDocumentKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-OPENPROTECTION TC_PNCINPUTPROTECTION #20241112T073026.405 GMT</pzDocumentKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDate/>
+<pyWindowTitle/>
+<pyCircumstanceTemplate/>
+<pyUsage/>
+<pyRuleParamsStreamName/>
+<pyStreamName/>
+<pyInterface/>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>Ticket</pyObjClassLabel>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleName>TC_PNCInputProtection</pyRuleName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260721T024726.361 GMT</pyShowJavaWindowName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSet/>
+<pyRuleEnds/>
+<pySpecialtyComponentData/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-OPENPROTECTION TC_PNCINPUTPROTECTION #20241112T073026.405 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-ticket/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-ticket/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

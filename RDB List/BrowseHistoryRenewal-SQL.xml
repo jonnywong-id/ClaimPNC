@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pyRuleFormStatusTime>20260721T035837.413 GMT</pyRuleFormStatusTime>
+<pxSaveDateTime>20190917T035741.765 GMT</pxSaveDateTime>
+<pyFormPost/>
+<pyDescription/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyClassName>ASM-FW-GISFW-Work</pyClassName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOperator>Calvin_1</pxUpdateOperator>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedKey/>
+<pxCreateOperator>Calvin_1</pxCreateOperator>
+<pyHandlerFlow/>
+<pyStatus/>
+<pxMoveImportDateTime>20191226T024812.035 GMT</pxMoveImportDateTime>
+<pyDocumentTitle/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzChecksum>2026824203</pzChecksum>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pyRuleSetVersion>01-02-19</pyRuleSetVersion>
+<pyShowJavaWindowName>GeneratedJava20260721T035837.439 GMT</pyShowJavaWindowName>
+<pxOriginalCreateDateTime/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceProp/>
+<pyBaseRule>false</pyBaseRule>
+<pyTemplate/>
+<pyRWAccess>ASM</pyRWAccess>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!BROWSERENEWALDATAPEGA #20190814T071152.749 GMT</pzOriginalInstanceKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!BROWSEHISTORYRENEWAL #20190917T022512.458 GMT</pzInsKey>
+<pxInsId>ASM-FW-GISFW-WORK!ASM!BROWSEHISTORYRENEWAL</pxInsId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDefinition/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyLabelOld>BrowseHistoryRenewal</pyLabelOld>
+<pyWorkKey/>
+<pyStreamName/>
+<pySPRuleSetName>Calvin_1@</pySPRuleSetName>
+<pxInstanceLockedRuleSetVersion/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleEnds/>
+<pyDeleteSQL/>
+<pyMethodStatus/>
+<pyBrowseSQL>SELECT "PC0".pylabel AS "HASIL1",
+       "PC0".pystatuswork AS "HASIL2",
+       "PC0".policyno AS "HASIL3",
+       "PC1".pxassignedusername AS "HASIL4",
+       "PC0".PXUPDATEOPNAME as "HASIL5"
+  FROM DATAPEGA.pc_ASM_FW_GISFW_Work "PC0",
+       datapega.pc_assign_worklist "PC1"
+ WHERE "PC0".oldpolicyno = {InputHistoryRenewal.CARI1} and ("PC0".pystatuswork &lt;&gt; 'Resolved-Rejected') AND "PC0".PXINSNAME LIKE 'RNW%' AND "PC0".pyid = "PC1".pxrefobjectinsname
+UNION ALL
+SELECT "PC0".pylabel AS "HASIL1",
+       "PC0".pystatuswork AS "HASIL2",
+       "PC0".policyno AS "HASIL3",
+       "PC2".PXASSIGNEDOPERATORID AS "HASIL4",
+       "PC0".PXUPDATEOPNAME as "HASIL5"
+  FROM DATAPEGA.pc_ASM_FW_GISFW_Work "PC0",
+       datapega.pc_assign_workbasket "PC2"
+ WHERE "PC0".oldpolicyno = {InputHistoryRenewal.CARI1} and ("PC0".pystatuswork &lt;&gt; 'Resolved-Rejected') AND "PC0".PXINSNAME LIKE 'RNW%' AND "PC0".pyid = "PC2".pxrefobjectinsname</pyBrowseSQL>
+<pyRequestType>BrowseHistoryRenewal</pyRequestType>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOpName/>
+<pyMemo>done</pyMemo>
+<pxSiblingCount/>
+<pxUpdateOpName>Calvin</pxUpdateOpName>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxMoveFromSystem/>
+<pyCircumstanceDate/>
+<pyRelativePath/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyDeletedObject/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!BROWSEHISTORYRENEWAL #20190917T022512.458 GMT</pzDocumentKey>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceVal/>
+<pxUpdateDateTime>20190917T035741.750 GMT</pxUpdateDateTime>
+<pyLabel>BrowseHistoryRenewal</pyLabel>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pxInstanceLockedDateTime/>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pySaveSQL/>
+<pyUsage/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOpName>Calvin</pxCreateOpName>
+<pxInsName>ASM-FW-GISFW-WORK!ASM!BROWSEHISTORYRENEWAL</pxInsName>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyJavaStream/>
+<pxHostId>jboss2058</pxHostId>
+<pyRuleName>ASM-FW-GISFW-Work ASM BrowseHistoryRenewal</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxCreateDateTime>20190917T022512.458 GMT</pxCreateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceType/>
+<pxTabLabel>ASM-FW-GISFW-Work ASM BrowseHistoryRenewal</pxTabLabel>
+<pySpecialtyComponentData/>
+<pyInterface/>
+<pyOpenSQL/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-WORK ASM!BROWSEHISTORYRENEWAL #20190917T022512.458 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-02-19 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

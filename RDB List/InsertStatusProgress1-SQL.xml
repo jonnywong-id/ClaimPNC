@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceTemplate/>
+<pyRuleName>@baseclass GCNM InsertStatusProgress1</pyRuleName>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleStarts/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSiblingCount/>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyClassName>@baseclass</pyClassName>
+<pxUpdateDateTime>20200513T033309.632 GMT</pxUpdateDateTime>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDateProp/>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pxOriginalCreateOpName/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyLabelOld>InsertStatusProgress1</pyLabelOld>
+<pyJavaStream/>
+<pyRequestType>InsertStatusProgress1</pyRequestType>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pxOriginalCreateOperator/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pyUsage/>
+<pxHostId>jboss2145</pxHostId>
+<pxInstanceLockedDateTime/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySpecialtyComponentData/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDate/>
+<pyStatus/>
+<pxInsName>@BASECLASS!GCNM!INSERTSTATUSPROGRESS1</pxInsName>
+<pzRuleSetVersionPatch>84</pzRuleSetVersionPatch>
+<pyDescription/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL @BASECLASS GCNM!BROWSESTATUSPROGRESS #20200508T041159.896 GMT</pzOriginalInstanceKey>
+<pyTempText>saved</pyTempText>
+<pyShowJavaWindowName>GeneratedJava20260823T142156.225 GMT</pyShowJavaWindowName>
+<pyRuleParamsStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplate/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySaveSQL/>
+<pyLabel>InsertStatusProgress1</pyLabel>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyDeleteSQL/>
+<pyRuleEnds/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHandlerFlow/>
+<pyWindowTitle/>
+<pyMethodStatus/>
+<pxInstanceLockedBy/>
+<pxCreateDateTime>20200508T075906.633 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyIsFromManageChangeLP/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyCircumstanceProp/>
+<pxSaveDateTime>20200513T033309.652 GMT</pxSaveDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSet/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!INSERTSTATUSPROGRESS1 #20200508T075906.633 GMT</pzInsKey>
+<pxCommitDateTime>20200813T090536.000 GMT</pxCommitDateTime>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateSystemID/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateInputBox/>
+<pxTabLabel>@baseclass GCNM InsertStatusProgress1</pxTabLabel>
+<pyRuleFormStatusTime>20260823T142156.205 GMT</pyRuleFormStatusTime>
+<pzChecksum>244902390</pzChecksum>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pxMoveImportDateTime>20200813T090536.035 GMT</pxMoveImportDateTime>
+<pyMemo>RDB untuk insert status progress 1</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!INSERTSTATUSPROGRESS1 #20200508T075906.633 GMT</pzDocumentKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInsId>@BASECLASS!GCNM!INSERTSTATUSPROGRESS1</pxInsId>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveFromSystem/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedKey/>
+<pyCircumstanceVal/>
+<pyRuleSetVersion>01-01-84</pyRuleSetVersion>
+<pyBrowseSQL>INSERT INTO POOLDATA.GCNM_MST_PROGRESS_KLAIM (ID_PROGRESS, STS_PROGRESS1, STATUS)
+VALUES ({TempInputStatus.CaseID},{TempInputStatus.City},{TempInputStatus.CityID})</pyBrowseSQL>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyFormPost/>
+<pyDeletedObject/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDocumentTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyWorkKey/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStreamName/>
+<pxInstanceLockedCreateDateTime/>
+<pyRelativePath/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!INSERTSTATUSPROGRESS1 #20200508T075906.633 GMT</pzInsKey>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyDelete>false</pyDelete>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+</pagedata>

@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzChecksum>1242029939</pzChecksum>
+<pyJavaStream/>
+<pyCircumstanceProp/>
+<pzRuleSetVersionPatch>81</pzRuleSetVersionPatch>
+<pyValueChanged>false</pyValueChanged>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOperator/>
+<pyRuleEnds/>
+<pyCircumstanceVal/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyUsage/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTempText/>
+<pyCircumstanceType/>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pyCircumstanceDate/>
+<pyMemo>menambahkan order by</pyMemo>
+<pyStreamName/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGEID #20191112T072128.635 GMT</pzInsKey>
+<pyRequestType>CountCoverageID</pyRequestType>
+<pyShowJavaWindowName>GeneratedJava20260901T085220.947 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxInstanceLockedRuleSet/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteSQL/>
+<pyWindowTitle/>
+<pyOpenSQL/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSaveDateTime>20191121T074536.112 GMT</pxSaveDateTime>
+<pxInstanceLockedKey/>
+<pySaveSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxHostId>jboss2058</pxHostId>
+<pyFormPost/>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pxUpdateDateTime>20191121T074536.100 GMT</pxUpdateDateTime>
+<pxOriginalCreateOpName/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxOriginalCreateDateTime/>
+<pyRuleParamsStreamName/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxOriginalCreateSystemID/>
+<pyDeletedObject/>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedCreateDateTime/>
+<pyDocumentTitle/>
+<pxMoveImportDateTime>20191231T041908.522 GMT</pxMoveImportDateTime>
+<pyHandlerFlow/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyLabel>CountCoverageID</pyLabel>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20190919T083421.818 GMT</pzOriginalInstanceKey>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountCoverageID</pyRuleName>
+<pyWorkKey/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountCoverageID</pxTabLabel>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyTemplateInputBox/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTCOVERAGEID</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGEID #20191112T072128.635 GMT</pzDocumentKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyDescription/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTCOVERAGEID</pxInsId>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBrowseSQL>SELECT TO_CHAR (A.CREATEDATETIME, 'YYYY-MM') AS "ACCUMCODE",
+         COUNT (A.COVERAGEID) AS "PRODKE",
+         SUM(B.GROSSVALUE) AS "AUTOCANCELPRINTSTATUS"
+    FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE A, POOLDATA.T_CLAIM_ADJUSTMENT B
+   WHERE A.CLAIMID = B.CLAIMID AND A.COVERAGEID = '10003'
+         AND to_char(a.CREATEDATETIME, 'yyyy-mm') 
+BETWEEN to_char(to_date({TempLaporan.TelpTertanggung},'dd/mm/yyyy'), 'yyyy-mm') 
+AND to_char(to_date({TempLaporan.UserTeknisEmail},'dd/mm/yyyy'),'yyyy-mm')
+GROUP BY TO_CHAR (A.CREATEDATETIME, 'YYYY-MM') ORDER BY TO_CHAR(A.CREATEDATETIME,'YYYY-MM')</pyBrowseSQL>
+<pyStatus/>
+<pySpecialtyComponentData/>
+<pxCreateDateTime>20191112T072128.635 GMT</pxCreateDateTime>
+<pyRuleSetVersion>01-01-81</pyRuleSetVersion>
+<pyRelativePath/>
+<pyLabelOld>CountCoverageID</pyLabelOld>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveFromSystem/>
+<pyRuleStarts/>
+<pyInterface/>
+<pyRuleFormStatusTime>20260901T085220.931 GMT</pyRuleFormStatusTime>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTCOVERAGEID #20191112T072128.635 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-81 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

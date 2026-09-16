@@ -1,0 +1,372 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateOperator>gaude</pxCreateOperator>
+<pxOriginalCreateOperator>gaude</pxOriginalCreateOperator>
+<pyTemplate/>
+<pyPostActivity/>
+<pyRelativePath/>
+<pyUseNewClipboard/>
+<pyCircumstanceTemplate/>
+<pyWindowTitle/>
+<pxInstanceLockedKey/>
+<pzChecksum>1624756052</pzChecksum>
+<pyDeclarePagesDataSource/>
+<pyWhen/>
+<pyReportDefinitionClass/>
+<pyDeletedObject/>
+<pxMoveImportOperName>Emilio Gaudette</pxMoveImportOperName>
+<pyCircumstanceProp/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTimeoutDD/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceType/>
+<pxUpdateDateTime>20180713T134707.428 GMT</pxUpdateDateTime>
+<pxMoveOriginalKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20150205T210939.823 GMT</pxMoveOriginalKey>
+<pzDocumentKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzDocumentKey>
+<pyStatus/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxSaveDateTime>20180713T134707.428 GMT</pxSaveDateTime>
+<pxSavedInPegaVersion>7.1.8</pxSavedInPegaVersion>
+<pxCreateOpName>Emilio Gaudette</pxCreateOpName>
+<pxOriginalCreateDateTime>20180713T134707.428 GMT</pxOriginalCreateDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>Pega-EndUserUI</pxOriginalRuleSet>
+<pyEnableLoadOnlyPage>true</pyEnableLoadOnlyPage>
+<pyAllowIdle>true</pyAllowIdle>
+<pyDescription/>
+<pyType>loadonly</pyType>
+<pyPageContextClass/>
+<pxInsId>D_PORTALCONTEXTGLOBAL</pxInsId>
+<pxMoveImportDateTime>20150205T144908.510 GMT</pxMoveImportDateTime>
+<pyObjClassLabel>Data Page</pyObjClassLabel>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperId>gaude</pxMoveImportOperId>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyLabelOld>D_PortalContextGlobal</pyLabelOld>
+<pyReloadForm>true</pyReloadForm>
+<pyLoadOnlyPageEnabled>true</pyLoadOnlyPageEnabled>
+<pyAllowOverride>false</pyAllowOverride>
+<pyStreamName/>
+<pxCreateDateTime>20180713T134707.428 GMT</pxCreateDateTime>
+<pyRefreshStrategy>never</pyRefreshStrategy>
+<pyUsage/>
+<pyPageType>loadonly</pyPageType>
+<pxInstanceLockedDateTime/>
+<pyRuleName>D_PortalContextGlobal</pyRuleName>
+<pxOriginalCreateOpName>Emilio Gaudette</pxOriginalCreateOpName>
+<pxMoveOriginalRuleSetVersion>07-10-17</pxMoveOriginalRuleSetVersion>
+<pyIsSavable>false</pyIsSavable>
+<pzInsKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzInsKey>
+<pyLoadActivity/>
+<pyTimeoutSS/>
+<pyKeyPageReference/>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pySelected>false</pySelected>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyClassName>Data-Portal</pyClassName>
+<pxInsName>D_PORTALCONTEXTGLOBAL</pxInsName>
+<pyTimeoutMM/>
+<pyScope>requestor</pyScope>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyInterface/>
+<pyAllowExternalExpiration>true</pyAllowExternalExpiration>
+<pySourceCount>1</pySourceCount>
+<pyEnableRetrievePageByKey>false</pyEnableRetrievePageByKey>
+<pyEditable>true</pyEditable>
+<pxInstanceLockedRuleSet/>
+<pyRuleSet>Pega-EndUserUI</pyRuleSet>
+<pyAccessGroup/>
+<pxUpdateOpName>Emilio Gaudette</pxUpdateOpName>
+<pyTimeoutHH/>
+<pyMemo>TASK-268995: Global portal context</pyMemo>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDate/>
+<pzOriginalInstanceKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20150123T155649.898 GMT</pzOriginalInstanceKey>
+<pzIndexCount>6</pzIndexCount>
+<pyRuleEnds/>
+<pyLabel>D_PortalContextGlobal</pyLabel>
+<pyIsClassFieldEditable>true</pyIsClassFieldEditable>
+<pyMethodStatus>Extension</pyMethodStatus>
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pySPRuleSetName>gaude@</pySPRuleSetName>
+<pyRuleParamsStreamName/>
+<pyAllowDuplicates>false</pyAllowDuplicates>
+<pyShowJavaWindowName>GeneratedJava20260822T140533.725 GMT</pyShowJavaWindowName>
+<pyIsDataSet/>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pxTabLabel>D_PortalContextGlobal</pxTabLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyPageName>D_PortalContextGlobal</pyPageName>
+<pyStructure>page</pyStructure>
+<pySpecialtyComponentData/>
+<pyUseTimeout/>
+<pxUpdateSystemID>SLSV718c</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyIsSimulated>false</pyIsSimulated>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzIsThreadFamilyEnabled>false</pzIsThreadFamilyEnabled>
+<pxUpdateOperator>gaude</pxUpdateOperator>
+<pxInstanceLockedRuleSetVersion/>
+<pyPageContext/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTaskGroup/>
+<pyCircumstanceVal/>
+<pxInstanceLockedBy/>
+<pxOriginalCreateSystemID>SLSVTABL</pxOriginalCreateSystemID>
+<pxMoveOriginalRuleSet>Pega-EndUserUI</pxMoveOriginalRuleSet>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyValueChanged>false</pyValueChanged>
+<pyWorkKey/>
+<pyPreviousApplicationName>PegaRULES</pyPreviousApplicationName>
+<pyRefreshOncePerInteraction>false</pyRefreshOncePerInteraction>
+<pyCircumstanceDateProp/>
+<pyFormPost/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxCreateSystemID>SLSVTABL</pxCreateSystemID>
+<pyCircumstanceDefinition/>
+<pyUseNewGenPageForEditableDataPage/>
+<pyAsync>false</pyAsync>
+<pyUseWhen/>
+<pxCommitDateTime>20191015T081331.000 GMT</pxCommitDateTime>
+<pyLoadReportDefinition/>
+<pyRuleStarts/>
+<pyRuleFormStatusTime>20260822T140533.718 GMT</pyRuleFormStatusTime>
+<pzStatus>false</pzStatus>
+<pyKeysForPageList REPEATINGTYPE="PropertyList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Data-Portal</pxRuleClassName>
+<pyMethodStatus>Extension</pyMethodStatus>
+<pxRuleObjClass>Rule-Obj-Model</pxRuleObjClass>
+<pxRuleFamilyName>PYDEFAULT</pxRuleFamilyName>
+<pyRuleName>pyDefault</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyTableList REPEATINGTYPE="PropertyList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyPostActivityParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyName/>
+</rowdata>
+</pyPostActivityParams>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesKey/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesDescription/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pySelected>false</pySelected>
+</rowdata>
+</pyPagesAndClasses>
+<pyLoadActivityParameters>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLoadActivityParameters>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyRun>true</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-declare-/rule-declare-pages/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pxMessageSummary>
+<pxUnjustifiedWarningCount>1</pxUnjustifiedWarningCount>
+<pxWarningCount>1</pxWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+</pxMessageSummary>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>(Rule-)pxNoDescandUsageWrngMsg</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxIsWarningJustified/>
+<pxWarningName>no description and usage specified</pxWarningName>
+<pxWarningCreatedTime>20150123T155419.219 GMT</pxWarningCreatedTime>
+<pxWarningCreateOperator>gaude</pxWarningCreateOperator>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzIndexOwnerKey>
+<pxWarningMessage>(Rule-)pxNoDescandUsageWrngMsg</pxWarningMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyAdditionalDependencies REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyAdditionalDependencies>
+<pyPageListKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyProperty/>
+</rowdata>
+</pyPageListKeys>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzIndexOwnerKey>
+<pxWarningName>no description and usage specified</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>gaude</pxWarningCreateOperator>
+<pxIsWarningJustified/>
+<pxWarningCreatedTime>20150123T155419.219 GMT</pxWarningCreatedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningDetails>(Rule-)pxNoDescandUsageWrngMsg</pxWarningDetails>
+<pxWarningMessage>Rules marked as extension, API, or template should include a detailed usage explaining how to use the rule and a description of what the rule does.  Provide this documentation on the history tab.</pxWarningMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyDataPageSaveOptionList REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyDataSourceList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDSSystemName>Pega</pyDSSystemName>
+<pyStructure>page</pyStructure>
+<pyDescription>Data Transform • Data-Portal • pyDefault</pyDescription>
+<pySourceWhen>Always</pySourceWhen>
+<pyWaitSeconds/>
+<pxCreateOpName>Sam Tremlett</pxCreateOpName>
+<pyReqDataTransform/>
+<pyConnectorName/>
+<pyPageListPropertyName/>
+<pyExecuteOnDataPage>false</pyExecuteOnDataPage>
+<pyLoadReportDefinition/>
+<pyRuleOpenerKey/>
+<pyEndPointURL/>
+<pzIndexOwnerKey>RULE-DECLARE-PAGES D_PORTALCONTEXTGLOBAL #20180713T134707.428 GMT</pzIndexOwnerKey>
+<pyLoadActivity>pxCallDataTransform</pyLoadActivity>
+<pyConnectorClassName/>
+<pyDTName>pyDefault</pyDTName>
+<pyTemplateGeneric/>
+<pxListSubscript>1</pxListSubscript>
+<pyClassName>Data-Portal</pyClassName>
+<pyReportDefinitionClass/>
+<pxCreateDateTime>20130522T215144.730 GMT</pxCreateDateTime>
+<pyDeclarePagesDataSource>DataTransform</pyDeclarePagesDataSource>
+<pyConnectorDisplayProp>pyServiceName</pyConnectorDisplayProp>
+<pySQLOption>false</pySQLOption>
+<pyResDataTransform/>
+<pxCreateSystemID>SLSVTABL</pxCreateSystemID>
+<pyDataSourceHolder>pyDefault</pyDataSourceHolder>
+<pzDisplayDeleteIcon/>
+<pyMaxRecords/>
+<pyTemplateInputBox/>
+<pyIsRequired>true</pyIsRequired>
+<pySQLAccess/>
+<pyEditable>true</pyEditable>
+<pyConnectorList>Rule-Connect-SOAP</pyConnectorList>
+<pxCreateOperator>trems1</pxCreateOperator>
+<pyIsSimulated>false</pyIsSimulated>
+<pzViewDataSources/>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyLoadActivityParameters>
+<pxObjClass>Data-Portal</pxObjClass>
+<pyModelName>pyDefault</pyModelName>
+</pyLoadActivityParameters>
+<pyDTParamList REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzDataSources">4</rowdata>
+</pzIndexes>
+<pyDisabledSource>
+<pyDescription>Data Transform</pyDescription>
+<pxObjClass>Embed-DeclarePageSource</pxObjClass>
+<pyDeclarePagesDataSource>DataTransform</pyDeclarePagesDataSource>
+</pyDisabledSource>
+<pyConnectorDTParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-NameValuePair</pxObjClass>
+<pyName/>
+</rowdata>
+</pyConnectorDTParams>
+</rowdata>
+</pyDataSourceList>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDesc/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDefaultValue/>
+<pyTemplateInputBox/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName/>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+</pyParameters>
+<pyActivityParams REPEATINGTYPE="PageList"/>
+</pagedata>

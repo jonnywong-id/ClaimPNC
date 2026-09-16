@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabelOld>Data Akseptasi PIC</pyLabelOld>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyCircumstanceProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateDateTime>20220216T044223.595 GMT</pxUpdateDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!DATAAKSEPTASIPIC #20220215T095552.145 GMT</pzInsKey>
+<pyDeletedObject/>
+<pyRuleSetVersion>01-01-97</pyRuleSetVersion>
+<pxHostId>jboss1036</pxHostId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!DATAAKSEPTASIPIC #20220215T095552.145 GMT</pzDocumentKey>
+<pyMemo>done</pyMemo>
+<pyDocumentTitle/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedKey/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateOperator/>
+<pyBaseRule>false</pyBaseRule>
+<pyShowJavaWindowName>GeneratedJava20260901T074040.345 GMT</pyShowJavaWindowName>
+<pySpecialtyComponentData/>
+<pyTemplateInputBox/>
+<pyHandlerFlow/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM DataAkseptasiPIC</pxTabLabel>
+<pxMoveFromSystem/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDescription/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceType/>
+<pySaveSQL/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxOriginalCreateSystemID/>
+<pyRequestType>DataAkseptasiPIC</pyRequestType>
+<pyOpenSQL/>
+<pyCircumstanceVal/>
+<pyInterface/>
+<pyStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!DATAANALISAPIC #20211116T095419.263 GMT</pzOriginalInstanceKey>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!DATAAKSEPTASIPIC</pxInsId>
+<pyUsage/>
+<pxMoveImportDateTime>20220610T100601.340 GMT</pxMoveImportDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormStatusTime>20260901T074040.325 GMT</pyRuleFormStatusTime>
+<pyJavaStream/>
+<pyLabel>Data Akseptasi PIC</pyLabel>
+<pyRuleParamsStreamName/>
+<pyCircumstanceTemplate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxSaveDateTime>20220216T044223.603 GMT</pxSaveDateTime>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxCommitDateTime>20220610T100602.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateDateTime/>
+<pyTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCheckInRuleSet/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyStreamName/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pyRuleStarts/>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!DATAAKSEPTASIPIC</pxInsName>
+<pyBrowseSQL>select a.leader_member as "CommentLOD", b.ACCEPTANCE_DATECOMITEE as "AcceptedDateKomite", b.receivedatelod as "ReceiveDateLOD", b.tglakseptasi as "AcceptedDate" from t_claim_pnc a,t_claim_adjustment b
+where noakseptasi is not null
+and a.claimid=b.claimid
+and a.picteknik={TempBisnis.LBUID}
+{ASIS:TempBisnis.PROD_KE}</pyBrowseSQL>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateDateTime>20220215T095552.145 GMT</pxCreateDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>-274596822</pzChecksum>
+<pxSiblingCount/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyWindowTitle/>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM DataAkseptasiPIC</pyRuleName>
+<pyFormPost/>
+<pzRuleSetVersionPatch>97</pzRuleSetVersionPatch>
+<pyTemporaryObject/>
+<pxMergeSynchronized>20211119T075634.923 GMT</pxMergeSynchronized>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyWorkKey/>
+<pxInstanceLockedBy/>
+<pyCircumstanceDefinition/>
+<pyDeleteSQL/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!DATAAKSEPTASIPIC #20220215T095552.145 GMT</pzInsKey>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!DATAAKSEPTASIPIC #20211117T035709.586 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

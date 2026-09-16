@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyReturnType>String</pyReturnType>
+<pxInstanceLockedKey/>
+<pyDisplayName>GetPageJSONString--()</pyDisplayName>
+<pyCircumstanceProp/>
+<pyWorkKey/>
+<pzOriginalInstanceKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzOriginalInstanceKey>
+<pyInterface/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyJavaSource>PublicAPI tools = (PegaAPI) ThreadContainer.get().getPublicAPI();
+ClipboardPage stepPage = tools.getStepPage();
+String retValue = stepPage.getJSON(false);
+return retValue;</pyJavaSource>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pyDocumentTitle/>
+<pyCircumstanceDateProp/>
+<pzDocumentKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzDocumentKey>
+<pyIsFromManageChangeLP/>
+<pyValueChanged>false</pyValueChanged>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateOperator/>
+<pyCircumstanceType/>
+<pxOriginalCreateOpName/>
+<pxInsName>ASM!GETPAGEJSONSTRING--()</pxInsName>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyCircumstanceDefinition/>
+<pyDeletedObject/>
+<pySPRuleSetName/>
+<pyClassName/>
+<pxInstanceLockedBy/>
+<pyCircumstanceVal/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyMemo>fix add dual condition</pyMemo>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRelativePath/>
+<pxUpdateOperator>febry@sinarmas.co.id</pxUpdateOperator>
+<pxMoveOriginalRuleSet>Pega-RULES</pxMoveOriginalRuleSet>
+<pxMoveOriginalKey>RULE-UTILITY-FUNCTION UTILITIES COUNTINPAGELIST #20130918T235536.552 GMT</pxMoveOriginalKey>
+<pzChecksum>1302194642</pzChecksum>
+<pzRuleSetVersionPatch>48</pzRuleSetVersionPatch>
+<pyStreamName/>
+<pxCreateDateTime>20170303T101047.469 GMT</pxCreateDateTime>
+<pyCircumstanceDate/>
+<pyShowJavaWindowName>GeneratedJava20260826T032146.334 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyLibraryName>ASM</pyLibraryName>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyUsageType>OutputFormatting</pyUsageType>
+<pyStatus/>
+<pxUpdateDateTime>20170303T101158.129 GMT</pxUpdateDateTime>
+<pyRuleName>ASM GetPageJSONString--()</pyRuleName>
+<pyUsage/>
+<pyWindowTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyInline/>
+<pyReloadForm>true</pyReloadForm>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxHostId>jboss2058</pxHostId>
+<pyMethodStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzInsKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzInsKey>
+<pyFunctionName>GetPageJSONString--()</pyFunctionName>
+<pxInsId>ASM!GETPAGEJSONSTRING--()</pxInsId>
+<pyObjClassLabel>Function</pyObjClassLabel>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyIntrinsic/>
+<pyReturnPegaType/>
+<pxUpdateOpName>febry lin</pxUpdateOpName>
+<pyCompile>true</pyCompile>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateSystemID/>
+<pyRuleSetVersion>01-01-48</pyRuleSetVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzIsPrivateCheckOut/>
+<pxSiblingCount/>
+<pyMethodName>GetPageJSONString</pyMethodName>
+<pyDescription/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxSaveDateTime>20170303T101158.131 GMT</pxSaveDateTime>
+<pxMoveFromSystem>sdev718</pxMoveFromSystem>
+<pzIndexCount>5</pzIndexCount>
+<pyRuleFormStatusTime>20260826T032146.288 GMT</pyRuleFormStatusTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateOpName>febry lin</pxCreateOpName>
+<pyReturnUsage/>
+<pxCommitDateTime>20200312T080353.000 GMT</pxCommitDateTime>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pyActionName>RULE-UTILITY-FUNCTION ASM COUNTINPAGELISTANDDUAL--(STRING,CA8F14F3D361C2C5BC799A91668EFEF8 #20170301T041715.576 GMT</pyActionName>
+<pxCreateOperator>febry@sinarmas.co.id</pxCreateOperator>
+<pyRuleParamsStreamName/>
+<pyLabel>GetPageJSONString</pyLabel>
+<pyDecoratedFunctionName>GetPageJSONString--()</pyDecoratedFunctionName>
+<pyFormPost/>
+<pxMoveOriginalRuleSetVersion>07-10-01</pxMoveOriginalRuleSetVersion>
+<pxObjClass>Rule-Utility-Function</pxObjClass>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxTabLabel>ASM GetPageJSONString--()</pxTabLabel>
+<pyReturnPegaClass/>
+<pySpecialtyComponentData/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabelOld>GetPageJSONString</pyLabelOld>
+<pxMoveImportDateTime>20191226T024618.603 GMT</pxMoveImportDateTime>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyRuleStarts/>
+<pzStatus>valid</pzStatus>
+<pyThrowsException REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-Utility-FunctionExceptions</pxObjClass>
+<pyException/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyThrowsException>
+<pyRuleReferenceTypes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyClassName/>
+<pxObjClass>Rule-Obj-Class</pxObjClass>
+<pyKeyDefList REPEATINGTYPE="PageList"/>
+</rowdata>
+</pyRuleReferenceTypes>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyParametersDefinition REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPageClass/>
+<pyPegaType/>
+<pyParameterName/>
+<pxObjClass>Embed-Rule-Utility-FunctionParameters</pxObjClass>
+<pyParameterUsage/>
+<pyParameterMode/>
+<pyParameterType/>
+</rowdata>
+</pyParametersDefinition>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-48 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-48 (Available)</pyLabel>
+<pzInsKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-utility-/rule-utility-function/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-utility-/rule-utility-function/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pyCheckOut>false</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+</pyToolBarSettings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pyRuleName>ASM GISFW</pyRuleName>
+<pxRuleFamilyName>ASM!GISFW</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-UTILITY-FUNCTION ASM GETPAGEJSONSTRING--() #20170303T101047.469 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyJavaPackageName REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyJavaPackageName/>
+<pxObjClass>Embed-Rule-Utility-Package</pxObjClass>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyJavaPackageName>
+</pagedata>

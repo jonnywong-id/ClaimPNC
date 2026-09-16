@@ -1,0 +1,463 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyInterface/>
+<pyRuleEnds/>
+<pxSiblingCount/>
+<pyRuleStarts/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pySPRuleSetName>picada@</pySPRuleSetName>
+<pxUpdateSystemID>sls-envcam82</pxUpdateSystemID>
+<pyMemo>Unchecking "Require authentication to run"</pyMemo>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181218T201247.027 GMT</pzDocumentKey>
+<pyCircumstanceDate/>
+<pxTabLabel>pyIsValidRuleSetName</pxTabLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxMoveImportOperId>picada</pxMoveImportOperId>
+<pyMethodStatus/>
+<pxInstanceLockedSaveDateTime/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyAssociatedImage/>
+<pyFormPost/>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyLabel>pyIsValidRuleSetName</pyLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyJavaGenerateTime>20181212T175111.353 GMT</pyJavaGenerateTime>
+<pyTemplateInputBox/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pxInstanceLockedRuleSetVersion/>
+<pyStreamName/>
+<pyLabelOld>pyIsValidRuleSetName</pyLabelOld>
+<pxInsId>!PYISVALIDRULESETNAME</pxInsId>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyCircumstanceDateProp/>
+<pyDescription/>
+<pxMoveImportDateTime>20181218T201018.479 GMT</pxMoveImportDateTime>
+<pyStatus/>
+<pyUsage/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20180724T194626.134 GMT</pzOriginalInstanceKey>
+<pyJavaStream/>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBaseRule>false</pyBaseRule>
+<pyTemplate/>
+<pyInputMayStart>false</pyInputMayStart>
+<pyCircumstanceDefinition/>
+<pyWindowTitle/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceTemplate/>
+<pxUpdateDateTime>20181218T201247.027 GMT</pxUpdateDateTime>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyRuleSet>Pega-RulesEngine</pyRuleSet>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxMoveImportOperName>David Picariello</pxMoveImportOperName>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedCreateDateTime/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyRuleName>pyIsValidRuleSetName</pyRuleName>
+<pyRelativePath/>
+<pyActivityName>pyIsValidRuleSetName</pyActivityName>
+<pxHostId>10.1.6.47_envcam83-web-1</pxHostId>
+<pzIndexCount>6</pzIndexCount>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pxOriginalCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20260724T034006.501 GMT</pyShowJavaWindowName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceProp/>
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pyRuleSearchQuery/>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateSystemID/>
+<pyEditable/>
+<pxUpdateOperator>picada</pxUpdateOperator>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceVal/>
+<pxCreateDateTime>20181218T201247.027 GMT</pxCreateDateTime>
+<pxCommitDateTime>20191015T081608.000 GMT</pxCommitDateTime>
+<pyJavaClassName>Rule_Obj_Activity__baseclass_pyIsValidRuleSetName_Action_20181212T175027_775_GMT</pyJavaClassName>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pxOriginalCreateOperator/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181218T201247.027 GMT</pzInsKey>
+<pxMoveFromSystem/>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pySpecialtyComponentData/>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceType/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreatedInPRPCVersion>07-01-07</pxCreatedInPRPCVersion>
+<pyRuleParamsStreamName/>
+<pyRuleFormStatusTime>20260724T034006.479 GMT</pyRuleFormStatusTime>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pzChecksum>2042320449</pzChecksum>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInsName>@BASECLASS!PYISVALIDRULESETNAME</pxInsName>
+<pxSaveDateTime>20181218T201247.027 GMT</pxSaveDateTime>
+<pyDeletedObject/>
+<pySelected>false</pySelected>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>08-03-01</pyRuleSetVersion>
+<pxUpdateOpName>David Picariello</pxUpdateOpName>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pxInstanceLockedBy/>
+<pxOriginalCreateOpName/>
+<pyClassName>@baseclass</pyClassName>
+<pyWorkKey/>
+<pzStatus>false</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181218T201247.027 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>08-03-01 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181218T201247.027 GMT</pzInsKey>
+<pyLabel>08-03-01 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleCompareList>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningCreatedTime>20181212T175027.248 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedTime/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181212T175027.174 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pyWarningJustifiedMessage/>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreateOperator>picada</pxWarningCreateOperator>
+<pxWarningName>Activity use</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedTime/>
+<pxWarningCreateOperator>picada</pxWarningCreateOperator>
+<pxWarningCreatedTime>20181212T175027.307 GMT</pxWarningCreatedTime>
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pxWarningMessage>You should create a test case for this rule to identify any regression issues that might occur when this rule is modified.</pxWarningMessage>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningJustifiedOperator/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181212T175027.174 GMT</pzIndexOwnerKey>
+<pyWarningJustifiedMessage/>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">4</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc/>
+</rowdata>
+</pyLocalParameters>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyRun>true</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRefresh>true</pyRefresh>
+<pyPreview>true</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pySiblings>true</pySiblings>
+<pyShowJava>true</pyShowJava>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliRule/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName/>
+<pyParametersParamDefaultValue/>
+</rowdata>
+</pyParameters>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningJustifiedOperator/>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181212T175027.174 GMT</pzIndexOwnerKey>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxWarningCreatedTime>20181212T175027.248 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>picada</pxWarningCreateOperator>
+<pxWarningJustifiedTime/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pyWarningJustifiedMessage/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Activity use</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningName>Pega Unit Warning</pxWarningName>
+<pyWarningJustifiedMessage/>
+<pxWarningMessage>(Rule-)pxPegaUnit</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>picada</pxWarningCreateOperator>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningJustifiedOperator/>
+<pxWarningCreatedTime>20181212T175027.307 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181212T175027.174 GMT</pzIndexOwnerKey>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-)pxPegaUnit</pxWarningDetails>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">4</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeClass>@baseclass</pyPrivilegeClass>
+<pyPrivilegeName/>
+</rowdata>
+</pyActivityPrivilegeList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>@baseclass</pyRuleName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PYISVALIDRULESETNAME #20181212T175027.174 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowType</pyParametersParamName>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+</rowdata>
+</pySystemParameters>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	Data-.pyIsValidRuleSetName</pxStepDefaultDescription>
+<pyStepsPreCondition/>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepsTransition/>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyPropRef/>
+<pyStepsJavaSource/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsObjectName/>
+<pyStepsDescription>Do nothing for @baseclass. Only process at Data-</pyStepsDescription>
+<pyTemplateInputBox/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyStepsActivityNameUC>CALL DATA-.PYISVALIDRULESETNAME</pyStepsActivityNameUC>
+<pyStepActivityDescription/>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyExpanded>true</pyExpanded>
+<pxCreateDateTime>20180711T203938.649 GMT</pxCreateDateTime>
+<pzStepExpanded/>
+<pyStepsBlockName>//</pyStepsBlockName>
+<pyOnException/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyStepsActivityName>Call Data-.pyIsValidRuleSetName</pyStepsActivityName>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20180711T203938.650 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyStepsPreCondParamsWhenTruePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyStepsRepeatDefStart/>
+<pxCreateDateTime>20180711T203938.652 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20180711T203938.652 GMT</pxCreateDateTime>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyForEachClass/>
+<pxCreateOperator>picada</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen/>
+<pxCreateSystemID>sls-envcam2</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOperator>picada</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20180711T203938.651 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>David Picariello</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+</rowdata>
+</pySteps>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>1</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>1</pxLowSeverityWarningCount>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+</pxMessageSummary>
+</pagedata>

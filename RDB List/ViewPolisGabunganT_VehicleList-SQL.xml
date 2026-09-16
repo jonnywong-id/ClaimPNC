@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDocumentTitle/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportDateTime>20260712T145756.349 GMT</pxMoveImportDateTime>
+<pyFormPost/>
+<pxUpdateOperator>ALBERT</pxUpdateOperator>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!VIEWPOLISGABUNGANT_VEHICLELIST #20260708T023927.230 GMT</pzDocumentKey>
+<pxCreateDateTime>20260708T023927.230 GMT</pxCreateDateTime>
+<pyMethodStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyHandlerFlow/>
+<pxCreateOperator>ALBERT</pxCreateOperator>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRequestType>ViewPolisGabunganT_VehicleList</pyRequestType>
+<pyUsage/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyDeleteSQL/>
+<pyLabelOld>ViewPolisGabunganT_VehicleList</pyLabelOld>
+<pyOpenSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedCreateDateTime/>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!VIEWPOLISGABUNGANT_VEHICLELIST</pxInsId>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyInterface/>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleEnds/>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceVal/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceProp/>
+<pyCircumstanceType/>
+<pyDeletedObject/>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWorkKey/>
+<pyIsFromManageChangeLP/>
+<pyDescription/>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!VIEWPOLISGABUNGANT_VEHICLELIST</pxInsName>
+<pzRuleSetVersionPatch>80</pzRuleSetVersionPatch>
+<pyCircumstanceTemplate/>
+<pyBrowseSQL>SELECT 
+       TO_CLOB (vehiclelist) AS HASIL1,
+       TO_CLOB (accessorylist) AS HASIL2,
+       TO_CLOB (coveragelist) AS HASIL3
+  FROM pooldata.t_vehiclelist a
+  WHERE idpega = {BrowseObjEDM.CARI1} {ASIS:BrowseObjEDM.CARI2}
+{ASIS:BrowseObjEDM.CARI3}
+ and rownum &gt;={ASIS:Pagination.FirstRow} 
+ and rownum &lt;= {ASIS:Pagination.LastRow}
+order by indexobject asc</pyBrowseSQL>
+<pxInstanceLockedBy/>
+<pyShowJavaWindowName>GeneratedJava20260721T043617.346 GMT</pyShowJavaWindowName>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM ViewPolisGabunganT_VehicleList</pyRuleName>
+<pxSaveDateTime>20260710T135135.651 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pyJavaStream/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxInstanceLockedRuleSetVersion/>
+<pyBaseRule>false</pyBaseRule>
+<pyMemo>add pagination untuk b2b gabungan bri</pyMemo>
+<pyStreamName/>
+<pxUpdateOpName>Albert</pxUpdateOpName>
+<pyTemporaryObject/>
+<pyCheckInRuleSet/>
+<pyRuleStarts/>
+<pyRuleSetVersion>01-05-80</pyRuleSetVersion>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedRuleSet/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!VIEWPOLISGABUNGANT_VEHICLELIST #20260708T023927.230 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20260712T145756.000 GMT</pxCommitDateTime>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateDateTime/>
+<pxUpdateDateTime>20260710T135135.640 GMT</pxUpdateDateTime>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM ViewPolisGabunganT_VehicleList</pxTabLabel>
+<pySaveSQL/>
+<pxOriginalCreateOperator/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWindowTitle/>
+<pyStatus/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDate/>
+<pxHostId>jboss10372</pxHostId>
+<pyLabel>ViewPolisGabunganT_VehicleList</pyLabel>
+<pyRWAccess>ASM</pyRWAccess>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormStatusTime>20260721T043617.321 GMT</pyRuleFormStatusTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVEGABUNGANT_VEHICLELIST #20260617T070146.464 GMT</pzOriginalInstanceKey>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzChecksum>-1113302594</pzChecksum>
+<pxInstanceLockedKey/>
+<pyCircumstanceDateProp/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSiblingCount/>
+<pxCreateOpName>Albert</pxCreateOpName>
+<pyTemplateInputBox/>
+<pyDeleteMemo>init</pyDeleteMemo>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRelativePath/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!VIEWPOLISGABUNGANT_VEHICLELIST #20260708T023927.230 GMT</pzInsKey>
+<pyLabel>01-05-80 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyUsage/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyWorkKey/>
+<pxInstanceLockedRuleSet/>
+<pyRequestType>GetInboxKomunikasi</pyRequestType>
+<pyDocumentTitle/>
+<pzChecksum>-895335166</pzChecksum>
+<pyFormPost/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM GetInboxKomunikasi</pxTabLabel>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedKey/>
+<pyCircumstanceDate/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pySpecialtyComponentData/>
+<pyDeleteMemo>sonw</pyDeleteMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxCommitDateTime>20210801T030935.000 GMT</pxCommitDateTime>
+<pyRuleEnds/>
+<pxSaveDateTime>20210719T064958.889 GMT</pxSaveDateTime>
+<pyBrowseSQL>select * 
+from (select createddate AS "CloseClaimDate", message AS "Email", sendername AS "UserName", sender AS "UserTeknis",
+        caseid AS "pzInsKey", komunikasiid AS "ClaimNo",
+        replymessage AS "CloseClaimNote", komunikasistatus AS "StatusClaim",
+        createdatereply AS "AnalystTransferDate"
+    from pooldata.m_komunikasi_pnc  
+    where caseid in ({ASIS:getkomunikasi.D_SURVEY_ID})
+   {ASIS:getkomunikasi.EMAIL}
+union all
+    select createddate AS "CloseClaimDate", message AS "Email", sendername AS "UserName", sender AS "UserTeknis",
+        caseid AS "pzInsKey", komunikasiid AS "ClaimNo",replymessage AS "CloseClaimNote", 
+        komunikasistatus AS "StatusClaim",createdatereply AS "AnalystTransferDate"
+    from pooldata.m_komunikasi_pnc  
+    where caseid in ({ASIS:getkomunikasi.M_SURVEY_ID})) z
+order by z."CloseClaimDate" desc</pyBrowseSQL>
+<pyCircumstanceProp/>
+<pxUpdateDateTime>20210719T064958.869 GMT</pxUpdateDateTime>
+<pyRuleSetVersion>01-01-61</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20210712T080439.555 GMT</pzDocumentKey>
+<pyOpenSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pyJavaStream/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplateInputBox/>
+<pyCheckInRuleSet/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!GETINBOXKOMUNIKASI</pxInsName>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!GETINBOXKOMUNIKASI</pxInsId>
+<pxMoveImportDateTime>20210801T030935.530 GMT</pxMoveImportDateTime>
+<pyShowJavaWindowName>GeneratedJava20260831T070002.933 GMT</pyShowJavaWindowName>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM GetInboxKomunikasi</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHandlerFlow/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyClassName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETHISTORYEMAILADJUSTER_PNC #20190813T074540.251 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatusTime>20260831T070002.906 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateSystemID/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyInterface/>
+<pyStreamName/>
+<pxMergeSynchronized>20210621T094628.616 GMT</pxMergeSynchronized>
+<pyMemo>done</pyMemo>
+<pyLabelOld>GetInboxKomunikasi</pyLabelOld>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pxCreateDateTime>20210712T080439.555 GMT</pxCreateDateTime>
+<pyRuleStarts/>
+<pxOriginalCreateOperator/>
+<pxHostId>jboss2143</pxHostId>
+<pxMoveFromSystem/>
+<pxOriginalCreateOpName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionPatch>61</pzRuleSetVersionPatch>
+<pyCircumstanceDefinition/>
+<pyIsFromManageChangeLP/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStatus/>
+<pyTemplate/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleParamsStreamName/>
+<pySaveSQL/>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyLabel>GetInboxKomunikasi</pyLabel>
+<pyTemporaryObject/>
+<pyDeletedObject/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20210712T080439.555 GMT</pzInsKey>
+<pyCircumstanceTemplate/>
+<pyRelativePath/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateDateTime/>
+<pyDescription/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedDateTime/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pySave>false</pySave>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20250205T014553.708 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-61 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20210712T080439.555 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20210621T094213.610 GMT</pzInsKey>
+<pyLabel>01-01-60 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMenuTooltip/>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI #20200207T120549.360 GMT</pzInsKey>
+<pxListSubscript>4</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

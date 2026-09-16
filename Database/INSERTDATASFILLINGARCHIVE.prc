@@ -1,0 +1,53 @@
+CREATE OR REPLACE PROCEDURE          InsertDatasFillingArchive(flags in varchar2,tID_ARCHIVE in number,
+tNOKLAIM in varchar2,
+tNOPOLIS in varchar2,
+tTERTANGGUNG in varchar2,
+tDOL in date,
+tPICTEKNIK in varchar2,
+tUSERINPUT in varchar2,
+tTGLTERIMADOK in date,
+tTGLINPUT in date,
+tJUMLAHLEMBAR in number,
+tTIPEDOK in varchar2,
+tJENISDOK in varchar2,
+tNAMABOX in varchar2,
+tKODEFILLING in varchar2,ErrMsg OUT VARCHAR2)
+as
+counts_id number;
+
+BEGIN
+   
+   
+   select count(*) into counts_id from pooldata.T_CLAIM_ARCHIVE_FILE;
+   
+   if counts_id=0 then 
+        counts_id := counts_id+1;
+        INSERT INTO POOLDATA.T_CLAIM_ARCHIVE_FILE(ID_ARCHIVE,NOKLAIM,NOPOLIS,TERTANGGUNG,DOL,PICTEKNIK,TGLTERIMADOK,TGLINPUT,JUMLAHLEMBAR,TIPEDOK,JENISDOK,NAMABOX,KODEFILLING,USERINPUT)
+        VALUES(counts_id,tNOKLAIM,tNOPOLIS,tTERTANGGUNG,tDOL,tPICTEKNIK,tTGLTERIMADOK,sysdate,tJUMLAHLEMBAR,tTIPEDOK,tJENISDOK,tNAMABOX,tKODEFILLING,tUSERINPUT);
+        ErrMsg :='1/'||counts_id;
+        COMMIT;
+   elsif flags='insert' and counts_id!=0 then
+        
+        select max(ID_ARCHIVE) into counts_id from pooldata.T_CLAIM_ARCHIVE_FILE;
+        counts_id:=counts_id+1;
+        INSERT INTO POOLDATA.T_CLAIM_ARCHIVE_FILE(ID_ARCHIVE,NOKLAIM,NOPOLIS,TERTANGGUNG,DOL,PICTEKNIK,TGLTERIMADOK,TGLINPUT,JUMLAHLEMBAR,TIPEDOK,JENISDOK,NAMABOX,KODEFILLING,USERINPUT)
+        VALUES(counts_id,tNOKLAIM,tNOPOLIS,tTERTANGGUNG,tDOL,tPICTEKNIK,tTGLTERIMADOK,sysdate,tJUMLAHLEMBAR,tTIPEDOK,tJENISDOK,tNAMABOX,tKODEFILLING,tUSERINPUT);
+        ErrMsg:='1/'||counts_id;
+        COMMIT;
+   elsif flags='update' then
+        UPDATE POOLDATA.T_CLAIM_ARCHIVE_FILE set NOKLAIM=tNOKLAIM,NOPOLIS=tNOPOLIS,TERTANGGUNG=tTERTANGGUNG,
+        DOL=tDOL,PICTEKNIK=tPICTEKNIK,TGLTERIMADOK=tTGLTERIMADOK,JUMLAHLEMBAR=tJUMLAHLEMBAR,TIPEDOK=tTIPEDOK,JENISDOK=tJENISDOK,
+        NAMABOX=tNAMABOX,KODEFILLING=tKODEFILLING where ID_ARCHIVE=tID_ARCHIVE;    
+        ErrMsg :='1';
+        COMMIT;
+   end if;
+   
+
+   EXCEPTION
+      WHEN OTHERS
+      THEN
+         ErrMsg := 'Error exec Insert Data Filling Archive';
+         RETURN;
+   END;
+
+/

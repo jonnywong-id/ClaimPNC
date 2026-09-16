@@ -1,0 +1,281 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportDateTime>20161013T121125.987 GMT</pxMoveImportDateTime>
+<pxOriginalCreateSystemID>SLSV722c</pxOriginalCreateSystemID>
+<pxMoveOriginalKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20161014T093542.175 GMT</pxMoveOriginalKey>
+<pyDescription>Generates a user friendly label for a page.
+
+This is currently only being used for rule compare, but has potential to be used in other situations.</pyDescription>
+<pxCreateDateTime>20180713T135506.726 GMT</pxCreateDateTime>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxCreateOpName>Feenr</pxCreateOpName>
+<pxUpdateOperator>feenr</pxUpdateOperator>
+<pyJavaClassName>_baseclass_pygetpagelabel_20180713_135506_726</pyJavaClassName>
+<pxInstanceLockedRuleSet/>
+<pzChecksum>-1012719932</pzChecksum>
+<pyTaskGroup/>
+<pySpecialtyComponentData/>
+<pxInstanceLockedCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveOriginalRuleSetVersion>07-10-27</pxMoveOriginalRuleSetVersion>
+<pyRuleParamsStreamName/>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyShowJavaWindowName>GeneratedJava20260724T090009.999 GMT</pyShowJavaWindowName>
+<pzOriginalInstanceKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20161010T114028.565 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pxInsId>!PYGETPAGELABEL</pxInsId>
+<pxOriginalCreateOperator>feenr</pxOriginalCreateOperator>
+<pyCircumstanceDate/>
+<pxInstanceLockedKey/>
+<pzDocumentKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20180713T135506.726 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pyUsage>This @baseclass version sets the default Param.ReturnLabel. Override in child classes to change the behavior.
+
+Apply this Data Transform with the checkbox "PassParameterPage" selected so that the Out Parameter makes it back to the calling activity.</pyUsage>
+<pyCircumstanceDefinition/>
+<pyIsFromManageChangeLP/>
+<pyCallSuperClassModel>true</pyCallSuperClassModel>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pySPRuleSetName>feenr@</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStreamName/>
+<pyLabelOld>Get Page Label</pyLabelOld>
+<pyModelName>pyGetPageLabel</pyModelName>
+<pyInterface/>
+<pyDocumentTitle/>
+<pxCreateSystemID>SLSV722c</pxCreateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pxMoveImportOperId>feenr</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyOfflineValidationMessage/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleStarts/>
+<pzInsKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20180713T135506.726 GMT</pzInsKey>
+<pyFormPost/>
+<pyRuleName>pyGetPageLabel</pyRuleName>
+<pxUpdateDateTime>20180713T135506.726 GMT</pxUpdateDateTime>
+<pxUpdateSystemID>SLSV722c</pxUpdateSystemID>
+<pyCircumstanceVal/>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyTemplate/>
+<pxOriginalCreateOpName>Feenr</pxOriginalCreateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalRuleSet>Pega-Desktop</pxOriginalRuleSet>
+<pyCircumstanceProp/>
+<pxInstanceLockedDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedBy/>
+<pyClassName>@baseclass</pyClassName>
+<pyValueChanged>false</pyValueChanged>
+<pzQuickConfigure>true</pzQuickConfigure>
+<pxInstanceLockedSaveDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleSearchQuery/>
+<pyCircumstanceType/>
+<pxMoveImportOperName>Ryan Feeney</pxMoveImportOperName>
+<pyDataModelFormat>Clipboard</pyDataModelFormat>
+<pyLabel>Get Page Label</pyLabel>
+<pxInsName>@BASECLASS!PYGETPAGELABEL</pxInsName>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pySelected>false</pySelected>
+<pyWorkKey/>
+<pyWindowTitle/>
+<pxCommitDateTime>20191015T081543.000 GMT</pxCommitDateTime>
+<pxObjClass>Rule-Obj-Model</pxObjClass>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pxCreateOperator>feenr</pxCreateOperator>
+<pxSaveDateTime>20180713T135506.726 GMT</pxSaveDateTime>
+<pyRuleFormStatusTime>20260724T090009.984 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateDateTime>20180713T135506.726 GMT</pxOriginalCreateDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyCircumstanceDateProp/>
+<pxTabLabel>pyGetPageLabel</pxTabLabel>
+<pyRuleSet>Pega-Desktop</pyRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyObjClassLabel>Data Transform</pyObjClassLabel>
+<pxUpdateOpName>Feenr</pxUpdateOpName>
+<pyRelativePath/>
+<pyCircumstanceTemplate/>
+<pyMemo>BUG-268058</pyMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaStream/>
+<pyTemplateInputBox/>
+<pxMoveOriginalRuleSet>Pega-Desktop</pxMoveOriginalRuleSet>
+<pzIndexCount>4</pzIndexCount>
+<pzImplVersion>06.02.01</pzImplVersion>
+<pyRuleEnds/>
+<pyDeleteMemo>Changed the Description and Usage</pyDeleteMemo>
+<pzStatus>false</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20180713T135506.726 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRun>true</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyShowJava>true</pyShowJava>
+<pyLaunch>true</pyLaunch>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-model/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>PageLabel</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc>The user friendly label for the parent page, page list, or page group</pyParametersParamDesc>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>The subscript of a list or group to be included in the CompareLabel</pyParametersParamDesc>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>Index</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>ReturnLabel</pyParametersParamName>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>Return the user friendly label.</pyParametersParamDesc>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamDefaultValue/>
+</rowdata>
+</pyParameters>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20180713T135506.726 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pyMethodStatus/>
+<pyRuleName>@baseclass</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-MODEL @BASECLASS PYGETPAGELABEL #20180713T135506.726 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyProperties REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRelationNameAppend/>
+<pyPropertiesValue>param.PageLabel + " "+param.PageIndex</pyPropertiesValue>
+<pxCreateOperator>feenr</pxCreateOperator>
+<pxCreateDateTime>20161010T113856.932 GMT</pxCreateDateTime>
+<pyPropRef/>
+<pyRelationNameWhen/>
+<pyRelationNameUpdatepage/>
+<pyDisabled/>
+<pyPropertiesName>param.ReturnLabel</pyPropertiesName>
+<pxCreateOpName>Feenr</pxCreateOpName>
+<pxObjClass>Embed-ModelParams</pxObjClass>
+<pxCreateSystemID>SLSV722c</pxCreateSystemID>
+<pyClassName/>
+<pyActionName>SET</pyActionName>
+<pyPropertyStepId>1</pyPropertyStepId>
+<pyExpanded>true</pyExpanded>
+<pyProperties REPEATINGTYPE="PageList"/>
+<pyExpressionGadget>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowParameters>true</pyShowParameters>
+<pyShowLocalVariables>false</pyShowLocalVariables>
+<pyTemplateInputBox/>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyProperties>
+</pagedata>

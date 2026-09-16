@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleName>NotifikasiSalvageRequest</pyRuleName>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pxCreateDateTime>20241011T095203.319 GMT</pxCreateDateTime>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzDocumentKey>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInsId>!NOTIFIKASISALVAGEREQUEST</pxInsId>
+<pxMoveImportDateTime>20241223T123705.804 GMT</pxMoveImportDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStreamName>NotifikasiSalvageRequest</pyStreamName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyRuleFormStatusTime>20260902T064626.888 GMT</pyRuleFormStatusTime>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pxHostId>jboss10372</pxHostId>
+<pyShowJavaWindowName>GeneratedJava20260902T064626.925 GMT</pyShowJavaWindowName>
+<pyCompact>false</pyCompact>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+    &lt;style&gt;
+      p , li{
+        font-size: 15px;
+        color: "Green";
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body style="font-family: Arial, Helvetica, sans-serif;"&gt;
+    &lt;p&gt;Dear,&lt;/p&gt;
+    &lt;p&gt; Dengan ini kami memberitahukan terdapat request salvage, dengan detail klaim sebagai berikut : &lt;/p&gt;
+    &lt;table&gt;
+      &lt;tr&gt;&lt;td&gt;No Klaim&lt;/td&gt;
+        &lt;td&gt;: &lt;pega:reference name="TempInsertSalvage.Country"&gt;&lt;/pega:reference&gt;&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;Nilai Salvage&lt;/td&gt;
+        &lt;td&gt;: &lt;pega:reference name="TempInsertSalvage.RefNo"&gt;&lt;/pega:reference&gt;&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;Message Request&lt;/td&gt;
+        &lt;td&gt;: &lt;pega:reference name="TempInsertSalvage.FlagASO"&gt;&lt;/pega:reference&gt;&lt;/td&gt;&lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzInsKey>
+<pxSaveDateTime>20241017T023309.818 GMT</pxSaveDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxUpdateDateTime>20241017T023309.809 GMT</pxUpdateDateTime>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDNOTIFIKASIKLAIMPADARICABANG #20240912T025020.494 GMT</pzOriginalInstanceKey>
+<pyReloadForm>true</pyReloadForm>
+<pyLabelOld>NotifikasiSalvageRequest</pyLabelOld>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyMemo>done</pyMemo>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzIndexCount>14</pzIndexCount>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabel>NotifikasiSalvageRequest</pyLabel>
+<pyDeleteMemo>work in progress</pyDeleteMemo>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxCommitDateTime>20241223T123706.000 GMT</pxCommitDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!NOTIFIKASISALVAGEREQUEST</pxInsName>
+<pzChecksum>-251246574</pzChecksum>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxTabLabel>NotifikasiSalvageRequest</pxTabLabel>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyBaseRule>false</pyBaseRule>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_NotifikasiSalvageRequest_Stream_20241011T095204_413_GMT</pyJavaClassName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxPageName>TempInsertSalvage</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleFamilyName>COUNTRY</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>Country</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRuleName>RefNo</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>REFNO</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>FLAGASO</pxRuleFamilyName>
+<pyRuleName>FlagASO</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC NOTIFIKASISALVAGEREQUEST #20241011T095203.319 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pyPreview>true</pyPreview>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>true</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempInsertSalvage</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyFormPost/>
+<pyStatus/>
+<pyRelativePath/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyCircumstanceProp/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMergeSynchronized>20240722T072309.474 GMT</pxMergeSynchronized>
+<pyRuleFormStatusTime>20260826T040120.472 GMT</pyRuleFormStatusTime>
+<pyHistoryObject/>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyLabelOld>InsertDokumentHistoriKlaimPNC</pyLabelOld>
+<pyTemporaryObject/>
+<pxSiblingCount/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyTemplate/>
+<pzChecksum>-1482950369</pzChecksum>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsFromManageChangeLP/>
+<pzIsPrivateCheckOut/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pyRequestType>InsertDokumentHistoriKlaimPNC</pyRequestType>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxUpdateDateTime>20250226T073753.716 GMT</pxUpdateDateTime>
+<pyCircumstanceDateProp/>
+<pxCreateDateTime>20250226T073740.161 GMT</pxCreateDateTime>
+<pyRuleParamsStreamName/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!INSERTDOKUMENTHISTORIKLAIMPNC</pxInsName>
+<pyWorkKey/>
+<pyHandlerFlow/>
+<pyDescription/>
+<pyTemplateInputBox/>
+<pyInterface/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM InsertDokumentHistoriKlaimPNC</pyRuleName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceTemplate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pySpecialtyComponentData/>
+<pyMethodStatus/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!INSERTDOKUMENTHISTORIKLAIMPNC</pxInsId>
+<pxMoveFromSystem/>
+<pyBrowseSQL>INSERT INTO POOLDATA.DATA_ATTACHFILE_HISTORIKLAIM(DATAID, NOKLAIM, INPUTDATE, INPUTOPERATOR, ATTACHNAME,ATTACHNOTE,ATTACHMIMETYPE,MESSAGE,CATRGORY,GCNMCATEGORY,GCNMTYPE) 
+VALUES ({InsertAttachment.DATAID},{InsertAttachment.DISC},sysdate,{InsertAttachment.INPUTOPERATOR},{InsertAttachment.ATTACHNAME},{InsertAttachment.ATTACHNAME},{InsertAttachment.ATTACHMIMETYPE},{InsertAttachment.pyNote},{TempCategoryAttachment.DETAIL_DOCUMENT},{TempCategoryAttachment.DOC_TYPE_ID},{TempCategoryAttachment.ID})</pyBrowseSQL>
+<pxCommitDateTime>20250226T073753.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportDateTime>20240730T120721.424 GMT</pxMoveImportDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM InsertDokumentHistoriKlaimPNC</pxTabLabel>
+<pyDeleteSQL/>
+<pyCircumstanceDefinition/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20250226T073740.161 GMT</pzInsKey>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pxInstanceLockedKey/>
+<pyMemo>OK</pyMemo>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyWindowTitle/>
+<pyShowJavaWindowName>GeneratedJava20260826T040120.496 GMT</pyShowJavaWindowName>
+<pyLabel>InsertDokumentHistoriKlaimPNC</pyLabel>
+<pySaveSQL>INSERT INTO POOLDATA.DATA_ATTACHFILE_HISTORIKLAIM(DATAID, NOKLAIM, INPUTDATE, INPUTOPERATOR, ATTACHNAME,ATTACHNOTE,ATTACHMIMETYPE,MESSAGE,CATRGORY,GCNMCATEGORY,GCNMTYPE) 
+VALUES ({InsertAttachment.DATAID},{InsertAttachment.DISC},sysdate,{InsertAttachment.INPUTOPERATOR},{InsertAttachment.ATTACHNAME},{InsertAttachment.ATTACHNAME},{InsertAttachment.ATTACHMIMETYPE},{InsertAttachment.pyNote},{TempCategoryAttachment.DETAIL_DOCUMENT},{TempCategoryAttachment.DOC_TYPE_ID},{TempCategoryAttachment.ID})</pySaveSQL>
+<pxHostId>jboss1040</pxHostId>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyJavaStream/>
+<pxSaveDateTime>20250226T073753.802 GMT</pxSaveDateTime>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyOpenSQL/>
+<pyRuleStarts/>
+<pyBaseRule>false</pyBaseRule>
+<pyCheckInRuleSet/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20240722T072239.299 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceVal/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyClassName>
+<pyCircumstanceDate/>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyUsage/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceType/>
+<pyStreamName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20250226T073740.161 GMT</pzDocumentKey>
+<pyDeletedObject/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>true</pyDelete>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>false</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20250226T073740.161 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20240722T072239.299 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-03-08 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENTHISTORIKLAIMPNC #20240404T023021.809 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-04 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

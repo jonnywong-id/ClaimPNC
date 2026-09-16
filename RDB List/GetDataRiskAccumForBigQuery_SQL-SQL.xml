@@ -1,0 +1,211 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyBrowseSQL>SELECT x.policyno AS "PolicyNo",
+       x.accumulationcode as "AccumulationCode",
+       x.treatyyear as "TreatyYear",
+       x.reinsurancetypeid as "ReinsuranceTypeID",
+       to_char(TO_DATE (x.adjustmentdate, 'DD-MM-YY'),'YYYYMMDD') AS "AdjusmentDate",
+       to_char(TO_DATE (x.endaccumulationdate, 'DD-MM-YY'),'YYYYMMDD') AS "EndAccumulationDate",
+       x.accumulationadjustment as "AccumulationAdjustment",
+       x.outteradjustment as "OutterAdjustment",
+       y.jsondata.AccumulationName as "AccumulationName",
+       y.jsondata.Note as "Note",
+       y.jsondata.ZipCode as "ZipCode",
+       z.jsondata.CurrencyValue as "CurrencyValue",
+       (select note from reinsurancetype where id = x.reinsurancetypeid) as "ReinsuranceTypeName"
+  FROM POOLDATA.ACCUMULATION_ADJUSTLIST x,
+       POOLDATA.m_accumulation y,
+       POOLDATA.m_riskaccumulation z
+ WHERE     x.accumulationcode = y.id
+       AND z.accumulationcode = y.id
+       AND x.accumulationcode = {InputData.AccumulationCode}
+       AND z.treatyyear = x.treatyyear
+       AND z.reinsurancetypeid = x.reinsurancetypeid</pyBrowseSQL>
+<pzChecksum>-869636041</pzChecksum>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pxHostId>jboss1040</pxHostId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyWorkKey/>
+<pyRuleSetVersion>01-05-21</pyRuleSetVersion>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveFromSystem/>
+<pxInstanceLockedRuleSet/>
+<pxSiblingCount/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInsId>ASM-FW-GISFW-INT-RISKACCUMULATION!ASM!GETDATARISKACCUMFORBIGQUERY_SQL</pxInsId>
+<pxMoveImportDateTime>20250323T100426.565 GMT</pxMoveImportDateTime>
+<pyDeleteMemo>doen gant format date</pyDeleteMemo>
+<pxInstanceLockedCreateDateTime/>
+<pyRelativePath/>
+<pyUsage/>
+<pyTemporaryObject/>
+<pyCircumstanceDateProp/>
+<pyRuleName>ASM-FW-GISFW-Int-RISKACCUMULATION ASM GetDataRiskAccumForBigQuery_SQL</pyRuleName>
+<pyHandlerFlow/>
+<pyMemo>done tambah where accumulationcode</pyMemo>
+<pxOriginalCreateSystemID/>
+<pyLabel>GetDataRiskAccumForBigQuery_SQL</pyLabel>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pyRuleParamsStreamName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOperator/>
+<pyMethodStatus/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateDateTime/>
+<pxUpdateDateTime>20250320T033212.324 GMT</pxUpdateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyIsFromManageChangeLP/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDescription/>
+<pyRuleFormStatusTime>20260827T072953.300 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pyRuleEnds/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250319T022127.828 GMT</pzInsKey>
+<pxInstanceLockedKey/>
+<pyOpenSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleStarts/>
+<pyLabelOld>GetDataRiskAccumForBigQuery_SQL</pyLabelOld>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxInstanceLockedDateTime/>
+<pyDeleteSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250311T080801.431 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceVal/>
+<pzRuleSetVersionPatch>21</pzRuleSetVersionPatch>
+<pyRequestType>GetDataRiskAccumForBigQuery_SQL</pyRequestType>
+<pyJavaStream/>
+<pyCheckInRuleSet/>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pxMergeSynchronized>20250317T081357.755 GMT</pxMergeSynchronized>
+<pyShowJavaWindowName>GeneratedJava20260827T072953.328 GMT</pyShowJavaWindowName>
+<pyTemplate/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20250319T022127.828 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250319T022127.828 GMT</pzDocumentKey>
+<pxInsName>ASM-FW-GISFW-INT-RISKACCUMULATION!ASM!GETDATARISKACCUMFORBIGQUERY_SQL</pxInsName>
+<pyClassName>ASM-FW-GISFW-Int-RISKACCUMULATION</pyClassName>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<pxSaveDateTime>20250320T033212.337 GMT</pxSaveDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pyDocumentTitle/>
+<pyCircumstanceDefinition/>
+<pyTemplateInputBox/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20250323T100426.000 GMT</pxCommitDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyInterface/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceProp/>
+<pxInstanceLockedBy/>
+<pxOriginalCreateOpName/>
+<pyDeletedObject/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyStatus/>
+<pxTabLabel>ASM-FW-GISFW-Int-RISKACCUMULATION ASM GetDataRiskAccumForBigQuery_SQL</pxTabLabel>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-05-21 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250319T022127.828 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-05-20 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250317T080306.746 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-RISKACCUMULATION ASM!GETDATARISKACCUMFORBIGQUERY_SQL #20250311T080801.431 GMT</pzInsKey>
+<pyLabel>01-05-19 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyNew>true</pyNew>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelete>false</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

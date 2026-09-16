@@ -1,0 +1,815 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyAssociatedImage/>
+<pyStatus/>
+<pzRuleFormToolbarHotKeys/>
+<pxInstanceLockedDateTime/>
+<pzRABranchSelection/>
+<pySPRuleSetName>houlj@</pySPRuleSetName>
+<pxMoveImportOperName>Jeff Houle</pxMoveImportOperName>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxInstanceLockedRuleSet/>
+<pzRARulePrefix/>
+<pyMethodStatus>Extension</pyMethodStatus>
+<pxUpdateDateTime>20180713T132809.838 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyJavaStream/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxJustifiedWarningCount/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveOriginalRuleSet>Pega-IntegrationEngine</pxMoveOriginalRuleSet>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20140422T185029.288 GMT</pxMoveOriginalKey>
+<pzRAAppliesTo/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleFormToolbarLockedIcon/>
+<pyDeletedObject>false</pyDeletedObject>
+<pzRAApplication/>
+<pyWindowTitle/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pxMoveImportDateTime>20140422T154312.008 GMT</pxMoveImportDateTime>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pyCircumstanceTemplate/>
+<pxMoveFromSystem/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<RuleFormHistory_CustomFields/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;CustomMap DESCRIPTION= "" TYPE= "JAVAOBJECT" REQUIRED= "0" INOUT= "OUT" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyDescription>Converts the embedded list to a java.util.LinkedHashMap</pyDescription>
+<RMHeaderAction/>
+<pzRuleFormStatus/>
+<pzChangeRuleset/>
+<pzRuleFormToolbarSaveAs/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzApplyToPromptPegaDeveloper/>
+<pxOriginalCreateOpName>Jeff Houle</pxOriginalCreateOpName>
+<pxSaveDateTime>20180713T132809.838 GMT</pxSaveDateTime>
+<pyWorkKey/>
+<pzChecksum>-1355894279</pzChecksum>
+<pyJavaClassName>embed_integration_custompropertylist_pyconverttojavamap_20180713_132809_838</pyJavaClassName>
+<pyValueChanged>false</pyValueChanged>
+<pzIndexCount>11</pzIndexCount>
+<RuleFormHistory_Description/>
+<pyDeleteMemo>SR-108588: convert to a map for easy use with email.</pyDeleteMemo>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleFormToolbarCheckout/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyCircumstanceType/>
+<pzRuleFormErrorHeader/>
+<pyRuleParamsStreamName/>
+<pyRuleEnds/>
+<pyRuleSet>Pega-IntegrationEngine</pyRuleSet>
+<pzInsKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzInsKey>
+<pzRuleFormToolbarDelete/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pyReloadForm>true</pyReloadForm>
+<pzRARecordConfiguration/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pxUpdateOperator>houlj</pxUpdateOperator>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>prpc</pxUpdateSystemID>
+<pxCreateDateTime>20180713T132809.838 GMT</pxCreateDateTime>
+<pyDocumentTitle/>
+<pyRuleSearchQuery/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20140418T182735.513 GMT</pzOriginalInstanceKey>
+<pzRuleFormToolbarCheckin/>
+<pyRuleStarts/>
+<pzPrivileges/>
+<pyRuleName>pyConvertToJavaMap</pyRuleName>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pzRuleFormToolbar/>
+<pyCircumstanceProp/>
+<pxOriginalCreateDateTime>20180713T132809.838 GMT</pxOriginalCreateDateTime>
+<pyMemo>SR-108588: change security settings</pyMemo>
+<pySelected>false</pySelected>
+<pxMoveOriginalRuleSetVersion>07-10-11</pxMoveOriginalRuleSetVersion>
+<pyRuleFormStatusTime>20260723T084346.941 GMT</pyRuleFormStatusTime>
+<pzRuleFormWarningsHeader/>
+<pzUnjustifiedWarningList/>
+<pzRuleFormRuleset/>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pxMoveImportOperId>houlj</pxMoveImportOperId>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyTemplateDisplayText>No rulesets available</pyTemplateDisplayText>
+<pxInsName>EMBED-INTEGRATION-CUSTOMPROPERTYLIST!PYCONVERTTOJAVAMAP</pxInsName>
+<pzRuleFormKeysAndDescription/>
+<pyActivityName>pyConvertToJavaMap</pyActivityName>
+<pyBaseRule>false</pyBaseRule>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaGenerateTime>20140419T000032.027 GMT</pyJavaGenerateTime>
+<pyCircumstanceDate/>
+<pyCircumstanceVal/>
+<pxTabLabel>pyConvertToJavaMap</pxTabLabel>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pyCircumstanceDefinition/>
+<pyHistoryObject/>
+<pzRuleFormToolbarSave/>
+<pxCommitDateTime>20191015T081620.000 GMT</pxCommitDateTime>
+<pxInsId>!PYCONVERTTOJAVAMAP</pxInsId>
+<pyShowJavaWindowName>GeneratedJava20260723T084346.962 GMT</pyShowJavaWindowName>
+<pyLabelOld>Convert to Java Map</pyLabelOld>
+<pxUpdateOpName>Jeff Houle</pxUpdateOpName>
+<pxSiblingCount/>
+<pzRuleCreationWarningWrapper/>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pxCreatedInPRPCVersion>07-02-01</pxCreatedInPRPCVersion>
+<pyRuleCreationWarning/>
+<pzRARecordContext/>
+<pxOriginalCreateOperator>houlj</pxOriginalCreateOperator>
+<pzAddRuleFormHistoryCustomFields/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyUsage>Call on a non-empty page of this class, then consume parameter "CustomMap" as a Java Map.</pyUsage>
+<pzDocumentKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzDocumentKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyLabel>Convert to Java Map</pyLabel>
+<pyInterface/>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyRelativePath/>
+<pyStreamName/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxOriginalCreateSystemID>SLSV72</pxOriginalCreateSystemID>
+<pyTemplateInputBox/>
+<pzNewSimplified/>
+<pyInputMayStart>true</pyInputMayStart>
+<pyFormPost/>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyClassName>Embed-Integration-CustomPropertyList</pyClassName>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pzStatus>false</pzStatus>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pyActivityRole/>
+</rowdata>
+</pyActivityRolesList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTemplateInputBox/>
+<pyPrivilegeName/>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeClass>Embed-Integration-CustomPropertyList</pyPrivilegeClass>
+</rowdata>
+</pyActivityPrivilegeList>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzInsKey>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyShowJava>true</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyPreview>true</pyPreview>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyRun>true</pyRun>
+<pyBack>true</pyBack>
+<pyUsesInheritance>true</pyUsesInheritance>
+</pyToolBarSettings>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransition/>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pyStepsClassName>Embed-Integration-CustomPropertyList</pyStepsClassName>
+<pyStepsParentClass>Embed-Integration-CustomPropertyList</pyStepsParentClass>
+<pyStepsDescription>init map</pyStepsDescription>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName/>
+<pyPropRef/>
+<pyStepsPreCondition/>
+<pyStepsJavaSource>ParameterPage pp = tools.getParameterPage();
+pp. putObject("CustomMap", new java.util.LinkedHashMap());</pyStepsJavaSource>
+<pyTemplateInputBox/>
+<pzEditActivityStepJavaExternally/>
+<pyOnException/>
+<pxInsName/>
+<pzStepExpanded/>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pzActivityStep/>
+<pyStepActivityDescription/>
+<pyExpanded>true</pyExpanded>
+<pyStepsObjectName/>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20140418T182735.518 GMT</pxCreateDateTime>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefLimit/>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxCreateDateTime>20140418T182735.521 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20260723T084346.934 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260723T084346.932 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsClassName>Embed-Integration-CustomJavaProperty</pyStepsClassName>
+<pyOnException/>
+<pyStepsPreCondition/>
+<pzActivityStep/>
+<pxCreateDateTime>20140418T183133.419 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pzStepExpanded/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pyPropRef/>
+<pyStepsObjectName>Primary.pyProperties</pyStepsObjectName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsJavaSource>ClipboardPage curProp = myStepPage;
+String key = curProp.get</pyStepsJavaSource>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsTransition/>
+<pyExpanded>true</pyExpanded>
+<pyStepActivityDescription/>
+<pzActivityParamArrayHeaderCustom/>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsDescription>loop over list, put entries with non-empty keys into map</pyStepsDescription>
+<pzEditActivityStepJavaExternally/>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyTemplateInputBox/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName/>
+<pyStepsParentClass>Embed-Integration-CustomPropertyList</pyStepsParentClass>
+<pxInsName/>
+<pyStepsRepeatDef>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pyTemplateInputBox/>
+<pyStepsRepeatDefHasRepeat>EMBEDDED</pyStepsRepeatDefHasRepeat>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20140418T183133.444 GMT</pxCreateDateTime>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20140418T183133.446 GMT</pxCreateDateTime>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyTemplateInputBox/>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI/>
+<pxObjClass/>
+<pyStepsParamUIRemoved/>
+</pyStepsCallParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsObjectName/>
+<pyOnException/>
+<pzActivityStep/>
+<pxCreateDateTime>20140418T183556.085 GMT</pxCreateDateTime>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pzStepExpanded/>
+<pyStepsClassName>Embed-Integration-CustomJavaProperty</pyStepsClassName>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsJavaSource>ParameterPage pp = tools.getParameterPage();
+java.util.Map map  = ((java.util.Map)pp. getObject("CustomMap"));
+map.put(key, value);</pyStepsJavaSource>
+<pyStepActivityDescription/>
+<pyStepPageReference>RH_1.pySteps(2).pySteps(1)</pyStepPageReference>
+<pyTemplateInputBox/>
+<pzEditActivityStepJavaExternally/>
+<pyStepsDescription>if key is not empty, put entry on map</pyStepsDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsTransition/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsParentClass>Embed-Integration-CustomJavaProperty</pyStepsParentClass>
+<pxInsName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsBlockName/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pySteps REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateDateTime>20140418T183556.089 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pyForEachProperty/>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20140418T183556.090 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20140418T183556.092 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20140418T183556.087 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pyTemplateInputBox/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>@(Pega-RULES:String).length(local.key) &gt; 0</pyStepsPreCondParamsWhen>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+</pySteps>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateDateTime>20140418T183133.431 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTemplateInputBox/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pzActivityParamArrayCustom/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<PropertiesName>local.key</PropertiesName>
+<PropertiesValue>.pyName</PropertiesValue>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOperator>houlj</pxCreateOperator>
+<pxObjClass>@baseclass</pxObjClass>
+<pxCreateDateTime>20140418T183650.785 GMT</pxCreateDateTime>
+<PropertiesName>local.value</PropertiesName>
+<PropertiesValue>.pyValue</PropertiesValue>
+<pyTemplateInputBox/>
+<pzActivityParamArrayCustom/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Jeff Houle</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateDateTime>20140418T183133.441 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen/>
+<pxCreateOperator>houlj</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>SLSV72</pxCreateSystemID>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+</pySteps>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTemplateInputBox/>
+<pyParametersParamName>key</pyParametersParamName>
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamDesc/>
+<pyParametersParamName>value</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTemplateInputBox/>
+</rowdata>
+</pyLocalParameters>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreatedTime>20140418T183112.513 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxWarningMessage>pxActivityUse</pxWarningMessage>
+<pxWarningJustifiedOperator/>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningDetails>pxActivityUse</pxWarningDetails>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningJustifiedTime/>
+<pxWarningType>Maintainability</pxWarningType>
+<pxIsWarningJustified/>
+<pyWarningJustifiedMessage/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningType>Maintainability</pxWarningType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningMessage>pxJavaStep	5 lines</pxWarningMessage>
+<pxWarningDetails>pxJavaStep	5 lines</pxWarningDetails>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified/>
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedTime/>
+<pxWarningCreatedTime>20140418T184032.874 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedOperator/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>Embed-Integration-CustomJavaProperty</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Embed-Integration-CustomJavaProperty</pyRuleName>
+<pxRuleFamilyName>EMBED-INTEGRATION-CUSTOMJAVAPROPERTY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>PYVALUE</pxRuleFamilyName>
+<pyRuleName>pyValue</pyRuleName>
+<pxRuleClassName>Embed-Integration-CustomJavaProperty</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyProperties</pyRuleName>
+<pxRuleClassName>Embed-Integration-CustomPropertyList</pxRuleClassName>
+<pxRuleFamilyName>PYPROPERTIES</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyName</pyRuleName>
+<pxRuleFamilyName>PYNAME</pxRuleFamilyName>
+<pxRuleClassName>Embed-Integration-CustomJavaProperty</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleFamilyName>STRING!LENGTH--(STRING)</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyRuleName>String length--(String)</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleClassName/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pyRuleName>Property-Set</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>Embed-Integration-CustomPropertyList</pyRuleName>
+<pxRuleClassName>Embed-Integration-CustomPropertyList</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>EMBED-INTEGRATION-CUSTOMPROPERTYLIST</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Embed-Integration-CustomPropertyList</pyPagesAndClassesClass>
+<pyTemplateInputBox/>
+</rowdata>
+</pyPagesAndClasses>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTemplateInputBox/>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>JAVAOBJECT</pyParametersParamType>
+<pyParametersParamName>CustomMap</pyParametersParamName>
+</rowdata>
+</pyParameters>
+<pxMessageSummary>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+</pxMessageSummary>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowType</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+</rowdata>
+</pySystemParameters>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>pxActivityUse</pxWarningDetails>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedOperator/>
+<pxWarningCreatedTime>20140418T183112.513 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedTime/>
+<pxIsWarningJustified/>
+<pxWarningName>Activity use</pxWarningName>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pyWarningJustifiedMessage/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningMessage>pxActivityUse</pxWarningMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningJustifiedOperator/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY EMBED-INTEGRATION-CUSTOMPROPERTYLIST PYCONVERTTOJAVAMAP #20180713T132809.838 GMT</pzIndexOwnerKey>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningName>Java step</pxWarningName>
+<pxWarningCreatedTime>20140418T184032.874 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedTime/>
+<pxWarningMessage>pxJavaStep	5 lines</pxWarningMessage>
+<pxWarningDetails>pxJavaStep	5 lines</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified/>
+<pyWarningJustifiedMessage/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+</pagedata>

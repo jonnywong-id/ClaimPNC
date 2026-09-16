@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyCircumstanceType/>
+<pyUsage/>
+<pyHandlerFlow/>
+<pxInstanceLockedDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedBy/>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pyWindowTitle/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM ResultDataAIKlaim_komite</pxTabLabel>
+<pyInterface/>
+<pyDeletedObject/>
+<pyOpenSQL/>
+<pyMethodStatus/>
+<pyJavaStream/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDescription/>
+<pxSaveDateTime>20240715T081734.213 GMT</pxSaveDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleStarts/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveFromSystem/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatusTime>20260721T042831.721 GMT</pyRuleFormStatusTime>
+<pyCircumstanceVal/>
+<pyStatus/>
+<pxOriginalCreateOpName/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!RESULTDATAAIKLAIM_KOMITE #20240620T113422.792 GMT</pzInsKey>
+<pyRequestType>ResultDataAIKlaim_komite</pyRequestType>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pyWorkKey/>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportDateTime>20240715T114352.507 GMT</pxMoveImportDateTime>
+<pxOriginalCreateSystemID/>
+<pxUpdateDateTime>20240620T134047.491 GMT</pxUpdateDateTime>
+<pxOriginalCreateOperator/>
+<pySaveSQL/>
+<pzChecksum>646051040</pzChecksum>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyLabelOld>Result Data AI Klaim_komite</pyLabelOld>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!RESULTDATAAIKLAIM_KOMITE #20240620T113422.792 GMT</pzDocumentKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceDefinition/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMemo>dones</pyMemo>
+<pyRelativePath/>
+<pyBrowseSQL>select objectname as "ObjectName",
+RESULTAI as "Coverage_AI",
+STS_FINAL as "ResultAI",
+PENGGUNAAN_WORDING_POLIS as "PENGGUNAAN_WORDING_POLIS",
+CONF_SCORE as "CONF_SCORE",
+KATEGORI_KRONOLOGI as "KATEGORI_KRONOLOGI",
+COVERAGE_AI_FINAL as "COVERAGE_AI_FINAL",
+CAUSE_OF_LOSS as "CAUSE_OF_LOSS",
+BATASLAPOR as "BatasLapor",
+BATASUMUR as "BatasUmur",
+COVERAGEKRONOLOGI as "CoverageKronologi",
+PERIODEPOLIS as "PeriodePolis",
+NOTETOLAK as "NoteAITolak",
+NOTETERIMA as "NoteAITerima",
+TGLAI as "TanggalComitee",
+COVERAGE_TERIMA as "COVERAGE_TERIMA",
+COVERAGE_TOLAK as "COVERAGE_TOLAK",
+NOTE_COVERAGE_TERIMA as "NOTE_COVERAGE_TERIMA",
+NOTE_COVERAGE_TOLAK as "NOTE_COVERAGE_TOLAK"
+from POOLDATA.T_CLAIM_DATA_RESULTS_AI
+where komite={TempClaimAttach.AlasanKlaim}</pyBrowseSQL>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceDate/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM ResultDataAIKlaim_komite</pyRuleName>
+<pyDeleteSQL/>
+<pxOriginalCreateDateTime/>
+<pyTemplate/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!RESULTDATAAIKLAIM_KOMITE</pxInsName>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pyCircumstanceTemplate/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsFromManageChangeLP/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyShowJavaWindowName>GeneratedJava20260721T042831.743 GMT</pyShowJavaWindowName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!RESULTDATAAIKLAIM_KOMITE</pxInsId>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyFormPost/>
+<pxInstanceLockedKey/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceDateProp/>
+<pxHostId>jboss10362</pxHostId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETFILEONPC_LINK_ATTACHMENTGCNM #20230413T083836.792 GMT</pzOriginalInstanceKey>
+<pyRuleEnds/>
+<pySpecialtyComponentData/>
+<pxCreateDateTime>20240620T113422.792 GMT</pxCreateDateTime>
+<pyLabel>Result Data AI Klaim_komite</pyLabel>
+<pyCircumstanceProp/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!RESULTDATAAIKLAIM_KOMITE #20240620T113422.792 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

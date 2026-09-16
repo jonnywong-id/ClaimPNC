@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBaseRule>false</pyBaseRule>
+<pzChecksum>-1159853620</pzChecksum>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pySaveSQL/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyTemplate/>
+<pyWindowTitle/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDateProp/>
+<pxSiblingCount/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsFromManageChangeLP/>
+<pyStatus/>
+<pxOriginalCreateOpName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleParamsStreamName/>
+<pyDescription/>
+<pyRuleStarts/>
+<pxInsName>ASM-FW-GISFW-INT-SPREADSYARIAH!ASM!GETTABARUFUNDNEW</pxInsName>
+<pyTemplateInputBox/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceTemplate/>
+<pyLabelOld>GetTabaruFundNew</pyLabelOld>
+<pyRuleSetVersion>01-05-65</pyRuleSetVersion>
+<pyCircumstanceType/>
+<pyRuleName>ASM-FW-GISFW-Int-SPREADSYARIAH ASM GetTabaruFundNew</pyRuleName>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pxInsId>ASM-FW-GISFW-INT-SPREADSYARIAH!ASM!GETTABARUFUNDNEW</pxInsId>
+<pyCircumstanceDate/>
+<pxOriginalCreateSystemID/>
+<pyDocumentTitle/>
+<pyRequestType>GetTabaruFundNew</pyRequestType>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pyInterface/>
+<pyMethodStatus/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyDeletedObject/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pxInstanceLockedRuleSet/>
+<pxMoveImportDateTime>20260131T162204.663 GMT</pxMoveImportDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyShowJavaWindowName>GeneratedJava20260828T015627.165 GMT</pyShowJavaWindowName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-SPREADSYARIAH ASM!GETTABARUFUNDNEW #20260130T085421.042 GMT</pzInsKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxHostId>jboss1037</pxHostId>
+<pyRuleEnds/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyUsage/>
+<pzRuleSetVersionPatch>65</pzRuleSetVersionPatch>
+<pxMoveFromSystem/>
+<pyMemo>rubah jadi in agar tidak kena error more than row</pyMemo>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pyWorkKey/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pySPRuleSetName>YOHANESBAPTISTA@</pySPRuleSetName>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedKey/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyClassName>ASM-FW-GISFW-Int-SPREADSYARIAH</pyClassName>
+<pyStreamName/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyFormPost/>
+<pxUpdateDateTime>20260130T085436.111 GMT</pxUpdateDateTime>
+<pyTempText>saved</pyTempText>
+<pxOriginalCreateDateTime/>
+<pyLabel>GetTabaruFundNew</pyLabel>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxSaveDateTime>20260130T085436.126 GMT</pxSaveDateTime>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyRWAccess>ASM</pyRWAccess>
+<pyRuleFormStatusTime>20260828T015627.131 GMT</pyRuleFormStatusTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyHandlerFlow/>
+<pyDeleteSQL/>
+<pxInstanceLockedBy/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCommitDateTime>20260131T162204.000 GMT</pxCommitDateTime>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyValueChanged>false</pyValueChanged>
+<pyJavaStream/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-SPREADSYARIAH ASM!GETTABARUFUNDNEW #20190705T071505.620 GMT</pzOriginalInstanceKey>
+<pxTabLabel>ASM-FW-GISFW-Int-SPREADSYARIAH ASM GetTabaruFundNew</pxTabLabel>
+<pyBrowseSQL>/* Formatted on 05/Jul/19 2:33:08 PM (QP5 v5.215.12089.38647) */
+SELECT a.PercentTabaruFund AS HASIL1
+  FROM POOLDATA.SpreadSyariah a
+ WHERE     a.TopID in (SELECT DISTINCT b.TreatyGroupID
+                      FROM TreatyBusiness b
+                     WHERE b.BizCode = {InputDataSearch.CARI1} AND b.TreatyYear = {InputDataSearch.CARI2})
+       AND a.Year = {InputDataSearch.CARI2}</pyBrowseSQL>
+<pxCreateDateTime>20260130T085421.042 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-SPREADSYARIAH ASM!GETTABARUFUNDNEW #20260130T085421.042 GMT</pzDocumentKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-05-65 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-SPREADSYARIAH ASM!GETTABARUFUNDNEW #20260130T085421.042 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-SPREADSYARIAH ASM!GETTABARUFUNDNEW #20190705T071505.620 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

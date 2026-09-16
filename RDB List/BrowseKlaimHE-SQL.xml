@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20240730T092257.039 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BrowseKlaimHE</pxTabLabel>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCommitDateTime>20240730T120721.000 GMT</pxCommitDateTime>
+<pxUpdateDateTime>20240730T092317.554 GMT</pxUpdateDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemporaryObject/>
+<pyRelativePath/>
+<pySaveSQL/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxOriginalCreateOperator/>
+<pxMoveFromSystem/>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pxHostId>jboss10372</pxHostId>
+<pxMoveImportDateTime>20240730T120721.419 GMT</pxMoveImportDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyWorkKey/>
+<pyLabelOld>Ambil Data Klaim HE</pyLabelOld>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyWindowTitle/>
+<pyCircumstanceTemplate/>
+<pyDocumentTitle/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMPERDAY #20201124T072030.112 GMT</pzOriginalInstanceKey>
+<pyStatus/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyBrowseSQL>SELECT A.CLAIMNO AS "ClaimNo",                   
+       A.NOPOLIS AS "PolicyNo",                     
+       A.PICTEKNIK AS "PICRekanan",                 
+       to_char(A.REGISTERDATE,'dd/MM/yyyy') AS "RegisterDate",             
+       to_char(A.DATEOFLOSS,'dd/MM/yyyy') AS "DateOfLoss",                
+       A.QQNAME AS "UserName",                       
+       B.CAUSEOFLOSS AS "CauseOfLoss",              
+       A.SOBNAME AS "BusinessName",                  
+       (SELECT LOCATION_1 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK WHERE A.CLAIMID=PZINSKEY) AS "Location",                                   
+       (SELECT SUM(PRICE) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='1') AS "AlasanKlaim",      
+       (SELECT AVG(DISKON) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='1') AS  "AlasanTerlambat",         
+       (SELECT SUM(TREATMENTVALUE) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='1') AS  "City",                      
+       (SELECT SUM(PRICE) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='2') AS "District",         
+       (SELECT AVG(DISKON) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='2') AS "BranchName",               
+       (SELECT SUM(TREATMENTVALUE) FROM POOLDATA.T_CLAIM_TREATMENT WHERE A.CLAIMID=CLAIMID AND TREATMENTTYPE='2') AS  "ConsultantName",           
+       (SELECT NAMA_BENGKEL FROM POOLDATA.T_CLAIM_PENAWARAN WHERE CLAIMID=A.CLAIMID FETCH NEXT 1 ROW ONLY) AS "InsuredName",             
+       (SELECT WILAYAH_BENGKEL FROM POOLDATA.T_CLAIM_PENAWARAN WHERE CLAIMID=A.CLAIMID FETCH NEXT 1 ROW ONLY) AS "NamaDokumen",          
+       (SELECT SUPPLIERNAME FROM POOLDATA.T_CLAIM_PANEL WHERE CLAIMID=A.CLAIMID FETCH NEXT 1 ROW ONLY) AS "NamaSurveyor",                 
+       (SELECT Z.OCCUPATIONNAME FROM POOLDATA.T_ANEKALIST Z WHERE A.NOPOLIS=Z.NOPOLIS AND A.PRODKE=Z.PRODKE AND B.OBJECTID=Z.INDEXOBJECT FETCH NEXT 1 ROW ONLY) AS "Occupation",   
+       (SELECT MODELNAME FROM POOLDATA.T_CLAIM_OBJECTLIST C WHERE C.CLAIMID = A.CLAIMID AND B.OBJECTID=C.OBJECTID) AS "UserTeknis",       
+       (SELECT BRANDNAME FROM POOLDATA.T_CLAIM_OBJECTLIST C WHERE C.CLAIMID = A.CLAIMID AND B.OBJECTID=C.OBJECTID) AS "UserTeknisEmail", 
+       (SELECT MANUFACTUREYEAR FROM POOLDATA.T_CLAIM_OBJECTLIST C WHERE C.CLAIMID = A.CLAIMID AND B.OBJECTID=C.OBJECTID) AS "TreatyName", 
+       (SELECT C.ENGINENUMBER FROM POOLDATA.T_CLAIM_OBJECTLIST C WHERE C.CLAIMID = A.CLAIMID AND B.OBJECTID=C.OBJECTID) AS "TreatyYear", 
+       (SELECT C.CHASISSNUMBER FROM POOLDATA.T_CLAIM_OBJECTLIST C WHERE C.CLAIMID = A.CLAIMID AND B.OBJECTID=C.OBJECTID) AS "ClientName", 
+       (SELECT SUM(CONVERTVALUE) FROM POOLDATA.T_CLAIM_ESTIMASI T WHERE T.CLAIMID = A.CLAIMID) AS "Remark",                              
+       (SELECT SUM(X.TOTAL_CLAIM) FROM POOLDATA.T_CLAIM_ADJUSTMENT X WHERE X.CLAIMID = A.CLAIMID) AS "EmailTertanggung",                  
+       (SELECT SUM(X.GROSSVALUE) FROM POOLDATA.T_CLAIM_ADJUSTMENT X WHERE X.CLAIMID = A.CLAIMID) AS "Province"                         
+FROM T_CLAIM_PNC A, T_CLAIM_OBJECTCOVERAGE B
+WHERE A.BUSINESSCODE='10043'
+AND A.CLAIMID=B.CLAIMID
+{ASIS:TempLaporan.AlasanKlaim}</pyBrowseSQL>
+<pxInstanceLockedBy/>
+<pyStreamName/>
+<pyMethodStatus/>
+<pyCheckInRuleSet/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyTemplateInputBox/>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxSiblingCount/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyMemo>done perbaiki query get data HE</pyMemo>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySpecialtyComponentData/>
+<pyDescription/>
+<pxSaveDateTime>20240730T092317.561 GMT</pxSaveDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyShowJavaWindowName>GeneratedJava20260901T085005.210 GMT</pyShowJavaWindowName>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyHandlerFlow/>
+<pyCircumstanceVal/>
+<pxOriginalCreateDateTime/>
+<pyRuleSetVersion>01-03-08</pyRuleSetVersion>
+<pyRequestType>BrowseKlaimHE</pyRequestType>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROWSEKLAIMHE</pxInsId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSEKLAIMHE #20240730T092257.039 GMT</pzInsKey>
+<pyJavaStream/>
+<pxOriginalCreateOpName/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxMergeSynchronized>20230330T025640.404 GMT</pxMergeSynchronized>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSEKLAIMHE #20240730T092257.039 GMT</pzDocumentKey>
+<pyOpenSQL/>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyInterface/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROWSEKLAIMHE</pxInsName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleStarts/>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BrowseKlaimHE</pyRuleName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatusTime>20260901T085005.189 GMT</pyRuleFormStatusTime>
+<pyCircumstanceType/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalCreateSystemID/>
+<pyRuleParamsStreamName/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyLabel>Ambil Data Klaim HE</pyLabel>
+<pzChecksum>667731993</pzChecksum>
+<pyDeleteSQL/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSEKLAIMHE #20240730T092257.039 GMT</pzInsKey>
+<pyLabel>01-03-08 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-02-04 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSEKLAIMHE #20230329T085359.503 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSEKLAIMHE #20201207T083222.158 GMT</pzInsKey>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckOut>true</pyCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyRulePage>
+</pyRulePage>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

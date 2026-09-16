@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyUsage/>
+<pxMoveFromSystem/>
+<pyJavaStream/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRuleSetVersion>01-01-61</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pyShowJavaWindowName>GeneratedJava20260822T045017.064 GMT</pyShowJavaWindowName>
+<pxMoveImportDateTime>20210801T030935.585 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCommitDateTime>20210801T030935.000 GMT</pxCommitDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCheckInRuleSet/>
+<pxOriginalCreateOperator/>
+<pxUpdateDateTime>20210727T042915.091 GMT</pxUpdateDateTime>
+<pyCircumstanceTemplate/>
+<pyCircumstanceVal/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL</pxInsName>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceProp/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pxHostId>jboss2143</pxHostId>
+<pyLabelOld>EmailKomiteBerjenjangTravelExGratia_sql</pyLabelOld>
+<pyCircumstanceDateProp/>
+<pyStreamName/>
+<pyInterface/>
+<pyFormPost/>
+<pxSaveDateTime>20210727T042915.110 GMT</pxSaveDateTime>
+<pyRuleParamsStreamName/>
+<pyHandlerFlow/>
+<pyLabel>EmailKomiteBerjenjangTravelExGratia_sql</pyLabel>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyTemplateInputBox/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxOriginalCreateSystemID/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGTRAVEL_SQL #20180405T070032.517 GMT</pzOriginalInstanceKey>
+<pyDescription/>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pyIsFromManageChangeLP/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pyStatus/>
+<pyTemporaryObject/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRequestType>EmailKomiteBerjenjangTravelExGratia_sql</pyRequestType>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDeleteSQL/>
+<pyTemplate/>
+<pxInstanceLockedBy/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyRuleStarts/>
+<pyWorkKey/>
+<pyMemo>add cc</pyMemo>
+<pyBrowseSQL>select EMAIL as BRANCH_CODE, DEGREE as BRANCH_NAME, OPERATOR_ID as BUSINESS_CODE, CC as BUSINESS_NAME  
+from pooldata.emailKomite where type_business='TRAVEL'  and sts_aktif='1' and sts_adj = '1' AND sts_exgratia = {tempAdj.CommentLOD} and LIMIT_BOTTOM_EXGRATIA &lt;= {tempAdj.ConvertAdjustmentValue} order by degree</pyBrowseSQL>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL #20210727T035213.495 GMT</pzDocumentKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM EmailKomiteBerjenjangTravelExGratia_sql</pyRuleName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateDateTime>20210727T035213.495 GMT</pxCreateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedCreateDateTime/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM EmailKomiteBerjenjangTravelExGratia_sql</pxTabLabel>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyDeletedObject/>
+<pySpecialtyComponentData/>
+<pzChecksum>-1231346038</pzChecksum>
+<pzRuleSetVersionPatch>61</pzRuleSetVersionPatch>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxSiblingCount/>
+<pyMethodStatus/>
+<pyCircumstanceType/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL</pxInsId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL #20210727T035213.495 GMT</pzInsKey>
+<pyWindowTitle/>
+<pyRuleFormStatusTime>20260822T045017.036 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxMergeSynchronized>20190404T095741.438 GMT</pxMergeSynchronized>
+<pyRuleEnds/>
+<pyBaseRule>false</pyBaseRule>
+<pyOpenSQL/>
+<pyCircumstanceDefinition/>
+<pySaveSQL/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-61 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL #20210727T035213.495 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyLabel>01-01-40 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGTRAVELEXGRATIA_SQL #20190402T100524.736 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

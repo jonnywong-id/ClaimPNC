@@ -1,0 +1,739 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyLabel>ReportAI_HTML</pyLabel>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzIndexCount>52</pzIndexCount>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportDateTime>20240824T090434.153 GMT</pxMoveImportDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pxCreateDateTime>20240726T101120.867 GMT</pxCreateDateTime>
+<pyLabelOld>ReportAI_HTML</pyLabelOld>
+<pyBaseRule>false</pyBaseRule>
+<pzChecksum>261853898</pzChecksum>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyDeleteMemo>ubah untuk report ai terima dan tolak terpisah'</pyDeleteMemo>
+<pxTabLabel>ReportAI_HTML</pxTabLabel>
+<pxHostId>jboss10402</pxHostId>
+<pxUpdateDateTime>20240814T044134.519 GMT</pxUpdateDateTime>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzDocumentKey>
+<pxMergeSynchronized>20240717T110914.105 GMT</pxMergeSynchronized>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxInsId>!REPORTAI_HTML</pxInsId>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyReloadForm>true</pyReloadForm>
+<pyShowJavaWindowName>GeneratedJava20260908T031934.786 GMT</pyShowJavaWindowName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pyMemo>done</pyMemo>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzInsKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatusTime>20260908T031934.756 GMT</pyRuleFormStatusTime>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pyValueChanged>false</pyValueChanged>
+<pyCompact>false</pyCompact>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCommitDateTime>20240824T090434.000 GMT</pxCommitDateTime>
+<pxSaveDateTime>20240814T044134.548 GMT</pxSaveDateTime>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!REPORTAI_HTML</pxInsName>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyRuleName>ReportAI_HTML</pyRuleName>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240506T043201.972 GMT</pzOriginalInstanceKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_ReportAI_HTML_Stream_20240814T043831_451_GMT</pyJavaClassName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pySourceStream>&lt;!DOCTYPE html&gt;
+&lt;html lang="id"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;style type="text/css"&gt;
+        body {
+            font-family: 'Times New Roman', serif;
+        }
+        .Summary {
+            border-collapse: collapse;
+            margin-left: 30px;
+        }
+        .Detail {
+            background-color: #84E5FD;
+        }
+        .Rician {
+            border-collapse: collapse;
+            margin-left: 30px;
+            width: 90%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        ul li {
+            font-size: 15px;
+        }
+        body p {
+            font-size: 15px; 
+        }
+    &lt;/style&gt;
+ 
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;p&gt;
+        DEAR BAPAK/IBU,
+        &lt;br&gt;
+        BERIKUT KAMI SAMPAIKAN LAPORAN DARI &lt;br&gt;
+        &lt;b&gt;PERBANDINGAN HASIL KEPUTUSAN AI DAN KOMITE DARI KLAIM PERSONAL ACCIDENT (PA)&lt;/b&gt; DARI TANGGAL
+        &lt;pega:reference name="TempDate.Status"&gt;&lt;/pega:reference&gt; - 
+        &lt;pega:reference name="TempDate.BusinessName"&gt;&lt;/pega:reference&gt;, YANG TELAH DIEVALUASI OLEH SISTEM AI DAN KOMITE.
+    &lt;/p&gt;
+    &lt;p&gt;1. SUMMARY DATA &lt;/p&gt;
+    &lt;p&gt; Deskripsi: Akumulasi klaim yang telah diproses dalam rentang waktu 1 minggu.&lt;/p&gt;
+   
+    &lt;table class="Summary"&gt;
+        &lt;tr style="background-color: #EEEBEB;"&gt;
+            &lt;th&gt;Total Klaim&lt;/th&gt;
+            &lt;th&gt;Komite Diterima&lt;/th&gt;
+            &lt;th&gt;Komite Ditolak&lt;/th&gt;
+            &lt;th&gt;AI Diterima&lt;/th&gt;
+            &lt;th&gt;AI Ditolak&lt;/th&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;&lt;pega:reference name="TempTotal.BatasLapor"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="TempTotal.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="TempTotal.Notes"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="TempTotal.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="TempTotal.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+    &lt;p&gt;2. DETAIL PERBANDINGAN KEPUTUSAN KOMITE DAN HASIL AI&lt;/p&gt;
+  &lt;p&gt;Deskripsi:&lt;/p&gt;
+    &lt;ul class="list"&gt;
+        &lt;li&gt;&lt;b&gt;KOMITE DITERIMA : &lt;/b&gt; Status ketika Komite telah menilai dan menyetujui semua informasi dan bukti yang diajukan, sehingga klaim dianggap valid dan layak untuk diproses lebih lanjut. &lt;/li&gt;
+        &lt;li&gt;&lt;b&gt;KOMITE DITOLAK  : &lt;/b&gt; Status ketika Komite telah menilai bahwa klaim tidak memenuhi syarat dan ketentuan yang berlaku.&lt;/li&gt;
+        &lt;li&gt;&lt;b&gt;AI DITERIMA     : &lt;/b&gt;Status ketika AI memprediksi kronologi kejadian sesuai dengan coverage yang dipilih.&lt;/li&gt;
+        &lt;li&gt;&lt;b&gt;AI DITOLAK      : &lt;/b&gt;Status ketika AI memprediksi kronologi kejadian tidak sesuai dengan coverage yang dipilih.&lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;table class="Rician" id="detailTable"&gt;
+        &lt;tr style="background-color: #EEEBEB;"&gt;
+            &lt;th&gt;No&lt;/th&gt;
+            &lt;th&gt;No Klaim&lt;/th&gt;
+            &lt;th&gt;Komite Approval&lt;/th&gt;
+            &lt;th&gt;Tanggal Komite Approve&lt;/th&gt;
+            &lt;th&gt;AI Approval&lt;/th&gt;
+            &lt;th&gt;Tanggal AI Dikirim&lt;/th&gt;
+            &lt;th&gt;Nama Komite&lt;/th&gt;
+            &lt;th&gt;Note Komite Approval&lt;/th&gt;
+            &lt;th&gt;Note AI Terima&lt;/th&gt;
+            &lt;th&gt;Note AI Tolak&lt;/th&gt;
+        &lt;/tr&gt;
+       
+        &lt;pega:forEach name="TempAITerima.pxResults"&gt;
+          &lt;!-- UNTUK KOMITE 4 --&gt;
+         &lt;pega:when test="$THIS.BatasUmur='4'"&gt;
+          &lt;pega:when test="$THIS.ClaimID!=''"&gt;
+           &lt;tr&gt;
+            &lt;td rowspan="4"&gt;&lt;pega:reference name="$THIS.IDDLA"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td rowspan="4"&gt;&lt;pega:reference name="$THIS.ClaimID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+         &lt;pega:when test="$THIS.ClaimID=''"&gt;
+           &lt;tr&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+          &lt;/pega:when&gt;
+          &lt;!-- UNTUK KOMITE 3 --&gt;
+         &lt;pega:when test="$THIS.BatasUmur='3'"&gt;
+          &lt;pega:when test="$THIS.ClaimID!=''"&gt;
+           &lt;tr&gt;
+            &lt;td rowspan="3"&gt;&lt;pega:reference name="$THIS.IDDLA"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td rowspan="3"&gt;&lt;pega:reference name="$THIS.ClaimID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+         &lt;pega:when test="$THIS.ClaimID=''"&gt;
+           &lt;tr&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+          &lt;/pega:when&gt;
+          
+           &lt;!-- UNTUK KOMITE 2 --&gt;
+         &lt;pega:when test="$THIS.BatasUmur='2'"&gt;
+          &lt;pega:when test="$THIS.ClaimID!=''"&gt;
+           &lt;tr&gt;
+            &lt;td rowspan="2"&gt;&lt;pega:reference name="$THIS.IDDLA"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td rowspan="2"&gt;&lt;pega:reference name="$THIS.ClaimID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+         &lt;pega:when test="$THIS.ClaimID=''"&gt;
+           &lt;tr&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;/pega:when&gt;
+          &lt;/pega:when&gt;
+          
+          &lt;!-- UNTUK KOMITE 1 --&gt;
+       &lt;pega:when test="$THIS.BatasUmur='1' "&gt;
+          &lt;tr&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.IDDLA"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ClaimID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.KomiteAccepted"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.ResultAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.DateAI"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NamaKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteKomite"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITerima"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;pega:reference name="$THIS.NoteAITolak"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/pega:when&gt;
+        &lt;/pega:forEach&gt;
+    &lt;/table&gt;
+    &lt;p&gt;DEMIKIAN LAPORAN INI KAMI SAMPAIKAN, TERIMAKASIH ATAS PERHATIANYA.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStreamName>ReportAI_HTML</pyStreamName>
+<pyHistoryObject>false</pyHistoryObject>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>true</pyPreview>
+<pyShowJava>true</pyShowJava>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>Temptes</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>TempDetail.pxResults</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesPage>TempTotal</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Adjustment</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesPage>TempDetail</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempDate</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempCountAIDiterima</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Adjustment</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempCountAIDiterima.pxResults</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyPagesAndClassesPage>TempAITolak</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempAITerima</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyPagesAndClassesPage>TempAITerima.pxResults</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Adjustment</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Adjustment</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempAITolak.pxResults</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzInsKey>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-08 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240814T032239.987 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-03-07 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240716T070954.707 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240513T095943.137 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240506T043201.972 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-03-04 (Available)</pyLabel>
+<pxListSubscript>6</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240508T060840.039 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>TempDate</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxPageName>TempAITerima</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxPageName>TempDetail</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxPageName>TempTotal</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Data-Adjustment</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxPageName>Temptes</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">30</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxPageName>TempAITolak</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">31</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxPageName>TempCountAIDiterima</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">32</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">33</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pyRuleName>NoteAITolak</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NOTEAITOLAK</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">34</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DATEKOMITE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>DateKomite</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">35</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Notes</pyRuleName>
+<pxRuleFamilyName>NOTES</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">36</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-ADJUSTMENT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">37</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>BusinessName</pyRuleName>
+<pxRuleFamilyName>BUSINESSNAME</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">38</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxRuleFamilyName>BATASLAPOR</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pyRuleName>BatasLapor</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">39</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>KOMITEACCEPTED</pxRuleFamilyName>
+<pyRuleName>KomiteAccepted</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">40</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pyRuleName>NamaKomite</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>NAMAKOMITE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">41</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pyRuleName>ResultAI</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxRuleFamilyName>RESULTAI</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">42</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>Status</pyRuleName>
+<pxRuleFamilyName>STATUS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">43</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>ClaimID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>CLAIMID</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">44</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">45</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pyRuleName>NoteAITerima</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NOTEAITERIMA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">46</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DATEAI</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pyRuleName>DateAI</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">47</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pyRuleName>Code-Pega-List</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>CODE-PEGA-LIST</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">48</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>NoteKomite</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pxRuleFamilyName>NOTEKOMITE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">49</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">50</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pyRuleName>IDDLA</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>IDDLA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">51</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240726T101120.867 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240814T032239.987 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-08 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240716T070954.707 GMT</pzInsKey>
+<pyLabel>01-03-07 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240513T095943.137 GMT</pzInsKey>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxListSubscript>4</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240506T043201.972 GMT</pzInsKey>
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>5</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxListSubscript>6</pxListSubscript>
+<pyLabel>01-03-04 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REPORTAI_HTML #20240508T060840.039 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

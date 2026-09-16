@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleStarts/>
+<pyDeleteSQL/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOpName>nickson tichandra</pxCreateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateSystemID>pegadevsimasnet83</pxCreateSystemID>
+<pyRuleFormStatusTime>20260903T024837.042 GMT</pyRuleFormStatusTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBaseRule>false</pyBaseRule>
+<pxSaveDateTime>20250804T082649.097 GMT</pxSaveDateTime>
+<pzChecksum>-288013013</pzChecksum>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETACCEPTEDNOSERVICE #20250731T035706.638 GMT</pzOriginalInstanceKey>
+<pyBrowseSQL>select noakseptasi as "AcceptedNo" from pooldata.t_claim_adjustment where claimid = {TempJsonKlaim.BUSINESS_CODE}</pyBrowseSQL>
+<pyLabelOld>GetAcceptedNoService</pyLabelOld>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETACCEPTEDNOSERVICE #20250804T082642.387 GMT</pzInsKey>
+<pyCircumstanceType/>
+<pxUpdateSystemID>pegadevsimasnet83</pxUpdateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260903T024837.068 GMT</pyShowJavaWindowName>
+<pyMemo>Pindah ruleset</pyMemo>
+<pyFormPost/>
+<pyRuleParamsStreamName/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxOriginalCreateOperator/>
+<pyOpenSQL/>
+<pxCommitDateTime>20250804T085818.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyJavaStream/>
+<pxHostId>jboss1962</pxHostId>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM GetAcceptedNoService</pxTabLabel>
+<pyStatus/>
+<pyRequestType>GetAcceptedNoService</pyRequestType>
+<pxUpdateOperator>nicksontichandra</pxUpdateOperator>
+<pyLabel>GetAcceptedNoService</pyLabel>
+<pyCircumstanceVal/>
+<pyDescription/>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETACCEPTEDNOSERVICE</pxInsName>
+<pyRelativePath/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM GetAcceptedNoService</pyRuleName>
+<pxSiblingCount/>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWindowTitle/>
+<pyDeletedObject/>
+<pxCreateDateTime>20250804T082642.387 GMT</pxCreateDateTime>
+<pxUpdateOpName>nickson tichandra</pxUpdateOpName>
+<pxMoveImportDateTime>20250804T085818.199 GMT</pxMoveImportDateTime>
+<pxInstanceLockedKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyIsFromManageChangeLP/>
+<pyValueChanged>false</pyValueChanged>
+<pyHandlerFlow/>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETACCEPTEDNOSERVICE #20250804T082642.387 GMT</pzDocumentKey>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStreamName/>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!GETACCEPTEDNOSERVICE</pxInsId>
+<pySPRuleSetName>nicksontichandra@</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pyCircumstanceDateProp/>
+<pyCircumstanceDate/>
+<pyTemplate/>
+<pyCircumstanceProp/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateInputBox/>
+<pyMethodStatus/>
+<pyDocumentTitle/>
+<pyWorkKey/>
+<pxOriginalCreateDateTime/>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOpName/>
+<pyRuleEnds/>
+<pxUpdateDateTime>20250804T082649.089 GMT</pxUpdateDateTime>
+<pySaveSQL/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pyUsage/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pyCircumstanceDefinition/>
+<pyCircumstanceTemplate/>
+<pxCreateOperator>nicksontichandra</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedRuleSet/>
+<pyInterface/>
+<pxMoveFromSystem/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!GETACCEPTEDNOSERVICE #20250804T082642.387 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyDelete>false</pyDelete>
+<pySave>false</pySave>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

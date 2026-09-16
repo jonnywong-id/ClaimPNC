@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pyMethodStatus/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyShowJavaWindowName>GeneratedJava20260901T040317.322 GMT</pyShowJavaWindowName>
+<pyHandlerFlow/>
+<pxInsName>ASM-FW-GISFW-INT-CURRENCY!ASM!CURRENCYSYMBOL</pxInsName>
+<pyRuleParamsStreamName/>
+<pyWindowTitle/>
+<pxHostId>jboss10362</pxHostId>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleEnds/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCommitDateTime>20260606T145851.000 GMT</pxCommitDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStreamName/>
+<pyCircumstanceDate/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceProp/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxMoveImportDateTime>20260606T145850.916 GMT</pxMoveImportDateTime>
+<pyLabelOld>CurrencySymbol</pyLabelOld>
+<pyInterface/>
+<pxUpdateDateTime>20260602T022336.274 GMT</pxUpdateDateTime>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDateProp/>
+<pxOriginalCreateOpName/>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pxCreateDateTime>20260602T022315.485 GMT</pxCreateDateTime>
+<pySpecialtyComponentData/>
+<pyTaskID/>
+<pyRelativePath/>
+<pxInstanceLockedKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyOpenSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pyRequestType>CurrencySymbol</pyRequestType>
+<pyUsage/>
+<pyJavaStream/>
+<pxInsId>ASM-FW-GISFW-INT-CURRENCY!ASM!CURRENCYSYMBOL</pxInsId>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyFormPost/>
+<pySPRuleSetName>CALVINJOE@</pySPRuleSetName>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDefinition/>
+<pyWorkKey/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20260227T092921.551 GMT</pzOriginalInstanceKey>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20260602T022315.485 GMT</pzDocumentKey>
+<pyCircumstanceVal/>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxSiblingCount/>
+<pyRuleSetVersion>01-05-77</pyRuleSetVersion>
+<pyLabel>CurrencySymbol</pyLabel>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pzChecksum>-814604438</pzChecksum>
+<pyCircumstanceTemplate/>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyBrowseSQL>select CURRENCYSYMBOL AS "HASIL1", currency as "HASIL2" from pooldata.currency where id = {SearchNilaiKursInput.Currency}</pyBrowseSQL>
+<pyRWAccess>ASM</pyRWAccess>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pyDescription/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatusTime>20260901T040317.287 GMT</pyRuleFormStatusTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pySaveSQL/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyCircumstanceType/>
+<pxOriginalCreateOperator/>
+<pxSaveDateTime>20260602T022336.294 GMT</pxSaveDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMemo>doen tambah untuk select currency</pyMemo>
+<pyClassName>ASM-FW-GISFW-Int-CURRENCY</pyClassName>
+<pyStatus/>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pyRuleName>ASM-FW-GISFW-Int-CURRENCY ASM CurrencySymbol</pyRuleName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20260602T022315.485 GMT</pzInsKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsFromManageChangeLP/>
+<pyTemplate/>
+<pyDeletedObject/>
+<pxTabLabel>ASM-FW-GISFW-Int-CURRENCY ASM CurrencySymbol</pxTabLabel>
+<pxInstanceLockedCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-05-77 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20260602T022315.485 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-05-68 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20260227T092921.551 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CURRENCY ASM!CURRENCYSYMBOL #20180117T014950.824 GMT</pzInsKey>
+<pyLabel>01-01-62 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+</pyToolBarSettings>
+</pagedata>

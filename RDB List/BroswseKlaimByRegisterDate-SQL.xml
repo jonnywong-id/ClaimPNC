@@ -1,0 +1,394 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabelOld>Ambil Data Klaim dengan tgl register</pyLabelOld>
+<pyStreamName/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pyCircumstanceTemplate/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateDateTime/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20220203T013121.525 GMT</pzOriginalInstanceKey>
+<pyIsFromManageChangeLP/>
+<pyWorkKey/>
+<pyDescription/>
+<pyDeletedObject/>
+<pyShowJavaWindowName>GeneratedJava20260901T090327.109 GMT</pyShowJavaWindowName>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pyMemo>save risk location</pyMemo>
+<pyCircumstanceType/>
+<pyUsage/>
+<pxOriginalCreateSystemID/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxHostId>jboss1037</pxHostId>
+<pyBaseRule>false</pyBaseRule>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20260723T043702.839 GMT</pzInsKey>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>Ambil Data Klaim dengan tgl register</pyLabel>
+<pyInterface/>
+<pyWindowTitle/>
+<pyBrowseSQL>SELECT 
+a.CLAIMNO AS "IDPEGA",
+a.CLAIMID AS "POLICYDECLARATIONNO",
+(select NVL(jt.Diagnose, jt.DescDiagnose) from JSON_KLAIM jk,  
+                                     json_table (  jk.DATA_JSONBLOB, '$.ObjectList[*]'
+                                                        columns ( ObjectID varchar2 path '$.ObjectID',
+                                                        nested path '$.ObjectCoverageList[*]'
+                                                        columns (Diagnose varchar2 path '$.Diagnose',
+                                                        CoverageID varchar2 path '$.CoverageID',
+                                                        DescDiagnose varchar2 path '$.DescDiagnose'))) jt
+                                                        where jk.IDPEGA = a.CLAIMID AND jt.ObjectID = d.objectid AND d.OBJECTCOVERAGEID = jt.CoverageID) AS "Diagnose",
+a.LOCATION AS "RISKLOCATION",    
+TO_DATE(tobj.asmdateofbirth,'RRRRMMDD') AS "DOB",
+TRUNC(MONTHS_BETWEEN(TRUNC(a.dateofloss),
+                            TO_DATE(tobj.asmdateofbirth,'RRRRMMDD')) / 12) AS "USIA",            
+g.CAUSEOFLOSS as "NATUREOFLOSS",
+( SELECT to_char(ROUND(MONTHS_BETWEEN(TRUNC(a.dateofloss),
+                                     MAX(TRUNC(mds.mds_beg_date)) KEEP (DENSE_RANK LAST ORDER BY mds.mds_prod_ke)),2), '9999D99','NLS_NUMERIC_CHARACTERS = '',.''')
+           FROM collection.mst_det_sales@ASMD.SINARMAS.CO.ID mds
+          WHERE mds.mds_no_polis = a.nopolis ) || ' Bulan' AS "POLICYRANGE",  
+to_char(a.NOPOLIS) AS "EDMNO", 
+replace(a.QQNAME, ',',' ') as "QQNAME", 
+a.BUSINESSNAME as "NOPOLIS",
+a.leader_member as "BUSINESSTYPE",
+TO_CHAR(a.DATEOFLOSS,'YYYY') as "ENDDATE",
+to_char(a.DATEOFLOSS,'dd/mm/yyyy') as "EDMDATE", 
+x.RECEIVEDDATE_1 as "PRODKE", 
+to_char(a.FINISHREGISTERDATE,'dd/mm/yyyy') as "ACCUMCODE", 
+to_char(a.CLOSECLAIMDATE,'dd/mm/yyyy') as "TABLEOBJECTNAME",
+to_char(a.REGISTERDATE,'dd/mm/yyyy') as "REGISTERID", 
+to_char(a.transferpic_date,'dd/mm/yyyy')   as "WARRANTYNO", 
+(select to_char(min(tanggal+12/24),'dd/mm/yyyy') from os_akseptasi_klaim where caseid=a.claimid)  as "pyCountry", 
+to_char(a.DATEOFREQUESTDOCUMENT,'dd/mm/yyyy') as "THEINSURED", 
+to_char(a.SURVEYDATE,'dd/mm/yyyy') as "BUSINESSCODE",
+a.PICTEKNIK as "OLDPOLICYNO",
+replace(a.closeclaimnote,chr(10),' ') as "GROUPPANEL",
+to_char(a.investigator_tf_date,'dd/mm/yyyy') as "SOBLEADER1",
+to_char(a.ANALYSTTORCLPUCL_DATE,'dd/mm/yyyy') as "SOBLEADER2",
+to_char(a.RCLPUCL_TF_TOANALYST,'dd/mm/yyyy') as "SOBLEADER0",
+a.RCLPUCL as "SOBNAME",
+to_char(a.COMPLIANCE_CREATEDATE,'dd/mm/yyyy') as "SOURCEOFBUSINESS",
+to_char(a.CPLVALID_DATE,'dd/mm/yyyy') as "ISMAINFOLLOWING",
+to_char(a.POSTAUDIT_TF_ANALYSTDATE,'dd/mm/yyyy') as "STATUSBUSINESS",
+to_char(a.CPLPOSTAUDIT_VALIDDATE,'dd/mm/yyyy') as "EDMTYPE",
+a.ALASANKETERLAMBATAN as "MARKETINGCODE",
+a.businesscode as "BUSINESSNAME",
+(Select b.lsc_note from v_sts_claim b where a.StatusClaim = b.LSC_ID) as "CLIENTID", 
+to_char(d.ACCEPTANCE_DATECOMITEE,'dd/mm/yyyy') as "SYARIAHSTATUS",
+to_char(d.tglbayar,'dd/mm/yyyy') as "BRANCHCODE", 
+d.status as "BRANCHNAME",
+d.paymenttype as "MARKETINGNAME",
+d.noakseptasi as "STARTDATE",
+to_char(d.printlod_date,'dd/mm/yyyy') as "FLAGEDMBATAL",
+to_char(d.tglakseptasi,'dd/mm/yyyy') as "FOLLOWEDPOLICY",
+to_char(d.manual_acceptancedate,'dd/mm/yyyy') as "POOLINGSTATUS",
+to_char(d.MANUALACCEPTANCEDATECOMITEE,'dd/mm/yyyy') as "AUTOCANCELPRINTSTATUS",
+to_number(d.GROSSVALUE) as "ASMAnalisator",
+a.SOBNAME as "ISFOLLOWINGCHILD",
+g.coveragename AS "PNCSearch",
+x.pnccaseid AS "pyNote",
+x.pxcreateoperator as "pyLabel",
+to_char(a.TGLDOKLENGKAP,'dd/mm/yyyy') as "pyGroup",
+to_char(d.ANALYST_TFKOMITEDATE,'dd/mm/yyyy') as "pyCountryName",
+to_char(a.trf_to_investigator,'dd/mm/yyyy') as "pzInsKey",
+to_char(d.receivedatelod,'dd/mm/yyyy') as "pyID",
+substr(X.REPORTDATE_1,0,8) as "IndexSpreading",
+to_char(d.TRANSFER_CASHIER_DATE,'dd/mm/yyyy') as "pyEmailAddress",
+(select posisi from POOLDATA.GCNM_PROGRESS_POSISI_PNC z where z.caseid = a.CLAIMNO and id = (select max(id)from POOLDATA.GCNM_PROGRESS_POSISI_PNC where caseid = z.caseid )) as "pyIssue",
+(select to_char(startdate,'dd/mm/yyyy') from t_general where nopolis=a.nopolis and prodke=a.prodke) as "PlatNo",
+(select to_char(enddate,'dd/mm/yyyy') from t_general where nopolis=a.nopolis and prodke=a.prodke) as "Position"
+FROM T_CLAIM_PNC a, t_claim_adjustment d, t_claim_objectcoverage g, datapega.pc_asm_fw_gcnmfw_work x, pooldata.t_personlist tobj  where 
+trunc(a.registerdate)&gt;=to_date({TempLaporan.AnalystTransferDate},'dd/mm/yyyy') 
+and trunc(a.registerdate)&lt;=to_date({TempLaporan.DateOfLoss},'dd/mm/yyyy') 
+and x.pxobjclass='ASM-FW-GCNMFW-Work-PNC'
+AND a.branchcode != '100639'
+{ASIS:TempLaporan.UserTeknis}
+and d.claimid = a.ClaimID 
+and a.claimid = g.claimid
+and a.claimid = x.pzInskey
+and d.objectcoverageid=g.objectcoverageid
+AND a.nopolis = tobj.nopolis
+AND a.prodke = tobj.prodke
+AND d.objectid = tobj.indexobject
+order by a.ClaimID asc</pyBrowseSQL>
+<pyCircumstanceDate/>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>1851589487</pzChecksum>
+<pxCommitDateTime>20260810T090331.000 GMT</pxCommitDateTime>
+<pxMergeSynchronized>20230714T020056.410 GMT</pxMergeSynchronized>
+<pxOriginalCreateOperator/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROSWSEKLAIMBYREGISTERDATE</pxInsId>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxMoveImportDateTime>20230714T104512.911 GMT</pxMoveImportDateTime>
+<pyOpenSQL/>
+<pxUpdateDateTime>20260810T090331.403 GMT</pxUpdateDateTime>
+<pyRequestType>BroswseKlaimByRegisterDate</pyRequestType>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20260723T043702.839 GMT</pzDocumentKey>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceVal/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxSaveDateTime>20260810T090331.497 GMT</pxSaveDateTime>
+<pxInstanceLockedBy/>
+<pyHandlerFlow/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!BROSWSEKLAIMBYREGISTERDATE</pxInsName>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyDeleteSQL/>
+<pxUpdateOperator>ARLEXYVARIAN_1</pxUpdateOperator>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySpecialtyComponentData/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceProp/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedKey/>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BroswseKlaimByRegisterDate</pyRuleName>
+<pxCreateDateTime>20260723T043702.839 GMT</pxCreateDateTime>
+<pyRuleStarts/>
+<pxMoveFromSystem/>
+<pyTemplateInputBox/>
+<pyMethodStatus/>
+<pzIsPrivateCheckOut/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDocumentTitle/>
+<pyJavaStream/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM BroswseKlaimByRegisterDate</pxTabLabel>
+<pyCircumstanceDefinition/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxSiblingCount/>
+<pyTemporaryObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySaveSQL/>
+<pyRuleEnds/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCheckInRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatusTime>20260901T090327.089 GMT</pyRuleFormStatusTime>
+<pyFormPost/>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDateProp/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyShowJava>false</pyShowJava>
+<pyDelete>true</pyDelete>
+<pyForward>true</pyForward>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyVersionSecure>false</pyVersionSecure>
+<pySave>false</pySave>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20260723T043702.839 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20230714T020042.963 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-04 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20230327T043346.980 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20221125T033025.672 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-02-02 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20220203T013121.525 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20211111T075600.953 GMT</pzInsKey>
+<pxListSubscript>6</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20210827T035820.652 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxListSubscript>7</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxListSubscript>8</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20210312T014550.977 GMT</pzInsKey>
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>9</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20201222T090648.513 GMT</pzInsKey>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pxListSubscript>10</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20201109T101459.662 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyValue>3</pyValue>
+<pxListSubscript>11</pxListSubscript>
+<pyLabel>01-01-85 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20200519T033733.309 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pxListSubscript>12</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20200203T083358.190 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyLabel>01-01-83 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20200116T092222.316 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>13</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxListSubscript>14</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20191206T084953.027 GMT</pzInsKey>
+<pyLabel>01-01-82 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pxListSubscript>15</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20191126T022144.697 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-81 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pyLabel>01-01-79 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20190919T083421.818 GMT</pzInsKey>
+<pxListSubscript>16</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20190206T024156.288 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-62 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>17</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pyLabel>01-01-59 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>18</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20181214T112532.574 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

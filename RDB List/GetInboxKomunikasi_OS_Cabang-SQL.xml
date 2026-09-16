@@ -1,0 +1,265 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyMethodStatus/>
+<pyDeleteMemo>sonw</pyDeleteMemo>
+<pxMoveImportDateTime>20260803T102321.791 GMT</pxMoveImportDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyShowJavaWindowName>GeneratedJava20260901T041452.273 GMT</pyShowJavaWindowName>
+<pxMoveFromSystem/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRelativePath/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleEnds/>
+<pxSaveDateTime>20260522T094952.327 GMT</pxSaveDateTime>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalCreateDateTime/>
+<pyRequestType>GetInboxKomunikasi_OS_Cabang</pyRequestType>
+<pyLabelOld>GetInboxKomunikasi_OS_Cabang</pyLabelOld>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyDeleteSQL/>
+<pyStreamName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyJavaStream/>
+<pyDescription/>
+<pxSiblingCount/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI_OS_CABANG #20260522T094944.227 GMT</pzDocumentKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxOriginalCreateOperator/>
+<pyCircumstanceType/>
+<pxInstanceLockedRuleSetVersion/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI_OS_CABANG #20260522T094944.227 GMT</pzInsKey>
+<pxOriginalCreateOpName/>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyWindowTitle/>
+<pxCommitDateTime>20260803T102321.000 GMT</pxCommitDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM GetInboxKomunikasi_OS_Cabang</pxTabLabel>
+<pyRuleFormStatusTime>20260901T041452.254 GMT</pyRuleFormStatusTime>
+<pyTemplate/>
+<pxInstanceLockedRuleSet/>
+<pyDeletedObject/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pyCircumstanceTemplate/>
+<pyCircumstanceProp/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pyBrowseSQL>WITH operator_list AS (
+    SELECT operator_id
+    FROM pooldata.mst_user_teknik
+    WHERE sts_aktif = '1'
+),
+base_data AS (
+    SELECT
+        a.createddate,
+        a.message,
+        a.sendername,
+        a.sender,
+        a.caseid,
+        a.komunikasiid,
+        a.replymessage,
+        a.komunikasistatus,
+        a.createdatereply,
+        CASE
+            WHEN a.sender IN (
+                SELECT operator_id
+                FROM operator_list
+            )
+            THEN 'INTERNAL'
+            ELSE 'EXTERNAL'
+        END AS sender_type
+    FROM pooldata.m_komunikasi_pnc a
+    WHERE a.caseid in ({ASIS:getkomunikasi.D_SURVEY_ID})
+),
+internal_user AS (
+    SELECT
+        sendername
+    FROM base_data
+    WHERE sender_type = 'INTERNAL'
+      AND ROWNUM = 1
+)
+SELECT
+    z."CloseClaimDate",
+    z."Email",
+    iu.sendername AS "UserName",
+    iu.sendername AS "UserTeknik",
+    z."pzInsKey",
+    z."ClaimNo",
+    z."CloseClaimNote",
+    z."StatusClaim",
+    z."AnalystTransferDate"
+FROM (
+    SELECT
+        createddate AS "CloseClaimDate",
+        message AS "Email",
+        caseid AS "pzInsKey",
+        komunikasiid AS "ClaimNo",
+        replymessage AS "CloseClaimNote",
+        komunikasistatus AS "StatusClaim",
+        createddate AS "AnalystTransferDate",
+        createddate AS sort_date
+    FROM base_data
+    WHERE sender_type = 'INTERNAL'
+    UNION ALL
+    SELECT
+        NULL AS "CloseClaimDate",
+        '' AS "Email",
+        caseid AS "pzInsKey",
+        komunikasiid AS "ClaimNo",
+        message AS "CloseClaimNote",
+        komunikasistatus AS "StatusClaim",
+        createddate AS "AnalystTransferDate",
+        createddate AS sort_date
+    FROM base_data
+    WHERE sender_type = 'EXTERNAL'
+    UNION ALL
+SELECT
+    NVL(createdatereply, createddate) AS "CloseClaimDate",
+    replymessage AS "Email",
+    caseid AS "pzInsKey",
+    komunikasiid AS "ClaimNo",
+    '' AS "CloseClaimNote",
+    komunikasistatus AS "StatusClaim",
+    NULL AS "AnalystTransferDate",
+    NVL(createdatereply, createddate) AS sort_date
+FROM base_data
+WHERE sender_type = 'EXTERNAL'
+  AND NVL(TRIM(replymessage), 'X') &lt;&gt; 'X'
+) z
+CROSS JOIN internal_user iu
+ORDER BY z.sort_date ASC</pyBrowseSQL>
+<pxOriginalCreateSystemID/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLabel>GetInboxKomunikasi_OS_Cabang</pyLabel>
+<pyFormPost/>
+<pyTemporaryObject/>
+<pxUpdateDateTime>20260522T094944.227 GMT</pxUpdateDateTime>
+<pyDocumentTitle/>
+<pyRuleStarts/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDefinition/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCheckInRuleSet>GCNMFWInt</pyCheckInRuleSet>
+<pySpecialtyComponentData/>
+<pxHostId>jboss10372</pxHostId>
+<pzIsPrivateCheckOut/>
+<pyRuleSetVersion>01-03-19</pyRuleSetVersion>
+<pxInstanceLockedKey/>
+<pyTemplateInputBox/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pxInstanceLockedBy/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyOpenSQL/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyClassName>
+<pyMemo>checkin</pyMemo>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pyCircumstanceVal/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleParamsStreamName/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM GetInboxKomunikasi_OS_Cabang</pyRuleName>
+<pyUsage/>
+<pyStatus/>
+<pyCircumstanceDateProp/>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyInterface/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!GETINBOXKOMUNIKASI_OS_CABANG</pxInsName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI_OS_CABANG #20260511T034848.037 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateDateTime>20260522T094944.227 GMT</pxCreateDateTime>
+<pyCircumstanceDate/>
+<pzChecksum>1283512991</pzChecksum>
+<pyHandlerFlow/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!GETINBOXKOMUNIKASI_OS_CABANG</pxInsId>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pySaveSQL/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI_OS_CABANG #20260522T094944.227 GMT</pzInsKey>
+<pyLabel>01-03-19 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!GETINBOXKOMUNIKASI_OS_CABANG #20260511T034857.971 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pySaveAs>true</pySaveAs>
+<pyDelete>true</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>false</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

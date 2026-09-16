@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDescription/>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pyCircumstanceTemplate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyMemo>dones</pyMemo>
+<pyTemplate/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateDateTime>20240726T065418.471 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM ProcLODPersonalAccident_job</pxTabLabel>
+<pyWindowTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCircumstanceType/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyOpenSQL/>
+<pxInstanceLockedBy/>
+<pyWorkKey/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyInterface/>
+<pxCreateDateTime>20240726T064140.484 GMT</pxCreateDateTime>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyCircumstanceDate/>
+<pyDeleteSQL/>
+<pyDeletedObject/>
+<pyRuleSetVersion>01-03-09</pyRuleSetVersion>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxMoveImportDateTime>20240824T090406.504 GMT</pxMoveImportDateTime>
+<pyHistoryObject/>
+<pyRequestType>ProcLODPersonalAccident_job</pyRequestType>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyMethodStatus/>
+<pyCircumstanceVal/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemplateInputBox/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDefinition/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxSaveDateTime>20240726T065418.484 GMT</pxSaveDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!PROCLODPERSONALACCIDENT_JOB #20240726T064140.484 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyUsage/>
+<pySaveSQL/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyShowJavaWindowName>GeneratedJava20260721T042758.425 GMT</pyShowJavaWindowName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!PROCLODPERSONALACCIDENT_JOB #20240726T064140.484 GMT</pzOriginalInstanceKey>
+<pyJavaStream/>
+<pySpecialtyComponentData/>
+<pyHandlerFlow/>
+<pyBaseRule>false</pyBaseRule>
+<pyBrowseSQL>BEGIN 
+  POOLDATA.Proc_JobPersonalAccidentKlaim({InsertLODJOB.Remark},{InsertLODJOB.TOTAL},{InsertLODJOB.RefNo},{InsertLODJOB.ObjectName},{InsertLODJOB.ClaimID},{InsertLODJOB.KomiteNo},{InsertLODJOB.PolicyNo},{InsertLODJOB.BusinessID},{InsertLODJOB.BusinessName},{InsertLODJOB.FlagNOLL},{InsertLODJOB.FlagASO},{InsertLODJOB.Email},
+{InsertLODJOB.pyNote out});
+END;</pyBrowseSQL>
+<pxHostId>jboss10402</pxHostId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyFormPost/>
+<pyLabel>ProcLODPersonalAccident_job</pyLabel>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionPatch>09</pzRuleSetVersionPatch>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!PROCLODPERSONALACCIDENT_JOB</pxInsId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!PROCLODPERSONALACCIDENT_JOB #20240726T064140.484 GMT</pzInsKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!PROCLODPERSONALACCIDENT_JOB</pxInsName>
+<pyDocumentTitle/>
+<pyIsFromManageChangeLP/>
+<pyStreamName/>
+<pyRuleStarts/>
+<pyRuleFormStatusTime>20260721T042758.406 GMT</pyRuleFormStatusTime>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxMoveFromSystem/>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pxCommitDateTime>20240824T090406.000 GMT</pxCommitDateTime>
+<pyLabelOld>ProcLODPersonalAccident_job</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRelativePath/>
+<pyStatus/>
+<pyCircumstanceProp/>
+<pxInstanceLockedKey/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM ProcLODPersonalAccident_job</pyRuleName>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzChecksum>-2133281032</pzChecksum>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!PROCLODPERSONALACCIDENT_JOB #20240726T064140.484 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

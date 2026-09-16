@@ -1,0 +1,195 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDescription/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM CheckExistsInCashierTable_SQL</pxTabLabel>
+<pyStreamName/>
+<pxOriginalCreateOpName/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!CHECKEXISTSINCASHIERTABLE_SQL</pxInsName>
+<pyCircumstanceProp/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceVal/>
+<pzChecksum>-398885286</pzChecksum>
+<pxSiblingCount/>
+<pySPRuleSetName>JONNYWONG8@YAHOO.COM</pySPRuleSetName>
+<pzIsPrivateCheckOut/>
+<pyLabel>CheckExistsInCashierTable_SQL</pyLabel>
+<pyStatus/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedBy/>
+<pyCircumstanceType/>
+<pyTemplate/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!CHECKEXISTSINCASHIERTABLE_SQL</pxInsId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pyInterface/>
+<pyDeletedObject/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOpName>JONNY</pxUpdateOpName>
+<pxMoveImportOperName/>
+<pySpecialtyComponentData/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA</pyClassName>
+<pyHistoryObject>false</pyHistoryObject>
+<pyWorkKey/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyOpenSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBrowseSQL>SELECT TO_CHAR(SUM(cnt)) AS "QTY"
+       FROM (  SELECT COUNT(1) AS cnt
+                        FROM gl.t_all_payment
+                       WHERE no_trans = {TempAnomaly.NoAkseptasi} 
+                      UNION ALL
+                      SELECT COUNT(1) AS cnt
+                        FROM gl.t_request_kasir
+                       WHERE no_trans = {TempAnomaly.NoAkseptasi}
+                      UNION ALL
+                      SELECT COUNT(1) AS cnt
+                        FROM investasi.t_claim_spk
+                       WHERE no_akseptasi = {TempAnomaly.NoAkseptasi} 
+                      UNION ALL
+                      SELECT COUNT(1) AS cnt
+                        FROM gl.t_all_payment
+                       WHERE no_trans = {TempAnomaly.PolicyNo} || {TempAnomaly.ContractNo}
+                      UNION ALL
+                      SELECT COUNT(1) AS cnt
+                        FROM gl.t_request_kasir
+                       WHERE no_trans = {TempAnomaly.PolicyNo} || {TempAnomaly.ContractNo}
+                      UNION ALL
+                      SELECT COUNT(1) AS cnt
+                        FROM investasi.t_claim_spk
+                       WHERE no_akseptasi = {TempAnomaly.PolicyNo} || {TempAnomaly.ContractNo} 
+                       )</pyBrowseSQL>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!CHECKEXISTSINCASHIERTABLE_SQL #20260818T100140.292 GMT</pzDocumentKey>
+<pxCreateOpName>JONNY</pxCreateOpName>
+<pxCommitDateTime>20260818T104652.000 GMT</pxCommitDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!CHECKEXISTSINCASHIERTABLE_SQL #20260818T100140.292 GMT</pzInsKey>
+<pyShowJavaWindowName>GeneratedJava20260903T025146.007 GMT</pyShowJavaWindowName>
+<pxCreateSystemID>pegaprdsimasinsurtech</pxCreateSystemID>
+<pyRuleFormStatusTime>20260903T025145.963 GMT</pyRuleFormStatusTime>
+<pxSaveDateTime>20260818T104652.193 GMT</pxSaveDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySaveSQL/>
+<pyMethodStatus/>
+<pyRuleEnds/>
+<pyTemplateInputBox/>
+<pyJavaStream/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportOperId/>
+<pxHostId>jboss1962</pxHostId>
+<pxCreateDateTime>20260818T100140.292 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyWindowTitle/>
+<pyCircumstanceDateProp/>
+<pyRuleParamsStreamName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRequestType>CheckExistsInCashierTable_SQL</pyRequestType>
+<pxUpdateOperator>JONNYWONG8@YAHOO.COM</pxUpdateOperator>
+<pyDeleteSQL/>
+<pyCircumstanceTemplate/>
+<pyDocumentTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUsage/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxOriginalCreateSystemID/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabelOld>CheckExistsInCashierTable_SQL</pyLabelOld>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM CheckExistsInCashierTable_SQL</pyRuleName>
+<pxMoveImportDateTime/>
+<pyRuleStarts/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyIsFromManageChangeLP/>
+<pxUpdateDateTime>20260818T104652.131 GMT</pxUpdateDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyMemo>Add Rdb List for check exists in Cashier table</pyMemo>
+<pyHandlerFlow/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTANOMALYAPI_SQL #20260814T101901.527 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDate/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOperator/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateSystemID>pegaprdsimasinsurtech</pxUpdateSystemID>
+<pxOriginalCreateDateTime/>
+<pxMoveFromSystem/>
+<pyRelativePath/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedDateTime/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>true</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!CHECKEXISTSINCASHIERTABLE_SQL #20260818T100140.292 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

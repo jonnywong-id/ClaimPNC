@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateOperator/>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pxMoveImportDateTime>20250710T070605.531 GMT</pxMoveImportDateTime>
+<pyRuleFormStatusTime>20260901T081002.910 GMT</pyRuleFormStatusTime>
+<pyRuleEnds/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyJavaStream/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyUsage/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceTemplate/>
+<pyOpenSQL/>
+<pxSaveDateTime>20250710T043455.482 GMT</pxSaveDateTime>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyLabel>InsertDataSlikOJKF06</pyLabel>
+<pxInstanceLockedCreateDateTime/>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!INSERTDATASLIKOJKF06</pxInsName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM InsertDataSlikOJKF06</pyRuleName>
+<pyFormPost/>
+<pyDocumentTitle/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!INSERTDATASLIKOJKF06 #20250710T043447.502 GMT</pzDocumentKey>
+<pyIsFromManageChangeLP/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzChecksum>-1872682769</pzChecksum>
+<pyDeleteSQL/>
+<pyRequestType>InsertDataSlikOJKF06</pyRequestType>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pxSiblingCount/>
+<pyInterface/>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pyBrowseSQL>insert into pooldata.t_claim_slik_ojk (norekfasilitas,nocifdebitur,kodejenisfasilitas,sumberdana,tanggalmulai,tanggalakhir,sukubunga,kodevaluta,nominal,nilaimatauangasal,kodekolektabilitas,tanggalmacet,kodesebabmacet,tunggakan,jumlahharitunggakan,tanggalkondisi,kodekondisi,kodekantorcabang,operasidata,keterangan,bulanlapor,claimid,contractno,recoveryclaim,noktp,npwpperusahaan,nopolis,clientid)
+values ({TempDataSlinkD01.NOMORREKENINGFASILITAS},{TempDataSlinkD01.NOMORCIFDEBITUR},{TempDataSlinkD01.KodeJenisFasilitas},{TempDataSlinkD01.SumberDana},{TempDataSlinkD01.District},{TempDataSlinkD01.DistrictID},{TempDataSlinkD01.SukuBunga},{TempDataSlinkD01.KODEVALUTA},{TempDataSlinkD01.TSIObject},{TempDataSlinkD01.NilaiMataUangAsal},{TempDataSlinkD01.KodeKolektibilitas},{TempDataSlinkD01.TanggalMacet},{TempDataSlinkD01.KodeSebabMacet},{TempDataSlinkD01.TUNGGAKAN},{TempDataSlinkD01.JumlahHariTunggakan},{TempDataSlinkD01.TanggalKondisi},{TempDataSlinkD01.KodeKondisi},{TempDataSlinkD01.KodeKantorCabang},{TempDataSlinkD01.OperasiData},{TempDataSlinkD01.Keterangan},{TempDataSlinkD01.City},{TempDataSlinkD01.ClaimID},{TempDataSlinkD01.ContractNo},{TempDataSlinkD01.RecoveryClaim},{TempDataSlinkD01.NoKTP},{TempDataSlinkD01.NPWPPerusahaan},{TempDataSlinkD01.PolicyNo},{TempDataSlinkD01.CityID})</pyBrowseSQL>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyWorkKey/>
+<pzIsPrivateCheckOut/>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedBy/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCommitDateTime>20250710T070605.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyLabelOld>InsertDataSlikOJKF06</pyLabelOld>
+<pySpecialtyComponentData/>
+<pyShowJavaWindowName>GeneratedJava20260901T081002.930 GMT</pyShowJavaWindowName>
+<pxCreateDateTime>20250710T043447.502 GMT</pxCreateDateTime>
+<pyDescription/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM InsertDataSlikOJKF06</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHandlerFlow/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDateProp/>
+<pyStreamName/>
+<pyStatus/>
+<pyCircumstanceDefinition/>
+<pyTemplate/>
+<pyWindowTitle/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateInputBox/>
+<pyDeleteMemo>Ubah variabel bulan klaim</pyDeleteMemo>
+<pyMemo>Pindah ruleset</pyMemo>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!INSERTDATASLIKOJKF06</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateDateTime/>
+<pxHostId>jboss10-42</pxHostId>
+<pyRuleStarts/>
+<pySaveSQL/>
+<pxOriginalCreateOpName/>
+<pxUpdateDateTime>20250710T043455.473 GMT</pxUpdateDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!INSERTDATASLIKOJKF06 #20250710T043447.502 GMT</pzInsKey>
+<pySPRuleSetName>NICKSONTICHANDRA@</pySPRuleSetName>
+<pyCircumstanceProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeletedObject/>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceType/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRelativePath/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveFromSystem/>
+<pxInstanceLockedKey/>
+<pyCircumstanceVal/>
+<pyCircumstanceDate/>
+<pyMethodStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!INSERTDATASLIKOJKF06 #20250625T110107.735 GMT</pzOriginalInstanceKey>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!INSERTDATASLIKOJKF06 #20250710T043447.502 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+<pyVersionSecure>false</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyDelete>true</pyDelete>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+</pagedata>

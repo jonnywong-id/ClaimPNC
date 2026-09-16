@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI!ASM!SEARCHKLAIMINDIVIDU_SQL</pxInsId>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateDateTime>20191008T034808.005 GMT</pxCreateDateTime>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI ASM SearchKlaimIndividu_SQL</pxTabLabel>
+<pyCircumstanceType/>
+<pyStreamName/>
+<pyTemplate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRelativePath/>
+<pxCreateOperator>ASWINDEWASTAWA</pxCreateOperator>
+<pyDescription/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceVal/>
+<pxInstanceLockedRuleSet/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxHostId>jboss2165</pxHostId>
+<pxUpdateOpName>I WAYAN ASWIN DEW ASTAWA</pxUpdateOpName>
+<pxInstanceLockedDateTime/>
+<pxUpdateOperator>ASWINDEWASTAWA</pxUpdateOperator>
+<pyRWAccess>ASM</pyRWAccess>
+<pyTemplateInputBox/>
+<pzChecksum>684959258</pzChecksum>
+<pyValueChanged>false</pyValueChanged>
+<pyIsFromManageChangeLP/>
+<pyWindowTitle/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDate/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pxSaveDateTime>20191009T074917.970 GMT</pxSaveDateTime>
+<pyRequestType>SearchKlaimIndividu_SQL</pyRequestType>
+<pySaveSQL/>
+<pxOriginalCreateOpName/>
+<pyDeletedObject/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!SEARCHKLAIMINDIVIDU_SQL #20191008T034808.005 GMT</pzDocumentKey>
+<pxOriginalCreateSystemID/>
+<pyMemo>ubah</pyMemo>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI</pyClassName>
+<pyJavaStream/>
+<pyLabelOld>SearchKlaimIndividu_SQL</pyLabelOld>
+<pzRuleSetVersionPatch>39</pzRuleSetVersionPatch>
+<pyInterface/>
+<pyDocumentTitle/>
+<pxOriginalRuleSet>GKM</pxOriginalRuleSet>
+<pxInstanceLockedKey/>
+<pyWorkKey/>
+<pyRuleSet>GKM</pyRuleSet>
+<pyHandlerFlow/>
+<pxMoveImportOperName>Roby</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveImportDateTime>20200824T042219.675 GMT</pxMoveImportDateTime>
+<pySpecialtyComponentData/>
+<pxInstanceLockedRuleSetVersion/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleSetVersion>01-01-39</pyRuleSetVersion>
+<pxOriginalCreateOperator/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxInstanceLockedBy/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!SEARCHKLAIMINDIVIDU_SQL #20191008T034808.005 GMT</pzInsKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyBrowseSQL>SELECT pyID as "pyID", 
+       pzInsKey as "pzInsKey"
+  FROM DATAPEGA.pc_ASM_FW_GKM_Work
+ WHERE InsuredType_1 = '1' AND pxobjclass = 'ASM-FW-GKM-Work-Claim'
+   AND trunc(pxCreateDateTime) = trunc(sysdate)</pyBrowseSQL>
+<pyStatus/>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI!ASM!SEARCHKLAIMINDIVIDU_SQL</pxInsName>
+<pyRuleFormStatusTime>20260908T065103.606 GMT</pyRuleFormStatusTime>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI ASM SearchKlaimIndividu_SQL</pyRuleName>
+<pyCircumstanceProp/>
+<pxCreateOpName>I WAYAN ASWIN DEW ASTAWA</pxCreateOpName>
+<pyLabel>SearchKlaimIndividu_SQL</pyLabel>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyMethodStatus/>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateDateTime/>
+<pxCommitDateTime>20200824T042219.000 GMT</pxCommitDateTime>
+<pyFormPost/>
+<pyDeleteMemo>ubah</pyDeleteMemo>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pySPRuleSetName>GKM</pySPRuleSetName>
+<pyShowJavaWindowName>GeneratedJava20260908T065103.629 GMT</pyShowJavaWindowName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pyUsage/>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!SEARCHKLAIMINDIVIDU_SQL #20191004T033146.640 GMT</pzOriginalInstanceKey>
+<pxMoveImportOperId>roby_t@sinarmas.co.id</pxMoveImportOperId>
+<pxUpdateDateTime>20191009T074917.959 GMT</pxUpdateDateTime>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-39 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!SEARCHKLAIMINDIVIDU_SQL #20191008T034808.005 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI ASM!SEARCHKLAIMINDIVIDU_SQL #20191004T033146.640 GMT</pzInsKey>
+<pyLabel>01-01-36 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

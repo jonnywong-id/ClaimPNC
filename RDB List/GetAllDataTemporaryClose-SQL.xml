@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETALLDATATEMPORARYCLOSE #20241031T093540.966 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStatus/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyHistoryObject/>
+<pyLabelOld>GetAllDataTemporaryClose</pyLabelOld>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyMethodStatus/>
+<pyShowJavaWindowName>GeneratedJava20260908T060229.289 GMT</pyShowJavaWindowName>
+<pxMoveFromSystem/>
+<pyRuleFormStatusTime>20260908T060228.882 GMT</pyRuleFormStatusTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETALLDATATEMPORARYCLOSE #20241031T093540.966 GMT</pzInsKey>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyDisplayMode>basic</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pzChecksum>-1595990820</pzChecksum>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplate/>
+<pyIsFromManageChangeLP/>
+<pyJavaStream/>
+<pyHandlerFlow/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyFormPost/>
+<pxInstanceLockedRuleSetVersion/>
+<pyBrowseSQL>select PNCCASEID as "CaseID" from pooldata.GCNM_PROGRESS_CLAIM x
+where pnccaseid in
+(SELECT A.PYID
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A,
+       DATAPEGA.PC_ASSIGN_WORKLIST B,
+       POOLDATA.T_CLAIM_SURVEY_KLAIM S
+ WHERE     B.PXREFOBJECTINSNAME = A.PYID
+       AND B.pxAssignedOperatorID = S.USERTEKNIK
+       AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+       AND A.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC')
+and POSISIID='1' and ID_UPDATE=(select max(ID_UPDATE) from pooldata.GCNM_PROGRESS_CLAIM b where B.PNCCASEID=x.PNCCASEID)
+and upper(KETERANGAN) not like '%AUTO%' and upper(KETERANGAN) not like '%SYSTEM%' and X.STATUS_PROGRESS1='017'</pyBrowseSQL>
+<pyStreamName/>
+<pyLabel>GetAllDataTemporaryClose</pyLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateDateTime>20241031T093540.966 GMT</pxCreateDateTime>
+<pyOpenSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyWindowTitle/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetAllDataTemporaryClose</pyRuleName>
+<pyUsage/>
+<pxMoveImportDateTime>20241223T123625.089 GMT</pxMoveImportDateTime>
+<pyCircumstanceDate/>
+<pyCircumstanceVal/>
+<pyCircumstanceType/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxUpdateDateTime>20241128T120247.169 GMT</pxUpdateDateTime>
+<pyDescription/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxCommitDateTime>20241223T123625.000 GMT</pxCommitDateTime>
+<pyMemo>dones</pyMemo>
+<pxInstanceLockedKey/>
+<pyRelativePath/>
+<pxInstanceLockedBy/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxInstanceLockedCreateDateTime/>
+<pyDeleteSQL>delete pooldata.Temporary_CloseSementaraPNC where CLAIMID={NoTempKlaims.CaseID}</pyDeleteSQL>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyCircumstanceDefinition/>
+<pyRuleStarts/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxSaveDateTime>20241128T120247.177 GMT</pxSaveDateTime>
+<pyInterface/>
+<pyCircumstanceTemplate/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETALLDATATEMPORARYCLOSE</pxInsName>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRequestType>GetAllDataTemporaryClose</pyRequestType>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETALLDATATEMPORARYCLOSE</pxInsId>
+<pyRuleEnds/>
+<pySaveSQL>insert into pooldata.Temporary_CloseSementaraPNC(CLAIMID,INSERTDATE,PIC,TANGGALDEADLINE)
+VALUES({NoTempKlaims.CaseID},sysdate,{NoTempKlaims.UserTeknis},{NoTempKlaims.DateOfLoss DateTime})</pySaveSQL>
+<pxSiblingCount/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetAllDataTemporaryClose</pxTabLabel>
+<pyTemplateInputBox/>
+<pyDocumentTitle/>
+<pxHostId>jboss10372</pxHostId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedRuleSet/>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETALLDATATEMPORARYCLOSE #20241031T093540.966 GMT</pzDocumentKey>
+<pyWorkKey/>
+<pyDeletedObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDateProp/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETALLDATATEMPORARYCLOSE #20241031T093540.966 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

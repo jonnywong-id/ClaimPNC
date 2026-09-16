@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyUsage/>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pyHistoryObject/>
+<pyDeleteSQL/>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!INSERTANOMALY_SQL</pxInsName>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateDateTime>20260626T033935.537 GMT</pxUpdateDateTime>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pyRuleFormStatusTime>20260908T084257.700 GMT</pyRuleFormStatusTime>
+<pyJavaStream/>
+<pyDescription/>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyInterface/>
+<pyStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleStarts/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCommitDateTime>20260626T033935.000 GMT</pxCommitDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceTemplate/>
+<pyStreamName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDocumentTitle/>
+<pySpecialtyComponentData/>
+<pyBrowseSQL>BEGIN
+     POOLDATA.PKG_KONVERSI_JSONKLAIM.Update_Log_Transfer_Kasir_PNC ( {TempAnomaly.ClaimID}, {TempAnomaly.NoAkseptasi}, {TempAnomaly.Url}, {TempAnomaly.ResponseCode}, {TempAnomaly.ResponseMsg}, {TempAnomaly.ErrorNotesAkseptasi out} );
+END;</pyBrowseSQL>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDate/>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzIsPrivateCheckOut/>
+<pyTemplate/>
+<pxMoveImportDateTime/>
+<pxSaveDateTime>20260626T033935.592 GMT</pxSaveDateTime>
+<pySaveSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyShowJavaWindowName>GeneratedJava20260908T084257.717 GMT</pyShowJavaWindowName>
+<pyDeletedObject/>
+<pyWorkKey/>
+<pyOpenSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM InsertAnomaly_SQL</pxTabLabel>
+<pxInstanceLockedRuleSet/>
+<pyRuleEnds/>
+<pyWindowTitle/>
+<pyCircumstanceType/>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pyLabel>InsertAnomaly_SQL</pyLabel>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20260626T033917.400 GMT</pxCreateDateTime>
+<pxInstanceLockedDateTime/>
+<pxMoveImportOperId/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzChecksum>-1103362891</pzChecksum>
+<pyHandlerFlow/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTANOMALY_SQL #20260626T033917.400 GMT</pzInsKey>
+<pyFormPost/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDefinition/>
+<pxHostId>jboss10402</pxHostId>
+<pxMoveImportOperName/>
+<pyMethodStatus/>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveFromSystem/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTANOMALY_SQL #20260626T033917.400 GMT</pzOriginalInstanceKey>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!INSERTANOMALY_SQL</pxInsId>
+<pyRequestType>InsertAnomaly_SQL</pyRequestType>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTANOMALY_SQL #20260626T033917.400 GMT</pzDocumentKey>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateInputBox/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxSiblingCount/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM InsertAnomaly_SQL</pyRuleName>
+<pyCircumstanceVal/>
+<pySPRuleSetName/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRun>false</pyRun>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>false</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBack>true</pyBack>
+<pyDelete>true</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTANOMALY_SQL #20260626T033917.400 GMT</pzInsKey>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

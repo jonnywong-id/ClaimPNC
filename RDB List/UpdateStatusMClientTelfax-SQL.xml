@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsId>ASM-FW-GISFW-INT-CLIENT!ASM!UPDATESTATUSMCLIENTTELFAX</pxInsId>
+<pyWindowTitle/>
+<pxCreateOpName>Racaliaugustus</pxCreateOpName>
+<pyRequestType>UpdateStatusMClientTelfax</pyRequestType>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pySPRuleSetName/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSet/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATESTATUSMCLIENTTELFAX #20240422T090018.775 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleStarts/>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatusTime>20260901T040459.275 GMT</pyRuleFormStatusTime>
+<pyIsFromManageChangeLP/>
+<pxCreateDateTime>20240422T090018.775 GMT</pxCreateDateTime>
+<pyJavaStream/>
+<pxUpdateOpName>Racaliaugustus</pxUpdateOpName>
+<pySpecialtyComponentData/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySaveSQL/>
+<pxSiblingCount/>
+<pyBaseRule>false</pyBaseRule>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyInterface/>
+<pyRuleParamsStreamName/>
+<pyUsage/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportDateTime>20240426T113904.942 GMT</pxMoveImportDateTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260901T040459.303 GMT</pyShowJavaWindowName>
+<pyStatus/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATESTATUSMCLIENTTELFAX #20240422T090018.775 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedCreateDateTime/>
+<pyFormPost/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDate/>
+<pxHostId>jboss1037</pxHostId>
+<pyDeletedObject/>
+<pyCircumstanceProp/>
+<pxUpdateOperator>Racaliaugustus</pxUpdateOperator>
+<pxCommitDateTime>20240426T113905.000 GMT</pxCommitDateTime>
+<pyTemplate/>
+<pxTabLabel>ASM-FW-GISFW-Int-CLIENT ASM UpdateStatusMClientTelfax</pxTabLabel>
+<pyStreamName/>
+<pxMoveFromSystem/>
+<pyDescription/>
+<pyHistoryObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pxSaveDateTime>20240422T090113.376 GMT</pxSaveDateTime>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATESTATUSMCLIENTTELFAX #20240422T090018.775 GMT</pzInsKey>
+<pzChecksum>-637411871</pzChecksum>
+<pyLabel>UpdateStatusMClientTelfax</pyLabel>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-04-65</pyRuleSetVersion>
+<pyDeleteSQL/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxCreateOperator>Racaliaugustus</pxCreateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRWAccess>ASM</pyRWAccess>
+<pyClassName>ASM-FW-GISFW-Int-CLIENT</pyClassName>
+<pyBrowseSQL>UPDATE T_MCLIENTTELFAX
+   SET VERIFICATIONSTATUS = '1', VERIFIEDDATE = SYSDATE, VERIFICATIONSOURCE ='WHATSAPP'
+ WHERE RANDOMKEY = {InputData.CARI7}</pyBrowseSQL>
+<pyRuleName>ASM-FW-GISFW-Int-CLIENT ASM UpdateStatusMClientTelfax</pyRuleName>
+<pyRuleEnds/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxUpdateDateTime>20240422T090113.372 GMT</pxUpdateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyCircumstanceVal/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyHandlerFlow/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyOpenSQL/>
+<pzRuleSetVersionPatch>65</pzRuleSetVersionPatch>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDateProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInsName>ASM-FW-GISFW-INT-CLIENT!ASM!UPDATESTATUSMCLIENTTELFAX</pxInsName>
+<pyCircumstanceTemplate/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-04-65 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATESTATUSMCLIENTTELFAX #20240422T090018.775 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+</pagedata>

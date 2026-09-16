@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyMethodStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyUsage/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyHandlerFlow/>
+<pyCircumstanceDefinition/>
+<pxSaveDateTime>20180719T063623.099 GMT</pxSaveDateTime>
+<pyCircumstanceDate/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySaveSQL/>
+<pyJavaStream/>
+<pzChecksum>-1432406804</pzChecksum>
+<pyMemo>select to_number</pyMemo>
+<pyInterface/>
+<pyBrowseSQL>SELECT a.DATA_JSON.EndDateTime AS HASIL1
+  FROM json_polis a
+ WHERE     nopolis = {InputDataPolis.CARI1}
+       AND to_number(a.prodke) = (SELECT MIN (to_number(b.prodke))
+                         FROM json_polis b
+                        WHERE nopolis = {InputDataPolis.CARI1})</pyBrowseSQL>
+<pyOpenSQL/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyWindowTitle/>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceTemplate/>
+<pyStatus/>
+<pxInstanceLockedRuleSet/>
+<pyDescription/>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEENDDATETIMEARBUSINESS</pxInsName>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyCircumstanceProp/>
+<pyCircumstanceDateProp/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRelativePath/>
+<pxSiblingCount/>
+<pyRuleEnds/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySpecialtyComponentData/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyLabel>BrowseEndDateTimeARBusiness</pyLabel>
+<pyRuleSetVersion>01-01-67</pyRuleSetVersion>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyIsFromManageChangeLP/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedCreateDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20180715T153339.139 GMT</pzOriginalInstanceKey>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyWorkKey/>
+<pyHistoryObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEENDDATETIMEARBUSINESS</pxInsId>
+<pxMoveImportDateTime>20191226T024727.284 GMT</pxMoveImportDateTime>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxUpdateDateTime>20180719T063623.076 GMT</pxUpdateDateTime>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM BrowseEndDateTimeARBusiness</pxTabLabel>
+<pyDeleteSQL/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyCircumstanceType/>
+<pyFormPost/>
+<pyRuleStarts/>
+<pzRuleSetVersionPatch>67</pzRuleSetVersionPatch>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyDeletedObject/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRequestType>BrowseEndDateTimeARBusiness</pyRequestType>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM BrowseEndDateTimeARBusiness</pyRuleName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20180715T153339.139 GMT</pzInsKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRuleFormStatusTime>20260828T013925.110 GMT</pyRuleFormStatusTime>
+<pyDocumentTitle/>
+<pxHostId>jboss2058</pxHostId>
+<pyTemplate/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedBy/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyShowJavaWindowName>GeneratedJava20260828T013925.130 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20180715T153339.139 GMT</pzDocumentKey>
+<pxCreateDateTime>20180715T153339.139 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyShowJava>false</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20191016T070450.805 GMT</pzInsKey>
+<pyLabel>01-02-23 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20180912T042215.618 GMT</pzInsKey>
+<pyLabel>01-01-73 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEENDDATETIMEARBUSINESS #20180715T153339.139 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-67 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

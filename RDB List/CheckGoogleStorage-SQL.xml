@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeleteMemo>save</pyDeleteMemo>
+<pyCircumstanceDateProp/>
+<pyRuleFormStatusTime>20260721T040410.299 GMT</pyRuleFormStatusTime>
+<pxCreateDateTime>20250613T031554.002 GMT</pxCreateDateTime>
+<pyRelativePath/>
+<pyRequestType>CheckGoogleStorage</pyRequestType>
+<pxInstanceLockedRuleSet/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzChecksum>1047873175</pzChecksum>
+<pyDescription/>
+<pyCircumstanceTemplate/>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pxSiblingCount/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStatus/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyCircumstanceVal/>
+<pyRuleParamsStreamName/>
+<pyRuleEnds/>
+<pzRuleSetVersionPatch>12</pzRuleSetVersionPatch>
+<pyRuleSetVersion>01-03-12</pyRuleSetVersion>
+<pyJavaStream/>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceProp/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!CHECKGOOGLESTORAGE #20250613T031554.002 GMT</pzDocumentKey>
+<pyCircumstanceDate/>
+<pxInstanceLockedKey/>
+<pxHostId>jboss10372</pxHostId>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyHandlerFlow/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSaveDateTime>20250613T033246.317 GMT</pxSaveDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportDateTime>20250617T114318.767 GMT</pxMoveImportDateTime>
+<pyMemo>save</pyMemo>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!CHECKGOOGLESTORAGE #20250613T031554.002 GMT</pzInsKey>
+<pyTemplate/>
+<pyWindowTitle/>
+<pyTemplateInputBox/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20250613T033246.304 GMT</pxUpdateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzIsPrivateCheckOut/>
+<pyShowJavaWindowName>GeneratedJava20260721T040410.322 GMT</pyShowJavaWindowName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStreamName/>
+<pySaveSQL/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyBrowseSQL>select IMAGEID AS CARI1 FROM general.t_storage_image where IMAGEID = {ImageID.CARI1}</pyBrowseSQL>
+<pyCircumstanceDefinition/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateOperator/>
+<pyClassName>ASM-FW-GKM-Int-KONVERSI2</pyClassName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyFormPost/>
+<pxCommitDateTime>20250617T114318.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pxInstanceLockedCreateDateTime/>
+<pxTabLabel>ASM-FW-GKM-Int-KONVERSI2 ASM CheckGoogleStorage</pxTabLabel>
+<pyRuleStarts/>
+<pxInsId>ASM-FW-GKM-INT-KONVERSI2!ASM!CHECKGOOGLESTORAGE</pxInsId>
+<pxOriginalCreateDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyRuleName>ASM-FW-GKM-Int-KONVERSI2 ASM CheckGoogleStorage</pyRuleName>
+<pxOriginalCreateSystemID/>
+<pyMethodStatus/>
+<pxInstanceLockedDateTime/>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pxOriginalCreateOpName/>
+<pyLabelOld>CheckGoogleStorage</pyLabelOld>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyLabel>CheckGoogleStorage</pyLabel>
+<pyInterface/>
+<pyIsFromManageChangeLP/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!GETDOCUMENTPNCBYCAT #20250318T092017.788 GMT</pzOriginalInstanceKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pyUsage/>
+<pyBaseRule>false</pyBaseRule>
+<pxInsName>ASM-FW-GKM-INT-KONVERSI2!ASM!CHECKGOOGLESTORAGE</pxInsName>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-03-12 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-KONVERSI2 ASM!CHECKGOOGLESTORAGE #20250613T031554.002 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyDelete>true</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPreview>false</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>false</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

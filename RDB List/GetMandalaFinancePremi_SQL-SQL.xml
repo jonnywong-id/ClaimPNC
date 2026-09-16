@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRelativePath/>
+<pyFormPost/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM GetMandalaFinancePremi_SQL</pyRuleName>
+<pyStatus/>
+<pxOriginalCreateOperator/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceType/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyInterface/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateOpName>Jonny Wong</pxCreateOpName>
+<pyStreamName/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOperator>jonnywong@sinarmas.co.id</pxUpdateOperator>
+<pyHandlerFlow/>
+<pyCircumstanceDate/>
+<pxMoveFromSystem/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pySPRuleSetName>jonnywong@sinarmas.co.id</pySPRuleSetName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleStarts/>
+<pyWindowTitle/>
+<pyJavaStream/>
+<pyBrowseSQL>SELECT NVL(SUM(premi), 0) AS "NoteKasir"
+  FROM MBU.T_CADANGAN_KLAIM_KREDIT_04203@asmd.sinarmas.co.id
+ WHERE TRUNC(input_date) BETWEEN TO_DATE({TempTotalPremi.IssueDate},'DD/MM/RRRR') AND TO_DATE({TempTotalPremi.PaymentDate},'DD/MM/RRRR')
+   AND agen_id = {TempTotalPremi.ID_MST}
+   AND flag_lunas = '1'</pyBrowseSQL>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETMANDALAFINANCEPREMI_SQL</pxInsId>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20251211T041345.861 GMT</pxCreateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCommitDateTime>20251211T070048.000 GMT</pxCommitDateTime>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETWOMPREMI #20231102T052355.958 GMT</pzOriginalInstanceKey>
+<pxUpdateDateTime>20251211T070048.369 GMT</pxUpdateDateTime>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyLabelOld>Get Mandala Finance Premi SQL</pyLabelOld>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplateInputBox/>
+<pyUsage/>
+<pxOriginalCreateSystemID/>
+<pzChecksum>-1142097560</pzChecksum>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETMANDALAFINANCEPREMI_SQL #20251211T041345.861 GMT</pzInsKey>
+<pyDeleteSQL/>
+<pxOriginalCreateOpName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOpName>Jonny Wong</pxUpdateOpName>
+<pxInstanceLockedBy/>
+<pyShowJavaWindowName>GeneratedJava20260901T104553.231 GMT</pyShowJavaWindowName>
+<pyCircumstanceProp/>
+<pxInstanceLockedKey/>
+<pzIsPrivateCheckOut/>
+<pxCreateOperator>jonnywong@sinarmas.co.id</pxCreateOperator>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxHostId>jboss10402</pxHostId>
+<pyMethodStatus/>
+<pyLabel>Get Mandala Finance Premi SQL</pyLabel>
+<pyValueChanged>false</pyValueChanged>
+<pyIsFromManageChangeLP/>
+<pyWorkKey/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateDateTime/>
+<pyOpenSQL/>
+<pyRequestType>GetMandalaFinancePremi_SQL</pyRequestType>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!GETMANDALAFINANCEPREMI_SQL</pxInsName>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM GetMandalaFinancePremi_SQL</pxTabLabel>
+<pyDescription/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxSiblingCount/>
+<pyCircumstanceVal/>
+<pyCircumstanceTemplate/>
+<pyDeletedObject/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormStatusTime>20260901T104553.213 GMT</pyRuleFormStatusTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20251211T070048.488 GMT</pxSaveDateTime>
+<pyMemo>Get premi Mandala Finance</pyMemo>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyTemporaryObject/>
+<pySpecialtyComponentData/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyCircumstanceDefinition/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETMANDALAFINANCEPREMI_SQL #20251211T041345.861 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleEnds/>
+<pyDocumentTitle/>
+<pySaveSQL/>
+<pxMoveImportDateTime>20240116T113039.860 GMT</pxMoveImportDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyDelete>true</pyDelete>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!GETMANDALAFINANCEPREMI_SQL #20251211T041345.861 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRulePage>
+</pyRulePage>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

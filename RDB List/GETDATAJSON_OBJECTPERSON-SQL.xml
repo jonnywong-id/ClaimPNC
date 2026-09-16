@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETDATAJSON_OBJECTPERSON #20181209T171336.024 GMT</pzDocumentKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceType/>
+<pxUpdateOperator>FRANSISCOJUNIUS</pxUpdateOperator>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportDateTime>20191226T024738.207 GMT</pxMoveImportDateTime>
+<pyDocumentTitle/>
+<pyRuleStarts/>
+<pxUpdateOpName>FRANSISCO JUNIUS</pxUpdateOpName>
+<pyStreamName/>
+<pyRuleSetVersion>01-01-86</pyRuleSetVersion>
+<pxUpdateDateTime>20181209T171348.607 GMT</pxUpdateDateTime>
+<pyRuleFormStatusTime>20260721T041503.739 GMT</pyRuleFormStatusTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!GETDATAJSON_OBJECTPERSON</pxInsId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxHostId>jboss2058</pxHostId>
+<pxOriginalCreateDateTime/>
+<pyDescription/>
+<pyShowJavaWindowName>GeneratedJava20260721T041503.763 GMT</pyShowJavaWindowName>
+<pyInterface/>
+<pyTemplate/>
+<pyCircumstanceVal/>
+<pxSiblingCount/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETDATAJSON_OBJECTPERSON #20181209T171336.024 GMT</pzInsKey>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedKey/>
+<pyBaseRule>false</pyBaseRule>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM GETDATAJSON_OBJECTPERSON</pxTabLabel>
+<pyStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateOperator/>
+<pyCircumstanceTemplate/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDefinition/>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pyMethodStatus/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHistoryObject>false</pyHistoryObject>
+<pyJavaStream/>
+<pxCommitDateTime>20200312T080241.000 GMT</pxCommitDateTime>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOperator>FRANSISCOJUNIUS</pxCreateOperator>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxSaveDateTime>20181209T171348.646 GMT</pxSaveDateTime>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyDeleteMemo>s</pyDeleteMemo>
+<pxInstanceLockedBy/>
+<pyFormPost/>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!GETDATAJSON_OBJECTPERSON</pxInsName>
+<pyWindowTitle/>
+<pzRuleSetVersionPatch>86</pzRuleSetVersionPatch>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>GETDATAJSON_OBJECTPERSON</pyLabel>
+<pyHandlerFlow/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyBrowseSQL>select OBJECTDATA AS HASIL1 from t_object where IDPEGA = {InputDataAdopt.CARI1}</pyBrowseSQL>
+<pyMemo>DOne ad</pyMemo>
+<pyUsage/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyWorkKey/>
+<pySpecialtyComponentData/>
+<pxCreateDateTime>20181209T171336.024 GMT</pxCreateDateTime>
+<pxOriginalCreateOpName/>
+<pzChecksum>2129682193</pzChecksum>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pyTemplateInputBox/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyRWAccess>ASM</pyRWAccess>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM GETDATAJSON_OBJECTPERSON</pyRuleName>
+<pyIsFromManageChangeLP/>
+<pyOpenSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETDATAJSON_OBJECTPERSON #20181205T072825.879 GMT</pzOriginalInstanceKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedRuleSet/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pySPRuleSetName>FRANSISCOJUNIUS@</pySPRuleSetName>
+<pyDeleteSQL/>
+<pyRequestType>GETDATAJSON_OBJECTPERSON</pyRequestType>
+<pxCreateOpName>FRANSISCO JUNIUS</pxCreateOpName>
+<pyCircumstanceDate/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxOriginalCreateSystemID/>
+<pyLabelOld>GETDATAJSON_OBJECTPERSON</pyLabelOld>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETDATAJSON_OBJECTPERSON #20181209T171336.024 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETDATAJSON_OBJECTPERSON #20181205T072825.879 GMT</pzInsKey>
+<pyLabel>01-01-85 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleEnds/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETMARKETINGEMAIL #20191128T094127.377 GMT</pzDocumentKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMethodStatus/>
+<pyCircumstanceVal/>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!GETMARKETINGEMAIL</pxInsId>
+<pxInstanceLockedRuleSet/>
+<pyUsage/>
+<pyRuleParamsStreamName/>
+<pyStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOpName/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROSWSEPOLICYDATABYPOLICYNO #20171107T041211.252 GMT</pzOriginalInstanceKey>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRequestType>GetMarketingEmail</pyRequestType>
+<pyFormPost/>
+<pzChecksum>380700522</pzChecksum>
+<pxCreateOpName>RIXTUS KUSUMA</pxCreateOpName>
+<pyRuleStarts/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyShowJavaWindowName>GeneratedJava20260901T040253.229 GMT</pyShowJavaWindowName>
+<pxOriginalCreateSystemID/>
+<pxSaveDateTime>20191128T094142.329 GMT</pxSaveDateTime>
+<pxCreateDateTime>20191128T094127.377 GMT</pxCreateDateTime>
+<pyStatus/>
+<pyCircumstanceDateProp/>
+<pxMoveImportDateTime>20191226T024741.573 GMT</pxMoveImportDateTime>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM GetMarketingEmail</pxTabLabel>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!GETMARKETINGEMAIL</pxInsName>
+<pxMoveFromSystem/>
+<pxInstanceLockedBy/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxInstanceLockedDateTime/>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxUpdateDateTime>20191128T094142.317 GMT</pxUpdateDateTime>
+<pyCircumstanceDefinition/>
+<pyCheckInRuleSet/>
+<pxUpdateOpName>RIXTUS KUSUMA</pxUpdateOpName>
+<pyDeleteSQL/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM GetMarketingEmail</pyRuleName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDate/>
+<pyDeletedObject/>
+<pyRuleFormStatusTime>20260901T040253.206 GMT</pyRuleFormStatusTime>
+<pyDocumentTitle/>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyWindowTitle/>
+<pxSiblingCount/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxInstanceLockedRuleSetVersion/>
+<pyBaseRule>false</pyBaseRule>
+<pySaveSQL/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyCircumstanceTemplate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyWorkKey/>
+<pyLabel>Ambil email Marketing</pyLabel>
+<pxOriginalCreateDateTime/>
+<pyRuleSetVersion>01-02-29</pyRuleSetVersion>
+<pyDescription/>
+<pyOpenSQL/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyRelativePath/>
+<pyHandlerFlow/>
+<pxOriginalCreateOperator/>
+<pxHostId>jboss2058</pxHostId>
+<pyMemo>t_marketingofficer</pyMemo>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceType/>
+<pyBrowseSQL>SELECT email AS HASIL1
+  FROM pooldata.t_marketingofficer
+ WHERE id = {InputData.CARI1}</pyBrowseSQL>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionPatch>29</pzRuleSetVersionPatch>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETMARKETINGEMAIL #20191128T094127.377 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyJavaStream/>
+<pyCircumstanceProp/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyLabelOld>Ambil email Marketing</pyLabelOld>
+<pxMergeSynchronized>20171129T085848.072 GMT</pxMergeSynchronized>
+<pyInterface/>
+<pxInstanceLockedKey/>
+<pyIsFromManageChangeLP/>
+<pyTemplateInputBox/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETMARKETINGEMAIL #20191128T094127.377 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-29 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!GETMARKETINGEMAIL #20171129T085834.091 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-55 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

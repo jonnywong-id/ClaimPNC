@@ -1,0 +1,17 @@
+# Biner hasil build
+*.exe
+backend/claimpnc
+
+# Hasil build SPA — dihasilkan `npm run build` di frontend/, disematkan saat go build.
+# .gitkeep sengaja ikut supaya `go build ./...` tetap jalan pada clone yang bersih:
+# direktif go:embed menuntut folder dist ada, walau isinya belum dibangun.
+backend/spa/dist/*
+!backend/spa/dist/.gitkeep
+
+# Dependensi frontend
+frontend/node_modules/
+
+# Berkas lingkungan yang memuat nilai rahasia
+backend/.env
+backend/.env.*
+!backend/.env.example

@@ -1,0 +1,467 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pzChecksum>646447686</pzChecksum>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pxMoveImportOperName>Saurabh Korgaonkar</pxMoveImportOperName>
+<pxCreateOperator>chavr</pxCreateOperator>
+<pyLabelOld>To Alternate Operator</pyLabelOld>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyJavaGenerateTime>20161115T114045.592 GMT</pyJavaGenerateTime>
+<pySelected>false</pySelected>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;CheckAvailability DESCRIPTION= "Check the operator&amp;#39;s availability" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceVal/>
+<pyLabel>To Alternate Operator</pyLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>WORK-!PYTOALTERNATEOPERATOR</pxInsName>
+<pyAssociatedImage/>
+<pyWorkKey/>
+<pyRuleSet>Pega-ProcessEngine</pyRuleSet>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pyRuleName>pyToAlternateOperator</pyRuleName>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>chavr</pxUpdateOperator>
+<pyCircumstanceDateProp/>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pxUpdateOpName>Ravi Krishna Chavali</pxUpdateOpName>
+<pyStatus/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySpecialtyComponentData/>
+<pyBaseRule>false</pyBaseRule>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pxInstanceLockedCreateDateTime/>
+<pyDocumentTitle/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20160901T193025.520 GMT</pxMoveOriginalKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pyUsage>Use in routing shapes of a flow.
+Extension Activity - To avoid routing to System Operator when an assignment is routed to current user/operator after an Wait Shape in the flow.
+Customer can override this activity to route the assignment accordingly when an assignment is routed to System after mid process dependency (i.e. For Assignments after Wait Shape).</pyUsage>
+<pzDocumentKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzDocumentKey>
+<pyRuleEnds/>
+<pyClassName>Work-</pyClassName>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCommitDateTime>20191015T081638.000 GMT</pxCommitDateTime>
+<pyJavaStream/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20161115T113652.631 GMT</pzOriginalInstanceKey>
+<pyInterface>Process Routing</pyInterface>
+<pyRelativePath/>
+<pyPreviousApplicationName>PegaRULES</pyPreviousApplicationName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStreamName/>
+<pyJavaClassName>work__pytoalternateoperator_20180713_133053_936</pyJavaClassName>
+<pyRuleSearchQuery/>
+<pxCreatedInPRPCVersion>07-02-01</pxCreatedInPRPCVersion>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleStarts/>
+<pyCircumstanceType/>
+<pyCircumstanceProp/>
+<pxUpdateSystemID>SLSV722h</pxUpdateSystemID>
+<pyMemo>BUG-271631: Step1 - Avoiding the call to "ToCreateOperator" activity by adding "When" condition  of "pyToAlternateOperator" activity when pxCreateOperator is set to empty.</pyMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pyTaskGroup/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateDateTime>20180713T133053.936 GMT</pxOriginalCreateDateTime>
+<pyRuleParamsStreamName/>
+<pyDescription>Routes the assignment to operator who created the work object
+Extension Activity - To avoid routing to System Operator when an assignment is routed to current user/operator after an Wait Shape in the flow.
+Customer can override this activity to route the assignment accordingly when an assignment is routed to System after mid process dependency (i.e. For Assignments after Wait Shape).</pyDescription>
+<pyInputMayStart>false</pyInputMayStart>
+<pxOriginalInstanceKey>RULE-OBJ-ACTIVITY WORK- TOCREATEOPERATOR #20031226T202907.355 GMT</pxOriginalInstanceKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateDateTime>20180713T133053.936 GMT</pxCreateDateTime>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalRuleSet>Pega-ProCom</pxOriginalRuleSet>
+<pxMoveOriginalRuleSetVersion>07-10-27</pxMoveOriginalRuleSetVersion>
+<pxUpdateDateTime>20180713T133053.936 GMT</pxUpdateDateTime>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260718T091254.459 GMT</pyShowJavaWindowName>
+<pxSiblingCount/>
+<pxInstanceLockedDateTime/>
+<pyOldActivityType>ROUTE</pyOldActivityType>
+<pyActivityType>ROUTE</pyActivityType>
+<pyJavaFUAVersion/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportDateTime>20161214T204940.283 GMT</pxMoveImportDateTime>
+<pySPRuleSetName>chavr@</pySPRuleSetName>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOperator>chavr</pxOriginalCreateOperator>
+<pzIndexCount>16</pzIndexCount>
+<pxOriginalCreateOpName>Ravi Krishna Chavali</pxOriginalCreateOpName>
+<pxInstanceLockedSaveDateTime/>
+<pyRuleFormStatusTime>20260718T091254.437 GMT</pyRuleFormStatusTime>
+<pxMoveImportOperId>korgs</pxMoveImportOperId>
+<pxSaveDateTime>20180713T133053.936 GMT</pxSaveDateTime>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pyActivityName>pyToAlternateOperator</pyActivityName>
+<pxTabLabel>pyToAlternateOperator</pxTabLabel>
+<pyTemplateInputBox/>
+<pxInstanceLockedBy/>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzInsKey>
+<pyCircumstanceTemplate/>
+<pyWindowTitle/>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pyMethodStatus/>
+<pxMoveOriginalRuleSet>Pega-ProcessEngine</pxMoveOriginalRuleSet>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxInsId>!PYTOALTERNATEOPERATOR</pxInsId>
+<pyFormPost/>
+<pxInstanceLockedKey/>
+<pyIsFromManageChangeLP/>
+<pyDeletedObject/>
+<pzStatus>false</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass/>
+<pyPrivilegeName/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyActivityPrivilegeList>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>true</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyRestore>false</pyRestore>
+<pyShowJava>true</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyPreview>true</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+</pyToolBarSettings>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxAllChangeList REPEATINGTYPE="PropertyList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType>String</pyParametersParamType>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamDesc/>
+<pyParametersParamName/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyLocalParameters>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>08-01-01 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyActivityRolesList>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsObjectName/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxCreateDateTime>20160829T101357.162 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyOnException/>
+<pyStepsJavaSource/>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Call ToCreateOperator</pyStepsActivityName>
+<pxCreateOperator>chavr</pxCreateOperator>
+<pyPropRef/>
+<pyStepsDescription>Call ToCreateOperator when pxCreateOperator is not empty</pyStepsDescription>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	ToCreateOperator</pxStepDefaultDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyPassCurrentParameterPage>true</pyPassCurrentParameterPage>
+<pyStepsActivityNameUC>CALL TOCREATEOPERATOR</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxCreateSystemID>SLSV722h</pxCreateSystemID>
+<pyStepsTransition/>
+<pyStepsBlockName/>
+<pyStepActivityDescription/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>SLSV722h</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhen>.pxCreateOperator==""</pyStepsPreCondParamsWhen>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>6</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20160829T101357.163 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOperator>chavr</pxCreateOperator>
+<pyExpressionGadget>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyIsLaunchAsOverlay>true</pyIsLaunchAsOverlay>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>chavr</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateDateTime>20160829T101357.166 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pxCreateSystemID>SLSV722h</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateSystemID>SLSV722h</pxCreateSystemID>
+<pxCreateOperator>chavr</pxCreateOperator>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20160829T101357.166 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20160829T101357.165 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateSystemID>SLSV722h</pxCreateSystemID>
+<pxCreateOpName>Ravi Krishna Chavali</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOperator>chavr</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<CheckAvailability>false</CheckAvailability>
+<pyStepsParamUIRemoved/>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>Check the operator's availability</pyParametersParamDesc>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>CheckAvailability</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+</rowdata>
+</pySteps>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamName>flowType</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+</rowdata>
+</pySystemParameters>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>DATA-ADMIN-OPERATOR-ID</pxRuleFamilyName>
+<pxRuleClassName>Data-Admin-Operator-ID</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzIndexOwnerKey>
+<pyRuleName>Data-Admin-Operator-ID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>ToCreateOperator</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleFamilyName>TOCREATEOPERATOR</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>WORK-</pxRuleFamilyName>
+<pyRuleName>Work-</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXCREATEOPERATOR</pxRuleFamilyName>
+<pyRuleName>pxCreateOperator</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- PYTOALTERNATEOPERATOR #20180713T133053.936 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamDesc>Check the operator's availability</pyParametersParamDesc>
+<pyParametersParamSize/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName>CheckAvailability</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass/>
+</rowdata>
+</pyParameters>
+</pagedata>

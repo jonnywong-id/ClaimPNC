@@ -1,0 +1,227 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceDefinition/>
+<pySaveSQL/>
+<pxOriginalCreateSystemID/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySpecialtyComponentData/>
+<pyCheckInRuleSet/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxHostId>jboss10422</pxHostId>
+<pyCircumstanceTemplate/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20230620T105147.758 GMT</pzInsKey>
+<pxMoveImportDateTime>20231027T122925.288 GMT</pxMoveImportDateTime>
+<pyCircumstanceProp/>
+<pyDeleteSQL/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceType/>
+<pyRelativePath/>
+<pyMemo>dones</pyMemo>
+<pxInstanceLockedDateTime/>
+<pyTemplateInputBox/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxSiblingCount/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!INSERTPENGKINIANDATA_SQL</pxInsId>
+<pyLabelOld>InsertPengkinianData_SQL</pyLabelOld>
+<pyRuleFormStatusTime>20260901T104630.379 GMT</pyRuleFormStatusTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleSetVersion>01-02-07</pyRuleSetVersion>
+<pxInstanceLockedKey/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20230620T105147.758 GMT</pzDocumentKey>
+<pxSaveDateTime>20230620T105156.428 GMT</pxSaveDateTime>
+<pyInterface/>
+<pyDescription/>
+<pyLabel>InsertPengkinianData_SQL</pyLabel>
+<pyShowJavaWindowName>GeneratedJava20260901T104630.399 GMT</pyShowJavaWindowName>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedBy/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyBaseRule>false</pyBaseRule>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pzChecksum>1187119154</pzChecksum>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!INSERTPENGKINIANDATA_SQL</pxInsName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyUsage/>
+<pyTemporaryObject/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData ASM InsertPengkinianData_SQL</pxTabLabel>
+<pxCommitDateTime>20231027T122927.000 GMT</pxCommitDateTime>
+<pyRuleParamsStreamName/>
+<pyDocumentTitle/>
+<pyCircumstanceDate/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyHandlerFlow/>
+<pyIsFromManageChangeLP/>
+<pxMoveFromSystem/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxCreateDateTime>20230620T105147.758 GMT</pxCreateDateTime>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalCreateDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20230616T102353.485 GMT</pzOriginalInstanceKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleEnds/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyBrowseSQL>DECLARE
+   Claimid      VARCHAR2 (32767);
+   Pyid         VARCHAR2 (32767);
+   Noktp        VARCHAR2 (32767);
+   Oldemail     VARCHAR2 (32767);
+   Oldtelp      VARCHAR2 (32767);
+   Newemail     VARCHAR2 (32767);
+   Newtelp      VARCHAR2 (32767);
+   Userinput    VARCHAR2 (32767);
+   pyCategori   VARCHAR2 (32767);
+   idopc  VARCHAR2 (32767);
+   DATAPEGA CLOB;
+BEGIN
+    Claimid := {TempUpPengkinian.CityID};
+    Pyid := {TempUpPengkinian.ClaimID};
+    Noktp := {TempUpPengkinian.NewNoKTP};
+    Oldemail := {TempUpPengkinian.Email};
+    Oldtelp := {TempUpPengkinian.TelpTertanggung};
+    Newemail := {TempUpPengkinian.NewEmail};
+    Newtelp := {TempUpPengkinian.NewTelpTertanggung};   
+    Userinput := {TempUpPengkinian.UserAdmin};
+    pyCategori := {TempUpPengkinian.pyCategory};
+    DBMS_LOB.CREATETEMPORARY(DATAPEGA, true);
+    DATAPEGA := {TempUpPengkinian.Remark};
+   idopc := {TempUpPengkinian.BranchID};
+
+POOLDATA.UpdateInsert_PengkinianData(Claimid,Pyid,Noktp,Oldemail,Oldtelp,Newemail,Newtelp,Userinput,pyCategori,DATAPEGA ,idopc ,{TempUpPengkinian.pyNote out});
+  COMMIT;
+END;</pyBrowseSQL>
+<pyOpenSQL/>
+<pyStatus/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceVal/>
+<pyDeletedObject/>
+<pxUpdateDateTime>20230620T105156.421 GMT</pxUpdateDateTime>
+<pyTemplate/>
+<pyMethodStatus/>
+<pyRequestType>InsertPengkinianData_SQL</pyRequestType>
+<pzRuleSetVersionPatch>07</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pyRuleStarts/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyFormPost/>
+<pxOriginalCreateOperator/>
+<pyWindowTitle/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData ASM InsertPengkinianData_SQL</pyRuleName>
+<pxOriginalCreateOpName/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>false</pyPreview>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20230620T105147.758 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20230616T102353.485 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20211228T033438.778 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-01-96 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!INSERTPENGKINIANDATA_SQL #20210828T084554.695 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

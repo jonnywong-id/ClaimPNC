@@ -1,0 +1,990 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHTMLVersion>1</pyHTMLVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOpName>Calvin</pxCreateOpName>
+<pzOriginalInstanceKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20171103T090649.293 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSet/>
+<pyTemplate/>
+<pyLabel>CustomActivePage</pyLabel>
+<pySourceStreamDispBackUp/>
+<pxUpdateOpName>Calvin</pxUpdateOpName>
+<pzInsKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzInsKey>
+<pzChecksum>383650008</pzChecksum>
+<pxCommitDateTime>20200312T080257.000 GMT</pxCommitDateTime>
+<pyLabelOld>CustomActivePage</pyLabelOld>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyHistoryObject>false</pyHistoryObject>
+<pyUseAsHeader>false</pyUseAsHeader>
+<pzRuleSetVersionPatch>63</pzRuleSetVersionPatch>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxSaveDateTime>20180313T044351.125 GMT</pxSaveDateTime>
+<pySpecialityControl>false</pySpecialityControl>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pxOriginalCreateOperator/>
+<pyWorkKey/>
+<pyStreamName>CustomActivePage</pyStreamName>
+<pyIsScoreCard/>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyAutoHTML>false</pyAutoHTML>
+<pzSectionParamPageSection/>
+<pyIsFromManageChangeLP/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyFormPost/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzDocumentKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzDocumentKey>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyCircumstanceVal/>
+<pySectionXML/>
+<pyRuleSetVersion>01-01-63</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceProp/>
+<pyCorrType/>
+<pxInstanceLockedDateTime/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyShowJavaWindowName>GeneratedJava20260723T100335.362 GMT</pyShowJavaWindowName>
+<pxOriginalCreateSystemID/>
+<pyRuleName>CustomActivePage</pyRuleName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDefinition/>
+<pxCreateDateTime>20180313T043753.991 GMT</pxCreateDateTime>
+<pxObjClass>Rule-HTML-Section</pxObjClass>
+<pyRelativePath/>
+<pySpecialtyComponentData/>
+<pyWindowTitle/>
+<pyJavaClassName>Rule_HTML_Section__baseclass_CustomActivePage_Stream_20180313T043755_223_GMT</pyJavaClassName>
+<pxInstanceLockedKey/>
+<pxHostId>jboss2058</pxHostId>
+<pxInstanceLockedBy/>
+<pySectionType>standard</pySectionType>
+<pxCreateOperator>Calvin_1</pxCreateOperator>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pxOriginalCreateDateTime/>
+<pzIndexCount>21</pzIndexCount>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pxInsId>!CUSTOMACTIVEPAGE</pxInsId>
+<pyParameterSetFlag>false</pyParameterSetFlag>
+<pzSectionParamPageClass/>
+<pyAdvParamPageClass/>
+<pyUseAsPageView>false</pyUseAsPageView>
+<pyUseAsRight>false</pyUseAsRight>
+<pyContainerType>NOHEADER</pyContainerType>
+<pyRuleEnds/>
+<pxUpdateDateTime>20180313T044351.066 GMT</pxUpdateDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyJSRCompliant>false</pyJSRCompliant>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyValueChanged>false</pyValueChanged>
+<pySourceStream>&lt;% 
+ClipboardPage Pagination =  tools.findPage("Pagination"); 
+int CurrentPage = 0;
+Double TotalData = 0.0;
+Double PageSize = 0.0;
+int TotalNoOfPages = 0;
+int DisplayPage = 0;
+String SectionName = "";
+   String classA = ""; 
+try{
+Pagination = tools.findPage("Pagination");  
+CurrentPage = Integer.parseInt(Pagination.getString("CurrentIndex"));
+TotalData = Double.parseDouble(Pagination.getString("TotalData"));
+PageSize = Double.parseDouble(Pagination.getString("PageSize"));
+TotalNoOfPages = (int)Math.ceil(TotalData/PageSize);
+DisplayPage = 0;
+SectionName = Pagination.getString("SectionName");
+DisplayPage = CurrentPage;
+if(TotalNoOfPages &gt; 0)
+  {
+  	DisplayPage = Integer.parseInt(Pagination.getString("PagesIndex")); 
+  	if(DisplayPage &gt; TotalNoOfPages)
+  	{
+  		DisplayPage = TotalNoOfPages;
+  	}
+  	else if(DisplayPage &lt; 1)
+    {
+     	DisplayPage = 1;                       
+    }
+  }                         
+classA = ""; 
+}catch(NumberFormatException nfe){}     
+%&gt;
+
+    &lt;div class="field-item dataValueRead pagination-links"&gt;
+
+        &lt;%
+if(DisplayPage &gt;= 6 &amp;&amp; DisplayPage &lt;= TotalNoOfPages-5 &amp;&amp; TotalNoOfPages &gt;5)
+{%&gt;
+            &lt;a href="#" style="padding: 1px 6px" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11" data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=lower&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"&gt;...&lt;/a&gt;
+            &lt;%for(int i = DisplayPage; i&lt;=DisplayPage+4;i++){
+   		if(i == CurrentPage)
+  			classA = "inactiveLink";
+  		else
+  			classA = "";
+   %&gt;
+                &lt;a aria-label="" style="padding: 1px 6px" data-test-id="20171103095238010211645" href="#" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11"
+                    data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=&lt;%=i%&gt;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"
+                    class="&lt;%=classA%&gt;"&gt;
+                    &lt;%=i%&gt;
+                &lt;/a&gt;
+                &lt;%}%&gt;
+                    &lt;a href="#" style="padding: 1px 6px" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11" data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=upper&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"&gt;...&lt;/a&gt;
+                    &lt;%}
+
+else if(DisplayPage &gt;= 1 &amp;&amp; DisplayPage &lt;= 5 &amp;&amp; TotalNoOfPages &gt;5)
+{
+	for(int i = 1; i&lt;=5;i++){
+  		if(i == CurrentPage)
+  			classA = "inactiveLink";
+  		else
+  			classA = "";
+   %&gt;
+                        &lt;a aria-label="" style="padding: 1px 6px" data-test-id="20171103095238010211645" href="#" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11"
+                            data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=&lt;%=i%&gt;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"
+                            class="&lt;%=classA%&gt;"&gt;
+                            &lt;%=i%&gt;
+                        &lt;/a&gt;
+                        &lt;%}%&gt;
+                            &lt;a href="#" style="padding: 1px 6px" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11" data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=upper&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"&gt;...&lt;/a&gt;
+                            &lt;%}
+
+else if(DisplayPage &gt;= TotalNoOfPages-4 &amp;&amp; DisplayPage &lt;= TotalNoOfPages &amp;&amp; TotalNoOfPages &gt;5 &amp;&amp; (TotalNoOfPages%5==0))
+{%&gt;
+                                &lt;a href="#" style="padding: 1px 6px" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11" data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=lower&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"&gt;...&lt;/a&gt;
+                                &lt;%for(int i = DisplayPage; i&lt;=TotalNoOfPages;i++){
+  		if(i == CurrentPage)
+  			classA = "inactiveLink";
+  		else
+  			classA = "";
+   %&gt;
+                                    &lt;a aria-label="" style="padding: 1px 6px" data-test-id="20171103095238010211645" href="#" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11"
+                                        data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=&lt;%=i%&gt;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"
+                                        class="&lt;%=classA%&gt;"&gt;
+                                        &lt;%=i%&gt;
+                                    &lt;/a&gt;
+                                    &lt;%}
+}
+                                        
+else if(DisplayPage &gt;= (TotalNoOfPages%5)+1 &amp;&amp; DisplayPage &lt;= TotalNoOfPages &amp;&amp; TotalNoOfPages &gt;5 &amp;&amp; (TotalNoOfPages%5!=0))
+{%&gt;
+                                &lt;a href="#" style="padding: 1px 6px" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11" data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=lower&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"&gt;...&lt;/a&gt;
+                                &lt;%for(int i = DisplayPage; i&lt;=TotalNoOfPages;i++){
+  		if(i == CurrentPage)
+  			classA = "inactiveLink";
+  		else
+  			classA = "";
+   %&gt;
+                                    &lt;a aria-label="" style="padding: 1px 6px" data-test-id="20171103095238010211645" href="#" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11"
+                                        data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=&lt;%=i%&gt;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"
+                                        class="&lt;%=classA%&gt;"&gt;
+                                        &lt;%=i%&gt;
+                                    &lt;/a&gt;
+                                    &lt;%}
+}
+else if(TotalNoOfPages &lt;= 5){
+	for(int i = 1; i&lt;=TotalNoOfPages;i++){
+  		if(i == CurrentPage)
+  			classA = "inactiveLink";
+  		else
+  			classA = "";
+%&gt;
+	&lt;a aria-label="" style="padding: 1px 6px" data-test-id="20171103095238010211645" href="#" onclick="pd(event);" name="ButtonPagingInbox_pyTempWorkPage_11"
+                                        data-ctl="Link" data-click="[[&amp;quot;refresh&amp;quot;, [&amp;quot;otherSection&amp;quot;,&amp;quot;&lt;%=SectionName%&gt;&amp;quot;, &amp;quot;NumberPageGrid_Act&amp;quot;, &amp;quot;&amp;amp;PageNumber=&lt;%=i%&gt;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]],[&amp;quot;refresh&amp;quot;, [&amp;quot;thisSection&amp;quot;,&amp;quot;&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;&amp;amp;=&amp;quot;, &amp;quot;&amp;quot;, &amp;quot;,&amp;quot;,&amp;quot;:event&amp;quot;,&amp;quot;&amp;quot;,&amp;quot;pyTempWorkPage&amp;quot;]]]"
+                                        class="&lt;%=classA%&gt;"&gt;
+                                        &lt;%=i%&gt;
+                                    &lt;/a&gt;
+                                    &lt;%}
+                            }%&gt;
+    &lt;/div&gt;</pySourceStream>
+<pyMemo>done add try catch</pyMemo>
+<pxOriginalCreateOpName/>
+<pyDocumentTitle/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyUseAsLeft>false</pyUseAsLeft>
+<pyCompact>true</pyCompact>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceType/>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyJavaStream/>
+<pxUpdateOperator>Calvin_1</pxUpdateOperator>
+<pzCollaborationHandle>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzCollaborationHandle>
+<pyUseAsFooter>false</pyUseAsFooter>
+<pyIsUsingDesignTemplate>false</pyIsUsingDesignTemplate>
+<pyMethodStatus/>
+<pyObjClassLabel>Section</pyObjClassLabel>
+<pxMoveImportDateTime>20191226T025030.965 GMT</pxMoveImportDateTime>
+<pyUsage/>
+<pySPRuleSetName>Calvin_1@</pySPRuleSetName>
+<pyCategory/>
+<pyAdvParamPageSection/>
+<pyCircumstanceTemplate/>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyRuleStarts/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyDescription/>
+<pyReloadForm>true</pyReloadForm>
+<pxInsName>@BASECLASS!CUSTOMACTIVEPAGE</pxInsName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyInterface/>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyDeleteMemo>asd</pyDeleteMemo>
+<pxTabLabel>CustomActivePage</pxTabLabel>
+<pyCircumstanceDate/>
+<pyTempNewVersion>false</pyTempNewVersion>
+<pyLocalized>false</pyLocalized>
+<pyCircumstanceDateProp/>
+<pyClassName>@baseclass</pyClassName>
+<pyRuleFormStatusTime>20260723T100335.334 GMT</pyRuleFormStatusTime>
+<pyCategoryDisplayName>None</pyCategoryDisplayName>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pzIsAutoGenerated>false</pzIsAutoGenerated>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyBaseRule>false</pyBaseRule>
+<pzStatus>valid</pzStatus>
+<pySections REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRefreshWhenActive>false</pyRefreshWhenActive>
+<pyHeaderIconSource>standard</pyHeaderIconSource>
+<pyExpandedWhen/>
+<pyUsingPage/>
+<pyFloatLayout>None</pyFloatLayout>
+<pyRegionName/>
+<pyIsVisibilityOption/>
+<pyEditOptions/>
+<pyPageContext/>
+<pyClearFloatedLayouts>false</pyClearFloatedLayouts>
+<pyPreProcRunActivity/>
+<pyInlineStyle/>
+<pyTabNavigationType>Menu</pyTabNavigationType>
+<pyContainerType>NOHEADER</pyContainerType>
+<pyLayoutModeVariants>Legacy</pyLayoutModeVariants>
+<pyAriaLabel/>
+<pyIconProperty/>
+<pySpecifyPreLoadActivity/>
+<pyContainerActiveWhen/>
+<pyTourID/>
+<pyExpandable>false</pyExpandable>
+<pyContainerFormat>NOHEADER</pyContainerFormat>
+<pyLoadDeferred>false</pyLoadDeferred>
+<pyRemoveSpacingLeft>None</pyRemoveSpacingLeft>
+<pyIncludeHeader/>
+<pyContainerTypeUpgrade>NO_HEADER</pyContainerTypeUpgrade>
+<pyRemoveSpacingRight>None</pyRemoveSpacingRight>
+<pyCustomTabStyle/>
+<pyLayoutGroupTemplateType/>
+<pyPreProcRunDataTrans/>
+<pyAriaRole/>
+<pyImage/>
+<pyCustomHeader/>
+<pyIsClientActiveWhen>false</pyIsClientActiveWhen>
+<pyDisplayAdvancedOptions>false</pyDisplayAdvancedOptions>
+<pyTemplateFormat/>
+<pyStretchTab>false</pyStretchTab>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyIncludeLabel/>
+<pyHideRightColumn/>
+<pyLayoutAutoWidth>false</pyLayoutAutoWidth>
+<pyLayoutGroupFormatOther/>
+<pyAriaRoleType/>
+<pyContainerCustomClass/>
+<pyLayoutGroupItemsHeadingLevel/>
+<pyContainerStyle/>
+<pyPromptClass/>
+<pyAutomationID/>
+<pyHeadingLevel/>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pySelfClear>true</pySelfClear>
+<pyTitle>Title</pyTitle>
+<pyCustomClass/>
+<pyContainerDisableWhen/>
+<pyTabPosition/>
+<pyHideLeftColumn/>
+<pyTabAlignment>Top</pyTabAlignment>
+<pyReadWriteStyle/>
+<pyPrefixOther/>
+<pyNewTabGroup>false</pyNewTabGroup>
+<pyIsClientDisableWhen>false</pyIsClientDisableWhen>
+<pyRemoveSpacingTop>None</pyRemoveSpacingTop>
+<pyAssociatedPrivileges/>
+<pyPrefix/>
+<pyTitleType/>
+<pyLegacyOptions>Flexbox</pyLegacyOptions>
+<pyHeaderCustomClass/>
+<pyReadOnly/>
+<pyRemoveSpacingBottom>None</pyRemoveSpacingBottom>
+<pyHeaderType/>
+<pySectionId>S1</pySectionId>
+<pyRefreshRunActivity>false</pyRefreshRunActivity>
+<pxObjClass>Embed-Harness-Section</pxObjClass>
+<pyReadOnlyStyle/>
+<pyExpanded>true</pyExpanded>
+<pyIncludeTitleIcon/>
+<pyFlexAlignment/>
+<pyIsBodyVisibilityOption/>
+<pyIsRegion/>
+<pyContainerVisibleWhen/>
+<pyRefreshRunDataTrans>false</pyRefreshRunDataTrans>
+<pyRefreshPreActivity/>
+<pyDeferLoadRetrievalActivity/>
+<pyTemplateType/>
+<pyReadOnlyWhen/>
+<pyContainerRefreshWhen/>
+<pyImageTitle/>
+<pyLayoutMode>Flexbox</pyLayoutMode>
+<pyLabelFieldValue/>
+<pyAllowChangesToColumns/>
+<pyTabbedHeader>false</pyTabbedHeader>
+<pyIsRepeatLayoutGroup>false</pyIsRepeatLayoutGroup>
+<pyContainerOtherFormat/>
+<pyPrefixRowColRepeat/>
+<pyRefreshPreActivityParams>
+</pyRefreshPreActivityParams>
+<pyStandardHeaderElements REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyVisible>ALWAYS</pyVisible>
+<pyCaption/>
+<pyOverridingStyle/>
+<pyCondition/>
+<pyReadOnly/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyField/>
+<pyReadOnlyCondition/>
+</rowdata>
+</pyStandardHeaderElements>
+<pyHeaderTable>
+<pxObjClass>Embed-Display-Table</pxObjClass>
+<pyLayoutFormat>CUSTOM</pyLayoutFormat>
+<pyUnit>px</pyUnit>
+<pyColumnCount>1</pyColumnCount>
+<pyLayoutFormatType>FREEFORM</pyLayoutFormatType>
+<pyLayoutOtherFormat/>
+<pyWidth/>
+<pyID/>
+<pyRowCount>1</pyRowCount>
+<pyHeight/>
+<pyRows REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Row</pxObjClass>
+<pyCells REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Cell</pxObjClass>
+<pyHeaderTitle/>
+<pzShowSelectOther>false</pzShowSelectOther>
+<pyInlineStyle/>
+<pyBeforeMergeHeight/>
+<pyValue/>
+<pyFormat/>
+<pyAutomationID/>
+<pyAutoHTML/>
+<pyCanbeAutoGenerated>false</pyCanbeAutoGenerated>
+<pyIncludeLabel>false</pyIncludeLabel>
+<pyLabelFormatOther/>
+<pyWrap>false</pyWrap>
+<pyCellId/>
+<pyTooltip/>
+<pyReadWriteStyleValue/>
+<pyAutomationIDWarning>false</pyAutomationIDWarning>
+<pyUseLabelDesc>false</pyUseLabelDesc>
+<pyCellHeader>false</pyCellHeader>
+<pyReadOnlyStyle/>
+<pyHeight>13</pyHeight>
+<pyPreActivity/>
+<pyInputFormat>false</pyInputFormat>
+<pyReadWriteStyle/>
+<pyBeforeMergeWidth/>
+<pyGridRDName/>
+<pyReadOnlyStyleValue/>
+<pyType/>
+<pyColSpan/>
+<pyRowSpan/>
+<pyPreserveParamState/>
+<pyClientAction/>
+<pyLabelFor/>
+<pyWidthUse>true</pyWidthUse>
+<pyPassCurrentParameterPage/>
+<pyHeightUse>true</pyHeightUse>
+<pyTourID/>
+<pyGridRDClass/>
+<pyLabelFieldValue/>
+<pyWidth>100</pyWidth>
+<pyReadOnly>true</pyReadOnly>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pyClientEvent/>
+<pyRestricted>false</pyRestricted>
+<pyEditOptions/>
+<pyLabelReserveSpace>true</pyLabelReserveSpace>
+<pyUserData>
+<pyCondition/>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyRefreshWhen/>
+<pyReadOnly/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyDefaultValue/>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+<pyVisible>ALWAYS</pyVisible>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyReadOnlyCondition/>
+<pyRequired/>
+</pyUserData>
+<pyPreActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreActivityParams>
+<pyGeneratedDefinition>
+<pxObjClass>Embed-Control-Mode-GeneratedDefinition</pxObjClass>
+</pyGeneratedDefinition>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyPreDataTransform>
+<pyModes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+</rowdata>
+</pyModes>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+<pyHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLParams>
+</rowdata>
+</pyCells>
+</rowdata>
+</pyRows>
+</pyHeaderTable>
+<pyDeferLoadRetrievalActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyDeferLoadRetrievalActivityParams>
+<pyUserData>
+<pyReadOnlyCondition/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+</pyUserData>
+<pySectionBody REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyShowCustomMessageForNoLoadMoreMessages>true</pyShowCustomMessageForNoLoadMoreMessages>
+<pyRDName/>
+<pyDeleteActivity/>
+<pyDecPassCurrentParamPage>false</pyDecPassCurrentParamPage>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyColumnResizing>false</pyColumnResizing>
+<pyDragDrop>false</pyDragDrop>
+<pyRDLCategorizationScrubber>false</pyRDLCategorizationScrubber>
+<pyGridDeleteActivityExists>false</pyGridDeleteActivityExists>
+<pyRowPromptClass/>
+<pyEnableSwipe>false</pyEnableSwipe>
+<pyPageListProperty/>
+<pyPrivilegeUpdate/>
+<pyRDLCategorizeBy/>
+<pyDPName/>
+<pyRDLPageSizeOther/>
+<pyRepeatDirection/>
+<pyAllowRowUpdate>true</pyAllowRowUpdate>
+<pyRDLPageMode>0</pyRDLPageMode>
+<pyRDLRowDetailsTemplate>pzRDLRowDetailsTemplate</pyRDLRowDetailsTemplate>
+<pyRefreshWhen/>
+<pyRDLPreActivity>pyPreListAction</pyRDLPreActivity>
+<pyRDAppliesTo/>
+<pyPageListPropertyClass/>
+<pyDragDropEnableGrouping>false</pyDragDropEnableGrouping>
+<pySourceType>Property</pySourceType>
+<pyAppendActivity/>
+<pyDisplayActionArea>true</pyDisplayActionArea>
+<pyNumberOfColumns/>
+<pyUsingPage/>
+<pyRDLPageSize>10</pyRDLPageSize>
+<pyFieldValueForNoLoadMoreRowsMsg>pyRDLNoMoreData</pyFieldValueForNoLoadMoreRowsMsg>
+<pyPreActivity/>
+<pyRDLDetailsPrimarySection/>
+<pyRDLShowDetails>false</pyRDLShowDetails>
+<pyRDLCategorization>false</pyRDLCategorization>
+<pyGridAppendActivityExists>false</pyGridAppendActivityExists>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyShowNoRowsRdLMsg>false</pyShowNoRowsRdLMsg>
+<pySectionSource/>
+<pyAlignment/>
+<pyRDLPostActivityExists>false</pyRDLPostActivityExists>
+<pySummary/>
+<pyPrivilegeView/>
+<pyPreserveParamState>false</pyPreserveParamState>
+<pyBodyType>SIMPLELAYOUT</pyBodyType>
+<pyRowResizing>false</pyRowResizing>
+<pySectionId/>
+<pyRDLDetailsFlowAction/>
+<pyDisableAutoRefresh>false</pyDisableAutoRefresh>
+<pyForceNonTemplate>false</pyForceNonTemplate>
+<pyDPResultsClass/>
+<pyRDLPostActivity>pyPostListAction</pyRDLPostActivity>
+<pyRDLHeight/>
+<pyInclude/>
+<pyDragDropGroupName/>
+<pySectionForNoRdlRows>pzRDLNoResultsMessage</pySectionForNoRdlRows>
+<pyRuleForCustomNoRowsRdlMsg>section</pyRuleForCustomNoRowsRdlMsg>
+<pyRDLPreActivityExists>false</pyRDLPreActivityExists>
+<pyDisplayWhen/>
+<pyFieldValueForNoRows>pzRDLNoResults</pyFieldValueForNoRows>
+<pySectionForNoLoadMoreRowsMsg>pyRDLNoMoreData</pySectionForNoLoadMoreRowsMsg>
+<pxObjClass>Embed-Harness-SectionBody</pxObjClass>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+<pyDPParams>
+</pyDPParams>
+<pySectionParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pySectionParams>
+<pyPreactivityParams>
+</pyPreactivityParams>
+<pyDeclareParams>
+</pyDeclareParams>
+<pyTable>
+<pyWidth/>
+<pyID/>
+<pxObjClass>Embed-Display-Table</pxObjClass>
+<pyLayoutOtherFormat/>
+<pyUnitHeight>px</pyUnitHeight>
+<pyRowCount>1</pyRowCount>
+<pyHeight/>
+<pyLayoutFormatType>SIMPLELAYOUT</pyLayoutFormatType>
+<pyUnit>px</pyUnit>
+<pyLayoutFormat/>
+<pyColumnCount>1</pyColumnCount>
+<pyColumnDefaults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Restricted</pxObjClass>
+<pyCellId/>
+<pyCellHeader>false</pyCellHeader>
+<pyRestrictedType>NONE</pyRestrictedType>
+<pyHeaderStyle/>
+<pyInlineStyle/>
+</rowdata>
+</pyColumnDefaults>
+<pyRows REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Row</pxObjClass>
+<pyCells REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyColumnFilteringDropDown>true</pyColumnFilteringDropDown>
+<pyColumnSorting>true</pyColumnSorting>
+<pyFormat/>
+<pyAutoHTML/>
+<pyReadOnlyStyleValue/>
+<pyPassCurrentParameterPage/>
+<pyHeightUse>true</pyHeightUse>
+<pyPreserveParamState/>
+<pyAutomationIDWarning>false</pyAutomationIDWarning>
+<pyLabelFormatOther/>
+<pyBeforeMergeHeight/>
+<pyWrap>true</pyWrap>
+<pyWidthUse>true</pyWidthUse>
+<pyCellId/>
+<pyRowSpan/>
+<pyLabelFieldValue/>
+<pyReadWriteStyle/>
+<pyGridRDName/>
+<pyRestricted>false</pyRestricted>
+<pyUseLabelDesc>false</pyUseLabelDesc>
+<pyLabelReserveSpace>true</pyLabelReserveSpace>
+<pyShowFilterUIBy>value</pyShowFilterUIBy>
+<pyDateTimeFormat/>
+<pyIncludeLabel>false</pyIncludeLabel>
+<pyAutomationID>201711031422500052441</pyAutomationID>
+<pyReadWriteStyleValue/>
+<pyType/>
+<pyColumnCategorize>false</pyColumnCategorize>
+<pyHeight>22</pyHeight>
+<pyReadOnly/>
+<pyBeforeMergeWidth/>
+<pyClientAction/>
+<pyTooltip/>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pzShowSelectOther>false</pzShowSelectOther>
+<pyEditOptions/>
+<pyTourID/>
+<pyCanbeAutoGenerated>false</pyCanbeAutoGenerated>
+<pyInlineStyle/>
+<pyWidth>130</pyWidth>
+<pyGridRDClass/>
+<pySortFilterProperty/>
+<pyRangeFiltering/>
+<pyLabelFor/>
+<pyDateFormat/>
+<pyClientEvent/>
+<pyColumnFiltering>true</pyColumnFiltering>
+<pyColSpan/>
+<pyReadOnlyStyle/>
+<pxObjClass>Embed-Display-Table-Cell</pxObjClass>
+<pyHorizontalAlignment>true</pyHorizontalAlignment>
+<pyRequired/>
+<pyCellHeader>false</pyCellHeader>
+<pyCategorizeSortType>ASC</pyCategorizeSortType>
+<pyInputFormat>false</pyInputFormat>
+<pyDateTimeSecondCutoff>3</pyDateTimeSecondCutoff>
+<pyValue/>
+<pyHeaderTitle/>
+<pyPreActivity/>
+<pyCustDateTime/>
+<pyModes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+<pyHelperTextType>none</pyHelperTextType>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+</rowdata>
+</pyModes>
+<pyUserData>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyDefaultValue/>
+<pyRefreshWhen/>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyReadOnly/>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyReadOnlyCondition/>
+<pyVisible/>
+<pyCondition/>
+<pyRequired/>
+</pyUserData>
+<pyHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLParams>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyPreDataTransform>
+<pyPreActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreActivityParams>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+<pyGeneratedDefinition>
+<pxObjClass>Embed-Control-Mode-GeneratedDefinition</pxObjClass>
+</pyGeneratedDefinition>
+<pySections REPEATINGTYPE="PageList"/>
+</rowdata>
+</pyCells>
+<pyRowDefaults>
+<pyCellId/>
+<pyRestrictedType>NONE</pyRestrictedType>
+<pyHeaderStyle/>
+<pyCellHeader>false</pyCellHeader>
+<pyInlineStyle/>
+<pxObjClass>Embed-Display-Table-Restricted</pxObjClass>
+</pyRowDefaults>
+</rowdata>
+</pyRows>
+</pyTable>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+<pyName/>
+</pyPreDataTransform>
+<pyRDParams>
+</pyRDParams>
+<pyDCPreDataTransform>
+<pyName/>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyDCPreDataTransform>
+<pySectionBodyElements REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyCaption/>
+<pyVisible/>
+<pyDefaultValue/>
+<pyReadOnlyCondition/>
+<pyReadOnly/>
+<pyField/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyOverridingStyle/>
+<pyCondition/>
+</rowdata>
+</pySectionBodyElements>
+</rowdata>
+</pySectionBody>
+<pyRefreshPreDataTransform>
+<pyName/>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyRefreshPreDataTransform>
+</rowdata>
+</pySections>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>Pagination</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GISFW-Data-Pagination</pyPagesAndClassesClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>true</pyPropertyPane>
+<pyRun>true</pyRun>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyHelpRef>/rule-/rule-html-/rule-html-section/main.htm</pyHelpRef>
+<pyDelete>false</pyDelete>
+<pyAvailability>false</pyAvailability>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-html-/rule-html-section/main.htm</pyHelpURI>
+<pyPreview>true</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>true</pyShowJava>
+</pyToolBarSettings>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageName>Pagination</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GISFW-Data-Pagination</pxPageClass>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pxSelectorName>.field-item</pxSelectorName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pxSelectorName>.pagination-links</pxSelectorName>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxSelectorName>.dataValueRead</pxSelectorName>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">16</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pzSectionParamPageDefaults>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPageDefaults>
+<pyDefaultButton>
+<pyWhenNotPrivilege/>
+<pxObjClass>Embed-Harness-Button</pxObjClass>
+<pyNoFormSubmit>false</pyNoFormSubmit>
+<pyIsModalWindow>false</pyIsModalWindow>
+<pyStyle/>
+<pyButtonType/>
+<pyButtonId/>
+<pyWindowWidth>80</pyWindowWidth>
+<pyVisibleWhen/>
+<pyButtonPosition/>
+<pyUseExistingFrame/>
+<pyAction/>
+<pyLocalAction/>
+<pyCaption/>
+<pyTargetName/>
+<pyWindowHeight>82</pyWindowHeight>
+<pyPrivilege/>
+<pyTooltip/>
+<pyActionComplete/>
+<pyPassCurrentParameterPage/>
+<pyActionParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyActionParams>
+</pyDefaultButton>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>Not auto-generated</pxWarningName>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreatedTime>20171103T090649.295 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(Rule-HTML-Section)pxSectionNotAutoGenerated</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>Calvin_1</pxWarningCreateOperator>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningMessage>(Rule-HTML-Section)pxSectionNotAutoGenerated</pxWarningMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">17</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+<pyDescription/>
+<pyValue/>
+<pyName/>
+</rowdata>
+</pyIndirectIncludes>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreatedTime>20171103T090649.295 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pxWarningName>Not auto-generated</pxWarningName>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>Whenever possible, use the Auto-Generated HTML option for ease of maintenance.</pxWarningMessage>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningDetails>(Rule-HTML-Section)pxSectionNotAutoGenerated</pxWarningDetails>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>Calvin_1</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">17</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamDesc/>
+<pyParametersParamSize/>
+<pyParametersParamReq/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut/>
+<pyParametersParamName/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamLabel/>
+<pyParametersParamType/>
+</rowdata>
+</pyParameters>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-PAGINATION</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Pagination</pxRuleClassName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GISFW-Data-Pagination</pyRuleName>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexOwnerKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyThirdPartyParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType/>
+<pyParametersParamName/>
+<pyThirdPartyParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+</rowdata>
+</pyThirdPartyParams>
+</rowdata>
+</pyThirdPartyParams>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxMessageSummary>
+<pxWarningCount>1</pxWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedWarningCount>1</pxUnjustifiedWarningCount>
+</pxMessageSummary>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20180313T043753.991 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyLabel>01-01-54 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20171103T090649.293 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-HTML-SECTION @BASECLASS CUSTOMACTIVEPAGE #20171103T072227.852 GMT</pzInsKey>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-53 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyDefaultUserData>
+<pyRequired/>
+<pxObjClass>Embed-Harness-UserData</pxObjClass>
+<pyDefaultValue/>
+<pyCondition/>
+<pyReadOnly/>
+<pyVisible>ALWAYS</pyVisible>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+<pyReadOnlyCondition/>
+<pyRefreshWhen/>
+<pyIsClientWhen>false</pyIsClientWhen>
+</pyDefaultUserData>
+</pagedata>

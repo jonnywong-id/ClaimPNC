@@ -1,0 +1,23 @@
+CREATE OR REPLACE PROCEDURE          PEGA_JSON_INSERT_HISTORY_CLAIM_PNC(CaseID IN VARCHAR2, StatusNote IN VARCHAR2, UserUpdate IN VARCHAR2, ErrMsg OUT VARCHAR2)
+AS
+
+BEGIN
+    
+    BEGIN
+        INSERT INTO LIST_HISTORY_CLAIM_PNC (CASEID, CREATEDATETIME, STATUSNOTE, USERUPDATE) VALUES (CaseID, CURRENT_TIMESTAMP, StatusNote, UserUpdate);
+        ErrMsg := 'Data sudah di simpan';
+    EXCEPTION
+        WHEN OTHERS THEN
+            ErrMsg := 'HISTORY_CLAIM_PNC Error : ' || sqlerrm;
+            ROLLBACK;
+            RETURN;
+    END;
+        
+EXCEPTION
+    WHEN OTHERS THEN
+        ErrMsg := 'PEGA_JSON_INSERT_HISTORY_CLAIM_PNC Error : ' || sqlerrm;
+        ROLLBACK;
+        RETURN;
+END;
+
+/

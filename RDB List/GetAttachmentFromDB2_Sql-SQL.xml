@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDefinition/>
+<pxSiblingCount/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM GetAttachmentFromDB2_Sql</pxTabLabel>
+<pyLabel>GetAttachmentFromDB2_Sql</pyLabel>
+<pyStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyWorkKey/>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-DUAL ASM!CHECKHOLIDAYDATE_SQL #20180924T065057.667 GMT</pxMoveOriginalKey>
+<pySpecialtyComponentData/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyLabelOld>GetAttachmentFromDB2_Sql</pyLabelOld>
+<pyTemplate/>
+<pxSaveDateTime>20250916T083502.154 GMT</pxSaveDateTime>
+<pyStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateDateTime>20250701T084042.846 GMT</pxCreateDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyShowJavaWindowName>GeneratedJava20260831T093219.012 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceType/>
+<pyCheckInRuleSet/>
+<pyRuleFormStatusTime>20260831T093218.982 GMT</pyRuleFormStatusTime>
+<pxCommitDateTime>20250916T083502.000 GMT</pxCommitDateTime>
+<pyDocumentTitle/>
+<pyCircumstanceTemplate/>
+<pyMemo>save new sql</pyMemo>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedDateTime>20250916T083502.153 GMT</pxInstanceLockedDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM GetAttachmentFromDB2_Sql</pyRuleName>
+<pyHistoryObject>false</pyHistoryObject>
+<pyWindowTitle/>
+<pyHandlerFlow/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveFromSystem/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyUsage/>
+<pyRequestType>GetAttachmentFromDB2_Sql</pyRequestType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleEnds/>
+<pyRuleStarts/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETATTACHMENTFROMDB_SQL #20250616T091254.696 GMT</pzOriginalInstanceKey>
+<pyOpenSQL/>
+<pyCircumstanceProp/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETATTACHMENTFROMDB2_SQL #20250701T084042.846 GMT</pzInsKey>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETATTACHMENTFROMDB2_SQL #20250701T084042.846 GMT</pzDocumentKey>
+<pyCircumstanceDateProp/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyInterface/>
+<pyMethodStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateSystemID/>
+<pxHostId>jboss1036</pxHostId>
+<pyDeleteSQL>delete pooldata.data_attachfile where dataid ={TempInputParamAttach.pyID}</pyDeleteSQL>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateDateTime/>
+<pxOriginalCreateOpName/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxMoveImportOperName>WULANINDRIPAAT</pxMoveImportOperName>
+<pyIsFromManageChangeLP/>
+<pyRelativePath/>
+<pzRuleSetVersionPatch>12</pzRuleSetVersionPatch>
+<pyBaseRule>false</pyBaseRule>
+<pxInsId>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!GETATTACHMENTFROMDB2_SQL</pxInsId>
+<pxInstanceLockedBy>WULANINDRIPAAT</pxInstanceLockedBy>
+<pyFormPost/>
+<pyValueChanged>false</pyValueChanged>
+<pxInsName>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!GETATTACHMENTFROMDB2_SQL</pxInsName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyCircumstanceVal/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyClassName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE</pyClassName>
+<pyDescription/>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pySaveSQL/>
+<pyJavaStream/>
+<pxInstanceLockedKey/>
+<pyDeleteMemo>GetAttachmentFromDB_Sql</pyDeleteMemo>
+<pyTemplateInputBox/>
+<pxMoveImportOperId>WULANINDRIPAAT</pxMoveImportOperId>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyBrowseSQL>select ATTACHNAME AS "ATTACHNAME", ATTACHMIMETYPE AS "ATTACHMIMETYPE", ATTACHNOTE AS "ATTACHNOTE", INPUTDATE AS "INPUTDATE", IMAGEID AS "IMAGEID" from pooldata.data_attachfile where dataid={TempInputParamAttach.pyID}</pyBrowseSQL>
+<pxMoveOriginalRuleSet>GKM</pxMoveOriginalRuleSet>
+<pyRuleSetVersion>01-03-12</pyRuleSetVersion>
+<pxUpdateDateTime>20250701T094441.523 GMT</pxUpdateDateTime>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveOriginalRuleSetVersion>01-01-02</pxMoveOriginalRuleSetVersion>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyTemporaryObject/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzChecksum>-1323241482</pzChecksum>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportDateTime>20250617T114318.735 GMT</pxMoveImportDateTime>
+<pyDeletedObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pySave>false</pySave>
+<pyDelete>false</pyDelete>
+<pyShowJava>false</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyAvailability>false</pyAvailability>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETATTACHMENTFROMDB2_SQL #20250701T084042.846 GMT</pzInsKey>
+<pyLabel>01-03-12 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

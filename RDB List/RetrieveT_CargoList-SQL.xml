@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBrowseSQL>SELECT TO_CLOB (OBJECTDATA) AS HASIL1,
+       TO_CLOB (COVERAGEDATA) AS HASIL2
+  FROM T_CARGOLIST
+ WHERE idpega = {BrowseObjEDM.CARI1}
+{ASIS:BrowseObjEDM.CARI4}
+order by to_number(indexobject) asc</pyBrowseSQL>
+<pyBaseRule>false</pyBaseRule>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_CARGOLIST #20240531T023614.386 GMT</pzInsKey>
+<pyCircumstanceProp/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceVal/>
+<pyHandlerFlow/>
+<pxUpdateOperator>YOHANESCAHYO</pxUpdateOperator>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_CARGOLIST #20200714T060553.514 GMT</pzOriginalInstanceKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStatus/>
+<pxCreateDateTime>20240531T023614.386 GMT</pxCreateDateTime>
+<pxSaveDateTime>20240531T023651.134 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM RetrieveT_CargoList</pyRuleName>
+<pxInstanceLockedCreateDateTime/>
+<pyWorkKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20240602T003527.000 GMT</pxCommitDateTime>
+<pyWindowTitle/>
+<pxUpdateOpName>YOHANES CAHYO</pxUpdateOpName>
+<pyCircumstanceType/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxOriginalCreateDateTime/>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVET_CARGOLIST</pxInsId>
+<pzRuleSetVersionPatch>70</pzRuleSetVersionPatch>
+<pyRuleSetVersion>01-04-70</pyRuleSetVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyFormPost/>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyOpenSQL/>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemplateInputBox/>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pyInterface/>
+<pyRuleFormStatusTime>20260721T043200.988 GMT</pyRuleFormStatusTime>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM RetrieveT_CargoList</pxTabLabel>
+<pyShowJavaWindowName>GeneratedJava20260721T043201.011 GMT</pyShowJavaWindowName>
+<pyDeleteSQL/>
+<pyDescription/>
+<pxInstanceLockedDateTime/>
+<pyRequestType>RetrieveT_CargoList</pyRequestType>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMethodStatus/>
+<pxOriginalCreateOperator/>
+<pxCreateOpName>YOHANES CAHYO</pxCreateOpName>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyLabelOld>RetrieveT_CargoList</pyLabelOld>
+<pxOriginalCreateSystemID/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyRuleEnds/>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStreamName/>
+<pxInstanceLockedKey/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyRelativePath/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyMemo>add to_number</pyMemo>
+<pxInstanceLockedRuleSet/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDateProp/>
+<pySpecialtyComponentData/>
+<pxCreateOperator>YOHANESCAHYO</pxCreateOperator>
+<pyUsage/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pxHostId>jboss1037</pxHostId>
+<pzChecksum>-602372194</pzChecksum>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeleteMemo>init</pyDeleteMemo>
+<pxUpdateDateTime>20240531T023651.126 GMT</pxUpdateDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_CARGOLIST #20240531T023614.386 GMT</pzDocumentKey>
+<pyValueChanged>false</pyValueChanged>
+<pyLabel>RetrieveT_CargoList</pyLabel>
+<pyDocumentTitle/>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxMoveImportDateTime>20240602T003527.444 GMT</pxMoveImportDateTime>
+<pyJavaStream/>
+<pxOriginalCreateOpName/>
+<pySaveSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleStarts/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!RETRIEVET_CARGOLIST</pxInsName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_CARGOLIST #20240531T023614.386 GMT</pzInsKey>
+<pyLabel>01-04-70 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-02-67 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!RETRIEVET_CARGOLIST #20200714T060553.514 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyRuleData>true</pyRuleData>
+<pyRefresh>true</pyRefresh>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

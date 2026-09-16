@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>FRISTO DANIEL DAMAYANTO SIMANGUNSONG</pxUpdateOpName>
+<pxInstanceLockedRuleSet/>
+<pxSaveDateTime>20200611T024746.150 GMT</pxSaveDateTime>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCommitDateTime>20200824T063415.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySPRuleSetName>GKM</pySPRuleSetName>
+<pxInsName>ASM-FW-GKM-INT-TENDER_SUPPLIER!ASM!GETDATASPAREPART_SQL</pxInsName>
+<pyDeleteSQL/>
+<pyLabel>GetDataSparepart_SQL</pyLabel>
+<pyDescription/>
+<pyTemplateInputBox/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzChecksum>-1061006825</pzChecksum>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceType/>
+<pyHistoryObject/>
+<pyRelativePath/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-TENDER_SUPPLIER ASM!GETDATASPAREPART_SQL #20200521T093832.727 GMT</pzDocumentKey>
+<pyDocumentTitle/>
+<pxSiblingCount/>
+<pyRuleSet>GKM</pyRuleSet>
+<pyBrowseSQL>SELECT no_part,
+       nama_part,
+       kondisi_barang,
+       qty,
+       CASE
+          WHEN satuan = 'PCS' THEN qty || ' PCS'
+          WHEN satuan = 'SET' THEN qty || ' SET (' || qty_set || ' PCS)'
+       END
+          satuan
+  FROM pooldata.tender_supplier
+ WHERE STS_WINNER = '1' 
+ AND no_wo = {NoWO.IDPEGA}</pyBrowseSQL>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyJavaStream/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-TENDER_SUPPLIER ASM!GETDATASPAREPART_SQL #20200521T093832.727 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>FRISTO DANIEL DAMAYANTO SIMANGUNSONG</pxCreateOpName>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pySpecialtyComponentData/>
+<pyCircumstanceDateProp/>
+<pyRuleSetVersion>01-01-54</pyRuleSetVersion>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-TENDER_SUPPLIER ASM!GETDATASPAREPART_SQL #20200521T093832.727 GMT</pzInsKey>
+<pyTemplate/>
+<pyHandlerFlow/>
+<pyFormPost/>
+<pzRuleSetVersionPatch>54</pzRuleSetVersionPatch>
+<pyMethodStatus/>
+<pxUpdateDateTime>20200611T024746.132 GMT</pxUpdateDateTime>
+<pyCircumstanceTemplate/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyCircumstanceProp/>
+<pyCircumstanceVal/>
+<pyRuleFormStatusTime>20260831T094806.034 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateDateTime>20200521T093832.727 GMT</pxCreateDateTime>
+<pyDeletedObject/>
+<pyBaseRule>false</pyBaseRule>
+<pyRequestType>GetDataSparepart_SQL</pyRequestType>
+<pyCircumstanceDefinition/>
+<pxMoveImportDateTime>20200824T063415.002 GMT</pxMoveImportDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedKey/>
+<pyShowJavaWindowName>GeneratedJava20260831T094806.063 GMT</pyShowJavaWindowName>
+<pyWorkKey/>
+<pyClassName>ASM-FW-GKM-Int-TENDER_SUPPLIER</pyClassName>
+<pxMoveImportOperId>roby_t@sinarmas.co.id</pxMoveImportOperId>
+<pxTabLabel>ASM-FW-GKM-Int-TENDER_SUPPLIER ASM GetDataSparepart_SQL</pxTabLabel>
+<pyStreamName/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRWAccess>ASM</pyRWAccess>
+<pxMoveFromSystem/>
+<pyRuleParamsStreamName/>
+<pxUpdateOperator>FRISTODANIELDAMAYANTO</pxUpdateOperator>
+<pxMoveImportOperName>Roby</pxMoveImportOperName>
+<pyRuleStarts/>
+<pyWindowTitle/>
+<pyStatus/>
+<pxInsId>ASM-FW-GKM-INT-TENDER_SUPPLIER!ASM!GETDATASPAREPART_SQL</pxInsId>
+<pxCreateOperator>FRISTODANIELDAMAYANTO</pxCreateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedDateTime/>
+<pyUsage/>
+<pyOpenSQL/>
+<pxHostId>jboss2142</pxHostId>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsFromManageChangeLP/>
+<pyRuleName>ASM-FW-GKM-Int-TENDER_SUPPLIER ASM GetDataSparepart_SQL</pyRuleName>
+<pyInterface/>
+<pyMemo>penambahan qty</pyMemo>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-54 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-TENDER_SUPPLIER ASM!GETDATASPAREPART_SQL #20200521T093832.727 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

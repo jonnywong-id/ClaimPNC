@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyWindowTitle/>
+<pyCircumstanceVal/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateOpName/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyStatus/>
+<pySaveSQL/>
+<pyRuleFormStatusTime>20260831T011616.552 GMT</pyRuleFormStatusTime>
+<pyLabel>SetKomiteTerimaTolakBasedLimit</pyLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceProp/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxUpdateDateTime>20241108T082625.089 GMT</pxUpdateDateTime>
+<pyDeleteSQL/>
+<pxMergeSynchronized>20240625T094618.848 GMT</pxMergeSynchronized>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyOpenSQL/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDeletedObject/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRequestType>SetKomiteTerimaTolakBasedLimit</pyRequestType>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM SetKomiteTerimaTolakBasedLimit</pyRuleName>
+<pyRelativePath/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!SETKOMITETERIMATOLAKBASEDLIMIT</pxInsName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceTemplate/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyCircumstanceType/>
+<pyMemo>dones</pyMemo>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20241108T072651.469 GMT</pxCreateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETKOMITETERIMATOLAKNONMBUBASEDLIMIT #20240624T043323.267 GMT</pzOriginalInstanceKey>
+<pyStreamName/>
+<pxOriginalCreateDateTime/>
+<pyIsFromManageChangeLP/>
+<pyInterface/>
+<pyWorkKey/>
+<pxSiblingCount/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyTemporaryObject/>
+<pySpecialtyComponentData/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!SETKOMITETERIMATOLAKBASEDLIMIT #20241108T072651.469 GMT</pzInsKey>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyCircumstanceDefinition/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>-404607156</pzChecksum>
+<pxOriginalCreateSystemID/>
+<pyCheckInRuleSet/>
+<pxSaveDateTime>20241108T082625.106 GMT</pxSaveDateTime>
+<pyHandlerFlow/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyDocumentTitle/>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyDescription/>
+<pyRuleEnds/>
+<pyFormPost/>
+<pxMoveImportDateTime>20241223T123621.192 GMT</pxMoveImportDateTime>
+<pyTemplateInputBox/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!SETKOMITETERIMATOLAKBASEDLIMIT</pxInsId>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyJavaStream/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedRuleSet/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!SETKOMITETERIMATOLAKBASEDLIMIT #20241108T072651.469 GMT</pzDocumentKey>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceDateProp/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM SetKomiteTerimaTolakBasedLimit</pxTabLabel>
+<pyLabelOld>SetKomiteTerimaTolakBasedLimit</pyLabelOld>
+<pxInstanceLockedKey/>
+<pxInstanceLockedCreateDateTime/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDate/>
+<pxMoveFromSystem/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMethodStatus/>
+<pyRuleStarts/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyUsage/>
+<pyBrowseSQL>SELECT 
+    pyId AS "pyID",
+    SUBSTR(PNCCASEID, INSTR(PNCCASEID, ' ') + 1) AS "NoKlaim",
+     pzInsKey as "pzInsKey",
+   PNCCASEID AS "CoverInsKey",
+    	 POLICYNO AS "NoPolis",
+    	   PYRESOLVEDTIMESTAMP as "TglKomite",
+    	   BUSINESSNAME as "NamaBisnis",
+    	   BRANCHNAME as "BranchName",
+    	   SOBNAME  as "NamaSumbis",
+    	   QQName as "NamaTertanggung",
+(select BUSINESSGROUPNAME from pooldata.BUSINESSNEW where id=(select BUSINESSCODE from pooldata.T_CLAIM_PNC where claimid=PNCCASEID)) as "BUSINESSNAME",
+       Case when (select max(TYPEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST where KOMITE_ID=pyId)='2' then
+       case when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=1 then 'Final'
+             when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=2 then 'Interim'
+             when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=3 then 'Salvage'
+             when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=4 then 'Adjuster Fee'
+             when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=5 then 'Adjustment'
+             when (select max(PAYMENTTYPE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=pyId)=6 then 'Tolak Klaim'
+             else 'Collection Fee' end
+        when (select max(TYPEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST where KOMITE_ID=pyId)='1' then 'Survey Komite'
+        when (select max(TYPEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST where KOMITE_ID=pyId)='3' then 'Ex Gratia'
+        when (select max(TYPEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST where KOMITE_ID=pyId)='4' then 'Liable Klaim'
+        when (select max(TYPEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST where KOMITE_ID=pyId)='5' then 'Final'                     
+       else 'Survey Komite' end
+        as "StatusKlaim",
+(select max(X.NOTEKOMITE) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=A.PYID and STATUSAPPROVE={TempKomiteInput.AlasanKlaim} and namakomite={TempKomite.RCLComment}) as "RejectedCode",
+(select max(X.NILAIKLAIM) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=A.PYID)* (select max(X.SHAREASM) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=A.PYID)/100 as "IBNR",
+(select max(X.NILAIKLAIM) from POOLDATA.T_CLAIM_KOMITE_LIST x where X.KOMITE_ID=A.PYID)*(select (PRSN_OR+PRSN_ORS+PRSN_PSRQS_OR+PRSN_FSPLNSOR+PRSN_PSPLNSOR+PRSN_PSPLNSOR) from POOLDATA.PEGA_DASHBOARDPNC pg where PG.NOKLAIM=SUBSTR (PNCCASEID, INSTR (PNCCASEID, ' ') + 1))/100 as "pyScore",
+(select PICTEKNIK from POOLDATA.T_CLAIM_PNC where claimid=PNCCASEID) as "DraftWordingID"
+ from DATAPEGA.PC_ASM_FW_GCNMFW_WORK a where 
+pxobjclass='ASM-FW-GCNMFW-Work-Komite' and STATUSCASE_1={TempKomiteInput.AlasanKlaim} and
+PYRESOLVEDUSERID in (select OPERATOR_ID from POOLDATA.EMAILKOMITE where TYPE_BUSINESS={TempKomiteInput.AreaClaimId} and limit_bottom&gt;={TempKomiteInput.ClaimAmountAdjust} {ASIS:TempKomiteInput.ClientName})
+{ASIS:TempKomiteInput.CauseOfLoss}</pyBrowseSQL>
+<pxOriginalCreateOperator/>
+<pyShowJavaWindowName>GeneratedJava20260831T011616.573 GMT</pyShowJavaWindowName>
+<pxHostId>jboss10372</pxHostId>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!SETKOMITETERIMATOLAKBASEDLIMIT #20241108T072651.469 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!SETKOMITETERIMATOLAKBASEDLIMIT #20240624T214757.601 GMT</pzInsKey>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+</pagedata>

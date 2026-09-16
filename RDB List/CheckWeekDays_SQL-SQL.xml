@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-DUAL ASM!CHECKWEEKDAYS_SQL #20180924T064828.851 GMT</pxMoveOriginalKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyMethodStatus/>
+<pyFormPost/>
+<pxOriginalCreateOpName/>
+<pyRuleName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM CheckWeekDays_SQL</pyRuleName>
+<pxMoveOriginalRuleSet>GKM</pxMoveOriginalRuleSet>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceType/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyHandlerFlow/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatusTime>20260831T072743.439 GMT</pyRuleFormStatusTime>
+<pxInsName>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!CHECKWEEKDAYS_SQL</pxInsName>
+<pyDeletedObject/>
+<pxInstanceLockedKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateDateTime/>
+<pyStatus/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceProp/>
+<pxInstanceLockedDateTime/>
+<pxOriginalCreateOperator/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabel>CheckWeekDays_SQL</pyLabel>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM CheckWeekDays_SQL</pxTabLabel>
+<pzChecksum>-536235829</pzChecksum>
+<pyCircumstanceVal/>
+<pxMoveOriginalRuleSetVersion>01-01-02</pxMoveOriginalRuleSetVersion>
+<pyRuleStarts/>
+<pyDescription/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyStreamName/>
+<pxSiblingCount/>
+<pyJavaStream/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyCircumstanceDefinition/>
+<pyInterface/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCircumstanceDate/>
+<pyIsFromManageChangeLP/>
+<pyWorkKey/>
+<pySpecialtyComponentData/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateDateTime>20221025T081850.920 GMT</pxCreateDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKWEEKDAYS_SQL #20191120T101721.310 GMT</pzOriginalInstanceKey>
+<pyCircumstanceTemplate/>
+<pyTemplateInputBox/>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pxHostId>jboss10373</pxHostId>
+<pyClassName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL</pyClassName>
+<pyRequestType>CheckWeekDays_SQL</pyRequestType>
+<pxMoveImportDateTime>20221116T100636.700 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySaveSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyUsage/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxUpdateDateTime>20221025T082004.121 GMT</pxUpdateDateTime>
+<pyBrowseSQL>SELECT COUNT (1) AS "DOCID"
+  FROM (  SELECT TO_DATE ({InputCheckDate.pyNote}, 'dd/mm/yyyy') + LEVEL tanggal
+              FROM DUAL
+        CONNECT BY LEVEL &lt;= TO_NUMBER ({InputCheckDate.STS_STATUS}))
+ WHERE TRIM (TO_CHAR (tanggal, 'DAY')) IN
+          ('SABTU', 'MINGGU', 'SATURDAY', 'SUNDAY')</pyBrowseSQL>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKWEEKDAYS_SQL #20221025T081850.920 GMT</pzDocumentKey>
+<pxCommitDateTime>20221116T100637.000 GMT</pxCommitDateTime>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pyLabelOld>CheckWeekDays_SQL</pyLabelOld>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyMemo>done</pyMemo>
+<pyTemplate/>
+<pxSaveDateTime>20221025T082004.130 GMT</pxSaveDateTime>
+<pyRelativePath/>
+<pxMoveFromSystem/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyDocumentTitle/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyOpenSQL/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsId>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!CHECKWEEKDAYS_SQL</pxInsId>
+<pyDeleteSQL/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyShowJavaWindowName>GeneratedJava20260831T072743.455 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKWEEKDAYS_SQL #20221025T081850.920 GMT</pzInsKey>
+<pyRuleEnds/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKWEEKDAYS_SQL #20221025T081850.920 GMT</pzInsKey>
+<pyLabel>01-01-99 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+</pagedata>

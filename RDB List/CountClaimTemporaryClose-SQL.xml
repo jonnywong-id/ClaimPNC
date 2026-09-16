@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDate/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM CountClaimTemporaryClose</pxTabLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyRelativePath/>
+<pxInstanceLockedKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pxUpdateDateTime>20260406T044340.269 GMT</pxUpdateDateTime>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxSaveDateTime>20260716T032403.574 GMT</pxSaveDateTime>
+<pyWorkKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeletedObject/>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTCLAIMTEMPORARYCLOSE #20260325T013433.786 GMT</pzDocumentKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pySaveSQL/>
+<pyOpenSQL/>
+<pyJavaStream/>
+<pyCircumstanceVal/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTCLAIMTEMPORARYCLOSE</pxInsName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyStatus/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTCLAIMTEMPORARYCLOSE</pxInsId>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceProp/>
+<pyLabelOld>Count Claim Temporary Close</pyLabelOld>
+<pxInstanceLockedDateTime>20260716T032403.574 GMT</pxInstanceLockedDateTime>
+<pyRuleFormStatusTime>20260901T105857.298 GMT</pyRuleFormStatusTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyBrowseSQL>SELECT count(1) as "ref_no"
+  FROM datapega.pc_asm_fw_gcnmfw_work a
+ WHERE     a.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+       AND a.pyStatusWork = 'Resolved-Completed'
+       AND a.ISPENDINGCLOSE = 'true'
+       AND a.userteknis_1 IN {ASIS:TempOperator.CityID}
+       {ASIS:TempSearch.source}</pyBrowseSQL>
+<pyRuleStarts/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM CountClaimTemporaryClose</pyRuleName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceType/>
+<pyInterface/>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveFromSystem/>
+<pyUsage/>
+<pxInstanceLockedBy>MICHELLEWILLIAM</pxInstanceLockedBy>
+<pxInstanceLockedCreateDateTime/>
+<pyFormPost/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTCLAIMTEMPORARYCLOSE #20260325T013433.786 GMT</pzInsKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzChecksum>-862882226</pzChecksum>
+<pyStreamName/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxOriginalCreateOpName/>
+<pyTemplate/>
+<pxOriginalCreateDateTime/>
+<pyMemo>edit tempoperator.cityid</pyMemo>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pyDescription/>
+<pyHandlerFlow/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportDateTime>20230414T101624.384 GMT</pxMoveImportDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyRuleEnds/>
+<pyCircumstanceDateProp/>
+<pyShowJavaWindowName>GeneratedJava20260901T105857.315 GMT</pyShowJavaWindowName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyDocumentTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceDefinition/>
+<pyRequestType>CountClaimTemporaryClose</pyRequestType>
+<pyIsFromManageChangeLP/>
+<pxHostId>jboss10-42</pxHostId>
+<pyDeleteSQL/>
+<pyValueChanged>false</pyValueChanged>
+<pySpecialtyComponentData/>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxSiblingCount/>
+<pyCircumstanceTemplate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!BROWSECLAIMTEMPORARYCLOSE #20230103T090738.474 GMT</pzOriginalInstanceKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyMethodStatus/>
+<pxOriginalCreateOperator/>
+<pyTemplateInputBox/>
+<pxMergeSynchronized>20230406T094231.512 GMT</pxMergeSynchronized>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemporaryObject/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCommitDateTime>20260716T032403.000 GMT</pxCommitDateTime>
+<pyLabel>Count Claim Temporary Close</pyLabel>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCheckInRuleSet/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pxCreateDateTime>20260325T013433.786 GMT</pxCreateDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>false</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pySiblings>true</pySiblings>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTCLAIMTEMPORARYCLOSE #20260325T013433.786 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTCLAIMTEMPORARYCLOSE #20230406T044205.045 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-04 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

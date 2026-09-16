@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pxMoveImportDateTime>20191231T063512.247 GMT</pxMoveImportDateTime>
+<pxInstanceLockedBy/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKHOLIDAY_SQL #20191120T101548.615 GMT</pzDocumentKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedCreateDateTime/>
+<pyHandlerFlow/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pySpecialtyComponentData/>
+<pxSiblingCount/>
+<pyDeletedObject/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDefinition/>
+<pxSaveDateTime>20191128T072017.446 GMT</pxSaveDateTime>
+<pyCircumstanceDateProp/>
+<pyTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStatus/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxMoveOriginalKey>RULE-CONNECT-SQL ASM-FW-GKM-INT-DUAL ASM!CHECKHOLIDAYDATE_SQL #20180924T065057.667 GMT</pxMoveOriginalKey>
+<pxMoveOriginalRuleSet>GKM</pxMoveOriginalRuleSet>
+<pxOriginalCreateSystemID/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDeleteSQL/>
+<pxHostId>jboss2058</pxHostId>
+<pyInterface/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyWindowTitle/>
+<pxCreateOpName>Willy Tandra</pxCreateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemplateInputBox/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxUpdateOperator>willygcnm</pxUpdateOperator>
+<pxMoveOriginalRuleSetVersion>01-01-02</pxMoveOriginalRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateDateTime>20191120T101548.615 GMT</pxCreateDateTime>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInsName>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!CHECKHOLIDAY_SQL</pxInsName>
+<pxUpdateOpName>Willy Tandra</pxUpdateOpName>
+<pzRuleSetVersionPatch>51</pzRuleSetVersionPatch>
+<pyRuleStarts/>
+<pyRuleName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM CheckHoliday_SQL</pyRuleName>
+<pzChecksum>-430978574</pzChecksum>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyDescription/>
+<pyBrowseSQL>SELECT COUNT (1) as "DOCID"
+     FROM general.hrd_lbr@ASMD.SINARMAS.CO.ID
+    WHERE     tanggal &gt;= to_date({InputCheckDate.ID_PERIHAL DateTime},'dd/mm/yyyy')
+          AND tanggal &lt;= to_date({InputCheckDate.PERIHAL_NAME DateTime},'dd/mm/yyyy')
+          AND TRIM(TO_CHAR (tanggal, 'DAY')) NOT IN ('SABTU','MINGGU','SATURDAY','SUNDAY')</pyBrowseSQL>
+<pyRequestType>CheckHoliday_SQL</pyRequestType>
+<pyShowJavaWindowName>GeneratedJava20260831T072638.294 GMT</pyShowJavaWindowName>
+<pyRelativePath/>
+<pyOpenSQL/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pyLabelOld>CheckHoliday_SQL</pyLabelOld>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFormPost/>
+<pyCircumstanceProp/>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOperator/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleEnds/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceType/>
+<pxCreateOperator>willygcnm</pxCreateOperator>
+<pyStreamName/>
+<pxMoveFromSystem/>
+<pyMemo>tes</pyMemo>
+<pyRuleSetVersion>01-01-51</pyRuleSetVersion>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyMethodStatus/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySaveSQL/>
+<pyDocumentTitle/>
+<pxInsId>ASM-FW-GCNMFW-INT-M_DOCTRAVEL!GCNM!CHECKHOLIDAY_SQL</pxInsId>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyUsage/>
+<pyJavaStream/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDate/>
+<pyLabel>CheckHoliday_SQL</pyLabel>
+<pxTabLabel>ASM-FW-GCNMFW-Int-M_DOCTRAVEL GCNM CheckHoliday_SQL</pxTabLabel>
+<pyRuleFormStatusTime>20260831T072638.271 GMT</pyRuleFormStatusTime>
+<pxUpdateDateTime>20191128T072017.434 GMT</pxUpdateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKHOLIDAY_SQL #20191007T072947.652 GMT</pzOriginalInstanceKey>
+<pyClassName>ASM-FW-GCNMFW-Int-M_DOCTRAVEL</pyClassName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKHOLIDAY_SQL #20191120T101548.615 GMT</pzInsKey>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pyIsFromManageChangeLP/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyShowJava>false</pyShowJava>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-51 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKHOLIDAY_SQL #20191120T101548.615 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyLabel>01-01-50 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_DOCTRAVEL GCNM!CHECKHOLIDAY_SQL #20191007T072947.652 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

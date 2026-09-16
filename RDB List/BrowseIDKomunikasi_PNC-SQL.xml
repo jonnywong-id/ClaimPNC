@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM BrowseIDKomunikasi_PNC</pyRuleName>
+<pyBrowseSQL>select Max(KOMUNIKASIID) AS "IDObject" from POOLDATA.M_KOMUNIKASI_PNC</pyBrowseSQL>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceProp/>
+<pyMethodStatus/>
+<pyDeleteSQL/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxOriginalCreateSystemID/>
+<pyTemplate/>
+<pyRuleFormStatusTime>20260721T035907.302 GMT</pyRuleFormStatusTime>
+<pxSiblingCount/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSetVersion>01-01-84</pyRuleSetVersion>
+<pyCircumstanceVal/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!BROWSEIDKOMUNIKASI_PNC #20200302T063031.909 GMT</pzInsKey>
+<pxOriginalCreateDateTime/>
+<pyDeleteMemo>DONE</pyDeleteMemo>
+<pyTemplateInputBox/>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pxSaveDateTime>20200303T060838.215 GMT</pxSaveDateTime>
+<pyInterface/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyWorkKey/>
+<pyRuleEnds/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyTempText>saved</pyTempText>
+<pxMoveImportDateTime>20200813T090536.123 GMT</pxMoveImportDateTime>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateDateTime>20200303T060838.202 GMT</pxUpdateDateTime>
+<pxCreateDateTime>20200302T063031.909 GMT</pxCreateDateTime>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pyMemo>query untuk cari maks id untuk dijadikan id untuk dokumen list</pyMemo>
+<pzRuleSetVersionPatch>84</pzRuleSetVersionPatch>
+<pyDescription/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyOpenSQL/>
+<pxInstanceLockedDateTime/>
+<pyIsFromManageChangeLP/>
+<pyWindowTitle/>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pxMoveFromSystem/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyCircumstanceType/>
+<pxCommitDateTime>20200813T090536.000 GMT</pxCommitDateTime>
+<pyDocumentTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!BROWSEIDKOMUNIKASI_PNC #20200302T063031.909 GMT</pzDocumentKey>
+<pxInstanceLockedKey/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyRuleStarts/>
+<pyRequestType>BrowseIDKomunikasi_PNC</pyRequestType>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss2145</pxHostId>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTEMAILADJUSTER_PNC #20200212T032238.365 GMT</pzOriginalInstanceKey>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM BrowseIDKomunikasi_PNC</pxTabLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pyCircumstanceDate/>
+<pyLabelOld>BrowseIDKomunikasi_PNC</pyLabelOld>
+<pyUsage/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyClassName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!BROWSEIDKOMUNIKASI_PNC</pxInsId>
+<pyHandlerFlow/>
+<pyShowJavaWindowName>GeneratedJava20260721T035907.327 GMT</pyShowJavaWindowName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDateProp/>
+<pyRuleParamsStreamName/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!BROWSEIDKOMUNIKASI_PNC</pxInsName>
+<pxOriginalCreateOperator/>
+<pyLabel>BrowseIDKomunikasi_PNC</pyLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzChecksum>-1595064772</pzChecksum>
+<pyStreamName/>
+<pyStatus/>
+<pyJavaStream/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyFormPost/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyHistoryObject>false</pyHistoryObject>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!BROWSEIDKOMUNIKASI_PNC #20200302T063031.909 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

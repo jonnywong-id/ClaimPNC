@@ -1,0 +1,243 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyOpenSQL/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyStreamName/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pxInstanceLockedBy/>
+<pyUsage/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyBrowseSQL>DECLARE 
+  FLAGS VARCHAR2(32767);
+  TCLAIMID VARCHAR2(32767);
+  TOBJECTID VARCHAR2(32767);
+  TCOVERAGEID VARCHAR2(32767);
+  TADJUSTMENTID VARCHAR2(32767);
+  TOBJECTNAME VARCHAR2(32767);
+  TRESULTAI VARCHAR2(32767);
+  TKOMITE VARCHAR2(32767);
+  TPENGGUNAAN_WORDING_POLIS VARCHAR2(32767);
+  TSTS_FINAL VARCHAR2(32767);
+  TCONF_SCORE NUMBER;
+  TKATEGORI_KRONOLOGI VARCHAR2(32767);
+  TCOVERAGE_AI_FINAL VARCHAR2(32767);
+  TCAUSE_OF_LOSS VARCHAR2(32767);
+  TBATASLAPOR VARCHAR2(32767);
+  TBATASUMUR VARCHAR2(32767);
+  TCOVERAGEKRONOLOGI VARCHAR2(32767);
+  TKELENGKAPANDOKUMEN VARCHAR2(32767);
+  TPERIODEPOLIS VARCHAR2(32767);
+  TNOTETERIMA VARCHAR2(32767);
+  TNOTETOLAK VARCHAR2(32767);
+  TKOMITESTATUS VARCHAR2(32767);
+  TNOTEKOMITE VARCHAR2(32767);
+  TTGLKOMITE DATE;
+  tCoverageTerima VARCHAR2(32767);
+  tCoverageTolak  VARCHAR2(32767);
+  tCoverageNoteTerima VARCHAR2(32767);
+  tCoverageNoteTolak VARCHAR2(32767);
+  ERRMSG VARCHAR2(32767);
+
+BEGIN 
+  FLAGS := {TEMPALLDATAAI.FlagAtasan};
+  TCLAIMID := {TEMPALLDATAAI.AcceptedNo};
+  TOBJECTID := {TEMPALLDATAAI.IDObject};
+  TCOVERAGEID := {TEMPALLDATAAI.IDCoverage};
+  TADJUSTMENTID := {TEMPALLDATAAI.IDAdjustClaim};
+  TOBJECTNAME := {TEMPALLDATAAI.ObjectName};
+  TRESULTAI := {TEMPALLDATAAI.Coverage_AI};
+  TKOMITE := {TEMPALLDATAAI.CaseIDKomite};
+  TPENGGUNAAN_WORDING_POLIS := {TEMPALLDATAAI.PENGGUNAAN_WORDING_POLIS};
+  TSTS_FINAL := {TEMPALLDATAAI.ResultAI};
+  TCONF_SCORE := {TEMPALLDATAAI.GrossValue Decimal};
+  TKATEGORI_KRONOLOGI := {TEMPALLDATAAI.KATEGORI_KRONOLOGI};
+  TCOVERAGE_AI_FINAL := {TEMPALLDATAAI.COVERAGE_AI_FINAL};
+  TCAUSE_OF_LOSS := {TEMPALLDATAAI.CAUSE_OF_LOSS};
+  TBATASLAPOR := {TEMPALLDATAAI.BatasLapor};
+  TBATASUMUR := {TEMPALLDATAAI.BatasUmur};
+  TCOVERAGEKRONOLOGI := {TEMPALLDATAAI.CoverageKronologi};
+  TKELENGKAPANDOKUMEN := NULL;
+  TPERIODEPOLIS := {TEMPALLDATAAI.PeriodePolis};
+  TNOTETERIMA := {TEMPALLDATAAI.Notes};
+  TNOTETOLAK := {TEMPALLDATAAI.NoteAkseptasi};
+  TKOMITESTATUS := {TEMPALLDATAAI.Receiver};
+  TNOTEKOMITE :={TEMPALLDATAAI.RefNoAI};
+  TTGLKOMITE :={TEMPALLDATAAI.TanggalComitee DateTime};
+  tCoverageTerima :={TEMPALLDATAAI.NoAccount};
+  tCoverageTolak  :={TEMPALLDATAAI.NoAccount2};
+  tCoverageNoteTerima :={TEMPALLDATAAI.DISC};
+  tCoverageNoteTolak :={TEMPALLDATAAI.DISC2};
+
+
+  POOLDATA.INSERTDATAAIKLAIMPNC ( FLAGS, TCLAIMID, TOBJECTID, TCOVERAGEID, TADJUSTMENTID, TOBJECTNAME, TRESULTAI, TKOMITE, TPENGGUNAAN_WORDING_POLIS, TSTS_FINAL, TCONF_SCORE, TKATEGORI_KRONOLOGI, TCOVERAGE_AI_FINAL, TCAUSE_OF_LOSS, TBATASLAPOR, TBATASUMUR, TCOVERAGEKRONOLOGI, TKELENGKAPANDOKUMEN, TPERIODEPOLIS, TNOTETERIMA, TNOTETOLAK, TKOMITESTATUS, TNOTEKOMITE,TTGLKOMITE,tCoverageTerima,tCoverageTolak ,tCoverageNoteTerima , tCoverageNoteTolak,{TEMPALLDATAAI.KOMISI},{TEMPALLDATAAI.MessagePajak out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyCircumstanceDefinition/>
+<pyJavaStream/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyValueChanged>false</pyValueChanged>
+<pyRequestType>InsertDataAIToTableFlatKlaimPA</pyRequestType>
+<pxUpdateDateTime>20240607T024146.934 GMT</pxUpdateDateTime>
+<pyInterface/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pxInstanceLockedKey/>
+<pyCircumstanceDateProp/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!INSERTDATAAITOTABLEFLATKLAIMPA</pxInsId>
+<pyShowJavaWindowName>GeneratedJava20260720T143119.599 GMT</pyShowJavaWindowName>
+<pyStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyWorkKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySpecialtyComponentData/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyMemo>dones</pyMemo>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM InsertDataAIToTableFlatKlaimPA</pxTabLabel>
+<pyRuleEnds/>
+<pyLabelOld>InsertDataAIToTableFlatKlaimPA</pyLabelOld>
+<pyRelativePath/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pxMergeSynchronized>20240507T010127.308 GMT</pxMergeSynchronized>
+<pyRuleStarts/>
+<pyRuleParamsStreamName/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatusTime>20260720T143119.576 GMT</pyRuleFormStatusTime>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySaveSQL/>
+<pyMethodStatus/>
+<pyTemplate/>
+<pyHandlerFlow/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyBaseRule>false</pyBaseRule>
+<pxSiblingCount/>
+<pyLabel>InsertDataAIToTableFlatKlaimPA</pyLabel>
+<pxSaveDateTime>20240607T024146.941 GMT</pxSaveDateTime>
+<pyCircumstanceType/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDocumentTitle/>
+<pyCircumstanceVal/>
+<pyHistoryObject/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTDATAAITOTABLEFLATKLAIMPA #20240506T094402.900 GMT</pzOriginalInstanceKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzChecksum>-842256038</pzChecksum>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pyFormPost/>
+<pyCircumstanceTemplate/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyCheckInRuleSet/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxMoveFromSystem/>
+<pxCommitDateTime>20240715T114352.000 GMT</pxCommitDateTime>
+<pxMoveImportDateTime>20240715T114352.424 GMT</pxMoveImportDateTime>
+<pyIsFromManageChangeLP/>
+<pyWindowTitle/>
+<pyDescription/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTDATAAITOTABLEFLATKLAIMPA #20240606T122221.679 GMT</pzDocumentKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxCreateDateTime>20240606T122221.679 GMT</pxCreateDateTime>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceProp/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM InsertDataAIToTableFlatKlaimPA</pyRuleName>
+<pyDeletedObject/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyTemporaryObject/>
+<pyCircumstanceDate/>
+<pxHostId>jboss10362</pxHostId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTDATAAITOTABLEFLATKLAIMPA #20240606T122221.679 GMT</pzInsKey>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!INSERTDATAAITOTABLEFLATKLAIMPA</pxInsName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelegates>false</pyDelegates>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTDATAAITOTABLEFLATKLAIMPA #20240606T122221.679 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-04 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!INSERTDATAAITOTABLEFLATKLAIMPA #20240506T094402.900 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

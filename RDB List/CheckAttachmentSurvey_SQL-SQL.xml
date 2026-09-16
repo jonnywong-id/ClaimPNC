@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxMoveImportDateTime>20211204T041451.146 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxOriginalCreateOperator/>
+<pyRuleParamsStreamName/>
+<pzInsKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!CHECKATTACHMENTSURVEY_SQL #20211129T073704.968 GMT</pzInsKey>
+<pxSiblingCount/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxTabLabel>Link-Attachment ASM CheckAttachmentSurvey_SQL</pxTabLabel>
+<pzDocumentKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!CHECKATTACHMENTSURVEY_SQL #20211129T073704.968 GMT</pzDocumentKey>
+<pySpecialtyComponentData/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>LINK-ATTACHMENT!ASM!CHECKATTACHMENTSURVEY_SQL</pxInsName>
+<pxUpdateOperator>CALVINJOE</pxUpdateOperator>
+<pyMemo>tambah pycategory in</pyMemo>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pyOpenSQL/>
+<pyCircumstanceTemplate/>
+<pyRuleName>Link-Attachment ASM CheckAttachmentSurvey_SQL</pyRuleName>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxSaveDateTime>20211202T061008.028 GMT</pxSaveDateTime>
+<pxHostId>jboss10363</pxHostId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStatus/>
+<pxOriginalCreateOpName/>
+<pyIsFromManageChangeLP/>
+<pyDocumentTitle/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyStreamName/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyLabel>CheckAttachmentSurvey_SQL</pyLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalRuleSet>GISFWInt</pxOriginalRuleSet>
+<pyLabelOld>CheckAttachmentSurvey_SQL</pyLabelOld>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeleteSQL/>
+<pyRuleFormStatusTime>20260720T142625.265 GMT</pyRuleFormStatusTime>
+<pySaveSQL/>
+<pzChecksum>-879168571</pzChecksum>
+<pyCircumstanceDateProp/>
+<pxCreateOperator>CALVINJOE</pxCreateOperator>
+<pyInterface/>
+<pyClassName>Link-Attachment</pyClassName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceVal/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!SEARCHATTACHMENTCATEGORYSQL #20170704T072434.689 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRequestType>CheckAttachmentSurvey_SQL</pyRequestType>
+<pxOriginalCreateDateTime/>
+<pyRelativePath/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyDeletedObject/>
+<pyDescription/>
+<pyShowJavaWindowName>GeneratedJava20260720T142625.283 GMT</pyShowJavaWindowName>
+<pyTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleStarts/>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>01-03-33</pyRuleSetVersion>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyFormPost/>
+<pyJavaStream/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxInstanceLockedKey/>
+<pyUsage/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pxUpdateDateTime>20211202T061008.021 GMT</pxUpdateDateTime>
+<pxInsId>LINK-ATTACHMENT!ASM!CHECKATTACHMENTSURVEY_SQL</pxInsId>
+<pzRuleSetVersionPatch>33</pzRuleSetVersionPatch>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWindowTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxCommitDateTime>20211204T041451.000 GMT</pxCommitDateTime>
+<pxCreateOpName>CALVIN JOE</pxCreateOpName>
+<pxUpdateOpName>CALVIN JOE</pxUpdateOpName>
+<pxInstanceLockedBy/>
+<pyHandlerFlow/>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveFromSystem/>
+<pyCircumstanceType/>
+<pyWorkKey/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMethodStatus/>
+<pyBrowseSQL>select pycategory as HASIL1,count(1) as HASIL2 from DATAPEGA.PC_LINK_ATTACHMENT where pxlinkedreffrom = {AllAttachments.pxResults(1).pxLinkedRefFrom} and pycategory in ('FotoKiriDepan','FotoKananBelakang','FotoKananDepan','FotoKiriBelakang','FotoDashboard','FotoInterior','FotoSpeedometer','FotoRangka','FotoNoMesin','FotoSTNK','FotoTambahan1','FotoTambahan2','FotoDiagram') group by pycategory having count(1) &gt;1</pyBrowseSQL>
+<pyTemplateInputBox/>
+<pyCircumstanceDate/>
+<pxCreateDateTime>20211129T073704.968 GMT</pxCreateDateTime>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-33 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL LINK-ATTACHMENT ASM!CHECKATTACHMENTSURVEY_SQL #20211129T073704.968 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySaveAs>true</pySaveAs>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

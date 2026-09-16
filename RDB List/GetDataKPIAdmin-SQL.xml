@@ -1,0 +1,418 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMIN</pxInsName>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyDescription/>
+<pyDeletedObject/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMergeSynchronized>20230808T035033.258 GMT</pxMergeSynchronized>
+<pyOpenSQL/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMIN</pxInsId>
+<pyCircumstanceProp/>
+<pyJavaStream/>
+<pyHandlerFlow/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdmin</pyRuleName>
+<pyStatus/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyShowJavaWindowName>GeneratedJava20260901T073134.602 GMT</pyShowJavaWindowName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedKey/>
+<pyCircumstanceDate/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxMoveFromSystem/>
+<pyCircumstanceDateProp/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWindowTitle/>
+<pxInstanceLockedDateTime/>
+<pyRuleEnds/>
+<pxInstanceLockedBy/>
+<pyDeleteSQL/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportDateTime>20231027T122925.315 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pyLabelOld>GetDataKPIAdmin</pyLabelOld>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedCreateDateTime/>
+<pyRequestType>GetDataKPIAdmin</pyRequestType>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdmin</pxTabLabel>
+<pyRuleFormStatusTime>20260901T073134.580 GMT</pyRuleFormStatusTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceType/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxHostId>jboss10372</pxHostId>
+<pyBrowseSQL>SELECT 'KLAIM NON MBU' AS "UserTeknis",
+        'YUSMIARSIH DYAHPUSPITA S' AS "Remark",
+        'ALL (NON HEALTH DAN NON MBU)' AS "Country",
+        '96030583' AS "CountryID",
+        {Efektifdates.Country}|| ' - ' || {Efektifdates.CountryID} AS "ClaimNo",
+         leader_lebihdari_sla as "ClaimAmount",
+         total_klaim_leader as "BranchID",
+         (leader_lebihdari_sla / total_klaim_leader) * 100 AS "BranchName",
+         member_lebihdari_sla as "BusinessID",
+         total_klaim_member as "BusinessName",
+         (member_lebihdari_sla / total_klaim_member) * 100 AS "CASEDB",
+         CASE
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 &lt; 0.5
+            THEN   5
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 0.5 AND 1
+            THEN   4
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 = 1
+            THEN   3
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1 AND  1.5
+            THEN   2
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1.5 AND 2
+            THEN   1
+            ELSE 0
+         END
+           AS "City",
+         0.45 AS "CaseID",
+         (CASE
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 &lt; 0.5
+            THEN   5
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 0.5 AND  1
+            THEN   4
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 = 1
+            THEN   3
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1 AND  1.5
+            THEN   2
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1.5 AND 2
+            THEN   1
+            ELSE 0
+         END / 5) * 0.45 * 100 AS "CauseOfLoss",
+         CASE
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 &lt; 0.5
+            THEN   5
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 0.5 AND  1
+            THEN   4
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 = 1
+            THEN   3
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1 AND  1.5
+            THEN   2
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1.5 AND 2
+            THEN   1
+            ELSE 0
+         END
+           AS "CauseOfLossID",
+         0.40 AS "IsPLA",
+         (CASE
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 &lt; 0.5
+            THEN   5
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 0.5 AND 1
+            THEN   4
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 = 1
+            THEN   3
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1 AND  1.5
+            THEN   2
+            WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1.5 AND 2
+            THEN   1
+            ELSE 0
+         END / 5) * 0.40 * 100 AS "CityID",
+         (CASE
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 &lt; 0.5
+            THEN   5
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 0.5 AND 1
+            THEN   4
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 = 1
+            THEN   3
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1 AND  1.5
+            THEN   2
+            WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1.5 AND 2
+            THEN   1
+            ELSE 0
+         END / 5) * 0.45 * 100 + 
+            (CASE
+                WHEN  (member_lebihdari_sla / total_klaim_member) * 100 &lt; 0.5
+                THEN   5
+                WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 0.5 AND 1
+                THEN   4
+                WHEN  (member_lebihdari_sla / total_klaim_member) * 100 = 1
+                THEN   3
+                WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1 AND  1.5
+                THEN   2
+                WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1.5 AND 2
+                THEN   1
+                ELSE 0
+             END / 5) * 0.40 * 100 AS "ClientID",
+         3/5*85 AS "ClientName",
+         TRUNC(
+             ((CASE
+                WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 &lt; 0.5
+                THEN   5
+                WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 0.5 AND 1
+                THEN   4
+                WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 = 1
+                THEN   3
+                WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1 AND  1.5
+                THEN   2
+                WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1.5 AND 2
+                THEN   1
+                ELSE 0
+             END / 5) * 0.45 * 100 + 
+                (CASE
+                    WHEN  (member_lebihdari_sla / total_klaim_member) * 100 &lt; 0.5
+                    THEN   5
+                    WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 0.5 AND 1
+                    THEN   4
+                    WHEN  (member_lebihdari_sla / total_klaim_member) * 100 = 1
+                    THEN   3
+                    WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1 AND  1.5
+                    THEN   2
+                    WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1.5 AND 2
+                    THEN   1
+                    ELSE 0
+                 END / 5) * 0.40 * 100) / ((3/5)*90)
+            ,2 ) AS "CloseClaimNote",
+         CASE 
+            WHEN 
+                 ((CASE
+                    WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 &lt; 0.5
+                    THEN   5
+                    WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 0.5 AND 1
+                    THEN   4
+                    WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 = 1
+                    THEN   3
+                    WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1 AND  1.5
+                    THEN   2
+                    WHEN  (leader_lebihdari_sla / total_klaim_leader) * 100 BETWEEN 1.5 AND 2
+                    THEN   1
+                    ELSE 0
+                 END / 5) * 0.45 * 100 + 
+                    (CASE
+                        WHEN  (member_lebihdari_sla / total_klaim_member) * 100 &lt; 0.5
+                        THEN   5
+                        WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 0.5 AND 1
+                        THEN   4
+                        WHEN  (member_lebihdari_sla / total_klaim_member) * 100 = 1
+                        THEN   3
+                        WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1 AND  1.5
+                        THEN   2
+                        WHEN  (member_lebihdari_sla / total_klaim_member) * 100 BETWEEN 1.5 AND 2
+                        THEN   1
+                        ELSE 0
+                     END / 5) * 0.40 * 100) / ((3/5)*90) &lt; 1
+            THEN 'TIDAK TERCAPAI TARGET'
+            ELSE 'TERCAPAI TARGET'
+         END AS "ContractNo"
+  FROM (SELECT             
+            (  SELECT COUNT(noklaim)
+                  FROM (
+                  
+                        SELECT 
+                            a.noklaim,
+                            b.receivedate AS tgl_terima_dokumen,
+                            b.TRANSFERPIC_DATE AS tgl_trf_ke_teknik,
+                            datamining.get_working_hours@asmd.sinarmas.co.id(b.registerdate, b.TRANSFERPIC_DATE) / 28800 AS tat_regis,
+                            a.reinsurer 
+                          FROM pooldata.pega_dashboardpnc a,
+                               pooldata.t_claim_pnc b, 
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE a.noklaim = b.claimno
+                           AND b.claimid=d.pzinskey
+                           AND a.stsklaim &lt;&gt; '2'
+                           AND pxcreateoperator IN  ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN','RUTHCLARA') 
+                           AND group_panel IN ('003', '004', '006','009') AND groupbisnisid NOT IN ('09', '11', '16', '25')  
+                           {ASIS:TempLaporan.BranchID}
+                        )
+                 WHERE reinsurer = '1' AND tat_regis &gt; 1
+                ) AS leader_lebihdari_sla,
+            (  SELECT COUNT(noklaim)
+                  FROM (
+                        SELECT 
+                            a.noklaim,
+                            b.receivedate AS tgl_terima_dokumen,
+                            b.TRANSFERPIC_DATE AS tgl_trf_ke_teknik,
+                            datamining.get_working_hours@asmd.sinarmas.co.id(b.registerdate, b.TRANSFERPIC_DATE) / 28800 AS tat_regis,
+                            a.reinsurer 
+                          FROM pooldata.pega_dashboardpnc a,
+                               pooldata.t_claim_pnc b, 
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE a.noklaim = b.claimno
+                           AND b.claimid=d.pzinskey
+                           AND a.stsklaim &lt;&gt; '2'
+                           AND pxcreateoperator IN  ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')  
+                           AND group_panel IN ('003', '004', '006','009') AND groupbisnisid NOT IN ('09', '11', '16', '25')
+                           {ASIS:TempLaporan.BranchID}
+                        )
+                 WHERE reinsurer = '1'
+                ) AS total_klaim_leader,
+            (SELECT COUNT(noklaim)
+                  FROM (
+                        SELECT 
+                            a.noklaim,
+                            b.receivedate AS tgl_terima_dokumen,
+                            b.TRANSFERPIC_DATE AS tgl_trf_ke_teknik,
+                            datamining.get_working_hours@asmd.sinarmas.co.id(b.registerdate, b.TRANSFERPIC_DATE) / 28800 AS tat_regis,
+                            a.reinsurer 
+                          FROM pooldata.pega_dashboardpnc a,
+                               pooldata.t_claim_pnc b, 
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE a.noklaim = b.claimno
+                           AND b.claimid=d.pzinskey
+                           AND a.stsklaim &lt;&gt; '2'
+                           AND pxcreateoperator IN  ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')  
+                           AND group_panel IN ('003', '004', '006','009') AND groupbisnisid NOT IN ('09', '11', '16', '25')
+                           {ASIS:TempLaporan.BranchID}
+                        )
+                 WHERE reinsurer &lt;&gt; '1' AND tat_regis &gt; 1
+                ) AS member_lebihdari_sla,
+            (  SELECT
+                    COUNT(noklaim)
+                  FROM (
+                        SELECT 
+                            a.noklaim,
+                            b.receivedate AS tgl_terima_dokumen,
+                            b.TRANSFERPIC_DATE AS tgl_trf_ke_teknik,
+                            datamining.get_working_hours@asmd.sinarmas.co.id(b.registerdate, b.TRANSFERPIC_DATE) / 28800 AS tat_regis,
+                            a.reinsurer
+                          FROM pooldata.pega_dashboardpnc a,
+                               pooldata.t_claim_pnc b, 
+                               datapega.pc_asm_fw_gcnmfw_work d
+                         WHERE a.noklaim = b.claimno
+                           AND a.stsklaim &lt;&gt; '2'
+                           AND b.claimid=d.pzinskey
+                           AND pxcreateoperator IN  ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
+                           AND group_panel IN ('003', '004', '006','009') AND groupbisnisid NOT IN ('09', '11', '16', '25')
+                           {ASIS:TempLaporan.BranchID}
+                        )
+                 WHERE reinsurer &lt;&gt; '1'
+                ) AS total_klaim_member
+        FROM DUAL)</pyBrowseSQL>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCommitDateTime>20241009T043645.000 GMT</pxCommitDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMIN #20241009T043429.510 GMT</pzInsKey>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyTemplate/>
+<pyCheckInRuleSet/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyCircumstanceDefinition/>
+<pzChecksum>-186722169</pzChecksum>
+<pxOriginalCreateSystemID/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateDateTime/>
+<pyRelativePath/>
+<pyMethodStatus/>
+<pxCreateDateTime>20241009T043429.510 GMT</pxCreateDateTime>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyTemporaryObject/>
+<pySaveSQL/>
+<pySpecialtyComponentData/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pxOriginalCreateOperator/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxSiblingCount/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplateInputBox/>
+<pyMemo>dones</pyMemo>
+<pyInterface/>
+<pxUpdateDateTime>20241009T043645.810 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyUsage/>
+<pyWorkKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPIC #20211230T095003.020 GMT</pzOriginalInstanceKey>
+<pxSaveDateTime>20241009T043645.862 GMT</pxSaveDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateOpName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMIN #20241009T043429.510 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyBaseRule>false</pyBaseRule>
+<pyFormPost/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>GetDataKPIAdmin</pyLabel>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMIN #20241009T043429.510 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMIN #20230804T074013.190 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

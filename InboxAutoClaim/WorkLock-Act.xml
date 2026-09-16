@@ -1,0 +1,2434 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateOpName>Lakshmi BIlla</pxUpdateOpName>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260724T031017.279 GMT</pyShowJavaWindowName>
+<pxUpdateOperator>billl</pxUpdateOperator>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStatus/>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pySpecialtyComponentData/>
+<pyDescription>Start a transaction</pyDescription>
+<pyRuleSetVersion>08-01-01</pyRuleSetVersion>
+<pyCircumstanceType/>
+<pxInsName>WORK-!WORKLOCK</pxInsName>
+<pyWorkKey/>
+<pxMoveOriginalRuleSet>Pega-ProCom</pxMoveOriginalRuleSet>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pxMoveImportDateTime>20160613T113945.691 GMT</pxMoveImportDateTime>
+<pyJavaGenerateTime>20160614T053247.433 GMT</pyJavaGenerateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyCircumstanceDateProp/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleName>WorkLock</pyRuleName>
+<pyClassName>Work-</pyClassName>
+<pyInterface/>
+<pyFormPost/>
+<pxCreateDateTime>20180713T132209.359 GMT</pxCreateDateTime>
+<pySelected>false</pySelected>
+<pxInstanceLockedKey/>
+<pyRuleSearchQuery/>
+<pxOriginalCreateDateTime>20180713T132209.359 GMT</pxOriginalCreateDateTime>
+<pxMoveFromSystem>pega</pxMoveFromSystem>
+<pyRuleEnds/>
+<pyAssociatedImage/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedRuleSetVersion/>
+<pyValueChanged>false</pyValueChanged>
+<pyUsage>This activity sets the following values in the parameter SuccessIndicator:
+0 - no errors
+-1 - work object not found
+-2 - work object open access denied
+-3 - work object's lock held by another
+-4 - work object modify access denied (lock fail)
+-5 - cover object not found
+-6 - cover object open access denied
+-7 - cover object's lock held by another
+-8 - cover object modify access denied (lock fail)
+-9 - lockstring fail
+-10 - miscellaneous database failure
+Parameter FailureInfo contains Rule-Message info about the problem.  For locking issues (-3, -7, and -9 the clipboard page LockInfo will contain further information).</pyUsage>
+<pyLabelOld>ProCom primitive activity to lock a work object</pyLabelOld>
+<pyLabel>ProCom primitive activity to lock a work object</pyLabel>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRelativePath/>
+<pxMoveImportOperName>Lakshmi BIlla</pxMoveImportOperName>
+<pxUpdateSystemID>sdeV722</pxUpdateSystemID>
+<pyDeletedObject/>
+<pyIsFromManageChangeLP/>
+<pxUpdateDateTime>20180713T132209.359 GMT</pxUpdateDateTime>
+<pzChecksum>-1690694228</pzChecksum>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceProp/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyStreamName/>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportOperId>billl</pxMoveImportOperId>
+<pyCircumstanceVal/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzDocumentKey>
+<pyJavaStream/>
+<pyTaskGroup/>
+<pyInputMayStart>false</pyInputMayStart>
+<pyJavaClassName>work__worklock_20180713_132209_359</pyJavaClassName>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyRuleParamsStreamName/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pySPRuleSetName>billl@</pySPRuleSetName>
+<pyCircumstanceDefinition/>
+<pxHostId>1d407e1106c501b92d737506992c6d06</pxHostId>
+<pxInstanceLockedDateTime/>
+<pyMemo>us-129043</pyMemo>
+<pyAuthenticatedOnly>false</pyAuthenticatedOnly>
+<pxOriginalCreateOpName>Lakshmi BIlla</pxOriginalCreateOpName>
+<pyRuleSet>Pega-ProCom</pyRuleSet>
+<pyWindowTitle/>
+<pxCommitDateTime>20191015T081638.000 GMT</pxCommitDateTime>
+<pyReloadForm>true</pyReloadForm>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;workPage DESCRIPTION= "name to use for work page" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;workHandle DESCRIPTION= "handle of work object" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;coverPage DESCRIPTION= "name to use for cover page" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;workOnly DESCRIPTION= "if true doesn&amp;#39;t open &amp;amp; lock cover or string" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;releaseLockManually DESCRIPTION= "true if lock should remain after commit (default is false)" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;DisplayLockInfo DESCRIPTION= "if true, displays lock info screen when necessary" TYPE= "BOOLEAN" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;SuccessIndicator DESCRIPTION= "return value from this activity" TYPE= "INTEGER" REQUIRED= "0" INOUT= "OUT" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;FailureInfo DESCRIPTION= "further info about failures" TYPE= "STRING" REQUIRED= "0" INOUT= "OUT" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxOriginalCreateSystemID>pega</pxOriginalCreateSystemID>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzInsKey>
+<pyBaseRule>false</pyBaseRule>
+<pxSaveDateTime>20180713T132209.359 GMT</pxSaveDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzIndexCount>28</pzIndexCount>
+<pyActivityName>WorkLock</pyActivityName>
+<pxSiblingCount/>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyNamespace/>
+<pyRuleFormStatusTime>20260724T031017.263 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateOperator>billl@pega.com</pxOriginalCreateOperator>
+<pxInsId>!WORKLOCK</pxInsId>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pxOriginalRuleSet>Pega-ProCom</pxOriginalRuleSet>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyRuleStarts/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20160613T181010.299 GMT</pxMoveOriginalKey>
+<pyTemplateInputBox/>
+<pxMoveOriginalRuleSetVersion>07-10-27</pxMoveOriginalRuleSetVersion>
+<pxTabLabel>WorkLock</pxTabLabel>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20160614T052547.702 GMT</pzOriginalInstanceKey>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pxInstanceLockedBy/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pzStatus>false</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage>Local.workPage</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Work-</pyPagesAndClassesClass>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>Param.coverPage</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Work-Cover-</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+<pxSubscript>2</pxSubscript>
+</rowdata>
+</pyPagesAndClasses>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pyRuleName>Page PageExistsWithClass--(String,PublicAPI)</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pxRuleFamilyName>PAGE!PAGEEXISTSWITHCLASS--(STRING,PUBLICAPI)</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>Work-Cover-</pxRuleClassName>
+<pxRuleFamilyName>STEPSTATUSFAIL</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-When</pxRuleObjClass>
+<pyRuleName>StepStatusFail</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>Default GetInstanceHandle--(String,Activity)</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pxRuleFamilyName>DEFAULT!GETINSTANCEHANDLE--(STRING,ACTIVITY)</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMethodStatus>API</pyMethodStatus>
+<pxRuleFamilyName>OBJ-REFRESH-AND-LOCK</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pyRuleName>Obj-Refresh-And-Lock</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxCoverInsKey</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXCOVERINSKEY</pxRuleFamilyName>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Work-</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleFamilyName>WORK-</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pyRuleName>DetermineLockString</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxRuleFamilyName>DETERMINELOCKSTRING</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Utility-Library</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>DEFAULT!GETINSTANCEHANDLEFROMPAGE--(ACTIVITY,PAGE)</pxRuleFamilyName>
+<pyRuleName>Default getInstanceHandleFromPage--(Activity,Page)</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleFamilyName>STEPSTATUSFAIL</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>StepStatusFail</pyRuleName>
+<pxRuleObjClass>Rule-Obj-When</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PXLOCKHANDLE</pxRuleFamilyName>
+<pxRuleClassName>Work-</pxRuleClassName>
+<pyRuleName>pxLockHandle</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pyRuleName>Property-Set</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pyMethodStatus>API</pyMethodStatus>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pyRuleName>Obj-Open-By-Handle</pyRuleName>
+<pxRuleFamilyName>OBJ-OPEN-BY-HANDLE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeName/>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyPrivilegeClass>Work-</pyPrivilegeClass>
+</rowdata>
+</pyActivityPrivilegeList>
+<pxAllChangeList REPEATINGTYPE="PropertyList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	272 lines</pxWarningDetails>
+<pxWarningCreatedTime>20160613T111312.214 GMT</pxWarningCreatedTime>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>Writing application logic using the Java activity method impacts maintainability, discourages reusability, and increases risk during upgrades. Use this method only when necessary. If executing Java code is required, consider using the Call-Function activity method to execute a Function rule. Using Function rules encourages creating well-defined input and output parameters and can be reused across many different types of rules.</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxWarningName>Java step</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreateOperator>billl@pega.com</pxWarningCreateOperator>
+<pxWarningJustifiedOperator/>
+<pxWarningMessage>The use of activity rules should be limited. The need for activities can be reduced by using data transforms, as well as techniques such as case management, the Engine API, and declaratives.</pxWarningMessage>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxIsWarningJustified/>
+<pyWarningJustifiedMessage/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>Activity use</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20160613T111312.215 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>08-01-01 (Final)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+<pyActivityRole/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyActivityRolesList>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyParametersParamName>flowType</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+</rowdata>
+</pySystemParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsBlockName/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>0</pyStepsPreCondition>
+<pyOnException/>
+<pyStepsObjectName/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyTemplateInputBox/>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyPropRef/>
+<pyStepsDescription>set defaults &amp; check for temp</pyStepsDescription>
+<pxSubscript>1</pxSubscript>
+<pyStepsJavaSource>// default SuccessIndicator to 0
+tools.putParamValue("SuccessIndicator", "0");
+ClipboardPage primaryPage = tools.getPrimaryPage();
+
+// if workPage parameter blank, use primary page name
+if (pega_rules_default.IsParamBlank(tools, "workPage"))		
+{
+	if (primaryPage != null)
+	{
+		if (primaryPage.getName().equals(""))
+		{
+			// The primary page must have a name, and we prefer pyWorkPage
+			if (tools.findPage("pyWorkPage") == null)
+				primaryPage.rename("pyWorkPage");
+			else
+			{
+				// We won't overwrite pyWorkPage, so we must abort
+				tools.putParamValue("SuccessIndicator", "-10");
+				tools.putParamValue("FailureInfo", "The page being locked has no name, and 'pyWorkPage' is already in use.");
+				nextBlock = "***";	
+				return true;											
+			}
+		}
+		workPage = primaryPage.getName();
+	}
+	else
+	{
+		// We must open onto a named page, and we prefer pyWorkPage
+		if (tools.findPage("pyWorkPage") != null)
+		{
+			// We won't overwrite pyWorkPage, so we must abort
+			tools.putParamValue("SuccessIndicator", "-10");
+			tools.putParamValue("FailureInfo", "No page name was passed into WorkLock, and 'pyWorkPage' is already in use.");
+			nextBlock = "***";	
+			return true;											
+		}
+		workPage = "pyWorkPage";
+	}
+}
+else
+	workPage = tools.getParamValue("workPage");
+
+// if workHandle parameter blank, use primary page handle
+if (pega_rules_default.IsParamBlank(tools, "workHandle"))
+{
+	if (primaryPage != null)
+	{
+		if (primaryPage.getProperty(".pyTemporaryObject").toBoolean())
+		{
+			// The work object is temporary; it doesn't get locked
+			nextBlock = "T";
+			return true;
+		}
+		else
+		{
+			String workHandle = primaryPage.getString(".pzInsKey");
+			if (workHandle == null || workHandle.equals(""))
+			{
+				// If pzInsKey hasn't been computed yet, it is a new page and cannot be locked.
+				tools.putParamValue("SuccessIndicator", "-10");
+				tools.putParamValue("FailureInfo", "A new page cannot be locked; it must be saved first.");
+				nextBlock = "***";					
+				return true;	
+			}
+			else
+				tools.putParamValue("workHandle", workHandle);
+		}
+	}
+	else
+	{
+		// No primary page and no handle specified; we are sunk!!!
+		tools.putParamValue("SuccessIndicator", "-10");
+		tools.putParamValue("FailureInfo", "No work object information was passed in to WorkLock");
+		nextBlock = "***";
+		return true;
+	}
+}
+
+// if coverPage parameter blank, use pyWorkCover
+if (pega_rules_default.IsParamBlank(tools, "coverPage") 
+   &amp;&amp; tools.getParamAsBoolean(PropertyInfo.TYPE_TRUEFALSE, "workOnly") == false)
+{
+	String strCoverPage = "pyWorkCover";
+	ClipboardPage pyWorkCover = tools.findPage("pyWorkCover");
+	if (pyWorkCover == null &amp;&amp; !workPage.equals("pyWorkPage"))
+	{
+		// Let's double-check that the cover isn't, in fact, currently residing in pyWorkPage
+		// if the user supplied a different page name
+		ClipboardPage pyWorkPage = tools.findPage("pyWorkPage");
+		if (pyWorkPage != null &amp;&amp; pega_rules_utilities.isOrInheritsFrom(tools, pyWorkPage, "Work-Cover-"))
+		{
+			String workHandle = tools.getParamValue("workHandle");
+			ClipboardProperty coveredKeys = pyWorkPage.getProperty(".pxCoveredInsKeys");
+			if (pega_rules_utilities.IsInPropertyList(workHandle, coveredKeys))
+			{
+				// Yes, this is the cover we want.  We can use pyWorkPage because the primary work
+				// object is on a different page
+				strCoverPage = "pyWorkPage";
+			}
+		}
+	}
+	tools.putParamValue("coverPage", strCoverPage);
+}
+</pyStepsJavaSource>
+<pzStepExpanded/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>0</PropertiesValue>
+<PropertiesName/>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>5</pyStepsTransParamsWhenFalse>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhen>@PageExistsWithClass(Local.workPage, tools)</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhen>@GetInstanceHandle(Local.workPage, tools) == Param.workHandle</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms>WR</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript>2</pxSubscript>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyOnException>Err</pyOnException>
+<pxStepDefaultDescription>Obj-Open-By-Handle</pxStepDefaultDescription>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Obj-Open-By-Handle</pyStepsActivityName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepActivityDescription/>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsDescription>lock for release on commit</pyStepsDescription>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsActivityNameUC>OBJ-OPEN-BY-HANDLE</pyStepsActivityNameUC>
+<pyPropRef/>
+<pyStepsBlockName/>
+<pzStepExpanded/>
+<pyStepsJavaSource/>
+<pxSubscript>2</pxSubscript>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<InstanceHandle>Param.workHandle</InstanceHandle>
+<LockInfoPage>LockInfo</LockInfoPage>
+<Lock>-1</Lock>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<ReleaseOnCommit>-1</ReleaseOnCommit>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalsePrms>DLS</pyStepsTransParamsWhenFalsePrms>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTruePrms>Err</pyStepsTransParamsWhenTruePrms>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyForEachProperty/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pyForEachClass/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>Param.releaseLockManually==true</pyStepsPreCondParamsWhen>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsActivityNameUC>OBJ-OPEN-BY-HANDLE</pyStepsActivityNameUC>
+<pyPropRef/>
+<pyStepsBlockName/>
+<pyStepsActivityName>Obj-Open-By-Handle</pyStepsActivityName>
+<pyTemplateInputBox/>
+<pxSubscript>3</pxSubscript>
+<pxStepDefaultDescription>Obj-Open-By-Handle</pxStepDefaultDescription>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepPageReference>RH_1.pySteps(3)</pyStepPageReference>
+<pyStepsJavaSource/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsTransition>true</pyStepsTransition>
+<pyExpanded>true</pyExpanded>
+<pyStepsPreCondition>0</pyStepsPreCondition>
+<pyOnException>Err</pyOnException>
+<pyStepsDescription>lock and hold</pyStepsDescription>
+<pyStepActivityDescription/>
+<pzStepExpanded/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsCallParams>
+<ReleaseOnCommit/>
+<LockInfoPage>LockInfo</LockInfoPage>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<Lock>-1</Lock>
+<InstanceHandle>Param.workHandle</InstanceHandle>
+</pyStepsCallParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms>Err</pyStepsTransParamsWhenTruePrms>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenFalsePrms>DLS</pyStepsTransParamsWhenFalsePrms>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTrue/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(4)</pyStepPageReference>
+<pyPropRef/>
+<pyStepsDescription>lock for release on commit</pyStepsDescription>
+<pyStepsActivityNameUC>OBJ-REFRESH-AND-LOCK</pyStepsActivityNameUC>
+<pyStepsActivityName>Obj-Refresh-And-Lock</pyStepsActivityName>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pxSubscript>4</pxSubscript>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsBlockName>WR</pyStepsBlockName>
+<pxStepDefaultDescription>Obj-Refresh-And-Lock</pxStepDefaultDescription>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepActivityDescription/>
+<pyStepsJavaSource/>
+<pyTemplateInputBox/>
+<pyExpanded>true</pyExpanded>
+<pyOnException/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pzStepExpanded/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms>DLS</pyStepsTransParamsWhenFalsePrms>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms>Err</pyStepsTransParamsWhenTruePrms>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhen>Param.releaseLockManually==true</pyStepsPreCondParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<ReleaseOnCommit>-1</ReleaseOnCommit>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<LockInfoPage>LockInfo</LockInfoPage>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pyStepsDescription>lock and hold</pyStepsDescription>
+<pyStepsJavaSource/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyTemplateInputBox/>
+<pxStepDefaultDescription>Obj-Refresh-And-Lock</pxStepDefaultDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityName>Obj-Refresh-And-Lock</pyStepsActivityName>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepsBlockName/>
+<pyStepPageReference>RH_1.pySteps(5)</pyStepPageReference>
+<pyStepsActivityNameUC>OBJ-REFRESH-AND-LOCK</pyStepsActivityNameUC>
+<pxSubscript>5</pxSubscript>
+<pyOnException/>
+<pyStepsPreCondition/>
+<pyStepsTransition>true</pyStepsTransition>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzStepExpanded/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyPropRef/>
+<pyStepsRepeatDef>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStop/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachProperty/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms>DLS</pyStepsTransParamsWhenFalsePrms>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTruePrms>Err</pyStepsTransParamsWhenTruePrms>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<LockInfoPage>LockInfo</LockInfoPage>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<ReleaseOnCommit/>
+</pyStepsCallParams>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyStepsTransition>true</pyStepsTransition>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyPropRef/>
+<pyStepsDescription>handle errors with work object</pyStepsDescription>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pxSubscript>6</pxSubscript>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxInsName/>
+<pyTemplateInputBox/>
+<pyOnException/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsJavaSource>String strWorstMessage = tools.getActivityStatus().getWorstMessage();
+String workKey = tools.getParamValue("workHandle");
+
+// We need to distinguish between an open failure and a lock failure.
+String msgName = tools.getActivityStatus().getWorstMessageName();
+if (msgName.equals("Database-Instance-NotFound"))
+{
+	// Unable to open the work object
+	tools.putParamValue("SuccessIndicator", "-1");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-WorkOpenFail\t" + workKey + "\t" + strWorstMessage));
+}
+else if (msgName.equals("Database-Authorization-NoOpenAccess"))
+{
+	// Security violation in opening this work object
+	tools.putParamValue("SuccessIndicator", "-2");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-WorkOpenFail\t" + workKey + "\t" + strWorstMessage));
+}
+else if (msgName.equals("Database-LockFailure-LockHeldByAnother"))
+{
+	// Unable to lock the work object
+	tools.putParamValue("SuccessIndicator", "-3");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-WorkLockFail\t" + workKey + "\t" + strWorstMessage));			
+	
+	boolean bDisplayLockInfo = tools.getParamAsBoolean(PropertyInfo.TYPE_TRUEFALSE, "DisplayLockInfo");
+	if (bDisplayLockInfo == true)
+	{
+		pega_rules_utilities.callActivity(myStepPage, "DisplayLockInfo", tools.getParameterPage());
+	}
+}
+else if (msgName.equals("Database-Authorization-NoModifyAccess"))
+{	
+  String strMessage = tools.getStepPage().getMessagesAll();
+	// Security violation to lock due to no modify access
+	tools.putParamValue("SuccessIndicator", "-4");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-WorkLockFail\t" + workKey + "\t" + strWorstMessage) + "\t" + strMessage);			
+}
+else
+{
+	tools.putParamValue("SuccessIndicator", "-10");
+	tools.putParamValue("FailureInfo", strWorstMessage);
+}</pyStepsJavaSource>
+<pyStepActivityDescription/>
+<pyStepsBlockName>Err</pyStepsBlockName>
+<pyStepsPreCondition/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(6)</pyStepPageReference>
+<pzStepExpanded/>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhen>true</pyStepsTransParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>6</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pyStepsPreCondParamsWhen/>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyPropRef/>
+<pyStepActivityDescription/>
+<pyStepsActivityName>Call DetermineLockString</pyStepsActivityName>
+<pyStepsTransition>0</pyStepsTransition>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	DetermineLockString</pxStepDefaultDescription>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName>DLS</pyStepsBlockName>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepPageReference>RH_1.pySteps(7)</pyStepPageReference>
+<pyStepsActivityNameUC>CALL DETERMINELOCKSTRING</pyStepsActivityNameUC>
+<pyTemplateInputBox/>
+<pxSubscript>7</pxSubscript>
+<pyStepsJavaSource/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzStepExpanded/>
+<pyStepsDescription>get the lock string</pyStepsDescription>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyOnException/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyExpanded>true</pyExpanded>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse/>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue/>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTrue>6</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhen>Param.workOnly==true</pyStepsPreCondParamsWhen>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyStepPageReference>RH_1.pySteps(8)</pyStepPageReference>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pxSubscript>8</pxSubscript>
+<pyPropRef/>
+<pyStepActivityDescription/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyOnException/>
+<pyExpanded>true</pyExpanded>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsBlockName/>
+<pyTemplateInputBox/>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pyStepsDescription>get the cover handle</pyStepsDescription>
+<pzStepExpanded/>
+<pyStepsPreCondition/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>.pxCoverInsKey</PropertiesValue>
+<pxSubscript>1</pxSubscript>
+<PropertiesName>Local.coverHandle</PropertiesName>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefLimit/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTruePrms>OC</pyStepsTransParamsWhenTruePrms>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen>.pxLockHandle==""</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStepsTransParamsWhen>.pxLockHandle == @getInstanceHandleFromPage(tools, myStepPage)</pyStepsTransParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxSubscript>2</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms>OC</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsTransParamsWhen>.pxLockHandle==.pxCoverInsKey</pyStepsTransParamsWhen>
+<pxSubscript>3</pxSubscript>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms>Str</pyStepsTransParamsWhenFalsePrms>
+<pyStepsTransParamsWhenFalse>1</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen>@PageExistsWithClass(Param.coverPage, tools)</pyStepsTransParamsWhen>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>5</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTruePrms/>
+<pxSubscript>4</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhen>@GetInstanceHandle(Param.coverPage, tools) == .pxCoverInsKey</pyStepsTransParamsWhen>
+<pxSubscript>5</pxSubscript>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenTruePrms>CR</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pyPropRef/>
+<pyStepPageReference>RH_1.pySteps(9)</pyStepPageReference>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxSubscript>9</pxSubscript>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzStepExpanded/>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Obj-Open-By-Handle</pyStepsActivityName>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepActivityDescription/>
+<pyStepsTransition>true</pyStepsTransition>
+<pyOnException>CErr</pyOnException>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pyStepsActivityNameUC>OBJ-OPEN-BY-HANDLE</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pyExpanded>true</pyExpanded>
+<pxStepDefaultDescription>Obj-Open-By-Handle</pxStepDefaultDescription>
+<pyStepsBlockName/>
+<pyStepsDescription>lock the cover with release</pyStepsDescription>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTruePrms>CErr</pyStepsTransParamsWhenTruePrms>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<InstanceHandle>Local.coverHandle</InstanceHandle>
+<LockInfoPage>LockInfo</LockInfoPage>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<ReleaseOnCommit>-1</ReleaseOnCommit>
+<Lock>-1</Lock>
+</pyStepsCallParams>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefHasRepeat/>
+<pyForEachProperty/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhen>Param.releaseLockManually==true</pyStepsPreCondParamsWhen>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyStepsActivityName>Obj-Open-By-Handle</pyStepsActivityName>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepPageReference>RH_1.pySteps(10)</pyStepPageReference>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxStepDefaultDescription>Obj-Open-By-Handle</pxStepDefaultDescription>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pyPropRef/>
+<pyStepsBlockName/>
+<pxSubscript>10</pxSubscript>
+<pyStepsJavaSource/>
+<pyStepsDescription>lock the cover and hold</pyStepsDescription>
+<pyStepsActivityNameUC>OBJ-OPEN-BY-HANDLE</pyStepsActivityNameUC>
+<pyStepsPreCondition/>
+<pyOnException>CErr</pyOnException>
+<pzStepExpanded/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachProperty/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<InstanceHandle>Local.coverHandle</InstanceHandle>
+<Lock>-1</Lock>
+<LockInfoPage>LockInfo</LockInfoPage>
+<ReleaseOnCommit/>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTruePrms>CErr</pyStepsTransParamsWhenTruePrms>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyParamArray>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyStepsActivityName>Obj-Refresh-And-Lock</pyStepsActivityName>
+<pyTemplateInputBox/>
+<pyStepsBlockName>CR</pyStepsBlockName>
+<pyStepActivityDescription/>
+<pyPropRef/>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pyExpanded>true</pyExpanded>
+<pyStepsActivityNameUC>OBJ-REFRESH-AND-LOCK</pyStepsActivityNameUC>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsTransition>true</pyStepsTransition>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsJavaSource/>
+<pyStepsDescription>lock the cover with release</pyStepsDescription>
+<pxStepDefaultDescription>Obj-Refresh-And-Lock</pxStepDefaultDescription>
+<pxSubscript>11</pxSubscript>
+<pyStepPageReference>RH_1.pySteps(11)</pyStepPageReference>
+<pyOnException/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pzStepExpanded/>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsRepeatDef>
+<pyForEachProperty/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefStop/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>3</pyStepsPreCondParamsWhenTrue>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsPreCondParamsWhen>Param.releaseLockManually==true</pyStepsPreCondParamsWhen>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTruePrms>CErr</pyStepsTransParamsWhenTruePrms>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<ReleaseOnCommit>-1</ReleaseOnCommit>
+<LockInfoPage>LockInfo</LockInfoPage>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxStepDefaultDescription>Obj-Refresh-And-Lock</pxStepDefaultDescription>
+<pyStepsDescription>lock the cover and hold</pyStepsDescription>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsJavaSource/>
+<pyStepsActivityNameUC>OBJ-REFRESH-AND-LOCK</pyStepsActivityNameUC>
+<pyStepPageReference>RH_1.pySteps(12)</pyStepPageReference>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsActivityName>Obj-Refresh-And-Lock</pyStepsActivityName>
+<pyTemplateInputBox/>
+<pyStepsPreCondition/>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyOnException/>
+<pzStepExpanded/>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pxSubscript>12</pxSubscript>
+<pyStepsBlockName/>
+<pyExpanded>true</pyExpanded>
+<pyPropRef/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepActivityDescription/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenTruePrms>CErr</pyStepsTransParamsWhenTruePrms>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsRepeatDef>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachClass/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsCallParams>
+<ReleaseOnCommit/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<LockInfoPage>LockInfo</LockInfoPage>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenTrue/>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhen/>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyPropRef/>
+<pyExpanded>true</pyExpanded>
+<pyStepsDescription>handle errors with cover object</pyStepsDescription>
+<pxSubscript>13</pxSubscript>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsPreCondition/>
+<pyOnException/>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pzStepExpanded/>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepPageReference>RH_1.pySteps(13)</pyStepPageReference>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsBlockName>CErr</pyStepsBlockName>
+<pyTemplateInputBox/>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsJavaSource>// First remove any locks we've already taken out
+ClipboardPage pgWork = tools.findPage(workPage);
+pega_rules_utilities.callActivity(pgWork, "WorkUnlock", tools.getParameterPage());
+
+String strWorstMessage = tools.getActivityStatus().getWorstMessage();
+String workKey = tools.getParamValue("workHandle");
+
+// We need to distinguish between an open failure and a lock failure.
+String msgName = tools.getActivityStatus().getWorstMessageName();
+if (msgName.equals("Database-Instance-NotFound"))
+{
+	// Unable to open the cover object
+	tools.putParamValue("SuccessIndicator", "-5");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverOpenFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));
+}
+else if (msgName.equals("Database-Authorization-NoOpenAccess"))
+{
+	// Security violation to open the cover
+	tools.putParamValue("SuccessIndicator", "-6");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverOpenFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));			
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));
+}
+else if (msgName.equals("Database-LockFailure-LockHeldByAnother"))
+{
+	// Unable to lock the cover object
+	tools.putParamValue("SuccessIndicator", "-7");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverLockFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));						
+	boolean bDisplayLockInfo = tools.getParamAsBoolean(PropertyInfo.TYPE_TRUEFALSE, "DisplayLockInfo");
+	if (bDisplayLockInfo == true)
+	{
+		// When we show a work object in the LockInfo harness, we must first move
+		// it to the work page
+		pgWork.replace(myStepPage);
+		myStepPage.removeFromClipboard();
+		pega_rules_utilities.callActivity(pgWork, "DisplayLockInfo", tools.getParameterPage());
+	}
+}
+else if (msgName.equals("Database-Authorization-NoModifyAccess"))
+{
+	// Security violation to lock due to no modify access
+	tools.putParamValue("SuccessIndicator", "-8");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverLockFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));						
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));
+}
+else
+{
+	tools.putParamValue("SuccessIndicator", "-10");
+	tools.putParamValue("FailureInfo", strWorstMessage);
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));			
+}
+</pyStepsJavaSource>
+<pyStepActivityDescription/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder/>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen>true</pyStepsTransParamsWhen>
+<pyStepsTransParamsWhenTrue>6</pyStepsTransParamsWhenTrue>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pyStepsPreCondParamsWhen/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefLimit/>
+<pyForEachProperty/>
+<pyStepsRepeatDefStart/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsCallParams>
+<pyTempPlaceHolder/>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsBlockName>Str</pyStepsBlockName>
+<pyTemplateInputBox/>
+<pyOnException/>
+<pyStepsJavaSource>// Lock the work object's pxLockHandle
+boolean bReleaseOnCommit = !tools.getParamAsBoolean(PropertyInfo.TYPE_TRUEFALSE, "releaseLockManually");
+String strLockHandle = myStepPage.getString(".pxLockHandle");
+if (strLockHandle.length() &gt; 0) 
+{			
+	try 
+	{ 
+		ClipboardPage pgLockInfo = tools.createPage("System-Locks", "");
+		if (!tools.getDatabase().getLockManager().lock(strLockHandle, bReleaseOnCommit, pgLockInfo))
+		{
+			// Failed to lock, -9 is the indicator that the lock string was something else
+			pgLockInfo.rename("LockInfo");
+			tools.putParamValue("SuccessIndicator", "-9");	
+			tools.putParamValue("FailureInfo", tools.getRuleMessage("Database-LockFailure-LockHeldByAnother\t" + strLockHandle + "\t" + pgLockInfo.getString("pxCreateOperator")));					
+			tools.getStepStatus().add(ProcessingStatus.SEVERITY_FAIL, "Locked", "could not lock " + strLockHandle);
+
+			// remove locks already taken
+			pega_rules_utilities.callActivity(myStepPage, "WorkUnlock", tools.getParameterPage());
+
+			boolean bDisplayLockInfo = tools.getParamAsBoolean(PropertyInfo.TYPE_TRUEFALSE, "DisplayLockInfo");
+			if (bDisplayLockInfo == true)
+			{			
+				pega_rules_utilities.callActivity(myStepPage, "DisplayLockInfo", tools.getParameterPage());
+			}
+			nextBlock = "***";
+		}
+	} catch (DatabaseException e) {
+		tools.putParamValue("SuccessIndicator", "-10");
+		tools.putParamValue("FailureInfo", "Failure while trying to lock " + strLockHandle + " was: " + e.getMessage());
+		nextBlock = "***";									
+	}
+}
+</pyStepsJavaSource>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyStepPageReference>RH_1.pySteps(14)</pyStepPageReference>
+<pxSubscript>14</pxSubscript>
+<pyExpanded>true</pyExpanded>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepActivityDescription/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsPreCondition/>
+<pyStepsTransition>0</pyStepsTransition>
+<pyPropRef/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyStepsDescription>lock the string</pyStepsDescription>
+<pzStepExpanded/>
+<pyStepsCallParams>
+<pyTempPlaceHolder/>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefIteration/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhen/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxSubscript>1</pxSubscript>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder/>
+<pxSubscript>1</pxSubscript>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenFalse/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxSubscript>1</pxSubscript>
+<pyStepsTransParamsWhenTrue/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyStepPageReference>RH_1.pySteps(15)</pyStepPageReference>
+<pyStepsJavaSource/>
+<pyStepsClassName>Work-Cover-</pyStepsClassName>
+<pxStepDefaultDescription>Obj-Open-By-Handle</pxStepDefaultDescription>
+<pyStepsPreCondition>true</pyStepsPreCondition>
+<pyStepsBlockName>OC</pyStepsBlockName>
+<pxSubscript>15</pxSubscript>
+<pyStepsActivityName>Obj-Open-By-Handle</pyStepsActivityName>
+<pyStepsActivityNameUC>OBJ-OPEN-BY-HANDLE</pyStepsActivityNameUC>
+<pyTemplateInputBox/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyOnException>CErr2</pyOnException>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsDescription>open cover without lock</pyStepsDescription>
+<pyStepsObjectName>Param.coverPage</pyStepsObjectName>
+<pyPropRef/>
+<pzStepExpanded/>
+<pyStepActivityDescription/>
+<pyExpanded>true</pyExpanded>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsRepeatDef>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefStop/>
+<pyForEachProperty/>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen>StepStatusFail</pyStepsTransParamsWhen>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>1</pyStepsTransParamsWhenTrue>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTruePrms>CErr2</pyStepsTransParamsWhenTruePrms>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenFalse>6</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<ReleaseOnCommit/>
+<Lock/>
+<InstanceHandle>Local.coverHandle</InstanceHandle>
+<LockInfoPage/>
+</pyStepsCallParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalse>6</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxSubscript>1</pxSubscript>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen>Local.coverHandle != ""</pyStepsPreCondParamsWhen>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pyExpanded>true</pyExpanded>
+<pxSubscript>16</pxSubscript>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsObjectName>Local.workPage</pyStepsObjectName>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsParentClass>Work-</pyStepsParentClass>
+<pyStepsDescription>handle cover open fail</pyStepsDescription>
+<pyPropRef/>
+<pyStepsBlockName>CErr2</pyStepsBlockName>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsPreCondition/>
+<pzStepExpanded/>
+<pyStepsTransition>true</pyStepsTransition>
+<pyStepsJavaSource>// Since we didn't try to lock the cover, we must have failed to open it
+
+// First remove any locks we've already taken out
+ClipboardPage pgWork = tools.findPage(workPage);
+pega_rules_utilities.callActivity(pgWork, "WorkUnlock", tools.getParameterPage());
+
+String strWorstMessage = tools.getActivityStatus().getWorstMessage();
+String workKey = tools.getParamValue("workHandle");
+
+// We need to distinguish between an open failure and a lock failure.
+String msgName = tools.getActivityStatus().getWorstMessageName();
+if (msgName.equals("Database-Instance-NotFound"))
+{
+	// Unable to open the cover object
+	tools.putParamValue("SuccessIndicator", "-5");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverOpenFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));
+}
+else if (msgName.equals("Database-Authorization-NoOpenAccess"))
+{
+	// Security violation to open the cover
+	tools.putParamValue("SuccessIndicator", "-6");
+	tools.putParamValue("FailureInfo", tools.getRuleMessage("WorkLock-CoverOpenFail\t" + coverHandle + "\t" + workKey + "\t" + strWorstMessage));			
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));
+}
+else
+{
+	tools.putParamValue("SuccessIndicator", "-10");
+	tools.putParamValue("FailureInfo", strWorstMessage);		
+
+	// We are going to add a message to the workpage about it
+	pgWork.getProperty(".pxCoverInsKey").addMessage(tools.getParamValue("FailureInfo"));			
+}</pyStepsJavaSource>
+<pyStepPageReference>RH_1.pySteps(16)</pyStepPageReference>
+<pyOnException/>
+<pyStepActivityDescription/>
+<pyTemplateInputBox/>
+<pyStepsClassName>Work-</pyStepsClassName>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxSubscript>1</pxSubscript>
+<pyTempPlaceHolder/>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pxCreateDateTime>20160613T110250.934 GMT</pxCreateDateTime>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStart/>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachProperty/>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyForEachClass/>
+<pxCreateOperator>billl@pega.com</pxCreateOperator>
+<pxCreateOpName>Lakshmi BIlla</pxCreateOpName>
+<pxCreateDateTime>20160613T110250.936 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateSystemID>sdeV721</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenTrue>6</pyStepsTransParamsWhenTrue>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateDateTime>20260724T031017.253 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxSubscript>1</pxSubscript>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsTransParamsWhen>true</pyStepsTransParamsWhen>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPageAliases>
+<pyTempPlaceHolder/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder/>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20260724T031017.251 GMT</pxCreateDateTime>
+<pxSubscript>1</pxSubscript>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>JONNYWONG8@YAHOO.COM</pxCreateOperator>
+<pxCreateOpName>JONNY WONG</pxCreateOpName>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+</pySteps>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>true</pyShowJava>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pySaveAs>true</pySaveAs>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+<pyRun>true</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyPreview>true</pyPreview>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>08-01-01 (Final)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+<pxMessageSummary>
+<pxUnjustifiedHSWarningCount>2</pxUnjustifiedHSWarningCount>
+<pxHighSeverityWarningCount>2</pxHighSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+</pxMessageSummary>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDesc>name to use for work page</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamName>workPage</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc>handle of work object</pyParametersParamDesc>
+<pyParametersParamName>workHandle</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+<pxSubscript>2</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxSubscript>3</pxSubscript>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamName>coverPage</pyParametersParamName>
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc>name to use for cover page</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc>if true doesn't open &amp; lock cover or string</pyParametersParamDesc>
+<pyParametersParamName>workOnly</pyParametersParamName>
+<pxSubscript>4</pxSubscript>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxSubscript>5</pxSubscript>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>releaseLockManually</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>true if lock should remain after commit (default is false)</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDefaultValue/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxSubscript>6</pxSubscript>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc>if true, displays lock info screen when necessary</pyParametersParamDesc>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamName>DisplayLockInfo</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamType>INTEGER</pyParametersParamType>
+<pxSubscript>7</pxSubscript>
+<pyParametersParamDesc>return value from this activity</pyParametersParamDesc>
+<pyParametersParamIntelliValidateAs/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamName>SuccessIndicator</pyParametersParamName>
+<pyParametersParamIntelliBaseClass/>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyParametersParamDesc>further info about failures</pyParametersParamDesc>
+<pyParametersParamName>FailureInfo</pyParametersParamName>
+<pyParametersParamInOut>OUT</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+<pxSubscript>8</pxSubscript>
+<pyParametersParamIntelliRule/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliBaseClass/>
+</rowdata>
+</pyParameters>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreatedTime>20160613T111312.214 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(Rule-Obj-Activity)pxJavaStep	272 lines</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator/>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(Rule-Obj-Activity)pxJavaStep	272 lines</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Java step</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyWarningJustifiedMessage/>
+<pxWarningCreateOperator>billl@pega.com</pxWarningCreateOperator>
+<pxWarningJustifiedTime/>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningName>Activity use</pxWarningName>
+<pxWarningDetails>(Rule-Obj-Activity)pxActivityUse</pxWarningDetails>
+<pxWarningMessage>(Rule-Obj-Activity)pxActivityUse</pxWarningMessage>
+<pxIsWarningJustified/>
+<pxWarningJustifiedOperator/>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY WORK- WORKLOCK #20180713T132209.359 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20160613T111312.215 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>handle of cover</pyParametersParamDesc>
+<pxSubscript>1</pxSubscript>
+<pyParametersParamName>coverHandle</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamName>workPage</pyParametersParamName>
+<pxSubscript>2</pxSubscript>
+<pyParametersParamDesc>work page name</pyParametersParamDesc>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyLocalParameters>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+</pagedata>

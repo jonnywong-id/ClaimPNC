@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyCircumstanceDate/>
+<pzChecksum>-1985938123</pzChecksum>
+<pyHandlerFlow/>
+<pyFormPost/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplate/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeleteSQL/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyUsage/>
+<pyLabelOld>GetDataKPIAdminPA_khusus PA</pyLabelOld>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceProp/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyDeletedObject/>
+<pxInstanceLockedDateTime/>
+<pyTemplateInputBox/>
+<pxCommitDateTime>20250122T034133.000 GMT</pxCommitDateTime>
+<pySpecialtyComponentData/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxSiblingCount/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceVal/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyMemo>dones</pyMemo>
+<pyStreamName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateDateTime>20250122T034133.435 GMT</pxUpdateDateTime>
+<pxOriginalCreateOperator/>
+<pyRequestType>GetDataKPIAdminPA_khususPA</pyRequestType>
+<pyDescription/>
+<pxOriginalCreateDateTime/>
+<pyIsFromManageChangeLP/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxSaveDateTime>20250122T034133.507 GMT</pxSaveDateTime>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyLabel>GetDataKPIAdminPA_khusus PA</pyLabel>
+<pyTemporaryObject/>
+<pyJavaStream/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pyMethodStatus/>
+<pyCircumstanceDefinition/>
+<pyRuleStarts/>
+<pyCircumstanceTemplate/>
+<pyRuleEnds/>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pyRelativePath/>
+<pxHostId>jboss10372</pxHostId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA_KHUSUSPA #20250122T013507.484 GMT</pzDocumentKey>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdminPA_khususPA</pyRuleName>
+<pyShowJavaWindowName>GeneratedJava20260901T073213.829 GMT</pyShowJavaWindowName>
+<pyCheckInRuleSet/>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyInterface/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySaveSQL/>
+<pzIsPrivateCheckOut/>
+<pyOpenSQL/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMergeSynchronized>20240426T114006.360 GMT</pxMergeSynchronized>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA #20231110T123812.377 GMT</pzOriginalInstanceKey>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataKPIAdminPA_khususPA</pxTabLabel>
+<pxMoveFromSystem/>
+<pyCircumstanceDateProp/>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateDateTime>20250122T013507.484 GMT</pxCreateDateTime>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxInstanceLockedBy/>
+<pxOriginalCreateSystemID/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMINPA_KHUSUSPA</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatusTime>20260901T073213.812 GMT</pyRuleFormStatusTime>
+<pyStatus/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pyBrowseSQL>select * from (SELECT B.CLAIMNO AS "AnaylstRemarks",
+'KLAIM PA' as "Country",
+'Regist Klaim PA' as "CountryID",
+B.NOPOLIS as "AreaClaimId",
+(select TO_CHAR(g.STARTDATE, 'dd/mm/yyyy') from POOLDATA.T_GENERAL g where g.nopolis=B.NOPOLIS and G.PRODKE=B.PRODKE) as "BusinessID",
+(select TO_CHAR(G.ENDDATE, 'dd/mm/yyyy') from POOLDATA.T_GENERAL g where g.nopolis=b.NOPOLIS and G.PRODKE=B.PRODKE) as "BusinessName",
+       d.pxcreateoperator as "UserAdmin",
+       TO_CHAR (B.RECEIVEDATE, 'dd/mm/yyyy') AS "City",
+       TO_CHAR (b.registerdate, 'dd/mm/yyyy') AS "CityID",
+       case when C.RECEIVEDATELOD is not null then TO_CHAR (C.RECEIVEDATELOD, 'dd/mm/yyyy')
+       else TO_CHAR (C.TGLAKSEPTASI, 'dd/mm/yyyy') end AS "BranchID",
+       TO_CHAR (C.TGLAKSEPTASI, 'dd/mm/yyyy') AS "BranchName",
+         datamining.get_working_hours@asmd.sinarmas.co.id (b.RECEIVEDATE,
+                                                           b.registerdate)
+       / 28800
+          AS "NIK",
+         datamining.get_working_hours@asmd.sinarmas.co.id (case when C.RECEIVEDATELOD is not null then c.RECEIVEDATELOD else c.TGLAKSEPTASI end,
+                                                           c.TGLAKSEPTASI)
+       / 28800
+          AS "ClientID", 
+         case when datamining.get_working_hours@asmd.sinarmas.co.id (b.RECEIVEDATE,
+                                                           b.registerdate)
+       / 28800&gt;1 then 'TIDAK SLA' else 'SLA' end as "NPWP",
+       case when datamining.get_working_hours@asmd.sinarmas.co.id (case when C.RECEIVEDATELOD is not null then c.RECEIVEDATELOD else c.TGLAKSEPTASI end,
+                                                           c.TGLAKSEPTASI)
+       / 28800&gt;1 then 'TIDAK SLA' else 'SLA' end as "ClientName",
+       Case when d.pystatuswork='Resolved-Rejected' then 'Rejected' when D.PYSTATUSWORK='Resolved-Completed' then 'Close' else 'Outstanding' end as "STS_NOTELP",
+rownum as "RN"
+  FROM pooldata.t_claim_pnc b,
+       POOLDATA.T_CLAIM_ADJUSTMENT c,
+       datapega.pc_asm_fw_gcnmfw_work d
+ WHERE     B.CLAIMID = C.CLAIMID
+       AND b.claimid = d.pzinskey
+       AND pxcreateoperator IN
+              ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
+       AND B.GROUPPANEL IN ('002')
+{ASIS:TempLaporan.Remark}
+) {ASIS:TempLaporan.NoteKasir}</pyBrowseSQL>
+<pyRuleParamsStreamName/>
+<pyWindowTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportDateTime>20231027T122925.315 GMT</pxMoveImportDateTime>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAKPIADMINPA_KHUSUSPA</pxInsName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA_KHUSUSPA #20250122T013507.484 GMT</pzInsKey>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+<pyV2/>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>false</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRun>false</pyRun>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySaveAs>true</pySaveAs>
+<pyPreview>false</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pyDelete>true</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA_KHUSUSPA #20250122T013507.484 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAKPIADMINPA_KHUSUSPA #20240426T091456.310 GMT</pzInsKey>
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

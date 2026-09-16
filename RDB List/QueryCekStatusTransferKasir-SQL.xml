@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCommitDateTime>20260115T083108.000 GMT</pxCommitDateTime>
+<pyCircumstanceTemplate/>
+<pyCircumstanceProp/>
+<pyRuleStarts/>
+<pyCircumstanceDefinition/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyMemo>rownum hilangin petik</pyMemo>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE GCNM QueryCekStatusTransferKasir</pyRuleName>
+<pyStatus/>
+<pyOpenSQL/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pyStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!QUERYLOGSERVICECLAIM #20190624T062157.627 GMT</pzOriginalInstanceKey>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRuleParamsStreamName/>
+<pyCircumstanceType/>
+<pyRelativePath/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE!GCNM!QUERYCEKSTATUSTRANSFERKASIR</pxInsId>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceDateProp/>
+<pxHostId>jboss10372</pxHostId>
+<pyWindowTitle/>
+<pyRuleFormStatusTime>20260820T042633.231 GMT</pyRuleFormStatusTime>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!QUERYCEKSTATUSTRANSFERKASIR #20260113T103912.998 GMT</pzDocumentKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyMethodStatus/>
+<pxInstanceLockedRuleSet/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyUsage/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyTemplateInputBox/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE!GCNM!QUERYCEKSTATUSTRANSFERKASIR</pxInsName>
+<pxCreateDateTime>20260113T103912.998 GMT</pxCreateDateTime>
+<pyShowJavaWindowName>GeneratedJava20260820T042633.248 GMT</pyShowJavaWindowName>
+<pyHistoryObject>false</pyHistoryObject>
+<pyBaseRule>false</pyBaseRule>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportDateTime>20191231T063512.609 GMT</pxMoveImportDateTime>
+<pyWorkKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!QUERYCEKSTATUSTRANSFERKASIR #20260113T103912.998 GMT</pzInsKey>
+<pyInterface/>
+<pyIsFromManageChangeLP/>
+<pySaveSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateOpName/>
+<pyBrowseSQL>SELECT JSON_VALUE(a.JSONOUT, '$.ResponseMessage') AS "ResponseMsg", JSON_VALUE(a.JSONOUT, '$.ResponseCode') AS "ResponseCode"
+FROM POOLDATA.CLAIM_SERVICE_LOG a where SERVICEref={TempPNC2.BUSINESS_CODE} and rownum=1  order by insertdate desc</pyBrowseSQL>
+<pxUpdateDateTime>20260115T083107.955 GMT</pxUpdateDateTime>
+<pyCircumstanceVal/>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pxInstanceLockedBy/>
+<pzChecksum>-145826613</pzChecksum>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE</pyClassName>
+<pyRequestType>QueryCekStatusTransferKasir</pyRequestType>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pyLabelOld>QueryCekStatusTransferKasir</pyLabelOld>
+<pySpecialtyComponentData/>
+<pyLabel>QueryCekStatusTransferKasir</pyLabel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE GCNM QueryCekStatusTransferKasir</pxTabLabel>
+<pyTemplate/>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pzIsPrivateCheckOut/>
+<pyCircumstanceDate/>
+<pxOriginalCreateOperator/>
+<pyRuleEnds/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxSaveDateTime>20260115T083108.019 GMT</pxSaveDateTime>
+<pyFormPost/>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyJavaStream/>
+<pyDocumentTitle/>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeletedObject/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDescription/>
+<pxOriginalCreateSystemID/>
+<pyHandlerFlow/>
+<pxOriginalCreateDateTime/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pyDelete>true</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!QUERYCEKSTATUSTRANSFERKASIR #20260113T103912.998 GMT</pzInsKey>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

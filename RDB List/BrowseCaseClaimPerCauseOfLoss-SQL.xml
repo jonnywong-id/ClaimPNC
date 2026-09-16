@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceTemplate/>
+<pxMoveImportDateTime>20200813T090536.089 GMT</pxMoveImportDateTime>
+<pyRuleEnds/>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pzRuleSetVersionPatch>84</pzRuleSetVersionPatch>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySaveSQL/>
+<pyLabel>BrowseCaseClaimPerCauseOfLoss</pyLabel>
+<pyJavaStream/>
+<pyRequestType>BrowseCaseClaimPerCauseOfLoss</pyRequestType>
+<pxHostId>jboss2145</pxHostId>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedDateTime/>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOpName>Intan Henny</pxCreateOpName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM BrowseCaseClaimPerCauseOfLoss</pxTabLabel>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pyRuleSetVersion>01-01-84</pyRuleSetVersion>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROWSECASECLAIMPERCAUSEOFLOSS #20200422T100333.507 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyWindowTitle/>
+<pxUpdateDateTime>20200508T063535.343 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedBy/>
+<pyRuleFormStatusTime>20260831T092926.849 GMT</pyRuleFormStatusTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM BrowseCaseClaimPerCauseOfLoss</pyRuleName>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyTempText/>
+<pyRuleStarts/>
+<pyUsage/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxOriginalCreateOpName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyMemo>nilai reject dari nilai os</pyMemo>
+<pyFormPost/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyCircumstanceDefinition/>
+<pyDeleteMemo>case per causeofloss, case nilai blm semua</pyDeleteMemo>
+<pyCircumstanceVal/>
+<pyBaseRule>false</pyBaseRule>
+<pyLabelOld>BrowseCaseClaimPerCauseOfLoss</pyLabelOld>
+<pyCircumstanceProp/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOpName>Intan Henny</pxUpdateOpName>
+<pxCommitDateTime>20200813T090536.000 GMT</pxCommitDateTime>
+<pyShowJavaWindowName>GeneratedJava20260831T092926.868 GMT</pyShowJavaWindowName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyBrowseSQL>select lgb_note AS "SOBNAME", COL_DESC AS "REGISTERID",
+SUM(
+        CASE
+        WHEN (stsklaim is not null ) 
+        THEN 1
+        ELSE 0
+        END
+       )
+       AS "OLDPOLICYNO",
+    SUM (
+        CASE 
+        WHEN (stsklaim = '3') 
+        THEN 1
+        ELSE 0
+        END
+        )
+       AS "PRODKE",
+    SUM (
+        CASE
+        WHEN (stsklaim = '1')
+        THEN 1
+        ELSE 0
+        END
+    ) AS "GROUPPANEL",
+        SUM (
+        CASE
+        WHEN (stsklaim not in ('1','2','3'))
+        THEN 1
+        ELSE 0
+        END
+    ) AS "MARKETINGNAME",
+    SUM (
+        CASE
+        WHEN (stsklaim = '3')
+        THEN (ttlos)
+        ELSE 0
+        END)
+       AS "FLAGEDMBATAL",
+    SUM (
+        CASE
+        WHEN (stsklaim = '1')
+        THEN (TTLAKSEP)
+        ELSE 0
+        END)
+       AS "BRANCHNAME",
+    SUM (
+        CASE
+        WHEN (stsklaim not in ('1','2','3'))
+        THEN (TTLOS) 
+        ELSE 0
+        END)
+       AS "EDMNO",
+    SUM (
+        CASE
+        WHEN (stsklaim = '1')
+        THEN ((TTLAKSEP+TTLOS)+(TTLOS-TTLAKSEP))
+        WHEN (stsklaim not in ('1','2','3'))
+        THEN (TTLAKSEP+TTLOS)
+        ELSE 0 
+        END)
+       AS "FOLLOWEDPOLICY"                          
+from POOLDATA.PEGA_DASHBOARDPNC
+where lgb_note={TempData.CaseID}
+{ASIS:TempData.ClaimNo}
+{ASIS:TempPeriode.AnaylstRemarks}
+and COL_DESC IS NOT NULL
+GROUP BY COL_DESC, lgb_note
+ORDER BY lgb_note ASC</pyBrowseSQL>
+<pxOriginalCreateDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!BROWSECASECLAIMPERCAUSEOFLOSS #20200424T120901.172 GMT</pzDocumentKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDeleteSQL/>
+<pyTemplate/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyCircumstanceType/>
+<pyDescription/>
+<pyCircumstanceDate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzChecksum>-445907912</pzChecksum>
+<pyRelativePath/>
+<pyHandlerFlow/>
+<pyValueChanged>false</pyValueChanged>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!BROWSECASECLAIMPERCAUSEOFLOSS</pxInsName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!BROWSECASECLAIMPERCAUSEOFLOSS #20200424T120901.172 GMT</pzInsKey>
+<pxSaveDateTime>20200508T063535.370 GMT</pxSaveDateTime>
+<pyMethodStatus/>
+<pxCreateDateTime>20200424T120901.172 GMT</pxCreateDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!BROWSECASECLAIMPERCAUSEOFLOSS</pxInsId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateOperator/>
+<pyDeletedObject/>
+<pyStatus/>
+<pySpecialtyComponentData/>
+<pyOpenSQL/>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyPreview>false</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyLaunch>true</pyLaunch>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!BROWSECASECLAIMPERCAUSEOFLOSS #20200424T120901.172 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-84 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

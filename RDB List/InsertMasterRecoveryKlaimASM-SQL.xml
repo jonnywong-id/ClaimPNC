@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeletedObject/>
+<pyOpenSQL/>
+<pxHostId>jboss1036</pxHostId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCheckInRuleSet/>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDefinition/>
+<pySpecialtyComponentData/>
+<pxMoveImportDateTime>20241223T123621.179 GMT</pxMoveImportDateTime>
+<pyCircumstanceType/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTMASTERRECOVERYKLAIMASM #20250506T082418.267 GMT</pzDocumentKey>
+<pyStatus/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxMergeSynchronized>20241216T035220.723 GMT</pxMergeSynchronized>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pyBrowseSQL>DECLARE 
+  TIDMASTER NUMBER;
+  TNAMAPRINCIPAL VARCHAR2(32767);
+  TTAHUN VARCHAR2(32767);
+  TNILAIKLAIM NUMBER;
+  TNILAIRECOVERY NUMBER;
+  TPEMBAYARAN NUMBER;
+  TSISA NUMBER;
+  TKETERANGAN VARCHAR2(32767);
+  TPOSISI VARCHAR2(32767);
+  TDOKUMENID VARCHAR2(32767);
+  TNOVA VARCHAR2(32767);
+  TUSERNAME VARCHAR2(32767);
+  TCLIENTID VARCHAR2(32767);
+  TNOHPLL VARCHAR2(32767);
+  TNOPOLIS VARCHAR2(32767);
+  TLBUID VARCHAR2(32767);
+  TLDCID VARCHAR2(32767);
+  TLAGAGENID VARCHAR2(32767);
+  TLMOID VARCHAR2(32767);
+
+BEGIN 
+  TIDMASTER := {TempRecovery.TOTAL};
+  TNAMAPRINCIPAL := {TempRecovery.NamaPrincipal};
+  TTAHUN := {TempRecovery.TreatyYear};
+  TNILAIKLAIM := {TempRecovery.ClaimAmountAdjust};
+  TNILAIRECOVERY := {TempRecovery.NilaiDeductible};
+  TPEMBAYARAN := {TempRecovery.TotalListClaimAmountIDR};
+  TSISA := {TempRecovery.TPLAmount};
+  TKETERANGAN := {TempRecovery.Remark};
+  TPOSISI := {TempRecovery.NoKTPMasking};
+  TDOKUMENID :={TempRecovery.CoverageID};
+  TNOVA := {TempRecovery.VirtualAccountNumber};
+  TUSERNAME := {TempRecovery.UserTeknis};
+  TCLIENTID := {TempRecovery.ClientID};
+ TNOHPLL := {TempRecovery.Idlogservice};
+TNOPOLIS := {TempRecovery.PolicyNo};
+TLBUID := {TempRecovery.BusinessID};
+  TLDCID := {TempRecovery.BranchID};
+  TLAGAGENID := {TempRecovery.AgentID};
+ TLMOID := {TempRecovery.MarketingID};
+
+  POOLDATA.INSERTMASTERRECOVERYKLAIM ( TIDMASTER, TNAMAPRINCIPAL, TTAHUN, TNILAIKLAIM, TNILAIRECOVERY, TPEMBAYARAN, TSISA, TKETERANGAN, TPOSISI, TDOKUMENID,TNOVA, TUSERNAME, TCLIENTID, {TempRecovery.RCV_ID},TNOHPLL ,TNOPOLIS ,TLBUID ,TLDCID,TLAGAGENID ,TLMOID , {TempRecovery.Notes OUT});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTMASTERRECOVERYKLAIMASM #20250506T082418.267 GMT</pzInsKey>
+<pxCommitDateTime>20250506T090744.000 GMT</pxCommitDateTime>
+<pyInterface/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRelativePath/>
+<pxCreateDateTime>20250506T082418.267 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyDocumentTitle/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedBy/>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pyTemplateInputBox/>
+<pyMemo>Tambah parameter lbuid, ldcid, lagagenid dan lmoid</pyMemo>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHandlerFlow/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyWindowTitle/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTMASTERRECOVERYKLAIMASM</pxInsId>
+<pyStreamName/>
+<pyCircumstanceTemplate/>
+<pyDeleteSQL/>
+<pxOriginalCreateOperator/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyShowJavaWindowName>GeneratedJava20260822T063349.403 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertMasterRecoveryKlaimASM</pyRuleName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDate/>
+<pxSiblingCount/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyUsage/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSaveDateTime>20250506T090744.170 GMT</pxSaveDateTime>
+<pyCircumstanceDateProp/>
+<pySaveSQL/>
+<pxInstanceLockedKey/>
+<pyDescription/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyFormPost/>
+<pzIsPrivateCheckOut/>
+<pyIsFromManageChangeLP/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertMasterRecoveryKlaimASM</pxTabLabel>
+<pyTemporaryObject/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalCreateOpName/>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyWorkKey/>
+<pxInstanceLockedDateTime/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTHISTORYKOMUNIKASISALVAGE #20240930T095041.568 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalCreateDateTime/>
+<pyRuleStarts/>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabelOld>InsertMasterRecoveryKlaimASM</pyLabelOld>
+<pyRuleFormStatusTime>20260822T063349.376 GMT</pyRuleFormStatusTime>
+<pyCircumstanceVal/>
+<pyJavaStream/>
+<pyRuleParamsStreamName/>
+<pzChecksum>-228022715</pzChecksum>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyCircumstanceProp/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTMASTERRECOVERYKLAIMASM</pxInsName>
+<pyLabel>InsertMasterRecoveryKlaimASM</pyLabel>
+<pxOriginalCreateSystemID/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedRuleSet/>
+<pyRequestType>InsertMasterRecoveryKlaimASM</pyRequestType>
+<pyMethodStatus/>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pxUpdateDateTime>20250506T090744.073 GMT</pxUpdateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyDelete>true</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyNew>true</pyNew>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBranchOut>false</pyBranchOut>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyVersionSecure>false</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyCompareVersion/>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleResolution>true</pyRuleResolution>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTMASTERRECOVERYKLAIMASM #20250506T082418.267 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTMASTERRECOVERYKLAIMASM #20241023T042551.893 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDateProp/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTMASTERGRUPSPAREPARTMANAGER #20240627T040652.628 GMT</pzOriginalInstanceKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM CountPaymentKlaimAkseptasiManager</pyRuleName>
+<pyTemplate/>
+<pyRuleFormStatusTime>20260831T081532.617 GMT</pyRuleFormStatusTime>
+<pyRuleStarts/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRequestType>CountPaymentKlaimAkseptasiManager</pyRequestType>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pyDeleteSQL/>
+<pySaveSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyOpenSQL/>
+<pyRelativePath/>
+<pyWorkKey/>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pyIsFromManageChangeLP/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyLabelOld>CountPaymentKlaimAkseptasiManager</pyLabelOld>
+<pxMoveImportDateTime>20240715T114352.461 GMT</pxMoveImportDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleParamsStreamName/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTPAYMENTKLAIMAKSEPTASIMANAGER</pxInsId>
+<pyHandlerFlow/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM CountPaymentKlaimAkseptasiManager</pxTabLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyJavaStream/>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyDeletedObject/>
+<pyInterface/>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionPatch>06</pzRuleSetVersionPatch>
+<pxHostId>jboss10362</pxHostId>
+<pxInstanceLockedBy/>
+<pyShowJavaWindowName>GeneratedJava20260831T081532.647 GMT</pyShowJavaWindowName>
+<pyCircumstanceDate/>
+<pyValueChanged>false</pyValueChanged>
+<pxCommitDateTime>20240715T114353.000 GMT</pxCommitDateTime>
+<pyMemo>done</pyMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTPAYMENTKLAIMAKSEPTASIMANAGER #20240627T063047.861 GMT</pzInsKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplateInputBox/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyCircumstanceVal/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyUsage/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pxOriginalCreateSystemID/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveFromSystem/>
+<pxCreateDateTime>20240627T063047.861 GMT</pxCreateDateTime>
+<pyCircumstanceType/>
+<pxSiblingCount/>
+<pxSaveDateTime>20240701T084858.508 GMT</pxSaveDateTime>
+<pzChecksum>2029210422</pzChecksum>
+<pyRuleSetVersion>01-03-06</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTPAYMENTKLAIMAKSEPTASIMANAGER #20240627T063047.861 GMT</pzDocumentKey>
+<pyFormPost/>
+<pyWindowTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDocumentTitle/>
+<pxOriginalCreateDateTime/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxUpdateDateTime>20240701T084858.488 GMT</pxUpdateDateTime>
+<pxInstanceLockedRuleSet/>
+<pyLabel>CountPaymentKlaimAkseptasiManager</pyLabel>
+<pyBrowseSQL>SELECT COUNT(CLAIMID) AS "City" FROM POOLDATA.T_CLAIM_AKSEPTASI_CHECKER WHERE STSAPP NOT IN ('1','2') OR STSAPP IS NULL  {ASIS:tempQuery.OPERATOR_ID}</pyBrowseSQL>
+<pyCircumstanceTemplate/>
+<pyRuleEnds/>
+<pyCircumstanceProp/>
+<pyMethodStatus/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyStatus/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!COUNTPAYMENTKLAIMAKSEPTASIMANAGER</pxInsName>
+<pyDescription/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!COUNTPAYMENTKLAIMAKSEPTASIMANAGER #20240627T063047.861 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

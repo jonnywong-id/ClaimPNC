@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeletedObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleStarts/>
+<pxCreateDateTime>20221223T085204.678 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyStreamName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxUpdateDateTime>20230111T024327.179 GMT</pxUpdateDateTime>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxSaveDateTime>20230111T024327.187 GMT</pxSaveDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyMethodStatus/>
+<pxSiblingCount/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSetVersion>01-02-02</pyRuleSetVersion>
+<pxHostId>jboss10362</pxHostId>
+<pyValueChanged>false</pyValueChanged>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!GETSHARETKA #20221223T085204.678 GMT</pzInsKey>
+<pyDeleteMemo>add coins id</pyDeleteMemo>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyWorkKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWindowTitle/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportDateTime>20230112T100629.254 GMT</pxMoveImportDateTime>
+<pyCircumstanceProp/>
+<pyLabel>Get Share TKA</pyLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRuleSetVersionPatch>02</pzRuleSetVersionPatch>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStatus/>
+<pyHandlerFlow/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!GETPAYMENTDATA #20221219T025723.220 GMT</pzOriginalInstanceKey>
+<pyMemo>done</pyMemo>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBrowseSQL>SELECT SHARE_CLAIM AS "CURRENCY", KONSORSIUM_MEMBER AS "CUSTOMER",
+(select id from pooldata.agent@prod_asm.sinarmas.co.id where oldid=a.lsd_id and rownum='1') as "BRANCH" FROM ANEKA.MST_SHARE_PU@PROD_TKA.SINARMAS.CO.ID a
+{ASIS:TempTKA.LSC_ID}</pyBrowseSQL>
+<pxInsId>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!GETSHARETKA</pxInsId>
+<pyRequestType>GetShareTKA</pyRequestType>
+<pyRelativePath/>
+<pxInstanceLockedBy/>
+<pzChecksum>348079877</pzChecksum>
+<pyInterface/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pySaveSQL/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!GETSHARETKA</pxInsName>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyIsFromManageChangeLP/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDefinition/>
+<pyDeleteSQL/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA</pyClassName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedKey/>
+<pyDocumentTitle/>
+<pxInstanceLockedDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!GETSHARETKA #20221223T085204.678 GMT</pzDocumentKey>
+<pxMoveFromSystem/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyCircumstanceDateProp/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceType/>
+<pyRuleEnds/>
+<pyCircumstanceDate/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyOpenSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM GetShareTKA</pxTabLabel>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM GetShareTKA</pyRuleName>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyJavaStream/>
+<pyUsage/>
+<pyRuleFormStatusTime>20260721T042231.779 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceTemplate/>
+<pyLabelOld>Get Share TKA</pyLabelOld>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyShowJavaWindowName>GeneratedJava20260721T042231.799 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pxCommitDateTime>20230112T100629.000 GMT</pxCommitDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!GETSHARETKA #20221223T085204.678 GMT</pzInsKey>
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPreview>false</pyPreview>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -1,0 +1,206 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDeletedObject/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTOPENPORTECTIONCASESMI</pxInsId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20210222T062953.009 GMT</pzDocumentKey>
+<pyWindowTitle/>
+<pxOriginalCreateSystemID/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateDateTime/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRequestType>InsertOpenPortectionCaseSMI</pyRequestType>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceProp/>
+<pxOriginalCreateOperator/>
+<pyFormPost/>
+<pyHandlerFlow/>
+<pyMethodStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>01-01-59</pyRuleSetVersion>
+<pyRelativePath/>
+<pxMoveFromSystem/>
+<pySpecialtyComponentData/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTOPENPORTECTIONCASESMI</pxInsName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDeleteSQL/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyDocumentTitle/>
+<pxHostId>jboss2165</pxHostId>
+<pyStreamName/>
+<pyRuleEnds/>
+<pyLabelOld>InsertOpenPortectionCaseSMI</pyLabelOld>
+<pxCreateDateTime>20210222T062953.009 GMT</pxCreateDateTime>
+<pxOriginalCreateOpName/>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDefinition/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pxSiblingCount/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDate/>
+<pxCommitDateTime>20210424T080922.000 GMT</pxCommitDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyWorkKey/>
+<pzChecksum>1740161762</pzChecksum>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pyBaseRule>false</pyBaseRule>
+<pyShowJavaWindowName>GeneratedJava20260718T091420.275 GMT</pyShowJavaWindowName>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionPatch>59</pzRuleSetVersionPatch>
+<pyCheckInRuleSet/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pxInstanceLockedBy/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplateInputBox/>
+<pyInterface/>
+<pyCircumstanceVal/>
+<pyTemporaryObject/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedDateTime/>
+<pyDescription/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMergeSynchronized>20200324T094034.912 GMT</pxMergeSynchronized>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyMemo>DONE</pyMemo>
+<pxUpdateDateTime>20210222T063210.804 GMT</pxUpdateDateTime>
+<pyIsFromManageChangeLP/>
+<pyLabel>InsertOpenPortectionCaseSMI</pyLabel>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20210222T062953.009 GMT</pzInsKey>
+<pyRuleParamsStreamName/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxSaveDateTime>20210222T063210.832 GMT</pxSaveDateTime>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertOpenPortectionCaseSMI</pxTabLabel>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertOpenPortectionCaseSMI</pyRuleName>
+<pxMoveImportDateTime>20210424T080922.443 GMT</pxMoveImportDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatusTime>20260718T091420.247 GMT</pyRuleFormStatusTime>
+<pyBrowseSQL/>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20200116T081636.586 GMT</pzOriginalInstanceKey>
+<pyUsage/>
+<pyRuleStarts/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedCreateDateTime/>
+<pyJavaStream/>
+<pySaveSQL>INSERT INTO general.mst_buka_proteksi@smi.sinarmas.co.id (MBP_ID,
+                                                          MBP_NO_POLIS,
+                                                          MBP_NO_REF,
+                                                          PROTEKSI_ID,
+                                                          LUS_ID,
+                                                          MBP_TGL_INPUT,
+                                                          MBP_ALASAN,
+                                                          MBP_PERSETUJUAN,
+                                                          KETERANGAN)
+  VALUES({ TempInsertOPC.BRANCH_CODE}, 
+         {TempInsertOPC.POLICY_NO},
+         (SELECT NO_SPKfrom v_klaim@smi.sinarmas.co.id where no_klaim={TempInsertOPC.BRANCH_NAME} and no_polis={TempInsertOPC.POLICY_NO} fetch next 1 rows only), 
+         {TempInsertOPC.BUSINESS_NAME}, 
+         '00000', 
+         sysdate, 
+         {TempInsertOPC.CUSTOMER}, 
+         {TempInsertOPC.MARKETING}, 
+         {TempInsertOPC.CUSTOMER})</pySaveSQL>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyDelete>false</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-59 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20210222T062953.009 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20200131T024451.393 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOPENPORTECTIONCASESMI #20200116T081636.586 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-52 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

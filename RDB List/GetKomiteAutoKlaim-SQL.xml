@@ -1,0 +1,172 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyShowJavaWindowName>GeneratedJava20260826T022751.135 GMT</pyShowJavaWindowName>
+<pxMoveImportDateTime>20210917T122823.616 GMT</pxMoveImportDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETKOMITEAUTOKLAIM</pxInsId>
+<pxSiblingCount/>
+<pyCircumstanceVal/>
+<pyFormPost/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDeleteSQL/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxHostId>jboss2166</pxHostId>
+<pxMoveFromSystem/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCommitDateTime>20210917T122823.000 GMT</pxCommitDateTime>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pzRuleSetVersionPatch>94</pzRuleSetVersionPatch>
+<pyHandlerFlow/>
+<pyDescription/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDateProp/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleParamsStreamName/>
+<pxUpdateDateTime>20210907T104200.444 GMT</pxUpdateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatusTime>20260826T022751.110 GMT</pyRuleFormStatusTime>
+<pyCircumstanceType/>
+<pyUsage/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetKomiteAutoKlaim</pxTabLabel>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzChecksum>52564605</pzChecksum>
+<pxOriginalCreateSystemID/>
+<pyRuleSetVersion>01-01-94</pyRuleSetVersion>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceProp/>
+<pyLabel>Get Komite Auto Klaim</pyLabel>
+<pyIsFromManageChangeLP/>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pyInterface/>
+<pyCircumstanceDefinition/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyWorkKey/>
+<pySaveSQL/>
+<pyJavaStream/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETKOMITEAUTOKLAIM #20210907T095614.883 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyBrowseSQL>select operator_id as "UserAdmin" from emailkomite where type_business='BONDING'
+and sts_aktif='1'</pyBrowseSQL>
+<pyHistoryObject>false</pyHistoryObject>
+<pySpecialtyComponentData/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETKOMITEAUTOKLAIM #20210907T095614.883 GMT</pzDocumentKey>
+<pxInstanceLockedKey/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyMethodStatus/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyStreamName/>
+<pyRequestType>GetKomiteAutoKlaim</pyRequestType>
+<pyTemplate/>
+<pyCircumstanceDate/>
+<pyLabelOld>Get Komite Auto Klaim</pyLabelOld>
+<pxInstanceLockedBy/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETEMAILKOMITEAUTOKLAIM #20210907T095340.815 GMT</pzOriginalInstanceKey>
+<pyRuleStarts/>
+<pyMemo>done</pyMemo>
+<pyDocumentTitle/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetKomiteAutoKlaim</pyRuleName>
+<pyWindowTitle/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETKOMITEAUTOKLAIM</pxInsName>
+<pyStepPageReference>RH_2</pyStepPageReference>
+<pyStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedCreateDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyOpenSQL/>
+<pxOriginalCreateOperator/>
+<pyRuleEnds/>
+<pxCreateDateTime>20210907T095614.883 GMT</pxCreateDateTime>
+<pxSaveDateTime>20210907T104200.456 GMT</pxSaveDateTime>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETKOMITEAUTOKLAIM #20210907T095614.883 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

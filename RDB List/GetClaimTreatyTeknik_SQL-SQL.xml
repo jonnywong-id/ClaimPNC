@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleName>Assign-WorkBasket GCNM GetClaimTreatyTeknik_SQL</pyRuleName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzChecksum>1310261903</pzChecksum>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateDateTime>20220318T070228.481 GMT</pxUpdateDateTime>
+<pyRuleFormStatusTime>20260831T033130.822 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionPatch>97</pzRuleSetVersionPatch>
+<pyClassName>Assign-WorkBasket</pyClassName>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceDate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyHandlerFlow/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveFromSystem/>
+<pyJavaStream/>
+<pxTabLabel>Assign-WorkBasket GCNM GetClaimTreatyTeknik_SQL</pxTabLabel>
+<pyDocumentTitle/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyMethodStatus/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInsName>ASSIGN-WORKBASKET!GCNM!GETCLAIMTREATYTEKNIK_SQL</pxInsName>
+<pyStatus/>
+<pyDescription/>
+<pyRuleSetVersion>01-01-97</pyRuleSetVersion>
+<pyLabel>GetClaimTreatyTeknik_SQL</pyLabel>
+<pyRuleStarts/>
+<pyCircumstanceTemplate/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET GCNM!GETCLAIMTREATYTEKNIK_SQL #20220221T090503.311 GMT</pzInsKey>
+<pxSaveDateTime>20220318T070228.489 GMT</pxSaveDateTime>
+<pxHostId>jboss1036</pxHostId>
+<pyBrowseSQL>select a.PXREFOBJECTKEY AS CARI1,
+       a.PXREFOBJECTINSNAME AS CARI2,
+       a.PXASSIGNEDOPERATORID AS CARI3,
+       a.PZINSKEY AS CARI4,
+       B.NOPOLIS AS CARI5,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.QuotationData.BusinessName') AS CARI6,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.QuotationData.SobName') AS CARI7,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.QuotationData.CedingCoName') AS CARI8,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.InsuredName') AS CARI9,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.DateOfLoss') AS CARI13,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.IsSubjectivity') AS CARI14,
+       JSON_VALUE (B.DATA_JSONBLOB, '$.IDMaster') AS CARI15
+from DATAPEGA.pc_assign_workbasket a left join
+     pooldata.json_klaim b on  a.PXREFOBJECTKEY=b.IDPEGA
+where PXASSIGNEDOPERATORID='TreatyinPNCTeknik'
+and a.PXREFOBJECTKEY LIKE '%CLMP%'</pyBrowseSQL>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET GCNM!GETCLAIMTREATYTEKNIK_SQL #20220221T090503.311 GMT</pzOriginalInstanceKey>
+<pyDeleteSQL/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyShowJavaWindowName>GeneratedJava20260831T033130.843 GMT</pyShowJavaWindowName>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pyInterface/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedKey/>
+<pxMoveImportDateTime>20220610T100604.895 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRequestType>GetClaimTreatyTeknik_SQL</pyRequestType>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceProp/>
+<pyUsage/>
+<pxInstanceLockedRuleSet/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedCreateDateTime/>
+<pyWorkKey/>
+<pyBaseRule>false</pyBaseRule>
+<pzDocumentKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET GCNM!GETCLAIMTREATYTEKNIK_SQL #20220221T090503.311 GMT</pzDocumentKey>
+<pyMemo>done</pyMemo>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRelativePath/>
+<pyCircumstanceDateProp/>
+<pyRuleParamsStreamName/>
+<pyHistoryObject/>
+<pyWindowTitle/>
+<pyLabelOld>GetClaimTreatyTeknik_SQL</pyLabelOld>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleEnds/>
+<pySaveSQL/>
+<pyOpenSQL/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInstanceLockedBy/>
+<pyStreamName/>
+<pyCircumstanceType/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCommitDateTime>20220610T100605.000 GMT</pxCommitDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInsId>ASSIGN-WORKBASKET!GCNM!GETCLAIMTREATYTEKNIK_SQL</pxInsId>
+<pyTemplate/>
+<pySpecialtyComponentData/>
+<pxCreateDateTime>20220221T090503.311 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckOut>true</pyCheckOut>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASSIGN-WORKBASKET GCNM!GETCLAIMTREATYTEKNIK_SQL #20220221T090503.311 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

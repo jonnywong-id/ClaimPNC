@@ -1,0 +1,215 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveImportDateTime>20241223T123625.065 GMT</pxMoveImportDateTime>
+<pyStreamName/>
+<pyCircumstanceType/>
+<pxInstanceLockedDateTime/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-KOMITE GCNM!GETKOMITEPADITERIMA #20241024T033707.860 GMT</pzInsKey>
+<pxTabLabel>ASM-FW-GCNMFW-Work-Komite GCNM GetKomitePAditerima</pxTabLabel>
+<pyOpenSQL/>
+<pyCircumstanceVal/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyLabelOld>GetKomitePAditerima</pyLabelOld>
+<pxCommitDateTime>20241223T123625.000 GMT</pxCommitDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalCreateDateTime/>
+<pxUpdateDateTime>20241024T033742.185 GMT</pxUpdateDateTime>
+<pxOriginalCreateSystemID/>
+<pyRuleName>ASM-FW-GCNMFW-Work-Komite GCNM GetKomitePAditerima</pyRuleName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxOriginalCreateOperator/>
+<pyShowJavaWindowName>GeneratedJava20260828T093004.089 GMT</pyShowJavaWindowName>
+<pxMoveFromSystem/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyRuleStarts/>
+<pyTemplateInputBox/>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyTemporaryObject/>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSet/>
+<pyDescription/>
+<pxHostId>jboss10372</pxHostId>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxInstanceLockedCreateDateTime/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleParamsStreamName/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedBy/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GCNMFW-WORK-KOMITE!GCNM!GETKOMITEPADITERIMA</pxInsName>
+<pyStatus/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyCheckInRuleSet/>
+<pyMemo>tambah query tampil dari table komite</pyMemo>
+<pyInterface/>
+<pyIsFromManageChangeLP/>
+<pxSaveDateTime>20241024T033742.199 GMT</pxSaveDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySpecialtyComponentData/>
+<pyCircumstanceDate/>
+<pyDeletedObject/>
+<pyHandlerFlow/>
+<pyDeleteSQL/>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateDateTime>20241024T033707.860 GMT</pxCreateDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyFormPost/>
+<pyCircumstanceDefinition/>
+<pyUsage/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETKOMITEPADITERIMA #20240530T103719.941 GMT</pzOriginalInstanceKey>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRelativePath/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyCircumstanceProp/>
+<pxSiblingCount/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyWorkKey/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxInsId>ASM-FW-GCNMFW-WORK-KOMITE!GCNM!GETKOMITEPADITERIMA</pxInsId>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pyRequestType>GetKomitePAditerima</pyRequestType>
+<pxOriginalCreateOpName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDateProp/>
+<pxMergeSynchronized>20240627T143259.361 GMT</pxMergeSynchronized>
+<pySaveSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-KOMITE GCNM!GETKOMITEPADITERIMA #20241024T033707.860 GMT</pzDocumentKey>
+<pyCircumstanceTemplate/>
+<pyMethodStatus/>
+<pyClassName>ASM-FW-GCNMFW-Work-Komite</pyClassName>
+<pyJavaStream/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleEnds/>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pyLabel>GetKomitePAditerima</pyLabel>
+<pyRuleFormStatusTime>20260828T093004.063 GMT</pyRuleFormStatusTime>
+<pyDeleteMemo>get data Komite Login</pyDeleteMemo>
+<pyBrowseSQL>select * from (SELECT 
+    a.pyId AS "pyID",
+    SUBSTR(PNCCASEID, INSTR(PNCCASEID, ' ') + 1) AS "ClaimID",
+      a.pzInsKey as "pzInsKey",
+    	  A.PNCCASEID AS "CoverInsKey",
+    	  a.POLICYNO AS "NoPolis",
+    	   a.PXCREATEDATETIME as "CreateDateTime",
+    r.OBJECTNAME AS "NamaTertanggung",
+   case when b.STATUSAPPROVE='1' then 'DITERIMA' else 'DITOLAK' end as "KomiteJawab",
+    b.NOTEKOMITE AS "NoteKomite",
+    r.TGLAI as "TanggalAI",
+     b.tanggalkomite as "TglKomite",
+    r.NOTETERIMA AS "NoteAITerima",
+    r.NOTETOLAK AS "NoteAITolak",
+    r.RESULTAI AS "JawabanAI",
+r.COVERAGE_AI_FINAL AS "COVERAGE_AI_FINAL" ,
+r.KATEGORI_KRONOLOGI AS "KATEGORI_KRONOLOGI",
+rownum as "RN"
+FROM 
+    DATAPEGA.PC_ASM_FW_GCNMFW_WORK a,
+    POOLDATA.T_CLAIM_DATA_RESULTS_AI  r,
+ POOLDATA.T_CLAIM_KOMITE_LIST b
+WHERE 
+    a.pyId = r.KOMITE and 
+    a.pxobjclass='ASM-FW-GCNMFW-Work-Komite' 
+   and r.KOMITE=b.KOMITE_ID
+    AND a.STATUSCASE_1={TempKomiteInput.AlasanKlaim}
+    AND a.grouppanel_1={TempKomiteInput.BranchName}  
+    AND a.PYRESOLVEDUSERID IN (SELECT OPERATOR_ID FROM POOLDATA.EMAILKOMITE WHERE TYPE_BUSINESS={TempKomiteInput.AreaClaimId}  AND limit_bottom&gt;={TempKomiteInput.ClaimAmountAdjust})
+and
+ PYID in (select x.KOMITE from POOLDATA.T_CLAIM_DATA_RESULTS_AI x )
+{Asis:LaporanDataAIKlaim.NoteAITerima}
+)
+{Asis: TempLaporan.NoteKasir}</pyBrowseSQL>
+<pzChecksum>-838774473</pzChecksum>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-KOMITE GCNM!GETKOMITEPADITERIMA #20241024T033707.860 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-KOMITE GCNM!GETKOMITEPADITERIMA #20240531T043846.733 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

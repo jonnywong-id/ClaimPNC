@@ -1,0 +1,168 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyOpenSQL/>
+<pyRuleName>ASM-FW-GISFW-Int-Coins ASM GetDataCoinsMaster_SQL</pyRuleName>
+<pxUpdateOpName>Abraham GP</pxUpdateOpName>
+<pxInsId>ASM-FW-GISFW-INT-COINS!ASM!GETDATACOINSMASTER_SQL</pxInsId>
+<pxInstanceLockedCreateDateTime/>
+<pyHistoryObject/>
+<pyShowJavaWindowName>GeneratedJava20260827T081225.003 GMT</pyShowJavaWindowName>
+<pyDisplayMode>basic</pyDisplayMode>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedKey/>
+<pyBrowseSQL>SELECT "ID" AS "ID",
+       "CLIENTNAME" AS "ClientName",
+       "BRANCHLNAME" AS "BranchName"
+  FROM POOLDATA.COINS
+ WHERE ("ID" = trim('{ASIS:InputCoins.CARI1}')) AND ("BRANCHLNAME" LIKE trim('%{ASIS:InputCoins.CARI2}%'))</pyBrowseSQL>
+<pyDescription/>
+<pxInsName>ASM-FW-GISFW-INT-COINS!ASM!GETDATACOINSMASTER_SQL</pxInsName>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCreateDateTime>20251023T084911.734 GMT</pxCreateDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyCircumstanceVal/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyLabel>GetDataCoinsMaster_SQL</pyLabel>
+<pxCreateOpName>Abraham GP</pxCreateOpName>
+<pyDeletedObject/>
+<pxInstanceLockedDateTime/>
+<pxCreateOperator>ABRAHAMGP</pxCreateOperator>
+<pyIsFromManageChangeLP/>
+<pyDocumentTitle/>
+<pyWorkKey/>
+<pyJavaStream/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportDateTime>20251026T143845.850 GMT</pxMoveImportDateTime>
+<pxUpdateOperator>ABRAHAMGP</pxUpdateOperator>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxHostId>jboss10362</pxHostId>
+<pyClassName>ASM-FW-GISFW-Int-Coins</pyClassName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!GETDATACOINSMASTER_SQL #20251023T084911.734 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSetVersion/>
+<pxCommitDateTime>20251026T143846.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!GETDATACOINSMASTER_SQL #20251023T084911.734 GMT</pzInsKey>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxSaveDateTime>20251023T085044.061 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pyCircumstanceDateProp/>
+<pzChecksum>-915874612</pzChecksum>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySPRuleSetName/>
+<pyRuleFormStatusTime>20260827T081224.978 GMT</pyRuleFormStatusTime>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveFromSystem/>
+<pyTemplate/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBaseRule>false</pyBaseRule>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleSetVersion>01-05-48</pyRuleSetVersion>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!GETDATACOINSMASTER_SQL #20251023T084911.734 GMT</pzDocumentKey>
+<pxTabLabel>ASM-FW-GISFW-Int-Coins ASM GetDataCoinsMaster_SQL</pxTabLabel>
+<pyUsage/>
+<pyTemplateInputBox/>
+<pxInstanceLockedBy/>
+<pyRuleEnds/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxSiblingCount/>
+<pyDeleteSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStatus/>
+<pyCircumstanceType/>
+<pyHandlerFlow/>
+<pyInterface/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWindowTitle/>
+<pyFormPost/>
+<pyCircumstanceDate/>
+<pzRuleSetVersionPatch>48</pzRuleSetVersionPatch>
+<pyMethodStatus/>
+<pyRuleStarts/>
+<pyCircumstanceProp/>
+<pyRequestType>GetDataCoinsMaster_SQL</pyRequestType>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySaveSQL/>
+<pxUpdateDateTime>20251023T085044.056 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!GETDATACOINSMASTER_SQL #20251023T084911.734 GMT</pzInsKey>
+<pyLabel>01-05-48 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

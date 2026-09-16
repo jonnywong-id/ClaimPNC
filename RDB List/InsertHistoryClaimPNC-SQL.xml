@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionPatch>70</pzRuleSetVersionPatch>
+<pyFormPost/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTOSAKSEPTASICLAIMPNC #20180112T035041.983 GMT</pzOriginalInstanceKey>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTHISTORYCLAIMPNC #20190524T084304.147 GMT</pzInsKey>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceVal/>
+<pyShowJavaWindowName>GeneratedJava20260720T130418.110 GMT</pyShowJavaWindowName>
+<pyStatus/>
+<pxMoveFromSystem/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertHistoryClaimPNC</pxTabLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWorkKey/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pxHostId>jboss2058</pxHostId>
+<pyCircumstanceDefinition/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM InsertHistoryClaimPNC</pyRuleName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySPRuleSetName>CHRISTINE_TANDYWIJAYA@</pySPRuleSetName>
+<pxInstanceLockedBy/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleFormStatusTime>20260720T130418.088 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pzChecksum>-983816288</pzChecksum>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSet/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleParamsStreamName/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHandlerFlow/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplateInputBox/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTHISTORYCLAIMPNC</pxInsName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyDeleteSQL/>
+<pxMoveImportDateTime>20191231T041908.905 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pyInterface/>
+<pyUsage/>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pyMemo>done buat RDb untuk panggil procedure</pyMemo>
+<pxCreateOpName>CHRISTINE TANDYWIJAYA</pxCreateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSiblingCount/>
+<pyLabelOld>InsertHistoryClaimPNC</pyLabelOld>
+<pyRequestType>InsertHistoryClaimPNC</pyRequestType>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyDescription/>
+<pyMethodStatus/>
+<pxCreateDateTime>20190524T084304.147 GMT</pxCreateDateTime>
+<pyCircumstanceProp/>
+<pyCircumstanceType/>
+<pyJavaStream/>
+<pyBrowseSQL>BEGIN 
+  
+  POOLDATA.PEGA_JSON_INSERT_HISTORY_CLAIM_PNC({TempPNC.POLICY_NO}, {TempPNC.BUSINESS_CODE},{TempPNC.BRANCH_CODE}, {OutputData.BRANCH_NAME out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWindowTitle/>
+<pxCreateOperator>CHRISTINE_TANDYWIJAYA</pxCreateOperator>
+<pyLabel>InsertHistoryClaimPNC</pyLabel>
+<pxSaveDateTime>20190524T091812.570 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pxUpdateDateTime>20190524T091812.464 GMT</pxUpdateDateTime>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxInstanceLockedDateTime/>
+<pyDeletedObject/>
+<pyRelativePath/>
+<pySaveSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>CHRISTINE TANDYWIJAYA</pxUpdateOpName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyOpenSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTHISTORYCLAIMPNC #20190524T084304.147 GMT</pzDocumentKey>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-01-70</pyRuleSetVersion>
+<pyValueChanged>false</pyValueChanged>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!INSERTHISTORYCLAIMPNC</pxInsId>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateOperator>CHRISTINE_TANDYWIJAYA</pxUpdateOperator>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-70 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!INSERTHISTORYCLAIMPNC #20190524T084304.147 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyAvailability>false</pyAvailability>
+<pySiblings>true</pySiblings>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pySave>false</pySave>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

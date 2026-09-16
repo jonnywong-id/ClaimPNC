@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pyUsage/>
+<pyRelativePath/>
+<pyRequestType>INSERTLOGGLOBALPROTECTION</pyRequestType>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceDefinition/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyMethodStatus/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveFromSystem/>
+<pyStreamName/>
+<pyMemo>set no polis</pyMemo>
+<pyBrowseSQL/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsFromManageChangeLP/>
+<pxMoveImportDateTime>20240804T070137.162 GMT</pxMoveImportDateTime>
+<pyFormPost/>
+<pyDescription/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240804T023954.025 GMT</pzInsKey>
+<pyShowJavaWindowName>GeneratedJava20260827T072756.576 GMT</pyShowJavaWindowName>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxInstanceLockedRuleSet/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pxTabLabel>ASM-FW-GISFW-Int-POOLDATA ASM INSERTLOGGLOBALPROTECTION</pxTabLabel>
+<pxHostId>jboss10234</pxHostId>
+<pyDeletedObject/>
+<pxSiblingCount/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyRuleStarts/>
+<pxOriginalCreateDateTime/>
+<pzChecksum>-2012173900</pzChecksum>
+<pyRuleFormStatusTime>20260827T072756.544 GMT</pyRuleFormStatusTime>
+<pxCreateDateTime>20240804T023954.025 GMT</pxCreateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyLabel>INSERTLOGGLOBALPROTECTION</pyLabel>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleName>ASM-FW-GISFW-Int-POOLDATA ASM INSERTLOGGLOBALPROTECTION</pyRuleName>
+<pxUpdateOpName>RIXTUS KUSUMA</pxUpdateOpName>
+<pxCreateOpName>RIXTUS KUSUMA</pxCreateOpName>
+<pxSaveDateTime>20240804T023958.942 GMT</pxSaveDateTime>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!INSERTLOGGLOBALPROTECTION</pxInsName>
+<pyTemplateInputBox/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDeleteSQL/>
+<pyInterface/>
+<pyCircumstanceProp/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxUpdateDateTime>20240804T023954.025 GMT</pxUpdateDateTime>
+<pyCircumstanceType/>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyJavaStream/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!INSERTLOGGLOBALPROTECTION</pxInsId>
+<pxInstanceLockedDateTime/>
+<pyDeleteMemo>ok\'</pyDeleteMemo>
+<pyCheckInRuleSet/>
+<pyRuleSetVersion>01-04-76</pyRuleSetVersion>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pyLabelOld>INSERTLOGGLOBALPROTECTION</pyLabelOld>
+<pyCircumstanceTemplate/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxCommitDateTime>20240804T070137.000 GMT</pxCommitDateTime>
+<pyRWAccess>ASM</pyRWAccess>
+<pyWorkKey/>
+<pySaveSQL>INSERT INTO POOLDATA.T_LOG_GLOBALPROTECTION 
+(IDPEGA,
+ NOPOLIS,
+ OPERATORID,
+ BUSINESSNAME,
+ EDMTYPE,
+ MESSAGE,
+ TGL_INPUT,
+ HELPSDESKNO,
+ TGL_UPDATE,
+ PICIT,
+ TYPE)
+VALUES ({InputLogGlobalProtection.IDPEGA},
+               {InputLogGlobalProtection.Nopolis},
+               {InputLogGlobalProtection.OperatorID},
+               {InputLogGlobalProtection.BusinessName},
+               {InputLogGlobalProtection.EDMType},
+               {InputLogGlobalProtection.Message},
+               sysdate,
+               {InputLogGlobalProtection.HelpdeskNo},
+               null,
+               {InputLogGlobalProtection.PicIT},
+               {InputLogGlobalProtection.Type})</pySaveSQL>
+<pxOriginalCreateOpName/>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240804T023954.025 GMT</pzDocumentKey>
+<pyDocumentTitle/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240803T082408.372 GMT</pzOriginalInstanceKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySpecialtyComponentData/>
+<pyOpenSQL/>
+<pyTemplate/>
+<pxInstanceLockedKey/>
+<pyHandlerFlow/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceVal/>
+<pyCircumstanceDate/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzRuleSetVersionPatch>76</pzRuleSetVersionPatch>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyClassName>ASM-FW-GISFW-Int-POOLDATA</pyClassName>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240804T023954.025 GMT</pzInsKey>
+<pyLabel>01-04-76 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-04-75 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!INSERTLOGGLOBALPROTECTION #20240712T033130.524 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+</pagedata>

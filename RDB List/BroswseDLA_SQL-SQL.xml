@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyWindowTitle/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-DLA GCNM!BROSWSEDLA_SQL #20191219T063331.326 GMT</pzInsKey>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleEnds/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDeleteSQL/>
+<pxCreateOpName>INTAN HENNY</pxCreateOpName>
+<pxInstanceLockedRuleSet/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-DLA GCNM!BROSWSEDLA_SQL #20191219T063331.326 GMT</pzDocumentKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxMoveImportDateTime>20191231T041908.443 GMT</pxMoveImportDateTime>
+<pyCircumstanceTemplate/>
+<pyMemo>ubah property as</pyMemo>
+<pyJavaStream/>
+<pyStatus/>
+<pyInterface/>
+<pyRuleFormStatusTime>20260901T073234.316 GMT</pyRuleFormStatusTime>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyUsage/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDate/>
+<pxUpdateOpName>INTAN HENNY</pxUpdateOpName>
+<pyClassName>ASM-FW-GCNMFW-Data-DLA</pyClassName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-DLA GCNM BroswseDLA_SQL</pyRuleName>
+<pxInsId>ASM-FW-GCNMFW-DATA-DLA!GCNM!BROSWSEDLA_SQL</pxInsId>
+<pxSiblingCount/>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionPatch>82</pzRuleSetVersionPatch>
+<pyIsFromManageChangeLP/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyRuleParamsStreamName/>
+<pySaveSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-DLA GCNM!BROSWSEDLA_SQL #20190717T110107.111 GMT</pzOriginalInstanceKey>
+<pxOriginalCreateOperator/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-01-82</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateDateTime>20191219T063433.809 GMT</pxUpdateDateTime>
+<pyCircumstanceDateProp/>
+<pyLabelOld>Ambil Data Tanggal DLA</pyLabelOld>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyDescription/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStreamName/>
+<pxMoveFromSystem/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeletedObject/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyDocumentTitle/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxInsName>ASM-FW-GCNMFW-DATA-DLA!GCNM!BROSWSEDLA_SQL</pxInsName>
+<pxSaveDateTime>20191219T063433.821 GMT</pxSaveDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceProp/>
+<pxCreateDateTime>20191219T063331.326 GMT</pxCreateDateTime>
+<pyBrowseSQL>SELECT to_char(TGLKIRIM,'dd/mm/yyyy') as "IsDLA" FROM POOLDATA.T_DLALIST WHERE CLAIMID={TempSearch.SearchName} ORDER BY TGLKIRIM DESC FETCH NEXT 1 ROWS ONLY</pyBrowseSQL>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pyRequestType>BroswseDLA_SQL</pyRequestType>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyHandlerFlow/>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyMethodStatus/>
+<pyCircumstanceVal/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-DLA GCNM BroswseDLA_SQL</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxOriginalCreateOpName/>
+<pyFormPost/>
+<pyRuleStarts/>
+<pxOriginalCreateDateTime/>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pyCircumstanceDefinition/>
+<pxHostId>jboss2058</pxHostId>
+<pyHistoryObject>false</pyHistoryObject>
+<pzChecksum>538305737</pzChecksum>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyShowJavaWindowName>GeneratedJava20260901T073234.338 GMT</pyShowJavaWindowName>
+<pyRelativePath/>
+<pyDeleteMemo>DONE</pyDeleteMemo>
+<pxInstanceLockedBy/>
+<pyLabel>Ambil Data Tanggal DLA</pyLabel>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-82 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-DLA GCNM!BROSWSEDLA_SQL #20191219T063331.326 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-73 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-DLA GCNM!BROSWSEDLA_SQL #20190717T110107.111 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+<pyRun>false</pyRun>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

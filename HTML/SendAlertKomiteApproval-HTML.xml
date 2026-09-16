@@ -1,0 +1,335 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCompact>false</pyCompact>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pxCreateDateTime>20201026T072348.968 GMT</pxCreateDateTime>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxUpdateDateTime>20201026T073847.521 GMT</pxUpdateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20201026T073847.548 GMT</pxSaveDateTime>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyRuleFormStatusTime>20260908T041557.721 GMT</pyRuleFormStatusTime>
+<pxHostId>jboss2145</pxHostId>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pzIndexCount>20</pzIndexCount>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pzChecksum>414026921</pzChecksum>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCommitDateTime>20201111T105249.000 GMT</pxCommitDateTime>
+<pyStreamName>SendAlertKomiteApproval</pyStreamName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMemo>add nama PIC</pyMemo>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDeleteMemo>test</pyDeleteMemo>
+<pyTempText>saved</pyTempText>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxMoveImportDateTime>20201111T105249.478 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20200707T032716.014 GMT</pzOriginalInstanceKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyClassName>ASM-FW-GCNMFW-Work-Komite</pyClassName>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyLabel>Send Alert Komite Approval</pyLabel>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+ &lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  font-color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+     &lt;table&gt;
+       &lt;tr&gt;&lt;td&gt;Dear,&lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Berikut status komite yang sudah diproses &lt;/td&gt;&lt;/tr&gt; 
+          &lt;tr&gt;&lt;br/&gt;&lt;/tr&gt;
+       &lt;tr&gt; &lt;td&gt;No Klaim&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempKomiteEmail.Remarks"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;No KMT&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempKomiteEmail.Initial"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Nama Komite&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempKomiteEmail.KomiteID"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Nama PIC&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempKomiteEmail.KomiteEmail"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Status Akseptasi Komite&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;pega:when test="TempKomiteEmail.Salvage=='1'"&gt;
+           &lt;td&gt;&lt;b&gt;Approve&lt;/b&gt;&lt;/td&gt;
+                  &lt;/pega:when&gt;
+         &lt;pega:when test="TempKomiteEmail.Salvage=='2'"&gt;
+           &lt;td&gt;&lt;b&gt;Reject&lt;/b&gt;&lt;/td&gt;
+                  &lt;/pega:when&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Komen Komite&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempKomiteEmail.KomiteComment"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+     &lt;/table&gt;&lt;br&gt;
+     Terima Kasih.
+	&lt;br&gt;&lt;br&gt;
+   
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyRuleSetVersion>01-01-88</pyRuleSetVersion>
+<pzRuleSetVersionPatch>88</pzRuleSetVersionPatch>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyReloadForm>true</pyReloadForm>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInsName>ASM-FW-GCNMFW-WORK-KOMITE!SENDALERTKOMITEAPPROVAL</pxInsName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleName>SendAlertKomiteApproval</pyRuleName>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzDocumentKey>
+<pyShowJavaWindowName>GeneratedJava20260908T041557.751 GMT</pyShowJavaWindowName>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyLabelOld>Send Alert Komite Approval</pyLabelOld>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_Komite_SendAlertKomiteApproval_Stream_20201026T072349_877_GMT</pyJavaClassName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzInsKey>
+<pxTabLabel>SendAlertKomiteApproval</pxTabLabel>
+<pxInsId>!SENDALERTKOMITEAPPROVAL</pxInsId>
+<pyBaseRule>false</pyBaseRule>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage>TempKomiteEmail</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Comitee</pyPagesAndClassesClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxSelectorName>.link-button</pxSelectorName>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20200707T032716.014 GMT</pzInsKey>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleCompareList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20200707T032716.014 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-86 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>KOMITEID</pxRuleFamilyName>
+<pyRuleName>KomiteID</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Comitee</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-COMITEE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>REMARKS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>Remarks</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleFamilyName>KOMITEEMAIL</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pyRuleName>KomiteEmail</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyRuleName>ASM-FW-GCNMFW-Work-Komite</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Komite</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-KOMITE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>INITIAL</pxRuleFamilyName>
+<pyRuleName>Initial</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>KomiteComment</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Comitee</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>KOMITECOMMENT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyPreview>true</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>true</pyShowJava>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+</pyToolBarSettings>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageClass>ASM-FW-GCNMFW-Data-Comitee</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTKOMITEAPPROVAL #20201026T072348.968 GMT</pzIndexOwnerKey>
+<pxPageName>TempKomiteEmail</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

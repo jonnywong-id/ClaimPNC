@@ -1,0 +1,362 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSaveDateTime>20201221T041038.494 GMT</pxSaveDateTime>
+<pzDocumentKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzDocumentKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportDateTime>20210112T005022.988 GMT</pxMoveImportDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pxUpdateDateTime>20201221T041038.445 GMT</pxUpdateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pxHostId>jboss2163</pxHostId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCommitDateTime>20210112T005023.000 GMT</pxCommitDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStreamName>SendAlertApprovalMaster</pyStreamName>
+<pyLabel>Send Alert Approval Master</pyLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+ &lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  font-color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+     &lt;table&gt;
+       &lt;tr&gt;&lt;td&gt;Dear Pak Daniel/Pak Bambang,&lt;/td&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;/tr&gt;
+       &lt;tr&gt;&lt;td&gt;Terdapat inputan master yang membutuhkan approval &lt;/td&gt;&lt;/tr&gt; 
+          &lt;tr&gt;&lt;br/&gt;&lt;/tr&gt;
+       &lt;tr&gt; &lt;td&gt;Jenis Master/Approval&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempMaster.NamaDokumen"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen!='PERBEDAAN NO RANGKA' &amp;&amp; TempMaster.CaseID!= 'UnknownID' "&gt;
+         &lt;td&gt;ID Master&lt;/td&gt;
+         &lt;/pega:when&gt;  
+         &lt;pega:when test="TempMaster.NamaDokumen=='PERBEDAAN NO RANGKA'"&gt;
+         &lt;td&gt;No Klaim&lt;/td&gt;
+         &lt;/pega:when&gt; 
+         &lt;pega:when test="TempMaster.CaseID!= 'UnknownID' "&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;/pega:when&gt; 
+         &lt;pega:when test="TempMaster.CaseID!= 'UnknownID' "&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempMaster.CaseID"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+           &lt;/pega:when&gt; 
+       &lt;/tr&gt;  
+       &lt;tr&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='BENGKEL'"&gt;
+           &lt;td&gt;Nama Bengkel&lt;/td&gt;
+          &lt;/pega:when&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='PANEL'"&gt;
+           &lt;td&gt;Nama Panel&lt;/td&gt;
+          &lt;/pega:when&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='SPAREPART'||TempMaster.NamaDokumen=='GROUPING SPAREPART'"&gt;
+           &lt;td&gt;Nama Sparepart&lt;/td&gt;
+          &lt;/pega:when&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='KATEGORI SPAREPART'"&gt;
+           &lt;td&gt;Nama Kategori Sparepart&lt;/td&gt;
+          &lt;/pega:when&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='TIPE SPAREPART'"&gt;
+           &lt;td&gt;Nama Tipe Sparepart&lt;/td&gt;
+          &lt;/pega:when&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen!='PERBEDAAN NO RANGKA'"&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;/pega:when&gt;  
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempMaster.CauseOfLoss"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='GROUPING SPAREPART'"&gt;
+           &lt;td&gt;Nama Panel&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempMaster.Conveyance"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+         &lt;/pega:when&gt;
+       &lt;/tr&gt;
+       &lt;tr&gt;
+         &lt;pega:when test="TempMaster.NamaDokumen=='GROUPING SPAREPART'"&gt;
+           &lt;td&gt;No Rangka&lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;b&gt;&lt;pega:reference name="TempMaster.Country"&gt;&lt;/pega:reference&gt;&lt;/b&gt;&lt;/td&gt;
+         &lt;/pega:when&gt;
+       &lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+     &lt;/table&gt;&lt;br&gt;
+     Data dapat di cek di inbox manager tab approval master.
+     &lt;br&gt;
+     Terima Kasih.
+	&lt;br&gt;&lt;br&gt;
+   
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pzChecksum>1592151468</pzChecksum>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsId>!SENDALERTAPPROVALMASTER</pxInsId>
+<pyRuleName>SendAlertApprovalMaster</pyRuleName>
+<pzRuleSetVersionPatch>89</pzRuleSetVersionPatch>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pxInsName>@BASECLASS!SENDALERTAPPROVALMASTER</pxInsName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyTempText>saved</pyTempText>
+<pyLabelOld>Send Alert Approval Master</pyLabelOld>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBaseRule>false</pyBaseRule>
+<pyJavaClassName>Rule_Obj_HTML__baseclass_SendAlertApprovalMaster_Stream_20201221T040437_176_GMT</pyJavaClassName>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxCreateDateTime>20201221T040437.176 GMT</pxCreateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyShowJavaWindowName>GeneratedJava20260826T064810.611 GMT</pyShowJavaWindowName>
+<pyMemo>DONE</pyMemo>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzInsKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyRuleSetVersion>01-01-89</pyRuleSetVersion>
+<pyReloadForm>true</pyReloadForm>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyClassName>@baseclass</pyClassName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxTabLabel>SendAlertApprovalMaster</pxTabLabel>
+<pyRuleFormStatusTime>20260826T064810.581 GMT</pyRuleFormStatusTime>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-KOMITE SENDALERTAPPROVALMASTER #20201109T015124.672 GMT</pzOriginalInstanceKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxMergeSynchronized>20201110T051159.813 GMT</pxMergeSynchronized>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pyCompact>false</pyCompact>
+<pzIndexCount>20</pzIndexCount>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pzStatus>valid</pzStatus>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pxSelectorName>.link-button</pxSelectorName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-89 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201109T025058.815 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxPageName>TempMaster</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+<pyShowJava>true</pyShowJava>
+<pyPreview>true</pyPreview>
+<pyRestore>false</pyRestore>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBranchOut>false</pyBranchOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyAvailability>false</pyAvailability>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CASEID</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>CaseID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>CAUSEOFLOSS</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>CauseOfLoss</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>COUNTRY</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Country</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CONVEYANCE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Conveyance</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>@baseclass</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>NAMADOKUMEN</pxRuleFamilyName>
+<pyRuleName>NamaDokumen</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempMaster</pyPagesAndClassesPage>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201221T040437.176 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-89 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML @BASECLASS SENDALERTAPPROVALMASTER #20201109T025058.815 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+</pagedata>

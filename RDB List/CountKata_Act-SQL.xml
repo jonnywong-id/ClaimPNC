@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyOpenSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsId>ASM-FW-GKM-WORK-CLAIM!ASM!COUNTKATA_ACT</pxInsId>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedBy/>
+<pyTemplate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GKM-WORK-CLAIM ASM!COUNTKATA_ACT #20191007T032806.014 GMT</pzDocumentKey>
+<pySPRuleSetName>ESTERCAROLINA@</pySPRuleSetName>
+<pxUpdateOpName>ESTER CAROLINA</pxUpdateOpName>
+<pxMoveFromSystem/>
+<pyShowJavaWindowName>GeneratedJava20260908T071634.540 GMT</pyShowJavaWindowName>
+<pyRuleParamsStreamName/>
+<pyDeleteSQL/>
+<pxInstanceLockedDateTime/>
+<pyUsage/>
+<pyCircumstanceProp/>
+<pyDescription/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDefinition/>
+<pxCreateOpName>ESTER CAROLINA</pxCreateOpName>
+<pyBrowseSQL>select regexp_substr ({InputParam.IDPEGA}, '[^|]+', 1, level) as "pyNote" from dual 
+connect by level &lt;= length ({InputParam.IDPEGA}) - nvl(length(replace({InputParam.IDPEGA},'|','')),0) + 1</pyBrowseSQL>
+<pyRuleSetVersion>01-01-38</pyRuleSetVersion>
+<pyLabelOld>CountKata_Act</pyLabelOld>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GKM-WORK-CLAIM ASM!COUNTKATA_ACT #20190926T094845.013 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDateProp/>
+<pyCircumstanceVal/>
+<pyLabel>CountKata_Act</pyLabel>
+<pxInsName>ASM-FW-GKM-WORK-CLAIM!ASM!COUNTKATA_ACT</pxInsName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleName>ASM-FW-GKM-Work-Claim ASM CountKata_Act</pyRuleName>
+<pyHandlerFlow/>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyValueChanged>false</pyValueChanged>
+<pyDeleteMemo>save as</pyDeleteMemo>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceTemplate/>
+<pzChecksum>511045642</pzChecksum>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateDateTime>20191007T032806.014 GMT</pxCreateDateTime>
+<pxTabLabel>ASM-FW-GKM-Work-Claim ASM CountKata_Act</pxTabLabel>
+<pxOriginalCreateOperator/>
+<pyStreamName/>
+<pyMemo>perbaiki</pyMemo>
+<pyIsFromManageChangeLP/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyFormPost/>
+<pySpecialtyComponentData/>
+<pxCreateOperator>ESTERCAROLINA</pxCreateOperator>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalRuleSet>GKM</pxOriginalRuleSet>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzRuleSetVersionPatch>38</pzRuleSetVersionPatch>
+<pyRuleSet>GKM</pyRuleSet>
+<pxUpdateOperator>ESTERCAROLINA</pxUpdateOperator>
+<pxSiblingCount/>
+<pxHostId>jboss2165</pxHostId>
+<pxInstanceLockedRuleSet/>
+<pyRuleStarts/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyMethodStatus/>
+<pyWindowTitle/>
+<pxMoveImportOperId>roby_t@sinarmas.co.id</pxMoveImportOperId>
+<pyWorkKey/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedCreateDateTime/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyRequestType>CountKata_Act</pyRequestType>
+<pxSaveDateTime>20191007T033740.072 GMT</pxSaveDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pySaveSQL/>
+<pxCommitDateTime>20200824T042130.000 GMT</pxCommitDateTime>
+<pyStatus/>
+<pyTemplateInputBox/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyClassName>ASM-FW-GKM-Work-Claim</pyClassName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRelativePath/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-WORK-CLAIM ASM!COUNTKATA_ACT #20191007T032806.014 GMT</pzInsKey>
+<pxMoveImportDateTime>20200824T042130.602 GMT</pxMoveImportDateTime>
+<pxUpdateDateTime>20191007T033740.054 GMT</pxUpdateDateTime>
+<pyDeletedObject/>
+<pyJavaStream/>
+<pxOriginalCreateSystemID/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormStatusTime>20260908T071634.466 GMT</pyRuleFormStatusTime>
+<pxMoveImportOperName>Roby</pxMoveImportOperName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyInterface/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyRuleEnds/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-WORK-CLAIM ASM!COUNTKATA_ACT #20191007T032806.014 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-38 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pyLabel>01-01-32 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GKM-WORK-CLAIM ASM!COUNTKATA_ACT #20190926T094845.013 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

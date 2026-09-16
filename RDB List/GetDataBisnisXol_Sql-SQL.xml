@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataBisnisXol_Sql</pxTabLabel>
+<pxUpdateDateTime>20241223T104943.869 GMT</pxUpdateDateTime>
+<pySaveSQL/>
+<pyRuleStarts/>
+<pyStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATABISNISXOL_SQL #20241210T065215.959 GMT</pzOriginalInstanceKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveImportDateTime>20241223T123621.005 GMT</pxMoveImportDateTime>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATABISNISXOL_SQL</pxInsName>
+<pyJavaStream/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyOpenSQL/>
+<pyRuleParamsStreamName/>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplate/>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyFormPost/>
+<pyHistoryObject/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyCircumstanceTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pxCreateDateTime>20241210T065215.959 GMT</pxCreateDateTime>
+<pySpecialtyComponentData/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceVal/>
+<pyRuleFormStatusTime>20260822T085258.696 GMT</pyRuleFormStatusTime>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceProp/>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSetVersion/>
+<pyWindowTitle/>
+<pyMemo>done</pyMemo>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxInstanceLockedBy/>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyBrowseSQL>SELECT BUSINESSGROUPID AS "CurrencyID", BUSINESSGROUPNAME AS "KomiteComment"
+    FROM pooldata.business
+   WHERE BUSINESSGROUPID IN
+             (SELECT ID
+                FROM pooldata.BUSINESSGROUP
+               WHERE TOPID IN (SELECT DISTINCT TREATYGROUPID
+                                 FROM POOLDATA.proportionalarrg {Asis:TempXOL.AgentID}
+                               ))
+GROUP BY BUSINESSGROUPID, BUSINESSGROUPNAME</pyBrowseSQL>
+<pyRequestType>GetDataBisnisXol_Sql</pyRequestType>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATABISNISXOL_SQL</pxInsId>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataBisnisXol_Sql</pyRuleName>
+<pyDeleteSQL/>
+<pxMoveFromSystem/>
+<pyLabelOld>GetDataBisnisXol_Sql</pyLabelOld>
+<pyInterface/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyStreamName/>
+<pyHandlerFlow/>
+<pyRelativePath/>
+<pyCircumstanceDefinition/>
+<pyMethodStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyIsFromManageChangeLP/>
+<pyShowJavaWindowName>GeneratedJava20260822T085258.720 GMT</pyShowJavaWindowName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySPRuleSetName>MARIATRIELSA@</pySPRuleSetName>
+<pyCircumstanceDateProp/>
+<pyLabel>GetDataBisnisXol_Sql</pyLabel>
+<pyCircumstanceDate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSiblingCount/>
+<pyUsage/>
+<pyDescription/>
+<pyDeletedObject/>
+<pyCircumstanceType/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxHostId>jboss10372</pxHostId>
+<pxInstanceLockedDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATABISNISXOL_SQL #20241210T065215.959 GMT</pzInsKey>
+<pxInstanceLockedCreateDateTime/>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pzChecksum>879259180</pzChecksum>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATABISNISXOL_SQL #20241210T065215.959 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedKey/>
+<pxSaveDateTime>20241223T104943.882 GMT</pxSaveDateTime>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATABISNISXOL_SQL #20241210T065215.959 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+</pagedata>

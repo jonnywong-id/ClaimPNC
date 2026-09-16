@@ -1,0 +1,1562 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDate/>
+<pyJavaFUAVersion>03-02</pyJavaFUAVersion>
+<pzRuleFormToolbar/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<RMHeaderAction/>
+<pxInsName>@BASECLASS!PXCONVERTRESULTSTOCSV</pxInsName>
+<pyRuleStarts/>
+<pzRuleFormRuleset/>
+<pyWindowTitle/>
+<pxOriginalRuleSet>Pega-RulesEngine</pxOriginalRuleSet>
+<pzRuleFormErrorHeader/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzRuleCreationWarningWrapper/>
+<pxOriginalCreateOpName/>
+<pzDocumentKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190121T135442.223 GMT</pzDocumentKey>
+<pxUpdateSystemID>prpc</pxUpdateSystemID>
+<RuleFormSettings/>
+<pzUnjustifiedWarningList/>
+<RuleFormHistory_CustomFields/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pzRuleFormKeysAndDescription/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleFormToolbarLockedIcon/>
+<pyMemo>BUG-422024 - added java code in step-4 to get aggregate function name for properties</pyMemo>
+<pyJavaClassName>Rule_Obj_Activity__baseclass_pxConvertResultsToCSV_Action_20190129T142827_038_GMT</pyJavaClassName>
+<pyCircumstanceProp/>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleEnds/>
+<pxMoveImportOperId>Administrator@pega.com</pxMoveImportOperId>
+<pyOldActivityType>ACTIVITY</pyOldActivityType>
+<pyUsage>This activity can be used to convert the results from a pagelist property into a CSV file</pyUsage>
+<pyClassName>@baseclass</pyClassName>
+<pzPrivileges/>
+<pxMoveImportOperName>Administrator</pxMoveImportOperName>
+<pzAvailabilityNotSet>Set Availability</pzAvailabilityNotSet>
+<pyReloadForm>true</pyReloadForm>
+<pyDirtyModalCon/>
+<pyInterface/>
+<pxUpdateOperator>suroDev</pxUpdateOperator>
+<pxMoveImportDateTime>20171009T174803.014 GMT</pxMoveImportDateTime>
+<pzRuleFormToolbarDelete/>
+<pxInstanceLockedBy/>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleFormToolbarSaveAs/>
+<pxInstanceLockedDateTime/>
+<pzRuleFormToolbarCheckin/>
+<pzRARulePrefix/>
+<pxSaveDateTime>20190129T143305.723 GMT</pxSaveDateTime>
+<pyPreviousApplicationName>PegaRULES</pyPreviousApplicationName>
+<pyCircumstanceTemplate/>
+<pzAddRuleFormHistoryCustomFields/>
+<pzRARecordContext/>
+<pzChecksum>1029938767</pzChecksum>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyActivityName>pxConvertResultsToCSV</pyActivityName>
+<pzRAAppliesTo/>
+<pyLabelOld>Convert Results to CSV</pyLabelOld>
+<pyCircumstanceType/>
+<pySelected>false</pySelected>
+<pxObjClass>Rule-Obj-Activity</pxObjClass>
+<pyRuleSearchQuery/>
+<pyXMLSignature>&lt;?xml version="1.0"?&gt;&lt;methodSignature&gt;&lt;pyStepsCallParams&gt;&lt;CSVProperties DESCRIPTION= "CSV of properties as columns in CSV" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;CSVPropertyTypes DESCRIPTION= "CSV of property types in the same order of properties in CSVProperties" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;PageListProperty DESCRIPTION= "name of the property to be read in the primay page" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;FileName DESCRIPTION= "option. If blank will be defaulted to ResultsToCSV" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;AppendTimeStampToFileName DESCRIPTION= "if true, timestamp is appended to file Name(to avoid concurrency issues)" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;CSVFieldModes DESCRIPTION= "CSV of Field Modes of properties" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;CSVPropHeaders DESCRIPTION= "CSV of property headers as columns in CSV" TYPE= "STRING" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;HeadersMap DESCRIPTION= "Property header map" TYPE= "JAVAOBJECT" REQUIRED= "0" INOUT= "IN" SIZE="" SMARTPROMPT="N" SMARTPROMPTRULE="RULEKEY" SMARTPROMPTRULECLASS="" SMARTPROMPTBASECLASS="PageClass" SMARTPROMPTDATANODE="" DEFAULTVALUE="" /&gt;&lt;/pyStepsCallParams&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyMethodStatus/>
+<RuleFormHistory_Description/>
+<pyLabel>Convert Results to CSV</pyLabel>
+<pxMoveFromSystem/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyInputMayStart>true</pyInputMayStart>
+<pzRuleFormStatus/>
+<pxOriginalCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleCreationWarning/>
+<pzChangeRuleset/>
+<pxJustifiedWarningCount/>
+<pyRuleAvailable>Final</pyRuleAvailable>
+<pyCircumstanceVal/>
+<pyActivityType>ACTIVITY</pyActivityType>
+<pzIndexCount>10</pzIndexCount>
+<pyCEReset>true</pyCEReset>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxHostId>608d70f3e2cedd575be09e4b7fc73514</pxHostId>
+<pyObjClassLabel>Activity</pyObjClassLabel>
+<pzNewSimplified/>
+<pzOriginalInstanceKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190121T135442.223 GMT</pzOriginalInstanceKey>
+<pxCreateOperator>ghoss4</pxCreateOperator>
+<pxInstanceLockedRuleSet/>
+<pyRuleName>pxConvertResultsToCSV</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSet>Pega-RulesEngine</pyRuleSet>
+<pxCreateDateTime>20190121T135442.223 GMT</pxCreateDateTime>
+<pxTabLabel>pxConvertResultsToCSV</pxTabLabel>
+<pzRAApplication/>
+<pyRuleParamsStreamName/>
+<pxMoveOriginalRuleSet>Pega-RulesEngine</pxMoveOriginalRuleSet>
+<pyStatus/>
+<pyTaskStatusXml>&lt;pagedata&gt;&lt;/pagedata&gt;</pyTaskStatusXml>
+<pxCreatedInPRPCVersion>07-02-01</pxCreatedInPRPCVersion>
+<pxInstanceLockedKey/>
+<pxCommitDateTime>20191015T081608.000 GMT</pxCommitDateTime>
+<pzRuleFormToolbarHotKeys/>
+<pxUpdateDateTime>20190129T143305.723 GMT</pxUpdateDateTime>
+<pzRuleSetVersionMajor>08</pzRuleSetVersionMajor>
+<pyJavaGenerateTime>20190129T143004.726 GMT</pyJavaGenerateTime>
+<pyDeleteMemo>BUG-422024 - added code to get the aggregate function name for properties</pyDeleteMemo>
+<pxUpdateOpName>Surojit Ghosh</pxUpdateOpName>
+<pzRuleFormToolbarCheckout/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedSaveDateTime/>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedCreateDateTime/>
+<pxSiblingCount/>
+<pyBaseRule>false</pyBaseRule>
+<pyCheckInRuleSet>Pega-RulesEngine</pyCheckInRuleSet>
+<pyTaskGroup/>
+<pxMoveOriginalKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20170926T172518.197 GMT</pxMoveOriginalKey>
+<pxCreateOpName>Surojit Ghosh</pxCreateOpName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190121T135442.223 GMT</pzInsKey>
+<pzRuleFormWarningsHeader/>
+<pyAssociatedImage/>
+<pyDeletedObject/>
+<pxHasPromptPagesDefined>false</pxHasPromptPagesDefined>
+<pzRABranchSelection/>
+<pyDescription>This activity can be used to convert the results from a pagelist property into a CSV file</pyDescription>
+<pxMoveOriginalRuleSetVersion>07-10-35</pxMoveOriginalRuleSetVersion>
+<pxOriginalCreateSystemID/>
+<pySPRuleSetName>suroDev@</pySPRuleSetName>
+<pyValueChanged>false</pyValueChanged>
+<pyFormPost/>
+<pyTemplateInputBox/>
+<pyAuthenticatedOnly>true</pyAuthenticatedOnly>
+<pzRARecordConfiguration/>
+<pyShowJavaWindowName>GeneratedJava20260724T033743.781 GMT</pyShowJavaWindowName>
+<pzApplyToPromptPegaDeveloper/>
+<pyStreamName/>
+<pxOriginalCreateOperator/>
+<pzRuleFormToolbarSave/>
+<pyRuleFormStatusTime>20260724T033743.758 GMT</pyRuleFormStatusTime>
+<pyIsFromManageChangeLP/>
+<pyEditable/>
+<pyJavaStream/>
+<pyJavaGenerateVersion>03-01-01</pyJavaGenerateVersion>
+<pyJavaGenerateAPIVersion>03-02</pyJavaGenerateAPIVersion>
+<pyRuleSetVersion>08-03-01</pyRuleSetVersion>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRelativePath/>
+<pySpecialtyComponentData/>
+<pxInsId>!PXCONVERTRESULTSTOCSV</pxInsId>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pzStatus>false</pzStatus>
+<pySystemParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName>flowName</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>subscript to the pxFlow page</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>pyFlowType of the flow being run</pyParametersParamDesc>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamName>flowType</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamDesc>work object page name</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>ReferencePageName</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamType>String</pyParametersParamType>
+<pyUsage>FLOW</pyUsage>
+<pyParametersParamName>ReferenceClass</pyParametersParamName>
+<pyParametersParamDesc>class of the work object</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamDesc>pzInsKey of the work object</pyParametersParamDesc>
+<pyParametersParamName>ReferenceInsKey</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamType>TrueFalse</pyParametersParamType>
+<pyParametersParamDesc>flag for whether this flow is in draft mode or not</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>pyDraftMode</pyParametersParamName>
+<pyUsage>FLOW</pyUsage>
+</rowdata>
+</pySystemParameters>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyStepsRepeatDef>
+</pyStepsRepeatDef>
+<pyActivityRolesList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyActivityRole/>
+<pxObjClass>Embed-Rule-ActivitySecurity</pxObjClass>
+</rowdata>
+</pyActivityRolesList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190121T135442.223 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>08-03-01 (Final)</pyLabel>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningJustifiedOperator/>
+<pxWarningDetails>(Rule-)pzPreventSensitiveDataInLogs</pxWarningDetails>
+<pxWarningType>Security</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningJustifiedTime/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningMessage>Be careful not to write sensitive or confidential information, including encrypted properties and any properties from encrypted BLOBs, to logs.</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>bamms1</pxWarningCreateOperator>
+<pxWarningName>pzPreventSensitiveDataInLogs</pxWarningName>
+<pxWarningCreatedTime>20190121T134638.498 GMT</pxWarningCreatedTime>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pyWarningJustifiedMessage/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">0</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxPageName>D_GetOpsList</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxMessageSummary>
+<pxWarningCount>1</pxWarningCount>
+<pxUnjustifiedWarningCount>1</pxUnjustifiedWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+</pxMessageSummary>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>true</pyShowJava>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>true</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpRef>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-activity/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pyFavorites>true</pyFavorites>
+<pyPreview>true</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+</pyToolBarSettings>
+<pyLocalParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>CSVString</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc/>
+<pyParametersParamName>FileName</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamType>String</pyParametersParamType>
+<pyParametersParamDesc/>
+<pyParametersParamName>localeCode</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>decimalSeperator</pyParametersParamName>
+<pyParametersParamDesc/>
+<pyParametersParamType>String</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>numberFormatted</pyParametersParamName>
+<pyParametersParamDesc/>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamName>listSeperator</pyParametersParamName>
+<pyParametersParamType>String</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc/>
+</rowdata>
+</pyLocalParameters>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PROPERTY-MAP-DECISIONTABLE</pxRuleFamilyName>
+<pxRuleClassName/>
+<pyRuleName>Property-Map-DecisionTable</pyRuleName>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxRuleFamilyName>CODE-PEGA-REQUESTOR</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Code-Pega-Requestor</pxRuleClassName>
+<pyRuleName>Code-Pega-Requestor</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-Declare-DecisionTable</pxRuleObjClass>
+<pxRuleFamilyName>PZGETLOCALELISTSEPERATOR</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyMethodStatus>Internal</pyMethodStatus>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pzGetLocaleListSeperator</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>CODE-PEGA-LIST</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pyRuleName>Code-Pega-List</pyRuleName>
+<pyMethodStatus/>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXREQLOCALE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxReqLocale</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxRuleClassName>Code-Pega-Requestor</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Method</pxRuleObjClass>
+<pxRuleClassName/>
+<pxRuleFamilyName>PROPERTY-SET</pxRuleFamilyName>
+<pyRuleName>Property-Set</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyRuleName>DownloadFile</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleFamilyName>DOWNLOADFILE</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyRuleName>@baseclass</pyRuleName>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>08-03-01 (Final)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190121T135442.223 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleCompareList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>D_GetOpsList</pyPagesAndClassesPage>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamDefaultValue/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>CSVProperties</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>CSV of properties as columns in CSV</pyParametersParamDesc>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamDesc>CSV of property types in the same order of properties in CSVProperties</pyParametersParamDesc>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamName>CSVPropertyTypes</pyParametersParamName>
+<pyParametersParamIntelliRule/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamDefaultValue/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>name of the property to be read in the primay page</pyParametersParamDesc>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamName>PageListProperty</pyParametersParamName>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyParametersParamDesc>option. If blank will be defaulted to ResultsToCSV</pyParametersParamDesc>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>FileName</pyParametersParamName>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamDefaultValue/>
+<pyParametersParamDesc>if true, timestamp is appended to file Name(to avoid concurrency issues)</pyParametersParamDesc>
+<pyParametersParamName>AppendTimeStampToFileName</pyParametersParamName>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamIntelliRule/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>CSV of Field Modes of properties</pyParametersParamDesc>
+<pyParametersParamName>CSVFieldModes</pyParametersParamName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyParametersParamName>CSVPropHeaders</pyParametersParamName>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule/>
+<pyParametersParamDesc>CSV of property headers as columns in CSV</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamReq>0</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyParametersParamIntelliValidateAs/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName>HeadersMap</pyParametersParamName>
+<pyParametersParamDesc>Property header map</pyParametersParamDesc>
+<pyParametersParamReq>0</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDefaultValue/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamInOut>IN</pyParametersParamInOut>
+<pyParametersParamType>JAVAOBJECT</pyParametersParamType>
+</rowdata>
+</pyParameters>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyActivityPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeClass>Code-Pega-List</pyPrivilegeClass>
+<pyPrivilegeName/>
+</rowdata>
+</pyActivityPrivilegeList>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningMessage>(Rule-)pzPreventSensitiveDataInLogs</pxWarningMessage>
+<pxWarningCreateOperator>bamms1</pxWarningCreateOperator>
+<pzIndexOwnerKey>RULE-OBJ-ACTIVITY @BASECLASS PXCONVERTRESULTSTOCSV #20190129T101455.987 GMT</pzIndexOwnerKey>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreatedTime>20190121T134638.498 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedOperator/>
+<pxWarningType>Security</pxWarningType>
+<pyWarningJustifiedMessage/>
+<pxWarningName>pzPreventSensitiveDataInLogs</pxWarningName>
+<pxWarningJustifiedTime/>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningDetails>(Rule-)pzPreventSensitiveDataInLogs</pxWarningDetails>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">0</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pySteps REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsActivityName>java</pyStepsActivityName>
+<pxInsName/>
+<pyStepsBlockName>//</pyStepsBlockName>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepPageReference>RH_1.pySteps(1)</pyStepPageReference>
+<pyPropRef/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyExpanded>true</pyExpanded>
+<pyStepActivityDescription/>
+<pyStepsObjectName/>
+<pyStepsPreCondition/>
+<pyTemplateInputBox/>
+<pyStepsJavaSource>localeCode = tools.getRequestor().getLocale();
+//numberFormatted =PRNumberFormat.format(localeCode,PRNumberFormat.DEFAULT_DECIMAL, false, null,  1000.25);</pyStepsJavaSource>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyOnException/>
+<pyStepsTransition/>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pxCreateDateTime>20150211T081616.297 GMT</pxCreateDateTime>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pzStepExpanded/>
+<pyStepsDescription>Get the locale from requestor</pyStepsDescription>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyForEachProperty/>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pxCreateDateTime>20150211T081616.303 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pxCreateDateTime>20150211T081616.305 GMT</pxCreateDateTime>
+<pyForEachClass/>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateDateTime>20150211T081616.299 GMT</pxCreateDateTime>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOperator>chinm2</pxCreateOperator>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20150211T081616.301 GMT</pxCreateDateTime>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhen/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepPageReference>RH_1.pySteps(2)</pyStepPageReference>
+<pyExpanded>true</pyExpanded>
+<pyStepsDescription>Assign locale to parameter to be used in Decision table</pyStepsDescription>
+<pyOnException/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepsTransition/>
+<pyStepActivityDescription/>
+<pyTemplateInputBox/>
+<pyStepsActivityNameUC>PROPERTY-SET</pyStepsActivityNameUC>
+<pyStepsJavaSource/>
+<pyStepsObjectName>pxRequestor</pyStepsObjectName>
+<pyStepsActivityName>Property-Set</pyStepsActivityName>
+<pyStepsPreCondition/>
+<pxStepDefaultDescription>Property-Set</pxStepDefaultDescription>
+<pxCreateDateTime>20150211T082043.897 GMT</pxCreateDateTime>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyPropRef/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsBlockName/>
+<pzStepExpanded/>
+<pyStepsClassName>Code-Pega-Requestor</pyStepsClassName>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsCallParams>
+<pyStepsParamUIRemoved/>
+<pyStepsParamUI/>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20150211T082043.901 GMT</pxCreateDateTime>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pxCreateDateTime>20150211T082043.904 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefStop/>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefLimit/>
+<pxCreateDateTime>20150211T082043.907 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyForEachProperty/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20150211T082043.911 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyForEachClass/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<PropertiesName>Param.LocaleCode</PropertiesName>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<PropertiesValue>.pxReqLocale</PropertiesValue>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>PropertiesName</pyParametersParamName>
+<pyParametersParamDesc>The name of the property to update.  Specified as (page.property or .property syntax)</pyParametersParamDesc>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSize>30</pyParametersParamSize>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>true</pyParametersParamReq>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>The property(s) value.  This can be a literal value in double quotes or a reference value (page.property, .property or a java expression)</pyParametersParamDesc>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamSize>90</pyParametersParamSize>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>PropertiesValue</pyParametersParamName>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+</rowdata>
+</pyStepsParamUI>
+<pyExpressionGadget>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyShowParameters>true</pyShowParameters>
+<pyTemplateInputBox/>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyEditable>true</pyEditable>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pxCreateDateTime>20170607T123731.620 GMT</pxCreateDateTime>
+<PropertiesName>local.localeCode</PropertiesName>
+<PropertiesValue>.pxReqLocale</PropertiesValue>
+<pxCreateOperator>Admin@suro</pxCreateOperator>
+<pxCreateSystemID>sls-pochyd</pxCreateSystemID>
+<pxCreateOpName>Admin@Launchpad</pxCreateOpName>
+<pyExpressionGadget>
+<pyIsLaunchAsOverlay>false</pyIsLaunchAsOverlay>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pyTemplateInputBox/>
+<pyShowParameters>true</pyShowParameters>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+</rowdata>
+</pyParamArray>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxStepDefaultDescription>Property-Map-DecisionTable</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsTransition/>
+<pyTemplateInputBox/>
+<pyStepsActivityName>Property-Map-DecisionTable</pyStepsActivityName>
+<pyStepsActivityNameUC>PROPERTY-MAP-DECISIONTABLE</pyStepsActivityNameUC>
+<pyExpanded>true</pyExpanded>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzStepExpanded/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyPropRef/>
+<pxCreateDateTime>20150211T081951.027 GMT</pxCreateDateTime>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsBlockName/>
+<pyOnException/>
+<pyStepsPreCondition/>
+<pyStepsJavaSource/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepPageReference>RH_1.pySteps(3)</pyStepPageReference>
+<pyStepsDescription>Evaluate decision to get the list separator</pyStepsDescription>
+<pyStepActivityDescription/>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyStepsRepeatDef>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsRepeatDefStart/>
+<pyForEachProperty/>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefIteration/>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20150211T081951.031 GMT</pxCreateDateTime>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pxCreateDateTime>20150211T081951.032 GMT</pxCreateDateTime>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20150211T081951.030 GMT</pxCreateDateTime>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20150211T081951.029 GMT</pxCreateDateTime>
+<pxCreateOpName>Mahesh Chintawar</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhen/>
+<pxCreateOperator>chinm2</pxCreateOperator>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pxCreateSystemID>slsv718h</pxCreateSystemID>
+</rowdata>
+</pyStepsPreCondParams>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyStepsParamUIRemoved/>
+<PropertyName>local.listSeperator</PropertyName>
+<DecisionTableName>pzGetLocaleListSeperator</DecisionTableName>
+<AllowMissingProperties>false</AllowMissingProperties>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyExpressionGadget>
+<pyTemplateInputBox/>
+<pyShowCustomPages>true</pyShowCustomPages>
+<pyShowLocalVariables>true</pyShowLocalVariables>
+<pyEditable>true</pyEditable>
+<pxObjClass>PegaGadget-ExpressionBuilder</pxObjClass>
+<pyShowParameters>true</pyShowParameters>
+<pyIsLaunchAsOverlay/>
+<pyExpressionMapNew REPEATINGTYPE="PropertyGroup">
+</pyExpressionMapNew>
+</pyExpressionGadget>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamSmartPromptRule>PROPERTY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>PropertyName</pyParametersParamName>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule>Rule-Obj-Property</pyParametersParamIntelliRule>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamDesc>Result in</pyParametersParamDesc>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamIntelliRule>Rule-Declare-DecisionTable</pyParametersParamIntelliRule>
+<pyParametersParamSmartPrompt>true</pyParametersParamSmartPrompt>
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamDesc>name of the Rule-Declare-DecisionTable</pyParametersParamDesc>
+<pyParametersParamName>DecisionTableName</pyParametersParamName>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamType>STRING</pyParametersParamType>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamName>AllowMissingProperties</pyParametersParamName>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamDesc>if false (or not set), a missing property will halt execution</pyParametersParamDesc>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyStepsTransition/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pyOnException/>
+<pyStepsObjectName/>
+<pyStepsPreCondition>false</pyStepsPreCondition>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pzStepExpanded/>
+<pyStepsDescription>Construct CSV string</pyStepsDescription>
+<pyExpanded>true</pyExpanded>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pyStepActivityDescription/>
+<pyTemplateInputBox/>
+<pzActivityStep/>
+<pyStepsJavaSource>StringBuffer csvbuff = new StringBuffer();
+
+//Construct list of properties to be displayed on CSV
+java.util.List propList = new ArrayList();
+java.util.List propHeadersList = new ArrayList();
+java.util.List&lt;String&gt; propTypes = null;
+java.util.List&lt;String&gt; fieldModes = null;
+
+if(tools.getParamValue("CSVPropertyTypes")!= null &amp;&amp; !tools.getParamValue("CSVPropertyTypes").equals("")) {
+  propTypes = java.util.Arrays.asList(tools.getParamValue("CSVPropertyTypes").split(","));
+}
+
+if(tools.getParamValue("CSVFieldModes")!= null &amp;&amp; !tools.getParamValue("CSVFieldModes").equals("")) {
+  fieldModes = java.util.Arrays.asList(tools.getParamValue("CSVFieldModes").split(",",-1));
+}
+  
+Iterator iter = null;
+String CSVProps = tools.getParamValue("CSVProperties");
+
+String pageListProp = tools.getParamValue("PageListProperty");
+ClipboardProperty resultsProp = myStepPage.getProperty(pageListProp);
+
+if(!CSVProps.equals("")){
+  propList = java.util.Arrays.asList(CSVProps.split(","));	
+}else{
+	ClipboardPage firstResultPage = resultsProp.getPageValue(1);
+	java.util.Set propSet = firstResultPage.keySet();
+
+	String propName="";
+	
+	iter = propSet.iterator();
+	while (iter.hasNext()) {
+		propName = (String)iter.next();
+		if(propName.equals("pxObjClass")){
+			continue;
+		}
+		propList.add(propName);	
+	}
+}
+
+//form property-alias map for aggregate fields
+ClipboardProperty fieldMapping = myStepPage.getProperty("pyMapping");
+String fieldName;
+java.util.Map&lt;String, String&gt; fieldMap = new java.util.HashMap&lt;&gt;();
+ClipboardPage fieldPg;
+for(int i = 1; i &lt;= fieldMapping.size(); i++) {
+  fieldPg = fieldMapping.getPageValue(i);
+  fieldName = fieldPg.getString("pyColumnName");
+  if (fieldName.indexOf(".") != -1) {
+    fieldMap.put(fieldName, fieldPg.getString("pyPropertyName"));  
+  }
+}
+
+String propertyName;
+String aliasName;
+String joinedClassName;
+ClipboardPage fieldPage;
+java.util.Map&lt;String, String&gt; columnAliasMap = new java.util.HashMap&lt;&gt;();
+ClipboardProperty uiFields = myStepPage.getProperty(".pyReportDefinition.pyUI.pyBody.pyUIFields");
+
+Iterator it = uiFields.iterator();
+
+while (it.hasNext()) {
+	fieldPage = ((ClipboardProperty)it.next()).getPageValue();
+  fieldName = fieldPage.getString(".pyFieldName");
+  if (fieldPage.getString("pyFunction") != "") {
+    aliasName = fieldMap.get(fieldName);
+    if (fieldName.indexOf(".") != -1) {
+      if (fieldName.indexOf(".") != 0) {
+        joinedClassName = (fieldName.split("\\."))[0];
+      	propertyName = (fieldName.split("\\."))[1];
+      	fieldName = ".pxPages("+joinedClassName+")."+propertyName;
+      } else {
+        fieldName = (fieldName.split("\\."))[1];
+      }
+    columnAliasMap.put(fieldName, aliasName);
+    }
+  }
+}
+
+//populating decimalPrecisionMap
+java.util.Map &lt;String, Integer&gt; decimalPrecisionMap = new java.util.HashMap&lt;&gt;(); 
+int k = 0;
+String propName="";
+String propType="";
+String className = myStepPage.getString("pyObjClass");
+if (propTypes != null) {
+  iter = propTypes.iterator();
+  while (iter.hasNext()) {
+    propType = (String)iter.next();
+    if ("Decimal".equals(propType)) {
+      propName = (String)propList.get(k);
+      if (columnAliasMap.containsKey(propName)) {
+        propName = (String)columnAliasMap.get(propName);
+      }
+      String decimalPrecision = tools.getThread().getDictionary().getQualifier(className,propName,"pyDecimalPrecision");
+	    if(!StringUtils.isBlank(decimalPrecision)) {
+		    decimalPrecisionMap.put(propName, Integer.valueOf(decimalPrecision));
+      } else {
+		    decimalPrecisionMap.put(propName, -1);
+      }
+    }
+    k++;
+  }
+}
+
+
+//loop through properties and add as column headers in the CSV file
+String CSVPropHeaders = tools.getParamValue("CSVPropHeaders");
+java.util.Map headersMap = null;
+Object hmObj = tools.getParameterPage().getObject("HeadersMap");
+if(hmObj instanceof java.util.Map) {
+   headersMap = (java.util.Map)hmObj;
+}
+  if(CSVPropHeaders!= null &amp;&amp; !"".equals(CSVPropHeaders)){
+    propHeadersList = java.util.Arrays.asList(CSVPropHeaders.split(","));
+    iter = propHeadersList.iterator();
+  } else if (headersMap !=null &amp;&amp; headersMap.size()&gt;0){
+        StringBuffer headersBuffer = new StringBuffer();
+		Iterator&lt;String&gt; headersIter = propList.iterator();
+    	if(headersIter.hasNext()){
+		while(headersIter.hasNext()){
+				headersBuffer.append(headersMap.get(headersIter.next()));
+				headersBuffer.append(",");
+		}
+   iter = java.util.Arrays.asList(headersBuffer.substring(0, headersBuffer.length()-1).split(",")).iterator();
+        }
+    else{
+      iter = propList.iterator();
+    }
+  }else {
+    iter = propList.iterator();
+  }
+
+int z = 0;
+while(iter.hasNext()){
+	if(fieldModes!=null &amp;&amp; fieldModes.get(z)!=null &amp;&amp; (fieldModes.get(z).equals("Calculated") || fieldModes.get(z).equals("Read Only"))){
+		csvbuff.append(((String)iter.next()) + "(read-only)");
+	}
+	else{
+		csvbuff.append((String)iter.next());
+	}
+	
+	if(iter.hasNext()){
+		csvbuff.append(listSeperator);
+	}
+	z++;
+}
+
+
+csvbuff.append("\n");
+
+ClipboardPage propPage =null;
+String propValue = "";
+int j=0;
+for(int i =1; i&lt;=resultsProp.size(); i++){
+	iter = propList.iterator();
+	propPage = resultsProp.getPageValue(i);
+	while(iter.hasNext()){
+	
+		propName = (String)iter.next();
+    if (columnAliasMap.containsKey(propName)) {
+      propName = (String)columnAliasMap.get(propName);
+    }
+		propValue = propPage.getString(propName);
+    
+	  //get default date formats for excel for the requestor locale
+		PublicAPI tools = null;
+		PRThread  mThread = (PRThread)ThreadContainer.get();
+		if (mThread != null) {
+			tools = mThread.getPublicAPI();
+		}
+      
+      String EXCEL_DATE_TIME_DEFAULT_FORMAT = "M/d/yyyy H:mm";
+	  String EXCEL_DATE_DEFAULT_FORMAT = "M/d/yyyy";
+      
+      ClipboardPage defaultDateFormatsForExcelClipboardPage = tools.createPage("PegaAccel-DataImport", "defaultDateFormatsForExcelPage");      
+  	  defaultDateFormatsForExcelClipboardPage.putString(".pyLocale", localeCode);
+		ParameterPage newParamsPage = new ParameterPage();
+
+		StringMap params = new HashStringMap();
+		params.putString("pxObjClass", "Rule-Declare-DecisionTable");
+		params.putString("pyClassName", "PegaAccel-DataImport");
+		params.putString("pyPurpose", "pzExcelDefaultDateTimeFormat");
+		tools.doAction(params, defaultDateFormatsForExcelClipboardPage, newParamsPage);   
+      
+        String dateFormat  = defaultDateFormatsForExcelClipboardPage.getString("pyExcelDefaultDateFormat");
+		if(StringUtils.isBlank(dateFormat)){
+			dateFormat = EXCEL_DATE_DEFAULT_FORMAT;
+		}
+		dateFormat = dateFormat.replaceAll("\"", "");
+		String dateTimeFormat = defaultDateFormatsForExcelClipboardPage.getString("pyExcelDefaultDateTimeFormat");		
+		if(StringUtils.isBlank(dateTimeFormat)){
+			dateTimeFormat = EXCEL_DATE_TIME_DEFAULT_FORMAT;
+		}
+		dateTimeFormat = dateTimeFormat.replaceAll("\"", "");
+      
+          if(!propValue.equals("") &amp;&amp; propTypes != null){
+            propType = propTypes.get(j); 
+            if ((propType.equals("Decimal"))) {
+              propValue = PRNumberFormat.format(localeCode, PRNumberFormat.DEFAULT_DECIMAL, false, null, decimalPrecisionMap.get(propName), new BigDecimal(propValue));
+            } else if (propType.equals("Double")) {
+              propValue = PRNumberFormat.format(localeCode,PRNumberFormat.DEFAULT_DECIMAL, false, null,  Double.parseDouble(propValue));
+            } else if ("Date".equals(propType)) {
+				String userTimeZone = mThread.getTimeZoneName();		
+				Date date = PRDateFormat.parseAsDate(localeCode, userTimeZone, null, propValue);
+			  	java.text.DateFormat sdf = new java.text.SimpleDateFormat(dateFormat, com.pega.apache.commons.lang.LocaleUtils.toLocale(localeCode));
+				sdf.setLenient(false);
+				sdf.setTimeZone(java.util.TimeZone.getTimeZone(userTimeZone));
+				propValue = sdf.format(date);			
+            } else if ("DateTime".equals(propType) || "Date Time".equals(propType)) {
+				String userTimeZone = mThread.getTimeZoneName();
+				DateTimeUtils dtu = pega.getDateTimeUtils();
+				propValue = dtu.formatDateTime(propValue, dateTimeFormat, userTimeZone, localeCode);			
+            }
+          }
+      if(propValue.contains("\"")){
+          propValue = propValue.replaceAll("\"", "\"\"");
+        }
+      
+        if(propValue.contains(listSeperator) || propValue.contains("\"") || propValue.contains("\n") ||  propValue.contains("\r\n") ||  propValue.contains("\r")){
+		    csvbuff.append("\""+propValue+"\"");
+		} else {
+            csvbuff.append(propValue);  
+        }
+
+		
+		
+		if(iter.hasNext()){
+			csvbuff.append(listSeperator);
+		}
+      j++;
+	}
+  j=0;
+	csvbuff.append("\n");
+}
+
+CSVString = csvbuff.toString();</pyStepsJavaSource>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyPropRef/>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyStepsBlockName/>
+<pyStepPageReference>RH_1.pySteps(4)</pyStepPageReference>
+<pxInsName/>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pzEditActivityStepJavaExternally/>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyStepsCallParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefIteration/>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsRepeatDefStop/>
+<pxCreateDateTime>20140221T071143.562 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyStepsRepeatDefHasRepeat/>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStart/>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pyStepsRepeatDefLimit/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20140221T071143.564 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyForEachClass/>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pxCreateOperator>garlh</pxCreateOperator>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</rowdata>
+</pyParamArray>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Surojit Ghosh</pxCreateOpName>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pxCreateSystemID>sls-envhyd83</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20190121T133913.225 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhen/>
+<pxCreateOperator>ghoss4</pxCreateOperator>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pxCreateSystemID>sls-envhyd83</pxCreateSystemID>
+<pxCreateOpName>Surojit Ghosh</pxCreateOpName>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateOperator>ghoss4</pxCreateOperator>
+<pyStepsPreCondParamsWhen>@(Pega-RULES:Default).PropertyExists(.pxResults(1), tools)</pyStepsPreCondParamsWhen>
+<pxCreateDateTime>20190121T133913.224 GMT</pxCreateDateTime>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalse>6</pyStepsPreCondParamsWhenFalse>
+</rowdata>
+</pyStepsPreCondParams>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyOnException/>
+<pyStepsJavaSource>char sep = PRFile.separatorChar;
+String exportPath= tools.getProperty("pxProcess.pxServiceExportPath").getStringValue();
+DateTimeUtils dtu = ThreadContainer.get().getDateTimeUtils();
+
+String fileNameParam = tools.getParamValue("FileName");
+if(fileNameParam.equals("")){
+	fileNameParam = "RecordsToCSV";
+}
+Boolean appendTimeStamp = tools.getParamAsBoolean(ImmutablePropertyInfo.TYPE_TRUEFALSE,"AppendTimeStampToFileName");
+
+FileName+=fileNameParam;
+if(appendTimeStamp){
+	FileName+="_";
+	FileName+=dtu.getCurrentTimeStamp();
+}
+FileName+=".csv";
+String strSQLfullPath = exportPath+ sep + FileName;
+PRFile f = new PRFile(strSQLfullPath);
+try{
+ // Create file 
+ PROutputStream stream = new PROutputStream(f);
+ PRWriter out = new PRWriter(stream, null, false);
+ // Bug with Excel reading a file starting with 'ID' as SYLK file. If CSV starts with ID, prepend an empty space.
+ if(CSVString.startsWith("ID")){
+	CSVString=" "+CSVString;
+ }
+ out.write(CSVString);
+ //Close the output stream
+ out.close();
+}catch (Exception e) {
+ oLog.error("Error writing csv file: " + e.getMessage());
+}</pyStepsJavaSource>
+<pyTemplateInputBox/>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pyStepsBlockName/>
+<pyStepsActivityNameUC>JAVA</pyStepsActivityNameUC>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pxStepDefaultDescription>Java</pxStepDefaultDescription>
+<pyStepsActivityName>Java</pyStepsActivityName>
+<pyPropRef/>
+<pzStepExpanded/>
+<pxInsName/>
+<pzActivityStep/>
+<pyExpanded>true</pyExpanded>
+<pyStepsDescription>Write to csv file at location</pyStepsDescription>
+<pyStepsTransition/>
+<pyStepsObjectName/>
+<pyStepsPreCondition/>
+<pzEditActivityStepJavaExternally/>
+<pyStepPageReference>RH_1.pySteps(5)</pyStepPageReference>
+<pxCreateDateTime>20140221T074125.433 GMT</pxCreateDateTime>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepActivityDescription/>
+<pyStepsPageAliases>
+<pxObjClass/>
+</pyStepsPageAliases>
+<pySteps REPEATINGTYPE="PageList"/>
+<pyStepsCallParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pyStepsCallParams>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxCreateDateTime>20140221T074125.434 GMT</pxCreateDateTime>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsPreCondParamsWhen/>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenTruePrms/>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+</rowdata>
+</pyStepsPreCondParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyParamArray>
+<pyStepsRepeatDef>
+<pyStepsRepeatDefStop/>
+<pyStepsRepeatDefHasRepeat/>
+<pyStepsRepeatDefIteration/>
+<pyForEachProperty/>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxCreateDateTime>20140221T074125.436 GMT</pxCreateDateTime>
+<pyStepsRepeatDefLimit/>
+<pyStepsRepeatDefStart/>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxCreateDateTime>20140221T074125.438 GMT</pxCreateDateTime>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+<pyForEachClass/>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStepsTransParamsWhenFalsePrms/>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateDateTime>20140221T074125.435 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen/>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyStepActivityDescription/>
+<pyStepsActivityName>Call @baseclass.DownloadFile</pyStepsActivityName>
+<pyExpanded>true</pyExpanded>
+<pyTemplateInputBox/>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxObjClass>Embed-ActivitySteps</pxObjClass>
+<pyStepPageReference>RH_1.pySteps(6)</pyStepPageReference>
+<pyStepsTransition/>
+<pxStepDefaultDescription>	[Embed-ActivitySteps.pyActionPrompt]Call	@baseclass.DownloadFile</pxStepDefaultDescription>
+<pyStepsObjectName/>
+<pyOnException/>
+<pyStepsBlockName/>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsActivityNameUC>CALL @BASECLASS.DOWNLOADFILE</pyStepsActivityNameUC>
+<pyStepsPreCondition/>
+<pyStepsDescription>download the csv file</pyStepsDescription>
+<pyStepsParentClass>@baseclass</pyStepsParentClass>
+<pyStepsClassName>@baseclass</pyStepsClassName>
+<pzActivityStep/>
+<pyStepsJavaSource/>
+<pzStepExpanded/>
+<pxCreateDateTime>20140221T084040.621 GMT</pxCreateDateTime>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pyPropRef/>
+<pyPassCurrentParameterPage>false</pyPassCurrentParameterPage>
+<pyStepsPageAliases>
+</pyStepsPageAliases>
+<pyStepsPreCondParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateOperator>garlh</pxCreateOperator>
+<pyStepsPreCondParamsWhenFalse>2</pyStepsPreCondParamsWhenFalse>
+<pyStepsPreCondParamsWhen/>
+<pxCreateDateTime>20140221T084040.622 GMT</pxCreateDateTime>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxObjClass>Embed-ActivityPreConditions</pxObjClass>
+<pyStepsPreCondParamsWhenFalsePrms/>
+<pyStepsPreCondParamsWhenTrue>2</pyStepsPreCondParamsWhenTrue>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsPreCondParamsWhenTruePrms/>
+</rowdata>
+</pyStepsPreCondParams>
+<pyStepsRepeatDef>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxCreateDateTime>20140221T084040.625 GMT</pxCreateDateTime>
+<pyForEachProperty/>
+<pyStepsRepeatDefLimit/>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pyStepsRepeatDefIteration/>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsRepeatDefStart/>
+<pyStepsRepeatDefHasRepeat/>
+<pxObjClass>Embed-ActivityRepeat</pxObjClass>
+<pyStepsRepeatDefStop/>
+<pyForEachValidClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateDateTime>20140221T084040.626 GMT</pxCreateDateTime>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pyForEachClass/>
+<pxObjClass>Embed-ActivityForEachClasses</pxObjClass>
+</rowdata>
+</pyForEachValidClasses>
+</pyStepsRepeatDef>
+<pyStepsTransParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxCreateSystemID>SLSV72HYD</pxCreateSystemID>
+<pyStepsTransParamsWhenFalsePrms/>
+<pyStepsTransParamsWhenFalse>2</pyStepsTransParamsWhenFalse>
+<pyStepsTransParamsWhenTruePrms/>
+<pxCreateOperator>garlh</pxCreateOperator>
+<pxCreateDateTime>20140221T084040.624 GMT</pxCreateDateTime>
+<pyStepsTransParamsWhen/>
+<pyStepsTransParamsWhenTrue>2</pyStepsTransParamsWhenTrue>
+<pxCreateOpName>Hemanth Garlapati</pxCreateOpName>
+<pxObjClass>Embed-ActivityTransitions</pxObjClass>
+</rowdata>
+</pyStepsTransParams>
+<pyStepsCallParams>
+<DeleteFile>true</DeleteFile>
+<pyStepsParamUIRemoved/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<FileName>local.FileName</FileName>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamReq>true</pyParametersParamReq>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamDesc>FileName from service export to dowload  to client</pyParametersParamDesc>
+<pyParametersParamType>STRING</pyParametersParamType>
+<pyParametersParamName>FileName</pyParametersParamName>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyParametersParamSmartPrompt>false</pyParametersParamSmartPrompt>
+<pyParametersParamIntelliBaseClass>PageClass</pyParametersParamIntelliBaseClass>
+<pyParametersParamDesc>should the file be delete after the is dowloaded</pyParametersParamDesc>
+<pyParametersParamType>BOOLEAN</pyParametersParamType>
+<pyParametersParamSmartPromptRule>RULEKEY</pyParametersParamSmartPromptRule>
+<pyParametersParamInOut>true</pyParametersParamInOut>
+<pyParametersParamName>DeleteFile</pyParametersParamName>
+<pyParametersParamReq>false</pyParametersParamReq>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</pyStepsCallParams>
+<pyParamArray REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pyStepsParamUI REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+</rowdata>
+</pyStepsParamUI>
+</rowdata>
+</pyParamArray>
+<pySteps REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+</pySteps>
+</pagedata>

@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabel>BrowseAPPName_sql</pyLabel>
+<pyDeletedObject/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL</pyClassName>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxHostId>jboss2145</pxHostId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySpecialtyComponentData/>
+<pyRequestType>BrowseAPPName_sql</pyRequestType>
+<pyRuleEnds/>
+<pxInstanceLockedKey/>
+<pyStatus/>
+<pyDescription/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL GCNM!BROWSEAPPNAME_SQL #20200116T080811.459 GMT</pzInsKey>
+<pxMoveImportDateTime>20200813T090238.401 GMT</pxMoveImportDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateOpName>Willy Tandra</pxUpdateOpName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplate/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceProp/>
+<pySPRuleSetName>willygcnm@</pySPRuleSetName>
+<pyCircumstanceTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedBy/>
+<pyJavaStream/>
+<pxCreateOpName>Willy Tandra</pxCreateOpName>
+<pyFormPost/>
+<pyInterface/>
+<pxInstanceLockedRuleSet/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20200116T080811.459 GMT</pxCreateDateTime>
+<pyLabelOld>BrowseAPPName_sql</pyLabelOld>
+<pyIsFromManageChangeLP/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL GCNM!BROWSEAPPNAME_SQL #20200116T080811.459 GMT</pzDocumentKey>
+<pxOriginalCreateSystemID/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL GCNM BrowseAPPName_sql</pxTabLabel>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL!GCNM!BROWSEAPPNAME_SQL</pxInsId>
+<pyTemplateInputBox/>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pyCircumstanceDate/>
+<pyCircumstanceVal/>
+<pxOriginalCreateOperator/>
+<pxMoveFromSystem/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDeleteSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyHandlerFlow/>
+<pzRuleSetVersionPatch>52</pzRuleSetVersionPatch>
+<pyCircumstanceDateProp/>
+<pzChecksum>-1251583181</pzChecksum>
+<pxSiblingCount/>
+<pyWorkKey/>
+<pyRuleStarts/>
+<pxOriginalCreateOpName/>
+<pySaveSQL/>
+<pxCommitDateTime>20200813T090238.000 GMT</pxCommitDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyMemo>done</pyMemo>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pyCircumstanceDefinition/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL!GCNM!BROWSEAPPNAME_SQL</pxInsName>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxSaveDateTime>20200116T080905.334 GMT</pxSaveDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyBaseRule>false</pyBaseRule>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL GCNM!BROWSESERVICENAME_SQL #20191107T045222.708 GMT</pzOriginalInstanceKey>
+<pyDocumentTitle/>
+<pxOriginalCreateDateTime/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyRuleFormStatusTime>20260720T144815.884 GMT</pyRuleFormStatusTime>
+<pxCreateOperator>willygcnm</pxCreateOperator>
+<pyRelativePath/>
+<pxUpdateDateTime>20200116T080905.240 GMT</pxUpdateDateTime>
+<pyUsage/>
+<pyStreamName/>
+<pxInstanceLockedRuleSetVersion/>
+<pyBrowseSQL>SELECT APP as "DOCUMENTNAME" FROM pooldata.DB_LINK_PEGA where APPIP like '%{ASIS:TempError.ID_Offer}%'</pyBrowseSQL>
+<pyValueChanged>false</pyValueChanged>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleParamsStreamName/>
+<pyRuleSetVersion>01-01-52</pyRuleSetVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOperator>willygcnm</pxUpdateOperator>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL GCNM BrowseAPPName_sql</pyRuleName>
+<pyShowJavaWindowName>GeneratedJava20260720T144815.908 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL GCNM!BROWSEAPPNAME_SQL #20200116T080811.459 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-52 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>false</pyDelete>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyRuleData>true</pyRuleData>
+<pyRefresh>true</pyRefresh>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+</pagedata>

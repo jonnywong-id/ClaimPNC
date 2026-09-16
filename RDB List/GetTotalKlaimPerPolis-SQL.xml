@@ -1,0 +1,178 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCheckInRuleSet/>
+<pyWindowTitle/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceDateProp/>
+<pyLabelOld>Get Total Klaim Per Polis</pyLabelOld>
+<pyBaseRule>false</pyBaseRule>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyBrowseSQL>SELECT SUM(GROSSVALUE*CURRENCYVALUE) as "AdjustmentValue" FROM T_CLAIM_PNC a, T_CLAIM_ADJUSTMENT b 
+WHERE a.CLAIMID = b.CLAIMID
+AND b.NOAKSEPTASI IS NOT NULL
+AND a.NOPOLIS = {tempEKomite.Salvage}</pyBrowseSQL>
+<pyCircumstanceType/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!BROSWSEKLAIMBYREGISTERDATE #20220203T013121.525 GMT</pzOriginalInstanceKey>
+<pyMemo>done</pyMemo>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETTOTALKLAIMPERPOLIS #20220209T070157.216 GMT</pzInsKey>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyTemporaryObject/>
+<pyHandlerFlow/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceDefinition/>
+<pySpecialtyComponentData/>
+<pySaveSQL/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pyRequestType>GetTotalKlaimPerPolis</pyRequestType>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalCreateSystemID/>
+<pyJavaStream/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateOpName/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetTotalKlaimPerPolis</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pzChecksum>347306094</pzChecksum>
+<pyTemplateInputBox/>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pyMethodStatus/>
+<pyCircumstanceTemplate/>
+<pyShowJavaWindowName>GeneratedJava20260901T070315.512 GMT</pyShowJavaWindowName>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyDescription/>
+<pyStatus/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetTotalKlaimPerPolis</pyRuleName>
+<pxSaveDateTime>20220209T095914.096 GMT</pxSaveDateTime>
+<pxMoveImportDateTime>20220610T100601.390 GMT</pxMoveImportDateTime>
+<pxHostId>jboss1036</pxHostId>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionPatch>97</pzRuleSetVersionPatch>
+<pyDocumentTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyOpenSQL/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETTOTALKLAIMPERPOLIS</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyRelativePath/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyCircumstanceVal/>
+<pyCircumstanceProp/>
+<pyFormPost/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyRuleFormStatusTime>20260901T070315.491 GMT</pyRuleFormStatusTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyLabel>Get Total Klaim Per Polis</pyLabel>
+<pxCreateDateTime>20220209T070157.216 GMT</pxCreateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETTOTALKLAIMPERPOLIS #20220209T070157.216 GMT</pzDocumentKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyUsage/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveFromSystem/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETTOTALKLAIMPERPOLIS</pxInsName>
+<pyRuleParamsStreamName/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSiblingCount/>
+<pxOriginalCreateOperator/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyStreamName/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDate/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyRuleEnds/>
+<pyRuleSetVersion>01-01-97</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCommitDateTime>20220610T100602.000 GMT</pxCommitDateTime>
+<pxInstanceLockedBy/>
+<pxInstanceLockedRuleSetVersion/>
+<pyInterface/>
+<pxUpdateDateTime>20220209T095914.088 GMT</pxUpdateDateTime>
+<pxOriginalCreateDateTime/>
+<pyWorkKey/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETTOTALKLAIMPERPOLIS #20220209T070157.216 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-97 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

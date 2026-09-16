@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceType/>
+<pyUsage/>
+<pxUpdateDateTime>20231127T025800.562 GMT</pxUpdateDateTime>
+<pxCreateOperator>YAFIASAMUEL</pxCreateOperator>
+<pyLabel>CheckVerificationFromLog</pyLabel>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFICATIONFROMLOG #20231123T025114.060 GMT</pzDocumentKey>
+<pyWorkKey/>
+<pxInsId>ASM-FW-GISFW-INT-CLIENT!ASM!CHECKVERIFICATIONFROMLOG</pxInsId>
+<pxSaveDateTime>20231127T025800.580 GMT</pxSaveDateTime>
+<pyRWAccess>ASM</pyRWAccess>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormStatusTime>20260901T040430.950 GMT</pyRuleFormStatusTime>
+<pyMemo>add baca sms status juga</pyMemo>
+<pxInstanceLockedKey/>
+<pyIsFromManageChangeLP/>
+<pyOpenSQL/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaStream/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedRuleSetVersion/>
+<pyDescription/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFICATIONFROMLOG #20231123T025114.060 GMT</pzOriginalInstanceKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyInterface/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedCreateDateTime/>
+<pyFormPost/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyDocumentTitle/>
+<pyMethodStatus/>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pxInsName>ASM-FW-GISFW-INT-CLIENT!ASM!CHECKVERIFICATIONFROMLOG</pxInsName>
+<pxCommitDateTime>20231128T111444.000 GMT</pxCommitDateTime>
+<pyRuleName>ASM-FW-GISFW-Int-CLIENT ASM CheckVerificationFromLog</pyRuleName>
+<pyRuleStarts/>
+<pyRelativePath/>
+<pxCreateOpName>Yafia Samuel</pxCreateOpName>
+<pxMoveFromSystem/>
+<pyRequestType>CheckVerificationFromLog</pyRequestType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyBaseRule>false</pyBaseRule>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplate/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pxSiblingCount/>
+<pyDeletedObject/>
+<pyBrowseSQL>SELECT LASTDATESTATUSTEXT AS HASIL1
+  FROM T_WHATSAPP_LOG A
+ WHERE     (WA_STATUS = 'delivered' OR (SMS_STATUS = '1' AND WA_STATUS = 'sent'))
+       AND NOT EXISTS
+                  (SELECT '1'
+                     FROM T_WHATSAPP_LOG B
+                    WHERE     A.RANDOMKEY_CLIENT = B.RANDOMKEY_CLIENT
+                          AND B.TYPE = 'REPLY'
+                          AND UPPER (B.WA_REPLY) LIKE '%TIDAK%')
+        AND RANDOMKEY_CLIENT = {InputData.CARI7}</pyBrowseSQL>
+<pzChecksum>-1649873048</pzChecksum>
+<pyTemplateInputBox/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceTemplate/>
+<pyShowJavaWindowName>GeneratedJava20260901T040430.976 GMT</pyShowJavaWindowName>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxTabLabel>ASM-FW-GISFW-Int-CLIENT ASM CheckVerificationFromLog</pxTabLabel>
+<pyCircumstanceDefinition/>
+<pySpecialtyComponentData/>
+<pyRuleSetVersion>01-04-38</pyRuleSetVersion>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20231123T025114.060 GMT</pxCreateDateTime>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceVal/>
+<pyLabelOld>CheckVerificationFromLog</pyLabelOld>
+<pyStatus/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOpName>Yafia Samuel</pxUpdateOpName>
+<pzRuleSetVersionPatch>38</pzRuleSetVersionPatch>
+<pyClassName>ASM-FW-GISFW-Int-CLIENT</pyClassName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyCircumstanceDate/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyCircumstanceProp/>
+<pyStreamName/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyHistoryObject/>
+<pyDeleteSQL/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFICATIONFROMLOG #20231123T025114.060 GMT</pzInsKey>
+<pxHostId>jboss1040</pxHostId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHandlerFlow/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOperator>YAFIASAMUEL</pxUpdateOperator>
+<pxMoveImportDateTime>20231128T111443.873 GMT</pxMoveImportDateTime>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySaveSQL/>
+<pyRuleEnds/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!CHECKVERIFICATIONFROMLOG #20231123T025114.060 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-04-38 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+</pagedata>

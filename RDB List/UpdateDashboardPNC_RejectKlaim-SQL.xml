@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSetVersion>01-01-95</pyRuleSetVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRelativePath/>
+<pyWorkKey/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM #20211014T040147.484 GMT</pzInsKey>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyTemplateInputBox/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceType/>
+<pxInstanceLockedBy/>
+<pySpecialtyComponentData/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxInstanceLockedKey/>
+<pyIsFromManageChangeLP/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateDateTime>20211014T090007.855 GMT</pxUpdateDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleStarts/>
+<pyStatus/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleFormStatusTime>20260721T043428.548 GMT</pyRuleFormStatusTime>
+<pxSaveDateTime>20211207T025427.346 GMT</pxSaveDateTime>
+<pyLabelOld>UpdateDashboardPNC_RejectKlaim</pyLabelOld>
+<pyHistoryObject/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySaveSQL/>
+<pzChecksum>792927540</pzChecksum>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDefinition/>
+<pyMemo>update status klaim</pyMemo>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM #20211014T040147.484 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTemplate/>
+<pyRuleParamsStreamName/>
+<pyBaseRule>false</pyBaseRule>
+<pyDocumentTitle/>
+<pyLabel>UpdateDashboardPNC_RejectKlaim</pyLabel>
+<pxInsName>@BASECLASS!GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM</pxInsName>
+<pyClassName>@baseclass</pyClassName>
+<pyCircumstanceDateProp/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxInstanceLockedDateTime/>
+<pyDescription/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyDeleteSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM #20211014T040147.484 GMT</pzOriginalInstanceKey>
+<pxMoveFromSystem/>
+<pyRuleEnds/>
+<pyJavaStream/>
+<pyCircumstanceProp/>
+<pxMoveImportDateTime>20211221T124057.967 GMT</pxMoveImportDateTime>
+<pyShowJavaWindowName>GeneratedJava20260721T043428.571 GMT</pyShowJavaWindowName>
+<pxCommitDateTime>20211221T124059.000 GMT</pxCommitDateTime>
+<pyFormPost/>
+<pyOpenSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedCreateDateTime/>
+<pyRequestType>UpdateDashboardPNC_RejectKlaim</pyRequestType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsId>@BASECLASS!GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM</pxInsId>
+<pxCreateDateTime>20211014T040147.484 GMT</pxCreateDateTime>
+<pyUsage/>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyCircumstanceTemplate/>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyBrowseSQL>UPDATE POOLDATA.PEGA_DASHBOARDPNC SET STSKLAIM = '2' WHERE NOKLAIM = {TempStsDash.CaseID}</pyBrowseSQL>
+<pxSiblingCount/>
+<pyWindowTitle/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyCircumstanceVal/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyInterface/>
+<pyHandlerFlow/>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxTabLabel>@baseclass GCNM UpdateDashboardPNC_RejectKlaim</pxTabLabel>
+<pxHostId>jboss1040</pxHostId>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceDate/>
+<pyRuleName>@baseclass GCNM UpdateDashboardPNC_RejectKlaim</pyRuleName>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyCheckOut>true</pyCheckOut>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBack>true</pyBack>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyForward>true</pyForward>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!UPDATEDASHBOARDPNC_REJECTKLAIM #20211014T040147.484 GMT</pzInsKey>
+<pyLabel>01-01-95 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

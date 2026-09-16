@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSiblingCount/>
+<pyCircumstanceDate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-T_COASACCEPTATION ASM!BROWSEEMAILCOAS #20250609T080021.351 GMT</pzOriginalInstanceKey>
+<pyCircumstanceVal/>
+<pxMoveFromSystem/>
+<pyValueChanged>false</pyValueChanged>
+<pyDeleteSQL/>
+<pyCircumstanceProp/>
+<pyIsFromManageChangeLP/>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxInstanceLockedBy/>
+<pyFormPost/>
+<pyStreamName/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyOpenSQL/>
+<pyDocumentTitle/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionPatch>37</pzRuleSetVersionPatch>
+<pyUsage/>
+<pyRuleStarts/>
+<pxUpdateDateTime>20250711T031646.940 GMT</pxUpdateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzChecksum>-1452111402</pzChecksum>
+<pxInstanceLockedRuleSetVersion/>
+<pyMemo>ru bah pakai old policy no</pyMemo>
+<pxMoveImportDateTime>20250713T144048.401 GMT</pxMoveImportDateTime>
+<pxCreateOpName>Yafia Samuel</pxCreateOpName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCommitDateTime>20250713T144048.000 GMT</pxCommitDateTime>
+<pyCircumstanceType/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyWindowTitle/>
+<pxSaveDateTime>20250711T031646.947 GMT</pxSaveDateTime>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyRWAccess>ASM</pyRWAccess>
+<pyBaseRule>false</pyBaseRule>
+<pyTemplateInputBox/>
+<pxTabLabel>ASM-FW-GISFW-Int-T_COASACCEPTATION ASM BrowseOldEmailCoas</pxTabLabel>
+<pyCircumstanceDefinition/>
+<pyRuleName>ASM-FW-GISFW-Int-T_COASACCEPTATION ASM BrowseOldEmailCoas</pyRuleName>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOpName>Yafia Samuel</pxUpdateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateOperator/>
+<pyTemporaryObject/>
+<pxMergeSynchronized>20250617T140012.533 GMT</pxMergeSynchronized>
+<pySpecialtyComponentData/>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyShowJavaWindowName>GeneratedJava20260901T040228.810 GMT</pyShowJavaWindowName>
+<pyJavaStream/>
+<pyCheckInRuleSet/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedKey/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxHostId>jboss10362</pxHostId>
+<pxOriginalCreateSystemID/>
+<pyLabel>BrowseOldEmailCoas</pyLabel>
+<pyCircumstanceTemplate/>
+<pyHistoryObject>false</pyHistoryObject>
+<pySaveSQL>UPDATE T_LOGINCOAS SET LOGINAPLIKASI = UPPER(EMAIL) , PASSWORD = LOWER(EMAIL)
+WHERE EMAIL = UPPER({EmailCoas.CARI3})</pySaveSQL>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-T_COASACCEPTATION ASM!BROWSEOLDEMAILCOAS #20250711T031636.887 GMT</pzDocumentKey>
+<pyRuleSetVersion>01-05-37</pyRuleSetVersion>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyInterface/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyWorkKey/>
+<pyTemplate/>
+<pyRequestType>BrowseOldEmailCoas</pyRequestType>
+<pxOriginalCreateOpName/>
+<pyRuleParamsStreamName/>
+<pyDeletedObject/>
+<pxCreateDateTime>20250711T031636.887 GMT</pxCreateDateTime>
+<pxOriginalCreateDateTime/>
+<pxInsName>ASM-FW-GISFW-INT-T_COASACCEPTATION!ASM!BROWSEOLDEMAILCOAS</pxInsName>
+<pyLabelOld>BrowseOldEmailCoas</pyLabelOld>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateOperator>YAFIASAMUEL</pxUpdateOperator>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-T_COASACCEPTATION ASM!BROWSEOLDEMAILCOAS #20250711T031636.887 GMT</pzInsKey>
+<pyBrowseSQL>SELECT EMAILCOAS AS HASIL1, EMAILCOAS AS HASIL2
+  FROM T_COASACCEPTATION
+ WHERE     COINSID = {EmailCoas.CARI2}
+       AND IDPEGA IN (SELECT idpega
+                        FROM t_general
+                       WHERE nopolis ={EmailCoas.CARI1})
+       AND ROWNUM = '1'</pyBrowseSQL>
+<pyDeleteMemo>ok</pyDeleteMemo>
+<pxInsId>ASM-FW-GISFW-INT-T_COASACCEPTATION!ASM!BROWSEOLDEMAILCOAS</pxInsId>
+<pyHandlerFlow/>
+<pyCircumstanceDateProp/>
+<pyRelativePath/>
+<pyRuleFormStatusTime>20260901T040228.786 GMT</pyRuleFormStatusTime>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxInstanceLockedDateTime/>
+<pyMethodStatus/>
+<pxInstanceLockedCreateDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStatus/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDescription/>
+<pxCreateOperator>YAFIASAMUEL</pxCreateOperator>
+<pyClassName>ASM-FW-GISFW-Int-T_COASACCEPTATION</pyClassName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPreview>false</pyPreview>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCheckIn>false</pyCheckIn>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyBack>true</pyBack>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+</pyToolBarSettings>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-T_COASACCEPTATION ASM!BROWSEOLDEMAILCOAS #20250711T031636.887 GMT</pzInsKey>
+<pyLabel>01-05-37 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-05-35 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-T_COASACCEPTATION ASM!BROWSEOLDEMAILCOAS #20250617T084704.391 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

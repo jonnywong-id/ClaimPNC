@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20241224T091719.441 GMT</pzInsKey>
+<pxMergeSynchronized>20240819T075718.272 GMT</pxMergeSynchronized>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyApplicableTo>Cluster</pyApplicableTo>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateDateTime>20241224T091719.441 GMT</pxCreateDateTime>
+<pyAccessGroup>GCNMFW:Authors</pyAccessGroup>
+<pyRuleName>JobSendAutoLODKlaimPersonal</pyRuleName>
+<pzOriginalInstanceKey>RULE-ASYNC-JOBSCHEDULER PNCMYREPORTKLAIM3 #20240517T055833.341 GMT</pzOriginalInstanceKey>
+<pxMoveImportOperName>Nover</pxMoveImportOperName>
+<pxSaveDateTime>20241224T091727.571 GMT</pxSaveDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyActivityName>Act_SendAutoLODKlaimPersonal</pyActivityName>
+<pyAccessGroupContext>false</pyAccessGroupContext>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzIndexCount>2</pzIndexCount>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatusTime>20260908T032246.527 GMT</pyRuleFormStatusTime>
+<pyNodeBasedFrequencies>Startup</pyNodeBasedFrequencies>
+<pyIsEnabled>true</pyIsEnabled>
+<pyObjClassLabel>Job Scheduler</pyObjClassLabel>
+<pyPurpose>JobSendAutoLODKlaimPersonal</pyPurpose>
+<pyDescription>job jalan 2 menit</pyDescription>
+<pyBaseClass>ASM-FW-GCNMFW-Work-PNC</pyBaseClass>
+<pyReloadForm>true</pyReloadForm>
+<pyIsResolvable>true</pyIsResolvable>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxHostId>jboss1036</pxHostId>
+<pxMoveImportDateTime>20240824T090435.507 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxUpdateDateTime>20241224T091727.556 GMT</pxUpdateDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteMemo>wip</pyDeleteMemo>
+<pyUsage>job jalan 2 menit</pyUsage>
+<pxCommitDateTime>20241224T091727.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyMemo>dones</pyMemo>
+<pyMode>Daily</pyMode>
+<pxInsId>JOBSENDAUTOLODKLAIMPERSONAL</pxInsId>
+<pyRuleHarness>pzRuleFormNew</pyRuleHarness>
+<pyLabelOld>JobSendAutoLODKlaimPersonal</pyLabelOld>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxObjClass>Rule-Async-JobScheduler</pxObjClass>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxTabLabel>JobSendAutoLODKlaimPersonal</pxTabLabel>
+<pxInsName>JOBSENDAUTOLODKLAIMPERSONAL</pxInsName>
+<pzDocumentKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20241224T091719.441 GMT</pzDocumentKey>
+<pyShowJavaWindowName>GeneratedJava20260908T032246.541 GMT</pyShowJavaWindowName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyClusterBasedFrequencies>Daily</pyClusterBasedFrequencies>
+<pyLabel>JobSendAutoLODKlaimPersonal</pyLabel>
+<pzChecksum>701894922</pzChecksum>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pzStatus>valid</pzStatus>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRecurrencePattern>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyDailyInterval>1</pyDailyInterval>
+<pxObjClass>Embed-Data-Event-Schedule-Pattern</pxObjClass>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyYearlyMonthSelection>0</pyYearlyMonthSelection>
+<pyTimeUnitOptions>Hours</pyTimeUnitOptions>
+<pyDayFrequency>Daily-EveryNDays</pyDayFrequency>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pyStartTime>205400</pyStartTime>
+<pyYearlyMonth>0</pyYearlyMonth>
+</pyRecurrencePattern>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyLaunch>true</pyLaunch>
+<pyDelete>true</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>false</pyVersionSecure>
+<pyHelpRef>/rule-/rule-async-/rule-async-jobscheduler/main.htm</pyHelpRef>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Act_SendAutoLODKlaimPersonal</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleFamilyName>ACT_SENDAUTOLODKLAIMPERSONAL</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20241224T091719.441 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20241224T091719.441 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pyNodeType>BackgroundProcessing</pyNodeType>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pxSubscript>BackgroundProcessing</pxSubscript>
+</rowdata>
+</pyNodeTypes>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20241224T091719.441 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-ASYNC-JOBSCHEDULER JOBSENDAUTOLODKLAIMPERSONAL #20240726T054137.054 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

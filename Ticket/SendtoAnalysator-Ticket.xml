@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsId>!SENDTOANALYSATOR</pxInsId>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxSaveDateTime>20171204T022527.376 GMT</pxSaveDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyShowJavaWindowName>GeneratedJava20260721T025446.727 GMT</pyShowJavaWindowName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDate/>
+<pyCircumstanceTemplate/>
+<pxMoveFromSystem/>
+<pxObjClass>Rule-Obj-Ticket</pxObjClass>
+<pyDeletedObject/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleParamsStreamName/>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyWindowTitle/>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20200312T080330.000 GMT</pxCommitDateTime>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxUpdateOperator>willy_tandra@sinarmas.co.id</pxUpdateOperator>
+<pyRuleFormStatusTime>20260721T025446.703 GMT</pyRuleFormStatusTime>
+<pyFormPost/>
+<pyRuleSetVersion>01-01-03</pyRuleSetVersion>
+<pxHostId>jboss2058</pxHostId>
+<pzInsKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-PNC SENDTOANALYSATOR #20171204T022520.819 GMT</pzInsKey>
+<pyTicketName>SendtoAnalysator</pyTicketName>
+<pyRuleStarts/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceType/>
+<pyLabel>SendtoAnalysator</pyLabel>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyBaseRule>false</pyBaseRule>
+<pySPRuleSetName/>
+<pxCreateOperator>willy_tandra@sinarmas.co.id</pxCreateOperator>
+<pzRuleSetVersionPatch>03</pzRuleSetVersionPatch>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOpName>Willy Tandra</pxCreateOpName>
+<pxUpdateDateTime>20171204T022527.371 GMT</pxUpdateDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pxSiblingCount/>
+<pyHistoryObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedCreateDateTime/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!SENDTOANALYSATOR</pxInsName>
+<pyStreamName/>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSet/>
+<pyRuleName>SendtoAnalysator</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateInputBox/>
+<pyIsFromManageChangeLP/>
+<pyJavaStream/>
+<pyWorkKey/>
+<pyCircumstanceProp/>
+<pyValueChanged>false</pyValueChanged>
+<pzOriginalInstanceKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-PNC SENDTOANALYSATOR #20171204T022520.819 GMT</pzOriginalInstanceKey>
+<pyCircumstanceDateProp/>
+<pyCircumstanceVal/>
+<pzDocumentKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-PNC SENDTOANALYSATOR #20171204T022520.819 GMT</pzDocumentKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyMethodStatus/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxInstanceLockedBy/>
+<pxUpdateOpName>Willy Tandra</pxUpdateOpName>
+<pzChecksum>1259884280</pzChecksum>
+<pxInstanceLockedKey/>
+<pxMoveImportDateTime>20191231T032013.934 GMT</pxMoveImportDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedDateTime/>
+<pxTabLabel>SendtoAnalysator</pxTabLabel>
+<pyObjClassLabel>Ticket</pyObjClassLabel>
+<pyDescription/>
+<pyInterface/>
+<pyRuleEnds/>
+<pxCreateDateTime>20171204T022520.819 GMT</pxCreateDateTime>
+<pyTemplate/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-TICKET ASM-FW-GCNMFW-WORK-PNC SENDTOANALYSATOR #20171204T022520.819 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-03 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-ticket/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-ticket/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+</pagedata>

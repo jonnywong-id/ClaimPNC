@@ -1,0 +1,214 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateSystemID/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyFormPost/>
+<pxInstanceLockedKey/>
+<pzRuleSetVersionPatch>11</pzRuleSetVersionPatch>
+<pxInsName>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETPROGRESSFORKPIPIC</pxInsName>
+<pyIsFromManageChangeLP/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceVal/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pyShowJavaWindowName>GeneratedJava20260901T074119.055 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedBy>WULANINDRIPAAT</pxInstanceLockedBy>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSPIC #20240831T033415.771 GMT</pzOriginalInstanceKey>
+<pyDocumentTitle/>
+<pyDeletedObject/>
+<pyRuleName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetProgressForKPIPIC</pyRuleName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyWindowTitle/>
+<pxMoveFromSystem/>
+<pyInterface/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxOriginalCreateDateTime/>
+<pzChecksum>1742180115</pzChecksum>
+<pyCircumstanceDate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCommitDateTime>20250220T004204.000 GMT</pxCommitDateTime>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC</pyClassName>
+<pxMoveImportDateTime>20241223T123621.949 GMT</pxMoveImportDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyStatus/>
+<pxInstanceLockedRuleSetVersion/>
+<pxMergeSynchronized>20240925T082157.027 GMT</pxMergeSynchronized>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRelativePath/>
+<pyStreamName/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyWorkKey/>
+<pyTemplate/>
+<pxSaveDateTime>20250220T004204.402 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pxInsId>ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC!GCNM!GETPROGRESSFORKPIPIC</pxInsId>
+<pyCircumstanceDateProp/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pySpecialtyComponentData/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-PEGA_DASHBOARDPNC GCNM GetProgressForKPIPIC</pxTabLabel>
+<pyRuleParamsStreamName/>
+<pyTemporaryObject/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleEnds/>
+<pyRuleStarts/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTemplateInputBox/>
+<pxSiblingCount/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyMethodStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxHostId>jboss1036</pxHostId>
+<pyUsage/>
+<pyRuleSetVersion>01-03-11</pyRuleSetVersion>
+<pyCheckInRuleSet/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHandlerFlow/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSFORKPIPIC #20241224T040824.364 GMT</pzDocumentKey>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBrowseSQL>SELECT a.PIC as "PIC",count(C.ID_UPDATE) as "NOAKSEP",
+       sum(CASE
+              WHEN
+                     (
+                              SELECT   t.tgl_input
+                              FROM     pooldata.gcnm_progress_claim t
+                              WHERE    t.pnccaseid=c.pnccaseid
+                              AND      t.id_update&gt;c.id_update
+                              ORDER BY t.id_update ASC FETCH next 1 row only) IS NULL THEN 1
+              ELSE
+                     CASE
+                            WHEN trunc(c.next_followup)+1 &gt;=
+                                             (
+                                                      SELECT   trunc(t.tgl_input)
+                                                      FROM     pooldata.gcnm_progress_claim t
+                                                      WHERE    t.pnccaseid=c.pnccaseid
+                                                      AND      t.id_update&gt;c.id_update
+                                                      ORDER BY t.id_update ASC FETCH next 1 row only) THEN 1
+                            ELSE 0
+                     END
+       END) AS "STSKLAIM"
+FROM   pooldata.gcnm_progress_claim c,
+       pooldata.pega_dashboardpnc a
+WHERE  c.pnccaseid = a.noklaim and A.STSKLAIM not in ('1','2','3')
+AND    upper(c.keterangan) NOT LIKE '%AUTO%'
+and upper(c.keterangan) NOT LIKE '%SYSTEM%'
+AND    a.pic = c.user_input
+{ASIS:TempBisnis.PIC}
+AND    a.pic != 'ASNET'
+{ASIS:TempBisnis.PROD_KE}
+{ASIS:TempBisnis.GROUP_PANEL}
+group by a.pic</pyBrowseSQL>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSFORKPIPIC #20241224T040824.364 GMT</pzInsKey>
+<pyMemo>dones</pyMemo>
+<pySaveSQL/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRequestType>GetProgressForKPIPIC</pyRequestType>
+<pyRuleFormStatusTime>20260901T074119.036 GMT</pyRuleFormStatusTime>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyLabelOld>GetProgressForKPIPIC</pyLabelOld>
+<pyCircumstanceType/>
+<pyDeleteSQL/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxUpdateDateTime>20241224T040833.283 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDescription/>
+<pyLabel>GetProgressForKPIPIC</pyLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime>20250220T004204.402 GMT</pxInstanceLockedDateTime>
+<pyJavaStream/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOpName/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateDateTime>20241224T040824.364 GMT</pxCreateDateTime>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>false</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSFORKPIPIC #20241224T040824.364 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-03-11 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-PEGA_DASHBOARDPNC GCNM!GETPROGRESSFORKPIPIC #20240913T075833.889 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

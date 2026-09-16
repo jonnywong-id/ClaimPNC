@@ -1,0 +1,308 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsId>!SENDLOAUTOMATICLYTOTERTANGGUNGJOB</pxInsId>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxHostId>jboss10372</pxHostId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateDateTime>20240829T065724.343 GMT</pxCreateDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+   &lt;style&gt;
+     body{
+       color:#000000;
+     }
+    .table1{
+        border: 1px solid #999;
+        padding: 1px 1px;
+        font-family: sans-serif;
+        color: #232323;
+        border-collapse: collapse;
+    }
+    .td1{border: 1px solid #999;
+        padding: 1px 1px;
+    }
+     
+
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+       &lt;p&gt;Kepada Yth.&lt;br&gt;
+        Bpk/Ibu di Tempat,&lt;/p&gt;
+       
+       &lt;p&gt;
+         Bersama dengan ini kami sampaikan Letter of Discharge (LOD) klaim Personal Accident (PA) dengan data klaim sesuai lampiran.
+       &lt;/p&gt;
+
+      &lt;p&gt;Untuk melanjutkan proses klaim mohon bantuannya : &lt;/p&gt;
+      &lt;dl&gt;
+        &lt;dd&gt;- Melengkapi draft LOD dengan mengisi nama, alamat email tertanggung/ ahli waris dan nomor rekening penerima klaim.&lt;/dd&gt;
+        &lt;dd&gt;- Menandatangani LOD di atas materai Rp 10.000&lt;/dd&gt;
+        &lt;dd&gt;- Megirimkan kembali LOD yang sudah dilengkapi ke PT Asuransi Sinar Mas.&lt;/dd&gt;
+     &lt;/dl&gt;
+      &lt;p&gt;Demikian kami sampaikan, atas perhatiannya kami ucapakan terima kasih.&lt;/p&gt;
+      &lt;br&gt;&lt;p&gt;Hormat kami,&lt;/p&gt;
+      &lt;b&gt;PT Asuransi Sinar Mas&lt;/b&gt;
+    &lt;br&gt;&lt;br&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzInsKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzDocumentKey>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyRuleFormStatusTime>20260908T032948.113 GMT</pyRuleFormStatusTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyShowJavaWindowName>GeneratedJava20260908T032948.145 GMT</pyShowJavaWindowName>
+<pyBaseRule>false</pyBaseRule>
+<pzIndexCount>16</pzIndexCount>
+<pxCommitDateTime>20241223T123706.000 GMT</pxCommitDateTime>
+<pyReloadForm>true</pyReloadForm>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxTabLabel>SendLOAutomaticlyToTertanggungJOB</pxTabLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleName>SendLOAutomaticlyToTertanggungJOB</pyRuleName>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pzChecksum>664764208</pzChecksum>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_SendLOAutomaticlyToTertanggungJOB_Stream_20240913T104145_679_GMT</pyJavaClassName>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyHistoryObject>false</pyHistoryObject>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDEMAILBODYTOTERTANGGUNG #20210804T030053.723 GMT</pzOriginalInstanceKey>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxUpdateDateTime>20240913T104201.495 GMT</pxUpdateDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxMoveImportDateTime>20241223T123705.835 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyLabel>SendLOAutomaticly To Tertanggung JOB</pyLabel>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!SENDLOAUTOMATICLYTOTERTANGGUNGJOB</pxInsName>
+<pyStreamName>SendLOAutomaticlyToTertanggungJOB</pyStreamName>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyLabelOld>SendLOAutomaticly To Tertanggung JOB</pyLabelOld>
+<pxSaveDateTime>20240913T104201.512 GMT</pxSaveDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyMemo>done email LOD oto dan BFI</pyMemo>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMergeSynchronized>20240806T063858.874 GMT</pxMergeSynchronized>
+<pyCompact>false</pyCompact>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>true</pyShowJava>
+<pyBack>true</pyBack>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pyPreview>true</pyPreview>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyRuleResolution>true</pyRuleResolution>
+<pyForward>true</pyForward>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxPageName>TempListLOD</pxPageName>
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>BisnisKlaimTemps</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxPageClass>ASM-FW-GCNMFW-Data-Adjustment</pxPageClass>
+<pxPageName>TempEmailTertanggung</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxPageName>pyWorkPage</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240806T062323.143 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Adjustment</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempEmailTertanggung</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>TempListLOD</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempListLOD.pxResults</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>BisnisKlaimTemps</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-09 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240806T062323.143 GMT</pzInsKey>
+</rowdata>
+</pyRuleCompareList>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Adjustment</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-ADJUSTMENT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pyRuleName>Code-Pega-List</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>CODE-PEGA-LIST</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC SENDLOAUTOMATICLYTOTERTANGGUNGJOB #20240829T065724.343 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

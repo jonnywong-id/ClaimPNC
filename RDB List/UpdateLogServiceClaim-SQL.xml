@@ -1,0 +1,207 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleEnds/>
+<pyLabel>UpdateLogServiceClaim</pyLabel>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyRuleStarts/>
+<pxMergeSynchronized>20201104T023317.202 GMT</pxMergeSynchronized>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-01-61</pyRuleSetVersion>
+<pyMemo>done</pyMemo>
+<pyCheckInRuleSet/>
+<pxHostId>jboss2143</pxHostId>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionPatch>61</pzRuleSetVersionPatch>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyJavaStream/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE GCNM UpdateLogServiceClaim</pxTabLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSet/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20200311T021957.054 GMT</pzOriginalInstanceKey>
+<pyDescription/>
+<pySaveSQL>update pooldata.claim_service_log set jsonout= {servicelog.PLANNAME} where id={servicelog.PLANID}</pySaveSQL>
+<pyStreamName/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceProp/>
+<pyDeleteMemo>fix checking hit service</pyDeleteMemo>
+<pxOriginalCreateOpName/>
+<pyHandlerFlow/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE GCNM UpdateLogServiceClaim</pyRuleName>
+<pyRuleParamsStreamName/>
+<pySpecialtyComponentData/>
+<pxCommitDateTime>20210801T030935.000 GMT</pxCommitDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateDateTime/>
+<pyOpenSQL/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20210706T040903.871 GMT</pzInsKey>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSiblingCount/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE</pyClassName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyRelativePath/>
+<pyCircumstanceDateProp/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDefinition/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyUsage/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRequestType>UpdateLogServiceClaim</pyRequestType>
+<pxOriginalCreateSystemID/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE!GCNM!UPDATELOGSERVICECLAIM</pxInsName>
+<pyHistoryObject>false</pyHistoryObject>
+<pyMethodStatus/>
+<pyRuleFormStatusTime>20260720T142842.052 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedBy/>
+<pxSaveDateTime>20210706T101722.530 GMT</pxSaveDateTime>
+<pyDeleteSQL/>
+<pyLabelOld>UpdateLogServiceClaim</pyLabelOld>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateDateTime>20210706T101722.474 GMT</pxUpdateDateTime>
+<pxCreateDateTime>20210706T040903.871 GMT</pxCreateDateTime>
+<pyWorkKey/>
+<pyCircumstanceDate/>
+<pxInstanceLockedCreateDateTime/>
+<pyDocumentTitle/>
+<pyTemporaryObject/>
+<pyBrowseSQL>select serviceid as "ID", JSON_VALUE(JSONOUT, '$.ClaimData.CaseID') as "PLANID" from pooldata.claim_service_log where JSON_VALUE(JSONOUT, '$.ClaimData.StatusClaim')='1' and serviceid={servicelog.ID}</pyBrowseSQL>
+<pyCircumstanceTemplate/>
+<pyCircumstanceType/>
+<pyTemplateInputBox/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveFromSystem/>
+<pyStatus/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE!GCNM!UPDATELOGSERVICECLAIM</pxInsId>
+<pyFormPost/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20210706T040903.871 GMT</pzDocumentKey>
+<pyInterface/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxMoveImportDateTime>20210801T030935.573 GMT</pxMoveImportDateTime>
+<pzChecksum>-687026400</pzChecksum>
+<pyValueChanged>false</pyValueChanged>
+<pyWindowTitle/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyCircumstanceVal/>
+<pyDeletedObject/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBaseRule>false</pyBaseRule>
+<pyShowJavaWindowName>GeneratedJava20260720T142842.073 GMT</pyShowJavaWindowName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-61 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20210706T040903.871 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-56 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20201104T023254.831 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20200311T021957.054 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-53 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20190729T042502.873 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>4</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-45 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-01-44 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_LST_DOC_TRAVEL_COVERAGE GCNM!UPDATELOGSERVICECLAIM #20190624T064940.669 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyShowJava>false</pyShowJava>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+</pagedata>

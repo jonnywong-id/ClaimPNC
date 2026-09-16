@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyCircumstanceDate/>
+<pyJavaStream/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA</pyClassName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSaveDateTime>20210331T042328.777 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pyDeleteSQL/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!BROWSEDATAREASCOINS</pxInsName>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM BrowseDataReasCoins</pxTabLabel>
+<pyMemo>done</pyMemo>
+<pxSiblingCount/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceDateProp/>
+<pyCircumstanceVal/>
+<pxOriginalCreateOperator/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxOriginalCreateDateTime/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA!GCNM!BROWSEDATAREASCOINS</pxInsId>
+<pyCircumstanceType/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyRuleSetVersion>01-01-91</pyRuleSetVersion>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRequestType>BrowseDataReasCoins</pyRequestType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyValueChanged>false</pyValueChanged>
+<pyBaseRule>false</pyBaseRule>
+<pyLabel>BrowseDataReasCoins</pyLabel>
+<pyUsage/>
+<pyRuleParamsStreamName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!BROWSEDATAREASCOINS #20210325T072453.488 GMT</pzDocumentKey>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_OBJECT_ANEKA GCNM BrowseDataReasCoins</pyRuleName>
+<pyRelativePath/>
+<pyCircumstanceTemplate/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyOpenSQL/>
+<pyLabelOld>BrowseDataReasCoins</pyLabelOld>
+<pxInstanceLockedRuleSet/>
+<pyWorkKey/>
+<pxUpdateDateTime>20210331T042328.753 GMT</pxUpdateDateTime>
+<pyDeletedObject/>
+<pySpecialtyComponentData/>
+<pyStatus/>
+<pxCreateDateTime>20210325T072453.488 GMT</pxCreateDateTime>
+<pyHandlerFlow/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveFromSystem/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedDateTime/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyBrowseSQL>select max(to_number(b.lsd_id_pega)) as "CityID", a.coinsname as "District" from general.v_coins a, general.lst_asuradur b  
+where a.mcl_id=b.mcl_id and a.coinsname ={TempReasPLA.PLAReinsurer}
+{ASIS:TempReasPLA.CurrencyPolicy}
+group by a.coinsname</pyBrowseSQL>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyDocumentTitle/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleStarts/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzChecksum>-2104397670</pzChecksum>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDescription/>
+<pyRuleFormStatusTime>20260827T061711.331 GMT</pyRuleFormStatusTime>
+<pxHostId>jboss2165</pxHostId>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedKey/>
+<pyCircumstanceDefinition/>
+<pyFormPost/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!BROWSEDATAREASCOINS #20210325T072453.488 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedBy/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedRuleSetVersion/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!SEARCHOBJECTANEKACREDIT #20201119T035052.548 GMT</pzOriginalInstanceKey>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySaveSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxCommitDateTime>20210424T075602.000 GMT</pxCommitDateTime>
+<pyTemplate/>
+<pxOriginalCreateOpName/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzRuleSetVersionPatch>91</pzRuleSetVersionPatch>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pxMoveImportDateTime>20210424T075602.130 GMT</pxMoveImportDateTime>
+<pyCircumstanceProp/>
+<pyRuleEnds/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyMethodStatus/>
+<pyShowJavaWindowName>GeneratedJava20260827T061711.355 GMT</pyShowJavaWindowName>
+<pxOriginalCreateSystemID/>
+<pyWindowTitle/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyInterface/>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_OBJECT_ANEKA GCNM!BROWSEDATAREASCOINS #20210325T072453.488 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-91 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRun>false</pyRun>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyAvailability>false</pyAvailability>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>true</pyVersionSecure>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

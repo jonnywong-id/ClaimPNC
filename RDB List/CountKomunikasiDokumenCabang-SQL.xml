@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleParamsStreamName/>
+<pxCommitDateTime>20260406T044543.000 GMT</pxCommitDateTime>
+<pxUpdateOpName>ARLEXYVARIAN</pxUpdateOpName>
+<pxUpdateDateTime>20260406T044543.156 GMT</pxUpdateDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalCreateDateTime/>
+<pyCheckInRuleSet/>
+<pxMoveFromSystem/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyUsage/>
+<pyDeletedObject/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyLabelOld>CountKomunikasiDokumenCabang</pyLabelOld>
+<pxUpdateOperator>ARLEXYVARIAN</pxUpdateOperator>
+<pxCreateOpName>ARLEXYVARIAN</pxCreateOpName>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTKOMUNIKASIDOKUMENCABANG</pxInsId>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pyDeleteSQL/>
+<pyCircumstanceDate/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDefinition/>
+<pyDocumentTitle/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pySaveSQL/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyTemplate/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!COUNTKOMUNIKASIDOKUMENCABANG</pxInsName>
+<pyShowJavaWindowName>GeneratedJava20260901T105759.492 GMT</pyShowJavaWindowName>
+<pyFormPost/>
+<pxSaveDateTime>20260406T044543.248 GMT</pxSaveDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOpName/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTKOMUNIKASIDOKUMENCABANG #20260325T013758.399 GMT</pzInsKey>
+<pyIsFromManageChangeLP/>
+<pyRuleStarts/>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyBaseRule>false</pyBaseRule>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTKOMUNIKASIDOKUMENCABANG #20260325T013758.399 GMT</pzDocumentKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pzIsPrivateCheckOut/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyCircumstanceVal/>
+<pyMemo>edit tempoperator.cityid</pyMemo>
+<pyCircumstanceProp/>
+<pyDescription/>
+<pyWorkKey/>
+<pyOpenSQL/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyCircumstanceTemplate/>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyRuleEnds/>
+<pxHostId>jboss1037</pxHostId>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRelativePath/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyLabel>CountKomunikasiDokumenCabang</pyLabel>
+<pyTemplateInputBox/>
+<pyRequestType>CountKomunikasiDokumenCabang</pyRequestType>
+<pxMergeSynchronized>20230914T105003.699 GMT</pxMergeSynchronized>
+<pyHandlerFlow/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStatus/>
+<pxOriginalCreateSystemID/>
+<pyMethodStatus/>
+<pxMoveImportDateTime>20231027T122925.735 GMT</pxMoveImportDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxSiblingCount/>
+<pxCreateOperator>ARLEXYVARIAN</pxCreateOperator>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountKomunikasiDokumenCabang</pyRuleName>
+<pyTemporaryObject/>
+<pxCreateDateTime>20260325T013758.399 GMT</pxCreateDateTime>
+<pxOriginalCreateOperator/>
+<pyRuleFormStatusTime>20260901T105759.475 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDateProp/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyJavaStream/>
+<pySpecialtyComponentData/>
+<pxInstanceLockedCreateDateTime/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CountKomunikasiDokumenCabang</pxTabLabel>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!COUNTKOMUNIKASIPICTEKNIK #20230406T044942.046 GMT</pzOriginalInstanceKey>
+<pyCircumstanceType/>
+<pzChecksum>2141242684</pzChecksum>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyWindowTitle/>
+<pyBrowseSQL>SELECT  count(1) as "ref_no"
+  FROM datapega.pc_asm_fw_gcnmfw_work a,
+       datapega.pc_assign_worklist b
+ WHERE     a.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+       AND a.pyid = b.PXREFOBJECTINSNAME
+       AND a.pyStatusWork NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+       AND EXISTS
+                (SELECT *
+                   FROM pooldata.t_claim_pnc c, pooldata.m_komunikasi_pnc kom
+                  WHERE (c.claimno=a.pyid) 
+                        AND komunikasistatus={TempView.ClaimNo}
+                        and kom.sender!={TempOperator.CityID})
+                        and a.pyid in (select communicate_to from pooldata.m_komunikasi_pnc kom where kom.communicate_to=a.pyid)
+                        AND b.pxassignedoperatorid IN {ASIS:TempOperator.CityID}
+                        {ASIS:TempSearch.source}</pyBrowseSQL>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>false</pyVersionSecure>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+<pyDelete>true</pyDelete>
+<pyShowJava>false</pyShowJava>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pySaveAs>true</pySaveAs>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTKOMUNIKASIDOKUMENCABANG #20260325T013758.399 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!COUNTKOMUNIKASIDOKUMENCABANG #20230914T034509.547 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

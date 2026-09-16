@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHandlerFlow/>
+<pyRuleStarts/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!EMAILKOMITEBERJENJANGPATKI_SQL</pxInsId>
+<pxCommitDateTime>20240131T023046.000 GMT</pxCommitDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20240131T023008.197 GMT</pzInsKey>
+<pyStatus/>
+<pyUsage/>
+<pyMemo>dones</pyMemo>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStreamName/>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionPatch>66</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWindowTitle/>
+<pzChecksum>-856523223</pzChecksum>
+<pxOriginalCreateOpName/>
+<pyDocumentTitle/>
+<pxMergeSynchronized>20210727T043104.091 GMT</pxMergeSynchronized>
+<pyDeletedObject/>
+<pxMoveImportDateTime>20210801T030935.580 GMT</pxMoveImportDateTime>
+<pyRuleFormStatusTime>20260822T044822.005 GMT</pyRuleFormStatusTime>
+<pyOpenSQL/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxOriginalCreateDateTime/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxSaveDateTime>20240131T023046.187 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM EmailKomiteBerjenjangPATKI_sql</pyRuleName>
+<pySpecialtyComponentData/>
+<pyRequestType>EmailKomiteBerjenjangPATKI_sql</pyRequestType>
+<pyRelativePath/>
+<pyCircumstanceVal/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxInstanceLockedRuleSet/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceType/>
+<pyCircumstanceTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20180403T074129.872 GMT</pzOriginalInstanceKey>
+<pyLabelOld>EmailKomiteBerjenjangPATKI_sql</pyLabelOld>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyFormPost/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyWorkKey/>
+<pxInstanceLockedKey/>
+<pyCircumstanceDate/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyDescription/>
+<pyRuleEnds/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20240131T023008.197 GMT</pzDocumentKey>
+<pyLabel>EmailKomiteBerjenjangPATKI_sql</pyLabel>
+<pyCircumstanceDateProp/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDeleteSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxCreateDateTime>20240131T023008.197 GMT</pxCreateDateTime>
+<pxMoveFromSystem/>
+<pyTemplate/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM EmailKomiteBerjenjangPATKI_sql</pxTabLabel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHistoryObject>false</pyHistoryObject>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemporaryObject/>
+<pyValueChanged>false</pyValueChanged>
+<pyBrowseSQL>SELECT EMAIL as BRANCH_CODE, DEGREE as BRANCH_NAME, OPERATOR_ID as BUSINESS_CODE, CC as BUSINESS_NAME 
+FROM EMAILKOMITE WHERE STS_ADJ = '1' AND STS_AKTIF = '1' AND TYPE_BUSINESS = {tempAdj.pyMemo} AND type_komite='2' AND LIMIT_BOTTOM &lt;= {tempAdj.ConvertAdjustmentValue} ORDER BY DEGREE</pyBrowseSQL>
+<pxSiblingCount/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySaveSQL/>
+<pyShowJavaWindowName>GeneratedJava20260822T044822.030 GMT</pyShowJavaWindowName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxHostId>jboss1036</pxHostId>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedDateTime/>
+<pyRuleSetVersion>01-01-66</pyRuleSetVersion>
+<pyInterface/>
+<pyMethodStatus/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyIsFromManageChangeLP/>
+<pyJavaStream/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateDateTime>20240131T023046.139 GMT</pxUpdateDateTime>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!EMAILKOMITEBERJENJANGPATKI_SQL</pxInsName>
+<pyTemplateInputBox/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyBranchOut>false</pyBranchOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyDelete>false</pyDelete>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyPreview>false</pyPreview>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20240131T023008.197 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-66 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20210727T043013.037 GMT</pzInsKey>
+<pyLabel>01-01-61 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20180405T065903.863 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-01-20 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20180118T080241.865 GMT</pzInsKey>
+<pxListSubscript>4</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-01-03 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!EMAILKOMITEBERJENJANGPATKI_SQL #20171204T080953.387 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

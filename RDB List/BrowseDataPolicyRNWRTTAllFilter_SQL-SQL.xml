@@ -1,0 +1,281 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATAPOLICYRNWRTTALLFILTER_SQL #20171023T084808.038 GMT</pzDocumentKey>
+<pyCircumstanceDateProp/>
+<pyMethodStatus/>
+<pyTemplateInputBox/>
+<pyBrowseSQL>select * from (select x.*, rownum rn from (select (CASE WHEN (JSON_VALUE ("POLICYDATA" FORMAT JSON
+    , '$.CIFData.Customer_P.ASMClientID' RETURNING VARCHAR2(4000) NULL ON ERROR)&lt;&gt;''
+    OR JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.ASMClientID' ) IS NOT NULL) THEN
+    JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.pyFirstName' )||' '||
+    JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.pyLastName' ) 
+    WHEN (JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany' ) IS NOT NULL 
+    OR JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany' )&lt;&gt;'') 
+    THEN JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany') END )
+             AS "CustomerName",
+             JSON_VALUE(POLICYDATA, '$.CaseID') as "CaseID", 
+             a.prodke as "Prodke",
+             a.nopolis as "PolicyNo", 
+             TO_DATE (
+             (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+             'YYYYMMDD hh24miss')
+             AS "EndDateTime",
+          TO_DATE (
+             (   SUBSTR (JSON_VALUE(POLICYDATA, '$.StartDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.StartDateTime'), 10, 6)),
+             'YYYYMMDD hh24miss')
+             AS "StartDateTime",
+             get_name_agent (
+                JSON_VALUE (POLICYDATA, '$.Quotation.SourceOfBusiness'))
+             AS "SourceOfBusinessName",
+             GET_MO_NAME (JSON_VALUE (POLICYDATA, '$.Quotation.MarketingCode'))
+             AS "MarketingName",
+             (SELECT b.JSONDATA.Name
+             FROM m_branch b
+            WHERE b.ID = JSON_VALUE (POLICYDATA, '$.Quotation.BranchCode'))
+             AS "BranchName",
+             GET_BUSINESS_NAME (JSON_VALUE (POLICYDATA, '$.Quotation.BusinessCode'))
+             AS "BusinessName",
+             a.Renewal.RenewalStatus as "RenewalStatus",
+             'false' as "SelectRenewal" from json_polis a where not exists(select '1' from json_polis where json_exists (renewal, '$.RenewalStatus') and nopolis=a.nopolis and prodke=a.prodke) and {ASIS:InputData.CARI10} TO_DATE (
+          (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+          'YYYYMMDD hh24miss') &gt;= to_date('01'||lpad(extract(month from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2)),2,'0')||extract(year from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'),2)), 'ddMMyyyy') and
+          TO_DATE (
+          (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+          'YYYYMMDD hh24miss') &lt;= last_day(ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2))   
+          and JSON_VALUE(POLICYDATA, '$.Quotation.BranchCode') in (select id from m_branch b where json_textcontains(b.JSONDATA, '$.BranchParentID', '{ASIS:InputData.CARI5}') ) 
+          and a.prodke = (select max(prodke) from json_polis where nopolis = a.nopolis)
+union all
+select (CASE WHEN (JSON_VALUE ("POLICYDATA" FORMAT JSON
+    , '$.CIFData.Customer_P.ASMClientID' RETURNING VARCHAR2(4000) NULL ON ERROR)&lt;&gt;''
+    OR JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.ASMClientID' ) IS NOT NULL) THEN
+    JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.pyFirstName' )||' '||
+    JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_P.pyLastName' ) 
+    WHEN (JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany' ) IS NOT NULL 
+    OR JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany' )&lt;&gt;'') 
+    THEN JSON_VALUE("POLICYDATA" FORMAT JSON , '$.CIFData.Customer_C.pyCompany') END )
+             AS "CustomerName",
+             JSON_VALUE(POLICYDATA, '$.CaseID') as "CaseID", 
+             a.prodke as "Prodke",
+             a.nopolis as "PolicyNo", 
+             TO_DATE (
+             (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+             'YYYYMMDD hh24miss')
+             AS "EndDateTime",
+          TO_DATE (
+             (   SUBSTR (JSON_VALUE(POLICYDATA, '$.StartDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.StartDateTime'), 10, 6)),
+             'YYYYMMDD hh24miss')
+             AS "StartDateTime",
+             get_name_agent (
+                JSON_VALUE (POLICYDATA, '$.Quotation.SourceOfBusiness'))
+             AS "SourceOfBusinessName",
+             GET_MO_NAME (JSON_VALUE (POLICYDATA, '$.Quotation.MarketingCode'))
+             AS "MarketingName",
+             (SELECT b.JSONDATA.Name
+             FROM m_branch b
+            WHERE b.ID = JSON_VALUE (POLICYDATA, '$.Quotation.BranchCode'))
+             AS "BranchName",
+             GET_BUSINESS_NAME (JSON_VALUE (POLICYDATA, '$.Quotation.BusinessCode'))
+             AS "BusinessName",
+             a.Renewal.RenewalStatus as "RenewalStatus",
+             'false' as "SelectRenewal" from json_polis a where not exists(select '1' from json_polis where json_exists (renewal, '$.RenewalStatus') and nopolis=a.nopolis and prodke=a.prodke) and {ASIS:InputData.CARI11} TO_DATE (
+          (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+          'YYYYMMDD hh24miss') &gt;= to_date('01'||lpad(extract(month from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2)),2,'0')||extract(year from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'),2)), 'ddMMyyyy') and
+          TO_DATE (
+          (   SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 1, 8)
+           || SUBSTR (JSON_VALUE(POLICYDATA, '$.EndDateTime'), 10, 6)),
+          'YYYYMMDD hh24miss') &lt;= last_day(ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2))   
+          and JSON_VALUE(POLICYDATA, '$.Quotation.BranchCode') in (select id from m_branch b where json_textcontains(b.JSONDATA, '$.BranchParentID', '{ASIS:InputData.CARI5}') ) 
+          and a.prodke = (select max(prodke) from json_polis where nopolis = a.nopolis)
+          union all
+             select  (select get_nama_client@asmd.sinarmas.co.id(client_id) from mst_sales@asmd.sinarmas.co.id c where c.msp_no_spak = b.msp_no_spak),
+             b.mds_no_polis, 
+             b.mds_prod_ke,
+             b.mds_no_polis,
+             b.mds_end_date,
+             b.mds_beg_date,
+             get_nama_agen@asmd.sinarmas.co.id (b.lag_agen_id),
+             GET_nama_mo@asmd.sinarmas.co.id (b.lmo_id),
+             get_nama_cabang@asmd.sinarmas.co.id(b.ldc_id),
+             GET_nama_bisnis@asmd.sinarmas.co.id (b.lbu_id),
+             ' ',
+             'false' from mst_det_sales@asmd.sinarmas.co.id b where b.ljp_id &lt;&gt; '5' AND {ASIS:InputData.CARI12} trunc(b.mds_end_date) &gt;= to_date('01'||lpad(extract(month from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2)),2,'0')||
+             extract(year from ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'),2)), 'ddMMyyyy') 
+             and trunc(b.mds_end_date) &lt;= last_day(ADD_MONTHS(to_date('{ASIS:InputData.CARI6}','dd/MM/yyyy hh24:mi'), 2)) 
+             and b.ldc_id in (select ldc_id from lst_det_cabang@asmd.sinarmas.co.id where lca_id='{ASIS:InputData.CARI2}')
+            and b.mds_prod_ke = (select max(c.mds_prod_ke) from mst_det_sales@asmd.sinarmas.co.id c where c.mds_no_polis = b.mds_no_polis)) x) where rn &gt;= {Paging.CARI1} and rn &lt;= {Paging.CARI2}</pyBrowseSQL>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRelativePath/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyWindowTitle/>
+<pyCircumstanceDate/>
+<pyDescription/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDefinition/>
+<pyInterface/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDocumentTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveFromSystem/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOperator>Calvin_1</pxCreateOperator>
+<pxOriginalCreateOpName/>
+<pyJavaStream/>
+<pxUpdateDateTime>20171102T043537.708 GMT</pxUpdateDateTime>
+<pxCreateDateTime>20171023T084808.038 GMT</pxCreateDateTime>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEDATAPOLICYRNWRTTALLFILTER_SQL</pxInsName>
+<pxInstanceLockedKey/>
+<pxMoveImportDateTime>20191226T024726.948 GMT</pxMoveImportDateTime>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<pxOriginalCreateOperator/>
+<pySaveSQL/>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM BrowseDataPolicyRNWRTTAllFilter_SQL</pxTabLabel>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEDATAPOLICYRNWRTTALLFILTER_SQL</pxInsId>
+<pyRuleFormStatusTime>20260831T011545.939 GMT</pyRuleFormStatusTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateOpName>Calvin</pxUpdateOpName>
+<pyWorkKey/>
+<pxInstanceLockedDateTime/>
+<pyMemo>done</pyMemo>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateSystemID/>
+<pzChecksum>1954849028</pzChecksum>
+<pyStreamName/>
+<pxSiblingCount/>
+<pyLabelOld>Ambil Data Polis Renewal RTT Dengan Semua Filter</pyLabelOld>
+<pyLabel>Ambil Data Polis Renewal RTT Dengan Semua Filter</pyLabel>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyRequestType>BrowseDataPolicyRNWRTTAllFilter_SQL</pyRequestType>
+<pyHandlerFlow/>
+<pyUsage/>
+<pySpecialtyComponentData/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxHostId>jboss2058</pxHostId>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyTaskID/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATAPOLICYRNWALLFILTER_SQL #20171019T065728.779 GMT</pzOriginalInstanceKey>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCheckInRuleSet/>
+<pyCircumstanceProp/>
+<pyCircumstanceType/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxCreateOpName>Calvin</pxCreateOpName>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateDateTime/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyDeletedObject/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyShowJavaWindowName>GeneratedJava20260831T011545.985 GMT</pyShowJavaWindowName>
+<pyRuleSetVersion>01-01-53</pyRuleSetVersion>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRuleStarts/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceVal/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxInstanceLockedRuleSet/>
+<pyRuleParamsStreamName/>
+<pxSaveDateTime>20171102T043537.719 GMT</pxSaveDateTime>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleEnds/>
+<pyTemplate/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM BrowseDataPolicyRNWRTTAllFilter_SQL</pyRuleName>
+<pxUpdateOperator>Calvin_1</pxUpdateOperator>
+<pyRWAccess>ASM</pyRWAccess>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyOpenSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pzRuleSetVersionPatch>53</pzRuleSetVersionPatch>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATAPOLICYRNWRTTALLFILTER_SQL #20171023T084808.038 GMT</pzInsKey>
+<pyBaseRule>false</pyBaseRule>
+<pyStatus/>
+<pxInstanceLockedBy/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyNew>true</pyNew>
+<pyAvailability>false</pyAvailability>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pySaveAs>true</pySaveAs>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPreview>false</pyPreview>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyCompareVersion/>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATAPOLICYRNWRTTALLFILTER_SQL #20171023T084808.038 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+</pagedata>

@@ -1,0 +1,182 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyWorkKey/>
+<pxCreateDateTime>20260415T080222.981 GMT</pxCreateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySaveSQL/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!CHECKCOINSBLACKLIST_SQL #20260407T012442.221 GMT</pzOriginalInstanceKey>
+<pyDeleteSQL/>
+<pyLabel>CheckCoinsBlacklist_SQL</pyLabel>
+<pxOriginalCreateOpName/>
+<pxMoveImportDateTime>20260419T141323.338 GMT</pxMoveImportDateTime>
+<pxInstanceLockedRuleSet/>
+<pyStatus/>
+<pyIsFromManageChangeLP/>
+<pxInsName>ASM-FW-GISFW-INT-COINS!ASM!CHECKCOINSBLACKLIST_SQL</pxInsName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzRuleSetVersionPatch>74</pzRuleSetVersionPatch>
+<pyRuleEnds/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyUsage/>
+<pyLabelOld>CheckCoinsBlacklist_SQL</pyLabelOld>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pxSaveDateTime>20260415T080329.665 GMT</pxSaveDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeletedObject/>
+<pxHostId>jboss1036</pxHostId>
+<pyRequestType>CheckCoinsBlacklist_SQL</pyRequestType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyJavaStream/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pxSiblingCount/>
+<pyRuleFormStatusTime>20260827T081253.681 GMT</pyRuleFormStatusTime>
+<pxOriginalCreateSystemID/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pzChecksum>238009430</pzChecksum>
+<pyHandlerFlow/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pySpecialtyComponentData/>
+<pyMethodStatus/>
+<pyRuleParamsStreamName/>
+<pxUpdateDateTime>20260415T080329.657 GMT</pxUpdateDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSetVersion>01-05-74</pyRuleSetVersion>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySPRuleSetName>YOHANESBAPTISTA@</pySPRuleSetName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pxTabLabel>ASM-FW-GISFW-Int-Coins ASM CheckCoinsBlacklist_SQL</pxTabLabel>
+<pyCircumstanceDate/>
+<pyCircumstanceDateProp/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceType/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!CHECKCOINSBLACKLIST_SQL #20260415T080222.981 GMT</pzDocumentKey>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyRelativePath/>
+<pyCircumstanceDefinition/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyValueChanged>false</pyValueChanged>
+<pyShowJavaWindowName>GeneratedJava20260827T081253.721 GMT</pyShowJavaWindowName>
+<pyRuleStarts/>
+<pyInterface/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCommitDateTime>20260419T141323.000 GMT</pxCommitDateTime>
+<pxInstanceLockedBy/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleName>ASM-FW-GISFW-Int-Coins ASM CheckCoinsBlacklist_SQL</pyRuleName>
+<pxInsId>ASM-FW-GISFW-INT-COINS!ASM!CHECKCOINSBLACKLIST_SQL</pxInsId>
+<pyCircumstanceVal/>
+<pyOpenSQL/>
+<pyTemplate/>
+<pyCircumstanceTemplate/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyDocumentTitle/>
+<pyStreamName/>
+<pyBrowseSQL>SELECT COUNT (1) AS "HASIL1"
+  FROM pooldata.m_clientblacklist x, pooldata.t_agent y
+ WHERE x.flag = 'ASURADUR' AND x.id = y.clientid AND y.id = {InputCoins.CARI1}
+AND y.id NOT IN (select z.agentid from pooldata.m_openprotection_asuradur z where z.agentid = {InputCoins.CARI1} and caseid = {pyWorkPage.pzInsKey})</pyBrowseSQL>
+<pyMemo>tambah exclude open protection asuradur</pyMemo>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyFormPost/>
+<pyWindowTitle/>
+<pxMoveFromSystem/>
+<pyDescription/>
+<pxOriginalCreateOperator/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxInstanceLockedKey/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!CHECKCOINSBLACKLIST_SQL #20260415T080222.981 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GISFW-Int-Coins</pyClassName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyPreview>false</pyPreview>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyFavorites>true</pyFavorites>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-05-74 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!CHECKCOINSBLACKLIST_SQL #20260415T080222.981 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-05-73 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-COINS ASM!CHECKCOINSBLACKLIST_SQL #20260407T012442.221 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

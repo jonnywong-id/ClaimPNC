@@ -1,0 +1,164 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyFormPost/>
+<pyCircumstanceDefinition/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleStarts/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetListCurrency</pyRuleName>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyHandlerFlow/>
+<pxInstanceLockedBy/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETLISTCURRENCY</pxInsId>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyCircumstanceType/>
+<pyOpenSQL/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pyLabel>GetListCurrency</pyLabel>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetListCurrency</pxTabLabel>
+<pxInstanceLockedDateTime/>
+<pyRequestType>GetListCurrency</pyRequestType>
+<pyJavaStream/>
+<pxSiblingCount/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDeleteSQL/>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyCircumstanceProp/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInsName>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETLISTCURRENCY</pxInsName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETLISTCURRENCY #20220110T044536.830 GMT</pzDocumentKey>
+<pySPRuleSetName/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyClassName>
+<pxHostId>jboss10362</pxHostId>
+<pyWindowTitle/>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETLISTCURRENCY #20220110T044536.830 GMT</pzOriginalInstanceKey>
+<pyMethodStatus/>
+<pyBaseRule>false</pyBaseRule>
+<pyTemplate/>
+<pxInstanceLockedKey/>
+<pySaveSQL/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyBrowseSQL>select id as "ID", currency as "Currency"  from pooldata.currency
+{ASIS:TempParam.Note}</pyBrowseSQL>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxCreateDateTime>20220110T044536.830 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxUpdateDateTime>20220110T044854.572 GMT</pxUpdateDateTime>
+<pyCircumstanceDateProp/>
+<pyDeletedObject/>
+<pyShowJavaWindowName>GeneratedJava20260901T104515.661 GMT</pyShowJavaWindowName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxSaveDateTime>20220110T044854.574 GMT</pxSaveDateTime>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETLISTCURRENCY #20220110T044536.830 GMT</pzInsKey>
+<pyRuleFormStatusTime>20260901T104515.637 GMT</pyRuleFormStatusTime>
+<pyRuleEnds/>
+<pyUsage/>
+<pyIsFromManageChangeLP/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceVal/>
+<pyHistoryObject/>
+<pxMoveImportDateTime>20220126T101718.858 GMT</pxMoveImportDateTime>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pyDescription/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzChecksum>970832532</pzChecksum>
+<pyTemplateInputBox/>
+<pyInterface/>
+<pyStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyBack>true</pyBack>
+<pyCheckOut>true</pyCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETLISTCURRENCY #20220110T044536.830 GMT</pzInsKey>
+<pyLabel>01-01-96 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

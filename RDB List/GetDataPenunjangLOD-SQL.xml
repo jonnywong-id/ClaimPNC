@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabel>Get Data Penunjang LOD</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPENUNJANGLOD #20210427T020821.206 GMT</pzInsKey>
+<pxOriginalCreateSystemID/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyJavaStream/>
+<pzRuleSetVersionPatch>92</pzRuleSetVersionPatch>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDeleteSQL/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAPENUNJANGLOD</pxInsName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPENUNJANGLOD #20210427T020821.206 GMT</pzDocumentKey>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataPenunjangLOD</pxTabLabel>
+<pyTemporaryObject/>
+<pyTemplate/>
+<pxOriginalCreateOperator/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyMemo>menampilkan nama file nya</pyMemo>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETUSERTEKNISONCLAIMDATA #20210312T071943.496 GMT</pzOriginalInstanceKey>
+<pyOpenSQL/>
+<pxCommitDateTime>20210627T052623.000 GMT</pxCommitDateTime>
+<pyCircumstanceDateProp/>
+<pyMethodStatus/>
+<pxInstanceLockedKey/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceTemplate/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETDATAPENUNJANGLOD</pxInsId>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyRuleSetVersion>01-01-92</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pyUsage/>
+<pxCreateDateTime>20210427T020821.206 GMT</pxCreateDateTime>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDate/>
+<pxMergeSynchronized>20210423T090437.464 GMT</pxMergeSynchronized>
+<pyRuleEnds/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyFormPost/>
+<pyRelativePath/>
+<pxInstanceLockedBy/>
+<pyValueChanged>false</pyValueChanged>
+<pyDocumentTitle/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxOriginalCreateDateTime/>
+<pySpecialtyComponentData/>
+<pxHostId>jboss2146</pxHostId>
+<pyLabelOld>Get Data Penunjang LOD</pyLabelOld>
+<pxUpdateDateTime>20210603T083813.275 GMT</pxUpdateDateTime>
+<pyHandlerFlow/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStatus/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyShowJavaWindowName>GeneratedJava20260721T041641.632 GMT</pyShowJavaWindowName>
+<pyDeletedObject/>
+<pySaveSQL/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetDataPenunjangLOD</pyRuleName>
+<pxInstanceLockedDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyInterface/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleFormStatusTime>20260721T041641.609 GMT</pyRuleFormStatusTime>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyCircumstanceProp/>
+<pyWorkKey/>
+<pxOriginalCreateOpName/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxSiblingCount/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedRuleSetVersion/>
+<pxSaveDateTime>20210603T083813.335 GMT</pxSaveDateTime>
+<pxMoveFromSystem/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCheckInRuleSet/>
+<pyCircumstanceDefinition/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyTemplateInputBox/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzChecksum>-943932906</pzChecksum>
+<pyCircumstanceVal/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyStreamName/>
+<pyBrowseSQL>select ATTACHNAME as "City",ATTACHNOTE as "District",ATTACHMIMETYPE as "Country",pooldata.base64encode(attachfile) as "pzCaptchaId" from pooldata.data_attachfile {ASIS:TempDataLODEmail.City}</pyBrowseSQL>
+<pyRequestType>GetDataPenunjangLOD</pyRequestType>
+<pyDescription/>
+<pyCircumstanceType/>
+<pyRuleStarts/>
+<pyWindowTitle/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxMoveImportDateTime>20210627T052623.391 GMT</pxMoveImportDateTime>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pySave>false</pySave>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPENUNJANGLOD #20210427T020821.206 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-92 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATAPENUNJANGLOD #20210416T093132.790 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

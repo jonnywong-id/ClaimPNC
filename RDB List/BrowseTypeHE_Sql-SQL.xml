@@ -1,0 +1,172 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSiblingCount/>
+<pyCircumstanceDateProp/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!BROWSETYPEHE_SQL</pxInsName>
+<pxSaveDateTime>20200925T061558.134 GMT</pxSaveDateTime>
+<pyCircumstanceTemplate/>
+<pyHandlerFlow/>
+<pxOriginalRuleSet/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pyCircumstanceType/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzRuleSetVersionPatch>56</pzRuleSetVersionPatch>
+<pxInstanceLockedKey/>
+<pyCircumstanceVal/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!BROWSEBRANDHE_SQL #20200909T015130.706 GMT</pzOriginalInstanceKey>
+<pyCircumstanceProp/>
+<pyWindowTitle/>
+<pyRuleEnds/>
+<pxOriginalCreateOpName/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDeleteSQL/>
+<pxInsId>ASM-FW-GCNMFW-INT-BENGKEL_HE!GCNM!BROWSETYPEHE_SQL</pxInsId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyTemplateInputBox/>
+<pySpecialtyComponentData/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyDocumentTitle/>
+<pyStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260819T095355.235 GMT</pyShowJavaWindowName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pySPRuleSetName>GCNMFWInt</pySPRuleSetName>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pyWorkKey/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyDescription/>
+<pxOriginalCreateOperator/>
+<pzChecksum>-581839229</pzChecksum>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportDateTime>20201111T102239.690 GMT</pxMoveImportDateTime>
+<pyLabel>BrowseTypeHE_Sql</pyLabel>
+<pyRuleStarts/>
+<pyInterface/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyLabelOld>BrowseTypeHE_Sql</pyLabelOld>
+<pyBaseRule>false</pyBaseRule>
+<pxHostId>jboss2145</pxHostId>
+<pxOriginalCreateDateTime/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMethodStatus/>
+<pyFormPost/>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-56</pyRuleSetVersion>
+<pyRequestType>BrowseTypeHE_Sql</pyRequestType>
+<pyMemo>ganti query ambil dari tabel</pyMemo>
+<pyRelativePath/>
+<pyRuleName>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM BrowseTypeHE_Sql</pyRuleName>
+<pxOriginalCreateSystemID/>
+<pyClassName>ASM-FW-GCNMFW-Int-BENGKEL_HE</pyClassName>
+<pyBrowseSQL>select id as "BANK_ID", TYPENAME as "NAMA_BANK" from branddetail where type = 'ANEKA' and ACTIVESTATUS=1</pyBrowseSQL>
+<pyTemplate/>
+<pxInstanceLockedBy/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateOpName>SURYA FEBRIYANTO DATU</pxUpdateOpName>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeletedObject/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!BROWSETYPEHE_SQL #20200909T030217.104 GMT</pzDocumentKey>
+<pxTabLabel>ASM-FW-GCNMFW-Int-BENGKEL_HE GCNM BrowseTypeHE_Sql</pxTabLabel>
+<pySaveSQL/>
+<pxUpdateDateTime>20200925T061558.116 GMT</pxUpdateDateTime>
+<pyStatus/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pxCreateDateTime>20200909T030217.104 GMT</pxCreateDateTime>
+<pyRuleFormStatusTime>20260819T095355.205 GMT</pyRuleFormStatusTime>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCommitDateTime>20201111T102239.000 GMT</pxCommitDateTime>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!BROWSETYPEHE_SQL #20200909T030217.104 GMT</pzInsKey>
+<pxMoveFromSystem/>
+<pyJavaStream/>
+<pxInstanceLockedRuleSet/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRun>false</pyRun>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-56 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!BROWSETYPEHE_SQL #20200909T030217.104 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyTemplate/>
+<pxHostId>jboss10372</pxHostId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pyBrowseSQL>select 
+    a.DOL as "ASMFull",
+    CAUSEOFLOSS as "AcceptedNo",
+    sum(OSVALUE) as "Currency",
+    sum(AKSEPVALUE) as "CurrencyID"
+from pooldata.XOL_TABLE_ALL_KLAIM a
+where to_char(to_date(a.DOL,'dd/mm/yyyy'),'yyyy')= {TempMst.CurrencyName} and CAUSEOFLOSS in 
+(select DESCRIPTION from POOLDATA.V_D_CAUSE_OF_LOSS)
+and A.GROUPBUSINESS in ({ASIS:TempMst.CurrencyID})
+group by a.DOL, CAUSEOFLOSS</pyBrowseSQL>
+<pxInstanceLockedRuleSetVersion/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAXOL_CALULATION #20240827T131052.326 GMT</pzInsKey>
+<pyWorkKey/>
+<pyClassName>ASM-FW-GCNMFW-Data-Adjustment</pyClassName>
+<pxOriginalCreateSystemID/>
+<pyRuleParamsStreamName/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxOriginalCreateDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAXOL_CALULATION #20240827T131052.326 GMT</pzDocumentKey>
+<pyTemplateInputBox/>
+<pxInstanceLockedKey/>
+<pyRuleEnds/>
+<pxInsId>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATAXOL_CALULATION</pxInsId>
+<pxInstanceLockedBy/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyWindowTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyMethodStatus/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyCircumstanceTemplate/>
+<pyDescription/>
+<pyShowJavaWindowName>GeneratedJava20260831T022814.531 GMT</pyShowJavaWindowName>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedCreateDateTime/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyOpenSQL/>
+<pxMoveImportDateTime>20241223T123621.014 GMT</pxMoveImportDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyLabel>Get Data XOL_Calulation</pyLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySaveSQL/>
+<pyCircumstanceDateProp/>
+<pyStatus/>
+<pyDocumentTitle/>
+<pyRequestType>GetDataXOL_Calulation</pyRequestType>
+<pxOriginalCreateOpName/>
+<pyRuleStarts/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyDeleteMemo>-</pyDeleteMemo>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyIsFromManageChangeLP/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyLabelOld>Get Data XOL_Calulation</pyLabelOld>
+<pxCreateDateTime>20240827T131052.326 GMT</pxCreateDateTime>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyFormPost/>
+<pzChecksum>-1597042050</pzChecksum>
+<pyDeletedObject/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDeleteSQL/>
+<pyRuleFormStatusTime>20260831T022814.513 GMT</pyRuleFormStatusTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pyMemo>done add get data xol dari calculation</pyMemo>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyCircumstanceVal/>
+<pyValueChanged>false</pyValueChanged>
+<pxInsName>ASM-FW-GCNMFW-DATA-ADJUSTMENT!GCNM!GETDATAXOL_CALULATION</pxInsName>
+<pyCircumstanceProp/>
+<pxSaveDateTime>20240917T020450.391 GMT</pxSaveDateTime>
+<pxInstanceLockedDateTime/>
+<pxUpdateDateTime>20240917T020450.352 GMT</pxUpdateDateTime>
+<pyJavaStream/>
+<pyRuleName>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataXOL_Calulation</pyRuleName>
+<pxOriginalCreateOperator/>
+<pyInterface/>
+<pyCircumstanceDate/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyHandlerFlow/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDefinition/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyUsage/>
+<pyCircumstanceType/>
+<pyRelativePath/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataXOL_Calulation</pxTabLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBaseRule>false</pyBaseRule>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAXOL #20220922T041337.681 GMT</pzOriginalInstanceKey>
+<pxSiblingCount/>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-ADJUSTMENT GCNM!GETDATAXOL_CALULATION #20240827T131052.326 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyCompareVersion/>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyBranchOut>false</pyBranchOut>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

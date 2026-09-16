@@ -1,0 +1,292 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyWindowTitle/>
+<pxCreateDateTime>20210924T080551.953 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSet/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceTemplate/>
+<pyDeletedObject/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20210924T131440.911 GMT</pxSaveDateTime>
+<pyCheckInRuleSet/>
+<pxOriginalCreateSystemID/>
+<pyRuleFormStatusTime>20260908T083554.061 GMT</pyRuleFormStatusTime>
+<pyTemplateInputBox/>
+<pyRuleSetVersion>01-01-95</pyRuleSetVersion>
+<pyFormPost/>
+<pxCommitDateTime>20211221T124059.000 GMT</pxCommitDateTime>
+<pxMoveFromSystem/>
+<pxInsName>ASM-FW-GCNMFW-INT-M_WA_MESSAGE!GCNM!TRANSFERTOKASIR_SQL</pxInsName>
+<pyCircumstanceVal/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210312T042203.030 GMT</pzOriginalInstanceKey>
+<pyWorkKey/>
+<pyDeleteSQL/>
+<pyCircumstanceProp/>
+<pyStreamName/>
+<pySaveSQL/>
+<pyDocumentTitle/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceType/>
+<pyMemo>done</pyMemo>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210924T080551.953 GMT</pzInsKey>
+<pxMergeSynchronized>20210805T013956.358 GMT</pxMergeSynchronized>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pxTabLabel>ASM-FW-GCNMFW-Int-M_WA_MESSAGE GCNM TransferToKasir_sql</pxTabLabel>
+<pyMethodStatus/>
+<pySpecialtyComponentData/>
+<pyClassName>ASM-FW-GCNMFW-Int-M_WA_MESSAGE</pyClassName>
+<pyStatus/>
+<pxSiblingCount/>
+<pyCircumstanceDateProp/>
+<pzChecksum>1165359353</pzChecksum>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxInstanceLockedKey/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyTemplate/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsId>ASM-FW-GCNMFW-INT-M_WA_MESSAGE!GCNM!TRANSFERTOKASIR_SQL</pxInsId>
+<pxOriginalCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleName>ASM-FW-GCNMFW-Int-M_WA_MESSAGE GCNM TransferToKasir_sql</pyRuleName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedDateTime/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210924T080551.953 GMT</pzDocumentKey>
+<pyRuleEnds/>
+<pxInstanceLockedBy/>
+<pyBrowseSQL>DECLARE
+   vNoTrans      VARCHAR2 (32767);
+   vLbuId        VARCHAR2 (32767);
+   vLdcId        VARCHAR2 (32767);
+   vAccountNo    VARCHAR2 (32767);
+   vLbgId        VARCHAR2 (32767);
+   vTglAksep     DATE;
+   vNett         NUMBER;
+   vLkuId        VARCHAR2 (32767);
+   vLjtdId       VARCHAR2 (32767);
+   vNoPolis      VARCHAR2 (32767);
+   vAcceptType   VARCHAR2 (32767);
+   vDeductible   NUMBER;
+   vKaliDeduct   NUMBER;
+   vKepada     VARCHAR2 (32767);
+   vEmail        VARCHAR2 (32767);
+   vCaseID       VARCHAR2 (32767);
+   vStsSyariah  VARCHAR2 (32767);
+   vnote  VARCHAR2 (32767);
+   vstsdsa VARCHAR2 (32767);
+
+BEGIN
+  vNoTrans      := {TempTransferKasir.CountryID};
+  vLbuId        :={TempTransferKasir.Email};
+  vLdcId        :={TempTransferKasir.CreateFrom};
+  vAccountNo    :={TempTransferKasir.Currency};
+  vLbgId        :={TempTransferKasir.DistrictID};
+  vTglAksep     :={TempTransferKasir.UserName Datetime};
+  vNett         :={TempTransferKasir.City};
+  vLkuId        :={TempTransferKasir.CityID};
+  vLjtdId       :={TempTransferKasir.AnaylstRemarks};
+  vCaseID       :={TempTransferKasir.CaseID};
+  vNoPolis      :={TempTransferKasir.AnalystDoctorRemaks};
+  vAcceptType   :={TempTransferKasir.ClaimID};
+  vDeductible   :={TempTransferKasir.ClaimNo};
+  vKaliDeduct   :={TempTransferKasir.Country};
+  vKepada     :={TempTransferKasir.Remark};
+  vEmail        :={TempTransferKasir.CauseOfLoss};
+  vStsSyariah :={TempTransferKasir.UserAdmin};
+  vnote  := {TempTransferKasir.ResponseNote};
+  vstsdsa := {TempTransferKasir.StatusReceiver};
+
+   gl.pkg_pelunasan_kasir.p_insert_all_payment_kasir(vNoTrans,
+                                                      vLbuId,
+                                                      vLdcId,
+                                                      vAccountNo,
+                                                      vLbgId,
+                                                      vTglAksep,
+                                                      '0',
+                                                      vNett,
+                                                      vLkuId,
+                                                      vLjtdId,
+                                                      '',
+                                                      '',
+                                                      vCaseID,
+                                                      vNoPolis,
+                                                      vAcceptType,
+                                                      vDeductible,
+                                                      vKaliDeduct,
+                                                      '',
+                                                      '',
+                                                      vKepada,
+                                                      '',
+                                                      vEmail,
+                                                      '',
+                                                      vstsdsa,
+                                                      vStsSyariah,
+                                                      '',
+                                                      '',
+                                                      {TempTransferKasir.CloseClaimNote out},
+                                                      '',
+                                                      '',
+                                                      vnote,
+                                                      '',
+                                                      '');
+   COMMIT;
+END;</pyBrowseSQL>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOperator/>
+<pyLabel>TransferToKasir_sql</pyLabel>
+<pyShowJavaWindowName>GeneratedJava20260908T083554.095 GMT</pyShowJavaWindowName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxHostId>jboss1040</pxHostId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyDescription/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxUpdateDateTime>20210924T131440.887 GMT</pxUpdateDateTime>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateOpName/>
+<pxMoveImportDateTime>20211221T124058.127 GMT</pxMoveImportDateTime>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleStarts/>
+<pyBaseRule>false</pyBaseRule>
+<pyTemporaryObject/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyOpenSQL/>
+<pyUsage/>
+<pyCircumstanceDefinition/>
+<pyLabelOld>TransferToKasir_sql</pyLabelOld>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRelativePath/>
+<pyCircumstanceDate/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyHandlerFlow/>
+<pyRequestType>TransferToKasir_sql</pyRequestType>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pyInterface/>
+<pyJavaStream/>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210924T080551.953 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210804T025135.204 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210628T071903.959 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-93 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210430T041727.515 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210312T042203.030 GMT</pzInsKey>
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-01-90 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-M_WA_MESSAGE GCNM!TRANSFERTOKASIR_SQL #20210204T074250.575 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>6</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyRun>false</pyRun>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+</pagedata>

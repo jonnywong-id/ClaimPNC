@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHandlerFlow/>
+<pyTemplateInputBox/>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyCircumstanceVal/>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS!GCNM!BROWSECOLBYBISNIS_SQL</pxInsId>
+<pyWindowTitle/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyDescription/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxUpdateOpName>WILLY YAKOBUS TANDRA</pxUpdateOpName>
+<pxSiblingCount/>
+<pyLabelOld>BrowseCOLByBisnis_Sql</pyLabelOld>
+<pyStatus/>
+<pzChecksum>-1794954316</pzChecksum>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pxUpdateOperator>WILLYYAKOBUSTANDRA</pxUpdateOperator>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_CAUSE_OF_LOSS</pyClassName>
+<pyCircumstanceDefinition/>
+<pyMemo>done</pyMemo>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_CAUSE_OF_LOSS GCNM BrowseCOLByBisnis_Sql</pxTabLabel>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateOperator/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyJavaStream/>
+<pxOriginalCreateDateTime/>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pyCircumstanceDate/>
+<pyCircumstanceType/>
+<pySaveSQL/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_CAUSE_OF_LOSS GCNM BrowseCOLByBisnis_Sql</pyRuleName>
+<pxMoveImportDateTime>20201111T102239.707 GMT</pxMoveImportDateTime>
+<pyFormPost/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20260826T023031.509 GMT</pyShowJavaWindowName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStreamName/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxSaveDateTime>20200923T102620.711 GMT</pxSaveDateTime>
+<pyMethodStatus/>
+<pxInstanceLockedBy/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceProp/>
+<pxCreateOpName>WILLY YAKOBUS TANDRA</pxCreateOpName>
+<pxInstanceLockedRuleSet/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS GCNM!QUERYCLAIMBATCHANEKA #20191002T032458.570 GMT</pzOriginalInstanceKey>
+<pxUpdateDateTime>20200923T102620.380 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS GCNM!BROWSECOLBYBISNIS_SQL #20200923T040153.410 GMT</pzInsKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedDateTime/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBrowseSQL>SELECT a.*,(select col_desc from v_m_cause_of_loss where m_col_id=a.m_col_id) as "pyNote"
+  FROM pooldata.v_d_cause_of_loss a
+ WHERE EXISTS
+          (SELECT *
+             FROM v_d_cause_of_loss_business
+            WHERE {ASIS:TempSearchBisnis.DESCRIPTION}
+                  AND d_col_id = a.d_col_id)</pyBrowseSQL>
+<pyInterface/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateOperator>WILLYYAKOBUSTANDRA</pxCreateOperator>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS!GCNM!BROWSECOLBYBISNIS_SQL</pxInsName>
+<pxCommitDateTime>20201111T102239.000 GMT</pxCommitDateTime>
+<pxHostId>jboss2145</pxHostId>
+<pyDeleteSQL/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS GCNM!BROWSECOLBYBISNIS_SQL #20200923T040153.410 GMT</pzDocumentKey>
+<pxInstanceLockedCreateDateTime/>
+<pyCircumstanceTemplate/>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyTemplate/>
+<pzRuleSetVersionPatch>56</pzRuleSetVersionPatch>
+<pxMoveFromSystem/>
+<pyRuleSet>GCNMFWInt</pyRuleSet>
+<pyRuleParamsStreamName/>
+<pyRequestType>BrowseCOLByBisnis_Sql</pyRequestType>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateDateTime>20200923T040153.410 GMT</pxCreateDateTime>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSetVersion>01-01-56</pyRuleSetVersion>
+<pyLabel>BrowseCOLByBisnis_Sql</pyLabel>
+<pySpecialtyComponentData/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyDeletedObject/>
+<pyRuleFormStatusTime>20260826T023031.402 GMT</pyRuleFormStatusTime>
+<pySPRuleSetName>WILLYYAKOBUSTANDRA@</pySPRuleSetName>
+<pyOpenSQL/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceDateProp/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedKey/>
+<pyIsFromManageChangeLP/>
+<pyValueChanged>false</pyValueChanged>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyVersionSecure>true</pyVersionSecure>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_CAUSE_OF_LOSS GCNM!BROWSECOLBYBISNIS_SQL #20200923T040153.410 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-56 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,879 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleEnds/>
+<pyEnable>true</pyEnable>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedRuleSet/>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzInsKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInsName>GCNMFW</pxInsName>
+<pyCircumstanceDefinition/>
+<pyStatus/>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pyCircumstanceDateProp/>
+<pyRelativePath/>
+<pzChecksum>-1232310537</pzChecksum>
+<pxUpdateDateTime>20260107T024625.610 GMT</pxUpdateDateTime>
+<pxOriginalCreateOperator/>
+<pyMethodStatus/>
+<pzDocumentKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzDocumentKey>
+<pyBaseRule>false</pyBaseRule>
+<pySPRuleSetName>jonnywong@sinarmas.co.id</pySPRuleSetName>
+<pxInstanceLockedKey/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxOriginalCreateOpName/>
+<pyTriggerInterval>1800</pyTriggerInterval>
+<pxObjClass>Rule-Agent-Queue</pxObjClass>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxOriginalCreateDateTime/>
+<pyAgentCategory>Unknown</pyAgentCategory>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportDateTime>20240116T113124.296 GMT</pxMoveImportDateTime>
+<pzIndexCount>14</pzIndexCount>
+<pxInstanceLockedDateTime/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStreamName/>
+<pyUsage/>
+<pyCircumstanceVal/>
+<pyCircumstanceType/>
+<pyFormPost/>
+<pxSaveDateTime>20260107T024625.802 GMT</pxSaveDateTime>
+<pyLabelOld>TATReportAgent</pyLabelOld>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedRuleSetVersion/>
+<pyClassName/>
+<pyIsFromManageChangeLP/>
+<pyCircumstanceProp/>
+<pyLabel>TATReportAgent</pyLabel>
+<pyShowJavaWindowName>GeneratedJava20260908T063446.744 GMT</pyShowJavaWindowName>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pxMoveFromSystem/>
+<pyReloadForm>true</pyReloadForm>
+<pyBypassActivityAuthentication>true</pyBypassActivityAuthentication>
+<pxUpdateOperator>jonnywong@sinarmas.co.id</pxUpdateOperator>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyAccessGroup>GCNMFW:Administrators</pyAccessGroup>
+<pyDescription/>
+<pyEditable/>
+<pyTempText>saved</pyTempText>
+<pyTemplate/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceDate/>
+<pyDeletedObject/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pzIsPrivateCheckOut/>
+<pyRuleStarts/>
+<pyWorkKey/>
+<pyRuleParamsStreamName/>
+<pyDocumentTitle/>
+<pyMemo>Hapus agent AutoAcceptKomite (sudah ada di Job Scheduler)</pyMemo>
+<pxInsId>GCNMFW</pxInsId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzOriginalInstanceKey>RULE-AGENT-QUEUE GCNMFW #20231214T025902.508 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>Jonny Wong</pxCreateOpName>
+<pyJavaStream/>
+<pyRuleName>GCNMFW</pyRuleName>
+<pxCommitDateTime>20260107T024625.000 GMT</pxCommitDateTime>
+<pyRuleFormStatusTime>20260908T063446.725 GMT</pyRuleFormStatusTime>
+<pxCreateOperator>jonnywong@sinarmas.co.id</pxCreateOperator>
+<pxCreateDateTime>20260107T024541.910 GMT</pxCreateDateTime>
+<pyTemplateInputBox/>
+<pySpecialtyComponentData/>
+<pxUpdateOpName>Jonny Wong</pxUpdateOpName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyInterface/>
+<pxTabLabel>GCNMFW</pxTabLabel>
+<pyMustUseQueueManager/>
+<pyObjClassLabel>Agents</pyObjClassLabel>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>jboss10372</pxHostId>
+<pyCircumstanceTemplate/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyDeleteMemo>add agent notif kasir blm bayar</pyDeleteMemo>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-03-13 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20231214T025902.508 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20221103T034552.401 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20220127T110736.945 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pxListSubscript>4</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20220114T104518.586 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>6</pxListSubscript>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20210729T032519.053 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-93 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20210429T084959.566 GMT</pzInsKey>
+<pxListSubscript>7</pxListSubscript>
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>8</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20210217T062255.327 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-90 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>9</pxListSubscript>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20210119T062529.746 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20191227T020145.071 GMT</pzInsKey>
+<pxListSubscript>10</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-82 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxListSubscript>11</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-81 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20191126T064958.501 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20191009T075542.447 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>12</pxListSubscript>
+<pyMenuTooltip/>
+<pyLabel>01-01-80 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxListSubscript>13</pxListSubscript>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20190910T015905.555 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-01-77 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyValue>3</pyValue>
+<pyLabel>01-01-71 (Available)</pyLabel>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20190613T093543.619 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>14</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20181218T034650.382 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>15</pxListSubscript>
+<pyLabel>01-01-59 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20180813T090931.555 GMT</pzInsKey>
+<pxListSubscript>16</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-50 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-18 (Available)</pyLabel>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20180207T114032.703 GMT</pzInsKey>
+<pxListSubscript>17</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-AGENT-QUEUE GCNMFW #20170906T091047.526 GMT</pzInsKey>
+<pyLabel>01-01-01 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>18</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningCreatedTime>20220121T082402.313 GMT</pxWarningCreatedTime>
+<pxWarningMessage>(Rule-Agent-Queue)pxAgentsUse</pxWarningMessage>
+<pxWarningDetails>(Rule-Agent-Queue)pxAgentsUse</pxWarningDetails>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxWarningName>pxAgentsUse</pxWarningName>
+<pyWarningJustifiedMessage>-</pyWarningJustifiedMessage>
+<pxWarningJustifiedOperator>WILLYYAKOBUSTANDRA</pxWarningJustifiedOperator>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningJustifiedTime>20210217T062630.822 GMT</pxWarningJustifiedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">5</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningCreatedTime>20220121T082402.313 GMT</pxWarningCreatedTime>
+<pxWarningJustifiedTime>20210217T062630.822 GMT</pxWarningJustifiedTime>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningName>pxAgentsUse</pxWarningName>
+<pxWarningJustifiedOperator>WILLYYAKOBUSTANDRA</pxWarningJustifiedOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>Agents will be deprecated in a later release. Use Job Scheduler or Queue Processor to resolve your use case as per requirement, instead of Agent.</pxWarningMessage>
+<pxWarningDetails>(Rule-Agent-Queue)pxAgentsUse</pxWarningDetails>
+<pyWarningJustifiedMessage>-</pyWarningJustifiedMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">5</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pxMessageSummary>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>0</pxUnjustifiedHSWarningCount>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+</pxMessageSummary>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>CREATECASEPNCAGENT_ACTBUTTON</pxRuleFamilyName>
+<pyRuleName>CreateCasePNCAgent_ActButton</pyRuleName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyRuleName>AlertAgentKasirBlmTransferKlaim</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ALERTAGENTKASIRBLMTRANSFERKLAIM</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>TransferAllCaseNotAssigned</pyRuleName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>TRANSFERALLCASENOTASSIGNED</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>JONNYWONG@SINARMAS.CO.ID</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-RuleSet-Name</pxRuleObjClass>
+<pyRuleName>jonnywong@sinarmas.co.id</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>AlertPendingPLADLA</pyRuleName>
+<pxRuleFamilyName>ALERTPENDINGPLADLA</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>PNCGetDataFromDukcapil_Act</pyRuleName>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PNCGETDATAFROMDUKCAPIL_ACT</pxRuleFamilyName>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pyRuleName>@baseclass</pyRuleName>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>@BASECLASS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-agent-/rule-agent-queue/main.htm</pyHelpURI>
+<pyCheckOut>true</pyCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>false</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyDelete>true</pyDelete>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyRefresh>true</pyRefresh>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-agent-/rule-agent-queue/main.htm</pyHelpRef>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyFutureQueues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyAgentName>UpdateDukcapil</pyAgentName>
+<pyAgentCategory>Uncategorized</pyAgentCategory>
+<pyEnableMutualExclusion>false</pyEnableMutualExclusion>
+<pxCreateOperator>willygcnm</pxCreateOperator>
+<pyExecutionType>Recurring</pyExecutionType>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pxCreateDateTime>20191129T071845.843 GMT</pxCreateDateTime>
+<pyEnable>false</pyEnable>
+<pySecondsBeforeNextRunInCluster>0</pySecondsBeforeNextRunInCluster>
+<pyExpanded>false</pyExpanded>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyTriggerInterval/>
+<pyMaxRecords/>
+<pyUseAutomaticQueueManagement>false</pyUseAutomaticQueueManagement>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyMinutesBeforeNextRunInCluster>0</pyMinutesBeforeNextRunInCluster>
+<pyDailyOptions>Daily-EveryDay</pyDailyOptions>
+<pyHoursBeforeNextRunInCluster/>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pyQueueClass>ASM-FW-GCNMFW-Work-PNC</pyQueueClass>
+<pyQueueMode>Advanced</pyQueueMode>
+<pyTemplateInputBox/>
+<pxCreateOpName>Willy Tandra</pxCreateOpName>
+<pxObjClass>Embed-Rule-FutureQueue</pxObjClass>
+<pyDequeueActivity>PNCGetDataFromDukcapil_Act</pyDequeueActivity>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyEnableTimeIntervalBetweenRunsInCluster>false</pyEnableTimeIntervalBetweenRunsInCluster>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pxSubscript>BackgroundProcessing</pxSubscript>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pyNodeType>BackgroundProcessing</pyNodeType>
+</rowdata>
+</pyNodeTypes>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzRuleAgentIndex">0</rowdata>
+</pzIndexes>
+<pyRecurrenceDetails>
+<pyStartSecond>0</pyStartSecond>
+<pyEndDate/>
+<pyStartHour>19</pyStartHour>
+<pyStartDateTime/>
+<pyStartMinute>0</pyStartMinute>
+<pxObjClass>Data-Event-Recurring</pxObjClass>
+<pyStartAmPm>PM</pyStartAmPm>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyUseEndDate/>
+<pyEndCount/>
+<pyPattern>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyYearlyMonthSelection>1</pyYearlyMonthSelection>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyIsDayOfMonth/>
+<pyMonthlyInterval/>
+<pyType>Daily-EveryDay</pyType>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pyYearlyDay/>
+<pyEveryWeekday/>
+<pyDayOfMonth/>
+<pyYearlyMonth>1</pyYearlyMonth>
+<pyDayOfMonthInterval/>
+<pyDaySelection/>
+<pyDailyInterval/>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pxObjClass>Embed-Data-Event-Pattern</pxObjClass>
+<pyWeeklyInterval/>
+<pyIsMonthAndDay/>
+<pySelectedDays REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">false</rowdata>
+<rowdata REPEATINGINDEX="2">false</rowdata>
+<rowdata REPEATINGINDEX="3">false</rowdata>
+<rowdata REPEATINGINDEX="4">false</rowdata>
+<rowdata REPEATINGINDEX="5">false</rowdata>
+<rowdata REPEATINGINDEX="6">false</rowdata>
+<rowdata REPEATINGINDEX="7">false</rowdata>
+</pySelectedDays>
+</pyPattern>
+</pyRecurrenceDetails>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyActivityParameters>
+</pyActivityParameters>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyEnableTimeIntervalBetweenRunsInCluster>false</pyEnableTimeIntervalBetweenRunsInCluster>
+<pyQueueMode>Advanced</pyQueueMode>
+<pxCreateDateTime>20210119T062455.823 GMT</pxCreateDateTime>
+<pySecondsBeforeNextRunInCluster>0</pySecondsBeforeNextRunInCluster>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyQueueClass>@baseclass</pyQueueClass>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyEnable>true</pyEnable>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyExecutionType>Periodic</pyExecutionType>
+<pyUseAutomaticQueueManagement>false</pyUseAutomaticQueueManagement>
+<pyMinutesBeforeNextRunInCluster>0</pyMinutesBeforeNextRunInCluster>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyDequeueActivity>CreateCasePNCAgent_ActButton</pyDequeueActivity>
+<pyEnableMutualExclusion>true</pyEnableMutualExclusion>
+<pyTriggerInterval>1800</pyTriggerInterval>
+<pyExpanded>false</pyExpanded>
+<pxObjClass>Embed-Rule-FutureQueue</pxObjClass>
+<pyAgentName>ClaimCreditAgent</pyAgentName>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyDailyOptions>Daily-EveryDay</pyDailyOptions>
+<pyAgentCategory>Uncategorized</pyAgentCategory>
+<pyTemplateInputBox/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHoursBeforeNextRunInCluster/>
+<pyMaxRecords/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzRuleAgentIndex">1</rowdata>
+</pzIndexes>
+<pyActivityParameters>
+</pyActivityParameters>
+<pyRecurrenceDetails>
+<pyStartAmPm>PM</pyStartAmPm>
+<pyEndCount/>
+<pyStartDateTime/>
+<pyStartSecond>0</pyStartSecond>
+<pyEndDate/>
+<pyStartHour>19</pyStartHour>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pxObjClass>Data-Event-Recurring</pxObjClass>
+<pyStartMinute>0</pyStartMinute>
+<pyUseEndDate/>
+<pyPattern>
+<pyIsDayOfMonth/>
+<pyMonthlyInterval/>
+<pyDayOfMonthInterval/>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pyDaySelection/>
+<pyWeeklyInterval/>
+<pyIsMonthAndDay/>
+<pyDailyInterval/>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyYearlyMonthSelection>1</pyYearlyMonthSelection>
+<pyDayOfMonth/>
+<pyYearlyMonth>1</pyYearlyMonth>
+<pyType>Daily-EveryDay</pyType>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pxObjClass>Embed-Data-Event-Pattern</pxObjClass>
+<pyYearlyDay/>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyEveryWeekday/>
+<pySelectedDays REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">false</rowdata>
+<rowdata REPEATINGINDEX="2">false</rowdata>
+<rowdata REPEATINGINDEX="3">false</rowdata>
+<rowdata REPEATINGINDEX="4">false</rowdata>
+<rowdata REPEATINGINDEX="5">false</rowdata>
+<rowdata REPEATINGINDEX="6">false</rowdata>
+<rowdata REPEATINGINDEX="7">false</rowdata>
+</pySelectedDays>
+</pyPattern>
+</pyRecurrenceDetails>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pyNodeType>BackgroundProcessing</pyNodeType>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pxSubscript>BackgroundProcessing</pxSubscript>
+</rowdata>
+</pyNodeTypes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyUseAutomaticQueueManagement>false</pyUseAutomaticQueueManagement>
+<pyQueueMode>Default</pyQueueMode>
+<pyHoursBeforeNextRunInCluster/>
+<pySecondsBeforeNextRunInCluster>0</pySecondsBeforeNextRunInCluster>
+<pyQueueClass>@baseclass</pyQueueClass>
+<pyTemplateInputBox/>
+<pxObjClass>Embed-Rule-FutureQueue</pxObjClass>
+<pyEnableMutualExclusion>false</pyEnableMutualExclusion>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyMaxRecords/>
+<pyTriggerInterval/>
+<pyMinutesBeforeNextRunInCluster>0</pyMinutesBeforeNextRunInCluster>
+<pxCreateOpName>SURYA FEBRIYANTO DATU</pxCreateOpName>
+<pyExpanded>false</pyExpanded>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pyEnable>true</pyEnable>
+<pyEnableTimeIntervalBetweenRunsInCluster>false</pyEnableTimeIntervalBetweenRunsInCluster>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyExecutionType>Recurring</pyExecutionType>
+<pyAgentCategory>Uncategorized</pyAgentCategory>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyDailyOptions>Daily-EveryDay</pyDailyOptions>
+<pyDequeueActivity>TransferAllCaseNotAssigned</pyDequeueActivity>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyTemporaryObject/>
+<pxCreateDateTime>20210305T101525.848 GMT</pxCreateDateTime>
+<pyAgentName>AutoPICAgent</pyAgentName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzRuleAgentIndex">2</rowdata>
+</pzIndexes>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyActivityParameters>
+</pyActivityParameters>
+<pyRecurrenceDetails>
+<pyStartHour>8</pyStartHour>
+<pxObjClass>Data-Event-Recurring</pxObjClass>
+<pyStartMinute>15</pyStartMinute>
+<pyStartDateTime/>
+<pyUseEndDate/>
+<pyStartSecond>0</pyStartSecond>
+<pyEndCount/>
+<pyStartAmPm>AM</pyStartAmPm>
+<pyEndDate/>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyPattern>
+<pyWeeklyInterval/>
+<pyMonthlyInterval/>
+<pyDayOfMonth/>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pyDayOfMonthInterval/>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyIsMonthAndDay/>
+<pyEveryWeekday/>
+<pyType>Daily-EveryDay</pyType>
+<pyYearlyMonthSelection>1</pyYearlyMonthSelection>
+<pyYearlyMonth>1</pyYearlyMonth>
+<pyYearlyDay/>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyIsDayOfMonth/>
+<pyDailyInterval/>
+<pxObjClass>Embed-Data-Event-Pattern</pxObjClass>
+<pyDaySelection/>
+<pySelectedDays REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">false</rowdata>
+<rowdata REPEATINGINDEX="2">false</rowdata>
+<rowdata REPEATINGINDEX="3">false</rowdata>
+<rowdata REPEATINGINDEX="4">false</rowdata>
+<rowdata REPEATINGINDEX="5">false</rowdata>
+<rowdata REPEATINGINDEX="6">false</rowdata>
+<rowdata REPEATINGINDEX="7">false</rowdata>
+</pySelectedDays>
+</pyPattern>
+</pyRecurrenceDetails>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pxSubscript>BackgroundProcessing</pxSubscript>
+<pyNodeType>BackgroundProcessing</pyNodeType>
+</rowdata>
+</pyNodeTypes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyTriggerInterval/>
+<pyTemplateInputBox/>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyQueueClass>@baseclass</pyQueueClass>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyExpanded>false</pyExpanded>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyMaxRecords/>
+<pyQueueMode>Default</pyQueueMode>
+<pySecondsBeforeNextRunInCluster>0</pySecondsBeforeNextRunInCluster>
+<pyHoursBeforeNextRunInCluster/>
+<pyEnableMutualExclusion>false</pyEnableMutualExclusion>
+<pyExecutionType>Recurring</pyExecutionType>
+<pyAgentName>SendAlertPLADLA</pyAgentName>
+<pyMinutesBeforeNextRunInCluster>0</pyMinutesBeforeNextRunInCluster>
+<pyDailyOptions>Daily-EveryDay</pyDailyOptions>
+<pyEnable>true</pyEnable>
+<pyEnableTimeIntervalBetweenRunsInCluster>false</pyEnableTimeIntervalBetweenRunsInCluster>
+<pyAgentCategory>Uncategorized</pyAgentCategory>
+<pxObjClass>Embed-Rule-FutureQueue</pxObjClass>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyDequeueActivity>AlertPendingPLADLA</pyDequeueActivity>
+<pxCreateDateTime>20221103T034600.684 GMT</pxCreateDateTime>
+<pyUseAutomaticQueueManagement>false</pyUseAutomaticQueueManagement>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzRuleAgentIndex">3</rowdata>
+</pzIndexes>
+<pyActivityParameters>
+</pyActivityParameters>
+<pyRecurrenceDetails>
+<pyStartSecond>0</pyStartSecond>
+<pxObjClass>Data-Event-Recurring</pxObjClass>
+<pyEndDate/>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyStartAmPm>AM</pyStartAmPm>
+<pyStartDateTime/>
+<pyStartMinute>0</pyStartMinute>
+<pyStartHour>8</pyStartHour>
+<pyUseEndDate/>
+<pyEndCount/>
+<pyPattern>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pxObjClass>Embed-Data-Event-Pattern</pxObjClass>
+<pyWeeklyInterval/>
+<pyDayOfMonth/>
+<pyMonthlyInterval/>
+<pyYearlyMonthSelection>1</pyYearlyMonthSelection>
+<pyDaySelection/>
+<pyIsDayOfMonth/>
+<pyEveryWeekday/>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyIsMonthAndDay/>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyType>Daily-EveryDay</pyType>
+<pyYearlyDay/>
+<pyYearlyMonth>1</pyYearlyMonth>
+<pyDayOfMonthInterval/>
+<pyDailyInterval/>
+<pySelectedDays REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">false</rowdata>
+<rowdata REPEATINGINDEX="2">false</rowdata>
+<rowdata REPEATINGINDEX="3">false</rowdata>
+<rowdata REPEATINGINDEX="4">false</rowdata>
+<rowdata REPEATINGINDEX="5">false</rowdata>
+<rowdata REPEATINGINDEX="6">false</rowdata>
+<rowdata REPEATINGINDEX="7">false</rowdata>
+</pySelectedDays>
+</pyPattern>
+</pyRecurrenceDetails>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pyNodeType>BackgroundProcessing</pyNodeType>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+<pxSubscript>BackgroundProcessing</pxSubscript>
+</rowdata>
+</pyNodeTypes>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRecurringFrequency>Daily</pyRecurringFrequency>
+<pyAgentName>NotifPICKasir</pyAgentName>
+<pyYearlyOptions>Yearly-EveryDayOfMonth</pyYearlyOptions>
+<pyUseAutomaticQueueManagement>false</pyUseAutomaticQueueManagement>
+<pyDequeueActivity>AlertAgentKasirBlmTransferKlaim</pyDequeueActivity>
+<pyMonthlyOptions>Monthly-EveryNDayOfEveryMMonths</pyMonthlyOptions>
+<pyQueueClass>@baseclass</pyQueueClass>
+<pyQueueMode>Default</pyQueueMode>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyExpanded>false</pyExpanded>
+<pyEnableTimeIntervalBetweenRunsInCluster>false</pyEnableTimeIntervalBetweenRunsInCluster>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pySecondsBeforeNextRunInCluster>0</pySecondsBeforeNextRunInCluster>
+<pyTriggerInterval/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyAgentCategory>Uncategorized</pyAgentCategory>
+<pyTemplateInputBox/>
+<pyDailyOptions>Daily-EveryDay</pyDailyOptions>
+<pyMinutesBeforeNextRunInCluster>0</pyMinutesBeforeNextRunInCluster>
+<pyEnable>true</pyEnable>
+<pyMaxRecords/>
+<pxCreateDateTime>20231214T025947.452 GMT</pxCreateDateTime>
+<pyEnableMutualExclusion>false</pyEnableMutualExclusion>
+<pyNodeTypesText>BackgroundProcessing</pyNodeTypesText>
+<pyHoursBeforeNextRunInCluster/>
+<pxObjClass>Embed-Rule-FutureQueue</pxObjClass>
+<pyExecutionType>Recurring</pyExecutionType>
+<pzIndexOwnerKey>RULE-AGENT-QUEUE GCNMFW #20260107T024541.910 GMT</pzIndexOwnerKey>
+<pyNodeTypes REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="BackgroundProcessing">
+<pxSubscript>BackgroundProcessing</pxSubscript>
+<pyNodeType>BackgroundProcessing</pyNodeType>
+<pxObjClass>Embed-Rule-FutureQueue-nodeInfo</pxObjClass>
+</rowdata>
+</pyNodeTypes>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzRuleAgentIndex">4</rowdata>
+</pzIndexes>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRecurrenceDetails>
+<pyUseEndDate/>
+<pyEndCount/>
+<pyStartSecond>0</pyStartSecond>
+<pyStartDateTime/>
+<pyStartMinute>0</pyStartMinute>
+<pyEndDate/>
+<pxObjClass>Data-Event-Recurring</pxObjClass>
+<pyStartAmPm>AM</pyStartAmPm>
+<pyUseTimeZone>Asia/Jakarta</pyUseTimeZone>
+<pyStartHour>5</pyStartHour>
+<pyPattern>
+<pyYearlyDaySelection>day</pyYearlyDaySelection>
+<pyDayOfMonth/>
+<pyMonthlyDaySelection>day</pyMonthlyDaySelection>
+<pyYearlyWeekSelection>first</pyYearlyWeekSelection>
+<pyDailyInterval/>
+<pyYearlyMonth>1</pyYearlyMonth>
+<pyYearlyMonthSelection>1</pyYearlyMonthSelection>
+<pxObjClass>Embed-Data-Event-Pattern</pxObjClass>
+<pyDayOfMonthInterval/>
+<pyEveryWeekday/>
+<pyType>Daily-EveryDay</pyType>
+<pyIsDayOfMonth/>
+<pyDaySelection/>
+<pyYearlyDay/>
+<pyIsMonthAndDay/>
+<pyWeeklyInterval/>
+<pyMonthlyInterval/>
+<pyMonthlyWeekSelection>first</pyMonthlyWeekSelection>
+<pySelectedDays REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">false</rowdata>
+<rowdata REPEATINGINDEX="2">false</rowdata>
+<rowdata REPEATINGINDEX="3">false</rowdata>
+<rowdata REPEATINGINDEX="4">false</rowdata>
+<rowdata REPEATINGINDEX="5">false</rowdata>
+<rowdata REPEATINGINDEX="6">false</rowdata>
+<rowdata REPEATINGINDEX="7">false</rowdata>
+</pySelectedDays>
+</pyPattern>
+</pyRecurrenceDetails>
+<pyActivityParameters>
+</pyActivityParameters>
+</rowdata>
+</pyFutureQueues>
+</pagedata>

@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyInterface/>
+<pxInstanceLockedBy/>
+<pyUsage/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyDocumentTitle/>
+<pyDeleteSQL/>
+<pxInstanceLockedKey/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTDATAMSTVIRTUALACCOUNT</pxInsId>
+<pyTemplateInputBox/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveFromSystem/>
+<pyFormPost/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyBrowseSQL>DECLARE 
+  TCLIENTID VARCHAR2(32767);
+  TCLIENTNAME VARCHAR2(32767);
+  TSTATUS VARCHAR2(32767);
+  TFlags  VARCHAR2(32767);
+  TMESSAGE VARCHAR2(32767);
+  TVIRTUALACCOUNTNUMBER VARCHAR2(32767);
+  tEMAILVA VARCHAR2(32767);
+
+BEGIN 
+ TFlags := {GeneratedVARecovery.ClaimLocation};
+  TCLIENTID := {GeneratedVARecovery.ClientID};
+  TCLIENTNAME := {GeneratedVARecovery.NamaPrincipal};
+  TSTATUS := {GeneratedVARecovery.Status};
+  TMESSAGE := {GeneratedVARecovery.Message};
+  TVIRTUALACCOUNTNUMBER := {GeneratedVARecovery.VirtualAccountNumber};
+  tEMAILVA := {GeneratedVARecovery.EmailBroker};
+
+  POOLDATA.ADD_NEWMASTERVIRTUALACCOUNT ( TFlags ,TCLIENTID, TCLIENTNAME, TSTATUS, TMESSAGE, TVIRTUALACCOUNTNUMBER,tEMAILVA , {GeneratedVARecovery.Notes OUT});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyRelativePath/>
+<pyRequestType>InsertDataMSTVirtualAccount</pyRequestType>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyStatus/>
+<pxMoveImportDateTime>20241223T123621.165 GMT</pxMoveImportDateTime>
+<pzChecksum>883243725</pzChecksum>
+<pyCircumstanceType/>
+<pyMethodStatus/>
+<pxOriginalCreateDateTime/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleStarts/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!INSERTDATAMSTVIRTUALACCOUNT</pxInsName>
+<pyHistoryObject>false</pyHistoryObject>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyJavaStream/>
+<pyTemplate/>
+<pyOpenSQL/>
+<pySpecialtyComponentData/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyLabel>InsertDataMSTVirtualAccount</pyLabel>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyLabelOld>InsertDataMSTVirtualAccount</pyLabelOld>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTDATAMSTVIRTUALACCOUNT #20241202T073618.866 GMT</pzInsKey>
+<pxCreateDateTime>20241202T073618.866 GMT</pxCreateDateTime>
+<pxHostId>jboss10372</pxHostId>
+<pyShowJavaWindowName>GeneratedJava20260822T054103.239 GMT</pyShowJavaWindowName>
+<pxInstanceLockedRuleSetVersion/>
+<pyIsFromManageChangeLP/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateDateTime>20241216T033907.743 GMT</pxUpdateDateTime>
+<pyCircumstanceDate/>
+<pxSaveDateTime>20241216T033907.751 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pyDescription/>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateOpName/>
+<pxSiblingCount/>
+<pyTemporaryObject/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyCircumstanceDateProp/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertDataMSTVirtualAccount</pyRuleName>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM InsertDataMSTVirtualAccount</pxTabLabel>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceProp/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTDATAMSTVIRTUALACCOUNT #20241202T073618.866 GMT</pzDocumentKey>
+<pyHandlerFlow/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateSystemID/>
+<pyValueChanged>false</pyValueChanged>
+<pyWorkKey/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyDeletedObject/>
+<pySaveSQL/>
+<pyRuleFormStatusTime>20260822T054103.217 GMT</pyRuleFormStatusTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceDefinition/>
+<pyCheckInRuleSet/>
+<pyWindowTitle/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyCircumstanceVal/>
+<pyRuleParamsStreamName/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETIDDOCUMENTSUPPORTSRV #20241202T032224.136 GMT</pzOriginalInstanceKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDeleteMemo>tambah id  object</pyDeleteMemo>
+<pyMemo>done add email VA</pyMemo>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyPreview>false</pyPreview>
+<pyDelete>false</pyDelete>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyNew>true</pyNew>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!INSERTDATAMSTVIRTUALACCOUNT #20241202T073618.866 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

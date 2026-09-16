@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRelativePath/>
+<pyLabelOld>Get List Coverage Marine</pyLabelOld>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyCircumstanceType/>
+<pyRuleStarts/>
+<pyRequestType>GetListCoverageMarine</pyRequestType>
+<pxOriginalCreateOperator/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxMoveImportDateTime>20220126T101718.816 GMT</pxMoveImportDateTime>
+<pyRuleParamsStreamName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedBy/>
+<pyTemplateInputBox/>
+<pxInstanceLockedCreateDateTime/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyMemo>add where</pyMemo>
+<pyInterface/>
+<pxSaveDateTime>20220119T103635.666 GMT</pxSaveDateTime>
+<pyCircumstanceDefinition/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInstanceLockedRuleSet/>
+<pxSiblingCount/>
+<pyCircumstanceDateProp/>
+<pyDescription/>
+<pyCircumstanceVal/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pxMergeSynchronized>20201112T024839.096 GMT</pxMergeSynchronized>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemporaryObject/>
+<pyUsage/>
+<pxUpdateDateTime>20220119T103635.655 GMT</pxUpdateDateTime>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEMARINE #20220119T094241.848 GMT</pzDocumentKey>
+<pyDeleteSQL/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetListCoverageMarine</pyRuleName>
+<pyBaseRule>false</pyBaseRule>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_POLIS GCNM GetListCoverageMarine</pxTabLabel>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeletedObject/>
+<pxOriginalCreateSystemID/>
+<pyIsFromManageChangeLP/>
+<pyFormPost/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETLISTCOVERAGEMARINE</pxInsName>
+<pyStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDate/>
+<pxInstanceLockedDateTime/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyJavaStream/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEMARINE #20220119T094241.848 GMT</pzInsKey>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxHostId>jboss10362</pxHostId>
+<pyLabel>Get List Coverage Marine</pyLabel>
+<pyOpenSQL/>
+<pyMethodStatus/>
+<pzChecksum>820402521</pzChecksum>
+<pyRuleFormStatusTime>20260720T130705.902 GMT</pyRuleFormStatusTime>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySpecialtyComponentData/>
+<pyCircumstanceProp/>
+<pyShowJavaWindowName>GeneratedJava20260720T130705.921 GMT</pyShowJavaWindowName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedKey/>
+<pyTemplate/>
+<pySaveSQL/>
+<pyWorkKey/>
+<pyCheckInRuleSet/>
+<pxCreateDateTime>20220119T094241.848 GMT</pxCreateDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyDocumentTitle/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyBrowseSQL>SELECT 
+ to_clob(coveragedata) AS "PRODKE"
+FROM pooldata.t_cargolist
+where
+nopolis={TempPolis.POLICY_NO}
+and prodke={TempPolis.CURRENCY}
+and goodsid = {TempPolis.BRANCH_NAME}
+and indexobject = {TempPolis.TSI}</pyBrowseSQL>
+<pyStreamName/>
+<pyWindowTitle/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyHandlerFlow/>
+<pyClassName>ASM-FW-GCNMFW-Int-V_POLIS</pyClassName>
+<pyRuleEnds/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceTemplate/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-CLAIM_SERVICE_LOG GCNM!GETLISTCOVERAGEMARINE #20200804T020807.215 GMT</pzOriginalInstanceKey>
+<pxInsId>ASM-FW-GCNMFW-INT-V_POLIS!GCNM!GETLISTCOVERAGEMARINE</pxInsId>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveFromSystem/>
+<pxOriginalCreateOpName/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pyShowJava>false</pyShowJava>
+<pyPreview>false</pyPreview>
+<pyForward>true</pyForward>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyVersionSecure>true</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEMARINE #20220119T094241.848 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_POLIS GCNM!GETLISTCOVERAGEMARINE #20201112T024753.823 GMT</pzInsKey>
+<pyLabel>01-01-89 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceType/>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEDATASUMTOTALTSIFIRE</pxInsName>
+<pyInterface/>
+<pyHandlerFlow/>
+<pxOriginalCreateSystemID/>
+<pyLabel>BrowseDataSumTotalTSIFire</pyLabel>
+<pxMergeSynchronized>20200924T111215.971 GMT</pxMergeSynchronized>
+<pySaveSQL/>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pxInstanceLockedRuleSet/>
+<pzChecksum>949928089</pzChecksum>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedDateTime/>
+<pxHostId>jboss2132</pxHostId>
+<pyRuleSetVersion>01-02-82</pyRuleSetVersion>
+<pxUpdateDateTime>20201113T084546.496 GMT</pxUpdateDateTime>
+<pxCreateOpName>Abraham GP</pxCreateOpName>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!BROWSEDATASUMTOTALTSIFIRE</pxInsId>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyFormPost/>
+<pyDeleteMemo>add for mbu</pyDeleteMemo>
+<pxSaveDateTime>20201113T084546.522 GMT</pxSaveDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateOperator>ABRAHAMGP</pxCreateOperator>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleStarts/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleEnds/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRequestType>BrowseDataSumTotalTSIFire</pyRequestType>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedKey/>
+<pxOriginalCreateOperator/>
+<pyMethodStatus/>
+<pyTemplate/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20201113T084516.892 GMT</pzInsKey>
+<pyIsFromManageChangeLP/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20201113T084516.892 GMT</pzDocumentKey>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceProp/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyDeletedObject/>
+<pxMoveFromSystem/>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxMoveImportDateTime>20201113T101714.742 GMT</pxMoveImportDateTime>
+<pyOpenSQL/>
+<pyCheckInRuleSet/>
+<pyCircumstanceVal/>
+<pyRuleFormStatusTime>20260827T072449.470 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDateProp/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pySpecialtyComponentData/>
+<pxOriginalCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20260827T072449.495 GMT</pyShowJavaWindowName>
+<pyRelativePath/>
+<pyRWAccess>ASM</pyRWAccess>
+<pyWorkKey/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyCircumstanceDate/>
+<pyTemporaryObject/>
+<pxUpdateOperator>ABRAHAMGP</pxUpdateOperator>
+<pxCreateDateTime>20201113T084516.892 GMT</pxCreateDateTime>
+<pyRuleParamsStreamName/>
+<pyDeleteSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pyDocumentTitle/>
+<pxOriginalCreateOpName/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDefinition/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyStreamName/>
+<pyLabelOld>BrowseDataSumTotalTSIFire</pyLabelOld>
+<pxSiblingCount/>
+<pxUpdateOpName>Abraham GP</pxUpdateOpName>
+<pyMemo>ubah tambah flagdelete depan TSIObjectItem</pyMemo>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyWindowTitle/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemplateInputBox/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20200825T101909.928 GMT</pzOriginalInstanceKey>
+<pyDescription/>
+<pyUsage/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM BrowseDataSumTotalTSIFire</pyRuleName>
+<pyValueChanged>false</pyValueChanged>
+<pyBrowseSQL>/* Formatted on 05/Aug/20 3:52:55 PM (QP5 v5.215.12089.38647) */
+SELECT sum(jt.TSIOBJECTITEM) as "HASIL1"  FROM T_PROPERTYLIST A,JSON_TABLE (
+A.PROPERTYITEMLIST,'$'COLUMNS(NESTED PATH '$.PropertyItemList[*]' COLUMNS(TSIOBJECTITEM VARCHAR(32) PATH '$.TSIObjectItem', FLAGDELETE VARCHAR(5) PATH '$.FlagDelete')))jt 
+WHERE A.IDPEGA  = {InputData.CARI1}
+         AND (jt.FLAGDELETE &lt;&gt; '1' OR jt.FLAGDELETE IS NULL)
+ORDER BY A.INDEXOBJECT</pyBrowseSQL>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM BrowseDataSumTotalTSIFire</pxTabLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCommitDateTime>20201113T101714.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionPatch>82</pzRuleSetVersionPatch>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pySiblings>true</pySiblings>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPropertyPane>false</pyPropertyPane>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pyCompareVersion/>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20201113T084516.892 GMT</pzInsKey>
+<pyLabel>01-02-82 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-72 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20200924T111150.594 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20200825T101909.928 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-02-69 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!BROWSEDATASUMTOTALTSIFIRE #20200805T085537.921 GMT</pzInsKey>
+<pyLabel>01-02-68 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

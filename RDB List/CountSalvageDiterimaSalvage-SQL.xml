@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!COUNTSALVAGEDITERIMASALVAGE #20241211T090307.780 GMT</pzOriginalInstanceKey>
+<pyOpenSQL/>
+<pxInstanceLockedBy/>
+<pxInstanceLockedDateTime/>
+<pyDeleteSQL/>
+<pyRelativePath/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabelOld>CountSalvageDiterimaSalvage</pyLabelOld>
+<pyWindowTitle/>
+<pxMoveImportDateTime>20241223T123621.023 GMT</pxMoveImportDateTime>
+<pxSaveDateTime>20241212T035513.901 GMT</pxSaveDateTime>
+<pzChecksum>1439636884</pzChecksum>
+<pySpecialtyComponentData/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDescription/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyShowJavaWindowName>GeneratedJava20260901T081409.887 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyBaseRule>false</pyBaseRule>
+<pyDeletedObject/>
+<pyInterface/>
+<pxInstanceLockedKey/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!COUNTSALVAGEDITERIMASALVAGE</pxInsName>
+<pyDocumentTitle/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxSiblingCount/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxHostId>jboss10372</pxHostId>
+<pyCircumstanceType/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!COUNTSALVAGEDITERIMASALVAGE #20241211T090307.780 GMT</pzDocumentKey>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyCircumstanceDateProp/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleParamsStreamName/>
+<pyTemplate/>
+<pyUsage/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyFormPost/>
+<pyRuleFormStatusTime>20260901T081409.867 GMT</pyRuleFormStatusTime>
+<pyRWAccess>ASM</pyRWAccess>
+<pyMethodStatus/>
+<pyHistoryObject/>
+<pyMemo>done</pyMemo>
+<pyJavaStream/>
+<pyCircumstanceDate/>
+<pxInstanceLockedRuleSet/>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyTemplateInputBox/>
+<pyHandlerFlow/>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!COUNTSALVAGEDITERIMASALVAGE #20241211T090307.780 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pyIsFromManageChangeLP/>
+<pyLabel>CountSalvageDiterimaSalvage</pyLabel>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyCircumstanceTemplate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStreamName/>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pyWorkKey/>
+<pyRequestType>CountSalvageDiterimaSalvage</pyRequestType>
+<pyStatus/>
+<pxCreateDateTime>20241211T090307.780 GMT</pxCreateDateTime>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData ASM CountSalvageDiterimaSalvage</pxTabLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceProp/>
+<pxMoveFromSystem/>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyRuleStarts/>
+<pyValueChanged>false</pyValueChanged>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!ASM!COUNTSALVAGEDITERIMASALVAGE</pxInsId>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData ASM CountSalvageDiterimaSalvage</pyRuleName>
+<pyBrowseSQL>select count(noklaim) as "CityID" from pooldata.pnc_salvage where ststransfer = '3'</pyBrowseSQL>
+<pySaveSQL/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceVal/>
+<pxUpdateDateTime>20241212T035513.895 GMT</pxUpdateDateTime>
+<pyRuleEnds/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA ASM!COUNTSALVAGEDITERIMASALVAGE #20241211T090307.780 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyLaunch>true</pyLaunch>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>false</pyShowJava>
+<pySiblings>true</pySiblings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCompareVersion/>
+<pyRecover>false</pyRecover>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

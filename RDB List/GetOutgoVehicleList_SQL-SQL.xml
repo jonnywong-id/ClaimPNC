@@ -1,0 +1,198 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETOUTGOVEHICLELIST_SQL #20260512T014907.782 GMT</pzDocumentKey>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyBrowseSQL>with data as(
+select idpega,
+nopolis,
+nvl(jt.premium,0) as premium,
+nvl(jt.oldpremium,0) as oldpremium,
+nvl(jt.premium,0)-nvl(jt.oldpremium,0) as totalpremium
+from pooldata.t_vehiclelist a,
+JSON_TABLE (coveragelist, '$.CoverageList[*].OutGoList[*]'
+  COLUMNS (Premium Number PATH '$.OutgoAmount',
+  OldPremium Number PATH '$.OldOutgo[*].OutgoAmount',
+  Coverage VARCHAR(50) PATH '$.CoverageNote')) jt
+where idpega = {InputData.CARI1}
+union all
+select idpega,
+nopolis,
+sum(nvl(jb.premium,0)) as premium,
+sum(nvl(jb.oldpremium,0)) as oldpremium,
+nvl(jb.premium,0)-nvl(jb.oldpremium,0) as totalpremium
+from pooldata.t_vehiclelist a,
+JSON_TABLE (coveragelist, '$.CoverageList[*].AdditionalCoverage[*].OutGoList[*]'
+  COLUMNS (Premium Number PATH '$.OutgoAmount',
+  OldPremium Number PATH '$.OldOutgo[*].OutgoAmount',
+  Coverage VARCHAR(50) PATH '$.CoverageNote')) jb
+where idpega  = {InputData.CARI1}
+group by idpega,nopolis,premium,oldpremium
+)
+select sum(premium) as HASIL1 ,sum(oldpremium) as HASIL2 ,sum(totalpremium) as HASIL3 from data</pyBrowseSQL>
+<pyJavaStream/>
+<pxHostId>jboss10362</pxHostId>
+<pxSiblingCount/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceTemplate/>
+<pyLabel>GetOutgoVehicleList_SQL</pyLabel>
+<pySPRuleSetName>ALBERT@</pySPRuleSetName>
+<pyRuleEnds/>
+<pxInstanceLockedKey/>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedCreateDateTime/>
+<pxInsName>ASM-FW-GISFW-INT-POOLDATA!ASM!GETOUTGOVEHICLELIST_SQL</pxInsName>
+<pyDocumentTitle/>
+<pyDeletedObject/>
+<pyMethodStatus/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySaveSQL/>
+<pxCreateOpName>Albert</pxCreateOpName>
+<pxUpdateOperator>ALBERT</pxUpdateOperator>
+<pyRuleFormStatusTime>20260827T085224.855 GMT</pyRuleFormStatusTime>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyWorkKey/>
+<pxUpdateDateTime>20260512T015539.304 GMT</pxUpdateDateTime>
+<pyShowJavaWindowName>GeneratedJava20260827T085224.876 GMT</pyShowJavaWindowName>
+<pyStatus/>
+<pxInstanceLockedDateTime/>
+<pyBaseRule>false</pyBaseRule>
+<pyTemplateInputBox/>
+<pyCircumstanceVal/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSetVersion>01-05-77</pyRuleSetVersion>
+<pyDeleteMemo>add outgo sum dari vehiclelist</pyDeleteMemo>
+<pyOpenSQL/>
+<pyRelativePath/>
+<pxInsId>ASM-FW-GISFW-INT-POOLDATA!ASM!GETOUTGOVEHICLELIST_SQL</pxInsId>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxCreateDateTime>20260512T014907.782 GMT</pxCreateDateTime>
+<pyRequestType>GetOutgoVehicleList_SQL</pyRequestType>
+<pxOriginalCreateOperator/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyValueChanged>false</pyValueChanged>
+<pyRWAccess>ASM</pyRWAccess>
+<pzRuleSetVersionPatch>77</pzRuleSetVersionPatch>
+<pyClassName>ASM-FW-GISFW-Int-Pooldata</pyClassName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETOUTGOVEHICLELIST_SQL #20260512T014907.782 GMT</pzInsKey>
+<pyWindowTitle/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETAPISERVICELOGNOTIFICATION #20230717T114530.720 GMT</pzOriginalInstanceKey>
+<pyIsFromManageChangeLP/>
+<pyFormPost/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleName>ASM-FW-GISFW-Int-Pooldata ASM GetOutgoVehicleList_SQL</pyRuleName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyInterface/>
+<pxMoveFromSystem/>
+<pyTemplate/>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyCircumstanceProp/>
+<pzChecksum>-622372246</pzChecksum>
+<pyMemo>add untuk ambil outgolist</pyMemo>
+<pyLabelOld>GetOutgoVehicleList_SQL</pyLabelOld>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyStreamName/>
+<pxInstanceLockedRuleSet/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedBy/>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedRuleSetVersion/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyUsage/>
+<pxTabLabel>ASM-FW-GISFW-Int-Pooldata ASM GetOutgoVehicleList_SQL</pxTabLabel>
+<pxCommitDateTime>20260606T145854.000 GMT</pxCommitDateTime>
+<pyCircumstanceDateProp/>
+<pyDescription/>
+<pxSaveDateTime>20260512T015539.317 GMT</pxSaveDateTime>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDate/>
+<pxCreateOperator>ALBERT</pxCreateOperator>
+<pyHandlerFlow/>
+<pySpecialtyComponentData/>
+<pyCircumstanceType/>
+<pyDeleteSQL/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateOpName>Albert</pxUpdateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportDateTime>20260606T145853.493 GMT</pxMoveImportDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyRuleStarts/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyLaunch>true</pyLaunch>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+<pyRestore>false</pyRestore>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCompareVersion/>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-05-77 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POOLDATA ASM!GETOUTGOVEHICLELIST_SQL #20260512T014907.782 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

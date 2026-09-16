@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Work-SurveyClaim</pyClassName>
+<pyCircumstanceTemplate/>
+<pxSiblingCount/>
+<pxUpdateDateTime>20210617T141816.277 GMT</pxUpdateDateTime>
+<pyRuleStarts/>
+<pxCommitDateTime>20210627T052623.000 GMT</pxCommitDateTime>
+<pyFormPost/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETTOTALINDEXSURVEY #20210426T095551.512 GMT</pzInsKey>
+<pxInsId>ASM-FW-GCNMFW-WORK-SURVEYCLAIM!GCNM!GETTOTALINDEXSURVEY</pxInsId>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyOpenSQL/>
+<pyRuleSetVersion>01-01-92</pyRuleSetVersion>
+<pyCircumstanceDate/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyShowJavaWindowName>GeneratedJava20260721T042302.682 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pyLabelOld>Get Total Index Survey</pyLabelOld>
+<pySpecialtyComponentData/>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateDateTime>20210426T095551.512 GMT</pxCreateDateTime>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCircumstanceType/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxSaveDateTime>20210617T141816.296 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pyWorkKey/>
+<pyLabel>Get Total Index Survey</pyLabel>
+<pyRelativePath/>
+<pyDeletedObject/>
+<pyUsage/>
+<pxMoveImportDateTime>20210627T052623.671 GMT</pxMoveImportDateTime>
+<pxInstanceLockedBy/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyRequestType>GetTotalIndexSurvey</pyRequestType>
+<pxInsName>ASM-FW-GCNMFW-WORK-SURVEYCLAIM!GCNM!GETTOTALINDEXSURVEY</pxInsName>
+<pyBrowseSQL>SELECT CASEID AS "IdxSurveyResults", TGLPERAWATAN AS "TanggalPerawatan"  FROM POOLDATA.T_SURVEYORLIST 
+WHERE CASEID={TempSurvey.pzInsKey} AND PNCCASEID={TempSurvey.CaseID}</pyBrowseSQL>
+<pxTabLabel>ASM-FW-GCNMFW-Work-SurveyClaim GCNM GetTotalIndexSurvey</pxTabLabel>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyTemplate/>
+<pyMemo>done</pyMemo>
+<pxHostId>jboss2146</pxHostId>
+<pyHistoryObject/>
+<pyJavaStream/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETTOTALINDEXSURVEY #20210426T095551.512 GMT</pzOriginalInstanceKey>
+<pySaveSQL>INSERT INTO POOLDATA.T_SURVEYORLIST
+(CASEID,
+  PNCCASEID,
+  SURVEYTYPE,
+  LOSSTYPE,
+  SUVEYOR_NAME,
+  SURVEYDATE,
+  LOCATION_SURVEY,
+  OBJECT_NAME,
+  LOCATION_OBJECT,
+  IDOBJECT,
+  INDEX_SURVEY,
+  TGLPERAWATAN,
+  NAMA_PASIEN,
+  STS_SURVEY,
+  KETERANGAN)
+VALUES
+(
+{TempSurvey.pzInsKey},
+{TempSurvey.CaseID},
+{TempSurvey.SurveyorType},
+{TempSurvey.LossType},
+{TempSurvey.SurveyorName},
+{TempSurvey.SurveyDate},
+{TempSurvey.LocationSurvey},
+{TempSurvey.ObjectName},
+{TempSurvey.ObjectLocation},
+{TempSurvey.IDObject},
+{TempSurvey.IdxSurveyResults},
+{TempSurvey.TanggalPerawatan},
+{TempSurvey.NamaPasien},
+{TempSurvey.AdjusterStatus},
+{TempSurvey.KeteranganLain}
+)</pySaveSQL>
+<pyRuleFormStatusTime>20260721T042302.658 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDefinition/>
+<pxMoveFromSystem/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplateInputBox/>
+<pyHandlerFlow/>
+<pyWindowTitle/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyIsFromManageChangeLP/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETTOTALINDEXSURVEY #20210426T095551.512 GMT</pzDocumentKey>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyDescription/>
+<pxInstanceLockedKey/>
+<pyRuleEnds/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pzChecksum>425578447</pzChecksum>
+<pyDocumentTitle/>
+<pyStatus/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedRuleSet/>
+<pyDeleteSQL/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceProp/>
+<pzRuleSetVersionPatch>92</pzRuleSetVersionPatch>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyCircumstanceDateProp/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceVal/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyInterface/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleName>ASM-FW-GCNMFW-Work-SurveyClaim GCNM GetTotalIndexSurvey</pyRuleName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-SURVEYCLAIM GCNM!GETTOTALINDEXSURVEY #20210426T095551.512 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-92 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pyLaunch>true</pyLaunch>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyBack>true</pyBack>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySaveAs>true</pySaveAs>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>
