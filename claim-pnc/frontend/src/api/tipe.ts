@@ -63,6 +63,41 @@ export type ResponsDaftarPortal = {
 }
 
 /**
+ * Satu baris Master Status Klaim.
+ *
+ * Status Klaim adalah salah satu dari empat konsep status yang `D-18` tetapkan memang
+ * berbeda. Ia menjawab "klaim ini berada di keadaan bisnis apa" — Register, Claim
+ * Committee, Paid, dan seterusnya. Domainnya 33 kode `1134`–`1166`.
+ */
+export type StatusKlaim = {
+  /** Dibuat sistem saat status ditambahkan; tidak pernah berubah sesudahnya. */
+  kode: string
+  /** Teks yang dibaca pengguna. Di layar Pega ia berlabel "Status". */
+  label: string
+  /**
+   * Penomoran lama `01`–`11` yang melekat pada sebelas kode pertama (`1134`–`1144`).
+   * Kosong untuk 22 kode sisanya, dan tidak pernah diisi untuk status baru.
+   */
+  kode_lama: string
+}
+
+export type ResponsDaftarStatusKlaim = {
+  status_klaim: StatusKlaim[]
+  /** Datang dari server, bukan dihitung dari panjang senarai. */
+  total: number
+}
+
+export type ResponsStatusKlaim = {
+  status_klaim: StatusKlaim
+}
+
+/** Satu aturan yang dilanggar beserta kolom yang melanggarnya. */
+export type PelanggaranField = {
+  field: string
+  pesan: string
+}
+
+/**
  * Kode galat yang dikirim backend.
  *
  * Layar membedakan jenis galat lewat kode ini, TIDAK PERNAH dengan mencocokkan teks
@@ -76,6 +111,12 @@ export const KodeGalat = {
   sesiKedaluwarsa: 'sesi_kedaluwarsa',
   permintaanCacat: 'permintaan_cacat',
   galatInternal: 'galat_internal',
+
+  // Milik modul master data.
+  statusKlaimTidakDitemukan: 'status_klaim_tidak_ditemukan',
+  validasiGagal: 'validasi_gagal',
+  labelStatusSudahDipakai: 'label_status_sudah_dipakai',
+  kodeStatusSudahDipakai: 'kode_status_sudah_dipakai',
 } as const
 
 export type KodeGalat = (typeof KodeGalat)[keyof typeof KodeGalat]

@@ -13,9 +13,12 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
+
+	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
@@ -66,6 +69,7 @@ func periksa(konf config.Konfigurasi, login string, sumberSandi io.Reader, kelua
 	alamat := periksaKatalog(ctx, warisan, konf.PortalUtama, cetak)
 	periksaTabelAplikasi(ctx, warisan, cetak)
 	periksaTabelLogin(ctx, warisan, cetak)
+	periksaMasterStatus(ctx, masterstatussql.RepoBaru(utama), cetak)
 
 	cetak("")
 	if login == "" {
@@ -129,6 +133,46 @@ func periksaTabelAplikasi(ctx context.Context, warisan *sqlstore.Warisan, cetak 
 		cetak("            Mode periksa TETAP bisa mencoba masuk — ia tidak menulis apa pun.")
 		cetak("            Yang belum bisa adalah masuk lewat aplikasi, karena itu menyimpan sesi.")
 	}
+}
+
+// periksaMasterStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.
+//
+// Ia melaporkan JUMLAH BARIS, bukan sekadar "dapat dibaca". Angka itulah yang menjawab
+// acceptance criteria TKT-F4-005 — "master status memuat tepat 33 kode, dihitung dan
+// dilaporkan angkanya" — dan angka yang meleset menandakan langkah pemindahan isi pada
+// migrasi 0002 tidak berjalan sebagaimana mestinya.
+func periksaMasterStatus(ctx context.Context, repo *masterstatussql.Repo, cetak func(string, ...any)) {
+	if err := repo.PeriksaTabel(ctx); err != nil {
+		cetak("  [BELUM] POOLDATA.M_STS_CLAIM belum siap: %v", err)
+		cetak("            Kolom LSC_NOTE dan OLD_LSC_ID ditambahkan migrasi 0002.")
+		cetak("            Selama belum dijalankan, layar Master Status Klaim tidak dapat")
+		cetak("            dipakai terhadap Oracle — tetapi seluruh bagian lain tetap jalan.")
+		return
+	}
+
+	daftar, err := repo.Daftar(ctx)
+	if err != nil {
+		cetak("  [GAGAL] POOLDATA.M_STS_CLAIM tidak dapat dibaca isinya: %v", err)
+		return
+	}
+
+	cetak("  [ok]    POOLDATA.M_STS_CLAIM dapat dibaca: %d status", len(daftar))
+	if kosong := hitungLabelKosong(daftar); kosong > 0 {
+		// Label kosong akan tampil sebagai status kosong di 23 rule Pega yang membaca
+		// V_STS_CLAIM, termasuk laporan TAT dan KPI. Ia harus terlihat di sini, bukan
+		// ditemukan pengguna di laporan.
+		cetak("  [WASPADA] %d status berlabel kosong — periksa langkah 2 migrasi 0002", kosong)
+	}
+}
+
+func hitungLabelKosong(daftar []masterstatus.StatusKlaim) int {
+	kosong := 0
+	for _, s := range daftar {
+		if strings.TrimSpace(s.Label) == "" {
+			kosong++
+		}
+	}
+	return kosong
 }
 
 func periksaTabelLogin(ctx context.Context, warisan *sqlstore.Warisan, cetak func(string, ...any)) {

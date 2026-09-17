@@ -26,6 +26,7 @@ import (
 	"claim-pnc/internal/auth/repo/memori"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
@@ -35,6 +36,10 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	masterstatushttp "claim-pnc/internal/masterstatus/http"
+	masterstatusmemori "claim-pnc/internal/masterstatus/repo/memori"
+	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
+	masterstatususecase "claim-pnc/internal/masterstatus/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemori "claim-pnc/internal/portal/repo/memori"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -90,7 +95,22 @@ func jalankan() error {
 		berkasSPA = nil
 	}
 
+	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
+	// bentuk respons dan header Cache-Control-nya tidak berbeda antarmodul.
+	tulisJSON := func(w http.ResponseWriter, r *http.Request, status int, badan any) {
+		authhttp.TulisJSON(w, r, status, badan, logger)
+	}
+	tulisGalatAuth := authhttp.TulisGalat(logger)
+
 	handlerAuth := authhttp.HandlerBaru(rakitan.auth, logger)
+	handlerMasterStatus := masterstatushttp.HandlerBaru(masterstatushttp.Opsi{
+		Layanan: rakitan.masterStatus,
+		Logger:  logger,
+		// Galat yang bukan milik modul master diteruskan ke penulis galat auth,
+		// sehingga galat sesi tetap dijawab dengan kode yang sudah dikenal frontend.
+		TulisRespon:        tulisJSON,
+		TulisGalatCadangan: masterstatushttp.PenulisGalat(tulisGalatAuth),
+	})
 	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
 		Repo:       rakitan.portal,
 		AliasSiap:  rakitan.aliasSiap,
@@ -115,6 +135,12 @@ func jalankan() error {
 			api.Group(func(terlindungi chi.Router) {
 				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, authhttp.TulisGalat(logger)))
 				portalhttp.Pasang(terlindungi, handlerPortal)
+
+				// Master data juga berada di balik sesi. Pemeriksaan peran — "apakah
+				// pemanggil memiliki menu Master Data" (D-59) — belum ada di sini
+				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
+				// dengan seluruh rute lain hari ini.
+				masterstatushttp.Pasang(terlindungi, handlerMasterStatus)
 			})
 		},
 	})
@@ -133,17 +159,19 @@ func jalankan() error {
 
 // rakitan memegang seluruh modul yang sudah terpasang beserta cara menutupnya.
 type rakitan struct {
-	auth      *usecase.Layanan
-	portal    portal.Repo
-	aliasSiap func() []string
-	tutup     func()
+	auth         *usecase.Layanan
+	portal       portal.Repo
+	masterStatus *masterstatususecase.Layanan
+	aliasSiap    func() []string
+	tutup        func()
 }
 
 // penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type penyimpanan struct {
-	pengguna auth.PenggunaRepo
-	sesi     auth.SesiRepo
-	portal   portal.Repo
+	pengguna     auth.PenggunaRepo
+	sesi         auth.SesiRepo
+	portal       portal.Repo
+	masterStatus masterstatus.Repo
 
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
@@ -180,11 +208,20 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 		return rakitan{}, err
 	}
 
+	layananMasterStatus, err := masterstatususecase.LayananBaru(masterstatususecase.Opsi{
+		Repo: simpan.masterStatus,
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
 	return rakitan{
-		auth:      layanan,
-		portal:    simpan.portal,
-		aliasSiap: simpan.aliasSiap,
-		tutup:     simpan.tutup,
+		auth:         layanan,
+		portal:       simpan.portal,
+		masterStatus: layananMasterStatus,
+		aliasSiap:    simpan.aliasSiap,
+		tutup:        simpan.tutup,
 	}, nil
 }
 
@@ -240,10 +277,18 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		utama := kumpulan.Utama()
 		simpan.warisan = sqlstore.WarisanBaru(utama)
 		simpan.portal = portalsql.RepoBaru(utama)
+		// Master status dibaca dari basis data portal yang sedang melayani. Ia dipasang
+		// pada koneksi UTAMA untuk sekarang; membaca master dari basis data portal yang
+		// sedang dipilih pengguna adalah lingkup TKT-F6-002, yang menuntut portal aktif
+		// melekat pada permintaan — bukan pada keadaan global (R-20).
+		simpan.masterStatus = masterstatussql.RepoBaru(utama)
 		simpan.aliasSiap = kumpulan.Tersedia
 		simpan.tutup = kumpulan.Tutup
 	} else {
 		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
+		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
+		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
+		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
 	}
 

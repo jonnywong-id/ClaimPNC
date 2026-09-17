@@ -1,4 +1,5 @@
 import { KodeGalat } from './tipe'
+import type { PelanggaranField } from './tipe'
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -9,11 +10,21 @@ export class GalatAPI extends Error {
   readonly kode: string
   readonly status: number
 
-  constructor(kode: string, pesan: string, status: number) {
+  /**
+   * Pelanggaran per field, hanya terisi pada galat validasi (`422`).
+   *
+   * Ia dibawa sampai ke layar supaya kolom yang salah dapat ditandai di tempatnya,
+   * bukan sekadar menampilkan satu pesan di atas form — form yang panjang membuat
+   * pengguna harus menebak kolom mana yang dimaksud.
+   */
+  readonly detail: PelanggaranField[]
+
+  constructor(kode: string, pesan: string, status: number, detail?: PelanggaranField[]) {
     super(pesan)
     this.name = 'GalatAPI'
     this.kode = kode
     this.status = status
+    this.detail = detail ?? []
   }
 }
 
@@ -26,7 +37,13 @@ export class GalatJaringan extends Error {
 }
 
 type OpsiPermintaan = {
-  metode?: 'GET' | 'POST'
+  /**
+   * PUT dipakai pengubahan master: seluruh isi yang boleh diubah dikirim setiap kali,
+   * sehingga permintaannya menggantikan dan idempoten. DELETE sengaja TIDAK ada —
+   * tidak satu pun layar menghapus data, dan metode yang tidak tersedia di sini tidak
+   * dapat dipakai kode yang ditulis kemudian tanpa keputusan sadar.
+   */
+  metode?: 'GET' | 'POST' | 'PUT'
   badan?: unknown
   token?: string | null
 }
@@ -61,11 +78,12 @@ export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): P
 
   const isi = await bacaJSON(respons)
   if (!respons.ok) {
-    const galat = isi as { kode?: string; pesan?: string } | null
+    const galat = isi as { kode?: string; pesan?: string; detail?: PelanggaranField[] } | null
     throw new GalatAPI(
       galat?.kode ?? KodeGalat.galatInternal,
       galat?.pesan ?? 'Terjadi kesalahan pada sistem.',
       respons.status,
+      galat?.detail,
     )
   }
   return isi as T
