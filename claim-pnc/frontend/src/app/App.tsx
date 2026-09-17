@@ -1,14 +1,19 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
+<<<<<<< HEAD
 import { HalamanMasterRekening } from '@/modules/master-rekening/HalamanMasterRekening'
+=======
+import { HalamanMasterStatusKlaim } from '@/modules/master-status-klaim/HalamanMasterStatusKlaim'
+>>>>>>> master
 import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
 import { GalatAPI } from '@/api/klien'
 import { KodeGalat } from '@/api/tipe'
 import { gunakanSesi } from '@/app/sesi'
 
+import { KerangkaHalaman } from './KerangkaHalaman'
 import { PenjagaSesi } from './PenjagaSesi'
 import { PeringatanSesi } from './PeringatanSesi'
 
@@ -46,9 +51,16 @@ export function Rute() {
       <Route path="/masuk" element={<HalamanMasuk />} />
       <Route
         path="/"
-        element={
-          <PenjagaSesi anak={<Beranda />} />
-        }
+        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanBeranda />} />} />}
+      />
+      {/*
+        Modul berikutnya menempel sebagai satu baris di sini. Penjaga sesi adalah
+        KENYAMANAN TAMPILAN; penegakan yang sebenarnya ada di server, yang memeriksa
+        sesi pada setiap endpoint.
+      */}
+      <Route
+        path="/master/status-klaim"
+        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterStatusKlaim />} />} />}
       />
       {/*
         Master rekening berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan
@@ -73,12 +85,24 @@ export function Rute() {
   )
 }
 
-function Beranda() {
+/**
+ * Terlindungi membungkus SELURUH layar di balik sesi dengan kerangka yang sama: bilah
+ * atas, menu, identitas pengguna, tombol keluar, dan peringatan sesi.
+ *
+ * Satu pembungkus untuk semuanya, bukan satu per layar. Itu yang membuat tombol Keluar
+ * dan nama pengguna hanya ada di satu tempat — sebelumnya keduanya hidup di dalam
+ * halaman beranda, sehingga layar lain tidak punya cara keluar.
+ */
+function Terlindungi({ anak }: { anak: ReactNode }) {
   return (
-    <div className="min-h-screen bg-white">
-      <PeringatanSesi />
-      <HalamanBeranda />
-    </div>
+    <KerangkaHalaman
+      anak={
+        <>
+          <PeringatanSesi />
+          {anak}
+        </>
+      }
+    />
   )
 }
 

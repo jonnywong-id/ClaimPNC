@@ -4,12 +4,20 @@ Implementasi pengganti aplikasi Pega PRPC 8.3 **Claim PNC**. Dokumen migrasi, AD
 tiket pekerjaan berada di repository terpisah: `D:\Jonny\Project\Claude.AI\XML Claim PNC\docs`.
 
 **Yang sudah ada di tahap ini: login dari ujung ke ujung, dan modul bisnis pertama — Master Rekening.**
+**Yang sudah ada di tahap ini: login dari ujung ke ujung, dan satu modul bisnis — Master Status
+Klaim.**
 
 | | |
 |---|---|
-| Tiket yang dikerjakan | `TKT-F3-001` seam identitas · `TKT-F3-003` sesi & token · `TKT-U1-002` alur masuk di frontend |
-| Tiket yang disentuh sebagian | `TKT-F1-001` struktur & aturan lapisan · `TKT-F1-002` konfigurasi · `TKT-F1-003` logging · `TKT-F2-001` koneksi & seam repository |
-| Tiket yang **belum** dikerjakan | `TKT-F3-002` provider HCC/HCQ · `TKT-F3-004` tabel peran & izin menu · `TKT-F3-005` middleware otorisasi · `TKT-U1-001` kerangka portal |
+| Tiket yang dikerjakan | `TKT-F3-001` seam identitas · `TKT-F3-003` sesi & token · `TKT-U1-002` alur masuk di frontend · **`TKT-F4-005` bagian Master Status Klaim** |
+| Tiket yang disentuh sebagian | `TKT-F1-001` struktur & aturan lapisan · `TKT-F1-002` konfigurasi · `TKT-F1-003` logging · `TKT-F2-001` koneksi & seam repository · **`TKT-U2-001` komponen tabel baku** · **`TKT-F4-001` pola master data** |
+| Tiket yang **belum** dikerjakan | `TKT-F3-002` provider HCC/HCQ · `TKT-F3-004` tabel peran & izin menu · `TKT-F3-005` middleware otorisasi · `TKT-U1-001` kerangka portal · `TKT-U2-005` pemilihan pustaka tabel |
+
+> **Master Status Klaim belum dapat dipakai terhadap Oracle.** Kolom `LSC_NOTE` pada
+> `POOLDATA.M_STS_CLAIM` masih kosong di seluruh 32 baris sampai
+> [`migrations/0002`](backend/migrations/0002_master_status_klaim.up.sql) dijalankan DBA. Terhadap
+> penyimpanan memori ia berfungsi penuh dengan 33 baris nyata. Jalankan `./claimpnc.exe -periksa`
+> untuk melihat keadaannya.
 
 Keputusan, penyimpangan dari Steering, dan utang teknis yang disadari dicatat di
 [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md). Jalannya pengerjaan dicatat di
@@ -40,6 +48,10 @@ claim-pnc/
 │   │   ├── portal/                  MODUL — entitas & basis datanya (ADR-0030)
 │   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memori
 │   │   │   └── http/                    rute daftar portal
+│   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
+│   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
+│   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memori + 33 baris contoh
+│   │   │   └── http/                    dto, galat, handler, rute
 │   │   └── platform/                config, logging, db, middleware, waktu, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
@@ -74,6 +86,32 @@ claim-pnc/
    modul; `cmd/claimpnc` memanggil `authhttp.Pasang(...)` di bawah `/api`. Menambah modul
    berarti menambah satu baris di sana.
 4. **Frontend tidak mengimpor antar-modul.** Kebutuhan bersama naik ke `components/` atau `api/`.
+   Menu dan pembungkus layar hidup di `app/`, bukan di salah satu modul — menaruhnya di dalam modul
+   akan memaksa modul lain mengimpornya.
+5. **Semua tabel memakai `components/TabelData`.** Tidak ada `<table>` mentah di folder `modules/`.
+   Inilah yang mengubah 268 grid sistem lama menjadi satu implementasi. Pilihan pustaka tabel
+   (`TKT-U2-005`) masih terbuka; bila kelak diputuskan, yang diganti adalah isi satu berkas itu.
+6. **Nilai desain yang berulang tinggal di `src/gaya.css`**, bukan diketik ulang per layar —
+   bayangan, lengkung, dan kurva gerak. Warna memakai palet bawaan Tailwind (blue untuk aksen,
+   slate untuk dasar), bukan warna karangan.
+
+### Tampilan
+
+**Light Mode saja** (keputusan Work Owner 2026-09-17); `color-scheme: light` ditegaskan supaya
+kontrol bawaan peramban tidak ikut membalik mengikuti tema sistem pengguna.
+
+| Hal | Ketetapan |
+|---|---|
+| Aksen | **Blue** (`blue-600`) — tombol utama, menu aktif, cincin fokus. Kontras teks putih di atasnya **5,1:1** — AA, bukan AAA |
+| Merah | **Hanya untuk galat.** Ia tidak dipakai sebagai aksen meski warna korporat, supaya tombol Simpan tidak tertukar dengan pesan galat |
+| Keadaan kontrol | `hover` mengangkat · `active` menekan · `focus-visible` memberi cincin. Ketiganya wajib ada di setiap nada tombol |
+| Gerak | Dimatikan seluruhnya pada `prefers-reduced-motion: reduce` |
+| Pembedaan penting | **Tidak pernah hanya warna.** Isian salah ditandai tepi + ikon + teks; nada pesan dibedakan bentuk ikonnya |
+| Font & ikon | Font sistem, ikon SVG di `components/Ikon.tsx`. **Tanpa Google Fonts dan tanpa pustaka ikon** — aplikasi berjalan di jaringan tertutup |
+
+> **SPA tersemat ke binary** lewat `go:embed`. Proses yang sedang berjalan memuat tampilan **lama**
+> sampai dibangun ulang: `cd frontend && npm run build`, lalu jalankan ulang binary-nya. Selama
+> mengerjakan antarmuka, `npm run dev` di port 5173 jauh lebih cepat.
 
 Aturan 2 **belum ditegakkan perkakas** — lihat utang teknis nomor 1 di
 `docs/keputusan-implementasi.md`.
@@ -129,12 +167,21 @@ cd backend && ./claimpnc.exe
 Skema dijalankan lebih dulu oleh **DBA**, bukan oleh aplikasi — akun aplikasi tidak punya hak DDL:
 
 ```
-backend/migrations/0001_pengguna_dan_sesi.up.sql
+backend/migrations/0001_pengguna_dan_sesi.up.sql       tabel BARU: CPNC_PENGGUNA, CPNC_SESI_AKTIF
 backend/migrations/0001_pengguna_dan_sesi.down.sql
+backend/migrations/0002_master_status_klaim.up.sql     MENGUBAH objek milik sistem lama
+backend/migrations/0002_master_status_klaim.down.sql
 ```
 
 Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work Owner (`D-63`).
-**Berkas itu belum pernah dijalankan di lingkungan mana pun.**
+**Keduanya belum pernah dijalankan di lingkungan mana pun.**
+
+> **`0002` berbeda sifatnya dari `0001` dan menuntut perhatian lebih.** `0001` hanya menambah dua
+> tabel baru; `0002` mengisi kolom pada `POOLDATA.M_STS_CLAIM` dan **mendefinisikan ulang
+> `POOLDATA.V_STS_CLAIM`**, yang dibaca 23 rule Pega. Bila definisinya salah, yang rusak bukan layar
+> master melainkan laporan TAT dan KPI — dan rusaknya **tanpa galat**, hanya kolom status yang
+> kosong. Berkasnya memuat langkah verifikasi yang wajib dijalankan di antara langkah perubahan,
+> serta satu berkas DDL yang wajib disimpan DBA lebih dulu agar rollback mungkin.
 
 
 ### Menguji integrasi nyata sebelum migrasi dijalankan
@@ -208,13 +255,30 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/portal` | wajib | daftar entitas dari `POOLDATA.M_PORTAL_PNC` + portal utama |
 | `GET` | `/api/master-rekening` | wajib | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
 | `POST` | `/api/master-rekening` | wajib | mengajukan rekening baru — selalu lahir berstatus menunggu |
-| `GET` | `/api/master-rekening/bank` | wajib | daftar bank dari `GENERAL.LST_BANK_GROUP` |
 | `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | satu rekening |
 | `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | mengubah rekening yang **masih menunggu** keputusan |
 | `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
+| `GET` | `/api/master/status-klaim` | wajib | daftar status klaim + `total` |
+| `POST` | `/api/master/status-klaim` | wajib | `{label}` → `201` + baris beserta kode yang dibuat sistem |
+| `PUT` | `/api/master/status-klaim/{kode}` | wajib | `{label}` → `200` + baris setelah diubah |
+
+### Master Status Klaim
+
+Menggantikan harness Pega `StatusClaimInbox`. **Kode tidak pernah dikirim klien:** pada penambahan
+ia dibuat penyimpanan mengikuti skema warisan (kode situs disambung nomor urut tiga digit), pada
+pengubahan ia diambil dari jalur URL. **Tidak ada `DELETE`** — layar Pega pun tidak punya, dan
+`ADR-0012` melarang master dihapus permanen karena klaim lama merujuknya.
+
+Tiga aturan yang **tidak ada** di sistem lama, diputuskan Work Owner 2026-09-17: nama status wajib
+diisi, paling panjang 100 karakter, dan tidak boleh sama dengan status lain (mengabaikan besar-kecil
+huruf dan spasi tepi).
+
+> **Batas yang diwarisi.** `LSC_ID` bertipe `CHAR(4)` dan `M_STS_CLAIM_SEQ` berada di 193 per
+> 2026-09-17. Saat urutan mencapai 1000 kodenya menjadi lima karakter dan penyisipan ditolak
+> `ORA-12899` — sekitar **806 penambahan** lagi. Memotongnya menjadi tiga digit akan menghasilkan
+> kode ganda, jadi perilakunya dibiarkan dan batasnya dicatat di sini.
 
 ### Alur masuk — dua sumber identitas
-
 Ditetapkan Work Owner 2026-09-16. Urutannya **tidak boleh dibalik**.
 
 1. Kredensial dikirim ke **API HCC/HCQ**. Alamatnya dibaca dari basis data, bukan dari konfigurasi:
@@ -241,6 +305,10 @@ membedakan jenis galat lewat `kode`**, tidak pernah dengan mencocokkan teks pesa
 | `sesi_tidak_sah` | 401 | token tidak dikenal atau sudah dicabut |
 | `permintaan_cacat` | 400 | badan permintaan tidak dapat dibaca |
 | `galat_internal` | 500 | selebihnya |
+| `validasi_gagal` | 422 | isian melanggar aturan bisnis; badan memuat `detail` berisi **seluruh** pelanggaran beserta nama field-nya |
+| `label_status_sudah_dipakai` | 409 | nama status sudah dipakai baris lain — konflik keadaan, bukan isian cacat |
+| `kode_status_sudah_dipakai` | 409 | kode yang dibuat sistem bentrok; seharusnya mustahil |
+| `status_klaim_tidak_ditemukan` | 404 | kode yang diminta tidak ada di master |
 
 Bentuk galat ini **sementara**: kontrak galat yang mengikat seluruh aplikasi adalah `TKT-F1-004`,
 yang masih terhalang keputusan Work Owner.

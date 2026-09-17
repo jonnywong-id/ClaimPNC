@@ -27,6 +27,7 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/masterrekening"
+	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
@@ -42,6 +43,10 @@ import (
 	rekeningmemori "claim-pnc/internal/masterrekening/repo/memori"
 	rekeningsql "claim-pnc/internal/masterrekening/repo/sqlstore"
 	rekeningusecase "claim-pnc/internal/masterrekening/usecase"
+	masterstatushttp "claim-pnc/internal/masterstatus/http"
+	masterstatusmemori "claim-pnc/internal/masterstatus/repo/memori"
+	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
+	masterstatususecase "claim-pnc/internal/masterstatus/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemori "claim-pnc/internal/portal/repo/memori"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -97,7 +102,22 @@ func jalankan() error {
 		berkasSPA = nil
 	}
 
+	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
+	// bentuk respons dan header Cache-Control-nya tidak berbeda antarmodul.
+	tulisJSON := func(w http.ResponseWriter, r *http.Request, status int, badan any) {
+		authhttp.TulisJSON(w, r, status, badan, logger)
+	}
+	tulisGalatAuth := authhttp.TulisGalat(logger)
+
 	handlerAuth := authhttp.HandlerBaru(rakitan.auth, logger)
+	handlerMasterStatus := masterstatushttp.HandlerBaru(masterstatushttp.Opsi{
+		Layanan: rakitan.masterStatus,
+		Logger:  logger,
+		// Galat yang bukan milik modul master diteruskan ke penulis galat auth,
+		// sehingga galat sesi tetap dijawab dengan kode yang sudah dikenal frontend.
+		TulisRespon:        tulisJSON,
+		TulisGalatCadangan: masterstatushttp.PenulisGalat(tulisGalatAuth),
+	})
 	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
 		Repo:       rakitan.portal,
 		AliasSiap:  rakitan.aliasSiap,
@@ -145,6 +165,11 @@ func jalankan() error {
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				rekeninghttp.Pasang(terlindungi, handlerRekening)
+				// Master data juga berada di balik sesi. Pemeriksaan peran — "apakah
+				// pemanggil memiliki menu Master Data" (D-59) — belum ada di sini
+				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
+				// dengan seluruh rute lain hari ini.
+				masterstatushttp.Pasang(terlindungi, handlerMasterStatus)
 			})
 		},
 	})
@@ -166,15 +191,17 @@ type rakitan struct {
 	auth           *usecase.Layanan
 	portal         portal.Repo
 	masterRekening *rekeningusecase.Layanan
+	masterStatus *masterstatususecase.Layanan
 	aliasSiap      func() []string
 	tutup          func()
 }
 
 // penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type penyimpanan struct {
-	pengguna auth.PenggunaRepo
-	sesi     auth.SesiRepo
-	portal   portal.Repo
+	pengguna     auth.PenggunaRepo
+	sesi         auth.SesiRepo
+	portal       portal.Repo
+	masterStatus masterstatus.Repo
 
 	rekening     masterrekening.Repo
 	bankRekening masterrekening.BankRepo
@@ -219,10 +246,19 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 		return rakitan{}, err
 	}
 
+	layananMasterStatus, err := masterstatususecase.LayananBaru(masterstatususecase.Opsi{
+		Repo: simpan.masterStatus,
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
 	return rakitan{
 		auth:           layanan,
 		portal:         simpan.portal,
 		masterRekening: rakitMasterRekening(konf, simpan, logger),
+		masterStatus: layananMasterStatus,
 		aliasSiap:      simpan.aliasSiap,
 		tutup:          simpan.tutup,
 	}, nil
@@ -361,11 +397,15 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		simpan.bankRekening = rekeningsql.BankRepoBaru(utama)
 		simpan.rekeningDiOracle = true
 		simpan.aliasSiap = kumpulan.Tersedia
+		simpan.masterStatus = masterstatussql.RepoBaru(utama)
 		simpan.tutup = kumpulan.Tutup
 	} else {
 		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
 		simpan.rekening = rekeningmemori.RepoBaru()
 		simpan.bankRekening = rekeningmemori.BankRepoBaru(rekeningmemori.DaftarBankContoh()...)
+		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
+		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
+		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
 	}
 
