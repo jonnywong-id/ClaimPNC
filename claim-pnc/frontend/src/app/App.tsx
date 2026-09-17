@@ -3,11 +3,8 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
-<<<<<<< HEAD
 import { HalamanMasterRekening } from '@/modules/master-rekening/HalamanMasterRekening'
-=======
 import { HalamanMasterStatusKlaim } from '@/modules/master-status-klaim/HalamanMasterStatusKlaim'
->>>>>>> master
 import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
 import { GalatAPI } from '@/api/klien'
 import { KodeGalat } from '@/api/tipe'

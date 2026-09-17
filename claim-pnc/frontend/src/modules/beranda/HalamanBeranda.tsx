@@ -1,9 +1,5 @@
 import { Link } from 'react-router-dom'
 
-<<<<<<< HEAD
-import { gunakanKeluar } from '@/modules/masuk/api'
-=======
->>>>>>> master
 import { DaftarPortal, PemilihPortal } from '@/modules/portal/PemilihPortal'
 import { JenisPengguna } from '@/api/tipe'
 import { IkonDaftar } from '@/components/Ikon'
@@ -85,32 +81,10 @@ export function HalamanBeranda() {
         <DaftarPortal />
       </section>
 
-<<<<<<< HEAD
-      {/*
-        SATU-SATUNYA tautan sementara ke modul yang sudah ada. Ia berdiri sendiri dan
-        dapat dihapus tanpa menyentuh modul mana pun: begitu daftar menu berbasis izin
-        (TKT-F3-004 dan TKT-U1-001) tersedia, tautan ini digantikan olehnya.
-      */}
-      <section className="mt-8">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Modul</h2>
-        <Link
-          to="/master-rekening"
-          className="mt-3 inline-block rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-        >
-          Master Rekening
-        </Link>
-      </section>
-
-      <p className="mt-8 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        Menu belum tampil di sini. Daftar menu mengikuti izin peran, dan tabel 22 peran
-        beserta 51 izin menu adalah TKT-F3-004 — masih menunggu daftar penugasan operator
-        per peran dari DBA dan Work Owner.
-=======
       <p className="mt-6 rounded-kartu border border-slate-200 bg-slate-100/70 p-4 text-sm text-slate-600">
         Menu di atas belum mengikuti izin peran. Daftar 22 peran beserta 51 izin menunya
         adalah TKT-F3-004 — masih menunggu daftar penugasan operator per peran dari DBA
         dan Work Owner.
->>>>>>> master
       </p>
     </div>
   )
