@@ -524,3 +524,244 @@ datang sesudahnya, bukan oleh masuk itu sendiri:
 
 Jadi ia tetap dibangun, tetapi ketiadaannya **tidak menghalangi pengujian integrasi** — dan itulah
 yang diperbaiki di §9.11.
+
+---
+
+## 10. Modul Master Rekening (2026-09-17)
+
+### 10.1 Master ini punya alur persetujuan — dan itu menjawab pertanyaan `TKT-F4-001`
+
+`TKT-F4-001` mencatat pertanyaan terbuka: *"apakah perubahan master butuh alur
+persetujuan, dan berlaku untuk master yang mana?"*
+
+Untuk Master Rekening pertanyaan itu **tidak perlu ditunggu jawabannya** — sistem yang
+berjalan hari ini sudah menjawabnya. `POOLDATA.LST_ACCOUNT` memuat `APPROVAL`,
+`KOMITE_APPROVAL`, dan `TANGGALAPPROVEKOMITE` sejak awal, dan
+`CNMUpdateMasterRekening_act` menegakkan alurnya.
+
+Alasannya juga jelas: rekening menentukan **ke mana uang klaim dikirim**. Satu baris
+yang keliru berarti pembayaran mendarat di rekening yang salah, dan tidak ada langkah
+sesudahnya yang dapat menangkapnya.
+
+**Yang tetap menjadi keputusan Work Owner** adalah apakah pola ini berlaku untuk master
+lain. Modul ini tidak memutuskannya, dan tidak memaksakan bentuknya ke master mana pun.
+
+### 10.2 Alias Pega tidak dibawa masuk
+
+Alias kolom sistem lama menyesatkan secara aktif. Yang paling berbahaya: **satu alias
+dipakai untuk dua kolom berbeda pada rule yang berbeda**.
+
+| Alias | Artinya saat SELECT | Artinya saat UPDATE |
+|---|---|---|
+| `pyID` | `USER_INPUT` | `APPROVAL` |
+| `KOMISI` | `FLAGUPDATE` | `TANGGALAPPROVEKOMITE` |
+
+Ditambah `CaseID`→`STS_AKTIF`, `CoverID`→`ACCOUNT_TYPE`, `pyCountry`→`KOMITE_APPROVAL`,
+dan `NoHpUserAccount`→`EMAILINPUT` (surel, bukan nomor HP).
+
+Seluruhnya diganti nama domain berbahasa Indonesia. Pemetaan tiga arah
+alias→kolom→domain ditulis lengkap di kepala
+`repo/sqlstore/rekening.sql` — satu-satunya tempat ketiganya dapat dibandingkan.
+Ini melaksanakan `03-CURRENT-ARCHITECTURE` §4.2.
+
+### 10.3 Perilaku yang sengaja DIPERTAHANKAN walau cacat
+
+Work Owner memilih paritas lebih dulu (`P-5`). Tiga hal berikut **tidak** diperbaiki,
+dan dicatat di sini supaya tidak terbaca sebagai kelalaian:
+
+| Perilaku lama | Kenapa cacat | Kenapa tetap dipertahankan |
+|---|---|---|
+| Nomor rekening yang **ditolak** komite **dihapus** lalu disisip ulang saat diajukan lagi | Menghilangkan jejak penolakan sebelumnya — persis pola yang `ADR-0013` perintahkan diganti | Menggantinya dengan versi baru mengubah perilaku, sehingga uji kesetaraan tidak lagi 1:1 |
+| Portal yang didaftarkan ke Kasir **di-hardcode** `ASM` dan `SIMASNET` | `ADR-0025` menuntutnya menjadi master/konfigurasi | Master portal untuk keperluan ini belum ada |
+| Tipe rekening di-hardcode di `SetTipeRekening` | Idem | Master tipe rekening belum ada |
+
+Keduanya yang terakhir **tidak disebar di dalam percabangan**: masing-masing menjadi
+satu konstanta bernama (`portalYangDidaftarkanKeKasir`, `TIPE_REKENING`), sehingga saat
+masternya tersedia yang perlu diubah hanya satu tempat.
+
+### 10.4 Yang DIPERBAIKI, karena memperbaikinya tidak mengubah perilaku
+
+| Cacat lama | Perbaikan |
+|---|---|
+| `DELETE FROM LST_ACCOUNT where {ASIS:TempDataBank.City}` — klausa WHERE dirangkai dari properti klipboard | Kunci dan syarat `APPROVAL='2'` ditulis **di dalam** kueri; pemanggil tidak dapat menggesernya |
+| `UPDATE … where account_no = {TempBank.pyEmailAddress}` — kunci satu kolom, lewat properti bernama alamat surel | Kunci menjadi pasangan `ACCOUNT_NO` + `BANKID`; nomor rekening yang sama dapat ada di dua bank |
+| `TGL_INPUT = sysdate` | Waktu dari seam `platform/waktu`, disimpan UTC, dapat diuji deterministik |
+| `SUBSTR(response_kasir, INSTR(…))` di dalam SQL | Pindah ke `masterrekening.PangkasResponsKasir`; `INSTR` tidak portabel ke PostgreSQL |
+| 68 pemakaian `ROWNUM` | `OFFSET … FETCH NEXT` (`09-DATABASE-STRATEGY` §3.3) |
+
+### 10.5 Keputusan komite disimpan SEBELUM Kasir dihubungi
+
+Urutannya disengaja dan berbeda dari cara membacanya sepintas.
+
+Keputusan komite adalah **fakta bisnis yang sudah terjadi** begitu orangnya menekan
+tombol. Bila ia baru disimpan setelah Kasir menjawab, satu kegagalan jaringan akan
+membuang keputusan yang sudah benar-benar diambil, dan komite harus memutuskan ulang
+tanpa tahu kenapa.
+
+Karena itu: keputusan disimpan dulu, lalu pendaftaran ke Kasir dijalankan sebagai
+akibatnya. Kegagalannya **tidak** membatalkan keputusan; ia dicatat di `STS_SERVICE` dan
+`RESPONSE_KASIR`, diberitahukan ke PIC, dan **ditampilkan di layar** — bukan
+disembunyikan. Rekening yang disetujui tetapi gagal didaftarkan akan menahan pembayaran,
+dan satu-satunya orang yang dapat menindaklanjutinya adalah petugas yang melihat layar.
+
+### 10.6 Asumsi yang disadari dan menunggu konfirmasi
+
+`CNMUpdateMasterRekening_act` memanggil **kedua** Connect-REST Kasir dengan prasyarat
+yang **sama persis** (`komite="ya" && APPROVAL="1"` dan portal ASM/SIMASNET), tanpa
+syarat pembeda di antara keduanya. Export tidak menunjukkan mana yang dipakai kapan.
+
+**Asumsi yang diambil:** rekening yang menggantikan rekening lama
+(`OLDACCOUNT_NO` terisi) dikirim lewat `UpdateSearchDataRekeningToKasir`; selebihnya
+lewat `InjectDataRekeningToKasir`. Dasarnya nama servicenya sendiri.
+
+**Menunggu konfirmasi Work Owner.** Bila salah, yang berubah hanya satu percabangan di
+`usecase/putuskan.go`.
+
+### 10.7 Penghalang yang masih ada
+
+| Penghalang | Pemilik | Akibatnya sekarang |
+|---|---|---|
+| **Alamat dan kredensial API Kasir** tidak ada di export — ia di konfigurasi instans Pega | **Tim Infra** | Seam Kasir terisi tiruan; rekening tetap dapat diputuskan komite, pendaftaran ke Kasir dilewati. Aplikasi **memperingatkannya di log saat start** |
+| **Bentuk badan permintaan Kasir** disusun dari properti yang disalin activity ke `MyServicePage`, belum pernah diuji terhadap sistem nyata | **Tim Infra** | Bila Kasir menuntut bentuk lain, yang berubah hanya `kasir/kasir.go` |
+| **Otorisasi menu** (`TKT-F3-005`) belum ada | **Work Owner / DBA** | Setiap pengguna yang dapat masuk dapat membuka layar ini. Rute sudah berada di balik sesi; yang belum ada adalah pemeriksaan kewenangan |
+| **Jejak audit** (`S-5`) belum ada | — | Perubahan master rekening belum tercatat siapa-kapan-dari apa-menjadi apa, padahal `TKT-F4-001` mensyaratkannya. `UPDATEBY` dan `TANGGALAPPROVEKOMITE` hanya menyimpan keadaan terakhir, bukan riwayat |
+| **Kepemilikan tulis `LST_ACCOUNT`** | **Work Owner** | `P-1` menuntut satu tabel ditulis satu sistem. Layar Pega-nya wajib dimatikan pada saat modul ini dinyalakan, bukan sesudahnya |
+| **Node 22.12+** di mesin pengembangan | **Work Owner / Tim Infra** | Uji frontend tidak dapat dijalankan; lihat `catatan-pengembangan.md` §9.8 |
+
+### 10.8 Penyimpangan dari Steering yang disadari
+
+**`TKT-U6-001` menuntut penghapusan lunak**, dan modul ini **tidak** menyediakan
+penghapusan sama sekali — bukan lunak, bukan keras. `LST_ACCOUNT` tidak punya kolom
+penanda hapus, dan menambahkannya menuntut DDL yang menyentuh tabel milik bersama
+selama masa paralel (`P-1`, `ADR-0004`).
+
+Penggantinya yang sudah ada: kolom `STS_AKTIF`. Rekening yang tidak dipakai lagi
+**dinonaktifkan**, tetap terbaca, dan tetap dapat dirujuk klaim lama — yang secara
+perilaku adalah apa yang dituntut penghapusan lunak. Layar menandainya secara terpisah
+supaya rekening disetujui-tetapi-nonaktif tidak disalahbaca sebagai siap pakai.
+
+Menambah kolom penanda hapus yang sesungguhnya menunggu DDL dan keputusan Work Owner.
+
+### 10.9 Koreksi: dua sandi kolom yang sempat salah ditebak
+
+Ditemukan saat penelusuran lanjutan atas `SetTipeRekening`, **setelah** implementasi
+pertama selesai. Activity itu mengisi **dua** daftar pilihan sekaligus, dan keduanya
+sempat saya salah baca:
+
+| Kolom | Alias Pega | Sandi sebenarnya | Sempat saya tulis |
+|---|---|---|---|
+| `ACCOUNT_TYPE` | `CoverID` | **`"BIASA"` / `"VA"`** (Virtual Account) | `TERTANGGUNG` / `BENGKEL` / `RUMAH SAKIT` / `PIHAK KETIGA` |
+| `STS_AKTIF` | `CaseID` | **`"Ya"` / `"Tidak"`** | `"1"` / `"0"` |
+
+Sumbernya:
+
+```
+TempTipeBank.pxResults(<APPEND>).Telephone     = "BIASA" · "VA"      → TempBank.CoverID
+TempTipeBank.pxResults(<APPEND>).NomorKontrak  = "Ya" · "Tidak"      → TempBank.CaseID
+```
+
+**Kenapa ini berbahaya dan tidak berisik.** Salah sandi `STS_AKTIF` tidak membuat apa
+pun gagal — tidak ada galat, tidak ada baris yang ditolak. Ia hanya membuat **setiap
+rekening terbaca sebagai nonaktif**, sehingga `dapat_dipakai` selalu `false` dan petugas
+mengira seluruh rekening yang sah tidak dapat dipakai membayar klaim. Kegagalan diam
+seperti itu baru ketahuan di produksi.
+
+Salah nilai `ACCOUNT_TYPE` sama diamnya: layar akan menulis `"BENGKEL"` ke kolom yang
+hanya dikenali Pega sebagai `"BIASA"` atau `"VA"`.
+
+**Perbaikannya** — `sandiAktif` menulis `"Ya"`/`"Tidak"`; `bacaAktif` menerima
+`Ya`/`1`/`Y`/`Aktif` tanpa peduli besar-kecil huruf, supaya baris lama yang ejaannya
+berbeda tetap terbaca aktif; daftar tipe di formulir menjadi `BIASA` dan `VA`.
+
+**Dan dikunci uji** — `repo/sqlstore/sandi_test.go` menguji ketiganya, termasuk pulang
+pergi tulis-lalu-baca. Uji itu ada justru karena kesalahannya tidak menimbulkan galat:
+yang tidak berisik harus diuji, bukan diandalkan pada pembacaan ulang.
+
+**Pelajaran yang berlaku untuk modul berikutnya.** Sandi nilai kolom **tidak dapat
+ditebak dari nama kolom maupun dari SQL** — SQL hanya menunjukkan kolomnya, bukan nilai
+yang sah. Sumbernya adalah activity yang mengisi daftar pilihan layar (`Set*Value`,
+`Set*`), dan itu wajib dibaca untuk setiap kolom berjenis kode.
+
+### 10.10 Peringatan surel — menggantikan `SendEmailAlertRekening`
+
+**Yang ditiru apa adanya:**
+
+| Perilaku lama | Di sini |
+|---|---|
+| Surel dipicu **hanya** bila `ResponseCode == "9"` | Sama persis. Kode `"1"` tetap gagal **tanpa** surel |
+| Dikirim setelah rekening disetujui komite lalu didaftarkan ke Kasir | Sama |
+
+Satu pemicu yang sempat saya tambahkan — **Kasir tidak dapat dihubungi sama sekali** —
+sudah **dicabut**. Work Owner menetapkan alur bisnis dipertahankan apa adanya dan tidak
+ditambah apa pun di luar yang sudah ada (2026-09-17).
+
+*Akibat yang disadari:* Kasir yang mati total **tidak** memicu surel. Kegagalannya tetap
+terlihat di kolom Kasir pada layar dan di log aplikasi, tetapi tidak ada yang memberi
+tahu secara aktif. Ini perilaku sistem lama, dan dicatat supaya tidak terbaca sebagai
+kelalaian.
+
+#### Satu-satunya penyimpangan di modul ini: penerimanya
+
+Rule lama mencari alamat penerima dengan
+`select email from pooldata.mst_user_teknik where operator_id = {TempIns.pyID}`, diisi
+`OperatorID.pxInsName` — **operator yang sedang masuk**. Di sini penerimanya adalah
+**mailbox Tim IT** dari konfigurasi (`SMTP_PENERIMA_PERINGATAN`).
+
+**Riwayat keputusannya dicatat jujur, termasuk kesalahan saya.** Mula-mula saya
+menyimpulkan jalur lamanya buntu karena pemetaan identitas HCC/HCQ ke `OPERATOR_ID`
+belum ditetapkan (`ADR-0024` pertanyaan terbuka no. 4). **Kesimpulan itu terlalu cepat.**
+`GetUserDetailsQuery` menunjukkan:
+
+```sql
+(select email from POOLDATA.MST_USER_TEKNIK where operator_id = "PYUSERIDENTIFIER")
+  from DATAPEGA.pr_operators where "PYUSERIDENTIFIER" = {GetUserKlaim.source}
+```
+
+`MST_USER_TEKNIK.OPERATOR_ID` ternyata sama dengan `PYUSERIDENTIFIER` Pega — yaitu
+**nama login**, yang sudah disimpan aplikasi baru di `Pengguna.Login`. Jadi jalur as-is
+kemungkinan besar dapat dipakai; yang kurang hanya satu query verifikasi kecocokannya.
+
+Temuan itu disampaikan ke Work Owner, dan Work Owner **tetap memilih Tim IT**
+(2026-09-17) — kini dengan mengetahui bahwa jalur as-is tersedia. Alasannya: peringatan
+kegagalan integrasi ditujukan ke pihak yang dapat **memperbaikinya**, bukan ke orang
+yang kebetulan menekan tombol approve.
+
+Komite yang memutuskan tetap disebut **di dalam badan surel** sebagai keterangan, supaya
+Tim IT tahu kepada siapa harus bertanya.
+
+> **Bila kelak hendak dikembalikan ke as-is**, yang dibutuhkan hanya satu seam baru
+> (`EmailOperator(operatorID) string`) berisi kueri di atas, lalu mengganti sumber
+> `Peringatan.Kepada`. Pemicu, isi, dan pengirimannya tidak berubah.
+
+#### Yang tidak dapat direproduksi
+
+Rule HTML `EmailAlertRekeningToPIC` **tidak ada di dalam export** — hanya pemanggilannya
+yang terlihat. Badan suratnya disusun ulang, dan surelnya sendiri menyatakan bahwa
+susunannya **sementara**. Menunggu wording resmi dari tim bisnis.
+
+#### Dua langkah rule lama yang tidak ditiru
+
+| Langkah lama | Kenapa tidak ditiru |
+|---|---|
+| Membaca ulang `POOLDATA.CLAIM_SERVICE_LOG` untuk mengambil `ResponseCode` | Kode responsnya sudah di tangan sebagai nilai balik panggilan Kasir. Lagipula SQL-nya, `rownum=1 order by insertdate desc`, memotong baris **sebelum** mengurutkan sehingga tidak menjamin baris terbaru |
+| Prasyarat `TempClaimAttach.FlagNOLL=="Ya"` pada langkah kirim, berketerangan *"skip jika error karena sudah ada di kasir dan belum ada di lst account"* | Maksud bisnisnya tidak dapat dipastikan dari export. Work Owner menetapkan: **kirim selalu saat gagal kode 9**. Dicatat sebagai lubang paritas yang diketahui |
+
+#### Yang belum dibangun dan memang belum diperlukan
+
+Sistem lama menulis setiap panggilan service ke `POOLDATA.CLAIM_SERVICE_LOG`. Modul ini
+tidak. Respons Kasir sudah tersimpan di `STS_SERVICE` dan `RESPONSE_KASIR` pada barisnya
+sendiri dan tampil di layar; log terpusat menyusul bersama modul `S-4` Integrasi Sistem
+Luar (keputusan Work Owner 2026-09-17).
+
+#### Keamanan pengiriman
+
+Tiga hal ditegakkan di kode, bukan diserahkan ke konfigurasi:
+
+- **Kredensial SMTP hanya dikirim setelah STARTTLS berhasil.** Server yang tidak
+  menawarkan STARTTLS membuat pengiriman ditolak, bukan dilanjutkan tanpa enkripsi.
+- **Nilai header dipotong pada baris baru pertama.** Satu `\r\n` di dalam alamat cukup
+  untuk menyisipkan header tambahan — termasuk penerima tambahan. Ujinya menemukan
+  kelemahan nyata pada versi pertama, yang hanya mengganti baris baru dengan spasi
+  sehingga teks susupan tetap ikut terkirim di dalam header.
+- **Seluruh nilai dari data di-escape** sebelum masuk badan HTML. Nama pemilik rekening
+  dan pesan dari Kasir adalah teks yang dimasukkan pihak lain.

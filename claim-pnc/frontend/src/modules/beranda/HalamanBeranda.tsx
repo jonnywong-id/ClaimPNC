@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import { gunakanKeluar } from '@/modules/masuk/api'
 import { DaftarPortal, PemilihPortal } from '@/modules/portal/PemilihPortal'
 import { JenisPengguna } from '@/api/tipe'
@@ -68,6 +70,21 @@ export function HalamanBeranda() {
 
       <section className="mt-8">
         <DaftarPortal />
+      </section>
+
+      {/*
+        SATU-SATUNYA tautan sementara ke modul yang sudah ada. Ia berdiri sendiri dan
+        dapat dihapus tanpa menyentuh modul mana pun: begitu daftar menu berbasis izin
+        (TKT-F3-004 dan TKT-U1-001) tersedia, tautan ini digantikan olehnya.
+      */}
+      <section className="mt-8">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Modul</h2>
+        <Link
+          to="/master-rekening"
+          className="mt-3 inline-block rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        >
+          Master Rekening
+        </Link>
       </section>
 
       <p className="mt-8 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">

@@ -9,11 +9,22 @@ export class GalatAPI extends Error {
   readonly kode: string
   readonly status: number
 
-  constructor(kode: string, pesan: string, status: number) {
+  /**
+   * Kesalahan per kolom pada galat validasi.
+   *
+   * Terisi hanya bila backend mengirimkannya. Ia ada supaya pesan validasi dapat
+   * ditaruh di kolom yang benar alih-alih ditumpuk di atas formulir — satu kotak
+   * merah berisi sembilan kalimat memaksa pengguna mencocokkan sendiri kalimat mana
+   * milik kolom mana.
+   */
+  readonly field: Record<string, string>
+
+  constructor(kode: string, pesan: string, status: number, field?: Record<string, string>) {
     super(pesan)
     this.name = 'GalatAPI'
     this.kode = kode
     this.status = status
+    this.field = field ?? {}
   }
 }
 
@@ -26,7 +37,7 @@ export class GalatJaringan extends Error {
 }
 
 type OpsiPermintaan = {
-  metode?: 'GET' | 'POST'
+  metode?: 'GET' | 'POST' | 'PUT'
   badan?: unknown
   token?: string | null
 }
@@ -61,11 +72,14 @@ export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): P
 
   const isi = await bacaJSON(respons)
   if (!respons.ok) {
-    const galat = isi as { kode?: string; pesan?: string } | null
+    const galat = isi as
+      | { kode?: string; pesan?: string; field?: Record<string, string> }
+      | null
     throw new GalatAPI(
       galat?.kode ?? KodeGalat.galatInternal,
       galat?.pesan ?? 'Terjadi kesalahan pada sistem.',
       respons.status,
+      galat?.field,
     )
   }
   return isi as T

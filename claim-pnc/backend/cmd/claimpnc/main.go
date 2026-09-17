@@ -26,6 +26,7 @@ import (
 	"claim-pnc/internal/auth/repo/memori"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
@@ -35,6 +36,12 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	rekeninghttp "claim-pnc/internal/masterrekening/http"
+	rekeningkasir "claim-pnc/internal/masterrekening/kasir"
+	rekeningnotif "claim-pnc/internal/masterrekening/notifikasi"
+	rekeningmemori "claim-pnc/internal/masterrekening/repo/memori"
+	rekeningsql "claim-pnc/internal/masterrekening/repo/sqlstore"
+	rekeningusecase "claim-pnc/internal/masterrekening/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemori "claim-pnc/internal/portal/repo/memori"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -102,6 +109,25 @@ func jalankan() error {
 		TulisGalat: authhttp.TulisGalat(logger),
 	})
 
+	handlerRekening := rekeninghttp.HandlerBaru(rekeninghttp.Opsi{
+		Layanan: rakitan.masterRekening,
+		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
+		// sini, bukan di dalam salah satu modul, supaya kedua modul tetap tidak saling
+		// mengimpor — yang tahu keduanya hanyalah berkas perakitan ini.
+		Pemanggil: func(ctx context.Context) (rekeninghttp.Pemanggil, bool) {
+			konteks, ada := authhttp.KonteksPengguna(ctx)
+			if !ada {
+				return rekeninghttp.Pemanggil{}, false
+			}
+			return rekeninghttp.Pemanggil{
+				Identitas: konteks.Pengguna.Identitas,
+				Nama:      konteks.Pengguna.Nama,
+				Email:     konteks.Pengguna.Email,
+			}, true
+		},
+		Logger: logger,
+	})
+
 	router := httpserver.Router(httpserver.Bahan{
 		Logger:    logger,
 		BerkasSPA: berkasSPA,
@@ -115,6 +141,10 @@ func jalankan() error {
 			api.Group(func(terlindungi chi.Router) {
 				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, authhttp.TulisGalat(logger)))
 				portalhttp.Pasang(terlindungi, handlerPortal)
+
+				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
+				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
+				rekeninghttp.Pasang(terlindungi, handlerRekening)
 			})
 		},
 	})
@@ -133,10 +163,11 @@ func jalankan() error {
 
 // rakitan memegang seluruh modul yang sudah terpasang beserta cara menutupnya.
 type rakitan struct {
-	auth      *usecase.Layanan
-	portal    portal.Repo
-	aliasSiap func() []string
-	tutup     func()
+	auth           *usecase.Layanan
+	portal         portal.Repo
+	masterRekening *rekeningusecase.Layanan
+	aliasSiap      func() []string
+	tutup          func()
 }
 
 // penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
@@ -144,6 +175,14 @@ type penyimpanan struct {
 	pengguna auth.PenggunaRepo
 	sesi     auth.SesiRepo
 	portal   portal.Repo
+
+	rekening     masterrekening.Repo
+	bankRekening masterrekening.BankRepo
+
+	// rekeningDiOracle menyatakan master rekening dipasang di atas POOLDATA.LST_ACCOUNT
+	// yang sungguhan, bukan di memori. Adapter tiruan yang menulis jejak karangan
+	// dilarang di atasnya — lihat rakitMasterRekening.
+	rekeningDiOracle bool
 
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
@@ -181,11 +220,89 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 	}
 
 	return rakitan{
-		auth:      layanan,
-		portal:    simpan.portal,
-		aliasSiap: simpan.aliasSiap,
-		tutup:     simpan.tutup,
+		auth:           layanan,
+		portal:         simpan.portal,
+		masterRekening: rakitMasterRekening(konf, simpan, logger),
+		aliasSiap:      simpan.aliasSiap,
+		tutup:          simpan.tutup,
 	}, nil
+}
+
+// rakitMasterRekening menyusun modul Master Rekening di balik seam-nya.
+//
+// Seam Kasir diisi klien HTTP nyata bila alamatnya sudah dikonfigurasi, dan tiruan bila
+// belum. Perbedaannya diumumkan di log: layar yang tampak bekerja padahal pendaftaran
+// ke Kasir tidak pernah terjadi adalah kegagalan yang tidak terlihat siapa pun sampai
+// pembayaran pertama tertahan.
+func rakitMasterRekening(konf config.Konfigurasi, simpan penyimpanan, logger *slog.Logger) *rekeningusecase.Layanan {
+	var (
+		sistemKasir masterrekening.Kasir
+		pemberitahu masterrekening.Notifier
+	)
+
+	if konf.SMTP.Aktif() {
+		pemberitahu = rekeningnotif.PengirimBaru(rekeningnotif.Konfigurasi{
+			Host:      konf.SMTP.Host,
+			Port:      konf.SMTP.Port,
+			Pengguna:  konf.SMTP.Pengguna,
+			KataSandi: konf.SMTP.KataSandi,
+			Dari:      konf.SMTP.Dari,
+			Kepada:    konf.SMTP.PenerimaPeringatan,
+			Tenggang:  konf.SMTP.Batas,
+		})
+	} else {
+		pemberitahu = &rekeningnotif.Tiruan{}
+		logger.Warn("pengirim surel tiruan dipakai",
+			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Kasir gagal"),
+			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_PERINGATAN"))
+	}
+
+	switch {
+	case konf.Kasir.Aktif():
+		sistemKasir = rekeningkasir.KlienBaru(rekeningkasir.Konfigurasi{
+			URLDaftar:   konf.Kasir.URLDaftar,
+			URLPerbarui: konf.Kasir.URLPerbarui,
+			Pengguna:    konf.Kasir.Pengguna,
+			Sandi:       konf.Kasir.KataSandi,
+			Tenggang:    konf.Kasir.Batas,
+		})
+
+	case simpan.rekeningDiOracle:
+		// KASIR TIRUAN DILARANG DI ATAS BASIS DATA SUNGGUHAN.
+		//
+		// Tiruan menjawab "berhasil" beserta nomor rekening Kasir karangan. Bila
+		// jawaban itu ditulis ke POOLDATA.LST_ACCOUNT yang asli, kolom STS_SERVICE
+		// dan ID_REKASIR akan memuat jejak pendaftaran yang tidak pernah terjadi —
+		// dan tidak ada apa pun sesudahnya yang dapat membedakannya dari pendaftaran
+		// yang sungguhan. Data palsu di master rekening lebih berbahaya daripada
+		// langkah yang hilang.
+		//
+		// Seam dibiarkan nil. Usecase sudah menanganinya: rekening tetap dapat
+		// disetujui komite, dan langkah pendaftaran ke Kasir dilewati tanpa
+		// meninggalkan jejak apa pun.
+		sistemKasir = nil
+		logger.Warn("pendaftaran ke Kasir DILEWATI",
+			slog.String("sebab", "alamat sistem Kasir belum dikonfigurasi, sedangkan master rekening membaca basis data sungguhan"),
+			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Kasir, dan tidak ada jejak Kasir yang ditulis"),
+			slog.String("perbaikan", "isi KASIR_URL_DAFTAR_REKENING dan KASIR_URL_PERBARUI_REKENING"))
+
+	default:
+		// Penyimpanan di memori: tiruan aman dipakai dan memang berguna, karena ia
+		// membuat seluruh alur dapat dicoba tanpa basis data dan tanpa jaringan.
+		sistemKasir = rekeningkasir.TiruanBaru()
+		logger.Warn("sistem Kasir tiruan dipakai",
+			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Kasir yang sesungguhnya"),
+			slog.String("perbaikan", "isi KASIR_URL_DAFTAR_REKENING dan KASIR_URL_PERBARUI_REKENING"))
+	}
+
+	return rekeningusecase.LayananBaru(rekeningusecase.Opsi{
+		Repo:        simpan.rekening,
+		Bank:        simpan.bankRekening,
+		Kasir:       sistemKasir,
+		Notifier:    pemberitahu,
+		Jam:         waktu.JamSistem{},
+		PortalAlias: konf.PortalUtama,
+	})
 }
 
 // butuhOracle menyatakan apakah koneksi basis data harus dibuka.
@@ -240,10 +357,15 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		utama := kumpulan.Utama()
 		simpan.warisan = sqlstore.WarisanBaru(utama)
 		simpan.portal = portalsql.RepoBaru(utama)
+		simpan.rekening = rekeningsql.RepoBaru(utama)
+		simpan.bankRekening = rekeningsql.BankRepoBaru(utama)
+		simpan.rekeningDiOracle = true
 		simpan.aliasSiap = kumpulan.Tersedia
 		simpan.tutup = kumpulan.Tutup
 	} else {
 		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
+		simpan.rekening = rekeningmemori.RepoBaru()
+		simpan.bankRekening = rekeningmemori.BankRepoBaru(rekeningmemori.DaftarBankContoh()...)
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
 	}
 

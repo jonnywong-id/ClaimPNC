@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
+import { HalamanMasterRekening } from '@/modules/master-rekening/HalamanMasterRekening'
 import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
 import { GalatAPI } from '@/api/klien'
 import { KodeGalat } from '@/api/tipe'
@@ -47,6 +48,24 @@ export function Rute() {
         path="/"
         element={
           <PenjagaSesi anak={<Beranda />} />
+        }
+      />
+      {/*
+        Master rekening berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan
+        menu — siapa yang boleh membuka layar master mana — adalah TKT-F3-005 yang
+        belum ada; sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya.
+      */}
+      <Route
+        path="/master-rekening"
+        element={
+          <PenjagaSesi
+            anak={
+              <div className="min-h-screen bg-white">
+                <PeringatanSesi />
+                <HalamanMasterRekening />
+              </div>
+            }
+          />
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -3,7 +3,7 @@
 Implementasi pengganti aplikasi Pega PRPC 8.3 **Claim PNC**. Dokumen migrasi, ADR, dan papan
 tiket pekerjaan berada di repository terpisah: `D:\Jonny\Project\Claude.AI\XML Claim PNC\docs`.
 
-**Yang sudah ada di tahap ini: login dari ujung ke ujung.** Modul bisnis belum ada satu pun.
+**Yang sudah ada di tahap ini: login dari ujung ke ujung, dan modul bisnis pertama — Master Rekening.**
 
 | | |
 |---|---|
@@ -31,6 +31,12 @@ claim-pnc/
 │   │   │   ├── provider/                pengisi seam Identitas — HCQ, Lokal, Berantai, Tiruan
 │   │   │   ├── repo/                    pengisi seam penyimpanan — sqlstore, memori
 │   │   │   └── http/                    handler, dto, middleware sesi, rute modul
+│   │   ├── masterrekening/          MODUL — rekening tujuan pembayaran klaim
+│   │   │   ├── usecase/                 orkestrasi: ajukan, ubah, putuskan (komite)
+│   │   │   ├── kasir/                   pengisi seam Kasir — klien HTTP, tiruan
+│   │   │   ├── notifikasi/              pengisi seam Notifier — pengirim SMTP, tiruan
+│   │   │   ├── repo/                    sqlstore (LST_ACCOUNT, LST_BANK_GROUP), memori
+│   │   │   └── http/                    handler, dto, galat, rute modul
 │   │   ├── portal/                  MODUL — entitas & basis datanya (ADR-0030)
 │   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memori
 │   │   │   └── http/                    rute daftar portal
@@ -200,6 +206,12 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/saya` | wajib | identitas pemanggil + batas berlaku sesi |
 | `POST` | `/api/sesi/perpanjang` | wajib | menggeser batas berlaku |
 | `GET` | `/api/portal` | wajib | daftar entitas dari `POOLDATA.M_PORTAL_PNC` + portal utama |
+| `GET` | `/api/master-rekening` | wajib | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
+| `POST` | `/api/master-rekening` | wajib | mengajukan rekening baru — selalu lahir berstatus menunggu |
+| `GET` | `/api/master-rekening/bank` | wajib | daftar bank dari `GENERAL.LST_BANK_GROUP` |
+| `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | satu rekening |
+| `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | mengubah rekening yang **masih menunggu** keputusan |
+| `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
 
 ### Alur masuk — dua sumber identitas
 

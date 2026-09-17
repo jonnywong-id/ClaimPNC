@@ -489,3 +489,180 @@ Penanganannya: nilai nyata dipindahkan ke `backend/.env` (yang diabaikan git), d
 dikembalikan menjadi placeholder kosong. Karena berkas itu sempat memuat kredensial, keduanya
 sebaiknya diperlakukan sebagai **berpotensi terpapar** bila berkasnya pernah dibagikan atau
 di-commit di tempat lain — keputusan menggantinya ada pada Work Owner dan Tim Infra.
+
+---
+
+## 9. Sesi keempat — Modul Master Rekening (2026-09-17)
+
+### 9.1 Permintaan dan bahan yang diberikan
+
+Work Owner meminta penambahan **modul Master Rekening**, dengan
+`Harness/MasterRekening-Harness.xml` sebagai rujukan aplikasi existing, dan menuntut
+analisis penuh sebelum satu baris kode ditulis.
+
+### 9.2 Yang diperiksa lebih dulu, sebelum menulis kode
+
+Harness-nya sendiri ternyata hanya kerangka portal — isinya nyaris tidak memuat aturan
+bisnis. Yang memuat aturan adalah rule di sekitarnya, dan seluruhnya dibaca:
+
+| Jenis | Rule |
+|---|---|
+| RDB List | `GetDataMasterRekening`, `InsertMasterRekening`, `UpdateMasterRekening`, `DelDataRejectMasterRekening`, `SearchCodeBank_sql` |
+| Activity | `CNMUpdateMasterRekening_act`, `SetMasterRekeningValue`, `SetTipeRekening`, `ValidasiEmailRekening`, `GetDataMasterBank`, `SendEmailAlertRekening`, `HitDataRekeningToKasir`, `HitupdateDataRekeningToKasir` |
+| Section | `BrowseMasterRekening`, `BrowseMasterCariDataRekening`, `ApprovalMasterRekening`, `BrowseMasterRekeningApproval/Approve/Reject`, `ListPanelMasterRekening` |
+| Report Definition | `BrowseBankGroup` |
+| Connect REST | `InjectDataRekeningToKasir`, `UpdateSearchDataRekeningToKasir` |
+
+Hasilnya: tabel inti `POOLDATA.LST_ACCOUNT` (27 kolom), master bank
+`GENERAL.LST_BANK_GROUP`, lima tab layar, status persetujuan `0`/`1`/`2`, sembilan
+kolom wajib, aturan anti-duplikasi berikut pengecualiannya, dan dua efek samping saat
+komite menyetujui.
+
+### 9.3 Temuan yang menghentikan pekerjaan sebelum dimulai
+
+Instruksi menyebut modul **Login, Home, dan Master Data sudah selesai** dan harus
+diisolasi. Pemeriksaan menunjukkan **Master Data tidak ada di working copy ini**:
+backend hanya `auth`, `platform`, `portal`; frontend hanya `beranda`, `masuk`, `portal`
+— persis seperti yang dinyatakan `claim-pnc/README.md` sendiri.
+
+Yang diperiksa sebelum melaporkannya: kelima branch di `origin`, `git stash`, path docs
+yang disebut README, dan pencarian folder di seluruh drive `C:` dan `D:`. Nihil
+semuanya.
+
+Work Owner kemudian menunjukkan screenshot working copy lain di `D:\app\claim-pnc` yang
+memuat modul `masterstatus` / `master-status-klaim`. Path itu **tidak ada di mesin ini**
+dan belum pernah di-push ke `origin`. Work Owner memutuskan pekerjaan tetap dilanjutkan
+di working copy ini, dengan penamaan mengikuti pola yang terlihat di screenshot.
+
+**Akibatnya, yang dipakai sebagai acuan gaya adalah modul `auth` dan `portal` yang ada
+di sini**, bukan `masterstatus` yang tidak dapat dibaca. Bila kelak keduanya digabung,
+perbedaan gaya antara keduanya harus diperiksa manusia.
+
+### 9.4 Tiga keputusan yang dikonfirmasi Work Owner
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Seberapa luas cakupannya? | **Paritas penuh dengan Pega** — CRUD, lima tab, alur komite, integrasi Kasir, email alert |
+| Perilaku dipertahankan atau dibersihkan? | **Perilaku dipertahankan, penamaan dibersihkan** (`P-5`) |
+| Penamaan modul? | Mengikuti pola yang sudah ada: `internal/masterrekening`, `modules/master-rekening` |
+
+### 9.5 Yang dibangun
+
+```
+backend/internal/masterrekening/
+├── masterrekening.go          entitas, status, invarian, seam Repo/BankRepo/Kasir/Notifier
+├── masterrekening_test.go
+├── usecase/
+│   ├── ajukan.go              pengajuan, perubahan, daftar
+│   ├── putuskan.go            keputusan komite + pendaftaran Kasir
+│   └── alur_test.go
+├── repo/sqlstore/             LST_ACCOUNT dan LST_BANK_GROUP
+├── repo/memori/               adapter kedua, untuk uji tanpa basis data
+├── kasir/                     klien HTTP nyata + tiruan
+└── http/                      dto, handler, galat, rute
+
+frontend/src/modules/master-rekening/
+├── api.ts                     hook TanStack Query
+├── HalamanMasterRekening.tsx  lima tab
+├── FormRekening.tsx           formulir pengajuan
+├── TabelRekening.tsx          tabel bersama kelima tab
+└── HalamanMasterRekening.test.tsx
+```
+
+### 9.6 Perubahan di luar modul, dan alasannya
+
+Empat berkas di luar folder modul ikut berubah. Seluruhnya **penambahan**, tidak ada
+yang me-refactor modul yang sudah selesai:
+
+| Berkas | Perubahan | Kenapa tidak dapat dihindari |
+|---|---|---|
+| `cmd/claimpnc/main.go` | perakitan modul + pemasangan rute | Modul memasang rutenya sendiri, tetapi perakitannya memang milik entrypoint |
+| `internal/platform/config/config.go` | struct `Kasir` + empat variabel lingkungan | Seluruh konfigurasi wajib lewat `config.Muat`; membaca `os.Getenv` di dalam modul akan melanggar polanya sendiri |
+| `frontend/src/api/klien.ts` | `GalatAPI.field` + metode `PUT` | Galat validasi per kolom tidak dapat sampai ke layar tanpanya |
+| `frontend/src/api/tipe.ts` | tipe `Rekening`, `Bank`, `StatusRekening` | Berkas ini memang cerminan DTO Go; menaruhnya di tempat lain memecah kontrak |
+
+Satu berkas lagi, `modules/beranda/HalamanBeranda.tsx`, ditambahi **satu tautan** ke
+layar baru. Ia berdiri sendiri, ditandai komentar, dan dapat dihapus tanpa menyentuh
+modul mana pun. Tanpanya layar hanya dapat dicapai dengan mengetik URL.
+
+### 9.7 Verifikasi yang dijalankan
+
+| Perintah | Hasil |
+|---|---|
+| `go build ./...` | **lolos** |
+| `go vet ./...` | **lolos** |
+| `go test ./...` | **lolos** — 21 uji baru; seluruh uji lama (auth, portal, config) tetap hijau |
+| `gofmt -l` | bersih |
+| `npm run periksa-tipe` | **lolos** |
+| `npm test` | **TIDAK DAPAT DIJALANKAN** — lihat §9.8 |
+
+### 9.8 Kendala: uji frontend tidak dapat dijalankan di mesin ini
+
+`npm test` gagal sebelum satu uji pun berjalan, pada **ketiga** berkas uji — termasuk
+`HalamanMasuk.test.tsx` dan `PemilihPortal.test.tsx` yang sudah ada sebelum sesi ini.
+Jadi ia **bukan akibat perubahan sesi ini**.
+
+Sebabnya versi Node: mesin ini menjalankan **v20.18.0**, sedangkan `jsdom@30` menuntut
+`webidl.util.markAsUncloneable` (Node 21+) dan `html-encoding-sniffer@6` menuntut
+`require()` atas modul ESM (Node 20.19+/22.12+). `npm install` sendiri sudah
+memperingatkannya dengan `EBADENGINE`, dan `README.md` memang menyebut Node 20+ diuji
+pada 24.20.0.
+
+Dua kendala perkakas lain yang sudah diselesaikan di jalan:
+`node_modules` belum pernah dipasang di working copy ini, dan `rolldown` kehilangan
+binding native `win32-x64-msvc` akibat bug npm pada dependensi opsional.
+
+**Yang diperlukan:** Node **22.12+** (idealnya 24, sesuai README). Setelah itu
+`npm test` dapat dijalankan tanpa perubahan kode apa pun. Sampai itu terjadi,
+`npm run periksa-tipe` adalah verifikasi terkuat yang tersedia untuk frontend, dan ia
+lolos.
+
+### 9.9 Lanjutan: alur surel peringatan, dan dua nilai kolom yang sempat salah
+
+Dikerjakan setelah Work Owner meminta daftar asumsi disebutkan lebih dulu sebelum kode
+ditulis. Urutannya menjadi: **gali export → daftarkan asumsi → konfirmasi → baru kode.**
+Urutan itu langsung membayar dirinya sendiri.
+
+**Dua sandi kolom yang sempat salah ditebak.** Penelusuran lanjutan atas activity
+`SetTipeRekening` — yang ternyata mengisi DUA daftar pilihan sekaligus — menunjukkan:
+
+| Kolom | Sandi sebenarnya | Sempat saya tulis |
+|---|---|---|
+| `ACCOUNT_TYPE` | `"BIASA"` / `"VA"` | jenis pemilik (BENGKEL, RUMAH SAKIT, …) |
+| `STS_AKTIF` | `"Ya"` / `"Tidak"` | `"1"` / `"0"` |
+
+Keduanya **tidak menimbulkan galat apa pun** — hanya membuat setiap rekening terbaca
+nonaktif, sehingga petugas mengira rekening yang sah tidak dapat dipakai membayar klaim.
+Diperbaiki dan dikunci uji di `repo/sqlstore/sandi_test.go`.
+
+**Pelajaran untuk modul berikutnya:** sandi nilai kolom **tidak dapat ditebak dari SQL**
+— SQL hanya menunjukkan kolomnya, bukan nilai yang sah. Sumbernya adalah activity yang
+mengisi daftar pilihan layar (`Set*`), dan itu wajib dibaca untuk setiap kolom berjenis
+kode.
+
+**Enam asumsi pada alur surel didaftarkan dan dijawab Work Owner:**
+
+| Asumsi | Keputusan |
+|---|---|
+| Penerima surel | **Mailbox Tim IT** dari konfigurasi — satu-satunya penyimpangan, diputuskan dengan sadar setelah saya koreksi sendiri bahwa jalur as-is sebenarnya tersedia |
+| Isi surel (template hilang dari export) | Pakai susunan sendiri, **ditandai sementara** di dalam surelnya |
+| Pemicu tambahan saat Kasir mati total | **Dicabut** — hanya `ResponseCode == "9"`, as-is |
+| Prasyarat `FlagNOLL=="Ya"` | Abaikan; kirim selalu saat gagal kode 9 |
+| Menulis ke `CLAIM_SERVICE_LOG` | Belum perlu; menyusul bersama `S-4` |
+| Jalur Inject vs UpdateSearch ke Kasir | Tetap seperti asumsi semula |
+
+**Koreksi yang saya sampaikan sendiri di tengah jalan.** Saya sempat menyatakan jalur
+penerima as-is *buntu* karena `OPERATOR_ID` belum dipetakan. `GetUserDetailsQuery`
+membuktikan sebaliknya: `MST_USER_TEKNIK.OPERATOR_ID` sama dengan `PYUSERIDENTIFIER`
+Pega, yaitu nama login — yang sudah kita simpan di `Pengguna.Login`. Koreksi itu
+disampaikan sebelum keputusan dikunci, sehingga keputusannya diambil dengan informasi
+yang benar.
+
+**Satu kelemahan ditemukan oleh ujinya sendiri.** `bersihkanHeader` versi pertama
+mengganti baris baru dengan spasi. Itu memang menghalangi terbentuknya header baru,
+tetapi teks susupan tetap ikut terkirim di dalam header. Diperkuat menjadi **memotong**
+pada baris baru pertama.
+
+**Verifikasi:** `go build`, `go vet`, dan `go test ./...` seluruhnya lolos — termasuk
+seluruh uji modul yang sudah ada sebelumnya. `npm run periksa-tipe` lolos. `npm test`
+tetap terhalang versi Node (lihat §9.8).

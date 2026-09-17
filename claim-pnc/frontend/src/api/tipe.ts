@@ -79,3 +79,89 @@ export const KodeGalat = {
 } as const
 
 export type KodeGalat = (typeof KodeGalat)[keyof typeof KodeGalat]
+
+/**
+ * Posisi sebuah rekening dalam alur persetujuan komite.
+ *
+ * Sandinya "0"/"1"/"2" mengikuti kolom APPROVAL pada POOLDATA.LST_ACCOUNT. Ia tidak
+ * dapat dipilih bebas selama tabel yang sama masih dibaca sistem lama.
+ */
+export const StatusRekening = {
+  menunggu: '0',
+  disetujui: '1',
+  ditolak: '2',
+} as const
+
+export type StatusRekening = (typeof StatusRekening)[keyof typeof StatusRekening]
+
+/** Satu baris master rekening tujuan pembayaran klaim. */
+export type Rekening = {
+  nomor_rekening: string
+  nama_pemilik: string
+  nama_bank: string
+  cabang_bank: string
+  alamat_bank: string
+  kode_bank: string
+  tipe_rekening: string
+  aktif: boolean
+
+  email: string
+  telepon: string
+  nik: string
+  catatan: string
+  id_dokumen: string
+  diinput_oleh: string
+
+  status: string
+  /** Sebutan status dalam bahasa yang dibaca pengguna, dihitung server. */
+  status_label: string
+  komite_approval: string
+
+  diinput_pada: string
+  diputuskan_pada?: string
+
+  status_layanan: string
+  id_rekening_kasir: string
+  respons_kasir: string
+
+  /**
+   * Boleh tidak rekening ini menerima pembayaran klaim.
+   *
+   * Dihitung server dari dua syarat — disetujui komite DAN masih aktif — supaya
+   * keduanya tidak perlu diulang di setiap layar.
+   */
+  dapat_dipakai: boolean
+}
+
+export type Bank = {
+  kode: string
+  nama: string
+}
+
+export type ResponsDaftarRekening = {
+  rekening: Rekening[]
+  /** Banyaknya baris yang cocok SEBELUM dipotong paginasi. */
+  jumlah: number
+  batas: number
+  lewati: number
+}
+
+export type ResponsDaftarBank = {
+  bank: Bank[]
+}
+
+/**
+ * Kode galat modul Master Rekening.
+ *
+ * Terpisah dari KodeGalat karena ia milik satu modul, sementara KodeGalat mengikat
+ * seluruh aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const KodeGalatRekening = {
+  tidakDitemukan: 'rekening_tidak_ditemukan',
+  sudahAda: 'nomor_rekening_sudah_ada',
+  sudahDiputuskan: 'keputusan_sudah_diambil',
+  isianTidakSah: 'isian_tidak_sah',
+} as const
+
+export type KodeGalatRekening =
+  (typeof KodeGalatRekening)[keyof typeof KodeGalatRekening]
