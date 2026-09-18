@@ -15,7 +15,7 @@ Klaim.**
 
 > **Master Status Klaim belum dapat dipakai terhadap Oracle.** Kolom `LSC_NOTE` pada
 > `POOLDATA.M_STS_CLAIM` masih kosong di seluruh 32 baris sampai
-> [`migrations/0002`](backend/migrations/0002_master_status_klaim.up.sql) dijalankan DBA. Terhadap
+> [`migrations/0002`](backend/migrations/0002_master_claim_status.up.sql) dijalankan DBA. Terhadap
 > penyimpanan memori ia berfungsi penuh dengan 33 baris nyata. Jalankan `./claimpnc.exe -periksa`
 > untuk melihat keadaannya.
 
@@ -37,31 +37,31 @@ claim-pnc/
 │   │   ├── auth/                    MODUL — identitas, sesi, pengguna + seam-nya
 │   │   │   ├── usecase/                 orkestrasi: masuk, periksa, perpanjang, keluar
 │   │   │   ├── provider/                pengisi seam Identitas — HCQ, Lokal, Berantai, Tiruan
-│   │   │   ├── repo/                    pengisi seam penyimpanan — sqlstore, memori
+│   │   │   ├── repo/                    pengisi seam penyimpanan — sqlstore, memory
 │   │   │   └── http/                    handler, dto, middleware sesi, rute modul
 │   │   ├── masterrekening/          MODUL — rekening tujuan pembayaran klaim
 │   │   │   ├── usecase/                 orkestrasi: ajukan, ubah, putuskan (komite)
-│   │   │   ├── kasir/                   pengisi seam Kasir — klien HTTP, tiruan
-│   │   │   ├── notifikasi/              pengisi seam Notifier — pengirim SMTP, tiruan
-│   │   │   ├── repo/                    sqlstore (LST_ACCOUNT, LST_BANK_GROUP), memori
+│   │   │   ├── cashier/                 pengisi seam Kasir — klien HTTP, tiruan
+│   │   │   ├── notification/            pengisi seam Notifier — pengirim SMTP, tiruan
+│   │   │   ├── repo/                    sqlstore (LST_ACCOUNT, LST_BANK_GROUP), memory
 │   │   │   └── http/                    handler, dto, galat, rute modul
 │   │   ├── portal/                  MODUL — entitas & basis datanya (ADR-0030)
-│   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memori
+│   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memory
 │   │   │   └── http/                    rute daftar portal
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
-│   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memori + 33 baris contoh
+│   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
 │   │   │   └── http/                    dto, galat, handler, rute
-│   │   └── platform/                config, logging, db, middleware, waktu, httpserver
+│   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
 │   └── go.mod
 ├── frontend/                    SPA React + TypeScript + Vite
 │   └── src/
 │       ├── app/                     kerangka: router, provider, penjaga rute, sesi
-│       ├── modules/                 satu folder per modul — masuk, portal, beranda
+│       ├── modules/                 satu folder per modul — nama modul bisnis (D-81)
 │       ├── components/              pustaka komponen baku
-│       └── api/                     klien HTTP dan tipe kontrak API
+│       └── api/                     klien HTTP dan tipe kontrak API (client.ts, types.ts)
 └── docs/                        keputusan implementasi & catatan pengembangan
 ```
 
@@ -91,7 +91,7 @@ claim-pnc/
 5. **Semua tabel memakai `components/TabelData`.** Tidak ada `<table>` mentah di folder `modules/`.
    Inilah yang mengubah 268 grid sistem lama menjadi satu implementasi. Pilihan pustaka tabel
    (`TKT-U2-005`) masih terbuka; bila kelak diputuskan, yang diganti adalah isi satu berkas itu.
-6. **Nilai desain yang berulang tinggal di `src/gaya.css`**, bukan diketik ulang per layar —
+6. **Nilai desain yang berulang tinggal di `src/styles.css`**, bukan diketik ulang per layar —
    bayangan, lengkung, dan kurva gerak. Warna memakai palet bawaan Tailwind (blue untuk aksen,
    slate untuk dasar), bukan warna karangan.
 
@@ -141,7 +141,7 @@ tiruan. Keduanya **menolak berjalan di produksi**.
 binary — produksi tetap menjalankan satu proses saja (`ADR-0002`).
 
 Buka `http://localhost:8080`. Pengguna contoh ada di
-[`backend/internal/auth/provider/tiruan.go`](backend/internal/auth/provider/tiruan.go):
+[`backend/internal/auth/provider/fake.go`](backend/internal/auth/provider/fake.go):
 
 | Nama pengguna | Kata sandi | Untuk mencoba |
 |---|---|---|
@@ -167,10 +167,10 @@ cd backend && ./claimpnc.exe
 Skema dijalankan lebih dulu oleh **DBA**, bukan oleh aplikasi — akun aplikasi tidak punya hak DDL:
 
 ```
-backend/migrations/0001_pengguna_dan_sesi.up.sql       tabel BARU: CPNC_PENGGUNA, CPNC_SESI_AKTIF
-backend/migrations/0001_pengguna_dan_sesi.down.sql
-backend/migrations/0002_master_status_klaim.up.sql     MENGUBAH objek milik sistem lama
-backend/migrations/0002_master_status_klaim.down.sql
+backend/migrations/0001_user_and_session.up.sql       tabel BARU: CPNC_PENGGUNA, CPNC_SESI_AKTIF
+backend/migrations/0001_user_and_session.down.sql
+backend/migrations/0002_master_claim_status.up.sql     MENGUBAH objek milik sistem lama
+backend/migrations/0002_master_claim_status.down.sql
 ```
 
 Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work Owner (`D-63`).
@@ -236,7 +236,7 @@ pernah ikut tercetak di log.
 
 ```bash
 cd backend  && go vet ./... && go test ./...
-cd frontend && npm run periksa-tipe && npm test
+cd frontend && npm run typecheck && npm test
 ```
 
 Seluruh uji berjalan **tanpa basis data dan tanpa jaringan**: provider identitas tiruan dan

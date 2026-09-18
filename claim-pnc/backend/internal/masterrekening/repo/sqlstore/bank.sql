@@ -4,7 +4,7 @@
 -- tabel). Sumbernya sama dengan yang dipakai Report Definition BrowseBankGroup dan
 -- RDB List SearchCodeBank_sql pada sistem lama.
 
--- name: bank_daftar
+-- name: bank_list
 SELECT LBG_ID,
        BANK_GROUP
   FROM GENERAL.LST_BANK_GROUP

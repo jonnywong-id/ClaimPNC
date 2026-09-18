@@ -2,14 +2,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { App } from './app/App'
-import './gaya.css'
+import './styles.css'
 
-const akar = document.getElementById('akar')
-if (!akar) {
+const root = document.getElementById('akar')
+if (!root) {
   throw new Error('elemen #akar tidak ditemukan di index.html')
 }
 
-createRoot(akar).render(
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,

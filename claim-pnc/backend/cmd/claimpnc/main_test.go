@@ -11,96 +11,96 @@ import (
 	"claim-pnc/internal/platform/logging"
 )
 
-func konfPengembangan() config.Konfigurasi {
-	return config.Konfigurasi{
-		Lingkungan:       config.Pengembangan,
-		AdapterIdentitas: config.AdapterIdentitasTiruan,
-		Penyimpanan:      config.PenyimpananMemori,
-		PortalUtama:      "ASM",
-		Sesi:             config.Sesi{MasaBerlaku: 30 * time.Minute},
+func devConfig() config.Config {
+	return config.Config{
+		Environment:     config.Development,
+		IdentityAdapter: config.IdentityAdapterFake,
+		Storage:         config.StorageMemory,
+		PrimaryPortal:   "ASM",
+		Session:         config.Session{Lifetime: 30 * time.Minute},
 	}
 }
 
 // Dua adapter pengembangan hanya boleh hidup di luar produksi, dan penolakannya ada di
 // kode — bukan pada nilai konfigurasi yang dapat dibalik seseorang.
-func TestAdapterPengembanganMenolakProduksi(t *testing.T) {
-	konf := konfPengembangan()
-	konf.Lingkungan = config.Produksi
+func TestDevelopmentAdapterRefusesProduction(t *testing.T) {
+	cfg := devConfig()
+	cfg.Environment = config.Production
 
 	t.Run("provider identitas tiruan", func(t *testing.T) {
-		_, err := rakitIdentitas(konf, true, nil)
-		require.ErrorIs(t, err, provider.ErrTiruanDiProduksi)
+		_, err := buildIdentity(cfg, true, nil)
+		require.ErrorIs(t, err, provider.ErrFakeInProduction)
 	})
 
 	t.Run("penyimpanan memori", func(t *testing.T) {
-		// Sesi di memori satu instans tidak akan dikenali instans kedua di belakang
+		// Session di memori satu instans tidak akan dikenali instans kedua di belakang
 		// load balancer — pelanggaran langsung terhadap tuntutan stateless (D-27).
-		_, err := rakitPenyimpanan(konf, true, logging.Baru(0))
+		_, err := buildStorage(cfg, true, logging.New(0))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "menolak berjalan di lingkungan produksi")
 	})
 
 	t.Run("perakitan seluruh modul ikut gagal", func(t *testing.T) {
-		_, err := rakit(konf, logging.Baru(0))
+		_, err := build(cfg, logging.New(0))
 		require.Error(t, err)
 	})
 }
 
-func TestPerakitanBerjalanDiLuarProduksi(t *testing.T) {
-	hasil, err := rakit(konfPengembangan(), logging.Baru(0))
+func TestAssemblyRunsOutsideProduction(t *testing.T) {
+	result, err := build(devConfig(), logging.New(0))
 	require.NoError(t, err)
-	require.NotNil(t, hasil.auth)
-	require.NotNil(t, hasil.portal)
-	require.NotNil(t, hasil.aliasSiap)
-	hasil.tutup()
+	require.NotNil(t, result.auth)
+	require.NotNil(t, result.portal)
+	require.NotNil(t, result.readyAliases)
+	result.close()
 }
 
 // Provider HCQ menuntut KONEKSI basis data — tetapi bukan tabel CPNC_. Alamat layanannya dibaca dari
 // POOLDATA.GCNM_CONNECT_REST dan daftar login non-karyawan dari POOLDATA.M_LOGIN_PNC.
 // Menyalakannya tanpa Oracle harus gagal dengan pesan yang menyebut sebabnya.
-func TestIdentitasNyataMenuntutOracle(t *testing.T) {
-	konf := konfPengembangan()
-	konf.AdapterIdentitas = config.AdapterIdentitasNyata
+func TestRealIdentityAdapterRequiresOracle(t *testing.T) {
+	cfg := devConfig()
+	cfg.IdentityAdapter = config.IdentityAdapterHCQ
 
-	_, err := rakitIdentitas(konf, false, nil)
+	_, err := buildIdentity(cfg, false, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "koneksi basis data")
 }
 
 // Portal yang variabel koneksinya belum lengkap dilewati, bukan membuat aplikasi gagal
 // start: pengisian kredensial tiap entitas berjalan bertahap.
-func TestPortalBelumLengkapDilewati(t *testing.T) {
-	konf := konfPengembangan()
-	konf.Portal = map[string]config.Basisdata{
-		"ASM": {Alias: "ASM", Host: "h", Service: "s", Pengguna: "u", KataSandi: "p", Port: 1521},
-		"ASI": {Alias: "ASI", Host: "", Service: "", Pengguna: "", KataSandi: ""},
+func TestIncompletePortalSkipped(t *testing.T) {
+	cfg := devConfig()
+	cfg.Portal = map[string]config.Database{
+		"ASM": {Alias: "ASM", Host: "h", Service: "s", User: "u", Password: "p", Port: 1521},
+		"ASI": {Alias: "ASI", Host: "", Service: "", User: "", Password: ""},
 	}
 
-	parameter := parameterPortal(konf)
+	parameter := portalParameters(cfg)
 	require.Len(t, parameter, 1)
 	require.Equal(t, "ASM", parameter[0].Alias)
 }
 
 // Koneksi Oracle dan penyimpanan sesi adalah dua hal berbeda, dan memisahkannya penting:
 // integrasi HCC/HCQ dapat dicoba lewat layar SEBELUM migrasi 0001 dijalankan DBA.
-func TestKoneksiOracleTerpisahDariPenyimpananSesi(t *testing.T) {
+func TestOracleConnectionSeparateFromSessionStorage(t *testing.T) {
 	kasus := []struct {
-		nama        string
-		penyimpanan string
-		adapter     string
-		butuh       bool
+		name    string
+		storage string
+		adapter string
+		butuh   bool
 	}{
-		{"keduanya tiruan", config.PenyimpananMemori, config.AdapterIdentitasTiruan, false},
-		{"identitas nyata, sesi di memori", config.PenyimpananMemori, config.AdapterIdentitasNyata, true},
-		{"sesi di Oracle, identitas tiruan", config.PenyimpananOracle, config.AdapterIdentitasTiruan, true},
-		{"keduanya nyata", config.PenyimpananOracle, config.AdapterIdentitasNyata, true},
+		{"keduanya tiruan", config.StorageMemory, config.IdentityAdapterFake, false},
+		{"identitas nyata, sesi di memori", config.StorageMemory, config.IdentityAdapterHCQ, true},
+		{"sesi di Oracle, identitas tiruan", config.StorageOracle, config.IdentityAdapterFake, true},
+		{"keduanya nyata", config.StorageOracle, config.IdentityAdapterHCQ, true},
 	}
 	for _, k := range kasus {
-		t.Run(k.nama, func(t *testing.T) {
-			konf := konfPengembangan()
-			konf.Penyimpanan = k.penyimpanan
-			konf.AdapterIdentitas = k.adapter
-			require.Equal(t, k.butuh, butuhOracle(konf))
+		t.Run(k.name, func(t *testing.T) {
+			cfg := devConfig()
+			cfg.Storage = k.storage
+			cfg.IdentityAdapter = k.adapter
+			require.Equal(t, k.butuh, butuhOracle(cfg))
 		})
 	}
 }

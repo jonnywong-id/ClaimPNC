@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { panggilAPI } from '@/api/klien'
-import type { ResponsDaftarPortal } from '@/api/tipe'
-import { gunakanSesi } from '@/app/sesi'
+import { callAPI } from '@/api/client'
+import type { PortalListResponse } from '@/api/types'
+import { useSession } from '@/app/session'
 
 /**
  * Hook daftar portal.
@@ -11,12 +11,12 @@ import { gunakanSesi } from '@/app/sesi'
  * masuk. ADR-0030 menetapkan berpindah portal **tidak menuntut login ulang**, sehingga
  * portal tidak perlu — dan tidak boleh — menjadi bagian dari alur masuk.
  */
-export function gunakanDaftarPortal() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+export function usePortalList() {
+  const token = useSession((state) => state.token)
 
   return useQuery({
     queryKey: ['portal', token],
-    queryFn: () => panggilAPI<ResponsDaftarPortal>('/api/portal', { token }),
+    queryFn: () => callAPI<PortalListResponse>('/api/portal', { token }),
     enabled: token !== null,
     // Daftar entitas nyaris tidak pernah berubah dalam satu sesi kerja; memuatnya
     // ulang setiap kali komponen dipasang hanya membebani basis data portal utama.

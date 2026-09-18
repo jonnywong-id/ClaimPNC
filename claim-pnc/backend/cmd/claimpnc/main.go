@@ -23,41 +23,41 @@ import (
 
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
-	"claim-pnc/internal/auth/repo/memori"
+	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
-	"claim-pnc/internal/platform/waktu"
 	"claim-pnc/internal/portal"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
-	rekeninghttp "claim-pnc/internal/masterrekening/http"
-	rekeningkasir "claim-pnc/internal/masterrekening/kasir"
-	rekeningnotif "claim-pnc/internal/masterrekening/notifikasi"
-	rekeningmemori "claim-pnc/internal/masterrekening/repo/memori"
-	rekeningsql "claim-pnc/internal/masterrekening/repo/sqlstore"
-	rekeningusecase "claim-pnc/internal/masterrekening/usecase"
+	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
+	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
+	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
+	masterrekeningmemory "claim-pnc/internal/masterrekening/repo/memory"
+	masterrekeningsql "claim-pnc/internal/masterrekening/repo/sqlstore"
+	masterrekeningusecase "claim-pnc/internal/masterrekening/usecase"
 	masterstatushttp "claim-pnc/internal/masterstatus/http"
-	masterstatusmemori "claim-pnc/internal/masterstatus/repo/memori"
+	masterstatusmemory "claim-pnc/internal/masterstatus/repo/memory"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	masterstatususecase "claim-pnc/internal/masterstatus/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
-	portalmemori "claim-pnc/internal/portal/repo/memori"
+	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
-// berkasEnvBaku dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
+// defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
 // isinya, sehingga satu perintah dapat menimpa satu nilai tanpa menyunting berkas.
-const berkasEnvBaku = ".env"
+const defaultEnvFile = ".env"
 
 func main() {
-	if err := jalankan(); err != nil {
+	if err := run(); err != nil {
 		// Kegagalan saat start ditulis ke stderr dan menghentikan proses. Aplikasi
 		// yang setengah hidup lebih berbahaya daripada aplikasi yang tidak start.
 		fmt.Fprintln(os.Stderr, "gagal menjalankan aplikasi:", err)
@@ -65,248 +65,248 @@ func main() {
 	}
 }
 
-func jalankan() error {
+func run() error {
 	// Dua flag, keduanya untuk mode periksa. Aplikasi normal tidak memakai flag sama
 	// sekali — seluruh konfigurasinya dari .env atau lingkungan (ADR-0025).
-	modePeriksa := flag.Bool("periksa", false,
+	checkMode := flag.Bool("periksa", false,
 		"periksa integrasi basis data dan HCC/HCQ lalu berhenti; tidak menulis apa pun")
-	loginUji := flag.String("login", "",
+	testLogin := flag.String("login", "",
 		"nama pengguna yang dicoba pada mode periksa; kata sandinya dibaca dari stdin")
 	flag.Parse()
 
-	if err := config.MuatBerkasEnv(berkasEnvBaku); err != nil {
+	if err := config.LoadEnvFile(defaultEnvFile); err != nil {
 		return err
 	}
-	konf, err := config.Muat()
+	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
 
-	if *modePeriksa {
-		return periksa(konf, *loginUji, os.Stdin, os.Stdout)
+	if *checkMode {
+		return check(cfg, *testLogin, os.Stdin, os.Stdout)
 	}
 
-	logger := logging.Baru(slog.LevelInfo)
-	logger.Info("konfigurasi terbaca", slog.Any("konfigurasi", konf.Ringkas()))
+	logger := logging.New(slog.LevelInfo)
+	logger.Info("konfigurasi terbaca", slog.Any("konfigurasi", cfg.Summary()))
 
-	rakitan, err := rakit(konf, logger)
+	assembly, err := build(cfg, logger)
 	if err != nil {
 		return err
 	}
-	defer rakitan.tutup()
+	defer assembly.close()
 
-	berkasSPA, err := spa.Berkas()
+	spaFiles, err := spa.Files()
 	if err != nil {
 		logger.Warn("antarmuka tidak tersedia; aplikasi hanya melayani API",
 			slog.String("sebab", err.Error()))
-		berkasSPA = nil
+		spaFiles = nil
 	}
 
 	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
 	// bentuk respons dan header Cache-Control-nya tidak berbeda antarmodul.
-	tulisJSON := func(w http.ResponseWriter, r *http.Request, status int, badan any) {
-		authhttp.TulisJSON(w, r, status, badan, logger)
+	writeJSON := func(w http.ResponseWriter, r *http.Request, status int, body any) {
+		authhttp.WriteJSON(w, r, status, body, logger)
 	}
-	tulisGalatAuth := authhttp.TulisGalat(logger)
+	writeAuthError := authhttp.WriteError(logger)
 
-	handlerAuth := authhttp.HandlerBaru(rakitan.auth, logger)
-	handlerMasterStatus := masterstatushttp.HandlerBaru(masterstatushttp.Opsi{
-		Layanan: rakitan.masterStatus,
+	handlerAuth := authhttp.NewHandler(assembly.auth, logger)
+	handlerMasterStatus := masterstatushttp.NewHandler(masterstatushttp.Options{
+		Service: assembly.masterStatus,
 		Logger:  logger,
 		// Galat yang bukan milik modul master diteruskan ke penulis galat auth,
 		// sehingga galat sesi tetap dijawab dengan kode yang sudah dikenal frontend.
-		TulisRespon:        tulisJSON,
-		TulisGalatCadangan: masterstatushttp.PenulisGalat(tulisGalatAuth),
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: masterstatushttp.ErrorWriter(writeAuthError),
 	})
-	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
-		Repo:       rakitan.portal,
-		AliasSiap:  rakitan.aliasSiap,
-		AliasUtama: konf.PortalUtama,
-		Logger:     logger,
-		TulisRespon: func(w http.ResponseWriter, r *http.Request, status int, badan any) {
-			authhttp.TulisJSON(w, r, status, badan, logger)
+	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
+		Repo:         assembly.portal,
+		ReadyAliases: assembly.readyAliases,
+		PrimaryAlias: cfg.PrimaryPortal,
+		Logger:       logger,
+		WriteResponse: func(w http.ResponseWriter, r *http.Request, status int, body any) {
+			authhttp.WriteJSON(w, r, status, body, logger)
 		},
-		TulisGalat: authhttp.TulisGalat(logger),
+		WriteError: authhttp.WriteError(logger),
 	})
 
-	handlerRekening := rekeninghttp.HandlerBaru(rekeninghttp.Opsi{
-		Layanan: rakitan.masterRekening,
+	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
+		Service: assembly.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
 		// sini, bukan di dalam salah satu modul, supaya kedua modul tetap tidak saling
 		// mengimpor — yang tahu keduanya hanyalah berkas perakitan ini.
-		Pemanggil: func(ctx context.Context) (rekeninghttp.Pemanggil, bool) {
-			konteks, ada := authhttp.KonteksPengguna(ctx)
-			if !ada {
-				return rekeninghttp.Pemanggil{}, false
+		Caller: func(ctx context.Context) (masterrekeninghttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterrekeninghttp.Caller{}, false
 			}
-			return rekeninghttp.Pemanggil{
-				Identitas: konteks.Pengguna.Identitas,
-				Nama:      konteks.Pengguna.Nama,
-				Email:     konteks.Pengguna.Email,
+			return masterrekeninghttp.Caller{
+				Identity: baseCtx.User.Identity,
+				Name:     baseCtx.User.Name,
+				Email:    baseCtx.User.Email,
 			}, true
 		},
 		Logger: logger,
 	})
 
-	router := httpserver.Router(httpserver.Bahan{
-		Logger:    logger,
-		BerkasSPA: berkasSPA,
-		PasangAPI: func(api chi.Router) {
+	router := httpserver.Router(httpserver.Deps{
+		Logger:   logger,
+		SPAFiles: spaFiles,
+		MountAPI: func(api chi.Router) {
 			// Setiap modul memasang rutenya sendiri di sini. Modul berikutnya cukup
 			// menambah satu baris; server tidak perlu tahu isinya.
-			authhttp.Pasang(api, handlerAuth, rakitan.auth, logger)
+			authhttp.Mount(api, handlerAuth, assembly.auth, logger)
 
-			// Daftar portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
+			// List portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
 			// bukan di layar masuk (ADR-0030, berpindah portal tanpa login ulang).
-			api.Group(func(terlindungi chi.Router) {
-				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, authhttp.TulisGalat(logger)))
-				portalhttp.Pasang(terlindungi, handlerPortal)
+			api.Group(func(protected chi.Router) {
+				protected.Use(authhttp.Authenticate(assembly.auth, authhttp.WriteError(logger)))
+				portalhttp.Mount(protected, handlerPortal)
 
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
-				rekeninghttp.Pasang(terlindungi, handlerRekening)
+				masterrekeninghttp.Mount(protected, accountHandler)
 				// Master data juga berada di balik sesi. Pemeriksaan peran — "apakah
 				// pemanggil memiliki menu Master Data" (D-59) — belum ada di sini
 				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
 				// dengan seluruh rute lain hari ini.
-				masterstatushttp.Pasang(terlindungi, handlerMasterStatus)
+				masterstatushttp.Mount(protected, handlerMasterStatus)
 			})
 		},
 	})
 
 	server := &http.Server{
-		Addr:              konf.Alamat,
+		Addr:              cfg.Address,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	logger.Info("server menyala", slog.String("alamat", konf.Alamat))
+	logger.Info("server menyala", slog.String("alamat", cfg.Address))
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server berhenti: %w", err)
 	}
 	return nil
 }
 
-// rakitan memegang seluruh modul yang sudah terpasang beserta cara menutupnya.
-type rakitan struct {
-	auth           *usecase.Layanan
+// assembly memegang seluruh modul yang sudah terpasang beserta cara menutupnya.
+type assembly struct {
+	auth           *usecase.Service
 	portal         portal.Repo
-	masterRekening *rekeningusecase.Layanan
-	masterStatus *masterstatususecase.Layanan
-	aliasSiap      func() []string
-	tutup          func()
+	masterRekening *masterrekeningusecase.Service
+	masterStatus   *masterstatususecase.Service
+	readyAliases   func() []string
+	close          func()
 }
 
-// penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
-type penyimpanan struct {
-	pengguna     auth.PenggunaRepo
-	sesi         auth.SesiRepo
+// storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
+type storage struct {
+	user         auth.UserRepo
+	session      auth.SessionRepo
 	portal       portal.Repo
 	masterStatus masterstatus.Repo
 
-	rekening     masterrekening.Repo
-	bankRekening masterrekening.BankRepo
+	account     masterrekening.Repo
+	accountBank masterrekening.BankRepo
 
 	// rekeningDiOracle menyatakan master rekening dipasang di atas POOLDATA.LST_ACCOUNT
 	// yang sungguhan, bukan di memori. Adapter tiruan yang menulis jejak karangan
 	// dilarang di atasnya — lihat rakitMasterRekening.
-	rekeningDiOracle bool
+	accountInOracle bool
 
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
-	warisan *sqlstore.Warisan
+	legacy *sqlstore.Legacy
 
-	aliasSiap func() []string
-	tutup     func()
+	readyAliases func() []string
+	close        func()
 }
 
-// rakit menyusun seluruh modul di balik seam-nya masing-masing.
-func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
-	produksi := konf.Lingkungan == config.Produksi
+// build menyusun seluruh modul di balik seam-nya masing-masing.
+func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
+	production := cfg.Environment == config.Production
 
-	simpan, err := rakitPenyimpanan(konf, produksi, logger)
+	store, err := buildStorage(cfg, production, logger)
 	if err != nil {
-		return rakitan{}, err
+		return assembly{}, err
 	}
 
-	sistemIdentitas, err := rakitIdentitas(konf, produksi, simpan.warisan)
+	identitySystem, err := buildIdentity(cfg, production, store.legacy)
 	if err != nil {
-		simpan.tutup()
-		return rakitan{}, err
+		store.close()
+		return assembly{}, err
 	}
 
-	layanan, err := usecase.LayananBaru(usecase.Opsi{
-		Identitas:       sistemIdentitas,
-		PenggunaRepo:    simpan.pengguna,
-		SesiRepo:        simpan.sesi,
-		Jam:             waktu.JamSistem{},
-		MasaBerlakuSesi: konf.Sesi.MasaBerlaku,
+	service, err := usecase.NewService(usecase.Options{
+		Identity:        identitySystem,
+		UserRepo:        store.user,
+		SessionRepo:     store.session,
+		Clock:           clock.System{},
+		SessionLifetime: cfg.Session.Lifetime,
 	})
 	if err != nil {
-		simpan.tutup()
-		return rakitan{}, err
+		store.close()
+		return assembly{}, err
 	}
 
-	layananMasterStatus, err := masterstatususecase.LayananBaru(masterstatususecase.Opsi{
-		Repo: simpan.masterStatus,
+	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
+		Repo: store.masterStatus,
 	})
 	if err != nil {
-		simpan.tutup()
-		return rakitan{}, err
+		store.close()
+		return assembly{}, err
 	}
 
-	return rakitan{
-		auth:           layanan,
-		portal:         simpan.portal,
-		masterRekening: rakitMasterRekening(konf, simpan, logger),
-		masterStatus: layananMasterStatus,
-		aliasSiap:      simpan.aliasSiap,
-		tutup:          simpan.tutup,
+	return assembly{
+		auth:           service,
+		portal:         store.portal,
+		masterRekening: buildMasterRekening(cfg, store, logger),
+		masterStatus:   claimStatusService,
+		readyAliases:   store.readyAliases,
+		close:          store.close,
 	}, nil
 }
 
-// rakitMasterRekening menyusun modul Master Rekening di balik seam-nya.
+// buildMasterRekening menyusun modul Master Rekening di balik seam-nya.
 //
 // Seam Kasir diisi klien HTTP nyata bila alamatnya sudah dikonfigurasi, dan tiruan bila
 // belum. Perbedaannya diumumkan di log: layar yang tampak bekerja padahal pendaftaran
 // ke Kasir tidak pernah terjadi adalah kegagalan yang tidak terlihat siapa pun sampai
 // pembayaran pertama tertahan.
-func rakitMasterRekening(konf config.Konfigurasi, simpan penyimpanan, logger *slog.Logger) *rekeningusecase.Layanan {
+func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) *masterrekeningusecase.Service {
 	var (
-		sistemKasir masterrekening.Kasir
-		pemberitahu masterrekening.Notifier
+		cashierSystem masterrekening.Cashier
+		notifier      masterrekening.Notifier
 	)
 
-	if konf.SMTP.Aktif() {
-		pemberitahu = rekeningnotif.PengirimBaru(rekeningnotif.Konfigurasi{
-			Host:      konf.SMTP.Host,
-			Port:      konf.SMTP.Port,
-			Pengguna:  konf.SMTP.Pengguna,
-			KataSandi: konf.SMTP.KataSandi,
-			Dari:      konf.SMTP.Dari,
-			Kepada:    konf.SMTP.PenerimaPeringatan,
-			Tenggang:  konf.SMTP.Batas,
+	if cfg.SMTP.Active() {
+		notifier = masterrekeningnotif.NewSender(masterrekeningnotif.Config{
+			Host:     cfg.SMTP.Host,
+			Port:     cfg.SMTP.Port,
+			User:     cfg.SMTP.User,
+			Password: cfg.SMTP.Password,
+			From:     cfg.SMTP.From,
+			To:       cfg.SMTP.AlertRecipients,
+			Timeout:  cfg.SMTP.Timeout,
 		})
 	} else {
-		pemberitahu = &rekeningnotif.Tiruan{}
+		notifier = &masterrekeningnotif.Fake{}
 		logger.Warn("pengirim surel tiruan dipakai",
-			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Kasir gagal"),
+			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Cashier gagal"),
 			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_PERINGATAN"))
 	}
 
 	switch {
-	case konf.Kasir.Aktif():
-		sistemKasir = rekeningkasir.KlienBaru(rekeningkasir.Konfigurasi{
-			URLDaftar:   konf.Kasir.URLDaftar,
-			URLPerbarui: konf.Kasir.URLPerbarui,
-			Pengguna:    konf.Kasir.Pengguna,
-			Sandi:       konf.Kasir.KataSandi,
-			Tenggang:    konf.Kasir.Batas,
+	case cfg.Cashier.Active():
+		cashierSystem = masterrekeningcashier.NewClient(masterrekeningcashier.Config{
+			RegisterURL: cfg.Cashier.RegisterURL,
+			UpdateURL:   cfg.Cashier.UpdateURL,
+			User:        cfg.Cashier.User,
+			Password:    cfg.Cashier.Password,
+			Timeout:     cfg.Cashier.Timeout,
 		})
 
-	case simpan.rekeningDiOracle:
+	case store.accountInOracle:
 		// KASIR TIRUAN DILARANG DI ATAS BASIS DATA SUNGGUHAN.
 		//
-		// Tiruan menjawab "berhasil" beserta nomor rekening Kasir karangan. Bila
+		// Fake menjawab "berhasil" beserta nomor rekening Kasir karangan. Bila
 		// jawaban itu ditulis ke POOLDATA.LST_ACCOUNT yang asli, kolom STS_SERVICE
 		// dan ID_REKASIR akan memuat jejak pendaftaran yang tidak pernah terjadi —
 		// dan tidak ada apa pun sesudahnya yang dapat membedakannya dari pendaftaran
@@ -316,28 +316,28 @@ func rakitMasterRekening(konf config.Konfigurasi, simpan penyimpanan, logger *sl
 		// Seam dibiarkan nil. Usecase sudah menanganinya: rekening tetap dapat
 		// disetujui komite, dan langkah pendaftaran ke Kasir dilewati tanpa
 		// meninggalkan jejak apa pun.
-		sistemKasir = nil
-		logger.Warn("pendaftaran ke Kasir DILEWATI",
-			slog.String("sebab", "alamat sistem Kasir belum dikonfigurasi, sedangkan master rekening membaca basis data sungguhan"),
-			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Kasir, dan tidak ada jejak Kasir yang ditulis"),
+		cashierSystem = nil
+		logger.Warn("pendaftaran ke Cashier DILEWATI",
+			slog.String("sebab", "alamat sistem Cashier belum dikonfigurasi, sedangkan master rekening membaca basis data sungguhan"),
+			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Cashier, dan tidak ada jejak Cashier yang ditulis"),
 			slog.String("perbaikan", "isi KASIR_URL_DAFTAR_REKENING dan KASIR_URL_PERBARUI_REKENING"))
 
 	default:
 		// Penyimpanan di memori: tiruan aman dipakai dan memang berguna, karena ia
 		// membuat seluruh alur dapat dicoba tanpa basis data dan tanpa jaringan.
-		sistemKasir = rekeningkasir.TiruanBaru()
-		logger.Warn("sistem Kasir tiruan dipakai",
-			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Kasir yang sesungguhnya"),
+		cashierSystem = masterrekeningcashier.NewFake()
+		logger.Warn("sistem Cashier tiruan dipakai",
+			slog.String("akibat", "rekening yang disetujui komite TIDAK didaftarkan ke Cashier yang sesungguhnya"),
 			slog.String("perbaikan", "isi KASIR_URL_DAFTAR_REKENING dan KASIR_URL_PERBARUI_REKENING"))
 	}
 
-	return rekeningusecase.LayananBaru(rekeningusecase.Opsi{
-		Repo:        simpan.rekening,
-		Bank:        simpan.bankRekening,
-		Kasir:       sistemKasir,
-		Notifier:    pemberitahu,
-		Jam:         waktu.JamSistem{},
-		PortalAlias: konf.PortalUtama,
+	return masterrekeningusecase.NewService(masterrekeningusecase.Options{
+		Repo:        store.account,
+		Bank:        store.accountBank,
+		Cashier:     cashierSystem,
+		Notifier:    notifier,
+		Clock:       clock.System{},
+		PortalAlias: cfg.PrimaryPortal,
 	})
 }
 
@@ -353,31 +353,31 @@ func rakitMasterRekening(konf config.Konfigurasi, simpan penyimpanan, logger *sl
 // Menyatukan keduanya — seperti yang saya lakukan mula-mula — memaksa migrasi 0001
 // selesai sebelum integrasi HCC/HCQ dapat dicoba lewat layar, padahal keduanya tidak
 // saling bergantung.
-func butuhOracle(konf config.Konfigurasi) bool {
-	return konf.Penyimpanan == config.PenyimpananOracle ||
-		konf.AdapterIdentitas == config.AdapterIdentitasNyata
+func butuhOracle(cfg config.Config) bool {
+	return cfg.Storage == config.StorageOracle ||
+		cfg.IdentityAdapter == config.IdentityAdapterHCQ
 }
 
-// rakitPenyimpanan membuka koneksi portal bila diperlukan dan memasang repo di atasnya.
-func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logger) (penyimpanan, error) {
-	if konf.Penyimpanan == config.PenyimpananMemori && produksi {
-		// Sesi di memori satu instans melanggar tuntutan stateless (D-27): instans
+// buildStorage membuka koneksi portal bila diperlukan dan memasang repo di atasnya.
+func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (storage, error) {
+	if cfg.Storage == config.StorageMemory && production {
+		// Session di memori satu instans melanggar tuntutan stateless (D-27): instans
 		// kedua di belakang load balancer tidak akan mengenali sesi yang diterbitkan
 		// instans pertama. Penolakannya ada di kode, bukan di nilai konfigurasi.
-		return penyimpanan{}, errors.New(
+		return storage{}, errors.New(
 			"penyimpanan memori menolak berjalan di lingkungan produksi: sesi wajib dikenali seluruh instans (D-27)")
 	}
 
-	simpan := penyimpanan{
-		tutup:     func() {},
-		aliasSiap: func() []string { return nil },
+	store := storage{
+		close:        func() {},
+		readyAliases: func() []string { return nil },
 	}
 
-	if butuhOracle(konf) {
+	if butuhOracle(cfg) {
 		ctx, batal := context.WithTimeout(context.Background(), 30*time.Second)
 		defer batal()
 
-		kumpulan, err := db.KumpulanBaru(ctx, konf.PortalUtama, parameterPortal(konf), func(alias string, err error) {
+		pool, err := db.NewPool(ctx, cfg.PrimaryPortal, portalParameters(cfg), func(alias string, err error) {
 			// Portal yang gagal dibuka dicatat tetapi tidak menghentikan aplikasi:
 			// pengisian kredensial tiap entitas berjalan bertahap, dan satu entitas
 			// yang belum siap tidak boleh menghalangi entitas yang sudah siap.
@@ -386,119 +386,119 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 				slog.String("sebab", err.Error()))
 		})
 		if err != nil {
-			return penyimpanan{}, err
+			return storage{}, err
 		}
-		logger.Info("koneksi portal terbuka", slog.Any("portal", kumpulan.Tersedia()))
+		logger.Info("koneksi portal terbuka", slog.Any("portal", pool.Available()))
 
-		utama := kumpulan.Utama()
-		simpan.warisan = sqlstore.WarisanBaru(utama)
-		simpan.portal = portalsql.RepoBaru(utama)
-		simpan.rekening = rekeningsql.RepoBaru(utama)
-		simpan.bankRekening = rekeningsql.BankRepoBaru(utama)
-		simpan.rekeningDiOracle = true
-		simpan.aliasSiap = kumpulan.Tersedia
-		simpan.masterStatus = masterstatussql.RepoBaru(utama)
-		simpan.tutup = kumpulan.Tutup
+		primary := pool.Primary()
+		store.legacy = sqlstore.NewLegacy(primary)
+		store.portal = portalsql.NewRepo(primary)
+		store.account = masterrekeningsql.NewRepo(primary)
+		store.accountBank = masterrekeningsql.NewBankRepo(primary)
+		store.accountInOracle = true
+		store.readyAliases = pool.Available
+		store.masterStatus = masterstatussql.NewRepo(primary)
+		store.close = pool.Close
 	} else {
-		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
-		simpan.rekening = rekeningmemori.RepoBaru()
-		simpan.bankRekening = rekeningmemori.BankRepoBaru(rekeningmemori.DaftarBankContoh()...)
+		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
+		store.account = masterrekeningmemory.NewRepo()
+		store.accountBank = masterrekeningmemory.NewBankRepo(masterrekeningmemory.SampleBanks()...)
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
-		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
-		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
+		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
+		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 	}
 
-	switch konf.Penyimpanan {
-	case config.PenyimpananOracle:
-		utama := simpan.warisan.DB()
-		simpan.pengguna = sqlstore.PenggunaRepoBaru(utama)
-		simpan.sesi = sqlstore.SesiRepoBaru(utama)
+	switch cfg.Storage {
+	case config.StorageOracle:
+		primary := store.legacy.DB()
+		store.user = sqlstore.NewUserRepo(primary)
+		store.session = sqlstore.NewSessionRepo(primary)
 
-	case config.PenyimpananMemori:
+	case config.StorageMemory:
 		// Catatan dan sesi di memori. Dipakai bersama IDENTITAS_ADAPTER=hcq, ini
 		// memungkinkan masuk dengan kredensial SUNGGUHAN sebelum migrasi 0001
 		// dijalankan DBA — yang hilang hanya ketahanan sesi terhadap restart dan
 		// pengenalan sesi lintas instans.
-		if konf.AdapterIdentitas == config.AdapterIdentitasNyata {
+		if cfg.IdentityAdapter == config.IdentityAdapterHCQ {
 			logger.Warn("identitas nyata dengan penyimpanan memori",
 				slog.String("akibat", "sesi hilang saat restart dan tidak dikenali instans lain; hanya untuk pengujian"))
 		}
-		simpan.pengguna = memori.PenggunaRepoBaru()
-		simpan.sesi = memori.SesiRepoBaru()
+		store.user = memory.NewUserRepo()
+		store.session = memory.NewSessionRepo()
 
 	default:
-		simpan.tutup()
-		return penyimpanan{}, fmt.Errorf("penyimpanan %q tidak dikenal", konf.Penyimpanan)
+		store.close()
+		return storage{}, fmt.Errorf("penyimpanan %q tidak dikenal", cfg.Storage)
 	}
 
-	return simpan, nil
+	return store, nil
 }
 
-// rakitIdentitas menyusun rantai sumber identitas.
+// buildIdentity menyusun rantai sumber identitas.
 //
 // Urutannya adalah aturan bisnis yang ditetapkan Work Owner 2026-09-16: HCC/HCQ lebih
 // dulu untuk karyawan, lalu POOLDATA.M_LOGIN_PNC untuk non-karyawan.
-func rakitIdentitas(konf config.Konfigurasi, produksi bool, warisan *sqlstore.Warisan) (auth.Identitas, error) {
-	switch konf.AdapterIdentitas {
-	case config.AdapterIdentitasTiruan:
+func buildIdentity(cfg config.Config, production bool, legacy *sqlstore.Legacy) (auth.Identity, error) {
+	switch cfg.IdentityAdapter {
+	case config.IdentityAdapterFake:
 		// Penolakan terhadap produksi ada di dalam provider, bukan hanya di sini —
 		// satu nilai konfigurasi tidak boleh cukup untuk menyalakannya di produksi.
-		return provider.TiruanBaru(produksi, nil)
+		return provider.NewFake(production, nil)
 
-	case config.AdapterIdentitasNyata:
-		if warisan == nil {
+	case config.IdentityAdapterHCQ:
+		if legacy == nil {
 			return nil, errors.New("IDENTITAS_ADAPTER=hcq menuntut koneksi basis data: alamat layanan HCQ dan daftar login non-karyawan keduanya dibaca dari sana")
 		}
-		hcq, err := provider.HCQBaru(provider.OpsiHCQ{
-			Katalog:     warisan,
-			PortalAlias: konf.PortalUtama,
-			Pengguna:    konf.HCQ.Pengguna,
-			KataSandi:   konf.HCQ.KataSandi,
-			BatasWaktu:  konf.HCQ.Batas,
+		hcq, err := provider.NewHCQ(provider.HCQOptions{
+			Katalog:     legacy,
+			PortalAlias: cfg.PrimaryPortal,
+			User:        cfg.HCQ.User,
+			Password:    cfg.HCQ.Password,
+			Timeout:     cfg.HCQ.Timeout,
 		})
 		if err != nil {
 			return nil, err
 		}
-		lokal, err := provider.LokalBaru(warisan)
+		local, err := provider.NewLocal(legacy)
 		if err != nil {
 			return nil, err
 		}
-		return provider.BerantaiBaru(
-			provider.MataRantai{Nama: "hcq", Sumber: hcq},
-			provider.MataRantai{Nama: "lokal", Sumber: lokal},
+		return provider.NewChain(
+			provider.Link{Name: "hcq", Sumber: hcq},
+			provider.Link{Name: "lokal", Sumber: local},
 		)
 
 	default:
-		return nil, fmt.Errorf("adapter identitas %q tidak dikenal", konf.AdapterIdentitas)
+		return nil, fmt.Errorf("adapter identitas %q tidak dikenal", cfg.IdentityAdapter)
 	}
 }
 
-// parameterPortal mengubah konfigurasi portal menjadi parameter koneksi, melewati
+// portalParameters mengubah konfigurasi portal menjadi parameter koneksi, melewati
 // portal yang variabel wajibnya belum terisi.
-func parameterPortal(konf config.Konfigurasi) []db.Parameter {
-	alias := make([]string, 0, len(konf.Portal))
-	for a := range konf.Portal {
+func portalParameters(cfg config.Config) []db.Parameter {
+	alias := make([]string, 0, len(cfg.Portal))
+	for a := range cfg.Portal {
 		alias = append(alias, a)
 	}
 	sort.Strings(alias)
 
 	parameter := make([]db.Parameter, 0, len(alias))
 	for _, a := range alias {
-		b := konf.Portal[a]
-		if !b.Lengkap() {
+		b := cfg.Portal[a]
+		if !b.Complete() {
 			continue
 		}
 		parameter = append(parameter, db.Parameter{
-			Alias:       b.Alias,
-			Host:        b.Host,
-			Port:        b.Port,
-			Service:     b.Service,
-			Pengguna:    b.Pengguna,
-			KataSandi:   b.KataSandi,
-			MaksKoneksi: b.MaksKoneksi,
-			MaksIdle:    b.MaksIdle,
-			UmurKoneksi: b.UmurKoneksi,
+			Alias:              b.Alias,
+			Host:               b.Host,
+			Port:               b.Port,
+			Service:            b.Service,
+			User:               b.User,
+			Password:           b.Password,
+			MaxConnections:     b.MaxConnections,
+			MaxIdle:            b.MaxIdle,
+			ConnectionLifetime: b.ConnectionLifetime,
 		})
 	}
 	return parameter

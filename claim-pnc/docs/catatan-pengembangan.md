@@ -666,12 +666,12 @@ pada baris baru pertama.
 **Verifikasi:** `go build`, `go vet`, dan `go test ./...` seluruhnya lolos — termasuk
 seluruh uji modul yang sudah ada sebelumnya. `npm run periksa-tipe` lolos. `npm test`
 tetap terhalang versi Node (lihat §9.8).
-## 9. Sesi keempat — Master Status Klaim (2026-09-17)
+## 10. Sesi keempat — Master Status Klaim (2026-09-17)
 
 Modul bisnis **pertama**. Sampai sesi ini yang ada hanyalah login, pemilih portal, dan beranda
 sementara; `README.md` menyatakannya sendiri: *"Modul bisnis belum ada satu pun."*
 
-### 9.1 Koreksi premis instruksi
+### 10.1 Koreksi premis instruksi
 
 Instruksi menyebut modul **Login, Home, dan Master Data** sudah selesai dan dilarang disentuh.
 Pemeriksaan terhadap kode menemukan yang ketiga **tidak ada sama sekali** — tidak ada folder master
@@ -682,7 +682,7 @@ Disampaikan lebih dulu sebelum mengerjakan. Akibatnya bukan sekadar soal penamaa
 Klaim menjadi master data yang pertama**, sehingga setiap pilihan di sini menjadi pola untuk
 sekurang-kurangnya 28 master berikutnya.
 
-### 9.2 Yang dibaca sebelum menulis kode
+### 10.2 Yang dibaca sebelum menulis kode
 
 | Sumber | Yang diambil |
 |---|---|
@@ -705,7 +705,7 @@ sekurang-kurangnya 28 master berikutnya.
    `PEGA_M_PANEL_HE` — semuanya tabel `(ID, JSON_DATA)` yang ditulis procedure dan dibaca lewat
    view. Apa pun yang diputuskan di sini berlaku untuk 28 master sesudahnya.
 
-### 9.3 Empat pertanyaan konfirmasi dan jawabannya
+### 10.3 Empat pertanyaan konfirmasi dan jawabannya
 
 | # | Pertanyaan | Jawaban Work Owner |
 |---|---|---|
@@ -718,7 +718,7 @@ Jawaban 3 menyimpang dari acceptance criteria `TKT-F4-001` ("setiap perubahan ma
 tepat satu baris jejak audit"). Itu keputusan Work Owner, dicatat di `keputusan-implementasi.md`
 §10 beserta konsekuensinya — bukan diserap diam-diam.
 
-### 9.4 Yang dibangun
+### 10.4 Yang dibangun
 
 **Backend — modul `internal/masterstatus/`**, mengikuti bentuk modul yang sudah ada:
 
@@ -745,7 +745,7 @@ masterstatus/
 bersama: `api/klien.ts` (dukungan PUT dan `detail` galat), `api/tipe.ts` (tipe dan kode galat baru),
 `app/App.tsx` (satu rute), serta `cmd/claimpnc/main.go` dan `periksa.go` (perakitan).
 
-### 9.5 Kendala dan penyelesaiannya
+### 10.5 Kendala dan penyelesaiannya
 
 **Tabel dan kartu digambar dua kali.** Mula-mula `TabelData` menggambar `<table>` untuk layar lebar
 dan daftar kartu untuk layar sempit sebagai dua pohon terpisah. Itu mudah ditulis dan **salah**:
@@ -763,7 +763,7 @@ Pengujianlah yang menemukannya — bukan pembacaan ulang kode.
 aplikasi. Diselesaikan dengan `--noproxy` dan alamat `127.0.0.1`. Bukan cacat aplikasi, tetapi layak
 dicatat supaya tidak didiagnosis ulang oleh orang berikutnya.
 
-### 9.6 Verifikasi yang benar-benar dijalankan
+### 10.6 Verifikasi yang benar-benar dijalankan
 
 Bukan rencana. Seluruhnya dijalankan, dan angka di bawah adalah hasilnya.
 
@@ -797,10 +797,10 @@ tiruan — tanpa menyentuh basis data mana pun):
 | 13 | ubah baris yang tidak ada | `404` |
 | 14 | `DELETE` | `405` — rutenya memang tidak ada |
 
-### 9.7 Yang ditemukan dari basis data yang berjalan
+### 10.7 Yang ditemukan dari basis data yang berjalan
 
 Mode periksa dijalankan terhadap Oracle, lalu satu perkakas diagnostik **baca-saja** sementara untuk
-membaca katalog. Perkakasnya sudah dihapus; kuerinya dicatat di §9.8 supaya dapat diulang.
+membaca katalog. Perkakasnya sudah dihapus; kuerinya dicatat di §10.8 supaya dapat diulang.
 
 **Empat temuan, dan tiga di antaranya mengoreksi tebakan saya sendiri:**
 
@@ -832,7 +832,7 @@ di situ. Itulah yang diisi langkah 1 migrasi 0002, dan itu pula sebabnya mode pe
 `[WASPADA] 32 status berlabel kosong` sebelum migrasi dijalankan — bukan cacat, melainkan laporan
 yang benar atas keadaan yang belum bermigrasi.
 
-### 9.8 Kueri diagnostik, supaya dapat diulang tanpa perkakas
+### 10.8 Kueri diagnostik, supaya dapat diulang tanpa perkakas
 
 ```sql
 -- kolom tabel dan view
@@ -858,7 +858,7 @@ SELECT COUNT(*), COUNT(LSC_NOTE), COUNT(OLD_LSC_ID), COUNT(DBMS_LOB.GETLENGTH(JS
   FROM POOLDATA.M_STS_CLAIM;
 ```
 
-### 9.9 Yang belum dapat dibuktikan
+### 10.9 Yang belum dapat dibuktikan
 
 | Acceptance criteria | Keadaan | Apa yang menahannya |
 |---|---|---|
@@ -869,18 +869,18 @@ SELECT COUNT(*), COUNT(LSC_NOTE), COUNT(OLD_LSC_ID), COUNT(DBMS_LOB.GETLENGTH(JS
 
 ---
 
-## 10. Sesi kelima — penataan ulang tampilan (2026-09-17)
+## 11. Sesi kelima — penataan ulang tampilan (2026-09-17)
 
 Permintaan Work Owner: tampilan yang menarik secara visual, gaya modern, kontras baik, efek hover
 dan active dengan transisi halus, responsif di ponsel dan desktop, bayangan lembut dan sudut
 membulat, **Light Mode**.
 
-### 10.1 Dua keputusan yang diminta lebih dulu
+### 11.1 Dua keputusan yang diminta lebih dulu
 
 | Pertanyaan | Jawaban Work Owner |
 |---|---|
 | Layar mana yang ikut didesain ulang? | **Seluruh aplikasi** — termasuk Masuk dan Beranda |
-| Warna aksennya apa? | **Biru profesional**, abu-abu batu sebagai dasar. Mula-mula indigo, diganti menjadi `blue` atas permintaan susulan — lihat §10.11 |
+| Warna aksennya apa? | **Biru profesional**, abu-abu batu sebagai dasar. Mula-mula indigo, diganti menjadi `blue` atas permintaan susulan — lihat §11.11 |
 
 Pertanyaan pertama diajukan karena aturan proyek sampai sesi lalu **melarang menyentuh modul Login
 dan Home**, sedangkan desain ulang visual pasti menyentuh keduanya. Jawabannya mencabut larangan
@@ -890,7 +890,7 @@ itu untuk urusan tampilan.
 galat; tombol Simpan berwarna merah di sebelah pesan galat berwarna merah sulit dibedakan sekilas.
 Bila kelak merek menuntutnya, warna galat harus digeser lebih dulu.
 
-### 10.2 Sistem desain, bukan tempelan per layar
+### 11.2 Sistem desain, bukan tempelan per layar
 
 Seluruh nilai desain hidup di `src/gaya.css` sebagai token Tailwind v4 (`@theme`), bukan tersebar
 sebagai kelas di tiap layar:
@@ -904,9 +904,9 @@ sebagai kelas di tiap layar:
 
 Warnanya memakai **palet blue dan slate bawaan Tailwind**, bukan warna karangan. Nilainya sudah
 ada di pustaka sehingga tidak dapat salah ketik, dan kontrasnya sudah teruji — blue-600 di atas
-putih mencapai 5,1:1, lewat ambang AA. (Angka 8.6:1 yang sempat tertulis di sini salah — lihat §10.11.)
+putih mencapai 5,1:1, lewat ambang AA. (Angka 8.6:1 yang sempat tertulis di sini salah — lihat §11.11.)
 
-### 10.3 Tiga hal yang dikerjakan karena diminta, dan satu yang tidak diminta
+### 11.3 Tiga hal yang dikerjakan karena diminta, dan satu yang tidak diminta
 
 **Diminta, dan dikerjakan:**
 
@@ -923,7 +923,7 @@ putih mencapai 5,1:1, lewat ambang AA. (Angka 8.6:1 yang sempat tertulis di sini
 transisi menimbulkan pusing atau mual. Sistem operasinya sudah menyatakan itu; mengabaikannya
 berarti membuat aplikasi tidak dapat dipakai bagi mereka. Transisi **dimatikan**, bukan dipercepat.
 
-### 10.4 Tiga hal yang dipindahkan, dan alasannya bukan estetika
+### 11.4 Tiga hal yang dipindahkan, dan alasannya bukan estetika
 
 | Yang pindah | Dari | Ke | Kenapa |
 |---|---|---|---|
@@ -935,7 +935,7 @@ Baris "Nama" pada kartu identitas Beranda **dihapus** sebagai akibatnya. Itu buk
 kerapian — uji beranda mencari nama pengguna dengan **pencocokan persis**, dan dua elemen berisi
 nama yang sama membuat pencarian itu gagal. Pemindahan dan penghapusan harus dilakukan bersamaan.
 
-### 10.5 Kendala: uji layar master ikut rusak, dan itu benar
+### 11.5 Kendala: uji layar master ikut rusak, dan itu benar
 
 Setelah pemilih portal pindah ke bilah atas, **14 dari 15 uji layar master gagal**. Sebabnya bukan
 tampilan: bilah atas kini memanggil `/api/portal` pada **setiap** layar di balik sesi, sedangkan
@@ -949,7 +949,7 @@ Melunakkan `PemilihPortal` supaya tahan jawaban yang salah bentuk sempat diperti
 **ditolak**: kontrak API menjamin bentuknya, dan komponen yang diam saat menerima bentuk salah
 menyembunyikan cacat yang seharusnya terlihat.
 
-### 10.6 Kesalahan saya sendiri yang perlu dicatat
+### 11.6 Kesalahan saya sendiri yang perlu dicatat
 
 **Saya sempat menyimpulkan CSS responsifnya tidak terbentuk.** Pemeriksaan pertama mencari
 `min-width:` di berkas CSS hasil build dan tidak menemukan satu pun breakpoint — kesimpulannya:
@@ -968,7 +968,7 @@ Pola kesalahannya sama dengan yang sudah tercatat di sesi keempat: **alat ukur d
 divalidasi**. Sebelum menyimpulkan sesuatu tidak ada, alat pencarinya harus dibuktikan dulu
 menyala pada kasus yang jelas ada.
 
-### 10.7 Keputusan yang sengaja tidak diambil
+### 11.7 Keputusan yang sengaja tidak diambil
 
 | Yang tidak dipakai | Kenapa |
 |---|---|
@@ -978,7 +978,7 @@ menyala pada kasus yang jelas ada.
 | **Mode gelap** | Work Owner meminta Light Mode saja. `color-scheme: light` ditegaskan supaya kontrol bawaan peramban tidak ikut membalik mengikuti tema sistem |
 | **Menu hamburger** | Dengan dua entri, hamburger menambah satu ketukan untuk menyembunyikan sesuatu yang sebenarnya muat. Menu digulir menyamping. Perlu ditinjau ulang bila menunya kelak berasal dari izin peran dan bertambah banyak |
 
-### 10.8 Aksesibilitas — yang dikerjakan supaya kontras tidak berhenti di warna
+### 11.8 Aksesibilitas — yang dikerjakan supaya kontras tidak berhenti di warna
 
 - **Keadaan salah ditandai tiga cara**: warna tepi, ikon, dan teks. Sekitar satu dari dua belas
   laki-laki mengalami buta warna merah-hijau; bagi mereka tepi merah tidak berbeda dari abu-abu.
@@ -991,7 +991,7 @@ menyala pada kasus yang jelas ada.
 - **Tombol Keluar yang menyusut menjadi ikon** tetap membawa teks `sr-only` dan `aria-label`.
 - Label kolom pada tampilan kartu `aria-hidden`, karena `<th scope="col">` sudah menjelaskan selnya.
 
-### 10.9 Verifikasi yang benar-benar dijalankan
+### 11.9 Verifikasi yang benar-benar dijalankan
 
 | Pemeriksaan | Hasil |
 |---|---|
@@ -1016,7 +1016,7 @@ menyala pada kasus yang jelas ada.
 JS `200` 446.518 B, rute dalam `/master/status-klaim` `200` — bukan `404`, sehingga muat ulang
 di tengah aplikasi tidak menjatuhkan pengguna.
 
-### 10.10 Yang perlu diketahui saat mencoba
+### 11.10 Yang perlu diketahui saat mencoba
 
 SPA **tersemat ke binary** lewat `go:embed` (`ADR-0002`). Proses yang sedang berjalan memuat
 tampilan **lama** sampai dibangun ulang:
@@ -1029,7 +1029,7 @@ cd ../backend && go run ./cmd/claimpnc
 Selama pengembangan antarmuka, `npm run dev` di port 5173 jauh lebih cepat — perubahan langsung
 terlihat tanpa membangun ulang binary.
 
-### 10.11 Koreksi warna aksen: indigo menjadi biru (2026-09-17, masih hari yang sama)
+### 11.11 Koreksi warna aksen: indigo menjadi biru (2026-09-17, masih hari yang sama)
 
 Work Owner meninjau hasilnya dan meminta: **"gunakan warna biru, jangan terlalu ke warna ungu."**
 
@@ -1082,3 +1082,187 @@ untuk galat.
 | `--color-blue-600` di CSS | `oklch(54.6% .245 262.881)` — rona biru, terkonfirmasi |
 | Kelas `bg-blue-600`, `hover:bg-blue-700`, `active:bg-blue-800`, `focus-visible:ring-blue-500/35` | ada seluruhnya |
 | Sajian nyata port 8099 | halaman `200`, `theme-color` `#2563eb`, CSS yang disajikan **nol** indigo |
+
+---
+
+## 12. Sesi keenam — penamaan kode dialihkan ke bahasa Inggris (2026-09-18)
+
+### 12.1 Permintaan dan tiga pertanyaan yang diajukan lebih dulu
+
+> "ubah struktur folder code Claim PNC, dari bahasa indonesia menjadi bahasa inggris untuk penamaan
+> folder, file dan code didalamnya. dan tambahkan keterangan pada CLAUDE.MD supaya selanjutnya sudah
+> otomatis menggunakan bahasa inggris."
+
+Permintaan itu tidak menyebut batasnya, dan batasnya justru yang menentukan apakah pekerjaan ini
+penggantian nama atau perubahan yang merusak. Tiga pertanyaan diajukan **sebelum satu berkas pun
+disentuh**:
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Teks yang dilihat pengguna ikut atau tidak | Disamakan seperti referensi dari berkas XML Pega; tambahan yang tidak ada di XML dikoreksi menjadi bahasa Inggris |
+| 2 | Nama field JSON API dan nama kolom basis data | **Keduanya tetap Indonesia** |
+| 3 | Komentar dan dokumen | **Komentar termasuk isi dokumen di `claim-pnc/docs` tetap bahasa Indonesia** |
+
+Jawaban nomor 2 yang paling menentukan bentuk pekerjaannya: ia mengubah "ganti semua nama" menjadi
+"ganti nama internal, **jangan sentuh** kontrak" — dan kedua hal itu sering berada di baris yang
+sama:
+
+```go
+Number string `json:"nomor_rekening"`
+```
+
+Ditetapkan sebagai `D-80` di Decision Log, dan `08-TECHNICAL-STRATEGY.md` §4.1 ditulis ulang.
+
+### 12.2 Kenapa alat sederhana tidak memadai
+
+Percobaan pertama memakai `sed` dengan batas kata (`\b`). Ia salah di tiga tempat sekaligus, dan
+ketiganya baru terlihat belakangan:
+
+| Tempat | Contoh kerusakan |
+|---|---|
+| **Komentar** | `// Sesi yang dicabut` → `// Session yang dicabut` |
+| **Literal string** | data uji `"Aktif"` → `"Active"` — ini **isi kolom basis data**, bukan nama |
+| **Teks JSX** | `Tidak ada baris yang cocok` → `Tidak ada rows yang cocok` |
+
+Karena itu penggantian dikerjakan dengan pemindai kecil yang **memecah berkas menjadi potongan kode
+dan bukan-kode** lebih dulu: komentar (`//`, `/* */`) dan literal string dilewati, dan khusus
+template literal TypeScript, bagian `${…}` di dalamnya dikembalikan menjadi kode. Baru setelah itu
+peta nama diterapkan — pada potongan kode saja.
+
+**Satu kelas yang tetap lolos dari pemindai, dan cara menangkapnya.** Teks JSX (`<p>Rekening
+baru</p>`) bukan komentar dan bukan literal string; bagi pemindai ia kode. Uji frontend yang
+memeriksa teks layar apa adanya itulah yang menangkapnya — tujuh kerusakan, seluruhnya ketahuan
+sebagai uji merah, bukan lewat pembacaan ulang. Contoh yang paling menyesatkan bila lolos:
+`Rekening tujuan pembayaran klaim` sempat menjadi `Rekening target pembayaran klaim`.
+
+Kelas kedua yang juga lolos: **literal regex** (`/ubah status klaim/i`). Tanda `/` di awalnya dibaca
+pemindai sebagai pembagian, sehingga isinya ikut terganti. Empat pemeriksa uji terdampak, dan
+ditemukan oleh mekanisme yang sama.
+
+### 12.3 Urutan kerja yang dipakai
+
+Per modul, bukan sekaligus:
+
+```
+petakan nama → ganti (kode saja) → build → vet → test
+             → periksa baris komentar di git diff → perbaiki prosa
+```
+
+Langkah kelima yang paling sering menemukan sesuatu, dan ia tidak dapat digantikan kompilator:
+komentar yang rusak tetap dapat dikompilasi.
+
+**Prosa yang dipulihkan**, contohnya: `di memory` → `di memori` · `ke Cashier` → `ke Kasir` ·
+`Decision komite` → `Keputusan komite` · `Check kelengkapan isian` → `Periksa kelengkapan isian`.
+
+`Cashier` dipertahankan hanya di tempat ia menyebut **identifier Go** (`seam Cashier`,
+`bankaccount.Cashier`); di prosa, sistem eksternal itu tetap disebut **Kasir** sebagaimana bisnis
+menyebutnya.
+
+### 12.4 Yang berubah
+
+| Lingkup | Isi |
+|---|---|
+| Backend | 5 modul (`auth`, `bankaccount`, `claimstatus`, `portal`, `platform`), 88 berkas |
+| Frontend | 32 berkas, seluruh folder modul, dan berkas gaya |
+| Migrasi | 4 berkas — `0001_user_and_session.*`, `0002_master_claim_status.*` |
+| Nama query `.sql` | 29 penanda `-- name:`; **isi SQL tidak disentuh** |
+| Perintah npm | `periksa-tipe` → `typecheck` · `tandai-dist` → `mark-dist` |
+
+Peta lengkapnya ada di [`peta-penamaan.md`](peta-penamaan.md).
+
+### 12.5 Yang sengaja tidak diubah
+
+| Hal | Alasan |
+|---|---|
+| Nama field JSON API | kontrak; keputusan Work Owner |
+| Nama tabel dan kolom basis data | dimiliki bersama Pega (`D-21`), perubahannya menempuh `D-63` |
+| Komentar dan dokumen di `docs/` | keputusan Work Owner |
+| Teks layar yang ada padanannya di XML Pega | `D-13` |
+| **Variabel lingkungan dan flag baris perintah** | ditambahkan sebagai pengecualian kelima saat pekerjaan berjalan — lihat §12.6 |
+| `catatan-pengembangan.md` dan `keputusan-implementasi.md` yang memuat jalur berkas lama | keduanya **rekaman**, bukan pernyataan yang berlaku; diperlakukan sama seperti entri lama Decision Log |
+
+### 12.6 Pengecualian kelima yang ditemukan saat bekerja
+
+Aturan awal menyebut **empat** hal yang tetap Indonesia. Saat `cmd/claimpnc/periksa.go` menjadi
+`check.go`, muncul pertanyaan yang belum terjawab aturan itu: apakah flag `-periksa` dan variabel
+lingkungan `PENYIMPANAN`, `PORTAL_UTAMA`, `IDENTITAS_ADAPTER` ikut berganti?
+
+Keduanya **tidak** diganti, dan alasannya sama dengan alasan field JSON tidak diganti: ia dipakai
+berkas `.env`, skrip deployment, dan operator — menggantinya merusak lingkungan yang sudah berjalan,
+bukan sekadar mengganti nama. Aturan `D-80` dan §4.1 diperbarui menjadi **lima** hal, supaya ini
+tercatat sebagai keputusan, bukan kelalaian.
+
+### 12.7 Satu cacat lama yang terpaksa ikut diperbaiki
+
+`FormRekening.tsx` dan `HalamanMasterRekening.tsx` memanggil `GalatAPI.field`, padahal kelas itu
+tidak punya field bernama `field` — yang ada `detail: PelanggaranField[]`. Kode itu **tidak pernah
+lolos `tsc`**, dan sesudah penggantian nama ia menghalangi seluruh pemeriksaan tipe.
+
+Diperbaiki menjadi pembacaan `detail` sebagaimana bentuk sesungguhnya:
+
+```ts
+for (const { field, pesan } of error.detail) {
+  const column = COLUMN_MAP[field]
+  if (column) setError(column, { type: 'server', message: pesan })
+}
+```
+
+Ini **di luar lingkup penggantian nama**, dan dicatat di sini supaya tidak terbaca sebagai akibatnya.
+
+### 12.8 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l` | 0 berkas |
+| `go vet ./...` | bersih |
+| `go test ./...` | **16 paket ok**, tidak ada yang gagal |
+| `go build ./cmd/claimpnc` | ok |
+| `npm run typecheck` | bersih |
+| `npm test` | **39 lulus · 3 gagal** |
+| `npm run build` | ok — 40,9 KB CSS · 463,2 KB JS |
+
+**Ketiga uji frontend yang gagal sudah gagal sebelum sesi ini.** Ini dibuktikan, bukan
+diasumsikan: sebuah `git worktree` pada `HEAD` dibuat, `node_modules` ditautkan ke sana, dan
+suitenya dijalankan — hasilnya **sama persis, 3 gagal · 39 lulus, dengan ketiga nama uji yang
+sama**.
+
+Sebabnya bukan penamaan melainkan tabrakan nama tombol: tab layar berjudul **"Approve"** dan
+**"Reject"**, sama persis dengan tombol aksi per baris, sehingga
+`getByRole('button', { name: 'Approve' })` menemukan tab, bukan tombol aksinya. Diangkat sebagai
+temuan tersendiri di [`keputusan-implementasi.md`](keputusan-implementasi.md) §13.4.
+
+### 12.9 Koreksi susulan pada sesi yang sama — nama modul dikembalikan ke bahasa Indonesia
+
+Setelah penggantian nama selesai dan diverifikasi, Work Owner **tidak mengenali nama modulnya**:
+
+> "Untuk modul bank-account dan claim-status diubah menjadi master-rekening dan master-status-klaim
+> dan untuk prompt selanjutkan akan diberitahu nama modulnya"
+
+Satu pertanyaan diajukan lebih dulu, karena jawabannya mengubah besar pekerjaannya: `bank-account`
+dan `claim-status` adalah nama folder **frontend**; backend memakai `bankaccount` dan
+`claimstatus`. Berlaku di keduanya, atau hanya frontend? **Jawaban: keduanya** — sehingga satu
+modul punya satu nama di kedua sisi.
+
+**Yang berubah:**
+
+| Sebelum | Sesudah |
+|---|---|
+| `internal/bankaccount/**` · paket `bankaccount`, `bankaccounthttp` | `internal/masterrekening/**` · paket `masterrekening`, `masterrekeninghttp` |
+| `internal/claimstatus/**` · paket `claimstatus`, `claimstatushttp` | `internal/masterstatus/**` · paket `masterstatus`, `masterstatushttp` |
+| `src/modules/bank-account/**` | `src/modules/master-rekening/**` |
+| `src/modules/claim-status/**` | `src/modules/master-status-klaim/**` |
+| `BankAccountPage.tsx` | `AccountPage.tsx` |
+
+**Kenapa `AccountPage`, bukan `MasterRekeningPage`.** Yang berbahasa Indonesia adalah **nama
+modul**, bukan isinya. Komponen di dalamnya memakai nama **tipe domain** — sama seperti backend
+yang memuat `masterrekening.Account`, bukan `masterrekening.MasterRekening`.
+
+**Yang tidak ikut berubah:** `auth`, `portal`, `platform`, dan `spa` — keempatnya modul kerangka
+yang memang tidak punya nama bisnis.
+
+Ditetapkan sebagai `D-81`, dan `08-TECHNICAL-STRATEGY.md` §4.1 memuat aturannya supaya modul
+berikutnya mengikuti pola yang sama tanpa perlu ditanyakan lagi.
+
+**Verifikasi ulang setelah koreksi:** `gofmt` 0 berkas · `go vet` bersih · **16 paket uji Go
+lulus** · `tsc` bersih · `npm test` **39 lulus · 3 gagal** (ketiganya tetap kegagalan lama yang
+sama) · `npm run build` ok.

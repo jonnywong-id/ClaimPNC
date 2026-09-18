@@ -9,139 +9,139 @@ import (
 	"claim-pnc/internal/masterrekening"
 )
 
-func TestPeriksaMenyebutSeluruhFieldKosongSekaligus(t *testing.T) {
+func TestCheckNamesAllEmptyFieldsAtOnce(t *testing.T) {
 	// Pengguna yang mengisi sembilan kolom berhak tahu seluruh yang kurang dalam satu
 	// kali, bukan menemukan satu kesalahan baru pada setiap kali menekan simpan.
-	err := masterrekening.Rekening{}.Periksa()
+	err := masterrekening.Account{}.Check()
 	require.Error(t, err)
 
-	var validasi *masterrekening.GalatValidasi
+	var validasi *masterrekening.ValidationError
 	require.ErrorAs(t, err, &validasi)
 
 	assert.ElementsMatch(t, []string{
 		"nomor_rekening", "nama_pemilik", "nama_bank", "cabang_bank", "alamat_bank",
 		"kode_bank", "tipe_rekening", "email", "nik",
-	}, kunci(validasi.Field))
+	}, key(validasi.Field))
 }
 
-func TestPeriksaMenerimaRekeningLengkap(t *testing.T) {
-	require.NoError(t, rekeningLengkap().Periksa())
+func TestCheckAcceptsCompleteAccount(t *testing.T) {
+	require.NoError(t, completeAccount().Check())
 }
 
-func TestPeriksaMenolakEmailTanpaBentukYangMasukAkal(t *testing.T) {
-	r := rekeningLengkap()
+func TestCheckRejectsEmailWithImplausibleShape(t *testing.T) {
+	r := completeAccount()
 	r.Email = "bukan-email"
 
-	var validasi *masterrekening.GalatValidasi
-	require.ErrorAs(t, r.Periksa(), &validasi)
+	var validasi *masterrekening.ValidationError
+	require.ErrorAs(t, r.Check(), &validasi)
 	assert.Contains(t, validasi.Field, "email")
 }
 
-func TestKomiteTidakDapatMenyetujuiTanpaBukuRekeningDanKeterangan(t *testing.T) {
+func TestCommitteeCannotApproveWithoutPassbookAndNote(t *testing.T) {
 	// Dua syarat ini hanya berlaku saat MENYETUJUI. Komite tidak boleh menyetujui
 	// rekening yang buktinya tidak dapat dilihat, dan alasannya harus tercatat.
-	r := rekeningLengkap()
-	r.IDDokumen = ""
-	r.Catatan = ""
+	r := completeAccount()
+	r.DocumentID = ""
+	r.Note = ""
 
-	var validasi *masterrekening.GalatValidasi
-	require.ErrorAs(t, r.PeriksaSebelumDisetujui(), &validasi)
-	assert.ElementsMatch(t, []string{"id_dokumen", "catatan"}, kunci(validasi.Field))
+	var validasi *masterrekening.ValidationError
+	require.ErrorAs(t, r.CheckBeforeApproval(), &validasi)
+	assert.ElementsMatch(t, []string{"id_dokumen", "catatan"}, key(validasi.Field))
 }
 
-func TestKomiteDapatMenyetujuiSetelahBuktiDanKeteranganAda(t *testing.T) {
-	r := rekeningLengkap()
-	r.IDDokumen = "DOK-001"
-	r.Catatan = "Disetujui atasan, buku rekening sesuai."
+func TestCommitteeCanApproveOnceProofAndNoteExist(t *testing.T) {
+	r := completeAccount()
+	r.DocumentID = "DOK-001"
+	r.Note = "Disetujui atasan, buku rekening sesuai."
 
-	require.NoError(t, r.PeriksaSebelumDisetujui())
+	require.NoError(t, r.CheckBeforeApproval())
 }
 
-func TestNomorBaruSelaluBolehDidaftarkan(t *testing.T) {
-	assert.True(t, masterrekening.BolehDidaftarkanUlang(nil))
+func TestNewNumberIsAlwaysAllowedToRegister(t *testing.T) {
+	assert.True(t, masterrekening.CanBeResubmitted(nil))
 }
 
-func TestNomorYangDitolakKomiteBolehDiajukanUlang(t *testing.T) {
-	ditolak := rekeningLengkap()
-	ditolak.Status = masterrekening.StatusDitolak
+func TestNumberRejectedByCommitteeMayBeResubmitted(t *testing.T) {
+	rejected := completeAccount()
+	rejected.Status = masterrekening.StatusRejected
 
-	assert.True(t, masterrekening.BolehDidaftarkanUlang([]masterrekening.Rekening{ditolak}))
+	assert.True(t, masterrekening.CanBeResubmitted([]masterrekening.Account{rejected}))
 }
 
-func TestNomorYangMasihMenungguAtauSudahDisetujuiTidakBolehDiajukanUlang(t *testing.T) {
-	for _, status := range []masterrekening.StatusApproval{
-		masterrekening.StatusMenunggu,
-		masterrekening.StatusDisetujui,
+func TestPendingOrApprovedNumberMayNotBeResubmitted(t *testing.T) {
+	for _, status := range []masterrekening.ApprovalStatus{
+		masterrekening.StatusPending,
+		masterrekening.StatusApproved,
 	} {
-		r := rekeningLengkap()
+		r := completeAccount()
 		r.Status = status
-		assert.Falsef(t, masterrekening.BolehDidaftarkanUlang([]masterrekening.Rekening{r}),
+		assert.Falsef(t, masterrekening.CanBeResubmitted([]masterrekening.Account{r}),
 			"status %q seharusnya menahan pengajuan ulang", status)
 	}
 }
 
-func TestRekeningDapatDipakaiHanyaBilaDisetujuiDanAktif(t *testing.T) {
+func TestAccountUsableOnlyWhenApprovedAndActive(t *testing.T) {
 	// Dua syarat, bukan satu. Rekening yang dinonaktifkan setelah disetujui tidak
 	// boleh lagi menjadi tujuan pembayaran.
 	kasus := []struct {
-		nama   string
-		status masterrekening.StatusApproval
-		aktif  bool
+		name   string
+		status masterrekening.ApprovalStatus
+		active bool
 		mau    bool
 	}{
-		{"disetujui dan aktif", masterrekening.StatusDisetujui, true, true},
-		{"disetujui tetapi nonaktif", masterrekening.StatusDisetujui, false, false},
-		{"menunggu walau aktif", masterrekening.StatusMenunggu, true, false},
-		{"ditolak walau aktif", masterrekening.StatusDitolak, true, false},
+		{"disetujui dan aktif", masterrekening.StatusApproved, true, true},
+		{"disetujui tetapi nonaktif", masterrekening.StatusApproved, false, false},
+		{"menunggu walau aktif", masterrekening.StatusPending, true, false},
+		{"ditolak walau aktif", masterrekening.StatusRejected, true, false},
 	}
 	for _, k := range kasus {
-		t.Run(k.nama, func(t *testing.T) {
-			r := rekeningLengkap()
+		t.Run(k.name, func(t *testing.T) {
+			r := completeAccount()
 			r.Status = k.status
-			r.Aktif = k.aktif
-			assert.Equal(t, k.mau, r.DapatDipakai())
+			r.Active = k.active
+			assert.Equal(t, k.mau, r.Usable())
 		})
 	}
 }
 
-func TestPangkasResponsKasirMengambilBagianSetelahKurungSiku(t *testing.T) {
+func TestTrimCashierResponseTakesPartAfterBracket(t *testing.T) {
 	// Sistem lama memangkasnya di dalam SQL dengan SUBSTR/INSTR. Pemangkasannya
 	// pindah ke Go; hasilnya wajib sama.
-	assert.Equal(t, "Rekening sudah terdaftar",
-		masterrekening.PangkasResponsKasir("[ERR-01] Rekening sudah terdaftar"))
+	assert.Equal(t, "Account sudah terdaftar",
+		masterrekening.TrimCashierResponse("[ERR-01] Account sudah terdaftar"))
 
 	// Pesan tanpa kurung siku dikembalikan utuh, bukan menjadi kosong.
-	assert.Equal(t, "Berhasil", masterrekening.PangkasResponsKasir("Berhasil"))
-	assert.Equal(t, "", masterrekening.PangkasResponsKasir(""))
+	assert.Equal(t, "Berhasil", masterrekening.TrimCashierResponse("Berhasil"))
+	assert.Equal(t, "", masterrekening.TrimCashierResponse(""))
 }
 
-func TestLabelStatusMengikutiSebutanLayarLama(t *testing.T) {
-	assert.Equal(t, "Menunggu", masterrekening.StatusMenunggu.Label())
-	assert.Equal(t, "Komite Approve", masterrekening.StatusDisetujui.Label())
-	assert.Equal(t, "Komite Reject", masterrekening.StatusDitolak.Label())
-	assert.Equal(t, "", masterrekening.StatusApproval("7").Label())
+func TestStatusLabelsFollowLegacyScreenWording(t *testing.T) {
+	assert.Equal(t, "Menunggu", masterrekening.StatusPending.Label())
+	assert.Equal(t, "Committee Approve", masterrekening.StatusApproved.Label())
+	assert.Equal(t, "Committee Reject", masterrekening.StatusRejected.Label())
+	assert.Equal(t, "", masterrekening.ApprovalStatus("7").Label())
 }
 
-func rekeningLengkap() masterrekening.Rekening {
-	return masterrekening.Rekening{
-		NomorRekening: "1234567890",
-		NamaPemilik:   "BENGKEL CONTOH SEJAHTERA",
-		NamaBank:      "BANK CONTOH",
-		CabangBank:    "JAKARTA PUSAT",
-		AlamatBank:    "JL. CONTOH NO. 1",
-		KodeBank:      "014",
-		TipeRekening:  "BIASA",
-		Email:         "keuangan@contoh.co.id",
-		NIK:           "3171000000000000",
-		Aktif:         true,
-		Status:        masterrekening.StatusMenunggu,
+func completeAccount() masterrekening.Account {
+	return masterrekening.Account{
+		Number:      "1234567890",
+		OwnerName:   "BENGKEL CONTOH SEJAHTERA",
+		BankName:    "BANK CONTOH",
+		BankBranch:  "JAKARTA PUSAT",
+		BankAddress: "JL. CONTOH NO. 1",
+		BankCode:    "014",
+		AccountType: "BIASA",
+		Email:       "keuangan@contoh.co.id",
+		NIK:         "3171000000000000",
+		Active:      true,
+		Status:      masterrekening.StatusPending,
 	}
 }
 
-func kunci(m map[string]string) []string {
-	hasil := make([]string, 0, len(m))
+func key(m map[string]string) []string {
+	result := make([]string, 0, len(m))
 	for k := range m {
-		hasil = append(hasil, k)
+		result = append(result, k)
 	}
-	return hasil
+	return result
 }

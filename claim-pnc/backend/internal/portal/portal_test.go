@@ -6,57 +6,57 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"claim-pnc/internal/portal"
-	"claim-pnc/internal/portal/repo/memori"
+	"claim-pnc/internal/portal/repo/memory"
 )
 
-func TestTandaiTersediaMembedakanPortalSiapDanBelum(t *testing.T) {
-	daftar := memori.DaftarContoh()
-	require.Len(t, daftar, 6, "POOLDATA.M_PORTAL_PNC memuat enam entitas")
+func TestMarkAvailableDistinguishesReadyFromNotReady(t *testing.T) {
+	list := memory.SampleList()
+	require.Len(t, list, 6, "POOLDATA.M_PORTAL_PNC memuat enam entitas")
 
-	ditandai := portal.TandaiTersedia(daftar, []string{"ASM", "ASI"})
-	require.Len(t, ditandai, 6, "portal yang belum siap tetap ditampilkan, bukan disembunyikan")
+	marked := portal.MarkAvailable(list, []string{"ASM", "ASI"})
+	require.Len(t, marked, 6, "portal yang belum siap tetap ditampilkan, bukan disembunyikan")
 
-	siap := map[string]bool{}
-	for _, p := range ditandai {
-		siap[p.Alias] = p.Siap
+	ready := map[string]bool{}
+	for _, p := range marked {
+		ready[p.Alias] = p.Ready
 	}
-	require.True(t, siap["ASM"])
-	require.True(t, siap["ASI"])
-	require.False(t, siap["SMAS"], "kredensialnya belum diisi")
-	require.False(t, siap["SPKS"])
+	require.True(t, ready["ASM"])
+	require.True(t, ready["ASI"])
+	require.False(t, ready["SMAS"], "kredensialnya belum diisi")
+	require.False(t, ready["SPKS"])
 }
 
 // Kapitalisasi tidak boleh menentukan hasil. `11-SECURITY.md` §3.1 mencatat tiga nama
 // access group Pega muncul dalam dua kapitalisasi dan perbandingan rule lama tidak
 // konsisten soal itu; kesalahan yang sama tidak diulang.
-func TestPencocokanAliasAbaiBesarKecilHuruf(t *testing.T) {
-	daftar := memori.DaftarContoh()
+func TestAliasMatchingIgnoresCase(t *testing.T) {
+	list := memory.SampleList()
 
-	ditandai := portal.TandaiTersedia(daftar, []string{"asm", "  smas  "})
-	siap := map[string]bool{}
-	for _, p := range ditandai {
-		siap[p.Alias] = p.Siap
+	marked := portal.MarkAvailable(list, []string{"asm", "  smas  "})
+	ready := map[string]bool{}
+	for _, p := range marked {
+		ready[p.Alias] = p.Ready
 	}
-	require.True(t, siap["ASM"])
-	require.True(t, siap["SMAS"])
+	require.True(t, ready["ASM"])
+	require.True(t, ready["SMAS"])
 
-	ditemukan, err := portal.Cari(daftar, "spk")
+	found, err := portal.Find(list, "spk")
 	require.NoError(t, err)
-	require.Equal(t, "SINARMAS PENJAMINAN KREDIT", ditemukan.Nama)
+	require.Equal(t, "SINARMAS PENJAMINAN KREDIT", found.Name)
 }
 
-func TestCariPortalYangTidakAda(t *testing.T) {
-	_, err := portal.Cari(memori.DaftarContoh(), "TIDAKADA")
-	require.ErrorIs(t, err, portal.ErrTidakAda)
+func TestFindPortalThatDoesNotExist(t *testing.T) {
+	_, err := portal.Find(memory.SampleList(), "TIDAKADA")
+	require.ErrorIs(t, err, portal.ErrNotFound)
 }
 
-func TestDaftarContohSesuaiIsiTabel(t *testing.T) {
+func TestSampleListMatchesTableContent(t *testing.T) {
 	// Nilai-nilai ini disalin dari Database/m_portal_pnc.csv yang diekspor Work Owner.
 	// Bila tabelnya berubah, daftar contoh harus ikut — dan uji ini yang mengingatkan.
-	daftar := memori.DaftarContoh()
-	require.Equal(t, "202600101", daftar[0].ID)
-	require.Equal(t, "ASURANSI SINAR MAS", daftar[0].Nama)
-	require.Equal(t, "ASM", daftar[0].Alias)
-	require.Equal(t, "SPKS", daftar[5].Alias)
-	require.Equal(t, "SINARMAS PENJAMINAN KREDIT SYARIAH", daftar[5].Nama)
+	list := memory.SampleList()
+	require.Equal(t, "202600101", list[0].ID)
+	require.Equal(t, "ASURANSI SINAR MAS", list[0].Name)
+	require.Equal(t, "ASM", list[0].Alias)
+	require.Equal(t, "SPKS", list[5].Alias)
+	require.Equal(t, "SINARMAS PENJAMINAN KREDIT SYARIAH", list[5].Name)
 }

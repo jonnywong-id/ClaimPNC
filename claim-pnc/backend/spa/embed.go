@@ -30,22 +30,22 @@ import (
 )
 
 //go:embed all:dist
-var tersemat embed.FS
+var embedded embed.FS
 
-// ErrBelumDibangun menandai binary yang dikompilasi tanpa hasil build antarmuka.
+// ErrNotBuilt menandai binary yang dikompilasi tanpa hasil build antarmuka.
 //
 // Ini bukan kegagalan fatal: aplikasi tetap dapat melayani API. Yang tidak tersedia
 // hanyalah halamannya, dan pemanggil memilih sendiri apa yang dilakukan terhadap itu.
-var ErrBelumDibangun = errors.New("spa: hasil build antarmuka tidak ditemukan; jalankan npm run build di folder frontend")
+var ErrNotBuilt = errors.New("spa: hasil build antarmuka tidak ditemukan; jalankan npm run build di folder frontend")
 
-// Berkas mengembalikan berkas antarmuka siap sajikan, berakar di dist.
-func Berkas() (fs.FS, error) {
-	akar, err := fs.Sub(tersemat, "dist")
+// Files mengembalikan berkas antarmuka siap sajikan, berakar di dist.
+func Files() (fs.FS, error) {
+	root, err := fs.Sub(embedded, "dist")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := fs.Stat(akar, "index.html"); err != nil {
-		return nil, ErrBelumDibangun
+	if _, err := fs.Stat(root, "index.html"); err != nil {
+		return nil, ErrNotBuilt
 	}
-	return akar, nil
+	return root, nil
 }
