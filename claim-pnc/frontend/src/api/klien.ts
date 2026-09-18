@@ -1,4 +1,4 @@
-import { KodeGalat } from './tipe'
+import { KodeGalat, type DetailGalat } from './tipe'
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -9,11 +9,24 @@ export class GalatAPI extends Error {
   readonly kode: string
   readonly status: number
 
-  constructor(kode: string, pesan: string, status: number) {
+  /**
+   * Pelanggaran per isian, bila galatnya berupa kegagalan validasi.
+   *
+   * Backend mengirim SELURUH pelanggaran sekaligus, bukan yang pertama saja — meniru
+   * perilaku Pega yang menampilkan semua pesan bersamaan (P-5). Layar memakainya untuk
+   * menyorot setiap isian yang salah; meringkasnya menjadi satu pesan akan membuang
+   * justru bagian yang berguna.
+   *
+   * Kosong untuk galat yang tidak menunjuk isian tertentu.
+   */
+  readonly detail: DetailGalat[]
+
+  constructor(kode: string, pesan: string, status: number, detail: DetailGalat[] = []) {
     super(pesan)
     this.name = 'GalatAPI'
     this.kode = kode
     this.status = status
+    this.detail = detail
   }
 }
 
@@ -26,10 +39,25 @@ export class GalatJaringan extends Error {
 }
 
 type OpsiPermintaan = {
-  metode?: 'GET' | 'POST'
+  metode?: 'GET' | 'POST' | 'PUT'
   badan?: unknown
   token?: string | null
+  /**
+   * Alias portal entitas yang melayani permintaan ini.
+   *
+   * Wajib untuk setiap endpoint yang menyentuh basis data entitas: satu aplikasi
+   * melayani empat badan hukum dengan basis data terpisah (ADR-0030), dan backend
+   * MENOLAK permintaan yang tidak menyebutkannya — ia tidak pernah jatuh ke portal
+   * utama sebagai cadangan (R-20).
+   *
+   * Dikirim sebagai header, bukan di URL: nilai di URL ikut tercatat di log peramban,
+   * log proxy, dan header Referer.
+   */
+  portal?: string | null
 }
+
+/** Nama header tempat portal entitas disebut. Sama dengan portalhttp.HeaderPortal. */
+export const HEADER_PORTAL = 'X-Portal'
 
 /**
  * panggilAPI adalah satu-satunya tempat `fetch` dipanggil di seluruh aplikasi.
@@ -38,13 +66,14 @@ type OpsiPermintaan = {
  * yang memanggil fungsi ini (docs/Steering/08-TECHNICAL-STRATEGY.md §3).
  */
 export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): Promise<T> {
-  const { metode = 'GET', badan, token } = opsi
+  const { metode = 'GET', badan, token, portal } = opsi
 
   const header: Record<string, string> = { Accept: 'application/json' }
   if (badan !== undefined) header['Content-Type'] = 'application/json'
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
   if (token) header['Authorization'] = `Bearer ${token}`
+  if (portal) header[HEADER_PORTAL] = portal
 
   let respons: Response
   try {
@@ -61,11 +90,12 @@ export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): P
 
   const isi = await bacaJSON(respons)
   if (!respons.ok) {
-    const galat = isi as { kode?: string; pesan?: string } | null
+    const galat = isi as { kode?: string; pesan?: string; detail?: unknown } | null
     throw new GalatAPI(
       galat?.kode ?? KodeGalat.galatInternal,
       galat?.pesan ?? 'Terjadi kesalahan pada sistem.',
       respons.status,
+      Array.isArray(galat?.detail) ? (galat.detail as DetailGalat[]) : [],
     )
   }
   return isi as T

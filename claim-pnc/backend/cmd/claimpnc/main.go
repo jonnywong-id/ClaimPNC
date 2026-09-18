@@ -17,6 +17,8 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,12 +34,17 @@ import (
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/waktu"
 	"claim-pnc/internal/portal"
+	"claim-pnc/internal/statusprogres"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemori "claim-pnc/internal/portal/repo/memori"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	statusprogreshttp "claim-pnc/internal/statusprogres/http"
+	statusprogresmemori "claim-pnc/internal/statusprogres/repo/memori"
+	statusprogressql "claim-pnc/internal/statusprogres/repo/sqlstore"
+	statusprogresusecase "claim-pnc/internal/statusprogres/usecase"
 )
 
 // berkasEnvBaku dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -90,17 +97,55 @@ func jalankan() error {
 		berkasSPA = nil
 	}
 
+	// Kedua penulis ini dipakai seluruh modul supaya klien menghadapi satu bentuk
+	// respons dan satu bentuk galat saja.
+	//
+	// Tipenya ditulis tanpa nama dengan sengaja. Setiap modul menamai tipe penulisnya
+	// sendiri — authhttp.PenulisGalat, portalhttp.PenulisGalat, dan seterusnya — dan Go
+	// tidak mengizinkan nilai bertipe bernama disalin ke tipe bernama lain walau
+	// tanda tangannya sama. Nilai bertipe tanpa nama dapat disalin ke semuanya, sehingga
+	// modul tetap tidak perlu saling mengimpor tipe.
+	var tulisRespon func(w http.ResponseWriter, r *http.Request, status int, badan any) = func(
+		w http.ResponseWriter, r *http.Request, status int, badan any,
+	) {
+		authhttp.TulisJSON(w, r, status, badan, logger)
+	}
+
+	// Galat portal dipetakan modul portal, lalu sisanya diteruskan ke pemeta modul auth.
+	// Urutan pembungkusnya menentukan: yang lebih khusus memeriksa lebih dulu.
+	var tulisGalat func(w http.ResponseWriter, r *http.Request, err error) = portalhttp.DenganGalatPortal(
+		authhttp.TulisGalat(logger), tulisRespon,
+	)
+
 	handlerAuth := authhttp.HandlerBaru(rakitan.auth, logger)
 	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
+		Repo:        rakitan.portal,
+		AliasSiap:   rakitan.aliasSiap,
+		AliasUtama:  konf.PortalUtama,
+		Logger:      logger,
+		TulisRespon: tulisRespon,
+		TulisGalat:  tulisGalat,
+	})
+
+	handlerStatusProgres, err := statusprogreshttp.HandlerBaru(statusprogreshttp.Opsi{
+		Layanan:     rakitan.statusProgres,
+		Logger:      logger,
+		TulisRespon: tulisRespon,
+		TulisGalat:  tulisGalat,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Bahan penentu portal aktif dipakai setiap modul bisnis yang menyentuh basis data
+	// entitas. Ia dirakit sekali di sini supaya keempat modul berikutnya memakai
+	// pemeriksaan yang sama persis — bukan masing-masing menafsirkannya sendiri.
+	bahanPortalAktif := portalhttp.BahanPortalAktif{
 		Repo:       rakitan.portal,
 		AliasSiap:  rakitan.aliasSiap,
-		AliasUtama: konf.PortalUtama,
 		Logger:     logger,
-		TulisRespon: func(w http.ResponseWriter, r *http.Request, status int, badan any) {
-			authhttp.TulisJSON(w, r, status, badan, logger)
-		},
-		TulisGalat: authhttp.TulisGalat(logger),
-	})
+		TulisGalat: tulisGalat,
+	}
 
 	router := httpserver.Router(httpserver.Bahan{
 		Logger:    logger,
@@ -113,8 +158,13 @@ func jalankan() error {
 			// Daftar portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
 			// bukan di layar masuk (ADR-0030, berpindah portal tanpa login ulang).
 			api.Group(func(terlindungi chi.Router) {
-				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, authhttp.TulisGalat(logger)))
+				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, tulisGalat))
 				portalhttp.Pasang(terlindungi, handlerPortal)
+
+				// Master Status Progres 1. Rutenya memasang pemeriksaan portal sendiri
+				// di dalam Pasang — hanya pada rute yang benar-benar menyentuh basis
+				// data entitas.
+				statusprogreshttp.Pasang(terlindungi, handlerStatusProgres, bahanPortalAktif)
 			})
 		},
 	})
@@ -133,10 +183,11 @@ func jalankan() error {
 
 // rakitan memegang seluruh modul yang sudah terpasang beserta cara menutupnya.
 type rakitan struct {
-	auth      *usecase.Layanan
-	portal    portal.Repo
-	aliasSiap func() []string
-	tutup     func()
+	auth          *usecase.Layanan
+	portal        portal.Repo
+	statusProgres *statusprogresusecase.Layanan
+	aliasSiap     func() []string
+	tutup         func()
 }
 
 // penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
@@ -148,6 +199,13 @@ type penyimpanan struct {
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
 	warisan *sqlstore.Warisan
+
+	// pemilihStatusProgres memilih penyimpanan master status progres milik satu portal.
+	//
+	// Ia fungsi, bukan repo tunggal, karena tabelnya ada di basis data SETIAP entitas
+	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat —
+	// kebocoran lintas badan hukum yang justru dicegah R-20.
+	pemilihStatusProgres statusprogres.PemilihRepo
 
 	aliasSiap func() []string
 	tutup     func()
@@ -180,11 +238,20 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 		return rakitan{}, err
 	}
 
+	layananStatusProgres, err := statusprogresusecase.LayananBaru(statusprogresusecase.Opsi{
+		PemilihRepo: simpan.pemilihStatusProgres,
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
 	return rakitan{
-		auth:      layanan,
-		portal:    simpan.portal,
-		aliasSiap: simpan.aliasSiap,
-		tutup:     simpan.tutup,
+		auth:          layanan,
+		portal:        simpan.portal,
+		statusProgres: layananStatusProgres,
+		aliasSiap:     simpan.aliasSiap,
+		tutup:         simpan.tutup,
 	}, nil
 }
 
@@ -242,9 +309,21 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		simpan.portal = portalsql.RepoBaru(utama)
 		simpan.aliasSiap = kumpulan.Tersedia
 		simpan.tutup = kumpulan.Tutup
+
+		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
+		// dikenal atau koneksinya belum hidup menghasilkan galat dari Untuk() — TIDAK
+		// pernah dialihkan ke koneksi utama sebagai cadangan.
+		simpan.pemilihStatusProgres = func(alias string) (statusprogres.Repo, error) {
+			koneksi, err := kumpulan.Untuk(alias)
+			if err != nil {
+				return nil, err
+			}
+			return statusprogressql.RepoBaru(koneksi), nil
+		}
 	} else {
 		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
+		simpan.pemilihStatusProgres = pemilihStatusProgresMemori(konf.PortalUtama)
 	}
 
 	switch konf.Penyimpanan {
@@ -271,6 +350,37 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 	}
 
 	return simpan, nil
+}
+
+// pemilihStatusProgresMemori menyusun penyimpanan master status progres di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali — kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+//
+// Hanya portal utama yang dilayani di sini, sejalan dengan aliasSiap pada cabang tanpa
+// Oracle yang juga menyebut portal utama saja. Memilih portal lain tanpa basis data
+// karena itu ditolak dengan galat yang sama seperti di produksi — perilaku penolakannya
+// ikut teruji saat pengembangan, bukan hanya nanti.
+func pemilihStatusProgresMemori(aliasUtama string) statusprogres.PemilihRepo {
+	var kunci sync.Mutex
+	simpanan := map[string]statusprogres.Repo{}
+
+	return func(alias string) (statusprogres.Repo, error) {
+		bersih := strings.ToUpper(strings.TrimSpace(alias))
+		if bersih != strings.ToUpper(strings.TrimSpace(aliasUtama)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrBelumSiap, alias)
+		}
+
+		kunci.Lock()
+		defer kunci.Unlock()
+		if ada, sudah := simpanan[bersih]; sudah {
+			return ada, nil
+		}
+		baru := statusprogresmemori.RepoBaru(statusprogresmemori.DaftarContoh()...)
+		simpanan[bersih] = baru
+		return baru, nil
+	}
 }
 
 // rakitIdentitas menyusun rantai sumber identitas.

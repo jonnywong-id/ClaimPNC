@@ -62,6 +62,67 @@ export type ResponsDaftarPortal = {
   utama: string
 }
 
+// ── Master Status Progres 1 ──────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/statusprogres/http. Menggantikan layar Pega
+// `Harness/StatusProgress-Harness.xml` atas tabel POOLDATA.GCNM_MST_PROGRESS_KLAIM.
+
+/**
+ * Satu baris master status progres tingkat 1.
+ *
+ * Nama field di sini sudah dinamai ulang mengikuti `D-19`; kueri Pega mengaliaskan
+ * ketiga kolomnya ke nama yang tidak mencerminkan isi (`CaseID`, `City`, `CityID`).
+ */
+export type StatusProgres = {
+  /** Kolom ID_PROGRESS. Diterbitkan server; tidak pernah diisi pengguna. */
+  id: string
+  /** Kolom STS_PROGRESS1 — keterangan status yang dibaca petugas. */
+  nama: string
+  /** Kolom STATUS — kode posisi klaim tempat status ini berlaku. */
+  kode_posisi: string
+  /** Label posisi, dikirim server supaya layar tidak menyimpan salinan daftarnya. */
+  nama_posisi: string
+}
+
+/** Satu pilihan pada dropdown Posisi. */
+export type PosisiKlaim = {
+  kode: string
+  nama: string
+}
+
+export type ResponsDaftarStatusProgres = {
+  status_progres: StatusProgres[]
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type ResponsSatuStatusProgres = {
+  status_progres: StatusProgres
+  portal: string
+}
+
+export type ResponsDaftarPosisiKlaim = {
+  posisi: PosisiKlaim[]
+}
+
+/** Badan permintaan penambahan dan penyuntingan. */
+export type IsianStatusProgres = {
+  nama: string
+  kode_posisi: string
+}
+
+/**
+ * Satu isian yang ditolak server.
+ *
+ * Backend mengirim SELURUH pelanggaran sekaligus, bukan yang pertama saja — meniru
+ * perilaku Pega yang menampilkan semua pesan bersamaan (P-5). `kolom` memakai nama
+ * isian, sehingga layar dapat menyorot isian yang salah.
+ */
+export type DetailGalat = {
+  kolom: string
+  pesan: string
+}
+
 /**
  * Kode galat yang dikirim backend.
  *
@@ -76,6 +137,15 @@ export const KodeGalat = {
   sesiKedaluwarsa: 'sesi_kedaluwarsa',
   permintaanCacat: 'permintaan_cacat',
   galatInternal: 'galat_internal',
+
+  // Galat modul bisnis dan portal.
+  validasiGagal: 'validasi_gagal',
+  tidakDitemukan: 'tidak_ditemukan',
+  /** Permintaan tidak menyebut portal — pengguna belum memilih entitas. */
+  portalTidakDisebut: 'portal_tidak_disebut',
+  portalTidakDikenal: 'portal_tidak_dikenal',
+  /** Entitasnya ada, tetapi kredensial basis datanya belum diisi tim infrastruktur. */
+  portalBelumSiap: 'portal_belum_siap',
 } as const
 
 export type KodeGalat = (typeof KodeGalat)[keyof typeof KodeGalat]

@@ -104,3 +104,39 @@ func TestKoneksiOracleTerpisahDariPenyimpananSesi(t *testing.T) {
 		})
 	}
 }
+
+// Modul Master Status Progres ikut terpasang saat perakitan, dan penyimpanan tanpa
+// basis data pun tetap MENOLAK portal selain portal utama.
+//
+// Penolakan itu yang membuat perilaku pengembangan sama dengan produksi: memilih
+// entitas yang koneksinya belum hidup menghasilkan galat di keduanya, bukan diam-diam
+// dilayani basis data entitas lain (R-20).
+func TestModulStatusProgresTerpasangDanPortalLainDitolak(t *testing.T) {
+	hasil, err := rakit(konfPengembangan(), logging.Baru(0))
+	require.NoError(t, err)
+	t.Cleanup(hasil.tutup)
+	require.NotNil(t, hasil.statusProgres)
+
+	// Portal utama dilayani.
+	require.NoError(t, hasil.statusProgres.PastikanPortalSiap("ASM"))
+
+	// Entitas lain — dan portal yang tidak disebut sama sekali — ditolak.
+	for _, alias := range []string{"ASI", "SMAS", "TIDAKADA", ""} {
+		require.Error(t, hasil.statusProgres.PastikanPortalSiap(alias),
+			"portal %q tidak boleh dilayani tanpa koneksi basis datanya sendiri", alias)
+	}
+}
+
+// Penyimpanan di memori dipakai kembali antarpermintaan, bukan dibuat ulang.
+//
+// Bila dibuat ulang, penambahan yang baru disimpan akan hilang pada permintaan
+// berikutnya dan layarnya tampak rusak tanpa sebab yang terlihat.
+func TestPenyimpananMemoriDipakaiKembali(t *testing.T) {
+	pemilih := pemilihStatusProgresMemori("ASM")
+
+	pertama, err := pemilih("ASM")
+	require.NoError(t, err)
+	kedua, err := pemilih("asm") // huruf kecil harus menunjuk penyimpanan yang sama
+	require.NoError(t, err)
+	require.Same(t, pertama, kedua)
+}

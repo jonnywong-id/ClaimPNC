@@ -524,3 +524,329 @@ datang sesudahnya, bukan oleh masuk itu sendiri:
 
 Jadi ia tetap dibangun, tetapi ketiadaannya **tidak menghalangi pengujian integrasi** — dan itulah
 yang diperbaiki di §9.11.
+
+
+## 10. Modul Master Status Progres 1 — 2026-09-17 (sesi keempat)
+
+Modul bisnis pertama. Acuannya `Harness/StatusProgress-Harness.xml` atas tabel
+`POOLDATA.GCNM_MST_PROGRESS_KLAIM`.
+
+### 10.1 Keputusan yang diambil Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Lingkup portal modul yang menyentuh basis data entitas | **Portal-scoped sekarang**: alias portal dikirim di header, koneksi di-resolve per permintaan, permintaan tanpa portal **ditolak** |
+| 2 | Pintu masuk layar, sementara modul Home dilarang diubah | **Rute saja**; `HalamanBeranda.tsx` tidak disentuh |
+| 3 | Sumber daftar Posisi yang di Pega di-hardcode | **Konstanta di lapisan domain**, disajikan lewat API, dicatat sebagai utang menuju master data `F-4` |
+
+### 10.2 Penamaan ulang tiga kolom (D-19)
+
+Kueri lama mengaliaskan ketiga kolomnya ke nama yang tidak mencerminkan isi — persis
+utang teknis §4.2 `03-CURRENT-ARCHITECTURE.md`. Alias itu tidak dibawa:
+
+| Kolom | Alias Pega | Nama baru | Kenapa aliasnya menyesatkan |
+|---|---|---|---|
+| `ID_PROGRESS` | `"CaseID"` | `ID` | bukan nomor klaim sama sekali |
+| `STS_PROGRESS1` | `"City"` | `Nama` | bukan nama kota |
+| `STATUS` | `"CityID"` | `KodePosisi` | bukan kode kota, dan bukan penanda aktif |
+
+### 10.3 `STATUS` adalah kode posisi klaim, bukan flag aktif
+
+Kesimpulan ini menentukan seluruh bentuk layar, jadi buktinya dicatat utuh:
+
+| Bukti | Isi |
+|---|---|
+| `Section/BrowseStatusProgress-Section.xml` | sel isian `TempInputStatus.CityID` ber-`pyLabelFieldValue` = **"Posisi"**, `pyControlDisplayTitle` = **Dropdown**, sumber `TempPosition.pxResults` |
+| `Activity/InsertMstStatusProgress1_act-Act.xml` | `Local.POSISI := TempInputStatus.CityID` |
+| `Activity/ViewStatusProgress_act-Act.xml` | step "INPUT POSISI KLAIM untuk dropdown" berisi `REGISTER`/`002`, `SURVEY`/`004`, `AKSEPTASI`/`007`, `KOMITE`/`006` |
+| 17 berkas yang menyebut `GCNM_MST_PROGRESS_KLAIM` | tidak satu pun menyaring `STATUS`; semuanya menggabung lewat `ID_PROGRESS` |
+
+Butir terakhir dicatat apa adanya: kolom ini **diisi layar ini dan tidak pernah dipakai
+menyaring apa pun** di sistem lama. Tidak diberi perilaku penyaringan yang tidak pernah
+ada — itu akan menjadi fitur karangan, bukan migrasi.
+
+### 10.4 Tidak ada penghapusan, dan itu disengaja
+
+Diperiksa ke seluruh export: **tidak ada satu pun pernyataan `DELETE`** terhadap
+`GCNM_MST_PROGRESS_KLAIM`. Berkas `Data Transform/CNMShowInsertValueMstStsProgress_delet-DT.xml`
+yang namanya menjanjikan penghapusan ternyata **tidak memuat langkah apa pun**.
+
+Tiga alasan tidak menambahkannya:
+
+1. Menambah tombol hapus berarti mengarang perilaku yang tidak pernah ada di sistem lama.
+2. `D-66` menuntut soft delete, dan tabelnya **tidak punya kolom penanda terhapus**.
+   Menambah kolom menuntut permintaan skema tertulis, persetujuan Work Owner, dan
+   pelaksanaan DBA (`D-63`).
+3. Barisnya dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS1` dan
+   `GCNM_MST_PROGRESS.ID_PROGRESS` pada data klaim yang sudah berjalan — penghapusan
+   fisik akan memutus rujukan itu.
+
+### 10.5 Bentuk nomor direplikasi, cacatnya dicatat
+
+`Activity/InsertMstStatusProgress1_act-Act.xml` menyusun ID baru sebagai `"0" + nomor`
+atas hasil `SELECT NVL(MAX(ID_PROGRESS),0)+1`. Bentuk itu **direplikasi**, karena
+`ID_PROGRESS` adalah kunci yang dirujuk dua tabel lain dan baris lamanya sudah memakainya
+— menggantinya akan memutus baris baru dari data historis. `P-5` berlaku, dan bentuk ini
+tidak ada di daftar 13 perbaikan eksplisit `D-49`.
+
+Dua cacat ikut terbawa. Keduanya dicatat sebagai uji supaya tidak disangka rancangan:
+
+**Lebarnya tidak dipadatkan**, sehingga urutan teks tidak sama dengan urutan penerbitan —
+`"010"` mendahului `"09"`. Persoalan yang sama sudah dikenali pada nomor klaim
+`PNCN.YY.xxxx` (`D-71` butir 2). Karena itu daftar diurutkan **di basis data** mengikuti
+kueri lama, bukan diurutkan ulang sebagai teks di frontend.
+
+### 10.6 Nomor berikutnya dihitung di Go, bukan dengan MAX di SQL
+
+Ini satu-satunya tempat perilaku sengaja **dibuat berbeda** dari kueri lama, dan
+alasannya bukan selera.
+
+Bila `ID_PROGRESS` bertipe `VARCHAR2`, `MAX(ID_PROGRESS)` adalah maksimum
+**leksikografis**. Begitu tabel memuat `"010"`, maksimumnya tetap `"09"` karena `'9'`
+lebih besar dari `'1'` pada karakter kedua — nomor berikutnya kembali `10`, dan ID
+`"010"` diterbitkan dua kali. Tipe kolomnya sendiri belum diketahui (`R-08`), sehingga
+apakah cacat itu sudah aktif hari ini tidak dapat dipastikan.
+
+Menghitungnya di Go menghindari pertanyaan itu: setiap ID ditafsirkan sebagai angka,
+diambil yang terbesar, ditambah satu. **Untuk rentang yang kedua cara sepakat — satu
+sampai sembilan baris — hasilnya sama persis dengan Pega**, sehingga uji kesetaraan tidak
+melihat selisih. Sekaligus memenuhi aturan Steering bahwa pemformatan angka dilakukan di
+Go, bukan di SQL.
+
+ID yang tidak dapat ditafsirkan sebagai angka diabaikan saat mencari yang terbesar tetapi
+tetap dihitung sebagai terpakai — baris lama dapat memuat apa saja, dan menabraknya lebih
+buruk daripada melewatinya.
+
+### 10.7 Penyimpangan keenam: batas transaksi berada di dalam repo
+
+`08-TECHNICAL-STRATEGY.md` §4.5 menetapkan transaksi dimulai dan diakhiri di **lapisan
+aplikasi**. Pada `SisipBaru`, transaksinya berada di dalam **repo**.
+
+Alasannya: nomor baru diturunkan dari isi tabel itu sendiri. Memecahnya menjadi "ambil
+nomor" di aplikasi lalu "sisip" di repo melebarkan jarak antara membaca dan menulis —
+dan jarak itulah yang membuat dua penambahan bersamaan bertabrakan. Kueri pengambil ID
+karena itu memakai `SELECT ... FOR UPDATE`, sehingga penambahan kedua menunggu yang
+pertama selesai lalu membaca ulang termasuk baris yang baru masuk.
+
+Ia tetap portabel: `FOR UPDATE` didukung Oracle maupun PostgreSQL, jadi `D-20` tidak
+dilanggar. Biayanya dapat diterima — tabel ini master berbaris sedikit dan nyaris tidak
+pernah ditulis.
+
+**Yang masih tersisa:** tanpa constraint unik pada `ID_PROGRESS` — dan keberadaannya
+belum diketahui (`R-08`) — penyerialan ini bersandar pada penguncian, bukan pada jaminan
+basis data. Constraint unik masuk daftar permintaan DDL ke DBA.
+
+### 10.8 Empat posisi klaim masih di kode — utang yang dicatat terang
+
+`D-15` melarang nilai bisnis di-hardcode. Keempat posisi tetap berada di
+`internal/statusprogres/posisi.go`, dan itu **pelanggaran yang disadari**, bukan kelalaian.
+
+Yang membuatnya dapat diterima sekarang:
+
+| Hal | Keadaan |
+|---|---|
+| Tidak ada tabel master posisi di sistem lama | tidak ada yang dapat dibaca; di Pega pun ia dirakit di dalam activity |
+| Membuat tabelnya | menuntut permintaan skema tertulis, persetujuan Work Owner, pelaksanaan DBA (`D-63`) — modul akan terhalang |
+| Mengarang tabel beserta isinya | menebak, dan menebak dilarang |
+
+Yang sudah dibereskan sekarang hanyalah **tempatnya**: ia ada di satu tempat dan
+disajikan lewat `GET /api/master/posisi-klaim`, sehingga frontend tidak menyimpan
+salinannya. Di sistem lama keempat pasang nilai itu ditulis ulang di setiap activity yang
+membutuhkannya.
+
+Pemindahannya menjadi master data `F-4` menyentuh satu berkas dan satu endpoint.
+
+### 10.9 Portal melekat pada permintaan, bukan pada keadaan server
+
+`R-20` menyebut dua jalur kegagalan. Keduanya ditutup, dan keduanya ditutup dengan cara
+yang sama — **menolak**:
+
+| Jalur kegagalan `R-20` | Penanganan |
+|---|---|
+| Jatuh ke koneksi default ketika portal tidak diketahui | `portal.PilihAktif` mengembalikan `ErrTidakDisebut`; handler menolak dengan `400`. Tidak ada jalur mana pun yang memanggil `Kumpulan.Utama()` dari modul bisnis |
+| Portal aktif disimpan sebagai keadaan global di server | portal terpilih diletakkan di `context.Context` permintaan. Dua permintaan bersamaan dari pengguna yang sama tidak dapat saling menimpa |
+
+Ditambah satu pembedaan yang tidak diminta `R-20` tetapi berguna: **"tidak ada di daftar"
+dibedakan dari "koneksinya belum hidup"** (`400 portal_tidak_dikenal` versus
+`503 portal_belum_siap`). Keduanya menuntut tindak lanjut berbeda — yang pertama
+kemungkinan cacat antarmuka, yang kedua pekerjaan tim infrastruktur.
+
+**Yang TIDAK dijawab modul ini, dan harus disebut terang:** pemeriksaannya menjawab
+"portal ini ada dan koneksinya hidup", **bukan** "pengguna ini berwenang atas portal
+ini". Kewenangan portal per pengguna adalah `TKT-F6-003` dan masih terhalang — `D-78`
+menyisakan pertanyaan terbuka di mana data kewenangan itu disimpan, karena ia tidak dapat
+ikut tinggal di basis data masing-masing entitas.
+
+Selama itu belum terjawab, **setiap pengguna yang sudah masuk dapat memilih portal mana
+pun yang koneksinya hidup**. Itu `R-20` yang masih terbuka, bukan yang sudah ditutup.
+
+### 10.10 Galat validasi dikembalikan seluruhnya, dan disorot per isian
+
+`11-CROSSCUTTING.md` §1.2 aturan 1 menuntut kesalahan validasi dikumpulkan seluruhnya.
+Diterapkan pada ketiga lapisan:
+
+- Domain mengembalikan `GalatValidasi` yang memuat seluruh `Pelanggaran`.
+- Transport memetakannya ke `422` dengan `detail` berisi `{kolom, pesan}` per pelanggaran.
+- Layar menyorotnya pada isiannya masing-masing lewat `setError`, bukan meringkasnya
+  menjadi satu kotak pesan.
+
+`422` dibedakan dari `400` sesuai `10-API-STRATEGY.md` §5: `400` berarti ada cacat di
+frontend, `422` berarti pengguna perlu memperbaiki isiannya.
+
+### 10.11 Pemetaan galat modul, sementara TKT-F1-004 masih terhalang
+
+Kontrak galat yang mengikat seluruh aplikasi adalah `TKT-F1-004`, dan ia belum diputuskan.
+Yang ada hanyalah pemetaan milik modul auth.
+
+Menambah kode galat ke modul auth berarti menyunting modul yang sudah dinyatakan selesai.
+Karena itu galat dipetakan berlapis, dan setiap lapis dimiliki modul yang memang memiliki
+galatnya:
+
+```
+galat domain statusprogres  -> statusprogreshttp.petakanGalat
+galat portal                -> portalhttp.DenganGalatPortal
+sisanya                     -> authhttp.TulisGalat  (500, pesan umum, rincian ke log)
+```
+
+Bentuk badannya tetap `{kode, pesan}` pada ketiganya, sehingga klien tidak menghadapi
+dua bentuk galat yang berbeda. **Utang:** begitu `TKT-F1-004` diputuskan, ketiga pemetaan
+ini menjadi satu.
+
+Kekeliruan yang sempat terjadi dan cara ia terbongkar dicatat di
+`catatan-pengembangan.md` §9.5 — awalnya galat portal dipetakan **dua kali**, di modul
+portal dan di modul statusprogres. Duplikatnya dibuang.
+
+### 10.12 Jalur API tanpa awalan `/v1`
+
+`10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`. Kontrak yang sudah berjalan tidak
+memakainya (`/api/masuk`, `/api/portal`), dan memperkenalkannya di modul ini saja akan
+membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai utang, bukan
+diselesaikan sepihak di satu modul.
+
+### 10.13 Batas panjang nama adalah asumsi, bukan fakta
+
+> **DISUPERSEDE oleh §10.16.** Panjang kolom sudah ditetapkan Work Owner 2026-09-17:
+> **100 karakter**. Bagian di bawah merekam keadaan sebelum jawaban itu — angkanya (200)
+> tidak lagi berlaku, alasan menduplikasinya di dua tempat masih berlaku.
+
+`BatasPanjangNama = 200` **bukan** panjang kolom `STS_PROGRESS1` yang sebenarnya — DDL-nya
+tidak ada di export (`R-08`). Angkanya dipilih longgar dengan sengaja: penjaga yang
+terlalu ketat menolak data yang sebenarnya sah, sedangkan yang terlalu longgar paling
+buruk berujung galat dari basis data — dan galat itu terlihat, bukan diam-diam memotong
+data.
+
+Nilainya diulang di frontend (`FormStatusProgres.tsx`) supaya pengguna tahu sebelum
+mengirim. Server tetap yang berwenang; pemeriksaan di layar hanya kenyamanan. Begitu DDL
+diterima, **kedua tempat** harus disesuaikan — dan itu utang yang disadari dari
+menduplikasi sebuah angka.
+
+### 10.14 Yang belum dapat dibuktikan
+
+> **SEBAGIAN TERJAWAB — lihat §10.16 dan §10.17.** Tipe kolom `ID_PROGRESS` sudah
+> ditetapkan **CHAR berlebar tetap**, dan penanganannya mengubah dua kueri. Yang masih
+> belum terbukti dari tabel di bawah: keenam kueri terhadap Oracle sungguhan, **lebar**
+> kolomnya, constraint unik, dan kesetaraan gerbang 1.
+
+| Hal | Sebab |
+|---|---|
+| Keenam kueri SQL sah terhadap Oracle | belum pernah dijalankan; seluruh verifikasi memakai adapter memori |
+| Tipe dan panjang kolom | DDL belum ada (`R-08`) |
+| Ada tidaknya constraint unik pada `ID_PROGRESS` | idem — penyerialan nomor bersandar pada penguncian, bukan jaminan basis data |
+| Kesetaraan hasil dengan Pega (gerbang 1) | menuntut Pega staging (`ADR-0027`) **dan** isi tabel yang sebenarnya, yang belum ada |
+| Perilaku pada tipe kolom `CHAR` berlebar tetap | pemangkasan sudah dipasang tetapi belum diuji terhadap tipe sebenarnya |
+
+### 10.15 Yang perlu diminta
+
+> **Dua baris pertama menyempit — lihat §10.16.** Tipe kolom dan panjang
+> `STS_PROGRESS1` sudah dijawab Work Owner; dari DDL yang tersisa dibutuhkan **lebar**
+> kolom `ID_PROGRESS` dan ada-tidaknya constraint unik.
+
+| Yang diminta | Kepada | Untuk |
+|---|---|---|
+| DDL `POOLDATA.GCNM_MST_PROGRESS_KLAIM` | DBA | menetapkan `BatasPanjangNama`, memastikan tipe kolom, memeriksa constraint unik |
+| Isi tabelnya (CSV, seperti `v_sts_claim.csv`) | DBA | menggantikan `DaftarContoh()` dan memungkinkan uji kesetaraan |
+| Constraint unik pada `ID_PROGRESS` bila belum ada | DBA + Work Owner | menjadikan keunikan nomor jaminan basis data, bukan hanya hasil penguncian |
+| Penegasan bahwa layar ini tidak punya penghapusan | Work Owner | menutup pertanyaan apakah ketiadaan `DELETE` di Pega memang disengaja |
+| Kewenangan portal per pengguna | Work Owner (`TKT-F6-003`, `D-78`) | menutup sisa `R-20` |
+
+
+### 10.16 Empat asumsi dijawab Work Owner — 2026-09-17 (lanjutan)
+
+Empat pertanyaan yang §10.13 dan §10.14 catat sebagai terbuka diajukan sebagai pilihan
+dan dijawab pada hari yang sama. Dua di antaranya **mengubah kode**, satu menegaskan yang
+sudah ada, satu masih ditahan.
+
+| Asumsi | Jawaban | Akibat |
+|---|---|---|
+| Tipe kolom `ID_PROGRESS` | **CHAR berlebar tetap** | **Kode berubah** — lihat §10.17 |
+| Panjang kolom `STS_PROGRESS1` | **100 karakter** | `BatasPanjangNama` 200 → 100, di backend dan frontend |
+| Penghapusan baris | **tetap tidak ada**, sama seperti Pega | tidak berubah; ketiadaan tombol hapus kini ketetapan, bukan tafsiran |
+| Modul berikutnya | belum ditentukan | tidak ada modul baru dimulai |
+
+`BatasPanjangNama` **bukan lagi asumsi**. §10.13 yang menyebutnya "asumsi, bukan fakta"
+berlaku untuk keadaan sebelum jawaban ini; yang berlaku sekarang adalah entri ini.
+Angkanya tetap diulang di dua tempat — backend dan frontend — dan itu tetap utang yang
+disadari; yang hilang hanyalah ketidakpastian nilainya.
+
+### 10.17 CHAR berlebar tetap: parameter binding mengubah perilaku, bukan mempertahankannya
+
+Jawaban "CHAR berlebar tetap" membongkar cacat yang sebelumnya tidak terlihat, dan
+sebabnya justru aturan yang wajib dipatuhi.
+
+**Bagaimana cacatnya bekerja.** Kolom CHAR memadatkan nilainya dengan spasi tanpa memberi
+tanda apa pun: `"01"` tersimpan sebagai `"01 "`. Oracle membandingkan dua nilai CHAR
+dengan **blank-padded comparison** — spasi di ujung diabaikan. Literal teks di dalam SQL
+bertipe CHAR, sehingga kueri lama yang **merangkai** nilainya menjadi `= '01'` memang
+cocok dengan `"01 "`.
+
+Tetapi **parameter binding bertipe VARCHAR2**, dan CHAR lawan VARCHAR2 memakai
+**non-padded comparison**. `"01 "` tidak sama dengan `"01"`, dan barisnya tidak ketemu.
+
+| Kueri | Gejala bila dibiarkan `= :1` |
+|---|---|
+| `statusprogres_ambil` | pemuatan baris ke modal sunting selalu gagal |
+| `statusprogres_perbarui` | `UPDATE` mengenai **nol baris**, dan nol baris diartikan repo sebagai "tidak ditemukan" |
+
+Gejalanya menyesatkan justru karena **tidak ada galat basis data sama sekali**.
+Penyuntingan hanya melaporkan "tidak ditemukan" untuk setiap baris yang sebenarnya ada.
+
+**Yang penting untuk dipahami:** menyalin `= :1` apa adanya dari kueri lama akan
+**mengubah** perilaku, bukan mempertahankannya. Penyebabnya perpindahan dari perangkaian
+string ke parameter binding — yang diwajibkan `08-TECHNICAL-STRATEGY.md` §4.3 dan tidak
+dapat ditawar, karena perangkaian nilai adalah celah injeksi yang justru sedang ditutup.
+
+Ini contoh konkret bahwa **kesetaraan perilaku `P-5` tidak selalu berarti menyalin teks
+SQL apa adanya**. Kadang teks yang sama menghasilkan perilaku yang berbeda begitu cara
+nilainya masuk berubah.
+
+**Penanganannya:** `WHERE TRIM(ID_PROGRESS) = :1` pada kedua kueri.
+
+| Pilihan | Kenapa tidak dipakai |
+|---|---|
+| `CAST(:1 AS CHAR(n))` | lebar kolom `n` belum diketahui, dan salah menebaknya mengulang cacat yang sama |
+| Memadatkan nilai bind di Go | menuntut `n` yang sama; juga menyebarkan pengetahuan tentang tipe kolom ke lapisan yang tidak seharusnya tahu |
+| Kembali merangkai literal | melanggar §4.3; tidak dipertimbangkan |
+
+`TRIM` benar untuk lebar berapa pun dan portabel — Oracle maupun PostgreSQL sama-sama
+mendukungnya, jadi `D-20` tidak dilanggar. Pada PostgreSQL, tipe `char(n)` bahkan sudah
+mengabaikan spasi ujung saat membandingkan, sehingga `TRIM` di sana tidak berakibat apa
+pun selain menjadikan maksudnya terbaca.
+
+**Biaya yang diterima:** index atas `ID_PROGRESS` tidak terpakai. Dapat diterima di sini —
+tabel ini master berbaris sedikit dan dibaca per baris hanya saat menyunting. Pola ini
+**tidak boleh ditiru begitu saja** pada tabel bervolume besar; di sana `n` harus diketahui
+dan nilai bind yang dipadatkan.
+
+**Uji penjaganya:** `repo/sqlstore/kueri_test.go` menuntut `TRIM(ID_PROGRESS)` ada pada
+kedua kueri dan menolak `WHERE ID_PROGRESS =` tanpa TRIM. Ia ada karena gejala cacatnya
+senyap: seseorang yang kelak "merapikan" kueri ini tidak akan melihat apa pun rusak
+sampai pengguna melaporkan bahwa tombol Ubah tidak pernah berhasil.
+
+**Yang sudah benar sejak awal dan tidak perlu diubah:** pembacaan sudah memangkas ketiga
+kolom lewat `pindaiBaris`, sehingga domain tidak pernah melihat nilai berpadat spasi;
+`CariPosisi` juga sudah memangkas kode posisi. Keduanya memang dipasang untuk kemungkinan
+ini, dan jawaban Work Owner mengubahnya dari kehati-hatian menjadi keharusan.
+
+**Yang masih belum terbukti:** lebar kolomnya. Ia tidak dibutuhkan penanganan di atas,
+tetapi tetap diminta bersama DDL — nilai yang lebih panjang dari lebar kolom akan ditolak
+basis data, dan itu memang yang diinginkan.
