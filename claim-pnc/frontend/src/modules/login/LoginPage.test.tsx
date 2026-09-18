@@ -103,27 +103,27 @@ describe('layar masuk', () => {
       nama: 'kredensial salah',
       status: 401,
       kode: 'kredensial_salah',
-      judul: 'Nama pengguna atau kata sandi salah',
+      title: 'Nama pengguna atau kata sandi salah',
     },
     {
       nama: 'pengguna tidak aktif',
       status: 403,
       kode: 'pengguna_tidak_aktif',
-      judul: 'Akun Anda tidak aktif',
+      title: 'Akun Anda tidak aktif',
     },
     {
       nama: 'sistem identitas tidak dapat dihubungi',
       status: 503,
       kode: 'sistem_identitas_tidak_terhubung',
-      judul: 'Sistem identitas sedang tidak dapat dihubungi',
+      title: 'Sistem identitas sedang tidak dapat dihubungi',
     },
-  ])('membedakan galat $nama', async ({ status, kode, judul }) => {
+  ])('membedakan galat $nama', async ({ status, kode, title }) => {
     installFetch(() => jsonResponse(status, { kode, pesan: 'pesan dari server' }))
     show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     const warning = await screen.findByRole('alert')
-    expect(warning).toHaveTextContent(judul)
+    expect(warning).toHaveTextContent(title)
   })
 
   // Pesan untuk pengguna yang tidak ada dan pengguna yang ada berkata sandi salah harus

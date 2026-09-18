@@ -55,7 +55,7 @@ func mapError(err error) (int, ErrorResponse) {
 	case errors.Is(err, masterrekening.ErrNotFound):
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeNotFound,
-			Message: "Account tidak ditemukan.",
+			Message: "Rekening tidak ditemukan.",
 		}
 
 	case errors.Is(err, masterrekening.ErrAlreadyExists):

@@ -53,7 +53,7 @@ type SearchBox = {
 
 const EMPTY_SEARCH: SearchBox = { nomorRekening: '', namaPemilik: '', namaBank: '' }
 
-/** HalamanMasterRekening adalah layar pengelolaan master rekening. */
+/** AccountPage adalah layar pengelolaan master rekening. */
 export function AccountPage() {
   const [tab, setTab] = useState<TabId>('cari')
   const [search, setSearch] = useState<SearchBox>(EMPTY_SEARCH)
@@ -117,19 +117,19 @@ export function AccountPage() {
           <SearchFields
             id="cariNomor"
             label="No rekening"
-            nilai={search.nomorRekening}
+            value={search.nomorRekening}
             edit={(v) => setSearch((p) => ({ ...p, nomorRekening: v }))}
           />
           <SearchFields
             id="cariPemilik"
             label="Nama pemilik"
-            nilai={search.namaPemilik}
+            value={search.namaPemilik}
             edit={(v) => setSearch((p) => ({ ...p, namaPemilik: v }))}
           />
           <SearchFields
             id="cariBank"
             label="Nama bank"
-            nilai={search.namaBank}
+            value={search.namaBank}
             edit={(v) => setSearch((p) => ({ ...p, namaBank: v }))}
           />
         </div>
@@ -145,7 +145,7 @@ export function AccountPage() {
         <AccountTable
           rows={list.data?.rekening ?? []}
           loading={list.isPending}
-          aksi={
+          actions={
             tab === 'komite' || tab === 'menunggu'
               ? (rekening) => <CommitteeAction rekening={rekening} />
               : undefined
@@ -166,13 +166,13 @@ export function AccountPage() {
 function SearchFields({
   id,
   label,
-  nilai,
+  value,
   edit,
 }: {
   id: string
   label: string
-  nilai: string
-  edit: (nilai: string) => void
+  value: string
+  edit: (value: string) => void
 }) {
   return (
     <div>
@@ -181,7 +181,7 @@ function SearchFields({
       </label>
       <input
         id={id}
-        value={nilai}
+        value={value}
         onChange={(e) => edit(e.target.value)}
         className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
       />
@@ -249,7 +249,7 @@ function DecisionMessage({ error }: { error: unknown }) {
   if (error instanceof APIError && error.kode === 'isian_tidak_sah') {
     return (
       <p role="alert" className="text-xs text-red-700">
-        {error.detail.map((v) => v.pesan).join(' ')}
+        {Object.values(error.violations()).join(' ')}
       </p>
     )
   }

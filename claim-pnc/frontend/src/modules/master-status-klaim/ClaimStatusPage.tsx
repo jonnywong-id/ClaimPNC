@@ -58,10 +58,10 @@ export function ClaimStatusPage() {
   const columns: Column<ClaimStatus>[] = [
     {
       key: 'kode',
-      judul: 'Kode',
-      lebar: '8rem',
-      nilai: (s) => s.kode,
-      tampil: (s) => (
+      title: 'Kode',
+      width: '8rem',
+      value: (s) => s.kode,
+      render: (s) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
           {s.kode}
         </span>
@@ -69,16 +69,16 @@ export function ClaimStatusPage() {
     },
     {
       key: 'label',
-      judul: 'Status',
-      nilai: (s) => s.label,
-      tampil: (s) => <span className="font-medium text-slate-900">{s.label}</span>,
+      title: 'Status',
+      value: (s) => s.label,
+      render: (s) => <span className="font-medium text-slate-900">{s.label}</span>,
     },
     {
       key: 'kode_lama',
-      judul: 'Kode lama',
-      lebar: '9rem',
-      nilai: (s) => s.kode_lama,
-      tampil: (s) =>
+      title: 'Kode lama',
+      width: '9rem',
+      value: (s) => s.kode_lama,
+      render: (s) =>
         s.kode_lama ? (
           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100">
             {s.kode_lama}
@@ -91,12 +91,12 @@ export function ClaimStatusPage() {
     },
     {
       key: 'aksi',
-      judul: 'Aksi',
-      lebar: '7rem',
-      tanpaUrut: true,
-      keKanan: true,
-      nilai: () => '',
-      tampil: (s) => (
+      title: 'Aksi',
+      width: '7rem',
+      noSort: true,
+      alignRight: true,
+      value: () => '',
+      render: (s) => (
         <Button tone="halus" onClick={() => openEdit(s)} aria-label={`Ubah status ${s.label}`}>
           <EditIcon className="h-3.5 w-3.5" />
           Ubah
@@ -121,7 +121,7 @@ export function ClaimStatusPage() {
           Master Status Klaim
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Daftar state bisnis sebuah klaim — Register, Claim Committee, Paid, dan
+          Daftar keadaan bisnis sebuah klaim — Register, Claim Committee, Paid, dan
           seterusnya. Nama status yang diubah di sini langsung terbaca layar search
           klaim dan laporan.
         </p>
@@ -137,15 +137,15 @@ export function ClaimStatusPage() {
         columns={columns}
         rows={list.data?.status_klaim ?? []}
         rowKey={(s) => s.kode}
-        judul="Daftar Status Klaim"
-        keterangan={
+        title="Daftar Status Klaim"
+        description={
           list.data ? `${list.data.total} status terdaftar.` : 'Memuat daftar status…'
         }
         searchLabel="Cari kode atau nama status"
         emptyMessage="Belum ada status klaim yang terdaftar."
         isLoading={list.isPending}
         error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-        aksi={
+        actions={
           <>
             <Button
               tone="kedua"
@@ -176,16 +176,16 @@ function LoadErrorMessage({ error }: { error: unknown }) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage
-        judul="Tidak dapat menghubungi server"
-        keterangan="Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
+        title="Tidak dapat menghubungi server"
+        description="Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
         tone="gangguan"
       />
     )
   }
   return (
     <ErrorMessage
-      judul="Daftar status gagal dimuat"
-      keterangan={
+      title="Daftar status gagal dimuat"
+      description={
         error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem. Coba muat ulang.'
       }
       tone="gangguan"

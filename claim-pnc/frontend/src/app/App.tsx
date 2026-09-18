@@ -5,11 +5,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '@/modules/home/HomePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
+import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
-// import { HalamanStatusProgres1 } from '@/modules/master-status-progres/HalamanStatusProgres1'
 
 import { PageShell } from './PageShell'
 import { SessionGuard } from './SessionGuard'
@@ -21,7 +21,6 @@ import { SessionWarning } from './SessionWarning'
  * Tanpa penanganan terpusat, setiap layar harus mengingat memeriksanya sendiri — dan
  * satu layar yang lupa akan menampilkan halaman kosong alih-alih mengembalikan pengguna
  * ke layar masuk.
- * 
  */
 function handleSessionError(error: unknown): void {
   if (!(error instanceof APIError)) return
@@ -50,20 +49,38 @@ export function AppRoute() {
       <Route path="/masuk" element={<LoginPage />} />
       <Route
         path="/"
-        element={<SessionGuard anak={<Protected anak={<HomePage />} />} />}
+        element={
+          <SessionGuard>
+            <Protected>
+              <HomePage />
+            </Protected>
+          </SessionGuard>
+        }
       />
       {/*
         Modul berikutnya menempel sebagai satu baris di sini. Penjaga sesi adalah
         KENYAMANAN TAMPILAN; penegakan yang sebenarnya ada di server, yang memeriksa
         sesi pada setiap endpoint.
       */}
-      {/* <Route
+      <Route
         path="/master/status-progres-1"
-        element={<SessionGuard anak={<Protected anak={<HalamanStatusProgres1 />} />} />}
-      /> */}
+        element={
+          <SessionGuard>
+            <Protected>
+              <ProgressStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
       <Route
         path="/master/status-klaim"
-        element={<SessionGuard anak={<Protected anak={<ClaimStatusPage />} />} />}
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
       />
       {/*
         Master rekening berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan
@@ -73,14 +90,12 @@ export function AppRoute() {
       <Route
         path="/master-rekening"
         element={
-          <SessionGuard
-            anak={
-              <div className="min-h-screen bg-white">
-                <SessionWarning />
-                <AccountPage />
-              </div>
-            }
-          />
+          <SessionGuard>
+            <div className="min-h-screen bg-white">
+              <SessionWarning />
+              <AccountPage />
+            </div>
+          </SessionGuard>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -89,23 +104,19 @@ export function AppRoute() {
 }
 
 /**
- * Terlindungi membungkus SELURUH layar di balik sesi dengan kerangka yang sama: bilah
+ * Protected membungkus SELURUH layar di balik sesi dengan kerangka yang sama: bilah
  * atas, menu, identitas pengguna, tombol keluar, dan peringatan sesi.
  *
  * Satu pembungkus untuk semuanya, bukan satu per layar. Itu yang membuat tombol Keluar
  * dan nama pengguna hanya ada di satu tempat — sebelumnya keduanya hidup di dalam
  * halaman beranda, sehingga layar lain tidak punya cara keluar.
  */
-function Protected({ anak }: { anak: ReactNode }) {
+function Protected({ children }: { children: ReactNode }) {
   return (
-    <PageShell
-      anak={
-        <>
-          <SessionWarning />
-          {anak}
-        </>
-      }
-    />
+    <PageShell>
+      <SessionWarning />
+      {children}
+    </PageShell>
   )
 }
 

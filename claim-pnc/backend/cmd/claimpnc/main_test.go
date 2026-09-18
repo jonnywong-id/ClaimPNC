@@ -88,7 +88,7 @@ func TestOracleConnectionSeparateFromSessionStorage(t *testing.T) {
 		name    string
 		storage string
 		adapter string
-		butuh   bool
+		wants   bool
 	}{
 		{"keduanya tiruan", config.StorageMemory, config.IdentityAdapterFake, false},
 		{"identitas nyata, sesi di memori", config.StorageMemory, config.IdentityAdapterHCQ, true},
@@ -100,7 +100,7 @@ func TestOracleConnectionSeparateFromSessionStorage(t *testing.T) {
 			cfg := devConfig()
 			cfg.Storage = k.storage
 			cfg.IdentityAdapter = k.adapter
-			require.Equal(t, k.butuh, butuhOracle(cfg))
+			require.Equal(t, k.wants, needsOracle(cfg))
 		})
 	}
 }
@@ -111,18 +111,18 @@ func TestOracleConnectionSeparateFromSessionStorage(t *testing.T) {
 // Penolakan itu yang membuat perilaku pengembangan sama dengan produksi: memilih
 // entitas yang koneksinya belum hidup menghasilkan galat di keduanya, bukan diam-diam
 // dilayani basis data entitas lain (R-20).
-func TestModulStatusProgresTerpasangDanPortalLainDitolak(t *testing.T) {
-	hasil, err := rakit(konfPengembangan(), logging.Baru(0))
+func TestProgressStatusModuleMountedAndOtherPortalsRejected(t *testing.T) {
+	result, err := build(devConfig(), logging.New(0))
 	require.NoError(t, err)
-	t.Cleanup(hasil.tutup)
-	require.NotNil(t, hasil.statusProgres)
+	t.Cleanup(result.close)
+	require.NotNil(t, result.masterStatusProgres)
 
 	// Portal utama dilayani.
-	require.NoError(t, hasil.statusProgres.PastikanPortalSiap("ASM"))
+	require.NoError(t, result.masterStatusProgres.EnsurePortalReady("ASM"))
 
 	// Entitas lain — dan portal yang tidak disebut sama sekali — ditolak.
 	for _, alias := range []string{"ASI", "SMAS", "TIDAKADA", ""} {
-		require.Error(t, hasil.statusProgres.PastikanPortalSiap(alias),
+		require.Error(t, result.masterStatusProgres.EnsurePortalReady(alias),
 			"portal %q tidak boleh dilayani tanpa koneksi basis datanya sendiri", alias)
 	}
 }
@@ -131,12 +131,12 @@ func TestModulStatusProgresTerpasangDanPortalLainDitolak(t *testing.T) {
 //
 // Bila dibuat ulang, penambahan yang baru disimpan akan hilang pada permintaan
 // berikutnya dan layarnya tampak rusak tanpa sebab yang terlihat.
-func TestPenyimpananMemoriDipakaiKembali(t *testing.T) {
-	pemilih := pemilihStatusProgresMemori("ASM")
+func TestMemoryStoreIsReused(t *testing.T) {
+	selector := progressStatusSelectorMemory("ASM")
 
-	pertama, err := pemilih("ASM")
+	first, err := selector("ASM")
 	require.NoError(t, err)
-	kedua, err := pemilih("asm") // huruf kecil harus menunjuk penyimpanan yang sama
+	second, err := selector("asm") // huruf kecil harus menunjuk penyimpanan yang sama
 	require.NoError(t, err)
-	require.Same(t, pertama, kedua)
+	require.Same(t, first, second)
 }

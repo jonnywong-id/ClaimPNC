@@ -32,8 +32,6 @@ Dua skill kemungkinan besar berguna ketika modul bisnis mulai dikerjakan:
 
 ---
 
-<<<<<<< HEAD
-=======
 # Penggunaan Skill — Sesi 2026-09-17 (modul Master Status Progres 1)
 
 ## Ringkasan
@@ -92,7 +90,6 @@ antarmuka, dan itu keputusan kedalaman modul yang sungguh-sungguh.
 
 ---
 
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 # Penggunaan Skill — Sesi 2026-09-17 (Modul Master Rekening)
 
 ## Ringkasan
@@ -151,13 +148,9 @@ keputusannya.
 
 Tidak ada skill khusus yang dipanggil untuk semua ini; perkakasnya `grep`/`sed` atas XML
 Pega, dan yang menentukan adalah **urutan kerjanya**, bukan alatnya.
-<<<<<<< HEAD
----
-=======
 
 ---
 
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 # Penggunaan Skill — Sesi 2026-09-17 (Master Status Klaim)
 
 ## Ringkasan
@@ -258,7 +251,6 @@ polos tidak pernah cocok.
 Koreksinya disampaikan dalam alur kerja yang sama, sebelum menjadi kesimpulan yang dilaporkan.
 Pelajarannya sudah dicatat sesi lalu dan terulang di sini: **sebelum menyimpulkan sesuatu tidak
 ada, buktikan dulu alat pencarinya menyala pada kasus yang jelas ada.**
-<<<<<<< HEAD
 
 ---
 
@@ -329,5 +321,67 @@ sebelumnya, bukan kehati-hatian sesi ini.
   tanpa perlu ditanyakan lagi.
 - Kamus istilahnya ada di [`peta-penamaan.md`](peta-penamaan.md), termasuk **daftar yang sengaja
   tidak diterjemahkan**. Bacalah daftar itu lebih dulu sebelum mengganti nama apa pun.
-=======
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-18 (menyelesaikan merge & Master Status Progres 1)
+
+## Ringkasan
+
+**Tidak ada skill yang dipanggil pada sesi ini.** Alasannya dicatat per skill, bukan dibiarkan
+kosong.
+
+Yang menentukan hasil sesi ini bukan skill melainkan **satu pemeriksaan yang dijalankan sebelum
+pekerjaan dimulai**: `go build ./...` dan `npx tsc --noEmit` atas keadaan awal. Keduanya gagal, dan
+kegagalan itulah yang mengungkap bahwa permintaannya bertumpu pada merge yang belum diselesaikan.
+
+## Skill yang ditimbang
+
+| Skill | Kenapa masuk akal ditimbang | Kenapa tidak dipakai |
+|---|---|---|
+| `mattpocock-skills:resolving-merge-conflicts` | Sesi ini **memang** menyelesaikan konflik merge — satu-satunya sesi sejauh ini yang demikian | Skill itu menangani konflik yang **sedang** terjadi di working tree, dengan `git status` menyebut berkas mana yang bentrok. Di sini konfliknya **sudah ter-commit**: `git status` bersih, dan yang tersisa hanya penanda `<<<<<<<` di dalam berkas. Yang dibutuhkan adalah membaca kedua sisi dari `git show <sha>:<berkas>` lalu memutuskan per blok, bukan alur `git mergetool` |
+| `mattpocock-skills:diagnosing-bugs` | Repo tidak dapat di-build, dan sebabnya tidak disebut permintaan | Penyebabnya terbaca dari pesan kompilator dalam satu langkah (`syntax error: unexpected <<`). Yang perlu ditelusuri hanya **sejarahnya**, dan itu satu perintah `git log --graph` |
+| `mattpocock-skills:domain-modeling` | Modul yang diterjemahkan penuh dengan istilah domain | Arti istilahnya tidak berubah sedikit pun — hanya bahasanya. `CONTEXT.md` tidak disunting satu baris pun |
+| `mattpocock-skills:codebase-design` | Satu modul berpindah paket dan satu kerangka dihapus | Batas modulnya tidak bergeser. Yang dihapus bukan modul melainkan **percobaan kerangka yang sudah ditinggalkan di cabangnya sendiri** — penilaian bukti, bukan perancangan ulang |
+| `mattpocock-skills:tdd` | — | Tidak ada perilaku baru. Uji yang ada justru berperan sebagai **spesifikasi yang tidak boleh berubah** |
+| `mattpocock-skills:code-review` | 60+ berkas berubah | Yang menjaga sesi ini adalah kompilator, `go vet`, dan 60 uji — dan ketiganya dijalankan pada setiap langkah, bukan sekali di akhir |
+
+## Perkakas yang dipakai ulang dari sesi sebelumnya
+
+| Perkakas | Isi | Perubahan sesi ini |
+|---|---|---|
+| Pemindai pemecah kode | memecah berkas menjadi potongan **kode** dan **bukan-kode**, lalu menerapkan peta nama pada potongan kode saja | ditambah mode **daftar berkas eksplisit**, supaya peta nama bergenerik (`Kode`, `Pesan`, `Daftar`) dapat dipakai pada satu modul tanpa menyentuh modul lain |
+| Penghitung identifier | mengeluarkan identifier di luar komentar dan literal | ditulis ulang memakai `Map`, karena versi lama memakai objek biasa dan **pecah** saat identifier bernama `add` muncul di kode |
+| Penyelesai konflik | membaca kedua sisi blok `<<<<<<</=======/>>>>>>>` dan memilih satu | **baru** — dua varian: "selalu HEAD" untuk kode, dan "yang terisi; bila keduanya terisi ambil sisi cabang" untuk dokumen |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+| Teknik | Manfaat nyata |
+|---|---|
+| **Ukur keadaan awal sebelum menyentuh apa pun** | Inilah yang menemukan merge yang belum selesai. Bila langsung mengerjakan permintaan apa adanya, kegagalan build akan tampak seperti akibat pekerjaan sendiri |
+| **Peta nama dijalankan bertahap, bukan sekaligus** | Tiga putaran: identifier modul, rujukan antarpaket, lalu sisa variabel lokal. Setelah tiap putaran, penghitung identifier dijalankan ulang untuk melihat **apa yang masih tersisa secara terukur** — bukan dengan membaca ulang dan berharap tidak terlewat |
+| **Membuktikan kode mati memang mati** | `Kerangka.tsx` dihapus setelah `git show 4481dda:…/App.tsx` membuktikan cabang yang melahirkannya pun tidak memakainya. Tanpa langkah itu, penghapusannya hanya dugaan |
+| **Membedakan nama internal dari nama kontrak sebelum mengganti** | Seluruh tag `json:"…"` di backend ditarik dengan satu `grep` dan dibandingkan dengan peta nama, sebelum peta dijalankan. Itu yang menahan `aktif` — nama field API — ikut terganti |
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+**Laporan "seluruh pemeriksaan bersih" pada sesi lalu menjadi menyesatkan.** Ia benar saat
+diverifikasi, dan menjadi salah sesudah merge. Pelajarannya bukan "jangan melapor", melainkan
+**laporan verifikasi perlu menyebut commit yang diverifikasi** — tanpa itu, pembaca tidak punya cara
+mengetahui kapan laporan itu berhenti berlaku.
+
+**Perbaikan `GalatAPI.field` sesi lalu salah arah.** Saya menyimpulkan `field` tidak ada dari
+membaca kelasnya, lalu menggantinya dengan `detail`. Yang seharusnya dibaca adalah **kontrak
+backend** — di sana `field` ada dan `detail` tidak. Akibatnya pesan galat per kolom pada satu form
+berhenti muncul tanpa satu pun tanda.
+
+> Pola yang sama dengan dua sesi sebelumnya, dalam bentuk lain: **sumber kebenaran dibaca di tempat
+> yang salah.** Untuk bentuk data yang menyeberangi jaringan, sumbernya dto di backend — bukan kelas
+> di frontend yang kebetulan sedang dibaca.
+
+## Catatan untuk sesi berikutnya
+
+- Kontrak galat validasi **belum seragam antar tiga modul master** (`detail`/`field`, `field`/`kolom`).
+  `APIError.violations()` menutupinya di satu tempat; penyeragaman sesungguhnya adalah `TKT-F1-004`.
+- Master Status Progres **tingkat 2** sudah lengkap di backend tetapi belum punya layar dan belum
+  dipasang di `cmd/claimpnc`.

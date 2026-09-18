@@ -129,7 +129,7 @@ export function ClaimStatusForm({ status, tutup }: Props) {
             placeholder="Contoh: Reopen Claim"
             maxLength={MAX_LABEL_LENGTH}
             autoComplete="off"
-            petunjuk={`Paling panjang ${MAX_LABEL_LENGTH} karakter, dan belum dipakai status lain.`}
+            hint={`Paling panjang ${MAX_LABEL_LENGTH} karakter, dan belum dipakai status lain.`}
             error={errors.label?.message}
             disabled={save.isPending}
             {...remainingLabel}
@@ -181,8 +181,8 @@ function SaveErrorMessage({ error }: { error: unknown }) {
   if (error instanceof NetworkError) {
     return (
       <ErrorMessage
-        judul="Tidak dapat menghubungi server"
-        keterangan="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
+        title="Tidak dapat menghubungi server"
+        description="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
     )
@@ -191,53 +191,53 @@ function SaveErrorMessage({ error }: { error: unknown }) {
   if (!(error instanceof APIError)) {
     return (
       <ErrorMessage
-        judul="Gagal menyimpan"
-        keterangan="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
+        title="Gagal menyimpan"
+        description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
     )
   }
 
-  const { judul, keterangan, tone } = parse(error)
-  return <ErrorMessage judul={judul} keterangan={keterangan} tone={tone} />
+  const { title, description, tone } = parse(error)
+  return <ErrorMessage title={title} description={description} tone={tone} />
 }
 
-function parse(error: APIError): { judul: string; keterangan: string; tone: ErrorTone } {
+function parse(error: APIError): { title: string; description: string; tone: ErrorTone } {
   switch (error.kode) {
     case ErrorCode.statusLabelTaken:
       return {
-        judul: 'Nama status sudah dipakai',
-        keterangan: 'Sudah ada status dengan nama itu. Pakai nama lain.',
+        title: 'Nama status sudah dipakai',
+        description: 'Sudah ada status dengan nama itu. Pakai nama lain.',
         tone: 'penolakan',
       }
 
     case ErrorCode.validationFailed:
       return {
-        judul: 'Isian belum benar',
+        title: 'Isian belum benar',
         // Pesan dari server dipakai apa adanya: ia yang tahu aturan mana yang dilanggar,
         // dan menerjemahkannya ulang di sini akan membuat keduanya dapat berbeda.
-        keterangan: error.detail.map((d) => d.pesan).join(' ') || error.message,
+        description: error.detail.map((d) => d.pesan).join(' ') || error.message,
         tone: 'penolakan',
       }
 
-    case ErrorCode.statusKlaimTidakDitemukan:
+    case ErrorCode.claimStatusNotFound:
       return {
-        judul: 'Status tidak ditemukan',
-        keterangan: 'Baris ini mungkin sudah diubah orang lain. Muat ulang daftarnya.',
+        title: 'Status tidak ditemukan',
+        description: 'Baris ini mungkin sudah diubah orang lain. Muat ulang daftarnya.',
         tone: 'penolakan',
       }
 
     case ErrorCode.statusCodeTaken:
       return {
-        judul: 'Kode bentrok',
-        keterangan: 'Kode yang dibuat sistem sudah dipakai. Coba simpan sekali lagi.',
+        title: 'Kode bentrok',
+        description: 'Kode yang dibuat sistem sudah dipakai. Coba simpan sekali lagi.',
         tone: 'gangguan',
       }
 
     default:
       return {
-        judul: 'Gagal menyimpan',
-        keterangan: error.message,
+        title: 'Gagal menyimpan',
+        description: error.message,
         tone: 'gangguan',
       }
   }

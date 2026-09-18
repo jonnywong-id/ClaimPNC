@@ -57,8 +57,8 @@ type FieldValues = z.infer<typeof schema>
  * bernama supaya saat masternya tersedia, yang perlu diubah hanya satu tempat ini.
  */
 const ACCOUNT_TYPES = [
-  { nilai: 'BIASA', label: 'BIASA — rekening bank biasa' },
-  { nilai: 'VA', label: 'VA — Virtual Account' },
+  { value: 'BIASA', label: 'BIASA — rekening bank biasa' },
+  { value: 'VA', label: 'VA — Virtual Account' },
 ] as const
 
 type Props = {
@@ -66,7 +66,7 @@ type Props = {
   onSuccess?: () => void
 }
 
-/** FormRekening adalah formulir pengajuan rekening baru. */
+/** AccountForm adalah formulir pengajuan rekening baru. */
 export function AccountForm({ onSuccess }: Props) {
   const submit = useSubmitAccount()
   const bank = useBankList()
@@ -103,7 +103,10 @@ export function AccountForm({ onSuccess }: Props) {
     const error = submit.error
     if (!(error instanceof APIError) || error.kode !== AccountErrorCode.invalidInput) return
 
-    for (const { field, pesan } of error.detail) {
+    // violations() menyatukan kedua bentuk pelanggaran yang dipakai backend. Modul ini
+    // mengirimkannya sebagai PETA `field` (internal/masterrekening/http/dto.go:151),
+    // bukan sebagai senarai `detail` seperti kedua modul master lainnya.
+    for (const [field, pesan] of Object.entries(error.violations())) {
       const column = COLUMN_MAP[field]
       if (column) setError(column, { type: 'server', message: pesan })
     }
@@ -171,7 +174,7 @@ export function AccountForm({ onSuccess }: Props) {
           </select>
           {bank.isError && (
             <p className="mt-1 text-sm text-amber-800">
-              Daftar bank tidak dapat dimuat. Muat ulang page, lalu coba lagi.
+              Daftar bank tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.
             </p>
           )}
           {errors.kodeBank && (
@@ -215,7 +218,7 @@ export function AccountForm({ onSuccess }: Props) {
           >
             <option value="">— pilih tipe —</option>
             {ACCOUNT_TYPES.map((t) => (
-              <option key={t.nilai} value={t.nilai}>
+              <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
@@ -272,7 +275,7 @@ export function AccountForm({ onSuccess }: Props) {
       </label>
 
       <p className="text-sm text-slate-600">
-        Buku rekening wajib diunggah dan keterangan approval atasan wajib diisi before
+        Buku rekening wajib diunggah dan description approval atasan wajib diisi before
         komite dapat menyetujui rekening ini.
       </p>
 
@@ -302,14 +305,14 @@ const COLUMN_MAP: Record<string, keyof FieldValues> = {
 
 function SubmitErrorMessage({ error }: { error: unknown }) {
   const content = messageFor(error)
-  return <ErrorMessage judul={content.judul} keterangan={content.keterangan} tone={content.tone} />
+  return <ErrorMessage title={content.title} description={content.description} tone={content.tone} />
 }
 
-function messageFor(error: unknown): { judul: string; keterangan: string; tone: ErrorTone } {
+function messageFor(error: unknown): { title: string; description: string; tone: ErrorTone } {
   if (error instanceof NetworkError) {
     return {
-      judul: 'Server Claim PNC tidak dapat dihubungi',
-      keterangan: 'Periksa koneksi jaringan Anda, lalu coba lagi.',
+      title: 'Server Claim PNC tidak dapat dihubungi',
+      description: 'Periksa koneksi jaringan Anda, lalu coba lagi.',
       tone: 'gangguan',
     }
   }
@@ -317,28 +320,28 @@ function messageFor(error: unknown): { judul: string; keterangan: string; tone: 
     switch (error.kode) {
       case AccountErrorCode.alreadyExists:
         return {
-          judul: 'Nomor rekening sudah terdaftar',
-          keterangan:
+          title: 'Nomor rekening sudah terdaftar',
+          description:
             'Nomor ini sudah ada dan belum ditolak komite. Gunakan data yang sudah ada, atau tunggu keputusan komite atas pengajuan sebelumnya.',
           tone: 'penolakan',
         }
       case AccountErrorCode.invalidInput:
         return {
-          judul: 'Ada isian yang belum benar',
-          keterangan: 'Periksa kolom yang ditandai di bawah, lalu kirim ulang.',
+          title: 'Ada isian yang belum benar',
+          description: 'Periksa kolom yang ditandai di bawah, lalu kirim ulang.',
           tone: 'penolakan',
         }
       default:
         return {
-          judul: 'Terjadi kesalahan pada sistem',
-          keterangan: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
+          title: 'Terjadi kesalahan pada sistem',
+          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
           tone: 'gangguan',
         }
     }
   }
   return {
-    judul: 'Terjadi kesalahan pada sistem',
-    keterangan: 'Coba beberapa saat lagi.',
+    title: 'Terjadi kesalahan pada sistem',
+    description: 'Coba beberapa saat lagi.',
     tone: 'gangguan',
   }
 }

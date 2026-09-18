@@ -59,9 +59,9 @@ const toneClass: Record<ButtonTone, string> = {
 }
 
 /**
- * Tombol baku.
+ * Button baku.
  *
- * Alasan keberadaannya sama dengan KolomIsian: tanpa komponen ini, setiap layar menulis
+ * Alasan keberadaannya sama dengan Field: tanpa komponen ini, setiap layar menulis
  * ulang kelas Tailwind, keadaan nonaktif, dan cincin fokusnya sendiri — dan pada puluhan
  * layar itu berubah menjadi puluhan tafsir berbeda tentang bagaimana sebuah tombol
  * terlihat saat sedang bekerja.

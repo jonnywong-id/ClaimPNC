@@ -8,7 +8,7 @@ import { useSession } from '@/app/session'
 const WARNING_THRESHOLD_MS = 5 * 60 * 1000
 
 /**
- * PeringatanSesi memberi tahu pengguna sebelum sesinya habis.
+ * SessionWarning memberi tahu pengguna sebelum sesinya habis.
  *
  * Alasannya bukan kerapian: pengguna sistem klaim mengisi form panjang, dan sesi yang
  * habis di tengah pengisian tanpa peringatan berarti pekerjaan hilang (TKT-U1-002).

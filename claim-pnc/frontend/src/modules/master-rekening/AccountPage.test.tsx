@@ -36,11 +36,11 @@ function installFakeFetch() {
   )
 }
 
-function wrap(anak: React.ReactNode) {
+function wrap(children: React.ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  return <QueryClientProvider client={client}>{anak}</QueryClientProvider>
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
 function sampleAccount(overrides: Record<string, unknown> = {}) {
@@ -89,7 +89,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('HalamanMasterRekening', () => {
+describe('AccountPage', () => {
   it('menampilkan kelima tab layar lama', async () => {
     render(wrap(<AccountPage />))
 

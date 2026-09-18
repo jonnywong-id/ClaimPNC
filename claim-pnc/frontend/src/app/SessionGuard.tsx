@@ -4,13 +4,13 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useSession } from '@/app/session'
 
 /**
- * PenjagaSesi menahan rute yang menuntut pengguna sudah masuk.
+ * SessionGuard menahan rute yang menuntut pengguna sudah masuk.
  *
  * Ini KENYAMANAN TAMPILAN, bukan pengamanan. Penegakan yang sebenarnya ada di server:
  * setiap endpoint memeriksa sesi pemanggilnya sendiri (docs/Steering/11-SECURITY.md §3.1).
  * Menyembunyikan halaman di peramban tidak menutup apa pun.
  */
-export function SessionGuard({ anak }: { anak: ReactNode }) {
+export function SessionGuard({ children }: { children: ReactNode }) {
   const token = useSession((state) => state.token)
   const location = useLocation()
 
@@ -19,5 +19,5 @@ export function SessionGuard({ anak }: { anak: ReactNode }) {
     // bukan dilempar ke beranda.
     return <Navigate to="/masuk" replace state={{ dari: location }} />
   }
-  return <>{anak}</>
+  return <>{children}</>
 }

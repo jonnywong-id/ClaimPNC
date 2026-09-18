@@ -20,8 +20,8 @@ const schema = z.object({
 type FieldValues = z.infer<typeof schema>
 
 type MessageBody = {
-  judul: string
-  keterangan: string
+  title: string
+  description: string
   tone: ErrorTone
 }
 
@@ -36,8 +36,8 @@ type MessageBody = {
 function messageFor(error: unknown): MessageBody {
   if (error instanceof NetworkError) {
     return {
-      judul: 'Server Claim PNC tidak dapat dihubungi',
-      keterangan: 'Periksa koneksi jaringan Anda, lalu coba lagi.',
+      title: 'Server Claim PNC tidak dapat dihubungi',
+      description: 'Periksa koneksi jaringan Anda, lalu coba lagi.',
       tone: 'gangguan',
     }
   }
@@ -45,35 +45,35 @@ function messageFor(error: unknown): MessageBody {
     switch (error.kode) {
       case ErrorCode.wrongCredential:
         return {
-          judul: 'Nama pengguna atau kata sandi salah',
-          keterangan: 'Periksa kembali isian Anda, lalu coba masuk lagi.',
+          title: 'Nama pengguna atau kata sandi salah',
+          description: 'Periksa kembali isian Anda, lalu coba masuk lagi.',
           tone: 'penolakan',
         }
       case ErrorCode.userInactive:
         return {
-          judul: 'Akun Anda tidak aktif',
-          keterangan:
+          title: 'Akun Anda tidak aktif',
+          description:
             'Mengetik ulang tidak akan menolong. Hubungi administrator Claim PNC untuk mengaktifkan kembali akun Anda.',
           tone: 'penolakan',
         }
       case ErrorCode.identityDown:
         return {
-          judul: 'Sistem identitas sedang tidak dapat dihubungi',
-          keterangan:
+          title: 'Sistem identitas sedang tidak dapat dihubungi',
+          description:
             'Ini bukan kesalahan Anda. Tunggu beberapa saat, lalu coba lagi — mencoba berulang kali tidak mempercepat pemulihan.',
           tone: 'gangguan',
         }
       default:
         return {
-          judul: 'Terjadi kesalahan pada sistem',
-          keterangan: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
+          title: 'Terjadi kesalahan pada sistem',
+          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
           tone: 'gangguan',
         }
     }
   }
   return {
-    judul: 'Terjadi kesalahan pada sistem',
-    keterangan: 'Coba beberapa saat lagi.',
+    title: 'Terjadi kesalahan pada sistem',
+    description: 'Coba beberapa saat lagi.',
     tone: 'gangguan',
   }
 }
@@ -136,7 +136,7 @@ export function LoginPage() {
             className="space-y-5 rounded-kartu border border-slate-200 bg-white p-6 shadow-angkat sm:p-7"
           >
             {error && (
-              <ErrorMessage judul={error.judul} keterangan={error.keterangan} tone={error.tone} />
+              <ErrorMessage title={error.title} description={error.description} tone={error.tone} />
             )}
 
             <Field

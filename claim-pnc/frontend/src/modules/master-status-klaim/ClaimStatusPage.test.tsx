@@ -96,7 +96,7 @@ function show() {
 
 beforeEach(() => {
   calls = []
-  // Layar berada di balik sesi. Tanpa ini PenjagaSesi melempar ke layar masuk.
+  // Layar berada di balik sesi. Tanpa ini SessionGuard melempar ke layar masuk.
   useSession.setState({
     token: 'token-uji',
     user: SAMPLE_PROFILE,

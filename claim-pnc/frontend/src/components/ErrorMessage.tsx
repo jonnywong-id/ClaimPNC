@@ -11,8 +11,8 @@
 export type ErrorTone = 'penolakan' | 'gangguan'
 
 type Props = {
-  judul: string
-  keterangan: string
+  title: string
+  description: string
   tone: ErrorTone
 }
 
@@ -24,27 +24,27 @@ type Props = {
  * warna, dan kedua nada ini menuntut tindakan yang berbeda. Bila keduanya hanya berbeda
  * merah dan kuning, sebagian pengguna tidak akan pernah melihat bedanya.
  */
-const style: Record<ErrorTone, { kotak: string; icon: string; judul: string }> = {
+const style: Record<ErrorTone, { box: string; icon: string; title: string }> = {
   penolakan: {
-    kotak: 'border-red-200 bg-red-50/80',
+    box: 'border-red-200 bg-red-50/80',
     icon: 'bg-red-100 text-red-700',
-    judul: 'text-red-900',
+    title: 'text-red-900',
   },
   gangguan: {
-    kotak: 'border-amber-200 bg-amber-50/80',
+    box: 'border-amber-200 bg-amber-50/80',
     icon: 'bg-amber-100 text-amber-800',
-    judul: 'text-amber-900',
+    title: 'text-amber-900',
   },
 }
 
-/** PesanGalat menampilkan satu kotak pesan kesalahan yang dapat ditindaklanjuti. */
-export function ErrorMessage({ judul, keterangan, tone }: Props) {
+/** ErrorMessage menampilkan satu kotak pesan kesalahan yang dapat ditindaklanjuti. */
+export function ErrorMessage({ title, description, tone }: Props) {
   const g = style[tone]
 
   return (
     <div
       role="alert"
-      className={`flex items-start gap-3 rounded-kartu border p-3.5 text-sm shadow-lembut ${g.kotak}`}
+      className={`flex items-start gap-3 rounded-kartu border p-3.5 text-sm shadow-lembut ${g.box}`}
     >
       <span
         aria-hidden="true"
@@ -62,8 +62,8 @@ export function ErrorMessage({ judul, keterangan, tone }: Props) {
       </span>
 
       <div className="min-w-0">
-        <p className={`font-semibold ${g.judul}`}>{judul}</p>
-        <p className="mt-0.5 text-slate-700">{keterangan}</p>
+        <p className={`font-semibold ${g.title}`}>{title}</p>
+        <p className="mt-0.5 text-slate-700">{description}</p>
       </div>
     </div>
   )

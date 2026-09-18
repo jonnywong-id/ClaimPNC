@@ -50,8 +50,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 			cfg.Storage)
 	}
 
-	ctx, batal := context.WithTimeout(context.Background(), 60*time.Second)
-	defer batal()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
 
 	pool, err := db.NewPool(ctx, cfg.PrimaryPortal, portalParameters(cfg), func(alias string, err error) {
 		print("  [lewat] portal %-5s tidak dapat dibuka: %v", alias, err)
@@ -246,11 +246,11 @@ func printIfPresent(print func(string, ...any), label, value string) {
 //
 // Ia sengaja TIDAK diterima sebagai argumen baris perintah: argumen tersimpan di riwayat
 // shell dan terlihat oleh siapa pun yang menjalankan daftar proses.
-func readPassword(sumber io.Reader) (string, error) {
-	if sumber == nil {
-		sumber = os.Stdin
+func readPassword(source io.Reader) (string, error) {
+	if source == nil {
+		source = os.Stdin
 	}
-	rowScanner := bufio.NewScanner(sumber)
+	rowScanner := bufio.NewScanner(source)
 	if !rowScanner.Scan() {
 		if err := rowScanner.Err(); err != nil {
 			return "", fmt.Errorf("membaca kata sandi dari stdin: %w", err)

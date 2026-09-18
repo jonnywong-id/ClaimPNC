@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { panggilAPI } from '@/api/klien'
+import { callAPI } from '@/api/client'
 import type {
-  IsianStatusProgres,
-  ResponsDaftarPosisiKlaim,
-  ResponsDaftarStatusProgres,
-  ResponsSatuStatusProgres,
-} from '@/api/tipe'
-import { gunakanPortalTerpilih } from '@/app/portal'
-import { gunakanSesi } from '@/app/sesi'
+  ClaimPositionListResponse,
+  ProgressStatusInput,
+  ProgressStatusListResponse,
+  ProgressStatusResponse,
+} from '@/api/types'
+import { useSelectedPortal } from '@/app/portal'
+import { useSession } from '@/app/session'
 
-const JALUR = '/api/master/status-progres-1'
-const JALUR_POSISI = '/api/master/posisi-klaim'
+const ROUTE = '/api/master/status-progres-1'
+const ROUTE_POSITION = '/api/master/posisi-klaim'
 
 /**
- * kunciDaftar menyertakan portal DAN token.
+ * listKey menyertakan portal DAN token.
  *
  * Portal ikut di dalam kunci karena itulah yang menentukan basis data mana yang
  * menjawab (ADR-0030). Tanpa itu, berpindah entitas akan menampilkan data entitas
@@ -22,9 +22,9 @@ const JALUR_POSISI = '/api/master/posisi-klaim'
  * di layar yang menandakan data itu milik badan hukum lain (R-20).
  *
  * Token ikut supaya cache pengguna sebelumnya tidak terwarisi pengguna berikutnya di
- * peramban yang sama, mengikuti pola gunakanDaftarPortal.
+ * peramban yang sama, mengikuti pola usePortalList.
  */
-function kunciDaftar(portal: string | null, token: string | null) {
+function listKey(portal: string | null, token: string | null) {
   return ['master-status-progres-1', portal, token] as const
 }
 
@@ -36,13 +36,13 @@ function kunciDaftar(portal: string | null, token: string | null) {
  * akan menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka — layar
  * yang menuntun pengguna memilih portal lebih berguna daripada pesan galat.
  */
-export function gunakanDaftarStatusProgres() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const portal = gunakanPortalTerpilih((keadaan) => keadaan.alias)
+export function useProgressStatusList() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: kunciDaftar(portal, token),
-    queryFn: () => panggilAPI<ResponsDaftarStatusProgres>(JALUR, { token, portal }),
+    queryKey: listKey(portal, token),
+    queryFn: () => callAPI<ProgressStatusListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
   })
 }
@@ -51,18 +51,18 @@ export function gunakanDaftarStatusProgres() {
  * Hook daftar posisi klaim untuk dropdown.
  *
  * Tidak menuntut portal: keempat posisi adalah daftar milik aplikasi, bukan isi basis
- * data entitas mana pun (lihat internal/statusprogres/posisi.go).
+ * data entitas mana pun (lihat internal/masterstatusprogres/position.go).
  *
  * Daftarnya diambil dari server, tidak disalin ke sini. Menyalinnya berarti keempat
  * nilai itu hidup di dua tempat, dan tempat kedua akan terlupa ketika daftarnya kelak
  * pindah menjadi master data `F-4`.
  */
-export function gunakanDaftarPosisiKlaim() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+export function useClaimPositionList() {
+  const token = useSession((state) => state.token)
 
   return useQuery({
     queryKey: ['posisi-klaim', token],
-    queryFn: () => panggilAPI<ResponsDaftarPosisiKlaim>(JALUR_POSISI, { token }),
+    queryFn: () => callAPI<ClaimPositionListResponse>(ROUTE_POSITION, { token }),
     enabled: token !== null,
     // Daftarnya tetap selama aplikasi berjalan; memuatnya ulang setiap kali komponen
     // dipasang hanya menambah permintaan tanpa menambah apa pun.
@@ -71,16 +71,16 @@ export function gunakanDaftarPosisiKlaim() {
 }
 
 /** Hook penambahan status progres. */
-export function gunakanTambahStatusProgres() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const portal = gunakanPortalTerpilih((keadaan) => keadaan.alias)
-  const klien = useQueryClient()
+export function useCreateProgressStatus() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
 
   return useMutation({
-    mutationFn: (isian: IsianStatusProgres) =>
-      panggilAPI<ResponsSatuStatusProgres>(JALUR, {
+    mutationFn: (input: ProgressStatusInput) =>
+      callAPI<ProgressStatusResponse>(ROUTE, {
         metode: 'POST',
-        badan: isian,
+        body: input,
         token,
         portal,
       }),
@@ -89,27 +89,27 @@ export function gunakanTambahStatusProgres() {
     // saat yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi
     // tabel yang sebenarnya.
     onSuccess: () => {
-      void klien.invalidateQueries({ queryKey: kunciDaftar(portal, token) })
+      void client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }
 
 /** Hook penyuntingan status progres. */
-export function gunakanUbahStatusProgres() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const portal = gunakanPortalTerpilih((keadaan) => keadaan.alias)
-  const klien = useQueryClient()
+export function useUpdateProgressStatus() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, isian }: { id: string; isian: IsianStatusProgres }) =>
-      panggilAPI<ResponsSatuStatusProgres>(`${JALUR}/${encodeURIComponent(id)}`, {
+    mutationFn: ({ id, input }: { id: string; input: ProgressStatusInput }) =>
+      callAPI<ProgressStatusResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
         metode: 'PUT',
-        badan: isian,
+        body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      void klien.invalidateQueries({ queryKey: kunciDaftar(portal, token) })
+      void client.invalidateQueries({ queryKey: listKey(portal, token) })
     },
   })
 }

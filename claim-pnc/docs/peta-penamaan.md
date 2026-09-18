@@ -265,3 +265,65 @@ Modul kerangka tanpa nama bisnis (`auth`, `portal`, `platform`, `spa`) tidak ber
 
 **Komponen di dalam modul memakai nama tipe domain, bukan nama modul** — karena itu
 `AccountPage.tsx` di dalam `master-rekening/`, bukan `MasterRekeningPage.tsx`.
+
+---
+
+## Tambahan 2026-09-18 — modul Master Status Progres & prop komponen bersama
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| StatusProgres | ProgressStatus | keterangan progres pada satu posisi klaim |
+| Posisi (klaim) | Position | Register · Survey · Komite · Akseptasi |
+| Induk | Parent | Status Progres 1 yang menaungi baris tingkat 2 |
+| **Isian** (masukan domain Go) | **Input** | dibedakan dari `Values` yang dipakai untuk objek nilai form di React — lihat `keputusan-implementasi.md` §15.4 |
+| PelanggaranIsian | Violation | sama dengan modul masterstatus |
+| PemilihRepo | RepoSelector | memilih repo milik satu portal entitas |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| SisipBaru | InsertNew | lapisan repo — menurunkan ID lalu menyisip dalam satu operasi |
+| PastikanPortalSiap | EnsurePortalReady | |
+| PilihAktif | SelectActive | modul portal |
+
+### Prop komponen bersama — sisa yang dibereskan 2026-09-18
+
+Penggantian nama 2026-09-18 pagi menyisakan nama prop berbahasa Indonesia pada pustaka komponen.
+Seluruhnya kini Inggris:
+
+| Sebelum | Sesudah | Komponen |
+|---|---|---|
+| `judul` | `title` | `DataTable`, `ErrorMessage`, `Column` |
+| `keterangan` | `description` | `DataTable`, `ErrorMessage` |
+| `nilai` · `tampil` | `value` · `render` | `Column` |
+| `lebar` · `tanpaUrut` · `keKanan` | `width` · `noSort` · `alignRight` | `Column` |
+| `aksi` | `actions` | `DataTable`, `AccountTable` |
+| `petunjuk` | `hint` | `Field` |
+| `kotak` | `box` | `ErrorMessage` |
+| `arah` · `'naik'`/`'turun'` | `direction` · `'asc'`/`'desc'` | `DataTable` |
+| `anak` | `children` | `PageShell`, `SessionGuard`, `App` |
+
+**`aktif` sengaja TIDAK ikut diganti.** Ia nama field JSON API (`Account.aktif`), bukan nama
+internal — kecuali satu prop lokal pada `SortMarker` di `DataTable`, yang memang bukan kontrak.
+
+### Nama kueri `.sql` tambahan
+
+| Sebelum | Sesudah |
+|---|---|
+| `statusprogres_{daftar,ambil,sisip,perbarui,periksa_tabel}` | `progress_status_{list,get,insert,update,check_table}` |
+| `statusprogres_daftar_id_terkunci` | `progress_status_list_id_locked` |
+| `statusprogres2_*` | `progress_status2_*` |
+
+### Nama modul yang sudah ditetapkan
+
+| Nama modul bisnis (Work Owner) | Folder backend / paket Go | Folder frontend |
+|---|---|---|
+| Master Rekening | `internal/masterrekening` | `src/modules/master-rekening` |
+| Master Status Klaim | `internal/masterstatus` | `src/modules/master-status-klaim` |
+| Master Status Progres 1 | `internal/masterstatusprogres` | `src/modules/master-status-progres` |
+
+**Komponen di dalamnya memakai nama tipe domain, bukan nama modul** — karena itu
+`ProgressStatusPage.tsx` di dalam `master-status-progres/`, bukan `MasterStatusProgresPage.tsx`.

@@ -83,13 +83,13 @@ func mapError(err error) (int, ErrorResponse) {
 		// belum tersimpan, bukan sekadar melempar pengguna ke layar masuk.
 		return http.StatusUnauthorized, ErrorResponse{
 			Code:    CodeSessionExpired,
-			Message: "Session Anda sudah berakhir. Silakan masuk kembali.",
+			Message: "Sesi Anda sudah berakhir. Silakan masuk kembali.",
 		}
 
 	case errors.Is(err, auth.ErrSessionNotFound), errors.Is(err, auth.ErrSessionRevoked):
 		return http.StatusUnauthorized, ErrorResponse{
 			Code:    CodeInvalidSession,
-			Message: "Session tidak sah. Silakan masuk kembali.",
+			Message: "Sesi tidak sah. Silakan masuk kembali.",
 		}
 
 	default:

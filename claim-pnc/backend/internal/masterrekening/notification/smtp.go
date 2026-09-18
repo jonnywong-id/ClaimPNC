@@ -204,7 +204,7 @@ func composeEmail(from string, to []string, p masterrekening.Alert) []byte {
 
 // Subject adalah baris subjek surel peringatan.
 func Subject(p masterrekening.Alert) string {
-	return "Pendaftaran rekening ke Cashier GAGAL — " + p.Account.Number
+	return "Pendaftaran rekening ke Kasir GAGAL — " + p.Account.Number
 }
 
 // HTMLBody menyusun badan surel.
@@ -235,7 +235,7 @@ func HTMLBody(p masterrekening.Alert) string {
 	var b strings.Builder
 	b.WriteString("<html><body style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222\">")
 	b.WriteString("<p>Yth. Tim IT,</p>")
-	b.WriteString("<p>Account berikut telah <b>disetujui komite</b>, tetapi <b>gagal didaftarkan " +
+	b.WriteString("<p>Rekening berikut telah <b>disetujui komite</b>, tetapi <b>gagal didaftarkan " +
 		"ke sistem Kasir</b>. Selama pendaftaran belum berhasil, rekening ini <b>tidak dapat " +
 		"dipakai membayar klaim</b>.</p>")
 	b.WriteString("<table style=\"border-collapse:collapse\">")
@@ -244,8 +244,8 @@ func HTMLBody(p masterrekening.Alert) string {
 	b.WriteString(rows("Bank", r.BankName))
 	b.WriteString(rows("Cabang", r.BankBranch))
 	b.WriteString(rows("Tipe rekening", r.AccountType))
-	b.WriteString(rows("Kode respons Cashier", p.Code))
-	b.WriteString(rows("Pesan dari Cashier", p.Message))
+	b.WriteString(rows("Kode respons Kasir", p.Code))
+	b.WriteString(rows("Pesan dari Kasir", p.Message))
 	b.WriteString(rows("Diputuskan oleh", decidedBy))
 	b.WriteString("</table>")
 	b.WriteString("<p>Mohon ditindaklanjuti. Setelah masalahnya selesai, rekening dapat " +

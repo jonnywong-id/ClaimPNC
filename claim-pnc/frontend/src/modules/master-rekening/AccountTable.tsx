@@ -4,7 +4,7 @@ type Props = {
   rows: Account[]
   loading: boolean
   /** Tindakan per baris; kosong berarti tabel hanya dibaca. */
-  aksi?: ((rekening: Account) => React.ReactNode) | undefined
+  actions?: ((rekening: Account) => React.ReactNode) | undefined
 }
 
 /**
@@ -19,7 +19,7 @@ type Props = {
  * ia ada, tabel ini diganti dengannya; kolom dan tindakannya sudah dipisahkan supaya
  * penggantian itu tidak menyentuh isi layar.
  */
-export function AccountTable({ rows, loading, aksi }: Props) {
+export function AccountTable({ rows, loading, actions }: Props) {
   if (loading) {
     return <p className="py-8 text-center text-sm text-slate-500">Memuat data rekening…</p>
   }
@@ -43,7 +43,7 @@ export function AccountTable({ rows, loading, aksi }: Props) {
             <th scope="col" className="py-2 pr-4 font-medium">Tipe</th>
             <th scope="col" className="py-2 pr-4 font-medium">Status</th>
             <th scope="col" className="py-2 pr-4 font-medium">Kasir</th>
-            {aksi && <th scope="col" className="py-2 font-medium">Tindakan</th>}
+            {actions && <th scope="col" className="py-2 font-medium">Tindakan</th>}
           </tr>
         </thead>
         <tbody>
@@ -60,7 +60,7 @@ export function AccountTable({ rows, loading, aksi }: Props) {
               <td className="py-2 pr-4">
                 <CashierNote rekening={r} />
               </td>
-              {aksi && <td className="py-2">{aksi(r)}</td>}
+              {actions && <td className="py-2">{actions(r)}</td>}
             </tr>
           ))}
         </tbody>

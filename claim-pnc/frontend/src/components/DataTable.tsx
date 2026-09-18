@@ -12,18 +12,18 @@ import { SearchIcon, EmptyBoxIcon } from './Icon'
  */
 export type Column<T> = {
   key: string
-  judul: string
-  nilai: (rows: T) => string
-  tampil?: (rows: T) => ReactNode
+  title: string
+  value: (rows: T) => string
+  render?: (rows: T) => ReactNode
 
   /** Lebar kolom pada tampilan meja. Diabaikan pada tampilan kartu. */
-  lebar?: string
+  width?: string
 
   /** Kolom yang tidak layak diurutkan — misalnya kolom aksi. */
-  tanpaUrut?: boolean
+  noSort?: boolean
 
   /** Ratakan isi sel ke kanan pada tampilan meja. Dipakai kolom aksi. */
-  keKanan?: boolean
+  alignRight?: boolean
 }
 
 type Props<T> = {
@@ -32,11 +32,11 @@ type Props<T> = {
   rowKey: (rows: T) => string
 
   /** Judul di atas tabel; boleh dikosongkan bila layar sudah punya judulnya sendiri. */
-  judul?: string
-  keterangan?: string
+  title?: string
+  description?: string
 
   /** Tombol-tombol di kanan judul — Tambah, Muat ulang, dan sejenisnya. */
-  aksi?: ReactNode
+  actions?: ReactNode
 
   isLoading?: boolean
   error?: ReactNode
@@ -45,7 +45,7 @@ type Props<T> = {
   emptyMessage?: string
 }
 
-type SortOrder = { key: string; arah: 'naik' | 'turun' }
+type SortOrder = { key: string; direction: 'asc' | 'desc' }
 
 /**
  * DataTable adalah satu-satunya tabel di seluruh aplikasi.
@@ -95,9 +95,9 @@ export function DataTable<T>({
   columns,
   rows,
   rowKey,
-  judul,
-  keterangan,
-  aksi,
+  title,
+  description,
+  actions,
   isLoading = false,
   error,
   searchLabel = 'Cari',
@@ -109,7 +109,7 @@ export function DataTable<T>({
   const visible = useMemo(() => {
     const word = query.trim().toLowerCase()
     const filtered = word
-      ? rows.filter((b) => columns.some((k) => k.nilai(b).toLowerCase().includes(word)))
+      ? rows.filter((b) => columns.some((k) => k.value(b).toLowerCase().includes(word)))
       : rows
 
     if (!sort) return filtered
@@ -120,18 +120,18 @@ export function DataTable<T>({
     // Salinan dibuat lebih dulu: sort mengubah senarai di tempat, dan mengurutkan props
     // secara langsung akan mengubah data milik pemanggil.
     return [...filtered].sort((a, b) => {
-      const comparison = sortColumn.nilai(a).localeCompare(sortColumn.nilai(b), 'id', {
+      const comparison = sortColumn.value(a).localeCompare(sortColumn.value(b), 'id', {
         numeric: true,
         sensitivity: 'base',
       })
-      return sort.arah === 'naik' ? comparison : -comparison
+      return sort.direction === 'asc' ? comparison : -comparison
     })
   }, [rows, columns, query, sort])
 
   function toggleSort(key: string) {
     setSort((previous) => {
-      if (previous?.key !== key) return { key, arah: 'naik' }
-      if (previous.arah === 'naik') return { key, arah: 'turun' }
+      if (previous?.key !== key) return { key, direction: 'asc' }
+      if (previous.direction === 'asc') return { key, direction: 'desc' }
       // Klik ketiga mengembalikan urutan asli dari server. Tanpa ini, pengguna tidak
       // punya cara kembali ke urutan semula selain memuat ulang halaman.
       return null
@@ -142,13 +142,13 @@ export function DataTable<T>({
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
-      {(judul || aksi) && (
+      {(title || actions) && (
         <header className="flex flex-col gap-4 border-b border-slate-200 bg-white p-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            {judul && <h2 className="text-base font-semibold text-slate-900">{judul}</h2>}
-            {keterangan && <p className="mt-1 text-sm text-slate-600">{keterangan}</p>}
+            {title && <h2 className="text-base font-semibold text-slate-900">{title}</h2>}
+            {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
           </div>
-          {aksi && <div className="flex flex-wrap items-center gap-2">{aksi}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
 
@@ -207,21 +207,21 @@ export function DataTable<T>({
                   <th
                     key={k.key}
                     scope="col"
-                    style={k.lebar ? { width: k.lebar } : undefined}
+                    style={k.width ? { width: k.width } : undefined}
                     aria-sort={
                       sort?.key === k.key
-                        ? sort.arah === 'naik'
+                        ? sort.direction === 'asc'
                           ? 'ascending'
                           : 'descending'
                         : 'none'
                     }
                     className={[
                       'px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600',
-                      k.keKanan ? 'text-right' : '',
+                      k.alignRight ? 'text-right' : '',
                     ].join(' ')}
                   >
-                    {k.tanpaUrut ? (
-                      k.judul
+                    {k.noSort ? (
+                      k.title
                     ) : (
                       <button
                         type="button"
@@ -233,10 +233,10 @@ export function DataTable<T>({
                           'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
                         ].join(' ')}
                       >
-                        {k.judul}
+                        {k.title}
                         <SortMarker
-                          aktif={sort?.key === k.key}
-                          arah={sort?.arah ?? 'naik'}
+                          active={sort?.key === k.key}
+                          direction={sort?.direction ?? 'asc'}
                         />
                       </button>
                     )}
@@ -262,7 +262,7 @@ export function DataTable<T>({
                       className={[
                         'flex items-baseline gap-3 px-5 py-1.5',
                         'md:table-cell md:py-3.5 md:align-middle',
-                        k.keKanan ? 'md:text-right' : '',
+                        k.alignRight ? 'md:text-right' : '',
                       ].join(' ')}
                     >
                       {/*
@@ -274,10 +274,10 @@ export function DataTable<T>({
                         aria-hidden="true"
                         className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
                       >
-                        {k.judul}
+                        {k.title}
                       </span>
                       <span className="min-w-0 flex-1 break-words text-slate-900">
-                        {k.tampil ? k.tampil(b) : k.nilai(b) || '—'}
+                        {k.render ? k.render(b) : k.value(b) || '—'}
                       </span>
                     </td>
                   ))}
@@ -336,8 +336,8 @@ function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefine
  * disentuh tetikus — itu yang memberi tahu bahwa judulnya dapat ditekan. Tanpa petunjuk
  * itu, pengguna tidak punya cara menduga tabelnya dapat diurutkan.
  */
-function SortMarker({ aktif, arah }: { aktif: boolean; arah: 'naik' | 'turun' }) {
-  if (!aktif) {
+function SortMarker({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
+  if (!active) {
     return (
       <svg
         viewBox="0 0 12 12"
@@ -350,7 +350,7 @@ function SortMarker({ aktif, arah }: { aktif: boolean; arah: 'naik' | 'turun' })
   }
   return (
     <svg viewBox="0 0 12 12" aria-hidden="true" className="h-3 w-3 text-blue-600">
-      {arah === 'naik' ? (
+      {direction === 'asc' ? (
         <path d="m6 2 3.2 4H2.8L6 2Z" fill="currentColor" />
       ) : (
         <path d="M6 10 2.8 6h6.4L6 10Z" fill="currentColor" />

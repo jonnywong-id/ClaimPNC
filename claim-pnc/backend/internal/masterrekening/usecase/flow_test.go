@@ -156,7 +156,7 @@ func TestApprovedAccountIsRegisteredToCashier(t *testing.T) {
 	assert.Empty(t, build.cashier.Updated)
 	assert.Equal(t, "BERHASIL", result.ServiceStatus)
 	assert.Equal(t, "TIRUAN-0001", result.CashierAccountID)
-	assert.Equal(t, "Account diterima sistem Kasir.", result.CashierResponse,
+	assert.Equal(t, "Rekening diterima sistem Kasir.", result.CashierResponse,
 		"pesan Cashier dipangkas sampai setelah tanda ] seperti layar lama")
 }
 
@@ -226,7 +226,7 @@ func TestResponseCodeNineRaisesAlertToITTeam(t *testing.T) {
 	build.cashier.Response = masterrekening.CashierResult{
 		Succeeded: false,
 		Code:      "9",
-		Message:   "[ERR-09] Account sudah terdaftar di Cashier.",
+		Message:   "[ERR-09] Rekening sudah terdaftar di Kasir.",
 	}
 	ctx := context.Background()
 
@@ -237,7 +237,7 @@ func TestResponseCodeNineRaisesAlertToITTeam(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "GAGAL", result.ServiceStatus)
-	assert.Equal(t, "Account sudah terdaftar di Cashier.", result.CashierResponse)
+	assert.Equal(t, "Rekening sudah terdaftar di Kasir.", result.CashierResponse)
 
 	require.Len(t, build.notifier.Sent, 1)
 	peringatan := build.notifier.Sent[0]

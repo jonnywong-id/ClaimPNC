@@ -164,7 +164,7 @@ func (l *Service) registerWithCashier(
 		// Yang memperlihatkannya adalah kolom Kasir di layar Master Rekening dan log
 		// aplikasi. Dicatat di docs/keputusan-implementasi.md.
 		if logger != nil {
-			logger.Warn("pendaftaran rekening ke Cashier gagal",
+			logger.Warn("pendaftaran rekening ke Kasir gagal",
 				slog.String("nomor_rekening", r.Number),
 				slog.String("kode_bank", r.BankCode),
 				slog.String("pesan", err.Error()),
@@ -221,7 +221,7 @@ func (l *Service) recordCashierFailure(
 	logger *slog.Logger,
 ) {
 	if logger != nil {
-		logger.Warn("pendaftaran rekening ke Cashier gagal",
+		logger.Warn("pendaftaran rekening ke Kasir gagal",
 			slog.String("nomor_rekening", r.Number),
 			slog.String("kode_bank", r.BankCode),
 			slog.String("pesan", message),

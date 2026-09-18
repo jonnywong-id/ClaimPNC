@@ -31,6 +31,7 @@ type Entry = { ke: string; label: string; icon: ReactNode }
 const menu: Entry[] = [
   { ke: '/', label: 'Beranda', icon: <ShieldIcon className="h-4 w-4" /> },
   { ke: '/master/status-klaim', label: 'Master Status Klaim', icon: <ListIcon className="h-4 w-4" /> },
+  { ke: '/master/status-progres-1', label: 'Master Status Progres 1', icon: <ListIcon className="h-4 w-4" /> },
 ]
 
 /**
@@ -49,11 +50,11 @@ const menu: Entry[] = [
  * Pemindahan itu juga yang membuat keduanya tidak kembar: satu tombol Keluar di seluruh
  * aplikasi, satu tempat nama pengguna ditampilkan.
  */
-export function PageShell({ anak }: { anak: ReactNode }) {
+export function PageShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <TopBar />
-      <main className="pb-16">{anak}</main>
+      <main className="pb-16">{children}</main>
     </div>
   )
 }

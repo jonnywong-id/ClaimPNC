@@ -3,6 +3,9 @@
 // Tipe di sini adalah cerminan dto Go di internal/*/http. Bila salah satu berubah, yang
 // lain wajib ikut berubah — pemeriksaan tipe TypeScript adalah jaring pengaman antara
 // layar dan API.
+//
+// NAMA TIPE berbahasa Inggris (`D-80`); NAMA FIELD tetap Indonesia karena ia kontrak
+// API, bukan nama internal.
 
 /** Dua populasi pengguna, diverifikasi lewat dua jalur berbeda. */
 export const UserKind = {
@@ -64,7 +67,7 @@ export type PortalListResponse = {
 
 // ── Master Status Progres 1 ──────────────────────────────────────────────────────
 //
-// Cerminan dto di internal/statusprogres/http. Menggantikan layar Pega
+// Cerminan dto di internal/masterstatusprogres/http. Menggantikan layar Pega
 // `Harness/StatusProgress-Harness.xml` atas tabel POOLDATA.GCNM_MST_PROGRESS_KLAIM.
 
 /**
@@ -73,7 +76,7 @@ export type PortalListResponse = {
  * Nama field di sini sudah dinamai ulang mengikuti `D-19`; kueri Pega mengaliaskan
  * ketiga kolomnya ke nama yang tidak mencerminkan isi (`CaseID`, `City`, `CityID`).
  */
-export type StatusProgres = {
+export type ProgressStatus = {
   /** Kolom ID_PROGRESS. Diterbitkan server; tidak pernah diisi pengguna. */
   id: string
   /** Kolom STS_PROGRESS1 — keterangan status yang dibaca petugas. */
@@ -85,42 +88,30 @@ export type StatusProgres = {
 }
 
 /** Satu pilihan pada dropdown Posisi. */
-export type PosisiKlaim = {
+export type ClaimPosition = {
   kode: string
   nama: string
 }
 
-export type ResponsDaftarStatusProgres = {
-  status_progres: StatusProgres[]
+export type ProgressStatusListResponse = {
+  status_progres: ProgressStatus[]
   /** Entitas yang benar-benar menjawab permintaan ini. */
   portal: string
 }
 
-export type ResponsSatuStatusProgres = {
-  status_progres: StatusProgres
+export type ProgressStatusResponse = {
+  status_progres: ProgressStatus
   portal: string
 }
 
-export type ResponsDaftarPosisiKlaim = {
-  posisi: PosisiKlaim[]
+export type ClaimPositionListResponse = {
+  posisi: ClaimPosition[]
 }
 
 /** Badan permintaan penambahan dan penyuntingan. */
-export type IsianStatusProgres = {
+export type ProgressStatusInput = {
   nama: string
   kode_posisi: string
-}
-
-/**
- * Satu isian yang ditolak server.
- *
- * Backend mengirim SELURUH pelanggaran sekaligus, bukan yang pertama saja — meniru
- * perilaku Pega yang menampilkan semua pesan bersamaan (P-5). `kolom` memakai nama
- * isian, sehingga layar dapat menyorot isian yang salah.
- */
-export type DetailGalat = {
-  kolom: string
-  pesan: string
 }
 
 /**
@@ -152,9 +143,20 @@ export type ClaimStatusResponse = {
   status_klaim: ClaimStatus
 }
 
-/** Satu aturan yang dilanggar beserta kolom yang melanggarnya. */
+/**
+ * Satu aturan yang dilanggar beserta kolom yang melanggarnya.
+ *
+ * Kedua nama kunci ada dan keduanya opsional, karena kedua modul yang memakai bentuk
+ * senarai BELUM sepakat menamainya: `masterstatus` mengirim `field`
+ * (internal/masterstatus/http/dto.go:55), `masterstatusprogres` mengirim `kolom`
+ * (internal/masterstatusprogres/http/dto.go:82).
+ *
+ * Layar tidak perlu memilih sendiri di antara keduanya — `APIError.violations()`
+ * menyatukannya. Penyeragaman kontraknya masuk TKT-F1-004.
+ */
 export type FieldViolation = {
-  field: string
+  field?: string
+  kolom?: string
   pesan: string
 }
 
@@ -163,6 +165,8 @@ export type FieldViolation = {
  *
  * Layar membedakan jenis galat lewat kode ini, TIDAK PERNAH dengan mencocokkan teks
  * pesan — teks bisa berubah kapan saja tanpa mengubah artinya.
+ *
+ * NILAI-nya tetap berbahasa Indonesia: ia kontrak API, bukan nama internal (`D-80`).
  */
 export const ErrorCode = {
   wrongCredential: 'kredensial_salah',
@@ -175,23 +179,20 @@ export const ErrorCode = {
 
   // Galat modul bisnis dan portal.
   //
-  // `validasiGagal` dipakai BERSAMA oleh modul bisnis dan modul master data — ia tidak
-  // menunjuk satu modul tertentu, sehingga tempatnya di kelompok ini.
-  validasiGagal: 'validasi_gagal',
-  tidakDitemukan: 'tidak_ditemukan',
+  // `validationFailed` dipakai BERSAMA oleh modul bisnis dan modul master data — ia
+  // tidak menunjuk satu modul tertentu, sehingga tempatnya di kelompok ini.
+  validationFailed: 'validasi_gagal',
+  notFound: 'tidak_ditemukan',
   /** Permintaan tidak menyebut portal — pengguna belum memilih entitas. */
-  portalTidakDisebut: 'portal_tidak_disebut',
-  portalTidakDikenal: 'portal_tidak_dikenal',
+  portalNotStated: 'portal_tidak_disebut',
+  portalUnknown: 'portal_tidak_dikenal',
   /** Entitasnya ada, tetapi kredensial basis datanya belum diisi tim infrastruktur. */
-  portalBelumSiap: 'portal_belum_siap',
+  portalNotReady: 'portal_belum_siap',
 
   // Milik modul master data.
-  statusKlaimTidakDitemukan: 'status_klaim_tidak_ditemukan',
-  validationFailed: 'validasi_gagal',
+  claimStatusNotFound: 'status_klaim_tidak_ditemukan',
   statusLabelTaken: 'label_status_sudah_dipakai',
   statusCodeTaken: 'kode_status_sudah_dipakai',
-  labelStatusSudahDipakai: 'label_status_sudah_dipakai',
-  kodeStatusSudahDipakai: 'kode_status_sudah_dipakai',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -269,11 +270,11 @@ export type BankListResponse = {
 /**
  * Kode galat modul Master Rekening.
  *
- * Terpisah dari KodeGalat karena ia milik satu modul, sementara KodeGalat mengikat
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat
  * seluruh aplikasi. Keduanya dibaca dari field `kode` yang sama.
  */
 export const AccountErrorCode = {
-  tidakDitemukan: 'rekening_tidak_ditemukan',
+  notFound: 'rekening_tidak_ditemukan',
   alreadyExists: 'nomor_rekening_sudah_ada',
   alreadyDecided: 'keputusan_sudah_diambil',
   invalidInput: 'isian_tidak_sah',

@@ -6,18 +6,18 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   /** Pesan kesalahan validasi; bila terisi, kolom ditandai dan pesannya ditampilkan. */
   error?: string | undefined
   /** Keterangan singkat di bawah isian. Disembunyikan saat ada pesan galat. */
-  petunjuk?: string | undefined
+  hint?: string | undefined
   /** Ikon kecil di dalam kolom, sisi kiri. Murni hiasan; label tetap yang menjelaskan. */
   icon?: ReactNode
 }
 
 /**
- * KolomIsian adalah satu baris isian: label, input, dan pesan kesalahannya.
+ * Field adalah satu baris isian: label, input, dan pesan kesalahannya.
  *
  * Ia dibuat untuk dipakai langsung dengan React Hook Form:
  *
- *	<KolomIsian id="namaPengguna" label="Nama pengguna"
- *	            galat={errors.namaPengguna?.message} {...register('namaPengguna')} />
+ *	<Field id="namaPengguna" label="Nama pengguna"
+ *	       error={errors.namaPengguna?.message} {...register('namaPengguna')} />
  *
  * Ref diteruskan supaya `register` dapat memegang elemen inputnya.
  *
@@ -35,7 +35,7 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
  * sehingga pesannya dibacakan saat kursor masuk ke kolom — bukan hanya terlihat.
  */
 export const Field = forwardRef<HTMLInputElement, Props>(function Field(
-  { id, label, error, petunjuk, icon, className, disabled, ...rest },
+  { id, label, error, hint, icon, className, disabled, ...rest },
   ref,
 ) {
   const inputClass = [
@@ -73,7 +73,7 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
           ref={ref}
           disabled={disabled}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${id}-galat` : petunjuk ? `${id}-petunjuk` : undefined}
+          aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
           className={className ? `${inputClass} ${className}` : inputClass}
           {...rest}
         />
@@ -91,9 +91,9 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
           <span>{error}</span>
         </p>
       ) : (
-        petunjuk && (
+        hint && (
           <p id={`${id}-petunjuk`} className="mt-1.5 text-xs text-slate-500">
-            {petunjuk}
+            {hint}
           </p>
         )
       )}

@@ -19,7 +19,7 @@ func sampleAlert() masterrekening.Alert {
 			BankBranch:  "JAKARTA PUSAT",
 			AccountType: "BIASA",
 		},
-		Message:   "Account sudah terdaftar di Cashier.",
+		Message:   "Rekening sudah terdaftar di Kasir.",
 		Code:      "9",
 		DecidedBy: masterrekening.Recipients{Name: "Committee Contoh", Email: "komite@sinarmas.id"},
 	}
@@ -97,7 +97,7 @@ func TestBodyCarriesAllFollowUpDetails(t *testing.T) {
 		"1234567890",               // nomor rekening
 		"BENGKEL CONTOH SEJAHTERA", // pemilik
 		"BANK CONTOH",              // bank
-		"Account sudah terdaftar",  // pesan dari Cashier
+		"Rekening sudah terdaftar", // pesan dari Kasir
 		"Committee Contoh",         // siapa yang memutuskan
 		"tidak dapat",              // akibatnya terhadap pembayaran
 	}
@@ -122,7 +122,7 @@ func TestDataValuesAreEscapedBeforeEnteringHTML(t *testing.T) {
 		t.Error("nama pemilik tidak di-escape")
 	}
 	if strings.Contains(body, "<img src=x") {
-		t.Error("pesan dari Cashier tidak di-escape")
+		t.Error("pesan dari Kasir tidak di-escape")
 	}
 	if !strings.Contains(body, "&lt;script&gt;") {
 		t.Error("nama pemilik seharusnya tetap terbaca dalam bentuk ter-escape")

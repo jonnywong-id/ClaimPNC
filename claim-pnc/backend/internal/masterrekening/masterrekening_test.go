@@ -107,8 +107,8 @@ func TestAccountUsableOnlyWhenApprovedAndActive(t *testing.T) {
 func TestTrimCashierResponseTakesPartAfterBracket(t *testing.T) {
 	// Sistem lama memangkasnya di dalam SQL dengan SUBSTR/INSTR. Pemangkasannya
 	// pindah ke Go; hasilnya wajib sama.
-	assert.Equal(t, "Account sudah terdaftar",
-		masterrekening.TrimCashierResponse("[ERR-01] Account sudah terdaftar"))
+	assert.Equal(t, "Rekening sudah terdaftar",
+		masterrekening.TrimCashierResponse("[ERR-01] Rekening sudah terdaftar"))
 
 	// Pesan tanpa kurung siku dikembalikan utuh, bukan menjadi kosong.
 	assert.Equal(t, "Berhasil", masterrekening.TrimCashierResponse("Berhasil"))

@@ -37,7 +37,7 @@ func NewFake() *Fake {
 		Response: masterrekening.CashierResult{
 			Succeeded: true,
 			Code:      "0",
-			Message:   "[TIRUAN] Account diterima sistem Kasir.",
+			Message:   "[TIRUAN] Rekening diterima sistem Kasir.",
 			AccountID: "TIRUAN-0001",
 		},
 	}

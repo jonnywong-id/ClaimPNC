@@ -55,17 +55,12 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (LST_ACCOUNT, LST_BANK_GROUP), memory
 │   │   │   └── http/                    handler, dto, galat, rute modul
 │   │   ├── portal/                  MODUL — entitas & basis datanya (ADR-0030)
-<<<<<<< HEAD
 │   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memory
-=======
-│   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memori
 │   │   │   └── http/                    rute daftar portal + middleware portal aktif
-│   │   ├── statusprogres/           MODUL — Master Status Progres 1
-│   │   │   ├── usecase/                 orkestrasi: daftar, tambah, ubah
-│   │   │   ├── repo/                    sqlstore (GCNM_MST_PROGRESS_KLAIM), memori
+│   │   ├── masterstatusprogres/     MODUL — Master Status Progres 1 & 2
+│   │   │   ├── usecase/                 orkestrasi: list, create, update
+│   │   │   ├── repo/                    sqlstore (GCNM_MST_PROGRESS_KLAIM), memory
 │   │   │   └── http/                    handler, dto, pemetaan galat, rute modul
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
-│   │   │   └── http/                    rute daftar portal
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
@@ -76,15 +71,9 @@ claim-pnc/
 │   └── go.mod
 ├── frontend/                    SPA React + TypeScript + Vite
 │   └── src/
-<<<<<<< HEAD
-│       ├── app/                     kerangka: router, provider, penjaga rute, sesi
-│       ├── modules/                 satu folder per modul — nama modul bisnis (D-81)
-=======
 │       ├── app/                     kerangka: router, provider, penjaga rute, sesi,
-│       │                            menu utama, bingkai layar
-│       ├── modules/                 satu folder per modul — masuk, portal, beranda,
-│       │                            master-status-progres
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
+│       │                            bilah atas, menu utama
+│       ├── modules/                 satu folder per modul — nama modul bisnis (D-81)
 │       ├── components/              pustaka komponen baku
 │       └── api/                     klien HTTP dan tipe kontrak API (client.ts, types.ts)
 └── docs/                        keputusan implementasi & catatan pengembangan

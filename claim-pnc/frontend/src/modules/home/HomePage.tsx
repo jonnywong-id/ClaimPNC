@@ -50,22 +50,22 @@ export function HomePage() {
             <dl className="mt-4 space-y-3.5">
               <Row
                 label={pengguna.jenis === UserKind.karyawan ? 'NIK' : 'ID Login'}
-                nilai={pengguna.identitas}
+                value={pengguna.identitas}
                 mono
               />
               <Row
                 label="Jenis pengguna"
-                nilai={
+                value={
                   pengguna.jenis === UserKind.karyawan
                     ? 'Karyawan'
                     : 'Non-karyawan (broker / surveyor independen)'
                 }
               />
-              <Row label="Login" nilai={pengguna.login} />
+              <Row label="Login" value={pengguna.login} />
               {/* Dua field berikut hanya terisi untuk karyawan: POOLDATA.M_LOGIN_PNC
                   tidak memuat surel maupun perusahaan. */}
-              {pengguna.email && <Row label="Email" nilai={pengguna.email} />}
-              {pengguna.perusahaan && <Row label="Perusahaan" nilai={pengguna.perusahaan} />}
+              {pengguna.email && <Row label="Email" value={pengguna.email} />}
+              {pengguna.perusahaan && <Row label="Perusahaan" value={pengguna.perusahaan} />}
             </dl>
 
             {/* Pemilih portal disembunyikan dari bilah atas pada layar sempit karena
@@ -122,7 +122,7 @@ function MenuShortcut() {
         <span>
           <span className="block text-sm font-semibold text-slate-900">Master Status Klaim</span>
           <span className="mt-1 block text-sm text-slate-600">
-            33 state bisnis sebuah klaim — Register, Claim Committee, Paid, dan seterusnya.
+            33 keadaan bisnis sebuah klaim — Register, Claim Committee, Paid, dan seterusnya.
           </span>
         </span>
       </Link>
@@ -138,11 +138,11 @@ function MenuShortcut() {
   )
 }
 
-function Row({ label, nilai, mono = false }: { label: string; nilai: string; mono?: boolean }) {
+function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className={`mt-0.5 text-sm text-slate-900 ${mono ? 'font-mono' : ''}`}>{nilai}</dd>
+      <dd className={`mt-0.5 text-sm text-slate-900 ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   )
 }
