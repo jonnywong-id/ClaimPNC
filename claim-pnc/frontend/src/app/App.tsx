@@ -9,8 +9,8 @@ import { GalatAPI } from '@/api/klien'
 import { KodeGalat } from '@/api/tipe'
 import { gunakanSesi } from '@/app/sesi'
 
+import { Kerangka } from './Kerangka'
 import { PenjagaSesi } from './PenjagaSesi'
-import { PeringatanSesi } from './PeringatanSesi'
 
 /**
  * Sesi yang ditolak server di tengah pekerjaan dibersihkan di satu tempat ini.
@@ -44,50 +44,23 @@ export function Rute() {
   return (
     <Routes>
       <Route path="/masuk" element={<HalamanMasuk />} />
+      {/* Kedua rute di bawah dibungkus Kerangka, sehingga menu utama dan peringatan sesi
+          tampil di keduanya.
+
+          Beranda memakai aksiDiHalaman: ia sudah memuat pemilih portal dan tombol keluar
+          di header-nya sendiri, dan menampilkannya dua kali akan membingungkan. Berkas
+          modul Beranda sendiri TIDAK disentuh — yang berubah hanya pembungkusnya di sini,
+          dan berkas ini kerangka, bukan modul (keputusan Work Owner 2026-09-17). */}
       <Route
         path="/"
-        element={
-          <PenjagaSesi anak={<Beranda />} />
-        }
+        element={<PenjagaSesi anak={<Kerangka anak={<HalamanBeranda />} aksiDiHalaman />} />}
       />
-      {/* Master Status Progres 1.
-          Belum ada tautan menuju ke sini: peta menu mengikuti izin peran, dan tabel 22
-          peran beserta 51 izin menu adalah TKT-F3-004 yang masih terhalang. Keputusan
-          Work Owner 2026-09-17: rute lebih dulu, tanpa menyentuh modul Beranda. Sampai
-          kerangka menu TKT-U1-001 dibangun, layar ini dibuka lewat alamatnya. */}
       <Route
         path="/master/status-progres-1"
-        element={<PenjagaSesi anak={<Layar anak={<HalamanStatusProgres1 />} />} />}
+        element={<PenjagaSesi anak={<Kerangka anak={<HalamanStatusProgres1 />} />} />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  )
-}
-
-function Beranda() {
-  return (
-    <div className="min-h-screen bg-white">
-      <PeringatanSesi />
-      <HalamanBeranda />
-    </div>
-  )
-}
-
-/**
- * Layar membungkus satu halaman dengan bagian yang berlaku untuk seluruh layar dalam
- * sesi — sekarang baru peringatan sesi hampir habis.
- *
- * Ia bukan kerangka portal yang sebenarnya: navigasi samping dan jejak lokasi adalah
- * TKT-U1-001. Yang dijaminnya sekarang hanyalah satu hal yang tidak boleh terlewat —
- * peringatan sesi tampil di layar modul, bukan hanya di beranda. Tanpa itu, sesi habis
- * di tengah mengisi form akan datang tanpa peringatan.
- */
-function Layar({ anak }: { anak: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-white">
-      <PeringatanSesi />
-      {anak}
-    </div>
   )
 }
 

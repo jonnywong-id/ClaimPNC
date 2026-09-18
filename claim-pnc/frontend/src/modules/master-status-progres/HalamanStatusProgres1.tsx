@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { GalatAPI, GalatJaringan } from '@/api/klien'
 import { KodeGalat, type StatusProgres } from '@/api/tipe'
@@ -40,7 +39,7 @@ function pesanMuat(galat: unknown): IsiPesan {
         return {
           judul: 'Portal entitas belum dipilih',
           keterangan:
-            'Data master dimiliki masing-masing entitas. Pilih portal di beranda lebih dulu, lalu buka kembali layar ini.',
+            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
           nada: 'penolakan',
         }
       case KodeGalat.portalBelumSiap:
@@ -155,12 +154,9 @@ export function HalamanStatusProgres1() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <nav className="mb-4 text-sm">
-        <Link to="/" className="text-slate-600 underline hover:text-slate-900">
-          ← Beranda
-        </Link>
-      </nav>
-
+      {/* Tidak ada tautan "kembali ke beranda" di sini: menu utama di kerangka sudah
+          menyediakannya, dan dua jalan ke tempat yang sama pada satu layar membuat
+          pengguna menebak mana yang dimaksud. */}
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Master Status Progres 1</h1>
@@ -208,7 +204,7 @@ export function HalamanStatusProgres1() {
         {portal === null ? (
           <PesanGalat
             judul="Portal entitas belum dipilih"
-            keterangan="Data master dimiliki masing-masing entitas. Pilih portal di beranda lebih dulu, lalu buka kembali layar ini."
+            keterangan="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
             nada="penolakan"
           />
         ) : daftar.isPending ? (

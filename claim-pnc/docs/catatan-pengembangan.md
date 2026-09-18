@@ -758,3 +758,86 @@ Tidak ada modul baru dimulai — jawaban keempat belum menentukan arah berikutny
 **Diverifikasi ulang seluruhnya:** `go vet` bersih · `gofmt` bersih · `go test ./...`
 seluruh paket lulus, termasuk paket `repo/sqlstore` yang sebelumnya tidak punya uji sama
 sekali · `tsc --noEmit` lulus · `npm test` 36 lulus.
+
+
+### 9.10 Kerangka menu — 2026-09-18
+
+Work Owner bertanya apakah menunya sudah beres. **Belum** — dan itu akibat langsung
+keputusan "rute saja, jangan sentuh Beranda" (§9.3 pertanyaan 2). Diperiksa lebih dulu
+sebelum dijawab: satu-satunya tempat `status-progres-1` disebut di frontend adalah
+definisi rutenya sendiri, tanpa satu pun tautan dari mana pun.
+
+Diajukan empat pilihan, dan Work Owner memilih **menu di kerangka, Home tetap utuh**.
+
+**Jalan yang sebelumnya saya lewatkan.** Pada §9.3 saya menyajikan pilihannya seolah menu
+menuntut menyunting `HalamanBeranda.tsx`. Itu tidak benar: pembungkus rute `/` ada di
+`app/App.tsx` — kerangka, bukan modul Home. Menu karena itu dapat dipasang dengan berkas
+modul Beranda tetap utuh, dan itulah yang dikerjakan.
+
+| Berkas | Perlakuan |
+|---|---|
+| `app/menu.ts` | **baru** — peta menu sebagai data; modul baru = satu baris |
+| `app/NavigasiUtama.tsx` | **baru** — kolom samping di layar lebar, deret mendatar di layar sempit |
+| `app/Kerangka.tsx` | **baru** — bingkai bersama: peringatan sesi, menu, pemilih portal, keluar |
+| `app/App.tsx` | disunting — kedua rute dibungkus `Kerangka` |
+| `modules/master-status-progres/HalamanStatusProgres1.tsx` | tautan "← Beranda" dibuang, kini duplikat menu |
+| `modules/beranda/HalamanBeranda.tsx` | **tidak disentuh** |
+
+**Tiga hal yang ikut diperbaiki sekalian, dan bukan permintaan.**
+
+`PeringatanSesi` kini tampil di **setiap** layar dalam sesi. Sebelumnya layar modul harus
+mengingat memasangnya sendiri — dan satu layar yang lupa berarti peringatan sesi hampir
+habis tidak pernah muncul di sana.
+
+Pemilih portal dan tombol keluar ikut ke kerangka. Tanpa itu layar modul adalah **jalan
+buntu**: tidak ada cara berpindah entitas atau keluar tanpa kembali ke beranda. Berpindah
+portal tanpa login ulang adalah inti `ADR-0030`, jadi pemilihnya harus terjangkau dari
+layar mana pun.
+
+Karena pemilih portal sekarang ada di layar master, tiga pesan yang menyuruh pengguna
+*"pilih portal di beranda"* menjadi menyesatkan — keduanya disesuaikan menjadi *"pilih
+portal entitas di bagian atas halaman"*.
+
+### 9.11 Verifikasi kerangka menu
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run periksa-tipe` | lulus |
+| `npm test` | **48 uji lulus** — naik dari 36; 12 uji baru di `app/Kerangka.test.tsx` |
+| `npm run build` | lulus; `Menu utama` dan `Status Progres 1` terverifikasi ada di bundle |
+| `go vet` · `gofmt` · `go test ./...` | tetap bersih dan lulus seluruhnya |
+
+**Ditembak terhadap binary yang berjalan** (`APP_ALAMAT=:18081`):
+
+| Permintaan | Hasil |
+|---|---|
+| `GET /` | `200 text/html` |
+| `GET /master/status-progres-1` | `200 text/html` |
+| `GET /api/master/status-progres-1` + `X-Portal: ASM` | `200` |
+| `GET /api/master/status-progres-1` tanpa portal | `400` — penolakan portal masih utuh |
+
+Yang diuji ke-12 uji baru itu, bukan hanya bahwa menunya tampil:
+
+- setiap butir di `app/menu.ts` benar-benar muncul — membuktikan komponennya membaca data
+  itu, bukan menulis butirnya sendiri;
+- butir aktif ditandai `aria-current="page"`, dan Beranda **tidak** ikut aktif di layar
+  lain (tanpa `end`, ia aktif di mana-mana karena semua jalur dimulai dengan `/`);
+- pemilih portal dan tombol keluar tampil di layar modul, dan **tidak** tampil di Beranda
+  yang sudah menyediakannya sendiri;
+- keluar mencabut sesi **dan** pilihan portal;
+- keterangan "belum disaring izin peran" ada di layar.
+
+**Yang TIDAK diverifikasi:** tampilan di peramban sungguhan. Uji di atas berjalan di
+jsdom, yang tidak menghitung tata letak — jadi bahwa menu benar-benar menjadi kolom di
+layar lebar dan deret mendatar di layar sempit belum terbukti dengan mata. Itu perlu
+dibuka sendiri di peramban.
+
+### 9.12 Satu kalimat di Beranda kini bertentangan dengan layarnya
+
+`HalamanBeranda.tsx` masih menulis *"Menu belum tampil di sini."* — padahal menu tampil
+tepat di sebelahnya. Sisa paragrafnya masih benar: menu itu memang belum disaring izin
+peran.
+
+Tidak saya sunting, karena berkas itu milik modul Beranda yang dinyatakan tidak boleh
+diubah. Diajukan sebagai permintaan izin. Rinciannya beserta perubahan yang diusulkan ada
+di `keputusan-implementasi.md` §10.21.

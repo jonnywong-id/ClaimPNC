@@ -84,7 +84,7 @@ function pesanUntuk(galat: unknown): IsiPesan | null {
       case KodeGalat.portalTidakDikenal:
         return {
           judul: 'Portal entitas belum dipilih',
-          keterangan: 'Pilih portal entitas lebih dulu, lalu buka kembali layar ini.',
+          keterangan: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
           nada: 'penolakan',
         }
       case KodeGalat.portalBelumSiap:

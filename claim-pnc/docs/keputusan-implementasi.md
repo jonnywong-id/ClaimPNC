@@ -850,3 +850,108 @@ ini, dan jawaban Work Owner mengubahnya dari kehati-hatian menjadi keharusan.
 **Yang masih belum terbukti:** lebar kolomnya. Ia tidak dibutuhkan penanganan di atas,
 tetapi tetap diminta bersama DDL — nilai yang lebih panjang dari lebar kolom akan ditolak
 basis data, dan itu memang yang diinginkan.
+
+
+### 10.18 Kerangka menu — Home tetap utuh, dan cara itu mungkin
+
+Ditanyakan Work Owner 2026-09-18: *"jadi menunya apakah sudah beres?"* Jawabannya saat
+itu **belum** — dan itu memang akibat langsung §10.1 pertanyaan 2 (*"rute saja, jangan
+sentuh Beranda"*). Layar master hanya dapat dicapai dengan mengetik alamatnya.
+
+Work Owner memilih **menu di kerangka, Home tetap utuh**.
+
+**Jalan yang sebelumnya terlewat.** Pada §10.1 saya menyajikan pilihan seolah menu
+menuntut menyunting `HalamanBeranda.tsx`. Itu tidak benar: pembungkus rute `/` berada di
+`app/App.tsx`, yang **kerangka, bukan modul Home**. Menu karena itu dapat dipasang tanpa
+menyentuh satu byte pun berkas modul Beranda — dan itulah yang dikerjakan.
+
+| Berkas | Perlakuan |
+|---|---|
+| `app/menu.ts` | **baru** — peta menu sebagai data |
+| `app/NavigasiUtama.tsx` | **baru** — penampil menu, responsif, penanda aktif |
+| `app/Kerangka.tsx` | **baru** — bingkai: peringatan sesi, menu, pemilih portal, tombol keluar |
+| `app/App.tsx` | disunting — kedua rute dibungkus `Kerangka`; `Layar` yang sementara dibuang |
+| `modules/beranda/HalamanBeranda.tsx` | **tidak disentuh** |
+
+**Menu adalah data, bukan JSX.** Menambah modul berarti menambah satu baris di
+`app/menu.ts` — sejajar dengan backend, tempat modul baru cukup menambah satu pemanggilan
+`Pasang(...)` di `cmd/claimpnc`. Kalau menunya ditulis sebagai JSX, setiap modul baru
+menuntut menyunting tata letak, dan pada 74 layar itu berubah menjadi tata letak yang
+berbeda-beda.
+
+**Dua bentuk menurut lebar layar.** Kolom samping di layar lebar, deret mendatar yang
+dapat digulir di layar sempit. Bukan satu bentuk yang dipaksakan: kolom samping pada lebar
+ponsel memakan hampir separuh layar, dan `D-12` menetapkan surveyor memakai tablet dan
+ponsel di lapangan. Judul kelompok disembunyikan pada layar sempit karena di dalam deret
+mendatar ia memutus alurnya; butirnya tetap terlihat seluruhnya.
+
+**Penanda aktif memakai `aria-current`, bukan hanya warna.** Pengguna pembaca layar perlu
+tahu ia sedang di mana, dan warna tidak menyampaikan itu. Butir Beranda memakai `end`
+supaya ia tidak ikut aktif pada setiap jalur — tanpa itu ia aktif di mana-mana, karena
+semua jalur dimulai dengan `/`.
+
+### 10.19 Menu BUKAN kendali akses, dan itu dinyatakan di layar
+
+Daftar menu masih **tetap**, belum disaring izin peran. Penghalangnya berlapis:
+
+| Penghalang | Keadaan |
+|---|---|
+| Tabel 22 peran dan 51 izin menu | `TKT-F3-004`, belum dikerjakan |
+| Peta peran → menu | hidup di 34 When rule; **lima hilang dari export** |
+| Penugasan operator ke peran | **tidak ada di basis data** — `POOLDATA.T_ACCESS_GROUP_PNC` hanya memetakan `OPERATOR_ID` → `OLD_OPERATOR_ID` |
+
+Butir ketiga yang paling mendasar: tabel izinnya dapat dibangun tetapi **belum dapat
+diisi**.
+
+Karena itu navigasinya memuat satu baris keterangan: *"Daftar menu masih tetap, belum
+disaring izin peran. Kewenangan tetap diperiksa di server pada setiap permintaan."*
+
+**Kenapa keterangan itu ada di layar, bukan hanya di dokumen.** Penguji bisnis yang
+melihat menu lengkap dapat mengira izin sudah ditegakkan di antarmuka — dan itu persis
+cacat sistem lama yang tidak boleh diulang: `pyPrivilegeName` terisi pada **1 dari 902**
+activity, sehingga otorisasi di sana hanyalah penyembunyian menu. `D-59` menetapkan yang
+menjadi kendali adalah pemeriksaan di server pada setiap endpoint; menyembunyikan menu
+hanya kenyamanan tampilan.
+
+Begitu `TKT-F3-004` tersedia, yang berubah adalah penyaringan `menuUtama` terhadap izin
+pengguna — bentuk datanya tidak perlu berubah.
+
+### 10.20 Pemilih portal dan tombol keluar pindah ke kerangka — dengan satu penyesuaian
+
+Keduanya diletakkan di kerangka, bukan hanya di Beranda. Tanpa itu layar modul menjadi
+**jalan buntu**: pengguna tidak dapat berpindah entitas maupun keluar tanpa kembali ke
+beranda lebih dulu. Berpindah portal tanpa login ulang adalah inti `ADR-0030`, jadi
+pemilihnya harus terjangkau dari layar mana pun.
+
+**Penyesuaian yang disadari:** Beranda dibangun sebelum kerangka ini ada dan memuat
+keduanya di header-nya sendiri. Menampilkannya dua kali membuat tidak jelas pemilih portal
+mana yang berlaku, sehingga kerangka menerima penanda `aksiDiHalaman` dan Beranda
+melewatinya.
+
+Keduanya **seharusnya tinggal di kerangka saja**. Memindahkannya menuntut menyunting
+`modules/beranda/HalamanBeranda.tsx`, dan modul Beranda dinyatakan tidak boleh diubah.
+Dicatat sebagai utang teknis, bukan dikerjakan sepihak — lihat §10.21.
+
+**Akibat baiknya yang ikut terbawa:** `PeringatanSesi` kini tampil di **setiap** layar
+dalam sesi, bukan hanya di beranda. Sebelumnya layar modul harus mengingat memasangnya
+sendiri, dan satu layar yang lupa berarti peringatan sesi hampir habis tidak pernah muncul
+di sana — pada sistem yang formnya panjang, itu berarti pekerjaan hilang tanpa peringatan.
+
+### 10.21 Satu kalimat di Beranda kini bertentangan dengan layar
+
+`modules/beranda/HalamanBeranda.tsx` memuat paragraf:
+
+> *"Menu belum tampil di sini. Daftar menu mengikuti izin peran, dan tabel 22 peran
+> beserta 51 izin menu adalah TKT-F3-004 — masih menunggu daftar penugasan operator per
+> peran dari DBA dan Work Owner."*
+
+Kalimat **pertama** sekarang salah: menu tampil, tepat di sebelahnya. Sisanya masih benar —
+menu itu memang belum disaring izin peran.
+
+**Tidak saya sunting.** Berkas itu milik modul Beranda yang dinyatakan tidak boleh diubah,
+dan memperbaikinya sepihak berarti mengabaikan batasan yang Anda tetapkan demi kerapian
+satu paragraf. Diajukan sebagai permintaan izin, bukan diambil sendiri.
+
+Bila diizinkan, perubahannya satu paragraf: kalimat pertama dibuang, sisanya
+dipertahankan — dan pemilih portal serta tombol keluar di header Beranda ikut dipindahkan
+ke kerangka sehingga penanda `aksiDiHalaman` pada §10.20 tidak dibutuhkan lagi.

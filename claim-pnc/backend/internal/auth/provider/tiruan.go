@@ -105,6 +105,23 @@ func (t *Tiruan) Verifikasi(ctx context.Context, k auth.Kredensial) (auth.Profil
 func DaftarContoh() []PenggunaTiruan {
 	return []PenggunaTiruan{
 		{
+			// Akun pintas untuk mencoba layar berulang kali saat pengembangan: paling
+			// pendek diketik, dan sengaja ditaruh paling atas supaya mudah ditemukan
+			// saat hendak diganti. Kata sandinya lemah dengan sadar — ia tidak pernah
+			// sampai ke produksi karena TiruanBaru menolak start di sana.
+			NamaPengguna: "admin",
+			KataSandi:    "admin",
+			Aktif:        true,
+			Profil: auth.Profil{
+				Identitas:  "90000000",
+				Nama:       "Contoh Admin Pintas",
+				Jenis:      auth.Karyawan,
+				Login:      "admin",
+				Email:      "contoh.pintas@example.invalid",
+				Perusahaan: "ASM",
+			},
+		},
+		{
 			NamaPengguna: "adminpnc",
 			KataSandi:    "rahasia123",
 			Aktif:        true,

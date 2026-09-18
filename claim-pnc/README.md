@@ -10,8 +10,8 @@ pemilihan portal per permintaan yang dituntutnya.
 | | |
 |---|---|
 | Tiket yang dikerjakan | `TKT-F3-001` seam identitas · `TKT-F3-003` sesi & token · `TKT-U1-002` alur masuk di frontend |
-| Tiket yang disentuh sebagian | `TKT-F1-001` struktur & aturan lapisan · `TKT-F1-002` konfigurasi · `TKT-F1-003` logging · `TKT-F2-001` koneksi & seam repository · `TKT-F6-002` portal melekat pada permintaan · `TKT-U1-003` pustaka komponen baku (`U-2`) |
-| Tiket yang **belum** dikerjakan | `TKT-F3-002` provider HCC/HCQ · `TKT-F3-004` tabel peran & izin menu · `TKT-F3-005` middleware otorisasi · `TKT-F6-003` kewenangan portal per pengguna · `TKT-U1-001` kerangka portal |
+| Tiket yang disentuh sebagian | `TKT-F1-001` struktur & aturan lapisan · `TKT-F1-002` konfigurasi · `TKT-F1-003` logging · `TKT-F2-001` koneksi & seam repository · `TKT-F6-002` portal melekat pada permintaan · `TKT-U1-003` pustaka komponen baku (`U-2`) · `TKT-U1-001` kerangka portal — menu & bingkai layar |
+| Tiket yang **belum** dikerjakan | `TKT-F3-002` provider HCC/HCQ · `TKT-F3-004` tabel peran & izin menu · `TKT-F3-005` middleware otorisasi · `TKT-F6-003` kewenangan portal per pengguna |
 
 Keputusan, penyimpangan dari Steering, dan utang teknis yang disadari dicatat di
 [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md). Jalannya pengerjaan dicatat di
@@ -46,7 +46,8 @@ claim-pnc/
 │   └── go.mod
 ├── frontend/                    SPA React + TypeScript + Vite
 │   └── src/
-│       ├── app/                     kerangka: router, provider, penjaga rute, sesi
+│       ├── app/                     kerangka: router, provider, penjaga rute, sesi,
+│       │                            menu utama, bingkai layar
 │       ├── modules/                 satu folder per modul — masuk, portal, beranda,
 │       │                            master-status-progres
 │       ├── components/              pustaka komponen baku
@@ -250,10 +251,20 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
 
-Layar master belum punya tautan dari beranda: peta menu mengikuti izin peran, dan tabel
-22 peran beserta 51 izin menu adalah `TKT-F3-004` yang masih terhalang. Keputusan Work
-Owner 2026-09-17: rute lebih dulu, tanpa menyentuh modul Beranda. **Pilih portal di
-beranda lebih dulu**, lalu buka alamat layar itu.
+Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
+lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
+Kerangka juga memuat pemilih portal, tombol keluar, dan peringatan sesi hampir habis,
+sehingga ketiganya tersedia di setiap layar.
+
+> **Menu BUKAN kendali akses.** Daftarnya masih tetap, belum disaring izin peran: tabel
+> 22 peran dan 51 izin menu adalah `TKT-F3-004`, peta peran → menu hidup di 34 When rule
+> yang **lima di antaranya hilang dari export**, dan penugasan operator ke peran **tidak
+> ada di basis data**. Yang menjadi kendali adalah pemeriksaan di server pada setiap
+> endpoint (`D-59`); menyembunyikan menu hanya kenyamanan tampilan. Navigasinya menyatakan
+> keterbatasan itu di layar supaya tidak disalahpahami penguji.
+
+**Menambah layar ke menu = satu baris** di [`frontend/src/app/menu.ts`](frontend/src/app/menu.ts) —
+sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `cmd/claimpnc`.
 
 ### Alur masuk — dua sumber identitas
 
