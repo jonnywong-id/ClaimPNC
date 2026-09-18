@@ -17,6 +17,8 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,6 +36,7 @@ import (
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/portal"
+	"claim-pnc/internal/statusprogres"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
@@ -50,6 +53,10 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	statusprogreshttp "claim-pnc/internal/statusprogres/http"
+	statusprogresmemori "claim-pnc/internal/statusprogres/repo/memori"
+	statusprogressql "claim-pnc/internal/statusprogres/repo/sqlstore"
+	statusprogresusecase "claim-pnc/internal/statusprogres/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -102,6 +109,25 @@ func run() error {
 		spaFiles = nil
 	}
 
+	// Kedua penulis ini dipakai seluruh modul supaya klien menghadapi satu bentuk
+	// respons dan satu bentuk galat saja.
+	//
+	// Tipenya ditulis tanpa nama dengan sengaja. Setiap modul menamai tipe penulisnya
+	// sendiri — authhttp.PenulisGalat, portalhttp.PenulisGalat, dan seterusnya — dan Go
+	// tidak mengizinkan nilai bertipe bernama disalin ke tipe bernama lain walau
+	// tanda tangannya sama. Nilai bertipe tanpa nama dapat disalin ke semuanya, sehingga
+	// modul tetap tidak perlu saling mengimpor tipe.
+	var tulisRespon func(w http.ResponseWriter, r *http.Request, status int, badan any) = func(
+		w http.ResponseWriter, r *http.Request, status int, badan any,
+	) {
+		authhttp.TulisJSON(w, r, status, badan, logger)
+	}
+
+	// Galat portal dipetakan modul portal, lalu sisanya diteruskan ke pemeta modul auth.
+	// Urutan pembungkusnya menentukan: yang lebih khusus memeriksa lebih dulu.
+	var tulisGalat func(w http.ResponseWriter, r *http.Request, err error) = portalhttp.DenganGalatPortal(
+		authhttp.TulisGalat(logger), tulisRespon,
+	)
 	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
 	// bentuk respons dan header Cache-Control-nya tidak berbeda antarmodul.
 	writeJSON := func(w http.ResponseWriter, r *http.Request, status int, body any) {
@@ -118,6 +144,7 @@ func run() error {
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: masterstatushttp.ErrorWriter(writeAuthError),
 	})
+<<<<<<< HEAD
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
 		ReadyAliases: assembly.readyAliases,
@@ -128,6 +155,36 @@ func run() error {
 		},
 		WriteError: authhttp.WriteError(logger),
 	})
+=======
+	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
+		Repo:        rakitan.portal,
+		AliasSiap:   rakitan.aliasSiap,
+		AliasUtama:  konf.PortalUtama,
+		Logger:      logger,
+		TulisRespon: tulisRespon,
+		TulisGalat:  tulisGalat,
+	})
+
+	handlerStatusProgres, err := statusprogreshttp.HandlerBaru(statusprogreshttp.Opsi{
+		Layanan:     rakitan.statusProgres,
+		Logger:      logger,
+		TulisRespon: tulisRespon,
+		TulisGalat:  tulisGalat,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Bahan penentu portal aktif dipakai setiap modul bisnis yang menyentuh basis data
+	// entitas. Ia dirakit sekali di sini supaya keempat modul berikutnya memakai
+	// pemeriksaan yang sama persis — bukan masing-masing menafsirkannya sendiri.
+	bahanPortalAktif := portalhttp.BahanPortalAktif{
+		Repo:       rakitan.portal,
+		AliasSiap:  rakitan.aliasSiap,
+		Logger:     logger,
+		TulisGalat: tulisGalat,
+	}
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
@@ -158,10 +215,20 @@ func run() error {
 
 			// List portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
 			// bukan di layar masuk (ADR-0030, berpindah portal tanpa login ulang).
+<<<<<<< HEAD
 			api.Group(func(protected chi.Router) {
 				protected.Use(authhttp.Authenticate(assembly.auth, authhttp.WriteError(logger)))
 				portalhttp.Mount(protected, handlerPortal)
+=======
+			api.Group(func(terlindungi chi.Router) {
+				terlindungi.Use(authhttp.Autentikasi(rakitan.auth, tulisGalat))
+				portalhttp.Pasang(terlindungi, handlerPortal)
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 
+				// Master Status Progres 1. Rutenya memasang pemeriksaan portal sendiri
+				// di dalam Pasang — hanya pada rute yang benar-benar menyentuh basis
+				// data entitas.
+				statusprogreshttp.Pasang(terlindungi, handlerStatusProgres, bahanPortalAktif)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -190,10 +257,18 @@ func run() error {
 type assembly struct {
 	auth           *usecase.Service
 	portal         portal.Repo
+<<<<<<< HEAD
 	masterRekening *masterrekeningusecase.Service
 	masterStatus   *masterstatususecase.Service
 	readyAliases   func() []string
 	close          func()
+=======
+	statusProgres  *statusprogresusecase.Layanan
+	masterRekening *rekeningusecase.Layanan
+	masterStatus   *masterstatususecase.Layanan
+	aliasSiap      func() []string
+	tutup          func()
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 }
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
@@ -215,8 +290,20 @@ type storage struct {
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
 	legacy *sqlstore.Legacy
 
+<<<<<<< HEAD
 	readyAliases func() []string
 	close        func()
+=======
+	// pemilihStatusProgres memilih penyimpanan master status progres milik satu portal.
+	//
+	// Ia fungsi, bukan repo tunggal, karena tabelnya ada di basis data SETIAP entitas
+	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat —
+	// kebocoran lintas badan hukum yang justru dicegah R-20.
+	pemilihStatusProgres statusprogres.PemilihRepo
+
+	aliasSiap func() []string
+	tutup     func()
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 }
 
 // build menyusun seluruh modul di balik seam-nya masing-masing.
@@ -246,14 +333,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+<<<<<<< HEAD
 	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
 		Repo: store.masterStatus,
+=======
+	layananStatusProgres, err := statusprogresusecase.LayananBaru(statusprogresusecase.Opsi{
+		PemilihRepo: simpan.pemilihStatusProgres,
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
+	layananMasterStatus, err := masterstatususecase.LayananBaru(masterstatususecase.Opsi{
+		Repo: simpan.masterStatus,
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 	})
 	if err != nil {
 		store.close()
 		return assembly{}, err
 	}
 
+<<<<<<< HEAD
 	return assembly{
 		auth:           service,
 		portal:         store.portal,
@@ -261,6 +362,16 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatus:   claimStatusService,
 		readyAliases:   store.readyAliases,
 		close:          store.close,
+=======
+	return rakitan{
+		auth:           layanan,
+		portal:         simpan.portal,
+		statusProgres:  layananStatusProgres,
+		masterRekening: rakitMasterRekening(konf, simpan, logger),
+		masterStatus:   layananMasterStatus,
+		aliasSiap:      simpan.aliasSiap,
+		tutup:          simpan.tutup,
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 	}, nil
 }
 
@@ -390,6 +501,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		}
 		logger.Info("koneksi portal terbuka", slog.Any("portal", pool.Available()))
 
+<<<<<<< HEAD
 		primary := pool.Primary()
 		store.legacy = sqlstore.NewLegacy(primary)
 		store.portal = portalsql.NewRepo(primary)
@@ -399,14 +511,42 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.readyAliases = pool.Available
 		store.masterStatus = masterstatussql.NewRepo(primary)
 		store.close = pool.Close
+=======
+		utama := kumpulan.Utama()
+		simpan.warisan = sqlstore.WarisanBaru(utama)
+		simpan.portal = portalsql.RepoBaru(utama)
+		simpan.rekening = rekeningsql.RepoBaru(utama)
+		simpan.bankRekening = rekeningsql.BankRepoBaru(utama)
+		simpan.rekeningDiOracle = true
+		simpan.aliasSiap = kumpulan.Tersedia
+		simpan.masterStatus = masterstatussql.RepoBaru(utama)
+		simpan.tutup = kumpulan.Tutup
+
+		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
+		// dikenal atau koneksinya belum hidup menghasilkan galat dari Untuk() — TIDAK
+		// pernah dialihkan ke koneksi utama sebagai cadangan.
+		simpan.pemilihStatusProgres = func(alias string) (statusprogres.Repo, error) {
+			koneksi, err := kumpulan.Untuk(alias)
+			if err != nil {
+				return nil, err
+			}
+			return statusprogressql.RepoBaru(koneksi), nil
+		}
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
 		store.accountBank = masterrekeningmemory.NewBankRepo(masterrekeningmemory.SampleBanks()...)
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
+<<<<<<< HEAD
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
+=======
+		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
+		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
+		simpan.pemilihStatusProgres = pemilihStatusProgresMemori(konf.PortalUtama)
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 	}
 
 	switch cfg.Storage {
@@ -435,7 +575,42 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 	return store, nil
 }
 
+<<<<<<< HEAD
 // buildIdentity menyusun rantai sumber identitas.
+=======
+// pemilihStatusProgresMemori menyusun penyimpanan master status progres di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali — kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+//
+// Hanya portal utama yang dilayani di sini, sejalan dengan aliasSiap pada cabang tanpa
+// Oracle yang juga menyebut portal utama saja. Memilih portal lain tanpa basis data
+// karena itu ditolak dengan galat yang sama seperti di produksi — perilaku penolakannya
+// ikut teruji saat pengembangan, bukan hanya nanti.
+func pemilihStatusProgresMemori(aliasUtama string) statusprogres.PemilihRepo {
+	var kunci sync.Mutex
+	simpanan := map[string]statusprogres.Repo{}
+
+	return func(alias string) (statusprogres.Repo, error) {
+		bersih := strings.ToUpper(strings.TrimSpace(alias))
+		if bersih != strings.ToUpper(strings.TrimSpace(aliasUtama)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrBelumSiap, alias)
+		}
+
+		kunci.Lock()
+		defer kunci.Unlock()
+		if ada, sudah := simpanan[bersih]; sudah {
+			return ada, nil
+		}
+		baru := statusprogresmemori.RepoBaru(statusprogresmemori.DaftarContoh()...)
+		simpanan[bersih] = baru
+		return baru, nil
+	}
+}
+
+// rakitIdentitas menyusun rantai sumber identitas.
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 //
 // Urutannya adalah aturan bisnis yang ditetapkan Work Owner 2026-09-16: HCC/HCQ lebih
 // dulu untuk karyawan, lalu POOLDATA.M_LOGIN_PNC untuk non-karyawan.

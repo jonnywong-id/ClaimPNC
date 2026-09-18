@@ -3,6 +3,15 @@
 Implementasi pengganti aplikasi Pega PRPC 8.3 **Claim PNC**. Dokumen migrasi, ADR, dan papan
 tiket pekerjaan berada di repository terpisah: `D:\Jonny\Project\Claude.AI\XML Claim PNC\docs`.
 
+**Yang sudah ada di tahap ini: login dari ujung ke ujung, ditambah satu modul master data.**
+Modul bisnis pertama — **Master Status Progres 1** — dibangun pada 2026-09-17 beserta
+pemilihan portal per permintaan yang dituntutnya.
+
+| | |
+|---|---|
+| Tiket yang dikerjakan | `TKT-F3-001` seam identitas · `TKT-F3-003` sesi & token · `TKT-U1-002` alur masuk di frontend |
+| Tiket yang disentuh sebagian | `TKT-F1-001` struktur & aturan lapisan · `TKT-F1-002` konfigurasi · `TKT-F1-003` logging · `TKT-F2-001` koneksi & seam repository · `TKT-F6-002` portal melekat pada permintaan · `TKT-U1-003` pustaka komponen baku (`U-2`) · `TKT-U1-001` kerangka portal — menu & bingkai layar |
+| Tiket yang **belum** dikerjakan | `TKT-F3-002` provider HCC/HCQ · `TKT-F3-004` tabel peran & izin menu · `TKT-F3-005` middleware otorisasi · `TKT-F6-003` kewenangan portal per pengguna |
 **Yang sudah ada di tahap ini: login dari ujung ke ujung, dan modul bisnis pertama — Master Rekening.**
 **Yang sudah ada di tahap ini: login dari ujung ke ujung, dan satu modul bisnis — Master Status
 Klaim.**
@@ -46,7 +55,16 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (LST_ACCOUNT, LST_BANK_GROUP), memory
 │   │   │   └── http/                    handler, dto, galat, rute modul
 │   │   ├── portal/                  MODUL — entitas & basis datanya (ADR-0030)
+<<<<<<< HEAD
 │   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memory
+=======
+│   │   │   ├── repo/                    sqlstore (M_PORTAL_PNC), memori
+│   │   │   └── http/                    rute daftar portal + middleware portal aktif
+│   │   ├── statusprogres/           MODUL — Master Status Progres 1
+│   │   │   ├── usecase/                 orkestrasi: daftar, tambah, ubah
+│   │   │   ├── repo/                    sqlstore (GCNM_MST_PROGRESS_KLAIM), memori
+│   │   │   └── http/                    handler, dto, pemetaan galat, rute modul
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 │   │   │   └── http/                    rute daftar portal
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
@@ -58,8 +76,15 @@ claim-pnc/
 │   └── go.mod
 ├── frontend/                    SPA React + TypeScript + Vite
 │   └── src/
+<<<<<<< HEAD
 │       ├── app/                     kerangka: router, provider, penjaga rute, sesi
 │       ├── modules/                 satu folder per modul — nama modul bisnis (D-81)
+=======
+│       ├── app/                     kerangka: router, provider, penjaga rute, sesi,
+│       │                            menu utama, bingkai layar
+│       ├── modules/                 satu folder per modul — masuk, portal, beranda,
+│       │                            master-status-progres
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 │       ├── components/              pustaka komponen baku
 │       └── api/                     klien HTTP dan tipe kontrak API (client.ts, types.ts)
 └── docs/                        keputusan implementasi & catatan pengembangan
@@ -246,6 +271,70 @@ penyimpanan di memori keduanya hidup di dalam proses.
 
 ## Kontrak API
 
+| Metode | Jalur | Sesi | Portal | Keterangan |
+|---|---|---|---|---|
+| `POST` | `/api/masuk` | — | — | `{nama_pengguna, kata_sandi}` → token + profil |
+| `POST` | `/api/keluar` | opsional | — | mencabut sesi di server |
+| `GET` | `/api/saya` | wajib | — | identitas pemanggil + batas berlaku sesi |
+| `POST` | `/api/sesi/perpanjang` | wajib | — | menggeser batas berlaku |
+| `GET` | `/api/portal` | wajib | — | daftar entitas dari `POOLDATA.M_PORTAL_PNC` + portal utama |
+| `GET` | `/api/master/posisi-klaim` | wajib | — | empat posisi klaim untuk dropdown; daftar milik aplikasi, bukan isi basis data entitas |
+| `GET` | `/api/master/status-progres-1` | wajib | **wajib** | daftar master dari `POOLDATA.GCNM_MST_PROGRESS_KLAIM` |
+| `POST` | `/api/master/status-progres-1` | wajib | **wajib** | `{nama, kode_posisi}` → `201` + baris tersimpan; ID diterbitkan server |
+| `PUT` | `/api/master/status-progres-1/{id}` | wajib | **wajib** | `{nama, kode_posisi}`; ID tidak pernah ikut berubah |
+
+Tidak ada `DELETE` pada master status progres, dan itu disengaja: sistem lama tidak punya
+satu pun pernyataan `DELETE` terhadap tabel itu, dan tabelnya tidak punya kolom penanda
+terhapus yang dapat dipakai `D-66`. Alasan lengkapnya di
+[`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md) §10.4.
+
+### Portal entitas pada permintaan modul bisnis
+
+Endpoint bertanda **Portal wajib** menyentuh basis data satu entitas. Ia menuntut header:
+
+```
+X-Portal: ASM
+```
+
+Permintaan yang tidak menyebutkannya **ditolak**, tidak pernah dilayani portal utama
+sebagai cadangan — jatuh ke koneksi default berarti membaca atau menulis data satu badan
+hukum di basis data badan hukum lain tanpa satu pun pesan galat (`R-20`, `TKT-F6-002`).
+
+| Kode | HTTP | Artinya |
+|---|---|---|
+| `portal_tidak_disebut` | 400 | header `X-Portal` tidak ada; pengguna belum memilih entitas |
+| `portal_tidak_dikenal` | 400 | alias tidak ada di `POOLDATA.M_PORTAL_PNC` |
+| `portal_belum_siap` | 503 | entitasnya ada, tetapi kredensial basis datanya belum diisi |
+| `validasi_gagal` | 422 | isian melanggar aturan bisnis; `detail` memuat **seluruh** pelanggaran per isian |
+| `tidak_ditemukan` | 404 | baris yang dimaksud tidak ada |
+
+**Pemeriksaannya menjawab "portal ini ada dan koneksinya hidup", bukan "pengguna ini
+berwenang atas portal ini".** Kewenangan portal per pengguna adalah `TKT-F6-003` yang
+masih terhalang, sehingga setiap pengguna yang sudah masuk dapat memilih portal mana pun
+yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
+
+### Layar yang tersedia
+
+| Jalur di peramban | Layar |
+|---|---|
+| `/masuk` | masuk |
+| `/` | beranda sementara, memuat pemilih portal |
+| `/master/status-progres-1` | **Master Status Progres 1** |
+
+Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
+lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
+Kerangka juga memuat pemilih portal, tombol keluar, dan peringatan sesi hampir habis,
+sehingga ketiganya tersedia di setiap layar.
+
+> **Menu BUKAN kendali akses.** Daftarnya masih tetap, belum disaring izin peran: tabel
+> 22 peran dan 51 izin menu adalah `TKT-F3-004`, peta peran → menu hidup di 34 When rule
+> yang **lima di antaranya hilang dari export**, dan penugasan operator ke peran **tidak
+> ada di basis data**. Yang menjadi kendali adalah pemeriksaan di server pada setiap
+> endpoint (`D-59`); menyembunyikan menu hanya kenyamanan tampilan. Navigasinya menyatakan
+> keterbatasan itu di layar supaya tidak disalahpahami penguji.
+
+**Menambah layar ke menu = satu baris** di [`frontend/src/app/menu.ts`](frontend/src/app/menu.ts) —
+sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `cmd/claimpnc`.
 | Metode | Jalur | Sesi | Keterangan |
 |---|---|---|---|
 | `POST` | `/api/masuk` | — | `{nama_pengguna, kata_sandi}` → token + profil |

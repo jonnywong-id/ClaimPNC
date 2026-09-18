@@ -490,6 +490,357 @@ dikembalikan menjadi placeholder kosong. Karena berkas itu sempat memuat kredens
 sebaiknya diperlakukan sebagai **berpotensi terpapar** bila berkasnya pernah dibagikan atau
 di-commit di tempat lain — keputusan menggantinya ada pada Work Owner dan Tim Infra.
 
+
+## 9. Sesi keempat — modul Master Status Progres 1 (2026-09-17)
+
+Modul bisnis PERTAMA yang dibangun. Sebelum sesi ini repo hanya memuat login, beranda
+sementara, dan daftar portal.
+
+### 9.1 Yang dibaca lebih dulu, sebelum menulis satu baris kode
+
+Instruksi melarang langsung menulis kode. Yang dibaca, seluruhnya dari export Pega:
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `Harness/StatusProgress-Harness.xml` | layar acuan; memuat section `MasterStatusProgress` dan memanggil `BrowseStatusProgress` |
+| `Section/MasterStatusProgress-Section.xml` | judul layar **"Master Status Progress 1"**, tombol Tambah dan Refresh |
+| `Section/BrowseStatusProgress-Section.xml` | grid 3 kolom (`.CaseID` lebar 55, `.City` lebar 260, `.CityID`), form modal 3 isian, label isian **"ID"** dan **"Posisi"**, jenis kontrol (teks dan **dropdown**) |
+| `RDB List/BrowseStatusProgress-SQL.xml` | kueri daftar beserta `ORDER BY ID_PROGRESS ASC` |
+| `RDB List/InsertStatusProgress1-SQL.xml` | kolom yang disisipkan |
+| `RDB List/UpdateStatusProgress1_sql-SQL.xml` | kolom yang di-`SET` dan yang hanya menyaring |
+| `RDB List/UpdateStatusProgress1-SQL.xml` | kueri pemuat baris ke modal sunting |
+| `RDB List/BrowseIDStatusProgress-SQL.xml` | cara nomor baru diturunkan |
+| `Activity/InsertMstStatusProgress1_act-Act.xml` | urutan langkah penambahan, termasuk `"0" + nomor` |
+| `Activity/UpdateStatusProgress1_act-Act.xml` | urutan langkah penyuntingan, penanda mode `TempDcol.pyLabel = "Update"` |
+| `Activity/ViewStatusProgress_act-Act.xml` | **isi dropdown Posisi** — empat pasang nilai literal |
+| `Database/GET_POSISI_PROGRESS_PNC.fnc` | hubungan antartabel progres klaim |
+| `Database/GET_POSISI_PROGRESS2.fnc` | hubungan Status Progres 2 ke Status Progres 1 |
+
+Ditambah kode yang sudah ada: modul `auth` dan `portal` seluruhnya, `platform/db`,
+`platform/httpserver`, `cmd/claimpnc/main.go`, serta seluruh `frontend/src`.
+
+### 9.2 Empat temuan yang mengoreksi premis instruksi
+
+**Modul Master Data yang disebut "sudah selesai" tidak ada di repo ini.** Instruksi
+melarang mengubah modul Login, Home, dan Master Data yang sudah selesai. Diperiksa ke
+seluruh riwayat dan kelima cabang (`master`, `feat/intan-master`, `feat/fran-master`,
+`feat/arlexy-flowregister`, `feat/flow-register`): tidak satu pun memuat modul master
+data. Yang ada hanya `auth`, `portal`, dan `platform`. Larangan itu tetap dihormati untuk
+Login dan Home; untuk Master Data tidak ada yang perlu dilindungi karena belum ada.
+
+**Kolom `STATUS` bukan penanda aktif.** Namanya mengesankan flag aktif/nonaktif. Bukti
+menunjukkan sebaliknya: label isiannya di Pega adalah **"Posisi"**, kontrolnya dropdown
+bersumber `TempPosition.pxResults`, dan `InsertMstStatusProgress1_act` menyalinnya ke
+`Local.POSISI`. Ia menyimpan **kode posisi klaim**. Memperlakukannya sebagai flag aktif
+akan menghasilkan layar yang benar bentuknya tetapi salah artinya.
+
+**Isi dropdown Posisi tidak ada di tabel mana pun.** Ia dirakit di dalam activity sebagai
+empat pasang nilai literal: `REGISTER`=`002`, `SURVEY`=`004`, `KOMITE`=`006`,
+`AKSEPTASI`=`007`. Kode `003` dan `005` tidak dipakai jalur ini.
+
+**Kolom `STATUS` tidak dibaca kueri lain mana pun.** Diperiksa ke 17 berkas yang menyebut
+`GCNM_MST_PROGRESS_KLAIM`: yang lain hanya menggabung lewat `ID_PROGRESS`. Jadi kolom itu
+diisi di layar ini dan tidak pernah dipakai menyaring apa pun di sistem lama. Dicatat apa
+adanya — bukan diberi perilaku penyaringan yang tidak pernah ada.
+
+### 9.3 Tiga pertanyaan konfirmasi dan jawabannya
+
+Diajukan sebelum menulis kode, karena ketiganya mengubah bentuk pekerjaan secara
+mendasar. Dijawab Work Owner 2026-09-17.
+
+**Pertanyaan 1 — lingkup portal.** Tabel ini ada di basis data SETIAP entitas
+(`ADR-0030`), sementara pilihan portal saat itu hanya hidup di frontend dan tidak pernah
+dikirim ke backend. Tanpa penanganan, modul ini dapat menulis ke entitas yang salah —
+`R-20`, berdampak lintas badan hukum.
+
+> **Jawaban: portal-scoped sekarang.** Frontend mengirim alias portal di header setiap
+> permintaan; backend me-resolve koneksinya lewat `db.Kumpulan.Untuk()` dan **menolak**
+> bila portal kosong atau tidak dikenal — tidak pernah jatuh ke portal utama.
+
+**Pertanyaan 2 — pintu masuk layar.** Modul Home dilarang diubah, tetapi kerangka menu
+(`TKT-U1-001`) belum ada, sehingga layar baru tidak punya tautan menuju ke sana.
+
+> **Jawaban: rute saja, jangan sentuh Beranda.** `HalamanBeranda.tsx` tidak disentuh
+> sama sekali. Layar dibuka lewat `/master/status-progres-1`.
+
+**Pertanyaan 3 — sumber daftar Posisi.** `D-15` menuntut nilai seperti ini menjadi master
+data, tetapi tabel masternya tidak ada dan membuatnya menuntut persetujuan Work Owner
+serta pelaksanaan DBA (`D-63`).
+
+> **Jawaban: konstanta aplikasi, dan dicatat sebagai utang.** Keempat posisi hidup di
+> lapisan domain Go dan disajikan lewat endpoint agar frontend tidak menyalinnya.
+
+### 9.4 Yang dibangun
+
+**Backend — modul baru `internal/statusprogres/`**
+
+| Lapisan | Berkas | Isi |
+|---|---|---|
+| Domain | `statusprogres.go` | tipe `StatusProgres` dan `Isian`, pemeriksaan isian yang mengumpulkan SELURUH pelanggaran, `FormatNomor`, seam `Repo` dan `PemilihRepo` |
+| Domain | `posisi.go` | keempat posisi klaim beserta pencarian dan pelabelannya |
+| Aplikasi | `usecase/layanan.go` | `Daftar`, `Ambil`, `Tambah`, `Ubah`, `Posisi`, `PastikanPortalSiap` |
+| Adapter | `repo/sqlstore/` | 6 kueri di berkas `.sql` terpisah beserta adapter Oracle/PostgreSQL |
+| Adapter | `repo/memori/` | adapter kedua yang membuat seam nyata; dipakai uji dan pengembangan tanpa basis data |
+| Transport | `http/` | 4 rute, DTO terpisah dari tipe domain, pemetaan galat modul |
+
+**Backend — dua berkas baru pada modul `portal`**, tanpa menyunting berkas yang sudah
+ada: `aktif.go` (`PilihAktif`, `ErrTidakDisebut`, `ErrBelumSiap`) dan
+`http/portalaktif.go` (header `X-Portal`, middleware `PortalAktif`, `DenganGalatPortal`).
+
+**Frontend**
+
+| Berkas | Isi |
+|---|---|
+| `components/TabelData.tsx` | **baru** — satu-satunya tabel yang boleh dipakai layar di `modules/`; cikal-bakal `U-2` |
+| `components/KolomPilihan.tsx` | **baru** — pasangan `KolomIsian` untuk isian dropdown |
+| `components/Tombol.tsx` | **baru** — tombol baku; menonaktifkan diri saat tindakan berjalan |
+| `modules/master-status-progres/api.ts` | hook TanStack Query; portal ikut di dalam kunci cache |
+| `modules/master-status-progres/FormStatusProgres.tsx` | satu form untuk dua mode, tambah dan ubah |
+| `modules/master-status-progres/HalamanStatusProgres1.tsx` | layar daftar |
+| `api/klien.ts` | **disunting aditif** — metode `PUT`, header portal, dan `GalatAPI.detail` |
+| `api/tipe.ts` | **disunting aditif** — tipe kontrak dan lima kode galat baru |
+| `app/App.tsx` | **disunting aditif** — satu rute dan pembungkus `Layar` |
+
+### 9.5 Kendala yang muncul dan penyelesaiannya
+
+**Tipe fungsi bernama tidak dapat saling disalin.** Setiap modul menamai tipe penulis
+galatnya sendiri (`authhttp.PenulisGalat`, `portalhttp.PenulisGalat`), dan Go menolak
+menyalin nilai bertipe bernama ke tipe bernama lain walau tanda tangannya sama. Build
+gagal di dua tempat.
+
+Penyelesaian: nilai bersama di `cmd` dideklarasikan dengan tipe fungsi **tanpa nama**, dan
+parameter `DenganGalatPortal` juga tanpa nama. Nilai tanpa nama dapat disalin ke tipe
+bernama mana pun, sehingga modul tetap tidak perlu saling mengimpor tipe.
+
+**Galat portal dijawab 500.** Middleware portal memakai penulis galat yang disuntikkan,
+dan penulis itu milik modul auth yang tidak mengenal galat portal — ketiga penolakan
+portal terjawab `500` alih-alih `400`/`503`. Ditemukan oleh uji, bukan oleh pembacaan.
+
+Penyelesaian: pemetaan galat portal dipindahkan ke modul portal sebagai
+`DenganGalatPortal`, lalu dirantai di `cmd`. Pemetaan yang sempat saya duplikasi di modul
+`statusprogres` dibuang supaya hanya ada satu sumber kebenaran.
+
+**Satu suntingan gagal tanpa suara.** Perubahan pada `api/klien.ts` yang menyalurkan
+`detail` galat ke `GalatAPI` tidak pernah teterap — teks pencariannya tidak cocok karena
+berkas itu berakhiran CRLF. Akibatnya pelanggaran per isian tidak pernah sampai ke layar.
+**Yang menemukannya adalah uji**, yang mengharapkan kedua pesan tersorot dan hanya
+mendapat kotak pesan umum. Tanpa uji itu cacat ini akan lolos, dan gejalanya halus: form
+tetap menolak, hanya tidak menunjukkan isian mana yang salah.
+
+**Dependensi frontend belum terpasang.** `node_modules` tidak ada, sehingga
+`npm run periksa-tipe` gagal sebelum sempat memeriksa apa pun. Dijalankan `npm install`
+(135 paket) lebih dulu — verifikasi yang tidak pernah benar-benar dijalankan bukan
+verifikasi.
+
+### 9.6 Verifikasi yang benar-benar dijalankan
+
+Bukan pembacaan ulang, melainkan perintah yang dieksekusi beserta hasilnya.
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./...` | lulus, tanpa temuan |
+| `gofmt -l` pada berkas baru | bersih |
+| `go test ./...` | **seluruh paket lulus** — 3 berkas uji baru: domain, usecase, rute |
+| `npm run periksa-tipe` | lulus, mode ketat |
+| `npm test` | **36 uji lulus**, 18 di antaranya baru |
+| `npm run build` | lulus, 189 modul, hasil tersemat ke `backend/spa/dist` |
+
+**Ditembak sungguhan terhadap binary yang berjalan** (`APP_ALAMAT=:18080`, penyimpanan
+memori, identitas tiruan). Tiga belas permintaan, seluruhnya sesuai harapan:
+
+| # | Permintaan | Harapan | Hasil |
+|---|---|---|---|
+| 1 | `GET` daftar tanpa header portal | ditolak | `400 portal_tidak_disebut` |
+| 2 | `GET` daftar dengan `X-Portal: ASM` | 6 baris | `200`, `"portal":"ASM"` |
+| 3 | `GET` daftar dengan `X-Portal: ASI` | ditolak, koneksi belum hidup | `503 portal_belum_siap` |
+| 4 | `GET` daftar dengan portal karangan | ditolak | `400 portal_tidak_dikenal` |
+| 5 | `GET` daftar tanpa sesi | ditolak | `401 sesi_tidak_sah` |
+| 6 | `GET` daftar posisi tanpa portal | dilayani | `200`, empat posisi |
+| 7 | `POST` tambah | ID diterbitkan server | `201`, `id` = `07` |
+| 8 | `PUT` ubah baris `03` | tersimpan | `200`, nama dan posisi berubah |
+| 9 | `POST` nama kosong dan posisi `999` | dua pelanggaran sekaligus | `422`, `detail` berisi 2 butir |
+| 10 | `PUT` baris `99` | tidak ditemukan | `404 tidak_ditemukan` |
+| 11 | `GET` daftar setelah 7 dan 8 | perubahan tersimpan, urutan tetap | 7 baris, `03` berubah, `07` di akhir |
+| 12 | `DELETE` baris `01` | rute tidak disediakan | `405` |
+| 13 | `GET /master/status-progres-1` (rute SPA) | halaman dimuat | `200 text/html` |
+
+**Log diperiksa terhadap kebocoran.** `grep` untuk kata sandi contoh, kata `Bearer`, dan
+`kata_sandi` pada seluruh log server: **nol kemunculan**. Penolakan portal tercatat pada
+tingkat `WARN` beserta alias yang diminta — alias entitas, bukan data nasabah.
+
+### 9.7 Yang belum dapat dijalankan
+
+> **SEBAGIAN TERJAWAB — lihat §9.8.** Tipe kolom sudah ditetapkan **CHAR berlebar
+> tetap**, dan jawaban itu membongkar cacat yang penanganannya mengubah dua kueri.
+> Yang masih berlaku dari bagian di bawah: adapter SQL belum pernah menyentuh Oracle,
+> dan uji kesetaraan gerbang 1 belum dapat dijalankan.
+
+**Adapter SQL belum pernah menyentuh Oracle.** Seluruh verifikasi di atas memakai adapter
+memori. Enam kueri di `repo/sqlstore/statusprogres.sql` karena itu **belum terbukti sah
+terhadap basis data sungguhan** — ia belum pernah dijalankan satu kali pun.
+
+Dua hal yang khususnya belum terbukti, keduanya bergantung pada DDL yang belum ada
+(`R-08`):
+
+- **Tipe kolom `ID_PROGRESS` dan `STATUS`.** Bila `CHAR` berlebar tetap, nilainya
+  dipadatkan spasi. Pemangkasan sudah dipasang pada pembacaan, tetapi belum diuji
+  terhadap tipe yang sebenarnya.
+- **Perilaku `SELECT ... FOR UPDATE`.** Dipakai menyerialkan penurunan nomor baru; di
+  Oracle dan PostgreSQL keduanya sah, tetapi belum dijalankan.
+
+**Uji kesetaraan gerbang 1 belum dapat dijalankan.** Ia menuntut Pega staging yang dapat
+ditembak dari luar (`ADR-0027`), dan ketersediaannya masih belum dikonfirmasi. Ditambah
+satu penghalang khusus modul ini: **isi tabel yang sebenarnya belum ada** — tidak ada
+`gcnm_mst_progress_klaim.csv` di `Database/` sebagaimana `v_sts_claim.csv` dan
+`m_portal_pnc.csv`. `DaftarContoh()` pada adapter memori adalah susunan sendiri, dan
+sudah ditandai demikian di dalam kodenya.
+
+
+### 9.8 Empat asumsi dijawab, dan satu cacat senyap yang tersingkap karenanya
+
+Asumsi yang §9.7 catat sebagai terbuka diajukan kembali sebagai pilihan, lalu dijawab
+Work Owner pada hari yang sama.
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Tipe kolom `ID_PROGRESS` | **CHAR berlebar tetap** |
+| Panjang kolom `STS_PROGRESS1` | **100 karakter** |
+| Penghapusan baris | tetap tidak ada, sama seperti Pega |
+| Modul berikutnya | belum ditentukan |
+
+**Jawaban pertama membongkar cacat yang belum terlihat, dan tidak akan terlihat sampai
+kode ini menyentuh Oracle sungguhan.**
+
+Kolom CHAR memadatkan nilainya dengan spasi: `"01"` tersimpan sebagai `"01 "`. Oracle
+membandingkan CHAR dengan CHAR memakai *blank-padded comparison* sehingga spasi ujung
+diabaikan — dan literal teks di dalam SQL bertipe CHAR, sehingga kueri lama yang
+**merangkai** nilainya menjadi `= '01'` memang cocok. Tetapi **parameter binding bertipe
+VARCHAR2**, dan CHAR lawan VARCHAR2 memakai *non-padded comparison*: `"01 "` tidak sama
+dengan `"01"`.
+
+Akibatnya, dua kueri yang menyaring berdasarkan ID **tidak akan menemukan satu baris pun**:
+pemuatan baris ke modal sunting selalu gagal, dan `UPDATE` mengenai nol baris — yang oleh
+repo diartikan "tidak ditemukan". Tanpa satu pun galat basis data yang menjelaskan
+sebabnya.
+
+Yang perlu dicatat: **menyalin `= :1` apa adanya dari kueri lama justru MENGUBAH
+perilaku**, bukan mempertahankannya. Penyebabnya perpindahan dari perangkaian string ke
+parameter binding — aturan yang wajib dan tidak dapat ditawar. Kesetaraan `P-5` ternyata
+tidak selalu berarti menyalin teks SQL apa adanya.
+
+Penanganannya `WHERE TRIM(ID_PROGRESS) = :1` pada `statusprogres_ambil` dan
+`statusprogres_perbarui`, beserta alasan menolak tiga alternatifnya, dicatat di
+`keputusan-implementasi.md` §10.17.
+
+**Kenapa ini tidak tertangkap uji yang sudah ada.** Seluruh uji memakai adapter memori,
+dan memori tidak memadatkan apa pun. Ini batas nyata dari pengujian tanpa basis data, dan
+sudah disebut di §9.7 — jawaban Work Owner mengubahnya dari catatan menjadi bukti.
+
+Penggantinya: `repo/sqlstore/kueri_test.go` yang menuntut `TRIM(ID_PROGRESS)` ada pada
+kedua kueri dan menolak perbandingan langsung tanpa TRIM. Ia menjaga perbaikan ini tidak
+hilang saat seseorang kelak "merapikan" kuerinya — karena gejalanya senyap, tidak akan
+ada yang melihat sesuatu rusak sampai pengguna melaporkan tombol Ubah tidak pernah
+berhasil.
+
+### 9.9 Perubahan yang dijalankan atas keempat jawaban
+
+| Berkas | Perubahan |
+|---|---|
+| `repo/sqlstore/statusprogres.sql` | `TRIM(ID_PROGRESS)` pada dua penyaring ID; catatan CHAR pada kueri sisip |
+| `repo/sqlstore/kueri_test.go` | **baru** — 8 uji: keberadaan kueri, disiplin SQL portabel, parameter binding, penjaga TRIM, kunci baris tidak di-SET, `FOR UPDATE`, pemeriksa tabel tidak mengambil baris |
+| `statusprogres.go` | `BatasPanjangNama` 200 → **100**, dan keterangannya berubah dari asumsi menjadi ketetapan |
+| `FormStatusProgres.tsx` | `BATAS_PANJANG_NAMA` 200 → **100** |
+| `keputusan-implementasi.md` | §10.16 dan §10.17 baru; penunjuk *disupersede* pada §10.13–§10.15 |
+
+Tidak ada modul baru dimulai — jawaban keempat belum menentukan arah berikutnya.
+
+**Diverifikasi ulang seluruhnya:** `go vet` bersih · `gofmt` bersih · `go test ./...`
+seluruh paket lulus, termasuk paket `repo/sqlstore` yang sebelumnya tidak punya uji sama
+sekali · `tsc --noEmit` lulus · `npm test` 36 lulus.
+
+
+### 9.10 Kerangka menu — 2026-09-18
+
+Work Owner bertanya apakah menunya sudah beres. **Belum** — dan itu akibat langsung
+keputusan "rute saja, jangan sentuh Beranda" (§9.3 pertanyaan 2). Diperiksa lebih dulu
+sebelum dijawab: satu-satunya tempat `status-progres-1` disebut di frontend adalah
+definisi rutenya sendiri, tanpa satu pun tautan dari mana pun.
+
+Diajukan empat pilihan, dan Work Owner memilih **menu di kerangka, Home tetap utuh**.
+
+**Jalan yang sebelumnya saya lewatkan.** Pada §9.3 saya menyajikan pilihannya seolah menu
+menuntut menyunting `HalamanBeranda.tsx`. Itu tidak benar: pembungkus rute `/` ada di
+`app/App.tsx` — kerangka, bukan modul Home. Menu karena itu dapat dipasang dengan berkas
+modul Beranda tetap utuh, dan itulah yang dikerjakan.
+
+| Berkas | Perlakuan |
+|---|---|
+| `app/menu.ts` | **baru** — peta menu sebagai data; modul baru = satu baris |
+| `app/NavigasiUtama.tsx` | **baru** — kolom samping di layar lebar, deret mendatar di layar sempit |
+| `app/Kerangka.tsx` | **baru** — bingkai bersama: peringatan sesi, menu, pemilih portal, keluar |
+| `app/App.tsx` | disunting — kedua rute dibungkus `Kerangka` |
+| `modules/master-status-progres/HalamanStatusProgres1.tsx` | tautan "← Beranda" dibuang, kini duplikat menu |
+| `modules/beranda/HalamanBeranda.tsx` | **tidak disentuh** |
+
+**Tiga hal yang ikut diperbaiki sekalian, dan bukan permintaan.**
+
+`PeringatanSesi` kini tampil di **setiap** layar dalam sesi. Sebelumnya layar modul harus
+mengingat memasangnya sendiri — dan satu layar yang lupa berarti peringatan sesi hampir
+habis tidak pernah muncul di sana.
+
+Pemilih portal dan tombol keluar ikut ke kerangka. Tanpa itu layar modul adalah **jalan
+buntu**: tidak ada cara berpindah entitas atau keluar tanpa kembali ke beranda. Berpindah
+portal tanpa login ulang adalah inti `ADR-0030`, jadi pemilihnya harus terjangkau dari
+layar mana pun.
+
+Karena pemilih portal sekarang ada di layar master, tiga pesan yang menyuruh pengguna
+*"pilih portal di beranda"* menjadi menyesatkan — keduanya disesuaikan menjadi *"pilih
+portal entitas di bagian atas halaman"*.
+
+### 9.11 Verifikasi kerangka menu
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npm run periksa-tipe` | lulus |
+| `npm test` | **48 uji lulus** — naik dari 36; 12 uji baru di `app/Kerangka.test.tsx` |
+| `npm run build` | lulus; `Menu utama` dan `Status Progres 1` terverifikasi ada di bundle |
+| `go vet` · `gofmt` · `go test ./...` | tetap bersih dan lulus seluruhnya |
+
+**Ditembak terhadap binary yang berjalan** (`APP_ALAMAT=:18081`):
+
+| Permintaan | Hasil |
+|---|---|
+| `GET /` | `200 text/html` |
+| `GET /master/status-progres-1` | `200 text/html` |
+| `GET /api/master/status-progres-1` + `X-Portal: ASM` | `200` |
+| `GET /api/master/status-progres-1` tanpa portal | `400` — penolakan portal masih utuh |
+
+Yang diuji ke-12 uji baru itu, bukan hanya bahwa menunya tampil:
+
+- setiap butir di `app/menu.ts` benar-benar muncul — membuktikan komponennya membaca data
+  itu, bukan menulis butirnya sendiri;
+- butir aktif ditandai `aria-current="page"`, dan Beranda **tidak** ikut aktif di layar
+  lain (tanpa `end`, ia aktif di mana-mana karena semua jalur dimulai dengan `/`);
+- pemilih portal dan tombol keluar tampil di layar modul, dan **tidak** tampil di Beranda
+  yang sudah menyediakannya sendiri;
+- keluar mencabut sesi **dan** pilihan portal;
+- keterangan "belum disaring izin peran" ada di layar.
+
+**Yang TIDAK diverifikasi:** tampilan di peramban sungguhan. Uji di atas berjalan di
+jsdom, yang tidak menghitung tata letak — jadi bahwa menu benar-benar menjadi kolom di
+layar lebar dan deret mendatar di layar sempit belum terbukti dengan mata. Itu perlu
+dibuka sendiri di peramban.
+
+### 9.12 Satu kalimat di Beranda kini bertentangan dengan layarnya
+
+`HalamanBeranda.tsx` masih menulis *"Menu belum tampil di sini."* — padahal menu tampil
+tepat di sebelahnya. Sisa paragrafnya masih benar: menu itu memang belum disaring izin
+peran.
+
+Tidak saya sunting, karena berkas itu milik modul Beranda yang dinyatakan tidak boleh
+diubah. Diajukan sebagai permintaan izin. Rinciannya beserta perubahan yang diusulkan ada
+di `keputusan-implementasi.md` §10.21.
 ---
 
 ## 9. Sesi keempat — Modul Master Rekening (2026-09-17)

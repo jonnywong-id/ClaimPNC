@@ -1,12 +1,21 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
+<<<<<<< HEAD:claim-pnc/frontend/src/app/PageShell.tsx
 import { ListIcon, LogoutIcon, ShieldIcon } from '@/components/Icon'
 import { Button } from '@/components/Button'
 import { useLogout } from '@/modules/login/api'
 import { PortalPicker } from '@/modules/portal/PortalPicker'
 import { UserKind } from '@/api/types'
 import { useSession } from '@/app/session'
+=======
+import { IkonDaftar, IkonKeluar, IkonKunci, IkonPerisai } from '@/components/Ikon'
+import { Tombol } from '@/components/Tombol'
+import { gunakanKeluar } from '@/modules/masuk/api'
+import { PemilihPortal } from '@/modules/portal/PemilihPortal'
+import { JenisPengguna } from '@/api/tipe'
+import { gunakanSesi } from '@/app/sesi'
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/app/KerangkaHalaman.tsx
 
 /** Satu entri navigasi. Daftarnya ada di bawah, bukan tersebar di layar-layar. */
 type Entry = { ke: string; label: string; icon: ReactNode }
@@ -28,9 +37,21 @@ type Entry = { ke: string; label: string; icon: ReactNode }
  * docs/keputusan-implementasi.md — bukan disembunyikan sebagai fitur yang seolah sudah
  * berizin.
  */
+<<<<<<< HEAD:claim-pnc/frontend/src/app/PageShell.tsx
 const menu: Entry[] = [
   { ke: '/', label: 'Beranda', icon: <ShieldIcon className="h-4 w-4" /> },
   { ke: '/master/status-klaim', label: 'Master Status Klaim', icon: <ListIcon className="h-4 w-4" /> },
+=======
+const menu: Entri[] = [
+  { ke: '/', label: 'Beranda', ikon: <IkonPerisai className="h-4 w-4" /> },
+  { ke: '/master/status-klaim', label: 'Master Status Klaim', ikon: <IkonDaftar className="h-4 w-4" /> },
+  {
+    ke: '/master/status-progres-1',
+    label: 'Master Status Progres 1',
+    ikon: <IkonDaftar className="h-4 w-4" />,
+  },
+  { ke: '/master-rekening', label: 'Master Rekening', ikon: <IkonKunci className="h-4 w-4" /> },
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/app/KerangkaHalaman.tsx
 ]
 
 /**

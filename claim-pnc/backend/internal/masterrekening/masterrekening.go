@@ -435,8 +435,13 @@ type Alert struct {
 	// Work Owner menetapkan penerimanya adalah mailbox Tim IT (2026-09-17), karena
 	// peringatan kegagalan integrasi ditujukan ke pihak yang dapat MEMPERBAIKINYA,
 	// bukan ke orang yang kebetulan menekan tombol approve. Dicatat di
+<<<<<<< HEAD
 	// docs/keputusan-implementasi.md §10.10.
 	DecidedBy Recipients
+=======
+	// docs/keputusan-implementasi.md §11.10.
+	Diputuskan Penerima
+>>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
 }
 
 // Notifier adalah seam ke pemberitahuan.
