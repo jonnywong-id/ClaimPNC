@@ -1,9 +1,5 @@
-<<<<<<< HEAD:claim-pnc/frontend/src/api/client.ts
 import { ErrorCode } from './types'
 import type { FieldViolation } from './types'
-=======
-import { KodeGalat, type DetailGalat } from './tipe'
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/klien.ts
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -31,39 +27,15 @@ export class APIError extends Error {
    * layar Status Klaim hanya membaca `pesan` sehingga belum terdampak. Penyeragamannya
    * masuk kontrak galat TKT-F1-004.
    */
-<<<<<<< HEAD:claim-pnc/frontend/src/api/client.ts
   readonly detail: FieldViolation[]
 
   constructor(kode: string, pesan: string, status: number, detail?: FieldViolation[]) {
-=======
-  readonly detail: DetailGalat[]
-
-  /**
-   * Pelanggaran per isian dalam bentuk peta `kolom → pesan`.
-   *
-   * Ia menyampaikan hal yang sama dengan `detail`, tetapi bentuknya berbeda karena
-   * modul Master Rekening mengirimkannya sebagai objek, bukan senarai
-   * (internal/masterrekening/http/dto.go:151). Keduanya hidup berdampingan supaya tidak
-   * ada modul yang harus mengubah kontraknya lebih dulu; penyatuannya masuk TKT-F1-004.
-   *
-   * Kosong untuk galat yang tidak menunjuk isian tertentu.
-   */
-  readonly field: Record<string, string>
-
-  constructor(
-    kode: string,
-    pesan: string,
-    status: number,
-    detail?: DetailGalat[],
-    field?: Record<string, string>,
-  ) {
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/klien.ts
     super(pesan)
     this.name = 'APIError'
     this.kode = kode
     this.status = status
     this.detail = detail ?? []
-    this.field = field ?? {}
+    // this.field = field ?? {}
   }
 }
 
@@ -108,20 +80,15 @@ export const HEADER_PORTAL = 'X-Portal'
  * Komponen tidak pernah memanggil fetch sendiri; mereka memakai hook TanStack Query
  * yang memanggil fungsi ini (docs/Steering/08-TECHNICAL-STRATEGY.md §3).
  */
-<<<<<<< HEAD:claim-pnc/frontend/src/api/client.ts
 export async function callAPI<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { metode = 'GET', body, token } = options
-=======
-export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): Promise<T> {
-  const { metode = 'GET', badan, token, portal } = opsi
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/klien.ts
 
   const header: Record<string, string> = { Accept: 'application/json' }
   if (body !== undefined) header['Content-Type'] = 'application/json'
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
   if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  // if (portal) header[HEADER_PORTAL] = portal
 
   let response: Response
   try {
@@ -136,7 +103,6 @@ export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): P
 
   if (response.status === 204) return undefined as T
 
-<<<<<<< HEAD:claim-pnc/frontend/src/api/client.ts
   const content = await readJSON(response)
   if (!response.ok) {
     const error = content as { kode?: string; pesan?: string; detail?: FieldViolation[] } | null
@@ -145,54 +111,14 @@ export async function panggilAPI<T>(jalur: string, opsi: OpsiPermintaan = {}): P
       error?.pesan ?? 'Terjadi kesalahan pada sistem.',
       response.status,
       error?.detail,
-=======
-  const isi = await bacaJSON(respons)
-  if (!respons.ok) {
-    // detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya
-    // bentuknya: badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun
-    // saat berjalan.
-    const galat = isi as
-      | { kode?: string; pesan?: string; detail?: unknown; field?: unknown }
-      | null
-    throw new GalatAPI(
-      galat?.kode ?? KodeGalat.galatInternal,
-      galat?.pesan ?? 'Terjadi kesalahan pada sistem.',
-      respons.status,
-      Array.isArray(galat?.detail) ? (galat.detail as DetailGalat[]) : [],
-      petaField(galat?.field),
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/klien.ts
     )
   }
   return content as T
 }
 
-<<<<<<< HEAD:claim-pnc/frontend/src/api/client.ts
 async function readJSON(response: Response): Promise<unknown> {
   const text = await response.text()
   if (text.trim() === '') return null
-=======
-/**
- * petaField menyaring `field` menjadi peta teks→teks yang aman dipakai layar.
- *
- * Senarai dan `null` ikut ditolak — keduanya bertipe `object` di JavaScript, sehingga
- * pemeriksaan `typeof` saja akan meloloskannya. Pasangan yang nilainya bukan teks
- * dibuang satu per satu, bukan membuang seluruh peta: satu isian yang bentuknya aneh
- * tidak boleh menghilangkan pesan isian lain yang sudah benar.
- */
-function petaField(nilai: unknown): Record<string, string> {
-  if (typeof nilai !== 'object' || nilai === null || Array.isArray(nilai)) return {}
-
-  const hasil: Record<string, string> = {}
-  for (const [kolom, pesan] of Object.entries(nilai)) {
-    if (typeof pesan === 'string') hasil[kolom] = pesan
-  }
-  return hasil
-}
-
-async function bacaJSON(respons: Response): Promise<unknown> {
-  const teks = await respons.text()
-  if (teks.trim() === '') return null
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/klien.ts
   try {
     return JSON.parse(text)
   } catch {

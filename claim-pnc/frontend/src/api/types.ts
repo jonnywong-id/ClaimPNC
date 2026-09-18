@@ -187,14 +187,11 @@ export const ErrorCode = {
 
   // Milik modul master data.
   statusKlaimTidakDitemukan: 'status_klaim_tidak_ditemukan',
-<<<<<<< HEAD:claim-pnc/frontend/src/api/types.ts
   validationFailed: 'validasi_gagal',
   statusLabelTaken: 'label_status_sudah_dipakai',
   statusCodeTaken: 'kode_status_sudah_dipakai',
-=======
   labelStatusSudahDipakai: 'label_status_sudah_dipakai',
   kodeStatusSudahDipakai: 'kode_status_sudah_dipakai',
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60:claim-pnc/frontend/src/api/tipe.ts
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]

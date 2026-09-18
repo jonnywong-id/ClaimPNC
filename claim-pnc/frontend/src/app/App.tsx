@@ -2,7 +2,6 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
-<<<<<<< HEAD
 import { HomePage } from '@/modules/home/HomePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
@@ -10,16 +9,7 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
-=======
-import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
-import { HalamanMasterRekening } from '@/modules/master-rekening/HalamanMasterRekening'
-import { HalamanMasterStatusKlaim } from '@/modules/master-status-klaim/HalamanMasterStatusKlaim'
-import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
-import { HalamanStatusProgres1 } from '@/modules/master-status-progres/HalamanStatusProgres1'
-import { GalatAPI } from '@/api/klien'
-import { KodeGalat } from '@/api/tipe'
-import { gunakanSesi } from '@/app/sesi'
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
+// import { HalamanStatusProgres1 } from '@/modules/master-status-progres/HalamanStatusProgres1'
 
 import { PageShell } from './PageShell'
 import { SessionGuard } from './SessionGuard'
@@ -57,18 +47,7 @@ export function createQueryClient(): QueryClient {
 export function AppRoute() {
   return (
     <Routes>
-<<<<<<< HEAD
       <Route path="/masuk" element={<LoginPage />} />
-=======
-      <Route path="/masuk" element={<HalamanMasuk />} />
-      {/* Seluruh rute di bawah dibungkus Terlindungi, sehingga bilah atas, menu, identitas
-          pengguna, tombol keluar, dan peringatan sesi tampil sama di semuanya.
-
-          Beranda tidak lagi perlu perlakuan khusus. Pemilih portal, tombol keluar, dan
-          nama pengguna sudah pindah dari header-nya ke bilah atas pada penataan ulang
-          2026-09-17; PemilihPortal yang tersisa di dalamnya ber-`sm:hidden`, melengkapi
-          bilah atas yang justru menyembunyikannya di layar sempit. */}
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
       <Route
         path="/"
         element={<SessionGuard anak={<Protected anak={<HomePage />} />} />}
@@ -78,10 +57,10 @@ export function AppRoute() {
         KENYAMANAN TAMPILAN; penegakan yang sebenarnya ada di server, yang memeriksa
         sesi pada setiap endpoint.
       */}
-      <Route
+      {/* <Route
         path="/master/status-progres-1"
-        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanStatusProgres1 />} />} />}
-      />
+        element={<SessionGuard anak={<Protected anak={<HalamanStatusProgres1 />} />} />}
+      /> */}
       <Route
         path="/master/status-klaim"
         element={<SessionGuard anak={<Protected anak={<ClaimStatusPage />} />} />}
@@ -93,7 +72,6 @@ export function AppRoute() {
       */}
       <Route
         path="/master-rekening"
-<<<<<<< HEAD
         element={
           <SessionGuard
             anak={
@@ -104,9 +82,6 @@ export function AppRoute() {
             }
           />
         }
-=======
-        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterRekening />} />} />}
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -142,13 +117,7 @@ export function App() {
   return (
     <QueryClientProvider client={client}>
       <BrowserRouter>
-<<<<<<< HEAD
         <AppRoute />
-=======
-
-      
-        <Rute />
->>>>>>> 4481dda8c6ca4133e9bb79370ca24d614bd4ae60
       </BrowserRouter>
     </QueryClientProvider>
   )
