@@ -1,62 +1,83 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes } from 'react'
 
 /**
- * Peran tombol menentukan seberapa menonjol ia terlihat, bukan sekadar warnanya.
+ * Nada menentukan berat sebuah tombol, bukan sekadar warnanya.
  *
- * - `utama`    — tindakan yang dituju pengguna saat membuka layar. Satu per layar.
- * - `sekunder` — tindakan yang wajar tetapi bukan tujuan utama.
- * - `halus`    — tindakan yang membatalkan atau mundur; tidak boleh menarik perhatian.
+ * - `utama`   — tindakan yang dituju pengguna di layar itu. Satu saja per kelompok.
+ * - `kedua`   — tindakan yang sah tetapi bukan yang utama: Ubah, Muat ulang.
+ * - `halus`   — tindakan yang membatalkan atau menutup. Tidak menarik perhatian.
  *
- * Membedakan ketiganya penting pada form: "Simpan" dan "Batal" yang terlihat sama
- * membuat pengguna menekan yang salah, dan pada layar master itu berarti kehilangan
- * isian yang baru diketik.
+ * Membedakannya penting pada layar master: Simpan dan Batal berdampingan, dan tombol
+ * yang tampak sama berat membuat pengguna menekan yang salah.
  */
-export type PeranTombol = 'utama' | 'sekunder' | 'halus'
+export type NadaTombol = 'utama' | 'kedua' | 'halus'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  peran?: PeranTombol
-  /** Ditampilkan menggantikan anak selama tindakan berjalan. */
-  sedangJalan?: boolean
-  teksSedangJalan?: string
-  children: ReactNode
-}
-
-const kelasPeran: Record<PeranTombol, string> = {
-  utama: 'bg-slate-900 text-white hover:bg-slate-700 border border-slate-900',
-  sekunder: 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300',
-  halus: 'bg-transparent text-slate-600 hover:bg-slate-100 border border-transparent',
+  nada?: NadaTombol
 }
 
 /**
- * Tombol baku aplikasi.
+ * Tiga keadaan yang WAJIB terlihat pada setiap nada, bukan hanya pada yang utama:
  *
- * Ia menangani satu hal yang mudah terlupa bila setiap layar menulis tombolnya sendiri:
- * tombol yang sedang menjalankan tindakan WAJIB nonaktif. Tanpa itu, pengguna yang
- * menekan "Simpan" dua kali mengirim dua permintaan — dan pada layar yang menambah
- * baris, itu menghasilkan dua baris.
+ *   hover         — mengangkat: warna menua, bayangan melebar, tombol naik 1px
+ *   active        — menekan: tombol kembali turun dan menyusut tipis (98%)
+ *   focus-visible — cincin 4px beropasitas rendah, mengikuti lengkung tombol
+ *
+ * Gerakan naik-turun itu yang membuat tombol terasa dapat ditekan. Tanpa `active`,
+ * tombol terasa "mati" karena tidak ada umpan balik antara menekan dan hasilnya muncul —
+ * dan pada jaringan lambat jeda itu bisa terasa lama.
+ *
+ * `focus-visible`, bukan `focus`: cincin hanya muncul untuk papan ketik. Memakai `focus`
+ * membuat cincin ikut muncul setiap kali tombol diklik tetikus, yang terlihat seperti
+ * cacat tampilan dan akhirnya membuat orang menghapus cincinnya sama sekali — termasuk
+ * bagi pengguna papan ketik yang benar-benar membutuhkannya.
  */
-export function Tombol({
-  peran = 'sekunder',
-  sedangJalan = false,
-  teksSedangJalan,
-  children,
-  disabled,
-  className,
-  type = 'button',
-  ...sisa
-}: Props) {
-  const kelas =
-    'rounded px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ' +
-    kelasPeran[peran]
+const kelas: Record<NadaTombol, string> = {
+  utama: [
+    'bg-blue-600 text-white shadow-aksen',
+    'hover:bg-blue-700 hover:shadow-angkat hover:-translate-y-px',
+    'active:translate-y-0 active:scale-[0.98] active:bg-blue-800',
+    'focus-visible:ring-blue-500/35',
+    'disabled:hover:translate-y-0 disabled:hover:bg-blue-600 disabled:hover:shadow-aksen',
+  ].join(' '),
 
-  return (
-    <button
-      type={type}
-      disabled={disabled || sedangJalan}
-      className={className ? `${kelas} ${className}` : kelas}
-      {...sisa}
-    >
-      {sedangJalan && teksSedangJalan ? teksSedangJalan : children}
-    </button>
-  )
+  kedua: [
+    'border border-slate-300 bg-white text-slate-700 shadow-lembut',
+    'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 hover:shadow-angkat hover:-translate-y-px',
+    'active:translate-y-0 active:scale-[0.98] active:bg-slate-100',
+    'focus-visible:ring-slate-400/35',
+    'disabled:hover:translate-y-0 disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:shadow-lembut',
+  ].join(' '),
+
+  halus: [
+    'text-slate-600',
+    'hover:bg-slate-100 hover:text-slate-900',
+    'active:scale-[0.98] active:bg-slate-200',
+    'focus-visible:ring-slate-400/35',
+    'disabled:hover:bg-transparent',
+  ].join(' '),
+}
+
+/**
+ * Tombol baku.
+ *
+ * Alasan keberadaannya sama dengan KolomIsian: tanpa komponen ini, setiap layar menulis
+ * ulang kelas Tailwind, keadaan nonaktif, dan cincin fokusnya sendiri — dan pada puluhan
+ * layar itu berubah menjadi puluhan tafsir berbeda tentang bagaimana sebuah tombol
+ * terlihat saat sedang bekerja.
+ *
+ * `type` sengaja berbawaan `button`. Bawaan HTML adalah `submit`, dan tombol Batal yang
+ * lupa menyebut tipenya akan diam-diam mengirim form.
+ */
+export function Tombol({ nada = 'kedua', className, type = 'button', ...sisa }: Props) {
+  const kelasDasar = [
+    'inline-flex items-center justify-center gap-2 rounded-kontrol px-3.5 py-2',
+    'text-sm font-medium whitespace-nowrap select-none',
+    'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-halus',
+    'focus:outline-none focus-visible:ring-4',
+    'disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none',
+    kelas[nada],
+  ].join(' ')
+
+  return <button type={type} className={className ? `${kelasDasar} ${className}` : kelasDasar} {...sisa} />
 }

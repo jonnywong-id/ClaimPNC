@@ -1,1 +1,112 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   Sistem desain Claim PNC — Light Mode
+   ==========================================================================
+
+   Hanya ada satu mode: terang. Ditetapkan Work Owner 2026-09-17, dan `color-scheme`
+   di bawah memberi tahu peramban supaya kontrol bawaannya — bilah gulir, pemilih
+   tanggal, tanda centang — ikut terang, bukan mengikuti tema sistem pengguna.
+
+   Palet aksen memakai BLUE dari Tailwind, bukan warna karangan. Alasannya praktis:
+   nilainya sudah ada di pustaka sehingga tidak dapat salah ketik, dan kontrasnya sudah
+   teruji.
+
+   Mula-mula dipakai indigo, lalu diganti atas permintaan Work Owner 2026-09-17: indigo
+   condong ke ungu, dan yang diminta adalah biru. `blue-600` (#2563EB) adalah biru murni
+   tanpa campuran ungu.
+
+   KONTRAS, dengan angka yang sebenarnya. Teks putih di atas `blue-600` mencapai 5,1:1 —
+   lewat ambang AA untuk teks normal (4,5:1), TIDAK mencapai AAA (7:1). Angka 8,6:1 yang
+   sempat tertulis di sini untuk indigo salah hitung; indigo-600 sebenarnya 6,2:1. Bila
+   kelak AAA dituntut, yang diubah adalah dasarnya menjadi `blue-700` (6,7:1) atau
+   `blue-800` (8,6:1) — bukan angkanya di komentar ini.
+
+   Merah SENGAJA tidak dipakai sebagai aksen meski ia warna korporat. Merah adalah
+   bahasa universal untuk galat, dan tombol Simpan berwarna merah di sebelah pesan galat
+   berwarna merah membuat keduanya sulit dibedakan sekilas.
+   ========================================================================== */
+
+@theme {
+  /* ------------------------------------------------------------------
+     Bayangan berlapis.
+
+     Tiap bayangan disusun dua lapis — satu rapat untuk menegaskan tepi, satu lebar
+     untuk kesan ketinggian. Satu lapis saja menghasilkan bayangan yang terlihat
+     "ditempel"; dua lapis meniru cahaya nyata yang menyebar.
+
+     Warnanya slate-900 beropasitas rendah, bukan hitam murni: bayangan hitam di atas
+     latar kebiruan terlihat kotor.
+     ------------------------------------------------------------------ */
+  --shadow-lembut: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+  --shadow-angkat: 0 2px 4px -2px rgb(15 23 42 / 0.06), 0 8px 16px -6px rgb(15 23 42 / 0.10);
+  --shadow-terbang: 0 4px 8px -4px rgb(15 23 42 / 0.06), 0 20px 40px -16px rgb(15 23 42 / 0.18);
+  /* Bayangan tombol utama memakai warna aksennya sendiri — blue-700 (29 78 216) —
+     bukan abu-abu. Bayangan berwarna membuat tombol terasa menyala, bukan sekadar
+     berwarna. */
+  --shadow-aksen: 0 1px 2px 0 rgb(29 78 216 / 0.16), 0 6px 16px -6px rgb(29 78 216 / 0.35);
+
+  /* Lengkung. Satu tangga saja supaya tidak ada tiga radius berbeda di satu layar. */
+  --radius-kartu: 0.875rem;
+  --radius-kontrol: 0.625rem;
+
+  /* Lengkung gerak. Ease-out: cepat memulai, melambat di akhir — terasa responsif
+     karena reaksinya terlihat seketika. */
+  --ease-halus: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Angka sejajar lebar pada tabel dan kode status. Tanpa ini, kolom kode terlihat
+     bergoyang karena angka 1 lebih sempit daripada angka lain. */
+  table,
+  .angka-rata {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Cincin fokus digambar sendiri lewat kelas focus-visible pada tiap kontrol, bukan
+     outline bawaan — supaya bentuknya mengikuti lengkung kontrolnya. Outline bawaan
+     hanya dihapus untuk pointer; papan ketik TETAP mendapat penanda. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Bilah gulir yang tidak mencuri perhatian. */
+  * {
+    scrollbar-color: var(--color-slate-300) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+/* ==========================================================================
+   Hormati pengguna yang meminta gerak dikurangi.
+
+   Sebagian orang mengalami pusing atau mual karena animasi. Sistem operasinya sudah
+   menyatakan itu; mengabaikannya berarti membuat aplikasi tidak dapat dipakai bagi
+   mereka. Transisi dimatikan, bukan dipercepat — nol lebih aman daripada nyaris nol.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

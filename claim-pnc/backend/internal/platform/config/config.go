@@ -63,6 +63,8 @@ type Konfigurasi struct {
 	Penyimpanan      string
 	Sesi             Sesi
 	HCQ              HCQ
+	Kasir            Kasir
+	SMTP             SMTP
 
 	// PortalUtama adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
@@ -92,6 +94,77 @@ type HCQ struct {
 	Pengguna  string
 	KataSandi string
 	Batas     time.Duration
+}
+
+// Kasir memuat alamat dan kredensial layanan pendaftaran rekening ke sistem Kasir.
+//
+// Dipakai modul Master Rekening saat komite menyetujui sebuah rekening. Berbeda dari
+// HCQ, alamatnya ADA di sini dan bukan di basis data: sistem lama menyimpannya di
+// konfigurasi instans Pega, bukan di GCNM_CONNECT_REST, sehingga tidak ada tabel yang
+// dapat dibaca untuk menemukannya.
+//
+// Seluruhnya boleh kosong. Bila kosong, modul Master Rekening tetap berjalan penuh dan
+// hanya melewatkan langkah pendaftaran ke Kasir — itu yang membuat layar dapat dipakai
+// sebelum kredensialnya tersedia dari Tim Infra.
+type Kasir struct {
+	URLDaftar   string
+	URLPerbarui string
+	Pengguna    string
+	KataSandi   string
+	Batas       time.Duration
+}
+
+// Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
+func (k Kasir) Aktif() bool {
+	return strings.TrimSpace(k.URLDaftar) != "" && strings.TrimSpace(k.URLPerbarui) != ""
+}
+
+// SMTP memuat parameter server surel keluar.
+//
+// Dipakai modul Master Rekening untuk memberi tahu komite bila rekening yang baru
+// disetujuinya gagal didaftarkan ke Kasir.
+//
+// Pengguna dan KataSandi boleh kosong: relay SMTP internal sering menerima pengirim
+// dari jaringan tepercaya tanpa autentikasi. Bila keduanya diisi, kredensialnya HANYA
+// dikirim setelah STARTTLS berhasil — penolakannya ada di kode, bukan di konfigurasi.
+type SMTP struct {
+	Host      string
+	Port      int
+	Pengguna  string
+	KataSandi string
+	Dari      string
+
+	// PenerimaPeringatan adalah mailbox Tim IT yang menerima peringatan kegagalan
+	// integrasi. Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_PERINGATAN.
+	//
+	// Keputusan Work Owner 2026-09-17: peringatan ditujukan ke pihak yang dapat
+	// MEMPERBAIKI kegagalan, bukan ke pengguna yang kebetulan memicunya.
+	PenerimaPeringatan []string
+
+	Batas time.Duration
+}
+
+// Aktif menyatakan konfigurasi ini cukup untuk mengirim surel.
+//
+// Penerima ikut disyaratkan: pengirim surel tanpa tujuan bukan setengah aktif, ia
+// tidak aktif — dan menyatakannya aktif akan menyembunyikan konfigurasi yang belum
+// selesai di balik pengiriman yang tidak pernah sampai ke siapa pun.
+func (s SMTP) Aktif() bool {
+	return strings.TrimSpace(s.Host) != "" &&
+		s.Port > 0 &&
+		strings.TrimSpace(s.Dari) != "" &&
+		len(s.PenerimaPeringatan) > 0
+}
+
+// pecahAlamat memecah daftar alamat yang dipisah koma dan membuang yang kosong.
+func pecahAlamat(daftar string) []string {
+	var hasil []string
+	for _, bagian := range strings.Split(daftar, ",") {
+		if potong := strings.TrimSpace(bagian); potong != "" {
+			hasil = append(hasil, potong)
+		}
+	}
+	return hasil
 }
 
 // Basisdata memuat parameter koneksi satu portal. KataSandi tidak pernah ikut tercetak.
@@ -161,6 +234,18 @@ func Muat() (Konfigurasi, error) {
 	if err != nil {
 		galat = append(galat, err)
 	}
+	batasKasir, err := ambilDurasi("KASIR_BATAS_WAKTU", 30*time.Second)
+	if err != nil {
+		galat = append(galat, err)
+	}
+	portSMTP, err := ambilAngka("SMTP_PORT", 0)
+	if err != nil {
+		galat = append(galat, err)
+	}
+	batasSMTP, err := ambilDurasi("SMTP_BATAS_WAKTU", 20*time.Second)
+	if err != nil {
+		galat = append(galat, err)
+	}
 
 	portalUtama := strings.ToUpper(strings.TrimSpace(ambil("PORTAL_UTAMA", portalUtamaBaku)))
 	portal, galatPortal := muatPortal()
@@ -176,6 +261,22 @@ func Muat() (Konfigurasi, error) {
 			Pengguna:  strings.TrimSpace(os.Getenv("HCQ_LOGIN_USER")),
 			KataSandi: os.Getenv("HCQ_LOGIN_PASSWORD"),
 			Batas:     batasHCQ,
+		},
+		Kasir: Kasir{
+			URLDaftar:   strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
+			URLPerbarui: strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
+			Pengguna:    strings.TrimSpace(os.Getenv("KASIR_USER")),
+			KataSandi:   os.Getenv("KASIR_PASSWORD"),
+			Batas:       batasKasir,
+		},
+		SMTP: SMTP{
+			Host:               strings.TrimSpace(os.Getenv("SMTP_HOST")),
+			Port:               portSMTP,
+			Pengguna:           strings.TrimSpace(os.Getenv("SMTP_USER")),
+			KataSandi:          os.Getenv("SMTP_PASSWORD"),
+			Dari:               strings.TrimSpace(os.Getenv("SMTP_DARI")),
+			PenerimaPeringatan: pecahAlamat(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
+			Batas:              batasSMTP,
 		},
 		PortalUtama: portalUtama,
 		Portal:      portal,
@@ -325,6 +426,8 @@ func (k Konfigurasi) Ringkas() map[string]any {
 		"portal_tersedia":    strings.Join(k.AliasTersedia(), ","),
 		"hcq_pengguna_diisi": k.HCQ.Pengguna != "",
 		"hcq_sandi_diisi":    k.HCQ.KataSandi != "",
+		"kasir_aktif":        k.Kasir.Aktif(),
+		"smtp_aktif":         k.SMTP.Aktif(),
 	}
 }
 

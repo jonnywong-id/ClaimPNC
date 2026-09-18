@@ -62,13 +62,14 @@ export function Kerangka({ anak, aksiDiHalaman = false }: Props) {
           <span className="text-sm font-semibold text-slate-900">Claim PNC</span>
           <div className="flex flex-wrap items-center gap-3">
             <PemilihPortal />
+            {/* Tombol tidak lagi menyediakan sedangJalan/teksSedangJalan; keadaan
+                "sedang jalan" dinyatakan pemanggil lewat disabled dan teks bersyarat. */}
             <Tombol
-              peran="sekunder"
+              nada="kedua"
               onClick={() => keluar.mutate()}
-              sedangJalan={keluar.isPending}
-              teksSedangJalan="Keluar…"
+              disabled={keluar.isPending}
             >
-              Keluar
+              {keluar.isPending ? 'Keluar…' : 'Keluar'}
             </Tombol>
           </div>
         </header>

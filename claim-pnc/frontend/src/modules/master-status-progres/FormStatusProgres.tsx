@@ -209,16 +209,11 @@ export function FormStatusProgres({
       />
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <Tombol peran="halus" onClick={onBatal} disabled={sedangMenyimpan}>
+        <Tombol nada="halus" onClick={onBatal} disabled={sedangMenyimpan}>
           Batal
         </Tombol>
-        <Tombol
-          type="submit"
-          peran="utama"
-          sedangJalan={sedangMenyimpan}
-          teksSedangJalan="Menyimpan…"
-        >
-          Simpan
+        <Tombol type="submit" nada="utama" disabled={sedangMenyimpan}>
+          {sedangMenyimpan ? 'Menyimpan…' : 'Simpan'}
         </Tombol>
       </div>
     </form>

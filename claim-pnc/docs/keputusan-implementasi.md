@@ -955,3 +955,553 @@ satu paragraf. Diajukan sebagai permintaan izin, bukan diambil sendiri.
 Bila diizinkan, perubahannya satu paragraf: kalimat pertama dibuang, sisanya
 dipertahankan — dan pemilih portal serta tombol keluar di header Beranda ikut dipindahkan
 ke kerangka sehingga penanda `aksiDiHalaman` pada §10.20 tidak dibutuhkan lagi.
+## 11. Modul Master Rekening (2026-09-17)
+
+### 11.1 Master ini punya alur persetujuan — dan itu menjawab pertanyaan `TKT-F4-001`
+
+`TKT-F4-001` mencatat pertanyaan terbuka: *"apakah perubahan master butuh alur
+persetujuan, dan berlaku untuk master yang mana?"*
+
+Untuk Master Rekening pertanyaan itu **tidak perlu ditunggu jawabannya** — sistem yang
+berjalan hari ini sudah menjawabnya. `POOLDATA.LST_ACCOUNT` memuat `APPROVAL`,
+`KOMITE_APPROVAL`, dan `TANGGALAPPROVEKOMITE` sejak awal, dan
+`CNMUpdateMasterRekening_act` menegakkan alurnya.
+
+Alasannya juga jelas: rekening menentukan **ke mana uang klaim dikirim**. Satu baris
+yang keliru berarti pembayaran mendarat di rekening yang salah, dan tidak ada langkah
+sesudahnya yang dapat menangkapnya.
+
+**Yang tetap menjadi keputusan Work Owner** adalah apakah pola ini berlaku untuk master
+lain. Modul ini tidak memutuskannya, dan tidak memaksakan bentuknya ke master mana pun.
+
+### 11.2 Alias Pega tidak dibawa masuk
+
+Alias kolom sistem lama menyesatkan secara aktif. Yang paling berbahaya: **satu alias
+dipakai untuk dua kolom berbeda pada rule yang berbeda**.
+
+| Alias | Artinya saat SELECT | Artinya saat UPDATE |
+|---|---|---|
+| `pyID` | `USER_INPUT` | `APPROVAL` |
+| `KOMISI` | `FLAGUPDATE` | `TANGGALAPPROVEKOMITE` |
+
+Ditambah `CaseID`→`STS_AKTIF`, `CoverID`→`ACCOUNT_TYPE`, `pyCountry`→`KOMITE_APPROVAL`,
+dan `NoHpUserAccount`→`EMAILINPUT` (surel, bukan nomor HP).
+
+Seluruhnya diganti nama domain berbahasa Indonesia. Pemetaan tiga arah
+alias→kolom→domain ditulis lengkap di kepala
+`repo/sqlstore/rekening.sql` — satu-satunya tempat ketiganya dapat dibandingkan.
+Ini melaksanakan `03-CURRENT-ARCHITECTURE` §4.2.
+
+### 11.3 Perilaku yang sengaja DIPERTAHANKAN walau cacat
+
+Work Owner memilih paritas lebih dulu (`P-5`). Tiga hal berikut **tidak** diperbaiki,
+dan dicatat di sini supaya tidak terbaca sebagai kelalaian:
+
+| Perilaku lama | Kenapa cacat | Kenapa tetap dipertahankan |
+|---|---|---|
+| Nomor rekening yang **ditolak** komite **dihapus** lalu disisip ulang saat diajukan lagi | Menghilangkan jejak penolakan sebelumnya — persis pola yang `ADR-0013` perintahkan diganti | Menggantinya dengan versi baru mengubah perilaku, sehingga uji kesetaraan tidak lagi 1:1 |
+| Portal yang didaftarkan ke Kasir **di-hardcode** `ASM` dan `SIMASNET` | `ADR-0025` menuntutnya menjadi master/konfigurasi | Master portal untuk keperluan ini belum ada |
+| Tipe rekening di-hardcode di `SetTipeRekening` | Idem | Master tipe rekening belum ada |
+
+Keduanya yang terakhir **tidak disebar di dalam percabangan**: masing-masing menjadi
+satu konstanta bernama (`portalYangDidaftarkanKeKasir`, `TIPE_REKENING`), sehingga saat
+masternya tersedia yang perlu diubah hanya satu tempat.
+
+### 11.4 Yang DIPERBAIKI, karena memperbaikinya tidak mengubah perilaku
+
+| Cacat lama | Perbaikan |
+|---|---|
+| `DELETE FROM LST_ACCOUNT where {ASIS:TempDataBank.City}` — klausa WHERE dirangkai dari properti klipboard | Kunci dan syarat `APPROVAL='2'` ditulis **di dalam** kueri; pemanggil tidak dapat menggesernya |
+| `UPDATE … where account_no = {TempBank.pyEmailAddress}` — kunci satu kolom, lewat properti bernama alamat surel | Kunci menjadi pasangan `ACCOUNT_NO` + `BANKID`; nomor rekening yang sama dapat ada di dua bank |
+| `TGL_INPUT = sysdate` | Waktu dari seam `platform/waktu`, disimpan UTC, dapat diuji deterministik |
+| `SUBSTR(response_kasir, INSTR(…))` di dalam SQL | Pindah ke `masterrekening.PangkasResponsKasir`; `INSTR` tidak portabel ke PostgreSQL |
+| 68 pemakaian `ROWNUM` | `OFFSET … FETCH NEXT` (`09-DATABASE-STRATEGY` §3.3) |
+
+### 11.5 Keputusan komite disimpan SEBELUM Kasir dihubungi
+
+Urutannya disengaja dan berbeda dari cara membacanya sepintas.
+
+Keputusan komite adalah **fakta bisnis yang sudah terjadi** begitu orangnya menekan
+tombol. Bila ia baru disimpan setelah Kasir menjawab, satu kegagalan jaringan akan
+membuang keputusan yang sudah benar-benar diambil, dan komite harus memutuskan ulang
+tanpa tahu kenapa.
+
+Karena itu: keputusan disimpan dulu, lalu pendaftaran ke Kasir dijalankan sebagai
+akibatnya. Kegagalannya **tidak** membatalkan keputusan; ia dicatat di `STS_SERVICE` dan
+`RESPONSE_KASIR`, diberitahukan ke PIC, dan **ditampilkan di layar** — bukan
+disembunyikan. Rekening yang disetujui tetapi gagal didaftarkan akan menahan pembayaran,
+dan satu-satunya orang yang dapat menindaklanjutinya adalah petugas yang melihat layar.
+
+### 11.6 Asumsi yang disadari dan menunggu konfirmasi
+
+`CNMUpdateMasterRekening_act` memanggil **kedua** Connect-REST Kasir dengan prasyarat
+yang **sama persis** (`komite="ya" && APPROVAL="1"` dan portal ASM/SIMASNET), tanpa
+syarat pembeda di antara keduanya. Export tidak menunjukkan mana yang dipakai kapan.
+
+**Asumsi yang diambil:** rekening yang menggantikan rekening lama
+(`OLDACCOUNT_NO` terisi) dikirim lewat `UpdateSearchDataRekeningToKasir`; selebihnya
+lewat `InjectDataRekeningToKasir`. Dasarnya nama servicenya sendiri.
+
+**Menunggu konfirmasi Work Owner.** Bila salah, yang berubah hanya satu percabangan di
+`usecase/putuskan.go`.
+
+### 11.7 Penghalang yang masih ada
+
+| Penghalang | Pemilik | Akibatnya sekarang |
+|---|---|---|
+| **Alamat dan kredensial API Kasir** tidak ada di export — ia di konfigurasi instans Pega | **Tim Infra** | Seam Kasir terisi tiruan; rekening tetap dapat diputuskan komite, pendaftaran ke Kasir dilewati. Aplikasi **memperingatkannya di log saat start** |
+| **Bentuk badan permintaan Kasir** disusun dari properti yang disalin activity ke `MyServicePage`, belum pernah diuji terhadap sistem nyata | **Tim Infra** | Bila Kasir menuntut bentuk lain, yang berubah hanya `kasir/kasir.go` |
+| **Otorisasi menu** (`TKT-F3-005`) belum ada | **Work Owner / DBA** | Setiap pengguna yang dapat masuk dapat membuka layar ini. Rute sudah berada di balik sesi; yang belum ada adalah pemeriksaan kewenangan |
+| **Jejak audit** (`S-5`) belum ada | — | Perubahan master rekening belum tercatat siapa-kapan-dari apa-menjadi apa, padahal `TKT-F4-001` mensyaratkannya. `UPDATEBY` dan `TANGGALAPPROVEKOMITE` hanya menyimpan keadaan terakhir, bukan riwayat |
+| **Kepemilikan tulis `LST_ACCOUNT`** | **Work Owner** | `P-1` menuntut satu tabel ditulis satu sistem. Layar Pega-nya wajib dimatikan pada saat modul ini dinyalakan, bukan sesudahnya |
+| **Node 22.12+** di mesin pengembangan | **Work Owner / Tim Infra** | Uji frontend tidak dapat dijalankan; lihat `catatan-pengembangan.md` §9.8 |
+
+### 11.8 Penyimpangan dari Steering yang disadari
+
+**`TKT-U6-001` menuntut penghapusan lunak**, dan modul ini **tidak** menyediakan
+penghapusan sama sekali — bukan lunak, bukan keras. `LST_ACCOUNT` tidak punya kolom
+penanda hapus, dan menambahkannya menuntut DDL yang menyentuh tabel milik bersama
+selama masa paralel (`P-1`, `ADR-0004`).
+
+Penggantinya yang sudah ada: kolom `STS_AKTIF`. Rekening yang tidak dipakai lagi
+**dinonaktifkan**, tetap terbaca, dan tetap dapat dirujuk klaim lama — yang secara
+perilaku adalah apa yang dituntut penghapusan lunak. Layar menandainya secara terpisah
+supaya rekening disetujui-tetapi-nonaktif tidak disalahbaca sebagai siap pakai.
+
+Menambah kolom penanda hapus yang sesungguhnya menunggu DDL dan keputusan Work Owner.
+
+### 11.9 Koreksi: dua sandi kolom yang sempat salah ditebak
+
+Ditemukan saat penelusuran lanjutan atas `SetTipeRekening`, **setelah** implementasi
+pertama selesai. Activity itu mengisi **dua** daftar pilihan sekaligus, dan keduanya
+sempat saya salah baca:
+
+| Kolom | Alias Pega | Sandi sebenarnya | Sempat saya tulis |
+|---|---|---|---|
+| `ACCOUNT_TYPE` | `CoverID` | **`"BIASA"` / `"VA"`** (Virtual Account) | `TERTANGGUNG` / `BENGKEL` / `RUMAH SAKIT` / `PIHAK KETIGA` |
+| `STS_AKTIF` | `CaseID` | **`"Ya"` / `"Tidak"`** | `"1"` / `"0"` |
+
+Sumbernya:
+
+```
+TempTipeBank.pxResults(<APPEND>).Telephone     = "BIASA" · "VA"      → TempBank.CoverID
+TempTipeBank.pxResults(<APPEND>).NomorKontrak  = "Ya" · "Tidak"      → TempBank.CaseID
+```
+
+**Kenapa ini berbahaya dan tidak berisik.** Salah sandi `STS_AKTIF` tidak membuat apa
+pun gagal — tidak ada galat, tidak ada baris yang ditolak. Ia hanya membuat **setiap
+rekening terbaca sebagai nonaktif**, sehingga `dapat_dipakai` selalu `false` dan petugas
+mengira seluruh rekening yang sah tidak dapat dipakai membayar klaim. Kegagalan diam
+seperti itu baru ketahuan di produksi.
+
+Salah nilai `ACCOUNT_TYPE` sama diamnya: layar akan menulis `"BENGKEL"` ke kolom yang
+hanya dikenali Pega sebagai `"BIASA"` atau `"VA"`.
+
+**Perbaikannya** — `sandiAktif` menulis `"Ya"`/`"Tidak"`; `bacaAktif` menerima
+`Ya`/`1`/`Y`/`Aktif` tanpa peduli besar-kecil huruf, supaya baris lama yang ejaannya
+berbeda tetap terbaca aktif; daftar tipe di formulir menjadi `BIASA` dan `VA`.
+
+**Dan dikunci uji** — `repo/sqlstore/sandi_test.go` menguji ketiganya, termasuk pulang
+pergi tulis-lalu-baca. Uji itu ada justru karena kesalahannya tidak menimbulkan galat:
+yang tidak berisik harus diuji, bukan diandalkan pada pembacaan ulang.
+
+**Pelajaran yang berlaku untuk modul berikutnya.** Sandi nilai kolom **tidak dapat
+ditebak dari nama kolom maupun dari SQL** — SQL hanya menunjukkan kolomnya, bukan nilai
+yang sah. Sumbernya adalah activity yang mengisi daftar pilihan layar (`Set*Value`,
+`Set*`), dan itu wajib dibaca untuk setiap kolom berjenis kode.
+
+### 11.10 Peringatan surel — menggantikan `SendEmailAlertRekening`
+
+**Yang ditiru apa adanya:**
+
+| Perilaku lama | Di sini |
+|---|---|
+| Surel dipicu **hanya** bila `ResponseCode == "9"` | Sama persis. Kode `"1"` tetap gagal **tanpa** surel |
+| Dikirim setelah rekening disetujui komite lalu didaftarkan ke Kasir | Sama |
+
+Satu pemicu yang sempat saya tambahkan — **Kasir tidak dapat dihubungi sama sekali** —
+sudah **dicabut**. Work Owner menetapkan alur bisnis dipertahankan apa adanya dan tidak
+ditambah apa pun di luar yang sudah ada (2026-09-17).
+
+*Akibat yang disadari:* Kasir yang mati total **tidak** memicu surel. Kegagalannya tetap
+terlihat di kolom Kasir pada layar dan di log aplikasi, tetapi tidak ada yang memberi
+tahu secara aktif. Ini perilaku sistem lama, dan dicatat supaya tidak terbaca sebagai
+kelalaian.
+
+#### Satu-satunya penyimpangan di modul ini: penerimanya
+
+Rule lama mencari alamat penerima dengan
+`select email from pooldata.mst_user_teknik where operator_id = {TempIns.pyID}`, diisi
+`OperatorID.pxInsName` — **operator yang sedang masuk**. Di sini penerimanya adalah
+**mailbox Tim IT** dari konfigurasi (`SMTP_PENERIMA_PERINGATAN`).
+
+**Riwayat keputusannya dicatat jujur, termasuk kesalahan saya.** Mula-mula saya
+menyimpulkan jalur lamanya buntu karena pemetaan identitas HCC/HCQ ke `OPERATOR_ID`
+belum ditetapkan (`ADR-0024` pertanyaan terbuka no. 4). **Kesimpulan itu terlalu cepat.**
+`GetUserDetailsQuery` menunjukkan:
+
+```sql
+(select email from POOLDATA.MST_USER_TEKNIK where operator_id = "PYUSERIDENTIFIER")
+  from DATAPEGA.pr_operators where "PYUSERIDENTIFIER" = {GetUserKlaim.source}
+```
+
+`MST_USER_TEKNIK.OPERATOR_ID` ternyata sama dengan `PYUSERIDENTIFIER` Pega — yaitu
+**nama login**, yang sudah disimpan aplikasi baru di `Pengguna.Login`. Jadi jalur as-is
+kemungkinan besar dapat dipakai; yang kurang hanya satu query verifikasi kecocokannya.
+
+Temuan itu disampaikan ke Work Owner, dan Work Owner **tetap memilih Tim IT**
+(2026-09-17) — kini dengan mengetahui bahwa jalur as-is tersedia. Alasannya: peringatan
+kegagalan integrasi ditujukan ke pihak yang dapat **memperbaikinya**, bukan ke orang
+yang kebetulan menekan tombol approve.
+
+Komite yang memutuskan tetap disebut **di dalam badan surel** sebagai keterangan, supaya
+Tim IT tahu kepada siapa harus bertanya.
+
+> **Bila kelak hendak dikembalikan ke as-is**, yang dibutuhkan hanya satu seam baru
+> (`EmailOperator(operatorID) string`) berisi kueri di atas, lalu mengganti sumber
+> `Peringatan.Kepada`. Pemicu, isi, dan pengirimannya tidak berubah.
+
+#### Yang tidak dapat direproduksi
+
+Rule HTML `EmailAlertRekeningToPIC` **tidak ada di dalam export** — hanya pemanggilannya
+yang terlihat. Badan suratnya disusun ulang, dan surelnya sendiri menyatakan bahwa
+susunannya **sementara**. Menunggu wording resmi dari tim bisnis.
+
+#### Dua langkah rule lama yang tidak ditiru
+
+| Langkah lama | Kenapa tidak ditiru |
+|---|---|
+| Membaca ulang `POOLDATA.CLAIM_SERVICE_LOG` untuk mengambil `ResponseCode` | Kode responsnya sudah di tangan sebagai nilai balik panggilan Kasir. Lagipula SQL-nya, `rownum=1 order by insertdate desc`, memotong baris **sebelum** mengurutkan sehingga tidak menjamin baris terbaru |
+| Prasyarat `TempClaimAttach.FlagNOLL=="Ya"` pada langkah kirim, berketerangan *"skip jika error karena sudah ada di kasir dan belum ada di lst account"* | Maksud bisnisnya tidak dapat dipastikan dari export. Work Owner menetapkan: **kirim selalu saat gagal kode 9**. Dicatat sebagai lubang paritas yang diketahui |
+
+#### Yang belum dibangun dan memang belum diperlukan
+
+Sistem lama menulis setiap panggilan service ke `POOLDATA.CLAIM_SERVICE_LOG`. Modul ini
+tidak. Respons Kasir sudah tersimpan di `STS_SERVICE` dan `RESPONSE_KASIR` pada barisnya
+sendiri dan tampil di layar; log terpusat menyusul bersama modul `S-4` Integrasi Sistem
+Luar (keputusan Work Owner 2026-09-17).
+
+#### Keamanan pengiriman
+
+Tiga hal ditegakkan di kode, bukan diserahkan ke konfigurasi:
+
+- **Kredensial SMTP hanya dikirim setelah STARTTLS berhasil.** Server yang tidak
+  menawarkan STARTTLS membuat pengiriman ditolak, bukan dilanjutkan tanpa enkripsi.
+- **Nilai header dipotong pada baris baru pertama.** Satu `\r\n` di dalam alamat cukup
+  untuk menyisipkan header tambahan — termasuk penerima tambahan. Ujinya menemukan
+  kelemahan nyata pada versi pertama, yang hanya mengganti baris baru dengan spasi
+  sehingga teks susupan tetap ikut terkirim di dalam header.
+- **Seluruh nilai dari data di-escape** sebelum masuk badan HTML. Nama pemilik rekening
+  dan pesan dari Kasir adalah teks yang dimasukkan pihak lain.
+## 12. Master Status Klaim — modul bisnis pertama (2026-09-17)
+
+Sampai sesi ini belum ada satu pun modul bisnis. Karena itu setiap keputusan di bawah bukan hanya
+tentang satu layar: ia menjadi pola untuk sekurang-kurangnya **28 master berikutnya**.
+
+### 12.1 Keputusan Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Menulis ke mana | **Go jadi penulis tunggal `POOLDATA.M_STS_CLAIM`**, tidak lagi menyimpan JSON; isi JSON dipindahkan ke kolom. Procedure `PEGA_M_STS_CLAIM` boleh ditinggalkan |
+| 2 | Lingkup | Fungsi dan tampilan **seperti Pega**, tetapi lebih bagus, mobile friendly, dan user friendly |
+| 3 | Jejak audit | **Samakan dengan sekarang** — sistem lama tidak punya, jadi tidak ditambahkan |
+| 4 | Validasi | **Tolak ID atau nama status ganda, dan tolak yang kosong** |
+
+### 12.2 Kepemilikan tabel: kenapa `P-1` tidak dilanggar
+
+`P-1` berbunyi *satu tabel hanya boleh ditulis satu sistem* selama masa paralel — bukan bahwa tabel
+lama tidak boleh ditulis sama sekali.
+
+Layar Master Status Klaim adalah **satu-satunya penulis** `M_STS_CLAIM` di sistem lama: hanya
+`RDB List/UpdateStsClaim-SQL.xml` yang memanggil `PEGA_M_STS_CLAIM`, dan hanya layar itu yang
+memanggil rule tersebut. Memindahkan layarnya karena itu memindahkan kepemilikan tabelnya **secara
+utuh**. Pega berubah menjadi pembaca saja lewat `V_STS_CLAIM`, yang dibaca 23 rule-nya.
+
+**Alternatif yang ditolak: tabel baru milik Go.** Ia lebih bersih secara skema, tetapi Pega tetap
+membaca `V_STS_CLAIM` — sehingga akan ada **dua master yang menyimpang** begitu ada perubahan,
+kecuali dibangun sinkronisasi dua arah yang justru dilarang `P-1`. Satu sumber kebenaran menang atas
+skema yang lebih rapi.
+
+### 12.3 Skema kode warisan dipertahankan apa adanya
+
+Kode dibentuk `id_site` disambung nomor urut tiga digit, persis seperti `PEGA_M_STS_CLAIM.prc`.
+Dengan situs `1` dan urutan 134 sampai 166, hasilnya tepat `1134` sampai `1166`.
+
+Tidak diganti dengan skema yang lebih baik, dan itu keputusan sadar: **23 rule Pega membaca kode ini
+selama masa paralel**, dan klaim lama menyimpannya. Skema baru berarti dua sistem penomoran hidup
+berdampingan tanpa alasan.
+
+Yang **diperbaiki** hanya pembentukannya: perangkaian dan pemformatan angka dikerjakan di Go, bukan
+lewat `LPAD` dan `TO_CHAR` di SQL — keduanya dilarang `09-DATABASE-STRATEGY.md` §4 karena mengikat
+kueri pada dialek Oracle.
+
+**Batas yang diwarisi, dan tidak ditutupi.** `LSC_ID` bertipe `CHAR(4)`. Saat urutan mencapai 1000,
+kodenya menjadi lima karakter dan penyisipan **ditolak** dengan `ORA-12899`. Memotongnya menjadi
+tiga digit akan menghasilkan **kode ganda** — jauh lebih buruk daripada penyisipan yang gagal dengan
+pesan jelas. Perilakunya dibiarkan, batasnya dicatat: urutan berada di **193** pada 2026-09-17,
+menyisakan sekitar **806 penambahan**.
+
+### 12.4 `FROM DUAL` — pengecualian dialek yang kedua, dan dipagari
+
+`09-DATABASE-STRATEGY.md` §4 melarang `FROM DUAL` karena tidak ada padanannya di PostgreSQL.
+Pengambilan `NEXTVAL` menuntutnya.
+
+Pengecualiannya diperlakukan sama dengan generator nomor klaim pada `ADR-0005`: **satu kueri
+bernama, diisolasi**, dan dipagari uji `TestFromDualHanyaDiKueriUrutan` yang **gagal bila ada kueri
+kedua** memakainya. Disiplin yang hanya ditulis di dokumen akan dilanggar pada bulan ketiga; yang
+dipagari uji tidak.
+
+### 12.5 Jejak audit tidak dibangun — penyimpangan yang disadari
+
+`TKT-F4-001` menuntut *"setiap perubahan master menghasilkan tepat satu baris jejak audit dengan
+nilai sebelum dan sesudah"*. **Tidak dibangun**, atas keputusan Work Owner: sistem lama tidak
+mencatat apa pun, dan yang diminta adalah menyamakannya.
+
+**Konsekuensinya dicatat terbuka, bukan disembunyikan:**
+
+1. Perubahan nama status **tidak dapat ditelusuri** — siapa mengubahnya, kapan, dari apa menjadi
+   apa. Nama status yang diubah langsung terbaca 23 rule Pega, termasuk laporan TAT dan KPI yang
+   dibaca manajemen.
+2. `D-59` menghapus pemisahan tugas dan menjadikan jejak audit **satu-satunya kontrol pengimbang**
+   yang tersisa. Di modul ini kontrol itu belum ada.
+3. Menambahkannya kelak menyentuh **seluruh** master, bukan hanya yang ini — itulah sebabnya
+   `TKT-F4-001` menempatkannya di kerangka, bukan di masing-masing master.
+
+Bila `S-5` dibangun kemudian, tempat menyisipkannya sudah jelas: lapisan `usecase`, di dalam
+transaksi yang sama dengan penyimpanan.
+
+### 12.6 Tiga aturan validasi, dan yang sengaja tidak ada
+
+Layar Pega **tidak memvalidasi apa pun**: `pyRequired=false`, tanpa batas panjang, tanpa pemeriksaan
+keunikan. Work Owner memutuskan tiga aturan baru.
+
+| Aturan | Di mana ditegakkan | Kenapa di situ |
+|---|---|---|
+| Label wajib diisi | Zod di layar **dan** domain Go | Layar menjawab tanpa perjalanan jaringan; domain menegakkan, karena pemanggilan langsung ke API tidak melewati layar |
+| Label tidak boleh ganda | Pemeriksaan di `usecase` **dan** indeks unik basis data | Pemeriksaan memberi pesan yang jelas; indeks yang menjamin. Dua permintaan bersamaan dapat sama-sama lolos pemeriksaan — hanya indeks yang tidak dapat ditembus |
+| Kode tidak boleh ganda | Kunci utama `M_STS_CLAIM_PK` | Kode dibuat urutan, jadi bentrok seharusnya mustahil. Penerjemahannya ada supaya kemustahilan itu **terlihat** bila terjadi, bukan menimpa baris lain |
+
+**Batas panjang 100 karakter** bukan permintaan Work Owner melainkan akibat kolomnya:
+`LSC_NOTE VARCHAR2(100)`. Tanpa batas di aplikasi, label yang kepanjangan akan ditolak basis data
+sebagai galat `500` alih-alih pesan yang dapat diperbaiki pengguna.
+
+Perbandingan keunikan mengabaikan besar-kecil huruf dan spasi tepi — `Paid` dan `PAID  ` adalah
+status yang sama bagi pengguna. Ekspresinya sama persis di kedua tempat: `masterstatus.KunciLabel`
+di Go dan `UPPER(TRIM(LSC_NOTE))` di indeks. Bila keduanya berbeda, aplikasi akan menerima label
+yang kemudian ditolak basis data.
+
+**Yang sengaja tidak ada: Hapus.** Layar Pega tidak punya tombol hapus, procedure-nya hanya mengenal
+INSERT dan UPDATE, dan `ADR-0012` melarang master dihapus permanen karena klaim lama merujuknya.
+Ketiadaan itu **dikunci tiga uji** — seam tanpa metode `Hapus`, rute `DELETE` menjawab `405`, dan
+tidak ada kueri yang memuat `DELETE` — supaya penambahannya menjadi keputusan sadar, bukan
+kelalaian yang lolos review.
+
+### 12.7 Kenapa tanpa pustaka tabel
+
+`ADR-0002` sengaja meninggalkan pilihan TanStack Table versus AG Grid **terbuka**, dan `TKT-U2-005`
+menuntut keputusannya diambil dengan **angka** — karena koreksi ukuran (median grid ternyata 6
+kolom, bukan 18 sampai 27) melemahkan alasan memilih pustaka kelas berat.
+
+Menarik salah satunya sekarang berarti mendahului keputusan itu. `TabelData` karena itu dibuat
+sesempit mungkin: cari, urut, tiga keadaan tampilan. Bila pustaka kelak dipilih, yang diganti adalah
+**isi satu berkas** — bukan setiap layar yang memakainya.
+
+**Pencarian dan pengurutan dikerjakan di peramban**, dan itu keputusan berbasis angka, bukan
+kemalasan: masternya 33 baris dan bertambah beberapa baris per tahun. Menyaring 33 baris di server
+berarti satu perjalanan jaringan untuk setiap huruf yang diketik, tanpa satu pun manfaat. Layar yang
+datanya besar — inbox dan laporan — **tidak boleh** mengikuti pola ini; keduanya menuntut paginasi
+keyset dari server (`D-10`), dan itu lingkup `TKT-U2-001`.
+
+### 12.8 Satu DOM untuk meja dan kartu
+
+Versi pertama `TabelData` menggambar dua pohon: `<table>` untuk layar lebar, daftar kartu untuk
+layar sempit, masing-masing disembunyikan bergantian dengan kelas Tailwind.
+
+Itu salah, dan pengujian yang membuktikannya: kelas Tailwind hanya menyembunyikan lewat CSS,
+sehingga **kedua pohon tetap ada di DOM**. Setiap isi sel muncul dua kali, pembaca layar membacanya
+dua kali, dan 14 dari 15 uji gagal karena setiap pencarian menemukan dua elemen untuk satu nilai.
+
+Yang dipakai sekarang: **satu `<table>`** yang elemennya diubah menjadi blok lewat CSS pada layar
+sempit. Nama kolom digambar ulang di dalam sel sebagai label kecil yang hilang pada layar lebar, dan
+label itu `aria-hidden` karena `<th scope="col">` sudah menjelaskan selnya.
+
+### 12.9 Kontrak API modul ini
+
+| Metode | Jalur | Jawaban |
+|---|---|---|
+| `GET` | `/api/master/status-klaim` | daftar + `total` |
+| `POST` | `/api/master/status-klaim` | `201` + baris beserta kode yang dibuat sistem |
+| `GET` | `/api/master/status-klaim/{kode}` | satu baris |
+| `PUT` | `/api/master/status-klaim/{kode}` | `200` + baris setelah diubah |
+
+**Kode tidak pernah datang dari klien.** Pada penambahan ia dibuat penyimpanan; pada pengubahan ia
+di jalur URL. Sentinel `"UnknownID"` yang dipakai Pega tidak dibawa sama sekali.
+
+**`PUT`, bukan `PATCH`:** seluruh isi yang boleh diubah — satu field — dikirim setiap kali, sehingga
+permintaannya menggantikan dan **idempoten**. Diuji: dua permintaan identik menghasilkan jawaban
+yang sama persis.
+
+Kode galat baru, dan kenapa statusnya berbeda-beda:
+
+| Kode | HTTP | Kenapa bukan yang lain |
+|---|---|---|
+| `validasi_gagal` | `422` | Permintaannya berbentuk benar, isinya yang melanggar aturan bisnis. `400` berarti bug frontend; `422` berarti kesalahan pengguna yang harus ditandai di kolomnya |
+| `label_status_sudah_dipakai` | `409` | Isian penggunanya sah, tetapi bentrok dengan keadaan penyimpanan — mungkin karena orang lain baru saja memakai nama itu |
+| `kode_status_sudah_dipakai` | `409` | idem, dan seharusnya mustahil |
+| `status_klaim_tidak_ditemukan` | `404` | — |
+
+Galat validasi membawa `detail` berisi **seluruh** pelanggaran beserta nama field-nya. Mengembalikan
+satu per satu akan membuat pengguna menekan Simpan berkali-kali untuk menemukan kesalahan
+berikutnya — dan sistem lama menampilkan semuanya sekaligus.
+
+### 12.10 Otorisasi: keadaan yang belum berubah
+
+Rute modul ini **terlindungi sesi**, tetapi **belum diperiksa perannya**. `D-59` menetapkan satuan
+izin adalah menu, dan penegakan "apakah peran pemanggil memiliki menu Master Data" adalah
+`TKT-F3-005` — yang bergantung pada tabel peran `TKT-F3-004`, yang dapat dibangun tetapi **belum
+dapat diisi** karena penugasan operator ke peran tidak ada di basis data maupun di export.
+
+Keadaan ini sama dengan seluruh rute lain hari ini. Yang berubah: sekarang ada rute yang **menulis
+master**, sehingga taruhannya naik. Daftar menu di `app/KerangkaHalaman.tsx` juga masih tetap —
+setiap pengguna yang masuk melihat menu yang sama.
+
+### 12.11 Yang berubah di luar modul baru
+
+Isolasi modul Login, Home, dan Portal dipatuhi. Lima berkas bersama ikut berubah, seluruhnya
+penambahan:
+
+| Berkas | Perubahan | Kenapa tidak dapat dihindari |
+|---|---|---|
+| `api/klien.ts` | `PUT` ditambahkan ke daftar metode; `GalatAPI` membawa `detail` | Pengubahan master menuntut `PUT`; `detail` yang membuat galat dapat ditandai per kolom. `DELETE` **sengaja tidak** ditambahkan |
+| `api/tipe.ts` | tipe `StatusKlaim` dan empat kode galat baru | Cerminan DTO Go; pemeriksaan tipe adalah jaring pengaman antara layar dan API |
+| `app/App.tsx` | satu rute + pembungkus `KerangkaHalaman` | Titik pasang modul, setara `main.go` di backend |
+| `cmd/claimpnc/main.go` | perakitan modul dan pemasangan rute | idem |
+| `cmd/claimpnc/periksa.go` | laporan kesiapan `M_STS_CLAIM` | Membedakan "migrasi belum jalan" dari "tidak punya hak baca" |
+
+`HalamanBeranda.tsx` **tidak disentuh** — menu dipasang di `app/`, bukan di dalam modul beranda,
+karena modul tidak boleh saling mengimpor.
+
+### 12.12 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+| Pertanyaan | Pemilik | Menahan |
+|---|---|---|
+| **Kenapa basis data memuat 32 baris sementara CSV memuat 33?** Kode `1165` "Rejected Chasier" tidak ada di `POOLDATA.M_STS_CLAIM` | Work Owner + DBA | Tidak menahan pembangunan; menahan pernyataan "master memuat tepat 33 kode" |
+| Persetujuan menjalankan migrasi `0002` | Work Owner + DBA (`D-63`) | Layar bekerja terhadap Oracle |
+| Hak `INSERT`/`UPDATE` akun aplikasi atas `M_STS_CLAIM`, dan hak baca atas `M_SITE_DATABASE` serta urutan | DBA | Penambahan dan pengubahan terhadap Oracle |
+| Apakah `LSC_ID` diperlebar sebelum urutan mencapai 1000 | Work Owner + DBA | Tidak mendesak — sekitar 806 penambahan lagi |
+| Kapan `JSONDATA` boleh dibuang | Work Owner | Tidak menahan apa pun; sebaiknya setelah masa pengamatan |
+
+---
+
+## 13. Sistem desain antarmuka (2026-09-17, sesi kelima)
+
+### 13.1 Keputusan Work Owner
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Layar mana yang didesain ulang | **Seluruh aplikasi**, termasuk Masuk dan Beranda |
+| 2 | Warna aksen | **Blue** (`blue-600`), slate sebagai dasar. Mula-mula indigo; diganti atas permintaan susulan hari yang sama karena indigo condong ke ungu |
+| 3 | Mode tampilan | **Light Mode saja** |
+
+Jawaban 1 **mencabut aturan isolasi untuk urusan tampilan**. Modul Login dan Home boleh disentuh
+kelas Tailwind-nya; alur, validasi, penanganan galat, dan logikanya tetap tidak boleh diubah — dan
+33 uji yang lulus tanpa dilonggarkan adalah buktinya.
+
+### 13.2 Kenapa bukan merah korporat
+
+Merah Sinar Mas ditawarkan sebagai pilihan dan tidak dipilih. Alasannya bukan selera:
+
+Merah adalah bahasa universal untuk galat dan bahaya. Bila ia menjadi warna tombol utama, tombol
+**Simpan** berwarna merah akan berdiri di sebelah **pesan galat** berwarna merah, dan keduanya sulit
+dibedakan sekilas — persis pada saat pengguna paling perlu membedakannya.
+
+Bila merek kelak menuntutnya, warna galat harus digeser lebih dulu (misalnya ke rose tua), bukan
+sesudahnya.
+
+### 13.3 Token, bukan kelas yang diulang
+
+Seluruh nilai desain hidup di `src/gaya.css` sebagai token Tailwind v4 (`@theme`). Yang ditaruh di
+sana hanya yang **berulang di banyak layar**; sisanya tetap kelas Tailwind biasa.
+
+| Token | Kenapa ia layak menjadi token |
+|---|---|
+| Tiga tangga bayangan + satu bayangan aksen | Dipakai di kartu, tabel, form, bilah atas, dan tombol. Nilainya **dua lapis** — satu rapat untuk tepi, satu lebar untuk ketinggian; satu lapis terlihat "ditempel" |
+| Dua tangga lengkung (`kartu`, `kontrol`) | Membatasi pilihan. Tanpa batas, satu layar bisa memuat tiga radius berbeda tanpa ada yang menyadarinya |
+| Satu lengkung gerak (`--ease-halus`) | Seluruh transisi memakai kurva yang sama, sehingga aplikasi terasa satu benda |
+
+**Warnanya memakai palet bawaan Tailwind (blue, slate), bukan warna karangan.** Nilainya sudah ada
+di pustaka sehingga tidak dapat salah ketik, dan kontrasnya sudah teruji.
+
+### 13.4 Tiga keadaan yang wajib terlihat pada setiap kontrol
+
+Bukan hanya pada tombol utama:
+
+| Keadaan | Yang terjadi | Kenapa |
+|---|---|---|
+| `hover` | warna menua, bayangan melebar, naik 1px | Memberi tahu bahwa benda itu dapat ditekan |
+| `active` | turun kembali, menyusut 98% | Umpan balik antara menekan dan hasilnya muncul. Tanpanya tombol terasa mati pada jaringan lambat |
+| `focus-visible` | cincin 4px beropasitas rendah | Satu-satunya cara pengguna papan ketik tahu ia ada di mana |
+
+**`focus-visible`, bukan `focus`.** Memakai `focus` membuat cincin ikut muncul setiap kali tombol
+diklik tetikus, yang terlihat seperti cacat tampilan — dan berujung pada orang menghapus cincinnya
+sama sekali, termasuk bagi pengguna papan ketik yang benar-benar membutuhkannya.
+
+### 13.5 Gerak dimatikan bila pengguna memintanya
+
+`prefers-reduced-motion: reduce` mematikan seluruh transisi dan animasi. Ini **tidak diminta**
+Work Owner, dan tetap dikerjakan.
+
+Alasannya: permintaannya adalah "transisi yang halus", dan bagi sebagian orang transisi menimbulkan
+pusing atau mual. Sistem operasinya sudah menyatakan itu. Mengabaikannya berarti membuat aplikasi
+tidak dapat dipakai bagi mereka — yang membatalkan maksud permintaannya sendiri.
+
+Transisi **dimatikan**, bukan dipercepat: nol lebih aman daripada nyaris nol.
+
+### 13.6 Kontras tidak berhenti di warna
+
+Warna saja tidak terbaca oleh sekitar satu dari dua belas laki-laki yang mengalami buta warna
+merah-hijau. Setiap pembedaan yang menentukan tindakan karena itu ditandai **lebih dari satu cara**:
+
+| Pembedaan | Cara menandainya |
+|---|---|
+| Isian salah | warna tepi **+** ikon **+** teks pesan **+** `aria-invalid` |
+| Penolakan versus gangguan | warna **+ BENTUK ikon** (lingkaran versus segitiga) |
+| Portal siap versus belum | warna **+** titik **+** teks |
+| Kolom sedang diurutkan | warna **+** arah panah |
+
+### 13.7 Tiga hal yang pindah ke bilah atas
+
+Tombol **Keluar**, **pemilih portal**, dan **nama pengguna** pindah dari halaman Beranda ke bilah
+atas aplikasi.
+
+Alasannya bukan estetika melainkan cacat nyata: ketiganya berlaku untuk seluruh layar di balik
+sesi, dan selama ia hidup di dalam Beranda, **pengguna yang sedang membuka layar master tidak punya
+cara keluar** tanpa kembali ke beranda lebih dulu.
+
+Akibat yang harus dikerjakan bersamaan: baris "Nama" pada kartu identitas Beranda **dihapus**.
+Menyisakannya membuat nama yang sama muncul dua kali di satu layar — dan membuat uji beranda yang
+mencarinya dengan pencocokan persis gagal menemukannya.
+
+### 13.8 Yang sengaja tidak dipakai
+
+| Tidak dipakai | Alasan |
+|---|---|
+| **Google Fonts** | Aplikasi berjalan di VM on-premise tanpa jaminan akses internet (`D-08`). Huruf yang gagal dimuat mengubah seluruh tata letak. Dipakai tumpukan font sistem |
+| **Pustaka ikon** | Delapan bentuk sederhana tidak sebanding dengan satu dependensi yang harus dipelajari tim (`D-09`), dipantau keamanannya, dan ikut membesarkan bundel |
+| **Pustaka tabel** | `TKT-U2-005` menuntut keputusannya diambil dengan pengukuran, bukan kesan. Belum berubah |
+| **Mode gelap** | Light Mode saja, keputusan Work Owner. `color-scheme: light` ditegaskan supaya kontrol bawaan peramban tidak ikut membalik mengikuti tema sistem |
+| **Menu hamburger** | Dengan dua entri, ia menambah satu ketukan untuk menyembunyikan sesuatu yang muat. Perlu ditinjau ulang bila menu kelak berasal dari izin peran (`TKT-F3-004`) dan bertambah banyak |
+
+### 13.9 Yang berubah, dan yang tidak
+
+**Berubah:** seluruh berkas antarmuka — kelas Tailwind, susunan elemen, dan penempatan tiga kontrol
+di §11.7.
+
+**TIDAK berubah:**
+
+- Satu pun endpoint, DTO, atau kontrak API.
+- Satu pun aturan bisnis, validasi, atau penanganan galat.
+- Satu baris pun kode backend.
+- Satu pun uji dilonggarkan. Yang disunting hanya **fixture** uji layar master, supaya peladen
+  tiruannya menjawab `/api/portal` — panggilan yang memang baru muncul karena pemilih portal pindah
+  ke bilah atas.

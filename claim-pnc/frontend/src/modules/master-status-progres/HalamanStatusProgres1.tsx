@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { GalatAPI, GalatJaringan } from '@/api/klien'
 import { KodeGalat, type StatusProgres } from '@/api/tipe'
 import { PesanGalat, type NadaGalat } from '@/components/PesanGalat'
-import { TabelData, type KolomTabel } from '@/components/TabelData'
+import { TabelData, type Kolom } from '@/components/TabelData'
 import { Tombol } from '@/components/Tombol'
 import { gunakanPortalTerpilih } from '@/app/portal'
 
@@ -124,16 +124,21 @@ export function HalamanStatusProgres1() {
     tambah.mutate(isian, { onSuccess: tutupForm })
   }
 
-  const kolom: KolomTabel<StatusProgres>[] = [
-    { kunci: 'id', judul: 'ID', kelas: 'w-20 whitespace-nowrap', isi: (b) => b.id },
-    { kunci: 'nama', judul: 'Status Progres', isi: (b) => b.nama },
+  // `nilai` dipisah dari `tampil` mengikuti kontrak Kolom: yang dicari dan diurutkan
+  // adalah teks polos, yang dilihat pengguna boleh berisi markup. Menyatukannya akan
+  // membuat pencarian ikut menelusuri kelas CSS.
+  const kolom: Kolom<StatusProgres>[] = [
+    { kunci: 'id', judul: 'ID', lebar: 'w-20', nilai: (b) => b.id },
+    { kunci: 'nama', judul: 'Status Progres', nilai: (b) => b.nama },
     {
       kunci: 'posisi',
       judul: 'Posisi',
-      kelas: 'w-40',
+      lebar: 'w-40',
       // Label posisi yang ditampilkan; kodenya ikut disebut karena itulah yang
-      // tersimpan di kolom STATUS dan yang dipakai saat menelusuri data.
-      isi: (b) => (
+      // tersimpan di kolom STATUS dan yang dipakai saat menelusuri data. Keduanya ikut
+      // ke `nilai` supaya pencarian menemukan baris lewat kode maupun lewat labelnya.
+      nilai: (b) => `${b.nama_posisi} ${b.kode_posisi}`,
+      tampil: (b) => (
         <span>
           {b.nama_posisi}
           <span className="ml-2 text-xs text-slate-500">{b.kode_posisi}</span>
@@ -143,9 +148,14 @@ export function HalamanStatusProgres1() {
     {
       kunci: 'aksi',
       judul: 'Aksi',
-      kelas: 'w-24',
-      isi: (b) => (
-        <Tombol peran="sekunder" onClick={() => bukaUbah(b)} aria-label={`Ubah ${b.nama}`}>
+      lebar: 'w-24',
+      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
+      // tombol, bukan data.
+      tanpaUrut: true,
+      keKanan: true,
+      nilai: () => '',
+      tampil: (b) => (
+        <Tombol nada="kedua" onClick={() => bukaUbah(b)} aria-label={`Ubah ${b.nama}`}>
           Ubah
         </Tombol>
       ),
@@ -166,14 +176,13 @@ export function HalamanStatusProgres1() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tombol
-            peran="sekunder"
+            nada="kedua"
             onClick={() => void daftar.refetch()}
-            sedangJalan={daftar.isFetching}
-            teksSedangJalan="Memuat…"
+            disabled={daftar.isFetching}
           >
-            Refresh
+            {daftar.isFetching ? 'Memuat…' : 'Refresh'}
           </Tombol>
-          <Tombol peran="utama" onClick={bukaTambah} disabled={form !== TERTUTUP}>
+          <Tombol nada="utama" onClick={bukaTambah} disabled={form !== TERTUTUP}>
             Tambah
           </Tombol>
         </div>
@@ -227,7 +236,6 @@ export function HalamanStatusProgres1() {
             kunciBaris={(b) => b.id}
             keterangan="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
             pesanKosong="Belum ada status progres pada entitas ini."
-            lebarMinimum="min-w-[40rem]"
           />
         )}
       </section>
