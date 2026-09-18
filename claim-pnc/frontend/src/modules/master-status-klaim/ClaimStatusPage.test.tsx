@@ -57,6 +57,9 @@ function installFetch(reply: (url: string, init?: RequestInit) => Response | Pro
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
+    // Kerangka layar memuat menunya sendiri sejak menu dibaca dari basis data. Ia
+    // dijawab di sini supaya uji layar ini menguji layarnya, bukan jalur galat menu.
+    if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
     return Promise.resolve(reply(url, init))
   })
 }

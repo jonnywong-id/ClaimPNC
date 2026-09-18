@@ -327,3 +327,32 @@ internal — kecuali satu prop lokal pada `SortMarker` di `DataTable`, yang mema
 
 **Komponen di dalamnya memakai nama tipe domain, bukan nama modul** — karena itu
 `ProgressStatusPage.tsx` di dalam `master-status-progres/`, bukan `MasterStatusProgresPage.tsx`.
+
+---
+
+## Tambahan 2026-09-19 — modul menu
+
+Modul `internal/menu` adalah **modul kerangka**, bukan layar Master yang diminta dengan nama bisnis.
+Namanya karena itu Inggris, sejajar dengan `auth`, `portal`, dan `platform` — `D-81` hanya berlaku
+untuk modul yang Work Owner sebut dengan nama bisnisnya.
+
+| Kolom / istilah basis data | Inggris di kode |
+|---|---|
+| `MENU_ID` · `MENU_DESC` | `ID` · `Description` |
+| `MENU_PROGRAM` | `Program` — nama harness, dikirim apa adanya ke layar |
+| `MENU_ID_LEADER` | `ParentID` — nil berarti kelompok tingkat atas |
+| `MENU_SEQUENCE` | `Sequence` |
+| `LOGIN_ID_GROUP` | **`Subject`** — satu kolom yang menampung login MAUPUN group; `Subjects()` menyusun daftarnya |
+| `GROUP_ID` | `Group` |
+| butir menu beserta anaknya | `Node` |
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Otorisasi | Authorization | `AuthorizedIDs` mengembalikan MENU_ID yang diizinkan |
+| Kelompok menu | Group | bukan `Category`: sumbernya memang baris menu yang tidak berinduk |
+| Susun pohon | BuildTree | |
+
+**Nama field JSON tetap Indonesia** (`id`, `nama`, `program`, `submenu`) — ia kontrak API.
+
+**Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
+`menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.

@@ -1776,3 +1776,116 @@ luar** — bukan teks yang boleh kami karang.
 > Pelajarannya: kerusakan pada teks tidak akan pernah muncul sebagai kegagalan kompilasi. Yang
 > menemukannya di sini adalah **satu permintaan HTTP ke aplikasi yang sedang berjalan** — langkah
 > yang tidak ada di daftar verifikasi sebelumnya, dan sejak sekarang ada.
+
+---
+
+## 15. Sesi kedelapan — menu kiri dibaca dari basis data (2026-09-19)
+
+### 15.1 Permintaan
+
+> "Tambahkan menu di sebelah kiri dengan membaca table dengan query sbb: `SELECT menu.menu_id,
+> menu.menu_desc, menu.menu_id_leader, menu.menu_program FROM M_APLIKASI app,
+> M_MENU_APLIKASI_PNC menu WHERE app.app_id = menu.app_id AND app.app_desc = 'CLAIM PNC' ORDER BY
+> menu.menu_sequence;` / Menu disusun berurutan sesuai menu_sequence dan sub menu disusun sesuai
+> menu_id_leader / Sedangkan menu akan aktif jika Login ID atau Group ID tersebut ada akses ke table
+> M_OTORISASI_PNC dan harness sesuai kolom menu_program sudah ada modulnya"
+
+### 15.2 Yang dicari lebih dulu, dan apa yang ditemukan
+
+Ketiga tabel itu belum pernah dipakai modul mana pun, jadi bentuknya dicari sebelum satu baris kode
+ditulis. Hasilnya melampaui dugaan:
+
+| Yang dicari | Ditemukan |
+|---|---|
+| DDL ketiga tabel | **`Database/CREATE_MENU.sql`** — lengkap, termasuk `M_LOGIN_GROUP_PNC` |
+| Isinya | **lima CSV**: `m_aplikasi`, `m_menu_aplikasi_pnc`, `m_otorisasi_pnc`, `m_login_group_pnc`, `m_login_pnc` |
+| Rule Pega yang memakainya | **NOL** — dicari ke seluruh 2.634 berkas XML |
+| Penyebutan di dokumen proyek | **NOL** |
+
+Dua akibat dari baris ketiga dan keempat: ini **kemampuan baru**, bukan pemindahan perilaku Pega,
+sehingga tidak ada baseline untuk gerbang 1. Dan `m_login_group_pnc.csv` adalah artefak yang
+`D-58` serta `TKT-F3-004` nyatakan **tidak ada di basis data** — lihat
+[`keputusan-implementasi.md`](keputusan-implementasi.md) §16.2.
+
+### 15.3 Apa yang dibaca dari datanya, sebelum aturannya ditulis
+
+Bentuk aturan tampil TIDAK dikarang; ia dibaca dari isi tabelnya:
+
+```
+M_OTORISASI_PNC  group "IT"    → MENU_ID 11..81   (71 baris)
+                 login "JONNY" → MENU_ID 4, 82..86 (6 baris)
+M_LOGIN_GROUP_PNC              → JONNY anggota IT
+```
+
+- Group `IT` **tidak diberi izin atas satu pun kelompok tingkat atas** (MENU_ID 1..4), padahal
+  anak-anaknya diberi. Menuntut kelompok punya baris izin sendiri akan menghapus **seluruh** menu
+  group IT. Karena itu aturannya: **kelompok tampil bila ada anaknya yang tampil.**
+- Login `JONNY` justru diberi izin atas MENU_ID 4 (REPORT). Bila anaknya kosong, judul kelompoknya
+  tetap disembunyikan — judul yang tidak membuka apa pun hanya menambah barang di layar.
+- Izin group dan izin login **digabung**, bukan saling menggantikan: keduanya memberi butir yang
+  berbeda, dan hanya penggabungan yang menghasilkan menu yang utuh.
+
+### 15.4 Tiga temuan sampingan yang memperjelas dokumen lama
+
+| Temuan | Artinya |
+|---|---|
+| **9 `MENU_PROGRAM` menunjuk harness yang TIDAK ADA di export** — `DataMemberReas`, `DetailMasterPasalAI`, `InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `InboxRequestSalvage`, `InboxServiceCenter`, `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes` | memperjelas `K-33` dengan daftar yang konkret |
+| **8 harness ADA tetapi tidak muncul di menu mana pun** — ketujuh harness berkelas `Work` ditambah `ViewPolis1` | **menguatkan Lampiran G**: ketujuhnya memang dibuka DARI DALAM klaim, bukan dari menu |
+| **MENU_ID 83 "Report Adjuster" adalah daun tanpa `MENU_PROGRAM`** | barisnya ada di master, tujuannya tidak — bukan kesalahan pembacaan |
+
+### 15.5 Yang dibangun
+
+**Backend — modul `internal/menu`.** Namanya Inggris, bukan nama modul bisnis: ia modul kerangka
+seperti `auth` dan `portal`, bukan layar Master yang diminta dengan nama bisnis (`D-81`).
+
+```
+internal/menu/
+  menu.go              domain: Item, Node, BuildTree, Subjects, seam Repo
+  repo/sqlstore/       4 kueri + pemeriksaan tabel
+  repo/memory/         isi contoh DISALIN dari kelima CSV
+  usecase/build.go     urutan langkah: group → izin group → izin login
+  http/                GET /api/menu
+```
+
+**Frontend.**
+
+```
+app/menu/api.ts       hook useMenu()
+app/menu/registry.ts  peta MENU_PROGRAM → rute; 3 baris hari ini
+app/Sidebar.tsx       kolom menu kiri, kelompok dapat dilipat
+app/PageShell.tsx     tata letak berubah: bilah atas + kolom kiri + isi
+```
+
+### 15.6 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l` · `go build` · `go vet` | bersih |
+| `go test ./...` | **24 paket lulus**, termasuk 4 paket modul menu |
+| `tsc --noEmit` · `npm run build` | bersih |
+| `npm test` | **68 lulus · 3 gagal** (naik dari 57; 11 tambahannya uji Sidebar) |
+
+Ketiga kegagalan itu tetap kegagalan lama yang sama di `AccountPage.test.tsx` — tab "Approve"/"Reject"
+bernama sama persis dengan tombol aksi per baris.
+
+**Diuji terhadap aplikasi yang benar-benar berjalan**, bukan hanya lewat uji:
+
+```
+POST /api/masuk  (IDENTITAS_ADAPTER=fake, instans sementara di :8099)
+GET  /api/menu   → 3 kelompok · 71 butir · 3 di antaranya aktif
+                   MASTER (33) · INBOX (34) · VIEW (4)
+                   REPORT tidak muncul — izinnya milik login JONNY, bukan group IT
+GET  /api/menu   tanpa sesi → 401 sesi_tidak_sah
+```
+
+### 15.7 Satu perbaikan kecil di luar lingkup
+
+Uji `ClaimStatusPage` merender seluruh `AppRoute`, sehingga kerangka layarnya ikut memuat menu.
+Pada kasus uji "pemuatan gagal", peladen tiruannya menjawab galat untuk SETIAP jalur — termasuk
+`/api/menu` — dan pesan galat menu ikut terbaca sebagai `role="alert"` yang dicari uji itu.
+
+Dua hal diperbaiki, dan keduanya benar terlepas dari uji:
+
+- Pesan galat menu memakai **`role="status"`**, bukan `role="alert"`. Menu yang gagal dimuat adalah
+  keadaan, bukan sesuatu yang harus menyela apa yang sedang dibaca pengguna di isi halaman.
+- Fixture uji itu kini menjawab `/api/menu`, sama seperti ia sudah menjawab `/api/portal`.

@@ -65,6 +65,37 @@ export type PortalListResponse = {
   utama: string
 }
 
+// ── Menu aplikasi ────────────────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/menu/http. Sumbernya POOLDATA.M_MENU_APLIKASI_PNC, disaring
+// kewenangan pemanggil lewat M_OTORISASI_PNC.
+
+/**
+ * Satu butir menu beserta submenunya.
+ *
+ * Server hanya mengirim butir yang boleh DILIHAT pemanggil. Yang menentukan butir itu
+ * dapat diklik atau belum adalah layar, lewat peta rute di `app/menu/registry.ts` —
+ * hanya frontend yang tahu modul mana yang sudah dibangun.
+ */
+export type MenuItem = {
+  /** MENU_ID. Kunci yang stabil: nama menu dapat berubah, nomornya tidak. */
+  id: number
+  nama: string
+  /**
+   * MENU_PROGRAM — nama harness Pega yang dituju butir ini.
+   *
+   * Kosong berarti butir ini tidak menuju layar mana pun: kelompok tingkat atas, atau
+   * daun yang memang tidak punya tujuan di master (MENU_ID 83).
+   */
+  program: string
+  /** Selalu ada sebagai senarai, tidak pernah null. */
+  submenu: MenuItem[]
+}
+
+export type MenuListResponse = {
+  menu: MenuItem[]
+}
+
 // ── Master Status Progres 1 ──────────────────────────────────────────────────────
 //
 // Cerminan dto di internal/masterstatusprogres/http. Menggantikan layar Pega

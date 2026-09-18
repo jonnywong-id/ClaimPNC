@@ -1723,3 +1723,145 @@ server: rutenya berada di balik middleware sesi DAN middleware portal aktif.
 | Uji untuk `PageShell` | `Kerangka.test.tsx` dihapus bersama komponennya; uji penggantinya belum ditulis |
 | Master Status Progres **tingkat 2** belum punya layar | backend-nya lengkap (`Repo2`, `Service2`, `Mount2`), rutenya belum dipasang di `main.go` dan layarnya belum ada |
 | `AccountStatus.{menunggu,disetujui,ditolak}` masih Indonesia | §14.2 — ketiganya juga teks layar |
+
+---
+
+## 16. Menu aplikasi dibaca dari basis data (2026-09-19, sesi kedelapan)
+
+### 16.1 Keputusan Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Menu tanpa otorisasi dan menu yang belum ada modulnya | **Tidak berizin disembunyikan; belum ada modul tampil nonaktif** bertanda "belum tersedia" |
+| 2 | Nilai mana yang dicocokkan ke `M_OTORISASI_PNC` | **Dari login yang diketik**, cari GROUP_ID-nya di `M_LOGIN_GROUP_PNC`; lalu cari izin untuk group-group itu DAN untuk login itu sendiri |
+
+### 16.2 Temuan yang menyentuh keputusan lama: `D-58`, `D-59`, dan `TKT-F3-004`
+
+`D-58` menetapkan peran bisnis berjumlah **22, satu-untuk-satu dengan access group Pega**, dan
+mencatat penghalangnya:
+
+> **Penugasan operator ke peran tidak ada di database.** `POOLDATA.T_ACCESS_GROUP_PNC` hanya
+> memetakan `OPERATOR_ID` ke `OLD_OPERATOR_ID`. Tanpa artefak ini, `F-3` dapat membangun tabelnya
+> tetapi **tidak dapat mengisinya**.
+
+Artefak itu **kini ada**, tetapi bukan dalam bentuk yang diperkirakan:
+
+| Yang diperkirakan `D-58`/`D-59` | Yang benar-benar diterima |
+|---|---|
+| operator ke **22 peran** lalu ke 51 item menu | login ke **group** lalu ke butir menu |
+| peta peran-ke-menu hidup di **34 When rule** | izin hidup sebagai **baris tabel** `M_OTORISASI_PNC` |
+| 5 When rule hilang dari export | tidak relevan — modelnya tidak memakai When rule |
+
+**Modelnya berbeda, bukan hanya sumbernya.** Tidak ada konsep "peran" di sini: subjek otorisasi
+adalah **login** atau **group**, dan keduanya tinggal di kolom yang sama (`LOGIN_ID_GROUP`).
+
+Yang TIDAK berubah: `D-59` tetap berlaku — **penyembunyian menu bukan kendali akses.** Yang
+menggerbang tetap pemeriksaan di server pada setiap endpoint modulnya masing-masing. Modul ini
+tidak menambah maupun mengurangi kewenangan siapa pun; ia hanya berhenti menawarkan pintu yang
+pasti tertutup.
+
+**Pertanyaan terbuka untuk Work Owner:** apakah `M_OTORISASI_PNC` **menggantikan** rencana 22 peran
+pada `D-58`, atau keduanya akan hidup berdampingan? Jawabannya menentukan apakah `TKT-F3-004` masih
+perlu dikerjakan dalam bentuknya yang sekarang. Saya tidak memutuskannya sendiri: itu mencabut
+sebuah keputusan Decision Log, dan pencabutan ditulis sebagai keputusan baru, bukan dikerjakan
+diam-diam.
+
+### 16.3 Tidak ada baseline Pega — gerbang 1 tidak berlaku
+
+Ketiga tabelnya **tidak dipakai satu pun rule di export**, dicari ke seluruh 2.634 berkas XML.
+DDL-nya pun datang sebagai skrip pembuatan (`Database/CREATE_MENU.sql`), bukan sebagai bagian dari
+skema lama.
+
+Artinya modul ini tidak dapat diuji kesetaraannya dengan Pega — polanya sama dengan `F-3` dan `S-5`
+pada `D-56`, dan penggantinya sama pula: **uji fungsional terhadap kontrak**. Kontraknya di sini
+sudah ada seluruhnya (DDL, isi contoh, dan aturan dari Work Owner), sehingga modul ini **tidak
+terhalang** seperti keduanya.
+
+### 16.4 Aturan tampil dibaca dari data, bukan dipilih
+
+| Aturan | Bukti yang memaksanya |
+|---|---|
+| Kelompok tampil bila ada **anaknya** yang tampil | group `IT` diberi izin atas MENU_ID 11 sampai 81 dan **tidak satu pun** atas 1 sampai 4. Menuntut baris izin untuk kelompoknya akan menghapus seluruh menunya |
+| Kelompok yang punya izin tetapi anaknya kosong **disembunyikan** | login `JONNY` diberi izin atas MENU_ID 4 (REPORT). Judul tanpa isi hanya menambah barang di layar |
+| Izin group dan izin login **digabung** | keduanya memberi butir yang berbeda: IT memberi MASTER, INBOX, VIEW; JONNY memberi REPORT |
+| Daun tanpa `MENU_PROGRAM` **tetap tampil** | MENU_ID 83 "Report Adjuster" ada di master tanpa tujuan. Menyembunyikannya mengubur kekosongan data yang justru perlu dilihat |
+
+### 16.5 Kunci pencocokan: login yang DIKETIK, dan kenapa itu sudah tersedia
+
+Work Owner menetapkan kuncinya **login yang diketik** — bukan NIK, dan bukan nilai yang dikembalikan
+HCQ. Sempat tampak menuntut perubahan pada modul Login, yang `D-80` sudah sentuh sekali.
+
+Ternyata tidak. `Profile.Login` didokumentasikan sebagai *"yang diketik pengguna di layar masuk"*,
+dan implementasinya `firstNonEmpty(orang.Login, response.Login, k.Username)`. Contoh respons HCQ di
+`hcq_test.go` menunjukkan **HCQ memantulkan kembali apa yang dikirim**: permintaannya membawa
+`Login: k.Username`, dan responsnya mengembalikan `Person.Login` dengan nilai yang sama persis.
+Jadi `User.Login` yang sudah tersimpan memang login yang diketik, untuk kedua populasi pengguna.
+
+**Konsekuensi yang harus disebut terang.** Isi contoh `m_login_group_pnc.csv` dan
+`m_otorisasi_pnc.csv` hanya memuat login **non-karyawan** `JONNY`. Karyawan yang masuk lewat HCC/HCQ
+akan melihat **menu kosong** sampai barisnya ditambahkan dengan login HCQ-nya — misalnya alamat
+surel, bila itu yang mereka ketik. Itu keadaan data, bukan cacat kode, dan layarnya menyebutkannya
+apa adanya: *"Belum ada menu yang diberikan untuk pengguna ini."*
+
+### 16.6 Dibaca dari basis data portal UTAMA, bukan per entitas
+
+Keempat tabelnya **tidak punya kolom entitas**, dan letaknya sekerabat dengan `M_LOGIN_PNC` serta
+`M_PORTAL_PNC` yang sudah dibaca dari portal utama. Peta menu dan kewenangan pemakainya adalah data
+lingkup **identitas**, bukan data bisnis milik satu badan hukum.
+
+Akibat yang disengaja: **menu seseorang sama di keempat portal.** Berpindah portal mengubah data
+yang dibaca layar, bukan daftar layar yang boleh ia buka. Rutenya karena itu **tidak** dipasangi
+middleware portal — menuntut portal di sini akan membuat menunya gagal justru saat pengguna belum
+memilih entitas.
+
+### 16.7 Peta rute di frontend, bukan di backend
+
+Pembagian tugasnya tegas:
+
+```
+backend   butir menu mana yang boleh DILIHAT pemanggil   (M_OTORISASI_PNC)
+frontend  butir menu mana yang sudah punya LAYAR          (app/menu/registry.ts)
+```
+
+Yang dipetakan adalah **rute antarmuka**, dan backend tidak menyimpannya. Menaruh peta itu di server
+berarti ia harus tahu bentuk URL React, dan setiap perubahan rute menjadi perubahan di dua tempat.
+
+**Menambah modul sama dengan menambah satu baris** di `registry.ts`. Hari ini isinya tiga:
+`StatusClaimInbox`, `MasterRekening`, `StatusProgress` — dari 75 butir yang punya program.
+
+### 16.8 Beranda tidak diambil dari tabel menu
+
+Ia bukan pengganti harness Pega mana pun, melainkan layar milik aplikasi baru ini. Menambahkannya ke
+`M_MENU_APLIKASI_PNC` berarti mengarang baris master. Tautannya karena itu tetap di `Sidebar`, di
+atas kelompok-kelompok yang datang dari basis data.
+
+### 16.9 Isi contoh adapter memori disalin, bukan disusun
+
+Berbeda dari adapter memori modul lain — yang isinya **susunan sendiri** karena tabel aslinya tidak
+ada di export — ketiga daftar di sini **disalin apa adanya** dari CSV yang diterima. Menu yang
+terlihat saat pengembangan karena itu sama persis dengan menu produksi, termasuk keanehannya.
+
+Satu tambahan yang TIDAK disalin, dan dipisahkan supaya jelas: `NewDevRepo()` memberi login provider
+tiruan (`adminpnc` dan kawan-kawan) keanggotaan group `IT`. Tanpa itu, masuk saat pengembangan
+menghasilkan menu kosong — bukan karena ada yang rusak, melainkan karena login itu memang tidak ada
+di `m_login_group_pnc.csv`. Tambahan ini hanya hidup di adapter memori; jalur Oracle membaca tabel
+yang sebenarnya.
+
+### 16.10 Daftar parameter IN disusun di Go — dan itu bukan perangkaian SQL
+
+Banyaknya subjek berbeda tiap pengguna, sehingga daftar `IN` tidak dapat ditulis tetap di berkas
+`.sql`. Penanda `SUBJECTS` di dalam kueri diganti daftar `:2, :3, …` oleh `expandSubjects`.
+
+Yang disisipkan hanyalah **penanda parameter**, tidak pernah nilainya — seluruh nilai tetap dikirim
+terpisah. Celah `{ASIS:...}` warisan (`03-CURRENT-ARCHITECTURE.md` §4.5) tetap tertutup, dan
+`TestExpandSubjectsInsertsPlaceholdersNeverValues` yang menjaga pernyataan itu tetap benar bila
+fungsinya kelak disunting.
+
+### 16.11 Yang belum dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Layar pengelolaan menu dan otorisasi | Modul ini hanya MEMBACA. Menambah atau mengubah baris `M_MENU_APLIKASI_PNC` dan `M_OTORISASI_PNC` belum punya layar — dan belum diminta |
+| Baris otorisasi untuk pengguna karyawan | Data, bukan kode — lihat §16.5 |
+| Apakah `M_OTORISASI_PNC` menggantikan 22 peran `D-58` | menunggu keputusan Work Owner — §16.2 |
+| Tabrakan nama tab/tombol di Master Rekening (3 uji merah) | tetap menunggu keputusan Work Owner — §14.4 |

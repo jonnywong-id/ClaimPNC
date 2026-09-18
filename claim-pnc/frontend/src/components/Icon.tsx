@@ -121,3 +121,30 @@ export function EmptyBoxIcon(props: Props) {
     </Base>
   )
 }
+
+/** Anak panah — penanda kelompok menu yang terbuka atau tertutup. */
+export function ChevronIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </Base>
+  )
+}
+
+/** Tiga garis — pembuka menu pada layar sempit. */
+export function MenuIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Base>
+  )
+}
+
+/** Silang — penutup menu pada layar sempit. */
+export function CloseIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="m6 6 12 12M18 6 6 18" />
+    </Base>
+  )
+}

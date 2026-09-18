@@ -31,6 +31,7 @@ import (
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
+	"claim-pnc/internal/menu"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
@@ -54,6 +55,10 @@ import (
 	masterstatusprogresmemory "claim-pnc/internal/masterstatusprogres/repo/memory"
 	masterstatusprogressql "claim-pnc/internal/masterstatusprogres/repo/sqlstore"
 	masterstatusprogresusecase "claim-pnc/internal/masterstatusprogres/usecase"
+	menuhttp "claim-pnc/internal/menu/http"
+	menumemory "claim-pnc/internal/menu/repo/memory"
+	menusql "claim-pnc/internal/menu/repo/sqlstore"
+	menuusecase "claim-pnc/internal/menu/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -151,6 +156,28 @@ func run() error {
 		return err
 	}
 
+	// Menu dirakit dari POOLDATA.M_MENU_APLIKASI_PNC dan M_OTORISASI_PNC. Jembatan
+	// konteks pemanggilnya SATU ARAH dari modul auth, dipasang di sini supaya kedua
+	// modul tetap tidak saling mengimpor.
+	menuHandler, err := menuhttp.NewHandler(menuhttp.Options{
+		Service: assembly.menu,
+		Caller: func(ctx context.Context) (menuhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return menuhttp.Caller{}, false
+			}
+			// Login yang DIKETIK pengguna, bukan NIK: itulah yang dicocokkan ke
+			// M_LOGIN_GROUP_PNC.LOGIN_ID dan M_OTORISASI_PNC.LOGIN_ID_GROUP.
+			return menuhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    menuhttp.ErrorWriter(writeAuthError),
+	})
+	if err != nil {
+		return err
+	}
+
 	// Bahan penentu portal aktif dipakai setiap modul bisnis yang menyentuh basis data
 	// entitas. Ia dirakit sekali di sini supaya modul-modul berikutnya memakai
 	// pemeriksaan yang sama persis, bukan masing-masing menafsirkannya sendiri.
@@ -194,6 +221,12 @@ func run() error {
 				protected.Use(authhttp.Authenticate(assembly.auth, authhttp.WriteError(logger)))
 				portalhttp.Mount(protected, handlerPortal)
 
+				// Menu berada di balik sesi tetapi TIDAK di balik pemeriksaan portal:
+				// peta menu dan kewenangannya hidup di basis data portal utama dan tidak
+				// punya kolom entitas. Menuntut portal di sini akan membuat menunya gagal
+				// justru saat pengguna belum memilih entitas.
+				menuhttp.Mount(protected, menuHandler)
+
 				// Master Status Progres 1. Rutenya memasang pemeriksaan portal sendiri
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
@@ -233,6 +266,9 @@ type assembly struct {
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
 
+	// menu menyusun peta menu beserta kewenangan pemakainya.
+	menu *menuusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -262,6 +298,11 @@ type storage struct {
 	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat,
 	// kebocoran lintas badan hukum yang justru dicegah R-20.
 	progressStatusSelector masterstatusprogres.RepoSelector
+
+	// menu dibaca dari basis data portal UTAMA, sama seperti M_LOGIN_PNC dan
+	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
+	// identitas, bukan data bisnis milik satu badan hukum.
+	menu menu.Repo
 
 	readyAliases func() []string
 	close        func()
@@ -302,6 +343,12 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	menuService, err := menuusecase.NewService(menuusecase.Options{Repo: store.menu})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
 		Repo: store.masterStatus,
 	})
@@ -316,6 +363,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterRekening:      buildMasterRekening(cfg, store, logger),
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
+		menu:                menuService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -455,6 +503,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.accountInOracle = true
 		store.readyAliases = pool.Available
 		store.masterStatus = masterstatussql.NewRepo(primary)
+		store.menu = menusql.NewRepo(primary)
 		store.close = pool.Close
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
@@ -476,6 +525,10 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
+		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
+		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
+		store.menu = menumemory.NewDevRepo()
 	}
 
 	switch cfg.Storage {

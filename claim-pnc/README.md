@@ -61,6 +61,11 @@ claim-pnc/
 │   │   │   ├── usecase/                 orkestrasi: list, create, update
 │   │   │   ├── repo/                    sqlstore (GCNM_MST_PROGRESS_KLAIM), memory
 │   │   │   └── http/                    handler, dto, pemetaan galat, rute modul
+│   │   ├── menu/                    MODUL — peta menu & otorisasi pemakainya
+│   │   │   ├── usecase/                 group login → izin group + izin login → pohon
+│   │   │   ├── repo/                    sqlstore (M_MENU_APLIKASI_PNC, M_OTORISASI_PNC,
+│   │   │   │                            M_LOGIN_GROUP_PNC, M_APLIKASI), memory
+│   │   │   └── http/                    GET /api/menu
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
@@ -72,7 +77,8 @@ claim-pnc/
 ├── frontend/                    SPA React + TypeScript + Vite
 │   └── src/
 │       ├── app/                     kerangka: router, provider, penjaga rute, sesi,
-│       │                            bilah atas, menu utama
+│       │                            bilah atas, sidebar menu (dibaca dari basis data),
+│       │                            app/menu/registry.ts — peta MENU_PROGRAM → rute
 │       ├── modules/                 satu folder per modul — nama modul bisnis (D-81)
 │       ├── components/              pustaka komponen baku
 │       └── api/                     klien HTTP dan tipe kontrak API (client.ts, types.ts)
