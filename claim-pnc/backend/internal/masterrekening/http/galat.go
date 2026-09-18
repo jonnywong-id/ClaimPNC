@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sort"
 
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/platform/logging"
@@ -47,9 +48,9 @@ func petakanGalat(err error) (int, ResponsGalat) {
 		// memenuhi aturan bisnis. Membedakan keduanya membuat layar tahu kapan harus
 		// menandai kolom dan kapan harus melaporkan cacat pemrograman.
 		return http.StatusUnprocessableEntity, ResponsGalat{
-			Kode:  KodeIsianTidakSah,
-			Pesan: "Ada isian yang belum benar. Periksa kolom yang ditandai.",
-			Field: validasi.Field,
+			Kode:   KodeIsianTidakSah,
+			Pesan:  "Ada isian yang belum benar. Periksa kolom yang ditandai.",
+			Detail: pelanggaranDari(validasi),
 		}
 
 	case errors.Is(err, masterrekening.ErrTidakDitemukan):
@@ -84,6 +85,25 @@ func petakanGalat(err error) (int, ResponsGalat) {
 			Pesan: "Terjadi kesalahan pada sistem.",
 		}
 	}
+}
+
+// pelanggaranDari mengubah galat validasi domain menjadi daftar untuk klien.
+//
+// Diurutkan menurut nama field supaya jawaban atas permintaan yang sama selalu identik.
+// Tanpa itu, urutannya mengikuti iterasi map Go — yang sengaja acak — sehingga uji
+// kontrak menjadi rapuh dan log sulit dibandingkan.
+func pelanggaranDari(g *masterrekening.GalatValidasi) []PelanggaranDTO {
+	nama := make([]string, 0, len(g.Field))
+	for f := range g.Field {
+		nama = append(nama, f)
+	}
+	sort.Strings(nama)
+
+	hasil := make([]PelanggaranDTO, 0, len(nama))
+	for _, f := range nama {
+		hasil = append(hasil, PelanggaranDTO{Field: f, Pesan: g.Field[f]})
+	}
+	return hasil
 }
 
 // TulisJSON menuliskan badan respons.

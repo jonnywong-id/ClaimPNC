@@ -60,6 +60,17 @@ export function IkonCari(props: Props) {
   )
 }
 
+/** Kartu — rekening bank. Dipakai menu Master Rekening. */
+export function IkonKartu(props: Props) {
+  return (
+    <Dasar {...props}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18" />
+      <path d="M6.5 14.5h3.5" />
+    </Dasar>
+  )
+}
+
 export function IkonTambah(props: Props) {
   return (
     <Dasar {...props}>

@@ -249,7 +249,7 @@ function PesanKeputusan({ galat }: { galat: unknown }) {
   if (galat instanceof GalatAPI && galat.kode === 'isian_tidak_sah') {
     return (
       <p role="alert" className="text-xs text-red-700">
-        {Object.values(galat.field).join(' ')}
+        {galat.detail.map((p) => p.pesan).join(' ')}
       </p>
     )
   }

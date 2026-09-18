@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { DaftarPortal, PemilihPortal } from '@/modules/portal/PemilihPortal'
 import { JenisPengguna } from '@/api/tipe'
-import { IkonDaftar } from '@/components/Ikon'
+import { IkonDaftar, IkonKartu } from '@/components/Ikon'
 import { gunakanSesi } from '@/app/sesi'
 
 /**
@@ -127,7 +127,35 @@ function PintasanMenu() {
         </span>
       </Link>
 
-      <div className="flex flex-col justify-center gap-2 rounded-kartu border border-dashed border-slate-300 bg-slate-50/60 p-5">
+      <Link
+        to="/master/rekening"
+        className={[
+          'group flex flex-col gap-3 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut',
+          'transition-[box-shadow,transform,border-color] duration-200 ease-halus',
+          'hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-angkat',
+          'active:translate-y-0 active:shadow-lembut',
+          'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25',
+        ].join(' ')}
+      >
+        <span
+          aria-hidden="true"
+          className={[
+            'flex h-10 w-10 items-center justify-center rounded-kontrol bg-blue-50 text-blue-600',
+            'transition-colors duration-200 ease-halus',
+            'group-hover:bg-blue-600 group-hover:text-white',
+          ].join(' ')}
+        >
+          <IkonKartu className="h-5 w-5" />
+        </span>
+        <span>
+          <span className="block text-sm font-semibold text-slate-900">Master Rekening</span>
+          <span className="mt-1 block text-sm text-slate-600">
+            Rekening tujuan pembayaran klaim, beserta alur persetujuan komitenya.
+          </span>
+        </span>
+      </Link>
+
+      <div className="flex flex-col justify-center gap-2 rounded-kartu border border-dashed border-slate-300 bg-slate-50/60 p-5 sm:col-span-2">
         <span className="text-sm font-medium text-slate-600">Modul berikutnya menyusul</span>
         <span className="text-sm text-slate-500">
           Registrasi klaim, komite, akseptasi, dan laporan dikerjakan bertahap sesuai

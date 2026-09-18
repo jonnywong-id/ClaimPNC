@@ -145,8 +145,20 @@ type ResponsGalat struct {
 	Kode  string `json:"kode"`
 	Pesan string `json:"pesan"`
 
-	// Field menyebut kesalahan per kolom pada galat validasi, supaya layar dapat
-	// menaruh pesannya di kolom yang benar alih-alih menumpuknya di atas formulir
-	// (TKT-U2-002).
-	Field map[string]string `json:"field,omitempty"`
+	// Detail hanya terisi pada galat validasi, dan memuat SELURUH pelanggaran
+	// sekaligus supaya layar dapat menaruh pesannya di kolom yang benar alih-alih
+	// menumpuknya di atas formulir (TKT-U2-002).
+	//
+	// Bentuknya SAMA dengan modul masterstatus, dan itu disengaja: klien menangani
+	// galat validasi seluruh aplikasi dengan satu jalur. Modul ini semula memakai
+	// `field` sebagai map, lalu diselaraskan ke bentuk bersama ini — modul yang
+	// menumpang kontrak bersama harus mengikutinya, bukan memaksa kontraknya membawa
+	// dua bentuk.
+	Detail []PelanggaranDTO `json:"detail,omitempty"`
+}
+
+// PelanggaranDTO adalah satu aturan yang dilanggar beserta isian yang melanggarnya.
+type PelanggaranDTO struct {
+	Field string `json:"field"`
+	Pesan string `json:"pesan"`
 }

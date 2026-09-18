@@ -65,18 +65,15 @@ export function Rute() {
         belum ada; sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya.
       */}
       <Route
-        path="/master-rekening"
-        element={
-          <PenjagaSesi
-            anak={
-              <div className="min-h-screen bg-white">
-                <PeringatanSesi />
-                <HalamanMasterRekening />
-              </div>
-            }
-          />
-        }
+        path="/master/rekening"
+        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterRekening />} />} />}
       />
+      {/*
+        Jalur lama `/master-rekening` dipertahankan sebagai pengalihan, bukan dihapus.
+        Ia sudah dipakai dan sudah tersimpan di riwayat peramban; membiarkannya mati
+        akan menjawab tautan yang pernah sah dengan halaman beranda tanpa penjelasan.
+      */}
+      <Route path="/master-rekening" element={<Navigate to="/master/rekening" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

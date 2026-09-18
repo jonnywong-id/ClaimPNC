@@ -103,9 +103,9 @@ export function FormRekening({ padaBerhasil }: Props) {
     const galat = ajukan.error
     if (!(galat instanceof GalatAPI) || galat.kode !== KodeGalatRekening.isianTidakSah) return
 
-    for (const [kolomServer, pesan] of Object.entries(galat.field)) {
-      const kolom = PETA_KOLOM[kolomServer]
-      if (kolom) setError(kolom, { type: 'server', message: pesan })
+    for (const pelanggaran of galat.detail) {
+      const kolom = PETA_KOLOM[pelanggaran.field]
+      if (kolom) setError(kolom, { type: 'server', message: pelanggaran.pesan })
     }
   }, [ajukan.error, setError])
 
