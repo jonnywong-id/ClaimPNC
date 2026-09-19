@@ -45,7 +45,7 @@ export function InboxPage() {
           <div className="mt-3">
             <ErrorMessage
               title="Daftar pekerjaan tidak dapat dimuat"
-              note={errorMessage(inbox.error)}
+              description={errorMessage(inbox.error)}
               tone="gangguan"
             />
           </div>
@@ -69,7 +69,7 @@ export function InboxPage() {
           <div className="mt-3">
             <ErrorMessage
               title="Tugas tidak dapat diambil"
-              note={errorMessage(get.error)}
+              description={errorMessage(get.error)}
               tone="penolakan"
             />
           </div>
@@ -191,7 +191,7 @@ function NewClaimForm() {
         <div className="mt-3">
           <ErrorMessage
             title="Klaim tidak dapat dibuka"
-            note={errorMessage(mulai.error)}
+            description={errorMessage(mulai.error)}
             tone="penolakan"
           />
         </div>

@@ -1,4 +1,4 @@
-// Package clock mendeklarasikan seam Jam.
+// Package clock mendeklarasikan seam Clock.
 //
 // Seluruh waktu di aplikasi ini disimpan sebagai UTC dan hanya dikonversi ke WIB di
 // satu tempat. Tidak ada penambahan 7 jam manual di mana pun — itu tepat kegagalan
@@ -15,19 +15,19 @@ type Clock interface {
 	Now() time.Time
 }
 
-// FixedClock adalah implementasi untuk pengujian: waktunya tidak bergerak kecuali
-// digeser dengan Maju.
-type FixedClock struct {
-	clock time.Time
+// Fixed adalah implementasi untuk pengujian: waktunya tidak bergerak kecuali digeser
+// dengan Advance.
+type Fixed struct {
+	now time.Time
 }
 
-// FixedClockAt membuat jam yang berhenti pada waktu tertentu.
-func FixedClockAt(t time.Time) *FixedClock {
-	return &FixedClock{clock: t.UTC()}
+// FixedAt membuat jam yang berhenti pada waktu tertentu.
+func FixedAt(t time.Time) *Fixed {
+	return &Fixed{now: t.UTC()}
 }
 
 // Now mengembalikan waktu yang sedang dipegang jam ini.
-func (j *FixedClock) Now() time.Time { return j.clock }
+func (f *Fixed) Now() time.Time { return f.now }
 
 // Advance menggeser jam ke depan sebanyak d.
-func (j *FixedClock) Advance(d time.Duration) { j.clock = j.clock.Add(d) }
+func (f *Fixed) Advance(d time.Duration) { f.now = f.now.Add(d) }

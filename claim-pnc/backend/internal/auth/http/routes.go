@@ -14,7 +14,7 @@ import (
 //
 // Jalur yang didaftarkan relatif terhadap tempat pemanggil memasangnya — di
 // cmd/claimpnc ia dipasang di bawah /api.
-func Mount(r chi.Router, h *Handler, checker SessionChecker, logger *slog.Logger) {
+func Mount(r chi.Router, h *Handler, pemeriksa SessionChecker, logger *slog.Logger) {
 	writeError := WriteError(logger)
 
 	// Dua rute terbuka: masuk belum punya sesi, dan keluar harus tetap bekerja walau
@@ -23,8 +23,8 @@ func Mount(r chi.Router, h *Handler, checker SessionChecker, logger *slog.Logger
 	r.Post("/keluar", h.Logout)
 
 	r.Group(func(protected chi.Router) {
-		protected.Use(Authenticate(checker, writeError))
+		protected.Use(Authenticate(pemeriksa, writeError))
 		protected.Get("/saya", h.Me)
-		protected.Post("/sesi/perpanjang", h.Extend)
+		protected.Post("/sesi/perpanjang", h.Renew)
 	})
 }

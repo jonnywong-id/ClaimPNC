@@ -12,20 +12,20 @@ import (
 
 // Repo menyimpan daftar portal di memori.
 type Repo struct {
-	list    []portal.Portal
-	failure error
+	list []portal.Portal
+	err  error
 }
 
 // NewRepo membentuk repo berisi daftar yang diberikan.
 func NewRepo(list ...portal.Portal) *Repo { return &Repo{list: list} }
 
 // SetError membuat repo menjawab dengan galat, untuk menguji jalur gagal.
-func (r *Repo) SetError(err error) { r.failure = err }
+func (r *Repo) SetError(err error) { r.err = err }
 
 // List mengembalikan portal yang tersimpan.
 func (r *Repo) List(_ context.Context) ([]portal.Portal, error) {
-	if r.failure != nil {
-		return nil, r.failure
+	if r.err != nil {
+		return nil, r.err
 	}
 	return r.list, nil
 }

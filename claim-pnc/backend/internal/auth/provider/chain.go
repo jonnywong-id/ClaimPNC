@@ -22,26 +22,26 @@ import (
 // Urutan ini tidak boleh dibalik: mendahulukan tabel lokal berarti kata sandi karyawan
 // ikut disidik dan dicocokkan ke tabel yang bukan tempatnya.
 type Chain struct {
-	link []ChainLink
+	mataRantai []Link
 }
 
-// ChainLink adalah satu sumber identitas beserta namanya untuk keperluan galat.
-type ChainLink struct {
+// Link adalah satu sumber identitas beserta namanya untuk keperluan galat.
+type Link struct {
 	Name   string
-	Source auth.Identity
+	Sumber auth.Identity
 }
 
 // NewChain membentuk rantai. Urutan slice adalah urutan percobaan.
-func NewChain(link ...ChainLink) (*Chain, error) {
-	if len(link) == 0 {
+func NewChain(mataRantai ...Link) (*Chain, error) {
+	if len(mataRantai) == 0 {
 		return nil, errors.New("provider: rantai identitas tidak boleh kosong")
 	}
-	for _, m := range link {
-		if m.Source == nil {
+	for _, m := range mataRantai {
+		if m.Sumber == nil {
 			return nil, errors.New("provider: ada mata rantai tanpa sumber identitas")
 		}
 	}
-	return &Chain{link: link}, nil
+	return &Chain{mataRantai: mataRantai}, nil
 }
 
 // Verify mencoba setiap sumber berurutan sampai ada yang menerima.
@@ -49,7 +49,7 @@ func NewChain(link ...ChainLink) (*Chain, error) {
 // # Galat mana yang dilaporkan bila semuanya gagal
 //
 // Bukan sekadar galat terakhir. Bila ADA satu sumber yang tidak dapat dihubungi, yang
-// dilaporkan adalah ErrIdentitySystemDown — karena kita memang **tidak tahu** apakah
+// dilaporkan adalah ErrIdentitySystemUnreachable — karena kita memang **tidak tahu** apakah
 // kredensialnya salah; bisa jadi ia benar tetapi sistem yang memverifikasinya sedang
 // mati. Menyebutnya "kata sandi salah" dalam keadaan itu menyuruh pengguna mengetik
 // ulang sesuatu yang sebenarnya sudah benar.
@@ -58,12 +58,12 @@ func NewChain(link ...ChainLink) (*Chain, error) {
 // sumber berikutnya untuk akun yang sengaja dinonaktifkan tidak masuk akal.
 func (b *Chain) Verify(ctx context.Context, k auth.Credential) (auth.Profile, error) {
 	var (
-		anyOutage   bool
-		lastFailure error
+		anyDown bool
+		lastErr error
 	)
 
-	for _, code := range b.link {
-		profile, err := code.Source.Verify(ctx, k)
+	for _, mata := range b.mataRantai {
+		profile, err := mata.Sumber.Verify(ctx, k)
 		if err == nil {
 			return profile, nil
 		}
@@ -72,13 +72,13 @@ func (b *Chain) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 		case errors.Is(err, auth.ErrUserInactive):
 			return auth.Profile{}, err
 
-		case errors.Is(err, auth.ErrIdentitySystemDown):
-			anyOutage = true
-			lastFailure = err
+		case errors.Is(err, auth.ErrIdentitySystemUnreachable):
+			anyDown = true
+			lastErr = err
 
 		case errors.Is(err, auth.ErrWrongCredential):
-			if lastFailure == nil {
-				lastFailure = err
+			if lastErr == nil {
+				lastErr = err
 			}
 
 		default:
@@ -89,11 +89,11 @@ func (b *Chain) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 		}
 	}
 
-	if anyOutage {
-		return auth.Profile{}, lastFailure
+	if anyDown {
+		return auth.Profile{}, lastErr
 	}
-	if lastFailure != nil {
-		return auth.Profile{}, lastFailure
+	if lastErr != nil {
+		return auth.Profile{}, lastErr
 	}
 	return auth.Profile{}, auth.ErrWrongCredential
 }

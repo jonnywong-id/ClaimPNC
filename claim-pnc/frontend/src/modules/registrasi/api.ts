@@ -69,7 +69,7 @@ export function useStartClaim() {
 
   return useMutation({
     mutationFn: (content: { nomor_polis: string; portal: string }) =>
-      callAPI<ClaimResponse>('/api/registrasi/klaim', { method: 'POST', body: content, token }),
+      callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token }),
     onSuccess: () => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
     },
@@ -83,7 +83,7 @@ export function useSaveRegister() {
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register', { method: 'POST', body: content, token }),
+      callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token }),
     onSuccess: (result) => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
       void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
@@ -98,7 +98,7 @@ export function useClaimTask() {
 
   return useMutation({
     mutationFn: (taskID: string) =>
-      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { method: 'POST', token }),
+      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token }),
     onSuccess: (tugas) => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
       void apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
@@ -114,7 +114,7 @@ export function useCompleteStage() {
   return useMutation({
     mutationFn: (content: { taskID: string; action: string; kembali?: boolean }) =>
       callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/selesai`, {
-        method: 'POST',
+        metode: 'POST',
         body: { action: content.action, kembali: content.kembali ?? false },
         token,
       }),
@@ -134,9 +134,9 @@ export function useCompleteStage() {
 export function violationsFrom(failure: unknown): Violation[] {
   if (!(failure instanceof APIError)) return []
   if (failure.kode !== RegistrationErrorCode.validationFailed) return []
-  if (!Array.isArray(failure.details)) return []
+  if (!Array.isArray(failure.detail)) return []
 
-  return failure.details.filter(
+  return failure.detail.filter(
     (p): p is Violation =>
       typeof p === 'object' && p !== null && 'kode' in p && 'field' in p && 'pesan' in p,
   )

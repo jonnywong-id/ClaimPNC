@@ -17,7 +17,7 @@ export function SessionGuard({ children }: { children: ReactNode }) {
   if (!token) {
     // Lokasi yang dituju dititipkan supaya setelah masuk pengguna kembali ke sana,
     // bukan dilempar ke beranda.
-    return <Navigate to="/masuk" replace state={{ from: location }} />
+    return <Navigate to="/masuk" replace state={{ dari: location }} />
   }
   return <>{children}</>
 }

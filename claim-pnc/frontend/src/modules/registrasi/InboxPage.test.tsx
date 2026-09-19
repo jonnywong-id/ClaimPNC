@@ -77,10 +77,10 @@ function mount(component: ReactNode) {
 beforeEach(() => {
   calls = []
   window.sessionStorage.clear()
-  useSession.getState().cleanup()
-  useSession.getState().signIn({
+  useSession.getState().clear()
+  useSession.getState().login({
     token: 'token-contoh',
-    pengguna: {
+    user: {
       identitas: '90000001',
       nama: 'Contoh Administrator',
       jenis: 'KARYAWAN',
@@ -88,7 +88,7 @@ beforeEach(() => {
       email: '',
       perusahaan: 'ASM',
     },
-    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    validUntil: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   })
 })
 

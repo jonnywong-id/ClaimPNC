@@ -13,9 +13,12 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
+
+	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
@@ -23,34 +26,34 @@ import (
 //
 // # Kenapa mode ini ada
 //
-// Masuk yang sesungguhnya MENULIS ke CPNC_PENGGUNA dan CPNC_SESI_AKTIF, dan kedua tabel
+// Login yang sesungguhnya MENULIS ke CPNC_PENGGUNA dan CPNC_SESI_AKTIF, dan kedua tabel
 // itu baru ada setelah DBA menjalankan migrasi 0001. Tanpa mode ini, integrasi HCC/HCQ
 // dan POOLDATA.M_LOGIN_PNC tidak dapat dicoba sama sekali sebelum migrasi selesai —
 // padahal keduanya justru yang paling ingin dibuktikan lebih dulu.
 //
 // Mode ini karena itu **tidak menulis apa pun**. Ia hanya membaca, memanggil HCQ, dan
 // melaporkan apa yang ditemukannya.
-func check(cfg config.Config, login string, passwordSource io.Reader, output io.Writer) error {
-	print := func(format string, body ...any) {
-		_, _ = fmt.Fprintf(output, format+"\n", body...)
+func check(cfg config.Config, login string, passwordSource io.Reader, out io.Writer) error {
+	print := func(format string, content ...any) {
+		_, _ = fmt.Fprintf(out, format+"\n", content...)
 	}
 
-	print("Periksa integrasi Claim PNC")
+	print("Check integrasi Claim PNC")
 	print("  lingkungan       : %s", cfg.Environment)
-	print("  portal utama     : %s", cfg.MainPortal)
+	print("  portal utama     : %s", cfg.PrimaryPortal)
 	print("  adapter identitas: %s", cfg.IdentityAdapter)
 	print("")
 
-	if cfg.Store != config.StorageOracle {
+	if cfg.Storage != config.StorageOracle {
 		return fmt.Errorf("mode periksa menuntut PENYIMPANAN=oracle; sekarang %q.\n"+
 			"    Alamat layanan HCQ dan daftar login non-karyawan keduanya dibaca dari basis data",
-			cfg.Store)
+			cfg.Storage)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	pool, err := db.NewPool(ctx, cfg.MainPortal, portalParams(cfg), func(alias string, err error) {
+	pool, err := db.NewPool(ctx, cfg.PrimaryPortal, portalParameters(cfg), func(alias string, err error) {
 		print("  [lewat] portal %-5s tidak dapat dibuka: %v", alias, err)
 	})
 	if err != nil {
@@ -59,18 +62,19 @@ func check(cfg config.Config, login string, passwordSource io.Reader, output io.
 	defer pool.Close()
 	print("  [ok]    koneksi basis data: %s", strings.Join(pool.Available(), ", "))
 
-	primary := pool.Main()
+	primary := pool.Primary()
 	legacy := sqlstore.NewLegacy(primary)
 
-	listPortals := checkPortals(ctx, portalsql.NewRepo(primary), print)
-	address := checkCatalog(ctx, legacy, cfg.MainPortal, print)
+	portalList := checkPortal(ctx, portalsql.NewRepo(primary), print)
+	address := checkCatalog(ctx, legacy, cfg.PrimaryPortal, print)
 	checkAppTables(ctx, legacy, print)
-	checkLoginTables(ctx, legacy, print)
+	checkLoginTable(ctx, legacy, print)
+	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
 		print("Selesai. Tambahkan -login <nama pengguna> untuk mencoba masuk sungguhan.")
-		_ = listPortals
+		_ = portalList
 		return nil
 	}
 	if address == "" {
@@ -80,7 +84,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, output io.
 	return checkLogin(ctx, cfg, legacy, login, passwordSource, print)
 }
 
-func checkPortals(ctx context.Context, repo portal.Repo, print func(string, ...any)) []portal.Portal {
+func checkPortal(ctx context.Context, repo portal.Repo, print func(string, ...any)) []portal.Portal {
 	list, err := repo.List(ctx)
 	if err != nil {
 		print("  [GAGAL] POOLDATA.M_PORTAL_PNC: %v", err)
@@ -111,13 +115,13 @@ func checkCatalog(ctx context.Context, legacy *sqlstore.Legacy, alias string, pr
 // checkAppTables membedakan "migrasi belum dijalankan" dari "akun tidak punya hak
 // baca" — dua sebab yang tampak mirip tetapi perbaikannya berbeda jauh.
 func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(string, ...any)) {
-	tables := []struct{ name, queries string }{
-		{"CPNC_PENGGUNA", "pengguna_periksa_tabel"},
-		{"CPNC_SESI_AKTIF", "sesi_periksa_tabel"},
+	tabel := []struct{ name, query string }{
+		{"CPNC_PENGGUNA", "user_check_table"},
+		{"CPNC_SESI_AKTIF", "session_check_table"},
 	}
 	missing := 0
-	for _, t := range tables {
-		if err := legacy.CheckTables(ctx, t.queries); err != nil {
+	for _, t := range tabel {
+		if err := legacy.CheckTable(ctx, t.query); err != nil {
 			print("  [BELUM] %s tidak dapat dibaca: %v", t.name, err)
 			missing++
 			continue
@@ -131,8 +135,48 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 	}
 }
 
-func checkLoginTables(ctx context.Context, legacy *sqlstore.Legacy, print func(string, ...any)) {
-	if err := legacy.CheckTables(ctx, "login_lokal_periksa_tabel"); err != nil {
+// checkClaimStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.
+//
+// Ia melaporkan JUMLAH BARIS, bukan sekadar "dapat dibaca". Angka itulah yang menjawab
+// acceptance criteria TKT-F4-005 — "master status memuat tepat 33 kode, dihitung dan
+// dilaporkan angkanya" — dan angka yang meleset menandakan langkah pemindahan isi pada
+// migrasi 0002 tidak berjalan sebagaimana mestinya.
+func checkClaimStatus(ctx context.Context, repo *masterstatussql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.M_STS_CLAIM belum siap: %v", err)
+		print("            Kolom LSC_NOTE dan OLD_LSC_ID ditambahkan migrasi 0002.")
+		print("            Selama belum dijalankan, layar Master Status Klaim tidak dapat")
+		print("            dipakai terhadap Oracle — tetapi seluruh bagian lain tetap jalan.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.M_STS_CLAIM tidak dapat dibaca isinya: %v", err)
+		return
+	}
+
+	print("  [ok]    POOLDATA.M_STS_CLAIM dapat dibaca: %d status", len(list))
+	if empty := countEmptyLabels(list); empty > 0 {
+		// Label kosong akan tampil sebagai status kosong di 23 rule Pega yang membaca
+		// V_STS_CLAIM, termasuk laporan TAT dan KPI. Ia harus terlihat di sini, bukan
+		// ditemukan pengguna di laporan.
+		print("  [WASPADA] %d status berlabel kosong — periksa langkah 2 migrasi 0002", empty)
+	}
+}
+
+func countEmptyLabels(list []masterstatus.ClaimStatus) int {
+	empty := 0
+	for _, s := range list {
+		if strings.TrimSpace(s.Label) == "" {
+			empty++
+		}
+	}
+	return empty
+}
+
+func checkLoginTable(ctx context.Context, legacy *sqlstore.Legacy, print func(string, ...any)) {
+	if err := legacy.CheckTable(ctx, "local_login_check_table"); err != nil {
 		print("  [GAGAL] POOLDATA.M_LOGIN_PNC tidak dapat dibaca: %v", err)
 		return
 	}
@@ -154,13 +198,13 @@ func checkLogin(
 		return err
 	}
 
-	chain, err := assembleIdentity(cfg, false, legacy)
+	rantai, err := buildIdentity(cfg, false, legacy)
 	if err != nil {
 		return err
 	}
 
 	print("Mencoba masuk sebagai %q …", login)
-	profile, err := chain.Verify(ctx, auth.Credential{Username: login, Password: password})
+	profile, err := rantai.Verify(ctx, auth.Credential{Username: login, Password: password})
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrWrongCredential):
@@ -168,7 +212,7 @@ func checkLogin(
 			print("          Keduanya menjawab; jadi jalur integrasinya hidup, kredensialnya yang tidak cocok.")
 		case errors.Is(err, auth.ErrUserInactive):
 			print("  [TOLAK] akun ada tetapi tidak aktif.")
-		case errors.Is(err, auth.ErrIdentitySystemDown):
+		case errors.Is(err, auth.ErrIdentitySystemUnreachable):
 			print("  [GAGAL] sistem identitas tidak dapat dihubungi: %v", err)
 		default:
 			print("  [GAGAL] %v", err)
@@ -180,19 +224,19 @@ func checkLogin(
 	print("            jenis      : %s", profile.Kind)
 	print("            identitas  : %s", profile.Identity)
 	print("            nama       : %s", profile.Name)
-	printIfSet(print, "login      ", profile.Login)
-	printIfSet(print, "email      ", profile.Email)
-	printIfSet(print, "perusahaan ", profile.Company)
-	printIfSet(print, "cabang     ", profile.Branch)
-	printIfSet(print, "kode cabang", profile.BranchCode)
-	printIfSet(print, "jabatan    ", profile.Position)
+	printIfPresent(print, "login      ", profile.Login)
+	printIfPresent(print, "email      ", profile.Email)
+	printIfPresent(print, "perusahaan ", profile.Company)
+	printIfPresent(print, "cabang     ", profile.Branch)
+	printIfPresent(print, "kode cabang", profile.BranchCode)
+	printIfPresent(print, "jabatan    ", profile.Position)
 	if profile.ActiveAtSource != nil {
 		print("            aktif di sumber: %t (direkam, belum dipakai menolak)", *profile.ActiveAtSource)
 	}
 	return nil
 }
 
-func printIfSet(print func(string, ...any), label, value string) {
+func printIfPresent(print func(string, ...any), label, value string) {
 	if strings.TrimSpace(value) != "" {
 		print("            %s: %s", label, value)
 	}
@@ -206,14 +250,14 @@ func readPassword(source io.Reader) (string, error) {
 	if source == nil {
 		source = os.Stdin
 	}
-	scanner := bufio.NewScanner(source)
-	if !scanner.Scan() {
-		if err := scanner.Err(); err != nil {
+	rowScanner := bufio.NewScanner(source)
+	if !rowScanner.Scan() {
+		if err := rowScanner.Err(); err != nil {
 			return "", fmt.Errorf("membaca kata sandi dari stdin: %w", err)
 		}
 		return "", errors.New("kata sandi tidak terbaca dari stdin")
 	}
-	password := strings.TrimRight(scanner.Text(), "\r\n")
+	password := strings.TrimRight(rowScanner.Text(), "\r\n")
 	if password == "" {
 		return "", errors.New("kata sandi kosong")
 	}

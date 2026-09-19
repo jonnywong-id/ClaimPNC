@@ -3,7 +3,7 @@
 -- Kolom selalu disebut namanya; SELECT * dilarang supaya kolom baru di basis data
 -- tidak diam-diam mengubah perilaku aplikasi.
 
--- name: pengguna_ambil_by_identitas
+-- name: user_get_by_identity
 SELECT IDENTITAS,
        JENIS,
        NAMA,
@@ -20,7 +20,7 @@ SELECT IDENTITAS,
   FROM CPNC_PENGGUNA
  WHERE IDENTITAS = :1
 
--- name: pengguna_perbarui
+-- name: user_update
 UPDATE CPNC_PENGGUNA
    SET JENIS           = :1,
        NAMA            = :2,
@@ -33,11 +33,11 @@ UPDATE CPNC_PENGGUNA
        DIPERBARUI_PADA = :9
  WHERE IDENTITAS = :10
 
--- name: pengguna_sisip
+-- name: user_insert
 INSERT INTO CPNC_PENGGUNA (IDENTITAS, JENIS, NAMA, LOGIN, EMAIL, PERUSAHAAN, CABANG, KODE_CABANG, JABATAN, OPERATOR_ID, AKTIF, DIBUAT_PADA, DIPERBARUI_PADA)
 VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13)
 
--- name: pengguna_periksa_tabel
+-- name: user_check_table
 --
 -- Memastikan tabel ada dan dapat dibaca akun aplikasi, tanpa mengambil satu baris pun.
 -- Dipakai mode periksa untuk memberi tahu apakah migrasi 0001 sudah dijalankan.

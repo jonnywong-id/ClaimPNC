@@ -17,6 +17,9 @@ import (
 // PortalDTO adalah bentuk portal yang dikirim ke peramban.
 //
 // Terpisah dari portal.Portal supaya perubahan internal tidak bocor ke klien.
+//
+// Nama field JSON tetap berbahasa Indonesia: kontrak API sengaja tidak diusik saat
+// penamaan kode dialihkan ke bahasa Inggris (keputusan Work Owner 2026-09-18).
 type PortalDTO struct {
 	ID    string `json:"id"`
 	Name  string `json:"nama"`
@@ -29,18 +32,18 @@ type PortalDTO struct {
 
 // ListResponse adalah jawaban GET /api/portal.
 type ListResponse struct {
-	Portal []PortalDTO `json:"portal"`
+	Portals []PortalDTO `json:"portal"`
 
-	// Main adalah alias portal yang basis datanya melayani sesi dan lookup pra-login.
+	// Primary adalah alias portal yang basis datanya melayani sesi dan lookup pra-login.
 	// Dikirim supaya antarmuka dapat memilihnya sebagai portal awal tanpa menebak.
-	Main string `json:"utama"`
+	Primary string `json:"utama"`
 }
 
 // Handler melayani permintaan daftar portal.
 type Handler struct {
 	repo          portal.Repo
 	readyAliases  func() []string
-	mainAlias     string
+	primaryAlias  string
 	logger        *slog.Logger
 	writeResponse func(w http.ResponseWriter, r *http.Request, status int, body any)
 	writeError    func(w http.ResponseWriter, r *http.Request, err error)
@@ -54,7 +57,7 @@ type Options struct {
 	// perubahan ketersediaan terbaca pada saat permintaan datang.
 	ReadyAliases func() []string
 
-	MainAlias     string
+	PrimaryAlias  string
 	Logger        *slog.Logger
 	WriteResponse func(w http.ResponseWriter, r *http.Request, status int, body any)
 	WriteError    func(w http.ResponseWriter, r *http.Request, err error)
@@ -65,7 +68,7 @@ func NewHandler(o Options) *Handler {
 	return &Handler{
 		repo:          o.Repo,
 		readyAliases:  o.ReadyAliases,
-		mainAlias:     o.MainAlias,
+		primaryAlias:  o.PrimaryAlias,
 		logger:        o.Logger,
 		writeResponse: o.WriteResponse,
 		writeError:    o.WriteError,
@@ -91,7 +94,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		body = append(body, PortalDTO{ID: p.ID, Name: p.Name, Alias: p.Alias, Ready: p.Ready})
 	}
 
-	h.writeResponse(w, r, http.StatusOK, ListResponse{Portal: body, Main: h.mainAlias})
+	h.writeResponse(w, r, http.StatusOK, ListResponse{Portals: body, Primary: h.primaryAlias})
 }
 
 // Mount mendaftarkan rute modul portal.

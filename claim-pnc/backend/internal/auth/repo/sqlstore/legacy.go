@@ -24,11 +24,11 @@ type Legacy struct {
 func NewLegacy(db *sql.DB) *Legacy { return &Legacy{db: db} }
 
 // FindActive memenuhi provider.LoginListRepo.
-func (w *Legacy) FindActive(ctx context.Context, loginID, passwordDigest string) (provider.LocalLogin, error) {
-	row := w.db.QueryRowContext(ctx, loadQuery("login_lokal_cari_aktif"), loginID, passwordDigest)
+func (w *Legacy) FindActive(ctx context.Context, loginID, passwordFingerprint string) (provider.LocalLogin, error) {
+	rows := w.db.QueryRowContext(ctx, getQuery("local_login_find_active"), loginID, passwordFingerprint)
 
 	var result provider.LocalLogin
-	err := row.Scan(&result.LoginID, &result.LoginName)
+	err := rows.Scan(&result.LoginID, &result.LoginName)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return provider.LocalLogin{}, provider.ErrLoginMismatch
@@ -41,10 +41,10 @@ func (w *Legacy) FindActive(ctx context.Context, loginID, passwordDigest string)
 
 // ServiceAddress memenuhi provider.ServiceCatalog.
 func (w *Legacy) ServiceAddress(ctx context.Context, app, serviceKind string) (string, error) {
-	row := w.db.QueryRowContext(ctx, loadQuery("layanan_alamat"), app, serviceKind)
+	rows := w.db.QueryRowContext(ctx, getQuery("service_address"), app, serviceKind)
 
 	var address string
-	err := row.Scan(&address)
+	err := rows.Scan(&address)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", provider.ErrServiceNotRegistered
@@ -57,25 +57,25 @@ func (w *Legacy) ServiceAddress(ctx context.Context, app, serviceKind string) (s
 	return strings.TrimSpace(address), nil
 }
 
-// Pastikan Warisan benar-benar memenuhi kedua seam yang dipakai provider. Pemeriksaan
+// Pastikan Legacy benar-benar memenuhi kedua seam yang dipakai provider. Pemeriksaan
 // ini terjadi saat kompilasi, bukan saat pengguna pertama mencoba masuk.
 var (
 	_ provider.LoginListRepo  = (*Legacy)(nil)
 	_ provider.ServiceCatalog = (*Legacy)(nil)
 )
 
-// CheckTables menguji apakah sebuah tabel ada dan dapat dibaca akun aplikasi, tanpa
+// CheckTable menguji apakah sebuah tabel ada dan dapat dibaca akun aplikasi, tanpa
 // mengambil satu baris pun.
 //
 // Dipakai mode periksa untuk membedakan dua sebab kegagalan yang tampak mirip tetapi
 // perbaikannya berbeda jauh: tabel belum dibuat (migrasi belum dijalankan DBA) versus
 // akun aplikasi tidak punya hak baca.
-func (w *Legacy) CheckTables(ctx context.Context, queryName string) error {
-	row, err := w.db.QueryContext(ctx, loadQuery(queryName))
+func (w *Legacy) CheckTable(ctx context.Context, queryName string) error {
+	rows, err := w.db.QueryContext(ctx, getQuery(queryName))
 	if err != nil {
 		return err
 	}
-	return row.Close()
+	return rows.Close()
 }
 
 // DB membuka koneksi yang dipegang repo ini supaya repo lain dapat dipasang di atas

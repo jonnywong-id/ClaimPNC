@@ -193,19 +193,65 @@ web/src/
 
 | Hal | Aturan | Contoh |
 |---|---|---|
-| Paket | Kata benda tunggal, huruf kecil, tanpa garis bawah | `klaim`, `spreading`, `settlement` |
-| Berkas | `snake_case.go` | `validasi_tanggal.go` |
-| Tipe & fungsi ekspor | `PascalCase` | `Klaim`, `RegistrasiKlaim` |
-| Interface | Nama peran, bukan berakhiran `Interface` | `KlaimRepository`, bukan `IKlaimRepository` |
-| Istilah domain | **Ikuti `CONTEXT.md` tanpa perkecualian** | `ObjekPertanggungan`, bukan `Object` · `SettlementLine`, bukan `Adjustment` |
+| Paket | Kata benda tunggal, huruf kecil, tanpa garis bawah. **Paket modul memakai nama modul bisnis** (`D-81`) | `masterrekening`, `masterstatus`, `spreading` |
+| Berkas | `snake_case.go` | `date_validation.go` |
+| Tipe & fungsi ekspor | `PascalCase` | `Claim`, `RegisterClaim` |
+| Interface | Nama peran, bukan berakhiran `Interface` | `ClaimRepository`, bukan `IClaimRepository` |
+| Istilah domain | Padanan Inggris dari `CONTEXT.md`, **bukan alias Pega** | `InsuredItem`, bukan `Object` · `SettlementLine`, bukan `Adjustment` |
 
-**Bahasa penamaan:** istilah domain memakai **bahasa Indonesia** sesuai `CONTEXT.md`, karena
-itulah bahasa yang dipakai bisnis dan tim. Istilah teknis memakai **bahasa Inggris** mengikuti
-konvensi Go. Contoh: `type Klaim struct` dengan method `Validate()`.
+**Bahasa penamaan: seluruh nama di dalam kode memakai bahasa Inggris** (`D-80`) — nama folder,
+nama berkas, paket, tipe, fungsi, method, field, parameter, dan variabel lokal, di backend Go
+maupun frontend TypeScript.
 
-Alasannya: mencampur istilah domain berbahasa Inggris yang salah terjemah (seperti `Adjustment`
-yang ternyata berarti nilai penyelesaian) adalah tepat sumber kekacauan yang sedang kita
-perbaiki.
+**Lima hal yang sengaja TETAP berbahasa Indonesia**, dan kelimanya bukan "nama di dalam kode":
+
+| Yang tetap Indonesia | Alasan |
+|---|---|
+| **Komentar** dan seluruh dokumen di `docs/` | Pembacanya tim, dan `D-09` menetapkan tim adalah developer Pega internal. Penjelasan yang sulit dibaca adalah penjelasan yang tidak dibaca |
+| **Nama field JSON pada API** (`nama_pengguna`, `berlaku_sampai`, `nomor_rekening`) | Ia **kontrak**, bukan nama internal. Mengubahnya adalah perubahan yang merusak klien, bukan penggantian nama |
+| **Nama tabel dan kolom basis data** (`CPNC_PENGGUNA`, `LSC_NOTE`, `STS_AKTIF`) | Dimiliki bersama Pega selama masa paralel (`D-21`), dan perubahannya menempuh `D-63` |
+| **Teks yang dilihat pengguna** | Mengikuti layar Pega apa adanya (`D-13`). Yang **tidak** ada padanannya di XML Pega ditulis dalam bahasa Inggris |
+| **Nama variabel lingkungan dan flag baris perintah** (`PENYIMPANAN`, `PORTAL_UTAMA`, `-periksa`) | Sama sifatnya dengan kontrak API: ia dipakai berkas `.env`, skrip deployment, dan operator. Menggantinya adalah perubahan yang merusak, bukan penggantian nama |
+
+Akibatnya satu baris kode dapat memuat keduanya, dan itu memang yang dikehendaki:
+
+```go
+// Number adalah nomor rekening; namanya di basis data tetap NO_REKENING.
+type Account struct {
+	Number string `json:"nomor_rekening"`
+}
+```
+
+**Kenapa ini berubah dari `D-19`.** `D-19` menetapkan istilah domain memakai bahasa Indonesia agar
+salah terjemah seperti `Adjustment` tidak terbawa. Sasaran itu **tetap dipegang** — yang dipakai
+adalah padanan Inggris yang benar dari `CONTEXT.md` (`SettlementLine`, bukan `Adjustment`), bukan
+alias Pega. Yang berubah hanyalah bahasanya, dan alasannya dua: pustaka standar Go dan React
+seluruhnya berbahasa Inggris sehingga penamaan campur membuat setiap baris berpindah bahasa dua
+kali, dan bahasa Indonesia tidak mengenal infleksi sehingga `Daftar`, `Didaftarkan`, dan
+`Pendaftaran` sering tertukar di tempat yang tidak disengaja.
+
+**Satu pengecualian yang berlawanan arah: nama folder modul memakai nama modul bisnis** (`D-81`).
+Folder modul dinamai menurut **nama modul yang disebut Work Owner**, dalam bahasa Indonesia:
+
+| Lapisan | Bentuk | Contoh |
+|---|---|---|
+| Folder backend & nama paket Go | `namamodul` — huruf kecil, **tanpa tanda hubung** (Go tidak mengizinkannya) | `internal/masterrekening`, `internal/masterstatus` |
+| Folder frontend | `nama-modul` — `kebab-case` | `src/modules/master-rekening`, `src/modules/master-status-klaim` |
+
+**Isi modul tetap berbahasa Inggris.** Yang berbahasa Indonesia hanyalah **nama modulnya**, karena
+itulah nama yang dipakai Work Owner dan yang tertulis di tiket:
+
+```go
+package masterrekening        // nama modul — Indonesia
+
+type Account struct {         // tipe di dalamnya — Inggris
+	Number string `json:"nomor_rekening"`
+}
+```
+
+**Nama modul tidak dikarang.** Ia diambil dari nama yang disebut Work Owner saat modul diminta —
+"Master Rekening" menjadi `master-rekening`, "Master Status Klaim" menjadi `master-status-klaim`.
+Modul kerangka yang tidak punya nama bisnis (`auth`, `portal`, `platform`, `spa`) tidak berubah.
 
 ### 4.2 Penanganan kesalahan
 

@@ -1,4 +1,5 @@
 import { ErrorCode } from './types'
+import type { FieldViolation } from './types'
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -10,25 +11,69 @@ export class APIError extends Error {
   readonly status: number
 
   /**
-   * Rincian tambahan yang dikirim backend bersama galat, bila ada.
+   * Pelanggaran per isian dalam bentuk SENARAI, hanya terisi pada galat validasi (`422`).
    *
-   * Sebagian galat tidak cukup dijelaskan satu pesan. Penolakan validasi klaim,
-   * misalnya, menyebut SETIAP aturan yang dilanggar beserta kolomnya, supaya layar dapat
-   * menandai kolom yang tepat alih-alih menampilkan satu kalimat dan membiarkan petugas
-   * mencari sendiri.
+   * Backend mengirim SELURUH pelanggaran sekaligus, bukan yang pertama saja — meniru
+   * perilaku Pega yang menampilkan semua pesan bersamaan (P-5). Ia dibawa sampai ke
+   * layar supaya isian yang salah dapat ditandai di tempatnya, bukan sekadar satu pesan
+   * di atas form — pada form panjang pengguna harus menebak kolom mana yang dimaksud.
    *
-   * Tipenya `unknown` dengan sengaja: bentuknya berbeda per modul, dan pemanggilnyalah
-   * yang tahu bentuk apa yang ia harapkan. Memaksakan satu tipe di sini berarti modul
-   * yang satu ikut berubah setiap kali modul lain menambah rincian.
+   * Kosong untuk galat yang tidak menunjuk isian tertentu.
+   *
+   * CATATAN KONTRAK — TIGA BENTUK YANG BELUM SERAGAM. Ketiga modul master mengirim
+   * pelanggaran validasi dengan bentuk yang berbeda, dan itu keadaan nyata hari ini:
+   *
+   *   masterstatus         detail: [{ field, pesan }]     internal/masterstatus/http/dto.go:55
+   *   masterstatusprogres  detail: [{ kolom, pesan }]     internal/masterstatusprogres/http/dto.go:82
+   *   masterrekening       field:  { kolom: pesan }       internal/masterrekening/http/dto.go:151
+   *
+   * Karena itu `detail` DAN `field` hidup berdampingan di sini. Menyeragamkannya
+   * menuntut mengubah kontrak tiga modul sekaligus, dan kontrak galat yang mengikat
+   * seluruh aplikasi adalah TKT-F1-004 yang masih terhalang. Yang dikerjakan sekarang
+   * adalah menampung ketiganya tanpa membuat satu layar pun menebak bentuknya.
    */
-  readonly details: unknown
+  readonly detail: FieldViolation[]
 
-  constructor(kode: string, pesan: string, status: number, details?: unknown) {
+  /**
+   * Pelanggaran per isian dalam bentuk PETA `kolom → pesan`.
+   *
+   * Dipakai modul Master Rekening. Kosong untuk galat yang tidak menunjuk isian
+   * tertentu, dan kosong pula untuk modul yang memakai `detail`.
+   */
+  readonly field: Record<string, string>
+
+  constructor(
+    kode: string,
+    pesan: string,
+    status: number,
+    detail?: FieldViolation[],
+    field?: Record<string, string>,
+  ) {
     super(pesan)
-    this.name = 'GalatAPI'
+    this.name = 'APIError'
     this.kode = kode
     this.status = status
-    this.details = details
+    this.detail = detail ?? []
+    this.field = field ?? {}
+  }
+
+  /**
+   * violations menyatukan kedua bentuk menjadi satu peta `kolom → pesan`.
+   *
+   * Layar memakai ini alih-alih memilih sendiri antara `detail` dan `field`. Dengan
+   * begitu, satu layar tidak perlu tahu modul mana yang memakai bentuk yang mana — dan
+   * ketika TKT-F1-004 menyeragamkannya kelak, yang berubah hanya berkas ini.
+   *
+   * Nama kunci dibaca dari `field` maupun `kolom`, karena kedua modul yang memakai
+   * `detail` pun belum sepakat menamainya.
+   */
+  violations(): Record<string, string> {
+    const result: Record<string, string> = { ...this.field }
+    for (const item of this.detail) {
+      const column = item.field ?? item.kolom
+      if (column) result[column] = item.pesan
+    }
+    return result
   }
 }
 
@@ -36,15 +81,36 @@ export class APIError extends Error {
 export class NetworkError extends Error {
   constructor() {
     super('Tidak dapat menghubungi server Claim PNC.')
-    this.name = 'GalatJaringan'
+    this.name = 'NetworkError'
   }
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST'
+  /**
+   * PUT dipakai pengubahan master: seluruh isi yang boleh diubah dikirim setiap kali,
+   * sehingga permintaannya menggantikan dan idempoten. DELETE sengaja TIDAK ada —
+   * tidak satu pun layar menghapus data, dan metode yang tidak tersedia di sini tidak
+   * dapat dipakai kode yang ditulis kemudian tanpa keputusan sadar.
+   */
+  metode?: 'GET' | 'POST' | 'PUT'
   body?: unknown
   token?: string | null
+  /**
+   * Alias portal entitas yang melayani permintaan ini.
+   *
+   * Wajib untuk setiap endpoint yang menyentuh basis data entitas: satu aplikasi
+   * melayani empat badan hukum dengan basis data terpisah (ADR-0030), dan backend
+   * MENOLAK permintaan yang tidak menyebutkannya — ia tidak pernah jatuh ke portal
+   * utama sebagai cadangan (R-20).
+   *
+   * Dikirim sebagai header, bukan di URL: nilai di URL ikut tercatat di log peramban,
+   * log proxy, dan header Referer.
+   */
+  portal?: string | null
 }
+
+/** Nama header tempat portal entitas disebut. Sama dengan portalhttp.HeaderPortal. */
+export const HEADER_PORTAL = 'X-Portal'
 
 /**
  * callAPI adalah satu-satunya tempat `fetch` dipanggil di seluruh aplikasi.
@@ -53,18 +119,19 @@ type RequestOptions = {
  * yang memanggil fungsi ini (docs/Steering/08-TECHNICAL-STRATEGY.md §3).
  */
 export async function callAPI<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, token } = options
+  const { metode = 'GET', body, token, portal } = options
 
   const header: Record<string, string> = { Accept: 'application/json' }
   if (body !== undefined) header['Content-Type'] = 'application/json'
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
   if (token) header['Authorization'] = `Bearer ${token}`
+  if (portal) header[HEADER_PORTAL] = portal
 
   let response: Response
   try {
     response = await fetch(path, {
-      method: method,
+      method: metode,
       headers: header,
       body: body === undefined ? null : JSON.stringify(body),
     })
@@ -76,15 +143,39 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
 
   const content = await readJSON(response)
   if (!response.ok) {
-    const failure = content as { kode?: string; pesan?: string; violations?: unknown } | null
+    // detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya
+    // bentuknya: badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun
+    // saat berjalan.
+    const error = content as
+      | { kode?: string; pesan?: string; detail?: unknown; field?: unknown }
+      | null
     throw new APIError(
-      failure?.kode ?? ErrorCode.internalError,
-      failure?.pesan ?? 'Terjadi kesalahan pada sistem.',
+      error?.kode ?? ErrorCode.internalError,
+      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
       response.status,
-      failure?.violations,
+      Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
+      fieldMap(error?.field),
     )
   }
   return content as T
+}
+
+/**
+ * fieldMap menyaring `field` menjadi peta teks→teks yang aman dipakai layar.
+ *
+ * Senarai dan `null` ikut ditolak — keduanya bertipe `object` di JavaScript, sehingga
+ * pemeriksaan `typeof` saja akan meloloskannya. Pasangan yang nilainya bukan teks
+ * dibuang satu per satu, bukan membuang seluruh peta: satu isian yang bentuknya aneh
+ * tidak boleh menghilangkan pesan isian lain yang sudah benar.
+ */
+function fieldMap(value: unknown): Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+
+  const result: Record<string, string> = {}
+  for (const [column, message] of Object.entries(value)) {
+    if (typeof message === 'string') result[column] = message
+  }
+  return result
 }
 
 async function readJSON(response: Response): Promise<unknown> {

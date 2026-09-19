@@ -1,11 +1,11 @@
-// Package provider berisi implementasi seam auth.Identitas.
+// Package provider berisi implementasi seam auth.Identity.
 //
 // Tiga di antaranya nyata dan satu untuk pengembangan:
 //
 //	HCQ      — karyawan, ke API internal HCC/HCQ (TKT-F3-002)
-//	Lokal    — non-karyawan, ke POOLDATA.M_LOGIN_PNC
-//	Berantai — menggabungkan keduanya sesuai urutan yang ditetapkan bisnis
-//	Tiruan   — daftar pengguna contoh di memori; MENOLAK berjalan di produksi
+//	Local    — non-karyawan, ke POOLDATA.M_LOGIN_PNC
+//	Chain — menggabungkan keduanya sesuai urutan yang ditetapkan bisnis
+//	Fake   — daftar pengguna contoh di memori; MENOLAK berjalan di produksi
 package provider
 
 import (
@@ -33,7 +33,7 @@ type FakeUser struct {
 // yang membutuhkan identitas dapat diuji dengan jaringan dimatikan.
 type Fake struct {
 	user map[string]FakeUser
-	// simulateOutage membuat provider menjawab seolah sistem identitas tidak dapat
+	// simulasiPutus membuat provider menjawab seolah sistem identitas tidak dapat
 	// dihubungi. Ia ada supaya jalur galat ketiga dapat dicoba di layar masuk tanpa
 	// harus benar-benar mematikan apa pun.
 	simulateOutage bool
@@ -48,27 +48,27 @@ var ErrFakeInProduction = errors.New("provider identitas tiruan menolak berjalan
 // konfigurasi yang bisa dibalik seseorang. Siapa pun yang menyalakan provider ini di
 // produksi mendapatkan aplikasi yang tidak mau start, bukan aplikasi yang menerima
 // kata sandi palsu.
-func NewFake(productionEnv bool, list []FakeUser) (*Fake, error) {
-	if productionEnv {
+func NewFake(productionEnvironment bool, list []FakeUser) (*Fake, error) {
+	if productionEnvironment {
 		return nil, ErrFakeInProduction
 	}
 	if len(list) == 0 {
 		list = SampleList()
 	}
-	index := make(map[string]FakeUser, len(list))
+	indeks := make(map[string]FakeUser, len(list))
 	for _, p := range list {
 		key := strings.ToLower(strings.TrimSpace(p.Username))
 		if key == "" {
 			return nil, fmt.Errorf("provider identitas tiruan: ada baris tanpa nama pengguna")
 		}
-		index[key] = p
+		indeks[key] = p
 	}
-	return &Fake{user: index}, nil
+	return &Fake{user: indeks}, nil
 }
 
 // SetSimulateOutage menyalakan atau mematikan simulasi sistem identitas yang tidak
 // dapat dihubungi.
-func (t *Fake) SetSimulateOutage(decision bool) { t.simulateOutage = decision }
+func (t *Fake) SetSimulateOutage(down bool) { t.simulateOutage = down }
 
 // Verify memeriksa kredensial terhadap daftar pengguna contoh.
 //
@@ -76,14 +76,14 @@ func (t *Fake) SetSimulateOutage(decision bool) { t.simulateOutage = decision }
 // sandi sungguhan; yang memegangnya adalah HCC/HCQ dan M_LOGIN_PNC.
 func (t *Fake) Verify(ctx context.Context, k auth.Credential) (auth.Profile, error) {
 	if err := ctx.Err(); err != nil {
-		return auth.Profile{}, fmt.Errorf("%w: %v", auth.ErrIdentitySystemDown, err)
+		return auth.Profile{}, fmt.Errorf("%w: %v", auth.ErrIdentitySystemUnreachable, err)
 	}
 	if t.simulateOutage {
-		return auth.Profile{}, auth.ErrIdentitySystemDown
+		return auth.Profile{}, auth.ErrIdentitySystemUnreachable
 	}
 
-	p, ok := t.user[strings.ToLower(strings.TrimSpace(k.Username))]
-	if !ok {
+	p, existing := t.user[strings.ToLower(strings.TrimSpace(k.Username))]
+	if !existing {
 		// Pengguna yang tidak ada dan kata sandi yang salah menghasilkan galat yang
 		// sama persis. Membedakannya membocorkan siapa saja yang punya akun.
 		return auth.Profile{}, auth.ErrWrongCredential
@@ -149,7 +149,7 @@ func SampleList() []FakeUser {
 			Active:   false,
 			Profile: auth.Profile{
 				Identity: "90000003",
-				Name:     "Contoh Pengguna Nonaktif",
+				Name:     "Contoh User Nonaktif",
 				Kind:     auth.Employee,
 				Login:    "penggunanonaktif",
 				Email:    "contoh.nonaktif@example.invalid",

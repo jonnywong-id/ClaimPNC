@@ -27,7 +27,7 @@ type LoginListRepo interface {
 	// Ketiga syarat sengaja digabung dalam satu kueri: memisahkannya menjadi "cari
 	// pengguna" lalu "bandingkan sandi" membuat lamanya jawaban berbeda antara akun
 	// yang ada dan yang tidak — dan selisih waktu itu membocorkan keberadaan akun.
-	FindActive(ctx context.Context, loginID, passwordDigest string) (LocalLogin, error)
+	FindActive(ctx context.Context, loginID, passwordFingerprint string) (LocalLogin, error)
 }
 
 // ErrLoginMismatch dikembalikan LoginListRepo bila tidak ada baris yang cocok.
@@ -61,8 +61,8 @@ func NewLocal(repo LoginListRepo) (*Local, error) {
 // keputusan yang boleh diambil diam-diam saat memindahkan aplikasi. Dicatat sebagai
 // pertanyaan terbuka di docs/keputusan-implementasi.md.
 func PasswordDigest(password string) string {
-	count := sha256.Sum256([]byte(password))
-	return strings.ToUpper(hex.EncodeToString(count[:]))
+	total := sha256.Sum256([]byte(password))
+	return strings.ToUpper(hex.EncodeToString(total[:]))
 }
 
 // Verify mencocokkan kredensial ke daftar login lokal.
@@ -72,7 +72,7 @@ func (l *Local) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 		return auth.Profile{}, auth.ErrWrongCredential
 	}
 
-	row, err := l.repo.FindActive(ctx, loginID, PasswordDigest(k.Password))
+	rows, err := l.repo.FindActive(ctx, loginID, PasswordDigest(k.Password))
 	switch {
 	case errors.Is(err, ErrLoginMismatch):
 		// Satu galat untuk tiga sebab: login tidak ada, sandi salah, atau akun tidak
@@ -85,10 +85,10 @@ func (l *Local) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 	}
 
 	profile := auth.Profile{
-		Identity: strings.TrimSpace(row.LoginID),
-		Name:     strings.TrimSpace(row.LoginName),
+		Identity: strings.TrimSpace(rows.LoginID),
+		Name:     strings.TrimSpace(rows.LoginName),
 		Kind:     auth.NonEmployee,
-		Login:    strings.TrimSpace(row.LoginID),
+		Login:    strings.TrimSpace(rows.LoginID),
 	}
 	if err := profile.Check(); err != nil {
 		return auth.Profile{}, err

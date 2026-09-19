@@ -18,22 +18,22 @@ import (
 
 const testLifetime = 30 * time.Minute
 
-type tools struct {
+type perkakas struct {
 	service     *usecase.Service
-	clock       *clock.FixedClock
+	clock       *clock.Fixed
 	userRepo    *memory.UserRepo
 	sessionRepo *memory.SessionRepo
 }
 
-// setup merakit layanan lengkap tanpa basis data dan tanpa jaringan: provider
+// prepare merakit layanan lengkap tanpa basis data dan tanpa jaringan: provider
 // identitas tiruan dan penyimpanan di memori keduanya bekerja di dalam proses.
-func setup(t *testing.T) tools {
+func prepare(t *testing.T) perkakas {
 	t.Helper()
 
 	identitySystem, err := provider.NewFake(false, nil)
 	require.NoError(t, err)
 
-	testClock := clock.FixedClockAt(time.Date(2026, 9, 15, 3, 0, 0, 0, time.UTC))
+	testClock := clock.FixedAt(time.Date(2026, 9, 15, 3, 0, 0, 0, time.UTC))
 	userRepo := memory.NewUserRepo()
 	sessionRepo := memory.NewSessionRepo()
 
@@ -46,54 +46,54 @@ func setup(t *testing.T) tools {
 	})
 	require.NoError(t, err)
 
-	return tools{service: service, clock: testClock, userRepo: userRepo, sessionRepo: sessionRepo}
+	return perkakas{service: service, clock: testClock, userRepo: userRepo, sessionRepo: sessionRepo}
 }
 
-func validCredential() auth.Credential {
+func kredensialSah() auth.Credential {
 	return auth.Credential{Username: "adminpnc", Password: "rahasia123"}
 }
 
 func TestLoginIssuesUsableSession(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 	require.NotEmpty(t, result.Token)
 	require.Equal(t, "90000001", result.User.Identity)
 	require.Equal(t, p.clock.Now().Add(testLifetime), result.Session.ExpiresAt)
 
-	sessionCtx, err := p.service.Check(ctx, result.Token)
+	baseCtx, err := p.service.Check(ctx, result.Token)
 	require.NoError(t, err)
-	require.Equal(t, result.User.Identity, sessionCtx.User.Identity)
+	require.Equal(t, result.User.Identity, baseCtx.User.Identity)
 }
 
 // Token yang diterbitkan tidak memuat kredensial dan tidak memuat data nasabah —
 // dibuktikan dengan membongkar isinya (TKT-F3-003).
-func TestTokenCarriesNoCredentialOrIdentity(t *testing.T) {
-	p := setup(t)
+func TestTokenCarriesNeitherCredentialNorIdentity(t *testing.T) {
+	p := prepare(t)
 
-	result, err := p.service.Login(context.Background(), validCredential())
+	result, err := p.service.Login(context.Background(), kredensialSah())
 	require.NoError(t, err)
 
-	body, err := base64.RawURLEncoding.DecodeString(string(result.Token))
+	content, err := base64.RawURLEncoding.DecodeString(string(result.Token))
 	require.NoError(t, err, "token harus berupa nilai acak yang dapat dibongkar, bukan teks bermakna")
-	require.Len(t, body, 32, "token harus 32 byte acak")
+	require.Len(t, content, 32, "token harus 32 byte acak")
 
-	raw := strings.ToLower(string(result.Token) + " " + string(body))
-	for _, secret := range []string{"rahasia123", "adminpnc", "90000001", "contoh administrator", "example.invalid"} {
-		require.NotContains(t, raw, strings.ToLower(secret),
+	mentah := strings.ToLower(string(result.Token) + " " + string(content))
+	for _, rahasia := range []string{"rahasia123", "adminpnc", "90000001", "contoh administrator", "example.invalid"} {
+		require.NotContains(t, mentah, strings.ToLower(rahasia),
 			"token tidak boleh memuat kredensial maupun identitas pengguna")
 	}
 }
 
 // Yang tersimpan adalah sidik token, bukan tokennya. Bocornya isi tabel sesi tidak
 // dengan sendirinya memberi orang lain sesi yang dapat dipakai.
-func TestRawTokenNeverStored(t *testing.T) {
-	p := setup(t)
+func TestRawTokenIsNeverStored(t *testing.T) {
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	stored, err := p.sessionRepo.GetByTokenDigest(ctx, result.Token.Digest())
@@ -106,11 +106,11 @@ func TestRawTokenNeverStored(t *testing.T) {
 // Token kedaluwarsa ditolak dengan galat yang DAPAT DIBEDAKAN dari token tidak sah
 // (TKT-F3-003). Frontend memakai pembedaan ini untuk menyelamatkan isian yang belum
 // tersimpan, bukan sekadar melempar pengguna ke layar masuk.
-func TestExpiredSessionDistinctFromInvalidToken(t *testing.T) {
-	p := setup(t)
+func TestExpiredSessionDistinguishedFromInvalidToken(t *testing.T) {
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	p.clock.Advance(testLifetime + time.Second)
@@ -127,10 +127,10 @@ func TestExpiredSessionDistinctFromInvalidToken(t *testing.T) {
 // Mencabut sesi membuat permintaan berikutnya ditolak SEKETIKA — bukan menunggu masa
 // berlaku habis (TKT-F3-003). Jam sengaja tidak digeser sedetik pun di uji ini.
 func TestRevocationTakesEffectImmediately(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	_, err = p.service.Check(ctx, result.Token)
@@ -144,12 +144,12 @@ func TestRevocationTakesEffectImmediately(t *testing.T) {
 		"sesi masih dalam masa berlaku; penolakannya harus karena pencabutan")
 }
 
-// Keluar mencabut sesi di server, bukan menghapus barisnya (ADR-0012).
+// Logout mencabut sesi di server, bukan menghapus barisnya (ADR-0012).
 func TestLogoutDoesNotDeleteSessionRow(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 	require.NoError(t, p.service.Logout(ctx, result.Token))
 
@@ -167,13 +167,13 @@ func TestLogoutDoesNotDeleteSessionRow(t *testing.T) {
 // Ia membuktikan bahwa layanan tidak menyimpan state di dirinya sendiri, TETAPI belum
 // membuktikan perilaku yang sama terhadap Oracle. Pembuktian itu menunggu basis data
 // pengembangan tersedia.
-func TestSessionRecognizedByOtherInstance(t *testing.T) {
-	p := setup(t)
+func TestSessionRecognisedByAnotherInstance(t *testing.T) {
+	p := prepare(t)
 	ctx := context.Background()
 
 	identitySystem, err := provider.NewFake(false, nil)
 	require.NoError(t, err)
-	instanceB, err := usecase.NewService(usecase.Options{
+	instansB, err := usecase.NewService(usecase.Options{
 		Identity:        identitySystem,
 		UserRepo:        p.userRepo,
 		SessionRepo:     p.sessionRepo,
@@ -182,27 +182,27 @@ func TestSessionRecognizedByOtherInstance(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
-	sessionCtx, err := instanceB.Check(ctx, result.Token)
+	baseCtx, err := instansB.Check(ctx, result.Token)
 	require.NoError(t, err)
-	require.Equal(t, result.User.Identity, sessionCtx.User.Identity)
+	require.Equal(t, result.User.Identity, baseCtx.User.Identity)
 
-	require.NoError(t, instanceB.Logout(ctx, result.Token))
+	require.NoError(t, instansB.Logout(ctx, result.Token))
 	_, err = p.service.Check(ctx, result.Token)
 	require.ErrorIs(t, err, auth.ErrSessionRevoked, "pencabutan di satu instans berlaku di instans lain")
 }
 
-func TestExtendMovesDeadline(t *testing.T) {
-	p := setup(t)
+func TestRenewShiftsExpiry(t *testing.T) {
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	p.clock.Advance(20 * time.Minute)
-	extended, err := p.service.Extend(ctx, result.Token)
+	extended, err := p.service.Renew(ctx, result.Token)
 	require.NoError(t, err)
 	require.Equal(t, p.clock.Now().Add(testLifetime), extended.ExpiresAt)
 
@@ -211,35 +211,35 @@ func TestExtendMovesDeadline(t *testing.T) {
 	require.NoError(t, err, "sesi yang sudah diperpanjang masih berlaku")
 }
 
-func TestExpiredSessionCannotBeExtended(t *testing.T) {
-	p := setup(t)
+func TestExpiredSessionCannotBeRenewed(t *testing.T) {
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	p.clock.Advance(testLifetime + time.Second)
-	_, err = p.service.Extend(ctx, result.Token)
+	_, err = p.service.Renew(ctx, result.Token)
 	require.ErrorIs(t, err, auth.ErrSessionExpired)
 }
 
 // Profil yang salah satu fieldnya kosong ditolak — pengguna yang berhasil masuk tetapi
 // cabangnya kosong tidak dapat dicocokkan dengan data klaimnya sendiri.
 func TestIncompleteProfileRejected(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 
 	_, err := p.service.Login(context.Background(),
 		auth.Credential{Username: "profilbolong", Password: "rahasia123"})
 	require.Error(t, err)
 
-	var failure *auth.IncompleteProfileError
-	require.ErrorAs(t, err, &failure)
-	require.Equal(t, []string{"nama"}, failure.EmptyFields)
+	var issues *auth.IncompleteProfileError
+	require.ErrorAs(t, err, &issues)
+	require.Equal(t, []string{"nama"}, issues.EmptyFields)
 	require.Equal(t, 0, p.sessionRepo.Count(), "tidak ada sesi yang boleh terbit")
 }
 
-func TestEmptyCredentialAnsweredLikeWrongCredential(t *testing.T) {
-	p := setup(t)
+func TestEmptyCredentialAnsweredSameAsWrongCredential(t *testing.T) {
+	p := prepare(t)
 
 	_, errEmpty := p.service.Login(context.Background(), auth.Credential{})
 	_, errWrong := p.service.Login(context.Background(),
@@ -252,10 +252,10 @@ func TestEmptyCredentialAnsweredLikeWrongCredential(t *testing.T) {
 // Pengguna yang dinonaktifkan setelah masuk kehilangan aksesnya pada permintaan
 // berikutnya — status aktif dibaca dari basis data, tidak tertanam di sesi.
 func TestDeactivatedUserRejectedOnNextRequest(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 	ctx := context.Background()
 
-	result, err := p.service.Login(ctx, validCredential())
+	result, err := p.service.Login(ctx, kredensialSah())
 	require.NoError(t, err)
 
 	p.userRepo.SetActive(result.User.Identity, false)
@@ -265,11 +265,11 @@ func TestDeactivatedUserRejectedOnNextRequest(t *testing.T) {
 }
 
 func TestLogoutWithUnknownTokenIsNotAnError(t *testing.T) {
-	p := setup(t)
+	p := prepare(t)
 	require.NoError(t, p.service.Logout(context.Background(), auth.Token("bukan token siapa pun")))
 }
 
-func TestServiceRejectsIncompleteParts(t *testing.T) {
+func TestServiceRejectsIncompleteDeps(t *testing.T) {
 	_, err := usecase.NewService(usecase.Options{})
 	require.Error(t, err)
 }

@@ -18,30 +18,30 @@ import (
 	"claim-pnc/internal/platform/middleware"
 )
 
-// Bahan adalah yang dibutuhkan server untuk berdiri.
-type Bahan struct {
+// Deps adalah yang dibutuhkan server untuk berdiri.
+type Deps struct {
 	Logger *slog.Logger
 
-	// PasangAPI dipanggil dengan router yang sudah berada di bawah /api. Di sinilah
+	// MountAPI dipanggil dengan router yang sudah berada di bawah /api. Di sinilah
 	// setiap modul mendaftarkan rutenya.
-	PasangAPI func(chi.Router)
+	MountAPI func(chi.Router)
 
-	// BerkasSPA adalah hasil build SPA. Bila nil, aplikasi hanya melayani API.
-	BerkasSPA fs.FS
+	// SPAFiles adalah hasil build SPA. Bila nil, aplikasi hanya melayani API.
+	SPAFiles fs.FS
 }
 
 // Router menyusun seluruh rute: API di bawah /api, sisanya milik SPA.
-func Router(b Bahan) http.Handler {
+func Router(b Deps) http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.IDPermintaan)
-	r.Use(middleware.Pulih(b.Logger))
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recover(b.Logger))
 	r.Use(middleware.Log(b.Logger))
 
-	if b.PasangAPI != nil {
-		r.Route("/api", b.PasangAPI)
+	if b.MountAPI != nil {
+		r.Route("/api", b.MountAPI)
 	}
-	if b.BerkasSPA != nil {
-		r.NotFound(spa(b.BerkasSPA))
+	if b.SPAFiles != nil {
+		r.NotFound(spa(b.SPAFiles))
 	}
 	return r
 }
@@ -51,16 +51,16 @@ func Router(b Bahan) http.Handler {
 // Jalur yang tidak cocok dengan berkas mana pun dijawab dengan index.html, bukan 404:
 // rute dalam seperti /klaim/123/estimasi adalah milik router di peramban, dan memuat
 // ulang halaman pada rute itu harus tetap menampilkan halaman yang benar.
-func spa(berkas fs.FS) http.HandlerFunc {
-	pelayan := http.FileServer(http.FS(berkas))
+func spa(files fs.FS) http.HandlerFunc {
+	pelayan := http.FileServer(http.FS(files))
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		bersih := path.Clean(strings.TrimPrefix(r.URL.Path, "/"))
 		if bersih == "." || bersih == "/" {
 			bersih = "index.html"
 		}
-		if _, err := fs.Stat(berkas, bersih); err != nil {
-			indeks, err := fs.ReadFile(berkas, "index.html")
+		if _, err := fs.Stat(files, bersih); err != nil {
+			index, err := fs.ReadFile(files, "index.html")
 			if err != nil {
 				http.Error(w, "halaman tidak tersedia", http.StatusNotFound)
 				return
@@ -69,7 +69,7 @@ func spa(berkas fs.FS) http.HandlerFunc {
 			// Kerangka halaman tidak boleh di-cache: satu rilis baru harus langsung
 			// terpakai tanpa pengguna menekan muat ulang paksa.
 			w.Header().Set("Cache-Control", "no-store")
-			_, _ = w.Write(indeks)
+			_, _ = w.Write(index)
 			return
 		}
 		pelayan.ServeHTTP(w, r)

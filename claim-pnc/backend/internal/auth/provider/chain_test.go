@@ -12,26 +12,26 @@ import (
 
 // fakeSource adalah satu mata rantai yang jawabannya ditentukan uji.
 type fakeSource struct {
-	profile auth.Profile
-	failure error
-	called  int
+	profile   auth.Profile
+	issues    error
+	dipanggil int
 }
 
 func (s *fakeSource) Verify(context.Context, auth.Credential) (auth.Profile, error) {
-	s.called++
-	if s.failure != nil {
-		return auth.Profile{}, s.failure
+	s.dipanggil++
+	if s.issues != nil {
+		return auth.Profile{}, s.issues
 	}
 	return s.profile, nil
 }
 
-func chain(t *testing.T, source ...auth.Identity) *provider.Chain {
+func rantai(t *testing.T, sumber ...auth.Identity) *provider.Chain {
 	t.Helper()
-	code := make([]provider.ChainLink, 0, len(source))
-	for i, s := range source {
-		code = append(code, provider.ChainLink{Name: string(rune('a' + i)), Source: s})
+	mata := make([]provider.Link, 0, len(sumber))
+	for i, s := range sumber {
+		mata = append(mata, provider.Link{Name: string(rune('a' + i)), Sumber: s})
 	}
-	b, err := provider.NewChain(code...)
+	b, err := provider.NewChain(mata...)
 	require.NoError(t, err)
 	return b
 }
@@ -50,31 +50,31 @@ func TestChainStopsWhenFirstSourceSucceeds(t *testing.T) {
 	hcq := &fakeSource{profile: employeeProfile()}
 	local := &fakeSource{profile: nonEmployeeProfile()}
 
-	profile, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	profile, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
 	require.NoError(t, err)
 	require.Equal(t, auth.Employee, profile.Kind)
-	require.Equal(t, 1, hcq.called)
-	require.Zero(t, local.called, "jalur non-karyawan tidak boleh dijalankan bila HCQ menerima")
+	require.Equal(t, 1, hcq.dipanggil)
+	require.Zero(t, local.dipanggil, "jalur non-karyawan tidak boleh dijalankan bila HCQ menerima")
 }
 
 // Langkah 2: HCQ gagal → jalur POOLDATA.M_LOGIN_PNC dicoba.
-func TestChainFallsThroughWhenFirstSourceRejects(t *testing.T) {
-	hcq := &fakeSource{failure: auth.ErrWrongCredential}
+func TestChainFallsToSecondSourceWhenFirstRejects(t *testing.T) {
+	hcq := &fakeSource{issues: auth.ErrWrongCredential}
 	local := &fakeSource{profile: nonEmployeeProfile()}
 
-	profile, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	profile, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
 	require.NoError(t, err)
 	require.Equal(t, auth.NonEmployee, profile.Kind)
-	require.Equal(t, 1, local.called)
+	require.Equal(t, 1, local.dipanggil)
 }
 
 // Broker harus tetap dapat masuk ketika HCC/HCQ sedang mati — sistem identitas yang
 // putus tidak boleh ikut mengunci pengguna yang tidak memakainya.
 func TestChainKeepsServingWhenFirstSourceIsDown(t *testing.T) {
-	hcq := &fakeSource{failure: auth.ErrIdentitySystemDown}
+	hcq := &fakeSource{issues: auth.ErrIdentitySystemUnreachable}
 	local := &fakeSource{profile: nonEmployeeProfile()}
 
-	profile, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	profile, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
 	require.NoError(t, err)
 	require.Equal(t, auth.NonEmployee, profile.Kind)
 }
@@ -84,51 +84,51 @@ func TestChainKeepsServingWhenFirstSourceIsDown(t *testing.T) {
 // apakah kredensialnya benar, dan menyuruh pengguna mengetik ulang sesuatu yang sudah
 // benar hanya membuang waktunya.
 func TestChainReportsOutageNotWrongCredential(t *testing.T) {
-	hcq := &fakeSource{failure: auth.ErrIdentitySystemDown}
-	local := &fakeSource{failure: auth.ErrWrongCredential}
+	hcq := &fakeSource{issues: auth.ErrIdentitySystemUnreachable}
+	local := &fakeSource{issues: auth.ErrWrongCredential}
 
-	_, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
-	require.ErrorIs(t, err, auth.ErrIdentitySystemDown)
+	_, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	require.ErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 	require.NotErrorIs(t, err, auth.ErrWrongCredential)
 }
 
 // Bila seluruh sumber hidup dan semuanya menolak, barulah kredensialnya memang salah.
-func TestChainReportsWrongCredentialWhenAllUp(t *testing.T) {
-	hcq := &fakeSource{failure: auth.ErrWrongCredential}
-	local := &fakeSource{failure: auth.ErrWrongCredential}
+func TestChainReportsWrongCredentialWhenAllSourcesAlive(t *testing.T) {
+	hcq := &fakeSource{issues: auth.ErrWrongCredential}
+	local := &fakeSource{issues: auth.ErrWrongCredential}
 
-	_, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	_, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
 	require.ErrorIs(t, err, auth.ErrWrongCredential)
-	require.NotErrorIs(t, err, auth.ErrIdentitySystemDown)
+	require.NotErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 }
 
 // Akun yang sengaja dinonaktifkan menghentikan rantai: mencoba sumber berikutnya
 // untuknya tidak masuk akal.
-func TestChainStopsOnInactiveUser(t *testing.T) {
-	hcq := &fakeSource{failure: auth.ErrUserInactive}
+func TestChainStopsAtInactiveUser(t *testing.T) {
+	hcq := &fakeSource{issues: auth.ErrUserInactive}
 	local := &fakeSource{profile: nonEmployeeProfile()}
 
-	_, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	_, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
 	require.ErrorIs(t, err, auth.ErrUserInactive)
-	require.Zero(t, local.called)
+	require.Zero(t, local.dipanggil)
 }
 
 // Galat yang tidak dikenali — misalnya profil tidak lengkap dari sumber yang menjawab
 // berhasil — tidak boleh tersamarkan menjadi "kredensial salah".
-func TestChainDoesNotSwallowUnknownFailure(t *testing.T) {
-	gap := &auth.IncompleteProfileError{EmptyFields: []string{"nama"}}
-	hcq := &fakeSource{failure: gap}
+func TestChainDoesNotSwallowUnknownError(t *testing.T) {
+	bolong := &auth.IncompleteProfileError{EmptyFields: []string{"nama"}}
+	hcq := &fakeSource{issues: bolong}
 	local := &fakeSource{profile: nonEmployeeProfile()}
 
-	_, err := chain(t, hcq, local).Verify(context.Background(), auth.Credential{})
-	require.ErrorAs(t, err, &gap)
-	require.Zero(t, local.called)
+	_, err := rantai(t, hcq, local).Verify(context.Background(), auth.Credential{})
+	require.ErrorAs(t, err, &bolong)
+	require.Zero(t, local.dipanggil)
 }
 
 func TestChainRejectsEmptyChain(t *testing.T) {
 	_, err := provider.NewChain()
 	require.Error(t, err)
 
-	_, err = provider.NewChain(provider.ChainLink{Name: "kosong"})
+	_, err = provider.NewChain(provider.Link{Name: "kosong"})
 	require.ErrorContains(t, err, "tanpa sumber identitas")
 }

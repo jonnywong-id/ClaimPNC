@@ -6,11 +6,11 @@ const STORAGE_KEY = 'claim-pnc.sesi'
 
 export type SessionState = {
   token: string | null
-  pengguna: User | null
-  expiresAt: string | null
-  signIn: (value: { token: string; pengguna: User; expiresAt: string }) => void
-  refreshExpiry: (expiresAt: string) => void
-  cleanup: () => void
+  user: User | null
+  validUntil: string | null
+  login: (value: { token: string; user: User; validUntil: string }) => void
+  refreshValidity: (validUntil: string) => void
+  clear: () => void
 }
 
 /**
@@ -29,40 +29,40 @@ export type SessionState = {
 export const useSession = create<SessionState>((set) => ({
   ...loadFromBrowser(),
 
-  signIn: ({ token, pengguna, expiresAt }) => {
-    saveToBrowser({ token, pengguna, expiresAt })
-    set({ token, pengguna, expiresAt })
+  login: ({ token, user, validUntil }) => {
+    saveToBrowser({ token, user, validUntil })
+    set({ token, user, validUntil })
   },
 
-  refreshExpiry: (expiresAt) => {
+  refreshValidity: (validUntil) => {
     set((previous) => {
-      if (previous.token && previous.pengguna) {
+      if (previous.token && previous.user) {
         saveToBrowser({
           token: previous.token,
-          pengguna: previous.pengguna,
-          expiresAt,
+          user: previous.user,
+          validUntil,
         })
       }
-      return { expiresAt }
+      return { validUntil }
     })
   },
 
-  cleanup: () => {
+  clear: () => {
     clearFromBrowser()
-    set({ token: null, pengguna: null, expiresAt: null })
+    set({ token: null, user: null, validUntil: null })
   },
 }))
 
-type StoredSession = { token: string; pengguna: User; expiresAt: string }
+type StoredSession = { token: string; user: User; validUntil: string }
 
-function loadFromBrowser(): Pick<SessionState, 'token' | 'pengguna' | 'expiresAt'> {
-  const empty = { token: null, pengguna: null, expiresAt: null }
+function loadFromBrowser(): Pick<SessionState, 'token' | 'user' | 'validUntil'> {
+  const empty = { token: null, user: null, validUntil: null }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return empty
     const content = JSON.parse(raw) as Partial<StoredSession>
-    if (!content.token || !content.pengguna || !content.expiresAt) return empty
-    return { token: content.token, pengguna: content.pengguna, expiresAt: content.expiresAt }
+    if (!content.token || !content.user || !content.validUntil) return empty
+    return { token: content.token, user: content.user, validUntil: content.validUntil }
   } catch {
     // sessionStorage dapat ditolak peramban (mode privat, kebijakan perusahaan).
     // Aplikasi tetap harus jalan; pengguna cukup masuk ulang setelah muat ulang.

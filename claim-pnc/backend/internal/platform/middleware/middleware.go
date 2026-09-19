@@ -11,16 +11,16 @@ import (
 	"claim-pnc/internal/platform/logging"
 )
 
-// IDPermintaan memberi setiap permintaan satu pengenal dan menaruhnya di context serta
+// RequestID memberi setiap permintaan satu pengenal dan menaruhnya di context serta
 // di header respons, sehingga satu keluhan pengguna dapat ditelusuri ke satu baris log.
-func IDPermintaan(berikutnya http.Handler) http.Handler {
+func RequestID(berikutnya http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")
 		if id == "" {
-			id = idAcak()
+			id = randomID()
 		}
 		w.Header().Set("X-Request-Id", id)
-		berikutnya.ServeHTTP(w, r.WithContext(logging.DenganIDPermintaan(r.Context(), id)))
+		berikutnya.ServeHTTP(w, r.WithContext(logging.WithRequestID(r.Context(), id)))
 	})
 }
 
@@ -32,9 +32,9 @@ func Log(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(berikutnya http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mulai := time.Now()
-			perekam := &perekamStatus{ResponseWriter: w, status: http.StatusOK}
+			perekam := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			berikutnya.ServeHTTP(perekam, r)
-			logging.Dari(r.Context(), logger).Info("permintaan selesai",
+			logging.From(r.Context(), logger).Info("permintaan selesai",
 				slog.String("metode", r.Method),
 				slog.String("jalur", r.URL.Path),
 				slog.Int("status", perekam.status),
@@ -44,15 +44,15 @@ func Log(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// Pulih menahan panic agar satu permintaan yang rusak tidak menjatuhkan proses yang
+// Recover menahan panic agar satu permintaan yang rusak tidak menjatuhkan proses yang
 // sedang melayani permintaan lain.
-func Pulih(logger *slog.Logger) func(http.Handler) http.Handler {
+func Recover(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(berikutnya http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
-				if sebab := recover(); sebab != nil {
-					logging.Dari(r.Context(), logger).Error("permintaan panik",
-						slog.Any("sebab", sebab),
+				if cause := recover(); cause != nil {
+					logging.From(r.Context(), logger).Error("permintaan panik",
+						slog.Any("sebab", cause),
 						slog.String("jalur", r.URL.Path),
 					)
 					w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -65,20 +65,20 @@ func Pulih(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-type perekamStatus struct {
+type statusRecorder struct {
 	http.ResponseWriter
 	status int
 }
 
-func (p *perekamStatus) WriteHeader(kode int) {
-	p.status = kode
-	p.ResponseWriter.WriteHeader(kode)
+func (p *statusRecorder) WriteHeader(code int) {
+	p.status = code
+	p.ResponseWriter.WriteHeader(code)
 }
 
-func idAcak() string {
-	isi := make([]byte, 8)
-	if _, err := rand.Read(isi); err != nil {
+func randomID() string {
+	content := make([]byte, 8)
+	if _, err := rand.Read(content); err != nil {
 		return "tanpa-id"
 	}
-	return hex.EncodeToString(isi)
+	return hex.EncodeToString(content)
 }

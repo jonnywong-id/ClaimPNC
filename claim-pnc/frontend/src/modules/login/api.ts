@@ -5,9 +5,9 @@ import type { LoginResponse, ExtendResponse, MeResponse } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-export type LoginFormValues = {
-  username: string
-  password: string
+export type LoginFields = {
+  namaPengguna: string
+  kataSandi: string
 }
 
 /**
@@ -17,19 +17,19 @@ export type LoginFormValues = {
  * tidak ditulis ke sessionStorage, dan tidak pernah ikut di objek hasil.
  */
 export function useLogin() {
-  const saveSession = useSession((state) => state.signIn)
+  const saveSession = useSession((state) => state.login)
 
   return useMutation({
-    mutationFn: (values: LoginFormValues) =>
+    mutationFn: (values: LoginFields) =>
       callAPI<LoginResponse>('/api/masuk', {
-        method: 'POST',
-        body: { nama_pengguna: values.username, kata_sandi: values.password },
+        metode: 'POST',
+        body: { nama_pengguna: values.namaPengguna, kata_sandi: values.kataSandi },
       }),
     onSuccess: (result) => {
       saveSession({
         token: result.token,
-        pengguna: result.pengguna,
-        expiresAt: result.berlaku_sampai,
+        user: result.pengguna,
+        validUntil: result.berlaku_sampai,
       })
     },
   })
@@ -43,15 +43,15 @@ export function useLogin() {
  */
 export function useLogout() {
   const token = useSession((state) => state.token)
-  const cleanup = useSession((state) => state.cleanup)
-  const clearPortal = useSelectedPortal((state) => state.cleanup)
+  const clear = useSession((state) => state.clear)
+  const clearPortal = useSelectedPortal((state) => state.clear)
 
   return useMutation({
-    mutationFn: () => callAPI<void>('/api/keluar', { method: 'POST', token }),
+    mutationFn: () => callAPI<void>('/api/keluar', { metode: 'POST', token }),
     // Sesi dibersihkan di peramban apa pun hasilnya: bila server tidak dapat dihubungi,
     // menahan pengguna tetap "masuk" di layar justru menyesatkan.
     onSettled: () => {
-      cleanup()
+      clear()
       // Pilihan portal ikut dibersihkan: pengguna berikutnya di peramban yang sama
       // tidak boleh mewarisi entitas yang dipilih pengguna sebelumnya.
       clearPortal()
@@ -62,16 +62,16 @@ export function useLogout() {
 /** Hook perpanjang sesi, dipakai peringatan sebelum sesi habis. */
 export function useExtendSession() {
   const token = useSession((state) => state.token)
-  const refreshExpiry = useSession((state) => state.refreshExpiry)
+  const refreshValidity = useSession((state) => state.refreshValidity)
 
   return useMutation({
     mutationFn: () =>
-      callAPI<ExtendResponse>('/api/sesi/perpanjang', { method: 'POST', token }),
-    onSuccess: (result) => refreshExpiry(result.berlaku_sampai),
+      callAPI<ExtendResponse>('/api/sesi/perpanjang', { metode: 'POST', token }),
+    onSuccess: (result) => refreshValidity(result.berlaku_sampai),
   })
 }
 
-/** fetchMe memuat ulang identitas pemanggil dari server. */
+/** ambilSaya memuat ulang identitas pemanggil dari server. */
 export function fetchMe(token: string): Promise<MeResponse> {
   return callAPI<MeResponse>('/api/saya', { token })
 }

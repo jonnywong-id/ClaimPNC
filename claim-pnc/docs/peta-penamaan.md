@@ -1,182 +1,358 @@
-# Peta Penamaan — Indonesia → Inggris
+# Peta Penamaan — Indonesia ke Inggris
 
-Rujukan untuk `D-80` (nama di dalam kode berbahasa Inggris) dan `D-81` (nama folder modul
-memakai nama modul bisnis). Dokumen ini menjawab dua pertanyaan: **apa yang berubah**, dan
-**apa yang sengaja tidak berubah**.
+Ditetapkan Work Owner 2026-09-18: **penamaan folder, berkas, dan identifier di dalam kode memakai
+bahasa Inggris.** Dokumen ini adalah kamus yang dipakai saat penggantian, dan menjadi acuan untuk
+kode yang ditulis sesudahnya.
 
-| | |
-|---|---|
-| Tanggal | 2026-09-18 |
-| Dasar | `D-80`, `D-81`, `08-TECHNICAL-STRATEGY.md` §4.1 |
-| Cakupan | seluruh `claim-pnc/backend` dan `claim-pnc/frontend/src` |
-| Bukti | backend: `go build`/`go vet`/`go test` bersih (10 paket) · frontend: `tsc --noEmit` bersih, 33 uji lulus, `npm run build` berhasil |
-
----
-
-## 1. Aturannya dalam satu tabel
+## Yang berubah, dan yang TIDAK
 
 | Hal | Bahasa | Alasan |
 |---|---|---|
-| Folder, berkas, paket, tipe, fungsi, method, field, parameter, variabel | **Inggris** | Pustaka standar Go dan React seluruhnya Inggris; penamaan campur membuat satu baris berpindah bahasa dua kali |
-| **Nama folder modul** | **Indonesia** | Nama yang dipakai Work Owner saat meminta pekerjaan dan yang tertulis di tiket (`D-81`) |
-| Komentar dan seluruh dokumen di `docs/` | **Indonesia** | Pembacanya tim, dan `D-09` menetapkan tim adalah developer Pega internal |
-| Nama field JSON pada API | **Indonesia** | Ia **kontrak**. Mengubahnya merusak klien, bukan mengganti nama |
-| Nama tabel dan kolom basis data | **Indonesia** | Dimiliki bersama Pega selama masa paralel (`D-21`); perubahannya menempuh `D-63` |
-| Jalur URL API (`/api/masuk`, `/api/registrasi/klaim`) | **Indonesia** | Sama sifatnya dengan nama field JSON |
-| Teks yang dilihat pengguna | **Indonesia** | Mengikuti layar Pega apa adanya (`D-13`) |
-| Nama variabel lingkungan dan flag baris perintah | **Indonesia** | Dipakai berkas `.env`, skrip deployment, dan operator |
-| Nama kueri di berkas `.sql` (`-- name: klaim_sisip`) | **Indonesia** | Ia hidup berdampingan dengan nama tabel dan kolom di berkas yang sama |
+| Nama folder dan berkas | **Inggris** | Keputusan Work Owner 2026-09-18 |
+| Identifier: paket, tipe, fungsi, variabel, field | **Inggris** | idem |
+| **Komentar di dalam kode** | **tetap Indonesia** | Keputusan Work Owner — komentar menjelaskan alasan keputusan, dan menerjemahkannya menggeser nuansa istilah domain |
+| **Dokumen di `claim-pnc/docs/`** | **tetap Indonesia** | Rekaman sesi yang sudah terjadi; menerjemahkannya berarti menulis ulang catatan |
+| **Nama field JSON API** | **tetap Indonesia** | Keputusan Work Owner — kontrak API tidak diusik |
+| **Nama tabel dan kolom basis data** | **tetap Indonesia** | idem. Tabel warisan Pega memang tidak boleh disentuh sama sekali |
+| **Teks yang dilihat pengguna** | **mengikuti layar Pega**; yang tidak ada di export Pega dikoreksi ke Inggris | Keputusan Work Owner — `D-13` menetapkan tampilan meniru Pega supaya pengguna tidak belajar ulang |
 
-Akibatnya satu baris dapat memuat keduanya, dan itu memang yang dikehendaki:
+> **Akibat yang disengaja:** satu berkas dapat memuat identifier Inggris, komentar Indonesia, tag
+> JSON Indonesia, dan teks layar Indonesia sekaligus. Itu bukan ketidakkonsistenan yang terlewat —
+> keempatnya punya pembaca yang berbeda: pengembang, pengembang, klien API, dan staf klaim.
 
-```go
-// Number adalah nomor rekening; namanya di basis data tetap NO_REKENING.
-type Account struct {
-	Number string `json:"nomor_rekening"`
-}
-```
+## Istilah domain
 
-### Yang TIDAK berubah dari `D-19`
-
-`D-19` menetapkan istilah domain tidak boleh memakai alias Pega yang salah arti. Sasaran itu
-**tetap dipegang**; yang berubah hanya bahasanya. Padanan yang dipakai adalah padanan benar dari
-`CONTEXT.md`, bukan nama lama Pega:
-
-| Alias Pega | **Tidak** dipakai | Dipakai |
+| Indonesia | Inggris | Catatan |
 |---|---|---|
-| `Adjustment` | ❌ | `SettlementLine` |
-| `Object` | ❌ | `InsuredItem` |
-| `CaseID` | ❌ | nama eksplisit per konteks |
+| Pengguna | User | |
+| Sesi | Session | |
+| Identitas | Identity | NIK karyawan atau LOGIN_ID non-karyawan |
+| Kredensial | Credential | |
+| NamaPengguna | Username | |
+| KataSandi | Password | |
+| SidikKataSandi | PasswordDigest | sidik SHA-256, bukan kata sandinya |
+| SidikToken | TokenDigest | |
+| Profil | Profile | |
+| Portal | Portal | sudah Inggris |
+| StatusKlaim | ClaimStatus | |
+| Rekening | BankAccount | rekening bank penerima ganti rugi |
+| Bank | Bank | sudah Inggris |
+| Kasir | Cashier | |
+| Komite | Committee | |
+| Pengajuan | Submission | |
+| Pengaju | Submitter | |
+| Keputusan | Decision | |
+| BukuRekening | Passbook | bukti fisik rekening |
+| Notifikasi | Notification | |
+| Warisan | Legacy | tabel milik sistem lama |
+
+## Kata kerja dan operasi
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Baru | New | pembentuk: `LayananBaru` → `NewService` |
+| Daftar | List | mengembalikan banyak baris |
+| Ambil | Get | mengembalikan satu baris |
+| Cari | Find | pencarian yang boleh tidak ketemu |
+| Sisip | Insert | lapisan repo |
+| Perbarui | Update | lapisan repo |
+| Tambah | Create | lapisan usecase — dibedakan dari `Insert` supaya lapisannya terbaca |
+| Ubah | Update | lapisan usecase |
+| Simpan | Save | |
+| Hapus | Delete | **tidak dipakai** — master tidak dihapus (`ADR-0012`) |
+| Masuk | Login | |
+| Keluar | Logout | |
+| Perpanjang | Renew | |
+| Cabut | Revoke | |
+| Periksa | Check | pemeriksaan yang mengembalikan keadaan |
+| Verifikasi | Verify | pemeriksaan kredensial |
+| Ajukan | Submit | |
+| Putuskan | Decide | |
+| Muat | Load | |
+| Pasang | Mount | pendaftaran rute |
+| Buka / Tutup | Open / Close | |
+| Samarkan | Mask | |
+| Ringkas | Summary | `Ringkas()` → `Summary()` |
+
+## Istilah teknis
+
+| Indonesia | Inggris |
+|---|---|
+| Galat | Error (`GalatValidasi` → `ValidationError`, `ErrX` tetap `ErrX`) |
+| Pelanggaran | Violation |
+| Peringatan | Warning |
+| Layanan | Service |
+| Opsi | Options |
+| Bahan | Deps |
+| Hasil | Result |
+| Konteks (pemanggil) | Caller |
+| Pemanggil | Caller |
+| Penulis | Writer |
+| Penerima / Pengirim | Recipient / Sender |
+| Konfigurasi | Config |
+| Lingkungan | Environment |
+| Basisdata | Database |
+| Kumpulan (koneksi) | Pool |
+| Jam / Waktu / Sekarang | Clock / Time / Now |
+| BerlakuSampai | ExpiresAt |
+| DiterbitkanPada | IssuedAt |
+| DicabutPada | RevokedAt |
+| DibuatPada / DiperbaruiPada | CreatedAt / UpdatedAt |
+| MasaBerlaku | Lifetime |
+| SisaBerlaku | Remaining |
+| Kueri | Query |
+| Rute | Routes |
+| Tiruan | Fake |
+| Memori | Memory |
+| Lokal | Local |
+| Berantai / MataRantai | Chain / Link |
+| Contoh | Sample |
+| Lengkap / Kosong | Complete / Empty |
+| Bersih | Clean |
+| Aktif / Tersedia / Siap | Active / Available / Ready |
+| Utama | Primary |
+| Jenis | Kind |
+| Nilai | Value |
+| Jumlah | Count |
+| Urutan | Sequence (urutan nomor) · SortOrder (arah pengurutan tabel) |
+
+## Istilah antarmuka
+
+| Indonesia | Inggris |
+|---|---|
+| Halaman | Page |
+| Beranda | Home |
+| KerangkaHalaman | PageShell |
+| PenjagaSesi | SessionGuard |
+| PeringatanSesi | SessionWarning |
+| BilahAtas | TopBar |
+| Merek | Brand |
+| Navigasi | Navigation |
+| ChipPengguna | UserChip |
+| PemilihPortal | PortalPicker |
+| DaftarPortal | PortalList |
+| KolomIsian | Field |
+| PesanGalat | ErrorMessage |
+| TabelData | DataTable |
+| Tombol | Button |
+| Ikon | Icon |
+| Gaya | Styles |
+| Nada | Tone |
+| Judul / Keterangan | Title / Description |
+| Aksi | Actions |
+| Anak | Children |
+| Baris / Kolom | Row / Column |
+| Tampil | Render |
+| Lebar | Width |
+| SedangMemuat | IsLoading |
+| KeadaanKosong / KeadaanMemuat | EmptyState / LoadingState |
+| PenandaUrutan | SortMarker |
+| Pemutar | Spinner |
+| Inisial | Initials |
+| Isian | Values |
+| Keadaan | State |
+| `gunakanX` (hook) | `useX` |
+
+## Nama uji
+
+Nama fungsi uji ikut diterjemahkan karena ia identifier. Kalimatnya dipertahankan sebagai
+**kalimat yang menyatakan aturan**, bukan diringkas menjadi nama teknis — itu yang membuat daftar
+uji terbaca sebagai dokumentasi aturan yang selalu mutakhir
+(`docs/Steering/14-TESTING-STRATEGY.md` §3.2).
+
+Contoh:
+
+| Sebelum | Sesudah |
+|---|---|
+| `TestKredensialKosongDijawabSamaDenganKredensialSalah` | `TestEmptyCredentialAnsweredSameAsWrongCredential` |
+| `TestSebelasKodePertamaMembawaPenomoranLama` | `TestFirstElevenCodesCarryLegacyNumbering` |
+| `TestSeamTidakMenyediakanOperasiHapus` | `TestSeamProvidesNoDeleteOperation` |
 
 ---
 
-## 2. Folder yang berganti nama
+## Peta folder dan berkas — hasil akhir
 
-| Sebelum | Sesudah | Catatan |
-|---|---|---|
-| `backend/internal/platform/waktu` | `backend/internal/platform/clock` | sekaligus menyamakan nama dengan seam Clock di Steering |
-| `backend/internal/*/repo/memori` | `backend/internal/*/repo/memory` | tiga modul |
-| `frontend/src/modules/masuk` | `frontend/src/modules/login` | nama modulnya memang "Login" |
-| `frontend/src/modules/beranda` | `frontend/src/modules/home` | nama modulnya memang "Home" |
-| `frontend/src/uji` | `frontend/src/test` | |
-
-**Yang sengaja tetap:** `backend/internal/registrasi`, `frontend/src/modules/registrasi`,
-`frontend/src/modules/portal`, `backend/internal/portal`, `backend/internal/auth`,
-`backend/internal/platform`, `backend/spa`. Empat yang terakhir adalah modul kerangka yang tidak
-punya nama bisnis; dua yang pertama memakai nama modul (`D-81`).
-
-Bentuk nama folder modul berbeda antar lapisan karena Go melarang tanda hubung pada nama paket:
-
-| Lapisan | Bentuk | Contoh |
-|---|---|---|
-| Backend — folder dan nama paket Go | `namamodul`, tanpa tanda hubung | `internal/registrasi` |
-| Frontend — folder | `nama-modul`, `kebab-case` | `src/modules/registrasi` |
-
----
-
-## 3. Berkas yang berganti nama
+Ditetapkan saat penggantian dijalankan pada 2026-09-18. Tabel ini adalah **keadaan akhir**, bukan
+usulan.
 
 ### Backend
 
 | Sebelum | Sesudah |
 |---|---|
-| `platform/clock/jam.go` · `sistem.go` · `zona.go` | `clock.go` · `system.go` · `zone.go` |
-| `auth/identitas.go` · `pengguna.go` · `sesi.go` | `identity.go` · `user.go` · `session.go` |
-| `auth/http/galat.go` · `rute.go` · `rute_test.go` | `errors.go` · `routes.go` · `routes_test.go` |
-| `auth/provider/berantai.go` · `lokal.go` · `tiruan.go` (+ uji) | `chain.go` · `local.go` · `fake.go` (+ uji) |
-| `auth/repo/sqlstore/kueri.go` · `pengguna.{go,sql}` · `sesi.{go,sql}` · `warisan.{go,sql}` | `query.go` · `user.{go,sql}` · `session.{go,sql}` · `legacy.{go,sql}` |
-| `auth/usecase/masuk.go` (+ uji) | `login.go` (+ uji) |
-| `portal/http/rute.go` | `routes.go` |
-| `registrasi/alur.go` · `alur_register.go` · `alur_test.go` | `flow.go` · `flow_register.go` · `flow_test.go` |
-| `registrasi/klaim.go` · `tugas.go` · `unitkerja.go` · `validasi.go` (+ uji) | `claim.go` · `task.go` · `unit_of_work.go` · `validation.go` (+ uji) |
-| `registrasi/http/galat.go` · `rute.go` | `errors.go` · `routes.go` |
-| `registrasi/repo/sqlstore/eksekutor.go` · `klaim.{go,sql}` · `kueri.go` · `pendukung.{go,sql}` · `tugas.{go,sql}` | `executor.go` · `claim.{go,sql}` · `query.go` · `support.{go,sql}` · `task.{go,sql}` |
-| `registrasi/repo/memory/pendukung.go` | `support.go` |
-| `registrasi/usecase/layanan.go` · `mulai.go` · `tugas.go` · `registrasi_test.go` | `service.go` · `start.go` · `task.go` · `registration_test.go` |
-| `cmd/claimpnc/periksa.go` · `registrasi.go` | `check.go` · `registration.go` |
+| `internal/platform/waktu/{jam,sistem}.go` | `internal/platform/clock/{clock,system}.go` |
+| `internal/masterstatus/**` | `internal/masterstatus/**` — nama modul dikembalikan (`D-81`) |
+| `internal/masterrekening/**` | `internal/masterrekening/**` — nama modul dikembalikan (`D-81`) |
+| `internal/masterrekening/kasir/` | `internal/masterrekening/cashier/` |
+| `internal/masterrekening/notifikasi/` | `internal/masterrekening/notification/` |
+| `*/repo/memori/memori.go` | `*/repo/memory/memory.go` |
+| `*/http/{rute,galat}.go` | `*/http/{routes,errors}.go` |
+| `auth/{identitas,pengguna,sesi}.go` | `auth/{identity,user,session}.go` |
+| `auth/provider/{berantai,lokal,tiruan}.go` | `auth/provider/{chain,local,fake}.go` |
+| `auth/repo/sqlstore/warisan.{go,sql}` | `auth/repo/sqlstore/legacy.{go,sql}` |
+| `cmd/claimpnc/periksa.go` | `cmd/claimpnc/check.go` |
 | `migrations/0001_pengguna_dan_sesi.*` | `migrations/0001_user_and_session.*` |
-| `migrations/0002_registrasi_klaim_dan_tugas.*` | `migrations/0002_claim_and_task.*` |
-
-> **Mengganti nama berkas migrasi aman.** `golang-migrate` mencatat **nomor versi**, bukan nama
-> berkasnya, sehingga basis data yang sudah menjalankan `0001` tetap mengenalinya.
+| `migrations/0002_master_status_klaim.*` | `migrations/0002_master_claim_status.*` |
 
 ### Frontend
 
 | Sebelum | Sesudah |
 |---|---|
-| `api/klien.ts` · `api/tipe.ts` | `api/client.ts` · `api/types.ts` |
-| `app/Kerangka.tsx` · `PenjagaSesi.tsx` · `PeringatanSesi.tsx` · `sesi.ts` | `Shell.tsx` · `SessionGuard.tsx` · `SessionWarning.tsx` · `session.ts` |
-| `components/KolomIsian.tsx` · `PesanGalat.tsx` | `FormField.tsx` · `ErrorMessage.tsx` |
-| `modules/masuk/HalamanMasuk.tsx` (+ uji) | `modules/login/LoginPage.tsx` (+ uji) |
-| `modules/beranda/HalamanBeranda.tsx` | `modules/home/HomePage.tsx` |
-| `modules/portal/PemilihPortal.tsx` (+ uji) | `modules/portal/PortalSelector.tsx` (+ uji) |
-| `modules/registrasi/HalamanInbox.tsx` (+ uji) | `modules/registrasi/InboxPage.tsx` (+ uji) |
-| `modules/registrasi/HalamanKlaim.tsx` (+ uji) | `modules/registrasi/ClaimPage.tsx` (+ uji) |
-| `modules/registrasi/JalurTahap.tsx` · `tipe.ts` | `StagePath.tsx` · `types.ts` |
-| `gaya.css` | `styles.css` |
+| `src/api/{klien,tipe}.ts` | `src/api/{client,types}.ts` |
+| `src/app/KerangkaHalaman.tsx` | `src/app/PageShell.tsx` |
+| `src/app/{PenjagaSesi,PeringatanSesi}.tsx` | `src/app/{SessionGuard,SessionWarning}.tsx` |
+| `src/app/sesi.ts` | `src/app/session.ts` |
+| `src/components/{Ikon,KolomIsian,PesanGalat,TabelData,Tombol}.tsx` | `src/components/{Icon,Field,ErrorMessage,DataTable,Button}.tsx` |
+| `src/gaya.css` | `src/styles.css` |
+| `src/modules/beranda/HalamanBeranda.tsx` | `src/modules/home/HomePage.tsx` |
+| `src/modules/masuk/HalamanMasuk.tsx` | `src/modules/login/LoginPage.tsx` |
+| `src/modules/master-rekening/**` | `src/modules/master-rekening/**` — nama modul dikembalikan (`D-81`) |
+| `src/modules/master-status-klaim/**` | `src/modules/master-status-klaim/**` — nama modul dikembalikan (`D-81`) |
+| `src/modules/portal/PemilihPortal.tsx` | `src/modules/portal/PortalPicker.tsx` |
+| `src/uji/setup.ts` | `src/test/setup.ts` |
 
----
+### Nama query di berkas `.sql`
 
-## 4. Istilah domain — padanan yang dipakai
+Penanda `-- name:` adalah **identifier yang dipanggil kode Go**, sehingga ikut berbahasa Inggris.
+**Isi SQL-nya tidak disentuh** — nama tabel dan kolom tetap milik basis data.
 
-Diambil dari `CONTEXT.md`. Dipakai **konsisten di kedua sisi**, sehingga tipe Go dan tipe
-TypeScript yang menggambarkan hal yang sama bernama sama.
-
-| Indonesia | Inggris | Indonesia | Inggris |
-|---|---|---|---|
-| Klaim | `Claim` | Polis | `Policy` |
-| Objek Pertanggungan | `InsuredItem` | Coverage | `Coverage` |
-| Spreading | `Spreading` | Pelapor | `Reporter` |
-| Tugas | `Task` | Tahap | `Stage` |
-| Alur | `Flow` | Keputusan | `Decision` |
-| Penugasan | `Assigner` | Penerima tugas | `Assignee` |
-| Antrean | `Queue` | Workbasket | `Workbasket` |
-| Pengguna | `User` | Sesi | `Session` |
-| Identitas | `Identity` | Kredensial | `Credential` |
-| Profil | `Profile` | Peran | `Roles` |
-| Pelanggaran | `Violation` | Galat validasi | `ValidationError` |
-| Penyebab Kerugian | `CauseOfLoss` | Tanggal Kejadian | `DateOfLoss` |
-| Tanggal Lapor | `ReportDate` | Tanggal Terima Dokumen | `DateReceived` |
-| Nilai Estimasi | `EstimateValue` | Kurs | `ExchangeRate` |
-| Uang (sen) | `Money` | Persentase ×10⁴ | `Percent` |
-| Penerbit Nomor | `NumberIssuer` | Jejak Audit | `AuditTrail` |
-| Pemberitahuan | `Notification` | Unit Kerja (transaksi) | `UnitOfWork` |
-| Lini Bisnis | `LineOfBusiness` | Jenis Treaty | `TreatyKind` |
-
-Awalan yang dipakai berulang: `Jenis…` → `…Kind` · `Kode…` → `Code…` · `Respons…` →
-`…Response` · `Permintaan…` → `…Request` · `Isian…` → `…Input` / `…FormValues` ·
-`Ambil…` → `Get…` · `Simpan…` → `Save…` · `gunakan…` (hook React) → `use…`.
-
----
-
-## 5. Kasus yang menuntut perhatian
-
-Enam hal berikut **tidak** dapat diselesaikan dengan penggantian nama biasa, dan dua di antaranya
-sempat menyebabkan kerusakan yang tertangkap perkakas sebelum masuk ke repo.
-
-| # | Kasus | Perlakuan |
-|---|---|---|
-| 1 | **Kata Indonesia berawal kapital berbentuk sama dengan nama tipe** — `Kode`, `Sesi`, `Klaim`, `Polis` | Di komentar, hanya nama **berpunuk** (`KlaimRepo`, `TanggalKejadian`) yang diganti. Nama satu kata diganti hanya bila ia kata pertama komentar dokumentasi yang menamai deklarasi di bawahnya |
-| 2 | **Teks JSX adalah teks yang dilihat pengguna** — `<button>Simpan</button>` | Wilayah teks JSX dipisahkan dari wilayah kode dan tidak pernah disentuh. Seluruh 68 potongan teks dibandingkan sebelum dan sesudah, dan identik |
-| 3 | **Literal regex di berkas uji memuat teks UI** — `findByText(/Tidak ada pekerjaan/)` | Diperlakukan seperti string |
-| 4 | **Interpolasi template adalah kode** — `` `${nama}` `` | Diperlakukan sebagai kode; menandainya string akan membuat deklarasi berganti sementara pemakaiannya tertinggal |
-| 5 | **Nama properti DTO frontend adalah kontrak JSON** — `nama`, `klaim`, `tugas`, `kode` | Dikeluarkan dari peta. Variabel lokal yang kebetulan bernama sama ikut tetap, lalu diganti satu per satu |
-| 6 | **Nama parameter rute hidup di dalam string** — `path="/registrasi/klaim/:klaimID"` | Ia terikat pada destrukturisasi `useParams`, jadi ia nama di dalam kode. Diganti menjadi `:claimID`. Segmen jalurnya sendiri (`/registrasi/klaim`) tetap Indonesia |
-
-Dua rujukan pengenal lain juga hidup di dalam string dan harus ikut berganti:
-`Pick<SessionState, 'expiresAt'>` di `app/session.ts`, dan `register('username')` beserta
-`id="username"` di `modules/login/LoginPage.tsx`.
-
----
-
-## 6. Yang dibuktikan, bukan diasumsikan
-
-Empat kontrak diperiksa dengan membandingkan sidik ringkas isi sebelum dan sesudah:
-
-| Kontrak | Hasil |
+| Sebelum | Sesudah |
 |---|---|
-| Seluruh tag `json:"…"` di backend | **identik** |
-| Seluruh jalur URL `/api/…` | **identik** |
-| Seluruh isi berkas `.sql` dan migrasi | **identik** |
-| Seluruh nama variabel lingkungan | **identik** |
-| Seluruh teks JSX yang dilihat pengguna | **identik** — 68 potongan, sebelum dan sesudah |
+| `pengguna_ambil_by_identitas` | `user_get_by_identity` |
+| `sesi_{sisip,cabut,perpanjang,periksa_tabel}` | `session_{insert,revoke,extend,check_table}` |
+| `login_lokal_{cari_aktif,periksa_tabel}` | `local_login_{find_active,check_table}` |
+| `layanan_alamat` | `service_address` |
+| `portal_daftar` | `portal_list` |
+| `status_klaim_*` | `claim_status_*` |
+| `rekening_*` · `bank_daftar` | `account_*` · `bank_list` |
+
+### Perintah npm
+
+| Sebelum | Sesudah |
+|---|---|
+| `npm run periksa-tipe` | `npm run typecheck` |
+| `npm run tandai-dist` | `npm run mark-dist` |
+
+## Nama yang sengaja TIDAK diterjemahkan
+
+| Nama | Alasan |
+|---|---|
+| `NIK` | singkatan resmi, bukan kata |
+| `HCQ`, `SPA`, `DTO`, `SQL`, `SMTP` | singkatan |
+| `Kasir` di dalam **komentar** | nama sistem eksternal sebagaimana disebut bisnis; seam Go-nya tetap `Cashier` |
+| Nilai kolom `"Ya"`, `"Tidak"`, `"Aktif"` | **isi data**, bukan nama. Mengubahnya mengubah arti baris di basis data |
+| Kode galat API (`isian_tidak_sah`, `sesi_kedaluwarsa`, …) | kontrak API |
+| Variabel lingkungan (`PENYIMPANAN`, `PORTAL_UTAMA`, `IDENTITAS_ADAPTER`, `POOLDATA_*_PENGGUNA`) | dipakai berkas `.env` dan skrip deployment — menggantinya merusak lingkungan yang berjalan |
+| Flag baris perintah (`-periksa`, `-login`) | idem; ia antarmuka operator, bukan nama internal. Fungsi di baliknya tetap `check()` di `cmd/claimpnc/check.go` |
+
+---
+
+## Nama modul — pengecualian yang berlawanan arah (`D-81`)
+
+Ditetapkan Work Owner 2026-09-18, **sesudah** penggantian nama dijalankan: **nama folder modul
+memakai nama modul bisnis dalam bahasa Indonesia**, bukan padanan Inggrisnya.
+
+| Lapisan | Bentuk | Contoh |
+|---|---|---|
+| Folder backend & paket Go | `namamodul` — tanpa tanda hubung | `internal/masterrekening` · `internal/masterstatus` |
+| Folder frontend | `nama-modul` — `kebab-case` | `src/modules/master-rekening` · `src/modules/master-status-klaim` |
+
+**Isi modulnya tetap Inggris.** Yang Indonesia hanya nama modulnya:
+`internal/masterrekening/repo/sqlstore/account.go` — kiri nama modul, kanan isi modul.
+
+**Nama modul berikutnya disebutkan Work Owner di prompt.** Jangan menerjemahkan dan jangan
+mengarang: "Master Rekening" → `master-rekening`, "Input Receive Document" → `input-receive-document`.
+Modul kerangka tanpa nama bisnis (`auth`, `portal`, `platform`, `spa`) tidak berubah.
+
+**Komponen di dalam modul memakai nama tipe domain, bukan nama modul** — karena itu
+`AccountPage.tsx` di dalam `master-rekening/`, bukan `MasterRekeningPage.tsx`.
+
+---
+
+## Tambahan 2026-09-18 — modul Master Status Progres & prop komponen bersama
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| StatusProgres | ProgressStatus | keterangan progres pada satu posisi klaim |
+| Posisi (klaim) | Position | Register · Survey · Komite · Akseptasi |
+| Induk | Parent | Status Progres 1 yang menaungi baris tingkat 2 |
+| **Isian** (masukan domain Go) | **Input** | dibedakan dari `Values` yang dipakai untuk objek nilai form di React — lihat `keputusan-implementasi.md` §15.4 |
+| PelanggaranIsian | Violation | sama dengan modul masterstatus |
+| PemilihRepo | RepoSelector | memilih repo milik satu portal entitas |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| SisipBaru | InsertNew | lapisan repo — menurunkan ID lalu menyisip dalam satu operasi |
+| PastikanPortalSiap | EnsurePortalReady | |
+| PilihAktif | SelectActive | modul portal |
+
+### Prop komponen bersama — sisa yang dibereskan 2026-09-18
+
+Penggantian nama 2026-09-18 pagi menyisakan nama prop berbahasa Indonesia pada pustaka komponen.
+Seluruhnya kini Inggris:
+
+| Sebelum | Sesudah | Komponen |
+|---|---|---|
+| `judul` | `title` | `DataTable`, `ErrorMessage`, `Column` |
+| `keterangan` | `description` | `DataTable`, `ErrorMessage` |
+| `nilai` · `tampil` | `value` · `render` | `Column` |
+| `lebar` · `tanpaUrut` · `keKanan` | `width` · `noSort` · `alignRight` | `Column` |
+| `aksi` | `actions` | `DataTable`, `AccountTable` |
+| `petunjuk` | `hint` | `Field` |
+| `kotak` | `box` | `ErrorMessage` |
+| `arah` · `'naik'`/`'turun'` | `direction` · `'asc'`/`'desc'` | `DataTable` |
+| `anak` | `children` | `PageShell`, `SessionGuard`, `App` |
+
+**`aktif` sengaja TIDAK ikut diganti.** Ia nama field JSON API (`Account.aktif`), bukan nama
+internal — kecuali satu prop lokal pada `SortMarker` di `DataTable`, yang memang bukan kontrak.
+
+### Nama kueri `.sql` tambahan
+
+| Sebelum | Sesudah |
+|---|---|
+| `statusprogres_{daftar,ambil,sisip,perbarui,periksa_tabel}` | `progress_status_{list,get,insert,update,check_table}` |
+| `statusprogres_daftar_id_terkunci` | `progress_status_list_id_locked` |
+| `statusprogres2_*` | `progress_status2_*` |
+
+### Nama modul yang sudah ditetapkan
+
+| Nama modul bisnis (Work Owner) | Folder backend / paket Go | Folder frontend |
+|---|---|---|
+| Master Rekening | `internal/masterrekening` | `src/modules/master-rekening` |
+| Master Status Klaim | `internal/masterstatus` | `src/modules/master-status-klaim` |
+| Master Status Progres 1 | `internal/masterstatusprogres` | `src/modules/master-status-progres` |
+
+**Komponen di dalamnya memakai nama tipe domain, bukan nama modul** — karena itu
+`ProgressStatusPage.tsx` di dalam `master-status-progres/`, bukan `MasterStatusProgresPage.tsx`.
+
+---
+
+## Tambahan 2026-09-19 — modul menu
+
+Modul `internal/menu` adalah **modul kerangka**, bukan layar Master yang diminta dengan nama bisnis.
+Namanya karena itu Inggris, sejajar dengan `auth`, `portal`, dan `platform` — `D-81` hanya berlaku
+untuk modul yang Work Owner sebut dengan nama bisnisnya.
+
+| Kolom / istilah basis data | Inggris di kode |
+|---|---|
+| `MENU_ID` · `MENU_DESC` | `ID` · `Description` |
+| `MENU_PROGRAM` | `Program` — nama harness, dikirim apa adanya ke layar |
+| `MENU_ID_LEADER` | `ParentID` — nil berarti kelompok tingkat atas |
+| `MENU_SEQUENCE` | `Sequence` |
+| `LOGIN_ID_GROUP` | **`Subject`** — satu kolom yang menampung login MAUPUN group; `Subjects()` menyusun daftarnya |
+| `GROUP_ID` | `Group` |
+| butir menu beserta anaknya | `Node` |
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Otorisasi | Authorization | `AuthorizedIDs` mengembalikan MENU_ID yang diizinkan |
+| Kelompok menu | Group | bukan `Category`: sumbernya memang baris menu yang tidak berinduk |
+| Susun pohon | BuildTree | |
+
+**Nama field JSON tetap Indonesia** (`id`, `nama`, `program`, `submenu`) — ia kontrak API.
+
+**Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
+`menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.

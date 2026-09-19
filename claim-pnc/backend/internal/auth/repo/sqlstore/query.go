@@ -16,17 +16,17 @@ import (
 //go:embed *.sql
 var queryFiles embed.FS
 
-// queries memuat seluruh pernyataan SQL, dikunci dengan namanya.
-var queries = loadAllQueries()
+// query memuat seluruh pernyataan SQL, dikunci dengan namanya.
+var query = loadAllQueries()
 
-// loadQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
+// getQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
 //
 // Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
 // masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
 // saat pertama dijalankan — bukan galat runtime yang menunggu pengguna menemukannya.
-func loadQuery(name string) string {
-	text, ok := queries[name]
-	if !ok {
+func getQuery(name string) string {
+	text, existing := query[name]
+	if !existing {
 		panic(fmt.Sprintf("sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
 	}
 	return text
@@ -41,13 +41,13 @@ func loadAllQueries() map[string]string {
 	if err != nil {
 		panic("sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
 	}
-	for _, file := range list {
-		body, err := queryFiles.ReadFile(file.Name())
+	for _, files := range list {
+		content, err := queryFiles.ReadFile(files.Name())
 		if err != nil {
-			panic("sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
+			panic("sqlstore: tidak dapat membaca " + files.Name() + ": " + err.Error())
 		}
-		for name, text := range splitByName(string(body)) {
-			if _, conflict := result[name]; conflict {
+		for name, text := range splitByName(string(content)) {
+			if _, bentrok := result[name]; bentrok {
 				panic("sqlstore: nama kueri ganda: " + name)
 			}
 			result[name] = text
@@ -56,28 +56,28 @@ func loadAllQueries() map[string]string {
 	return result
 }
 
-func splitByName(body string) map[string]string {
-	const marker = "-- name:"
+func splitByName(content string) map[string]string {
+	const penanda = "-- name:"
 	result := map[string]string{}
 	name := ""
-	var lines []string
+	var body []string
 
-	store := func() {
+	save := func() {
 		if name != "" {
-			if text := strings.TrimSpace(strings.Join(lines, "\n")); text != "" {
+			if text := strings.TrimSpace(strings.Join(body, "\n")); text != "" {
 				result[name] = text
 			}
 		}
 	}
-	for _, row := range strings.Split(body, "\n") {
-		if trim := strings.TrimSpace(row); strings.HasPrefix(trim, marker) {
-			store()
-			name = strings.TrimSpace(strings.TrimPrefix(trim, marker))
-			lines = nil
+	for _, rows := range strings.Split(content, "\n") {
+		if trimmed := strings.TrimSpace(rows); strings.HasPrefix(trimmed, penanda) {
+			save()
+			name = strings.TrimSpace(strings.TrimPrefix(trimmed, penanda))
+			body = nil
 			continue
 		}
-		lines = append(lines, row)
+		body = append(body, rows)
 	}
-	store()
+	save()
 	return result
 }

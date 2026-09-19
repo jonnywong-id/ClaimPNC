@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// User adalah catatan lokal satu orang. Identitas adalah kunci alaminya.
+// User adalah catatan lokal satu orang. Identity adalah kunci alaminya.
 //
 // Sistem identitas luar memiliki identitasnya; aplikasi ini menyimpan salinannya agar
 // pengguna dapat dirujuk oleh data klaim, peran, dan jejak audit bahkan ketika sistem
@@ -31,8 +31,8 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-// UserFromProfile membentuk catatan pengguna baru dari profil yang baru diverifikasi.
-func UserFromProfile(p Profile, now time.Time) User {
+// FromProfile membentuk catatan pengguna baru dari profil yang baru diverifikasi.
+func FromProfile(p Profile, sekarang time.Time) User {
 	return User{
 		Identity:   p.Identity,
 		Kind:       p.Kind,
@@ -44,8 +44,8 @@ func UserFromProfile(p Profile, now time.Time) User {
 		BranchCode: p.BranchCode,
 		Position:   p.Position,
 		Active:     true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		CreatedAt:  sekarang,
+		UpdatedAt:  sekarang,
 	}
 }
 
@@ -54,7 +54,7 @@ func UserFromProfile(p Profile, now time.Time) User {
 // Yang TIDAK ikut tersalin: status aktif, OperatorID, dan waktu pembuatan. Ketiganya
 // dimiliki administrator aplikasi ini, bukan sistem identitas luar — menimpanya setiap
 // kali pengguna masuk akan menghidupkan kembali akun yang sengaja dinonaktifkan.
-func (u *User) RefreshFrom(p Profile, now time.Time) {
+func (u *User) RefreshFrom(p Profile, sekarang time.Time) {
 	u.Kind = p.Kind
 	u.Name = p.Name
 	u.Login = p.Login
@@ -63,9 +63,9 @@ func (u *User) RefreshFrom(p Profile, now time.Time) {
 	u.Branch = p.Branch
 	u.BranchCode = p.BranchCode
 	u.Position = p.Position
-	u.UpdatedAt = now
+	u.UpdatedAt = sekarang
 	if u.CreatedAt.IsZero() {
-		u.CreatedAt = now
+		u.CreatedAt = sekarang
 	}
 }
 
@@ -77,7 +77,7 @@ type UserRepo interface {
 	// belum pernah tercatat.
 	GetByIdentity(ctx context.Context, identity string) (User, error)
 
-	// SaveOrUpdate menulis catatan pengguna berdasarkan Identitas: menyisipkan
+	// Save menulis catatan pengguna berdasarkan Identity: menyisipkan
 	// bila belum ada, memperbarui bila sudah. Ia tidak pernah menghapus.
-	SaveOrUpdate(ctx context.Context, p User) error
+	Save(ctx context.Context, p User) error
 }

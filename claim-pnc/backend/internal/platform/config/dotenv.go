@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// MuatBerkasEnv membaca berkas .env dan menaruh isinya ke variabel lingkungan proses.
+// LoadEnvFile membaca berkas .env dan menaruh isinya ke variabel lingkungan proses.
 //
 // Nilai yang SUDAH ada di lingkungan tidak ditimpa. Urutannya disengaja: variabel yang
 // disetel operator saat menjalankan aplikasi harus menang atas berkas, supaya satu
@@ -26,58 +26,58 @@ import (
 // Tidak ada interpolasi `${LAIN}`, tidak ada `export`, dan tidak ada nilai
 // multi-baris. Format yang lebih pintar berarti lebih banyak cara salah membaca
 // kredensial.
-func MuatBerkasEnv(jalur string) error {
-	berkas, err := os.Open(jalur)
+func LoadEnvFile(filePath string) error {
+	files, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("config: membuka %s: %w", jalur, err)
+		return fmt.Errorf("config: membuka %s: %w", filePath, err)
 	}
-	defer func() { _ = berkas.Close() }()
+	defer func() { _ = files.Close() }()
 
-	pemindai := bufio.NewScanner(berkas)
+	pemindai := bufio.NewScanner(files)
 	nomor := 0
 	for pemindai.Scan() {
 		nomor++
-		baris := strings.TrimSpace(pemindai.Text())
-		if baris == "" || strings.HasPrefix(baris, "#") {
+		rows := strings.TrimSpace(pemindai.Text())
+		if rows == "" || strings.HasPrefix(rows, "#") {
 			continue
 		}
-		nama, nilai, ada := strings.Cut(baris, "=")
-		if !ada {
-			return fmt.Errorf("config: %s baris %d tidak berbentuk NAMA=nilai", jalur, nomor)
+		name, value, existing := strings.Cut(rows, "=")
+		if !existing {
+			return fmt.Errorf("config: %s baris %d tidak berbentuk NAMA=nilai", filePath, nomor)
 		}
-		nama = strings.TrimSpace(nama)
-		if nama == "" {
-			return fmt.Errorf("config: %s baris %d tidak punya nama variabel", jalur, nomor)
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return fmt.Errorf("config: %s baris %d tidak punya nama variabel", filePath, nomor)
 		}
-		if _, sudahAda := os.LookupEnv(nama); sudahAda {
+		if _, exists := os.LookupEnv(name); exists {
 			continue
 		}
-		if err := os.Setenv(nama, lepasKutip(strings.TrimSpace(nilai))); err != nil {
-			return fmt.Errorf("config: menyetel %s: %w", nama, err)
+		if err := os.Setenv(name, unquote(strings.TrimSpace(value))); err != nil {
+			return fmt.Errorf("config: menyetel %s: %w", name, err)
 		}
 	}
 	if err := pemindai.Err(); err != nil {
-		return fmt.Errorf("config: membaca %s: %w", jalur, err)
+		return fmt.Errorf("config: membaca %s: %w", filePath, err)
 	}
 	return nil
 }
 
-// lepasKutip membuang sepasang kutip pembungkus bila ada. Kata sandi basis data kerap
+// unquote membuang sepasang kutip pembungkus bila ada. Kata sandi basis data kerap
 // memuat karakter seperti `#` atau spasi yang menuntut kutip.
-func lepasKutip(nilai string) string {
-	if len(nilai) >= 2 {
-		awal, akhir := nilai[0], nilai[len(nilai)-1]
-		if (awal == '"' && akhir == '"') || (awal == '\'' && akhir == '\'') {
-			return nilai[1 : len(nilai)-1]
+func unquote(value string) string {
+	if len(value) >= 2 {
+		start, end := value[0], value[len(value)-1]
+		if (start == '"' && end == '"') || (start == '\'' && end == '\'') {
+			return value[1 : len(value)-1]
 		}
 	}
 	// Komentar di belakang nilai hanya dikenali bila didahului spasi, supaya kata sandi
 	// yang memuat '#' tidak terpotong diam-diam.
-	if potong := strings.Index(nilai, " #"); potong >= 0 {
-		return strings.TrimSpace(nilai[:potong])
+	if trimmed := strings.Index(value, " #"); trimmed >= 0 {
+		return strings.TrimSpace(value[:trimmed])
 	}
-	return nilai
+	return value
 }

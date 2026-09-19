@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AppRoutes } from '@/app/App'
+import { AppRoute } from '@/app/App'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -31,13 +31,13 @@ type Call = { url: string; init: RequestInit | undefined }
 
 let calls: Call[] = []
 
-// stubFetch memasang peladen tiruan. Permintaan /api/portal dijawab otomatis supaya
+// installFetch memasang peladen tiruan. Permintaan /api/portal dijawab otomatis supaya
 // setiap uji tidak perlu mengulang daftar portal yang sama.
-function stubFetch(answer: (url: string) => Response | Promise<Response>) {
+function installFetch(reply: (url: string) => Response | Promise<Response>) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
-    return Promise.resolve(answer(url))
+    return Promise.resolve(reply(url))
   })
 }
 
@@ -48,31 +48,31 @@ function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
-function mount() {
-  const apiClient = new QueryClient({
+function show() {
+  const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return render(
-    <QueryClientProvider client={apiClient}>
+    <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/masuk']}>
-        <AppRoutes />
+        <AppRoute />
       </MemoryRouter>
     </QueryClientProvider>,
   )
 }
 
-async function fillAndSubmit(username: string, password: string) {
+async function fillAndSubmit(namaPengguna: string, kataSandi: string) {
   const pengguna = userEvent.setup()
-  await pengguna.type(screen.getByLabelText('Nama pengguna'), username)
-  await pengguna.type(screen.getByLabelText('Kata sandi'), password)
+  await pengguna.type(screen.getByLabelText('Nama pengguna'), namaPengguna)
+  await pengguna.type(screen.getByLabelText('Kata sandi'), kataSandi)
   await pengguna.click(screen.getByRole('button', { name: 'Masuk' }))
 }
 
 beforeEach(() => {
   calls = []
   window.sessionStorage.clear()
-  useSession.getState().cleanup()
-  useSelectedPortal.getState().cleanup()
+  useSession.getState().clear()
+  useSelectedPortal.getState().clear()
 })
 
 afterEach(() => {
@@ -81,7 +81,7 @@ afterEach(() => {
 
 describe('layar masuk', () => {
   it('menampilkan beranda setelah kredensial diterima', async () => {
-    stubFetch(() =>
+    installFetch(() =>
       jsonResponse(200, {
         token: 'token-contoh',
         tipe_token: 'Bearer',
@@ -89,7 +89,7 @@ describe('layar masuk', () => {
         pengguna: SAMPLE_PROFILE,
       }),
     )
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     await waitFor(() => expect(screen.getByText('Selamat datang, Contoh Administrator.')).toBeInTheDocument())
@@ -118,8 +118,8 @@ describe('layar masuk', () => {
       title: 'Sistem identitas sedang tidak dapat dihubungi',
     },
   ])('membedakan galat $nama', async ({ status, kode, title }) => {
-    stubFetch(() => jsonResponse(status, { kode, pesan: 'pesan dari server' }))
-    mount()
+    installFetch(() => jsonResponse(status, { kode, pesan: 'pesan dari server' }))
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     const warning = await screen.findByRole('alert')
@@ -129,16 +129,16 @@ describe('layar masuk', () => {
   // Pesan untuk pengguna yang tidak ada dan pengguna yang ada berkata sandi salah harus
   // SAMA — membedakannya membocorkan siapa yang punya akun.
   it('tidak membocorkan keberadaan akun', async () => {
-    stubFetch(() =>
+    installFetch(() =>
       jsonResponse(401, { kode: 'kredensial_salah', pesan: 'Nama pengguna atau kata sandi salah.' }),
     )
 
-    const first = mount()
+    const first = show()
     await fillAndSubmit('tidakpernahada', 'apa saja')
     const firstMessage = (await screen.findByRole('alert')).textContent
     first.unmount()
 
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'sandi salah')
     const secondMessage = (await screen.findByRole('alert')).textContent
 
@@ -147,7 +147,7 @@ describe('layar masuk', () => {
 
   it('menampilkan pesan tersendiri ketika server tidak dapat dihubungi', async () => {
     vi.stubGlobal('fetch', () => Promise.reject(new TypeError('network down')))
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     const warning = await screen.findByRole('alert')
@@ -155,8 +155,8 @@ describe('layar masuk', () => {
   })
 
   it('menolak kirim bila isian kosong, tanpa memanggil server', async () => {
-    stubFetch(() => jsonResponse(200, {}))
-    mount()
+    installFetch(() => jsonResponse(200, {}))
+    show()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Masuk' }))
 
@@ -166,7 +166,7 @@ describe('layar masuk', () => {
   })
 
   it('tidak pernah menaruh kata sandi maupun token di URL', async () => {
-    stubFetch(() =>
+    installFetch(() =>
       jsonResponse(200, {
         token: 'token-contoh',
         tipe_token: 'Bearer',
@@ -174,7 +174,7 @@ describe('layar masuk', () => {
         pengguna: SAMPLE_PROFILE,
       }),
     )
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     await waitFor(() => expect(calls.length).toBeGreaterThan(0))
@@ -186,7 +186,7 @@ describe('layar masuk', () => {
   })
 
   it('tidak pernah menyimpan kata sandi di peramban', async () => {
-    stubFetch(() =>
+    installFetch(() =>
       jsonResponse(200, {
         token: 'token-contoh',
         tipe_token: 'Bearer',
@@ -194,7 +194,7 @@ describe('layar masuk', () => {
         pengguna: SAMPLE_PROFILE,
       }),
     )
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
 
     await waitFor(() => expect(useSession.getState().token).toBe('token-contoh'))
@@ -202,7 +202,7 @@ describe('layar masuk', () => {
   })
 
   it('mengirim token sebagai Bearer di header, bukan di tempat lain', async () => {
-    stubFetch((url) =>
+    installFetch((url) =>
       url === '/api/masuk'
         ? jsonResponse(200, {
             token: 'token-contoh',
@@ -212,7 +212,7 @@ describe('layar masuk', () => {
           })
         : new Response(null, { status: 204 }),
     )
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
     await waitFor(() => expect(screen.getByText('Selamat datang, Contoh Administrator.')).toBeInTheDocument())
 
@@ -227,7 +227,7 @@ describe('layar masuk', () => {
   })
 
   it('membersihkan sesi di peramban setelah keluar', async () => {
-    stubFetch((url) =>
+    installFetch((url) =>
       url === '/api/masuk'
         ? jsonResponse(200, {
             token: 'token-contoh',
@@ -237,7 +237,7 @@ describe('layar masuk', () => {
           })
         : new Response(null, { status: 204 }),
     )
-    mount()
+    show()
     await fillAndSubmit('adminpnc', 'rahasia123')
     await waitFor(() => expect(screen.getByText('Selamat datang, Contoh Administrator.')).toBeInTheDocument())
 

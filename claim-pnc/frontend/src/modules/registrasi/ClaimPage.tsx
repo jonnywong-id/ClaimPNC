@@ -41,7 +41,7 @@ export function ClaimPage() {
   if (klaim.isError) {
     return (
       <Frame>
-        <ErrorMessage title="Klaim tidak dapat dimuat" note={errorMessage(klaim.error)} tone="gangguan" />
+        <ErrorMessage title="Klaim tidak dapat dimuat" description={errorMessage(klaim.error)} tone="gangguan" />
       </Frame>
     )
   }
@@ -163,7 +163,7 @@ function StageActions({ tugas }: { tugas: Task }) {
 
       {done.isError && (
         <div className="mt-3">
-          <ErrorMessage title="Tahap tidak dapat ditutup" note={errorMessage(done.error)} tone="penolakan" />
+          <ErrorMessage title="Tahap tidak dapat ditutup" description={errorMessage(done.error)} tone="penolakan" />
         </div>
       )}
 
@@ -290,7 +290,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {save.isError && (
         <ErrorMessage
           title={violations.length > 0 ? 'Klaim belum dapat disimpan' : 'Penyimpanan gagal'}
-          note={errorMessage(save.error)}
+          description={errorMessage(save.error)}
           tone={violations.length > 0 ? 'penolakan' : 'gangguan'}
         />
       )}

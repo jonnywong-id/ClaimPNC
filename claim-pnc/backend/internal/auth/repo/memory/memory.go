@@ -16,40 +16,40 @@ import (
 	"claim-pnc/internal/auth"
 )
 
-// UserRepo menyimpan catatan pengguna di memori, dikunci Identitas.
+// UserRepo menyimpan catatan pengguna di memori, dikunci Identity.
 type UserRepo struct {
-	mu   sync.RWMutex
-	body map[string]auth.User
+	mu      sync.RWMutex
+	content map[string]auth.User
 }
 
 // NewUserRepo membentuk store kosong.
 func NewUserRepo() *UserRepo {
-	return &UserRepo{body: map[string]auth.User{}}
+	return &UserRepo{content: map[string]auth.User{}}
 }
 
 // GetByIdentity membaca satu catatan pengguna.
 func (s *UserRepo) GetByIdentity(_ context.Context, identity string) (auth.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	p, ok := s.body[identity]
-	if !ok {
+	p, existing := s.content[identity]
+	if !existing {
 		return auth.User{}, auth.ErrUserNotFound
 	}
 	return p, nil
 }
 
-// SaveOrUpdate menulis catatan pengguna.
-func (s *UserRepo) SaveOrUpdate(_ context.Context, p auth.User) error {
+// Save menulis catatan pengguna.
+func (s *UserRepo) Save(_ context.Context, p auth.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if old, ok := s.body[p.Identity]; ok {
+	if lama, existing := s.content[p.Identity]; existing {
 		// Status aktif dimiliki administrator, bukan sistem identitas luar; ia tidak
 		// ikut tertimpa saat profil disegarkan.
-		p.Active = old.Active
-		p.OperatorID = old.OperatorID
-		p.CreatedAt = old.CreatedAt
+		p.Active = lama.Active
+		p.OperatorID = lama.OperatorID
+		p.CreatedAt = lama.CreatedAt
 	}
-	s.body[p.Identity] = p
+	s.content[p.Identity] = p
 	return nil
 }
 
@@ -58,62 +58,62 @@ func (s *UserRepo) SaveOrUpdate(_ context.Context, p auth.User) error {
 func (s *UserRepo) SetActive(identity string, active bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if p, ok := s.body[identity]; ok {
+	if p, existing := s.content[identity]; existing {
 		p.Active = active
-		s.body[identity] = p
+		s.content[identity] = p
 	}
 }
 
 // SessionRepo menyimpan sesi di memori, dikunci sidik token.
 type SessionRepo struct {
-	mu   sync.RWMutex
-	body map[string]auth.Session
+	mu      sync.RWMutex
+	content map[string]auth.Session
 }
 
 // NewSessionRepo membentuk store kosong.
-func NewSessionRepo() *SessionRepo { return &SessionRepo{body: map[string]auth.Session{}} }
+func NewSessionRepo() *SessionRepo { return &SessionRepo{content: map[string]auth.Session{}} }
 
 // Save menuliskan sesi baru.
 func (s *SessionRepo) Save(_ context.Context, fresh auth.Session) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.body[fresh.TokenDigest] = fresh
+	s.content[fresh.TokenDigest] = fresh
 	return nil
 }
 
 // GetByTokenDigest mencari sesi dari sidik tokennya.
-func (s *SessionRepo) GetByTokenDigest(_ context.Context, digest string) (auth.Session, error) {
+func (s *SessionRepo) GetByTokenDigest(_ context.Context, fingerprint string) (auth.Session, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	found, ok := s.body[digest]
-	if !ok {
+	ditemukan, existing := s.content[fingerprint]
+	if !existing {
 		return auth.Session{}, auth.ErrSessionNotFound
 	}
-	return found, nil
+	return ditemukan, nil
 }
 
 // Revoke menandai sesi sebagai dicabut tanpa menghapus barisnya.
-func (s *SessionRepo) Revoke(_ context.Context, id string, at time.Time) error {
+func (s *SessionRepo) Revoke(_ context.Context, id string, pada time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for digest, item := range s.body {
+	for fingerprint, item := range s.content {
 		if item.ID == id && item.RevokedAt == nil {
-			clock := at.UTC()
+			clock := pada.UTC()
 			item.RevokedAt = &clock
-			s.body[digest] = item
+			s.content[fingerprint] = item
 		}
 	}
 	return nil
 }
 
-// Extend menggeser batas berlaku sesi yang masih aktif.
-func (s *SessionRepo) Extend(_ context.Context, id string, expiresAt time.Time) error {
+// Renew menggeser batas berlaku sesi yang masih aktif.
+func (s *SessionRepo) Renew(_ context.Context, id string, berlakuSampai time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for digest, item := range s.body {
+	for fingerprint, item := range s.content {
 		if item.ID == id && item.RevokedAt == nil {
-			item.ExpiresAt = expiresAt.UTC()
-			s.body[digest] = item
+			item.ExpiresAt = berlakuSampai.UTC()
+			s.content[fingerprint] = item
 		}
 	}
 	return nil
@@ -124,5 +124,5 @@ func (s *SessionRepo) Extend(_ context.Context, id string, expiresAt time.Time) 
 func (s *SessionRepo) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return len(s.body)
+	return len(s.content)
 }

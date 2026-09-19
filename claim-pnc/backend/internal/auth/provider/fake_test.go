@@ -12,7 +12,7 @@ import (
 
 // Provider tiruan menolak start bila lingkungan bertanda produksi, dan penolakannya ada
 // di kode — bukan hanya di nilai konfigurasi (TKT-F3-001).
-func TestFakeRejectedInProduction(t *testing.T) {
+func TestFakeRefusesProduction(t *testing.T) {
 	fake, err := provider.NewFake(true, nil)
 	require.ErrorIs(t, err, provider.ErrFakeInProduction)
 	require.Nil(t, fake)
@@ -26,7 +26,7 @@ func TestFakeRunsOutsideProduction(t *testing.T) {
 
 // Ketiga jenis galat dapat dibedakan pemanggil TANPA memeriksa teks pesan
 // (TKT-F3-001). Pembedaannya lewat errors.Is.
-func TestFakeDistinguishesThreeFailureKinds(t *testing.T) {
+func TestFakeDistinguishesThreeErrorKinds(t *testing.T) {
 	ctx := context.Background()
 	fake, err := provider.NewFake(false, nil)
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestFakeDistinguishesThreeFailureKinds(t *testing.T) {
 		_, err := fake.Verify(ctx, auth.Credential{Username: "adminpnc", Password: "salah"})
 		require.ErrorIs(t, err, auth.ErrWrongCredential)
 		require.NotErrorIs(t, err, auth.ErrUserInactive)
-		require.NotErrorIs(t, err, auth.ErrIdentitySystemDown)
+		require.NotErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 	})
 
 	t.Run("pengguna tidak aktif", func(t *testing.T) {
@@ -45,12 +45,12 @@ func TestFakeDistinguishesThreeFailureKinds(t *testing.T) {
 	})
 
 	t.Run("sistem identitas tidak dapat dihubungi", func(t *testing.T) {
-		decision, err := provider.NewFake(false, nil)
+		down, err := provider.NewFake(false, nil)
 		require.NoError(t, err)
-		decision.SetSimulateOutage(true)
+		down.SetSimulateOutage(true)
 
-		_, err = decision.Verify(ctx, auth.Credential{Username: "adminpnc", Password: "rahasia123"})
-		require.ErrorIs(t, err, auth.ErrIdentitySystemDown)
+		_, err = down.Verify(ctx, auth.Credential{Username: "adminpnc", Password: "rahasia123"})
+		require.ErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 		require.NotErrorIs(t, err, auth.ErrWrongCredential)
 	})
 }
@@ -62,12 +62,12 @@ func TestFakeDoesNotLeakAccountExistence(t *testing.T) {
 	fake, err := provider.NewFake(false, nil)
 	require.NoError(t, err)
 
-	_, errNotFound := fake.Verify(ctx, auth.Credential{Username: "tidakpernahada", Password: "apa saja"})
+	_, errTidakAda := fake.Verify(ctx, auth.Credential{Username: "tidakpernahada", Password: "apa saja"})
 	_, errWrongPassword := fake.Verify(ctx, auth.Credential{Username: "adminpnc", Password: "bukan sandinya"})
 
-	require.ErrorIs(t, errNotFound, auth.ErrWrongCredential)
+	require.ErrorIs(t, errTidakAda, auth.ErrWrongCredential)
 	require.ErrorIs(t, errWrongPassword, auth.ErrWrongCredential)
-	require.Equal(t, errNotFound.Error(), errWrongPassword.Error())
+	require.Equal(t, errTidakAda.Error(), errWrongPassword.Error())
 }
 
 func TestFakeAcceptsValidCredential(t *testing.T) {

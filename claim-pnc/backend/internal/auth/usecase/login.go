@@ -24,20 +24,20 @@ type Service struct {
 	sessionRepo     auth.SessionRepo
 	clock           clock.Clock
 	sessionLifetime time.Duration
-	randomSource    io.Reader
+	sumberAcak      io.Reader
 }
 
-// Options adalah bahan pembentuk Layanan. Seluruhnya wajib kecuali RandomSource.
+// Options adalah bahan pembentuk Service. Seluruhnya wajib kecuali SumberAcak.
 type Options struct {
 	Identity        auth.Identity
 	UserRepo        auth.UserRepo
 	SessionRepo     auth.SessionRepo
 	Clock           clock.Clock
 	SessionLifetime time.Duration
-	RandomSource    io.Reader
+	SumberAcak      io.Reader
 }
 
-// NewService membentuk Layanan dan menolak bahan yang tidak lengkap — kegagalan di
+// NewService membentuk Service dan menolak bahan yang tidak lengkap — kegagalan di
 // sini terjadi saat start, bukan saat pengguna pertama mencoba masuk.
 func NewService(o Options) (*Service, error) {
 	switch {
@@ -48,7 +48,7 @@ func NewService(o Options) (*Service, error) {
 	case o.SessionRepo == nil:
 		return nil, errors.New("usecase: penyimpanan sesi wajib diisi")
 	case o.Clock == nil:
-		return nil, errors.New("usecase: seam jam wajib diisi")
+		return nil, errors.New("usecase: seam clock wajib diisi")
 	case o.SessionLifetime <= 0:
 		return nil, errors.New("usecase: masa berlaku sesi harus lebih besar dari nol")
 	}
@@ -58,7 +58,7 @@ func NewService(o Options) (*Service, error) {
 		sessionRepo:     o.SessionRepo,
 		clock:           o.Clock,
 		sessionLifetime: o.SessionLifetime,
-		randomSource:    o.RandomSource,
+		sumberAcak:      o.SumberAcak,
 	}, nil
 }
 
@@ -70,8 +70,8 @@ type Result struct {
 	User    auth.User
 }
 
-// SessionContext adalah identitas pemanggil yang sudah terbukti, dipakai seluruh lapisan lain.
-type SessionContext struct {
+// Caller adalah identitas pemanggil yang sudah terbukti, dipakai seluruh lapisan lain.
+type Caller struct {
 	User    auth.User
 	Session auth.Session
 }
@@ -104,21 +104,21 @@ func (l *Service) Login(ctx context.Context, k auth.Credential) (Result, error) 
 		return Result{}, auth.ErrUserInactive
 	}
 
-	token, err := auth.IssueToken(l.randomSource)
+	token, err := auth.IssueToken(l.sumberAcak)
 	if err != nil {
 		return Result{}, fmt.Errorf("usecase: menerbitkan token: %w", err)
 	}
-	sessionID, err := auth.NewSessionID(l.randomSource)
+	sessionID, err := auth.NewSessionID(l.sumberAcak)
 	if err != nil {
 		return Result{}, fmt.Errorf("usecase: menerbitkan pengenal sesi: %w", err)
 	}
-	now := l.clock.Now().UTC()
+	sekarang := l.clock.Now().UTC()
 	s := auth.Session{
 		ID:          sessionID,
 		TokenDigest: token.Digest(),
 		Identity:    p.Identity,
-		IssuedAt:    now,
-		ExpiresAt:   now.Add(l.sessionLifetime),
+		IssuedAt:    sekarang,
+		ExpiresAt:   sekarang.Add(l.sessionLifetime),
 	}
 	if err := l.sessionRepo.Save(ctx, s); err != nil {
 		return Result{}, fmt.Errorf("usecase: menyimpan sesi: %w", err)
@@ -127,40 +127,40 @@ func (l *Service) Login(ctx context.Context, k auth.Credential) (Result, error) 
 }
 
 // Check menguji token yang dibawa permintaan dan mengembalikan identitas pemiliknya.
-func (l *Service) Check(ctx context.Context, token auth.Token) (SessionContext, error) {
+func (l *Service) Check(ctx context.Context, token auth.Token) (Caller, error) {
 	if strings.TrimSpace(string(token)) == "" {
-		return SessionContext{}, auth.ErrSessionNotFound
+		return Caller{}, auth.ErrSessionNotFound
 	}
 	s, err := l.sessionRepo.GetByTokenDigest(ctx, token.Digest())
 	if err != nil {
-		return SessionContext{}, err
+		return Caller{}, err
 	}
 	if err := s.Check(l.clock.Now().UTC()); err != nil {
-		return SessionContext{}, err
+		return Caller{}, err
 	}
 	p, err := l.userRepo.GetByIdentity(ctx, s.Identity)
 	if err != nil {
-		return SessionContext{}, fmt.Errorf("usecase: memuat pengguna sesi: %w", err)
+		return Caller{}, fmt.Errorf("usecase: memuat pengguna sesi: %w", err)
 	}
 	if !p.Active {
-		return SessionContext{}, auth.ErrUserInactive
+		return Caller{}, auth.ErrUserInactive
 	}
-	return SessionContext{User: p, Session: s}, nil
+	return Caller{User: p, Session: s}, nil
 }
 
-// Extend menggeser batas berlaku sesi yang masih hidup. Sesi yang sudah kedaluwarsa
+// Renew menggeser batas berlaku sesi yang masih hidup. Sesi yang sudah kedaluwarsa
 // atau dicabut tidak dapat dihidupkan kembali — pengguna harus masuk ulang.
-func (l *Service) Extend(ctx context.Context, token auth.Token) (auth.Session, error) {
-	sessionCtx, err := l.Check(ctx, token)
+func (l *Service) Renew(ctx context.Context, token auth.Token) (auth.Session, error) {
+	baseCtx, err := l.Check(ctx, token)
 	if err != nil {
 		return auth.Session{}, err
 	}
-	newDeadline := l.clock.Now().UTC().Add(l.sessionLifetime)
-	if err := l.sessionRepo.Extend(ctx, sessionCtx.Session.ID, newDeadline); err != nil {
+	newLimit := l.clock.Now().UTC().Add(l.sessionLifetime)
+	if err := l.sessionRepo.Renew(ctx, baseCtx.Session.ID, newLimit); err != nil {
 		return auth.Session{}, fmt.Errorf("usecase: memperpanjang sesi: %w", err)
 	}
-	sessionCtx.Session.ExpiresAt = newDeadline
-	return sessionCtx.Session, nil
+	baseCtx.Session.ExpiresAt = newLimit
+	return baseCtx.Session, nil
 }
 
 // Logout mencabut sesi di server. Mencabut sesi yang sudah tidak berlaku bukan galat:
@@ -189,21 +189,21 @@ func (l *Service) Logout(ctx context.Context, token auth.Token) error {
 // belum dikerjakan. Dampak bila langkah kedua gagal terbatas: catatan pengguna
 // tersegarkan tanpa sesi terbit, dan penyegaran itu idempoten.
 func (l *Service) refreshUser(ctx context.Context, profile auth.Profile) (auth.User, error) {
-	now := l.clock.Now().UTC()
+	sekarang := l.clock.Now().UTC()
 
 	p, err := l.userRepo.GetByIdentity(ctx, profile.Identity)
 	switch {
 	case errors.Is(err, auth.ErrUserNotFound):
-		p = auth.UserFromProfile(profile, now)
+		p = auth.FromProfile(profile, sekarang)
 	case err != nil:
 		return auth.User{}, fmt.Errorf("usecase: memuat pengguna: %w", err)
 	default:
 		// Status aktif dan OperatorID tidak ikut tersegarkan — keduanya dimiliki
 		// administrator aplikasi ini, bukan sistem identitas luar.
-		p.RefreshFrom(profile, now)
+		p.RefreshFrom(profile, sekarang)
 	}
 
-	if err := l.userRepo.SaveOrUpdate(ctx, p); err != nil {
+	if err := l.userRepo.Save(ctx, p); err != nil {
 		return auth.User{}, fmt.Errorf("usecase: menyimpan pengguna: %w", err)
 	}
 	return p, nil

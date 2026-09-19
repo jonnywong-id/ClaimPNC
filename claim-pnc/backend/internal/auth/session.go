@@ -23,22 +23,22 @@ type Token string
 // Digest mengembalikan sidik SHA-256 token dalam heksadesimal. Fungsinya satu arah:
 // dari sidik tidak dapat disusun kembali tokennya.
 func (t Token) Digest() string {
-	count := sha256.Sum256([]byte(t))
-	return hex.EncodeToString(count[:])
+	total := sha256.Sum256([]byte(t))
+	return hex.EncodeToString(total[:])
 }
 
 // IssueToken membuat token acak baru. Sumber keacakan diterima sebagai parameter
 // supaya pengujian dapat menjalankannya secara deterministik; di produksi ia selalu
 // crypto/rand.Reader.
-func IssueToken(random io.Reader) (Token, error) {
-	if random == nil {
-		random = rand.Reader
+func IssueToken(acak io.Reader) (Token, error) {
+	if acak == nil {
+		acak = rand.Reader
 	}
-	body := make([]byte, tokenByteLength)
-	if _, err := io.ReadFull(random, body); err != nil {
+	content := make([]byte, tokenByteLength)
+	if _, err := io.ReadFull(acak, content); err != nil {
 		return "", err
 	}
-	return Token(base64.RawURLEncoding.EncodeToString(body)), nil
+	return Token(base64.RawURLEncoding.EncodeToString(content)), nil
 }
 
 // NewSessionID membuat pengenal sesi yang acak dan berdiri sendiri.
@@ -46,15 +46,15 @@ func IssueToken(random io.Reader) (Token, error) {
 // Pengenal ini sengaja TIDAK diturunkan dari token maupun sidiknya: pengenal sesi
 // muncul di jejak audit dan di layar administrasi, dan tidak satu pun dari keduanya
 // boleh menjadi petunjuk menuju token yang masih hidup.
-func NewSessionID(random io.Reader) (string, error) {
-	if random == nil {
-		random = rand.Reader
+func NewSessionID(acak io.Reader) (string, error) {
+	if acak == nil {
+		acak = rand.Reader
 	}
-	body := make([]byte, 16)
-	if _, err := io.ReadFull(random, body); err != nil {
+	content := make([]byte, 16)
+	if _, err := io.ReadFull(acak, content); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(body), nil
+	return hex.EncodeToString(content), nil
 }
 
 // Session adalah satu sesi yang pernah diterbitkan.
@@ -76,23 +76,23 @@ type Session struct {
 //
 // Pencabutan diperiksa lebih dulu daripada kedaluwarsa: sesi yang dicabut administrator
 // harus terbaca sebagai dicabut walau kebetulan juga sudah lewat masa berlakunya.
-func (s Session) Check(now time.Time) error {
+func (s Session) Check(sekarang time.Time) error {
 	if s.RevokedAt != nil {
 		return ErrSessionRevoked
 	}
-	if !now.Before(s.ExpiresAt) {
+	if !sekarang.Before(s.ExpiresAt) {
 		return ErrSessionExpired
 	}
 	return nil
 }
 
-// Active adalah bentuk ringkas Periksa untuk tempat yang hanya butuh ya atau tidak.
-func (s Session) Active(now time.Time) bool { return s.Check(now) == nil }
+// Active adalah bentuk ringkas Check untuk tempat yang hanya butuh ya atau tidak.
+func (s Session) Active(sekarang time.Time) bool { return s.Check(sekarang) == nil }
 
-// TimeLeft mengembalikan berapa lama lagi sesi ini berlaku; nol bila sudah habis.
-func (s Session) TimeLeft(now time.Time) time.Duration {
-	if left := s.ExpiresAt.Sub(now); left > 0 {
-		return left
+// Remaining mengembalikan berapa lama lagi sesi ini berlaku; nol bila sudah habis.
+func (s Session) Remaining(sekarang time.Time) time.Duration {
+	if sisa := s.ExpiresAt.Sub(sekarang); sisa > 0 {
+		return sisa
 	}
 	return 0
 }
@@ -111,12 +111,12 @@ type SessionRepo interface {
 	// GetByTokenDigest mencari sesi dari sidik tokennya. Ia mengembalikan
 	// ErrSessionNotFound bila tidak ada yang cocok — dan galat itu sengaja
 	// berbeda dari ErrSessionExpired.
-	GetByTokenDigest(ctx context.Context, digest string) (Session, error)
+	GetByTokenDigest(ctx context.Context, fingerprint string) (Session, error)
 
 	// Revoke menandai sesi sebagai dicabut pada waktu tertentu. Barisnya tidak dihapus
 	// secara fisik (ADR-0012): sesi yang pernah ada tetap dapat ditelusuri jejak audit.
-	Revoke(ctx context.Context, id string, at time.Time) error
+	Revoke(ctx context.Context, id string, pada time.Time) error
 
-	// Extend menggeser batas berlaku sesi yang masih aktif.
-	Extend(ctx context.Context, id string, expiresAt time.Time) error
+	// Renew menggeser batas berlaku sesi yang masih aktif.
+	Renew(ctx context.Context, id string, berlakuSampai time.Time) error
 }

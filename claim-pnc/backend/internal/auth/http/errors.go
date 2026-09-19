@@ -13,13 +13,13 @@ import (
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan
 // dengan mencocokkan teks pesan.
 const (
-	CodeWrongCredential    = "kredensial_salah"
-	CodeUserInactive       = "pengguna_tidak_aktif"
-	CodeIdentitySystemDown = "sistem_identitas_tidak_terhubung"
-	CodeInvalidSession     = "sesi_tidak_sah"
-	CodeSessionExpired     = "sesi_kedaluwarsa"
-	CodeMalformedRequest   = "permintaan_cacat"
-	CodeInternalError      = "galat_internal"
+	CodeWrongCredential  = "kredensial_salah"
+	CodeUserInactive     = "pengguna_tidak_aktif"
+	CodeIdentityDown     = "sistem_identitas_tidak_terhubung"
+	CodeInvalidSession   = "sesi_tidak_sah"
+	CodeSessionExpired   = "sesi_kedaluwarsa"
+	CodeMalformedRequest = "permintaan_cacat"
+	CodeInternalError    = "galat_internal"
 )
 
 // wrongCredentialMessage sengaja sama untuk pengguna yang tidak ada dan kata sandi yang
@@ -62,11 +62,11 @@ func mapError(err error) (int, ErrorResponse) {
 			Message: "Akun Anda tidak aktif. Hubungi administrator Claim PNC.",
 		}
 
-	case errors.Is(err, auth.ErrIdentitySystemDown):
+	case errors.Is(err, auth.ErrIdentitySystemUnreachable):
 		// 503, bukan 401: ini bukan kesalahan pengguna, dan mencoba berulang kali
 		// justru membanjiri sistem yang sedang bermasalah.
 		return http.StatusServiceUnavailable, ErrorResponse{
-			Code:    CodeIdentitySystemDown,
+			Code:    CodeIdentityDown,
 			Message: "Sistem identitas sedang tidak dapat dihubungi. Coba beberapa saat lagi.",
 		}
 
@@ -74,8 +74,8 @@ func mapError(err error) (int, ErrorResponse) {
 		// Sistem identitas menjawab dengan profil yang tidak lengkap. Meneruskannya
 		// berarti pengguna masuk tetapi tidak dikenali data klaimnya sendiri.
 		return http.StatusBadGateway, ErrorResponse{
-			Code:    CodeIdentitySystemDown,
-			Message: "Profil pengguna dari sistem identitas tidak lengkap. Hubungi administrator Claim PNC.",
+			Code:    CodeIdentityDown,
+			Message: "Profile pengguna dari sistem identitas tidak lengkap. Hubungi administrator Claim PNC.",
 		}
 
 	case errors.Is(err, auth.ErrSessionExpired):

@@ -45,7 +45,7 @@ type Credential struct {
 // `POOLDATA.M_LOGIN_PNC`, bahkan hanya memuat `login_id` dan `login_name`.
 //
 // Karena itu yang wajib adalah tiga hal yang benar-benar selalu ada: siapa dia
-// (Identitas), namanya, dan dari jalur mana ia diverifikasi. Sisanya opsional dan
+// (Identity), namanya, dan dari jalur mana ia diverifikasi. Sisanya opsional dan
 // dibiarkan kosong bila sumbernya memang tidak mengirimkannya — bukan diisi tebakan.
 type Profile struct {
 	// Identity adalah kunci alami pengguna: NIK untuk karyawan, LOGIN_ID untuk
@@ -82,15 +82,15 @@ type Profile struct {
 // Implementasinya hanya boleh menjawab satu pertanyaan: apakah kredensial ini sah, dan
 // bila sah, siapa pemiliknya. Ia tidak tahu apa pun soal sesi maupun izin.
 //
-// Pengisinya ada di auth/provider: HCQ untuk karyawan, Lokal untuk non-karyawan, dan
-// Berantai yang menggabungkan keduanya sesuai urutan yang ditetapkan bisnis.
+// Pengisinya ada di auth/provider: HCQ untuk karyawan, Local untuk non-karyawan, dan
+// Chain yang menggabungkan keduanya sesuai urutan yang ditetapkan bisnis.
 type Identity interface {
-	Verify(ctx context.Context, credential Credential) (Profile, error)
+	Verify(ctx context.Context, kredensial Credential) (Profile, error)
 }
 
 // Check memastikan profil layak dipakai.
 //
-// Identitas yang kosong ditolak karena pengguna tanpa kunci alami tidak dapat
+// Identity yang kosong ditolak karena pengguna tanpa kunci alami tidak dapat
 // dicocokkan dengan data klaimnya sendiri — kegagalan yang jauh lebih mahal bila baru
 // ketahuan setelah ia mengisi satu form registrasi penuh.
 func (p Profile) Check() error {

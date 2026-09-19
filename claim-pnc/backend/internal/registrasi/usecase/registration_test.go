@@ -46,14 +46,14 @@ type environment struct {
 	service   *usecase.Service
 	store     *memory.Store
 	parameter *memory.Parameter
-	clock     *clock.FixedClock
+	clock     *clock.Fixed
 	caller    usecase.Caller
 }
 
 func setup(t *testing.T, roles ...string) environment {
 	t.Helper()
 
-	clock := clock.FixedClockAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
+	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
 	parameter := memory.NewParameter()
 
@@ -305,7 +305,7 @@ func (failSend) Send(context.Context, registrasi.Notification) error { return er
 // tugas, dan jejak audit sudah ditulis. Bila batas transaksinya benar, ketiganya ikut
 // dibatalkan.
 func TestFailedSaveLeavesNoRow(t *testing.T) {
-	clock := clock.FixedClockAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
+	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
 
 	service, err := usecase.NewService(usecase.Options{

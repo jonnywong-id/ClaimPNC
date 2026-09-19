@@ -3,7 +3,7 @@
 -- Aplikasi ini hanya MEMBACA ketiganya; penulisnya tetap sistem yang sekarang memiliki
 -- tabel itu (ADR-0004, penulis tunggal per tabel).
 
--- name: login_lokal_cari_aktif
+-- name: local_login_find_active
 --
 -- Login non-karyawan: broker dan surveyor independen. Ketiga syarat digabung dalam satu
 -- kueri dengan sengaja — memisahkannya membuat lamanya jawaban berbeda antara akun yang
@@ -18,7 +18,7 @@ SELECT LOGIN_ID,
    AND ACTIVE_STATUS = '1'
    AND UPPER(HASH_PASSWORD) = UPPER(:2)
 
--- name: layanan_alamat
+-- name: service_address
 --
 -- Alamat endpoint layanan luar. Penyaringnya adalah APP — alias portal — dan bukan
 -- APPLICATIONIP seperti rule lama `RDB List/BrowseServiceName_sql-SQL.xml`, yang
@@ -30,7 +30,7 @@ SELECT SERVICENAME
    AND TYPESERVICE = :2
 
 
--- name: login_lokal_periksa_tabel
+-- name: local_login_check_table
 SELECT LOGIN_ID
   FROM POOLDATA.M_LOGIN_PNC
  WHERE 1 = 0

@@ -237,5 +237,9 @@ type ErrorResponse struct {
 	Code    string `json:"kode"`
 	Message string `json:"pesan"`
 
-	Violation []ViolationDTO `json:"pelanggaran,omitempty"`
+	// Kuncinya `detail`, sama dengan masterstatus dan masterstatusprogres, karena
+	// itulah satu-satunya kunci yang dibaca APIError di sisi klien. Sebelum
+	// penyelarasan ini modul ini mengirim `pelanggaran` sementara layar membaca
+	// `violations`, sehingga tidak ada satu pun pesan validasi yang sampai ke layar.
+	Violation []ViolationDTO `json:"detail,omitempty"`
 }

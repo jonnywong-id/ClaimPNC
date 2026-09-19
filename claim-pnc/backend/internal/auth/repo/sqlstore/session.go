@@ -26,10 +26,10 @@ type SessionRepo struct {
 func NewSessionRepo(db *sql.DB) *SessionRepo { return &SessionRepo{db: db} }
 
 // Save menuliskan sesi yang baru diterbitkan.
-func (r *SessionRepo) Save(ctx context.Context, newSession auth.Session) error {
-	_, err := r.db.ExecContext(ctx, loadQuery("sesi_sisip"),
-		newSession.ID, newSession.TokenDigest, newSession.Identity,
-		newSession.IssuedAt.UTC(), newSession.ExpiresAt.UTC())
+func (r *SessionRepo) Save(ctx context.Context, freshSession auth.Session) error {
+	_, err := r.db.ExecContext(ctx, getQuery("session_insert"),
+		freshSession.ID, freshSession.TokenDigest, freshSession.Identity,
+		freshSession.IssuedAt.UTC(), freshSession.ExpiresAt.UTC())
 	if err != nil {
 		// Galat sengaja tidak memuat sidik token maupun tokennya.
 		return fmt.Errorf("sqlstore: menyimpan sesi: %w", err)
@@ -38,24 +38,24 @@ func (r *SessionRepo) Save(ctx context.Context, newSession auth.Session) error {
 }
 
 // GetByTokenDigest mencari sesi dari sidik tokennya.
-func (r *SessionRepo) GetByTokenDigest(ctx context.Context, digest string) (auth.Session, error) {
-	row := r.db.QueryRowContext(ctx, loadQuery("sesi_ambil_by_sidik"), digest)
+func (r *SessionRepo) GetByTokenDigest(ctx context.Context, fingerprint string) (auth.Session, error) {
+	rows := r.db.QueryRowContext(ctx, getQuery("session_get_by_fingerprint"), fingerprint)
 
 	var (
 		result  auth.Session
-		revoked sql.NullTime
+		dicabut sql.NullTime
 	)
-	err := row.Scan(&result.ID, &result.TokenDigest, &result.Identity,
-		&result.IssuedAt, &result.ExpiresAt, &revoked)
+	err := rows.Scan(&result.ID, &result.TokenDigest, &result.Identity,
+		&result.IssuedAt, &result.ExpiresAt, &dicabut)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return auth.Session{}, auth.ErrSessionNotFound
 	case err != nil:
 		return auth.Session{}, fmt.Errorf("sqlstore: membaca sesi: %w", err)
 	}
-	if revoked.Valid {
-		at := revoked.Time.UTC()
-		result.RevokedAt = &at
+	if dicabut.Valid {
+		pada := dicabut.Time.UTC()
+		result.RevokedAt = &pada
 	}
 	result.IssuedAt = result.IssuedAt.UTC()
 	result.ExpiresAt = result.ExpiresAt.UTC()
@@ -63,16 +63,16 @@ func (r *SessionRepo) GetByTokenDigest(ctx context.Context, digest string) (auth
 }
 
 // Revoke menandai sesi sebagai dicabut. Barisnya tidak dihapus (ADR-0012).
-func (r *SessionRepo) Revoke(ctx context.Context, id string, at time.Time) error {
-	if _, err := r.db.ExecContext(ctx, loadQuery("sesi_cabut"), at.UTC(), id); err != nil {
+func (r *SessionRepo) Revoke(ctx context.Context, id string, pada time.Time) error {
+	if _, err := r.db.ExecContext(ctx, getQuery("session_revoke"), pada.UTC(), id); err != nil {
 		return fmt.Errorf("sqlstore: mencabut sesi: %w", err)
 	}
 	return nil
 }
 
-// Extend menggeser batas berlaku sesi yang masih aktif.
-func (r *SessionRepo) Extend(ctx context.Context, id string, expiresAt time.Time) error {
-	if _, err := r.db.ExecContext(ctx, loadQuery("sesi_perpanjang"), expiresAt.UTC(), id); err != nil {
+// Renew menggeser batas berlaku sesi yang masih aktif.
+func (r *SessionRepo) Renew(ctx context.Context, id string, berlakuSampai time.Time) error {
+	if _, err := r.db.ExecContext(ctx, getQuery("session_extend"), berlakuSampai.UTC(), id); err != nil {
 		return fmt.Errorf("sqlstore: memperpanjang sesi: %w", err)
 	}
 	return nil

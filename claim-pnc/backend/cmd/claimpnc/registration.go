@@ -35,7 +35,7 @@ import (
 // menyebut persis apa yang belum nyata.
 func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
-	clock := clock.SystemClock{}
+	clock := clock.System{}
 
 	options := registrasiusecase.Options{
 		PolicyRepo:         registrasimemory.NewPolicyStore(registrasimemory.SamplePolicies(clock.Now())...),

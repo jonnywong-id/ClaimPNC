@@ -136,10 +136,10 @@ function mount(component: ReactNode) {
 beforeEach(() => {
   sentBody = null
   window.sessionStorage.clear()
-  useSession.getState().cleanup()
-  useSession.getState().signIn({
+  useSession.getState().clear()
+  useSession.getState().login({
     token: 'token-contoh',
-    pengguna: {
+    user: {
       identitas: '90000001',
       nama: 'Contoh Administrator',
       jenis: 'KARYAWAN',
@@ -147,7 +147,7 @@ beforeEach(() => {
       email: '',
       perusahaan: 'ASM',
     },
-    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    validUntil: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   })
 })
 
@@ -192,7 +192,7 @@ describe('layar kerja klaim', () => {
       body: {
         kode: 'validasi_gagal',
         pesan: 'Nomor SLIK Harus Diisi',
-        violations: [
+        detail: [
           { kode: 'nomor_slik_kosong', field: 'nomor_slik', pesan: 'Nomor SLIK Harus Diisi' },
           {
             kode: 'tanggal_lapor_sebelum_kejadian',
