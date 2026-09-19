@@ -21,22 +21,23 @@ import (
 	"strings"
 
 	"claim-pnc/internal/pelaporanklaim"
-	"claim-pnc/internal/platform/waktu"
+	"claim-pnc/internal/platform/clock"
 )
 
 // Service mengelola laporan klaim di atas satu seam penyimpanan.
 type Service struct {
 	repo  pelaporanklaim.Repo
-	clock waktu.Jam
+	clock clock.Clock
 }
 
 // Options adalah bahan pembentuk Service.
 //
-// Field Clock bertipe `waktu.Jam` — nama berbahasa Indonesia karena seam itu milik paket
-// `platform/waktu` yang berada DI LUAR modul ini dan belum bermigrasi ke `D-80`.
+// Field Clock bertipe `clock.Clock`, seam waktu milik `platform/clock` yang berada DI LUAR
+// modul ini. Ia yang membuat seluruh aturan berbasis tanggal di sini dapat diuji
+// deterministik, tanpa satu pun `time.Now()` di dalam modul.
 type Options struct {
 	Repo  pelaporanklaim.Repo
-	Clock waktu.Jam
+	Clock clock.Clock
 }
 
 // NewService membentuk Service dan menolak bahan yang tidak lengkap — kegagalannya
@@ -145,7 +146,7 @@ func (s *Service) Record(ctx context.Context, report pelaporanklaim.ClaimReport,
 		return pelaporanklaim.ClaimReport{}, err
 	}
 
-	now := s.clock.Sekarang().UTC()
+	now := s.clock.Now().UTC()
 
 	report.Number = ""
 	report.CreatedBy = trim(by.Login)
@@ -248,7 +249,7 @@ func (s *Service) Update(ctx context.Context, number string, report pelaporankla
 	next.DocumentReceivedDate = report.DocumentReceivedDate
 	next.NotTransferredReason = report.NotTransferredReason
 	next.NotRegisteredNote = report.NotRegisteredNote
-	next.UpdatedAt = s.clock.Sekarang().UTC()
+	next.UpdatedAt = s.clock.Now().UTC()
 
 	saved, err := s.repo.Update(ctx, next)
 	if err != nil {
@@ -287,7 +288,7 @@ func (s *Service) Transfer(ctx context.Context, number string) (pelaporanklaim.C
 		return pelaporanklaim.ClaimReport{}, pelaporanklaim.ErrAlreadyTransferred
 	}
 
-	now := s.clock.Sekarang().UTC()
+	now := s.clock.Now().UTC()
 	report.Transferred = true
 	report.TransferredAt = &now
 	report.UpdatedAt = now
@@ -348,7 +349,7 @@ func (s *Service) LinkClaim(ctx context.Context, number, claimNumber string) (pe
 		return pelaporanklaim.ClaimReport{}, pelaporanklaim.ErrAlreadyRegistered
 	}
 
-	now := s.clock.Sekarang().UTC()
+	now := s.clock.Now().UTC()
 	report.ClaimNumber = claimNumber
 	report.RegisteredAt = &now
 	report.UpdatedAt = now

@@ -16,7 +16,7 @@ import (
 
 	"claim-pnc/internal/pelaporanklaim/repo/memory"
 	"claim-pnc/internal/pelaporanklaim/usecase"
-	"claim-pnc/internal/platform/waktu"
+	"claim-pnc/internal/platform/clock"
 
 	reporthttp "claim-pnc/internal/pelaporanklaim/http"
 )
@@ -35,7 +35,7 @@ func testServer(t *testing.T, withSamples bool) http.Handler {
 
 	service, err := usecase.NewService(usecase.Options{
 		Repo:  repo,
-		Clock: waktu.JamTetapPada(testNow),
+		Clock: clock.FixedAt(testNow),
 	})
 	require.NoError(t, err)
 

@@ -1,4 +1,4 @@
-import type { StageSummary } from '@/api/tipe'
+import type { StageSummary } from '@/api/types'
 
 type Props = {
   summary: StageSummary[]

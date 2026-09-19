@@ -41,176 +41,176 @@ import (
 	"time"
 )
 
-// StatusApproval adalah posisi sebuah rekening dalam alur persetujuan komite.
+// ApprovalStatus adalah posisi sebuah rekening dalam alur persetujuan komite.
 //
 // Nilainya sengaja tetap "0", "1", "2" seperti di POOLDATA.LST_ACCOUNT: tabelnya masih
 // dibaca dan ditulis sistem lama selama masa paralel (ADR-0003), sehingga mengubah
 // sandi nilainya akan membuat kedua sistem membaca baris yang sama secara berbeda.
-type StatusApproval string
+type ApprovalStatus string
 
 const (
-	// StatusMenunggu — rekening sudah diajukan, komite belum memutuskan.
-	StatusMenunggu StatusApproval = "0"
-	// StatusDisetujui — komite menyetujui; rekening dapat dipakai membayar klaim.
-	StatusDisetujui StatusApproval = "1"
-	// StatusDitolak — komite menolak.
-	StatusDitolak StatusApproval = "2"
+	// StatusPending — rekening sudah diajukan, komite belum memutuskan.
+	StatusPending ApprovalStatus = "0"
+	// StatusApproved — komite menyetujui; rekening dapat dipakai membayar klaim.
+	StatusApproved ApprovalStatus = "1"
+	// StatusRejected — komite menolak.
+	StatusRejected ApprovalStatus = "2"
 )
 
 // Label mengembalikan sebutan status dalam bahasa yang dibaca pengguna.
-func (s StatusApproval) Label() string {
+func (s ApprovalStatus) Label() string {
 	switch s {
-	case StatusMenunggu:
+	case StatusPending:
 		return "Menunggu"
-	case StatusDisetujui:
-		return "Komite Approve"
-	case StatusDitolak:
-		return "Komite Reject"
+	case StatusApproved:
+		return "Committee Approve"
+	case StatusRejected:
+		return "Committee Reject"
 	default:
 		return ""
 	}
 }
 
-// Dikenal menyatakan status ini termasuk salah satu dari tiga yang sah.
-func (s StatusApproval) Dikenal() bool {
-	return s == StatusMenunggu || s == StatusDisetujui || s == StatusDitolak
+// Known menyatakan status ini termasuk salah satu dari tiga yang sah.
+func (s ApprovalStatus) Known() bool {
+	return s == StatusPending || s == StatusApproved || s == StatusRejected
 }
 
-// Rekening adalah satu baris master rekening.
+// Account adalah satu baris master rekening.
 //
-// Kunci alaminya adalah pasangan NomorRekening + KodeBank — nomor rekening yang sama
+// Key alaminya adalah pasangan Number + BankCode — nomor rekening yang sama
 // dapat ada di dua bank berbeda, dan sistem lama pun mengunci keduanya bersama-sama
 // pada setiap UPDATE.
-type Rekening struct {
-	NomorRekening string
-	NamaPemilik   string
-	NamaBank      string
-	CabangBank    string
-	AlamatBank    string
+type Account struct {
+	Number      string
+	OwnerName   string
+	BankName    string
+	BankBranch  string
+	BankAddress string
 
-	// KodeBank adalah LBG_ID pada GENERAL.LST_BANK_GROUP.
-	KodeBank string
+	// BankCode adalah LBG_ID pada GENERAL.LST_BANK_GROUP.
+	BankCode string
 
-	// TipeRekening membedakan pemilik rekening: tertanggung, bengkel, rumah sakit,
+	// AccountType membedakan pemilik rekening: tertanggung, bengkel, rumah sakit,
 	// dan seterusnya. Daftarnya data, bukan konstanta.
-	TipeRekening string
+	AccountType string
 
-	// Aktif adalah status pakai rekening, terpisah dari status persetujuan. Rekening
+	// Active adalah status pakai rekening, terpisah dari status persetujuan. Account
 	// yang sudah disetujui masih dapat dinonaktifkan tanpa menghapusnya — data klaim
 	// lama tetap merujuknya (ADR-0012).
-	Aktif bool
+	Active bool
 
 	Email          string
-	EmailPenginput string
-	Telepon        string
+	SubmitterEmail string
+	Phone          string
 
 	// NIK adalah identitas pemilik rekening, bukan identitas petugas yang menginput.
 	NIK string
 
-	// IDDokumen menunjuk lampiran buku rekening. Wajib terisi sebelum komite dapat
+	// DocumentID menunjuk lampiran buku rekening. Wajib terisi sebelum komite dapat
 	// menyetujui — komite tidak boleh menyetujui rekening yang tidak dapat dilihat
 	// buktinya.
-	IDDokumen string
+	DocumentID string
 
-	// Catatan adalah keterangan approval atasan. Wajib terisi saat komite menyetujui.
-	Catatan string
+	// Note adalah keterangan approval atasan. Wajib terisi saat komite menyetujui.
+	Note string
 
-	Status         StatusApproval
-	KomiteApproval string
-	DiputuskanPada *time.Time
+	Status            ApprovalStatus
+	CommitteeApproval string
+	DecidedAt         *time.Time
 
-	DiinputOleh string
-	DiinputPada time.Time
-	DiubahOleh  string
+	CreatedBy string
+	CreatedAt time.Time
+	UpdatedBy string
 
-	// StatusLayanan menandai hasil pendaftaran ke sistem Kasir.
-	StatusLayanan string
-	// IDRekeningKasir adalah nomor rekening di sisi Kasir, dikembalikan saat
+	// ServiceStatus menandai hasil pendaftaran ke sistem Kasir.
+	ServiceStatus string
+	// CashierAccountID adalah nomor rekening di sisi Kasir, dikembalikan saat
 	// pendaftaran berhasil.
-	IDRekeningKasir string
-	// ResponsKasir adalah pesan terakhir dari Kasir, sudah dipangkas sampai setelah
+	CashierAccountID string
+	// CashierResponse adalah pesan terakhir dari Kasir, sudah dipangkas sampai setelah
 	// tanda "]" persis seperti yang ditampilkan layar lama.
-	ResponsKasir string
+	CashierResponse string
 
-	// FlagPerubahan menandai baris yang lahir dari perubahan rekening klaim berjalan,
+	// ChangeFlag menandai baris yang lahir dari perubahan rekening klaim berjalan,
 	// bukan dari pendaftaran baru.
-	FlagPerubahan string
+	ChangeFlag string
 
 	// Tiga field berikut menyimpan nilai sebelum perubahan. Sistem lama memakainya
 	// untuk memberi tahu Kasir rekening mana yang digantikan.
-	KodeBankLama      string
-	NomorRekeningLama string
-	NamaPemilikLama   string
+	PreviousBankCode  string
+	PreviousNumber    string
+	PreviousOwnerName string
 }
 
 // Bank adalah satu baris GENERAL.LST_BANK_GROUP.
 type Bank struct {
-	Kode string
-	Nama string
+	Code string
+	Name string
 }
 
-// Kunci adalah identitas alami satu rekening.
-type Kunci struct {
-	NomorRekening string
-	KodeBank      string
+// Key adalah identitas alami satu rekening.
+type Key struct {
+	Number   string
+	BankCode string
 }
 
-// KunciDari membaca kunci alami sebuah rekening.
-func (r Rekening) KunciDari() Kunci {
-	return Kunci{NomorRekening: r.NomorRekening, KodeBank: r.KodeBank}
+// KeyOf membaca kunci alami sebuah rekening.
+func (r Account) KeyOf() Key {
+	return Key{Number: r.Number, BankCode: r.BankCode}
 }
 
-// MenungguKeputusan menyatakan rekening ini belum diputuskan komite.
-func (r Rekening) MenungguKeputusan() bool { return r.Status == StatusMenunggu }
+// AwaitingDecision menyatakan rekening ini belum decided komite.
+func (r Account) AwaitingDecision() bool { return r.Status == StatusPending }
 
-// DapatDipakai menyatakan rekening ini boleh menjadi tujuan pembayaran klaim.
+// Usable menyatakan rekening ini boleh menjadi tujuan pembayaran klaim.
 //
 // Dua syarat, bukan satu: disetujui komite DAN masih aktif. Rekening yang dinonaktifkan
 // setelah disetujui tidak boleh dipakai lagi.
-func (r Rekening) DapatDipakai() bool { return r.Status == StatusDisetujui && r.Aktif }
+func (r Account) Usable() bool { return r.Status == StatusApproved && r.Active }
 
 var (
-	// ErrTidakDitemukan dikembalikan bila kunci yang diminta tidak ada.
-	ErrTidakDitemukan = errors.New("masterrekening: rekening tidak ditemukan")
+	// ErrNotFound dikembalikan bila kunci yang diminta tidak ada.
+	ErrNotFound = errors.New("masterrekening: rekening tidak ditemukan")
 
-	// ErrSudahAda dikembalikan bila nomor rekening sudah terdaftar dan barisnya
-	// BUKAN bekas penolakan komite. Lihat BolehDidaftarkanUlang.
-	ErrSudahAda = errors.New("masterrekening: nomor rekening sudah terdaftar")
+	// ErrAlreadyExists dikembalikan bila nomor rekening sudah terdaftar dan barisnya
+	// BUKAN bekas penolakan komite. Lihat CanBeResubmitted.
+	ErrAlreadyExists = errors.New("masterrekening: nomor rekening sudah terdaftar")
 
-	// ErrSudahDiputuskan dikembalikan bila komite hendak memutuskan rekening yang
+	// ErrAlreadyDecided dikembalikan bila komite hendak memutuskan rekening yang
 	// keputusannya sudah pernah diambil. Keputusan komite tidak dianulir lewat layar
 	// ini; pengajuan baru adalah jalannya.
-	ErrSudahDiputuskan = errors.New("masterrekening: keputusan komite sudah pernah diambil")
+	ErrAlreadyDecided = errors.New("masterrekening: keputusan komite sudah pernah diambil")
 
-	// ErrStatusTidakDikenal dikembalikan bila keputusan yang diminta bukan setuju
+	// ErrUnknownStatus dikembalikan bila keputusan yang diminta bukan setuju
 	// maupun tolak.
-	ErrStatusTidakDikenal = errors.New("masterrekening: status keputusan tidak dikenal")
+	ErrUnknownStatus = errors.New("masterrekening: status keputusan tidak dikenal")
 )
 
-// GalatValidasi menyebut seluruh field yang tidak memenuhi syarat sekaligus.
+// ValidationError menyebut seluruh field yang tidak memenuhi syarat sekaligus.
 //
 // Disebut sekaligus, bukan satu per satu: pengguna yang mengisi sembilan kolom berhak
 // tahu seluruh yang kurang dalam satu kali, bukan menemukan satu kesalahan baru pada
 // setiap kali menekan simpan.
-type GalatValidasi struct {
+type ValidationError struct {
 	Field map[string]string
 }
 
-func (g *GalatValidasi) Error() string {
-	nama := make([]string, 0, len(g.Field))
+func (g *ValidationError) Error() string {
+	name := make([]string, 0, len(g.Field))
 	for f := range g.Field {
-		nama = append(nama, f)
+		name = append(name, f)
 	}
 	// Diurutkan supaya pesannya sama pada setiap pemanggilan — pesan galat yang
 	// berubah-ubah urutannya menyulitkan pengujian dan pembacaan log.
-	urutkan(nama)
-	return "masterrekening: isian tidak lengkap: " + strings.Join(nama, ", ")
+	sortRows(name)
+	return "masterrekening: isian tidak lengkap: " + strings.Join(name, ", ")
 }
 
-// Kosong menyatakan tidak ada satu pun field yang bermasalah.
-func (g *GalatValidasi) Kosong() bool { return len(g.Field) == 0 }
+// Empty menyatakan tidak ada satu pun field yang bermasalah.
+func (g *ValidationError) Empty() bool { return len(g.Field) == 0 }
 
-// Periksa memeriksa kelengkapan sebuah rekening sebelum disimpan.
+// Check memeriksa kelengkapan sebuah rekening sebelum disimpan.
 //
 // Daftar field wajibnya diambil apa adanya dari prasyarat langkah "Set Err Msg" pada
 // activity CNMUpdateMasterRekening_act:
@@ -222,47 +222,47 @@ func (g *GalatValidasi) Kosong() bool { return len(g.Field) == 0 }
 // ditambah satu langkah terpisah sesudahnya untuk TempBank.Nik, dan satu lagi untuk
 // TempBank.IDBank. Ketiganya digabung di sini karena pengguna melihatnya sebagai satu
 // formulir, bukan tiga.
-func (r Rekening) Periksa() error {
-	galat := &GalatValidasi{Field: map[string]string{}}
+func (r Account) Check() error {
+	issues := &ValidationError{Field: map[string]string{}}
 
 	wajib := []struct {
-		nama  string
-		nilai string
-		pesan string
+		name    string
+		value   string
+		message string
 	}{
-		{"nomor_rekening", r.NomorRekening, "Nomor rekening wajib diisi."},
-		{"nama_pemilik", r.NamaPemilik, "Nama pemilik rekening wajib diisi."},
-		{"nama_bank", r.NamaBank, "Nama bank wajib diisi."},
-		{"cabang_bank", r.CabangBank, "Nama cabang bank wajib diisi."},
-		{"alamat_bank", r.AlamatBank, "Alamat bank wajib diisi."},
-		{"kode_bank", r.KodeBank, "Bank wajib dipilih dari daftar."},
-		{"tipe_rekening", r.TipeRekening, "Tipe rekening wajib dipilih."},
+		{"nomor_rekening", r.Number, "Nomor rekening wajib diisi."},
+		{"nama_pemilik", r.OwnerName, "Nama pemilik rekening wajib diisi."},
+		{"nama_bank", r.BankName, "Nama bank wajib diisi."},
+		{"cabang_bank", r.BankBranch, "Nama cabang bank wajib diisi."},
+		{"alamat_bank", r.BankAddress, "Alamat bank wajib diisi."},
+		{"kode_bank", r.BankCode, "Bank wajib dipilih dari daftar."},
+		{"tipe_rekening", r.AccountType, "Tipe rekening wajib dipilih."},
 		{"email", r.Email, "Email wajib diisi."},
 		{"nik", r.NIK, "NIK pemilik rekening wajib diisi."},
 	}
 	for _, w := range wajib {
-		if strings.TrimSpace(w.nilai) == "" {
-			galat.Field[w.nama] = w.pesan
+		if strings.TrimSpace(w.value) == "" {
+			issues.Field[w.name] = w.message
 		}
 	}
 
 	// Email diperiksa bentuknya hanya bila terisi; kalau kosong, pesan "wajib diisi"
 	// di atas sudah cukup dan menambah pesan kedua untuk field yang sama hanya
 	// membingungkan.
-	if alamat := strings.TrimSpace(r.Email); alamat != "" && !EmailMasukAkal(alamat) {
-		galat.Field["email"] = "Format email tidak benar."
+	if address := strings.TrimSpace(r.Email); address != "" && !EmailLooksValid(address) {
+		issues.Field["email"] = "Format email tidak benar."
 	}
-	if alamat := strings.TrimSpace(r.EmailPenginput); alamat != "" && !EmailMasukAkal(alamat) {
-		galat.Field["email_penginput"] = "Format email penginput tidak benar."
+	if address := strings.TrimSpace(r.SubmitterEmail); address != "" && !EmailLooksValid(address) {
+		issues.Field["email_penginput"] = "Format email penginput tidak benar."
 	}
 
-	if galat.Kosong() {
+	if issues.Empty() {
 		return nil
 	}
-	return galat
+	return issues
 }
 
-// PeriksaSebelumDisetujui memeriksa dua syarat tambahan yang hanya berlaku saat komite
+// CheckBeforeApproval memeriksa dua syarat tambahan yang hanya berlaku saat komite
 // MENYETUJUI — bukan saat menolak, dan bukan saat rekening disimpan.
 //
 // Keduanya diambil dari dua langkah Page-Set-Messages pada CNMUpdateMasterRekening_act
@@ -273,39 +273,39 @@ func (r Rekening) Periksa() error {
 //
 // Alasannya masuk akal dan dipertahankan: komite tidak boleh menyetujui rekening yang
 // buktinya tidak dapat dilihat, dan alasan persetujuan harus tercatat.
-func (r Rekening) PeriksaSebelumDisetujui() error {
-	galat := &GalatValidasi{Field: map[string]string{}}
+func (r Account) CheckBeforeApproval() error {
+	issues := &ValidationError{Field: map[string]string{}}
 
-	if strings.TrimSpace(r.IDDokumen) == "" {
-		galat.Field["id_dokumen"] = "Buku rekening wajib diunggah sebelum disetujui."
+	if strings.TrimSpace(r.DocumentID) == "" {
+		issues.Field["id_dokumen"] = "Buku rekening wajib diunggah sebelum disetujui."
 	}
-	if strings.TrimSpace(r.Catatan) == "" {
-		galat.Field["catatan"] = "Keterangan approval atasan wajib diisi."
+	if strings.TrimSpace(r.Note) == "" {
+		issues.Field["catatan"] = "Keterangan approval atasan wajib diisi."
 	}
 
-	if galat.Kosong() {
+	if issues.Empty() {
 		return nil
 	}
-	return galat
+	return issues
 }
 
-// BolehDidaftarkanUlang menyatakan nomor rekening yang sudah ada masih boleh diajukan
+// CanBeResubmitted menyatakan nomor rekening yang sudah ada masih boleh diajukan
 // lagi karena pengajuan sebelumnya DITOLAK komite.
 //
 // Ini menjaga perilaku sistem lama apa adanya (P-5). Prasyarat aslinya:
 //
-//	@SizeOfPropertyList(TempValidasi.pxResults)==0 || TempValidasi.pxResults(1).StsAp=="Komite Reject"
+//	@SizeOfPropertyList(TempValidasi.pxResults)==0 || TempValidasi.pxResults(1).StsAp=="Committee Reject"
 //
 // CATATAN UTANG TEKNIS. Sistem lama melaksanakannya dengan MENGHAPUS baris yang
 // ditolak lalu menyisipkan baris baru (RDB-List DelDataRejectMasterRekening). Itu
 // menghilangkan jejak penolakan sebelumnya, dan persis pola yang ADR-0013 perintahkan
 // diganti. Penggantinya tidak dikerjakan di sini karena akan mengubah perilaku, dan
 // Work Owner memilih paritas lebih dulu. Ia dicatat di docs/keputusan-implementasi.md.
-func BolehDidaftarkanUlang(yangAda []Rekening) bool {
+func CanBeResubmitted(yangAda []Account) bool {
 	if len(yangAda) == 0 {
 		return true
 	}
-	return yangAda[0].Status == StatusDitolak
+	return yangAda[0].Status == StatusRejected
 }
 
 // Filter mempersempit daftar rekening yang dibaca.
@@ -315,58 +315,58 @@ func BolehDidaftarkanUlang(yangAda []Rekening) bool {
 // potongan WHERE dari properti TempDataBank, ditambah satu cabang per nilai
 // Param.stsapprove ("0", "1", "2") dan satu cabang untuk Param.komiteapprove.
 type Filter struct {
-	// Status membatasi ke satu posisi persetujuan. Kosong berarti seluruhnya.
-	Status StatusApproval
+	// Status membatasi ke satu posisi persetujuan. Empty berarti seluruhnya.
+	Status ApprovalStatus
 
-	// NomorRekening, NamaPemilik, NamaBank adalah pencarian sebagian, tanpa peduli
+	// Number, OwnerName, BankName adalah pencarian sebagian, tanpa peduli
 	// besar-kecil huruf.
-	NomorRekening string
-	NamaPemilik   string
-	NamaBank      string
+	Number    string
+	OwnerName string
+	BankName  string
 
-	// HanyaKomiteSaya membatasi ke rekening yang menunggu keputusan komite yang
+	// MyCommitteeOnly membatasi ke rekening yang menunggu keputusan komite yang
 	// sedang masuk. Dipakai tab "Komite Approval".
-	HanyaKomiteSaya bool
-	// IdentitasKomite adalah komite yang sedang masuk; hanya dipakai bila
-	// HanyaKomiteSaya bernilai true.
-	IdentitasKomite string
+	MyCommitteeOnly bool
+	// CommitteeIdentity adalah komite yang sedang masuk; hanya dipakai bila
+	// MyCommitteeOnly bernilai true.
+	CommitteeIdentity string
 
-	// Batas dan Lewati adalah paginasi dari server (TKT-U6-001). Batas 0 berarti
+	// Limit dan Lewati adalah paginasi dari server (TKT-U6-001). Batas 0 berarti
 	// memakai nilai baku repo, bukan berarti tanpa batas — daftar rekening tumbuh
 	// terus dan tidak pernah aman dibaca seluruhnya.
-	Batas  int
-	Lewati int
+	Limit  int
+	Offset int
 }
 
 // Repo adalah seam ke penyimpanan master rekening.
 //
-// Pengisinya ada di repo/sqlstore (POOLDATA.LST_ACCOUNT) dan repo/memori.
+// Pengisinya ada di repo/sqlstore (POOLDATA.LST_ACCOUNT) dan repo/memory.
 type Repo interface {
-	// Daftar membaca rekening yang cocok dengan filter, beserta jumlah seluruh baris
+	// List membaca rekening yang cocok dengan filter, beserta jumlah seluruh baris
 	// yang cocok sebelum dipotong paginasi.
-	Daftar(ctx context.Context, f Filter) (baris []Rekening, jumlah int, err error)
+	List(ctx context.Context, f Filter) (rows []Account, total int, err error)
 
-	// Ambil membaca satu rekening. Mengembalikan ErrTidakDitemukan bila tidak ada.
-	Ambil(ctx context.Context, k Kunci) (Rekening, error)
+	// Get membaca satu rekening. Mengembalikan ErrNotFound bila tidak ada.
+	Get(ctx context.Context, k Key) (Account, error)
 
-	// CariNomor membaca seluruh baris dengan nomor rekening tertentu, tanpa peduli
+	// FindByNumber membaca seluruh baris dengan nomor rekening tertentu, tanpa peduli
 	// banknya. Dipakai pemeriksaan duplikasi, yang di sistem lama memang hanya
 	// membandingkan nomornya.
-	CariNomor(ctx context.Context, nomor string) ([]Rekening, error)
+	FindByNumber(ctx context.Context, nomor string) ([]Account, error)
 
-	// Simpan menyisipkan rekening baru.
-	Simpan(ctx context.Context, r Rekening) error
+	// Save menyisipkan rekening baru.
+	Save(ctx context.Context, r Account) error
 
-	// Perbarui menulis ulang rekening yang sudah ada.
-	Perbarui(ctx context.Context, r Rekening) error
+	// Update menulis ulang rekening yang sudah ada.
+	Update(ctx context.Context, r Account) error
 
-	// HapusYangDitolak membuang baris bekas penolakan komite sebelum pengajuan ulang
+	// ClearRejected membuang baris bekas penolakan komite sebelum pengajuan ulang
 	// disisipkan.
 	//
 	// Namanya menyebut syaratnya supaya tidak pernah terbaca sebagai penghapusan
 	// umum: pengisi seam WAJIB menolak menghapus baris yang statusnya bukan
-	// StatusDitolak.
-	HapusYangDitolak(ctx context.Context, k Kunci) error
+	// StatusRejected.
+	ClearRejected(ctx context.Context, k Key) error
 }
 
 // BankRepo adalah seam ke daftar bank.
@@ -374,20 +374,20 @@ type Repo interface {
 // Terpisah dari Repo karena sumbernya tabel lain (GENERAL.LST_BANK_GROUP) yang hanya
 // DIBACA aplikasi ini — pemiliknya sistem lain (ADR-0004).
 type BankRepo interface {
-	Daftar(ctx context.Context) ([]Bank, error)
+	List(ctx context.Context) ([]Bank, error)
 }
 
-// HasilKasir adalah jawaban sistem Kasir atas pendaftaran satu rekening.
-type HasilKasir struct {
-	// Berhasil menyatakan Kasir menerima rekening ini.
-	Berhasil bool
-	// IDRekening adalah nomor rekening di sisi Kasir bila pendaftaran berhasil.
-	IDRekening string
-	// Pesan adalah keterangan dari Kasir, dipakai apa adanya untuk ResponsKasir.
-	Pesan string
-	// Kode adalah kode respons mentah. "1" berarti gagal dan "9" berarti gagal yang
+// CashierResult adalah jawaban sistem Kasir atas pendaftaran satu rekening.
+type CashierResult struct {
+	// Succeeded menyatakan Kasir menerima rekening ini.
+	Succeeded bool
+	// AccountID adalah nomor rekening di sisi Kasir bila pendaftaran berhasil.
+	AccountID string
+	// Message adalah keterangan dari Kasir, dipakai apa adanya untuk CashierResponse.
+	Message string
+	// Code adalah kode respons mentah. "1" berarti gagal dan "9" berarti gagal yang
 	// menuntut PIC diberi tahu — keduanya dibaca dari activity lama.
-	Kode string
+	Code string
 }
 
 // Kasir adalah seam ke sistem Kasir.
@@ -395,33 +395,33 @@ type HasilKasir struct {
 // Sistem lama memanggilnya lewat dua Connect-REST berbeda: InjectDataRekeningToKasir
 // untuk rekening yang baru disetujui, dan UpdateSearchDataRekeningToKasir untuk
 // rekening yang menggantikan rekening lama. Keduanya hanya dipanggil untuk portal ASM
-// dan SIMASNET — lihat usecase.Putuskan.
-type Kasir interface {
-	// Daftarkan mendaftarkan rekening baru ke Kasir.
-	Daftarkan(ctx context.Context, r Rekening) (HasilKasir, error)
+// dan SIMASNET — lihat usecase.Decide.
+type Cashier interface {
+	// Register mendaftarkan rekening baru ke Kasir.
+	Register(ctx context.Context, r Account) (CashierResult, error)
 
-	// Perbarui memberi tahu Kasir bahwa sebuah rekening menggantikan rekening lama.
-	Perbarui(ctx context.Context, r Rekening) (HasilKasir, error)
+	// Update memberi tahu Kasir bahwa sebuah rekening menggantikan rekening lama.
+	Update(ctx context.Context, r Account) (CashierResult, error)
 }
 
-// Penerima adalah orang yang dituju sebuah pemberitahuan.
-type Penerima struct {
-	Nama  string
+// Recipients adalah orang yang dituju sebuah pemberitahuan.
+type Recipients struct {
+	Name  string
 	Email string
 }
 
-// Peringatan adalah isi pemberitahuan kegagalan pendaftaran ke Kasir.
-type Peringatan struct {
-	Rekening Rekening
+// Alert adalah isi pemberitahuan kegagalan pendaftaran ke Kasir.
+type Alert struct {
+	Account Account
 
-	// Pesan adalah keterangan kegagalan dari Kasir, apa adanya.
-	Pesan string
+	// Message adalah keterangan kegagalan dari Kasir, apa adanya.
+	Message string
 
-	// Kode adalah kode respons Kasir. "9" adalah satu-satunya yang di sistem lama
+	// Code adalah kode respons Kasir. "9" adalah satu-satunya yang di sistem lama
 	// memicu surel.
-	Kode string
+	Code string
 
-	// Diputuskan adalah komite yang baru saja mengambil keputusan.
+	// DecidedBy adalah komite yang baru saja mengambil keputusan.
 	//
 	// Ia BUKAN penerima peringatan — ia keterangan, supaya penerima tahu kepada siapa
 	// harus bertanya. Penerimanya ditetapkan konfigurasi dan diketahui pengisi seam,
@@ -435,8 +435,8 @@ type Peringatan struct {
 	// Work Owner menetapkan penerimanya adalah mailbox Tim IT (2026-09-17), karena
 	// peringatan kegagalan integrasi ditujukan ke pihak yang dapat MEMPERBAIKINYA,
 	// bukan ke orang yang kebetulan menekan tombol approve. Dicatat di
-	// docs/keputusan-implementasi.md §10.10.
-	Diputuskan Penerima
+	// docs/keputusan-implementasi.md §11.10.
+	DecidedBy Recipients
 }
 
 // Notifier adalah seam ke pemberitahuan.
@@ -444,10 +444,10 @@ type Peringatan struct {
 // Satu-satunya pemakaiannya di modul ini meniru SendEmailAlertRekening: memberi tahu
 // komite ketika pendaftaran ke Kasir gagal dengan kode "9".
 type Notifier interface {
-	PeringatkanKegagalanKasir(ctx context.Context, p Peringatan) error
+	WarnCashierFailure(ctx context.Context, p Alert) error
 }
 
-// PangkasResponsKasir mengambil bagian pesan setelah tanda "]".
+// TrimCashierResponse mengambil bagian pesan setelah tanda "]".
 //
 // Sistem lama melakukannya di dalam SQL:
 //
@@ -456,27 +456,27 @@ type Notifier interface {
 // Ia dipindahkan ke Go karena itu urusan penyajian, bukan urusan basis data — dan
 // karena INSTR bukan fungsi standar yang tersedia sama di PostgreSQL kelak
 // (docs/Steering/09-DATABASE-STRATEGY.md §4).
-func PangkasResponsKasir(mentah string) string {
+func TrimCashierResponse(mentah string) string {
 	if i := strings.IndexByte(mentah, ']'); i >= 0 {
 		return strings.TrimSpace(mentah[i+1:])
 	}
 	return strings.TrimSpace(mentah)
 }
 
-// EmailMasukAkal memeriksa bentuk alamat surel sekadarnya.
+// EmailLooksValid memeriksa bentuk alamat surel sekadarnya.
 //
 // Sengaja longgar, dan itu disengaja: satu-satunya cara membuktikan sebuah alamat
 // benar adalah mengirim surel ke sana. Validasi yang terlalu ketat justru menolak
 // alamat sah — dan layar lama pun hanya memeriksa keberadaan "@" lewat activity
 // ValidasiEmailRekening.
-func EmailMasukAkal(alamat string) bool {
-	alamat = strings.TrimSpace(alamat)
-	i := strings.IndexByte(alamat, '@')
-	if i <= 0 || i == len(alamat)-1 {
+func EmailLooksValid(address string) bool {
+	address = strings.TrimSpace(address)
+	i := strings.IndexByte(address, '@')
+	if i <= 0 || i == len(address)-1 {
 		return false
 	}
 	// Tidak boleh ada "@" kedua, dan bagian setelahnya harus memuat titik di tengah.
-	domain := alamat[i+1:]
+	domain := address[i+1:]
 	if strings.ContainsRune(domain, '@') {
 		return false
 	}
@@ -484,12 +484,12 @@ func EmailMasukAkal(alamat string) bool {
 	return j > 0 && j < len(domain)-1
 }
 
-// urutkan mengurutkan nama field. Ditulis di sini supaya paket domain tidak perlu
+// sortRows mengurutkan nama field. Ditulis di sini supaya paket domain tidak perlu
 // mengimpor sort hanya untuk satu pemakaian pada jalur galat.
-func urutkan(nama []string) {
-	for i := 1; i < len(nama); i++ {
-		for j := i; j > 0 && nama[j] < nama[j-1]; j-- {
-			nama[j], nama[j-1] = nama[j-1], nama[j]
+func sortRows(name []string) {
+	for i := 1; i < len(name); i++ {
+		for j := i; j > 0 && name[j] < name[j-1]; j-- {
+			name[j], name[j-1] = name[j-1], name[j]
 		}
 	}
 }

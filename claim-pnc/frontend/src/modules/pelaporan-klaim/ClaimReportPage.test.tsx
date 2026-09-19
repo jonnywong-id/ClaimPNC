@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { Rute } from '@/app/App'
-import { gunakanSesi } from '@/app/sesi'
-import type { ClaimReport } from '@/api/tipe'
+import { AppRoute } from '@/app/App'
+import { useSession } from '@/app/session'
+import type { ClaimReport } from '@/api/types'
 
 const PATH = '/api/pelaporan-klaim'
 
@@ -121,6 +121,9 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promi
     // Bilah atas memuat pemilih portal, sehingga SETIAP layar di balik sesi ikut memanggil
     // /api/portal. Dijawab otomatis supaya tiap uji tidak perlu mengulang daftar yang sama.
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
+    // Kerangka layar memuat menunya sendiri sejak menu dibaca dari basis data. Ia
+    // dijawab di sini supaya uji layar ini menguji layarnya, bukan jalur galat menu.
+    if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
     return Promise.resolve(answer(url, init))
   })
 }
@@ -161,7 +164,7 @@ function renderPage() {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/pelaporan-klaim']}>
-        <Rute />
+        <AppRoute />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -181,17 +184,17 @@ function lastListCall(): Call | undefined {
 
 beforeEach(() => {
   calls = []
-  // Layar berada di balik sesi. Tanpa ini PenjagaSesi melempar ke layar masuk.
-  gunakanSesi.setState({
+  // Layar berada di balik sesi. Tanpa ini SessionGuard melempar ke layar masuk.
+  useSession.setState({
     token: 'token-uji',
-    pengguna: SAMPLE_PROFILE,
-    berlakuSampai: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    user: SAMPLE_PROFILE,
+    validUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   })
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  gunakanSesi.getState().bersihkan()
+  useSession.getState().clear()
 })
 
 describe('daftar', () => {

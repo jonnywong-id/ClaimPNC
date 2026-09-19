@@ -3,12 +3,12 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { GalatAPI, GalatJaringan } from '@/api/klien'
-import { KodeGalat, ClaimReportErrorCode, type ClaimReport } from '@/api/tipe'
-import { KolomIsian } from '@/components/KolomIsian'
+import { APIError, NetworkError } from '@/api/client'
+import { ErrorCode, ClaimReportErrorCode, type ClaimReport } from '@/api/types'
+import { Field } from '@/components/Field'
 import { TextAreaField } from '@/components/TextAreaField'
-import { PesanGalat, type NadaGalat } from '@/components/PesanGalat'
-import { Tombol } from '@/components/Tombol'
+import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { Button } from '@/components/Button'
 
 import { useSaveReport, type ReportFormValues } from './api'
 
@@ -270,13 +270,13 @@ export function ClaimReportForm({ report, onClose }: Props) {
           title="Pelapor"
           description="Siapa yang melaporkan, dan bagaimana menghubunginya."
         >
-          <KolomIsian
+          <Field
             id="nama_pelapor"
             label="Nama pelapor"
             placeholder="Contoh: Bagas Prasetya"
             maxLength={MAX_LENGTH.name}
             autoComplete="off"
-            galat={errors.nama_pelapor?.message}
+            error={errors.nama_pelapor?.message}
             disabled={save.isPending}
             {...nameRest}
             ref={(element) => {
@@ -284,45 +284,45 @@ export function ClaimReportForm({ report, onClose }: Props) {
               firstField.current = element
             }}
           />
-          <KolomIsian
+          <Field
             id="email_pengirim"
             label="Email pengirim"
             type="email"
             placeholder="nama@perusahaan.co.id"
             maxLength={MAX_LENGTH.email}
             autoComplete="off"
-            galat={errors.email_pengirim?.message}
+            error={errors.email_pengirim?.message}
             disabled={save.isPending}
             {...register('email_pengirim')}
           />
-          <KolomIsian
+          <Field
             id="telepon_pengirim"
             label="Telepon pengirim"
             placeholder="021-5550101"
             maxLength={MAX_LENGTH.phone}
             autoComplete="off"
-            galat={errors.telepon_pengirim?.message}
+            error={errors.telepon_pengirim?.message}
             disabled={save.isPending}
             {...register('telepon_pengirim')}
           />
-          <KolomIsian
+          <Field
             id="nama_kurir"
             label="Kurir ASM"
             placeholder="Contoh: JNE"
             maxLength={MAX_LENGTH.name}
             autoComplete="off"
-            petunjuk="Nama ekspedisi atau kurir yang membawa dokumennya."
-            galat={errors.nama_kurir?.message}
+            hint="Nama ekspedisi atau kurir yang membawa dokumennya."
+            error={errors.nama_kurir?.message}
             disabled={save.isPending}
             {...register('nama_kurir')}
           />
-          <KolomIsian
+          <Field
             id="subjek_email"
             label="Subjek email"
             placeholder="Judul surel laporan yang masuk"
             maxLength={MAX_LENGTH.name}
             autoComplete="off"
-            galat={errors.subjek_email?.message}
+            error={errors.subjek_email?.message}
             disabled={save.isPending}
             {...register('subjek_email')}
           />
@@ -332,59 +332,59 @@ export function ClaimReportForm({ report, onClose }: Props) {
           title="Polis dan tertanggung"
           description="Sebagaimana disebut pelapor. Data polis yang sah dibaca saat registrasi, bukan di sini — jadi nomor yang belum pasti tetap boleh dicatat."
         >
-          <KolomIsian
+          <Field
             id="nomor_polis"
             label="Nomor polis"
             maxLength={MAX_LENGTH.policyNumber}
             autoComplete="off"
-            galat={errors.nomor_polis?.message}
+            error={errors.nomor_polis?.message}
             disabled={save.isPending}
             {...register('nomor_polis')}
           />
-          <KolomIsian
+          <Field
             id="nama_tertanggung"
             label="Nama tertanggung"
             maxLength={MAX_LENGTH.name}
             autoComplete="off"
-            galat={errors.nama_tertanggung?.message}
+            error={errors.nama_tertanggung?.message}
             disabled={save.isPending}
             {...register('nama_tertanggung')}
           />
-          <KolomIsian
+          <Field
             id="email_tertanggung"
             label="Email tertanggung"
             type="email"
             maxLength={MAX_LENGTH.email}
             autoComplete="off"
-            galat={errors.email_tertanggung?.message}
+            error={errors.email_tertanggung?.message}
             disabled={save.isPending}
             {...register('email_tertanggung')}
           />
-          <KolomIsian
+          <Field
             id="nomor_referensi"
             label="Nomor referensi"
             maxLength={MAX_LENGTH.policyNumber}
             autoComplete="off"
-            galat={errors.nomor_referensi?.message}
+            error={errors.nomor_referensi?.message}
             disabled={save.isPending}
             {...register('nomor_referensi')}
           />
-          <KolomIsian
+          <Field
             id="kode_bisnis"
             label="Kode bisnis"
             maxLength={MAX_LENGTH.code}
             autoComplete="off"
-            galat={errors.kode_bisnis?.message}
+            error={errors.kode_bisnis?.message}
             disabled={save.isPending}
             {...register('kode_bisnis')}
           />
-          <KolomIsian
+          <Field
             id="group_panel"
             label="Group panel"
             maxLength={MAX_LENGTH.code}
             autoComplete="off"
-            petunjuk="002 PA · 003/009 Aneka · 004 Marine · 005 Travel · 006 Fire."
-            galat={errors.group_panel?.message}
+            hint="002 PA · 003/009 Aneka · 004 Marine · 005 Travel · 006 Fire."
+            error={errors.group_panel?.message}
             disabled={save.isPending}
             {...register('group_panel')}
           />
@@ -394,40 +394,40 @@ export function ClaimReportForm({ report, onClose }: Props) {
           title="Kerugian yang dilaporkan"
           description="Apa yang terjadi, kapan, dan di mana."
         >
-          <KolomIsian
+          <Field
             id="tanggal_kejadian"
             label="Tanggal kejadian"
             type="date"
-            galat={errors.tanggal_kejadian?.message}
+            error={errors.tanggal_kejadian?.message}
             disabled={save.isPending}
             {...register('tanggal_kejadian')}
           />
-          <KolomIsian
+          <Field
             id="tipe_klaim"
             label="Tipe klaim"
             maxLength={MAX_LENGTH.code}
             autoComplete="off"
-            galat={errors.tipe_klaim?.message}
+            error={errors.tipe_klaim?.message}
             disabled={save.isPending}
             {...register('tipe_klaim')}
           />
-          <KolomIsian
+          <Field
             id="nilai_estimasi"
             label="Estimasi kerugian"
             inputMode="decimal"
             placeholder="450000000"
             autoComplete="off"
-            petunjuk="Angka saja, tanpa titik ribuan dan tanpa Rp."
-            galat={errors.nilai_estimasi?.message}
+            hint="Angka saja, tanpa titik ribuan dan tanpa Rp."
+            error={errors.nilai_estimasi?.message}
             disabled={save.isPending}
             {...register('nilai_estimasi')}
           />
-          <KolomIsian
+          <Field
             id="sim_pengendara"
             label="SIM pengendara"
             maxLength={MAX_LENGTH.policyNumber}
             autoComplete="off"
-            galat={errors.sim_pengendara?.message}
+            error={errors.sim_pengendara?.message}
             disabled={save.isPending}
             {...register('sim_pengendara')}
           />
@@ -471,21 +471,21 @@ export function ClaimReportForm({ report, onClose }: Props) {
           title="Dokumen dan catatan"
           description="Kelengkapan dokumen dan alasan bila laporan tertahan."
         >
-          <KolomIsian
+          <Field
             id="jumlah_dokumen"
             label="Jumlah dokumen"
             type="number"
             min={0}
-            galat={errors.jumlah_dokumen?.message}
+            error={errors.jumlah_dokumen?.message}
             disabled={save.isPending}
             {...register('jumlah_dokumen')}
           />
-          <KolomIsian
+          <Field
             id="tanggal_terima_dokumen"
             label="Tanggal terima dokumen"
             type="date"
-            petunjuk="Kapan dokumennya benar-benar diterima."
-            galat={errors.tanggal_terima_dokumen?.message}
+            hint="Kapan dokumennya benar-benar diterima."
+            error={errors.tanggal_terima_dokumen?.message}
             disabled={save.isPending}
             {...register('tanggal_terima_dokumen')}
           />
@@ -516,13 +516,13 @@ export function ClaimReportForm({ report, onClose }: Props) {
         </FieldGroup>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
-          <Tombol type="submit" nada="utama" disabled={save.isPending}>
+          <Button type="submit" tone="utama" disabled={save.isPending}>
             {save.isPending && <Spinner />}
             {save.isPending ? 'Menyimpan…' : 'Simpan'}
-          </Tombol>
-          <Tombol nada="halus" onClick={onClose} disabled={save.isPending}>
+          </Button>
+          <Button tone="halus" onClick={onClose} disabled={save.isPending}>
             Batal
-          </Tombol>
+          </Button>
         </div>
       </div>
     </form>
@@ -577,68 +577,68 @@ function Spinner() {
  * Teks bisa berubah kapan saja tanpa mengubah artinya; kode tidak.
  */
 function SaveErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof GalatJaringan) {
+  if (error instanceof NetworkError) {
     return (
-      <PesanGalat
-        judul="Tidak dapat menghubungi server"
-        keterangan="Laporan belum tersimpan. Periksa koneksi lalu coba lagi."
-        nada="gangguan"
+      <ErrorMessage
+        title="Tidak dapat menghubungi server"
+        description="Laporan belum tersimpan. Periksa koneksi lalu coba lagi."
+        tone="gangguan"
       />
     )
   }
 
-  if (!(error instanceof GalatAPI)) {
+  if (!(error instanceof APIError)) {
     return (
-      <PesanGalat
-        judul="Gagal menyimpan"
-        keterangan="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
-        nada="gangguan"
+      <ErrorMessage
+        title="Gagal menyimpan"
+        description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
+        tone="gangguan"
       />
     )
   }
 
-  const { judul, keterangan, nada } = describeError(error)
-  return <PesanGalat judul={judul} keterangan={keterangan} nada={nada} />
+  const { title, description, tone } = describeError(error)
+  return <ErrorMessage title={title} description={description} tone={tone} />
 }
 
-function describeError(error: GalatAPI): {
-  judul: string
-  keterangan: string
-  nada: NadaGalat
+function describeError(error: APIError): {
+  title: string
+  description: string
+  tone: ErrorTone
 } {
   switch (error.kode) {
-    case KodeGalat.validasiGagal:
+    case ErrorCode.validationFailed:
       return {
-        judul: 'Isian belum benar',
+        title: 'Isian belum benar',
         // Pesan dari server dipakai apa adanya: ia yang tahu aturan mana yang dilanggar,
         // dan menerjemahkannya ulang di sini akan membuat keduanya dapat berbeda.
-        keterangan: error.detail.map((d) => d.pesan).join(' ') || error.message,
-        nada: 'penolakan',
+        description: error.detail.map((d) => d.pesan).join(' ') || error.message,
+        tone: 'penolakan',
       }
 
     case ClaimReportErrorCode.alreadyRegistered:
       return {
-        judul: 'Laporan sudah menjadi klaim',
-        keterangan:
+        title: 'Laporan sudah menjadi klaim',
+        description:
           'Sejak klaimnya terbit, yang berlaku adalah data klaim — laporannya tidak dapat diubah lagi. Muat ulang daftarnya.',
-        nada: 'penolakan',
+        tone: 'penolakan',
       }
 
     case ClaimReportErrorCode.notFound:
       return {
-        judul: 'Laporan tidak ditemukan',
-        keterangan: 'Laporan ini mungkin sudah diubah orang lain. Muat ulang daftarnya.',
-        nada: 'penolakan',
+        title: 'Laporan tidak ditemukan',
+        description: 'Laporan ini mungkin sudah diubah orang lain. Muat ulang daftarnya.',
+        tone: 'penolakan',
       }
 
     case ClaimReportErrorCode.numberTaken:
       return {
-        judul: 'Nomor bentrok',
-        keterangan: 'Nomor yang dibuat sistem sudah dipakai. Coba simpan sekali lagi.',
-        nada: 'gangguan',
+        title: 'Nomor bentrok',
+        description: 'Nomor yang dibuat sistem sudah dipakai. Coba simpan sekali lagi.',
+        tone: 'gangguan',
       }
 
     default:
-      return { judul: 'Gagal menyimpan', keterangan: error.message, nada: 'gangguan' }
+      return { title: 'Gagal menyimpan', description: error.message, tone: 'gangguan' }
   }
 }

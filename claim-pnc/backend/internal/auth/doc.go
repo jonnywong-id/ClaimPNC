@@ -3,21 +3,21 @@
 // # Isi paket ini
 //
 // Aturan dan tipe yang dimiliki modul — identitas pengguna, sesi, dan catatan pengguna
-// lokal — beserta SEAM yang dideklarasikannya: `Identitas`, `PenggunaRepo`, dan
-// `SesiRepo`. Antarmuka dideklarasikan di sini, di paket yang memakainya, dan dipenuhi
+// lokal — beserta SEAM yang dideklarasikannya: `Identity`, `UserRepo`, dan
+// `SessionRepo`. Antarmuka dideklarasikan di sini, di paket yang memakainya, dan dipenuhi
 // subpaket di bawahnya.
 //
 // # Yang DILARANG masuk ke paket ini
 //
 // HTTP, SQL, driver basis data, dan bentuk JSON wire. Paket ini hanya boleh mengimpor
-// pustaka standar dan seam lintas modul (`platform/waktu`). Aturan ini adalah bentuk
+// pustaka standar dan seam lintas modul (`platform/clock`). Aturan ini adalah bentuk
 // modul dari arah ketergantungan `ADR-0001`: ketergantungan hanya mengarah ke dalam.
 //
 // # Susunan subpaket
 //
 //	auth/            aturan modul + seam          ← paket ini
 //	auth/usecase/    orkestrasi masuk, periksa, perpanjang, keluar
-//	auth/provider/   pengisi seam Identitas       — tiruan, dan kelak HCC/HCQ
+//	auth/provider/   pengisi seam Identity       — tiruan, dan kelak HCC/HCQ
 //	auth/repo/       pengisi seam penyimpanan     — sqlstore, memori
 //	auth/http/       lapisan transport modul ini  — handler, dto, middleware, rute
 //

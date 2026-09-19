@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { panggilAPI } from '@/api/klien'
+import { callAPI } from '@/api/client'
 import type {
-  Rekening,
-  ResponsDaftarBank,
-  ResponsDaftarRekening,
-  StatusRekening,
-} from '@/api/tipe'
-import { gunakanSesi } from '@/app/sesi'
+  Account,
+  BankListResponse,
+  AccountListResponse,
+  AccountStatus,
+} from '@/api/types'
+import { useSession } from '@/app/session'
 
-const JALUR = '/api/master-rekening'
+const ROUTES = '/api/master-rekening'
 
 /** Saringan daftar rekening; seluruh field boleh kosong. */
-export type SaringanRekening = {
-  status?: StatusRekening | ''
+export type AccountFilter = {
+  status?: AccountStatus | ''
   nomorRekening?: string
   namaPemilik?: string
   namaBank?: string
@@ -24,7 +24,7 @@ export type SaringanRekening = {
 }
 
 /** Isian formulir rekening. */
-export type IsianRekening = {
+export type AccountFields = {
   nomorRekening: string
   namaPemilik: string
   namaBank: string
@@ -43,38 +43,38 @@ export type IsianRekening = {
   namaPemilikLama?: string
 }
 
-function badanDari(isian: IsianRekening) {
+function bodyOf(values: AccountFields) {
   return {
-    nomor_rekening: isian.nomorRekening,
-    nama_pemilik: isian.namaPemilik,
-    nama_bank: isian.namaBank,
-    cabang_bank: isian.cabangBank,
-    alamat_bank: isian.alamatBank,
-    kode_bank: isian.kodeBank,
-    tipe_rekening: isian.tipeRekening,
-    email: isian.email,
-    telepon: isian.telepon,
-    nik: isian.nik,
-    id_dokumen: isian.idDokumen,
-    catatan: isian.catatan,
-    aktif: isian.aktif,
-    kode_bank_lama: isian.kodeBankLama ?? '',
-    nomor_rekening_lama: isian.nomorRekeningLama ?? '',
-    nama_pemilik_lama: isian.namaPemilikLama ?? '',
+    nomor_rekening: values.nomorRekening,
+    nama_pemilik: values.namaPemilik,
+    nama_bank: values.namaBank,
+    cabang_bank: values.cabangBank,
+    alamat_bank: values.alamatBank,
+    kode_bank: values.kodeBank,
+    tipe_rekening: values.tipeRekening,
+    email: values.email,
+    telepon: values.telepon,
+    nik: values.nik,
+    id_dokumen: values.idDokumen,
+    catatan: values.catatan,
+    aktif: values.aktif,
+    kode_bank_lama: values.kodeBankLama ?? '',
+    nomor_rekening_lama: values.nomorRekeningLama ?? '',
+    nama_pemilik_lama: values.namaPemilikLama ?? '',
   }
 }
 
-function kueriDari(saringan: SaringanRekening): string {
+function queryFrom(filter: AccountFilter): string {
   const q = new URLSearchParams()
-  if (saringan.status) q.set('status', saringan.status)
-  if (saringan.nomorRekening?.trim()) q.set('nomor_rekening', saringan.nomorRekening.trim())
-  if (saringan.namaPemilik?.trim()) q.set('nama_pemilik', saringan.namaPemilik.trim())
-  if (saringan.namaBank?.trim()) q.set('nama_bank', saringan.namaBank.trim())
-  if (saringan.komiteSaya) q.set('komite_saya', '1')
-  if (saringan.batas !== undefined) q.set('batas', String(saringan.batas))
-  if (saringan.lewati !== undefined) q.set('lewati', String(saringan.lewati))
-  const teks = q.toString()
-  return teks === '' ? '' : `?${teks}`
+  if (filter.status) q.set('status', filter.status)
+  if (filter.nomorRekening?.trim()) q.set('nomor_rekening', filter.nomorRekening.trim())
+  if (filter.namaPemilik?.trim()) q.set('nama_pemilik', filter.namaPemilik.trim())
+  if (filter.namaBank?.trim()) q.set('nama_bank', filter.namaBank.trim())
+  if (filter.komiteSaya) q.set('komite_saya', '1')
+  if (filter.batas !== undefined) q.set('batas', String(filter.batas))
+  if (filter.lewati !== undefined) q.set('lewati', String(filter.lewati))
+  const text = q.toString()
+  return text === '' ? '' : `?${text}`
 }
 
 /**
@@ -83,13 +83,13 @@ function kueriDari(saringan: SaringanRekening): string {
  * Kelima tab layar memakai hook yang sama dengan saringan berbeda; `queryKey` memuat
  * saringannya sehingga berpindah tab tidak menampilkan hasil tab sebelumnya sesaat.
  */
-export function gunakanDaftarRekening(saringan: SaringanRekening) {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+export function useAccountList(filter: AccountFilter) {
+  const token = useSession((state) => state.token)
 
   return useQuery({
-    queryKey: ['master-rekening', saringan, token],
+    queryKey: ['master-rekening', filter, token],
     queryFn: () =>
-      panggilAPI<ResponsDaftarRekening>(`${JALUR}${kueriDari(saringan)}`, { token }),
+      callAPI<AccountListResponse>(`${ROUTES}${queryFrom(filter)}`, { token }),
     enabled: token !== null,
     // Antrean komite berubah karena tindakan orang lain; hasil yang basi di layar
     // persetujuan berarti dua komite memutuskan rekening yang sama.
@@ -103,77 +103,77 @@ export function gunakanDaftarRekening(saringan: SaringanRekening) {
  * Daftarnya nyaris tidak pernah berubah dalam satu sesi kerja, sehingga disimpan lama —
  * memuatnya ulang setiap kali formulir dibuka hanya membebani basis data.
  */
-export function gunakanDaftarBank() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+export function useBankList() {
+  const token = useSession((state) => state.token)
 
   return useQuery({
     queryKey: ['master-rekening', 'bank', token],
-    queryFn: () => panggilAPI<ResponsDaftarBank>(`${JALUR}/bank`, { token }),
+    queryFn: () => callAPI<BankListResponse>(`${ROUTES}/bank`, { token }),
     enabled: token !== null,
     staleTime: 30 * 60 * 1000,
   })
 }
 
 /** Hook pengajuan rekening baru. */
-export function gunakanAjukanRekening() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const klien = useQueryClient()
+export function useSubmitAccount() {
+  const token = useSession((state) => state.token)
+  const client = useQueryClient()
 
   return useMutation({
-    mutationFn: (isian: IsianRekening) =>
-      panggilAPI<Rekening>(JALUR, { metode: 'POST', badan: badanDari(isian), token }),
+    mutationFn: (values: AccountFields) =>
+      callAPI<Account>(ROUTES, { metode: 'POST', body: bodyOf(values), token }),
     onSuccess: () => {
-      void klien.invalidateQueries({ queryKey: ['master-rekening'] })
+      void client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }
 
 /** Hook perubahan rekening yang masih menunggu keputusan. */
-export function gunakanUbahRekening() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const klien = useQueryClient()
+export function useUpdateAccount() {
+  const token = useSession((state) => state.token)
+  const client = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ kodeBank, nomorRekening, isian }: {
+    mutationFn: ({ kodeBank, nomorRekening, values }: {
       kodeBank: string
       nomorRekening: string
-      isian: IsianRekening
+      values: AccountFields
     }) =>
-      panggilAPI<Rekening>(
-        `${JALUR}/${encodeURIComponent(kodeBank)}/${encodeURIComponent(nomorRekening)}`,
-        { metode: 'PUT', badan: badanDari(isian), token },
+      callAPI<Account>(
+        `${ROUTES}/${encodeURIComponent(kodeBank)}/${encodeURIComponent(nomorRekening)}`,
+        { metode: 'PUT', body: bodyOf(values), token },
       ),
     onSuccess: () => {
-      void klien.invalidateQueries({ queryKey: ['master-rekening'] })
+      void client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }
 
 /** Hook keputusan komite: menyetujui atau menolak satu rekening. */
-export function gunakanPutuskanRekening() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
-  const klien = useQueryClient()
+export function useDecideAccount() {
+  const token = useSession((state) => state.token)
+  const client = useQueryClient()
 
   return useMutation({
     mutationFn: ({ kodeBank, nomorRekening, status, catatan, idDokumen }: {
       kodeBank: string
       nomorRekening: string
-      status: StatusRekening
+      status: AccountStatus
       catatan: string
       idDokumen?: string
     }) =>
-      panggilAPI<Rekening>(
-        `${JALUR}/${encodeURIComponent(kodeBank)}/${encodeURIComponent(nomorRekening)}/keputusan`,
+      callAPI<Account>(
+        `${ROUTES}/${encodeURIComponent(kodeBank)}/${encodeURIComponent(nomorRekening)}/keputusan`,
         {
           metode: 'POST',
-          badan: { status, catatan, id_dokumen: idDokumen ?? '' },
+          body: { status, catatan, id_dokumen: idDokumen ?? '' },
           token,
         },
       ),
     onSuccess: () => {
       // Seluruh tab ikut disegarkan: satu keputusan memindahkan baris dari tab
       // "Waiting Approval" ke tab "Approve" atau "Reject" sekaligus.
-      void klien.invalidateQueries({ queryKey: ['master-rekening'] })
+      void client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
   })
 }

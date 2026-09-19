@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { panggilAPI } from '@/api/klien'
-import type { ClaimReportListResponse, ClaimReportResponse } from '@/api/tipe'
-import { gunakanSesi } from '@/app/sesi'
+import { callAPI } from '@/api/client'
+import type { ClaimReportListResponse, ClaimReportResponse } from '@/api/types'
+import { useSession } from '@/app/session'
 
 const PATH = '/api/pelaporan-klaim'
 
@@ -51,11 +51,11 @@ function buildPath(f: ReportFilter): string {
  * riwayat laporan ke setiap layar yang dibuka.
  */
 export function useReportList(filter: ReportFilter) {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+  const token = useSession((state) => state.token)
 
   return useQuery({
     queryKey: keys.list(token, filter),
-    queryFn: () => panggilAPI<ClaimReportListResponse>(buildPath(filter), { token }),
+    queryFn: () => callAPI<ClaimReportListResponse>(buildPath(filter), { token }),
     enabled: token !== null,
 
     // Hasil tab sebelumnya ditahan selama tab baru dimuat, alih-alih layar berkedip
@@ -108,16 +108,16 @@ export type ReportFormValues = {
  * pengubahan ia berada di jalur URL.
  */
 export function useSaveReport() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+  const token = useSession((state) => state.token)
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: ({ number, values }: { number?: string; values: ReportFormValues }) =>
-      panggilAPI<ClaimReportResponse>(
+      callAPI<ClaimReportResponse>(
         number ? `${PATH}/${encodeURIComponent(number)}` : PATH,
         {
           metode: number ? 'PUT' : 'POST',
-          badan: values,
+          body: values,
           token,
         },
       ),
@@ -138,12 +138,12 @@ export function useSaveReport() {
  * apa pun yang mencegah laporan ditransfer dua kali.
  */
 export function useTransferReport() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+  const token = useSession((state) => state.token)
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: (number: string) =>
-      panggilAPI<ClaimReportResponse>(`${PATH}/${encodeURIComponent(number)}/transfer`, {
+      callAPI<ClaimReportResponse>(`${PATH}/${encodeURIComponent(number)}/transfer`, {
         metode: 'POST',
         token,
       }),
@@ -162,14 +162,14 @@ export function useTransferReport() {
  * tab "belum diregistrasi" selamanya.
  */
 export function useLinkClaim() {
-  const token = gunakanSesi((keadaan) => keadaan.token)
+  const token = useSession((state) => state.token)
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: ({ number, claimNumber }: { number: string; claimNumber: string }) =>
-      panggilAPI<ClaimReportResponse>(`${PATH}/${encodeURIComponent(number)}/klaim`, {
+      callAPI<ClaimReportResponse>(`${PATH}/${encodeURIComponent(number)}/klaim`, {
         metode: 'POST',
-        badan: { nomor_klaim: claimNumber },
+        body: { nomor_klaim: claimNumber },
         token,
       }),
     onSuccess: () => {

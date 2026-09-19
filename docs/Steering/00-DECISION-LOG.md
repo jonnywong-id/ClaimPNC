@@ -2343,3 +2343,132 @@ Karena itu **kewenangan portal harus tersimpan di satu tempat bersama identitas*
 **Yang tetap terbuka:** **8 usulan bertanda `DUGAAN`** dan **5 bertanda `JANGGAL`** pada inventaris harness masih menunggu koreksi Work Owner. Dua yang paling patut ditinjau: `inboxCompliance_Harness` (145 KB, **nol** Report Definition — antrean kerja tanpa sumber data tidak masuk akal) dan `inboxAnalystDoctor_Harness` (348 KB, menyangkut **data medis** `FR-R2`, sehingga salah golong berakibat pada kendali akses).
 
 **Dampak ke Steering:** `CONTEXT.md` (entri baru) · `06-MODULE-BREAKDOWN.md` `U-3` · `22-INVENTARIS-HARNESS.md` · `docs/ticketing/U-3-*` dan `U-6-*` · `docs/tools/build-inventaris-harness.js`
+
+---
+
+### D-80 · Penamaan di Dalam Kode Menjadi Bahasa Inggris — Membatasi `D-19`
+**Status:** DECIDED — **membatasi `D-19`** pada bagian bahasa penamaan; sisa isi `D-19` tetap berlaku
+
+**Pertanyaan:** `D-19` menetapkan istilah domain dipakai sebagai **ubiquitous language** di nama
+tabel, struct Go, endpoint API, label UI, dan dokumentasi — dan `08-TECHNICAL-STRATEGY.md` §4.1
+menurunkannya menjadi *"istilah domain memakai bahasa Indonesia, istilah teknis memakai bahasa
+Inggris"*. Setelah modul Login, Home, Master Rekening, dan Master Status Klaim berjalan, aturan itu
+menghasilkan kode yang berpindah bahasa dua kali dalam satu baris. Apakah penamaannya dialihkan
+seluruhnya ke bahasa Inggris?
+
+**Jawaban Work Owner (2026-09-18):**
+> "ubah struktur folder code Claim PNC, dari bahasa indonesia menjadi bahasa inggris untuk penamaan
+> folder, file dan code didalamnya. dan tambahkan keterangan pada CLAUDE.MD supaya selanjutnya sudah
+> otomatis menggunakan bahasa inggris."
+
+Tiga pertanyaan lanjutan diajukan sebelum satu berkas pun disentuh, dan seluruhnya dijawab:
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Teks yang dilihat pengguna ikut atau tidak | **Disamakan seperti referensi dari file XML**, kecuali tambahan yang tidak ada di XML — itu dikoreksi menjadi bahasa Inggris |
+| 2 | Nama field JSON API dan nama kolom basis data | **Keduanya tetap Indonesia** |
+| 3 | Komentar dan dokumen | **Komentar termasuk isi dokumen di `claim-pnc/docs` tetap bahasa Indonesia** |
+
+**Keputusan akhir:** **seluruh nama di dalam kode memakai bahasa Inggris** — folder, berkas, paket,
+tipe, fungsi, method, field struct, parameter, dan variabel lokal, di backend Go maupun frontend
+TypeScript. Lima hal **tetap berbahasa Indonesia**: komentar dan dokumen, nama field JSON API,
+nama tabel/kolom basis data, teks yang dilihat pengguna, serta **nama variabel lingkungan dan flag
+baris perintah** — yang terakhir karena ia dipakai berkas `.env` dan skrip deployment, sehingga
+menggantinya merusak lingkungan yang sudah berjalan, bukan sekadar mengganti nama.
+
+**Apa yang dibatasi dari `D-19`, dan apa yang tidak.** Yang dibatasi **hanya bahasanya**. Sasaran
+`D-19` — tidak membawa alias Pega yang salah arti — **tetap dipegang penuh**: yang dipakai adalah
+padanan Inggris yang benar dari `CONTEXT.md`, bukan alias lama. `Adjustment` tetap **tidak** dipakai;
+penggantinya `SettlementLine`. `Object` tetap tidak dipakai; penggantinya `InsuredItem`. `CONTEXT.md`
+tetap satu-satunya sumber arti istilah, dan entrinya tetap berbahasa Indonesia.
+
+**Alasan yang diterima:**
+
+1. **Pustaka standar Go dan React seluruhnya berbahasa Inggris.** Penamaan campur membuat satu
+   baris berpindah bahasa dua kali — `kumpulan.Tersedia()` berdampingan dengan `strings.TrimSpace`.
+2. **Bahasa Indonesia tidak mengenal infleksi.** `Daftar`, `Didaftarkan`, dan `Pendaftaran` sering
+   tertukar di tempat yang tidak disengaja; `List`, `Register`, dan `Registration` tidak.
+3. **Rekrutmen dan rujukan.** Pencarian galat, contoh kode, dan dokumentasi pustaka seluruhnya
+   berbahasa Inggris.
+
+**Konsekuensi yang diterima secara sadar:**
+
+1. **Satu baris kode dapat memuat dua bahasa** — `Number string \`json:"nomor_rekening"\`` — dan
+   itu memang yang dikehendaki: yang kiri nama internal, yang kanan kontrak.
+2. **Riwayat `git blame` pada modul yang sudah selesai terputus** oleh perubahan menyeluruh ini.
+   Isolasi Protektif yang biasanya melarang menyentuh modul selesai **dicabut khusus untuk
+   penggantian nama ini**, atas permintaan Work Owner; perilakunya tidak diubah sama sekali.
+3. **Dokumen `claim-pnc/docs/catatan-pengembangan.md` dan `keputusan-implementasi.md` memuat jalur
+   berkas lama.** Keduanya **rekaman**, bukan pernyataan yang berlaku, sehingga tidak disunting —
+   sejalan dengan perlakuan yang sama pada `00-DECISION-LOG.md`.
+
+**Dampak ke Steering:** `08-TECHNICAL-STRATEGY.md` §4.1 (ditulis ulang) · `CLAUDE.md` dan
+`STEERING.md` dibangun ulang · `D-19` dibatasi
+
+---
+
+### D-81 · Nama Folder Modul Memakai Nama Modul Bisnis — Melengkapi `D-80`
+**Status:** DECIDED — **melengkapi `D-80`** dengan satu pengecualian yang berlawanan arah
+
+**Pertanyaan:** `D-80` menetapkan seluruh nama di dalam kode memakai bahasa Inggris, dan
+penggantian namanya menghasilkan folder modul `internal/bankaccount`, `internal/claimstatus`,
+`src/modules/bank-account`, dan `src/modules/claim-status`. Work Owner tidak mengenali nama-nama
+itu sebagai modul yang dimintanya.
+
+**Jawaban Work Owner (2026-09-18):**
+> "Untuk modul bank-account dan claim-status diubah menjadi master-rekening dan master-status-klaim
+> dan untuk prompt selanjutkan akan diberitahu nama modulnya, contoh modul Master Rekening maka
+> nama modulnya pada script menjadi master-rekening"
+
+Satu pertanyaan lanjutan diajukan sebelum berkas disentuh: apakah aturan ini berlaku di backend
+juga, atau hanya di frontend — karena `bank-account` dan `claim-status` yang disebut Work Owner
+adalah nama folder **frontend**, sementara backend memakai `bankaccount` dan `claimstatus`.
+**Jawaban: backend dan frontend.**
+
+**Keputusan akhir:** **nama folder modul mengikuti nama modul bisnis yang disebut Work Owner**,
+dalam bahasa Indonesia.
+
+| Lapisan | Bentuk | Contoh |
+|---|---|---|
+| Folder backend dan nama paket Go | `namamodul` — huruf kecil, **tanpa tanda hubung** | `internal/masterrekening` · `internal/masterstatus` |
+| Folder frontend | `nama-modul` — `kebab-case` | `src/modules/master-rekening` · `src/modules/master-status-klaim` |
+
+**Isi modulnya tetap berbahasa Inggris** sesuai `D-80`. Yang berbahasa Indonesia hanyalah **nama
+modulnya** — tipe, fungsi, field, dan variabel di dalamnya tidak berubah:
+
+```go
+package masterrekening
+
+type Account struct {
+	Number string `json:"nomor_rekening"`
+}
+```
+
+**Kenapa pengecualian ini justru memperkuat `D-80`, bukan melemahkannya.** `D-80` menetapkan yang
+tetap berbahasa Indonesia adalah hal-hal yang **dipakai orang di luar kode** — kontrak API, kolom
+basis data, teks layar, variabel lingkungan. Nama modul masuk kategori yang sama: ia dipakai Work
+Owner saat meminta pekerjaan, tertulis di tiket (`docs/ticketing/`), dan dipakai saat membicarakan
+lingkup. Nama yang tidak dikenali orang yang memesannya bukan nama yang berguna.
+
+**Nama modul tidak dikarang.** Ia diambil dari nama yang disebut Work Owner, dan untuk modul
+berikutnya **akan disebutkan di prompt**. Modul kerangka yang memang tidak punya nama bisnis —
+`auth`, `portal`, `platform`, `spa` — tidak berubah.
+
+**Yang berubah pada sesi ini:**
+
+| Sebelum | Sesudah |
+|---|---|
+| `internal/bankaccount/**` · `bankaccount.go` | `internal/masterrekening/**` · `masterrekening.go` |
+| `internal/claimstatus/**` · `claimstatus.go` | `internal/masterstatus/**` · `masterstatus.go` |
+| paket `bankaccounthttp` · `claimstatushttp` | paket `masterrekeninghttp` · `masterstatushttp` |
+| awalan galat `"bankaccount: …"` · `"claimstatus: …"` | `"masterrekening: …"` · `"masterstatus: …"` |
+| `src/modules/bank-account/**` | `src/modules/master-rekening/**` |
+| `src/modules/claim-status/**` | `src/modules/master-status-klaim/**` |
+| `BankAccountPage.tsx` | `AccountPage.tsx` — komponen memakai nama **tipe domain**, bukan nama modul |
+
+**Konsekuensi yang diterima secara sadar:** satu jalur berkas dapat memuat dua bahasa —
+`internal/masterrekening/repo/sqlstore/account.go`. Yang kiri nama modul, yang kanan isi modul,
+dan keduanya memang punya pembaca yang berbeda.
+
+**Dampak ke Steering:** `08-TECHNICAL-STRATEGY.md` §4.1 (tabel Penamaan + bagian baru) ·
+`CLAUDE.md` dan `STEERING.md` dibangun ulang · `claim-pnc/docs/peta-penamaan.md`

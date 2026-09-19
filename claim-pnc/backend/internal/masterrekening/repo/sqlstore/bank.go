@@ -15,38 +15,38 @@ type BankRepo struct {
 	db *sql.DB
 }
 
-// BankRepoBaru membentuk repo; db wajib sudah terhubung.
-func BankRepoBaru(db *sql.DB) *BankRepo { return &BankRepo{db: db} }
+// NewBankRepo membentuk repo; db wajib sudah terhubung.
+func NewBankRepo(db *sql.DB) *BankRepo { return &BankRepo{db: db} }
 
-// Daftar membaca seluruh bank.
-func (r *BankRepo) Daftar(ctx context.Context) ([]masterrekening.Bank, error) {
-	baris, err := r.db.QueryContext(ctx, ambilKueri("bank_daftar"))
+// List membaca seluruh bank.
+func (r *BankRepo) List(ctx context.Context) ([]masterrekening.Bank, error) {
+	rows, err := r.db.QueryContext(ctx, getQuery("bank_list"))
 	if err != nil {
 		return nil, fmt.Errorf("masterrekening/sqlstore: membaca daftar bank: %w", err)
 	}
-	defer func() { _ = baris.Close() }()
+	defer func() { _ = rows.Close() }()
 
-	var hasil []masterrekening.Bank
-	for baris.Next() {
-		var kode, nama sql.NullString
-		if err := baris.Scan(&kode, &nama); err != nil {
+	var result []masterrekening.Bank
+	for rows.Next() {
+		var code, name sql.NullString
+		if err := rows.Scan(&code, &name); err != nil {
 			return nil, fmt.Errorf("masterrekening/sqlstore: membaca baris bank: %w", err)
 		}
-		b := masterrekening.Bank{Kode: teks(kode), Nama: teks(nama)}
+		b := masterrekening.Bank{Code: text(code), Name: text(name)}
 		// Baris tanpa kode tidak dapat dipilih pengguna dan hanya akan menghasilkan
 		// rekening tanpa bank. Ia dilewati di sini, bukan dibiarkan muncul di layar.
-		if b.Kode == "" {
+		if b.Code == "" {
 			continue
 		}
-		if b.Nama == "" {
-			b.Nama = b.Kode
+		if b.Name == "" {
+			b.Name = b.Code
 		}
-		hasil = append(hasil, b)
+		result = append(result, b)
 	}
-	if err := baris.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("masterrekening/sqlstore: menelusuri daftar bank: %w", err)
 	}
-	return hasil, nil
+	return result, nil
 }
 
 var _ masterrekening.BankRepo = (*BankRepo)(nil)

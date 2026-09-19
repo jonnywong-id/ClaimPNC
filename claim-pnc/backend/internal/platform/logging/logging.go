@@ -3,7 +3,7 @@
 // Satu aturan mengikat seluruh aplikasi dan ditegakkan di sini: kredensial dan token
 // sesi tidak pernah masuk log, termasuk pada jalur galat dan termasuk sebagiannya.
 // Paket ini karena itu tidak menyediakan cara apa pun untuk menulis nilai mentah
-// keduanya — yang tersedia hanya Samarkan().
+// keduanya — yang tersedia hanya Mask().
 package logging
 
 import (
@@ -13,43 +13,43 @@ import (
 	"strconv"
 )
 
-type kunciKonteks string
+type contextKey string
 
-const kunciIDPermintaan kunciKonteks = "id_permintaan"
+const requestIDKey contextKey = "id_permintaan"
 
-// Baru membuat logger terstruktur. Keluarannya JSON supaya dapat dibaca perkakas,
+// New membuat logger terstruktur. Keluarannya JSON supaya dapat dibaca perkakas,
 // bukan hanya mata manusia.
-func Baru(taraf slog.Level) *slog.Logger {
-	opsi := &slog.HandlerOptions{Level: taraf}
-	return slog.New(slog.NewJSONHandler(os.Stdout, opsi))
+func New(level slog.Level) *slog.Logger {
+	opts := &slog.HandlerOptions{Level: level}
+	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
 }
 
-// DenganIDPermintaan menaruh ID permintaan ke dalam context.
-func DenganIDPermintaan(ctx context.Context, id string) context.Context {
-	return context.WithValue(ctx, kunciIDPermintaan, id)
+// WithRequestID menaruh ID permintaan ke dalam context.
+func WithRequestID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, requestIDKey, id)
 }
 
-// IDPermintaan mengambil ID permintaan dari context; kosong bila tidak ada.
-func IDPermintaan(ctx context.Context) string {
-	id, _ := ctx.Value(kunciIDPermintaan).(string)
+// RequestID mengambil ID permintaan dari context; kosong bila tidak ada.
+func RequestID(ctx context.Context) string {
+	id, _ := ctx.Value(requestIDKey).(string)
 	return id
 }
 
-// Dari mengembalikan logger yang sudah membawa ID permintaan, sehingga seluruh baris
+// From mengembalikan logger yang sudah membawa ID permintaan, sehingga seluruh baris
 // log satu permintaan dapat dirangkai kembali.
-func Dari(ctx context.Context, logger *slog.Logger) *slog.Logger {
-	if id := IDPermintaan(ctx); id != "" {
+func From(ctx context.Context, logger *slog.Logger) *slog.Logger {
+	if id := RequestID(ctx); id != "" {
 		return logger.With(slog.String("id_permintaan", id))
 	}
 	return logger
 }
 
-// Samarkan mengubah nilai sensitif menjadi bentuk yang tidak dapat dipakai kembali,
+// Mask mengubah nilai sensitif menjadi bentuk yang tidak dapat dipakai kembali,
 // tetapi masih cukup untuk membedakan satu nilai dari yang lain saat menelusuri galat.
 // Nilai aslinya tidak pernah dikembalikan.
-func Samarkan(nilai string) string {
-	if nilai == "" {
+func Mask(value string) string {
+	if value == "" {
 		return "(kosong)"
 	}
-	return "(disamarkan, " + strconv.Itoa(len([]rune(nilai))) + " karakter)"
+	return "(disamarkan, " + strconv.Itoa(len([]rune(value))) + " karakter)"
 }

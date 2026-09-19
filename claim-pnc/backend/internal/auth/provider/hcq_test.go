@@ -14,26 +14,26 @@ import (
 	"claim-pnc/internal/auth/provider"
 )
 
-// katalogTiruan menjawab dengan satu alamat, atau dengan galat yang diminta.
-type katalogTiruan struct {
-	alamat       string
-	galat        error
-	appDiminta   string
-	jenisDiminta string
+// fakeCatalog menjawab dengan satu alamat, atau dengan galat yang diminta.
+type fakeCatalog struct {
+	address    string
+	issues     error
+	appDiminta string
+	wantedKind string
 }
 
-func (k *katalogTiruan) AlamatLayanan(_ context.Context, app, jenis string) (string, error) {
-	k.appDiminta, k.jenisDiminta = app, jenis
-	if k.galat != nil {
-		return "", k.galat
+func (k *fakeCatalog) ServiceAddress(_ context.Context, app, kind string) (string, error) {
+	k.appDiminta, k.wantedKind = app, kind
+	if k.issues != nil {
+		return "", k.issues
 	}
-	return k.alamat, nil
+	return k.address, nil
 }
 
-// responsBerhasil adalah bentuk respons nyata HCC/HCQ, disalin dari contoh yang
+// successResponse adalah bentuk respons nyata HCC/HCQ, disalin dari contoh yang
 // diberikan Work Owner 2026-09-16 — termasuk blok Placement dan EmpLeader yang tidak
 // seluruhnya dipakai.
-const responsBerhasil = `{
+const successResponse = `{
   "Response": {"pyStatusMessage":"Success","Alias":"VALID","pyErrorCode":"200","Result":"VALID, Data Ditemukan"},
   "EmpResponse": {
     "Placement": {
@@ -53,74 +53,74 @@ const responsBerhasil = `{
   "Login": "JONNYWONG8@YAHOO.COM"
 }`
 
-// responsGagal adalah contoh kegagalan yang diberikan Work Owner.
-const responsGagal = `{
+// failureResponse adalah contoh kegagalan yang diberikan Work Owner.
+const failureResponse = `{
   "Response": {"pyStatusMessage":"Failed","Alias":"INVALID","pyErrorCode":"403","Result":"INVALID, Username/Password Kosong"},
   "Login": "JONNYWONG8@YAHOO.COM",
   "Password": ""
 }`
 
-func peladenHCQ(t *testing.T, status int, badan string, rekam func(*http.Request, []byte)) *httptest.Server {
+func hcqServer(t *testing.T, status int, body string, rekam func(*http.Request, []byte)) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		isi := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(isi)
+		content := make([]byte, r.ContentLength)
+		_, _ = r.Body.Read(content)
 		if rekam != nil {
-			rekam(r, isi)
+			rekam(r, content)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		_, _ = w.Write([]byte(badan))
+		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(server.Close)
 	return server
 }
 
-func TestHCQMenerimaKredensialSah(t *testing.T) {
+func TestHCQAcceptsValidCredential(t *testing.T) {
 	var (
 		header http.Header
-		badan  []byte
+		body   []byte
 	)
-	server := peladenHCQ(t, http.StatusOK, responsBerhasil, func(r *http.Request, isi []byte) {
+	server := hcqServer(t, http.StatusOK, successResponse, func(r *http.Request, content []byte) {
 		header = r.Header.Clone()
-		badan = isi
+		body = content
 	})
 
-	katalog := &katalogTiruan{alamat: server.URL}
-	hcq, err := provider.HCQBaru(provider.OpsiHCQ{
-		Katalog: katalog, PortalAlias: "ASM", Pengguna: "aplikasi", KataSandi: "sandiaplikasi",
+	katalog := &fakeCatalog{address: server.URL}
+	hcq, err := provider.NewHCQ(provider.HCQOptions{
+		Katalog: katalog, PortalAlias: "ASM", User: "aplikasi", Password: "sandiaplikasi",
 	})
 	require.NoError(t, err)
 
-	profil, err := hcq.Verifikasi(context.Background(),
-		auth.Kredensial{NamaPengguna: "JONNYWONG8@YAHOO.COM", KataSandi: "sandipengguna"})
+	profile, err := hcq.Verify(context.Background(),
+		auth.Credential{Username: "JONNYWONG8@YAHOO.COM", Password: "sandipengguna"})
 	require.NoError(t, err)
 
 	t.Run("profil dipetakan dari Person dan Placement", func(t *testing.T) {
-		require.Equal(t, "99091100", profil.Identitas)
-		require.Equal(t, "JONNY", profil.Nama)
-		require.Equal(t, auth.Karyawan, profil.Jenis)
-		require.Equal(t, "JONNYWONG8@YAHOO.COM", profil.Login)
-		require.Equal(t, "contoh@example.invalid", profil.Email)
-		require.Equal(t, "ASM", profil.Perusahaan)
-		require.Equal(t, "KANTOR PUSAT", profil.Cabang, "dari Placement.BranchName")
-		require.Equal(t, "001", profil.KodeCabang, "dari Placement.BranchCode")
-		require.Equal(t, "IT SPECIALIST", profil.Jabatan, "dari Placement.PositionName")
-		require.NotNil(t, profil.AktifDiSumber)
-		require.True(t, *profil.AktifDiSumber)
+		require.Equal(t, "99091100", profile.Identity)
+		require.Equal(t, "JONNY", profile.Name)
+		require.Equal(t, auth.Employee, profile.Kind)
+		require.Equal(t, "JONNYWONG8@YAHOO.COM", profile.Login)
+		require.Equal(t, "contoh@example.invalid", profile.Email)
+		require.Equal(t, "ASM", profile.Company)
+		require.Equal(t, "KANTOR PUSAT", profile.Branch, "dari Placement.BranchName")
+		require.Equal(t, "001", profile.BranchCode, "dari Placement.BranchCode")
+		require.Equal(t, "IT SPECIALIST", profile.Position, "dari Placement.PositionName")
+		require.NotNil(t, profile.ActiveAtSource)
+		require.True(t, *profile.ActiveAtSource)
 	})
 
 	// Kolom APP diisi alias portal, bukan 'ASM' yang ditulis tetap — tiap entitas boleh
 	// punya endpoint HCQ sendiri (koreksi Work Owner 2026-09-16).
 	t.Run("alamat dicari dengan alias portal", func(t *testing.T) {
 		require.Equal(t, "ASM", katalog.appDiminta)
-		require.Equal(t, "HCQ-LOGIN", katalog.jenisDiminta)
+		require.Equal(t, "HCQ-LOGIN", katalog.wantedKind)
 	})
 
 	t.Run("Basic Auth memakai kredensial aplikasi", func(t *testing.T) {
-		sandi, ada := strings.CutPrefix(header.Get("Authorization"), "Basic ")
-		require.True(t, ada, "header Authorization harus memakai skema Basic")
-		terurai, err := base64.StdEncoding.DecodeString(sandi)
+		password, existing := strings.CutPrefix(header.Get("Authorization"), "Basic ")
+		require.True(t, existing, "header Authorization harus memakai skema Basic")
+		terurai, err := base64.StdEncoding.DecodeString(password)
 		require.NoError(t, err)
 		require.Equal(t, "aplikasi:sandiaplikasi", string(terurai))
 		require.NotContains(t, string(terurai), "sandipengguna",
@@ -128,58 +128,58 @@ func TestHCQMenerimaKredensialSah(t *testing.T) {
 	})
 
 	t.Run("badan permintaan memakai bentuk Login dan Password", func(t *testing.T) {
-		require.Contains(t, string(badan), `"Login":"JONNYWONG8@YAHOO.COM"`)
-		require.Contains(t, string(badan), `"Password":"sandipengguna"`)
+		require.Contains(t, string(body), `"Login":"JONNYWONG8@YAHOO.COM"`)
+		require.Contains(t, string(body), `"Password":"sandipengguna"`)
 	})
 }
 
 // pyErrorCode selain "200" berarti gagal, dan dilaporkan sebagai kredensial salah supaya
 // rantai meneruskannya ke jalur kedua.
-func TestHCQMenolakKredensialSalah(t *testing.T) {
-	server := peladenHCQ(t, http.StatusOK, responsGagal, nil)
-	hcq := hcqUji(t, server.URL)
+func TestHCQRejectsWrongCredential(t *testing.T) {
+	server := hcqServer(t, http.StatusOK, failureResponse, nil)
+	hcq := testHCQ(t, server.URL)
 
-	_, err := hcq.Verifikasi(context.Background(),
-		auth.Kredensial{NamaPengguna: "JONNYWONG8@YAHOO.COM", KataSandi: ""})
-	require.ErrorIs(t, err, auth.ErrKredensialSalah)
-	require.NotErrorIs(t, err, auth.ErrSistemTidakTerhubung)
+	_, err := hcq.Verify(context.Background(),
+		auth.Credential{Username: "JONNYWONG8@YAHOO.COM", Password: ""})
+	require.ErrorIs(t, err, auth.ErrWrongCredential)
+	require.NotErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 }
 
 // Teks Result dari HCQ dapat membedakan "username tidak ditemukan" dari "password
 // salah". Ia tidak boleh sampai ke pengguna.
-func TestHCQTidakMeneruskanTeksResult(t *testing.T) {
-	server := peladenHCQ(t, http.StatusOK, responsGagal, nil)
-	hcq := hcqUji(t, server.URL)
+func TestHCQDoesNotForwardResultText(t *testing.T) {
+	server := hcqServer(t, http.StatusOK, failureResponse, nil)
+	hcq := testHCQ(t, server.URL)
 
-	_, err := hcq.Verifikasi(context.Background(), auth.Kredensial{NamaPengguna: "a", KataSandi: "b"})
+	_, err := hcq.Verify(context.Background(), auth.Credential{Username: "a", Password: "b"})
 	require.NotContains(t, err.Error(), "Username/Password Kosong")
 }
 
-func TestHCQMembedakanSistemTidakTerhubung(t *testing.T) {
+func TestHCQDistinguishesUnreachableSystem(t *testing.T) {
 	t.Run("respons bukan JSON", func(t *testing.T) {
-		server := peladenHCQ(t, http.StatusBadGateway, "<html>gateway error</html>", nil)
-		_, err := hcqUji(t, server.URL).Verifikasi(context.Background(),
-			auth.Kredensial{NamaPengguna: "a", KataSandi: "b"})
-		require.ErrorIs(t, err, auth.ErrSistemTidakTerhubung)
-		require.NotErrorIs(t, err, auth.ErrKredensialSalah)
+		server := hcqServer(t, http.StatusBadGateway, "<html>gateway error</html>", nil)
+		_, err := testHCQ(t, server.URL).Verify(context.Background(),
+			auth.Credential{Username: "a", Password: "b"})
+		require.ErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
+		require.NotErrorIs(t, err, auth.ErrWrongCredential)
 	})
 
 	t.Run("respons tanpa pyErrorCode", func(t *testing.T) {
-		server := peladenHCQ(t, http.StatusOK, `{"Response":{}}`, nil)
-		_, err := hcqUji(t, server.URL).Verifikasi(context.Background(),
-			auth.Kredensial{NamaPengguna: "a", KataSandi: "b"})
-		require.ErrorIs(t, err, auth.ErrSistemTidakTerhubung)
+		server := hcqServer(t, http.StatusOK, `{"Response":{}}`, nil)
+		_, err := testHCQ(t, server.URL).Verify(context.Background(),
+			auth.Credential{Username: "a", Password: "b"})
+		require.ErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 	})
 
 	t.Run("baris GCNM_CONNECT_REST belum ada", func(t *testing.T) {
-		katalog := &katalogTiruan{galat: provider.ErrLayananTidakTerdaftar}
-		hcq, err := provider.HCQBaru(provider.OpsiHCQ{
-			Katalog: katalog, PortalAlias: "SPKS", Pengguna: "u", KataSandi: "p",
+		katalog := &fakeCatalog{issues: provider.ErrServiceNotRegistered}
+		hcq, err := provider.NewHCQ(provider.HCQOptions{
+			Katalog: katalog, PortalAlias: "SPKS", User: "u", Password: "p",
 		})
 		require.NoError(t, err)
 
-		_, err = hcq.Verifikasi(context.Background(), auth.Kredensial{NamaPengguna: "a", KataSandi: "b"})
-		require.ErrorIs(t, err, auth.ErrSistemTidakTerhubung)
+		_, err = hcq.Verify(context.Background(), auth.Credential{Username: "a", Password: "b"})
+		require.ErrorIs(t, err, auth.ErrIdentitySystemUnreachable)
 		// Galatnya menyebut persis baris mana yang kurang, supaya DBA tahu apa yang
 		// harus dibuat tanpa menebak.
 		require.Contains(t, err.Error(), "GCNM_CONNECT_REST")
@@ -190,33 +190,33 @@ func TestHCQMembedakanSistemTidakTerhubung(t *testing.T) {
 
 // HCQ menjawab berhasil tetapi tanpa NIK: meneruskannya berarti pengguna masuk tanpa
 // dapat dikenali data klaimnya sendiri.
-func TestHCQMenolakProfilTanpaIdentitas(t *testing.T) {
-	const tanpaNIK = `{"Response":{"pyErrorCode":"200"},"EmpResponse":{"Person":{"Name":"JONNY"}}}`
-	server := peladenHCQ(t, http.StatusOK, tanpaNIK, nil)
+func TestHCQRejectsProfileWithoutIdentity(t *testing.T) {
+	const withoutNIK = `{"Response":{"pyErrorCode":"200"},"EmpResponse":{"Person":{"Name":"JONNY"}}}`
+	server := hcqServer(t, http.StatusOK, withoutNIK, nil)
 
-	_, err := hcqUji(t, server.URL).Verifikasi(context.Background(),
-		auth.Kredensial{NamaPengguna: "a", KataSandi: "b"})
-	var bolong *auth.GalatProfilTidakLengkap
+	_, err := testHCQ(t, server.URL).Verify(context.Background(),
+		auth.Credential{Username: "a", Password: "b"})
+	var bolong *auth.IncompleteProfileError
 	require.ErrorAs(t, err, &bolong)
-	require.Equal(t, []string{"identitas"}, bolong.FieldKosong)
+	require.Equal(t, []string{"identitas"}, bolong.EmptyFields)
 }
 
-func TestHCQMenolakBahanTidakLengkap(t *testing.T) {
-	_, err := provider.HCQBaru(provider.OpsiHCQ{PortalAlias: "ASM", Pengguna: "u", KataSandi: "p"})
+func TestHCQRejectsIncompleteDeps(t *testing.T) {
+	_, err := provider.NewHCQ(provider.HCQOptions{PortalAlias: "ASM", User: "u", Password: "p"})
 	require.Error(t, err)
 
-	_, err = provider.HCQBaru(provider.OpsiHCQ{Katalog: &katalogTiruan{}, PortalAlias: "ASM", KataSandi: "p"})
+	_, err = provider.NewHCQ(provider.HCQOptions{Katalog: &fakeCatalog{}, PortalAlias: "ASM", Password: "p"})
 	require.ErrorContains(t, err, "HCQ_LOGIN_USER")
 
-	_, err = provider.HCQBaru(provider.OpsiHCQ{Katalog: &katalogTiruan{}, PortalAlias: "ASM", Pengguna: "u"})
+	_, err = provider.NewHCQ(provider.HCQOptions{Katalog: &fakeCatalog{}, PortalAlias: "ASM", User: "u"})
 	require.ErrorContains(t, err, "HCQ_LOGIN_PASSWORD")
 }
 
-func hcqUji(t *testing.T, alamat string) *provider.HCQ {
+func testHCQ(t *testing.T, address string) *provider.HCQ {
 	t.Helper()
-	hcq, err := provider.HCQBaru(provider.OpsiHCQ{
-		Katalog: &katalogTiruan{alamat: alamat}, PortalAlias: "ASM",
-		Pengguna: "aplikasi", KataSandi: "sandiaplikasi",
+	hcq, err := provider.NewHCQ(provider.HCQOptions{
+		Katalog: &fakeCatalog{address: address}, PortalAlias: "ASM",
+		User: "aplikasi", Password: "sandiaplikasi",
 	})
 	require.NoError(t, err)
 	return hcq

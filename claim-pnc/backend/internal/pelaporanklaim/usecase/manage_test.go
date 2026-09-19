@@ -10,7 +10,7 @@ import (
 	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/pelaporanklaim/repo/memory"
 	"claim-pnc/internal/pelaporanklaim/usecase"
-	"claim-pnc/internal/platform/waktu"
+	"claim-pnc/internal/platform/clock"
 )
 
 // testNow adalah waktu tetap yang dipakai seluruh uji di berkas ini.
@@ -19,10 +19,10 @@ import (
 // hari ini dan gagal pada hari lain tanpa ada yang berubah di kode.
 var testNow = time.Date(2026, time.September, 18, 7, 30, 0, 0, time.UTC)
 
-func testService(t *testing.T, initial ...pelaporanklaim.ClaimReport) (*usecase.Service, *waktu.JamTetap) {
+func testService(t *testing.T, initial ...pelaporanklaim.ClaimReport) (*usecase.Service, *clock.Fixed) {
 	t.Helper()
 
-	clock := waktu.JamTetapPada(testNow)
+	clock := clock.FixedAt(testNow)
 	service, err := usecase.NewService(usecase.Options{
 		Repo:  memory.NewRepo(initial...),
 		Clock: clock,
@@ -45,7 +45,7 @@ func testReport() pelaporanklaim.ClaimReport {
 
 // Bahan yang tidak lengkap ditolak saat start, bukan saat pengguna pertama membuka layar.
 func TestServiceRejectsIncompleteOptions(t *testing.T) {
-	_, err := usecase.NewService(usecase.Options{Clock: waktu.JamTetapPada(testNow)})
+	_, err := usecase.NewService(usecase.Options{Clock: clock.FixedAt(testNow)})
 	require.Error(t, err, "seam penyimpanan wajib diisi")
 
 	_, err = usecase.NewService(usecase.Options{Repo: memory.NewRepo()})
@@ -165,7 +165,7 @@ func TestTransferRejectsSecondTransfer(t *testing.T) {
 	recorded, err := service.Record(context.Background(), testReport(), testRecorder)
 	require.NoError(t, err)
 
-	clock.Maju(2 * time.Hour)
+	clock.Advance(2 * time.Hour)
 	moved, err := service.Transfer(context.Background(), recorded.Number)
 	require.NoError(t, err)
 	require.True(t, moved.Transferred)
@@ -173,7 +173,7 @@ func TestTransferRejectsSecondTransfer(t *testing.T) {
 	require.Equal(t, testNow.Add(2*time.Hour), *moved.TransferredAt)
 	require.Equal(t, pelaporanklaim.StageNotRegistered, moved.Stage())
 
-	clock.Maju(time.Hour)
+	clock.Advance(time.Hour)
 	_, err = service.Transfer(context.Background(), recorded.Number)
 	require.ErrorIs(t, err, pelaporanklaim.ErrAlreadyTransferred)
 
@@ -195,7 +195,7 @@ func TestLinkClaimRejectsSecondLink(t *testing.T) {
 	recorded, err := service.Record(context.Background(), testReport(), testRecorder)
 	require.NoError(t, err)
 
-	clock.Maju(3 * time.Hour)
+	clock.Advance(3 * time.Hour)
 	linked, err := service.LinkClaim(context.Background(), recorded.Number, "PNCN.26.0148")
 	require.NoError(t, err)
 	require.Equal(t, "PNCN.26.0148", linked.ClaimNumber)
@@ -217,7 +217,7 @@ func TestLinkClaimAlsoMarksTransferWhenMissing(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, recorded.Transferred)
 
-	clock.Maju(time.Hour)
+	clock.Advance(time.Hour)
 	linked, err := service.LinkClaim(context.Background(), recorded.Number, "PNCN.26.0148")
 	require.NoError(t, err)
 
@@ -273,7 +273,7 @@ func TestUpdateCannotMoveStage(t *testing.T) {
 	recorded, err := service.Record(context.Background(), testReport(), testRecorder)
 	require.NoError(t, err)
 
-	clock.Maju(time.Hour)
+	clock.Advance(time.Hour)
 	edited := testReport()
 	edited.ReporterName = "Nama Baru"
 	edited.Transferred = true

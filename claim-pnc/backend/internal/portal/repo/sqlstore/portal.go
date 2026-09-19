@@ -15,7 +15,7 @@ import (
 )
 
 //go:embed *.sql
-var berkasKueri embed.FS
+var queryFiles embed.FS
 
 // Repo membaca daftar portal dari POOLDATA.M_PORTAL_PNC.
 //
@@ -24,61 +24,61 @@ var berkasKueri embed.FS
 // dipilih.
 type Repo struct {
 	db    *sql.DB
-	kueri string
+	query string
 }
 
-// RepoBaru membentuk repo; db wajib sudah terhubung.
-func RepoBaru(db *sql.DB) *Repo {
-	isi, err := berkasKueri.ReadFile("portal.sql")
+// NewRepo membentuk repo; db wajib sudah terhubung.
+func NewRepo(db *sql.DB) *Repo {
+	content, err := queryFiles.ReadFile("portal.sql")
 	if err != nil {
 		// Berkas disematkan saat kompilasi; ketiadaannya adalah cacat pemrograman yang
 		// harus terlihat saat pertama dijalankan, bukan galat yang menunggu pengguna.
 		panic("portal/sqlstore: tidak dapat membaca portal.sql: " + err.Error())
 	}
-	return &Repo{db: db, kueri: potongSetelahPenanda(string(isi))}
+	return &Repo{db: db, query: contentAfterMarker(string(content))}
 }
 
-// Daftar membaca seluruh portal.
-func (r *Repo) Daftar(ctx context.Context) ([]portal.Portal, error) {
-	baris, err := r.db.QueryContext(ctx, r.kueri)
+// List membaca seluruh portal.
+func (r *Repo) List(ctx context.Context) ([]portal.Portal, error) {
+	rows, err := r.db.QueryContext(ctx, r.query)
 	if err != nil {
 		return nil, fmt.Errorf("portal/sqlstore: membaca daftar portal: %w", err)
 	}
-	defer func() { _ = baris.Close() }()
+	defer func() { _ = rows.Close() }()
 
-	var hasil []portal.Portal
-	for baris.Next() {
+	var result []portal.Portal
+	for rows.Next() {
 		var p portal.Portal
-		if err := baris.Scan(&p.ID, &p.Nama, &p.Alias); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Alias); err != nil {
 			return nil, fmt.Errorf("portal/sqlstore: membaca baris portal: %w", err)
 		}
 		p.ID = strings.TrimSpace(p.ID)
-		p.Nama = strings.TrimSpace(p.Nama)
+		p.Name = strings.TrimSpace(p.Name)
 		p.Alias = strings.ToUpper(strings.TrimSpace(p.Alias))
-		hasil = append(hasil, p)
+		result = append(result, p)
 	}
-	if err := baris.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("portal/sqlstore: menelusuri daftar portal: %w", err)
 	}
-	return hasil, nil
+	return result, nil
 }
 
-// potongSetelahPenanda mengambil isi setelah baris "-- name: ...", membuang komentar
+// contentAfterMarker mengambil isi setelah baris "-- name: ...", membuang komentar
 // kepala berkas yang tidak perlu dikirim ke basis data.
-func potongSetelahPenanda(isi string) string {
-	const penanda = "-- name:"
-	var badan []string
-	mulai := false
-	for _, baris := range strings.Split(isi, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(baris), penanda) {
-			mulai = true
+func contentAfterMarker(content string) string {
+	const marker = "-- name:"
+	var body []string
+	started := false
+	for _, line := range strings.Split(content, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), marker) {
+			started = true
 			continue
 		}
-		if mulai {
-			badan = append(badan, baris)
+		if started {
+			body = append(body, line)
 		}
 	}
-	return strings.TrimSpace(strings.Join(badan, "\n"))
+	return strings.TrimSpace(strings.Join(body, "\n"))
 }
 
 var _ portal.Repo = (*Repo)(nil)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"claim-pnc/internal/platform/waktu"
+	"claim-pnc/internal/platform/clock"
 )
 
 // NumberPrefix menandai asal sebuah nomor laporan.
@@ -61,11 +61,11 @@ const SequenceWidth = 4
 //  2. Waktu pencatatan datang dari seam Jam, sehingga nomor yang terbit dapat diuji
 //     secara deterministik — termasuk perilakunya di sekitar pergantian tahun.
 //
-// Tahunnya tahun **WIB**, bukan UTC. Lihat waktu.TwoDigitYearWIB.
+// Tahunnya tahun **WIB**, bukan UTC. Lihat clock.TwoDigitYearWIB.
 func BuildNumber(recordedAt time.Time, sequence int64) string {
 	return fmt.Sprintf("%s.%02d.%0*d",
 		NumberPrefix,
-		waktu.TwoDigitYearWIB(recordedAt),
+		clock.TwoDigitYearWIB(recordedAt),
 		SequenceWidth,
 		sequence,
 	)

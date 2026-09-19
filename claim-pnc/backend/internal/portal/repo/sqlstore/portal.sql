@@ -3,7 +3,7 @@
 -- Tabel milik sistem lama; aplikasi ini hanya MEMBACA (ADR-0004, penulis tunggal per
 -- tabel). Kolom disebut namanya; SELECT * dilarang.
 
--- name: portal_daftar
+-- name: portal_list
 SELECT PORTAL_ID,
        PORTAL_NAME,
        PORTAL_ALIAS

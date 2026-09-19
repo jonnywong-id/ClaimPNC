@@ -10,9 +10,9 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 }
 
 /**
- * TextAreaField adalah saudara `KolomIsian` untuk isian bertingkat banyak baris.
+ * TextAreaField adalah saudara `Field` untuk isian bertingkat banyak baris.
  *
- * # Kenapa ia komponen tersendiri, bukan sakelar pada KolomIsian
+ * # Kenapa ia komponen tersendiri, bukan sakelar pada Field
  *
  * `<textarea>` dan `<input>` adalah dua elemen berbeda dengan atribut yang berbeda —
  * `rows` di satu sisi, `maxLength` berperilaku beda di sisi lain — dan menyatukannya
@@ -20,7 +20,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
  * Dua komponen yang berbagi tampilan lebih jujur daripada satu komponen yang berbagi
  * kebingungan.
  *
- * # Tampilannya sengaja SAMA PERSIS dengan KolomIsian
+ * # Tampilannya sengaja SAMA PERSIS dengan Field
  *
  * Kelas tepinya, cincin fokusnya, dan cara keadaan salah ditandai diambil dari sana kata
  * per kata. Satu form dapat memuat keduanya berdampingan — form Pelaporan Klaim memuat
@@ -28,7 +28,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
  * formnya terbaca seperti tambal sulam.
  *
  * Nama props-nya TIDAK sama: di sini `error`/`hint` (bahasa Inggris, `D-80`), sementara
- * `KolomIsian` memakai `galat`/`petunjuk` karena ia ditulis sebelum `D-80` dan berada di
+ * `Field` memakai `galat`/`petunjuk` karena ia ditulis sebelum `D-80` dan berada di
  * luar lingkup pekerjaan ini. Satu berkas form karenanya memuat keduanya berdampingan.
  *
  * # Keadaan salah ditandai TIGA cara sekaligus

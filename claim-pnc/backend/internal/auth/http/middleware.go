@@ -9,18 +9,18 @@ import (
 	"claim-pnc/internal/auth/usecase"
 )
 
-type kunciKonteks string
+type contextKey string
 
-const kunciPengguna kunciKonteks = "konteks_pengguna"
+const callerKey contextKey = "konteks_pengguna"
 
-// PemeriksaSesi adalah bagian usecase yang dibutuhkan middleware ini. Ia dinyatakan
+// SessionChecker adalah bagian usecase yang dibutuhkan middleware ini. Ia dinyatakan
 // sebagai antarmuka sempit supaya middleware dapat diuji tanpa membentuk seluruh
 // layanan.
-type PemeriksaSesi interface {
-	Periksa(ctx context.Context, token auth.Token) (usecase.Konteks, error)
+type SessionChecker interface {
+	Check(ctx context.Context, token auth.Token) (usecase.Caller, error)
 }
 
-// Autentikasi menolak permintaan yang tidak membawa sesi yang sah, dan menaruh
+// Authenticate menolak permintaan yang tidak membawa sesi yang sah, dan menaruh
 // identitas pemanggil ke dalam context bila sah.
 //
 // Identitas diteruskan lewat context, bukan lewat parameter berantai maupun variabel
@@ -30,50 +30,50 @@ type PemeriksaSesi interface {
 // Pemeriksaan "apakah peran pemanggil berwenang atas endpoint ini" adalah TKT-F3-005
 // yang belum dikerjakan, dan ia bergantung pada tabel peran TKT-F3-004 yang masih
 // terhalang artefak.
-func Autentikasi(pemeriksa PemeriksaSesi, tulisGalat PenulisGalat) func(http.Handler) http.Handler {
+func Authenticate(pemeriksa SessionChecker, writeError ErrorWriter) func(http.Handler) http.Handler {
 	return func(berikutnya http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, ada := TokenDariPermintaan(r)
-			if !ada {
-				tulisGalat(w, r, auth.ErrSesiTidakDitemukan)
+			token, existing := TokenFromRequest(r)
+			if !existing {
+				writeError(w, r, auth.ErrSessionNotFound)
 				return
 			}
-			konteks, err := pemeriksa.Periksa(r.Context(), token)
+			baseCtx, err := pemeriksa.Check(r.Context(), token)
 			if err != nil {
-				tulisGalat(w, r, err)
+				writeError(w, r, err)
 				return
 			}
-			berikutnya.ServeHTTP(w, r.WithContext(DenganKonteksPengguna(r.Context(), konteks)))
+			berikutnya.ServeHTTP(w, r.WithContext(WithCaller(r.Context(), baseCtx)))
 		})
 	}
 }
 
-// DenganKonteksPengguna menaruh identitas pemanggil ke context.
-func DenganKonteksPengguna(ctx context.Context, k usecase.Konteks) context.Context {
-	return context.WithValue(ctx, kunciPengguna, k)
+// WithCaller menaruh identitas pemanggil ke context.
+func WithCaller(ctx context.Context, k usecase.Caller) context.Context {
+	return context.WithValue(ctx, callerKey, k)
 }
 
-// KonteksPengguna mengambil identitas pemanggil dari context. Nilai kedua bernilai
-// false bila permintaan tidak melewati middleware Autentikasi.
-func KonteksPengguna(ctx context.Context) (usecase.Konteks, bool) {
-	k, ada := ctx.Value(kunciPengguna).(usecase.Konteks)
-	return k, ada
+// CallerFromContext mengambil identitas pemanggil dari context. Nilai kedua bernilai
+// false bila permintaan tidak melewati middleware Authenticate.
+func CallerFromContext(ctx context.Context) (usecase.Caller, bool) {
+	k, existing := ctx.Value(callerKey).(usecase.Caller)
+	return k, existing
 }
 
-// TokenDariPermintaan membaca token sesi dari header Authorization dengan skema Bearer.
+// TokenFromRequest membaca token sesi dari header Authorization dengan skema Bearer.
 //
 // Token hanya dibaca dari header, tidak pernah dari query string: nilai di URL ikut
 // tercatat di log peramban, log proxy, dan header Referer.
-func TokenDariPermintaan(r *http.Request) (auth.Token, bool) {
+func TokenFromRequest(r *http.Request) (auth.Token, bool) {
 	header := strings.TrimSpace(r.Header.Get("Authorization"))
 	if header == "" {
 		return "", false
 	}
-	bagian := strings.SplitN(header, " ", 2)
-	if len(bagian) != 2 || !strings.EqualFold(bagian[0], "Bearer") {
+	part := strings.SplitN(header, " ", 2)
+	if len(part) != 2 || !strings.EqualFold(part[0], "Bearer") {
 		return "", false
 	}
-	token := strings.TrimSpace(bagian[1])
+	token := strings.TrimSpace(part[1])
 	if token == "" {
 		return "", false
 	}

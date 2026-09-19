@@ -1,11 +1,11 @@
 import { useState } from 'react'
 
-import { GalatAPI, GalatJaringan } from '@/api/klien'
-import { ReportStage, type ClaimReport } from '@/api/tipe'
-import { IkonMuatUlang, IkonTambah, IkonUbah } from '@/components/Ikon'
-import { PesanGalat } from '@/components/PesanGalat'
-import { TabelData, type Kolom } from '@/components/TabelData'
-import { Tombol } from '@/components/Tombol'
+import { APIError, NetworkError } from '@/api/client'
+import { ReportStage, type ClaimReport } from '@/api/types'
+import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
+import { ErrorMessage } from '@/components/ErrorMessage'
+import { DataTable, type Column } from '@/components/DataTable'
+import { Button } from '@/components/Button'
 
 import { useLinkClaim, useReportList, useTransferReport } from './api'
 import { ClaimReportForm } from './ClaimReportForm'
@@ -84,30 +84,30 @@ export function ClaimReportPage() {
     setEditing(null)
   }
 
-  const columns: Kolom<ClaimReport>[] = [
+  const columns: Column<ClaimReport>[] = [
     {
-      kunci: 'nomor',
-      judul: 'Nomor',
-      lebar: '10rem',
-      nilai: (r) => r.nomor,
-      tampil: (r) => (
+      key: 'nomor',
+      title: 'Nomor',
+      width: '10rem',
+      value: (r) => r.nomor,
+      render: (r) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
           {r.nomor}
         </span>
       ),
     },
     {
-      kunci: 'tahap',
-      judul: 'Tahap',
-      lebar: '11rem',
-      nilai: (r) => r.tahap_label,
-      tampil: (r) => <StageBadge stage={r.tahap} label={r.tahap_label} />,
+      key: 'tahap',
+      title: 'Tahap',
+      width: '11rem',
+      value: (r) => r.tahap_label,
+      render: (r) => <StageBadge stage={r.tahap} label={r.tahap_label} />,
     },
     {
-      kunci: 'pelapor',
-      judul: 'Pelapor',
-      nilai: (r) => r.nama_pelapor,
-      tampil: (r) => (
+      key: 'pelapor',
+      title: 'Pelapor',
+      value: (r) => r.nama_pelapor,
+      render: (r) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{r.nama_pelapor}</p>
           {r.email_pengirim && (
@@ -117,10 +117,10 @@ export function ClaimReportPage() {
       ),
     },
     {
-      kunci: 'tertanggung',
-      judul: 'Polis & tertanggung',
-      nilai: (r) => `${r.nomor_polis} ${r.nama_tertanggung}`,
-      tampil: (r) => (
+      key: 'tertanggung',
+      title: 'Polis & tertanggung',
+      value: (r) => `${r.nomor_polis} ${r.nama_tertanggung}`,
+      render: (r) => (
         <div className="min-w-0">
           <p className="truncate text-slate-900">{r.nama_tertanggung || '—'}</p>
           <p className="truncate font-mono text-xs text-slate-500">{r.nomor_polis || '—'}</p>
@@ -128,18 +128,18 @@ export function ClaimReportPage() {
       ),
     },
     {
-      kunci: 'tanggal_kejadian',
-      judul: 'Tgl kejadian',
-      lebar: '9rem',
-      nilai: (r) => r.tanggal_kejadian,
-      tampil: (r) => <span className="tabular-nums">{readableDate(r.tanggal_kejadian)}</span>,
+      key: 'tanggal_kejadian',
+      title: 'Tgl kejadian',
+      width: '9rem',
+      value: (r) => r.tanggal_kejadian,
+      render: (r) => <span className="tabular-nums">{readableDate(r.tanggal_kejadian)}</span>,
     },
     {
-      kunci: 'nomor_klaim',
-      judul: 'No klaim',
-      lebar: '10rem',
-      nilai: (r) => r.nomor_klaim,
-      tampil: (r) =>
+      key: 'nomor_klaim',
+      title: 'No klaim',
+      width: '10rem',
+      value: (r) => r.nomor_klaim,
+      render: (r) =>
         r.nomor_klaim ? (
           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100">
             {r.nomor_klaim}
@@ -151,16 +151,16 @@ export function ClaimReportPage() {
         ),
     },
     {
-      kunci: 'aksi',
-      judul: 'Aksi',
-      lebar: '16rem',
-      tanpaUrut: true,
-      keKanan: true,
-      nilai: () => '',
-      tampil: (r) => (
+      key: 'aksi',
+      title: 'Aksi',
+      width: '16rem',
+      noSort: true,
+      alignRight: true,
+      value: () => '',
+      render: (r) => (
         <div className="flex flex-wrap justify-end gap-1.5">
-          <Tombol
-            nada="halus"
+          <Button
+            tone="halus"
             onClick={() => openEdit(r)}
             disabled={!r.dapat_diubah}
             title={
@@ -170,24 +170,24 @@ export function ClaimReportPage() {
             }
             aria-label={`Ubah laporan ${r.nomor}`}
           >
-            <IkonUbah className="h-3.5 w-3.5" />
+            <EditIcon className="h-3.5 w-3.5" />
             Ubah
-          </Tombol>
+          </Button>
 
           {r.dapat_ditransfer && (
-            <Tombol
-              nada="kedua"
+            <Button
+              tone="kedua"
               onClick={() => transfer.mutate(r.nomor)}
               disabled={transfer.isPending}
               aria-label={`Transfer laporan ${r.nomor} ke ASM pusat`}
             >
               Transfer
-            </Tombol>
+            </Button>
           )}
 
           {!r.nomor_klaim && r.ditransfer && (
-            <Tombol
-              nada="kedua"
+            <Button
+              tone="kedua"
               onClick={() => {
                 setLinking(r)
                 setFormOpen(false)
@@ -195,7 +195,7 @@ export function ClaimReportPage() {
               aria-label={`Tautkan laporan ${r.nomor} ke nomor klaim`}
             >
               Registrasi
-            </Tombol>
+            </Button>
           )}
         </div>
       ),
@@ -261,27 +261,27 @@ export function ClaimReportPage() {
         </div>
       )}
 
-      <TabelData
-        kolom={columns}
-        baris={rows}
-        kunciBaris={(r) => r.nomor}
-        judul="Daftar Laporan Klaim"
-        keterangan={data ? `${data.jumlah} laporan pada tahap ini.` : 'Memuat daftar laporan…'}
-        labelCari="Cari nomor laporan, nomor klaim, polis, tertanggung, atau pelapor"
-        pesanKosong="Belum ada laporan pada tahap ini."
-        sedangMemuat={list.isPending}
-        galat={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-        cariDiServer={{ nilai: search, ubah: changeSearch, jumlahCocok: data?.jumlah }}
-        aksi={
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.nomor}
+        title="Daftar Laporan Klaim"
+        description={data ? `${data.jumlah} laporan pada tahap ini.` : 'Memuat daftar laporan…'}
+        searchLabel="Cari nomor laporan, nomor klaim, polis, tertanggung, atau pelapor"
+        emptyMessage="Belum ada laporan pada tahap ini."
+        isLoading={list.isPending}
+        error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+        serverSearch={{ value: search, onChange: changeSearch, matchCount: data?.jumlah }}
+        actions={
           <>
-            <Tombol nada="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
-              <IkonMuatUlang className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
+            <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
+              <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
               {list.isFetching ? 'Memuat…' : 'Muat ulang'}
-            </Tombol>
-            <Tombol nada="utama" onClick={openCreate} disabled={formOpen && !editing}>
-              <IkonTambah className="h-4 w-4" />
+            </Button>
+            <Button tone="utama" onClick={openCreate} disabled={formOpen && !editing}>
+              <AddIcon className="h-4 w-4" />
               Catat laporan
-            </Tombol>
+            </Button>
           </>
         }
       />
@@ -375,12 +375,12 @@ function RegistrationPanel({
             className="mt-1.5 w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 transition-[border-color,box-shadow] duration-150 ease-halus placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-50"
           />
         </div>
-        <Tombol type="submit" nada="utama" disabled={working || claimNumber.trim() === ''}>
+        <Button type="submit" tone="utama" disabled={working || claimNumber.trim() === ''}>
           {working ? 'Menyimpan…' : 'Tautkan'}
-        </Tombol>
-        <Tombol nada="halus" onClick={onClose} disabled={working}>
+        </Button>
+        <Button tone="halus" onClick={onClose} disabled={working}>
           Batal
-        </Tombol>
+        </Button>
       </div>
     </form>
   )
@@ -418,20 +418,20 @@ function Pagination({
         Menampilkan {first}–{last} dari {total} laporan.
       </p>
       <div className="flex gap-2">
-        <Tombol
-          nada="kedua"
+        <Button
+          tone="kedua"
           onClick={() => onMove(Math.max(0, offset - limit))}
           disabled={offset === 0 || loading}
         >
           Sebelumnya
-        </Tombol>
-        <Tombol
-          nada="kedua"
+        </Button>
+        <Button
+          tone="kedua"
           onClick={() => onMove(offset + limit)}
           disabled={last >= total || loading}
         >
           Berikutnya
-        </Tombol>
+        </Button>
       </div>
     </div>
   )
@@ -451,22 +451,22 @@ function readableDate(date: string): string {
 
 /** Gagal memuat selalu bernada gangguan: pengguna baru membuka layarnya. */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof GalatJaringan) {
+  if (error instanceof NetworkError) {
     return (
-      <PesanGalat
-        judul="Tidak dapat menghubungi server"
-        keterangan="Daftar laporan belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
-        nada="gangguan"
+      <ErrorMessage
+        title="Tidak dapat menghubungi server"
+        description="Daftar laporan belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
+        tone="gangguan"
       />
     )
   }
   return (
-    <PesanGalat
-      judul="Daftar laporan gagal dimuat"
-      keterangan={
-        error instanceof GalatAPI ? error.message : 'Terjadi kesalahan pada sistem. Coba muat ulang.'
+    <ErrorMessage
+      title="Daftar laporan gagal dimuat"
+      description={
+        error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem. Coba muat ulang.'
       }
-      nada="gangguan"
+      tone="gangguan"
     />
   )
 }
@@ -479,31 +479,31 @@ function LoadErrorMessage({ error }: { error: unknown }) {
  * memuat ulang. Gangguan sistem tidak dapat ditolong dengan mencoba berkali-kali.
  */
 function ActionErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof GalatJaringan) {
+  if (error instanceof NetworkError) {
     return (
-      <PesanGalat
-        judul="Tidak dapat menghubungi server"
-        keterangan="Aksi belum tersimpan. Periksa koneksi lalu coba lagi."
-        nada="gangguan"
+      <ErrorMessage
+        title="Tidak dapat menghubungi server"
+        description="Aksi belum tersimpan. Periksa koneksi lalu coba lagi."
+        tone="gangguan"
       />
     )
   }
-  if (error instanceof GalatAPI && error.status === 409) {
+  if (error instanceof APIError && error.status === 409) {
     return (
-      <PesanGalat
-        judul="Laporan sudah berubah"
-        keterangan={`${error.message} Muat ulang daftarnya untuk melihat keadaan terbaru.`}
-        nada="penolakan"
+      <ErrorMessage
+        title="Laporan sudah berubah"
+        description={`${error.message} Muat ulang daftarnya untuk melihat keadaan terbaru.`}
+        tone="penolakan"
       />
     )
   }
   return (
-    <PesanGalat
-      judul="Aksi gagal"
-      keterangan={
-        error instanceof GalatAPI ? error.message : 'Terjadi kesalahan pada sistem. Coba lagi.'
+    <ErrorMessage
+      title="Aksi gagal"
+      description={
+        error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem. Coba lagi.'
       }
-      nada="gangguan"
+      tone="gangguan"
     />
   )
 }
