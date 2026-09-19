@@ -43,6 +43,29 @@ type Props<T> = {
 
   labelCari?: string
   pesanKosong?: string
+
+  /**
+   * Menyerahkan pencarian dan pengurutan ke PEMANGGIL, bukan dikerjakan komponen ini.
+   *
+   * Dipakai layar yang datanya dipaginasi server — inbox dan laporan. Pada layar seperti
+   * itu, menyaring dan mengurutkan di peramban hanya menyentuh halaman yang sedang
+   * terbuka, sehingga hasilnya BOHONG: pengguna mencari sesuatu yang ada di halaman tiga
+   * dan diberi tahu bahwa ia tidak ada.
+   *
+   * Saat prop ini diisi, kotak cari menjadi terkendali pemanggil dan komponen ini tidak
+   * menyaring apa pun. Pengurutan ikut dimatikan dengan alasan yang sama — mengurutkan
+   * satu halaman dari sepuluh bukan pengurutan.
+   *
+   * Dibiarkan kosong pada layar master, tempat seluruh baris memang sudah di tangan.
+   */
+  cariDiServer?:
+    | {
+        nilai: string
+        ubah: (nilai: string) => void
+        /** Banyaknya baris yang cocok di server, untuk keterangan di bawah kotak cari. */
+        jumlahCocok?: number | undefined
+      }
+    | undefined
 }
 
 type Urutan = { kunci: string; arah: 'naik' | 'turun' }
@@ -90,6 +113,14 @@ type Urutan = { kunci: string; arah: 'naik' | 'turun' }
  *
  * Layar yang datanya besar — inbox dan laporan — TIDAK boleh memakai penyaringan ini;
  * mereka menuntut paginasi keyset dari server, dan itu lingkup `TKT-U2-001`.
+ *
+ * Untuk itulah prop `cariDiServer` ada: saat ia diisi, komponen ini berhenti menyaring dan
+ * berhenti mengurutkan, dan kotak carinya menjadi milik pemanggil. Layar Pelaporan Klaim
+ * adalah pemakai pertamanya.
+ *
+ * Yang dipilih di sini adalah satu prop opsional, bukan tabel kedua. Tabel kedua akan
+ * membatalkan seluruh alasan komponen ini ada — dan membatalkannya pada modul bisnis
+ * pertama yang membutuhkannya.
  */
 export function TabelData<T>({
   kolom,
@@ -102,11 +133,21 @@ export function TabelData<T>({
   galat,
   labelCari = 'Cari',
   pesanKosong = 'Belum ada data.',
+  cariDiServer,
 }: Props<T>) {
-  const [cari, setCari] = useState('')
+  const [cariLokal, setCariLokal] = useState('')
   const [urutan, setUrutan] = useState<Urutan | null>(null)
 
+  const diServer = cariDiServer !== undefined
+  const cari = cariDiServer ? cariDiServer.nilai : cariLokal
+  const setCari = cariDiServer ? cariDiServer.ubah : setCariLokal
+
   const terlihat = useMemo(() => {
+    // Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
+    // sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
+    // terbuka.
+    if (diServer) return baris
+
     const kata = cari.trim().toLowerCase()
     const disaring = kata
       ? baris.filter((b) => kolom.some((k) => k.nilai(b).toLowerCase().includes(kata)))
@@ -126,7 +167,7 @@ export function TabelData<T>({
       })
       return urutan.arah === 'naik' ? perbandingan : -perbandingan
     })
-  }, [baris, kolom, cari, urutan])
+  }, [baris, kolom, cari, urutan, diServer])
 
   function gantiUrutan(kunci: string) {
     setUrutan((sebelumnya) => {
@@ -180,7 +221,9 @@ export function TabelData<T>({
         </div>
         {adaPencarian && (
           <p className="mt-2 text-xs text-slate-600" role="status">
-            {terlihat.length} dari {baris.length} baris cocok.
+            {cariDiServer
+              ? `${cariDiServer.jumlahCocok ?? terlihat.length} baris cocok.`
+              : `${terlihat.length} dari ${baris.length} baris cocok.`}
           </p>
         )}
       </div>
@@ -209,7 +252,7 @@ export function TabelData<T>({
                     scope="col"
                     style={k.lebar ? { width: k.lebar } : undefined}
                     aria-sort={
-                      urutan?.kunci === k.kunci
+                      !diServer && urutan?.kunci === k.kunci
                         ? urutan.arah === 'naik'
                           ? 'ascending'
                           : 'descending'
@@ -220,7 +263,12 @@ export function TabelData<T>({
                       k.keKanan ? 'text-right' : '',
                     ].join(' ')}
                   >
-                    {k.tanpaUrut ? (
+                    {/*
+                      Pengurutan ikut dimatikan saat pencarian dikerjakan server:
+                      mengurutkan satu halaman dari sepuluh bukan pengurutan, dan panah
+                      yang muncul menjanjikan sesuatu yang tidak dilakukannya.
+                    */}
+                    {k.tanpaUrut || diServer ? (
                       k.judul
                     ) : (
                       <button

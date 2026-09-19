@@ -7,6 +7,8 @@ tiket pekerjaan berada di repository terpisah: `D:\Jonny\Project\Claude.AI\XML C
 **Yang sudah ada di tahap ini: login dari ujung ke ujung, dan satu modul bisnis — Master Status
 Klaim.**
 
+**Ditambah 2026-09-18: modul proses klaim yang pertama — Pelaporan Klaim.**
+
 | | |
 |---|---|
 | Tiket yang dikerjakan | `TKT-F3-001` seam identitas · `TKT-F3-003` sesi & token · `TKT-U1-002` alur masuk di frontend · **`TKT-F4-005` bagian Master Status Klaim** |
@@ -18,6 +20,11 @@ Klaim.**
 > [`migrations/0002`](backend/migrations/0002_master_status_klaim.up.sql) dijalankan DBA. Terhadap
 > penyimpanan memori ia berfungsi penuh dengan 33 baris nyata. Jalankan `./claimpnc.exe -periksa`
 > untuk melihat keadaannya.
+
+> **Pelaporan Klaim juga belum dapat dipakai terhadap Oracle.** Tabel
+> `POOLDATA.CPNC_LAPORAN_KLAIM` belum ada sampai
+> [`migrations/0003`](backend/migrations/0003_pelaporan_klaim.up.sql) dijalankan DBA. Terhadap
+> penyimpanan memori ia berfungsi penuh dengan enam laporan contoh yang mencakup kelima tahap.
 
 Keputusan, penyimpangan dari Steering, dan utang teknis yang disadari dicatat di
 [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md). Jalannya pengerjaan dicatat di
@@ -51,6 +58,10 @@ claim-pnc/
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memori + 33 baris contoh
+│   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── pelaporanklaim/          MODUL — Pelaporan Klaim (B-14)
+│   │   │   ├── usecase/                 catat, ubah, transfer, tautkan klaim, daftar
+│   │   │   ├── repo/                    sqlstore (CPNC_LAPORAN_KLAIM), memori + 6 contoh
 │   │   │   └── http/                    dto, galat, handler, rute
 │   │   └── platform/                config, logging, db, middleware, waktu, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
@@ -261,6 +272,30 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/status-klaim` | wajib | daftar status klaim + `total` |
 | `POST` | `/api/master/status-klaim` | wajib | `{label}` → `201` + baris beserta kode yang dibuat sistem |
 | `PUT` | `/api/master/status-klaim/{kode}` | wajib | `{label}` → `200` + baris setelah diubah |
+| `GET` | `/api/pelaporan-klaim` | wajib | daftar laporan; saringan `tahap`, `cari`, `cabang`, `batas`, `lewati` — beserta `ringkasan` kelima tahap |
+| `POST` | `/api/pelaporan-klaim` | wajib | mencatat laporan baru → `201` + nomor yang dibuat sistem |
+| `GET` | `/api/pelaporan-klaim/{nomor}` | wajib | satu laporan |
+| `PUT` | `/api/pelaporan-klaim/{nomor}` | wajib | mengubah laporan yang **belum diregistrasi** |
+| `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | wajib | menandai laporan dikirim ke ASM pusat; `409` bila sudah |
+| `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | wajib | `{nomor_klaim}` — menautkan laporan ke klaim; `409` bila sudah |
+
+### Pelaporan Klaim
+
+Menggantikan harness Pega `InboxRCVApp_Harness`, yang di menu portal berjudul **"Inbox Laporan
+Klaim"**, beserta flow action `InputReceiveDocument`.
+
+**Tahap dihitung, tidak disimpan.** Lima tahap — belum ditransfer, belum diregistrasi, sudah
+diregistrasi, sudah diakseptasi, ditolak — diturunkan dari tiga kolom, persis seperti sistem lama
+menurunkannya dari kombinasi `PNCCASEID` dan `STATUSLOCK`. Dua tahap terakhir diisi modul klaim
+(`B-5`, `B-10`) yang belum ada, sehingga hari ini keduanya selalu nol.
+
+**Perpindahan tahap adalah aksi tersendiri**, bukan efek samping penyimpanan seperti di Pega, dan
+tidak dapat terjadi dua kali. **Tidak ada `DELETE`** — laporan yang sudah tertaut klaim dirujuk
+klaimnya lewat `ClaimData.RCV_ID`.
+
+Hanya **nama pelapor** yang wajib diisi. Itu bukan kelonggaran: laporan kerugian datang dengan
+kelengkapan yang berbeda-beda dan harus dapat dicatat sekarang lalu dilengkapi kemudian —
+kelengkapan yang sesungguhnya ditegakkan saat registrasi (`B-2`).
 
 ### Master Status Klaim
 

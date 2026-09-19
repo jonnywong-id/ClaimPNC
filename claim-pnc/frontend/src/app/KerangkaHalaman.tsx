@@ -30,6 +30,7 @@ type Entri = { ke: string; label: string; ikon: ReactNode }
  */
 const menu: Entri[] = [
   { ke: '/', label: 'Beranda', ikon: <IkonPerisai className="h-4 w-4" /> },
+  { ke: '/pelaporan-klaim', label: 'Pelaporan Klaim', ikon: <IkonDaftar className="h-4 w-4" /> },
   { ke: '/master/status-klaim', label: 'Master Status Klaim', ikon: <IkonDaftar className="h-4 w-4" /> },
 ]
 

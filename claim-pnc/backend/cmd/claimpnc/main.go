@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
@@ -47,6 +48,10 @@ import (
 	masterstatusmemori "claim-pnc/internal/masterstatus/repo/memori"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	masterstatususecase "claim-pnc/internal/masterstatus/usecase"
+	laporanhttp "claim-pnc/internal/pelaporanklaim/http"
+	laporanmemory "claim-pnc/internal/pelaporanklaim/repo/memory"
+	laporansql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
+	laporanusecase "claim-pnc/internal/pelaporanklaim/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemori "claim-pnc/internal/portal/repo/memori"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -129,6 +134,38 @@ func jalankan() error {
 		TulisGalat: authhttp.TulisGalat(logger),
 	})
 
+	handlerPelaporanKlaim := laporanhttp.NewHandler(laporanhttp.Options{
+		Service: rakitan.pelaporanKlaim,
+		// Jembatan satu arah dari modul auth ke modul pelaporan klaim, dipasang di sini
+		// supaya kedua modul tetap tidak saling mengimpor — yang tahu keduanya hanyalah
+		// berkas perakitan ini.
+		//
+		// Kode cabang diambil dari profil pengguna, bukan dari badan permintaan.
+		//
+		// Di sistem lama ia dibaca `GetIDCabang` lewat DB Link `@ASMD`
+		// (`Activity/CreateNewCaseRCV-Act.xml` step 6), dan API penggantinya (`D-25`,
+		// `R-03`) belum ada. Yang dipakai sebagai gantinya adalah `Placement.BranchCode`
+		// dari HCC/HCQ, yang memang sudah dipetakan ke `Pengguna.KodeCabang` justru untuk
+		// keperluan batas data per cabang (`11-SECURITY.md` §3.2, dicatat di
+		// `keputusan-implementasi.md` §9.5).
+		//
+		// Ia KOSONG untuk pengguna non-karyawan — `POOLDATA.M_LOGIN_PNC` tidak memuat
+		// cabang. Dalam keadaan itu nilai dari form yang dipakai; usecase menanganinya.
+		GetCaller: func(ctx context.Context) (laporanhttp.Caller, bool) {
+			konteks, ada := authhttp.KonteksPengguna(ctx)
+			if !ada {
+				return laporanhttp.Caller{}, false
+			}
+			return laporanhttp.Caller{
+				Login:      konteks.Pengguna.Login,
+				BranchCode: konteks.Pengguna.KodeCabang,
+			}, true
+		},
+		Logger:              logger,
+		WriteJSON:           tulisJSON,
+		FallbackErrorWriter: laporanhttp.ErrorWriter(tulisGalatAuth),
+	})
+
 	handlerRekening := rekeninghttp.HandlerBaru(rekeninghttp.Opsi{
 		Layanan: rakitan.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
@@ -170,6 +207,11 @@ func jalankan() error {
 				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
 				// dengan seluruh rute lain hari ini.
 				masterstatushttp.Pasang(terlindungi, handlerMasterStatus)
+
+				// Pelaporan Klaim memuat nama tertanggung, nomor polis, kronologi
+				// kejadian, dan alamat surel pelapor. Tidak satu pun boleh terbaca
+				// tanpa sesi.
+				laporanhttp.Mount(terlindungi, handlerPelaporanKlaim)
 			})
 		},
 	})
@@ -191,17 +233,19 @@ type rakitan struct {
 	auth           *usecase.Layanan
 	portal         portal.Repo
 	masterRekening *rekeningusecase.Layanan
-	masterStatus *masterstatususecase.Layanan
+	masterStatus   *masterstatususecase.Layanan
+	pelaporanKlaim *laporanusecase.Service
 	aliasSiap      func() []string
 	tutup          func()
 }
 
 // penyimpanan memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type penyimpanan struct {
-	pengguna     auth.PenggunaRepo
-	sesi         auth.SesiRepo
-	portal       portal.Repo
-	masterStatus masterstatus.Repo
+	pengguna       auth.PenggunaRepo
+	sesi           auth.SesiRepo
+	portal         portal.Repo
+	masterStatus   masterstatus.Repo
+	pelaporanKlaim pelaporanklaim.Repo
 
 	rekening     masterrekening.Repo
 	bankRekening masterrekening.BankRepo
@@ -254,11 +298,21 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 		return rakitan{}, err
 	}
 
+	layananPelaporanKlaim, err := laporanusecase.NewService(laporanusecase.Options{
+		Repo:  simpan.pelaporanKlaim,
+		Clock: waktu.JamSistem{},
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
 	return rakitan{
 		auth:           layanan,
 		portal:         simpan.portal,
 		masterRekening: rakitMasterRekening(konf, simpan, logger),
-		masterStatus: layananMasterStatus,
+		masterStatus:   layananMasterStatus,
+		pelaporanKlaim: layananPelaporanKlaim,
 		aliasSiap:      simpan.aliasSiap,
 		tutup:          simpan.tutup,
 	}, nil
@@ -398,6 +452,7 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		simpan.rekeningDiOracle = true
 		simpan.aliasSiap = kumpulan.Tersedia
 		simpan.masterStatus = masterstatussql.RepoBaru(utama)
+		simpan.pelaporanKlaim = laporansql.NewRepo(utama)
 		simpan.tutup = kumpulan.Tutup
 	} else {
 		simpan.portal = portalmemori.RepoBaru(portalmemori.DaftarContoh()...)
@@ -406,6 +461,10 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
 		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
+		// Laporan contoh mencakup kelima tahap, sehingga seluruh tab layar Pelaporan
+		// Klaim dapat dicoba tanpa Oracle dan tanpa menunggu migrasi 0003. Seluruh
+		// isinya karangan — lihat repo/memory/sample.go.
+		simpan.pelaporanKlaim = laporanmemory.NewRepo(laporanmemory.SampleReports()...)
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
 	}
 

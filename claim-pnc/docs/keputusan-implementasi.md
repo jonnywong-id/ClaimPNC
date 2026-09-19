@@ -1080,3 +1080,301 @@ di §11.7.
   tiruannya menjawab `/api/portal` — panggilan yang memang baru muncul karena pemilih portal pindah
   ke bilah atas.
 >>>>>>> master
+
+---
+
+> **Catatan atas berkas ini.** Baris 530, 769, dan 1082 di atas masih memuat penanda konflik
+> merge yang belum diselesaikan (`<<<<<<< HEAD`, `=======`, `>>>>>>> master`), berasal dari
+> commit `3e57aae`. Akibatnya ada **dua bab bernomor §10** yang sama-sama sah: Master Rekening
+> dan Master Status Klaim. Keduanya sengaja tidak saya nomori ulang — rujukan silang seperti
+> `§10.9` dipakai berkas lain, termasuk komentar di dalam kode. Bab di bawah karena itu bernomor
+> **§12**, melompati §11 yang sudah dipakai bab Sistem Desain.
+
+## 12. Modul Pelaporan Klaim (2026-09-18)
+
+Modul **proses klaim** yang pertama. Karena itu setiap keputusan di bawah bukan hanya tentang satu
+layar: ia menjadi pola untuk tiga belas modul bisnis berikutnya, yang seluruhnya berurusan dengan
+klaim dan bukan dengan master.
+
+### 12.1 Keputusan Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Tiket `B-14` bertentangan dengan export — mana yang diikuti? | **Ikuti export.** Tiket dicatat sebagai usulan revisi, tidak disunting diam-diam |
+| 2 | Header laporan ada di tabel engine Pega yang dibaca 116 rule | **Tabel baru milik aplikasi.** *"tabel ini sudah tidak mau dipakai dan akan dibuatkan tabel baru"* |
+| 3 | Lingkup sesi ini | **Form dan daftar bertahap.** Tanpa lampiran, utas komunikasi, dan penugasan |
+| 4 | Bahasa penamaan | *"Tugas sekarang hanya untuk proses modul ini saja"* — lihat §12.9 |
+
+### 12.2 Nama modul: kenapa "Pelaporan Klaim" dan bukan "Receive Document"
+
+`D-81` menetapkan nama modul diambil dari nama yang disebut Work Owner. Yang membuat keputusan ini
+mudah adalah bahwa sistem lama pun memakai nama itu di permukaan yang dilihat orang — hanya nama
+kelas internalnya yang berbeda:
+
+| Bukti | Isi |
+|---|---|
+| `Navigation/pyCaseWorkerNavigation-Navigation.xml:19864` | menu **"Inbox Laporan Klaim"** |
+| `Activity/CreateNewCaseRCV-Act.xml` step 7 | `Param.Posisi = "LAPORAN KLAIM"` |
+| `Section/ViewStatusReceiveDocument-Section.xml` | komentar developer menyebut *"inbox pelaporan klaim"* |
+
+`Work-ReceiveDocument` adalah nama internal, dan `D-19` menetapkan alias internal tidak dibawa.
+
+### 12.3 Tahap DIHITUNG, tidak disimpan
+
+Sistem lama tidak menyimpan status laporan sebagai kolom. Ia menurunkannya dari kombinasi dua
+penanda, terbaca dari `RDB List/BrowseClaimRCV_Aksep-SQL.xml`:
+
+```
+PNCCASEID null   + STATUSLOCK null     -> belum ditransfer ke ASM
+PNCCASEID null   + STATUSLOCK terisi   -> sudah ditransfer, belum diregistrasi
+PNCCASEID terisi + STATUSLOCK terisi   -> sudah diregistrasi menjadi klaim
+```
+
+Pola itu **dipertahankan**. Menyimpan tahap sebagai kolom tersendiri akan membuat dua sumber
+kebenaran yang dapat berselisih — dan selisihnya tidak menimbulkan galat, hanya laporan yang
+tertahan di tab yang salah.
+
+Konsekuensinya mengikat di dua tempat sekaligus: ekspresi `CASE` di SQL dan metode `Tahap()` di Go
+harus sama persis. Keduanya dipagari uji `TestEkspresiTahapSeragamDiSeluruhKueri`.
+
+**Dua tahap yang belum dapat terjadi.** `SUDAH_AKSEPTASI` dan `DITOLAK` ditentukan modul klaim
+(`B-5`, `B-10`) yang belum ada; sistem lama menghitungnya dengan menengok `t_claim_adjustment` dan
+`t_claim_pnc`. Modul ini tidak menengok ke sana — ia menyediakan satu field `HasilKlaim` yang
+diisi modul klaim saat hasilnya diketahui. Hari ini field itu selalu kosong, dan kedua tab itu
+selalu nol. Tabnya **tetap ditampilkan**: tab yang menghilang saat kosong membuat pengguna mengira
+tabnya tidak ada.
+
+### 12.4 Kenapa tabel baru, dan apa yang ditinggalkan bersama tabel lama
+
+Data laporan di sistem lama hidup di dua tempat, dan keduanya tidak dapat dipakai:
+
+| Tempat | Kenapa tidak |
+|---|---|
+| `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` | Tabel milik **engine Pega**, dibaca 116 rule, dan tetap ditulis Pega untuk seluruh case type lain yang belum bermigrasi. `P-1` melarang dua sistem menulis satu tabel |
+| `POOLDATA.T_CLAIM_RECIVEDCLAIM` | Penulis tunggalnya memang terbukti — hanya `PROCINSERTDATARECIVEDKLAIM` yang menyentuhnya. Tetapi ia **hanya memuat sebagian**: penanda transfer, estimasi, tipe klaim, dan jumlah dokumen tidak punya kolom di sana; keempatnya hanya hidup di blob case Pega |
+
+**Satu hal yang harus dijawab sebelum modul ini menyala di produksi.** Penelusuran seluruh export
+tidak menemukan satu pun rule yang **membaca** `T_CLAIM_RECIVEDCLAIM`. Sejauh yang terlihat, tabel
+itu write-only. Bila ada pembaca di luar export — laporan BI, perkakas cabang, kueri berkala — ia
+akan berhenti menerima baris baru begitu modul ini menyala, dan berhentinya **tidak menimbulkan
+galat apa pun**. Kuerinya untuk DBA ada di kepala migrasi `0003`.
+
+### 12.5 Alias Pega tidak dibawa masuk
+
+Pemetaan properti klipboard ke kolom di sistem lama menyesatkan secara aktif. Enam yang terburuk,
+dari `RDB List/Rcv_ProcInsertRecivedDocument-SQL.xml:102-124`:
+
+| Properti | Kolom sebenarnya | Kenapa berbahaya |
+|---|---|---|
+| `TelpTertanggung` | `USERINPUT` | petugas penginput, bukan telepon tertanggung |
+| `TanggalSelesaiRawatInap` | `REGISTDATE` | tanggal registrasi, bukan tanggal pulang rawat |
+| `NamaSurveyor` | `NAMAKURIRASM` | nama kurir, bukan surveyor |
+| `UserTeknis` | `NAMATERTANGGUNG` | nama tertanggung, bukan petugas teknis |
+| `LokasiSurveyor` | `LOKASIKEJADIAN` | lokasi kejadian |
+| `ReferenceId` | `TANGGALTERIMADOKUMEN` | sebuah **tanggal**, bukan nomor referensi |
+
+`StatusLock` juga bukan seperti namanya: ia bukan kunci baris melainkan penanda bahwa laporan sudah
+dikirim ke ASM pusat.
+
+Pemetaan tiga arah lengkapnya ditulis di kepala `repo/sqlstore/laporan.sql` — satu-satunya tempat
+ketiganya dapat dibandingkan berdampingan. Ini melaksanakan `03-CURRENT-ARCHITECTURE` §4.2.
+
+### 12.6 Perilaku yang sengaja TIDAK ditiru, beserta alasannya
+
+| Perilaku lama | Kenapa tidak dibawa |
+|---|---|
+| Kunci layar `StatusLock` **dapat dilewati** operator berjabatan "PA" atau bercabang kantor pusat (`Pre_ActReceiveDocument` step 3-4) | Pagar kewenangan yang ditulis di dalam kode — persis yang `D-15` larang. Di sini yang mengunci adalah REGISTRASI, tanpa pengecualian |
+| `UpdateRCVCase` **menimpa** nomor polis, tertanggung, tanggal kejadian, dan kronologi pada laporan dengan nilai dari klaim | Itu menghapus apa yang benar-benar dilaporkan pelapor — dan dengan begitu menghapus satu-satunya cara mengetahui bahwa pelapor semula menyebut polis yang keliru |
+| `TANGGALTERIMADOKUMEN` bertipe **VARCHAR2** | Tanggal sebagai teks membuat pengurutan menjadi pengurutan teks dan penyaringan rentang tidak dapat memakai indeks — cacat yang `09-DATABASE-STRATEGY` §3.2 perintahkan dihapus |
+| `ROWNUM` pada ketiga kueri inbox | `OFFSET … FETCH NEXT`, sesuai §3.3 |
+| Tiga penyisipan `{ASIS:tempQuery.*}` per kueri inbox | Penyaring sebagai parameter. Ketiga rule inbox menjadi satu kueri |
+| Prefix `'ASM-FW-GCNMFW-WORK '` pada nomor klaim | `D-22` dan `D-71`: kunci teknis Pega tidak lagi bocor ke data bisnis |
+| `ErrMsg` berbasis string dan `COMMIT` di dalam rule | `D-68`: kepemilikan transaksi pindah ke Go |
+
+### 12.7 Perpindahan tahap menjadi aksi tersendiri
+
+Di sistem lama, pengisian `StatusLock` dan `DateOfSendASM` terjadi sebagai **efek samping
+penyimpanan layar** — tanpa langkah tersendiri, dan tanpa apa pun yang mencegah laporan ditransfer
+dua kali.
+
+Di sini keduanya menjadi sub-sumber daya: `POST /{nomor}/transfer` dan `POST /{nomor}/klaim`.
+`10-API-STRATEGY` §2 menetapkannya, dan alasannya nyata di sini — kedua aksi punya invarian
+sendiri, dan pembaruan field generik akan melewatkan keduanya sekaligus.
+
+**Transfer kedua ditolak, bukan dibiarkan lolos.** Menimpa tanggal transfer berarti menghapus kapan
+laporan itu benar-benar dikirim. Begitu pula penautan klaim kedua: satu laporan melahirkan satu
+klaim, dan menautkannya ke klaim kedua membuat dua klaim mengaku berasal dari laporan yang sama.
+
+### 12.8 Penyimpangan yang disadari
+
+#### 12.8.1 Nilai uang disimpan sebagai teks, bukan `NUMBER(18,2)`
+
+`09-DATABASE-STRATEGY` §5 menetapkan nilai uang bertipe `NUMBER(18,2)`. Kolom `NILAI_ESTIMASI`
+dibuat `VARCHAR2(30)`.
+
+**Alasannya bukan kemudahan.** Aplikasi membawa nilai ini sebagai teks desimal, karena pustaka
+standar Go tidak punya tipe desimal dan `float64` akan membulatkan diam-diam — hal yang `I-12`
+larang. Menuliskan teks itu ke kolom `NUMBER` menyerahkan konversinya kepada
+`NLS_NUMERIC_CHARACTERS`: pada sesi yang pemisah desimalnya koma, `1234.56` akan **ditolak**.
+
+Kegagalan itu bergantung lingkungan, dan **di mesin tempat berkas ini ditulis tidak ada basis data
+untuk membuktikannya**. Memilih tipe yang kegagalannya tidak dapat saya deteksi adalah pilihan yang
+salah. Bentuknya dipagari `CHECK` regex di basis data dan diperiksa lagi di domain.
+
+**Batas yang harus disadari:** kolomnya tidak dapat dijumlahkan atau dibandingkan sebagai angka di
+SQL. Itu dapat diterima karena nilai ini tidak dipakai perhitungan apa pun — ambang komite dan
+Notice of Large Losses dihitung dari nilai pada **klaim** (`B-5`), bukan dari perkiraan pelapor.
+
+**Pertanyaan terbuka:** apakah pustaka desimal boleh ditambahkan sebagai dependensi? Bila ya,
+kolom ini menjadi `NUMBER(18,2)` lewat migrasi tersendiri, dan yang berubah hanya adapter.
+
+#### 12.8.2 Bentuk nomor laporan adalah keputusan baru
+
+Nomor laporan lama ditentukan `pyWorkIDPrefix` pada rule kelas Pega, yang **tidak ada di export**;
+pencarian seluruh export tidak menemukan satu pun contoh nilainya. Bentuk lamanya karena itu tidak
+diketahui dan tidak dapat ditiru.
+
+Yang dipakai mengikuti satu-satunya keputusan penomoran yang pernah diambil proyek ini, `D-71`:
+`LPK.YY.xxxx` bersebelahan dengan `PNCN.YY.xxxx`.
+
+Satu cacat `D-71` **tidak diwarisi**: sintaks nomor klaim memakai `TO_CHAR` tanpa format mask,
+sehingga lebar segmen terakhir berubah-ubah dan pengurutan sebagai teks tidak sesuai urutan
+penerbitan (`.10` mendahului `.9`). Tabel ini baru dan nomornya belum pernah terbit, jadi lebarnya
+dibuat tetap. Dikunci uji `TestPengurutanTeksSesuaiUrutanPenerbitan`.
+
+**Menunggu konfirmasi Work Owner.** Bila bentuk lain yang dikehendaki, yang berubah hanya satu
+konstanta.
+
+#### 12.8.3 Satu prop baru pada komponen tabel baku
+
+Lihat `catatan-pengembangan.md` §11.9. Ringkasnya: `TabelData` menyaring di peramban dan dokumennya
+sendiri melarang layar seperti ini memakainya. Membuat tabel kedua akan membatalkan aturan "semua
+tabel lewat `TabelData`" pada modul bisnis pertama yang memakainya; memakainya apa adanya
+menghasilkan pencarian yang **bohong**. Yang dipilih: satu prop opsional, bersifat menambah.
+
+### 12.9 Bahasa penamaan: asumsi yang salah, lalu dikoreksi Work Owner
+
+`CLAUDE.md` memuat `D-80` (18 September) yang mewajibkan seluruh nama di dalam kode berbahasa
+Inggris. Seluruh kode di working copy ini — `auth`, `portal`, `masterrekening`, `masterstatus` —
+berbahasa Indonesia. Keduanya tidak dapat dipenuhi bersamaan.
+
+Jawaban Work Owner, *"Tugas sekarang hanya untuk proses modul ini saja"*, menolak opsi mengganti
+seluruh modul tetapi tidak menyebut bahasa mana untuk modul baru.
+
+**Asumsi yang saya ambil saat itu: bahasa Indonesia**, mengikuti kelima modul yang ada, dengan
+alasan instruksi sesi ini menuntut *konsistensi implementasi* secara eksplisit.
+
+**Asumsi itu SALAH.** Work Owner memeriksa hasilnya dan menyatakan: *"saya cek masih menggunakan
+bahasa indonesia, mohon diubah jadi inggris"*. Yang berlaku adalah `D-80`, bukan konsistensi dengan
+kode yang ditulis sebelum `D-80` ada.
+
+**Yang kemudian dikerjakan:** seluruh penamaan di dalam modul ini diganti ke bahasa Inggris —
+folder, berkas, paket, tipe, fungsi, method, field, parameter, dan variabel lokal, di backend
+maupun frontend.
+
+**Lima hal TETAP berbahasa Indonesia**, sesuai kelima pengecualian `D-80`:
+
+| Yang tetap Indonesia | Contoh di modul ini |
+|---|---|
+| Komentar dan dokumen | seluruh komentar Go dan TSX, serta ketiga dokumen di `docs/` |
+| Nama field JSON pada API | `nama_pelapor`, `tanggal_kejadian`, `dapat_ditransfer` |
+| Nama tabel dan kolom basis data | `POOLDATA.CPNC_LAPORAN_KLAIM`, `NOMOR`, `DITRANSFER` |
+| Teks yang dilihat pengguna | judul tab, label kolom, pesan galat |
+| Nilai kode galat | `laporan_sudah_ditransfer` — ia kontrak yang sudah dibaca frontend |
+
+**Nama folder mengikuti `D-81` sepenuhnya:** `internal/pelaporanklaim` (tanpa tanda hubung, karena
+Go tidak mengizinkannya) dan `src/modules/pelaporan-klaim`. Nama modulnya Indonesia; isinya Inggris.
+
+#### 12.9.1 Akibat yang diterima: berkas campur dua bahasa
+
+Komponen bersama yang ditulis sebelum `D-80` berada **di luar lingkup** pekerjaan ini, dan arahan
+Work Owner *"untuk luar lingkup flow tolong jangan diubah atau diperbaiki apapun"* melarang
+menyentuhnya. Akibatnya satu baris kode dapat memuat dua bahasa, dan itu memang yang dikehendaki:
+
+```tsx
+<KolomIsian id="nama_pelapor" galat={errors.nama_pelapor?.message} disabled={save.isPending} />
+<TextAreaField id="kronologi" error={errors.kronologi?.message} disabled={save.isPending} />
+```
+
+Yang tetap Indonesia karena berada di luar lingkup: props `TabelData` (`kolom`, `baris`,
+`kunciBaris`, `judul`, `aksi`, `cariDiServer`), props `KolomIsian` (`galat`, `petunjuk`), props
+`PesanGalat` (`judul`, `keterangan`, `nada`), prop `Tombol` (`nada`), klien API (`panggilAPI`,
+`metode`, `badan`, `GalatAPI`), store sesi (`gunakanSesi`), dan seam jam (`waktu.Jam`,
+`JamSistem`, `JamTetapPada`, `.Maju`).
+
+Tiga fungsi yang DITULIS pada sesi ini di paket `waktu` ikut diganti ke Inggris — `DateWIB`,
+`TwoDigitYearWIB` — karena keduanya berkas baru, bukan kode lama yang disentuh. Paket `waktu`
+karenanya kini memuat keduanya berdampingan.
+
+### 12.10 Kontrak API modul ini
+
+| Metode | Jalur | Jawaban |
+|---|---|---|
+| `GET` | `/api/pelaporan-klaim` | halaman, `jumlah`, `batas`, `lewati`, dan `ringkasan` kelima tahap |
+| `POST` | `/api/pelaporan-klaim` | `201` beserta nomor yang dibuat sistem |
+| `GET` | `/api/pelaporan-klaim/{nomor}` | satu laporan |
+| `PUT` | `/api/pelaporan-klaim/{nomor}` | `200` beserta laporan setelah diubah |
+| `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | `200`, atau `409` bila sudah ditransfer |
+| `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | `200`, atau `409` bila sudah diregistrasi |
+
+**Tidak ada `DELETE`.** `ADR-0012` menetapkan penghapusan lunak menyeluruh, dan laporan yang sudah
+tertaut klaim dirujuk klaimnya lewat `ClaimData.RCV_ID` — rujukan yang dipakai 41 rule Pega.
+Ketiadaannya dikunci dua uji, supaya penambahannya kelak menjadi keputusan sadar.
+
+**Ringkasan tahap dikirim bersama halaman, bukan lewat endpoint terpisah.** Alasannya sama dengan
+alasan sistem lama memakai satu kueri berisi enam `SUM(CASE WHEN ...)`: angka tiap tab harus
+konsisten dengan isi tab yang sedang terbuka. Dua permintaan terpisah dapat tiba di antara dua
+perubahan, dan pengguna melihat lencana "3" di atas tabel berisi empat baris.
+
+Kode galat baru:
+
+| Kode | HTTP | Kenapa bukan yang lain |
+|---|---|---|
+| `validasi_gagal` | `422` | Permintaannya berbentuk benar, isinya yang melanggar aturan bisnis |
+| `laporan_sudah_ditransfer` | `409` | Isian penggunanya sah, tetapi bentrok dengan keadaan penyimpanan |
+| `laporan_sudah_diregistrasi` | `409` | idem |
+| `nomor_laporan_sudah_dipakai` | `409` | Seharusnya mustahil — nomornya dibuat urutan |
+| `laporan_klaim_tidak_ditemukan` | `404` | — |
+
+### 12.11 Validasi: hanya satu field yang wajib
+
+Layar Pega tidak mewajibkan apa pun. Itu bukan kelalaian melainkan sifat pekerjaannya: laporan
+kerugian datang lewat telepon dan surel dengan kelengkapan yang berbeda-beda, dan petugas harus
+dapat mencatatnya **sekarang** lalu melengkapinya kemudian. Menolak laporan yang belum lengkap
+berarti laporan itu tidak tercatat sama sekali.
+
+Yang diwajibkan hanya **nama pelapor** — tanpa itu laporannya tidak dapat ditindaklanjuti siapa
+pun. Kelengkapan yang sesungguhnya ditegakkan saat **registrasi** (`B-2`), tempat invarian `I-2`
+sampai `I-10` berlaku.
+
+Yang ditambahkan di luar itu semuanya berasal dari lebar kolom atau dari bentuk yang harus dapat
+dikirim ke basis data: batas panjang, bentuk tanggal `YYYY-MM-DD`, bentuk surel yang longgar, dan
+bentuk nilai uang. Seluruh pelanggaran dikembalikan **sekaligus** — pada form berisi 17 isian,
+sekali-satu akan menyiksa.
+
+### 12.12 Otorisasi: keadaan yang belum berubah
+
+Rute modul ini terlindungi sesi, tetapi **belum diperiksa perannya**. Sistem lama membatasi layar
+ini pada tujuh peran lewat When rule `IsReceivePNC`: `Administrators`, `CaseManager`, `PncAdmin`,
+`PncManagerAdmin`, `PncReceive`, `PNCReportClaimInternal`, dan `PNCReportClaimEksternal`.
+
+Yang terakhir patut diperhatikan: **pelapor luar** juga membuka layar ini di sistem lama
+(`Activity/CreateNewCaseRCV-Act.xml` step 4 bercabang khusus untuknya).
+
+Keadaan ini sama dengan seluruh rute lain hari ini. Yang berubah: **taruhannya naik**. Layar ini
+memuat nama tertanggung, nomor polis, kronologi kejadian, dan alamat surel — bukan master data
+yang aman dilihat siapa saja.
+
+### 12.13 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+| Pertanyaan | Pemilik | Menahan |
+|---|---|---|
+| Adakah pembaca `T_CLAIM_RECIVEDCLAIM` di luar export? | Work Owner + DBA | Menyalakan modul ini di produksi |
+| Bentuk nomor laporan `LPK.YY.xxxx` — disetujui? | Work Owner | Tidak menahan; koreksinya satu konstanta |
+| Bolehkah pustaka desimal ditambahkan sebagai dependensi? | Work Owner | Tipe kolom `NILAI_ESTIMASI` |
+| ~~Bahasa penamaan modul baru — Indonesia atau Inggris?~~ | Work Owner | **TERTUTUP** — dijawab Inggris (`D-80`); lihat §12.9 |
+| Persetujuan menjalankan migrasi `0003` | Work Owner + DBA (`D-63`) | Layar bekerja terhadap Oracle |
+| Hak `INSERT`/`UPDATE` akun aplikasi atas tabel dan urutan baru | DBA | idem |
+| Daftar pilihan `Kurir` dan `Tipe Klaim` — tidak ada di export | Work Owner | Tidak menahan; keduanya teks bebas hari ini |
+| Kapan lampiran, utas komunikasi, dan penugasan menyusul | Work Owner | Paritas penuh dengan layar lama |
+| Go dan Node terpasang di mesin pengembangan | Work Owner / Tim Infra | **Seluruh verifikasi otomatis** |

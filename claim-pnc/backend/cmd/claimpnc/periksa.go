@@ -14,11 +14,13 @@ import (
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
+	laporansql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
@@ -70,6 +72,7 @@ func periksa(konf config.Konfigurasi, login string, sumberSandi io.Reader, kelua
 	periksaTabelAplikasi(ctx, warisan, cetak)
 	periksaTabelLogin(ctx, warisan, cetak)
 	periksaMasterStatus(ctx, masterstatussql.RepoBaru(utama), cetak)
+	periksaPelaporanKlaim(ctx, laporansql.NewRepo(utama), cetak)
 
 	cetak("")
 	if login == "" {
@@ -162,6 +165,47 @@ func periksaMasterStatus(ctx context.Context, repo *masterstatussql.Repo, cetak 
 		// V_STS_CLAIM, termasuk laporan TAT dan KPI. Ia harus terlihat di sini, bukan
 		// ditemukan pengguna di laporan.
 		cetak("  [WASPADA] %d status berlabel kosong — periksa langkah 2 migrasi 0002", kosong)
+	}
+}
+
+// periksaPelaporanKlaim melaporkan kesiapan POOLDATA.CPNC_LAPORAN_KLAIM sesudah migrasi
+// 0003.
+//
+// Ia melaporkan jumlah laporan PER TAHAP, bukan sekadar "dapat dibaca". Angka itulah yang
+// membedakan tabel yang sudah dipakai dari tabel yang baru dibuat dan masih kosong — dan
+// pada tabel yang sudah berisi, ia sekaligus memperlihatkan apakah ada laporan yang
+// tertahan lama di satu tahap.
+func periksaPelaporanKlaim(ctx context.Context, repo *laporansql.Repo, cetak func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		cetak("  [BELUM] POOLDATA.CPNC_LAPORAN_KLAIM belum siap: %v", err)
+		cetak("            Tabelnya dibuat migrasi 0003. Selama belum dijalankan, layar")
+		cetak("            Pelaporan Klaim tidak dapat dipakai terhadap Oracle — tetapi")
+		cetak("            seluruh bagian lain tetap jalan.")
+		return
+	}
+
+	ringkasan, err := repo.Summary(ctx, pelaporanklaim.Filter{})
+	if err != nil {
+		cetak("  [GAGAL] POOLDATA.CPNC_LAPORAN_KLAIM tidak dapat dihitung isinya: %v", err)
+		return
+	}
+
+	seluruhnya := 0
+	for _, jumlah := range ringkasan {
+		seluruhnya += jumlah
+	}
+	cetak("  [ok]    POOLDATA.CPNC_LAPORAN_KLAIM dapat dibaca: %d laporan", seluruhnya)
+
+	// Urutannya tetap, mengikuti perjalanan laporan — bukan urutan map, yang berubah
+	// setiap kali proses dijalankan dan membuat dua keluaran tidak dapat dibandingkan.
+	for _, tahap := range []pelaporanklaim.Stage{
+		pelaporanklaim.StageNotTransferred,
+		pelaporanklaim.StageNotRegistered,
+		pelaporanklaim.StageRegistered,
+		pelaporanklaim.StageAccepted,
+		pelaporanklaim.StageRejected,
+	} {
+		cetak("            %-20s %d", tahap.Label(), ringkasan[tahap])
 	}
 }
 

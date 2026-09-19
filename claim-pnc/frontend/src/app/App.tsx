@@ -6,6 +6,7 @@ import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
 import { HalamanMasterRekening } from '@/modules/master-rekening/HalamanMasterRekening'
 import { HalamanMasterStatusKlaim } from '@/modules/master-status-klaim/HalamanMasterStatusKlaim'
 import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
+import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { GalatAPI } from '@/api/klien'
 import { KodeGalat } from '@/api/tipe'
 import { gunakanSesi } from '@/app/sesi'
@@ -58,6 +59,18 @@ export function Rute() {
       <Route
         path="/master/status-klaim"
         element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterStatusKlaim />} />} />}
+      />
+      {/*
+        Pelaporan Klaim — modul proses klaim yang pertama, menggantikan harness
+        `InboxRCVApp_Harness` yang di menu Pega berjudul "Inbox Laporan Klaim".
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
+        sistem lama membatasinya pada tujuh peran lewat When rule `IsReceivePNC` — adalah
+        `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/pelaporan-klaim"
+        element={<PenjagaSesi anak={<Terlindungi anak={<ClaimReportPage />} />} />}
       />
       {/*
         Master rekening berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan

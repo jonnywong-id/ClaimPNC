@@ -1082,3 +1082,376 @@ untuk galat.
 | `--color-blue-600` di CSS | `oklch(54.6% .245 262.881)` — rona biru, terkonfirmasi |
 | Kelas `bg-blue-600`, `hover:bg-blue-700`, `active:bg-blue-800`, `focus-visible:ring-blue-500/35` | ada seluruhnya |
 | Sajian nyata port 8099 | halaman `200`, `theme-color` `#2563eb`, CSS yang disajikan **nol** indigo |
+
+---
+
+## 11. Sesi keenam — Modul Pelaporan Klaim (2026-09-18)
+
+Modul **proses klaim** yang pertama. Sampai sesi ini yang ada hanyalah login, portal, beranda,
+dan dua modul master; tidak satu pun menyentuh perjalanan sebuah klaim.
+
+### 11.1 Permintaan
+
+Work Owner meminta penambahan **modul Pelaporan Klaim**, dengan `Flow/InputReceiveDocument.xml`
+sebagai rujukan aplikasi existing, dan menuntut analisis penuh sebelum satu baris kode ditulis.
+
+### 11.2 Yang diperiksa lebih dulu, sebelum menulis kode
+
+Flow-nya sendiri hampir kosong — tiga shape: Start, satu assignment, End. Yang memuat aturan
+adalah rule di sekitarnya, dan seluruhnya dibaca:
+
+| Jenis | Rule |
+|---|---|
+| Flow | `InputReceiveDocument.xml` |
+| Flow Action | `InputReceiveDocument-FlowAction.xml` (pre-activity `Pre_ActReceiveDocument`) |
+| Section | `ViewInputReceiveDocument_sec`, `ViewStatusReceiveDocument`, `ReceiveDocumentShow_sec`, `InboxManagerReceive_Section` |
+| Harness | `InboxRCVApp_Harness`, `ReceiveDoucument_Harness`, `ViewReceiveDocument` |
+| Activity | `CreateNewCaseRCV`, `rcv_InsertRecivedDocumentClaim`, `UpdateRCVCase`, `Pre_ActReceiveDocument`, `PNCAdminRouterRCV`, `SumDocumentReceive`, `SetDataViewRCV_Act`, `SetListRCV_Act`, `SetAssignmentInboxReceive_act`, `ExportNotTransferRCV` |
+| RDB List | `Rcv_ProcInsertRecivedDocument`, `ViewTableBrowseRCVInProcess/Acc/Reject`, `BrowseClaimRCV_Aksep`, `GetDataRCVallKlaimPATravel` |
+| Report Definition | `BrowseCaseReceivedDocList_RD` |
+| When | `IsReceivePNC`, `IsPNCReceive`, `IsManagerReceive` |
+| Database | `PROCINSERTDATARECIVEDKLAIM.prc`, `INSERTDATAKLAIMCABANG.prc` |
+| Navigation | `pyCaseWorkerNavigation` |
+
+Hasilnya: tabel inti `POOLDATA.T_CLAIM_RECIVEDCLAIM` (26 kolom), daur hidup lima tahap yang
+diturunkan dari dua penanda, tujuh peran yang boleh membukanya, dan 26 pemetaan alias yang
+sebagian besarnya salah arti.
+
+### 11.3 Nama modulnya bukan karangan — tiga bukti
+
+Instruksi menyebut "Pelaporan Klaim" sementara case Pega-nya bernama `Work-ReceiveDocument`.
+Ketiga bukti berikut menunjukkan nama Work Owner justru yang dipakai sistem lama di permukaan:
+
+| Bukti | Isi |
+|---|---|
+| `Navigation/pyCaseWorkerNavigation-Navigation.xml:19864` | menu **"Inbox Laporan Klaim"** menuju `InboxRCVApp_Harness` |
+| `Activity/CreateNewCaseRCV-Act.xml` step 7 | `Param.Posisi = "LAPORAN KLAIM"` dan `Param.note = "Auto Create Laporan"` |
+| `Section/ViewStatusReceiveDocument-Section.xml` | komentar developer: *"done add row num in inbox pelaporan klaim"* |
+
+`D-81` menetapkan nama modul diambil dari nama yang disebut Work Owner. Di sini keduanya cocok.
+
+### 11.4 Temuan yang menghentikan pekerjaan sebelum dimulai
+
+Tiket `docs/ticketing/B-14-.../issues/01-*.md` menetapkan lingkup **"cabang pengirim, ekspedisi,
+nomor resi, tanggal kirim, estimasi tiba, jumlah lembar, jenis dokumen"** — *"kesembilan field"* —
+dan non-goal *"tidak mengunggah berkas dokumen"*.
+
+Pemeriksaan ke export menunjukkan keduanya **tidak menggambarkan layar yang ditunjuk Work Owner**:
+
+- Seluruh properti `ReceiveDocument.*` di seluruh export berjumlah **34**, dan tidak satu pun
+  bernama ekspedisi, resi, tanggal kirim, estimasi tiba, atau jumlah lembar.
+- `DocumentList` justru **unggah berkas** (`FileName`, `Base64`, `Format`, `GCNMCategory`) —
+  persis yang tiket sebut non-goal.
+
+Sumber tiket itu `CONTEXT.md`, yang menandai keterangannya `[KODE]` alias disimpulkan — bukan rule.
+
+**Work Owner memutuskan export yang diikuti**, dan tiket `B-14` dicatat sebagai usulan revisi.
+
+### 11.5 Koreksi atas temuan saya sendiri
+
+Pernyataan "ekspedisi dan resi tidak ada di export" **salah**, dan saya sampaikan sendiri sebelum
+melanjutkan.
+
+Ejaan Pega-nya `EXPEDISI` dan `NORESI`, dan saya sempat menyingkirkan berkas yang benar sebagai
+"urusan cabang". Keduanya memang ada:
+
+- `Database/INSERTDATAKLAIMCABANG.prc` menulis ke `POOLDATA.T_CLAIM_DATACABANG` dengan `RCV_ID`,
+  `EXPEDISI`, `NORESI`, `TANGGALKIRIMRESI`, `TGLESTIMASIRESI`.
+- Diisi `Activity/SendDataDariCabangKeKantorPusat_ACT` yang berkelas
+  **`ASM-FW-GCNMFW-Work-PNC`** — yaitu **klaim**, bukan case RCV. Fieldnya hidup di
+  `ClaimData.EkspedisiKlaim`, `ClaimData.NoResiEskpedisi`, `ClaimData.TanggalKirimEksedisi`,
+  `ClaimData.EstimasiSampaiEkspedisi`.
+
+Jadi kesembilan field tiket `B-14` milik aksi **"Transfer ke Kantor Pusat"** pada klaim, bukan
+milik layar ini. Kesimpulan tentang modul mana yang dibangun **tidak berubah** — yang dikoreksi
+kalimat saya, bukan arahnya.
+
+Pola kesalahannya sama dengan yang sudah dua kali tercatat di berkas ini (§9.9 dan §10.6):
+**alat ukur dipercaya sebelum dibuktikan menyala pada kasus yang jelas ada.**
+
+### 11.6 Empat pertanyaan konfirmasi dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tiket `B-14` bertentangan dengan export — mana yang diikuti? | **Ikuti export** |
+| 2 | Header laporan ada di `PC_ASM_FW_GCNMFW_WORK` yang dibaca 116 rule — ditaruh di mana? | *"tabel ini sudah tidak mau dipakai dan akan dibuatkan tabel baru"* |
+| 3 | Seberapa luas lingkup sesi ini? | **Form dan daftar bertahap** — tanpa lampiran, utas komunikasi, dan penugasan |
+| 4 | `D-80` mewajibkan penamaan Inggris, tetapi seluruh kode yang ada berbahasa Indonesia | *"Tugas sekarang hanya untuk proses modul ini saja"* |
+
+Jawaban 4 menolak opsi mengganti seluruh modul, tetapi **tidak menyebut** bahasa mana untuk modul
+baru. Asumsi yang diambil dan disampaikan: **bahasa Indonesia**, mengikuti kelima modul yang ada —
+karena instruksi Work Owner menuntut konsistensi implementasi, dan `D-80` belum pernah diterapkan
+di working copy ini. Nama folder modul mengikuti `D-81`: `internal/pelaporanklaim` dan
+`src/modules/pelaporan-klaim`.
+
+### 11.7 Yang dibangun
+
+```
+backend/internal/pelaporanklaim/
+├── pelaporanklaim.go        domain: LaporanKlaim (32 field), Tahap, Filter, seam Repo
+├── errors.go                empat galat sentinel, GalatValidasi, 19 nama field
+├── pelaporanklaim_test.go
+├── usecase/
+│   ├── kelola.go            Daftar, Ambil, Catat, Ubah, Transfer, TautkanKlaim
+│   └── kelola_test.go
+├── repo/memori/             adapter kedua, enam laporan contoh mencakup kelima tahap
+├── repo/sqlstore/           adapter Oracle, laporan.sql, generator nomor
+└── http/                    dto, galat, handler, rute
+
+backend/internal/platform/waktu/wib.go      satu-satunya tempat UTC menjadi WIB
+backend/migrations/0003_pelaporan_klaim.*   tabel baru CPNC_LAPORAN_KLAIM
+
+frontend/src/components/KolomTeksPanjang.tsx   isian banyak baris, dipakai bersama
+frontend/src/modules/pelaporan-klaim/
+├── api.ts                   empat hook TanStack Query
+├── HalamanPelaporanKlaim.tsx
+├── FormPelaporanKlaim.tsx   17 isian, empat kelompok
+├── TabTahap.tsx
+└── HalamanPelaporanKlaim.test.tsx
+```
+
+### 11.8 Perubahan di luar modul, dan alasannya
+
+Seluruhnya **penambahan**; tidak ada yang me-refactor modul yang sudah selesai.
+
+| Berkas | Perubahan | Kenapa tidak dapat dihindari |
+|---|---|---|
+| `cmd/claimpnc/main.go` | perakitan modul, pemasangan rute, jembatan pemanggil | Modul memasang rutenya sendiri, tetapi perakitannya milik entrypoint |
+| `cmd/claimpnc/periksa.go` | laporan kesiapan `CPNC_LAPORAN_KLAIM` per tahap | Membedakan "migrasi belum jalan" dari "tidak punya hak baca" |
+| `internal/platform/waktu/wib.go` | **berkas baru** — zona WIB dan tanggal kalender | `F-5` menuntut konversi di SATU tempat. Menaruhnya di dalam modul akan membuat modul berikutnya menyalinnya |
+| `frontend/src/api/tipe.ts` | tipe `LaporanKlaim`, `TahapLaporan`, `KodeGalatLaporan` | Berkas ini memang cerminan DTO Go |
+| `frontend/src/app/App.tsx` | satu rute | Titik pasang modul, setara `main.go` |
+| `frontend/src/app/KerangkaHalaman.tsx` | satu entri menu | Tanpanya layar hanya dapat dicapai dengan mengetik URL |
+| `frontend/src/components/TabelData.tsx` | **satu prop opsional** `cariDiServer` | Lihat §11.9 |
+
+### 11.9 Kendala: tabel baku menyaring di peramban, layar ini tidak boleh
+
+`TabelData` menyaring dan mengurutkan di peramban, dan **dokumennya sendiri melarang layar seperti
+ini memakainya**: *"Layar yang datanya besar — inbox dan laporan — TIDAK boleh memakai penyaringan
+ini."*
+
+Tiga jalan dipertimbangkan:
+
+| Jalan | Kenapa tidak atau ya |
+|---|---|
+| Membuat tabel kedua khusus modul ini | Membatalkan aturan "semua tabel lewat `TabelData`" pada modul bisnis PERTAMA yang memakainya — persis kegagalan 268 grid yang komponen itu ada untuk mencegahnya |
+| Memakainya apa adanya | Pencarian hanya menyentuh halaman yang terbuka. Petugas mencari laporan yang ada di halaman tiga dan diberi tahu ia tidak ada — **hasil yang bohong**, bukan sekadar tidak membantu |
+| **Menambah satu prop opsional** | Dipilih. Saat `cariDiServer` diisi, kotak cari menjadi terkendali pemanggil, penyaringan di peramban dimatikan, dan pengurutan ikut dimatikan — mengurutkan satu halaman dari sepuluh bukan pengurutan |
+
+Bersifat menambah, bukan mengubah: layar master yang tidak mengisinya berperilaku sama persis.
+
+### 11.10 Kendala lain dan penyelesaiannya
+
+| Kendala | Penyelesaian | Dampak |
+|---|---|---|
+| Nilai uang dibawa sebagai teks desimal (tidak ada pustaka desimal), sedangkan kolom `NUMBER` menyerahkan konversinya ke `NLS_NUMERIC_CHARACTERS` — pada sesi berlokal koma, teks `1234.56` DITOLAK | Kolomnya dibuat `VARCHAR2(30)` dengan `CHECK` regex, dan alasannya ditulis lengkap di migrasi | Penyimpangan sadar dari `09-DATABASE-STRATEGY` §5. Kolomnya tidak dapat dijumlahkan di SQL — dapat diterima karena nilai ini tidak dipakai perhitungan apa pun |
+| `time.LoadLocation("Asia/Jakarta")` gagal di Windows tanpa basis data zona waktu | `time.FixedZone("WIB", 7*3600)` | Deterministik di mesin mana pun; WIB memang tidak mengenal daylight saving |
+| Bentuk nomor laporan lama tidak dapat ditiru — `pyWorkIDPrefix` ada di rule kelas yang tidak diekspor, dan nol contoh nilainya di seluruh export | Bentuk baru `LPK.YY.xxxx` mengikuti `D-71`, diisolasi di satu berkas | Menunggu konfirmasi Work Owner; yang berubah hanya satu konstanta |
+| `z.coerce.number()` membuat tipe masukan dan keluaran skema berbeda, sehingga React Hook Form dan Zod bertengkar soal `defaultValues` | Jumlah dokumen disimpan sebagai teks di skema, diubah menjadi angka satu kali saat mengirim | Satu baris konversi, tipe tetap sehat |
+| `exactOptionalPropertyTypes` menolak prop opsional menerima nilai yang mungkin `undefined` | Ditulis eksplisit dengan `\| undefined`, mengikuti pola `KolomIsian` yang sudah ada | — |
+| Heredoc bash gagal pada dokumen panjang berisi tanda kutip | Ditulis lewat berkas scratchpad lalu digabungkan — kendala yang sama sudah tercatat di §8.5 | Hanya cara penulisan |
+
+### 11.11 Verifikasi — YANG TIDAK DAPAT DIJALANKAN
+
+**Go dan Node tidak terpasang di mesin ini.** Diperiksa di PATH (Git Bash dan PowerShell),
+`C:\Program Files\Go`, `C:\Go`, `C:\Program Files\nodejs`, dan `%LOCALAPPDATA%\Programs` — nihil
+seluruhnya. Drive `D:` yang dirujuk catatan sesi terdahulu juga tidak dapat diakses.
+
+Akibatnya, tidak satu pun dari ini dapat dijalankan pada sesi ini:
+
+```
+go build ./...        TIDAK DAPAT DIJALANKAN — go tidak terpasang
+go vet ./...          TIDAK DAPAT DIJALANKAN
+go test ./...         TIDAK DAPAT DIJALANKAN
+gofmt -l              TIDAK DAPAT DIJALANKAN
+npm run periksa-tipe  TIDAK DAPAT DIJALANKAN — node tidak terpasang
+npm test              TIDAK DAPAT DIJALANKAN
+npm run build         TIDAK DAPAT DIJALANKAN
+```
+
+Ini pertama kalinya sebuah sesi di proyek ini berakhir **tanpa satu pun pemeriksaan otomatis
+dijalankan**. Seluruh sesi sebelumnya menutup pekerjaannya dengan tabel hasil; sesi ini tidak
+dapat, dan menyatakannya lulus tanpa bukti akan menyesatkan gerbang penerimaan.
+
+**Yang dapat dilakukan sebagai gantinya, dan hasilnya:**
+
+| Pemeriksaan pengganti | Hasil |
+|---|---|
+| Keseimbangan kurung tiap berkas Go | seluruhnya seimbang; dua selisih terlacak ke kurung **di dalam string literal** |
+| Setiap konstanta `Field*` yang dipakai benar-benar dideklarasikan | **19 dipakai, 19 ada**, nol selisih |
+| Jumlah penanda posisi SQL versus jumlah argumen Go | `laporan_daftar` 12/12, `laporan_jumlah` 10/10, `laporan_ringkasan` 8/8, `laporan_sisip` 32/32, `laporan_perbarui` 30/30 |
+| Urutan kolom `SELECT` versus urutan `Scan` | 32/32, berpasangan satu per satu |
+| Setiap tanda tangan metode adapter versus seam `Repo` | kelima metode cocok pada kedua adapter |
+
+Kelimanya pemeriksaan manual, dan **tidak satu pun menggantikan kompilator**.
+
+### 11.12 Cacat repository yang ditemukan, di luar lingkup modul ini
+
+**Dua berkas dokumentasi masih memuat penanda konflik merge yang belum diselesaikan:**
+
+| Berkas | Baris |
+|---|---|
+| `claim-pnc/docs/keputusan-implementasi.md` | 530, 769, 1082 |
+| `claim-pnc/docs/penggunaan-skill.md` | 35, 94, 195 |
+
+Keduanya berasal dari commit `3e57aae "benerin konflik"`. **Tidak ada berkas kode yang terkena** —
+hanya markdown. Saya **tidak menyelesaikannya**: kedua berkas memuat dua bab `§10` dari dua sesi
+berbeda yang sama-sama sah, dan menomori ulang salah satunya akan memutus rujukan silang yang
+dipakai berkas lain (termasuk komentar kode yang menyebut `keputusan-implementasi.md §10.9`).
+Penyelesaiannya menuntut keputusan penomoran, bukan suntingan mekanis.
+
+**Satu ketidakkonsistenan lain dari merge yang sama:** modul Master Rekening dirutekan di
+`/master-rekening` **tanpa** `KerangkaHalaman`, sementara Master Status Klaim di
+`/master/status-klaim` **dengan** kerangka — dan Master Rekening **tidak ada di menu** sama sekali.
+Tidak disentuh, karena aturan Isolasi Protektif melarangnya.
+
+### 11.13 Yang belum dapat dibuktikan
+
+| Acceptance criteria | Keadaan | Apa yang menahannya |
+|---|---|---|
+| Kode dapat dikompilasi | **Belum** | Go tidak terpasang di mesin ini |
+| Uji lulus | **Belum** | idem, dan Node untuk sisi frontend |
+| Layar bekerja terhadap Oracle | **Belum** | migrasi `0003` belum dijalankan DBA (`D-63`) |
+| Nomor laporan terbit unik dari urutan | **Belum diuji** terhadap Oracle | idem, dan menuntut hak `INSERT` yang belum tentu dimiliki akun aplikasi |
+| Hasil setara dengan Pega (gerbang 1) | **Belum** | `S-8` belum ada, dan Pega staging yang dapat ditembak dari luar belum dikonfirmasi |
+
+### 11.14 Arahan Work Owner: yang di luar lingkup dibiarkan apa adanya
+
+Setelah laporan sesi ini dibaca, Work Owner menetapkan (2026-09-18):
+
+> *"untuk luar lingkup flow tolong jangan diubah atau diperbaiki apapun, dibiarkan saja"*
+
+**Yang dikembalikan karena arahan ini.** Dua suntingan pada `README.md` sudah saya batalkan dan
+teksnya dikembalikan **verbatim**:
+
+| Yang sempat saya perbaiki | Dikembalikan menjadi |
+|---|---|
+| Dua baris pembuka yang kembar akibat merge `3e57aae`, masing-masing mengaku "modul bisnis pertama" — saya gabungkan menjadi satu kalimat | Kedua baris asli, apa adanya. Modul baru ditambahkan sebagai **baris ketiga yang berdiri sendiri** |
+| Peringatan "Master Status Klaim belum dapat dipakai terhadap Oracle" — saya tulis ulang menjadi daftar dua modul | Paragraf aslinya utuh. Peringatan Pelaporan Klaim menjadi **blockquote terpisah di bawahnya** |
+
+Setelah pembatalan itu, `README.md` menjadi **35 baris bertambah, nol baris terhapus**.
+
+**Yang memang tidak pernah disentuh, dan tetap tidak disentuh:** penanda konflik merge di
+`keputusan-implementasi.md` dan `penggunaan-skill.md` (§11.12), ketidakkonsistenan rute dan menu
+Master Rekening (§11.12), dan `CLAUDE.md` yang memuat perubahan `D-80`/`D-81` belum ter-commit
+milik Work Owner.
+
+**Berkas bersama yang tetap berubah, dan sifat perubahannya.** Seluruhnya tuntutan modul baru,
+bukan perbaikan cacat yang tidak berhubungan:
+
+| Berkas | Baris terhapus | Sifat |
+|---|---|---|
+| `api/tipe.ts` · `app/App.tsx` · `app/KerangkaHalaman.tsx` · `cmd/claimpnc/periksa.go` · `README.md` | **nol** | murni penambahan |
+| `cmd/claimpnc/main.go` | 6 | seluruhnya **perataan gofmt** yang dipaksa nama field baru yang lebih panjang; nol logika tersentuh |
+| `components/TabelData.tsx` | 6 | satu prop opsional `cariDiServer`. Layar yang tidak mengisinya berperilaku sama persis — lihat §11.9 untuk alasannya dan untuk akibat bila ia dibatalkan |
+
+Arahan ini dicatat sebagai preferensi kerja yang berlaku seterusnya, bukan hanya untuk sesi ini.
+
+### 11.15 Keputusan Work Owner atas jejak pada `TabelData` (2026-09-18)
+
+Setelah arahan §11.14, satu-satunya berkas bersama yang masih memuat baris berubah adalah
+`components/TabelData.tsx`. Tiga tingkat jejak ditawarkan beserta akibatnya masing-masing:
+
+| Tingkat | Jejak | Akibat |
+|---|---|---|
+| 1 | **lima** baris berubah — pencarian ke server DAN pengurutan dimatikan | Pengurutan tidak lagi menjanjikan sesuatu yang tidak dilakukannya |
+| 2 | tiga baris berubah — hanya pencarian ke server | Panah urut tetap muncul dan mengurutkan **hanya halaman yang terlihat** |
+| 3 | nol baris — `TabelData` tidak disentuh | Pencarian **hanya menyaring halaman yang terbuka**; laporan di halaman tiga dilaporkan tidak ada |
+
+**Work Owner memilih tingkat 1**, sesuai rekomendasi.
+
+Kelima baris itu seluruhnya **baris yang dimodifikasi, bukan fungsi yang dihapus** — cabang
+aslinya tetap ada dan tetap diambil setiap kali prop `cariDiServer` tidak diisi:
+
+| Baris lama | Menjadi | Saat `cariDiServer` kosong |
+|---|---|---|
+| `const [cari, setCari] = useState('')` | `cariLokal` + `cari`/`setCari` diturunkan | state lokal yang sama |
+| `}, [baris, kolom, cari, urutan])` | `+ diServer` di dependency | tidak berubah; dibutuhkan `exhaustive-deps` |
+| `{terlihat.length} dari {baris.length} baris cocok.` | ternary | cabang `else` **teks yang sama persis** |
+| `urutan?.kunci === k.kunci` | `!diServer && …` | `!false && …` — sama persis |
+| `{k.tanpaUrut ? (` | `{k.tanpaUrut \|\| diServer ? (` | `x \|\| false` — sama persis |
+
+Artinya `HalamanMasterStatusKlaim` dan `HalamanMasterRekening` mengevaluasi kelima titik itu ke
+nilai yang identik dengan sebelumnya. **Klaim itu belum terbukti** — ia seharusnya dibuktikan 33
+uji frontend yang sudah ada, dan Node tidak terpasang di mesin ini (§11.11).
+
+**Satu kehilangan nyata yang ditemukan saat Work Owner memeriksa dan sudah dikembalikan.** Komentar
+paket sempat kehilangan rujukan `TKT-U2-001` ketika saya menulis ulang paragrafnya. Rujukan itu
+kini utuh di barisnya semula, dan penjelasan `cariDiServer` ditambahkan sebagai paragraf terpisah
+di bawahnya.
+
+---
+
+### 11.16 Penggantian nama ke bahasa Inggris — koreksi Work Owner atas asumsi saya
+
+**Permintaan Work Owner, apa adanya:**
+
+> *"saya cek masih menggunakan bahasa indonesia, mohon diubah jadi inggris"*
+
+**Apa yang keliru.** §12.9 `keputusan-implementasi.md` mencatat saya mengambil **asumsi** bahasa
+Indonesia, dengan alasan konsistensi dengan lima modul yang sudah ada. Asumsi itu salah: yang
+berlaku adalah `D-80` (18 September), dan kelima modul lama berbahasa Indonesia karena ditulis
+**sebelum** `D-80` ada — bukan karena Indonesia yang dikehendaki.
+
+Saya sendiri sudah mencatat pertentangannya sebagai pertanyaan terbuka dan menandainya *"koreksinya
+mekanis"*. Yang tidak saya lakukan adalah **menanyakannya** — padahal pertanyaannya sudah saya
+tuliskan sendiri.
+
+**Yang diganti.** Seluruh penamaan di dalam modul: nama folder, nama berkas, nama paket, tipe,
+fungsi, method, field struct, parameter, dan variabel lokal — backend maupun frontend.
+
+| Berkas lama | Menjadi |
+|---|---|
+| `repo/memori/memori.go` · `contoh.go` | `repo/memory/memory.go` · `sample.go` |
+| `repo/sqlstore/laporan.go` · `laporan.sql` | `repo/sqlstore/report.go` · `report.sql` |
+| `repo/sqlstore/kueri.go` · `nomor.go` | `repo/sqlstore/query.go` · `number.go` |
+| `usecase/kelola.go` | `usecase/manage.go` |
+| `http/galat.go` · `rute.go` | `http/errors.go` · `routes.go` |
+| `components/KolomTeksPanjang.tsx` | `components/TextAreaField.tsx` |
+| `HalamanPelaporanKlaim.tsx` · `FormPelaporanKlaim.tsx` · `TabTahap.tsx` | `ClaimReportPage.tsx` · `ClaimReportForm.tsx` · `StageTabs.tsx` |
+
+Nama kueri di berkas `.sql` ikut berganti — `laporan_daftar` menjadi `report_list`, dan seterusnya
+untuk kedelapan kueri.
+
+**Yang TIDAK diganti, dan alasannya masing-masing.** Kelima pengecualian `D-80` dipegang penuh:
+
+1. **Komentar dan dokumen** — tetap Indonesia, termasuk komentar di berkas yang namanya berganti.
+   `D-09` menetapkan pembacanya tim internal eks-Pega.
+2. **Nama field JSON** — `nama_pelapor`, `tanggal_kejadian`, `dapat_ditransfer`. Ia kontrak;
+   menggantinya adalah perubahan yang merusak klien, bukan penggantian nama.
+3. **Nama tabel dan kolom** — `POOLDATA.CPNC_LAPORAN_KLAIM` beserta ke-32 kolomnya. Perubahannya
+   menempuh `D-63`, bukan keputusan sepihak.
+4. **Teks yang dilihat pengguna** — judul tab, label kolom, isi pesan galat.
+5. **Nilai kode galat** — `laporan_sudah_ditransfer` dan saudaranya. Hanya nama konstantanya yang
+   berganti (`CodeAlreadyMoved`); nilainya tetap, karena frontend membedakan galat lewat nilai itu.
+
+**Nama modulnya sendiri tetap Indonesia** sesuai `D-81`: `internal/pelaporanklaim` dan
+`src/modules/pelaporan-klaim`. Isinya Inggris, namanya Indonesia — itu memang bentuk yang `D-81`
+kehendaki.
+
+**Akibat yang harus dilihat Work Owner, bukan disembunyikan.** Komponen bersama berada di luar
+lingkup dan arahan *"untuk luar lingkup flow tolong jangan diubah"* melarang menyentuhnya, sehingga
+**satu berkas kini memuat dua bahasa**:
+
+```tsx
+<KolomIsian id="nama_pelapor" galat={errors.nama_pelapor?.message} disabled={save.isPending} />
+<TextAreaField id="kronologi" error={errors.kronologi?.message} disabled={save.isPending} />
+```
+
+Dua baris berdampingan, dua ejaan untuk hal yang sama. Rinciannya di
+`keputusan-implementasi.md` §12.9.1.
+
+**Satu penilaian yang saya ambil sendiri dan layak dikoreksi bila keliru:** ketiga fungsi baru di
+paket `waktu` (`WIB`, `DateWIB`, `TwoDigitYearWIB`) ikut diganti ke Inggris, karena keduanya berkas
+yang ditulis pada sesi ini — bukan kode lama yang disentuh. Akibatnya paket `waktu` kini memuat
+`Jam`, `JamSistem`, `JamTetapPada` berdampingan dengan ketiganya. Bila yang dikehendaki adalah
+paket itu seragam, penggantian `Jam` dan saudaranya adalah pekerjaan tersendiri di luar lingkup ini.
+
+**Perilakunya tidak berubah sama sekali.** Tidak ada satu pun cabang logika, nilai ambang, kueri,
+atau bentuk respons yang bergeser — yang berganti hanya nama. Dan seperti seluruh pekerjaan sesi
+ini, **itu belum terbukti**: Go dan Node tidak terpasang di mesin ini (§11.11), sehingga tidak ada
+`go build`, `go vet`, `go test`, `tsc`, maupun `vitest` yang dapat dijalankan.
+
+Yang dapat saya lakukan sebagai gantinya adalah penelusuran manual: seluruh nama lama dicari ulang
+di backend maupun frontend dan **nol kemunculan tersisa** di luar modul `auth`, `portal`,
+`masterrekening`, dan `masterstatus` yang memang berada di luar lingkup.
