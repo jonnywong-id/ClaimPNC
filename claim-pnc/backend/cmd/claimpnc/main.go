@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/komite"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
@@ -38,10 +39,15 @@ import (
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/portal"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	komitehttp "claim-pnc/internal/komite/http"
+	komitememory "claim-pnc/internal/komite/repo/memory"
+	komitesql "claim-pnc/internal/komite/repo/sqlstore"
+	komiteusecase "claim-pnc/internal/komite/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -134,6 +140,12 @@ func run() error {
 		// sehingga galat sesi tetap dijawab dengan kode yang sudah dikenal frontend.
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: masterstatushttp.ErrorWriter(writeAuthError),
+	})
+	handlerKomite := komitehttp.NewHandler(komitehttp.Options{
+		Service:             assembly.komite,
+		Logger:              logger,
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
@@ -281,6 +293,13 @@ func run() error {
 				// kejadian, dan alamat surel pelapor. Tidak satu pun boleh terbaca
 				// tanpa sesi.
 				pelaporanklaimhttp.Mount(protected, claimReportHandler)
+
+				// Modul Komite memasang dua kelompok rute sekaligus: master ambang di
+				// bawah master/, dan perhitungan penjenjangan di bawah komite/.
+				// Keduanya DIBACA SAJA — tidak ada satu pun jalur yang menulis ke
+				// POOLDATA.EMAILKOMITE selama masa paralel (P-1, keputusan Work Owner
+				// 2026-09-17).
+				komitehttp.Mount(protected, handlerKomite)
 			})
 		},
 	})
@@ -304,6 +323,9 @@ type assembly struct {
 	masterRekening *masterrekeningusecase.Service
 	masterStatus   *masterstatususecase.Service
 
+	// komite membaca master ambang dan menghitung penjenjangan persetujuan (B-7).
+	komite *komiteusecase.Service
+
 	// masterStatusProgres memakai pemilih repo per portal, bukan repo tunggal:
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
@@ -325,6 +347,9 @@ type storage struct {
 	portal         portal.Repo
 	masterStatus   masterstatus.Repo
 	pelaporanKlaim pelaporanklaim.Repo
+
+	// komite adalah master ambang POOLDATA.EMAILKOMITE — DIBACA SAJA.
+	komite komite.Repo
 
 	account     masterrekening.Repo
 	accountBank masterrekening.BankRepo
@@ -412,12 +437,34 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Policy tidak dipasok: DefaultPolicy dipakai — mode kumulatif, dan hanya
+	// Non-MBU yang memakai pita dengan batas Rp 100.000.000 (`D-52`, `D-70`).
+	//
+	// Ia BELUM bergantung pada portal yang sedang melayani, dan itu batas yang disadari:
+	// entitas Simasnet memakai mode satu-penyetuju, dan entitas SMI memakai batas pita
+	// USD 7.000 — keduanya ada di rule yang sama (`Activity/SetEmailKomite-Act.xml`).
+	// Menyambungkannya ke portal aktif adalah `TKT-F6-002`, yang menuntut portal melekat
+	// pada permintaan alih-alih pada keadaan global (`R-20`).
+	//
+	// Randomizer dipasok sekarang meski portal ASM tidak memakainya: bila kelak portal
+	// diganti ke mode satu-penyetuju, pemilihannya langsung acak — bukan diam-diam
+	// selalu jatuh ke orang yang sama.
+	komiteService, err := komiteusecase.NewService(komiteusecase.Options{
+		Repo:       store.komite,
+		Randomizer: random.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                service,
 		portal:              store.portal,
 		masterRekening:      buildMasterRekening(cfg, store, logger),
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
+		komite:              komiteService,
 		menu:                menuService,
 		pelaporanKlaim:      claimReportService,
 		readyAliases:        store.readyAliases,
@@ -561,6 +608,23 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatussql.NewRepo(primary)
 		store.menu = menusql.NewRepo(primary)
 		store.pelaporanKlaim = pelaporanklaimsql.NewRepo(primary)
+
+		// Master ambang komite dipasang pada koneksi UTAMA, dan itu CACAT YANG DISADARI —
+		// bukan sekadar sementara.
+		//
+		// Work Owner menegaskan 2026-09-19 bahwa setiap server punya POOLDATA-nya sendiri,
+		// dan isi EMAILKOMITE BERBEDA antar server: baris SIMASNET hanya ada di POOLDATA
+		// server Simasnet. Selama repo ini terpasang pada koneksi utama, portal mana pun
+		// yang dipilih pengguna akan membaca tangga ambang milik portal UTAMA.
+		//
+		// Akibatnya bukan galat melainkan angka yang salah tanpa tanda: layar menampilkan
+		// jenjang persetujuan entitas lain, dan tidak ada yang terlihat keliru. Itu kelas
+		// kegagalan yang sama dengan `R-20`.
+		//
+		// Hari ini belum menimbulkan kerugian karena hanya portal utama yang dilayani.
+		// Memperbaikinya adalah `TKT-F6-002` — koneksi diambil dari portal AKTIF, yang
+		// menuntut portal melekat pada permintaan alih-alih pada keadaan global.
+		store.komite = komitesql.NewRepo(primary)
 		store.close = pool.Close
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
@@ -580,6 +644,10 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
+		// Isi master ambang yang sebenarnya ikut dimuat, sehingga layar Ambang Komite
+		// dan simulasi penjenjangan dapat dicoba lengkap tanpa Oracle — termasuk
+		// ketujuh kasus pada spec B-7.
+		store.komite = komitememory.NewSampleRepo()
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya

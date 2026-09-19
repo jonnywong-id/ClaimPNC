@@ -2,6 +2,8 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
+import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
@@ -114,6 +116,31 @@ export function AppRoute() {
               <SessionWarning />
               <AccountPage />
             </div>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/ambang-komite"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ThresholdPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Penjenjangan berada di bawah /komite, bukan /master, karena ia bukan data acuan
+        melainkan aturan bisnis modul B-7. Tangga ambangnya milik F-4, cara membacanya
+        milik B-7 — dan batas itu ikut terlihat di alamat halamannya.
+      */}
+      <Route
+        path="/komite/penjenjangan"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TieringPage />
+            </Protected>
           </SessionGuard>
         }
       />
