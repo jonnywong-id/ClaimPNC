@@ -1,0 +1,83 @@
+// Package sqlstore memenuhi seam penyimpanan dengan SQL terhadap basis data relasional.
+//
+// Dua aturan mengikat seluruh berkas di sini:
+//   - Teks SQL berada di berkas .sql terpisah, bukan string di tengah kode Go, supaya
+//     dapat dibaca, di-review, dan dijalankan langsung terhadap basis data.
+//   - Nilai selalu lewat parameter binding. Tidak pernah ada perangkaian nilai ke
+//     dalam teks SQL.
+package sqlstore
+
+import (
+	"embed"
+	"fmt"
+	"strings"
+)
+
+//go:embed *.sql
+var queryFiles embed.FS
+
+// queries memuat seluruh pernyataan SQL, dikunci dengan namanya.
+var queries = loadAllQueries()
+
+// loadQuery mengembalikan teks SQL bernama tertentu dan panik bila namanya tidak ada.
+//
+// Panik di sini disengaja dan aman: nama kueri adalah konstanta di dalam kode, bukan
+// masukan pengguna, sehingga ketiadaannya adalah cacat pemrograman yang harus terlihat
+// saat pertama dijalankan — bukan galat runtime yang menunggu pengguna menemukannya.
+func loadQuery(name string) string {
+	text, ok := queries[name]
+	if !ok {
+		panic(fmt.Sprintf("sqlstore: kueri %q tidak ditemukan di berkas .sql", name))
+	}
+	return text
+}
+
+// loadAllQueries membaca setiap berkas .sql dan memecahnya pada penanda
+// "-- name: <nama>". Satu berkas karena itu dapat memuat beberapa pernyataan dan tetap
+// terbaca sebagai satu kesatuan saat di-review.
+func loadAllQueries() map[string]string {
+	result := map[string]string{}
+	list, err := queryFiles.ReadDir(".")
+	if err != nil {
+		panic("sqlstore: tidak dapat membaca berkas kueri: " + err.Error())
+	}
+	for _, file := range list {
+		body, err := queryFiles.ReadFile(file.Name())
+		if err != nil {
+			panic("sqlstore: tidak dapat membaca " + file.Name() + ": " + err.Error())
+		}
+		for name, text := range splitByName(string(body)) {
+			if _, conflict := result[name]; conflict {
+				panic("sqlstore: nama kueri ganda: " + name)
+			}
+			result[name] = text
+		}
+	}
+	return result
+}
+
+func splitByName(body string) map[string]string {
+	const marker = "-- name:"
+	result := map[string]string{}
+	name := ""
+	var lines []string
+
+	store := func() {
+		if name != "" {
+			if text := strings.TrimSpace(strings.Join(lines, "\n")); text != "" {
+				result[name] = text
+			}
+		}
+	}
+	for _, row := range strings.Split(body, "\n") {
+		if trim := strings.TrimSpace(row); strings.HasPrefix(trim, marker) {
+			store()
+			name = strings.TrimSpace(strings.TrimPrefix(trim, marker))
+			lines = nil
+			continue
+		}
+		lines = append(lines, row)
+	}
+	store()
+	return result
+}
