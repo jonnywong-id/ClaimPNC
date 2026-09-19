@@ -1889,3 +1889,293 @@ Dua hal diperbaiki, dan keduanya benar terlepas dari uji:
 - Pesan galat menu memakai **`role="status"`**, bukan `role="alert"`. Menu yang gagal dimuat adalah
   keadaan, bukan sesuatu yang harus menyela apa yang sedang dibaca pengguna di isi halaman.
 - Fixture uji itu kini menjawab `/api/menu`, sama seperti ia sudah menjawab `/api/portal`.
+
+---
+
+## 16. Sesi kesembilan — Master Status Progres 2 dihidupkan (2026-09-19)
+
+Rujukan utama: `Harness/StatusProgress2-Harness.xml`.
+
+### 16.1 Yang ditemukan sebelum satu baris pun ditulis
+
+Pemeriksaan pertama memberi hasil yang tidak diduga: **backend tingkat 2 sudah ada di repo**. Ia
+berasal dari sesi sebelumnya, ikut masuk ke `master` lewat commit `4481dda`, lalu dinamai ulang ke
+bahasa Inggris oleh rekan. Tetapi ia **kode mati** — lengkap, dan tidak terpasang ke apa pun.
+
+Enam pemeriksaan dijalankan sebelum rencana disusun, dan semuanya nol:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `Mount2` dirakit di `main.go` | **0 rujukan** |
+| `ErrParentNotFound` dipetakan di `errors.go` | **0 rujukan** |
+| Berkas uji tingkat 2 | **0 berkas** |
+| Frontend tingkat 2 | **0 berkas** |
+| Rute di `App.tsx` | **0 rujukan** |
+| `StatusProgress2` di `registry.ts` | **0 rujukan** |
+
+Membuka `/master/status-progres-2` hari itu karena itu tidak menghasilkan apa pun, dan menembak
+`/api/master/status-progres-2` menjawab HTML halaman SPA — bukan JSON.
+
+> Pelajaran yang dicatat: **kode yang ada di repo belum tentu kode yang hidup.** Yang membuktikan
+> sebuah modul berjalan bukan keberadaan berkasnya, melainkan satu baris di berkas perakitan.
+
+### 16.2 Layar lama dibaca ulang, bukan diandaikan kembar
+
+`StatusProgress2-Harness.xml` (282.747 bita) dan `StatusProgress-Harness.xml` (282.680 bita)
+berselisih **67 bita**, dan seluruh selisihnya metadata export. Perbedaan yang benar-benar berarti
+hanya dua: `pyLabel` "Master Status Progress 2", dan Report Definition `BrowseStatusProgress2`.
+
+Meski kembar secara struktur, **isinya tidak kembar** — dan tiga perbedaan berikut hanya terlihat
+setelah rule-nya dibaca satu per satu:
+
+| Hal | Tingkat 1 | Tingkat 2 |
+|---|---|---|
+| Tabel | `GCNM_MST_PROGRESS_KLAIM` | **`GCNM_MST_PROGRESS`** (nama lebih pendek) |
+| Bentuk ID | `"0" + nomor` → `01`, `02` | **angka polos** → `1`, `2`, `60` |
+| Isian kedua | Posisi klaim, daftar milik aplikasi | **induk**, dibaca dari tabel tingkat 1 milik entitas |
+| Penyuntingan | ada dan bekerja | **ada tetapi tidak bekerja** — §16.4 |
+
+Bentuk ID diverifikasi **dua kali, dari dua arah**: dari rule
+(`Activity/InsertMstStatusProgress2_act` memakai `MAX(ID_MST)+1` apa adanya, sementara tingkat 1
+merangkai `"0"+`), dan dari data yang beredar di kueri lain — `GetDataProgressClaim-SQL.xml`
+menyaring `STATUS_PROGRESS2 not in ('2','24','60')`, angka polos, bukan `'02'`.
+
+### 16.3 Alias kolom yang tidak boleh dipakai sebagai petunjuk arti
+
+`BrowseStatusProgress2-SQL.xml` mengaliaskan kelima kolomnya ke nama yang tidak mencerminkan isi
+sama sekali — utang teknis `03-CURRENT-ARCHITECTURE.md` §4.2 dalam bentuknya yang paling parah di
+seluruh modul yang sudah dikerjakan:
+
+```
+ID_MST         AS "CaseID"       bukan nomor klaim
+STS_PROGRESS1  AS "City"         nama INDUK
+STS_PROGRESS2  AS "CityID"       nama BARIS INI SENDIRI
+ID_PROGRESS    AS "District"     ID induk
+TIPE           AS "DistrictID"   arti tidak diketahui
+```
+
+Perhatikan `City` dan `CityID`: keduanya **tidak berpasangan**. Dugaan yang wajar — "CityID adalah
+kode dari City" — justru salah. Kelimanya dinamai ulang mengikuti `D-19`, dan yang dipetakan adalah
+**kolomnya**, bukan aliasnya.
+
+### 16.4 Tombol "Update" di layar lama tidak mengubah apa pun
+
+Ini temuan yang paling menentukan bentuk modul ini, dan ia hanya muncul karena rantai
+rule-nya ditelusuri sampai ujung, bukan berhenti pada namanya:
+
+```
+RDB List/UpdateStatusProgress2-SQL.xml      namanya "Update", isinya SELECT satu baris
+Activity/UpdateMstStatusProgress2_act       menyiapkan lima Local.* lalu memanggil ↓
+RDB List/UpdateStatusProgress2_sql-SQL.xml  UPDATE POOLDATA.GCNM_PROGRESS_CLAIM
+                                            SET JSONSTATUS_PROGRESS2 = ...
+```
+
+Pernyataan terakhir menyentuh **tabel lain** — `GCNM_PROGRESS_CLAIM` adalah catatan progres milik
+satu klaim, bukan master. Ia menyaring dengan `{tempSearchProgress.AnalystDoctorRemaks}` dan
+`{tempSearchProgress.Email}`, dua page klipboard yang **tidak diisi** activity itu maupun
+section layarnya. Kelima `Local.*` yang disiapkan dengan cermat tidak pernah dipakai satu pun.
+
+Seluruh export diperiksa: **nol `UPDATE` dan nol `DELETE`** terhadap `POOLDATA.GCNM_MST_PROGRESS`.
+
+Keputusan Work Owner untuk modul ini adalah **jalankan as-is**, dan itu yang dikerjakan — dengan
+satu pengecualian yang dinyatakan terbuka: **jalur `UPDATE` ke `GCNM_PROGRESS_CLAIM` tidak
+direproduksi.** Yang direplikasi adalah **hasil yang teramati** — baris master tidak berubah —
+bukan jalur yang menghasilkannya. Menyalin jalurnya berarti membawa pernyataan yang, bila kedua
+page itu kebetulan terisi sisa nilai dari layar lain dalam sesi yang sama, menimpa catatan progres
+sebuah klaim dengan isian layar master.
+
+### 16.5 Yang dikerjakan sesi ini
+
+**Backend — dua sambungan yang mengubah kode mati menjadi API yang hidup:**
+
+| Berkas | Perubahan |
+|---|---|
+| `cmd/claimpnc/main.go` | `NewHandler2` dirakit, `Mount2` dipasang, `Service2` dibangun, dua pemilih repo ditambahkan (Oracle dan memori) |
+| `internal/masterstatusprogres/http/errors.go` | `ErrParentNotFound` dipetakan ke **422 pada isian `id_induk`** |
+
+Pemilih repo memori tingkat 2 **tidak memeriksa alias portalnya sendiri**, melainkan menanyakannya
+ke pemilih tingkat 1 — portal yang ditolak di sana ditolak di sini dengan galat yang sama persis.
+Dua pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya disunting, dan yang
+dipertaruhkan pada `R-20` adalah pemisahan data antar badan hukum.
+
+Repo tingkat 1 yang dikembalikannya **dipakai langsung** sebagai induk, bukan disalin. Dengan
+begitu status progres 1 yang baru ditambahkan lewat layarnya langsung muncul di dropdown tingkat 2
+— perilaku yang sama dengan adapter SQL, yang membaca tabel induk di dalam transaksi yang sama.
+
+**Backend — empat berkas uji, 0 → 40 kasus:**
+
+| Berkas | Isi |
+|---|---|
+| `masterstatusprogres2_test.go` | `Clean`, `Check` (termasuk kasus batas dan pengumpulan seluruh pelanggaran), `FormatID2` tanpa awalan nol, `ErrParentNotFound` terbedakan |
+| `usecase/manage2_test.go` | pemisahan antarportal, penolakan portal tak dikenal, induk baru langsung terlihat, ID diturunkan server, nama induk disalin |
+| `repo/sqlstore/query2_test.go` | **tabel yang benar** (§16.6), tanpa UPDATE/DELETE, parameter binding, `TRIM(ID_MST)`, `FOR UPDATE`, `TIPE` tidak pernah ditulis |
+| `http/routes2_test.go` | seluruh rute di balik sesi, **seluruh rute menuntut portal**, daftar kosong berupa `[]`, induk tak ada → 422 pada `id_induk`, PUT/PATCH/DELETE → 404 |
+
+**Frontend — modul baru, menempel pada folder modul yang sama:**
+
+`api2.ts` · `ProgressStatus2Form.tsx` · `ProgressStatus2Page.tsx` · `ProgressStatus2Page.test.tsx`
+(11 kasus), ditambah tipe di `src/api/types.ts`, satu rute di `App.tsx`, dan **satu baris** di
+`src/app/menu/registry.ts`.
+
+### 16.6 Uji yang paling penting di modul ini: nama tabel
+
+`TestQueries2TargetTheChildTable` memeriksa setiap kueri berawalan `progress_status2_` menyentuh
+`POOLDATA.GCNM_MST_PROGRESS` dan **tidak** menyentuh `GCNM_MST_PROGRESS_KLAIM`.
+
+Tampak sepele, dan justru itu sebabnya ia ada. Nama kedua tabel nyaris sama, **kedua tabel punya
+kolom `ID_PROGRESS`**, dan tertukar sekali saja berarti layar tingkat 2 membaca — atau lebih buruk,
+menulis — ke tabel induknya. Tidak ada galat basis data apa pun yang akan muncul.
+
+### 16.7 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt` · `go build` · `go vet` | bersih |
+| `go test ./...` | **24 paket lulus** |
+| `tsc --noEmit` | bersih |
+| `npm test` | **81 lulus · 3 gagal** (naik dari 68; 13 tambahannya uji Status Progres 2) |
+
+Ketiga kegagalan itu tetap kegagalan lama yang sama di `AccountPage.test.tsx` — modul Master
+Rekening yang berada di bawah Isolasi Protektif dan tidak disentuh sesi ini. Jumlahnya sama persis
+sebelum dan sesudah seluruh pekerjaan.
+
+**Ditembak ke binary produksi, bukan hanya lewat uji.** Uji membuktikan bentuknya benar; hanya
+binary yang benar-benar berjalan — lengkap dengan SPA tersemat — yang membuktikan **rakitannya**
+benar. Layar dibangun (`npm run build` → `backend/spa/dist`), disematkan (`go build`), lalu
+dijalankan di porta lain supaya server Work Owner tidak terganggu:
+
+```
+GET  /api/menu                            MENU_ID 24 "Master Status Progress 2"
+                                          program StatusProgress2  →  terkirim
+GET  /master/status-progres-2             200 text/html  (SPA melayani rutenya)
+bundel assets/index-*.js                  memuat "/master/status-progres-2",
+                                          "StatusProgress2", dan judul layarnya
+
+alur yang dilalui pengguna, berurutan:
+  1. buka layar    GET  daftar          200
+  2. tekan Tambah  GET  induk           200   6 pilihan
+  3. Simpan        POST                 201   id=7 · induk 02 · tipe=''
+  4. muat ulang    GET  daftar          200   6 → 7 baris
+```
+
+Tiga hal yang **hanya terbukti di sini**, tidak di uji mana pun:
+
+| Yang terbukti | Kenapa uji tidak dapat membuktikannya |
+|---|---|
+| Butir menunya **hidup** | `registry.ts` dan `/api/menu` dirakit dua pihak yang berbeda; kecocokan ejaan `StatusProgress2` baru terbukti saat keduanya bertemu |
+| Rutenya **masuk ke bundel** | uji Vitest merender komponen langsung, tidak melewati `App.tsx` maupun proses build |
+| `Mount2` benar-benar **terpasang** | uji rute merakit servernya sendiri; hanya `cmd/claimpnc` yang membuktikan perakitan sungguhan |
+
+**4 dari 71 butir menu kini punya layar** — naik dari 3. Ketiga yang lain: Master Status Klaim,
+Master Rekening, Master Status Progres 1.
+
+### 16.8 Satu temuan di luar lingkup: jalur `/api` yang tak dikenal dijawab halaman SPA
+
+Terlihat saat menembak aplikasi yang benar-benar berjalan, bukan lewat uji — dan uji tidak dapat
+melihatnya karena `httpserver.Router` di dalam uji dirakit **tanpa** berkas SPA.
+
+```
+DELETE /api/jalur-karangan                → 200, badan berisi index.html
+DELETE /api/master/status-progres-2/1     → 200, badan berisi index.html
+DELETE /api/master/status-progres-1/01    → 405  (jalur ini PUNYA rute, metodenya saja beda)
+```
+
+**Ini bukan bawaan modul ini dan bukan perilaku baru.** Ia berlaku untuk **setiap** jalur `/api`
+yang tidak punya rute — termasuk jalur yang namanya dikarang. Penyebabnya penampung SPA yang
+memasang dirinya pada seluruh sisa jalur, tanpa mengecualikan awalan `/api`.
+
+Akibatnya bagi klien: permintaan ke endpoint yang tidak ada **tidak** dijawab `404` dalam bentuk
+JSON, melainkan `200` berisi HTML. Klien yang mengurai jawabannya sebagai JSON akan gagal dengan
+pesan yang tidak menyebutkan sebab sebenarnya.
+
+Untuk modul ini akibatnya terbatas: `PUT` dan `DELETE` memang **tidak melakukan apa pun** — tidak
+ada baris yang berubah, dan `TestNoEditRoute2Exists` membuktikan rutenya memang tidak terdaftar.
+Yang keliru hanyalah **bentuk penolakannya**.
+
+**Tidak diperbaiki di sesi ini**, dan itu disengaja: perbaikannya menyentuh `internal/platform/httpserver`
+yang dipakai seluruh modul, sementara tugas sesi ini dibatasi pada Master Progres 2. Dicatat di sini
+supaya tidak ditemukan ulang sebagai kejutan.
+
+### 16.9 Yang belum dikerjakan, dan kenapa
+
+| Hal | Alasan |
+|---|---|
+| Isi contoh `SampleList2()` | **bukan data produksi.** Isi `GCNM_MST_PROGRESS` tidak ada di export — tidak ada CSV-nya seperti `v_sts_claim.csv`, dan DDL-nya belum diterima (`R-08`). Nama-namanya susunan sendiri, ditandai jelas di doc comment-nya, dan **tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1** |
+| Arti kolom `TIPE` | tidak diketahui. Di seluruh export ia hanya muncul pada dua `SELECT` — tanpa satu pun `INSERT`, `UPDATE`, maupun penyaring. Ia dibaca dan ditampilkan, tidak pernah ditulis |
+| Panjang maksimum `STS_PROGRESS2` | **asumsi yang disadari** — 100, disamakan dengan tingkat 1. Berbeda dari tingkat 1, angka ini bukan ketetapan Work Owner; DDL-nya belum ada |
+| Penyuntingan dan penghapusan | tidak ada di sistem lama — §16.4 |
+| Salinan nama induk yang dapat menyimpang | dijalankan as-is atas keputusan Work Owner. Bahwa penyimpangan itu benar-benar terjadi di produksi terbaca dari `GetDataOutstandingperCabangExport-SQL.xml`, yang memakai `MAX(sts_progress1) ... GROUP BY id_progress` — `MAX` hanya diperlukan bila baris ber-`id_progress` sama menyimpan nama yang berlainan |
+
+### 16.10 Harness dibaca sampai ke header kolom — dan dua kolom saya ternyata keliru
+
+Sesi ini ditutup dengan membaca `Harness/StatusProgress2-Harness.xml` **sampai ke isinya**, bukan
+hanya strukturnya. Pembacaan pertama berhenti pada kesimpulan "kembar dengan tingkat 1, selisihnya
+hanya metadata export" — benar, tetapi **tidak cukup**: yang menentukan tata letak bukan harness-nya
+melainkan section yang dirakitnya.
+
+Header grid terbaca eksplisit di `Section/BrowseStatusProgress2-Section.xml`, dalam bentuk
+`<pyValue>&lt;b&gt;…&lt;b&gt;</pyValue>`:
+
+| Header Pega | Terikat ke | Kolom basis data |
+|---|---|---|
+| `No` | `.CaseID` | `ID_MST` |
+| `Status Progress 1` | `.City` | `STS_PROGRESS1` — **nama induk** |
+| `Status Progress 2` | `.CityID` | `STS_PROGRESS2` — nama baris ini |
+| *(tanpa judul)* | `.pyTemplateInputBox` | tombol **Update** |
+
+**Dua kekeliruan yang ditemukan pada layar yang sudah saya bangun:**
+
+| # | Keliru | Yang benar |
+|---|---|---|
+| 1 | Nama baris ditaruh **sebelum** nama induk | Pega menaruh **induk lebih dulu** |
+| 2 | Kolom **Tipe** ditambahkan sebagai kolom keempat | Pega **tidak punya** kolom itu sama sekali |
+
+Keduanya sudah diperbaiki.
+
+**Kekeliruan 1 berlawanan dengan dugaan yang wajar**, dan itu sebabnya lolos: pada layar master
+mana pun, nama barisnya sendiri biasanya mendahului rujukan induknya. Di sini kebalikannya —
+dan alias `City`/`CityID` yang menyesatkan membuat urutannya makin sulit dibaca dari kueri saja.
+`TestProgressStatus2Page` kini memuat kasus yang mematok urutan `ID · Status Progres 1 ·
+Status Progres 2`, sehingga tidak dapat tertukar lagi tanpa uji yang merah.
+
+**Kekeliruan 2 adalah tambahan saya sendiri, bukan warisan Pega.** `DistrictID` (TIPE) terikat ke
+page `TempUpdateStatus2` — **modal penyuntingan**, bukan baris grid. Karena modal itu memang tidak
+dibawa (§16.4), TIPE tidak punya tempat di layar ini.
+
+Yang dihapus **hanya kolomnya**. TIPE tetap dibaca kueri dan tetap dikirim pada respons API,
+sehingga nilainya tidak hilang dari aplikasi dan siap dipakai bila kelak ada layar rincian. Satu
+kasus uji menjaga pernyataan itu tetap benar.
+
+> Ini **membalik** alasan yang saya tulis sendiri di §16.9 dan pada doc comment kolomnya —
+> *"ditampilkan supaya nilai yang benar-benar tersimpan terlihat petugas"*. Alasan itu masuk akal,
+> tetapi ia **alasan saya**, bukan perilaku sistem lama. `D-13` menetapkan tata letak mengikuti
+> Pega, dan kolom yang tidak pernah ada di Pega adalah layar yang menuntut pengguna belajar hal
+> baru tanpa ia memintanya.
+
+**Tiga hal yang sengaja TIDAK diseragamkan ke Pega**, karena bertabrakan dengan konsistensi antar
+layar bersaudara — dan `Master Status Progres 1` berada di bawah Isolasi Protektif sehingga tidak
+dapat ikut disesuaikan:
+
+| Hal | Pega | Dipakai di sini | Alasan |
+|---|---|---|---|
+| Judul kolom pertama | `No` | `ID` | Layar Progres 1 memakai `ID`; mengubah satu layar saja membuat dua layar bersaudara berbeda |
+| Ejaan | `Progress` | `Progres` | idem — Progres 1 sudah memakai ejaan Indonesia |
+| Judul layar | `Master Status Progress 2` | `Master Status Progres 2` | idem |
+
+Ketiganya **kosmetik** dan tidak mengubah cara pengguna membaca tabel. Yang diperbaiki adalah yang
+**substantif** — urutan kolom dan kolom yang tidak seharusnya ada.
+
+**Satu hal yang tercatat tetapi tidak dikerjakan.** Grid Pega memuat `pyGridPaginator`, sedangkan
+`DataTable` bersama belum punya paginasi — ia menyediakan pencarian dan pengurutan di peramban.
+Menambahkannya berarti menyentuh `U-2`, komponen yang dipakai seluruh layar master, dan akan
+membuat Progres 1 menyimpang dari Progres 2 bila hanya salah satu memakainya. Pada tabel master
+berbaris sedikit dampaknya tidak terasa; dicatat sebagai utang, bukan diselesaikan diam-diam.
+
+**Yang diperiksa ulang dan ternyata SUDAH benar:**
+
+| Hal | Pega | Layar |
+|---|---|---|
+| Tombol | `Tambah` · `Refresh` | sama persis |
+| Urutan isian form tambah | `TempInputStatus2.CityID` (induk) → `.District` (nama) | induk lalu nama ✔ |
+| Jumlah isian form tambah | 2 | 2 ✔ |
+| Judul layar di section | `Master Status Progress 2` | ✔ (ejaan, lihat tabel di atas) |

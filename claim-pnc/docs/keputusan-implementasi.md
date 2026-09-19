@@ -1865,3 +1865,182 @@ fungsinya kelak disunting.
 | Baris otorisasi untuk pengguna karyawan | Data, bukan kode — lihat §16.5 |
 | Apakah `M_OTORISASI_PNC` menggantikan 22 peran `D-58` | menunggu keputusan Work Owner — §16.2 |
 | Tabrakan nama tab/tombol di Master Rekening (3 uji merah) | tetap menunggu keputusan Work Owner — §14.4 |
+
+---
+
+## 17. Master Status Progres 2 (2026-09-19, sesi kesembilan)
+
+### 17.1 Kenapa tingkat 2 menempel pada paket domain yang sama
+
+`internal/masterstatusprogres` kini memuat dua tingkat, bukan dua paket. Alasannya bukan kedekatan
+nama, melainkan ketergantungan yang tidak dapat dipisahkan: **penambahan tingkat 2 tidak dapat
+dilakukan tanpa membaca tingkat 1 lebih dulu** — untuk memastikan induknya ada, dan untuk menyalin
+namanya ke kolom `STS_PROGRESS1`.
+
+Memisahkannya menjadi dua paket akan membuat paket tingkat 2 mengimpor paket tingkat 1 untuk hal
+yang berada di inti operasinya sendiri. Satu paket, dua tingkat, dua seam (`Repo` dan `Repo2`).
+
+Yang **tidak** disatukan adalah layanannya: `Service` dan `Service2` terpisah meski sepaket, karena
+keduanya memilih penyimpanan yang berbeda. Satu layanan yang melayani dua tabel akan menerima dua
+pemilih repo dan bercabang di setiap method.
+
+### 17.2 Tidak ada rute ubah dan tidak ada rute hapus
+
+Bukan pekerjaan yang belum selesai. Sistem lama tidak memiliki satu pun pernyataan yang mengubah
+isi `POOLDATA.GCNM_MST_PROGRESS` setelah barisnya tersimpan — nol `UPDATE`, nol `DELETE` di seluruh
+export. Tombol "Update" yang ada di layar lama menulis ke **tabel lain** dengan dua page klipboard
+yang tidak pernah diisi; rinciannya di `catatan-pengembangan.md` §16.4.
+
+Mendaftarkan rute yang tidak dapat berbuat apa-apa hanya memindahkan kejutannya dari layar ke API.
+
+**Satu bagian sengaja tidak direproduksi**, dan ini pengecualian yang dinyatakan terbuka terhadap
+"jalankan as-is": pemanggilan `UPDATE` ke `GCNM_PROGRESS_CLAIM`. Yang direplikasi adalah **hasil
+yang teramati** — baris master tidak berubah — bukan jalur yang menghasilkannya. Jalur itu, bila
+kedua page klipboardnya kebetulan terisi sisa nilai dari layar lain dalam sesi yang sama, menimpa
+catatan progres sebuah klaim dengan isian layar master.
+
+Menambahkan penyuntingan kelak adalah perubahan yang **menambah**, bukan membongkar: satu method
+pada seam, satu kueri, satu rute.
+
+### 17.3 ID tingkat 2 tanpa awalan nol
+
+`FormatID2` menghasilkan angka polos; `FormatID` tingkat 1 menghasilkan `"0" + nomor`. Ini
+perbedaan nyata di sistem lama, terverifikasi dua kali:
+
+```
+tingkat 1  Activity/InsertMstStatusProgress1_act  TempInputStatus.CaseID  := "0"+.City
+tingkat 2  Activity/InsertMstStatusProgress2_act  TempInputStatus2.CaseID := .District
+```
+
+Dikuatkan data yang beredar: `GetDataProgressClaim-SQL.xml` menyaring
+`STATUS_PROGRESS2 not in ('2','24','60')` — angka polos.
+
+Memakai `FormatID` tingkat 1 di sini akan menerbitkan ID yang **tidak dapat dicocokkan** dengan
+baris `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` yang sudah ada — dan tidak ada galat apa pun yang
+muncul.
+
+Akibat sampingan yang menguntungkan: tanpa awalan, tingkat 2 luput dari persoalan urutan teks yang
+menghinggapi tingkat 1 (`"010"` mendahului `"09"`).
+
+### 17.4 `ErrParentNotFound` dijawab 422 pada isian, bukan 404
+
+Keduanya berarti "tidak ditemukan", dan keduanya dipetakan berbeda dengan sengaja:
+
+| Galat | Status | Alasan |
+|---|---|---|
+| `ErrNotFound` | 404 | baris yang **diminta** pemanggil tidak ada |
+| `ErrParentNotFound` | **422** dengan `kolom: "id_induk"` | **isian** yang dipilih pengguna sudah tidak ada — ia dapat memperbaikinya |
+
+404 akan membuat layar mengatakan barisnya sendiri hilang, padahal yang hilang adalah induk yang
+dipilih di dropdown. Nama isiannya `id_induk`, sama persis dengan field JSON yang dikirim layar,
+supaya keterangan galat menempel di tempat yang benar tanpa penerjemahan.
+
+Pemetaannya ditaruh **sebelum** `ErrNotFound` di `mapError`, karena urutan `switch` menentukan.
+
+Sebelum sesi ini galat itu **tidak dipetakan sama sekali** — ia jatuh ke penulis galat bersama dan
+dijawab **500**. Induk yang sudah dihapus petugas lain karena itu tampil sebagai kerusakan sistem,
+bukan sebagai isian yang perlu dipilih ulang. `TestCreate2RejectsMissingParent` menjaga itu tidak
+kembali.
+
+### 17.5 Seluruh rute tingkat 2 menuntut portal — termasuk daftar induknya
+
+Berbeda dari tingkat 1, yang menyisakan `/master/posisi-klaim` di luar pemeriksaan portal karena
+keempat posisi itu daftar milik aplikasi.
+
+Di tingkat 2 tidak ada satu pun rute yang isinya milik aplikasi: **daftar induk pun dibaca dari
+basis data entitas**. Dua entitas punya Status Progres 1 yang berbeda, dan menyajikan daftar satu
+entitas kepada entitas lain adalah kebocoran yang justru dicegah `R-20`.
+
+Akibat lanjutannya di frontend: `useProgressStatus2ParentList` **tidak** diberi `staleTime` panjang
+seperti `useClaimPositionList`. Isinya dapat berubah kapan saja lewat layar Master Status Progres 1.
+
+### 17.6 Pemilih repo memori bertanya ke pemilih tingkat 1, tidak memeriksa sendiri
+
+`progressStatus2SelectorMemory` menerima `RepoSelector` tingkat 1 sebagai bahan, lalu menanyakan
+portalnya ke sana. Portal yang ditolak di tingkat 1 ditolak di tingkat 2 dengan galat yang sama
+persis.
+
+Dua pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya disunting — dan yang
+dipertaruhkan pada `R-20` bukan pesan galat, melainkan pemisahan data antar badan hukum.
+
+Repo tingkat 1 yang dikembalikannya **dipakai langsung** sebagai induk, bukan disalin menjadi
+daftar terpisah. Kalau disalin, kedua adapter akan berbeda pada hal yang justru paling ingin diuji:
+induk yang baru ditambahkan lewat layar tingkat 1 tidak akan terlihat di dropdown tingkat 2.
+`TestService2SeesNewlyAddedParent` menjaga pernyataan itu tetap benar.
+
+### 17.7 `TIPE` dibaca, ditampilkan, tidak pernah ditulis
+
+Artinya tidak diketahui: di seluruh export ia hanya muncul pada dua `SELECT`, tanpa satu pun
+`INSERT`, `UPDATE`, maupun penyaring yang memakainya. DDL tabelnya belum diterima (`R-08`),
+sehingga tidak ada pula daftar nilai sahnya.
+
+Tiga pilihan ditimbang, dan yang ketiga diambil:
+
+| Pilihan | Akibat |
+|---|---|
+| Tidak dibaca sama sekali | nilai yang benar-benar tersimpan tidak terlihat petugas |
+| Ditulis dengan nilai tebakan | mengarang; dan `NULL` pun keputusan yang belum diputuskan siapa pun |
+| **Dibaca dan dikirim, tidak pernah ditulis** | baris lama tidak kehilangan nilainya hanya karena disentuh layar baru |
+
+> **Dikoreksi setelah header grid Pega dibaca.** Baris ketiga semula berbunyi *"dibaca dan
+> **ditampilkan**"*, dan layar ini sempat memuat kolom `Tipe`. Pega **tidak punya kolom itu** —
+> `DistrictID` terikat ke page `TempUpdateStatus2`, yaitu modal penyuntingan yang tidak dibawa.
+> Kolomnya dicabut; pembacaan dan pengirimannya lewat API **tidak** berubah. Rinciannya di
+> `catatan-pengembangan.md` §16.10.
+
+`INSERT`-nya karena itu menyebut **empat kolom saja**, persis seperti sistem lama — basis data
+mengisi `TIPE` dengan default kolomnya sendiri. `TestInsert2NeverWritesKind` menjaganya.
+
+Di layar, `TIPE` yang kosong ditandai `—` supaya sel kosong tidak terbaca sebagai kegagalan memuat.
+
+### 17.8 Salinan nama induk dipertahankan, beserta cacatnya
+
+`STS_PROGRESS1` menyimpan **salinan** nama induk pada saat baris disimpan, bukan hasil join.
+Denormalisasi sistem lama ini dijalankan as-is atas keputusan Work Owner.
+
+Konsekuensinya disadari dan dicatat supaya tidak dikira rancangan: **mengganti nama sebuah Status
+Progres 1 tidak memperbarui salinan di baris-baris tingkat 2 yang sudah ada**, sehingga keduanya
+dapat berbeda.
+
+Bahwa perbedaan itu benar-benar terjadi di produksi terbaca dari kueri laporan yang membacanya —
+`GetDataOutstandingperCabangExport-SQL.xml` memakai
+`SELECT id_progress, MAX(sts_progress1) ... GROUP BY id_progress`, dan `MAX` hanya diperlukan bila
+baris ber-`id_progress` sama menyimpan nama yang berlainan.
+
+### 17.9 `MAX(ID_MST)+1` diberi `FOR UPDATE` — dan itu bukan perubahan aturan
+
+Di Pega, `NVL(MAX(B.ID_MST),0)+1` dijalankan sebagai kueri lepas, lalu hasilnya dipakai `INSERT`
+beberapa langkah kemudian. Di antara keduanya tidak ada apa pun yang menghalangi penambahan lain
+masuk lebih dulu — dua petugas yang menambah bersamaan dapat menerima nomor yang sama.
+
+Pembacaan, penurunan nomor, dan penyisipan karena itu berada di dalam **satu operasi repo** dengan
+`FOR UPDATE`. Bentuk nomornya tetap sama; yang ditutup hanyalah lubang balapan pada cara nomor itu
+diturunkan.
+
+`NVL` sendiri tidak dibawa — ia diganti pembacaan daftar ID lalu penurunan di Go, sejalan dengan
+`D-20`.
+
+### 17.10 Panjang nama 100 adalah asumsi, dan dinyatakan begitu
+
+`MaxNameLength2 = 100` disamakan dengan tingkat 1. Berbeda dari tingkat 1, angka ini **bukan**
+ketetapan Work Owner: DDL `POOLDATA.GCNM_MST_PROGRESS` belum ada (`R-08`), dan kedua kolom menyimpan
+hal yang sejenis pada tabel yang sekerabat.
+
+Bila basis data ternyata menerima lebih pendek, penolakannya datang dari basis data dan terbaca
+sebagai galat teknis, bukan sebagai pesan yang menuntun pengguna. Itu kekurangan yang diterima
+sampai DDL-nya tiba — **bukan** alasan menebak angka yang lebih longgar, karena menebak longgar
+justru memindahkan kegagalannya ke tempat yang lebih sulit dibaca.
+
+Angka yang sama diulang di `ProgressStatus2Form.tsx`. Bila berubah, kedua tempat harus ikut berubah;
+keduanya saling menyebut di doc comment-nya.
+
+### 17.11 Yang belum dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Isi `SampleList2()` diganti data sebenarnya | isi `GCNM_MST_PROGRESS` tidak ada di export dan belum diminta ke DBA. Isi contohnya **susunan sendiri**, ditandai jelas, dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1 |
+| Panjang kolom yang sebenarnya | menunggu DDL — `R-08` |
+| Arti kolom `TIPE` | menunggu DDL dan konfirmasi Work Owner |
+| Penyuntingan baris | tidak ada di sistem lama; menambahkannya kelak adalah perubahan yang menambah — §17.2 |
+| Kewenangan menulis di produksi | selama Pega masih penulis tabel ini, layar dijalankan modus baca saja (`ADR-0004`, penulis tunggal per tabel) |
+| Tabrakan nama tab/tombol di Master Rekening (3 uji merah) | tetap menunggu keputusan Work Owner — §14.4 |

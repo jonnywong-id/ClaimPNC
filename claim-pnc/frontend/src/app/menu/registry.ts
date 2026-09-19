@@ -35,6 +35,7 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master-rekening',
   StatusProgress: '/master/status-progres-1',
+  StatusProgress2: '/master/status-progres-2',
 }
 
 /**

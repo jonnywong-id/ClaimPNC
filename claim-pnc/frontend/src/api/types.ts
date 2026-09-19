@@ -145,6 +145,82 @@ export type ProgressStatusInput = {
   kode_posisi: string
 }
 
+// Master Status Progres 2 — tingkat kedua.
+//
+// Cerminan dto2 di internal/masterstatusprogres/http. Menggantikan layar Pega
+// `Harness/StatusProgress2-Harness.xml` atas tabel POOLDATA.GCNM_MST_PROGRESS.
+//
+// PERHATIKAN NAMA TABELNYA: yang berakhiran `_KLAIM` adalah tingkat SATU.
+
+/**
+ * Satu baris master status progres tingkat 2.
+ *
+ * Kueri lama mengaliaskan kelima kolomnya ke nama yang tidak mencerminkan isi sama sekali
+ * — dan `City`/`CityID` di sana TIDAK berpasangan seperti dugaan yang wajar: `City` adalah
+ * nama induk sedangkan `CityID` adalah nama baris ini sendiri. Alias itu tidak dibawa
+ * (`D-19`).
+ */
+export type ProgressStatus2 = {
+  /** Kolom ID_MST. Diterbitkan server; tidak pernah diisi pengguna. */
+  id: string
+  /** Kolom STS_PROGRESS2 — keterangan status tingkat 2 yang dibaca petugas. */
+  nama: string
+  /** Kolom ID_PROGRESS — Status Progres 1 yang menaungi baris ini. */
+  id_induk: string
+  /**
+   * Kolom STS_PROGRESS1 — SALINAN nama induk pada saat baris ini disimpan.
+   *
+   * Ia salinan, bukan hasil join; itu perilaku sistem lama yang dijalankan as-is atas
+   * keputusan Work Owner 2026-09-18. Nilainya karena itu dapat berbeda dari nama induk
+   * yang berlaku sekarang bila induknya pernah diganti nama.
+   */
+  nama_induk: string
+  /**
+   * Kolom TIPE, dibaca apa adanya dan tidak pernah ditulis.
+   *
+   * Artinya tidak diketahui — di seluruh export ia hanya muncul pada dua SELECT, tanpa
+   * satu pun INSERT, UPDATE, maupun penyaring, dan DDL tabelnya belum diterima (R-08).
+   */
+  tipe: string
+}
+
+/** Satu pilihan pada dropdown "Status Progres 1". */
+export type ProgressStatus2Parent = {
+  id: string
+  nama: string
+}
+
+export type ProgressStatus2ListResponse = {
+  status_progres_2: ProgressStatus2[]
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type ProgressStatus2Response = {
+  status_progres_2: ProgressStatus2
+  portal: string
+}
+
+export type ProgressStatus2ParentListResponse = {
+  /**
+   * Daftar induk BERBEDA antarentitas — ia dibaca dari tabel tingkat 1 milik portal yang
+   * bersangkutan, bukan daftar tetap milik aplikasi seperti halnya posisi klaim.
+   */
+  induk: ProgressStatus2Parent[]
+  portal: string
+}
+
+/**
+ * Badan permintaan penambahan tingkat 2.
+ *
+ * Dua isian saja, persis seperti layar lama. ID diturunkan server dari isi tabel,
+ * `nama_induk` disalin server dari baris induk, dan `tipe` tidak pernah ditulis.
+ */
+export type ProgressStatus2Input = {
+  nama: string
+  id_induk: string
+}
+
 /**
  * Satu baris Master Status Klaim.
  *

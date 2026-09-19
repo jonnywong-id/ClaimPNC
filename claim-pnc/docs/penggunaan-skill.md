@@ -444,3 +444,102 @@ mengembalikan `Person.Login` dengan nilai yang sama. Tidak ada yang perlu diubah
 - Menambah layar baru kini menuntut **satu baris** di `frontend/src/app/menu/registry.ts`. Bila
   butirnya tetap tampak "belum tersedia", yang pertama diperiksa adalah ejaan `MENU_PROGRAM`-nya —
   ia dicocokkan persis, termasuk huruf besar-kecilnya.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-19 (Master Status Progres 2)
+
+## Ringkasan
+
+| | |
+|---|---|
+| **Skill Matt Pocock yang dipanggil** | **tidak ada** |
+| **Skill Claude Code yang dipakai** | Read · Grep · Glob · Bash · Write · Edit — perkakas baku, bukan skill terpaket |
+| **Lama sesi** | satu sesi kerja |
+| **Keluaran** | 2 sambungan backend · 4 berkas uji backend (40 kasus) · 4 berkas frontend (11 kasus) · 3 titik sambung · 3 dokumen |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Alasannya sama seperti sesi-sesi sebelumnya, dan tetap berlaku: **seluruh fakta sesi ini ada di
+dalam repository.** Tidak satu pun klaim di dokumen ini bersumber dari luar.
+
+| Skill | Ditimbang, tidak dipakai — alasannya |
+|---|---|
+| `domain-modeling` | Istilahnya sudah ditetapkan sesi sebelumnya, dan `CONTEXT.md` tidak bertambah. Yang dikerjakan di sini adalah **memakai** bahasa itu, bukan menajamkannya |
+| `grilling` | Tidak ada premis yang perlu diuji ke Work Owner. Tiga keputusan yang dibutuhkan — tanpa jalur ubah, nama induk disalin, `TIPE` baca-saja — **sudah dijawab** pada sesi sebelumnya dengan "jalani saja as-is", dan menanyakannya ulang hanya menambah beban tanpa menambah kendali |
+| `codebase-design` | Batas modul dan seam-nya sudah ditetapkan sesi sebelumnya (`Repo2`, `RepoSelector2`). Sesi ini memasangnya, bukan merancangnya |
+| `tdd` | Kode produksinya sudah ada lebih dulu. Ujinya ditulis **setelahnya** — dan itu dinyatakan apa adanya, bukan disamarkan sebagai TDD |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+| Teknik | Kenapa di sesi ini |
+|---|---|
+| **Buktikan keadaan awal, jangan nyatakan** | Enam pemeriksaan `grep` dijalankan sebelum rencana disusun, dan hasilnya **membalik dugaan**: backend-nya ternyata sudah ada, tetapi mati. Kalau dugaan awal dipakai apa adanya, sesi ini akan menulis ulang modul yang sudah ada |
+| **Telusuri rantai rule sampai ujung, bukan berhenti pada namanya** | `UpdateStatusProgress2-SQL.xml` bernama "Update" dan isinya `SELECT`. Yang benar-benar menulis ada di berkas lain, ke **tabel lain**, dengan parameter yang tidak pernah diisi. Berhenti pada namanya akan menghasilkan tombol Ubah yang tampak bekerja dan tidak mengubah apa pun |
+| **Verifikasi dua arah untuk hal yang tidak dapat dilihat gagal** | Bentuk ID tanpa awalan nol dibuktikan dari **rule** dan dari **data yang beredar di kueri lain**. Salah di sini tidak menghasilkan galat apa pun — hanya ID yang tidak cocok dengan baris klaim yang sudah ada |
+| **Tulis uji untuk hal yang gagalnya senyap** | `TestQueries2TargetTheChildTable` memeriksa nama tabel. Kedua tabel punya kolom `ID_PROGRESS`, sehingga tertukar tidak menghasilkan galat basis data — hanya data yang salah tempat |
+| **Jalankan suite penuh sebelum dan sesudah** | 3 kegagalan lama di `master-rekening` dihitung di kedua titik. Tanpa angka sebelum, "tiga yang gagal itu bukan dari saya" hanyalah klaim |
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan | Perbaikan |
+|---|---|---|
+| Nama helper uji `twoPortals` bertabrakan dengan milik uji tingkat 1 di paket yang sama | kompilasi gagal | diganti `twoPortals2` |
+| Nama field JSON pelanggaran ditebak `"field"` | uji panik — `interface {} is nil` | dibaca ke `dto.go`: tagnya **`kolom`**. Menebak nama kontrak adalah hal yang tidak perlu ditebak, karena berkasnya ada |
+| Tipe `portalhttp.ErrorWriter` dipakai langsung | kompilasi gagal | ditiru pola uji tingkat 1, yang mendeklarasikan tipe fungsi polos dengan sengaja |
+| **`gofmt -w` dijalankan pada SELURUH direktori modul**, bukan pada berkas yang saya tulis | `git status` menandai **18 berkas** berubah, termasuk berkas tingkat 1 yang tidak saya sentuh | diperiksa dengan `git diff -w`: seluruh 17 berkas lain **nol perubahan isi** — murni akhir-baris LF versus CRLF. Semuanya diseragamkan kembali ke CRLF, dan selisih akhirnya tinggal **2 berkas backend** yang memang saya sunting |
+
+Tiga yang pertama tertangkap kompilasi atau uji dalam hitungan detik — dan itu memang gunanya.
+
+Yang keempat berbeda sifatnya, dan itu yang membuatnya layak dicatat: **tidak ada perkakas yang
+akan mengeluh.** Kode tetap terkompilasi, uji tetap hijau, dan satu-satunya yang menunjukkannya
+adalah `git status` — yang sengaja diperiksa di akhir justru untuk melihat apakah lingkupnya
+melebar. Tugas sesi ini dibatasi "tanpa perlu ubah di bagian yang lain", dan menandai 16 berkas
+tingkat 1 sebagai berubah sudah melanggarnya meski isinya tidak bergeser satu karakter pun.
+
+> Pelajarannya: **perintah yang menyentuh direktori lebih berbahaya daripada perintah yang
+> menyentuh berkas.** `gofmt -w berkas1.go berkas2.go`, bukan `gofmt -w direktori/`.
+
+### Kesalahan kelima — dan yang paling lama tidak ketahuan
+
+| Kesalahan | Bagaimana ketahuan | Perbaikan |
+|---|---|---|
+| **Dua kolom grid keliru**: urutan tertukar, dan satu kolom (`Tipe`) ditambahkan padahal Pega tidak punya | Work Owner meminta harness dibaca **secara penuh**. Pembacaan pertama berhenti pada "kembar dengan tingkat 1, selisihnya metadata export" — benar, tetapi tata letak tidak tinggal di harness melainkan di **section** yang dirakitnya | Header dibaca langsung dari `<pyValue>&lt;b&gt;…&lt;b&gt;</pyValue>`: `No · Status Progress 1 · Status Progress 2`. Urutan diperbaiki, kolom `Tipe` dicabut, dua uji baru memaku keduanya |
+
+Ini berbeda sifatnya dari empat yang lain, dan itu yang membuatnya layak dicatat terpisah.
+
+**Kompilasi tidak mengeluh. Uji tidak merah.** Layarnya tampil rapi, angkanya benar, dan seluruh
+uji hijau — karena ujinya saya tulis sendiri terhadap kolom yang saya rancang sendiri. Uji hanya
+membuktikan layar sesuai **niat penulisnya**; ia tidak membuktikan niat itu sesuai sistem lama.
+
+Dua hal yang membuatnya lolos:
+
+1. **Urutannya berlawanan dengan dugaan yang wajar.** Pada layar master mana pun, nama barisnya
+   sendiri biasanya mendahului rujukan induknya. Di sini kebalikannya — dan alias `City`/`CityID`
+   yang menyesatkan membuat urutan itu makin sulit dibaca dari kueri saja.
+2. **Kolom `Tipe` punya alasan yang terdengar masuk akal** — *"supaya nilai yang tersimpan terlihat
+   petugas"*. Alasannya benar sebagai gagasan; yang salah adalah ia **alasan saya**, bukan perilaku
+   sistem lama. `D-13` menetapkan tata letak mengikuti Pega.
+
+> Pelajarannya: **"kembar secara struktur" bukan alasan berhenti membaca.** Yang menentukan tata
+> letak bukan harness, melainkan section yang dirakitnya — dan header kolomnya tertulis harfiah
+> di sana, tidak perlu ditebak sama sekali.
+
+Satu hal lagi yang ikut terbukti: **permintaan Work Owner untuk memeriksa "secara penuh" bukan
+formalitas.** Tanpa permintaan itu, kedua kolom keliru ini akan ikut ke produksi tanpa satu pun
+perkakas yang mengeluh.
+
+Yang tidak tertangkap perkakas mana pun adalah kesalahan pembacaan rule, dan untuk itu satu-satunya
+penangkal adalah membaca rantainya sampai ujung.
+
+## Catatan untuk sesi berikutnya
+
+- **`SampleList2()` bukan data produksi.** Isinya susunan sendiri karena `GCNM_MST_PROGRESS` tidak
+  ada di export. Ia sudah ditandai di doc comment-nya, tetapi tanda itu mudah terlewat ketika
+  layarnya tampak berisi dan masuk akal. **Minta isi tabelnya ke DBA** sebelum modul ini dipakai
+  untuk uji kesetaraan gerbang 1.
+- **Tiga angka di modul ini masih asumsi**, seluruhnya karena `R-08`: panjang `STS_PROGRESS2` (100),
+  tipe kolom `ID_MST`, dan arti `TIPE`.
+- **Menambah layar baru tetap menuntut satu baris** di `frontend/src/app/menu/registry.ts`. Ejaan
+  `MENU_PROGRAM`-nya dicocokkan persis, termasuk huruf besar-kecilnya — untuk modul ini
+  `StatusProgress2`, yang sudah ada di `M_MENU_APLIKASI_PNC` dengan `MENU_ID` 24.

@@ -6,6 +6,7 @@ import { HomePage } from '@/modules/home/HomePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
+import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -68,6 +69,16 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ProgressStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/status-progres-2"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ProgressStatus2Page />
             </Protected>
           </SessionGuard>
         }

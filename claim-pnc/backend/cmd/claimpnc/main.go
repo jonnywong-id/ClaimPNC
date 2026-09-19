@@ -156,6 +156,19 @@ func run() error {
 		return err
 	}
 
+	// Master Status Progres 2 memakai penulis galat yang SAMA PERSIS dengan tingkat 1,
+	// bukan rantai baru: keduanya memetakan galat lewat satu fungsi petakanGalat, sehingga
+	// satu jenis galat tidak pernah dijawab dua bentuk yang berbeda.
+	progressStatus2Handler, err := masterstatusprogreshttp.NewHandler2(masterstatusprogreshttp.Options2{
+		Service:       assembly.masterStatusProgres2,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterstatusprogreshttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	// Menu dirakit dari POOLDATA.M_MENU_APLIKASI_PNC dan M_OTORISASI_PNC. Jembatan
 	// konteks pemanggilnya SATU ARAH dari modul auth, dipasang di sini supaya kedua
 	// modul tetap tidak saling mengimpor.
@@ -231,6 +244,10 @@ func run() error {
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
 				masterstatusprogreshttp.Mount(protected, progressStatusHandler, activePortalDeps)
+				// Master Status Progres 2. SELURUH rutenya dipasangi pemeriksaan portal —
+				// termasuk daftar induknya, yang dibaca dari tabel tingkat 1 milik entitas
+				// yang bersangkutan, bukan daftar tetap milik aplikasi.
+				masterstatusprogreshttp.Mount2(protected, progressStatus2Handler, activePortalDeps)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -266,6 +283,11 @@ type assembly struct {
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
 
+	// masterStatusProgres2 memakai pemilih repo per portal dengan alasan yang sama, dan
+	// menerima pemilih tingkat 1 sebagai bahan kedua: penambahan tingkat 2 membaca baris
+	// induknya untuk memastikan induk itu ada dan menyalin namanya.
+	masterStatusProgres2 *masterstatusprogresusecase.Service2
+
 	// menu menyusun peta menu beserta kewenangan pemakainya.
 	menu *menuusecase.Service
 
@@ -298,6 +320,10 @@ type storage struct {
 	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat,
 	// kebocoran lintas badan hukum yang justru dicegah R-20.
 	progressStatusSelector masterstatusprogres.RepoSelector
+
+	// progressStatus2Selector memilih penyimpanan tingkat 2 milik satu portal, dengan
+	// alasan yang sama persis: POOLDATA.GCNM_MST_PROGRESS ada di basis data setiap entitas.
+	progressStatus2Selector masterstatusprogres.RepoSelector2
 
 	// menu dibaca dari basis data portal UTAMA, sama seperti M_LOGIN_PNC dan
 	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
@@ -343,6 +369,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	progressStatus2Service, err := masterstatusprogresusecase.NewService2(masterstatusprogresusecase.Options2{
+		RepoSelector:   store.progressStatus2Selector,
+		ParentSelector: store.progressStatusSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	menuService, err := menuusecase.NewService(menuusecase.Options{Repo: store.menu})
 	if err != nil {
 		store.close()
@@ -358,14 +393,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	return assembly{
-		auth:                service,
-		portal:              store.portal,
-		masterRekening:      buildMasterRekening(cfg, store, logger),
-		masterStatus:        claimStatusService,
-		masterStatusProgres: progressStatusService,
-		menu:                menuService,
-		readyAliases:        store.readyAliases,
-		close:               store.close,
+		auth:                 service,
+		portal:               store.portal,
+		masterRekening:       buildMasterRekening(cfg, store, logger),
+		masterStatus:         claimStatusService,
+		masterStatusProgres:  progressStatusService,
+		masterStatusProgres2: progressStatus2Service,
+		menu:                 menuService,
+		readyAliases:         store.readyAliases,
+		close:                store.close,
 	}, nil
 }
 
@@ -516,6 +552,13 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+		store.progressStatus2Selector = func(alias string) (masterstatusprogres.Repo2, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterstatusprogressql.NewRepo2(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -525,6 +568,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		store.progressStatus2Selector = progressStatus2SelectorMemory(store.progressStatusSelector)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -583,6 +627,47 @@ func progressStatusSelectorMemory(primaryAlias string) masterstatusprogres.RepoS
 			return existing, nil
 		}
 		fresh := masterstatusprogresmemory.NewRepo(masterstatusprogresmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// progressStatus2SelectorMemory menyusun penyimpanan tingkat 2 di memori.
+//
+// Ia TIDAK memeriksa alias portalnya sendiri, melainkan menanyakannya ke pemilih tingkat
+// 1: portal yang ditolak di sana ditolak di sini dengan galat yang sama persis. Dua
+// pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya disunting —
+// dan yang dipertaruhkan pada R-20 adalah pemisahan data antar badan hukum.
+//
+// Repo tingkat 1 yang dikembalikan pemilih itu DIPAKAI LANGSUNG sebagai induk, bukan
+// disalin. Dengan begitu status progres 1 yang baru ditambahkan lewat layarnya langsung
+// muncul di dropdown tingkat 2 — perilaku yang sama dengan adapter SQL, yang membaca
+// tabel induk di dalam transaksi yang sama.
+func progressStatus2SelectorMemory(parentSelector masterstatusprogres.RepoSelector) masterstatusprogres.RepoSelector2 {
+	var lock sync.Mutex
+	store := map[string]masterstatusprogres.Repo2{}
+
+	return func(alias string) (masterstatusprogres.Repo2, error) {
+		parent, err := parentSelector(alias)
+		if err != nil {
+			return nil, err
+		}
+
+		memoryParent, usable := parent.(*masterstatusprogresmemory.Repo)
+		if !usable {
+			// Tidak mungkin terjadi pada rakitan yang ada; dinyatakan supaya cacat
+			// perakitan gagal keras, bukan diam-diam menyajikan induk yang kosong.
+			return nil, fmt.Errorf("perakitan: repo tingkat 1 portal %q bukan adapter memori", alias)
+		}
+
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterstatusprogresmemory.NewRepo2(memoryParent, masterstatusprogresmemory.SampleList2()...)
 		store[clean] = fresh
 		return fresh, nil
 	}

@@ -83,6 +83,23 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Detail:  detail,
 		}, true
 
+	case errors.Is(err, masterstatusprogres.ErrParentNotFound):
+		// Diperiksa SEBELUM ErrNotFound. Keduanya berarti "tidak ditemukan", tetapi yang
+		// ini menunjuk ISIAN yang dapat diperbaiki pengguna — induk yang dipilihnya sudah
+		// tidak ada — sehingga jawabannya 422 dengan keterangan menempel di isian itu,
+		// bukan 404 yang membuat layar tampak kehilangan barisnya sendiri.
+		//
+		// Nama isiannya `id_induk`, sama persis dengan field JSON yang dikirim layar,
+		// supaya keterangan galat menempel di tempat yang benar tanpa penerjemahan.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeValidationFailed,
+			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",
+			Detail: []ViolationDTO{{
+				Field:   "id_induk",
+				Message: "Status progres 1 yang dipilih sudah tidak ada. Muat ulang halaman, lalu pilih kembali.",
+			}},
+		}, true
+
 	case errors.Is(err, masterstatusprogres.ErrNotFound):
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeNotFound,
