@@ -839,3 +839,441 @@ di §11.7.
 - Satu pun uji dilonggarkan. Yang disunting hanya **fixture** uji layar master, supaya peladen
   tiruannya menjawab `/api/portal` — panggilan yang memang baru muncul karena pemilih portal pindah
   ke bilah atas.
+
+---
+
+## 12. Penjenjangan Komite dan Master Ambang (2026-09-17, sesi keenam)
+
+### 12.1 Empat keputusan Work Owner pada sesi ini
+
+| # | Pertanyaan | Keputusan |
+|---|---|---|
+| 1 | `B-7` bergantung pada `B-5` dan `B-6` yang belum ada. Apa cakupannya? | **Master ambang + mesin penjenjangan.** Layar keputusan komite menyusul setelah prasyaratnya ada |
+| 2 | Tabel warisan mana yang boleh ditulis? | **Baca saja.** `POOLDATA.EMAILKOMITE` dan `T_CLAIM_KOMITE_LIST` tetap dimiliki Pega |
+| 3 | `AutoAcceptKomite` dibawa? | **Tidak dibawa** |
+| 4 | Go dan Node tidak terpasang di mesin ini | **Tulis kode, uji menyusul** |
+
+### 12.2 Kepemilikan tabel: kenapa modul ini berbeda dari Master Status Klaim
+
+Modul sebelumnya **menulis** ke tabel warisan, dan itu sah karena kepemilikannya benar-benar
+berpindah: layar Master Status Klaim adalah satu-satunya penulis `M_STS_CLAIM` di sistem
+lama, sehingga memindahkan layarnya memindahkan tabelnya secara utuh.
+
+Modul ini **tidak**. `POOLDATA.EMAILKOMITE` masih ditulis Pega dan dibaca **17 kueri** di
+sana — `EmailKomiteBerjenjang_sql` beserta varian PA, Travel, Bonding, Simasnet, Adjuster,
+dan Salvage. Tidak ada satu layar pun yang dapat dipindahkan untuk memindahkan
+kepemilikannya, karena tabel itu tidak punya layar pengelola di sistem lama sama sekali.
+
+`P-1` karena itu ditegakkan dengan cara yang paling keras yang tersedia: **berkas `.sql`
+modul ini tidak memuat satu pun `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `DROP`,
+atau `ALTER`**, dan `TestTidakAdaKueriYangMenulis` memindainya. Aturan yang hanya ada di
+dokumen akan dilanggar oleh kode berikutnya; aturan yang dijaga uji tidak.
+
+Akibatnya di layar: tidak ada tombol Tambah maupun Ubah, dan **ketiadaannya dijelaskan di
+layar itu sendiri**. Pengguna yang terbiasa dengan layar master lain akan mencarinya, dan
+tanpa keterangan ia akan menyimpulkan layarnya belum selesai.
+
+### 12.3 Kenapa penyaringan dikerjakan di Go, bukan di `WHERE`
+
+Seluruh 30 baris master dibaca tanpa klausa penyaring, lalu disaring di lapisan domain.
+
+Biayanya nol — isinya 30 baris. Yang diperoleh: aturan penjenjangan (kumulatif, pemilihan
+pita, urutan) hidup di **satu tempat** sebagai fungsi murni yang dapat diuji tanpa basis
+data, dan perilakunya dijamin sama persis antara Oracle dan penyimpanan di memori.
+
+Menaruh penyaringan di SQL akan memecah aturan itu menjadi dua salinan yang dapat berbeda
+pendapat — persis pola yang membuat sistem lama menyebarkan satu aturan bisnis ke activity,
+SQL, dan stored procedure sekaligus, sehingga satu perubahan harus dicari di tiga tempat
+dan sering hanya ditemukan di dua.
+
+### 12.4 Tipe nilai uang: kenapa dibangun sendiri
+
+`I-12` melarang `float` untuk nilai uang, dan modul ini adalah yang pertama benar-benar
+memerlukannya: ia membandingkan Rp 50.000.001 melawan Rp 50.000.000, dan selisih satu
+rupiah menentukan satu jenjang persetujuan ikut atau tidak.
+
+`internal/platform/uang` menyimpannya sebagai `int64` satuan terkecil. Tidak ada dependensi
+pihak ketiga — untuk kebutuhan yang seluruhnya penjumlahan dan perbandingan pada dua
+desimal, bilangan bulat sudah cukup.
+
+**Satu jebakan yang ditangani eksplisit:** memindai NUMBER Oracle ke `*string` tampak aman
+tetapi tidak. Bila driver menyerahkan `float64`, `database/sql` memformatnya dengan
+`strconv.FormatFloat(v, 'g', -1, 64)`, dan `'g'` menghasilkan notasi ilmiah untuk angka
+besar — Rp 100.000.000 menjadi `"1e+08"`. Karena itu setiap bentuk driver ditangani sendiri,
+dan `float64` berdesimal **ditolak** alih-alih dibulatkan diam-diam.
+
+### 12.5 Urutan penyetuju dibuat pasti — perbedaan yang disengaja
+
+Kueri sistem lama mengurutkan dengan `ORDER BY DEGREE` saja. Pada master yang berlaku,
+Non-MBU pita 1 memiliki **dua baris ber-DEGREE 1** (ID 7 dan ID 1), sehingga urutan keduanya
+diserahkan kepada basis data dan dapat berubah antar eksekusi.
+
+Modul ini memecahkan seri secara pasti: ambang bawah lebih kecil lebih dulu — yang secara
+bisnis memang masuk akal, karena jenjang berambang lebih rendah menyetujui lebih awal —
+lalu ID sebagai pemecah terakhir.
+
+Ini **tidak mengubah siapa** yang menyetujui, hanya urutannya saat seri. Dan setiap kali
+terjadi, penanda `UrutanTidakPasti` menyala sampai ke layar, supaya perbedaan urutan
+terhadap Pega pada kasus seri **tidak terbaca sebagai cacat** saat uji kesetaraan `S-8`
+dijalankan kelak.
+
+### 12.6 `LIMIT_TOP` dipakai — untuk satu hal saja
+
+`D-47` menetapkan `LIMIT_TOP` bukan penyaring pemilih baris; memakainya untuk memilih akan
+mengembalikan tepat satu baris dan menghapus penjenjangan seluruhnya. Perannya adalah
+**validasi integritas master**.
+
+Di sistem lama kolom itu tersimpan tetapi **tidak pernah dipakai satu kueri pun**.
+`PeriksaIntegritas` memberinya pekerjaan: menemukan rentang yang tumpang tindih, berlubang,
+atau terbalik; melaporkan jenjang ganda; dan menyebutkan sampai nilai berapa tangga tiap
+lini masih membedakan jenjang.
+
+**Pengelompokannya berbeda antar lini, dan itu wajib.** Untuk Non-MBU, per pita. Untuk lini
+lain, per lini saja — bila tangga PA dikelompokkan per `TYPE_KOMITE`, ia terbelah menjadi
+dua potongan yang tampak berlubang parah, padahal di PA kolom itu membedakan PA reguler
+dari PA TKI (`D-70`).
+
+### 12.7 Kontrak API modul ini
+
+    GET /api/master/ambang-komite              200  tangga + daftar lini + kebijakan pita
+    GET /api/master/ambang-komite/integritas   200  temuan, termasuk saat ada cacat
+    GET /api/komite/penjenjangan?nilai=&lini=  200  penyetuju berurutan
+                                               400  nilai bukan angka kanonik
+                                               404  lini tidak ada di master
+                                               422  isian melanggar aturan
+
+Tiga hal yang disengaja:
+
+**Seluruhnya GET.** Tidak satu pun mengubah apa pun. Akibat praktisnya: hasil perhitungan
+dapat ditautkan, sehingga seseorang yang menemukan angka meragukan dapat mengirimkan
+tautannya apa adanya kepada Work Owner.
+
+**Integritas menjawab 200 walau ada cacat.** Cacat pada master adalah **temuan yang
+dilaporkan endpoint ini**, bukan kegagalan permintaan. Menjawabnya dengan galat akan
+membuat layar menampilkan halaman gagal justru pada saat ia paling perlu menampilkan isinya.
+
+**"Lini tidak ada" (404) dibedakan dari "tidak ada jenjang yang cocok" (200 + penanda).**
+Yang pertama salah ketik atau lini baru yang belum diisi; yang kedua keadaan data yang harus
+dilihat Work Owner. Menjawab keduanya sama akan menyembunyikan yang kedua.
+
+**Nilai uang dikirim sebagai teks desimal kanonik**, bukan angka JSON — angka JSON adalah
+floating point ganda di peramban. Pemisah ribuan diurai **di layar**, karena artinya berbeda
+antar bahasa dan penafsirannya harus terjadi di tempat yang tahu bahasanya.
+
+### 12.8 Alamat surel tidak dibaca sama sekali
+
+Master ambang memuat kolom `EMAIL` dan `CC`. Keduanya **tidak masuk ke dalam `SELECT`** —
+bukan dibaca lalu dibuang di lapisan berikutnya.
+
+Dua alasan yang saling menguatkan: modul ini menghitung **siapa yang menyetujui**, bukan ke
+mana pemberitahuan dikirim (itu `S-3`); dan `D-67` menetapkan alamat pribadi pada master
+lama — sekurang-kurangnya enam akun Gmail di jalur produksi — tidak dibawa ke sistem baru
+sama sekali.
+
+Tidak membacanya sejak kueri membuat alamat itu tidak pernah sampai ke peramban, alih-alih
+mengandalkan setiap lapisan sesudahnya ingat membuangnya. Dijaga dua uji: satu memindai
+kuerinya, satu memindai badan respons.
+
+### 12.9 Batas pita: satu-satunya nilai bisnis yang masih di dalam kode
+
+`BatasPitaNonMBUBawaan = 100_000_000` ada sebagai konstanta, dan itu menyimpang dari `D-15`.
+
+Penyimpangannya dibatasi: konstanta itu **tidak dibaca mesin penjenjangan**. Ia hanya nilai
+bawaan yang membentuk `Kebijakan`, dan `Kebijakan` **dipasok dari luar** lewat
+`usecase.Opsi`. Memindahkannya menjadi master `F-4` kelak tidak menyentuh satu baris pun
+aturan di `jenjang.go`. Sifat itu diuji di `TestKebijakanPitaDapatDiganti`.
+
+Kenapa belum menjadi master: tidak ada tabel yang memuatnya. Di sistem lama pita dipilih
+dengan **membandingkan nama orang** — `Activity/SetEmailKomite-Act.xml` step 10, 12, dan 14
+mencocokkan `UserTeknis` dengan tiga nama tertentu lalu memaksa nilai pembandingnya melewati
+ambang. `D-52` mencabut cara itu; yang menggantikannya adalah pita yang diturunkan dari
+nilai klaim, dan angkanya belum punya rumah.
+
+Ia juga ditampilkan di layar, bukan disembunyikan: angka yang menentukan uang tidak boleh
+hanya hidup di dalam kode tanpa pernah terlihat siapa pun.
+
+### 12.10 Jejak audit tetap tidak dibangun
+
+Sama dengan modul sebelumnya, dan alasannya kini lebih kuat: modul ini **tidak menulis apa
+pun**, sehingga tidak ada perubahan bernilai bisnis yang perlu dicatat.
+
+Yang akan membutuhkannya adalah `TKT-B07-002` — pencatatan keputusan komite — dan di sana
+jejak audit bukan pelengkap melainkan **satu-satunya kontrol pengimbang**, karena `D-59`
+menghapus pemisahan tugas.
+
+### 12.11 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+1. **Beban bila `AutoAcceptKomite` dihapus** belum dihitung; `TKT-B07-003` menuntut angkanya
+   sebelum rilis. Kuerinya ada di catatan pengembangan §11.10.
+2. **Arti baris `DEGREE=0`** — datanya menunjukkan ia penerima pemberitahuan registrasi
+   (`STS_ADJ` kosong, `STS_REG` menyala), dan penyaring yang ada sudah mengeluarkannya.
+   Pengamatan itu dilaporkan, belum ditegaskan Work Owner.
+3. **`dbms_random.value` pada dua kueri Simasnet** — tidak dibawa, dan larangannya dijaga
+   uji. Bila ternyata disengaja, aturan urutan di modul ini harus ditinjau ulang.
+4. **Perilaku `STS_ABS`** — kolomnya dibaca dan dibawa sampai ke layar, tetapi **tidak
+   menyaring siapa pun**. Tidak ada rule di export yang memperlihatkan apa yang terjadi bila
+   ia menyala, dan menebaknya berarti mengarang aturan yang menentukan siapa menyetujui uang.
+5. **Pemeriksaan peran** pada rute modul ini belum ada — `TKT-F3-005`, sama dengan seluruh
+   rute lain hari ini. Yang perlu disadari khusus modul ini: isi layarnya memperlihatkan
+   siapa yang berwenang menyetujui uang.
+
+---
+
+## 13. Empat jawaban Work Owner yang mengoreksi sesi sebelumnya (2026-09-18)
+
+### 13.1 Dua keputusan kemarin dibatalkan
+
+| Keputusan 2026-09-17 | Keputusan 2026-09-18 |
+|---|---|
+| `AutoAcceptKomite` **tidak dibawa** | **dikonversi**, bukan dihapus |
+| Pengacakan penyetuju **tidak dibawa** | **dibawa** — ia disengaja, dan membawa kontrol yang berharga |
+
+Keduanya dicatat sebagai pembatalan, bukan disunting menjadi seolah-olah tidak pernah ada.
+
+### 13.2 Dua mode penjenjangan, ditentukan per portal
+
+Temuan terbesar sesi ini: penjenjangan komite **tidak punya satu aturan**, melainkan dua,
+dan yang berlaku ditentukan **entitas** — bukan lini bisnis.
+
+| Mode | Berlaku pada | Perilaku |
+|---|---|---|
+| `kumulatif` | seluruh entitas selain Simasnet | setiap jenjang yang ambang bawahnya terlampaui ikut menyetujui |
+| `satu-penyetuju` | entitas **Simasnet** | dipilih **tepat satu**, diacak di antara jenjang terendah, **penginput dikecualikan** |
+
+Pemilihnya di sistem lama (`Activity/SetListComiteeClaimPerObjAdj-Act.xml`):
+
+```
+bila TempGetApp.LSC_ID == "SIMASNET"  → SetEmailKomiteSimasnet
+selain itu                            → SetEmailKomite
+```
+
+dan `LSC_ID` dibaca dari `POOLDATA.DB_LINK_PEGA` dengan **mencocokkan nama server** —
+persis pola yang `D-75` ganti dengan portal. Karena itu `Mode` menjadi medan pada
+`Kebijakan`, satu per portal, bukan pada `Ambang` maupun `Lini`.
+
+### 13.3 Pengecualian penginput: kontrol pemisahan tugas yang nyata
+
+Aturan Simasnet mengeluarkan **operator yang sedang menginput** dari daftar calon
+penyetuju. Sumbernya `Activity/SetEmailKomiteSimasnet-Act.xml`, yang menyusun potongan SQL
+`"AND OPERATOR_ID!='" + OperatorID.pyUserIdentifier + "'"`.
+
+Ini penting melampaui modul komite: `D-59` menetapkan **tidak ada pemisahan tugas formal**
+di sistem lama. Temuan ini tidak membatalkannya — cakupannya satu entitas — tetapi ia
+membuktikan pernyataan itu tidak berlaku mutlak, dan bahwa mekanismenya pernah ada.
+
+Perbandingan identitasnya dinormalkan lewat `KunciOperator` (huruf besar, spasi tepi
+dibuang). Itu bukan kelonggaran: bila pencocokan gagal, penginput tetap menjadi calon dan
+**dapat terpilih menyetujui pengajuannya sendiri** — dan kegagalannya tidak terlihat,
+karena hasilnya tetap berupa nama yang masuk akal.
+
+### 13.4 Pengacakan pindah dari SQL ke Go
+
+Kueri lama mengacak di dalam SQL (`ORDER BY degree, dbms_random.value`). Di sini
+pengacakannya pindah ke Go, di balik seam `komite.Pengacak`.
+
+Yang dilarang `kueri_test.go` karena itu bukan perilakunya melainkan **tempatnya**.
+Alasannya: diacak di dalam SQL membuat aturannya tidak dapat diuji sama sekali — hasil
+yang berbeda tiap kali dijalankan tidak dapat dibandingkan dengan apa pun. Di balik seam,
+pengujian memakai pemilih tetap sementara produksi memakai `platform/acak`.
+
+Bawaannya **tetap**, bukan acak. Sesuatu yang diam-diam menjadi acak jauh lebih berbahaya
+daripada sesuatu yang diam-diam menjadi tetap: yang pertama baru ketahuan saat dua orang
+membandingkan hasil dan menemukannya berbeda.
+
+**Akibatnya bagi gerbang 1:** pada mode ini, yang dapat dibandingkan dengan Pega bukan
+SIAPA yang terpilih melainkan **apakah kumpulan calonnya sama**. Karena itu `Kandidat`
+dikirim sampai ke layar, dan layarnya menyatakan terus terang bahwa hasil berbeda pada
+nilai yang sama bukan cacat.
+
+### 13.5 Batas pita berbeda per entitas — dan satu angka yang nyaris salah dipakai
+
+Pertanyaan Work Owner "ini diambil dari mana" menghasilkan temuan yang tidak dicari.
+
+Batas Rp 100.000.000 **ada di dalam rule**, bukan disimpulkan:
+
+```
+tempAdj.AcceptedNo := @If(tempAdj.ConvertAdjustmentValue > 100000000, 2, 1)
+```
+
+Tetapi empat baris di bawahnya, rule yang sama memuat kembarannya untuk entitas dolar:
+
+```
+tempAdj.AcceptedNo := @If(tempAdj.ConvertAdjustmentValue > 7000, 2, 1)
+```
+
+Jadi konstanta tunggal yang ditulis sesi sebelumnya **benar untuk portal rupiah dan salah
+untuk portal SMI**, dengan selisih sekitar 14.000 kali lipat. Rasio 100.000.000 ÷ 7.000 ≈
+14.285 adalah **kurs yang dibekukan ke dalam kode**, bukan kurs dari master mata uang.
+
+`BatasPitaNonMBUSMI` dicantumkan bukan supaya dipakai apa adanya, melainkan supaya
+perbedaannya terlihat. Angkanya wajib dikonfirmasi ulang sebelum portal SMI dilayani.
+
+### 13.6 `DEGREE=0` disaring eksplisit meski hari ini tidak mengubah apa pun
+
+Work Owner menegaskan baris ber-`DEGREE` nol tidak dipakai. Penyaringnya ditulis meski
+tidak mengubah satu hasil pun pada master yang berlaku — baris seperti itu sudah tersaring
+lebih dulu oleh `STS_ADJ`.
+
+Alasannya: tanpa penyaring itu, aturannya hanya **berlaku secara kebetulan**. Satu baris
+baru ber-DEGREE 0 dengan `STS_ADJ` menyala akan diam-diam ikut menyetujui uang.
+
+### 13.7 `AutoAcceptKomite`: yang ditiru dan yang diperbaiki
+
+| Hal | Perlakuan | Alasan |
+|---|---|---|
+| Syarat lama menganggur | **ditiru** | inti aturannya; rule lama tidak punya syarat lain |
+| Pelaku `SISTEM` | **diperbaiki** | sistem lama hanya menitipkan jejaknya pada kalimat di kolom catatan, sehingga satu-satunya cara mengetahui sebuah persetujuan itu otomatis adalah mencocokkan teks |
+| Batas nilai dan jenjang | **ditambahkan, mati secara bawaan** | menjaga kesetaraan dengan Pega, sekaligus menyediakan tempat bagi jawaban Work Owner |
+| Fitur secara keseluruhan | **mati secara bawaan** | job ini melewati seluruh kontrol otorisasi (`D-59`); tidak boleh menyala karena kelalaian menyetel |
+
+**Ambangnya parameter, bukan konstanta**, karena `> 2` pada rule lama dapat berarti 48 jam
+atau 72 jam dan export tidak menyelesaikannya. Yang dipakai adalah bacaan yang lebih lambat
+menyetujui — bila keliru, akibatnya klaim menunggu sehari lebih lama, bukan uang yang
+telanjur disetujui sendiri oleh sistem.
+
+Penulisan persetujuan dan penjadwalnya **belum dibangun**: keduanya menuntut jalur
+keputusan komite dan mekanisme penjadwal yang belum ada, dan menulis ke
+`T_CLAIM_KOMITE_LIST` melanggar keputusan "baca saja" yang masih berlaku.
+
+### 13.8 Pertanyaan terbuka yang bertambah
+
+1. `> 2` pada `AutoAcceptKomite` — 48 jam atau 72 jam. Hanya Pega staging yang dapat
+   memastikan.
+2. Nilai dan jenjang mana yang boleh disetujui otomatis.
+3. Batas pita portal SMI — USD 7.000 berasal dari kurs beku yang sudah tidak berlaku.
+4. Master ambang portal Simasnet belum pernah dilihat; mode satu-penyetuju belum teruji
+   terhadap data sungguhan.
+5. Apakah pengecualian penginput seharusnya berlaku di entitas lain juga — hari ini ia
+   hanya ada pada satu jalur, dan meluaskannya adalah **perubahan aturan**, bukan
+   perbaikan.
+
+---
+
+## 13. Empat jawaban penutup, dan satu akibat yang harus diketahui sebelum rilis (2026-09-18)
+
+### 13.1 Jawaban
+
+| # | Pertanyaan | Jawaban | Akibat pada kode |
+|---|---|---|---|
+| 1 | `> 2` itu 48 atau 72 jam? | **72 jam** | Ambiguitas tertutup; bawaan 3 hari dipastikan benar |
+| 2 | Nilai dan jenjang mana yang boleh auto-accept? | **Tidak dibatasi** — selama `KomiteCount <= KomiteLoop` | Dua medan konfigurasi **dihapus**, syarat jenjang ditambahkan |
+| 3 | Batas pita portal SMI | *(belum dijawab)* | tetap terbuka |
+| 4 | Pengecualian penginput berlaku di entitas lain? | **Ya** | Pengecualian menjadi **berlaku di semua mode** |
+
+### 13.2 Jawaban 2 menutup pertanyaan, dan karena itu dua knob dihapus
+
+Sehari sebelumnya saya membangun `BatasNilai` dan `JenjangMaksimum` sebagai tempat bagi
+jawaban yang belum ada, mati secara bawaan. Jawabannya kini datang: **tidak ada batas
+apa pun**; syaratnya hanya lama menganggur dan jenjangnya belum habis.
+
+Keduanya **dihapus, bukan dibiarkan mati**. Konfigurasi yang tidak pernah dipakai adalah
+jalur yang tidak pernah diuji, dan ia menyiratkan kemampuan yang tidak diminta siapa pun.
+Menambahkannya kembali kelak lebih murah daripada memeliharanya sekarang.
+
+Sebagai gantinya, `KomiteTertunda` kini membawa `JumlahJenjang` dan aturannya memeriksa
+`MasihDalamJenjang()` — `KomiteCount <= KomiteLoop`, diambil apa adanya dari
+`When/IsKomiteLoop-When.xml`. Ia diperiksa di dalam aturannya, bukan diandaikan sudah
+disaring pemanggil: aturan yang menyetujui uang tidak boleh bergantung pada asumsi bahwa
+masukannya sudah bersih.
+
+### 13.3 Jawaban 4 adalah perubahan perilaku, dan akibatnya sudah dihitung
+
+Pengecualian penginput kini berlaku pada **kedua mode**. Di sistem lama ia hanya ada pada
+satu kueri — jalur Simasnet.
+
+**Ini bukan peniruan melainkan perubahan aturan**, dan pada mode kumulatif akibatnya
+langsung: jumlah penyetuju **berkurang satu** setiap kali penginputnya kebetulan anggota
+komite pada tangga itu.
+
+Yang lebih perlu diketahui: dihitung dari `Database/emailkomite.csv`, **setiap lini punya
+jenjang terendah yang diisi SATU orang saja**. Bila orang itu yang mengajukan, klaimnya
+berakhir **tanpa penyetuju sama sekali** — bukan berkurang satu, melainkan berhenti.
+
+| Lini | Rentang nilai | Satu-satunya penyetuju |
+|---|---|---|
+| NONMBU pita 1 | ≤ Rp 50.000.000 | ELLENSUPRIYATI |
+| NONMBU pita 2 | Rp 100.000.001 – Rp 500.000.000 | BAMBANGSETIADJIGUNAWAN |
+| NONMBUAB | seluruhnya | ELLENSUPRIYATI |
+| NONMBUC | seluruhnya | ELLENSUPRIYATI |
+| PA | ≤ Rp 10.000.000 | WAHYUKRISTANTI |
+| TRAVEL | ≤ Rp 50.000.000 | RATNAGUSNITASARI |
+| BONDING | seluruhnya | RIZALGREATLIN |
+
+Ketujuhnya diuji sebagai kasus yang **harus** menghasilkan nol penyetuju
+(`TestPengecualianPenginputDapatMenghabiskanSeluruhPenyetuju`) — bukan supaya dianggap
+benar, melainkan supaya keadaannya terlihat sebelum ada klaim nyata yang berhenti
+karenanya.
+
+**Seberapa mungkin terjadi** bergantung pada apakah anggota komite juga menginput klaim.
+Satu petunjuk: ELLENSUPRIYATI muncul di `Activity/SetEmailKomite-Act.xml` sebagai
+`UserTeknis` pada logika lama berbasis nama — artinya ia juga PIC Teknik, bukan hanya
+anggota komite. Itu menaikkan kemungkinannya, dan pantas dipastikan ke pengguna bisnis.
+
+**Yang dikerjakan supaya tidak gagal diam-diam:**
+
+- `Tersingkir` dibedakan dari `DikecualikanPenginput`. Yang pertama menyatakan siapa yang
+  **benar-benar** keluar; yang kedua hanya siapa yang diminta dikecualikan. Penginput yang
+  bukan anggota komite tidak mengubah apa pun, dan layar tidak boleh menyiratkan
+  sebaliknya.
+- Layar membedakan **dua sebab** klaim tanpa penyetuju: master yang tidak menjangkau nilai
+  itu, versus seluruh penyetuju tersingkir karena penginputnya. Keduanya menuntut tindakan
+  dari orang yang berbeda.
+- Isian Operator ID pengaju kini muncul pada semua mode, tidak lagi hanya Simasnet.
+
+### 13.4 Yang masih terbuka
+
+1. **Batas pita portal SMI** — USD 7.000 berasal dari kurs beku 14.285 yang sudah tidak
+   berlaku. Belum dijawab.
+2. **Master ambang portal Simasnet** belum pernah dilihat; mode satu-penyetuju masih diuji
+   dengan data buatan.
+3. **Seberapa sering anggota komite menginput klaim sendiri** — menentukan apakah ketujuh
+   keadaan di §13.3 adalah risiko nyata atau kemungkinan teoretis. Pertanyaan untuk
+   pengguna bisnis, bukan untuk kode.
+4. **Menyambungkan kebijakan ke portal aktif** — `TKT-F6-002`.
+
+---
+
+## 14. Penamaan modul Komite mengikuti `D-80` dan `D-81` (2026-09-19)
+
+### Keputusan
+
+Seluruh nama di dalam kode modul Komite — folder, berkas, tipe, fungsi, method, field,
+parameter, dan variabel lokal — memakai **bahasa Inggris**, kecuali **nama folder modulnya**
+(`internal/komite`, `src/modules/ambang-komite`) yang tetap berbahasa Indonesia.
+
+### Kenapa demikian, bukan sebaliknya
+
+Ini bukan pilihan yang saya ambil sendiri: `CLAUDE.md` §7.4.1 sudah menetapkannya lewat `D-80`
+dan `D-81`. Yang saya kerjakan adalah menerapkannya, setelah pass sebelumnya (§16 catatan
+pengembangan) memakai aturan lama yang menyuruh istilah domain tetap Indonesia.
+
+Dua alasan `D-80` yang langsung terasa di modul ini:
+
+1. **Pustaka standar Go dan React seluruhnya berbahasa Inggris.** Sebelum penggantian, satu
+   baris dapat berpindah bahasa dua kali — `sortDeterministic(cocok)` berdampingan dengan
+   `strings.TrimSpace`. Sesudahnya tidak.
+2. **Bahasa Indonesia tidak mengenal infleksi.** `Jenjang` dipakai untuk tiga hal berbeda di
+   modul ini — nomor DEGREE, jumlah penyetuju, dan tangga itu sendiri — dan ketiganya sempat
+   tertukar. Padanan Inggrisnya memisahkan mereka sendiri: `Tier`, `TierCount`, dan tangga yang
+   diwakili `[]Threshold`.
+
+### Yang menahan penerapannya sampai tuntas
+
+**Variabel lokal di berkas uji tetap Indonesia.** Alasannya bukan kelalaian melainkan dua hal
+yang diuji dan gagal: kata-kata itu hidup berdampingan dengan prosa Indonesia di komentar **dan
+di pesan assertion**, sehingga penggantian otomatis memutus konsistensi deklarasi-pemakaian; dan
+tanpa kompiler, menulis ulang 1.830 baris uji menukar cacat kosmetik dengan risiko cacat nyata.
+
+Rinciannya beserta buktinya ada di `catatan-pengembangan.md` §17.4.
+
+### Yang TIDAK terpengaruh, dan itu disengaja
+
+Kontrak yang menyeberang keluar dari kode tidak ikut berubah: **nama field JSON**, **nilai kode
+galat**, **jalur rute**, **nama kolom basis data**, dan **teks yang dilihat pengguna**. Mengubah
+salah satunya bukan penggantian nama melainkan perubahan yang merusak klien.
+
+Akibatnya satu baris dapat memuat dua bahasa, dan itu memang yang dikehendaki `D-80`:
+
+```go
+LowerBound money.Money `json:"batas_bawah"`
+```

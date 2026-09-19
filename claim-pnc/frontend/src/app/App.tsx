@@ -2,6 +2,8 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
+import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HalamanBeranda } from '@/modules/beranda/HalamanBeranda'
 import { HalamanMasterStatusKlaim } from '@/modules/master-status-klaim/HalamanMasterStatusKlaim'
 import { HalamanMasuk } from '@/modules/masuk/HalamanMasuk'
@@ -57,6 +59,19 @@ export function Rute() {
       <Route
         path="/master/status-klaim"
         element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterStatusKlaim />} />} />}
+      />
+      <Route
+        path="/master/ambang-komite"
+        element={<PenjagaSesi anak={<Terlindungi anak={<ThresholdPage />} />} />}
+      />
+      {/*
+        Penjenjangan berada di bawah /komite, bukan /master, karena ia bukan data acuan
+        melainkan aturan bisnis modul B-7. Tangga ambangnya milik F-4, cara membacanya
+        milik B-7 — dan batas itu ikut terlihat di alamat halamannya.
+      */}
+      <Route
+        path="/komite/penjenjangan"
+        element={<PenjagaSesi anak={<Terlindungi anak={<TieringPage />} />} />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

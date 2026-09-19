@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
-import { IkonDaftar, IkonKeluar, IkonPerisai } from '@/components/Ikon'
+import {
+  IkonDaftar,
+  IkonKeluar,
+  IkonPerisai,
+  IkonTangga,
+  IkonTimbangan,
+} from '@/components/Ikon'
 import { Tombol } from '@/components/Tombol'
 import { gunakanKeluar } from '@/modules/masuk/api'
 import { PemilihPortal } from '@/modules/portal/PemilihPortal'
@@ -31,6 +37,12 @@ type Entri = { ke: string; label: string; ikon: ReactNode }
 const menu: Entri[] = [
   { ke: '/', label: 'Beranda', ikon: <IkonPerisai className="h-4 w-4" /> },
   { ke: '/master/status-klaim', label: 'Master Status Klaim', ikon: <IkonDaftar className="h-4 w-4" /> },
+  { ke: '/master/ambang-komite', label: 'Ambang Komite', ikon: <IkonTangga className="h-4 w-4" /> },
+  {
+    ke: '/komite/penjenjangan',
+    label: 'Penjenjangan Komite',
+    ikon: <IkonTimbangan className="h-4 w-4" />,
+  },
 ]
 
 /**

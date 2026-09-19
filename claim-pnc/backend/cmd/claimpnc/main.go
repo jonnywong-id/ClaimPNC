@@ -26,16 +26,22 @@ import (
 	"claim-pnc/internal/auth/repo/memori"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/komite"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/platform/waktu"
 	"claim-pnc/internal/portal"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	komitehttp "claim-pnc/internal/komite/http"
+	komitememory "claim-pnc/internal/komite/repo/memory"
+	komitesql "claim-pnc/internal/komite/repo/sqlstore"
+	komiteusecase "claim-pnc/internal/komite/usecase"
 	masterstatushttp "claim-pnc/internal/masterstatus/http"
 	masterstatusmemori "claim-pnc/internal/masterstatus/repo/memori"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
@@ -111,6 +117,12 @@ func jalankan() error {
 		TulisRespon:        tulisJSON,
 		TulisGalatCadangan: masterstatushttp.PenulisGalat(tulisGalatAuth),
 	})
+	handlerKomite := komitehttp.NewHandler(komitehttp.Options{
+		Service:             rakitan.komite,
+		Logger:              logger,
+		WriteResponse:       tulisJSON,
+		FallbackErrorWriter: komitehttp.ErrorWriter(tulisGalatAuth),
+	})
 	handlerPortal := portalhttp.HandlerBaru(portalhttp.Opsi{
 		Repo:       rakitan.portal,
 		AliasSiap:  rakitan.aliasSiap,
@@ -141,6 +153,13 @@ func jalankan() error {
 				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
 				// dengan seluruh rute lain hari ini.
 				masterstatushttp.Pasang(terlindungi, handlerMasterStatus)
+
+				// Modul Komite memasang dua kelompok rute sekaligus: master ambang di
+				// bawah master/, dan perhitungan penjenjangan di bawah komite/.
+				// Keduanya DIBACA SAJA — tidak ada satu pun jalur yang menulis ke
+				// POOLDATA.EMAILKOMITE selama masa paralel (P-1, keputusan Work Owner
+				// 2026-09-17).
+				komitehttp.Mount(terlindungi, handlerKomite)
 			})
 		},
 	})
@@ -162,6 +181,7 @@ type rakitan struct {
 	auth         *usecase.Layanan
 	portal       portal.Repo
 	masterStatus *masterstatususecase.Layanan
+	komite       *komiteusecase.Service
 	aliasSiap    func() []string
 	tutup        func()
 }
@@ -172,6 +192,7 @@ type penyimpanan struct {
 	sesi         auth.SesiRepo
 	portal       portal.Repo
 	masterStatus masterstatus.Repo
+	komite       komite.Repo
 
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
@@ -216,10 +237,32 @@ func rakit(konf config.Konfigurasi, logger *slog.Logger) (rakitan, error) {
 		return rakitan{}, err
 	}
 
+	// Policy tidak dipasok: DefaultPolicy dipakai — mode kumulatif, dan hanya
+	// Non-MBU yang memakai pita dengan batas Rp 100.000.000 (`D-52`, `D-70`).
+	//
+	// Ia BELUM bergantung pada portal yang sedang melayani, dan itu batas yang disadari:
+	// entitas Simasnet memakai mode satu-penyetuju, dan entitas SMI memakai batas pita
+	// USD 7.000 — keduanya ada di rule yang sama (`Activity/SetEmailKomite-Act.xml`).
+	// Menyambungkannya ke portal aktif adalah `TKT-F6-002`, yang menuntut portal melekat
+	// pada permintaan alih-alih pada keadaan global (`R-20`).
+	//
+	// Randomizer dipasok sekarang meski portal ASM tidak memakainya: bila kelak portal
+	// diganti ke mode satu-penyetuju, pemilihannya langsung acak — bukan diam-diam
+	// selalu jatuh ke orang yang sama.
+	serviceKomite, err := komiteusecase.NewService(komiteusecase.Options{
+		Repo:       simpan.komite,
+		Randomizer: random.System{},
+	})
+	if err != nil {
+		simpan.tutup()
+		return rakitan{}, err
+	}
+
 	return rakitan{
 		auth:         layanan,
 		portal:       simpan.portal,
 		masterStatus: layananMasterStatus,
+		komite:       serviceKomite,
 		aliasSiap:    simpan.aliasSiap,
 		tutup:        simpan.tutup,
 	}, nil
@@ -282,6 +325,23 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		// sedang dipilih pengguna adalah lingkup TKT-F6-002, yang menuntut portal aktif
 		// melekat pada permintaan — bukan pada keadaan global (R-20).
 		simpan.masterStatus = masterstatussql.RepoBaru(utama)
+
+		// Master ambang komite dipasang pada koneksi UTAMA, dan itu CACAT YANG DISADARI —
+		// bukan sekadar sementara.
+		//
+		// Work Owner menegaskan 2026-09-19 bahwa setiap server punya POOLDATA-nya sendiri,
+		// dan isi EMAILKOMITE BERBEDA antar server: baris SIMASNET hanya ada di POOLDATA
+		// server Simasnet. Selama repo ini terpasang pada koneksi utama, portal mana pun
+		// yang dipilih pengguna akan membaca tangga ambang milik portal UTAMA.
+		//
+		// Akibatnya bukan galat melainkan angka yang salah tanpa tanda: layar menampilkan
+		// jenjang persetujuan entitas lain, dan tidak ada yang terlihat keliru. Itu kelas
+		// kegagalan yang sama dengan `R-20`.
+		//
+		// Hari ini belum menimbulkan kerugian karena hanya portal utama yang dilayani.
+		// Memperbaikinya adalah `TKT-F6-002` — koneksi diambil dari portal AKTIF, yang
+		// menuntut portal melekat pada permintaan alih-alih pada keadaan global.
+		simpan.komite = komitesql.NewRepo(utama)
 		simpan.aliasSiap = kumpulan.Tersedia
 		simpan.tutup = kumpulan.Tutup
 	} else {
@@ -289,6 +349,10 @@ func rakitPenyimpanan(konf config.Konfigurasi, produksi bool, logger *slog.Logge
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
 		simpan.masterStatus = masterstatusmemori.RepoBaru(masterstatusmemori.DaftarContoh()...)
+		// Isi master ambang yang sebenarnya ikut dimuat, sehingga layar Ambang Komite
+		// dan simulasi penjenjangan dapat dicoba lengkap tanpa Oracle — termasuk
+		// ketujuh kasus pada spec B-7.
+		simpan.komite = komitememory.NewSampleRepo()
 		simpan.aliasSiap = func() []string { return []string{konf.PortalUtama} }
 	}
 
