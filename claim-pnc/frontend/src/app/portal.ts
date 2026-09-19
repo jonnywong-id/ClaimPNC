@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 
-const KUNCI_SIMPANAN = 'claim-pnc.portal'
+const STORAGE_KEY = 'claim-pnc.portal'
 
-type KeadaanPortal = {
+type PortalState = {
   /** Alias portal yang sedang dipilih; null berarti belum ditentukan. */
   alias: string | null
-  pilih: (alias: string) => void
-  bersihkan: () => void
+  select: (alias: string) => void
+  clear: () => void
 }
 
 /**
@@ -17,23 +17,23 @@ type KeadaanPortal = {
  * berpindah portal TIDAK menuntut login ulang, sehingga keduanya memang berumur
  * berbeda.
  */
-export const gunakanPortalTerpilih = create<KeadaanPortal>((set) => ({
-  alias: muatDariPeramban(),
+export const useSelectedPortal = create<PortalState>((set) => ({
+  alias: loadFromBrowser(),
 
-  pilih: (alias) => {
-    simpanKePeramban(alias)
+  select: (alias) => {
+    saveToBrowser(alias)
     set({ alias })
   },
 
-  bersihkan: () => {
-    hapusDariPeramban()
+  clear: () => {
+    clearFromBrowser()
     set({ alias: null })
   },
 }))
 
-function muatDariPeramban(): string | null {
+function loadFromBrowser(): string | null {
   try {
-    return window.sessionStorage.getItem(KUNCI_SIMPANAN)
+    return window.sessionStorage.getItem(STORAGE_KEY)
   } catch {
     // sessionStorage dapat ditolak peramban (mode privat, kebijakan perusahaan).
     // Aplikasi tetap harus jalan; pengguna cukup memilih portalnya lagi.
@@ -41,17 +41,17 @@ function muatDariPeramban(): string | null {
   }
 }
 
-function simpanKePeramban(alias: string): void {
+function saveToBrowser(alias: string): void {
   try {
-    window.sessionStorage.setItem(KUNCI_SIMPANAN, alias)
+    window.sessionStorage.setItem(STORAGE_KEY, alias)
   } catch {
     /* diabaikan dengan sadar: pilihan tetap hidup di memori tab ini */
   }
 }
 
-function hapusDariPeramban(): void {
+function clearFromBrowser(): void {
   try {
-    window.sessionStorage.removeItem(KUNCI_SIMPANAN)
+    window.sessionStorage.removeItem(STORAGE_KEY)
   } catch {
     /* diabaikan dengan sadar */
   }

@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && npm run tandai-dist",
-    "tandai-dist": "node -e \"require('fs').writeFileSync('../backend/spa/dist/.gitkeep','')\"",
+    "build": "tsc --noEmit && vite build && npm run mark-dist",
+    "mark-dist": "node -e \"require('fs').writeFileSync('../backend/spa/dist/.gitkeep','')\"",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "periksa-tipe": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

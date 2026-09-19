@@ -22,126 +22,126 @@ import (
 	_ "github.com/sijms/go-ora/v2"
 )
 
-// Parameter adalah bahan pembuka satu koneksi. KataSandi tidak pernah ikut tercetak.
+// Parameter adalah bahan pembuka satu koneksi. Password tidak pernah ikut tercetak.
 type Parameter struct {
-	Alias       string
-	Host        string
-	Port        int
-	Service     string
-	Pengguna    string
-	KataSandi   string
-	MaksKoneksi int
-	MaksIdle    int
-	UmurKoneksi time.Duration
+	Alias              string
+	Host               string
+	Port               int
+	Service            string
+	User               string
+	Password           string
+	MaxConnections     int
+	MaxIdle            int
+	ConnectionLifetime time.Duration
 }
 
-// Kumpulan memegang koneksi seluruh portal yang berhasil dibuka.
+// Pool memegang koneksi seluruh portal yang berhasil dibuka.
 //
 // Portal yang kredensialnya belum diisi atau tidak dapat dihubungi **tidak membuat
 // aplikasi gagal start** — ia hanya tidak tersedia, dan memilihnya menghasilkan galat
 // yang menyebut portalnya. Pengisian kredensial tiap entitas berjalan bertahap, dan
 // satu entitas yang belum siap tidak boleh menghalangi entitas yang sudah siap.
-type Kumpulan struct {
-	koneksi map[string]*sql.DB
-	utama   string
+type Pool struct {
+	connections map[string]*sql.DB
+	primary     string
 }
 
-// KumpulanBaru membuka koneksi untuk setiap parameter yang diberikan.
+// NewPool membuka koneksi untuk setiap parameter yang diberikan.
 //
 // Portal utama diperlakukan berbeda: kegagalannya **fatal**, karena basis datanya yang
 // melayani daftar portal, alamat layanan HCQ, login non-karyawan, dan tabel sesi.
 // Tanpa itu aplikasi tidak dapat melayani satu permintaan pun.
-func KumpulanBaru(ctx context.Context, utama string, parameter []Parameter, catat func(alias string, err error)) (*Kumpulan, error) {
-	k := &Kumpulan{koneksi: map[string]*sql.DB{}, utama: utama}
+func NewPool(ctx context.Context, primary string, parameter []Parameter, record func(alias string, err error)) (*Pool, error) {
+	k := &Pool{connections: map[string]*sql.DB{}, primary: primary}
 
 	for _, p := range parameter {
-		koneksi, err := Buka(ctx, p)
+		connections, err := Open(ctx, p)
 		if err != nil {
-			if p.Alias == utama {
-				k.Tutup()
-				return nil, fmt.Errorf("portal utama %q: %w", utama, err)
+			if p.Alias == primary {
+				k.Close()
+				return nil, fmt.Errorf("portal utama %q: %w", primary, err)
 			}
-			if catat != nil {
-				catat(p.Alias, err)
+			if record != nil {
+				record(p.Alias, err)
 			}
 			continue
 		}
-		k.koneksi[p.Alias] = koneksi
+		k.connections[p.Alias] = connections
 	}
 
-	if _, ada := k.koneksi[utama]; !ada {
-		k.Tutup()
-		return nil, fmt.Errorf("db: portal utama %q tidak ada di daftar koneksi", utama)
+	if _, existing := k.connections[primary]; !existing {
+		k.Close()
+		return nil, fmt.Errorf("db: portal utama %q tidak ada di daftar koneksi", primary)
 	}
 	return k, nil
 }
 
-// Utama mengembalikan koneksi portal utama. Ia selalu ada bila Kumpulan terbentuk.
-func (k *Kumpulan) Utama() *sql.DB { return k.koneksi[k.utama] }
+// Primary mengembalikan koneksi portal utama. Ia selalu ada bila Pool terbentuk.
+func (k *Pool) Primary() *sql.DB { return k.connections[k.primary] }
 
-// AliasUtama mengembalikan alias portal utama.
-func (k *Kumpulan) AliasUtama() string { return k.utama }
+// PrimaryAlias mengembalikan alias portal utama.
+func (k *Pool) PrimaryAlias() string { return k.primary }
 
-// Untuk mengembalikan koneksi satu portal.
+// For mengembalikan koneksi satu portal.
 //
 // Modul bisnis memanggil ini dengan portal yang sedang dipilih pengguna, sehingga
 // kuerinya mengenai basis data entitas yang benar tanpa perlu menyaring per baris —
 // pemisahan datanya ada di tingkat koneksi, bukan di tingkat kueri (ADR-0030 Opsi 1).
-func (k *Kumpulan) Untuk(alias string) (*sql.DB, error) {
-	koneksi, ada := k.koneksi[strings.ToUpper(strings.TrimSpace(alias))]
-	if !ada {
-		return nil, fmt.Errorf("db: portal %q tidak tersedia; yang tersedia: %s", alias, strings.Join(k.Tersedia(), ", "))
+func (k *Pool) For(alias string) (*sql.DB, error) {
+	connections, existing := k.connections[strings.ToUpper(strings.TrimSpace(alias))]
+	if !existing {
+		return nil, fmt.Errorf("db: portal %q tidak tersedia; yang tersedia: %s", alias, strings.Join(k.Available(), ", "))
 	}
-	return koneksi, nil
+	return connections, nil
 }
 
-// Tersedia menyebut alias portal yang koneksinya hidup, terurut.
-func (k *Kumpulan) Tersedia() []string {
-	alias := make([]string, 0, len(k.koneksi))
-	for a := range k.koneksi {
+// Available menyebut alias portal yang koneksinya hidup, terurut.
+func (k *Pool) Available() []string {
+	alias := make([]string, 0, len(k.connections))
+	for a := range k.connections {
 		alias = append(alias, a)
 	}
 	sort.Strings(alias)
 	return alias
 }
 
-// Tutup menutup seluruh koneksi.
-func (k *Kumpulan) Tutup() {
-	for _, koneksi := range k.koneksi {
-		_ = koneksi.Close()
+// Close menutup seluruh koneksi.
+func (k *Pool) Close() {
+	for _, connections := range k.connections {
+		_ = connections.Close()
 	}
 }
 
-// Buka membuka satu pool koneksi dan langsung mengujinya.
+// Open membuka satu pool koneksi dan langsung mengujinya.
 //
 // Pengujian dilakukan saat start supaya parameter yang salah ketahuan saat itu juga —
 // bukan berhasil start lalu gagal pada permintaan pengguna pertama.
-func Buka(ctx context.Context, p Parameter) (*sql.DB, error) {
-	koneksi, err := sql.Open("oracle", dsn(p))
+func Open(ctx context.Context, p Parameter) (*sql.DB, error) {
+	connections, err := sql.Open("oracle", dsn(p))
 	if err != nil {
 		return nil, fmt.Errorf("db: membuka koneksi Oracle: %w", err)
 	}
 
-	// Batas pool dijaga rendah dengan sengaja. Selama masa paralel basis data dibagi
+	// Batas waktu pool dijaga rendah dengan sengaja. Selama masa paralel basis data dibagi
 	// dengan Pega (ADR-0004); pool yang terlalu besar memakan koneksi yang dibutuhkan
 	// Pega untuk melayani produksi. Menaikkannya harus dibicarakan dengan DBA.
-	koneksi.SetMaxOpenConns(p.MaksKoneksi)
-	koneksi.SetMaxIdleConns(p.MaksIdle)
-	koneksi.SetConnMaxLifetime(p.UmurKoneksi)
+	connections.SetMaxOpenConns(p.MaxConnections)
+	connections.SetMaxIdleConns(p.MaxIdle)
+	connections.SetConnMaxLifetime(p.ConnectionLifetime)
 
-	ctxUji, batal := context.WithTimeout(ctx, 10*time.Second)
+	testCtx, batal := context.WithTimeout(ctx, 10*time.Second)
 	defer batal()
-	if err := koneksi.PingContext(ctxUji); err != nil {
-		_ = koneksi.Close()
+	if err := connections.PingContext(testCtx); err != nil {
+		_ = connections.Close()
 		return nil, fmt.Errorf("db: tidak dapat menghubungi Oracle di %s:%d/%s sebagai %s: %w",
-			p.Host, p.Port, p.Service, p.Pengguna, err)
+			p.Host, p.Port, p.Service, p.User, err)
 	}
-	return koneksi, nil
+	return connections, nil
 }
 
 // dsn menyusun alamat koneksi. Kata sandi disandikan URL supaya karakter khusus di
 // dalamnya tidak merusak alamat — dan hasilnya tidak pernah ditulis ke log.
 func dsn(p Parameter) string {
 	return fmt.Sprintf("oracle://%s:%s@%s:%d/%s",
-		url.QueryEscape(p.Pengguna), url.QueryEscape(p.KataSandi), p.Host, p.Port, p.Service)
+		url.QueryEscape(p.User), url.QueryEscape(p.Password), p.Host, p.Port, p.Service)
 }
