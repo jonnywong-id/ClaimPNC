@@ -653,3 +653,97 @@ branch di tengah sesi, dan saya meneruskan dengan peta dari branch sebelumnya.
    penanda itu sengaja dibawa supaya modul itu tidak menafsirkannya ulang.
 3. **Kuota `LOGSEEN`** milik layar rincian, dan belum ada yang memakainya. Pola
    `Check`/`Grant` di modul ini dapat dipakai ulang apa adanya.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-20 (modul Inbox Admin)
+
+## Ringkasan
+
+| Hal | Isi |
+|---|---|
+| Modul | Inbox Admin (`MENU_ID 63`, harness `PNCInboxAdmin`) |
+| Skill resmi yang dipanggil | **tidak ada** |
+| Teknik yang dipakai | grilling, domain modeling, codebase design — diterapkan tanpa memanggil skill |
+
+## Skill yang ditimbang
+
+Daftar skill yang tersedia pada sesi ini diperiksa lebih dulu. Tak satu pun cocok dengan
+pekerjaan ini: yang tersedia adalah skill dokumen (`docx`, `pdf`, `pptx`, `xlsx`), skill
+artefak halaman, dan skill perkakas Claude Code. Tidak ada skill pemodelan domain maupun
+perancangan kode di antaranya.
+
+Keputusan: **tidak memanggil satu pun**, dan menerapkan tekniknya secara manual. Memanggil
+skill dokumen untuk menulis kode Go akan menambah langkah tanpa menambah apa pun.
+
+## Teknik yang dipakai tanpa memanggil skill
+
+### Grilling — delapan pertanyaan sebelum satu baris kode
+
+Dua putaran. Putaran pertama empat pertanyaan; jawabannya memunculkan satu jawaban yang
+menjawab hal lain, sehingga putaran kedua mengajukannya ulang beserta tiga pertanyaan yang
+baru terbuka oleh jawaban putaran pertama.
+
+**Manfaat yang terukur.** Empat dari delapan jawaban **mengubah lingkup pekerjaan**:
+
+| Jawaban | Yang berubah |
+|---|---|
+| Tab Komunikasi tidak dipakai | Tiga tab dan satu kueri cacat tidak dibangun sama sekali |
+| Tunggu API pengganti | Penyaring cabang tidak dibangun; seam-nya tetap ada |
+| Hanya "Lihat Detail Klaim" | Delapan tombol tidak dibangun |
+| Default All Case Admin | Tab bawaan berubah dari dugaan saya (ALL) |
+
+Tanpa pertanyaan kedua dan ketiga, saya akan membangun tiga tab yang gagal dengan galat
+Oracle dan satu penyaring yang menembus batas yang sengaja belum dilewati.
+
+**Satu pertanyaan yang gagal, dan itu berguna.** Pertanyaan tentang tombol aksi dijawab
+dengan keterangan tab bawaan. Alih-alih menebak maksudnya, pertanyaannya diajukan ulang —
+dan jawaban "salah sasaran" itu ternyata memberi keterangan yang tidak saya tanyakan dan
+tidak akan saya temukan sendiri.
+
+### Domain modeling — menolak mewarisi nama yang berubah arti
+
+Layar ini kasus terberat sejauh ini: **lima alias Pega berarti hal yang berbeda tergantung
+tab mana yang terbuka.** Teknik yang dipakai sama dengan sesi View History Claim — telusuri
+tiap alias ke kolom sebenarnya, lalu namai menurut ARTI bagi pengguna.
+
+Bedanya: karena satu alias punya dua arti, pemetaannya tidak dapat ditulis sebagai satu
+tabel. Ia ditulis sebagai **tiga tabel menurut kelompok tab**, di kepala `inboxadmin.sql`.
+
+Yang dihasilkan: `WorkItem` dengan 31 isian bernama menurut yang dibaca pengguna —
+`sumber_bisnis` bukan `rcvid`, `cabang_survei` bukan `keterangan`.
+
+### Codebase design — seam yang dibenarkan, bukan yang mungkin
+
+Dua seam saja: `Repo` dan `Clock`. Keduanya punya dua pengisi nyata (SQL dan memori; jam
+sistem dan jam tetap), memenuhi aturan "satu adapter berarti seam hipotetis".
+
+`Repo` sengaja hanya punya **satu operasi, dan tidak ada yang menulis**. Seluruh tabel yang
+dibacanya milik Pega; operasi tulis yang tidak tersedia di seam tidak dapat dipakai kode
+yang ditulis kemudian tanpa keputusan sadar (`P-1`).
+
+`Repo.List` juga sengaja **tidak menerima `Pagination`**. Menaruhnya di sana akan
+menyembunyikan bahwa seluruh baris memang ditarik — dan justru itulah keputusan yang perlu
+tetap terlihat.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Menyusun peta label-tab ke kode dari urutan markup XML | Dua arah pembacaan menghasilkan dua peta berbeda, dan keduanya bertentangan dengan semantik kueri. Ditarik sebelum dipakai |
+| Regex alias di uji ikut menangkap `CAST(NULL AS DATE)` | Uji gagal pada kueri yang sebenarnya benar |
+| Uji "tanpa perangkaian SQL" ikut menolak pola `LIKE` yang sah | Uji gagal pada kueri yang sebenarnya benar |
+| Menonaktifkan kotak cari saat permintaan berjalan | Uji layar gagal — dan sebabnya bukan uji yang keliru melainkan cacat nyata yang menelan ketikan |
+
+Dua yang pertama punya pola sama dengan sesi lalu: **menyimpulkan dari bentuk, bukan dari
+arti.** Dua yang terakhir sebaliknya — keduanya ditemukan uji, dan yang terakhir menemukan
+cacat yang tidak akan terlihat sampai ada yang mengetik cepat di layar sungguhan.
+
+## Catatan untuk sesi berikutnya
+
+1. **Urutan tag di dalam satu `rowdata` XML Pega ACAK.** Jangan menyimpulkan pasangan
+   apa pun dari urutan kemunculannya; pakai semantik rule-nya.
+2. **Modul View Claim (`MENU_ID 75`)** akan menghapus `src/app/ViewClaimPlaceholder.tsx`.
+   Kuncinya sudah dikirim di setiap baris sebagai `referensi`.
+3. **`gofmt -l` tidak berguna di repo ini** — berkasnya CRLF, gofmt menginginkan LF, dan ia
+   menandai seluruh repo. Pakai `go vet` dan `go test`.

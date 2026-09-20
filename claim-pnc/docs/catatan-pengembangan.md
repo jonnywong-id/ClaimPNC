@@ -2393,3 +2393,149 @@ Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis, dan migrasi 000
 dijalankan DBA. Yang terbukti hanyalah bentuk kuerinya — lewat `query_test.go` yang
 memeriksa keseragaman alias, jumlah parameter, disiplin SQL portabel, dan larangan menulis
 ke tabel milik sistem lama.
+
+## 18. Sesi kesebelas — modul Inbox Admin (2026-09-20)
+
+Menu `MENU_ID 63` "Inbox Admin", pengganti harness `PNCInboxAdmin`. Modul proses klaim
+ketiga setelah Pelaporan Klaim dan View History Claim.
+
+### 18.1 Analisis pra-implementasi
+
+Dikerjakan sebelum satu baris kode ditulis, atas permintaan Work Owner. Yang dibaca:
+
+| Berkas | Yang diambil |
+|---|---|
+| `Harness/PNCInboxAdmin-Harness.xml` (1,9 MB) | judul layar; tiga section yang di-*include* |
+| `Section/PNCInboxAdmin-Section.xml` (1,9 MB) | 11 tab, 8 kontainer grid, 9 tombol, kondisi tampil |
+| `Section/PNCAdminShow_sec-Section.xml` | sel Case ID; di-*include* 6× |
+| `Section/ButtonPagingInbox-Section.xml` | First/Previous/Next/Last + "Total Data :" |
+| `Activity/SetTempClaimRegistandNotRegist-Act.xml` (396 KB, 38 langkah) | pemilih kueri per tab; penyusun seluruh filter |
+| `Activity/{First,Previous,Next,Last}PageGrid_Act` | mekanisme paginasi |
+| 9 berkas `RDB List/` | SQL sesungguhnya tiap tab |
+
+**Tujuh temuan yang mengubah rancangan**, dan tak satu pun terbaca dari dokumen mana pun:
+
+1. **Tab dipilih lewat properti bernama `TempView.CityID`** — bukan kode kota, melainkan
+   kode tab. Nilainya `3`, `4`–`6`, dan `7`–`13`.
+2. **Alias berubah ARTI dari tab ke tab.** `.RCVID` berarti sumber bisnis di tab ALL dan
+   nama surveyor di tab Request Survey; `.Keterangan`, `.Kurir`, `.UserAdmin`, dan
+   `.StatusKomunikasi` sama. Ini lebih pekat daripada View History Claim, tempat satu alias
+   salah arti tetapi setidaknya konsisten.
+3. **`BrowseClaimALLKomunikasi` cacat sintaksis.** UNION dengan 15 kolom di cabang pertama
+   dan 14 di cabang kedua — Oracle menolaknya dengan ORA-01789.
+4. **Muat pertama menarik SELURUH baris.** Klausa paginasi baru terpasang setelah tombol
+   halaman ditekan; totalnya dihitung dari baris yang sudah terlanjur ditarik.
+5. **Tujuh titik ASIS** menyisipkan potongan SQL, termasuk klausa paginasinya sendiri.
+6. **Penyaring cabang menembus DB Link** ke `HRDASM.V_HRD_MST@ASMD` (`R-03`).
+7. **Kotak cari hanya menyentuh dua kolom**, dan mengetik teks bermuatan "PNC" memindahkan
+   tab secara diam-diam.
+
+### 18.2 Koreksi atas analisis saya sendiri
+
+Saya menyusun pasangan label-tab ke kodenya dari urutan markup section, lalu **menariknya
+kembali sebelum dipakai**: urutan tag di dalam satu blok XML ini acak, dan pasangan yang
+sama menghasilkan dua peta berbeda tergantung arah pembacaan. Yang dipakai sebagai gantinya
+adalah **semantik kueri di activity**, yang tidak bergantung pada urutan markup.
+
+Akibat langsungnya dinyatakan apa adanya: saya **tidak dapat membuktikan sendiri** tab mana
+yang ber-`pyCondition` bernilai `1==2`. Yang dapat dibuktikan hanyalah bahwa **empat
+elemen** memang bertanda begitu. Pernyataan Work Owner yang menjadi acuan.
+
+### 18.3 Pertanyaan konfirmasi dan jawabannya
+
+Delapan pertanyaan diajukan dalam dua putaran sebelum kode ditulis; seluruhnya dijawab Work
+Owner 2026-09-20.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Sebelas tab sekaligus atau bertahap | **sekaligus** |
+| 2 | Tab Komunikasi yang UNION-nya cacat | **tidak dipakai — sudah di-remark di Pega** |
+| 3 | Penyaring cabang yang menembus DB Link | **tunggu API pengganti** |
+| 4 | Tombol aksi mana yang dibangun | dijawab dengan hal lain, lalu ditanyakan ulang |
+| 5 | Selama menunggu API, layar berbuat apa | **penyaring ditandai belum tersedia, data tidak disaring cabang** |
+| 6 | Tombol aksi (ulang) | **Lihat Detail Klaim** |
+| 7 | Nama modul | **`inboxadmin` / `inbox-admin`** |
+| 8 | Paginasi | **replikasi apa adanya** |
+
+**Jawaban 1 dan 2 digabung** menjadi delapan tab: sebelas dikurangi tiga Komunikasi.
+
+**Jawaban atas pertanyaan 4 ternyata menjawab hal lain** — "Layar secara default
+menampilkan data All Case Admin". Itu keterangan berharga yang tidak saya tanyakan, dan
+menjadi `DefaultTab`; pertanyaan tombolnya diajukan ulang secara terpisah.
+
+### 18.4 Yang dibangun
+
+**Backend — `internal/inboxadmin/`**
+
+| Berkas | Isi |
+|---|---|
+| `inboxadmin.go` | `WorkItem` 31 isian, `Pagination`, `Page`, `Slice`, `Caller`, seam `Repo`/`Clock` |
+| `tab.go` | 8 tab beserta kolomnya, `DisabledTabs`, nama field |
+| `query.go` | `BusinessLine`, `QueryInput`, `Query`, `NewQuery` |
+| `errors.go` | `ErrCallerUnknown` dan `ValidationError` |
+| `usecase/list.go` | `Metadata` dan `List` |
+| `repo/sqlstore/` | 7 kueri tab + 1 pemeriksa tabel; pemindai 29 kolom |
+| `repo/memory/` | penyimpanan memori + 14 baris contoh mencakup kedelapan tab |
+| `http/` | dto, galat, handler, rute |
+
+**Tanpa migrasi.** Seluruh tabel yang dibaca modul ini sudah ada dan milik sistem lama —
+ini modul pertama yang tidak menuntut satu pun migrasi.
+
+**Frontend — `src/modules/inbox-admin/`** — `types.ts`, `api.ts`, `InboxTabs.tsx`,
+`InboxAdminPage.tsx`, beserta ujinya. Ditambah `src/app/ViewClaimPlaceholder.tsx`.
+
+**Rute API baru:**
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox-admin/tab` | bentuk layar: tab, kolom, dropdown, keterbatasan |
+| `GET` | `/api/inbox-admin` | isi satu tab |
+
+### 18.5 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **Urutan tag XML acak**, sehingga pasangan label-tab ke kode tidak dapat dibuktikan dari markup | Peta diambil dari semantik kueri di activity; keterbatasannya dinyatakan, bukan ditutupi |
+| **Regex alias di uji ikut menangkap `CAST(NULL AS DATE)`** sebagai alias bernama "DATE" | Alias hanya dihitung bila berada di ujung baris kolom |
+| **Uji "tanpa perangkaian SQL" ikut menolak pola LIKE yang sah** | Uji diperketat per baris: perangkaian hanya sah pada baris yang memuat `LIKE` |
+| **Kotak cari menonaktifkan diri saat memuat**, sehingga ketikan hilang | `disabled` dicabut, dan ketikan diberi jeda 350 ms sebelum dikirim — lihat §18.6 |
+| **`gofmt -l` menandai seluruh repo** | Berkasnya CRLF sementara gofmt menginginkan LF; ia bukan sinyal yang berguna di repo ini. Yang dipakai `go vet` dan `go test` |
+
+### 18.6 Cacat yang ditemukan uji sendiri, dan itu bukan cacat uji
+
+Uji "mengirim kata kunci ke server" gagal karena permintaannya tidak pernah terkirim.
+Sebabnya bukan uji yang keliru: **kotak cari menonaktifkan dirinya selama permintaan
+berjalan**, dan karena setiap ketikan memicu permintaan, sebagian besar huruf yang diketik
+cepat akan tertelan.
+
+Dua hal diperbaiki sekaligus: `disabled` dicabut dari kotak cari, dan ketikan diberi **jeda
+350 ms**. Jeda itu bukan kosmetik — dengan paginasi yang direplikasi apa adanya, satu
+permintaan menarik seluruh baris yang cocok, sehingga satu permintaan per huruf berarti
+delapan kali penarikan penuh untuk satu kata.
+
+### 18.7 Verifikasi yang benar-benar dijalankan
+
+    cd backend  && go build ./... && go vet ./... && go test ./...
+    cd frontend && npm run typecheck && npm test
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruh paket lulus, termasuk 3 paket baru |
+| `npm run typecheck` | bersih |
+| `npm test` | **125 lulus, 3 gagal** |
+
+**Ketiga kegagalan itu sudah ada sebelum sesi ini**, seluruhnya di
+`master-rekening/AccountPage.test.tsx`. Angkanya cocok persis dengan baseline sesi
+sebelumnya — 112 lulus ditambah 13 uji baru sama dengan 125 — dan `git status` membuktikan
+berkas `master-rekening` tidak disentuh sama sekali. **Tidak diperbaiki** karena berada di
+luar lingkup tugas.
+
+Uji modul ini: **13 uji layar + 45 uji backend**, seluruhnya lulus.
+
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis. Yang terbukti hanyalah
+bentuk kuerinya — lewat `query_test.go` yang memeriksa keseragaman 29 alias, kesesuaian
+jumlah bind dengan argumen yang disiapkan, disiplin SQL portabel, larangan menulis, larangan
+memaginasi di SQL, dan larangan menembus DB Link.

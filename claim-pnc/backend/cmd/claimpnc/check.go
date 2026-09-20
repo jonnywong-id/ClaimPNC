@@ -20,6 +20,7 @@ import (
 	"claim-pnc/internal/portal"
 	"claim-pnc/internal/riwayatklaim"
 
+	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -76,6 +77,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
 	checkClaimHistoryGate(ctx, riwayatklaimsql.NewProtectionRepo(primary), print)
+	checkInboxAdmin(ctx, inboxadminsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -352,4 +354,25 @@ func checkClaimHistoryGate(
 	print("  [ok]    POOLDATA.MST_PROTEKSI_DATA_PNC dapat dibaca")
 	print("            Catatan: pendaftaran pengguna untuk MODUL=%q dilakukan lewat", riwayatklaim.ModuleKey)
 	print("            layar Master Proteksi Data milik sistem lama, bukan oleh aplikasi ini.")
+}
+
+// checkInboxAdmin memastikan tabel yang dibaca layar Inbox Admin terjangkau.
+//
+// Berbeda dengan modul lain, modul ini TIDAK menuntut satu pun migrasi: seluruh tabel yang
+// dibacanya sudah ada dan milik sistem lama. Yang dapat gagal karena itu bukan "tabelnya
+// belum dibuat", melainkan "akun aplikasi belum diberi hak SELECT atasnya".
+func checkInboxAdmin(
+	ctx context.Context,
+	repo *inboxadminsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] DATAPEGA.PC_ASM_FW_GCNMFW_WORK tidak dapat dibaca: %v", err)
+		print("            Tanpa hak baca atasnya, seluruh tab Inbox Admin kosong.")
+		print("            Tabel ini milik sistem lama dan tidak dibuat migrasi mana pun.")
+		return
+	}
+	print("  [ok]    DATAPEGA.PC_ASM_FW_GCNMFW_WORK dapat dibaca")
+	print("            Catatan: penyaring Cabang dan Korwil BELUM aktif — sumbernya")
+	print("            DB Link ke HRD yang belum punya API pengganti (R-03).")
 }

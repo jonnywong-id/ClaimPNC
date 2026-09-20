@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/inboxadmin"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
@@ -43,6 +44,10 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	inboxadminhttp "claim-pnc/internal/inboxadmin/http"
+	inboxadminmemory "claim-pnc/internal/inboxadmin/repo/memory"
+	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+	inboxadminusecase "claim-pnc/internal/inboxadmin/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -249,6 +254,25 @@ func run() error {
 		FallbackErrorWriter: riwayatklaimhttp.ErrorWriter(writePortalAwareError),
 	})
 
+	// Inbox Admin. Jembatan pemanggilnya membawa LOGIN, bukan NIK: itulah yang dicocokkan
+	// ke `PXCREATEOPNAME` dan `PXASSIGNEDOPERATORID` pada tabel Pega, dan memakai NIK di
+	// sini akan membuat tiga tab tampak kosong bagi setiap pengguna.
+	inboxAdminHandler := inboxadminhttp.NewHandler(inboxadminhttp.Options{
+		Service: assembly.inboxAdmin,
+		GetCaller: func(ctx context.Context) (inboxadminhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxadminhttp.Caller{}, false
+			}
+			return inboxadminhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+		// pemeriksaan portal.
+		FallbackErrorWriter: inboxadminhttp.ErrorWriter(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
@@ -311,6 +335,11 @@ func run() error {
 				// klaim seorang nasabah. Selain sesi, ia dijaga gerbang proteksi data
 				// yang jatahnya berkurang tiap kali layar dibuka.
 				riwayatklaimhttp.Mount(protected, claimHistoryHandler, activePortalDeps)
+
+				// Inbox Admin memuat nama tertanggung, nomor polis, dan catatan
+				// analis — seluruhnya milik satu badan hukum. Rutenya karena itu
+				// menuntut portal, sama seperti View History Claim.
+				inboxadminhttp.Mount(protected, inboxAdminHandler, activePortalDeps)
 			})
 		},
 	})
@@ -347,6 +376,9 @@ type assembly struct {
 	// riwayatKlaim melayani layar View History Claim (`MENU_ID 76`).
 	riwayatKlaim *riwayatklaimusecase.Service
 
+	// inboxAdmin melayani layar Inbox Admin (`MENU_ID 63`).
+	inboxAdmin *inboxadminusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -380,6 +412,12 @@ type storage struct {
 	// lintas badan hukum yang justru dicegah `R-20`.
 	claimHistorySelector    riwayatklaim.RepoSelector
 	claimProtectionSelector riwayatklaim.ProtectionRepoSelector
+
+	// inboxAdminSelector memilih penyimpanan antrean Inbox Admin milik satu portal.
+	//
+	// Ia fungsi dengan alasan yang sama: antrean kerja satu badan hukum bukan antrean
+	// badan hukum lain, dan barisnya memuat nama tertanggung (`ADR-0030`, `R-20`).
+	inboxAdminSelector inboxadmin.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -465,6 +503,20 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Logger disuntikkan supaya modul ini dapat MEMPERINGATKAN saat satu permintaan
+	// menarik sangat banyak baris. Peringatan itu tidak mengubah apa pun; ia membuat
+	// akibat keputusan "paginasi direplikasi apa adanya" terlihat operator sebelum
+	// terlihat sebagai aplikasi yang kehabisan memori.
+	inboxAdminService, err := inboxadminusecase.NewService(inboxadminusecase.Options{
+		RepoSelector: store.inboxAdminSelector,
+		Clock:        clock.System{},
+		Logger:       logger,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                service,
 		portal:              store.portal,
@@ -474,6 +526,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		menu:                menuService,
 		pelaporanKlaim:      claimReportService,
 		riwayatKlaim:        claimHistoryService,
+		inboxAdmin:          inboxAdminService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -643,6 +696,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return riwayatklaimsql.NewProtectionRepo(conn), nil
 		}
+
+		store.inboxAdminSelector = func(alias string) (inboxadmin.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxadminsql.NewRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -662,6 +723,9 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.pelaporanKlaim = pelaporanklaimmemory.NewRepo(pelaporanklaimmemory.SampleReports()...)
 		store.claimHistorySelector = claimHistorySelectorMemory(cfg.PrimaryPortal)
 		store.claimProtectionSelector = claimProtectionSelectorMemory(cfg.PrimaryPortal)
+		// Antrean contoh mencakup kedelapan tab, sehingga seluruh tab layar Inbox Admin
+		// dapat dicoba tanpa Oracle. Seluruh isinya karangan — lihat repo/memory/sample.go.
+		store.inboxAdminSelector = inboxAdminSelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -814,6 +878,35 @@ func claimHistorySelectorMemory(primaryAlias string) riwayatklaim.RepoSelector {
 			return existing, nil
 		}
 		fresh := riwayatklaimmemory.NewRepo(riwayatklaimmemory.SampleClaims()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxAdminSelectorMemory menyusun penyimpanan antrean Inbox Admin di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali —
+// alasannya sama dengan claimHistorySelectorMemory.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func inboxAdminSelectorMemory(primaryAlias string) inboxadmin.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxadmin.Repo{}
+
+	return func(alias string) (inboxadmin.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxadminmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

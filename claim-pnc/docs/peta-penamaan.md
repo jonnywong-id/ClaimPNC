@@ -449,3 +449,128 @@ untuk gerbangnya: `search_policy_number` · `search_claim_number` · `search_bir
 
 **Nama tabel baru** tetap Indonesia karena ia milik basis data (`D-80`):
 `POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.
+
+---
+
+## Tambahan 2026-09-20 — modul Inbox Admin (`inboxadmin`)
+
+Modul ini **kasus alias paling berat di seluruh export**, dan berbeda jenisnya dari
+View History Claim: di sana satu alias salah arti tetapi konsisten, di sini **satu alias
+berarti hal yang berbeda tergantung tab mana yang terbuka**. Sebabnya kedelapan grid berbagi
+satu halaman klipboard yang sama, dan tiap kueri mengisi ulang properti yang sama dengan
+kolom yang berbeda.
+
+### Nama modul
+
+`inboxadmin` di backend, `inbox-admin` di frontend. Ia mengikuti `D-81`: nama modulnya
+berbahasa Indonesia karena itulah nama yang dipakai Work Owner, sementara isinya berbahasa
+Inggris. Judul yang dibaca pengguna tetap **"Inbox Admin"**, mengikuti judul menu Pega
+(`D-13`).
+
+### Kode tab — nilainya dipertahankan, namanya tidak
+
+Properti pemilih tab di Pega bernama `TempView.CityID` — nama yang tidak menyatakan isinya
+sama sekali. Namanya **tidak dibawa**; nilainya **dipertahankan**.
+
+Alasan mempertahankan nilai: kode `3`, `7`, `9`, `11` muncul di prakondisi 34 langkah
+activity dan di kondisi tampil delapan kontainer grid. Menomori ulang tabnya berarti setiap
+penelusuran balik ke export Pega harus menempuh satu tabel terjemahan.
+
+| Kode | Tab | Kueri lama |
+|---|---|---|
+| `3` | ALL | `BrowseClaimALL` |
+| `7` | Unregistered RCV | `BrowseClaimNotRegistAll` |
+| `8` | Unregistered RCV Online | `BrowseClaimNotRegistAll` + saringan kurir |
+| `9` | Request Survey | `BrowseRequestSurvey` |
+| `10` | Request Dokumen | `GetRequestDokumenKomunikasi` |
+| `11` | All Case Admin | `GetAllCaseAdmin` |
+| `12` | Branch Claim | `GetKlaimCabang` |
+| `13` | Status RCL/PUCL | `GetReminderPUCL` |
+
+Kode `4`, `5`, `6` — tab Komunikasi — **tidak dibangun** (keputusan Work Owner 2026-09-20).
+
+### Properti grid Pega → arti sebenarnya → nama di kode
+
+**Kelompok tab ALL / Unregistered RCV / Branch Claim:**
+
+| Properti grid Pega | Kolom basis data | Arti bagi pengguna | Nama di kode |
+|---|---|---|---|
+| `.PNCCaseID` | `A.PYID` | Case ID | `CaseID` |
+| `.TypeOfClaim` ⚠ | `A.PZINSKEY` | kunci teknis Pega | `Reference` |
+| `.PolicyNo` | `POLICYNO` | Policy no | `PolicyNumber` |
+| `.QQName` | `QQNAME` | Insured name | `InsuredName` |
+| `.JenisDokumen` ⚠ | `BUSINESSNAME` | Business name | `BusinessName` |
+| `.RCVID` ⚠ | `A.SOBNAME` | Business source | `BusinessSource` |
+| `.NumberOfDocument` ⚠ | `BRANCHNAME` | Branch Name | `BranchName` |
+| `.UserAdmin` ⚠ | `BRANCH.BRANCHNAME` | Branch Claim | `ClaimBranch` |
+| `.Keterangan` ⚠ | `PXCREATEOPERATOR` | Creator | `Creator` |
+| `.TglKejadian` | `DATEOFLOSS_1` | Date of loss | `LossDate` |
+| `.ReceivedDate` ⚠ | `REPORTDATE_1` / `REGISTERDATE_1` | Report Date | `ReportDate` |
+| `.pxCreateDateTime` | `PXCREATEDATETIME` | Input Date | `InputDate` |
+| `.DateForAging` | `T_CLAIM_JOB_PERSONALACCIDENT.INSERTDATE` | dasar Aging LOD | `LODDate` |
+| `.TelpPengirim` ⚠ | `NOTREGISTNOTE_1` | Note | `Note` |
+| `.PosisiProgressID` ⚠ | `CASE PYSTATUSWORK` | Claim Position | `ClaimPosition` |
+| `.StatusLock` ⚠ | `V_STS_CLAIM.LSC_NOTE` | Claim Status | `ClaimStatus` |
+| `.StatusWorkCase` ⚠ | `CASE` atas `STATUSLOD` | LOD Status | `LODStatus` |
+| `.Kurir` ⚠ | `B.PXFLOWNAME` | nama flow — **tidak ditampilkan** | tidak dibawa |
+| `.StatusKomunikasi` ⚠ | `KODECABANG_1` | kode cabang — **tidak ditampilkan** | tidak dibawa |
+
+**Kelompok tab Request Survey — properti yang SAMA, arti yang BERBEDA:**
+
+| Properti grid Pega | Kolom basis data | Arti bagi pengguna | Nama di kode |
+|---|---|---|---|
+| `.SubjectEmail` ⚠ | `T_REQ_SURVEY.CLAIMID` | kunci teknis Pega | `Reference` |
+| `.StatusKomunikasi` ⚠ | `T_REQ_SURVEY.INPUTDATE` | Tanggal Request | `RequestDate` |
+| `.Kurir` ⚠ | `A.BRANCHNAME` | Cabang Polis | `PolicyBranch` |
+| `.Keterangan` ⚠ | `T_REQ_SURVEY.BRANCH` | Cabang Survey | `SurveyBranch` |
+| `.Resource` ⚠ | `USERTEKNIS_1` | PIC Klaim | `TechnicalPIC` |
+| `.RCVID` ⚠ | `T_REQ_SURVEY.SURVEYOR` | Surveyor | `Surveyor` |
+| `.UserAdmin` ⚠ | `SUBSTR(SURVEYID, 20, 30)` | No Survey | `SurveyNumber` |
+
+**Kelompok tab Status RCL/PUCL:**
+
+| Properti grid Pega | Kolom basis data | Arti bagi pengguna | Nama di kode |
+|---|---|---|---|
+| `.ClaimID` | `A.PYID` | Case ID | `CaseID` |
+| `.ClaimNo` ⚠ | `A.PZINSKEY` | kunci teknis Pega | `Reference` |
+| `.NewTelpTertanggung` ⚠ | `A.QQNAME` | Nama Tertanggung | `InsuredName` |
+| `.pxCreateDateTime` ⚠ | `TANGGALKIRIMPUCL_1` | Tanggal Masuk Inbox | `InboxDate` |
+| `.NoteKomite` ⚠ | `KOMENTARANALISATOR_1` | Deskripsi Analyst | `AnalystNote` |
+| `.Status` | `CASE RCL_PUCL_1` | Status RCL/PUCL | `RCLPUCLStatus` |
+| `.TanggalCetakDLA` ⚠ | `TANGGALCETAKDOKUMENPUCL_1` | Tanggal Cetak Surat | `LetterPrintDate` |
+| `.LOGSEEN` ⚠ | `LAMAKLAIM_1` | Lama Klaim | `ClaimAge` |
+| `.StsAcceptance` ⚠ | `STATUSKLAIM_1` | Status Kadaluarsa | `ExpiryStatus` |
+
+⚠ menandai nama yang tidak menyatakan isinya. Perhatikan `.LOGSEEN`: di modul View History
+Claim ia berarti **jatah lihat data proteksi**, di sini ia berarti **lama klaim**.
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Tab / antrean | `Tab` | satu antrean kerja pada layar ini |
+| Kode tab | `Tab.Code` | nilai `TempView.CityID` sistem lama |
+| Baris pekerjaan | `WorkItem` | satu baris antrean |
+| Lini bisnis (penyaring) | `BusinessLine` | `ALL` · `NONMBU` · `BONDING` · `PA` · `TRAVEL` |
+| Umur / tenggat | `Aging` | `ReportAgingDays` · `TotalAgingDays` · `LODAgingDays` · `RequestAgingDays` |
+| Tab yang tidak dibangun | `DisabledTab` | ketiga tab Komunikasi |
+| Keterbatasan | `Limitations` | hal yang belum berjalan penuh, dikirim ke layar |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Potong satu halaman | `Slice` | memotong halaman dari seluruh baris yang sudah di tangan |
+| Isi kolom Aging | `WithAging` | mengembalikan salinan, bukan mengubah di tempat |
+| Keterangan layar | `Metadata` | daftar tab dan dropdown; tidak menyentuh basis data |
+
+**Nama field JSON tetap Indonesia** — `case_id`, `no_polis`, `sumber_bisnis`,
+`cabang_klaim`, `aging_total`, `tab_bawaan`, `tab_dinonaktifkan`, `keterbatasan`. Ia kontrak
+API.
+
+**Nama kueri `.sql`** berawalan `list_` untuk ketujuh tab, ditambah satu pemeriksa:
+`list_all` · `list_unregistered` · `list_request_survey` · `list_request_document` ·
+`list_all_case_admin` · `list_branch_claim` · `list_rcl_pucl` · `check_table`.
+
+**Tidak ada tabel baru** dan **tidak ada migrasi**: seluruh tabel yang dibaca modul ini sudah
+ada dan milik sistem lama.
