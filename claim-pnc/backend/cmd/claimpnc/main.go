@@ -28,9 +28,16 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/masterautoclaim"
+	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/masterpanel"
+	"claim-pnc/internal/masterpasal"
+	"claim-pnc/internal/masterpenolakan"
 	"claim-pnc/internal/masterrekening"
+	"claim-pnc/internal/mastersparepart"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
+	"claim-pnc/internal/mastersupplier"
 	"claim-pnc/internal/menu"
 	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/clock"
@@ -43,12 +50,36 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
+	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
+	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
+	masterautoclaimusecase "claim-pnc/internal/masterautoclaim/usecase"
+	masterbengkelhttp "claim-pnc/internal/masterbengkel/http"
+	masterbengkelmemory "claim-pnc/internal/masterbengkel/repo/memory"
+	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
+	masterbengkelusecase "claim-pnc/internal/masterbengkel/usecase"
+	masterpanelhttp "claim-pnc/internal/masterpanel/http"
+	masterpanelmemory "claim-pnc/internal/masterpanel/repo/memory"
+	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
+	masterpanelusecase "claim-pnc/internal/masterpanel/usecase"
+	masterpasalhttp "claim-pnc/internal/masterpasal/http"
+	masterpasalmemory "claim-pnc/internal/masterpasal/repo/memory"
+	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
+	masterpasalusecase "claim-pnc/internal/masterpasal/usecase"
+	masterpenolakanhttp "claim-pnc/internal/masterpenolakan/http"
+	masterpenolakanmemory "claim-pnc/internal/masterpenolakan/repo/memory"
+	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
+	masterpenolakanusecase "claim-pnc/internal/masterpenolakan/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
 	masterrekeningmemory "claim-pnc/internal/masterrekening/repo/memory"
 	masterrekeningsql "claim-pnc/internal/masterrekening/repo/sqlstore"
 	masterrekeningusecase "claim-pnc/internal/masterrekening/usecase"
+	masterspareparthttp "claim-pnc/internal/mastersparepart/http"
+	mastersparepartmemory "claim-pnc/internal/mastersparepart/repo/memory"
+	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
+	mastersparepartusecase "claim-pnc/internal/mastersparepart/usecase"
 	masterstatushttp "claim-pnc/internal/masterstatus/http"
 	masterstatusmemory "claim-pnc/internal/masterstatus/repo/memory"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
@@ -57,6 +88,10 @@ import (
 	masterstatusprogresmemory "claim-pnc/internal/masterstatusprogres/repo/memory"
 	masterstatusprogressql "claim-pnc/internal/masterstatusprogres/repo/sqlstore"
 	masterstatusprogresusecase "claim-pnc/internal/masterstatusprogres/usecase"
+	mastersupplierhttp "claim-pnc/internal/mastersupplier/http"
+	mastersuppliermemory "claim-pnc/internal/mastersupplier/repo/memory"
+	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
+	mastersupplierusecase "claim-pnc/internal/mastersupplier/usecase"
 	menuhttp "claim-pnc/internal/menu/http"
 	menumemory "claim-pnc/internal/menu/repo/memory"
 	menusql "claim-pnc/internal/menu/repo/sqlstore"
@@ -161,6 +196,201 @@ func run() error {
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError:    masterstatusprogreshttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Status Progres 2 memakai penulis galat yang SAMA PERSIS dengan tingkat 1,
+	// bukan rantai baru: keduanya memetakan galat lewat satu fungsi petakanGalat, sehingga
+	// satu jenis galat tidak pernah dijawab dua bentuk yang berbeda.
+	progressStatus2Handler, err := masterstatusprogreshttp.NewHandler2(masterstatusprogreshttp.Options2{
+		Service:       assembly.masterStatusProgres2,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterstatusprogreshttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Penolakan Klaim memakai penulis galat yang SAMA dengan master status
+	// progres: ia pun menyentuh basis data entitas, sehingga galat portal harus dijawab
+	// dengan kode yang sudah dikenal frontend.
+	rejectionHandler, err := masterpenolakanhttp.NewHandler(masterpenolakanhttp.Options{
+		Service: assembly.masterPenolakan,
+		Komite:  assembly.masterPenolakanKomite,
+		// Jembatan satu arah dari modul auth. Ia dipasang di sini, bukan di dalam salah
+		// satu modul, supaya kedua modul tetap tidak saling mengimpor — yang tahu
+		// keduanya hanyalah berkas perakitan ini.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK: kolom USER_INPUT pada
+		// POOLDATA.MST_PENOLAKAN_KLAIM_2 sudah berisi login pada baris-baris lama.
+		Caller: func(ctx context.Context) (masterpenolakanhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterpenolakanhttp.Caller{}, false
+			}
+			return masterpenolakanhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterpenolakanhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Auto Claim memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	autoClaimHandler, err := masterautoclaimhttp.NewHandler(masterautoclaimhttp.Options{
+		Service: assembly.masterAutoClaim,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK — dan di modul ini pilihan itu
+		// MENENTUKAN, bukan sekadar rapi: nilainya dibandingkan dengan kolom KOMITE,
+		// yang berisi OPERATOR_ID dari POOLDATA.EMAILKOMITE. Memakai NIK akan membuat
+		// tab Komite Approval selalu kosong, tanpa satu pun galat.
+		Caller: func(ctx context.Context) (masterautoclaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterautoclaimhttp.Caller{}, false
+			}
+			return masterautoclaimhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterautoclaimhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Bengkel memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	workshopHandler, err := masterbengkelhttp.NewHandler(masterbengkelhttp.Options{
+		Service: assembly.masterBengkel,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK — sama seperti modul master lain. Di
+		// modul ini ia TIDAK pernah tersimpan: POOLDATA.BENGKEL_HE tidak punya satu pun
+		// kolom pencatat pelaku maupun waktu, sehingga identitas pemanggil hanya masuk
+		// log. Itu keterbatasan tabelnya, dan sudah dicatat pada usecase.Actor.
+		Caller: func(ctx context.Context) (masterbengkelhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterbengkelhttp.Caller{}, false
+			}
+			return masterbengkelhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterbengkelhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Panel memakai penulis galat yang SAMA dengan modul bisnis lain: ia menyentuh
+	// basis data entitas, sehingga galat portal harus dijawab dengan kode yang sudah
+	// dikenal frontend.
+	panelHandler, err := masterpanelhttp.NewHandler(masterpanelhttp.Options{
+		Service: assembly.masterPanel,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK — sama seperti modul master lain. Di
+		// modul ini ia TIDAK pernah tersimpan: POOLDATA.PANEL_HE tidak punya satu pun
+		// kolom pencatat pelaku maupun waktu, sehingga identitas pemanggil hanya masuk
+		// log. Itu keterbatasan tabelnya, dan sudah dicatat pada usecase.Actor.
+		Caller: func(ctx context.Context) (masterpanelhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterpanelhttp.Caller{}, false
+			}
+			return masterpanelhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterpanelhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Sparepart memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	sparepartHandler, err := masterspareparthttp.NewHandler(masterspareparthttp.Options{
+		Service: assembly.masterSparepart,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK — sama seperti modul master lain. Di modul
+		// ini ia BENAR-BENAR TERSIMPAN ke kolom USER_UPDATE, berbeda dari Master Panel yang
+		// tabelnya tidak punya kolom pencatat pelaku sama sekali. Kolom itu sudah berisi
+		// login pada baris-baris lama, dan menuliskan NIK ke kolom yang sama akan membuat dua
+		// bentuk identitas hidup berdampingan tanpa cara membedakannya.
+		Caller: func(ctx context.Context) (masterspareparthttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterspareparthttp.Caller{}, false
+			}
+			return masterspareparthttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterspareparthttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Pasal Kerugian memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	//
+	// Ia TIDAK menerima Caller, dan itu bukan kelalaian: POOLDATA.V_M_DATA_PASAL hanya
+	// punya tiga kolom — IDDATA, IDPASAL, JSONPASAL — sehingga tidak ada tempat menuliskan
+	// siapa dan kapan. Akibatnya perubahan dan penghapusan di layar itu tidak meninggalkan
+	// jejak di basis data; keterbatasan itu dicatat pada masterpasalhttp.Handler.
+	clauseHandler, err := masterpasalhttp.NewHandler(masterpasalhttp.Options{
+		Service:       assembly.masterPasal,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterpasalhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master Supplier memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	supplierHandler, err := mastersupplierhttp.NewHandler(mastersupplierhttp.Options{
+		Service: assembly.masterSupplier,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Login yang DIKETIK pengguna, bukan NIK — sama seperti modul master lain.
+		// Berbeda dari Master Bengkel dan Master Panel, di modul ini ia BENAR-BENAR
+		// TERSIMPAN: ia menjadi kunci USERKLAIMID di dalam dokumen supplier dan kolom
+		// USER_REQ pada baris permintaan persetujuan. Keduanya ditulis sistem lama juga
+		// (`CreateNewMasterSupplier_post` step 6), sehingga jejaknya bukan tambahan.
+		Caller: func(ctx context.Context) (mastersupplierhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return mastersupplierhttp.Caller{}, false
+			}
+			return mastersupplierhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    mastersupplierhttp.ErrorWriter(writePortalAwareError),
 	})
 	if err != nil {
 		return err
@@ -292,6 +522,42 @@ func run() error {
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
 				masterstatusprogreshttp.Mount(protected, progressStatusHandler, activePortalDeps)
+				// Master Status Progres 2. SELURUH rutenya dipasangi pemeriksaan portal —
+				// termasuk daftar induknya, yang dibaca dari tabel tingkat 1 milik entitas
+				// yang bersangkutan, bukan daftar tetap milik aplikasi.
+				masterstatusprogreshttp.Mount2(protected, progressStatus2Handler, activePortalDeps)
+				// Master Penolakan Klaim. SATU pemasangan untuk DUA tab — Penolakan
+				// Klaim dan Penolakan Komite — karena keduanya satu layar dan satu
+				// butir menu (MENU_ID 25). Seluruh rutenya dipasangi pemeriksaan
+				// portal; tidak ada satu pun yang isinya milik aplikasi.
+				masterpenolakanhttp.Mount(protected, rejectionHandler, activePortalDeps)
+				// Master Auto Claim. SELURUH rutenya dipasangi pemeriksaan portal —
+				// master maupun ketiga lookup-nya dibaca dari basis data entitas, dan
+				// dua entitas punya sumber bisnis serta daftar client yang berbeda.
+				masterautoclaimhttp.Mount(protected, autoClaimHandler, activePortalDeps)
+				// Master Bengkel. SELURUH rutenya dipasangi pemeriksaan portal —
+				// POOLDATA.BENGKEL_HE dan ketiga tabel acuannya ada di basis data setiap
+				// entitas, dan dua entitas punya daftar cabang yang berbeda.
+				masterbengkelhttp.Mount(protected, workshopHandler, activePortalDeps)
+				// Master Panel. Rutenya memasang pemeriksaan portal sendiri di dalam
+				// Mount — SELURUHNYA kecuali daftar pilihan Lokasi dan Sisi, yang
+				// isinya konstanta yang ditanam di activity Pega dan bukan dibaca dari
+				// basis data entitas mana pun.
+				masterpanelhttp.Mount(protected, panelHandler, activePortalDeps)
+				// Master Sparepart. SELURUH rutenya dipasangi pemeriksaan portal —
+				// termasuk daftar pilihannya, yang berbeda dari Master Panel: kategori
+				// dan tipe suku cadang dibaca dari basis data entitas, bukan dari
+				// konstanta yang ditanam di activity Pega.
+				masterspareparthttp.Mount(protected, sparepartHandler, activePortalDeps)
+				// Master Pasal Kerugian. Rutenya memasang pemeriksaan portal sendiri di
+				// dalam Mount — SELURUHNYA kecuali daftar Kategori, yang isinya milik
+				// aplikasi dan bukan dibaca dari basis data entitas mana pun.
+				masterpasalhttp.Mount(protected, clauseHandler, activePortalDeps)
+				// Master Supplier. SELURUH rutenya dipasangi pemeriksaan portal —
+				// M_SUPPLIER dan keempat tabel acuannya ada di basis data setiap
+				// entitas, dan dua entitas punya daftar cabang serta supplier yang
+				// berbeda. Tidak ada satu pun rutenya yang isinya milik aplikasi.
+				mastersupplierhttp.Mount(protected, supplierHandler, activePortalDeps)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -337,6 +603,57 @@ type assembly struct {
 	// masterStatusProgres memakai pemilih repo per portal, bukan repo tunggal:
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
+
+	// masterStatusProgres2 memakai pemilih repo per portal dengan alasan yang sama, dan
+	// menerima pemilih tingkat 1 sebagai bahan kedua: penambahan tingkat 2 membaca baris
+	// induknya untuk memastikan induk itu ada dan menyalin namanya.
+	masterStatusProgres2 *masterstatusprogresusecase.Service2
+
+	// masterAutoClaim melayani layar Master Auto Claim — daftar Sumber Bisnis yang
+	// klaimnya boleh dibuat otomatis. Ia memakai pemilih repo per portal dengan alasan
+	// yang sama seperti master lain: POOLDATA.M_AUTO_CLAIM_PNC beserta ketiga tabel
+	// acuannya ada di basis data SETIAP entitas (ADR-0030).
+	masterAutoClaim *masterautoclaimusecase.Service
+
+	// masterBengkel melayani layar Master Bengkel — daftar bengkel rekanan beserta
+	// syarat kerja samanya. Ia memakai pemilih repo per portal dengan alasan yang sama
+	// seperti master lain: POOLDATA.BENGKEL_HE beserta ketiga tabel acuannya ada di basis
+	// data SETIAP entitas (ADR-0030).
+	masterBengkel *masterbengkelusecase.Service
+
+	// masterPanel melayani layar Master Panel — daftar panel bodi kendaraan berat
+	// beserta perlakuan klaim yang berlaku atasnya. Ia memakai pemilih repo per portal
+	// dengan alasan yang sama seperti master lain: POOLDATA.PANEL_HE dan tabel anaknya
+	// POOLDATA.LOKASI_PANEL_HE ada di basis data SETIAP entitas (ADR-0030).
+	masterPanel *masterpanelusecase.Service
+
+	// masterSparepart melayani layar Master Sparepart — daftar suku cadang alat berat
+	// beserta harga, dimensi, dan batas stoknya. Ia memakai pemilih repo per portal dengan
+	// alasan yang sama seperti master lain: POOLDATA.SPAREPART_HE beserta kedua tabel
+	// acuannya ada di basis data SETIAP entitas (ADR-0030).
+	masterSparepart *mastersparepartusecase.Service
+
+	// masterPasal melayani layar Master Pasal Kerugian — daftar baku butir ketentuan polis
+	// yang dirujuk saat klaim dinilai. Ia memakai pemilih repo per portal dengan alasan
+	// yang sama seperti master lain: POOLDATA.V_M_DATA_PASAL dan POOLDATA.BUSINESS ada di
+	// basis data SETIAP entitas (ADR-0030).
+	masterPasal *masterpasalusecase.Service
+
+	// masterSupplier melayani layar Master Supplier — daftar supplier rekanan beserta
+	// syarat dagangnya. Ia memakai pemilih repo per portal dengan alasan yang sama
+	// seperti master lain: M_SUPPLIER dan keempat tabel acuannya ada di basis data
+	// SETIAP entitas (ADR-0030).
+	masterSupplier *mastersupplierusecase.Service
+
+	// masterPenolakan melayani tab Penolakan Klaim pada layar Master Penolakan Klaim.
+	// Ia memakai pemilih repo per portal dengan alasan yang sama seperti master status
+	// progres: kedua tabelnya ada di basis data SETIAP entitas (ADR-0030).
+	masterPenolakan *masterpenolakanusecase.Service
+
+	// masterPenolakanKomite melayani tab Penolakan Komite pada layar yang SAMA. Ia
+	// layanan tersendiri karena tabelnya tidak sekerabat dan tidak punya satu pun kolom
+	// yang menghubungkannya dengan kedua tabel di atas.
+	masterPenolakanKomite *masterpenolakanusecase.ServiceKomite
 
 	// menu menyusun peta menu beserta kewenangan pemakainya.
 	menu *menuusecase.Service
@@ -388,6 +705,44 @@ type storage struct {
 	// kebocoran lintas badan hukum yang justru dicegah R-20.
 	progressStatusSelector masterstatusprogres.RepoSelector
 
+	// progressStatus2Selector memilih penyimpanan tingkat 2 milik satu portal, dengan
+	// alasan yang sama persis: POOLDATA.GCNM_MST_PROGRESS ada di basis data setiap entitas.
+	progressStatus2Selector masterstatusprogres.RepoSelector2
+
+	// autoClaimSelector memilih penyimpanan Master Auto Claim milik satu portal.
+	// POOLDATA.M_AUTO_CLAIM_PNC dan ketiga tabel acuannya ada di basis data setiap
+	// entitas.
+	autoClaimSelector masterautoclaim.RepoSelector
+
+	// workshopSelector memilih penyimpanan Master Bengkel milik satu portal.
+	// POOLDATA.BENGKEL_HE dan ketiga tabel acuannya ada di basis data setiap entitas.
+	workshopSelector masterbengkel.RepoSelector
+
+	// panelSelector memilih penyimpanan Master Panel milik satu portal.
+	// POOLDATA.PANEL_HE dan tabel anaknya POOLDATA.LOKASI_PANEL_HE ada di basis data
+	// setiap entitas.
+	panelSelector masterpanel.RepoSelector
+
+	// sparepartSelector memilih penyimpanan Master Sparepart milik satu portal.
+	sparepartSelector mastersparepart.RepoSelector
+
+	// clauseSelector memilih penyimpanan Master Pasal Kerugian milik satu portal.
+	// POOLDATA.V_M_DATA_PASAL dan master lini bisnisnya ada di basis data setiap entitas.
+	clauseSelector masterpasal.RepoSelector
+
+	// supplierSelector memilih penyimpanan Master Supplier milik satu portal.
+	// M_SUPPLIER, antrean POOLDATA.PROTEKSI_KLAIMMBU, dan keempat tabel acuannya ada di
+	// basis data setiap entitas.
+	supplierSelector mastersupplier.RepoSelector
+
+	// rejectionSelector memilih penyimpanan Master Penolakan Klaim milik satu portal.
+	// POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2 ada di basis data setiap entitas.
+	rejectionSelector masterpenolakan.RepoSelector
+
+	// rejectionKomiteSelector memilih penyimpanan Master Penolakan Komite milik satu
+	// portal — POOLDATA.MST_REJECTED_KOMITE, juga per entitas.
+	rejectionKomiteSelector masterpenolakan.RepoSelectorKomite
+
 	// menu dibaca dari basis data portal UTAMA, sama seperti M_LOGIN_PNC dan
 	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
 	// identitas, bukan data bisnis milik satu badan hukum.
@@ -432,6 +787,102 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	progressStatus2Service, err := masterstatusprogresusecase.NewService2(masterstatusprogresusecase.Options2{
+		RepoSelector:   store.progressStatus2Selector,
+		ParentSelector: store.progressStatusSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	autoClaimService, err := masterautoclaimusecase.NewService(masterautoclaimusecase.Options{
+		RepoSelector: store.autoClaimSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Pasal Kerugian TIDAK menerima Clock: tabelnya tidak punya kolom waktu maupun
+	// kolom pelaku sama sekali — hanya IDDATA, IDPASAL, dan JSONPASAL.
+	clauseService, err := masterpasalusecase.NewService(masterpasalusecase.Options{
+		RepoSelector: store.clauseSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Supplier MENERIMA Clock, berbeda dari Master Pasal Kerugian dan Master
+	// Bengkel. Ia menulis dua jejak waktu: kunci TGL_INSERT di dalam dokumen supplier —
+	// dalam bentuk teks dd/MM/yyyy zona WIB, terikat karena dokumennya dibaca bersama Pega
+	// — dan kolom TGL_INPUT pada baris permintaan persetujuan, yang bentuknya bebas karena
+	// tidak dibaca layar mana pun.
+	supplierService, err := mastersupplierusecase.NewService(mastersupplierusecase.Options{
+		RepoSelector: store.supplierSelector,
+		Clock:        clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
+		RepoSelector: store.workshopSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Panel TIDAK menerima Clock: kedua tabelnya tidak punya kolom waktu maupun
+	// kolom pelaku sama sekali — kelima belas kolom induknya terbaca lengkap dari
+	// BrowseMasterPanel_HE_RD, dan tidak satu pun menyebut siapa atau kapan.
+	panelService, err := masterpanelusecase.NewService(masterpanelusecase.Options{
+		RepoSelector: store.panelSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Sparepart MENERIMA Clock, berbeda dari Master Panel dan Master Bengkel:
+	// POOLDATA.SPAREPART_HE punya kolom TGL_UPDATE_HARGA, dan
+	// `Activity/UpdateSparepartHE_act` mengisinya dengan @DateTime.CurrentDateTime().
+	// Jam yang sama dipakai modul auth, sehingga waktu di seluruh aplikasi berasal dari satu
+	// sumber dan tidak ada satu pun penambahan 7 jam manual yang menyelinap masuk.
+	sparepartService, err := mastersparepartusecase.NewService(mastersparepartusecase.Options{
+		RepoSelector: store.sparepartSelector,
+		Clock:        clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Penolakan Klaim menerima Clock karena ia menulis kolom TANGGALKIRIM.
+	// Jam yang sama dipakai modul auth, sehingga waktu di seluruh aplikasi berasal dari
+	// satu sumber dan tidak ada satu pun penambahan 7 jam manual yang menyelinap masuk.
+	rejectionService, err := masterpenolakanusecase.NewService(masterpenolakanusecase.Options{
+		RepoSelector: store.rejectionSelector,
+		Clock:        clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Tab Penolakan Komite TIDAK menerima Clock: tabelnya tidak punya kolom waktu maupun
+	// kolom pelaku sama sekali.
+	rejectionKomiteService, err := masterpenolakanusecase.NewServiceKomite(masterpenolakanusecase.OptionsKomite{
+		RepoSelector: store.rejectionKomiteSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	menuService, err := menuusecase.NewService(menuusecase.Options{Repo: store.menu})
 	if err != nil {
 		store.close()
@@ -466,16 +917,29 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	return assembly{
-		auth:                service,
-		portal:              store.portal,
-		masterRekening:      buildMasterRekening(cfg, store, logger),
-		masterStatus:        claimStatusService,
-		masterStatusProgres: progressStatusService,
-		menu:                menuService,
-		pelaporanKlaim:      claimReportService,
-		riwayatKlaim:        claimHistoryService,
-		readyAliases:        store.readyAliases,
-		close:               store.close,
+		auth:                 service,
+		portal:               store.portal,
+		masterRekening:       buildMasterRekening(cfg, store, logger),
+		masterStatus:         claimStatusService,
+		masterStatusProgres:  progressStatusService,
+		masterStatusProgres2: progressStatus2Service,
+
+		masterAutoClaim: autoClaimService,
+		masterBengkel:   workshopService,
+		masterPanel:     panelService,
+		masterSparepart: sparepartService,
+		masterPasal:     clauseService,
+		masterSupplier:  supplierService,
+
+		masterPenolakan:       rejectionService,
+		masterPenolakanKomite: rejectionKomiteService,
+
+		pelaporanKlaim: claimReportService,
+		riwayatKlaim:   claimHistoryService,
+
+		menu:         menuService,
+		readyAliases: store.readyAliases,
+		close:        store.close,
 	}, nil
 }
 
@@ -627,6 +1091,69 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+		store.progressStatus2Selector = func(alias string) (masterstatusprogres.Repo2, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterstatusprogressql.NewRepo2(conn), nil
+		}
+		store.autoClaimSelector = func(alias string) (masterautoclaim.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterautoclaimsql.NewRepo(conn), nil
+		}
+		store.workshopSelector = func(alias string) (masterbengkel.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterbengkelsql.NewRepo(conn), nil
+		}
+		store.panelSelector = func(alias string) (masterpanel.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterpanelsql.NewRepo(conn), nil
+		}
+		store.sparepartSelector = func(alias string) (mastersparepart.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastersparepartsql.NewRepo(conn), nil
+		}
+		store.clauseSelector = func(alias string) (masterpasal.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterpasalsql.NewRepo(conn), nil
+		}
+		store.supplierSelector = func(alias string) (mastersupplier.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastersuppliersql.NewRepo(conn), nil
+		}
+		store.rejectionSelector = func(alias string) (masterpenolakan.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterpenolakansql.NewRepo(conn), nil
+		}
+		store.rejectionKomiteSelector = func(alias string) (masterpenolakan.RepoKomite, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterpenolakansql.NewRepoKomite(conn), nil
+		}
 
 		store.claimHistorySelector = func(alias string) (riwayatklaim.Repo, error) {
 			conn, err := pool.For(alias)
@@ -652,6 +1179,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		store.progressStatus2Selector = progressStatus2SelectorMemory(store.progressStatusSelector)
+		store.autoClaimSelector = autoClaimSelectorMemory(cfg.PrimaryPortal)
+		store.workshopSelector = workshopSelectorMemory(cfg.PrimaryPortal)
+		store.panelSelector = panelSelectorMemory(cfg.PrimaryPortal)
+		store.sparepartSelector = sparepartSelectorMemory(cfg.PrimaryPortal)
+		store.clauseSelector = clauseSelectorMemory(cfg.PrimaryPortal)
+		store.supplierSelector = supplierSelectorMemory(cfg.PrimaryPortal)
+		store.rejectionSelector = rejectionSelectorMemory(cfg.PrimaryPortal)
+		store.rejectionKomiteSelector = rejectionKomiteSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -719,6 +1255,332 @@ func progressStatusSelectorMemory(primaryAlias string) masterstatusprogres.RepoS
 		store[clean] = fresh
 		return fresh, nil
 	}
+}
+
+// progressStatus2SelectorMemory menyusun penyimpanan tingkat 2 di memori.
+//
+// Ia TIDAK memeriksa alias portalnya sendiri, melainkan menanyakannya ke pemilih tingkat
+// 1: portal yang ditolak di sana ditolak di sini dengan galat yang sama persis. Dua
+// pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya disunting —
+// dan yang dipertaruhkan pada R-20 adalah pemisahan data antar badan hukum.
+//
+// Repo tingkat 1 yang dikembalikan pemilih itu DIPAKAI LANGSUNG sebagai induk, bukan
+// disalin. Dengan begitu status progres 1 yang baru ditambahkan lewat layarnya langsung
+// muncul di dropdown tingkat 2 — perilaku yang sama dengan adapter SQL, yang membaca
+// tabel induk di dalam transaksi yang sama.
+func progressStatus2SelectorMemory(parentSelector masterstatusprogres.RepoSelector) masterstatusprogres.RepoSelector2 {
+	var lock sync.Mutex
+	store := map[string]masterstatusprogres.Repo2{}
+
+	return func(alias string) (masterstatusprogres.Repo2, error) {
+		parent, err := parentSelector(alias)
+		if err != nil {
+			return nil, err
+		}
+
+		memoryParent, usable := parent.(*masterstatusprogresmemory.Repo)
+		if !usable {
+			// Tidak mungkin terjadi pada rakitan yang ada; dinyatakan supaya cacat
+			// perakitan gagal keras, bukan diam-diam menyajikan induk yang kosong.
+			return nil, fmt.Errorf("perakitan: repo tingkat 1 portal %q bukan adapter memori", alias)
+		}
+
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterstatusprogresmemory.NewRepo2(memoryParent, masterstatusprogresmemory.SampleList2()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// autoClaimSelectorMemory menyusun penyimpanan Master Auto Claim di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa
+// Oracle. Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang
+// sama seperti di produksi.
+//
+// Penyimpanan contoh memuat ketiga tabel acuannya sekaligus — sumber bisnis, client,
+// dan bank — sehingga seluruh alur layar dapat dicoba tanpa Oracle: mencari sumber
+// bisnis, menambah, menolak yang sudah ada, lalu menyetujui lewat tab komite.
+func autoClaimSelectorMemory(primaryAlias string) masterautoclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterautoclaim.Store{}
+
+	return func(alias string) (masterautoclaim.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterautoclaimmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// workshopSelectorMemory menyusun penyimpanan Master Bengkel di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab — dan pada
+// modul ini akibatnya lebih jauh: nomor urut ID_BENGKEL ikut mundur, sehingga dua
+// bengkel dapat lahir dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa
+// Oracle. Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama
+// seperti di produksi.
+//
+// Penyimpanan contoh memuat ketiga tabel acuannya sekaligus — cabang, kota, dan bank —
+// sehingga seluruh alur layar dapat dicoba tanpa Oracle: menambah, menolak nama yang
+// sudah ada, menyunting, lalu menyetujui borongan lewat tab Waiting Approval.
+func workshopSelectorMemory(primaryAlias string) masterbengkel.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterbengkel.Store{}
+
+	return func(alias string) (masterbengkel.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterbengkelmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// panelSelectorMemory menyusun penyimpanan Master Panel di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan hilang
+// pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab — dan pada modul ini
+// akibatnya lebih jauh: nomor urut ID_PANEL ikut mundur, sehingga dua panel dapat lahir
+// dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti
+// di produksi.
+//
+// Penyimpanan contoh memuat panel dengan DUA, SATU, dan NOL lokasi, sehingga seluruh alur
+// layar dapat dicoba tanpa Oracle — termasuk panel tanpa lokasi sama sekali, keadaan sah
+// yang paling mudah terlupa diuji.
+func panelSelectorMemory(primaryAlias string) masterpanel.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterpanel.Store{}
+
+	return func(alias string) (masterpanel.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterpanelmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// sparepartSelectorMemory menyusun penyimpanan Master Sparepart di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali.
+// Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan hilang pada
+// permintaan berikutnya dan layarnya tampak rusak tanpa sebab — dan pada modul ini
+// akibatnya lebih jauh: nomor urut ID ikut mundur, sehingga dua sparepart dapat lahir
+// dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+//
+// Penyimpanan contoh memuat ketiga status persetujuan sekaligus beserta kedua daftar
+// acuannya, sehingga seluruh alur layar dapat dicoba tanpa Oracle — termasuk baris yang
+// kolom pilihannya kosong dan baris yang belum pernah distempel tanggal harga, dua keadaan
+// sah yang paling mudah terlupa diuji.
+func sparepartSelectorMemory(primaryAlias string) mastersparepart.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]mastersparepart.Store{}
+
+	return func(alias string) (mastersparepart.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := mastersparepartmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// clauseSelectorMemory menyusun penyimpanan Master Pasal Kerugian di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab — dan pada
+// modul ini akibatnya lebih jauh: nomor urut IDDATA ikut mundur, sehingga dua pasal dapat
+// lahir dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa
+// Oracle. Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama
+// seperti di produksi.
+//
+// Penyimpanan contoh memuat master lini bisnisnya sekaligus, sehingga seluruh alur layar
+// dapat dicoba tanpa Oracle: menambah, memilih lini bisnis dari daftar, menyunting, lalu
+// menghapus.
+func clauseSelectorMemory(primaryAlias string) masterpasal.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterpasal.Store{}
+
+	return func(alias string) (masterpasal.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterpasalmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// supplierSelectorMemory menyusun penyimpanan Master Supplier di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+//
+// Di modul ini pemakaian ulang itu punya akibat kedua yang tidak dimiliki master lain:
+// antrean permintaan persetujuan ikut tersimpan di instans yang sama, sehingga alur
+// "tambah supplier lalu periksa antreannya" dapat dicoba tanpa Oracle sama sekali.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti
+// di produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func supplierSelectorMemory(primaryAlias string) mastersupplier.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]mastersupplier.Store{}
+
+	return func(alias string) (mastersupplier.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := mastersuppliermemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// rejectionSelectorMemory menyusun penyimpanan Master Penolakan Klaim di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali. Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti
+// di produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func rejectionSelectorMemory(primaryAlias string) masterpenolakan.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterpenolakan.Repo{}
+
+	return func(alias string) (masterpenolakan.Repo, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterpenolakanmemory.NewRepo(
+			masterpenolakanmemory.SampleParents(),
+			masterpenolakanmemory.SampleList()...,
+		)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// rejectionKomiteSelectorMemory menyusun penyimpanan Master Penolakan Komite di memori.
+//
+// Ia TIDAK menumpang pada rejectionSelectorMemory seperti halnya tingkat 2 master status
+// progres menumpang pada tingkat 1: kedua tabel itu memang tidak berhubungan, dan
+// menautkannya di sini akan menyiratkan hubungan yang tidak ada.
+func rejectionKomiteSelectorMemory(primaryAlias string) masterpenolakan.RepoSelectorKomite {
+	var lock sync.Mutex
+	store := map[string]masterpenolakan.RepoKomite{}
+
+	return func(alias string) (masterpenolakan.RepoKomite, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterpenolakanmemory.NewRepoKomite(masterpenolakanmemory.SampleListKomite()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// memoryPortal menormalkan alias portal dan menolak yang bukan portal utama.
+//
+// Satu fungsi untuk kedua pemilih di atas supaya keduanya menolak dengan galat yang sama
+// persis. Dua pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya
+// disunting — dan yang dipertaruhkan pada R-20 adalah pemisahan data antar badan hukum.
+func memoryPortal(alias, primaryAlias string) (string, error) {
+	clean := strings.ToUpper(strings.TrimSpace(alias))
+	if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+		return "", fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+	}
+	return clean, nil
 }
 
 // buildIdentity menyusun rantai sumber identitas.

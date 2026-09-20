@@ -65,7 +65,7 @@ func TestCreateDoesNotLeakBetweenPortals(t *testing.T) {
 
 	saved, err := service.Create(ctx, "ASI", masterstatusprogres.Input{
 		Name:         "MENUNGGU BERKAS",
-		PositionCode: "002",
+		PositionCode: "REGISTER",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "01", saved.ID, "tabel ASI masih kosong, nomor mulai dari 1")
@@ -90,10 +90,10 @@ func TestUnknownPortalRejectedNotRedirected(t *testing.T) {
 	_, err := service.List(ctx, "SMAS")
 	require.ErrorIs(t, err, portal.ErrNotReady)
 
-	_, err = service.Create(ctx, "SMAS", masterstatusprogres.Input{Name: "APA SAJA", PositionCode: "002"})
+	_, err = service.Create(ctx, "SMAS", masterstatusprogres.Input{Name: "APA SAJA", PositionCode: "REGISTER"})
 	require.ErrorIs(t, err, portal.ErrNotReady)
 
-	_, err = service.Update(ctx, "SMAS", "01", masterstatusprogres.Input{Name: "APA SAJA", PositionCode: "002"})
+	_, err = service.Update(ctx, "SMAS", "01", masterstatusprogres.Input{Name: "APA SAJA", PositionCode: "REGISTER"})
 	require.ErrorIs(t, err, portal.ErrNotReady)
 
 	// Yang terpenting: tidak ada satu baris pun yang masuk ke entitas mana pun.
@@ -110,12 +110,12 @@ func TestNewIDContinuesFromHighest(t *testing.T) {
 
 	saved, err := service.Create(context.Background(), "ASM", masterstatusprogres.Input{
 		Name:         "MENUNGGU PEMBAYARAN",
-		PositionCode: "007",
+		PositionCode: "AKSEPTASI",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "07", saved.ID, "contoh berisi 01..06, berikutnya 07")
 	require.Equal(t, "MENUNGGU PEMBAYARAN", saved.Name)
-	require.Equal(t, "007", saved.PositionCode)
+	require.Equal(t, "AKSEPTASI", saved.PositionCode)
 }
 
 // Input tidak sah ditolak SEBELUM menyentuh penyimpanan.
@@ -139,12 +139,12 @@ func TestUpdateSavesNameAndPositionWithoutChangingID(t *testing.T) {
 
 	result, err := service.Update(ctx, "ASM", "03", masterstatusprogres.Input{
 		Name:         "SURVEI DIJADWALKAN",
-		PositionCode: "006",
+		PositionCode: "KOMITE",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "03", result.ID, "ID adalah kunci baris, bukan isian")
 	require.Equal(t, "SURVEI DIJADWALKAN", result.Name)
-	require.Equal(t, "006", result.PositionCode)
+	require.Equal(t, "KOMITE", result.PositionCode)
 
 	loaded, err := service.Get(ctx, "ASM", "03")
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestUpdateMissingRow(t *testing.T) {
 
 	_, err := service.Update(context.Background(), "ASM", "99", masterstatusprogres.Input{
 		Name:         "APA SAJA",
-		PositionCode: "002",
+		PositionCode: "REGISTER",
 	})
 	require.ErrorIs(t, err, masterstatusprogres.ErrNotFound)
 }

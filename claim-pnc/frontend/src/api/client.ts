@@ -88,11 +88,25 @@ export class NetworkError extends Error {
 type RequestOptions = {
   /**
    * PUT dipakai pengubahan master: seluruh isi yang boleh diubah dikirim setiap kali,
-   * sehingga permintaannya menggantikan dan idempoten. DELETE sengaja TIDAK ada —
-   * tidak satu pun layar menghapus data, dan metode yang tidak tersedia di sini tidak
-   * dapat dipakai kode yang ditulis kemudian tanpa keputusan sadar.
+   * sehingga permintaannya menggantikan dan idempoten.
+   *
+   * # DELETE ditambahkan pada 2026-09-19, dan inilah keputusan sadarnya
+   *
+   * Sampai sebelum itu, DELETE sengaja TIDAK ada di sini — tidak satu pun layar menghapus
+   * data, dan komentar ini menuntut keputusan sadar sebelum metodenya dibuka. Keputusan
+   * itu kini ada.
+   *
+   * **Master Pasal Kerugian** (MENU_ID 27) adalah layar pertama yang menghapus. Layar
+   * lamanya memang punya tombolnya — `Section/BrowsePasalDeatailMaster-Section.xml`
+   * memanggil `CNMInsertPasalDataMaster(DeleteFlag="1")`, yang menjalankan
+   * `DELETE FROM POOLDATA.V_M_DATA_PASAL`. `D-66` menetapkan soft delete menyeluruh,
+   * tetapi tabelnya hanya punya tiga kolom dan tidak punya penanda terhapus; menambah
+   * kolom menempuh `D-63`. Work Owner memilih "jalankan as is".
+   *
+   * Yang dibuka di sini hanyalah METODENYA. Penghapusan tetap permanen dan tetap hanya
+   * dimiliki satu modul; layar lain yang memakainya tetap menuntut keputusan tersendiri.
    */
-  metode?: 'GET' | 'POST' | 'PUT'
+  metode?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
   token?: string | null
   /**
