@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/pelaporanklaim"
-	"claim-pnc/internal/platform/logging"
 )
 
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan
@@ -41,22 +40,27 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		status, body, recognized := mapError(err)
+
 		if !recognized {
 			if fallback != nil {
 				fallback(w, r, err)
 				return
 			}
+
 			status, body = http.StatusInternalServerError, ErrorResponse{
 				Code:    CodeInternalError,
 				Message: "Terjadi kesalahan pada sistem.",
 			}
 		}
+
 		if status >= http.StatusInternalServerError {
-			logging.Dari(r.Context(), logger).Error("permintaan gagal",
+			logger.Error(
+				"permintaan gagal",
 				slog.String("jalur", r.URL.Path),
 				slog.String("galat", err.Error()),
 			)
 		}
+
 		writeJSON(w, r, status, body)
 	}
 }
@@ -76,9 +80,14 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// kesalahan pengguna yang harus ditandai di kolomnya
 		// (docs/Steering/10-API-STRATEGY.md §5).
 		details := make([]ViolationDTO, 0, len(validation.Violations))
+
 		for _, v := range validation.Violations {
-			details = append(details, ViolationDTO{Field: v.Field, Message: v.Message})
+			details = append(details, ViolationDTO{
+				Field:   v.Field,
+				Message: v.Message,
+			})
 		}
+
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeValidationFail,
 			Message: "Isian belum benar. Perbaiki yang ditandai lalu simpan lagi.",
