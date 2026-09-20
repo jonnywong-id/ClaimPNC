@@ -18,10 +18,12 @@ import (
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
+	"claim-pnc/internal/riwayatklaim"
 
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
 )
 
 // check menjalankan pemeriksaan integrasi dan mencetak hasilnya, lalu berhenti.
@@ -73,6 +75,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
+	checkClaimHistoryGate(ctx, riwayatklaimsql.NewProtectionRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -306,4 +309,47 @@ func readPassword(source io.Reader) (string, error) {
 		return "", errors.New("kata sandi kosong")
 	}
 	return password, nil
+}
+
+// checkClaimHistoryGate melaporkan kesiapan gerbang proteksi data layar View History
+// Claim sesudah migrasi 0004.
+//
+// # Kenapa ia diperiksa terpisah dari tabel aplikasi lain
+//
+// Karena kesiapannya menempuh DUA pihak, bukan satu. Tabel jejaknya dibuat DBA lewat
+// migrasi 0004; tetapi baris proteksi penggunanya didaftarkan lewat layar Master Proteksi
+// Data MILIK SISTEM LAMA. Salah satunya belum selesai berarti layar menolak setiap
+// pengguna — dan penolakan itu benar menurut aturan, sehingga tidak akan tampak sebagai
+// galat di mana pun kecuali di sini.
+func checkClaimHistoryGate(
+	ctx context.Context,
+	repo *riwayatklaimsql.ProtectionRepo,
+	print func(string, ...any),
+) {
+	ready, err := repo.TableReady(ctx)
+	switch {
+	case err != nil:
+		print("  [GAGAL] POOLDATA.%s tidak dapat diperiksa: %v", riwayatklaimsql.TableName, err)
+		return
+	case !ready:
+		print("  [BELUM] POOLDATA.%s belum ada", riwayatklaimsql.TableName)
+		print("            Tabelnya dibuat migrasi 0004. Selama belum dijalankan, layar")
+		print("            View History Claim tidak dapat dipakai terhadap Oracle —")
+		print("            tetapi seluruh bagian lain tetap jalan.")
+		return
+	}
+	print("  [ok]    POOLDATA.%s dapat dibaca", riwayatklaimsql.TableName)
+
+	// Master proteksi dibaca dengan login yang PASTI tidak ada, sehingga pemeriksaan ini
+	// tidak menyentuh data siapa pun. Yang diuji hanyalah apakah tabelnya dapat dibaca
+	// akun aplikasi — hak SELECT atasnya diberikan migrasi 0004 langkah 4.
+	if _, _, err := repo.Find(ctx, "\x00periksa", riwayatklaim.ModuleKey); err != nil {
+		print("  [BELUM] POOLDATA.MST_PROTEKSI_DATA_PNC tidak dapat dibaca: %v", err)
+		print("            Tanpa hak baca atasnya, gerbang proteksi menolak SETIAP")
+		print("            pengguna. Lihat langkah 4 migrasi 0004.")
+		return
+	}
+	print("  [ok]    POOLDATA.MST_PROTEKSI_DATA_PNC dapat dibaca")
+	print("            Catatan: pendaftaran pengguna untuk MODUL=%q dilakukan lewat", riwayatklaim.ModuleKey)
+	print("            layar Master Proteksi Data milik sistem lama, bukan oleh aplikasi ini.")
 }

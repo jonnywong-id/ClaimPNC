@@ -2267,3 +2267,129 @@ ini, **itu belum terbukti**: Go dan Node tidak terpasang di mesin ini (§16.11),
 Yang dapat saya lakukan sebagai gantinya adalah penelusuran manual: seluruh nama lama dicari ulang
 di backend maupun frontend dan **nol kemunculan tersisa** di luar modul `auth`, `portal`,
 `masterrekening`, dan `masterstatus` yang memang berada di luar lingkup.
+
+---
+
+## 17. Sesi kesepuluh — modul View History Claim (2026-09-20)
+
+Menu `MENU_ID 76` "View History Claim", pengganti harness `PNCSearchKlaim`. Modul proses
+klaim kedua setelah Pelaporan Klaim.
+
+### 17.1 Analisis pra-implementasi
+
+Dikerjakan sebelum satu baris kode ditulis, atas permintaan Work Owner. Yang dibaca:
+
+| Berkas | Yang diambil |
+|---|---|
+| `Harness/PNCSearchKlaim-Harness.xml` | judul layar "VIEW HISTORY CLAIM" |
+| `Section/PNCSearchKlaim-Section.xml` | 3 isian, tombol Cari, 2 grid × 13 kolom, kondisi tampil |
+| `Activity/PNCSearchHistoryKlaim_Act-Act.xml` | pemilih kueri per tipe, penyiapan parameter |
+| `Activity/InsertLogProteksiDataKlaimMasking-Act.xml` | gerbang proteksi data + kuota |
+| `Activity/CekmaskingDataPerLoginUserKlaim-Act.xml` | pembacaan master proteksi |
+| `Database/UPDATE_LOG_PROTEKSI.prc` | isi log proteksi |
+| 12 berkas `RDB List/` | SQL sesungguhnya tiap tipe pencarian |
+
+**Tiga temuan yang mengubah rancangan**, dan tak satu pun terbaca dari dokumen mana pun:
+
+1. **Dua belas dari enam belas kolom grid bernama menyesatkan.** `.EDMNO` berarti No
+   Klaim, `.THEINSURED` berarti Posisi Klaim, `.SOBNAME` berarti PIC Teknis. Pemetaan
+   lengkapnya kini di `peta-penamaan.md` dan di kepala `riwayatklaim.sql`.
+2. **Layar tergerbang proteksi data.** Pengguna wajib terdaftar di
+   `POOLDATA.MST_PROTEKSI_DATA_PNC`, dan satu jatah pencarian terpakai setiap kali layar
+   dibuka. Ini tidak tercatat di dokumen migrasi mana pun.
+3. **Tiga cacat aturan.** Pencarian Tanggal Lahir membaca isian yang tersembunyi,
+   prakondisi langkah 6 adalah tautologi, dan pencarian Nama Objek kehilangan kolom
+   Posisi Klaim.
+
+### 17.2 Pertanyaan konfirmasi dan jawabannya
+
+Enam pertanyaan diajukan sebelum kode ditulis; seluruhnya dijawab Work Owner 2026-09-20.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Gerbang proteksi dibawa sejauh apa | **Bangun penuh** |
+| 2 | Ketiga cacat aturan | **Replikasi apa adanya** |
+| 3 | Tipe pencarian No Rekening | ditanyakan balik: "script ini dipanggil di mana" → lalu **replikasi apa adanya** |
+| 4 | Label tipe pencarian & kode 10 | **pakai turunan dari deskripsi langkah**, kode 10 dilewati |
+| 5 | Ke mana penulisan gerbang diarahkan (`P-1`) | **tabel baru milik aplikasi** |
+| 6 | Branch dasar | **`Feat/arlexy-View-History-Claim`** |
+
+**Pertanyaan 3 menghasilkan temuan tambahan.** Penelusuran menemukan
+`AmbilDataKlaimDenganNoRekening` hanya dipanggil satu tempat di seluruh export — layar ini
+sendiri. Tetapi penelusuran yang sama memperlihatkan pencarian itu **tidak pernah memakai
+nomor rekening yang diketik**: rekeningnya tertanam tetap di dalam SQL, dan isian pengguna
+disisipkan sebagai potongan SQL mentah di posisi yang membuat kuerinya cacat sintaksis.
+
+**Satu koreksi atas deskripsi saya sendiri.** Pertanyaan 1 diajukan dengan keterangan yang
+keliru: saya menyebut "kuota lihat data berkurang" dan "tiap pencarian dicatat ke
+`LOG_DATA_PROTEKSI_KLAIM`". Verifikasi berikutnya membuktikan yang berkurang adalah kuota
+**pencarian** (`LOGSEARCH`), gerbangnya berjalan **sekali saat layar dibuka** bukan tiap
+pencarian, log **tidak** ditulis di layar ini, dan masking tidak berlaku karena grid-nya
+tidak punya kolom KTP/telepon/surel. Koreksinya disampaikan sebelum kode ditulis; arah
+keputusannya tidak berubah.
+
+### 17.3 Yang dibangun
+
+**Backend — `internal/riwayatklaim/`**
+
+| Berkas | Isi |
+|---|---|
+| `riwayatklaim.go` | `ClaimHistory` 16 isian, `Pagination`, `Page`, `Caller`, seam `Repo`/`Clock` |
+| `searchtype.go` | 12 tipe pencarian, `Criteria`, `QueryValue` — tempat cacat direplikasi |
+| `proteksi.go` | `Protection`, `Access`, `Usage`, `Check`, `Grant`, seam `ProtectionRepo` |
+| `errors.go` | tiga galat domain + `ValidationError` |
+| `usecase/search.go` | `Open` (memakai jatah) dan `Search` (tidak) |
+| `repo/sqlstore/` | 11 kueri pencarian + 4 kueri gerbang, pembungkus paginasi |
+| `repo/memory/` | penyimpanan memori + 5 klaim contoh + 3 baris proteksi contoh |
+| `http/` | dto, galat, handler, rute |
+
+**Migrasi** `0004_riwayat_klaim_proteksi.{up,down}.sql` — tabel
+`POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`, satu sequence, dua indeks. **Belum pernah dijalankan.**
+
+**Frontend — `src/modules/riwayat-klaim/`** — `types.ts`, `api.ts`, `SearchPanel.tsx`,
+`ClaimHistoryPage.tsx`, beserta ujinya.
+
+**Rute API baru:**
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `POST` | `/api/riwayat-klaim/buka` | menjalankan gerbang, **memakai satu jatah** |
+| `GET` | `/api/riwayat-klaim` | pencarian; tidak memakai jatah |
+
+### 17.4 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **Working tree berpindah branch di tengah sesi.** Sesi dimulai di `feat/arlexy-inbox-pelaporan-klaim` dengan modul `inboxlaporanklaim` yang saya pakai sebagai acuan pola; di tengah analisis tree berpindah ke `master`, tempat modul itu tidak ada dan digantikan `pelaporanklaim` | Diperiksa lebih dulu apakah pekerjaan hilang — tidak: ia aman di commit `924baf9`. Pola diacu ulang dari `pelaporanklaim` yang ada di `master`, dan branch dasar ditanyakan ke Work Owner |
+| **`DataTable` di `master` tidak punya `serverPaging` maupun `hideSearch`** | Paginasi digambar sendiri di layar, mengikuti pola `ClaimReportPage`. `hideSearch` ditambahkan sebagai prop opsional — aditif, bawaan `false`, sehingga tidak satu pun layar lama berubah |
+| **`SelectOption` tidak mengenal `disabled`** | Tidak diubah. Tipe yang belum tersedia ditandai pada labelnya, dan yang dinonaktifkan adalah tombol Cari |
+| **Membuka layar memakai jatah, sementara `StrictMode` menjalankan efek dua kali** | Pembukaan memakai `useQuery` ber-`staleTime: Infinity`, bukan `useMutation` di dalam `useEffect`. Diuji: tepat satu permintaan `POST` |
+| **Uji menekan dropdown sebelum isinya tiba** | Helper `renderOpened()` menunggu salah satu pilihan muncul, bukan menunggu labelnya — label sudah ada sejak penggambaran pertama |
+
+### 17.5 Verifikasi yang benar-benar dijalankan
+
+```
+cd backend  && go build ./... && go vet ./... && go test ./...
+cd frontend && npm run typecheck && npm test
+```
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruh paket lulus, termasuk 3 paket baru |
+| `npm run typecheck` | bersih |
+| `npm test` | **112 lulus, 3 gagal** |
+
+**Ketiga kegagalan itu sudah ada di `master` sebelum sesi ini**, seluruhnya di
+`master-rekening/AccountPage.test.tsx`. Dibuktikan dengan menjalankan berkas uji itu
+terhadap `DataTable` versi `master` — hasilnya sama persis, 3 gagal. Bukan akibat
+perubahan sesi ini, dan **tidak diperbaiki** karena berada di luar lingkup tugas.
+
+Uji modul ini: **13 uji layar + 20 uji backend**, seluruhnya lulus.
+
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis, dan migrasi 0004 belum
+dijalankan DBA. Yang terbukti hanyalah bentuk kuerinya — lewat `query_test.go` yang
+memeriksa keseragaman alias, jumlah parameter, disiplin SQL portabel, dan larangan menulis
+ke tabel milik sistem lama.

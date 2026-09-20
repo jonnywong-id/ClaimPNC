@@ -356,3 +356,96 @@ untuk modul yang Work Owner sebut dengan nama bisnisnya.
 
 **Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
 `menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.
+
+---
+
+## Tambahan 2026-09-20 — modul View History Claim (`riwayatklaim`)
+
+Modul ini **kasus paling pekat** dari alias menyesatkan di seluruh export, dan karena itu
+pemetaannya dicatat utuh di sini — bukan hanya di berkas `.sql`-nya.
+
+### Nama modul
+
+`riwayatklaim` di backend, `riwayat-klaim` di frontend. Ia mengikuti `D-81`: nama modulnya
+berbahasa Indonesia karena itulah nama yang dipakai Work Owner, sementara isinya berbahasa
+Inggris. Judul yang dibaca pengguna tetap **"View History Claim"**, mengikuti judul layar
+Pega (`D-13`).
+
+### Properti grid Pega → arti sebenarnya → nama di kode
+
+Dua belas dari enam belas kolom bernama sesuatu yang sama sekali tidak menyatakan isinya.
+
+| Properti grid Pega | Kolom basis data | Arti bagi pengguna | Nama di kode |
+|---|---|---|---|
+| `.IDPEGA` | `CLAIMID` | kunci teknis Pega | `Reference` |
+| `.EDMNO` ⚠ | `CLAIMNO` | No Klaim | `Number` |
+| `.NOPOLIS` | `NOPOLIS` | No Polis | `PolicyNumber` |
+| `.QQNAME` | `QQNAME` | Nama Tertanggung | `InsuredName` |
+| `.STARTDATE` ⚠ | `DATEOFLOSS` | Tgl Kejadian | `LossDate` |
+| `.BUSINESSNAME` | `BUSINESSNAME` | Bisnis | `BusinessName` |
+| `.BRANCHNAME` | `BRANCHNAME` | Cabang | `BranchName` |
+| `.STATUSBUSINESS` ⚠ | `STATUSWORK` | Status | `WorkStatus` |
+| `.THEINSURED` ⚠ | `V_STS_CLAIM.LSC_NOTE` | Posisi Klaim | `ClaimPosition` |
+| `.ENDDATE` ⚠ | `CLOSECLAIMDATE` | Tanggal Close | `CloseDate` |
+| `.FLAGEDMBATAL` ⚠ | `CLOSECLAIMNOTE` | Catatan Close | `CloseNote` |
+| `.SOBNAME` ⚠ | `PICTEKNIK` | PIC Teknis | `TechnicalPIC` |
+| `.OLDPOLICYNO` ⚠ | `DETAIL_PNC_SALVAGE.NOAKSEPTASI` | No Akseptasi | `AcceptanceNumber` |
+| `.WARRANTYNO` ⚠ | `DETAIL_PNC_SALVAGE.IDBALAILELANG` | No Balai Lelang | `AuctionHouseID` |
+| `.SOBLEADER1` ⚠ | `T_PERSON.FULLNAME` | Nama Objek | `InsuredItemName` |
+| `.EDMDATE` ⚠ | `T_PERSON.ASMDATEOFBIRTH` | Tanggal Lahir | `BirthDate` |
+
+⚠ menandai nama yang menyesatkan secara aktif. `.THEINSURED` yang berarti **Posisi Klaim**
+dan `.FLAGEDMBATAL` yang berarti **Catatan Close** adalah dua yang paling jauh.
+
+`InsuredItemName` memakai istilah `CONTEXT.md`: objek pertanggungan, bukan "Object" yang
+bertabrakan dengan makna pemrograman.
+
+### Isian formulir — nama properti tertukar satu sama lain
+
+Inilah sumber salah satu cacat yang direplikasi: **dua properti tanggal yang namanya
+justru tertukar dengan perannya.**
+
+| Label di layar | Properti Pega | Nama di kode | Dipakai kueri? |
+|---|---|---|---|
+| Nama Pencarian | `TempSearch.SearchName` | `Text` | ya, untuk tipe teks |
+| Tanggal Pencarian | `TempSearch.DateOfSendInputor` ⚠ | `SearchDate` | ya, untuk SELURUH tipe tanggal |
+| Tanggal Lahir | `TempSearch.SearchDate` ⚠ | `BirthDate` | **tidak pernah** |
+
+Properti bernama `SearchDate` adalah isian **Tanggal Lahir**, dan properti bernama
+`DateOfSendInputor` adalah isian **Tanggal Pencarian**. Nama di kode mengikuti **label yang
+dibaca pengguna**, bukan nama propertinya — kalau tidak, kode ini akan mewarisi persis
+kekeliruan yang membuat cacatnya lahir.
+
+### Gerbang proteksi data — alias yang tidak dapat ditebak
+
+Kueri lama membaca master proteksi dengan alias yang tak satu pun menyatakan isinya. Arti
+keenamnya hanya terbaca dari komentar langkah di activity-nya.
+
+| Alias di kueri lama | Kolom basis data | Arti | Nama di kode |
+|---|---|---|---|
+| `City` ⚠ | `LOGSEEN` | jatah **lihat data** (layar rincian) | `ViewQuota` |
+| `CityID` ⚠ | `LOGSEARCH` | jatah **pencarian** (layar ini) | `SearchQuota` |
+| `Country` ⚠ | `STS_NOTELP` | masking nomor telepon | `MaskPhone` |
+| `CountryID` ⚠ | `STS_EMAIL` | masking surel | `MaskEmail` |
+| `Province` ⚠ | `STS_KTP` | masking nomor KTP | `MaskIDCard` |
+| `ProvinceID` ⚠ | `SUBMODUL` | daftar submodul | `SubModules` |
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Tipe pencarian | `SearchType` | |
+| Kriteria pencarian | `Criteria` | dibentuk hanya lewat `NewCriteria` |
+| Gerbang / keadaan izin | `Access` | `Check` memeriksa, `Grant` memakai satu jatah |
+| Jatah | `Quota` | `QuotaTotal` · `QuotaUsed` · `QuotaRemaining` |
+| Pemakaian jatah | `Usage` | satu baris jejak; `ConsumesQuota` membedakan buka layar dari pencarian |
+| Baris proteksi | `Protection` | isi `MST_PROTEKSI_DATA_PNC` |
+
+**Nama field JSON tetap Indonesia** — `nomor_klaim`, `posisi_klaim`, `pic_teknis`,
+`tipe_pencarian`, `proteksi`, `jatah_sisa`. Ia kontrak API.
+
+**Nama kueri `.sql`** berawalan `search_` untuk kesebelas pencarian dan `protection_`
+untuk gerbangnya: `search_policy_number` · `search_claim_number` · `search_birth_date` ·
+`protection_find` · `protection_count_usage` · `protection_record_usage` ·
+`protection_check_table`.
+
+**Nama tabel baru** tetap Indonesia karena ia milik basis data (`D-80`):
+`POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.

@@ -546,3 +546,110 @@ Tidak ada skill yang akan menangkapnya. Yang menangkapnya adalah Work Owner yang
 `mattpocock-skills:tdd` dan `codebase-design` tetap menjadi yang relevan saat `B-2` Registrasi
 dikerjakan, dengan syarat yang sama: Go terpasang lebih dulu, sehingga siklus merah-hijau benar-benar
 dapat dijalankan alih-alih dibayangkan.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-20 (modul View History Claim)
+
+## Ringkasan
+
+Satu modul dibangun dari nol: `MENU_ID 76` "View History Claim", pengganti harness
+`PNCSearchKlaim`. Tidak ada skill Claude maupun Matt Pocock yang **dipanggil** sebagai
+perintah; yang dipakai adalah tekniknya, dan itu dicatat di bawah beserta apa yang
+dihasilkannya.
+
+## Skill yang ditimbang
+
+| Skill | Ditimbang untuk | Dipakai? |
+|---|---|---|
+| `mattpocock-skills:grilling` | menyusun pertanyaan sebelum menulis kode | **tekniknya dipakai**, skill tidak dipanggil |
+| `mattpocock-skills:domain-modeling` | menamai ulang 16 kolom beralias menyesatkan | **tekniknya dipakai** |
+| `mattpocock-skills:codebase-design` | menentukan batas modul dan letak seam | **tekniknya dipakai** |
+| `mattpocock-skills:tdd` | uji lebih dulu | tidak — uji ditulis setelah bentuk domainnya jelas, sejalan dengan modul-modul sebelumnya |
+| `code-review` | meninjau diff sendiri | tidak — tidak ada diff pihak lain untuk ditinjau |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+### Grilling — enam pertanyaan sebelum satu baris kode
+
+Kerangkanya: **cari faktanya sendiri, serahkan keputusannya**. Seluruh enam pertanyaan
+disertai angka dari export dan rekomendasi beserta alasannya, bukan "bagaimana menurut
+Bapak".
+
+Yang dihasilkannya, dan tidak akan muncul tanpa itu:
+
+| Pertanyaan | Yang terungkap |
+|---|---|
+| Gerbang proteksi | Layar ini **tergerbang**, dan itu tidak tercatat di dokumen migrasi mana pun |
+| Cacat aturan | Tiga cacat, salah satunya membuat satu tipe pencarian tidak pernah berfungsi |
+| No Rekening | Work Owner **bertanya balik** — dan penelusurannya membuktikan nomor rekening yang diketik tidak pernah sampai ke kueri |
+| Penulisan gerbang | Benturan `P-1` yang tidak terlihat sampai "bangun penuh" dipilih |
+
+**Satu kesalahan sendiri yang tertangkap oleh disiplin ini.** Pertanyaan tentang gerbang
+saya ajukan dengan keterangan yang keliru — menyebut kuota *lihat data* padahal yang
+berkurang kuota *pencarian*, dan menyebut log ditulis padahal tidak. Kekeliruannya
+ketahuan saat memverifikasi sebelum menulis kode, dan koreksinya disampaikan lengkap
+dengan tabel "saya katakan / sebenarnya". Arah keputusannya tidak berubah, tetapi isinya
+berubah banyak.
+
+### Domain modeling — menolak mewarisi nama yang salah
+
+Layar ini kasus paling pekat dari alias menyesatkan di seluruh export: **12 dari 16** nama
+properti grid tidak menyatakan isinya. `.EDMNO` berarti No Klaim, `.THEINSURED` berarti
+Posisi Klaim, `.FLAGEDMBATAL` berarti Catatan Close.
+
+Teknik yang dipakai: **silangkan pernyataan dengan kode** sebelum menamai. Setiap alias
+ditelusuri ke kolom basis datanya lewat SQL-nya, lalu ke arti yang dibaca pengguna lewat
+label kolom grid-nya. Barulah nama Inggrisnya dipilih dari `CONTEXT.md`.
+
+Hasilnya dicatat di tiga tempat supaya tidak hilang: kepala `riwayatklaim.sql`,
+`peta-penamaan.md`, dan komentar pada tiap isian `ClaimHistory`.
+
+Satu temuan yang hanya muncul karena penelusuran ini: **dua properti tanggal yang namanya
+tertukar dengan perannya** — properti bernama `SearchDate` adalah isian "Tanggal Lahir",
+sementara isian "Tanggal Pencarian" bernama `DateOfSendInputor`. Dari situlah cacat yang
+direplikasi itu lahir, dan tanpa menelusuri namanya satu per satu, cacatnya akan terbaca
+sebagai kesalahan ketik biasa.
+
+### Codebase design — seam yang dibenarkan, bukan yang mungkin
+
+Prinsip "satu adapter berarti seam hipotetis, dua adapter berarti seam nyata" dipakai
+sebagai penyaring. Tiga seam dibuat, seluruhnya punya dua pengisi nyata:
+
+| Seam | Pengisi 1 | Pengisi 2 |
+|---|---|---|
+| `Repo` | SQL Oracle | memori + 5 klaim contoh |
+| `ProtectionRepo` | SQL Oracle (dua tabel) | memori + 3 baris proteksi contoh |
+| `Clock` | jam sistem | jam tetap di uji |
+
+`ProtectionRepo` dipisahkan dari `Repo` bukan karena kerapian melainkan karena
+**kepemilikan tabelnya berbeda**: yang satu membaca tabel sistem lama, yang lain menulis
+tabel aplikasi. Pemisahan itu bentuk nyata `P-1`, dan `query_test.go` menegakkannya.
+
+Uji penghapusan dipakai pada `Criteria.QueryValue`: bila method itu dihapus dan kuerinya
+membaca isian langsung, aturan pemilihan nilai — termasuk cacat yang direplikasi — akan
+tersebar ke sebelas tempat. Ia jelas membayar dirinya sendiri.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Menyebut kuota "lihat data" padahal "pencarian", dan menyebut log ditulis padahal tidak | Verifikasi ke `InsertLogProteksiDataKlaimMasking` sebelum menulis kode; koreksinya dilaporkan lengkap |
+| Menyebut pengguna "tidak dapat mengetik nomor rekening sama sekali" pada tipe 12 | Pembacaan ulang kondisi tampil — isiannya ADA, isinya yang dibuang |
+| Memakai `serverPaging` dan `hideSearch` pada `DataTable` | Keduanya tidak ada di `master`; saya mengacu pada versi komponen di branch lain yang tidak ikut ke `master` |
+| Memakai `disabled` pada `SelectOption` | Tidak ada di tipenya; diganti penandaan pada label, tanpa mengubah komponen bersama |
+| Uji menekan dropdown sebelum isinya tiba | Delapan uji gagal sekaligus; helper `renderOpened()` menunggu pilihannya, bukan labelnya |
+
+Kelimanya punya pola yang sama: **mengandalkan ingatan alih-alih memeriksa keadaan
+sekarang.** Empat di antaranya lahir dari satu sebab tunggal — working tree berpindah
+branch di tengah sesi, dan saya meneruskan dengan peta dari branch sebelumnya.
+
+## Catatan untuk sesi berikutnya
+
+1. **Periksa branch aktif sebelum mengacu pada pola modul lain.** Repo ini punya banyak
+   branch paralel dengan implementasi berbeda untuk menu yang sama.
+2. **Modul rincian klaim (`MENU_ID 75`)** akan memakai `Protection.MaskPhone`,
+   `MaskEmail`, dan `MaskIDCard` yang sudah dibaca modul ini tetapi belum dipakai. Ketiga
+   penanda itu sengaja dibawa supaya modul itu tidak menafsirkannya ulang.
+3. **Kuota `LOGSEEN`** milik layar rincian, dan belum ada yang memakainya. Pola
+   `Check`/`Grant` di modul ini dapat dipakai ulang apa adanya.

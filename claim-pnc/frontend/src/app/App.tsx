@@ -7,6 +7,7 @@ import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -97,6 +98,24 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        View History Claim — pencarian riwayat klaim, menggantikan harness
+        `PNCSearchKlaim` (`MENU_ID 76`).
+
+        Selain penjaga sesi, layar ini dijaga GERBANG PROTEKSI DATA di server: pengguna
+        wajib terdaftar di Master Proteksi Data, dan satu jatah pencarian terpakai setiap
+        kali layar dibuka. Penjaga di sini tetap sekadar kenyamanan tampilan.
+      */}
+      <Route
+        path="/riwayat-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimHistoryPage />
             </Protected>
           </SessionGuard>
         }

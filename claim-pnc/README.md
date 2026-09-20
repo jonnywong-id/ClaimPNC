@@ -81,6 +81,12 @@ claim-pnc/
 │   │   │   ├── usecase/                 catat, ubah, transfer, tautkan klaim, daftar
 │   │   │   ├── repo/                    sqlstore (CPNC_LAPORAN_KLAIM), memory + 6 contoh
 │   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── riwayatklaim/            MODUL — View History Claim (menu 76)
+│   │   │   ├── usecase/                 buka layar (gerbang proteksi), cari
+│   │   │   ├── repo/                    sqlstore — 11 kueri pencarian atas T_CLAIM_PNC
+│   │   │   │                            + gerbang: MST_PROTEKSI_DATA_PNC dibaca,
+│   │   │   │                            CPNC_PEMAKAIAN_PROTEKSI ditulis; memory + contoh
+│   │   │   └── http/                    dto, galat, handler, rute
 │   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
@@ -202,7 +208,20 @@ backend/migrations/0001_user_and_session.up.sql       tabel BARU: CPNC_PENGGUNA,
 backend/migrations/0001_user_and_session.down.sql
 backend/migrations/0002_master_claim_status.up.sql     MENGUBAH objek milik sistem lama
 backend/migrations/0002_master_claim_status.down.sql
+backend/migrations/0003_pelaporan_klaim.up.sql         tabel BARU: CPNC_LAPORAN_KLAIM + sequence
+backend/migrations/0003_pelaporan_klaim.down.sql
+backend/migrations/0004_riwayat_klaim_proteksi.up.sql  tabel BARU: CPNC_PEMAKAIAN_PROTEKSI + sequence
+backend/migrations/0004_riwayat_klaim_proteksi.down.sql
 ```
+
+> **`0003` dan `0004` dijalankan di SETIAP portal entitas, bukan hanya di portal utama** —
+> berbeda dari `0001`. Keduanya menyimpan data bisnis milik satu badan hukum, dan `ADR-0030`
+> menetapkan pemisahannya ada di tingkat koneksi. Akibatnya masing-masing dijalankan empat kali,
+> dan gagal di salah satunya membuat portal tersebut tertinggal versi.
+>
+> **`0004` juga menuntut satu hak baca terhadap tabel milik sistem lama.** Akun aplikasi
+> membutuhkan `SELECT` pada `POOLDATA.MST_PROTEKSI_DATA_PNC`; tanpa itu, gerbang proteksi layar
+> View History Claim menolak setiap pengguna. Perinciannya ada di langkah 4 berkas migrasinya.
 
 Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work Owner (`D-63`).
 **Keduanya belum pernah dijalankan di lingkungan mana pun.**
@@ -326,6 +345,10 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/masuk` | masuk |
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
+| `/master/status-klaim` | **Master Status Klaim** |
+| `/master-rekening` | **Master Rekening** |
+| `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
+| `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -362,6 +385,88 @@ sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `
 | `PUT` | `/api/pelaporan-klaim/{nomor}` | wajib | mengubah laporan yang **belum diregistrasi** |
 | `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | wajib | menandai laporan dikirim ke ASM pusat; `409` bila sudah |
 | `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | wajib | `{nomor_klaim}` — menautkan laporan ke klaim; `409` bila sudah |
+| `POST` | `/api/riwayat-klaim/buka` | wajib | menjalankan gerbang proteksi; memakai satu jatah pencarian |
+| `GET` | `/api/riwayat-klaim` | wajib | pencarian riwayat klaim; saringan `tipe`, `nilai`, `tanggal_pencarian`, `tanggal_lahir`, `halaman`, `ukuran` |
+
+### View History Claim
+
+Menggantikan harness Pega `PNCSearchKlaim`, yang di menu portal berjudul **"View History Claim"**
+(`MENU_ID 76`). Ia layar **pencarian riwayat klaim**, bukan inbox — barisnya bukan pekerjaan,
+tidak hilang setelah dikerjakan, dan tidak punya tenggat (`D-79`).
+
+Kedua rutenya menuntut header `X-Portal`: riwayat klaim satu badan hukum bukan riwayat badan
+hukum lain, dan jatah proteksi seorang pengguna di satu entitas bukan jatahnya di entitas lain.
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `POST` | `/api/riwayat-klaim/buka` | menjalankan gerbang proteksi; **memakai satu jatah pencarian** |
+| `GET` | `/api/riwayat-klaim` | pencarian. Parameter: `tipe`, `nilai`, `tanggal_pencarian`, `tanggal_lahir`, `halaman`, `ukuran` |
+
+**`POST /buka` mengubah keadaan, dan itulah sebabnya ia bukan `GET`.** Satu jatah pencarian
+terpakai setiap kali layar dibuka — perilaku sistem lama, yang menjalankan gerbangnya pada
+langkah berprakondisi `TempSearch.SearchType==""`, yaitu hanya sebelum tipe pencarian dipilih.
+Layar karena itu memanggilnya **sekali per kunjungan**, lewat `useQuery` ber-`staleTime: Infinity`
+— bukan lewat efek, yang di `StrictMode` berjalan dua kali dan akan menghabiskan dua jatah.
+
+#### Gerbang proteksi data
+
+Layar ini satu-satunya yang tergerbang, dan gerbangnya **bukan sekadar izin melainkan jatah yang
+berkurang**. Sumbernya `POOLDATA.MST_PROTEKSI_DATA_PNC` milik sistem lama.
+
+| Kode galat | HTTP | Artinya |
+|---|---|---|
+| `proteksi_belum_terdaftar` | 403 | pemanggil tidak punya baris proteksi untuk modul `PNCSearchKlaim` |
+| `jatah_pencarian_habis` | 409 | terdaftar, tetapi jatah pencariannya habis |
+| `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; gerbang tidak dapat diperiksa |
+
+Keduanya dibedakan karena tindakannya berbeda: yang satu menuntut pendaftaran, yang lain menuntut
+penambahan jatah.
+
+> **Master tidak pernah ditulis aplikasi ini.** Sistem lama mengurangi jatah dengan `UPDATE`
+> terhadap tabelnya sendiri; menirunya berarti dua sistem menulis satu tabel selama masa paralel,
+> tepat yang dilarang `P-1`. Di sini master hanya **dibaca**, pemakaian dicatat ke
+> `POOLDATA.CPNC_PEMAKAIAN_PROTEKSI` milik aplikasi ([`migrations/0004`](backend/migrations/0004_riwayat_klaim_proteksi.up.sql)),
+> dan sisa jatah **dihitung** — jatah master dikurangi pemakaian yang tercatat.
+>
+> Akibatnya selama kedua layar sama-sama hidup, seorang pengguna memperoleh jatah lebih banyak
+> daripada yang tertulis di master. Diterima secara sadar; ia berakhir saat layar Pega dimatikan.
+
+#### Dua belas tipe pencarian
+
+Kodenya dipertahankan apa adanya, **termasuk lompatan dari 9 ke 11** — tidak ada tipe 10 di
+sistem lama.
+
+| Kode | Tipe | Isian | Catatan |
+|---|---|---|---|
+| 1 | No Polis | teks | |
+| 2 | Nama Customer | teks | dicocokkan sebagian |
+| 3 | Nama Objek | teks | dicocokkan sebagian; **kolom Posisi Klaim kosong** |
+| 4 | No PLA | teks | dicocokkan sebagian |
+| 5 | No DLA | teks | dicocokkan sebagian |
+| 6 | Tgl Kejadian | tanggal | |
+| 7 | No Klaim | teks | melayani `PNC-xxxx` **dan** `PNCN.YY.xxxx` |
+| 8 | No Akseptasi | teks | |
+| 9 | Tanggal Lahir | tanggal | membawa kolom Nama Objek + Tanggal Lahir; **hasilnya selalu kosong** |
+| 11 | No Survey | teks | |
+| 12 | No Rekening | teks + tanggal | **belum tersedia** — menembus DB Link (`R-03`) |
+| 13 | ID Balai Lelang | teks | membawa kolom No Akseptasi + No Balai Lelang |
+
+> **Tiga cacat sistem lama DIREPLIKASI, bukan diperbaiki** (keputusan Work Owner 2026-09-20):
+> pencarian Tanggal Lahir membaca isian yang tersembunyi sehingga hasilnya selalu kosong,
+> prakondisi pemilih nilainya adalah tautologi, dan pencarian Nama Objek tidak membawa kolom
+> Posisi Klaim. Ketiganya dipagari uji dan dinyatakan di layar supaya tidak dilaporkan berulang
+> kali sebagai kerusakan modul. Alasan lengkapnya di
+> [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md) §18.2.
+>
+> **Yang TIDAK ikut direplikasi: perangkaian nilai ke dalam teks SQL.** Kedua belas kueri lama
+> menyisipkan nilai — dan sebagian menyisipkan potongan SQL — langsung ke teks kuerinya.
+> `08-TECHNICAL-STRATEGY.md` §4.3 melarangnya tanpa perkecualian, dan keputusan "replikasi apa
+> adanya" dibaca berlaku pada perilaku bisnis, bukan pada celah injeksi.
+
+**Paginasi sisi server adalah perubahan perilaku yang disadari.** Tak satu pun kueri lama
+menyetel batas baris, sehingga seluruh hasil ditarik sekaligus — terhadap `T_CLAIM_PNC` yang
+berisi puluhan juta baris (`D-10`), itu tidak dapat dibawa apa adanya
+(`09-DATABASE-STRATEGY.md` §6.3).
 
 ### Pelaporan Klaim
 

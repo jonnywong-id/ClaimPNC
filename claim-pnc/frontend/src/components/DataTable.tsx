@@ -66,6 +66,21 @@ type Props<T> = {
         matchCount?: number | undefined
       }
     | undefined
+
+  /**
+   * Menyembunyikan kotak cari bawaan.
+   *
+   * Dipakai layar yang sudah punya formulir pencariannya sendiri di atas tabel — View
+   * History Claim adalah yang pertama, dan formulirnya berupa tipe pencarian beserta
+   * isian yang bergantian mengikutinya, bukan satu kata kunci bebas.
+   *
+   * Tanpa prop ini, layar seperti itu menampilkan DUA kotak pencarian yang mencari hal
+   * berbeda: yang di atas menembak basis data, yang di dalam tabel hanya menyaring
+   * halaman yang sedang terbuka. Pengguna tidak punya cara membedakannya.
+   *
+   * Nilai bawaannya `false`, sehingga seluruh layar yang sudah ada tidak berubah.
+   */
+  hideSearch?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -134,6 +149,7 @@ export function DataTable<T>({
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
   serverSearch,
+  hideSearch = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -193,40 +209,42 @@ export function DataTable<T>({
         </header>
       )}
 
-      <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
-        <label htmlFor="tabel-cari" className="sr-only">
-          {searchLabel}
-        </label>
-        <div className="relative sm:max-w-sm">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
-          >
-            <SearchIcon className="h-4 w-4" />
-          </span>
-          <input
-            id="tabel-cari"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchLabel}
-            className={[
-              'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-              'text-sm text-slate-900 placeholder:text-slate-400',
-              'transition-[border-color,box-shadow] duration-150 ease-halus',
-              'hover:border-slate-400',
-              'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-            ].join(' ')}
-          />
+      {!hideSearch && (
+        <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
+          <label htmlFor="tabel-cari" className="sr-only">
+            {searchLabel}
+          </label>
+          <div className="relative sm:max-w-sm">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </span>
+            <input
+              id="tabel-cari"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={searchLabel}
+              className={[
+                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
+                'text-sm text-slate-900 placeholder:text-slate-400',
+                'transition-[border-color,box-shadow] duration-150 ease-halus',
+                'hover:border-slate-400',
+                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
+              ].join(' ')}
+            />
+          </div>
+          {hasSearch && (
+            <p className="mt-2 text-xs text-slate-600" role="status">
+              {serverSearch
+                ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
+                : `${visible.length} dari ${rows.length} baris cocok.`}
+            </p>
+          )}
         </div>
-        {hasSearch && (
-          <p className="mt-2 text-xs text-slate-600" role="status">
-            {serverSearch
-              ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
-              : `${visible.length} dari ${rows.length} baris cocok.`}
-          </p>
-        )}
-      </div>
+      )}
 
       {error ? (
         <div className="p-5">{error}</div>

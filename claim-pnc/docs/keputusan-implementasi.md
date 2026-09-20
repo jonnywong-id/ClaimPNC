@@ -2160,3 +2160,144 @@ yang aman dilihat siapa saja.
 | Daftar pilihan `Kurir` dan `Tipe Klaim` — tidak ada di export | Work Owner | Tidak menahan; keduanya teks bebas hari ini |
 | Kapan lampiran, utas komunikasi, dan penugasan menyusul | Work Owner | Paritas penuh dengan layar lama |
 | Go dan Node terpasang di mesin pengembangan | Work Owner / Tim Infra | **Seluruh verifikasi otomatis** |
+
+---
+
+## 18. Modul View History Claim (2026-09-20, sesi kesepuluh)
+
+### 18.1 Keputusan Work Owner pada sesi ini
+
+| # | Keputusan | Akibatnya |
+|---|---|---|
+| 1 | **Gerbang proteksi data dibangun penuh** | Layar menolak pengguna yang belum terdaftar, dan satu jatah pencarian terpakai tiap kali layar dibuka |
+| 2 | **Ketiga cacat aturan direplikasi apa adanya** | Pencarian Tanggal Lahir tidak pernah membuahkan hasil; kolom Posisi Klaim kosong pada pencarian Nama Objek |
+| 3 | **Tipe No Rekening direplikasi apa adanya** | Dua isian tetap digambar; tipenya ditandai belum tersedia karena menembus DB Link (`R-03`) |
+| 4 | **Label tipe pencarian memakai turunan dari deskripsi langkah**, kode 10 dilewati | Dua belas pilihan dengan kode `1`–`9`, `11`–`13` |
+| 5 | **Penulisan gerbang diarahkan ke tabel baru milik aplikasi** | `P-1` terjaga; migrasi 0004 |
+| 6 | Branch `Feat/arlexy-View-History-Claim` | — |
+
+### 18.2 Kenapa cacat direplikasi, dan bagaimana ia dijaga tetap terlihat
+
+`P-5` menetapkan hasil yang benar adalah hasil yang sama dengan Pega, kecuali perbaikan
+yang diputuskan eksplisit. Work Owner memutuskan ketiga cacat layar ini **tidak** masuk
+daftar perbaikan.
+
+Keputusan yang direplikasi punya satu bahaya khas: ia tidak dapat dibedakan dari
+kelalaian. Enam bulan lagi, seseorang yang menemukan pencarian Tanggal Lahir selalu kosong
+akan "memperbaikinya" — dan tanpa menyadarinya, ia mengubah perilaku yang sengaja
+dipertahankan.
+
+Karena itu ketiganya dipagari di **empat tempat sekaligus**:
+
+| Tempat | Bentuk |
+|---|---|
+| `searchtype.go` `QueryValue` | komentar menyebut langkah activity-nya dan mengapa prakondisinya tautologi |
+| `riwayatklaim_test.go` | `TestPencarianTanggalLahirMemakaiIsianYangSalah` — menguji cacatnya |
+| `usecase/search_test.go` | `TestPencarianTanggalLahirSelaluKosong` — data contoh MEMUAT sasarannya, dan hasilnya tetap kosong |
+| layar | keterangan di bawah judul tabel menyatakan keterbatasannya kepada pengguna |
+
+Yang keempat penting: tanpa itu, hasil yang selalu kosong akan dilaporkan berulang kali
+sebagai kerusakan modul.
+
+### 18.3 Satu hal yang TIDAK ikut direplikasi, dan alasannya
+
+**Perangkaian nilai ke dalam teks SQL.** Kedua belas kueri lama menyisipkan nilai langsung
+lewat pola `{InputData.CARI4}` dan `{ASIS:InputData.CARI4}`; yang kedua bahkan menyisipkan
+**potongan SQL**, bukan nilai. Gerbang proteksinya lebih jauh lagi —
+`GetFileOnPc_link_attachmentGCNM` berisi tepat satu baris penyisipan, sehingga SELURUH
+SQL-nya datang dari sebuah properti klipboard.
+
+`08-TECHNICAL-STRATEGY.md` §4.3 melarang keduanya tanpa perkecualian. Keputusan "replikasi
+apa adanya" dibaca sebagai berlaku pada **perilaku bisnis**, bukan pada celah injeksi —
+dan perbedaan itu dinyatakan di sini supaya ia menjadi keputusan yang tercatat, bukan
+kelonggaran yang diambil diam-diam.
+
+Seluruh nilai lewat parameter binding, dan `query_test.go` menjaganya.
+
+### 18.4 Kenapa jatah dihitung, bukan disimpan
+
+Sistem lama mengurangi jatah dengan `UPDATE` terhadap `POOLDATA.MST_PROTEKSI_DATA_PNC`.
+Menirunya berarti aplikasi ini dan Pega sama-sama menulis satu tabel selama masa paralel —
+tepat yang dilarang `P-1`.
+
+Akibatnya bukan galat, dan itulah yang membuatnya berbahaya: kedua sistem menulis sisa
+menurut hitungannya masing-masing, yang menulis belakangan menang, dan jatah seorang
+pengguna berubah tanpa satu pun jejak yang menjelaskannya.
+
+Di sini master **hanya dibaca**; pemakaian dicatat di tabel milik aplikasi, dan sisa jatah
+dihitung sebagai jatah master dikurangi pemakaian yang tercatat.
+
+**Akibat yang diterima secara sadar:** selama layar Pega dan layar ini sama-sama hidup,
+seorang pengguna memperoleh jatah **lebih banyak** daripada yang tertulis di master —
+sebanyak pemakaian di salah satu sistem tidak terlihat oleh yang lain. Pilihan lainnya
+adalah dua sistem menulis satu tabel, yang merusak lebih dalam dan lebih sulit dilacak. Ia
+berakhir dengan sendirinya saat layar Pega dimatikan.
+
+### 18.5 Satu hal yang saya putuskan sendiri, dan dinyatakan supaya dapat dikoreksi
+
+**Pencarian dicatat ke jejak audit meski sistem lama tidak mencatatnya di layar ini.**
+
+Verifikasi membuktikan parameter `flagloging` tidak pernah dikirim dari layar ini,
+sehingga sistem lama tidak menulis satu baris log pun saat orang mencari. Replikasi
+harfiah berarti tidak mencatat apa pun.
+
+Yang dipilih: **tetap mencatat**, dengan tiga alasan — `D-59` menjadikan jejak audit
+satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas; ia tidak melanggar `P-1`
+karena ditulis ke tabel milik aplikasi; dan satu tabel yang sama sekaligus menjadi dasar
+hitungan sisa jatah.
+
+Baris pencarian ditandai `MEMAKAI_JATAH = 0`, sehingga ia **tidak** mengurangi jatah —
+perilaku jatahnya tetap sama persis dengan sistem lama. Yang bertambah hanya jejaknya.
+
+### 18.6 Satu perubahan terhadap kueri lama yang dituntut `D-22`
+
+Pencarian No Klaim di sistem lama merangkai nama kelas internal Pega ke dalam kunci
+pencariannya. Klaim terbitan sistem baru berformat `PNCN.YY.xxxx` dan tidak pernah menulis
+awalan itu lagi, sehingga kueri lama tidak akan pernah menemukannya.
+
+Yang dicari sekarang adalah `CLAIMNO`. Ia **setara** untuk baris warisan — awalannya tepat
+19 karakter, dan kueri lama sendiri memperlakukan `SUBSTR(CLAIMID,20)` sebagai nomor klaim
+pada `BroswseKlaimByPolicyNo`. Masukan yang sama menemukan baris yang sama; yang bertambah
+hanya baris terbitan sistem baru.
+
+Awalan itu **dipertahankan** pada pencarian No Survey, dan perbedaannya disengaja: yang
+dirangkai di sana bukan nomor klaim melainkan `CASEID` milik baris surveyor, dan kolom itu
+memang menyimpan kunci berformat Pega.
+
+### 18.7 Penyimpangan dari dokumen Steering
+
+| Hal | Steering | Di sini | Alasan |
+|---|---|---|---|
+| Paginasi | tidak diatur untuk layar ini | `OFFSET … FETCH NEXT` di server | Kueri lama menarik SELURUH baris yang cocok tanpa `MaxRecords`; terhadap `T_CLAIM_PNC` berpuluh juta baris (`D-10`) itu tidak dapat dibawa apa adanya. `09-DATABASE-STRATEGY.md` §6.3 menyatakannya **perubahan perilaku**, dan ia dicatat begitu |
+| Isian wajib | sistem lama tidak memeriksa apa pun | isian yang tampak wajib diisi | Pengaman, bukan aturan bisnis: menekan Cari dengan isian kosong pada tipe Nama Customer menghasilkan pencarian berpola kosong — seluruh isi tabel |
+| Urutan hasil | kueri lama tidak mengurutkan | `ORDER BY REFERENCE` | Tanpa urutan yang ditetapkan, paginasi membuat satu baris muncul di dua halaman sekaligus hilang dari halaman lain |
+| `hideSearch` pada `DataTable` | komponen baku hanya menyediakan yang dipakai layar master | satu prop opsional ditambahkan | Layar ini sudah punya formulir pencarian sendiri; kotak cari kedua hanya menyaring halaman yang sedang terbuka dan hasilnya menyesatkan. Bawaannya `false`, sehingga tidak satu pun layar lama berubah |
+
+### 18.8 Yang sengaja TIDAK dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Tombol "Lihat Detail Klaim" | Layar rincian adalah `MENU_ID 75` "View Claim" — modul tersendiri yang belum dibangun. Kuncinya sudah ikut dikirim di setiap baris (`referensi`), sehingga menyalakannya kelak tidak menuntut perubahan kontrak |
+| Masking KTP/telepon/surel | Tidak berlaku di layar ini: grid-nya tidak punya satu pun kolom itu. Ketiga penandanya tetap DIBACA dan dibawa di `Protection`, supaya modul rincian kelak membaca keadaan yang sama alih-alih menafsirkannya ulang |
+| Pencarian No Rekening yang berfungsi | Menembus DB Link ke basis data pembayaran yang belum punya API pengganti (`R-03`) |
+| Memperbaiki 3 uji `master-rekening` yang gagal | Sudah gagal di `master` sebelum sesi ini, dan berada di luar lingkup tugas. Dibuktikan dengan menjalankannya terhadap `DataTable` versi `master` |
+
+### 18.9 Yang belum dapat dibuktikan
+
+- **Seluruh SQL modul ini belum pernah dijalankan terhadap Oracle.** Tidak ada basis data
+  di mesin tempat berkas ini ditulis, dan migrasi 0004 belum dijalankan DBA. Yang terbukti
+  hanyalah bentuk kuerinya lewat `query_test.go`.
+- **Nama kolom pada `MST_PROTEKSI_DATA_PNC` dibaca dari SQL dinamis di activity, bukan dari
+  DDL.** DDL-nya tidak ada di export (`R-08`). Bila nama kolomnya berbeda, gerbang gagal
+  dengan galat Oracle yang menyebut kolomnya — bukan gagal diam-diam.
+- **Kode tipe pencarian `10` diasumsikan memang tidak ada.** Tidak ada langkah
+  `Search Type 10` di activity mana pun, dan tidak ada kueri yang menganggur menunggunya.
+
+### 18.10 Pertanyaan terbuka yang menahan tahap berikutnya
+
+| # | Pertanyaan | Pemilik |
+|---|---|---|
+| 1 | Apakah Master Proteksi Data sudah berisi baris ber-`MODUL='PNCSearchKlaim'`? Bila nol, layar menolak setiap pengguna | DBA + Work Owner |
+| 2 | Apakah layar Master Proteksi Data ikut dimigrasikan? Selama belum, jatah hanya dapat ditambah lewat layar Pega | Work Owner |
+| 3 | Label tipe pencarian yang sebenarnya dibaca pengguna — yang dipakai sekarang turunan dari deskripsi langkah, karena definisi propertinya tidak ada di export | Tim Pega |
+| 4 | Apakah cacat pencarian Tanggal Lahir kelak diperbaiki? Bila ya, ia menjadi butir baru pada daftar perbaikan eksplisit `P-5` | Work Owner |

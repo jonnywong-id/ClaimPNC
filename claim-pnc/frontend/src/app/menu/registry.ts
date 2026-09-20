@@ -37,6 +37,10 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusProgress: '/master/status-progres-1',
   // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
   InboxRCVApp_Harness: '/pelaporan-klaim',
+
+  // MENU_ID 76 "View History Claim". Layar pencarian riwayat klaim, bukan inbox —
+  // pembedaannya ditetapkan `D-79` dan menentukan modul pemiliknya.
+  PNCSearchKlaim: '/riwayat-klaim',
 }
 
 /**
