@@ -132,3 +132,37 @@ VALUES (:1, :2, :3, :4)
 SELECT ID_MST
   FROM POOLDATA.GCNM_MST_PROGRESS
  WHERE 1 = 0
+
+-- name: progress_status2_update
+--
+-- TIDAK ADA ASALNYA DI PEGA. Ini satu-satunya kueri di berkas ini yang bukan pemindahan.
+--
+-- Seluruh export tidak memuat satu pun UPDATE terhadap POOLDATA.GCNM_MST_PROGRESS.
+-- Yang bernama "Update" di sana — `RDB List/UpdateStatusProgress2_sql-SQL.xml` — menulis ke
+-- TABEL LAIN:
+--
+--   UPDATE POOLDATA.GCNM_PROGRESS_CLAIM C SET JSONSTATUS_PROGRESS2 = {TempInputStatusProgress2.City}
+--    WHERE PNCCASEID = {tempSearchProgress.AnalystDoctorRemaks} AND ID_UPDATE = {tempSearchProgress.Email}
+--
+-- dan kedua page klipboard itu tidak pernah diisi pada layar master — `TempInputStatusProgress2`
+-- bahkan hanya muncul di berkas SQL itu sendiri. Menekan tombolnya tidak mengubah apa pun.
+--
+-- Work Owner memutuskan menambahkan penyuntingan yang benar-benar bekerja pada 2026-09-20.
+-- Konsekuensinya disadari: uji kesetaraan gerbang 1 akan menemukan selisih pada modul ini,
+-- dan selisih itu dinyatakan di muka sebagai perbaikan terencana (`D-54`).
+--
+-- ID_MST TIDAK PERNAH ikut di-SET, hanya menyaring di WHERE. Ia kunci baris dan dirujuk
+-- GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2 pada data klaim yang sudah berjalan; mengubahnya
+-- memutus rujukan itu tanpa satu pun galat basis data. Batas yang sama dipegang
+-- progress_status_update pada tingkat 1.
+--
+-- STS_PROGRESS1 ikut di-SET karena ia SALINAN nama induk. Bila induk berpindah tanpa nama
+-- itu disalin ulang, barisnya akan menunjuk induk A sambil menyandang nama induk B.
+--
+-- TRIM pada penyaringnya sama alasannya dengan progress_status2_get: parameter binding
+-- bertipe VARCHAR2, dan perbandingan CHAR dengan VARCHAR2 memakai non-padded comparison.
+UPDATE POOLDATA.GCNM_MST_PROGRESS
+   SET STS_PROGRESS2 = :1,
+       ID_PROGRESS   = :2,
+       STS_PROGRESS1 = :3
+ WHERE TRIM(ID_MST) = :4

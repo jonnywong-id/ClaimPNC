@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
-import { SearchIcon, EmptyBoxIcon } from './Icon'
+import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
 
 /**
  * Satu kolom tabel.
@@ -43,9 +43,65 @@ type Props<T> = {
 
   searchLabel?: string
   emptyMessage?: string
+
+  /**
+   * Banyaknya baris per halaman. Tidak diisi berarti **tanpa paginasi** — seluruh baris
+   * digambar sekaligus.
+   *
+   * # Kenapa opt-in, bukan bawaan
+   *
+   * Ukuran halaman di sistem lama **berbeda-beda per layar**, dan angkanya terbaca dari
+   * `pyPageSize` (atau `pyPageSizeOther` bila nilainya `"Other"`) pada masing-masing
+   * section:
+   *
+   *	Master Supplier · Master Bengkel                     20 baris
+   *	Master Rekening · Status Klaim · Status Progres ·
+   *	Pasal Kerugian · Penolakan Klaim                     15 baris
+   *	Master Panel                                         15 baris tab Approve,
+   *	                                                     50 baris tab Reject & Waiting
+   *
+   * Tidak ada satu angka yang benar untuk semuanya, sehingga ia milik layar — bukan milik
+   * komponen ini.
+   *
+   * Master Panel bahkan berbeda ANTARTAB pada satu layar yang sama, sehingga angkanya
+   * tidak dapat dititipkan ke layar sekali pun — ia milik tab. Itulah kenapa prop ini
+   * menerima angka biasa, bukan dibaca komponen dari suatu tempat.
+   *
+   * Bawaannya **tanpa paginasi** supaya layar yang belum menyalakannya berperilaku persis
+   * seperti sebelumnya. Menyalakannya untuk sebuah layar cukup satu prop.
+   */
+  pageSize?: number
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
+
+/**
+ * pageWindow memilih nomor halaman mana yang digambar sebagai tombol.
+ *
+ * Tujuh halaman atau kurang digambar seluruhnya. Lebih dari itu, yang digambar adalah
+ * halaman pertama, terakhir, halaman sekarang beserta tetangganya, dan `sela` di antara
+ * kelompok yang tidak bersambung.
+ *
+ * Tanpa pembatasan ini, daftar seribu baris menggambar lima puluh tombol nomor yang
+ * membungkus beberapa baris — dan justru membuat halaman yang sedang dibuka sulit
+ * ditemukan.
+ */
+export function pageWindow(current: number, total: number): (number | 'sela')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1)
+  }
+
+  const result: (number | 'sela')[] = [1]
+  const start = Math.max(2, current - 1)
+  const stop = Math.min(total - 1, current + 1)
+
+  if (start > 2) result.push('sela')
+  for (let nomor = start; nomor <= stop; nomor++) result.push(nomor)
+  if (stop < total - 1) result.push('sela')
+
+  result.push(total)
+  return result
+}
 
 /**
  * DataTable adalah satu-satunya tabel di seluruh aplikasi.
@@ -102,9 +158,11 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  pageSize,
 }: Props<T>) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
+  const [page, setPage] = useState(1)
 
   const visible = useMemo(() => {
     const word = query.trim().toLowerCase()
@@ -136,9 +194,36 @@ export function DataTable<T>({
       // punya cara kembali ke urutan semula selain memuat ulang halaman.
       return null
     })
+    // Mengurutkan ulang menyusun ulang seluruh daftar, sehingga halaman ketujuh yang
+    // sedang dibuka tidak lagi memuat baris yang sama. Kembali ke halaman pertama adalah
+    // satu-satunya posisi yang artinya tidak berubah.
+    setPage(1)
   }
 
   const hasSearch = query.trim() !== ''
+
+  /*
+    Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
+
+    Itu yang ditiru dari sistem lama: grid Pega terikat pada page list klipboard
+    (`pyPageListProperty`), sehingga paginatornya memotong daftar yang SUDAH tersaring —
+    bukan meminta halaman berikutnya ke server. Memotong lebih dulu akan membuat pencarian
+    hanya menemukan baris yang kebetulan ada di halaman yang sedang dibuka.
+
+    Ia juga bukan paginasi keyset sisi server. Itu `TKT-U2-001`, dan Steering menyebutnya
+    **perubahan perilaku, bukan pemeliharaan** — layar berpuluh juta baris menuntutnya,
+    layar master yang berbaris puluhan tidak.
+  */
+  const paginated = pageSize !== undefined && pageSize > 0
+  const totalPages = paginated ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+
+  // Halaman dijepit saat menggambar, bukan disetel lewat efek. Baris dapat berkurang di
+  // luar kendali komponen ini — penyaring dipersempit, atau daftarnya dimuat ulang setelah
+  // sebuah baris berpindah — dan halaman yang sudah tidak ada harus menampilkan halaman
+  // terakhir, bukan tabel kosong tanpa penjelasan.
+  const currentPage = Math.min(page, totalPages)
+  const firstIndex = paginated ? (currentPage - 1) * pageSize : 0
+  const shown = paginated ? visible.slice(firstIndex, firstIndex + pageSize) : visible
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
@@ -167,7 +252,12 @@ export function DataTable<T>({
             id="tabel-cari"
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
+              // daftar lama hampir pasti tidak ada pada daftar baru.
+              setPage(1)
+            }}
             placeholder={searchLabel}
             className={[
               'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
@@ -246,7 +336,7 @@ export function DataTable<T>({
             </thead>
 
             <tbody className="block md:table-row-group">
-              {visible.map((b) => (
+              {shown.map((b) => (
                 <tr
                   key={rowKey(b)}
                   className={[
@@ -287,7 +377,143 @@ export function DataTable<T>({
           </table>
         </div>
       )}
+
+      {/*
+        Paginator digambar hanya bila paginasinya menyala DAN ada baris yang terlihat.
+        Saat memuat, saat gagal, dan saat kosong ia tidak berarti apa-apa — dan tiga
+        keadaan itu sudah punya tampilannya sendiri di atas.
+      */}
+      {paginated && !error && !isLoading && visible.length > 0 && (
+        <Paginator
+          firstRow={firstIndex + 1}
+          lastRow={firstIndex + shown.length}
+          totalRows={visible.length}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPick={setPage}
+        />
+      )}
     </section>
+  )
+}
+
+/**
+ * Paginator adalah pemilih halaman di kaki tabel.
+ *
+ * # Bentuknya mengikuti paginator Pega, bukan dikarang
+ *
+ * `Section/InboxMasterSupplier-Section.xml` menyisipkan `pyGridPaginator` di kaki grid
+ * dengan `pyPageMode = Numeric` dan `pyPaginationButtonsFormat = Standard` — **nomor
+ * halaman**, bukan tombol "muat lebih banyak". Gaya selnya
+ * (`dataLabelRead gridActionAlignRight`) menaruhnya **rata kanan**, dan itu yang ditiru.
+ *
+ * # Ringkasan barisnya DITAMBAHKAN
+ *
+ * Pega hanya menggambar nomor halamannya. "Menampilkan 1–20 dari 57 baris" tidak ada di
+ * sana, dan ia ditambahkan karena tanpa itu nomor halaman tidak memberi tahu apa pun
+ * tentang seberapa banyak yang belum dilihat — pada tabel yang baru saja disaring,
+ * itulah justru yang ingin diketahui.
+ *
+ * Pencacah "Total Data :" milik `Section/DataCountMasterSupllier` tetap ada di kepala
+ * layar dan menghitung hal yang berbeda: seluruh baris yang dimuat, bukan yang tersaring.
+ *
+ * # Yang dijaga untuk pembaca layar
+ *
+ * Ringkasannya `role="status"`, sehingga berpindah halaman diumumkan tanpa memindahkan
+ * fokus. Nomor halaman yang sedang dibuka memakai `aria-current="page"` — bukan hanya
+ * warna, yang tidak terbaca pembaca layar dan tidak terbedakan oleh sekitar satu dari dua
+ * belas laki-laki yang mengalami buta warna merah-hijau.
+ */
+function Paginator({
+  firstRow,
+  lastRow,
+  totalRows,
+  currentPage,
+  totalPages,
+  onPick,
+}: {
+  firstRow: number
+  lastRow: number
+  totalRows: number
+  currentPage: number
+  totalPages: number
+  onPick: (page: number) => void
+}) {
+  const step =
+    'inline-flex h-8 min-w-8 items-center justify-center rounded-kontrol border px-2 text-sm ' +
+    'transition-colors duration-150 ease-halus ' +
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40'
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-slate-600" role="status">
+        Menampilkan{' '}
+        <span className="font-medium text-slate-800">
+          {firstRow}–{lastRow}
+        </span>{' '}
+        dari {totalRows} baris.
+      </p>
+
+      {/*
+        Tombolnya disembunyikan saat halamannya hanya satu. Paginator berisi satu tombol
+        yang tidak dapat ditekan tidak memberi tahu apa pun; ringkasan barisnya tetap
+        berguna dan tetap tampil.
+      */}
+      {totalPages > 1 && (
+        <nav aria-label="Halaman tabel" className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPick(currentPage - 1)}
+            disabled={currentPage === 1}
+            aria-label="Halaman sebelumnya"
+            className={`${step} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`}
+          >
+            <ChevronIcon className="h-4 w-4 rotate-180" />
+          </button>
+
+          {pageWindow(currentPage, totalPages).map((item, index) =>
+            item === 'sela' ? (
+              <span
+                // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
+                // dapat muncul bersamaan — indeksnya yang membedakan.
+                key={`sela-${index}`}
+                aria-hidden="true"
+                className="px-1 text-sm text-slate-400"
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onPick(item)}
+                aria-label={`Halaman ${item}`}
+                aria-current={item === currentPage ? 'page' : undefined}
+                className={[
+                  step,
+                  item === currentPage
+                    ? 'border-blue-600 bg-blue-600 font-medium text-white'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100',
+                ].join(' ')}
+              >
+                {item}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            onClick={() => onPick(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            aria-label="Halaman berikutnya"
+            className={`${step} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`}
+          >
+            <ChevronIcon className="h-4 w-4" />
+          </button>
+        </nav>
+      )}
+    </div>
   )
 }
 

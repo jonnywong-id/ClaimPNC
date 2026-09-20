@@ -396,19 +396,105 @@ func TestCreate2RejectsMalformedBody(t *testing.T) {
 	}
 }
 
-// Tidak ada PUT dan tidak ada DELETE, dan itu bukan pekerjaan yang belum selesai.
+// PATCH dan DELETE tidak ada; PUT ada.
 //
-// Sistem lama tidak memiliki satu pun pernyataan yang mengubah isi tabel ini setelah
-// barisnya tersimpan. Mendaftarkan rute yang tidak dapat berbuat apa-apa hanya memindahkan
-// kejutannya dari layar ke API.
-func TestNoEditRoute2Exists(t *testing.T) {
+// PATCH tidak: kedua isian wajib, sehingga tidak ada pembaruan parsial yang masuk akal.
+// DELETE tidak: tabelnya tidak punya kolom penanda terhapus yang dapat dipakai `D-66`,
+// dan barisnya dirujuk data klaim yang sudah berjalan.
+//
+// Jawabannya **405**, bukan 404 — dan itu berubah pada 2026-09-20 ketika PUT ditambahkan.
+// Sebelumnya jalur `/{id}` tidak terdaftar sama sekali sehingga chi menjawab "tidak
+// ditemukan"; sekarang jalurnya ada tetapi metodenya tidak diizinkan. Yang kedua lebih
+// benar, dan lebih menolong pemanggil: ia membedakan "endpoint tidak ada" dari "endpoint
+// ada, metodenya salah".
+func TestOnlyPutIsRegistered2(t *testing.T) {
 	p := newTestServer2(t)
 
-	for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodDelete} {
+	for _, method := range []string{http.MethodPatch, http.MethodDelete} {
 		t.Run(method, func(t *testing.T) {
 			response, _ := p.call(t, method, "/api/master/status-progres-2/1", "ASM",
 				`{"nama":"X","id_induk":"01"}`)
-			require.Equal(t, http.StatusNotFound, response.StatusCode)
+			require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
 		})
 	}
+}
+
+// Penyuntingan menjawab 200 dengan baris tersimpannya, termasuk nama induk yang
+// disalin ulang server bila induknya berpindah.
+func TestUpdate2ReturnsStoredRow(t *testing.T) {
+	p := newTestServer2(t)
+
+	response, content := p.call(t, http.MethodPut, "/api/master/status-progres-2/1", "ASM",
+		`{"nama":"  NAMA SETELAH DIUBAH  ","id_induk":"03"}`)
+	require.Equal(t, http.StatusOK, response.StatusCode, "200, bukan 201 — barisnya sudah ada")
+	require.Equal(t, "ASM", content["portal"])
+
+	saved, isObject := content["status_progres_2"].(map[string]any)
+	require.True(t, isObject)
+	require.Equal(t, "1", saved["id"], "ID tidak pernah berubah")
+	require.Equal(t, "NAMA SETELAH DIUBAH", saved["nama"], "isian dipangkas lebih dulu")
+	require.Equal(t, "03", saved["id_induk"])
+	require.Equal(t, "MENUNGGU JADWAL SURVEI", saved["nama_induk"],
+		"nama induk disalin ulang dari induk BARU, bukan dibawa dari layar")
+
+	// Perubahannya benar-benar tersimpan.
+	_, listContent := p.call(t, http.MethodGet, "/api/master/status-progres-2", "ASM", "")
+	list := listContent["status_progres_2"].([]any)
+	first := list[0].(map[string]any)
+	require.Equal(t, "NAMA SETELAH DIUBAH", first["nama"])
+}
+
+// Baris yang tidak ada dijawab 404 — bukan diam-diam berhasil.
+func TestUpdate2ReportsMissingRow(t *testing.T) {
+	p := newTestServer2(t)
+
+	response, content := p.call(t, http.MethodPut, "/api/master/status-progres-2/9999", "ASM",
+		`{"nama":"APA SAJA","id_induk":"01"}`)
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Equal(t, masterstatusprogreshttp.CodeNotFound, content["kode"])
+}
+
+// Induk baru yang tidak ada dijawab 422 pada isian `id_induk`, sama seperti jalur tambah.
+func TestUpdate2RejectsMissingParent(t *testing.T) {
+	p := newTestServer2(t)
+
+	response, content := p.call(t, http.MethodPut, "/api/master/status-progres-2/1", "ASM",
+		`{"nama":"APA SAJA","id_induk":"99"}`)
+	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
+
+	detail := content["detail"].([]any)
+	require.Len(t, detail, 1)
+	require.Equal(t, "id_induk", detail[0].(map[string]any)["kolom"])
+}
+
+// Jalur ubah berada di balik sesi dan menuntut portal, sama seperti jalur lainnya.
+func TestUpdate2RequiresSessionAndPortal(t *testing.T) {
+	p := newTestServer2(t)
+	body := `{"nama":"X","id_induk":"01"}`
+
+	noToken := *p
+	noToken.token = ""
+	response, _ := noToken.call(t, http.MethodPut, "/api/master/status-progres-2/1", "ASM", body)
+	require.Equal(t, http.StatusUnauthorized, response.StatusCode)
+
+	response, _ = p.call(t, http.MethodPut, "/api/master/status-progres-2/1", "", body)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+	response, _ = p.call(t, http.MethodPut, "/api/master/status-progres-2/1", "SMAS", body)
+	require.GreaterOrEqual(t, response.StatusCode, 400)
+}
+
+// Portal lain TIDAK terpengaruh oleh penyuntingan di portal ini.
+//
+// Inti `R-20`: kegagalannya tidak terlihat sebagai galat — yang salah hanya milik siapa
+// data itu.
+func TestUpdate2DoesNotLeakAcrossPortals(t *testing.T) {
+	p := newTestServer2(t)
+
+	response, _ := p.call(t, http.MethodPut, "/api/master/status-progres-2/1", "ASM",
+		`{"nama":"DIUBAH DI ASM","id_induk":"01"}`)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	_, content := p.call(t, http.MethodGet, "/api/master/status-progres-2", "ASI", "")
+	require.Empty(t, content["status_progres_2"], "ASI tetap kosong")
 }

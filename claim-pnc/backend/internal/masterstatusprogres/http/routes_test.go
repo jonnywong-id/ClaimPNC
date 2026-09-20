@@ -204,14 +204,14 @@ func TestWithoutPortalRejected(t *testing.T) {
 
 	t.Run("menambah", func(t *testing.T) {
 		response, content := p.call(t, http.MethodPost, "/api/master/status-progres-1", "",
-			`{"nama":"UJI","kode_posisi":"002"}`)
+			`{"nama":"UJI","kode_posisi":"REGISTER"}`)
 		require.Equal(t, http.StatusBadRequest, response.StatusCode)
 		require.Equal(t, portalhttp.CodeNotStated, content["kode"])
 	})
 
 	t.Run("mengubah", func(t *testing.T) {
 		response, content := p.call(t, http.MethodPut, "/api/master/status-progres-1/01", "",
-			`{"nama":"UJI","kode_posisi":"002"}`)
+			`{"nama":"UJI","kode_posisi":"REGISTER"}`)
 		require.Equal(t, http.StatusBadRequest, response.StatusCode)
 		require.Equal(t, portalhttp.CodeNotStated, content["kode"])
 	})
@@ -257,7 +257,7 @@ func TestListNamesAnsweringPortal(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "01", first["id"])
 	require.Equal(t, "DOKUMEN DITERIMA", first["nama"])
-	require.Equal(t, "002", first["kode_posisi"])
+	require.Equal(t, "REGISTER", first["kode_posisi"])
 	require.Equal(t, "REGISTER", first["nama_posisi"], "label dikirim bersama kodenya")
 }
 
@@ -286,7 +286,7 @@ func TestCreateReturnsSavedRow(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPost, "/api/master/status-progres-1", "ASI",
-		`{"nama":"MENUNGGU BERKAS","kode_posisi":"004"}`)
+		`{"nama":"MENUNGGU BERKAS","kode_posisi":"SURVEY"}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	rows, ok := content["status_progres"].(map[string]any)
@@ -331,7 +331,7 @@ func TestUpdateExistingRow(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPut, "/api/master/status-progres-1/03", "ASM",
-		`{"nama":"SURVEI DIJADWALKAN","kode_posisi":"006"}`)
+		`{"nama":"SURVEI DIJADWALKAN","kode_posisi":"KOMITE"}`)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	rows, ok := content["status_progres"].(map[string]any)
@@ -345,7 +345,7 @@ func TestUpdateMissingRow(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPut, "/api/master/status-progres-1/99", "ASM",
-		`{"nama":"APA SAJA","kode_posisi":"002"}`)
+		`{"nama":"APA SAJA","kode_posisi":"REGISTER"}`)
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 	require.Equal(t, masterstatusprogreshttp.CodeNotFound, content["kode"])
 }
@@ -356,7 +356,7 @@ func TestUnknownFieldRejected(t *testing.T) {
 	p := newTestServer(t)
 
 	response, content := p.call(t, http.MethodPost, "/api/master/status-progres-1", "ASM",
-		`{"nama":"UJI","kode_posisi":"002","namaa":"salah ketik"}`)
+		`{"nama":"UJI","kode_posisi":"REGISTER","namaa":"salah ketik"}`)
 	require.Equal(t, http.StatusBadRequest, response.StatusCode)
 	require.Equal(t, masterstatusprogreshttp.CodeMalformedRequest, content["kode"])
 }
@@ -380,12 +380,13 @@ func TestPositionListDoesNotRequirePortal(t *testing.T) {
 
 	position, ok := content["posisi"].([]any)
 	require.True(t, ok)
-	require.Len(t, position, 4)
+	// Sembilan BARIS, delapan nilai berbeda: "All" memang terulang di layar lama.
+	require.Len(t, position, 9)
 
 	first, ok := position[0].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "002", first["kode"])
-	require.Equal(t, "REGISTER", first["nama"])
+	require.Equal(t, "All", first["kode"])
+	require.Equal(t, "All", first["nama"])
 }
 
 // Tetapi ia tetap berada di balik sesi.

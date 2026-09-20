@@ -543,3 +543,814 @@ penangkal adalah membaca rantainya sampai ujung.
 - **Menambah layar baru tetap menuntut satu baris** di `frontend/src/app/menu/registry.ts`. Ejaan
   `MENU_PROGRAM`-nya dicocokkan persis, termasuk huruf besar-kecilnya — untuk modul ini
   `StatusProgress2`, yang sudah ada di `M_MENU_APLIKASI_PNC` dengan `MENU_ID` 24.
+
+## Tambahan 2026-09-20 — paginasi, ID induk, lalu penyuntingan
+
+Tiga umpan balik Work Owner atas layar yang sudah dinyatakan selesai. Tidak ada skill yang
+dipanggil; ketiganya adalah koreksi terhadap bukti, bukan keputusan rancangan baru.
+
+### Kesalahan keenam — mencatat "utang" untuk kemampuan yang sudah ada
+
+| Kesalahan | Bagaimana ketahuan | Perbaikan |
+|---|---|---|
+| Menulis *"DataTable belum punya paginasi"* di dokumen, lalu melanjutkan | Work Owner bertanya kenapa layarnya tidak berhalaman. `DataTable` **sudah** punya prop `pageSize`, dan dua layar lain sudah memakainya | satu prop: `pageSize={15}`, angkanya dari `pyPageSizeOther` pada section Pega |
+
+> Pelajarannya: **"dicatat sebagai utang" adalah kalimat yang harus dicurigai.** Ia terdengar
+> bertanggung jawab, dan justru karena itu ia lolos tanpa diperiksa. Yang benar: sebelum
+> menuliskannya, baca komponennya.
+
+### Kesalahan ketujuh — kesalahan kolom yang ketiga pada modul yang sama
+
+ID induk ditempelkan di sebelah nama induk (`LAPORAN AWAL 001`). Pega mengikat kolom itu ke
+`.City` **saja**. Ini menyusul dua kesalahan kolom sebelumnya — urutan tertukar dan kolom `Tipe`
+yang tidak ada — sehingga polanya tidak lagi dapat disebut kebetulan.
+
+Ketiganya punya akar yang sama: **membaca kueri untuk menentukan tampilan.** Kueri memberitahu
+data apa yang tersedia; ia tidak memberitahu data mana yang digambar.
+
+> Aturan yang dipakai sejak sekarang: **satu kolom hanya boleh digambar bila ada `<rowdata>` yang
+> mengikatnya ke properti baris.** Kolom yang hanya muncul di klausa `SELECT` bukan kolom layar.
+
+### Teknik: memisahkan "apa yang terlihat" dari "apa yang terjadi"
+
+Dipakai untuk menjawab apakah tombol Ubah perlu direplikasi. `UpdateStatusProgress2_sql`
+**terlihat** menyunting, tetapi tiga bukti yang berdiri sendiri membuktikan ia tidak menyentuh
+tabel master: tabelnya lain, page sumbernya hanya muncul di berkas SQL itu sendiri, dan page
+penyaringnya hanya diisi layar lain.
+
+Yang layak direplikasi adalah **hasil yang teramati**, bukan jalur yang menghasilkannya —
+terutama ketika jalur itu, pada keadaan tertentu, akan menimpa catatan progres sebuah klaim.
+
+### Keputusan yang dibalik, dan kenapa itu benar
+
+Work Owner mula-mula memilih tidak menambahkan penyuntingan, lalu beberapa saat kemudian
+memintanya. Pertanyaan pertama adalah *"apakah mereplikasi tombol Pega"* — jawabannya tidak.
+Pertanyaan kedua *"apakah baris yang salah ketik dapat diperbaiki"* — jawabannya harus bisa,
+karena tombol hapus pun tidak ada.
+
+Yang dijaga saat membangunnya: ia dinyatakan sebagai **perilaku baru** di lima tempat — doc
+comment seam, form, layar, `catatan-pengembangan.md` §16.13, dan `keputusan-implementasi.md`
+§17.2 — sehingga selisihnya pada gerbang 1 ditemukan sebagai hal yang sudah tertulis, bukan
+sebagai kejutan (`D-54`).
+
+### Satu uji yang harapannya dibalik, dan itu bukan kelonggaran
+
+`TestNoEditRoute2Exists` memastikan `PUT` dijawab 404. Setelah rutenya ada, chi menjawab **405** —
+dan 405 lebih benar: jalurnya ada, metodenyalah yang tidak dilayani. Ujinya diganti menjadi
+`TestOnlyPutIsRegistered2` yang menjaga hal yang masih berlaku: **`DELETE` tetap tidak dilayani.**
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-19 (Master Penolakan Klaim)
+
+## Ringkasan
+
+| | |
+|---|---|
+| Pekerjaan | Modul Master Penolakan Klaim — dua master pada satu layar (MENU_ID 25) |
+| Skill yang **dipanggil** | **tidak ada** |
+| Teknik skill yang dipakai **tanpa memanggilnya** | `grilling` · `domain-modeling` · `codebase-design` |
+| Perkakas lain | `AskUserQuestion` untuk empat pertanyaan konfirmasi |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Tiga skill Matt Pocock terpasang dan relevan pada paruh kedua sesi — `tdd`, `code-review`,
+`codebase-design`. Tidak satu pun dipanggil, dan alasannya sama untuk ketiganya: **pekerjaannya
+sudah punya cetakan yang lebih ketat daripada yang skill itu tawarkan.**
+
+| Skill | Kenapa tidak dipanggil |
+|---|---|
+| `codebase-design` | Batas modul sudah ditetapkan `README.md` §"Aturan susunan yang mengikat" dan dicontohkan tiga modul master sebelumnya. Yang dibutuhkan bukan merancang batas baru melainkan **mengikuti batas yang sudah ada** — dan satu-satunya pertanyaan rancangan yang benar-benar baru (satu seam untuk dua tabel, atau dua) dijawab oleh **bukti**: procedure lama memanggil keduanya dalam satu langkah |
+| `tdd` | Urutannya memang uji-lebih-dulu untuk perbaikan duplikasi induk — uji `TestChoosingExistingParentDoesNotCreateDuplicateParent` ditulis sebagai pernyataan aturan sebelum adapter memori selesai. Tetapi itu disiplin yang sudah tertulis di `14-TESTING-STRATEGY.md` §3.2, bukan sesuatu yang perlu dimuat ulang |
+| `code-review` | Sesi ini menulis modul baru, bukan meninjau perubahan orang lain. Yang ditinjau — `masterautoclaim` milik sesi lain — justru **tidak boleh** disentuh (Isolasi Protektif) |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+### `grilling` — menekan premis sampai patah, sebelum menulis kode
+
+Dipakai pada empat premis. **Tiga di antaranya patah**, dan ketiganya akan menghasilkan kode yang
+salah bila diterima apa adanya:
+
+| Premis awal | Ditekan dengan | Hasil |
+|---|---|---|
+| "Harness ini adalah layarnya" | membaca `pyUsage` dan `pyMemo`-nya | **patah** — ia cangkang; isinya dua lapis lebih dalam di `BrowseNoteRejectClaim` |
+| "Grid menyaring `STATUS='0'`, seperti tertulis di activity-nya" | membaca `pyStepsPreCondition` langkah itu | **patah** — berprasyarat `Param.master=="1"`, yang layar ini tidak kirim |
+| "Layar ini mengelola satu master" | menghitung kemunculan nama page dan tombol | **patah** — dua master, dua tombol, satu `FlagASO` |
+| "Persetujuan diisi di layar ini" | mencari siapa yang memakai `Sec_PenolakanKlaimChecker` | **patah** — milik `UserInbox_Harness`, MENU_ID 58 |
+
+Yang membuat teknik ini bekerja di sini bukan kecurigaan umum melainkan satu kebiasaan: **setiap
+kali sebuah activity tampak melakukan sesuatu, precondition-nya dibaca lebih dulu.** Premis kedua
+hanya patah karena itu.
+
+### `domain-modeling` — menolak alias yang menyesatkan
+
+`BrowseStatusPenolakanKlaim2-SQL.xml` mengaliaskan kedelapan kolomnya ke nama yang tidak
+mencerminkan isi sama sekali — bentuk paling parah dari utang teknis §4.2 yang sudah dikenal:
+
+```
+NOTE_ST      AS "City"            nama INDUK, bukan nama kota
+NOTE_ND      AS "CityID"          nama BARIS INI, bukan kode kota
+ID_ND        AS "District"        kunci baris, bukan kabupaten
+USER_INPUT   AS "UserTeknis"      pengaju, bukan PIC Teknik
+NOTEAPPROVED AS "NoteKasir"       tidak ada urusan dengan kasir
+<derivasi>   AS "AnaylstRemarks"  bukan catatan analis — dan salah eja
+```
+
+`City`/`CityID` **tidak berpasangan**, persis seperti pada Master Status Progres 2. Aturan yang
+dipegang: **yang dipetakan adalah KOLOMNYA, bukan aliasnya.** Aliasnya dicatat di doc comment
+sebagai peringatan, tidak pernah dipakai sebagai petunjuk arti.
+
+### `codebase-design` — seam dibenarkan bukti, bukan simetri
+
+Satu pertanyaan rancangan yang benar-benar baru: dua tabel Penolakan Klaim dilayani satu seam atau
+dua? Simetri dengan Master Status Progres menyarankan **dua** (di sana tingkat 1 dan 2 punya seam
+masing-masing). Buktinya menyarankan **satu**:
+
+- `Activity/InsertMasterPenolakanNoteKlaim` memanggil `MasterPenolakanKlaim1` lalu langsung
+  memakai ID hasilnya untuk `MasterPenolakanKlaim2` — satu langkah, bukan dua;
+- induk baru **harus lahir bersama anaknya**, kalau tidak ia baris menggantung — persis cacat yang
+  sedang diperbaiki;
+- memecahnya menuntut `*sql.Tx` bocor ke luar repo agar keduanya sebungkus transaksi.
+
+Bukti menang. Yang berbeda dari Master Status Progres bukan kelalaian: di sana kedua tingkat punya
+**layar sendiri-sendiri**, di sini keduanya satu layar.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+Tiga, seluruhnya tertangkap sebelum masuk ke kode yang dijalankan:
+
+| # | Kesalahan | Yang menangkapnya |
+|---|---|---|
+| 1 | Menulis penyaring `WHERE STATUS='0'` ke dalam kueri daftar | Membaca `pyStepsPreCondition` — sesuatu yang belum saya lakukan saat pertama membaca activity-nya |
+| 2 | Asersi uji "kueri tidak boleh memuat APPROVED" | Kolom `NOTEAPPROVED` dan `TANGGAL_APPROVE` memang memuat kata itu. Uji gagal, asersinya dipersempit ke literal bertanda kutip |
+| 3 | Menyimpulkan port 8080 dipegang instans aplikasi lain | Respons `HTTP 403` dengan header `Server: squid/5.5` — yang memegangnya proxy korporat |
+
+Kesalahan 3 layak dicatat karena kesimpulannya **masuk akal dan salah**: "port terpakai" saat
+mengembangkan aplikasi web hampir selalu berarti instans lain. Yang mengoreksinya bukan penalaran
+ulang melainkan **membaca respons mentahnya**.
+
+## Satu hal yang tidak saya kerjakan, dan itu disengaja
+
+`internal/masterautoclaim/` muncul di working tree selama sesi berjalan dan **tidak dapat
+dikompilasi** (`undefined: LookupRepo`). Ia bukan buatan sesi ini. Memperbaikinya akan melanggar
+Isolasi Protektif dan menabrak sesi yang sedang menulisnya — `cmd/claimpnc/check.go` bahkan
+disunting dari luar di tengah sesi.
+
+Yang dikerjakan: menjalankan verifikasi dengan **mengecualikan** paket itu, lalu melaporkannya.
+Membiarkan `go build ./...` gagal tanpa menyebutkannya akan menyerahkan kejutannya ke orang
+berikutnya.
+
+## Catatan untuk sesi berikutnya
+
+Modul berikutnya yang paling erat hubungannya adalah **Inbox Manager** (MENU_ID 58,
+`UserInbox_Harness`) — di sanalah persetujuan Penolakan Klaim benar-benar dikerjakan, lewat
+`Sec_PenolakanKlaimChecker` dan `RDB List/UpdateStatusPenolakanKlaim2-SQL.xml`. Seluruh bahannya
+sudah terbaca sesi ini:
+
+- kolom yang ditulisnya: `STATUS`, `APPROVEBY`, `TANGGAL_APPROVE`, `NOTEAPPROVED`;
+- penyaringnya: `WHERE STATUS='0'` — di sanalah `Param.master=="1"` benar-benar dikirim;
+- pencacahnya: `RDB List/CountCheckerRejectNotes-SQL.xml`.
+
+Satu hal yang perlu diputuskan sebelum modul itu dibangun: **siapa yang boleh menyetujui.**
+`D-59` menetapkan satuan izin adalah menu tanpa pemisahan tugas formal, sehingga orang yang
+mengajukan dapat pula menyetujui bila ia punya kedua menu itu.
+
+---
+
+# Sesi kesebelas — Master Auto Claim (2026-09-19)
+
+## Ringkasan
+
+| | |
+|---|---|
+| Permintaan | tambahkan modul **Master Auto Claim**, dengan `Harness/AutoKlaim-Harness.xml` sebagai acuan |
+| Skill Matt Pocock yang dipanggil | **tidak ada** |
+| Skill Claude Code yang dipanggil | **tidak ada** |
+| Perkakas yang dipakai | `AskUserQuestion` · dua skrip pembaca XML Pega yang dibuat sesi ini |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Alasannya sama dengan beberapa sesi terakhir, dan tetap berlaku:
+
+| Skill | Kenapa tidak |
+|---|---|
+| `grilling` | Pertanyaannya sudah **terjawab oleh rule-nya sendiri**. Yang tersisa adalah empat keputusan bisnis, dan itu diajukan langsung ke Work Owner lewat `AskUserQuestion` — bukan digali lewat ronde pertanyaan |
+| `domain-modeling` | Istilah barunya nol. `Sumber Bisnis`, `Client`, `Bank`, dan `Komite` semuanya sudah ada di `CONTEXT.md` atau di modul yang sudah dibangun |
+| `codebase-design` | Batas modulnya sudah ditentukan lima modul sebelumnya. Yang dikerjakan adalah **mengikuti** pola itu, bukan merancang ulang |
+| `tdd` · `code-review` · `diagnosing-bugs` | Tidak diminta, dan pola ujinya sudah mapan di repo ini |
+
+## Perkakas yang dibuat sendiri, dan kenapa `grep` tidak memadai
+
+Harness-nya 291 KiB dan seluruh isinya satu pohon XML dengan `rowdata` bersarang. Tiga kali
+pembacaan dengan regex menghasilkan jawaban yang **salah**, dan ketiganya baru ketahuan setelah
+dibandingkan dengan pembacaan yang benar:
+
+| Percobaan | Kenapa gagal |
+|---|---|
+| `grep -oE` atas nama atribut | Pega menyimpan nilainya sebagai **elemen**, bukan atribut — nol keluaran |
+| Regex atas `<rowdata>` | `rowdata` bersarang sampai empat tingkat; langkah aktivitas dan parameter UI tercampur jadi satu |
+| Membaca `pyStepsPreCondition` berurutan | urutan elemen di dalam satu `rowdata` **tidak dijamin**, sehingga prasyarat menempel ke langkah yang salah |
+
+Yang dipakai akhirnya: dua skrip `xml.etree.ElementTree` di scratchpad —
+satu untuk langkah aktivitas beserta prasyarat dan aksinya, satu untuk langkah **bersarang**
+(badan perulangan `pxResults`). Keduanya menelusuri pohon, bukan teks, sehingga sarangnya tidak
+pernah tercampur.
+
+Satu hal yang hanya terbaca lewat pembacaan pohon: **kode aksi prasyarat**. Nilai `2`/`3`/`6`
+pada `pyStepsPreCondParamsWhenTrue`/`WhenFalse` berarti *continue* / *skip step* / *exit
+activity* — dan tanpa memetakannya, langkah 5 pada `InsertMstAutoClaim_act` terbaca **terbalik**:
+prasyaratnya `Param.err==""`, yang sekilas berarti "keluar bila tidak ada galat". Yang benar
+kebalikannya, dan itu hanya terlihat dari `WhenFalse = 6`.
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Membaca pemakaian HILIR untuk mengetahui arti sebuah tabel.** Nama modul dan nama kolom
+keduanya menyesatkan. Yang menjawab "apa sebenarnya ini" adalah satu kueri di modul **lain** —
+`GetReceiverClaimAsuransiKredit-SQL.xml` — yang mencocokkan `INISIALID` dengan
+`T_GENERAL.SOURCEOFBUSINESS`. Tanpa itu, modul ini akan dibangun sebagai "master klaim otomatis"
+dan seluruh penamaannya salah.
+
+**Menolak alias sebagai petunjuk arti.** Sepuluh alias tidak mencerminkan isi, dan satu di
+antaranya — `City` — berarti **kolom yang berbeda** saat dibaca dan saat ditulis. Yang dipetakan
+adalah kolomnya.
+
+**Menanyakan yang menyentuh uang, memutuskan sisanya.** Empat pertanyaan diajukan; belasan
+keputusan lain diambil sendiri dan dicatat. Pemisahnya satu: apakah jawabannya mengubah **nilai
+yang tersimpan** atau **siapa yang berwenang**.
+
+**Membuktikan kegagalan uji itu pre-existing, bukan mengklaimnya.** Tiga uji `AccountPage`
+gagal. Alih-alih menyebutnya "tidak berhubungan", keempat berkas sesi ini di-`git stash`, uji
+dijalankan ulang — tetap gagal — lalu `git stash pop`.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | Menulis `parsePercent` dengan `fmt.Sscanf` dan tiga lapis perbandingan teks untuk menambal kelemahannya | Dibaca ulang sebelum uji ditulis: Sscanf berhenti pada karakter tak cocok dan **tetap melapor sukses**. `strconv.ParseFloat` menyelesaikannya dalam satu baris |
+| 2 | Menerima `BankCode` dari layar untuk memeriksa "bank tidak diketik manual" | Kode itu **tidak pernah disimpan** — tabelnya tidak punya kolomnya. Akibatnya tombol Approve akan bergantung pada nilai yang tidak dapat dibaca kembali dari baris tersimpan |
+| 3 | Mengisi `ReceiverName: "-"` di handler supaya `Check` lolos pada jalur simpan | Akal-akalan yang menyembunyikan aturan sebenarnya. Diganti `CheckEditable` yang menyatakan aturannya apa adanya |
+| 4 | Menulis komentar Go berisi `'.',''` | `gofmt` mengubah dua petik tunggal berurutan menjadi tanda kutip tipografis, sehingga cuplikan SQL-nya tidak lagi sama dengan kuerinya |
+| 5 | Menyebut `ESCAPE '\'` di komentar Go tetapi **tidak menuliskannya di kueri** | Tertangkap saat membaca ulang berkas `.sql`. Oracle tidak punya karakter pelolos bawaan pada `LIKE`, jadi komentarnya benar dan kuerinya yang kurang |
+
+Kelima-limanya tertangkap **sebelum** uji ditulis atau sebelum commit — tidak satu pun lolos ke
+hasil akhir. Yang menangkapnya bukan perkakas melainkan membaca ulang apa yang baru saja ditulis.
+
+## Catatan untuk sesi berikutnya
+
+**`gofmt -l` tidak berguna di repo ini.** Seluruh berkas memakai CRLF sementara gofmt menuntut
+LF, sehingga ia menandai **setiap** berkas. Cara memisahkan temuan nyata dari derau akhiran
+baris: bandingkan sisi `+` dan `-` dari `gofmt -d` setelah keduanya dinormalkan. Dua temuan nyata
+pada sesi ini terungkap begitu — perataan blok `const` dan kutipan tipografis di atas.
+
+**Ada sesi lain yang menulis di repo ini bersamaan.** Modul `masterpenolakan` bertambah di
+working tree **selama** sesi ini berjalan, termasuk empat berkas dokumentasi. Akibatnya nomor bab
+bergeser: bab yang semula §17/§18 menjadi §18/§19. Sebelum menyunting dokumen, periksa ulang
+nomor bab terakhirnya — jangan mengandalkan yang terbaca di awal sesi.
+
+---
+
+# Sesi kedua belas — Master Pasal Kerugian (2026-09-19)
+
+## Ringkasan
+
+| | |
+|---|---|
+| **Skill yang dipanggil** | **tidak ada** |
+| **Skill yang ditimbang** | `mattpocock-skills:grilling`, `codebase-design`, `domain-modeling`, `tdd` |
+| **Alat bantu yang dibuat sendiri** | pembaca XML Pega berbasis `ElementTree` untuk membongkar section dan activity |
+| **Keputusan Work Owner yang dicatat** | 4 — seluruhnya "coba jalankan secara as is" |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Sama seperti sebelas sesi sebelumnya, dan alasannya tidak berubah: pekerjaan sesi ini adalah
+**membaca export Pega lalu menurunkannya menjadi modul**, dan tidak satu pun skill yang tersedia
+mengerjakan salah satu dari keduanya. Yang menentukan hasil di sini adalah ketelitian membaca XML,
+bukan teknik yang dapat dipinjam.
+
+Dua yang paling dekat, dan kenapa keduanya tetap tidak dipanggil:
+
+| Skill | Kenapa ditimbang | Kenapa tidak dipanggil |
+|---|---|---|
+| `grilling` | Ada empat hal yang memang perlu ditanyakan ke Work Owner | Pertanyaannya sudah terbentuk sendiri dari bukti — tiga di antaranya berupa pertentangan langsung dengan `D-66`, `R-16`, dan pola modul sebelumnya. Yang dibutuhkan hanyalah menyajikan pilihannya beserta akibat masing-masing, dan itu satu pemanggilan `AskUserQuestion` |
+| `domain-modeling` | Penamaan ulang `D-19` adalah inti modul ini | `CONTEXT.md` sudah memuat kosakata yang dipakai; yang dikerjakan adalah memetakan properti Pega ke istilah yang sudah ada, bukan menyusun istilah baru |
+
+`tdd` tidak dipanggil karena urutannya memang tidak dapat dibalik di sini: bentuk dokumen JSON
+harus dibaca dari export lebih dulu, dan uji yang ditulis sebelum bentuknya diketahui hanya akan
+menguji tebakan.
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Membaca XML Pega dengan parser, bukan dengan `grep`.** Section `BrowsePasalDeatailMaster` besarnya
+354 KiB dan seluruh isinya satu baris panjang; `grep` mengembalikan potongan yang tidak dapat
+ditelusuri ke elemen induknya. Yang dipakai adalah skrip Python `ElementTree` sekali pakai yang
+menelusuri `Embed-Display-Table-Cell` **dalam urutan dokumen**, lalu mencetak `pyValue`,
+`pyLabelFieldValue`, dan `pyFormat` tiap sel. Itu yang membuat pasangan label ↔ properti terbaca
+persis — termasuk yang terbalik dari dugaan wajar (`ISI PASAL` ↔ `.DESCRIPTION`).
+
+**Menolak menebak apa yang dapat dibaca.** Bentuk dokumen `JSONPASAL` mula-mula tampak harus
+ditebak. Ia tidak: `Function/GetPageJSONString-Function.xml` memuat `stepPage.getJSON(false)`, dan
+satu baris itu menentukan bahwa kuncinya adalah nama properti page apa adanya — yang kemudian
+dikonfirmasi silang oleh keempat `json_value` pada kueri lama.
+
+**Membuktikan kegagalan yang pre-existing, bukan mengasumsikannya.** Sesi ini menyentuh berkas
+bersama `api/client.ts`, sehingga "tiga uji `AccountPage` memang sudah gagal" tidak cukup
+diucapkan. Ia dibuktikan: `git stash` atas kedua berkas bersama, jalankan ulang, ketiganya tetap
+gagal, lalu `git stash pop`.
+
+**Menyatakan selisih di muka.** Tiga perbedaan terhadap Pega ditulis sebagai daftar tersendiri di
+README, di `keputusan-implementasi.md`, dan di doc comment — bukan ditemukan belakangan sebagai
+kejutan pada uji kesetaraan gerbang 1.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 1 | `ls -R internal \| head -200` dipakai untuk memetakan modul yang ada; hasilnya terpotong dan saya menyimpulkan `masterbengkel` tidak ada | `go build` berhasil atas kode yang mengimpornya | Jangan memakai keluaran yang **sengaja dipotong** sebagai dasar kesimpulan tentang kelengkapan |
+| 2 | `fakeRow.Scan` menulis `return assign(...)` di dalam perulangan, sehingga hanya kolom pertama terisi | empat uji gagal sekaligus dengan nilai kosong | `return` di dalam perulangan yang seharusnya mengisi seluruh elemen — selalu periksa ulang bahwa loop benar-benar berjalan sampai habis |
+| 3 | Uji menuntut **nol** permintaan jaringan sebelum portal dipilih | uji gagal: daftar Kategori memang sengaja tidak bergantung portal | Ekspektasi uji ikut salah bila ditulis sebelum perilakunya dipikirkan tuntas. Yang diperbaiki ekspektasinya, bukan kodenya |
+| 4 | Heredoc `bash` dipakai menambahkan bagian dokumen sepanjang ratusan baris; gagal terurai | pesan `unexpected EOF while looking for matching quote` | Untuk isi panjang, tulis ke berkas lebih dulu lalu `cat >>` — jangan menaruhnya di dalam perintah shell |
+
+Keempatnya ditemukan oleh perkakas — build, uji, dan shell — bukan oleh pembacaan ulang. Itu pola
+yang sama dengan sesi-sesi sebelumnya, dan alasan mengapa uji ditulis untuk hal yang **tidak
+terlihat di layar**.
+
+## Catatan untuk sesi berikutnya
+
+**Modul Master Bengkel muncul di working tree SELAMA sesi ini berjalan**, dikerjakan orang lain —
+`internal/masterbengkel/` sudah ada sejak awal sesi, dan `frontend/src/modules/master-bengkel/`
+menyusul di tengah sesi. Keduanya tidak disentuh (Isolasi Protektif), dan suntingan pada
+`App.tsx` serta `registry.ts` dilakukan dengan `Edit` atas potongan spesifik sehingga pekerjaan
+keduanya hidup berdampingan tanpa saling menimpa.
+
+Akibatnya nomor bab bergeser lagi: bab terakhir `catatan-pengembangan.md` menjadi §19 dan
+`keputusan-implementasi.md` menjadi §20. **Periksa ulang nomor bab terakhir sebelum menyunting** —
+jangan mengandalkan yang terbaca di awal sesi.
+
+**Satu hal yang menunggu basis data sungguhan:** pengikatan `JSONPASAL` yang lebih panjang dari
+4000 karakter. Itu satu-satunya bagian modul ini yang tidak dapat dibuktikan di lingkungan
+pengembangan, dan ia ditandai di banner `masterpasal.sql`.
+
+---
+
+# Sesi ketiga belas — Master Bengkel (2026-09-19)
+
+## Ringkasan
+
+| | |
+|---|---|
+| **Skill yang dipanggil** | **tidak ada** |
+| **Skill yang ditimbang** | `mattpocock-skills:grilling`, `codebase-design`, `domain-modeling`, `tdd`, `code-review` |
+| **Alat bantu yang dibuat sendiri** | dua pembaca XML Pega sekali pakai: pengekstrak caption dari indeks `pzIndexes`, dan pemindai prasyarat langkah activity |
+| **Keputusan Work Owner yang dicatat** | 4 — seluruhnya "coba jalankan secara as is" |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Sama seperti dua belas sesi sebelumnya, dan alasannya tidak berubah: pekerjaan sesi ini adalah
+**membaca export Pega lalu menurunkannya menjadi modul**, dan tidak satu pun skill yang tersedia
+mengerjakan salah satu dari keduanya. Yang menentukan hasil di sini adalah ketelitian membaca XML,
+bukan teknik yang dapat dipinjam.
+
+Lima yang ditimbang, dan kenapa kelimanya tetap tidak dipanggil:
+
+| Skill | Kenapa ditimbang | Kenapa tidak dipanggil |
+|---|---|---|
+| `grilling` | Empat hal memang perlu ditanyakan ke Work Owner, dan salah satunya (jalur simpan) menentukan seluruh bentuk modul | Pertanyaannya sudah terbentuk sendiri dari bukti: dua tabel untuk satu master, badan fungsi JSON yang hilang, operator ber-kata-sandi tetap, dan rule persetujuan yang tidak ada di export. Yang dibutuhkan hanyalah menyajikan pilihannya beserta akibat masing-masing — satu pemanggilan `AskUserQuestion` |
+| `codebase-design` | Modul ini punya **tiga** seam, satu lebih banyak dari modul master mana pun sebelumnya (`Repo`, `LookupRepo`, `IDSource`) | Kosakatanya sudah terpakai di `04-FUTURE-ARCHITECTURE.md`, dan pola tiga-seam-satu-`Store` sudah ada preseden langsungnya di `masterautoclaim`. Yang dikerjakan adalah mengikuti pola yang sudah disetujui, bukan merancang batas baru |
+| `domain-modeling` | Empat puluh kolom, dan **tiga** di antaranya berarti ganda | `CONTEXT.md` sudah memuat kosakata yang dipakai. Yang dikerjakan adalah memetakan kolom Pega ke istilah yang mencerminkan isinya, dan kriterianya sudah ditetapkan `D-19` — bukan menyusun istilah baru |
+| `tdd` | Aturan validasinya banyak dan berlapis (wajib bersyarat, persentase, keunikan) | Urutannya tidak dapat dibalik: aturan mana yang berlaku baru diketahui setelah prasyarat langkah activity dibaca. Uji yang ditulis sebelum itu hanya akan menguji tebakan. Ujinya tetap ditulis berdampingan dengan kode, 54 di backend dan 16 di frontend |
+| `code-review` | Modul ini menyentuh `main.go` yang sedang disunting sesi lain | Yang dibutuhkan bukan tinjauan terhadap standar melainkan memastikan tidak ada pekerjaan pihak lain yang tertimpa, dan itu dijawab `git status` — bukan skill |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Menemukan bahwa harness-nya cangkang, bukan layar.** `Harness/BengkelHE-Harness.xml` besarnya
+282 KiB, dan pencarian pertama untuk `NAMA_BENGKEL` di dalamnya menghasilkan **nol**. Yang
+dilakukan berikutnya bukan menyerah pada harness, melainkan memindai seluruh identifier
+ber-substring "bengkel" di dalamnya — yang mengungkap satu-satunya kaitan nyata: section
+`MasterBengkelHE`. Dari sana empat lapis ditelusuri sampai ketemu ketiga tab dan formnya.
+
+**Membaca caption dari indeks rule, bukan dari layout.** Empat percobaan pertama mengekstrak label
+form gagal: format export menyimpan referensi rule pada `pzIndexes`, bukan sebagai atribut layout,
+sehingga tidak ada `pyCaption` yang dapat dibaca berpasangan dengan propertinya. Yang akhirnya
+berhasil adalah membaca `pxRuleFamilyName` berawalan `PYCAPTION!` beserta `pyRuleName` bertipe
+`Rule-Obj-Property` dari blok `rowdata` yang sama — dan dari sana ke-33 caption terbaca utuh.
+
+**Membuktikan ketiadaan, bukan mengasumsikannya.** Nilai sah tujuh penanda status tidak diketahui.
+Alih-alih menulis "tidak ada di export" berdasarkan tidak-menemukannya, dijalankan pemindaian
+menyeluruh atas `Activity/`, `When/`, `RDB List/`, dan seluruh section bengkel untuk **setiap
+bentuk perbandingan** terhadap ketujuh kolom itu. Hasilnya nol, dan barulah kalimat "nol bukti"
+layak ditulis. Pemindaian yang sama justru menemukan satu-satunya nilai yang **memang** dapat
+dibaca — `Local.STS_REKANAN=='0'` di dalam `pyStepsPreCondParamsWhen`, tempat yang tidak terbaca
+oleh pencarian atas `pyStepsPreCondition`.
+
+**Menolak menebak apa yang tidak dapat dibaca.** Berbeda dari sesi sebelumnya yang berhasil
+membaca `stepPage.getJSON(false)` di dalam `GetPageJSONString-Function.xml`, kali ini berkas yang
+**sama** hanya memuat tanda tangannya — badan fungsinya tidak ikut. Itulah yang menentukan bahwa
+jalur simpan JSON tidak dapat dikerjakan, dan keputusannya berdiri di atas ketiadaan yang
+terbukti, bukan di atas preferensi.
+
+**Memperlakukan kegagalan uji sebagai temuan, bukan sebagai gangguan.** Enam uji frontend gagal
+dengan *"Found multiple elements with the role button and name Approve"*. Perbaikan yang paling
+cepat adalah menyempitkan pencarian di uji. Yang dikerjakan adalah membaca kenapa ambiguitasnya
+ada — dan ia ada **di layar**, bukan di uji: dua kontrol berbeda diberi nama yang sama persis.
+Yang diperbaiki karena itu adalah UI-nya.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana tertangkap |
+|---|---|---|
+| 1 | Mengira `Section/MasterBengkelHE` memuat form, karena ia satu-satunya section yang dirujuk harness | Pemindaian propertinya menghasilkan nol kolom bengkel; formnya ternyata dua lapis lebih dalam |
+| 2 | Mengira `Section/ApprovalMasterBengkelHE` adalah tab keempat layar ini | Pencarian pemakainya menunjukkan ia dipakai `InboxManager_Sec` — layar yang sama sekali berbeda |
+| 3 | Menulis `TestInsertColumnCountMatchesArguments` memanggil `sampleWorkshop()` yang belum ada | Kompilasi uji gagal pada jalannya yang pertama |
+| 4 | Menamai tombol keputusan "Approve"/"Reject", sama persis dengan caption tab | Enam uji frontend gagal sekaligus; diperbaiki di UI, bukan di uji |
+| 5 | Meninggalkan parameter `call` yang tidak terpakai pada satu pemanggilan `defaultReply` | `tsc --noEmit` menandainya `TS6133` |
+
+Kelimanya tertangkap **sebelum** pekerjaan dinyatakan selesai. Yang menangkap tiga di antaranya
+adalah perkakas (kompilator, `tsc`, uji); dua sisanya tertangkap karena hasil pembacaan diperiksa
+ulang terhadap export alih-alih dipercaya.
+
+## Catatan untuk sesi berikutnya
+
+**Format section Pega punya dua tempat penyimpanan yang berbeda.** Modul-modul sebelumnya
+menemukan pasangan label ↔ properti di dalam `Embed-Display-Table-Cell`; section bengkel
+menyimpannya di indeks `pzIndexes` sebagai `PYCAPTION!<LABEL>` berdampingan dengan
+`Rule-Obj-Property`. Coba keduanya sebelum menyimpulkan sebuah section tidak memuat apa-apa.
+
+**Keluarga procedure `PEGA_M_*` berjumlah lima belas, dan seluruhnya berpola sama:** kode situs
+dari `M_SITE_DATABASE` + sequence, lalu `INSERT INTO <tabel>(ID, JSONDATA)`. Dua di antaranya
+sudah dikerjakan (`M_STS_CLAIM`, `M_BENGKEL_HE`) dan keduanya diputuskan sama. Modul berikutnya
+dari keluarga itu — panel, sparepart, supplier, surveyor, cause of loss — dapat mengikuti pola
+yang sama tanpa mengulang analisisnya, **asalkan** pertanyaan "tabel atau view" tetap ditanyakan
+ke DBA untuk masing-masing.
+
+**Ada sesi lain yang menulis di repo ini bersamaan.** Modul `masterpasal` bertambah di working
+tree **selama** sesi ini berjalan, dan `cmd/claimpnc/main.go` sempat tidak dapat dikompilasi
+karena perakitannya setengah jadi. Jangan memperbaiki atau mengembalikan pekerjaan pihak lain —
+tunggu, lalu bangun ulang. Nomor bab dokumentasi juga bergeser: periksa ulang nomor terakhirnya
+sebelum menyunting.
+
+---
+
+# Sesi keempat belas — Master Panel (2026-09-20)
+
+## Ringkasan
+
+| | |
+|---|---|
+| **Skill yang dipanggil** | **tidak ada** |
+| **Skill yang ditimbang** | `mattpocock-skills:grilling`, `codebase-design`, `domain-modeling`, `tdd`, `code-review` |
+| **Alat bantu yang dibuat sendiri** | tiga pembaca XML Pega sekali pakai: pengekstrak elemen ber-SQL dari rule RDB, pembaca `pyRequired` + `pyControlDisplayTitle` berpasangan dengan propertinya, dan pemindai `PropertiesName`/`PropertiesValue` pada activity |
+| **Keputusan Work Owner yang dicatat** | 2 — keduanya "Jalankan sebagai as is" |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Sama seperti tiga belas sesi sebelumnya, dan alasannya tidak berubah: pekerjaan sesi ini adalah
+**membaca export Pega lalu menurunkannya menjadi modul**, dan tidak satu pun skill yang tersedia
+mengerjakan salah satu dari keduanya.
+
+Lima yang ditimbang, dan kenapa kelimanya tetap tidak dipanggil:
+
+| Skill | Kenapa ditimbang | Kenapa tidak dipanggil |
+|---|---|---|
+| `grilling` | Dua hal memang perlu ditanyakan, dan yang pertama (nasib sub-tabel) menentukan seluruh bentuk modul — termasuk apakah repo-nya perlu transaksi sama sekali | Pertanyaannya sudah terbentuk sendiri dari bukti: tabel anak yang kolom keempatnya hanya muncul sebagai penyaring, dan sembilan dropdown yang daftar pilihannya tidak ikut di export. Yang dibutuhkan hanyalah menyajikan pilihannya beserta akibat masing-masing — satu pemanggilan `AskUserQuestion` |
+| `codebase-design` | Modul ini **aggregate pertama** di aplikasi ini: satu induk dengan koleksi anak, disimpan dan diganti sebagai satu kesatuan | Batasnya sudah ditentukan bentuk datanya, bukan oleh pilihan rancangan: baris anak tidak punya kunci sendiri, sehingga ia **tidak dapat** menjadi entitas berdiri sendiri. Yang tersisa adalah menaruh keduanya di balik satu `Repo` — keputusan yang tidak punya alternatif nyata |
+| `domain-modeling` | Satu nama (`STS_SISI`) memikul **dua** arti yang sama sekali berbeda, dan salah satunya alias | `CONTEXT.md` dan `D-19` sudah menetapkan kriterianya: pakai nama yang mencerminkan isi. Yang dikerjakan adalah menerapkannya, bukan menyusun kosakata baru |
+| `tdd` | Aturan validasi baris anak berlapis: wajib, sandi sah, dan kembar — ketiganya pada daftar yang panjangnya berubah-ubah | Urutannya tidak dapat dibalik: sandi sisi mana yang sah baru diketahui setelah `SetLokasiSisiPanel-Act` dan `GetSisiPanel-Act` dibaca dan **disilangkan**. Uji yang ditulis sebelum itu hanya menguji tebakan. Ujinya tetap ditulis berdampingan dengan kode — 63 di backend, 16 di frontend |
+| `code-review` | `main.go`, `App.tsx`, `types.ts`, dan `registry.ts` **sedang disunting sesi lain** saat sesi ini berjalan | Yang dibutuhkan bukan tinjauan terhadap standar melainkan memastikan tidak ada pekerjaan pihak lain yang tertimpa, dan itu dijawab `git status` dan `go build` — bukan skill |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Menyilangkan dua rule untuk memastikan satu daftar nilai.** Sandi sisi (`-`, `1`, `2`) tidak
+disimpulkan dari satu tempat. `SetLokasiSisiPanel-Act` menyusunnya sebagai daftar pilihan;
+`GetSisiPanel-Act` menerjemahkannya kembali menjadi label. Keduanya sepakat, dan kesepakatan itulah
+yang membuat daftarnya layak dipakai sebagai **aturan validasi** — berbeda dari kesembilan penanda
+`STS_*`, yang tidak punya satu pun sumber sehingga hanya boleh diperlakukan sebagai teks.
+
+**Menelusuri pemanggil untuk mengetahui arti sebuah kolom.** `NAMA` pada tabel anak tidak pernah
+dibaca di mana pun — ia hanya muncul sebagai penyaring pada satu kueri. Yang dilakukan bukan
+menebak artinya, melainkan mencari **siapa yang memanggil kueri itu**: lima section modul Grouping
+Sparepart HE, yang mengirimkan sebuah nama lokasi. Dari situ keputusan penulisannya punya dasar,
+dan — yang lebih penting — punya **cara dibantah** lewat `claimpnc -periksa`.
+
+**Memastikan `pyRequired` satu per satu, bukan menyimpulkan dari satu contoh.** Dua isian pertama
+yang diperiksa bertanda `pyRequired=true`, dan godaannya adalah menyimpulkan seluruhnya begitu.
+Kesepuluhnya diperiksa dengan pemindai yang membaca `pyRequired` berpasangan dengan
+`pyLabelFieldValue` — dan kesepuluhnya memang wajib, termasuk `EXCLUSION_C` yang artinya tidak
+diketahui sama sekali.
+
+**Membaca SQL dari elemen yang benar.** Empat percobaan pertama mengekstrak SQL dari rule RDB
+menghasilkan kosong: `<pySQL>` tidak ada di format ini. Yang berhasil adalah mencari elemen `py*`
+mana pun yang isinya memuat kata kunci SQL — yang mengungkap `<pyBrowseSQL>`, dan dari sana keenam
+kueri panel terbaca utuh.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 1 | **Menjalankan `go build` di latar bersamaan dengan menyunting `main.go`** | Build melaporkan `could not import claim-pnc/internal/masterpanel` padahal berkasnya sudah ada — ia membaca keadaan setengah jalan | Build yang berjalan bersamaan dengan penyuntingan tidak membuktikan apa pun. Diulang setelah seluruh berkas tertulis |
+| 2 | **Uji `TestDeleteOnlyOnTheChildTable` yang tidak membuktikan apa pun** | `"LOKASI_PANEL_HE"` berakhiran `"PANEL_HE"`, sehingga `NotContains(upperCase, "PANEL_HE\n")` selalu gagal — dan bila kebetulan lolos, ia lolos karena alasan yang salah | Uji yang memakai pencocokan substring atas nama yang saling berakhiran harus menguji **sasaran pernyataannya**, bukan ada-tidaknya nama |
+| 3 | **Nama aksesibel tombol hapus tersambung tanpa spasi** | Uji melaporkan nama sebenarnya: `"Hapuslokasi baris 1"` | Algoritma nama aksesibel **memangkas setiap simpul teks lalu menyambungnya tanpa pemisah**. Teks berkelas `sr-only` yang mengandalkan spasi di ujung tidak bekerja; `aria-label` eksplisit tidak punya kelemahan itu. **Ini cacat nyata pada komponen, bukan pada ujinya** — dan diperbaiki di komponennya |
+| 4 | **Memanggil `npx eslint`** | Project ini tidak memakai ESLint sama sekali; `package.json` hanya punya `typecheck` dan `test`. Perintahnya justru mengunduh ESLint 10 yang tidak dipakai siapa pun | Periksa `package.json` sebelum menjalankan perkakas yang "biasanya ada" |
+
+## Catatan untuk sesi berikutnya
+
+**Modul `mastersupplier` dikerjakan paralel di working tree yang sama sepanjang sesi ini.** Empat
+berkas bersama — `main.go`, `App.tsx`, `api/types.ts`, `app/menu/registry.ts` — disunting dua
+pihak. Tidak ada yang tertimpa, dan cara memastikannya: **menambahkan di akhir berkas**, lalu
+memeriksa `go build`, `npm run typecheck`, dan `git status` sesudahnya. Satu kegagalan build yang
+berasal dari pekerjaan paralel itu **tidak disentuh**, dan ia konvergen sendiri.
+
+Perlakuan yang sama dipakai untuk dokumen: bagian baru **ditambahkan di akhir**, bukan disisipkan
+di tengah, supaya penomorannya tidak bertabrakan dengan bagian yang sedang ditulis pihak lain.
+
+---
+
+# Sesi kelima belas — Master Supplier (2026-09-20)
+
+> Dikerjakan **paralel** dengan sesi keempat belas (Master Panel) di working tree yang sama.
+
+## Ringkasan
+
+| | |
+|---|---|
+| **Skill yang dipanggil** | **tidak ada** |
+| **Skill yang ditimbang** | `mattpocock-skills:grilling`, `codebase-design`, `domain-modeling`, `tdd`, `code-review` |
+| **Alat bantu yang dibuat sendiri** | empat pembaca XML Pega sekali pakai: pemindai sel layout (`pyValue` + `pyLabelFieldValue` + `pyFormat` + `pyRequired` + `pyEditOptions`), pembaca sumber dropdown (`pyListSource` + `pySourceName`), pemindai langkah activity (`pyStepsActivityName` + `pyStepsPreCondParamsWhen`), dan pembaca pasangan `PropertiesName`/`PropertiesValue` |
+| **Keputusan Work Owner yang dicatat** | 3 — ketiganya "Jalankan sebagai as is" |
+| **Cacat yang ditemukan uji** | 1 — nama field pelanggaran yang tidak dikenali klien bersama |
+
+## Kenapa tidak ada skill yang dipanggil
+
+Sama seperti empat belas sesi sebelumnya, dan alasannya tidak berubah: pekerjaan sesi ini adalah
+**membaca export Pega lalu menurunkannya menjadi modul**, dan tidak satu pun skill yang tersedia
+mengerjakan salah satu dari keduanya.
+
+Lima yang ditimbang, dan kenapa kelimanya tetap tidak dipanggil:
+
+| Skill | Kenapa ditimbang | Kenapa tidak dipanggil |
+|---|---|---|
+| `grilling` | Tiga hal memang perlu ditanyakan, dan yang pertama (bentuk penyimpanan) menentukan seluruh modul — ia bahkan **membalik** keputusan yang diambil Master Bengkel atas pertanyaan yang sama | Ketiga pertanyaannya sudah terbentuk sendiri dari bukti: tabel yang hanya tiga kolom, antrean persetujuan yang sisi pemutusnya tidak ada, dan lima dropdown yang daftarnya tidak ikut di export. Yang dibutuhkan hanyalah menyajikan pilihannya beserta akibat masing-masing — satu pemanggilan `AskUserQuestion` |
+| `codebase-design` | Modul ini punya **empat seam**, satu lebih banyak daripada modul master mana pun: `Repo`, `LookupRepo`, `ApprovalRepo`, dan `IDSource` | Batasnya ditentukan **kepemilikan proses**, bukan pilihan rancangan: antrean persetujuan dimiliki proses yang layarnya tidak ada, sehingga ia tidak dapat digabung ke `Repo`. Yang tersisa adalah menyatukan cara memilihnya lewat satu `Store` — keputusan yang tidak punya alternatif nyata bila keempatnya harus berasal dari koneksi entitas yang sama |
+| `domain-modeling` | Dua nama memikul arti yang bukan namanya: `NO_KLAIM` yang diisi **ID supplier**, dan kolom grid berlabel "JENIS SUPPLIER" yang isinya `.JENIS_STATUS_NOTE` | `CONTEXT.md` dan `D-19` sudah menetapkan kriterianya: pakai nama yang mencerminkan isi. Yang dikerjakan adalah menerapkannya — `SupplierID`, bukan `NoKlaim` — bukan menyusun kosakata baru |
+| `tdd` | Aturan penyimpanannya bercabang: dua jalur yang memperlakukan status aktif secara berbeda, dan salah satunya melewati persetujuan sama sekali | Urutannya tidak dapat dibalik: prasyarat mana yang berlaku baru diketahui setelah `CreateNewMasterSupplier_post` dan `EditMasterSupplier_post` dibaca dan **disilangkan**. Uji yang ditulis sebelum itu hanya menguji tebakan. Ujinya tetap ditulis berdampingan dengan kode — 57 di backend, 22 di frontend |
+| `code-review` | Empat berkas bersama **sedang disunting sesi lain** saat sesi ini berjalan | Yang dibutuhkan bukan tinjauan terhadap standar melainkan memastikan tidak ada pekerjaan pihak lain yang tertimpa, dan itu dijawab `git status`, `go build`, dan `tsc` — bukan skill |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Membaca kunci JSON dari kueri BACANYA, bukan dari fungsi penulisnya.** Ini teknik yang membalik
+keputusan modul ini terhadap Master Bengkel. Fungsi penulis dokumen (`@ASM.GetPageJSONString()`)
+tidak ada badannya di export — sama persis dengan keadaan di Master Bengkel, yang karena itu
+menolak menulis JSON. Yang berbeda: `GetDataEditMasterSupller-SQL.xml` **membaca kembali setiap
+kuncinya satu per satu**, sehingga kedua puluh lima nama kunci terbaca tanpa satu pun tebakan.
+
+Pelajarannya umum: ketika penulis sebuah dokumen tidak terbaca, **pembacanya** dapat memberi tahu
+hal yang sama.
+
+**Menyilangkan dua activity untuk memastikan sebuah turunan.** Hubungan `JENIS_STATUS` dan
+`SUPPLIER_HE` tidak disimpulkan dari satu tempat. `CreateNewMasterSupplier_post` step 7 menurunkan
+yang kedua dari yang pertama; `GetDataSupplier_pre` step 6.3 **membalik arahnya** saat memuat.
+Keduanya saling membalik, dan justru itulah yang membuktikan keduanya dua wajah dari satu hal —
+sekaligus mengungkap cacat pada yang pertama: ia hanya punya cabang "bila", tanpa cabang "selain
+itu".
+
+**Menghitung `pyRequired` dari sel layout, bukan dari daftar tag.** Percobaan pertama memindai
+seluruh `<pyRequired>` di berkas section dan menghasilkan 47 nilai `true`/`false` tanpa tahu milik
+isian yang mana — angka yang tidak dapat dipakai. Yang berhasil adalah memecah berkasnya pada
+`Embed-Display-Table-Cell` lebih dulu, lalu membaca `pyRequired` **berpasangan dengan `pyValue`**
+di dalam sel yang sama. Kelima belasnya terbaca dengan nama isiannya.
+
+**Mencari tabel sebuah kelas Pega lewat kueri yang memakainya.** Kelas `ASM-FW-GISFW-Int-BRANCH`
+tidak punya pemetaan tabel di export. Yang dilakukan bukan menebak nama tabelnya, melainkan mencari
+**kueri lain yang membaca nama cabang dari ID-nya** — `GetBranchName-SQL` dan tujuh rule
+`SearchKlaimBy*_RDB`, yang seluruhnya membaca `M_BRANCH` dengan kunci JSON `Name`. Itu sekaligus
+mengungkap bahwa penamaan kuncinya **berbeda** dari `M_SUPPLIER`: `Name`, bukan `NAMA`.
+
+**Membandingkan modul tetangga sebelum menyalin angkanya.** Lebar nomor urut ID di Master Bengkel
+sepuluh digit; godaannya adalah menyalinnya. `PEGA_M_SUPPLIER.prc:21` menyebut **sebelas**.
+Bedanya satu karakter, dan tidak mungkin terlihat tanpa membandingkannya — dijaga
+`TestSequenceWidthFollowsProcedure`.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 1 | **`ViolationDTO` memakai nama field `isian`** | Uji frontend "menyorot setiap isian yang ditolak server" gagal: layar menampilkan kotak galat umum alih-alih menyorot isiannya. Klien bersama hanya membaca `field` atau `kolom` | Nama yang **lebih tepat artinya** bukan nama yang benar bila ada kontrak bersama yang sudah menetapkannya. Periksa pembacanya, bukan hanya penulisnya. **Ini cacat nyata**, dan akibatnya besar: pada form lima belas isian wajib, pengguna tidak diberi tahu yang mana |
+| 2 | **Memecah klausa SELECT dengan memisahkan koma** | `TestReaderQueriesShareColumnOrder` melaporkan potongan `"JSON_VALUE(JSONDATA"` dan `"'$.NAMA')"` sebagai dua kolom terpisah | Setiap ekspresi `JSON_VALUE` memuat koma **di dalam tanda kurungnya sendiri**. Penggantinya satu regex beralternatif, dengan cabang JSON_VALUE lebih dulu supaya ia melahap seluruh ekspresinya |
+| 3 | **Meninggalkan asersi tautologi** `require.Equal(x, x)` | Terbaca saat membaca ulang berkas uji sebelum menyatakannya selesai | Uji yang selalu lulus lebih buruk daripada tidak ada uji: ia memberi rasa aman tanpa menjaga apa pun. Diganti asersi atas `RequestedBy`, `Reason`, dan bentuk `PROTEKSI_ID` |
+| 4 | **Mengandaikan portal tidak dikenal dijawab 404** | Uji melaporkan 400. `portalhttp.mapPortalError` memang memetakan `ErrNotFound` ke 400 dengan kode `portal_tidak_dikenal` | Status HTTP sebuah modul bersama dibaca dari **pemetanya**, bukan diandaikan dari artinya. Uji diperbaiki dan sekaligus diperkuat: kini ia memeriksa kodenya juga |
+| 5 | **Heredoc bash untuk menulis dokumen panjang** | Bash melaporkan `unexpected EOF while looking for matching` — dan berkasnya tidak tersentuh sama sekali | Teks panjang berisi tanda kutip, backtick, dan pipa tidak ditulis lewat shell. Penggantinya: tulis ke berkas sementara dengan alat tulis, lalu `cat >>` |
+
+## Catatan untuk sesi berikutnya
+
+**Syarat menaikkan `LookupPicker` ke `components/` kini TERPENUHI.**
+`master-bengkel/CityPicker.tsx` mencatat syaratnya sendiri: *"begitu ada modul KETIGA yang
+membutuhkan kotak cari–pilih, ketiganya dipindahkan sekaligus."* Modul ketiga itu adalah Master
+Supplier.
+
+Yang menahannya sekarang bukan lagi syarat itu melainkan **Isolasi Protektif** — menaikkannya
+menuntut menyunting dua modul master yang sudah selesai. Ia layak dijadwalkan Work Owner sebagai
+satu pekerjaan tersendiri.
+
+**Tiga kegagalan uji di `master-rekening/AccountPage.test.tsx` masih ada**, dan jumlahnya tidak
+bertambah sejak §17.11. Folder `master-rekening/` dan `components/` terbukti **bersih** di
+`git status`, jadi keduanya bukan berasal dari sesi ini maupun sesi paralelnya.
+
+**Bekerja paralel berhasil tanpa satu pun pekerjaan tertimpa.** Caranya dicatat di
+`catatan-pengembangan.md` §22.11, dan yang paling menentukan: **menambahkan di akhir berkas, dan
+membaca ulang tepat sebelum menyunting**. Dua suntingan memang gagal karena berkasnya sudah
+berubah — dan keduanya gagal dengan aman, bukan menimpa.
+
+## Tambahan pada sesi yang sama — paginasi sesuai Pega
+
+Diminta setelah modulnya selesai. Tidak ada skill yang dipanggil; yang dipakai satu teknik
+pembacaan export dan satu keputusan batas.
+
+**Menyurvei seluruh layar sebelum memilih angka.** Godaannya adalah membaca `pyPageSize` pada
+layar Supplier saja, menemukan `20`, lalu menjadikannya bawaan komponen bersama. Yang dilakukan
+sebaliknya: memindai **259 berkas** section dan harness yang memuat `pyPageSize`, lalu
+menghitung nilai efektifnya per layar. Hasilnya mengubah bentuk implementasinya — angkanya
+ternyata **20 pada tiga layar dan 15 pada lima layar**, sehingga ia tidak mungkin menjadi bawaan.
+
+Satu jebakan di dalamnya: `pyPageSize` sering bernilai `"Other"`, dan angkanya sebenarnya ada di
+`pyPageSizeOther`. Membaca tag pertama saja akan melaporkan delapan layar "tanpa ukuran".
+
+**Memilih batas perubahan, bukan hanya perilakunya.** Paginasi milik komponen bersama — itu
+alasan `DataTable` ada. Tetapi komponen itu dipakai sembilan layar yang sudah dinyatakan selesai,
+dan Isolasi Protektif melarang perilakunya berubah. Keduanya dipenuhi sekaligus lewat satu prop
+opsional yang bawaannya mempertahankan perilaku lama — dan yang menjaganya bukan niat melainkan
+uji yang diletakkan **di berkas uji komponen**, bukan di uji modul yang dilindungi.
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 6 | **Menambahkan bagian dokumen di akhir berkas tanpa memeriksa judul di atasnya** | Sesi paralel sudah menambahkan bagian `## 23`, sehingga `### 22.14` milik sesi ini mendarat **di dalamnya** dan terbaca seolah bagian dari sana | "Tambahkan di akhir" aman terhadap tabrakan tulis, tetapi **tidak** aman terhadap urutan. Pada berkas yang ditulis dua pihak, periksa judul terakhir lebih dulu — lalu sisipkan pada tempatnya, bukan di ujung |
+
+---
+
+# Sesi 2026-09-20 (lanjutan) — koreksi Master Status Progres 1
+
+Umpan balik Work Owner atas layar yang sudah dibangun: paginasi hilang, dan dropdown
+Posisi tidak selengkap Pega. Rinciannya di `catatan-pengembangan.md` §24 dan
+`keputusan-implementasi.md` §25.
+
+## Kenapa tidak ada skill yang dipanggil
+
+Diperiksa lebih dulu terhadap daftar skill yang terpasang, bukan dilewati begitu saja:
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `grilling` | Pekerjaannya **bukan mengambil keputusan baru**, melainkan memeriksa dua keluhan konkret terhadap export. Yang dibutuhkan bukti, bukan pertanyaan |
+| `domain-modeling` | Istilahnya sudah ada di `CONTEXT.md` dan tidak bertambah. Yang berubah **nilai**, bukan konsep |
+| `codebase-design` | Batas modul dan seam tidak tersentuh. Perbaikannya di dalam satu paket yang sudah ada |
+| `tdd` | Uji memang ditulis, tetapi mengikuti koreksi yang sudah terbukti dari export — bukan memandu rancangannya |
+| `diagnosing-bugs` | Kedua cacat **sudah ditunjuk Work Owner beserta bukti layarnya**. Tidak ada yang perlu dipersempit |
+
+Memanggil skill di sini akan menambah langkah tanpa menambah apa pun pada hasilnya.
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Memeriksa ikatan kendali, bukan hanya asal nilainya.** Inilah teknik yang *tidak* saya
+pakai saat membangun modulnya, dan ketiadaannya persis yang menyebabkan cacatnya. Yang
+benar: sebelum memakai sebuah daftar nilai, baca dulu `pyValue` dan `pyPrompt` sel yang
+memakainya. Keduanya menunjuk `.CaseID` yang sama — dan itu langsung menjawab pertanyaan
+"kode atau teks" tanpa perlu menebak.
+
+**Membedakan "tidak ditemukan" dari "tidak ada".** Kedelapan nilai dicari ke seluruh
+`Activity/`, `Section/`, `RDB List/`, dan `Data Transform/` sebelum menyimpulkan
+artefaknya hilang. Tanpa pencarian yang dituntaskan, "saya tidak menemukannya" mudah
+tersamar sebagai "ia tidak ada" — dan pada `R-16` keduanya berakibat sangat berbeda: yang
+pertama kelalaian saya, yang kedua kekurangan export yang harus ditagih ke Tim Pega.
+
+**Menerima tangkapan layar sebagai bukti, dengan batasnya disebut.** Karena artefaknya
+memang tidak ada, layar yang sedang berjalan adalah sumber terbaik yang tersedia. Yang
+dijaga: batas kesahihannya ditulis di kode, dan **dua hal yang tangkapan layar tidak dapat
+jawab** — apakah "All" boleh tersimpan, dan "PROCUREMENT" versus "PROCUREMENT/SUPPLIER" —
+diangkat sebagai pertanyaan, bukan diisi sendiri.
+
+**Menelusuri akibat perubahan nilai ke seluruh jalurnya.** Mengganti kode menjadi teks
+tampak seperti mengganti isi satu senarai. Yang ikut terseret ternyata `Input.Clean`:
+`strings.ToUpper` benar untuk kode angka, dan diam-diam salah untuk `"All"`. Cacat itu
+tidak akan terlihat dari uji mana pun yang ada — ia baru muncul sebagai baris ber-`"ALL"`
+di basis data.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 7 | **Menyimpulkan pasangan kode→label dari dua properti berdampingan** pada activity yang benar, tanpa memeriksa sel yang memakainya | Work Owner membandingkan layar baru dengan Pega yang berjalan | Nilai yang berdekatan di satu berkas belum tentu berpasangan. **Ikatan kendali yang memakainya** yang menentukan — bukan kedekatan letak |
+| 8 | **Tidak menyalakan paginasi** pada layar yang komponennya sudah mendukungnya | Idem | Kemampuan yang opt-in **tidak menyala sendiri**. Saat sebuah kemampuan bersama ditambahkan, layar yang sudah ada harus ditinjau ulang satu per satu — dan yang menjaganya uji, bukan ingatan |
+
+Keduanya punya sifat yang sama, dan itu yang paling perlu diingat: **tidak satu pun
+menimbulkan galat**. Layarnya tampil rapi, barisnya tersimpan, dan seluruh uji hijau.
+Yang menemukannya manusia yang membandingkannya dengan sistem lama.
+
+## Catatan untuk sesi berikutnya
+
+Dua pertanyaan menunggu jawaban Work Owner sebelum modul ini dapat dinyatakan setara
+dengan Pega — keduanya di `catatan-pengembangan.md` §24.8. Selama belum dijawab,
+`position.go` memuat nilai yang **mungkin** benar, dan komentarnya menyatakan itu
+terang-terangan.
+
+## Koreksi Work Owner — kolom grid tidak sesuai Pega
+
+Work Owner mengirim tangkapan layar Pega yang sedang berjalan dengan satu pertanyaan:
+*"kenapa kolomnya tidak sesuai pega?"*
+
+**Menghitung ulang ke export sebelum menyalin dari gambar.** Godaannya adalah membaca kolom
+dari tangkapan layar lalu menuliskannya. Tangkapan layar dapat terpotong di tepi kanan, sehingga
+yang dilakukan lebih dulu adalah memastikan jumlah kolomnya dari `pyColumnCount` dan urutannya
+dari urutan sel di dalam definisi grid. Gambar hanya dipakai untuk hal yang **tidak ada** di
+export — dan justru di situ ia paling berharga: tiga temuan yang tidak mungkin terbaca dari
+export sama sekali.
+
+**Memeriksa urutan bawaan, bukan mengandaikannya.** Sesi paralel menemukan
+`pySortType = DESC` pada grid Master Bengkel, sehingga urutannya wajib diikuti. Godaannya adalah
+menerapkan temuan itu ke sini juga. Yang dilakukan: memeriksanya — dan grid supplier ternyata
+**tidak punya setelan urutan sama sekali**, sehingga `ORDER BY` yang sudah ada justru
+dipertahankan. Temuan modul tetangga diperiksa, bukan diberlakukan.
+
+| # | Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|---|
+| 7 | **Menggabungkan 9 kolom grid menjadi 7 kolom majemuk** | Work Owner melihat layarnya. **Tidak satu pun uji menangkapnya** — seluruh uji layar memeriksa isi baris, tidak satu pun memeriksa susunan kolom | Alasan dari modul tetangga **tidak boleh disalin tanpa memeriksa premisnya**. "Grid 40 kolom tidak terbaca" benar untuk Master Bengkel; grid ini sembilan kolom. Uji pembanding daftar header ditambahkan supaya penggabungan berikutnya gagal di sana lebih dulu |
+| 8 | **Menamai sandi `JENIS_STATUS = "1"` sebagai "Heavy Equipment"** | Layar produksi menampilkan label "ASM" untuk kolom yang sama | Saya sendiri menetapkan aturan "sandi yang artinya tidak diketahui ditampilkan apa adanya, bukan tebakan" — lalu melanggarnya untuk satu sandi karena namanya *terdengar* jelas. Hubungan `JENIS_STATUS→SUPPLIER_HE` memang terbukti; **labelnya tidak** |
+
+---
+
+## Sesi Master Sparepart (2026-09-20)
+
+### Skill yang dipanggil
+
+**Tidak satu pun.** Alasannya sama dengan sesi-sesi modul master sebelumnya dan tidak
+berubah: seluruh fakta yang dibutuhkan ada di dalam repository ini — 2.634 berkas export
+Pega, `docs/Steering/`, dan sembilan modul yang sudah selesai. Tidak ada satu pun klaim di
+sesi ini yang bersumber dari luar, sehingga `research` tidak relevan; dan tidak ada bug yang
+sedang didiagnosis, konflik merge, maupun prototipe yang perlu dibuat.
+
+### Teknik dari skill yang dipakai tanpa memanggilnya
+
+**`grilling` — cari faktanya sendiri, serahkan keputusannya.**
+
+Empat pertanyaan yang diajukan ke Work Owner seluruhnya disertai bukti terukur, bukan
+"bagaimana menurut Bapak": jumlah kolom grid (5 dari 23, dengan satu sel sisa salin-tempel),
+ketiga rule acuan yang penyaringnya tidak sepakat, satu-satunya jejak nilai SATUAN di seluruh
+export, dan preseden §28 untuk tombol unggah.
+
+Disiplin yang sama dipakai **setelah** jawaban diterima. Tiga dari empat jawaban berbunyi
+"seperti aplikasi PEGA" — jawaban yang tampak menutup pertanyaan padahal memindahkannya
+menjadi "apa yang sebenarnya dilakukan Pega". Penelusuran lanjutan itu yang menemukan bahwa
+dropdown Kategori dan Tipe pada layar ini menyaring **yang sudah disetujui**, bukan yang
+menunggu seperti dua rule lain yang lebih mudah ditemukan.
+
+Manfaatnya konkret: tanpa langkah itu, layar akan menawarkan kategori yang belum disetujui,
+dan kesalahannya tidak akan terlihat sampai ada kategori yang ditolak.
+
+**`domain-modeling` — tolak istilah yang memikul dua arti.**
+
+Empat nama warisan ditolak dan diberi nama sendiri di modul ini:
+
+| Nama di Pega | Masalahnya | Nama di sini |
+|---|---|---|
+| `TempInputPanelHE.CaseID` / `.City` / `.Country` | halaman milik Master **Panel**, dipakai validasi Sparepart; ketiga propertinya tidak ada hubungannya dengan isinya | `Name`, `Number`, `Code` |
+| `PART_CATEGORY_ID as "CityID"` | dialiaskan menjadi nama yang tidak ada hubungannya dengan kategori | `Category.ID` |
+| `InputBengkel.ALASAN_STS_BGKL` | properti bernama "alasan status bengkel" memikul **jenis master** | tidak dibawa |
+| `ErrMsg` pada `PEGA_M_SPAREPART_HE.prc` | satu keluaran memikul pesan berhasil DAN pesan galat | tidak dibawa |
+
+**`codebase-design` — satu adapter berarti seam hipotetis.**
+
+`LookupRepo` dideklarasikan terpisah dari `Repo` meski keduanya selalu dipilih bersama lewat
+`RepoSelector`. Alasannya bukan kerapian: keduanya menjawab pertanyaan yang berbeda — "apa
+pilihan yang tersedia" versus "apa isi master ini" — dan kedua tabel acuannya dimiliki sistem
+lain, sehingga keduanya dapat berubah sendiri-sendiri. Yang disatukan hanyalah cara
+memilihnya.
+
+Prinsip yang sama menahan `ChoiceField.tsx` tetap di dalam modul, bukan naik ke
+`shared/components/`: ia jawaban atas daftar pilihan yang hilang di SATU modul, bukan pola
+antarmuka yang layak dipakai ulang. Menaikkannya akan mengundang layar lain memakainya di
+tempat yang daftar pilihannya sebenarnya diketahui.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+**`git stash` dipakai untuk membaca keadaan.** Untuk membuktikan bahwa tiga kegagalan uji
+`master-rekening` bukan akibat sesi ini, saya menjalankan `git stash push` dengan pathspec.
+Perintahnya melaporkan galat pathspec — tetapi stash-nya **tetap terbentuk**, dan ia menelan
+seluruh berkas frontend modul ini termasuk direktori yang belum terlacak. Dikembalikan
+dengan `git stash pop`, seluruh berkas utuh, uji kembali hijau.
+
+Yang salah bukan perintahnya melainkan pilihannya: pertanyaan "apakah berkas ini berubah?"
+sudah terjawab `git diff --stat`, yang tidak menyentuh working tree sama sekali. Alat yang
+mengubah keadaan tidak boleh dipakai untuk membaca keadaan — dan galat yang dilaporkannya
+tidak berarti tidak ada yang terjadi.
+
+**Label `<span>` pada ChoiceField.** Versi pertamanya memakai `<span>` sebagai label untuk
+kedua varian, sehingga isiannya tidak tertaut ke labelnya. Tertangkap uji, tetapi akibat
+sebenarnya lebih jauh daripada uji yang gagal: label yang tidak tertaut juga tidak dibacakan
+pembaca layar.
+
+### Catatan untuk sesi berikutnya
+
+Modul Master Kategori Sparepart (MENU_ID 33) dan Master Tipe Sparepart (MENU_ID 34) adalah
+lanjutan langsung modul ini — keduanya mengelola justru dua tabel acuan yang di sini hanya
+dibaca. Section keduanya sudah terbaca dan labelnya sudah diketahui:
+
+- Kategori: `ID Kategori Sparepart`, `Nama Kategori Sparepart`
+- Tipe: `ID Tipe Sparepart`, `Nama Tipe Sparepart`, `Kategori Sparepart`
+
+Keduanya memakai pola tiga tab dan activity persetujuan yang sama.

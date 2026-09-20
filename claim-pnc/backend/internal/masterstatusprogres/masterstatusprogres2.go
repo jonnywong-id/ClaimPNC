@@ -269,6 +269,43 @@ type Repo2 interface {
 	//
 	// Input sudah harus bersih dan lolos Check.
 	InsertNew(ctx context.Context, input Input2) (ProgressStatus2, error)
+
+	// Update menyimpan perubahan nama dan induk pada baris yang sudah ada.
+	//
+	// ErrNotFound bila barisnya tidak ada; ErrParentNotFound bila induk barunya tidak ada.
+	//
+	// # Kenapa ia membaca induk seperti InsertNew
+	//
+	// Karena induknya boleh berpindah, dan `STS_PROGRESS1` adalah SALINAN nama induk.
+	// Memindahkan induk tanpa menyalin ulang namanya akan meninggalkan baris yang
+	// menunjuk induk A tetapi menyandang nama induk B — menyimpang secara diam-diam,
+	// persis kelas cacat yang sudah ada di produksi dan terbaca dari
+	// `MAX(sts_progress1) ... GROUP BY id_progress`.
+	//
+	// Keduanya karena itu berada di dalam SATU transaksi: baca induk, lalu perbarui.
+	//
+	// # Yang TIDAK pernah diubah
+	//
+	// `ID_MST` tidak pernah ikut di-SET. Ia kunci baris, dan dirujuk
+	// `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` pada data klaim yang sudah berjalan —
+	// mengubahnya memutus rujukan itu tanpa satu pun galat basis data. Batas yang sama
+	// dipegang tingkat 1, yang juga tidak pernah meng-SET kolom kuncinya.
+	//
+	// # Kenapa method ini ada, padahal sistem lama tidak punya UPDATE
+	//
+	// Ini **penambahan yang disengaja**, bukan pemindahan. Seluruh export Pega tidak
+	// memuat satu pun pernyataan yang mengubah isi tabel ini — tombol "Update" pada layar
+	// lama menulis ke TABEL LAIN lewat page klipboard yang tidak pernah diisi, sehingga
+	// tidak mengubah apa pun (lihat doc comment di atas).
+	//
+	// Work Owner memutuskan menambahkannya pada 2026-09-20, setelah ditunjukkan bahwa
+	// tanpa ini salah ketik nama tidak dapat diperbaiki sama sekali — tombol hapus pun
+	// tidak ada. Karena ia perilaku baru, uji kesetaraan gerbang 1 akan menemukan selisih
+	// pada modul ini, dan selisih itu **harus dinyatakan di muka** sebagai perbaikan
+	// terencana, bukan ditemukan sebagai kejutan (`D-54`).
+	//
+	// Input sudah harus bersih dan lolos Check.
+	Update(ctx context.Context, id string, input Input2) (ProgressStatus2, error)
 }
 
 // RepoSelector2 memilih Repo2 milik satu portal entitas.

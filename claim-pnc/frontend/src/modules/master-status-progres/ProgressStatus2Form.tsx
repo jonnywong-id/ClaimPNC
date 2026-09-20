@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ProgressStatus2Parent } from '@/api/types'
+import { ErrorCode, type ProgressStatus2, type ProgressStatus2Parent } from '@/api/types'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
@@ -34,6 +34,8 @@ const schema = z.object({
 export type ProgressStatus2Fields = z.infer<typeof schema>
 
 type Props = {
+  /** Baris yang disunting; null berarti penambahan baru. */
+  edited: ProgressStatus2 | null
   parents: ProgressStatus2Parent[]
   isSaving: boolean
   error: unknown
@@ -102,28 +104,55 @@ function violationsOf(error: unknown): Record<string, string> {
 }
 
 /**
- * ProgressStatus2Form adalah form penambahan Master Status Progres 2.
+ * ProgressStatus2Form adalah satu form untuk DUA mode — tambah dan ubah.
  *
- * SATU mode saja — tambah. Berbeda dari tingkat 1 yang memakai satu form untuk dua mode,
- * di sini tidak ada mode ubah karena sistem lama tidak punya penyuntingan yang benar-benar
- * bekerja: tombol "Update" pada layar lama menulis ke TABEL LAIN
- * (`UpdateStatusProgress2_sql` menyentuh GCNM_PROGRESS_CLAIM) dengan dua page klipboard
- * yang tidak pernah diisi, sehingga tabel master tidak berubah sama sekali.
+ * Satu form, bukan dua, mengikuti tingkat 1 dan mengikuti sistem lama: modal yang sama
+ * dipakai kedua mode, hanya judulnya yang berganti.
+ *
+ * # Kenapa mode ubah ADA, padahal sistem lama tidak punya penyuntingan yang bekerja
+ *
+ * Tombol "Update" pada layar lama menulis ke TABEL LAIN — `UpdateStatusProgress2_sql`
+ * menyentuh `GCNM_PROGRESS_CLAIM` — lewat dua page klipboard yang tidak pernah diisi,
+ * sehingga tabel master tidak berubah sama sekali.
+ *
+ * Work Owner memutuskan menambahkan penyuntingan yang benar-benar bekerja pada
+ * 2026-09-20, setelah ditunjukkan bahwa tanpanya salah ketik nama tidak dapat diperbaiki
+ * — tombol hapus pun tidak ada. Ia **perilaku baru**, bukan pemindahan, dan selisihnya
+ * pada uji kesetaraan gerbang 1 dinyatakan di muka sebagai perbaikan terencana.
  *
  * Dua isian saja, persis seperti layar lama: `Section/BrowseStatusProgress2-Section.xml`
  * hanya mengikat induk (dropdown) dan nama. ID diterbitkan server dari isi tabel;
  * nama induk disalin server dari baris induknya; TIPE tidak pernah ditulis.
  */
-export function ProgressStatus2Form({ parents, isSaving, error, onSave, onCancel }: Props) {
+export function ProgressStatus2Form({
+  edited,
+  parents,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = edited !== null
+
   const {
     register,
     handleSubmit,
+    reset,
     setError,
     formState: { errors },
   } = useForm<ProgressStatus2Fields>({
     resolver: zodResolver(schema),
-    defaultValues: { nama: '', id_induk: '' },
+    defaultValues: {
+      nama: edited?.nama ?? '',
+      id_induk: edited?.id_induk ?? '',
+    },
   })
+
+  // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu
+  // — misalnya pengguna menekan "Ubah" pada baris lain.
+  useEffect(() => {
+    reset({ nama: edited?.nama ?? '', id_induk: edited?.id_induk ?? '' })
+  }, [edited, reset])
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
@@ -137,18 +166,36 @@ export function ProgressStatus2Form({ parents, isSaving, error, onSave, onCancel
   }, [error, setError])
 
   const message = messageFor(error)
+  const title = editMode ? 'Ubah Status Progres 2' : 'Tambah Status Progres 2'
 
   return (
     <form
       onSubmit={handleSubmit(onSave)}
       noValidate
-      aria-label="Tambah Status Progres 2"
+      aria-label={title}
       className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 className="text-base font-semibold text-slate-900">Tambah Status Progres 2</h2>
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
         <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+      )}
+
+      {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
+          belum ada — nomornya diterbitkan server dari isi tabel.
+
+          Ia juga tidak akan pernah dapat diubah: `ID_MST` dirujuk
+          `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` pada data klaim yang sudah berjalan. */}
+      {editMode && (
+        <div>
+          {/* Sebutannya "No", menyamai judul kolom pertama pada grid — satu layar tidak
+              boleh menyebut hal yang sama dengan dua nama. */}
+          <span className="block text-sm font-medium text-slate-700">No</span>
+          <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+            {edited.id}
+            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+          </p>
+        </div>
       )}
 
       {/* Induk dipilih LEBIH DULU, mengikuti urutan isian pada layar lama. Ia juga yang

@@ -131,7 +131,8 @@ describe('daftar master status progres 2', () => {
     expect(screen.getByRole('heading', { name: 'Master Status Progres 2' })).toBeInTheDocument()
 
     const table = await screen.findByRole('table')
-    expect(within(table).getByRole('columnheader', { name: 'ID' })).toBeInTheDocument()
+    // Judul kolom pertama **"No"**, bukan "ID" — header Pega apa adanya (`D-13`).
+    expect(within(table).getByRole('columnheader', { name: 'No' })).toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: 'Status Progres 1' })).toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: 'Status Progres 2' })).toBeInTheDocument()
   })
@@ -150,7 +151,7 @@ describe('daftar master status progres 2', () => {
       .getAllByRole('columnheader')
       .map((h) => h.textContent?.trim())
 
-    expect(header.slice(0, 3)).toEqual(['ID', 'Status Progres 1', 'Status Progres 2'])
+    expect(header.slice(0, 3)).toEqual(['No', 'Status Progres 1', 'Status Progres 2'])
   })
 
   // TIPE tidak pernah menjadi kolom grid di Pega — ia terikat ke page TempUpdateStatus2,
@@ -172,6 +173,34 @@ describe('daftar master status progres 2', () => {
     expect(screen.getByText('SURVEYOR DITUNJUK')).toBeInTheDocument()
     expect(screen.getByText('DOKUMEN DITERIMA')).toBeInTheDocument()
     expect(screen.getByText('MENUNGGU JADWAL SURVEI')).toBeInTheDocument()
+  })
+
+  // Kolom `Status Progress 1` di Pega terikat ke `.City` SAJA — nama induk, tanpa ID.
+  // Versi sebelumnya menempelkan ID induk sebagai teks abu-abu di sebelahnya
+  // (`DOKUMEN DITERIMA 01`); Work Owner menanyakannya pada 2026-09-20 dan itu dicabut.
+  it('tidak menempelkan ID induk di sebelah namanya', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    // Sel induk memuat namanya saja — bukan "DOKUMEN DITERIMA 01".
+    expect(within(table).getAllByText('DOKUMEN DITERIMA').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/DOKUMEN DITERIMA\s+01/)).not.toBeInTheDocument()
+  })
+
+  // ID induk TETAP dipakai pencarian meski tidak digambar — `value` yang menyediakannya.
+  // Petugas yang hafal kode induk tetap dapat menemukan barisnya.
+  it('tetap dapat dicari lewat kode induk meski kodenya tidak tampil', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.type(screen.getByRole('searchbox'), '02')
+
+    const table = screen.getByRole('table')
+    // Hanya baris ber-induk `02` yang tersisa.
+    expect(within(table).getByText('SURVEYOR DITUNJUK')).toBeInTheDocument()
+    expect(within(table).queryByText('SURAT PERMINTAAN DOKUMEN DIKIRIM')).not.toBeInTheDocument()
   })
 
   // Portal WAJIB ikut di setiap permintaan yang menyentuh basis data entitas — termasuk
@@ -312,18 +341,155 @@ describe('penambahan status progres 2', () => {
   })
 })
 
+// Grid layar lama BERHALAMAN — `Section/BrowseStatusProgress2-Section.xml` menyisipkan
+// `pyGridPaginator` dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Versi pertama
+// layar ini menggambar seluruh baris sekaligus; Work Owner menemukannya pada 2026-09-20,
+// setelah menemukan hal yang sama di layar tingkat 1. Uji ini penjaganya.
+describe('paginasi', () => {
+  it('menyalakan paginasi tabel', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('SURAT PERMINTAAN DOKUMEN DIKIRIM')
+    // Daftar contohnya dua baris, sehingga nomor halaman memang tidak digambar —
+    // ringkasan barisnya yang membuktikan paginasi menyala. Ukuran halamannya sendiri
+    // dikunci di DataTable.test.tsx, bukan di sini.
+    expect(screen.getByText(/dari 2 baris/)).toBeInTheDocument()
+  })
+})
+
+// Penyuntingan adalah perilaku BARU — sistem lama tidak punya satu pun pernyataan yang
+// mengubah isi POOLDATA.GCNM_MST_PROGRESS. Ditambahkan atas keputusan Work Owner pada
+// 2026-09-20, setelah ditunjukkan bahwa tanpanya salah ketik nama tidak dapat diperbaiki
+// dengan cara apa pun. Alasan lengkapnya ada pada doc comment layar ini.
+describe('penyuntingan status progres 2', () => {
+  it('membuka form berisi nama dan induk baris yang ditekan', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ubah SURAT PERMINTAAN DOKUMEN DIKIRIM' }),
+    )
+
+    const form = await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+    expect(within(form).getByLabelText(/Status Progres 2/)).toHaveValue(
+      'SURAT PERMINTAAN DOKUMEN DIKIRIM',
+    )
+    expect(within(form).getByLabelText(/Status Progres 1/)).toHaveValue('01')
+  })
+
+  // ID diperlihatkan supaya petugas tahu baris mana yang sedang disunting, tetapi ia tidak
+  // dapat diubah: `ID_MST` dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` pada data klaim
+  // yang sudah berjalan.
+  it('menampilkan ID sebagai keterangan, bukan isian', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ubah SURAT PERMINTAAN DOKUMEN DIKIRIM' }),
+    )
+
+    const form = await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+    expect(within(form).getByText('(tidak dapat diubah)')).toBeInTheDocument()
+    expect(within(form).queryByLabelText('ID')).not.toBeInTheDocument()
+  })
+
+  // ID masuk lewat JALUR, bukan badan permintaan. Badan hanya memuat dua isian yang memang
+  // dapat diubah — sama persis dengan bentuk badan penambahan.
+  it('mengirim PUT ke jalur ber-ID dengan nama dan induk saja', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah SURVEYOR DITUNJUK' }))
+    const form = await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+
+    await userEvent.clear(within(form).getByLabelText(/Status Progres 2/))
+    await userEvent.type(within(form).getByLabelText(/Status Progres 2/), 'SURVEYOR BERANGKAT')
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      expect(calls.some((c) => c.method === 'PUT')).toBe(true)
+    })
+
+    const saved = calls.find((c) => c.method === 'PUT')
+    expect(saved?.url).toBe('/api/master/status-progres-2/2')
+    expect(saved?.body).toEqual({ nama: 'SURVEYOR BERANGKAT', id_induk: '02' })
+    expect(saved?.header['X-Portal']).toBe('ASM')
+  })
+
+  // Induk boleh berpindah. Nama induk yang tersimpan di kolom STS_PROGRESS1 adalah SALINAN,
+  // dan yang menulis ulang salinan itu adalah server — layar hanya menyebut ID induknya.
+  it('mengizinkan induk berpindah', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ubah SURAT PERMINTAAN DOKUMEN DIKIRIM' }),
+    )
+    const form = await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+
+    await userEvent.selectOptions(within(form).getByLabelText(/Status Progres 1/), '02')
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      expect(calls.some((c) => c.method === 'PUT')).toBe(true)
+    })
+
+    const saved = calls.find((c) => c.method === 'PUT')
+    expect(saved?.body).toEqual({
+      nama: 'SURAT PERMINTAAN DOKUMEN DIKIRIM',
+      id_induk: '02',
+    })
+  })
+
+  // Menekan "Ubah" pada baris lain tanpa menutup form lebih dulu harus mengganti isinya —
+  // bukan menyisakan isian baris sebelumnya, yang akan tersimpan ke baris yang salah.
+  it('mengganti isian saat baris lain ditekan tanpa form ditutup', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ubah SURAT PERMINTAAN DOKUMEN DIKIRIM' }),
+    )
+    await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah SURVEYOR DITUNJUK' }))
+
+    const form = screen.getByRole('form', { name: 'Ubah Status Progres 2' })
+    expect(within(form).getByLabelText(/Status Progres 2/)).toHaveValue('SURVEYOR DITUNJUK')
+    expect(within(form).getByLabelText(/Status Progres 1/)).toHaveValue('02')
+  })
+
+  it('tidak menembak server saat nama dikosongkan', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah SURVEYOR DITUNJUK' }))
+    const form = await screen.findByRole('form', { name: 'Ubah Status Progres 2' })
+
+    await userEvent.clear(within(form).getByLabelText(/Status Progres 2/))
+    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    expect(await within(form).findByText('Nama status progres 2 wajib diisi.')).toBeInTheDocument()
+    expect(calls.some((c) => c.method === 'PUT')).toBe(false)
+  })
+})
+
 describe('yang sengaja tidak ada', () => {
-  // Sistem lama punya tombol "Update", tetapi tombol itu tidak mengubah apa pun pada tabel
-  // master: kuerinya menyentuh TABEL LAIN dengan dua page klipboard yang tidak pernah
-  // diisi. Yang direplikasi adalah hasil yang teramati, bukan jalur yang menghasilkannya.
-  it('tidak menampilkan tombol Ubah maupun Hapus', async () => {
+  // Tombol Hapus tidak pernah ada di sistem lama, tabelnya tidak punya kolom penanda
+  // terhapus yang dapat dipakai D-66, dan barisnya dirujuk data klaim yang sudah berjalan.
+  it('tidak menampilkan tombol Hapus', async () => {
     installFetch(defaultReply())
     show()
 
     const table = await screen.findByRole('table')
-    expect(within(table).queryByRole('button', { name: /Ubah/ })).not.toBeInTheDocument()
     expect(within(table).queryByRole('button', { name: /Hapus/ })).not.toBeInTheDocument()
-    expect(within(table).queryByRole('columnheader', { name: 'Aksi' })).not.toBeInTheDocument()
   })
 })
 

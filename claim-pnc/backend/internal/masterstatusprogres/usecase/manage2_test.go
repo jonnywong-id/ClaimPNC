@@ -135,7 +135,7 @@ func TestService2SeesNewlyAddedParent(t *testing.T) {
 
 	added, err := asmParent.InsertNew(context.Background(), masterstatusprogres.Input{
 		Name:         "MENUNGGU PEMBAYARAN",
-		PositionCode: "007",
+		PositionCode: "AKSEPTASI",
 	})
 	require.NoError(t, err)
 
@@ -202,6 +202,96 @@ func TestService2CreateDerivesIDAndCopiesParentName(t *testing.T) {
 	stored, err := service.Get(context.Background(), "ASM", saved.ID)
 	require.NoError(t, err)
 	require.Equal(t, saved, stored)
+}
+
+// Penyuntingan mengubah nama DAN memindahkan induk, lalu menyalin ulang nama induknya.
+//
+// Penyalinan ulang itu yang paling mudah terlewat: `STS_PROGRESS1` adalah salinan, dan
+// induk yang berpindah tanpa namanya ikut berpindah meninggalkan baris yang menunjuk
+// induk A sambil menyandang nama induk B.
+func TestService2UpdateMovesParentAndRecopiesItsName(t *testing.T) {
+	service, asmParent, _ := twoPortals2(t)
+
+	parents, err := asmParent.List(context.Background())
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(parents), 2)
+	asal, tujuan := parents[0], parents[1]
+
+	awal, err := service.Create(context.Background(), "ASM", masterstatusprogres.Input2{
+		Name: "DOKUMEN AWAL", ParentID: asal.ID,
+	})
+	require.NoError(t, err)
+	require.Equal(t, asal.Name, awal.ParentName)
+
+	diubah, err := service.Update(context.Background(), "ASM", awal.ID, masterstatusprogres.Input2{
+		Name: "  DOKUMEN SETELAH DIUBAH  ", ParentID: tujuan.ID,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, awal.ID, diubah.ID, "ID tidak pernah berubah")
+	require.Equal(t, "DOKUMEN SETELAH DIUBAH", diubah.Name, "isian dipangkas lebih dulu")
+	require.Equal(t, tujuan.ID, diubah.ParentID)
+	require.Equal(t, tujuan.Name, diubah.ParentName, "nama induk disalin ulang dari induk BARU")
+
+	// Perubahannya benar-benar tersimpan, bukan hanya dikembalikan.
+	tersimpan, err := service.Get(context.Background(), "ASM", awal.ID)
+	require.NoError(t, err)
+	require.Equal(t, diubah, tersimpan)
+}
+
+// Isian diperiksa lebih dulu; yang salah tidak pernah sampai ke penyimpanan.
+func TestService2UpdateValidatesBeforeStoring(t *testing.T) {
+	service, _, _ := twoPortals2(t)
+
+	awal, err := service.Create(context.Background(), "ASM", masterstatusprogres.Input2{
+		Name: "SEBELUM", ParentID: "01",
+	})
+	require.NoError(t, err)
+
+	_, err = service.Update(context.Background(), "ASM", awal.ID, masterstatusprogres.Input2{
+		Name: "   ", ParentID: "01",
+	})
+	var validationError *masterstatusprogres.ValidationError
+	require.ErrorAs(t, err, &validationError)
+
+	tetap, err := service.Get(context.Background(), "ASM", awal.ID)
+	require.NoError(t, err)
+	require.Equal(t, "SEBELUM", tetap.Name, "isian yang ditolak tidak boleh menyentuh baris")
+}
+
+// Baris yang tidak ada menghasilkan ErrNotFound, bukan diam-diam berhasil.
+func TestService2UpdateReportsMissingRow(t *testing.T) {
+	service, _, _ := twoPortals2(t)
+
+	_, err := service.Update(context.Background(), "ASM", "9999", masterstatusprogres.Input2{
+		Name: "APA SAJA", ParentID: "01",
+	})
+	require.ErrorIs(t, err, masterstatusprogres.ErrNotFound)
+}
+
+// Induk baru yang tidak ada ditolak dengan galat yang MENYEBUT induknya.
+func TestService2UpdateRejectsMissingParent(t *testing.T) {
+	service, _, _ := twoPortals2(t)
+
+	awal, err := service.Create(context.Background(), "ASM", masterstatusprogres.Input2{
+		Name: "SEBELUM", ParentID: "01",
+	})
+	require.NoError(t, err)
+
+	_, err = service.Update(context.Background(), "ASM", awal.ID, masterstatusprogres.Input2{
+		Name: "SESUDAH", ParentID: "99",
+	})
+	require.ErrorIs(t, err, masterstatusprogres.ErrParentNotFound)
+}
+
+// Portal tetap ditegakkan pada jalur ubah — bukan hanya pada jalur baca dan tambah.
+func TestService2UpdateRejectsUnknownPortal(t *testing.T) {
+	service, _, _ := twoPortals2(t)
+
+	_, err := service.Update(context.Background(), "TIDAKADA", "1", masterstatusprogres.Input2{
+		Name: "APA SAJA", ParentID: "01",
+	})
+	require.ErrorIs(t, err, portal.ErrNotReady)
 }
 
 // Induk yang tidak ada ditolak dengan galat yang MENYEBUT induknya, bukan galat umum.

@@ -138,6 +138,44 @@ func (r *Repo2) InsertNew(ctx context.Context, input masterstatusprogres.Input2)
 	return fresh, nil
 }
 
+// Update menyimpan perubahan nama dan induk pada baris yang sudah ada.
+//
+// Induk dibaca dari repo tingkat 1 yang SAMA dengan yang dipakai InsertNew, sehingga
+// adapter ini dan adapter SQL memperlakukan perpindahan induk dengan cara yang sama:
+// namanya disalin ulang, tidak dibiarkan menyimpang.
+//
+// TIPE dan ID tidak pernah tersentuh — yang pertama karena aplikasi ini tidak pernah
+// menulisnya, yang kedua karena ia kunci baris yang dirujuk data klaim berjalan.
+func (r *Repo2) Update(ctx context.Context, id string, input masterstatusprogres.Input2) (masterstatusprogres.ProgressStatus2, error) {
+	// Induk dibaca SEBELUM kunci diambil, sama seperti InsertNew: repo tingkat 1 punya
+	// kuncinya sendiri, dan mengambil keduanya bersarang membuka jalan ke deadlock.
+	parent, err := r.parent.Get(ctx, input.ParentID)
+	if err != nil {
+		return masterstatusprogres.ProgressStatus2{}, fmt.Errorf("%w: %q", masterstatusprogres.ErrParentNotFound, input.ParentID)
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return masterstatusprogres.ProgressStatus2{}, r.failure
+	}
+
+	for i, sp := range r.rows {
+		if strings.TrimSpace(sp.ID) != strings.TrimSpace(id) {
+			continue
+		}
+
+		r.rows[i].Name = input.Name
+		r.rows[i].ParentID = parent.ID
+		r.rows[i].ParentName = parent.Name
+		// Kind (TIPE) sengaja dibiarkan apa adanya — baris lama tidak boleh kehilangan
+		// nilainya hanya karena namanya disunting.
+		return r.rows[i], nil
+	}
+
+	return masterstatusprogres.ProgressStatus2{}, masterstatusprogres.ErrNotFound
+}
+
 // SampleList2 adalah isi awal untuk pengembangan dan pengujian tanpa basis data.
 //
 // PERINGATAN — INI BUKAN DATA PRODUKSI. Isi sebenarnya POOLDATA.GCNM_MST_PROGRESS tidak

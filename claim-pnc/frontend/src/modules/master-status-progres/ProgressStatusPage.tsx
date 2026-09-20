@@ -134,16 +134,14 @@ export function ProgressStatusPage() {
       key: 'posisi',
       title: 'Posisi',
       width: 'w-40',
-      // Label posisi yang ditampilkan; kodenya ikut disebut karena itulah yang
-      // tersimpan di kolom STATUS dan yang dipakai saat menelusuri data. Keduanya ikut
-      // ke `nilai` supaya pencarian menemukan baris lewat kode maupun lewat labelnya.
-      value: (row) => `${row.nama_posisi} ${row.kode_posisi}`,
-      render: (row) => (
-        <span>
-          {row.nama_posisi}
-          <span className="ml-2 text-xs text-slate-500">{row.kode_posisi}</span>
-        </span>
-      ),
+      // Hanya SATU nilai yang digambar, bukan label plus kode di sebelahnya.
+      //
+      // Versi sebelumnya menyandingkan keduanya karena saya mengira yang tersimpan
+      // adalah kode angka ("002") dan labelnya terpisah. Koreksi 2026-09-20 membuktikan
+      // sebaliknya: dropdown-nya di Pega mengikat nilai simpanan dan label ke properti
+      // yang sama, sehingga keduanya identik — menyandingkannya hanya menulis
+      // "REGISTER REGISTER".
+      value: (row) => row.nama_posisi,
     },
     {
       key: 'aksi',
@@ -232,6 +230,13 @@ export function ProgressStatusPage() {
             rowKey={(row) => row.id}
             description="Sumber: POOLDATA.GCNM_MST_PROGRESS_KLAIM"
             emptyMessage="Belum ada status progres pada entitas ini."
+            // 15 baris per halaman, sama seperti layar lama. Angkanya BUKAN dikarang:
+            // `Section/BrowseStatusProgress-Section.xml` menyisipkan `pyGridPaginator`
+            // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`.
+            //
+            // Ditambahkan 2026-09-20 setelah Work Owner menemukan grid ini menggambar
+            // seluruh baris sekaligus, padahal layar lamanya berhalaman.
+            pageSize={15}
           />
         )}
       </section>

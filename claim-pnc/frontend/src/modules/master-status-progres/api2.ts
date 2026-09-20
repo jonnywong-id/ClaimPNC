@@ -73,14 +73,7 @@ export function useProgressStatus2ParentList() {
   })
 }
 
-/**
- * Hook penambahan status progres 2.
- *
- * Tidak ada hook penyuntingan, dan itu bukan pekerjaan yang belum selesai: sistem lama
- * tidak memiliki satu pun pernyataan yang mengubah isi POOLDATA.GCNM_MST_PROGRESS setelah
- * barisnya tersimpan. Alasan lengkapnya ada pada doc comment `masterstatusprogres.Repo2`
- * di backend.
- */
+/** Hook penambahan status progres 2. */
 export function useCreateProgressStatus2() {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
@@ -98,6 +91,37 @@ export function useCreateProgressStatus2() {
     // diterbitkan server dari isi tabel, dan petugas lain dapat menambah baris pada saat
     // yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi tabel yang
     // sebenarnya.
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: listKey2(portal, token) })
+    },
+  })
+}
+
+/**
+ * Hook penyuntingan status progres 2.
+ *
+ * ID masuk lewat JALUR, bukan badan permintaan — menerimanya dari badan berarti satu
+ * permintaan dapat menyebut dua ID yang berbeda.
+ *
+ * Ditambahkan 2026-09-20 atas keputusan Work Owner. Ia perilaku BARU, bukan pemindahan:
+ * sistem lama tidak punya satu pun pernyataan yang mengubah isi tabel ini. Alasan
+ * lengkapnya ada pada doc comment `masterstatusprogres.Repo2.Update` di backend.
+ */
+export function useUpdateProgressStatus2() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ProgressStatus2Input }) =>
+      callAPI<ProgressStatus2Response>(`${ROUTE}/${encodeURIComponent(id)}`, {
+        metode: 'PUT',
+        body: input,
+        token,
+        portal,
+      }),
+    // Daftar dimuat ulang dari server, bukan disunting di tempat: bila induk berpindah,
+    // nama induk yang disalin server bisa berbeda dari yang ada di layar.
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: listKey2(portal, token) })
     },

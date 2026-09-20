@@ -7,6 +7,13 @@ import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
 import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
+import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
+import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
+import { PanelPage } from '@/modules/master-panel/PanelPage'
+import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
+import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
+import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
+import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -79,6 +86,133 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ProgressStatus2Page />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Satu rute untuk DUA master — Penolakan Klaim dan Penolakan Komite — karena
+        keduanya satu layar dan satu butir menu di Pega (MENU_ID 25). Pemilihannya tab di
+        dalam layar, bukan dua rute.
+      */}
+      <Route
+        path="/master/penolakan-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RejectionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Satu rute untuk EMPAT tab — Master Auto Klaim, Komite Approval, Waiting
+        Approval, dan Reject — karena keempatnya satu layar dan satu butir menu di Pega
+        (MENU_ID 26). Keempatnya hanya berbeda saringan atas tabel yang sama.
+      */}
+      <Route
+        path="/master/auto-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AutoClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Satu rute untuk TIGA tab — Approve, Waiting Approval, dan Reject — karena
+        ketiganya satu layar dan satu butir menu di Pega (MENU_ID 28). Ketiganya hanya
+        berbeda saringan atas tabel yang sama.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini, padahal di Pega keduanya ada di
+        Inbox Manager (`Section/ApprovalMasterBengkelHE`). Inbox Manager belum dibangun,
+        dan menunda keputusannya berarti setiap bengkel yang ditambah tertahan tanpa satu
+        pun cara menyelesaikannya. Bentuk keputusannya sama persis — centang beberapa
+        baris, satu tombol untuk seluruh pilihan.
+      */}
+      <Route
+        path="/master/bengkel"
+        element={
+          <SessionGuard>
+            <Protected>
+              <WorkshopPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Panel (MENU_ID 30). Layar master pertama yang mengelola BARIS ANAK —
+        daftar lokasi pada setiap panel, tersimpan di POOLDATA.LOKASI_PANEL_HE.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
+        Master Bengkel: `Section/ApprovalMasterPanelHE` di Pega dipakai Inbox Manager,
+        dan Inbox Manager belum dibangun.
+      */}
+      <Route
+        path="/master/panel"
+        element={
+          <SessionGuard>
+            <Protected>
+              <PanelPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Sparepart (MENU_ID 31). Master ketiga dari keluarga alat berat, setelah
+        Master Bengkel dan Master Panel; ketiganya berbagi satu activity persetujuan yang
+        sama di Pega (`Activity/SetApprovalAllMaster`).
+
+        Dua hal membedakannya: tabelnya PUNYA kolom pencatat pelaku (USER_UPDATE) dan
+        stempel waktu (TGL_UPDATE_HARGA), dan ia TIDAK punya kolom alasan penolakan —
+        sehingga layarnya tidak menggambar isian Catatan sama sekali.
+      */}
+      <Route
+        path="/master/sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SparepartPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Pasal Kerugian (MENU_ID 27). Layar pertama yang MENGHAPUS data secara
+        permanen — `D-66` menetapkan soft delete menyeluruh, tetapi tabelnya tidak punya
+        kolom penanda terhapus dan Work Owner memilih "jalankan as is" pada 2026-09-19.
+      */}
+      <Route
+        path="/master/pasal-kerugian"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClausePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Supplier (MENU_ID 29). TANPA tab — layar lamanya memang satu grid dengan
+        tiga tombol, tanpa penyaring status apa pun.
+
+        Dua hal yang membedakannya dari master lain, dan keduanya menyentuh uang:
+
+        Seluruh isinya tinggal di SATU kolom JSONDATA. `M_SUPPLIER` hanya punya ID, OLDID,
+        dan JSONDATA — tidak ada kembaran berkolom bernama seperti POOLDATA.BENGKEL_HE.
+
+        Menonaktifkan supplier berlaku SEKETIKA, tanpa persetujuan siapa pun, sedangkan
+        mengaktifkannya harus menunggu (`EditMasterSupplier_post` step 12). Sisi pemutus
+        antreannya TIDAK ADA di export sama sekali (`R-16`), sehingga layar ini berhenti
+        pada menyisipkan permintaannya — persis seperti sistem lama.
+      */}
+      <Route
+        path="/master/supplier"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SupplierPage />
             </Protected>
           </SessionGuard>
         }

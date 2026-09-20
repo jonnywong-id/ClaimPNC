@@ -11,6 +11,7 @@ import {
   useCreateProgressStatus2,
   useProgressStatus2List,
   useProgressStatus2ParentList,
+  useUpdateProgressStatus2,
 } from './api2'
 import { ProgressStatus2Form, type ProgressStatus2Fields } from './ProgressStatus2Form'
 
@@ -67,54 +68,89 @@ function loadMessage(error: unknown): MessageContent {
  *   - Tombol "Tambah" dan "Refresh"      — section yang sama
  *   - Grid   — `Section/BrowseStatusProgress2-Section.xml`, ORDER BY ID_MST ASC
  *
- * # Yang SENGAJA tidak ada, dan itu bukan pekerjaan yang belum selesai
+ * # Tombol Ubah — ADA di sini, dan itu perilaku BARU
  *
- * **Tombol Ubah.** Layar lama memilikinya, tetapi tombol itu tidak mengubah apa pun pada
- * tabel master: `UpdateStatusProgress2_sql` menyentuh TABEL LAIN — GCNM_PROGRESS_CLAIM,
- * catatan progres milik satu klaim — dan menyaringnya dengan dua page klipboard yang tidak
- * pernah diisi activity maupun section-nya. Seluruh export tidak memuat satu pun UPDATE
- * atau DELETE terhadap POOLDATA.GCNM_MST_PROGRESS.
+ * Layar lama memilikinya, tetapi tombol itu **tidak mengubah apa pun** pada tabel master:
+ * `UpdateStatusProgress2_sql` menyentuh TABEL LAIN — `GCNM_PROGRESS_CLAIM`, catatan progres
+ * milik satu klaim — dan menyaringnya dengan dua page klipboard yang tidak pernah diisi.
+ * `TempInputStatusProgress2` bahkan hanya muncul di berkas SQL itu sendiri. Seluruh export
+ * tidak memuat satu pun `UPDATE` terhadap `POOLDATA.GCNM_MST_PROGRESS`.
  *
- * Yang direplikasi adalah HASIL yang teramati — baris master tidak berubah — bukan jalur
- * yang menghasilkannya. Menyalin jalurnya berarti membawa pernyataan yang, bila kedua page
- * itu kebetulan terisi sisa nilai dari layar lain dalam sesi yang sama, MENIMPA catatan
- * progres sebuah klaim dengan isian layar master.
+ * Versi pertama layar ini karena itu mereplikasi **hasil yang teramati** — baris master
+ * tidak berubah — dan tidak menyediakan penyuntingan sama sekali.
  *
- * **Tombol Hapus.** Tidak pernah ada di sistem lama, dan tabelnya pun tidak punya kolom
- * penanda terhapus yang dapat dipakai `D-66`.
+ * **Work Owner memutuskan sebaliknya pada 2026-09-20**, setelah ditunjukkan bahwa tanpa
+ * penyuntingan, salah ketik nama tidak dapat diperbaiki dengan cara apa pun — tombol hapus
+ * pun tidak ada, sehingga baris yang keliru akan menetap selamanya.
+ *
+ * Yang ditambahkan **bukan** jalur Pega yang rusak itu, melainkan `UPDATE` yang benar ke
+ * tabel master. Dua batas dijaga: `ID_MST` tidak pernah ikut di-`SET` karena ia dirujuk
+ * data klaim berjalan, dan salinan nama induk (`STS_PROGRESS1`) ditulis ulang server bila
+ * induknya berpindah.
+ *
+ * Konsekuensinya disadari: ia **selisih** pada uji kesetaraan gerbang 1, dan dinyatakan di
+ * muka sebagai perbaikan terencana — bukan ditemukan sebagai kejutan (`D-54`).
+ *
+ * # Yang SENGAJA tidak ada
+ *
+ * **Tombol Hapus.** Tidak pernah ada di sistem lama, tabelnya tidak punya kolom penanda
+ * terhapus yang dapat dipakai `D-66`, dan barisnya dirujuk data klaim yang sudah berjalan.
  *
  * **Kolom TIPE.** Sempat ditampilkan di layar ini, lalu dicabut setelah header grid Pega
  * dibaca: `Section/BrowseStatusProgress2-Section.xml` hanya memuat tiga header —
  * `No`, `Status Progress 1`, `Status Progress 2` — dan `DistrictID` (TIPE) terikat ke page
- * `TempUpdateStatus2`, yaitu **modal penyuntingan**, bukan baris grid.
- *
- * Karena modal itu tidak dibawa (§ di atas), TIPE tidak punya tempat di layar ini. Ia tetap
- * dibaca dan tetap dikirim pada respons API, sehingga nilainya tidak hilang dan siap dipakai
- * bila kelak ada layar rincian. Yang dihapus hanyalah kolomnya — dan kolom itu memang tidak
- * pernah ada di Pega.
+ * `TempUpdateStatus2`, bukan baris grid. Ia tetap dibaca dan tetap dikirim pada respons
+ * API; yang dihapus hanyalah kolomnya.
  */
+/** Tidak ada form yang terbuka. */
+const CLOSED = 'closed'
+/** Form terbuka dalam mode tambah. */
+const CREATE = 'create'
+
+type FormState = typeof CLOSED | typeof CREATE | ProgressStatus2
+
 export function ProgressStatus2Page() {
   const portal = useSelectedPortal((state) => state.alias)
-  const [isFormOpen, setFormOpen] = useState(false)
+  const [form, setForm] = useState<FormState>(CLOSED)
 
   const list = useProgressStatus2List()
   const parents = useProgressStatus2ParentList()
   const create = useCreateProgressStatus2()
+  const update = useUpdateProgressStatus2()
+
+  // Keadaan form memikul tiga hal sekaligus — tertutup, tambah, atau baris yang sedang
+  // disunting — mengikuti pola tingkat 1. Menyimpannya sebagai dua state terpisah
+  // (`isOpen` + `edited`) membuka keadaan yang tidak masuk akal: terbuka tanpa mode.
+  const edited = typeof form === 'string' ? null : form
+  const isSaving = create.isPending || update.isPending
+  const saveError = edited ? update.error : create.error
 
   function openCreate() {
     create.reset()
-    setFormOpen(true)
+    update.reset()
+    setForm(CREATE)
+  }
+
+  function openEdit(row: ProgressStatus2) {
+    create.reset()
+    update.reset()
+    setForm(row)
   }
 
   function closeForm() {
     create.reset()
-    setFormOpen(false)
+    update.reset()
+    setForm(CLOSED)
   }
 
   function save(values: ProgressStatus2Fields) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
     // diketik, itu berarti mengetik ulang dari awal.
+    if (edited) {
+      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
+      return
+    }
     create.mutate(values, { onSuccess: closeForm })
   }
 
@@ -124,7 +160,7 @@ export function ProgressStatus2Page() {
   //	<b>No<b>                 -> .CaseID  (ID_MST)
   //	<b>Status Progress 1<b>  -> .City    (STS_PROGRESS1, nama induk)
   //	<b>Status Progress 2<b>  -> .CityID  (STS_PROGRESS2, nama baris ini)
-  //	(tanpa judul)            -> tombol Update — tidak dibawa, lihat doc comment di atas
+  //	(tanpa judul)            -> tombol Update
   //
   // Perhatikan urutannya: **induk mendahului nama barisnya sendiri**. Itu berlawanan
   // dengan dugaan yang wajar, dan sempat tertukar di layar ini sebelum header Pega dibaca.
@@ -132,21 +168,50 @@ export function ProgressStatus2Page() {
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup.
   const columns: Column<ProgressStatus2>[] = [
-    { key: 'id', title: 'ID', width: 'w-20', value: (row) => row.id },
+    // Judulnya **"No"**, bukan "ID" — itu header Pega apa adanya
+    // (`<b>No<b>` terikat ke `.CaseID`, yaitu `ID_MST`). Layar ini sempat menuliskannya
+    // "ID"; Work Owner menanyakannya pada 2026-09-20. `D-13` menetapkan teks yang dilihat
+    // pengguna mengikuti layar lama.
+    //
+    // Isinya TETAP `ID_MST` — bukan nomor urut baris. Menomori ulang per halaman akan
+    // menyesatkan: yang dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` adalah `ID_MST`,
+    // dan itulah nomor yang dicari petugas.
+    { key: 'id', title: 'No', width: 'w-20', value: (row) => row.id },
     {
       key: 'induk',
       title: 'Status Progres 1',
-      // ID induk ikut ke `value` supaya pencarian menemukan baris lewat kodenya maupun
-      // lewat namanya.
+      // Yang DITAMPILKAN hanya namanya, persis seperti Pega: kolom `Status Progress 1`
+      // terikat ke `.City` saja, yaitu `STS_PROGRESS1`. `ID_PROGRESS` memang ikut
+      // di-SELECT `BrowseStatusProgress2-SQL`, tetapi tidak pernah digambar di grid — ia
+      // dipakai modal penyuntingan, yang tidak dibawa.
+      //
+      // Versi sebelumnya menempelkan ID induk sebagai teks abu-abu di sebelah namanya
+      // (`LAPORAN AWAL 001`). Itu tambahan saya, bukan perilaku sistem lama, dan Work Owner
+      // menanyakannya pada 2026-09-20.
+      //
+      // ID-nya TETAP ikut ke `value`, bukan ke `render`: `value` adalah yang dipakai
+      // pencarian dan pengurutan, sehingga petugas yang hafal kode induk tetap dapat
+      // menemukan barisnya — tanpa satu karakter pun bertambah di layar.
       value: (row) => `${row.nama_induk} ${row.id_induk}`,
-      render: (row) => (
-        <span>
-          {row.nama_induk}
-          <span className="ml-2 text-xs text-slate-500">{row.id_induk}</span>
-        </span>
-      ),
+      render: (row) => <span>{row.nama_induk}</span>,
     },
     { key: 'nama', title: 'Status Progres 2', value: (row) => row.nama },
+    {
+      key: 'aksi',
+      title: 'Aksi',
+      width: 'w-24',
+      // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
+      // tombol, bukan data. Posisinya paling kanan, sama seperti kolom tanpa judul yang
+      // memuat tombol Update pada grid Pega.
+      noSort: true,
+      alignRight: true,
+      value: () => '',
+      render: (row) => (
+        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
+          Ubah
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -162,7 +227,7 @@ export function ProgressStatus2Page() {
           <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
-          <Button tone="utama" onClick={openCreate} disabled={isFormOpen}>
+          <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
             Tambah
           </Button>
         </div>
@@ -176,12 +241,13 @@ export function ProgressStatus2Page() {
         <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
       </p>
 
-      {isFormOpen && (
+      {form !== CLOSED && (
         <section className="mt-5">
           <ProgressStatus2Form
+            edited={edited}
             parents={parents.data?.induk ?? []}
-            isSaving={create.isPending}
-            error={create.error}
+            isSaving={isSaving}
+            error={saveError}
             onSave={save}
             onCancel={closeForm}
           />
@@ -215,6 +281,12 @@ export function ProgressStatus2Page() {
             rowKey={(row) => row.id}
             description="Sumber: POOLDATA.GCNM_MST_PROGRESS"
             emptyMessage="Belum ada status progres 2 pada entitas ini."
+            // 15 baris per halaman, sama seperti layar lama. Angkanya dibaca dari section
+            // MILIK LAYAR INI, bukan disalin dari tingkat 1:
+            // `Section/BrowseStatusProgress2-Section.xml` menyisipkan `pyGridPaginator`
+            // dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Kebetulan sama
+            // dengan tingkat 1 — dan kebetulan itu diperiksa, bukan diandaikan.
+            pageSize={15}
           />
         )}
       </section>

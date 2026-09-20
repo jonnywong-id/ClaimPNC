@@ -15,18 +15,24 @@ type ProgressStatusDTO struct {
 	ID   string `json:"id"`
 	Name string `json:"nama"`
 
-	// KodePosisi adalah nilai yang tersimpan, dipakai saat menyunting.
+	// PositionCode adalah nilai yang tersimpan di kolom STATUS, dipakai saat menyunting.
+	// Sejak koreksi 2026-09-20 isinya TEKS ("REGISTER"), bukan kode angka ("002") —
+	// lihat masterstatusprogres/position.go.
 	PositionCode string `json:"kode_posisi"`
 
 	// PositionName adalah label yang dibaca pengguna.
 	//
-	// Ia dikirim bersama kodenya supaya layar tidak perlu memetakan sendiri — dan
-	// karena itu tidak perlu menyimpan salinan keempat posisi di frontend. Satu daftar,
-	// satu tempat.
+	// Pada layar ini isinya sama persis dengan PositionCode, karena dropdown-nya di
+	// sistem lama memakai satu properti untuk nilai simpanan sekaligus labelnya. Ia
+	// tetap dikirim terpisah supaya layar tidak perlu memetakan sendiri, dan supaya
+	// kontraknya tidak berubah bila kelak daftarnya pindah menjadi master data `F-4`
+	// dengan label yang dibedakan.
 	PositionName string `json:"nama_posisi"`
 }
 
 // PositionDTO adalah satu pilihan pada dropdown Posisi.
+//
+// Code dan Name bernilai sama pada layar ini; lihat ProgressStatusDTO.PositionName.
 type PositionDTO struct {
 	Code string `json:"kode"`
 	Name string `json:"nama"`
