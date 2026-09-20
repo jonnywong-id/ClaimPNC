@@ -444,3 +444,61 @@ mengembalikan `Person.Login` dengan nilai yang sama. Tidak ada yang perlu diubah
 - Menambah layar baru kini menuntut **satu baris** di `frontend/src/app/menu/registry.ts`. Bila
   butirnya tetap tampak "belum tersedia", yang pertama diperiksa adalah ejaan `MENU_PROGRAM`-nya —
   ia dicocokkan persis, termasuk huruf besar-kecilnya.
+
+# Penggunaan Skill — Sesi 2026-09-19 (modul Inbox Laporan Klaim)
+
+## Ringkasan
+
+**Tidak satu pun skill dipanggil pada sesi ini.** Itu dicatat apa adanya, bukan diisi dengan nama
+skill yang kebetulan terdengar cocok — catatan penggunaan skill yang memuat skill yang tidak dipakai
+membuat seluruh berkas ini kehilangan gunanya.
+
+Yang dipakai adalah **teknik**, sebagian di antaranya berasal dari skill yang pernah dipakai sesi
+sebelumnya dan kini sudah menjadi kebiasaan kerja.
+
+## Skill yang ditimbang
+
+| Skill | Ditimbang untuk | Kenapa tidak jadi dipakai |
+|---|---|---|
+| `mattpocock-skills:grilling` | Tiga pertanyaan lingkup di awal sesi | Pertanyaannya sudah punya bentuk yang benar — masing-masing menawarkan pilihan berdasar bukti, dengan rekomendasi dan konsekuensinya. Memanggil skill hanya akan menambah satu lapis yang menghasilkan pertanyaan yang sama |
+| `mattpocock-skills:domain-modeling` | Menamai `Position`, `Origin`, `Category` | Istilahnya **tidak dikarang**: ketiga nilai `Position` disalin apa adanya dari `CASE WHEN` pada `ViewAllCase-SQL.xml`, dan kesembilan judul tab dari `pyValue` bertanda `<b>`. Yang dibutuhkan pembacaan sumber, bukan penajaman istilah |
+| `mattpocock-skills:codebase-design` | Batas modul dan letak seam | Batasnya sudah ditetapkan modul-modul sebelumnya, dan modul ini mengikutinya persis. Menimbang ulang berarti menimbang ulang keputusan yang sudah berjalan lima modul |
+| `mattpocock-skills:tdd` | Uji modul | Uji ditulis **sesudah** perilaku terbaca dari sumber Pega, bukan sebelum. Pada pekerjaan migrasi, "merah dulu" menuntut saya sudah tahu jawabannya — dan jawabannya justru yang sedang dicari di dalam 1,16 MB XML |
+| `dataviz` | Bagan `pxChart` di layar lama | Bagannya tidak dibawa sama sekali (lihat catatan pengembangan §16.9). Tidak ada yang digambar |
+
+## Teknik yang dipakai tanpa memanggil skill
+
+| Teknik | Bagaimana ia berbuah pada sesi ini |
+|---|---|
+| **Baca sumbernya sampai ke dasar, jangan berhenti di berkas yang ditunjuk** | Harness yang diminta ternyata hanya pembungkus. Berhenti di sana akan menghasilkan layar yang dikarang; menelusuri satu tingkat lagi menemukan section 1,16 MB, dua activity, enam kueri, dan delapan pencacah |
+| **Ambil teks layar dari sumbernya, jangan diterjemahkan** | Kesembilan judul tab dan keenam belas nama kolom dibaca dari `pyValue` bertanda `<b>`. Menerjemahkannya menjadi bahasa Indonesia akan lolos kompilasi tanpa satu pun tanda bahwa layar berubah bagi penggunanya (`D-13`) |
+| **Bedakan cacat lama dari cacat baru, lalu katakan yang mana** | Kueri grid dan kueri pencacah tidak sepakat untuk satu tab. Menutupnya diam-diam akan membuat selisihnya muncul sebagai "cacat modul baru" saat uji kesetaraan `S-8` |
+| **Jalankan aplikasinya, jangan berhenti di uji** | Uji membuktikan bentuknya benar. Hanya permintaan HTTP sungguhan yang menemukan bahwa tombol Buat Baru menjawab `409` untuk SETIAP pengguna tiruan — dan itu yang mengungkap saya menambahkan aturan yang tidak ada di Pega |
+| **Buktikan klaim "kegagalan lama", jangan menyalinnya dari dokumen** | Tiga uji gagal di `AccountPage.test.tsx`. Dokumen sesi sebelumnya sudah menyebutnya kegagalan lama, dan itu tidak cukup: perubahan `DataTable.tsx` di-`git stash`, uji dijalankan ulang, ketiganya tetap gagal |
+| **Buat probe yang sengaja gagal untuk menguji alat ukurnya** | Helper uji `selectedColumns` bisa saja lulus karena tidak mengurai apa pun. Probe sementara membuktikan ia mengurai 19 kolom dan `WHERE` sepanjang 544 karakter, lalu dihapus |
+| **Terjemahkan aturan menjadi PENANDA, bukan menjadi potongan SQL** | Sembilan tab dilayani dua bentuk kueri tetap. Aturan tabnya hidup di Go, tempat ia dapat diuji tanpa basis data — dan potongan SQL tidak pernah melewati batas modul, yang persis pola `{ASIS:...}` warisan |
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | **Menambahkan aturan yang tidak ada di Pega** — menolak pembuatan berkas tanpa cabang | Menjalankan aplikasinya: `409` untuk setiap pengguna tiruan. Pembacaan ulang `CreateNewCaseRCV` membuktikan Pega tidak memeriksa apa pun di sana |
+| 2 | **Menjalankan `npx prettier` pada repo yang tidak memakainya** | Gaya seluruh `DataTable.tsx` berubah — titik koma dan kutip ganda. Repo ini tidak punya konfigurasi prettier dan tidak memuatnya di `package.json`. Dikembalikan lewat `git checkout`, lalu suntingan diterapkan ulang dengan tangan |
+| 3 | **Menghitung kolom secara hafalan** — mengira 18, ternyata 19 | Probe sementara. Saya lupa `reporter_name` yang baru saya tambahkan sendiri beberapa langkah sebelumnya |
+| 4 | **Menulis lencana tab sebagai angka telanjang** | Uji aksesibilitas gagal: nama tombolnya terbaca `"Replied from ASM0"`. Yang diperbaiki komponennya — `aria-label` menjadi "Replied from ASM, 0 berkas" — bukan ujinya |
+
+Keempatnya punya pola yang sama: **yang menemukan bukan pembacaan ulang, melainkan menjalankan
+sesuatu.** Pembacaan ulang menemukan apa yang saya sudah curigai; menjalankan menemukan apa yang
+tidak saya curigai.
+
+## Catatan untuk sesi berikutnya
+
+- **Modul `B-14` Receive Document adalah lanjutan langsungnya.** Layar rincinya (`ViewReceiveDocument`)
+  yang melengkapi berkas kosong buatan tombol "Buat Baru", dan ia yang akan menulis kolom-kolom
+  `POOLDATA.T_CLAIM_RECIVEDCLAIM` yang belum tersentuh.
+- **`CONTEXT.md` belum memuat istilah `Laporan Klaim`, `Position`, dan `Kanwil`.** Ketiganya kini
+  punya arti tepat di dalam sistem ini. Tidak dikerjakan di sesi ini karena `CONTEXT.md` adalah
+  dokumen Steering yang perubahannya ditulis sebagai keputusan, bukan disunting menyusul — sama
+  seperti catatan sesi sebelumnya tentang `Menu` dan `Otorisasi`.
+- **Lima pertanyaan terbuka menunggu Work Owner**, dan yang pertama menyentuh batas data:
+  lihat `keputusan-implementasi.md` §17.11.

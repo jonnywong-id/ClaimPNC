@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
@@ -78,6 +79,21 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Laporan Klaim — modul bisnis pertama pada kelompok menu INBOX. Ia memakai
+        kerangka yang sama dengan layar master, sehingga bilah atas, menu, dan pemilih
+        portal tersedia di dalamnya.
+      */}
+      <Route
+        path="/inbox/laporan-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportInboxPage />
             </Protected>
           </SessionGuard>
         }

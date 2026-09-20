@@ -70,6 +70,11 @@ claim-pnc/
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
 │   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── inboxlaporanklaim/       MODUL — Inbox Laporan Klaim (menu 64)
+│   │   │   ├── usecase/                 orkestrasi: daftar+ringkas, kanwil, ambil, buat
+│   │   │   ├── repo/                    sqlstore (PC_ASM_FW_GCNMFW_WORK dibaca +
+│   │   │   │                            CPNC_LAPORAN_KLAIM ditulis), memory
+│   │   │   └── http/                    dto, galat, handler, ekspor CSV, rute
 │   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
@@ -191,7 +196,15 @@ backend/migrations/0001_user_and_session.up.sql       tabel BARU: CPNC_PENGGUNA,
 backend/migrations/0001_user_and_session.down.sql
 backend/migrations/0002_master_claim_status.up.sql     MENGUBAH objek milik sistem lama
 backend/migrations/0002_master_claim_status.down.sql
+backend/migrations/0003_claim_report_inbox.up.sql      tabel BARU: CPNC_LAPORAN_KLAIM + sequence
+backend/migrations/0003_claim_report_inbox.down.sql
 ```
+
+> **`0003` dijalankan di SETIAP portal entitas, bukan hanya di portal utama** — berbeda dari `0001`.
+> Berkas laporan adalah data bisnis milik satu badan hukum, dan `ADR-0030` menetapkan pemisahannya
+> ada di tingkat koneksi. Akibatnya berkas itu dijalankan empat kali, dan gagal di salah satunya
+> membuat portal tersebut tertinggal versi. Ia hanya **menambah** satu tabel dan satu sequence;
+> tidak satu pun objek milik sistem lama disentuh.
 
 Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work Owner (`D-63`).
 **Keduanya belum pernah dijalankan di lingkungan mana pun.**
@@ -315,6 +328,9 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/masuk` | masuk |
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
+| `/master/status-klaim` | **Master Status Klaim** |
+| `/master-rekening` | **Master Rekening** |
+| `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — modul bisnis pertama di kelompok menu INBOX |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -345,6 +361,37 @@ sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `
 | `GET` | `/api/master/status-klaim` | wajib | daftar status klaim + `total` |
 | `POST` | `/api/master/status-klaim` | wajib | `{label}` → `201` + baris beserta kode yang dibuat sistem |
 | `PUT` | `/api/master/status-klaim/{kode}` | wajib | `{label}` → `200` + baris setelah diubah |
+
+### Inbox Laporan Klaim
+
+Seluruh rutenya menuntut header `X-Portal` — setiap satunya menyentuh basis data entitas, termasuk
+daftar pilihan dropdown (isi "Pilih Kanwil" dibaca dari `POOLDATA.BRANCH` milik entitas itu).
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox/laporan-klaim` | satu halaman daftar + lencana kesembilan tab. Saringan: `kategori`, `kanwil`, `bisnis`, `cari`, `halaman`, `ukuran` |
+| `GET` | `/api/inbox/laporan-klaim/pilihan` | isi ketiga dropdown: tab, bisnis, kanwil |
+| `GET` | `/api/inbox/laporan-klaim/ekspor` | unduhan CSV dengan saringan yang sama |
+| `GET` | `/api/inbox/laporan-klaim/{id}` | satu berkas laporan |
+| `POST` | `/api/inbox/laporan-klaim` | tombol "Buat Baru" — **tanpa badan permintaan** |
+
+`POST` tidak membaca badan permintaan, dan itu bukan kelalaian: tombolnya di sistem lama tidak
+meminta satu pun isian. `CreateNewCaseRCV` hanya mengisi lima nilai yang seluruhnya diturunkan dari
+petugas penekannya, lalu berkasnya lahir **kosong** untuk dilengkapi di layar berikutnya (`B-14`,
+belum dibangun).
+
+> **Penulisan tidak lagi masuk ke `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`** (keputusan Work Owner
+> 2026-09-19). Berkas baru tinggal di `POOLDATA.CPNC_LAPORAN_KLAIM` — tabel milik aplikasi ini,
+> dibuat [`migrations/0003`](backend/migrations/0003_claim_report_inbox.up.sql) — sementara berkas
+> lama tetap **dibaca** di tempatnya. Daftar yang dilihat petugas adalah gabungan keduanya, dan
+> asal setiap baris terbaca dari kolom `asal` maupun dari nomornya: berkas terbitan aplikasi ini
+> berformat `RCVN.YY.xxxx`.
+>
+> Dengan begitu `P-1` terpenuhi di tingkat tabel: tidak ada satu tabel pun yang ditulis dua sistem.
+
+| Kode galat tambahan | HTTP | Artinya |
+|---|---|---|
+| `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; laporan baru tidak dapat dibuat |
 
 ### Master Status Klaim
 
