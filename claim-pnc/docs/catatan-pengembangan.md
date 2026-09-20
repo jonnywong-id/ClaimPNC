@@ -3475,3 +3475,194 @@ Yang **wajib** dijalankan sebelum pekerjaan ini disebut selesai tidak berubah:
 cd backend  && gofmt -l ./... && go vet ./... && go test ./...
 cd frontend && npm run periksa-tipe && npm test && npm run build
 ```
+
+---
+
+## 24. Modul Inbox Komite (2026-09-20, sesi kesembilan)
+
+Menggantikan harness `InboxKomite_Harness` beserta section `InboxKomite_section` (1,8 MB) —
+**MENU_ID 52** pada `POOLDATA.M_MENU_APLIKASI_PNC`. Ini `TKT-B07-002`, tiket yang sebelumnya
+berstatus `needs-info`.
+
+### 24.1 Tiga keputusan Work Owner yang membuka pekerjaan ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Inbox dibaca dari mana? Aplikasi baru belum punya tabel kasus komite | **Tabel warisan Pega, baca-saja** |
+| 2 | Seberapa jauh lingkupnya? | **Inbox + pencatatan keputusan** |
+| 3 | Kunci "ini inbox milik siapa"? | **`User.Login` huruf besar** |
+
+Jawaban 1 dan 2 **bersinggungan**, dan turunannya saya selesaikan sendiri karena `TKT-B07-002`
+sudah menetapkannya: sumber baca-saja berarti keputusan TIDAK boleh ditulis ke
+`T_CLAIM_KOMITE_LIST` (`P-1` — tabel itu masih ditulis Pega). Tiketnya menyebut jalan keluarnya
+pada bagian migrasi skema — *"Menambah tabel jejak komite"* — dan itulah migrasi `0004`.
+
+Hasilnya dua sumber dengan kepemilikan berbeda, bertemu di **satu tempat saja**
+(`usecase.InboxService.withProgress`):
+
+    kasus komite   dibaca dari tabel WARISAN, tidak pernah ditulis   InboxRepo
+    keputusan      ditulis ke tabel MILIK APLIKASI INI               DecisionRepo
+
+### 24.2 Apa yang sebenarnya ada di dalam harness itu
+
+Harness-nya cangkang; isinya di section. Yang terbaca dari export:
+
+| Yang ditemukan | Sumbernya |
+|---|---|
+| **Tiga** kotak, bukan satu layar | caption `Kotak Masuk Komite Outstanding` / `…Diterima` / `…Ditolak` |
+| Penyaring inti: `PXASSIGNEDOPERATORID = <yang login>` | `InboxRegisterKomite_RD` filter A |
+| `PYSTATUSWORK <> 'Resolved-Completed'` | idem, filter B |
+| Urutan: yang terlama di atas | `ORDER BY "AgingKomite" DESC` |
+| Pencarian "No Komite / No Klaim", Tgl Input Dari/Sampai | `pyActionPrompt`, `pyCaption` pada section |
+
+Ketiga kotak dilayani tiga rule SQL berbeda yang membaca tabel yang sama:
+`GetKomitePAOutstanding`, `GetKomitePAditerima`, `ShowKomiteTerimaTolakNonMBU`. Ketiganya
+merangkai penyaringnya ke dalam teks SQL lewat pola `ASIS` — celah injeksi `K-29`. Di sini
+ketiganya menjadi **satu kueri berparameter**.
+
+### 24.3 Lima alias yang tidak dibawa
+
+Inilah utang teknis `03-CURRENT-ARCHITECTURE.md` §4.2 dalam bentuk yang paling murni: nama
+property yang sama sekali tidak mencerminkan isinya.
+
+| Property Pega | Caption di layar | Isi sebenarnya |
+|---|---|---|
+| `.IBNR` | Nilai ASM Share | `NILAIKLAIM × SHAREASM / 100` |
+| `.pyScore` | Nilai OR ASM | `NILAIKLAIM × Σ PRSN_* / 100` |
+| `.DraftWordingID` | PIC Klaim | `T_CLAIM_PNC.PICTEKNIK` |
+| `.RejectedCode` | Alasan Reject | `NOTEKOMITE` |
+| `.StatusKlaim` | Tipe Komite | `TYPEKOMITE × PAYMENTTYPE` |
+
+Yang terakhir paling berbahaya: ia bernama `StatusKlaim` tetapi sama sekali **bukan** Status
+Klaim dalam arti `D-18`. Ia diturunkan dari dua kolom lewat CASE bersarang, dan penurunan itu
+kini hidup di Go sebagai `komite.CommitteeKindOf` — satu tabel keputusan yang dapat diuji tanpa
+basis data, menggantikan **enam subkueri berkorelasi per baris**.
+
+### 24.4 Jumlah jenjang dibiarkan TIDAK DIKETAHUI, dan itu keputusan
+
+`CommitteeCase.TierCount` hampir selalu nol hari ini, dan layar menyatakannya apa adanya.
+
+Menghitungnya menuntut nilai klaim **dan lini bisnis**. Nilai klaim ada di
+`T_CLAIM_KOMITE_LIST`; lini bisnisnya **tidak ada di sana** — di sistem lama ia diturunkan
+`SetEmailKomite`, rule yang mencampur `BusinessType`, pencocokan nama server, dan tiga nama
+orang (`D-52` mencabut yang terakhir).
+
+Menebak pemetaan itu berarti mengarang aturan yang menentukan **berapa orang** harus menyetujui
+sebuah klaim — tepat jenis tebakan yang `D-47` buktikan berbahaya, saat "perbaikan" yang tampak
+masuk akal hampir menghapus penjenjangan seluruhnya.
+
+Akibatnya pada perilaku: `Progress.Closed()` tidak pernah bernilai benar lewat jalur persetujuan,
+sehingga yang mengeluarkan kasus dari kotak Outstanding adalah **"sudah saya putuskan"**, bukan
+"seluruh jenjang selesai". Itu justru setara dengan sistem lama, tempat menyelesaikan assignment
+mengeluarkan pekerjaan dari worklist orang itu sementara jenjang lain tetap menunggu pemiliknya.
+
+### 24.5 Empat penyimpangan yang disengaja dari kueri lama
+
+| # | Yang diubah | Kenapa |
+|---|---|---|
+| 1 | `T_CLAIM_DATA_RESULTS_AI` dan `PEGA_DASHBOARDPNC` dibaca lewat subkueri ber-`GROUP BY` | Join langsung dapat **menggandakan baris inbox**, sementara kueri jumlah tidak menyentuh tabel itu — paginasi yang jumlahnya berbeda dari isinya adalah pekerjaan yang hilang |
+| 2 | Cabang `else` pada `STATUSAPPROVE` tidak ditiru | Kolom KOSONG bukan `1`, sehingga kasus yang belum diputuskan ikut terbaca "ditolak" di sana |
+| 3 | Pemotongan prefix memakai `REPLACE`, bukan pencari posisi | `INSTR` dilarang `D-20`; padanan standarnya **tidak ada di Oracle 19c**. `REPLACE` ada di keduanya dan langsung membalik penggabungan prefix pada `CLAIMID` |
+| 4 | Catatan WAJIB pada tolak dan kembalikan | Sistem lama tidak mewajibkannya; penolakan tanpa alasan tidak dapat ditindaklanjuti siapa pun |
+
+### 24.6 Satu cacat yang DITIRU, dan alasannya
+
+Rumus persentase OR pada `ShowKomiteTerimaTolakNonMBU` menjumlahkan `PRSN_PSPLNSOR` **dua kali**:
+
+    PRSN_OR + PRSN_ORS + PRSN_PSRQS_OR + PRSN_FSPLNSOR + PRSN_PSPLNSOR + PRSN_PSPLNSOR
+
+Kolom `PRSN_FSPLNSOR` yang namanya mirip hanya muncul sekali. Polanya sangat menyerupai
+salin-tempel yang lupa diganti — dan bila benar, ia **melebihkan "Nilai OR ASM"** yang dibaca
+komite saat menyetujui uang.
+
+Ia tetap ditiru. `P-5` menetapkan perilaku dipertahankan lebih dulu, dan dugaan ini **tidak ada
+di antara 13 perbaikan eksplisit** yang `D-49` setujui. Memperbaikinya diam-diam akan memunculkan
+selisih pada uji kesetaraan yang tidak dapat dipetakan ke butir mana pun — dan `D-54` menuntut
+selisih seperti itu disetujui Work Owner tertulis.
+
+### 24.7 Tiga kerusakan yang SUDAH ADA sebelum sesi ini, dan ditemukan karena dikompilasi
+
+Sesi sebelumnya (§22.6, §23.5) menyatakan **tidak satu baris pun pernah dikompilasi** karena Go
+dan Node "tidak terpasang". Ternyata keduanya **terpasang**, hanya tidak ada di `PATH`:
+`/c/Program Files/Go/bin` dan `/c/Program Files/nodejs`.
+
+Begitu `go build ./...` dijalankan, backend **tidak dapat dikompilasi sama sekali** — bukan karena
+pekerjaan sesi ini, melainkan karena empat sisa penggantian nama `D-80` yang tidak pernah terbukti:
+
+| Berkas | Rujukan usang | Yang benar |
+|---|---|---|
+| `komite/http/errors.go` | `logging.Dari` | `logging.From` |
+| `pelaporanklaim/http/errors.go` | `logging.Dari` | `logging.From` |
+| `komite/repo/sqlstore/query_test.go` | `kueri` (30×) | `queries` |
+| `komite/http/routes_test.go` | `respons.BusinessLine`, `mentah.Thresholds` | `BusinessLines`, `Ambang` |
+
+Keempatnya diperbaiki. Ini **bukan refactor** — ia memperbaiki build yang rusak, dan tanpanya
+tidak satu pun verifikasi dapat dijalankan.
+
+**Pelajarannya bukan tentang keempat cacat itu.** §22.6 menulis bahwa Go dan Node tidak terpasang
+karena `command -v` mengembalikan kosong, lalu berhenti di situ selama dua sesi. `command -v` yang
+kosong berarti **tidak ada di PATH**, bukan tidak terpasang — dan jarak antara kedua kesimpulan
+itu adalah dua sesi kerja yang seluruh hasilnya tidak terbukti. Ini pola yang sama dengan tiga
+kesalahan pada §22.5 dan §23.3: **alat ukur dipercaya sebelum diuji.**
+
+### 24.8 Dua kesalahan saya sendiri pada sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | Penggantian berjangkar atas kata `kueri` ikut mengganti kata Indonesia yang sama di dalam komentar dan pesan assertion — "Seluruh queries yang dipanggil", "queries %q memakai" | pembacaan ulang hasilnya; dipulihkan dengan mengembalikan prosa lalu mengganti hanya rujukan identifier |
+| 2 | Uji `TestAgingDihitungSebagaiSelisihTanggalKalender` menyatakan `+3 jam` dari 23:00 WIB "masih hari yang sama" — padahal ia melewati tengah malam | `go test` gagal; **kodenya benar, ujinya yang salah** |
+
+Yang pertama adalah **kali kelima** pola penggantian-merusak-prosa muncul (§22.5 butir 1, §23.3
+butir 1 dan 3). Yang kedua justru bukti bahwa menjalankan uji berguna: tanpa kompilasi, uji yang
+salah itu akan tercatat sebagai "sudah diuji".
+
+### 24.9 Keadaan verifikasi — kali ini benar-benar dijalankan
+
+    backend   go build ./...      bersih
+              go vet ./...        bersih
+              go test ./...       36 paket OK, 0 FAIL
+              gofmt               seluruh berkas baru dan yang disunting bersih *
+
+    frontend  npm run typecheck   bersih
+              npm test            144 uji: 139 lulus, 5 gagal **
+              npm run build       berhasil, 214 modul
+
+**\*** `gofmt -l` menandai **setiap** berkas Go di repo ini, termasuk yang tidak disentuh sama
+sekali. Sebabnya akhiran baris **CRLF** di seluruh repo, bukan format kodenya. Dibuktikan dengan
+menjalankan `gofmt` atas salinan yang CR-nya dibuang: **nol** berkas dalam lingkup yang perlu
+diformat. `gofmt -w` seluruh repo **tidak dijalankan** — ia akan menulis ulang setiap berkas tanpa
+satu pun perubahan isi.
+
+**\*\*** Kelima kegagalan ada di `master-rekening` (3) dan `ambang-komite` (2), dan **seluruhnya
+sudah gagal sebelum sesi ini**. Dibuktikan dengan `git stash` atas ketiga berkas frontend yang
+disunting, menjalankan kedua suite itu, lalu `git stash pop`: **5 gagal yang sama**. Tidak
+diperbaiki di sesi ini karena ia di luar lingkup dan menyentuh modul orang lain — dicatat sebagai
+temuan, bukan diserap diam-diam.
+
+Uji baru yang ditambahkan sesi ini: **74** di `komite`, **29** di `usecase`, **30** di `http`,
+**14** di `sqlstore`, **16** di frontend.
+
+### 24.10 Yang belum dikerjakan, dan itu bukan kelalaian
+
+| Hal | Alasan |
+|---|---|
+| Migrasi `0004` belum dijalankan di lingkungan mana pun | Akun aplikasi tidak punya hak DDL; prosedurnya `D-63` |
+| Keputusan tidak menutup case di Pega | `P-1` melarang menulis ke tabel Pega — lihat §24.11 |
+| Jumlah jenjang tidak dihitung | lini bisnis tidak ada di sumber yang dibaca — §24.4 |
+| Pemeriksaan peran pada rutenya | `TKT-F3-005`, sama dengan seluruh rute lain hari ini |
+| Kueri masih memakai koneksi portal UTAMA | `TKT-F6-002`; di sini akibatnya **daftar pekerjaan** badan hukum lain, bukan sekadar angka acuan |
+| `Export To Excel` | menuntut `S-2` yang belum ada sama sekali |
+
+### 24.11 Akibat masa paralel yang WAJIB diketahui sebelum rilis
+
+Kasus yang sudah diputuskan di sistem baru **tetap terbuka di Pega**: `PYSTATUSWORK` di sana tidak
+berubah dan penugasan worklist-nya tidak dicabut. Layar menutupinya dengan menumpangkan keputusan
+kita di atas baris warisan, tetapi Pega tidak tahu apa-apa tentang itu.
+
+Dua akibatnya:
+
+1. Orang yang sama dapat memutuskan kasus itu **lagi di Pega**. Keputusan mana yang sah adalah
+   pertanyaan untuk Work Owner.
+2. Alur Pega **tidak berlanjut** ke jenjang berikutnya karena persetujuan kita.
+
+Keduanya disebutkan **di layar**, bukan disembunyikan.

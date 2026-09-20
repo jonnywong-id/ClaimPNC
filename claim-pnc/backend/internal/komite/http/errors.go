@@ -20,6 +20,11 @@ const (
 	CodeUnknownLine      = "lini_tidak_dikenal"
 	CodeInvalidValue     = "nilai_klaim_cacat"
 	CodeInternalError    = "galat_internal"
+
+	// Kode layar Inbox Komite.
+	CodeCaseNotFound   = "kasus_tidak_ditemukan"
+	CodeDecisionClosed = "komite_sudah_selesai"
+	CodeMalformedBody  = "permintaan_cacat"
 )
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri
@@ -51,7 +56,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			}
 		}
 		if status >= http.StatusInternalServerError {
-			logging.Dari(r.Context(), logger).Error("permintaan gagal",
+			logging.From(r.Context(), logger).Error("permintaan gagal",
 				slog.String("jalur", r.URL.Path),
 				slog.String("galat", err.Error()),
 			)
@@ -92,6 +97,37 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeUnknownLine,
 			Message: "Lini bisnis itu tidak ada di master ambang komite.",
+		}, true
+
+	case errors.Is(err, komite.ErrCaseNotFound), errors.Is(err, komite.ErrNotAssigned):
+		// Keduanya dijawab 404 YANG SAMA, dan penyamaannya disengaja.
+		//
+		// Membedakannya akan mengubah endpoint ini menjadi alat untuk menebak nomor
+		// case: "404" berarti tidak ada, "403" berarti ada tetapi milik orang lain — dan
+		// yang kedua membocorkan keberadaan pekerjaan beserta nilainya kepada siapa pun
+		// yang punya sesi.
+		//
+		// Perbedaannya tetap ada di dalam domain, sehingga log dapat menyebut sebab yang
+		// sebenarnya sementara peramban tidak.
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeCaseNotFound,
+			Message: "Kasus komite itu tidak ada di inbox Anda.",
+		}, true
+
+	case errors.Is(err, komite.ErrDecisionClosed):
+		// 409, bukan 422: permintaannya sah dan isinya benar — yang berubah adalah
+		// KEADAAN kasusnya, biasanya karena keputusan sudah tercatat dari tab lain.
+		// Layar menanganinya berbeda: ia memuat ulang, bukan menandai isian yang salah.
+		return http.StatusConflict, ErrorResponse{
+			Code: CodeDecisionClosed,
+			Message: "Keputusan atas kasus ini sudah tercatat. Muat ulang untuk " +
+				"melihat keadaan terbarunya.",
+		}, true
+
+	case errors.Is(err, errMalformedBody):
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedBody,
+			Message: "Permintaan tidak dapat dibaca. Periksa isian lalu coba lagi.",
 		}, true
 
 	case errors.Is(err, money.ErrFormat):

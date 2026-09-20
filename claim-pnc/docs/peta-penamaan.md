@@ -356,3 +356,90 @@ untuk modul yang Work Owner sebut dengan nama bisnisnya.
 
 **Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
 `menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.
+
+---
+
+## Tambahan 2026-09-20 — modul Inbox Komite
+
+### Alias Pega yang TIDAK dibawa
+
+Ini bagian terpenting dari peta modul ini. Lima property pada section lama bernama sesuatu yang
+sama sekali tidak mencerminkan isinya — utang teknis `03-CURRENT-ARCHITECTURE.md` §4.2. Nama yang
+dipakai di sini diturunkan dari **apa yang benar-benar dihitung SQL-nya**, bukan dari nama
+property-nya (`D-19`).
+
+| Property Pega | Caption di layar lama | Isi sebenarnya | Nama di kode |
+|---|---|---|---|
+| `.IBNR` | Nilai ASM Share | `NILAIKLAIM × SHAREASM / 100` | `ASMShareValue` |
+| `.pyScore` | Nilai OR ASM | `NILAIKLAIM × Σ PRSN_*` | `ORValue` |
+| `.DraftWordingID` | PIC Klaim | `T_CLAIM_PNC.PICTEKNIK` | `ClaimPIC` |
+| `.RejectedCode` | Alasan Reject | `NOTEKOMITE` | `CommitteeNote` |
+| `.StatusKlaim` | Tipe Komite | `TYPEKOMITE × PAYMENTTYPE` | `CommitteeKind` |
+
+`.StatusKlaim` patut disebut khusus: ia **bukan** Status Klaim dalam arti `D-18`. Menyalin namanya
+akan menambah tafsir kelima pada konsep yang `D-18` sudah susah payah pisahkan menjadi empat.
+
+### Istilah domain baru
+
+| Indonesia (`CONTEXT.md`) | Inggris | Contoh |
+|---|---|---|
+| Kasus komite | `CommitteeCase` | `CommitteeCase`, `FindCase`, `ListCases` |
+| Kotak masuk | `InboxKind` | `InboxOutstanding`, `InboxAccepted`, `InboxRejected` |
+| Keputusan | `Decision` | `Decision`, `DecisionKind`, `DecisionCommand` |
+| Setuju · Tolak · Kembalikan | `Approve` · `Reject` · `Return` | `DecisionApprove`, `DecisionReject`, `DecisionReturn` |
+| Kesimpulan | `Outcome` | `OutcomePending`, `OutcomeApproved`, `OutcomeRejected`, `OutcomeReturned` |
+| Penjenjangan (keadaan) | `Progress` | `Progress`, `Evaluate`, `TierCountUnknown` |
+| Umur menunggu | `Aging` | `AgingDays` |
+| Pemutus | `Actor` | `Actor`, `ActorLogin`, `ActorName` |
+| Tipe komite | `CommitteeKind` | `CommitteeKindOf` |
+| Warisan (dari Pega) | `Legacy` | `LegacyOutcome`, `LegacyTier` |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Putuskan | `Decide` | aksi bisnis, bukan `Update` — ia punya invarian dan meninggalkan jejak |
+| Catat | `Record` | append-only; sengaja BUKAN `Save`, yang menyiratkan dapat menimpa |
+| Ringkas | `Summarize` | jumlah per kotak dalam satu perjalanan |
+| Tumpangkan | `withProgress` | menumpangkan keputusan kita di atas kasus warisan |
+
+### Nama kueri `.sql` tambahan
+
+Berawalan menurut **apa yang dilayaninya**, bukan menurut nama tabelnya — karena satu kueri di
+sini menyentuh enam tabel sekaligus:
+
+    inbox_list · inbox_count · inbox_summary · inbox_get · inbox_check_table
+    decision_list_for_cases · decision_insert · decision_check_table
+
+`decision_insert` adalah **satu-satunya pernyataan tulis di seluruh paket**, dan ia terdaftar
+eksplisit di `kueriYangBolehMenulis` pada ujinya.
+
+### Nama tabel dan kolom — tetap Indonesia
+
+`POOLDATA.CPNC_KOMITE_KEPUTUSAN` beserta seluruh kolomnya (`CASE_ID`, `NOMOR_KLAIM`, `JENJANG`,
+`KEPUTUSAN`, `CATATAN`, `ACTOR_LOGIN`, `ACTOR_NAMA`, `PADA`) berbahasa Indonesia mengikuti `D-80`:
+nama basis data dimiliki bersama Pega selama masa paralel, dan perubahannya menempuh `D-63`.
+
+Dua kolom memakai awalan `ACTOR_` yang berbahasa Inggris. Itu disengaja: ia menghindari kata
+"pengguna", yang di tabel ini akan menyesatkan — pemutusnya belum tentu ada di tabel pengguna
+aplikasi ini, dan nilainya adalah login warisan.
+
+### Nama field JSON — tetap Indonesia
+
+`nomor_case`, `nomor_klaim`, `aging_komite`, `tipe_komite`, `nilai_asm_share`, `nilai_or_asm`,
+`penjenjangan`, `kesimpulan`, `keputusan`, `catatan`, `kotak`, `ringkasan` — seluruhnya kontrak
+API, bukan nama internal (`D-80`).
+
+Nilai enumnya pun Indonesia dan sengaja sama dengan yang tersimpan di kolom `KEPUTUSAN`:
+`setuju` · `tolak` · `kembalikan`, dan `outstanding` · `diterima` · `ditolak`.
+
+### Nama modul
+
+| Lapisan | Nama |
+|---|---|
+| Backend | tidak ada folder baru — ia bagian `internal/komite/` (`D-81`) |
+| Frontend | `src/modules/inbox-komite/` — nama modul yang disebut Work Owner |
+
+Berkas frontend berbahasa Inggris sesuai `D-80`: `InboxKomitePage.tsx`, `InboxTabs.tsx`,
+`DecisionPanel.tsx`. "Inbox Komite" pada nama folder adalah **nama modulnya**, dan itu satu-satunya
+yang berbahasa Indonesia.

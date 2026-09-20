@@ -15,6 +15,28 @@ var (
 	// keadaan data yang harus dilihat Work Owner. Menjawab keduanya dengan galat yang
 	// sama akan menyembunyikan yang kedua.
 	ErrUnknownBusinessLine = errors.New("komite: lini bisnis tidak ada di master ambang")
+
+	// ErrCaseNotFound berarti nomor case komite itu tidak ada sama sekali.
+	ErrCaseNotFound = errors.New("komite: kasus komite tidak ditemukan")
+
+	// ErrNotAssigned berarti kasusnya ada, tetapi bukan milik pemanggil.
+	//
+	// Ia dibedakan dari ErrCaseNotFound di dalam domain, lalu SENGAJA DISAMAKAN di
+	// lapisan transport — keduanya dijawab 404. Membedakannya di sana akan mengubah
+	// endpoint ini menjadi alat untuk menebak nomor case: "404" berarti tidak ada,
+	// "403" berarti ada tetapi milik orang lain, dan yang kedua membocorkan keberadaan
+	// pekerjaan beserta nilainya kepada siapa pun yang punya sesi.
+	//
+	// Perbedaannya tetap berguna di sini: log dapat menyebut sebab yang sebenarnya,
+	// sementara peramban tidak.
+	ErrNotAssigned = errors.New("komite: kasus komite bukan milik pemanggil")
+
+	// ErrDecisionClosed berarti komite pada kasus itu sudah selesai.
+	//
+	// Ia menjaga sesuatu yang nyata: dua anggota yang membuka layar bersamaan, lalu
+	// keduanya menekan tombol. Tanpa pemeriksaan ini, keputusan kedua akan tercatat
+	// sebagai jenjang yang sama dua kali — dan penjenjangan berhenti dapat dipercaya.
+	ErrDecisionClosed = errors.New("komite: komite pada kasus ini sudah selesai")
 )
 
 // Field yang dapat membawa pelanggaran validasi. Nilainya dipakai apa adanya lapisan
@@ -25,6 +47,12 @@ var (
 const (
 	FieldValue        = "nilai"
 	FieldBusinessLine = "lini"
+
+	// Isian layar Inbox Komite.
+	FieldInboxKind = "kotak"
+	FieldDateTo    = "sampai"
+	FieldDecision  = "keputusan"
+	FieldNote      = "catatan"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.

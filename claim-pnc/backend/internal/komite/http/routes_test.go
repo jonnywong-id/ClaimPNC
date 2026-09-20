@@ -42,7 +42,10 @@ func serverUji(t *testing.T) http.Handler {
 
 	router := chi.NewRouter()
 	router.Route("/api", func(api chi.Router) {
-		komitehttp.Mount(api, handler)
+		// Inbox Komite tidak dipasang: berkas ini menguji master ambang dan
+		// penjenjangan, dan membentuk kedua penyimpanan inbox hanya untuk itu adalah
+		// bahan yang tidak dipakai satu pernyataan pun di bawah.
+		komitehttp.Mount(api, handler, nil)
 	})
 	return router
 }
@@ -76,7 +79,7 @@ func TestDaftarAmbangMengembalikanSeluruhBarisBesertaRingkasannya(t *testing.T) 
 	// Daftar lini datang DARI DATA, bukan dari daftar tetap di dalam kode.
 	require.Equal(t,
 		[]string{"BONDING", "NONMBU", "NONMBUAB", "NONMBUC", "PA", "TRAVEL"},
-		respons.BusinessLine)
+		respons.BusinessLines)
 
 	// Batas pita dikirim supaya pengguna dapat melihatnya, bukan menghafalnya.
 	require.Len(t, respons.BandPolicies, 1)
@@ -96,9 +99,9 @@ func TestNilaiUangDikirimSebagaiTeksKanonik(t *testing.T) {
 		Ambang []map[string]any `json:"ambang"`
 	}
 	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &mentah))
-	require.NotEmpty(t, mentah.Thresholds)
+	require.NotEmpty(t, mentah.Ambang)
 
-	for _, baris := range mentah.Thresholds {
+	for _, baris := range mentah.Ambang {
 		require.IsType(t, "", baris["batas_bawah"], "batas_bawah harus teks, bukan angka JSON")
 		require.IsType(t, "", baris["batas_atas"], "batas_atas harus teks, bukan angka JSON")
 	}
@@ -355,7 +358,7 @@ func serverSimasnet(t *testing.T) http.Handler {
 	})
 
 	router := chi.NewRouter()
-	router.Route("/api", func(api chi.Router) { komitehttp.Mount(api, handler) })
+	router.Route("/api", func(api chi.Router) { komitehttp.Mount(api, handler, nil) })
 	return router
 }
 

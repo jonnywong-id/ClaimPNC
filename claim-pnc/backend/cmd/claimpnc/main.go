@@ -147,6 +147,30 @@ func run() error {
 		WriteResponse:       writeJSON,
 		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
 	})
+	handlerKomiteInbox := komitehttp.NewInboxHandler(komitehttp.InboxHandlerOptions{
+		Service: assembly.komiteInbox,
+		// Jembatan satu arah dari modul auth ke modul Komite. Ia dipasang di sini, bukan
+		// di dalam salah satu modul, supaya keduanya tetap tidak saling mengimpor — yang
+		// tahu keduanya hanyalah berkas perakitan ini.
+		//
+		// Yang dijembatani LOGIN, bukan NIK. Inbox disaring terhadap `PXASSIGNEDOPERATORID`
+		// pada worklist Pega, yang berisi nama seperti `ELLENSUPRIYATI` — dan Work Owner
+		// menetapkan kunci pencocokannya adalah login yang DIKETIK pengguna
+		// (`docs/keputusan-implementasi.md` §16.5).
+		Caller: func(ctx context.Context) (komitehttp.InboxCaller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return komitehttp.InboxCaller{}, false
+			}
+			return komitehttp.InboxCaller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+			}, true
+		},
+		Logger:              logger,
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
+	})
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
 		ReadyAliases: assembly.readyAliases,
@@ -294,12 +318,22 @@ func run() error {
 				// tanpa sesi.
 				pelaporanklaimhttp.Mount(protected, claimReportHandler)
 
-				// Modul Komite memasang dua kelompok rute sekaligus: master ambang di
-				// bawah master/, dan perhitungan penjenjangan di bawah komite/.
-				// Keduanya DIBACA SAJA — tidak ada satu pun jalur yang menulis ke
+				// Modul Komite memasang tiga kelompok rute sekaligus: master ambang di
+				// bawah master/, perhitungan penjenjangan di bawah komite/, dan Inbox
+				// Komite di bawah komite/inbox.
+				//
+				// Dua yang pertama DIBACA SAJA — tidak ada satu pun jalur yang menulis ke
 				// POOLDATA.EMAILKOMITE selama masa paralel (P-1, keputusan Work Owner
 				// 2026-09-17).
-				komitehttp.Mount(protected, handlerKomite)
+				//
+				// Yang ketiga MENULIS, dan hanya ke satu tempat: tabel keputusan milik
+				// aplikasi ini sendiri (migrasi 0004). Kasusnya tetap dibaca saja dari
+				// tabel warisan.
+				//
+				// Isi layar ini memperlihatkan siapa yang berwenang menyetujui uang, dan
+				// setiap barisnya memuat nilai klaim serta nama tertanggung. Tidak satu
+				// pun boleh terbaca tanpa sesi.
+				komitehttp.Mount(protected, handlerKomite, handlerKomiteInbox)
 			})
 		},
 	})
@@ -326,6 +360,10 @@ type assembly struct {
 	// komite membaca master ambang dan menghitung penjenjangan persetujuan (B-7).
 	komite *komiteusecase.Service
 
+	// komiteInbox melayani layar Inbox Komite: daftar pekerjaan anggota komite dan
+	// pencatatan keputusannya (`TKT-B07-002`, MENU_ID 52).
+	komiteInbox *komiteusecase.InboxService
+
 	// masterStatusProgres memakai pemilih repo per portal, bukan repo tunggal:
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
@@ -350,6 +388,15 @@ type storage struct {
 
 	// komite adalah master ambang POOLDATA.EMAILKOMITE — DIBACA SAJA.
 	komite komite.Repo
+
+	// komiteInbox membaca kasus komite dari tabel warisan; komiteDecision menulis
+	// keputusannya ke tabel milik aplikasi ini.
+	//
+	// Keduanya dinyatakan TERPISAH meski satu objek yang sama dapat mengisi keduanya
+	// (adapter memori memang demikian). Pembelahannya mengikuti kepemilikan tabel:
+	// yang satu tidak boleh menulis apa pun, yang lain menulis.
+	komiteInbox    komite.InboxRepo
+	komiteDecision komite.DecisionRepo
 
 	account     masterrekening.Repo
 	accountBank masterrekening.BankRepo
@@ -458,6 +505,21 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Inbox Komite memakai jam sistem dalam UTC, sama dengan modul lain. Ia dipasok
+	// eksplisit — bukan dibiarkan memakai bawaan — supaya jelas terbaca bahwa Aging
+	// dihitung dari jam SERVER, bukan jam peramban. Satu kenyataan tidak boleh punya dua
+	// umur.
+	komiteInboxService, err := komiteusecase.NewInboxService(komiteusecase.InboxOptions{
+		Cases:     store.komiteInbox,
+		Decisions: store.komiteDecision,
+		IDs:       komitememory.IDGenerator{},
+		Clock:     clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                service,
 		portal:              store.portal,
@@ -465,6 +527,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
 		komite:              komiteService,
+		komiteInbox:         komiteInboxService,
 		menu:                menuService,
 		pelaporanKlaim:      claimReportService,
 		readyAliases:        store.readyAliases,
@@ -625,6 +688,19 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Memperbaikinya adalah `TKT-F6-002` — koneksi diambil dari portal AKTIF, yang
 		// menuntut portal melekat pada permintaan alih-alih pada keadaan global.
 		store.komite = komitesql.NewRepo(primary)
+
+		// Inbox Komite membaca tabel WARISAN — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`,
+		// `PC_ASSIGN_WORKLIST`, `T_CLAIM_KOMITE_LIST`, `T_CLAIM_DATA_RESULTS_AI` — dan
+		// menulis keputusannya ke tabel MILIK APLIKASI INI (`CPNC_KOMITE_KEPUTUSAN`,
+		// migrasi 0004). Keduanya dipasang pada koneksi yang sama.
+		//
+		// Cacat portalnya SAMA PERSIS dengan master ambang di atas, dan di sini akibatnya
+		// lebih berat: yang salah portal bukan angka acuan melainkan DAFTAR PEKERJAAN
+		// beserta nilai klaim dan nama tertanggung milik badan hukum lain. Itu `R-20`
+		// secara harfiah, dan penutupannya `TKT-F6-002`.
+		store.komiteInbox = komitesql.NewInboxRepo(primary)
+		store.komiteDecision = komitesql.NewDecisionRepo(primary)
+
 		store.close = pool.Close
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
@@ -648,6 +724,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// dan simulasi penjenjangan dapat dicoba lengkap tanpa Oracle — termasuk
 		// ketujuh kasus pada spec B-7.
 		store.komite = komitememory.NewSampleRepo()
+		// Kasus komite contoh ikut dimuat, sehingga layar Inbox Komite dapat dicoba
+		// LENGKAP — termasuk alur keputusannya — tanpa Oracle dan tanpa menunggu migrasi
+		// 0004. Seluruh isinya KARANGAN, berbeda dari master ambang di atas: tidak ada
+		// satu pun ekstrak antrean komite yang pernah diserahkan kepada kami. Lihat
+		// repo/memory/inbox_sample.go.
+		inboxStore := komitememory.NewSampleInboxStore()
+		store.komiteInbox = inboxStore
+		store.komiteDecision = inboxStore
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya

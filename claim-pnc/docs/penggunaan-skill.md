@@ -721,3 +721,95 @@ alat ukur dipercaya sebelum diuji pada kasus yang jelas benar.
 Yang berubah dari sesi sebelumnya bukan kekerapan kesalahannya, melainkan **kapan ia
 ketahuan**: ketiganya tertangkap oleh pemeriksaan yang dijalankan sendiri sebelum hasilnya
 dilaporkan, bukan oleh Work Owner sesudahnya.
+
+---
+
+## Sesi kesembilan — Modul Inbox Komite (2026-09-20)
+
+### Skill yang dipanggil
+
+**Tidak satu pun skill dipanggil lewat perkakas Skill pada sesi ini.** Itu dinyatakan terang
+karena ketentuan dokumentasi menuntutnya, dan menuliskan pemakaian yang tidak terjadi lebih buruk
+daripada menuliskan bahwa ia tidak terjadi.
+
+Yang dipakai adalah **kosakata dan disiplin** dari skill Matt Pocock yang sudah menjadi cara kerja
+proyek ini sejak sesi pertama. Keduanya dicatat di bawah beserta apa yang benar-benar dihasilkannya
+— bukan sebagai klaim, melainkan sebagai keputusan yang dapat ditunjuk barisnya.
+
+### `codebase-design` — kosakata seam, depth, dan locality
+
+| Kapan | Apa yang dihasilkan |
+|---|---|
+| Saat menentukan batas seam | **Dua seam, bukan satu**: `InboxRepo` (baca warisan) dan `DecisionRepo` (tulis milik sendiri). Prinsip "satu adapter berarti seam hipotetis" tidak dipakai untuk menggabungkannya — yang memisahkan keduanya bukan jumlah adapter melainkan **kepemilikan tabel**, dan menggabungkannya akan membuat aturan baca-saja bergantung pada kehati-hatian penyunting berikutnya |
+| Saat menentukan letak aturan | **Depth**: `CommitteeKindOf` menyembunyikan CASE bersarang yang di sistem lama menjalankan enam subkueri berkorelasi per baris, di balik satu fungsi yang dapat diuji tanpa basis data |
+| Saat aturan kotak harus ada di SQL | **Locality yang diakui gagal**: aturannya hidup di dua tempat, dan pelanggarannya dicatat terbuka beserta penebusnya — definisi Go menjadi kanonik, adapter memori memakainya langsung, dan satu uji membandingkan klausa penyaring `inbox_list` dengan `inbox_count` kata per kata |
+
+**Manfaat yang nyata:** tanpa kosakata ini, godaan terbesarnya adalah menaruh seluruh penyaringan
+di Go "supaya aturannya satu tempat" — yang akan menuntut seluruh antrean komite dibaca ke memori
+sebelum satu halaman ditampilkan.
+
+### `domain-modeling` — menajamkan istilah sebelum menulis tipe
+
+Dipakai paling berat, dan hasilnya paling terlihat.
+
+Section lama menampilkan kolomnya lewat property yang **sama sekali tidak mencerminkan isinya**.
+Menyalin nama itu ke dalam tipe Go akan membawa serta kekacauan yang justru menjadi alasan migrasi:
+
+| Property Pega | Diuji ke SQL-nya | Nama di sistem baru |
+|---|---|---|
+| `.IBNR` | `NILAIKLAIM × SHAREASM / 100` | `ASMShareValue` |
+| `.pyScore` | `NILAIKLAIM × Σ PRSN_*` | `ORValue` |
+| `.DraftWordingID` | `T_CLAIM_PNC.PICTEKNIK` | `ClaimPIC` |
+| `.RejectedCode` | `NOTEKOMITE` | `CommitteeNote` |
+| `.StatusKlaim` | `TYPEKOMITE × PAYMENTTYPE` | `CommitteeKind` |
+
+Yang terakhir adalah temuan yang paling mudah terlewat: property bernama `StatusKlaim` yang sama
+sekali **bukan** Status Klaim dalam arti `D-18`. Menyalinnya akan menambah tafsir kelima pada
+konsep yang `D-18` sudah susah payah pisahkan menjadi empat.
+
+Disiplin skill ini juga yang mencegah satu tebakan besar: **jumlah jenjang dibiarkan tidak
+diketahui** alih-alih diturunkan dari `GroupPanel`. Pemetaan Group Panel ke `TYPE_BUSINESS` tidak
+ada di sumber mana pun yang dibaca modul ini, dan menebaknya berarti mengarang aturan yang
+menentukan berapa orang harus menyetujui sebuah klaim.
+
+### `grilling` — dipakai pada diri sendiri, bukan pada Work Owner
+
+Tiga pertanyaan diajukan ke Work Owner di muka, masing-masing dengan pilihan beserta akibatnya —
+bukan pertanyaan terbuka. Dua di antaranya ternyata **bersinggungan** (sumber baca-saja versus
+pencatatan keputusan), dan persinggungan itu disebutkan saat jawabannya diterima alih-alih
+diselesaikan diam-diam.
+
+Disiplin yang sama dipakai pada setiap angka sebelum ditulis: tiga kueri SQL lama dibaca utuh,
+bukan disimpulkan dari nama rule-nya. Itu yang memunculkan `PRSN_PSPLNSOR` yang dijumlahkan dua
+kali — dugaan cacat pada rumus yang menghitung uang, yang **tidak akan terlihat** bila kuerinya
+hanya diterjemahkan tanpa dibaca.
+
+### Teknik yang dipakai tanpa memanggil skill
+
+**Menjalankan perkakas yang dua sesi terakhir dinyatakan tidak ada.** §22.6 dan §23.5 menyatakan Go
+dan Node tidak terpasang karena `command -v` kosong. Pemeriksaan satu baris ke
+`C:/Program Files/Go/bin` membuktikan keduanya **ada** — hanya tidak di `PATH`. Akibatnya langsung:
+empat kerusakan kompilasi yang sudah ada selama dua sesi ditemukan, dan seluruh pekerjaan sesi ini
+benar-benar terbukti alih-alih hanya diperiksa dengan mata.
+
+**Membuktikan kegagalan yang bukan milik kita.** Lima uji frontend gagal. Alih-alih menduga,
+ketiga berkas frontend yang disunting di-`git stash`, kedua suite dijalankan, lalu
+di-`git stash pop`: **lima kegagalan yang sama**. Itu mengubah "mungkin bukan salah saya" menjadi
+"terbukti bukan".
+
+**Memisahkan CRLF dari format kode.** `gofmt -l` menandai setiap berkas di repo. Menjalankan
+`gofmt -w` akan menulis ulang seluruhnya tanpa satu pun perubahan isi. Yang dijalankan sebagai
+gantinya: salinan tanpa CR, lalu `gofmt -l` — **nol** berkas dalam lingkup yang perlu diformat.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+Dua, keduanya di `catatan-pengembangan.md` §24.8.
+
+Yang pertama — penggantian berjangkar atas kata `kueri` ikut merusak prosa Indonesia di komentar —
+adalah **kali kelima** pola yang sama muncul (§22.5 butir 1, §23.3 butir 1 dan 3). Ia tertangkap
+oleh pembacaan ulang, bukan oleh perkakas.
+
+Yang kedua berbeda sifatnya dan justru menguntungkan: sebuah **uji yang saya tulis salah** —
+menyatakan `+3 jam` dari 23:00 WIB masih hari yang sama — dan `go test` yang menangkapnya.
+Kodenya benar; ujinya yang keliru. Pada dua sesi sebelumnya kesalahan seperti itu akan tercatat
+sebagai "sudah diuji".

@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
 import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
+import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
@@ -140,6 +141,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <TieringPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Komite — menggantikan harness `InboxKomite_Harness`, MENU_ID 52.
+
+        Ia berada di bawah /komite bersama penjenjangan, bukan di bawah /master: isinya
+        pekerjaan dan keputusan, bukan data acuan. Batas kepemilikan itu ikut terlihat di
+        alamat halamannya.
+
+        Pemeriksaan kewenangan menu — di data contoh, MENU_ID 52 hanya diberikan kepada
+        grup `IT` — adalah `TKT-F3-005` yang belum ada. Sampai itu ada, setiap pengguna
+        yang dapat masuk dapat membukanya; yang membatasi isinya adalah penyaring pemilik
+        di server, bukan rute ini.
+      */}
+      <Route
+        path="/komite/inbox"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxKomitePage />
             </Protected>
           </SessionGuard>
         }

@@ -33,7 +33,18 @@ import "github.com/go-chi/chi/v5"
 // di `docs/keputusan-implementasi.md`. Yang perlu disadari khusus modul ini: peran
 // pengujinya kelak adalah **PNCKomite** dan **PNCKomiteTeknik**, dan isi layar ini
 // memperlihatkan siapa yang berwenang menyetujui uang.
-func Mount(r chi.Router, h *Handler) {
+//
+// # Inbox Komite dipasang di Mount yang SAMA, bukan lewat fungsi tersendiri
+//
+// Keduanya berbagi awalan `/komite`, dan chi memanggil `panic` bila satu pola rute
+// didaftarkan dua kali. Memisahkannya menjadi dua fungsi akan membuat kegagalannya muncul
+// sebagai panic saat start — bukan sebagai galat kompilasi — pada setiap orang yang lupa
+// urutan pemasangannya.
+//
+// `inbox` boleh nil, dan saat nil rutenya tidak dipasang sama sekali. Itulah yang dipakai
+// pengujian yang hanya menyentuh master ambang, sehingga ia tidak perlu membentuk kedua
+// penyimpanan Inbox Komite untuk menguji satu endpoint penjenjangan.
+func Mount(r chi.Router, h *Handler, inbox *InboxHandler) {
 	r.Route("/master/ambang-komite", func(master chi.Router) {
 		master.Get("/", h.ListThresholds)
 
@@ -45,5 +56,24 @@ func Mount(r chi.Router, h *Handler) {
 
 	r.Route("/komite", func(k chi.Router) {
 		k.Get("/penjenjangan", h.Tiering)
+
+		if inbox == nil {
+			return
+		}
+
+		// Inbox Komite — menggantikan harness `InboxKomite_Harness` beserta ketiga
+		// kueri yang merakit isinya (`TKT-B07-002`, MENU_ID 52).
+		k.Route("/inbox", func(box chi.Router) {
+			box.Get("/", inbox.List)
+			box.Get("/{nomor}", inbox.Detail)
+
+			// Keputusan adalah SUB-SUMBER DAYA, bukan PATCH pada kasusnya.
+			//
+			// Ia punya invarian — satu orang memutuskan sekali, dan komite yang sudah
+			// selesai tidak menerima apa pun — serta meninggalkan jejak permanen.
+			// Pembaruan field generik akan melewatkan keduanya
+			// (`docs/Steering/10-API-STRATEGY.md` §2).
+			box.Post("/{nomor}/keputusan", inbox.Decide)
+		})
 	})
 }

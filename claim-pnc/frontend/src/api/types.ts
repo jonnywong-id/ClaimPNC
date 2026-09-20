@@ -568,3 +568,167 @@ export type KomiteTieringResponse = {
    */
   urutan_tidak_pasti: boolean
 }
+
+// ---------------------------------------------------------------------------
+// Inbox Komite (`TKT-B07-002`, MENU_ID 52 — harness `InboxKomite_Harness`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Kotak mana yang sedang dibuka.
+ *
+ * Ketiganya menggantikan tiga grid pada `Section/InboxKomite_section-Section.xml`:
+ * "Kotak Masuk Komite Outstanding", "…Diterima", dan "…Ditolak".
+ *
+ * Hanya yang pertama berisi **pekerjaan** dalam arti `D-79` — barisnya hilang setelah
+ * diputuskan dan punya tenggat. Dua sisanya riwayat.
+ */
+export const KomiteInboxKind = {
+  outstanding: 'outstanding',
+  accepted: 'diterima',
+  rejected: 'ditolak',
+} as const
+
+export type KomiteInboxKind = (typeof KomiteInboxKind)[keyof typeof KomiteInboxKind]
+
+/** Tiga keputusan yang dapat diberikan komite. */
+export const KomiteDecisionKind = {
+  approve: 'setuju',
+  reject: 'tolak',
+  return: 'kembalikan',
+} as const
+
+export type KomiteDecisionKind =
+  (typeof KomiteDecisionKind)[keyof typeof KomiteDecisionKind]
+
+/** Kesimpulan atas seluruh keputusan pada satu kasus. */
+export const KomiteOutcome = {
+  pending: 'menunggu',
+  approved: 'disetujui',
+  rejected: 'ditolak',
+  returned: 'dikembalikan',
+} as const
+
+export type KomiteOutcome = (typeof KomiteOutcome)[keyof typeof KomiteOutcome]
+
+/** Satu keputusan komite yang tercatat. Tidak pernah diubah dan tidak pernah dihapus. */
+export type KomiteDecision = {
+  id: string
+  jenjang: number
+  keputusan: KomiteDecisionKind
+  catatan?: string
+  oleh: string
+  nama_pemutus?: string
+  /** RFC 3339 dalam UTC. */
+  pada: string
+}
+
+/** Keadaan penjenjangan satu kasus menurut sistem ini. */
+export type KomiteProgress = {
+  kesimpulan: KomiteOutcome
+  /** Nol berarti **belum diketahui**, bukan nol jenjang — lihat penanda di bawah. */
+  jumlah_jenjang: number
+  jenjang_kini: number
+  jenjang_disetujui: number
+  /**
+   * Dikirim sebagai kesimpulan, bukan dibiarkan disimpulkan layar dari angka nol.
+   *
+   * Jumlah jenjang yang tidak diketahui lalu digambar sebagai "1 dari 1" akan membuat
+   * persetujuan pertama tampak menutup seluruh komite.
+   */
+  jumlah_jenjang_belum_diketahui: boolean
+  selesai: boolean
+  /** Layar memakainya menyembunyikan tombol; penegakannya tetap di server (409). */
+  sudah_saya_putuskan: boolean
+  keputusan: KomiteDecision[]
+}
+
+/**
+ * Satu baris Inbox Komite.
+ *
+ * Nama field di sini **sudah benar**, berbeda dari property Pega yang digantikannya:
+ * `.IBNR` → nilai ASM share, `.pyScore` → nilai OR ASM, `.DraftWordingID` → PIC klaim,
+ * `.StatusKlaim` → tipe komite (`D-19`).
+ */
+export type KomiteCase = {
+  nomor_case: string
+  nomor_klaim: string
+
+  nomor_polis: string
+  nama_tertanggung: string
+  nama_bisnis: string
+  sumber_bisnis: string
+  cabang: string
+  group_panel?: string
+  pic_klaim?: string
+
+  /** RFC 3339 dalam UTC; kosong berarti belum ada, bukan tahun 1. */
+  tanggal_komite?: string
+  tanggal_input?: string
+  /** Dihitung **server**, dalam hari kalender WIB. Jam peramban tidak dipakai. */
+  aging_komite: number
+
+  status_kerja?: string
+  tipe_komite?: string
+
+  /** Teks desimal kanonik — bukan angka JSON, yang akan dibulatkan diam-diam. */
+  nilai_klaim: string
+  nilai_asm_share: string
+  nilai_or_asm: string
+
+  note_komite?: string
+
+  /** Membedakan "belum dinilai AI" dari "dinilai dengan hasil kosong". */
+  ada_penilaian_ai: boolean
+  jawaban_ai?: string
+  note_ai_diterima?: string
+  note_ai_ditolak?: string
+  tanggal_ai?: string
+
+  /** Keputusan dan jenjang yang tercatat **di Pega**, bukan di sistem ini. */
+  keputusan_pega?: KomiteOutcome
+  jenjang_pega?: number
+
+  penjenjangan: KomiteProgress
+}
+
+export type KomiteInboxSummary = {
+  outstanding: number
+  diterima: number
+  ditolak: number
+}
+
+export type KomiteInboxListResponse = {
+  kasus: KomiteCase[]
+  /** Seluruh yang cocok, bukan isi halaman ini. */
+  total: number
+  lewati: number
+  batas: number
+  ringkasan: KomiteInboxSummary
+  /** Kotak yang benar-benar dipakai server — yang tidak dikenali jatuh ke outstanding. */
+  kotak: KomiteInboxKind
+  /**
+   * Operator yang dipakai menyaring, dipantulkan kembali.
+   *
+   * Dengan ini inbox yang kosong dapat dibedakan sebabnya: tidak ada pekerjaan, versus
+   * identitas sesi tidak cocok dengan satu pun `OPERATOR_ID` di data warisan — keadaan
+   * yang sangat mungkin selama pemetaan identitas HCC/HCQ belum ada (`ADR-0024`).
+   */
+  operator: string
+  /** Jam server yang dipakai menghitung aging. */
+  sekarang: string
+}
+
+export type KomiteCaseResponse = {
+  kasus: KomiteCase
+  sekarang: string
+}
+
+/** Kode galat khusus layar Inbox Komite. */
+export const KomiteInboxErrorCode = {
+  caseNotFound: 'kasus_tidak_ditemukan',
+  decisionClosed: 'komite_sudah_selesai',
+  malformedBody: 'permintaan_cacat',
+} as const
+
+export type KomiteInboxErrorCode =
+  (typeof KomiteInboxErrorCode)[keyof typeof KomiteInboxErrorCode]

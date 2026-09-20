@@ -2597,3 +2597,160 @@ Akibatnya satu baris dapat memuat dua bahasa, dan itu memang yang dikehendaki `D
 ```go
 LowerBound money.Money `json:"batas_bawah"`
 ```
+
+---
+
+## 22. Inbox Komite (2026-09-20, sesi kesembilan)
+
+### 22.1 Tiga keputusan Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban | Akibat pada kode |
+|---|---|---|---|
+| 1 | Inbox dibaca dari mana? | **Tabel warisan Pega, baca-saja** | `InboxRepo` membaca empat tabel warisan; nol pernyataan tulis |
+| 2 | Seberapa jauh lingkupnya? | **Inbox + pencatatan keputusan** | `DecisionRepo` + migrasi `0004` |
+| 3 | Kunci pencocokan pemilik inbox | **`User.Login` huruf besar** | `InboxCaller.Login`, dinormalkan `OperatorKey` |
+
+### 22.2 Kepemilikan tabel: dua sumber, satu layar
+
+Jawaban 1 dan 2 tidak dapat dipenuhi bersamaan tanpa membelah kepemilikannya. `P-1` menetapkan
+satu tabel hanya boleh ditulis satu sistem, dan `POOLDATA.T_CLAIM_KOMITE_LIST` — tempat sistem
+lama menyimpan `STATUSAPPROVE`, `NOTEKOMITE`, `NAMAKOMITE`, dan `KOMITEKE` — masih ditulis Pega
+lewat `INSERTDATAKOMITELIST` serta dibaca puluhan kueri di sana.
+
+`TKT-B07-002` sudah menetapkan jalan keluarnya pada bagian migrasi skema: *"Menambah tabel jejak
+komite. Backward-compatible."*
+
+| Seam | Tabel | Hak |
+|---|---|---|
+| `komite.InboxRepo` | `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, `PC_ASSIGN_WORKLIST`, `POOLDATA.T_CLAIM_KOMITE_LIST`, `T_CLAIM_DATA_RESULTS_AI`, `T_CLAIM_PNC`, `PEGA_DASHBOARDPNC` | **SELECT saja** |
+| `komite.DecisionRepo` | `POOLDATA.CPNC_KOMITE_KEPUTUSAN` (migrasi `0004`) | SELECT + INSERT |
+
+Dua seam, bukan satu, meski adapter memori mengisi keduanya dengan objek yang sama. Pembelahannya
+mengikuti kepemilikan tabel — dan itu yang membuat aturan "yang satu tidak boleh menulis" berhenti
+bergantung pada kehati-hatian orang yang menyuntingnya berikutnya. Dijaga uji
+`TestTidakAdaKueriYangMenulis` dan `TestKueriTulisHanyaMenyentuhTabelMilikSendiri`.
+
+### 22.3 Tabel keputusan APPEND-ONLY, dan penegakannya di hak akses
+
+Tidak ada UPDATE dan tidak ada DELETE — bukan hanya di kode, melainkan di **hak akses basis
+data**: migrasi `0004` menginstruksikan DBA memberi `SELECT, INSERT` saja.
+
+Alasannya lebih kuat di modul ini daripada di mana pun: `D-59` menghapus pemisahan tugas — satu
+orang dapat membuat, menyetujui, dan membayarkan satu klaim bila perannya memiliki ketiga menu
+itu. Tidak ada kontrol teknis yang mencegahnya, sehingga jejak inilah **satu-satunya kontrol
+pengimbang yang tersisa** (`ADR-0012`, `ADR-0023`, `09-DATABASE-STRATEGY.md` §8).
+
+Aturan yang hanya ada di dalam kode dapat dilanggar oleh kode berikutnya; aturan yang ada di hak
+akses tidak.
+
+### 22.4 Satu orang memutuskan sekali — dijaga dua lapis
+
+| Lapis | Di mana | Kenapa perlu keduanya |
+|---|---|---|
+| Aturan | `Progress.DecidedBy` di usecase | memberi pesan yang dapat dibaca, bukan galat 500 |
+| Constraint | `CPNC_KOMITE_KEPUTUSAN_UK (CASE_ID, ACTOR_LOGIN)` | pemeriksaan dan penyimpanan **bukan satu operasi atomik** — dua permintaan bersamaan dapat lolos keduanya |
+
+Bentrok constraint diterjemahkan menjadi `komite.ErrDecisionClosed` lewat nama constraint-nya
+(`sqlstore.UniqueKeyName`), bukan lewat nomor galat driver: nama itu milik kita dan tidak berubah
+saat driver atau basis datanya berganti.
+
+### 22.5 Kenapa "sekali per orang", bukan "sekali per jenjang"
+
+Jumlah jenjang sebuah kasus **belum dapat dihitung** — lihat `catatan-pengembangan.md` §24.4.
+Tanpa angka itu, "seluruh jenjang selesai" tidak dapat disimpulkan.
+
+Yang masih dapat dijamin: seorang anggota komite memutuskan sekali. Itulah yang mengeluarkan kasus
+dari kotak Outstanding **miliknya**, persis seperti menyelesaikan assignment mengeluarkannya dari
+worklist di sistem lama — sementara jenjang lain tetap menunggu pemiliknya masing-masing.
+
+Penugasan komite memang per ORANG, bukan per antrean bersama (`T-7`), sehingga semantik itu bukan
+penyederhanaan melainkan bentuk yang benar.
+
+### 22.6 Kontrak API modul ini
+
+    GET  /api/komite/inbox?kotak=&cari=&dari=&sampai=&lewati=&batas=
+                                                   200  satu halaman + ringkasan tiga kotak
+                                                   422  tanggal cacat
+    GET  /api/komite/inbox/{nomor}                 200  satu kasus + penjenjangan
+                                                   404  tidak ada ATAU bukan milik pemanggil
+    POST /api/komite/inbox/{nomor}/keputusan       200  kasus sesudah keputusan
+                                                   400  badan tidak dapat dibaca
+                                                   404  tidak ada ATAU bukan milik pemanggil
+                                                   422  keputusan/catatan melanggar aturan
+                                                   409  sudah diputuskan
+
+Enam hal yang disengaja:
+
+**404 yang sama untuk "tidak ada" dan "bukan milik Anda".** Membedakannya akan mengubah endpoint
+ini menjadi alat untuk menebak nomor case: `404` berarti tidak ada, `403` berarti ada tetapi milik
+orang lain — dan yang kedua membocorkan keberadaan pekerjaan beserta nilainya kepada siapa pun
+yang punya sesi. Perbedaannya **tetap ada di dalam domain** (`ErrCaseNotFound` versus
+`ErrNotAssigned`), sehingga log dapat menyebut sebab yang sebenarnya.
+
+**409, bukan 422, untuk keputusan kedua.** Permintaannya sah dan isinya benar; yang berubah adalah
+KEADAAN kasusnya. Layar menanganinya berbeda: ia memuat ulang, bukan menandai isian yang salah.
+
+**Badan permintaan menolak field yang tidak dikenali.** Klien yang mengirim `jenjang` atau `pada`
+harus tahu keduanya tidak dipakai — mengabaikannya diam-diam akan membuatnya mengira ia menentukan
+sesuatu yang sebenarnya ditetapkan server.
+
+**Tanggal cacat ditolak, paginasi cacat tidak.** `dari=20-09-2026` mengubah APA yang ditampilkan,
+sehingga mengabaikannya akan menampilkan seluruh riwayat kepada seseorang yang mengira ia melihat
+satu minggu. `lewati=abc` hanya mengubah dari mana halamannya dimulai, sehingga jatuh ke halaman
+pertama adalah pemulihan yang benar.
+
+**Respons memantulkan `kotak` dan `operator`.** Kotak yang tidak dikenali JATUH ke outstanding
+alih-alih ditolak, dan tanpa pantulan itu layar tidak tahu permintaannya diperlakukan berbeda.
+Operator dipantulkan supaya inbox kosong dapat dibedakan sebabnya — tidak ada pekerjaan, versus
+identitas sesi tidak cocok dengan satu pun `OPERATOR_ID` warisan (`ADR-0024`).
+
+**Nilai uang sebagai teks desimal kanonik**, bukan angka JSON — sama dengan modul ini sebelumnya
+(§18.7). Angka JSON adalah floating point ganda di peramban, dan `I-12` menetapkan nilai uang
+disimpan presisi penuh.
+
+### 22.7 Aturan kotak hidup di DUA tempat, dan itu diakui
+
+Definisi kanoniknya `komite.CommitteeCase.InBox`; klausa `CASE WHEN` pada `inbox.sql` menirunya.
+Itu melanggar "satu aturan satu tempat", dan pelanggarannya disengaja.
+
+Berbeda dari master ambang — 30 baris, dibaca utuh, disaring di Go (§18.3) — kasus komite tumbuh
+bersama jumlah klaim. Menyaringnya di Go menuntut seluruh antrean komite dibaca ke memori sebelum
+satu halaman ditampilkan.
+
+Yang dikerjakan supaya kedua salinan tidak berbeda pendapat diam-diam: fungsi Go-lah yang
+**mendefinisikan** aturannya, kuerinya menyebutnya dalam komentar, dan adapter memori memakainya
+langsung — sehingga setiap uji yang berjalan tanpa basis data menguji definisi itu, bukan salinan
+SQL-nya. Ditambah `TestPenyaringDaftarDanPenghitungSama`, yang membandingkan klausa penyaring
+`inbox_list` dengan `inbox_count` kata per kata: bila keduanya berbeda, layar akan menampilkan
+jumlah halaman yang tidak pernah ada isinya.
+
+### 22.8 Operator kosong berarti NOL BARIS, dan dijawab tanpa menyentuh basis data
+
+`InboxRepo.ListCases` mengembalikan halaman kosong sebelum kueri dikirim bila penyaring pemiliknya
+kosong. Kueri yang penyaring pemiliknya kosong **tidak boleh pernah dikirim** — supaya satu salah
+ketik pada klausa WHERE tidak dapat membuatnya mengembalikan seluruh antrean komite perusahaan.
+
+Kegagalan yang aman pada sebuah inbox adalah menampilkan **terlalu sedikit**, bukan terlalu banyak.
+
+### 22.9 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+1. **`PRSN_PSPLNSOR` dijumlahkan dua kali** pada rumus Nilai OR ASM. Diduga salin-tempel yang lupa
+   diganti, ditiru apa adanya sesuai `P-5`, dan **belum dikonfirmasi**. Bila benar cacat, ia
+   melebihkan angka yang dibaca komite saat menyetujui uang. Pemilik: **Work Owner** — perbaikannya
+   menuntut penambahan pada 13 butir `D-49`.
+2. **Zona waktu pada penyaring tanggal.** Batas rentang disusun sebagai tengah malam WIB, sementara
+   `PXCREATEDATETIME` disimpan Pega dalam GMT lalu digeser tujuh jam secara manual di 118 titik
+   (`R-12`). Bila sebagian data tersimpan sudah tergeser dan sebagian belum, batasnya meleset tujuh
+   jam pada sebagian baris. Tidak dapat dipastikan dari export; menuntut pembandingan terhadap data
+   nyata di staging (`D-53`).
+3. **Keputusan tidak menutup case di Pega.** Selama masa paralel, orang yang sama dapat memutuskan
+   kasus itu lagi di sana, dan alur Pega tidak berlanjut karena persetujuan kita. Keputusan mana
+   yang sah adalah pertanyaan untuk **Work Owner**.
+4. **`T_CLAIM_DATA_RESULTS_AI` berapa baris per kasus?** Kueri diagregasi `MAX` supaya tidak
+   menggandakan baris inbox; bila tabelnya memang satu baris per kasus, agregasinya tidak mengubah
+   apa pun. Pemilik: **DBA**.
+5. **Koneksi portal.** Kueri masih memakai koneksi UTAMA, sama dengan master ambang (§18 dan
+   `main.go`). Di sini akibatnya lebih berat: yang salah portal adalah **daftar pekerjaan** badan
+   hukum lain. `TKT-F6-002`.
+6. **Retensi jejak keputusan.** `D-62` menetapkan ia mengikuti retensi data klaim; **angkanya belum
+   diserahkan**, sehingga tidak ada penghapusan berkala yang boleh dijadwalkan.
