@@ -17,6 +17,7 @@ import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
+import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -24,6 +25,7 @@ import { useSession } from '@/app/session'
 import { PageShell } from './PageShell'
 import { SessionGuard } from './SessionGuard'
 import { SessionWarning } from './SessionWarning'
+import { ViewClaimPlaceholder } from './ViewClaimPlaceholder'
 
 /**
  * Sesi yang ditolak server di tengah pekerjaan dibersihkan di satu tempat ini.
@@ -261,6 +263,40 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimHistoryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Admin — antrean kerja admin klaim, menggantikan harness `PNCInboxAdmin`
+        (`MENU_ID 63`). Delapan tab; tiga tab Komunikasi milik sistem lama tidak dibawa
+        karena sudah tidak dipakai (keputusan Work Owner 2026-09-20).
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
+        sistem lama membedakan perilaku bagi CaseManager dan PncManagerAdmin — adalah
+        `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox-admin"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxAdminPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Tujuan tombol "Lihat Detail Klaim". Layar sebenarnya adalah `MENU_ID 75`
+        "View Claim" yang belum dibangun; rute ini menyatakan keadaan itu apa adanya
+        alih-alih melempar pengguna ke beranda tanpa penjelasan.
+      */}
+      <Route
+        path="/view-claim/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ViewClaimPlaceholder />
             </Protected>
           </SessionGuard>
         }

@@ -27,12 +27,16 @@ import (
 	"claim-pnc/internal/portal"
 	"claim-pnc/internal/riwayatklaim"
 
+<<<<<<< HEAD
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
 	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
+=======
+	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+>>>>>>> Feat-arlexy-Inbox-admin
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
@@ -97,6 +101,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkSupplier(ctx, primary, print)
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
 	checkClaimHistoryGate(ctx, riwayatklaimsql.NewProtectionRepo(primary), print)
+	checkInboxAdmin(ctx, inboxadminsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -1118,6 +1123,7 @@ func checkClaimHistoryGate(
 	print("            layar Master Proteksi Data milik sistem lama, bukan oleh aplikasi ini.")
 }
 
+<<<<<<< HEAD
 // checkSparepart melaporkan kesiapan POOLDATA.SPAREPART_HE beserta kedua tabel acuannya.
 //
 // Ketiga tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat
@@ -1305,4 +1311,25 @@ func checkSparepartLookup(
 		print("            tampil hanyalah NAMA acuannya. Menyimpan ulang baris seperti itu")
 		print("            menuntut petugas memilih kategori atau tipe yang sah.")
 	}
+=======
+// checkInboxAdmin memastikan tabel yang dibaca layar Inbox Admin terjangkau.
+//
+// Berbeda dengan modul lain, modul ini TIDAK menuntut satu pun migrasi: seluruh tabel yang
+// dibacanya sudah ada dan milik sistem lama. Yang dapat gagal karena itu bukan "tabelnya
+// belum dibuat", melainkan "akun aplikasi belum diberi hak SELECT atasnya".
+func checkInboxAdmin(
+	ctx context.Context,
+	repo *inboxadminsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] DATAPEGA.PC_ASM_FW_GCNMFW_WORK tidak dapat dibaca: %v", err)
+		print("            Tanpa hak baca atasnya, seluruh tab Inbox Admin kosong.")
+		print("            Tabel ini milik sistem lama dan tidak dibuat migrasi mana pun.")
+		return
+	}
+	print("  [ok]    DATAPEGA.PC_ASM_FW_GCNMFW_WORK dapat dibaca")
+	print("            Catatan: penyaring Cabang dan Korwil BELUM aktif — sumbernya")
+	print("            DB Link ke HRD yang belum punya API pengganti (R-03).")
+>>>>>>> Feat-arlexy-Inbox-admin
 }

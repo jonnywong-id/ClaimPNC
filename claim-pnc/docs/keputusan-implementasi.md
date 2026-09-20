@@ -4713,3 +4713,182 @@ memang menyimpan kunci berformat Pega.
 | 2 | Apakah layar Master Proteksi Data ikut dimigrasikan? Selama belum, jatah hanya dapat ditambah lewat layar Pega | Work Owner |
 | 3 | Label tipe pencarian yang sebenarnya dibaca pengguna — yang dipakai sekarang turunan dari deskripsi langkah, karena definisi propertinya tidak ada di export | Tim Pega |
 | 4 | Apakah cacat pencarian Tanggal Lahir kelak diperbaiki? Bila ya, ia menjadi butir baru pada daftar perbaikan eksplisit `P-5` | Work Owner |
+
+## 19. Modul Inbox Admin (2026-09-20, sesi kesebelas)
+
+### 19.1 Keputusan Work Owner pada sesi ini
+
+| # | Keputusan | Akibatnya |
+|---|---|---|
+| 1 | **Seluruh tab dibangun sekaligus** | Delapan tab, bukan bertahap |
+| 2 | **Tiga tab Komunikasi tidak dipakai** — sudah di-remark di Pega | Kueri `BrowseClaimALLKomunikasi` yang cacat sintaksis tidak dibawa sama sekali |
+| 3 | **Penyaring cabang MENUNGGU API pengganti** DB Link HRD | Seam ada, adapter belum; sampai API tiba, daftar tidak dibatasi cabang |
+| 4 | **Tombol "Lihat Detail Klaim" dibangun**, tombol lain tidak | Delapan tombol lain tidak dibangun; tujuannya diarahkan ke rute yang menyatakan keadaan |
+| 5 | **Tab bawaan: All Case Admin** | Layar terbuka pada klaim MILIK petugas, bukan seluruh klaim berjalan |
+| 6 | **Paginasi direplikasi apa adanya** | Seluruh baris ditarik, lalu dipotong di aplikasi |
+| 7 | Nama modul `inboxadmin` / `inbox-admin` | `D-81` |
+
+### 19.2 Kenapa satu bentuk baris untuk delapan tab
+
+Kedelapan grid sistem lama membaca halaman klipboard yang sama, dan tiap tab hanya
+menampilkan sebagian kolomnya. `WorkItem` karena itu satu tipe dengan 31 isian, sebagian
+kosong pada tab mana pun — pola yang sama dengan `ClaimHistory` di modul View History Claim.
+
+Alternatifnya — empat bentuk baris menurut halaman klipboard asalnya — akan menghasilkan
+empat pemindai, empat DTO, dan empat tabel di layar, padahal yang berbeda hanyalah kolom
+mana yang terlihat.
+
+Yang menjaga agar isian kosong tidak terbaca sebagai data hilang: **kolom mana yang digambar
+ditetapkan `Tab.Columns`, bukan ditebak dari isi baris**. Menebaknya dari isi akan membuat
+kolom menghilang ketika seluruh baris halaman itu kebetulan kosong.
+
+### 19.3 Satu alias, dua arti — dan kenapa itu tidak dibawa
+
+Ini yang membedakan modul ini dari yang mana pun sebelumnya:
+
+| Properti Pega | di tab ALL | di tab Request Survey |
+|---|---|---|
+| `.RCVID` | `A.SOBNAME` (sumber bisnis) | `T_REQ_SURVEY.SURVEYOR` (nama surveyor) |
+| `.Keterangan` | `PXCREATEOPERATOR` (pembuat) | `T_REQ_SURVEY.BRANCH` (cabang survei) |
+| `.Kurir` | `B.PXFLOWNAME` (nama flow) | `A.BRANCHNAME` (cabang polis) |
+| `.UserAdmin` | nama cabang klaim | `SUBSTR(SURVEYID,20,30)` (no survei) |
+
+Di View History Claim, satu alias salah arti tetapi setidaknya **konsisten**. Di sini ia
+berubah arti tergantung tab yang sedang terbuka — sehingga membawanya berarti membangun
+sistem baru yang tidak dapat dijelaskan tanpa menyebut tab mana yang dimaksud.
+
+Pemetaan tiga arahnya dicatat di kepala `inboxadmin.sql`, satu-satunya tempat ketiganya
+dapat dibandingkan berdampingan.
+
+### 19.4 Paginasi direplikasi apa adanya — dan keberatannya dicatat
+
+Keberatan disampaikan **sebelum** keputusan diambil, beserta angkanya: dengan penyaring
+cabang yang belum aktif, tab ALL menarik seluruh klaim yang masih berjalan ke memori
+aplikasi, dan tabelnya berisi puluhan juta baris (`D-10`). Work Owner memilih replikasi.
+Keputusan itu dihormati dan dijalankan.
+
+Yang ditambahkan sebagai gantinya **tidak mengubah perilaku sama sekali**: satu peringatan
+di log begitu satu permintaan melampaui `LargeResultWarning` (5.000 baris), menyebut tab,
+jumlah baris, dan sebabnya. Memotong hasil akan menyalahi keputusan; memperingatkan membuat
+akibatnya terlihat operator sebelum terlihat sebagai aplikasi yang kehabisan memori.
+
+Satu hal yang **tidak** direplikasi: kueri `GetAllCaseAdmin` dan
+`GetRequestDokumenKomunikasi` tidak mengurutkan hasilnya sama sekali. Itu dapat dibiarkan
+selama hasilnya tidak dipaginasi; begitu halamannya dipotong, urutan yang tidak ditetapkan
+membuat satu baris muncul di dua halaman sekaligus hilang dari halaman lain. `ORDER BY`
+ditambahkan pada keduanya.
+
+### 19.5 Tiga tab yang tidak dibangun, dan bagaimana ketiadaannya dijaga terbaca
+
+Work Owner menyatakan ketiganya sudah di-remark di Pega. Pembacaan export mendukungnya dari
+dua sisi: ada **empat elemen ber-`pyCondition` `1==2`** di section itu, dan kuerinya memang
+**cacat sintaksis** — UNION dengan 15 kolom di satu cabang dan 14 di cabang lain.
+
+Ketiadaannya dipagari di **tiga tempat**, karena pertanyaan "kenapa tab Komunikasi tidak
+ada" pasti diajukan lagi:
+
+| Tempat | Bentuk |
+|---|---|
+| `tab.go` `DisabledTabs` | data, bukan komentar — ikut terkirim ke layar |
+| `NewQuery` | tautan lama ber-`tab=4` dijawab dengan ALASANNYA, bukan "tab tidak dikenal" |
+| layar | disebut di bawah tabel, bukan digambar sebagai tab mati yang mengundang klik |
+
+Ditambah `query_test.go` yang **gagal** bila suatu saat ada kueri menganggur untuk ketiganya.
+
+### 19.6 Batas yang saya tarik sendiri pada "replikasi apa adanya"
+
+Dua hal sengaja TIDAK direplikasi, dan keduanya dinyatakan di sini supaya menjadi keputusan
+yang tercatat, bukan kelonggaran yang diambil diam-diam.
+
+**Pertama, perangkaian nilai ke dalam teks SQL.** Ketujuh kueri lama menyusun klausa
+WHERE-nya di activity lalu menyisipkannya lewat tujuh titik `ASIS` — termasuk klausa
+paginasinya sendiri. `08-TECHNICAL-STRATEGY.md` §4.3 melarangnya tanpa perkecualian, dan
+keputusan "replikasi apa adanya" dibaca sebagai berlaku pada **perilaku bisnis**, bukan pada
+celah injeksi. Sama seperti sesi sebelumnya.
+
+**Kedua, perpindahan tab diam-diam saat mencari.** Sistem lama menyetel ulang tab menjadi
+`3` atau `7` menurut ada-tidaknya teks "PNC" di kotak cari. Ia bagian dari alur dua mode
+milik Pega, dan di layar React ia akan tampil sebagai tab yang berpindah sendiri saat
+pengguna mengetik. Tidak dibawa.
+
+### 19.7 Aging dihitung hari kalender, dan itu dinyatakan ke pengguna
+
+Sistem lama menghitungnya lewat `GCNMTimeDifferenceWorkCalender_Act`, yang membaca kalender
+libur `GENERAL.HRD_LBR` lewat DB Link. Keputusan Work Owner menunda seluruh sambungan itu
+sampai API penggantinya ada (`R-03`), sehingga kalender kerja belum tersedia.
+
+Yang dipilih: **hitung hari kalender, dan nyatakan keterbatasannya di layar.** Mengganti
+hari kerja dengan hari kalender secara diam-diam adalah kelas perubahan perilaku yang paling
+berbahaya — angkanya masuk akal, hanya lebih besar, dan tidak ada yang menyadarinya sampai
+seseorang membandingkannya dengan Pega.
+
+Daftar keterbatasannya dikirim **server**, bukan ditulis tetap di layar, supaya hilang dengan
+sendirinya begitu penghalangnya hilang — tanpa menyunting frontend.
+
+### 19.8 Aging dihitung di Go, bukan di SQL
+
+Dua alasan. Hasilnya dapat diuji secara deterministik lewat seam `Clock`, dan kuerinya tetap
+portabel tanpa fungsi tanggal khas Oracle.
+
+Selisihnya dihitung terhadap **tanggal**, bukan timestamp: baris yang masuk pukul 23.00 dan
+dibaca pukul 01.00 esok harinya berumur satu hari, bukan nol hari
+(`08-TECHNICAL-STRATEGY.md` §4.4). Tanggal di masa depan menghasilkan nol, bukan angka
+negatif — baris seperti itu ada di data warisan, dan "minus tiga hari" tidak berarti apa pun
+bagi petugas yang membaca kolom tenggat.
+
+### 19.9 Kontrak API modul ini
+
+| Metode | Jalur | Isi |
+|---|---|---|
+| `GET` | `/api/inbox-admin/tab` | `tab[]`, `tab_bawaan`, `lini_bisnis[]`, `tab_dinonaktifkan[]`, `keterbatasan[]`, `portal` |
+| `GET` | `/api/inbox-admin` | `tab`, `baris[]`, `paginasi`, `penyaring`, `portal` |
+
+Parameter: `tab`, `bisnis`, `cari`, `halaman`, `ukuran`.
+
+**Bentuk layar datang dari server**, termasuk daftar kolom tiap tab. Alasannya bukan
+kerapian: daftar itu adalah hasil pembacaan export Pega, dan tempat pembacaan itu tercatat
+adalah backend. Menyalinnya ke layar berarti daftar yang sama hidup di dua tempat, dan yang
+satu akan tertinggal saat yang lain diperbaiki.
+
+**`penyaring` dikembalikan** karena tidak selalu sama dengan yang diminta: tab yang tidak
+mendukung pencarian mengembalikan kata kunci kosong, sehingga layar dapat membersihkan
+kotaknya alih-alih menampilkan kata kunci yang tampak aktif padahal tidak menyaring apa pun.
+
+### 19.10 Otorisasi: keadaan yang belum berubah
+
+Rutenya terlindungi sesi dan pemeriksaan portal. Pemeriksaan peran — "apakah peran pemanggil
+memiliki menu ini" — adalah `TKT-F3-005` yang belum ada.
+
+Satu pembedaan sistem lama karena itu belum dibawa: layar ini memperlakukan
+`GCNMFW:CaseManager` dan `GCNMFW:PncManagerAdmin` berbeda — keduanya melewati penyaring
+cabang dan memperoleh pemilih korwil. Akibatnya untuk sekarang **seluruh pengguna
+berperilaku seperti manajer**, yaitu tanpa penyaring cabang. Itu kebetulan sejalan dengan
+keputusan menunda penyaring cabang, dan keduanya akan selesai bersama-sama.
+
+### 19.11 Tombol "Lihat Detail Klaim" dan tujuannya
+
+Work Owner memutuskan tombolnya dibangun; layar tujuannya `MENU_ID 75` "View Claim" belum
+ada. Tiga pilihan, dua di antaranya buruk:
+
+| Pilihan | Akibat |
+|---|---|
+| Tombol menuju rute tak terdaftar | Pengguna terlempar ke beranda tanpa penjelasan — tampak rusak |
+| Tombol mati | Tidak memenuhi keputusan, dan menyembunyikan bahwa jalurnya sudah lengkap |
+| **Tujuan yang menyatakan keadaan** | Yang dipakai |
+
+`src/app/ViewClaimPlaceholder.tsx` karena itu ada, dan ia **tidak memanggil server sama
+sekali**. Menampilkan sebagian data klaim di layar sementara akan menciptakan kontrak yang
+harus dipelihara, untuk layar yang seluruh bentuknya belum dirancang. Berkas itu **akan
+dihapus** saat modul View Claim lahir.
+
+Yang dikirim adalah `referensi` — kunci teknis Pega yang memang dipakai `setDataViewKlaim_Act`
+di sistem lama — sehingga menyalakan layar rincian kelak tidak menuntut perubahan kontrak.
+
+### 19.12 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+| # | Pertanyaan | Pemilik |
+|---|---|---|
+| 1 | Apakah ketiga tab Komunikasi memang gagal di Pega produksi (ORA-01789), dan perlukah dilaporkan ke Tim Pega? | Work Owner + Tim Pega |
+| 2 | Kapan API pengganti DB Link HRD tersedia? Sampai itu ada, penyaring cabang dan Aging hari kerja keduanya tertahan | Tim pemilik sistem HRD |
+| 3 | Delapan tombol yang belum dibangun — mana yang menyusul, dan dalam urutan apa? | Work Owner |
+| 4 | Nilai `STATUSLOD` berarti terbalik antara lini OTO/BFI dan lini lain. Direplikasi apa adanya; perlukah ia masuk daftar perbaikan `P-5`? | Work Owner |

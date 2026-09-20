@@ -80,6 +80,10 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 76 "View History Claim". Layar pencarian riwayat klaim, bukan inbox —
   // pembedaannya ditetapkan `D-79` dan menentukan modul pemiliknya.
   PNCSearchKlaim: '/riwayat-klaim',
+
+  // MENU_ID 63 "Inbox Admin". Inbox sungguhan menurut `D-79`: barisnya pekerjaan dari
+  // PC_ASSIGN_WORKLIST, hilang setelah klaimnya selesai, dan punya tenggat (kolom Aging).
+  PNCInboxAdmin: '/inbox-admin',
 }
 
 /**
