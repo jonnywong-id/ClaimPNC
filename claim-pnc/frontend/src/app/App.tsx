@@ -4,20 +4,17 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
+import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
+import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
+import { MaskingPage } from '@/modules/master-masking/MaskingPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
-import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
-import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
-import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
-import { PanelPage } from '@/modules/master-panel/PanelPage'
-import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
-import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
-import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
-import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
+import { TechnicianPage } from '@/modules/master-pic-teknik/TechnicianPage'
+import { RecoveryPage } from '@/modules/master-recovery/RecoveryPage'
+import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
+import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
+import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
-import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
-import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
-import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -25,7 +22,6 @@ import { useSession } from '@/app/session'
 import { PageShell } from './PageShell'
 import { SessionGuard } from './SessionGuard'
 import { SessionWarning } from './SessionWarning'
-import { ViewClaimPlaceholder } from './ViewClaimPlaceholder'
 
 /**
  * Sesi yang ditolak server di tengah pekerjaan dibersihkan di satu tempat ini.
@@ -85,143 +81,6 @@ export function AppRoute() {
         }
       />
       <Route
-        path="/master/status-progres-2"
-        element={
-          <SessionGuard>
-            <Protected>
-              <ProgressStatus2Page />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Satu rute untuk DUA master — Penolakan Klaim dan Penolakan Komite — karena
-        keduanya satu layar dan satu butir menu di Pega (MENU_ID 25). Pemilihannya tab di
-        dalam layar, bukan dua rute.
-      */}
-      <Route
-        path="/master/penolakan-klaim"
-        element={
-          <SessionGuard>
-            <Protected>
-              <RejectionPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Satu rute untuk EMPAT tab — Master Auto Klaim, Komite Approval, Waiting
-        Approval, dan Reject — karena keempatnya satu layar dan satu butir menu di Pega
-        (MENU_ID 26). Keempatnya hanya berbeda saringan atas tabel yang sama.
-      */}
-      <Route
-        path="/master/auto-claim"
-        element={
-          <SessionGuard>
-            <Protected>
-              <AutoClaimPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Satu rute untuk TIGA tab — Approve, Waiting Approval, dan Reject — karena
-        ketiganya satu layar dan satu butir menu di Pega (MENU_ID 28). Ketiganya hanya
-        berbeda saringan atas tabel yang sama.
-
-        Tombol Approve dan Reject ada DI DALAM layar ini, padahal di Pega keduanya ada di
-        Inbox Manager (`Section/ApprovalMasterBengkelHE`). Inbox Manager belum dibangun,
-        dan menunda keputusannya berarti setiap bengkel yang ditambah tertahan tanpa satu
-        pun cara menyelesaikannya. Bentuk keputusannya sama persis — centang beberapa
-        baris, satu tombol untuk seluruh pilihan.
-      */}
-      <Route
-        path="/master/bengkel"
-        element={
-          <SessionGuard>
-            <Protected>
-              <WorkshopPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Master Panel (MENU_ID 30). Layar master pertama yang mengelola BARIS ANAK —
-        daftar lokasi pada setiap panel, tersimpan di POOLDATA.LOKASI_PANEL_HE.
-
-        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
-        Master Bengkel: `Section/ApprovalMasterPanelHE` di Pega dipakai Inbox Manager,
-        dan Inbox Manager belum dibangun.
-      */}
-      <Route
-        path="/master/panel"
-        element={
-          <SessionGuard>
-            <Protected>
-              <PanelPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Master Sparepart (MENU_ID 31). Master ketiga dari keluarga alat berat, setelah
-        Master Bengkel dan Master Panel; ketiganya berbagi satu activity persetujuan yang
-        sama di Pega (`Activity/SetApprovalAllMaster`).
-
-        Dua hal membedakannya: tabelnya PUNYA kolom pencatat pelaku (USER_UPDATE) dan
-        stempel waktu (TGL_UPDATE_HARGA), dan ia TIDAK punya kolom alasan penolakan —
-        sehingga layarnya tidak menggambar isian Catatan sama sekali.
-      */}
-      <Route
-        path="/master/sparepart"
-        element={
-          <SessionGuard>
-            <Protected>
-              <SparepartPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Master Pasal Kerugian (MENU_ID 27). Layar pertama yang MENGHAPUS data secara
-        permanen — `D-66` menetapkan soft delete menyeluruh, tetapi tabelnya tidak punya
-        kolom penanda terhapus dan Work Owner memilih "jalankan as is" pada 2026-09-19.
-      */}
-      <Route
-        path="/master/pasal-kerugian"
-        element={
-          <SessionGuard>
-            <Protected>
-              <ClausePage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      {/*
-        Master Supplier (MENU_ID 29). TANPA tab — layar lamanya memang satu grid dengan
-        tiga tombol, tanpa penyaring status apa pun.
-
-        Dua hal yang membedakannya dari master lain, dan keduanya menyentuh uang:
-
-        Seluruh isinya tinggal di SATU kolom JSONDATA. `M_SUPPLIER` hanya punya ID, OLDID,
-        dan JSONDATA — tidak ada kembaran berkolom bernama seperti POOLDATA.BENGKEL_HE.
-
-        Menonaktifkan supplier berlaku SEKETIKA, tanpa persetujuan siapa pun, sedangkan
-        mengaktifkannya harus menunggu (`EditMasterSupplier_post` step 12). Sisi pemutus
-        antreannya TIDAK ADA di export sama sekali (`R-16`), sehingga layar ini berhenti
-        pada menyisipkan permintaannya — persis seperti sistem lama.
-      */}
-      <Route
-        path="/master/supplier"
-        element={
-          <SessionGuard>
-            <Protected>
-              <SupplierPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      <Route
         path="/master/status-klaim"
         element={
           <SessionGuard>
@@ -232,71 +91,144 @@ export function AppRoute() {
         }
       />
       {/*
-        Pelaporan Klaim — modul proses klaim yang pertama, menggantikan harness
-        `InboxRCVApp_Harness` yang di menu Pega berjudul "Inbox Laporan Klaim".
-
-        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
-        sistem lama membatasinya pada tujuh peran lewat When rule `IsReceivePNC` — adalah
-        `TKT-F3-005` yang belum ada.
+        Master Dominan Factor juga membaca basis data ENTITAS yang sedang dipilih.
+        Akibat salah entitas di sini halus tetapi luas: keterangan faktor ikut terbaca
+        laporan Outstanding per Cabang lewat LISTAGG, sehingga yang keliru bukan satu
+        layar melainkan isi laporan yang dibaca manajemen.
       */}
       <Route
-        path="/pelaporan-klaim"
+        path="/master/dominan-factor"
         element={
           <SessionGuard>
             <Protected>
-              <ClaimReportPage />
+              <DominantFactorPage />
             </Protected>
           </SessionGuard>
         }
       />
       {/*
-        View History Claim — pencarian riwayat klaim, menggantikan harness
-        `PNCSearchKlaim` (`MENU_ID 76`).
+        Master Penyebab Kerugian — TINGKAT GOLONGAN saja (MENU_ID 20). Rinciannya
+        (MENU_ID 38) butir menu tersendiri dan belum punya layar.
 
-        Selain penjaga sesi, layar ini dijaga GERBANG PROTEKSI DATA di server: pengguna
-        wajib terdaftar di Master Proteksi Data, dan satu jatah pencarian terpakai setiap
-        kali layar dibuka. Penjaga di sini tetap sekadar kenyamanan tampilan.
+        Ia membaca basis data ENTITAS yang sedang dipilih. Akibat salah entitas di sini
+        menjangkau lebih jauh daripada satu layar: keterangannya dibaca 19 rule Pega dan
+        menjadi kolom PENGELOMPOKAN pada dasbor klaim per penyebab kerugian serta laporan
+        XOL per bisnis.
       */}
       <Route
-        path="/riwayat-klaim"
+        path="/master/penyebab-kerugian"
         element={
           <SessionGuard>
             <Protected>
-              <ClaimHistoryPage />
+              <CauseOfLossPage />
             </Protected>
           </SessionGuard>
         }
       />
       {/*
-        Inbox Admin — antrean kerja admin klaim, menggantikan harness `PNCInboxAdmin`
-        (`MENU_ID 63`). Delapan tab; tiga tab Komunikasi milik sistem lama tidak dibawa
-        karena sudah tidak dipakai (keputusan Work Owner 2026-09-20).
-
-        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
-        sistem lama membedakan perilaku bagi CaseManager dan PncManagerAdmin — adalah
-        `TKT-F3-005` yang belum ada.
+        Master Tipe Surveyors membaca basis data ENTITAS yang sedang dipilih, bukan basis
+        data portal utama. Penjaga portalnya ada di server — layar hanya menuntun
+        pengguna memilih lebih dulu.
       */}
       <Route
-        path="/inbox-admin"
+        path="/master/tipe-surveyor"
         element={
           <SessionGuard>
             <Protected>
-              <InboxAdminPage />
+              <SurveyorTypePage />
             </Protected>
           </SessionGuard>
         }
       />
       {/*
-        Tujuan tombol "Lihat Detail Klaim". Layar sebenarnya adalah `MENU_ID 75`
-        "View Claim" yang belum dibangun; rute ini menyatakan keadaan itu apa adanya
-        alih-alih melempar pengguna ke beranda tanpa penjelasan.
+        Master Surveyors — daftar ORANGNYA, anak dari Master Tipe Surveyors di atas.
+        Membaca basis data ENTITAS yang sedang dipilih, dan barisnya memuat nama, alamat,
+        telepon, surel, serta nama login aplikasi seseorang.
       */}
       <Route
-        path="/view-claim/:referensi"
+        path="/master/surveyor"
         element={
           <SessionGuard>
             <Protected>
-              <ViewClaimPlaceholder />
+              <SurveyorPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master PIC Teknik juga membaca basis data ENTITAS yang sedang dipilih. Selain itu
+        ia menembak direktori pegawai untuk mencari nama, dan alamat layanannya pun dibaca
+        per entitas — dua alasan yang membuat portal wajib dipilih lebih dulu.
+      */}
+      <Route
+        path="/master/pic-teknik"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TechnicianPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Recovery juga membaca basis data ENTITAS yang sedang dipilih — dan di layar
+        ini akibat salah entitas paling berat, karena yang ditampilkan memuat NOMOR
+        REKENING VIRTUAL. Penjaga portalnya ada di server; layar hanya menuntun pengguna
+        memilih lebih dulu.
+
+        Berbeda dari butir master lain: layarnya FORM ENTRI, bukan pengelola data acuan.
+        Sistem lama tidak punya cara membaca kembali batch yang sudah tercatat, dan itu
+        ditiru apa adanya (keputusan Work Owner 2026-09-19).
+      */}
+      <Route
+        path="/master/recovery"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RecoveryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Masking juga membaca basis data ENTITAS yang sedang dipilih, dan di layar
+        inilah akibat salah entitas paling berat di antara seluruh butir master: yang
+        ditampilkan adalah daftar SIAPA yang boleh membuka nomor KTP, surel, dan nomor
+        telepon nasabah tanpa disamarkan (`R-20`). Penjaga portalnya ada di server; layar
+        hanya menuntun pengguna memilih lebih dulu.
+
+        Kewenangan menu — siapa yang boleh membuka layar ini — adalah TKT-F3-005 yang
+        belum ada. Sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya, dan
+        itu berarti dapat memberi dirinya sendiri kewenangan membuka data pribadi. Dicatat
+        terbuka di docs/keputusan-implementasi.md, bukan disembunyikan.
+      */}
+      <Route
+        path="/master/masking"
+        element={
+          <SessionGuard>
+            <Protected>
+              <MaskingPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master XOL juga membaca basis data ENTITAS yang sedang dipilih, dan di layar ini
+        akibat salah entitas menjalar paling jauh di antara butir master: struktur treaty
+        menentukan pembagian klaim ke para reasuradur, sehingga limit dan share satu badan
+        hukum yang tersimpan di badan hukum lain akan mengubah nilai yang dihitung PLA dan
+        DLA sesudahnya (`R-20`). Penjaga portalnya ada di server; layar hanya menuntun
+        pengguna memilih lebih dulu.
+
+        Berbeda dari butir master lain: menyimpan di sini SEKALIGUS mengajukan struktur
+        treaty ke komite — perilaku yang ditiru apa adanya dari layar lama.
+      */}
+      <Route
+        path="/master/xol"
+        element={
+          <SessionGuard>
+            <Protected>
+              <XOLPage />
             </Protected>
           </SessionGuard>
         }
@@ -307,16 +239,21 @@ export function AppRoute() {
         belum ada; sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya.
       */}
       <Route
-        path="/master-rekening"
+        path="/master/rekening"
         element={
           <SessionGuard>
-            <div className="min-h-screen bg-white">
-              <SessionWarning />
+            <Protected>
               <AccountPage />
-            </div>
+            </Protected>
           </SessionGuard>
         }
       />
+      {/*
+        Jalur lama `/master-rekening` dipertahankan sebagai pengalihan, bukan dihapus.
+        Ia sudah dipakai dan sudah tersimpan di riwayat peramban; membiarkannya mati
+        akan menjawab tautan yang pernah sah dengan halaman beranda tanpa penjelasan.
+      */}
+      <Route path="/master-rekening" element={<Navigate to="/master/rekening" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

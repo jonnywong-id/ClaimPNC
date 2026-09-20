@@ -141,6 +141,25 @@ type SMTP struct {
 	// MEMPERBAIKI kegagalan, bukan ke pengguna yang kebetulan memicunya.
 	AlertRecipients []string
 
+	// XOLCommitteeRecipients adalah mailbox komite yang menerima pemberitahuan pengajuan
+	// Master XOL. Ditulis sebagai daftar dipisah koma di XOL_PENERIMA_KOMITE.
+	//
+	// # Kenapa ia konfigurasi, dan kenapa hanya SEMENTARA
+	//
+	// `Activity/SendDataMasterXOLToKomites-Act.xml` menuliskan dua alamat PERORANGAN
+	// langsung di dalam activity-nya, dan yang kedua menimpa yang pertama ketika berjalan
+	// di host dev. Pola itu persis yang `D-15` larang dibawa, dan `D-67` menegaskan tidak
+	// ada akun pribadi yang ikut ke sistem baru.
+	//
+	// Tempat yang benar bagi daftar ini adalah master **Penerima Notifikasi** (`F-4`),
+	// dan master itu belum dibangun. Sampai ia ada, daftarnya ditaruh di konfigurasi —
+	// tetap dapat diubah tanpa menyentuh kode, tetapi belum dapat diubah pengguna bisnis
+	// sendiri. Dicatat terbuka di docs/keputusan-implementasi.md.
+	//
+	// Kosong berarti pemberitahuan TIDAK dikirim: cmd memasang tiruan yang mencatat, dan
+	// penyimpanan Master XOL tetap berhasil.
+	XOLCommitteeRecipients []string
+
 	Timeout time.Duration
 }
 
@@ -276,7 +295,10 @@ func Load() (Config, error) {
 			Password:        os.Getenv("SMTP_PASSWORD"),
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
-			Timeout:         smtpTimeout,
+
+			XOLCommitteeRecipients: splitAddress(os.Getenv("XOL_PENERIMA_KOMITE")),
+
+			Timeout: smtpTimeout,
 		},
 		PrimaryPortal: primaryPortal,
 		Portal:        portal,

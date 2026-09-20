@@ -35,7 +35,7 @@ type Props<T> = {
   title?: string
   description?: string
 
-  /** Tombol-tombol di kanan judul — Tambah, Muat ulang, dan sejenisnya. */
+  /** Tombol-tombol di kanan judul — Tambah, Refresh, dan sejenisnya. */
   actions?: ReactNode
 
   isLoading?: boolean

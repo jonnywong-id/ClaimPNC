@@ -1,6 +1,10 @@
 package masterstatushttp
 
-import "github.com/go-chi/chi/v5"
+import (
+	"github.com/go-chi/chi/v5"
+
+	portalhttp "claim-pnc/internal/portal/http"
+)
 
 // Mount mendaftarkan seluruh rute modul Master Status Klaim ke router yang diberikan.
 //
@@ -27,15 +31,27 @@ import "github.com/go-chi/chi/v5"
 // penugasan operator ke peran tidak ada di basis data maupun di export
 // (docs/Steering/11-SECURITY.md §3.1). Keadaan ini sama dengan seluruh rute lain yang
 // sudah ada hari ini, dan dicatat terbuka di docs/keputusan-implementasi.md.
-func Mount(r chi.Router, h *Handler) {
-	r.Route("/master/status-klaim", func(master chi.Router) {
-		master.Get("/", h.List)
-		master.Post("/", h.Create)
-		master.Get("/{kode}", h.Get)
+// # Portal entitas (2026-09-19)
+//
+// Middleware ActivePortal dipasang DI SINI, bukan di cmd, karena SELURUH rute modul ini
+// menyentuh basis data entitas. Permintaan tanpa portal ditolak, TIDAK PERNAH dialihkan
+// ke portal utama sebagai cadangan (`R-20`, `TKT-F6-002`).
+//
+// Modul ini semula dilayani portal utama saja. Penyelarasannya diputuskan Work Owner
+// 2026-09-19, sekaligus mencabut Isolasi Protektif untuk modul ini.
+func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
+	r.Group(func(perPortal chi.Router) {
+		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
-		// PUT, bukan PATCH: seluruh isi yang boleh diubah — satu field, label — dikirim
-		// setiap kali, sehingga permintaannya menggantikan dan idempoten. Mengirim
-		// permintaan yang sama dua kali menghasilkan keadaan akhir yang sama.
-		master.Put("/{kode}", h.Update)
+		perPortal.Route("/master/status-klaim", func(master chi.Router) {
+			master.Get("/", h.List)
+			master.Post("/", h.Create)
+			master.Get("/{kode}", h.Get)
+
+			// PUT, bukan PATCH: seluruh isi yang boleh diubah — satu field, label —
+			// dikirim setiap kali, sehingga permintaannya menggantikan dan idempoten.
+			// Mengirim permintaan yang sama dua kali menghasilkan keadaan akhir yang sama.
+			master.Put("/{kode}", h.Update)
+		})
 	})
 }

@@ -1868,3027 +1868,1784 @@ fungsinya kelak disunting.
 
 ---
 
-## 17. Master Status Progres 2 (2026-09-19, sesi kesembilan)
+## 17. Modul Master Tipe Surveyors (2026-09-19, sesi kesembilan)
 
-### 17.1 Kenapa tingkat 2 menempel pada paket domain yang sama
+Modul master data keempat, dan yang **pertama** menyimpang dari pola Master Status Klaim pada hal
+yang mendasar: lingkup portalnya.
 
-`internal/masterstatusprogres` kini memuat dua tingkat, bukan dua paket. Alasannya bukan kedekatan
-nama, melainkan ketergantungan yang tidak dapat dipisahkan: **penambahan tingkat 2 tidak dapat
-dilakukan tanpa membaca tingkat 1 lebih dulu** — untuk memastikan induknya ada, dan untuk menyalin
-namanya ke kolom `STS_PROGRESS1`.
+### 17.1 Per portal, bukan portal utama — dan itu perbedaan yang disengaja
 
-Memisahkannya menjadi dua paket akan membuat paket tingkat 2 mengimpor paket tingkat 1 untuk hal
-yang berada di inti operasinya sendiri. Satu paket, dua tingkat, dua seam (`Repo` dan `Repo2`).
+**Keputusan Work Owner 2026-09-19.** Modul ini membaca dan menulis basis data **entitas yang sedang
+dipilih pengguna**, bukan basis data portal utama.
 
-Yang **tidak** disatukan adalah layanannya: `Service` dan `Service2` terpisah meski sepaket, karena
-keduanya memilih penyimpanan yang berbeda. Satu layanan yang melayani dua tabel akan menerima dua
-pemilih repo dan bercabang di setiap method.
+Itu membuatnya berbeda dari dua modul master yang sudah ada:
 
-### 17.2 Ada rute ubah — perilaku baru; tetap tidak ada rute hapus
-
-> **Keputusan ini dibalik dalam satu hari.** Ditanyakan ulang pada 2026-09-20, Work Owner mula-mula
-> memilih **tidak menambahkan** fitur ubah. Beberapa saat kemudian ia bertanya *"Dimana button
-> ubah? kenapa tidak muncul?"*, lalu memilih **menambahkannya, mencakup nama dan induk**.
-> Riwayat lengkapnya di `catatan-pengembangan.md` §16.11 dan §16.13.
->
-> Pembalikan itu bukan inkonsistensi: pertanyaan pertama adalah *"apakah mereplikasi tombol
-> Pega"*, pertanyaan kedua *"apakah baris yang salah ketik dapat diperbaiki"*. Jawaban yang benar
-> untuk keduanya memang berlawanan.
-
-**Sistem lama tidak punya penyuntingan yang bekerja.** Nol `UPDATE`, nol `DELETE` terhadap
-`POOLDATA.GCNM_MST_PROGRESS` di seluruh export. Tombol "Update" di layar lama menulis ke **tabel
-lain** (`GCNM_PROGRESS_CLAIM`) dengan dua page klipboard yang tidak pernah diisi; rinciannya di
-`catatan-pengembangan.md` §16.4.
-
-**Yang ditambahkan bukan jalur itu.** Jalur Pega, bila kedua page klipboardnya kebetulan terisi
-sisa nilai dari layar lain dalam sesi yang sama, akan menimpa catatan progres sebuah klaim dengan
-isian layar master. Yang dibuat adalah `UPDATE` yang benar ke tabel master.
-
-| Hal | Ketetapan |
-|---|---|
-| Yang dapat diubah | **nama** dan **induk** |
-| `ID_MST` | **tidak pernah** ikut di-`SET` — ia dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` pada data klaim berjalan |
-| `STS_PROGRESS1` | **ditulis ulang server** dari baris induk yang baru; ia salinan, bukan rujukan |
-| `TIPE` | tidak disentuh — tidak pernah ditulis sistem lama maupun sistem ini |
-| Letak ID | **di jalur**, bukan di badan — badan yang memuat ID membuka kemungkinan satu permintaan menyebut dua ID |
-
-**Ini selisih pada gerbang 1, dan dinyatakan di muka** (`D-54`): sistem lama tidak mengubah baris
-master, sistem baru mengubahnya.
-
-**Rute hapus tetap tidak ada.** Ia tidak pernah ada di sistem lama, tabelnya tidak punya kolom
-penanda terhapus yang dapat dipakai `D-66`, dan barisnya dirujuk data klaim yang sudah berjalan.
-Satu uji menjaganya: `TestOnlyPutIsRegistered2`.
-
-### 17.3 ID tingkat 2 tanpa awalan nol
-
-`FormatID2` menghasilkan angka polos; `FormatID` tingkat 1 menghasilkan `"0" + nomor`. Ini
-perbedaan nyata di sistem lama, terverifikasi dua kali:
-
-```
-tingkat 1  Activity/InsertMstStatusProgress1_act  TempInputStatus.CaseID  := "0"+.City
-tingkat 2  Activity/InsertMstStatusProgress2_act  TempInputStatus2.CaseID := .District
-```
-
-Dikuatkan data yang beredar: `GetDataProgressClaim-SQL.xml` menyaring
-`STATUS_PROGRESS2 not in ('2','24','60')` — angka polos.
-
-Memakai `FormatID` tingkat 1 di sini akan menerbitkan ID yang **tidak dapat dicocokkan** dengan
-baris `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` yang sudah ada — dan tidak ada galat apa pun yang
-muncul.
-
-Akibat sampingan yang menguntungkan: tanpa awalan, tingkat 2 luput dari persoalan urutan teks yang
-menghinggapi tingkat 1 (`"010"` mendahului `"09"`).
-
-### 17.4 `ErrParentNotFound` dijawab 422 pada isian, bukan 404
-
-Keduanya berarti "tidak ditemukan", dan keduanya dipetakan berbeda dengan sengaja:
-
-| Galat | Status | Alasan |
+| Modul | Lingkup | Alasan |
 |---|---|---|
-| `ErrNotFound` | 404 | baris yang **diminta** pemanggil tidak ada |
-| `ErrParentNotFound` | **422** dengan `kolom: "id_induk"` | **isian** yang dipilih pengguna sudah tidak ada — ia dapat memperbaikinya |
+| Master Status Klaim | portal utama | keputusan saat modul bisnis pertama dibangun; tidak ditinjau ulang |
+| Master Rekening | portal utama | idem |
+| Master Status Progres 1 | **per portal** | `GCNM_MST_PROGRESS_KLAIM` ada di basis data setiap entitas |
+| **Master Tipe Surveyors** | **per portal** | `M_SURVEYORS` ada di basis data setiap entitas |
 
-404 akan membuat layar mengatakan barisnya sendiri hilang, padahal yang hilang adalah induk yang
-dipilih di dropdown. Nama isiannya `id_induk`, sama persis dengan field JSON yang dikirim layar,
-supaya keterangan galat menempel di tempat yang benar tanpa penerjemahan.
+Dasarnya `D-75` butir 4 — **master data per portal** — dan `ADR-0030` Opsi 1, yang menempatkan
+pemisahan antarentitas di tingkat **koneksi**, bukan di tingkat penyaringan baris. Tidak ada satu
+pun kueri modul ini yang menyaring berdasarkan entitas, dan memang tidak boleh ada.
 
-Pemetaannya ditaruh **sebelum** `ErrNotFound` di `mapError`, karena urutan `switch` menentukan.
+**Konsekuensi yang diterima:** dua modul master yang sudah ada kini berbeda lingkup dari dua yang
+lebih baru. Itu **tidak diperbaiki sesi ini** — menyentuh Master Status Klaim dan Master Rekening
+melanggar Isolasi Protektif, dan perubahannya bukan perapian melainkan perubahan perilaku: layar
+yang selama ini menampilkan data ASM akan mulai menampilkan data entitas yang dipilih. Ia keputusan
+tersendiri yang perlu diambil Work Owner, bukan efek samping modul baru.
 
-Sebelum sesi ini galat itu **tidak dipetakan sama sekali** — ia jatuh ke penulis galat bersama dan
-dijawab **500**. Induk yang sudah dihapus petugas lain karena itu tampil sebagai kerusakan sistem,
-bukan sebagai isian yang perlu dipilih ulang. `TestCreate2RejectsMissingParent` menjaga itu tidak
-kembali.
+**Yang dipakai untuk menegakkannya** sama persis dengan Master Status Progres 1:
 
-### 17.5 Seluruh rute tingkat 2 menuntut portal — termasuk daftar induknya
+- `mastertipesurveyors.RepoSelector` — fungsi yang memilih repo satu portal, dan **menghasilkan
+  galat** bila portalnya tidak dikenal atau koneksinya belum hidup. Tidak pernah jatuh ke portal
+  utama sebagai cadangan (`R-20`).
+- Middleware `portalhttp.ActivePortal` dipasang **di dalam `Mount`**, bukan di `cmd`, karena
+  SELURUH rute modul ini menyentuh basis data entitas — berbeda dari Master Status Progres yang
+  punya satu rute (`posisi-klaim`) yang tidak.
 
-Berbeda dari tingkat 1, yang menyisakan `/master/posisi-klaim` di luar pemeriksaan portal karena
-keempat posisi itu daftar milik aplikasi.
+### 17.2 Tidak ada migrasi pemindahan data — dan itu bukan kelalaian
 
-Di tingkat 2 tidak ada satu pun rute yang isinya milik aplikasi: **daftar induk pun dibaca dari
-basis data entitas**. Dua entitas punya Status Progres 1 yang berbeda, dan menyajikan daftar satu
-entitas kepada entitas lain adalah kebocoran yang justru dicegah `R-20`.
+Modul ini **tidak** menyalin langkah migrasi `0002`. Alasannya dibaca dari katalog basis data, bukan
+disimpulkan dari pola master:
 
-Akibat lanjutannya di frontend: `useProgressStatus2ParentList` **tidak** diberi `staleTime` panjang
-seperti `useClaimPositionList`. Isinya dapat berubah kapan saja lewat layar Master Status Progres 1.
+| | Master Status Klaim | Master Tipe Surveyors |
+|---|---|---|
+| Kolom label | `LSC_NOTE` ada tetapi **kosong** pada 32 baris | `DESCRIPTION` ada dan **sudah terisi** pada 4 baris |
+| View | membaca `JSON_VALUE(JSONDATA, '$.LSC_NOTE')` | **sudah membaca kolom** `DESCRIPTION` |
+| Menuntut `CREATE OR REPLACE VIEW`? | **ya** — menyentuh 23 rule Pega | **tidak** |
+| Menuntut pemindahan isi JSON ke kolom? | **ya** | **tidak** |
 
-### 17.6 Pemilih repo memori bertanya ke pemilih tingkat 1, tidak memeriksa sendiri
+Akibatnya **modul ini bekerja penuh walau migrasi `0003` belum dijalankan DBA** — berbeda dari
+Master Status Klaim, yang daftarnya tampil tanpa label sampai migrasi `0002` jalan.
 
-`progressStatus2SelectorMemory` menerima `RepoSelector` tingkat 1 sebagai bahan, lalu menanyakan
-portalnya ke sana. Portal yang ditolak di tingkat 1 ditolak di tingkat 2 dengan galat yang sama
-persis.
+Yang hilang tanpa migrasi `0003` hanya satu: penegakan keunikan nama **di basis data**. Aplikasi
+tetap menolak nama ganda; yang tidak terjaga adalah dua permintaan yang tiba bersamaan.
 
-Dua pemeriksaan terpisah atas hal yang sama akan berbeda begitu salah satunya disunting — dan yang
-dipertaruhkan pada `R-20` bukan pesan galat, melainkan pemisahan data antar badan hukum.
+### 17.3 Yang ditulis saat menyimpan: `DESCRIPTION` saja
 
-Repo tingkat 1 yang dikembalikannya **dipakai langsung** sebagai induk, bukan disalin menjadi
-daftar terpisah. Kalau disalin, kedua adapter akan berbeda pada hal yang justru paling ingin diuji:
-induk yang baru ditambahkan lewat layar tingkat 1 tidak akan terlihat di dropdown tingkat 2.
-`TestService2SeesNewlyAddedParent` menjaga pernyataan itu tetap benar.
+**Keputusan Work Owner 2026-09-19:** *"save ke kolom DESCRIPTION saja karena kolom json_data sudah
+tidak mau dipakai"*.
 
-### 17.7 `TIPE` dibaca, ditampilkan, tidak pernah ditulis
+Konsekuensi yang disadari dan dicatat, bukan disembunyikan:
 
-Artinya tidak diketahui: di seluruh export ia hanya muncul pada dua `SELECT`, tanpa satu pun
-`INSERT`, `UPDATE`, maupun penyaring yang memakainya. DDL tabelnya belum diterima (`R-08`),
-sehingga tidak ada pula daftar nilai sahnya.
+1. **Baris baru meninggalkan `JSON_DATA` bernilai NULL.** Itu sah: constraint `VALID_JSON_DATA1`
+   berbunyi `JSON_DATA IS JSON (STRICT)`, dan pemeriksaan semacam itu menghasilkan UNKNOWN — bukan
+   FALSE — untuk NULL, sehingga barisnya diterima.
+2. **Baris lama yang diubah akan memuat JSON yang usang.** Tidak ada rule Pega yang membacanya;
+   satu-satunya yang menyentuhnya adalah `PEGA_M_SURVEYORS`, yang sejak sekarang tidak dipanggil
+   siapa pun.
+3. Kapan `JSON_DATA` boleh dibuang adalah keputusan tersendiri, sebaiknya setelah masa pengamatan.
 
-Tiga pilihan ditimbang, dan yang ketiga diambil:
+Diuji, bukan sekadar dijanjikan: `TestWriteQueriesDoNotTouchJSONColumn` gagal bila ada kueri tulis
+yang menyebut kolom itu.
 
-| Pilihan | Akibat |
+### 17.4 Kenapa modulnya `mastertipesurveyors`
+
+`D-81` menetapkan nama folder modul mengikuti **nama modul bisnis** yang disebut Work Owner. Nama
+itu tidak dikarang — ia ada di `Database/m_menu_aplikasi_pnc.csv` sebagai `MENU_ID 14`:
+**"Master Tipe Surveyors"**.
+
+| Lapisan | Bentuk |
 |---|---|
-| Tidak dibaca sama sekali | nilai yang benar-benar tersimpan tidak terlihat petugas |
-| Ditulis dengan nilai tebakan | mengarang; dan `NULL` pun keputusan yang belum diputuskan siapa pun |
-| **Dibaca dan dikirim, tidak pernah ditulis** | baris lama tidak kehilangan nilainya hanya karena disentuh layar baru |
+| Folder backend & paket Go | `mastertipesurveyors` — huruf kecil, tanpa tanda hubung |
+| Folder frontend | `master-tipe-surveyors` — `kebab-case` |
+| Rute API | `/api/master/tipe-surveyor` — **tunggal** |
+| Rute layar | `/master/tipe-surveyor` — **tunggal** |
 
-> **Dikoreksi setelah header grid Pega dibaca.** Baris ketiga semula berbunyi *"dibaca dan
-> **ditampilkan**"*, dan layar ini sempat memuat kolom `Tipe`. Pega **tidak punya kolom itu** —
-> `DistrictID` terikat ke page `TempUpdateStatus2`, yaitu modal penyuntingan yang tidak dibawa.
-> Kolomnya dicabut; pembacaan dan pengirimannya lewat API **tidak** berubah. Rinciannya di
-> `catatan-pengembangan.md` §16.10.
+Rutenya tunggal sementara nama modulnya jamak, dan itu disengaja: rute master yang sudah ada
+seluruhnya tunggal (`status-klaim`, `rekening`, `status-progres-1`). Menyeragamkan jalurnya lebih
+berguna daripada menyeragamkannya dengan nama modul, karena jalur adalah **kontrak** sedangkan nama
+modul adalah nama internal.
 
-`INSERT`-nya karena itu menyebut **empat kolom saja**, persis seperti sistem lama — basis data
-mengisi `TIPE` dengan default kolomnya sendiri. `TestInsert2NeverWritesKind` menjaganya.
+Isi modulnya tetap berbahasa Inggris (`D-80`): tipe `SurveyorType`, field `Code`, `Description`,
+`LegacyCode`. Nama field JSON tetap Indonesia karena ia kontrak: `kode`, `deskripsi`, `kode_lama`.
 
-Di layar, `TIPE` yang kosong ditandai `—` supaya sel kosong tidak terbaca sebagai kegagalan memuat.
+### 17.5 Tidak ada Hapus, dan buktinya tiga lapis
 
-### 17.8 Salinan nama induk dipertahankan, beserta cacatnya
+Sama seperti master lain, tetapi di sini bukti penolakannya lebih kuat dan layak disebut:
 
-`STS_PROGRESS1` menyimpan **salinan** nama induk pada saat baris disimpan, bukan hasil join.
-Denormalisasi sistem lama ini dijalankan as-is atas keputusan Work Owner.
+1. **Layar Pega tidak punya tombol hapus** — `Section/GridSurveyors-Section.xml` hanya memuat
+   **Tambah** dan **Refresh**.
+2. **`PEGA_M_SURVEYORS.prc` hanya mengenal INSERT dan UPDATE.** Pemindaian seluruh export untuk
+   `(INSERT INTO|UPDATE|DELETE FROM) …M_SURVEYORS` menemukan **satu berkas saja**, dan tidak ada
+   `DELETE` di dalamnya.
+3. **Barisnya dirujuk data yang sedang berjalan** — `V_D_SURVEYORS` pada 2026-09-19 memuat 19
+   surveyor bertipe `1001`, 18 bertipe `1002`, dan 6 bertipe `1004`. Ditambah tiga kueri Pega yang
+   mematok kodenya langsung.
 
-Konsekuensinya disadari dan dicatat supaya tidak dikira rancangan: **mengganti nama sebuah Status
-Progres 1 tidak memperbarui salinan di baris-baris tingkat 2 yang sudah ada**, sehingga keduanya
-dapat berbeda.
+Penegakannya di tiga tempat: seam tidak menyediakan operasinya, rute tidak mendaftarkan metodenya,
+dan uji `TestNoQueryDeletes` menolak kueri yang memuat `DELETE`, `TRUNCATE`, atau `DROP`.
 
-Bahwa perbedaan itu benar-benar terjadi di produksi terbaca dari kueri laporan yang membacanya —
-`GetDataOutstandingperCabangExport-SQL.xml` memakai
-`SELECT id_progress, MAX(sts_progress1) ... GROUP BY id_progress`, dan `MAX` hanya diperlukan bila
-baris ber-`id_progress` sama menyimpan nama yang berlainan.
+### 17.6 Batas panjang 100 karakter — keputusan, bukan bacaan
 
-### 17.9 `MAX(ID_MST)+1` diberi `FOR UPDATE` — dan itu bukan perubahan aturan
+**Ditetapkan Work Owner 2026-09-19.** Ia satu-satunya angka di modul ini yang **tidak** dapat
+dibaca dari mana pun, sehingga ia memang harus diputuskan — dan sampai diputuskan, ia ditandai
+sebagai asumsi di kode maupun di sini.
 
-Di Pega, `NVL(MAX(B.ID_MST),0)+1` dijalankan sebagai kueri lepas, lalu hasilnya dipakai `INSERT`
-beberapa langkah kemudian. Di antara keduanya tidak ada apa pun yang menghalangi penambahan lain
-masuk lebih dulu — dua petugas yang menambah bersamaan dapat menerima nomor yang sama.
+Yang diketahui pasti: kolomnya `VARCHAR2(4000)`, dan layar Pega tidak membatasi apa pun
+(`pyMaxLength` kosong). Keduanya tidak memberi angka yang berguna — nama tipe sepanjang 4000
+karakter akan merusak setiap grid yang menampilkannya.
 
-Pembacaan, penurunan nomor, dan penyisipan karena itu berada di dalam **satu operasi repo** dengan
-`FOR UPDATE`. Bentuk nomornya tetap sama; yang ditutup hanyalah lubang balapan pada cara nomor itu
-diturunkan.
+Seratus dipilih karena ia angka yang sama dengan `masterstatus.MaxLabelLength` dan
+`masterstatusprogres.MaxNameLength`, sehingga batas yang dilihat pengguna seragam antarlayar master.
+Nilai terpanjang yang benar-benar ada hari ini 17 karakter.
 
-`NVL` sendiri tidak dibawa — ia diganti pembacaan daftar ID lalu penurunan di Go, sejalan dengan
-`D-20`.
+Bila diubah, dua tempat wajib ikut berubah — domain Go dan skema Zod di form — dan komentarnya
+sudah menyebut itu di keduanya.
 
-### 17.10 Panjang nama 100 adalah asumsi, dan dinyatakan begitu
+**Satu akibat yang menuntut pemeriksaan sebelum modul dipakai:** batas ini baru, sehingga baris
+lama yang namanya melebihi 100 karakter tidak akan hilang tetapi **tidak dapat disunting** lewat
+layar baru. Pemeriksaannya ditambahkan sebagai langkah `0b` migrasi `0003`. Pada ASM hasilnya nol
+baris; portal lain belum dapat diperiksa.
 
-`MaxNameLength2 = 100` disamakan dengan tingkat 1. Berbeda dari tingkat 1, angka ini **bukan**
-ketetapan Work Owner: DDL `POOLDATA.GCNM_MST_PROGRESS` belum ada (`R-08`), dan kedua kolom menyimpan
-hal yang sejenis pada tabel yang sekerabat.
+### 17.7 Besar-kecil huruf tidak diseragamkan
 
-Bila basis data ternyata menerima lebih pendek, penolakannya datang dari basis data dan terbaca
-sebagai galat teknis, bukan sebagai pesan yang menuntun pengguna. Itu kekurangan yang diterima
-sampai DDL-nya tiba — **bukan** alasan menebak angka yang lebih longgar, karena menebak longgar
-justru memindahkan kegagalannya ke tempat yang lebih sulit dibaca.
+Keempat nilai yang ada seluruhnya huruf besar, dan godaan untuk menambahkan `toUpperCase` pada
+penyimpanan nyata. **Tidak dilakukan.**
 
-Angka yang sama diulang di `ProgressStatus2Form.tsx`. Bila berubah, kedua tempat harus ikut berubah;
-keduanya saling menyebut di doc comment-nya.
+`Activity/ValidasiMasterSurveyor-Act.xml` memang memanggil `@toUpperCase`, tetapi atas
+`TempDetailSurveyors.NAME` — yaitu nama **surveyor** di `D_SURVEYORS`, bukan deskripsi **tipe** di
+`M_SURVEYORS`. Tidak ada satu pun rule yang menyeragamkan yang kedua.
 
-### 17.11 Yang belum dikerjakan
+Menambahkannya berarti mengarang perilaku yang tidak pernah ada, dan `P-5` menetapkan perilaku
+dipertahankan lebih dulu. Yang diseragamkan hanyalah **perbandingan** saat menguji keunikan
+(`DescriptionKey`), dan ekspresinya sepadan dengan indeks `UPPER(TRIM(DESCRIPTION))` pada migrasi
+`0003` — keduanya harus sama, atau aplikasi akan menerima nama yang kemudian ditolak basis data.
 
-| Hal | Alasan |
+### 17.8 Utang yang diwarisi, bukan dibuat
+
+Ketiganya sudah ada sebelum modul ini dan tetap ada sesudahnya:
+
+| Utang | Keadaan |
 |---|---|
-| Isi `SampleList2()` diganti data sebenarnya | isi `GCNM_MST_PROGRESS` tidak ada di export dan belum diminta ke DBA. Isi contohnya **susunan sendiri**, ditandai jelas, dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1 |
-| Panjang kolom yang sebenarnya | menunggu DDL — `R-08` |
-| Arti kolom `TIPE` | menunggu DDL dan konfirmasi Work Owner |
-| ~~Penyuntingan baris~~ | ✅ **selesai 2026-09-20** atas keputusan Work Owner — nama dan induk; §17.2 |
-| Penghapusan baris | tidak ada di sistem lama, tidak ada kolom penanda terhapus, dan barisnya dirujuk data klaim berjalan — §17.2 |
-| Kewenangan menulis di produksi | selama Pega masih penulis tabel ini, layar dijalankan modus baca saja (`ADR-0004`, penulis tunggal per tabel) |
-| Tabrakan nama tab/tombol di Master Rekening (3 uji merah) | tetap menunggu keputusan Work Owner — §14.4 |
+| **Kewenangan peran belum diperiksa** | Rutenya di balik sesi dan portal, tetapi "apakah pemanggil punya menu Master Data" (`D-59`) belum ditegakkan — `TKT-F3-005`, yang bergantung pada tabel peran `TKT-F3-004` yang dapat dibangun tetapi belum dapat diisi |
+| **Kontrak galat belum seragam** | Modul ini memakai `detail: [{field, pesan}]` mengikuti `masterstatus`, sementara `masterstatusprogres` memakai `kolom`. Keduanya sudah ditampung `APIError.violations()` di frontend. Penyeragamannya `TKT-F1-004` |
+| **Jalur API tanpa `/v1`** | `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`; memperkenalkannya di satu modul akan membuat dua gaya jalur hidup berdampingan |
+
+### 17.9 Temuan yang perlu jawaban, bukan perbaikan
+
+**Layar Master Tipe Surveyors di Pega efektif tidak berfungsi untuk menyimpan.** Procedure-nya
+menulis `JSON_DATA`, view-nya membaca `DESCRIPTION`, dan tidak ada trigger yang menghubungkan
+keduanya (`ALL_TRIGGERS` nol baris).
+
+Bukan cacat yang dibuat modul ini, dan bukan pula sesuatu yang perlu diperbaiki di sisi Pega —
+begitu Go menjadi penulis tunggal, yang ditulis adalah kolom yang memang dibaca. Tetapi ia
+menjelaskan satu hal yang berguna: bila Work Owner mengira layar Pega itu masih dipakai untuk
+menambah tipe, penambahan terakhir dari sana kemungkinan besar muncul dengan deskripsi kosong.
+
+Rinciannya di `catatan-pengembangan.md` §17.4.
 
 ---
 
-## 18. Modul Master Penolakan Klaim (2026-09-19, sesi kesepuluh)
+## 18. Modul Master PIC Teknik (2026-09-19, sesi kesepuluh)
 
-Modul bisnis keempat, mengganti `Harness/PNC_MasterTolakKlaim-Harness.xml` (MENU_ID 25).
+Layar `Harness/UserTeknisInbox` atas `POOLDATA.MST_USER_TEKNIK`, butir menu `MENU_ID 13`.
 
-### 18.1 Keputusan yang diambil Work Owner pada sesi ini
+### 18.1 Modul yang sudah ada dibawa ke standar yang berlaku, bukan ditambal
 
-| # | Perkara | Keputusan |
-|---|---|---|
-| 1 | Cakupan layar | **Kedua master dibangun**, sesuai Pega: `MST_PENOLAKAN_KLAIM_1`/`_2` untuk Penolakan Klaim, `MST_REJECTED_KOMITE` untuk Penolakan Komite |
-| 2 | Cacat `MASTERPENOLAKANKLAIM1` | **Diperbaiki** — induk dipilih dari daftar, boleh tambah baru |
-| 3 | Pengubahan mereset status persetujuan | **Dibawa apa adanya** |
-| 4 | Kolom persetujuan | **Tampil di grid, baca-saja** |
-
-### 18.2 Satu penyimpangan dari `P-5`, dan alasannya
-
-`P-5` menetapkan perilaku dipertahankan lebih dulu, kecuali untuk perbaikan yang diputuskan
-eksplisit. Modul ini punya **tepat satu** perbaikan semacam itu.
-
-**Cacatnya.** `Database/MASTERPENOLAKANKLAIM1.prc` melakukan `INSERT` pada **kedua** cabang
-`IF`-nya, tidak pernah `UPDATE`:
-
-```
-:8   IF tid_st is null or tid_st='' then
-:9       INSERT INTO POOLDATA.MST_PENOLAKAN_KLAIM_1 (ID_ST,NOTE_ST) VALUES (id_mst,tnotest);
-:13  elsif tid_st is not null or tid_st!='' then
-:14      INSERT INTO POOLDATA.MST_PENOLAKAN_KLAIM_1 (ID_ST,NOTE_ST) VALUES (tid_st,tnotest);
-```
-
-`Activity/InsertMasterPenolakanNoteKlaim-Act.xml` memanggilnya pada **setiap** simpan, lalu
-memakai ID hasilnya sebagai `ID_ST` baris tingkat 2. Akibatnya:
-
-- setiap penambahan menerbitkan satu baris tingkat 1 baru, walau teksnya sama persis;
-- setiap **pengubahan** juga menerbitkannya, dan memindahkan baris tingkat 2 ke induk yang baru —
-  meninggalkan induk lama tanpa satu pun yang merujuknya;
-- `MST_PENOLAKAN_KLAIM_1` tumbuh sebanyak jumlah penyimpanan, bukan sebanyak jumlah alasan
-  penolakan yang sebenarnya ada.
-
-**Yang diputuskan.** Induk **dipilih dari daftar** yang sudah ada; baris tingkat 1 baru lahir
-hanya bila pengguna memang meminta yang baru. Jalur "pilih" tidak menulis apa pun ke tabel
-tingkat 1.
-
-**Konsekuensi yang diterima, dan dinyatakan di muka supaya tidak ditemukan sebagai kejutan pada
-uji kesetaraan gerbang 1:**
-
-| Hal | Sistem lama | Sistem baru |
-|---|---|---|
-| Menyimpan dengan induk yang sudah ada | `MST_PENOLAKAN_KLAIM_1` bertambah satu baris | tidak bertambah |
-| `MST_PENOLAKAN_KLAIM_2.ID_ST` sesudah diubah | selalu menunjuk induk yang **baru dibuat** | menunjuk induk yang **dipilih** |
-| Bentuk isian "Status Penolakan 1" | kotak teks bebas | daftar pilihan + opsi tambah baru |
-
-**Baris lama dibiarkan.** Duplikat yang sudah telanjur ada di produksi tidak dibersihkan modul
-ini: membersihkannya berarti memutuskan baris mana yang menang, dan baris tingkat 2 yang merujuk
-induk yang "kalah" harus dipindahkan. Itu keputusan data yang belum diambil siapa pun. Yang
-dikerjakan adalah **menghentikan pertumbuhannya**, dan melaporkan besarnya — mode `-periksa`
-menghitung nama tingkat 1 yang kembar dan menyebut angkanya.
-
-### 18.3 Tiga perilaku yang DIREPLIKASI, termasuk yang tampak aneh
-
-| Perilaku | Bukti | Kenapa tidak diperbaiki |
-|---|---|---|
-| Pengubahan mereset `STATUS` ke `'0'` dan `TANGGALKIRIM` ke waktu sekarang | `MASTERPENOLAKANKLAIM2.prc:14` | Keputusan Work Owner, dan masuk akal secara bisnis: teks yang sudah disetujui tidak boleh berubah diam-diam |
-| Ketiga kolom persetujuan **tidak** ikut dibersihkan saat reset | `MASTERPENOLAKANKLAIM2.prc:14` — hanya enam kolom yang di-`SET` | Ia jejak keputusan yang **pernah** ada. Layar menyebutnya demikian alih-alih menyembunyikannya |
-| Baris pertama pada `MST_REJECTED_KOMITE` yang kosong bernomor **111** | `INSERTMASTERREJECTEDKOMITE.prc:9` | Tidak ada keterangan apa pun tentang asal angka itu, dan keadaannya hanya terjadi sekali seumur tabel |
-
-### 18.4 Penyaring yang TIDAK dibawa, dan kenapa itu bukan kelalaian
-
-`RDB List/BrowseStatusPenolakanKlaim2-SQL.xml` memuat `{ASIS:MasterCheckerPenolakan.RemakApprove}`
-— potongan teks SQL yang disisipkan dari nilai klipboard. Yang mengisinya adalah
-`Activity/BrowseStatusPenolakanKlaim_2-Act.xml` langkah 2, dengan nilai `"WHERE STATUS='0'"`.
-
-Langkah itu **berprasyarat `Param.master=="1"`**, dan layar Master Penolakan Klaim **tidak
-mengirim parameter itu** — yang mengirimnya adalah layar checker pada Inbox Manager. Dari layar
-ini potongan penyaringnya karena itu tetap kosong, dan gridnya menampilkan **seluruh** baris.
-
-Menyalin penyaringnya ke sistem baru akan menyembunyikan baris yang sudah diputuskan: itu
-**perubahan perilaku**, bukan replikasi. Saya sempat menuliskannya sebelum membaca
-preconditionnya — uji `TestListShowsEveryRowRegardlessOfApproval` yang menjaganya tidak kembali.
-
-Potongan `{ASIS:...}`-nya sendiri tidak dibawa dalam bentuk apa pun. Selain melanggar
-§4.3 `08-TECHNICAL-STRATEGY.md` (parameter binding tanpa perkecualian), ia membawa **kebocoran
-antarlayar**: nilai yang tertinggal dari layar checker dalam sesi yang sama akan diam-diam
-menyaring layar ini.
-
-### 18.5 Keputusan desain
-
-| # | Keputusan | Alasan |
-|---|---|---|
-| 1 | **Satu paket Go untuk dua master** (`internal/masterpenolakan`) | Satu butir menu, satu layar. Memecahnya berarti dua rakitan dan dua pemilih portal untuk sesuatu yang dilihat pengguna sebagai satu layar |
-| 2 | **Dua seam terpisah** di dalamnya — `Repo` dan `RepoKomite` | Tabelnya tidak sekerabat dan tidak punya satu pun kolom yang menghubungkannya. Menyatukan seam-nya akan menyiratkan hubungan yang tidak ada |
-| 3 | **Satu seam untuk dua tabel Penolakan Klaim** | Penambahannya satu operasi yang tidak dapat dipecah: induk baru harus lahir bersama anaknya, di dalam transaksi yang sama. Memecahnya menuntut `*sql.Tx` bocor ke luar repo |
-| 4 | Nama tipe `RejectionStatus` / `RejectionStatus2` | Mengikuti `ProgressStatus`/`ProgressStatus2` yang bentuknya sama persis, dan mengikuti label layar Pega ("Status Penolakan 1" / "2"). Tidak ada istilah yang dikarang |
-| 5 | `TANGGALKIRIM` diisi dari seam `Clock`, bukan `SYSDATE` | Mengikuti preseden `account_insert` pada Master Rekening. Konsekuensinya dicatat — lihat §18.6 |
-| 6 | Kolom `USER_INPUT` diisi **login**, bukan NIK | Sistem lama mengisinya `OperatorID.pyUserIdentifier`, sehingga baris lama sudah berisi login. Mengisinya dengan NIK membuat satu kolom memuat dua jenis pengenal yang tidak dapat dibedakan sesudahnya |
-| 7 | `ORDER BY ID_ST ASC` ditambah `ID_ND ASC` | Kueri lama tidak menentukan urutan di antara baris ber-`ID_ST` sama, sehingga basis data bebas memulangkannya dalam urutan apa pun. Kunci kedua membuat yang tadinya sembarang menjadi tetap — tidak bertentangan dengan urutan lama |
-| 8 | Daftar Status Penolakan 1 diurutkan menurut **nama** | Tidak ada kueri lama yang urutannya harus disamai (`MST_PENOLAKAN_KLAIM_1` tidak muncul di satu pun rule SQL), dan yang dibaca manusia di sana namanya. Pada tabel yang kemungkinan besar penuh nama kembar, ia juga membuat kembarannya berdampingan |
-| 9 | Tidak ada `DELETE` pada ketiga tabel | Seluruh export tidak memuat satu pun, layar lama tidak punya tombolnya, dan tidak satu pun tabelnya punya kolom penanda terhapus yang dapat dipakai `D-66` |
-| 10 | Aturan wajib-isi dan batas panjang **ditambahkan** | Tidak ada di sistem lama. Mengikuti keputusan yang sama pada Master Status Klaim (2026-09-17) |
-
-### 18.6 Utang teknis yang disadari
-
-| # | Utang | Dampak bila dibiarkan |
-|---|---|---|
-| 1 | **Panjang maksimum 100 karakter adalah ASUMSI.** DDL ketiga tabel belum ada (`R-08`), dan procedure lama menerima parameternya sebagai `varchar2` tanpa panjang | Bila kolomnya lebih pendek, penolakannya datang dari basis data sebagai galat teknis, bukan pesan yang menuntun pengguna. Angkanya diulang di `RejectionForm.tsx` dan `CommitteeRejectionForm.tsx` — bila berubah, ketiga tempat harus ikut |
-| 2 | **`TANGGALKIRIM` UTC versus WIB.** Baris yang ditulis Pega memuat waktu server (WIB); baris yang ditulis aplikasi ini memuat UTC. Keduanya terpaut tujuh jam pada kolom yang sama selama masa paralel | Wujud nyata `R-12` pada tabel ini. Tidak dapat dihindari tanpa melanggar §4.4, dan terbatas pada satu kolom yang hanya ditampilkan — tidak dipakai perhitungan mana pun |
-| 3 | **Modal "Master Status Penolakan 1" tidak dibangun.** `Flow Action/Flo_MasterPenolakanKlaim` tidak ada di export (`R-16`) | Fungsinya tercakup opsi "+ Status Penolakan 1 baru…" pada form, tetapi isi modal aslinya tidak diketahui — mungkin ada isian yang terlewat |
-| 4 | **Data contoh adalah susunan sendiri.** Isi ketiga tabel tidak ikut dikirim: tidak ada CSV-nya di `Database/` | Tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1 |
-| 5 | **Pemetaan galat masih milik modul.** Sama seperti tiga modul master sebelumnya | Pindah ke tempat bersama begitu `TKT-F1-004` diputuskan |
-| 6 | **Nama kunci pelanggaran `kolom`, bukan `field`.** Mengikuti `masterstatusprogres` | Ketidakseragaman yang sudah dikenali; `APIError.violations()` menyatukannya |
-
-### 18.7 Yang sengaja tidak dikerjakan
-
-| Hal | Alasan |
-|---|---|
-| **Layar checker** (menyetujui / menolak) | Ia `Section/Sec_PenolakanKlaimChecker` pada `UserInbox_Harness`, MENU_ID 58 — modul tersendiri. Keputusan Work Owner: di layar ini keempat kolom persetujuan baca-saja |
-| **Membersihkan duplikat tingkat 1 yang sudah ada** | Menuntut keputusan data yang belum diambil siapa pun. Yang dikerjakan adalah menghentikan pertumbuhannya dan melaporkan besarnya |
-| **Migrasi skema** | Ketiga tabel adalah tabel **warisan** yang sudah ada; tidak satu pun dibuat aplikasi ini. Yang dibutuhkan hanyalah hak baca-tulis dari DBA |
-| **Paginasi tabel** | `DataTable` bersama belum punya; menambahkannya menyentuh `U-2` yang dipakai seluruh layar master |
-
----
-
-## 19. Modul Master Auto Claim (2026-09-19, sesi kesebelas)
-
-### 19.1 Keputusan yang diambil Work Owner pada sesi ini
-
-Keempatnya diajukan sebagai pertanyaan **sebelum** satu baris kode ditulis, karena keempatnya
-menyentuh aturan yang menentukan ke mana uang klaim dikirim.
-
-| # | Pertanyaan | Jawaban |
-|---|---|---|
-| 1 | `CLAIM_ALLOWED` ditimpa `"1"` saat tambah tetapi memakai isian pengguna saat ubah — bagaimana di sistem baru? | **Selalu "1", tidak dapat diubah** |
-| 2 | `KOMITE` diambil dengan `type_business='BONDING'` tertanam, baris pertama, tanpa `ORDER BY` | **Replikasi apa adanya** |
-| 3 | Approve/Reject menulis ulang 13 kolom dari isi form | **Kirim ulang seluruh isian seperti Pega** |
-| 4 | `UpdateAutoClaim` tidak menulis `NAMA_PENERIMA` | **Nama penerima tidak bisa diupdate** |
-
-### 19.2 Nama modulnya menyesatkan, dan itu bukan alasan menggantinya
-
-"Master Auto Claim" bukan master klaim. Ia daftar **Sumber Bisnis yang klaimnya boleh dibuat
-otomatis**, beserta ke mana ganti ruginya dibayarkan.
-
-Yang membuktikannya bukan penamaan melainkan pemakaian hilirnya — `INISIALID` dicocokkan dengan
-`T_GENERAL.SOURCEOFBUSINESS` pada `GetReceiverClaimAsuransiKredit-SQL.xml`.
-
-Namanya **tetap** "Master Auto Claim": itu nama pada `MENU_DESC` MENU_ID 26 dan nama yang dipakai
-Work Owner, dan `D-81` menetapkan folder modul dinamai menurut nama yang disebut Work Owner.
-Yang dikerjakan adalah menuliskan artinya di doc comment paket, bukan mengarang nama yang lebih
-tepat tetapi tidak dikenali siapa pun.
-
-### 19.3 Menyimpan dan memutuskan adalah SATU operasi
-
-Bukan penyederhanaan, melainkan bentuk sistem lama: `Activity/UpdateMstAutoClaim_act` melayani
-tiga tombol sekaligus, dibedakan hanya oleh parameternya.
-
-```
-tab Master / Reject, tombol Update   stsapprove="0"
-tab Komite, tombol Approve           stsapprove="1"
-tab Komite, tombol Reject            stsapprove="2"
-```
-
-Karena itu **tidak ada** endpoint `/keputusan` terpisah seperti pada Master Rekening — satu
-`PUT /api/master/auto-claim/{inisial}` dengan `status` di dalam badannya. Keputusan Work Owner
-19.1 #3 mempertahankan bentuk itu.
-
-**Akibat yang mengikuti dan memang dikehendaki:** menyunting baris yang sudah disetujui
-**mengembalikannya ke antrean persetujuan**. Persetujuan lama tidak berlaku atas isi yang sudah
-berubah — dan itu benar untuk master yang menentukan ke mana uang dikirim.
-
-### 19.4 Bentuk "kirim ulang" dipertahankan; jalur yang merusaknya tidak
-
-Di Pega, isian yang dikirim ulang diambil dari **page form** — dan page form hanya terisi bila
-barisnya lebih dulu dimuat lewat tombol Update. Komite yang menekan Approve langsung dari grid
-mengirim `CLIENTID`, `CLIENTNAME`, dan `KOMITE` **kosong**, dan kueri `UPDATE` menulis ketiganya
-apa adanya.
-
-Dua perubahan menutupnya tanpa mengubah bentuk kontraknya:
-
-| Perubahan | Alasan |
-|---|---|
-| Kueri **daftar** ikut membaca `CLIENTID` dan `CLIENTNAME` | layar selalu memegang nilai sebenarnya, sehingga pengiriman ulang tidak dapat menghapusnya. Menambah kolom pada `SELECT` tidak mengubah satu baris pun |
-| `KOMITE` **tidak pernah** datang dari permintaan | dibaca dari baris tersimpan, ditulis kembali apa adanya. Di Pega ia dapat menghapus penyetujunya sendiri |
-
-Yang direplikasi adalah **hasil yang teramati pada jalur normal**, bukan jalur yang
-menghasilkannya.
-
-### 19.5 Pemeriksaan bank dipindahkan ke lapisan aplikasi — dan dibuat lebih kuat
-
-Pega menolak dengan *"Nama bank jangan diketik manual"* bila kode bank dari autocomplete kosong.
-Kode itu **tidak pernah disimpan**; tabelnya tidak punya kolomnya.
-
-| Pilihan | Akibat |
-|---|---|
-| Terima kode bank dari layar | mempercayai peramban atas nilai yang tidak dapat dibaca kembali; tombol Approve menjadi bergantung padanya |
-| **Cocokkan NAMA bank ke `GENERAL.LST_BANK_GROUP`** | maksud yang sama, tidak dapat ditipu kode karangan |
-
-Karena pencocokannya menuntut pembacaan basis data, ia tidak dapat berada di domain. Ia ada di
-`usecase.ensureBankKnown`, dan galatnya dibungkus `masterautoclaim.OneViolation` supaya sampai ke
-layar dalam bentuk yang **sama** dengan pelanggaran isian lain — bukan sebagai 500.
-
-### 19.6 Dua pemeriksaan isian, bukan satu
-
-| Method | Dipakai | Menuntut |
-|---|---|---|
-| `Input.Check` | tambah | seluruh isian, termasuk Sumber Bisnis dan nama penerima |
-| `Input.CheckEditable` | simpan & keputusan | hanya isian yang **dapat** diubah |
-
-Keduanya berbagi `checkEditable`, bukan disalin, supaya aturan yang sama tidak pernah berbeda
-antara menambah dan menyimpan.
-
-Versi pertama tidak begitu: ia memakai satu `Check` dan handler mengisi `ReceiverName: "-"` agar
-lolos. Itu akal-akalan yang **menyembunyikan aturan yang sebenarnya berlaku**, dan diganti sebelum
-uji ditulis.
-
-### 19.7 `Store` menyatukan pemilihan, bukan kepentingannya
-
-`Repo` (tabel master) dan `LookupRepo` (empat tabel acuan) tetap **dideklarasikan terpisah**:
-keduanya menjawab pertanyaan yang berbeda dan dapat berubah sendiri-sendiri.
-
-Yang disatukan hanyalah **cara memilihnya** — `RepoSelector` mengembalikan `Store` yang memuat
-keduanya. Alasannya: keduanya selalu berasal dari koneksi entitas yang sama, sehingga dua pemilih
-terpisah hanya akan membuka kemungkinan keduanya menunjuk entitas yang **berbeda**. Itu persis
-kelas cacat yang dicegah `R-20`.
-
-### 19.8 `PCT_MAX` disimpan sebagai TEKS
-
-DDL `POOLDATA.M_AUTO_CLAIM_PNC` belum diterima (`R-08`), sehingga tipe kolomnya belum diketahui.
-Mengubahnya menjadi angka di dalam aplikasi berarti memutuskan pembulatan dan presisi tanpa dasar
-— dan `D-51` melarang nilai uang maupun persentase ditebak.
-
-Yang dikerjakan: baris lama **dibaca apa adanya**, dan yang **baru** diperiksa berbentuk angka
-0–100. Koma maupun titik diterima sebagai pemisah desimal — petugas Indonesia mengetik "82,5"
-sementara basis data menyimpan "82.5"; menolak salah satunya berarti menolak isian yang benar
-hanya karena papan ketiknya.
-
-`strconv.ParseFloat` dipakai, bukan `fmt.Sscanf`: Sscanf berhenti pada karakter pertama yang
-tidak cocok dan **tetap melapor sukses**, sehingga `"82abc"` akan lolos sebagai 82.
-
-### 19.9 Identitas pemanggil memakai LOGIN, dan di modul ini itu MENENTUKAN
-
-Modul lain memakai login karena rapi. Di sini ia menentukan: nilainya dibandingkan dengan kolom
-`KOMITE`, yang berisi `OPERATOR_ID` dari `POOLDATA.EMAILKOMITE`. Memakai NIK akan membuat tab
-Komite Approval **selalu kosong, tanpa satu pun galat** — kegagalan yang tidak terlihat di layar
-mana pun.
-
-Nilai yang dibandingkan tidak pernah diterima dari permintaan: layar hanya mengirim
-`komite_saya=true`, dan siapa "saya" diambil dari sesi. Menerimanya dari layar berarti siapa pun
-dapat melihat antrean persetujuan komite lain dengan mengganti satu nilai.
-
-### 19.10 Selisih yang direncanakan, dan yang bukan
-
-| Selisih | Terlihat di | Sebab |
-|---|---|---|
-| `CLAIM_ALLOWED` selalu `"1"` juga saat ubah | isi tabel | keputusan Work Owner 19.1 #1 |
-| `PCT_MAX` bukan angka 0–100 **ditolak** | penolakan isian | kolomnya persentase; Pega menerima teks apa pun |
-| Daftar terurut `INISIALID` | urutan baris di layar | kueri lama tanpa `ORDER BY` |
-
-**Bukan selisih hasil**, tetapi tetap dicatat: penyaring komite berpindah dari perangkaian teks
-SQL menjadi kueri terikat, dan daftar membaca dua kolom lebih banyak. Keduanya tidak mengubah
-satu baris pun.
-
-### 19.11 Utang teknis yang disadari
-
-| Utang | Keterangan |
-|---|---|
-| `'BONDING'` tertanam di kueri komite | Work Owner memilih replikasi apa adanya. Persis bentuk hardcode yang `D-15` perintahkan menjadi master. Dijaga terlihat oleh `TestCommitteeQueryKeepsHardcodedBusinessType` — siapa pun yang mengangkatnya kelak menghapus uji itu **dengan sadar** |
-| Balapan penambahan hanya **dipersempit** | `FOR UPDATE` tidak dapat mengunci baris yang belum ada. Penutupnya constraint unik pada `INISIALID`; menunggu `R-08` dan `D-63` |
-| Batas panjang isian **asumsi** | DDL belum ada. Angkanya diulang di `AutoClaimForm.tsx`, dan duplikasi itu dijaga terlihat oleh `TestLengthLimitsAreStated` |
-| Pemetaan galat milik modul sendiri | `TKT-F1-004` masih terhalang; bentuk `{kode, pesan}` tetap sama sehingga klien tidak menghadapi dua bentuk |
-| `USERINPUT` menyimpan **pelaku terakhir**, bukan pembuat | tabelnya tidak punya kolom kedua, dan menambah kolom menempuh `D-63` |
-| Tidak ada kolom waktu sama sekali | jejak audit (`D-28`, modul `S-5`) belum dapat disandarkan pada tabel ini |
-
-### 19.12 Yang sengaja tidak dikerjakan
-
-| Hal | Alasan |
-|---|---|
-| **`DELETE`** | Sistem lama tidak punya satu pun terhadap tabel ini, dan `D-66` melarang penghapusan fisik data bernilai bisnis. Baris yang tidak dipakai **ditolak komite**, bukan dibuang. Dijaga `TestNoDeleteStatement` |
-| **Isian CLAIM ALLOWED di layar** | selalu `"1"`. Kotak yang isinya selalu diabaikan lebih buruk daripada tidak ada kotak sama sekali |
-| **Memindahkan baris ke sumber bisnis lain** | `INISIALID` kunci baris; `UpdateAutoClaim-SQL.xml` pun tidak pernah memindahkannya. Salah pilih diperbaiki dengan menolak lalu menambah baru |
-| **Migrasi skema** | `M_AUTO_CLAIM_PNC` dan keempat tabel acuannya **warisan** yang sudah ada; yang dibutuhkan hanyalah hak baca-tulis dari DBA |
-
-## 20. Modul Master Pasal Kerugian (2026-09-19, sesi kedua belas)
-
-Menggantikan `Harness/DetailMasterPasalRejected-Harness.xml` (MENU_ID 27), judul di layar
-**"Detail Pasal Kerugian"**, atas tabel `POOLDATA.V_M_DATA_PASAL`.
-
-### 20.1 Keputusan yang MENYUPERSEDE aturan Steering — dan kenapa ia ditulis di depan
-
-`D-66` menetapkan **soft delete menyeluruh**: tidak ada `DELETE` fisik pada data bernilai bisnis di
-sistem baru, dan penghapusan dinyatakan lewat penanda.
-
-Layar lama modul ini **punya tombol Hapus**, dan tombol itu menghapus barisnya secara fisik:
-
-```
-Section/BrowsePasalDeatailMaster-Section.xml   tombol "Delete"
-  -> CNMInsertPasalDataMaster(DeleteFlag="1")
-  -> RDB List/DeleteDataPasalDataMaster-SQL.xml
-     Delete from POOLDATA.V_M_DATA_PASAL where IDDATA = {InputData.OLD_M_COL_ID}
-```
-
-Tabelnya hanya punya tiga kolom dan tidak punya penanda terhapus; menambah kolom menempuh `D-63`.
-Tiga jalan keluar diajukan ke Work Owner pada 2026-09-19:
-
-| Pilihan | Akibatnya |
-|---|---|
-| Penanda di dalam `JSONPASAL` | `D-66` terpenuhi tanpa perubahan skema, tetapi baris yang dihapus **tetap terlihat di Pega** selama masa paralel |
-| Minta kolom penanda ke DBA (`D-63`) | paling bersih, tetapi tombolnya **tidak dapat dibangun** sampai kolomnya tiba |
-| `DELETE` fisik seperti Pega | setara dengan sistem lama, tetapi **melanggar `D-66`** |
-
-**Jawaban Work Owner: "coba jalankan secara as is"** — pilihan ketiga.
-
-Keputusan itu dihormati dan dijalankan. Yang TIDAK dilakukan adalah menyembunyikannya. Ia dinyatakan
-di **lima tempat**, supaya siapa pun yang menyentuh modul ini menemukannya tanpa mencari:
-
-1. doc comment `masterpasal.Repo` — lengkap dengan ketiga pilihan yang ditawarkan;
-2. banner `masterpasal.sql` aturan ke-5, dan pada kueri `clause_delete` sendiri;
-3. `TestDeleteAppearsInExactlyOneQuery` — pengecualiannya tidak boleh melebar ke kueri lain;
-4. README, dengan blok peringatan tersendiri;
-5. layar, lewat konfirmasi yang menyebut kata "permanen".
-
-**Konsekuensi yang diterima secara sadar:** baris yang dihapus tidak dapat dipulihkan, dan **tidak
-meninggalkan jejak apa pun** — tabelnya juga tidak punya kolom pencatat siapa dan kapan. Bila kelak
-ada temuan audit yang menuntut jejak penghapusan, yang berubah adalah skema tabelnya, bukan kode
-modul ini.
-
-### 20.2 Tiga keputusan "as is" lainnya
-
-Ketiganya diajukan bersama yang di atas, dan ketiganya dijawab sama.
-
-| # | Yang ditawarkan | Keputusan |
-|---|---|---|
-| 2 | Kategori: tiga kode `1`/`2`/`3`, atau dua kode plus cabang `else` | **cabang `else`** — kode "Notifikasi" KOSONG |
-| 3 | Bisnis: wajib dipilih dari master (seperti Master Auto Claim), atau boleh diketik bebas | **boleh diketik bebas**, seperti `pyAllowFreeFormInput=true` |
-| 4 | No Pasal wajib unik, atau boleh kembar | **boleh kembar**; satu-satunya isian wajib tetap No Pasal |
-
-**Kenapa keputusan 2 bukan sekadar soal selera.** Daftar pilihan dropdown hidup di Rule-Obj-Property
-`JaminanPengecualianApproval`, dan **tidak ada satu pun direktori Properties di export** (`R-16`).
-Yang terbaca hanya ekspresi turunannya:
-
-```
-@if(...==1,"Jaminan Polis", @if(...==2,"Pengecualian","Notifikasi"))
-```
-
-Mengarang kode `"3"` berarti menebak, dan tebakan itu akan terbukti salah **tanpa satu pun galat**:
-baris lama berkode lain akan tampak benar di layar tetapi tersimpan ulang dengan kode yang berbeda.
-Yang dipakai karena itu cabang `else` apa adanya.
-
-Ditambah satu pengaman yang tidak diminta tetapi menutup lubang yang sama: bila baris tersimpan
-memuat kode di luar ketiganya, layar menambahkan **pilihan bayangan** berlabel
-`Notifikasi (kode lama <x>)`. Kode aslinya tetap terpilih dan tetap tersimpan utuh selama pengguna
-tidak sengaja menggantinya. Tanpa itu, membuka lalu menyimpan baris semacam itu akan diam-diam
-mengganti kodenya.
-
-### 20.3 Yang TIDAK direplikasi, dan itu selisih terencana
-
-Ketiganya dinyatakan di muka supaya tidak ditemukan sebagai kejutan pada uji kesetaraan gerbang 1.
-
-| Selisih | Sebab |
-|---|---|
-| Nomor `IDDATA` dihitung di Go | `PEGA_D_PASAL_MASTER.prc:11` memakai `max()` **tanpa** `NVL`, sehingga tabel kosong menghasilkan kunci kosong; dan `TO_NUMBER` atas kolom teks gagal ORA-01722 begitu satu baris saja bukan angka |
-| `PUT` atas baris yang hilang dijawab `404` | cabang `ELSE` procedure lama justru **menyisipkan baris baru**, sehingga menyunting baris yang sudah dihapus petugas lain menerbitkan baris kedua tanpa satu pun tanda |
-| Daftar diurutkan `IDPASAL, IDDATA` | kueri lama tidak punya `ORDER BY` sama sekali, sehingga urutannya dapat berbeda antar pemanggilan |
-
-Ditambah satu pembersihan kecil pada isian Bisnis: butir yang **kode dan namanya sama-sama kosong**
-dibuang saat disimpan. Layar lama menerbitkan baris kosong seketika saat ikon tambah ditekan, dan
-menyimpannya berarti menyimpan butir yang tidak menunjuk apa pun.
-
-### 20.4 Satu perilaku Pega yang sengaja TIDAK ditiru pada jalur yang merusak
-
-Saat sebuah pasal dibuka untuk disunting, Pega membaca ulang nama lini bisnisnya dari
-`POOLDATA.BUSINESS` lewat sub-kueri `(select NOTE from BUSINESS c where c.ID = A.D_COL_ID)`, lalu
-menyalinnya ke `.Note`.
-
-Akibatnya pada jalur ketikan bebas: butir itu tidak punya kode, sub-kuerinya tidak menemukan apa
-pun, dan `.Note` menjadi **kosong**. Nama yang diketik pengguna **hilang** begitu pasalnya dibuka
-kembali — tanpa satu pun pesan.
-
-Di sini penyegaran namanya tetap dilakukan — itu yang membuat nama lini bisnis selalu mutakhir —
-tetapi butir yang kodenya tidak ketemu **mempertahankan nama tersimpannya**. Yang direplikasi adalah
-hasil yang teramati pada jalur normal, bukan jalur yang merusak; alasan yang sama dipakai modul
-Master Auto Claim saat menutup penghapusan data client secara diam-diam (§19.6 pada sesi itu).
-
-### 20.5 Penyimpangan dari dokumen Steering
-
-| Ketetapan | Yang dijalankan | Alasan |
-|---|---|---|
-| `D-66` soft delete menyeluruh | `DELETE` fisik pada `V_M_DATA_PASAL` | keputusan Work Owner 2026-09-19; rinciannya §20.1 |
-| §4.5 batas transaksi di lapisan aplikasi | transaksi dibuka **di dalam** `Repo.Insert` | nomor `IDDATA` diturunkan dari isi tabel itu sendiri; memisahkannya membuka lubang balapan yang justru sedang ditutup. Pengecualian yang sama sudah diambil `masterpenolakan` |
-| `10-API-STRATEGY.md` §2 awalan `/api/v1/...` | jalur tanpa awalan versi | kontrak yang ada belum memakainya; memperkenalkannya di satu modul akan membuat dua gaya jalur hidup berdampingan |
-
-### 20.6 Keputusan desain yang diambil sendiri
-
-| Keputusan | Alasan |
-|---|---|
-| **Domain tidak mengenal JSON sama sekali** | dokumen `JSONPASAL` adalah BENTUK PENYIMPANAN, bukan aturan bisnis. Pembongkarannya berhenti di `repo/sqlstore`, persis seperti nama kolom |
-| **`View_DATA_PASAL` tidak dipakai** | view itu tidak ada di export, DDL-nya belum ada (`R-08`), hampir pasti memakai `JSON_TABLE` khas Oracle, dan kuerinya merangkai penyaring dari `{ASIS:...}`. `JSONPASAL` dibaca utuh lalu dibongkar di Go — hasilnya sama, tanpa bergantung pada objek yang tidak dapat dibaca maupun dipindahkan |
-| **Daftar tidak memuat lini bisnis** | grid layar lama pun tidak menampilkannya; memuatnya berarti satu pembacaan master lini bisnis untuk setiap pasal demi kolom yang tidak ada |
-| **Rute `/kategori` di luar pemeriksaan portal** | isinya milik aplikasi, bukan data entitas. Menuntut portal di sana akan membuat form gagal dimuat justru saat pengguna belum memilih entitas |
-| **Nama lini bisnis dibaca satu per satu, bukan dengan `IN`** | jumlahnya kecil — daftar lini bisnis satu pasal, bukan satu tabel — dan klausa `IN` yang panjangnya berubah-ubah berarti satu teks kueri berbeda untuk setiap jumlah baris |
-| **`ClauseForm` tanpa zod dan React Hook Form** | aturannya tinggal SATU. Memasang keduanya untuk satu perbandingan dengan teks kosong berarti tiga lapis perantara, sementara isian Bisnis yang berupa daftar justru lebih jernih sebagai state biasa. Server tetap memeriksa ulang seluruhnya |
-| **Konfirmasi hapus berupa panel, bukan modal** | modal menuntut perangkap fokus dan penanganan Escape sendiri; yang dibutuhkan hanyalah agar akibatnya terbaca sebelum tombolnya ditekan, dan panel di tempat tidak menutupi baris yang sedang dibicarakan |
-| **`DELETE` dibuka di `api/client.ts`** | komentar di sana memang menuntut keputusan sadar sebelum metodenya dibuka; keputusan itu kini ada, dan alasannya ditulis di tempat yang sama |
-
-### 20.7 Yang belum dapat dibuktikan
-
-| Hal | Sebabnya |
-|---|---|
-| **Pengikatan CLOB lebih dari 4000 karakter** | `go-ora` dapat menolaknya dengan ORA-01461 bila mengikatnya sebagai `VARCHAR2`. Tidak ada Oracle di lingkungan ini; dicatat di banner `masterpasal.sql` sebagai hal yang **wajib** dicoba pada basis data sungguhan dengan satu pasal berisi teks panjang |
-| **Bentuk dokumen `JSONPASAL` pada baris lama** | ia dihasilkan `ClipboardPage.getJSON`, dan keluarannya bergantung pada tipe properti klipboard yang tidak ada di export. Yang dikerjakan adalah membuat pembacanya **memaafkan** tipe non-teks, dan melaporkan baris yang tidak dapat diurai beserta `IDDATA`-nya di mode periksa |
-| **Kode Kategori yang benar-benar ada di data** | mode `-periksa` melaporkannya bila ditemukan kode di luar ketiganya; sampai itu dijalankan pada basis data sungguhan, dugaan apa pun tetap dugaan |
-| **Isi `POOLDATA.BUSINESS`** | tidak ikut dikirim bersama export. Data contoh untuk pengembangan adalah susunan sendiri — **nama lini bisnisnya nyata** (dari `CONTEXT.md`), **kodenya dikarang** — dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1 |
-
-### 20.8 Yang sengaja tidak dikerjakan
-
-| Hal | Alasan |
-|---|---|
-| **Membuat No Pasal unik** | ditawarkan dan ditolak (§20.2 #4). Kuncinya `IDDATA`, dan Pega pun tidak memeriksanya |
-| **Membatasi panjang isian** | lebar kolom `IDPASAL` tidak diketahui (`R-08`); menolak berdasarkan angka yang dikarang berarti menolak isian yang sebenarnya diterima basis data. Yang ada hanyalah batas badan permintaan di lapisan transport |
-| **Mengangkat textarea ke `components/`** | hanya modul ini yang memakainya. Menaikkannya lebih dulu berarti menebak bentuk yang dibutuhkan modul lain sebelum modul itu ada — alasan yang sama dipakai `LookupPicker` pada Master Auto Claim |
-| **Migrasi skema** | `V_M_DATA_PASAL` dan `BUSINESS` adalah objek **warisan** yang sudah ada; yang dibutuhkan hanyalah hak baca-tulis dari DBA |
-
----
-
-## 21. Modul Master Bengkel (2026-09-19, sesi ketiga belas)
-
-Menggantikan `Harness/BengkelHE-Harness.xml` (MENU_ID 28) atas `POOLDATA.BENGKEL_HE`.
-
-**Work Owner menjawab keempat pertanyaan dengan kalimat yang sama:** *"coba jalankan
-secara as is"*. Keputusan di bawah adalah penerapan `P-5` — replikasi perilaku lebih dulu
-— beserta **satu tempat yang tidak dapat direplikasi**, dan alasannya teknis.
-
-### 21.1 Jalur simpan: kolom bernama ke `BENGKEL_HE`, bukan JSON ke `M_BENGKEL_HE`
-
-Ini keputusan terbesar modul ini, dan ia **menyimpang dari "as is"**. Alasannya bukan
-selera.
-
-Sistem lama memakai dua tabel untuk satu master:
-
-```
-tulis   Activity/UpdateBengkelHE_act  →  InputBengkel.ACCOUNT_ID := @GCNM.GetPageJSONString()
-        RDB List/UpdateBengkelHE-SQL  →  POOLDATA.PEGA_M_BENGKEL_HE(Datapega, IDPega, out)
-        Database/PEGA_M_BENGKEL_HE.prc:22 → INSERT INTO POOLDATA.M_BENGKEL_HE(ID, JSONDATA)
-
-baca    Report Definition/BrowseBengkelHE_RD → POOLDATA.BENGKEL_HE, 40 kolom
-        RDB List/ValidationMasterBengkel     → pooldata.bengkel_he
-        RDB List/CountMasterBengkelManagee   → POOLDATA.BENGKEL_HE
-        RDB List/GetIDDokumenBengkel         → POOLDATA.BENGKEL_HE
-```
-
-Memanggil procedure-nya dilarang `D-02`. Yang tersisa dua pilihan, dan **hanya satu yang
-dapat dikerjakan tanpa menebak**:
-
-| Pilihan | Dapat dikerjakan? |
-|---|---|
-| Menulis dokumen JSON ke `M_BENGKEL_HE.JSONDATA` dengan SQL biasa | **TIDAK.** Nama kunci JSON-nya diterbitkan `@GCNM.GetPageJSONString()`, dan `Function/GetPageJSONString-Function.xml` **hanya memuat tanda tangannya** — badan fungsinya tidak ikut di export (`R-16`). Setiap kunci yang ditulis akan menjadi tebakan, pada master yang menentukan diskon, pajak, dan rekening tujuan pembayaran |
-| Menulis kolom bernama ke `BENGKEL_HE` | **YA.** Keempat puluh kolomnya terbaca lengkap dari `BrowseBengkelHE_RD-RD.xml`, sehingga setiap nilai yang ditulis diketahui benar, dan apa yang ditulis dapat dibaca kembali oleh layar yang sama |
-
-Yang kedua dipakai. **Perlakuannya sama dengan Master Status Klaim**, yang menghadapi
-keluarga procedure `PEGA_M_*` yang sama persis — lima belas procedure dengan pola
-site-prefix + `JSONDATA` — dan memutuskan hal yang sama: Go menjadi penulis tunggal dan
-berhenti menulis `JSONDATA` (`D-02`, `D-68`). Lihat banner
-`internal/masterstatus/repo/sqlstore/masterstatus.sql` dan migrasi 0002.
-
-**Penomorannya tetap direplikasi apa adanya**, dan itu yang membuat keputusan ini aman
-terhadap Pega: `PEGA_M_BENGKEL_HE.prc:11,19` membaca `M_SITE_DATABASE.ID` lalu menambahkan
-`LPAD(BENGKEL_HE_SEQ.NEXTVAL,10,'0')`. Kedua sumber yang sama dipakai di sini, sehingga ID
-yang diterbitkan aplikasi ini **melanjutkan deret yang sudah ada** dan tidak pernah
-bertabrakan dengan ID yang pernah diterbitkan Pega.
-
-#### Satu hal yang belum dapat dipastikan, dan cara memastikannya
-
-Apakah `POOLDATA.BENGKEL_HE` sebuah **tabel** atau sebuah **view** atas
-`M_BENGKEL_HE.JSONDATA`. DDL-nya tidak ada di export (`R-08`), dan keduanya sama-sama
-masuk akal — preseden bentuk kedua ada: `V_STS_CLAIM` adalah view atas
-`M_STS_CLAIM.JSONDATA`, dan migrasi 0002 yang membongkarnya menempuh `D-63`.
-
-Yang dikerjakan alih-alih menebak: **`claimpnc -periksa` membandingkan jumlah baris
-keduanya**, dan melaporkan hasilnya beserta apa artinya. Bila jumlahnya sama, keduanya
-kemungkinan satu sumber dan kueri modul ini berjalan apa adanya. Bila berbeda, keduanya
-dua tabel terpisah — dan penulisan modul ini tidak akan sampai ke Pega maupun sebaliknya.
-
-**Jalur tulis tidak boleh diaktifkan di produksi sebelum DBA memastikannya.**
-
-### 21.2 Pembuatan akun bengkel TIDAK dibawa
-
-`Activity/ValidationLoginBengkel_act` step 9 memanggil `GCNMCreateOperator` dengan
-`accessGroup=GKM:InboxWorkshop`, `unitName="WorkShop"`, `orgName="ASM"`, dan — pada step 2
-— `Local.password := "123456"`.
-
-Dua alasan, dan yang kedua cukup sendirian:
-
-1. **Tidak ada targetnya.** Sistem baru tidak punya operator Pega, dan kontrak
-   identitasnya sendiri belum ada (`F-3`, `R-14`).
-2. **Kata sandinya sama untuk setiap bengkel yang pernah dibuatkan akun.** Mereplikasinya
-   berarti menerbitkan akun dengan kata sandi yang sudah diketahui siapa pun yang pernah
-   membaca rule itu. Ia bukan "keanehan sistem lama yang direplikasi demi kesetaraan"
-   melainkan cacat keamanan aktif.
-
-**Yang tetap dibawa:** `LOGIN_APLIKASI` disimpan, diperiksa keunikannya, dan **diwajibkan
-untuk bengkel rekanan**. Syarat terakhir itu bukan karangan — `ValidationLoginBengkel_act`
-melompat keluar pada prasyarat `Local.STS_REKANAN=='0'`, sehingga bengkel non-rekanan
-memang tidak pernah punya login.
-
-**Yang diperiksa berbeda, dan itu tidak terhindarkan.** Pega mencari login yang sama di
-daftar operator Pega (`Data-Admin-Operator-ID` lewat report `GCNMGetListOfOperators`); di
-sini keunikannya diperiksa terhadap kolom `LOGIN_APLIKASI` pada tabel bengkel itu sendiri.
-Akibatnya: login yang bertabrakan dengan operator Pega yang **bukan** bengkel tidak lagi
-tertangkap. Selisih terencana, tertutup begitu `F-3` punya kontrak.
-
-**Layar MENYATAKAN ketiadaannya.** Saat status rekanan dipilih, form menampilkan kalimat
-bahwa login hanya *disimpan* dan akunnya belum diterbitkan. Tanpa itu, petugas akan
-mengira bengkelnya sudah bisa masuk hanya karena login-nya tersimpan.
-
-### 21.3 Surel pemberitahuan TIDAK dikirim, tetapi dicatat
-
-`Activity/UpdateBengkelHE_act` step 18–19 mengirim surel ke satu alamat yang tertanam di
-dalam rule — **alamat pribadi seseorang**, bukan mailbox fungsional. `D-67` melarangnya
-dibawa, dan seam Notifier (`S-3`) belum ada.
-
-Yang dikerjakan: peristiwanya **dicatat di log** sebagai `Info`, menyebutkan bengkel mana,
-portal mana, oleh siapa, dan **kenapa tidak dikirim**. Yang hilang adalah satu langkah
-proses yang nyata — PIC tidak lagi diberi tahu bahwa ada bengkel menunggu persetujuan —
-dan ketiadaannya harus terbaca di log alih-alih ditemukan berbulan kemudian oleh petugas
-yang bertanya kenapa antreannya menumpuk.
-
-### 21.4 Approve dan Reject ditaruh di layar ini
-
-Di Pega keduanya **tidak** ada di layar bengkel: `Section/ApprovalMasterBengkelHE` dipakai
-`InboxManager_Sec`, dan keputusannya dijalankan `Activity/SetApprovalAllMaster` yang
-melayani bengkel, panel, dan sparepart sekaligus lewat `Param.TIPE2`.
-
-Rule SQL yang benar-benar menjalankan penetapannya **tidak ada di export** (`R-16`):
-`SetApprovalAllMaster` dirujuk empat berkas tetapi tidak punya berkas sendiri. Yang
-terbaca hanyalah kolom yang disentuhnya — `ID_BENGKEL`, `APPROVAL`, dan `MAIL`.
-
-Inbox Manager belum dibangun. Menunda keputusannya sampai layar itu ada berarti setiap
-bengkel yang ditambah tertahan di Waiting Approval tanpa satu pun cara menyelesaikannya —
-dan alur ini tidak dapat dicoba sama sekali.
-
-**Yang dipakai adalah bentuk yang sama persis**: centang beberapa baris, lalu satu tombol
-untuk seluruh pilihan. Memindahkannya ke Inbox Manager kelak hanya soal letak tombol,
-bukan soal perilaku.
-
-**Satu kolom sengaja TIDAK ikut ditulis.** `SetApprovalAllMaster` menulisi
-`InputBengkel.MAIL := .USER_UPDATE` — menimpa kolom surel bengkel dengan identitas petugas
-yang menyetujui. Itu kolom berarti ganda yang ketiga, dan membawanya berarti menghapus
-alamat surel bengkel setiap kali ia disetujui. `TestDecisionQueryTouchesOnlyApproval`
-menjaganya.
-
-### 21.5 Nilai sah tujuh penanda status: saran dari data, bukan tebakan
-
-`STS_SUPPLY`, `STS_EKLAIM`, `STS_AUTO_AKSEP`, `STS_PAYMENT`, `STS_AUTOPAYMENT`,
-`STS_TEKNO`, `STS_ORDER` dirender `pxRadioButtons` atau `pxDropdown`, dan daftar
-pilihannya ada di rule Field Value yang tidak ikut di export.
-
-Pencarian menyeluruh atas `Activity/`, `When/`, `RDB List/`, dan seluruh section bengkel
-untuk setiap perbandingan terhadap ketujuhnya menghasilkan **nol hasil**.
-
-Tiga pilihan dipertimbangkan:
-
-| Pilihan | Ditolak karena |
-|---|---|
-| Dropdown "Ya/Tidak" dengan nilai `1`/`0` | menebak domain kolom yang menentukan kanal mana yang boleh dipakai bengkel. Satu tebakan yang salah berarti bengkel kehilangan kanal tanpa satu pun tanda |
-| Teks bebas tanpa bantuan apa pun | jujur, tetapi petugas harus **hafal** kodenya — dan tidak ada satu pun tempat ia dapat melihatnya |
-| **Teks bebas dengan saran dari nilai yang sudah dipakai baris lain** | **dipakai** |
-
-Yang ketiga menjawab pertanyaan "nilai apa yang sah di kolom ini" dengan satu-satunya
-sumber yang tersedia: **data itu sendiri**. Layar mengumpulkan nilai berbeda dari baris
-yang sedang termuat lalu menawarkannya sebagai `<datalist>`. Tidak ada yang dikarang, dan
-petugas tetap dapat mengetik nilai yang belum pernah dipakai.
-
-**Satu-satunya yang dibuat dropdown adalah `STATUS_REKANAN`**, karena nilainya diketahui —
-dan diketahuinya pun dari percabangan, bukan dari label: `ValidationLoginBengkel_act`
-melompat keluar pada `Local.STS_REKANAN=='0'`. Ia dibuat dropdown karena ia **menentukan
-wajib-tidaknya isian lain**, sehingga teks bebas di sana akan membuat aturan validasinya
-bergantung pada ketikan.
-
-### 21.6 Tiga isian wajib, tidak lebih
-
-Sistem lama **tidak punya satu pun prasyarat "wajib diisi"** pada layar ini — berbeda dari
-Master Auto Claim yang menolak delapan isian kosong sekaligus. Yang ada hanyalah dua
-pemeriksaan keunikan.
-
-Yang diwajibkan dibatasi pada tiga isian yang **tanpanya baris itu tidak dapat dipakai
-siapa pun**, dan ketiganya dapat dibenarkan dari export:
-
-| Isian | Kenapa wajib |
-|---|---|
-| `NAMA_BENGKEL` | ia kunci alami — `ValidationMasterBengkel` mencari baris DENGAN nama itu, sehingga baris tanpa nama tidak akan pernah tertangkap pemeriksaan ganda, dan dua baris tanpa nama akan lolos berdampingan |
-| `STATUS_REKANAN` | ia yang menentukan apakah bengkel diberi login |
-| `LOGIN_APLIKASI` | wajib **hanya** bila bengkelnya rekanan; bengkel rekanan tanpa login akan tersimpan diam-diam tanpa pernah dapat masuk |
-
-Selebihnya boleh kosong, persis seperti hari ini. Mewajibkan lebih banyak akan menolak
-penambahan yang sekarang diterima — dan itu selisih perilaku yang tidak diminta siapa pun.
-`TestEverythingElseMayBeBlank` menjaganya.
-
-### 21.7 Empat puluh kolom bertipe TEKS, termasuk yang jelas angka dan tanggal
-
-Termasuk `PPN`, `DISC_JASA`, `DISC_SPART`, `PERSEN_MATERIAL`, `SLA`, dan `TGL_STATUS`.
-
-Alasannya satu: **DDL tabelnya belum diterima** (`R-08`). Mengubahnya menjadi angka atau
-waktu berarti memutuskan presisi, pembulatan, dan zona waktu tanpa dasar — dan nilai uang
-maupun persentase tidak boleh ditebak (`D-51`, `F-5`).
-
-Baris lama dibaca apa adanya; yang baru **diperiksa** berbentuk angka 0–100 lewat
-`Input.Check`, tetapi **tidak pernah diubah bentuknya saat disimpan**. Koma dan titik
-keduanya diterima sebagai pemisah desimal — petugas Indonesia mengetik "12,5" sementara
-basis data menyimpan "12.5" — dan yang tersimpan tetap apa yang diketik.
-`TestPercentValueKeptVerbatim` menjaganya.
-
-### 21.8 Dua hal yang Pega hapus diam-diam, dan di sini dipertahankan
-
-Keduanya ditemukan saat membaca urutan langkah, bukan saat mencari cacat:
-
-| Apa | Di Pega | Di sini |
-|---|---|---|
-| `DOKUMENID` | diisi dari hasil `PNCSaveAttachmentToDB` pada **setiap** penyimpanan, sehingga penyimpanan tanpa lampiran menimpanya dengan kosong — lampiran lenyap hanya karena barisnya disunting | dibaca dari baris yang tersimpan dan ditulis kembali apa adanya |
-| `MAIL` | ditimpa `USER_UPDATE` saat menyetujui | tidak ikut ditulis sama sekali |
-
-Keduanya **bukan** selisih hasil yang terlihat pengguna pada jalur normal; yang berbeda
-adalah jalur yang menghapus datanya sendiri tidak ikut dibawa.
-
-### 21.9 Pemeriksaan keunikan ada di jalur simpan juga
-
-Di Pega, `ValidateMasterBengkel` dipanggil dari layar tanpa memandang tambah atau ubah,
-dan `UpdateBengkelHE_act` memanggil `ValidationLoginBengkel_act` pada **ketiga** tabnya.
-
-Melewatkannya pada jalur simpan akan memperbolehkan dua bengkel bernama sama — cukup
-dengan menyunting salah satunya. Karena itu `ensureUnique` dijalankan juga saat menyimpan,
-dengan **baris yang sedang disunting dikecualikan**: menyimpan tanpa mengubah namanya
-tidak boleh ditolak karena namanya sendiri sudah dipakai oleh dirinya sendiri.
-
-Pada jalur **tambah** pemeriksaannya berada di dalam `Repo.Insert`, di dalam satu
-transaksi bersama `FOR UPDATE` — karena di sanalah balapan penambahan dapat terjadi.
-Keterbatasannya dinyatakan terang-terangan di kedua tempat: **`FOR UPDATE` tidak dapat
-mengunci baris yang belum ada**, sehingga dua penambahan atas nama yang sama masih dapat
-lolos keduanya. Penutupnya adalah constraint unik, dan itu menunggu `R-08` dan `D-63`.
-
-### 21.10 Keputusan borongan: satu pernyataan per baris, di dalam satu transaksi
-
-Bukan satu pernyataan dengan daftar kunci yang panjangnya berubah-ubah. Daftar placeholder
-yang dibentuk saat berjalan membuat teks SQL tidak lagi tetap, dan itu persis bentuk yang
-`08-TECHNICAL-STRATEGY.md` §4.3 larang.
-
-Biayanya beberapa perjalanan tambahan pada operasi yang jarang dan berbaris sedikit; yang
-diperoleh adalah teks kueri yang dapat dibaca utuh di berkas `.sql`.
-
-Transaksinya melingkupi **seluruh** baris, sehingga persetujuan borongan tidak pernah
-setengah jalan. Sistem lama tidak menjamin itu — `SetApprovalAllMaster` menjalankan satu
-RDB-List per baris tanpa transaksi yang melingkupinya.
-
-Batas **200 baris** per permintaan ditambahkan. Ia bukan aturan bisnis melainkan penjaga
-sumber daya: transaksi yang menahan ribuan kunci baris menghalangi Pega yang sedang
-melayani produksi pada tabel yang sama (`D-21`).
-
-### 21.11 `CityPicker` disalin, tidak dinaikkan ke `components/`
-
-Ia nyaris sama dengan `LookupPicker` milik Master Auto Claim. Aturan susunan frontend
-melarang satu fitur mengimpor dari fitur lain, dan kebutuhan bersama naik ke
-`components/` — tetapi menaikkannya **sekarang** berarti menyunting `master-auto-claim`
-yang sudah dinyatakan selesai, dan Isolasi Protektif melarangnya.
-
-Syarat menaikkannya kelak ditulis di dalam berkasnya supaya tidak perlu ditemukan ulang:
-begitu ada modul **ketiga** yang membutuhkan kotak cari–pilih, ketiganya dipindahkan
-sekaligus dalam satu perubahan — bukan dua modul menunggu satu sama lain.
-
-### 21.12 Tombol keputusan dinamai berbeda dari tab
-
-Uji frontend menemukan bahwa tab "Approve"/"Reject" dan tombol keputusan "Approve"/"Reject"
-tidak dapat dibedakan dari namanya. Caption tab **harus** tetap — ia caption Pega (`D-13`)
-— sehingga yang diubah adalah tombolnya: **"Approve terpilih"** dan **"Reject terpilih"**.
-
-Caption tombol keputusan sendiri tidak dapat dibaca dari export (`ApprovalMasterBengkelHE`
-hanya menyisakan caption 'PILIH' dan 'BUTTON'), sehingga tidak ada teks Pega yang
-dikorbankan.
-
-Ia perbaikan aksesibilitas, bukan selera: pembaca layar mengumumkan dua kontrol yang sama
-sekali berbeda dengan kata yang sama persis, dan pengguna perintah suara tidak punya cara
-memilih yang mana.
-
-### 21.13 Utang yang dicatat, bukan diselesaikan
-
-| Utang | Kenapa dibiarkan |
-|---|---|
-| Penyaring `LDI_ID='0076'` tertanam di kueri cabang | persis bentuk hardcode yang `D-15` perintahkan menjadi konfigurasi, tetapi tidak ada satu pun keterangan di export tentang artinya — mengangkatnya berarti menebak nilainya untuk entitas lain. Ia literal, bukan masukan pengguna, sehingga bukan celah injeksi. Dijaga terlihat oleh `TestBranchQueryKeepsHardcodedApplicationCode` |
-| Tabel `CITY` disebut **tanpa skema** | persis seperti seluruh kueri lama yang membacanya. Melengkapinya berarti menebak, dan tebakan yang salah membuat lookup Kota kosong tanpa galat yang menjelaskan sebabnya |
-| Pemetaan galat milik modul sendiri | kontrak galat yang mengikat seluruh aplikasi adalah `TKT-F1-004` dan masih terhalang; menambah kode ke modul auth berarti menyunting modul yang sudah selesai |
-| Jalur `/api/master/bengkel` tanpa `/v1` | `10-API-STRATEGY.md` §2 menetapkan `/api/v1/...`; memperkenalkannya di satu modul saja akan membuat dua gaya jalur hidup berdampingan |
-
----
-
-## 22. Modul Master Panel (2026-09-20, sesi keempat belas)
-
-Menggantikan `Harness/MasterPanel_HE-Harness.xml` (MENU_ID 30) atas `POOLDATA.PANEL_HE`
-beserta tabel anaknya `POOLDATA.LOKASI_PANEL_HE`.
-
-**Modul master pertama yang mengelola baris anak.** Seluruh modul master sebelumnya rata.
-
-### 22.1 Dua pertanyaan, dua jawaban "as is"
-
-| Pertanyaan | Jawaban | Yang dijalankan |
-|---|---|---|
-| Sub-tabel Lokasi/Sisi | *"Jalankan sebagai as is"* | dikelola penuh — baca, tambah, ubah, hapus |
-| Kesembilan kolom `STS_*` | *"Jalankan sebagai as is"* | disimpan sebagai teks apa adanya, tanpa menebak enum |
-
-Keduanya dibaca sebagai **`P-5`**: replikasi perilaku lebih dulu, perbaikan kemudian.
-
-### 22.2 Menulis kolom bernama, bukan dokumen JSON
-
-Sistem lama memakai **dua tabel** untuk satu master — pola dua-penyimpanan yang
-`03-CURRENT-ARCHITECTURE.md` §3.2 catat sebagai `R-10`:
-
-```
-tulis  Activity/CNMUpdatePanelHE_act  →  InputData.NAME := @GCNM.GetPageJSONString()
-       RDB List/UpdatePanel_HE-SQL    →  POOLDATA.PEGA_M_PANEL_HE(Datapega, IDPanel, out)
-       Database/PEGA_M_PANEL_HE.prc   →  INSERT INTO POOLDATA.M_PANEL_HE(ID, JSONDATA)
-
-baca   BrowseMasterPanel_HE_RD        →  POOLDATA.PANEL_HE, 14 kolom
-       ValidationMasterPanel          →  pooldata.panel_he
-       GetLokasiSisiPanel             →  pooldata.lokasi_panel_he
-```
-
-Menulisnya lewat procedure dilarang `D-02`. Dua pilihan tersisa, dan hanya satu yang dapat
-dikerjakan tanpa menebak:
-
-| Pilihan | Dapat dikerjakan? |
-|---|---|
-| (a) menulis dokumen JSON ke `M_PANEL_HE.JSONDATA` | **TIDAK** — nama kunci JSON-nya diterbitkan `@GCNM.GetPageJSONString()`, dan badan fungsinya tidak ikut di export (`R-16`). Setiap kunci menjadi tebakan |
-| (b) menulis kolom bernama ke `PANEL_HE` dan `LOKASI_PANEL_HE` | **YA** untuk induk (14 kolom terbaca lengkap dari RD); **sebagian** untuk anak — lihat §22.4 |
-
-**(b) yang dipakai**, sama dengan Master Bengkel dan Master Status Klaim yang menghadapi
-keluarga procedure `PEGA_M_*` yang sama.
-
-**Yang wajib dipastikan DBA sebelum jalur tulis dipakai di produksi:** apakah `PANEL_HE`
-sebuah TABEL atau sebuah VIEW atas `M_PANEL_HE.JSONDATA`. DDL-nya tidak ada (`R-08`), dan
-keduanya sama-sama masuk akal — preseden bentuk VIEW ada: `V_STS_CLAIM` adalah view atas
-`M_STS_CLAIM.JSONDATA`. `claimpnc -periksa` membandingkan jumlah baris keduanya.
-
-### 22.3 Lebar ID enam digit, bukan sepuluh
-
-`PEGA_M_PANEL_HE.prc:21` memakai `lpad(…,6,'0')`, sementara `PEGA_M_BENGKEL_HE.prc:19`
-memakai `lpad(…,10,'0')`. Kedua procedure ditulis dengan pola yang sama dan lebarnya tetap
-berbeda; **ditiru apa adanya**, karena menyeragamkannya akan menerbitkan ID yang tidak
-sebentuk dengan ID yang sudah ada.
-
-Akibat sampingan yang dicatat: pada lebar enam, batas `ComposeID` jauh lebih dekat. Nomor
-urut yang melewati enam digit **tidak dipotong** — kuncinya dibiarkan tumbuh, dan itu
-terlihat, alih-alih bertabrakan diam-diam seperti yang dilakukan `LPAD` Oracle.
-
-### 22.4 Kolom `NAMA` pada tabel anak — asumsi, dan pemeriksaannya
-
-Tabel anak punya empat kolom; hanya tiga yang artinya pasti.
-
-| Kolom | Sumber | Arti |
-|---|---|---|
-| `ID_PANEL` | `GetLokasiSisiPanel-SQL` | kunci induk |
-| `LOKASI_PANEL` | idem, dialiaskan `"NAME"` | nama lokasi |
-| `SISI_PANEL` | idem, dialiaskan `"STS_SISI"` | sandi sisi |
-| `NAMA` | `GetDataSisiPanel-SQL` | **hanya muncul sebagai penyaring** |
-
-**Keputusan:** `NAMA` diisi nilai yang **sama** dengan `LOKASI_PANEL`.
-
-Alasannya bukan kemudahan melainkan **menjaga pembaca hilirnya tetap bekerja**:
-`GetDataSisiPanel` dipakai modul **Grouping Sparepart HE** untuk mencari sisi sebuah
-lokasi, dan ia menyaring `nama = <nama lokasi>`. Membiarkan `NAMA` kosong akan mematikan
-modul itu **tanpa satu pun pesan galat** — kelas kegagalan yang paling mahal ditemukan.
-
-**Asumsinya dapat dibantah, dan cara membantahnya sudah terpasang.** `claimpnc -periksa`
-menghitung baris yang `NAMA`-nya berbeda dari `LOKASI_PANEL`, dan melaporkan `[WASPADA]`
-beserta larangan mengaktifkan jalur tulis bila hasilnya bukan nol.
-
-Ini satu-satunya pemeriksaan di seluruh mode periksa yang menguji **asumsi penulisan**,
-bukan ketersediaan tabel.
-
-### 22.5 Hapus-lalu-sisip-ulang — pertentangan dengan `D-66` yang dinyatakan terbuka
-
-Penyimpanan mengganti **seluruh** baris lokasi: dibuang, lalu disisipkan ulang.
-
-| Hal | Isi |
-|---|---|
-| **Kenapa** | baris anak tidak punya kunci sendiri — tidak ada kolom surrogate yang memungkinkan satu baris dikenali lintas penyimpanan |
-| **Preseden Pega** | `PEGA_CONVERT_JSONKLAIM_PNC.prc:492-503` melakukan hal yang sama pada 12 tabel |
-| **Yang dilanggar** | `D-66` — soft delete menyeluruh |
-| **Status penggantinya** | `ADR-0013` — **belum diputuskan** |
-| **Keputusan Work Owner** | *"as is"* (2026-09-19, dan ditegaskan lagi 2026-09-20) |
-| **Yang menahan akibatnya** | keduanya di dalam **satu transaksi**; sistem lama tidak menjamin itu |
-| **Yang menjaganya tetap terlihat** | `TestDeleteOnlyOnTheChildTable` — `DELETE` terhadap tabel **induk** tetap dilarang |
-
-### 22.6 Kesepuluh isian induk WAJIB
-
-Berbeda dari Master Bengkel, yang tidak punya satu pun isian wajib di layarnya.
-
-Kesepuluhnya bertanda `pyRequired=true` pada `Section/BrowsePanelHEApproval-Section.xml` —
-diperiksa satu per satu, bukan disimpulkan dari salah satunya. Termasuk `EXCLUSION_C`,
-yang artinya **tidak diketahui sama sekali** tetapi tetap diwajibkan karena begitulah
-layar lamanya.
-
-### 22.7 Dua perbedaan yang DIRENCANAKAN terhadap Pega
-
-| # | Perbedaan | Alasan |
-|---|---|---|
-| 1 | **Sisi di luar tiga sandi yang dikenal ditolak** | `GetSisiPanel-Act.xml` membaca apa pun yang bukan `"-"` dan bukan `"1"` sebagai `"KANAN"`, sehingga nilai rusak tampil sebagai nilai yang sah |
-| 2 | **Lokasi kembar pada sisi yang sama ditolak** | sistem lama tidak memeriksanya, dan dua baris kembar membuat `GetDataSisiPanel` — yang membaca satu nilai saja — mengembalikan baris yang mana pun lebih dulu ditemukan |
-
-Baris lama yang sudah memuat keduanya tetap **dibaca apa adanya**; yang ditolak hanya
-penyimpanan baru.
-
-### 22.8 Yang TIDAK dibatasi, meski tampak wajar
-
-Nama lokasi **tidak** dibatasi pada kelima pilihan `LocationOptions`. Baris lama dapat
-memuat lokasi lain, dan menolaknya berarti baris yang hari ini sah tidak dapat disimpan
-ulang. Dropdown layar menawarkan kelimanya; validasi tidak memaksakannya.
-
-### 22.9 `STS_SISI` memikul dua arti — dipisah di sini
-
-| Tempat | Nama di modul ini | Nama di kontrak API |
-|---|---|---|
-| kolom `PANEL_HE.STS_SISI`, caption "STATUS SISI" | `Panel.SideStatus` | `status_sisi` |
-| alias `SISI_PANEL as "STS_SISI"` pada tabel anak | `PanelLocation.Side` | `sisi_panel` |
-
-Bentuk utang yang sama dengan dua yang sudah dicatat di Master Bengkel (`ACCOUNT_ID` dan
-`ALASAN_STS_BGKL`).
-
-### 22.10 Alasan penolakan hanya tersimpan pada keputusan TOLAK
-
-`POOLDATA.PANEL_HE` punya kolom `ALASAN_TOLAK`, dan layar lama menaruh isian "Catatan"
-(`TempStsClaim.pyNote`) berdampingan dengan tombol keputusan. Keduanya jelas sepasang.
-
-Menuliskannya pada persetujuan akan mengisi kolom bernama "alasan tolak" pada baris yang
-justru **disetujui** — satu lagi kolom berarti ganda, yang justru sedang dihindari modul
-ini. Layar **menyatakan** aturan itu di bawah isiannya, bukan membiarkannya menjadi
-kejutan.
-
-### 22.11 Daftar pilihan disajikan endpoint tanpa portal
-
-`GET /api/master/panel/pilihan` adalah satu-satunya rute modul ini yang **tidak** menuntut
-portal. Isinya konstanta yang ditanam di `Activity/SetLokasiSisiPanel-Act.xml`, bukan
-bacaan basis data entitas mana pun.
-
-Memasangi pemeriksaan portal padanya akan membuat form tidak dapat menggambar dropdown-nya
-sebelum portal dipilih — penolakan yang tidak melindungi apa pun. Perlakuannya sama dengan
-daftar Kategori pada Master Pasal Kerugian.
-
-### 22.12 Utang teknis yang ditambahkan sesi ini
-
-| Utang | Rencana penyelesaian |
-|---|---|
-| Kode galat modul dipetakan di modul sendiri | pindah ke tempat bersama begitu `TKT-F1-004` diputuskan |
-| Jalur `/api/master/panel` tanpa awalan `/v1` | penyeragaman seluruh aplikasi, bukan sepihak di satu modul |
-| Batas panjang diulang di backend dan `PanelForm.tsx` | dijaga `TestLengthLimitsAreTheOnesTheFormRepeats`; hilang begitu DDL diterima (`R-08`) |
-| `sequenceWidth` disalin di `sqlstore` dan `memory` | paket memori tidak boleh bergantung pada paket sqlstore; kesamaannya dijaga uji |
-| Asumsi kolom `NAMA` | dibantah atau dikuatkan `claimpnc -periksa`; bila terbantah, `masterpanel.sql` diperbaiki sebelum jalur tulis aktif |
-
----
-
-## 23. Modul Master Supplier (2026-09-20, sesi kelima belas)
-
-Modul kesebelas, atas tabel **`M_SUPPLIER`**. Ia berbeda dari sepuluh modul sebelumnya
-pada satu hal yang menentukan hampir seluruh keputusan di bawah: **tabelnya hanya punya
-tiga kolom — `ID`, `OLDID`, dan `JSONDATA`.**
-
-### 23.1 Menulis dokumen JSON, dan kenapa itu justru yang benar di sini
-
-`D-02` menetapkan aplikasi tidak memanggil stored procedure. `PEGA_M_SUPPLIER` karena itu
-tidak dipanggil, dan yang tersisa adalah menulis tabelnya langsung — tetapi tabelnya tidak
-punya kolom bernama satu pun.
-
-Master Bengkel menghadapi pertanyaan yang **sama persis** dan menjawabnya **berbeda**.
-Banner `masterbengkel.sql` menolak pilihan "menulis dokumen JSON dengan SQL biasa" dengan
-alasan yang tegas: nama kuncinya diterbitkan `@GCNM.GetPageJSONString()`, dan badan fungsi
-itu tidak ada di export — *"setiap kunci yang ditulis akan menjadi tebakan, pada master
-yang menentukan diskon, pajak, dan rekening tujuan pembayaran."*
-
-Alasan itu **tidak berlaku di sini**, dan itulah yang membalik keputusannya.
-`RDB List/GetDataEditMasterSupller-SQL.xml` membaca setiap kunci satu per satu:
-
-```sql
-A.JSONDATA.NAMA AS "NAMA", A.JSONDATA.ALAMAT AS "ALAMAT", …
-```
-
-Kedua puluh lima kuncinya terbaca lengkap. Ditambah tiga yang terbaca dari kedua activity
-penyimpan — `USERKLAIMID`, `TGL_INSERT`, dan `ID` — seluruh dokumen dapat ditulis **tanpa
-satu pun tebakan**.
-
-**Yang menjaganya:** `TestWrittenKeysMatchReadKeys` membandingkan kunci yang ditulis
-`documentValue` dengan kunci yang dibaca kueri. Sebuah kunci yang ditulis tetapi tidak
-pernah dibaca kembali — kelas cacat yang hanya terlihat sebagai isian yang diam-diam
-kosong setelah disimpan — membuat uji itu gagal.
-
-### 23.2 Notasi titik Oracle diganti `JSON_VALUE`
-
-Kueri lamanya memakai `A.JSONDATA.NAMA`, yang **tidak ada padanannya di PostgreSQL**.
-Menyalinnya apa adanya berarti seluruh modul ini berhenti bekerja pada hari perpindahan
-basis data, dan berhentinya tidak akan terlihat sebelum itu.
-
-`JSON_VALUE(JSONDATA, '$.NAMA')` mengembalikan nilai yang sama persis dan berlaku di Oracle
-12c+ maupun PostgreSQL 17+ — justru alasan `D-24` mewajibkan versi 17 (222 pemanggilan
-SQL/JSON di seluruh sistem lama).
-
-Dijaga `TestNoOracleDotNotation`, uji yang khas modul ini: modul master lain tidak membaca
-kolom JSON sama sekali.
-
-### 23.3 Penggabungan dokumen, bukan penimpaan
-
-`PEGA_M_SUPPLIER.prc:36` mengganti **seluruh** dokumen:
-
-```sql
-UPDATE M_SUPPLIER SET JSONDATA = DataPega WHERE ID = IDPega;
-```
-
-dan yang dikirim Pega hanyalah kunci yang kebetulan ada di halaman klipboardnya. Kunci apa
-pun yang tidak dibaca `GetDataEditMasterSupller` karena itu **lenyap pada setiap
-penyimpanan** — termasuk kunci yang ditulis jalur lain, dan termasuk kunci yang belum
-diketahui siapa pun.
-
-`mergeDocument` membaca dokumen tersimpan lebih dulu (`FOR UPDATE`), menimpa kunci yang
-dikenal, dan membiarkan sisanya. Perlakuannya **sama persis** dengan `DOKUMENID` pada
-Master Bengkel: jalur yang menghapus datanya sendiri tidak ikut dibawa.
-
-`FOR UPDATE` bukan hiasan. Tanpa itu, dua penyimpanan atas baris yang sama akan sama-sama
-membaca dokumen lama dan yang terakhir menimpa perubahan yang pertama — tanpa satu pun
-tanda.
-
-**Dokumen lama yang rusak tidak menghentikan penyimpanan.** Baris yang `JSONDATA`-nya bukan
-JSON sah ditulis ulang dari nol alih-alih menolak permintaannya; yang hilang hanyalah kunci
-yang memang sudah tidak terbaca siapa pun. Menolak akan mengunci petugas tanpa cara
-memperbaikinya.
-
-### 23.4 `PROTEKSI_ID` yang tidak dapat ditiru
-
-Baris permintaan persetujuan menuntut sebuah kunci, dan di Pega kunci itu adalah
-`ChildPageProtection.pyID` — ID work object case `ASM-FW-GKM-Work-Protection` yang dibuat
-tiga langkah sebelumnya lewat `CreateWorkPage` dan `AddWork`.
-
-Sistem baru tidak punya work object Pega, dan **tidak ada satu pun rule di export yang
-memperlihatkan bentuk ID-nya.** Tiga langkah pembuatan case itu tidak dibawa; yang
-dibutuhkan darinya hanyalah kuncinya.
-
-`ComposeApprovalID` membentuknya sebagai `SUP.` + ID supplier + waktu UTC berformat
-`yyyyMMddHHmmss`. Tiga hal yang diperolehnya:
-
-1. **Asalnya terbaca.** Awalan `SUP.` tidak mungkin diterbitkan Pega — alasan yang sama
-   dengan prefiks `PNCN` pada nomor klaim (`D-22`).
-2. **Barisnya tertaut ke supplier-nya** tanpa membaca kolom `NO_KLAIM`, yang namanya justru
-   menyesatkan — ia diisi ID supplier, bukan nomor klaim.
-3. **Penyimpanan berulang dalam detik yang sama ditolak** basis data alih-alih menghasilkan
-   dua permintaan kembar, bila kolomnya memang berkunci utama.
-
-Waktunya UTC, bukan WIB, dan itu disengaja: ia kunci teknis. Memakai zona waktu setempat
-pada sebuah kunci berarti kuncinya berulang setiap kali zona waktunya bergeser.
-
-**Bentuk ini BELUM disetujui.** Pilihan lain — sequence tersendiri — menuntut objek basis
-data baru dan menempuh `D-63`.
-
-### 23.5 `SUPPLIER_HE` diturunkan ke DUA arah, sistem lama hanya satu
-
-`CreateNewMasterSupplier_post` step 7 hanya punya cabang "bila", tanpa cabang "selain itu".
-Akibatnya supplier HE yang diubah menjadi bukan-HE **tetap tersimpan sebagai HE**, dan
-`GetDataSupplier_pre` mengembalikan `JENIS_STATUS` menjadi `"1"` saat dimuat — perubahannya
-hilang tanpa satu pun tanda.
-
-`DeriveHeavyEquipment` selalu menulis kedua arah. **Selisih yang direncanakan**, dan
-satu-satunya yang terlihat pengguna.
-
-Arah kebalikannya — `DeriveSupplyType` — dipakai saat **membaca**, dan itu bukan kerapian:
-dokumen lama dapat memuat `JENIS_STATUS` yang tidak sejalan dengan `SUPPLIER_HE` justru
-karena cacat di atas, dan yang menentukan perilaku sistem hilir adalah `SUPPLIER_HE`.
-Membacanya dari sanalah yang membuat layar menampilkan keadaan yang sebenarnya berlaku.
-
-### 23.6 Daftar dropdown dibaca dari DATA, bukan dikarang
-
-Kelima isian bersandi — `STS_REKANAN`, `JENIS_STATUS`, `JENIS_SUPPLIER`,
-`STS_AKTIF_PROMLIST`, `STS_AUTOPAYMENT` — dirender `pxDropdown` bersumber `associated`,
-artinya daftar pilihannya hidup di rule **Field Value**. Tidak satu pun rule Field Value
-ikut di export (`R-16`).
-
-Ada tiga jalan, dan hanya satu yang tidak menebak:
-
-| Jalan | Verdict |
-|---|---|
-| Mengarang daftarnya | **DITOLAK** — nilai yang salah tersimpan ke master yang menentukan ke rekening siapa uang berpindah, dan salahnya tidak terlihat di layar mana pun |
-| Mengubah isiannya menjadi teks bebas | **DITOLAK** — layar lamanya dropdown, dan salah ketik pada kolom bersandi tersimpan diam-diam |
-| Menawarkan nilai yang BENAR-BENAR ADA di data | **dipakai** |
-
-Keterbatasannya dinyatakan, bukan disembunyikan: nilai sah yang belum pernah dipakai satu
-baris pun tidak akan muncul. Karena itu daftarnya **digabung** dengan tiga sandi yang
-artinya terbukti dari percabangan activity:
-
-| Sandi | Buktinya |
-|---|---|
-| `JENIS_STATUS` `"1"`/`"0"` | `CreateNewMasterSupplier_post` step 7 dan `GetDataSupplier_pre` step 6.3 saling membalik keduanya |
-| `STS_AKTIF_PROMLIST` `"1"`/`"0"` | step 6 menetapkan `"0"` pada supplier baru; step 12 hanya meminta persetujuan bila `"1"` atau kosong |
-| `STS_AUTOPAYMENT` | isiannya `pxCheckbox`, sehingga hanya punya dua keadaan |
-
-`STS_REKANAN` dan `JENIS_SUPPLIER` **sengaja tidak diberi nilai dasar**. Master Bengkel
-punya bukti bahwa `STATUS_REKANAN = "0"` berarti bukan rekanan — tetapi itu kolom tabel
-**lain** pada modul lain, dan memindahkan artinya ke sini berarti mengandaikan kedua master
-memakai sandi yang sama. Tidak ada satu pun bukti untuk itu.
-
-Penggabungannya ada di **lapisan aplikasi**, bukan di adapter: adapter menjawab "apa yang
-ada di data", dan yang memutuskan bagaimana itu dilengkapi adalah aturan. Dijaga
-`TestListCodesOnEmptyStoreStillOffersProvenValues` — tanpa penggabungan, basis data yang
-masih kosong akan menyajikan lima dropdown tanpa satu pun pilihan, dan supplier pertama
-tidak akan pernah dapat ditambahkan.
-
-Label sandi yang hanya ditemukan di data berisi **sandinya sendiri**, bukan tebakan artinya.
-Menampilkan tebakan yang tampak meyakinkan lebih buruk daripada menampilkan sandinya apa
-adanya.
-
-### 23.7 `LookupPicker` bersama — syaratnya kini TERPENUHI, dan tetap tidak dikerjakan
-
-`master-bengkel/CityPicker.tsx` mencatat syaratnya sendiri:
-
-> *"begitu ada modul KETIGA yang membutuhkan kotak cari–pilih, ketiganya dipindahkan
-> sekaligus ke `components/LookupPicker` dalam satu perubahan."*
-
-**Modul ketiga itu adalah modul ini** — setelah `master-auto-claim/LookupPicker` dan
-`master-bengkel/CityPicker`. Syaratnya terpenuhi.
-
-Yang menahannya bukan lagi syarat itu melainkan **Isolasi Protektif**: menaikkannya menuntut
-menyunting dua modul master yang sudah dinyatakan selesai. Perubahan itu layak dijadwalkan
-Work Owner sebagai satu pekerjaan tersendiri, bukan diselipkan ke dalam penambahan modul
-ini.
-
-Sampai itu dijadwalkan, modul ini punya `CityPicker`-nya sendiri, dan berkasnya menyatakan
-keadaan itu terang-terangan alih-alih mendiamkannya.
-
-### 23.8 Kota dipilih lewat cari–pilih, padahal layar lama memakai dropdown
-
-`Section/CreateMasterSupplier_Sec` memang memasang `pxDropdown` atas `BrowseCity_RD`, dan
-report definition itu **tidak membatasi hasilnya sama sekali** (`pyMaxRecords=0`) — seluruh
-tabel `CITY` yang berbaris ribuan dimuat ke klipboard, lalu disaring di peramban.
-
-Menirunya berarti mengirim ribuan baris untuk satu pilihan, pada setiap kali form dibuka.
-Yang ditiru karena itu adalah **hasilnya** — petugas memilih satu kota dari master kota —
-bukan cara memuatnya.
-
-Cabang, Negara, dan Bank tetap dropdown biasa: ketiganya daftar pendek, persis seperti
-layar lama.
-
-### 23.9 Yang disimpan adalah NAMA, bukan kode
-
-Dokumen supplier tidak punya `KOTA_ID`, `CABANG_ID`, maupun `BANK_ID` — kueri bacanya hanya
-menyebut `KOTA`, `NAMA_CABANG`, `NEGARA`, dan `BANK`. Itu berbeda dari Master Bengkel, yang
-menyimpan kode dan nama berpasangan.
-
-Akibat yang harus disadari: bila sebuah cabang berganti nama, baris supplier yang menyebut
-nama lamanya **tidak ikut berubah** dan tidak lagi cocok dengan satu pun pilihan di
-dropdown. Itu keadaan sistem lama; membetulkannya menuntut kolom yang tabelnya tidak punya
-— perubahan skema (`D-63`), bukan keputusan modul ini.
-
-Yang dikerjakan di sini: nilai tersimpan **selalu ditampilkan apa adanya**, supaya
-menyunting baris lama tidak diam-diam mengosongkan cabang atau kotanya.
-
-### 23.10 Nama terkunci — ditegakkan server, bukan hanya layar
-
-`pyReadOnlyCondition` pada isian NAMA adalah satu-satunya syarat read-only di seluruh form
-itu. Layar Pega menegakkannya dengan mengunci isiannya, **dan hanya itu**.
-
-Server ikut memeriksanya, dan perbandingannya **mengabaikan besar-kecil huruf dan spasi di
-ujung**: yang dilarang adalah mengganti namanya, bukan mengirimkannya kembali dengan ejaan
-yang sedikit berbeda. Layar mengirim nilai yang dimuatnya apa adanya, tetapi klien lain
-belum tentu.
-
-Galatnya dibedakan dari "nama sudah dipakai" (`nama_supplier_terkunci` versus
-`nama_supplier_sudah_ada`) karena tindakan perbaikannya berbeda: yang pertama menuntut
-membatalkan dan memuat ulang, yang kedua menuntut nama lain.
-
-### 23.11 Pemeriksaan nama ganda DITAMBAHKAN
-
-Berbeda dari Master Bengkel yang punya `ValidationMasterBengkel`, **tidak ada satu pun rule
-di export yang memeriksa nama supplier ganda.**
-
-Ia ditambahkan karena layar sendiri memperlakukan nama sebagai kunci alami: sekali
-tersimpan, isiannya terkunci dan tidak dapat diperbaiki lagi. Gabungan keduanya berarti dua
-supplier bernama sama di sistem lama akan hidup selamanya tanpa satu pun cara membedakannya
-dari layar.
-
-**Selisih yang direncanakan:** penambahan yang dulu diterima kini ditolak, dan baris lama
-dibaca apa adanya.
-
-Penutupnya yang sebenarnya adalah constraint unik, dan di modul ini ia lebih jauh daripada
-di modul lain: **namanya tersimpan di dalam dokumen JSON**, sehingga constraint unik atasnya
-menuntut index berbasis fungsi lebih dulu.
-
-### 23.12 Menonaktifkan supplier TIDAK melewati persetujuan
-
-`EditMasterSupplier_post` step 12 memasang prasyarat:
-
-```
-@String.equals(STS_AKTIF_PROMLIST,"1") || @String.equals(STS_AKTIF_PROMLIST,"")
-```
-
-Artinya **menonaktifkan sebuah supplier tersimpan langsung tanpa persetujuan siapa pun**,
-sedangkan mengaktifkannya harus menunggu.
-
-Itu tampak disengaja dan arahnya masuk akal — menutup kerja sama tidak perlu izin,
-membukanya perlu — sehingga ditiru apa adanya. Nilai kosong ikut diterima persis seperti
-prasyaratnya, meski form mewajibkan isian itu: permintaan yang tidak datang dari form dapat
-mengirimkannya kosong, dan Pega memperlakukannya sebagai "perlu persetujuan".
-
-Ia **satu-satunya jalur di modul ini yang mengubah keadaan tanpa melewati antrean mana
-pun**, dan tiga hal menjaganya tetap terlihat: log menyertakan penanda
-`persetujuan_diminta`, layar menyatakannya di bawah tombol Simpan, dan
-`TestSaveSkipsApprovalWhenDeactivating` gagal bila perilakunya berubah.
-
-### 23.13 `TGL_INSERT` tetap teks `dd/MM/yyyy`
-
-Kedua activity penyimpan menulisnya lewat
-`@DateTime.FormatDateTime(…,"dd/MM/yyyy","in_ID","Asia/Jakarta")`. Tanggal sebagai teks
-tidak dapat diurutkan, tidak dapat disaring sebagai rentang, dan tidak memakai index —
-persis utang yang `09-DATABASE-STRATEGY.md` §3.2 catat.
-
-Ia **dipertahankan**, dan hanya di dalam dokumen yang dibagi dengan Pega: menyimpannya
-sebagai waktu yang benar akan membuat layar Pega membaca sesuatu yang berbeda dari yang
-ditulisnya sendiri (`D-21`).
-
-Baris permintaan persetujuan, yang **tidak dibaca layar mana pun**, memakai waktu sungguhan
-— tidak ada yang mengikatnya.
-
-Konversinya diisolasi di `timestamp.go`, satu berkas untuk seluruh modul, sesuai
-`08-TECHNICAL-STRATEGY.md` §4.4. `TestFormatJakartaDateCrossesMidnight` menjaga kasus yang
-`R-12` catat: pukul 17:30 UTC sudah pukul 00:30 WIB keesokan harinya, dan mengambil tanggal
-dari waktu UTC akan menuliskan tanggal **kemarin** pada setiap penyimpanan selepas pukul
-lima sore waktu Jakarta.
-
-### 23.14 Baris permintaan membawa `Supplier`, bukan teks JSON
-
-`ApprovalRequest.Snapshot` bertipe `Supplier`, bukan dokumen yang sudah dirangkai.
-Alasannya batas lapisan: **bentuk dokumen JSON adalah urusan penyimpanan**, dan lapisan
-aplikasi tidak boleh mengetahuinya.
-
-Yang merangkainya adalah adapter yang sama dengan yang merangkai dokumen master, sehingga
-keduanya tidak pernah dapat berbeda bentuk.
-
-### 23.15 Utang teknis yang ditambahkan sesi ini
-
-| Utang | Rencana penyelesaian |
-|---|---|
-| Kode galat modul dipetakan di modul sendiri | pindah ke tempat bersama begitu `TKT-F1-004` diputuskan |
-| Jalur `/api/master/supplier` tanpa awalan `/v1` | penyeragaman seluruh aplikasi, bukan sepihak di satu modul |
-| Batas panjang diulang di backend dan `SupplierForm.tsx` | dijaga `TestLengthLimitsAreStable`; hilang begitu DDL diterima (`R-08`) |
-| `CityPicker` ketiga yang belum dinaikkan ke `components/` | satu pekerjaan tersendiri yang menyentuh tiga modul; lihat §23.7 |
-| Permintaan persetujuan di luar transaksi penyimpanan | menuntut transaksi yang dipegang lapisan aplikasi — bentuk seam yang menyentuh seluruh modul master |
-| Bentuk `PROTEKSI_ID` buatan sendiri | menunggu keputusan Work Owner; pilihan lain menuntut objek basis data baru (`D-63`) |
-| `ViolationDTO` memakai `kolom`, sementara Master Pasal memakai `field` | keduanya sah hari ini karena klien membaca keduanya; penyeragamannya `TKT-F1-004` |
-
-### 23.16 Paginasi: opt-in di komponen bersama, angkanya milik layar
-
-Ditambahkan menyusul pada hari yang sama, atas permintaan *"buatkan pagination sesuai
-pega"*.
-
-#### Kenapa ukuran halaman menjadi prop, bukan angka di dalam komponen
-
-Karena di sistem lama pun ia berbeda-beda. Setelannya dibaca dari `pyPageSize` — atau dari
-`pyPageSizeOther` bila nilainya `"Other"` — pada `pyGridProps` masing-masing section:
-
-| Layar | Ukuran | Mode |
-|---|---|---|
-| Master Supplier · Master Bengkel · Master Panel | **20** | Numeric |
-| Master Rekening · Status Klaim · Status Progres · Pasal Kerugian · Penolakan Klaim | **15** | Numeric |
-| Master Auto Claim | — | tanpa paginator |
-
-Tidak ada satu angka yang benar untuk semuanya. Menaruh salah satunya sebagai bawaan
-komponen berarti delapan layar lain memakai angka yang bukan angkanya.
-
-#### Kenapa opt-in, dan bukan menyala secara bawaan
-
-`DataTable` dipakai **sembilan layar master yang sudah dinyatakan selesai**. Menyalakan
-paginasi sebagai bawaan mengubah kesembilannya sekaligus — Master Status Klaim yang berisi
-33 baris akan langsung terpotong dua halaman, beserta ujinya yang gagal.
-
-Itu melanggar **Isolasi Protektif**, dan pelanggarannya tidak diperlukan: satu prop
-opsional menjawab kebutuhan layar ini tanpa menyentuh yang lain.
-
-```
-pageSize?: number     tidak diisi  →  tanpa paginasi, persis seperti sebelumnya
-                      diisi 20     →  paginasi numerik, 20 baris per halaman
-```
-
-Yang menjaganya bukan niat melainkan uji: `tanpa paginasi > menggambar SELURUH baris bila
-pageSize tidak diisi` berada **di berkas uji komponen**, sehingga perubahan bawaan
-kelak gagal di sana — bukan di uji milik modul yang sudah selesai.
-
-#### Kenapa di komponen bersama, dan bukan di layar Supplier saja
-
-Karena itu alasan `DataTable` ada. `07-TECHNICAL-STRATEGY.md` §3 aturan 2 menetapkan
-seluruh tabel memakai satu komponen, dan `06-MODULE-BREAKDOWN.md` menyebut `U-2` sebagai
-investasi frontend terpenting justru karena 268 grid sistem lama memakai pola yang sama.
-
-Menulis paginator di dalam `SupplierPage` berarti paginator kesepuluh menyusul saat layar
-berikutnya membutuhkannya — persis kegagalan yang `D-09` khawatirkan untuk tim yang sedang
-belajar React.
-
-`components/` sendiri **bukan** modul yang dilindungi Isolasi Protektif; yang dilindungi
-adalah modul Login, Home, dan Master Data. Perubahan di sini tetap dijaga agar aditif:
-satu prop opsional, satu fungsi terekspor, satu komponen dalam berkas yang sama.
-
-#### Paginasi berjalan SESUDAH pencarian dan pengurutan
-
-Urutannya menentukan. Memotong halaman lebih dulu akan membuat pencarian hanya menemukan
-baris yang kebetulan ada di halaman yang sedang dibuka — cacat yang tidak terlihat sebagai
-galat, hanya sebagai hasil pencarian yang salah.
-
-Urutan yang dipakai juga yang ditiru: grid Pega terikat pada page list klipboard
-(`pyPageListProperty = ListMasterSupllier.pxResults`), sehingga paginatornya memotong
-daftar yang **sudah** tersaring — bukan meminta halaman berikutnya ke server.
-
-Dua akibat yang ikut diurus, keduanya mengembalikan posisi ke halaman pertama:
-
-| Peristiwa | Alasan |
-|---|---|
-| kata kunci berubah | halaman ketiga daftar lama hampir pasti tidak ada pada daftar baru |
-| urutan berubah | mengurutkan ulang menyusun ulang seluruh daftar; halaman ketiga tidak lagi memuat baris yang sama |
-
-#### Halaman dijepit saat menggambar, bukan disetel lewat efek
-
-Baris dapat berkurang di luar kendali komponen — penyaring dipersempit, atau daftarnya
-dimuat ulang setelah sebuah baris berpindah. Halaman yang sudah tidak ada karena itu
-menampilkan **halaman terakhir**, bukan tabel kosong tanpa penjelasan.
-
-Dikerjakan dengan `Math.min` saat menggambar. `useEffect` yang menyetel state akan
-menghasilkan satu gambar perantara yang kosong lebih dulu, dan itu terlihat sebagai
-kedipan.
-
-#### Dua hal yang DITAMBAHKAN terhadap Pega
-
-| Tambahan | Alasan |
-|---|---|
-| **Ringkasan "Menampilkan 1–20 dari 57 baris"** | Pega hanya menggambar nomor halamannya. Tanpa ringkasan itu, nomor halaman tidak memberi tahu seberapa banyak yang belum dilihat — pada tabel yang baru disaring, justru itulah yang ingin diketahui |
-| **Sela `…` pada daftar panjang** | daftar seribu baris menggambar lima puluh tombol nomor yang membungkus beberapa baris, dan justru membuat halaman yang sedang dibuka sulit ditemukan. Aturannya di `pageWindow`, diekspor supaya dapat diuji terpisah dari komponennya |
-
-Pencacah "Total Data :" milik `Section/DataCountMasterSupllier` tetap ada di kepala layar
-dan menghitung hal yang **berbeda**: seluruh baris yang dimuat, bukan yang tersaring.
-Keduanya sengaja dibiarkan berdampingan.
-
-#### Yang dijaga untuk pembaca layar
-
-| Hal | Cara |
-|---|---|
-| Berpindah halaman diumumkan | ringkasan barisnya `role="status"` — diumumkan tanpa memindahkan fokus |
-| Halaman yang sedang dibuka | `aria-current="page"`, bukan hanya warna |
-| Bilah nomornya dapat dilompati | `<nav aria-label="Halaman tabel">` |
-| Tombol panah punya nama | `aria-label` eksplisit; ikonnya `aria-hidden` dan tidak pernah menjadi satu-satunya penanda |
-
-`aria-current` bukan pelengkap: warna saja tidak terbaca pembaca layar, dan tidak
-terbedakan oleh sekitar satu dari dua belas laki-laki yang mengalami buta warna
-merah-hijau.
-
-#### Yang TIDAK dikerjakan
-
-**Paginasi keyset sisi server.** Itu `TKT-U2-001`, dan Steering menyebutnya **perubahan
-perilaku, bukan pemeliharaan**: grid lama memang memotong di klipboard, bukan memaginasi
-di server. Layar berpuluh juta baris menuntutnya; layar master yang berbaris puluhan
-tidak.
-
-Endpoint `GET /api/master/supplier?cari=` sudah menerima penyaring, sehingga perpindahannya
-kelak tidak menuntut kontrak baru — hanya menambah `cursor` dan `limit`.
-
-**Menyalakan paginasi pada delapan layar master lain.** Setelan Pega-nya sudah terbaca dan
-tercatat di tabel di atas, sehingga menyalakannya cukup satu prop per layar. Ia tidak
-dikerjakan di sini karena menyentuh modul yang sudah dinyatakan selesai — keputusan Work
-Owner, bukan keputusan sesi ini.
-
-#### Utang yang ditambahkan
-
-| Utang | Rencana penyelesaian |
-|---|---|
-| Delapan layar master memakai paginasi Pega-nya, tetapi belum menyalakannya | satu prop per layar; menunggu keputusan Work Owner karena menyentuh modul selesai |
-| Ukuran halaman ditulis di layar, bukan dibaca dari konfigurasi | sistem lama pun menanamnya di section; mengangkatnya menjadi konfigurasi menuntut keputusan tersendiri (`D-15`) |
-
----
-
-## 24. Koreksi Master Panel — layar diselaraskan dengan Pega (2026-09-20)
-
-Ditulis sebagai bagian tersendiri, bukan disunting ke dalam §22, karena §22 merekam apa
-yang **benar-benar diputuskan saat itu**. Yang berubah ditulis sebagai keputusan baru yang
-menyebut butir yang disupersede — perlakuan yang sama dengan `00-DECISION-LOG.md`.
-
-### 24.1 Apa yang memicunya
-
-Work Owner mengirim **tangkapan layar Master Panel HE yang sebenarnya** beserta satu
-kalimat: *"Saya ingin tampilannya konsisten dengan pega seperti ini."*
-
-Empat hal pada layar yang dibangun ternyata menyimpang, dan seluruhnya **dapat dibuktikan
-dari export** — bukan soal selera:
-
-| Hal | Bukti export | Yang dibangun | Putusan |
-|---|---|---|---|
-| Judul | `pyCaption Master Panel HE` pada `ListPanelHE` | "Master Panel" | **diperbaiki** |
-| Urutan tab | urutan section pada `BrowsePanelHE`: Approve → Reject → Waiting Approval | Approve → Waiting Approval → Reject | **diperbaiki** |
-| Kolom grid | 11 kolom berdampingan, `pyLabelFieldValue` pada `BrowsePanelHEApproval` | 9 penanda diringkas jadi satu kolom "Penanda", ditambah kolom "Lokasi" | **diperbaiki** |
-| Urutan baris | `pySortType=DESC` atas `ID_PANEL` | `ORDER BY NAME` | **diperbaiki** |
-
-Ditambah tiga tombol yang memang ada di layar lama dan belum dibangun sama sekali:
-`Upload Document`, `Upload Data Master Panel`, `Upload Data Lokasi Panel`
-(`pyButtonLabel` pada `BrowsePanelHE`).
-
-### 24.2 Kenapa keempatnya menyimpang, dan apa pelajarannya
-
-Keempatnya berasal dari **satu kebiasaan yang sama**: memperbaiki tata letak yang dianggap
-sulit dibaca, alih-alih menirunya.
-
-Alasan yang dipakai saat itu tertulis apa adanya di kode:
-
-> *"Grid Pega menampilkan kesebelas kolomnya sekaligus. Itu tidak ditiru seluruhnya:
-> sembilan penanda berdampingan menjadi deretan sandi yang tidak dapat dibaca mata."*
-
-Alasan itu **masuk akal sebagai desain, dan salah sebagai migrasi**. `D-13` tidak menuntut
-tata letak yang lebih baik; ia menuntut tata letak yang **sama**, supaya pengguna tidak
-perlu belajar ulang. Petugas yang setiap hari memindai kolom `STATUS PECAH` pada posisi
-yang sama akan kehilangan kebiasaannya begitu kolom itu dilipat ke dalam ringkasan.
-
-**Pelajarannya, dan ia berlaku untuk modul berikutnya:** penyimpangan tata letak menuntut
-alasan yang lebih kuat daripada "lebih mudah dibaca". Yang layak menjadi alasan hanyalah
-hal yang **tidak dapat dikerjakan** — rule yang hilang, data yang tidak ada, atau perilaku
-yang berbahaya. Urutan tab dan susunan kolom bukan salah satunya.
-
-Yang sebelumnya dicatat sebagai *"selisih yang direncanakan, dan satu-satunya yang tampak
-di layar daftar"* karena itu **dicabut**. Modul ini sekarang tidak punya satu pun selisih
-tata letak terhadap Pega.
-
-### 24.3 Yang berubah
-
-| Berkas | Perubahan |
-|---|---|
-| `PanelPage.tsx` | judul → "Master Panel HE"; urutan tab → Approve · Reject · Waiting Approval; 11 kolom grid dikembalikan berdampingan; kolom "Lokasi" dan "Penanda" dibuang; tiga tombol unggah ditambahkan dalam keadaan mati; `LocationSummary` dihapus |
-| `masterpanel.sql` | `ORDER BY NAME` → `ORDER BY ID_PANEL DESC` pada `panel_list` dan `panel_list_search` |
-| `repo/memory/memory.go` | pengurutan memori mengikuti, supaya urutan saat pengembangan sama dengan produksi |
-| `query_test.go` | `TestListOrderFollowsPega` — mengunci arah urutan |
-| `manage_test.go` | `TestListOrderIsIDDescending` — mengunci hal yang sama di adapter memori |
-| `PanelPage.test.tsx` | uji judul, kesebelas kolom, urutan tab, ketiadaan kolom Lokasi, dan ketiga tombol unggah |
-
-### 24.4 Tiga tombol unggah: ditampilkan MATI, bukan dihilangkan
-
-Rule yang menjalankan ketiganya **tidak ikut di export** (`R-16`), sehingga tidak ada
-perilaku yang dapat ditiru.
+`internal/masterpicteknik` sudah ada sebelum sesi ini, tetapi ditulis **sebelum `D-80`** dan
+sebelum pola portal-aware: berkasnya `galat.go`/`rute.go`/`kueri.go`, foldernya `repo/memori/`,
+identifiernya `PICTeknik`/`Layanan`/`Daftar`, dan usecase-nya memegang **satu `Repo`**.
 
 Tiga pilihan ditimbang:
 
 | Pilihan | Akibat |
 |---|---|
-| dihilangkan | petugas mengira fiturnya hilang, dan tidak ada apa pun di layar yang menjelaskannya |
-| ditampilkan hidup | tombol yang tidak melakukan apa-apa — kelas cacat yang paling merusak kepercayaan |
-| **ditampilkan mati beserta alasannya** | kemajuan migrasi terbaca langsung dari layar |
+| Biarkan, tambahkan wiring saja | Modul bisnis kedelapan memakai gaya yang sudah dicabut `D-80`, dan **tidak portal-aware** — melanggar `ADR-0030` |
+| Tambal sebagian | Setengah berkas Inggris setengah Indonesia; lebih membingungkan daripada keduanya |
+| **Tulis ulang seluruhnya mengikuti `mastertipesurveyors`** | Dipilih |
 
-Yang ketiga dipakai, mengikuti preseden yang sudah ada: butir menu yang belum punya layar
-pun **tetap tampil**, tidak dapat diklik, dan bertanda "belum tersedia" — keputusan Work
-Owner 2026-09-18.
+Yang menentukan bukan kerapian melainkan `RepoSelector`: tanpa itu, satu instans `Repo` melayani
+seluruh entitas, dan daftar petugas satu badan hukum dapat terbaca dari badan hukum lain (`R-20`).
+Itu cacat yang tidak terlihat sebagai galat — layarnya tampak normal, isinya masuk akal, dan yang
+salah hanya milik siapa data itu.
 
-### 24.5 Yang TIDAK ikut berubah, dan kenapa
+**Isolasi Protektif tetap dipatuhi**: modul Login, Home, dan Master Data yang sudah selesai tidak
+disentuh satu baris pun.
 
-| Hal | Alasan |
+### 18.2 Daftar hanya menampilkan petugas aktif — dan akibatnya diterima sadar
+
+Report Definition `BrowseVMstUserTeknis_RD` memasang dua penyaring bergabung `A AND B`, dan yang
+kedua dipatok: `STS_AKTIF = '1'`.
+
+**Keputusan Work Owner: dipertahankan persis.** Saya menyampaikan konsekuensinya lebih dulu — di
+Pega, petugas yang dinonaktifkan hilang dari layar dan tidak dapat ditemukan lagi — dan jawabannya
+ditegaskan.
+
+Yang saya lakukan sesudahnya bukan menawar keputusan itu melainkan **memeriksa sejauh mana jalan
+buntunya**. `GetMasterPICTeknis` ternyata **tidak menyaring status aktif sama sekali**, sehingga:
+
+| Jalur | Menyaring aktif? |
 |---|---|
-| **Nilai penanda tetap ditampilkan sebagai sandi** (`1`, `0`) | menggantinya dengan "Ya"/"Tidak" berarti menebak domain sembilan kolom yang daftar nilainya tidak ada di export (`R-16`) — dan menebak di tempat yang paling terlihat. Pega pun menampilkannya apa adanya |
-| **Kolom "Pilih" pada tab Waiting Approval** | ia bukan tambahan: `Section/ApprovalMasterPanelHE` punya kolom `pyCaption Pilih` yang sama. Yang berpindah hanyalah letaknya — dari Inbox Manager yang belum dibangun ke layar ini |
-| **Daftar lokasi dikelola di dalam form** | grid Pega memang tidak punya kolom lokasi; lokasi hanya muncul saat sebuah panel dibuka |
-| **Tombol "Ubah" berupa tombol, bukan tautan** | Pega menggambarnya sebagai tautan, tetapi `components/Button` adalah komponen baku yang dipakai sembilan layar master lain. Menyimpang di satu layar akan membuat aplikasinya terlihat dirakit dari dua tempat — dan katanya tetap sama |
+| Daftar (`technician_list`, dari view) | **ya** — sama dengan Pega |
+| Ambil satu baris (`technician_get`, dari tabel) | **tidak** — sama dengan Pega |
 
-### 24.6 Hasil pemeriksaan sesudah koreksi
+Artinya petugas nonaktif hilang dari daftar tetapi **tetap terjangkau lewat ID dan dapat diaktifkan
+kembali**. Jalan buntunya tidak lebih dalam daripada di sistem lama, dan itu dicapai dengan meniru
+Pega lebih teliti — bukan dengan menyimpang darinya.
 
-| Perintah | Hasil |
+Layar menyatakannya terang-terangan (*"Petugas nonaktif tidak ditampilkan, sama seperti di sistem
+lama"*), dan form memperingatkan **sebelum** menyimpan bahwa menonaktifkan akan menghilangkan baris
+dari daftar. Tanpa itu, penonaktifan akan dilaporkan pengguna sebagai kehilangan data.
+
+### 18.3 Daftar dibaca dari VIEW, penulisan selalu ke TABEL
+
+| Objek | Peran |
 |---|---|
-| `go build ./...` · `gofmt -l internal/masterpanel` | hijau / bersih |
-| `go test -count=1 ./internal/masterpanel/...` | **hijau**, keempat paket |
-| `npm run typecheck` | **hijau** |
-| `vitest run src/modules/master-panel` | **hijau**, 18 uji (naik dari 16) |
+| `POOLDATA.V_MST_USER_TEKNIS` | dibaca untuk daftar — memuat `TOTAL_JOB` yang tidak ada di tabel |
+| `POOLDATA.MST_USER_TEKNIK` | dibaca untuk satu baris, dan **satu-satunya yang ditulis** |
 
----
+Ejaannya berbeda dan itu bukan salah ketik: view berakhiran **TEKNIS**, tabel berakhiran **TEKNIK**.
+Keduanya terbaca apa adanya dari export.
 
-## 25. Koreksi Master Status Progres 1 — nilai Posisi dan paginasi (2026-09-20)
+Pembagian ini meniru sistem lama persis — RD berkelas `...-Int-V_MST_USER_TEKNIS`, sementara
+`GetMasterPICTeknis` dan procedure penulisnya menyebut `MST_USER_TEKNIK`.
 
-Tiga keputusan, seluruhnya lahir dari umpan balik Work Owner atas layar yang sudah
-dibangun. Rinciannya di `catatan-pengembangan.md` §24.
+**Satu hal BELUM terverifikasi dan dicatat terbuka.** Definisi view tidak ada di export; nama
+kolomnya **diduga** `OLD_OPERATOR_ID` — diturunkan dari nama properti kelas Pega, yang memetakan
+properti ke kolom bernama sama. Bila dugaan itu keliru, yang berubah **hanya kueri
+`technician_list`**; tidak ada satu baris kode Go yang ikut berubah. `claimpnc -periksa` melaporkan
+kegagalannya beserta kueri `all_views` yang perlu dijalankan DBA.
 
-### 25.1 Nilai yang tersimpan di kolom STATUS adalah TEKS, bukan kode angka
+### 18.4 `PR_OPERATORS` ditinggalkan; direktori pegawai menjadi seam tersendiri
 
-**Keputusan.** `GCNM_MST_PROGRESS_KLAIM.STATUS` menyimpan teks posisinya —
-`"REGISTER"`, `"KOMITE"`, `"SURVEY"`, `"AKSEPTASI"`, `"OUTSTANDING"`, `"BENGKEL"`,
-`"PROCUREMENT"`, `"All"` — bukan kode `"002"`/`"004"`/`"006"`/`"007"` seperti yang
-ditulis versi sebelumnya.
+Sistem lama mencari nama **dua tingkat**: tabel operator milik Pega, lalu — bila kosong — layanan
+REST. **Keputusan Work Owner: tinggalkan tabel operator Pega seluruhnya**, pakai layanan saja.
 
-**Ini mencabut keputusan §10 pada berkas ini** yang menetapkan pasangan kode→label.
-Entri §10 **tidak disunting** — ia merekam apa yang diputuskan saat itu beserta alasannya,
-dan mengubahnya akan menghapus jejak bahwa kesimpulannya pernah keliru. Aturan yang sama
-dipakai `00-DECISION-LOG.md` terhadap `D-01`…`D-30`.
+Itu lurus dengan arah migrasi: `DATAPEGA.PR_OPERATORS` milik engine Pega, dan bergantung padanya
+berarti modul ini ikut mati ketika Pega dimatikan.
 
-**Dasarnya.** Sel "Posisi" pada `Section/BrowseStatusProgress-Section.xml` mengikat
-`pyValue` **dan** `pyPrompt` ke properti yang sama (`.CaseID`), dan
-`Activity/ViewStatusProgress_act-Act.xml` mengisi `.CaseID` dengan literal teks
-(`"AKSEPTASI"`). Nilai simpanan dan labelnya karena itu satu dan sama.
+Alamat layanannya dibaca **per entitas**:
 
-**Kenapa ini penting melebihi "daftar yang kurang panjang".** Menyimpan `"002"` ke kolom
-yang di seluruh sistem lama berisi `"REGISTER"` **tidak menimbulkan galat apa pun** —
-barisnya tersimpan, layarnya tampak benar, dan kegagalannya baru terlihat ketika ada yang
-membandingkan nilainya. Ia kelas cacat yang sama dengan `R-20`: salah, tetapi senyap.
+```sql
+SELECT servicename FROM POOLDATA.GCNM_CONNECT_REST
+ WHERE app = <portal_alias> AND typeservice = 'HCQ-LOGIN';
+```
 
-### 25.2 Daftar posisi tetap di kode, dan sumbernya tangkapan layar
+ID yang diketik dicocokkan ke **LOGIN**, dan `TYPESERVICE` yang dipakai **`'HCQ-LOGIN'`** — keduanya
+ditetapkan Work Owner. Saya melaporkan bahwa Pega memakai `'GetEmployee'` untuk pencarian ini;
+keputusannya menyatukan keduanya ke satu baris layanan.
 
-**Keputusan.** Kedelapan nilai tetap hidup sebagai daftar bernama di lapisan domain
-(`position.go`) dan disajikan lewat API — **tidak** disalin ke frontend, **tidak** dibuat
-sebagai tabel baru.
+**Barisnya sudah ada, dan itu terverifikasi** — bukan diandaikan. `Database/gcnm_connect_rest.csv`
+memuat `SERVICEID 79` dengan `APP='ASM'` dan `TYPESERVICE='HCQ-LOGIN'`, dan baris yang sama itulah
+yang **sudah dipakai modul Login hari ini** lewat kueri `service_address` pada
+`internal/auth/repo/sqlstore/legacy.sql`. Tidak ada permintaan baru ke DBA untuk portal utama.
 
-**Dasarnya tidak berubah dari §10.3:** tidak ada tabel master posisi di sistem lama yang
-dapat dibaca, dan membuatnya menuntut permintaan perubahan skema tertulis, persetujuan
-Work Owner, serta pelaksanaan DBA (`D-63`) — modul ini akan terhalang sampai itu selesai.
-Mengarang tabel beserta isinya berarti menebak.
+Nilainya tetap dapat dikonfigurasi lewat `Options.ServiceKind`, sehingga pemindahan ke layanan
+tersendiri kelak menjadi perubahan konfigurasi, bukan rilis ulang.
 
-**Yang baru: sumber daftarnya.** Rule yang mengisi `TempPosition` untuk harness ini tidak
-ada di export — sudah dicari ke `Activity/`, `Section/`, `RDB List/`, dan
-`Data Transform/`, dan kedelapan nilainya tidak pernah muncul bersama di satu tempat mana
-pun (`R-16`). Karena artefaknya memang tidak ada, **tangkapan layar Pega yang sedang
-berjalan adalah sumber yang sahih**, dan itu diterima sebagai dasar — bukan ditebak dan
-bukan ditunda.
+### 18.5 Satu pencarian mengisi DUA isian
 
-**Utang teknis yang tetap tercatat.** Daftar ini seharusnya menjadi master data milik
-`F-4` sesuai `D-15`, dapat diubah tanpa merilis ulang aplikasi. Selama masih di kode,
-menambah posisi berarti mengubah kode.
+Respons HCQ memuat blok `EmpLeader` — terbukti dari contoh respons yang diberikan Work Owner
+2026-09-16 dan tersimpan di `internal/auth/provider/hcq_test.go:52`. Satu pencarian karena itu
+menjawab **Nama** sekaligus **Atasan**.
 
-### 25.3 Bentuk kontrak API sengaja tidak diubah
+Itu memecahkan dua hal sekaligus: pengganti isian Atasan yang di Pega berupa autocomplete atas
+daftar operator (yang kini ditinggalkan), dan pengisian nama yang memang tidak pernah diketik.
 
-**Keputusan.** `kode_posisi` dan `nama_posisi` **tetap dua field**, meskipun isinya kini
-selalu sama. Begitu pula `kode` dan `nama` pada daftar posisi.
+**Usulan direktori tidak menimpa pilihan pengguna.** Atasan hanya diisi bila pengguna
+mengosongkannya, karena atasan menurut struktur organisasi belum tentu atasan penanganan klaim —
+dan layar Pega pun menandai isian itu `pyReadOnly=false`. Aturan yang sama diterapkan **di server**,
+bukan hanya di layar, supaya pemanggilan API langsung berperilaku sama.
 
-**Yang dipertimbangkan dan tidak diambil:** menyatukannya menjadi satu field `posisi`.
-Ia lebih jujur terhadap keadaan hari ini, tetapi harganya perubahan yang merusak klien
-demi penamaan yang lebih rapi. Dan pemisahannya tetap berguna: bila daftarnya kelak
-pindah menjadi master data `F-4`, label yang dibaca pengguna dapat dibedakan dari nilai
-yang tersimpan tanpa mengubah kontrak sama sekali.
+Nama, sebaliknya, **selalu** ditimpa hasil pencarian. Menerimanya dari klien akan membuat master
+memuat nama yang tidak cocok dengan identitasnya, dan setiap layar penugasan akan menyebut orang
+yang berbeda dari yang sesungguhnya bertugas.
 
-**Yang berubah sebagai gantinya:** keterangan pada `dto.go` menyatakan terang-terangan
-bahwa keduanya bernilai sama pada layar ini, beserta sebabnya. Dan kolom Posisi di layar
-tidak lagi menyandingkan label dengan kodenya — menyandingkan dua nilai yang identik
-hanya menulis "REGISTER REGISTER".
+### 18.6 Adapter direktori berdiri sendiri, modul Login tidak disentuh
 
-### 25.4 Pembakuan ejaan pindah ke Input.Clean
+`auth/provider.HCQ.Verify` **tidak** dipakai ulang. Keduanya menembak endpoint yang sama tetapi
+menanyakan hal berbeda:
 
-**Keputusan.** `Input.Clean` **tidak lagi meng-huruf-besarkan** nilai posisi. Ia
-membakukan ejaannya ke baris daftar yang cocok lewat `FindPosition`, dan membiarkan nilai
-yang tidak dikenal apa adanya supaya `Check` yang menolaknya — bukan `Clean`, agar
-pesannya sampai ke pengguna.
-
-**Sebabnya satu nilai:** `"All"` ber-ejaan campuran. `strings.ToUpper` akan menyimpan
-`"ALL"`, yang tidak sama dengan apa pun yang pernah ditulis sistem lama.
-
-**Akibat sampingan yang diinginkan:** tabel tidak lagi dapat terisi `"All"`, `"ALL"`, dan
-`"all"` sekaligus. Pembakuan itu terjadi di **satu tempat**, bukan diulang di setiap
-pemanggil.
-
-### 25.5 Paginasi 15 baris dinyalakan
-
-**Keputusan.** Grid Master Status Progres 1 berhalaman **15 baris**, sesuai
-`pyPageSizeOther = 15` pada `Section/BrowseStatusProgress-Section.xml`.
-
-Angkanya milik **layar**, bukan milik komponen — `DataTable.pageSize` sudah dirancang
-opt-in karena layar lain memakai 20. Yang diperbaiki hanyalah layar ini tidak pernah
-menyalakannya.
-
-**Uji baru menjaganya.** Tanpa uji, prop satu baris seperti ini hilang tanpa jejak pada
-penyuntingan berikutnya — dan hilangnya tidak menimbulkan galat, hanya mengembalikan
-perilaku yang salah.
-
-### 25.6 Aturan kerja yang ditambahkan untuk diri sendiri
-
-**Sebelum memakai sebuah daftar nilai dari export, periksa dulu ikatan `pyValue` sel yang
-memakainya** — bukan hanya menelusuri dari mana nilainya berasal.
-
-Kesalahan ini berasal dari membaca deretan angka di sebelah label pada activity yang
-benar, lalu menyimpulkan keduanya berpasangan untuk layar ini. Polanya sama dengan `R-06`
-pada Steering: tiga arti kode status yang disimpulkan dari pemakaian ternyata seluruhnya
-salah. Aturannya sudah ditulis sebagai komentar di `position.go`, bukan hanya di sini.
-
-### 25.7 Kedua pertanyaan §25.1–§25.2 dijawab: "Sesuaikan saja dengan Pega"
-
-Jawaban Work Owner, 2026-09-20. Rincian buktinya di `catatan-pengembangan.md` §24.9.
-
-**Keputusan A — daftar posisi berisi sembilan baris, delapan nilai berbeda.** "All"
-direplikasi dua kali persis seperti layar lama. `pyHasNoSelection = false` pada sel
-dropdown membuktikan Pega tidak menyisipkan baris kosong, sehingga pengulangan itu ada di
-datanya sendiri — bukan baris prompt yang salah terbaca. Pengulangan tidak mengubah apa
-yang tersimpan, sehingga biayanya nol dan yang diperoleh kesetaraan tampilan (`D-13`).
-
-**Keputusan B — nilainya "PROCUREMENT", tanpa "/SUPPLIER".** Kekhawatiran §24.8 butir 2
-**dicabut dengan bukti**: `'PROCUREMENT/SUPPLIER'` hanya dibandingkan terhadap
-`.AlasanTerlambat` dan `.SurveyorAddrress` di tiga berkas, dan tidak pernah terhadap
-kolom `STATUS` milik master ini. Tidak ada perubahan yang diperlukan.
-
-**Keputusan C — `SelectField` mengunci option dengan posisi, bukan nilai.** Konsekuensi
-langsung dari Keputusan A: daftar kini boleh memuat nilai kembar, dan kunci berbasis nilai
-membuat React menemui dua kunci yang sama. Perubahannya **netral terhadap perilaku** —
-urutan daftar ditentukan server dan tidak pernah disusun ulang di layar — dan seluruh uji
-sembilan layar yang memakai komponen ini tetap hijau.
-
-**Penyimpangan yang sengaja dipertahankan.** `SelectField` tetap menyisipkan baris kosong
-`— pilih —`, sedangkan Pega tidak dan langsung memilih baris pertama. Tanpa baris kosong,
-penambahan baru akan **menyimpan "All" tanpa pengguna pernah memilihnya** — nilai yang
-tidak pernah ia tentukan, tersimpan tanpa satu pun tanda. Penyimpangan ini disebut
-terang-terangan di sini supaya ia menjadi pilihan yang tercatat, bukan temuan berikutnya;
-mengembalikannya ke perilaku Pega adalah satu prop di layar, bukan perubahan komponen.
-
----
-
-## 26. Koreksi Master Auto Claim — grid diselaraskan dengan Pega (2026-09-20)
-
-### 26.1 Yang dikoreksi Work Owner
-
-Grid layar Master Auto Claim **menggabungkan kolom yang di Pega terpisah**. Laporannya
-menyebut satu contoh — bank dan nomor rekening — dan pemeriksaan menemukan empat.
-
-| Versi pertama | Pega |
+| | Pertanyaannya |
 |---|---|
-| `Bank & rekening` | `BANK PENERIMA` · `NO REKENING` |
-| `PIC lapor` (PIC + email) | `EMAIL LAPOR` · `PIC` |
-| `Nama penerima` (+ client) | `NAMA PENERIMA`; client tidak ada di grid |
-| `Dipakai` | tidak ada |
-| — | `ALAMAT PENERIMA` **hilang** dari layar |
+| `auth/provider.HCQ.Verify` | benarkah sandi ini milik orang ini? |
+| `masterpicteknik/directory.HCQ.Lookup` | siapa orang dengan identitas ini, dan siapa atasannya? |
 
-Penyebabnya bukan salah baca sumber: komentar di atas kode itu sudah memuat kesembilan header
-beserta alias dan kolomnya. Yang terjadi adalah tampilan "dirapikan" saat menulis JSX tanpa
-membandingkan hasilnya kembali dengan komentar yang baru saja ditulis.
+`Verify` menolak dengan `ErrWrongCredential` begitu `pyErrorCode` bukan `"200"`, dan membuang
+seluruh blok `EmpResponse` — justru bagian yang dibutuhkan pencarian. Memakai ulangnya menuntut
+menyunting modul yang sudah dinyatakan selesai.
 
-`D-13` tidak menyisakan ruang untuk itu: alur dan tata letak ditiru supaya pengguna tidak perlu
-belajar ulang, dan penggabungan kolom adalah perubahan tata letak.
+Yang **dipakai ulang** adalah pembaca katalognya: `sqlstore.Legacy` disuntikkan dari `cmd` lewat
+antarmuka sempit `ServiceCatalog` yang dideklarasikan modul ini sendiri. Kedua modul tetap tidak
+saling mengimpor — yang tahu keduanya hanyalah berkas perakitan.
 
-### 26.2 Kolom mengikuti tab, karena di Pega memang begitu
+Galat `provider.ErrServiceNotRegistered` diteruskan sebagai **nilai**, bukan diimpor tipenya. Itu
+yang membuat modul ini dapat membedakan katalog yang belum diisi dari jaringan yang putus, tanpa
+bergantung pada modul auth.
 
-| Tab | Kolom |
+### 18.7 Sandi pengisi, dan kenapa `pyErrorCode` tidak dipakai
+
+Permintaan ke endpoint itu menuntut sepasang Login dan Password. Untuk pencarian nama tidak ada
+sandi yang dapat diberikan — yang dicari justru orang lain, bukan pemanggil.
+`SetMstUserTeknisMstUser_act` langkah 6 mengisinya `"1"`, dan nilai itu dipakai sebagai bawaan.
+
+Konsekuensinya mengikat: **`pyErrorCode` tidak dapat dipakai sebagai penentu**, karena sandi pengisi
+memang tidak pernah benar. Yang menentukan adalah ada-tidaknya nama di dalam blok `EmpResponse` —
+bila ada, pegawainya dikenal; bila tidak, ia dianggap tidak terdaftar.
+
+**Yang belum dapat dibuktikan:** apakah HCQ benar-benar mengisi `EmpResponse` ketika sandinya salah.
+Itu hanya terjawab dengan memanggilnya sungguhan — alamatnya sudah terbaca dari katalog, tetapi
+panggilan sungguhan belum pernah dijalankan dari lingkungan ini. Bila ternyata
+tidak, yang berubah adalah `Options.ServiceKind` — diarahkan ke layanan pencarian tersendiri — tanpa
+menyentuh domain maupun usecase.
+
+### 18.8 Tiga nilai yang tidak boleh datang dari klien
+
+`nama`, `grup_panel`, dan `beban_kerja` **ditolak** bila ada di badan permintaan, bukan diabaikan
+diam-diam — `decoder.DisallowUnknownFields()`.
+
+| Nilai | Kenapa |
 |---|---|
-| Master Auto Klaim · Waiting Approval · Reject | 9 |
-| **Komite Approval** | **8** — tanpa KOMITE |
+| `nama` | dimiliki direktori; dicari server setiap kali menyimpan |
+| `grup_panel` | procedure lama tidak pernah menulisnya, pada cabang INSERT maupun UPDATE |
+| `beban_kerja` | milik view, dihitung, dan tidak ada di tabel yang ditulis modul ini |
 
-Di tab Komite seluruh barisnya memang milik pemanggil, sehingga kolom itu tidak memberi tahu apa
-pun. Lebar kolomnya diambil apa adanya dari section: `72 · 177 · 167 · 105 · 139 · 163 · 60 ·
-90 · 115 · 93` piksel.
+Mengabaikannya diam-diam akan membuat klien yang mengirimnya mengira nilainya tersimpan.
 
-### 26.3 Approve dan Reject berada di FORM, bukan di baris grid
+### 18.9 Penyimpangan dari sistem lama yang disengaja
 
-Versi pertama menaruh keduanya di setiap baris tab Komite. Letaknya di Pega berbeda, dan itu
-terbaca dari posisinya di dalam berkas section:
-
-| Elemen | Offset |
-|---|---|
-| isian form | 59.116 |
-| tombol `stsapprove` | 152.789 – 165.855 |
-| header grid | 232.228 |
-| tombol `INISIAL` (Update per baris) | 279.901 |
-
-Alur Pega karena itu: **Update pada baris → isian termuat → komite memutuskan atas isi yang
-benar-benar dilihatnya.** Baris grid hanya punya satu tombol, di keempat tab.
-
-Letak itu pula yang menjelaskan cacat pada §19.4: komite yang **tidak** memuat barisnya lebih
-dulu mengirim page form kosong, dan `UPDATE` menulis `CLIENTID`/`CLIENTNAME` kosong apa adanya.
-Penutupnya tidak berubah — nilai yang dikirim tetap berasal dari baris yang dimuat.
-
-### 26.4 Tombol form berbeda per tab, dan satu tab baca saja
-
-| Tab | Tombol form |
-|---|---|
-| Master Auto Klaim · Reject | Simpan (`stsapprove="0"`) |
-| Komite Approval | Approve · Reject — **tanpa Simpan** |
-| **Waiting Approval** | **tidak ada** |
-
-Tab Waiting Approval hanya memanggil `UpdateMstAutoClaim_act1`, yang memuat baris ke form, tanpa
-satu pun activity penyimpan. Ia layar **baca saja**: yang memutuskan adalah komite yang ditunjuk,
-lewat tabnya sendiri. Isiannya dinonaktifkan supaya keadaan itu terlihat, bukan hanya terasa saat
-pengguna mencari tombol yang tidak ada.
-
-### 26.5 Keterangan `CLAIM_ALLOWED` dipindahkan, bukan dibuang
-
-Kolom `Dipakai` dibuat karena keadaan "disetujui tetapi `CLAIM_ALLOWED` bukan 1" tidak terlihat
-di layar mana pun — di Pega maupun di sini — padahal ia membuat sebuah baris tidak pernah dipakai
-pembuatan klaim otomatis.
-
-Alasannya masih berlaku; tempatnya yang salah. Ia sekarang **catatan di atas tabel**, muncul
-hanya bila barisnya ada, menyebut inisialnya. Grid tetap mengikuti Pega kolom per kolom.
-
-| Pilihan | Akibat |
-|---|---|
-| Kolom tambahan | grid tidak lagi sama dengan Pega — ditolak |
-| Dihapus sama sekali | keadaan yang membuat baris "mati" kembali tidak terlihat siapa pun |
-| **Catatan di luar grid** | keduanya terpenuhi |
-
-Bila Work Owner lebih suka keterangan itu hilang, menghapusnya satu blok — dan mode `-periksa`
-tetap melaporkan angkanya.
-
-### 26.6 Dua perbedaan yang TETAP ada terhadap tangkapan layar
-
-| Hal | Alasan |
-|---|---|
-| Tanpa ikon saring (▼) per kolom | `DataTable` bersama menyediakan satu kotak pencarian dan pengurutan per kolom. Penyaring per kolom mengubah komponen yang dipakai SELURUH layar master (`U-2`) |
-| Header kolom aksi kosong | mengikuti Pega. Sel judul kosong tidak menamai kolomnya bagi pembaca layar; yang menutupinya adalah tombol di dalam tiap sel, yang bernama "Update" |
-
-### 26.7 Uji yang menjaga koreksi ini
-
-Tiga uji baru, dan yang pertama sengaja **menguji urutan sebagai senarai** — kolom yang benar
-tetapi berpindah tempat pun gagal:
-
-| Uji | Menjaga |
-|---|---|
-| `menampilkan sembilan kolom Pega pada urutan yang sama` | tidak ada kolom yang digabung, hilang, atau bertambah |
-| `menaruh setiap nilai di selnya sendiri, tidak digabung` | ISI selnya, bukan hanya headernya |
-| `menghilangkan kolom Komite pada tab Komite Approval` | perbedaan antartab |
-| `baris grid hanya punya tombol Update, termasuk di tab Komite` | Approve/Reject tidak kembali ke baris |
-
-Uji kedua ditambahkan setelah yang pertama ditulis, dan alasannya layak dicatat: **uji header
-saja tidak cukup.** Render yang headernya benar tetapi tetap menggabungkan dua nilai ke dalam
-satu sel akan lolos — dan itu persis bentuk kesalahan yang dikoreksi di sini.
-
-Ditambah `tab Waiting Approval membuka form baca saja` dan `tidak menyediakan tombol Simpan di
-tab Komite`. Seluruhnya **18 uji**, naik dari 14; backend tidak tersentuh.
-
-## 27. Koreksi Master Bengkel — grid, urutan, dan paginasi diselaraskan dengan Pega (2026-09-20)
-
-Work Owner mengirim tangkapan layar Pega yang sedang berjalan dan meminta kolom serta
-paginasinya disesuaikan. Lima hal diubah, dan **kelimanya dikonfirmasi ulang ke export**
-sebelum disentuh — tangkapan layar dipakai untuk menemukan selisihnya, bukan sebagai
-sumber kebenarannya.
-
-Alasannya bukan kehati-hatian berlebihan: gambar dapat terpotong di tepi kanan, dan
-kolom ketujuh yang kebetulan tidak terlihat akan hilang tanpa ada yang menyadarinya.
-`pyColumnCount = 7` menjawabnya tanpa keraguan.
-
-### Grid enam kolom, bukan kolom rakitan
-
-Yang sebelumnya saya buat adalah kolom **gabungan** — "Nama bengkel" dengan ID di
-bawahnya, "Kota & cabang", "Kontak", "Diskon jasa / sparepart". Bentuk itu lazim pada
-tabel modern dan memuat lebih banyak keterangan dalam ruang yang sama.
-
-Ia tetap dicabut. `D-13` menuntut tata letak yang ditiru supaya pengguna tidak perlu
-belajar ulang, dan kolom gabungan mengubah **apa yang dicari mata** di setiap baris.
-Keempat kolom yang saya tampilkan — `NAMA_KABUPATEN`, `STATUS_REKANAN`, `NAMA_CABANG`,
-`MAIL` — bahkan tidak muncul sama sekali di area grid Pega; seluruhnya hanya ada di form.
-
-Pelajarannya layak dicatat: **"lebih informatif" bukan alasan yang sah** pada layar yang
-sedang dimigrasikan. Yang dibandingkan pengguna adalah layar lama, bukan layar yang ideal.
-
-### Satu keterangan yang tetap dipertahankan, dengan tempat yang berbeda
-
-Kolom "Rekanan" hilang, tetapi penandaan bengkel **rekanan yang login aplikasinya kosong**
-dipindahkan ke dalam sel Login Aplikasi.
-
-Ia bukan hiasan. Di Pega, sel kosong pada kolom itu tidak dapat dibedakan antara "memang
-tidak diberi login" (non-rekanan, dan itu benar) dan "seharusnya punya tetapi tidak"
-(rekanan, dan bengkelnya tidak akan pernah dapat masuk). Perbedaannya tidak terlihat di
-layar mana pun di sistem lama.
-
-Keterangan itu muncul **hanya** pada keadaan kedua. Menandai keduanya akan membuat tandanya
-tidak berarti apa-apa — dan itu yang dijaga uji
-`tidak menandai bengkel non-rekanan yang tanpa login`.
-
-### Urutan bawaan dipindahkan ke server, dan kenapa itu bukan kosmetik
-
-`ORDER BY NAMA_BENGKEL` menjadi `ORDER BY ID_BENGKEL DESC`, meniru `pySortType=DESC`
-`pySortOrder=1` pada kolom pertama grid.
-
-Di Pega, pengurutan itu dikerjakan grid **di peramban** atas page list yang sudah dimuat —
-kueri lamanya sendiri tidak punya `ORDER BY` sama sekali. Menaruhnya di server bukan
-peniruan mekanismenya melainkan peniruan **hasilnya**, dan pada layar berpaginasi keduanya
-tidak dapat dipisahkan: urutan menentukan baris mana yang ada di halaman berapa.
-
-Kelas cacatnya patut disebut: urutan yang salah **tidak terlihat sebagai galat**. Halaman
-pertama tetap terisi, jumlah barisnya tetap benar, dan angkanya tetap masuk akal — yang
-berbeda hanya baris mana yang ada di halaman ketiga. `TestListQueriesOrderByKeyDescending`
-yang menjaganya, dan repo memori ikut disesuaikan supaya urutan saat pengembangan sama
-dengan di produksi.
-
-Satu keterbatasan dicatat di berkas `.sql`: pengurutannya leksikografis bila kolomnya
-bertipe teks, dan itu sama dengan urutan penerbitan **hanya selama lebar kunci tetap**.
-Kunci hari ini berlebar tetap; bila nomor urut melampaui sepuluh digit, kunci tumbuh —
-lihat `ComposeID`, yang sengaja tidak memotongnya — dan urutannya menyimpang tanpa
-menimbulkan galat apa pun.
-
-### Paginasi: tidak ada komponen bersama yang disentuh
-
-`DataTable` sudah punya paginasi opt-in lewat prop `pageSize`, ditambahkan sesi
-`masterpasal` yang berjalan bersamaan — dan doc comment-nya bahkan sudah mencatat "Master
-Supplier · Master Bengkel → 20 baris". Yang dikerjakan hanyalah menyalakannya dengan satu
-prop.
-
-Angkanya tetap disebut di layar, bukan dijadikan bawaan komponen: `pyPageSize` berbeda per
-section di sistem lama, dan layar master lain memakai 15.
-
-### Dua tombol yang sengaja TIDAK digambar
-
-"Upload Document" dan "Upload Data Master Bengkel" nyata di layar Pega. Rule di baliknya
-tidak ikut di export (`R-16`), sehingga yang dapat digambar hanyalah tombol yang tidak
-melakukan apa pun.
-
-Itu lebih buruk daripada tidak menggambarkannya: petugas akan menekannya, tidak terjadi
-apa-apa, dan yang dilaporkan adalah "aplikasinya rusak" — bukan "fiturnya belum ada".
-Ketiadaannya sudah tercatat sebagai pekerjaan yang belum dikerjakan (§20.12).
-
----
-
-## 28. Tiga tombol unggah Master Panel dihapus — menyupersede §24.4 (2026-09-20)
-
-### 28.1 Keputusan
-
-Ketiga tombol unggah pada layar Master Panel — **"Upload Document"**, **"Upload Data
-Master Panel"**, dan **"Upload Data Lokasi Panel"** — **tidak digambar sama sekali**.
-
-Ini **menyupersede §24.4**, yang memutuskan ketiganya ditampilkan dalam keadaan mati
-beserta keterangan "belum tersedia". Keputusan Work Owner, 2026-09-20, sesudah alasan
-ketiadaannya ditelusuri sampai ke rule-nya.
-
-### 28.2 Apa yang ditemukan saat ditelusuri
-
-Pertanyaan Work Owner — *"kenapa tombol upload belum tersedia?"* — dijawab dengan
-penelusuran, bukan dengan mengulang klaim. Hasilnya:
-
-| Tombol | Local action yang dipanggil | Ada di export? |
-|---|---|---|
-| Upload Document | `UploadDocument` | **tidak** |
-| Upload Data Master Panel | `PNCUploadMasterPanelCSV` | **tidak** |
-| Upload Data Lokasi Panel | `PNCUploadLokasiPanelCSV` | **tidak** |
-
-Terbaca dari `<pyLocalAction>` pada `Section/BrowsePanelHE-Section.xml`. Pencarian rule
-yang `pyRuleName`-nya persis ketiga nama itu, di seluruh 2.634 berkas: **nol**.
-
-Dua di antaranya — `PNCUploadMasterPanelCSV` dan `PNCUploadLokasiPanelCSV` — **hanya
-muncul di satu berkas di seluruh export**, yaitu section yang memanggilnya.
-
-**Ini gap, bukan kategori yang memang tidak diekspor.** Folder `Flow Action/` berisi
-**29 berkas**, dan salah satunya justru Flow Action unggah CSV yang serupa —
-`PNCUploadDataKlaimSlikOJK-FA.xml`, ruleset GCNMFW yang sama, menunjuk activity
-`PNCUploadAutoClaimSlikOJK` dan `pxUploadCSVResults`. Jadi Flow Action memang ikut
-diekspor; ketiga milik Master Panel yang tidak ikut (`R-16`).
-
-### 28.3 Yang tidak diketahui karenanya
-
-Flow Action-lah yang menyebutkan form mana yang dibuka dan activity mana yang memprosesnya.
-Tanpa ketiganya:
-
-| Tidak diketahui | Akibatnya |
-|---|---|
-| **Susunan kolom CSV** | menebaknya berarti berkas diterima sistem tetapi kolomnya dipetakan ke tempat yang salah — dan itu tidak muncul sebagai galat |
-| Validasi yang berjalan | apakah nama ganda ditolak, apakah sandi `STS_*` diperiksa |
-| Activity yang menulis | jalur yang sama dengan Simpan, atau jalur sendiri |
-| **Apakah baris hasil unggah masuk antrean persetujuan** | unggah massal yang melewati `APPROVAL="0"` adalah jalan pintas yang **memintas seluruh kontrol persetujuan** |
-
-Butir terakhir yang membuat ketiganya tidak layak ditebak lalu dibangun: menebak salah di
-sana berarti membuat pintu masuk data yang tidak diperiksa siapa pun.
-
-### 28.4 Kenapa dihapus, bukan dibiarkan mati
-
-§24.4 menimbang tiga pilihan dan memilih "ditampilkan mati", dengan alasan kemajuan migrasi
-terbaca dari layar. Work Owner memilih yang pertama — **dihilangkan**.
-
-Alasannya sah, dan ia mengoreksi timbangan §24.4 yang terlalu berat ke satu sisi: tombol
-mati yang tidak pernah hidup selama berbulan-bulan **berhenti menjadi penanda kemajuan dan
-berubah menjadi perabot**. Preseden "butir menu tetap tampil bertanda belum tersedia" yang
-dipakai §24.4 sebenarnya tidak setara — butir menu itu menunjuk layar yang **sedang**
-dibangun satu per satu, sementara ketiga tombol ini menunggu artefak dari pihak lain tanpa
-tanggal.
-
-Ketiadaannya tetap terbaca — bukan dari layar, melainkan dari tempat yang memang dibaca
-saat orang mencarinya: `README.md`, komentar pada `PanelPage.tsx`, dan bagian ini.
-
-### 28.5 Yang berubah
-
-| Berkas | Perubahan |
-|---|---|
-| `PanelPage.tsx` | blok tiga tombol dihapus; diganti komentar yang menyebut ketiga local action beserta alasan ketiadaannya |
-| `PanelPage.test.tsx` | uji dibalik menjadi **`tidak menggambar satu pun tombol unggah`** — menjaga ketiganya tidak kembali tanpa keputusan baru |
-| `README.md` | baris "Tombol" pada tabel tata letak; paragraf ketiga tombol ditulis ulang sebagai "tidak dibawa" |
-
-Jumlah uji layar **tetap 18** — satu uji diganti, bukan dibuang.
-
-### 28.6 Cara membukanya kelak
-
-Salah satu dari dua ini cukup:
-
-1. **Tiga Flow Action di atas** beserta section form dan activity pemrosesnya, diminta ke
-   Tim Pega — masuk ke permintaan export ulang berbasis Product rule (`D-39`).
-2. **Contoh berkas CSV** untuk Master Panel dan Lokasi Panel dari Work Owner. Dari situ
-   susunan kolomnya terbaca; yang tetap perlu diputuskan adalah apakah baris hasil unggah
-   masuk **Waiting Approval** atau langsung **Approve**.
-
----
-
-## 29. Koreksi Master Supplier — grid diselaraskan dengan Pega (2026-09-20)
-
-Menyupersede bagian "Susunan kolom" pada §23.
-
-### Keputusan yang dicabut, dan kenapa
-
-Grid sembilan kolom sempat saya gabungkan menjadi tujuh kolom majemuk, dengan alasan yang
-**disalin dari Master Bengkel**: grid empat puluh kolom tidak dapat dibaca pada layar mana
-pun.
-
-Alasan itu tidak berlaku di sini. Grid supplier hanya **sembilan** kolom, dan sembilan
-kolom memang dapat dibaca. Menyalin alasan dari modul tetangga tanpa memeriksa apakah
-premisnya masih berlaku adalah kekeliruannya — bukan penilaian tata letaknya.
-
-Yang tersisa dari penggabungan itu hanyalah biayanya: petugas yang hafal urutan kolom Pega
-harus mencarinya kembali, dan `D-13` menuntut justru sebaliknya.
-
-### Kesembilan kolom, terverifikasi ke export
-
-`pyColumnCount = 9` pada `Section/InboxMasterSupplier-Section.xml`, dengan urutan sel:
-
-| Properti | Caption export | Caption produksi |
-|---|---|---|
-| `.ID` | ID | ID |
-| `.NAMA` | NAMA | **Input Nama** |
-| `.ALAMAT` | ALAMAT | ALAMAT |
-| `.TELEPON` | TELP | TELP |
-| `.JENIS_STATUS_NOTE` | JENIS SUPPLIER | JENIS SUPPLIER |
-| `.STS_REKANAN_NOTE` | STATUS REKANAN | STATUS REKANAN |
-| `.STS_AKTIF` | STATUS AKTIF | STATUS AKTIF |
-| `.POSISI` | POSISI | POSISI |
-| tombol | OPTION | OPTION |
-
-Tangkapan layar **tidak** dipakai sebagai sumber tunggal: ia dapat terpotong di tepi
-kanan, sehingga kolomnya dihitung ulang dari definisi grid lebih dulu. Yang diambil dari
-tangkapan layar hanyalah hal yang tidak ada di export — lihat tiga butir di bawah.
-
-### Urutan baris: TIDAK ada yang dapat ditiru
-
-Grid ini tidak punya `pySortType`, `pySortOrder`, maupun `pyInitialSortColumn`, dan
-`pyDisplayInitialSort = false`. Urutannya mengikuti kueri daftar, yang justru tidak ada di
-export (`R-16`).
-
-`ORDER BY` menurut nama pada `supplier_list` karena itu **dipertahankan**. Ini berbeda dari
-Master Bengkel, yang urutannya (`pySortType = DESC` pada kolom pertama) memang terbaca dan
-karena itu wajib diikuti. Di sini tidak ada yang wajib diikuti, dan urutan yang ditentukan
-lebih baik daripada urutan yang berubah-ubah antar pemanggilan.
-
-### Kolom POSISI digambar meski selalu kosong
-
-Sempat saya hilangkan dengan alasan: menampilkan angka yang tidak diketahui artinya lebih
-buruk daripada tidak menampilkannya.
-
-Alasan itu gugur setelah melihat layar aslinya — **di Pega pun kolom itu kosong**. Yang
-dihilangkan karena itu bukan angka yang membingungkan, melainkan satu kolom yang memang
-ada. Ia dikembalikan, dan selnya menampilkan `—`.
-
-### Kolom bersandi menampilkan LABEL, dengan sandi sebagai cadangan
-
-`JENIS SUPPLIER` dan `STATUS REKANAN` di Pega terikat `.JENIS_STATUS_NOTE` dan
-`.STS_REKANAN_NOTE` — **label**, bukan sandi. Keduanya hanya muncul di harness dan section
-layar ini; tidak ada satu pun kueri di export yang memuatnya (`R-16`).
-
-Tiga jalan, dan yang ketiga dipakai:
-
-| Jalan | Verdict |
-|---|---|
-| Menampilkan sandi mentah | **DITOLAK** — layar berbeda dari Pega, dan sandi tidak berarti apa pun bagi petugas |
-| Mengarang labelnya | **DITOLAK** — pada kolom yang menentukan status kerja sama |
-| Mencari label dari daftar `/sandi`, jatuh ke sandi bila tidak diketahui | **dipakai** |
-
-`labelOf` mengerjakannya. Hari ini `STATUS AKTIF` sudah tampil sebagai "Aktif" seperti
-Pega; kedua kolom lain masih menampilkan sandinya — **terlihat, bukan tersamar**. Begitu
-daftar Field Value-nya diterima, keduanya ikut menampilkan label tanpa satu baris kode pun
-berubah.
-
-### Tiga temuan dari layar produksi yang TIDAK ada di export
-
-**Caption "Input Nama".** Export menuliskannya `NAMA`, dan teks "Input Nama" tidak ada di
-section maupun harness Master Supplier. Layar produksi **sudah berubah sejak export
-diambil** — bukti langsung untuk `R-09`. Yang diikuti adalah layar yang dilihat pengguna
-(`D-13`), dan selisihnya dicatat alih-alih didiamkan.
-
-**Label `JENIS SUPPLIER` berbunyi "ASM".** Ini melemahkan label yang saya berikan pada
-`DefaultCodeOption`, yang menamai `JENIS_STATUS = "1"` sebagai *"Heavy Equipment"* —
-disimpulkan dari `SUPPLIER_HE := "1"` yang memang terbukti.
-
-Bila labelnya di produksi berbunyi "ASM", domain `JENIS_STATUS` kemungkinan **lebih kaya
-daripada dua nilai**, dan `GetDataSupplier_pre` yang memaksanya menjadi `0`/`1` justru
-membuang informasi — yang berarti form kami ikut membuangnya.
-
-**Belum diubah**, karena hubungan `JENIS_STATUS = "1"` → `SUPPLIER_HE = "1"` tetap
-terbukti dan tidak dibantah apa pun. Diangkat sebagai pertanyaan terbuka; mengubah label
-tanpa daftar Field Value hanya akan mengganti satu tebakan dengan tebakan lain.
-
-**ID produksi tujuh digit.** `1005972` **tidak mungkin** dihasilkan
-`id_site || lpad(to_char(supplier_seq.nextval), 11, '0')`, yang selalu menghasilkan
-sebelas digit atau lebih.
-
-Dan ia benar-benar kolom `ID`, bukan `OLDID`: tombol Edit mengirimkan nilai kolom itu ke
-`GetDataSupplier_pre`, yang menyaring `A.ID = {ParamSP.ID}`. Baris yang ada sekarang
-karena itu **tidak lahir dari procedure itu**.
-
-Akibatnya diterima secara sadar: ID yang diterbitkan aplikasi baru akan terlihat berbeda
-dari setiap baris yang sudah ada — persis sifat yang `D-22` justru pilih pada nomor klaim,
-karena asal sebuah baris terbaca dari kuncinya tanpa tabel pemetaan. Yang berubah hanyalah
-bahwa ia sekarang **dinyatakan**, bukan ditemukan.
-
-### Pelajaran yang dicatat, bukan hanya perbaikannya
-
-Kekeliruan ini **tidak ditangkap satu pun uji** — yang menangkapnya adalah Work Owner yang
-melihat layarnya. Sebabnya: seluruh uji layar memeriksa *isi* baris, tidak satu pun
-memeriksa *susunan kolomnya*.
-
-Tiga uji ditambahkan untuk menutupnya, dan yang pertama membandingkan seluruh
-`columnheader` dengan daftar harfiah — penggabungan kolom apa pun gagal di sana lebih
-dulu.
-
-### Utang yang ditambahkan
-
-| Utang | Rencana penyelesaian |
-|---|---|
-| Kolom `JENIS SUPPLIER` dan `STATUS REKANAN` masih menampilkan sandi | menunggu daftar Field Value; `labelOf` sudah siap menerimanya tanpa perubahan kode |
-| Label `JENIS_STATUS = "1"` mungkin bukan "Heavy Equipment" | menunggu jawaban Work Owner atas temuan "ASM" |
-| Kolom `POSISI` selalu kosong | menunggu keputusan tentang antrean `proteksi_klaimmbu` |
-| Nama supplier tampak sebagai tautan di produksi | menunggu konfirmasi ia membuka apa; export tidak memasang aksi apa pun |
-
----
-
-## 30. Paginasi Master Panel — ukuran halaman berbeda ANTARTAB (2026-09-20)
-
-### Permintaan
-
-*"dan tolong buatkan pagination sesuai pega"*
-
-### Yang dibaca dari export sebelum menyalakannya
-
-Ukuran halaman tidak ditebak. Ia dibaca dari `pyPageSize` pada section masing-masing —
-atau `pyPageSizeOther` bila nilainya `"Other"` — beserta `pyPageMode` yang menentukan
-bentuk paginatornya:
-
-| Grid | Section | `pyPageSize` | `pyPageMode` | Hasil |
-|---|---|---|---|---|
-| **Grid utama** | `BrowsePanelHEApprove` | `Other` → **15** | `Numeric` | 15 baris, nomor halaman |
-| **Grid utama** | `BrowsePanelHEReject` | **50** | `Numeric` | 50 baris, nomor halaman |
-| **Grid utama** | `BrowsePanelHEApproval` | **50** | `Numeric` | 50 baris, nomor halaman |
-| Sub-grid Lokasi | ketiganya | 20 | **`None`** | **tidak dipaginasi** |
-
-Cara memastikan mana `pyPageSize` milik grid mana: keduanya berdampingan di dalam satu
-section, dan yang membedakannya adalah `pyPageListProperty` di sekitarnya —
-`TempStsClaim.LOKASI` untuk sub-grid, `pgRepPgSubSection…pxResults` untuk grid utama.
-
-**Angka 15 dikuatkan bukti kedua yang berdiri sendiri:** tangkapan layar Pega yang dikirim
-Work Owner memperlihatkan tepat lima belas baris pada tab Approve — dari `1000106` turun
-sampai `1000092` — beserta paginator `1 2 3 4 5 6 7 8 >`.
-
-### Keputusan: perbedaan antartab DITIRU
-
-Satu layar, satu report definition, tiga tab — dan ukuran halamannya berbeda. Tidak ada
-alasan bisnis apa pun yang membuat daftar yang **disetujui** layak dipotong lebih pendek
-daripada daftar yang **ditolak**. Ia hampir pasti akibat ketiga section dikonfigurasi
-sendiri-sendiri, bukan keputusan siapa pun.
-
-Ia tetap ditiru, dan alasannya adalah pelajaran §24: **penyimpangan tata letak menuntut
-alasan yang lebih kuat daripada "lebih rapi"**. Yang layak menjadi alasan hanyalah hal yang
-tidak dapat dikerjakan — dan menyamakan ketiganya bukan salah satunya.
-
-Penyeragamannya **diangkat sebagai pertanyaan ke Work Owner**, bukan diputuskan sendiri.
-
-### Sub-grid lokasi sengaja TIDAK dipaginasi
-
-`pyPageSize=20` tersimpan pada grid lokasi, tetapi `pyPageMode="None"` mematikan
-paginatornya — seluruh baris digambar sekaligus. Masuk akal untuk daftar yang kelima
-pilihan lokasinya saja; yang menahan pertumbuhannya adalah `masterpanel.MaxLocationRows`
-(50), bukan paginator.
-
-### Yang berubah
-
-| Berkas | Perubahan |
-|---|---|
-| `PanelPage.tsx` | `pageSize` ditambahkan ke setiap butir `TABS` (15 · 50 · 50), diteruskan ke `DataTable` lewat `active.pageSize` |
-| `LocationEditor.tsx` | catatan bahwa daftar lokasi memang tidak dipaginasi, beserta buktinya — supaya tidak ditambahkan kemudian |
-| `components/DataTable.tsx` | daftar ukuran halaman per layar dilengkapi Master Panel; ditambah catatan bahwa ia layar pertama yang berbeda **antartab**, sehingga angkanya milik tab dan bukan milik layar |
-| `PanelPage.test.tsx` | empat uji baru: potongan 15 baris tab Approve, 50 baris tab Reject, perpindahan halaman, dan paginator yang tidak digambar bila hanya satu halaman |
-| `README.md` | baris "Paginasi" pada tabel tata letak beserta catatan perbedaan antartab |
-
-Tidak ada perubahan backend. Paginasi ini **sisi klien**, memotong daftar yang sudah
-dimuat — sama dengan seluruh layar master lain, dan sama dengan Pega yang memaginasi page
-list klipboard. Paginasi keyset sisi server tetap `TKT-U2-001`.
-
-### Kendala yang ditemui
-
-| Kendala | Penyelesaian |
-|---|---|
-| Uji tab Reject gagal dengan `Unable to find role="table"` | Tab awal (Approve) sengaja kosong pada uji itu, dan `DataTable` menggambar pesan kosong alih-alih tabel. `await findByRole('table')` di awal dihapus — bilah tab tidak bergantung pada data, sehingga dapat langsung diklik |
-
-### Hasil pemeriksaan
-
-| Perintah | Hasil |
-|---|---|
-| `npm run typecheck` | **hijau** |
-| `vitest run src/modules/master-panel` | **hijau**, **22 uji** — naik dari 18 |
-| `vitest run` (seluruhnya) | 229 lulus, 3 gagal — ketiganya pre-existing di `master-rekening`, modul yang tidak tersentuh |
-
-### Yang perlu diputuskan Work Owner
-
-Apakah ketiga tab diseragamkan menjadi satu ukuran halaman. Sekarang mengikuti Pega apa
-adanya: 15 di Approve, 50 di dua tab lain. Menyamakannya adalah satu baris perubahan, dan
-akibatnya hanya pada tampilan — tidak menyentuh data maupun kontrak API.
-
----
-
-## 31. Koreksi Master Auto Claim — caption dan urutan tab (2026-09-20)
-
-### 31.1 Yang dikoreksi Work Owner
-
-Tab pertama layar ini bercaption **"Master Auto Klaim"**. Di Pega, tab dengan nama itu tidak
-ada — **"Master Auto Klaim" adalah judul layar**, sebaris dengan tombol Tambah dan Refresh di
-atas keempat tab.
-
-Caption dan urutan tab yang sebenarnya ada di `pyTitle` tiap container pada
-`Section/MasterAutoKlaim-Section.xml` (`pyHeaderType=TABBED`, `pyTabAlignment=Top`,
-`pyStretchTab=false`), dalam urutan dokumen:
-
-| # | `pyTitle` | section | penyaring |
+| Hal | Pega | Di sini | Alasan |
 |---|---|---|---|
-| 1 | **Approve** | `BrowseAutoKlaim` | `stsapprove="1"` |
-| 2 | **Reject** | `BrowseAutoKlaimReject` | `stsapprove="2"` |
-| 3 | **Waiting Approval** | `BrowseAutoKlaimApproval` | `stsapprove="0"` |
-| 4 | **Komite Approval** | `BrowseAutoKlaimKomite` | `stsapprove="0"`, `komite="ya"` |
+| Perbandingan `OPERATOR_ID` | procedure memakai `=` tanpa `UPPER`; pencarian nama memakai `UPPER` | **`UPPER` di semua jalur** | Ketidakkonsistenannya membuat "BUDI" dan "budi" dapat menjadi dua baris untuk orang yang sama |
+| Email kosong | diterima | **ditolak** | Petugas tanpa surel tidak menerima satu pun pemberitahuan penugasan, dan ketiadaannya baru ketahuan jauh dari layar ini |
+| WHERE dirangkai `{ASIS:InputCOL.OPERATOR_ID}` | ya | **parameter binding** | Celah injeksi (utang teknis 4.5) |
+| Penulisan lewat `PEGA_MST_USER_TEKNIS` | ya | **SQL langsung dari Go** | `D-02`; ditambah `ErrMsg` yang pada jalur BERHASIL berisi *"Data Sudah Disimpan dengan ID : ..."* sehingga berhasil dan gagal tidak dapat dibedakan tanpa membaca teks (`D-68`) |
+| Pencarian nama | berjalan diam-diam | **punya tombol, hasilnya terlihat sebelum Simpan** | Di Pega kegagalannya baru muncul sebagai penolakan setelah seluruh form diisi |
 
-Akibat kekeliruan itu: tab **Approve hilang sama sekali**, dan tiga tab lain bergeser. Hanya
-satu dari empat yang kebetulan benar tempatnya.
+Satu hal yang **tidak** diperbaiki: generator `id_site || lpad(MST_USER_TEKNIS_SEQ.nextval,6,'0')`
+yang dihitung procedure lalu tidak pernah dipakai. Ia kode mati, dan tidak dibawa — bukan
+diperbaiki, karena tidak ada yang rusak.
 
-### 31.2 Kenapa penyaringnya benar tetapi captionnya salah
+### 18.10 Keberadaan diperiksa di dalam transaksi, bukan diserahkan ke batasan unik
 
-Keduanya datang dari tempat yang berbeda di berkas yang sama:
+DDL `MST_USER_TEKNIK` tidak ada di export (`R-08`), sehingga **keberadaan batasan unik pada
+`OPERATOR_ID` tidak dapat dipastikan**. Mengandalkannya saja berarti bertaruh: bila ternyata tidak
+ada, dua baris untuk satu petugas tersimpan diam-diam dan penugasan klaim menjadi tidak dapat
+ditebak.
 
-| Yang dibaca | Memberi |
+`Insert` karena itu memeriksa keberadaan **di dalam satu transaksi** dengan penyisipannya. Deteksi
+`ORA-00001` tetap dipasang sebagai jaring pengaman bila batasannya ternyata ada dan dua permintaan
+tiba bersamaan — dicocokkan lewat **kode**, bukan nama constraint yang tidak diketahui.
+
+### 18.11 Yang belum dapat dibuktikan
+
+| Hal | Sebab |
 |---|---|
-| `pyDeferLoadRetrievalActivityParams` | **penyaring** tiap tab — dibaca sejak awal, keempatnya benar |
-| `pyTitle` container | **caption** tiap tab — tidak pernah dibaca |
+| Nama kolom `V_MST_USER_TEKNIS` | definisi view tidak ada di export; dugaannya dari nama properti kelas Pega |
+| Perilaku HCQ saat sandi pengisi salah | hanya terjawab dengan memanggil layanan sungguhan; alamatnya sudah terbaca, tetapi panggilannya belum pernah dijalankan dari lingkungan ini |
+| Keberadaan batasan unik `OPERATOR_ID` | DDL tabel tidak ada (`R-08`) |
+| Isi nyata `MST_USER_TEKNIK` | tidak ada CSV maupun dump di export; contoh di `repo/memory` **dikarang** dan memakai domain `example.invalid` |
 
-Caption disusun dari nama section dan dari judul layar, bukan dari sumbernya. Pelajarannya
-dicatat: satu berkas dapat menjawab dua pertanyaan yang berbeda, dan menjawab yang satu tidak
-berarti yang lain ikut terjawab.
-
-### 31.3 Judul layar memakai ejaan Pega, menu memakai ejaan basis data
-
-| Tempat | Teks | Sumber |
-|---|---|---|
-| `<h1>` layar | Master Auto **Klaim** | `Section/MasterAutoKlaim-Section.xml` |
-| Butir menu di kolom samping | Master Auto **Claim** | `POOLDATA.M_MENU_APLIKASI_PNC.MENU_DESC` |
-
-Kedua ejaan itu memang berbeda di sistem lama. Keduanya direplikasi dari sumbernya
-masing-masing; menyeragamkannya berarti memilih salah satu tanpa dasar, dan `D-80` menetapkan
-teks yang dilihat pengguna mengikuti layar Pega apa adanya.
-
-### 31.4 Dua caption yang bertabrakan dengan nama tombol
-
-"Approve" kini caption tab **dan** caption tombol pada form tab Komite; begitu pula "Reject".
-Keduanya memang bernama sama di Pega, dan bagi pengguna tidak membingungkan karena letaknya
-berbeda.
-
-Bagi uji ia jebakan — dan jebakan yang **sudah pernah menjatuhkan tiga uji Master Rekening**.
-Penutupnya: seluruh penekanan tab lewat `clickTab`, yang membatasi pencarian pada `<nav>` bilah
-tab. Tidak ada pencarian tab yang global lagi.
-
-### 31.5 Bentuk visual tab TIDAK diubah — dibawa ke Work Owner
-
-Tabnya tetap bergaya garis bawah, bukan tab berbingkai gaya Pega klasik.
-
-Dua instruksi bertabrakan di sini:
-
-| Instruksi | Menuntut |
-|---|---|
-| "UI mengikuti Pega" | tab berbingkai |
-| "Konsisten dengan modul sebelumnya" | garis bawah, seperti seluruh layar master lain |
-
-Seluruh layar master yang sudah ada — Master Rekening, Penolakan Klaim, Supplier, Panel,
-Bengkel — memakai gaya yang sama. Mengubah satu modul membuat aplikasinya tidak seragam;
-mengubah semuanya menyentuh modul di bawah Isolasi Protektif.
-
-**Belum diputuskan**, dan sengaja tidak diputuskan sendiri.
-
-### 31.6 Uji yang menjaga koreksi ini
-
-`menampilkan keempat tab Pega pada urutan yang sama` membandingkan caption **sebagai senarai**
-— caption yang benar tetapi berpindah tempat pun gagal — lalu menegaskan "Master Auto Klaim"
-ada sebagai `heading` tetapi **tidak** sebagai tab.
-
-Seluruhnya **19 uji**, naik dari 18; backend tidak tersentuh.
+Keempatnya dilaporkan `claimpnc -periksa` atau dinyatakan di komentar berkasnya, bukan disimpan
+sebagai pengetahuan yang hanya ada di kepala.
 
 ---
 
-## 32. Modul Master Sparepart (2026-09-20, sesi keenam belas)
+## 19. Penyelarasan lingkup portal: Master Status Klaim & Master Rekening (2026-09-19)
 
-Master ketiga dari keluarga alat berat, setelah Master Bengkel (§21) dan Master Panel (§22).
-Ketiganya berbagi satu activity persetujuan yang sama di Pega — `SetApprovalAllMaster` —
-dibedakan hanya oleh nilai yang ditulis ke `InputBengkel.ALASAN_STS_BGKL`, yang untuk modul
-ini bernilai `"M_SPAREPART_HE"`.
+**Keputusan Work Owner 2026-09-19**, sekaligus **mencabut Isolasi Protektif** untuk kedua modul
+itu — keduanya termasuk "Master Data yang sudah selesai" yang instruksi tetap larang disentuh.
 
-### 32.1 Empat pertanyaan yang diajukan, dan jawabannya
+### 19.1 Apa yang salah sebelumnya
 
-| # | Pertanyaan | Jawaban Work Owner |
+Empat modul master dibangun berurutan, dan dua yang pertama memakai lingkup yang keliru:
+
+| Modul | Sebelum | Sesudah |
 |---|---|---|
-| 1 | Grid Pega hanya 5 kolom dari 23 — susunan mana yang dipakai? | **Ikuti Pega, buang sel kosong** |
-| 2 | Dropdown Kategori/Tipe: rule Pega tidak sepakat soal penyaring APPROVAL | **seperti aplikasi PEGA** |
-| 3 | Daftar pilihan SATUAN tidak ada di export | **seperti aplikasi PEGA** |
-| 4 | Dua tombol unggah: hapus (preseden §28) atau gambar mati? | **seperti aplikasi PEGA** |
+| Master Status Klaim | portal **utama** saja | **per portal** |
+| Master Rekening | portal **utama** saja | **per portal** |
+| Master Status Progres 1 | per portal | tidak berubah |
+| Master Tipe Surveyors | per portal | tidak berubah |
+| Master PIC Teknik | per portal | tidak berubah |
 
-Ketiga jawaban "seperti aplikasi PEGA" menuntut penelusuran tambahan sebelum dapat
-dikerjakan — jawaban itu menunjuk perilaku Pega, dan perilaku itu belum tentu yang tertulis
-di rule yang pertama kali ditemukan. Hasilnya:
+Dasarnya `D-75` butir 4 — **master data per portal** — dan `ADR-0030` Opsi 1, yang menempatkan
+pemisahan antarentitas di tingkat **koneksi**. Kedua modul pertama menyimpang darinya, dan
+penyimpangan itu tidak pernah diputuskan; ia hanya belum ditinjau ketika modul bisnis pertama
+dibangun.
 
-**Pertanyaan 2 tertutup oleh bukti.** Export memuat TIGA rule yang membaca kedua tabel acuan
-dengan penyaring berbeda. Yang benar-benar dipakai layar Master Sparepart adalah
-`Activity/BrowseTipeKategoriPart-Act.xml` — dirujuk ketiga section tabnya — yang menjalankan:
+**Akibat nyatanya bukan soal kerapian.** `POOLDATA.LST_ACCOUNT` dan `POOLDATA.M_STS_CLAIM` ada di
+basis data setiap entitas. Melayani keduanya dari portal utama berarti:
 
-    TempStatus.City := "1"
-    BrowseMasterSparepartCategoryClaimHE  ->  where APPROVAL = {TempStatus.City}
-    BrowseTipeSparepart                   ->  where APPROVAL = '1'
+- Rekening pembayaran klaim SELURUH badan hukum terbaca dan tertulis di satu basis data —
+  lengkap dengan nomor rekening, NIK, dan surel pihak ketiga.
+- Status klaim satu entitas dipakai layar entitas lain.
 
-**Keduanya menyaring "sudah disetujui".** Kedua rule yang memakai penyaring "menunggu"
-dipanggil dari layar Master Kategori dan Master Tipe (MENU_ID 33 dan 34), bukan dari sini.
+Keduanya kegagalan yang **tidak terlihat sebagai galat**: layar tampil normal, angkanya masuk akal,
+dan yang salah hanya milik siapa data itu. Persis `R-20`.
 
-**Pertanyaan 3 menuntut kompromi yang dinyatakan.** Pega merender SATUAN sebagai `pxDropdown`,
-JENIS_SPART sebagai `pxRadioButtons`, dan STATUS_SPART sebagai `pxDropdown` — tetapi daftar
-pilihan ketiganya ada di rule Field Value yang **tidak ikut di export** (`R-16`). "Seperti
-Pega" karena itu dapat dipenuhi pada BENTUKNYA, tidak pada ISINYA. Yang dikerjakan:
+### 19.2 Bentuk yang dipakai, dan kenapa keduanya berbeda
 
-- bentuknya dropdown dan radio, persis seperti Pega;
-- pilihannya diambil dari **nilai yang sudah dipakai baris lain** pada entitas itu;
-- selalu ada pilihan **"Lainnya…"** yang membuka isian ketik.
+Dua modul, dua bentuk — dan perbedaannya bukan selera.
 
-Butir terakhir bukan hiasan: tanpa ia, basis data yang masih kosong menghasilkan dropdown
-tanpa satu pun pilihan, dan baris lama yang nilainya belum pernah dipakai baris lain tidak
-dapat disimpan ulang. Komponennya `ChoiceField.tsx`, sengaja tinggal di dalam modul dan
-bukan di `shared/components/` — ia jawaban atas daftar pilihan yang hilang, bukan pola
-antarmuka yang layak dipakai ulang.
+**Master Status Klaim → `RepoSelector`**, sama dengan Master Status Progres dan Master Tipe
+Surveyors. Layanannya hanya memegang penyimpanan, sehingga alias portal cukup menjadi parameter
+tiap method: `List(ctx, portalAlias)`, `Create(ctx, portalAlias, label)`, dan seterusnya.
 
-**Pertanyaan 4 menyimpang dari §28 dengan sengaja.** Pada Master Panel, Work Owner memilih
-menghapus tiga tombol unggahnya. Di sini ia memilih "seperti aplikasi PEGA", sehingga kedua
-tombolnya **digambar dalam keadaan mati** beserta keterangan kenapa. Perbedaan perlakuan
-antara dua layar yang berdekatan itu disengaja, bukan kelalaian.
+**Master Rekening → `ServiceSelector`**, satu LAYANAN per portal. Bentuknya berbeda karena
+layanannya memegang lebih dari penyimpanan: seam Kasir, seam Notifier, jam, dan — yang menentukan —
+`portalAlias` yang dipakai `portalsRegisteredWithCashier` untuk memutuskan **apakah rekening yang
+disetujui didaftarkan ke Kasir** (`usecase/decide.go:131`).
 
-### 32.2 Empat hal yang membedakannya dari Master Panel
+Menjadikan alias sebagai parameter method di sana berarti setiap method harus merakit ulang
+keputusan itu. Satu layanan per portal membuat `portalAlias` tetap menjadi **sifat layanan**, bukan
+parameter yang dapat tertukar.
 
-| | Master Panel | Master Sparepart |
+### 19.3 Satu cacat yang ikut terperbaiki tanpa diminta
+
+Sebelum penyelarasan, `PortalAlias` yang dipakai Master Rekening **selalu portal utama**
+(`cfg.PrimaryPortal`), apa pun entitas yang sedang dilihat pengguna.
+
+Artinya keputusan "daftarkan rekening ini ke Kasir atau tidak" dijawab dengan **entitas yang salah**
+bagi setiap pengguna yang sedang melihat entitas selain portal utama — mendaftarkan yang seharusnya
+tidak, atau melewatkan yang seharusnya didaftarkan. Sekarang ia dijawab dengan entitas yang
+benar-benar dipilih.
+
+Cacat ini tidak pernah dilaporkan siapa pun, dan tidak akan muncul sebagai galat. Ia ditemukan
+karena `portalAlias` harus dibaca ulang untuk memindahkan modulnya.
+
+### 19.4 Yang TIDAK berubah, dan itu disengaja
+
+| Hal | Keterangan |
+|---|---|
+| Seam Kasir, Notifier, dan jam | **dipakai bersama** seluruh entitas — ketiganya konfigurasi tingkat aplikasi, bukan data entitas |
+| Aturan bisnis kedua modul | tidak satu baris pun disentuh; yang berpindah hanya **dari basis data mana** ia bekerja |
+| Bentuk kontrak API | jalur dan badan permintaan tetap sama. Yang bertambah: header `X-Portal` wajib, dan respons menyebut `portal` yang menjawab |
+| Keunikan nomor rekening | tetap **per entitas**, bukan lintas entitas — nomor yang sama di dua badan hukum bukan duplikat, dan itu diuji |
+
+### 19.5 Akibat yang harus disadari sebelum dipakai
+
+1. **Layar kedua modul sekarang MENOLAK dilayani tanpa portal.** Pengguna yang belum memilih
+   entitas melihat penjelasan, bukan daftar. Di layar itu praktis tidak terasa: pemilih portal di
+   bilah atas memilih portal utama dari server secara otomatis.
+2. **Isi yang tampil dapat berubah bagi pengguna yang memilih entitas selain ASM.** Itu memang
+   maksudnya — tetapi bagi pengguna yang terbiasa selalu melihat data ASM, perubahannya nyata.
+3. **Tidak dapat diverifikasi untuk lima entitas.** Kredensial ASI, SMAS, SMI, SPK, dan SPKS belum
+   terisi di lingkungan pengembangan, sehingga yang terbukti hanya perilaku terhadap ASM dan
+   terhadap adapter memori. Ini **penghalang yang sama** dengan migrasi `0003`.
+4. **Layanan per portal dibuat saat pertama diminta lalu dipakai kembali.** Ia tidak pernah
+   dilepaskan selama proses hidup; dengan enam entitas, itu enam layanan — bukan beban yang layak
+   dioptimalkan.
+
+### 19.6 Yang diuji, dan yang sengaja diuji lebih keras
+
+Uji HTTP baru ditulis untuk **kedua** modul, dan yang diuji bukan "handler-nya bekerja" melainkan
+**penjagaannya menolak**:
+
+| Perkara | Master Status Klaim | Master Rekening |
 |---|---|---|
-| Pencatat pelaku | tidak ada kolomnya | **`USER_UPDATE` ada** — diisi login pemanggil |
-| Alasan tolak | `ALASAN_TOLAK` ada | **tidak ada kolomnya sama sekali** |
-| Tabel acuan | tidak ada | **dua**, keduanya dibaca dari basis data entitas |
-| Lebar nomor urut ID | enam digit | **sepuluh digit** |
+| Tanpa header portal → `400` pada setiap rute | ✅ 4 rute | ✅ 6 rute |
+| Portal tidak dikenal → `400`, belum siap → `503` | ✅ | ✅ |
+| Tiap entitas menjawab dengan isinya sendiri | ✅ | ✅ |
+| Menulis di satu entitas tidak menyentuh entitas lain | ✅ | ✅ |
+| Nomor/kunci yang sama di dua entitas bukan duplikat | — | ✅ |
 
-Akibat yang paling terlihat: layar ini **tidak menggambar isian Catatan** pada bilah
-keputusan. Layar persetujuan Pega memang punya `pyNote`, tetapi di modul ini ia tidak menuju
-ke mana pun — `SetValueSparepartHE` justru mengosongkannya dan `UpdateSparepartHE_act`
-memakainya sebagai penampung sementara hasil penyimpanan. Menggambar isian yang diam-diam
-membuang isinya lebih buruk daripada tidak menggambarnya.
+Master Rekening **belum punya uji HTTP sama sekali** sebelum ini. Menambahkannya bersamaan dengan
+perubahan rutenya disengaja: perubahan yang menyentuh pemisahan antarbadan hukum tidak layak
+diserahkan tanpa uji yang membuktikan pemisahannya.
 
-Akibat kedua: `/pilihan` di modul ini **dipasangi pemeriksaan portal**, berbeda dari Master
-Panel yang tidak. Di sana daftarnya konstanta yang ditanam di activity Pega; di sini ia
-dibaca dari `GCNM_M_SPAREPART_CATEGORY` dan `GCNM_M_SPAREPART_TYPE` milik entitas — dan
-menyajikan daftar satu entitas kepada entitas lain adalah kebocoran yang `R-20` cegah.
+### 19.7 Satu uji yang sempat lulus karena alasan yang salah
 
-### 32.3 Dua cacat warisan yang TIDAK dibawa
+`TestOversizedRequestBodyRejected` pada Master Status Klaim memeriksa badan permintaan raksasa
+ditolak `400`. Setelah middleware portal dipasang, ia **tetap lulus** — tetapi `400`-nya datang dari
+pemeriksaan portal, bukan dari penolakan badan permintaan.
 
-**Sel `.TELP_BENGKEL` di dalam grid Sparepart.** Satu sel salin-tempel dari grid Master
-Bengkel, menunjuk properti yang tidak ada di `SPAREPART_HE`, jadi selalu kosong. Menggambar
-kolom yang selalu kosong bukan kesetaraan melainkan peniruan cacat.
-
-**`ErrMsg` yang memikul dua arti.** `Database/PEGA_M_SPAREPART_HE.prc:23` menuliskan pesan
-keberhasilan beserta ID yang diterbitkan ke parameter bernama `ErrMsg` — pada jalur SUKSES.
-Satu kolom keluaran memikul pesan berhasil dan pesan galat sekaligus, persis pola yang `D-68`
-tolak pada `ADD_NEWMASTERVIRTUALACCOUNT`. Kontrak galat berbasis string itu tidak dibawa.
-
-Ditambah alias menyesatkan yang tidak dibawa: ketiga rule validasi sparepart membandingkan
-nilainya terhadap halaman `TempInputPanelHE` — halaman milik Master **Panel** — dengan
-properti `.CaseID` untuk nama, `.City` untuk nomor, dan `.Country` untuk kode. Kedua tabel
-acuan pun mengaliaskan `PART_CATEGORY_ID` menjadi `"CityID"` dan `PART_CATEGORY_NAME`
-menjadi `"City"`. Seluruhnya bentuk utang yang `03-CURRENT-ARCHITECTURE.md` §4.2 catat.
-
-### 32.4 Satu perilaku ganjil yang SENGAJA direplikasi
-
-`TGL_UPDATE_HARGA` distempel pada **setiap** penyimpanan yang harganya terisi, bukan hanya
-saat harganya berubah. Itu meniru `Activity/UpdateSparepartHE_act` apa adanya: preconditionnya
-memeriksa `PropertyHasValue(TempSparepart.HARGA_JUAL)` — yang diperiksa hanyalah harganya
-TERISI, bukan harganya BERUBAH.
-
-Akibatnya kolom bernama "tanggal update harga" ikut bergerak ketika yang berubah hanya nama
-sparepartnya. Itu ganjil, dan ia **tidak diperbaiki**: memperbaikinya berarti menambah butir
-ke daftar perbaikan eksplisit `P-5`, dan daftar itu milik `D-49` — keputusan Work Owner, bukan
-tafsiran modul.
-
-### 32.5 Tiga selisih yang DIRENCANAKAN terhadap sistem lama
-
-Ketiganya menolak isian yang di sistem lama diterima. Baris lama yang sudah memuat nilai
-seperti itu tetap **dibaca apa adanya**; penolakan hanya terjadi saat barisnya disimpan ulang.
-
-1. **Kedelapan isian angka wajib berupa angka.** Sistem lama menerima apa pun, dan
-   `HARGA_JUAL` bertuliskan "seribu" tersimpan apa adanya lalu muncul di laporan.
-2. **Harga jual tidak boleh negatif, dan dibatasi Rp 100 miliar.** Penjaring salah ketik, bukan
-   aturan bisnis: satu nol berlebih mengubah Rp 1,25 juta menjadi Rp 12,5 juta.
-3. **Stok minimal tidak boleh melampaui stok maksimal.** Pasangan yang terbalik membuat setiap
-   pemeriksaan stok di modul hilir selalu benar atau selalu salah.
-
-Ditambah satu yang lebih halus: ketiga rule validasi Pega hanya meng-`UPPER` tanpa memangkas,
-sehingga baris yang tersimpan dengan spasi di ujung lolos sebagai nilai yang berbeda. Kueri
-di sini memakai `UPPER(TRIM(...))`.
-
-### 32.6 Asumsi yang disadari, beserta cara memeriksanya
-
-| Asumsi | Dasarnya | Cara memeriksanya |
-|---|---|---|
-| `PROD_DATE` bertipe TEKS | Pega merendernya `pxTextInput` TANPA `pyDateTimeFormat` | `claimpnc -periksa` membaca kolomnya |
-| `TGL_UPDATE_HARGA` bertipe WAKTU | Pega mengisinya dengan waktu sistem | idem |
-| `SPAREPART_HE` dan `M_SPAREPART_HE_BU` satu sumber | keduanya dibaca/ditulis berpasangan | perbandingan jumlah baris di `-periksa` |
-| Batas panjang enam isian | tidak ada satu pun `pyMaxLength` di layar lama (`R-08`) | belum dapat diperiksa; menunggu DDL |
-
-Akhiran `_BU` pada nama tabel JSON Pega **tidak disebut artinya di mana pun** dalam export.
-Bila `-periksa` melaporkan jumlah baris keduanya berbeda, jalur tulis tidak boleh diaktifkan
-di produksi sebelum DBA memastikan mana yang menjadi sumbernya.
-
-### 32.7 Catatan lingkup
-
-`D-34` menyatakan area Bengkel, Sparepart, dan Supplier dikeluarkan dari lingkup migrasi.
-Keputusan itu sudah dilangkahi dalam praktik: Master Bengkel (§21), Master Panel (§22), dan
-Master Supplier (§23) dari daftar pengecualian yang sama sudah dibangun dan diterima. Modul
-ini mengikuti preseden itu.
-
-Pencabutan `D-34` karena itu **tersirat, bukan tertulis**. Bila kelak ada yang membaca
-Decision Log tanpa membaca dokumen ini, ia akan menemukan larangan yang sudah tidak berlaku.
-Keputusan baru yang menyebut `D-34` sebagai disupersede layak ditulis — dan itu milik Work
-Owner, bukan tafsiran modul.
+Diperbaiki dengan mengirim header portal DAN memeriksa **kode galatnya**, bukan hanya statusnya.
+Dua sebab yang menghasilkan status sama harus dapat dibedakan uji, atau uji itu berhenti menguji
+apa yang namanya janjikan.
 
 ---
 
-## 33. Modul Pelaporan Klaim (2026-09-18)
+## 20. Modul Master Surveyors (2026-09-20, sesi kesebelas)
 
-> Sesi ini berjalan di cabang `feat/Michelle-flowpelaporan-backup`, **bersamaan** dengan
-> §14–§16 yang berjalan di `master`. Ia ditulis sebagai §12 di cabangnya sendiri; nomor §33
-> diberikan saat digabungkan, supaya rujukan §14–§16 yang sudah ada tidak bergeser.
+Modul `MENU_ID 15` (`DetailSurveyorsInbox`) atas tabel `POOLDATA.D_SURVEYORS` — daftar ORANG
+yang melakukan survei, anak dari Master Tipe Surveyors yang berisi golongannya.
 
-Modul **proses klaim** yang pertama. Karena itu setiap keputusan di bawah bukan hanya tentang satu
-layar: ia menjadi pola untuk tiga belas modul bisnis berikutnya, yang seluruhnya berurusan dengan
-klaim dan bukan dengan master.
+### 20.1 Keputusan Work Owner
 
-### 33.1 Keputusan Work Owner pada sesi ini
-
-| # | Pertanyaan | Jawaban |
-|---|---|---|
-| 1 | Tiket `B-14` bertentangan dengan export — mana yang diikuti? | **Ikuti export.** Tiket dicatat sebagai usulan revisi, tidak disunting diam-diam |
-| 2 | Header laporan ada di tabel engine Pega yang dibaca 116 rule | **Tabel baru milik aplikasi.** *"tabel ini sudah tidak mau dipakai dan akan dibuatkan tabel baru"* |
-| 3 | Lingkup sesi ini | **Form dan daftar bertahap.** Tanpa lampiran, utas komunikasi, dan penugasan |
-| 4 | Bahasa penamaan | *"Tugas sekarang hanya untuk proses modul ini saja"* — lihat §33.9 |
-
-### 33.2 Nama modul: kenapa "Pelaporan Klaim" dan bukan "Receive Document"
-
-`D-81` menetapkan nama modul diambil dari nama yang disebut Work Owner. Yang membuat keputusan ini
-mudah adalah bahwa sistem lama pun memakai nama itu di permukaan yang dilihat orang — hanya nama
-kelas internalnya yang berbeda:
-
-| Bukti | Isi |
-|---|---|
-| `Navigation/pyCaseWorkerNavigation-Navigation.xml:19864` | menu **"Inbox Laporan Klaim"** |
-| `Activity/CreateNewCaseRCV-Act.xml` step 7 | `Param.Posisi = "LAPORAN KLAIM"` |
-| `Section/ViewStatusReceiveDocument-Section.xml` | komentar developer menyebut *"inbox pelaporan klaim"* |
-
-`Work-ReceiveDocument` adalah nama internal, dan `D-19` menetapkan alias internal tidak dibawa.
-
-### 33.3 Tahap DIHITUNG, tidak disimpan
-
-Sistem lama tidak menyimpan status laporan sebagai kolom. Ia menurunkannya dari kombinasi dua
-penanda, terbaca dari `RDB List/BrowseClaimRCV_Aksep-SQL.xml`:
-
-```
-PNCCASEID null   + STATUSLOCK null     -> belum ditransfer ke ASM
-PNCCASEID null   + STATUSLOCK terisi   -> sudah ditransfer, belum diregistrasi
-PNCCASEID terisi + STATUSLOCK terisi   -> sudah diregistrasi menjadi klaim
-```
-
-Pola itu **dipertahankan**. Menyimpan tahap sebagai kolom tersendiri akan membuat dua sumber
-kebenaran yang dapat berselisih — dan selisihnya tidak menimbulkan galat, hanya laporan yang
-tertahan di tab yang salah.
-
-Konsekuensinya mengikat di dua tempat sekaligus: ekspresi `CASE` di SQL dan metode `Tahap()` di Go
-harus sama persis. Keduanya dipagari uji `TestEkspresiTahapSeragamDiSeluruhKueri`.
-
-**Dua tahap yang belum dapat terjadi.** `SUDAH_AKSEPTASI` dan `DITOLAK` ditentukan modul klaim
-(`B-5`, `B-10`) yang belum ada; sistem lama menghitungnya dengan menengok `t_claim_adjustment` dan
-`t_claim_pnc`. Modul ini tidak menengok ke sana — ia menyediakan satu field `HasilKlaim` yang
-diisi modul klaim saat hasilnya diketahui. Hari ini field itu selalu kosong, dan kedua tab itu
-selalu nol. Tabnya **tetap ditampilkan**: tab yang menghilang saat kosong membuat pengguna mengira
-tabnya tidak ada.
-
-### 33.4 Kenapa tabel baru, dan apa yang ditinggalkan bersama tabel lama
-
-Data laporan di sistem lama hidup di dua tempat, dan keduanya tidak dapat dipakai:
-
-| Tempat | Kenapa tidak |
-|---|---|
-| `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` | Tabel milik **engine Pega**, dibaca 116 rule, dan tetap ditulis Pega untuk seluruh case type lain yang belum bermigrasi. `P-1` melarang dua sistem menulis satu tabel |
-| `POOLDATA.T_CLAIM_RECIVEDCLAIM` | Penulis tunggalnya memang terbukti — hanya `PROCINSERTDATARECIVEDKLAIM` yang menyentuhnya. Tetapi ia **hanya memuat sebagian**: penanda transfer, estimasi, tipe klaim, dan jumlah dokumen tidak punya kolom di sana; keempatnya hanya hidup di blob case Pega |
-
-**Satu hal yang harus dijawab sebelum modul ini menyala di produksi.** Penelusuran seluruh export
-tidak menemukan satu pun rule yang **membaca** `T_CLAIM_RECIVEDCLAIM`. Sejauh yang terlihat, tabel
-itu write-only. Bila ada pembaca di luar export — laporan BI, perkakas cabang, kueri berkala — ia
-akan berhenti menerima baris baru begitu modul ini menyala, dan berhentinya **tidak menimbulkan
-galat apa pun**. Kuerinya untuk DBA ada di kepala migrasi `0003`.
-
-### 33.5 Alias Pega tidak dibawa masuk
-
-Pemetaan properti klipboard ke kolom di sistem lama menyesatkan secara aktif. Enam yang terburuk,
-dari `RDB List/Rcv_ProcInsertRecivedDocument-SQL.xml:102-124`:
-
-| Properti | Kolom sebenarnya | Kenapa berbahaya |
-|---|---|---|
-| `TelpTertanggung` | `USERINPUT` | petugas penginput, bukan telepon tertanggung |
-| `TanggalSelesaiRawatInap` | `REGISTDATE` | tanggal registrasi, bukan tanggal pulang rawat |
-| `NamaSurveyor` | `NAMAKURIRASM` | nama kurir, bukan surveyor |
-| `UserTeknis` | `NAMATERTANGGUNG` | nama tertanggung, bukan petugas teknis |
-| `LokasiSurveyor` | `LOKASIKEJADIAN` | lokasi kejadian |
-| `ReferenceId` | `TANGGALTERIMADOKUMEN` | sebuah **tanggal**, bukan nomor referensi |
-
-`StatusLock` juga bukan seperti namanya: ia bukan kunci baris melainkan penanda bahwa laporan sudah
-dikirim ke ASM pusat.
-
-Pemetaan tiga arah lengkapnya ditulis di kepala `repo/sqlstore/laporan.sql` — satu-satunya tempat
-ketiganya dapat dibandingkan berdampingan. Ini melaksanakan `03-CURRENT-ARCHITECTURE` §4.2.
-
-### 33.6 Perilaku yang sengaja TIDAK ditiru, beserta alasannya
-
-| Perilaku lama | Kenapa tidak dibawa |
-|---|---|
-| Kunci layar `StatusLock` **dapat dilewati** operator berjabatan "PA" atau bercabang kantor pusat (`Pre_ActReceiveDocument` step 3-4) | Pagar kewenangan yang ditulis di dalam kode — persis yang `D-15` larang. Di sini yang mengunci adalah REGISTRASI, tanpa pengecualian |
-| `UpdateRCVCase` **menimpa** nomor polis, tertanggung, tanggal kejadian, dan kronologi pada laporan dengan nilai dari klaim | Itu menghapus apa yang benar-benar dilaporkan pelapor — dan dengan begitu menghapus satu-satunya cara mengetahui bahwa pelapor semula menyebut polis yang keliru |
-| `TANGGALTERIMADOKUMEN` bertipe **VARCHAR2** | Tanggal sebagai teks membuat pengurutan menjadi pengurutan teks dan penyaringan rentang tidak dapat memakai indeks — cacat yang `09-DATABASE-STRATEGY` §3.2 perintahkan dihapus |
-| `ROWNUM` pada ketiga kueri inbox | `OFFSET … FETCH NEXT`, sesuai §3.3 |
-| Tiga penyisipan `{ASIS:tempQuery.*}` per kueri inbox | Penyaring sebagai parameter. Ketiga rule inbox menjadi satu kueri |
-| Prefix `'ASM-FW-GCNMFW-WORK '` pada nomor klaim | `D-22` dan `D-71`: kunci teknis Pega tidak lagi bocor ke data bisnis |
-| `ErrMsg` berbasis string dan `COMMIT` di dalam rule | `D-68`: kepemilikan transaksi pindah ke Go |
-
-### 33.7 Perpindahan tahap menjadi aksi tersendiri
-
-Di sistem lama, pengisian `StatusLock` dan `DateOfSendASM` terjadi sebagai **efek samping
-penyimpanan layar** — tanpa langkah tersendiri, dan tanpa apa pun yang mencegah laporan ditransfer
-dua kali.
-
-Di sini keduanya menjadi sub-sumber daya: `POST /{nomor}/transfer` dan `POST /{nomor}/klaim`.
-`10-API-STRATEGY` §2 menetapkannya, dan alasannya nyata di sini — kedua aksi punya invarian
-sendiri, dan pembaruan field generik akan melewatkan keduanya sekaligus.
-
-**Transfer kedua ditolak, bukan dibiarkan lolos.** Menimpa tanggal transfer berarti menghapus kapan
-laporan itu benar-benar dikirim. Begitu pula penautan klaim kedua: satu laporan melahirkan satu
-klaim, dan menautkannya ke klaim kedua membuat dua klaim mengaku berasal dari laporan yang sama.
-
-### 33.8 Penyimpangan yang disadari
-
-#### 17.8.1 Nilai uang disimpan sebagai teks, bukan `NUMBER(18,2)`
-
-`09-DATABASE-STRATEGY` §5 menetapkan nilai uang bertipe `NUMBER(18,2)`. Kolom `NILAI_ESTIMASI`
-dibuat `VARCHAR2(30)`.
-
-**Alasannya bukan kemudahan.** Aplikasi membawa nilai ini sebagai teks desimal, karena pustaka
-standar Go tidak punya tipe desimal dan `float64` akan membulatkan diam-diam — hal yang `I-12`
-larang. Menuliskan teks itu ke kolom `NUMBER` menyerahkan konversinya kepada
-`NLS_NUMERIC_CHARACTERS`: pada sesi yang pemisah desimalnya koma, `1234.56` akan **ditolak**.
-
-Kegagalan itu bergantung lingkungan, dan **di mesin tempat berkas ini ditulis tidak ada basis data
-untuk membuktikannya**. Memilih tipe yang kegagalannya tidak dapat saya deteksi adalah pilihan yang
-salah. Bentuknya dipagari `CHECK` regex di basis data dan diperiksa lagi di domain.
-
-**Batas yang harus disadari:** kolomnya tidak dapat dijumlahkan atau dibandingkan sebagai angka di
-SQL. Itu dapat diterima karena nilai ini tidak dipakai perhitungan apa pun — ambang komite dan
-Notice of Large Losses dihitung dari nilai pada **klaim** (`B-5`), bukan dari perkiraan pelapor.
-
-**Pertanyaan terbuka:** apakah pustaka desimal boleh ditambahkan sebagai dependensi? Bila ya,
-kolom ini menjadi `NUMBER(18,2)` lewat migrasi tersendiri, dan yang berubah hanya adapter.
-
-#### 17.8.2 Bentuk nomor laporan adalah keputusan baru
-
-Nomor laporan lama ditentukan `pyWorkIDPrefix` pada rule kelas Pega, yang **tidak ada di export**;
-pencarian seluruh export tidak menemukan satu pun contoh nilainya. Bentuk lamanya karena itu tidak
-diketahui dan tidak dapat ditiru.
-
-Yang dipakai mengikuti satu-satunya keputusan penomoran yang pernah diambil proyek ini, `D-71`:
-`LPK.YY.xxxx` bersebelahan dengan `PNCN.YY.xxxx`.
-
-Satu cacat `D-71` **tidak diwarisi**: sintaks nomor klaim memakai `TO_CHAR` tanpa format mask,
-sehingga lebar segmen terakhir berubah-ubah dan pengurutan sebagai teks tidak sesuai urutan
-penerbitan (`.10` mendahului `.9`). Tabel ini baru dan nomornya belum pernah terbit, jadi lebarnya
-dibuat tetap. Dikunci uji `TestPengurutanTeksSesuaiUrutanPenerbitan`.
-
-**Menunggu konfirmasi Work Owner.** Bila bentuk lain yang dikehendaki, yang berubah hanya satu
-konstanta.
-
-#### 17.8.3 Satu prop baru pada komponen tabel baku
-
-Lihat `catatan-pengembangan.md` §11.9. Ringkasnya: `TabelData` menyaring di peramban dan dokumennya
-sendiri melarang layar seperti ini memakainya. Membuat tabel kedua akan membatalkan aturan "semua
-tabel lewat `TabelData`" pada modul bisnis pertama yang memakainya; memakainya apa adanya
-menghasilkan pencarian yang **bohong**. Yang dipilih: satu prop opsional, bersifat menambah.
-
-### 33.9 Bahasa penamaan: asumsi yang salah, lalu dikoreksi Work Owner
-
-`CLAUDE.md` memuat `D-80` (18 September) yang mewajibkan seluruh nama di dalam kode berbahasa
-Inggris. Seluruh kode di working copy ini — `auth`, `portal`, `masterrekening`, `masterstatus` —
-berbahasa Indonesia. Keduanya tidak dapat dipenuhi bersamaan.
-
-Jawaban Work Owner, *"Tugas sekarang hanya untuk proses modul ini saja"*, menolak opsi mengganti
-seluruh modul tetapi tidak menyebut bahasa mana untuk modul baru.
-
-**Asumsi yang saya ambil saat itu: bahasa Indonesia**, mengikuti kelima modul yang ada, dengan
-alasan instruksi sesi ini menuntut *konsistensi implementasi* secara eksplisit.
-
-**Asumsi itu SALAH.** Work Owner memeriksa hasilnya dan menyatakan: *"saya cek masih menggunakan
-bahasa indonesia, mohon diubah jadi inggris"*. Yang berlaku adalah `D-80`, bukan konsistensi dengan
-kode yang ditulis sebelum `D-80` ada.
-
-**Yang kemudian dikerjakan:** seluruh penamaan di dalam modul ini diganti ke bahasa Inggris —
-folder, berkas, paket, tipe, fungsi, method, field, parameter, dan variabel lokal, di backend
-maupun frontend.
-
-**Lima hal TETAP berbahasa Indonesia**, sesuai kelima pengecualian `D-80`:
-
-| Yang tetap Indonesia | Contoh di modul ini |
-|---|---|
-| Komentar dan dokumen | seluruh komentar Go dan TSX, serta ketiga dokumen di `docs/` |
-| Nama field JSON pada API | `nama_pelapor`, `tanggal_kejadian`, `dapat_ditransfer` |
-| Nama tabel dan kolom basis data | `POOLDATA.CPNC_LAPORAN_KLAIM`, `NOMOR`, `DITRANSFER` |
-| Teks yang dilihat pengguna | judul tab, label kolom, pesan galat |
-| Nilai kode galat | `laporan_sudah_ditransfer` — ia kontrak yang sudah dibaca frontend |
-
-**Nama folder mengikuti `D-81` sepenuhnya:** `internal/pelaporanklaim` (tanpa tanda hubung, karena
-Go tidak mengizinkannya) dan `src/modules/pelaporan-klaim`. Nama modulnya Indonesia; isinya Inggris.
-
-#### 17.9.1 Akibat yang diterima: berkas campur dua bahasa
-
-Komponen bersama yang ditulis sebelum `D-80` berada **di luar lingkup** pekerjaan ini, dan arahan
-Work Owner *"untuk luar lingkup flow tolong jangan diubah atau diperbaiki apapun"* melarang
-menyentuhnya. Akibatnya satu baris kode dapat memuat dua bahasa, dan itu memang yang dikehendaki:
-
-```tsx
-<KolomIsian id="nama_pelapor" galat={errors.nama_pelapor?.message} disabled={save.isPending} />
-<TextAreaField id="kronologi" error={errors.kronologi?.message} disabled={save.isPending} />
-```
-
-Yang tetap Indonesia karena berada di luar lingkup: props `TabelData` (`kolom`, `baris`,
-`kunciBaris`, `judul`, `aksi`, `cariDiServer`), props `KolomIsian` (`galat`, `petunjuk`), props
-`PesanGalat` (`judul`, `keterangan`, `nada`), prop `Tombol` (`nada`), klien API (`panggilAPI`,
-`metode`, `badan`, `GalatAPI`), store sesi (`gunakanSesi`), dan seam jam (`waktu.Jam`,
-`JamSistem`, `JamTetapPada`, `.Maju`).
-
-Tiga fungsi yang DITULIS pada sesi ini di paket `waktu` ikut diganti ke Inggris — `DateWIB`,
-`TwoDigitYearWIB` — karena keduanya berkas baru, bukan kode lama yang disentuh. Paket `waktu`
-karenanya kini memuat keduanya berdampingan.
-
-### 33.10 Kontrak API modul ini
-
-| Metode | Jalur | Jawaban |
-|---|---|---|
-| `GET` | `/api/pelaporan-klaim` | halaman, `jumlah`, `batas`, `lewati`, dan `ringkasan` kelima tahap |
-| `POST` | `/api/pelaporan-klaim` | `201` beserta nomor yang dibuat sistem |
-| `GET` | `/api/pelaporan-klaim/{nomor}` | satu laporan |
-| `PUT` | `/api/pelaporan-klaim/{nomor}` | `200` beserta laporan setelah diubah |
-| `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | `200`, atau `409` bila sudah ditransfer |
-| `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | `200`, atau `409` bila sudah diregistrasi |
-
-**Tidak ada `DELETE`.** `ADR-0012` menetapkan penghapusan lunak menyeluruh, dan laporan yang sudah
-tertaut klaim dirujuk klaimnya lewat `ClaimData.RCV_ID` — rujukan yang dipakai 41 rule Pega.
-Ketiadaannya dikunci dua uji, supaya penambahannya kelak menjadi keputusan sadar.
-
-**Ringkasan tahap dikirim bersama halaman, bukan lewat endpoint terpisah.** Alasannya sama dengan
-alasan sistem lama memakai satu kueri berisi enam `SUM(CASE WHEN ...)`: angka tiap tab harus
-konsisten dengan isi tab yang sedang terbuka. Dua permintaan terpisah dapat tiba di antara dua
-perubahan, dan pengguna melihat lencana "3" di atas tabel berisi empat baris.
-
-Kode galat baru:
-
-| Kode | HTTP | Kenapa bukan yang lain |
-|---|---|---|
-| `validasi_gagal` | `422` | Permintaannya berbentuk benar, isinya yang melanggar aturan bisnis |
-| `laporan_sudah_ditransfer` | `409` | Isian penggunanya sah, tetapi bentrok dengan keadaan penyimpanan |
-| `laporan_sudah_diregistrasi` | `409` | idem |
-| `nomor_laporan_sudah_dipakai` | `409` | Seharusnya mustahil — nomornya dibuat urutan |
-| `laporan_klaim_tidak_ditemukan` | `404` | — |
-
-### 33.11 Validasi: hanya satu field yang wajib
-
-Layar Pega tidak mewajibkan apa pun. Itu bukan kelalaian melainkan sifat pekerjaannya: laporan
-kerugian datang lewat telepon dan surel dengan kelengkapan yang berbeda-beda, dan petugas harus
-dapat mencatatnya **sekarang** lalu melengkapinya kemudian. Menolak laporan yang belum lengkap
-berarti laporan itu tidak tercatat sama sekali.
-
-Yang diwajibkan hanya **nama pelapor** — tanpa itu laporannya tidak dapat ditindaklanjuti siapa
-pun. Kelengkapan yang sesungguhnya ditegakkan saat **registrasi** (`B-2`), tempat invarian `I-2`
-sampai `I-10` berlaku.
-
-Yang ditambahkan di luar itu semuanya berasal dari lebar kolom atau dari bentuk yang harus dapat
-dikirim ke basis data: batas panjang, bentuk tanggal `YYYY-MM-DD`, bentuk surel yang longgar, dan
-bentuk nilai uang. Seluruh pelanggaran dikembalikan **sekaligus** — pada form berisi 17 isian,
-sekali-satu akan menyiksa.
-
-### 33.12 Otorisasi: keadaan yang belum berubah
-
-Rute modul ini terlindungi sesi, tetapi **belum diperiksa perannya**. Sistem lama membatasi layar
-ini pada tujuh peran lewat When rule `IsReceivePNC`: `Administrators`, `CaseManager`, `PncAdmin`,
-`PncManagerAdmin`, `PncReceive`, `PNCReportClaimInternal`, dan `PNCReportClaimEksternal`.
-
-Yang terakhir patut diperhatikan: **pelapor luar** juga membuka layar ini di sistem lama
-(`Activity/CreateNewCaseRCV-Act.xml` step 4 bercabang khusus untuknya).
-
-Keadaan ini sama dengan seluruh rute lain hari ini. Yang berubah: **taruhannya naik**. Layar ini
-memuat nama tertanggung, nomor polis, kronologi kejadian, dan alamat surel — bukan master data
-yang aman dilihat siapa saja.
-
-### 33.13 Pertanyaan terbuka yang ditinggalkan sesi ini
-
-| Pertanyaan | Pemilik | Menahan |
-|---|---|---|
-| Adakah pembaca `T_CLAIM_RECIVEDCLAIM` di luar export? | Work Owner + DBA | Menyalakan modul ini di produksi |
-| Bentuk nomor laporan `LPK.YY.xxxx` — disetujui? | Work Owner | Tidak menahan; koreksinya satu konstanta |
-| Bolehkah pustaka desimal ditambahkan sebagai dependensi? | Work Owner | Tipe kolom `NILAI_ESTIMASI` |
-| ~~Bahasa penamaan modul baru — Indonesia atau Inggris?~~ | Work Owner | **TERTUTUP** — dijawab Inggris (`D-80`); lihat §33.9 |
-| Persetujuan menjalankan migrasi `0003` | Work Owner + DBA (`D-63`) | Layar bekerja terhadap Oracle |
-| Hak `INSERT`/`UPDATE` akun aplikasi atas tabel dan urutan baru | DBA | idem |
-| Daftar pilihan `Kurir` dan `Tipe Klaim` — tidak ada di export | Work Owner | Tidak menahan; keduanya teks bebas hari ini |
-| Kapan lampiran, utas komunikasi, dan penugasan menyusul | Work Owner | Paritas penuh dengan layar lama |
-| Go dan Node terpasang di mesin pengembangan | Work Owner / Tim Infra | **Seluruh verifikasi otomatis** |
-
----
-
-## 34. Modul View History Claim (2026-09-20, sesi kesepuluh)
-
-### 34.1 Keputusan Work Owner pada sesi ini
-
-| # | Keputusan | Akibatnya |
-|---|---|---|
-| 1 | **Gerbang proteksi data dibangun penuh** | Layar menolak pengguna yang belum terdaftar, dan satu jatah pencarian terpakai tiap kali layar dibuka |
-| 2 | **Ketiga cacat aturan direplikasi apa adanya** | Pencarian Tanggal Lahir tidak pernah membuahkan hasil; kolom Posisi Klaim kosong pada pencarian Nama Objek |
-| 3 | **Tipe No Rekening direplikasi apa adanya** | Dua isian tetap digambar; tipenya ditandai belum tersedia karena menembus DB Link (`R-03`) |
-| 4 | **Label tipe pencarian memakai turunan dari deskripsi langkah**, kode 10 dilewati | Dua belas pilihan dengan kode `1`–`9`, `11`–`13` |
-| 5 | **Penulisan gerbang diarahkan ke tabel baru milik aplikasi** | `P-1` terjaga; migrasi 0004 |
-| 6 | Branch `Feat/arlexy-View-History-Claim` | — |
-
-### 34.2 Kenapa cacat direplikasi, dan bagaimana ia dijaga tetap terlihat
-
-`P-5` menetapkan hasil yang benar adalah hasil yang sama dengan Pega, kecuali perbaikan
-yang diputuskan eksplisit. Work Owner memutuskan ketiga cacat layar ini **tidak** masuk
-daftar perbaikan.
-
-Keputusan yang direplikasi punya satu bahaya khas: ia tidak dapat dibedakan dari
-kelalaian. Enam bulan lagi, seseorang yang menemukan pencarian Tanggal Lahir selalu kosong
-akan "memperbaikinya" — dan tanpa menyadarinya, ia mengubah perilaku yang sengaja
-dipertahankan.
-
-Karena itu ketiganya dipagari di **empat tempat sekaligus**:
-
-| Tempat | Bentuk |
-|---|---|
-| `searchtype.go` `QueryValue` | komentar menyebut langkah activity-nya dan mengapa prakondisinya tautologi |
-| `riwayatklaim_test.go` | `TestPencarianTanggalLahirMemakaiIsianYangSalah` — menguji cacatnya |
-| `usecase/search_test.go` | `TestPencarianTanggalLahirSelaluKosong` — data contoh MEMUAT sasarannya, dan hasilnya tetap kosong |
-| layar | keterangan di bawah judul tabel menyatakan keterbatasannya kepada pengguna |
-
-Yang keempat penting: tanpa itu, hasil yang selalu kosong akan dilaporkan berulang kali
-sebagai kerusakan modul.
-
-### 34.3 Satu hal yang TIDAK ikut direplikasi, dan alasannya
-
-**Perangkaian nilai ke dalam teks SQL.** Kedua belas kueri lama menyisipkan nilai langsung
-lewat pola `{InputData.CARI4}` dan `{ASIS:InputData.CARI4}`; yang kedua bahkan menyisipkan
-**potongan SQL**, bukan nilai. Gerbang proteksinya lebih jauh lagi —
-`GetFileOnPc_link_attachmentGCNM` berisi tepat satu baris penyisipan, sehingga SELURUH
-SQL-nya datang dari sebuah properti klipboard.
-
-`08-TECHNICAL-STRATEGY.md` §4.3 melarang keduanya tanpa perkecualian. Keputusan "replikasi
-apa adanya" dibaca sebagai berlaku pada **perilaku bisnis**, bukan pada celah injeksi —
-dan perbedaan itu dinyatakan di sini supaya ia menjadi keputusan yang tercatat, bukan
-kelonggaran yang diambil diam-diam.
-
-Seluruh nilai lewat parameter binding, dan `query_test.go` menjaganya.
-
-### 34.4 Kenapa jatah dihitung, bukan disimpan
-
-Sistem lama mengurangi jatah dengan `UPDATE` terhadap `POOLDATA.MST_PROTEKSI_DATA_PNC`.
-Menirunya berarti aplikasi ini dan Pega sama-sama menulis satu tabel selama masa paralel —
-tepat yang dilarang `P-1`.
-
-Akibatnya bukan galat, dan itulah yang membuatnya berbahaya: kedua sistem menulis sisa
-menurut hitungannya masing-masing, yang menulis belakangan menang, dan jatah seorang
-pengguna berubah tanpa satu pun jejak yang menjelaskannya.
-
-Di sini master **hanya dibaca**; pemakaian dicatat di tabel milik aplikasi, dan sisa jatah
-dihitung sebagai jatah master dikurangi pemakaian yang tercatat.
-
-**Akibat yang diterima secara sadar:** selama layar Pega dan layar ini sama-sama hidup,
-seorang pengguna memperoleh jatah **lebih banyak** daripada yang tertulis di master —
-sebanyak pemakaian di salah satu sistem tidak terlihat oleh yang lain. Pilihan lainnya
-adalah dua sistem menulis satu tabel, yang merusak lebih dalam dan lebih sulit dilacak. Ia
-berakhir dengan sendirinya saat layar Pega dimatikan.
-
-### 34.5 Satu hal yang saya putuskan sendiri, dan dinyatakan supaya dapat dikoreksi
-
-**Pencarian dicatat ke jejak audit meski sistem lama tidak mencatatnya di layar ini.**
-
-Verifikasi membuktikan parameter `flagloging` tidak pernah dikirim dari layar ini,
-sehingga sistem lama tidak menulis satu baris log pun saat orang mencari. Replikasi
-harfiah berarti tidak mencatat apa pun.
-
-Yang dipilih: **tetap mencatat**, dengan tiga alasan — `D-59` menjadikan jejak audit
-satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas; ia tidak melanggar `P-1`
-karena ditulis ke tabel milik aplikasi; dan satu tabel yang sama sekaligus menjadi dasar
-hitungan sisa jatah.
-
-Baris pencarian ditandai `MEMAKAI_JATAH = 0`, sehingga ia **tidak** mengurangi jatah —
-perilaku jatahnya tetap sama persis dengan sistem lama. Yang bertambah hanya jejaknya.
-
-### 34.6 Satu perubahan terhadap kueri lama yang dituntut `D-22`
-
-Pencarian No Klaim di sistem lama merangkai nama kelas internal Pega ke dalam kunci
-pencariannya. Klaim terbitan sistem baru berformat `PNCN.YY.xxxx` dan tidak pernah menulis
-awalan itu lagi, sehingga kueri lama tidak akan pernah menemukannya.
-
-Yang dicari sekarang adalah `CLAIMNO`. Ia **setara** untuk baris warisan — awalannya tepat
-19 karakter, dan kueri lama sendiri memperlakukan `SUBSTR(CLAIMID,20)` sebagai nomor klaim
-pada `BroswseKlaimByPolicyNo`. Masukan yang sama menemukan baris yang sama; yang bertambah
-hanya baris terbitan sistem baru.
-
-Awalan itu **dipertahankan** pada pencarian No Survey, dan perbedaannya disengaja: yang
-dirangkai di sana bukan nomor klaim melainkan `CASEID` milik baris surveyor, dan kolom itu
-memang menyimpan kunci berformat Pega.
-
-### 34.7 Penyimpangan dari dokumen Steering
-
-| Hal | Steering | Di sini | Alasan |
+| # | Perkara | Keputusan | Tanggal |
 |---|---|---|---|
-| Paginasi | tidak diatur untuk layar ini | `OFFSET … FETCH NEXT` di server | Kueri lama menarik SELURUH baris yang cocok tanpa `MaxRecords`; terhadap `T_CLAIM_PNC` berpuluh juta baris (`D-10`) itu tidak dapat dibawa apa adanya. `09-DATABASE-STRATEGY.md` §6.3 menyatakannya **perubahan perilaku**, dan ia dicatat begitu |
-| Isian wajib | sistem lama tidak memeriksa apa pun | isian yang tampak wajib diisi | Pengaman, bukan aturan bisnis: menekan Cari dengan isian kosong pada tipe Nama Customer menghasilkan pencarian berpola kosong — seluruh isi tabel |
-| Urutan hasil | kueri lama tidak mengurutkan | `ORDER BY REFERENCE` | Tanpa urutan yang ditetapkan, paginasi membuat satu baris muncul di dua halaman sekaligus hilang dari halaman lain |
-| `hideSearch` pada `DataTable` | komponen baku hanya menyediakan yang dipakai layar master | satu prop opsional ditambahkan | Layar ini sudah punya formulir pencarian sendiri; kotak cari kedua hanya menyaring halaman yang sedang terbuka dan hasilnya menyesatkan. Bawaannya `false`, sehingga tidak satu pun layar lama berubah |
+| 1 | Lingkup modul | **Alur persetujuan komite penuh**, seperti Master Rekening | 2026-09-19 |
+| 2 | Verifikasi struktur tabel | **Tanpa kueri katalog** — dirancang dari export Pega saja | 2026-09-19 |
+| 2b | `V_D_SURVEYORS` membaca kolom atau JSON? | **Membaca KOLOM**, tidak memakai `JSON_DATA` lagi → migrasi 0004 langkah 3 dicabut | 2026-09-20 |
+| 3 | `BRANCH` / `LOGIN_APLIKASI` / `DOCID` | Mengikuti perilaku Pega apa adanya | 2026-09-19 |
+| 4 | Aturan Approve/Reject yang disangka hilang | **Ternyata ADA** — satu activity, parameter `approval` (§20.2). Penurunan dari `masterrekening` tidak jadi dipakai | dikoreksi 2026-09-20 |
+| 5 | Pembuatan akun surveyor | Perilaku Pega dibawa; tabel operator Pega **tidak** ditulis | 2026-09-19 |
 
-### 34.8 Yang sengaja TIDAK dikerjakan
+Keputusan 5 adalah bacaan saya atas jawaban "seperti PEGA saja", dan ia **dinyatakan sebagai
+asumsi kepada Work Owner sebelum kode ditulis**, bukan diambil diam-diam. Alasannya di §20.4.
 
-| Hal | Alasan |
+### 20.2 Keputusan komite: satu activity, tiga nilai parameter
+
+**Bagian ini ditulis ulang pada 2026-09-20.** Versi sebelumnya menyatakan rule Approve/Reject
+**tidak ada di export** dan bahwa bentuknya **diturunkan** dari `masterrekening`. Itu keliru.
+
+Yang memperbaikinya adalah pertanyaan Work Owner: *"rule Approve/Reject ini dipanggil di mana"*.
+Saya mencari rule **bernama** Approve/Reject, tidak menemukannya, lalu menyimpulkan ia hilang —
+tanpa menelusuri **pemanggilnya**. Kesalahannya bukan pada pembacaan, melainkan pada berhenti
+terlalu cepat.
+
+**Yang sebenarnya berlaku.** Tidak ada rule tersendiri karena memang tidak perlu ada. Ketiga
+tombol memanggil activity yang **sama**, dibedakan satu parameter — dibaca dari
+`Section/BrowseDetailSuveryorsKomite-Section.xml` dan `-Approve`/`-Reject`:
+
+| Tombol | Activity | Parameter |
+|---|---|---|
+| **Approve** | `CNMInsertDetailSurveyors_act` | `approval = "1"` |
+| **Reject** | `CNMInsertDetailSurveyors_act` | `approval = "2"` |
+| **Simpan** | `CNMInsertDetailSurveyors_act` | `approval = "0"` |
+| **Ubah** | `SetDetailSurveryorsValue_act` | `dsurveyid = .D_SURVEY_ID` |
+| **View Document** | flow action `ViewDocumentMasterRekening` | — |
+
+dan di dalam activity, pada langkah 4: `TempDetailSurveyors.APPROVAL := Param.approval`.
+
+Kedua tombol keputusan **hanya ada di tab "Komite Approval"**. Tab Waiting, Approve, dan Reject
+tidak memilikinya.
+
+**Akibat terpentingnya: modul ini PUNYA baseline**, sehingga dapat diuji setara dengan Pega.
+Pernyataan "tidak dapat lulus gerbang 1" **dicabut**.
+
+**Satu perbedaan yang tetap disengaja, dan dinyatakan.** Sistem lama memakai satu jalan masuk
+untuk menyimpan dan memutuskan. Modul ini memisahkannya:
+
+| | Pega | Di sini |
+|---|---|---|
+| Menyimpan isian | `CNMInsertDetailSurveyors_act(approval="0")` | `POST /api/master/surveyor` · `PUT /{id}` |
+| Keputusan komite | `CNMInsertDetailSurveyors_act(approval="1"\|"2")` | `POST /{id}/keputusan` |
+
+Alasannya bukan kerapian: satu jalan masuk berarti badan permintaan yang sama dapat membawa
+isian **dan** status persetujuan, sehingga siapa pun yang boleh menyunting surveyor dapat
+menyetujuinya sendiri dalam satu permintaan. `D-59` menetapkan tidak ada pemisahan tugas formal,
+jadi bentuk kontraknya adalah satu-satunya penjagaan yang tersisa.
+
+Keadaan akhir yang tersimpan **tetap sama**: `APPROVAL` berisi `"0"`, `"1"`, atau `"2"`.
+
+### 20.2b Saringan tab: terbukti, bukan ditafsirkan
+
+`BrowseVDSurveyors_RD` berparameter, dan tiap section mengisinya berbeda (`pyRDParams`):
+
+| Tab | `Approve` | `Komite` |
+|---|---|---|
+| Waiting Approval | `"0"` | (kosong) |
+| Komite Approval | `"0"` | `OperatorID.pyUserIdentifier` |
+| Approve | `"1"` | (kosong) |
+| Reject | `"2"` | (kosong) |
+
+Baris kedua membuktikan **dua hal sekaligus**: antrean komite menyaring dengan identitas operator
+yang sedang masuk, dan kolom `KOMITE` memang berisi **Operator ID** — menguatkan temuan soal
+alias `BUSINESS_CODE` di §20.6. Saringan di `surveyor_list` sudah sesuai dan tidak perlu diubah.
+
+`PNCIsInternalSurveyors` juga terbaca: isinya `TempDetailSurveyors.M_SURVEY_ID = "1001"`, sama
+persis dengan konstanta `InternalTypeCode`.
+
+### 20.2c Dua CACAT implementasi yang ditemukan dari penelusuran lanjutan
+
+Work Owner menanggapi §20.2 dengan: *"masalahnya apa, kalau Approve parameter approval='1' dan
+kalau reject approval='2' … coba dicek lg"*.
+
+Mekanismenya memang sesederhana itu. Yang keliru bukan Pega-nya — **implementasi saya**, dan
+pemeriksaan ulang menemukan dua cacat.
+
+#### Cacat 1 — email diperlakukan opsional, padahal WAJIB
+
+Langkah 4 `CNMInsertDetailSurveyors_act` menyiapkan teks galatnya sebagai variabel lokal, dan
+langkah 5 memancarkannya:
+
+```
+langkah 4   local.email := "Email harus diisi"
+langkah 5   precondition: TempDetailSurveyors.EMAIL==""   → pesan local.email
+```
+
+Saya sebelumnya menyimpulkan email opsional karena "tidak ada aturan yang mewajibkannya di
+export". Aturannya ada; saya belum membaca variabel pesannya.
+
+**Diperbaiki** di domain (`Check()`) dan di skema Zod form, dengan pesan yang sama persis.
+Label kolomnya menjadi **Email (wajib)**.
+
+Dua teks galat lain ikut terbaca dari langkah yang sama, dan keduanya menguatkan aturan yang
+sudah dibawa: `local.err = "Nama Belum Terdaftar."` dan
+`local.errSameOperator = "User ID sudah terdaftar. Silahkan pilih User ID yang lain."`
+
+#### Cacat 2 — menyunting TIDAK mengembalikan surveyor ke antrean komite
+
+Ini yang lebih berat, dan ia justru muncul dari pertanyaan tentang parameter itu.
+
+Langkah 4 berjalan **tanpa syarat**:
+
+```
+pyStepsPreCondition: true          (tidak ada precondition when)
+TempDetailSurveyors.APPROVAL := Param.approval
+```
+
+Tombol **Simpan** pada tab "Approve" dan "Reject" mengirim `approval = "0"`. Artinya menyunting
+surveyor yang **sudah disetujui** — atau sudah ditolak — **mengembalikannya ke posisi menunggu**.
+
+Penguatnya: `SetDetailSurveryorsValue_act`, yang mengisi formulir Ubah, **tidak menyalin
+`APPROVAL` sama sekali**. Nilainya memang hanya datang dari parameter, tidak pernah dari baris
+yang sedang disunting.
+
+Implementasi saya sebelumnya **mempertahankan** status pada `Update`. Akibatnya nama login,
+alamat, dan email surveyor dapat diubah **setelah** komite menyetujuinya, dan komite tidak
+pernah melihat perubahannya. Itu bukan sekadar beda dari Pega — itu melubangi satu-satunya
+kontrol yang ada, karena `D-59` menetapkan tidak ada pemisahan tugas formal.
+
+**Diperbaiki:** `Update` selalu menyetel status ke menunggu. Jejak keputusan sebelumnya
+(`TGL_APPROVE_KOMITE`, `CATATAN_KOMITE`) ikut dibuang — baris berstatus menunggu yang memuat
+tanggal keputusan adalah keadaan yang tidak dapat dibaca siapa pun. Kedua kolom itu tambahan
+modul ini, sehingga pembuangannya tidak punya padanan di Pega dan dicatat sebagai keputusan
+tersendiri.
+
+Komite yang ditunjuk **tetap** — ia ditetapkan sekali saat pengajuan pertama, sejalan dengan
+kueri `surveyor_update` yang memang tidak menyentuh kolom `KOMITE`.
+
+#### Satu hal yang MASIH terbuka
+
+Precondition langkah 8 menyebut `M_SURVEY_ID` = `1021`, `1022`, `1023`, `1025`, `1026`, `1027`,
+`1028` — tujuh kode tipe di luar empat baris yang diverifikasi modul induk.
+
+Ia memancarkan `local.err` (*"Nama Belum Terdaftar."*), **bukan** pesan login — sehingga dugaan
+awal bahwa deret itu memperluas kewajiban login **tidak terbukti**. Apa sebenarnya artinya belum
+jelas, dan keempat baris master di portal ASM tidak memuat satu pun darinya. Dibawa ke **Tim
+Pega**, tidak ditebak.
+
+### 20.3 `V_D_SURVEYORS` membaca KOLOM — ditegaskan Work Owner 2026-09-20
+
+Pertanyaan terbesar modul ini **sudah terjawab**, dan jawabannya menyederhanakan banyak hal.
+
+Latarnya: modul induk menemukan jebakan pada tabel tetangga — `PEGA_M_SURVEYORS` menulis
+**hanya** ke `JSON_DATA` sementara `V_M_SURVEYORS` membaca kolom, tanpa trigger yang menyalin.
+Layar Pega tampak berhasil menyimpan, tetapi hasilnya tidak pernah terlihat di view.
+`PEGA_D_SURVEYORS.prc` memakai **pola yang sama persis**, sehingga pertanyaannya wajar diajukan.
+
+**Jawaban Work Owner:** `V_D_SURVEYORS` membaca **kolom**, tidak memakai `JSON_DATA` lagi.
+
+| Yang berubah karenanya | Isi |
 |---|---|
-| Tombol "Lihat Detail Klaim" | Layar rincian adalah `MENU_ID 75` "View Claim" — modul tersendiri yang belum dibangun. Kuncinya sudah ikut dikirim di setiap baris (`referensi`), sehingga menyalakannya kelak tidak menuntut perubahan kontrak |
-| Masking KTP/telepon/surel | Tidak berlaku di layar ini: grid-nya tidak punya satu pun kolom itu. Ketiga penandanya tetap DIBACA dan dibawa di `Protection`, supaya modul rincian kelak membaca keadaan yang sama alih-alih menafsirkannya ulang |
-| Pencarian No Rekening yang berfungsi | Menembus DB Link ke basis data pembayaran yang belum punya API pengganti (`R-03`) |
-| Memperbaiki 3 uji `master-rekening` yang gagal | Sudah gagal di `master` sebelum sesi ini, dan berada di luar lingkup tugas. Dibuktikan dengan menjalankannya terhadap `DataTable` versi `master` |
+| **Migrasi 0004 langkah 3 DICABUT** | Definisi ulang view tidak diperlukan. Ia tidak dibiarkan sebagai pernyataan berkomentar "untuk jaga-jaga" — mendefinisikan ulang view yang dibaca rule Pega produksi adalah tindakan berisiko, dan menyediakannya pada berkas yang dijalankan DBA adalah undangan yang tidak perlu ada |
+| **Langkah 0d turun derajat** | Dari pertanyaan penentu menjadi **laporan keadaan** |
+| **Tulisan Go langsung terlihat Pega** | Tanpa satu pun perubahan pada view, sama seperti `M_SURVEYORS` |
 
-### 34.9 Yang belum dapat dibuktikan
+**Satu pertanyaan tersisa untuk Tim Pega, dan ia BUKAN penghalang modul ini.**
 
-- **Seluruh SQL modul ini belum pernah dijalankan terhadap Oracle.** Tidak ada basis data
-  di mesin tempat berkas ini ditulis, dan migrasi 0004 belum dijalankan DBA. Yang terbukti
-  hanyalah bentuk kuerinya lewat `query_test.go`.
-- **Nama kolom pada `MST_PROTEKSI_DATA_PNC` dibaca dari SQL dinamis di activity, bukan dari
-  DDL.** DDL-nya tidak ada di export (`R-08`). Bila nama kolomnya berbeda, gerbang gagal
-  dengan galat Oracle yang menyebut kolomnya — bukan gagal diam-diam.
-- **Kode tipe pencarian `10` diasumsikan memang tidak ada.** Tidak ada langkah
-  `Search Type 10` di activity mana pun, dan tidak ada kueri yang menganggur menunggunya.
+Bila view membaca kolom sementara `PEGA_D_SURVEYORS` menulis JSON, maka baris yang ditulis
+**layar Pega** meninggalkan kolomnya kosong dan tampak hilang di view — cacat yang sama dengan
+yang tercatat pada `M_SURVEYORS`, dan ia **sudah berjalan hari ini**.
 
-### 34.10 Pertanyaan terbuka yang menahan tahap berikutnya
+Bahwa 43 baris yang ada **terbaca** lewat view berarti kolomnya memang terisi, sehingga barisnya
+pasti diisi lewat jalur lain: migrasi data, penyisipan langsung, atau trigger. Langkah 0d
+memeriksanya sebagai laporan. Modul ini tidak memperbaikinya dan tidak perlu — sejak Go menjadi
+penulis tunggal, yang ditulis adalah kolom yang memang dibaca.
 
-| # | Pertanyaan | Pemilik |
-|---|---|---|
-| 1 | Apakah Master Proteksi Data sudah berisi baris ber-`MODUL='PNCSearchKlaim'`? Bila nol, layar menolak setiap pengguna | DBA + Work Owner |
-| 2 | Apakah layar Master Proteksi Data ikut dimigrasikan? Selama belum, jatah hanya dapat ditambah lewat layar Pega | Work Owner |
-| 3 | Label tipe pencarian yang sebenarnya dibaca pengguna — yang dipakai sekarang turunan dari deskripsi langkah, karena definisi propertinya tidak ada di export | Tim Pega |
-| 4 | Apakah cacat pencarian Tanggal Lahir kelak diperbaiki? Bila ya, ia menjadi butir baru pada daftar perbaikan eksplisit `P-5` | Work Owner |
+**Yang MASIH belum diverifikasi** dan tetap menjadi asumsi: panjang kolom `NAME`, nama constraint
+kunci utama, dan tipe data kolom-kolomnya. Ketiganya diminta pada migrasi 0004 langkah 0c.
 
-## 19. Modul Inbox Admin (2026-09-20, sesi kesebelas)
+### 20.4 Akun aplikasi surveyor: perilaku dibawa, tabel Pega tidak ditulis
 
-### 19.1 Keputusan Work Owner pada sesi ini
+`CNMInsertDetailSurveyors_act` langkah 18 memanggil `GCNMCreateOperator`, yang membuat instans
+`Data-Admin-Operator-ID` — baris pada tabel operator milik **engine Pega**.
 
-| # | Keputusan | Akibatnya |
-|---|---|---|
-| 1 | **Seluruh tab dibangun sekaligus** | Delapan tab, bukan bertahap |
-| 2 | **Tiga tab Komunikasi tidak dipakai** — sudah di-remark di Pega | Kueri `BrowseClaimALLKomunikasi` yang cacat sintaksis tidak dibawa sama sekali |
-| 3 | **Penyaring cabang MENUNGGU API pengganti** DB Link HRD | Seam ada, adapter belum; sampai API tiba, daftar tidak dibatasi cabang |
-| 4 | **Tombol "Lihat Detail Klaim" dibangun**, tombol lain tidak | Delapan tombol lain tidak dibangun; tujuannya diarahkan ke rute yang menyatakan keadaan |
-| 5 | **Tab bawaan: All Case Admin** | Layar terbuka pada klaim MILIK petugas, bukan seluruh klaim berjalan |
-| 6 | **Paginasi direplikasi apa adanya** | Seluruh baris ditarik, lalu dipotong di aplikasi |
-| 7 | Nama modul `inboxadmin` / `inbox-admin` | `D-81` |
+Dua hal melarang modul master menulisnya:
 
-### 19.2 Kenapa satu bentuk baris untuk delapan tab
+- **`P-1` (`D-21`)**: satu tabel hanya boleh ditulis satu sistem selama masa paralel. Tabel
+  operator dimiliki Pega sampai `F-3` memindahkannya. Pelanggarannya **tidak menimbulkan pesan
+  galat apa pun** — ia baru terlihat sebagai data rusak.
+- **`F-3` terhalang**: kontrak HCC/HCQ nol jejak di export (`R-14`, `ADR-0024`).
 
-Kedelapan grid sistem lama membaca halaman klipboard yang sama, dan tiap tab hanya
-menampilkan sebagian kolomnya. `WorkItem` karena itu satu tipe dengan 31 isian, sebagian
-kosong pada tab mana pun — pola yang sama dengan `ClaimHistory` di modul View History Claim.
+**Yang diambil:** modul menyatakan kehendaknya lewat seam `AccountRegistrar` dengan **kedelapan
+parameter Pega apa adanya**, dan pengisi seam di tahap ini **mencatat** permintaannya tanpa
+membuat akun.
 
-Alternatifnya — empat bentuk baris menurut halaman klipboard asalnya — akan menghasilkan
-empat pemindai, empat DTO, dan empat tabel di layar, padahal yang berbeda hanyalah kolom
-mana yang terlihat.
+Aturan Pega yang **tetap dibawa utuh**: login wajib untuk Internal Surveyor, keunikannya diuji,
+sandi sementara `LOGIN_APLIKASI + "123456"`, penanda wajib-ganti-sandi, access group
+`GCNMFW:PNCSurveyor`, dan unit `Internal`/`Eksternal`.
 
-Yang menjaga agar isian kosong tidak terbaca sebagai data hilang: **kolom mana yang digambar
-ditetapkan `Tab.Columns`, bukan ditebak dari isi baris**. Menebaknya dari isi akan membuat
-kolom menghilang ketika seluruh baris halaman itu kebetulan kosong.
+**Yang hilang, dan dinyatakan di layar:** surveyor internal yang ditambahkan lewat layar baru
+**belum dapat masuk** sampai `F-3` siap. Ini disebut pada panel peringatan di halamannya — bukan
+hanya di dokumen ini.
 
-### 19.3 Satu alias, dua arti — dan kenapa itu tidak dibawa
+**Koreksi atas kekhawatiran saya sendiri.** Saya melaporkan sandi `login+123456` kepada Work
+Owner sebagai masalah keamanan. Setelah `GCNMCreateOperator` dibaca sampai habis, ia menyetel
+`pyChangePasswordOnNextLogin = "True"` — sandi itu **sementara dan wajib diganti saat login
+pertama**. Risikonya jauh lebih kecil dari yang saya sampaikan. Koreksinya disampaikan **sebelum**
+Work Owner mengambil keputusan, sehingga dasar keputusannya benar.
 
-Ini yang membedakan modul ini dari yang mana pun sebelumnya:
+### 20.5 Lima kolom yang DITAMBAHKAN ke tabel lama
 
-| Properti Pega | di tab ALL | di tab Request Survey |
-|---|---|---|
-| `.RCVID` | `A.SOBNAME` (sumber bisnis) | `T_REQ_SURVEY.SURVEYOR` (nama surveyor) |
-| `.Keterangan` | `PXCREATEOPERATOR` (pembuat) | `T_REQ_SURVEY.BRANCH` (cabang survei) |
-| `.Kurir` | `B.PXFLOWNAME` (nama flow) | `A.BRANCHNAME` (cabang polis) |
-| `.UserAdmin` | nama cabang klaim | `SUBSTR(SURVEYID,20,30)` (no survei) |
+`TGL_APPROVE_KOMITE` · `CATATAN_KOMITE` · `USER_INPUT` · `TGL_INPUT` · `USER_UPDATE`.
 
-Di View History Claim, satu alias salah arti tetapi setidaknya **konsisten**. Di sini ia
-berubah arti tergantung tab yang sedang terbuka — sehingga membawanya berarti membangun
-sistem baru yang tidak dapat dijelaskan tanpa menyebut tab mana yang dimaksud.
+Kedua Report Definition yang ada tidak memuat satu pun dari kelimanya, jadi ini **penambahan
+kemampuan**, bukan pemindahan perilaku.
 
-Pemetaan tiga arahnya dicatat di kepala `inboxadmin.sql`, satu-satunya tempat ketiganya
-dapat dibandingkan berdampingan.
+**Alasannya bukan kerapian.** `D-59` menetapkan satuan izin adalah menu dan **tidak ada pemisahan
+tugas formal** — satu orang dapat mengajukan surveyor lalu menyetujuinya sendiri bila perannya
+memiliki menu itu. Jejak audit karena itu menjadi **satu-satunya kontrol pengimbang yang
+tersisa**, dan keputusan komite tanpa pencatat dan tanpa waktu tidak dapat ditelusuri siapa pun.
 
-### 19.4 Paginasi direplikasi apa adanya — dan keberatannya dicatat
+Seluruhnya NULLABLE, mengikuti `P-4`: selama rolling deployment versi lama dan baru berjalan
+bersamaan terhadap skema yang sama.
 
-Keberatan disampaikan **sebelum** keputusan diambil, beserta angkanya: dengan penyaring
-cabang yang belum aktif, tab ALL menarik seluruh klaim yang masih berjalan ke memori
-aplikasi, dan tabelnya berisi puluhan juta baris (`D-10`). Work Owner memilih replikasi.
-Keputusan itu dihormati dan dijalankan.
+**Migrasi 0004 WAJIB** — berbeda dari 0003 yang opsional. Kelima kolom disentuh pada setiap
+pembacaan dan penyimpanan; tanpanya layar gagal dengan `ORA-00904` pada permintaan pertama.
 
-Yang ditambahkan sebagai gantinya **tidak mengubah perilaku sama sekali**: satu peringatan
-di log begitu satu permintaan melampaui `LargeResultWarning` (5.000 baris), menyebut tab,
-jumlah baris, dan sebabnya. Memotong hasil akan menyalahi keputusan; memperingatkan membuat
-akibatnya terlihat operator sebelum terlihat sebagai aplikasi yang kehabisan memori.
+### 20.6 Aturan nama ganda lebih ketat dari modul induk
 
-Satu hal yang **tidak** direplikasi: kueri `GetAllCaseAdmin` dan
-`GetRequestDokumenKomunikasi` tidak mengurutkan hasilnya sama sekali. Itu dapat dibiarkan
-selama hasilnya tidak dipaginasi; begitu halamannya dipotong, urutan yang tidak ditetapkan
-membuat satu baris muncul di dua halaman sekaligus hilang dari halaman lain. `ORDER BY`
-ditambahkan pada keduanya.
+`ValidasiMasterSurveyor` membandingkan dengan `@toUpperCase(@replaceAll(.NAME," ",""))` — huruf
+**dan seluruh spasi** diabaikan. Akibatnya `"BUDI SANTOSO"` dan `"budisantoso"` adalah orang yang
+sama bagi sistem.
 
-### 19.5 Tiga tab yang tidak dibangun, dan bagaimana ketiadaannya dijaga terbaca
+Modul induk memakai `UPPER(TRIM(...))` saja. **Menyalinnya akan melonggarkan aturan yang sistem
+lama tegakkan**, dan membuat nama ganda lolos.
 
-Work Owner menyatakan ketiganya sudah di-remark di Pega. Pembacaan export mendukungnya dari
-dua sisi: ada **empat elemen ber-`pyCondition` `1==2`** di section itu, dan kuerinya memang
-**cacat sintaksis** — UNION dengan 15 kolom di satu cabang dan 14 di cabang lain.
+Ekspresinya sama persis di tiga tempat, dan ada uji yang menjaganya: `mastersurveyors.NameKey` di
+Go, `UPPER(REPLACE(d.NAME, ' ', ''))` di SQL, dan indeks unik `UX_D_SURVEYORS_NAME` pada migrasi
+0004. `REPLACE` ditulis tiga argumen, bukan dua — bentuk dua argumen sah di Oracle tetapi tidak
+ada di PostgreSQL (`D-20`).
 
-Ketiadaannya dipagari di **tiga tempat**, karena pertanyaan "kenapa tab Komunikasi tidak
-ada" pasti diajukan lagi:
+### 20.7 Empat field yang diperlakukan wajib
 
-| Tempat | Bentuk |
+Tipe surveyor, nama, **email**, dan login aplikasi untuk surveyor internal.
+
+**Email sempat terlewat**, dan itu dibetulkan 2026-09-20 — lihat §20.2d.
+
+**Kenapa hanya tiga.** Formulir masukan layar lama **tidak ada di export** — tidak ada section
+maupun flow action yang memuat `TempDetailSurveyors.ADDRESS` dan kawan-kawannya. Artinya field
+mana yang bertanda wajib di layar Pega **tidak dapat dibaca**, dan itu bagian dari `R-16`.
+
+Keempatnya wajib karena punya **pesan galat sendiri** atau **aturan yang bergantung padanya** — bukan karena diduga wajib.
+Sisanya dibiarkan opsional: menambahkan kewajiban yang tidak terbaca di mana pun akan menolak
+data yang hari ini sah — perubahan perilaku yang menyamar sebagai kerapian.
+
+### 20.8 Dua hal yang dipatok, dan kenapa itu benar
+
+| Nilai | Alasan |
 |---|---|
-| `tab.go` `DisabledTabs` | data, bukan komentar — ikut terkirim ke layar |
-| `NewQuery` | tautan lama ber-`tab=4` dijawab dengan ALASANNYA, bukan "tab tidak dikenal" |
-| layar | disebut di bawah tabel, bukan digambar sebagai tab mati yang mengundang klik |
+| `InternalTypeCode = "1001"` | Memang dipatok di sistem lama, di dua tempat yang menentukan perilaku: `@If(M_SURVEY_ID=="1001","Internal","Eksternal")` dan ketiga kueri `BrowseSurveyorType*` yang mematok `1002`/`1003`/`1004` |
+| `TRFKOMITE = "1"` saat keputusan diambil | **DUGAAN yang dinyatakan.** Kolomnya hanya pernah DISALIN di export, tidak pernah dibandingkan dengan apa pun — nilai yang bermakna baginya tidak dapat diketahui. "1" dipilih karena itu yang dipakai kolom penanda biner lain di basis data yang sama |
 
-Ditambah `query_test.go` yang **gagal** bila suatu saat ada kueri menganggur untuk ketiganya.
+### 20.9 Pertanyaan yang masih terbuka
 
-### 19.6 Batas yang saya tarik sendiri pada "replikasi apa adanya"
-
-Dua hal sengaja TIDAK direplikasi, dan keduanya dinyatakan di sini supaya menjadi keputusan
-yang tercatat, bukan kelonggaran yang diambil diam-diam.
-
-**Pertama, perangkaian nilai ke dalam teks SQL.** Ketujuh kueri lama menyusun klausa
-WHERE-nya di activity lalu menyisipkannya lewat tujuh titik `ASIS` — termasuk klausa
-paginasinya sendiri. `08-TECHNICAL-STRATEGY.md` §4.3 melarangnya tanpa perkecualian, dan
-keputusan "replikasi apa adanya" dibaca sebagai berlaku pada **perilaku bisnis**, bukan pada
-celah injeksi. Sama seperti sesi sebelumnya.
-
-**Kedua, perpindahan tab diam-diam saat mencari.** Sistem lama menyetel ulang tab menjadi
-`3` atau `7` menurut ada-tidaknya teks "PNC" di kotak cari. Ia bagian dari alur dua mode
-milik Pega, dan di layar React ia akan tampil sebagai tab yang berpindah sendiri saat
-pengguna mengetik. Tidak dibawa.
-
-### 19.7 Aging dihitung hari kalender, dan itu dinyatakan ke pengguna
-
-Sistem lama menghitungnya lewat `GCNMTimeDifferenceWorkCalender_Act`, yang membaca kalender
-libur `GENERAL.HRD_LBR` lewat DB Link. Keputusan Work Owner menunda seluruh sambungan itu
-sampai API penggantinya ada (`R-03`), sehingga kalender kerja belum tersedia.
-
-Yang dipilih: **hitung hari kalender, dan nyatakan keterbatasannya di layar.** Mengganti
-hari kerja dengan hari kalender secara diam-diam adalah kelas perubahan perilaku yang paling
-berbahaya — angkanya masuk akal, hanya lebih besar, dan tidak ada yang menyadarinya sampai
-seseorang membandingkannya dengan Pega.
-
-Daftar keterbatasannya dikirim **server**, bukan ditulis tetap di layar, supaya hilang dengan
-sendirinya begitu penghalangnya hilang — tanpa menyunting frontend.
-
-### 19.8 Aging dihitung di Go, bukan di SQL
-
-Dua alasan. Hasilnya dapat diuji secara deterministik lewat seam `Clock`, dan kuerinya tetap
-portabel tanpa fungsi tanggal khas Oracle.
-
-Selisihnya dihitung terhadap **tanggal**, bukan timestamp: baris yang masuk pukul 23.00 dan
-dibaca pukul 01.00 esok harinya berumur satu hari, bukan nol hari
-(`08-TECHNICAL-STRATEGY.md` §4.4). Tanggal di masa depan menghasilkan nol, bukan angka
-negatif — baris seperti itu ada di data warisan, dan "minus tiga hari" tidak berarti apa pun
-bagi petugas yang membaca kolom tenggat.
-
-### 19.9 Kontrak API modul ini
-
-| Metode | Jalur | Isi |
-|---|---|---|
-| `GET` | `/api/inbox-admin/tab` | `tab[]`, `tab_bawaan`, `lini_bisnis[]`, `tab_dinonaktifkan[]`, `keterbatasan[]`, `portal` |
-| `GET` | `/api/inbox-admin` | `tab`, `baris[]`, `paginasi`, `penyaring`, `portal` |
-
-Parameter: `tab`, `bisnis`, `cari`, `halaman`, `ukuran`.
-
-**Bentuk layar datang dari server**, termasuk daftar kolom tiap tab. Alasannya bukan
-kerapian: daftar itu adalah hasil pembacaan export Pega, dan tempat pembacaan itu tercatat
-adalah backend. Menyalinnya ke layar berarti daftar yang sama hidup di dua tempat, dan yang
-satu akan tertinggal saat yang lain diperbaiki.
-
-**`penyaring` dikembalikan** karena tidak selalu sama dengan yang diminta: tab yang tidak
-mendukung pencarian mengembalikan kata kunci kosong, sehingga layar dapat membersihkan
-kotaknya alih-alih menampilkan kata kunci yang tampak aktif padahal tidak menyaring apa pun.
-
-### 19.10 Otorisasi: keadaan yang belum berubah
-
-Rutenya terlindungi sesi dan pemeriksaan portal. Pemeriksaan peran — "apakah peran pemanggil
-memiliki menu ini" — adalah `TKT-F3-005` yang belum ada.
-
-Satu pembedaan sistem lama karena itu belum dibawa: layar ini memperlakukan
-`GCNMFW:CaseManager` dan `GCNMFW:PncManagerAdmin` berbeda — keduanya melewati penyaring
-cabang dan memperoleh pemilih korwil. Akibatnya untuk sekarang **seluruh pengguna
-berperilaku seperti manajer**, yaitu tanpa penyaring cabang. Itu kebetulan sejalan dengan
-keputusan menunda penyaring cabang, dan keduanya akan selesai bersama-sama.
-
-### 19.11 Tombol "Lihat Detail Klaim" dan tujuannya
-
-Work Owner memutuskan tombolnya dibangun; layar tujuannya `MENU_ID 75` "View Claim" belum
-ada. Tiga pilihan, dua di antaranya buruk:
-
-| Pilihan | Akibat |
+| Pertanyaan | Pemilik |
 |---|---|
-| Tombol menuju rute tak terdaftar | Pengguna terlempar ke beranda tanpa penjelasan — tampak rusak |
-| Tombol mati | Tidak memenuhi keputusan, dan menyembunyikan bahwa jalurnya sudah lengkap |
-| **Tujuan yang menyatakan keadaan** | Yang dipakai |
+| ~~Rule Approve/Reject Detail Surveyors — apakah masih ada di sistem Pega?~~ | ✅ **TERJAWAB 2026-09-20** — tidak ada rule tersendiri; satu activity, parameter `approval` |
+| ~~Apakah email WAJIB?~~ | ✅ **TERJAWAB 2026-09-20** — wajib, pesannya `"Email harus diisi"` |
+| Apa arti deret tipe `1021`–`1028` pada precondition langkah 8? | **Tim Pega** |
+| ~~Apakah `V_D_SURVEYORS` membaca kolom atau JSON?~~ | ✅ **TERJAWAB 2026-09-20** — membaca kolom |
+| Dari mana kolom 43 baris yang ada terisi, bila procedure hanya menulis JSON? | **Tim Pega / DBA** (langkah 0d, laporan) |
+| Panjang kolom `D_SURVEYORS.NAME` yang sebenarnya | **DBA** (langkah 0c) |
+| Nilai `TRFKOMITE` yang bermakna | **Tim Pega / Work Owner** |
+| Kueri `EMAILKOMITE` mana yang dipakai jalur surveyor | **Tim Pega** |
+| Kapan `F-3` siap, sehingga akun surveyor dapat benar-benar diterbitkan | **Work Owner** |
+| Master cabang, agar `BRANCH` menjadi daftar pilihan dan bukan isian teks | **Work Owner** |
+| Unggah lampiran (`DOCID`), menunggu modul `S-1 Dokumen` | **Work Owner** |
 
-`src/app/ViewClaimPlaceholder.tsx` karena itu ada, dan ia **tidak memanggil server sama
-sekali**. Menampilkan sebagian data klaim di layar sementara akan menciptakan kontrak yang
-harus dipelihara, untuk layar yang seluruh bentuknya belum dirancang. Berkas itu **akan
-dihapus** saat modul View Claim lahir.
+---
 
-Yang dikirim adalah `referensi` — kunci teknis Pega yang memang dipakai `setDataViewKlaim_Act`
-di sistem lama — sehingga menyalakan layar rincian kelak tidak menuntut perubahan kontrak.
+## 21. Modul Master Recovery (2026-09-20, sesi kedua belas)
 
-### 19.12 Pertanyaan terbuka yang ditinggalkan sesi ini
+Sumber: `Harness/MasterRecovery-Harness.xml`, kedua section-nya, lima activity, tiga rule
+SQL, tiga stored procedure, dan **katalog Oracle portal ASM yang berjalan**.
 
-| # | Pertanyaan | Pemilik |
+### 21.1 Bentuk modul: entri saja
+
+**Keputusan Work Owner 2026-09-20** atas tiga pertanyaan yang diajukan sebelum mulai:
+kerjakan seperti yang ada di Pega · tiru apa adanya, entri saja · simpan saja, tanpa Ubah
+maupun Hapus.
+
+Dasarnya diperiksa, bukan diandaikan: **nol** kueri di seluruh export yang MEMBACA
+`POOLDATA.MST_RECOVERY_ASM_PENJAMINAN`, dan `INSERTMASTERRECOVERYKLAIM.prc` hanya mengenal
+INSERT.
+
+**Akibatnya pada kode:** rute `GET /`, `PUT /{n}`, dan `DELETE /{n}` **tidak didaftarkan
+sama sekali** — bukan didaftarkan lalu menolak. Rute yang tidak ada tidak dapat dipanggil
+kode yang ditulis kemudian tanpa keputusan sadar.
+
+### 21.2 Nilai uang: `int64` rupiah utuh
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Tipe kolom | `NUMBER` **tanpa presisi, tanpa skala** — menerima pecahan |
+| Baris bernilai pecahan | **nol**, diperiksa dengan `NILAIKLAIM <> TRUNC(NILAIKLAIM) OR …` |
+| `NLS_NUMERIC_CHARACTERS` | `".,"` |
+
+Float dilarang untuk nilai uang tanpa perkecualian (`09-DATABASE-STRATEGY.md` §5), dan
+kolomnya tidak memberi batas apa pun. Karena itu angkanya **ditetapkan**, bukan dibaca.
+
+**Konsekuensi yang diterima sadar:** isian bernilai pecahan **ditolak**, sementara layar
+Pega akan menerimanya. Menerima pecahan lalu memotongnya diam-diam jauh lebih berbahaya
+daripada menolaknya dengan pesan. Bila sen kelak dibutuhkan, yang berubah adalah tipe
+`Amount` menjadi titik-tetap dua desimal — kolomnya tidak perlu disentuh.
+
+### 21.3 Aturan Sisa DIPERTAHANKAN apa adanya
+
+Dua cabang, dan cabang kedua **mengabaikan pembayaran batch berjalan**:
+
+| Prasyarat | Rumus |
+|---|---|
+| Pembayaran Sebelumnya = 0 | `Sisa = Nilai Klaim − Pembayaran` |
+| Pembayaran Sebelumnya > 0 | `Sisa = Nilai Klaim − Pembayaran Sebelumnya` |
+
+Ketiga baris produksi cocok tanpa perkecualian. **Tidak diperbaiki**: `P-5` menetapkan
+perilaku dipertahankan lebih dulu, dan aturan ini tidak ada di daftar 13 perbaikan
+eksplisit `D-49`. Bila ia memang cacat, perbaikannya menempuh keputusan tertulis.
+
+Dikunci uji di tiga tempat — domain Go, layar, dan uji asap.
+
+### 21.4 Empat cacat sistem lama yang TIDAK dibawa
+
+| Cacat | Bukti | Penggantinya |
 |---|---|---|
-| 1 | Apakah ketiga tab Komunikasi memang gagal di Pega produksi (ORA-01789), dan perlukah dilaporkan ke Tim Pega? | Work Owner + Tim Pega |
-| 2 | Kapan API pengganti DB Link HRD tersedia? Sampai itu ada, penyaring cabang dan Aging hari kerja keduanya tertahan | Tim pemilik sistem HRD |
-| 3 | Delapan tombol yang belum dibangun — mana yang menyusul, dan dalam urutan apa? | Work Owner |
-| 4 | Nilai `STATUSLOD` berarti terbalik antara lini OTO/BFI dan lini lain. Direplikasi apa adanya; perlukah ia masuk daftar perbaikan `P-5`? | Work Owner |
+| Nomor batch dibaca saat layar dibuka, lalu **INSERT dilewati diam-diam** bila sudah dipakai | `INSERTMASTERRECOVERYKLAIM.prc` — `IF count_master<=0 THEN insert` tanpa cabang lain | Nomor diterbitkan **di dalam transaksi** dengan `LOCK TABLE … IN EXCLUSIVE MODE`; bentrok yang tersisa menjadi `409` yang terlihat |
+| `ErrMsg` membawa **nomor VA** sekaligus pesan galat | `ADD_NEWMASTERVIRTUALACCOUNT.prc:18` | Nomor dan keadaan "dipakai ulang" dipisah; `dipakai_ulang` adalah penanda yang dapat dibaca program (`D-68`) |
+| `COMMIT` di dalam procedure, `ROLLBACK` sesudahnya | `SET_ATTACHMENT_64BIT.prc` | Ketiga langkah penyimpanan lampiran dalam **satu** transaksi Go |
+| Klausa WHERE dirangkai dari nama principal ketikan pengguna | `GetDataVAbyValidasiVA-SQL.xml` — `{ASIS:GeneratedVARecovery.NoteKomite}` | Parameter binding tanpa perkecualian |
+
+### 21.5 Bukti bayar disimpan ke kolom BLOB yang sudah ada
+
+`D-16` menetapkan dokumen disimpan lewat API storage internal, dan modul yang
+membangunnya (`S-1`) belum ada. Menunggunya berarti layar ini tidak dapat menerima bukti
+bayar sama sekali.
+
+Pemeriksaan katalog menemukan `POOLDATA.DATA_ATTACHFILE` **berkolom BLOB `ATTACHFILE`**,
+dan procedure lama pun menyisipkan ke tabel yang sama. Karena itu menyimpannya di sana
+**memakai jalur yang memang sudah ada**, bukan jalan pintas.
+
+`IMAGEID` sengaja dikosongkan — ia penunjuk ke penyimpanan luar, dan mengisinya dengan
+nilai karangan akan membuat pembaca mana pun mengira berkasnya ada di sana. `IDPEGA` juga
+dikosongkan: batch recovery bukan kasus Pega dan tidak punya kunci semacam itu.
+
+**Penanda `DATAID` mengikuti bentuk yang terbukti**: dua digit tahun + sepuluh angka urut,
+diverifikasi dari `DATAID` terbesar yang ada dan dari `ATTACHFILE_SEQ`. Urutan yang sama
+dipakai, sehingga penomorannya melanjutkan deret Pega dan tidak pernah bertabrakan.
+
+### 21.6 Pencarian polis: DB Link dipakai, dan utangnya dicatat
+
+`MST_DET_SALES@ASMD` adalah salah satu dari 64 pemakaian DB Link yang `D-25` tetapkan
+diganti API — "API Master Sales", yang **belum ada** (`R-03`).
+
+Selama masa paralel link-nya masih hidup dan masih dibaca Pega, sehingga memakainya
+**meneruskan** ketergantungan yang sudah ada alih-alih menambah yang baru. Ia diisolasi
+pada **satu kueri bernama**, sehingga penggantinya kelak menyentuh satu tempat.
+
+**Kegagalannya tidak membatalkan penyimpanan.** Sistem lama pun meneruskan dengan keempat
+kolom kosong — `Insert_mst_recoveryKlaimASM` tidak punya satu pun prasyarat yang
+menghentikan alur. Yang dicatat adalah uang yang sudah diterima; menolak menyimpan karena
+basis data pihak lain sedang mati akan membuang seluruh isian petugas.
+
+Keadaannya **dikembalikan ke layar** lewat `identitas_polis_terisi`, dikirim terpisah dan
+bukan disimpulkan dari kolom kosong — kosong dapat berarti nomor polisnya memang tidak
+diisi, dan itu hal yang berbeda.
+
+### 21.7 Dua hal yang DISIMPULKAN
+
+| Hal | Yang diketahui pasti | Yang disimpulkan |
+|---|---|---|
+| Kontrak penerbit VA | alamat (`GCNM_CONNECT_REST`, `TYPESERVICE=GENERATEDVA`), metode POST, dan properti yang diisi/dibaca activity | pemetaan nama field JSON. Rule `VirtualAccountClaimsPNC` **tidak ada di export** (`R-16`) |
+| Daftar pilihan Tahun | kolom `TAHUN VARCHAR2(20)`; ketiga baris berisi `"2018"` | daftar nilainya. `GetListYear` **tidak ada di export** (`R-16`) |
+
+Keduanya ditandai di kode pada tempat yang tepat. Pembacaan respons VA sengaja dibuat
+**toleran** terhadap beberapa ejaan kunci: satu perbedaan ejaan tidak boleh membuat VA
+yang sudah benar-benar terbit gagal tercatat.
+
+Untuk Tahun, yang ditegakkan adalah **bentuknya** — empat angka dalam rentang wajar —
+bukan daftar nilainya. Menebak isi daftarnya berarti mengarang aturan bisnis; menerima apa
+saja berarti membiarkan `"20188"` tersimpan.
+
+### 21.8 Penerbit VA tiruan bukan kenyamanan
+
+Alamat yang terdaftar menunjuk layanan Pega yang **menerbitkan rekening virtual
+sungguhan**. Menembaknya dari lingkungan pengembangan meninggalkan rekening nyata yang
+tidak diminta siapa pun, pada sistem yang dipakai orang lain.
+
+Pilihannya mengikuti **ada atau tidaknya koneksi basis data**, bukan `IDENTITAS_ADAPTER` —
+karena alamatnya dibaca dari Oracle. Perbedaannya **diumumkan di log saat start**, bukan
+dibiarkan senyap: layar yang tampak bekerja padahal nomornya karangan adalah kegagalan
+yang tidak terlihat siapa pun sampai dana pertama dikirim ke nomor itu.
+
+### 21.9 Yang ditambahkan ke berkas bersama, dan kenapa aditif
+
+| Berkas | Tambahan | Alasan |
+|---|---|---|
+| `src/lib/money.ts` | **baru** | `08-TECHNICAL-STRATEGY.md` §3 aturan 4 menetapkan pemformatan angka dan mata uang melewati satu berkas bersama. Master Recovery modul pertama yang menangani uang, jadi berkasnya lahir bersamanya |
+| `api/client.ts` | `uploadAPI`, `downloadAPI` | Aturan "tidak ada `fetch` di dalam komponen" akan runtuh pada modul pertama yang mengunggah berkas. **Aditif** — tidak ada perilaku lama yang diubah |
+| `api/types.ts` | tipe + 10 kode galat | Cerminan dto Go |
+| `App.tsx`, `registry.ts` | satu rute, satu baris peta | Menambah modul = menambah satu baris |
+| `main.go`, `check.go` | perakitan dan pemeriksaan | idem |
+
+Tidak ada berkas modul Login, Home, maupun Master Data yang sudah selesai yang disunting.
+
+### 21.10 Pemeriksaan peran masih belum ada — dan di modul ini akibatnya lebih berat
+
+Rutenya terlindungi sesi dan portal, tetapi **belum diperiksa perannya** (`TKT-F3-005`,
+terhalang `TKT-F3-004`). Keadaan ini sama dengan seluruh rute lain hari ini.
+
+Ia disebut khusus karena di modul ini akibatnya berbeda derajat: rutenya **menerbitkan
+rekening virtual** dan **mencatat nilai uang**, sehingga tanpa pemeriksaan peran keduanya
+terbuka bagi setiap pengguna yang berhasil masuk.
+
+---
+
+## 22. Modul Master Dominan Factor (2026-09-20, sesi ketiga belas)
+
+Menggantikan `Harness/DetailDominanFactor-Harness.xml` atas tabel
+`POOLDATA.M_DOMINAN_FACTOR`.
+
+### 22.1 Modul ini SENGAJA berbeda dari dua master sebelumnya
+
+Ini keputusan terpenting di sesi ini, dan yang paling mudah "diperbaiki" menjadi salah oleh
+siapa pun yang menyamakannya dengan modul tetangganya.
+
+| Hal | Master Status Klaim & Tipe Surveyors | **Master Dominan Factor** |
+|---|---|---|
+| Nama kosong | **ditolak** | **diterima** |
+| Nama ganda | **ditolak** (indeks unik) | **diterima** (tanpa indeks) |
+| Pembentuk kode | `id_site \|\| lpad(urutan,3,'0')` | **`max(ID)+1`**, tanpa padding |
+| Sumber nomor | `M_SITE_DATABASE` + sequence | tabel itu sendiri |
+| Migrasi basis data | wajib / opsional | **tidak ada sama sekali** |
+
+Ketiga perbedaan pertama adalah **keputusan Work Owner 2026-09-20**, diambil setelah akibatnya
+dinyatakan di muka. Dua yang terakhir mengikuti dari sana.
+
+Yang mengikat di kode: uji `TestEmptyNameAccepted` dan
+`TestCreateAcceptsEmptyAndDuplicateNames` akan **gagal** bila seseorang menambahkan `.min(1)`
+pada skema Zod atau pemeriksaan keunikan di usecase. Bila uji itu gagal, yang perlu dibaca lebih
+dulu adalah keputusan ini — bukan ujinya.
+
+### 22.2 `max+1` ditiru, bukan diganti — tetapi cacat balapannya ditutup
+
+`Database/PEGA_M_DOMINAN_FACTOR.prc:11`:
+
+```sql
+select nvl(max(to_number(ID)),0)+1 into id_site from M_DOMINAN_FACTOR;
+```
+
+Menggantinya dengan sequence akan mengubah **bentuk ID yang diterbitkan**, dan
+`T_CLAIM_DOMINANFACTOR` menyimpan nilainya apa adanya — deret lama dan baru tidak akan sinambung.
+Jadi perhitungannya ditiru persis, termasuk hasil `"1"` saat tabel kosong dan ketiadaan nol di
+depan.
+
+Yang **tidak** ditiru adalah ketiadaan kuncinya. Prosedur lama membaca nilai tertinggi tanpa
+kunci apa pun, sehingga dua penyimpanan bersamaan menerbitkan nomor yang sama. Di sini ketiga
+langkahnya — kunci, hitung, sisip — berada dalam **satu transaksi Go** dengan
+`SELECT ID ... FOR UPDATE`, sejalan `D-68` yang memindahkan kepemilikan transaksi ke Go.
+
+**Batasnya dinyatakan, bukan disembunyikan:** bila tabel kosong tidak ada baris yang dapat
+dikunci, sehingga dua penyisipan pertama yang benar-benar bersamaan masih dapat kembar. Keadaan
+itu hanya mungkin sekali seumur hidup tabel, dan penjagaan sisanya ada di pemeriksaan ID
+terhadap daftar yang sudah terkunci.
+
+### 22.3 Nama constraint tidak diketahui — disiasati, bukan ditebak
+
+Master Status Klaim menerjemahkan galat bentrok dengan mencocokkan **nama constraint**
+(`M_STS_CLAIM_PK`), yang dibaca dari `ALL_CONSTRAINTS` pada 2026-09-17. Untuk
+`M_DOMINAN_FACTOR`, nama itu **tidak diketahui** — DDL-nya tidak ada di export (`R-08`).
+
+Menebaknya dari pola penamaan adalah persis kesalahan yang pernah terjadi di Master Status
+Klaim, ketika `PK_M_STS_CLAIM` ditulis lebih dulu dan ternyata terbalik. Jadi pendekatannya
+diganti: karena seluruh ID **sudah dibaca dan dikunci** di dalam transaksi yang sama,
+pemeriksaan bentrok dilakukan di Go atas daftar itu. Ia tidak bergantung pada nama objek basis
+data mana pun.
+
+### 22.4 Pengurutan dikerjakan di Go, dan itu perbaikan yang disengaja
+
+Kueri Pega **tidak punya `ORDER BY` sama sekali**, sehingga urutan barisnya ditentukan basis data
+dan dapat berubah sewaktu-waktu. Menambahkan `ORDER BY ID` akan mengurutkan sebagai **teks** —
+dan karena ID tidak bernol di depan, `10` akan mendahului `9`.
+
+Mengurutkannya secara numerik di SQL menuntut `TO_NUMBER(ID)`, yang terikat dialek Oracle dan
+dilarang `09-DATABASE-STRATEGY.md` §4. Jadi urutannya dikerjakan di
+`masterdominanfactor.SortByID` — **satu fungsi di lapisan domain**, dipakai adapter SQL maupun
+adapter memori, supaya keduanya tidak dapat berbeda pendapat tentang urutan yang benar.
+
+Ini mengubah susunan di layar, **tidak mengubah satu pun nilai**.
+
+Baris ber-ID bukan bilangan ditempatkan di **belakang**. Menaruhnya di depan akan menyembunyikan
+baris normal di bawah keanehan warisan.
+
+### 22.5 `to_number` yang gagal total diganti pelewatan yang tercatat
+
+Procedure lama memakai `to_number(ID)` saat membentuk nomor berikutnya. Satu baris warisan
+ber-ID bukan bilangan akan membuatnya gagal dengan ORA-01722 dan **membatalkan seluruh
+penambahan**, tanpa pesan yang menyebut baris mana penyebabnya.
+
+`NumericID` melewati baris seperti itu. Perbedaan yang disengaja, dan arahnya menguntungkan:
+satu baris cacat tidak lagi membuat penambahan faktor baru mustahil.
+
+Ia tidak dibiarkan senyap: mode periksa melaporkannya sebagai `[WASPADA]`, karena **Pega masih
+dapat menulis tabel ini** selama masa paralel dan di sana keadaan itu tetap fatal.
+
+### 22.6 Tidak ada Hapus, dan ketiadaannya diuji
+
+Tiga bukti, bukan satu: layar Pega tidak punya tombolnya, procedure-nya tidak punya cabangnya,
+dan menghapus satu baris akan membuat setiap klaim yang menyimpan ID itu di
+`T_CLAIM_DOMINANFACTOR` kehilangan artinya — sehingga laporan Outstanding per Cabang menampilkan
+faktor yang hilang tanpa penjelasan (`ADR-0012`).
+
+Ketiadaannya **diuji di tiga lapisan**, bukan sekadar dicatat di komentar:
+`TestNoQueryDeletes` (SQL), `TestNoDeleteRoute` (HTTP, 405), dan
+`tidak menyediakan tombol hapus` (layar).
+
+### 22.7 Nama field JSON `nama`, label layar "Keterangan" — dan keduanya benar
+
+| Lapisan | Dipakai | Alasan |
+|---|---|---|
+| Kolom basis data | `NAME` | milik sistem lama |
+| Field domain Go | `Name` | penamaan kode berbahasa Inggris (`D-80`) |
+| Field JSON | `nama` | **kontrak** — mencerminkan isinya, bukan label layarnya (`D-80`) |
+| Label di layar | **"Keterangan"** | teks yang dilihat pengguna mengikuti layar Pega apa adanya (`D-13`) |
+
+Perbedaan itu dicatat di komentar dto supaya tidak terbaca sebagai ketidakkonsistenan. Ia
+mengikuti dua keputusan yang memang berbeda peruntukan.
+
+Nama modul mengikuti `D-81` — `masterdominanfactor` di backend, `master-dominan-factor` di
+frontend, ruas URL `master/dominan-factor`: nama modul yang dipakai Work Owner dan yang tertulis
+di butir MENU_ID 18, bukan terjemahan "faktor-dominan".
+
+### 22.8 Akibat pada laporan disebut di layar, bukan hanya di kode
+
+`GetDataOutstandingperCabangExport` merangkai nama faktor dengan `LISTAGG(m.name, ', ')`.
+Mengubah keterangan di layar master **langsung mengubah isi laporan yang dibaca manajemen**.
+
+Itu dinyatakan di paragraf pembuka layar, bukan hanya di komentar kode — pengguna yang
+mengubahnya perlu tahu jangkauan akibatnya sebelum menekan Simpan, bukan sesudah.
+
+### 22.9 Peringatan menggantikan pemeriksaan yang sengaja tidak ada
+
+Karena keterangan ganda diterima, **pengguna tidak akan pernah ditolak sistem**. Jadi
+satu-satunya cara ia tahu adalah diberi tahu: form tambah memuat peringatan bahwa keterangan
+yang sama boleh terdaftar lebih dari satu kali, dan menyarankan memeriksa daftar lebih dulu.
+
+Alasan yang sama membuat form digambar sebagai panel **di atas tabel**, bukan dialog melayang —
+daftarnya harus tetap terlihat justru saat pengguna sedang mengetik.
+
+Baris ber-keterangan kosong ditandai `(tanpa keterangan)` di tabel, bukan dibiarkan sebagai sel
+kosong yang terlihat seperti tabel rusak. Keduanya konsekuensi langsung dari keputusan 22.1.
+
+### 22.10 Contoh data ditandai sebagai karangan
+
+Isi `M_DOMINAN_FACTOR` yang sebenarnya **belum pernah diterima** — tidak ada artefak setara
+`Database/v_sts_claim.csv` untuk tabel ini.
+
+`SampleList` karena itu diberi peringatan besar di kepalanya bahwa isinya dikarang, lengkap
+dengan kueri yang perlu diminta ke DBA. Pilihan membiarkannya kosong ditolak: daftar kosong
+membuat pengurutan numerik, tombol Ubah, dan keadaan tabel berisi tidak dapat dicoba sama sekali
+tanpa Oracle. Yang dikarang hanyalah **teksnya**; perilaku yang diujinya nyata.
+
+Sepuluh baris dipilih dengan sengaja supaya ID mencapai dua digit — itulah yang membuktikan
+pengurutan numerik benar-benar bekerja, dan bukan kebetulan karena semua ID masih satu digit.
+
+### 22.11 Yang ditambahkan ke berkas bersama, dan kenapa aditif
+
+| Berkas | Tambahan | Alasan |
+|---|---|---|
+| `api/types.ts` | 3 tipe + 2 kode galat | Cerminan dto Go |
+| `App.tsx`, `registry.ts` | satu rute, satu baris peta | Menambah modul = menambah satu baris |
+| `main.go`, `check.go` | perakitan dan pemeriksaan | idem |
+
+Tidak ada berkas modul Login, Home, maupun Master Data yang sudah selesai yang disunting.
+Tidak ada berkas migrasi yang ditambahkan — lihat 22.1.
+
+### 22.12 Pemeriksaan peran masih belum ada
+
+Rutenya terlindungi sesi dan portal, tetapi **belum diperiksa perannya** (`TKT-F3-005`, terhalang
+`TKT-F3-004`). Keadaan ini sama dengan seluruh rute lain hari ini.
+
+Di modul ini akibatnya lebih ringan daripada Master Recovery — tidak ada uang maupun rekening
+yang tersentuh — tetapi tidak nol: keterangan yang diubah ikut terbaca laporan Outstanding per
+Cabang.
+
+## 23. Modul Master Masking (2026-09-20, sesi keempat belas)
+
+Butir menu `MENU_ID 17`, harness `MasterProteksiVisibilityData`, tabel
+`POOLDATA.MST_PROTEKSI_DATA_PNC`.
+
+Modul ini berbeda derajat dari master lain yang sudah dibangun: isinya bukan data acuan,
+melainkan **kewenangan melihat data pribadi nasabah**. Setiap keputusan di bawah diambil
+dengan menimbang satu hal yang sama — apa akibatnya bila ia salah, dan apakah salahnya
+akan terlihat.
+
+### 23.1 Kunci alaminya CABANG + LOGIN, bukan ID_MST
+
+**Keputusan.** Keunikan ditegakkan atas pasangan cabang+pengguna, bukan atas ID.
+
+**Dasarnya.** `Database/UPDATE_LOG_PROTEKSI.prc` menolak penyisipan bila pasangannya sudah
+ada (`:29-31`, pesan "LOGIN … SUDAH ADA") dan mencocokkan pasangan yang sama saat update
+(`:74-76`). Basis data membenarkannya: 25 baris menghasilkan 25 pasangan unik.
+
+**Akibat bila diabaikan.** Dua baris untuk orang yang sama di satu cabang berarti dua
+kewenangan yang keduanya berlaku — dan yang satu dapat luput saat dicabut.
+
+**Yang harus diketahui.** Tabel ini **tidak punya indeks unik**; ALL_INDEXES hanya memuat
+satu indeks NONUNIQUE. Artinya pemeriksaan di usecase adalah **satu-satunya** yang menolak
+pasangan ganda, dan dua permintaan yang tiba benar-benar bersamaan dapat sama-sama lolos.
+Sistem lama pun demikian — penegakannya sepenuhnya bersandar pada procedure. Indeks unik
+diusulkan ke DBA; sampai ada, keadaan ini dicatat terbuka, bukan disembunyikan.
+
+### 23.2 Status aktif dipisahkan dari form
+
+**Keputusan.** Status punya jalur tersendiri (`PUT /{id}/status`), dan `SaveRequest`
+**tidak menerima** field `aktif`. Server menolak badan permintaan yang memuatnya.
+
+**Dasarnya.** Ini bukan kerapian REST melainkan pencegahan satu kelas kesalahan. Bila
+status ikut di dalam form, menyimpan perubahan isian pada baris nonaktif akan
+**mengembalikan kewenangan membuka data pribadi** — tanpa pesan galat, tanpa tanda di
+layar, dan tanpa ada yang bermaksud demikian. Kegagalan seperti itu dapat berjalan lama
+tanpa ada yang menyadarinya.
+
+**Penegakannya berlapis tiga:** DTO tidak punya fieldnya · usecase menimpa `Active` dengan
+nilai tersimpan · `masking_update` tidak menyentuh kolom `STS_AKTF`. Tiga uji menjaganya
+(domain, usecase, layar), ditambah satu perkara uji asap.
+
+### 23.3 Tombol DELETE tidak pernah menghapus, dan namanya diubah
+
+**Keputusan.** Tidak ada rute `DELETE`. Penonaktifan memakai `PUT /{id}/status`, dan
+tombolnya di layar disebut **Nonaktifkan / Aktifkan**, bukan Hapus.
+
+**Dasarnya.** `RDB List/DeleteMstProteksi_SQL-SQL.xml` hanya menjalankan
+`UPDATE … SET STS_AKTF`, dan `Activity/DeleteMasking-Act.xml` mengisinya `'TIDAK AKTIF'`.
+Tidak ada satu pun pernyataan `DELETE` terhadap tabel ini di seluruh export. `D-66`
+menetapkan hal yang sama untuk sistem baru.
+
+**Kenapa namanya ikut diubah.** Nama "Hapus" untuk tindakan yang tidak menghapus membuat
+petugas mengira datanya hilang, lalu menambahkannya lagi dari awal — dan barisnya menjadi
+dua. Ini satu-satunya tempat modul ini menyimpang dari `D-13` (tampilan meniru Pega), dan
+penyimpangannya disengaja karena nama lamanya salah menggambarkan apa yang terjadi.
+
+**Akibat yang diterima.** Sepuluh dari 25 baris produksi berstatus tidak aktif, dan
+masing-masing adalah catatan bahwa seseorang PERNAH diberi kewenangan. Daftar karena itu
+menampilkan baris nonaktif **secara baku** — menyembunyikannya akan membuat 40% isinya
+lenyap dari layar tanpa penjelasan, dan tidak ada cara mengaktifkannya kembali.
+
+### 23.4 Kolom PASSWORD ditulis literal, dan tidak pernah dibaca
+
+**Keputusan Work Owner (2026-09-20).** Kolomnya diisi persis seperti sistem lama.
+
+**Yang ditemukan sebelum keputusan diambil.** Work Owner semula memilih "dibawa apa adanya"
+ketika kami sama-sama mengira kolom itu berisi kata sandi. Penelusuran membuktikan
+sebaliknya, dan temuannya dilaporkan kembali sebelum kode ditulis:
+`Activity/InsermaskingDataKlaimPnc_-Act.xml` menetapkan
+`InputData.ResponseCode := "saya"` — literal tetap; tidak ada isian PASSWORD di layar Pega;
+dan seluruh logika verifikasinya dikomentari di `UPDATE_LOG_PROTEKSI.prc:114-122`. Basis
+data membenarkannya: 25 dari 25 baris berisi nilai sepanjang tepat 4 karakter.
+
+Setelah diberi tahu, Work Owner **tetap memilih menulis literal yang sama**, supaya baris
+lama dan baru seragam. Keputusan itu dihormati dan dijalankan.
+
+**Dua pagar yang dipasang.** Nilainya menjadi konstanta bernama `legacyPassword` yang
+membawa penjelasan lengkap — supaya ia tidak pernah lagi terbaca sebagai rahasia, dan
+supaya menghapusnya kelak cukup menyentuh satu tempat. Dan kolomnya **tidak pernah dibaca,
+tidak pernah masuk DTO, tidak pernah dikirim ke peramban**. Satu uji menjaganya
+(`TestPasswordNeverLeavesServer`), diperkuat uji asap yang memeriksa nol kemunculan kata
+"password" dan "sandi" di respons daftar.
+
+### 23.5 ID tetap dibentuk MAX+1
+
+**Keputusan Work Owner.** Meniru `Database/UPDATE_LOG_PROTEKSI.prc:33-34`, bukan diganti
+sequence.
+
+**Dasarnya.** Penomoran tetap bersambung dengan yang dibuat Pega selama masa paralel
+(`P-5`). Sequence akan memutus kesinambungan itu dan menuntut migrasi DBA.
+
+**Bahaya yang disadari dan diterima.** Dua penyimpanan bersamaan dapat membaca nilai yang
+sama, dan tidak ada indeks unik yang menolaknya. Penanganannya: nomor dibaca **di dalam
+transaksi yang sama** dengan penyisipannya, dan bentrokan dicoba ulang sampai tiga kali.
+Itu mempersempit peluangnya, **tidak menutupnya** — dan itu dinyatakan apa adanya di kode
+maupun di sini.
+
+### 23.6 MODUL dan SUB MODUL diketik bebas
+
+**Keputusan Work Owner.** "Seperti aplikasi Pega saja".
+
+**Dasarnya.** Daftar pilihannya di Pega dipasok rule `MODULKLAIMMASKING`, dan rule itu
+**hilang dari export** (`R-16`) — daftarnya tidak dapat direproduksi tanpa mengarangnya.
+
+**Kenapa tidak dibatasi ke nilai yang ada di data.** Satu-satunya nilai MODUL di produksi
+adalah `PNCSearchKlaim`. Membatasi isian ke nilai itu akan menolak nilai sah yang belum
+pernah dipakai — dan menolak data yang benar jauh lebih merugikan daripada menerima salah
+ketik yang dapat disunting kembali.
+
+**Yang dilakukan sebagai gantinya.** Form mengisi MODUL dengan `PNCSearchKlaim` sebagai
+**saran**, bukan batasan. Bentuk daftar SUB MODUL — dipisah koma dengan koma di ujung —
+dibawa apa adanya, karena Pega masih membaca tabel yang sama selama masa paralel (`D-21`).
+
+### 23.7 Baris produksi yang cacat ditampilkan apa adanya
+
+**Keputusan Work Owner.** Tidak diperbaiki otomatis, tidak disembunyikan.
+
+**Dasarnya.** Satu baris memuat `Penerima Pembayaran KlaimRegistrasi,Dokumen,` — kurang
+koma dan kurang dua huruf. Merapikannya saat ditampilkan akan membuat layar terlihat benar
+sementara datanya tetap salah, dan tidak ada yang tahu ia perlu diperbaiki. Perbaikannya
+menempuh jalur DBA.
+
+Hal yang sama berlaku untuk cabang yang tidak dikenal: `LEFT JOIN`, bukan `INNER`, dan
+barisnya ditandai di layar. Tidak ada yang menggantung hari ini, tetapi menyembunyikannya
+bila kelak terjadi berarti sebuah kewenangan hidup tanpa pernah terbaca benar di layar
+mana pun.
+
+### 23.8 Daftar cabang dibaca di modul ini, bukan di modul bersama
+
+**Keputusan.** `GET /api/master/masking/cabang` membaca `POOLDATA.BRANCH` — hanya membaca,
+tidak pernah menulis.
+
+**Kenapa tidak dijadikan modul bersama.** Modul inilah satu-satunya yang memperlakukan kode
+cabang sebagai **kunci asing sungguhan**; Master Surveyors menyimpan nama cabang sebagai
+teks biasa. Kebutuhannya berbeda, dan menyatukannya sekarang akan memaksa dua hal yang
+tidak sama menjadi satu. Bila modul ketiga membutuhkannya, barulah ia naik.
+
+**Kenapa disaring, bukan dimuat seluruhnya.** Tabelnya 803 baris. Mengirim semuanya ke
+peramban setiap kali form dibuka membebani jaringan untuk daftar yang hampir seluruhnya
+tidak akan dilihat — layar lama pun memakai autocomplete.
+
+### 23.9 Transaksi dimiliki Go, procedure tidak dipanggil
+
+**Keputusan.** `POOLDATA.Update_Log_Proteksi` tidak dipanggil sama sekali; pernyataan
+SQL-nya ditulis langsung (`D-02`), dan transaksinya dimiliki Go (`D-68`).
+
+**Dasarnya, dan ia contoh yang paling jelas dari `D-68`.** Procedure itu melakukan `COMMIT`
+sendiri di **tiga cabang** (`:57`, `:99`, `:161`) lalu menaruh `ROLLBACK` sesudahnya,
+sehingga kegagalan di tengah meninggalkan data setengah jalan. Kontrak galatnya pun berbasis
+teks: parameter keluaran `MSG` berisi `'1'` bila berhasil dan kalimat berbahasa Indonesia
+bila gagal — pemanggil tidak dapat membedakan keduanya tanpa membaca isi teksnya.
+
+**Satu perbedaan yang disengaja.** `TANGGALINPUT` diisi dari aplikasi, bukan `SYSDATE`.
+Waktu datang dari satu tempat (seam Clock, `F-5`), bukan dari jam basis data yang tidak
+dapat dikendalikan maupun diuji — dan itu yang menutup `R-12`.
+
+### 23.10 Pencarian memakai parameter binding
+
+**Keputusan.** Seluruh nilai lewat bind; tidak ada perangkaian ke teks SQL.
+
+**Dasarnya.** `Activity/SearchDataMasking-Act.xml` merangkai kata kunci langsung ke
+pernyataannya lewat `{ASIS:InputSearch.CARI1}`, dan `CekmaskingDataPerLoginUserKlaim`
+merangkai `OperatorID.pyUserIdentifier`. Keduanya persis celah yang
+`docs/Steering/07` §4.3 tutup tanpa perkecualian.
+
+**Satu keputusan teknis yang perlu dicatat.** `masking_list` mengikat kata kunci **dua
+kali** sebagai `:2` dan `:3` alih-alih mengulang satu penanda, supaya kueri tidak
+bergantung pada perilaku driver terhadap penanda berulang. Ada uji yang menjaga keputusan
+itu tidak batal saat kueri disunting kelak (`TestBindMarkersAppearOnce`).
+
+**Tipe pencarian yang tidak dikenal DITOLAK**, tidak diam-diam diperlakukan sebagai "tanpa
+penyaring". Mengabaikannya akan menampilkan seluruh baris kepada pengguna yang mengira ia
+sedang menyaring — pada layar ini, itu berarti membuka seluruh peta kewenangan tanpa
+diminta.
+
+### 23.11 Nilai kolom diterjemahkan dengan arah aman
+
+**Keputusan.** `STS_KTP`/`STS_EMAIL`/`STS_NOTELP` bernilai `'Ya'`/`'Tidak'`; hanya `'Ya'`
+yang berarti boleh. `STS_AKTF` bernilai `'AKTIF'`/`'TIDAK AKTIF'`; hanya `'AKTIF'` yang
+berarti berlaku.
+
+**Dasarnya.** Dibaca langsung dari 25 baris produksi. Dugaan `'1'`/`'0'` yang sempat muncul
+dari blok yang dikomentari di procedure **terbukti salah** — dan itu alasan konkret
+mengapa nilai kolom tidak boleh disimpulkan dari kode yang tidak berjalan.
+
+**Arah penerjemahannya disengaja dan tidak boleh dibalik.** Nilai yang tidak dikenal —
+kosong, NULL, atau yang belum pernah terlihat — diperlakukan sebagai **tidak boleh**.
+Akibatnya data nasabah tetap tersamar. Aman salah ke arah menyamarkan, tidak pernah ke
+arah membuka.
+
+### 23.12 Yang diserahkan, dan apa akibatnya bila tidak ditindaklanjuti
+
+| Hal | Pemilik | Akibat bila dibiarkan |
+|---|---|---|
+| Rule `MODULKLAIMMASKING` hilang (`R-16`) | Tim Pega | MODUL dan SUB MODUL tetap teks bebas; salah ketik membuat masking diam-diam tidak berlaku |
+| Indeks unik `CABANG`+`LOGIN` | DBA | Dua permintaan bersamaan dapat membuat kewenangan ganda yang satu di antaranya luput saat dicabut |
+| Satu baris sub modul cacat | DBA | Baris itu tetap tampil apa adanya |
+| Pemeriksaan peran `TKT-F3-005` | Work Owner | **Siapa pun yang dapat masuk dapat memberi dirinya sendiri kewenangan membuka data pribadi nasabah** |
+| Kredensial lima portal | Tim Infra | Modul hanya dapat dipakai di portal ASM |
+
+Butir keempat adalah yang paling berat di seluruh modul ini, dan ia **bukan** akibat
+rancangan modul — ia keadaan yang sama dengan seluruh rute lain yang sudah ada hari ini.
+Yang membedakannya adalah taruhannya.
+
+---
+
+## 24. Modul Master Penyebab Kerugian (2026-09-20, sesi kelima belas)
+
+`MENU_ID 20` · harness `CauseOfLossInbox` · tabel `POOLDATA.M_CAUSE_OF_LOSS`.
+
+### 24.1 Lingkup dibatasi pada TINGKAT GOLONGAN
+
+**Keputusan.** Modul ini hanya mengelola `M_CAUSE_OF_LOSS`. Rinciannya
+(`D_CAUSE_OF_LOSS`, harness `DetailCauseOfLoss`, `MENU_ID 38`) menjadi modul tersendiri
+yang belum dibangun.
+
+**Dasarnya.** Work Owner menjawab *"seperti aplikasi PEGA saja"*, dan di Pega keduanya
+memang terpisah: butir menu berbeda, harness berbeda, Report Definition berbeda
+(`BrowseVMCauseOfLoss_RD` versus `SelectVDCauseOfLoss_RD`), procedure berbeda.
+
+**Yang ini tutup.** Godaan menumpangkan rincian sebagai sub-sumber daya
+(`/penyebab-kerugian/{id}/rincian`). Itu akan menyatukan dua layar yang di sistem lama
+terpisah, dan menyulitkan penegakan izin per menu (`D-59`) karena keduanya butir menu
+yang berbeda. Ketiadaannya **diuji**, bukan sekadar dicatat.
+
+### 24.2 Isi pindah dari dokumen JSON ke kolom — dan `P-1` belum terpenuhi utuh
+
+**Keputusan.** Go membaca dan menulis kolom `M_COL_ID`, `OLD_M_COL_ID`, dan `COL_DESC`.
+`JSON_DATA` **tidak pernah ditulis lagi**. Perpindahan isinya dikerjakan migrasi 0005,
+mengikuti pola migrasi 0002 pada `M_STS_CLAIM`.
+
+**Dasarnya.** Work Owner menjawab *"menggunakan tabel yang di baca pada PEGA, tidak pakai
+json lagi"*, sejalan dengan `D-02` (procedure tidak dipanggil) dan `D-68` (kontrak galat
+`ErrMsg` tidak dibawa — pada jalur BERHASIL ia berisi kalimat, bukan kekosongan).
+
+**Perbedaan penting dari migrasi 0002, dan konsekuensinya diterima sadar.** Pada
+`M_STS_CLAIM`, layar yang dipindahkan adalah satu-satunya penulis tabelnya. **Di sini
+tidak:**
+
+| Layar | Menu | Status |
+|---|---|---|
+| `CauseOfLossInbox` | 20 | dipindahkan sesi ini |
+| `CauseOfLossInboxSimasOnline` | 21 | **masih hidup di Pega** |
+
+Keduanya menulis lewat `RDB List/UpdateMCauseOfLoss-SQL.xml`. Selama layar kedua dipakai,
+baris yang ditulisnya hanya mengisi `JSON_DATA` dan akan tampil **tanpa keterangan** di 19
+rule pembaca — tanpa satu pun galat.
+
+Keberatan ini disampaikan sebelum pekerjaan dimulai dan arahnya tetap dipilih. Yang
+dikerjakan sebagai gantinya adalah membuat celahnya **terlihat**, bukan menambalnya
+diam-diam:
+
+- Migrasi 0005 menaruh peringatan di kepala berkas dan **melarang langkah 3 dijalankan**
+  sebelum Work Owner memilih satu dari tiga cara menutup celahnya.
+- Kueri `cause_of_loss_count_pending_json` menghitung barisnya.
+- Mode periksa melaporkan angkanya setiap kali dijalankan, beserta dua sebab yang mungkin.
+
+**Yang ini tutup.** Menulis `JSON_DATA` sekaligus kolom "supaya aman". Itu akan membuat
+dua salinan yang dapat berbeda, dan mengulang persis utang teknis §3.2 yang menjadi alasan
+migrasi ini ada.
+
+### 24.3 Tanpa validasi — kosong dan ganda diterima
+
+**Keputusan.** Keterangan kosong dan keterangan ganda **diterima**. Tidak ada indeks unik
+yang dibuat.
+
+**Dasarnya.** Work Owner menjawab *"sesuai PEGA saja"*, dan Pega memang tidak memvalidasi
+apa pun di layar ini: `Section/BrowseCauseOfLoss-Section.xml` tidak memasang `pyRequired`
+maupun `pyMaxLength`, dan `Database/PEGA_M_CAUSE_OF_LOSS.prc` tidak memeriksa apa pun
+sebelum menyisipkan. `P-5` menetapkan perilaku dipertahankan lebih dulu.
+
+**Ini berbeda dari Master Status Klaim dan Master Tipe Surveyors, yang justru menolak
+keduanya** (keputusan Work Owner 2026-09-17 dan 2026-09-19). Kedua keputusan diambil untuk
+layar yang berbeda dan keduanya berlaku. Perbedaannya dicatat di kode supaya tidak
+"diseragamkan" tanpa keputusan baru.
+
+**Satu hal yang tetap ada, dan ia bukan aturan bisnis.** Batas 100 karakter. Ia penjaga
+terhadap penolakan basis data: tanpa batas, isian yang melebihi lebar kolom sampai ke
+pengguna sebagai galat 500 beserta nomor galat Oracle. Lebar `COL_DESC` yang sebenarnya
+belum diketahui (`R-08`); bila kelak lebih sempit, yang berubah cukup satu konstanta di
+tiap sisi.
+
+**Akibat yang diterima sadar, dan disampaikan di layar.** Karena ganda diterima, pengguna
+tidak akan pernah ditolak sistem — jadi satu-satunya cara ia tahu adalah **diberi tahu**.
+Form penambahan memuat peringatan yang menggantikan pemeriksaan yang sengaja tidak ada.
+
+### 24.4 ID dibentuk seperti procedure lama, batasnya dibiarkan terlihat
+
+**Keputusan.** `M_COL_ID` dibentuk kode situs ditambah tiga digit ber-nol di depan, dengan
+kode situs dari `M_SITE_DATABASE WHERE CURRENT_SITE = '1'` dan urutan dari
+`M_CAUSE_SEQ.NEXTVAL` — persis `Database/PEGA_M_CAUSE_OF_LOSS.prc`.
+
+**Dasarnya.** ID yang diterbitkan aplikasi ini harus MELANJUTKAN deret yang sudah ada.
+Deret baru akan bertabrakan dengan ID yang pernah diterbitkan Pega.
+
+**Batas yang dibiarkan apa adanya.** Bilangan di atas 999 dikembalikan apa adanya, sama
+seperti `LPAD` Oracle, sehingga ID ke-1000 menjadi lima karakter. Bila kolomnya memang
+`varchar2(4)` seperti yang dideklarasikan procedure, penyisipannya akan **ditolak basis
+data**. Ia **tidak dipotong** menjadi tiga digit: itu akan menghasilkan ID GANDA, yang
+jauh lebih buruk daripada penyisipan yang gagal dengan pesan jelas.
+
+**Perangkaian dan pemformatannya dikerjakan di Go**, bukan `LPAD`/`TO_CHAR` di SQL —
+keduanya mengikat kueri pada dialek Oracle (`D-20`). `FROM DUAL` yang tidak terhindarkan
+diisolasi di satu kueri, dan isolasi itu **diuji**.
+
+### 24.5 Pengurutan teks, bukan numerik — kebalikan dari Master Dominan Factor
+
+**Keputusan.** Daftar diurutkan menurut ID secara teks, di Go.
+
+**Dasarnya.** Bentuk ID-nya tetap — kode situs ditambah tiga digit ber-nol di depan —
+sehingga pengurutan teks dan numerik menghasilkan urutan yang sama. Ini kebalikan dari
+Master Dominan Factor, yang ID-nya `max+1` tanpa nol di depan sehingga `10` mendahului `9`
+bila diurutkan sebagai teks.
+
+Pengurutannya tetap di Go, bukan `ORDER BY`, karena pengurutan kolom CHAR berpadding
+berperilaku berbeda antar-basis-data.
+
+### 24.6 ID lama ditampilkan meski Pega tidak menampilkannya
+
+**Keputusan.** Kolom `OLD_M_COL_ID` dikirim API dan ditampilkan di tabel serta di form
+pengubahan — sebagai keterangan, bukan isian.
+
+**Dasarnya.** Ia satu-satunya yang menjelaskan data historis yang masih memakai penomoran
+lama. Keputusan yang sama sudah diambil di Master Status Klaim untuk `OLD_LSC_ID`.
+Grid Pega tidak menampilkannya, tetapi Report Definition-nya membawanya — jadi ia bukan
+data yang sengaja disembunyikan, hanya tidak ditampilkan.
+
+Ia **tidak pernah dapat diisi dari luar**: tidak diterima di badan permintaan, dan tidak
+diisi kueri penyisipan. Ketiadaannya di jalur tulis **diuji**.
+
+### 24.7 Seluruh teks layar diambil apa adanya dari Pega
+
+**Keputusan.** Setiap teks yang dilihat pengguna disalin dari export, bukan dikarang:
+
+| Yang tampil | Sumbernya |
+|---|---|
+| Judul **Master Penyebab Kerugian** | `pyValue` pada `Harness/CauseOfLossInbox-Harness.xml` |
+| Kolom **ID** | `pyValue` pada sel ber-`pyCellHeader=true`, `pyLabelFor .M_COL_ID` |
+| Kolom **Deskripsi Kerugian** | idem, `pyLabelFor .COL_DESC` |
+| Isian **Deskripsi Kerugian** | `pyLabelPreview` pada form |
+| Tombol **Tambah** dan **Refresh** | `pyButtonLabel` pada harness |
+| Aksi **Ubah** | `pxLink` berlabel `Ubah` pada section |
+| Judul form **Memperbaharui Data** | `pyTitle` pada section |
+
+**Ini mengoreksi keputusan yang sempat diambil sebelumnya.** Pembacaan pertama menyimpulkan
+grid Pega tidak memasang caption pada kolom deskripsi, sehingga judulnya "jatuh ke nama
+properti `COL_DESC`" dan layar baru menuliskannya **"Keterangan"**.
+
+Kesimpulan itu **salah**: captionnya ada, hanya tersimpan sebagai `pyValue` pada sel
+berpenanda `pyCellHeader=true` — bukan sebagai `pyCaption` yang dicari pembacaan pertama.
+Membaca section dalam urutan dokumen memunculkannya. `D-13` karena itu berlaku penuh di
+sini, tanpa pengecualian yang sempat dibuat.
+
+**Field JSON ikut berubah menjadi `deskripsi`**, bukan `keterangan`. Membiarkannya berbeda
+dari label layar akan mengulang persis utang teknis §4.2 — nama yang tidak mencerminkan
+isinya.
+
+### 24.8 Kolom ID lama dikirim API, tetapi tidak ditampilkan
+
+**Keputusan.** `OLD_M_COL_ID` tetap ada di kontrak API, tetapi **tidak tampil di layar**.
+
+**Dasarnya.** Dua artefak Pega yang berbeda diikuti di tempatnya masing-masing:
+
+| Lapisan | Mengikuti | Memuat `OLD_M_COL_ID`? |
+|---|---|---|
+| Data | `Report Definition/BrowseVMCauseOfLoss_RD` | **ya** |
+| Layar | `Section/BrowseCauseOfLoss` | **tidak** — grid hanya dua kolom |
+
+**Ini juga mengoreksi keputusan sebelumnya**, yang menampilkan kolom itu dengan alasan "ia
+menjelaskan data historis" — mengikuti preseden Master Status Klaim. Alasannya tetap benar,
+tetapi Work Owner meminta layar mengikuti Pega saja, dan grid Pega tidak memuatnya.
+
+Ia tidak dibuang dari kontrak karena lapisan datanya memang memuatnya, dan modul Rincian
+Penyebab Kerugian (`MENU_ID 38`) kelak tidak perlu mengubah kontrak ini untuk menautkan
+data historisnya. Ketiadaannya di layar **dijaga uji**, supaya menampilkannya kembali
+menjadi keputusan — bukan perbaikan yang menyelinap.
+
+### 24.9 Satu isian Pega yang sengaja tidak dibawa
+
+**Keputusan.** Form hanya memuat SATU isian yang dapat diketik.
+
+**Dasarnya.** Form Pega sebenarnya memuat **dua** isian berlabel "Deskripsi Kerugian":
+
+| Terikat | `pyAutomationID` | Diisi saat mengubah? | Dapat dibaca kembali? |
+|---|---|---|---|
+| `TempCauseOfLoss.COL_DESC` | `201703231439450790383511` | ya | ya, lewat view |
+| `TempCauseOfLoss.Description` | **sama persis** | **tidak** | **tidak** |
+
+`pyAutomationID` yang sama menandakan salin-tempel. Yang kedua **mati**:
+`Activity/SetCauseOfLossValue_act-Act.xml` mengisi form dengan `M_COL_ID`, `COL_DESC`, dan
+`pyNote` saja, dan `V_M_CAUSE_OF_LOSS` tidak punya kolom untuk membacanya kembali — apa pun
+yang diketik di sana hanya menumpang di dokumen JSON lewat `@GCNM.GetPageJSONString()` lalu
+hilang dari pandangan.
+
+Membawanya berarti menyalin isian yang sejak semula tidak berfungsi. Ketiadaannya dijaga
+uji.
+
+### 24.10 Yang berbeda dari Pega, dan alasannya masing-masing
+
+Sesudah koreksi di atas, yang tersisa hanyalah hal yang menyangkut **mekanisme**, bukan isi
+layar. Ketiganya dipertahankan dengan alasan yang dapat diperiksa:
+
+| Hal | Pega | Di sini | Alasan |
+|---|---|---|---|
+| Pencarian | filter dropdown per kolom | satu kotak cari | komponen `DataTable` yang sama dipakai seluruh modul master; Pega pun menyaring, hanya bentuknya berbeda |
+| Pesan hasil simpan | isian **Catatan** berisi `ErrMsg` | galat berkode; berhasil menutup form | kontrak galat `ErrMsg` tidak dibawa (`D-68`) — pada jalur BERHASIL pun ia berisi kalimat, sehingga pengguna harus membaca teks untuk tahu hasilnya |
+| Peringatan "deskripsi ganda diterima" | tidak ada | ada, saat menambah | menggantikan pemeriksaan yang sengaja tidak ada; bentuknya sama dengan Master Dominan Factor |
+
+**Satu pemberitahuan DICABUT.** Form pengubahan sempat memuat catatan bahwa deskripsi
+dipakai mengelompokkan laporan. Akibat itu nyata — `BrowseCaseClaimPerCauseOfLoss-SQL.xml`
+dan `GetDataXOLPerBusiness-SQL.xml` keduanya `GROUP BY COL_DESC` — tetapi layar Pega tidak
+memuatnya, dan Work Owner meminta layar mengikuti Pega saja. Akibatnya tetap tercatat di
+dokumen ini dan di komentar kode; ia hanya tidak lagi ditampilkan.
+
+### 24.11 Label tombol diseragamkan ke Pega di SELURUH modul master
+
+**Keputusan Work Owner 2026-09-20.** Setelah perbedaan diangkat, Work Owner menetapkan
+seluruh modul master mengikuti Pega: label tombolnya **"Refresh"**, bukan "Muat ulang".
+
+**Dasarnya, dan ia tidak menyisakan keraguan.** Ke-10 harness master di export diperiksa
+satu per satu, dan **seluruhnya** memasang `pyButtonLabel` yang sama:
+
+```
+StatusClaimInbox · MasterRekening · StatusProgress · SurveyorsInbox
+DetailSurveyorsInbox · UserTeknisInbox · MasterRecovery · DetailDominanFactor
+CauseOfLossInbox                                    → Refresh
+MasterProteksiVisibilityData                        → REFRESH
+```
+
+Tidak ada satu pun yang berbunyi "Muat ulang". `D-13` menetapkan teks yang dilihat pengguna
+mengikuti layar lama, sehingga "Muat ulang" adalah penyimpangan yang tidak pernah
+diputuskan — ia menyelinap, bukan dipilih. Docstring `DominantFactorPage` bahkan sudah
+menyebut "Refresh" di tabel "yang ditiru", tetapi tombolnya tidak mengikuti.
+
+**Yang disentuh, dan hanya itu.** Perubahannya satu kata per tempat, tanpa mengubah
+perilaku apa pun:
+
+| Jenis | Diubah? |
+|---|---|
+| Label tombol `{isFetching ? 'Memuat…' : 'Muat ulang'}` | **ya** — 7 modul |
+| Kalimat yang MENYEBUT tombolnya ("…lalu tekan Muat ulang") | **ya** — agar tidak menunjuk tombol yang tidak ada |
+| Komentar dan docstring yang menyebut tombolnya | **ya** — agar tidak menyesatkan pembaca berikutnya |
+| Prosa umum ("Muat ulang daftarnya.") | **tidak** — ia kalimat Indonesia biasa, bukan rujukan tombol |
+| "Muat ulang halaman" di `AccountForm` | **tidak** — ia memang memuat ulang HALAMAN peramban |
+
+**Kenapa ini tidak melanggar Isolasi Protektif.** Aturan itu melarang **saya** mengubah
+atau me-refactor modul yang sudah selesai atas inisiatif sendiri. Ini bukan itu: Work Owner
+yang memintanya, perubahannya satu kata, tidak ada logika yang bergeser, dan tidak ada uji
+modul terdahulu yang mengunci label itu — diperiksa lebih dulu, dan hasilnya nol.
+
+**Satu modul TIDAK ikut diubah: `master-xol`.** Ia sedang ditulis sesi lain di pohon kerja
+yang sama — berkasnya berubah beberapa kali selama sesi ini berlangsung, dan satu berkas
+baru (`XOLForm.tsx`) muncul di tengah jalan. Menyuntingnya akan bertabrakan dengan pekerjaan
+yang belum selesai. Ia masih berbunyi "Muat ulang" dan **perlu diseragamkan oleh sesi yang
+memilikinya**.
+
+**Yang belum ada penjaganya.** Hanya modul ini yang punya uji atas label tombolnya. Modul
+lain tidak, sehingga "Muat ulang" dapat kembali menyelinap tanpa ada yang menahan.
+Menambahkan uji setara ke sembilan modul lain adalah pekerjaan tersendiri, dan tidak
+dikerjakan di sini.
+
+### 24.12 Yang tetap terbuka setelah modul ini selesai
+
+1. **`P-1` belum terpenuhi utuh** — layar Simas Online (MENU_ID 21) masih menulis tabel
+   yang sama dari Pega. Cara menutupnya menunggu keputusan Work Owner; ketiga pilihannya
+   tertulis di kepala migrasi 0005.
+2. **Migrasi 0005 belum pernah dijalankan**, dan enam fakta skema di dalamnya masih
+   ditebak. Langkah 0 berisi kueri yang harus dijalankan DBA lebih dulu.
+3. **Isi master yang sebenarnya belum diterima.** Daftar contoh deskripsinya dikarang;
+   hanya bentuk ID-nya yang diturunkan dari bukti.
+4. **Empat field Simas Online belum terpetakan** — `BISNISID`, `MST_COL_ID`, `DISC`,
+   `KOMISI` hidup di dalam dokumen JSON dan tidak ada di kolom mana pun. Ia menjadi bahan
+   yang harus dijawab saat MENU_ID 21 dipindahkan.
+5. **`master-xol` belum ikut diseragamkan** — ia sedang ditulis sesi lain dan masih
+   berbunyi "Muat ulang" (§24.11). Perlu dikerjakan sesi yang memilikinya.
+6. **Sembilan modul master belum punya uji atas label tombolnya**, sehingga "Muat ulang"
+   dapat menyelinap kembali tanpa ada yang menahan (§24.11).
+7. **Pemeriksaan peran belum ada** (`TKT-F3-005`), sama dengan seluruh rute lain hari ini.
+
+### 23.13 Koreksi setelah audit ulang terhadap Pega (2026-09-20)
+
+Enam keputusan di §23 dikoreksi setelah `MasterProteksi_Sec` dibaca langsung. Rinciannya di
+`catatan-pengembangan.md` §23.12; yang berikut adalah keputusannya, bukan ceritanya.
+
+| Keputusan semula | Keputusan sekarang | Dasar |
+|---|---|---|
+| Grid memuat MODUL & SUB MODUL | Keduanya hanya di **form**; grid memakai kolom **LIHAT MODUL** | susunan kolom `:15671`–`:17415` |
+| KTP/Email/NoTelp satu kolom | **Tiga kolom terpisah** | `.STS_KTP` `:16158` · `.STS_EMAIL` `:16340` · `.STS_NOTELP` `:16516` |
+| MAX CARI lalu MAX LIHAT | **MAX LIHAT lebih dulu** | `.LOGSEEN` `:16680` mendahului `.LOGSEARCH` `:16868` |
+| Dua tipe pencarian | **Empat** tipe, termasuk status aktif | `SearchData.Type` 1–4 |
+| Status **di luar** form, ada tombol Aktifkan | Status **di dalam** form; aksi hanya pada baris aktif | isian `:22449` · syarat `.STS_AKTF=='AKTIF'` pada kedua tombol |
+
+**Yang paling penting dicatat sebagai pelajaran.** Pemisahan status dari form adalah
+perlindungan yang saya tambahkan sendiri — masuk akal, tetapi **tidak tercatat di 13 butir
+`P-5`**, dan karena itu melanggar prinsipnya. Pega sudah punya perlindungan yang sepadan di
+tempat lain: tombol Ubah tidak muncul pada baris nonaktif. Keduanya kini mengikuti Pega.
+
+**Konsekuensi yang menunggu keputusan Work Owner.** Baris yang sudah dinonaktifkan kini
+**tidak dapat diaktifkan kembali dari layar ini** — sama persis dengan sistem lama, dan
+sepuluh baris produksi berada dalam keadaan itu. Bila reaktivasi dikehendaki, ia
+**penambahan perilaku** yang perlu diputuskan dan dicatat sebagai butir `P-5` baru.
+
+**Temuan `R-16` baru:** `Emb_ModulForMaskingData` — section yang memuat isian MODUL dan SUB
+MODUL pada form — **tidak ada di export**. Ini menguatkan keputusan sebelumnya bahwa
+keduanya diketik bebas. Panel "TEMPLATE AKSES" **tidak dibangun**: kedua section yang
+memasoknya mengikat properti dari domain yang berbeda sama sekali, sehingga tidak ada bukti
+tentang apa yang sebenarnya ia kerjakan — dan menebaknya akan melanggar larangan dummy
+logic.
+
+---
+
+## 25. Modul Master XOL (2026-09-21, sesi keenam belas)
+
+Butir menu `MENU_ID 19`, harness `DetailMasterXOL`, empat tabel `POOLDATA.MST_XOL_*`.
+
+### 25.1 Lingkupnya "sesuai Pega" — dan itu termasuk mengajukan ke komite
+
+Work Owner memilih lingkup **sesuai aplikasi Pega**. Yang perlu dicatat: di layar lama,
+menekan **Simpan** tidak berhenti pada menyimpan. `Activity/InsertUpdateMasterXOL-Act.xml`
+menutup rangkaiannya dengan dua pemanggilan berturut-turut, keduanya **tanpa prasyarat**:
+
+```
+pySteps(10)  Call UpdateStatusMasterKomitexol  → PIC, STSKOMITE='0', REMARKPIC
+pySteps(11)  Call SendDataMasterXOLToKomites   → pemberitahuan, FlagKomites=1
+```
+
+Akibatnya: menyimpan induk yang **sudah disetujui komite** mengembalikannya ke keadaan
+menunggu. Itu masuk akal — strukturnya berubah, sehingga persetujuan atas bentuk sebelumnya
+tidak lagi berlaku — dan ia ditiru apa adanya.
+
+Layar menyatakannya terang-terangan di kepala form, supaya pengguna tidak terkejut
+menemukan induk yang tadinya disetujui kembali berstatus menunggu.
+
+**Yang TIDAK termasuk:** persetujuan komite itu sendiri. Ia butir menu tersendiri
+(`MENU_ID 53`, harness `Inbox_XOL_Harness`) dan modul tersendiri.
+
+### 25.2 Total share 100% adalah PERINGATAN, bukan penolakan
+
+Ini keputusan yang paling mudah salah dibaca, sehingga buktinya dicatat utuh.
+
+Layar lama memeriksa total share per lapisan — tetapi **tidak memblokir penyimpanan**.
+Urutan langkahnya di `InsertUpdateMasterXOL`:
+
+```
+pySteps(2)     ulangi tiap lapisan
+  pySteps(2.1) local.totalshare := 0
+  pySteps(2.2) ulangi tiap reas → local.totalshare += .IndividualRiskPercentage
+  pySteps(2.3) SETEL PESAN bila total bukan 100
+pySteps(3)     SIMPAN INDUK        ← tanpa prasyarat apa pun
+pySteps(7)     SIMPAN LAPISAN & REAS
+pySteps(9)     tampilkan pesan bila ada
+```
+
+Langkah 3 dan 7 tidak punya prasyarat. Penyimpanan berjalan lebih dulu, pesannya muncul
+sesudahnya. **Produksi membuktikannya**: lapisan `10004` milik induk `10002` tersimpan
+dengan nol reasuradur.
+
+Satu jebakan pembacaan dicatat supaya tidak diperbaiki keliru oleh orang berikutnya:
+prasyarat langkah 2.3 berbunyi `local.totalshare==100` dengan kode cabang **`true=3`
+(lewati)** dan **`false=2` (jalankan)**. Dibaca sekilas ia tampak terbalik — pesannya
+justru muncul ketika total BUKAN 100.
+
+Keputusan Work Owner: perilaku itu ditiru. Akibatnya pada kontrak API: jawaban simpan
+membawa senarai **`peringatan`** yang terpisah dari galat, dan statusnya tetap `201`/`200`.
+
+**Toleransi empat desimal `D-51` sengaja TIDAK dipakai.** Ia ditetapkan untuk aturan
+spreading di modul `B-4`; memakainya di sini akan memperkenalkan aturan yang tidak pernah
+ada di layar ini. Perbandingannya bilangan bulat, persis seperti `local.totalshare==100`.
+
+### 25.3 Hapus BERKASKADE — satu-satunya selisih terencana yang diminta
+
+`Activity/DeleteFromTabelMst-Act.xml.xml` menghapus **satu tabel per pemanggilan**.
+Akibatnya terlihat di produksi pada 2026-09-20: induk `10003` sudah terhapus, tetapi
+**2 lapisan dan 3 baris bisnis miliknya masih ada** dan tidak dapat dicapai layar mana pun.
+
+Work Owner memilih **hapus fisik, tetapi berkaskade**. Menghapus satu induk membuang grup
+bisnis, lapisan, dan reas di bawahnya dalam **satu transaksi**.
+
+Urutannya mengikat: reas lebih dulu, lalu lapisan, lalu bisnis, baru induknya. Membalik dua
+yang pertama menghilangkan satu-satunya cara mengetahui `IDLAYER` mana yang milik induk itu.
+
+**Soft delete (`D-66`) tidak dipakai**, dan itu penyimpangan yang disadari. Alasannya:
+`D-66` menuntut kolom penanda baru pada empat tabel lewat jalur DBA (`D-63`), yang akan
+menahan modul ini sampai migrasi selesai — dan Work Owner memilih jalur yang tidak
+tertahan. Dicatat sebagai utang: bila kebijakan soft delete kelak ditegakkan menyeluruh,
+modul ini termasuk yang harus menyesuaikan.
+
+### 25.4 Cacat produksi yang DITIRU, bukan diperbaiki
+
+Penyaring grup bisnis mengikuti Type XOL, dan ketiga polanya disalin apa adanya dari
+`ShowDetailGroupBisnisXol_Act`:
+
+| Type | Pola | Hasil nyata di ASM |
+|---|---|---|
+| 1 | `%PROPERTY%` `%MOTOR%` `%ENGINEERING%` | 6 grup, termasuk HEAVY EQUIPMENT |
+| 2 | `%PA%` `%GA%` | **hanya AVIATION HULL** |
+| 3 | `%MARINE%` `%HEAVY EQUPMENT%` | MARINE CARGO, MARINE HULL |
+
+**Type 2 cacat.** Ia dimaksudkan menjaring PA dan GA, tetapi keduanya bernaung di bawah
+grup treaty "GENERAL ACCIDENT" yang tidak memuat potongan itu. Yang justru terjaring adalah
+AVIATION HULL, karena induknya "AVIATION & AEROSPACE" memuat `PA` di dalam kata AERO**SPA**CE.
+
+**Salah ketik `HEAVY EQUPMENT` tidak berakibat apa-apa.** Dijalankan langsung ke ASM, ejaan
+yang benar maupun yang salah mengembalikan hasil yang sama: nama itu tidak ada di
+`PROPORTIONALARRG.TREATYGROUPNAME` dalam ejaan mana pun.
+
+Work Owner memilih keduanya ditiru (`P-5`). Sebuah uji dibuat khusus untuk membuktikan
+cacat Type 2 memang direproduksi — bukan diam-diam diperbaiki.
+
+### 25.5 Dua cacat yang JUSTRU diperbaiki, dan kenapa
+
+Keduanya bertipe sama: parameter diterima procedure lalu **dibuang** pada cabang update.
+
+| Cacat | Bukti | Akibatnya di sistem lama |
+|---|---|---|
+| `TYPEXOL` tidak ikut diubah | `INSERT_UPDATE_MST_XOL.prc:39` menyetel NAMA, TAHUN, KURSVALUE saja | Mengubah Type XOL pada induk yang sudah ada **tidak pernah tersimpan** |
+| Nama reas tidak ikut diubah | `:115` menyetel `PERCENTSHARE` saja | Membetulkan ejaan nama reasuradur **tidak pernah tersimpan** |
+
+Keduanya diperbaiki karena isian yang hilang tanpa pesan adalah kelas cacat yang paling
+sulit dipercaya pengguna: layar menerima, menyatakan tersimpan, lalu menampilkan nilai lama.
+
+**Selisihnya dicatat terbuka**: layar baru akan mulai menyimpan perubahan yang dulu hilang
+diam-diam. Keduanya di luar 13 butir `P-5`, sehingga bila uji kesetaraan menemukannya, ia
+sudah tercatat di sini sebagai perbaikan yang disengaja.
+
+### 25.6 Tiga rule Pega hilang, dan apa yang dipakai sebagai gantinya
+
+| Yang hilang | Perannya | Pengganti | Dasarnya |
+|---|---|---|---|
+| `GetTypeofxolclaim` | daftar pilihan Type XOL | label diturunkan dari isi penyaring bisnis | satu-satunya bukti tersisa: cabang `CNPSupportDoc == "1"/"2"/"3"` |
+| `InputPanelReas` | picker Reasuransi | ID dan nama **diketik bebas** | section yang tersisa (`InputDetailPanelReasGenerated`) menampilkan keduanya sebagai isian teks |
+| activity pengisi `TempYear` | daftar pilihan Tahun | `POOLDATA.M_TREATYYEAR` | satu-satunya master tahun treaty; memuat kelima tahun yang dipakai master XOL |
+
+Untuk Reas, menebak masternya sengaja dihindari: dari 18 nama yang dipakai, hanya **5** ada
+di `T_REINSURER` dan **8** di `TREATYREINSURER`; "SWISS RE" tidak ada di keduanya. Memilih
+salah satunya akan membuat 13 nama yang sudah dipakai menjadi tidak dapat dipilih lagi.
+
+Ketiganya dicatat sebagai `R-16` dan menunggu Tim Pega.
+
+### 25.7 Penyimpangan yang disadari
+
+**`ParseAmount` tidak ada di modul ini**, berbeda dari `masterrecovery` dan modul lain yang
+punya pembaca angka dari teks. Versi pertama berkas ini punya, lalu dibuang setelah uji
+membuktikannya **ambigu**: karena titik dibuang sebagai pemisah ribuan, `"13.500"` dan
+`"13500.75"` menjadi angka yang sama — sehingga isian pecahan yang seharusnya ditolak
+justru diterima sebagai `1.350.075`.
+
+Ia dibuang, bukan ditambal, karena memang tidak dibutuhkan: seluruh angka di modul ini tiba
+sebagai **angka** di dalam JSON. **Catatan untuk modul lain:** pola yang sama ada di
+`masterrecovery.ParseAmount`; ia tidak disentuh karena Isolasi Protektif, tetapi
+kelemahannya sama dan layak ditinjau bila modul itu dibuka lagi.
+
+**Kolom `"LIMIT"` selalu dikutip** di seluruh kueri. Di Oracle ia bukan kata cadangan
+sehingga dapat ditulis polos — dan justru itu yang membuat kelalaiannya tidak akan ketahuan
+sampai cutover ke PostgreSQL, tempat `LIMIT` **adalah** kata cadangan. Sebuah uji menjaganya.
+
+**Penerima notifikasi komite dari konfigurasi**, bukan dari master. `D-67` menetapkan
+tempatnya adalah master **Penerima Notifikasi** (`F-4`), dan master itu belum dibangun.
+`XOL_PENERIMA_KOMITE` adalah tempat sementara — tetap dapat diubah tanpa menyentuh kode,
+tetapi belum dapat diubah pengguna bisnis sendiri.
+
+**Metode `DELETE` ditambahkan ke `callAPI`.** Komentar di `api/client.ts` menyatakan ia
+sengaja tidak ada dan menuntut "keputusan sadar" sebelum ditambahkan. Keputusan itu diambil
+Work Owner pada 2026-09-20; alasannya dicatat di komentar yang sama.
+
+### 25.8 Yang tidak dibangun, dan kenapa
+
+**Baris grup bisnis yang `IDBUSINESS`-nya kosong tidak dapat dihapus.** Kueri hapus lama
+mencocokkan `IDBUSINESS = :id`, dan pencocokan itu tidak pernah benar untuk NULL — sehingga
+dua baris produksi milik induk 10009 **sudah tidak dapat dihapus dari layar Pega hari ini**.
+Batasannya dipertahankan; layar mematikan tombolnya beserta keterangannya, bukan membiarkan
+pengguna menekan tanpa akibat.
+
+Sebuah kueri yang dapat menghapusnya sempat ditulis lalu **dibuang**: ia tidak dipanggil
+dari mana pun, dan kueri hapus yang menganggur adalah kode mati yang berbahaya.
+
+**Panel persetujuan komite tidak dibangun** — ia butir menu tersendiri (`MENU_ID 53`).
+Kolom `KOMITE` dan `REMARKKOMITE` karena itu hanya **dibaca**, tidak pernah ditulis modul
+ini.
+
+### 25.9 Utang yang dicatat terbuka
+
+| Utang | Pemilik |
+|---|---|
+| Label Type XOL menunggu `GetTypeofxolclaim` | Tim Pega |
+| Sumber daftar Reasuransi menunggu `InputPanelReas` | Tim Pega |
+| Sumber dropdown Tahun belum dikonfirmasi | Tim Pega / Work Owner |
+| 5 baris yatim di produksi menunggu pembersihan | DBA (`D-63`) |
+| Indeks unik pada `MST_XOL_BUSINESS` dan `MST_XOL_REAS` | DBA |
+| Penerima notifikasi pindah ke master Penerima Notifikasi | `F-4` |
+| Soft delete `D-66` bila kelak ditegakkan menyeluruh | Work Owner |
+| Pemeriksaan peran per menu | `TKT-F3-005` |
