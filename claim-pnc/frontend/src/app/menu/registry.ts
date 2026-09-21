@@ -79,6 +79,15 @@ export const MENU_ROUTES: Record<string, string> = {
   // induk, grup bisnis, layer, dan reas tiap layer — dan satu-satunya yang menyimpannya
   // sekaligus mengajukan ke komite.
   DetailMasterXOL: '/master/xol',
+
+  // MENU_ID 53 "Inbox XOL". Akumulasi klaim per perjanjian Excess of Loss beserta
+  // pemberitahuan PLA/DLA kepada reasuradur. MEMBACA SAJA untuk sekarang — keempat
+  // tabel yang ditulis sistem lama masih dimiliki Pega selama masa paralel (`P-1`).
+  //
+  // Bedakan dari `DetailMasterXOL` di atas: itu Master XOL (`MENU_ID 19`) yang MENULIS
+  // struktur treaty-nya. Keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya satu
+  // di antaranya yang boleh menulis.
+  Inbox_XOL_Harness: '/inbox-xol',
 }
 
 /**

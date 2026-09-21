@@ -16,6 +16,7 @@ import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
 import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -245,6 +246,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <XOLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox XOL — akumulasi klaim per perjanjian Excess of Loss, pengganti harness
+        `Inbox_XOL_Harness` (`MENU_ID 53`).
+
+        Layar ini MEMBACA SAJA: keempat tabel yang ditulis sistem lama masih dimiliki
+        Pega selama masa paralel (`P-1`), keputusan Work Owner 2026-09-20.
+
+        Di sistem lama kedua tabnya dijaga access group yang berbeda — PncPICTeknik dan
+        CaseManager. Pembedaan itu belum dapat ditegakkan (`TKT-F3-004`), sehingga setiap
+        pengguna yang dapat masuk melihat keduanya.
+      */}
+      <Route
+        path="/inbox-xol"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxXOLPage />
             </Protected>
           </SessionGuard>
         }

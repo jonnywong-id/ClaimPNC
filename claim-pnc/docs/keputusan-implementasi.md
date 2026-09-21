@@ -4435,3 +4435,162 @@ ini.
 | Penerima notifikasi pindah ke master Penerima Notifikasi | `F-4` |
 | Soft delete `D-66` bila kelak ditegakkan menyeluruh | Work Owner |
 | Pemeriksaan peran per menu | `TKT-F3-005` |
+| 1 | Apakah Master Proteksi Data sudah berisi baris ber-`MODUL='PNCSearchKlaim'`? Bila nol, layar menolak setiap pengguna | DBA + Work Owner |
+| 2 | Apakah layar Master Proteksi Data ikut dimigrasikan? Selama belum, jatah hanya dapat ditambah lewat layar Pega | Work Owner |
+| 3 | Label tipe pencarian yang sebenarnya dibaca pengguna — yang dipakai sekarang turunan dari deskripsi langkah, karena definisi propertinya tidak ada di export | Tim Pega |
+| 4 | Apakah cacat pencarian Tanggal Lahir kelak diperbaiki? Bila ya, ia menjadi butir baru pada daftar perbaikan eksplisit `P-5` | Work Owner |
+
+## 26. Modul Inbox XOL (2026-09-20, sesi ketujuh belas)
+
+Menu `MENU_ID 53`, pengganti harness `Inbox_XOL_Harness`.
+
+### 26.1 Keputusan Work Owner pada sesi ini
+
+| # | Keputusan | Akibatnya pada kode |
+|---|---|---|
+| 1 | Keempat tampilan dibangun, **tanpa aksi tulis** | Enam rute baca; tiga rute tulis ada tetapi menolak |
+| 2 | **Belum menulis** — kepemilikan tabel tetap di Pega | Tidak ada `INSERT`/`UPDATE`/`DELETE` di mana pun; diuji |
+| 3 | Section `InboxClaimXOL` **disediakan** Work Owner | Seluruh susunan grid dibaca dari bukti, bukan direkonstruksi |
+| 4 | "Print Perhitungan" **diganti unduhan CSV** lebih dulu | `GET /pla-dla/unduh`, labelnya bukan "Print Perhitungan" |
+
+### 26.2 Keputusan desain
+
+**Modul ini membaca saja, dan larangan menulisnya DIUJI — bukan sekadar dituliskan.**
+
+`P-1` menetapkan satu tabel hanya boleh ditulis satu sistem. Empat tabel yang ditulis
+sistem lama tetap dimiliki Pega selama masa paralel:
+
+	POOLDATA.XOL_TABLE_ALL_KLAIM   ditulis "INSERT DOL DAN COL"
+	POOLDATA.T_PLA_XOL             ditulis penerbitan dan persetujuan PLA
+	POOLDATA.T_DLA_XOL             ditulis penerbitan dan persetujuan DLA
+	POOLDATA.MST_XOL_PNC           ditulis pengajuan master ke komite
+
+Aturan yang hanya ditulis di komentar akan dilanggar oleh kode berikutnya.
+`TestTidakAdaPernyataanYangMenulis` karena itu memindai seluruh kueri terhadap `INSERT`,
+`UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, dan `COMMIT`, lalu menuntut setiap kueri dimulai
+dengan `SELECT`.
+
+**Tombol yang belum tersedia DIGAMBAR, dan menjawab dengan alasan.**
+
+Ketiga aksi tulis tetap punya rutenya, dan rutenya menjawab `409` beserta penjelasan
+bahwa kewenangan menulis masih ada di Pega. Bukan `404`, dan bukan pula tombol yang
+disembunyikan:
+
+- Tombol yang hilang dilaporkan pengguna sebagai fitur yang rusak.
+- `404` terbaca seperti salah alamat, sehingga penyebab sesungguhnya tidak sampai ke
+  pengguna maupun ke penelusur masalah.
+
+**Pembagian kurs hidup di usecase, bukan di SQL.**
+
+Grid berjudul "OS Value (USD)" sedangkan tabelnya menyimpan rupiah. Sistem lama
+membaginya di lapisan aktivitas (`Activity/GetClaimXOL-Act.xml`). Tempatnya dipertahankan
+di lapisan setara, dan itu bukan sekadar kesetiaan: pembagian di SQL akan mengulang kurs
+yang sama di empat kueri berbeda, dan satu yang lupa tidak menghasilkan galat apa pun —
+hanya angka yang salah.
+
+**Treaty inward TIDAK ikut dibagi kurs, dan pembedaannya diuji khusus.**
+
+Setiap baris treaty inward punya mata uangnya sendiri yang tidak terbawa ke hasil,
+sehingga konversinya wajib terjadi sebelum penjumlahan. Membaginya lagi dengan kurs
+perjanjian akan mengecilkan nilainya sebesar kurs untuk kedua kalinya — kekeliruan yang
+tidak menghasilkan galat apa pun.
+
+**Nama tabel dipilih dengan MEMILIH KUERI, bukan dirangkai.**
+
+Sistem lama memilih `T_PLA_XOL` atau `T_DLA_XOL` dengan menyusun teks SQL di properti
+klipboard lalu menyisipkannya mentah. Di sini keduanya menjadi dua kueri terpisah yang
+dipilih lewat map bertipe `AdviceType`. Harga dari pilihan itu adalah kembaran yang dapat
+berpisah diam-diam, dan `TestKeduaKueriPemberitahuanKembarPersis` membayarnya: yang boleh
+berbeda HANYA nama tabelnya.
+
+**Daftar group business menempuh placeholder, bukan nilai.**
+
+Penanda di berkas `.sql` digantikan deretan `:3, :4, :5` sebelum kueri dikirim. Yang
+dirangkai adalah tanda tanya, bukan isi; seluruh kode tetap dikirim sebagai argumen
+terpisah. Senarai kosong DITOLAK — klausa `IN ()` tidak sah di Oracle, dan di sebagian
+dialek lain ia mengembalikan seluruh baris, yang berarti menampilkan klaim group business
+yang tidak ditanggung perjanjian itu.
+
+**Pemilih perjanjian menjadi dropdown, bukan grid di dalam modal.**
+
+Di sistem lama ia grid: pengguna menekan "INSERT DOL DAN COL", memilih satu baris, lalu
+menekan "Pilih". Bentuk itu ada karena modal tersebut sekaligus tempat MENAMBAH data DOL
+dan COL — dan penambahan itulah yang belum dipindahkan. Yang tersisa hanyalah pemilihan
+satu nilai dari daftar pendek. Ketiga kolomnya tetap terbaca di dalam labelnya.
+
+**Dua tombol lama menjadi SATU panel PLA/DLA.**
+
+"Generated DLA PLA XOL" dan "Cari Data DLA PLA XOL" sama-sama memanggil
+`BrowseDataXOLPLADLAGenerated` dengan tiga parameter yang sama. Yang membedakannya hanya
+dari mana nilainya diambil. Menggambar dua tombol yang membuka dua panel berisi tabel yang
+sama akan mengulang kekeliruan asalnya, bukan meniru perilaku yang berbeda.
+
+### 26.3 Penyimpangan dari sistem lama, dan alasannya
+
+| # | Perilaku lama | Di sini | Dasar |
+|---|---|---|---|
+| 1 | Kurs memakai `TRUNC(sysdate)`, parameter tanggalnya diabaikan | Memakai **tanggal kejadian** | `D-49` butir 4, `D-48` |
+| 2 | Kurs tidak ditemukan → `RETURN 1`, valuta asing jadi 1:1 terhadap rupiah | Baris **ditandai**, nilainya tidak dikarang | `D-49` butir 5 — diterapkan lebih sempit, lihat §19.4 |
+| 3 | Alamat surel reasuradur ditimpa alamat tetap bila operatornya bernama tertentu | **Tidak dibawa** | `D-15`, `D-67` |
+| 4 | `PERCENT \|\| ' %'` dirangkai di SQL | Angka; tanda persen ditambahkan saat ditampilkan | `08-TECHNICAL-STRATEGY.md` §4.3 |
+| 5 | Nomor dan revisi dirakit `CASE` di SQL | Dibawa terpisah, dirakit di Go | idem |
+| 6 | Nilai disisipkan mentah ke teks SQL | Parameter binding tanpa perkecualian | idem |
+| 7 | Dua function basis data dipanggil dari kueri | Ditulis ulang di tempatnya | `D-02` |
+| 8 | Kueri akumulasi tanpa `ORDER BY` | Urutan ditetapkan | grid yang barisnya berpindah tanpa sebab terbaca sebagai kerusakan |
+
+**Penyimpangan 2 diterapkan LEBIH SEMPIT daripada bunyi `D-48`.** `D-48` menolak
+TRANSAKSI yang kursnya tidak ada; layar ini tidak bertransaksi, ia meringkas. Menolak
+seluruh layar karena satu baris historis kehilangan kurs akan menutup data lain tanpa
+sebab. Yang dikerjakan: barisnya ditandai, nilainya tidak dikarang, dan layar menyatakan
+kursnya tidak tersedia. **Penyempitan ini keputusan saya, bukan keputusan Work Owner**, dan
+dicatat di sini supaya dapat dikoreksi.
+
+### 26.4 Cacat yang DIREPLIKASI, bukan diperbaiki
+
+`P-5` menetapkan perilaku dipertahankan lebih dulu, dan hanya 13 butir `D-49` yang boleh
+diperbaiki. Ketiga cacat berikut **tidak termasuk** di dalamnya:
+
+| Cacat | Di mana | Akibatnya |
+|---|---|---|
+| `MAX(TO_CHAR(TGLINSERT,'dd/mm/yyyy'))` mengambil teks terbesar, bukan tanggal terbaru | antrean persetujuan | `31/01/2024` dianggap lebih besar daripada `01/12/2024` |
+| Kolom berjudul "Date Of Loss" berisi TAHUN perjanjian | grid Approval XOL | Judulnya dipertahankan (`D-13`); keterangannya dinyatakan di bawah tabel |
+| "Total Klaim" menghitung nomor klaim untuk bisnis sendiri, tetapi nama perusahaan untuk treaty inward | grid rincian | Dua hitungan berbeda di kolom yang sama |
+
+Ketiganya dicatat di komentar tipe yang bersangkutan supaya tidak terbaca sebagai cacat
+baru saat uji kesetaraan dijalankan.
+
+### 26.5 Yang sengaja tidak dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Aksi tulis apa pun | Keputusan Work Owner; `P-1` |
+| Dokumen PLA/DLA resmi (PDF) | Diganti unduhan CSV lebih dulu. Berkas yang tampak resmi padahal bukan berakibat ke luar perusahaan — PLA dan DLA dikirim kepada reasuradur |
+| Pemeriksaan peran per tab | `TKT-F3-004` belum ada; penugasan operator ke peran tidak ada di basis data maupun di export |
+| Modul Master XOL (`MENU_ID 19`, `DetailMasterXOL`) | Menu tersendiri, layar tersendiri |
+| Kolom `min(LIMIT)` dan `min(EXCESS)` dari `MST_XOL_LAYER` | Tidak satu pun dari keenam grid menampilkannya |
+| Paginasi | Jumlah baris di layar ini dibatasi jumlah tahun perjanjian dan jumlah reasuradur per layer — puluhan, bukan puluhan juta |
+
+### 26.6 Yang belum dapat dibuktikan
+
+1. **Tidak satu pun dari kedua belas tabel XOL pernah dilihat isinya.** DDL-nya belum ada
+   (`R-08`), dan tidak ada basis data di mesin tempat berkas ini ditulis. Yang terbukti
+   hanyalah bentuk kuerinya.
+2. **Kolom `M_CURRENCYSTANDARD` disimpulkan dari tanda tangan function**, bukan dari DDL:
+   `ID`, `CurrencyDate`, `CurrencyValue`. Bila nama sebenarnya berbeda, kueri treaty
+   inward gagal — dan gagalnya baru terlihat saat layar dibuka.
+3. **`GetDataMasterXOL` kelas `Data-Adjustment` direkonstruksi**, bukan disalin. Ia tidak
+   ada di export (`R-16`).
+4. **Mata uang dasar `10001` di-hardcode**, dengan jalan keluar lewat
+   `NewRepoWithBaseCurrency`. Tempatnya adalah master `F-4` yang belum ada
+   (`TKT-F4-004`).
+
+### 26.7 Pertanyaan terbuka yang menahan tahap berikutnya
+
+| # | Pertanyaan | Kepada |
+|---|---|---|
+| 1 | Kapan kewenangan menulis tabel XOL berpindah ke Go, dan apakah Pega berhenti menulis pada saat yang sama? | Work Owner + Tim Pega |
+| 2 | Apakah kolom `M_CURRENCYSTANDARD` memang `ID`/`CurrencyDate`/`CurrencyValue`? | DBA |
+| 3 | Apakah `GetDataMasterXOL` kelas `Data-Adjustment` dapat dikirim, untuk memeriksa rekonstruksinya? | Tim Pega |
+| 4 | Sub-section `PrintPLADLA_XOL` bervisibilitas `1==2` — apakah kolom aksi itu memang sudah mati, atau dimatikan sementara? | Work Owner |
+| 5 | Kode mata uang dasar perhitungan treaty inward — apakah `10001` berlaku sama di keempat entitas? | Work Owner |
+| 6 | Bentuk dokumen PLA/DLA resmi, untuk menggantikan unduhan CSV | Work Owner |

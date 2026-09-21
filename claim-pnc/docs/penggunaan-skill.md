@@ -1826,3 +1826,110 @@ sama besar dengan bagian intinya.
 | `research` | Seluruh fakta ada di dalam repository dan di basis data ASM; tidak ada klaim yang bersumber dari luar |
 | `resolving-merge-conflicts` | Tidak ada konflik merge |
 | `writing-for-agents` | Dokumen sesi ini ditujukan untuk dibaca manusia |
+1. **Periksa branch aktif sebelum mengacu pada pola modul lain.** Repo ini punya banyak
+   branch paralel dengan implementasi berbeda untuk menu yang sama.
+2. **Modul rincian klaim (`MENU_ID 75`)** akan memakai `Protection.MaskPhone`,
+   `MaskEmail`, dan `MaskIDCard` yang sudah dibaca modul ini tetapi belum dipakai. Ketiga
+   penanda itu sengaja dibawa supaya modul itu tidak menafsirkannya ulang.
+3. **Kuota `LOGSEEN`** milik layar rincian, dan belum ada yang memakainya. Pola
+   `Check`/`Grant` di modul ini dapat dipakai ulang apa adanya.
+
+# Penggunaan Skill — Sesi 2026-09-20 (modul Inbox XOL)
+
+## Ringkasan
+
+Satu skill dipanggil, dua dipakai tekniknya tanpa dipanggil. Nilai terbesarnya bukan pada
+kode yang dihasilkan melainkan pada **satu pertanyaan yang membatalkan rencana rekonstruksi
+seluruh susunan layar** — dan pertanyaan itu lahir dari disiplin `grilling`, bukan dari
+membaca lebih banyak berkas.
+
+## Skill yang dipakai
+
+### `mattpocock-skills:grilling` — fase analisis, sebelum satu baris kode ditulis
+
+**Alasan dipakai.** Tugasnya melarang menulis kode sebelum analisis selesai, dan modul ini
+punya empat keputusan yang bukan milik saya: lingkup, kepemilikan tulis terhadap `P-1`,
+perlakuan atas section yang hilang, dan nasib tombol cetak. Menebak salah satunya berarti
+membangun hal yang salah selama berjam-jam.
+
+**Disiplin yang benar-benar dijalankan:**
+
+1. **Fakta dicari sendiri, keputusan diserahkan.** Sebelum bertanya, keenam grid, dua
+   function basis data, dan dua belas kueri sudah dibaca. Pertanyaannya karena itu memuat
+   angka dan nama berkas, bukan "bagaimana menurut Bapak".
+2. **Setiap pertanyaan disertai rekomendasi** beserta akibat tiap pilihan.
+3. **Kontradiksi diangkat, tidak diserap diam-diam.** Larangan menulis (`P-1`) dan
+   keberadaan tiga tombol tulis di layar bertabrakan; keduanya disajikan berdampingan
+   alih-alih saya putuskan sendiri.
+
+**Hasilnya, dan ini yang terpenting.** Pertanyaan 3 ditawarkan dengan tiga pilihan yang
+**semuanya mengandung tebakan** — rekonstruksi dari SQL, menunggu Tim Pega, atau
+rekonstruksi lalu dikoreksi. Work Owner menjawab dengan **menyediakan berkasnya**. Susunan
+keenam grid — judul kolom, urutan, lebar, properti yang diikat — karenanya dibaca dari
+bukti, bukan dikarang.
+
+Seandainya saya tidak bertanya dan langsung merekonstruksi, hasilnya akan tampak
+meyakinkan dan **sebagian besar salah**: `.City` berarti ID XOL, `.ERROR` berarti Share
+Percent, `.HASIL5` berarti Remark — tidak satu pun dapat ditebak dari namanya.
+
+### `mattpocock-skills:domain-modeling` — dipakai tekniknya, tanpa dipanggil
+
+**Alasan.** Nama properti di layar ini bukan sekadar tidak lazim, melainkan **berarti hal
+lain**. Membawa nama itu ke sistem baru berarti mewariskan kekacauan yang justru menjadi
+alasan migrasi.
+
+**Yang dikerjakan:** setiap nama properti disilangkan ke SQL yang mengisinya, lalu diberi
+nama yang menyatakan isinya. Pemetaan lengkapnya ditulis di **tiga tempat yang saling
+memeriksa**: kepala `inboxxol.sql`, komentar tipe di `inboxxol.go`, dan
+`peta-penamaan.md`.
+
+**Satu istilah baru masuk `CONTEXT.md`**: `Pita Layer XOL` tidak ditambahkan karena belum
+dipakai, tetapi `Treaty Inward` sebagai penanda — bukan sebagai nama yang diketik siapa pun
+— dicatat di komentar konstanta `TreatyInwardLabel`.
+
+### `mattpocock-skills:codebase-design` — dipakai tekniknya, tanpa dipanggil
+
+Dipakai menimbang satu hal: apakah `BreakdownByBusiness` dan `BreakdownTreatyInward` layak
+menjadi **dua method** pada seam yang sama, atau satu method yang menyatukannya.
+
+Dipisahkan, dan alasannya lolos uji deletion: keduanya membaca tabel berbeda, dan yang satu
+nilainya sudah dikonversi sementara yang lain belum. Menyatukannya berarti menyembunyikan
+perbedaan yang justru paling mudah salah — dan kesalahannya tidak menghasilkan galat apa
+pun, hanya angka yang mengecil sebesar kurs.
+
+## Teknik yang dipakai tanpa skill
+
+| Teknik | Untuk apa | Hasilnya |
+|---|---|---|
+| Pembacaan XML berbasis skrip | Harness 1 MB dan section 962 KB tidak dapat dibaca utuh | Keenam grid beserta kolom, lebar, dan properti terikatnya terekstraksi utuh |
+| Pengujian alat ukur sebelum dipercaya | Ekstraksi pertama memakai `pySectionName`, hasilnya nihil | Penanda diganti `pyCellHeader`/`pyValue` setelah terbukti menyala pada kasus yang jelas benar |
+| Membuktikan kegagalan pra-ada | 3 uji frontend gagal | `git stash` atas ketiga berkas yang saya sunting, lalu uji dijalankan ulang — hasilnya sama persis |
+| Menulis uji yang menegakkan keputusan | Larangan menulis, larangan function basis data, larangan DB Link | 16 uji disiplin kueri; keputusan yang hanya ada di komentar akan dilanggar kode berikutnya |
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
+
+| Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Menyebut layar ini punya "4 tab"** dalam pertanyaan konfirmasi | Section yang Work Owner sediakan membuktikan strukturnya **2 tab ber-access-group + tombol** | Menyimpulkan struktur dari daftar `pyLabel` tanpa membaca kondisi tampilnya. Label tidak menyatakan apakah sesuatu tab atau tombol |
+| **Menulis impor `Advice` di bagian bawah `api.ts`** dengan komentar "menghindari impor melingkar" | Tidak ada impor melingkar; `types.ts` tidak mengimpor `api.ts` | Membenarkan sesuatu dengan alasan yang tidak diperiksa. Dibetulkan ke impor biasa di atas |
+| **Memakai kelas Tailwind yang tidak ada** — `rounded-lencana`, `text-biru-700` | Diperiksa terhadap `styles.css`; keduanya tidak terdaftar | Sistem desainnya memakai token Indonesia untuk SEBAGIAN hal (`rounded-kartu`, `shadow-lembut`) tetapi warna Tailwind apa adanya. Menganggapnya seragam adalah tebakan |
+
+Satu lagi yang bukan kesalahan pemahaman melainkan kelalaian: **uji layar mencari "BANJIR"
+di seluruh halaman**, padahal teks itu juga muncul sebagai pilihan dropdown panel di
+bawahnya. Dilingkupi ke barisnya.
+
+## Catatan untuk sesi berikutnya
+
+1. **Modul Master XOL (`MENU_ID 19`, `DetailMasterXOL`)** adalah pasangan alami layar ini.
+   Ia MENULIS `MST_XOL_PNC`, `MST_XOL_LAYER`, `MST_XOL_BUSINESS`, dan `MST_XOL_REAS` lewat
+   `POOLDATA.INSERT_UPDATE_MST_XOL` — satu procedure yang sumbernya **sudah ada** di
+   `Database/`. Kepemilikan tulisnya harus diputuskan lebih dulu.
+2. **Kueri `master_business_list` dan `master_list` dapat dipakai ulang apa adanya** oleh
+   modul itu; keduanya sudah memisahkan master dari group business-nya.
+3. **Periksa `M_CURRENCYSTANDARD` ke DBA sebelum modul nilai uang berikutnya.** Kolomnya
+   di sini disimpulkan dari tanda tangan function, bukan dari DDL — dan modul mana pun yang
+   menghitung valuta asing akan menyentuhnya.
+4. **Pola `expandIDs` dapat dipakai ulang** oleh modul mana pun yang menyaring dengan
+   daftar berpanjang berubah. Ia sudah diuji terpisah.

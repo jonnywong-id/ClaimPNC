@@ -4734,3 +4734,151 @@ konsisten dengan hitungan yatim di baris berikutnya, dan keduanya saling menguat
 | **Indeks unik** | `MST_XOL_BUSINESS` dan `MST_XOL_REAS` tidak punya. Keunikan hanya dijaga pemeriksaan di kode — diusulkan ke DBA |
 | **Entitas selain ASM** | Kredensial lima portal belum terisi di `.env` — penghalang yang sama dengan modul lain |
 | **Pemeriksaan peran** | `TKT-F3-005` belum ada. Di modul ini akibatnya: siapa pun yang dapat masuk dapat mengajukan struktur treaty ke komite |
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis, dan migrasi 0004 belum
+dijalankan DBA. Yang terbukti hanyalah bentuk kuerinya — lewat `query_test.go` yang
+memeriksa keseragaman alias, jumlah parameter, disiplin SQL portabel, dan larangan menulis
+ke tabel milik sistem lama.
+
+## 26. Sesi ketujuh belas — modul Inbox XOL (2026-09-20)
+
+Menu `MENU_ID 53` "Inbox XOL", pengganti harness `Inbox_XOL_Harness`. Modul proses klaim
+ketiga setelah Pelaporan Klaim dan View History Claim.
+
+XOL — Excess of Loss — adalah treaty reasuransi non-proporsional yang menanggung kerugian
+di atas batas tertentu. Layar ini **bukan** layar klaim perorangan: ia mengakumulasi klaim
+satu tahun perjanjian, lalu memperlihatkan pemberitahuan PLA/DLA yang sudah diterbitkan
+kepada para reasuradur beserta status persetujuannya.
+
+### 26.1 Analisis pra-implementasi
+
+Dikerjakan sebelum satu baris kode ditulis, atas permintaan Work Owner. Yang dibaca:
+
+| Berkas | Yang diambil |
+|---|---|
+| `Harness/Inbox_XOL_Harness-Harness.xml` | pembungkus layar, tiga defer-load, tujuh tombol |
+| `Section/InboxClaimXOL-Section.xml` | 2 tab ber-access-group, 6 grid beserta kolomnya |
+| `Section/Sec_Detail_claim_XOL-Section.xml` | grid rincian di balik satu baris klaim |
+| `Activity/GetClaimXOL-Act.xml` | perhitungan berlapis tab 1, pembagian kurs |
+| `Activity/GetShowDataMasterXOL-Act.xml` · `GetDataXOLKomite-Act.xml` | sumber dua tampilan lain |
+| `Activity/BrowseDataXOLPLADLAGenerated-Act.xml` | pencarian PLA/DLA terbit |
+| `Activity/AddingPilihanMasterXOL-Act.xml` | pemilihan master XOL di modal |
+| 12 berkas `RDB List/` | SQL sesungguhnya tiap grid |
+| `Database/GET_GROUPBUSINESS_XOL.fnc` · `GETCURRENCYSTANDARD.fnc` | dua function yang ditulis ulang |
+| `Report Definition/SelectVDCauseOfLoss_RD-RD.xml` | isi dropdown Penyebab Kerugian |
+
+**Empat temuan yang mengubah rancangan**, dan tak satu pun terbaca dari dokumen mana pun:
+
+1. **Strukturnya 2 tab, bukan 4.** Kedua tab dijaga access group yang berbeda —
+   `GCNMFW:PncPICTeknik` dan `GCNMFW:CaseManager`. Tiga judul yang tampak seperti tab —
+   "Generated DLA PLA XOL", "Cari Data DLA PLA XOL", "INSERT DOL DAN COL" — sebenarnya
+   **tombol** di dalam tab pertama; ketiganya terdaftar sebagai `pyButtonLabel`.
+2. **Alias kolom menyesatkan lebih parah dari modul mana pun sebelumnya.** `.ASMFull`
+   berarti Tanggal Kejadian, `.AcceptedNo` berarti Penyebab Kerugian, `.City` berarti ID
+   XOL, `.ERROR` berarti Share Percent, `.HASIL5` berarti Remark. Pemetaan lengkapnya kini
+   di `peta-penamaan.md` dan di kepala `inboxxol.sql`.
+3. **Hardcode identitas di jalur produksi.**
+   `Activity/BrowseDataXOLPLADLAGenerated-Act.xml` menimpa alamat surel reasuradur dengan
+   satu alamat tetap apabila operator yang membuka layar bernama tertentu; dua activity
+   pengajuan komite menanam dua alamat surel pribadi; `XOLByPerCauseOfLossForKomite`
+   menanam satu login reasuradur. Tidak satu pun dibawa (`D-15`, `D-67`).
+4. **Seluruh kuerinya dirangkai dari string** — termasuk **nama tabel**: `T_PLA_XOL` atau
+   `T_DLA_XOL` dipilih dengan menyusun teks lalu menyisipkannya mentah lewat pola `ASIS`.
+
+**Satu temuan tambahan yang tidak berdampak pada lingkup**: sub-section `PrintPLADLA_XOL`
+pada grid utama bervisibilitas `1==2` — kolom aksi itu **mati permanen** di produksi.
+
+### 26.2 Pertanyaan konfirmasi dan jawabannya
+
+Empat pertanyaan diajukan sebelum kode ditulis; seluruhnya dijawab Work Owner 2026-09-20.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Berapa tampilan yang dibangun sesi ini | **Keempatnya, tanpa aksi tulis** |
+| 2 | Kepemilikan tulis terhadap `P-1` | **Belum menulis — baca saja dulu** |
+| 3 | Section `InboxClaimXOL` yang hilang dari export | Work Owner **menambahkannya** ke `Section/InboxClaimXOL-Section.xml` |
+| 4 | Tombol "Print Perhitungan" | **Cukup unduh CSV/Excel dulu** |
+
+**Jawaban 3 menghapus seluruh rekonstruksi yang direncanakan.** Pertanyaan diajukan dengan
+tiga pilihan yang semuanya mengandung tebakan; Work Owner menjawab dengan menyediakan
+berkasnya. Akibatnya susunan keenam grid — judul kolom, urutan, lebar, dan properti yang
+diikatnya — terbaca dari bukti, bukan dikarang.
+
+**Satu koreksi atas deskripsi saya sendiri.** Pertanyaan diajukan dengan menyebut layar ini
+punya "4 tab". Pemeriksaan section yang baru diterima membuktikan strukturnya **2 tab
+ber-access-group + tombol**. Koreksinya disampaikan sebelum kode ditulis; arah keputusannya
+tidak berubah — keempat tampilan tetap dibangun.
+
+### 26.3 Yang dibangun
+
+**Backend — `internal/inboxxol/`**
+
+| Berkas | Isi |
+|---|---|
+| `inboxxol.go` | `MasterXOL`, `ClaimSummary`, `BusinessBreakdown`, `Advice`, `ApprovalItem`, `CauseOfLoss`, tiga penyaring, seam `Repo`/`RepoSelector` |
+| `errors.go` | tiga galat domain + `ValidationError` |
+| `usecase/read.go` | enam operasi baca; pembagian kurs hidup di sini |
+| `repo/sqlstore/` | 10 kueri + `expandIDs` + 16 uji disiplin kueri |
+| `repo/memory/` | penyimpanan memori + contoh yang mencakup seluruh jalur |
+| `http/` | dto, galat, handler, rute — termasuk unduhan CSV |
+
+**Frontend — `src/modules/inbox-xol/`** — `types.ts`, `api.ts`, `errors.ts`,
+`ClaimPanel.tsx`, `AdvicePanel.tsx`, `ApprovalPanel.tsx`, `InboxXOLPage.tsx`, beserta
+ujinya.
+
+**Rute API baru:**
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox-xol/perjanjian` | daftar perjanjian XOL |
+| `GET` | `/api/inbox-xol/klaim` | akumulasi klaim satu perjanjian |
+| `GET` | `/api/inbox-xol/klaim/rincian` | rincian per group business + treaty inward |
+| `GET` | `/api/inbox-xol/pla-dla` | pemberitahuan PLA/DLA yang sudah terbit |
+| `GET` | `/api/inbox-xol/pla-dla/unduh` | isi perhitungan sebagai CSV |
+| `GET` | `/api/inbox-xol/persetujuan` | dua antrean tab Komite |
+| `GET` | `/api/inbox-xol/sebab-kerugian` | isi dropdown Penyebab Kerugian |
+| `POST` | `/api/inbox-xol/dol-col` · `/persetujuan` · `/pengajuan-komite` | **menolak dengan alasan** |
+
+**Tidak ada migrasi basis data.** Modul ini tidak menulis apa pun, sehingga tidak ada tabel
+baru yang dibutuhkan.
+
+### 26.4 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **`ASM-FW-GCNMFW-Data-Adjustment GCNM GetDataMasterXOL` tidak ada di export** — yang ada hanya versi kelas `Data-ClaimData` dengan alias berbeda | Disusun ulang dari **tiga sisi yang saling menguatkan**: kolom grid pada section, pemakaian propertinya di `GetClaimXOL`, dan `GetDataMasterXOLForKomiteApprove` yang membaca tabel yang sama. Dicatat sebagai rekonstruksi di kepala kueri, bukan disamarkan sebagai salinan |
+| **`GET_GROUPBUSINESS_XOL` mengembalikan teks yang nilainya SUDAH dikutip** supaya dapat disisipkan mentah ke klausa `IN` | Function ditulis ulang menjadi kueri biasa (`D-02`), hasilnya senarai — sehingga setiap kode menempuh parameter binding |
+| **Daftar group business panjangnya berubah**, sedangkan parameter binding butuh jumlah tetap | Penanda di berkas `.sql` digantikan **deretan placeholder**, bukan nilainya. Diuji: penomorannya melanjutkan parameter yang sudah ada, dan senarai kosong DITOLAK |
+| **`GETCURRENCYSTANDARD` mengembalikan `1` saat kurs tidak ada** — valuta asing diperlakukan 1:1 terhadap rupiah tanpa satu pun tanda | Ditulis ulang sebagai subkueri, memakai **tanggal kejadian** (`D-49` butir 4). Kurs yang tidak ada menghasilkan penanda `RateMissing`, dan layar menyatakan kursnya tidak tersedia alih-alih menampilkan angka |
+| **Treaty inward tidak boleh ikut dibagi kurs** — nilainya sudah dikonversi di kuerinya sendiri | Dipisahkan menjadi dua method seam. Diuji khusus: klaim sendiri dibagi, treaty inward tidak |
+| **Berkas Go baru berakhiran LF, sedangkan repo memakai CRLF** — `gofmt -l` menandai hampir seluruh repo | Berkas baru dikonversi ke CRLF agar konsisten. Keadaan CRLF repo **tidak diubah**; ia di luar lingkup tugas ini |
+| **Uji layar mencari "BANJIR" di seluruh halaman**, padahal teks itu juga muncul sebagai pilihan dropdown panel di bawahnya | Pencarian dilingkupi ke **barisnya** lewat `closest('tr')` |
+
+### 26.5 Verifikasi yang benar-benar dijalankan
+
+```
+cd backend  && go build ./... && go vet ./... && go test ./...
+cd frontend && npm run typecheck && npm test -- --run
+```
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruh paket lulus, termasuk 3 paket baru |
+| `npm run typecheck` | bersih |
+| `npm test` | **129 lulus, 3 gagal** |
+
+**Ketiga kegagalan itu sudah ada sebelum sesi ini**, seluruhnya di
+`master-rekening/AccountPage.test.tsx`. Dibuktikan dengan `git stash` atas ketiga berkas
+yang saya sunting lalu menjalankan berkas uji itu — hasilnya sama persis, 3 gagal. Bukan
+akibat perubahan sesi ini, dan **tidak diperbaiki** karena di luar lingkup tugas.
+
+Uji modul ini: **17 uji layar + 45 uji backend**, seluruhnya lulus.
+
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis, dan **tidak satu pun dari
+kedua belas tabel XOL pernah dilihat isinya** — DDL-nya juga belum ada (`R-08`). Yang
+terbukti hanyalah bentuk kuerinya, lewat `query_test.go` yang memeriksa larangan menulis,
+larangan memanggil function basis data, larangan DB Link, disiplin SQL portabel, kesamaan
+kolom antar kueri kembar, dan daftar tabel yang boleh disentuh.

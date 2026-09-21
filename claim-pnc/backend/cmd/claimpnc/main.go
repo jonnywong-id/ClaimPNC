@@ -29,6 +29,7 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpenyebabkerugian"
@@ -54,6 +55,10 @@ import (
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
+	inboxxolhttp "claim-pnc/internal/inboxxol/http"
+	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
+	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
+	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
 	masterdominanfactorhttp "claim-pnc/internal/masterdominanfactor/http"
 	masterdominanfactormemory "claim-pnc/internal/masterdominanfactor/repo/memory"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
@@ -409,6 +414,28 @@ func run() error {
 		return err
 	}
 
+	// Inbox XOL. Jembatan pemanggilnya membawa LOGIN, sama seperti View History Claim:
+	// identitas yang dipakai sistem lama di layar ini adalah `OperatorID.pyUserIdentifier`,
+	// bukan NIK.
+	//
+	// Modul ini MEMBACA SAJA (keputusan Work Owner 2026-09-20). Ketiga rute tulisnya ada
+	// tetapi menolak dengan alasan — lihat inboxxolhttp.Mount.
+	xolHandler := inboxxolhttp.NewHandler(inboxxolhttp.Options{
+		Service: assembly.inboxXOL,
+		GetCaller: func(ctx context.Context) (inboxxolhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxxolhttp.Caller{}, false
+			}
+			return inboxxolhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+		// pemeriksaan portal.
+		FallbackErrorWriter: inboxxolhttp.ErrorWriterFrom(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
 		// Galatnya dikembalikan lebih dulu, bukan dibungkus: nil bertipe *Service yang
@@ -516,6 +543,17 @@ func run() error {
 				// daftar kode, melainkan daftar siapa yang boleh membuka nomor KTP
 				// dan nomor telepon nasabah badan hukum lain (`R-20`).
 				mastermaskinghttp.Mount(protected, maskingHandler, activePortalDeps)
+
+				// Inbox XOL memuat nilai klaim agregat satu perjanjian reasuransi,
+				// nama reasuradur, dan alamat surelnya. Tidak satu pun boleh terbaca
+				// tanpa sesi, dan seluruhnya dijaga pemeriksaan portal.
+				//
+				// Ia MEMBACA SAJA (keputusan Work Owner 2026-09-20): keempat tabel XOL
+				// yang ditulis sistem lama tetap dimiliki Pega selama masa paralel
+				// (`P-1`). Bedakan dari Master XOL di atas, yang MENULIS struktur
+				// treaty-nya — keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya
+				// satu di antaranya yang boleh menulis.
+				inboxxolhttp.Mount(protected, inboxXOLHandler, activePortalDeps)
 			})
 		},
 	})
@@ -602,6 +640,9 @@ type assembly struct {
 	// POOLDATA.TMP_BATCH_AUTO_CLAIM ada di basis data SETIAP entitas (ADR-0030).
 	inboxAutoClaim *inboxautoclaimusecase.Service
 
+	// inboxXOL melayani layar Inbox XOL (`MENU_ID 53`).
+	inboxXOL *inboxxolusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -627,6 +668,14 @@ type storage struct {
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
 	legacy *sqlstore.Legacy
+
+	// inboxXOLSelector memilih penyimpanan Inbox XOL milik satu portal.
+	//
+	// Fungsi, bukan repo tunggal, dengan alasan yang sama seperti selector di atasnya:
+	// perjanjian XOL dan nilai klaimnya adalah data bisnis milik satu badan hukum
+	// (`ADR-0030`). Satu repo bersama akan membaca perjanjian satu entitas dari basis
+	// data entitas lain — kebocoran lintas badan hukum yang justru dicegah `R-20`.
+	inboxXOLSelector inboxxol.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -842,6 +891,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	inboxXOLService, err := inboxxolusecase.NewService(inboxxolusecase.Options{
+		RepoSelector: store.inboxXOLSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                   service,
 		portal:                 store.portal,
@@ -858,6 +915,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterMasking:          maskingService,
 		menu:                   menuService,
 		inboxAutoClaim:         autoClaimService,
+		inboxXOL:               inboxXOLService,
 		readyAliases:           store.readyAliases,
 		close:                  store.close,
 	}, nil
@@ -1120,6 +1178,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterrecoverysql.NewRepo(conn), nil
 		}
+
+		store.inboxXOLSelector = func(alias string) (inboxxol.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxxolsql.NewRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.accountSelector = accountSelectorMemory(cfg.PrimaryPortal)
@@ -1168,6 +1234,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
 		store.menu = menumemory.NewDevRepo()
+		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -1725,4 +1792,50 @@ func portalParameters(cfg config.Config) []db.Parameter {
 		})
 	}
 	return parameter
+}
+
+// inboxXOLSelectorMemory menyusun penyimpanan Inbox XOL di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai
+// kembali — alasannya sama dengan selector memori lain di berkas ini.
+//
+// Isinya contoh yang mencakup SELURUH jalur layar, termasuk dua yang paling mudah
+// terlewat: perjanjian tanpa group business, dan baris treaty inward yang kursnya tidak
+// ditemukan. Seluruhnya karangan — lihat inboxxol/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti
+// di produksi.
+func inboxXOLSelectorMemory(primaryAlias string) inboxxol.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxxol.Repo{}
+
+	return func(alias string) (inboxxol.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxxolmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// matchPrimaryPortal menyeragamkan alias dan menolak portal selain portal utama.
+//
+// Penolakannya memakai portal.ErrNotReady, galat yang sama dengan yang dihasilkan
+// produksi saat kredensial sebuah entitas belum diisi — sehingga jalur penolakannya
+// berperilaku sama di kedua lingkungan.
+func matchPrimaryPortal(alias, primaryAlias string) (string, error) {
+	clean := strings.ToUpper(strings.TrimSpace(alias))
+	if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+		return "", fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+	}
+	return clean, nil
 }
