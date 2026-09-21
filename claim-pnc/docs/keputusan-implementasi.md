@@ -1865,3 +1865,792 @@ fungsinya kelak disunting.
 | Baris otorisasi untuk pengguna karyawan | Data, bukan kode — lihat §16.5 |
 | Apakah `M_OTORISASI_PNC` menggantikan 22 peran `D-58` | menunggu keputusan Work Owner — §16.2 |
 | Tabrakan nama tab/tombol di Master Rekening (3 uji merah) | tetap menunggu keputusan Work Owner — §14.4 |
+
+---
+
+## 17. Modul Inbox Auto Claim (2026-09-19, sesi kesembilan)
+
+Modul **INBOX** pertama yang dibangun. Sebelumnya seluruh modul bisnis adalah layar
+master; ini yang pertama menampilkan **pekerjaan yang menunggu diproses** — dan `D-79`
+menetapkan itulah yang membedakan Inbox dari layar daftar biasa.
+
+### 17.1 Keputusan yang diambil Work Owner pada sesi ini
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Enam kueri penggerak layar ini tidak ada di export. Rekonstruksi, atau tunggu Tim Pega? | **Rekonstruksi + tetap minta ke Tim Pega** |
+| 2 | Tujuh tombol; empat mesinnya belum ada. Sejauh mana lingkupnya? | **Baca + Export + Upload.** Sisanya tampil nonaktif beserta alasannya |
+| 3 | Paginasi server-side seperti Pega, atau client-side seperti layar master? | **Server-side, 15 baris per halaman** |
+
+### 17.2 Kueri yang direkonstruksi, dan apa artinya bagi gerbang 1
+
+Keenam kueri di bawah **tidak ada di export** dan disusun ulang dari tabel serta dari
+activity pemanggilnya:
+
+| Kueri Pega yang hilang | Penggantinya |
+|---|---|
+| `BrowseClaimSPKAutoClaim` | `auto_claim_batch_list` |
+| `BrowseClaimSPK1_AutoClaim` | menyatu ke kueri yang sama |
+| `BrowseClaimSPK_COUNT_AutoClaim` | `auto_claim_batch_count` |
+| `BrowseAutoClaim_COUNT` | `auto_claim_line_count` |
+| `BrowseClaimSPK_detail_AutoClaim` | `auto_claim_line_list` |
+| `BrowseReportClaimSPK_AutoClaim` | `auto_claim_line_list_succeeded` / `_failed` |
+
+**Konsekuensi yang harus dipegang:** modul ini **tidak dapat dinyatakan lulus gerbang 1**
+sampai keenam kueri aslinya tiba, karena tidak ada yang dapat dibandingkan (`D-42`). Yang
+dapat dinyatakan sekarang hanyalah bahwa hasilnya konsisten dengan tabel dan dengan
+ambang yang tertulis harfiah di activity.
+
+**Yang TIDAK direkonstruksi, dan itu penting:** judul kolom kedua berkas CSV terbaca utuh
+di `REPORT_AUTO_CLAIM_ACT`, jadi keduanya **salinan**, bukan dugaan. Termasuk kenyataan
+bahwa berkas GAGAL punya **satu kolom lebih sedikit** ("No Ref Bank" tidak ada di sana) —
+perbedaan yang dipertahankan apa adanya.
+
+### 17.3 Dua kolom berkas ekspor yang isinya masih DUGAAN
+
+Tujuh dari sembilan kolom dapat ditelusuri ke kolom tabel tanpa ragu. Dua tidak:
+
+| Judul kolom | Diisi dari | Keyakinan |
+|---|---|---|
+| `No Ref Bank` | `KEYWORD` | **DUGAAN** |
+| `No Objek` | `PRODKE` | **DUGAAN** |
+
+Dugaannya diturunkan dari jalur Asuransi Kredit yang berbagi activity yang sama. Di sana
+kedua kolom itu diisi properti `WARRANTYNO` dan `CLIENTID`, dan `InsertTempAutoClaim`
+memperlihatkan `WARRANTYNO` disimpan ke `PRODKE` serta `CLIENTID` ke `NOASURANSI` pada
+tabel kredit.
+
+Tetapi **`TMP_BATCH_AUTO_CLAIM` tidak punya kolom `NOASURANSI`** — sudah diperiksa ke
+seluruh export — sehingga pemetaan kredit tidak dapat disalin utuh.
+
+Keduanya ditandai di `export.go` supaya orang yang menjalankan gerbang 1 tahu kolom mana
+yang perlu dibandingkan lebih dulu, dan tidak menghabiskan waktu pada tujuh yang sudah
+pasti.
+
+### 17.4 Satu penolakan yang TIDAK ada di sistem lama
+
+**Baris unggahan yang kode perusahaannya tidak ada di `M_AUTO_CLAIM_PNC` ditolak.**
+
+Sistem lama tidak memeriksanya saat unggah. Tetapi baris seperti itu **tidak akan pernah
+berhasil**: `GetReceiverClaimAsuransiKredit` mencari penerima klaim di master yang sama,
+dan tanpa baris master pemrosesan tidak menemukan penerima.
+
+Jadi pilihannya bukan "menolak" versus "menerima", melainkan:
+
+- menolak saat unggah dengan pesan yang dapat diperbaiki, atau
+- menerima lalu gagal diam-diam berhari-hari kemudian.
+
+Yang dipilih yang pertama. Ia **penyimpangan yang disengaja** dan harus disebut saat uji
+kesetaraan supaya tidak terbaca sebagai cacat.
+
+**Yang tidak ikut diperketat, dan itu juga disengaja:** `col_id` kosong TETAP diterima,
+karena `CreateCasePNC_AutoClaim` menanganinya sebagai kegagalan BARIS ("Penyebab kerugian
+tidak ditemukan"), bukan penolakan berkas. Menolaknya akan mengubah perilaku yang sudah
+ada — pelanggaran `P-5`.
+
+### 17.5 Bentuk tanggal diperiksa, walau nilainya disimpan sebagai teks
+
+`TMP_BATCH_AUTO_CLAIM` menyimpan tanggal sebagai **teks** `dd/mm/yyyy`. Itu terbaca dari
+`CreateCasePNC_AutoClaim` yang menyusun ulang timestamp-nya dengan pemotongan karakter
+berposisi tetap:
+
+```
+Local.dol = @substring(.DateOfLoss,6,10)+@substring(.DateOfLoss,3,5)+@substring(.DateOfLoss,0,2)+"T000000.000 GMT"
+```
+
+Dua akibat yang mengikat rancangan:
+
+1. **Nilainya tidak boleh ditafsirkan lalu ditulis ulang.** Membacanya sebagai tanggal
+   dan menyimpannya kembali akan mengubah isinya, dan pada tabel yang masih ditulis Pega
+   itu melanggar `P-5`. Ia juga mengaktifkan kembali seluruh kelas cacat zona waktu yang
+   `F-5` justru tutup.
+2. **Bentuknya tetap diperiksa saat unggah.** Teks berbentuk lain tidak menghasilkan
+   galat — ia menghasilkan TANGGAL LAIN, diam-diam. `"2026-09-19"` akan terbaca sebagai
+   tanggal `09-20` tahun `26-0`, dan tidak ada apa pun yang memberitahukannya.
+
+Pemeriksaan bentuk itu **bukan aturan bisnis baru**; ia menutup satu jalur kegagalan
+senyap pada aturan yang sudah ada. Kalender penuh (29 Februari) sengaja TIDAK diperiksa —
+itu menuntut penafsiran zona waktu, dan modul ini tidak boleh menafsirkan tanggal sama
+sekali.
+
+### 17.6 Nilai uang tetap teks dari ujung ke ujung
+
+`NILAIKLAIM` dibaca, disimpan, diekspor, dan dikirim ke layar sebagai **teks**, bukan
+angka. `I-12` menuntut nilai uang disimpan presisi penuh dan dibulatkan hanya saat
+ditampilkan; modul ini tidak menghitung apa pun atas nilai itu — ia hanya memindahkannya —
+sehingga mengubahnya menjadi `float64` hanya menambah kesempatan kehilangan presisi.
+
+Pemisah ribuan ditambahkan **di layar saja** (`formatMoney` pada `BatchDetail.tsx`), dan
+bagian desimalnya dibawa apa adanya, bukan dipaksa dua angka.
+
+### 17.7 LEFT JOIN, bukan INNER — dan uji yang menjaganya
+
+Batch yang kode perusahaannya tidak ada di master **tetap tampil**, dengan nama kosong dan
+tanda "Tidak terdaftar di Master Auto Claim".
+
+Dengan INNER JOIN barisnya hilang dari layar tanpa satu pun tanda — padahal baris seperti
+itu justru yang **tidak akan pernah berhasil diproses**. Menyembunyikannya adalah
+kegagalan senyap yang paling mahal.
+
+Tiga hal menjaganya tidak berubah kelak: baris contoh `ZZZZ` di penyimpanan memori, uji
+`TestMasterJoinStaysLeft` pada `query_test.go`, dan uji layar yang mencari teks
+penandanya.
+
+### 17.8 Nomor batch diterbitkan server, dan dihitung di Go
+
+Sistem lama tidak menunjukkan dari mana nomor batch berasal — flow action unggahnya
+hilang. Yang dipilih: **diturunkan dari isi tabel** per perusahaan, di dalam transaksi
+yang sama dengan penyisipannya.
+
+Nomornya dihitung **di Go**, bukan dengan `MAX` di SQL, dengan alasan yang sama seperti
+`masterstatusprogres.nextID`: DDL tabelnya tidak ada di export (`R-08`), sehingga tipe
+kolom `BATCH` tidak dapat dipastikan. Bila ia `VARCHAR2`, `MAX(BATCH)` adalah maksimum
+**leksikografis** — begitu tabel memuat `"10"`, maksimumnya tetap `"9"`, dan nomor
+berikutnya kembali `10`.
+
+Satu berkas dapat memuat beberapa perusahaan, dan **setiap perusahaan mendapat nomornya
+sendiri**. Itu mengikuti kunci pengelompokan `GroupingAutoClaim2` yang
+`(inisialid, batch)`, bukan `batch` saja.
+
+### 17.9 Unggahan bersifat semua-atau-tidak sama sekali
+
+Seluruh berkas diperiksa lebih dulu; bila ada satu baris yang tidak lolos, **tidak satu
+baris pun disimpan**, dan seluruh pelanggaran dilaporkan sekaligus beserta nomor barisnya.
+
+Sistem lama menjalankan `RDB-Save` per baris dan tidak menjamin ini. Perubahannya disengaja
+dan sejalan dengan `D-68`, yang sudah memindahkan kepemilikan transaksi ke Go justru untuk
+kelas masalah yang sama pada `B-4` dan `B-9`.
+
+Alasannya praktis: unggahan yang tersimpan setengah adalah keadaan yang **tidak dapat
+diperbaiki pengguna** — ia tidak punya cara mengetahui baris mana yang sudah masuk.
+
+### 17.10 Empat kolom yang sengaja dibiarkan NULL saat menyisipkan
+
+`IDPEGA`, `PROGRESS`, `NOAKSEPTASI`, dan `TMP_MESSAGE` **tidak ikut diisi**. Keempatnya
+adalah syarat yang membuat batch baru terambil pemrosesan:
+
+```
+GroupingAutoClaim2 : idpega is null AND (progress is null OR progress='0')
+GroupingAutoClaim  : noakseptasi IS NULL AND progress='1'
+```
+
+Mengisi salah satunya dengan teks kosong alih-alih membiarkannya NULL akan membuat batch
+yang baru diunggah **tidak pernah diproses, tanpa satu pun galat**. Uji
+`TestInsertLeavesProcessingMarkersUntouched` menjaganya.
+
+### 17.11 `'Sukses Klaim'` boleh berada di dalam kode
+
+`D-15` melarang nilai bisnis di-hardcode. Nilai ini dikecualikan dengan sadar, karena ia
+**bukan kebijakan melainkan isi protokol tabel warisan**: yang menuliskannya adalah
+`POOLDATA.INSERT_AUTOCLAIM`, dan empat kueri sistem lama menuliskannya apa adanya.
+
+Menjadikannya konfigurasi justru berbahaya — mengubahnya tidak akan mengubah apa yang
+ditulis procedure, sehingga layar dan data berselisih diam-diam.
+
+Ia tinggal di **satu konstanta** supaya keempat tempat yang memakainya tidak dapat berbeda
+satu sama lain — persis cacat "satu ambang, tiga operator" pada `D-49` #2.
+
+### 17.12 Penyaring memakai KODE, bukan NAMA
+
+Penyaring lama merangkai nama perusahaan langsung ke teks SQL lalu menyisipkannya lewat
+`{ASIS:...}`:
+
+```
+TemporaryInboxKasirAutoClaim.CaseID = "and B.NAMA_PENERIMA='"+TempSimpan1.CauseOfLoss+"'"
+```
+
+Itu celah SQL injection yang `08-TECHNICAL-STRATEGY.md` §4.3 tutup tanpa perkecualian.
+Menyaring pada **kode** sekaligus memperbaiki cacat kedua: nama perusahaan tidak dijamin
+unik, sehingga dua perusahaan bernama sama akan tercampur.
+
+Yang dilihat pengguna tetap namanya; kodenya hanya nilai di balik pilihan. Uji
+`TestCompanyFilterUsesCodeNotName` dan satu uji layar menjaganya tidak kembali ke nama.
+
+### 17.13 Tiga tombol ditampilkan nonaktif, bukan disembunyikan
+
+| Tombol | Menunggu |
+|---|---|
+| Proses Klaim | `B-2` Input Register · `B-3` Objek & Coverage · `B-5` Estimasi · `B-10` Akseptasi |
+| Generate DLA | `B-9` PLA/Pre-DLA/DLA |
+| Cek Premi | `S-4` Integrasi Sistem Luar |
+
+Perlakuannya sama dengan butir menu yang belum punya layar (keputusan Work Owner
+2026-09-18). Menyembunyikannya akan membuat layar ini **tampak selesai** padahal separuh
+alurnya belum ada — kesalahpahaman yang paling mahal di antara semua pilihan.
+
+`Proses Klaim` khususnya tidak boleh dikerjakan setengah: ia memanggil
+`CreateCasePNC_AutoClaim` yang membuat **case klaim utuh** — objek, coverage, spreading,
+adjustment, akseptasi, sampai penutupan case. Mengarang sebagiannya berarti menulis nomor
+klaim palsu ke tabel produksi.
+
+### 17.14 Paginasi ditambahkan ke DataTable secara aditif
+
+`components/DataTable.tsx` mendapat dua prop **opsional**: `pagination` dan `hideSearch`.
+Tanpa keduanya, perilakunya sama persis seperti sebelumnya — ketiga layar master tidak
+berubah sedikit pun.
+
+`hideSearch` ada karena kotak pencarian di peramban **menyesatkan** pada tabel berpaginasi
+server: ia hanya menyaring halaman yang sedang tampil, sementara pengguna mengira ia
+mencari ke seluruh data. Baris yang dicarinya ada di halaman lain dan tidak akan pernah
+muncul.
+
+### 17.15 Utang teknis yang disadari
+
+| # | Utang | Kenapa diterima sekarang |
+|---|---|---|
+| 1 | **Gerbang 1 tidak dapat dijalankan** sampai keenam kueri Pega tiba | Menunggu berarti tidak ada layar sama sekali; keputusan Work Owner butir 1 |
+| 2 | **Dua kolom CSV masih dugaan** (`No Ref Bank`, `No Objek`) | Ditandai di kode; yang dapat memastikannya hanya kueri asli |
+| 3 | **Bentuk berkas unggahan dikarang** dari nama kolom tabel | Flow action aslinya hilang; judul kolomnya hidup di satu tempat dan dilayani server, jadi menggantinya kelak menyentuh satu berkas |
+| 4 | **OFFSET di atas urutan yang tidak unik** dapat melewatkan atau menggandakan baris saat berpindah halaman | Kunci primer tabelnya tidak diketahui (`R-08`). Penutupnya DDL, bukan kueri yang lebih pintar |
+| 5 | **Penyisipan dapat ditolak kolom NOT NULL yang belum diketahui** | DDL belum ada. Mode `-periksa` memperingatkannya, dan satu unggahan kecil di staging akan membuktikannya |
+| 6 | **Urutan nomor batch berbeda antara penyimpanan memori dan SQL** bila kolomnya ternyata teks | Memori mengurutkan sebagai angka, SQL apa adanya. Fake yang meniru cacat akan membuat uji lulus untuk urutan yang salah |
+| 7 | Modul ini memetakan galatnya sendiri, bentuk keempat setelah tiga modul lain | Kontrak galat bersama adalah `TKT-F1-004` yang masih terhalang. Kunci pelanggarannya dibuat **sama** dengan `masterstatusprogres` (`kolom`) supaya tidak menambah bentuk baru |
+| 8 | Jalur tanpa `/v1` | Sama seperti modul lain; penyeragamannya bukan keputusan satu modul |
+
+### 17.16 Yang perlu diminta ke pihak lain
+
+| Yang diminta | Kepada | Menutup |
+|---|---|---|
+| Export ulang enam kueri `BrowseClaimSPK*_AutoClaim` beserta sepupu Kredit dan Travel-nya | **Tim Pega** | gerbang 1 modul ini |
+| Harness `Detail_AUTOCLAIM_Harness` | **Tim Pega** | susunan kolom layar rincian |
+| Flow action di balik tombol "Upload Data Klaim" | **Tim Pega** | bentuk berkas unggahan yang sebenarnya |
+| DDL `TMP_BATCH_AUTO_CLAIM` dan `M_AUTO_CLAIM_PNC` | **DBA** | utang 4, 5, dan 6 |
+| Hak baca kedua tabel + hak tulis pada yang pertama | **DBA** | menjalankan modul ini terhadap Oracle |
+
+---
+
+## 18. Inbox Auto Claim disetarakan dengan artefak yang akhirnya tiba (2026-09-19, sesi kesembilan lanjutan)
+
+Bab 17 ditulis di atas **rekonstruksi**: tujuh belas kueri, tiga harness rincian, satu flow
+action, dan DDL kedua tabel semuanya hilang dari export, dan modulnya dibangun dari nama kolom
+yang terbaca di tempat lain.
+
+Pada 2026-09-19 Work Owner mengirimkan **seluruhnya**. Bab ini mencatat apa yang berubah karena
+dugaan bertemu bukti — termasuk **enam hal yang saya bangun keliru**.
+
+### 18.1 Apa yang diterima
+
+| Berkas | Isi |
+|---|---|
+| `Database/CREATE_TABLE_1.sql` | DDL `TMP_BATCH_AUTO_CLAIM` (19 kolom, PK, 7 index) dan `M_AUTO_CLAIM_PNC` |
+| `InboxAutoClaim/BrowseClaimSPK*` (15 berkas) | daftar batch, rincian, dan hitungan untuk ketiga tab |
+| `InboxAutoClaim/BrowseReportClaimSPK_*` (3) | kueri di balik kedua tombol ekspor |
+| `InboxAutoClaim/BrowseCompanyClaimCredit` | sumber penyaring Nama Perusahaan |
+| `InboxAutoClaim/Detail_*_Harness` (3) | harness layar rincian |
+| `InboxAutoClaim/PNCUploadClaimCSV-FlowAction.xml` + `InsertKlaimToTable*` (4) | rantai unggahan yang sebenarnya |
+
+### 18.2 Enam hal yang saya bangun keliru
+
+Diurutkan menurut akibatnya, bukan menurut ukurannya.
+
+| # | Yang saya bangun | Yang sebenarnya | Akibat bila dibiarkan |
+|---|---|---|---|
+| 1 | Penyisipan **tidak mengisi `TGLPROSES`** | Ia bagian **PRIMARY KEY** `(NOPOLIS, TGLPROSES, TGLKEJADIAN)` | **Setiap unggahan ditolak ORA-01400.** Tidak akan pernah ketahuan lewat penyimpanan memori — hanya saat menembak Oracle |
+| 2 | Berkas unggahan meminta **`inisialid`, `prodke`, `currency`** | Ketiganya **hasil pencarian polis**, bukan isian | Meminta pengunggah mengisi nilai yang tidak ia ketahui, dan membiarkannya salah tanpa satu pun pemeriksaan |
+| 3 | Baris yang gagal validasi **ditolak seluruh berkasnya** | Barisnya **DISISIPKAN** beserta pesannya di `IDPEGA`, `NOAKSEPTASI`, dan `TMP_MESSAGE` | Kehilangan jejak baris bermasalah; perilaku yang sama sekali berbeda dari Pega |
+| 4 | Kolom `CURRENCY` ditampilkan **apa adanya** | Ia **id**; layar menampilkan hasil lookup ke `POOLDATA.CURRENCY` | Pengguna melihat "1", bukan "IDR" |
+| 5 | Ekspor: `No Objek` dari `PRODKE`, `No Ref Bank` dari `KEYWORD` | `No Objek` dari **`COL_ID`**; `No Ref Bank` lewat **DB Link** | Dua dari sembilan kolom berisi data yang salah, dan berkasnya dibaca perusahaan di luar Sinarmas |
+| 6 | Daftar batch diurutkan **menaik** | `ORDER BY BATCH DESC` | Batch yang baru diunggah berada di halaman terakhir |
+
+Butir 1 yang paling patut dicatat sebagai pelajaran. Ia **tidak dapat ditangkap satu pun uji
+yang saya tulis**, karena penyimpanan memori tidak punya constraint. Uji yang berjalan di atas
+tiruan hanya membuktikan kode sesuai dengan tiruannya.
+
+### 18.3 Tiga dugaan yang ternyata benar
+
+Dicatat karena keseimbangannya penting: yang keliru enam, yang benar juga ada.
+
+| Dugaan | Bukti |
+|---|---|
+| `TMP_MESSAGE = 'Sukses Klaim'` menandai baris berhasil | keempat kueri hitung memakainya persis |
+| Baris belum diproses **bukan** baris gagal — `IS NOT NULL` wajib | `AND TMP_MESSAGE!='Sukses Klaim' and TMP_MESSAGE is not null` |
+| Keempat hitungan adalah subquery berkorelasi atas tabel yang sama | benar, termasuk bentuk `COUNT(NOPOLIS)`-nya |
+
+### 18.4 Empat selisih yang SENGAJA dipertahankan terhadap kueri Pega
+
+Keempatnya dinyatakan di muka sebagai selisih yang diketahui, bukan ditemukan saat gerbang 1.
+
+| # | Pega | Sistem baru | Alasan |
+|---|---|---|---|
+| 1 | **INNER JOIN** ke master (`FROM a, b WHERE a.INISIALID = b.INISIALID`) | **LEFT JOIN** | Batch yang kodenya tidak ada di master HILANG dari layar tanpa satu pun tanda — padahal baris itu justru yang tidak akan pernah berhasil diproses |
+| 2 | `{ASIS:...CaseID}` — potongan SQL disisipkan mentah | satu kueri per variasi penyaring | Celah injeksi yang diwarisi pola `{ASIS:}` (538 kemunculan di export) |
+| 3 | `ROWNUM` berlapis | `OFFSET … FETCH NEXT` | `D-20`. **Ini perubahan perilaku**: pada pola tertentu ROWNUM dihitung sebelum ORDER BY |
+| 4 | `substr(IDPEGA,20,30)` bila memuat `PNC` | dipangkas bila **berawalan prefix Pega** | Nomor `PNCN.YY.xxxx` (`D-71`) memuat "PNC" dan lebih pendek dari 20 karakter — Oracle akan mengembalikan **teks kosong**. Untuk setiap nilai yang benar-benar ada hari ini, kedua aturan memberi hasil identik |
+
+### 18.5 Rantai unggahan yang sebenarnya
+
+`Activity/InsertKlaimToTable_Other-Act.xml` bukan penyisipan biasa; ia **rantai pemeriksaan
+polis** 32 langkah:
+
+```
+nomor polis (titik dibuang)
+      |
+      v
+GetReceiverClaimAsuransiKredit    t_general.sourceofbusiness
+   tidak ketemu --------------->  "Sumber Bisnis Tidak ditemukan"  -> baris DITOLAK
+      |
+      v
+BrowsePolisAso                    json_polis -> prodke + currency
+   tidak ketemu --------------->  "No Polis tidak di temukan"      -> baris DISISIPKAN bertanda
+      |
+      v
+tanggal lapor >= tanggal kejadian
+   dilanggar -----------------> "Tanggal lapor harus setelah..."   -> baris DISISIPKAN bertanda
+      |
+      v
+DOL dalam periode polis           BELUM DAPAT DIPERIKSA - menuntut snapshot polis (B-1)
+premi lunas (CekPremiAutoKlaim)   rule-nya tidak ada di export
+      |
+      v
+disisipkan, menunggu diproses
+```
+
+Pembedaan **ditolak** versus **disisipkan bertanda** bukan kerapian: baris bertanda masih ada di
+tabel dan terlihat di grid, baris ditolak tidak ada di mana pun. Hanya satu sebab yang menolak —
+tanpa kode perusahaan, barisnya tidak punya tempat di grid mana pun.
+
+### 18.6 Keputusan Work Owner: unggahan tetap dibuka
+
+Saya mengangkat satu risiko dan mengusulkan menutup unggahan sampai dua hal jelas:
+
+1. Baris yang saya sisipkan **memenuhi syarat pengambilan `GroupingAutoClaim2`**
+   (`idpega is null AND (progress is null OR progress='0')`), sehingga job Pega yang masih hidup
+   akan memprosesnya menjadi klaim — termasuk baris yang **belum melewati dua pemeriksaan yang
+   tidak dapat saya jalankan**.
+2. `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem selama masa paralel, dan tabel ini
+   masih ditulis Pega.
+
+**Work Owner memutuskan: "Unggahan tetap perlu, jangan ditutup."** Keputusan dihormati, dan
+modulnya dibuat sesetia mungkin terhadap artefak yang ada. Kedua pemeriksaan yang tidak dapat
+dijalankan **dicatat di kode beserta konstanta pesannya**, supaya penambahannya kelak memakai
+teks yang sama persis dan baris lama tetap dikenali.
+
+### 18.7 CURRENCY dikirim NULL saat unggah
+
+Pega mengambilnya dari **snapshot polis** (`TempPNC2.Policy.Currency`, hasil parsing JSON polis)
+— itu pekerjaan `B-1`, yang belum ada.
+
+Yang dipilih: **mengirim NULL**, bukan menebak. Menebaknya berarti mengisi kolom id dengan nilai
+yang tidak pernah cocok dengan `POOLDATA.CURRENCY`, dan akibatnya tidak terlihat sebagai galat —
+kolom mata uang hanya kosong di layar dan di berkas ekspor, persis seperti bila NULL. Bedanya,
+nilai yang salah **tidak dapat dibedakan dari nilai yang benar** saat gerbang 1 dijalankan.
+
+### 18.8 Perubahan yang dikerjakan
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxautoclaim/inboxautoclaim.go` | `Batch.ProcessedDate`; `Line` ditambah `CurrencyCode`, `ProcessedDate`, `ObjectName`, `FlagNoPayout`, `BankRefNo`; `Repo` ditambah `ResolveReceiver`, `FindPolicyProductSeq`; `InsertUpload` menerima `UploadLine` |
+| `upload.go` | ditulis ulang — kolom berkas yang sebenarnya, enam konstanta pesan harfiah, `CheckUploadShape` + `CheckDateOrder` menggantikan `CheckUpload` |
+| `export.go` | pemetaan kolom dikoreksi; `StripClaimPrefix` ditambahkan |
+| `repo/sqlstore/inboxautoclaim.sql` | 20 kueri, tiap kueri menyebut berkas sumbernya dan tiap penyimpangan |
+| `repo/sqlstore/inboxautoclaim.go` | `TRIM` dibuang (kolomnya `VARCHAR2`, bukan `CHAR`); ekspor punya kueri sendiri; `TGLPROSES` diisi |
+| `repo/memory/*` | `PolicyRow`; `groupBatch` dua fase dengan `TGLPROSES` sebagai kunci |
+| `usecase/manage.go` | `resolve()` — rantai pemeriksaan polis per baris |
+| `http/dto.go`, `http/routes.go` | tiga keadaan hasil unggahan; kolom baru |
+| `frontend/src/api/types.ts` | cerminan ketiganya |
+| `frontend/.../AutoClaimInboxPage.tsx` | kolom **Tgl Proses**; panel hasil membedakan lolos / bertanda / ditolak |
+| `frontend/.../BatchDetail.tsx` | kolom **Tgl Proses**; kunci baris mengikuti PK |
+| `frontend/.../UploadForm.tsx` | keterangan bahwa tiga kolom tidak perlu diisi |
+
+### 18.9 Utang teknis — diperbarui
+
+Utang 2, 3, dan 5 pada §17.15 **tertutup**. Yang tersisa dan yang baru:
+
+| # | Utang | Kenapa diterima sekarang |
+|---|---|---|
+| 1 | Gerbang 1 tetap belum dijalankan | Kuerinya sudah ada, tetapi **Pega staging yang dapat ditembak dari luar** belum dikonfirmasi (`ADR-0027`) |
+| 2 | **`CURRENCY` kosong pada setiap baris yang diunggah sistem baru** | Menunggu `B-1`. Terlihat di layar dan di berkas ekspor |
+| 3 | **`No Ref Bank` selalu kosong** di berkas ekspor BERHASIL | DB Link diganti API (`D-25`), API-nya belum ada (`R-03`) |
+| 4 | **Dua pemeriksaan tidak dijalankan** — DOL dalam periode polis, premi lunas | Keduanya menuntut artefak yang belum ada; konstanta pesannya sudah disiapkan |
+| 5 | `OBJECTNAME` dan `FLAGTIDAKBAYAR` dibawa tanpa diketahui artinya | Baru terbaca dari DDL; tidak muncul di satu pun kueri |
+| 6 | Paginasi `OFFSET` menggantikan `ROWNUM` | Selisih perilaku yang dinyatakan di muka (§18.4 butir 3) |
+| 7 | Modul ini memetakan galatnya sendiri | `TKT-F1-004` masih terhalang |
+
+### 18.10 Yang perlu diminta ke pihak lain — diperbarui
+
+Lima permintaan pada §17.16 **seluruhnya terpenuhi**. Yang tersisa:
+
+| Yang diminta | Kepada | Menutup |
+|---|---|---|
+| Hak baca `TMP_BATCH_AUTO_CLAIM`, `M_AUTO_CLAIM_PNC`, **`POOLDATA.CURRENCY`** + hak tulis pada yang pertama | **DBA** | menjalankan modul ini terhadap Oracle |
+| **Pega staging yang dapat ditembak dari luar** | **Tim Pega + Infra** | gerbang 1 modul ini, dan seluruh modul lain |
+| Rule **`CekPremiAutoKlaim`** | **Tim Pega** | pemeriksaan premi lunas saat unggah |
+| Rule **`GetMaxBatchAutoClaim`** | **Tim Pega** | memastikan cara penomoran batch sama persis |
+| **API pengganti `gl.t_claim_asuransi_credit@asmd`** | **Tim pemilik GL** | kolom `No Ref Bank` pada berkas ekspor |
+| Konfirmasi **`GroupingAutoClaim2` masih hidup di produksi** | **Tim Pega** | risiko §18.6 butir 1 |
+
+---
+
+## 19. Inbox Auto Claim: tiga tab, panel ringkasan, dan dropdown yang dibuang (2026-09-20, sesi kesepuluh)
+
+### 19.1 Apa yang berubah dan atas permintaan siapa
+
+Tiga permintaan Work Owner, berurutan dalam satu sesi:
+
+| # | Permintaan | Hasil |
+|---|---|---|
+| 1 | *"apakah tampilan bisa dibuat seperti contoh terlampir?"* (tangkapan layar Pega: donut + tabel Nama Perusahaan/Count) | Panel ringkasan §19.4 |
+| 2 | *"kenapa query yg dipakai berbeda dengan pega?"* + *"tab lain tidak muncul, hanya muncul data Aneka"* | Tiga tab §19.2 |
+| 3 | *"kalau sudah muncul tab dan data sudah bisa ter-filter, tidak perlu dropdown perusahaan lagi (sama seperti pega)"* | Dropdown dibuang §19.5 |
+
+Permintaan 2 berawal dari kueri contoh yang dikirim Work Owner. Kueri itu membaca
+`POOLDATA.TMP_BATCH_CLAIM_KREDIT`, bukan `TMP_BATCH_AUTO_CLAIM` — jadi ia **bukan koreksi atas
+kueri yang saya tulis**, melainkan kueri **tab yang lain**. Work Owner menegaskannya sendiri:
+*"iya sample yg sy berikan tadi untuk Asuransi Kredit"*.
+
+Memperlakukannya sebagai koreksi akan membuat tab ANEKA membaca tabel Asuransi Kredit — salah
+tanpa satu pun tanda di layar, karena tabelnya tetap terisi dan angkanya tetap masuk akal.
+
+### 19.2 Tiga tab, SATU cetakan kueri
+
+`InboxAutoClaim/InboxAutoClaim-Harness.xml` memuat tiga `pyCaption`: **INBOX AUTO CLAIM**,
+**ANEKA**, **Asuransi Kredit**, **Travel**. Masing-masing membaca tabel sendiri:
+
+| Tab | Tabel | Kolom perusahaan |
+|---|---|---|
+| ANEKA | `POOLDATA.TMP_BATCH_AUTO_CLAIM` | `INISIALID` |
+| Asuransi Kredit | `POOLDATA.TMP_BATCH_CLAIM_KREDIT` | **`AGENID`** |
+| Travel | `POOLDATA.TMP_BATCH_AUTO_TRAVEL` | `INISIALID` |
+
+Pega menyelesaikannya dengan **menggandakan setiap rule tiga kali** —
+`BrowseClaimSPKAutoClaim`, `BrowseClaimSPKClaimKredit`, `BrowseClaimSPKTravel`, dan seterusnya
+untuk COUNT, detail, dan laporannya. Itu persis utang teknis yang
+`03-CURRENT-ARCHITECTURE.md §4.6` sebut sebagai **duplikasi masif per lini bisnis**: satu
+perubahan aturan harus diterapkan di tiga tempat, dan sering hanya diterapkan di dua.
+
+**Yang dibangun: satu berkas `.sql`, tiga hasil.** Ke-23 kueri memakai `{{TABEL}}` (27×) dan
+`{{KOLOM}}` (52×), lalu disubstitusi **sekali saat proses menyala** untuk setiap tab:
+
+```go
+var resolved = resolveAllQueries()                  // kunci: "<sumber>::<nama kueri>"
+func getQueryFor(source Source, name string) string
+```
+
+Tiga hal yang membuat ini aman, dan ketiganya disengaja:
+
+1. **Substitusinya bukan dari masukan pengguna.** `Source` enum tertutup; `ParseSource` menolak
+   nilai lain dengan `ErrUnknownSource`. Nama tabel tidak dapat diparameterkan dalam SQL, jadi
+   satu-satunya cara aman adalah daftar tertutup — bukan perangkaian teks dari `?sumber=`.
+2. **Substitusinya di muka, bukan per permintaan.** `resolveAllQueries` **panik** bila masih ada
+   `{{` tersisa. Kegagalannya terjadi saat start, bukan pada permintaan pengguna pertama yang
+   kebetulan membuka tab itu.
+3. **Rujukan ke MASTER sengaja tidak ikut disubstitusi.** `B.INISIALID`, `M.INISIALID`, dan
+   `R.INISIALID` menunjuk `M_AUTO_CLAIM_PNC`, yang kolomnya **selalu** `INISIALID` — juga pada
+   tab Asuransi Kredit yang tabel batch-nya memakai `AGENID`. Mengganti semuanya membabi buta
+   akan menghasilkan `M.AGENID`, kolom yang tidak ada.
+
+Butir 3 dijaga uji `TestEverySourceResolvesToItsOwnTable`, yang untuk tab kredit menuntut
+`A.AGENID` **ada** dan `A.INISIALID` **tidak ada**.
+
+### 19.3 Nama tabel dikirim server bersama tabnya
+
+`GET /api/inbox-auto-claim/tab` mengembalikan `{kode, label, tabel}` per tab, dan rutenya
+**tidak** di balik pemeriksaan portal — daftar tab sama untuk setiap entitas dan tidak satu
+baris data entitas pun dibacanya. Menuntut portal di sana membuat layar gagal menggambar tabnya
+justru sebelum pengguna memilih entitas.
+
+Dua hal ikut dari server, bukan diketik di layar:
+
+- **Label.** Rule-nya bernama `*_AutoClaim` sementara yang dilihat pengguna **ANEKA**.
+  Menurunkan label dari nama rule menghasilkan tab yang salah nama.
+- **Nama tabel** pada keterangan "Sumber: …" di bawah judul grid. Sebelumnya teks tetap
+  `POOLDATA.TMP_BATCH_AUTO_CLAIM` — keterangan yang menjadi **salah pada dua dari tiga tab**,
+  dan salah dengan cara yang menyesatkan: petugas yang menelusuri selisih angka akan menanyakan
+  tabel yang bukan sumbernya kepada DBA.
+
+### 19.4 Panel ringkasan: donut + tabel
+
+Bentuknya mengikuti tangkapan layar yang dikirim Work Owner. Komponen Pega yang menggambarnya
+**tidak ada di export** dan tidak punya rule yang dapat dibaca, sehingga panel ini **kemampuan
+baru** — tidak ada yang dapat dibandingkan dengannya pada gerbang 1.
+
+| Keputusan | Isi |
+|---|---|
+| Satuan hitung | **jumlah BATCH**, sama dengan satu baris grid — sehingga angka panel dan total paginasi grid setelah disaring selalu cocok, dan pengguna dapat memeriksanya sendiri |
+| Pustaka grafik | **Recharts 3.10.1** — dependensi baru |
+| Sumber angka | `FULL OUTER JOIN` ke `M_AUTO_CLAIM_PNC`, bukan `LEFT JOIN` |
+| Yang digambar donut | hanya yang berjumlah **> 0** |
+| Yang dimuat tabel | **seluruh** perusahaan master, termasuk yang nol |
+
+`FULL OUTER JOIN` bukan kerapian. Dengan `LEFT JOIN` dari tabel batch, panel hanya memuat
+perusahaan yang **pernah** mengirim — dan Work Owner melaporkannya langsung: *"hanya muncul 2
+perusahaan seharusnya datanya lebih dari 2"*. Sejak dropdown dibuang (§19.5) akibatnya lebih
+berat daripada tampilan: perusahaan yang belum pernah mengirim batch tidak akan punya **cara
+dipilih sama sekali**.
+
+Arah join-nya dijaga `TestSummaryJoinSpansBothSides`, yang menuntut `FULL OUTER JOIN` beserta
+`COALESCE(R.JUMLAH_BATCH, 0)` — menggantikan `TestSummaryJoinStaysLeft` yang justru mengunci
+perilaku yang keliru.
+
+### 19.5 Dropdown perusahaan dibuang
+
+Atas permintaan Work Owner, dan sejalan dengan layar Pega yang memang tidak punya dropdown.
+Penyaringnya sekarang **hanya** panel ringkasan: irisan donut, baris tabel, dan nama di legenda;
+baris **All** membatalkannya.
+
+| Yang dibuang | Berkas |
+|---|---|
+| Komponen `CompanyFilter` | `AutoClaimInboxPage.tsx` |
+| Hook `useAutoClaimCompanyList` beserta rutenya | `api.ts` |
+| Invalidasi `inbox-auto-claim-perusahaan` setelah unggah | `api.ts` |
+
+**Endpoint `GET /api/inbox-auto-claim/perusahaan` sengaja TIDAK dihapus.** Ia satu-satunya
+pembacaan Master Auto Claim sebagai daftar, dan menghapus permukaan API yang sudah diuji bukan
+bagian dari permintaan ini. Bahwa ia kini tanpa pemanggil dicatat sebagai utang, bukan
+disembunyikan.
+
+Konsekuensi yang diterima sadar: pada portal dengan puluhan perusahaan, menemukan satu nama
+berarti menelusuri tabel ringkasan, bukan mengetik di daftar pilihan. Itulah sebab tabelnya
+wajib memuat seluruh master (§19.4).
+
+### 19.6 Kueri ditahan sampai tabnya diketahui
+
+`source` kosong berarti **daftar tab belum tiba**, bukan "semua tab". Ketiga kueri per-entitas
+karena itu memakai `enabled: … && source !== ''`.
+
+Tanpa itu, layar menembak server dua kali untuk satu pemuatan — sekali dengan `sumber=` kosong,
+sekali lagi begitu tabnya diketahui — dan di antara keduanya panel ringkasan sempat tergambar
+lalu **diganti kerangka pemuatan**. Kedipan itulah yang membuat enam uji komponen gagal dengan
+`element could not be found in the document` pada elemen yang baru saja ditemukan: elemennya
+memang sudah terlepas dari DOM.
+
+### 19.7 Data contoh memori mengisi KETIGA tab
+
+`NewSampleRepo` kini menyemai `SampleKreditLines()` dan `SampleTravelLines()`, dengan isi yang
+**sengaja berbeda** dari tab ANEKA.
+
+Alasannya bukan kelengkapan: dengan isi yang sama, layar yang lupa mengirim `?sumber=` akan
+tampak benar di ketiga tab. Dan tab yang kosong di lingkungan pengembangan tidak dapat dibedakan
+dari tab yang gagal memuat — keduanya tampak sama di layar.
+
+### 19.8 Utang teknis — diperbarui
+
+Ketujuh utang §18.9 **masih berlaku**. Yang bertambah:
+
+| # | Utang | Kenapa diterima sekarang |
+|---|---|---|
+| 8 | `GET /inbox-auto-claim/perusahaan` tanpa pemanggil | §19.5 |
+| 9 | Panel ringkasan **tanpa baseline Pega** | Komponennya tidak ada di export; gerbang 1 tidak berlaku padanya |
+| 10 | Recharts menaikkan berkas JS terpaket di atas 500 kB | Belum dipecah; pemecahan kode belum pernah diputuskan untuk aplikasi ini |
+| 11 | Nama tabel Oracle terbaca klien lewat `/tab` | Sebelumnya pun tertulis di dalam berkas JS terpaket; yang berubah hanya tempatnya, dan kini ia satu sumber alih-alih tiga salinan |
+
+---
+
+## 20. Urutan tab dan penyaring yang benar-benar menyaring (2026-09-20, sesi kesepuluh lanjutan)
+
+### 20.1 Yang dilaporkan, dan apa sebenarnya sebabnya
+
+Empat laporan berurutan dari Work Owner, yang ternyata **satu sebab**:
+
+| Laporan | Sebab |
+|---|---|
+| "tab Asuransi Kredit dipindahkan ke depan, Aneka kedua" | permintaan urutan — bukan cacat |
+| "filter untuk ketiga tab seharusnya hasilnya berbeda, belum berfungsi" | ringkasan dihitung **dari master**, sehingga ketiga tab memuat daftar perusahaan yang sama persis |
+| "semua tab belum berfungsi filternya" | idem |
+| "table detail di bawah tidak berubah saat klik pindah perusahaan" | idem — perusahaan yang diklik berjumlah **0 batch**, jadi gridnya kosong pada keduanya |
+
+Penyaringnya **tidak pernah rusak**. Dibuktikan sebelum satu baris pun diubah: `-periksa`
+terhadap Oracle menyaring per tab dan cocok (10 dari 11, 31 dari 100, 12 dari 13), dan permintaan
+HTTP sungguhan ke instans terpisah mengembalikan baris yang berbeda untuk tiap perusahaan.
+
+Yang rusak adalah **isi panelnya**: ia penuh baris yang bila diklik memang tidak menghasilkan apa
+pun.
+
+### 20.2 Ringkasan dihitung dari tabel batch, bukan dari master
+
+Arah join berbalik dua kali, dan keduanya berasal dari laporan Work Owner:
+
+| Kapan | Arah | Akibat |
+|---|---|---|
+| awal | dari tabel batch | panel memuat 2 perusahaan; dilaporkan "seharusnya lebih dari 2" |
+| §19.4 | `FULL OUTER JOIN` ke master | seluruh ~19 perusahaan tampil, **sama di ketiga tab** |
+| **sekarang** | `LEFT JOIN` dari tabel batch | tiap tab memuat perusahaannya sendiri |
+
+Laporan pertama pun sebenarnya bukan tentang master: yang dicari Work Owner data **Asuransi
+Kredit**, yang saat itu belum punya tabnya sendiri. Tab ANEKA memang hanya punya 2 perusahaan
+berbatch — angkanya benar, tabnya yang salah.
+
+Hasil terverifikasi terhadap Oracle: **Asuransi Kredit 9 perusahaan · ANEKA 2 · Travel 2.**
+
+**`LEFT JOIN`, bukan `INNER` seperti Pega.** Kueri Pega (`WHERE C.AGENID = D.INISIALID`) membuang
+batch yang kodenya tidak ada di master, padahal barisnya tetap tampil di grid — angka panel dan
+isi grid jadi tidak cocok, dan justru baris itulah yang tidak akan pernah berhasil diproses.
+
+**Akibat yang diterima sadar:** perusahaan terdaftar yang belum pernah mengirim batch tidak dapat
+dipilih. Memilihnya pun menghasilkan grid kosong, jadi yang hilang hanya cara menyatakan "rekanan
+ini belum mengirim apa pun" — dan itu pertanyaan master data, bukan pertanyaan inbox.
+
+### 20.3 Urutan tab, dan satu jebakan yang nyaris ikut terkirim
+
+`AllSource()` menjadi **kredit → aneka → travel**, dan `DefaultSource` mengikuti yang pertama.
+Ia **sengaja berbeda** dari urutan harness Pega, yang menyebut ANEKA lebih dulu.
+
+Mengubah `DefaultSource` menyingkap dua tempat yang diam-diam bergantung padanya:
+
+| Tempat | Yang terjadi |
+|---|---|
+| `memory.NewRepo` menyemai baris ke `DefaultSource` | seluruh data contoh ANEKA **berpindah ke tab Asuransi Kredit**; tab ANEKA menjadi kosong tanpa satu baris kode modulnya berubah |
+| `kueriAneka()` pada uji sqlstore memakai `DefaultSource` | namanya tetap "Aneka" sementara yang diperiksanya tabel Asuransi Kredit |
+
+Keduanya diperbaiki dengan menyebut tabnya **terang-terangan** (`SourceAneka`). Tab bawaan adalah
+keputusan **tampilan**; ia tidak boleh menentukan tabel mana yang dibaca atau diuji.
+
+Hal yang sama diterapkan pada uji usecase dan HTTP: 39 rujukan `DefaultSource` diganti
+`SourceAneka`, dan URL ujinya kini menyebut `?sumber=aneka`.
+
+### 20.4 Uji yang tidak dapat menangkap cacatnya
+
+Uji penyaring yang ada hanya memeriksa **URL permintaan**, dan stub `fetch`-nya mengembalikan
+daftar yang sama untuk permintaan apa pun. Cacat "permintaannya terkirim tetapi tabelnya tidak
+berubah" — persis kalimat Work Owner — tidak mungkin ditangkapnya.
+
+Yang ditambahkan:
+
+| Uji | Yang dijaga |
+|---|---|
+| stub `fetch` kini **benar-benar menyaring** | tanpa itu, seluruh uji penyaring hanya menguji perakitan URL |
+| `ISI tabel batch benar-benar berubah` | jumlah **baris yang tampil**, bukan URL — dan berpindah antar dua perusahaan, bukan sekadar menyalakan penyaring |
+| `setiap baris ringkasan menghasilkan batch` | tidak ada lagi baris berjumlah nol yang kliknya sia-sia |
+| `TestRingkasanTiapTabBerbeda` | ketiga tab menghasilkan daftar perusahaan yang berbeda |
+| `TestSummaryCountsFromBatchTableNotMaster` | arah join tidak berbalik lagi tanpa disadari |
+
+Ketiganya dibuktikan **merah lebih dulu**: menghapus `parameter.set('perusahaan', …)` membuat uji
+isi tabel gagal, dan menyemai master kembali membuat uji ringkasan gagal.
+
+### 20.5 Utang teknis — diperbarui
+
+Utang §19.8 tetap berlaku, kecuali butir 9 yang berubah bunyinya. Yang bertambah:
+
+| # | Utang | Kenapa diterima sekarang |
+|---|---|---|
+| 12 | Perusahaan terdaftar yang belum punya batch **tidak dapat dipilih** di panel | §20.2 — memilihnya pun menghasilkan grid kosong |
+| 13 | `-periksa` menguji penyaring dengan kode **mentah**, sementara HTTP memangkasnya | ditutup sebagian: pemeriksaan spasi-di-ujung ditambahkan, dan pada Oracle hari ini tidak ada yang berspasi |
+
+---
+
+## 21. Paginasi yang tidak menentukan urutan (2026-09-20)
+
+### 21.1 Cacat yang ditemukan karena Work Owner bertanya
+
+Pertanyaan *"perhatikan juga paging-nya, apakah sudah benar?"* menemukan cacat yang tidak
+dilaporkan siapa pun dan tidak akan muncul sebagai galat.
+
+Kedua kueri daftar batch mengurutkan **hanya** `ORDER BY A.BATCH DESC`. `BATCH` berulang antar
+perusahaan dan antar tanggal — pada tab Asuransi Kredit, 100 baris grid hanya berisi 62 pasangan
+(perusahaan, batch) yang berbeda.
+
+`OFFSET … FETCH NEXT` memotong hasil **menurut urutan**. Bila urutannya tidak menentukan satu
+susunan tunggal, basis data boleh menyusun baris yang seri dengan cara berbeda pada tiap
+eksekusi — dan halaman 2 lalu dapat mengulang baris halaman 1 sementara baris lain **tidak pernah
+muncul sama sekali**.
+
+**Pega tidak menghadapinya** karena gridnya memuat seluruh page list sekaligus; ia tidak pernah
+memotong hasil. Ini konsekuensi langsung dari paginasi sisi server, dan `15-NFR` memang sudah
+mencatat paginasi sebagai **perubahan perilaku**, bukan pemeliharaan.
+
+### 21.2 Perbaikannya, dan kenapa keempat kolomnya
+
+```sql
+ORDER BY A.BATCH DESC, A.{{KOLOM}}, CAST(A.TGLPROSES AS DATE) DESC, A.USERINPUT
+```
+
+Keempatnya bersama-sama adalah **kunci `GROUP BY`** kueri itu, sehingga tidak ada dua baris hasil
+yang dapat seri — urutannya total. Ini penambahan terhadap kueri Pega, dan wajib disebut saat uji
+kesetaraan: **urutan baris dalam satu nomor batch dapat berbeda dari Pega.** Isinya tidak.
+
+`BATCH` bertipe `NUMBER` menurut `Database/CREATE_TABLE_1.sql`, jadi urutannya memang numerik —
+tidak ada persoalan `'10' < '9'` yang biasa muncul bila nomor batch bertipe teks.
+
+### 21.3 Yang TIDAK terbukti, dan dikatakan apa adanya
+
+Pemeriksaan terhadap Oracle **tidak** menemukan halaman yang tumpang tindih:
+
+```
+tab Asuransi Kredit halaman 1 dan 2 tidak beririsan (15 + 15 dari 100)
+```
+
+Oracle kebetulan menyusun baris yang seri secara konsisten untuk rencana eksekusi yang sama. Itu
+**bukan jaminan** — rencana dapat berubah karena statistik, paralelisme, atau data baru. Cacatnya
+nyata, kemunculannya belum. Diperbaiki karena kebenarannya tidak boleh bergantung pada kebetulan.
+
+### 21.4 Tiga pemeriksaan baru pada `-periksa`
+
+Ketiganya lahir dari laporan yang tidak dapat dijawab oleh jumlah baris saja, dan semuanya
+melaporkan **angka**, tidak pernah nama perusahaan:
+
+| Pemeriksaan | Menjawab |
+|---|---|
+| kode perusahaan berspasi di ujung | "penyaring tidak berfungsi" yang disebabkan kolom `CHAR` — HTTP memangkas spasinya, repo tidak |
+| ketiga tab dibandingkan isinya | "tab ANEKA menampilkan data Asuransi Kredit" |
+| halaman 1 vs halaman 2 | "apakah paging-nya benar" |
+
+Yang kedua menjawab laporan 2026-09-20 dengan bukti: **Asuransi Kredit vs ANEKA beririsan 0
+baris.** Ketiga tab membaca tabel yang berbeda, dan itu kini diperiksa setiap kali `-periksa`
+dijalankan — bukan disimpulkan dari membaca kode.
+
+---
+
+## 22. Baris kembar: `CAST(timestamp AS DATE)` tidak memotong apa pun di Oracle (2026-09-20)
+
+### 22.1 Tangkapan layar yang menyelesaikan penelusuran
+
+Work Owner mengirim tangkapan layar tab Asuransi Kredit: **tiga baris DIRECT MO yang sama
+persis** — kode, nama, batch, tanggal, jumlah, dan pengunggah seluruhnya identik.
+
+Itu yang memecahkan penelusuran dua putaran sebelumnya. Sampai saat itu bukti menunjukkan
+penyaring bekerja benar di repo maupun HTTP, dan laporan "filter tidak berfungsi" tidak dapat
+dipertemukan dengan buktinya.
+
+### 22.2 Sebabnya: satu kalimat yang saya tulis sendiri dan salah
+
+Kueri Pega mengelompokkan per hari dengan `to_date(to_char(a.TGLPROSES,'dd/mm/yyyy'),'dd/mm/yyyy')`.
+Padanannya saya tulis `CAST(A.TGLPROSES AS DATE)` beserta keterangan *"portabel dan berarti
+sama (D-20)"*.
+
+**Keterangan itu salah.** Tipe `DATE` Oracle **membawa jam**, jadi cast dari `TIMESTAMP`
+tidak memotong apa pun di sana; di PostgreSQL cast yang sama memotong ke hari. Satu kueri, dua
+perilaku — persis yang `D-20` larang.
+
+Akibatnya satu hari kalender terpecah menjadi **satu kelompok per detik yang berbeda**, dan Go
+memformat tanggalnya hanya sampai hari — sehingga barisnya tampak kembar persis tanpa apa pun di
+layar yang menjelaskannya.
+
+| Tab | Baris grid sebelum | Sesudah | Kembar |
+|---|---:|---:|---:|
+| Asuransi Kredit | 100 | **62** | 38 |
+| ANEKA | 11 | **9** | 2 |
+| Travel | 13 | 13 | 0 |
+
+### 22.3 Perbaikannya
+
+`EXTRACT(YEAR/MONTH/DAY FROM A.TGLPROSES)` untuk pengelompokan — ANSI, berarti sama di kedua
+basis data, dan tidak bergantung pada apakah tipe `DATE` setempat membawa jam. Tanggal yang
+ditampilkan diambil `MIN(A.TGLPROSES)`: seluruh anggota kelompok berada pada hari yang sama, jadi
+nilai mana pun memberi tampilan yang sama.
+
+Diterapkan pada **lima** kueri yang harus sepakat satuannya — dua daftar batch, dua penghitung,
+dan ringkasan per perusahaan. Bila salah satu tertinggal, "Total Data" dan jumlah baris yang
+tampil akan berselisih lagi.
+
+### 22.4 Dua cacat yang ikut tertutup
+
+| Cacat | Bagaimana terkait |
+|---|---|
+| **Paginasi meleset** | Penghitung TIDAK menjoin master dan tidak terkena pemecahan kelompok, sehingga "Total Data" menyebut 100 sementara baris yang tampil lebih banyak. Halaman terakhir menjadi pendek |
+| **Master berbaris ganda** | `M_AUTO_CLAIM_PNC` memuat lebih dari satu baris per `INISIALID`. `MAX(B.NAMA_PENERIMA)` ditambahkan dan namanya dikeluarkan dari `GROUP BY` — ia bukan penyebab baris kembar yang dilaporkan, tetapi penggandanya nyata dan akan muncul begitu master bertambah |
+
+### 22.5 Kenapa tidak ada uji yang menangkapnya
+
+Karena tidak ada yang menguraikan SQL. Penyimpanan memori menyimpan tanggal sebagai teks
+`dd/mm/yyyy`, jadi pengelompokannya memang per hari — **fake-nya benar, yang nyata yang salah**.
+Ini kelas cacat yang sama dengan `ORA-01008` dan `TGLPROSES` sebagai bagian PRIMARY KEY: hanya
+Oracle sungguhan yang dapat menunjukkannya.
+
+Penjaganya sekarang dua lapis:
+
+| Penjaga | Menangkap |
+|---|---|
+| `TestDayGroupingDoesNotRelyOnDateCast` | `CAST(... AS DATE)` kembali dipakai untuk pengelompokan hari |
+| `-periksa`: baris kembar per perusahaan | pengelompokan yang pecah, dari sebab apa pun — termasuk yang belum terpikirkan |
+
+Yang kedua lebih berharga: ia memeriksa **akibatnya di data**, bukan bentuk kuerinya.

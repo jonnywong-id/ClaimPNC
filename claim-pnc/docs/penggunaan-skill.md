@@ -444,3 +444,378 @@ mengembalikan `Person.Login` dengan nilai yang sama. Tidak ada yang perlu diubah
 - Menambah layar baru kini menuntut **satu baris** di `frontend/src/app/menu/registry.ts`. Bila
   butirnya tetap tampak "belum tersedia", yang pertama diperiksa adalah ejaan `MENU_PROGRAM`-nya —
   ia dicocokkan persis, termasuk huruf besar-kecilnya.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-19 (modul Inbox Auto Claim)
+
+## Ringkasan
+
+| | |
+|---|---|
+| Permintaan | Menambah modul **Inbox Auto Claim**, dengan `InboxAutoClaim-Harness.xml` sebagai rujukan |
+| Skill yang benar-benar dipakai | **`codebase-design`** · **`domain-modeling`** · disiplin **`grilling`** pada diri sendiri |
+| Skill yang ditimbang dan tidak dipakai | `tdd`, `prototype`, `research`, `diagnosing-bugs`, `code-review`, `wizard`, `writing-for-agents`, `dataviz` |
+| Keluaran | 1 modul backend (8 berkas + 17 kueri), 1 modul frontend (4 berkas), 4 berkas uji, 3 dokumen |
+
+---
+
+## `codebase-design` — dipakai paling berat
+
+**Kapan.** Sebelum satu berkas Go ditulis, saat memutuskan bentuk seam `Repo` dan
+pembagian tanggung jawab antara domain, usecase, dan transport.
+
+**Kenapa skill ini yang dipakai.** Modul ini punya satu pertanyaan rancangan yang tidak
+dimiliki ketiga modul master sebelumnya: **ekspor CSV milik siapa?** Ia terasa seperti
+urusan HTTP (Content-Type, Content-Disposition), tetapi judul kolom dan urutannya adalah
+**ketetapan bisnis** yang disalin dari Pega.
+
+**Yang dihasilkan — tiga batas yang ditarik dengan alasan, bukan kebiasaan:**
+
+| Batas | Letaknya | Alasan yang dipakai skill |
+|---|---|---|
+| Bentuk berkas CSV | **domain** (`export.go`) | Judul kolomnya aturan bisnis. Di transport ia tidak dapat diuji tanpa menyalakan server |
+| Penyusunan berkas | **usecase** | Ia orkestrasi: pilih spec, baca baris, rangkai. Bukan aturan, bukan HTTP |
+| Header dan nama berkas | **transport** | Satu-satunya bagian yang benar-benar tentang HTTP |
+
+**Uji deletion yang dijalankan pada seam `Repo`.** Pertanyaannya: kalau `ExportLine`
+dihapus dan ekspor memakai `ListLine` berulang, apa yang muncul kembali di pemanggil?
+Jawabannya: pengulangan halaman, dan itu memang muncul di `sqlstore.ExportLine`. Tetapi ia
+muncul **satu kali di adapter**, bukan di usecase maupun di layar — jadi seam-nya tetap
+dibenarkan. Penyimpanan memori mengisinya dengan satu baris karena di sana memang tidak
+ada halaman.
+
+**Prinsip "satu adapter berarti seam hipotetis".** Seam `Repo` punya dua adapter nyata —
+`sqlstore` dan `memory` — dan yang kedua bukan sekadar pelengkap: ia yang membuat 22 uji
+usecase berjalan tanpa Oracle.
+
+---
+
+## `domain-modeling` — dipakai menamai ulang delapan kolom
+
+**Kapan.** Saat membaca pemetaan kolom grid ke properti Pega.
+
+**Kenapa.** Layar ini contoh utang teknis §4.2 yang paling telanjang yang ditemui sejauh
+ini. Kedelapan kolomnya terikat ke properti yang namanya **tidak ada hubungannya sama
+sekali** dengan isinya:
+
+```
+Nama Perusahaan  -> .AlasanTerlambat
+Batch            -> .CauseOfLoss
+Jumlah Gagal     -> .ClaimID
+User Upload      -> .AnaylstRemarks   (salah ketik "Anaylst" pun ikut)
+```
+
+**Disiplin skill yang dipakai: menyilangkan pernyataan dengan kode.** Nama barunya tidak
+dipilih dari selera — tiap nama diuji terhadap apa yang benar-benar diisi kueri. Contoh
+konkret yang tertangkap karenanya: `.CauseOfLoss` pada grid adalah **nomor batch**,
+sementara `COL_ID` pada tabel yang sama adalah **penyebab kerugian yang sungguhan**. Dua
+hal berbeda dengan satu nama Pega, dan menyalinnya apa adanya akan menghasilkan struct
+yang punya dua field bernama mirip untuk hal yang tidak berhubungan.
+
+**Satu istilah yang sengaja TIDAK dinamai ulang.** Judul kolom kedua berkas CSV
+dipertahankan apa adanya, termasuk yang menyesatkan ("No Objek" berisi nomor produk).
+Alasannya batas kepemilikan: berkas itu dibaca **perusahaan rekanan di luar Sinarmas**,
+sehingga judulnya kontrak keluaran, bukan nama internal. Penamaan ulang berhenti di batas
+berkas.
+
+---
+
+## Disiplin `grilling` — dipakai pada diri sendiri, bukan pada Work Owner
+
+**Kapan.** Sepanjang pembacaan export, sebelum setiap angka dipakai.
+
+Skill-nya tidak dipanggil sebagai perintah; yang dipakai aturannya: **cari faktanya
+sendiri, dan jangan pakai angka yang belum diperiksa ke sumbernya.**
+
+Dua hal yang tertangkap karenanya, dan keduanya akan menjadi kesalahan yang mahal:
+
+| Yang nyaris dipakai | Apa yang sebenarnya benar |
+|---|---|
+| `ValidationInitial_act` sebagai bukti aturan validasi **unggahan** | Ditelusuri pemanggilnya: ia milik `InsertMstAutoClaim_act` — layar **Master Auto Claim**, memeriksa inisial baru tidak kembar. Sama sekali bukan jalur unggah |
+| Pemetaan kolom CSV milik jalur **Asuransi Kredit** disalin ke Auto Claim | `TMP_BATCH_AUTO_CLAIM` **tidak punya** kolom `NOASURANSI` yang dipakai jalur kredit. Salinannya akan menghasilkan kueri yang gagal — atau lebih buruk, kolom yang diisi nilai yang salah |
+
+**Yang juga datang dari disiplin ini: tiga pertanyaan ke Work Owner diajukan dengan angka,
+bukan dengan "bagaimana menurut Bapak".** Pertanyaan tentang kueri yang hilang menyebut
+keenam namanya dan menyatakan sudah dicari ke 2.634 berkas; pertanyaan lingkup menyebut
+tujuh tombol beserta modul yang menahan masing-masing.
+
+---
+
+## Skill yang ditimbang dan alasan tidak dipakai
+
+| Skill | Alasan |
+|---|---|
+| `tdd` | Uji ditulis **sesudah** perilakunya jelas dari export, bukan sebelum. Pada modul migrasi, "merah dulu" menuntut mengetahui hasil yang benar — dan di sini hasil yang benar justru yang sedang dicari dari XML. Uji tetap ditulis lengkap; yang tidak dipakai urutannya |
+| `prototype` | Tidak ada pertanyaan rancangan yang butuh dijawab dengan kode buangan. Ketiga pertanyaan yang tersisa dijawab Work Owner, bukan oleh percobaan |
+| `research` | Seluruh fakta ada di dalam repository. Tidak satu pun klaim di sesi ini bersumber dari luar |
+| `diagnosing-bugs` | Tidak ada cacat yang sedang dikejar. Cacat sistem lama yang ditemukan (kegagalan senyap kode perusahaan) dicatat sebagai keputusan, bukan didiagnosis |
+| `code-review` | Tidak ada perubahan orang lain untuk ditinjau |
+| `wizard` | Tidak ada langkah yang hanya dapat dijalankan manusia |
+| `writing-for-agents` | Dokumen sesi ini untuk dibaca manusia |
+| `dataviz` | Layar ini tabel dan angka ringkas, bukan grafik. Pega pun memuat `pxChart` di section-nya, tetapi jalur Auto Claim tidak memakainya |
+
+---
+
+## Teknik yang dipakai tanpa memanggil skill
+
+**Membedah XML 1,66 MiB dengan skrip, bukan membacanya.** Harness-nya terlalu besar untuk
+dibaca manusia maupun dimuat utuh. Yang dipakai: skrip Node yang mengekstrak urutan
+kemunculan tag tertentu, lalu mencocokkan judul kolom dengan properti **berdasarkan
+urutannya di dokumen**. Itulah yang menghasilkan pemetaan delapan kolom — mustahil didapat
+dengan membaca berurutan.
+
+**Silang-periksa ke seluruh export sebelum menyatakan sesuatu hilang.** Setiap nama rule
+yang tampak hilang dicari ke **seluruh 2.634 berkas**, bukan hanya ke folder yang terduga.
+Itu yang membuktikan keenam kueri benar-benar tidak ada — dan juga yang menemukan bahwa
+sepupunya untuk dua lini lain ikut hilang, sehingga polanya menjadi jelas.
+
+**Menguji terhadap aplikasi yang benar-benar berjalan.** 16 permintaan HTTP ke instans
+sementara, termasuk jalur galat. Dua di antaranya tidak akan tertangkap uji unit: bahwa
+unggahan bercacat tidak menyisakan satu baris pun, dan bahwa baris hasil unggahan
+benar-benar bertanda belum diproses.
+
+---
+
+## Satu hal yang saya siapkan tetapi tidak jadi dipakai
+
+Sempat disiapkan pemeriksaan **`tgllapor >= tglkejadian`** pada unggahan — aturan `I-2`
+yang memang berlaku pada registrasi klaim.
+
+Tidak jadi dipakai. Alasannya `P-5`: jalur unggah sistem lama tidak memeriksanya, dan
+pelanggarannya ditangani **saat pembuatan case** sebagai kegagalan baris dengan pesannya
+sendiri. Menambahkannya di sini akan menolak berkas yang sistem lama terima, lalu muncul
+di uji kesetaraan sebagai selisih yang tidak ada di daftar 13 butir `D-49`.
+
+Aturan yang benar di tempat yang salah tetap merupakan perubahan perilaku.
+
+---
+
+## Catatan untuk sesi berikutnya
+
+1. **Modul ini belum dapat lulus gerbang 1.** Keenam kueri Pega yang hilang adalah
+   penghalangnya, dan itu ada di tangan Tim Pega.
+2. **Dua kolom CSV masih dugaan.** Bila kueri aslinya tiba, keduanya yang pertama
+   diperiksa — tujuh kolom lain sudah pasti.
+3. **`DataTable` sekarang punya paginasi server.** Layar inbox berikutnya memakainya
+   langsung; tidak perlu membangun ulang.
+4. **`callAPI` sekarang menerima `FormData` dan ada `unduhBerkas`.** Modul mana pun yang
+   butuh unggah atau unduh memakai keduanya, bukan memanggil `fetch` sendiri.
+
+---
+
+# Sesi kesembilan lanjutan — 2026-09-19
+
+Artefak Pega yang diminta sesi sebelumnya tiba seluruhnya, dan pekerjaannya berubah sifat: dari
+**merekonstruksi** menjadi **membandingkan rekonstruksi dengan buktinya**. Perbedaan itu
+menentukan skill mana yang berguna.
+
+## Skill yang dipakai
+
+### `mattpocock-skills:grilling` — dipakai pada diri sendiri
+
+**Kapan.** Sepanjang pembacaan 20 berkas baru, sebelum satu baris kode pun disunting.
+
+**Kenapa skill ini.** Godaan terbesar ketika artefak akhirnya tiba adalah membaca sekilas,
+menemukan yang cocok, lalu menyimpulkan "rekonstruksinya sudah benar". Disiplin grilling
+membalik arahnya: **tiap dugaan diuji untuk dipatahkan**, bukan untuk dibenarkan.
+
+**Yang dihasilkan.** Enam dugaan patah, tiga bertahan. Yang paling penting — butir `TGLPROSES` —
+tidak ditemukan dengan membaca kueri melainkan dengan membaca **DDL**, bagian yang paling
+menggoda untuk dilewati karena "hanya definisi tabel".
+
+**Manfaat nyata bagi proyek.** Tanpa disiplin ini, modulnya akan lulus seluruh uji, lulus
+tinjauan, lalu **gagal pada unggahan pertama di Oracle** dengan ORA-01400 — jenis kegagalan yang
+baru muncul di tangan pengguna.
+
+### `mattpocock-skills:domain-modeling` — untuk memisahkan tiga keadaan hasil unggahan
+
+**Kapan.** Saat merancang `UploadResult`, setelah membaca `InsertKlaimToTable_Other`.
+
+**Yang dipertajam.** Awalnya saya punya dua keadaan: berhasil dan gagal. Membaca activity-nya
+memperlihatkan **tiga** yang berbeda akibatnya:
+
+| Keadaan | Barisnya di tabel | Terlihat di grid | Yang harus dilakukan pengguna |
+|---|---|---|---|
+| lolos | ada | ya | menunggu pemrosesan |
+| bertanda | ada | ya, sebagai gagal | memperbaiki datanya |
+| ditolak | **tidak ada** | **tidak** | mengunggah ulang barisnya |
+
+Ketiganya diberi nama yang tidak dapat tertukar — dan nama field-nya sengaja **tidak** memakai
+kata "berhasil"/"gagal", karena kata itu sudah dipakai untuk hasil pemrosesan menjadi klaim.
+Memakainya dua kali untuk dua hal berbeda persis kesalahan yang `D-19` suruh hindari.
+
+**Manfaat.** Panel hasil unggahan di layar kini membedakan ketiganya. Menggabungkan yang kedua
+dan ketiga akan membuat pengguna **mencari baris yang tidak pernah tersimpan**.
+
+### `mattpocock-skills:codebase-design` — untuk bentuk seam `Repo`
+
+**Kapan.** Saat rantai pemeriksaan polis harus ditempatkan.
+
+**Keputusan yang dihasilkan.** `ResolveReceiver` dan `FindPolicyProductSeq` menjadi **dua method
+terpisah** di seam `Repo`, bukan satu `ResolvePolicy` yang mengembalikan segalanya. Sebabnya
+bukan kerapian: di Pega keduanya **dua kueri ke dua tabel berbeda**, dan kegagalannya
+menghasilkan **pesan yang berbeda** serta **akibat yang berbeda** — yang pertama menolak baris,
+yang kedua menandainya. Menyatukannya akan menghapus pembedaan itu di dalam adapter, tempat yang
+paling sulit diperiksa.
+
+Rantainya sendiri hidup di **lapisan aplikasi** (`usecase.resolve`), bukan di adapter: ia
+urutan aturan bisnis, dan adapter hanya menjawab pertanyaan data.
+
+## Skill yang ditimbang dan tidak dipakai
+
+| Skill | Alasan |
+|---|---|
+| `tdd` | Perubahan sesi ini sebagian besar **membalik uji yang sudah ada** karena premisnya terbukti salah. Menulis uji lebih dulu untuk perilaku yang baru saja terbukti tidak menambah apa pun — buktinya sudah ada di berkas XML-nya |
+| `diagnosing-bugs` | Tiga uji `master-rekening` yang gagal memang cacat nyata, tetapi **Isolasi Protektif** melarang saya menyentuh modul itu. Yang saya lakukan hanya membuktikan penyebabnya bukan dari sesi ini |
+| `research` | Seluruh fakta ada di dalam repository |
+
+## Teknik tanpa skill
+
+**Membuktikan kegagalan bukan milik saya sebelum melaporkannya.** Tiga uji `master-rekening`
+gagal. Alih-alih menduga, saya men-stash ketiga berkas bersama yang saya sentuh lalu menjalankan
+ulang uji itu — ketiganya tetap gagal. Baru setelah itu saya menyatakannya pre-existing.
+
+Ini penting justru karena mudah disalahgunakan ke arah sebaliknya: "bukan salah saya" adalah
+kalimat yang harus **dibuktikan**, bukan diasumsikan.
+
+**Menguji terhadap server sungguhan dengan berkas yang mencakup setiap keadaan.** Berkas
+unggahan uji berisi lima baris yang masing-masing memicu jalur berbeda — nomor polis bertitik,
+polis perusahaan lain, polis tanpa JSON, polis tanpa perusahaan, dan tanggal terbalik. Satu
+perintah membuktikan kelima jalurnya sekaligus, dan tiga di antaranya **tidak dapat dibuktikan
+uji memori** karena menyangkut pencarian polis.
+
+## Satu kesalahan metode yang patut dicatat
+
+Sesi lalu saya menulis tiga uji yang **menegakkan dugaan sebagai aturan**. Ketiganya lulus, dan
+ketiganya salah.
+
+Yang menyelamatkan bukan uji yang lebih banyak, melainkan **komentar di dalam uji itu yang
+menyebut dugaannya sebagai dugaan**. Orang berikutnya — dalam hal ini saya sendiri — langsung
+tahu uji mana yang boleh dicabut begitu buktinya datang.
+
+Kesimpulannya bukan "jangan menulis uji untuk hal yang belum pasti". Uji seperti itu tetap
+berguna: ia mengunci perilaku supaya tidak berubah tanpa sengaja. Yang wajib adalah
+**menyebutkan dasarnya di dalam uji itu sendiri**.
+
+## Catatan untuk sesi berikutnya
+
+1. **Modul ini sudah setara dengan artefaknya**, tetapi gerbang 1 tetap belum dapat dijalankan —
+   penghalangnya kini **Pega staging**, bukan kueri yang hilang.
+2. **Tab Asuransi Kredit dan Travel dapat dikerjakan kapan saja.** Kuerinya seluruhnya ada
+   (`*_AsuransiKredit`, `*_Travel`), pola sama persis dengan Auto Claim. Ia perubahan lingkup,
+   bukan koreksi — perlu persetujuan Work Owner.
+3. **`CURRENCY` menunggu `B-1`.** Saat modul snapshot polis ada, satu tempat yang berubah:
+   `usecase.resolve`.
+4. **Tiga uji `master-rekening` masih merah** dan bukan dari sesi ini. Perlu diputuskan Work
+   Owner kapan diperbaiki.
+5. **Penyimpanan memori tidak dapat menangkap pelanggaran constraint.** Sebelum modul berikutnya
+   menulis ke tabel warisan, baca DDL-nya lebih dulu — bukan kuerinya saja.
+
+---
+
+# Sesi kesepuluh — 2026-09-20
+
+Sesi perbaikan cacat yang dilaporkan langsung dari layar, lalu perluasan menjadi tiga tab. Sifat
+pekerjaannya berbeda dari sesi mana pun sebelumnya: **yang dilaporkan bukan "belum dibangun",
+melainkan "dibangun tetapi tidak berfungsi"** — dan itu menentukan skill mana yang berguna.
+
+## Skill yang dipakai
+
+### `mattpocock-skills:diagnosing-bugs`
+
+**Kapan dipanggil.** Setelah laporan *"filter perusahaan belum berfungsi saat klik pada donut
+maupun baris tabel"*, ketika uji komponen yang ada **seluruhnya hijau** dan backend sudah
+terverifikasi terhadap Oracle.
+
+**Kenapa skill ini, bukan langsung membaca kode.** Justru karena semuanya hijau. Keadaan
+"uji lulus tetapi pengguna melihat cacat" adalah keadaan paling menjebak: godaannya membaca kode
+sampai menemukan sesuatu yang *terlihat* mencurigakan, lalu mengubahnya dan berharap. Skill ini
+melarang persis itu — **tanpa satu perintah yang dapat merah, tidak boleh ada hipotesis.**
+
+**Yang dihasilkan, dan ini bagian terpentingnya.** Loop pertama yang saya bangun **HIJAU**,
+padahal cacatnya nyata. Ia mengeklik tombol nama — satu-satunya tempat yang memang sudah
+berfungsi. Pengguna mengeklik **angkanya**.
+
+Fase 1 skill ini menuntut loop yang *red-capable*: bukan "berjalan tanpa galat", melainkan
+**mampu merah pada cacat ini**. Loop pertama gagal memenuhi syarat itu, dan tanpa syaratnya saya
+akan menyimpulkan "tidak ada cacat" dari bukti yang tidak menguji apa pun.
+
+Setelah loop diperlebar untuk mengeklik sel angka → **merah** → sebabnya langsung terbaca:
+barisnya menyala saat disentuh kursor, tetapi hanya teks namanya yang berupa tombol.
+
+**Fase 5 dijalankan penuh pada ketiga cacat**: uji ditulis lebih dulu, dibuktikan **merah** dengan
+memasukkan kembali cacatnya, baru diperbaiki.
+
+| Cacat | Cara membuktikan uji-nya merah |
+|---|---|
+| ORA-01008 | Menomori ulang bind ke `:1` dua kali → uji gagal |
+| Penyaring tidak cocok | Memasang kembali `strings.ToUpper` → uji gagal |
+| Berpindah tab membawa penyaring lama | Menghapus `setCompany('')` → uji gagal |
+
+**Fase 6 dijalankan.** Seluruh instrumentasi bertanda `[DEBUG-a4f2]` dan `[DEBUG-b7c1]` dihapus,
+dan `grep` prefiksnya dijalankan untuk memastikannya.
+
+### `mattpocock-skills:codebase-design`
+
+**Kapan.** Saat memutuskan bentuk tiga tab, sebelum satu berkas pun ditambahkan.
+
+**Kenapa.** Pega menyelesaikannya dengan **menggandakan setiap rule tiga kali**. Pertanyaannya
+bukan "apakah menyalin tiga kali itu jelek" — melainkan **di mana seam-nya**.
+
+Kosakata skill ini menjawabnya: yang bervariasi antar tab **hanya dua nilai** (nama tabel dan
+nama kolom perusahaan), sementara seluruh bentuk kueri, paginasi, pengelompokan, dan pemetaan
+kolomnya sama. Seam-nya karena itu bukan "tiga repo", melainkan **satu cetakan dengan dua titik
+substitusi** — dan `Source` menjadi enum tertutup, bukan string bebas, supaya substitusinya tidak
+pernah berasal dari masukan pengguna.
+
+Prinsip **"satu adapter berarti seam hipotetis"** juga dipakai ke arah sebaliknya: saya
+**tidak** membuat antarmuka `SourceStrategy` beserta tiga implementasinya. Tiga nilai dalam satu
+peta sudah cukup, dan abstraksi tambahan hanya menambah tempat yang harus dibaca.
+
+### `mattpocock-skills:domain-modeling`
+
+**Kapan.** Saat menamai tab.
+
+**Yang dihasilkan.** Label tab **tidak** diturunkan dari nama rule. Rule-nya bernama
+`BrowseClaimSPKAutoClaim`, tetapi `pyCaption` harness menyebut **ANEKA**. Menurunkan nama dari
+rule menghasilkan tab yang salah nama di mata pengguna — persis kelas kesalahan yang `D-19`
+larang: membawa alias internal Pega ke permukaan yang dilihat manusia.
+
+Karena itu pula label dan nama tabel **dikirim server**, bukan diketik di layar: keduanya
+pengetahuan tentang sistem lama, dan itu milik backend.
+
+## Skill yang ditimbang dan tidak dipakai
+
+| Skill | Kenapa tidak |
+|---|---|
+| `tdd` | Dipakai **semangatnya** pada ketiga perbaikan cacat, tetapi jalurnya `diagnosing-bugs` fase 5 — bukan fitur baru yang dibangun dari uji kosong |
+| `grilling` | Tidak ada rencana yang perlu ditekan; yang ada laporan cacat dengan gejala yang jelas |
+| `code-review` | Perubahannya saya tulis sendiri dalam satu sesi dan sudah dijaga lint, `tsc`, dan uji |
+| `dataviz` | Ditimbang untuk donut. Bentuk dan palet sudah ditetapkan **contoh dari Work Owner** dan sistem desain proyek; yang saya pastikan hanyalah aturannya yang memang mengikat di sini — pembedaan tidak pernah hanya warna (irisan terpilih ditandai **garis tepi**), dan grafiknya `aria-hidden` dengan **tabel** sebagai sumber resmi |
+
+## Satu kesalahan metode yang patut dicatat
+
+Saya melaporkan *"[ok] ringkasan per perusahaan berjalan: 2 perusahaan"* sebagai **berhasil**.
+Angkanya benar — dua perusahaan memang punya batch — tetapi yang diharapkan Work Owner adalah
+seluruh perusahaan master.
+
+Pelajarannya: **"kuerinya mengembalikan sesuatu" bukan "kuerinya mengembalikan yang benar".**
+Verifikasi yang hanya memeriksa ketiadaan galat akan meloloskan jawaban yang salah dengan tenang.
+Sejak itu `-periksa` tidak lagi hanya menyebut jumlah, melainkan **membandingkan** angka ringkasan
+dengan total grid setelah disaring — pemeriksaan yang dapat gagal.
+
+## Catatan untuk sesi berikutnya
+
+1. **Gerbang 1 tetap belum dapat dijalankan.** Penghalangnya masih **Pega staging**, tidak
+   berubah dari sesi sebelumnya — dan kini berlaku untuk **ketiga** tab.
+2. **Panel ringkasan tidak punya baseline Pega.** Komponennya tidak ada di export; ia kemampuan
+   baru dan tidak dapat diuji kesetaraannya.
+3. **Endpoint `/inbox-auto-claim/perusahaan` kini tanpa pemanggil.** Perlu diputuskan Work Owner:
+   dipertahankan sebagai permukaan API, atau dihapus.
+4. **Berkas JS terpaket melewati 500 kB** sejak Recharts masuk. Pemecahan kode belum pernah
+   diputuskan untuk aplikasi ini.
+5. **Tiga uji `master-rekening` masih merah**, tetap bukan dari sesi ini.
+6. **Jangan pernah menimpa `PENYIMPANAN` saat menyalakan server.** `backend/.env` menyetel
+   `memori`; menimpanya dengan `oracle` membuat login gagal karena `CPNC_SESI_AKTIF` tidak ada di
+   skema itu. Timpaan itu hanya untuk `-periksa`, yang tidak mendengarkan porta.

@@ -224,6 +224,9 @@ export const ErrorCode = {
   claimStatusNotFound: 'status_klaim_tidak_ditemukan',
   statusLabelTaken: 'label_status_sudah_dipakai',
   statusCodeTaken: 'kode_status_sudah_dipakai',
+
+  /** Milik Inbox Auto Claim: berkas unggahan tidak memuat satu baris data pun. */
+  emptyUpload: 'unggahan_kosong',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -311,5 +314,235 @@ export const AccountErrorCode = {
   invalidInput: 'isian_tidak_sah',
 } as const
 
-export type AccountErrorCode =
-  (typeof AccountErrorCode)[keyof typeof AccountErrorCode]
+export type AccountErrorCode = (typeof AccountErrorCode)[keyof typeof AccountErrorCode]
+
+// ── Inbox Auto Claim ──────────────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/inboxautoclaim/http. Menggantikan layar Pega
+// `Harness/InboxAutoClaim-Harness.xml` atas POOLDATA.TMP_BATCH_AUTO_CLAIM yang dijoin ke
+// POOLDATA.M_AUTO_CLAIM_PNC.
+//
+// Nama field di sini sudah dinamai ulang mengikuti `D-19`. Grid lama mengikat kedelapan
+// kolomnya ke property yang namanya tidak ada hubungannya dengan isinya — `.CaseID` untuk
+// kode perusahaan, `.CauseOfLoss` untuk nomor batch, `.ClaimID` untuk jumlah gagal.
+
+/**
+ * Satu baris grid Inbox Auto Claim: satu unggahan milik satu perusahaan rekanan.
+ *
+ * Perusahaan mengirim klaimnya BORONGAN sebagai berkas, bukan satu per satu lewat layar
+ * Register. Satu baris di sini adalah satu pasangan (kode perusahaan × nomor batch).
+ */
+export type AutoClaimBatch = {
+  /** Kolom INISIALID — kode singkat perusahaan rekanan. */
+  kode_perusahaan: string
+  /** Dapat KOSONG bila kodenya tidak ada di Master Auto Claim; barisnya tetap tampil. */
+  nama_perusahaan: string
+  /** Kolom BATCH — nomor unggahan, unik di dalam satu perusahaan. */
+  batch: string
+
+  /**
+   * Kolom TGLPROSES, dan ia bagian KUNCI PENGELOMPOKAN grid — bukan sekadar tampilan.
+   *
+   * Satu nomor batch yang diunggah pada dua tanggal berbeda tampil sebagai DUA baris.
+   * Tanpa kolomnya, kedua baris itu tampak kembar tanpa sebab.
+   */
+  tanggal_proses: string
+
+  jumlah_upload: number
+  jumlah_proses: number
+  jumlah_berhasil: number
+  jumlah_gagal: number
+  /** Dihitung server dari selisih upload dan proses; layar tidak menghitungnya sendiri. */
+  jumlah_belum_proses: number
+
+  /** Kolom USERINPUT — pengguna yang mengunggah batch ini. */
+  user_upload: string
+}
+
+/** Keadaan satu baris klaim di dalam batch. */
+export const AutoClaimResult = {
+  succeeded: 'berhasil',
+  failed: 'gagal',
+  /** Belum tersentuh pemrosesan. BUKAN sama dengan gagal. */
+  pending: 'belum',
+} as const
+
+export type AutoClaimResult = (typeof AutoClaimResult)[keyof typeof AutoClaimResult]
+
+/**
+ * Satu baris klaim di dalam sebuah batch — isi layar DETAIL.
+ *
+ * Seluruh nilainya bertipe teks, termasuk tanggal dan nilai uang. Tanggal karena kolomnya
+ * memang menyimpan teks `dd/mm/yyyy` dan mengubahnya berarti mengubah isinya; nilai uang
+ * karena `I-12` menuntut presisi penuh dan pembulatan hanya saat ditampilkan.
+ */
+export type AutoClaimLine = {
+  nomor_polis: string
+  prod_ke: string
+  /** Terbit setelah baris berhasil diproses; kosong selama belum. */
+  nomor_klaim: string
+  nomor_aksep: string
+  /** KODE mata uang hasil lookup ke POOLDATA.CURRENCY, bukan id yang tersimpan. */
+  mata_uang: string
+  nilai_klaim: string
+  penyebab_kerugian: string
+  tanggal_kejadian: string
+  tanggal_lapor: string
+  /** Kolom TGLPROSES — kolom kedua pada grid rincian Pega. */
+  tanggal_proses: string
+  catatan: string
+  keyword: string
+  /**
+   * Dua kolom yang tidak tampil di grid rincian Pega dan tidak terbaca dari kueri mana
+   * pun; keberadaannya baru diketahui dari DDL. Dibawa apa adanya supaya isinya dapat
+   * diperiksa saat gerbang 1, bukan karena artinya sudah dipahami.
+   */
+  nama_objek: string
+  flag_tidak_bayar: string
+  /** Kolom TMP_MESSAGE apa adanya. Kosong berarti belum diproses. */
+  keterangan: string
+  /** Keadaan barisnya, dipakai memilih lencana — bukan mencocokkan teks keterangan. */
+  hasil: AutoClaimResult
+}
+
+/** Satu pilihan pada penyaring Nama Perusahaan. */
+export type AutoClaimCompany = {
+  kode: string
+  nama: string
+}
+
+/** Keterangan halaman pada daftar yang dipaginasi server. */
+export type Pagination = {
+  halaman: number
+  ukuran: number
+  total: number
+  /** Dikirim server, bukan dihitung layar — pembulatannya mudah salah pada sisa halaman. */
+  total_halaman: number
+}
+
+export type AutoClaimBatchListResponse = {
+  batch: AutoClaimBatch[]
+  paginasi: Pagination
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type AutoClaimLineListResponse = {
+  kode_perusahaan: string
+  batch: string
+  baris: AutoClaimLine[]
+  paginasi: Pagination
+  portal: string
+}
+
+/**
+ * Satu tab pada layar Inbox Auto Claim.
+ *
+ * Ketiganya berasal dari satu harness Pega dan hanya berbeda TABEL batch-nya:
+ *
+ *   aneka   TMP_BATCH_AUTO_CLAIM    kolom INISIALID
+ *   kredit  TMP_BATCH_CLAIM_KREDIT  kolom AGENID
+ *   travel  TMP_BATCH_AUTO_TRAVEL   kolom INISIALID
+ *
+ * Daftarnya datang dari SERVER, tidak ditulis di sini: tab adalah pengetahuan tentang
+ * tabel mana yang ada, dan itu milik backend.
+ */
+export type AutoClaimTab = {
+  kode: string
+  /** Teks tab, disalin dari pyCaption harness Pega: ANEKA, Asuransi Kredit, Travel. */
+  label: string
+  /** Tabel Oracle yang dibaca tab ini, ditampilkan sebagai keterangan sumber grid. */
+  tabel: string
+}
+
+export type AutoClaimTabListResponse = {
+  tab: AutoClaimTab[]
+  bawaan: string
+}
+
+export type AutoClaimCompanyListResponse = {
+  perusahaan: AutoClaimCompany[]
+  portal: string
+}
+
+/**
+ * Satu irisan grafik sekaligus satu baris tabel ringkasan.
+ *
+ * Yang dihitung adalah BATCH, bukan baris klaim — satuannya sama dengan satu baris grid.
+ * Dengan begitu angka di sini dan total paginasi setelah disaring selalu cocok: pengguna
+ * yang melihat "3" lalu mengeklik perusahaan itu mendapat tepat tiga baris.
+ */
+export type AutoClaimCompanySummary = {
+  kode: string
+  /** Dapat kosong bila kodenya tidak ada di Master Auto Claim; irisannya tetap ada. */
+  nama: string
+  jumlah_batch: number
+}
+
+export type AutoClaimSummaryResponse = {
+  perusahaan: AutoClaimCompanySummary[]
+  /** Baris "All". Dikirim server, bukan dijumlahkan layar. */
+  total: number
+  portal: string
+}
+
+/**
+ * Satu batch yang terbentuk dari sebuah unggahan.
+ *
+ * Perusahaannya TIDAK diketik pengunggah — ia diturunkan dari nomor polis tiap baris.
+ * Akibatnya satu berkas dapat menghasilkan beberapa batch sekaligus.
+ */
+export type AutoClaimUploadBatch = {
+  kode_perusahaan: string
+  nama_perusahaan: string
+  batch: string
+  jumlah_baris: number
+
+  /**
+   * Hasil PEMERIKSAAN SAAT UNGGAH, bukan hasil pemrosesan menjadi klaim.
+   *
+   * Baris "lolos" berarti lolos pemeriksaan polis dan MENUNGGU diproses — ia belum
+   * menjadi klaim apa pun. Kata "berhasil" sengaja dihindari supaya tidak tertukar
+   * dengan hasil akhir yang tampil di grid.
+   */
+  jumlah_lolos: number
+  jumlah_bertanda: number
+}
+
+/** Satu baris berkas yang TIDAK disisipkan sama sekali. */
+export type AutoClaimUploadRejected = {
+  /** Nomor baris di dalam berkas, terhitung sejak baris judul. */
+  baris: number
+  nomor_polis: string
+  pesan: string
+}
+
+/**
+ * Hasil satu unggahan, membedakan TIGA keadaan:
+ *
+ * - lolos — disisipkan, menunggu diproses
+ * - bertanda — disisipkan beserta pesan galatnya, persis perilaku Pega
+ * - ditolak — TIDAK disisipkan karena perusahaannya tidak dapat diturunkan dari polis
+ *
+ * Yang bertanda masih ada di tabel dan masih terlihat di grid; yang ditolak tidak ada di
+ * mana pun. Pengguna yang mengira keduanya sama akan mencari baris yang tidak pernah
+ * tersimpan.
+ */
+export type AutoClaimUploadResponse = {
+  batch: AutoClaimUploadBatch[]
+  jumlah_baris: number
+  ditolak: AutoClaimUploadRejected[]
+  portal: string
+}
+
+/**
+ * Bentuk berkas yang diterima unggahan.
+ *
+ * Dilayani server, tidak disalin ke sini: bila flow action Pega yang asli akhirnya tiba
+ * dan judul kolomnya ternyata berbeda, yang berubah hanya satu tempat.
+ */
+export type AutoClaimUploadTemplateResponse = {
+  kolom_wajib: string[]
+  kolom_opsional: string[]
+  batas_baris: number
+}

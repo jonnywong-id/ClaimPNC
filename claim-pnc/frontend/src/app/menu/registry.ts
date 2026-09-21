@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 72 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 71 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -35,6 +35,7 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master-rekening',
   StatusProgress: '/master/status-progres-1',
+  InboxAutoClaim: '/inbox-auto-claim',
 }
 
 /**

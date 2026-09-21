@@ -1889,3 +1889,603 @@ Dua hal diperbaiki, dan keduanya benar terlepas dari uji:
 - Pesan galat menu memakai **`role="status"`**, bukan `role="alert"`. Menu yang gagal dimuat adalah
   keadaan, bukan sesuatu yang harus menyela apa yang sedang dibaca pengguna di isi halaman.
 - Fixture uji itu kini menjawab `/api/menu`, sama seperti ia sudah menjawab `/api/portal`.
+
+---
+
+## 16. Sesi kesembilan — modul Inbox Auto Claim (2026-09-19)
+
+### 16.1 Permintaan
+
+> "lanjutkan untuk penambahan modul Inbox Auto Claim / cek secara penuh aplikasi existing
+> pada dokumen InboxAutoClaim\InboxAutoClaim-Harness.xml jadikan ini sebagai referensi."
+
+### 16.2 Yang dibaca lebih dulu, sebelum satu baris kode ditulis
+
+Harness-nya 1,66 MiB dan tidak terbaca utuh oleh manusia, jadi ia dibedah dengan skrip:
+tag mana yang mengikat judul kolom ke properti, tombol mana memanggil activity mana, dan
+kueri apa yang dijalankan tiap activity.
+
+| Yang dicari | Ditemukan |
+|---|---|
+| Section penyusun harness | **dua** — `Inbox_AS_KREDIT_Sect` (isi layar) dan `BrowseAutoKlaim` |
+| Layar ini dipakai berapa lini | **tiga** — Asuransi Kredit, **Auto Claim**, dan Travel berbagi SATU section |
+| Kolom grid | **8**, seluruhnya terikat ke properti yang namanya tidak ada hubungannya dengan isinya |
+| Tombol | **7** — Upload Data Klaim · Proses Klaim · DETAIL · EXPORT BERHASIL · EXPORT GAGAL · Generate DLA · Cek Premi |
+| Paginasi | server-side, First/Previous/Next/Last + "Total Data :", `PageSize = 15` |
+| Tabelnya | `POOLDATA.TMP_BATCH_AUTO_CLAIM` dijoin ke `POOLDATA.M_AUTO_CLAIM_PNC` |
+
+Pemetaan kolom ke properti itu sendiri layak dicatat, karena ia contoh utang teknis §4.2
+yang paling telanjang yang ditemui sejauh ini:
+
+```
+KODE                            .CaseID                   (bukan nomor kasus)
+Nama Perusahaan                 .AlasanTerlambat          (bukan alasan keterlambatan)
+Batch                           .CauseOfLoss              (bukan penyebab kerugian)
+Jumlah data yang di upload      .ChronologicalOfIncodent  (bukan kronologi kejadian)
+Jumlah data yang telah diproses .City                     (bukan nama kota)
+Jumlah Berhasil                 .CityID                   (bukan kode kota)
+Jumlah Gagal                    .ClaimID                  (bukan nomor klaim)
+User Upload                     .AnaylstRemarks           (bukan catatan analis)
+```
+
+### 16.3 Temuan terbesar: enam kueri layar ini TIDAK ADA di export
+
+Keempat activity layar ini memanggil enam `Rule-Connect-SQL` yang **tidak ada satu pun di
+2.634 berkas export**:
+
+```
+BrowseClaimSPKAutoClaim          daftar batch
+BrowseClaimSPK1_AutoClaim        jumlah case per perusahaan
+BrowseClaimSPK_COUNT_AutoClaim   jumlah baris detail
+BrowseAutoClaim_COUNT            jumlah baris detail
+BrowseClaimSPK_detail_AutoClaim  isi detail
+BrowseReportClaimSPK_AutoClaim   isi kedua CSV
+```
+
+Keempat sepupunya untuk jalur Asuransi Kredit dan Travel **juga hilang**
+(`BrowseClaimSPK1_AsuransiKredit`, `BrowseClaimSPKClaimKredit`, `BrowseClaimSPK1_Travel`,
+`BrowseClaimSPKTravel`) — jadi ini bukan satu berkas terlewat, melainkan satu keluarga
+rule yang tidak ikut diekspor. `R-16`.
+
+Ditambah **dua artefak lain** yang juga hilang dan menyentuh layar ini: harness
+`Detail_AUTOCLAIM_Harness` (tujuan tombol DETAIL) dan **flow action** di balik tombol
+Upload Data Klaim.
+
+### 16.4 Yang TETAP dapat dibaca, dan menjadi dasar rekonstruksi
+
+Tabelnya sendiri terbaca jelas dari kueri lain yang menyentuhnya, dan ambang hitungannya
+tertulis **harfiah** di activity ekspor:
+
+| Bukti | Isi |
+|---|---|
+| `RDB List/GroupingAutoClaim-SQL.xml` | kolom `INISIALID NOPOLIS PRODKE CURRENCY TGLKEJADIAN TGLLAPOR COL_ID NILAIKLAIM NOTE KEYWORD BATCH NOAKSEPTASI` |
+| `RDB List/GroupingAutoClaim2-SQL.xml` | `IDPEGA`, `PROGRESS`, beserta syarat batch "belum diproses" |
+| `RDB List/InsertUpdateAutoClaim-SQL.xml` | parameter `POOLDATA.INSERT_AUTOCLAIM` → `USERINPUT`, `TMP_MESSAGE` |
+| `RDB List/BrowseAutoKlaim-SQL.xml` | kolom `M_AUTO_CLAIM_PNC` termasuk `NAMA_PENERIMA` |
+| **`Activity/REPORT_AUTO_CLAIM_ACT-Act.xml`** | **`"AND TMP_MESSAGE='Sukses Klaim'"`** dan **`"AND TMP_MESSAGE!='Sukses Klaim' and TMP_MESSAGE is not null"`** |
+| idem | judul kolom KEDUA berkas CSV, lengkap dan berbeda panjang |
+| `Activity/DETAIL_AUTO_CLAIM-Act.xml` | `.PageSize = 15` |
+
+Judul kolom CSV-nya terbaca utuh, jadi kedua berkas ekspor **bukan rekonstruksi** — ia
+salinan.
+
+### 16.5 Tiga keputusan yang diambil Work Owner sebelum pengerjaan
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Enam kueri hilang — rekonstruksi, atau tunggu? | **Rekonstruksi + tetap minta ke Tim Pega.** Ditandai tegas di berkas `.sql`, dan modul dinyatakan tidak dapat lulus gerbang 1 sampai aslinya tiba |
+| Sejauh mana lingkup aksinya? | **Baca + Export + Upload.** Proses Klaim, Generate DLA, dan Cek Premi tetap TAMPIL tetapi nonaktif beserta alasannya |
+| Paginasi | **Server-side, 15/halaman**, meniru Pega |
+
+### 16.6 Yang dibangun
+
+**Backend — modul `internal/inboxautoclaim`.** Namanya mengikuti `D-81`: nama modul
+bisnis, huruf kecil tanpa tanda hubung.
+
+```
+internal/inboxautoclaim/
+  inboxautoclaim.go     domain: Batch, Line, Company, paginasi, penyaring, seam Repo
+  upload.go             pembacaan CSV + seluruh aturan isiannya
+  export.go             bentuk kedua berkas CSV, disalin dari Pega
+  repo/sqlstore/        17 kueri + pemeriksaan tabel
+  repo/memory/          tiruan setara + 4 batch contoh berisi 4 keadaan berbeda
+  usecase/manage.go     orkestrasi + penyusunan berkas ekspor
+  http/                 5 rute, pemetaan galat, DTO
+```
+
+**Frontend.**
+
+```
+modules/inbox-auto-claim/
+  AutoClaimInboxPage.tsx  grid 8 kolom, penyaring perusahaan, 7 tombol
+  BatchDetail.tsx         panel rincian, 15 baris/halaman
+  UploadForm.tsx          unggah CSV + petunjuk format dari server
+  api.ts                  6 hook TanStack Query
+```
+
+**Yang disentuh di luar modul, seluruhnya ADITIF:**
+
+| Berkas | Perubahan |
+|---|---|
+| `components/DataTable.tsx` | prop **opsional** `pagination` dan `hideSearch`. Tanpa keduanya perilakunya sama persis seperti sebelumnya — layar master tidak berubah sedikit pun |
+| `api/client.ts` | `callAPI` menerima `FormData`; ditambah `unduhBerkas` dan `simpanBerkas` |
+| `api/types.ts` | tipe modul + satu kode galat |
+| `app/menu/registry.ts` | satu baris |
+| `app/App.tsx` | satu rute |
+| `cmd/claimpnc/check.go` | pemeriksaan kesiapan kedua tabel pada mode `-periksa` |
+
+`MENU_ID 68` "Inbox Auto Claim" **sudah ada** di `M_MENU_APLIKASI_PNC`, jadi menyalakan
+butir menunya memang cukup satu baris.
+
+### 16.7 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l` · `go build` · `go vet` | bersih |
+| `go test ./...` | **28 paket lulus**, termasuk 4 paket modul baru |
+| `tsc --noEmit` · `npm run build` | bersih |
+| `npm test` | **82 lulus · 3 gagal** (naik dari 68); ketiganya kegagalan lama yang sama di `AccountPage.test.tsx` |
+
+**Diuji terhadap aplikasi yang benar-benar berjalan**, bukan hanya lewat uji. Instans
+sementara di `127.0.0.1:8123`, `PENYIMPANAN=memori`, `IDENTITAS_ADAPTER=fake`:
+
+```
+POST /api/masuk                                    200
+GET  /api/inbox-auto-claim            tanpa portal 400 portal_tidak_disebut
+GET  /api/inbox-auto-claim            tanpa sesi   401 sesi_tidak_sah
+GET  /api/inbox-auto-claim            X-Portal:SMAS 503 portal_belum_siap
+GET  /api/inbox-auto-claim                         200 4 batch, 8 kolom terisi benar
+GET  /api/inbox-auto-claim?halaman=2&ukuran=2      200 total 6, total_halaman 3
+GET  /api/inbox-auto-claim?perusahaan=BPRC         200 2 batch
+GET  /api/inbox-auto-claim/perusahaan              200 3 perusahaan
+GET  /api/inbox-auto-claim/MFIN/1                  200 4 baris, hasil per baris benar
+GET  /api/inbox-auto-claim/MFIN/999                404 tidak_ditemukan
+GET  .../MFIN/1/ekspor?hasil=berhasil              200 text/csv, 9 kolom, 2 baris
+GET  .../MFIN/1/ekspor?hasil=gagal                 200 text/csv, 8 kolom, 2 baris
+GET  .../MFIN/1/ekspor  (tanpa hasil)              400 permintaan_cacat
+POST /api/inbox-auto-claim/unggah     berkas sah   201 2 batch terbit: MFIN 3, BPRC 2
+POST /api/inbox-auto-claim/unggah     berkas cacat 422 6 pelanggaran sekaligus
+GET  /api/inbox-auto-claim/format-unggahan         200 tanpa header portal
+```
+
+Dua hal diperiksa khusus karena keduanya mudah lolos pengujian biasa:
+
+- **Unggahan bercacat tidak menyimpan satu baris pun.** Jumlah batch sebelum dan sesudah
+  percobaan gagal tetap **6**.
+- **Baris hasil unggahan benar-benar belum diproses.** `nomor_klaim` dan `keterangan`
+  kosong, `hasil` = `belum` — itulah yang membuatnya nanti terambil pemrosesan.
+
+Isi kedua berkas CSV diperiksa baris per baris terhadap judul kolom di
+`REPORT_AUTO_CLAIM_ACT`, termasuk BOM UTF-8 di awal berkas dan perbedaan jumlah kolom
+antara berkas BERHASIL (9) dan GAGAL (8).
+
+### 16.8 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| Menulis `"﻿"` lewat perkakas berkas menghasilkan **karakter BOM sungguhan** di tengah berkas Go, dan kompilator menolaknya (`illegal byte order mark`) | Diganti menjadi escape lewat skrip yang memakai `String.fromCharCode(0xFEFF)`. Percobaan pertama memakai escape di dalam string shell dan **gagal diam-diam** — laporannya menghitung sebelum mengganti, bukan sesudah |
+| `npx prettier` memakai bawaannya sendiri (titik koma, kutip ganda) dan **mereformat ulang tiga berkas** yang gaya proyeknya berbeda | Dijalankan ulang dengan `--no-semi --single-quote --print-width 100`. Diff diperiksa: satu-satunya perubahan di luar suntingan saya adalah dua baris yang disatukan pada `types.ts` |
+| `curl` ke `127.0.0.1` dijawab **403 dari proxy Squid korporat** | `--noproxy '*'`. Servernya sendiri sehat sejak awal — yang salah alat ujinya |
+| Port 8080 sudah terpakai proses lain | Instans uji dijalankan di `127.0.0.1:8123` lewat `APP_ALAMAT` |
+
+### 16.9 Dua kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Mengira `ValidationInitial_act` dan `ValidasiAutoClaim` adalah validasi jalur UNGGAH | Ditelusuri pemanggilnya: keduanya milik `InsertMstAutoClaim_act` — layar **Master Auto Claim**, memeriksa inisial baru tidak kembar. Nyaris saya pakai sebagai bukti untuk aturan yang bukan miliknya |
+| Menulis "EMPAT dari tujuh tombol belum dapat dikerjakan" di komentar layar | Dihitung ulang: yang jalan **empat** (Upload, Detail, dua Export), yang belum **tiga** |
+
+Keduanya diperbaiki saat ditemukan, bukan dibiarkan.
+
+---
+
+## 17. Sesi kesembilan lanjutan — tujuh belas artefak Pega tiba, dan enam koreksi yang menyusul (2026-09-19)
+
+Sesi sebelumnya membangun Inbox Auto Claim di atas rekonstruksi, dan mencatat dengan jelas apa
+saja yang belum ada. Sesi ini Work Owner mengirimkan **seluruh artefak yang diminta** — dan yang
+terjadi berikutnya adalah pelajaran tentang seberapa jauh rekonstruksi yang hati-hati pun dapat
+meleset.
+
+### 17.1 Pertanyaan konfirmasi dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Setelah melihat risiko bahwa baris hasil unggahan akan diambil job Pega yang masih hidup, apakah unggahan ditutup dulu? | **"Unggahan tetap perlu, jangan ditutup"** |
+
+Hanya satu pertanyaan di sesi ini, dan jawabannya **menolak usulan saya**. Rinciannya di
+`keputusan-implementasi.md` §18.6; yang penting dicatat di sini adalah bahwa keberatannya sudah
+disampaikan lebih dulu beserta buktinya, lalu keputusannya dihormati dan dikerjakan penuh —
+bukan dikerjakan setengah hati atau diam-diam dibatasi.
+
+### 17.2 Urutan kerja
+
+1. Membaca seluruh 20 berkas baru — DDL, 19 kueri, tiga harness, satu flow action, empat activity.
+2. Membandingkan tiap dugaan pada bab 17 dengan buktinya, satu per satu.
+3. Menulis ulang berkas SQL: 20 kueri, tiap kueri menyebut **berkas sumbernya** dan **tiap
+   penyimpangan** terhadap kueri aslinya.
+4. Menyesuaikan domain, kedua penyimpanan, lapisan aplikasi, dan transport.
+5. Memperbarui seluruh uji — termasuk **membalik tiga uji** yang selama ini menegakkan hal yang
+   ternyata salah.
+6. Menyesuaikan frontend.
+7. Verifikasi penuh, termasuk menembak server sungguhan dengan berkas unggahan nyata.
+
+### 17.3 Enam koreksi
+
+Diringkas di sini; rinciannya beserta akibatnya di `keputusan-implementasi.md` §18.2.
+
+| # | Koreksi | Beratnya |
+|---|---|---|
+| 1 | `TGLPROSES` wajib diisi — ia bagian PRIMARY KEY | **Setiap unggahan akan ditolak Oracle** |
+| 2 | Tiga kolom berkas unggahan tidak pernah ada; ketiganya hasil pencarian polis | Meminta nilai yang tidak diketahui pengunggah |
+| 3 | Baris gagal DISISIPKAN bertanda, bukan menolak berkas | Perilaku berbeda sama sekali dari Pega |
+| 4 | `CURRENCY` adalah id; layar menampilkan hasil lookup | Pengguna melihat "1", bukan "IDR" |
+| 5 | Dua kolom ekspor salah petakan | Berkasnya dibaca perusahaan di luar Sinarmas |
+| 6 | Urutan batch menurun, bukan menaik | Batch terbaru tersembunyi di halaman terakhir |
+
+### 17.4 Tiga uji yang DIBALIK, dan kenapa itu patut dicatat
+
+Ini bagian yang paling tidak nyaman dari sesi ini. Tiga uji yang saya tulis sesi lalu **menegakkan
+perilaku yang salah**, dan ketiganya lulus dengan meyakinkan:
+
+| Uji | Yang ditegakkannya | Yang benar |
+|---|---|---|
+| `TestInsertLeavesProcessingMarkersUntouched` | `IDPEGA`, `NOAKSEPTASI`, `TMP_MESSAGE` **tidak boleh** ada di kueri penyisipan | Ketiganya **diisi pesan galat** untuk baris yang gagal |
+| `TestKeyFiltersHandleCHARPadding` | penyaring wajib memakai `TRIM` karena kolomnya mungkin `CHAR` | DDL membuktikan `VARCHAR2` — tidak ada padding, `TRIM` justru mematikan index |
+| `TestDaftarPerusahaanDiambilDariBatchYangAda` | daftar perusahaan dibaca dari tabel batch | Dibaca dari **master**; perusahaan baru yang belum punya batch tetap harus muncul |
+
+Ketiganya ditulis dengan alasan yang terdengar masuk akal saat itu, dan alasannya tertulis
+panjang di komentar masing-masing. Yang membuktikannya salah bukan pembacaan ulang yang lebih
+teliti — melainkan artefak yang datang kemudian.
+
+**Uji yang menegakkan dugaan akan mengunci dugaan itu.** Pelajarannya bukan "jangan menulis uji
+untuk hal yang belum pasti", melainkan: uji seperti itu harus menyebut dugaannya sebagai dugaan
+di dalam komentarnya, supaya orang berikutnya tahu ia boleh dicabut. Ketiga uji di atas
+melakukannya, dan itulah yang membuat pencabutannya cepat.
+
+### 17.5 Satu cacat yang tidak dapat ditangkap uji mana pun
+
+`TGLPROSES` yang tidak diisi **lolos dari seluruh 40-an uji** modul ini, dan akan terus lolos
+berapa pun uji yang ditambahkan — karena penyimpanan memori tidak punya constraint.
+
+Yang menangkapnya bukan uji, melainkan membaca DDL.
+
+Konsekuensinya untuk modul berikutnya: **penyimpanan memori membuktikan kode sesuai dengan
+tiruannya, bukan sesuai dengan basis datanya.** Uji integrasi terhadap Oracle sungguhan (Testing
+Strategy §4) adalah satu-satunya yang menutup kelas cacat ini, dan ia belum dapat dijalankan
+karena hak aksesnya belum ada.
+
+### 17.6 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| Alat tulis berkas memasang **BOM sungguhan** (U+FEFF) alih-alih escape `﻿`, sehingga Go menolak berkasnya dengan `illegal byte order mark` | Diganti lewat skrip node: `s.split(BOM).join(ESC)`. Terjadi **dua kali** di sesi ini — pada `upload_test.go` dan `manage_test.go` |
+| Login ke server uji selalu dijawab `kredensial_salah` | Dua sebab berlapis: `.env` memakai `IDENTITAS_ADAPTER=hcq` (bukan provider tiruan), **dan** proses lama masih memegang port sehingga override tidak pernah berlaku. Log-nya menyebutkannya terang-terangan: `bind: Only one usage of each socket address` |
+| `pkill -f claimpnc` tidak mematikan proses di Windows | `taskkill //F //IM claimpnc.exe` |
+| `curl -F "berkas=@/tmp/coba.csv"` tidak menemukan berkasnya | curl Windows tidak mengenal jalur gaya Unix; dipakai `cygpath -w` |
+| Tiga uji `master-rekening` gagal | **Bukan karena sesi ini.** Dibuktikan dengan men-stash ketiga berkas bersama yang saya sentuh (`DataTable.tsx`, `client.ts`, `types.ts`) lalu menjalankan ulang — ketiganya tetap gagal. Cacatnya dari commit `ea379f5`/`6a59263`, dan Isolasi Protektif melarang saya menyentuhnya |
+
+### 17.7 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l ./cmd ./internal` | bersih |
+| `go build ./...` · `go vet ./...` | lulus |
+| `go test ./...` | **seluruh paket lulus** |
+| `npx tsc --noEmit` | bersih |
+| `npm run build` | 499,83 kB, berhasil |
+| `npx vitest run src/modules/inbox-auto-claim` | **16 lulus** |
+| `npx vitest run` (seluruh frontend) | 84 lulus, 3 gagal — ketiganya `master-rekening`, **sudah gagal sebelum sesi ini** |
+| Server sungguhan | dijalankan di `127.0.0.1:8137` dengan provider identitas tiruan |
+
+**Yang diperiksa terhadap server sungguhan**, bukan terhadap tiruan:
+
+- Daftar batch **urut menurun** — MFIN 2, BPRC 1, MFIN 1, ZZZZ 1.
+- Kolom **Tgl Proses** terisi pada setiap baris.
+- `ZZZZ` **tetap muncul** walau tidak ada di master (LEFT JOIN).
+- Penyaring perusahaan berisi **empat** entri dari master — termasuk `KRDU` dan `SRVY` yang belum
+  punya batch satu pun, dan **tanpa** `ZZZZ` yang punya batch tetapi tidak ada di master.
+- Kedua berkas ekspor: judul kolom persis daftar Pega, `No Ref Bank` kosong, `No Objek` berisi
+  `COL_ID`, mata uang berisi kode.
+- Satu berkas unggahan berisi lima baris yang **sengaja** mencakup kelima keadaan:
+
+| Baris | Isi | Hasil |
+|---|---|---|
+| 2 | nomor polis **bertitik** `01.001.2026.0500` | titik dibuang, tersimpan sebagai `0100120260500`, batch MFIN 3 |
+| 3 | polis milik **perusahaan lain** | batch **BPRC 2** — satu berkas, dua batch |
+| 4 | polis tidak ada di `json_polis` | tersimpan **bertanda** "No Polis tidak di temukan" |
+| 5 | polis tanpa perusahaan rekanan | **DITOLAK**, dilaporkan beserta nomor barisnya |
+| 6 | tanggal lapor **mendahului** kejadian | tersimpan **bertanda** "Tanggal lapor harus setelah tanggal kejadian" |
+
+Prodke pada baris 2 dan 6 terisi `1` dan `2` — **dari pencarian polis**, bukan dari berkas. Mata
+uang kosong pada seluruh baris baru, sesuai `keputusan-implementasi.md` §18.7.
+
+### 17.8 Yang TIDAK dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Tiga uji `master-rekening` yang gagal | **Isolasi Protektif.** Cacatnya sudah ada sebelum sesi ini dan sudah dibuktikan tidak berasal dari perubahan saya. Memperbaikinya adalah keputusan Work Owner, bukan inisiatif saya di tengah modul lain |
+| Tab **Asuransi Kredit** dan **Travel** | Ketiga tab punya kueri sendiri yang kini seluruhnya ada. Menambahkannya perubahan lingkup, bukan koreksi |
+| Tombol Proses Klaim, Generate DLA, Cek Premi | Ketiganya memanggil mesin yang modulnya belum dibangun; tetap tampil nonaktif beserta alasannya |
+
+> Baris **tab Asuransi Kredit dan Travel** tidak lagi berlaku sejak §18: Work Owner memintanya
+> pada sesi berikutnya, dan ketiganya kini terpasang. Barisnya dibiarkan sebagai rekaman keadaan
+> saat itu.
+
+---
+
+## 18. Sesi kesepuluh — tiga tab, panel ringkasan, dan dropdown yang dibuang (2026-09-20)
+
+### 18.1 Pertanyaan konfirmasi dan jawabannya
+
+| # | Yang saya tanyakan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Bentuk panel ringkasan | **Tabel + donut chart (seperti contoh)** |
+| 2 | Satuan angka ringkasan | **Jumlah BATCH per perusahaan**, kemudian dipertegas *"sesuaikan seperti pega saja"* |
+| 3 | Tempat daftar perusahaan yang jumlahnya nol | **Tabel ringkasan di panel atas** |
+| 4 | Apakah membangun ketiga tab | **Tiga tab seperti harness aslinya** |
+| 5 | (tanpa ditanya) | *"kalau sudah muncul tab dan data sudah bisa ter-filter, tidak perlu dropdown perusahaan lagi (sama seperti pega)"* |
+
+Satu hal yang saya **tanyakan ulang sebelum mengerjakan**, dan syukurlah: kueri contoh yang
+dikirim Work Owner membaca `TMP_BATCH_CLAIM_KREDIT`. Saya sempat membacanya sebagai koreksi atas
+kueri tab ANEKA. Work Owner menjawab *"iya sample yg sy berikan tadi untuk Asuransi Kredit"* —
+jadi ia kueri **tab lain**, bukan koreksi. Menerapkannya sebagai koreksi akan membuat tab ANEKA
+membaca tabel Asuransi Kredit tanpa satu pun tanda di layar.
+
+### 18.2 Empat cacat yang dilaporkan Work Owner, dan sebab masing-masing
+
+| Yang dilaporkan | Sebab sebenarnya |
+|---|---|
+| *"Daftar batch tidak dapat dimuat"* | **ORA-01008: not all variables bound** — `:1` dipakai dua kali sementara hanya tiga argumen dikirim. Driver Oracle mengikat **menurut kemunculan**, bukan menurut nomor |
+| *"filter saat pilih perusahaan belum berfungsi"* | `strings.ToUpper` pada kode perusahaan yang masuk, sementara `ListCompany` dan kolom basis datanya **tidak** di-upper. Kode `JTrust` tidak pernah cocok dengan `JTRUST` |
+| *"klik pada donut maupun baris tabel perusahaan"* tidak menyaring | Hanya **teks namanya** yang berupa tombol, sementara **barisnya menyala saat disentuh kursor**. Baris itu terlihat dapat diklik seluruhnya, dan janji itu tidak ditepati |
+| *"hanya muncul 2 perusahaan"* | Ringkasan dibaca dari tabel batch dengan `LEFT JOIN`, sehingga hanya memuat perusahaan yang **pernah** mengirim |
+
+Yang ketiga patut dicatat sebabnya: **sorotan hover-lah yang membuat cacat itu ada**. Tanpa
+sorotan, pengguna tidak akan mengira barisnya dapat diklik. Bukan penangan kliknya yang kurang,
+melainkan janji visual yang tidak ditepati.
+
+### 18.3 Loop diagnosis yang GREEN padahal cacatnya nyata
+
+Ini kesalahan metode saya, dan ia persis yang dicegah skill `diagnosing-bugs`.
+
+Loop jsdom pertama yang saya bangun untuk cacat klik **lulus** — karena ia mengeklik
+**tombol namanya**, satu-satunya tempat yang memang sudah berfungsi. Pengguna mengeklik
+**angkanya**.
+
+Setelah loop diperlebar untuk mengeklik sel angka, ia **merah**, dan sebabnya langsung terlihat.
+Pelajarannya bukan "perlebar loop", melainkan: **loop yang tidak pernah merah bukan bukti apa pun**
+— ia hanya bukti bahwa yang diujinya bukan cacatnya.
+
+Hal yang sama terjadi pada `TestQueryBindsAreNumberedInOrder` dan uji penyaring: keduanya saya
+buktikan **merah lebih dulu** dengan memasukkan kembali cacatnya, baru dinyatakan menjaga sesuatu.
+
+### 18.4 Enam uji komponen gagal karena layar BERKEDIP
+
+Setelah tab terpasang, enam uji panel ringkasan gagal dengan pesan yang tampak mustahil:
+`element could not be found in the document` pada elemen yang **baru saja ditemukan** oleh
+`getByRole` sebaris sebelumnya.
+
+Sebabnya bukan uji yang rapuh. `source` kosong pada render pertama, sehingga kuerinya menembak
+server dengan `sumber=` kosong; begitu daftar tab tiba, kunci cache-nya berubah dan panel yang
+sudah tergambar **diganti kerangka pemuatan**. Elemennya memang terlepas dari DOM.
+
+Perbaikannya di sumbernya, bukan di uji: ketiga kueri per-entitas kini `enabled` hanya bila
+`source !== ''`. Itu juga menghapus satu permintaan sia-sia per pemuatan layar.
+
+### 18.5 Satu kesalahan yang merusak lingkungan kerja Work Owner
+
+`taskkill //F //IM claimpnc.exe` mematikan **server pengembangan yang sedang dipakai Work Owner**,
+dan laporan yang masuk berikutnya adalah *"kenapa sekarang tidak bisa login?"*.
+
+Sejak itu server hanya dihentikan **menurut PID** yang benar-benar mendengarkan porta 8080:
+
+```bash
+PID=$(netstat -ano | grep LISTENING | grep ":8080" | head -1 | awk '{print $NF}')
+```
+
+Kesalahan kedua yang sejenis terjadi hari ini: saya menyalakan ulang server dengan
+`PENYIMPANAN=oracle`, padahal `backend/.env` proyek ini menyetel `PENYIMPANAN=memori`. Akibatnya
+`CPNC_SESI_AKTIF` tidak ditemukan dan **login gagal** — bukan karena kode, melainkan karena saya
+menimpa konfigurasi proyek. Server dinyalakan ulang tanpa timpaan, dan konfigurasinya dibiarkan
+apa adanya.
+
+`PENYIMPANAN=oracle` tetap dipakai untuk **satu hal saja**: menjalankan `-periksa` terhadap
+Oracle, dan itu proses terpisah yang tidak mendengarkan porta.
+
+### 18.6 `http proxy error` yang menyalahkan tempat yang salah
+
+Dua kali dalam sesi ini Work Owner melaporkan `http proxy error: /api/masuk`, dan dua kali
+sebabnya **bukan proxy**: backend-nya yang tidak menyala. Pesan bawaan Vite menyebut proxy,
+sehingga penelusuran berangkat dari tempat yang keliru.
+
+`vite.config.ts` kini memisahkan dua keadaan yang bawaannya tercampur:
+
+| Keadaan | Yang tercetak | Yang dilihat pengguna di layar |
+|---|---|---|
+| `ECONNREFUSED`/`ECONNRESET`/`EHOSTUNREACH`/`ETIMEDOUT` | "Backend Claim PNC tidak menyala di …" beserta perintah menjalankannya | **"Server Claim PNC tidak dapat dihubungi"** — soketnya diputus, sehingga `fetch` gagal dan layar memakai kalimat yang memang sudah ditulis untuk keadaan ini |
+| galat lain | `Galat proxy ke …` beserta kodenya, **ditambah** pesan bawaan Vite | pesan galat biasa |
+
+Pesan bawaan Vite **hanya ditelan pada keadaan pertama**, lewat `customLogger` yang menyaring
+satu baris tepat setelah kita menjelaskannya sendiri. Menelan semuanya akan menyembunyikan galat
+proxy yang benar-benar urusan proxy — persis yang diminta Work Owner untuk tidak terjadi.
+
+Dibuktikan dengan menjalankan Vite tanpa backend: keluarannya hanya pesan baru, dan baris
+`http proxy error: /api/masuk` tidak muncul lagi.
+
+### 18.7 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| Backtick di dalam `node -e` lewat Bash **dieksekusi shell** — struct tag Go `json:"kode"` hilang, dan sempat menghasilkan byte NUL serta BOM di tengah berkas | Skrip ditulis ke berkas `.js` di scratchpad lalu dijalankan `node <berkas>`; kerusakan yang telanjur diperbaiki dengan `Edit` bersasaran |
+| `python` tidak tersedia di lingkungan ini | Memakai `Edit` langsung, bukan skrip |
+| Substitusi teks yang terlalu bersemangat menghasilkan `r.line[source][source]` | Diperbaiki dengan penggantian susulan; sejak itu setiap substitusi dibaca ulang hasilnya |
+
+### 18.8 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l .` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruhnya lulus |
+| `-periksa` terhadap Oracle | **ANEKA** 19 perusahaan / 11 batch / penyaring cocok 10 · **Asuransi Kredit** 20 / 100 / 31 · **Travel** 19 / 13 / 12 |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` modul ini | **27 lulus** |
+| `npx vitest run` seluruh frontend | 95 lulus, **3 gagal** — ketiganya `master-rekening`, sudah ada sebelum sesi ini |
+| `npm run build` | berhasil; peringatan berkas > 500 kB dicatat sebagai utang |
+
+Tiga uji baru dibuktikan **merah lebih dulu**: penyaring tab, penghapusan penyaring perusahaan
+saat berpindah tab, dan penomoran bind.
+
+### 18.9 Yang TIDAK dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Tiga uji `master-rekening` yang gagal | **Isolasi Protektif**, dan sudah dibuktikan bukan berasal dari perubahan saya |
+| Menghapus endpoint `GET /inbox-auto-claim/perusahaan` | Dropdown-nya dibuang, endpoint-nya tidak. Menghapus permukaan API yang sudah diuji bukan bagian dari permintaan; ketiadaan pemanggilnya dicatat sebagai utang |
+| Memecah berkas JS terpaket yang kini > 500 kB | Pemecahan kode belum pernah diputuskan untuk aplikasi ini; memutuskannya sendiri di tengah modul adalah perubahan lingkup |
+| Tombol Proses Klaim, Generate DLA, Cek Premi | Belum berubah — mesinnya masih belum dibangun |
+
+---
+
+## 19. Sesi kesepuluh lanjutan — penyaring yang "tidak berfungsi" ternyata panel yang salah isi (2026-09-20)
+
+### 19.1 Empat laporan, satu sebab
+
+Work Owner melaporkan berturut-turut: urutan tab, "filter ketiga tab seharusnya berbeda",
+"semua tab belum berfungsi filternya", dan "table detail tidak berubah saat klik pindah
+perusahaan".
+
+Keempatnya — selain urutan tab — **satu sebab**: panel ringkasan dihitung dari master, sehingga
+setiap tab memuat daftar perusahaan yang sama dan sebagian besar barisnya berjumlah 0. Mengeklik
+dua baris nol berturut-turut memang menghasilkan grid kosong dua kali: "tidak berubah".
+
+### 19.2 Tiga kali saya hampir memperbaiki tempat yang salah
+
+Disiplin `diagnosing-bugs` menahan ketiganya, dan urutannya patut dicatat:
+
+| Dugaan | Cara memeriksanya | Hasil |
+|---|---|---|
+| Kode perusahaan berspasi (kolom `CHAR`), dipangkas HTTP sehingga tidak cocok | `-periksa` diperluas: kode yang sama diuji sekali lagi setelah dipangkas | **bukan** — tidak ada yang berspasi. Pemeriksaannya tetap dipasang, karena gejalanya identik dan tidak menghasilkan galat apa pun |
+| Penyaring rusak di repo | `-periksa` terhadap Oracle per tab | **bukan** — 10 dari 11, 31 dari 100, 12 dari 13 |
+| Penyaring rusak di HTTP | instans terpisah di porta 8099 (`IDENTITAS_ADAPTER=fake`), login sungguhan, curl per tab | **bukan** — `perusahaan=KRDU` mengembalikan 1 baris, `BPRC` 1 baris lain |
+
+Baru setelah ketiganya gugur, yang tersisa adalah isi panelnya — dan itu cocok dengan seluruh
+laporan sekaligus.
+
+**Instans di porta terpisah** penting: server Work Owner tidak disentuh sepanjang penelusuran.
+
+### 19.3 Loop jsdom yang merah karena alasan yang salah
+
+Uji baru "ISI tabel batch berubah" langsung **merah** — tetapi bukan karena cacatnya. Dua
+kekeliruan saya sendiri di dalam satu uji:
+
+1. Saya mengeklik perusahaan yang pada data uji berjumlah **0 batch**, jadi grid memang kosong.
+2. Saya menyimpan elemen `<table>` di variabel. Saat DataTable berpindah ke kerangka pemuatan atau
+   keadaan kosong, elemennya **dilepas dari DOM** — simpulan berikutnya menguji DOM yang sudah
+   tidak ada di layar, dan melaporkan jumlah baris yang lama.
+
+Yang kedua sempat terbaca sebagai "tabel tidak berubah" — persis kalimat laporan aslinya. Kalau
+saya berhenti di situ, saya akan "memperbaiki" cacat yang tidak ada.
+
+Yang memisahkannya: mencetak `document.body.textContent` apa adanya. Di sana terbaca
+**"Perusahaan ini belum punya batch klaim. Total Data : 0"** — layarnya berubah dengan benar,
+ujinya yang melihat ke tempat yang salah.
+
+### 19.4 Satu jebakan yang nyaris ikut terkirim
+
+Membalik urutan tab mengubah `DefaultSource` menjadi `kredit`, dan itu diam-diam memindahkan
+**seluruh data contoh ANEKA ke tab Asuransi Kredit** — karena `memory.NewRepo` menyemai barisnya
+ke "tab bawaan", bukan ke tab yang disebut namanya. Tab ANEKA menjadi kosong tanpa satu baris
+kode modulnya berubah.
+
+Yang menangkapnya uji usecase yang tiba-tiba mendapat 0 batch. Kalau uji itu memakai
+`DefaultSource` juga — dan sebelumnya memang begitu — ia akan ikut berpindah dan **tetap hijau**.
+
+Pelajarannya satu kalimat: **uji yang menyebut nilai lewat konstanta "yang sedang berlaku" ikut
+berubah arti ketika konstanta itu diubah.** Ke-39 rujukan `DefaultSource` di uji diganti dengan
+`SourceAneka`.
+
+### 19.5 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt`, `go vet`, `go test ./...` | bersih |
+| `-periksa` terhadap Oracle | **Asuransi Kredit** 9 perusahaan / 100 batch / penyaring cocok 31 · **ANEKA** 2 / 11 / 10 · **Travel** 2 / 13 / 12 |
+| HTTP sungguhan (porta 8099) | ringkasan tiap tab berbeda; `perusahaan=` mengubah isi grid pada ketiga tab |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` modul ini | **28 lulus** |
+| seluruh frontend | 96 lulus, 3 gagal — ketiganya `master-rekening`, sudah ada sebelum sesi ini |
+| `npm run build` | berhasil |
+
+Dua uji baru dibuktikan **merah lebih dulu**: menghapus `perusahaan` dari parameter, dan menyemai
+master kembali ke ringkasan.
+
+### 19.6 Yang TIDAK dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Menghapus perusahaan berjumlah nol dari **master** | Panel tidak menampilkannya; masternya sendiri tidak disentuh. Itu urusan modul master data |
+| Menyamakan `LEFT JOIN` menjadi `INNER` seperti Pega | Batch yang kodenya tidak ada di master akan hilang dari panel padahal tetap tampil di grid — angka dan isi jadi bertentangan |
+| Tiga uji `master-rekening` | Isolasi Protektif, dan bukan dari sesi ini |
+
+---
+
+## 20. Sesi kesepuluh lanjutan — tangkapan layar yang memecahkan dua putaran penelusuran (2026-09-20)
+
+### 20.1 Dua putaran yang tidak menemukan apa pun
+
+Work Owner melaporkan "filter tidak berfungsi" dua kali, dan dua kali saya membuktikan
+sebaliknya: penyaring benar di repo (`-periksa` terhadap Oracle), benar lewat HTTP (instans
+terpisah di porta 8099), dan benar di jsdom. Setiap bukti hijau, laporannya tetap sama.
+
+Yang memecahkannya **tangkapan layar**: tiga baris DIRECT MO yang sama persis di tab Asuransi
+Kredit. Bukan penyaring yang salah — gridnya yang menampilkan baris kembar, dan baris kembar itu
+terbaca sebagai "data perusahaan lain ikut muncul".
+
+**Pelajarannya tentang cara saya memverifikasi.** Ketiga pemeriksaan saya menghitung **jumlah**
+dan membandingkan **total**. Tidak satu pun memeriksa apakah ada dua baris yang isinya sama.
+Verifikasi yang hanya menjumlah tidak dapat melihat duplikasi — dan duplikasi justru yang
+dilihat pengguna lebih dulu.
+
+### 20.2 Sebabnya satu kalimat yang saya tulis sendiri
+
+Di berkas SQL, padanan pemotongan tanggal Pega saya tulis `CAST(A.TGLPROSES AS DATE)` dengan
+keterangan *"portabel dan berarti sama (D-20)"*. Tipe `DATE` Oracle **membawa jam**, jadi cast
+itu tidak memotong apa pun di sana — satu hari kalender terpecah menjadi satu kelompok per detik.
+
+Keterangan yang meyakinkan itu bertahan melewati dua putaran penelusuran justru karena ia
+**terbaca seperti sudah diperiksa**. Saya membacanya berkali-kali sebagai bagian yang sudah
+selesai.
+
+### 20.3 Urutan pemeriksaan yang akhirnya menemukannya
+
+| Langkah | Hasil |
+|---|---|
+| Bandingkan isi antar tab | Kredit vs ANEKA **0 beririsan** — routing tab benar |
+| Saring **setiap** perusahaan, bukan satu contoh | tidak ada baris yang bocor; jumlahnya cocok |
+| Periksa baris kembar | **38 di Kredit, 2 di ANEKA** ← di sini ketemu |
+| Cetak isi baris kembarnya | seluruh kolom identik, termasuk pengunggah |
+
+Dugaan pertama saya — master berbaris ganda — **salah**: memperbaikinya tidak mengurangi satu pun
+baris kembar. Yang membuktikannya angka yang tidak bergerak setelah perbaikan, bukan pembacaan
+ulang kode.
+
+### 20.4 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt`, `go vet`, `go test ./...` | bersih |
+| `-periksa` terhadap Oracle | **Kredit** 9 perusahaan / 62 batch / penyaring cocok 27 · **ANEKA** 2 / 9 / 8 · **Travel** 2 / 13 / 12 |
+| baris kembar | **0 pada ketiga tab** (sebelumnya 38 dan 2) |
+| halaman 1 vs 2 | tidak beririsan |
+| setiap perusahaan pada setiap tab | tersaring benar, tanpa kebocoran |
+
+`TestDayGroupingDoesNotRelyOnDateCast` dibuktikan **merah** lebih dulu dengan mengembalikan
+`CAST(... AS DATE)`.
+
+### 20.5 Yang TIDAK dikerjakan
+
+| Hal | Alasan |
+|---|---|
+| Mengubah penyimpanan memori | Ia menyimpan tanggal sebagai teks `dd/mm/yyyy`, jadi pengelompokannya memang sudah per hari. Fake-nya benar sejak awal |
+| Membersihkan master berbaris ganda | Itu data, bukan kode. `MAX(...)` membuat layar tahan terhadapnya; merapikan masternya keputusan Work Owner |

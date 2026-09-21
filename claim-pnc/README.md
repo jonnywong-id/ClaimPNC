@@ -66,6 +66,10 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (M_MENU_APLIKASI_PNC, M_OTORISASI_PNC,
 │   │   │   │                            M_LOGIN_GROUP_PNC, M_APLIKASI), memory
 │   │   │   └── http/                    GET /api/menu
+│   │   ├── inboxautoclaim/          MODUL — Inbox Auto Claim (U-3, inbox pertama)
+│   │   │   ├── usecase/                 orkestrasi: daftar, rincian, ekspor, unggah
+│   │   │   ├── repo/                    sqlstore (TMP_BATCH_AUTO_CLAIM, M_AUTO_CLAIM_PNC), memory
+│   │   │   └── http/                    5 rute; satu di antaranya menjawab CSV, bukan JSON
 │   │   ├── masterstatus/            MODUL — Master Status Klaim (F-4)
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
@@ -277,6 +281,104 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/status-progres-1` | wajib | **wajib** | daftar master dari `POOLDATA.GCNM_MST_PROGRESS_KLAIM` |
 | `POST` | `/api/master/status-progres-1` | wajib | **wajib** | `{nama, kode_posisi}` → `201` + baris tersimpan; ID diterbitkan server |
 | `PUT` | `/api/master/status-progres-1/{id}` | wajib | **wajib** | `{nama, kode_posisi}`; ID tidak pernah ikut berubah |
+| `GET` | `/api/inbox-auto-claim/tab` | wajib | — | tiga tab beserta tabel sumbernya; `bawaan` menyebut tab yang terbuka lebih dulu |
+| `GET` | `/api/inbox-auto-claim` | wajib | **wajib** | daftar batch; saringan `sumber`, `perusahaan`, `halaman`, `ukuran` |
+| `GET` | `/api/inbox-auto-claim/ringkasan` | wajib | **wajib** | jumlah batch per perusahaan untuk panel ringkasan; saringan `sumber` |
+| `GET` | `/api/inbox-auto-claim/perusahaan` | wajib | **wajib** | daftar Master Auto Claim — **tanpa pemanggil** sejak dropdown dibuang |
+| `GET` | `/api/inbox-auto-claim/{kode}/{batch}` | wajib | **wajib** | rincian satu batch; saringan `sumber`, `hasil`, `halaman` |
+| `GET` | `/api/inbox-auto-claim/{kode}/{batch}/ekspor` | wajib | **wajib** | berkas **CSV**; `hasil=berhasil` atau `hasil=gagal`, saringan `sumber` |
+| `POST` | `/api/inbox-auto-claim/unggah` | wajib | **wajib** | `multipart/form-data`, bagian `berkas`, saringan `sumber` → `201` + batch yang terbit dan baris yang ditolak |
+| `GET` | `/api/inbox-auto-claim/format-unggahan` | wajib | — | judul kolom yang diterima berkas unggahan |
+
+> `?sumber=` bernilai `aneka`, `kredit`, atau `travel`. Kosong berarti `aneka`; nilai lain
+> **ditolak**, tidak diam-diam dijatuhkan ke bawaannya.
+
+### Inbox Auto Claim
+
+Menggantikan harness Pega `InboxAutoClaim`, yang dijoin ke `POOLDATA.M_AUTO_CLAIM_PNC`.
+Perusahaan rekanan mengirim klaim **borongan** sebagai berkas; satu baris di layar adalah
+satu pasangan (kode perusahaan × nomor batch).
+
+**Tiga tab, tiga tabel** — persis seperti harness lama:
+
+| Tab | Tabel | Kolom perusahaan |
+|---|---|---|
+| **Asuransi Kredit** (bawaan) | `POOLDATA.TMP_BATCH_CLAIM_KREDIT` | **`AGENID`** |
+| **ANEKA** | `POOLDATA.TMP_BATCH_AUTO_CLAIM` | `INISIALID` |
+| **Travel** | `POOLDATA.TMP_BATCH_AUTO_TRAVEL` | `INISIALID` |
+
+Pega menggandakan setiap rule tiga kali untuk ini — utang teknis yang
+`03-CURRENT-ARCHITECTURE.md §4.6` sebut sebagai *duplikasi masif per lini bisnis*. Di sini
+ketiganya memakai **satu berkas `.sql`** dengan dua titik substitusi (`{{TABEL}}`,
+`{{KOLOM}}`) yang diisi sekali saat proses menyala, dari **enum tertutup** — bukan dari
+`?sumber=`.
+
+**Penyaring perusahaannya panel ringkasan**, bukan dropdown: donut + tabel
+"Nama Perusahaan / Jumlah Batch", dengan baris **All** untuk membatalkan. Dropdown di bilah
+judul grid dibuang atas permintaan Work Owner (2026-09-20), mengikuti layar Pega. Tabelnya memuat
+**hanya perusahaan yang punya batch di tab itu**, sehingga ketiga tab menghasilkan daftar yang
+berbeda dan setiap baris yang tampil pasti menghasilkan isi grid bila diklik.
+
+**Tiga dari tujuh tombol layar lama belum dapat dikerjakan**, dan ketiganya tetap tampil
+di layar dalam keadaan nonaktif beserta alasannya:
+
+| Tombol | Keadaan |
+|---|---|
+| Upload Data Klaim · DETAIL · EXPORT BERHASIL · EXPORT GAGAL | ✅ jalan |
+| Proses Klaim | ❌ menunggu `B-2`, `B-3`, `B-5`, `B-10` — ia membuat case klaim utuh |
+| Generate DLA | ❌ menunggu `B-9` |
+| Cek Premi | ❌ menunggu `S-4` |
+
+**Unggahan bukan penyisipan biasa.** Berkasnya **tidak** memuat kode perusahaan, nomor
+produk, maupun mata uang — ketiganya dicari dari nomor polisnya. Akibatnya satu berkas
+dapat menghasilkan beberapa batch sekaligus, dan hasil unggahan membedakan **tiga**
+keadaan:
+
+| Keadaan | Barisnya | Yang dilakukan pengguna |
+|---|---|---|
+| lolos | tersimpan, menunggu diproses | — |
+| bertanda | **tersimpan** beserta pesan gagalnya, terlihat di grid | memperbaiki datanya |
+| ditolak | **tidak tersimpan** — perusahaannya tidak dapat diturunkan dari polis | mengunggah ulang baris itu |
+
+> **Kuerinya sudah tiba (2026-09-19), dan enam dugaan terbukti salah.** Sebelumnya modul
+> ini dibangun dari rekonstruksi karena 17 kueri, 3 harness, 1 flow action, dan DDL kedua
+> tabel semuanya hilang dari export (`R-16`). Seluruhnya kini ada. Yang paling berat:
+> `TGLPROSES` ternyata bagian **PRIMARY KEY**, sehingga penyisipan versi pertama akan
+> **ditolak Oracle pada unggahan pertama** — cacat yang tidak dapat ditangkap satu pun uji
+> yang berjalan di atas penyimpanan memori. Rinciannya di
+> [`keputusan-implementasi.md` §18](docs/keputusan-implementasi.md).
+>
+> **Gerbang 1 tetap belum dapat dijalankan**, tetapi penghalangnya berpindah: bukan lagi
+> kueri yang hilang, melainkan **Pega staging yang dapat ditembak dari luar** (`ADR-0027`) —
+> dan kini itu berlaku untuk **ketiga** tab.
+>
+> **Panel ringkasannya tidak punya baseline Pega.** Komponen yang menggambarnya tidak ada di
+> export, jadi ia kemampuan baru — tidak ada yang dapat dibandingkan dengannya. Yang menjaganya
+> jujur satuan hitungnya: **jumlah batch**, sama dengan satu baris grid, sehingga angka panel
+> dan total grid setelah disaring selalu cocok dan dapat diperiksa pengguna sendiri.
+>
+> **Dua hal sengaja dibiarkan kosong** dan itu dinyatakan di muka, bukan ditemukan saat
+> pengujian: kolom `CURRENCY` pada setiap baris yang diunggah sistem baru (menunggu `B-1`)
+> dan kolom `No Ref Bank` pada berkas ekspor (menunggu API pengganti DB Link, `R-03`).
+>
+> Kedua berkas CSV **bukan** rekonstruksi: judul kolomnya terbaca utuh di
+> `REPORT_AUTO_CLAIM_ACT`, termasuk kenyataan bahwa berkas GAGAL punya satu kolom lebih
+> sedikit. Dua kolom yang isinya masih dugaan ditandai di `export.go`.
+
+Berkas unggahan berupa CSV dengan judul kolom pada baris pertama — pemisah koma maupun
+titik koma sama-sama diterima, dan BOM dari Excel ditangani:
+
+```
+inisialid,nopolis,prodke,tglkejadian,tgllapor,col_id,nilaiklaim,currency,note,keyword
+MFIN,0100120260001,1,03/01/2026,05/01/2026,12002,12500000.00,IDR,catatan,REF-1
+```
+
+`col_id`, `note`, dan `keyword` boleh tidak ada. Tanggal **wajib** `dd/mm/yyyy`: kolomnya
+menyimpan teks, dan pemrosesan memotongnya dengan posisi karakter tetap — bentuk lain
+menghasilkan tanggal yang salah tanpa satu pun galat.
+
+Unggahan bersifat **semua-atau-tidak sama sekali**: satu baris yang tidak lolos membatalkan
+seluruh berkas, dan semua pelanggaran dilaporkan sekaligus beserta nomor barisnya.
 
 Tidak ada `DELETE` pada master status progres, dan itu disengaja: sistem lama tidak punya
 satu pun pernyataan `DELETE` terhadap tabel itu, dan tabelnya tidak punya kolom penanda
@@ -315,6 +417,9 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/masuk` | masuk |
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
+| `/master/status-klaim` | **Master Status Klaim** |
+| `/master-rekening` | **Master Rekening** |
+| `/inbox-auto-claim` | **Inbox Auto Claim** — layar inbox pertama |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).

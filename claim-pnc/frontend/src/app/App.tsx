@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
@@ -78,6 +79,20 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Auto Claim. Ia layar INBOX pertama yang dibangun — barisnya pekerjaan yang
+        menunggu diproses, bukan data acuan (`D-79`).
+      */}
+      <Route
+        path="/inbox-auto-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AutoClaimInboxPage />
             </Protected>
           </SessionGuard>
         }

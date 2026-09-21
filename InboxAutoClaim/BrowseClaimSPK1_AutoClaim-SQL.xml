@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRequestType>BrowseClaimSPK1_AutoClaim</pyRequestType>
+<pyCircumstanceType/>
+<pxMoveFromSystem/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxUpdateOperator>ANDREWHANDOKO</pxUpdateOperator>
+<pyCircumstanceProp/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyWorkKey/>
+<pxOriginalCreateOperator/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyTemplateInputBox/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedDateTime/>
+<pyRuleFormStatusTime>20260919T062132.368 GMT</pyRuleFormStatusTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyWindowTitle/>
+<pyRuleSetVersion>01-02-04</pyRuleSetVersion>
+<pyDeleteSQL/>
+<pxCreateOpName>ANDREW HANDOKO</pxCreateOpName>
+<pyTempText>saved</pyTempText>
+<pxInstanceLockedCreateDateTime/>
+<pyDescription/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateDateTime>20230404T090308.538 GMT</pxUpdateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionPatch>04</pzRuleSetVersionPatch>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCheckInRuleSet/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260919T062132.418 GMT</pyShowJavaWindowName>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimSPK1_AutoClaim</pyRuleName>
+<pyRuleParamsStreamName/>
+<pyHandlerFlow/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceVal/>
+<pyJavaStream/>
+<pxInstanceLockedRuleSet/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedBy/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimSPK1_AutoClaim</pxTabLabel>
+<pyMemo>Done</pyMemo>
+<pxHostId>jboss10-42</pxHostId>
+<pxCommitDateTime>20230414T101625.000 GMT</pxCommitDateTime>
+<pxCreateOperator>ANDREWHANDOKO</pxCreateOperator>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySpecialtyComponentData/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDocumentTitle/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyBrowseSQL>SELECT d.NAMA_PENERIMA AS "City", d.INISIALID AS "CityID", COUNT (DISTINCT C.BATCH) AS "CauseOfLoss"
+    FROM POOLDATA.TMP_BATCH_AUTO_CLAIM c, POOLDATA.M_AUTO_CLAIM_PNC d
+   WHERE c.INISIALID = d.INISIALID
+{ASIS:TempSearch.SearchName}
+GROUP BY d.NAMA_PENERIMA, d.INISIALID</pyBrowseSQL>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxOriginalCreateDateTime/>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSPK1_AUTOCLAIM</pxInsId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyInterface/>
+<pyFormPost/>
+<pyLabelOld>BrowseClaimSPK1_AutoClaim</pyLabelOld>
+<pxOriginalCreateOpName/>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pxMergeSynchronized>20221025T083049.596 GMT</pxMergeSynchronized>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK1_AUTOCLAIM #20230404T085703.453 GMT</pzInsKey>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pySaveSQL/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyCircumstanceDate/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemporaryObject/>
+<pxOriginalCreateSystemID/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK1 #20220113T011347.929 GMT</pzOriginalInstanceKey>
+<pzChecksum>410115969</pzChecksum>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMoveImportDateTime>20230414T101624.640 GMT</pxMoveImportDateTime>
+<pyRelativePath/>
+<pyStatus/>
+<pyRuleStarts/>
+<pyDeletedObject/>
+<pyBaseRule>false</pyBaseRule>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK1_AUTOCLAIM #20230404T085703.453 GMT</pzDocumentKey>
+<pyUsage/>
+<pxCreateDateTime>20230404T085703.453 GMT</pxCreateDateTime>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSPK1_AUTOCLAIM</pxInsName>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyOpenSQL/>
+<pxUpdateOpName>ANDREW HANDOKO</pxUpdateOpName>
+<pxSiblingCount/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTemplate/>
+<pxInstanceLockedRuleSetVersion/>
+<pyLabel>BrowseClaimSPK1_AutoClaim</pyLabel>
+<pxSaveDateTime>20230404T090308.545 GMT</pxSaveDateTime>
+<pxInstanceLockedKey/>
+<pyCircumstanceTemplate/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRuleData>true</pyRuleData>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyBranchOut>false</pyBranchOut>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyFavorites>true</pyFavorites>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK1_AUTOCLAIM #20230404T085703.453 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-04 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK1_AUTOCLAIM #20221024T043119.224 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+</pagedata>

@@ -18,6 +18,8 @@ import (
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
+	"claim-pnc/internal/inboxautoclaim"
+	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
@@ -70,6 +72,10 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAppTables(ctx, legacy, print)
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
+	checkAutoClaim(ctx, inboxautoclaimsql.NewRepo(primary), print)
+	checkAutoClaimTabsDiffer(ctx, inboxautoclaimsql.NewRepo(primary), print)
+	checkAutoClaimPaging(ctx, inboxautoclaimsql.NewRepo(primary), print)
+	checkAutoClaimEveryCompany(ctx, inboxautoclaimsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -262,4 +268,283 @@ func readPassword(source io.Reader) (string, error) {
 		return "", errors.New("kata sandi kosong")
 	}
 	return password, nil
+}
+
+// checkAutoClaim melaporkan kesiapan kedua tabel yang dipakai Inbox Auto Claim.
+//
+// Berbeda dari checkClaimStatus, ia TIDAK melaporkan jumlah baris. Dua sebab, dan
+// keduanya disengaja:
+//
+//   - POOLDATA.TMP_BATCH_AUTO_CLAIM adalah tabel TRANSAKSI yang isinya berubah setiap
+//     hari. Angka barisnya tidak menjawab pertanyaan apa pun tentang kesiapan.
+//   - Menghitungnya berarti memindai tabel yang dapat sangat besar, dan mode periksa
+//     dijalankan terhadap produksi.
+//
+// Yang dilaporkan hanya "dapat dibaca atau tidak" — dan itulah yang membedakan
+// "tabelnya tidak ada" dari "akun aplikasi belum diberi hak baca".
+// checkAutoClaimEveryCompany menyaring SETIAP perusahaan, bukan hanya yang pertama.
+//
+// Pemeriksaan sebelumnya mengambil satu perusahaan contoh, dan itu meloloskan cacat yang
+// hanya mengenai sebagian: kode yang berbeda besar-kecil hurufnya, berspasi, atau punya
+// lebih dari satu baris master. Laporan Work Owner 2026-09-20 — menyaring satu perusahaan
+// tetapi baris perusahaan lain ikut tampil — tidak dapat ditangkap satu contoh.
+//
+// Dua hal diperiksa sekaligus untuk tiap perusahaan:
+//
+//	jumlahnya cocok    -> penyaringnya benar-benar menyaring
+//	barisnya satu kode -> tidak ada baris perusahaan lain yang lolos
+//
+// Ditambah pemeriksaan baris kembar: dua baris dengan (kode, batch, tanggal) yang sama
+// berarti join ke master MENGGANDAKAN baris — master punya lebih dari satu baris untuk
+// kode itu.
+func checkAutoClaimEveryCompany(ctx context.Context, repo *inboxautoclaimsql.Repo, print func(string, ...any)) {
+	for _, source := range inboxautoclaim.AllSource() {
+		summary, err := repo.SummarizeCompany(ctx, source)
+		if err != nil {
+			print("  [BELUM] tab %-15s ringkasan ditolak: %v", source.Label(), err)
+			continue
+		}
+
+		bocor, selisih, kembar := 0, 0, 0
+		for _, c := range summary.Company {
+			page, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+				Source:      source,
+				CompanyCode: c.Code,
+				Page:        inboxautoclaim.PageRequest{Number: 1, Size: 500},
+			})
+			if err != nil {
+				print("  [BELUM] tab %-15s penyaring ditolak: %v", source.Label(), err)
+				break
+			}
+			if page.Total != c.BatchCount {
+				selisih++
+			}
+
+			terlihat := map[string]bool{}
+			for _, b := range page.Item {
+				if b.CompanyCode != c.Code {
+					bocor++
+				}
+				kunci := b.CompanyCode + "\x00" + b.BatchNumber + "\x00" + b.ProcessedDate
+				if terlihat[kunci] {
+					kembar++
+				}
+				terlihat[kunci] = true
+			}
+		}
+
+		switch {
+		case bocor > 0:
+			print("  [BELUM] tab %-15s %d baris LOLOS penyaring — perusahaannya bukan yang diminta",
+				source.Label(), bocor)
+		case selisih > 0:
+			print("  [BELUM] tab %-15s %d perusahaan: jumlah ringkasan dan hasil penyaring berbeda",
+				source.Label(), selisih)
+		case kembar > 0:
+			print("  [BELUM] tab %-15s %d baris KEMBAR — (kode, batch, tanggal) yang sama muncul dua kali",
+				source.Label(), kembar)
+			print("            Join ke M_AUTO_CLAIM_PNC menggandakan baris: master punya lebih")
+			print("            dari satu baris untuk kode perusahaan yang sama.")
+		default:
+			print("  [ok]    tab %-15s seluruh %d perusahaan tersaring benar, tanpa baris kembar",
+				source.Label(), len(summary.Company))
+		}
+	}
+}
+
+// checkAutoClaimPaging memastikan halaman 2 tidak mengulang baris halaman 1.
+//
+// Ini bukan kerapian. `OFFSET … FETCH NEXT` memotong hasil menurut URUTAN, dan bila
+// urutannya tidak menentukan satu susunan tunggal, basis data boleh menyusun baris yang
+// seri dengan cara berbeda pada setiap eksekusi. Akibatnya satu baris dapat muncul di dua
+// halaman sementara baris lain tidak pernah muncul sama sekali — tanpa galat apa pun.
+//
+// Gejalanya di layar: menekan Next lalu Previous menampilkan isi yang berbeda, dan
+// sebagian batch "hilang". Pada tabel dengan 100 baris grid, itu bukan kemungkinan
+// teoretis.
+func checkAutoClaimPaging(ctx context.Context, repo *inboxautoclaimsql.Repo, print func(string, ...any)) {
+	for _, source := range inboxautoclaim.AllSource() {
+		const size = 15
+
+		satu, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source, Page: inboxautoclaim.PageRequest{Number: 1, Size: size},
+		})
+		if err != nil {
+			print("  [BELUM] tab %-15s halaman 1 ditolak: %v", source.Label(), err)
+			continue
+		}
+		if satu.Total <= size {
+			print("  [ok]    tab %-15s hanya satu halaman (%d baris)", source.Label(), satu.Total)
+			continue
+		}
+
+		dua, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source, Page: inboxautoclaim.PageRequest{Number: 2, Size: size},
+		})
+		if err != nil {
+			print("  [BELUM] tab %-15s halaman 2 ditolak: %v", source.Label(), err)
+			continue
+		}
+
+		pada1 := map[string]bool{}
+		for _, b := range satu.Item {
+			pada1[b.CompanyCode+"\x00"+b.BatchNumber+"\x00"+b.ProcessedDate] = true
+		}
+		ulang := 0
+		for _, b := range dua.Item {
+			if pada1[b.CompanyCode+"\x00"+b.BatchNumber+"\x00"+b.ProcessedDate] {
+				ulang++
+			}
+		}
+		if ulang > 0 {
+			print("  [BELUM] tab %-15s %d dari %d baris halaman 2 MENGULANG halaman 1",
+				source.Label(), ulang, len(dua.Item))
+			print("            Urutan kueri tidak menentukan satu susunan tunggal, sehingga")
+			print("            OFFSET memotong di tempat yang berbeda pada tiap eksekusi.")
+			continue
+		}
+		print("  [ok]    tab %-15s halaman 1 dan 2 tidak beririsan (%d + %d dari %d)",
+			source.Label(), len(satu.Item), len(dua.Item), satu.Total)
+	}
+}
+
+// checkAutoClaimTabsDiffer memastikan ketiga tab benar-benar membaca tabel yang berbeda.
+//
+// Ia menjawab satu laporan yang tidak dapat dijawab oleh jumlah saja: "tab ANEKA
+// menampilkan data Asuransi Kredit". Yang dibandingkan KUNCI barisnya — pasangan
+// (kode perusahaan, nomor batch) — bukan namanya, sehingga keluarannya tidak pernah memuat
+// nama perusahaan mana pun.
+//
+// Tumpang tindih tidak selalu berarti cacat: satu perusahaan boleh mengirim ke lebih dari
+// satu lini, dan nomor batch dihitung per tabel sehingga angka yang sama wajar muncul di
+// dua tabel. Yang MUSTAHIL benar adalah dua tab yang isinya sama persis.
+func checkAutoClaimTabsDiffer(ctx context.Context, repo *inboxautoclaimsql.Repo, print func(string, ...any)) {
+	kunci := map[inboxautoclaim.Source]map[string]bool{}
+	for _, source := range inboxautoclaim.AllSource() {
+		page, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source,
+			Page:   inboxautoclaim.PageRequest{Number: 1, Size: 200},
+		})
+		if err != nil {
+			print("  [BELUM] tab %-15s tidak dapat dibaca untuk perbandingan: %v", source.Label(), err)
+			return
+		}
+		set := map[string]bool{}
+		for _, b := range page.Item {
+			set[b.CompanyCode+"\x00"+b.BatchNumber] = true
+		}
+		kunci[source] = set
+	}
+
+	all := inboxautoclaim.AllSource()
+	for i := 0; i < len(all); i++ {
+		for j := i + 1; j < len(all); j++ {
+			a, b := kunci[all[i]], kunci[all[j]]
+			if len(a) == 0 || len(b) == 0 {
+				continue
+			}
+			sama := 0
+			for k := range a {
+				if b[k] {
+					sama++
+				}
+			}
+			if sama == len(a) && sama == len(b) {
+				print("  [BELUM] tab %s dan %s mengembalikan ISI YANG SAMA PERSIS (%d baris)",
+					all[i].Label(), all[j].Label(), sama)
+				print("            Keduanya membaca tabel yang berbeda, jadi ini berarti")
+				print("            penyaring tab tidak sampai ke kueri.")
+				continue
+			}
+			print("  [ok]    tab %-15s vs %-15s berbeda (%d dan %d baris, %d beririsan)",
+				all[i].Label(), all[j].Label(), len(a), len(b), sama)
+		}
+	}
+}
+
+func checkAutoClaim(ctx context.Context, repo *inboxautoclaimsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] tabel Inbox Auto Claim belum dapat dibaca: %v", err)
+		print("            Yang dibutuhkan: POOLDATA.TMP_BATCH_AUTO_CLAIM dan")
+		print("            POOLDATA.M_AUTO_CLAIM_PNC. Keduanya milik sistem lama dan TIDAK")
+		print("            dibuat migrasi mana pun — yang diperlukan hanya hak baca serta")
+		print("            hak tulis pada yang pertama.")
+		return
+	}
+	print("  [ok]    POOLDATA.TMP_BATCH_AUTO_CLAIM, M_AUTO_CLAIM_PNC, dan CURRENCY dapat dibaca")
+
+	// Kueri ringkasan dijalankan sungguhan, bukan sekadar diperiksa keberadaan tabelnya.
+	//
+	// Sebabnya konkret: dua cacat modul ini — TGLPROSES yang bagian PRIMARY KEY, dan
+	// `ORA-01008` dari bind yang diulang — LOLOS seluruh uji dan baru muncul saat Oracle
+	// benar-benar menguraikan pernyataannya. Penyimpanan memori tidak menguraikan SQL,
+	// jadi satu-satunya cara menangkap kelas cacat itu lebih awal adalah menjalankannya.
+	//
+	// Yang dicetak hanya JUMLAH, tidak pernah nama perusahaan: perintah ini dijalankan
+	// terhadap basis data berisi data nasabah, dan keluarannya sering ditempel ke tiket.
+	// KETIGA tab diperiksa, bukan hanya yang bawaan. Ketiganya membaca tabel yang
+	// berbeda, sehingga satu tab yang berhasil tidak menjamin dua lainnya.
+	for _, source := range inboxautoclaim.AllSource() {
+		summary, err := repo.SummarizeCompany(ctx, source)
+		if err != nil {
+			print("  [BELUM] tab %-15s ringkasan ditolak basis data: %v", source.Label(), err)
+			continue
+		}
+
+		// Penyaring perusahaan diuji SUNGGUHAN, memakai kode dari ringkasan tab ini.
+		// Ia pernah rusak dengan cara yang tidak menghasilkan galat apa pun: kodenya
+		// di-uppercase sebelum dibandingkan sementara kolomnya tidak, sehingga tabelnya
+		// selalu kosong.
+		var sample inboxautoclaim.CompanySummary
+		for _, c := range summary.Company {
+			if c.BatchCount > 0 {
+				sample = c
+				break
+			}
+		}
+		if sample.Code == "" {
+			print("  [ok]    tab %-15s terbaca: %d perusahaan, %d batch (belum ada isinya)",
+				source.Label(), len(summary.Company), summary.Total)
+			continue
+		}
+
+		page, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source, CompanyCode: sample.Code,
+		})
+		switch {
+		case err != nil:
+			print("  [BELUM] tab %-15s penyaring perusahaan ditolak: %v", source.Label(), err)
+		case page.Total != sample.BatchCount:
+			print("  [BELUM] tab %-15s penyaring menghasilkan %d batch, ringkasan menyebut %d",
+				source.Label(), page.Total, sample.BatchCount)
+			print("            Keduanya WAJIB sama. Selisihnya berarti kode perusahaan diubah")
+			print("            di salah satu jalur — spasi di ujung, atau besar kecil huruf.")
+		default:
+			print("  [ok]    tab %-15s %d perusahaan, %d batch; penyaring cocok (%d batch)",
+				source.Label(), len(summary.Company), summary.Total, page.Total)
+		}
+
+		// Kode yang sama diuji SEKALI LAGI setelah dipangkas spasinya, karena itulah yang
+		// benar-benar sampai ke repo lewat HTTP: handler memanggil `strings.TrimSpace`
+		// pada `?perusahaan=`.
+		//
+		// Bila kolomnya bertipe CHAR, Oracle memadatkan nilainya dengan spasi. Kode yang
+		// utuh cocok, kode yang dipangkas TIDAK — dan pemeriksaan di atas tidak akan
+		// menangkapnya karena ia memakai nilai mentah. Gejalanya di layar persis
+		// "penyaringnya tidak berfungsi": tidak ada galat, hanya tabel yang tidak berubah.
+		trimmed := strings.TrimSpace(sample.Code)
+		if trimmed == sample.Code {
+			continue
+		}
+		viaHTTP, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source, CompanyCode: trimmed,
+		})
+		if err != nil || viaHTTP.Total != page.Total {
+			print("  [BELUM] tab %-15s kode perusahaan BERSPASI di ujung (%d karakter -> %d)",
+				source.Label(), len(sample.Code), len(trimmed))
+			print("            Lewat HTTP kodenya dipangkas, dan penyaringnya menghasilkan")
+			print("            %d batch, bukan %d. Kolomnya kemungkinan CHAR, bukan VARCHAR2.",
+				viaHTTP.Total, page.Total)
+		}
+	}
 }

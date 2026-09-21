@@ -356,3 +356,95 @@ untuk modul yang Work Owner sebut dengan nama bisnisnya.
 
 **Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
 `menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.
+
+---
+
+## Tambahan 2026-09-19 — modul Inbox Auto Claim
+
+Nama modulnya **Indonesia** (`inboxautoclaim` di backend, `inbox-auto-claim` di frontend)
+mengikuti `D-81`: ia nama modul bisnis yang disebut Work Owner. Isinya **Inggris**.
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Batch | Batch | sudah Inggris; satu unggahan milik satu perusahaan |
+| Baris klaim | Line | satu klaim di dalam sebuah batch |
+| Perusahaan rekanan | Company | bank dan lembaga pembiayaan pengirim klaim borongan |
+| Halaman | PageRequest · BatchPage · LinePage | permintaan halaman dan hasilnya |
+| Penyaring | BatchFilter · LineQuery | |
+| Hasil pemrosesan | Result | `berhasil` · `gagal` · kosong berarti belum |
+| Baris unggahan | UploadRow | satu baris berkas CSV sesudah dibaca |
+| Ringkasan unggahan | UploadResult · BatchRef | |
+| Bentuk berkas ekspor | ExportSpec | judul kolom + cara memetakan barisnya |
+| Berkas unduhan | ExportFile · DownloadedFile | Go dan TypeScript |
+
+### Tambahan 2026-09-20 — tiga tab
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Tab / jenis klaim | **Source** | enum tertutup: `aneka` · `kredit` · `travel` |
+| Keterangan tab | **SourceInfo** | label, nama tabel, nama kolom perusahaan |
+| Ringkasan per perusahaan | **Summary · CompanySummary** | satuannya **jumlah batch** |
+
+Tiga catatan penamaan yang sengaja:
+
+1. **`Source`, bukan `Tab`.** Yang dipilih pengguna memang tampak sebagai tab, tetapi yang
+   ditentukannya **sumber data** — tabel mana yang dibaca. Menamainya `Tab` mengikat nama
+   domain pada bentuk tampilan, dan bentuk itu dapat berubah tanpa sumbernya berubah.
+2. **Nilai enum-nya Indonesia** (`aneka`, `kredit`, `travel`) karena ia **kontrak API** —
+   `?sumber=kredit` dipakai peramban dan tertulis di README, sama sifatnya dengan nama field
+   JSON.
+3. **Label tab tidak diturunkan dari nama rule.** Rule-nya `BrowseClaimSPKAutoClaim`, tetapi
+   `pyCaption` harness menyebut **ANEKA**. Label datang dari harness, dan dikirim server —
+   bukan diketik di layar.
+
+### Penamaan ulang delapan kolom grid (`D-19`)
+
+Alias Pega-nya **tidak dibawa**; ketiganya contoh utang teknis §4.2:
+
+| Judul kolom layar | Properti Pega | Nama di kode | Kolom tabel |
+|---|---|---|---|
+| KODE | `.CaseID` | `CompanyCode` | `INISIALID` |
+| Nama Perusahaan | `.AlasanTerlambat` | `CompanyName` | `NAMA_PENERIMA` |
+| Batch | `.CauseOfLoss` | `BatchNumber` | `BATCH` |
+| Jumlah data yang di upload | `.ChronologicalOfIncodent` | `Uploaded` | `COUNT(*)` |
+| Jumlah data yang telah diproses | `.City` | `Processed` | turunan `TMP_MESSAGE` |
+| Jumlah Berhasil | `.CityID` | `Succeeded` | turunan `TMP_MESSAGE` |
+| Jumlah Gagal | `.ClaimID` | `Failed` | turunan `TMP_MESSAGE` |
+| User Upload | `.AnaylstRemarks` | `UploadedBy` | `USERINPUT` |
+
+> `.CauseOfLoss` pada grid adalah **nomor batch**, sementara kolom `COL_ID` pada tabel yang
+> sama adalah **penyebab kerugian yang sungguhan** — dan itu yang dinamai `CauseOfLoss` di
+> kode. Dua hal berbeda dengan satu nama Pega.
+
+### Nama JSON tetap Indonesia
+
+`kode_perusahaan`, `nama_perusahaan`, `batch`, `jumlah_upload`, `jumlah_proses`,
+`jumlah_berhasil`, `jumlah_gagal`, `jumlah_belum_proses`, `user_upload`, `paginasi`,
+`baris`, `hasil`, `keterangan`.
+
+### Judul kolom berkas CSV — TIDAK diterjemahkan dan TIDAK diperbaiki
+
+`Inisial`, `No Polis`, `No Klaim`, `No Ref Bank`, `No Aksep`, `Currency`, `Nilai Klaim`,
+`No Objek`, `Keterangan`.
+
+Beberapa di antaranya menyesatkan ("No Objek" berisi nomor produk), tetapi berkas ini
+dibaca **perusahaan rekanan di luar Sinarmas**. Judulnya kontrak keluaran, bukan nama
+internal — penamaan ulang berhenti di batas berkas.
+
+### Judul kolom berkas UNGGAHAN — nama kolom basis data
+
+`inisialid`, `nopolis`, `prodke`, `tglkejadian`, `tgllapor`, `col_id`, `nilaiklaim`,
+`currency`, `note`, `keyword`.
+
+Flow action Pega-nya hilang dari export, sehingga judul aslinya tidak diketahui. Yang
+dipakai nama kolom tabel — satu-satunya nama yang dapat ditelusuri ke buktinya.
+
+### Prop baru pada komponen bersama
+
+| Prop | Komponen | Arti |
+|---|---|---|
+| `pagination` | `DataTable` | paginasi sisi server; opsional |
+| `hideSearch` | `DataTable` | menyembunyikan kotak pencarian peramban; opsional |
+| `unduhBerkas` · `simpanBerkas` | `api/client.ts` | mengambil respons non-JSON dan menyimpannya |

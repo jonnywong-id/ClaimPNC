@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
@@ -41,6 +42,10 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
+	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
+	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
+	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -188,6 +193,28 @@ func run() error {
 		WriteError:   writePortalAwareError,
 	}
 
+	// Inbox Auto Claim. Ia menyentuh basis data entitas, sehingga rutenya memakai
+	// activePortalDeps yang sama dengan modul bisnis lain.
+	autoClaimHandler, err := inboxautoclaimhttp.NewHandler(inboxautoclaimhttp.Options{
+		Service: assembly.inboxAutoClaim,
+		// Jembatan satu arah dari modul auth. Yang dibutuhkan hanya LOGIN pemanggil,
+		// karena itulah yang tertulis di kolom USERINPUT dan tampil sebagai
+		// "User Upload" di grid.
+		Caller: func(ctx context.Context) (inboxautoclaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxautoclaimhttp.Caller{}, false
+			}
+			return inboxautoclaimhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    inboxautoclaimhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
@@ -231,6 +258,10 @@ func run() error {
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
 				masterstatusprogreshttp.Mount(protected, progressStatusHandler, activePortalDeps)
+
+				// Inbox Auto Claim memuat nomor polis, nilai klaim, dan nama
+				// perusahaan rekanan; tidak satu pun boleh terbaca tanpa sesi.
+				inboxautoclaimhttp.Mount(protected, autoClaimHandler, activePortalDeps)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -269,6 +300,10 @@ type assembly struct {
 	// menu menyusun peta menu beserta kewenangan pemakainya.
 	menu *menuusecase.Service
 
+	// inboxAutoClaim memakai pemilih repo per portal, sama seperti masterStatusProgres:
+	// POOLDATA.TMP_BATCH_AUTO_CLAIM ada di basis data SETIAP entitas (ADR-0030).
+	inboxAutoClaim *inboxautoclaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -303,6 +338,13 @@ type storage struct {
 	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
 	// identitas, bukan data bisnis milik satu badan hukum.
 	menu menu.Repo
+
+	// autoClaimSelector memilih penyimpanan Inbox Auto Claim milik satu portal.
+	//
+	// Alasannya sama dengan progressStatusSelector: tabelnya ada di basis data SETIAP
+	// entitas, dan satu repo bersama akan menulis data seluruh entitas ke satu tempat —
+	// kebocoran lintas badan hukum yang justru dicegah R-20.
+	autoClaimSelector inboxautoclaim.RepoSelector
 
 	readyAliases func() []string
 	close        func()
@@ -357,6 +399,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	autoClaimService, err := inboxautoclaimusecase.NewService(inboxautoclaimusecase.Options{
+		RepoSelector: store.autoClaimSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                service,
 		portal:              store.portal,
@@ -364,6 +414,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
 		menu:                menuService,
+		inboxAutoClaim:      autoClaimService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -516,6 +567,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+
+		store.autoClaimSelector = func(alias string) (inboxautoclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxautoclaimsql.NewRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -525,6 +584,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		store.autoClaimSelector = autoClaimSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -583,6 +643,37 @@ func progressStatusSelectorMemory(primaryAlias string) masterstatusprogres.RepoS
 			return existing, nil
 		}
 		fresh := masterstatusprogresmemory.NewRepo(masterstatusprogresmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// autoClaimSelectorMemory menyusun penyimpanan Inbox Auto Claim di memori.
+//
+// Bentuknya sengaja sama persis dengan progressStatusSelectorMemory, termasuk
+// penyimpanan per portal yang dibuat sekali lalu dipakai kembali: unggahan yang baru
+// disimpan harus tetap ada pada permintaan berikutnya, dan penyimpanan yang dibuat ulang
+// tiap permintaan akan membuat layar tampak kehilangan data tanpa sebab.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain karena itu ditolak dengan galat yang sama seperti di produksi —
+// perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func autoClaimSelectorMemory(primaryAlias string) inboxautoclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxautoclaim.Repo{}
+
+	return func(alias string) (inboxautoclaim.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxautoclaimmemory.NewSampleRepo()
 		store[clean] = fresh
 		return fresh, nil
 	}
