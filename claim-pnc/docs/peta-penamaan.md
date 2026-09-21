@@ -449,3 +449,131 @@ untuk gerbangnya: `search_policy_number` · `search_claim_number` · `search_bir
 
 **Nama tabel baru** tetap Indonesia karena ia milik basis data (`D-80`):
 `POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.
+
+## Tambahan 2026-09-20 — modul Inbox XOL (`inboxxol`)
+
+### Nama modul
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder dan paket Go | `internal/inboxxol` |
+| Frontend, folder modul | `src/modules/inbox-xol` |
+| Rute antarmuka | `/inbox-xol` |
+| Awalan rute API | `/api/inbox-xol` |
+
+Mengikuti `D-81`: nama modulnya diambil dari nama yang dipakai Work Owner dan tertulis di
+menu — "Inbox XOL". Isinya tetap berbahasa Inggris (`D-80`).
+
+### Properti Pega → arti sebenarnya → nama di kode
+
+Alias di layar ini menyesatkan lebih parah daripada modul mana pun sebelumnya: namanya
+bukan singkatan tidak lazim, melainkan **berarti hal lain**.
+
+**Grid "DATA XOL BASED ON DOL AND COL"** — dari `GetDataXOL_Calulation`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.ASMFull` | `DOL` | Tanggal Kejadian | `ClaimSummary.LossDate` |
+| `.AcceptedNo` | `CAUSEOFLOSS` | Penyebab Kerugian | `ClaimSummary.CauseOfLoss` |
+| `.Currency` | `SUM(OSVALUE)` | Nilai Outstanding | `ClaimSummary.OutstandingValue` |
+| `.CurrencyID` | `SUM(AKSEPVALUE)` | Nilai Akseptasi | `ClaimSummary.AcceptedValue` |
+| `.BranchOfBank` | — (dari master) | Nama Group Business | `ClaimSummary.BusinessGroup` |
+
+**Grid "PILIH MASTER XOL"** — dari `GetDataMasterXOL` kelas `Data-Adjustment`, yang
+**tidak ada di export** dan direkonstruksi:
+
+| Properti Pega | Artinya | Nama di kode |
+|---|---|---|
+| `.CurrencyName` | Tahun XOL | `MasterXOL.Year` |
+| `.AcceptedNo` | Kurs perjanjian | `MasterXOL.ExchangeRate` |
+| `.Currency` | Nama group business | `MasterXOL.BusinessGroups[].Name` |
+| `.CurrencyID` | Kode group business | `MasterXOL.BusinessGroups[].ID` |
+| `.Notes` | Kode master XOL | `MasterXOL.ID` |
+
+**Grid rincian `Sec_Detail_claim_XOL`** — dari `GetDataMasterXOL` kelas `Data-ClaimData`
+dan `GetDataXOLPerBusiness`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.BranchID` | `MST_XOL_PNC.ID` | Kode Master XOL | `MasterXOL.ID` |
+| `.UserName` | `MST_XOL_PNC.NAMA` | Nama Master XOL | `MasterXOL.Name` |
+| `.UserAdmin` | `MST_XOL_PNC.TAHUN` | Tahun XOL | `MasterXOL.Year` |
+| `.Amount` | `MST_XOL_PNC.KURSVALUE` | Kurs | `MasterXOL.ExchangeRate` |
+| `.FlagASO` | `STSKOMITE` | Status Komite | `MasterXOL.CommitteeStatus` |
+| `.NoteKasir` | `REMARKKOMITE` | Catatan Komite | `MasterXOL.CommitteeNote` |
+| `.CABANG` | `TYPEXOL` | Tipe Master | `MasterXOL.Type` |
+| `.CloseClaimNote` | `REMARKPIC` | Catatan PIC | `MasterXOL.PICNote` |
+| `.Country` | `businessgroup.NOTE` | Nama Group Business | `BusinessBreakdown.BusinessGroup` |
+| `.IsDLA` | `COUNT(DISTINCT claimno)` | Jumlah Klaim | `BusinessBreakdown.ClaimCount` |
+| `.DLAShare` | `SUM(os_value)` | Nilai Outstanding | `BusinessBreakdown.OutstandingValue` |
+| `.KlaimAmount` | `SUM(aksep_value)` | Nilai Akseptasi | `BusinessBreakdown.AcceptedValue` |
+| `.IsKirim` | `businessgroupid` | Kode Group Business | `BusinessBreakdown.BusinessGroupID` |
+
+**Grid PLA/DLA** — dari `BrowseAllDataXOL_PLA`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.ResponseCode` / `.CaseID` / `.ref_no` | `NO_PLADLAXOL` | Nomor PLA/DLA | `Advice.Number` |
+| `.CoverInsKey` | `NAMAREAS` | Nama Reasuradur | `Advice.ReinsurerName` |
+| `.CABANG` | `NAMALAYER` | Nama Layer | `Advice.LayerName` |
+| `.ClaimFrom` | `TAHUN` | Tahun XOL | `Advice.Year` |
+| `.PNCSearch` | `KURS` | Kurs | `Advice.ExchangeRate` |
+| `.ERROR` | `PERCENT` | Share Percent | `Advice.SharePercent` |
+| `.NOTE` | `EMAIL` | Alamat Surel | `Advice.Email` |
+| `.HASIL5` | `REMARKREAS` | Catatan Reasuradur | `Advice.Remark` |
+| `.HASIL2` | `REMARKAPPROVE` | Catatan Persetujuan | `Advice.ApprovalNote` |
+| `.AlasanQuotationStock` | `REMARKPIC` | Catatan PIC | `Advice.PICNote` |
+| `.Status` | `LIMIT_XOL` | Batas Layer | `Advice.Limit` |
+| `.SISI` | `STATUSAPPROVE` | Status Persetujuan | `Advice.ApprovalStatus` |
+| `.CARI6` | `IDLAYER` | Kode Layer | `Advice.LayerID` |
+| `.pyBPNotes` | `IDMASTER` | Kode Master XOL | `Advice.MasterID` |
+| `.LastNoteBy` | `USERINPUT` | Penerbit | `Advice.InputBy` |
+| `.pyCaseID` | `CAUSEOFLOSS` | Penyebab Kerugian | `Advice.CauseOfLoss` |
+| `.source` | `REVISI` | Nomor Revisi | `Advice.Revision` |
+| `.pyCountry` | `T_REINSURER.COUNTRY` | Negara Reasuradur | `Advice.Country` |
+| `.pyEmailApprovalAllowed` | `MST_USER_TEKNIK.EMAIL` | Surel Penerbit | `Advice.InputByEmail` |
+
+**Grid Approval XOL dan DATA MASTER XOL** — dari `GetDataXOLForKomiteApprove` dan
+`GetDataMasterXOLForKomiteApprove`:
+
+| Properti Pega | Artinya | Nama di kode |
+|---|---|---|
+| `.City` | Tahun XOL (grid Approval) / Kode Master (grid Master) | `ApprovalItem.Year` / `MasterXOL.ID` |
+| `.CityID` | Penyebab Kerugian / Nama Master | `ApprovalItem.CauseOfLoss` / `MasterXOL.Name` |
+| `.Type` | Tipe PLA/DLA / Operator Pengaju | `ApprovalItem.Type` / `MasterXOL.PIC` |
+| `.NoteKasir` | Tanggal Insert / Kode Group Business | `ApprovalItem.LastInsertedAt` |
+| `.Country` | Tahun XOL | `MasterXOL.Year` |
+| `.CountryID` | Kurs | `MasterXOL.ExchangeRate` |
+
+> Perhatikan `.City`, `.CityID`, `.Type`, dan `.NoteKasir`: keempatnya dipakai untuk **dua
+> arti berbeda** pada dua grid di layar yang sama. Itu sebabnya nama properti tidak dapat
+> dipakai sebagai acuan apa pun.
+
+### Nama kueri `.sql`
+
+`master_list` · `master_pending_committee` · `master_business_list` · `claim_summary` ·
+`breakdown_business` · `breakdown_treaty_inward` · `advice_list_pla` · `advice_list_dla` ·
+`approval_advice_queue` · `cause_of_loss_list`
+
+### Nama yang sengaja TIDAK diterjemahkan
+
+Judul kolom di layar dibiarkan seperti di Pega (`D-13`): "Date Of Loss", "Cause Of Loss",
+"Group Business", "OS Value", "Accepted Value", "NO PLA / DLA", "Nama Insurance", "Nama
+Layer", "Share Percent", "ID XOL", "Nama XOL", "Tahun XOL", "Kurs Value", "TIPE",
+"Tanggal Insert", "Total Klaim", "Type Master", "ID Master".
+
+Termasuk **judul yang menyesatkan**: kolom "Date Of Loss" pada grid Approval XOL berisi
+tahun perjanjian, bukan tanggal kejadian. Judulnya dipertahankan; keterangannya dinyatakan
+di bawah tabel, dan namanya di kode dibetulkan menjadi `Year`.
+
+### Istilah domain baru
+
+| Indonesia / Pega | Inggris di kode | Keterangan |
+|---|---|---|
+| Perjanjian XOL | `MasterXOL` | satu tahun, satu kurs, sekumpulan group business |
+| Pemberitahuan PLA/DLA | `Advice`, `AdviceType` | `AdvicePLA`, `AdviceDLA` |
+| Akumulasi klaim | `ClaimSummary` | per Tanggal Kejadian × Penyebab Kerugian |
+| Rincian per group business | `BusinessBreakdown` | dua sumber: `SourceOwnBusiness`, `SourceTreatyInward` |
+| Antrean persetujuan | `ApprovalItem`, `ApprovalQueue` | satu baris = sekumpulan pemberitahuan |
+| Penyebab Kerugian | `CauseOfLoss` | yang tersimpan DESKRIPSI-nya, bukan kodenya |
+| Kurs tidak tersedia | `RateMissing` | pengganti `RETURN 1` pada function kurs lama |

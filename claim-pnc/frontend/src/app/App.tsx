@@ -8,6 +8,7 @@ import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
+import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -116,6 +117,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimHistoryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox XOL — akumulasi klaim per perjanjian Excess of Loss, pengganti harness
+        `Inbox_XOL_Harness` (`MENU_ID 53`).
+
+        Layar ini MEMBACA SAJA: keempat tabel yang ditulis sistem lama masih dimiliki
+        Pega selama masa paralel (`P-1`), keputusan Work Owner 2026-09-20.
+
+        Di sistem lama kedua tabnya dijaga access group yang berbeda — PncPICTeknik dan
+        CaseManager. Pembedaan itu belum dapat ditegakkan (`TKT-F3-004`), sehingga setiap
+        pengguna yang dapat masuk melihat keduanya.
+      */}
+      <Route
+        path="/inbox-xol"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxXOLPage />
             </Protected>
           </SessionGuard>
         }

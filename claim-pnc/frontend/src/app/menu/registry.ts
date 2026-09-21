@@ -41,6 +41,11 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 76 "View History Claim". Layar pencarian riwayat klaim, bukan inbox —
   // pembedaannya ditetapkan `D-79` dan menentukan modul pemiliknya.
   PNCSearchKlaim: '/riwayat-klaim',
+
+  // MENU_ID 53 "Inbox XOL". Akumulasi klaim per perjanjian Excess of Loss beserta
+  // pemberitahuan PLA/DLA kepada reasuradur. MEMBACA SAJA untuk sekarang — keempat
+  // tabel yang ditulis sistem lama masih dimiliki Pega selama masa paralel (`P-1`).
+  Inbox_XOL_Harness: '/inbox-xol',
 }
 
 /**
