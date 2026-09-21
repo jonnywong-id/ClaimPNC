@@ -93,11 +93,21 @@ func LabelKey(label string) string {
 	return strings.ToUpper(strings.TrimSpace(label))
 }
 
-// Repo adalah seam ke penyimpanan master status.
+// Repo adalah seam ke penyimpanan master status SATU portal.
+//
+// # Satu portal, bukan satu aplikasi (2026-09-19)
+//
+// Modul ini semula membaca dan menulis basis data portal UTAMA saja. Itu keliru terhadap
+// `D-75` butir 4 dan `ADR-0030`: M_STS_CLAIM ada di basis data SETIAP entitas, dan status
+// klaim milik satu badan hukum tidak boleh terbaca dari badan hukum lain.
+//
+// Pemisahan antarentitas ada di tingkat KONEKSI, bukan di tingkat penyaringan baris
+// (`ADR-0030` Opsi 1). Tidak ada satu pun kueri di pengisinya yang menyaring berdasarkan
+// entitas, dan memang tidak boleh ada.
 //
 // Pengisinya ada di repo/sqlstore (Oracle) dan repo/memory (pengujian dan pengembangan
-// tanpa basis data). Antarmukanya berbicara dalam istilah domain — Daftar, Ambil,
-// Sisip, Perbarui — bukan istilah SQL.
+// tanpa basis data). Antarmukanya berbicara dalam istilah domain — List, Get, Insert,
+// Update — bukan istilah SQL.
 type Repo interface {
 	// Daftar mengembalikan seluruh status, terurut menurut kode.
 	List(ctx context.Context) ([]ClaimStatus, error)
@@ -114,6 +124,16 @@ type Repo interface {
 	// berubah. Mengembalikan ErrNotFound bila kodenya tidak ada.
 	Update(ctx context.Context, code, label string) (ClaimStatus, error)
 }
+
+// RepoSelector memilih Repo milik satu portal entitas.
+//
+// Ia fungsi, bukan map yang sudah jadi, supaya kegagalan memilih portal terbaca pada saat
+// permintaan datang — bukan diputuskan sekali saat aplikasi start.
+//
+// Portal yang tidak dikenal atau koneksinya belum hidup WAJIB menghasilkan galat.
+// Mengembalikan repo portal utama sebagai jalan pintas berarti membaca atau menulis data
+// satu badan hukum di basis data badan hukum lain tanpa satu pun pesan galat (`R-20`).
+type RepoSelector func(portalAlias string) (Repo, error)
 
 // CheckLabel mengumpulkan SELURUH pelanggaran aturan label, bukan berhenti pada yang
 // pertama.

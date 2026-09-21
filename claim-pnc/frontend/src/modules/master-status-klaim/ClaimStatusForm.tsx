@@ -234,6 +234,22 @@ function parse(error: APIError): { title: string; description: string; tone: Err
         tone: 'gangguan',
       }
 
+    case ErrorCode.portalNotStated:
+    case ErrorCode.portalUnknown:
+      return {
+        title: 'Portal entitas belum dipilih',
+        description: 'Pilih portal entitas di bilah atas halaman, lalu simpan lagi.',
+        tone: 'penolakan',
+      }
+
+    case ErrorCode.portalNotReady:
+      return {
+        title: 'Basis data entitas ini belum tersedia',
+        description:
+          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
+        tone: 'gangguan',
+      }
+
     default:
       return {
         title: 'Gagal menyimpan',

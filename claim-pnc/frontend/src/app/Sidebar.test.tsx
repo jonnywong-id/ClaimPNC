@@ -30,6 +30,10 @@ const MENU = {
       submenu: [
         { id: 11, nama: 'Master Status Klaim', program: 'StatusClaimInbox', submenu: [] },
         { id: 13, nama: 'Master PIC Teknik', program: 'UserTeknisInbox', submenu: [] },
+        // MENU_ID 15 adalah daftar ORANG surveyor (D_SURVEYORS) — bedakan dari MENU_ID 14
+        // "Master Tipe Surveyors" yang berisi golongannya. Modulnya SUDAH dibangun
+        // (2026-09-20), sehingga ia kini contoh butir yang PUNYA layar.
+        { id: 15, nama: 'Master Surveyors', program: 'DetailSurveyorsInbox', submenu: [] },
         { id: 23, nama: 'Master Status Progress 1', program: 'StatusProgress', submenu: [] },
       ],
     },
@@ -40,6 +44,10 @@ const MENU = {
       submenu: [
         // MENU_ID 83 ada di master TANPA MENU_PROGRAM. Ia tetap dikirim server.
         { id: 83, nama: 'Report Adjuster', program: '', submenu: [] },
+        // Butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT sama
+        // sekali (`K-33`, 11 dari 47 harness target). Ia dipakai sebagai contoh butir
+        // yang belum ada modulnya — lihat alasannya di uji yang memakainya.
+        { id: 91, nama: 'Outstanding Klaim', program: 'InboxOutstanding_Harness', submenu: [] },
       ],
     },
   ],
@@ -178,10 +186,22 @@ describe('butir yang belum ada modulnya', () => {
     show()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /MASTER/ }))
+    await user.click(await screen.findByRole('button', { name: /REPORT/ }))
 
-    expect(screen.getByText('Master PIC Teknik')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Master PIC Teknik' })).not.toBeInTheDocument()
+    // Contohnya butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT
+    // sama sekali (`K-33`) — bukan butir yang kebetulan belum dibangun saat uji ini
+    // ditulis.
+    //
+    // Pembedaan itu MAHAL dipelajari: uji ini pernah memakai "Master PIC Teknik", lalu
+    // batal sendiri begitu modul itu jadi. Ia lalu diganti "Master Surveyors" beserta
+    // komentar yang memperingatkan jebakan yang sama — dan pada 2026-09-20 ia batal lagi,
+    // persis karena alasan yang sudah tertulis di komentarnya sendiri.
+    //
+    // `InboxOutstanding_Harness` tidak dapat mengulangi itu: harness-nya tidak ada di
+    // export, sehingga tidak ada yang dapat membangun modulnya tanpa meminta artefaknya
+    // ke Tim Pega lebih dulu.
+    expect(screen.getByText('Outstanding Klaim')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Outstanding Klaim' })).not.toBeInTheDocument()
     expect(screen.getAllByText('belum tersedia').length).toBeGreaterThan(0)
   })
 

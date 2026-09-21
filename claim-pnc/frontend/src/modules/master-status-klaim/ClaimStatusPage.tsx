@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { APIError, NetworkError } from '@/api/client'
 import type { ClaimStatus } from '@/api/types'
 import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { ErrorCode } from '@/api/types'
+import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { Button } from '@/components/Button'
+import { useSelectedPortal } from '@/app/portal'
 
 import { useClaimStatusList } from './api'
 import { ClaimStatusForm } from './ClaimStatusForm'
@@ -19,7 +21,7 @@ import { ClaimStatusForm } from './ClaimStatusForm'
  * # Yang ditiru dari layar lama
  *
  * Fungsinya sama persis: daftar bergrid dengan kolom kode dan status, tombol **Tambah**,
- * tombol **Muat ulang**, dan aksi **Ubah** per baris. **Tidak ada Hapus** — layar Pega
+ * tombol **Refresh**, dan aksi **Ubah** per baris. **Tidak ada Hapus** — layar Pega
  * pun tidak punya, dan `ADR-0012` melarang master dihapus permanen karena klaim lama
  * merujuknya.
  *
@@ -34,6 +36,7 @@ import { ClaimStatusForm } from './ClaimStatusForm'
  * | Nama ganda | diterima | ditolak (idem) |
  */
 export function ClaimStatusPage() {
+  const portal = useSelectedPortal((state) => state.alias)
   const list = useClaimStatusList()
 
   // null = form tertutup; { kode: '' } = sedang menambah; berisi = sedang mengubah.
@@ -125,6 +128,16 @@ export function ClaimStatusPage() {
           seterusnya. Nama status yang diubah di sini langsung terbaca layar search
           klaim dan laporan.
         </p>
+
+        {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
+            empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
+            hanya diandaikan pengguna (ADR-0030, R-20). */}
+        <p className="mt-3 text-xs text-slate-500">
+          Portal entitas:{' '}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? '—'}
+          </span>
+        </p>
       </header>
 
       {formTerbuka && (
@@ -133,13 +146,22 @@ export function ClaimStatusPage() {
         </div>
       )}
 
+      {portal === null ? (
+        <ErrorMessage
+          title="Portal entitas belum dipilih"
+          description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu."
+          tone="penolakan"
+        />
+      ) : (
       <DataTable
         columns={columns}
         rows={list.data?.status_klaim ?? []}
         rowKey={(s) => s.kode}
         title="Daftar Status Klaim"
         description={
-          list.data ? `${list.data.total} status terdaftar.` : 'Memuat daftar status…'
+          list.data
+            ? `${list.data.total} status terdaftar pada entitas ini.`
+            : 'Memuat daftar status…'
         }
         searchLabel="Cari kode atau nama status"
         emptyMessage="Belum ada status klaim yang terdaftar."
@@ -153,7 +175,7 @@ export function ClaimStatusPage() {
               disabled={list.isFetching}
             >
               <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-              {list.isFetching ? 'Memuat…' : 'Muat ulang'}
+              {list.isFetching ? 'Memuat…' : 'Refresh'}
             </Button>
             <Button tone="utama" onClick={openAdd} disabled={formTerbuka && !sedangDisunting}>
               <AddIcon className="h-4 w-4" />
@@ -162,6 +184,7 @@ export function ClaimStatusPage() {
           </>
         }
       />
+      )}
     </div>
   )
 }
@@ -173,22 +196,50 @@ export function ClaimStatusPage() {
  * salah — ia baru membuka layarnya.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof NetworkError) {
-    return (
-      <ErrorMessage
-        title="Tidak dapat menghubungi server"
-        description="Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
-        tone="gangguan"
-      />
-    )
-  }
+  const message = loadMessage(error)
   return (
-    <ErrorMessage
-      title="Daftar status gagal dimuat"
-      description={
-        error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem. Coba muat ulang.'
-      }
-      tone="gangguan"
-    />
+    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
   )
+}
+
+function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+  if (error instanceof NetworkError) {
+    return {
+      title: 'Tidak dapat menghubungi server',
+      description: 'Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
+      tone: 'gangguan',
+    }
+  }
+
+  if (error instanceof APIError) {
+    switch (error.kode) {
+      case ErrorCode.portalNotStated:
+      case ErrorCode.portalUnknown:
+        return {
+          title: 'Portal entitas belum dipilih',
+          description:
+            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
+          tone: 'penolakan',
+        }
+      case ErrorCode.portalNotReady:
+        return {
+          title: 'Basis data entitas ini belum tersedia',
+          description:
+            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
+          tone: 'gangguan',
+        }
+      default:
+        return {
+          title: 'Daftar status gagal dimuat',
+          description: error.message,
+          tone: 'gangguan',
+        }
+    }
+  }
+
+  return {
+    title: 'Daftar status gagal dimuat',
+    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
+    tone: 'gangguan',
+  }
 }

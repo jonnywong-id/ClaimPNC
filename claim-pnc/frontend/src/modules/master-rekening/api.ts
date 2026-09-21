@@ -7,6 +7,7 @@ import type {
   AccountListResponse,
   AccountStatus,
 } from '@/api/types'
+import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 const ROUTES = '/api/master-rekening'
@@ -85,11 +86,12 @@ function queryFrom(filter: AccountFilter): string {
  */
 export function useAccountList(filter: AccountFilter) {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: ['master-rekening', filter, token],
+    queryKey: ['master-rekening', portal, filter, token],
     queryFn: () =>
-      callAPI<AccountListResponse>(`${ROUTES}${queryFrom(filter)}`, { token }),
+      callAPI<AccountListResponse>(`${ROUTES}${queryFrom(filter)}`, { token, portal }),
     enabled: token !== null,
     // Antrean komite berubah karena tindakan orang lain; hasil yang basi di layar
     // persetujuan berarti dua komite memutuskan rekening yang sama.
@@ -105,10 +107,11 @@ export function useAccountList(filter: AccountFilter) {
  */
 export function useBankList() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: ['master-rekening', 'bank', token],
-    queryFn: () => callAPI<BankListResponse>(`${ROUTES}/bank`, { token }),
+    queryKey: ['master-rekening', portal, 'bank', token],
+    queryFn: () => callAPI<BankListResponse>(`${ROUTES}/bank`, { token, portal }),
     enabled: token !== null,
     staleTime: 30 * 60 * 1000,
   })
@@ -117,11 +120,12 @@ export function useBankList() {
 /** Hook pengajuan rekening baru. */
 export function useSubmitAccount() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: (values: AccountFields) =>
-      callAPI<Account>(ROUTES, { metode: 'POST', body: bodyOf(values), token }),
+      callAPI<Account>(ROUTES, { metode: 'POST', body: bodyOf(values), token, portal }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['master-rekening'] })
     },
@@ -131,6 +135,7 @@ export function useSubmitAccount() {
 /** Hook perubahan rekening yang masih menunggu keputusan. */
 export function useUpdateAccount() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const client = useQueryClient()
 
   return useMutation({
@@ -141,7 +146,7 @@ export function useUpdateAccount() {
     }) =>
       callAPI<Account>(
         `${ROUTES}/${encodeURIComponent(kodeBank)}/${encodeURIComponent(nomorRekening)}`,
-        { metode: 'PUT', body: bodyOf(values), token },
+        { metode: 'PUT', body: bodyOf(values), token, portal },
       ),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['master-rekening'] })
@@ -152,6 +157,7 @@ export function useUpdateAccount() {
 /** Hook keputusan komite: menyetujui atau menolak satu rekening. */
 export function useDecideAccount() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const client = useQueryClient()
 
   return useMutation({
@@ -168,6 +174,7 @@ export function useDecideAccount() {
           metode: 'POST',
           body: { status, catatan, id_dokumen: idDokumen ?? '' },
           token,
+          portal,
         },
       ),
     onSuccess: () => {

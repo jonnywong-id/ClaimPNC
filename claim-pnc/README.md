@@ -74,6 +74,17 @@ claim-pnc/
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
 │   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── mastertipesurveyors/     MODUL — Master Tipe Surveyors (F-4), per portal
+│   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
+│   │   │   ├── repo/                    sqlstore (M_SURVEYORS), memory + 4 baris contoh
+│   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── masterxol/               MODUL — Master XOL (F-4), per portal; BERTINGKAT 4
+│   │   │   ├── usecase/                 orkestrasi: daftar, ambil, simpan+ajukan komite,
+│   │   │   │                            hapus berkaskade, bekal isian layar
+│   │   │   ├── notification/            pengisi seam Notifier — SMTP, tiruan
+│   │   │   ├── repo/                    sqlstore (MST_XOL_PNC · _BUSINESS · _LAYER · _REAS),
+│   │   │   │                            memory + 4 induk contoh yang meniru keanehan produksi
+│   │   │   └── http/                    dto, galat, handler, rute
 │   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
@@ -191,14 +202,19 @@ cd backend && ./claimpnc.exe
 Skema dijalankan lebih dulu oleh **DBA**, bukan oleh aplikasi — akun aplikasi tidak punya hak DDL:
 
 ```
-backend/migrations/0001_user_and_session.up.sql       tabel BARU: CPNC_PENGGUNA, CPNC_SESI_AKTIF
+backend/migrations/0001_user_and_session.up.sql          tabel BARU: CPNC_PENGGUNA, CPNC_SESI_AKTIF
 backend/migrations/0001_user_and_session.down.sql
-backend/migrations/0002_master_claim_status.up.sql     MENGUBAH objek milik sistem lama
+backend/migrations/0002_master_claim_status.up.sql       MENGUBAH objek milik sistem lama
 backend/migrations/0002_master_claim_status.down.sql
+backend/migrations/0003_master_tipe_surveyor.up.sql      indeks unik saja — OPSIONAL
+backend/migrations/0003_master_tipe_surveyor.down.sql
+backend/migrations/0004_master_surveyor.up.sql           kolom baru — WAJIB bagi modulnya
+backend/migrations/0005_master_penyebab_kerugian.up.sql  MENGUBAH objek milik sistem lama
+backend/migrations/0005_master_penyebab_kerugian.down.sql
 ```
 
 Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work Owner (`D-63`).
-**Keduanya belum pernah dijalankan di lingkungan mana pun.**
+**Belum satu pun pernah dijalankan di lingkungan mana pun.**
 
 > **`0002` berbeda sifatnya dari `0001` dan menuntut perhatian lebih.** `0001` hanya menambah dua
 > tabel baru; `0002` mengisi kolom pada `POOLDATA.M_STS_CLAIM` dan **mendefinisikan ulang
@@ -206,6 +222,18 @@ Menjalankannya menuntut permintaan perubahan skema tertulis dan persetujuan Work
 > master melainkan laporan TAT dan KPI — dan rusaknya **tanpa galat**, hanya kolom status yang
 > kosong. Berkasnya memuat langkah verifikasi yang wajib dijalankan di antara langkah perubahan,
 > serta satu berkas DDL yang wajib disimpan DBA lebih dulu agar rollback mungkin.
+
+> **`0005` sesifat dengan `0002`, dan menuntut satu keputusan tambahan sebelum dijalankan.** Ia
+> memindahkan keterangan dari `JSON_DATA` ke kolom pada `POOLDATA.M_CAUSE_OF_LOSS` dan
+> **mendefinisikan ulang `POOLDATA.V_M_CAUSE_OF_LOSS`**, yang dibaca 19 rule Pega — dua di antaranya
+> mengelompokkan laporan dengan `GROUP BY COL_DESC`.
+>
+> Bedanya dari `0002`: di sana layar yang dipindahkan adalah satu-satunya penulis tabelnya, **di
+> sini tidak**. Layar `CauseOfLossInboxSimasOnline` (`MENU_ID 21`) masih menulis tabel yang sama
+> dari Pega, dan barisnya akan tampil **tanpa keterangan** — tanpa galat — sesudah langkah 3
+> dijalankan. Berkasnya **melarang langkah 3 dijalankan** sebelum Work Owner memilih cara
+> menutupnya, dan memuat langkah 0 berisi enam kueri yang wajib dijalankan DBA lebih dulu karena
+> enam fakta skemanya masih ditebak (`R-08`).
 
 
 ### Menguji integrasi nyata sebelum migrasi dijalankan
@@ -277,10 +305,12 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/saya` | wajib | — | identitas pemanggil + batas berlaku sesi |
 | `POST` | `/api/sesi/perpanjang` | wajib | — | menggeser batas berlaku |
 | `GET` | `/api/portal` | wajib | — | daftar entitas dari `POOLDATA.M_PORTAL_PNC` + portal utama |
+| `GET` | `/api/menu` | wajib | — | peta menu pemanggil dari `POOLDATA.M_MENU_APLIKASI_PNC`, disaring `M_OTORISASI_PNC` |
 | `GET` | `/api/master/posisi-klaim` | wajib | — | empat posisi klaim untuk dropdown; daftar milik aplikasi, bukan isi basis data entitas |
 | `GET` | `/api/master/status-progres-1` | wajib | **wajib** | daftar master dari `POOLDATA.GCNM_MST_PROGRESS_KLAIM` |
 | `POST` | `/api/master/status-progres-1` | wajib | **wajib** | `{nama, kode_posisi}` → `201` + baris tersimpan; ID diterbitkan server |
 | `PUT` | `/api/master/status-progres-1/{id}` | wajib | **wajib** | `{nama, kode_posisi}`; ID tidak pernah ikut berubah |
+<<<<<<< HEAD
 | `GET` | `/api/inbox-auto-claim/tab` | wajib | — | tiga tab beserta tabel sumbernya; `bawaan` menyebut tab yang terbuka lebih dulu |
 | `GET` | `/api/inbox-auto-claim` | wajib | **wajib** | daftar batch; saringan `sumber`, `perusahaan`, `halaman`, `ukuran` |
 | `GET` | `/api/inbox-auto-claim/ringkasan` | wajib | **wajib** | jumlah batch per perusahaan untuk panel ringkasan; saringan `sumber` |
@@ -379,11 +409,53 @@ menghasilkan tanggal yang salah tanpa satu pun galat.
 
 Unggahan bersifat **semua-atau-tidak sama sekali**: satu baris yang tidak lolos membatalkan
 seluruh berkas, dan semua pelanggaran dilaporkan sekaligus beserta nomor barisnya.
+=======
+| `GET` | `/api/master/tipe-surveyor` | wajib | **wajib** | daftar golongan surveyor dari `POOLDATA.M_SURVEYORS` |
+| `GET` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/tipe-surveyor` | wajib | **wajib** | `{deskripsi}` → `201` + baris tersimpan; kode diterbitkan server |
+| `PUT` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | `{deskripsi}`; kode tidak pernah ikut berubah |
+| `GET` | `/api/master/status-klaim` | wajib | **wajib** | daftar status klaim + `total` |
+| `GET` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/status-klaim` | wajib | **wajib** | `{label}` → `201` + baris beserta kode yang dibuat sistem |
+| `PUT` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | `{label}` → `200` + baris setelah diubah |
+| `GET` | `/api/master/pic-teknik` | wajib | **wajib** | daftar petugas teknik dari `POOLDATA.MST_USER_TEKNIK` |
+| `GET` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/pic-teknik` | wajib | **wajib** | mendaftarkan petugas baru; ID Operator diisi pengguna |
+| `PUT` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | mengubah petugas; ID Operator tidak ikut berubah |
+| `GET` | `/api/master-rekening` | wajib | **wajib** | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
+| `GET` | `/api/master-rekening/bank` | wajib | **wajib** | daftar bank untuk dropdown |
+| `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | satu rekening |
+| `POST` | `/api/master-rekening` | wajib | **wajib** | mengajukan rekening baru — selalu lahir berstatus menunggu |
+| `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | mengubah rekening yang **masih menunggu** keputusan |
+| `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | **wajib** | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
+| `GET` | `/api/master/recovery/form` | wajib | **wajib** | bekal awal layar: nomor batch **perkiraan** + pilihan tahun |
+| `GET` | `/api/master/recovery/principal` | wajib | **wajib** | pilihan principal dari `POOLDATA.MST_VIRTUAL_ACCOUNT_PNC` |
+| `GET` | `/api/master/recovery/polis/{nomor}` | wajib | **wajib** | identitas lini bisnis, cabang, agen, marketing dari `MST_DET_SALES@ASMD` |
+| `GET` | `/api/master/recovery/format-unggahan` | wajib | **wajib** | berkas contoh CSV daftar klaim; `text/csv`, bukan JSON |
+| `POST` | `/api/master/recovery/virtual-account` | wajib | **wajib** | terbitkan VA; `201` bila baru, `200` + `dipakai_ulang=true` bila principal sudah punya |
+| `POST` | `/api/master/recovery/bukti-bayar` | wajib | **wajib** | unggah bukti bayar (`multipart`, bagian `berkas`) → `id_dokumen` |
+| `POST` | `/api/master/recovery/baris-klaim` | wajib | **wajib** | baca CSV daftar klaim (`multipart`); **tidak menyimpan apa pun** |
+| `POST` | `/api/master/recovery` | wajib | **wajib** | Transfer Recovery; `sisa`, `nomor_batch`, identitas polis, dan `dicatat_oleh` **ditolak** bila dikirim klien |
+>>>>>>> 3dc63dccaff5bb215be5fb885f83ab60b2e5e9ea
 
 Tidak ada `DELETE` pada master status progres, dan itu disengaja: sistem lama tidak punya
 satu pun pernyataan `DELETE` terhadap tabel itu, dan tabelnya tidak punya kolom penanda
 terhapus yang dapat dipakai `D-66`. Alasan lengkapnya di
 [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md) §10.4.
+
+**Master Recovery tidak punya `GET` daftar, `PUT`, maupun `DELETE` sama sekali** — dan itu
+bukan pekerjaan yang tertinggal. Tidak ada satu pun kueri di export Pega yang MEMBACA
+`POOLDATA.MST_RECOVERY_ASM_PENJAMINAN`; layarnya form entri, bukan pengelola data acuan,
+dan `INSERTMASTERRECOVERYKLAIM.prc` hanya mengenal INSERT. Keputusan Work Owner 2026-09-20
+menetapkan itu ditiru apa adanya. Rinciannya di
+[`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md) §21.
+
+> **Seluruh modul master kini per portal (2026-09-19).** Master Status Klaim dan Master
+> Rekening semula dilayani basis data portal **utama** saja; keduanya diselaraskan atas
+> keputusan Work Owner, sekaligus mencabut Isolasi Protektif untuk kedua modul itu.
+> Sebelum penyelarasan, rekening pembayaran dan status klaim SELURUH badan hukum berada
+> di satu tempat. Rinciannya di
+> [`docs/keputusan-implementasi.md`](docs/keputusan-implementasi.md) §19.
 
 ### Portal entitas pada permintaan modul bisnis
 
@@ -418,8 +490,14 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
 | `/master/status-klaim` | **Master Status Klaim** |
+<<<<<<< HEAD
 | `/master-rekening` | **Master Rekening** |
 | `/inbox-auto-claim` | **Inbox Auto Claim** — layar inbox pertama |
+=======
+| `/master/rekening` | **Master Rekening** |
+| `/master/tipe-surveyor` | **Master Tipe Surveyors** |
+| `/master/pic-teknik` | **Master PIC Teknik** |
+>>>>>>> 3dc63dccaff5bb215be5fb885f83ab60b2e5e9ea
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -435,21 +513,6 @@ sehingga ketiganya tersedia di setiap layar.
 
 **Menambah layar ke menu = satu baris** di [`frontend/src/app/menu.ts`](frontend/src/app/menu.ts) —
 sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `cmd/claimpnc`.
-| Metode | Jalur | Sesi | Keterangan |
-|---|---|---|---|
-| `POST` | `/api/masuk` | — | `{nama_pengguna, kata_sandi}` → token + profil |
-| `POST` | `/api/keluar` | opsional | mencabut sesi di server |
-| `GET` | `/api/saya` | wajib | identitas pemanggil + batas berlaku sesi |
-| `POST` | `/api/sesi/perpanjang` | wajib | menggeser batas berlaku |
-| `GET` | `/api/portal` | wajib | daftar entitas dari `POOLDATA.M_PORTAL_PNC` + portal utama |
-| `GET` | `/api/master-rekening` | wajib | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
-| `POST` | `/api/master-rekening` | wajib | mengajukan rekening baru — selalu lahir berstatus menunggu |
-| `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | satu rekening |
-| `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | mengubah rekening yang **masih menunggu** keputusan |
-| `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
-| `GET` | `/api/master/status-klaim` | wajib | daftar status klaim + `total` |
-| `POST` | `/api/master/status-klaim` | wajib | `{label}` → `201` + baris beserta kode yang dibuat sistem |
-| `PUT` | `/api/master/status-klaim/{kode}` | wajib | `{label}` → `200` + baris setelah diubah |
 
 ### Master Status Klaim
 

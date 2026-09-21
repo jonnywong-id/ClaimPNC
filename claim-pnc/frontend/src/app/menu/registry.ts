@@ -33,9 +33,52 @@
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
-  MasterRekening: '/master-rekening',
+  MasterRekening: '/master/rekening',
   StatusProgress: '/master/status-progres-1',
   InboxAutoClaim: '/inbox-auto-claim',
+  // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
+  SurveyorsInbox: '/master/tipe-surveyor',
+  // MENU_ID 15 "Master Surveyors" — daftar ORANGNYA, anak dari butir di atas. Keduanya
+  // bernama mirip dan mudah tertukar; yang membedakan adalah `Detail` di awal nama
+  // programnya.
+  DetailSurveyorsInbox: '/master/surveyor',
+  // MENU_ID 13 "Master PIC Teknik". Namanya mengandung "Inbox" tetapi ia layar MASTER,
+  // bukan daftar pekerjaan (`D-79`) — barisnya data acuan, tidak hilang setelah
+  // ditindaklanjuti, dan tidak punya tenggat.
+  UserTeknisInbox: '/master/pic-teknik',
+  // MENU_ID 16 "Master Recovery". Berbeda dari butir master lain di daftar ini: layarnya
+  // FORM ENTRI, bukan pengelola data acuan — tidak ada satu pun kueri di export yang
+  // membaca kembali tabelnya. Letaknya tetap di bawah kelompok MASTER karena di situlah
+  // butir menunya berada (`MENU_ID_LEADER 1`).
+  MasterRecovery: '/master/recovery',
+  // MENU_ID 18 "Master Dominan Factor". Namanya diawali `Detail` seperti
+  // `DetailSurveyorsInbox`, tetapi di sini awalan itu TIDAK menandakan tingkat kedua —
+  // tidak ada master "Dominan Factor" di atasnya. Ia layar master yang berdiri sendiri.
+  DetailDominanFactor: '/master/dominan-factor',
+  // MENU_ID 20 "Master Penyebab Kerugian" — tingkat GOLONGAN (`M_CAUSE_OF_LOSS`).
+  //
+  // Dua butir menu bersaudara sengaja TIDAK dipetakan di sini, dan keduanya mudah
+  // tertukar dengannya:
+  //
+  //   MENU_ID 38  DetailCauseOfLoss            rinciannya (`D_CAUSE_OF_LOSS`), belum ada
+  //   MENU_ID 21  CauseOfLossInboxSimasOnline  varian Simas Online, belum ada
+  //
+  // Yang kedua patut diperhatikan khusus: ia menulis TABEL YANG SAMA dengan layar ini
+  // lewat Pega, sehingga selama ia belum dipindahkan, `P-1` belum terpenuhi utuh. Lihat
+  // backend/migrations/0005_master_penyebab_kerugian.up.sql.
+  CauseOfLossInbox: '/master/penyebab-kerugian',
+  // MENU_ID 17 "Master Masking". Nama programnya panjang dan tidak menyebut "masking"
+  // sama sekali — rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`), karena
+  // itulah nama yang dipakai Work Owner dan yang tertulis di menu.
+  //
+  // Isinya kewenangan melihat data pribadi nasabah, sehingga layar ini yang paling berat
+  // akibatnya bila terbuka oleh peran yang tidak berhak. Penegakan izin per menu masih
+  // TKT-F3-005 dan belum ada.
+  MasterProteksiVisibilityData: '/master/masking',
+  // MENU_ID 19 "Master XOL". Satu-satunya butir master yang layarnya BERTINGKAT EMPAT —
+  // induk, grup bisnis, layer, dan reas tiap layer — dan satu-satunya yang menyimpannya
+  // sekaligus mengajukan ke komite.
+  DetailMasterXOL: '/master/xol',
 }
 
 /**

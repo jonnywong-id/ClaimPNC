@@ -271,11 +271,11 @@ export function AccountForm({ onSuccess }: Props) {
 
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input type="checkbox" className="rounded border-slate-300" {...register('aktif')} />
-        Account aktif
+        Rekening aktif
       </label>
 
       <p className="text-sm text-slate-600">
-        Buku rekening wajib diunggah dan description approval atasan wajib diisi before
+        Buku rekening wajib diunggah dan keterangan approval atasan wajib diisi sebelum
         komite dapat menyetujui rekening ini.
       </p>
 
