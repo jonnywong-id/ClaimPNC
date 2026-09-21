@@ -84,6 +84,11 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 63 "Inbox Admin". Inbox sungguhan menurut `D-79`: barisnya pekerjaan dari
   // PC_ASSIGN_WORKLIST, hilang setelah klaimnya selesai, dan punya tenggat (kolom Aging).
   PNCInboxAdmin: '/inbox-admin',
+
+  // MENU_ID 65 "Inbox Progress Claim". Inbox sungguhan menurut `D-79`: barisnya klaim
+  // yang menunggu ditindaklanjuti, hilang begitu klaimnya tutup, dan punya tenggat
+  // berupa Next Follow Up.
+  ProgressClaim_Harness: '/inbox-progress-claim',
 }
 
 /**

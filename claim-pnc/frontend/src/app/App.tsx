@@ -18,6 +18,7 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
+import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -282,6 +283,25 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxAdminPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Progress Claim — pemantauan progres klaim berjalan, menggantikan harness
+        `ProgressClaim_Harness` (`MENU_ID 65`). Bagiannya bertumpuk, bukan bertab: itulah
+        bentuknya di Pega.
+
+        Bagian "Approval Progress Klaim" milik sistem lama tidak dibawa — ia satu-satunya
+        bagian yang menulis, dan tabelnya masih dimiliki Pega selama masa berjalan
+        paralel (keputusan Work Owner 2026-09-21).
+      */}
+      <Route
+        path="/inbox-progress-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxProgressClaimPage />
             </Protected>
           </SessionGuard>
         }

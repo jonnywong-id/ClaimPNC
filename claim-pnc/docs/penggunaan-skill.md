@@ -1657,3 +1657,108 @@ cacat yang tidak akan terlihat sampai ada yang mengetik cepat di layar sungguhan
 3. **`gofmt -l` tidak berguna di repo ini** — berkasnya CRLF, gofmt menginginkan LF, dan ia
    menandai seluruh repo. Pakai `go vet` dan `go test`.
 >>>>>>> Feat-arlexy-Inbox-admin
+
+---
+
+## Sesi Inbox Progress Claim (2026-09-21)
+
+### Skill yang dipanggil
+
+**Tidak satu pun.** Alasannya sama dengan sesi-sesi sebelumnya dan tidak berubah: seluruh
+fakta yang dibutuhkan ada di dalam repository ini — 2.634 berkas export Pega,
+`docs/Steering/`, dan sebelas modul yang sudah selesai. Tidak ada satu pun klaim di sesi ini
+yang bersumber dari luar, sehingga `research` tidak relevan.
+
+Satu skill sempat **ditimbang dan ditolak**: `diagnosing-bugs`, saat ditemukan bahwa paket
+`cmd` tidak dapat dikompilasi. Ia tidak dipakai karena tidak ada yang perlu didiagnosis —
+penanda konflik merge terbaca langsung dari berkasnya, dan sebabnya jelas dari
+`git status`. Memanggil skill untuk hal yang sudah terbaca hanya menambah langkah.
+
+### Teknik dari skill yang dipakai tanpa memanggilnya
+
+**`grilling` — cari faktanya sendiri, serahkan keputusannya.**
+
+Keempat pertanyaan yang diajukan ke Work Owner disertai bukti terukur, bukan "bagaimana
+menurut Bapak":
+
+| Pertanyaan | Bukti yang dibawa |
+|---|---|
+| Lingkup region | kelima kontainer beserta `pyDeferLoadRetrievalActivity` masing-masing, dan mana yang menulis |
+| Judul kolom | seluruh sel ber-`pyHeaderTitle` kosong; folder `Property` tidak ada di export |
+| Kontrol mati | `TempRefresh.DateOfLoss` nol kemunculan di `RDB List/`; `tempgetpic.CaseID` tidak dibaca kueri mana pun |
+| Lini bisnis | kedua definisi ditulis berdampingan, beserta catatan mana yang benar-benar dieksekusi |
+
+Disiplin yang sama dipakai **setelah** jawaban diterima, dan di sini hasilnya menentukan.
+Jawaban "ikuti versi Export — 4 lini" tampak menutup pertanyaan; penelusuran lanjutan ke
+prakondisi `GetProgressPerPIC` justru menemukan bahwa **lini bisnisnya bukan dropdown sama
+sekali** — ia dibaca dari `OperatorID.pyPosition`. Tanpa langkah itu, modul akan dibangun
+dengan dropdown yang menyaring hal yang benar tetapi asal nilainya salah, dan
+keterbatasannya tidak akan pernah dinyatakan ke pengguna.
+
+Penelusuran yang sama menemukan bahwa langkah "Progress Claim per User" **tidak punya
+prakondisi**, sehingga rekap "per PIC" sebenarnya selalu berisi satu petugas saja.
+
+**`domain-modeling` — tolak istilah yang memikul arti yang bukan isinya.**
+
+Layar ini kasus terberat sejauh ini: dua alias **tertukar** satu sama lain.
+
+| Nama di Pega | Masalahnya | Nama di sini |
+|---|---|---|
+| `CaseID` / `ClaimNo` | nomor klaim dan nomor polis **tertukar** aliasnya | `ClaimNumber` / `PolicyNumber` |
+| `District` | berisi nama tertanggung | `InsuredName` |
+| `KomiteApproveDate` | tidak berhubungan dengan komite sama sekali | `EarliestFollowUp` |
+| `NOKLAIM` / `NOAKSEP` / `REINSURER` / `STSKLAIM` / `NOPOLIS` | kelimanya `COUNT`, bukan atribut klaim | `ClaimCount` … `LateCount` |
+| `TempBisnis.NOAKSEP` | memikul **rentang tanggal**, bukan nomor akseptasi | `From` / `To` |
+| `TempRefresh.Remark` / `.City` | sepasang batas tanggal; namanya tidak menyatakan apa pun | `From` / `To` |
+
+Satu keputusan yang berlawanan arah juga diambil di sini, dan itu keputusan Work Owner:
+**judul kolom tetap memakai alias apa adanya**. Yang ditambahkan sebagai penyeimbang adalah
+`keterangan` per kolom, sehingga arti sebenarnya tetap terbaca pengguna tanpa membuka kode.
+
+**`codebase-design` — satu adapter berarti seam hipotetis; dua berarti seam nyata.**
+
+Seam `Repo` diberi **dua operasi**, bukan satu yang digeneralisasi: `ListClaims` dan
+`ListPICSummary`. Keduanya menjawab pertanyaan yang berbeda — "klaim apa yang menunggu"
+versus "seberapa tepat waktu petugas ini" — dan bentuk barisnya memang berbeda. Menyatukannya
+akan menghasilkan satu tipe yang separuh isiannya selalu kosong.
+
+Sebaliknya, `ClaimQuery` dan `PICQuery` sengaja dibuat **lebih sempit** daripada `Query`:
+repo region klaim tidak boleh dapat membaca lini bisnis maupun rentang tanggal, karena
+keduanya memang tidak menyaring di sana.
+
+**`tdd` — uji yang menemukan cacat, bukan uji yang membenarkan kode.**
+
+Satu uji gagal dan itu benar: bagian Evaluasi tetap menembak server meski jawabannya sudah
+pasti kosong. Cacatnya nyata, bukan uji yang keliru, dan `enabled` hook diperbaiki.
+
+Dua uji lain ditulis khusus untuk **menahan kerapian yang akan merusak**:
+
+- `TestOutstandingDrawsRegisterDateTwice` menjaga kolom kembar yang tampak seperti cacat.
+- `TestMisleadingAliasesAreKeptAsTitles` menjaga judul menyesatkan yang tampak seperti
+  salah ketik.
+
+Keduanya ada supaya perubahan itu — bila memang akan diambil — diambil lewat keputusan,
+bukan lewat kerapian orang berikutnya.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Menduga layar ini bertab seperti Inbox Admin | Pembacaan `pyTitle` dan `pyContainerType` menunjukkan kontainer bertumpuk, bukan bilah tab |
+| Menduga layar ini punya dua region | Pencarian `pyDeferLoadRetrievalActivity` menemukan **lima** |
+| Menulis uji "tanpa tulis" dengan pencocokan teks polos | Uji menolak `ID_UPDATE` yang memuat kata `UPDATE`; diganti regex berbatas kata |
+| Menegaskan isi tabel tepat setelah klik di uji layar | Bagian memuat datanya sendiri secara asinkron; penantian ditambahkan |
+| Memanggil `npx vitest` | Dilarang di repo ini — hanya skrip `package.json` yang boleh dijalankan; diperbaiki pada perintah berikutnya |
+
+### Catatan untuk sesi berikutnya
+
+Tiga hal yang belum tuntas dan sebaiknya dibawa:
+
+1. **`DateForAging` digambar dua kali** pada region Outstanding, sementara `tgl_proses`
+   yang dikembalikan kueri tidak terikat ke sel mana pun. Dugaan: sel kedua salah diikat.
+   Perlu konfirmasi Work Owner.
+2. **Lini bisnis pada rekap per PIC** sekarang dipilih pengguna; sumber aslinya
+   (`OperatorID.pyPosition`) tidak ada di sistem baru. Ia tertutup begitu pemetaan pengguna
+   ke lini bisnis menjadi master data (`F-4`).
+3. **Bagian "Evaluasi Progress Klaim" kosong di Pega.** Belum ada keterangan apa yang
+   seharusnya ada di sana.

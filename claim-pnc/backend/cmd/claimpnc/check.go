@@ -27,16 +27,14 @@ import (
 	"claim-pnc/internal/portal"
 	"claim-pnc/internal/riwayatklaim"
 
-<<<<<<< HEAD
+	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
 	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
-=======
-	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
->>>>>>> Feat-arlexy-Inbox-admin
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
@@ -102,6 +100,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
 	checkClaimHistoryGate(ctx, riwayatklaimsql.NewProtectionRepo(primary), print)
 	checkInboxAdmin(ctx, inboxadminsql.NewRepo(primary), print)
+	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -1123,7 +1122,6 @@ func checkClaimHistoryGate(
 	print("            layar Master Proteksi Data milik sistem lama, bukan oleh aplikasi ini.")
 }
 
-<<<<<<< HEAD
 // checkSparepart melaporkan kesiapan POOLDATA.SPAREPART_HE beserta kedua tabel acuannya.
 //
 // Ketiga tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat
@@ -1311,7 +1309,8 @@ func checkSparepartLookup(
 		print("            tampil hanyalah NAMA acuannya. Menyimpan ulang baris seperti itu")
 		print("            menuntut petugas memilih kategori atau tipe yang sah.")
 	}
-=======
+}
+
 // checkInboxAdmin memastikan tabel yang dibaca layar Inbox Admin terjangkau.
 //
 // Berbeda dengan modul lain, modul ini TIDAK menuntut satu pun migrasi: seluruh tabel yang
@@ -1331,5 +1330,30 @@ func checkInboxAdmin(
 	print("  [ok]    DATAPEGA.PC_ASM_FW_GCNMFW_WORK dapat dibaca")
 	print("            Catatan: penyaring Cabang dan Korwil BELUM aktif — sumbernya")
 	print("            DB Link ke HRD yang belum punya API pengganti (R-03).")
->>>>>>> Feat-arlexy-Inbox-admin
+}
+
+// checkInboxProgressClaim memastikan tabel yang dibaca layar Inbox Progress Claim
+// terjangkau.
+//
+// Sama seperti Inbox Admin, modul ini TIDAK menuntut satu pun migrasi: seluruh tabel yang
+// dibacanya sudah ada dan milik sistem lama. Yang dapat gagal karena itu bukan "tabelnya
+// belum dibuat", melainkan "akun aplikasi belum diberi hak SELECT atasnya".
+func checkInboxProgressClaim(
+	ctx context.Context,
+	repo *inboxprogressclaimsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.PEGA_DASHBOARDPNC tidak dapat dibaca: %v", err)
+		print("            Tanpa hak baca atasnya, seluruh bagian Inbox Progress Claim")
+		print("            kosong. Tabel ini milik sistem lama dan tidak dibuat migrasi")
+		print("            mana pun.")
+		return
+	}
+	print("  [ok]    POOLDATA.PEGA_DASHBOARDPNC dapat dibaca")
+	print("            Catatan: modul ini juga membaca GCNM_PROGRESS_CLAIM,")
+	print("            GCNM_PROGRESS_POSISI_PNC, GCNM_MST_PROGRESS_KLAIM,")
+	print("            GCNM_MST_PROGRESS, MST_USER_TEKNIK, dan T_CLAIM_PNC.")
+	print("            Penyaring Cabang BELUM aktif — sumbernya DB Link ke HRD yang")
+	print("            belum punya API pengganti (R-03).")
 }
