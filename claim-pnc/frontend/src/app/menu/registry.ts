@@ -91,10 +91,16 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //
-  // MENU_ID 55 "Inbox Claim Treaty Non Prop" (`InboxClaimNonProp_Harness`) adalah layar
-  // saudara yang berdiri sendiri dan BELUM dibangun; ia sengaja tidak dipetakan ke rute
-  // yang sama, karena keduanya membaca kueri dan tabel yang berbeda.
   InboxClaimTreaty_Harness: '/inbox-claim-treaty-prop',
+  // MENU_ID 55 "Inbox Claim Treaty Non Prop". Layar SAUDARA dari yang di atas, dan
+  // rutenya sengaja BERBEDA — bukan sekadar karena namanya berbeda.
+  //
+  // Keduanya membaca tabel, kolom, dan penanda objek kerja yang berbeda: yang ini
+  // menyaring `PXREFOBJECTINSNAME LIKE 'CLMNP-%'` atas gabungan TIGA tabel, sedangkan
+  // yang di atas menyaring kunci objek kerjanya atas gabungan dua tabel. Menunjuk
+  // keduanya ke satu rute akan menampilkan antrean lini bisnis yang salah, dan tidak ada
+  // apa pun di layar yang menandakannya.
+  InboxClaimNonProp_Harness: '/inbox-claim-treaty-non-prop',
 
   // MENU_ID 65 "Inbox Progress Claim". Inbox sungguhan menurut `D-79`: barisnya klaim
   // yang menunggu ditindaklanjuti, hilang begitu klaimnya tutup, dan punya tenggat

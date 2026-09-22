@@ -3115,3 +3115,76 @@ Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
    pemetaan properti `KomiteClaimData` ke kolomnya. Begitu itu tiba, yang berubah hanya
    `tab.go` (hapus penanda terhalang, tambah kolom) dan satu kueri baru — layar tidak
    perlu disentuh, karena keadaan terhalang datang dari server sebagai data.
+
+---
+
+# Sesi kesembilan belas — modul Inbox Claim Treaty Non Prop (2026-09-22)
+
+## Skill yang dipakai: TIDAK ADA — dan itu bukan pilihan
+
+**Keadaan yang sebenarnya.** Paket `mattpocock-skills` **tidak tersedia di sesi ini**.
+Daftar skill yang terpasang seluruhnya milik lingkungan lain (`dataviz`, `artifact-*`,
+`code-review`, `docx`, `pdf`, dan kerabatnya); tidak satu pun dari `grilling`,
+`domain-modeling`, maupun `codebase-design` dapat dipanggil.
+
+Ini dicatat apa adanya, bukan dikaburkan dengan menyebut "disiplinnya tetap dipakai" lalu
+menuliskannya seolah skill-nya berjalan. Sesi kedelapan belas memanggil ketiganya; sesi ini
+tidak dapat.
+
+**Yang dikerjakan sebagai gantinya.** Disiplin ketiganya sudah tertulis di catatan sesi
+sebelumnya dan diikuti dari sana sebagai **prosedur**, bukan sebagai skill yang dijalankan:
+
+| Disiplin | Dari mana | Bagaimana diterapkan sesi ini |
+|---|---|---|
+| Cari faktanya sendiri, tanyakan hanya yang benar-benar keputusan pemilik | catatan `grilling` §3017 | Tiga pertanyaan diajukan, seluruhnya disertai bukti `berkas:baris` |
+| Silangkan pernyataan dengan kode sebelum menamai | catatan `domain-modeling` §3042 | Dua kolom master id dipertahankan terpisah setelah keduanya terbukti dari sumber berbeda |
+| Operasi yang tidak ada tidak dapat dipakai tanpa keputusan sadar | catatan `codebase-design` §3058 | Seam `Repo` tetap tanpa operasi komite; tab terhalang ditolak di domain |
+
+## Teknik yang dipakai tanpa skill
+
+**Membaca kueri, bukan membaca tata letak.** Urutan kolom tiap tab diambil dari urutan
+kolom KUERI-nya, bukan dari urutan sel di section — berbeda dari modul Prop. Alasannya
+konkret dan dicatat di `tab.go`: ketiga grid layar ini membaca halaman klipboard yang sama
+dengan alias `CARI` bernomor, sehingga urutan sel tidak dapat dibaca sebagai urutan kolom
+tanpa menelusuri tiap sel ke nomor aliasnya. Urutan kueri terbaca utuh dan tidak dapat
+salah tafsir.
+
+**Menetapkan baseline sebelum menyimpulkan.** 120 galat typecheck dan 29 uji frontend yang
+gagal ditemukan di repo ini. Keduanya **dibuktikan pra-ada**, bukan diasumsikan: berkas
+frontend yang disunting sesi ini di-`git stash`, uji yang sama dijalankan ulang, dan ke-13
+kegagalan `riwayat-klaim` tetap muncul. Tanpa langkah itu, tidak ada dasar menyatakan
+sesi ini bersih.
+
+**Memakai uji milik repo sebagai pagar, bukan sebagai formalitas.** `query_test.go` modul
+Prop melarang `SYSDATE` dan `TRUNC(`. Kueri Non Prop menghitung Aging dengan keduanya.
+Larangan itu tidak dilonggarkan — yang diubah adalah kuerinya, menjadi
+`CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)`, yang hasilnya sama
+dan sah di Oracle maupun PostgreSQL.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
+
+| Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Nyaris menyalin `DATA_JSONBLOB` dari modul Prop** ke kueri Non Prop, karena keduanya membaca `POOLDATA.JSON_KLAIM` | Pencarian `data_json` ke seluruh `RDB List/` menemukan `GetJsonKlaimPNC-SQL.xml:38` — kolomnya bernama `DATA_JSON`, dan itu kolom yang BERBEDA | Dua layar saudara yang membaca tabel sama belum tentu membaca kolom sama. Menukarnya tidak menghasilkan galat apa pun — hanya dua kolom yang salah isi |
+| **`gofmt -w ./cmd/claimpnc` menyentuh dua berkas di luar lingkup** (`main_test.go`, `registration.go`) | `git status` sesudahnya; `git diff --numstat` membuktikan diff-nya hanya akhiran baris | Perintah pemformatan seluruh direktori melanggar Isolasi Protektif meski tidak mengubah satu karakter isi. Keduanya dikembalikan dengan `git checkout --` |
+| **Memakai `portal.Active` yang tidak ada** di `prepare()` | `go build` gagal; tipe sebenarnya `portal.Portal` | Menyalin pola dari modul lain tetap menuntut memeriksa tipenya, bukan hanya bentuknya |
+
+## Catatan untuk sesi berikutnya
+
+1. **Tab Komite Non Prop menunggu Tim Pega**, bukan DBA — berbeda dari tab komite modul
+   Prop. Yang hilang adalah rule `KmtGetInboxListCNP_SQL` (kelas `Assign-WorkBasket`,
+   ruleset GCNMFW), yang DIPANGGIL `Activity/GetWorkCNP_Act-Act.xml` tetapi tidak ada di
+   export. Ia bagian dari permintaan export ulang berbasis Product rule (`D-39`, `R-16`).
+2. **Report Definition `InboxKlaimNonPropAdmin` juga hilang dari export.** Ia tidak
+   menghalangi ekspor — susunan kolomnya terbaca utuh dari langkah `Property-Set` di
+   `GenerateClaimNonPropCSV`. Dicatat supaya tidak dicari ulang.
+3. **Satu Operator ID hardcode ditemukan di jalur kewenangan komite**
+   (`GetWorkCNP_Act`, langkah 4). Ia tidak dibawa dan namanya tidak disalin ke repo
+   (`D-69`). Ia menambah satu ke daftar 24 Operator ID hardcode `D-15`, dan letaknya
+   patut diperhatikan: ia menentukan **kewenangan**, bukan sekadar penerima notifikasi.
+4. **120 galat typecheck dan 29 uji frontend yang gagal masih terbuka** di modul lain
+   (`master-auto-claim`, `master-bengkel`, `master-supplier`, `riwayat-klaim`,
+   `inbox-auto-claim`). Sebabnya sama dengan yang dicatat sesi kedelapan belas butir 2:
+   `src/api/types.ts` kehilangan isinya pada merge `b764434`.

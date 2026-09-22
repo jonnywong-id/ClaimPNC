@@ -17,6 +17,7 @@ import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
 import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
@@ -342,6 +343,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimTreatyPropPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Claim Treaty Non Prop — antrean klaim treaty NON-proporsional, pengganti
+        harness `InboxClaimNonProp_Harness` (`MENU_ID 55`).
+
+        Rutenya sengaja terpisah dari layar saudaranya di atas: keduanya membaca tabel,
+        kolom, dan penanda objek kerja yang berbeda. Menyatukannya akan menampilkan
+        antrean lini bisnis yang salah tanpa satu pun tanda di layar.
+
+        Layar ini MEMBACA SAJA, dengan satu pengecualian yang tetap hanya membaca: tombol
+        ekspor berfungsi penuh, karena menghasilkan berkas tidak menyentuh kepemilikan
+        tabel (`P-1`). Pembuatan klaim tetap menolak dengan alasan.
+      */}
+      <Route
+        path="/inbox-claim-treaty-non-prop"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimTreatyNonPropPage />
             </Protected>
           </SessionGuard>
         }

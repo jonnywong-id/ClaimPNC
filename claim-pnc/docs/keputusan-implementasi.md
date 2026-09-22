@@ -5214,3 +5214,184 @@ komponen, bukan pustakanya.
    membuat dua gaya jalur hidup berdampingan.
 4. **Tidak ada jejak audit** atas pembuatan berkas. `S-5` belum ada; kolom `DIBUAT_OLEH` dan
    `DIBUAT_PADA` pada tabel baru adalah yang terdekat dengannya hari ini.
+
+---
+
+## 37. Modul Inbox Claim Treaty Non Prop (2026-09-22, sesi kesembilan belas)
+
+Menu `MENU_ID 55`, pengganti harness `InboxClaimNonProp_Harness`. Layar saudara dari
+`MENU_ID 54` yang dibangun sesi sebelumnya.
+
+### 37.1 Pertanyaan konfirmasi dan jawabannya
+
+Ketiganya diajukan **sebelum satu baris kode ditulis**, seluruhnya disertai bukti.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tombol ekspor (`GenerateClaimNonPropCSV`) dibangun sekarang atau ditunda? Report Definition-nya hilang dari export, tetapi susunan kolomnya terbaca dari activity-nya | **Bangun sekarang dari activity** |
+| 2 | "See TBA Claim" di Pega hanya berpengaruh bila "See All Claim" ikut dicentang (dua prakondisi ber-AND). Replikasi atau perbaiki? | **Perbaiki — TBA berdiri sendiri** |
+| 3 | Tab Komite dipasok kueri yang hilang dari export. Bagaimana? | **Terhalang, sama seperti modul Prop** |
+
+### 37.2 Kenapa modul ini BUKAN salinan modul Prop
+
+Keduanya mirip di layar dan namanya hanya berbeda dua kata. Di bawah permukaan keduanya
+berbeda pada hal-hal yang menentukan kuerinya:
+
+| | Prop (`MENU_ID 54`) | Non Prop (paket ini) |
+|---|---|---|
+| Penanda objek kerja | `PXREFOBJECTKEY LIKE '%CLMP%'` | `PXREFOBJECTINSNAME LIKE 'CLMNP-%'` |
+| Jumlah tabel | 2 | **3** |
+| Asal kolom bisnis | `JSON_VALUE(DATA_JSONBLOB, …)` | **kolom `PC_ASM_FW_GCNMFW_WORK`** |
+| Kolom JSON yang dibaca | `DATA_JSONBLOB` | **`DATA_JSON`** |
+| Varian tab pertama | 2 | **4** (3 di Pega + 1 baru) |
+| Kolom tambahan | — | Status, Aging, Create/Last Update Operator |
+
+Menyatukan keduanya akan memaksa satu kueri melayani dua bentuk data yang tidak sama —
+persis cacat yang sedang ditinggalkan (utang teknis 4.6).
+
+### 37.3 Dua kolom JSON berbeda pada satu tabel
+
+`POOLDATA.JSON_KLAIM` punya **dua** kolom JSON, dan kedua layar treaty membaca yang
+berbeda:
+
+```
+DATA_JSONBLOB   dibaca layar Prop      (GetClaimTreaty_SQL:104-109)
+DATA_JSON       dibaca layar ini       (GetKlaimNonPropAdmin_SQL:43-44)
+```
+
+Keduanya **tidak disamakan**. Apakah isinya sama tidak dapat diperiksa: DDL-nya belum
+tersedia (`R-08`). Menukar salah satunya ke yang lain adalah perubahan yang **tidak
+menghasilkan galat apa pun bila salah** — ia hanya menampilkan tanggal dan ID master milik
+dokumen yang berbeda.
+
+Yang diubah hanya **sintaksnya**, bukan kolomnya: notasi titik Oracle
+(`c.data_json.DateOfLoss`) menjadi `JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')`, supaya kueri
+tetap satu set untuk Oracle dan PostgreSQL (`D-20`, `D-24`).
+
+### 37.4 Dua kolom "master id" dipertahankan terpisah
+
+Layar lama menampilkan **keduanya berdampingan**, dan keduanya dari tempat berbeda:
+
+| Kolom grid | Asal | Alias Pega |
+|---|---|---|
+| "MasterID" | `b.MASTERID` — kolom objek kerja | `CARI19` |
+| "ID Master" | `c.DATA_JSON` jalur `$.IDMaster` | `CARI23` |
+
+Menyatukannya berarti memutuskan salah satu yang benar — keputusan yang tidak dapat diambil
+tanpa melihat isi kedua sumbernya. Bila kelak terbukti selalu sama, menyatukannya sepele;
+bila ternyata berbeda, menyatukannya sekarang menyembunyikan ketidakcocokan data yang
+justru perlu ketahuan.
+
+Satu baris data contoh sengaja memuat nilai yang **berbeda** pada keduanya, supaya
+penyatuan diam-diam di kemudian hari langsung ketahuan.
+
+### 37.5 "See TBA Claim" dibuat berdiri sendiri — selisih terencana `P-5`
+
+**Yang terbukti di export.** `Activity/GetDataTreatyinNonProp_Act-Act.xml` langkah 4
+dijaga **dua** prakondisi ber-AND:
+
+```
+Inputdata.CARI10 == ""    <- "See All Claim" tercentang
+Inputdata.CARI11 == ""    <- "See TBA Claim" tercentang
+```
+
+Akibatnya mencentang "See TBA Claim" sendirian **tidak menjalankan kueri apa pun yang
+berbeda** — layar tetap menampilkan hasil langkah 2.
+
+**Keputusan Work Owner 2026-09-22:** keduanya menjadi penyaring yang saling bebas. Ia
+melahirkan kueri kelima yang tidak ada di sistem lama — `list_admin_tba` — dan dinyatakan
+ke pengguna lewat `PlannedDifferences`, bukan hanya dicatat di komentar.
+
+### 37.6 Kolom "Status" tidak menyatakan status klaim
+
+Ia **literal** di dalam kueri, bukan kolom: `Estimation` untuk seluruh baris tab Admin,
+`Acceptation` untuk seluruh baris tab Teknik. Tidak ada satu pun kolom status yang dibaca.
+
+Artinya kolom bernama "Status" itu menyatakan **antrean mana baris ini berasal**. Tak satu
+pun dari kedua teks itu termasuk dalam 33 kode status klaim yang sebenarnya (`R-06`).
+
+Perilakunya **dipertahankan apa adanya** (`P-5`); yang ditambahkan hanyalah keterangan ke
+pengguna, karena kolom bernama "Status" yang tidak menyatakan status adalah hal yang wajar
+disalahpahami.
+
+### 37.7 "Aging" adalah hari kalender, bukan TAT
+
+`TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)` menghasilkan selisih hari kalender apa adanya:
+akhir pekan dan hari libur ikut terhitung. Ia **bukan** TAT — perhitungan TAT memotong jam
+kerja lewat `GET_WORKING_HOURS` dan `HRD_LBR` (`D-50`), dan layar ini tidak menyentuh
+keduanya.
+
+**Bentuknya diportabelkan tanpa mengubah hasilnya.** `SYSDATE` dan `TRUNC(tanggal)`
+keduanya ada di daftar padanan wajib `09-DATABASE-STRATEGY.md` §4, dan uji disiplin SQL
+milik repo ini melarang keduanya. Yang dipakai:
+
+```sql
+CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)
+```
+
+Pemangkasan kedua sisi dipertahankan — tanpanya selisih dihitung dari JAM, sehingga
+pekerjaan yang dibuat kemarin sore terhitung nol hari sampai lewat 24 jam.
+
+### 37.8 Dua hal di layar lama yang TIDAK dibawa
+
+| Yang tidak dibawa | Bukti | Alasan |
+|---|---|---|
+| **Nama orang menentukan kewenangan komite** | `GetWorkCNP_Act` langkah 4 membandingkan `OperatorID.pyUserIdentifier` dengan satu Operator ID yang ditanam di rule | Salah satu dari 24 Operator ID hardcode `D-15`. Namanya **tidak disalin** ke repo (`D-69`) |
+| **Fragmen SQL dirangkai dari string** | `GetWorkCNP_Act` menyusun klausa `WHERE` dengan penggabungan teks | Pola `{ASIS:…}`, celah injeksi (utang teknis 4.5). Larangan `08-TECHNICAL-STRATEGY.md` §4.3 tidak dikecualikan keputusan mana pun |
+
+### 37.9 Ekspor: namanya CSV, keluarannya bukan
+
+`GenerateClaimNonPropCSV` berakhir dengan `call MSOGenerateExcelFile` atas halaman
+`TempData` — berkas yang benar-benar diunduh pengguna adalah **berkas Excel**, meski nama
+rule-nya menyebut CSV.
+
+Yang dibangun di sini menghasilkan **CSV sungguhan**: ia dibuka Excel tanpa perantara,
+tidak menuntut pustaka pihak ketiga, dan dapat dialirkan potong demi potong — yang ketiga
+tidak mungkin dilakukan penghasil Excel.
+
+**Tujuh kolomnya dan urutannya** diambil dari langkah `Property-Set` activity itu:
+`.CARI11` → `.CARI15` → `.CARI14` → `.CARI16` → `.CARI17` → `.CARI22` → `.CARI12`. Yang
+berubah hanya **baris judulnya**: `MSOGenerateExcelFile` memakai nama properti sebagai
+judul, sehingga berkas lama berjudul kolom `CARI1`…`CARI7`.
+
+**Lima kolom yang ada di grid sengaja TIDAK ikut** — nomor polis, kedua master id, status,
+aging, dan operator pengubah. Kelimanya tidak pernah ada di berkas ekspor sistem lama, dan
+menambahkannya adalah kemampuan baru, bukan pemindahan.
+
+### 37.10 Tab Komite terhalang — pemiliknya Tim Pega, bukan DBA
+
+Berbeda dari tab komite modul Prop, yang menunggu DDL dari DBA. Di sini yang hilang adalah
+**rule-nya sendiri**: `KmtGetInboxListCNP_SQL` DIPANGGIL `GetWorkCNP_Act` tetapi tidak ada
+di export, sehingga tidak diketahui tabel mana yang dibacanya maupun kolom apa yang
+dikembalikannya.
+
+Menyusunnya sendiri dari pola kedua kueri lain berarti **menebak aturan yang menentukan
+persetujuan nilai uang**. Tab-nya karena itu digambar dengan alasan dan pemiliknya, dan
+ditolak di **domain** (`NewQuery`) — bukan di penyimpanan, yang akan menjadikannya galat
+500 tanpa sebab yang terbaca.
+
+### 37.11 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `inboxclaimtreatynonprop.go`, `tab.go`, `query.go`, `errors.go` |
+| Usecase | `usecase/list.go` |
+| Repo | `repo/sqlstore/` (5 kueri daftar + 2 pemeriksa), `repo/memory/` |
+| Transport | `http/` — dto, errors, handler, **export**, routes |
+| Uji | 12 uji aturan modul + 18 uji kueri + 17 uji layar |
+| Perakitan | `cmd/claimpnc/main.go` (8 titik), `check.go` (pemeriksa tersendiri) |
+| Frontend | `modules/inbox-claim-treaty-non-prop/`, rute `App.tsx`, peta `registry.ts` |
+
+**Tidak ada migrasi basis data.** Seluruh tabel yang dibaca milik sistem lama dan sudah
+ada; modul ini **tidak menulis satu pun** (`P-1`).
+
+### 37.12 Yang diverifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet` modul baru | bersih |
+| `gofmt -l` modul baru | bersih |
+| `go test ./...` | **111 paket lulus, 0 gagal** |
+| `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada, dibuktikan) |
+| `npx vitest run` modul baru | **17 uji lulus** |

@@ -5362,3 +5362,175 @@ lalu dihapus.
 | **Bagan** di atas daftar | `pxChart` dengan seri `Description`/`Count`; isinya sama dengan lencana tab yang sudah tergambar. Menggambarnya dua kali menambah barang, bukan keterangan |
 | **Membuka isi berkas** | Barisnya membuka penugasan `ReceiveDocument_Flow` lewat harness `ViewReceiveDocument` — layar tersendiri, lingkup `B-14`. Modul ini membawa rujukannya (`rujukan_pega`) tetapi tidak membukanya |
 | Menulis ke `POOLDATA.T_CLAIM_RECIVEDCLAIM` | `P-1` menetapkan satu tabel satu penulis. Keempat kolom yang ditulis Pega saat berkas lahir pindah ke tabel baru; sisanya ikut `B-14` saat modulnya dibangun |
+
+---
+
+## 35. Sesi kesembilan belas — modul Inbox Claim Treaty Non Prop (2026-09-22)
+
+Keputusan desainnya ada di [`keputusan-implementasi.md`](keputusan-implementasi.md) §37;
+berkas ini merekam **prosesnya**.
+
+Permintaannya menyebut satu berkas sebagai acuan: `InboxClaimNonProp_Harness-Harness.xml`.
+
+### 35.1 Analisis pra-implementasi
+
+Dilakukan sebelum satu baris kode ditulis, sesuai larangan di kepala permintaan.
+
+**Berkas acuannya 1,3 MiB — terlalu besar untuk dibaca utuh.** Yang dikerjakan adalah
+mengekstrak bagian yang menentukan bentuk layar, bukan membaca berurutan:
+
+| Yang dicari | Cara | Hasil |
+|---|---|---|
+| Judul tab dan kolom | pola `pyCaption <teks>` di section | 3 kontainer, ±25 judul kolom |
+| Sumber data tiap grid | `pyPagesAndClasses` di section | `ListCaseInbox`, `…Teknik`, `…Komite` |
+| Activity yang mengisinya | `pyActivity` di harness dan section | 4 activity |
+| Kueri yang dijalankan | `RequestType` + `BrowsePage` di activity | 4 kueri + 1 yang hilang |
+
+**Harness-nya sendiri ternyata hampir seluruhnya boilerplate portal Pega.** Yang
+menentukan bentuk layar ada di section dan di keempat activity-nya. Membaca harness
+berurutan akan menghabiskan puluhan ribu baris sebelum menemukan satu fakta yang berguna.
+
+### 35.2 Bagaimana layar lama memuat ketiga gridnya
+
+Ditelusuri dari `Activity/GetWorkCNP_Act-Act.xml`, dan urutannya menjelaskan seluruh bentuk
+modul:
+
+```
+langkah 1  Inputdata.CARI10 := OperatorID.pyUserIdentifier
+langkah 2  report FilterEmailKomiteWithLimit atas ASM-FW-GCNMFW-Int-EMAILKOMITE
+langkah 3  InputData.CARI13 := "tampil"   bila pemanggil anggota komite
+langkah 4  InputData.CARI13 := "tampil"   bila pemanggil operator tertentu   <- hardcode
+langkah …  RDB-List GetInboxListCNP_SQL     -> ListCaseInboxTeknik
+langkah …  RDB-List KmtGetInboxListCNP_SQL  -> ListCaseInboxKomite   <- rule HILANG
+langkah 7  call GetDataTreatyinNonProp_Act  -> ListCaseInbox          (tab Admin)
+```
+
+Langkah 7 itu yang paling mudah terlewat: tab Admin **tidak diisi activity ini langsung**,
+melainkan lewat activity kedua yang memilih di antara tiga kueri menurut kombinasi
+checkbox.
+
+### 35.3 Pertanyaan konfirmasi
+
+Tiga diajukan, seluruhnya disertai bukti `berkas:baris`. Jawaban lengkapnya di
+`keputusan-implementasi.md` §37.1.
+
+Yang perlu dicatat di sini adalah **kenapa ketiganya layak ditanyakan** — ketiganya
+mengubah lingkup secara material, dan tidak satu pun dapat dijawab dari export:
+
+1. **Ekspor** — Report Definition-nya hilang. Membangunnya menambah satu rute, satu berkas
+   transport, dan satu hook frontend.
+2. **Perilaku TBA** — mereplikasi kejanggalannya dan memperbaikinya menghasilkan jumlah
+   kueri yang berbeda (4 versus 5).
+3. **Tab Komite** — menebak kuerinya melanggar "No Shortcuts"; menyembunyikannya
+   menghilangkan fitur dari pandangan pengguna.
+
+### 35.4 Temuan yang mengubah rencana di tengah jalan
+
+**Rencana awal: salin pola modul Prop, ganti kuerinya.** Itu gugur setelah kedua kueri
+dibandingkan berdampingan.
+
+| Yang ditemukan | Akibatnya pada rencana |
+|---|---|
+| Penyaringnya atas kolom yang BERBEDA (`PXREFOBJECTINSNAME`, bukan `PXREFOBJECTKEY`) dan **berjangkar depan** | Penyimpanan memori harus menyaring awalan, bukan potongan tengah |
+| Gabungannya TIGA tabel, bukan dua | Seluruh pemetaan kolom disusun ulang dari nol |
+| Kolom bisnis dari **kolom tabel**, bukan dari blob JSON | `JSON_VALUE` hanya dipakai untuk dua kolom, bukan enam |
+| Kolom JSON-nya `DATA_JSON`, bukan `DATA_JSONBLOB` | Lihat §35.5 — nyaris tersalin keliru |
+| Tab Admin punya TIGA varian di Pega, bukan dua | Kombinasi checkbox menjadi empat setelah keputusan Work Owner |
+| Empat kolom yang tidak ada di layar Prop | Status, Aging, dan dua kolom operator |
+
+Yang dipakai ulang akhirnya hanya **bentuk lapisannya** — susunan paket, bentuk DTO,
+bentuk tab, pola paginasi. Isinya disusun dari kuerinya sendiri.
+
+### 35.5 Kesalahan yang nyaris masuk: kolom JSON yang salah
+
+Saat menulis kueri pertama, `DATA_JSONBLOB` hampir disalin dari modul Prop — keduanya
+membaca `POOLDATA.JSON_KLAIM`, jadi tampak wajar.
+
+**Yang menghentikannya:** pencarian `data_json` ke seluruh `RDB List/`, yang menemukan
+`GetJsonKlaimPNC-SQL.xml:38` — kueri yang memilih kolom bernama `DATA_JSON` apa adanya.
+Tabel itu punya **dua** kolom JSON, dan kedua layar treaty membaca yang berbeda.
+
+**Kenapa ini berbahaya di atas rata-rata:** menukar keduanya **tidak menghasilkan galat
+apa pun**. Kueri tetap berjalan, layar tetap terisi — hanya tanggal dan ID master yang
+berasal dari dokumen yang salah. Cacat seperti itu tidak punya gejala.
+
+Satu uji ditambahkan khusus untuk menjaganya: `TestQueriesReadTheNonPropJSONColumn`
+menggagalkan kueri mana pun yang menyebut `DATA_JSONBLOB`.
+
+### 35.6 Uji milik repo memaksa satu kueri ditulis ulang
+
+`query_test.go` modul Prop memuat `TestQueriesFollowPortableSQLDiscipline`, yang melarang
+`SYSDATE` — dan kueri Aging Non Prop memakainya, bersama `TRUNC(`.
+
+Larangan itu **tidak dilonggarkan**. Yang diubah adalah kuerinya:
+
+```sql
+-- sistem lama
+TRUNC(SYSDATE) - TRUNC(b.PXCREATEDATETIME)
+
+-- di sini
+CAST(CURRENT_TIMESTAMP AS DATE) - CAST(b.PXCREATEDATETIME AS DATE)
+```
+
+Hasilnya sama persis, dan bentuknya sah di Oracle maupun PostgreSQL. `TRUNC(`
+ditambahkan ke daftar terlarang modul ini supaya tidak kembali masuk diam-diam.
+
+### 35.7 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| `go build` gagal: `portal.Active` tidak ada | Tipe sebenarnya `portal.Portal`; disalin polanya tanpa memeriksa tipenya |
+| `gofmt -w ./cmd/claimpnc` menyentuh `main_test.go` dan `registration.go` di luar lingkup | `git diff --numstat` membuktikan diff-nya hanya akhiran baris; keduanya dikembalikan `git checkout --` |
+| `spa/dist/.gitkeep` terhapus | Dikembalikan bersama kedua berkas di atas |
+| 120 galat typecheck frontend | **Dibuktikan pra-ada**, bukan diasumsikan — lihat §35.8 |
+| 29 uji frontend gagal | Dibuktikan pra-ada dengan cara yang sama |
+
+### 35.8 Bagaimana kegagalan pra-ada dibuktikan
+
+Menyatakan "galatnya sudah ada sebelumnya" tanpa membuktikannya sama saja dengan
+mengabaikannya. Yang ditempuh:
+
+1. `npx tsc --noEmit`, lalu **menyaring keluarannya** untuk berkas yang disunting sesi ini
+   (`inbox-claim-treaty-non-prop`, `app/App`, `app/menu`) — nol kecocokan.
+2. Untuk uji yang gagal, kedua berkas frontend yang disunting di-`git stash`, lalu
+   `npx vitest run src/modules/riwayat-klaim` dijalankan ulang. **Ketiga belas kegagalan
+   yang sama tetap muncul.** Stash dikembalikan sesudahnya.
+
+Langkah kedua yang menentukan: langkah pertama saja tidak cukup, karena `App.tsx` diimpor
+setiap uji layar — perubahan di sana dapat menjatuhkan uji modul lain tanpa muncul di
+keluaran typecheck.
+
+### 35.9 Yang berubah di luar modul baru
+
+Empat berkas, seluruhnya penambahan:
+
+| Berkas | Perubahan |
+|---|---|
+| `cmd/claimpnc/main.go` | import, handler, mount, field assembly, field store, service, selector SQL, selector memori |
+| `cmd/claimpnc/check.go` | `checkClaimTreatyNonProp` — pemeriksa tersendiri, bukan menumpang pemeriksa modul Prop |
+| `frontend/src/app/App.tsx` | satu import, satu rute |
+| `frontend/src/app/menu/registry.ts` | satu baris peta `InboxClaimNonProp_Harness` |
+
+**Modul Login, Home, dan Master Data tidak disentuh** (Isolasi Protektif). Modul Inbox
+Claim Treaty Prop juga tidak — pemeriksa `-periksa`-nya sengaja tidak digabung, karena
+hak baca atas satu tabel tidak menyatakan apa pun tentang tabel lain.
+
+### 35.10 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./internal/inboxclaimtreatynonprop/...` | bersih |
+| `gofmt -l` modul baru | bersih |
+| `go test ./...` | 111 paket lulus, 0 gagal |
+| `npx tsc --noEmit` pada berkas sesi ini | bersih |
+| `npx vitest run` modul baru | 17 uji lulus |
+
+### 35.11 Yang masih menunggu pihak lain
+
+1. **`KmtGetInboxListCNP_SQL`** — Tim Pega. Tanpanya tab Komite tetap terhalang.
+2. **DDL `POOLDATA.JSON_KLAIM`** — DBA. Ia yang akan menjawab apakah `DATA_JSON` dan
+   `DATA_JSONBLOB` memuat dokumen yang sama, dan apakah kedua kolom master id dapat
+   disatukan.
+3. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk melihat
+   ketiga tab, termasuk antrean teknik yang bukan haknya.

@@ -24,6 +24,9 @@ import (
 
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxclaimtreatynonprop"
+	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
+
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
@@ -97,6 +100,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkCauseOfLoss(ctx, masterpenyebabkerugiansql.NewRepo(primary), print)
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
+	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 
@@ -1010,6 +1014,78 @@ func checkClaimTreatyProp(
 			print("  [PERIKSA] %s: Tanggal Kejadian kosong di DATA_JSONBLOB ($.DateOfLoss).",
 				item.ClaimID)
 			print("            Alias kueri sudah dibetulkan, jadi sebabnya ada di isi blob.")
+			break
+		}
+	}
+}
+
+// checkClaimTreatyNonProp memeriksa modul Inbox Claim Treaty Non Prop (`MENU_ID 55`).
+//
+// Ia TERPISAH dari pemeriksaan layar Prop di atas, dan bukan karena kerapian: modul ini
+// menyentuh satu tabel yang tidak disentuh layar Prop
+// (`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`) dan membaca kolom JSON yang BERBEDA pada tabel yang
+// sama (`DATA_JSON`, bukan `DATA_JSONBLOB`). Hak baca atas yang satu tidak menyatakan apa
+// pun tentang yang lain, dan kolom JSON yang salah tidak menghasilkan galat — ia hanya
+// mengosongkan dua kolom di layar.
+func checkClaimTreatyNonProp(
+	ctx context.Context,
+	repo *inboxclaimtreatynonpropsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel antrean treaty non-prop tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas DATAPEGA.PC_ASSIGN_WORKLIST,")
+		print("            DATAPEGA.PC_ASSIGN_WORKBASKET, DATAPEGA.PC_ASM_FW_GCNMFW_WORK,")
+		print("            dan POOLDATA.JSON_KLAIM.")
+		return
+	}
+	print("  [ok]    Ketiga tabel antrean treaty non-prop dapat dibaca")
+
+	// Satu halaman saja. Yang diperiksa adalah apakah kuerinya BERJALAN — termasuk
+	// JSON_VALUE atas DATA_JSON, yang menuntut kolomnya benar-benar berisi JSON yang sah.
+	page := inboxclaimtreatynonprop.Pagination{Page: 1, Size: 5}
+
+	technical, found := inboxclaimtreatynonprop.FindTab(
+		inboxclaimtreatynonprop.TabTechnical)
+	if !found {
+		print("  [GAGAL] Tab antrean teknik tidak terdaftar di modul")
+		return
+	}
+
+	result, err := repo.List(ctx, inboxclaimtreatynonprop.Query{Tab: technical}, page)
+	if err != nil {
+		print("  [GAGAL] Antrean teknik non-prop tidak dapat dibaca: %v", err)
+		print("            Bila galatnya menyebut JSON, isi POOLDATA.JSON_KLAIM.DATA_JSON")
+		print("            kemungkinan bukan JSON yang sah pada sebagian baris.")
+		print("            Perhatikan kolomnya DATA_JSON, BUKAN DATA_JSONBLOB yang dibaca")
+		print("            layar Treaty Prop — keduanya kolom berbeda pada tabel yang sama.")
+		return
+	}
+
+	print("  [ok]    Antrean teknik non-prop terbaca: %d pekerjaan menunggu", result.Total)
+	if result.Total == 0 {
+		print("            Kosong BUKAN berarti gagal — tetapi periksa apakah akun antrean")
+		print("            masih bernama %q di produksi. Nama itu literal di kueri lama,",
+			inboxclaimtreatynonprop.TechnicalWorkbasket)
+		print("            dan bila berubah, tab ini kosong tanpa satu pun galat.")
+		print("            Periksa pula apakah nomor klaim non-prop masih berawalan %q.",
+			inboxclaimtreatynonprop.ClaimPrefix)
+	}
+
+	// Kolom yang berasal dari PC_ASM_FW_GCNMFW_WORK diperiksa tersendiri.
+	//
+	// Gabungan ke tabel itu LEFT JOIN, sehingga penugasan yang objek kerjanya tidak
+	// ditemukan tetap muncul — dengan nama tertanggung, Ceding Co, dan umur yang kosong
+	// seluruhnya. Itu tidak menghasilkan galat apa pun, dan di layar terbaca seperti data
+	// yang memang belum diisi. Bila seluruh baris begitu, yang salah adalah kunci
+	// gabungannya, bukan datanya.
+	for _, item := range result.Items {
+		if item.InsuredName == "" && item.CedingCompany == "" {
+			print("  [PERIKSA] %s: seluruh kolom dari PC_ASM_FW_GCNMFW_WORK kosong.",
+				item.ClaimID)
+			print("            Bila ini terjadi pada SEMUA baris, gabungan")
+			print("            PXREFOBJECTKEY = PZINSKEY tidak menemukan pasangannya.")
 			break
 		}
 	}

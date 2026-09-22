@@ -29,6 +29,7 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxprogressclaim"
@@ -58,6 +59,11 @@ import (
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
+	inboxclaimtreatynonprophttp "claim-pnc/internal/inboxclaimtreatynonprop/http"
+	inboxclaimtreatynonpropmemory "claim-pnc/internal/inboxclaimtreatynonprop/repo/memory"
+	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
+	inboxclaimtreatynonpropusecase "claim-pnc/internal/inboxclaimtreatynonprop/usecase"
+
 	inboxclaimtreatypropthttp "claim-pnc/internal/inboxclaimtreatyprop/http"
 	inboxclaimtreatypropmemory "claim-pnc/internal/inboxclaimtreatyprop/repo/memory"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
@@ -510,6 +516,29 @@ func run() error {
 			FallbackErrorWriter: inboxclaimtreatypropthttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Claim Treaty Non Prop (`MENU_ID 55`). Layar SAUDARA dari yang di atas, dan
+	// dirakit terpisah dengan sengaja: keduanya membaca tabel, kolom, dan penanda objek
+	// kerja yang berbeda — lihat kepala `internal/inboxclaimtreatynonprop`.
+	//
+	// Jembatan pemanggilnya membawa LOGIN dengan alasan yang sama: yang dicocokkan ke
+	// `PXASSIGNEDOPERATORID` adalah `OperatorID.pyUserIdentifier`, bukan NIK.
+	claimTreatyNonPropHandler := inboxclaimtreatynonprophttp.NewHandler(
+		inboxclaimtreatynonprophttp.Options{
+			Service: assembly.inboxClaimTreatyNonProp,
+			GetCaller: func(ctx context.Context) (inboxclaimtreatynonprophttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxclaimtreatynonprophttp.Caller{}, false
+				}
+				return inboxclaimtreatynonprophttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxclaimtreatynonprophttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -664,6 +693,17 @@ func run() error {
 				inboxclaimtreatypropthttp.Mount(
 					protected, claimTreatyPropHandler, activePortalDeps)
 
+				// Inbox Claim Treaty Non Prop memuat data yang sama sifatnya —
+				// nama tertanggung dan nama Ceding Co milik satu badan hukum —
+				// sehingga rutenya dijaga pemeriksaan portal yang sama.
+				//
+				// Ia punya satu rute yang tidak dimiliki layar Prop: ekspor berkas.
+				// Berkas itu memuat data nasabah, dan justru karena ia terunduh ke
+				// perangkat pengguna, pemeriksaan portalnya tidak boleh lebih longgar
+				// daripada layarnya.
+				inboxclaimtreatynonprophttp.Mount(
+					protected, claimTreatyNonPropHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -764,6 +804,12 @@ type assembly struct {
 	// sama seperti modul inbox lain.
 	inboxClaimTreatyProp *inboxclaimtreatypropusecase.Service
 
+	// inboxClaimTreatyNonProp melayani layar Inbox Claim Treaty Non Prop (`MENU_ID 55`).
+	//
+	// Ia layar SAUDARA dari yang di atas dan sengaja berdiri sendiri: ketiga tabel yang
+	// dibacanya, penanda objek kerjanya, dan kolom gridnya berbeda.
+	inboxClaimTreatyNonProp *inboxclaimtreatynonpropusecase.Service
+
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
@@ -810,6 +856,10 @@ type storage struct {
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
 	// Ceding Co, dan keduanya milik satu badan hukum.
 	claimTreatyPropSelector inboxclaimtreatyprop.RepoSelector
+
+	// claimTreatyNonPropSelector memilih penyimpanan Inbox Claim Treaty Non Prop milik
+	// satu portal, dengan alasan yang sama persis dengan selector di atasnya.
+	claimTreatyNonPropSelector inboxclaimtreatynonprop.RepoSelector
 
 	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
 	//
@@ -1069,6 +1119,22 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	claimTreatyNonPropService, err := inboxclaimtreatynonpropusecase.NewService(
+		inboxclaimtreatynonpropusecase.Options{
+			RepoSelector: store.claimTreatyNonPropSelector,
+
+			// Alasan yang sama dengan layar Prop, ditambah satu yang khas modul ini:
+			// ekspor berkas memakai penyaring yang sama, sehingga satu unduhan dengan
+			// "See All Claim" mengeluarkan nama tertanggung seluruh petugas ke berkas
+			// yang tersimpan di perangkat pengguna. Jejaknya di log adalah satu-satunya
+			// hal yang menyatakan itu terjadi.
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
 	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
 	// mengikuti sistem lama yang juga tidak memaginasinya.
@@ -1084,27 +1150,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	return assembly{
-		auth:                   service,
-		portal:                 store.portal,
-		masterRekening:         buildMasterRekening(cfg, store, logger),
-		masterStatus:           claimStatusService,
-		masterStatusProgres:    progressStatusService,
-		masterTipeSurveyors:    surveyorTypeService,
-		masterSurveyors:        surveyorService,
-		masterPicTeknik:        picTeknikService,
-		masterRecovery:         recoveryService,
-		masterDominanFactor:    dominantFactorService,
-		masterXOL:              xolService,
-		masterPenyebabKerugian: causeOfLossService,
-		masterMasking:          maskingService,
-		menu:                   menuService,
-		inboxAutoClaim:         autoClaimService,
-		inboxXOL:               inboxXOLService,
-		inboxClaimTreatyProp:   claimTreatyPropService,
-		inboxProgressClaim:     inboxProgressClaimService,
-		inboxLaporanKlaim:      claimReportService,
-		readyAliases:           store.readyAliases,
-		close:                  store.close,
+		auth:                    service,
+		portal:                  store.portal,
+		masterRekening:          buildMasterRekening(cfg, store, logger),
+		masterStatus:            claimStatusService,
+		masterStatusProgres:     progressStatusService,
+		masterTipeSurveyors:     surveyorTypeService,
+		masterSurveyors:         surveyorService,
+		masterPicTeknik:         picTeknikService,
+		masterRecovery:          recoveryService,
+		masterDominanFactor:     dominantFactorService,
+		masterXOL:               xolService,
+		masterPenyebabKerugian:  causeOfLossService,
+		masterMasking:           maskingService,
+		menu:                    menuService,
+		inboxAutoClaim:          autoClaimService,
+		inboxXOL:                inboxXOLService,
+		inboxClaimTreatyProp:    claimTreatyPropService,
+		inboxClaimTreatyNonProp: claimTreatyNonPropService,
+		inboxProgressClaim:      inboxProgressClaimService,
+		inboxLaporanKlaim:       claimReportService,
+		readyAliases:            store.readyAliases,
+		close:                   store.close,
 	}, nil
 }
 
@@ -1396,6 +1463,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxclaimtreatypropsql.NewRepo(conn), nil
 		}
 
+		store.claimTreatyNonPropSelector = func(
+			alias string,
+		) (inboxclaimtreatynonprop.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxclaimtreatynonpropsql.NewRepo(conn), nil
+		}
+
 		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -1454,6 +1531,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
+		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 	}
 
@@ -2116,6 +2194,39 @@ func claimTreatyPropSelectorMemory(primaryAlias string) inboxclaimtreatyprop.Rep
 			return existing, nil
 		}
 		fresh := inboxclaimtreatypropmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// claimTreatyNonPropSelectorMemory menyusun penyimpanan Inbox Claim Treaty Non Prop di
+// memori; alasannya sama dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isi contohnya mencakup KEEMPAT penyaring layar ini sekaligus: penugasan milik dua petugas
+// berbeda, antrean teknik, satu baris yang nomor polisnya belum terbit, satu baris
+// ber-awalan `CLMP-` milik layar saudaranya, dan satu baris ber-awalan `KMTNP-`. Dua yang
+// terakhir yang membuktikan penyaring awalan tidak mencampur kedua layar treaty — lihat
+// inboxclaimtreatynonprop/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func claimTreatyNonPropSelectorMemory(
+	primaryAlias string,
+) inboxclaimtreatynonprop.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxclaimtreatynonprop.Repo{}
+
+	return func(alias string) (inboxclaimtreatynonprop.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxclaimtreatynonpropmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}
