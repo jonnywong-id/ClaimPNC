@@ -4818,8 +4818,6 @@ utuh.
 Pelajarannya: `git stash` bukan alat pemeriksaan. Pertanyaan yang sedang dijawab — "apakah
 berkas ini berubah?" — sudah terjawab oleh `git diff --stat`, yang tidak menyentuh working
 tree sama sekali. Alat yang mengubah keadaan tidak boleh dipakai untuk membaca keadaan.
-<<<<<<< Updated upstream
-=======
 
 ---
 
@@ -5842,3 +5840,5 @@ alih-alih tombol keputusan — memang murni internal modul itu.
 `eslint` tetap tidak dijalankan: repo ini masih **tidak punya** `eslint.config.*`. Utang yang
 sama sudah dicatat pada §34.5 dan belum berubah.
 >>>>>>> Stashed changes
+=======
+>>>>>>> master

@@ -781,8 +781,6 @@ membuat tipe acuannya bernama `PartType`, bukan `Type`.
 | `MaxNameLength` dkk | 6 angka | asumsi (`R-08`) | `TestLengthLimitsAreTheOnesTheFormRepeats` |
 | `PAGE_SIZE` | 30 | `pyPageSize` ketiga section tab | — (nilai layar, bukan komponen) |
 | `MaxPrice` | 100 miliar | penjaring salah ketik, bukan aturan bisnis | `TestCheckPrice` |
-<<<<<<< Updated upstream
-=======
 
 ---
 
@@ -1237,4 +1235,3 @@ Kunci petanya mengikuti basis data; rutenya mengikuti nama bisnis.
 | `status_tidak_dikenal` | status di luar 0/1/2 — 422 |
 | `tidak_ditemukan` | baris yang dibuka tidak ada — 404 |
 | `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field yang tidak dikenal — 400 |
->>>>>>> Stashed changes

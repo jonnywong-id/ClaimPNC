@@ -45,6 +45,44 @@ type Props<T> = {
   emptyMessage?: string
 
   /**
+   * Menyerahkan pencarian dan pengurutan ke PEMANGGIL, bukan dikerjakan komponen ini.
+   *
+   * Dipakai layar yang datanya dipaginasi server — inbox dan laporan. Pada layar seperti
+   * itu, menyaring dan mengurutkan di peramban hanya menyentuh halaman yang sedang
+   * terbuka, sehingga hasilnya BOHONG: pengguna mencari sesuatu yang ada di halaman tiga
+   * dan diberi tahu bahwa ia tidak ada.
+   *
+   * Saat prop ini diisi, kotak cari menjadi terkendali pemanggil dan komponen ini tidak
+   * menyaring apa pun. Pengurutan ikut dimatikan dengan alasan yang sama — mengurutkan
+   * satu halaman dari sepuluh bukan pengurutan.
+   *
+   * Dibiarkan kosong pada layar master, tempat seluruh baris memang sudah di tangan.
+   */
+  serverSearch?:
+    | {
+        value: string
+        onChange: (value: string) => void
+        /** Banyaknya baris yang cocok di server, untuk keterangan di bawah kotak cari. */
+        matchCount?: number | undefined
+      }
+    | undefined
+
+  /**
+   * Menyembunyikan kotak cari bawaan.
+   *
+   * Dipakai layar yang sudah punya formulir pencariannya sendiri di atas tabel — View
+   * History Claim adalah yang pertama, dan formulirnya berupa tipe pencarian beserta
+   * isian yang bergantian mengikutinya, bukan satu kata kunci bebas.
+   *
+   * Tanpa prop ini, layar seperti itu menampilkan DUA kotak pencarian yang mencari hal
+   * berbeda: yang di atas menembak basis data, yang di dalam tabel hanya menyaring
+   * halaman yang sedang terbuka. Pengguna tidak punya cara membedakannya.
+   *
+   * Nilai bawaannya `false`, sehingga seluruh layar yang sudah ada tidak berubah.
+   */
+  hideSearch?: boolean
+
+  /**
    * Banyaknya baris per halaman. Tidak diisi berarti **tanpa paginasi** — seluruh baris
    * digambar sekaligus.
    *
@@ -146,6 +184,14 @@ export function pageWindow(current: number, total: number): (number | 'sela')[] 
  *
  * Layar yang datanya besar — inbox dan laporan — TIDAK boleh memakai penyaringan ini;
  * mereka menuntut paginasi keyset dari server, dan itu lingkup `TKT-U2-001`.
+ *
+ * Untuk itulah prop `serverSearch` ada: saat ia diisi, komponen ini berhenti menyaring dan
+ * berhenti mengurutkan, dan kotak carinya menjadi milik pemanggil. Layar Pelaporan Klaim
+ * adalah pemakai pertamanya.
+ *
+ * Yang dipilih di sini adalah satu prop opsional, bukan tabel kedua. Tabel kedua akan
+ * membatalkan seluruh alasan komponen ini ada — dan membatalkannya pada modul bisnis
+ * pertama yang membutuhkannya.
  */
 export function DataTable<T>({
   columns,
@@ -158,13 +204,24 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  serverSearch,
+  hideSearch = false,
   pageSize,
 }: Props<T>) {
-  const [query, setQuery] = useState('')
+  const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
   const [page, setPage] = useState(1)
 
+  const onServer = serverSearch !== undefined
+  const query = serverSearch ? serverSearch.value : localQuery
+  const setQuery = serverSearch ? serverSearch.onChange : setLocalQuery
+
   const visible = useMemo(() => {
+    // Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
+    // sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
+    // terbuka.
+    if (onServer) return rows
+
     const word = query.trim().toLowerCase()
     const filtered = word
       ? rows.filter((b) => columns.some((k) => k.value(b).toLowerCase().includes(word)))
@@ -184,7 +241,7 @@ export function DataTable<T>({
       })
       return sort.direction === 'asc' ? comparison : -comparison
     })
-  }, [rows, columns, query, sort])
+  }, [rows, columns, query, sort, onServer])
 
   function toggleSort(key: string) {
     setSort((previous) => {
@@ -237,43 +294,47 @@ export function DataTable<T>({
         </header>
       )}
 
-      <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
-        <label htmlFor="tabel-cari" className="sr-only">
-          {searchLabel}
-        </label>
-        <div className="relative sm:max-w-sm">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
-          >
-            <SearchIcon className="h-4 w-4" />
-          </span>
-          <input
-            id="tabel-cari"
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
-              // daftar lama hampir pasti tidak ada pada daftar baru.
-              setPage(1)
-            }}
-            placeholder={searchLabel}
-            className={[
-              'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-              'text-sm text-slate-900 placeholder:text-slate-400',
-              'transition-[border-color,box-shadow] duration-150 ease-halus',
-              'hover:border-slate-400',
-              'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-            ].join(' ')}
-          />
+      {!hideSearch && (
+        <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
+          <label htmlFor="tabel-cari" className="sr-only">
+            {searchLabel}
+          </label>
+          <div className="relative sm:max-w-sm">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </span>
+            <input
+              id="tabel-cari"
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
+                // daftar lama hampir pasti tidak ada pada daftar baru.
+                setPage(1)
+              }}
+              placeholder={searchLabel}
+              className={[
+                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
+                'text-sm text-slate-900 placeholder:text-slate-400',
+                'transition-[border-color,box-shadow] duration-150 ease-halus',
+                'hover:border-slate-400',
+                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
+              ].join(' ')}
+            />
+          </div>
+          {hasSearch && (
+            <p className="mt-2 text-xs text-slate-600" role="status">
+              {serverSearch
+                ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
+                : `${visible.length} dari ${rows.length} baris cocok.`}
+            </p>
+          )}
         </div>
-        {hasSearch && (
-          <p className="mt-2 text-xs text-slate-600" role="status">
-            {visible.length} dari {rows.length} baris cocok.
-          </p>
-        )}
-      </div>
+      )}
 
       {error ? (
         <div className="p-5">{error}</div>
@@ -299,7 +360,7 @@ export function DataTable<T>({
                     scope="col"
                     style={k.width ? { width: k.width } : undefined}
                     aria-sort={
-                      sort?.key === k.key
+                      !onServer && sort?.key === k.key
                         ? sort.direction === 'asc'
                           ? 'ascending'
                           : 'descending'
@@ -310,7 +371,12 @@ export function DataTable<T>({
                       k.alignRight ? 'text-right' : '',
                     ].join(' ')}
                   >
-                    {k.noSort ? (
+                    {/*
+                      Pengurutan ikut dimatikan saat pencarian dikerjakan server:
+                      mengurutkan satu halaman dari sepuluh bukan pengurutan, dan panah
+                      yang muncul menjanjikan sesuatu yang tidak dilakukannya.
+                    */}
+                    {k.noSort || onServer ? (
                       k.title
                     ) : (
                       <button

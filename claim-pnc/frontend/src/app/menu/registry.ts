@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 70 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 62 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -101,6 +101,13 @@ export const MENU_ROUTES: Record<string, string> = {
   // Satu-satunya master yang seluruh isinya tinggal di SATU kolom JSONDATA: `M_SUPPLIER`
   // hanya punya ID, OLDID, dan JSONDATA.
   MasterSupplier: '/master/supplier',
+
+  // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
+  InboxRCVApp_Harness: '/pelaporan-klaim',
+
+  // MENU_ID 76 "View History Claim". Layar pencarian riwayat klaim, bukan inbox —
+  // pembedaannya ditetapkan `D-79` dan menentukan modul pemiliknya.
+  PNCSearchKlaim: '/riwayat-klaim',
 }
 
 /**

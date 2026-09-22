@@ -18,6 +18,8 @@ import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
 import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
 import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
+import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -293,6 +295,42 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimStatusPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Pelaporan Klaim — modul proses klaim yang pertama, menggantikan harness
+        `InboxRCVApp_Harness` yang di menu Pega berjudul "Inbox Laporan Klaim".
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
+        sistem lama membatasinya pada tujuh peran lewat When rule `IsReceivePNC` — adalah
+        `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/pelaporan-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        View History Claim — pencarian riwayat klaim, menggantikan harness
+        `PNCSearchKlaim` (`MENU_ID 76`).
+
+        Selain penjaga sesi, layar ini dijaga GERBANG PROTEKSI DATA di server: pengguna
+        wajib terdaftar di Master Proteksi Data, dan satu jatah pencarian terpakai setiap
+        kali layar dibuka. Penjaga di sini tetap sekadar kenyamanan tampilan.
+      */}
+      <Route
+        path="/riwayat-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimHistoryPage />
             </Protected>
           </SessionGuard>
         }

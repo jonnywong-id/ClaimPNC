@@ -667,6 +667,119 @@ export type ClaimStatusResponse = {
 }
 
 /**
+ * Posisi sebuah laporan klaim dalam perjalanannya menjadi klaim.
+ *
+ * Tahap DIHITUNG server dari isi laporan, tidak disimpan sebagai kolom — sama seperti
+ * sistem lama menurunkannya dari kombinasi `PNCCASEID` dan `STATUSLOCK`. Layar TIDAK
+ * menghitungnya sendiri: aturan yang hidup di dua tempat akan berselisih pada perubahan
+ * berikutnya.
+ */
+export const ReportStage = {
+  notTransferred: 'BELUM_TRANSFER',
+  notRegistered: 'BELUM_REGISTRASI',
+  registered: 'SUDAH_REGISTRASI',
+  accepted: 'SUDAH_AKSEPTASI',
+  rejected: 'DITOLAK',
+} as const
+
+export type ReportStage = (typeof ReportStage)[keyof typeof ReportStage]
+
+/**
+ * Satu laporan klaim — laporan kerugian yang masuk sebelum klaim diregistrasi.
+ *
+ * Menggantikan case `ASM-FW-GCNMFW-Work-ReceiveDocument`, yang di menu portal Pega
+ * berjudul **"Inbox Laporan Klaim"**.
+ */
+export type ClaimReport = {
+  nomor: string
+
+  nama_pelapor: string
+  email_pengirim: string
+  telepon_pengirim: string
+  nama_kurir: string
+  subjek_email: string
+
+  /** Polis dan tertanggung SEBAGAIMANA DISEBUT PELAPOR — bukan snapshot polis. */
+  nomor_polis: string
+  nama_tertanggung: string
+  email_tertanggung: string
+  kode_bisnis: string
+  group_panel: string
+  nomor_referensi: string
+
+  /** Tanggal kalender, `YYYY-MM-DD`. Kosong berarti belum diisi. */
+  tanggal_kejadian: string
+  lokasi_kejadian: string
+  kronologi: string
+  rincian_kerusakan: string
+  sim_pengendara: string
+  /** Teks desimal, bukan angka — presisi penuh tanpa pembulatan floating point. */
+  nilai_estimasi: string
+  tipe_klaim: string
+
+  jumlah_dokumen: number
+  tanggal_terima_dokumen: string
+
+  nomor_klaim: string
+  ditransfer: boolean
+  /** Waktu peristiwa, RFC 3339 UTC. Kosong berarti belum terjadi. */
+  tanggal_transfer: string
+  tanggal_registrasi: string
+  alasan_belum_transfer: string
+  catatan_belum_registrasi: string
+
+  /** Dihitung server dari isi laporan. Layar tidak menghitungnya sendiri. */
+  tahap: string
+  tahap_label: string
+
+  /** Dihitung server dari aturan yang sama yang ditegakkan usecase. */
+  dapat_ditransfer: boolean
+  dapat_diubah: boolean
+
+  kode_cabang: string
+  diinput_oleh: string
+  diinput_pada: string
+  diubah_pada: string
+}
+
+/** Jumlah laporan pada satu tahap, untuk lencana di atas tabnya. */
+export type StageSummary = {
+  tahap: string
+  label: string
+  jumlah: number
+}
+
+export type ClaimReportListResponse = {
+  laporan: ClaimReport[]
+  /** Banyaknya baris yang cocok SEBELUM dipotong paginasi. */
+  jumlah: number
+  batas: number
+  lewati: number
+  /** Selalu memuat kelima tahap, termasuk yang jumlahnya nol. */
+  ringkasan: StageSummary[]
+}
+
+export type ClaimReportResponse = {
+  laporan: ClaimReport
+}
+
+/**
+ * Kode galat modul Pelaporan Klaim.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat
+ * seluruh aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const ClaimReportErrorCode = {
+  notFound: 'laporan_klaim_tidak_ditemukan',
+  alreadyTransferred: 'laporan_sudah_ditransfer',
+  alreadyRegistered: 'laporan_sudah_diregistrasi',
+  numberTaken: 'nomor_laporan_sudah_dipakai',
+} as const
+
+export type ClaimReportErrorCode =
+  (typeof ClaimReportErrorCode)[keyof typeof ClaimReportErrorCode]
+
+/**
  * Satu aturan yang dilanggar beserta kolom yang melanggarnya.
  *
  * Kedua nama kunci ada dan keduanya opsional, karena kedua modul yang memakai bentuk

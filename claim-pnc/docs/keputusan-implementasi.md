@@ -4137,14 +4137,14 @@ Seluruhnya **19 uji**, naik dari 18; backend tidak tersentuh.
 
 ---
 
-## 30. Modul Master Sparepart (2026-09-20, sesi keenam belas)
+## 32. Modul Master Sparepart (2026-09-20, sesi keenam belas)
 
 Master ketiga dari keluarga alat berat, setelah Master Bengkel (§21) dan Master Panel (§22).
 Ketiganya berbagi satu activity persetujuan yang sama di Pega — `SetApprovalAllMaster` —
 dibedakan hanya oleh nilai yang ditulis ke `InputBengkel.ALASAN_STS_BGKL`, yang untuk modul
 ini bernilai `"M_SPAREPART_HE"`.
 
-### 30.1 Empat pertanyaan yang diajukan, dan jawabannya
+### 32.1 Empat pertanyaan yang diajukan, dan jawabannya
 
 | # | Pertanyaan | Jawaban Work Owner |
 |---|---|---|
@@ -4188,7 +4188,7 @@ menghapus tiga tombol unggahnya. Di sini ia memilih "seperti aplikasi PEGA", seh
 tombolnya **digambar dalam keadaan mati** beserta keterangan kenapa. Perbedaan perlakuan
 antara dua layar yang berdekatan itu disengaja, bukan kelalaian.
 
-### 30.2 Empat hal yang membedakannya dari Master Panel
+### 32.2 Empat hal yang membedakannya dari Master Panel
 
 | | Master Panel | Master Sparepart |
 |---|---|---|
@@ -4208,7 +4208,7 @@ Panel yang tidak. Di sana daftarnya konstanta yang ditanam di activity Pega; di 
 dibaca dari `GCNM_M_SPAREPART_CATEGORY` dan `GCNM_M_SPAREPART_TYPE` milik entitas — dan
 menyajikan daftar satu entitas kepada entitas lain adalah kebocoran yang `R-20` cegah.
 
-### 30.3 Dua cacat warisan yang TIDAK dibawa
+### 32.3 Dua cacat warisan yang TIDAK dibawa
 
 **Sel `.TELP_BENGKEL` di dalam grid Sparepart.** Satu sel salin-tempel dari grid Master
 Bengkel, menunjuk properti yang tidak ada di `SPAREPART_HE`, jadi selalu kosong. Menggambar
@@ -4225,7 +4225,7 @@ properti `.CaseID` untuk nama, `.City` untuk nomor, dan `.Country` untuk kode. K
 acuan pun mengaliaskan `PART_CATEGORY_ID` menjadi `"CityID"` dan `PART_CATEGORY_NAME`
 menjadi `"City"`. Seluruhnya bentuk utang yang `03-CURRENT-ARCHITECTURE.md` §4.2 catat.
 
-### 30.4 Satu perilaku ganjil yang SENGAJA direplikasi
+### 32.4 Satu perilaku ganjil yang SENGAJA direplikasi
 
 `TGL_UPDATE_HARGA` distempel pada **setiap** penyimpanan yang harganya terisi, bukan hanya
 saat harganya berubah. Itu meniru `Activity/UpdateSparepartHE_act` apa adanya: preconditionnya
@@ -4237,7 +4237,7 @@ sparepartnya. Itu ganjil, dan ia **tidak diperbaiki**: memperbaikinya berarti me
 ke daftar perbaikan eksplisit `P-5`, dan daftar itu milik `D-49` — keputusan Work Owner, bukan
 tafsiran modul.
 
-### 30.5 Tiga selisih yang DIRENCANAKAN terhadap sistem lama
+### 32.5 Tiga selisih yang DIRENCANAKAN terhadap sistem lama
 
 Ketiganya menolak isian yang di sistem lama diterima. Baris lama yang sudah memuat nilai
 seperti itu tetap **dibaca apa adanya**; penolakan hanya terjadi saat barisnya disimpan ulang.
@@ -4253,7 +4253,7 @@ Ditambah satu yang lebih halus: ketiga rule validasi Pega hanya meng-`UPPER` tan
 sehingga baris yang tersimpan dengan spasi di ujung lolos sebagai nilai yang berbeda. Kueri
 di sini memakai `UPPER(TRIM(...))`.
 
-### 30.6 Asumsi yang disadari, beserta cara memeriksanya
+### 32.6 Asumsi yang disadari, beserta cara memeriksanya
 
 | Asumsi | Dasarnya | Cara memeriksanya |
 |---|---|---|
@@ -4266,7 +4266,7 @@ Akhiran `_BU` pada nama tabel JSON Pega **tidak disebut artinya di mana pun** da
 Bila `-periksa` melaporkan jumlah baris keduanya berbeda, jalur tulis tidak boleh diaktifkan
 di produksi sebelum DBA memastikan mana yang menjadi sumbernya.
 
-### 30.7 Catatan lingkup
+### 32.7 Catatan lingkup
 
 `D-34` menyatakan area Bengkel, Sparepart, dan Supplier dikeluarkan dari lingkup migrasi.
 Keputusan itu sudah dilangkahi dalam praktik: Master Bengkel (§21), Master Panel (§22), dan
@@ -4277,8 +4277,6 @@ Pencabutan `D-34` karena itu **tersirat, bukan tertulis**. Bila kelak ada yang m
 Decision Log tanpa membaca dokumen ini, ia akan menemukan larangan yang sudah tidak berlaku.
 Keputusan baru yang menyebut `D-34` sebagai disupersede layak ditulis — dan itu milik Work
 Owner, bukan tafsiran modul.
-<<<<<<< Updated upstream
-=======
 
 ---
 
@@ -5256,4 +5254,3 @@ berbahasa Inggris sesuai `D-80`.
 | Jalur tanpa `/v1` | Kontrak yang ada belum memakainya |
 | Modus memori: dropdown dilayani salinan acuan sendiri | Menyatukannya menuntut satu modul mengimpor penyimpanan modul lain — tautan yang tidak ada di produksi |
 | `eslint` tidak dijalankan | Repo ini masih tidak punya `eslint.config.*` |
->>>>>>> Stashed changes
