@@ -2579,3 +2579,73 @@ sesudah — sesudahnya berarti klaim nyata sudah tersebar di dua tabel.
 
 > Tidak ada berkas `registrasi` maupun migrasinya yang disentuh sesi ini. Temuan ini
 > dilaporkan, bukan diperbaiki.
+
+### 18.26 Sebelas tab layar rujukan — hanya satu yang dapat bersumber dari `T_CLAIMLIST_ADMIN` (2026-09-22)
+
+Work Owner menyebut sebelas pilihan yang ada di layar Pega dan meminta sumber datanya
+diarahkan langsung ke `T_CLAIMLIST_ADMIN`. Pemeriksaan ke export **dan ke isi tabelnya**
+menunjukkan sebagian besar tidak dapat.
+
+**Pemetaan tab, dari `Activity/SetClaimPNC-Act.xml`.** Tab dikendalikan satu properti
+`TempVisibility.Email` bernilai 0–10 — sebelas nilai, sejalan dengan sebelas butir yang
+disebut Work Owner. Labelnya terbaca dari `pyStepsDescription` tiap cabang:
+
+| `Email` | `pyStepsDescription` | Label layar |
+|---|---|---|
+| 0 | dokumen LENGKAP | Complete documents |
+| 1 | dokumen BELUM LENGKAP | Documents not complete |
+| 2 | os loss adjuster | Loss Adjuster |
+| 3 | count temporary close · ALL DATA | (nilai bawaan) |
+| 4 | internal surveyor | Internal Surveyor |
+| 5 · 6 · 7 | Komunikasi · "yang tanya belum di jawab" | Not Answered · Replied… |
+| 8 | temporary close | Temporary Close |
+| 9 | Deadline To Temporary Close | Deadline To Temporary Close |
+| 10 | dokumen cabang | — |
+
+**Apakah `T_CLAIMLIST_ADMIN` dapat menjawabnya** — diperiksa atas 1.014 baris:
+
+| Tab | Kolom yang dibutuhkan | Keadaan |
+|---|---|---|
+| **ALL Case** | — cukup melepas `PYSTATUSWORK NOT IN (…)` | ✅ **dapat** |
+| Complete / not complete documents | penanda kelengkapan dokumen | ❌ tidak ada kolomnya |
+| Loss Adjuster · Internal Surveyor | `REQUESTSURVEY_1` | ❌ **100% NULL** pada 1.014 baris |
+| Temporary Close · Deadline | penanda temporary close | ❌ tidak ada |
+| Not Answered · Replied (3 tab) | riwayat komunikasi | ❌ tabel lain |
+
+Tiga sub-section yang dirujuk tab — `InboxPICTeknik`, `_1`, `_2` — **hilang dari export**
+(`R-16`), sehingga penyaringnya pun tidak dapat dibaca dari sana.
+
+**Kesimpulan:** mengarahkan sumbernya ke `T_CLAIMLIST_ADMIN` hanya menyelesaikan **ALL
+Case**. Sepuluh sisanya menuntut tabel lain, dan dua di antaranya (`Not Replied From
+Receiver`, `Replied From Receiver`) **nol kemunculan di seluruh export**.
+
+### 18.27 `STATUSLOCK_1` kosong di SELURUH tabel — kolom "Status ASM" akan selalu hampa
+
+Ditemukan saat memeriksa kolom kandidat, dan ini lebih berdampak daripada persoalan tab:
+
+```
+TOTAL_BARIS 1014 · STATUSLOCK_TERISI 0
+```
+
+Kolom yang dipakai modul ini untuk "Status ASM" **tidak pernah diisi**. Bukan kosong pada
+baris uji Work Owner saja — kosong pada **seluruh 1.014 baris**.
+
+Ini menutup pertanyaan terbuka §18.22 dengan jawaban yang tidak diduga: bukan "kode atau
+label", melainkan **tidak keduanya**. Dugaan bahwa tabel datar sudah menyelesaikan pencarian
+`v_sts_claim` di muka **gugur** — ia hanya menyediakan kolomnya, tanpa mengisinya.
+
+**Akibatnya:** kolom "Status ASM" akan selalu tampil sebagai tanda hubung. Tampilannya tidak
+rusak — keputusan §18.22 menampilkannya apa adanya justru menyelamatkan keadaan ini — tetapi
+kolomnya tidak membawa informasi apa pun.
+
+**Tiga kemungkinan, belum diputuskan (pemilik: Work Owner + DBA):**
+
+1. Kolomnya memang belum diisi proses pengisi tabel, dan akan terisi kelak
+2. Statusnya harus diambil dari master (`M_STS_CLAIM`, 33 kode) lewat kolom lain
+3. Layar tidak memerlukan kolom itu, dan ia dihapus
+
+Sampai dijawab, kolomnya **dipertahankan** — menghapusnya adalah perubahan yang lebih sulit
+dibalik daripada membiarkan satu kolom kosong.
+
+Catatan pendukung: `NOTREGISTNOTE_1` dan `REQUESTSURVEY_1` juga **0% terisi**, sedangkan
+`ENDDATE` 646, `STATUSPROGRESS2` 826, `REINSURER` 266, `KURIR` 112 dari 1.014.

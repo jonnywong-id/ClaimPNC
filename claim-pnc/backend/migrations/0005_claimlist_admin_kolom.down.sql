@@ -1,0 +1,53 @@
+-- 0005 down — membatalkan penambahan kolom T_CLAIMLIST_ADMIN
+--
+-- ============================================================================
+-- MENJALANKAN BERKAS INI MENGHAPUS DATA, BUKAN HANYA KOLOM.
+-- ============================================================================
+--
+-- `DROP COLUMN` membuang isinya sekaligus. Bila proses pengisi sudah mulai
+-- menulis kolom-kolom ini, menjalankan down berarti kehilangan apa yang sudah
+-- terisi — dan `D-66` menetapkan tidak ada penghapusan fisik data bernilai
+-- bisnis.
+--
+-- Karena itu down hanya sah dipakai bila kolomnya BELUM PERNAH DIISI, yaitu
+-- ketika 0005 baru dijalankan dan langsung dibatalkan.
+--
+-- Bila sudah terisi: jangan jalankan berkas ini. Hentikan pemakaian kolomnya
+-- lebih dulu, lalu hapus pada rilis berikutnya (`P-4`, penghapusan dua tahap).
+--
+-- Urutannya kebalikan dari up: index lebih dulu, lalu kolom.
+
+DROP INDEX POOLDATA.IX_CLAIMLIST_DEADLINE;
+DROP INDEX POOLDATA.IX_CLAIMLIST_STATUSCLAIM;
+DROP INDEX POOLDATA.IX_CLAIMLIST_SURVEYORTYPE;
+
+-- Tahap 2
+ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN DROP (
+    PXINSNAME, CASEID, CASEID_1, REFNO_1, BOOKNO_1, IDADJUSTCLAIM_1,
+    SOURCEOFBUSINESS, BUSINESSTYPE, TYPEPROTECTION, TYPEOFCLAIM_1, TKA_1,
+    EXGRATIA_1, MSIG_1,
+    PNCSTATUS_1, STATUSCASE_1, STATUSKLAIM_1, ASMSTATUS_1,
+    RECEIVEDDATE_1, DATEOFCOMITEE_1, DATEOFSENTDOCUMENT_1, CLOSECLAIMDATE_1,
+    APPOINTMENTDATE_1, RESCHEDULEDATE_1, SURVEYDATE_1, LAMAKLAIM_1, INPUTDATE,
+    RESCHEDULELOCATION_1, CLOSECLAIMNOTE_1, NUMBEROFDOCUMENT_1, KETERANGAN_1,
+    ADJUSTERACCEPT_1,
+    RCL_PUCL_1, PUCLAPPROVE_1, TANGGALKIRIMPUCL_1, TANGGALCETAKDOKUMENPUCL_1,
+    KOMENTARPUCL_1, KOMENTARANALISATOR_1,
+    PXSAVEDATETIME, PXUPDATEDATETIME, PXUPDATEOPERATOR, PXUPDATEOPNAME,
+    PYLABEL, PYORIGUSERID, PYRESOLVEDUSERID, PYRESOLVEDTIMESTAMP,
+    PYREOPENTIMESTAMP, PYREOPENCOUNT,
+    PXINSNAME_ASSIGN, PXSAVEDATETIME_ASSIGN, PXUPDATEDATETIME_ASSIGN,
+    PXUPDATEOPERATOR_ASSIGN, PXUPDATEOPNAME_ASSIGN, PYLABEL_ASSIGN,
+    PXASSIGNEDUSERNAME, PXTASKNAME, PYERRORMESSAGE
+);
+
+-- Tahap 1
+ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN DROP (
+    DOKUMENLENGKAP_1, ISPENDINGCLOSE, SURVEYORTYPE_1, ADJUSTERPIC_1,
+    ADJUSTERSTATUS_1, STATUSKOMUNIKASI_1, SURVEYORNAME_1, SURVEYORNAMEMARINE_1,
+    TANGGALDOKLENGKAP, STATUSCLAIM_1, PXDEADLINETIME, PXGOALTIME,
+    PYASSIGNMENTSTATUS
+);
+
+-- Tahap 3 tidak perlu dibatalkan — blok up-nya dikomentari dan tidak pernah
+-- dijalankan tanpa keputusan tersendiri.
