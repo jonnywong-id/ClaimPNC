@@ -1259,3 +1259,123 @@ di bawah tabel, dan namanya di kode dibetulkan menjadi `Year`.
 | Antrean persetujuan | `ApprovalItem`, `ApprovalQueue` | satu baris = sekumpulan pemberitahuan |
 | Penyebab Kerugian | `CauseOfLoss` | yang tersimpan DESKRIPSI-nya, bukan kodenya |
 | Kurs tidak tersedia | `RateMissing` | pengganti `RETURN 1` pada function kurs lama |
+
+---
+
+## Tambahan 2026-09-21 — modul Inbox Progress Claim (`inboxprogressclaim`)
+
+Modul ini punya ciri yang **tidak ada di modul mana pun sebelumnya**: dua alias tidak
+sekadar salah arti, melainkan **tertukar satu sama lain**. `CaseID` berisi nomor klaim
+sementara `ClaimNo` berisi nomor polis — persis terbalik dari yang dijanjikan namanya.
+
+### Nama modul
+
+`inboxprogressclaim` di backend, `inbox-progress-claim` di frontend. Ia mengikuti `D-81`:
+nama modulnya diambil dari nama yang dipakai Work Owner dan tertulis di menu
+(`MENU_ID 65` "Inbox Progress Claim"), sementara isinya berbahasa Inggris.
+
+### Kode bagian — kata, bukan angka
+
+Berbeda dari Inbox Admin, di sini tidak ada nomor warisan yang perlu dipertahankan. Layar
+lama **tidak punya pemilih bagian sama sekali** — kelima bagiannya ditumpuk dan
+masing-masing memuat datanya sendiri.
+
+| Kode | Bagian | Activity lama | Kueri lama |
+|---|---|---|---|
+| `outstanding` | Outstanding | `GetDataProgressClaim` | `DataProgressClaim` + `GcnmCountProgressClaim_SQL` |
+| `next-fu` | Next Follow Up | `GetNextFUdata_act` | sama + saringan jatuh tempo |
+| `per-pic` | Progress Klaim per PIC | `GetProgressPerPIC` | `GetProgressPIC` |
+| `evaluasi` | Evaluasi Progress Klaim | `Refreshpage_act` | **tidak ada** |
+
+Bagian "Approval Progress Klaim" **tidak dibangun** (keputusan Work Owner 2026-09-21): ia
+satu-satunya bagian yang menulis.
+
+### Tiga lapis nama, dan ketiganya sengaja berbeda
+
+Layar ini satu-satunya tempat ketiga lapis itu **tidak sama**, dan itu keputusan sadar:
+
+| Lapis | Contoh | Aturannya |
+|---|---|---|
+| Judul yang dibaca pengguna | `District` | alias Pega apa adanya (Work Owner 2026-09-21, `D-13`) |
+| Nama field JSON | `nama_tertanggung` | Indonesia, menyebut isinya (`D-80` pengecualian kontrak) |
+| Nama di dalam kode | `InsuredName` | Inggris, menyebut isinya (`D-19`, `D-80`) |
+
+Arti sebenarnya ikut dikirim server sebagai `kolom[].keterangan`, dan layar menggambarnya
+sebagai tooltip kolom. Tanpa itu, keputusan memakai alias apa adanya akan membuat layar
+baru sama tidak terbacanya dengan layar lama.
+
+### Alias grid Pega → arti sebenarnya → nama di kode
+
+**Bagian Outstanding dan Next Follow Up:**
+
+| Alias Pega | Kolom basis data | Arti bagi pengguna | Nama di kode | Field JSON |
+|---|---|---|---|---|
+| `CaseID` ⚠ | `a.NOKLAIM` | Nomor Klaim | `ClaimNumber` | `no_klaim` |
+| `ClaimNo` ⚠⚠ | `a.NOPOLIS` | **Nomor Polis** | `PolicyNumber` | `no_polis` |
+| `NoKTP` ⚠ | `a.NOPOLIS` | nomor polis, KEMBAR | tidak dibawa | — |
+| `District` ⚠ | `T_CLAIM_PNC.QQNAME` | Nama Tertanggung | `InsuredName` | `nama_tertanggung` |
+| `DateForAging` ⚠ | `a.TGLKLAIM` | Tanggal Registrasi | `RegisterDate` | `tanggal_registrasi` |
+| `DateOfLoss` | `a.DATEOFLOSS` | Tanggal Kejadian | `LossDate` | `tanggal_kejadian` |
+| `Country` ⚠ | `a.LGB_NOTE` | Catatan LGB | `LGBNote` | `catatan_lgb` |
+| `UserTeknis` ⚠ | `a.PIC` | PIC Klaim | `TechnicalPIC` | `pic_klaim` |
+| `City` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'POSISI')` | Posisi berjalan | `Position.Name` | `posisi` |
+| `CityID` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'sts_prg1')` | Status Progres 1 | `Position.Status1` | `status_progres_1` |
+| `CountryID` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'sts_prg2')` | Status Progres 2 | `Position.Status2` | `status_progres_2` |
+| `AnalystTransferDate` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'nextfu')` | Next Follow Up | `Position.NextFollowUp` | `next_follow_up` |
+| `KomiteApproveDate` ⚠ | `MIN(GCNM_PROGRESS_CLAIM.NEXT_FOLLOWUP)` | Follow Up terawal | `EarliestFollowUp` | `follow_up_terawal` |
+| `TanggalAnalystSendRCL` ⚠ | `a.TGL_PROSES` | Tanggal Proses | `ProcessDate` | `tanggal_proses` |
+| `ProdKe` | `a.PROD_KE` | Prod ke- | `ProdKe` | `prod_ke` |
+
+⚠⚠ menandai alias yang **tertukar** dengan alias lain di grid yang sama.
+
+`KomiteApproveDate` layak diperhatikan khusus: namanya menyebut persetujuan komite, padahal
+ia tidak berhubungan dengan komite sama sekali — isinya tenggat tindak lanjut paling awal
+pada klaim itu.
+
+**Bagian Progress Klaim per PIC** — empat dari enam aliasnya menyebut atribut klaim padahal
+seluruhnya hasil `COUNT`:
+
+| Alias Pega | Arti bagi pengguna | Nama di kode | Field JSON |
+|---|---|---|---|
+| `PIC` | Nama petugas | `PIC` | `pic` |
+| `NOKLAIM` ⚠ | Jumlah klaim yang ditangani | `ClaimCount` | `jumlah_klaim` |
+| `NOAKSEP` ⚠ | Jumlah pembaruan progres, di luar `AUTO%` | `UpdateCount` | `jumlah_pembaruan` |
+| `REINSURER` ⚠ | Tindak lanjut jatuh tempo hari ini | `DueTodayCount` | `jatuh_tempo_hari_ini` |
+| `STSKLAIM` ⚠ | Tindak lanjut tepat waktu | `OnTimeCount` | `tepat_waktu` |
+| `NOPOLIS` ⚠ | Tindak lanjut terlambat | `LateCount` | `terlambat` |
+
+### Nama properti penyaring
+
+| Properti Pega | Isinya | Nama di kode | Parameter query |
+|---|---|---|---|
+| `TempRefresh.ClaimNo` ⚠ | kata kunci pencarian | `Keyword` | `cari` |
+| `TempRefresh.DateOfLoss` | kotak tanggal yang **tidak menyaring apa pun** | tidak dibawa | — |
+| `TempRefresh.Remark` ⚠ | tanggal registrasi AWAL | `From` | `dari` |
+| `TempRefresh.City` ⚠ | tanggal registrasi AKHIR | `To` | `sampai` |
+| `tempgetpic.MCL_NAME` ⚠ | potongan SQL penyaring | tidak dibawa — diganti bind | — |
+| `tempgetpic.CaseID` ⚠ | potongan SQL lini bisnis yang **tidak pernah dibaca** | tidak dibawa | — |
+| `TempCabang.District` ⚠ | potongan SQL penyaring cabang | belum dibawa (`R-03`) | — |
+| `TempBisnis.GROUP_PANEL` | potongan SQL lini bisnis yang benar-benar dipakai | `Business` | `bisnis` |
+| `TempBisnis.NOAKSEP` ⚠ | potongan SQL **rentang tanggal**, bukan nomor akseptasi | `From`/`To` | `dari`/`sampai` |
+| `OperatorID.pyPosition` ⚠ | lini bisnis petugas, bukan jabatannya | belum ada padanannya | — |
+
+`TempRefresh.Remark` dan `TempRefresh.City` layak dicatat: keduanya adalah **sepasang batas
+tanggal**, dan tidak ada satu pun pada namanya yang menyatakan itu.
+
+### Nama tabel yang dibaca
+
+Tidak ada yang dinamai ulang — nama tabel dan kolom milik basis data, pengecualian `D-80`,
+dan perubahannya menempuh `D-63`.
+
+| Tabel | Dipakai untuk |
+|---|---|
+| `POOLDATA.PEGA_DASHBOARDPNC` | tabel ringkasan klaim; sumber utama ketiga bagian |
+| `POOLDATA.T_CLAIM_PNC` | nama tertanggung |
+| `POOLDATA.GCNM_PROGRESS_CLAIM` | riwayat progres dan tenggat tindak lanjut |
+| `POOLDATA.GCNM_PROGRESS_POSISI_PNC` | posisi yang sedang berjalan |
+| `POOLDATA.GCNM_MST_PROGRESS_KLAIM` | master Status Progres 1 |
+| `POOLDATA.GCNM_MST_PROGRESS` | master Status Progres 2 |
+| `POOLDATA.MST_USER_TEKNIK` | daftar petugas per lini bisnis |
+
+Keempat tabel progres itu sudah dimodelkan modul `masterstatusprogres`; modul ini hanya
+membacanya.

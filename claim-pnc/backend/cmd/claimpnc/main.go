@@ -29,6 +29,7 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
+	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastermasking"
@@ -55,6 +56,10 @@ import (
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	inboxautoclaimusecase "claim-pnc/internal/inboxautoclaim/usecase"
+	inboxprogressclaimhttp "claim-pnc/internal/inboxprogressclaim/http"
+	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
+	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
+	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
@@ -338,6 +343,11 @@ func run() error {
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError:    inboxautoclaimhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	surveyorTypeHandler, err := mastertipesurveyorshttp.NewHandler(mastertipesurveyorshttp.Options{
 		Service:       assembly.masterTipeSurveyors,
 		Logger:        logger,
@@ -420,7 +430,7 @@ func run() error {
 	//
 	// Modul ini MEMBACA SAJA (keputusan Work Owner 2026-09-20). Ketiga rute tulisnya ada
 	// tetapi menolak dengan alasan — lihat inboxxolhttp.Mount.
-	xolHandler := inboxxolhttp.NewHandler(inboxxolhttp.Options{
+	inboxXOLHandler := inboxxolhttp.NewHandler(inboxxolhttp.Options{
 		Service: assembly.inboxXOL,
 		GetCaller: func(ctx context.Context) (inboxxolhttp.Caller, bool) {
 			baseCtx, existing := authhttp.CallerFromContext(ctx)
@@ -435,6 +445,26 @@ func run() error {
 		// pemeriksaan portal.
 		FallbackErrorWriter: inboxxolhttp.ErrorWriterFrom(writePortalAwareError),
 	})
+
+	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
+	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
+	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
+	inboxProgressClaimHandler := inboxprogressclaimhttp.NewHandler(
+		inboxprogressclaimhttp.Options{
+			Service: assembly.inboxProgressClaim,
+			GetCaller: func(ctx context.Context) (inboxprogressclaimhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxprogressclaimhttp.Caller{}, false
+				}
+				return inboxprogressclaimhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxprogressclaimhttp.ErrorWriter(writePortalAwareError),
+		})
 
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
@@ -554,6 +584,12 @@ func run() error {
 				// treaty-nya — keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya
 				// satu di antaranya yang boleh menulis.
 				inboxxolhttp.Mount(protected, inboxXOLHandler, activePortalDeps)
+
+				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
+				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
+				// itu menuntut portal, sama seperti Inbox Admin.
+				inboxprogressclaimhttp.Mount(
+					protected, inboxProgressClaimHandler, activePortalDeps)
 			})
 		},
 	})
@@ -643,6 +679,9 @@ type assembly struct {
 	// inboxXOL melayani layar Inbox XOL (`MENU_ID 53`).
 	inboxXOL *inboxxolusecase.Service
 
+	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
+	inboxProgressClaim *inboxprogressclaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -676,6 +715,12 @@ type storage struct {
 	// (`ADR-0030`). Satu repo bersama akan membaca perjanjian satu entitas dari basis
 	// data entitas lain — kebocoran lintas badan hukum yang justru dicegah `R-20`.
 	inboxXOLSelector inboxxol.RepoSelector
+
+	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
+	//
+	// Ia fungsi dengan alasan yang sama: progres klaim satu badan hukum bukan progres
+	// badan hukum lain, dan barisnya memuat nama tertanggung (`ADR-0030`, `R-20`).
+	inboxProgressClaimSelector inboxprogressclaim.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -899,6 +944,20 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
+	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
+	// mengikuti sistem lama yang juga tidak memaginasinya.
+	inboxProgressClaimService, err := inboxprogressclaimusecase.NewService(
+		inboxprogressclaimusecase.Options{
+			RepoSelector: store.inboxProgressClaimSelector,
+			Clock:        clock.System{},
+			Logger:       logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                   service,
 		portal:                 store.portal,
@@ -916,6 +975,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		menu:                   menuService,
 		inboxAutoClaim:         autoClaimService,
 		inboxXOL:               inboxXOLService,
+		inboxProgressClaim:     inboxProgressClaimService,
 		readyAliases:           store.readyAliases,
 		close:                  store.close,
 	}, nil
@@ -1114,12 +1174,18 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		}
 
 		store.autoClaimSelector = func(alias string) (inboxautoclaim.Repo, error) {
-		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
 				return nil, err
 			}
 			return inboxautoclaimsql.NewRepo(conn), nil
+		}
+
+		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
 			return mastertipesurveyorssql.NewRepo(conn), nil
 		}
 		store.surveyorSelector = func(alias string) (mastersurveyors.Repo, error) {
@@ -1186,6 +1252,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxxolsql.NewRepo(conn), nil
 		}
+
+		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxprogressclaimsql.NewRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.accountSelector = accountSelectorMemory(cfg.PrimaryPortal)
@@ -1235,6 +1309,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
+		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -1309,6 +1384,22 @@ func autoClaimSelectorMemory(primaryAlias string) inboxautoclaim.RepoSelector {
 	store := map[string]inboxautoclaim.Repo{}
 
 	return func(alias string) (inboxautoclaim.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxautoclaimmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
 // surveyorTypeSelectorMemory menyusun penyimpanan master tipe surveyor di memori.
 //
 // Bentuknya sama dengan progressStatusSelectorMemory dan alasannya pun sama: satu portal
@@ -1334,7 +1425,6 @@ func surveyorTypeSelectorMemory(primaryAlias string) mastertipesurveyors.RepoSel
 		if existing, already := store[clean]; already {
 			return existing, nil
 		}
-		fresh := inboxautoclaimmemory.NewSampleRepo()
 		fresh := mastertipesurveyorsmemory.NewRepo(mastertipesurveyorsmemory.SampleList()...)
 		store[clean] = fresh
 		return fresh, nil
@@ -1822,6 +1912,33 @@ func inboxXOLSelectorMemory(primaryAlias string) inboxxol.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxxolmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxProgressClaimSelectorMemory menyusun penyimpanan progres klaim di memori;
+// alasannya sama dengan inboxAdminSelectorMemory.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func inboxProgressClaimSelectorMemory(primaryAlias string) inboxprogressclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxprogressclaim.Repo{}
+
+	return func(alias string) (inboxprogressclaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxprogressclaimmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

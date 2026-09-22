@@ -4882,3 +4882,180 @@ kedua belas tabel XOL pernah dilihat isinya** — DDL-nya juga belum ada (`R-08`
 terbukti hanyalah bentuk kuerinya, lewat `query_test.go` yang memeriksa larangan menulis,
 larangan memanggil function basis data, larangan DB Link, disiplin SQL portabel, kesamaan
 kolom antar kueri kembar, dan daftar tabel yang boleh disentuh.
+
+---
+
+## 33. Sesi kedua belas — modul Inbox Progress Claim (2026-09-21)
+
+Menu `MENU_ID 65` "Inbox Progress Claim", pengganti harness `ProgressClaim_Harness`.
+Pemantauan progres klaim yang masih berjalan: sudah sampai posisi mana sebuah klaim, apa
+status progresnya, dan kapan ia harus ditindaklanjuti berikutnya.
+
+### 33.1 Yang dibaca sebelum satu baris kode ditulis
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `Harness/ProgressClaim_Harness-Harness.xml` | pembungkus layar; menunjuk satu section |
+| `Section/ProgressClaim_Section-Section.xml` | **lima** region bertumpuk, kolom grid, tombol |
+| `Activity/GetDataProgressClaim-Act.xml` | region Outstanding — 14 langkah penyaring |
+| `Activity/GetNextFUdata_act-Act.xml` | region Next Follow Up |
+| `Activity/GetProgressPerPIC-Act.xml` | region Progress Klaim per PIC |
+| `Activity/StatusProgress_act11-Act.xml` | aksi baris: membuka klaim |
+| `RDB List/DataProgressClaim-SQL.xml` | kueri grid, berpaginasi `ROW_NUMBER` |
+| `RDB List/GcnmCountProgressClaim_SQL-SQL.xml` | pencacah total baris |
+| `RDB List/GetProgressPIC-SQL.xml` | rekap lima pencacah per PIC |
+| `RDB List/GetIDCabang-SQL.xml` | penyaring cabang — **menembus DB Link `@ASMD`** |
+| `Database/GET_POSISI_PROGRESS_PNC.fnc` | posisi dan status progres per klaim |
+
+### 33.2 Pertanyaan konfirmasi dan jawabannya
+
+Empat pertanyaan diajukan sebelum implementasi dimulai, karena keempatnya mengubah bentuk
+pekerjaan secara material.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Dari lima region, mana yang masuk lingkup | **Outstanding, Next Follow Up, Progress Klaim per PIC, Evaluasi**. Approval dan Input Progress Claim **di luar lingkup** |
+| 2 | Judul kolom tidak ada di export — bagaimana menetapkannya | **Pakai alias Pega apa adanya** |
+| 3 | Dua kontrol terbukti tidak menyaring apa pun | **Direplikasi apa adanya — tampil tetapi mati** |
+| 4 | Definisi lini bisnis grid dan Export bertentangan | **Ikuti versi Export — 4 lini** |
+
+Jawaban 1 menutup satu-satunya jalur tulis layar ini, sehingga modulnya **tidak punya
+operasi tulis sama sekali** — sama seperti Inbox Admin, dan aman terhadap `P-1`.
+
+### 33.3 Tujuh temuan dari pembacaan export
+
+1. **Alias kolom diacak, lebih parah dari Inbox Admin.** Nomor klaim dan nomor polis
+   **tertukar**: `CaseID` berisi `noklaim`, `ClaimNo` berisi `nopolis`. Ditambah `District`
+   yang berisi nama tertanggung dan `KomiteApproveDate` yang tidak berhubungan dengan
+   komite sama sekali.
+2. **`GET_POSISI_PROGRESS_PNC` dipanggil empat kali per baris**, masing-masing mengulang
+   kursor yang sama. Pada satu halaman 15 baris itu 60 pemanggilan. Source-nya **ada** di
+   `Database/`, sehingga `D-02` dapat dijalankan penuh.
+3. **Layar ini benar-benar memaginasi di basis data**, berbeda dari Inbox Admin:
+   `ROW_NUMBER` antara `FirstRow`–`LastRow`, ukuran halaman **15**, dengan kueri `COUNT`
+   terpisah.
+4. **Penyaring cabang menembus DB Link `@ASMD`** — penghalang `R-03` yang sama persis
+   dengan Inbox Admin.
+5. **Dua kontrol di layar tidak menyaring apa pun.** `TempRefresh.DateOfLoss` nol
+   kemunculan di seluruh `RDB List/`; dropdown lini bisnis pada grid menulis ke
+   `tempgetpic.CaseID` yang tidak dibaca kueri mana pun.
+6. **Definisi lini bisnis grid dan Export bertentangan**, dan grid tidak punya TRAVEL.
+7. **Judul kolom tidak dapat dibaca dari export** — seluruh sel ber-`pyHeaderTitle`
+   kosong, dan folder `Property` tidak ikut dikirim.
+
+Ditambah dua hal yang terbawa ke daftar selisih terencana: `addCalendar(...,7,0,0)` yang
+`F-5` larang, dan seluruh penyaring yang dirangkai sebagai teks SQL.
+
+### 33.4 Dua temuan yang muncul saat merancang, bukan saat membaca
+
+**Region "Evaluasi Progress Klaim" ternyata cangkang kosong.** Ia punya judul dan kerangka
+tabel satu baris, tetapi **nol properti terikat dan nol activity pengisi** —
+`Refreshpage_act` hanya penyegar generik. Tidak ada yang dapat dimigrasikan. Ia tetap
+digambar sebagai bagian dengan keterangan apa adanya, karena menghilangkannya akan membuat
+orang mengira modulnya belum selesai.
+
+**`DateForAging` digambar DUA KALI** sebagai dua kolom terpisah pada region Outstanding,
+keduanya terikat `tglklaim`. Sementara `tgl_proses` yang dikembalikan kueri **tidak terikat
+ke satu sel pun**. Dugaan: sel kedua seharusnya menggambar `tgl_proses` dan salah diikat.
+Itu dugaan, bukan bukti — ia dicatat dan diajukan, bukan diam-diam diperbaiki.
+
+### 33.5 Temuan yang mengubah rancangan region per PIC
+
+Penyaring lini bisnis pada rekap per PIC ternyata **bukan dropdown**. Prakondisi keempat
+cabangnya berbunyi `OperatorID.pyPosition == "NONMBU"` dan seterusnya — ia dibaca dari
+**jabatan pada catatan operator Pega**, yang rupanya diisi nama lini bisnis.
+
+Nilai itu **tidak tersedia di sistem baru**: HCC/HCQ mengembalikan jabatan sebenarnya
+(`Placement.PositionName`), bukan lini bisnis. Sampai pemetaan pengguna ke lini bisnis
+menjadi master data (`F-4`), lini bisnis **dipilih pengguna lewat dropdown** dan ditandai
+wajib. Keterbatasan itu dinyatakan di layar.
+
+Temuan kedua di region yang sama: langkah "Progress Claim per User" yang menyusun
+`and a.pic = '<pengguna yang login>'` **tidak punya prakondisi sama sekali**, sehingga
+selalu berjalan. Judulnya menyebut "per PIC", tetapi isinya selalu satu petugas — yang
+sedang membuka layar.
+
+### 33.6 Konflik merge yang sudah ada sebelum sesi ini
+
+`cmd/claimpnc/main.go` dan `check.go` **ter-commit dengan penanda konflik merge yang belum
+diselesaikan** (`<<<<<<< HEAD` … `>>>>>>> Feat-arlexy-Inbox-admin`). Akibatnya paket `cmd`
+**tidak dapat dikompilasi** sejak sebelum sesi ini; `git status` membuktikan kedua berkas
+tidak disentuh siapa pun di working tree.
+
+Keenam konfliknya **murni aditif** — satu sisi menambah modul master, sisi lain menambah
+`inboxadmin`. Penyelesaiannya mempertahankan **kedua sisi**, dan setelah itu backend
+terbangun untuk pertama kalinya di branch ini.
+
+### 33.7 Yang dibangun
+
+**Backend — `internal/inboxprogressclaim/`**
+
+| Berkas | Isi |
+|---|---|
+| `inboxprogressclaim.go` | `ClaimRow`, `Position`, `PICSummary`, paginasi, seam `Repo`/`Clock`/`RepoSelector` |
+| `view.go` | keempat region, kolomnya, dan daftar kontrol mati |
+| `query.go` | lini bisnis, validasi permintaan, penurunan `ClaimQuery`/`PICQuery` |
+| `errors.go` | galat domain dan kumpulan pelanggaran |
+| `usecase/list.go` | `Metadata()` dan `List()` yang bercabang menurut bentuk baris |
+| `repo/sqlstore/` | enam kueri + pemuat + pemindai |
+| `repo/memory/` | penyimpanan contoh yang meniru penyaring dan urutannya |
+| `http/` | DTO, galat, handler, rute |
+
+**Frontend — `src/modules/inbox-progress-claim/`** — `types.ts`, `api.ts`,
+`ProgressSection.tsx`, `InboxProgressClaimPage.tsx`, beserta ujinya.
+
+**Rute API baru:**
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox-progress-claim/bagian` | bentuk layar: region, kolom, dropdown, keterbatasan |
+| `GET` | `/api/inbox-progress-claim` | isi satu region |
+
+Tanpa satu pun migrasi basis data: seluruh tabel yang dibaca sudah ada dan milik sistem
+lama.
+
+### 33.8 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **Kueri posisi butuh daftar nomor klaim satu halaman**, panjangnya berubah-ubah | Penanda bind disusun dari JUMLAH baris lewat `inList`; tidak ada satu pun nilai yang menyentuh teks SQL, dan ujinya membuktikan keluarannya hanya penanda |
+| **`LISTAGG` dilarang repo, `STRING_AGG` tidak ada di Oracle 19c** | Penggabungan antarposisi dipindah ke Go seluruhnya; tidak ada agregasi teks di SQL sama sekali |
+| **Uji "tanpa tulis" menolak `ID_UPDATE`** karena memuat kata `UPDATE` | Pencocokan diganti regex berbatas kata |
+| **Dua bentuk baris dalam satu endpoint** | `ListResponse.Rows` bertipe `any` dengan alasan tertulis; alternatif dua endpoint ditolak karena layar belum tahu region mana yang diminta sebelum membaca metadata |
+| **`exactOptionalPropertyTypes` menolak `render` bernilai `undefined`** | `renderFor` diubah selalu mengembalikan fungsi |
+| **Judul kolom muncul dua kali di DOM** — `DataTable` menggambar tampilan meja dan kartu | Uji membaca `columnheader`, bukan teks |
+
+### 33.9 Cacat yang ditemukan uji sendiri
+
+Uji "tidak meminta apa pun ke server untuk bagian Evaluasi" **gagal**, dan itu bukan uji
+yang keliru: bagian kosong tetap menembak server saat dibuka. Backend memang menjawabnya
+tanpa menyentuh basis data, tetapi perjalanan jaringannya sia-sia — jawabannya sudah pasti
+kosong. `enabled` hook diberi syarat tambahan `!empty`.
+
+### 33.10 Verifikasi yang benar-benar dijalankan
+
+    cd backend  && go build ./... && go vet ./... && go test ./...
+    cd frontend && npm run typecheck && npm test
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih — **untuk pertama kalinya di branch ini** |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruh paket lulus, termasuk 4 paket baru |
+| `npm run typecheck` | bersih |
+| `npm test` | **332 lulus, 3 gagal** |
+
+Ketiga kegagalan itu **sudah ada sebelum sesi ini**, seluruhnya di
+`master-rekening/AccountPage.test.tsx`. Angkanya cocok persis dengan baseline yang diukur
+di awal sesi — 311 lulus ditambah 21 uji baru sama dengan 332 — dan `git status`
+membuktikan berkas `master-rekening` tidak disentuh sama sekali. **Tidak diperbaiki**
+karena Isolasi Protektif melarang menyentuh modul Master Data yang sudah selesai.
+
+Uji modul ini: **21 uji layar + 63 uji backend**, seluruhnya lulus.
+
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis. Yang terbukti hanyalah
+bentuk kuerinya — lewat `query_test.go` yang memeriksa keseragaman alias, kesesuaian jumlah
+bind dengan argumen yang disiapkan, kesamaan penyaring antara kueri daftar dan pencacahnya,
+disiplin SQL portabel, larangan menulis, larangan memanggil rutin basis data, larangan
+menembus DB Link, dan bahwa hanya kueri daftar yang memaginasi.

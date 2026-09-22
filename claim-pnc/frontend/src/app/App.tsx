@@ -17,6 +17,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
+import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -24,6 +25,7 @@ import { useSession } from '@/app/session'
 import { PageShell } from './PageShell'
 import { SessionGuard } from './SessionGuard'
 import { SessionWarning } from './SessionWarning'
+import { ViewClaimPlaceholder } from './ViewClaimPlaceholder'
 
 /**
  * Sesi yang ditolak server di tengah pekerjaan dibersihkan di satu tempat ini.
@@ -153,6 +155,40 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SurveyorTypePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Progress Claim — pemantauan progres klaim berjalan, menggantikan harness
+        `ProgressClaim_Harness` (`MENU_ID 65`). Bagiannya bertumpuk, bukan bertab: itulah
+        bentuknya di Pega.
+
+        Bagian "Approval Progress Klaim" milik sistem lama tidak dibawa — ia satu-satunya
+        bagian yang menulis, dan tabelnya masih dimiliki Pega selama masa berjalan
+        paralel (keputusan Work Owner 2026-09-21).
+      */}
+      <Route
+        path="/inbox-progress-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxProgressClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Tujuan tombol "Lihat Detail Klaim". Layar sebenarnya adalah `MENU_ID 75`
+        "View Claim" yang belum dibangun; rute ini menyatakan keadaan itu apa adanya
+        alih-alih melempar pengguna ke beranda tanpa penjelasan.
+      */}
+      <Route
+        path="/view-claim/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ViewClaimPlaceholder />
             </Protected>
           </SessionGuard>
         }

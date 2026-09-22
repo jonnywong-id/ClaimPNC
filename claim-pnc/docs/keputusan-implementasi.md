@@ -4594,3 +4594,253 @@ baru saat uji kesetaraan dijalankan.
 | 4 | Sub-section `PrintPLADLA_XOL` bervisibilitas `1==2` — apakah kolom aksi itu memang sudah mati, atau dimatikan sementara? | Work Owner |
 | 5 | Kode mata uang dasar perhitungan treaty inward — apakah `10001` berlaku sama di keempat entitas? | Work Owner |
 | 6 | Bentuk dokumen PLA/DLA resmi, untuk menggantikan unduhan CSV | Work Owner |
+
+---
+
+## 35. Modul Inbox Progress Claim (2026-09-21, sesi kedua belas)
+
+Menu `MENU_ID 65`, pengganti harness `ProgressClaim_Harness`.
+
+### 35.1 Lingkup — empat dari lima region, tanpa satu pun jalur tulis
+
+**Keputusan Work Owner 2026-09-21.** Layar lama menumpuk lima bagian; yang dibawa empat:
+
+| Region | Dibawa | Alasan |
+|---|---|---|
+| Outstanding | ya | grid utama, baca-saja |
+| Next Follow Up | ya | grid yang sama + saringan jatuh tempo |
+| Progress Klaim per PIC | ya | rekap lima pencacah, baca-saja |
+| Evaluasi Progress Klaim | ya | **kosong di Pega** — dibawa sebagai bagian berketerangan |
+| Approval Progress Klaim | **tidak** | satu-satunya bagian yang MENULIS |
+
+Tombol "Input Progress Claim" ikut tidak dibawa, dengan alasan yang sama.
+
+**Kenapa ini bukan sekadar pemangkasan lingkup.** Kedua bagian yang ditinggalkan menulis ke
+`POOLDATA.GCNM_PROGRESS_CLAIM` lewat `PROGRESS_CLAIM_PNC.prc` — procedure 16 parameter yang
+melakukan `COMMIT` sendiri. Selama masa berjalan paralel, tabel itu masih ditulis Pega, dan
+`P-1` menetapkan satu tabel hanya boleh ditulis satu sistem. Membawanya berarti dua sistem
+saling menimpa, dan akibatnya bukan galat melainkan data yang rusak diam-diam.
+
+Akibat yang sengaja dipertahankan: seam `Repo` modul ini **tidak punya satu pun operasi
+tulis**, sehingga kode yang ditulis kemudian tidak dapat menulis tanpa keputusan sadar.
+
+### 35.2 Judul kolom memakai alias Pega, meski aliasnya menyesatkan
+
+**Keputusan Work Owner 2026-09-21**, dari tiga pilihan yang diajukan.
+
+Judul kolom layar ini **tidak ada di export**: setiap sel grid ber-`pyHeaderTitle` kosong,
+judulnya datang dari label properti Pega, dan folder `Property` tidak ikut dikirim.
+
+Yang dipilih: **alias apa adanya**. Konsekuensinya diterima secara sadar — sebagian judul
+menyatakan hal yang bukan isinya:
+
+| Judul di layar | Isi sebenarnya |
+|---|---|
+| `CaseID` | Nomor Klaim |
+| `ClaimNo` | **Nomor Polis** — tertukar dengan yang di atas |
+| `District` | Nama Tertanggung |
+| `Country` | Catatan LGB |
+| `City` / `CityID` / `CountryID` | Posisi / Status Progres 1 / Status Progres 2 |
+| `AnalystTransferDate` | Next Follow Up |
+| `KomiteApproveDate` | Follow Up terawal — tidak berhubungan dengan komite |
+| `NOKLAIM` / `NOAKSEP` / `REINSURER` / `STSKLAIM` / `NOPOLIS` | lima pencacah pada rekap per PIC |
+
+**Yang ditambahkan supaya keputusan itu tidak merugikan pengguna:** setiap kolom membawa
+`keterangan` yang menyatakan isinya sebenarnya, dikirim server dan digambar layar sebagai
+tooltip kolom. Tanpa itu, layar baru akan sama tidak terbacanya dengan layar lama, dan
+satu-satunya tempat artinya tercatat adalah kode backend.
+
+**Nama di dalam kode TIDAK ikut memakai alias** (`D-19`, `D-80`): `ClaimNumber`,
+`PolicyNumber`, `InsuredName`. Kontrak JSON juga tidak: `no_klaim`, `no_polis`,
+`nama_tertanggung`. Yang memakai alias hanyalah judul yang dibaca orang.
+
+### 35.3 Dua kontrol direplikasi sebagai kontrol mati
+
+**Keputusan Work Owner 2026-09-21.** Kotak "Tanggal Kejadian" dan dropdown lini bisnis pada
+kedua region klaim **digambar tetapi tidak menyaring apa pun**, persis seperti di Pega.
+
+Bukti bahwa keduanya memang mati:
+
+- `TempRefresh.DateOfLoss` **nol kemunculan** di seluruh direktori `RDB List/`. Langkah
+  terakhir `GetDataProgressClaim` hanya menuliskannya kembali ke dirinya sendiri supaya
+  isiannya bertahan setelah layar disegarkan.
+- Dropdown lini bisnis pada grid mengisi `tempgetpic.CaseID`, dan properti itu tidak dibaca
+  satu pun kueri. Yang benar-benar dibaca `DataProgressClaim` hanyalah
+  `tempgetpic.MCL_NAME` dan `TempCabang.District`.
+
+**Yang tidak dilakukan, dan alasannya.** Membuat keduanya benar-benar bekerja adalah
+PERUBAHAN PERILAKU: ia memunculkan selisih pada uji kesetaraan gerbang 1 dan menuntut
+persetujuan tertulis sebagai butir `P-5` baru (`D-54`). Itu keputusan tersendiri.
+
+**Penyesuaian yang diambil di dalam batas keputusan itu:** kontrolnya tidak digambar sebagai
+kontrol mati yang mengundang klik. Yang digambar adalah **alasannya**, dikirim server sebagai
+`kontrol_mati`. Pengguna yang mencari penyaring Tanggal Kejadian memperoleh jawaban alih-alih
+menduga modulnya belum selesai — dan tidak ada yang melaporkan penyaring yang "tidak bekerja"
+berulang kali.
+
+### 35.4 Lini bisnis mengikuti definisi Export, bukan definisi grid
+
+**Keputusan Work Owner 2026-09-21.** Sistem lama memuat DUA definisi yang tidak sama:
+
+| | jalur grid Outstanding | jalur Export & per PIC |
+|---|---|---|
+| NONMBU | `groupbisnisid NOT IN ('06','09','11','16')` | `GROUP_PANEL IN ('003','004','006') AND groupbisnisid NOT IN ('09','11','16','25')` |
+| BONDING | `groupbisnisid IN ('11','16')` | `groupbisnisid IN ('09','11','16','25')` |
+| PA | `groupbisnisid IN ('06')` | `GROUP_PANEL IN ('002')` |
+| TRAVEL | **tidak ada** | `GROUP_PANEL IN ('005')` |
+
+Yang dipakai versi kanan. Ia satu-satunya yang benar-benar dieksekusi — versi kiri menulis
+ke properti yang tidak dibaca kueri mana pun, sehingga tidak pernah berpengaruh sejak awal.
+
+**Tanpa pilihan "semua", dan itu bukan kelalaian.** Nilai yang sama dicocokkan ke
+`MST_USER_TEKNIK.TYPE_BUSINESS`; tanpa lini bisnis, tidak ada satu pun petugas yang cocok
+dan hasilnya selalu kosong. Karena itu lini bisnis **wajib** pada rekap per PIC, dan
+layarnya menyatakan itu.
+
+### 35.5 Lini bisnis dipilih pengguna, karena sumber aslinya tidak ada di sistem baru
+
+Di sistem lama lini bisnis pada rekap per PIC **tidak dipilih pengguna**. Prakondisi keempat
+cabangnya berbunyi `OperatorID.pyPosition == "NONMBU"` dan seterusnya — ia dibaca dari
+jabatan pada catatan operator Pega, yang rupanya diisi nama lini bisnis.
+
+Nilai itu tidak tersedia di sistem baru: HCC/HCQ mengembalikan jabatan sebenarnya
+(`Placement.PositionName`), bukan lini bisnis.
+
+| Pilihan | Akibat |
+|---|---|
+| Bandingkan `Position` apa adanya | region **selalu kosong** bagi setiap pengguna |
+| **Dipilih pengguna lewat dropdown** ← diambil | region dapat dipakai; penyaringnya persis sama, yang berbeda hanya asal nilainya |
+| Tunda region ini | membuang satu dari tiga region yang sudah disetujui masuk lingkup |
+
+Keterbatasan itu **dinyatakan di layar** sebagai salah satu butir `keterbatasan`, bukan
+disembunyikan. Ia hilang dengan sendirinya begitu pemetaan pengguna ke lini bisnis menjadi
+master data (`F-4`).
+
+### 35.6 `GET_POSISI_PROGRESS_PNC` ditulis ulang sebagai satu kueri per halaman
+
+`D-02` menetapkan tidak ada pemanggilan stored function dari aplikasi. Fungsi ini dipanggil
+**empat kali untuk setiap baris grid** — sekali per kategori (`POSISI`, `sts_prg1`,
+`sts_prg2`, `nextfu`) — dan setiap panggilan mengulang kursor yang sama persis. Pada satu
+halaman 15 baris itu 60 pemanggilan.
+
+Penggantinya kueri `positions`: **satu kueri untuk seluruh baris satu halaman**, dan
+penggabungan antarposisi terjadi di Go.
+
+**Kenapa penggabungannya tidak di SQL.** `LISTAGG` dilarang repo (`09-DATABASE-STRATEGY.md`
+§4), sementara penggantinya `STRING_AGG` **tidak ada di Oracle 19c** yang berjalan hari ini.
+Memindahkannya ke Go menyelesaikan keduanya sekaligus, dan sebagai akibatnya jumlah posisi
+sebuah klaim menjadi angka yang dapat dihitung — bukan koma yang harus dihitung pengguna.
+
+**Satu cacat yang hilang karenanya.** Fungsi lama memformat tenggat dengan
+`to_char(..., 'DD-MM-YYYY hh:mm:ss')`. Pada Oracle, `mm` di dalam bagian jam berarti
+**bulan**, bukan menit — menitnya seharusnya `mi`. Jam yang selama ini tampil karena itu
+berbunyi `jam:BULAN:detik`. Di sistem baru tenggatnya tanggal sungguhan dan jamnya tidak
+dikirim sama sekali. Ini **selisih terencana** pada uji kesetaraan, bukan cacat.
+
+### 35.7 Paginasi benar-benar di basis data — berbeda dari Inbox Admin
+
+Inbox Admin menarik seluruh baris lalu memotongnya di aplikasi, karena begitulah Pega
+melakukannya di layar itu. **Layar ini sebaliknya**: `DataProgressClaim` memotong dengan
+`ROW_NUMBER` antara `FirstRow` dan `LastRow`, dan `GcnmCountProgressClaim_SQL` menghitung
+totalnya terpisah.
+
+Perbedaannya bukan pilihan gaya — keduanya mengikuti layarnya masing-masing.
+
+| Hal | Ketetapan |
+|---|---|
+| Ukuran halaman | **15**, dari `.PageSize` pada activity. Bukan 25 seperti Inbox Admin |
+| Sintaks | `OFFSET … FETCH NEXT`, bukan `ROW_NUMBER` (`09-DATABASE-STRATEGY.md` §3.3) |
+| Pencacah | kueri terpisah, penyaringnya **wajib sama persis** — dijaga uji |
+| Urutan | `TGL_PROSES ASC`, **ditambah nomor klaim sebagai pemutus seri** |
+
+Pemutus seri itu tambahan, dan ia menutup cacat nyata: tanpanya, baris ber-`tgl_proses` sama
+dapat berpindah halaman antarpermintaan sehingga satu baris muncul dua kali sementara baris
+lain tidak pernah muncul.
+
+### 35.8 Satu endpoint melayani dua bentuk baris
+
+Region klaim dan rekap per PIC punya bentuk baris yang berbeda: yang satu klaim, yang lain
+petugas beserta pencacahnya.
+
+| Pilihan | Alasan ditolak |
+|---|---|
+| Satu struktur gabungan | setiap baris klaim mengirim enam isian pencacah bernilai nol |
+| Dua endpoint terpisah | layar harus memilih endpoint sebelum ia tahu region mana yang diminta — padahal yang menentukannya adalah metadata dari server |
+| **`ListResponse.Rows` bertipe `any`** ← diambil | bentuknya ditentukan `bagian.bentuk`, dan alasannya ditulis di tempatnya |
+
+Standar koding melarang `any` **tanpa alasan tertulis**; alasannya ada di `dto.go`. Domain
+sendiri tetap punya dua tipe terpisah — `ClaimRow` dan `PICSummary` — sehingga yang longgar
+hanyalah kontrak wire, bukan modelnya.
+
+### 35.9 Daftar bind disusun dari jumlah baris, bukan dari isinya
+
+Kueri `positions` mencari posisi untuk seluruh nomor klaim pada satu halaman, dan panjang
+daftarnya berubah-ubah.
+
+| Pilihan | Alasan ditolak |
+|---|---|
+| Satu kueri per baris | kueri di dalam perulangan, dilarang `15-NFR` §3.2 |
+| Bind sebanyak `MaxPageSize` lalu sisanya NULL | setiap kueri membawa 100 bind meski halamannya 15 baris |
+| Mengulang kueri halaman sebagai subkueri | kueri rumit yang sama hidup di dua tempat dan dapat berselisih |
+| **Menyusun penanda bind dari jumlah baris** ← diambil | yang disusun `:7, :8, :9`, bukan nilainya |
+
+Larangan yang berlaku adalah **merangkai NILAI** ke dalam teks SQL. Yang disusun di sini
+panjangnya ditentukan jumlah baris, bukan isi baris, dan seluruh nomor klaim tetap dikirim
+sebagai argumen bind. `query_test.go` menguji tepat itu: keluaran `inList` hanya boleh
+terdiri atas penanda bind dan pemisahnya.
+
+### 35.10 Bagian bertumpuk, bukan bertab — dan dimuat saat dibuka
+
+`Section/ProgressClaim_Section-Section.xml` menumpuk kelima bagiannya sebagai kontainer
+berjudul, bukan sebagai bilah tab. Inbox Admin memang bertab; layar ini tidak. `D-13`
+menetapkan tampilan meniru Pega, jadi keduanya dibedakan.
+
+Tiap kontainer di Pega memasang `pyDeferLoadRetrievalActivity` sendiri, sehingga kuerinya
+berjalan saat bagiannya ditampilkan. Perilaku itu dibawa: **bagian memuat datanya sendiri
+saat dibuka**. Alasannya bukan kesetiaan semata — rekap per PIC menghitung lima subkueri
+agregat, dan membayarnya untuk bagian yang tidak dilihat adalah pemborosan yang terasa.
+
+Bagian Evaluasi **tidak meminta apa pun**, bahkan saat dibuka: jawabannya sudah pasti
+kosong.
+
+### 35.11 Kolom yang digambar dua kali dipertahankan
+
+Region Outstanding mengikat `.DateForAging` di **dua sel grid terpisah**, keduanya terikat
+`tglklaim`. Dua kolom bersebelahan karena itu menampilkan tanggal yang sama dengan judul
+yang sama pula.
+
+Dipertahankan atas keputusan "replikasi apa adanya": menghapus kolom kedua mengubah jumlah
+kolom yang dibandingkan pada uji kesetaraan gerbang 1.
+
+**Dugaan yang TIDAK diterapkan:** kueri mengembalikan `tgl_proses` yang tidak terikat ke sel
+mana pun, dan sangat mungkin sel kedua seharusnya menggambar kolom itu. Itu dugaan, bukan
+bukti — ia dicatat di `view.go` dan diajukan, bukan diam-diam diperbaiki.
+
+Akibat teknisnya: identitas kolom (`Key`) **dipisah** dari nama isiannya (`Field`), karena
+dua kolom yang menggambar isian yang sama akan bertabrakan bila identitasnya diambil dari
+isiannya.
+
+### 35.12 Penyaring cabang belum dibangun
+
+Kueri lama menyaring cabang lewat `GetIDCabang`, yang menembus DB Link:
+
+    from branch a, hrdasm.v_hrd_mst@asmd.sinarmas.co.id c,
+         lst_user_asuransi@asmd.sinarmas.co.id b
+
+DB Link `@ASMD` belum punya API pengganti (`R-03`, `D-25`). Penyaring cabang karena itu
+**tidak dibangun**, sama seperti di Inbox Admin. Akibatnya untuk sekarang seluruh pengguna
+melihat klaim seluruh cabang — persis seperti yang di sistem lama hanya berlaku bagi
+pengguna kantor pusat.
+
+Uji `TestBranchFilterIsAbsentEverywhere` menjaga agar ia tidak masuk diam-diam lewat DB
+Link, yang akan menembus batas yang sengaja belum dilewati.
+
+### 35.13 Konflik merge diselesaikan secara aditif
+
+`cmd/claimpnc/main.go` dan `check.go` ter-commit dengan enam penanda konflik yang belum
+diselesaikan, sehingga paket `cmd` tidak dapat dikompilasi sejak sebelum sesi ini.
+
+Keenamnya **murni aditif** — satu sisi menambah modul master, sisi lain menambah
+`inboxadmin`. Penyelesaiannya mempertahankan **kedua sisi**, tanpa menghapus satu baris pun
+milik siapa pun. Tidak ada perilaku yang diubah; yang berubah hanya berkas yang kini dapat
+dikompilasi.
