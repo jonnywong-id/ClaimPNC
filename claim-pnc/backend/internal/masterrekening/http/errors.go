@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"sort"
 
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/platform/logging"
@@ -49,8 +48,8 @@ func mapError(err error) (int, ErrorResponse) {
 		// menandai kolom dan kapan harus melaporkan cacat pemrograman.
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeInvalidInput,
-			Message: "Ada isian yang belum benar. Periksa kolom yang ditandai.",
-			Detail:  violationsFrom(validasi),
+			Message: "Ada isian yang belum benar. Check kolom yang ditandai.",
+			Field:   validasi.Field,
 		}
 
 	case errors.Is(err, masterrekening.ErrNotFound):
@@ -85,25 +84,6 @@ func mapError(err error) (int, ErrorResponse) {
 			Message: "Terjadi kesalahan pada sistem.",
 		}
 	}
-}
-
-// violationsFrom mengubah galat validasi domain menjadi daftar untuk klien.
-//
-// Diurutkan menurut nama field supaya jawaban atas permintaan yang sama selalu identik.
-// Tanpa itu, urutannya mengikuti iterasi map Go — yang sengaja acak — sehingga uji
-// kontrak menjadi rapuh dan log sulit dibandingkan.
-func violationsFrom(e *masterrekening.ValidationError) []PelanggaranDTO {
-	names := make([]string, 0, len(e.Field))
-	for f := range e.Field {
-		names = append(names, f)
-	}
-	sort.Strings(names)
-
-	result := make([]PelanggaranDTO, 0, len(names))
-	for _, f := range names {
-		result = append(result, PelanggaranDTO{Field: f, Pesan: e.Field[f]})
-	}
-	return result
 }
 
 // WriteJSON menuliskan badan respons.

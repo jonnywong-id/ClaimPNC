@@ -23,6 +23,8 @@ import (
 
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxclaimtreatyprop"
+	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
 	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
 	masterpicteknikdirectory "claim-pnc/internal/masterpicteknik/directory"
@@ -82,18 +84,16 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAppTables(ctx, legacy, print)
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
-<<<<<<< HEAD
 	checkAutoClaim(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkAutoClaimTabsDiffer(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkAutoClaimPaging(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkAutoClaimEveryCompany(ctx, inboxautoclaimsql.NewRepo(primary), print)
-=======
 	checkPicTeknik(ctx, masterpictekniksql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
 	checkRecovery(ctx, masterrecoverysql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
 	checkDominantFactor(ctx, masterdominanfactorsql.NewRepo(primary), print)
 	checkCauseOfLoss(ctx, masterpenyebabkerugiansql.NewRepo(primary), print)
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
->>>>>>> 3dc63dccaff5bb215be5fb885f83ab60b2e5e9ea
+	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -920,6 +920,70 @@ func checkAutoClaim(ctx context.Context, repo *inboxautoclaimsql.Repo, print fun
 			print("            Lewat HTTP kodenya dipangkas, dan penyaringnya menghasilkan")
 			print("            %d batch, bukan %d. Kolomnya kemungkinan CHAR, bukan VARCHAR2.",
 				viaHTTP.Total, page.Total)
+		}
+	}
+}
+
+// checkClaimTreatyProp memeriksa modul Inbox Claim Treaty Prop (`MENU_ID 54`).
+//
+// Tiga hal diperiksa, dan ketiganya pernah menjadi sebab layar terbuka tetapi kosong di
+// modul lain:
+//
+//  1. hak baca atas kedua tabel penugasan dan atas POOLDATA.JSON_KLAIM;
+//  2. apakah `JSON_VALUE` benar-benar dapat dijalankan terhadap DATA_JSONBLOB;
+//  3. apakah antrean teknik memang berisi — akun antreannya literal di kueri lama, dan
+//     bila namanya berubah di produksi, tabnya kosong tanpa satu pun galat.
+func checkClaimTreatyProp(
+	ctx context.Context,
+	repo *inboxclaimtreatypropsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel antrean treaty tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas DATAPEGA.PC_ASSIGN_WORKLIST,")
+		print("            DATAPEGA.PC_ASSIGN_WORKBASKET, dan POOLDATA.JSON_KLAIM.")
+		return
+	}
+	print("  [ok]    Tabel antrean treaty dan POOLDATA.JSON_KLAIM dapat dibaca")
+
+	// Satu halaman saja. Yang diperiksa adalah apakah kuerinya BERJALAN — termasuk
+	// JSON_VALUE atas DATA_JSONBLOB, yang menuntut kolomnya benar-benar berisi JSON yang
+	// sah. Bila blob-nya rusak, Oracle menolak di sini, bukan di layar pengguna.
+	page := inboxclaimtreatyprop.Pagination{Page: 1, Size: 5}
+
+	technical, found := inboxclaimtreatyprop.FindTab(inboxclaimtreatyprop.TabTechnical)
+	if !found {
+		print("  [GAGAL] Tab antrean teknik tidak terdaftar di modul")
+		return
+	}
+
+	result, err := repo.List(ctx, inboxclaimtreatyprop.Query{Tab: technical}, page)
+	if err != nil {
+		print("  [GAGAL] Antrean teknik tidak dapat dibaca: %v", err)
+		print("            Bila galatnya menyebut JSON, isi POOLDATA.JSON_KLAIM.DATA_JSONBLOB")
+		print("            kemungkinan bukan JSON yang sah pada sebagian baris.")
+		return
+	}
+
+	print("  [ok]    Antrean teknik terbaca: %d pekerjaan menunggu", result.Total)
+	if result.Total == 0 {
+		print("            Kosong BUKAN berarti gagal — tetapi periksa apakah akun antrean")
+		print("            masih bernama %q di produksi. Nama itu literal di kueri lama,",
+			inboxclaimtreatyprop.TechnicalWorkbasket)
+		print("            dan bila berubah, tab ini kosong tanpa satu pun galat.")
+	}
+
+	// Tanggal Kejadian diperiksa tersendiri karena ia perbaikan `P-5` modul ini: di sistem
+	// lama kolomnya SELALU kosong pada antrean teknik. Bila ia tetap kosong di sini,
+	// sebabnya bukan lagi alias yang tertukar melainkan isi blob — dan itu temuan yang
+	// berbeda, yang harus terbaca berbeda pula.
+	for _, item := range result.Items {
+		if item.LossDate == "" {
+			print("  [PERIKSA] %s: Tanggal Kejadian kosong di DATA_JSONBLOB ($.DateOfLoss).",
+				item.ClaimID)
+			print("            Alias kueri sudah dibetulkan, jadi sebabnya ada di isi blob.")
+			break
 		}
 	}
 }
