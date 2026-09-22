@@ -1,0 +1,125 @@
+package inboxlaporanklaimhttp
+
+import (
+	"errors"
+	"log/slog"
+	"net/http"
+
+	"claim-pnc/internal/inboxlaporanklaim"
+	"claim-pnc/internal/platform/logging"
+)
+
+// Kode galat modul ini.
+//
+// # Kenapa modul ini memetakan galatnya sendiri
+//
+// Kontrak galat yang mengikat seluruh aplikasi adalah TKT-F1-004, dan ia masih terhalang
+// keputusan Work Owner. Yang ada sekarang hanyalah pemetaan milik modul auth, dan
+// menambah kode ke sana berarti menyunting modul yang sudah dinyatakan selesai.
+//
+// Karena itu modul ini memetakan galat yang DIKENALINYA sendiri, lalu menyerahkan sisanya
+// ke penulis galat yang disuntikkan dari cmd — bentuk `{kode, pesan}` tetap sama sehingga
+// klien tidak menghadapi dua bentuk galat yang berbeda.
+const (
+	CodeValidationFailed = "validasi_gagal"
+	CodeNotFound         = "tidak_ditemukan"
+	CodeMalformedRequest = "permintaan_cacat"
+	CodeCallerIncomplete = "profil_pemanggil_tidak_lengkap"
+)
+
+// ErrorWriter menuliskan galat dalam bentuk respons HTTP.
+type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
+
+// JSONWriter menuliskan badan respons yang berhasil.
+type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body any)
+
+// writeModuleError memetakan galat yang dikenali modul ini, dan meneruskan sisanya.
+func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
+	status, body, known := mapError(err)
+	if !known {
+		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan
+		// jaringan, cacat pemrograman — diserahkan ke penulis bersama, yang menjawab 500
+		// dengan pesan umum dan menaruh rinciannya di log saja. Rincian galat internal
+		// tidak pernah dikirim ke peramban.
+		h.writeError(w, r, err)
+		return
+	}
+
+	if status >= http.StatusInternalServerError {
+		logging.From(r.Context(), h.logger).Error("permintaan gagal",
+			slog.String("jalur", r.URL.Path),
+			slog.String("galat", err.Error()),
+		)
+	}
+	h.writeResponse(w, r, status, body)
+}
+
+// mapError memetakan galat domain menjadi status dan badan respons.
+//
+// Nilai ketiga menyatakan apakah galatnya dikenali modul ini.
+//
+// Galat PORTAL sengaja tidak ada di sini. Ia dipetakan portalhttp.WithPortalError yang
+// membungkus penulis galat yang disuntikkan dari cmd — satu pemetaan yang dipakai seluruh
+// modul bisnis, bukan satu tafsiran per modul.
+func mapError(err error) (int, ErrorResponse, bool) {
+	var validationError *inboxlaporanklaim.ValidationError
+
+	switch {
+	case errors.As(err, &validationError):
+		// 422, bukan 400: bentuk permintaannya benar, isinya yang melanggar aturan
+		// bisnis. Frontend menanganinya berbeda — 400 berarti ada cacat di frontend,
+		// 422 berarti pengguna perlu memperbaiki isiannya (`10-API-STRATEGY.md` §5).
+		detail := make([]ViolationDTO, 0, len(validationError.Violation))
+		for _, v := range validationError.Violation {
+			detail = append(detail, ViolationDTO{Field: v.Field, Message: v.Message})
+		}
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeValidationFailed,
+			Message: "Ada isian yang belum benar. Periksa keterangan di bawah setiap isian.",
+			Detail:  detail,
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrUnknownCategory):
+		// 422, bukan 404: yang tidak dikenal adalah ISIAN pada permintaan, bukan alamat
+		// sumber daya. Menjawab 404 akan terbaca sebagai "layar ini tidak ada".
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeValidationFailed,
+			Message: "Tab yang diminta tidak dikenal.",
+			Detail:  []ViolationDTO{{Field: "kategori", Message: "Tab tidak dikenal."}},
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrUnknownBusinessLine):
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeValidationFailed,
+			Message: "Pilihan bisnis tidak dikenal.",
+			Detail:  []ViolationDTO{{Field: "bisnis", Message: "Pilihan bisnis tidak dikenal."}},
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeNotFound,
+			Message: "Laporan klaim yang dimaksud tidak ditemukan. Muat ulang daftarnya.",
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrCallerUnknown):
+		// 409, bukan 422: tidak ada satu pun isian yang dapat diperbaiki pengguna. Yang
+		// kurang adalah identitasnya sendiri, dan itu harus dibereskan di tempat lain.
+		//
+		// Ia BUKAN galat sesi — sesi sudah diperiksa middleware jauh sebelum sampai ke
+		// sini; yang ini berarti jembatan ke konteks pemanggil tidak terpasang.
+		return http.StatusConflict, ErrorResponse{
+			Code: CodeCallerIncomplete,
+			Message: "Identitas Anda belum terbaca lengkap, sehingga laporan baru tidak " +
+				"dapat dibuat. Hubungi pengelola aplikasi.",
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrReadOnlyOrigin):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeValidationFailed,
+			Message: "Laporan ini masih dikelola sistem lama dan hanya dapat dibaca dari sini.",
+		}, true
+
+	default:
+		return 0, ErrorResponse{}, false
+	}
+}

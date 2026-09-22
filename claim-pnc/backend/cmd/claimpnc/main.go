@@ -30,6 +30,7 @@ import (
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatyprop"
+	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/masterdominanfactor"
@@ -61,6 +62,11 @@ import (
 	inboxclaimtreatypropmemory "claim-pnc/internal/inboxclaimtreatyprop/repo/memory"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxclaimtreatypropusecase "claim-pnc/internal/inboxclaimtreatyprop/usecase"
+
+	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
+	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
+	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	inboxprogressclaimhttp "claim-pnc/internal/inboxprogressclaim/http"
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
@@ -391,6 +397,33 @@ func run() error {
 		return err
 	}
 
+	// Inbox Laporan Klaim. Jembatan pemanggilnya membawa LOGIN yang DIKETIK pengguna,
+	// bukan NIK: itulah yang dicocokkan ke pxcreateoperator pada tabel warisan dan ke
+	// sender pada percakapan.
+	claimReportHandler, err := inboxlaporanklaimhttp.NewHandler(inboxlaporanklaimhttp.Options{
+		Service: assembly.inboxLaporanKlaim,
+		Caller: func(ctx context.Context) (inboxlaporanklaim.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxlaporanklaim.Caller{}, false
+			}
+			return inboxlaporanklaim.Caller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+				// Cabang menentukan batas data seluruh layar ini. Ia datang dari profil
+				// HCC/HCQ; pengguna non-karyawan tidak memilikinya, dan berkas baru
+				// karena itu ditolak dengan pesan yang menyebutkan sebabnya.
+				BranchCode: baseCtx.User.BranchCode,
+			}, true
+		},
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    inboxlaporanklaimhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	picTeknikHandler, err := masterpicteknikhttp.NewHandler(masterpicteknikhttp.Options{
 		Service:       assembly.masterPicTeknik,
 		Logger:        logger,
@@ -450,6 +483,9 @@ func run() error {
 		// pemeriksaan portal.
 		FallbackErrorWriter: inboxxolhttp.ErrorWriterFrom(writePortalAwareError),
 	})
+	if err != nil {
+		return err
+	}
 
 	// Inbox Claim Treaty Prop (`MENU_ID 54`). Jembatan pemanggilnya membawa LOGIN dengan
 	// alasan yang sama seperti Inbox XOL: yang dicocokkan ke `PXASSIGNEDOPERATORID` pada
@@ -551,6 +587,10 @@ func run() error {
 				// Inbox Auto Claim memuat nomor polis, nilai klaim, dan nama
 				// perusahaan rekanan; tidak satu pun boleh terbaca tanpa sesi.
 				inboxautoclaimhttp.Mount(protected, autoClaimHandler, activePortalDeps)
+				// Inbox Laporan Klaim. Seluruh rutenya memasang pemeriksaan portal di
+				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
+				// jelas, karena setiap rutenya menyentuh basis data entitas.
+				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				// Master Tipe Surveyors. Sama seperti di atas: pemeriksaan portal
 				// dipasang di dalam Mount, karena SELURUH rutenya menyentuh basis
 				// data entitas.
@@ -727,6 +767,11 @@ type assembly struct {
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
+	// inboxLaporanKlaim melayani layar Inbox Laporan Klaim. Sama seperti master status
+	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
+	// milik satu badan hukum (ADR-0030).
+	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -771,6 +816,13 @@ type storage struct {
 	// Ia fungsi dengan alasan yang sama: progres klaim satu badan hukum bukan progres
 	// badan hukum lain, dan barisnya memuat nama tertanggung (`ADR-0030`, `R-20`).
 	inboxProgressClaimSelector inboxprogressclaim.RepoSelector
+
+	// claimReportSelector memilih penyimpanan berkas laporan klaim milik satu portal.
+	//
+	// Alasannya sama dengan progressStatusSelector di bawah, ditambah satu yang khas
+	// modul ini: ia membaca DUA tabel sekaligus — tabel warisan Pega dan tabel milik
+	// aplikasi ini — dan keduanya hidup di basis data entitas yang sama.
+	claimReportSelector inboxlaporanklaim.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -870,6 +922,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
 		RepoSelector: store.claimStatusSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	claimReportService, err := inboxlaporanklaimusecase.NewService(inboxlaporanklaimusecase.Options{
+		RepoSelector: store.claimReportSelector,
+		Clock:        clock.System{},
 	})
 	if err != nil {
 		store.close()
@@ -1041,6 +1102,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxXOL:               inboxXOLService,
 		inboxClaimTreatyProp:   claimTreatyPropService,
 		inboxProgressClaim:     inboxProgressClaimService,
+		inboxLaporanKlaim:      claimReportService,
 		readyAliases:           store.readyAliases,
 		close:                  store.close,
 	}, nil
@@ -1245,6 +1307,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxautoclaimsql.NewRepo(conn), nil
 		}
+
+		store.claimReportSelector = func(alias string) (inboxlaporanklaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxlaporanklaimsql.NewRepo(conn, clock.System{}), nil
+		}
+
 		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -1340,6 +1411,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		store.autoClaimSelector = autoClaimSelectorMemory(cfg.PrimaryPortal)
+		store.claimReportSelector = claimReportSelectorMemory(cfg.PrimaryPortal)
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
 		store.surveyorTypeSelector = surveyorTypeSelectorMemory(cfg.PrimaryPortal)
@@ -1468,6 +1540,34 @@ func autoClaimSelectorMemory(primaryAlias string) inboxautoclaim.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxautoclaimmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// claimReportSelectorMemory menyusun penyimpanan berkas laporan klaim di memori.
+//
+// Bentuknya sama persis dengan progressStatusSelectorMemory, dan alasannya pun sama:
+// satu penyimpanan per portal, dibuat saat pertama diminta lalu dipakai kembali. Kalau
+// dibuat ulang setiap permintaan, berkas yang baru dibuat lewat tombol "Buat Baru" akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+func claimReportSelectorMemory(primaryAlias string) inboxlaporanklaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxlaporanklaim.Repo{}
+	systemClock := clock.System{}
+
+	return func(alias string) (inboxlaporanklaim.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxlaporanklaimmemory.NewRepo(inboxlaporanklaimmemory.SampleOptions(systemClock))
 		store[clean] = fresh
 		return fresh, nil
 	}

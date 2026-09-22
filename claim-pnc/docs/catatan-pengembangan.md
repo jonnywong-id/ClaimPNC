@@ -1956,7 +1956,7 @@ Upload Data Klaim.
 Tabelnya sendiri terbaca jelas dari kueri lain yang menyentuhnya, dan ambang hitungannya
 tertulis **harfiah** di activity ekspor:
 
-| Bukti | Isi |
+| Yang dicari | Ditemukan |
 |---|---|
 | `RDB List/GroupingAutoClaim-SQL.xml` | kolom `INISIALID NOPOLIS PRODKE CURRENCY TGLKEJADIAN TGLLAPOR COL_ID NILAIKLAIM NOTE KEYWORD BATCH NOAKSEPTASI` |
 | `RDB List/GroupingAutoClaim2-SQL.xml` | `IDPEGA`, `PROGRESS`, beserta syarat batch "belum diproses" |
@@ -5216,3 +5216,149 @@ bentuk kuerinya — lewat `query_test.go` yang memeriksa keseragaman alias, kese
 bind dengan argumen yang disiapkan, kesamaan penyaring antara kueri daftar dan pencacahnya,
 disiplin SQL portabel, larangan menulis, larangan memanggil rutin basis data, larangan
 menembus DB Link, dan bahwa hanya kueri daftar yang memaginasi.
+
+---
+
+## 34. Sesi kesembilan — modul Inbox Laporan Klaim (2026-09-19)
+
+### 34.1 Permintaan
+
+> "lanjutkan untuk penambahan modul Inbox Laporan Klaim / cek secara penuh aplikasi existing pada
+> dokumen Harness dengan nama file InboxRCVApp_Harness jadikan ini sebagai referensi."
+
+### 34.2 Tiga pertanyaan konfirmasi dan jawabannya
+
+| Pertanyaan | Jawaban Work Owner |
+|---|---|
+| Lingkup iterasi ini — baca saja, baca + ekspor, atau penuh | **"Semuanya seperti aplikasi PEGA tapi table tidak save ke table PC_ASM_FW_GCNMFW_WORK lagi"** |
+| Tabel butuh paginasi sisi server, sedangkan `DataTable` menyaring di peramban | **"Seperti aplikasi PEGA yang berjalan saat ini"** — yakni paginasi server |
+| Sumber data yang disiapkan | **sqlstore + memory** |
+
+Jawaban pertama yang menentukan seluruh bentuk modul: **paritas penuh, tetapi penulisan pindah ke
+tabel milik aplikasi ini.**
+
+### 34.3 Yang dicari lebih dulu, dan apa yang ditemukan
+
+Harness yang ditunjuk ternyata **hanya pembungkus**. Seluruh isi layar hidup di satu section, dan
+aturan bisnisnya di dua activity.
+| Isi `InboxRCVApp_Harness` (1,19 MB) | pembungkus; isinya satu section `ViewStatusReceiveDocument` (1,16 MB) |
+| Pengisi grid | `Activity/SetListRCV_Act-Act.xml` dan `GetClaimRCVList_Act-Act.xml` |
+| Kueri daftar | **enam** RDB List, dipilih rantai `@if` atas `param.Note` |
+| Kueri pencacah | `BrowseClaimRCV_Aksep-SQL.xml` — **delapan angka dalam satu kueri** |
+| Judul tab dan nama kolom | terbaca apa adanya dari `pyValue` bertanda `<b>` |
+| Tombol | `CreateNewCaseRCV` · `SetListRCV_Act` · `ExportNotTransferRCV` |
+| Tabel yang ditulis saat berkas dibuat | `POOLDATA.T_CLAIM_RECIVEDCLAIM`, lewat `PROCINSERTDATARECIVEDKLAIM.prc` |
+
+**Sembilan tab, bukan enam.** Keenam kueri melayani sembilan tab: tiga tab komunikasi memakai kueri
+yang sama (`ViewRejectKomunikasiUser`) dengan penyaring percakapan yang berbeda.
+
+### 34.4 Empat temuan yang mengubah rancangan
+
+| Temuan | Akibat |
+|---|---|
+| **"Buat Baru" membuat berkas KOSONG** — `CreateNewCaseRCV` hanya mengisi lima nilai, seluruhnya diturunkan dari petugas penekannya | Tidak ada form sama sekali. Rancangan awal saya menyiapkan form belasan isian; ia dibatalkan |
+| **Tab "Data rejected" tidak punya lencana** — kueri pencacah menyaring `PYSTATUSWORK NOT IN (Resolved-Completed, Resolved-Rejected)`, sehingga berkas ditolak justru yang dikecualikan | `Summary.CountOf` mengembalikan dua nilai: angka DAN apakah ia dihitung. Nol dan "tidak dihitung" dibedakan |
+| **Kueri grid dan kueri pencacah TIDAK sepakat** untuk tab "Replied from ASM" — grid memakai `sender != saya`, pencacah memakai `sender = saya` | Selisihnya dibiarkan terlihat dan dicatat, bukan ditutup. Ia cacat yang sudah ada sebelum modul ini |
+| **Lima alias kolom menyebut hal yang sama sekali lain** — `Kurir`=nama bisnis, `UserAdmin`=nama cabang, `KodeCabang`=operator, `StatusKomunikasi`=kode cabang, `SIM`=keterangan | Tidak satu pun dibawa (`D-19`); pemetaan baliknya ditulis di kepala berkas `.sql` |
+
+### 34.5 Yang dibangun
+
+**Backend — modul `internal/inboxlaporanklaim`.** Namanya nama modul bisnis dalam bahasa Indonesia
+(`D-81`), isinya berbahasa Inggris (`D-80`).
+
+```
+internal/inboxlaporanklaim/
+  doc.go              dua tabel dan kenapa keduanya dibaca
+  claimreport.go      ClaimReport, Position, Origin, umur berkas
+  category.go         sembilan tab + pemetaan ke param.Note warisan
+  filter.go           penyaring, lini bisnis, paginasi
+  summary.go          delapan pencacah
+  number.go           RCVN.YY.xxxx
+  errors.go, seam.go  Repo, RepoSelector, Clock, Caller
+  usecase/            daftar, ringkas, kanwil, ambil, buat
+  repo/sqlstore/      satu fragmen sumber + enam badan kueri
+  repo/memory/        14 berkas contoh + percakapan contoh
+  http/               dto, galat, handler, ekspor CSV, rute
+migrations/0003_claim_report_inbox.{up,down}.sql
+components/DataTable.tsx                 + mode paginasi server (MENAMBAH, bukan mengubah)
+modules/inbox-laporan-klaim/types.ts     tipe kontrak API
+modules/inbox-laporan-klaim/api.ts       empat hook + unduhan CSV berheader
+modules/inbox-laporan-klaim/ClaimReportInboxPage.tsx
+app/App.tsx                              rute /inbox/laporan-klaim
+app/menu/registry.ts                     InboxRCVApp_Harness -> rute
+```
+
+### 34.6 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **Kueri harus melayani 9 tab, 4 penyaring, dan 2 tabel — tanpa merangkai teks SQL** | Satu fragmen `WITH` dipakai bersama enam badan kueri, disambung Go dari berkas `.sql` sendiri. Seluruh nilai tetap lewat parameter binding; aturan tab diterjemahkan menjadi **penanda**, bukan potongan SQL |
+| **Daftar kode `IN (...)` berbeda panjang per lini bisnis, sedangkan bentuk kueri harus tetap** | Daftar dipadatkan dengan mengulang kode terakhirnya — `IN ('002','002','002','002')` sama persis dengan `IN ('002')`. Kodenya tetap hidup di satu tempat, `BusinessLine.Criteria()` |
+| **`auth.User` tidak punya nomor telepon**, sedangkan Pega mengisi `TelpPengirim` | Kolomnya **tidak dibuat**. Kolom yang selamanya kosong tampak seperti data yang belum diisi, dan pertanyaannya akan terus berulang. Celahnya dicatat di `seam.go` |
+| **Nama pelapor tidak dapat dibaca dari tabel warisan** — tidak satu pun dari sembilan kueri lama menyentuh kolomnya, sehingga namanya tidak diketahui (`R-08`) | Dibaca dari tabel baru saja; untuk baris warisan ia `NULL`. Menebak nama kolom menghasilkan kueri yang gagal saat pertama dijalankan di produksi |
+| **Unduhan CSV lewat tautan biasa tidak membawa header**, sedangkan endpoint menuntut `Authorization` dan `X-Portal` | Diambil dengan `fetch` lalu disimpan sebagai Blob. Menaruh token di alamat ditolak — nilainya tercatat di riwayat peramban, log proxy, dan header Referer |
+| **`npx prettier` menulis ulang gaya seluruh `DataTable.tsx`** (titik koma, kutip ganda) | Repo ini **tidak memakai prettier** — tidak ada konfigurasinya dan tidak ada di `package.json`; `npx` mengunduhnya sendiri. Berkas dikembalikan lewat `git checkout`, lalu suntingan diterapkan ulang dengan tangan |
+
+### 34.7 Satu aturan yang saya tambahkan sendiri, lalu saya cabut
+
+Versi pertama **menolak** pembuatan berkas ketika cabang pemanggil tidak terbaca, dengan alasan
+berkas tanpa cabang akan hilang dari daftar yang disaring cabang. Alasannya masuk akal, dan
+penolakannya tetap salah.
+
+`CreateNewCaseRCV` langkah 19 mengisi cabang dari hasil `GetIDCabang` dan **tidak memeriksa
+hasilnya sama sekali**: kueri yang tidak mengembalikan baris menghasilkan cabang kosong, dan berkas
+tetap dibuat. Menolaknya adalah **aturan baru**, dan `P-5` menetapkan perilaku dipertahankan lebih
+dulu kecuali untuk 13 butir yang `D-49` sebut satu per satu — penolakan ini tidak ada di antaranya.
+
+Ketahuannya bukan dari membaca ulang, melainkan dari **menjalankan aplikasinya**: tombol Buat Baru
+menjawab `409` untuk setiap pengguna tiruan, karena tidak satu pun dari mereka punya kode cabang.
+
+### 34.8 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `gofmt -l` pada berkas baru | bersih |
+| `go build ./...` dan `go vet ./...` | bersih |
+| `go test ./...` | **seluruh paket lulus**, termasuk 3 paket modul baru |
+| `tsc --noEmit` | bersih |
+| `npm test` | **97 lulus, 3 gagal** (naik dari 83 lulus) |
+| `npm run build` | bersih |
+
+Ketiga kegagalan itu kegagalan lama di `AccountPage.test.tsx`. Kali ini **dibuktikan**, bukan
+diasumsikan: perubahan `DataTable.tsx` di-`git stash`, uji dijalankan ulang, dan ketiganya tetap
+gagal tanpa perubahan itu.
+
+**Diuji terhadap aplikasi yang benar-benar berjalan**, instans sementara di porta 8097:
+
+```
+POST /api/masuk
+GET  /api/inbox/laporan-klaim                      tanpa X-Portal -> 400 ditolak
+GET  /api/inbox/laporan-klaim/pilihan              9 tab, 5 bisnis, 3 kanwil
+GET  ?kategori=outstanding|belum-registrasi|...    keenam tab status berisi
+       lencana: 4 | 3 | 4 | 2 | (tak dihitung) | 11   -> 4+3+4 = 11 cocok dengan total
+GET  ?kanwil=01 -> 7 baris ; ?kanwil=03 -> 2 baris
+GET  ?bisnis=pa -> 3 ; ?bisnis=kelompok-khusus -> 2  (saling lepas)
+GET  ?cari=RCV-0003 -> 1 ; ?cari=RCV -> 0           (persis, bukan sebagian)
+GET  ?halaman=2&ukuran=4 -> halaman 2 dari 3
+GET  ?kategori=ngawur -> validasi_gagal
+GET  ketiga tab komunikasi -> pesan terakhir terisi
+POST /api/inbox/laporan-klaim -> RCVN.26.0001, Not Transferred, asal=claimpnc
+       lalu muncul di puncak tab "Data hasn't been transferred"
+GET  /ekspor -> CSV 13 baris, Content-Disposition + Cache-Control: no-store
+GET  /TIDAK-ADA -> 404 tidak_ditemukan
+GET  /api/menu -> butir 64 "Inbox Laporan Klaim" ada dan kini bertaut ke layarnya
+```
+
+Satu hal yang ditemukan hanya karena aplikasinya dijalankan: helper uji `selectedColumns` saya kira
+mengurai 18 kolom; probe sementara membuktikan **19** — saya lupa `reporter_name` yang baru
+ditambahkan. Probe-nya sengaja dibuat gagal untuk membuktikan helper-nya memang mengurai sesuatu,
+lalu dihapus.
+
+### 34.9 Yang TIDAK dikerjakan, dan alasannya
+
+| Hal | Alasan |
+|---|---|
+| Tombol **"Tarik data"** | Ia memanggil activity yang sama persis dengan Refresh (`SetListRCV_Act`). Dua tombol yang mengerjakan hal yang sama membawa pertanyaan "apa bedanya" yang tidak punya jawaban |
+| **Bagan** di atas daftar | `pxChart` dengan seri `Description`/`Count`; isinya sama dengan lencana tab yang sudah tergambar. Menggambarnya dua kali menambah barang, bukan keterangan |
+| **Membuka isi berkas** | Barisnya membuka penugasan `ReceiveDocument_Flow` lewat harness `ViewReceiveDocument` — layar tersendiri, lingkup `B-14`. Modul ini membawa rujukannya (`rujukan_pega`) tetapi tidak membukanya |
+| Menulis ke `POOLDATA.T_CLAIM_RECIVEDCLAIM` | `P-1` menetapkan satu tabel satu penulis. Keempat kolom yang ditulis Pega saat berkas lahir pindah ke tabel baru; sisanya ikut `B-14` saat modulnya dibangun |
