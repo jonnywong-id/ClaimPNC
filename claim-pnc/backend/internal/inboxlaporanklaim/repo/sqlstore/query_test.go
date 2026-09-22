@@ -23,6 +23,7 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"claim_report_region_list",
 		"claim_report_next_sequence",
 		"claim_report_insert",
+		"claim_report_update",
 		"claim_report_check_table",
 		"claim_report_check_legacy_table",
 	}
@@ -91,11 +92,46 @@ func TestQueriesUseParameterBinding(t *testing.T) {
 		"claim_report_summary_body",
 		"claim_report_get_body",
 		"claim_report_insert",
+		"claim_report_update",
 	}
 	for _, name := range parameterised {
 		require.Containsf(t, getQuery(name), ":1",
 			"kueri %q harus memakai parameter binding", name)
 	}
+}
+
+// Form Input Receive Document MENGISI berkas; ia tidak memindahkannya dan tidak menulis
+// ulang jejaknya.
+//
+// Keenam kolom di bawah karena itu tidak boleh pernah muncul di klausa SET. Satu di
+// antaranya yang tergeser sudah cukup merusak: `KODE_CABANG` adalah batas data seluruh
+// layar ini, dan menulisnya dari form berarti berkas berpindah cabang tanpa satu pun
+// tindakan yang menyatakannya.
+func TestUpdateNeverTouchesProtectedColumns(t *testing.T) {
+	setClause := getQuery("claim_report_update")
+	if at := strings.Index(setClause, "\n WHERE "); at >= 0 {
+		setClause = setClause[:at]
+	}
+	upper := strings.ToUpper(setClause)
+
+	for column, reason := range map[string]string{
+		"NO_LAPORAN":     "kunci baris; ia menyaring, tidak pernah berubah",
+		"NO_KLAIM":       "terbit saat registrasi (B-2), bukan dari form ini",
+		"KODE_CABANG":    "batas data; memindahkan berkas antarcabang bukan tindakan form ini",
+		"STS_DISERAHKAN": "perpindahan tahap adalah tindakan tersendiri",
+		"DIBUAT_OLEH":    "jejak pembuatan tidak pernah ditulis ulang",
+		"DIHAPUS_PADA":   "penghapusan dinyatakan lewat penanda (ADR-0012), bukan di sini",
+	} {
+		require.NotContainsf(t, upper, column+" ",
+			"klausa SET menyentuh %s — %s", column, reason)
+	}
+}
+
+// Berkas yang sudah ditandai terhapus tidak boleh dapat disunting lewat alamat yang masih
+// dipegang peramban seseorang.
+func TestUpdateSkipsRowsMarkedDeleted(t *testing.T) {
+	require.Contains(t, strings.ToUpper(getQuery("claim_report_update")), "DIHAPUS_PADA IS NULL",
+		"penyimpanan tidak menyaring baris yang sudah ditandai terhapus")
 }
 
 // Modul ini TIDAK MENULIS satu baris pun ke tabel milik Pega.
@@ -131,17 +167,35 @@ func TestNoQueryDeletesRows(t *testing.T) {
 	}
 }
 
-// Kolom yang dibaca ketiga badan kueri harus sama banyak dan sama urutan: scanRow
-// membacanya secara posisi, dan satu kolom yang bergeser TIDAK menghasilkan galat —
-// hanya kolom yang berisi isi kolom sebelahnya.
-func TestAllReadingQueriesSelectTheSameColumns(t *testing.T) {
+// Kedua badan DAFTAR harus memilih kolom yang sama banyak dan sama urutan: keduanya
+// dibaca scanRow, yang membaca secara POSISI — satu kolom yang bergeser tidak
+// menghasilkan galat, hanya kolom yang berisi isi kolom sebelahnya.
+func TestBothListQueriesSelectTheSameColumns(t *testing.T) {
 	reference := selectedColumns(t, getQuery("claim_report_list_body"))
 	require.NotEmpty(t, reference, "badan daftar tidak memilih satu kolom pun")
 
-	for _, name := range []string{"claim_report_message_body", "claim_report_get_body"} {
-		require.Equalf(t, reference, selectedColumns(t, getQuery(name)),
-			"kueri %q memilih kolom yang berbeda dari badan daftar", name)
-	}
+	require.Equal(t, reference, selectedColumns(t, getQuery("claim_report_message_body")),
+		"badan daftar komunikasi memilih kolom yang berbeda dari badan daftar biasa")
+}
+
+// Badan DETAIL memilih lebih banyak kolom, dan itu disengaja — hanya form yang
+// membutuhkan isian berkas, dan dua di antaranya berlebar 4.000 karakter.
+//
+// Yang dijaga uji ini: urutan kolom daftar tetap menjadi AWALAN kolom detail. scanRow dan
+// scanDetailRow membaca posisi yang sama untuk kolom yang sama, sehingga menyisipkan
+// kolom baru di tengah — bukan di ujung — akan menggeser salah satunya tanpa galat.
+func TestDetailQueryExtendsTheListColumnsWithoutReordering(t *testing.T) {
+	list := selectedColumns(t, getQuery("claim_report_list_body"))
+	detail := selectedColumns(t, getQuery("claim_report_get_body"))
+
+	require.Greater(t, len(detail), len(list), "badan detail tidak memilih kolom tambahan")
+
+	// last_message selalu kolom TERAKHIR pada keduanya; ia dibandingkan terpisah.
+	require.Equal(t, "last_message", list[len(list)-1])
+	require.Equal(t, "last_message", detail[len(detail)-1])
+
+	require.Equal(t, list[:len(list)-1], detail[:len(list)-1],
+		"urutan kolom daftar bukan lagi awalan kolom detail")
 }
 
 // Penyaring pada badan daftar dan badan pencacahnya harus sama persis. Bila berbeda,

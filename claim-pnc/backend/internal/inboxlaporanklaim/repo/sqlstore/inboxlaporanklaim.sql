@@ -99,6 +99,24 @@ WITH source AS (
            w.grouppanel_1        AS group_panel,
            b.businessgroupid     AS business_group,
            'pega'                AS origin,
+           -- Kesepuluh isian form TIDAK dapat dibaca dari tabel warisan: tidak satu pun
+           -- dari kesembilan kueri lama menyentuh kolomnya, sehingga nama kolomnya di
+           -- tabel Pega tidak diketahui (R-08). Menebaknya menghasilkan kueri yang gagal
+           -- saat pertama dijalankan di produksi.
+           --
+           -- Itu tidak menghalangi apa pun: berkas warisan memang tidak dapat disunting
+           -- dari sini — penulisnya Pega selama masa paralel (ADR-0004, P-1) — sehingga
+           -- form membukanya dalam modus baca saja.
+           CAST(NULL AS DATE)         AS received_date,
+           CAST(NULL AS VARCHAR(200)) AS reporter_email,
+           CAST(NULL AS VARCHAR(64))  AS reporter_phone,
+           CAST(NULL AS VARCHAR(255)) AS courier_name,
+           CAST(NULL AS NUMBER)       AS estimate_value,
+           CAST(NULL AS VARCHAR(500)) AS loss_location,
+           CAST(NULL AS VARCHAR(4000)) AS chronology,
+           CAST(NULL AS VARCHAR(4000)) AS damage_detail,
+           CAST(NULL AS VARCHAR(1000)) AS not_registered_note,
+           CAST(NULL AS NUMBER)       AS document_count,
            CASE
                WHEN w.pnccaseid IS NOT NULL AND w.statuslock_1 IS NOT NULL THEN 'Outstanding'
                WHEN w.statuslock_1 IS NOT NULL AND w.pnccaseid IS NULL     THEN 'Not Registered'
@@ -145,6 +163,16 @@ WITH source AS (
            r.group_panel         AS group_panel,
            r.kode_group_bisnis   AS business_group,
            'claimpnc'            AS origin,
+           r.tgl_terima_dokumen   AS received_date,
+           r.email_pelapor        AS reporter_email,
+           r.tlp_pelapor          AS reporter_phone,
+           r.nama_kurir           AS courier_name,
+           r.nilai_estimasi       AS estimate_value,
+           r.lokasi_kejadian      AS loss_location,
+           r.kronologis           AS chronology,
+           r.rincian_kerusakan    AS damage_detail,
+           r.ket_belum_registrasi AS not_registered_note,
+           r.jumlah_dokumen       AS document_count,
            CASE
                WHEN r.no_klaim IS NOT NULL AND r.sts_diserahkan = '1' THEN 'Outstanding'
                WHEN r.sts_diserahkan = '1' AND r.no_klaim IS NULL     THEN 'Not Registered'
@@ -389,6 +417,12 @@ SELECT COUNT(1) AS total,
 -- name: claim_report_get_body
 --
 -- Satu berkas menurut nomor registernya, dari tabel mana pun asalnya.
+--
+-- Ia memilih SEPULUH KOLOM LEBIH BANYAK daripada badan daftar, dan itu disengaja: hanya
+-- form Input Receive Document yang membutuhkan isian berkas, dan dua di antaranya —
+-- kronologis dan rincian kerusakan — berlebar 4.000 karakter. Menariknya pada setiap
+-- halaman daftar berarti memindahkan ratusan kilobita yang tidak pernah digambar, pada
+-- tabel berpuluh juta baris (D-10).
 SELECT s.report_id,
        s.claim_number,
        s.assignment_ref,
@@ -407,6 +441,16 @@ SELECT s.report_id,
        s.email_subject,
        s.position,
        s.origin,
+       s.received_date,
+       s.reporter_email,
+       s.reporter_phone,
+       s.courier_name,
+       s.estimate_value,
+       s.loss_location,
+       s.chronology,
+       s.damage_detail,
+       s.not_registered_note,
+       s.document_count,
        CAST(NULL AS VARCHAR(4000)) AS last_message
   FROM source s
  WHERE s.report_id = :1
@@ -452,6 +496,54 @@ SELECT POOLDATA.CPNC_LAPORAN_KLAIM_SEQ.NEXTVAL FROM DUAL
 INSERT INTO POOLDATA.CPNC_LAPORAN_KLAIM
     (NO_LAPORAN, NAMA_PELAPOR, KODE_CABANG, DIBUAT_OLEH, DIBUAT_PADA, TGL_AGING, STS_DISERAHKAN)
 VALUES (:1, :2, :3, :4, :5, :6, '0')
+
+-- name: claim_report_update
+--
+-- Menyimpan isian form Input Receive Document ke atas berkas yang sudah ada.
+--
+-- Asal: flow action `InputReceiveDocument` pada assignment tunggal
+-- `Flow/InputReceiveDocument.xml`, yang di sistem lama menyimpan lewat
+-- `Database/PROCINSERTDATARECIVEDKLAIM.prc`. Procedure itu TIDAK dipanggil (`D-02`);
+-- yang dipakai adalah pernyataan langsung, dan tiga cacatnya tidak ikut dibawa:
+-- `COMMIT` di dalam procedure, `ROLLBACK` yang terjadi sesudahnya, dan kontrak galat
+-- berbasis teks `ErrMsg` (`D-68`).
+--
+-- # Yang TIDAK pernah ikut di-SET, dan kenapa
+--
+--   NO_LAPORAN       kunci baris; ia menyaring, tidak pernah berubah
+--   NO_KLAIM         terbit saat registrasi (`B-2`), bukan dari form ini
+--   KODE_CABANG      batas data; memindahkan berkas antarcabang bukan tindakan form ini
+--   STS_DISERAHKAN   perpindahan tahap adalah tindakan tersendiri
+--   DIBUAT_OLEH/PADA jejak pembuatan tidak pernah ditulis ulang
+--   DIHAPUS_PADA     penghapusan dinyatakan lewat penanda (`ADR-0012`), bukan di sini
+--
+-- # Penyaring `DIHAPUS_PADA IS NULL`
+--
+-- Bukan kerapian: tanpa itu, berkas yang sudah ditandai terhapus tetap dapat disunting
+-- lewat alamat yang masih dipegang peramban seseorang.
+UPDATE POOLDATA.CPNC_LAPORAN_KLAIM
+   SET TGL_TERIMA_DOKUMEN   = :1,
+       TGL_KEJADIAN         = :2,
+       NAMA_PELAPOR         = :3,
+       EMAIL_PELAPOR        = :4,
+       TLP_PELAPOR          = :5,
+       NAMA_KURIR           = :6,
+       NO_POLIS             = :7,
+       NAMA_TERTANGGUNG     = :8,
+       NAMA_BISNIS          = :9,
+       NO_REFERENSI         = :10,
+       NILAI_ESTIMASI       = :11,
+       LOKASI_KEJADIAN      = :12,
+       SUBJEK_EMAIL         = :13,
+       KRONOLOGIS           = :14,
+       RINCIAN_KERUSAKAN    = :15,
+       ALASAN               = :16,
+       KET_BELUM_REGISTRASI = :17,
+       JUMLAH_DOKUMEN       = :18,
+       DIUBAH_OLEH          = :19,
+       DIUBAH_PADA          = :20
+ WHERE NO_LAPORAN = :21
+   AND DIHAPUS_PADA IS NULL
 
 -- name: claim_report_check_table
 --

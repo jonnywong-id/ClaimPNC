@@ -154,6 +154,57 @@ func (s *Service) Create(
 	})
 }
 
+// Save menyimpan isian form Input Receive Document ke atas berkas yang sudah ada.
+//
+// # Urutannya, dan kenapa begitu
+//
+//  1. Berkasnya DIBACA lebih dulu. Tanpa itu, penyimpanan terhadap berkas yang tidak ada
+//     akan terbaca sebagai "nol baris diubah" — dan nol baris punya dua sebab yang
+//     berbeda jauh: berkasnya tidak ada, atau berkasnya milik Pega.
+//  2. Asalnya diperiksa. Berkas warisan ditolak di sini, sebelum satu pun pemeriksaan
+//     isian dijalankan: menolak setelah memeriksa isian akan memberi pengguna daftar
+//     galat isian pada form yang sebenarnya memang tidak dapat disimpan sama sekali.
+//  3. Isiannya dibersihkan lalu diperiksa — SELURUH pelanggaran sekaligus.
+//  4. Baru ditulis, dengan jejak siapa dan kapan.
+func (s *Service) Save(
+	ctx context.Context,
+	portalAlias, id string,
+	caller inboxlaporanklaim.Caller,
+	detail inboxlaporanklaim.Detail,
+) (inboxlaporanklaim.ClaimReport, error) {
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
+
+	clean := caller.Clean()
+	if clean.Login == "" {
+		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrCallerUnknown
+	}
+
+	existing, err := repo.Get(ctx, id)
+	if err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
+	if existing.Origin == inboxlaporanklaim.OriginLegacy {
+		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrReadOnlyOrigin
+	}
+
+	cleanDetail := detail.Clean()
+	if err := cleanDetail.Check(); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
+
+	saved := cleanDetail.Apply(existing)
+	saved.UpdatedBy = clean.Login
+	saved.UpdatedAt = s.clock.Now()
+
+	if err := repo.Update(ctx, saved); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
+	return saved, nil
+}
+
 // buildFilter menyusun penyaring akhir dari pilihan pengguna dan identitas pemanggil.
 //
 // # Batas data, dan satu andaian yang perlu dibaca

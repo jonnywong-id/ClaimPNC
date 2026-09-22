@@ -2041,3 +2041,143 @@ lalu dihapus.
 | **Bagan** di atas daftar | `pxChart` dengan seri `Description`/`Count`; isinya sama dengan lencana tab yang sudah tergambar. Menggambarnya dua kali menambah barang, bukan keterangan |
 | **Membuka isi berkas** | Barisnya membuka penugasan `ReceiveDocument_Flow` lewat harness `ViewReceiveDocument` — layar tersendiri, lingkup `B-14`. Modul ini membawa rujukannya (`rujukan_pega`) tetapi tidak membukanya |
 | Menulis ke `POOLDATA.T_CLAIM_RECIVEDCLAIM` | `P-1` menetapkan satu tabel satu penulis. Keempat kolom yang ditulis Pega saat berkas lahir pindah ke tabel baru; sisanya ikut `B-14` saat modulnya dibangun |
+
+## 17. Sesi kesepuluh — tombol "Buat Baru" dan form Input Receive Document (2026-09-22)
+
+### 17.1 Permintaan
+
+> "Pada modul inbox laporan klaim kenapa button Buat Baru tidak bekerja? seharusnya saat diclick
+> Buat Baru dia akan membuat RCV baru dengan mengikuti file InputReceiveDocument.xml pada folder
+> Flow. Buatkan dan perbaiki Button Buat Baru tersebut"
+
+### 17.2 Kenapa tombolnya tampak tidak bekerja
+
+Permintaannya **berhasil** — `POST` menjawab `201` dan berkasnya benar-benar tersimpan. Yang tidak
+terjadi adalah dua hal berikutnya, dan tanpa keduanya tombol itu memang tidak berguna:
+
+| # | Yang terjadi | Akibat di kursi petugas |
+|---|---|---|
+| 1 | Layar **tidak berpindah ke form isian** | Berkas lahir kosong dan tidak ada tempat mengisinya |
+| 2 | Berkas baru berposisi *Not Transferred*, sedangkan tab bawaan *Outstanding Data* | Daftar tidak berubah sama sekali |
+
+Gabungan keduanya: menekan tombol menghasilkan satu pesan kecil, lalu tidak ada apa pun yang dapat
+dikerjakan. Itu sebabnya ia terbaca sebagai tombol rusak.
+
+**Akar sebabnya ada di sesi sebelumnya.** Saya membaca `Activity/CreateNewCaseRCV-Act.xml` dan
+menyimpulkan benar bahwa ia membuat berkas KOSONG — tetapi berhenti di situ. Yang tidak saya
+telusuri adalah ke mana berkas itu pergi sesudahnya, dan jawabannya ada di berkas yang Work Owner
+tunjuk: `Flow/InputReceiveDocument.xml`.
+
+### 17.3 Apa yang sebenarnya dilakukan alur itu
+
+```
+Start ─► Assignment "Receive Document" ─► End
+           WorkList, router PNCAdminRouterRCV
+           flow action: InputReceiveDocument
+```
+
+Berkas lahir kosong JUSTRU supaya assignment inilah yang mengisinya. Flow action
+`InputReceiveDocument` merender sebuah form — dan form itulah yang hilang dari modul saya.
+
+### 17.4 Bukti yang ditemukan, dan satu yang tidak ada
+
+| Yang dicari | Hasil |
+|---|---|
+| `Flow/InputReceiveDocument.xml` | ada — alur `ReceiveDocument_Flow`, satu assignment |
+| `Flow Action/InputReceiveDocument-FlowAction.xml` | ada — merender section `InputReceiveDocument` |
+| **`Section/InputReceiveDocument`** | **TIDAK ADA di export** — bagian dari ±242 rule hilang (`R-16`) |
+| `Section/ViewInputReceiveDocument_sec` (1,24 MB) | ada — varian tampil form yang sama; **dipakai sebagai sumber label dan properti** |
+| `Activity/Pre_ActReceiveDocument` | ada — hanya menyalin `StatusLock`; tidak menyiapkan isian |
+| Validate rule pada flow action | **NOL** — tidak ada isian wajib, tidak ada aturan |
+
+### 17.5 Lingkup form: ditentukan bukti, bukan selera
+
+Properti terikat pada section membelah dirinya sendiri menjadi dua kelompok yang jelas:
+
+| Kelompok | Terikat | Keputusan |
+|---|---|---|
+| 17 isian tunggal `.ReceiveDocument.*` | field biasa | **dibawa seluruhnya** |
+| Blok pelapor + alamat | `.ReportHE.*`, alamatnya page list `.ReportHE.ASMAdressList` | **tidak dibawa** — `ReportHE` adalah area **Heavy Equipment**, yang `D-34` keluarkan dari lingkup atas keputusan Work Owner |
+| Grid dokumen | page list `.ReceiveDocument.DocumentList` | **tidak dibawa** — menuntut `S-1`; yang dibawa hanya angka totalnya |
+| Riwayat komunikasi & progres | `tempHistoryKomunikasi`, `tempViewProgress` | **tidak dibawa** — milik modul lain |
+
+Empat dari sepuluh isian baru bahkan terbukti disimpan procedure lama
+(`PROCINSERTDATARECIVEDKLAIM.prc`); dua — estimasi kerugian dan jumlah dokumen — ada di form tetapi
+tidak di procedure, dan tetap dibawa karena ia isian yang benar-benar diketik petugas.
+
+### 17.6 Yang dibangun
+
+**Backend**
+
+```
+inboxlaporanklaim/detail.go          Detail: 17 isian + Clean/Check + DetailOf/Apply
+inboxlaporanklaim/claimreport.go     + 10 field isian, Money, UpdatedBy/UpdatedAt
+inboxlaporanklaim/seam.go            + Repo.Update
+usecase/inbox.go                     + Service.Save
+repo/sqlstore                        + claim_report_update, scanDetailRow, Get berkolom lengkap
+repo/memory                          + Update
+http/                                + PUT /{id}, DetailDTO, kode galat laporan_hanya_baca
+migrations/0004_claim_report_detail.{up,down}.sql
+```
+
+**Frontend**
+
+```
+ClaimReportFormPage.tsx    form Input Receive Document — 17 isian, 3 kelompok
+api.ts                     + useClaimReport, useSaveClaimReport
+ClaimReportInboxPage.tsx   Buat Baru MEMBUKA form; nomor berkas menjadi tautan
+App.tsx                    rute /inbox/laporan-klaim/:id
+```
+
+### 17.7 Keputusan yang menuntut pertimbangan
+
+| Hal | Keputusan dan alasannya |
+|---|---|
+| **Migrasi baru atau menyunting 0003** | **Berkas baru, 0004.** 0003 sudah diserahkan sebagai permintaan perubahan skema dan mungkin sudah dijalankan DBA di salah satu portal. Menyuntingnya berarti dua orang memegang berkas bernomor sama dengan isi berbeda |
+| **Berkas Pega di form** | **Baca saja.** Kewenangannya dihitung SERVER (`dapat_disunting`), bukan disimpulkan layar dari kolom `asal` — satu aturan, satu tempat |
+| **Kolom detail pada kueri daftar** | **Tidak.** Kueri detail memilih 10 kolom lebih banyak; dua di antaranya berlebar 4.000 karakter, dan menariknya pada setiap halaman berarti memindahkan ratusan kilobita yang tidak pernah digambar (`D-10`) |
+| **Aturan tanggal pada form** | **Tidak ada.** Aturan DOL dan Tanggal Lapor milik `B-2`; berkas laporan justru sering masuk sebelum tanggalnya dipastikan. Menambahkannya akan menolak berkas yang di Pega diterima (`P-5`) |
+| **Pemeriksaan isian** | Hanya **lebar kolom** dan **angka non-negatif** — penjaga penyimpanan, bukan aturan bisnis. Flow action lamanya tidak punya satu pun validate rule |
+
+### 17.8 Dua hal yang uji sendiri temukan
+
+1. **Uji invarian kolom gagal** saat kueri detail sengaja dibuat berbeda dari kueri daftar. Itu
+   persis fungsinya. Invariannya diperbarui menjadi bentuk yang benar: kedua badan **daftar** wajib
+   sama persis, dan urutan kolom daftar wajib tetap menjadi **awalan** kolom detail — karena
+   `scanRow` dan `scanDetailRow` membaca posisi yang sama untuk kolom yang sama.
+2. **Kode galat salah.** Penolakan berkas Pega semula menjawab `validasi_gagal` dengan `409`.
+   Ia bukan kegagalan validasi: tidak ada satu pun isian yang dapat diperbaiki pengguna, dan klien
+   membedakan galat lewat `kode`. Diberi kode sendiri, `laporan_hanya_baca`.
+
+### 17.9 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build`, `go vet`, `go test ./...` | **seluruh paket lulus** |
+| `tsc --noEmit` | bersih |
+| `npm test` | **106 lulus, 3 gagal** (naik dari 97; +9 uji modul ini) |
+| `npm run build` | bersih |
+
+Ketiga kegagalan tetap kegagalan lama di `AccountPage.test.tsx`, yang sudah dibuktikan mendahului
+pekerjaan modul ini pada sesi sebelumnya.
+
+**Diuji terhadap aplikasi yang benar-benar berjalan**, instans sementara di porta 8099:
+
+```
+POST /api/inbox/laporan-klaim            -> 201 RCVN.26.0001, dapat_disunting=true, isian terkirim
+PUT  /api/inbox/laporan-klaim/RCVN.26.0001 -> tersimpan; estimasi 250000000 sen, 3 dokumen
+GET  /api/inbox/laporan-klaim/RCVN.26.0001 -> isian terbaca kembali utuh
+GET  .../RCV-0001  (berkas Pega)         -> dapat_disunting=false
+PUT  .../RCV-0001                        -> 409 laporan_hanya_baca
+PUT  isian cacat                         -> 422 dengan 4 pelanggaran SEKALIGUS, masing-masing
+                                            menunjuk kolomnya
+PUT  field tak dikenal                   -> 400 permintaan_cacat
+PUT  berkas tidak ada                    -> 404 tidak_ditemukan
+```
+
+### 17.10 Yang masih belum ada
+
+Tombol Buat Baru kini bekerja penuh, tetapi dua hal dari form lama tetap tertinggal dan keduanya
+menunggu modul lain: **rincian per dokumen** (`S-1`) dan **blok data pelapor beserta alamatnya**
+(area Heavy Equipment, di luar lingkup `D-34`). Keterbatasan itu disebutkan di kaki form, bukan
+disembunyikan.

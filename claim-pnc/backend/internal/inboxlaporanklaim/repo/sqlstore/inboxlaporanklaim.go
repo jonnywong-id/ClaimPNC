@@ -177,16 +177,80 @@ func (r *Repo) ListRegions(ctx context.Context) ([]inboxlaporanklaim.Region, err
 	return result, nil
 }
 
-// Get membaca satu berkas laporan dari tabel mana pun asalnya.
+// Get membaca satu berkas laporan dari tabel mana pun asalnya, LENGKAP dengan isian
+// formnya.
+//
+// Ia memakai badan kuerinya sendiri dan pembaca barisnya sendiri: kueri detail memilih
+// sepuluh kolom lebih banyak daripada kueri daftar. Lihat catatan pada
+// claim_report_get_body.
 func (r *Repo) Get(ctx context.Context, id string) (inboxlaporanklaim.ClaimReport, error) {
-	rows, err := r.query(ctx, "claim_report_get_body", []any{strings.TrimSpace(id)})
+	rows, err := r.db.QueryContext(ctx, sourced("claim_report_get_body"), strings.TrimSpace(id))
+	if err != nil {
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca berkas: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca berkas: %w", err)
+		}
+		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrNotFound
+	}
+
+	report, err := scanDetailRow(rows)
 	if err != nil {
 		return inboxlaporanklaim.ClaimReport{}, err
 	}
-	if len(rows) == 0 {
-		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrNotFound
+	return report, nil
+}
+
+// Update menyimpan isian form ke atas berkas yang sudah ada.
+func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport) error {
+	// Baris milik Pega ditolak SEBELUM menyentuh basis data. Pernyataan UPDATE-nya
+	// memang hanya mengenai tabel milik aplikasi ini, sehingga baris warisan akan
+	// menghasilkan "nol baris" yang terbaca sebagai ErrNotFound — pesan yang menyesatkan
+	// untuk berkas yang sebenarnya ADA tetapi bukan milik kita.
+	if report.Origin == inboxlaporanklaim.OriginLegacy {
+		return inboxlaporanklaim.ErrReadOnlyOrigin
 	}
-	return rows[0], nil
+
+	result, err := r.db.ExecContext(ctx, getQuery("claim_report_update"),
+		nullTime(report.ReceivedDate),
+		nullTime(report.DateOfLoss),
+		emptyToNil(report.ReporterName),
+		emptyToNil(report.ReporterEmail),
+		emptyToNil(report.ReporterPhone),
+		emptyToNil(report.CourierName),
+		emptyToNil(report.PolicyNumber),
+		emptyToNil(report.InsuredName),
+		emptyToNil(report.BusinessName),
+		emptyToNil(report.ReferenceNumber),
+		int64(report.EstimateValue),
+		emptyToNil(report.LossLocation),
+		emptyToNil(report.EmailSubject),
+		emptyToNil(report.Chronology),
+		emptyToNil(report.DamageDetail),
+		emptyToNil(report.Reason),
+		emptyToNil(report.NotRegisteredNote),
+		report.DocumentCount,
+		emptyToNil(report.UpdatedBy),
+		nullTime(report.UpdatedAt),
+		report.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q: %w", report.ID, err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
+		// kegagalan: pernyataannya sendiri sudah berhasil.
+		return nil
+	}
+	if affected == 0 {
+		return inboxlaporanklaim.ErrNotFound
+	}
+	return nil
 }
 
 // Insert menerbitkan nomor lalu menyimpan berkas baru — ke tabel milik aplikasi ini.
@@ -453,7 +517,95 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 	return report, nil
 }
 
+// scanDetailRow membaca satu baris kueri detail — kolom daftar ditambah sepuluh isian
+// form.
+//
+// Ia terpisah dari scanRow karena kueri detail memang memilih lebih banyak kolom. Dua
+// pembaca untuk dua bentuk kueri, bukan satu pembaca yang menebak: `Scan` membaca secara
+// posisi, dan satu kolom yang bergeser TIDAK menghasilkan galat — hanya kolom yang berisi
+// isi kolom sebelahnya.
+func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
+	var (
+		id, claimNumber, assignmentRef          sql.NullString
+		policyNumber, insuredName, businessName sql.NullString
+		reporterName, referenceNumber           sql.NullString
+		dateOfLoss, createdAt, agingAt          sql.NullTime
+		createdBy, branchCode, branchName       sql.NullString
+		reason, emailSubject                    sql.NullString
+		position, origin                        sql.NullString
+
+		receivedDate                sql.NullTime
+		reporterEmail, reporterPhone sql.NullString
+		courierName, lossLocation    sql.NullString
+		estimateValue, documentCount sql.NullInt64
+		chronology, damageDetail     sql.NullString
+		notRegisteredNote            sql.NullString
+
+		lastMessage sql.NullString
+	)
+
+	if err := rows.Scan(
+		&id, &claimNumber, &assignmentRef,
+		&policyNumber, &insuredName, &reporterName, &businessName, &referenceNumber,
+		&dateOfLoss, &createdAt, &createdBy, &branchCode, &branchName,
+		&agingAt, &reason, &emailSubject, &position, &origin,
+		&receivedDate, &reporterEmail, &reporterPhone, &courierName,
+		&estimateValue, &lossLocation, &chronology, &damageDetail,
+		&notRegisteredNote, &documentCount,
+		&lastMessage,
+	); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca baris detail: %w", err)
+	}
+
+	report := inboxlaporanklaim.ClaimReport{
+		ID:                id.String,
+		ClaimNumber:       text(claimNumber),
+		AssignmentRef:     text(assignmentRef),
+		PolicyNumber:      text(policyNumber),
+		InsuredName:       text(insuredName),
+		ReporterName:      text(reporterName),
+		BusinessName:      text(businessName),
+		ReferenceNumber:   text(referenceNumber),
+		DateOfLoss:        moment(dateOfLoss),
+		CreatedAt:         moment(createdAt),
+		CreatedBy:         text(createdBy),
+		BranchCode:        text(branchCode),
+		BranchName:        text(branchName),
+		AgingAt:           moment(agingAt),
+		Reason:            text(reason),
+		EmailSubject:      text(emailSubject),
+		Position:          inboxlaporanklaim.Position(text(position)),
+		Origin:            inboxlaporanklaim.Origin(text(origin)),
+		ReceivedDate:      moment(receivedDate),
+		ReporterEmail:     text(reporterEmail),
+		ReporterPhone:     text(reporterPhone),
+		CourierName:       text(courierName),
+		EstimateValue:     inboxlaporanklaim.Money(estimateValue.Int64),
+		LossLocation:      text(lossLocation),
+		Chronology:        text(chronology),
+		DamageDetail:      text(damageDetail),
+		NotRegisteredNote: text(notRegisteredNote),
+		DocumentCount:     int(documentCount.Int64),
+		LastMessage:       text(lastMessage),
+	}
+	report.ID = strings.TrimSpace(report.ID)
+	report.Transferred = report.Position != inboxlaporanklaim.PositionNotTransferred
+	return report, nil
+}
+
 func text(value sql.NullString) string { return strings.TrimSpace(value.String) }
+
+// nullTime mengubah waktu nol menjadi NULL.
+//
+// Tanpa ini, tanggal yang memang belum diisi tersimpan sebagai tahun 1 — dan tanggal itu
+// tampak sah, lolos setiap pemeriksaan, lalu muncul di layar sebagai berkas paling
+// tertunggak yang pernah ada.
+func nullTime(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return value
+}
 
 func moment(value sql.NullTime) time.Time {
 	if !value.Valid {

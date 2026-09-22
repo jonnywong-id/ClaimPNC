@@ -65,13 +65,15 @@ type Region struct {
 // tingkat kueri (`ADR-0030` Opsi 1). Tidak ada satu pun kueri di baliknya yang menyaring
 // menurut entitas, dan memang tidak boleh ada.
 //
-// # Kenapa tidak ada Update dan tidak ada Delete
+// # Kenapa ada Update, tetapi tidak ada Delete
 //
-// Layar ini tidak mengubah satu baris pun. Yang dilakukannya hanya membaca dan membuat
-// berkas baru; pengubahan isi berkas terjadi di layar lain (`B-14`), dan penghapusan
-// tidak pernah terjadi sama sekali — `ADR-0012` melarang penghapusan fisik data bernilai
-// bisnis. Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang ditulis
-// kemudian tanpa keputusan sadar.
+// Update ada karena form **Input Receive Document** mengisi berkas yang sudah dibuat
+// tombol "Buat Baru" — itulah assignment tunggal pada `Flow/InputReceiveDocument.xml`,
+// dan tanpa Update tombol itu hanya menerbitkan berkas kosong yang tidak dapat diapa-apakan.
+//
+// Delete TIDAK ada, dan tidak akan ada: `ADR-0012` melarang penghapusan fisik data
+// bernilai bisnis. Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang
+// ditulis kemudian tanpa keputusan sadar.
 type Repo interface {
 	// List mengembalikan satu halaman hasil beserta jumlah seluruh baris yang cocok.
 	//
@@ -97,6 +99,18 @@ type Repo interface {
 	// beberapa langkah kemudian: jarak antara mengambil nomor dan memakainya adalah
 	// jarak yang membuat dua penambahan bersamaan menerima nomor yang sama.
 	Insert(ctx context.Context, report ClaimReport) (ClaimReport, error)
+
+	// Update menyimpan isian form ke atas berkas yang sudah ada.
+	//
+	// ErrNotFound bila berkasnya hilang di antara pemuatan form dan penyimpanannya.
+	//
+	// Pengisi seam WAJIB menolak baris milik Pega dengan ErrReadOnlyOrigin. Ia bukan
+	// kenyamanan tampilan: selama masa paralel, tepat satu sistem yang menulis sebuah
+	// baris (`ADR-0004`, `P-1`), dan `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dibaca 116 rule
+	// Pega yang masih melayani produksi.
+	//
+	// Report sudah harus melewati Detail.Clean dan Detail.Check.
+	Update(ctx context.Context, report ClaimReport) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

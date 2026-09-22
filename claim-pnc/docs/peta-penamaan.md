@@ -434,3 +434,60 @@ Ia kontrak, bukan nama internal: `id`, `nomor_klaim`, `tertanggung`, `nama_bisni
 | `serverPaging` | `DataTable` | mematikan saring & urut internal, menggambar kaki halaman |
 | `hideSearch` | `DataTable` | menyembunyikan kotak cari bawaan |
 | `ServerPaging` | `DataTable` | tipe baru yang diekspor |
+
+---
+
+## Tambahan 2026-09-22 — form Input Receive Document
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Isian (form) | Detail | isi berkas laporan yang dikumpulkan form; dibedakan dari `ClaimReport` yang memuat kepala berkasnya |
+| TanggalTerimaDokumen | ReceivedDate | |
+| Pelapor | Reporter | `ReporterName`, `ReporterEmail`, `ReporterPhone` |
+| Kurir | Courier | `CourierName` |
+| EstimasiKerugian | EstimateValue | bertipe `Money`; **bukan** nilai klaim |
+| LokasiKejadian | LossLocation | |
+| Kronologis | Chronology | |
+| RincianKerusakan | DamageDetail | |
+| KeteranganBelumRegistrasi | NotRegisteredNote | |
+| JumlahDokumen | DocumentCount | |
+| Uang | Money | bilangan bulat SEN (`ADR-0016`); diulang dari modul `registrasi`, tidak diimpor |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Simpan (form) | Save | lapisan usecase — dibedakan dari `Update` di lapisan repo |
+| Perbarui | Update | lapisan repo |
+| Terapkan | Apply | menuliskan isian form ke atas berkas yang sudah ada |
+| Bersihkan | Clean | memangkas spasi sebelum diperiksa |
+| Periksa | Check | menjalankan seluruh pemeriksaan sekaligus |
+
+### Nama kolom basis data — tetap Indonesia
+
+Migrasi 0004 menambah sepuluh kolom pada `POOLDATA.CPNC_LAPORAN_KLAIM`:
+`TGL_TERIMA_DOKUMEN`, `EMAIL_PELAPOR`, `TLP_PELAPOR`, `NAMA_KURIR`, `NILAI_ESTIMASI`,
+`LOKASI_KEJADIAN`, `KRONOLOGIS`, `RINCIAN_KERUSAKAN`, `KET_BELUM_REGISTRASI`, `JUMLAH_DOKUMEN`.
+
+### Nama kueri `.sql` tambahan
+
+`claim_report_update` — satu-satunya pernyataan pengubah pada modul ini.
+
+### Nama field JSON — tetap Indonesia
+
+`tanggal_terima_dokumen` · `nama_pelapor` · `email_pelapor` · `telepon_pelapor` · `nama_kurir` ·
+`estimasi_kerugian` · `lokasi_kejadian` · `kronologis` · `rincian_kerusakan` ·
+`keterangan_belum_registrasi` · `jumlah_dokumen` · `isian` · `dapat_disunting`
+
+### Kode galat tambahan
+
+| Kode | Artinya |
+|---|---|
+| `laporan_hanya_baca` | berkas ada, tetapi penulisnya masih Pega selama masa paralel |
+
+### Nama komponen
+
+`ClaimReportFormPage.tsx` — nama **tipe domain**, bukan nama modul, mengikuti aturan yang sama
+dengan `ClaimReportInboxPage.tsx` dan `AccountPage.tsx`.

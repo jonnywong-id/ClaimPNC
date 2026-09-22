@@ -198,6 +198,8 @@ backend/migrations/0002_master_claim_status.up.sql     MENGUBAH objek milik sist
 backend/migrations/0002_master_claim_status.down.sql
 backend/migrations/0003_claim_report_inbox.up.sql      tabel BARU: CPNC_LAPORAN_KLAIM + sequence
 backend/migrations/0003_claim_report_inbox.down.sql
+backend/migrations/0004_claim_report_detail.up.sql     MENAMBAH 10 kolom isian form pada tabel itu
+backend/migrations/0004_claim_report_detail.down.sql
 ```
 
 > **`0003` dijalankan di SETIAP portal entitas, bukan hanya di portal utama** — berbeda dari `0001`.
@@ -331,6 +333,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/master/status-klaim` | **Master Status Klaim** |
 | `/master-rekening` | **Master Rekening** |
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — modul bisnis pertama di kelompok menu INBOX |
+| `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -372,13 +375,38 @@ daftar pilihan dropdown (isi "Pilih Kanwil" dibaca dari `POOLDATA.BRANCH` milik 
 | `GET` | `/api/inbox/laporan-klaim` | satu halaman daftar + lencana kesembilan tab. Saringan: `kategori`, `kanwil`, `bisnis`, `cari`, `halaman`, `ukuran` |
 | `GET` | `/api/inbox/laporan-klaim/pilihan` | isi ketiga dropdown: tab, bisnis, kanwil |
 | `GET` | `/api/inbox/laporan-klaim/ekspor` | unduhan CSV dengan saringan yang sama |
-| `GET` | `/api/inbox/laporan-klaim/{id}` | satu berkas laporan |
+| `GET` | `/api/inbox/laporan-klaim/{id}` | satu berkas laporan + isian formnya |
 | `POST` | `/api/inbox/laporan-klaim` | tombol "Buat Baru" — **tanpa badan permintaan** |
+| `PUT` | `/api/inbox/laporan-klaim/{id}` | tombol Simpan pada form Input Receive Document |
 
 `POST` tidak membaca badan permintaan, dan itu bukan kelalaian: tombolnya di sistem lama tidak
 meminta satu pun isian. `CreateNewCaseRCV` hanya mengisi lima nilai yang seluruhnya diturunkan dari
-petugas penekannya, lalu berkasnya lahir **kosong** untuk dilengkapi di layar berikutnya (`B-14`,
-belum dibangun).
+petugas penekannya, lalu berkasnya lahir **kosong**.
+
+Yang mengisinya adalah **form Input Receive Document**, dan itulah assignment tunggal pada
+[`Flow/InputReceiveDocument.xml`](../Flow/InputReceiveDocument.xml):
+
+```
+Start ─► Assignment "Receive Document" ─► End
+           WorkList, router PNCAdminRouterRCV
+           flow action: InputReceiveDocument
+```
+
+Karena itu menekan "Buat Baru" **membuat berkas lalu langsung membuka formnya** di
+`/inbox/laporan-klaim/{id}`. Berhenti setelah berkasnya dibuat menerbitkan berkas yang tidak dapat
+diapa-apakan — dan dari kursi petugas, tombolnya tampak tidak bekerja.
+
+`PUT`, bukan `PATCH`: form mengirim **seluruh** isian setiap kali disimpan, sehingga permintaannya
+menggantikan dan idempoten.
+
+> **Berkas milik Pega dibuka dalam modus baca saja.** Selama masa paralel, tepat satu sistem yang
+> menulis sebuah baris (`ADR-0004`, `P-1`). Kewenangannya dihitung server dan dikirim sebagai
+> `dapat_disunting`; layar tidak menyimpulkannya sendiri dari kolom `asal`.
+>
+> **Tiga bagian form lama belum ada**, dan masing-masing punya alasannya: blok data pelapor beserta
+> alamatnya terikat area **Heavy Equipment** yang `D-34` keluarkan dari lingkup migrasi; grid
+> rincian dokumen menunggu modul penyimpanan dokumen (`S-1`); riwayat komunikasi dan progres
+> dimiliki modul lain. Keterbatasannya disebutkan di kaki form, bukan disembunyikan.
 
 > **Penulisan tidak lagi masuk ke `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`** (keputusan Work Owner
 > 2026-09-19). Berkas baru tinggal di `POOLDATA.CPNC_LAPORAN_KLAIM` — tabel milik aplikasi ini,
@@ -392,6 +420,7 @@ belum dibangun).
 | Kode galat tambahan | HTTP | Artinya |
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; laporan baru tidak dapat dibuat |
+| `laporan_hanya_baca` | 409 | berkas ada, tetapi penulisnya masih Pega. Bukan `validasi_gagal`: tidak ada isian yang dapat diperbaiki pengguna |
 
 ### Master Status Klaim
 

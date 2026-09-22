@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSelectedPortal } from '@/app/portal'
@@ -131,17 +131,36 @@ function defaultReply(extra?: (call: Call) => Reply | undefined) {
   }
 }
 
+/**
+ * Layar dirender bersama RUTE-nya, bukan sendirian.
+ *
+ * Perpindahan ke form adalah bagian dari apa yang dilakukan tombol Buat Baru — menguji
+ * tombolnya tanpa rute tujuan hanya membuktikan permintaan POST terkirim, bukan bahwa
+ * petugas sampai di tempat yang seharusnya.
+ *
+ * Halaman form sungguhan sengaja TIDAK ikut dirender: yang diuji di sini adalah layar
+ * daftar, dan menariknya serta akan membuat kegagalan form terbaca sebagai kegagalan
+ * daftar. Penanda sederhana sudah cukup membuktikan alamatnya berpindah dengan benar.
+ */
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <ClaimReportInboxPage />
+      <MemoryRouter initialEntries={['/inbox/laporan-klaim']}>
+        <Routes>
+          <Route path="/inbox/laporan-klaim" element={<ClaimReportInboxPage />} />
+          <Route path="/inbox/laporan-klaim/:id" element={<FormMarker />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
+}
+
+function FormMarker() {
+  const { id } = useParams()
+  return <div data-testid="form-berkas">{id}</div>
 }
 
 function startSession() {
@@ -371,7 +390,14 @@ describe('penyaring dan halaman', () => {
 })
 
 describe('tindakan', () => {
-  it('Buat Baru mengirim POST tanpa badan dan mengumumkan nomornya', async () => {
+  it('Buat Baru membuat berkas lalu MEMBUKA form isiannya', async () => {
+    // Inilah yang membuat tombolnya berarti. Di sistem lama, `CreateNewCaseRCV` membuat
+    // berkas kosong lalu `Flow/InputReceiveDocument.xml` meneruskannya ke assignment
+    // "Receive Document" yang merender form `InputReceiveDocument`.
+    //
+    // Berhenti setelah berkasnya dibuat — seperti versi pertama layar ini — menerbitkan
+    // berkas yang tidak dapat diapa-apakan, dan berkasnya mendarat di tab lain daripada
+    // yang sedang dibuka. Dari kursi petugas, tombolnya tampak tidak bekerja.
     installFetch(defaultReply())
     show()
 
@@ -381,7 +407,19 @@ describe('tindakan', () => {
     await waitFor(() => {
       expect(calls.some((c) => c.method === 'POST')).toBe(true)
     })
-    expect(await screen.findByText(/RCVN\.26\.0001/)).toBeInTheDocument()
+
+    // Nomor berkas diterbitkan server, dan layar berpindah ke alamat form berkas itu.
+    expect(await screen.findByTestId('form-berkas')).toHaveTextContent('RCVN.26.0001')
+  })
+
+  it('nomor berkas pada daftar membuka form yang sama', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    await userEvent.click(within(table).getByRole('link', { name: 'RCV-0001' }))
+
+    expect(await screen.findByTestId('form-berkas')).toHaveTextContent('RCV-0001')
   })
 
   it('kegagalan memuat daftar ditampilkan tanpa mengosongkan layar', async () => {

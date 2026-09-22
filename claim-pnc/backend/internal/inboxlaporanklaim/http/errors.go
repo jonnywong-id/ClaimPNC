@@ -25,6 +25,14 @@ const (
 	CodeNotFound         = "tidak_ditemukan"
 	CodeMalformedRequest = "permintaan_cacat"
 	CodeCallerIncomplete = "profil_pemanggil_tidak_lengkap"
+
+	// CodeReadOnly: berkas ada, tetapi penulisnya sistem lain.
+	//
+	// Ia BUKAN validasi_gagal, meski keduanya menolak penyimpanan. Tidak ada satu pun
+	// isian yang dapat diperbaiki pengguna, dan klien membedakan jenis galat lewat
+	// `kode` — memakai kode validasi akan membuat layar menunggu `detail` yang tidak
+	// pernah datang, lalu menampilkan form yang tampak dapat diperbaiki padahal tidak.
+	CodeReadOnly = "laporan_hanya_baca"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -114,9 +122,13 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		}, true
 
 	case errors.Is(err, inboxlaporanklaim.ErrReadOnlyOrigin):
+		// 409, bukan 403: yang menolak bukan kewenangan pengguna melainkan KEADAAN
+		// berkasnya — selama masa paralel, penulisnya masih Pega (`ADR-0004`, `P-1`).
+		// Pengguna yang sama dapat menyimpan berkas lain tanpa masalah.
 		return http.StatusConflict, ErrorResponse{
-			Code:    CodeValidationFailed,
-			Message: "Laporan ini masih dikelola sistem lama dan hanya dapat dibaca dari sini.",
+			Code: CodeReadOnly,
+			Message: "Laporan ini masih dikelola sistem lama dan hanya dapat dibaca dari sini. " +
+				"Perubahannya dilakukan di Pega.",
 		}, true
 
 	default:

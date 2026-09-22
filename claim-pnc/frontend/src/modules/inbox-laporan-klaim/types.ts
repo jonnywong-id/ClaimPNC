@@ -98,10 +98,105 @@ export type ClaimReportOptionResponse = {
   portal: string
 }
 
+/**
+ * Isian form **Input Receive Document**.
+ *
+ * Asalnya `Flow/InputReceiveDocument.xml` — assignment tunggal pada alur Receive
+ * Document — yang merender flow action `InputReceiveDocument`. Label setiap isian dibaca
+ * apa adanya dari `Section/ViewInputReceiveDocument_sec-Section.xml`.
+ *
+ * Tiga blok form lama TIDAK ada di sini; alasannya di
+ * `backend/internal/inboxlaporanklaim/detail.go`: blok data pelapor beserta alamatnya
+ * (area Heavy Equipment yang `D-34` keluarkan dari lingkup), grid dokumen (`S-1` belum
+ * ada), serta riwayat komunikasi dan progres (milik modul lain).
+ */
+export type ClaimReportDetail = {
+  /** `YYYY-MM-DD`, atau kosong bila tanggalnya memang belum diisi. */
+  tanggal_terima_dokumen: string
+  tanggal_kejadian: string
+
+  nama_pelapor: string
+  email_pelapor: string
+  telepon_pelapor: string
+  nama_kurir: string
+
+  nomor_polis: string
+  tertanggung: string
+  nama_bisnis: string
+  nomor_rujukan: string
+
+  /** Bilangan bulat SEN, tidak pernah pecahan (`ADR-0016`). Rp 1.000 = 100000. */
+  estimasi_kerugian: number
+
+  lokasi_kejadian: string
+  subjek_email: string
+
+  kronologis: string
+  rincian_kerusakan: string
+  alasan: string
+  keterangan_belum_registrasi: string
+
+  jumlah_dokumen: number
+}
+
 export type ClaimReportResponse = {
   laporan: ClaimReport
+  isian?: ClaimReportDetail
+
+  /**
+   * Boleh tidak berkas ini disimpan dari layar ini.
+   *
+   * Dihitung server, BUKAN disimpulkan layar dari `asal`. Aturannya — siapa yang
+   * berwenang menulis sebuah baris selama masa paralel (`ADR-0004`, `P-1`) — milik
+   * server, dan menyalinnya ke sini berarti satu aturan hidup di dua tempat.
+   */
+  dapat_disunting: boolean
+
   portal: string
 }
+
+/** Isian form yang seluruhnya kosong — keadaan berkas yang baru dibuat. */
+export const EMPTY_DETAIL: ClaimReportDetail = {
+  tanggal_terima_dokumen: '',
+  tanggal_kejadian: '',
+  nama_pelapor: '',
+  email_pelapor: '',
+  telepon_pelapor: '',
+  nama_kurir: '',
+  nomor_polis: '',
+  tertanggung: '',
+  nama_bisnis: '',
+  nomor_rujukan: '',
+  estimasi_kerugian: 0,
+  lokasi_kejadian: '',
+  subjek_email: '',
+  kronologis: '',
+  rincian_kerusakan: '',
+  alasan: '',
+  keterangan_belum_registrasi: '',
+  jumlah_dokumen: 0,
+}
+
+/**
+ * Batas panjang setiap isian, mengikuti kolom yang dibuat migrasi 0004.
+ *
+ * Angkanya diulang dari `backend/internal/inboxlaporanklaim/detail.go`. Server tetap yang
+ * berwenang; yang di sini hanya kenyamanan supaya pengguna tahu sebelum mengirim. Bila
+ * salah satu berubah, KEDUA tempat harus ikut berubah — utang yang disadari dari
+ * menduplikasi sebuah angka.
+ */
+export const FIELD_LIMIT = {
+  nama: 255,
+  email: 200,
+  telepon: 64,
+  polis: 64,
+  rujukan: 64,
+  lokasi: 500,
+  subjek: 1000,
+  catatan: 1000,
+  narasi: 4000,
+  jumlahDokumen: 9999,
+} as const
 
 /** Penyaring yang dipilih pengguna di layar. */
 export type ClaimReportQuery = {
@@ -134,6 +229,9 @@ export const ClaimReportErrorCode = {
   notFound: 'tidak_ditemukan',
   callerIncomplete: 'profil_pemanggil_tidak_lengkap',
   validationFailed: 'validasi_gagal',
+
+  /** Berkas ada, tetapi penulisnya masih Pega selama masa paralel. */
+  readOnly: 'laporan_hanya_baca',
 } as const
 
 export type ClaimReportErrorCode =

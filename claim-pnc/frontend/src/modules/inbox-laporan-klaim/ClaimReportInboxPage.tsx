@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -43,6 +44,7 @@ export function ClaimReportInboxPage() {
   const [query, setQuery] = useState<ClaimReportQuery>(EMPTY_QUERY)
   const [keyword, setKeyword] = useState('')
 
+  const navigate = useNavigate()
   const portal = useSelectedPortal((state) => state.alias)
   const options = useClaimReportOptions()
   const list = useClaimReportList(query)
@@ -161,14 +163,6 @@ export function ClaimReportInboxPage() {
         </div>
       )}
 
-      {create.isSuccess && (
-        <p className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900">
-          Laporan <span className="font-medium">{create.data.laporan.id}</span> dibuat dan
-          menunggu dilengkapi. Ia muncul di tab{' '}
-          <span className="font-medium">Data hasn&apos;t been transferred</span>.
-        </p>
-      )}
-
       <div className="mt-4">
         <DataTable<ClaimReport>
           columns={columnsFor(active?.komunikasi ?? false)}
@@ -197,10 +191,26 @@ export function ClaimReportInboxPage() {
           }}
           actions={
             <>
+              {/*
+                Buat Baru MEMBUKA form isiannya, tidak berhenti setelah berkasnya dibuat.
+                Itulah yang dilakukan alur lama: `CreateNewCaseRCV` membuat berkas kosong,
+                lalu `Flow/InputReceiveDocument.xml` meneruskannya ke assignment "Receive
+                Document" yang merender form `InputReceiveDocument`.
+
+                Berhenti di sini — seperti versi pertama layar ini — menerbitkan berkas
+                yang tidak dapat diapa-apakan, dan berkasnya pun mendarat di tab lain
+                daripada yang sedang dibuka. Dari kursi petugas, tombolnya tampak tidak
+                bekerja sama sekali.
+              */}
               <Button
                 type="button"
                 tone="utama"
-                onClick={() => create.mutate()}
+                onClick={() =>
+                  create.mutate(undefined, {
+                    onSuccess: (hasil) =>
+                      navigate(`/inbox/laporan-klaim/${encodeURIComponent(hasil.laporan.id)}`),
+                  })
+                }
                 disabled={create.isPending}
               >
                 <AddIcon className="mr-1.5 h-4 w-4" />
@@ -229,10 +239,9 @@ export function ClaimReportInboxPage() {
       </div>
 
       <p className="mt-4 text-xs text-slate-500">
-        Membuka isi sebuah laporan belum tersedia di sini: layar rinciannya adalah modul
-        Receive Document (<code>B-14</code>) yang belum dibangun. Kolom{' '}
-        <span className="font-medium">Asal</span> menyebutkan sistem yang memegang setiap
-        berkas selama masa paralel.
+        Tekan nomor berkas untuk membuka isiannya. Berkas bertanda{' '}
+        <span className="font-medium">Pega</span> dibuka dalam modus baca saja — selama masa
+        paralel, hanya satu sistem yang boleh menulis sebuah berkas.
       </p>
     </PageFrame>
   )
@@ -337,9 +346,18 @@ function columnsFor(message: boolean): Column<ClaimReport>[] {
       title: 'Case ID',
       value: (r) => r.id,
       width: '12rem',
+      // Nomor berkas menjadi tautan pembuka form. Di layar lama, barisnya dibuka dengan
+      // menekannya; tautan dipilih di sini supaya alamatnya dapat disalin, dibuka di tab
+      // baru, dan dijangkau papan ketik — tiga hal yang tidak diberikan baris yang hanya
+      // menanggapi klik.
       render: (r) => (
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          <span className="font-medium text-slate-900">{r.id}</span>
+          <Link
+            to={`/inbox/laporan-klaim/${encodeURIComponent(r.id)}`}
+            className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 hover:decoration-blue-600"
+          >
+            {r.id}
+          </Link>
           <OriginBadge origin={r.asal} />
         </span>
       ),

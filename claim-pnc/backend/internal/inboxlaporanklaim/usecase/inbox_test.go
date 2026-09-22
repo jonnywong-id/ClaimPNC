@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -491,5 +492,128 @@ func TestStorageFailureIsReportedNotSwallowed(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("kegagalan penyimpanan dijawab seolah berhasil")
+	}
+}
+
+func TestFormSavesOntoTheReportThatButtonCreated(t *testing.T) {
+	service, _ := newService(t)
+
+	created, err := service.Create(context.Background(), portalAlias, adminJakarta)
+	if err != nil {
+		t.Fatalf("membuat berkas: %v", err)
+	}
+
+	detail := inboxlaporanklaim.Detail{
+		ReceivedDate:  time.Date(2026, 9, 18, 0, 0, 0, 0, time.UTC),
+		DateOfLoss:    time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC),
+		ReporterName:  "Pelapor Contoh",
+		PolicyNumber:  "POL-CONTOH-1",
+		InsuredName:   "Tertanggung Contoh",
+		EstimateValue: inboxlaporanklaim.Rupiah(2_500_000),
+		Chronology:    "Kronologis contoh.",
+		DocumentCount: 3,
+	}
+
+	saved, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("menyimpan isian: %v", err)
+	}
+
+	if saved.ReporterName != "Pelapor Contoh" || saved.PolicyNumber != "POL-CONTOH-1" {
+		t.Fatalf("isian tidak tersimpan: %+v", saved)
+	}
+	if saved.UpdatedBy != adminJakarta.Login {
+		t.Fatalf("jejak penyimpan = %q, ingin %q", saved.UpdatedBy, adminJakarta.Login)
+	}
+	if saved.UpdatedAt.IsZero() {
+		t.Fatal("waktu penyimpanan tidak dicatat")
+	}
+
+	// Yang tersimpan harus terbaca kembali — bukan hanya dikembalikan oleh pemanggilnya.
+	reread, err := service.Get(context.Background(), portalAlias, created.ID)
+	if err != nil {
+		t.Fatalf("membaca ulang: %v", err)
+	}
+	if reread.Chronology != "Kronologis contoh." || reread.DocumentCount != 3 {
+		t.Fatalf("isian tidak bertahan: %+v", reread)
+	}
+}
+
+func TestSavingIsIdempotent(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	detail := inboxlaporanklaim.Detail{ReporterName: "Pelapor Contoh", DocumentCount: 2}
+
+	first, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("simpan pertama: %v", err)
+	}
+	second, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("simpan kedua: %v", err)
+	}
+
+	// Menekan Simpan dua kali menghasilkan keadaan yang sama persis — itulah yang membuat
+	// PUT benar dan PATCH tidak.
+	if inboxlaporanklaim.DetailOf(first) != inboxlaporanklaim.DetailOf(second) {
+		t.Fatal("penyimpanan kedua menghasilkan isian yang berbeda")
+	}
+}
+
+func TestLegacyReportIsRefusedBeforeAnyFieldIsChecked(t *testing.T) {
+	service, _ := newService(t)
+
+	// Isiannya sengaja dibuat CACAT. Yang harus dijawab adalah penolakan asal berkas,
+	// bukan daftar galat isian: memberi pengguna daftar isian yang harus diperbaiki pada
+	// form yang memang tidak dapat disimpan sama sekali adalah menyesatkan.
+	broken := inboxlaporanklaim.Detail{
+		ReporterName: strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+	}
+
+	_, err := service.Save(context.Background(), portalAlias, "RCV-0001", adminJakarta, broken)
+	if !errors.Is(err, inboxlaporanklaim.ErrReadOnlyOrigin) {
+		t.Fatalf("galat menyimpan berkas Pega = %v, ingin ErrReadOnlyOrigin", err)
+	}
+}
+
+func TestSavingAReportThatDoesNotExistIsNotFound(t *testing.T) {
+	service, _ := newService(t)
+
+	_, err := service.Save(context.Background(), portalAlias, "RCVN.26.9999", adminJakarta,
+		inboxlaporanklaim.Detail{})
+	if !errors.Is(err, inboxlaporanklaim.ErrNotFound) {
+		t.Fatalf("galat = %v, ingin ErrNotFound", err)
+	}
+}
+
+func TestSavingRefusesInvalidFieldsWithEveryViolation(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	broken := inboxlaporanklaim.Detail{
+		ReporterName:  strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+		EstimateValue: -1,
+	}
+
+	_, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, broken)
+
+	var failure *inboxlaporanklaim.ValidationError
+	if !errors.As(err, &failure) {
+		t.Fatalf("galat = %v, ingin ValidationError", err)
+	}
+	if len(failure.Violation) != 2 {
+		t.Fatalf("pelanggaran = %d, ingin 2", len(failure.Violation))
+	}
+}
+
+func TestSavingWithoutIdentityIsRefused(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	_, err := service.Save(context.Background(), portalAlias, created.ID,
+		inboxlaporanklaim.Caller{BranchCode: "1001"}, inboxlaporanklaim.Detail{})
+	if !errors.Is(err, inboxlaporanklaim.ErrCallerUnknown) {
+		t.Fatalf("galat = %v, ingin ErrCallerUnknown", err)
 	}
 }

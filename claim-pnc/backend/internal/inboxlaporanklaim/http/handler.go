@@ -2,11 +2,14 @@ package inboxlaporanklaimhttp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,6 +19,14 @@ import (
 
 	portalhttp "claim-pnc/internal/portal/http"
 )
+
+// maxRequestBody membatasi besar badan permintaan yang dibaca.
+//
+// Form Input Receive Document memuat dua isian bernarasi panjang — kronologis kejadian
+// dan rincian kerusakan, masing-masing 4.000 karakter. 64 KiB sudah jauh lebih dari
+// cukup, dan batasnya ada supaya permintaan bertubuh raksasa ditolak sebelum memakan
+// memori, bukan sesudah.
+const maxRequestBody = 64 << 10
 
 // CallerLookup membaca identitas pemanggil dari konteks permintaan.
 //
@@ -154,10 +165,90 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{
-		Laporan: toDTO(report, h.service.Now()),
-		Portal:  active.Alias,
-	})
+	h.writeResponse(w, r, http.StatusOK, singleResponse(report, active.Alias, h.service.Now()))
+}
+
+// Save menangani PUT /inbox/laporan-klaim/{id} — tombol Simpan pada form Input Receive
+// Document.
+//
+// PUT, bukan PATCH: form mengirim SELURUH isian setiap kali disimpan, sehingga
+// permintaannya menggantikan dan idempoten. Menekan Simpan dua kali menghasilkan keadaan
+// yang sama persis.
+func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	if id == "" {
+		h.writeModuleError(w, r, inboxlaporanklaim.ErrNotFound)
+		return
+	}
+
+	request, parsed := h.readRequest(w, r)
+	if !parsed {
+		return
+	}
+
+	saved, err := h.service.Save(r.Context(), active.Alias, id, caller, toDetail(request))
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	h.writeResponse(w, r, http.StatusOK, singleResponse(saved, active.Alias, h.service.Now()))
+}
+
+// readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
+func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
+	var request SaveRequest
+
+	reader := http.MaxBytesReader(w, r.Body, maxRequestBody)
+	decoder := json.NewDecoder(reader)
+	// Field yang tidak dikenal ditolak, tidak diabaikan diam-diam: salah ketik nama field
+	// akan terbaca sebagai "isian tidak dikirim" dan MENGOSONGKAN isian yang sebenarnya
+	// terisi — pada permintaan yang menggantikan seluruh isi, itu kehilangan data.
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&request); err != nil {
+		// Rincian galat penguraian tidak dikirim ke peramban: isinya memuat cuplikan
+		// badan permintaan.
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
+		})
+		return SaveRequest{}, false
+	}
+
+	// Badan yang memuat lebih dari satu dokumen JSON ditolak.
+	if err := decoder.Decode(new(struct{})); !errors.Is(err, io.EOF) {
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
+		})
+		return SaveRequest{}, false
+	}
+
+	return request, true
+}
+
+// singleResponse menyusun jawaban yang memuat satu berkas beserta isian formnya.
+func singleResponse(
+	report inboxlaporanklaim.ClaimReport,
+	portalAlias string,
+	now time.Time,
+) SingleResponse {
+	detail := toDetailDTO(inboxlaporanklaim.DetailOf(report))
+	return SingleResponse{
+		Laporan: toDTO(report, now),
+		Isian:   &detail,
+		// Berkas milik Pega hanya dapat dibaca dari sini selama masa paralel
+		// (`ADR-0004`, `P-1`). Layar memakai penanda ini untuk menggambar formnya dalam
+		// modus baca saja — bukan menyimpulkannya sendiri dari kolom `asal`.
+		DapatDisunting: report.Origin == inboxlaporanklaim.OriginNew,
+		Portal:         portalAlias,
+	}
 }
 
 // Create menangani POST /inbox/laporan-klaim — tombol "Buat Baru".
@@ -177,11 +268,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 201, dan badannya memuat baris yang benar-benar tersimpan beserta nomornya. Nomor
-	// diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
-		Laporan: toDTO(report, h.service.Now()),
-		Portal:  active.Alias,
-	})
+	// diterbitkan server, sehingga layar tidak punya cara lain mengetahuinya — dan layar
+	// LANGSUNG membuka form isiannya, persis seperti alur Pega yang meneruskan ke
+	// assignment "Receive Document" begitu berkasnya dibuat.
+	h.writeResponse(w, r, http.StatusCreated, singleResponse(report, active.Alias, h.service.Now()))
 }
 
 // prepare mengambil portal aktif dan identitas pemanggil sekaligus.

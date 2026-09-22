@@ -2035,3 +2035,125 @@ komponen, bukan pustakanya.
    membuat dua gaya jalur hidup berdampingan.
 4. **Tidak ada jejak audit** atas pembuatan berkas. `S-5` belum ada; kolom `DIBUAT_OLEH` dan
    `DIBUAT_PADA` pada tabel baru adalah yang terdekat dengannya hari ini.
+
+## 18. Form Input Receive Document (2026-09-22, sesi kesepuluh)
+
+Melengkapi §17. Tombol "Buat Baru" yang sebelumnya menerbitkan berkas kosong tanpa tempat
+mengisinya kini membuka form yang mengisinya — persis seperti alur
+`Flow/InputReceiveDocument.xml`.
+
+### 18.1 Apa yang salah sebelumnya
+
+Bukan bug pada permintaannya: `POST` menjawab `201` dan berkasnya tersimpan. Yang salah adalah
+**lingkup yang saya tetapkan sendiri** pada sesi sebelumnya.
+
+Saya membaca `CreateNewCaseRCV` dan menyimpulkan benar bahwa ia membuat berkas KOSONG, lalu
+berhenti — tanpa menelusuri ke mana berkas itu pergi sesudahnya. Jawabannya ada di alur yang
+memanggilnya: berkas lahir kosong JUSTRU supaya assignment "Receive Document" yang mengisinya.
+
+> **Pelajarannya, dicatat supaya tidak terulang:** membaca activity yang MEMBUAT sesuatu tidak
+> cukup. Yang menentukan artinya adalah alur yang menerimanya.
+
+### 18.2 Sumber yang dipakai, dan satu yang tidak ada
+
+| Artefak | Keadaan |
+|---|---|
+| `Flow/InputReceiveDocument.xml` | ada — Start → assignment `Receive Document` (WorkList, `PNCAdminRouterRCV`) → End |
+| `Flow Action/InputReceiveDocument-FlowAction.xml` | ada — merender section `InputReceiveDocument` |
+| **Section `InputReceiveDocument`** | **TIDAK ADA di export** (`R-16`) |
+| `Section/ViewInputReceiveDocument_sec` | ada, 1,24 MB — **dipakai sebagai pengganti sumber** |
+| `Database/PROCINSERTDATARECIVEDKLAIM.prc` | ada — menyilangkan isian form dengan kolom yang benar-benar disimpan |
+
+Section formnya sendiri hilang. Yang dipakai adalah **varian tampilnya**, yang memuat label dan
+properti terikat yang sama persis. Itu bukti terbaik yang tersedia, dan keterbatasannya ditulis di
+kepala `detail.go` alih-alih ditutupi.
+
+### 18.3 Lingkup form ditentukan oleh bentuk keterikatannya
+
+Properti pada section membelah dirinya sendiri, dan pembelahan itu yang dipakai — bukan penilaian
+saya tentang mana yang penting:
+
+| Kelompok | Terikat sebagai | Keputusan |
+|---|---|---|
+| 17 isian `.ReceiveDocument.*` | field tunggal | **dibawa** |
+| Blok pelapor + alamat | `.ReportHE.*`; alamatnya page list | **tidak** — `ReportHE` adalah area **Heavy Equipment**, dan `D-34` mengeluarkan Bengkel/Sparepart/Supplier beserta area HE dari lingkup migrasi |
+| Grid dokumen | page list `.ReceiveDocument.DocumentList` | **tidak** — menuntut `S-1`/`D-16`; angka totalnya tetap dibawa |
+| Riwayat komunikasi & progres | page list `tempHistoryKomunikasi`, `tempViewProgress` | **tidak** — menampilkan data milik modul lain, bukan isian form |
+
+### 18.4 Pemeriksaan isian: penjaga penyimpanan, bukan aturan bisnis
+
+Flow action `InputReceiveDocument` **tidak punya satu pun** validate rule maupun isian bertanda
+wajib — diperiksa langsung ke berkasnya. Pega menyimpan apa pun yang diketik.
+
+Yang diperiksa di sini karena itu hanya dua hal:
+
+| Pemeriksaan | Kenapa ia bukan aturan bisnis |
+|---|---|
+| **Panjang teks** terhadap lebar kolom migrasi 0004 | Tanpa ia, Oracle menolak dengan `ORA-12899` yang tidak menyebut isian mana. Dihitung dalam RUNE, bukan byte — satu huruf beraksen memakan dua byte, dan nama orang Indonesia memuatnya |
+| **Angka tidak negatif**, jumlah dokumen ≤ 9999 | Penjaga salah ketik. Angka enam digit pada "Total Jumlah Dokumen" hampir pasti bukan jumlah dokumen |
+
+**Aturan tanggal sengaja TIDAK ada.** DOL di dalam periode polis, Tanggal Lapor ≤ DOL + 7 hari, dan
+seterusnya adalah milik `B-2` (`02-BUSINESS-UNDERSTANDING.md` §3.1). Berkas laporan justru sering
+masuk sebelum tanggalnya dipastikan; menambahkannya di sini akan menolak berkas yang di Pega
+diterima — perubahan perilaku yang tidak ada di 13 butir `D-49`.
+
+### 18.5 Berkas Pega dibuka baca saja
+
+`Repo.Update` menolak baris ber-`Origin` warisan dengan `ErrReadOnlyOrigin`, dan penolakannya ada
+di **kedua** pengisi seam — SQL maupun memori. Seam yang kedua pengisinya berperilaku berbeda
+adalah seam yang menyembunyikan cacat.
+
+Penolakannya terjadi **sebelum** satu pun isian diperiksa: memberi pengguna daftar isian yang harus
+diperbaiki pada form yang memang tidak dapat disimpan sama sekali adalah menyesatkan.
+
+**Kewenangannya dikirim server** sebagai `dapat_disunting`, bukan disimpulkan layar dari kolom
+`asal`. Aturan siapa yang boleh menulis milik server; menyalinnya ke layar berarti satu aturan hidup
+di dua tempat, dan yang di layar akan tertinggal saat yang di server berubah.
+
+### 18.6 Kode galat tersendiri untuk penolakan itu
+
+Versi pertama menjawab `validasi_gagal` dengan `409`. **Dikoreksi menjadi `laporan_hanya_baca`.**
+
+Ia bukan kegagalan validasi: tidak ada satu pun isian yang dapat diperbaiki pengguna. Klien
+membedakan jenis galat lewat `kode`, dan memakai kode validasi akan membuat layar menunggu `detail`
+yang tidak pernah datang — lalu menampilkan form yang tampak dapat diperbaiki padahal tidak.
+
+`409`, bukan `403`: yang menolak bukan kewenangan pengguna melainkan **keadaan berkasnya**.
+Pengguna yang sama dapat menyimpan berkas lain tanpa masalah.
+
+### 18.7 Migrasi 0004 berdiri sendiri, bukan suntingan pada 0003
+
+0003 sudah diserahkan sebagai permintaan perubahan skema (`D-63`) dan mungkin sudah dijalankan DBA
+di salah satu portal. Menyuntingnya berarti dua orang memegang berkas bernomor sama dengan isi
+berbeda — dan yang menjalankan versi lama tidak punya cara mengetahuinya.
+
+0004 karena itu bersifat **menambah** dan aman dijalankan apa pun keadaannya, selama 0003 sudah
+lebih dulu. Seluruh kolomnya NULLABLE, sehingga versi aplikasi yang lama tetap berjalan terhadap
+skema ini (`P-4`).
+
+### 18.8 Kueri detail memilih lebih banyak kolom daripada kueri daftar
+
+Sepuluh kolom lebih banyak, dan dua di antaranya berlebar 4.000 karakter. Menariknya pada setiap
+halaman daftar berarti memindahkan ratusan kilobita yang tidak pernah digambar grid, pada tabel
+berpuluh juta baris (`D-10`).
+
+Biayanya: dua pembaca baris, bukan satu. Yang menjaganya adalah uji yang menuntut **urutan kolom
+daftar tetap menjadi AWALAN kolom detail** — `Scan` membaca secara posisi, dan menyisipkan kolom
+baru di tengah alih-alih di ujung akan menggeser salah satunya tanpa menghasilkan galat.
+
+### 18.9 Utang teknis yang bertambah
+
+1. **Batas panjang isian hidup di dua tempat** — `detail.go` dan `types.ts`. Server tetap yang
+   berwenang; yang di frontend hanya kenyamanan. Bila salah satu berubah, keduanya harus ikut.
+2. **Tipe `Money` diulang**, tidak diimpor dari modul `registrasi`. Paket domain satu modul tidak
+   boleh bergantung pada paket domain modul lain; tipe uang bersama adalah `TKT-U2-004` yang belum
+   ada.
+3. **`UpdatedBy`/`UpdatedAt` bukan jejak audit.** Jejak audit adalah `S-5` yang mencatat nilai
+   sebelum dan sesudah (`D-28`). Yang ini hanya menjawab "siapa terakhir menyentuh berkas ini".
+
+### 18.10 Pertanyaan terbuka yang bertambah
+
+| # | Pertanyaan | Kenapa ia penting |
+|---|---|---|
+| 6 | **Apakah berkas yang sudah diserahkan masih boleh disunting?** Form sekarang menerima penyimpanan pada berkas berposisi apa pun selama ia milik aplikasi ini. Di Pega, assignment-nya hilang setelah berkas berpindah tahap — sehingga formnya tidak lagi dapat dibuka. Perilaku itu **tidak** direplikasi karena mekanisme assignment-nya tidak dibawa, dan pembatasannya menuntut keputusan Work Owner |
+| 7 | **Siapa yang boleh mengisi form ini?** Sekarang setiap pengguna yang dapat membuka layarnya. Kewenangan per peran adalah `TKT-F3-005` yang belum ada; keadaannya sama dengan seluruh layar lain hari ini |
