@@ -9,20 +9,29 @@ import { useSession } from '@/app/session'
 
 import { ProgressStatusPage } from './ProgressStatusPage'
 
+// Kesembilan baris persis seperti yang dijawab server — lihat
+// `internal/masterstatusprogres/position.go`. Nilai simpanan dan labelnya memang sama;
+// di Pega dropdown-nya mengikat keduanya ke satu properti yang sama. Dan "All" memang
+// terulang di baris terakhir.
 const POSITIONS = {
   posisi: [
-    { kode: '002', nama: 'REGISTER' },
-    { kode: '004', nama: 'SURVEY' },
-    { kode: '006', nama: 'KOMITE' },
-    { kode: '007', nama: 'AKSEPTASI' },
+    { kode: 'All', nama: 'All' },
+    { kode: 'REGISTER', nama: 'REGISTER' },
+    { kode: 'KOMITE', nama: 'KOMITE' },
+    { kode: 'SURVEY', nama: 'SURVEY' },
+    { kode: 'AKSEPTASI', nama: 'AKSEPTASI' },
+    { kode: 'OUTSTANDING', nama: 'OUTSTANDING' },
+    { kode: 'BENGKEL', nama: 'BENGKEL' },
+    { kode: 'PROCUREMENT', nama: 'PROCUREMENT' },
+    { kode: 'All', nama: 'All' },
   ],
 }
 
 const LIST = {
   portal: 'ASM',
   status_progres: [
-    { id: '01', nama: 'DOKUMEN DITERIMA', kode_posisi: '002', nama_posisi: 'REGISTER' },
-    { id: '02', nama: 'MENUNGGU JADWAL SURVEI', kode_posisi: '004', nama_posisi: 'SURVEY' },
+    { id: '01', nama: 'DOKUMEN DITERIMA', kode_posisi: 'REGISTER', nama_posisi: 'REGISTER' },
+    { id: '02', nama: 'MENUNGGU JADWAL SURVEI', kode_posisi: 'SURVEY', nama_posisi: 'SURVEY' },
   ],
 }
 
@@ -215,7 +224,7 @@ describe('penambahan', () => {
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
 
     await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
-    await user.selectOptions(screen.getByLabelText('Posisi'), '004')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => {
@@ -226,7 +235,7 @@ describe('penambahan', () => {
     expect(sent?.url).toBe('/api/master/status-progres-1')
     expect(sent?.header['X-Portal']).toBe('ASM')
     // ID tidak dikirim: ia diterbitkan server dari isi tabel.
-    expect(sent?.body).toEqual({ nama: 'MENUNGGU BERKAS', kode_posisi: '004' })
+    expect(sent?.body).toEqual({ nama: 'MENUNGGU BERKAS', kode_posisi: 'SURVEY' })
   })
 
   // Validasi di layar menahan isian kosong sebelum permintaan dikirim.
@@ -236,7 +245,7 @@ describe('penambahan', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    await user.selectOptions(screen.getByLabelText('Posisi'), '002')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'REGISTER')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Nama status progres wajib diisi.')).toBeInTheDocument()
@@ -277,7 +286,7 @@ describe('penambahan', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
     await user.type(screen.getByLabelText('Status Progres'), 'X')
-    await user.selectOptions(screen.getByLabelText('Posisi'), '002')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'REGISTER')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Posisi klaim tidak dikenal.')).toBeInTheDocument()
@@ -298,7 +307,7 @@ describe('penambahan', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
     await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
-    await user.selectOptions(screen.getByLabelText('Posisi'), '004')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Terjadi kesalahan pada sistem')).toBeInTheDocument()
@@ -312,7 +321,7 @@ describe('penambahan', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
     await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
-    await user.selectOptions(screen.getByLabelText('Posisi'), '004')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(screen.queryByLabelText('Status Progres')).not.toBeInTheDocument())
@@ -328,7 +337,7 @@ describe('penyuntingan', () => {
     await user.click(await screen.findByRole('button', { name: 'Ubah DOKUMEN DITERIMA' }))
 
     expect(screen.getByLabelText('Status Progres')).toHaveValue('DOKUMEN DITERIMA')
-    expect(screen.getByLabelText('Posisi')).toHaveValue('002')
+    expect(screen.getByLabelText('Posisi')).toHaveValue('REGISTER')
     expect(screen.getByText('(tidak dapat diubah)')).toBeInTheDocument()
     // ID tidak muncul sebagai isian yang dapat disunting.
     expect(screen.queryByLabelText('ID')).not.toBeInTheDocument()
@@ -341,7 +350,7 @@ describe('penyuntingan', () => {
           status_progres: {
             id: '01',
             nama: 'DOKUMEN LENGKAP',
-            kode_posisi: '006',
+            kode_posisi: 'KOMITE',
             nama_posisi: 'KOMITE',
           },
           portal: 'ASM',
@@ -354,7 +363,7 @@ describe('penyuntingan', () => {
     await user.click(await screen.findByRole('button', { name: 'Ubah DOKUMEN DITERIMA' }))
     await user.clear(screen.getByLabelText('Status Progres'))
     await user.type(screen.getByLabelText('Status Progres'), 'DOKUMEN LENGKAP')
-    await user.selectOptions(screen.getByLabelText('Posisi'), '006')
+    await user.selectOptions(screen.getByLabelText('Posisi'), 'KOMITE')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
@@ -362,7 +371,7 @@ describe('penyuntingan', () => {
     const sent = calls.find((call) => call.method === 'PUT')
     expect(sent?.url).toBe('/api/master/status-progres-1/01')
     expect(sent?.header['X-Portal']).toBe('ASM')
-    expect(sent?.body).toEqual({ nama: 'DOKUMEN LENGKAP', kode_posisi: '006' })
+    expect(sent?.body).toEqual({ nama: 'DOKUMEN LENGKAP', kode_posisi: 'KOMITE' })
   })
 
   it('menutup form ketika dibatalkan tanpa mengirim apa pun', async () => {
@@ -375,6 +384,23 @@ describe('penyuntingan', () => {
 
     expect(screen.queryByLabelText('Status Progres')).not.toBeInTheDocument()
     expect(calls.some((call) => call.method === 'PUT' || call.method === 'POST')).toBe(false)
+  })
+})
+
+// Grid layar lama BERHALAMAN — `Section/BrowseStatusProgress-Section.xml` menyisipkan
+// `pyGridPaginator` dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Versi
+// pertama layar ini menggambar seluruh baris sekaligus, dan Work Owner menemukannya pada
+// 2026-09-20. Uji ini yang menjaga paginasinya tidak hilang lagi diam-diam.
+describe('paginasi', () => {
+  it('menyalakan paginasi tabel', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('DOKUMEN DITERIMA')
+    // Daftar contohnya dua baris, sehingga nomor halaman memang tidak digambar —
+    // ringkasan barisnya yang membuktikan paginasi menyala. Ukuran halamannya sendiri
+    // dikunci di DataTable.test.tsx, bukan di sini.
+    expect(screen.getByText(/dari 2 baris/)).toBeInTheDocument()
   })
 })
 

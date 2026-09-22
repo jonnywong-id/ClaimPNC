@@ -2,8 +2,10 @@
 //
 // # Apa yang dimodelkan di sini
 //
-// Satu klaim berjalan melewati beberapa **Posisi** (Register, Survey, Komite,
-// Akseptasi). Di dalam setiap posisi, petugas mencatat **Status Progres** — keterangan
+// Satu klaim berjalan melewati beberapa **Posisi** — Register, Komite, Survey,
+// Akseptasi, Outstanding, Bengkel, dan Procurement; daftar lengkapnya beserta asal
+// buktinya ada di position.go. Di dalam setiap posisi, petugas mencatat **Status
+// Progres** — keterangan
 // sudah sampai mana pekerjaan pada posisi itu. Daftar status itulah yang dikelola modul
 // ini, dan di sistem lama ia tinggal di POOLDATA.GCNM_MST_PROGRESS_KLAIM.
 //
@@ -37,7 +39,7 @@
 //
 //	ID_PROGRESS    AS "CaseID"  -> ID          (bukan nomor klaim sama sekali)
 //	STS_PROGRESS1  AS "City"    -> Nama        (bukan nama kota)
-//	STATUS         AS "CityID"  -> KodePosisi  (bukan kode kota; lihat posisi.go)
+//	STATUS         AS "CityID"  -> PositionCode (bukan kode kota; lihat position.go)
 //
 // Lapisan Domain — dilarang mengimpor HTTP, SQL, maupun driver basis data.
 package masterstatusprogres
@@ -58,8 +60,8 @@ type ProgressStatus struct {
 	// Nama adalah keterangan status yang dibaca petugas, kolom STS_PROGRESS1.
 	Name string
 
-	// KodePosisi menyebut posisi klaim tempat status ini berlaku, kolom STATUS.
-	// Nilainya salah satu Kode pada ListPositions().
+	// PositionCode menyebut posisi klaim tempat status ini berlaku, kolom STATUS.
+	// Nilainya salah satu Code pada ListPositions() — berupa teks, bukan kode angka.
 	PositionCode string
 }
 
@@ -119,14 +121,30 @@ func (g *ValidationError) Error() string {
 	return "masterstatusprogres: isian tidak sah (" + strings.Join(parts, "; ") + ")"
 }
 
-// Clean memangkas spasi di kedua ujung setiap isian.
+// Clean memangkas spasi di kedua ujung setiap isian, dan membakukan ejaan posisi.
 //
 // Dipisahkan dari Check supaya nilai yang tersimpan adalah nilai yang sudah dipangkas
 // — bukan nilai mentah yang lolos pemeriksaan karena kebetulan spasinya ikut terhitung.
+//
+// # Kenapa posisi TIDAK di-huruf-besarkan
+//
+// Versi sebelumnya memakai strings.ToUpper, dan itu benar selama nilai simpanannya kode
+// angka. Sejak koreksi 2026-09-20 (lihat position.go) yang tersimpan adalah TEKS-nya,
+// dan salah satu nilainya ber-ejaan campuran: "All". Meng-huruf-besarkan akan menyimpan
+// "ALL" — nilai yang tidak sama dengan apa pun yang ditulis sistem lama.
+//
+// Yang dipakai sebagai gantinya: ejaan dibakukan ke baris daftar yang cocok, sehingga
+// isian "register" maupun "REGISTER" sama-sama tersimpan sebagai "REGISTER". Nilai yang
+// tidak dikenal dibiarkan apa adanya — Check yang menolaknya, bukan Clean, supaya
+// pesannya sampai ke pengguna alih-alih hilang diam-diam.
 func (i Input) Clean() Input {
+	position := strings.TrimSpace(i.PositionCode)
+	if known, exists := FindPosition(position); exists {
+		position = known.Code
+	}
 	return Input{
 		Name:         strings.TrimSpace(i.Name),
-		PositionCode: strings.ToUpper(strings.TrimSpace(i.PositionCode)),
+		PositionCode: position,
 	}
 }
 

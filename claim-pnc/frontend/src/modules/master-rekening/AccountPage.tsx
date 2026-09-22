@@ -15,12 +15,20 @@ import { useAccountList, useDecideAccount, type AccountFilter } from './api'
  * BrowseMasterRekeningReject — yang isinya nyaris sama dan karena itu berbeda-beda di
  * tempat yang tidak disengaja. Di sini kelimanya satu layar dengan saringan berbeda.
  */
+/*
+ * Label tab SENGAJA dibedakan dari label tombol aksi (`Approve` dan `Reject`).
+ *
+ * Sebelumnya keduanya memakai kata yang sama persis, sehingga "tombol bernama Approve"
+ * menunjuk dua hal berbeda di satu layar — tab penyaring dan tombol yang benar-benar
+ * memutuskan rekening. Itu menyesatkan pengguna dan membuat uji tidak dapat menunjuk
+ * tombol yang dimaksudnya.
+ */
 const TABS = [
   { id: 'cari', label: 'Cari Data Rekening' },
-  { id: 'komite', label: 'Komite Approval' },
-  { id: 'menunggu', label: 'Waiting Approval' },
-  { id: 'disetujui', label: 'Approve' },
-  { id: 'ditolak', label: 'Reject' },
+  { id: 'komite', label: 'Antrean Komite Saya' },
+  { id: 'menunggu', label: 'Menunggu Approval' },
+  { id: 'disetujui', label: 'Sudah Disetujui' },
+  { id: 'ditolak', label: 'Sudah Ditolak' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -31,15 +39,33 @@ function filterFor(tab: TabId, search: SearchBox): AccountFilter {
     namaPemilik: search.namaPemilik,
     namaBank: search.namaBank,
   }
+
   switch (tab) {
     case 'komite':
-      return { ...base, status: AccountStatus.menunggu, komiteSaya: true }
+      return {
+        ...base,
+        status: AccountStatus.menunggu,
+        komiteSaya: true,
+      }
+
     case 'menunggu':
-      return { ...base, status: AccountStatus.menunggu }
+      return {
+        ...base,
+        status: AccountStatus.menunggu,
+      }
+
     case 'disetujui':
-      return { ...base, status: AccountStatus.disetujui }
+      return {
+        ...base,
+        status: AccountStatus.disetujui,
+      }
+
     case 'ditolak':
-      return { ...base, status: AccountStatus.ditolak }
+      return {
+        ...base,
+        status: AccountStatus.ditolak,
+      }
+
     default:
       return base
   }
@@ -51,7 +77,11 @@ type SearchBox = {
   namaBank: string
 }
 
-const EMPTY_SEARCH: SearchBox = { nomorRekening: '', namaPemilik: '', namaBank: '' }
+const EMPTY_SEARCH: SearchBox = {
+  nomorRekening: '',
+  namaPemilik: '',
+  namaBank: '',
+}
 
 /** AccountPage adalah layar pengelolaan master rekening. */
 export function AccountPage() {
@@ -63,16 +93,31 @@ export function AccountPage() {
   const list = useAccountList(filter)
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Master Rekening</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Rekening tujuan pembayaran klaim. Rekening baru menunggu decision komite
-          before dapat dipakai.
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <header className="mb-6">
+        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+          <ol className="flex items-center gap-1.5">
+            <li>Master Data</li>
+            <li aria-hidden="true" className="text-slate-300">
+              /
+            </li>
+            <li className="text-slate-700">Rekening</li>
+          </ol>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Master Rekening
+        </h1>
+
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+          Rekening tujuan pembayaran klaim. Rekening baru menunggu keputusan komite
+          sebelum dapat dipakai.
         </p>
       </header>
 
-      <nav aria-label="Tab master rekening" className="mt-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <nav
+        aria-label="Tab master rekening"
+        className="flex flex-wrap gap-1 border-b border-slate-200"
+      >
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -103,9 +148,14 @@ export function AccountPage() {
 
           {formTerbuka && (
             <div className="mt-4 rounded border border-slate-200 p-4">
-              <h2 className="text-sm font-semibold text-slate-900">Rekening baru</h2>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Rekening baru
+              </h2>
+
               <div className="mt-3">
-                <AccountForm onSuccess={() => setFormTerbuka(false)} />
+                <AccountForm
+                  onSuccess={() => setFormTerbuka(false)}
+                />
               </div>
             </div>
           )}
@@ -118,26 +168,46 @@ export function AccountPage() {
             id="cariNomor"
             label="No rekening"
             value={search.nomorRekening}
-            edit={(v) => setSearch((p) => ({ ...p, nomorRekening: v }))}
+            edit={(v) =>
+              setSearch((p) => ({
+                ...p,
+                nomorRekening: v,
+              }))
+            }
           />
+
           <SearchFields
             id="cariPemilik"
             label="Nama pemilik"
             value={search.namaPemilik}
-            edit={(v) => setSearch((p) => ({ ...p, namaPemilik: v }))}
+            edit={(v) =>
+              setSearch((p) => ({
+                ...p,
+                namaPemilik: v,
+              }))
+            }
           />
+
           <SearchFields
             id="cariBank"
             label="Nama bank"
             value={search.namaBank}
-            edit={(v) => setSearch((p) => ({ ...p, namaBank: v }))}
+            edit={(v) =>
+              setSearch((p) => ({
+                ...p,
+                namaBank: v,
+              }))
+            }
           />
         </div>
       </section>
 
       <section className="mt-6">
         {list.isError && (
-          <p role="alert" className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p
+            role="alert"
+            className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+          >
             Daftar rekening tidak dapat dimuat. Coba beberapa saat lagi.
           </p>
         )}
@@ -154,8 +224,8 @@ export function AccountPage() {
 
         {list.data && list.data.jumlah > list.data.rekening.length && (
           <p className="mt-3 text-sm text-slate-500">
-            Menampilkan {list.data.rekening.length} dari {list.data.jumlah} rekening.
-            Persempit search untuk melihat rest.
+            Menampilkan {list.data.rekening.length} dari {list.data.jumlah}{' '}
+            rekening. Persempit pencarian untuk melihat sisanya.
           </p>
         )}
       </section>
@@ -176,9 +246,13 @@ function SearchFields({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-slate-700"
+      >
         {label}
       </label>
+
       <input
         id={id}
         value={value}
@@ -201,7 +275,11 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
   const decide = useDecideAccount()
   const [catatan, setNote] = useState(rekening.catatan)
 
-  const send = (status: typeof AccountStatus.disetujui | typeof AccountStatus.ditolak) => {
+  const send = (
+    status:
+      | typeof AccountStatus.disetujui
+      | typeof AccountStatus.ditolak,
+  ) => {
     decide.mutate({
       kodeBank: rekening.kode_bank,
       nomorRekening: rekening.nomor_rekening,
@@ -212,9 +290,13 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
 
   return (
     <div className="flex min-w-[18rem] flex-col gap-2">
-      <label className="sr-only" htmlFor={`catatan-${rekening.kode_bank}-${rekening.nomor_rekening}`}>
+      <label
+        className="sr-only"
+        htmlFor={`catatan-${rekening.kode_bank}-${rekening.nomor_rekening}`}
+      >
         Keterangan approval atasan
       </label>
+
       <input
         id={`catatan-${rekening.kode_bank}-${rekening.nomor_rekening}`}
         value={catatan}
@@ -222,6 +304,7 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
         placeholder="Keterangan approval atasan"
         className="w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none"
       />
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -231,6 +314,7 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
         >
           Approve
         </button>
+
         <button
           type="button"
           disabled={decide.isPending}
@@ -240,26 +324,37 @@ function CommitteeAction({ rekening }: { rekening: Account }) {
           Reject
         </button>
       </div>
-      {decide.isError && <DecisionMessage error={decide.error} />}
+
+      {decide.isError && (
+        <DecisionMessage error={decide.error} />
+      )}
     </div>
   )
 }
 
 function DecisionMessage({ error }: { error: unknown }) {
-  if (error instanceof APIError && error.kode === 'isian_tidak_sah') {
+  if (
+    error instanceof APIError &&
+    error.kode === 'isian_tidak_sah'
+  ) {
     return (
       <p role="alert" className="text-xs text-red-700">
         {Object.values(error.violations()).join(' ')}
       </p>
     )
   }
-  if (error instanceof APIError && error.kode === 'keputusan_sudah_diambil') {
+
+  if (
+    error instanceof APIError &&
+    error.kode === 'keputusan_sudah_diambil'
+  ) {
     return (
       <p role="alert" className="text-xs text-red-700">
         Rekening ini sudah diputuskan komite lain. Muat ulang daftar.
       </p>
     )
   }
+
   return (
     <p role="alert" className="text-xs text-red-700">
       Keputusan tidak tersimpan. Coba lagi.

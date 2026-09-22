@@ -22,23 +22,32 @@ import (
 	"claim-pnc/internal/masterstatus"
 )
 
-// Service mengelola master status klaim di atas satu seam penyimpanan.
+// Service mengelola master status klaim di atas seam penyimpanan PER PORTAL.
 type Service struct {
-	repo masterstatus.Repo
+	repoSelector masterstatus.RepoSelector
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
-	Repo masterstatus.Repo
+	// RepoSelector memilih penyimpanan milik satu portal entitas. Wajib.
+	RepoSelector masterstatus.RepoSelector
 }
 
 // NewService membentuk Service dan menolak bahan yang tidak lengkap — kegagalannya
 // terjadi saat start, bukan saat pengguna pertama membuka layar.
 func NewService(o Options) (*Service, error) {
-	if o.Repo == nil {
-		return nil, errors.New("masterstatus/usecase: seam penyimpanan wajib diisi")
+	if o.RepoSelector == nil {
+		return nil, errors.New("masterstatus/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repo: o.Repo}, nil
+	return &Service{repoSelector: o.RepoSelector}, nil
+}
+
+// EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.
+func (l *Service) EnsurePortalReady(portalAlias string) error {
+	if _, err := l.repoSelector(portalAlias); err != nil {
+		return fmt.Errorf("masterstatus/usecase: portal %q tidak dapat dilayani: %w", portalAlias, err)
+	}
+	return nil
 }
 
 // Daftar mengembalikan seluruh status klaim, terurut menurut kode.
@@ -48,8 +57,13 @@ func NewService(o Options) (*Service, error) {
 // sekaligus dengan batas `pyMaxRecords=500`. Menambahkan paginasi server di sini akan
 // menambah kerumitan yang tidak menyelesaikan satu pun masalah nyata; penyaringan dan
 // pengurutan cukup dikerjakan di layar atas 33 baris yang sudah di tangan.
-func (l *Service) List(ctx context.Context) ([]masterstatus.ClaimStatus, error) {
-	list, err := l.repo.List(ctx)
+func (l *Service) List(ctx context.Context, portalAlias string) ([]masterstatus.ClaimStatus, error) {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := repo.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("masterstatus/usecase: membaca daftar status: %w", err)
 	}
@@ -60,8 +74,13 @@ func (l *Service) List(ctx context.Context) ([]masterstatus.ClaimStatus, error) 
 //
 // Ia menggantikan `SetStsClaimValue_act(lscid)`, yang menjalankan Report Definition
 // `SelectVStsClaim_RD` lalu menyalin hasilnya ke halaman `TempStsClaim`.
-func (l *Service) Get(ctx context.Context, code string) (masterstatus.ClaimStatus, error) {
-	status, err := l.repo.Get(ctx, trim(code))
+func (l *Service) Get(ctx context.Context, portalAlias, code string) (masterstatus.ClaimStatus, error) {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
+		return masterstatus.ClaimStatus{}, err
+	}
+
+	status, err := repo.Get(ctx, trim(code))
 	if err != nil {
 		if errors.Is(err, masterstatus.ErrNotFound) {
 			return masterstatus.ClaimStatus{}, err
@@ -78,15 +97,20 @@ func (l *Service) Get(ctx context.Context, code string) (masterstatus.ClaimStatu
 // `"UnknownID"` dan procedure yang menentukan kodenya
 // (`Activity/CNMUpdateStsclaim_act-Act.xml` → `PEGA_M_STS_CLAIM`). Menerima kode dari
 // luar akan membuat dua status berbeda dapat memperebutkan nomor yang sama.
-func (l *Service) Create(ctx context.Context, label string) (masterstatus.ClaimStatus, error) {
-	if err := masterstatus.NewValidationError(masterstatus.CheckLabel(label)); err != nil {
-		return masterstatus.ClaimStatus{}, err
-	}
-	if err := l.ensureLabelNotTaken(ctx, label, ""); err != nil {
+func (l *Service) Create(ctx context.Context, portalAlias, label string) (masterstatus.ClaimStatus, error) {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
 		return masterstatus.ClaimStatus{}, err
 	}
 
-	status, err := l.repo.Insert(ctx, trim(label))
+	if err := masterstatus.NewValidationError(masterstatus.CheckLabel(label)); err != nil {
+		return masterstatus.ClaimStatus{}, err
+	}
+	if err := ensureLabelNotTaken(ctx, repo, label, ""); err != nil {
+		return masterstatus.ClaimStatus{}, err
+	}
+
+	status, err := repo.Insert(ctx, trim(label))
 	if err != nil {
 		// Kedua galat di bawah datang dari penegakan di basis data, yang menang atas
 		// pemeriksaan di atas bila dua permintaan tiba bersamaan. Ia diteruskan apa
@@ -104,7 +128,11 @@ func (l *Service) Create(ctx context.Context, label string) (masterstatus.ClaimS
 // Hanya label yang dapat berubah. Kode bersifat tetap seumur hidup baris itu — layar
 // Pega menandainya read-only (`pyEditOptions=Read-only`), dan mengubahnya akan
 // memutus setiap klaim lama yang menyimpan kode tersebut.
-func (l *Service) Update(ctx context.Context, code, label string) (masterstatus.ClaimStatus, error) {
+func (l *Service) Update(ctx context.Context, portalAlias, code, label string) (masterstatus.ClaimStatus, error) {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
+		return masterstatus.ClaimStatus{}, err
+	}
 	code = trim(code)
 
 	if err := masterstatus.NewValidationError(masterstatus.CheckLabel(label)); err != nil {
@@ -112,17 +140,17 @@ func (l *Service) Update(ctx context.Context, code, label string) (masterstatus.
 	}
 	// Kode diperiksa lebih dulu supaya mengubah status yang tidak ada dijawab "tidak
 	// ditemukan", bukan "label sudah dipakai" yang menyesatkan.
-	if _, err := l.repo.Get(ctx, code); err != nil {
+	if _, err := repo.Get(ctx, code); err != nil {
 		if errors.Is(err, masterstatus.ErrNotFound) {
 			return masterstatus.ClaimStatus{}, err
 		}
 		return masterstatus.ClaimStatus{}, fmt.Errorf("masterstatus/usecase: membaca status %q: %w", code, err)
 	}
-	if err := l.ensureLabelNotTaken(ctx, label, code); err != nil {
+	if err := ensureLabelNotTaken(ctx, repo, label, code); err != nil {
 		return masterstatus.ClaimStatus{}, err
 	}
 
-	status, err := l.repo.Update(ctx, code, trim(label))
+	status, err := repo.Update(ctx, code, trim(label))
 	if err != nil {
 		if errors.Is(err, masterstatus.ErrNotFound) || errors.Is(err, masterstatus.ErrLabelTaken) {
 			return masterstatus.ClaimStatus{}, err
@@ -143,8 +171,8 @@ func (l *Service) Update(ctx context.Context, code, label string) (masterstatus.
 // (`UX_M_STS_CLAIM_LABEL` pada migrasi 0002), dan galatnya diterjemahkan kembali
 // menjadi ErrLabelTaken oleh repo. Yang di sini hanya membuat pesannya tiba lebih
 // cepat dan lebih jelas.
-func (l *Service) ensureLabelNotTaken(ctx context.Context, label, exceptCode string) error {
-	list, err := l.repo.List(ctx)
+func ensureLabelNotTaken(ctx context.Context, repo masterstatus.Repo, label, exceptCode string) error {
+	list, err := repo.List(ctx)
 	if err != nil {
 		return fmt.Errorf("masterstatus/usecase: memeriksa keunikan label: %w", err)
 	}

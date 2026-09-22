@@ -61,8 +61,21 @@ export const SelectField = forwardRef<HTMLSelectElement, Props>(function SelectF
         {...rest}
       >
         <option value="">{emptyText}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
+        {/*
+          Kunci memakai POSISI, bukan nilainya.
+
+          Daftar pilihan boleh memuat nilai kembar — dropdown Posisi pada Master Status
+          Progres 1 memuat "All" dua kali, dan itu direplikasi apa adanya dari layar Pega
+          (lihat internal/masterstatusprogres/position.go). Mengunci dengan `option.value`
+          membuat React menemui dua kunci yang sama dalam satu daftar, dan itu memicu
+          peringatan sekaligus penggambaran ulang yang tidak dapat diandalkan.
+
+          Urutan daftar ini ditentukan server dan tidak pernah disusun ulang di layar,
+          sehingga kunci berbasis posisi aman di sini — ia tidak aman pada daftar yang
+          barisnya dapat dipindah pengguna.
+        */}
+        {options.map((option, position) => (
+          <option key={`${position}-${option.value}`} value={option.value}>
             {option.label}
           </option>
         ))}

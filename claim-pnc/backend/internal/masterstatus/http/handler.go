@@ -9,6 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/portal"
+
+	portalhttp "claim-pnc/internal/portal/http"
 )
 
 // maxSaveBodyBytes membatasi ukuran badan permintaan simpan.
@@ -23,10 +26,10 @@ const maxSaveBodyBytes = 4 << 10
 // Ia dinyatakan sebagai antarmuka sempit di sisi PEMAKAI, bukan diimpor dari usecase,
 // supaya handler dapat diuji tanpa membentuk seluruh layanan beserta penyimpanannya.
 type Service interface {
-	List(ctx context.Context) ([]masterstatus.ClaimStatus, error)
-	Get(ctx context.Context, code string) (masterstatus.ClaimStatus, error)
-	Create(ctx context.Context, label string) (masterstatus.ClaimStatus, error)
-	Update(ctx context.Context, code, label string) (masterstatus.ClaimStatus, error)
+	List(ctx context.Context, portalAlias string) ([]masterstatus.ClaimStatus, error)
+	Get(ctx context.Context, portalAlias, code string) (masterstatus.ClaimStatus, error)
+	Create(ctx context.Context, portalAlias, label string) (masterstatus.ClaimStatus, error)
+	Update(ctx context.Context, portalAlias, code, label string) (masterstatus.ClaimStatus, error)
 }
 
 // Handler melayani permintaan Master Status Klaim.
@@ -63,7 +66,13 @@ func NewHandler(o Options) *Handler {
 // Menggantikan Report Definition BrowseVStsClaim_RD yang mengisi grid layar
 // StatusClaimInbox.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	list, err := h.service.List(r.Context())
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	list, err := h.service.List(r.Context(), active.Alias)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
@@ -73,7 +82,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	for _, s := range list {
 		content = append(content, toDTO(s))
 	}
-	h.writeResponse(w, r, http.StatusOK, ListResponse{ClaimStatus: content, Total: len(content)})
+	h.writeResponse(w, r, http.StatusOK, ListResponse{
+		ClaimStatus: content,
+		Total:       len(content),
+		Portal:      active.Alias,
+	})
 }
 
 // Ambil menangani GET /api/master/status-klaim/{kode}.
@@ -81,12 +94,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // Menggantikan SetStsClaimValue_act(lscid), yang menjalankan SelectVStsClaim_RD lalu
 // menyalin hasilnya ke halaman TempStsClaim untuk diisi ke form.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	status, err := h.service.Get(r.Context(), chi.URLParam(r, "kode"))
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	status, err := h.service.Get(r.Context(), active.Alias, chi.URLParam(r, "kode"))
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{ClaimStatus: toDTO(status)})
+	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+		ClaimStatus: toDTO(status),
+		Portal:      active.Alias,
+	})
 }
 
 // Tambah menangani POST /api/master/status-klaim.
@@ -95,18 +117,27 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 // procedure membentuk kodenya. Di sini kodenya tidak pernah ikut di badan permintaan
 // sama sekali — sentinel itu tidak dibawa.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
 	request, read := h.readRequest(w, r)
 	if !read {
 		return
 	}
 
-	status, err := h.service.Create(r.Context(), request.Label)
+	status, err := h.service.Create(r.Context(), active.Alias, request.Label)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 	// 201, bukan 200: sumber daya baru terbentuk dan kodenya baru diketahui di sini.
-	h.writeResponse(w, r, http.StatusCreated, SingleResponse{ClaimStatus: toDTO(status)})
+	h.writeResponse(w, r, http.StatusCreated, SingleResponse{
+		ClaimStatus: toDTO(status),
+		Portal:      active.Alias,
+	})
 }
 
 // Ubah menangani PUT /api/master/status-klaim/{kode}.
@@ -114,17 +145,26 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 // Menggantikan tombol Simpan pada baris yang sedang diubah. Kode diambil dari jalur URL,
 // tidak pernah dari badan permintaan.
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
 	request, read := h.readRequest(w, r)
 	if !read {
 		return
 	}
 
-	status, err := h.service.Update(r.Context(), chi.URLParam(r, "kode"), request.Label)
+	status, err := h.service.Update(r.Context(), active.Alias, chi.URLParam(r, "kode"), request.Label)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	h.writeResponse(w, r, http.StatusOK, SingleResponse{ClaimStatus: toDTO(status)})
+	h.writeResponse(w, r, http.StatusOK, SingleResponse{
+		ClaimStatus: toDTO(status),
+		Portal:      active.Alias,
+	})
 }
 
 // readRequest membaca badan permintaan simpan. Nilai kedua false berarti jawabannya

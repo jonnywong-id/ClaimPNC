@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
-import { SearchIcon, EmptyBoxIcon } from './Icon'
+import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
 
 /**
  * Satu kolom tabel.
@@ -26,6 +26,29 @@ export type Column<T> = {
   alignRight?: boolean
 }
 
+/**
+ * Paginasi yang dikerjakan SERVER.
+ *
+ * Diberikan hanya oleh layar yang datanya tumbuh tanpa batas — inbox dan laporan. Layar
+ * master tidak memakainya: 33 baris disaring di peramban, dan satu perjalanan jaringan
+ * per huruf yang diketik tidak memberi manfaat apa pun.
+ *
+ * Bila prop ini TIDAK diberikan, tabel berperilaku persis seperti sebelumnya: pencarian
+ * dan pengurutan di peramban, tanpa bilah halaman. Itu disengaja — komponen ini dipakai
+ * layar yang sudah ada, dan menambah kemampuan tidak boleh mengubah perilaku mereka.
+ */
+export type ServerPagination = {
+  /** Halaman yang sedang tampil, dimulai dari 1. */
+  page: number
+  size: number
+  /** Jumlah SELURUH baris di server, bukan yang tampil di halaman ini. */
+  total: number
+  totalPage: number
+  onPageChange: (page: number) => void
+  /** Sedang mengambil halaman lain; tombolnya dinonaktifkan selama itu. */
+  isLoading?: boolean
+}
+
 type Props<T> = {
   columns: Column<T>[]
   rows: T[]
@@ -35,7 +58,20 @@ type Props<T> = {
   title?: string
   description?: string
 
+  /**
+   * Nama tabelnya bagi pembaca layar, dipasang sebagai `aria-label` pada `<table>`.
+   *
+   * Diperlukan begitu satu layar memuat LEBIH DARI SATU tabel: tanpa nama, keduanya
+   * dibacakan hanya sebagai "tabel", dan pengguna pembaca layar tidak punya cara
+   * membedakan mana ringkasan dan mana daftar utamanya.
+   *
+   * Opsional supaya layar berisi satu tabel tidak perlu mengulang judul yang sudah
+   * terlihat tepat di atasnya.
+   */
+  label?: string
+
   /** Tombol-tombol di kanan judul — Tambah, Muat ulang, dan sejenisnya. */
+  /** Tombol-tombol di kanan judul — Tambah, Refresh, dan sejenisnya. */
   actions?: ReactNode
 
   isLoading?: boolean
@@ -66,9 +102,83 @@ type Props<T> = {
         matchCount?: number | undefined
       }
     | undefined
+
+  /**
+   * Menyembunyikan kotak cari bawaan.
+   *
+   * Dipakai layar yang sudah punya formulir pencariannya sendiri di atas tabel — View
+   * History Claim adalah yang pertama, dan formulirnya berupa tipe pencarian beserta
+   * isian yang bergantian mengikutinya, bukan satu kata kunci bebas.
+   *
+   * Tanpa prop ini, layar seperti itu menampilkan DUA kotak pencarian yang mencari hal
+   * berbeda: yang di atas menembak basis data, yang di dalam tabel hanya menyaring
+   * halaman yang sedang terbuka. Pengguna tidak punya cara membedakannya.
+   *
+   * Nilai bawaannya `false`, sehingga seluruh layar yang sudah ada tidak berubah.
+   */
+  hideSearch?: boolean
+
+  /** Bilah halaman First/Previous/Next/Last beserta "Total Data". */
+  pagination?: ServerPagination
+
+  /**
+   * Banyaknya baris per halaman. Tidak diisi berarti **tanpa paginasi** — seluruh baris
+   * digambar sekaligus.
+   *
+   * # Kenapa opt-in, bukan bawaan
+   *
+   * Ukuran halaman di sistem lama **berbeda-beda per layar**, dan angkanya terbaca dari
+   * `pyPageSize` (atau `pyPageSizeOther` bila nilainya `"Other"`) pada masing-masing
+   * section:
+   *
+   *	Master Supplier · Master Bengkel                     20 baris
+   *	Master Rekening · Status Klaim · Status Progres ·
+   *	Pasal Kerugian · Penolakan Klaim                     15 baris
+   *	Master Panel                                         15 baris tab Approve,
+   *	                                                     50 baris tab Reject & Waiting
+   *
+   * Tidak ada satu angka yang benar untuk semuanya, sehingga ia milik layar — bukan milik
+   * komponen ini.
+   *
+   * Master Panel bahkan berbeda ANTARTAB pada satu layar yang sama, sehingga angkanya
+   * tidak dapat dititipkan ke layar sekali pun — ia milik tab. Itulah kenapa prop ini
+   * menerima angka biasa, bukan dibaca komponen dari suatu tempat.
+   *
+   * Bawaannya **tanpa paginasi** supaya layar yang belum menyalakannya berperilaku persis
+   * seperti sebelumnya. Menyalakannya untuk sebuah layar cukup satu prop.
+   */
+  pageSize?: number
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
+
+/**
+ * pageWindow memilih nomor halaman mana yang digambar sebagai tombol.
+ *
+ * Tujuh halaman atau kurang digambar seluruhnya. Lebih dari itu, yang digambar adalah
+ * halaman pertama, terakhir, halaman sekarang beserta tetangganya, dan `sela` di antara
+ * kelompok yang tidak bersambung.
+ *
+ * Tanpa pembatasan ini, daftar seribu baris menggambar lima puluh tombol nomor yang
+ * membungkus beberapa baris — dan justru membuat halaman yang sedang dibuka sulit
+ * ditemukan.
+ */
+export function pageWindow(current: number, total: number): (number | 'sela')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1)
+  }
+
+  const result: (number | 'sela')[] = [1]
+  const start = Math.max(2, current - 1)
+  const stop = Math.min(total - 1, current + 1)
+
+  if (start > 2) result.push('sela')
+  for (let nomor = start; nomor <= stop; nomor++) result.push(nomor)
+  if (stop < total - 1) result.push('sela')
+
+  result.push(total)
+  return result
+}
 
 /**
  * DataTable adalah satu-satunya tabel di seluruh aplikasi.
@@ -128,15 +238,20 @@ export function DataTable<T>({
   rowKey,
   title,
   description,
+  label,
   actions,
   isLoading = false,
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
   serverSearch,
+  hideSearch = false,
+  pagination,
+  pageSize,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
+  const [page, setPage] = useState(1)
 
   const onServer = serverSearch !== undefined
   const query = serverSearch ? serverSearch.value : localQuery
@@ -177,9 +292,36 @@ export function DataTable<T>({
       // punya cara kembali ke urutan semula selain memuat ulang halaman.
       return null
     })
+    // Mengurutkan ulang menyusun ulang seluruh daftar, sehingga halaman ketujuh yang
+    // sedang dibuka tidak lagi memuat baris yang sama. Kembali ke halaman pertama adalah
+    // satu-satunya posisi yang artinya tidak berubah.
+    setPage(1)
   }
 
   const hasSearch = query.trim() !== ''
+
+  /*
+    Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
+
+    Itu yang ditiru dari sistem lama: grid Pega terikat pada page list klipboard
+    (`pyPageListProperty`), sehingga paginatornya memotong daftar yang SUDAH tersaring —
+    bukan meminta halaman berikutnya ke server. Memotong lebih dulu akan membuat pencarian
+    hanya menemukan baris yang kebetulan ada di halaman yang sedang dibuka.
+
+    Ia juga bukan paginasi keyset sisi server. Itu `TKT-U2-001`, dan Steering menyebutnya
+    **perubahan perilaku, bukan pemeliharaan** — layar berpuluh juta baris menuntutnya,
+    layar master yang berbaris puluhan tidak.
+  */
+  const paginated = pageSize !== undefined && pageSize > 0
+  const totalPages = paginated ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+
+  // Halaman dijepit saat menggambar, bukan disetel lewat efek. Baris dapat berkurang di
+  // luar kendali komponen ini — penyaring dipersempit, atau daftarnya dimuat ulang setelah
+  // sebuah baris berpindah — dan halaman yang sudah tidak ada harus menampilkan halaman
+  // terakhir, bukan tabel kosong tanpa penjelasan.
+  const currentPage = Math.min(page, totalPages)
+  const firstIndex = paginated ? (currentPage - 1) * pageSize : 0
+  const shown = paginated ? visible.slice(firstIndex, firstIndex + pageSize) : visible
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
@@ -193,40 +335,47 @@ export function DataTable<T>({
         </header>
       )}
 
-      <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
-        <label htmlFor="tabel-cari" className="sr-only">
-          {searchLabel}
-        </label>
-        <div className="relative sm:max-w-sm">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
-          >
-            <SearchIcon className="h-4 w-4" />
-          </span>
-          <input
-            id="tabel-cari"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchLabel}
-            className={[
-              'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-              'text-sm text-slate-900 placeholder:text-slate-400',
-              'transition-[border-color,box-shadow] duration-150 ease-halus',
-              'hover:border-slate-400',
-              'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-            ].join(' ')}
-          />
+      {!hideSearch && (
+        <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
+          <label htmlFor="tabel-cari" className="sr-only">
+            {searchLabel}
+          </label>
+          <div className="relative sm:max-w-sm">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </span>
+            <input
+              id="tabel-cari"
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
+                // daftar lama hampir pasti tidak ada pada daftar baru.
+                setPage(1)
+              }}
+              placeholder={searchLabel}
+              className={[
+                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
+                'text-sm text-slate-900 placeholder:text-slate-400',
+                'transition-[border-color,box-shadow] duration-150 ease-halus',
+                'hover:border-slate-400',
+                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
+              ].join(' ')}
+            />
+          </div>
+          {hasSearch && (
+            <p className="mt-2 text-xs text-slate-600" role="status">
+              {serverSearch
+                ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
+                : `${visible.length} dari ${rows.length} baris cocok.`}
+            </p>
+          )}
         </div>
-        {hasSearch && (
-          <p className="mt-2 text-xs text-slate-600" role="status">
-            {serverSearch
-              ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
-              : `${visible.length} dari ${rows.length} baris cocok.`}
-          </p>
-        )}
-      </div>
+      )}
 
       {error ? (
         <div className="p-5">{error}</div>
@@ -234,16 +383,12 @@ export function DataTable<T>({
         <LoadingState />
       ) : visible.length === 0 ? (
         <EmptyState
-          pesan={
-            hasSearch
-              ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
-              : emptyMessage
-          }
+          pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
           saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
         />
       ) : (
         <div className="md:overflow-x-auto">
-          <table className="block w-full border-collapse text-sm md:table">
+          <table aria-label={label} className="block w-full border-collapse text-sm md:table">
             <thead className="hidden md:table-header-group">
               <tr className="border-b border-slate-200 bg-slate-50/80 text-left">
                 {columns.map((k) => (
@@ -294,7 +439,7 @@ export function DataTable<T>({
             </thead>
 
             <tbody className="block md:table-row-group">
-              {visible.map((b) => (
+              {shown.map((b) => (
                 <tr
                   key={rowKey(b)}
                   className={[
@@ -335,7 +480,246 @@ export function DataTable<T>({
           </table>
         </div>
       )}
+
+      {pagination && <PageBar {...pagination} />}
+      {/*
+        Paginator digambar hanya bila paginasinya menyala DAN ada baris yang terlihat.
+        Saat memuat, saat gagal, dan saat kosong ia tidak berarti apa-apa — dan tiga
+        keadaan itu sudah punya tampilannya sendiri di atas.
+      */}
+      {paginated && !error && !isLoading && visible.length > 0 && (
+        <Paginator
+          firstRow={firstIndex + 1}
+          lastRow={firstIndex + shown.length}
+          totalRows={visible.length}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPick={setPage}
+        />
+      )}
     </section>
+  )
+}
+
+/**
+ * Bilah halaman: First / Previous / Next / Last beserta "Total Data".
+ *
+ * Bentuknya mengikuti `Section/ButtonPagingInbox-Section.xml` — keempat tombol itu dan
+ * label "Total Data :" adalah apa yang dilihat petugas di layar lama, dan `D-13`
+ * menetapkan tata letaknya ditiru supaya mereka tidak perlu belajar ulang.
+ *
+ * Keempat tombol memakai `aria-label` lengkap karena label yang terlihat disingkat pada
+ * layar sempit; tanpa itu pembaca layar hanya menyebut "tombol" tanpa tujuannya.
+ */
+
+function PageBar({
+  page,
+  size,
+  total,
+  totalPage,
+  onPageChange,
+  isLoading = false,
+}: ServerPagination) {
+  const atFirst = page <= 1
+  const atLast = totalPage === 0 || page >= totalPage
+
+  // Rentang baris yang sedang tampil. Ia jauh lebih berguna daripada nomor halaman saja:
+  // "16–30 dari 120" menjawab "sudah sampai mana saya" tanpa pengguna menghitung sendiri.
+  const first = total === 0 ? 0 : (page - 1) * size + 1
+  const last = Math.min(page * size, total)
+
+  const buttonClass = [
+    'inline-flex items-center justify-center rounded-kontrol border border-slate-300 bg-white',
+    'px-2.5 py-1.5 text-xs font-medium text-slate-700',
+    'transition-[background-color,border-color,color] duration-150 ease-halus',
+    'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900',
+    'focus:outline-none focus-visible:ring-4 focus-visible:ring-slate-400/35',
+    'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-slate-300',
+    'disabled:hover:bg-white disabled:hover:text-slate-700',
+  ].join(' ')
+
+  return (
+    <nav
+      aria-label="Navigasi halaman"
+      className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-xs text-slate-600" role="status">
+        {total === 0 ? (
+          'Total Data : 0'
+        ) : (
+          <>
+            Menampilkan <span className="font-medium text-slate-800">{first}</span>–
+            <span className="font-medium text-slate-800">{last}</span> · Total Data :{' '}
+            <span className="font-medium text-slate-800">{total}</span>
+          </>
+        )}
+      </p>
+
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={atFirst || isLoading}
+          aria-label="Halaman pertama"
+          onClick={() => onPageChange(1)}
+        >
+          First
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={atFirst || isLoading}
+          aria-label="Halaman sebelumnya"
+          onClick={() => onPageChange(page - 1)}
+        >
+          Previous
+        </button>
+
+        <span className="px-2 text-xs text-slate-600">
+          Hal. <span className="font-medium text-slate-800">{page}</span> dari{' '}
+          <span className="font-medium text-slate-800">{Math.max(totalPage, 1)}</span>
+        </span>
+
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={atLast || isLoading}
+          aria-label="Halaman berikutnya"
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={atLast || isLoading}
+          aria-label="Halaman terakhir"
+          onClick={() => onPageChange(totalPage)}
+        >
+          Last
+        </button>
+      </div>
+    </nav>
+ )
+}
+ /* Paginator adalah pemilih halaman di kaki tabel.
+ *
+ * # Bentuknya mengikuti paginator Pega, bukan dikarang
+ *
+ * `Section/InboxMasterSupplier-Section.xml` menyisipkan `pyGridPaginator` di kaki grid
+ * dengan `pyPageMode = Numeric` dan `pyPaginationButtonsFormat = Standard` — **nomor
+ * halaman**, bukan tombol "muat lebih banyak". Gaya selnya
+ * (`dataLabelRead gridActionAlignRight`) menaruhnya **rata kanan**, dan itu yang ditiru.
+ *
+ * # Ringkasan barisnya DITAMBAHKAN
+ *
+ * Pega hanya menggambar nomor halamannya. "Menampilkan 1–20 dari 57 baris" tidak ada di
+ * sana, dan ia ditambahkan karena tanpa itu nomor halaman tidak memberi tahu apa pun
+ * tentang seberapa banyak yang belum dilihat — pada tabel yang baru saja disaring,
+ * itulah justru yang ingin diketahui.
+ *
+ * Pencacah "Total Data :" milik `Section/DataCountMasterSupllier` tetap ada di kepala
+ * layar dan menghitung hal yang berbeda: seluruh baris yang dimuat, bukan yang tersaring.
+ *
+ * # Yang dijaga untuk pembaca layar
+ *
+ * Ringkasannya `role="status"`, sehingga berpindah halaman diumumkan tanpa memindahkan
+ * fokus. Nomor halaman yang sedang dibuka memakai `aria-current="page"` — bukan hanya
+ * warna, yang tidak terbaca pembaca layar dan tidak terbedakan oleh sekitar satu dari dua
+ * belas laki-laki yang mengalami buta warna merah-hijau.
+ */
+
+
+function Paginator({
+  firstRow,
+  lastRow,
+  totalRows,
+  currentPage,
+  totalPages,
+  onPick,
+}: {
+  firstRow: number
+  lastRow: number
+  totalRows: number
+  currentPage: number
+  totalPages: number
+  onPick: (page: number) => void
+}) {
+  const step =
+    'inline-flex h-8 min-w-8 items-center justify-center rounded-kontrol border px-2 text-sm ' +
+    'transition-colors duration-150 ease-halus ' +
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40'
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-slate-600" role="status">
+        Menampilkan{' '}
+        <span className="font-medium text-slate-800">
+          {firstRow}–{lastRow}
+        </span>{' '}
+        dari {totalRows} baris.
+      </p>
+
+      {/*
+        Tombolnya disembunyikan saat halamannya hanya satu. Paginator berisi satu tombol
+        yang tidak dapat ditekan tidak memberi tahu apa pun; ringkasan barisnya tetap
+        berguna dan tetap tampil.
+      */}
+      {totalPages > 1 && (
+        <nav aria-label="Halaman tabel" className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPick(currentPage - 1)}
+            disabled={currentPage === 1}
+            aria-label="Halaman sebelumnya"
+            className={`${step} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`}
+          >
+            <ChevronIcon className="h-4 w-4 rotate-180" />
+          </button>
+
+          {pageWindow(currentPage, totalPages).map((item, index) =>
+            item === 'sela' ? (
+              <span
+                // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
+                // dapat muncul bersamaan — indeksnya yang membedakan.
+                key={`sela-${index}`}
+                aria-hidden="true"
+                className="px-1 text-sm text-slate-400"
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onPick(item)}
+                aria-label={`Halaman ${item}`}
+                aria-current={item === currentPage ? 'page' : undefined}
+                className={[
+                  step,
+                  item === currentPage
+                    ? 'border-blue-600 bg-blue-600 font-medium text-white'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100',
+                ].join(' ')}
+              >
+                {item}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            onClick={() => onPick(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            aria-label="Halaman berikutnya"
+            className={`${step} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`}
+          >
+            <ChevronIcon className="h-4 w-4" />
+          </button>
+        </nav>
+      )}
+    </div>
   )
 }
 
@@ -356,7 +740,10 @@ function LoadingState() {
           <div className="h-3.5 w-16 animate-pulse rounded bg-slate-200" />
           <div
             className="h-3.5 flex-1 animate-pulse rounded bg-slate-200"
-            style={{ animationDelay: `${rows * 90}ms`, maxWidth: `${60 - rows * 6}%` }}
+            style={{
+              animationDelay: `${rows * 90}ms`,
+              maxWidth: `${60 - rows * 6}%`,
+            }}
           />
           <div className="hidden h-3.5 w-14 animate-pulse rounded bg-slate-200 sm:block" />
         </div>

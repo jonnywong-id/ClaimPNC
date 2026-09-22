@@ -12,7 +12,7 @@ import (
 // Nama isian wajib. Ini aturan pertama yang menolak isian pengguna, dan pesannya
 // menyebut apa yang harus ia lakukan — bukan hanya bahwa ada yang salah.
 func TestNameIsRequired(t *testing.T) {
-	input := masterstatusprogres.Input{Name: "   ", PositionCode: "002"}.Clean()
+	input := masterstatusprogres.Input{Name: "   ", PositionCode: "REGISTER"}.Clean()
 
 	err := input.Check()
 	require.Error(t, err)
@@ -67,7 +67,7 @@ func TestValidInputPasses(t *testing.T) {
 
 func TestTooLongNameRejected(t *testing.T) {
 	tooLong := strings.Repeat("A", masterstatusprogres.MaxNameLength+1)
-	input := masterstatusprogres.Input{Name: tooLong, PositionCode: "002"}.Clean()
+	input := masterstatusprogres.Input{Name: tooLong, PositionCode: "REGISTER"}.Clean()
 
 	err := input.Check()
 	var validationErr *masterstatusprogres.ValidationError
@@ -78,7 +78,7 @@ func TestTooLongNameRejected(t *testing.T) {
 	// ini paling sering salah (`14-TESTING-STRATEGY.md` §3.1).
 	exact := masterstatusprogres.Input{
 		Name:         strings.Repeat("A", masterstatusprogres.MaxNameLength),
-		PositionCode: "002",
+		PositionCode: "REGISTER",
 	}.Clean()
 	require.NoError(t, exact.Check())
 }
@@ -86,43 +86,68 @@ func TestTooLongNameRejected(t *testing.T) {
 // Spasi di ujung isian dipangkas SEBELUM diperiksa, bukan sesudah — kalau tidak, nama
 // berisi spasi saja akan lolos karena panjangnya bukan nol.
 func TestCleanTrimsAndNormalisesCase(t *testing.T) {
-	clean := masterstatusprogres.Input{Name: "  DOKUMEN DITERIMA  ", PositionCode: " 002 "}.Clean()
+	clean := masterstatusprogres.Input{Name: "  DOKUMEN DITERIMA  ", PositionCode: " REGISTER "}.Clean()
 
 	require.Equal(t, "DOKUMEN DITERIMA", clean.Name)
-	require.Equal(t, "002", clean.PositionCode)
+	require.Equal(t, "REGISTER", clean.PositionCode)
 }
 
-// Keempat posisi adalah yang benar-benar ada di
-// `Activity/ViewStatusProgress_act-Act.xml`. Bila daftarnya kelak pindah menjadi master
-// data `F-4`, uji ini yang mengingatkan bahwa nilainya pernah ditetapkan di sini.
+// Kesembilan baris ini adalah isi dropdown "Posisi" pada layar Pega yang sedang berjalan,
+// beserta urutannya. Rule yang mengisinya TIDAK ADA di export (`R-16`), sehingga tidak
+// ada berkas yang dapat dibandingkan — uji inilah satu-satunya tempat daftarnya
+// dikunci, dan yang akan mengingatkan bahwa nilainya pernah ditetapkan di sini bila
+// kelak ia pindah menjadi master data `F-4`.
+//
+// Urutannya ikut diuji, bukan hanya isinya: urutan dropdown adalah yang dilihat
+// pengguna, dan mengurutkannya ulang secara diam-diam mengubah layar (`D-13`).
 func TestPositionListMatchesLegacySystem(t *testing.T) {
 	list := masterstatusprogres.ListPositions()
-	require.Len(t, list, 4)
 
-	require.Equal(t, "002", list[0].Code)
-	require.Equal(t, "REGISTER", list[0].Name)
-	require.Equal(t, "004", list[1].Code)
-	require.Equal(t, "SURVEY", list[1].Name)
-	require.Equal(t, "006", list[2].Code)
-	require.Equal(t, "KOMITE", list[2].Name)
-	require.Equal(t, "007", list[3].Code)
-	require.Equal(t, "AKSEPTASI", list[3].Name)
+	order := make([]string, 0, len(list))
+	for _, p := range list {
+		// Nilai simpanan dan labelnya memang satu properti yang sama di sistem lama —
+		// dropdown-nya mengikat pyValue dan pyPrompt ke `.CaseID`. Kalau keduanya sampai
+		// berbeda, ada yang menambahkan pemetaan yang tidak pernah ada.
+		require.Equal(t, p.Code, p.Name, "nilai simpanan dan label harus sama persis")
+		order = append(order, p.Code)
+	}
+
+	require.Equal(t, []string{
+		"All",
+		"REGISTER",
+		"KOMITE",
+		"SURVEY",
+		"AKSEPTASI",
+		"OUTSTANDING",
+		"BENGKEL",
+		"PROCUREMENT",
+		// "All" memang terulang. `pyHasNoSelection = false` pada sel dropdown-nya
+		// membuktikan Pega tidak menyisipkan baris kosong, jadi pengulangan ini ada di
+		// datanya sendiri — bukan baris prompt yang salah terbaca.
+		"All",
+	}, order)
 }
 
-// Kode 003 dan 005 tidak dipakai jalur ini; keduanya harus tetap tidak dikenal.
+// Nilai yang tidak ada di daftar harus tetap tidak dikenal.
 func TestFindPosition(t *testing.T) {
-	p, known := masterstatusprogres.FindPosition("006")
+	p, known := masterstatusprogres.FindPosition("KOMITE")
 	require.True(t, known)
 	require.Equal(t, "KOMITE", p.Name)
 
 	// Kolom STATUS bisa bertipe CHAR berlebar tetap yang memadatkan nilainya dengan
 	// spasi tanpa memberi tanda apa pun (R-08: DDL belum ada).
-	p, known = masterstatusprogres.FindPosition("  006  ")
+	p, known = masterstatusprogres.FindPosition("  KOMITE  ")
 	require.True(t, known)
 	require.Equal(t, "KOMITE", p.Name)
 
-	_, known = masterstatusprogres.FindPosition("003")
-	require.False(t, known)
+	// Beda huruf besar-kecil diabaikan, dan yang dikembalikan adalah EJAAN BAKUNYA —
+	// itulah yang membuat Clean dapat membakukan isian sebelum disimpan.
+	p, known = masterstatusprogres.FindPosition("all")
+	require.True(t, known)
+	require.Equal(t, "All", p.Code)
+
+	_, known = masterstatusprogres.FindPosition("002")
+	require.False(t, known, "kode angka bukan lagi nilai yang dikenali; lihat koreksi 2026-09-20")
 	_, known = masterstatusprogres.FindPosition("")
 	require.False(t, known)
 }
@@ -133,7 +158,7 @@ func TestFindPosition(t *testing.T) {
 // constraint yang membatasinya — dan menyembunyikannya membuat baris tampak kosong
 // tanpa sebab. Pengguna perlu melihat apa yang benar-benar tersimpan.
 func TestPositionNameDoesNotHideForeignCode(t *testing.T) {
-	require.Equal(t, "REGISTER", masterstatusprogres.PositionName("002"))
+	require.Equal(t, "REGISTER", masterstatusprogres.PositionName("REGISTER"))
 	require.Equal(t, "999", masterstatusprogres.PositionName("999"))
 	require.Equal(t, "", masterstatusprogres.PositionName("   "))
 }
@@ -159,5 +184,5 @@ func TestPositionListCannotBeMutatedByCaller(t *testing.T) {
 	first[0].Name = "DIRUSAK"
 
 	second := masterstatusprogres.ListPositions()
-	require.Equal(t, "REGISTER", second[0].Name)
+	require.Equal(t, "All", second[0].Name)
 }

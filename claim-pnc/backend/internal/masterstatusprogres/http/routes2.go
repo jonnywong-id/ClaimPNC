@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -131,6 +132,50 @@ func (h *Handler2) Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Update menangani PUT /master/status-progres-2/{id}.
+//
+// ID diambil dari JALUR, bukan dari badan permintaan. Menerimanya dari badan berarti satu
+// permintaan dapat menyebut dua ID yang berbeda, dan yang mana yang menang menjadi
+// pertanyaan yang tidak perlu ada.
+func (h *Handler2) Update(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	if id == "" {
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
+		})
+		return
+	}
+
+	request, parsed := h.readRequest(w, r)
+	if !parsed {
+		return
+	}
+
+	saved, err := h.service.Update(r.Context(), active.Alias, id, masterstatusprogres.Input2{
+		Name:     request.Name,
+		ParentID: request.ParentID,
+	})
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	// 200, bukan 201: barisnya sudah ada sebelumnya. Badannya memuat baris yang
+	// benar-benar tersimpan — termasuk nama induk yang disalin ulang server bila induknya
+	// berpindah, yang tidak dapat diketahui layar dengan cara lain.
+	h.writeResponse(w, r, http.StatusOK, SingleResponse2{
+		ProgressStatus2: toDTO2(saved),
+		Portal:          active.Alias,
+	})
+}
+
 // readRequest membaca badan JSON. Nilai kedua false bila responsnya sudah ditulis.
 func (h *Handler2) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest2, bool) {
 	var request SaveRequest2
@@ -198,12 +243,16 @@ func (h *Handler2) writeModuleError(w http.ResponseWriter, r *http.Request, err 
 // posisi klaim di luarnya. Di sini tidak ada satu pun rute yang isinya milik aplikasi:
 // daftar induk pun dibaca dari basis data entitas.
 //
-// # Yang TIDAK didaftarkan, dan kenapa
+// # PUT ada; DELETE tidak
 //
-// Tidak ada PUT maupun DELETE. Sistem lama tidak memiliki satu pun pernyataan yang
-// mengubah atau menghapus isi POOLDATA.GCNM_MST_PROGRESS; buktinya ada pada doc comment
-// masterstatusprogres.Repo2. Mendaftarkan rute yang tidak dapat berbuat apa-apa hanya
-// memindahkan kejutannya dari layar ke API.
+// Keduanya TIDAK ada di sistem lama — export tidak memuat satu pun pernyataan yang
+// mengubah maupun menghapus isi POOLDATA.GCNM_MST_PROGRESS. Yang membedakan keduanya
+// adalah keputusan Work Owner 2026-09-20:
+//
+//	PUT     DITAMBAHKAN. Tanpa penyuntingan, salah ketik nama tidak dapat diperbaiki
+//	        sama sekali. Ia perilaku baru, bukan pemindahan — lihat Repo2.Update.
+//	DELETE  TIDAK ditambahkan. Tabelnya tidak punya kolom penanda terhapus yang dapat
+//	        dipakai D-66, dan barisnya dirujuk data klaim yang sudah berjalan.
 //
 // # Kenapa jalurnya tanpa /v1
 //
@@ -222,5 +271,10 @@ func Mount2(r chi.Router, h *Handler2, portalDeps portalhttp.ActivePortalDeps) {
 
 		perPortal.Get("/master/status-progres-2", h.List)
 		perPortal.Post("/master/status-progres-2", h.Create)
+
+		// PUT, bukan PATCH: badannya memuat SELURUH isian yang dapat diubah, bukan
+		// sebagian. Kedua isian itu wajib, dan mengirim salah satunya saja adalah
+		// permintaan yang tidak lengkap — bukan pembaruan parsial.
+		perPortal.Put("/master/status-progres-2/{id}", h.Update)
 	})
 }
