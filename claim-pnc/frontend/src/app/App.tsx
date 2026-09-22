@@ -3,11 +3,11 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
 import { LoginPage } from '@/modules/login/LoginPage'
-import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -84,19 +84,16 @@ export function AppRoute() {
         }
       />
       {/*
-        Pelaporan Klaim — modul proses klaim yang pertama, menggantikan harness
-        `InboxRCVApp_Harness` yang di menu Pega berjudul "Inbox Laporan Klaim".
-
-        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
-        sistem lama membatasinya pada tujuh peran lewat When rule `IsReceivePNC` — adalah
-        `TKT-F3-005` yang belum ada.
+        Inbox Laporan Klaim — modul bisnis pertama pada kelompok menu INBOX. Ia memakai
+        kerangka yang sama dengan layar master, sehingga bilah atas, menu, dan pemilih
+        portal tersedia di dalamnya.
       */}
       <Route
-        path="/pelaporan-klaim"
+        path="/inbox/laporan-klaim"
         element={
           <SessionGuard>
             <Protected>
-              <ClaimReportPage />
+              <ClaimReportInboxPage />
             </Protected>
           </SessionGuard>
         }

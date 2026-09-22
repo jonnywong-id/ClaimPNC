@@ -35,8 +35,10 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master-rekening',
   StatusProgress: '/master/status-progres-1',
-  // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
-  InboxRCVApp_Harness: '/pelaporan-klaim',
+
+  // MENU_ID 64 "Inbox Laporan Klaim", kelompok INBOX. Butir pertama di luar kelompok
+  // MASTER yang punya layar.
+  InboxRCVApp_Harness: '/inbox/laporan-klaim',
 }
 
 /**

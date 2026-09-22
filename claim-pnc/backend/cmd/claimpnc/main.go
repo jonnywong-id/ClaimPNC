@@ -28,11 +28,11 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
 	"claim-pnc/internal/menu"
-	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
@@ -42,6 +42,10 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
+	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
+	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -60,10 +64,6 @@ import (
 	menumemory "claim-pnc/internal/menu/repo/memory"
 	menusql "claim-pnc/internal/menu/repo/sqlstore"
 	menuusecase "claim-pnc/internal/menu/usecase"
-	pelaporanklaimhttp "claim-pnc/internal/pelaporanklaim/http"
-	pelaporanklaimmemory "claim-pnc/internal/pelaporanklaim/repo/memory"
-	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
-	pelaporanklaimusecase "claim-pnc/internal/pelaporanklaim/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -193,37 +193,34 @@ func run() error {
 		WriteError:   writePortalAwareError,
 	}
 
-	claimReportHandler := pelaporanklaimhttp.NewHandler(pelaporanklaimhttp.Options{
-		Service: assembly.pelaporanKlaim,
-		// Jembatan satu arah dari modul auth ke modul pelaporan klaim, dipasang di sini
-		// supaya kedua modul tetap tidak saling mengimpor — yang tahu keduanya hanyalah
-		// berkas perakitan ini.
+	claimReportHandler, err := inboxlaporanklaimhttp.NewHandler(inboxlaporanklaimhttp.Options{
+		Service: assembly.inboxLaporanKlaim,
+		// Jembatan satu arah dari modul auth ke modul Inbox Laporan Klaim, dipasang di
+		// sini supaya kedua modul tetap tidak saling mengimpor.
 		//
-		// Kode cabang diambil dari profil pengguna, bukan dari badan permintaan.
-		//
-		// Di sistem lama ia dibaca `GetIDCabang` lewat DB Link `@ASMD`
-		// (`Activity/CreateNewCaseRCV-Act.xml` step 6), dan API penggantinya (`D-25`,
-		// `R-03`) belum ada. Yang dipakai sebagai gantinya adalah `Placement.BranchCode`
-		// dari HCC/HCQ, yang memang sudah dipetakan ke `User.BranchCode` justru untuk
-		// keperluan batas data per cabang (`11-SECURITY.md` §3.2, dicatat di
-		// `keputusan-implementasi.md` §9.5).
-		//
-		// Ia KOSONG untuk pengguna non-karyawan — `POOLDATA.M_LOGIN_PNC` tidak memuat
-		// cabang. Dalam keadaan itu nilai dari form yang dipakai; usecase menanganinya.
-		GetCaller: func(ctx context.Context) (pelaporanklaimhttp.Caller, bool) {
+		// Login yang DIKETIK pengguna yang dibawa, bukan NIK: itulah yang dicocokkan ke
+		// pxcreateoperator pada tabel warisan dan ke sender pada percakapan.
+		Caller: func(ctx context.Context) (inboxlaporanklaim.Caller, bool) {
 			baseCtx, existing := authhttp.CallerFromContext(ctx)
 			if !existing {
-				return pelaporanklaimhttp.Caller{}, false
+				return inboxlaporanklaim.Caller{}, false
 			}
-			return pelaporanklaimhttp.Caller{
-				Login:      baseCtx.User.Login,
+			return inboxlaporanklaim.Caller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+				// Cabang menentukan batas data seluruh layar ini. Ia datang dari profil
+				// HCC/HCQ; pengguna non-karyawan tidak memilikinya, dan berkas baru
+				// karena itu ditolak dengan pesan yang menyebutkan sebabnya.
 				BranchCode: baseCtx.User.BranchCode,
 			}, true
 		},
-		Logger:              logger,
-		WriteJSON:           writeJSON,
-		FallbackErrorWriter: pelaporanklaimhttp.ErrorWriter(writeAuthError),
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    inboxlaporanklaimhttp.ErrorWriter(writePortalAwareError),
 	})
+	if err != nil {
+		return err
+	}
 
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
@@ -268,6 +265,11 @@ func run() error {
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
 				masterstatusprogreshttp.Mount(protected, progressStatusHandler, activePortalDeps)
+
+				// Inbox Laporan Klaim. Seluruh rutenya memasang pemeriksaan portal di
+				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
+				// jelas, karena setiap rutenya menyentuh basis data entitas.
+				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -276,11 +278,6 @@ func run() error {
 				// karena TKT-F3-004 dan TKT-F3-005 belum dikerjakan; keadaannya sama
 				// dengan seluruh rute lain hari ini.
 				masterstatushttp.Mount(protected, handlerMasterStatus)
-
-				// Pelaporan Klaim memuat nama tertanggung, nomor polis, kronologi
-				// kejadian, dan alamat surel pelapor. Tidak satu pun boleh terbaca
-				// tanpa sesi.
-				pelaporanklaimhttp.Mount(protected, claimReportHandler)
 			})
 		},
 	})
@@ -311,8 +308,10 @@ type assembly struct {
 	// menu menyusun peta menu beserta kewenangan pemakainya.
 	menu *menuusecase.Service
 
-	// pelaporanKlaim melayani alur Pelaporan Klaim (Receive Document).
-	pelaporanKlaim *pelaporanklaimusecase.Service
+	// inboxLaporanKlaim melayani layar Inbox Laporan Klaim. Sama seperti master status
+	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
+	// milik satu badan hukum (ADR-0030).
+	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
 
 	readyAliases func() []string
 	close        func()
@@ -320,11 +319,10 @@ type assembly struct {
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type storage struct {
-	user           auth.UserRepo
-	session        auth.SessionRepo
-	portal         portal.Repo
-	masterStatus   masterstatus.Repo
-	pelaporanKlaim pelaporanklaim.Repo
+	user         auth.UserRepo
+	session      auth.SessionRepo
+	portal       portal.Repo
+	masterStatus masterstatus.Repo
 
 	account     masterrekening.Repo
 	accountBank masterrekening.BankRepo
@@ -337,6 +335,13 @@ type storage struct {
 	// warisan bernilai nil bila koneksi Oracle tidak dibuka. Ia memberi akses baca ke
 	// tiga tabel milik sistem lama: M_PORTAL_PNC, M_LOGIN_PNC, dan GCNM_CONNECT_REST.
 	legacy *sqlstore.Legacy
+
+	// claimReportSelector memilih penyimpanan berkas laporan klaim milik satu portal.
+	//
+	// Alasannya sama dengan progressStatusSelector di bawah, ditambah satu yang khas
+	// modul ini: ia membaca DUA tabel sekaligus — tabel warisan Pega dan tabel milik
+	// aplikasi ini — dan keduanya hidup di basis data entitas yang sama.
+	claimReportSelector inboxlaporanklaim.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -395,17 +400,17 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
-		Repo: store.masterStatus,
+	claimReportService, err := inboxlaporanklaimusecase.NewService(inboxlaporanklaimusecase.Options{
+		RepoSelector: store.claimReportSelector,
+		Clock:        clock.System{},
 	})
 	if err != nil {
 		store.close()
 		return assembly{}, err
 	}
 
-	claimReportService, err := pelaporanklaimusecase.NewService(pelaporanklaimusecase.Options{
-		Repo:  store.pelaporanKlaim,
-		Clock: clock.System{},
+	claimStatusService, err := masterstatususecase.NewService(masterstatususecase.Options{
+		Repo: store.masterStatus,
 	})
 	if err != nil {
 		store.close()
@@ -419,7 +424,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
 		menu:                menuService,
-		pelaporanKlaim:      claimReportService,
+		inboxLaporanKlaim:   claimReportService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -560,7 +565,6 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.readyAliases = pool.Available
 		store.masterStatus = masterstatussql.NewRepo(primary)
 		store.menu = menusql.NewRepo(primary)
-		store.pelaporanKlaim = pelaporanklaimsql.NewRepo(primary)
 		store.close = pool.Close
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
@@ -573,6 +577,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+
+		store.claimReportSelector = func(alias string) (inboxlaporanklaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxlaporanklaimsql.NewRepo(conn, clock.System{}), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -582,14 +594,11 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		store.claimReportSelector = claimReportSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
 		store.menu = menumemory.NewDevRepo()
-		// Laporan contoh mencakup kelima tahap, sehingga seluruh tab layar Pelaporan
-		// Klaim dapat dicoba tanpa Oracle dan tanpa menunggu migrasi 0003. Seluruh
-		// isinya karangan — lihat repo/memory/sample.go.
-		store.pelaporanKlaim = pelaporanklaimmemory.NewRepo(pelaporanklaimmemory.SampleReports()...)
 	}
 
 	switch cfg.Storage {
@@ -644,6 +653,34 @@ func progressStatusSelectorMemory(primaryAlias string) masterstatusprogres.RepoS
 			return existing, nil
 		}
 		fresh := masterstatusprogresmemory.NewRepo(masterstatusprogresmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// claimReportSelectorMemory menyusun penyimpanan berkas laporan klaim di memori.
+//
+// Bentuknya sama persis dengan progressStatusSelectorMemory, dan alasannya pun sama:
+// satu penyimpanan per portal, dibuat saat pertama diminta lalu dipakai kembali. Kalau
+// dibuat ulang setiap permintaan, berkas yang baru dibuat lewat tombol "Buat Baru" akan
+// hilang pada permintaan berikutnya dan layarnya tampak rusak tanpa sebab.
+func claimReportSelectorMemory(primaryAlias string) inboxlaporanklaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxlaporanklaim.Repo{}
+	systemClock := clock.System{}
+
+	return func(alias string) (inboxlaporanklaim.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxlaporanklaimmemory.NewRepo(inboxlaporanklaimmemory.SampleOptions(systemClock))
 		store[clean] = fresh
 		return fresh, nil
 	}

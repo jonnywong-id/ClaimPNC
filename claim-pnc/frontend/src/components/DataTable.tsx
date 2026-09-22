@@ -26,6 +26,36 @@ export type Column<T> = {
   alignRight?: boolean
 }
 
+/**
+ * Kendali halaman yang dikerjakan SERVER, bukan peramban.
+ *
+ * Kehadirannya mengubah tiga hal sekaligus, dan ketiganya harus berubah bersamaan:
+ * penyaringan internal dimatikan, pengurutan internal dimatikan, dan kaki tabel
+ * menggambar nomor halaman.
+ *
+ * # Kenapa ketiganya, bukan salah satunya
+ *
+ * Karena tabel hanya memegang SATU halaman. Menyaring atau mengurutkan halaman itu
+ * menghasilkan jawaban yang tampak benar tetapi dihitung dari sepersekian data —
+ * "3 dari 10 baris cocok" padahal yang cocok di seluruh tabel ada 84. Itu bukan sekadar
+ * kurang berguna; itu menyesatkan.
+ *
+ * Layar berdata besar — inbox dan laporan (`D-10`: puluhan juta baris) — WAJIB memakai
+ * ini. Layar master yang barisnya puluhan tidak, dan karena itu seluruh isian di sini
+ * opsional: tiga layar master yang sudah selesai tidak berubah perilakunya sama sekali.
+ */
+export type ServerPaging = {
+  /** Halaman yang sedang tampil, dihitung mulai 1. */
+  page: number
+  pageSize: number
+
+  /** Banyaknya baris yang cocok di SELURUH tabel, bukan di halaman ini. */
+  total: number
+  totalPages: number
+
+  onPageChange: (page: number) => void
+}
+
 type Props<T> = {
   columns: Column<T>[]
   rows: T[]
@@ -44,28 +74,16 @@ type Props<T> = {
   searchLabel?: string
   emptyMessage?: string
 
+  /** Bila diisi, halaman dikendalikan server. Lihat ServerPaging. */
+  serverPaging?: ServerPaging
+
   /**
-   * Menyerahkan pencarian dan pengurutan ke PEMANGGIL, bukan dikerjakan komponen ini.
+   * Menyembunyikan kotak cari bawaan.
    *
-   * Dipakai layar yang datanya dipaginasi server — inbox dan laporan. Pada layar seperti
-   * itu, menyaring dan mengurutkan di peramban hanya menyentuh halaman yang sedang
-   * terbuka, sehingga hasilnya BOHONG: pengguna mencari sesuatu yang ada di halaman tiga
-   * dan diberi tahu bahwa ia tidak ada.
-   *
-   * Saat prop ini diisi, kotak cari menjadi terkendali pemanggil dan komponen ini tidak
-   * menyaring apa pun. Pengurutan ikut dimatikan dengan alasan yang sama — mengurutkan
-   * satu halaman dari sepuluh bukan pengurutan.
-   *
-   * Dibiarkan kosong pada layar master, tempat seluruh baris memang sudah di tangan.
+   * Dipakai layar yang sudah punya panel saringnya sendiri — dua kotak cari pada satu
+   * layar membuat pengguna menebak mana yang berlaku.
    */
-  serverSearch?:
-    | {
-        value: string
-        onChange: (value: string) => void
-        /** Banyaknya baris yang cocok di server, untuk keterangan di bawah kotak cari. */
-        matchCount?: number | undefined
-      }
-    | undefined
+  hideSearch?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -113,14 +131,6 @@ type SortOrder = { key: string; direction: 'asc' | 'desc' }
  *
  * Layar yang datanya besar — inbox dan laporan — TIDAK boleh memakai penyaringan ini;
  * mereka menuntut paginasi keyset dari server, dan itu lingkup `TKT-U2-001`.
- *
- * Untuk itulah prop `serverSearch` ada: saat ia diisi, komponen ini berhenti menyaring dan
- * berhenti mengurutkan, dan kotak carinya menjadi milik pemanggil. Layar Pelaporan Klaim
- * adalah pemakai pertamanya.
- *
- * Yang dipilih di sini adalah satu prop opsional, bukan tabel kedua. Tabel kedua akan
- * membatalkan seluruh alasan komponen ini ada — dan membatalkannya pada modul bisnis
- * pertama yang membutuhkannya.
  */
 export function DataTable<T>({
   columns,
@@ -133,20 +143,18 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
-  serverSearch,
+  serverPaging,
+  hideSearch = false,
 }: Props<T>) {
-  const [localQuery, setLocalQuery] = useState('')
+  const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
 
-  const onServer = serverSearch !== undefined
-  const query = serverSearch ? serverSearch.value : localQuery
-  const setQuery = serverSearch ? serverSearch.onChange : setLocalQuery
+  // Saat halaman dikendalikan server, tabel hanya memegang SATU halaman — menyaring dan
+  // mengurutkannya di sini akan menjawab pertanyaan yang salah. Lihat ServerPaging.
+  const local = serverPaging === undefined
 
   const visible = useMemo(() => {
-    // Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
-    // sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
-    // terbuka.
-    if (onServer) return rows
+    if (!local) return rows
 
     const word = query.trim().toLowerCase()
     const filtered = word
@@ -167,7 +175,7 @@ export function DataTable<T>({
       })
       return sort.direction === 'asc' ? comparison : -comparison
     })
-  }, [rows, columns, query, sort, onServer])
+  }, [rows, columns, query, sort, local])
 
   function toggleSort(key: string) {
     setSort((previous) => {
@@ -179,7 +187,7 @@ export function DataTable<T>({
     })
   }
 
-  const hasSearch = query.trim() !== ''
+  const hasSearch = local && query.trim() !== ''
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
@@ -193,40 +201,40 @@ export function DataTable<T>({
         </header>
       )}
 
-      <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
-        <label htmlFor="tabel-cari" className="sr-only">
-          {searchLabel}
-        </label>
-        <div className="relative sm:max-w-sm">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
-          >
-            <SearchIcon className="h-4 w-4" />
-          </span>
-          <input
-            id="tabel-cari"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchLabel}
-            className={[
-              'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-              'text-sm text-slate-900 placeholder:text-slate-400',
-              'transition-[border-color,box-shadow] duration-150 ease-halus',
-              'hover:border-slate-400',
-              'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-            ].join(' ')}
-          />
+      {!hideSearch && (
+        <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
+          <label htmlFor="tabel-cari" className="sr-only">
+            {searchLabel}
+          </label>
+          <div className="relative sm:max-w-sm">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-slate-400"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </span>
+            <input
+              id="tabel-cari"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={searchLabel}
+              className={[
+                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
+                'text-sm text-slate-900 placeholder:text-slate-400',
+                'transition-[border-color,box-shadow] duration-150 ease-halus',
+                'hover:border-slate-400',
+                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
+              ].join(' ')}
+            />
+          </div>
+          {hasSearch && (
+            <p className="mt-2 text-xs text-slate-600" role="status">
+              {visible.length} dari {rows.length} baris cocok.
+            </p>
+          )}
         </div>
-        {hasSearch && (
-          <p className="mt-2 text-xs text-slate-600" role="status">
-            {serverSearch
-              ? `${serverSearch.matchCount ?? visible.length} baris cocok.`
-              : `${visible.length} dari ${rows.length} baris cocok.`}
-          </p>
-        )}
-      </div>
+      )}
 
       {error ? (
         <div className="p-5">{error}</div>
@@ -252,7 +260,7 @@ export function DataTable<T>({
                     scope="col"
                     style={k.width ? { width: k.width } : undefined}
                     aria-sort={
-                      !onServer && sort?.key === k.key
+                      sort?.key === k.key
                         ? sort.direction === 'asc'
                           ? 'ascending'
                           : 'descending'
@@ -263,12 +271,7 @@ export function DataTable<T>({
                       k.alignRight ? 'text-right' : '',
                     ].join(' ')}
                   >
-                    {/*
-                      Pengurutan ikut dimatikan saat pencarian dikerjakan server:
-                      mengurutkan satu halaman dari sepuluh bukan pengurutan, dan panah
-                      yang muncul menjanjikan sesuatu yang tidak dilakukannya.
-                    */}
-                    {k.noSort || onServer ? (
+                    {k.noSort || !local ? (
                       k.title
                     ) : (
                       <button
@@ -335,7 +338,99 @@ export function DataTable<T>({
           </table>
         </div>
       )}
+
+      {serverPaging && !error && !isLoading && (
+        <PagingBar paging={serverPaging} shown={visible.length} />
+      )}
     </section>
+  )
+}
+
+/**
+ * Kaki tabel untuk halaman yang dikendalikan server.
+ *
+ * Yang ditulis bukan sekadar nomor halaman melainkan letaknya di dalam keseluruhan —
+ * "11–20 dari 57". Pada data berpuluh juta baris, nomor halaman saja tidak memberi tahu
+ * pengguna apakah yang ia cari masih jauh atau sudah terlewat.
+ *
+ * Tombolnya hanya Sebelumnya dan Berikutnya, bukan deretan nomor halaman. Deretan nomor
+ * menuntut jumlah halaman yang bermakna, dan pada tabel yang barisnya terus bertambah
+ * sementara pengguna membacanya, halaman ke-4.132 tidak menunjuk apa pun yang tetap.
+ */
+function PagingBar({ paging, shown }: { paging: ServerPaging; shown: number }) {
+  const { page, pageSize, total, totalPages, onPageChange } = paging
+
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const to = total === 0 ? 0 : from + shown - 1
+
+  return (
+    <nav
+      aria-label="Navigasi halaman"
+      className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      {/*
+        role="status" supaya pembaca layar mengumumkan perpindahan halaman. Tanpa itu,
+        menekan Berikutnya tidak menghasilkan satu pun umpan balik yang terdengar — isi
+        tabel berganti di tempat, dan fokus tetap tinggal di tombol.
+      */}
+      <p className="text-xs text-slate-600" role="status">
+        {total === 0 ? (
+          'Tidak ada baris.'
+        ) : (
+          <>
+            Menampilkan{' '}
+            <span className="font-medium text-slate-900">
+              {from}–{to}
+            </span>{' '}
+            dari <span className="font-medium text-slate-900">{total}</span> baris
+          </>
+        )}
+      </p>
+
+      <div className="flex items-center gap-2">
+        <PagingButton
+          label="Sebelumnya"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        />
+        <span className="px-1 text-xs text-slate-600">
+          Halaman {page} dari {totalPages}
+        </span>
+        <PagingButton
+          label="Berikutnya"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        />
+      </div>
+    </nav>
+  )
+}
+
+function PagingButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        'rounded-kontrol border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700',
+        'transition-[background-color,border-color,box-shadow] duration-150 ease-halus',
+        'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:text-slate-700',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   )
 }
 

@@ -356,3 +356,81 @@ untuk modul yang Work Owner sebut dengan nama bisnisnya.
 
 **Nama kueri `.sql`** berawalan `menu_`, mengikuti nama tabelnya dan bukan nama modul:
 `menu_list` · `menu_app_exists` · `menu_groups_of_login` · `menu_authorized_ids` · `menu_check_table`.
+
+---
+
+## Tambahan 2026-09-19 — modul Inbox Laporan Klaim
+
+Nama modulnya **nama bisnis dalam bahasa Indonesia** (`D-81`), isinya **berbahasa Inggris**
+(`D-80`) — sama seperti ketiga modul master sebelumnya.
+
+| Nama modul bisnis (Work Owner) | Folder backend / paket Go | Folder frontend |
+|---|---|---|
+| Inbox Laporan Klaim | `internal/inboxlaporanklaim` | `src/modules/inbox-laporan-klaim` |
+
+**Komponennya memakai nama tipe domain, bukan nama modul** — karena itu
+`ClaimReportInboxPage.tsx`, bukan `InboxLaporanKlaimPage.tsx`.
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| LaporanKlaim | ClaimReport | berkas laporan kerugian yang masuk, sebelum menjadi klaim bernomor |
+| Posisi (berkas) | Position | Outstanding · Not Registered · Not Transferred — **teks layar Pega, tidak diterjemahkan** |
+| Asal (baris) | Origin | `pega` atau `claimpnc`; menyebut sistem yang menerbitkan baris |
+| Kategori / Tab | Category | sembilan tab layar |
+| Pencacah | Summary | delapan angka lencana dalam satu kueri |
+| LiniBisnis | BusinessLine | dropdown "Bisnis" |
+| Kanwil | Region | dropdown "Pilih Kanwil"; sumbernya `BRANCH.BASTERRITORY` |
+| Pemanggil | Caller | identitas petugas yang mengirim permintaan |
+| Umur berkas | AgingDays | kolom "Total Aging" |
+| Pesan terakhir | LastMessage | kolom "Last message" pada ketiga tab komunikasi |
+| Diserahkan | Transferred | menggantikan `statuslock_1` yang TIDAK NULL |
+| RujukanPenugasan | AssignmentRef | isi `statuslock_1` apa adanya, untuk membuka berkasnya di Pega |
+| Halaman | Pagination · Page | `Pagination` yang diminta, `Page` yang dikembalikan |
+
+### Alias Pega yang TIDAK dibawa
+
+Kelimanya menyebut hal yang sama sekali lain dari isinya (`D-19`):
+
+| Kolom | Alias Pega lama | Nama di sini |
+|---|---|---|
+| `BUSINESSNAME` | `Kurir` | `BusinessName` |
+| `br.branchname` | `UserAdmin` | `BranchName` |
+| `pxcreateoperator` | `KodeCabang` | `CreatedBy` |
+| `kodecabang_1` | `StatusKomunikasi` | `BranchCode` |
+| `KETERANGAN_1` | `SIM` | `Reason` |
+| `BookNo_1` | `Sender` | `ReferenceNumber` |
+| `k.message` | `EmailPengirim` | `LastMessage` |
+
+### Nama kolom basis data — tetap Indonesia
+
+Tabel baru `POOLDATA.CPNC_LAPORAN_KLAIM` memakai nama kolom berbahasa Indonesia, mengikuti
+`CPNC_PENGGUNA` dan `CPNC_SESI_AKTIF`: `NO_LAPORAN`, `NO_KLAIM`, `NAMA_PELAPOR`, `KODE_CABANG`,
+`STS_DISERAHKAN`, `TGL_AGING`, `DIBUAT_OLEH`, `DIHAPUS_PADA`, dan seterusnya.
+
+### Nama kueri `.sql`
+
+Berawalan `claim_report_`, mengikuti nama domainnya:
+
+`claim_report_source` · `claim_report_list_body` · `claim_report_count_body` ·
+`claim_report_message_body` · `claim_report_message_count_body` · `claim_report_summary_body` ·
+`claim_report_get_body` · `claim_report_region_list` · `claim_report_next_sequence` ·
+`claim_report_insert` · `claim_report_check_table` · `claim_report_check_legacy_table`
+
+Akhiran `_body` menandai fragmen yang **bukan kueri utuh** — ia disambung `claim_report_source`
+lebih dulu. Lihat `sourced()` di `repo/sqlstore/query.go`.
+
+### Nama field JSON — tetap Indonesia
+
+Ia kontrak, bukan nama internal: `id`, `nomor_klaim`, `tertanggung`, `nama_bisnis`,
+`tanggal_kejadian`, `umur_hari`, `nama_cabang`, `pesan_akhir`, `posisi`, `asal`, `rujukan_pega`,
+`kategori`, `halaman`, `total_halaman`.
+
+### Prop komponen bersama yang bertambah
+
+| Prop | Komponen | Keterangan |
+|---|---|---|
+| `serverPaging` | `DataTable` | mematikan saring & urut internal, menggambar kaki halaman |
+| `hideSearch` | `DataTable` | menyembunyikan kotak cari bawaan |
+| `ServerPaging` | `DataTable` | tipe baru yang diekspor |

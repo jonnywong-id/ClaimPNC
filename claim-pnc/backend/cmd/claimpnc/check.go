@@ -14,13 +14,13 @@ import (
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/masterstatus"
-	"claim-pnc/internal/pelaporanklaim"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
+	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
-	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
@@ -72,7 +72,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAppTables(ctx, legacy, print)
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
-	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
+	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 
 	print("")
 	if login == "" {
@@ -138,6 +138,28 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 	}
 }
 
+// checkClaimReport melaporkan kesiapan kedua tabel Inbox Laporan Klaim.
+//
+// Ia memeriksa DUA hal yang sifatnya berbeda, dan membedakannya penting:
+//
+//	POOLDATA.CPNC_LAPORAN_KLAIM     tabel BARU, dibuat migrasi 0003 — dibaca DAN ditulis
+//	DATAPEGA.PC_ASM_FW_GCNMFW_WORK  tabel warisan Pega — hanya DIBACA
+//
+// Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada sejak
+// lama, dan kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang
+// tampak mirip di layar tetapi perbaikannya berbeda jauh.
+func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Inbox Laporan Klaim belum siap: %v", err)
+		print("            CPNC_LAPORAN_KLAIM dibuat migrasi backend/migrations/0003,")
+		print("            dan ia dijalankan di SETIAP portal entitas — bukan hanya portal utama.")
+		print("            PC_ASM_FW_GCNMFW_WORK sudah ada sejak lama; bila justru ia yang gagal,")
+		print("            yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
+		return
+	}
+	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
+}
+
 // checkClaimStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.
 //
 // Ia melaporkan JUMLAH BARIS, bukan sekadar "dapat dibaca". Angka itulah yang menjawab
@@ -165,47 +187,6 @@ func checkClaimStatus(ctx context.Context, repo *masterstatussql.Repo, print fun
 		// V_STS_CLAIM, termasuk laporan TAT dan KPI. Ia harus terlihat di sini, bukan
 		// ditemukan pengguna di laporan.
 		print("  [WASPADA] %d status berlabel kosong — periksa langkah 2 migrasi 0002", empty)
-	}
-}
-
-// checkClaimReport melaporkan kesiapan POOLDATA.CPNC_LAPORAN_KLAIM sesudah migrasi
-// 0003.
-//
-// Ia melaporkan jumlah laporan PER TAHAP, bukan sekadar "dapat dibaca". Angka itulah yang
-// membedakan tabel yang sudah dipakai dari tabel yang baru dibuat dan masih kosong — dan
-// pada tabel yang sudah berisi, ia sekaligus memperlihatkan apakah ada laporan yang
-// tertahan lama di satu tahap.
-func checkClaimReport(ctx context.Context, repo *pelaporanklaimsql.Repo, print func(string, ...any)) {
-	if err := repo.CheckTable(ctx); err != nil {
-		print("  [BELUM] POOLDATA.CPNC_LAPORAN_KLAIM belum siap: %v", err)
-		print("            Tabelnya dibuat migrasi 0003. Selama belum dijalankan, layar")
-		print("            Pelaporan Klaim tidak dapat dipakai terhadap Oracle — tetapi")
-		print("            seluruh bagian lain tetap jalan.")
-		return
-	}
-
-	summary, err := repo.Summary(ctx, pelaporanklaim.Filter{})
-	if err != nil {
-		print("  [GAGAL] POOLDATA.CPNC_LAPORAN_KLAIM tidak dapat dihitung isinya: %v", err)
-		return
-	}
-
-	total := 0
-	for _, count := range summary {
-		total += count
-	}
-	print("  [ok]    POOLDATA.CPNC_LAPORAN_KLAIM dapat dibaca: %d laporan", total)
-
-	// Urutannya tetap, mengikuti perjalanan laporan — bukan urutan map, yang berubah
-	// setiap kali proses dijalankan dan membuat dua keluaran tidak dapat dibandingkan.
-	for _, stage := range []pelaporanklaim.Stage{
-		pelaporanklaim.StageNotTransferred,
-		pelaporanklaim.StageNotRegistered,
-		pelaporanklaim.StageRegistered,
-		pelaporanklaim.StageAccepted,
-		pelaporanklaim.StageRejected,
-	} {
-		print("            %-20s %d", stage.Label(), summary[stage])
 	}
 }
 

@@ -445,104 +445,60 @@ mengembalikan `Person.Login` dengan nilai yang sama. Tidak ada yang perlu diubah
   butirnya tetap tampak "belum tersedia", yang pertama diperiksa adalah ejaan `MENU_PROGRAM`-nya —
   ia dicocokkan persis, termasuk huruf besar-kecilnya.
 
-# Penggunaan Skill — Sesi 2026-09-18 (Modul Pelaporan Klaim)
-
-Ketentuan VI.2 instruksi menuntut pencatatan setiap pemakaian skill khusus: namanya, alasannya,
-waktunya, keluarannya, dan manfaatnya.
+# Penggunaan Skill — Sesi 2026-09-19 (modul Inbox Laporan Klaim)
 
 ## Ringkasan
 
-**Tidak ada skill khusus yang dipanggil pada sesi ini.** Seperti pada empat sesi sebelumnya,
-berkas ini mencatat kenyataan itu beserta alasannya, bukan daftar kosong yang dibiarkan tanpa
-penjelasan.
+**Tidak satu pun skill dipanggil pada sesi ini.** Itu dicatat apa adanya, bukan diisi dengan nama
+skill yang kebetulan terdengar cocok — catatan penggunaan skill yang memuat skill yang tidak dipakai
+membuat seluruh berkas ini kehilangan gunanya.
 
-Satu skill sempat **relevan dan tetap tidak dipakai** — alasannya di bawah, dan ia berbeda dari
-alasan sesi-sesi sebelumnya.
+Yang dipakai adalah **teknik**, sebagian di antaranya berasal dari skill yang pernah dipakai sesi
+sebelumnya dan kini sudah menjadi kebiasaan kerja.
 
-## Skill yang dipertimbangkan dan alasan tidak dipakai
+## Skill yang ditimbang
 
-| Skill | Kapan ia akan menolong | Kenapa tidak dipakai di sesi ini |
+| Skill | Ditimbang untuk | Kenapa tidak jadi dipakai |
 |---|---|---|
-| `mattpocock-skills:codebase-design` | Menempatkan seam dan batas modul baru | Polanya sudah ditetapkan `04-FUTURE-ARCHITECTURE` §3 dan **sudah berwujud kode** di empat modul. Modul ini menyalinnya apa adanya: satu seam (`Repo`) dengan dua adapter, lapisan `usecase` yang tidak tahu HTTP maupun SQL, dan `http/` yang mendeklarasikan antarmuka sempitnya sendiri. Merancang ulang justru berisiko menyimpang dari modul yang sudah berjalan |
-| `mattpocock-skills:domain-modeling` | Menyusun kosakata domain baru | Kosakatanya **diekstraksi**, bukan dikarang: 26 nama kolom dari satu procedure, 34 nama properti dari seluruh export, dan lima nama tahap dari judul tab. Yang dibutuhkan pembacaan sumber primer, bukan pemodelan. Satu istilah yang memang baru — `Tahap` — diturunkan langsung dari ekspresi `CASE` di kueri lama |
-| `mattpocock-skills:tdd` | Siklus merah-hijau-refactor | **Di sinilah alasannya berbeda dari sesi lalu.** Siklus TDD menuntut uji dapat DIJALANKAN untuk melihat merah lalu hijau. Go tidak terpasang di mesin ini, sehingga tidak ada satu pun titik dalam siklus itu yang dapat diamati. Uji tetap ditulis — 40 uji Go dan 16 uji frontend — tetapi menyebutnya TDD akan menyiratkan ia pernah merah lalu hijau, dan itu tidak terjadi |
-| `mattpocock-skills:diagnosing-bugs` | Menelusuri bug sulit atau regresi | Tidak ada bug yang dapat didiagnosis: tanpa kompilator dan tanpa peramban, tidak ada perilaku salah yang dapat diamati. Yang muncul adalah cacat **repository** (penanda konflik merge di dua berkas markdown), dan itu ditemukan dengan `grep`, bukan dengan penelusuran |
-| `mattpocock-skills:research` | Meneliti pertanyaan terhadap sumber primer | Sumber primernya ada di repo ini dan dibaca langsung — 20 rule Pega, dua procedure, satu navigation. Yang **tidak** dapat diteliti adalah bentuk nomor laporan lama: ia ditentukan `pyWorkIDPrefix` pada rule kelas yang tidak diekspor. Karena itu ia dicatat sebagai keputusan baru beserta alasannya, bukan ditebak |
-| `mattpocock-skills:code-review` | Meninjau perubahan terhadap standar repo | Repo sudah di bawah git kali ini, sehingga syaratnya terpenuhi — tetapi peninjauan tanpa kompilator hanya dapat memeriksa gaya dan disiplin, bukan kebenaran. Yang dikerjakan sebagai gantinya adalah lima pemeriksaan manual di `catatan-pengembangan.md` §11.11, dan keterbatasannya dinyatakan apa adanya |
-| `dataviz` | Membuat grafik atau dashboard | Lencana angka pada tab bukan visualisasi data — ia enam bilangan bulat. Menariknya ke pustaka grafik akan menambah dependensi untuk sesuatu yang muat di satu `<span>` |
-| `anthropic-skills:xlsx` | Membaca atau menulis berkas spreadsheet | Dua CSV di `Database/` dibaca sebagai teks biasa lewat `grep`; tidak ada spreadsheet yang dihasilkan. Export CSV milik `ExportNotTransferRCV` berada di luar lingkup sesi ini |
+| `mattpocock-skills:grilling` | Tiga pertanyaan lingkup di awal sesi | Pertanyaannya sudah punya bentuk yang benar — masing-masing menawarkan pilihan berdasar bukti, dengan rekomendasi dan konsekuensinya. Memanggil skill hanya akan menambah satu lapis yang menghasilkan pertanyaan yang sama |
+| `mattpocock-skills:domain-modeling` | Menamai `Position`, `Origin`, `Category` | Istilahnya **tidak dikarang**: ketiga nilai `Position` disalin apa adanya dari `CASE WHEN` pada `ViewAllCase-SQL.xml`, dan kesembilan judul tab dari `pyValue` bertanda `<b>`. Yang dibutuhkan pembacaan sumber, bukan penajaman istilah |
+| `mattpocock-skills:codebase-design` | Batas modul dan letak seam | Batasnya sudah ditetapkan modul-modul sebelumnya, dan modul ini mengikutinya persis. Menimbang ulang berarti menimbang ulang keputusan yang sudah berjalan lima modul |
+| `mattpocock-skills:tdd` | Uji modul | Uji ditulis **sesudah** perilaku terbaca dari sumber Pega, bukan sebelum. Pada pekerjaan migrasi, "merah dulu" menuntut saya sudah tahu jawabannya — dan jawabannya justru yang sedang dicari di dalam 1,16 MB XML |
+| `dataviz` | Bagan `pxChart` di layar lama | Bagannya tidak dibawa sama sekali (lihat catatan pengembangan §16.9). Tidak ada yang digambar |
 
-## Perkakas non-skill yang dipakai, dan manfaatnya
+## Teknik yang dipakai tanpa memanggil skill
 
-| Perkakas | Dipakai untuk | Manfaat nyata |
+| Teknik | Bagaimana ia berbuah pada sesi ini |
+|---|---|
+| **Baca sumbernya sampai ke dasar, jangan berhenti di berkas yang ditunjuk** | Harness yang diminta ternyata hanya pembungkus. Berhenti di sana akan menghasilkan layar yang dikarang; menelusuri satu tingkat lagi menemukan section 1,16 MB, dua activity, enam kueri, dan delapan pencacah |
+| **Ambil teks layar dari sumbernya, jangan diterjemahkan** | Kesembilan judul tab dan keenam belas nama kolom dibaca dari `pyValue` bertanda `<b>`. Menerjemahkannya menjadi bahasa Indonesia akan lolos kompilasi tanpa satu pun tanda bahwa layar berubah bagi penggunanya (`D-13`) |
+| **Bedakan cacat lama dari cacat baru, lalu katakan yang mana** | Kueri grid dan kueri pencacah tidak sepakat untuk satu tab. Menutupnya diam-diam akan membuat selisihnya muncul sebagai "cacat modul baru" saat uji kesetaraan `S-8` |
+| **Jalankan aplikasinya, jangan berhenti di uji** | Uji membuktikan bentuknya benar. Hanya permintaan HTTP sungguhan yang menemukan bahwa tombol Buat Baru menjawab `409` untuk SETIAP pengguna tiruan — dan itu yang mengungkap saya menambahkan aturan yang tidak ada di Pega |
+| **Buktikan klaim "kegagalan lama", jangan menyalinnya dari dokumen** | Tiga uji gagal di `AccountPage.test.tsx`. Dokumen sesi sebelumnya sudah menyebutnya kegagalan lama, dan itu tidak cukup: perubahan `DataTable.tsx` di-`git stash`, uji dijalankan ulang, ketiganya tetap gagal |
+| **Buat probe yang sengaja gagal untuk menguji alat ukurnya** | Helper uji `selectedColumns` bisa saja lulus karena tidak mengurai apa pun. Probe sementara membuktikan ia mengurai 19 kolom dan `WHERE` sepanjang 544 karakter, lalu dihapus |
+| **Terjemahkan aturan menjadi PENANDA, bukan menjadi potongan SQL** | Sembilan tab dilayani dua bentuk kueri tetap. Aturan tabnya hidup di Go, tempat ia dapat diuji tanpa basis data — dan potongan SQL tidak pernah melewati batas modul, yang persis pola `{ASIS:...}` warisan |
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
 |---|---|---|
-| `grep` / `sed` atas XML Pega | Membongkar 20 rule: `pyBrowseSQL`, `pyStepsActivityName`, `PropertiesName`/`PropertiesValue`, `pyCaptionPrompt` | Menemukan yang **tidak terlihat di harness**: 26 pemetaan alias, daur hidup lima tahap, tujuh peran, dan judul menu "Inbox Laporan Klaim" yang membuktikan nama modulnya bukan karangan |
-| Skrip ekstraksi langkah activity | Mengubah XML berisi 135 KB boilerplate menjadi daftar langkah yang terbaca | `CreateNewCaseRCV` dan `rcv_InsertRecivedDocumentClaim` — dua activity terpenting — dapat dibaca utuh dalam satu tampilan alih-alih ditelusuri baris per baris |
-| Hitung kurung per berkas Go | Pengganti sebagian dari kompilator yang tidak ada | Dua selisih yang muncul terlacak ke kurung **di dalam string literal**; nol cacat sintaks nyata |
-| `comm` atas daftar konstanta | Memastikan 19 nama field yang dipakai benar-benar dideklarasikan | Nol selisih — pemeriksaan yang biasanya dikerjakan kompilator dalam sepersekian detik |
+| 1 | **Menambahkan aturan yang tidak ada di Pega** — menolak pembuatan berkas tanpa cabang | Menjalankan aplikasinya: `409` untuk setiap pengguna tiruan. Pembacaan ulang `CreateNewCaseRCV` membuktikan Pega tidak memeriksa apa pun di sana |
+| 2 | **Menjalankan `npx prettier` pada repo yang tidak memakainya** | Gaya seluruh `DataTable.tsx` berubah — titik koma dan kutip ganda. Repo ini tidak punya konfigurasi prettier dan tidak memuatnya di `package.json`. Dikembalikan lewat `git checkout`, lalu suntingan diterapkan ulang dengan tangan |
+| 3 | **Menghitung kolom secara hafalan** — mengira 18, ternyata 19 | Probe sementara. Saya lupa `reporter_name` yang baru saya tambahkan sendiri beberapa langkah sebelumnya |
+| 4 | **Menulis lencana tab sebagai angka telanjang** | Uji aksesibilitas gagal: nama tombolnya terbaca `"Replied from ASM0"`. Yang diperbaiki komponennya — `aria-label` menjadi "Replied from ASM, 0 berkas" — bukan ujinya |
 
-## Catatan jujur: yang hilang karena perkakasnya tidak ada
+Keempatnya punya pola yang sama: **yang menemukan bukan pembacaan ulang, melainkan menjalankan
+sesuatu.** Pembacaan ulang menemukan apa yang saya sudah curigai; menjalankan menemukan apa yang
+tidak saya curigai.
 
-Empat sesi sebelumnya menutup pekerjaannya dengan tabel hasil `go vet`, `go test`,
-`npm run periksa-tipe`, dan uji asap terhadap binary yang benar-benar berjalan. Sesi ini tidak
-dapat.
+## Catatan untuk sesi berikutnya
 
-Yang paling terasa hilang bukan uji otomatisnya, melainkan **kompilator**. Pada sesi keempat,
-`tsc --noEmit` menangkap satu cacat tipe nyata sebelum sampai ke layar; pada sesi kelima,
-pengujian menemukan cacat satu-DOM-dua-pohon yang **tidak ketahuan dari membaca ulang kode**.
-Kedua jaring itu tidak ada di sesi ini.
-
-Pemeriksaan manual yang dikerjakan sebagai gantinya menutup satu kelas kesalahan — nama yang tidak
-ada, jumlah argumen yang tidak cocok, urutan kolom yang bergeser — dan **tidak menutup sisanya**.
-
-## Catatan untuk tahap berikutnya
-
-- **`mattpocock-skills:tdd` menjadi relevan** begitu Go terpasang. Modul berikutnya di jalur klaim
-  (`B-2` Registrasi) menegakkan delapan aturan tanggal dan dua aturan duplikasi — persis bentuk
-  spesifikasi yang siklus merah-hijau melayaninya dengan baik.
-- **`mattpocock-skills:codebase-design`** saat `B-2` dikerjakan, karena modul itu menyembunyikan
-  137 step `InputRegister_act` di balik satu antarmuka. Itu keputusan kedalaman modul yang
-  sesungguhnya, berbeda dari modul ini yang bentuknya sudah ditentukan sistem lama.
-
----
-
-## Tambahan sesi ini: penggantian nama ke bahasa Inggris (19 September 2026)
-
-### Skill yang dipakai — tidak ada
-
-Penggantian nama menyeluruh bukan pekerjaan desain maupun pemodelan domain: bentuk modulnya tidak
-berubah, batas modulnya tidak berubah, dan tidak ada satu pun istilah domain yang artinya
-dipertanyakan ulang. Memanggil `codebase-design` atau `domain-modeling` di sini hanya akan
-menghasilkan pembenaran atas pekerjaan yang keputusannya sudah diberikan Work Owner.
-
-Yang dipakai adalah **pembacaan `CONTEXT.md` sebagai kamus istilah** — untuk memilih padanan
-Inggris yang benar, bukan terjemahan harfiah:
-
-| Istilah domain | Padanan yang dipakai | Yang sengaja DIHINDARI |
-|---|---|---|
-| Objek Pertanggungan | `InsuredItem` | `Object` — bertabrakan dengan makna pemrograman |
-| Settlement Line | `SettlementLine` | `Adjustment` — alias Pega yang salah arti |
-| Laporan Klaim | `ClaimReport` | `ReceiveDocument` — nama kelas internal Pega |
-| Tahap | `Stage` | `Status` — sudah dipakai empat konsep berbeda (`D-18`) |
-| Hasil Klaim | `ClaimOutcome` | `Result` — terlalu umum untuk domain yang punya empat status |
-
-Pilihan `ClaimReport` di atas `ReceiveDocument` bukan selera: `D-19` menetapkan alias internal Pega
-tidak dibawa, dan menu portal sistem lama sendiri berbunyi **"Inbox Laporan Klaim"**.
-
-### Yang skill TIDAK tangkap, dan tertangkap Work Owner
-
-Pertentangan antara `D-80` dan konsistensi dengan kode lama sudah saya tulis sendiri sebagai
-pertanyaan terbuka di `keputusan-implementasi.md` §12.13, lengkap dengan pemiliknya (Work Owner).
-Lalu saya **menjawabnya sendiri dengan asumsi** alih-alih menanyakannya.
-
-Ini pola kesalahan yang sama dengan yang sudah tercatat dua kali di dokumen proyek ini: bukan salah
-membaca bukti, melainkan **melanjutkan tanpa menunggu jawaban atas pertanyaan yang sudah tertulis**.
-Bedanya kali ini murah — koreksinya mekanis dan tidak menyentuh perilaku.
-
-Tidak ada skill yang akan menangkapnya. Yang menangkapnya adalah Work Owner yang memeriksa hasilnya.
-
-### Catatan untuk tahap berikutnya — tidak berubah
-
-`mattpocock-skills:tdd` dan `codebase-design` tetap menjadi yang relevan saat `B-2` Registrasi
-dikerjakan, dengan syarat yang sama: Go terpasang lebih dulu, sehingga siklus merah-hijau benar-benar
-dapat dijalankan alih-alih dibayangkan.
+- **Modul `B-14` Receive Document adalah lanjutan langsungnya.** Layar rincinya (`ViewReceiveDocument`)
+  yang melengkapi berkas kosong buatan tombol "Buat Baru", dan ia yang akan menulis kolom-kolom
+  `POOLDATA.T_CLAIM_RECIVEDCLAIM` yang belum tersentuh.
+- **`CONTEXT.md` belum memuat istilah `Laporan Klaim`, `Position`, dan `Kanwil`.** Ketiganya kini
+  punya arti tepat di dalam sistem ini. Tidak dikerjakan di sesi ini karena `CONTEXT.md` adalah
+  dokumen Steering yang perubahannya ditulis sebagai keputusan, bukan disunting menyusul — sama
+  seperti catatan sesi sebelumnya tentang `Menu` dan `Otorisasi`.
+- **Lima pertanyaan terbuka menunggu Work Owner**, dan yang pertama menyentuh batas data:
+  lihat `keputusan-implementasi.md` §17.11.
