@@ -17,12 +17,14 @@ import (
 	"claim-pnc/internal/masterpenyebabkerugian"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
+	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
 	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
@@ -93,6 +95,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkCauseOfLoss(ctx, masterpenyebabkerugiansql.NewRepo(primary), print)
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
+	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 
 	print("")
 	if login == "" {
@@ -156,6 +159,28 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 		print("            Mode periksa TETAP bisa mencoba masuk — ia tidak menulis apa pun.")
 		print("            Yang belum bisa adalah masuk lewat aplikasi, karena itu menyimpan sesi.")
 	}
+}
+
+// checkClaimReport melaporkan kesiapan kedua tabel Inbox Laporan Klaim.
+//
+// Ia memeriksa DUA hal yang sifatnya berbeda, dan membedakannya penting:
+//
+//	POOLDATA.CPNC_LAPORAN_KLAIM     tabel BARU, dibuat migrasi 0003 — dibaca DAN ditulis
+//	DATAPEGA.PC_ASM_FW_GCNMFW_WORK  tabel warisan Pega — hanya DIBACA
+//
+// Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada sejak
+// lama, dan kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang
+// tampak mirip di layar tetapi perbaikannya berbeda jauh.
+func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Inbox Laporan Klaim belum siap: %v", err)
+		print("            CPNC_LAPORAN_KLAIM dibuat migrasi backend/migrations/0003,")
+		print("            dan ia dijalankan di SETIAP portal entitas — bukan hanya portal utama.")
+		print("            PC_ASM_FW_GCNMFW_WORK sudah ada sejak lama; bila justru ia yang gagal,")
+		print("            yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
+		return
+	}
+	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
 }
 
 // checkClaimStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.
