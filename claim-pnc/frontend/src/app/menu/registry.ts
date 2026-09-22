@@ -88,6 +88,13 @@ export const MENU_ROUTES: Record<string, string> = {
   // struktur treaty-nya. Keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya satu
   // di antaranya yang boleh menulis.
   Inbox_XOL_Harness: '/inbox-xol',
+  // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
+  // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
+  //
+  // MENU_ID 55 "Inbox Claim Treaty Non Prop" (`InboxClaimNonProp_Harness`) adalah layar
+  // saudara yang berdiri sendiri dan BELUM dibangun; ia sengaja tidak dipetakan ke rute
+  // yang sama, karena keduanya membaca kueri dan tabel yang berbeda.
+  InboxClaimTreaty_Harness: '/inbox-claim-treaty-prop',
 }
 
 /**

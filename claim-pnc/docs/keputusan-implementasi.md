@@ -4594,3 +4594,190 @@ baru saat uji kesetaraan dijalankan.
 | 4 | Sub-section `PrintPLADLA_XOL` bervisibilitas `1==2` — apakah kolom aksi itu memang sudah mati, atau dimatikan sementara? | Work Owner |
 | 5 | Kode mata uang dasar perhitungan treaty inward — apakah `10001` berlaku sama di keempat entitas? | Work Owner |
 | 6 | Bentuk dokumen PLA/DLA resmi, untuk menggantikan unduhan CSV | Work Owner |
+
+---
+
+## 27. Modul Inbox Claim Treaty Prop (2026-09-21 … 2026-09-22, sesi kedelapan belas)
+
+Menu `MENU_ID 54`, pengganti harness `InboxClaimTreaty_Harness`. Modul `U-3`.
+
+### 27.1 Tiga keputusan Work Owner, diambil sebelum kode ditulis
+
+Ketiganya diajukan bersama buktinya masing-masing dan dijawab 2026-09-21.
+
+| # | Pertanyaan | Keputusan | Akibatnya pada kode |
+|---|---|---|---|
+| 1 | Tab "Komite Treaty ASM" membaca properti klipboard Pega yang nol kemunculan di seluruh SQL export dan tidak punya DDL (`R-08`) | **Bangun 3 tab; Komite ditandai terhalang** | `Tab.Blocked`, `BlockedReason`, `BlockedOwner` menjadi DATA yang dikirim ke layar |
+| 2 | Kolom "Date Of Loss" pada grid antrean teknik selalu kosong karena kueri mengisi `CARI13` sementara sel terikat `CARI10` | **Diperbaiki**, dicatat sebagai selisih terencana `P-5` | Ketiga kueri mengaliaskannya ke `LOSS_DATE` yang sama; butir pertama `PlannedDifferences` |
+| 3 | Tombol "Create Claim Treaty Prop" memanggil activity yang MENULIS objek kerja Pega | **Digambar, menolak dengan alasan** | Rute `POST` ada dan menjawab 501 `belum_tersedia` |
+
+### 27.2 `CARI13` diterjemahkan sebagai pemeriksaan peran, bukan sakelar layar
+
+**Yang ditemukan.** `Section/InboxClaimTreaty_Section-Section.xml` menjaga ketiga
+kontainernya dengan `InputData.CARI13`. Nilai itu tidak disetel activity pemuat grid mana
+pun; ia disetel `Activity/GetDataInboxTreaty_act-Act.xml` langkah 3, sesudah langkah 2
+menjalankan report atas kelas `ASM-FW-GCNMFW-Int-EMAILKOMITE`, dengan prakondisi
+`@equalsIgnoreCase(.OPERATOR_ID, Inputdata.CARI10)`.
+
+**Artinya** mode `tampil` berarti pemanggil adalah anggota komite menurut
+`POOLDATA.EMAILKOMITE.OPERATOR_ID`.
+
+**Keputusan.** Ketiga kontainer menjadi TAB yang dapat dipilih pengguna, bukan mode yang
+dipilih keadaan. Alasannya: pemeriksaan peran belum ada (`TKT-F3-004`), dan tabel peran
+dapat dibangun tetapi belum dapat diisi — penugasan operator ke peran tidak ada di basis
+data maupun di export (`11-SECURITY.md` §3.1).
+
+**Konsekuensi yang diterima secara sadar.** Setiap pengguna yang dapat masuk melihat
+ketiga tab, termasuk antrean teknik yang di sistem lama hanya terlihat oleh pemegang akun
+`TreatyinPNCTeknik`. Taruhannya terbatas selama modul ini membaca saja: antrean yang
+terlihat bukan antrean yang dapat diambil. Begitu pengambilan pekerjaan dipindahkan ke
+sini, pemeriksaan peran menjadi prasyarat — dicatat di kepala `http/routes.go`.
+
+**Alternatif yang ditolak.** Menebak keanggotaan komite dengan membaca `EMAILKOMITE`
+sendiri. Itu akan membuat modul ini punya model peran sendiri yang berbeda dari
+`TKT-F3-004`, dan dua model peran yang hidup berdampingan lebih buruk daripada satu yang
+belum ada.
+
+### 27.3 Lima grid disatukan menjadi tiga tab
+
+**Yang ditemukan.** Kelima grid section dipasok hanya EMPAT sumber, dan satu sumber
+memasok dua grid:
+
+| Kontainer | Kueri | Mode |
+|---|---|---|
+| Work List Treatyin Propotional | `GetClaimTreaty_SQL` / `…AllAdmin_SQL` | bukan komite |
+| Treaty Klaim | `GetClaimTreatyTeknik_SQL` | bukan komite |
+| Work Teknik Treatyin | `GetClaimTreatyTeknik_SQL` | komite |
+| Komite Treaty ASM | `WorkListKomite2` + `InboxKomiteTreaty_RD` | komite |
+
+**Keputusan.** "Treaty Klaim" dan "Work Teknik Treatyin" disatukan menjadi satu tab
+berjudul "Work Teknik Treatyin".
+
+**Alasannya.** Keduanya dipasok kueri yang sama persis dengan kolom yang sama persis.
+Membawa keduanya berarti dua tab yang isinya DIJAMIN identik — dan pengguna yang melihat
+keduanya akan mencari perbedaan yang tidak ada.
+
+### 27.4 Tab terhalang digambar sebagai DATA, bukan disembunyikan
+
+**Keputusan.** `Tab.Blocked`, `BlockedReason`, dan `BlockedOwner` dikirim server ke layar,
+dan layar menggambar penjelasan alih-alih tabel.
+
+**Kenapa data, bukan teks tetap di frontend.** Supaya penghalangnya hilang dengan
+sendirinya begitu DDL yang dibutuhkan tiba — tanpa menyunting frontend.
+
+**Kenapa `BlockedOwner` ada.** Penghalang tanpa alamat tidak pernah hilang; itu pelajaran
+yang sudah tercatat di `D-36`. Isinya menyebut DBA beserta artefak yang dibutuhkan.
+
+**Kenapa tab terhalang TIDAK menggambar tabel kosong.** Tabel kosong terbaca sebagai
+"tidak ada pekerjaan", padahal yang benar adalah "belum dapat dibaca". Keduanya menuntut
+tindakan yang berbeda dari pengguna.
+
+**Penolakannya terjadi di domain, bukan di penyimpanan.** `NewQuery` menolak tab terhalang
+dengan `ValidationError` berisi `BlockedReason`. Kalau dibiarkan sampai ke repo, ia akan
+gagal sebagai galat internal 500 — jawaban yang tidak menyebut sebabnya kepada siapa pun.
+
+### 27.5 Paginasi dikerjakan basis data, berbeda dari Inbox Admin
+
+**Keputusan.** `OFFSET … FETCH NEXT … ROWS ONLY` di dalam kueri, dengan
+`COUNT(*) OVER ()` membawa jumlah seluruh baris.
+
+**Kenapa berbeda dari Inbox Admin.** Inbox Admin memotong halaman di aplikasi karena Work
+Owner memutuskan paginasinya direplikasi apa adanya — sistem lama memang menarik seluruh
+baris lalu menghitung totalnya dari yang sudah ditarik. Di sini tidak ada perilaku seperti
+itu untuk direplikasi: ketiga kueri treaty tidak punya paginasi sama sekali, dan
+`pyMaxRecords` pada rule-nya kosong.
+
+Jadi pilihannya bukan "replikasi atau perbaiki", melainkan "tentukan". Yang ditentukan
+adalah bentuk yang portabel dan tidak menarik seluruh antrean ke memori aplikasi
+(`09-DATABASE-STRATEGY.md` §3.3).
+
+**Kenapa `COUNT(*) OVER ()`, bukan kueri penghitung terpisah.** Satu perjalanan, bukan
+dua. Kueri kedua akan membaca ulang seluruh gabungan ke `JSON_KLAIM`, dan gabungan itulah
+bagian yang mahal.
+
+**Utang yang disadari.** Halaman yang seluruhnya di luar rentang mengembalikan `Total`
+nol, karena totalnya dibawa baris — dan tidak ada baris. Keadaan itu hanya tercapai lewat
+parameter yang diketik sendiri; layar tidak pernah memintanya. Dicatat di tempatnya di
+`repo/sqlstore/inboxclaimtreatyprop.go`.
+
+### 27.6 `ORDER BY` ditambahkan pada kueri yang tidak punya
+
+`GetClaimTreatyTeknik_SQL` dan `GetClaimTreatyAllAdmin_SQL` tidak mengurutkan hasilnya.
+Itu dapat dibiarkan selama seluruh baris ditarik sekaligus; begitu halamannya dipotong,
+urutan yang tidak ditetapkan membuat satu baris muncul di dua halaman sekaligus hilang
+dari halaman lain.
+
+Urutannya mengikuti kueri yang MEMANG punya — `ORDER BY A.PXCREATEDATETIME DESC` pada
+`GetClaimTreaty_SQL` — ditambah `PXREFOBJECTINSNAME` sebagai pemutus seri supaya
+deterministik. Dinyatakan ke pengguna sebagai butir ketiga `PlannedDifferences`.
+
+### 27.7 Tanggal Kejadian dibawa sebagai TEKS
+
+**Keputusan.** `WorkItem.LossDate` bertipe `string`, bukan `time.Time`, dan DTO-nya pun
+teks biasa — bukan `*string` berformat `YYYY-MM-DD` seperti Inbox Admin.
+
+**Alasannya.** Nilainya dibaca `JSON_VALUE` dari `DATA_JSONBLOB`, yang selalu mengembalikan
+teks. Bentuk teks di dalam blob itu tidak dapat diperiksa: tidak ada DDL, dan isinya belum
+pernah dilihat (`R-08`). Mengubahnya menjadi tanggal berarti menebak formatnya untuk
+seluruh baris historis.
+
+**Akibat di layar.** Sel diformat menjadi `14 Agustus 2026` HANYA bila bentuknya
+`YYYY-MM-DD`; selain itu ditampilkan apa adanya. Menampilkan apa adanya lebih jujur
+daripada mengubah nilai yang tidak dikenali menjadi teks yang salah.
+
+### 27.8 Nama akun antrean teknik menjadi konstanta domain, dikirim sebagai bind
+
+`TreatyinPNCTeknik` literal di dalam `GetClaimTreatyTeknik_SQL`. Di sini ia konstanta
+`inboxclaimtreatyprop.TechnicalWorkbasket` dan dikirim sebagai parameter binding.
+
+**Kenapa bukan ditulis di dalam SQL.** Supaya SQL dan penyimpanan memori membaca nilai
+yang sama, sehingga keduanya tidak dapat berselisih tanpa ketahuan — dan uji yang lulus di
+atas memori menyatakan sesuatu yang benar tentang yang berjalan di Oracle.
+
+**Kenapa ia tidak melanggar `D-15`.** Yang `D-15` larang adalah nilai BISNIS yang berubah
+— ambang uang, penerima notifikasi, pemetaan peran. Ini kunci antrean yang menentukan tab
+mana yang dibaca, bukan nilai yang diubah pengguna bisnis. Ia tetap dikumpulkan di satu
+tempat, dan `-periksa` memperingatkan bila antreannya kosong supaya perubahan namanya di
+produksi terlihat sebelum pengguna melaporkannya.
+
+### 27.9 Tidak ada kotak cari, dan itu disengaja
+
+Tak satu pun dari ketiga kueri menyaring menurut kata kunci. Penyaringnya hanya
+`PXREFOBJECTKEY LIKE '%CLMP%'` ditambah pemilik antreannya.
+
+Menambah kotak cari berarti menambah kemampuan yang tidak pernah ada — dan pada layar yang
+sedang diuji kesetaraannya, kemampuan tambahan adalah selisih yang harus
+dipertanggungjawabkan (`D-54`). `Query` karena itu tidak punya isian kata kunci sama
+sekali, bukan punya tetapi diabaikan.
+
+### 27.10 Perbaikan keadaan repo — dikerjakan, dan alasannya
+
+Lima titik di `cmd/claimpnc/` tidak dapat dikompilasi sejak commit `b764434` dan `1b66136`
+(rinciannya di `catatan-pengembangan.md` §27.2).
+
+**Kenapa dikerjakan meski di luar lingkup.** Tanpa build yang berjalan, modul ini tidak
+dapat dirakit maupun diverifikasi — dan menyerahkan modul yang tidak pernah dikompilasi
+bersama aplikasinya berarti menyerahkan sesuatu yang belum terbukti apa pun.
+
+**Kenapa tidak lebih dari itu.** Keempat perbaikan seluruhnya PEMULIHAN: tiga di antaranya
+mengembalikan potongan yang hilang, diambil dari riwayat git bukan dikarang, dan satu
+menyelesaikan penanda konflik yang kedua sisinya aditif. Tidak satu pun mengubah perilaku.
+
+**Yang TIDAK dikerjakan, dan itu keputusan sadar:**
+
+| Terlihat | Kenapa tidak disentuh |
+|---|---|
+| 130 galat typecheck di 36 berkas frontend | Seluruhnya akibat isi `src/api/types.ts` yang hilang pada merge `b764434`. Mayoritas ada di modul Master Data, yang dilindungi Isolasi Protektif |
+| 45 uji frontend gagal di 8 berkas | Sama sebabnya. Memperbaikinya adalah pekerjaan tersendiri yang menyentuh modul selesai |
+| Modul `inboxadmin` ada tetapi tidak dirakit di `main.go` | Perakitannya keputusan tersendiri, bukan pemulihan. Dicatat di `catatan-pengembangan.md` §27.8 |
+
+### 27.11 `npm install` dijalankan
+
+`recharts` terdaftar di `package.json` tetapi tidak ada di `node_modules`, sehingga 19 dari
+29 berkas uji gagal DIMUAT — dan berkas yang gagal dimuat tidak menjalankan satu pun
+ujinya.
+
+Memasangnya bukan menambah dependensi; ia memasang yang sudah diputuskan sebelumnya.
+Akibatnya angka uji frontend naik dari 161 menjadi 407, dan 45 kegagalan yang selama ini
+tersembunyi menjadi terlihat. Kegagalan itu **bukan kegagalan baru** — dan mengembalikan
+keadaan tersembunyi hanya demi angka yang terlihat lebih baik akan menyesatkan.

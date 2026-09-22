@@ -4882,3 +4882,162 @@ kedua belas tabel XOL pernah dilihat isinya** — DDL-nya juga belum ada (`R-08`
 terbukti hanyalah bentuk kuerinya, lewat `query_test.go` yang memeriksa larangan menulis,
 larangan memanggil function basis data, larangan DB Link, disiplin SQL portabel, kesamaan
 kolom antar kueri kembar, dan daftar tabel yang boleh disentuh.
+
+---
+
+## 27. Sesi kedelapan belas — modul Inbox Claim Treaty Prop (2026-09-21 … 2026-09-22)
+
+**Tiket:** belum bernomor — modul `U-3`, menu `MENU_ID 54` "Inbox Claim Treaty Prop",
+pengganti harness `InboxClaimTreaty_Harness`.
+
+### 27.1 Yang diminta, dan apa yang ditemukan lebih dulu
+
+Permintaannya menambah modul Inbox Claim Treaty Prop dengan
+`Harness/InboxClaimTreaty_Harness-Harness.xml` sebagai acuan. Sebelum satu baris kode pun
+ditulis, dua hal ditemukan yang mengubah urutan pekerjaan:
+
+**Repo tidak dapat dikompilasi.** `go build ./...` gagal dengan galat sintaks. Sebabnya
+**konflik merge yang belum diselesaikan**, sebagian sejak commit `b764434` ("push ke
+master") dan sisanya dari `1b66136`. Rinciannya di §27.2. Ini bukan akibat sesi ini —
+dibuktikan dengan menjalankan build sebelum satu berkas pun disentuh.
+
+**Uji frontend sebagian besar tidak dapat dijalankan.** 19 dari 29 berkas uji gagal dimuat
+karena `recharts` terdaftar di `package.json` tetapi tidak ada di `node_modules`. Berkas
+yang gagal dimuat tidak menjalankan satu pun ujinya, sehingga angka "158 lulus" pada
+baseline menyembunyikan sekitar 246 uji yang tidak pernah berjalan.
+
+### 27.2 Perbaikan keadaan repo — lima titik, seluruhnya pemulihan
+
+Tidak satu pun berisi keputusan baru. Kelimanya memulihkan apa yang hilang saat merge, dan
+sebagian besar dipulihkan dari riwayat git, bukan direkonstruksi.
+
+| Berkas | Yang rusak | Cara dipulihkan |
+|---|---|---|
+| `cmd/claimpnc/check.go:85` | penanda konflik masih ada di dalam berkas | Kedua sisi ADITIF — sembilan fungsi dan enam impornya terbukti ada. Keduanya dipertahankan |
+| `cmd/claimpnc/main.go:341` | literal `inboxautoclaimhttp.Options` tidak pernah ditutup; `surveyorTypeHandler` mulai di tengahnya | Penutup literal dan pemeriksaan galatnya dikembalikan |
+| `cmd/claimpnc/main.go:1120` | `autoClaimSelector` dan `surveyorTypeSelector` berselang-seling dalam satu blok rusak | Dipecah menjadi dua closure |
+| `cmd/claimpnc/main.go:1320` | badan `autoClaimSelectorMemory` hilang; `surveyorTypeSelectorMemory` mulai di tengahnya | Badan aslinya diambil dari `git show dbea6dd`, bukan dikarang |
+| `cmd/claimpnc/main.go:428` | `xolHandler` dipakai dua modul; `Mount` memanggil `inboxXOLHandler` yang tidak ada | Deklarasinya dinamai `inboxXOLHandler`, menghapus tabrakan dengan Master XOL |
+
+Sesudahnya: `go build` bersih, `go vet` bersih, **103 paket lulus**.
+
+`npm install` dijalankan untuk memasang `recharts` yang sudah terdaftar di `package.json`.
+Itu memasang dependensi yang memang seharusnya ada — bukan menambah yang baru.
+
+### 27.3 Pembacaan export — dan dua premis yang gugur
+
+Harness-nya `Data-Portal` sebesar 1,5 MiB dan hampir seluruhnya metadata; isi layar ada di
+`Section/InboxClaimTreaty_Section-Section.xml` (996 KiB). Yang dibaca:
+
+| Berkas | Yang diambil |
+|---|---|
+| `Section/InboxClaimTreaty_Section-Section.xml` | 3 kontainer, 5 grid, 1 tombol, 2 checkbox, kondisi tampil tiap kontainer |
+| `Activity/GetDataTreatyin_Act-Act.xml` | pemilih kueri per keadaan pemanggil dan checkbox "See All Claim" |
+| `Activity/GetDataTreatyin_Actkomite-Act.xml` | varian komite dari activity yang sama |
+| `Activity/GetDataInboxTreaty_act-Act.xml` | penentu `InputData.CARI13` |
+| `RDB List/GetClaimTreaty_SQL`, `GetClaimTreatyAllAdmin_SQL`, `GetClaimTreatyTeknik_SQL` | ketiga kueri antrean |
+| `Report Definition/WorkListKomite2-RD`, `InboxKomiteTreaty_RD` | antrean komite |
+
+**Premis pertama yang gugur — `CARI13` bukan sakelar layar.** Ia tidak disetel oleh
+activity pemuat grid mana pun. `GetDataInboxTreaty_act` langkah 2 menjalankan report atas
+kelas `ASM-FW-GCNMFW-Int-EMAILKOMITE`, lalu langkah 3 menyetel `InputData.CARI13` menjadi
+`tampil` dengan prakondisi `@equalsIgnoreCase(.OPERATOR_ID, Inputdata.CARI10)`. Jadi mode
+`tampil` berarti **pemanggil adalah anggota komite** menurut
+`POOLDATA.EMAILKOMITE.OPERATOR_ID` — pemeriksaan peran, bukan pilihan pengguna. Pembacaan
+ini sejalan dengan yang sudah ditetapkan modul Master Surveyors
+(`mastersurveyors/committee/resolver.go`).
+
+**Premis kedua yang gugur — lima grid bukan lima antrean.** Setelah kondisi tampil tiap
+kontainer dibaca, ternyata dua grid dipasok KUERI YANG SAMA (`GetClaimTreatyTeknik_SQL`)
+dengan judul berbeda, dibedakan hanya oleh mode. Membawa keduanya berarti dua tab yang
+isinya dijamin identik. Yang dibawa satu, berjudul "Work Teknik Treatyin".
+
+### 27.4 Cacat yang ditemukan: kolom "Date Of Loss" antrean teknik selalu kosong
+
+`GetClaimTreatyTeknik_SQL` mengaliaskan Tanggal Kejadian sebagai **`CARI13`**, sedangkan
+kedua kueri worklist mengaliaskannya `CARI10` — dan KETIGA grid di section terikat ke
+`.CARI10` (offset 246369 dan 542471). Akibatnya kolom itu selalu kosong pada grid yang
+dipasok kueri teknik.
+
+Ia sekelas cacat `IDSALVAGE = NULL` dan `GETCURRENCYSTANDARD RETURN 1` pada `D-49`.
+**Work Owner menyetujui perbaikannya 2026-09-21** sebagai selisih terencana `P-5`.
+
+### 27.5 Yang dibangun
+
+| Lapisan | Berkas | Isi |
+|---|---|---|
+| Domain | `inboxclaimtreatyprop.go` | `WorkItem`, `Caller`, `Pagination`/`Page`/`Slice`, seam `Repo`, `RepoSelector` |
+| Domain | `tab.go` | 3 tab, kolomnya, `PlannedDifferences` |
+| Domain | `query.go`, `errors.go` | validasi permintaan, galat modul |
+| Usecase | `usecase/list.go` | `Metadata`, `List` |
+| Adapter | `repo/sqlstore/` | 3 kueri daftar, 2 kueri periksa, pemindai, `CheckTable` |
+| Adapter | `repo/memory/` | peniru ketiga penyaring dan 7 baris contoh |
+| Transport | `http/` | `dto`, `handler`, `errors`, `routes` |
+| Frontend | `inbox-claim-treaty-prop/` | `types`, `api`, `TreatyTabs`, `ClaimTreatyPropPage` |
+
+Ketiga tab dan sumbernya:
+
+| Tab | Sumber | Catatan |
+|---|---|---|
+| Work List Treatyin Propotional | `GetClaimTreaty_SQL` atau `GetClaimTreatyAllAdmin_SQL` | dipilih checkbox "See All Claim" |
+| Work Teknik Treatyin | `GetClaimTreatyTeknik_SQL` | antrean bersama, satu-satunya yang punya Subjectivity |
+| Komite Treaty ASM | — | **terhalang**, digambar dengan alasan dan pemiliknya |
+
+### 27.6 Kendala yang muncul dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| **Repo tidak dapat dikompilasi** sejak dua commit sebelumnya | Lima titik dipulihkan; sebagian besar dari riwayat git, bukan direkonstruksi (§27.2) |
+| **`recharts` terdaftar tetapi tidak terpasang**, menghalangi 19 berkas uji dimuat | `npm install`. Sesudahnya 407 uji benar-benar berjalan, naik dari 161 |
+| **Antrean komite tidak punya sumber yang dapat dicapai SQL** — `CLMNO` dan `KomiteClaimData` adalah properti di dalam BLOB | `CLMNO` dicari di seluruh `RDB List/`: **nol kemunculan**. Tidak ditebak. Tabnya digambar dengan alasan dan pemiliknya (keputusan Work Owner) |
+| **Tanggal Kejadian dibaca `JSON_VALUE`, formatnya tidak dapat diperiksa** (`R-08`) | Dibawa sebagai TEKS. Layar memformat hanya bila bentuknya `YYYY-MM-DD`; selain itu apa adanya |
+| **Dua grid dipasok kueri yang sama** dengan judul berbeda | Disatukan menjadi satu tab; alasannya dicatat di kepala paket |
+| **Halaman kosong menyisakan `Total` nol** karena total dibawa kolom `COUNT(*) OVER ()` | Diterima secara sadar dan dicatat di tempatnya: keadaan itu hanya tercapai lewat parameter yang diketik sendiri, dan satu kueri penghitung tambahan akan membebani setiap permintaan normal |
+| **Berkas Go baru berakhiran LF, repo memakai CRLF** | Berkas baru dikonversi ke CRLF. Keadaan CRLF repo tidak diubah |
+| **Uji layar memanggil `AppRoute`**, sehingga ikut menarik seluruh graf impor App | Dipertahankan — itu pola yang sudah dipakai Inbox Admin, dan setelah `npm install` ia berjalan |
+
+### 27.7 Verifikasi yang benar-benar dijalankan
+
+```
+cd backend  && go build ./... && go vet ./... && go test ./...
+cd frontend && npm run typecheck && npx vitest run
+```
+
+| Pemeriksaan | Sebelum sesi | Sesudah sesi |
+|---|---|---|
+| `go build ./...` | **GAGAL** — galat sintaks | bersih |
+| `go vet ./...` | **GAGAL** | bersih |
+| `go test ./...` | tidak dapat dijalankan | **106 paket lulus**, 0 gagal |
+| `npm run typecheck` | 134 galat | **130 galat** |
+| `npx vitest run` | 19 berkas gagal, 3 uji gagal, 158 lulus | **8 berkas gagal, 45 uji gagal, 362 lulus** |
+
+Uji modul ini: **18 uji layar dan 42 uji backend**, seluruhnya lulus.
+
+**Ke-130 galat typecheck dan ke-45 uji yang gagal SELURUHNYA di luar modul ini.** Tidak
+satu pun menyebut `inbox-claim-treaty-prop`, `app/App.tsx`, maupun `app/menu/registry.ts`
+— ketiganya berkas yang disentuh sesi ini. Kedelapan berkas uji yang gagal:
+`inbox-admin`, `master-auto-claim`, `master-bengkel`, `master-panel`, `master-sparepart`,
+`master-supplier`, `pelaporan-klaim`, `riwayat-klaim`.
+
+Angka uji frontend NAIK dari 161 menjadi 407 karena `npm install` membuat berkas yang
+sebelumnya gagal dimuat kini benar-benar berjalan. Kegagalan yang terlihat sekarang
+**bukan kegagalan baru** — ia kegagalan yang selama ini tersembunyi di balik berkas yang
+tidak pernah dimuat.
+
+**Yang TIDAK dapat diverifikasi:** seluruh SQL modul ini belum pernah dijalankan terhadap
+Oracle. Tidak ada basis data di mesin tempat berkas ini ditulis, dan isi
+`POOLDATA.JSON_KLAIM.DATA_JSONBLOB` belum pernah dilihat — DDL-nya juga belum ada
+(`R-08`). Yang terbukti hanyalah bentuk kuerinya, lewat `query_test.go` yang memeriksa
+larangan menulis, larangan merangkai nilai, disiplin SQL portabel, kesamaan alias antar
+kueri, keberadaan paginasi dan urutan, daftar tabel yang boleh disentuh, dan larangan DB
+Link. Perintah `-periksa` diperluas dengan `checkClaimTreatyProp` supaya ketiga tabelnya —
+dan `JSON_VALUE` atas blob-nya — terbukti terbaca sebelum layar dibuka pengguna.
+
+### 27.8 Temuan yang diserahkan ke sesi berikutnya
+
+**Modul Inbox Admin ada lengkap tetapi TIDAK DIRAKIT.** `internal/inboxadmin/` berisi
+domain, usecase, kedua repo, lapisan http, dan ujinya — seluruhnya sudah di-commit
+(`b02571c`) — tetapi `cmd/claimpnc/main.go` tidak menyebutnya sama sekali. Layarnya karena
+itu memanggil alamat yang tidak terdaftar, dan itulah sebab
+`inbox-admin/InboxAdminPage.test.tsx` gagal. Perakitannya di luar lingkup sesi ini dan
+tidak dikerjakan.

@@ -1933,3 +1933,111 @@ bawahnya. Dilingkupi ke barisnya.
    menghitung valuta asing akan menyentuhnya.
 4. **Pola `expandIDs` dapat dipakai ulang** oleh modul mana pun yang menyaring dengan
    daftar berpanjang berubah. Ia sudah diuji terpisah.
+
+---
+
+# Sesi kedelapan belas — modul Inbox Claim Treaty Prop (2026-09-21 … 2026-09-22)
+
+## Skill yang dipakai
+
+### `mattpocock-skills:grilling` — Fase analisis, sebelum satu baris kode ditulis
+
+**Kenapa dipakai.** Permintaannya melarang langsung menulis kode dan menuntut analisis
+lebih dulu. Skill ini menyediakan disiplin yang tepat: cari faktanya sendiri, ajukan
+pertanyaan hanya untuk hal yang benar-benar keputusan pemilik, dan sertakan rekomendasi
+pada setiap pertanyaan.
+
+**Waktu pemakaian.** 2026-09-21, sepanjang pembacaan export sampai tiga pertanyaan
+diajukan.
+
+**Keluaran.** Tiga pertanyaan keputusan, seluruhnya dijawab; rinciannya di
+`keputusan-implementasi.md` §27.1. Ketiganya diajukan bersama buktinya — bukan bersama
+dugaan:
+
+| Pertanyaan | Bukti yang menyertainya |
+|---|---|
+| Tab Komite | `CLMNO` dicari di SELURUH `RDB List/`: nol kemunculan. Jadi ia properti BLOB, bukan kolom |
+| Kolom Date Of Loss | Alias `CARI13` di kueri teknik versus `.CARI10` di sel grid, dengan offset section-nya |
+| Tombol Create | `CreateInputKlaimTreaty` menulis objek kerja; `P-1` menetapkan tabelnya milik Pega |
+
+**Manfaat nyata.** Pertanyaan pertama mencegah modul ini menebak nama kolom. Tanpa
+disiplin "cari faktanya sendiri", jalan termudah adalah menganggap `CLMNO` sebuah kolom
+bernama sama — dan modul akan gagal saat pertama kali menyentuh Oracle, dengan sebab yang
+baru ketahuan di produksi.
+
+### `mattpocock-skills:domain-modeling` — penamaan dan batas tipe
+
+**Kenapa dipakai.** Modul ini kasus penamaan terburuk sejauh ini: seluruh kolom bernama
+`CARI` ditambah nomor urut, dan nomornya TIDAK konsisten antar kueri.
+
+**Waktu pemakaian.** 2026-09-21, saat menyusun `WorkItem` dan `tab.go`.
+
+**Keluaran.** Pemetaan tiga arah di `peta-penamaan.md`, dan satu keputusan tipe yang
+langsung berasal dari disiplin "silangkan pernyataan dengan kode": `LossDate` bertipe
+`string`, bukan `time.Time`, karena `JSON_VALUE` mengembalikan teks dan bentuk teks di
+dalam blob tidak dapat diperiksa (`R-08`).
+
+**Manfaat nyata.** Menyilangkan alias `CARI10` dan `CARI13` dengan sel grid-nya adalah
+yang MENEMUKAN cacat kolom kosong. Membaca ketiga kueri saja tidak cukup — keduanya
+tampak benar sendiri-sendiri; yang salah adalah hubungannya dengan grid.
+
+### `mattpocock-skills:codebase-design` — batas modul dan seam
+
+**Kenapa dipakai.** Menentukan apakah antrean komite yang terhalang tetap menjadi bagian
+modul ini, dan di mana penolakannya terjadi.
+
+**Waktu pemakaian.** 2026-09-21, saat menyusun `Repo` dan `NewQuery`.
+
+**Keluaran.** Dua keputusan batas:
+
+1. Seam `Repo` **tidak punya operasi untuk antrean komite**. Operasi yang tidak ada tidak
+   dapat dipakai kode yang ditulis kemudian tanpa keputusan sadar.
+2. Tab terhalang ditolak di **domain** (`NewQuery`), bukan di penyimpanan. Penolakan di
+   penyimpanan akan menjadi galat internal 500 yang tidak menyebut sebabnya; di domain ia
+   menjadi `ValidationError` yang alasannya sampai ke layar.
+
+## Teknik yang dipakai tanpa skill
+
+**Pembacaan XML dengan skrip, bukan dengan mata.** Section-nya 996 KiB dan urutan tag di
+dalamnya acak. Yang dipakai: melinearkan `pyBodyType`, `pyPageListProperty`, `pyRDName`,
+dan judul kolom menurut OFFSET-nya, lalu memetakan grid ke kontainer lewat
+`pyContainerVisibleWhen`. Tanpa offset, hubungan grid ke judulnya tidak dapat ditentukan.
+
+**Memulihkan dari riwayat git, bukan merekonstruksi.** Tiga dari lima perbaikan keadaan
+repo diambil dengan `git show dbea6dd:…` dan `git show b764434:…`. Merekonstruksi badan
+fungsi dari ingatan akan menghasilkan kode yang MIRIP — dan mirip sudah cukup untuk
+membuat perilaku berbeda tanpa ketahuan.
+
+**Menetapkan baseline sebelum menyentuh apa pun.** `go build`, `go vet`, `go test`,
+`npm run typecheck`, dan `npx vitest run` dijalankan SEBELUM berkas pertama disunting.
+Tanpa itu, tidak ada cara membuktikan bahwa 130 galat typecheck dan 45 uji yang gagal
+bukan akibat sesi ini.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
+
+| Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Menyimpulkan struktur layar dari daftar `pyCaption`** — sempat terbaca sebagai lima tab sejajar | Kondisi tampil tiap kontainer (`pyContainerVisibleWhen`) membuktikan strukturnya dua MODE, dan dua grid dipasok kueri yang sama | Label tidak menyatakan apakah sesuatu tab, kontainer, atau tombol. Sama persis dengan pelajaran sesi Inbox XOL — dan terulang |
+| **Mengira `CARI13` sakelar tampilan** karena ia hanya muncul di `pyContainerVisibleWhen` | Pencarian `tampil` ke seluruh `Activity/` menemukan `GetDataInboxTreaty_act` yang menyetelnya dari report `EMAILKOMITE` | Properti yang hanya terlihat DIBACA belum tentu tidak ditulis. Cari penyetelnya sebelum menyimpulkan artinya |
+| **`check_table` awalnya hanya memeriksa dua dari tiga tabel**, sementara komentarnya menyebut "kedua tabel penugasan" | Dibaca ulang sebelum dijalankan; workbasket tidak ikut diperiksa padahal tab Teknik bergantung HANYA padanya | Komentar yang menjanjikan lebih dari yang dikerjakan kodenya lebih buruk daripada tanpa komentar. Dipecah menjadi `check_worklist` dan `check_workbasket` |
+
+## Catatan untuk sesi berikutnya
+
+1. **Modul `inboxadmin` ada lengkap tetapi TIDAK dirakit di `cmd/claimpnc/main.go`.**
+   Domain, usecase, kedua repo, lapisan http, dan ujinya sudah di-commit (`b02571c`).
+   Itulah sebab `InboxAdminPage.test.tsx` gagal. Perakitannya sekitar delapan titik, sama
+   dengan yang ditempuh modul ini.
+2. **`src/api/types.ts` kehilangan isinya pada merge `b764434`.** Itu sebab 130 galat
+   typecheck di 36 berkas. Pemulihannya sebaiknya dari riwayat git, bukan ditulis ulang —
+   `git show 3dc63dc:…/types.ts` (1191 baris) dan `git show dbea6dd:…/types.ts` (548
+   baris) adalah kedua sisi yang seharusnya bergabung.
+3. **Modul `InboxClaimNonProp_Harness` (`MENU_ID 55`) adalah saudara layar ini.** Ia punya
+   activity sendiri (`GetDataTreatyinNonProp_Act`), sehingga kuerinya BERBEDA —
+   memetakannya ke rute yang sama akan salah. Pola tab, DTO, dan layar modul ini dapat
+   dipakai ulang; kuerinya tidak.
+4. **Tab Komite Treaty ASM menunggu DDL `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`** beserta
+   pemetaan properti `KomiteClaimData` ke kolomnya. Begitu itu tiba, yang berubah hanya
+   `tab.go` (hapus penanda terhalang, tambah kolom) dan satu kueri baru — layar tidak
+   perlu disentuh, karena keadaan terhalang datang dari server sebagai data.

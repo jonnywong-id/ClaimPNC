@@ -16,6 +16,7 @@ import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
 import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -267,6 +268,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxXOLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Claim Treaty Prop — antrean klaim treaty proporsional, pengganti harness
+        `InboxClaimTreaty_Harness` (`MENU_ID 54`).
+
+        Layar ini MEMBACA SAJA: pembuatan klaim treaty menulis objek kerja di tabel yang
+        selama masa paralel masih dimiliki Pega (`P-1`), keputusan Work Owner 2026-09-21.
+
+        Di sistem lama ketiga antreannya dipisahkan KEADAAN pemanggil — apakah ia
+        memegang akun antrean teknik, dan apakah Operator ID-nya terdaftar di
+        POOLDATA.EMAILKOMITE. Pembedaan itu belum dapat ditegakkan (`TKT-F3-004`),
+        sehingga setiap pengguna yang dapat masuk melihat ketiganya.
+      */}
+      <Route
+        path="/inbox-claim-treaty-prop"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimTreatyPropPage />
             </Protected>
           </SessionGuard>
         }

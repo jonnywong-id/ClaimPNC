@@ -1259,3 +1259,76 @@ di bawah tabel, dan namanya di kode dibetulkan menjadi `Year`.
 | Antrean persetujuan | `ApprovalItem`, `ApprovalQueue` | satu baris = sekumpulan pemberitahuan |
 | Penyebab Kerugian | `CauseOfLoss` | yang tersimpan DESKRIPSI-nya, bukan kodenya |
 | Kurs tidak tersedia | `RateMissing` | pengganti `RETURN 1` pada function kurs lama |
+
+---
+
+## Tambahan 2026-09-22 — modul Inbox Claim Treaty Prop (`inboxclaimtreatyprop`)
+
+Menu `MENU_ID 54`, pengganti harness `InboxClaimTreaty_Harness`.
+
+### Kenapa modul ini kasus terburuk sejauh ini
+
+Di modul sebelumnya, nama properti Pega MENYESATKAN — `.ASMFull` berarti Tanggal Kejadian,
+`.RCVID` berarti sumber bisnis. Di sini nama propertinya **tidak menyatakan apa pun**:
+seluruh kolom bernama `CARI` ditambah nomor urut.
+
+Dan nomornya tidak stabil. Tanggal Kejadian bernomor `CARI10` di dua kueri dan `CARI13` di
+kueri ketiga — perbedaan yang menjadi cacat nyata, karena grid-nya terikat ke `CARI10`
+saja.
+
+### Pemetaan tiga arah
+
+| Alias Pega | Asal sebenarnya | Nama di kode | Field JSON | Judul kolom |
+|---|---|---|---|---|
+| `CARI1` | `a.PXREFOBJECTKEY` | `WorkKey` | — (tidak dikirim) | — |
+| `CARI2` | `a.PXREFOBJECTINSNAME` | `ClaimID` | `claim_id` | Claim ID |
+| `CARI3` | `a.PXASSIGNEDOPERATORID` | `AssignedOperator` | — (tidak dikirim) | — |
+| `CARI4` | `a.PZINSKEY` | `Reference` | `referensi` | — (tidak digambar) |
+| `CARI5` | `b.NOPOLIS` | `PolicyNumber` | `no_polis` | Policy No |
+| `CARI6` | `$.QuotationData.BusinessName` | `BusinessName` | `nama_bisnis` | Business Name |
+| `CARI7` | `$.QuotationData.SobName` | `BusinessSource` | `sumber_bisnis` | Source Of Business |
+| `CARI8` | `$.QuotationData.CedingCoName` | `CedingCompany` | `ceding_co` | Ceding Co Name |
+| `CARI9` | `$.InsuredName` | `InsuredName` | `nama_tertanggung` | Insured Name |
+| `CARI10` (!) | `$.DateOfLoss` | `LossDate` | `tanggal_kejadian` | Date Of Loss |
+| `CARI13` (!) | `$.DateOfLoss` | `LossDate` | `tanggal_kejadian` | Date Of Loss |
+| `CARI14` | `$.IsSubjectivity` | `Subjectivity` | `subjectivity` | Subjectivity |
+| `CARI15` | `$.IDMaster` | `MasterID` | `id_master` | ID Master |
+| `CARI43` | checkbox layar | `Query.SeeAll` | `lihat_semua` | See All Claim |
+
+Tanda (!) menandai satu nilai yang punya DUA nomor alias. Di sistem baru keduanya menjadi
+satu kolom `LOSS_DATE` — perbaikan `P-5` yang disetujui Work Owner 2026-09-21.
+
+### Properti yang BUKAN kolom data
+
+| Properti Pega | Artinya sebenarnya | Di sistem baru |
+|---|---|---|
+| `InputData.CARI13` | pemanggil adalah anggota komite (`EMAILKOMITE.OPERATOR_ID`) | tidak dibawa — ketiga kontainer menjadi tab yang dapat dipilih |
+| `SearchWorkbasket.CARI1` | login pemanggil, dibandingkan ke `TreatyinPNCTeknik` | `Caller.Login` dan konstanta `TechnicalWorkbasket` |
+| `SearchWorkbasket.CARI43` | checkbox "See All Claim" | `Query.SeeAll` |
+
+Perhatikan `CARI1`: ia berarti **dua hal berbeda** tergantung halamannya. Pada
+`DataPNC.pxResults` ia kunci objek kerja; pada `SearchWorkbasket` ia login pemanggil. Nama
+yang sama, arti yang sama sekali berbeda — persis pola `03-CURRENT-ARCHITECTURE.md` §4.2.
+
+### Judul yang dipertahankan apa adanya (`D-13`)
+
+| Di Pega | Dibawa? | Alasan |
+|---|---|---|
+| "Work List Treatyin **Propotional**" | ya, salah ejanya ikut | Membetulkannya menjadi "Proportional" membuat tab tidak dikenali pengguna yang mencarinya |
+| "Work Teknik Treatyin " (spasi di ujung) | ya, TANPA spasinya | Spasi itu artefak pengetikan, bukan teks yang dibaca; membawanya hanya menggagalkan pembandingan judul |
+| "Business Name" vs "Class Of Business" | keduanya | Isi yang sama berjudul berbeda antar grid; perbedaannya dijaga lewat `Tab.Columns` |
+
+### Nama modul dan berkas (`D-80`, `D-81`)
+
+| Lapisan | Bentuk |
+|---|---|
+| Paket Go | `inboxclaimtreatyprop` — huruf kecil, tanpa tanda hubung |
+| Folder frontend | `inbox-claim-treaty-prop` — `kebab-case` |
+| Rute antarmuka | `/inbox-claim-treaty-prop` |
+| Jalur API | `/api/inbox-claim-treaty-prop` |
+| Komponen layar | `ClaimTreatyPropPage` — nama TIPE, bukan nama modul |
+
+Nama modulnya berbahasa Indonesia mengikuti nama yang disebut Work Owner ("Inbox Claim
+Treaty Prop"); isinya berbahasa Inggris. Satu jalur berkas karena itu memuat dua bahasa —
+`internal/inboxclaimtreatyprop/repo/sqlstore/inboxclaimtreatyprop.go` — dan itu memang
+yang dikehendaki `D-81`.
