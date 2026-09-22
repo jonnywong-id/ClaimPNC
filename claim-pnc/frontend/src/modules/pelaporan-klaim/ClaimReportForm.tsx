@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, ClaimReportErrorCode, type ClaimReport } from '@/api/types'
 import { Field } from '@/components/Field'
-import { TextAreaField } from '@/components/TextAreaField'
+import { TextAreaField } from './TextAreaField'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Button } from '@/components/Button'
 

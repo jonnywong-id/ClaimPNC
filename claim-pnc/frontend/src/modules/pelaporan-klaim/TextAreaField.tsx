@@ -12,6 +12,17 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 /**
  * TextAreaField adalah saudara `Field` untuk isian bertingkat banyak baris.
  *
+ * # Kenapa ia tinggal DI DALAM modul, bukan di `components/`
+ *
+ * Hari ini pemakainya tepat satu: form Pelaporan Klaim. Komponen bersama yang hanya
+ * punya satu pemakai adalah tebakan tentang kebutuhan yang belum terbukti — dan
+ * menaruhnya di `components/` membuat setiap modul berikutnya menanggung keputusan yang
+ * tidak pernah mereka minta.
+ *
+ * Bila layar kedua kelak membutuhkannya, pemindahannya ke `components/` satu baris — dan
+ * pada saat itu ia dibenarkan oleh dua pemakai nyata, sama seperti prinsip "dua adapter
+ * membuat seam menjadi nyata" pada `04-FUTURE-ARCHITECTURE.md` §3.
+ *
  * # Kenapa ia komponen tersendiri, bukan sakelar pada Field
  *
  * `<textarea>` dan `<input>` adalah dua elemen berbeda dengan atribut yang berbeda —
@@ -27,9 +38,8 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
  * tiga belas isian pendek dan empat isian panjang — dan bila keduanya terlihat berbeda,
  * formnya terbaca seperti tambal sulam.
  *
- * Nama props-nya TIDAK sama: di sini `error`/`hint` (bahasa Inggris, `D-80`), sementara
- * `Field` memakai `galat`/`petunjuk` karena ia ditulis sebelum `D-80` dan berada di
- * luar lingkup pekerjaan ini. Satu berkas form karenanya memuat keduanya berdampingan.
+ * Nama props-nya pun sama — `id`, `label`, `error`, `hint` — sehingga keduanya dipakai
+ * dengan cara yang sama di dalam satu form.
  *
  * # Keadaan salah ditandai TIGA cara sekaligus
  *
