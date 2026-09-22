@@ -28,6 +28,10 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/daftardetaildokumentravel"
+	"claim-pnc/internal/daftartipedokumen"
+	"claim-pnc/internal/mastercolsimasonline"
+	"claim-pnc/internal/masterdokumentravel"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
@@ -41,6 +45,22 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
+	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
+	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
+	daftardetaildokumentravelusecase "claim-pnc/internal/daftardetaildokumentravel/usecase"
+	daftartipedokumenhttp "claim-pnc/internal/daftartipedokumen/http"
+	daftartipedokumenmemory "claim-pnc/internal/daftartipedokumen/repo/memory"
+	daftartipedokumensql "claim-pnc/internal/daftartipedokumen/repo/sqlstore"
+	daftartipedokumenusecase "claim-pnc/internal/daftartipedokumen/usecase"
+	mastercolhttp "claim-pnc/internal/mastercolsimasonline/http"
+	mastercolmemory "claim-pnc/internal/mastercolsimasonline/repo/memory"
+	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
+	mastercolusecase "claim-pnc/internal/mastercolsimasonline/usecase"
+	masterdokumentravelhttp "claim-pnc/internal/masterdokumentravel/http"
+	masterdokumentravelmemory "claim-pnc/internal/masterdokumentravel/repo/memory"
+	masterdokumentravelsql "claim-pnc/internal/masterdokumentravel/repo/sqlstore"
+	masterdokumentravelusecase "claim-pnc/internal/masterdokumentravel/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -188,6 +208,68 @@ func run() error {
 		WriteError:   writePortalAwareError,
 	}
 
+	// Master Dokumen Travel. Seperti Master Status Progres, tabelnya ada di basis data
+	// SETIAP entitas — rutenya karena itu memasang pemeriksaan portal sendiri di dalam
+	// Mount.
+	travelDocumentHandler, err := masterdokumentravelhttp.NewHandler(masterdokumentravelhttp.Options{
+		Service:       assembly.masterDokumenTravel,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    masterdokumentravelhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Master COL Simas Online. Sama seperti dua modul di atas, tabelnya ada di basis data
+	// SETIAP entitas — termasuk POOLDATA.BUSINESS yang hanya dibacanya.
+	causeOfLossHandler, err := mastercolhttp.NewHandler(mastercolhttp.Options{
+		Service:       assembly.masterCOLSimasOnline,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    mastercolhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Daftar Tipe Dokumen. Sama seperti tiga modul di atas, tabelnya ada di basis data
+	// SETIAP entitas. Ia satu-satunya di antara keempatnya yang juga menuliskan JEJAK
+	// SIMPAN — kolom USER_EDIT dan TGL_EDIT — sehingga ia perlu tahu siapa pemanggilnya.
+	documentTypeHandler, err := daftartipedokumenhttp.NewHandler(daftartipedokumenhttp.Options{
+		Service: assembly.daftarTipeDokumen,
+		Logger:  logger,
+		// Jembatan satu arah dari modul auth, bentuknya sama dengan yang dipakai master
+		// rekening di bawah. Ia dipasang di sini, bukan di dalam salah satu modul, supaya
+		// kedua modul tetap tidak saling mengimpor — yang tahu keduanya hanyalah berkas
+		// perakitan ini.
+		Caller: func(ctx context.Context) (daftartipedokumenhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return daftartipedokumenhttp.Caller{}, false
+			}
+			return daftartipedokumenhttp.Caller{Identity: baseCtx.User.Identity}, true
+		},
+		WriteResponse: writeJSON,
+		WriteError:    daftartipedokumenhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Daftar Detail Dokumen Travel. Seperti keempat modul di atas, seluruh tabelnya ada
+	// di basis data SETIAP entitas — termasuk POOLDATA.M_DOCTRAVEL dan
+	// POOLDATA.M_PLANTRAVEL yang hanya dibacanya sebagai daftar pilihan.
+	travelDocumentDetailHandler, err := daftardetaildokumentravelhttp.NewHandler(daftardetaildokumentravelhttp.Options{
+		Service:       assembly.daftarDetailDokumenTravel,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    daftardetaildokumentravelhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
@@ -231,6 +313,26 @@ func run() error {
 				// di dalam Mount — hanya pada rute yang benar-benar menyentuh basis
 				// data entitas.
 				masterstatusprogreshttp.Mount(protected, progressStatusHandler, activePortalDeps)
+				// Master Dokumen Travel. Seluruh rutenya menyentuh basis data
+				// entitas, sehingga pemeriksaan portal dipasang atas semuanya.
+				masterdokumentravelhttp.Mount(protected, travelDocumentHandler, activePortalDeps)
+				// Master COL Simas Online. Ia juga memasang /master/bisnis — daftar
+				// acuan milik GISFW yang hanya dibaca. Bila kelak ada modul Master
+				// Bisnis tersendiri, rute itu pindah ke sana; chi akan panik saat start
+				// bila keduanya mendaftarkannya bersamaan, dan itu justru yang membuat
+				// kekeliruan itu mustahil lolos diam-diam.
+				mastercolhttp.Mount(protected, causeOfLossHandler, activePortalDeps)
+				// Daftar Tipe Dokumen. Seluruh rutenya menyentuh basis data entitas,
+				// sehingga pemeriksaan portal dipasang atas semuanya.
+				daftartipedokumenhttp.Mount(protected, documentTypeHandler, activePortalDeps)
+				// Daftar Detail Dokumen Travel. Ia juga memasang
+				// /master/dokumen-travel-pilihan dan /master/plan-travel — dua daftar
+				// acuan yang tabelnya dimiliki modul lain dan tim lain, dan hanya
+				// dibacanya. Bila kelak ada modul Master Plan Travel tersendiri, rute
+				// kedua pindah ke sana; chi akan panik saat start bila keduanya
+				// mendaftarkannya bersamaan, dan itu justru yang membuat kekeliruan itu
+				// mustahil lolos diam-diam.
+				daftardetaildokumentravelhttp.Mount(protected, travelDocumentDetailHandler, activePortalDeps)
 				// Master rekening memuat nama, NIK, nomor rekening, dan surel pihak
 				// ketiga; tidak satu pun boleh terbaca tanpa sesi.
 				masterrekeninghttp.Mount(protected, accountHandler)
@@ -266,6 +368,27 @@ type assembly struct {
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
 	masterStatusProgres *masterstatusprogresusecase.Service
 
+	// masterDokumenTravel memakai pemilih repo per portal dengan alasan yang sama:
+	// POOLDATA.M_DOCTRAVEL adalah data acuan milik satu badan hukum, dan setiap
+	// entitas punya basis datanya sendiri.
+	masterDokumenTravel *masterdokumentravelusecase.Service
+
+	// masterCOLSimasOnline memakai pemilih repo per portal dengan alasan yang sama —
+	// POOLDATA.M_CAUSE_OF_LOSS ada di basis data setiap entitas — dan ditambah satu
+	// pemilih lagi untuk master bisnis milik GISFW yang hanya dibacanya.
+	masterCOLSimasOnline *mastercolusecase.Service
+
+	// daftarTipeDokumen memakai pemilih repo per portal dengan alasan yang sama:
+	// POOLDATA.LST_DOC_TYPE ada di basis data setiap entitas, dan ID-nya diterbitkan
+	// dari kode situs milik basis data itu (`PEGA_LST_DOC_TYPE.prc:12`).
+	daftarTipeDokumen *daftartipedokumenusecase.Service
+
+	// daftarDetailDokumenTravel memakai TIGA pemilih per portal: satu untuk kedua
+	// tabelnya sendiri, satu untuk POOLDATA.M_DOCTRAVEL milik modul Master Dokumen
+	// Travel, dan satu untuk POOLDATA.M_PLANTRAVEL milik GISFW. Ketiganya hidup di basis
+	// data entitas yang sama, tetapi mengisi seam yang berbeda.
+	daftarDetailDokumenTravel *daftardetaildokumentravelusecase.Service
+
 	// menu menyusun peta menu beserta kewenangan pemakainya.
 	menu *menuusecase.Service
 
@@ -298,6 +421,41 @@ type storage struct {
 	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat,
 	// kebocoran lintas badan hukum yang justru dicegah R-20.
 	progressStatusSelector masterstatusprogres.RepoSelector
+
+	// travelDocumentSelector memilih penyimpanan master dokumen travel milik satu
+	// portal, dengan alasan yang sama seperti progressStatusSelector di atas.
+	travelDocumentSelector masterdokumentravel.RepoSelector
+
+	// causeOfLossSelector memilih penyimpanan master COL Simas Online milik satu portal,
+	// dengan alasan yang sama seperti kedua pemilih di atas.
+	causeOfLossSelector mastercolsimasonline.RepoSelector
+
+	// documentTypeSelector memilih penyimpanan daftar tipe dokumen milik satu portal,
+	// dengan alasan yang sama seperti ketiga pemilih di atas.
+	documentTypeSelector daftartipedokumen.RepoSelector
+
+	// detailTravelSelector memilih penyimpanan detail dokumen travel milik satu portal,
+	// dengan alasan yang sama seperti keempat pemilih di atas.
+	detailTravelSelector daftardetaildokumentravel.RepoSelector
+
+	// travelChoiceSelector memilih pembaca POOLDATA.M_DOCTRAVEL sebagai daftar pilihan.
+	//
+	// Terpisah dari travelDocumentSelector meski keduanya membaca tabel yang SAMA,
+	// karena keduanya mengisi seam milik modul yang berbeda. Menyatukannya akan membuat
+	// modul Daftar Detail mengimpor tipe modul Master Dokumen Travel — dan sejak itu,
+	// perubahan di salah satunya merambat ke yang lain tanpa alasan.
+	travelChoiceSelector daftardetaildokumentravel.DocumentRepoSelector
+
+	// travelPlanSelector memilih pembaca POOLDATA.M_PLANTRAVEL milik GISFW yang HANYA
+	// DIBACA (`D-03`), sejajar dengan businessSelector di bawah.
+	travelPlanSelector daftardetaildokumentravel.PlanRepoSelector
+
+	// businessSelector memilih master bisnis milik satu portal.
+	//
+	// Terpisah dari causeOfLossSelector meski keduanya selalu dipilih bersamaan, karena
+	// keduanya mengisi seam yang berbeda: yang satu tabel milik modul COL, yang lain
+	// POOLDATA.BUSINESS milik GISFW yang HANYA DIBACA (D-03).
+	businessSelector mastercolsimasonline.BusinessRepoSelector
 
 	// menu dibaca dari basis data portal UTAMA, sama seperti M_LOGIN_PNC dan
 	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
@@ -343,6 +501,45 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	travelDocumentService, err := masterdokumentravelusecase.NewService(masterdokumentravelusecase.Options{
+		RepoSelector: store.travelDocumentSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	causeOfLossService, err := mastercolusecase.NewService(mastercolusecase.Options{
+		RepoSelector:     store.causeOfLossSelector,
+		BusinessSelector: store.businessSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Clock disuntikkan, bukan dipanggil di dalam repo: modul ini mengisi TGL_EDIT, dan
+	// `F-5` menetapkan waktu dibaca lewat satu seam supaya penyimpanan dapat diuji
+	// deterministik dan konversi zona waktu tidak tersebar.
+	documentTypeService, err := daftartipedokumenusecase.NewService(daftartipedokumenusecase.Options{
+		RepoSelector: store.documentTypeSelector,
+		Clock:        clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	travelDocumentDetailService, err := daftardetaildokumentravelusecase.NewService(daftardetaildokumentravelusecase.Options{
+		RepoSelector:     store.detailTravelSelector,
+		DocumentSelector: store.travelChoiceSelector,
+		PlanSelector:     store.travelPlanSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	menuService, err := menuusecase.NewService(menuusecase.Options{Repo: store.menu})
 	if err != nil {
 		store.close()
@@ -363,7 +560,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterRekening:      buildMasterRekening(cfg, store, logger),
 		masterStatus:        claimStatusService,
 		masterStatusProgres: progressStatusService,
-		menu:                menuService,
+		masterDokumenTravel: travelDocumentService,
+
+		masterCOLSimasOnline: causeOfLossService,
+
+		daftarTipeDokumen: documentTypeService,
+
+		daftarDetailDokumenTravel: travelDocumentDetailService,
+
+		menu: menuService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -516,6 +721,74 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+
+		// Master dokumen travel memakai pemilih yang sama bentuknya, dan dengan
+		// jaminan yang sama: portal yang tidak dikenal atau belum hidup menghasilkan
+		// galat dari For(), TIDAK pernah dialihkan ke koneksi utama sebagai cadangan.
+		store.travelDocumentSelector = func(alias string) (masterdokumentravel.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterdokumentravelsql.NewRepo(conn), nil
+		}
+
+		// Master COL Simas Online memakai DUA pemilih di atas koneksi yang sama: satu
+		// untuk tabelnya sendiri, satu untuk POOLDATA.BUSINESS yang hanya dibacanya.
+		// Keduanya memakai pool.For yang sama, sehingga daftar bisnis yang tampil pasti
+		// berasal dari entitas yang sedang dipilih pengguna — bukan dari entitas lain.
+		store.causeOfLossSelector = func(alias string) (mastercolsimasonline.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastercolsql.NewRepo(conn), nil
+		}
+		store.businessSelector = func(alias string) (mastercolsimasonline.BusinessRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastercolsql.NewBusinessRepo(conn), nil
+		}
+
+		// Daftar tipe dokumen memakai pemilih yang sama bentuknya, dan dengan jaminan
+		// yang sama: portal yang tidak dikenal atau belum hidup menghasilkan galat dari
+		// For(), TIDAK pernah dialihkan ke koneksi utama sebagai cadangan.
+		store.documentTypeSelector = func(alias string) (daftartipedokumen.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumensql.NewRepo(conn), nil
+		}
+
+		// Daftar Detail Dokumen Travel memakai TIGA pemilih di atas koneksi yang sama:
+		// satu untuk kedua tabelnya sendiri, satu untuk M_DOCTRAVEL, satu untuk
+		// M_PLANTRAVEL. Ketiganya lewat pool.For yang sama, sehingga daftar pilihan yang
+		// tampil pasti berasal dari entitas yang sedang dipilih pengguna — bukan dari
+		// entitas lain (`R-20`).
+		store.detailTravelSelector = func(alias string) (daftardetaildokumentravel.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftardetaildokumentravelsql.NewRepo(conn), nil
+		}
+		store.travelChoiceSelector = func(alias string) (daftardetaildokumentravel.DocumentRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftardetaildokumentravelsql.NewDocumentRepo(conn), nil
+		}
+		store.travelPlanSelector = func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftardetaildokumentravelsql.NewPlanRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -525,6 +798,21 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterStatus = masterstatusmemory.NewRepo(masterstatusmemory.SampleList()...)
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
+		store.travelDocumentSelector = travelDocumentSelectorMemory(cfg.PrimaryPortal)
+
+		// Satu master bisnis dipakai bersama seluruh pemilih COL di memori, meniru
+		// kenyataannya: bisnis dan COL hidup di basis data yang SAMA pada satu entitas.
+		causeOfLossBusiness := mastercolmemory.NewBusinessRepo(mastercolmemory.SampleBusinessList()...)
+		store.causeOfLossSelector = causeOfLossSelectorMemory(cfg.PrimaryPortal, causeOfLossBusiness)
+		store.businessSelector = businessSelectorMemory(cfg.PrimaryPortal, causeOfLossBusiness)
+		store.documentTypeSelector = documentTypeSelectorMemory(cfg.PrimaryPortal)
+
+		// Ketiga pemilih Daftar Detail Dokumen Travel dirakit bersamaan, meniru
+		// kenyataannya: detail, master dokumen, dan master plan hidup di basis data yang
+		// SAMA pada satu entitas.
+		store.detailTravelSelector = detailTravelSelectorMemory(cfg.PrimaryPortal)
+		store.travelChoiceSelector = travelChoiceSelectorMemory(cfg.PrimaryPortal)
+		store.travelPlanSelector = travelPlanSelectorMemory(cfg.PrimaryPortal)
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -585,6 +873,175 @@ func progressStatusSelectorMemory(primaryAlias string) masterstatusprogres.RepoS
 		fresh := masterstatusprogresmemory.NewRepo(masterstatusprogresmemory.SampleList()...)
 		store[clean] = fresh
 		return fresh, nil
+	}
+}
+
+// travelDocumentSelectorMemory menyusun penyimpanan master dokumen travel di memori.
+//
+// Bentuknya sengaja sama persis dengan progressStatusSelectorMemory di atas, termasuk
+// alasannya: satu portal mendapat satu penyimpanan yang dibuat saat pertama diminta
+// lalu dipakai kembali, dan portal selain portal utama ditolak dengan galat yang sama
+// seperti di produksi — sehingga perilaku penolakannya ikut teruji saat pengembangan.
+func travelDocumentSelectorMemory(primaryAlias string) masterdokumentravel.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterdokumentravel.Repo{}
+
+	return func(alias string) (masterdokumentravel.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterdokumentravelmemory.NewRepo(masterdokumentravelmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// documentTypeSelectorMemory menyusun penyimpanan daftar tipe dokumen di memori.
+//
+// Bentuknya sengaja sama persis dengan travelDocumentSelectorMemory di atas, termasuk
+// alasannya: satu portal mendapat satu penyimpanan yang dibuat saat pertama diminta lalu
+// dipakai kembali, dan portal selain portal utama ditolak dengan galat yang sama seperti
+// di produksi — sehingga perilaku penolakannya ikut teruji saat pengembangan.
+func documentTypeSelectorMemory(primaryAlias string) daftartipedokumen.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]daftartipedokumen.Repo{}
+
+	return func(alias string) (daftartipedokumen.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := daftartipedokumenmemory.NewRepo(daftartipedokumenmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// detailTravelSelectorMemory menyusun penyimpanan detail dokumen travel di memori.
+//
+// Bentuknya sengaja sama persis dengan documentTypeSelectorMemory di atas, termasuk
+// alasannya: satu portal mendapat satu penyimpanan yang dibuat saat pertama diminta lalu
+// dipakai kembali, dan portal selain portal utama ditolak dengan galat yang sama seperti
+// di produksi — sehingga perilaku penolakannya ikut teruji saat pengembangan.
+func detailTravelSelectorMemory(primaryAlias string) daftardetaildokumentravel.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]daftardetaildokumentravel.Repo{}
+
+	return func(alias string) (daftardetaildokumentravel.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := daftardetaildokumentravelmemory.NewRepo(daftardetaildokumentravelmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// travelChoiceSelectorMemory menyusun pembaca daftar pilihan ID Dokumen di memori.
+//
+// Isinya SAMA dengan contoh modul Master Dokumen Travel, dan itu disengaja: keduanya
+// membaca POOLDATA.M_DOCTRAVEL yang sama. Memakai isi yang berbeda akan menampilkan
+// isian ID Dokumen yang tidak pernah cocok dengan daftarnya sendiri — kelas kebingungan
+// yang tidak ada di produksi.
+//
+// Ia BACA-SAJA, sehingga instansnya tidak perlu dipakai kembali antarpermintaan seperti
+// ketiga pemilih penyimpanan: tidak ada keadaan yang dapat hilang.
+func travelChoiceSelectorMemory(primaryAlias string) daftardetaildokumentravel.DocumentRepoSelector {
+	shared := daftardetaildokumentravelmemory.NewDocumentRepo(daftardetaildokumentravelmemory.SampleDocumentList()...)
+
+	return func(alias string) (daftardetaildokumentravel.DocumentRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
+// travelPlanSelectorMemory menyusun pembaca plan dan jaminan Travel di memori.
+//
+// BACA-SAJA dengan alasan yang sama seperti travelChoiceSelectorMemory di atas.
+func travelPlanSelectorMemory(primaryAlias string) daftardetaildokumentravel.PlanRepoSelector {
+	shared := daftardetaildokumentravelmemory.NewPlanRepo(
+		daftardetaildokumentravelmemory.SamplePlanList(),
+		daftardetaildokumentravelmemory.SampleCoverageList(),
+	)
+
+	return func(alias string) (daftardetaildokumentravel.PlanRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
+// causeOfLossSelectorMemory menyusun penyimpanan master COL Simas Online di memori.
+//
+// Bentuknya sama dengan kedua pemilih di atas, dengan satu tambahan: master bisnis
+// disuntikkan supaya nama bisnis yang tampil di layar berasal dari master yang sama
+// dengan yang dipakai memeriksa keberadaannya. Tanpa itu, layar akan menampilkan nama
+// kosong untuk bisnis yang sebenarnya ada — dan gejalanya akan tampak seperti cacat
+// penyimpanan, padahal hanya perakitannya yang kurang.
+func causeOfLossSelectorMemory(
+	primaryAlias string,
+	business *mastercolmemory.BusinessRepo,
+) mastercolsimasonline.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]mastercolsimasonline.Repo{}
+
+	return func(alias string) (mastercolsimasonline.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := mastercolmemory.NewRepo(mastercolmemory.SampleList()...).WithBusiness(business)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// businessSelectorMemory melayani master bisnis di memori.
+//
+// Master yang sama dipakai untuk setiap portal yang dilayani — dan karena hanya portal
+// utama yang dilayani tanpa basis data, tidak ada dua entitas yang berbagi satu master
+// di sini. Penolakan portal lain tetap sama seperti di produksi.
+func businessSelectorMemory(
+	primaryAlias string,
+	business *mastercolmemory.BusinessRepo,
+) mastercolsimasonline.BusinessRepoSelector {
+	return func(alias string) (mastercolsimasonline.BusinessRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return business, nil
 	}
 }
 

@@ -37,7 +37,7 @@
 -- — rule lama merangkai `{ASIS:InputCOL.OPERATOR_ID}` langsung ke dalam WHERE, dan itu
 -- persis yang tidak diulang di sini.
 
--- name: pic_teknik_daftar
+-- name: pic_teknik_list
 SELECT OPERATOR_ID,
        MCL_NAME,
        EMAIL,
@@ -51,7 +51,7 @@ SELECT OPERATOR_ID,
   FROM POOLDATA.MST_USER_TEKNIK
  ORDER BY OPERATOR_ID
 
--- name: pic_teknik_ambil
+-- name: pic_teknik_get
 SELECT OPERATOR_ID,
        MCL_NAME,
        EMAIL,
@@ -65,7 +65,7 @@ SELECT OPERATOR_ID,
   FROM POOLDATA.MST_USER_TEKNIK
  WHERE UPPER(OPERATOR_ID) = UPPER(:1)
 
--- name: pic_teknik_sisip
+-- name: pic_teknik_insert
 --
 -- GROUPPANEL sengaja tidak ikut: procedure lama pun tidak pernah menulisnya, pada
 -- cabang INSERT maupun UPDATE.
@@ -75,7 +75,7 @@ INSERT INTO POOLDATA.MST_USER_TEKNIK
 VALUES (:1, :2, :3, :4, :5,
         :6, :7, :8, :9)
 
--- name: pic_teknik_perbarui
+-- name: pic_teknik_update
 --
 -- OPERATOR_ID tidak ikut diubah meski procedure lama menuliskannya
 -- (`SET OPERATOR_ID = IDPega ... WHERE OPERATOR_ID = IDPega`) — menyetel kolom ke
@@ -92,7 +92,7 @@ UPDATE POOLDATA.MST_USER_TEKNIK
        STS_AKTIF      = :8
  WHERE UPPER(OPERATOR_ID) = UPPER(:9)
 
--- name: pic_teknik_periksa_tabel
+-- name: pic_teknik_check_table
 --
 -- Memastikan seluruh kolom dapat dibaca akun aplikasi, tanpa mengambil satu baris pun.
 -- Dipakai mode periksa untuk membedakan dua sebab kegagalan yang tampak mirip: kolom
@@ -110,7 +110,7 @@ SELECT OPERATOR_ID,
   FROM POOLDATA.MST_USER_TEKNIK
  WHERE 1 = 0
 
--- name: operator_nama
+-- name: operator_name
 --
 -- Direktori operator. Meniru `SelectMstUserTeknisMclName` apa adanya, termasuk
 -- perbandingan UPPER di kedua sisi.

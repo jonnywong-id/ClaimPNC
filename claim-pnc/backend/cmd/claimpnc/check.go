@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,8 @@ import (
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
+	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
+	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
@@ -70,6 +73,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAppTables(ctx, legacy, print)
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
+	checkCauseOfLoss(ctx, mastercolsql.NewRepo(primary), mastercolsql.NewBusinessRepo(primary), print)
+	checkTravelDocumentDetail(ctx, primary, print)
 
 	print("")
 	if login == "" {
@@ -175,6 +180,53 @@ func countEmptyLabels(list []masterstatus.ClaimStatus) int {
 	return empty
 }
 
+// checkCauseOfLoss memeriksa kesiapan Master COL Simas Online.
+//
+// Ketiganya diperiksa TERPISAH — tabel COL, tabel pemetaan bisnis, dan master bisnis —
+// karena ketiganya gagal karena sebab yang berbeda, dan menyatukan laporannya membuat
+// pembaca menebak mana yang sebenarnya kurang:
+//
+//	tabel COL dan pemetaannya  migrasi 0004 belum dijalankan
+//	POOLDATA.BUSINESS          hak baca belum diberikan; tabel itu milik GISFW dan
+//	                           sampai modul ini aplikasi tidak pernah menyentuhnya
+func checkCauseOfLoss(
+	ctx context.Context,
+	repo *mastercolsql.Repo,
+	business *mastercolsql.BusinessRepo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Master COL Simas Online belum siap: %v", err)
+		print("            Kolom COL_DESC dan MST_COL_ID serta tabel")
+		print("            M_CAUSE_OF_LOSS_BUSINESS dibuat migrasi 0004. Selama belum")
+		print("            dijalankan, layarnya tidak dapat dipakai terhadap Oracle —")
+		print("            tetapi seluruh bagian lain tetap jalan.")
+	} else {
+		list, err := repo.List(ctx)
+		if err != nil {
+			print("  [GAGAL] POOLDATA.M_CAUSE_OF_LOSS tidak dapat dibaca isinya: %v", err)
+		} else {
+			print("  [ok]    POOLDATA.M_CAUSE_OF_LOSS dapat dibaca: %d cause of loss", len(list))
+		}
+	}
+
+	if err := business.CheckTable(ctx); err != nil {
+		print("  [GAGAL] POOLDATA.BUSINESS tidak dapat dibaca: %v", err)
+		print("            Tabel itu milik GISFW dan HANYA DIBACA. Mintakan GRANT SELECT")
+		print("            untuk akun aplikasi — tanpa itu, isian Bisnis pada layar COL")
+		print("            Simas Online kosong dan setiap penyimpanan yang memilih bisnis")
+		print("            akan ditolak.")
+		return
+	}
+
+	list, err := business.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.BUSINESS tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.BUSINESS dapat dibaca: %d bisnis", len(list))
+}
+
 func checkLoginTable(ctx context.Context, legacy *sqlstore.Legacy, print func(string, ...any)) {
 	if err := legacy.CheckTable(ctx, "local_login_check_table"); err != nil {
 		print("  [GAGAL] POOLDATA.M_LOGIN_PNC tidak dapat dibaca: %v", err)
@@ -262,4 +314,77 @@ func readPassword(source io.Reader) (string, error) {
 		return "", errors.New("kata sandi kosong")
 	}
 	return password, nil
+}
+
+// checkTravelDocumentDetail memeriksa kesiapan Daftar Detail Dokumen Travel.
+//
+// Keempat objeknya diperiksa TERPISAH, karena keempatnya gagal karena sebab yang berbeda
+// dan menyatukan laporannya membuat pembaca menebak mana yang sebenarnya kurang:
+//
+//	V_LST_DOC_TRAVEL             hak baca belum diberikan, atau view-nya memang tidak ada
+//	V_LST_DOC_TRAVEL_COVERAGE    idem
+//	M_DOCTRAVEL                  milik modul Master Dokumen Travel; hanya dibaca di sini
+//	M_PLANTRAVEL                 milik GISFW; hanya dibaca, dan belum pernah disentuh
+//	                             aplikasi ini sampai modul ini ada
+//
+// # Yang sengaja TIDAK diperiksa di sini
+//
+// Tabel dasar dan urutan yang dipakai jalur tulis. Nama ketiganya belum terverifikasi
+// (`R-16` — activity penyimpannya hilang dari export), dan memeriksa urutan berarti
+// MENGHABISKAN satu nomor — efek samping yang tidak pantas dimiliki mode periksa.
+// Verifikasinya ada di migrations/0006, dijalankan DBA sekali.
+//
+// Akibat yang harus disadari pembaca laporan ini: seluruh baris [ok] di bawah hanya
+// membuktikan jalur BACA siap. Jalur TULIS belum terbukti sampai migrasi 0005 dijawab.
+func checkTravelDocumentDetail(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := daftardetaildokumentravelsql.NewRepo(primary)
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Daftar Detail Dokumen Travel belum siap: %v", err)
+		print("            Kedua view V_LST_DOC_TRAVEL dan V_LST_DOC_TRAVEL_COVERAGE")
+		print("            adalah objek warisan Pega. Mintakan GRANT SELECT untuk akun")
+		print("            aplikasi — lihat migrations/0006. Selama belum diberikan,")
+		print("            layarnya tidak dapat dipakai terhadap Oracle; bagian lain")
+		print("            tetap jalan.")
+	} else {
+		list, err := repo.List(ctx)
+		if err != nil {
+			print("  [GAGAL] POOLDATA.V_LST_DOC_TRAVEL tidak dapat dibaca isinya: %v", err)
+		} else {
+			print("  [ok]    POOLDATA.V_LST_DOC_TRAVEL dapat dibaca: %d detail dokumen", len(list))
+		}
+	}
+
+	document := daftardetaildokumentravelsql.NewDocumentRepo(primary)
+	if err := document.CheckTable(ctx); err != nil {
+		print("  [GAGAL] POOLDATA.M_DOCTRAVEL tidak dapat dibaca: %v", err)
+		print("            Tanpa itu isian ID Dokumen pada layar Daftar Detail kosong.")
+		print("            Kodenya tetap dapat diketik sendiri, sehingga penyimpanan")
+		print("            tidak ikut gagal — yang hilang hanya daftar pilihannya.")
+	} else if list, err := document.List(ctx); err != nil {
+		print("  [GAGAL] POOLDATA.M_DOCTRAVEL tidak dapat dibaca isinya: %v", err)
+	} else {
+		print("  [ok]    POOLDATA.M_DOCTRAVEL dapat dibaca: %d dokumen travel", len(list))
+	}
+
+	plan := daftardetaildokumentravelsql.NewPlanRepo(primary)
+	if err := plan.CheckTable(ctx); err != nil {
+		print("  [GAGAL] POOLDATA.M_PLANTRAVEL tidak dapat dibaca: %v", err)
+		print("            Tabel itu milik GISFW dan HANYA DIBACA. Mintakan GRANT SELECT")
+		print("            untuk akun aplikasi. Perhatikan juga nama kolomnya belum")
+		print("            pernah diverifikasi — bila galatnya menyebut kolom, bukan")
+		print("            tabel, lihat bagian M_PLANTRAVEL pada migrations/0006.")
+		return
+	}
+
+	plans, err := plan.ListPlans(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.M_PLANTRAVEL tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	coverages, err := plan.ListCoverages(ctx)
+	if err != nil {
+		print("  [GAGAL] jaminan travel tidak dapat dibaca: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.M_PLANTRAVEL dapat dibaca: %d plan, %d jaminan", len(plans), len(coverages))
 }

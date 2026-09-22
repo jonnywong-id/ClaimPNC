@@ -3,6 +3,10 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { CauseOfLossPage } from '@/modules/master-col-simas-online/CauseOfLossPage'
+import { DocumentTypePage } from '@/modules/daftar-tipe-dokumen/DocumentTypePage'
+import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
+import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
@@ -73,6 +77,51 @@ export function AppRoute() {
         }
       />
       <Route
+        path="/master/dokumen-travel"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TravelDocumentPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/tipe-dokumen"
+        element={
+          <SessionGuard>
+            <Protected>
+              <DocumentTypePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Daftar Detail Dokumen Travel (MENU_ID 39). JANGAN tertukar dengan
+        /master/dokumen-travel di atas (MENU_ID 22) — yang ini master TURUNANNYA,
+        atas V_LST_DOC_TRAVEL, dan merujuk DOCID milik yang itu.
+      */}
+      <Route
+        path="/master/daftar-detail-dokumen-travel"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TravelDocumentDetailPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/col-simas-online"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CauseOfLossPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
         path="/master/status-klaim"
         element={
           <SessionGuard>
@@ -88,11 +137,7 @@ export function AppRoute() {
         belum ada; sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya.
       */}
       <Route
-<<<<<<< HEAD
         path="/master/rekening"
-        element={<PenjagaSesi anak={<Terlindungi anak={<HalamanMasterRekening />} />} />}
-=======
-        path="/master-rekening"
         element={
           <SessionGuard>
             <div className="min-h-screen bg-white">
@@ -101,7 +146,6 @@ export function AppRoute() {
             </div>
           </SessionGuard>
         }
->>>>>>> origin/master
       />
       {/*
         Jalur lama `/master-rekening` dipertahankan sebagai pengalihan, bukan dihapus.

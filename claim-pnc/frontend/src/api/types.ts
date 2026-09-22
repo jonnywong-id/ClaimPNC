@@ -174,6 +174,225 @@ export type ClaimStatusResponse = {
   status_klaim: ClaimStatus
 }
 
+// ── Master Dokumen Travel ────────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/masterdokumentravel/http. Menggantikan layar Pega
+// `Harness/BrowseMasterDocumentTravel_Harness-Harness.xml` atas tabel
+// POOLDATA.M_DOCTRAVEL.
+
+/**
+ * Satu jenis dokumen yang dapat diminta pada klaim lini Travel.
+ *
+ * Hanya dua field, dan itu memang seluruh isi tabelnya — grid maupun form di layar Pega
+ * pun hanya menampilkan keduanya.
+ *
+ * JANGAN tertukar dengan "Daftar Detail Dokumen Travel" (MENU_ID 39), master terpisah
+ * atas V_LST_DOC_TRAVEL yang merujuk `id` di sini dan menambahkan aturan wajib/tidak
+ * beserta jumlah unggahan minimum. Tipenya `TravelDocumentDetail` di bawah.
+ */
+export type TravelDocument = {
+  /** Kolom DOCID. Diterbitkan server; tidak pernah diisi pengguna, tidak pernah berubah. */
+  id: string
+  /** Kolom NAMADOKUMEN. Di layar Pega ia berlabel "Judul Dokumen". */
+  judul: string
+}
+
+export type TravelDocumentListResponse = {
+  dokumen_travel: TravelDocument[]
+  /** Datang dari server, bukan dihitung dari panjang senarai. */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type TravelDocumentResponse = {
+  dokumen_travel: TravelDocument
+  portal: string
+}
+
+/** Badan permintaan penambahan dan penyuntingan. */
+export type TravelDocumentInput = {
+  judul: string
+}
+
+/**
+ * Satu aturan kelengkapan dokumen Travel — baris V_LST_DOC_TRAVEL.
+ *
+ * Layar "Daftar Detail Dokumen Travel" (MENU_ID 39), pengganti
+ * `Harness/ListDocumentTravel-Harness.xml`. Ia merujuk `TravelDocument.id` di atas dan
+ * menambahkan aturannya: wajib atau tidak, berapa berkas paling sedikit, dan pada plan
+ * serta jaminan mana aturan itu berlaku.
+ *
+ * Nama fieldnya mengikuti label isian di layar Pega
+ * (`Section/BrowseDocumentTravel-Section.xml`), supaya satu istilah berlaku dari layar
+ * sampai ke kontrak.
+ */
+export type TravelDocumentDetail = {
+  /** Kunci baris. Diterbitkan server; tidak pernah diisi pengguna. */
+  id: string
+  /** Kolom DOCID — label layar "ID Dokumen". Rujukan ke master dokumen travel. */
+  id_dokumen: string
+  /** Kolom DOCUMENTNAME — label layar "Nama Dokumen". */
+  nama_dokumen: string
+  /**
+   * Kolom STSWAJIB — label layar "Status Wajib".
+   *
+   * Boolean, bukan angka 1/0 seperti di basis data. Angkanya bentuk penyimpanan, dan
+   * layar pun sudah mengubahnya menjadi "Ya"/"Tidak" sebelum menampilkannya.
+   */
+  status_wajib: boolean
+  /** Kolom MINUNGGAH — label layar "Minimal Unggah". Nol berarti tanpa tuntutan jumlah. */
+  minimal_unggah: number
+  /**
+   * Pembatasan per Plan dan Jaminan — baris V_LST_DOC_TRAVEL_COVERAGE.
+   *
+   * SELALU kosong pada hasil daftar; hanya terisi pada pengambilan satu baris. Layar
+   * karena itu WAJIB memuat ulang barisnya saat dibuka untuk disunting — memakai baris
+   * dari daftar akan membuat form tampak seolah seluruh pembatasannya sudah dihapus, dan
+   * menyimpannya benar-benar menghapusnya.
+   */
+  jaminan: TravelDocumentDetailCoverage[]
+}
+
+/** Satu pembatasan plan dan jaminan pada sebuah aturan dokumen. */
+export type TravelDocumentDetailCoverage = {
+  id: string
+  id_plan: string
+  nama_plan: string
+  id_jaminan: string
+  nama_jaminan: string
+}
+
+export type TravelDocumentDetailListResponse = {
+  detail_dokumen_travel: TravelDocumentDetail[]
+  /** Datang dari server, bukan dihitung dari panjang senarai. */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type TravelDocumentDetailResponse = {
+  detail_dokumen_travel: TravelDocumentDetail
+  portal: string
+}
+
+/** Badan permintaan penambahan dan penyuntingan detail dokumen travel. */
+export type TravelDocumentDetailInput = {
+  id_dokumen: string
+  nama_dokumen: string
+  status_wajib: boolean
+  minimal_unggah: number
+  /**
+   * Susunan AKHIR yang dikehendaki petugas — server menggantikan seluruh daftar lamanya,
+   * bukan menambahinya.
+   */
+  jaminan: TravelDocumentDetailCoverageInput[]
+}
+
+/**
+ * Satu baris grid plan dan jaminan yang dikirim layar.
+ *
+ * Nama DAN kode keduanya dikirim. Sebabnya perilaku layar lama: autocomplete-nya
+ * menyalin kode ke properti tersembunyi saat sebuah pilihan dipilih, tetapi isiannya
+ * tetap dapat diisi teks yang tidak ada di master — dan pada keadaan itu yang tersimpan
+ * hanyalah namanya, tanpa kode.
+ */
+export type TravelDocumentDetailCoverageInput = {
+  id_plan: string
+  nama_plan: string
+  id_jaminan: string
+  nama_jaminan: string
+}
+
+/** Satu pilihan pada isian ID Dokumen, dibaca dari POOLDATA.M_DOCTRAVEL. */
+export type TravelDocumentChoice = {
+  id: string
+  nama: string
+}
+
+export type TravelDocumentChoiceListResponse = {
+  dokumen: TravelDocumentChoice[]
+  portal: string
+}
+
+/** Satu pilihan pada isian Nama Plan, dibaca dari POOLDATA.M_PLANTRAVEL milik GISFW. */
+export type TravelPlan = {
+  id: string
+  nama: string
+}
+
+/**
+ * Satu pilihan pada isian Nama Jaminan.
+ *
+ * `id_plan` ikut dibawa supaya layar dapat menyaring jaminan menurut plan yang sudah
+ * dipilih tanpa menembak server lagi untuk setiap baris grid — penyaringan yang di Pega
+ * dikerjakan server lewat parameter `plan` pada `SearchCoverageTravel_RD`.
+ */
+export type TravelCoverage = {
+  id: string
+  nama: string
+  id_plan: string
+}
+
+/**
+ * Plan dan jaminan datang dalam SATU respons.
+ *
+ * Keduanya berasal dari tabel yang sama (POOLDATA.M_PLANTRAVEL) dan layar selalu
+ * membutuhkannya bersamaan: grid pembatasan tidak dapat menampilkan satu baris pun tanpa
+ * keduanya.
+ */
+export type TravelPlanListResponse = {
+  plan: TravelPlan[]
+  jaminan: TravelCoverage[]
+  portal: string
+}
+
+/**
+ * Satu tipe dokumen klaim — kolom V_LST_DOC_TYPE yang benar-benar tampil di layar.
+ *
+ * Tiga field, dan itu memang seluruh isi layarnya: baik grid maupun form di Pega hanya
+ * menampilkan ketiganya. OLD_ID, USER_EDIT, dan TGL_EDIT ada di tabelnya tetapi tidak
+ * pernah tampil, sehingga tidak ikut dikirim.
+ *
+ * JANGAN tertukar dengan dua master turunannya, keduanya belum dibangun:
+ * "Daftar Detail Tipe Dokumen" (`V_LST_DET_TYPE_DOC`) dan "Detail Tipe Dokumen per Bisnis"
+ * (`LST_TYPE_DOC_BUSINESS`). Keduanya merujuk `id` di sini.
+ */
+export type DocumentType = {
+  /** Kolom ID. Diterbitkan server; tidak pernah diisi pengguna, tidak pernah berubah. */
+  id: string
+  /** Kolom TYPE_DOCUMENT. Di grid Pega ia berlabel "Tipe Dokumen". */
+  tipe_dokumen: string
+  /**
+   * Kolom STS_PROSES, berlabel "Status Proses" di layar Pega.
+   *
+   * **Teks bebas, BUKAN penanda aktif/non-aktif.** Di Pega ia isian teks biasa tanpa
+   * daftar pilihan, dan layar Arsip Dokumen membacanya sebagai catatan — bahkan
+   * mengalias-namakannya "NoteKasir". Jangan memperlakukannya sebagai enum, dan jangan
+   * merendernya sebagai lencana berstatus.
+   */
+  status_proses: string
+}
+
+export type DocumentTypeListResponse = {
+  tipe_dokumen: DocumentType[]
+  /** Datang dari server, bukan dihitung dari panjang senarai. */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type DocumentTypeResponse = {
+  tipe_dokumen: DocumentType
+  portal: string
+}
+
+/** Badan permintaan penambahan dan penyuntingan. */
+export type DocumentTypeInput = {
+  tipe_dokumen: string
+  status_proses: string
+}
+
 /**
  * Satu aturan yang dilanggar beserta kolom yang melanggarnya.
  *
@@ -221,9 +440,33 @@ export const ErrorCode = {
   portalNotReady: 'portal_belum_siap',
 
   // Milik modul master data.
+  //
+  // Beberapa modul memakai kode "tidak ditemukan" MILIKNYA SENDIRI alih-alih `notFound`
+  // yang umum. Itu keadaan yang ada hari ini, bukan rancangan — penyeragamannya masuk
+  // TKT-F1-004. Sampai itu diputuskan, setiap kode yang benar-benar dikirim server harus
+  // terdaftar di sini; kode yang tidak terdaftar akan jatuh ke cabang bawaan dan layar
+  // menampilkan pesan umum untuk keadaan yang sebenarnya dapat dijelaskan.
   claimStatusNotFound: 'status_klaim_tidak_ditemukan',
+  travelDocumentDetailNotFound: 'detail_dokumen_travel_tidak_ditemukan',
   statusLabelTaken: 'label_status_sudah_dipakai',
   statusCodeTaken: 'kode_status_sudah_dipakai',
+
+  /**
+   * Milik modul Master Dokumen Travel.
+   *
+   * Hanya satu, dan itu cerminan modulnya: Work Owner menetapkan layar itu meniru Pega
+   * apa adanya tanpa validasi, sehingga tidak ada `validasi_gagal` maupun galat bentrok
+   * yang dapat terjadi di sana.
+   */
+  travelDocumentNotFound: 'dokumen_travel_tidak_ditemukan',
+
+  /**
+   * Milik modul Daftar Tipe Dokumen.
+   *
+   * Hanya satu, dengan alasan yang sama seperti Master Dokumen Travel di atas: Work Owner
+   * menetapkan layar itu meniru Pega apa adanya tanpa validasi.
+   */
+  documentTypeNotFound: 'tipe_dokumen_tidak_ditemukan',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -313,3 +556,84 @@ export const AccountErrorCode = {
 
 export type AccountErrorCode =
   (typeof AccountErrorCode)[keyof typeof AccountErrorCode]
+
+// -----------------------------------------------------------------------------
+// Master COL Simas Online
+//
+// Cerminan dto di internal/mastercolsimasonline/http. Menggantikan layar Pega
+// `Harness/CauseOfLossInboxSimasOnline-Harness.xml` atas tabel
+// POOLDATA.M_CAUSE_OF_LOSS beserta pemetaan bisnisnya.
+// -----------------------------------------------------------------------------
+
+/** Satu lini bisnis, dibaca dari POOLDATA.BUSINESS milik GISFW. Hanya dibaca. */
+export type Business = {
+  /**
+   * Kolom BUSINESS.ID.
+   *
+   * BOLEH KOSONG pada pemetaan yang namanya diketik bebas dan tidak ada di master —
+   * perilaku Pega yang dipertahankan (`pyAllowFreeFormInput=true`). Layar harus
+   * menyiapkan keadaan itu; ia bukan tanda data rusak.
+   */
+  id: string
+  /** Nama bisnis. Di layar Pega kolomnya berjudul "Bisnis" dan terikat ke `.Note`. */
+  nama: string
+}
+
+/**
+ * Satu baris Master COL Simas Online.
+ *
+ * COL adalah Cause of Loss — penyebab kerugian. Yang membuatnya "Simas Online" adalah
+ * dua isian yang tidak ada di layar Master COL biasa: `id_master_kerugian` dan daftar
+ * `bisnis` yang memakainya.
+ */
+export type CauseOfLoss = {
+  /** Kolom M_COL_ID. Diterbitkan server; tidak pernah diisi pengguna. */
+  id: string
+  /** Kolom COL_DESC — di layar Pega berlabel "Nama Cause of loss". */
+  nama: string
+  /**
+   * Kolom MST_COL_ID — di layar Pega berlabel "ID Master Kerugian".
+   *
+   * Isinya `id` cause of loss LAIN yang menjadi induk, bukan kode dari sistem sebelah:
+   * isiannya di Pega adalah daftar yang sumbernya `BrowseVMCauseOfLoss_RD` atas master
+   * yang sama. Kosong berarti tanpa induk.
+   */
+  id_master_kerugian: string
+  /**
+   * Daftar bisnis yang memakai penyebab kerugian ini.
+   *
+   * Pada jawaban DAFTAR ia selalu `[]`, dan itu disengaja: grid hanya menampilkan ID dan
+   * nama. Layar memuatnya saat baris dibuka untuk disunting.
+   */
+  bisnis: Business[]
+}
+
+export type CauseOfLossListResponse = {
+  cause_of_loss: CauseOfLoss[]
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type CauseOfLossResponse = {
+  cause_of_loss: CauseOfLoss
+  portal: string
+}
+
+export type BusinessListResponse = {
+  bisnis: Business[]
+  portal: string
+}
+
+/**
+ * Badan permintaan penambahan dan penyuntingan.
+ *
+ * `bisnis` berisi NAMA bisnis, bukan ID-nya — itulah yang diketik dan dilihat petugas di
+ * layar Pega, dan nama yang diketik bebas memang tidak punya ID. Server yang
+ * menyelesaikannya menjadi ID dengan mencocokkan ke master; nama yang tidak cocok tetap
+ * diterima dan disimpan tanpa ID.
+ */
+export type CauseOfLossInput = {
+  nama: string
+  id_master_kerugian: string
+  bisnis: string[]
+}

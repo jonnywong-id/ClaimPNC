@@ -19,29 +19,29 @@ import (
 //     dari yang di atas karena tindak lanjutnya berbeda:
 //     yang satu memperbaiki isian, yang lain menunggu.
 var (
-	ErrTidakDitemukan          = errors.New("masterpicteknik: PIC teknik tidak ditemukan")
-	ErrSudahAda                = errors.New("masterpicteknik: ID operator sudah terdaftar")
-	ErrOperatorTidakDikenal    = errors.New("masterpicteknik: ID operator tidak terdaftar di direktori operator")
-	ErrDirektoriTidakTerhubung = errors.New("masterpicteknik: direktori operator tidak dapat dihubungi")
+	ErrNotFound          = errors.New("masterpicteknik: PIC teknik tidak ditemukan")
+	ErrAlreadyExists                = errors.New("masterpicteknik: ID operator sudah terdaftar")
+	ErrUnknownOperator    = errors.New("masterpicteknik: ID operator tidak terdaftar di direktori operator")
+	ErrDirectoryUnreachable = errors.New("masterpicteknik: direktori operator tidak dapat dihubungi")
 )
 
 // Field yang dapat membawa pelanggaran validasi. Nilainya dipakai apa adanya oleh
 // lapisan transport sebagai penunjuk isian di layar, sehingga antarmuka dapat menandai
 // kolom yang salah — bukan sekadar menampilkan satu pesan di atas form.
 const (
-	FieldIDOperator = "id_operator"
+	FieldOperatorID = "id_operator"
 	FieldEmail      = "email"
-	FieldLiniBisnis = "lini_bisnis"
-	FieldGrup       = "grup"
-	FieldAtasan     = "atasan"
-	FieldKuota      = "kuota"
-	FieldKuotaLuar  = "kuota_luar"
+	FieldBusinessLine = "lini_bisnis"
+	FieldGroup       = "grup"
+	FieldSupervisor     = "atasan"
+	FieldQuota      = "kuota"
+	FieldExternalQuota  = "kuota_luar"
 )
 
 // Pelanggaran adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.
-type Pelanggaran struct {
+type Violation struct {
 	Field string
-	Pesan string
+	Message string
 }
 
 // GalatValidasi memuat SELURUH pelanggaran sekaligus.
@@ -49,16 +49,16 @@ type Pelanggaran struct {
 // Ia sengaja bukan daftar string: transport perlu tahu field mana yang salah untuk
 // menandainya di layar, dan informasi itu hilang bila pesannya dirangkai menjadi satu
 // kalimat.
-type GalatValidasi struct {
-	Pelanggaran []Pelanggaran
+type ValidationError struct {
+	Violation []Violation
 }
 
-func (g *GalatValidasi) Error() string {
-	pesan := make([]string, 0, len(g.Pelanggaran))
-	for _, p := range g.Pelanggaran {
-		pesan = append(pesan, p.Field+": "+p.Pesan)
+func (g *ValidationError) Error() string {
+	message := make([]string, 0, len(g.Violation))
+	for _, p := range g.Violation {
+		message = append(message, p.Field+": "+p.Message)
 	}
-	return "masterpicteknik: validasi gagal — " + strings.Join(pesan, "; ")
+	return "masterpicteknik: validasi gagal — " + strings.Join(message, "; ")
 }
 
 // GalatValidasiBaru membentuk galat validasi, atau nil bila tidak ada pelanggaran.
@@ -66,9 +66,9 @@ func (g *GalatValidasi) Error() string {
 // Mengembalikan nil bertipe error yang benar-benar nil — bukan pointer nil yang
 // terbungkus interface — supaya `if err != nil` di pemanggil berperilaku seperti yang
 // terbaca.
-func GalatValidasiBaru(pelanggaran []Pelanggaran) error {
-	if len(pelanggaran) == 0 {
+func NewValidationError(violation []Violation) error {
+	if len(violation) == 0 {
 		return nil
 	}
-	return &GalatValidasi{Pelanggaran: pelanggaran}
+	return &ValidationError{Violation: violation}
 }

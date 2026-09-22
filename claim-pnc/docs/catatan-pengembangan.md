@@ -1889,3 +1889,1030 @@ Dua hal diperbaiki, dan keduanya benar terlepas dari uji:
 - Pesan galat menu memakai **`role="status"`**, bukan `role="alert"`. Menu yang gagal dimuat adalah
   keadaan, bukan sesuatu yang harus menyela apa yang sedang dibaca pengguna di isi halaman.
 - Fixture uji itu kini menjawab `/api/menu`, sama seperti ia sudah menjawab `/api/portal`.
+
+---
+
+## 16. Sesi kesembilan — modul Master Dokumen Travel (2026-09-21)
+
+### 16.1 Permintaan
+
+Menambah modul **Master Dokumen Travel**, dengan
+`Harness/BrowseMasterDocumentTravel_Harness-Harness.xml` sebagai rujukan, setelah lebih dulu
+memahami CLAUDE.md, struktur proyek, arsitektur, pola coding, dan alur bisnis Pega. Dilarang
+langsung menulis kode.
+
+### 16.2 Yang dibaca lebih dulu, sebelum menulis satu baris kode
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `CLAUDE.md` (Steering gabungan) | `D-02`, `D-13`, `D-19`, `D-66`, `D-68`, `D-75`, `D-80`, `D-81`, `P-1`, `P-5`, `R-08`, `R-20`, `ADR-0012`, `ADR-0030` |
+| `claim-pnc/docs/peta-penamaan.md` | seluruh kamus penamaan, termasuk lima hal yang TETAP Indonesia |
+| `claim-pnc/docs/keputusan-implementasi.md` | §10 (per portal), §12 (master dua kolom), §14 (penamaan), §15 (merge) |
+| `internal/masterstatus/**` | pola master dua kolom + penerbitan kode dari situs & urutan |
+| `internal/masterstatusprogres/**` | pola per portal: `RepoSelector`, `ActivePortal`, uji pemisahan entitas |
+| `frontend/src/modules/master-status-{klaim,progres}/**` | pola layar, form dua mode, dan uji layar |
+| `Harness/`, `Section/`, `Report Definition/`, `Activity/`, `RDB List/`, `Database/` | perilaku layar lama — dirinci di keputusan-implementasi §17.5 |
+
+### 16.3 Empat temuan yang mengubah bentuk pekerjaan
+
+**1. Repo tidak dapat dibangun.** `go build ./...` gagal di dua paket, dan dua berkas frontend
+masih memuat penanda konflik `<<<<<<<` yang ter-commit. Ditemukan sebelum pekerjaan modul dimulai,
+dan dilaporkan sebagai pertanyaan pertama — modul baru tidak dapat dijalankan di atas aplikasi
+yang tidak menyala. Rinciannya di keputusan-implementasi §17.2.
+
+**2. Source procedure-nya ADA.** Berbeda dari `R-01` yang menghantui modul-modul nilai uang,
+`Database/DOCTRAVEL_CVG.prc` lengkap di repo. Aturan simpannya karena itu tidak perlu ditebak
+sama sekali — termasuk bentuk DOCID dan pilihan INSERT versus UPDATE.
+
+**3. Layar lama tidak memvalidasi apa pun.** Diperiksa langsung ke
+`Section/BrowseMasterDocumentTravel-Section.xml`: nol `pyRequired=true`, nol `pyMaxLength`. Ini
+berbeda dari Master Status Klaim yang justru diperketat Work Owner, sehingga tidak boleh
+disamakan diam-diam — jadi pertanyaan ketiga.
+
+**4. Ada dua menu bernama mirip.** MENU_ID 22 (`BrowseMasterDocumentTravel_Harness`, tabel
+`M_DOCTRAVEL`) dan MENU_ID 39 (`ListDocumentTravel`, view `V_LST_DOC_TRAVEL`). Yang kedua adalah
+master DETAIL yang merujuk DOCID milik yang pertama, dan ia di luar lingkup.
+
+### 16.4 Pertanyaan konfirmasi dan jawabannya
+
+Tiga diajukan sekaligus dengan pilihan jawaban beserta rekomendasi dan akibatnya.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Boleh memperbaiki build yang rusak? | jawaban pertama tidak menjawab pertanyaannya — **diajukan ulang**, lalu dijawab **"Boleh, dan rapikan masterpicteknik sekalian"** |
+| 2 | `M_DOCTRAVEL` di basis data mana | **"Seperti aplikasi Pega"** → dibaca sebagai per entitas, dengan alasan disampaikan lebih dulu |
+| 3 | Validasi | **"Tiru Pega apa adanya — tanpa validasi"** |
+
+Pertanyaan pertama sengaja diajukan ulang alih-alih ditebak: jawabannya menentukan apakah saya
+boleh menyentuh Master Rekening, yang masuk **Isolasi Protektif**.
+
+### 16.5 Yang dibangun
+
+**Perbaikan build** (atas izin, sebelum modul dikerjakan):
+
+- `masterrekening/http/galat.go` dihapus; fungsi `violationsOf` yang hilang saat merge dipulihkan
+  ke `errors.go`.
+- `masterpicteknik` dialihkan ke penamaan Inggris: **12 berkas, 788 identifier, 6 nama kueri
+  `.sql`, 7 berkas/folder berganti nama**. Dikerjakan pemindai `go/scanner`, bukan `sed`.
+
+**Backend** — `internal/masterdokumentravel/`:
+
+| Berkas | Isi |
+|---|---|
+| `masterdokumentravel.go` | `TravelDocument`, `Input`, `FormatID`, `ErrNotFound`, seam `Repo` + `RepoSelector` |
+| `usecase/manage.go` | pemilihan portal + List/Get/Create/Update |
+| `repo/sqlstore/masterdokumentravel.sql` | 6 kueri bernama |
+| `repo/sqlstore/masterdokumentravel.go` | repo Oracle, penerbitan DOCID dalam satu transaksi |
+| `repo/sqlstore/query.go` | pemuat kueri `.sql` |
+| `repo/memory/{memory,sample}.go` | adapter kedua + isi contoh yang ditandai BUKAN data produksi |
+| `http/{dto,errors,handler,routes}.go` | 4 rute, seluruhnya di balik `ActivePortal` |
+| `masterdokumentravel_test.go` | 10 uji domain |
+| `http/routes_test.go` | 11 uji kontrak, termasuk 3 uji pemisahan entitas |
+
+**Basis data** — `migrations/0003_master_travel_document.{up,down}.sql`: GRANT dan kueri
+pemeriksaan saja, **tanpa perubahan skema**, dijalankan di setiap entitas.
+
+**Frontend** — `src/modules/master-dokumen-travel/`: `api.ts`, `TravelDocumentPage.tsx`,
+`TravelDocumentForm.tsx`, `TravelDocumentPage.test.tsx` (11 uji). Ditambah tipe di
+`src/api/types.ts`, rute di `App.tsx`, dan satu baris di `app/menu/registry.ts`.
+
+### 16.6 Kendala yang muncul dan penyelesaiannya
+
+**Perkakas penggantian nama tidak ada di repo.** §14.3 menyebutnya dipakai, tetapi berkasnya
+tidak pernah di-commit. Dibuat ulang di scratchpad di atas `go/scanner`, dan kali ini alasannya
+lebih kuat daripada sekadar melindungi komentar: **tag JSON adalah literal string**, sehingga
+pemindai token melindungi kontrak API secara otomatis — sesuatu yang `sed` tidak dapat lakukan.
+
+**Peta nama disusun dari daftar yang nyata, bukan dari ingatan.** Perkakas dijalankan dua kali:
+`collect` mengeluarkan seluruh identifier yang benar-benar ada, barulah petanya disusun. Tanpa
+langkah itu, identifier yang terlewat baru ketahuan saat kompilasi — atau lebih buruk, tidak
+ketahuan sama sekali karena kebetulan masih valid.
+
+**Uji frontend tidak dapat dijalankan dengan setelan bawaan.** `npm test` gagal dengan
+`Timeout waiting for worker to respond` — kendala mesin yang sama seperti §10.8. Diselesaikan
+dengan `npx vitest run --no-file-parallelism --pool=threads`, dan dengan itu seluruh berkas uji
+berjalan.
+
+**Berkas berubah di tengah pekerjaan oleh pihak lain.** Kedua konflik frontend ternyata
+diselesaikan Work Owner sendiri saat saya mengerjakan backend, dan sebuah modul baru
+(`mastercolsimasonline`) muncul di tengah sesi. Keduanya diperiksa, tidak bertabrakan, dan **tidak
+saya timpa** — App.tsx yang saya sunting menerima rute keduanya berdampingan.
+
+### 16.7 Verifikasi yang benar-benar dijalankan
+
+Keadaan **sebelum** sesi ini, diukur lebih dulu supaya perbandingannya jujur:
+
+| Pemeriksaan | Sebelum | Sesudah |
+|---|---|---|
+| `go build ./...` | **GAGAL** — 2 paket | **lulus** |
+| `go vet ./...` | **GAGAL** | **lulus** |
+| `go test ./...` | tidak dapat dijalankan penuh | **30 paket lulus, 0 gagal** |
+| `tsc --noEmit` | lulus | **lulus** |
+| Uji frontend | 68 lulus / 3 gagal (6 berkas) | **79 lulus / 3 gagal (7 berkas)** |
+| Penanda konflik `<<<<<<<` | 2 berkas | **nol** |
+
+Ketiga uji frontend yang gagal adalah **ketiga yang sama** — `AccountPage.test.tsx`, tabrakan nama
+tab dan tombol "Approve"/"Reject" yang §14.4 catat sudah gagal sebelum sesi 2026-09-18 dan
+menunggu keputusan Work Owner. Tidak ada kegagalan baru.
+
+Uji yang ditambahkan sesi ini: **21** (10 domain Go, 11 layar).
+
+### 16.8 Yang belum dapat dijalankan
+
+- **Adapter SQL belum pernah menyentuh Oracle.** Tidak ada koneksi basis data di mesin ini. Yang
+  terbukti adalah adapter memori dan rakitan HTTP-nya; kebenaran SQL-nya terbukti saat DBA
+  menjalankan langkah verifikasi migrasi 0003.
+- **Mode periksa tidak menyentuh modul ini**, mengikuti Master Status Progres 1: `check.go`
+  memakai koneksi portal utama saja, sedangkan tabel ini hidup di setiap entitas. `CheckTable`
+  sudah tersedia di repo-nya bila kelak mode periksa diperluas per portal.
+- **Uji kesetaraan gerbang 1** menuntut Pega staging yang dapat ditembak dari luar (`ADR-0027`).
+
+### 16.9 Yang perlu diminta
+
+| Kepada | Yang diminta | Kenapa |
+|---|---|---|
+| DBA | DDL `POOLDATA.M_DOCTRAVEL` di setiap entitas | lebar `DOCID` menentukan kapan penomoran mentok; lebar `NAMADOKUMEN` menentukan apakah judul panjang akan ditolak |
+| DBA | `LAST_NUMBER` `POOLDATA.DOCTRAVEL_SEQ` | jarak ke batas enam digit belum dapat dihitung |
+| DBA | isi `POOLDATA.M_DOCTRAVEL` (CSV) | isi contoh adapter memori saat ini **susunan sendiri**; tidak boleh dipakai sebagai dasar uji kesetaraan |
+| DBA | eksekusi GRANT migrasi 0003 di **setiap** entitas | entitas yang terlewat gagal saat pengguna membuka layarnya |
+| Work Owner | keputusan tabrakan nama tab/tombol Master Rekening | 3 uji tetap merah sampai itu diputuskan (§14.4) |
+
+---
+
+## 17. Sesi kesepuluh — modul Master COL Simas Online (2026-09-21)
+
+### 17.1 Permintaan
+
+> "lanjutkan untuk penambahan modul Master COL SIMAS ONLINE — cek secara penuh aplikasi existing
+> pada dokumen `Harness/CauseOfLossInboxSimasOnline-Harness.xml` jadikan ini sebagai referensi."
+
+Dikerjakan **berbarengan** dengan sesi Master Dokumen Travel (§16) di repo yang sama. Akibatnya
+dicatat di §17.6 — beberapa berkas bersama disunting dua pihak dalam rentang waktu yang sama.
+
+### 17.2 Yang dibaca dari export, dan apa yang berubah karenanya
+
+Harness-nya sendiri hanya kerangka; isinya ada di rule yang dirujuknya.
+
+| Artefak Pega | Yang diambil darinya |
+|---|---|
+| `Section/Online_GridCauseOfLoss-Section.xml` | judul **"Master Cause Of Loss Simas Online"**, grid **ID + Description**, tombol **Tambah** & **Refresh** |
+| `Section/Online_BrowseCauseOfLoss-Section.xml` | judul form **"Memperbaharui Data Simas Online"**; isian **ID** (read-only), **Nama Cause of loss**, **ID Master Kerugian**, **Bisnis**; tombol **Simpan**/**Ubah** |
+| `Activity/PageNewForSetSimasOnlineCOL-Act.xml` | tombol Tambah membuka form kosong |
+| `Activity/SetDataCauseofflossOnline-Act.xml` | klik baris memuatnya ke form |
+| `Activity/Online_nsertCauseOfLoss_act-Act.xml` | `M_COL_ID` kosong menjadi `"UnknownID"`, dan itulah penanda baris baru |
+| `Database/PEGA_M_CAUSE_OF_LOSS.prc` | tabel sebenarnya **`M_CAUSE_OF_LOSS(M_COL_ID, JSON_DATA)`**; kode dibentuk `M_SITE_DATABASE.ID` disambung `LPAD(M_CAUSE_SEQ.NEXTVAL,3,'0')` |
+| `RDB List/GetLBUID_SQL-SQL.xml` | **bukti menentukan** — `V_D_CAUSE_OF_LOSS_BUSINESS (D_COL_ID, BISNISID)` di-join ke `BUSINESS (ID, NOTE)` |
+
+**Temuan yang paling mengubah bentuk pekerjaan.** Isian "Bisnis" ternyata **bukan satu nilai**:
+`Online_BrowseCauseOfLoss-Section.xml:5752` mendeklarasikan
+`<pyPageListProperty>TempCauseOfLoss.BISNISID</pyPageListProperty>` dengan
+`pyPageListPropertyClass = ASM-FW-GISFW-Int-BUSINESS`. Satu cause of loss dapat dipakai **banyak
+bisnis**, ditampilkan sebagai repeat grid satu kolom berisi `.Note`.
+
+Kalau ini terlewat, layarnya akan dibangun dengan satu dropdown dan **kehilangan data** pada setiap
+baris yang memetakan lebih dari satu bisnis — tanpa galat apa pun.
+
+### 17.3 Tiga pertanyaan yang diajukan sebelum satu berkas pun ditulis
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Repo tidak build (sisa merge `2322f15`); sejauh apa boleh dibereskan? | **bereskan seminimal mungkin** |
+| 2 | Isian Bisnis berupa PageList milik GISFW — lingkupnya? | **"seperti aplikasi PEGA"**, jadi dibangun penuh, banyak baris |
+| 3 | `PEGA_M_CAUSE_OF_LOSS` harus ditulis ulang (`D-02`), tetapi DDL view tidak ada (`R-08`) | **"metode penyimpanan sudah tidak pakai JSON lagi, langsung simpan ke data di tempat sesuai PEGA"** |
+
+Jawaban ketiga yang paling menentukan: ia menutup pilihan mereplikasi dokumen JSON, dan
+mengarahkan modul ini menempuh jalan yang **sama persis** dengan Master Status Klaim pada migrasi
+`0002` — isi JSON dipindahkan ke kolom, view didefinisikan ulang, procedure ditinggalkan.
+
+### 17.4 Yang dibangun
+
+**Backend** — `internal/mastercolsimasonline/`
+
+| Berkas | Isi |
+|---|---|
+| `mastercolsimasonline.go` | domain: `CauseOfLoss`, `Business`, `Input`, aturan isian, seam `Repo` dan `BusinessRepo` beserta kedua selector-nya |
+| `usecase/manage.go` | orkestrasi; menggabungkan pelanggaran murni dengan pemeriksaan keberadaan bisnis |
+| `repo/memory/memory.go` | adapter memori, isi contoh, dan master bisnis |
+| `repo/sqlstore/*.go` dan `*.sql` | adapter Oracle; 14 kueri bernama |
+| `http/dto.go`, `errors.go`, `routes.go` | transport; lima rute |
+
+**Migrasi** — `0004_master_col_simas_online.up.sql` dan `.down.sql`
+
+**Frontend** — `src/modules/master-col-simas-online/`: `api.ts`, `CauseOfLossPage.tsx`,
+`CauseOfLossForm.tsx`, `CauseOfLossPage.test.tsx`.
+
+**Rute API**
+
+```
+GET  /api/master/col-simas-online          daftar (tanpa pemetaan bisnis)
+POST /api/master/col-simas-online          tambah
+GET  /api/master/col-simas-online/{id}     satu baris LENGKAP dengan pemetaan bisnis
+PUT  /api/master/col-simas-online/{id}     ubah
+GET  /api/master/bisnis                    daftar bisnis (baca-saja, milik GISFW)
+```
+
+### 17.5 Empat keputusan yang tidak sepele
+
+**(a) Daftar tidak membawa pemetaan bisnis; baris yang dibuka dimuat ulang.**
+Grid Pega hanya menampilkan ID dan Description, jadi menarik pemetaan seluruh baris adalah kueri
+yang hasilnya tidak pernah dilihat. Akibatnya layar **wajib** memanggil `GET /{id}` saat baris
+dibuka, dan itu dijaga uji `memuat ulang baris yang dibuka supaya pemetaan bisnisnya ikut terbawa`.
+Tanpa itu, form akan tampak seolah seluruh bisnisnya sudah dihapus, dan menekan Simpan
+**benar-benar menghapusnya**.
+
+**(b) Pemetaan bisnis diganti dengan MENANDAI, bukan hapus-lalu-sisip-ulang.**
+Menyimpan pilihan grid dengan `DELETE` lalu `INSERT` adalah pola yang `D-66` cabut secara khusus
+(`PEGA_CONVERT_JSONKLAIM_PNC.prc:492-503`), hanya dalam ukuran kecil. Penggantinya: kolom
+`STS_AKTIF`, dinonaktifkan semua lalu dihidupkan yang dipilih. Penanda dipilih bukan karena selera
+— `V_D_CAUSE_OF_LOSS` memang sudah punya kolom `STS_AKTIF`, jadi bentuknya sudah dipakai domain
+ini. Uji `TestNoPhysicalDeleteAnywhere` yang menjaganya.
+
+**(c) Nama bisnis tidak pernah diterima dari klien.**
+Permintaan hanya membawa ID; nama selalu dibaca ulang dari `POOLDATA.BUSINESS`. Menerimanya dari
+luar berarti mempercayai klien atas data milik tabel tim lain (`D-03`).
+
+**(d) Nama Cause of loss diwajibkan, berbeda dari Pega.**
+Layar lama menandainya `pyRequired=false`, sehingga baris tanpa nama dapat tersimpan — dan akan
+muncul sebagai pilihan **kosong** di setiap dropdown penyebab kerugian. Perlakuannya disamakan
+dengan label Master Status Klaim yang sudah disetujui Work Owner. **Ini selisih terencana yang
+harus dinyatakan di muka pada gerbang 1** (`D-54`), bukan ditemukan sebagai kejutan.
+
+### 17.6 Kendala: dua sesi menyunting repo yang sama
+
+Sesi ini dan sesi Master Dokumen Travel (§16) berjalan bersamaan.
+
+| Kejadian | Penanganan |
+|---|---|
+| `go build ./...` gagal di tengah pekerjaan karena `masterdokumentravel` belum selesai dirakit | dipersempit ke `go build ./internal/...`; modul sendiri tetap dapat diverifikasi |
+| `App.tsx` berubah di disk setelah saya menyelesaikan konfliknya | penyelesaian saya bertahan; sesi sebelah menambahkan rutenya di atasnya |
+| Migrasi `0003` keburu dipakai sesi sebelah | migrasi modul ini memakai nomor **`0004`** |
+| `masterrekening/http/galat.go` dan `masterpicteknik` sudah dibereskan pihak lain saat saya hendak menyentuhnya | tidak jadi disentuh; hanya sisa frontend yang saya kerjakan |
+
+**Yang saya kerjakan dari sisa merge** — dan hanya ini:
+
+1. `App.tsx` — menyelesaikan konflik; sisi `origin/master` dipakai, jalurnya `/master/rekening`
+   supaya baris pengalihan yang sudah ada di bawahnya tidak menjadi kontradiksi.
+2. `AccountForm.tsx` — menyelesaikan konflik; sisi `origin/master` dipakai karena sisi `HEAD`
+   memanggil `PETA_KOLOM` dan `galat` yang sudah tidak ada di berkas itu.
+3. `KerangkaHalaman.tsx` — **dihapus**. Kembar mati `PageShell.tsx`: nol pemakai, dan keenam
+   impornya menunjuk berkas yang sudah tidak ada.
+
+### 17.7 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./...` | lulus |
+| `go test ./...` | **seluruhnya lulus**, termasuk 4 paket modul ini |
+| `gofmt -l ./internal/mastercolsimasonline/` | **kosong** |
+| `npx tsc --noEmit` | lulus |
+| `npx vitest run src/modules/master-col-simas-online` | **17 uji lulus** |
+| `npx vitest run` (seluruh frontend) | 96 lulus, **3 gagal** — lihat di bawah |
+
+**Ketiga kegagalan itu BUKAN akibat sesi ini, dan itu dibuktikan, bukan diduga.** Ketiganya di
+`master-rekening/AccountPage.test.tsx` (tombol Approve/Reject). Pembuktiannya: `AccountForm.tsx`
+diganti sementara dengan versi `git show origin/master:...`, uji dijalankan lagi, dan **ketiga
+kegagalan yang sama tetap muncul**. Berkasnya lalu dikembalikan. Ini persoalan yang §14.4 sudah
+catat menunggu keputusan Work Owner.
+
+> Baseline uji frontend yang saya jalankan di awal sesi **tidak sahih** sebagai pembanding: ia
+> berhenti pada 120 detik dan kegagalannya adalah `Failed to start forks worker`, bukan uji yang
+> benar-benar merah. Saya sempat membacanya sebagai "baseline hijau" — keliru, dan diperbaiki
+> dengan pembuktian di atas.
+
+### 17.8 Yang belum dapat dibuktikan
+
+| Hal | Sebab |
+|---|---|
+| Adapter SQL terhadap Oracle sungguhan | migrasi `0004` **belum pernah dijalankan di lingkungan mana pun**; DDL `M_CAUSE_OF_LOSS` belum dibaca dari katalog |
+| Bentuk dokumen JSON pada langkah 1 dan 3 migrasi | kunci `$.COL_DESC`, `$.MST_COL_ID`, dan `$.BISNISID[*].ID` **diturunkan dari nama property Pega**, bukan dibaca dari DDL view |
+| Lebar kolom `M_COL_ID` | menentukan kapan penomoran mentok; kode ke-1000 menjadi lima karakter |
+| Kesetaraan dengan layar Pega | menuntut Pega staging yang dapat ditembak dari luar (`ADR-0027`) |
+
+### 17.9 Yang diminta ke pihak lain
+
+| Kepada | Yang diminta | Kenapa menahan |
+|---|---|---|
+| DBA | `DBMS_METADATA.GET_DDL('VIEW','V_M_CAUSE_OF_LOSS','POOLDATA')` | **satu-satunya sumber** yang tahu bentuk dokumen JSON-nya; langkah 1 dan 3 migrasi berdiri di atas tebakan sampai ini ada |
+| DBA | daftar kolom `POOLDATA.M_CAUSE_OF_LOSS` beserta lebar `M_COL_ID` | migrasi 0002 membuktikan tebakan kolom bisa salah dan menghentikan migrasi di baris pertama |
+| DBA | `LAST_NUMBER` `POOLDATA.M_CAUSE_SEQ` | jarak ke batas tiga digit belum dapat dihitung |
+| DBA | isi `POOLDATA.M_CAUSE_OF_LOSS` dan `POOLDATA.BUSINESS` (CSV) | isi contoh adapter memori **susunan sendiri**; tidak boleh dipakai sebagai dasar uji kesetaraan |
+| DBA | `GRANT SELECT` atas `POOLDATA.BUSINESS` | tabel milik GISFW; sampai modul ini aplikasi tidak pernah menyentuhnya, jadi haknya belum tentu ada |
+| Work Owner | persetujuan bahwa **Nama Cause of loss wajib diisi** | selisih terencana terhadap Pega; harus dinyatakan sebelum gerbang 1 |
+| Work Owner | persetujuan **titik cutover** langkah 5 migrasi | sesudahnya, layar Simas Online di Pega berhenti menampilkan perubahan dari aplikasi baru |
+
+### 16.10 Pemeriksaan ulang terhadap layar Pega (2026-09-21, lanjutan)
+
+Work Owner meminta implementasinya dicek ulang terhadap aplikasi Pega, dan meminta hal yang masih
+janggal diajukan sebagai pertanyaan berpilihan.
+
+**Yang diperiksa ulang**, dan kali ini `Section/BrowseMasterDocumentTravel-Section.xml` dibaca
+utuh — bukan hanya dicari nama activity-nya seperti pada putaran pertama:
+
+| Yang dicari | Ditemukan |
+|---|---|
+| Teks setiap kendali | judul layar, header kolom, label isian, judul form |
+| Perilaku tombol Tambah | menjalankan Data Transform `CNMShowInsertMstDocTravel_dt` |
+| Isi Data Transform itu | `REMOVE TempMstDocTravel` lalu `SET pyLabel = "Update"` |
+| Syarat tampil form | `pyContainerVisibleWhen: TempMstDocTravel.pyLabel = 'Update'` |
+| Perilaku grid | `pyPageSize = 50`, nol `pySortFilterProperty` |
+| Ikatan setiap isian | `TempMstDocTravel.DOCID` read-only, `.NAMADOKUMEN` dapat diisi |
+
+**Satu hal terbukti yang sebelumnya hanya saya duga:** Tambah dan Ubah memang memakai **satu form
+yang sama** — Tambah menghapus halaman temp-nya lalu menyetel penanda yang sama dengan Ubah. Itu
+persis bentuk yang sudah dibangun, jadi tidak ada yang berubah karenanya.
+
+**Lima selisih ditemukan**, dan **dua di antaranya tidak saya sadari sebelumnya**:
+
+| # | Hal | Sadar? |
+|---|---|---|
+| 1 | label isian DOCID "ID Kerugian" | **tidak** |
+| 2 | header kolom "Judul Dokumen Travel" | **tidak** |
+| 3 | judul form "Memperbaharui Data" untuk kedua mode | ya |
+| 4 | wadah form modal, bukan panel | ya |
+| 5 | grid dipaginasi 50 dan tanpa pencarian | **paginasinya tidak** |
+
+Keempat pertanyaan diajukan berpilihan, masing-masing dengan bukti `berkas:baris`, rekomendasi,
+dan akibat yang diterima bila memilihnya. Keputusannya di keputusan-implementasi §17.14 — empat
+mengikuti Pega, satu (bentuk modal) sengaja tidak.
+
+### 16.11 Yang dikerjakan atas keputusan itu
+
+| Berkas | Perubahan |
+|---|---|
+| `TravelDocumentForm.tsx` | label "ID" → **"ID Kerugian"**; judul form menjadi **"Memperbaharui Data"** untuk kedua mode |
+| `TravelDocumentPage.tsx` | header kolom → **"Judul Dokumen Travel"**; `searchable={false}`, `pageSize={50}` |
+| `components/DataTable.tsx` | dua prop opsional baru: `searchable` (bawaan `true`) dan `pageSize` (bawaan tidak diisi), ditambah komponen `Paginator` |
+| `TravelDocumentPage.test.tsx` | 2 uji lama disesuaikan teksnya, **5 uji baru** mengunci kesetiaan pada Pega |
+
+**Komponen bersama disentuh, dan itu perlu dijelaskan.** `DataTable` dipakai Master Status Klaim
+dan Master Status Progres yang sudah selesai — keduanya masuk Isolasi Protektif. Yang membuat
+perubahan ini aman adalah **bawaan propnya**: `searchable = true` dan `pageSize` kosong berarti
+perilaku lama persis. Tidak ada satu pun berkas kedua modul itu yang disunting, dan suite
+lengkapnya dijalankan untuk membuktikannya.
+
+Alternatifnya — membuat tabel sendiri di dalam modul ini — ditolak: `08-TECHNICAL-STRATEGY.md` §3
+melarang `<table>` mentah di luar pustaka komponen, dan justru inilah yang dimaksud `U-2` dengan
+leverage.
+
+### 16.12 Verifikasi setelah koreksi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` | lulus |
+| `go test ./...` | **30 paket lulus, 0 gagal** |
+| `tsc --noEmit` | lulus |
+| Uji frontend | **101 lulus / 3 gagal (8 berkas)** |
+| Uji modul ini saja | **16 lulus / 0 gagal** |
+
+Ketiga yang gagal tetap **ketiga yang sama** — `AccountPage.test.tsx`, tabrakan nama tab dan
+tombol "Approve"/"Reject" (§14.4). Naik dari 96 menjadi 101 karena 5 uji baru.
+
+### 16.13 Kesalahan metode yang tercatat
+
+Kelima selisih ditemukan dengan membaca berkas yang **pada putaran pertama saya lewati isinya**.
+Saya membuka `Section/BrowseMasterDocumentTravel-Section.xml` hanya untuk mencari nama activity
+dan ada-tidaknya validasi, lalu mengambil daftar kolom dari Report Definition.
+
+Report Definition memberi **nama kolom basis data**; Section memberi **teks yang dilihat
+pengguna**. Mengambil teks layar dari Report Definition menghasilkan "Judul Dokumen" padahal
+layarnya berbunyi "Judul Dokumen Travel" — dan kekeliruan seperti itu tidak akan pernah
+terdeteksi kompilator maupun uji yang saya tulis sendiri, karena uji saya mencerminkan
+kekeliruannya.
+
+> **Untuk modul berikutnya: teks layar hanya boleh diambil dari Section dan Harness.** Report
+> Definition menjawab "kolom apa", bukan "tertulis apa". `D-13` menuntut teksnya, bukan kolomnya.
+
+---
+
+## 18. Sesi kesepuluh, bagian kedua — pemeriksaan ulang ke Pega dan empat koreksi (2026-09-21)
+
+### 18.1 Permintaan
+
+> "tolong tanyakan kepada saya dalam bentuk pertanyaan dan opsi jawaban untuk hal yang masih
+> janggal, biar bener2 beres, sekalian for note tolong di cek lagi seperti aplikasi PEGA"
+
+Pemeriksaan ulang dijalankan LEBIH DULU, sebelum pertanyaan disusun — supaya pertanyaannya berdiri
+di atas bukti, bukan di atas dugaan. Itu yang membuat empat dari empat pertanyaan ternyata punya
+jawaban yang mengubah kode, bukan sekadar menegaskan yang sudah ada.
+
+### 18.2 Yang ternyata sudah benar
+
+Dicatat supaya tidak diperiksa ulang lagi:
+
+| Hal | Bukti |
+|---|---|
+| Grid 2 kolom, keduanya read-only | `Online_BrowseCauseOfLoss-Section.xml:2635` (`.M_COL_ID`) dan `:2798` (`.COL_DESC`), keduanya `pyReadOnly=true` |
+| Tombol Tambah & Refresh | `Online_GridCauseOfLoss-Section.xml:1644`, `:1936` |
+| Klik baris memuat ke form | `pyEvent=click` → `SetDataCauseofflossOnline` (`:3052`, `:3192`) |
+| Bisnis = grid banyak baris | `pyPageListProperty` (`:5752`) |
+| **ID bisnis memang disimpan** | autocomplete memetakan dua kolom: `.Note` yang terlihat, dan `.ID` ber-`pyShow=false` tetapi `pySetValueOnSelect=true` (`:6150-6180`) |
+
+### 18.3 Temuan yang menguatkan keputusan yang sudah diambil
+
+Parameter klik baris ternyata:
+
+```
+SetDataCauseofflossOnline(status = .DISC, id_col = .M_COL_ID, rownums = .KOMISI)
+```
+
+`DISC` (diskon) dipakai mengangkut **status form**, `KOMISI` (komisi) mengangkut **nomor baris**.
+Itu persis utang teknis "alias kolom menyesatkan" (`03-CURRENT-ARCHITECTURE.md` §4.2) — properti
+yang ada dipakai ulang alih-alih membuat yang baru. Keduanya perkakas antarmuka Pega, bukan data
+bisnis, jadi benar tidak dibawa.
+
+### 18.4 Empat koreksi, dan apa yang berubah karenanya
+
+| # | Yang keliru | Bukti | Keputusan Work Owner |
+|---|---|---|---|
+| 1 | `MST_COL_ID` dibangun sebagai **teks bebas** | `:4594-4604` — isiannya daftar bersumber `BrowseVMCauseOfLoss_RD` ber-`pyAppliesTo` `V_M_CAUSE_OF_LOSS`, `pyValue=.M_COL_ID`, `pyPrompt=.COL_DESC` | **Dropdown COL lain** — ia rujukan-diri ke COL induk |
+| 2 | Label "ID" dan urutan isian | `:4301` "ID Kerugian", `:4489`, `:4813`, `:5874` | **Samakan persis dengan Pega** |
+| 3 | Judul mode tambah dikarang | `:4103` satu caption literal untuk kedua modus | **Samakan dengan Pega** |
+| 4 | Bisnis di luar master **ditolak** | `:6089` `pyAllowFreeFormInput=true` | **Terima apa adanya seperti Pega** |
+
+Koreksi 1 dan 4 mengubah model data, bukan hanya teks. Keduanya dikerjakan menyeluruh, bukan
+ditambal.
+
+### 18.5 Akibat koreksi 1 — MST_COL_ID menjadi rujukan-diri
+
+| Lapisan | Yang berubah |
+|---|---|
+| Domain | `CauseOfLoss.MasterCode` didokumentasikan sebagai Code baris lain |
+| Usecase | `checkParent` baru: induk yang tidak ada ditolak sebagai pelanggaran isian (bukan 500), dan **rujukan-diri ditolak** — baris yang menjadi induk bagi dirinya sendiri membentuk lingkaran |
+| Frontend | `SelectField` berisi cause of loss lain, berlabel `kode — nama` persis `pyValue`/`pyPrompt` Pega; baris yang sedang disunting **dikeluarkan dari pilihan** |
+
+Pilihan induk diambil dari daftar yang **sudah dimuat** — tidak ada permintaan tambahan.
+
+### 18.6 Akibat koreksi 4 — nama bisnis boleh diketik bebas
+
+Ini yang paling jauh akibatnya, karena `BISNISID` menjadi **boleh kosong**.
+
+**Yang berubah di kontrak API.** `bisnis` pada permintaan berisi **nama**, bukan ID:
+
+```json
+{"nama":"BANJIR","id_master_kerugian":"1001","bisnis":["FIRE / PROPERTY","BENGKEL BARU"]}
+```
+
+Alasannya bukan selera: nama itulah yang benar-benar terikat di layar Pega (`pyValue = .Note`),
+dan nama yang diketik bebas memang tidak punya ID. Server yang menyelesaikannya menjadi ID dengan
+mencocokkan ke master — cara yang sama dengan autocomplete Pega yang mengisi `.ID` saat sebuah
+pilihan diambil dari daftar.
+
+**Yang berubah di tabel pemetaan.** Kunci tidak lagi dapat berupa `BISNISID`:
+
+| Kolom | Peran |
+|---|---|
+| `NAMA_BISNIS` | **identitas baris**; selalu terisi |
+| `BISNISID` | **boleh NULL**; terisi bila namanya cocok dengan master saat disimpan |
+| `URUTAN` | susunan yang disusun pengguna di grid |
+| `STS_AKTIF` | soft delete (`D-66`) |
+
+Keunikannya ditegakkan indeks unik atas `(M_COL_ID, UPPER(TRIM(NAMA_BISNIS)))` — ekspresi yang
+**sama persis** dengan `mastercolsimasonline.SameBusiness` di Go dan dengan penyaring pada kueri
+`cause_of_loss_business_activate`. Bila ketiganya berbeda pendapat, baris kembar lolos.
+
+**Tiga akibat yang tidak langsung terlihat:**
+
+1. **Join ke `POOLDATA.BUSINESS` dibuang seluruhnya** dari kueri pembaca. Nama sudah tersimpan di
+   `NAMA_BISNIS`, dan join apa pun akan gagal menemukan baris yang memang tidak punya ID — persis
+   kelas cacat yang kueri lama punya. Ia sekaligus menghemat satu join.
+2. **`URUTAN` menjadi perlu.** Sebelumnya pembacaan diurutkan `BISNISID`, yang akan menempatkan
+   seluruh baris tanpa ID di satu ujung — layar menampilkan urutan yang berbeda dari yang baru
+   saja disimpan. Ini cacat yang ada di versi pertama dan hanya terlihat karena koreksi ini.
+3. **Kegagalan membaca master tidak lagi menggagalkan penyimpanan.** Master hanya dipakai untuk
+   MELENGKAPI ID; melengkapi yang gagal lebih baik daripada menolak penyimpanan yang sah. Yang
+   hilang hanya ID-nya — keadaan yang memang sudah harus ditangani setiap pembaca.
+
+**Kunci asing ke `POOLDATA.BUSINESS` tetap tidak dibuat**, dan alasannya kini lebih keras daripada
+sekadar kepemilikan tabel: kunci asing akan menolak tepat baris yang Work Owner putuskan harus
+diterima.
+
+### 18.7 Komponen antarmuka baru
+
+`src/components/ComboField.tsx` — `<input list>` + `<datalist>`: menawarkan saran tanpa memaksanya.
+
+`SelectField` tidak dapat menirunya, karena dropdown menutup nilai di luar daftar dan itu mengubah
+perilaku layar. `<datalist>` adalah padanan HTML baku yang paling dekat — tanpa pustaka tambahan,
+dan tanpa menuliskan sendiri penanganan papan ketik yang sudah disediakan peramban.
+
+Ia ditaruh di pustaka bersama, bukan di dalam modul: isian "bebas ketik dengan saran" akan muncul
+lagi pada layar lain, dan `08-TECHNICAL-STRATEGY.md` §5 menuntut seluruh isian memakai komponen
+baku. Berkasnya **baru**, tidak menyunting komponen yang sudah ada — Isolasi Protektif tidak
+tersentuh.
+
+### 18.8 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` | lulus |
+| `go test ./...` | **seluruhnya lulus** |
+| `gofmt -l ./internal/mastercolsimasonline/` | kosong |
+| `npx tsc --noEmit` | lulus |
+| `npx vitest run src/modules/master-col-simas-online` | **24 uji lulus** (dari 17) |
+
+Dijalankan sungguhan terhadap aplikasi yang menyala, dan keenam perilaku barunya terbukti:
+
+```
+"  fire / property  "  ->  {"id":"006","nama":"FIRE / PROPERTY"}   ejaan master dipakai
+"BENGKEL BARU"         ->  {"id":"","nama":"BENGKEL BARU"}         diterima tanpa ID
+id_master_kerugian 9999 ->  422, "Cause of loss 9999 tidak ada"
+1001 induk bagi 1001    ->  422, "tidak dapat menjadi induk bagi dirinya sendiri"
+["Aneka","  ANEKA  "]   ->  422, kembar dikenali lintas kapitalisasi
+PUT ["TRAVEL","ANEKA"]  ->  pemetaan diganti, urutan dipertahankan
+```
+
+### 18.9 Yang bertambah ke daftar tagihan
+
+| Kepada | Yang diminta | Kenapa menahan |
+|---|---|---|
+| DBA | isi `POOLDATA.BUSINESS` — khususnya lebar kolom `NOTE` | `MaxBusinessNameLength` = 100 masih penjaga; nama yang diketik bebas tidak ada yang menjamin muat |
+| Work Owner | persetujuan bahwa **nama bisnis kembar ditolak** | Pega tidak memeriksanya sama sekali; ini selisih terencana ketiga di luar 13 butir `P-5` |
+| Work Owner | persetujuan bahwa **rujukan-diri ditolak** | Pega tidak memeriksanya; selisih terencana keempat |
+| DBA | hitungan baris lama yang `BISNISID`-nya kosong setelah migrasi | gambaran seberapa sering isian bebas dipakai — bahan memutuskan apakah kelak diperketat |
+
+---
+
+## 19. Sesi kesepuluh, bagian ketiga — keempat penyimpangan dicabut (2026-09-21)
+
+### 19.1 Permintaan
+
+> "untuk yang butuh persetujuan silahkan cek lagi pada PEGA samain ja"
+
+Bagian kedua sesi ini menyisakan empat hal yang menunggu persetujuan Work Owner karena berbeda
+dari Pega. Instruksinya: periksa lagi ke Pega, lalu samakan.
+
+Pemeriksaan dijalankan lebih dulu untuk setiap butir — bukan diasumsikan Pega tidak memvalidasi,
+melainkan **dibuktikan**.
+
+### 19.2 Apa yang benar-benar dilakukan Pega
+
+| Yang diperiksa | Perintah/lokasi | Hasil |
+|---|---|---|
+| Validasi isian pada layar | `Section/Online_BrowseCauseOfLoss-Section.xml` | **`pyRequired=false` pada SELURUH 19 isian** |
+| Validasi pada activity simpan | `Activity/Online_nsertCauseOfLoss_act-Act.xml` | hanya `Page-New`, `Property-Set`, `RDB-List`, `Page-Remove` — **nol Page-Validate, nol Property-Validate** |
+| Rule validasi tersendiri | direktori export | **tidak ada direktori `Validate/` sama sekali** |
+| Keunikan pada grid Bisnis | baris 5700–6200 | **nol penanda unique/duplicate** |
+| Kontrol `MST_COL_ID` | baris 4546 | **`pxDropdown`**, `pyRequiredNew=false`, `pyHasNoSelection=false` |
+| Penyaring pada sumber dropdown | `BrowseVMCauseOfLoss_RD` | **nol filter** — baris itu sendiri ikut ditawarkan |
+| Siapa membaca `MST_COL_ID` | seluruh export + seluruh `Database/*.prc` | **hanya 2 tempat**, keduanya bagian layar ini; **nol di seluruh procedure** |
+
+Butir terakhir yang paling menentukan: **tidak ada apa pun yang menelusuri jenjang induk-anak.**
+Alasan saya menolak rujukan-diri — "membentuk lingkaran yang membuat penelusuran berputar tanpa
+henti" — karena itu **terbantah**. Tidak ada penelusuran; rujukan-diri adalah data mati.
+
+### 19.3 Yang diubah
+
+| # | Sebelum | Sesudah |
+|---|---|---|
+| 1 | Nama Cause of loss **wajib diisi** | **boleh kosong** |
+| 2 | Bisnis kembar **ditolak** | **diterima**, kedua baris tersimpan |
+| 3 | Judul mode tambah "Tambah Data Simas Online" | **"Memperbaharui Data Simas Online"** untuk kedua modus |
+| 4 | Rujukan-diri **ditolak**; baris sendiri dikeluarkan dari dropdown | **diterima**; baris sendiri **ikut ditawarkan** |
+
+Ditambah dua yang sudah dikerjakan di bagian kedua: label **"ID Kerugian"** dan urutan isian
+**ID Kerugian → ID Master Kerugian → Nama Cause of loss → Bisnis**.
+
+### 19.4 Satu yang TIDAK diubah, beserta alasannya
+
+**Induk yang tidak ada tetap ditolak server.** Ia bukan penyimpangan:
+
+Di Pega, isiannya `pxDropdown` yang hanya menawarkan kode yang benar-benar ada, sehingga kode yang
+tidak ada **tidak pernah dapat tersimpan lewat layar itu**. Aturannya sama; yang berbeda hanya
+**tempat penegakannya** — dan `D-59` menuntut setiap endpoint memeriksa sendiri, karena API dapat
+ditembak tanpa melewati layar.
+
+Presedennya sudah ada dan sudah disetujui: `masterstatusprogres.Input.Check` menolak kode posisi
+yang tidak dikenal dengan alasan yang sama persis — *"Menolak kode yang tidak dikenal adalah
+kendali yang di sistem lama diberikan oleh dropdown."*
+
+Hasilnya identik bagi pengguna. Bila Work Owner tetap ingin pemeriksaan ini dibuang, ia satu baris
+dan dapat dicabut kapan saja.
+
+### 19.5 Akibat yang paling jauh: kunci baris pemetaan berpindah
+
+Mengizinkan bisnis kembar membatalkan rancangan penyimpanan bagian kedua.
+
+Ketiga kandidat kunci, dan dua di antaranya gugur karena bukti:
+
+| Kandidat | Status |
+|---|---|
+| `BISNISID` | **gugur** — boleh NULL, karena nama yang diketik bebas tidak punya ID |
+| `NAMA_BISNIS` | **gugur** — tidak unik, karena bisnis kembar diizinkan |
+| **`URUTAN`** (posisi baris di grid) | **dipakai** |
+
+Posisi memang identitas yang benar: `TempCauseOfLoss.BISNISID` di Pega adalah **PageList**, yang
+barisnya pun dikenali lewat nomor urutnya.
+
+| Yang berubah | Sebelum | Sesudah |
+|---|---|---|
+| Kunci tabel | indeks unik atas `(M_COL_ID, UPPER(TRIM(NAMA_BISNIS)))` | **PRIMARY KEY `(M_COL_ID, URUTAN)`** |
+| Kueri upsert | mencocokkan nama | mencocokkan **posisi** |
+| Helper domain | `SameBusiness` (deteksi kembar) | **`NormalizeBusinessName`** (pencocokan ke master) |
+
+`NormalizeBusinessName` tetap ada dan tetap diekspor, tetapi perannya berubah: ia tidak lagi
+menolak kembar, ia memastikan "aneka" yang diketik pengguna tetap menemukan ID bisnis "ANEKA" di
+master.
+
+### 19.6 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` · `go test ./...` | **seluruhnya lulus** |
+| `gofmt -l ./internal/mastercolsimasonline/` | kosong |
+| `npx tsc --noEmit` | lulus |
+| `npx vitest run src/modules/master-col-simas-online` | **25 uji lulus** |
+
+Dibuktikan lewat aplikasi yang berjalan:
+
+```
+nama ""                       -> 201, tersimpan kosong
+bisnis ["ANEKA","ANEKA"]      -> 201, KEDUA baris tersimpan
+1001 induk bagi 1001          -> 200, tersimpan
+id_master_kerugian "9999"     -> 422 (dropdown Pega mustahil menghasilkannya)
+```
+
+### 19.7 Yang berubah di daftar tagihan
+
+**Empat butir persetujuan DICABUT** — tidak ada lagi yang menunggu keputusan soal penyimpangan
+perilaku, karena tidak ada lagi penyimpangannya.
+
+Yang tersisa untuk Work Owner hanya satu, dan sifatnya berbeda: **titik cutover langkah 5 migrasi**
+— sesudahnya layar Simas Online di Pega berhenti menampilkan perubahan dari aplikasi baru.
+
+Ke DBA tetap: DDL `V_M_CAUSE_OF_LOSS`, lebar `M_COL_ID` dan `BUSINESS.NOTE`, posisi `M_CAUSE_SEQ`,
+isi kedua tabel, dan `GRANT SELECT` atas `POOLDATA.BUSINESS`. Ditambah dua hitungan yang kini
+bersifat **laporan**, bukan penghalang: berapa baris lama yang `BISNISID`-nya kosong, dan berapa
+cause of loss yang memetakan satu bisnis lebih dari sekali.
+
+### 19.8 Kesalahan sendiri yang tercatat
+
+**Saya membangun empat aturan yang tidak ada di Pega, dan menyebutnya "perbaikan terencana".**
+
+Ketiganya masuk akal secara teknis — nama kosong memang muncul sebagai pilihan kosong di dropdown
+lain, bisnis kembar memang tidak bermakna, rujukan-diri memang terdengar berbahaya. Tetapi `P-5`
+menetapkan perilaku dipertahankan lebih dulu, dan `D-49` sudah memutuskan **13 butir perbaikan
+eksplisit** — tidak ada satu pun yang menyangkut layar ini.
+
+Pola yang harus diingat: **"ini jelas lebih baik" bukan dasar yang cukup untuk menyimpang.**
+Dasarnya adalah keputusan tertulis. Dan pada kasus rujukan-diri, alasan teknis saya bahkan
+**salah** — saya membayangkan penelusuran jenjang yang tidak pernah ada, tanpa memeriksanya lebih
+dulu.
+
+---
+
+## 20. Sesi kesebelas — modul Daftar Tipe Dokumen (2026-09-21)
+
+Permintaan Work Owner: menambah modul **Daftar Tipe Dokumen**, dengan
+`Harness/ListDocumentTypeInbox-Harness.xml` sebagai rujukan yang diperiksa penuh lebih dulu.
+
+### 20.1 Apa yang dibaca dari Pega sebelum satu baris kode ditulis
+
+| Hal | Temuan | Berkas |
+|---|---|---|
+| Menu | `MENU_ID 40` · `ListDocumentTypeInbox` · induk MASTER, urutan 1130 | `Database/m_menu_aplikasi_pnc.csv:35` |
+| Kelas | `ASM-FW-GCNMFW-Int-V_LST_DOC_TYPE` | `Activity/CNMSetListDocumentType_act-Act.xml` |
+| Tabel | `POOLDATA.LST_DOC_TYPE (ID, JSON_DATA)` — isinya JSON, dibongkar view | `Database/PEGA_LST_DOC_TYPE.prc:23` |
+| Kolom view | `ID`, `OLD_ID`, `TYPE_DOCUMENT`, `STS_PROSES`, `USER_EDIT`, `TGL_EDIT` | `Report Definition/BrowseLstDocType_RD-RD.xml` |
+| Penulis | **satu-satunya** — `UpdateLstDocType-SQL` memanggil `PEGA_LST_DOC_TYPE` | `RDB List/UpdateLstDocType-SQL.xml` |
+| Pembaca lain | 10+ rule, seluruhnya hanya membaca `ID` dan `TYPE_DOCUMENT` | `BrowseRegisterCvg-SQL.xml:82` dan sejenisnya |
+| Bentuk ID | kode situs disambung nomor urut **empat digit** dari `SET_LST_DOC_TYPE` | `PEGA_LST_DOC_TYPE.prc:21` |
+| Urutan grid | `ID` menaik — `pySortOrder=1`, `pySortType=ASC` | `BrowseLstDocType_RD-RD.xml:1676-1682` |
+| Paginasi | `pyPageSize=50`, `pyMaxRecords=500` | berkas yang sama |
+| Jejak simpan | `USER_EDIT` dari identitas operator, `TGL_EDIT` dari cap waktu | `CNMInsertListDocumentType_act-Act.xml` |
+
+### 20.2 Temuan yang paling mudah salah dibaca: `STS_PROSES` bukan status
+
+Namanya menyiratkan penanda aktif/non-aktif. Ia **bukan**, dan dua bukti mengunci itu:
+
+1. Di form Pega ia isian teks biasa — `pyEditOptions=Auto`, **tanpa** daftar pilihan, tanpa
+   `pyRequired`, tanpa `pyMaxLength` (`Section/BrowseListDocumentType-Section.xml:13455`).
+2. Layar Arsip Dokumen membacanya sebagai catatan bebas dan **mengalias-namakannya `"NoteKasir"`**
+   (`Activity/SearchDataArchiveFilling-Act.xml`, `Activity/GetDataArchiveCabangKlaim-Act.xml`).
+
+Menjadikannya dropdown berisi nilai yang dikarang sendiri akan menolak isian yang selama ini sah
+dan menyempitkan kolom yang dibaca layar lain. **Work Owner menetapkan 2026-09-21: ditiru apa
+adanya sebagai teks bebas.** Di layar ia diberi keterangan supaya petugas tidak mengiranya sakelar.
+
+### 20.3 Pertanyaan yang diajukan dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Perlakuan `STS_PROSES` | **Teks bebas, ditiru apa adanya** |
+| 2 | Validasi isian | **Tanpa validasi**, seperti Master Dokumen Travel |
+| 3 | Bentuk penyimpanan | **Tidak memakai JSON lagi**; disimpan langsung ke kolom sesuai Pega |
+| 4 | Bentuk grid | **Tanpa kotak cari**, 50 baris per halaman |
+| 5 | Dipisah per portal entitas? | "tolong dicek lagi seperti aplikasi PEGA" |
+
+Butir 5 dijawab dengan memeriksa, bukan menebak: `PEGA_LST_DOC_TYPE.prc:12` membentuk ID lewat
+pembacaan `M_SITE_DATABASE` — **mekanisme identik** dengan `DOCTRAVEL_CVG.prc:12` dan
+`PEGA_M_CAUSE_OF_LOSS.prc:11`, dua master yang sudah diputuskan per entitas. Kode situs melekat pada
+basis data tempat procedure berjalan, sehingga tiap entitas menerbitkan awalan ID-nya sendiri.
+**Kesimpulan: per entitas — modul dibangun portal-aware.**
+
+### 20.4 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `internal/daftartipedokumen/daftartipedokumen.go` |
+| Usecase | `internal/daftartipedokumen/usecase/manage.go` |
+| Repo SQL | `internal/daftartipedokumen/repo/sqlstore/` — `.go`, `.sql`, `query.go` |
+| Repo memori | `internal/daftartipedokumen/repo/memory/` — `memory.go`, `sample.go` |
+| Transport | `internal/daftartipedokumen/http/` — `dto.go`, `errors.go`, `handler.go`, `routes.go` |
+| Migrasi | `migrations/0005_daftar_tipe_dokumen.up.sql` dan `.down.sql` |
+| Layar | `frontend/src/modules/daftar-tipe-dokumen/` — `api.ts`, `DocumentTypePage.tsx`, `DocumentTypeForm.tsx` |
+
+Rute API: `GET|POST /api/master/tipe-dokumen`, `GET|PUT /api/master/tipe-dokumen/{id}`.
+Rute layar: `/master/tipe-dokumen`. Entri menu: `ListDocumentTypeInbox`.
+
+### 20.5 Satu hal yang berbeda dari tiga modul master sebelumnya
+
+Modul ini **menuliskan jejak simpan** — `USER_EDIT` dan `TGL_EDIT` — dan ketiga modul master
+sebelumnya tidak. Akibatnya dua hal yang tidak ada di sana:
+
+- **Jembatan identitas pemanggil** (`Options.Caller`), bentuknya sama dengan yang sudah dipakai
+  Master Rekening. Ia dipasang di `cmd/claimpnc`, bukan di dalam modul, supaya modul auth dan modul
+  ini tetap tidak saling mengimpor.
+- **Seam jam** (`Options.Clock`) di usecase. Waktu tidak diambil `time.Now()` di dalam repo dan
+  tidak diambil dari jam basis data di SQL — `F-5` menetapkan satu seam, dan tanpa itu penyimpanan
+  tidak dapat diuji deterministik. Ada uji khusus yang menjaga larangan itu.
+
+Keduanya BUKAN isian pengguna: `SaveRequest` hanya menerima dua field, dan uji kontrak menolak
+badan permintaan yang menyertakan `id` maupun `user_edit`.
+
+### 20.6 Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | **hijau** |
+| `go vet ./...` | **hijau** |
+| `go test ./...` | **hijau** — seluruh paket |
+| `tsc --noEmit` | **hijau** |
+| `vitest` modul ini | **hijau** — 11 uji |
+| `vitest` seluruhnya | **3 gagal di `master-rekening`** — lihat §20.7 |
+
+### 20.7 Tiga kegagalan yang BUKAN dari modul ini, dan bagaimana dipastikan
+
+`master-rekening/AccountPage.test.tsx` gagal pada tiga uji komite. Modul itu **tidak disentuh**
+(Isolasi Protektif). Pemastiannya menemukan sebab yang lebih mendasar:
+
+**Keadaan ter-commit branch ini masih memuat penanda konflik merge yang belum terselesaikan** —
+`<<<<<<< HEAD` di `app/App.tsx` dan di `master-rekening/AccountForm.tsx`. Artinya HEAD bahkan tidak
+dapat dikompilasi, dan perbaikannya ada di working tree rekan yang **belum di-commit**. Ketiga uji
+itu milik merge yang sedang berjalan.
+
+Suntingan saya pada berkas bersama murni penambahan — satu kunci `ErrorCode`, empat tipe, satu
+rute, satu entri menu — dan tidak satu pun dibaca `AccountPage`.
+
+### 20.8 Kesalahan sendiri yang tercatat
+
+**Saya menjalankan `git stash push` pada tiga berkas bersama untuk membuktikan kegagalan itu bukan
+milik saya — dan itu ikut membatalkan perbaikan konflik merge rekan yang belum di-commit.**
+
+Kerusakannya sesaat dan langsung dipulihkan `git stash pop` tanpa konflik, lalu diperiksa: ketiga
+suntingan saya kembali utuh dan tidak ada penanda konflik tersisa. Tetapi risikonya nyata — bila
+pop gagal, pekerjaan orang lain yang belum tersimpan di riwayat akan hilang.
+
+Pola yang harus diingat: **di repositori yang working tree-nya memuat pekerjaan orang lain yang
+belum di-commit, `git stash` bukan operasi baca.** Bukti yang sama sebenarnya sudah tersedia tanpa
+menyentuh apa pun — cukup membaca `git diff`, yang justru memperlihatkan penanda konflik itu.
+
+### 20.9 Yang bertambah ke daftar tagihan
+
+Ke **DBA**, seluruhnya tercatat sebagai langkah 0 pada migrasi 0005:
+
+- DDL `POOLDATA.V_LST_DOC_TYPE` yang berlaku sekarang — ia satu-satunya yang menjawab apakah
+  **`OLD_ID` kolom sungguhan atau nilai dari JSON**, dan jawabannya menentukan langkah 3 migrasi.
+- Daftar kolom dan **lebar `ID`** pada `LST_DOC_TYPE`.
+- Posisi urutan **`SET_LST_DOC_TYPE`** — namanya memang bukan `LST_DOC_TYPE_SEQ`.
+- **Bentuk `TGL_EDIT` di dalam JSON**; pemindahannya sengaja dipisah dari UPDATE utama supaya satu
+  baris berformat tak terduga tidak menggagalkan seluruh migrasi.
+- Isi tabel yang sebenarnya — contoh di `repo/memory/sample.go` adalah **susunan sendiri**, bukan
+  data produksi, dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1.
+
+Ke **Work Owner**: titik cutover langkah 3 migrasi, dan bahwa migrasi ini dijalankan di **basis data
+setiap entitas**, bukan hanya portal utama.
+
+---
+
+## 21. Sesi kedua belas — modul Daftar Detail Dokumen Travel (2026-09-22)
+
+Permintaan Work Owner: menambah modul **Daftar Detail Dokumen Travel**, dengan
+`Harness/ListDocumentTravel-Harness.xml` sebagai rujukan yang **diperiksa penuh lebih dulu**.
+
+Modul ini turunan langsung dari modul sesi kesembilan. Yang itu master **induk**
+(`M_DOCTRAVEL` — hanya DOCID dan judul); yang ini master **detail** yang merujuknya dan
+menambahkan aturannya. Batas keduanya sudah ditulis di kepala paket sesi kesembilan, dan sesi ini
+yang menagihnya.
+
+### 21.1 Apa yang dibaca dari Pega sebelum satu baris kode ditulis
+
+| Hal | Temuan | Berkas |
+|---|---|---|
+| Menu | `MENU_ID 39` · `ListDocumentTravel` · induk MASTER, urutan 1129 | `internal/menu/repo/memory/sample.go:56` |
+| Layar | judul **"Detail Dokumen Travel"**, tombol Tambah + Refresh | `Section/LSTDocumentTravel-Section.xml` |
+| Grid + form | tombol Simpan dan Ubah, isian dan grid berulangnya | `Section/BrowseDocumentTravel-Section.xml` |
+| Kelas grid | `ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL` | `Report Definition/BrowseLstDocTravel_RD-RD.xml` |
+| Kolom grid | `ID` · `DOCUMENTNAME` · `STSWAJIB` · `DOCID` · `MINUNGGAH` | berkas yang sama |
+| Urutan grid | `ID` menaik (`pySortOrder=1`), lalu `DOCID` menaik (`pySortOrder=2`) | berkas yang sama |
+| Batas hasil | `pyMaxRecords=500` | berkas yang sama |
+| Kelas kedua | `ASM-FW-GCNMFW-Int-V_LST_DOC_TRAVEL_COVERAGE`, ditaut `TRAVELDOCID` | `Activity/BrowseDocTravel-Act.xml` |
+| Arti `STSWAJIB` | **angka**: `.STSWAJIB==1` → `"Ya"`, `.STSWAJIB==0` → `"Tidak"` | berkas yang sama, precondition langkah |
+| Grid berulang | `TempDTDocTravel.COVERAGELIST` — Nama Plan + Nama Jaminan | `BrowseDocumentTravel-Section.xml:3731` |
+| Sumber ID Dokumen | autocomplete `BrowseMstDocTravel_RD` atas `M_DOCTRAVEL` | `BrowseDocumentTravel-Section.xml:1862` |
+| Sumber Plan | autocomplete `BrowsePlanTravelMaster_RD`, menyalin `.ID` ke `.PLANID` | baris `4593` dst. |
+| Sumber Jaminan | autocomplete `SearchCoverageTravel_RD`, **disaring** parameter `plan=.PLANID` | baris yang sama |
+| Pemakai aturannya | jalur registrasi klaim Travel | `Activity/TravelDocument_act-Act.xml` |
+
+### 21.2 Empat artefak yang TIDAK ada di export, dan bagaimana ketiadaannya diperlakukan
+
+Inilah perbedaan terbesar sesi ini dari sebelas sesi sebelumnya: **jalur tulis layar ini hilang**
+(`R-16`).
+
+| Yang hilang | Akibatnya | Perlakuan |
+|---|---|---|
+| `CNMInsertDocumentTravel_act` (tombol Simpan) | bentuk INSERT tidak dapat ditiru | bentuk pernyataannya **disusun di modul ini**, diisolasi di satu berkas `.sql` |
+| `CNMSetDetailTravelDocument_act` (tombol Ubah) | urutan langkah pemuatan form tidak diketahui | ditiru dari **isian formnya**, yang terbaca lengkap |
+| `BrowsePlanTravelMaster_RD`, `SearchCoverageTravel_RD` | nama kolom master plan tidak diketahui | kegagalan membacanya **tidak menghalangi penyimpanan** |
+| definisi view + DDL tabel dasar (`R-08`) | nama tabel tulis tidak diketahui | ditanyakan ke DBA lewat migrasi 0006 |
+
+Tidak ada procedure penggantinya: `Database/DOCTRAVEL_CVG.prc` **hanya melayani `M_DOCTRAVEL`**,
+yakni master induk yang layarnya sudah dibangun sesi kesembilan.
+
+### 21.3 Pengecekan ulang yang diminta Work Owner, dan apa yang ditemukannya
+
+Pada jawaban pertanyaan lingkup, Work Owner menjawab *"seperti aplikasi PEGA saja coba cek lagi"*.
+Pengecekan ulang itu **menemukan sesuatu yang tidak ada pada pembacaan pertama**, dan mengubah
+rancangan:
+
+`Activity/SetspreadingtoCoverage-Act.xml` menyimpan pembenaran peringatan Pega yang berbunyi apa
+adanya:
+
+> "ngambil data coverage bukan dari coverage travel tapi dari **m_plantravel**"
+
+ditambah nama rule `GetDataMasterCoverageTravel_m_plantravel`. Dari situ terbaca dua hal yang
+semula dikira tidak diketahui: **nama tabelnya**, dan bahwa **plan dan jaminan berasal dari SATU
+tabel** — kedua kelas Pega yang tampak berbeda (`Int-PLANTRAVEL` dan `Int-COVERAGETRAVEL`) hanyalah
+dua sudut pandang atasnya.
+
+Akibatnya keduanya dimodelkan sebagai **satu seam** (`PlanRepo`), bukan dua. Tanpa pengecekan ulang
+itu, modul ini akan memuat dua seam yang menyiratkan dua sumber yang sebenarnya satu.
+
+Pengecekan ulang yang sama juga menemukan `M_PLANTRAVEL.TRAVELDOCUMENTID` — kolom yang disalin ke
+`ObjectItem.IDDocTravel` saat registrasi klaim, lalu dipakai `TravelDocument_act` untuk menyaring
+`V_LST_DOC_TRAVEL` berdasarkan `DOCID`. Itu yang **membenarkan** model data yang dipilih.
+
+### 21.4 Pertanyaan yang diajukan dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Jalur simpan hilang dari export — bagaimana modul dibangun? | **"seperti aplikasi PEGA saja namun simpan langsung ke basis data tanpa JSON"** |
+| 2 | Sub-grid Plan/Jaminan ikut dibangun atau tidak? | **"seperti aplikasi PEGA saja coba cek lagi"** — ikut, dan sumbernya dicek ulang |
+| 3 | Isian divalidasi atau tidak? | **Tanpa validasi**, sama seperti Master Dokumen Travel |
+
+Jawaban 1 menutup satu kemungkinan yang sempat saya tawarkan: membangun jalur baca lebih dulu dan
+menunda jalur tulis. Yang diminta adalah modul yang **utuh**, dengan nama objek tulis yang
+ditanyakan ke DBA — bukan modul yang setengah dapat dipakai.
+
+### 21.5 Yang dibangun
+
+**Backend** — `internal/daftardetaildokumentravel/`, 5 lapisan mengikuti pola empat modul master
+sebelumnya:
+
+| Berkas | Isi |
+|---|---|
+| `daftardetaildokumentravel.go` | `Detail`, `Coverage`, `Input`, `Clean()`, **tiga seam**: `Repo`, `DocumentRepo`, `PlanRepo` |
+| `usecase/manage.go` | pemilihan portal untuk ketiga seam, tanpa aturan |
+| `repo/memory/` | ketiga seam di memori + contoh pengembangan |
+| `repo/sqlstore/` | SQL Oracle; **seluruh nama objek tulis terisolasi di satu berkas `.sql`** |
+| `http/` | dto, pemetaan galat, handler, rute |
+
+**Rute baru** — enam, empat milik modul dan dua daftar pilihan yang tabelnya milik pihak lain:
+
+```
+GET    /api/master/daftar-detail-dokumen-travel
+POST   /api/master/daftar-detail-dokumen-travel
+GET    /api/master/daftar-detail-dokumen-travel/{id}
+PUT    /api/master/daftar-detail-dokumen-travel/{id}
+GET    /api/master/dokumen-travel-pilihan     <- M_DOCTRAVEL, milik modul Master Dokumen Travel
+GET    /api/master/plan-travel                <- M_PLANTRAVEL, milik GISFW (D-03)
+```
+
+Kedua rute terakhir sengaja **di luar** sub-rute modul, sejajar dengan `/master/bisnis` milik modul
+Master COL Simas Online: menaruhnya di dalam akan menyiratkan kepemilikan tabel yang justru sedang
+dijaga tidak terjadi (`P-1`).
+
+**Frontend** — `src/modules/daftar-detail-dokumen-travel/`: `api.ts`, `TravelDocumentDetailPage.tsx`,
+`TravelDocumentDetailForm.tsx`, beserta pengujiannya. Ditambah tipe baru di `api/types.ts`, satu
+rute di `App.tsx`, dan satu baris di `app/menu/registry.ts` sehingga butir MENU_ID 39 hidup.
+
+**Migrasi** — `0006_detail_dokumen_travel.up.sql` / `.down.sql`. Berbeda dari migrasi sebelumnya, ia
+**bukan hanya pemberian hak melainkan juga daftar pertanyaan**: enam kueri katalog yang jawabannya
+menentukan apakah modul dapat menyimpan sama sekali.
+
+### 21.6 Keputusan rancangan yang perlu diketahui pembaca berikutnya
+
+**Daftar tidak membawa pembatasan plan; pengambilan satu baris membawanya.** Kueri daftar memang
+tidak membacanya — grid lima kolom dan tidak satu pun menyebut plan. Akibat yang mengikat: layar
+**wajib memuat ulang** baris saat dibuka untuk disunting. Memakai baris dari daftar akan membuat
+form tampak seolah seluruh pembatasannya sudah dihapus, dan menyimpannya **benar-benar
+menghapusnya**. Pola dan alasannya sama persis dengan pemetaan bisnis pada Master COL Simas Online,
+dan dijaga oleh dua pengujian — satu di backend, satu di frontend.
+
+**Daftar pembatasan diganti seluruhnya saat menyimpan, bukan ditambal baris demi baris.** Grid di
+form mengirim susunan akhir yang dikehendaki petugas, dan tidak ada satu pun penanda di sana yang
+menyatakan baris mana yang baru dan mana yang dibuang. Penggantian menyeluruh adalah satu-satunya
+tafsiran yang tidak menebak. `DELETE` yang dipakainya **tidak melanggar `D-66`**: baris itu hanya
+memuat dua rujukan, bukan data bernilai bisnis, dan alasannya ditulis di berkas `.sql`-nya.
+
+**Nama plan dan jaminan boleh diketik bebas, dan kodenya dicarikan dari namanya.**
+`SearchCoverageTravel_RD` ber-`pyAllowFreeFormInput=true`, sehingga nama di luar master TETAP boleh
+disimpan — tanpa kode. Karena itu isiannya `ComboField`, bukan `SelectField`, dan kegagalan memuat
+daftar pilihan **tidak menghalangi penyimpanan**. Perlakuan yang sama dipakai isian Bisnis pada
+Master COL Simas Online.
+
+**Satu urutan basis data untuk dua tabel.** Nomor dari `LST_DOC_TRAVEL_SEQ` dipakai baris induk
+maupun baris pembatasan. Sebabnya bukan kemalasan: setiap nama objek yang belum terverifikasi adalah
+satu hal lagi yang dapat salah dan satu hal lagi yang harus diperiksa DBA. Akibatnya deret ID
+masing-masing tabel **berlubang**, dan itu ditiru juga oleh adapter memori supaya data pengembangan
+tidak menyesatkan.
+
+### 21.7 Kendala yang muncul dan penyelesaiannya
+
+**Zod 4 menolak `z.coerce.number()` pada isian form.** Pemaksaan tipe membuat masukannya bertipe
+`unknown`, dan React Hook Form menolak resolver-nya. Diselesaikan dengan menyimpan Minimal Unggah
+sebagai **teks** di dalam form dan mengubahnya menjadi angka saat menyusun badan permintaan — yang
+sekaligus menghapus cacat yang lebih halus: isian kosong yang berubah menjadi `NaN` lalu dilaporkan
+sebagai "harus berupa angka" kepada pengguna yang sebenarnya tidak mengetik apa pun.
+
+**Saya sempat memakai `type="number"` untuk Minimal Unggah, dan itu keliru.** Pengujian yang gagal
+yang menunjukkannya: peramban menolak ketikan tak-valid sebelum sampai ke kode, sehingga penjaga di
+skema tidak pernah berjalan — dan lebih buruk, nilainya dikosongkan diam-diam sehingga `-2`
+tersimpan sebagai kosong tanpa tanda apa pun. Pemeriksaan ke Pega menyelesaikannya: isiannya di sana
+`pxTextInput`, isian **teks**. Diperbaiki menjadi `type="text"` dengan `inputMode="numeric"`.
+
+**Satu pengujian saya mencari `role="alert"` yang memang tidak ada.** Komponen `Field` bersama tidak
+menandai pesan galatnya dengan peran itu; hanya `ComboField` yang menandainya. Yang keliru
+pengujiannya, bukan kodenya — diperbaiki menjadi pencarian berdasarkan teks. Ketidakseragaman itu
+sendiri **tidak diperbaiki dari sini**: `Field` dipakai seluruh modul yang sudah selesai, dan
+menyentuhnya melanggar Isolasi Protektif. Dicatat di §21.9 sebagai temuan.
+
+**Nomor migrasi sempat salah.** Saya menulis `0005` padahal nomor itu sudah dipakai modul Daftar
+Tipe Dokumen sesi sebelumnya. Ditemukan saat mendaftar isi `migrations/`, dan seluruh rujukannya di
+empat berkas dikoreksi menjadi `0006` sebelum berkasnya dibuat.
+
+### 21.8 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | **lulus** |
+| `go vet ./...` | **lulus** |
+| `gofmt -l internal/daftardetaildokumentravel/` | satu berkas tidak rapi (`http/dto.go`), **sudah diperbaiki**, sekarang bersih |
+| `go test ./internal/daftardetaildokumentravel/...` | **lulus** — 12 uji domain, 13 uji rute |
+| `go test ./...` | **lulus** |
+| `npx tsc --noEmit` | **lulus** |
+| `npx vitest run src/modules/daftar-detail-dokumen-travel` | **lulus** — 15 uji |
+| `npx vitest run` (seluruh frontend) | **135 lulus, 3 gagal** — ketiganya di `master-rekening` |
+
+Ketiga kegagalan itu **bukan akibat sesi ini**. `AccountPage.test.tsx` tidak menyentuh satu pun
+berkas yang saya ubah — ia tidak merujuk `api/types.ts` maupun `ErrorCode` — dan
+`master-rekening/AccountForm.tsx` sudah berstatus `M` di working tree **sebelum sesi ini dimulai**.
+Ia pekerjaan orang lain yang belum di-commit, dan Isolasi Protektif melarang saya menyentuhnya.
+Dilaporkan apa adanya, bukan diperbaiki diam-diam.
+
+Catatan lingkungan: `npx vitest run` lewat Bash **gagal memulai worker** (`Timeout waiting for
+worker to respond`) — termasuk pada modul yang sudah ada sebelumnya, sehingga itu masalah
+lingkungan, bukan kode. Lewat PowerShell ia berjalan normal. ESLint dan Prettier **belum
+dikonfigurasi** di proyek ini (`eslint.config.*` tidak ada), sehingga gerbang frontend yang
+benar-benar berjalan adalah `tsc --noEmit` dan `vitest`.
+
+### 21.9 Yang bertambah ke daftar tagihan
+
+Ke **DBA**, seluruhnya tercatat sebagai Bagian 1 pada migrasi 0006 — dan empat yang pertama
+**memblokir jalur simpan**:
+
+- **Definisi kedua view** `V_LST_DOC_TRAVEL` dan `V_LST_DOC_TRAVEL_COVERAGE`. Ia satu-satunya yang
+  menjawab **nama tabel dasarnya**, dan aplikasi menulis ke tabel dasar itu.
+- Apakah tabelnya memang bernama `LST_DOC_TRAVEL` dan `LST_DOC_TRAVEL_COVERAGE` — dugaan yang
+  diturunkan dari nama view, bukan dibaca dari mana pun.
+- Bentuk kolom keduanya: apakah `ID` teks atau angka, dan apakah `STSWAJIB` serta `MINUNGGAH` angka.
+- Nama **urutan** penerbit ID, beserta contoh ID yang benar-benar terpakai hari ini. Bila urutannya
+  tidak ada, bentuk ID harus diturunkan dari data yang sudah ada — aplikasi tidak boleh menerbitkan
+  ID berbentuk lain, karena `TravelDocument_act` membacanya saat klaim Travel diregistrasi.
+- **Nama kolom `M_PLANTRAVEL`** (milik GISFW). Ini **tidak memblokir**: bila namanya berbeda, yang
+  hilang hanya daftar pilihannya — nama plan dan jaminan tetap dapat diketik sendiri.
+- Isi tabel yang sebenarnya. Contoh di `repo/memory/sample.go` adalah **susunan sendiri**, bukan
+  data produksi, dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1.
+
+Ke **Tim Pega**, menambah `R-16`: `CNMInsertDocumentTravel_act`, `CNMSetDetailTravelDocument_act`,
+`BrowsePlanTravelMaster_RD`, `SearchCoverageTravel_RD`, `BrowseDocumentTravel_Rd`, dan
+`GetDataMasterCoverageTravel_m_plantravel` — enam rule yang dirujuk layar ini tetapi tidak ada di
+export.
+
+Satu **cacat export** yang sejenis dengan yang sudah tercatat di `D-39`:
+`Data Transform/CNMRefreshDetailTravelDocument_dt-DT.xml` ternyata berisi rule
+`CNMShowInsertDetailTravelDocument_dt` — nama berkas dan `pyRuleName` di dalamnya **tidak cocok**.
+Ini bukti tambahan bahwa inventaris rule harus dibangun dari `pyRuleName`, bukan dari nama berkas.
+
+Ke **tim frontend** (bukan penghalang): komponen `Field` bersama tidak menandai pesan galatnya
+dengan `role="alert"` sementara `ComboField` menandainya. Penyeragamannya menyentuh seluruh modul
+yang sudah selesai, sehingga tidak dikerjakan sepihak dari modul ini.

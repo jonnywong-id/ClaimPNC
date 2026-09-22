@@ -16,45 +16,45 @@ import (
 // Form ini hanya mengirim beberapa field pendek; apa pun yang lebih besar bukan
 // permintaan yang wajar, dan menolaknya lebih awal menjaga memori tidak dihabiskan badan
 // permintaan yang dikarang.
-const batasBadanSimpan = 8 << 10
+const maxSaveBodyBytes = 8 << 10
 
 // Layanan adalah bagian usecase yang dipakai handler ini.
 //
 // Ia dinyatakan sebagai antarmuka sempit di sisi PEMAKAI, bukan diimpor dari usecase,
 // supaya handler dapat diuji tanpa membentuk seluruh layanan beserta penyimpanannya.
-type Layanan interface {
-	Daftar(ctx context.Context) ([]masterpicteknik.PICTeknik, error)
-	Ambil(ctx context.Context, idOperator string) (masterpicteknik.PICTeknik, error)
-	Tambah(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error)
-	Ubah(ctx context.Context, idOperator string, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error)
+type Service interface {
+	List(ctx context.Context) ([]masterpicteknik.PICTeknik, error)
+	Get(ctx context.Context, operatorID string) (masterpicteknik.PICTeknik, error)
+	Create(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error)
+	Update(ctx context.Context, operatorID string, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error)
 }
 
 // Handler melayani permintaan Master PIC Teknik.
 type Handler struct {
-	layanan     Layanan
+	service     Service
 	logger      *slog.Logger
-	tulisRespon PenulisJSON
-	tulisGalat  PenulisGalat
+	writeResponse JSONWriter
+	writeError  ErrorWriter
 }
 
 // Opsi adalah bahan pembentuk Handler.
-type Opsi struct {
-	Layanan Layanan
+type Options struct {
+	Service Service
 	Logger  *slog.Logger
 
 	// TulisRespon dan TulisGalatCadangan dipasok dari luar supaya seluruh modul
 	// menuliskan respons dan galat sesi dengan cara yang sama.
-	TulisRespon        PenulisJSON
-	TulisGalatCadangan PenulisGalat
+	WriteResponse        JSONWriter
+	FallbackErrorWriter ErrorWriter
 }
 
 // HandlerBaru membentuk handler modul Master PIC Teknik.
-func HandlerBaru(o Opsi) *Handler {
+func NewHandler(o Options) *Handler {
 	return &Handler{
-		layanan:     o.Layanan,
+		service:     o.Service,
 		logger:      o.Logger,
-		tulisRespon: o.TulisRespon,
-		tulisGalat:  TulisGalat(o.Logger, o.TulisRespon, o.TulisGalatCadangan),
+		writeResponse: o.WriteResponse,
+		writeError:  WriteError(o.Logger, o.WriteResponse, o.FallbackErrorWriter),
 	}
 }
 
@@ -62,86 +62,86 @@ func HandlerBaru(o Opsi) *Handler {
 //
 // Menggantikan Report Definition `BrowseVMstUserTeknis_RD` yang mengisi grid layar
 // `UserTeknisInbox`.
-func (h *Handler) Daftar(w http.ResponseWriter, r *http.Request) {
-	daftar, err := h.layanan.Daftar(r.Context())
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	list, err := h.service.List(r.Context())
 	if err != nil {
-		h.tulisGalat(w, r, err)
+		h.writeError(w, r, err)
 		return
 	}
 
-	isi := make([]PICTeknikDTO, 0, len(daftar))
-	for _, p := range daftar {
-		isi = append(isi, keDTO(p))
+	content := make([]PICTeknikDTO, 0, len(list))
+	for _, p := range list {
+		content = append(content, toDTO(p))
 	}
-	h.tulisRespon(w, r, http.StatusOK, ResponsDaftar{PICTeknik: isi, Total: len(isi)})
+	h.writeResponse(w, r, http.StatusOK, ListResponse{PICTeknik: content, Total: len(content)})
 }
 
 // Ambil menangani GET /api/master/pic-teknik/{id}.
 //
 // Menggantikan `SetMstUserTeknisValue_act`, yang menjalankan `GetMasterPICTeknis` lalu
 // menyalin hasilnya ke halaman `TempDcol` untuk diisi ke form.
-func (h *Handler) Ambil(w http.ResponseWriter, r *http.Request) {
-	p, err := h.layanan.Ambil(r.Context(), chi.URLParam(r, "id"))
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	p, err := h.service.Get(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		h.tulisGalat(w, r, err)
+		h.writeError(w, r, err)
 		return
 	}
-	h.tulisRespon(w, r, http.StatusOK, ResponsSatu{PICTeknik: keDTO(p)})
+	h.writeResponse(w, r, http.StatusOK, SingleResponse{PICTeknik: toDTO(p)})
 }
 
 // Tambah menangani POST /api/master/pic-teknik.
 //
 // Menggantikan `CNMInsertMstUserTeknis_act`, termasuk penolakan bila ID operatornya
 // tidak ditemukan di direktori operator.
-func (h *Handler) Tambah(w http.ResponseWriter, r *http.Request) {
-	permintaan, terbaca := h.bacaPermintaan(w, r)
-	if !terbaca {
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	request, readable := h.readRequest(w, r)
+	if !readable {
 		return
 	}
 
-	p, err := h.layanan.Tambah(r.Context(), dariPermintaan(permintaan.IDOperator, permintaan))
+	p, err := h.service.Create(r.Context(), fromRequest(request.OperatorID, request))
 	if err != nil {
-		h.tulisGalat(w, r, err)
+		h.writeError(w, r, err)
 		return
 	}
 	// 201, bukan 200: sumber daya baru terbentuk.
-	h.tulisRespon(w, r, http.StatusCreated, ResponsSatu{PICTeknik: keDTO(p)})
+	h.writeResponse(w, r, http.StatusCreated, SingleResponse{PICTeknik: toDTO(p)})
 }
 
 // Ubah menangani PUT /api/master/pic-teknik/{id}.
 //
 // ID diambil dari jalur URL, tidak pernah dari badan permintaan.
-func (h *Handler) Ubah(w http.ResponseWriter, r *http.Request) {
-	permintaan, terbaca := h.bacaPermintaan(w, r)
-	if !terbaca {
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	request, readable := h.readRequest(w, r)
+	if !readable {
 		return
 	}
 
 	id := chi.URLParam(r, "id")
-	p, err := h.layanan.Ubah(r.Context(), id, dariPermintaan(id, permintaan))
+	p, err := h.service.Update(r.Context(), id, fromRequest(id, request))
 	if err != nil {
-		h.tulisGalat(w, r, err)
+		h.writeError(w, r, err)
 		return
 	}
-	h.tulisRespon(w, r, http.StatusOK, ResponsSatu{PICTeknik: keDTO(p)})
+	h.writeResponse(w, r, http.StatusOK, SingleResponse{PICTeknik: toDTO(p)})
 }
 
 // bacaPermintaan membaca badan permintaan simpan. Nilai kedua false berarti jawabannya
 // sudah ditulis dan pemanggil harus berhenti.
-func (h *Handler) bacaPermintaan(w http.ResponseWriter, r *http.Request) (PermintaanSimpan, bool) {
-	var permintaan PermintaanSimpan
-	r.Body = http.MaxBytesReader(w, r.Body, batasBadanSimpan)
+func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request) (SaveRequest, bool) {
+	var request SaveRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxSaveBodyBytes)
 
-	if err := json.NewDecoder(r.Body).Decode(&permintaan); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		// Isi badan permintaan tidak ikut dikembalikan: memantulkan masukan mentah ke
 		// peramban adalah kebiasaan yang tidak layak dimulai di satu tempat pun.
-		h.tulisRespon(w, r, http.StatusBadRequest, ResponsGalat{
-			Kode:  KodePermintaanCacat,
-			Pesan: "Permintaan tidak dapat dibaca.",
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:  CodeMalformedRequest,
+			Message: "Permintaan tidak dapat dibaca.",
 		})
-		return PermintaanSimpan{}, false
+		return SaveRequest{}, false
 	}
-	return permintaan, true
+	return request, true
 }
 
 // dariPermintaan menyusun bentuk domain dari isian form.
@@ -149,30 +149,30 @@ func (h *Handler) bacaPermintaan(w http.ResponseWriter, r *http.Request) (Permin
 // Nama dan GrupPanel sengaja dibiarkan kosong: keduanya tidak pernah datang dari klien.
 // Nama diisi usecase dari direktori operator; GrupPanel dipertahankan dari baris yang
 // sudah ada.
-func dariPermintaan(idOperator string, p PermintaanSimpan) masterpicteknik.PICTeknik {
+func fromRequest(operatorID string, p SaveRequest) masterpicteknik.PICTeknik {
 	return masterpicteknik.PICTeknik{
-		IDOperator: idOperator,
+		OperatorID: operatorID,
 		Email:      p.Email,
-		LiniBisnis: p.LiniBisnis,
-		Grup:       p.Grup,
-		Atasan:     p.Atasan,
-		Kuota:      p.Kuota,
-		KuotaLuar:  p.KuotaLuar,
-		Aktif:      p.Aktif,
+		BusinessLine: p.BusinessLine,
+		Group:       p.Group,
+		Supervisor:     p.Supervisor,
+		Quota:      p.Quota,
+		ExternalQuota:  p.ExternalQuota,
+		Active:      p.Active,
 	}
 }
 
-func keDTO(p masterpicteknik.PICTeknik) PICTeknikDTO {
+func toDTO(p masterpicteknik.PICTeknik) PICTeknikDTO {
 	return PICTeknikDTO{
-		IDOperator: p.IDOperator,
-		Nama:       p.Nama,
+		OperatorID: p.OperatorID,
+		Name:       p.Name,
 		Email:      p.Email,
-		LiniBisnis: p.LiniBisnis,
-		Grup:       p.Grup,
-		Atasan:     p.Atasan,
-		Kuota:      p.Kuota,
-		KuotaLuar:  p.KuotaLuar,
+		BusinessLine: p.BusinessLine,
+		Group:       p.Group,
+		Supervisor:     p.Supervisor,
+		Quota:      p.Quota,
+		ExternalQuota:  p.ExternalQuota,
 		GrupPanel:  p.GrupPanel,
-		Aktif:      p.Aktif,
+		Active:      p.Active,
 	}
 }

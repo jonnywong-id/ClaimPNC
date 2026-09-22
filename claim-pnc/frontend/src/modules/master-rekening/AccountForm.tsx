@@ -103,18 +103,12 @@ export function AccountForm({ onSuccess }: Props) {
     const error = submit.error
     if (!(error instanceof APIError) || error.kode !== AccountErrorCode.invalidInput) return
 
-<<<<<<< HEAD:claim-pnc/frontend/src/modules/master-rekening/FormRekening.tsx
-    for (const pelanggaran of galat.detail) {
-      const kolom = PETA_KOLOM[pelanggaran.field]
-      if (kolom) setError(kolom, { type: 'server', message: pelanggaran.pesan })
-=======
     // violations() menyatukan kedua bentuk pelanggaran yang dipakai backend. Modul ini
     // mengirimkannya sebagai PETA `field` (internal/masterrekening/http/dto.go:151),
     // bukan sebagai senarai `detail` seperti kedua modul master lainnya.
     for (const [field, pesan] of Object.entries(error.violations())) {
       const column = COLUMN_MAP[field]
       if (column) setError(column, { type: 'server', message: pesan })
->>>>>>> origin/master:claim-pnc/frontend/src/modules/master-rekening/AccountForm.tsx
     }
   }, [submit.error, setError])
 

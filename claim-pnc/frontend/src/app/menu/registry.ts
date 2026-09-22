@@ -35,6 +35,39 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master-rekening',
   StatusProgress: '/master/status-progres-1',
+  // MENU_ID 22 "Master Dokumen Travel", di bawah kelompok MASTER.
+  //
+  // JANGAN tertukar dengan MENU_ID 39 di bawahnya: yang ini master INDUK — hanya DOCID
+  // dan judul dokumen.
+  BrowseMasterDocumentTravel_Harness: '/master/dokumen-travel',
+  // MENU_ID 39 "Daftar Detail Dokumen Travel", di bawah kelompok MASTER.
+  //
+  // Master TURUNAN atas V_LST_DOC_TRAVEL: ia merujuk DOCID milik MENU_ID 22 di atas dan
+  // menambahkan aturannya — wajib atau tidak, jumlah unggahan minimum, dan pembatasan per
+  // plan serta jaminan pada V_LST_DOC_TRAVEL_COVERAGE.
+  ListDocumentTravel: '/master/daftar-detail-dokumen-travel',
+  // MENU_ID 21 "Master COL SIMAS ONLNE", di bawah kelompok MASTER.
+  //
+  // Salah ketik "ONLNE" pada MENU_DESC ada di basis datanya, bukan di sini. Ia TIDAK
+  // diperbaiki dari kode: butir menu dibaca apa adanya dari
+  // POOLDATA.M_MENU_APLIKASI_PNC, dan memperbaikinya di sini akan membuat layar
+  // menampilkan teks yang berbeda dari isi tabel — perbaikannya menempuh `D-63`.
+  //
+  // JANGAN tertukar dengan MENU_ID 20 "Master Penyebab Kerugian" (`CauseOfLossInbox`),
+  // layar Master COL biasa atas tabel yang SAMA tetapi tanpa isian ID Master Kerugian
+  // dan tanpa pemetaan bisnis. Ia belum dibangun, dan butirnya tetap tampil sebagai
+  // "belum tersedia".
+  CauseOfLossInboxSimasOnline: '/master/col-simas-online',
+  // MENU_ID 40 "Daftar Tipe Dokumen", di bawah kelompok MASTER.
+  //
+  // JANGAN tertukar dengan dua master TURUNANNYA, yang merujuk ID milik layar ini dan
+  // keduanya belum dibangun:
+  //
+  //   `ListDetTypeDocument`   "Daftar Detail Tipe Dokumen"      (V_LST_DET_TYPE_DOC)
+  //   `DetTypeDocumenBisnis`  "Detail Tipe Dokumen per Bisnis"  (LST_TYPE_DOC_BUSINESS)
+  //
+  // Keduanya tetap tampil sebagai "belum tersedia".
+  ListDocumentTypeInbox: '/master/tipe-dokumen',
 }
 
 /**

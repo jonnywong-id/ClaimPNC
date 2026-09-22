@@ -28,40 +28,40 @@ type Repo struct {
 }
 
 // RepoBaru membentuk repo; db wajib sudah terhubung ke basis data portal yang dituju.
-func RepoBaru(db *sql.DB) *Repo { return &Repo{db: db} }
+func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 
 // Daftar membaca seluruh PIC teknik.
-func (r *Repo) Daftar(ctx context.Context) ([]masterpicteknik.PICTeknik, error) {
-	baris, err := r.db.QueryContext(ctx, ambilKueri("pic_teknik_daftar"))
+func (r *Repo) List(ctx context.Context) ([]masterpicteknik.PICTeknik, error) {
+	rows, err := r.db.QueryContext(ctx, getQuery("pic_teknik_list"))
 	if err != nil {
 		return nil, fmt.Errorf("masterpicteknik/sqlstore: membaca daftar PIC: %w", err)
 	}
-	defer func() { _ = baris.Close() }()
+	defer func() { _ = rows.Close() }()
 
-	var hasil []masterpicteknik.PICTeknik
-	for baris.Next() {
-		p, err := pindaiSatuBaris(baris)
+	var result []masterpicteknik.PICTeknik
+	for rows.Next() {
+		p, err := scanRow(rows)
 		if err != nil {
 			return nil, fmt.Errorf("masterpicteknik/sqlstore: membaca baris PIC: %w", err)
 		}
-		hasil = append(hasil, p)
+		result = append(result, p)
 	}
-	if err := baris.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("masterpicteknik/sqlstore: menelusuri daftar PIC: %w", err)
 	}
-	return hasil, nil
+	return result, nil
 }
 
 // Ambil membaca satu PIC teknik.
-func (r *Repo) Ambil(ctx context.Context, idOperator string) (masterpicteknik.PICTeknik, error) {
-	baris := r.db.QueryRowContext(ctx, ambilKueri("pic_teknik_ambil"), idOperator)
+func (r *Repo) Get(ctx context.Context, operatorID string) (masterpicteknik.PICTeknik, error) {
+	rows := r.db.QueryRowContext(ctx, getQuery("pic_teknik_get"), operatorID)
 
-	p, err := pindaiSatuBaris(baris)
+	p, err := scanRow(rows)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrTidakDitemukan
+		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrNotFound
 	case err != nil:
-		return masterpicteknik.PICTeknik{}, fmt.Errorf("masterpicteknik/sqlstore: membaca PIC %q: %w", idOperator, err)
+		return masterpicteknik.PICTeknik{}, fmt.Errorf("masterpicteknik/sqlstore: membaca PIC %q: %w", operatorID, err)
 	}
 	return p, nil
 }
@@ -72,45 +72,45 @@ func (r *Repo) Ambil(ctx context.Context, idOperator string) (masterpicteknik.PI
 // kunci ganda dari driver yang tidak dapat dibedakan pemanggil. Ia tetap bukan jaminan:
 // dua permintaan yang tiba bersamaan dapat sama-sama lolos, dan yang menahannya adalah
 // primary key di basis data — yang galatnya juga diterjemahkan di sini.
-func (r *Repo) Sisip(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
-	if _, err := r.Ambil(ctx, p.IDOperator); err == nil {
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrSudahAda
-	} else if !errors.Is(err, masterpicteknik.ErrTidakDitemukan) {
+func (r *Repo) Insert(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
+	if _, err := r.Get(ctx, p.OperatorID); err == nil {
+		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrAlreadyExists
+	} else if !errors.Is(err, masterpicteknik.ErrNotFound) {
 		return masterpicteknik.PICTeknik{}, err
 	}
 
-	_, err := r.db.ExecContext(ctx, ambilKueri("pic_teknik_sisip"),
-		p.IDOperator,
-		p.Nama,
+	_, err := r.db.ExecContext(ctx, getQuery("pic_teknik_insert"),
+		p.OperatorID,
+		p.Name,
 		p.Email,
-		p.LiniBisnis,
-		p.Grup,
-		p.Atasan,
-		p.Kuota,
-		p.KuotaLuar,
-		sandiAktif(p.Aktif),
+		p.BusinessLine,
+		p.Group,
+		p.Supervisor,
+		p.Quota,
+		p.ExternalQuota,
+		activeCode(p.Active),
 	)
 	if err != nil {
-		if kunciGanda(err) {
-			return masterpicteknik.PICTeknik{}, masterpicteknik.ErrSudahAda
+		if duplicateKey(err) {
+			return masterpicteknik.PICTeknik{}, masterpicteknik.ErrAlreadyExists
 		}
 		return masterpicteknik.PICTeknik{}, fmt.Errorf("masterpicteknik/sqlstore: menyisipkan PIC: %w", err)
 	}
-	return r.Ambil(ctx, p.IDOperator)
+	return r.Get(ctx, p.OperatorID)
 }
 
 // Perbarui mengubah PIC teknik yang sudah ada.
-func (r *Repo) Perbarui(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
-	hasil, err := r.db.ExecContext(ctx, ambilKueri("pic_teknik_perbarui"),
-		p.Nama,
+func (r *Repo) Update(ctx context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
+	result, err := r.db.ExecContext(ctx, getQuery("pic_teknik_update"),
+		p.Name,
 		p.Email,
-		p.LiniBisnis,
-		p.Grup,
-		p.Atasan,
-		p.Kuota,
-		p.KuotaLuar,
-		sandiAktif(p.Aktif),
-		p.IDOperator,
+		p.BusinessLine,
+		p.Group,
+		p.Supervisor,
+		p.Quota,
+		p.ExternalQuota,
+		activeCode(p.Active),
+		p.OperatorID,
 	)
 	if err != nil {
 		return masterpicteknik.PICTeknik{}, fmt.Errorf("masterpicteknik/sqlstore: memperbarui PIC: %w", err)
@@ -119,21 +119,21 @@ func (r *Repo) Perbarui(ctx context.Context, p masterpicteknik.PICTeknik) (maste
 	// Sebagian driver tidak melaporkan jumlah baris yang tersentuh. Ketiadaan angka
 	// BUKAN bukti tidak ada yang berubah, sehingga hanya angka nol yang sungguhan
 	// dianggap "tidak ditemukan".
-	if jumlah, err := hasil.RowsAffected(); err == nil && jumlah == 0 {
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrTidakDitemukan
+	if count, err := result.RowsAffected(); err == nil && count == 0 {
+		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrNotFound
 	}
-	return r.Ambil(ctx, p.IDOperator)
+	return r.Get(ctx, p.OperatorID)
 }
 
 // PeriksaTabel memastikan seluruh kolom dapat dibaca akun aplikasi, tanpa mengambil satu
 // baris pun. Dipakai mode periksa pada binary.
-func (r *Repo) PeriksaTabel(ctx context.Context) error {
-	baris, err := r.db.QueryContext(ctx, ambilKueri("pic_teknik_periksa_tabel"))
+func (r *Repo) CheckTable(ctx context.Context) error {
+	rows, err := r.db.QueryContext(ctx, getQuery("pic_teknik_check_table"))
 	if err != nil {
 		return fmt.Errorf("masterpicteknik/sqlstore: memeriksa tabel MST_USER_TEKNIK: %w", err)
 	}
-	defer func() { _ = baris.Close() }()
-	return baris.Err()
+	defer func() { _ = rows.Close() }()
+	return rows.Err()
 }
 
 // DirektoriRepo memenuhi seam DirektoriOperator dengan DATAPEGA.PR_OPERATORS.
@@ -141,66 +141,66 @@ func (r *Repo) PeriksaTabel(ctx context.Context) error {
 // Tabel itu milik Pega dan hanya DIBACA (ADR-0004). Ia dipisahkan dari Repo karena
 // sumbernya memang tabel lain dengan pemilik lain — menyatukannya akan menyamarkan
 // bahwa satu di antaranya kita tulis dan satu lagi tidak.
-type DirektoriRepo struct {
+type DirectoryRepo struct {
 	db *sql.DB
 }
 
 // DirektoriRepoBaru membentuk pembaca direktori operator.
-func DirektoriRepoBaru(db *sql.DB) *DirektoriRepo { return &DirektoriRepo{db: db} }
+func NewDirectoryRepo(db *sql.DB) *DirectoryRepo { return &DirectoryRepo{db: db} }
 
 // NamaOperator mencari nama petugas di direktori operator.
-func (d *DirektoriRepo) NamaOperator(ctx context.Context, idOperator string) (string, error) {
-	var nama sql.NullString
+func (d *DirectoryRepo) OperatorName(ctx context.Context, operatorID string) (string, error) {
+	var name sql.NullString
 
-	err := d.db.QueryRowContext(ctx, ambilKueri("operator_nama"), idOperator).Scan(&nama)
+	err := d.db.QueryRowContext(ctx, getQuery("operator_name"), operatorID).Scan(&name)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return "", masterpicteknik.ErrOperatorTidakDikenal
+		return "", masterpicteknik.ErrUnknownOperator
 	case err != nil:
 		// Kegagalan kueri terhadap tabel milik pihak lain diperlakukan sebagai
 		// direktori tidak terhubung, bukan sebagai "tidak terdaftar": keduanya menuntut
 		// tindak lanjut yang berbeda, dan menyamakannya akan menyuruh pengguna
 		// memperbaiki ID yang sebenarnya sudah benar.
-		return "", fmt.Errorf("%w: %v", masterpicteknik.ErrDirektoriTidakTerhubung, err)
+		return "", fmt.Errorf("%w: %v", masterpicteknik.ErrDirectoryUnreachable, err)
 	}
 
-	bersih := strings.TrimSpace(nama.String)
-	if bersih == "" {
+	clean := strings.TrimSpace(name.String)
+	if clean == "" {
 		// Baris ada tetapi namanya kosong. Sistem lama pun menolaknya — prasyaratnya
 		// `TempDcol.MCL_NAME==""`, bukan "baris tidak ditemukan".
-		return "", masterpicteknik.ErrOperatorTidakDikenal
+		return "", masterpicteknik.ErrUnknownOperator
 	}
-	return bersih, nil
+	return clean, nil
 }
 
 // pemindai menyatukan *sql.Row dan *sql.Rows sehingga satu fungsi pemindaian melayani
 // keduanya. Tanpa ini, sepuluh kolom harus ditulis dua kali dan kedua salinannya harus
 // diingat untuk diubah bersama-sama.
-type pemindai interface {
-	Scan(tujuan ...any) error
+type rowScanner interface {
+	Scan(target ...any) error
 }
 
-func pindaiSatuBaris(p pemindai) (masterpicteknik.PICTeknik, error) {
+func scanRow(p rowScanner) (masterpicteknik.PICTeknik, error) {
 	var (
-		id, nama, email, lini, grup, atasan, grupPanel, aktif sql.NullString
-		kuota, kuotaLuar                                      sql.NullInt64
+		id, name, email, line, group, supervisor, groupPanel, active sql.NullString
+		quota, externalQuota                                      sql.NullInt64
 	)
 
-	if err := p.Scan(&id, &nama, &email, &lini, &grup, &atasan, &kuota, &kuotaLuar, &grupPanel, &aktif); err != nil {
+	if err := p.Scan(&id, &name, &email, &line, &group, &supervisor, &quota, &externalQuota, &groupPanel, &active); err != nil {
 		return masterpicteknik.PICTeknik{}, err
 	}
 
 	return masterpicteknik.PICTeknik{
-		IDOperator: teks(id),
-		Nama:       teks(nama),
-		Email:      teks(email),
-		LiniBisnis: teks(lini),
-		Grup:       teks(grup),
-		Atasan:     teks(atasan),
-		Kuota:      int(kuota.Int64),
-		KuotaLuar:  int(kuotaLuar.Int64),
-		GrupPanel:  teks(grupPanel),
-		Aktif:      bacaAktif(teks(aktif)),
+		OperatorID: text(id),
+		Name:       text(name),
+		Email:      text(email),
+		BusinessLine: text(line),
+		Group:       text(group),
+		Supervisor:     text(supervisor),
+		Quota:      int(quota.Int64),
+		ExternalQuota:  int(externalQuota.Int64),
+		GrupPanel:  text(groupPanel),
+		Active:      readActive(text(active)),
 	}, nil
 }
 
@@ -209,9 +209,9 @@ func pindaiSatuBaris(p pemindai) (masterpicteknik.PICTeknik, error) {
 // "1" dan "0" — BUKAN "Ya"/"Tidak" seperti kolom bernama sama pada POOLDATA.LST_ACCOUNT.
 // Dua tabel berbeda memakai sandi berbeda, dan itu justru alasan pemetaannya ditulis
 // sebagai fungsi bernama di sini alih-alih diketik ulang di setiap pemanggilan.
-func sandiAktif(aktif bool) string {
-	if aktif {
-		return masterpicteknik.SandiAktif
+func activeCode(active bool) string {
+	if active {
+		return masterpicteknik.ActiveCode
 	}
 	return "0"
 }
@@ -222,8 +222,8 @@ func sandiAktif(aktif bool) string {
 // baris lama hanya karena ejaannya berbeda akan menampilkan petugas aktif sebagai
 // nonaktif — dan petugas nonaktif tidak menerima penugasan, sehingga kesalahan itu
 // langsung berakibat pada pembagian kerja.
-func bacaAktif(nilai string) bool {
-	switch strings.ToUpper(strings.TrimSpace(nilai)) {
+func readActive(value string) bool {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
 	case "1", "Y", "YA", "AKTIF", "A":
 		return true
 	default:
@@ -231,7 +231,7 @@ func bacaAktif(nilai string) bool {
 	}
 }
 
-func teks(n sql.NullString) string {
+func text(n sql.NullString) string {
 	if !n.Valid {
 		return ""
 	}
@@ -243,11 +243,11 @@ func teks(n sql.NullString) string {
 // Pencocokan teks dipakai karena driver tidak memberi tipe galat khusus untuknya.
 // Kodenya dicocokkan, bukan kalimatnya — pesan Oracle diterjemahkan mengikuti
 // NLS_LANGUAGE dan dapat berbeda per instans, sedangkan kodenya tidak.
-func kunciGanda(err error) bool {
+func duplicateKey(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "ORA-00001")
 }
 
 var (
 	_ masterpicteknik.Repo              = (*Repo)(nil)
-	_ masterpicteknik.DirektoriOperator = (*DirektoriRepo)(nil)
+	_ masterpicteknik.OperatorDirectory = (*DirectoryRepo)(nil)
 )

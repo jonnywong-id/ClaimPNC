@@ -43,6 +43,28 @@ type Props<T> = {
 
   searchLabel?: string
   emptyMessage?: string
+
+  /**
+   * Kotak pencarian ditampilkan.
+   *
+   * Bawaannya `true` supaya layar yang sudah ada tidak berubah. Dimatikan oleh layar
+   * yang di Pega memang tidak punya pencarian dan diputuskan meniru Pega apa adanya —
+   * Master Dokumen Travel adalah yang pertama (keputusan Work Owner 2026-09-21).
+   */
+  searchable?: boolean
+
+  /**
+   * Banyaknya baris per halaman.
+   *
+   * Tidak diisi berarti seluruh baris ditampilkan sekaligus, dan itu bawaannya supaya
+   * layar yang sudah ada tidak berubah. Diisi oleh layar yang meniru paginasi grid
+   * Pega — `pyPageSize` pada section-nya.
+   *
+   * Paginasi ini dikerjakan DI PERAMBAN atas baris yang sudah di tangan, sama seperti
+   * pencarian dan pengurutan di atas. Layar yang datanya besar menuntut paginasi keyset
+   * dari server dan TIDAK boleh memakai ini (`TKT-U2-001`).
+   */
+  pageSize?: number
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -102,9 +124,12 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  searchable = true,
+  pageSize,
 }: Props<T>) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
+  const [page, setPage] = useState(1)
 
   const visible = useMemo(() => {
     const word = query.trim().toLowerCase()
@@ -140,6 +165,18 @@ export function DataTable<T>({
 
   const hasSearch = query.trim() !== ''
 
+  // Halaman dihitung dari baris yang SUDAH disaring dan diurutkan, bukan dari `rows`
+  // mentah — kalau tidak, mencari sesuatu yang hasilnya sedikit akan menyisakan tombol
+  // halaman yang menuju halaman kosong.
+  const pageCount = pageSize ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+  // Dijepit, bukan disetel ulang lewat efek: setelah menyaring, halaman yang sedang
+  // dibuka bisa melebihi jumlah halaman yang tersisa. Menjepitnya saat render membuat
+  // tabel tidak pernah tampil kosong karena berada di halaman yang sudah tidak ada.
+  const currentPage = Math.min(page, pageCount)
+  const paged = pageSize
+    ? visible.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : visible
+
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
       {(title || actions) && (
@@ -152,6 +189,7 @@ export function DataTable<T>({
         </header>
       )}
 
+      {searchable && (
       <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
         <label htmlFor="tabel-cari" className="sr-only">
           {searchLabel}
@@ -184,6 +222,7 @@ export function DataTable<T>({
           </p>
         )}
       </div>
+      )}
 
       {error ? (
         <div className="p-5">{error}</div>
@@ -246,7 +285,7 @@ export function DataTable<T>({
             </thead>
 
             <tbody className="block md:table-row-group">
-              {visible.map((b) => (
+              {paged.map((b) => (
                 <tr
                   key={rowKey(b)}
                   className={[
@@ -285,9 +324,76 @@ export function DataTable<T>({
               ))}
             </tbody>
           </table>
+
+          {pageSize && pageCount > 1 && (
+            <Paginator
+              page={currentPage}
+              pageCount={pageCount}
+              total={visible.length}
+              onChange={setPage}
+            />
+          )}
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * Paginator hanya digambar bila halamannya lebih dari satu.
+ *
+ * Menyembunyikannya saat hanya ada satu halaman disengaja: tombol yang tidak pernah
+ * dapat ditekan bukan petunjuk, ia gangguan. Pada master yang isinya puluhan baris,
+ * itulah keadaan yang paling sering terjadi.
+ *
+ * Nomor halaman tidak digambar satu per satu. Dengan 50 baris per halaman, master yang
+ * bertambah beberapa baris per tahun tidak akan pernah punya cukup halaman untuk
+ * membuat deretan nomor lebih berguna daripada "Sebelumnya / Berikutnya" — dan deretan
+ * nomor menuntut keputusan tersendiri tentang apa yang dilakukan saat halamannya puluhan.
+ */
+function Paginator({
+  page,
+  pageCount,
+  total,
+  onChange,
+}: {
+  page: number
+  pageCount: number
+  total: number
+  onChange: (page: number) => void
+}) {
+  const button = [
+    'rounded-kontrol border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700',
+    'transition-colors duration-150 ease-halus',
+    'hover:border-slate-400 hover:bg-slate-50',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+    'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-300 disabled:hover:bg-white',
+  ].join(' ')
+
+  return (
+    <nav
+      aria-label="Halaman tabel"
+      className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3"
+    >
+      {/* role="status" supaya pembaca layar mendengar perpindahan halaman; tanpa itu,
+          menekan Berikutnya tidak mengumumkan apa pun. */}
+      <p className="text-xs text-slate-600" role="status">
+        Halaman {page} dari {pageCount} · {total} baris
+      </p>
+      <div className="flex items-center gap-2">
+        <button type="button" className={button} disabled={page <= 1} onClick={() => onChange(page - 1)}>
+          Sebelumnya
+        </button>
+        <button
+          type="button"
+          className={button}
+          disabled={page >= pageCount}
+          onClick={() => onChange(page + 1)}
+        >
+          Berikutnya
+        </button>
+      </div>
+    </nav>
   )
 }
 

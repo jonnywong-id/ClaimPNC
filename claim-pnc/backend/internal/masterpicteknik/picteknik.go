@@ -54,11 +54,11 @@ import (
 // Batas panjang isian. Seluruhnya KEBUTUHAN BARU: layar Pega tidak membatasi panjang
 // sama sekali. Angkanya mengikuti lebar kolom yang ada di tabel hari ini.
 const (
-	PanjangIDOperatorMaksimum = 64
-	PanjangEmailMaksimum      = 100
-	PanjangGrupMaksimum       = 50
-	PanjangAtasanMaksimum     = 64
-	PanjangLiniBisnisMaksimum = 50
+	MaxOperatorIDLength = 64
+	MaxEmailLength      = 100
+	MaxGroupLength       = 50
+	MaxSupervisorLength     = 64
+	MaxBusinessLineLength = 50
 )
 
 // KuotaMaksimum menahan angka kuota yang tidak masuk akal.
@@ -66,16 +66,16 @@ const (
 // Ia bukan aturan bisnis yang ditemukan di export — tidak ada batas di sana — melainkan
 // penjaga agar salah ketik tidak menghasilkan petugas berkuota jutaan yang menyedot
 // seluruh antrean penugasan.
-const KuotaMaksimum = 9999
+const MaxQuota = 9999
 
 // PICTeknik adalah satu baris master petugas teknik.
 type PICTeknik struct {
 	// IDOperator adalah OPERATOR_ID — kunci alaminya, sekaligus identitas petugas di
 	// direktori operator. Tetap seumur hidup baris ini.
-	IDOperator string
+	OperatorID string
 
 	// Nama adalah MCL_NAME. Ia DITURUNKAN dari direktori operator, bukan diketik.
-	Nama string
+	Name string
 
 	// Email adalah alamat surel petugas. Dipakai seluruh pemberitahuan yang ditujukan
 	// kepadanya — termasuk peringatan kegagalan integrasi Kasir.
@@ -84,16 +84,16 @@ type PICTeknik struct {
 	// LiniBisnis adalah TYPE_BUSINESS. Ia teks bebas, bukan pilihan tertutup: satu-
 	// satunya nilai yang benar-benar muncul di export adalah "NONMBU", dan mengarang
 	// daftar pilihan dari satu contoh akan menolak nilai sah yang belum terlihat.
-	LiniBisnis string
+	BusinessLine string
 
 	// Grup adalah TEAM_GROUP, kelompok kerja petugas.
-	Grup string
+	Group string
 
 	// Atasan adalah ATASAN — diisi OPERATOR_ID atasannya.
-	Atasan string
+	Supervisor string
 
 	// Kuota adalah COUNTER_QUOTA, banyaknya pekerjaan yang boleh dipikul petugas ini.
-	Kuota int
+	Quota int
 
 	// KuotaLuar adalah COUNTER_QUOTA2.
 	//
@@ -106,7 +106,7 @@ type PICTeknik struct {
 	// DB link itu sendiri TIDAK dibawa ke sini — `ADR-0008` menetapkan DB link diganti
 	// API, dan API-nya belum ada. Untuk sekarang nilainya dikelola sebagai isian biasa,
 	// persis seperti procedure lama yang menerimanya sebagai parameter.
-	KuotaLuar int
+	ExternalQuota int
 
 	// GrupPanel adalah GROUPPANEL, dialias "IBNR" pada SELECT lama.
 	//
@@ -116,7 +116,7 @@ type PICTeknik struct {
 	GrupPanel string
 
 	// Aktif menyatakan petugas masih menerima penugasan.
-	Aktif bool
+	Active bool
 }
 
 // SandiAktif adalah isi kolom STS_AKTIF untuk petugas yang aktif.
@@ -125,16 +125,16 @@ type PICTeknik struct {
 // tabel berbeda memakai sandi berbeda untuk kolom bernama sama, dan itu justru alasan
 // nilainya ditulis sebagai konstanta bernama di sini: `STS_AKTIF = '1'` muncul 17 kali
 // di seluruh export, tidak satu pun memakai "Ya".
-const SandiAktif = "1"
+const ActiveCode = "1"
 
 // Bersih mengembalikan salinan dengan spasi tepi dibuang.
-func (p PICTeknik) Bersih() PICTeknik {
-	p.IDOperator = strings.TrimSpace(p.IDOperator)
-	p.Nama = strings.TrimSpace(p.Nama)
+func (p PICTeknik) Clean() PICTeknik {
+	p.OperatorID = strings.TrimSpace(p.OperatorID)
+	p.Name = strings.TrimSpace(p.Name)
 	p.Email = strings.TrimSpace(p.Email)
-	p.LiniBisnis = strings.TrimSpace(p.LiniBisnis)
-	p.Grup = strings.TrimSpace(p.Grup)
-	p.Atasan = strings.TrimSpace(p.Atasan)
+	p.BusinessLine = strings.TrimSpace(p.BusinessLine)
+	p.Group = strings.TrimSpace(p.Group)
+	p.Supervisor = strings.TrimSpace(p.Supervisor)
 	p.GrupPanel = strings.TrimSpace(p.GrupPanel)
 	return p
 }
@@ -143,7 +143,7 @@ func (p PICTeknik) Bersih() PICTeknik {
 //
 // Perbandingan mengabaikan besar-kecil huruf, mengikuti kueri lamanya yang memang
 // menulis `upper(pyuseridentifier) = upper(:1)`.
-func KunciID(id string) string {
+func IDKey(id string) string {
 	return strings.ToUpper(strings.TrimSpace(id))
 }
 
@@ -153,18 +153,18 @@ func KunciID(id string) string {
 // istilah domain, bukan istilah SQL.
 type Repo interface {
 	// Daftar mengembalikan seluruh petugas, terurut menurut IDOperator.
-	Daftar(ctx context.Context) ([]PICTeknik, error)
+	List(ctx context.Context) ([]PICTeknik, error)
 
 	// Ambil mengembalikan satu petugas, atau ErrTidakDitemukan.
-	Ambil(ctx context.Context, idOperator string) (PICTeknik, error)
+	Get(ctx context.Context, operatorID string) (PICTeknik, error)
 
 	// Sisip menyimpan petugas baru. Mengembalikan ErrSudahAda bila IDOperator-nya
 	// sudah dipakai.
-	Sisip(ctx context.Context, p PICTeknik) (PICTeknik, error)
+	Insert(ctx context.Context, p PICTeknik) (PICTeknik, error)
 
 	// Perbarui mengubah petugas yang sudah ada. IDOperator, Nama, dan GrupPanel tidak
 	// ikut berubah. Mengembalikan ErrTidakDitemukan bila tidak ada.
-	Perbarui(ctx context.Context, p PICTeknik) (PICTeknik, error)
+	Update(ctx context.Context, p PICTeknik) (PICTeknik, error)
 }
 
 // DirektoriOperator adalah seam ke daftar operator tempat nama petugas dicari.
@@ -172,10 +172,10 @@ type Repo interface {
 // Sistem lama membacanya dari `DATAPEGA.PR_OPERATORS`, tabel milik Pega. Selama masa
 // paralel tabel itu masih hidup dan masih menjadi sumber kebenaran nama operator; ketika
 // Pega dimatikan, yang diganti hanyalah pengisi seam ini.
-type DirektoriOperator interface {
+type OperatorDirectory interface {
 	// NamaOperator mengembalikan nama petugas. Mengembalikan ErrOperatorTidakDikenal
 	// bila identitas itu tidak terdaftar.
-	NamaOperator(ctx context.Context, idOperator string) (string, error)
+	OperatorName(ctx context.Context, operatorID string) (string, error)
 }
 
 // Periksa mengumpulkan SELURUH pelanggaran aturan sekaligus, bukan berhenti pada yang
@@ -187,66 +187,66 @@ type DirektoriOperator interface {
 // Keberadaan petugas di direktori operator TIDAK diperiksa di sini — ia menuntut
 // memanggil seam, sedangkan fungsi ini murni dan dapat diuji tanpa apa pun.
 // Pemeriksaannya ada di usecase.
-func Periksa(p PICTeknik) []Pelanggaran {
-	p = p.Bersih()
-	var pelanggaran []Pelanggaran
+func Check(p PICTeknik) []Violation {
+	p = p.Clean()
+	var violation []Violation
 
-	tambah := func(field, pesan string) {
-		pelanggaran = append(pelanggaran, Pelanggaran{Field: field, Pesan: pesan})
+	create := func(field, message string) {
+		violation = append(violation, Violation{Field: field, Message: message})
 	}
 
-	if p.IDOperator == "" {
-		tambah(FieldIDOperator, "ID operator wajib diisi.")
-	} else if utf8.RuneCountInString(p.IDOperator) > PanjangIDOperatorMaksimum {
-		tambah(FieldIDOperator, "ID operator paling panjang "+itoa(PanjangIDOperatorMaksimum)+" karakter.")
+	if p.OperatorID == "" {
+		create(FieldOperatorID, "ID operator wajib diisi.")
+	} else if utf8.RuneCountInString(p.OperatorID) > MaxOperatorIDLength {
+		create(FieldOperatorID, "ID operator paling panjang "+itoa(MaxOperatorIDLength)+" karakter.")
 	}
 
 	if p.Email == "" {
-		tambah(FieldEmail, "Email wajib diisi.")
-	} else if !EmailMasukAkal(p.Email) {
-		tambah(FieldEmail, "Format email tidak benar.")
-	} else if utf8.RuneCountInString(p.Email) > PanjangEmailMaksimum {
-		tambah(FieldEmail, "Email paling panjang "+itoa(PanjangEmailMaksimum)+" karakter.")
+		create(FieldEmail, "Email wajib diisi.")
+	} else if !EmailLooksValid(p.Email) {
+		create(FieldEmail, "Format email tidak benar.")
+	} else if utf8.RuneCountInString(p.Email) > MaxEmailLength {
+		create(FieldEmail, "Email paling panjang "+itoa(MaxEmailLength)+" karakter.")
 	}
 
-	if utf8.RuneCountInString(p.LiniBisnis) > PanjangLiniBisnisMaksimum {
-		tambah(FieldLiniBisnis, "Lini bisnis paling panjang "+itoa(PanjangLiniBisnisMaksimum)+" karakter.")
+	if utf8.RuneCountInString(p.BusinessLine) > MaxBusinessLineLength {
+		create(FieldBusinessLine, "Lini bisnis paling panjang "+itoa(MaxBusinessLineLength)+" karakter.")
 	}
-	if utf8.RuneCountInString(p.Grup) > PanjangGrupMaksimum {
-		tambah(FieldGrup, "Grup paling panjang "+itoa(PanjangGrupMaksimum)+" karakter.")
+	if utf8.RuneCountInString(p.Group) > MaxGroupLength {
+		create(FieldGroup, "Grup paling panjang "+itoa(MaxGroupLength)+" karakter.")
 	}
-	if utf8.RuneCountInString(p.Atasan) > PanjangAtasanMaksimum {
-		tambah(FieldAtasan, "Atasan paling panjang "+itoa(PanjangAtasanMaksimum)+" karakter.")
+	if utf8.RuneCountInString(p.Supervisor) > MaxSupervisorLength {
+		create(FieldSupervisor, "Atasan paling panjang "+itoa(MaxSupervisorLength)+" karakter.")
 	}
 
-	if p.Kuota < 0 || p.Kuota > KuotaMaksimum {
-		tambah(FieldKuota, "Kuota harus antara 0 dan "+itoa(KuotaMaksimum)+".")
+	if p.Quota < 0 || p.Quota > MaxQuota {
+		create(FieldQuota, "Kuota harus antara 0 dan "+itoa(MaxQuota)+".")
 	}
-	if p.KuotaLuar < 0 || p.KuotaLuar > KuotaMaksimum {
-		tambah(FieldKuotaLuar, "Kuota sistem lain harus antara 0 dan "+itoa(KuotaMaksimum)+".")
+	if p.ExternalQuota < 0 || p.ExternalQuota > MaxQuota {
+		create(FieldExternalQuota, "Kuota sistem lain harus antara 0 dan "+itoa(MaxQuota)+".")
 	}
 
 	// Petugas tidak boleh menjadi atasan dirinya sendiri. Bukan aturan yang tertulis di
 	// export, melainkan akibat langsung dari cara `SearchPICTeknik_act` menelusuri
 	// rantai atasan: rujukan ke diri sendiri membuatnya berputar tanpa henti.
-	if p.Atasan != "" && KunciID(p.Atasan) == KunciID(p.IDOperator) {
-		tambah(FieldAtasan, "Petugas tidak boleh menjadi atasan dirinya sendiri.")
+	if p.Supervisor != "" && IDKey(p.Supervisor) == IDKey(p.OperatorID) {
+		create(FieldSupervisor, "Petugas tidak boleh menjadi atasan dirinya sendiri.")
 	}
 
-	return pelanggaran
+	return violation
 }
 
 // EmailMasukAkal memeriksa bentuk alamat surel sekadarnya.
 //
 // Sengaja longgar: satu-satunya cara membuktikan sebuah alamat benar adalah mengirim
 // surel ke sana, dan validasi yang terlalu ketat justru menolak alamat yang sah.
-func EmailMasukAkal(alamat string) bool {
-	alamat = strings.TrimSpace(alamat)
-	i := strings.IndexByte(alamat, '@')
-	if i <= 0 || i == len(alamat)-1 {
+func EmailLooksValid(address string) bool {
+	address = strings.TrimSpace(address)
+	i := strings.IndexByte(address, '@')
+	if i <= 0 || i == len(address)-1 {
 		return false
 	}
-	domain := alamat[i+1:]
+	domain := address[i+1:]
 	if strings.ContainsRune(domain, '@') {
 		return false
 	}
@@ -260,17 +260,17 @@ func itoa(n int) string {
 	if n == 0 {
 		return "0"
 	}
-	negatif := n < 0
-	if negatif {
+	negative := n < 0
+	if negative {
 		n = -n
 	}
-	var angka []byte
+	var digits []byte
 	for n > 0 {
-		angka = append([]byte{byte('0' + n%10)}, angka...)
+		digits = append([]byte{byte('0' + n%10)}, digits...)
 		n /= 10
 	}
-	if negatif {
-		angka = append([]byte{'-'}, angka...)
+	if negative {
+		digits = append([]byte{'-'}, digits...)
 	}
-	return string(angka)
+	return string(digits)
 }
