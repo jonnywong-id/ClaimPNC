@@ -26,8 +26,8 @@ func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 // Keduanya berbeda karena outstanding_list memakai dua parameter tambahan untuk paginasi.
 // Lihat kepala outstanding.sql; keduanya dijaga uji di query_test.go.
 const (
-	scopeFirstBindList  = 9
-	scopeFirstBindCount = 7
+	scopeFirstBindList  = 11
+	scopeFirstBindCount = 9
 )
 
 // List membaca satu halaman klaim yang masih berjalan beserta jumlah seluruh yang cocok.
@@ -47,7 +47,7 @@ func (r *Repo) List(ctx context.Context, f inboxoutstanding.Filter) (inboxoutsta
 	listSQL, scopeArgs := expandScope(query("outstanding_list"), f.Scope, scopeFirstBindList)
 
 	// Urutan argumen mengikuti NOMOR parameter, bukan urutan kemunculannya di dalam teks:
-	// paginasi memakai :7 dan :8, sehingga ia disisipkan sebelum argumen scope.
+	// paginasi memakai :9 dan :10, sehingga ia disisipkan sebelum argumen scope.
 	listArgs := append(append([]any(nil), filters...), f.Offset, f.Limit)
 	listArgs = append(listArgs, scopeArgs...)
 
@@ -72,7 +72,7 @@ func (r *Repo) List(ctx context.Context, f inboxoutstanding.Filter) (inboxoutsta
 	return inboxoutstanding.Page{Claims: claims, Total: total}, nil
 }
 
-// filterArgs menyusun enam argumen pertama, sama untuk kedua kueri.
+// filterArgs menyusun delapan argumen pertama, sama untuk kedua kueri.
 //
 // Pola "NULL berarti tidak menyaring" dipakai supaya satu teks SQL melayani seluruh
 // kombinasi penyaring. Menyusun WHERE-nya di Go akan mengembalikan SQL ke dalam kode —
@@ -81,13 +81,24 @@ func filterArgs(f inboxoutstanding.Filter) []any {
 	search := nilIfEmpty(f.Search)
 	pattern := nilIfEmpty(searchPattern(f.Search))
 
+	// Tahap dan cabang dikirim DUA KALI, dan itu bukan kelalaian.
+	//
+	// Keduanya muncul dua kali di dalam SQL — sekali pada `IS NULL`, sekali pada
+	// perbandingannya — dan driver mengikat argumen menurut urutan KEMUNCULAN penanda,
+	// bukan menurut nomornya. Mengirim sekali menghasilkan ORA-01008. Lihat kepala
+	// outstanding.sql.
+	stage := nilIfEmpty(strings.ToUpper(f.Stage))
+	branch := nilIfEmpty(strings.ToUpper(f.BranchCode))
+
 	return []any{
-		search,                               // :1 penentu apakah pencarian aktif
-		pattern,                              // :2 NOMOR
-		pattern,                              // :3 POLIS_NOMOR
-		pattern,                              // :4 USER_TEKNIS
-		nilIfEmpty(strings.ToUpper(f.Stage)), // :5
-		nilIfEmpty(strings.ToUpper(f.BranchCode)), // :6
+		search,  // :1 penentu apakah pencarian aktif
+		pattern, // :2 PYID
+		pattern, // :3 POLICYNO
+		pattern, // :4 USERTEKNIS_1
+		stage,   // :5 IS NULL
+		stage,   // :6 perbandingan
+		branch,  // :7 IS NULL
+		branch,  // :8 perbandingan
 	}
 }
 
@@ -95,7 +106,7 @@ func filterArgs(f inboxoutstanding.Filter) []any {
 //
 // # Kenapa ini BUKAN perangkaian SQL yang dilarang
 //
-// Yang disisipkan hanyalah `:9, :10, …` — PENANDA parameter, bukan nilainya. Seluruh nilai
+// Yang disisipkan hanyalah `:9, :11, …` — PENANDA parameter, bukan nilainya. Seluruh nilai
 // tetap dikirim terpisah lewat args, sehingga celah `{ASIS:…}` warisan tetap tertutup.
 // Satu-satunya teks bukan-penanda yang disisipkan adalah `AND 1 = 0`, dan ia konstanta di
 // dalam kode — tidak berasal dari data mana pun.

@@ -13,12 +13,14 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
+	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -73,6 +75,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
+	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -206,6 +209,45 @@ func checkClaimReport(ctx context.Context, repo *pelaporanklaimsql.Repo, print f
 		pelaporanklaim.StageRejected,
 	} {
 		print("            %-20s %d", stage.Label(), summary[stage])
+	}
+}
+
+// checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
+//
+// Inilah satu-satunya jalan membuktikan kuerinya sah selama migrasi 0001 belum dijalankan:
+// layarnya sendiri menuntut sesi, dan sesi disimpan di `CPNC_SESI_AKTIF` yang belum ada.
+//
+// Yang dibuktikan di sini: SQL-nya diterima Oracle, penanda bind-nya benar, dan
+// pembacaan 21 kolomnya cocok dengan tipe kolom yang sebenarnya. Yang TIDAK dibuktikan:
+// kesetaraan hasilnya dengan layar Pega — itu gerbang 1, milik `S-8`.
+func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, print func(string, ...any)) {
+	// Tanpa batas lini: memeriksa tabelnya, bukan kewenangan seseorang.
+	page, err := repo.List(ctx, inboxoutstanding.Filter{
+		Scope: inboxoutstanding.LineScope{Unrestricted: true},
+		Limit: 5,
+	})
+	if err != nil {
+		print("  [BELUM] POOLDATA.T_CLAIMLIST_ADMIN tidak dapat dibaca: %v", err)
+		print("            Tabelnya milik sistem lama, bukan dibuat migrasi. Selama belum ada,")
+		print("            layar Inbox Outstanding tidak dapat dipakai terhadap Oracle.")
+		return
+	}
+
+	print("  [ok]    POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: %d klaim masih berjalan", page.Total)
+
+	for _, c := range page.Claims {
+		nomor := c.ClaimNumber
+		if nomor == "" {
+			nomor = "(belum bernomor)"
+		}
+		aging := "—"
+		if c.AgingDays != nil {
+			aging = fmt.Sprintf("%d", *c.AgingDays)
+		}
+		// Nomor polis dan nama tertanggung SENGAJA tidak dicetak (`D-69`) — keluaran mode
+		// periksa sering disalin ke tiket dan percakapan.
+		print("            %-16s %-8s panel %-4s aging %-5s %s",
+			nomor, c.DisplayStatus(), c.GroupPanel, aging, c.CurrentStage)
 	}
 }
 

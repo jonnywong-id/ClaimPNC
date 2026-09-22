@@ -87,13 +87,27 @@
 -- nilai properti klipboard.
 --
 -- Nomor parameter TIDAK harus urut dengan posisinya di dalam teks, dan di sini itu
--- dimanfaatkan: paginasi memakai :7 dan :8 meski tertulis paling bawah, supaya penanda
--- scope dapat mulai dari :9 tanpa bergeser saat jumlah lini berubah.
+-- dimanfaatkan: paginasi memakai :9 dan :10 meski tertulis paling bawah, supaya penanda
+-- scope dapat mulai dari :11 tanpa bergeser saat jumlah lini berubah.
 --
---     outstanding_list   :1..:4 pencarian · :5 tahap · :6 cabang · :7 offset · :8 limit
+--     outstanding_list   :1..:4 pencarian · :5,:6 tahap · :7,:8 cabang · :9 offset · :10 limit
+--                        -> scope mulai :11
+--     outstanding_count  :1..:4 pencarian · :5,:6 tahap · :7,:8 cabang
 --                        -> scope mulai :9
---     outstanding_count  :1..:4 pencarian · :5 tahap · :6 cabang
---                        -> scope mulai :7
+--
+-- # Tiap kemunculan punya nomornya sendiri, dan itu WAJIB
+--
+-- Tahap dan cabang masing-masing muncul DUA KALI — sekali pada `IS NULL`, sekali pada
+-- perbandingannya. Keduanya sempat memakai nomor yang sama (`:5 IS NULL OR … = :5`),
+-- karena `:5` tampak sebagai satu variabel bernama "5".
+--
+-- Oracle menolaknya: **ORA-01008 not all variables bound**. Driver mengikat argumen
+-- menurut URUTAN KEMUNCULAN penanda di dalam teks, bukan menurut nomornya — delapan
+-- kemunculan menuntut delapan argumen, berapa pun nomor uniknya.
+--
+-- Tidak satu pun kueri lain di repo ini mengulang penanda dalam satu pernyataan, sehingga
+-- pola itu tidak pernah teruji sampai kueri ini menyentuh Oracle. Nilainya tetap dikirim
+-- dua kali dari `filterArgs`; yang berubah hanya penomorannya.
 --
 -- Kedua angka itu konstanta di sisi Go dan dijaga sebuah uji.
 
@@ -129,11 +143,11 @@ SELECT k.PZINSKEY,
         OR UPPER(k.PYID) LIKE :2 ESCAPE '\'
         OR UPPER(k.POLICYNO) LIKE :3 ESCAPE '\'
         OR UPPER(k.USERTEKNIS_1) LIKE :4 ESCAPE '\')
-   AND (:5 IS NULL OR UPPER(TRIM(k.PXTASKLABEL)) = :5)
-   AND (:6 IS NULL OR UPPER(TRIM(k.BRANCHNAME)) = :6)
+   AND (:5 IS NULL OR UPPER(TRIM(k.PXTASKLABEL)) = :6)
+   AND (:7 IS NULL OR UPPER(TRIM(k.BRANCHNAME)) = :8)
    /*SCOPE*/
  ORDER BY k.PXCREATEDATETIME DESC, k.PZINSKEY
-OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
+OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: outstanding_count
 -- Menghitung SELURUH baris yang cocok, bukan baris pada halaman ini.
@@ -152,6 +166,6 @@ SELECT COUNT(*)
         OR UPPER(k.PYID) LIKE :2 ESCAPE '\'
         OR UPPER(k.POLICYNO) LIKE :3 ESCAPE '\'
         OR UPPER(k.USERTEKNIS_1) LIKE :4 ESCAPE '\')
-   AND (:5 IS NULL OR UPPER(TRIM(k.PXTASKLABEL)) = :5)
-   AND (:6 IS NULL OR UPPER(TRIM(k.BRANCHNAME)) = :6)
+   AND (:5 IS NULL OR UPPER(TRIM(k.PXTASKLABEL)) = :6)
+   AND (:7 IS NULL OR UPPER(TRIM(k.BRANCHNAME)) = :8)
    /*SCOPE*/

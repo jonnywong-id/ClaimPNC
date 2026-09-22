@@ -2761,3 +2761,70 @@ bukan kebenaran.
 > Uji hanya dapat membuktikan kode sesuai dengan yang saya percayai. Yang membuktikan
 > kepercayaan itu benar hanyalah data nyata atau sumber Pega — dan keempat koreksi ini datang
 > dari sana, tidak satu pun dari uji.
+
+### 17.26 SQL menyentuh Oracle untuk pertama kalinya — dan langsung ditolak (2026-09-22)
+
+Work Owner menyisipkan satu baris ke `POOLDATA.T_CLAIMLIST_ADMIN` dan meminta layarnya
+dilihat. Itu kesempatan pertama kueri ini menyentuh Oracle sungguhan — hal yang sepanjang
+sesi tercatat sebagai **"belum terbukti"**.
+
+Oracle menolaknya pada percobaan pertama:
+
+```
+ORA-01008: not all variables bound
+```
+
+**Sebabnya.** Penyaring tahap dan cabang masing-masing memakai penandanya **dua kali**:
+
+```sql
+AND (:5 IS NULL OR UPPER(TRIM(k.PXTASKLABEL)) = :5)
+AND (:6 IS NULL OR UPPER(TRIM(k.BRANCHNAME))  = :6)
+```
+
+`:5` tampak sebagai satu variabel bernama "5", sehingga mengirim satu nilai terasa benar.
+Driver mengikat argumen menurut **urutan kemunculan penanda di dalam teks**, bukan menurut
+nomornya — delapan kemunculan menuntut delapan argumen.
+
+**Kenapa tidak satu pun uji menangkapnya.** Seluruh uji SQL berjalan tanpa basis data; ia
+memeriksa bentuk teks dan pengikatan parameter, bukan apakah Oracle menerimanya. Ditemukan
+juga bahwa **tidak satu pun kueri lain di repo ini mengulang penanda bernomor dalam satu
+pernyataan** — jadi polanya memang belum pernah teruji terhadap Oracle oleh siapa pun.
+
+**Perbaikannya.** Tiap kemunculan diberi nomornya sendiri (`:5`…`:8`), nilainya tetap
+dikirim dua kali. Paginasi bergeser ke `:9`/`:10`, penanda scope ke `:11` (list) dan `:9`
+(count). Satu uji baru — `TestPenandaBernomorTidakDiulangDalamSatuKueri` — menjaga pola itu
+tidak kembali.
+
+### 17.27 Hasil terhadap Oracle sungguhan
+
+Pemeriksa `checkOutstanding` ditambahkan ke mode `-periksa`, mengikuti pola yang sudah
+dipakai `masterstatus` dan `pelaporanklaim`. Hasilnya:
+
+```
+[ok] POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: 863 klaim masih berjalan
+       PNC-2785  On Progress  panel 006  aging —    Input Estimasi
+       PNC-2783  On Progress  panel 002  aging —    Input Register
+```
+
+Baris yang disisipkan Work Owner, dicari lewat penyaring pencarian:
+
+```
+[ok] POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: 1 klaim masih berjalan
+       PNC-1796  On Progress  panel 006  aging 618  Choose Surveyor
+```
+
+Seluruh turunannya benar: `PYSTATUSWORK='New'` → **On Progress** · `GROUPPANEL_1='006'` →
+panel 006 · `AGING=618` dibaca apa adanya · `PXTASKLABEL` → Choose Surveyor · pencarian atas
+`PYID` bekerja.
+
+**Yang kini terbukti:** SQL-nya diterima Oracle · penanda bind-nya benar · pembacaan 21
+kolomnya cocok dengan tipe kolom sebenarnya · penyaring pencarian bekerja · 863 baris
+terbaca dari tabel produksi.
+
+**Yang masih belum:** kesetaraan hasilnya dengan layar Pega (gerbang 1, milik `S-8`), dan
+**layarnya sendiri** — ia menuntut sesi, dan `CPNC_SESI_AKTIF` dibuat migrasi 0001 yang
+belum dijalankan.
+
+Satu catatan dari data nyata: `AGING` **kosong** pada kelima klaim terbaru, dan terisi 618
+pada klaim 2024. Kolom itu tampaknya diisi proses terjadwal, bukan saat klaim dibuat — dan
+itu menguatkan keputusan membacanya apa adanya alih-alih menghitungnya ulang.

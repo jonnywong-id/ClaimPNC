@@ -71,10 +71,10 @@ func TestPenandaScopeDimulaiDariNomorYangBenar(t *testing.T) {
 	scope := inboxoutstanding.LineScope{GroupPanels: []string{"003", "004", "006"}}
 
 	listSQL, _ := expandScope(query("outstanding_list"), scope, scopeFirstBindList)
-	require.Contains(t, listSQL, ":9, :10, :11")
+	require.Contains(t, listSQL, ":11, :12, :13")
 
 	countSQL, _ := expandScope(query("outstanding_count"), scope, scopeFirstBindCount)
-	require.Contains(t, countSQL, ":7, :8, :9")
+	require.Contains(t, countSQL, ":9, :10, :11")
 }
 
 // Uji yang menjaga konstanta scopeFirstBind* tetap sejalan dengan isi berkas .sql.
@@ -147,7 +147,7 @@ func TestSQLMenyatakanKarakterEscapeYangSamaDenganGo(t *testing.T) {
 func TestPenyaringKosongDikirimSebagaiNULL(t *testing.T) {
 	args := filterArgs(inboxoutstanding.Filter{}.Normalize())
 
-	require.Len(t, args, 6)
+	require.Len(t, args, 8)
 	for i, a := range args {
 		require.Nil(t, a, "argumen ke-%d harus NULL saat penyaringnya kosong", i+1)
 	}
@@ -159,8 +159,49 @@ func TestPenyaringTahapDanCabangDiseragamkanMenjadiHurufBesar(t *testing.T) {
 		BranchCode: "jkt",
 	}.Normalize())
 
-	require.Equal(t, "KOMITE", args[4])
-	require.Equal(t, "JKT", args[5])
+	// Delapan argumen, bukan enam: tahap dan cabang masing-masing dikirim DUA KALI karena
+	// penandanya muncul dua kali di dalam SQL. Lihat kepala outstanding.sql.
+	require.Len(t, args, 8)
+
+	require.Equal(t, "KOMITE", args[4]) // :5 IS NULL
+	require.Equal(t, "KOMITE", args[5]) // :6 perbandingan
+	require.Equal(t, "JKT", args[6])    // :7 IS NULL
+	require.Equal(t, "JKT", args[7])    // :8 perbandingan
+}
+
+// Tiap penanda bernomor muncul TEPAT SEKALI di dalam satu kueri.
+//
+// Ini uji yang menjaga ORA-01008 tidak kembali. Kueri ini sempat memakai
+// `:5 IS NULL OR … = :5`, dan Oracle menolaknya: driver mengikat argumen menurut urutan
+// KEMUNCULAN penanda, bukan menurut nomornya.
+//
+// Cacat itu lolos seluruh uji sampai kuerinya benar-benar menyentuh Oracle — tidak satu pun
+// kueri lain di repo ini mengulang penanda, sehingga polanya tidak pernah teruji.
+func TestPenandaBernomorTidakDiulangDalamSatuKueri(t *testing.T) {
+	for _, name := range []string{"outstanding_list", "outstanding_count"} {
+		seen := map[string]int{}
+		for _, mark := range regexp.MustCompile(`:\d+`).FindAllString(bodyOnly(query(name)), -1) {
+			seen[mark]++
+		}
+		for mark, count := range seen {
+			require.Equalf(t, 1, count,
+				"kueri %s memakai %s sebanyak %d kali; tiap kemunculan wajib bernomor sendiri",
+				name, mark, count)
+		}
+	}
+}
+
+// bodyOnly membuang baris komentar supaya nomor yang disebut di dalam penjelasan tidak
+// ikut terhitung sebagai penanda.
+func bodyOnly(statement string) string {
+	var kept []string
+	for _, line := range strings.Split(statement, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "--") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
 }
 
 // Kedua kueri wajib punya syarat WHERE yang sama persis selain paginasi.
@@ -178,8 +219,8 @@ func TestSyaratOutstandingSamaPadaKeduaKueri(t *testing.T) {
 		"k.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')",
 		"k.PXTASKLABEL NOT IN ('FixCorrespondence')",
 		"k.BRANCHNAME <> 'ASNET'",
-		"UPPER(TRIM(k.PXTASKLABEL)) = :5",
-		"UPPER(TRIM(k.BRANCHNAME)) = :6",
+		"UPPER(TRIM(k.PXTASKLABEL)) = :6",
+		"UPPER(TRIM(k.BRANCHNAME)) = :8",
 	} {
 		require.Contains(t, list, condition, "outstanding_list")
 		require.Contains(t, count, condition, "outstanding_count")
