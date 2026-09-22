@@ -1354,3 +1354,321 @@ dibaca. Section keduanya sudah terbaca dan labelnya sudah diketahui:
 - Tipe: `ID Tipe Sparepart`, `Nama Tipe Sparepart`, `Kategori Sparepart`
 
 Keduanya memakai pola tiga tab dan activity persetujuan yang sama.
+
+---
+
+## Sesi Master Kategori Sparepart (2026-09-21)
+
+### Skill yang dipanggil
+
+**Tidak satu pun.** Alasannya sama dengan sesi-sesi modul master sebelumnya dan tidak
+berubah: seluruh fakta yang dibutuhkan ada di dalam repository ini — 2.634 berkas export
+Pega, `docs/Steering/`, dan sebelas modul yang sudah selesai. Tidak ada satu pun klaim di
+sesi ini yang bersumber dari luar, sehingga `research` tidak relevan; tidak ada bug yang
+sedang didiagnosis, tidak ada konflik merge, dan tidak ada prototipe yang perlu dibuat.
+
+`tdd` tidak dipanggil, tetapi urutannya diikuti secara longgar: domain ditulis lebih dulu,
+lalu ujinya, lalu adapter — dan tiga uji ditulis khusus untuk menjaga keputusan yang mudah
+"diperbaiki" menjadi salah oleh orang berikutnya (lihat di bawah).
+
+### Teknik dari skill yang dipakai tanpa memanggilnya
+
+**`grilling` — cari faktanya sendiri, serahkan keputusannya.**
+
+Tiga pertanyaan diajukan ke Work Owner, dan **ketiganya disertai angka dan bukti**, bukan
+"bagaimana menurut Bapak":
+
+| Pertanyaan | Bukti yang disertakan |
+|---|---|
+| Penomoran `max+1` | pernyataan `nvl(max(PART_CATEGORY_ID),0)+1` apa adanya, beserta tiga pilihan dan biaya masing-masing (termasuk `D-63` bila memilih sequence) |
+| Approve/Reject di layar ini | preseden tiga master sebelumnya, ditambah akibat khas modul ini — kategori tertahan memblokir layar Master Sparepart |
+| Nama yang ditolak tetap memblokir | rule validasinya dikutip, beserta fakta bahwa ia TIDAK menyaring `APPROVAL` |
+
+Yang membuat ketiganya layak ditanyakan: tidak satu pun dapat diputuskan dari bukti saja.
+Yang **tidak** ditanyakan — urutan tab, ukuran halaman, caption, nama kolom — seluruhnya
+dapat dibaca langsung dari export, dan menanyakannya hanya akan memindahkan pekerjaan
+membaca kepada Work Owner.
+
+**`domain-modeling` — tolak istilah yang memikul arti yang bukan miliknya.**
+
+Tiga nama warisan ditolak:
+
+| Nama di Pega | Masalahnya | Nama di sini |
+|---|---|---|
+| `PART_CATEGORY_ID as "CityID"` | dialiaskan menjadi "kota" — tidak ada hubungannya dengan isinya | `ID` |
+| `PART_CATEGORY_NAME as "City"` | idem | `Name` |
+| `InputKategori.CITY_ID` / `.LOGIN_APLIKASI` / `.ACCOUNT_ID` | pada jalur SIMPAN, ketiganya membawa **nama**, **status**, dan **kunci** — tidak satu pun cocok dengan namanya | `Name`, `Status`, `ID` |
+
+Ditambah satu keputusan penamaan yang diambil justru karena modul TETANGGA: tipe domainnya
+dinamai `PartCategory`, bukan `Category`, karena `mastersparepart` sudah memakai `Category`
+untuk DTO dropdown-nya. Di TypeScript alasannya lebih kuat lagi — `SparepartCategory` sudah
+ada dan bentuknya berbeda.
+
+**`codebase-design` — seam yang nyata, bukan hipotetis.**
+
+`IDSource` tetap dideklarasikan terpisah dari `Repo` meski `Insert` menerbitkan ID-nya
+sendiri di dalam transaksi. Alasannya bukan simetri dengan modul lain, melainkan ada
+pemakainya yang nyata: `claimpnc -periksa` membuktikan penerbitan kunci bekerja terhadap
+basis data nyata **tanpa menyisipkan satu baris pun**.
+
+Kalau tidak ada pemakai kedua itu, seam-nya tidak dibuat — dan hal itu dinyatakan pada doc
+comment `Store`, supaya orang berikutnya tidak menghapusnya karena mengira ia tidak dipakai.
+
+### Tiga uji yang ditulis untuk menjaga keputusan, bukan menjaga kode
+
+Ketiganya akan gagal bila seseorang "memperbaiki" hal yang sengaja dibiarkan:
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestApprovedCodeMatchesLookupFilterUsedBySparepartScreen` | sandi `APPROVAL = '1'`. Mengubahnya membuat dropdown di layar Master Sparepart kosong **tanpa satu pun pesan galat** — kelas kegagalan yang tidak terlihat dari modul mana pun sendirian |
+| `TestCreateRejectsNameOfRejectedRow` | nama yang ditolak tetap memblokir (`P-5`). Bila kelak "diperbaiki", uji ini yang memberi tahu bahwa itu selisih yang menuntut persetujuan Work Owner |
+| `TestListOrdersByNumericKey` | pengurutan ANGKA, bukan teks — kebalikan dari Master Sparepart yang ID-nya memang teks |
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+**1. Nama paket transport hampir salah bentuk.** Versi pertamanya ditulis
+`masterkategorisparepartHTTP` — bentuk campuran yang tidak dipakai satu pun modul lain di
+repositori ini. Ketahuan saat membandingkannya dengan `masterspareparthttp` dan
+`masterpanelhttp`. Diperbaiki menjadi `masterkategorispareparthttp` sebelum berkas keduanya
+ditulis.
+
+Pelajarannya: nama panjang membuat pola yang biasanya jelas menjadi mudah meleset, dan
+satu-satunya penjaganya adalah membandingkan dengan tetangga — bukan mengandalkan ingatan.
+
+**2. Satu assertion uji frontend terlalu longgar.** `getByText(/Waiting Approval/)` cocok
+pada **dua** elemen: caption tab dan pemberitahuan di form. Ujinya gagal pada percobaan
+pertama.
+
+Itu bukan uji yang rewel melainkan cerminan keadaan nyata — kata yang sama memang muncul dua
+kali di layar, dan itulah alasan tombol keputusan dinamai "Approve **terpilih**" alih-alih
+"Approve". Diperbaiki dengan mempersempit pencarian ke dalam form.
+
+**3. Format import `main.go` sempat tidak urut.** Blok import yang saya sisipkan ditaruh
+setelah `masterpanel*`, padahal `gofmt` menuntut urutan alfabetis. Ketahuan hanya karena
+`gofmt -l` dijalankan atas **salinan ber-LF** — repositori memakai CRLF, sehingga `gofmt -l`
+apa adanya menandai 272 berkas dan temuan yang sebenarnya tenggelam di antaranya.
+
+Pelajarannya: pada repositori bercampur akhiran baris, `gofmt -l` langsung tidak berguna
+sebagai alat ukur. Yang berguna adalah membandingkan salinan yang sudah dinormalkan.
+
+### Satu hal yang TIDAK saya kerjakan meski tergoda
+
+Saat memeriksa contoh memori, ditemukan bahwa `mastersparepart` memakai kunci kategori
+`"KAT01"` — bentuk yang **tidak mungkin benar**, karena `nvl(max(...),0)+1` mustahil bekerja
+atasnya.
+
+Itu cacat nyata pada data contoh, dan memperbaikinya hanya menyentuh satu berkas. Tetap tidak
+dikerjakan: modul itu sudah selesai dan berada di bawah Isolasi Protektif, dan bentuk kunci
+contohnya tidak memengaruhi apa pun di produksi. Yang dikerjakan adalah mencatatnya di
+`keputusan-implementasi.md` §35.10 dan pada doc comment `sample.go` modul ini.
+
+### Catatan untuk sesi berikutnya
+
+1. **Sesi paralel terjadi, dan itu terasa.** `mastergroupingsparepart` (MENU_ID 32)
+   dikerjakan sesi lain selagi sesi ini berjalan: saat sesi ini dimulai ia baru punya
+   backend, menjelang selesai frontend-nya ikut muncul.
+
+   Akibat yang tercatat: satu `go test ./...` **gagal secara transien** karena menangkap
+   `main.go` di tengah penyuntingan sesi lain, dan jumlah uji frontend berubah di antara dua
+   kali menjalankannya. Keduanya sempat terbaca sebagai kerusakan yang saya buat.
+
+   Pelajarannya: pada repositori yang disunting lebih dari satu sesi, kegagalan yang tidak
+   dapat direproduksi wajib diperiksa ulang sebelum ditindaklanjuti — dan berkas bersama
+   (`App.tsx`, `menu/registry.ts`, `api/types.ts`) wajib diperiksa ulang di **akhir** sesi,
+   bukan hanya saat menyuntingnya. Pemeriksaan akhir itu dilakukan: kedua modul berdampingan
+   bersih, tidak ada yang tertimpa.
+2. **Master Tipe Sparepart (MENU_ID 34)** adalah tetangga langsung modul ini — tipe bercabang
+   dari kategori lewat `PART_CATEGORY_ID`. Ia akan menghadapi persoalan yang sama persis:
+   `max+1`, tiga kolom, rule keputusan yang perlu diperiksa keberadaannya.
+3. **Tiga uji `master-rekening/AccountPage.test.tsx` gagal** dan sudah gagal sebelum sesi ini.
+   Perlu keputusan apakah Isolasi Protektif dibuka untuk memperbaikinya.
+
+## Sesi Master Grouping Sparepart (2026-09-21)
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa |
+|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menekan empat asumsi yang tidak dapat diputuskan dari bukti, lalu mengajukannya ke Work Owner beserta rekomendasi |
+| `mattpocock-skills:domain-modeling` | saat menamai isian dan tipe | memisahkan nama properti Pega yang dipinjam dari arti sebenarnya |
+| `mattpocock-skills:codebase-design` | saat menetapkan seam | memutuskan LookupRepo terpisah dari Repo, dan IDSource terpisah dari keduanya |
+
+Ketiganya dipakai sebagai **disiplin**, bukan dipanggil sebagai perintah — repo ini melarang
+penulisan kode implementasi sebelum analisis selesai, dan ketiga skill itu yang memberi bentuk
+pada analisisnya.
+
+### `grilling` — empat pertanyaan yang benar-benar diajukan
+
+Disiplin yang dipakai: **cari faktanya sendiri, serahkan keputusannya ke Work Owner.** Setiap
+pertanyaan disajikan dengan buktinya, pilihannya, dan rekomendasi beserta alasannya.
+
+| Pertanyaan | Fakta yang dicari lebih dulu |
+|---|---|
+| Kolom `NAMA` pada `LOKASI_PANEL_HE` | dibaca `GetDataSisiPanel`, dilacak balik ke `pySourceName` autocomplete, lalu ke kelas report definition-nya |
+| Bentuk `SPAREPART_HE_VIN_GROUP` | dihitung dari kolom yang dibaca `GetDataMasterGrouping` dan yang disaring pemeriksaan duplikat |
+| Alur persetujuan | ditelusuri dari `Section/ApprovalPNCMasterGroupingSparepartHE` ke activity yang dipanggilnya |
+| Kontrol tiap isian | dibaca dari `pyFormat`, `pySourceName`, dan `pyAdditionalFields` pada section-nya |
+
+Jawabannya satu prinsip untuk keempatnya: **"sesuai Pega dan konsisten"**. Dua di antaranya —
+persetujuan dan kontrol isian — menuntut penafsiran, karena "sesuai Pega" dan "konsisten"
+menarik ke arah yang berbeda. Penafsirannya dinyatakan terbuka di jawaban, bukan diputuskan
+diam-diam:
+
+> Bentuk borongan menghasilkan **hasil yang terlihat identik** dengan Pega. Yang tidak ditiru
+> hanyalah kemampuan persetujuan untuk **gagal** karena validasi form ikut diputar ulang — dan
+> itu cacat, bukan fitur.
+
+### `domain-modeling` — bahasa domain yang harus dipisahkan dari properti Pega
+
+Modul ini kasus paling ekstrem sejauh ini. Layarnya salinan layar Master Sparepart, sehingga
+**enam isian memakai nama properti yang sama sekali tidak ada hubungannya dengan isinya**:
+
+| Properti Pega | Arti sebenarnya |
+|---|---|
+| `PANJANG` | Nama Panel |
+| `LEBAR` | Sisi |
+| `TINGGI` | No Rangka |
+| `QTY_PESAN` | Tipe Kendaraan |
+| `BERAT` | Grouping Dengan No Rangka |
+| `MAX_STOCK` | Catatan |
+| `MIN_STOCK` | ID Panel (tersembunyi) |
+
+Disiplin yang dipakai: **silangkan setiap pernyataan dengan kode sebelum menamainya.** Tidak
+satu pun nama di atas dipercaya; setiap properti dilacak ke kolom basis datanya lewat
+`GetDataMasterGrouping`, lalu ke label layarnya lewat `pyLabelFieldValue`, baru dinamai.
+
+Dua alias lagi ditemukan di luar form: `branddetail.id` dialiaskan `"BANK_ID"` dan `TYPENAME`
+dialiaskan `"NAMA_BANK"` — nama yang tidak ada hubungannya dengan bank, dan itulah sebabnya
+properti `NAMA_BANK` muncul di section Master Grouping Sparepart.
+
+### `codebase-design` — seam yang dibenarkan, dan yang tidak
+
+Prinsip yang dipakai: **satu adapter berarti seam hipotetis; dua adapter berarti seam nyata.**
+
+| Seam | Adapter nyata | Dibuat? |
+|---|---|---|
+| `Repo` | sqlstore + memory | ya |
+| `LookupRepo` | sqlstore + memory | ya — pertanyaannya berbeda ("apa pilihan yang tersedia"), dan keempat sumbernya milik master lain |
+| `IDSource` | sqlstore + memory | ya — isinya urusan penomoran, bukan urusan grouping |
+| Seam untuk tabel pendamping | — | **tidak**. Ia satu-lawan-satu dengan induknya dan tidak pernah dibaca sendirian; memisahkannya hanya menambah lapisan tanpa ada yang bervariasi di sana |
+
+`Store` menyatukan ketiganya — bukan menggantikannya. Yang disatukan hanyalah **cara
+memilihnya**: ketiganya selalu berasal dari koneksi entitas yang sama, sehingga tiga pemilih
+terpisah hanya akan membuka kemungkinan ketiganya menunjuk entitas berbeda.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+Ketiganya ditemukan oleh alat, bukan oleh pembacaan ulang — dan itu yang membuat alatnya layak
+dijalankan sebelum melapor selesai.
+
+| # | Kesalahan | Yang menangkapnya |
+|---|---|---|
+| 1 | `ParseGroupNumber` menerima `"+1"` padahal dokumentasinya menyatakan tanda `+` ditolak. Akibatnya `"+1"` akan terbaca sebagai grup 1 dan bertabrakan dengan `"0001"` | uji sendiri, `TestParseGroupNumberRejectsNonNumeric` |
+| 2 | Melaporkan **68 uji** di catatan pengembangan tanpa menghitungnya | pemeriksaan sendiri sebelum melapor; angka terverifikasi **100 fungsi uji**, 109 dengan sub-ujinya |
+| 3 | Selisih `gofmt` pada komentar bernomor `checkGrouping` di `cmd/claimpnc/check.go` | **dilaporkan sesi paralel**, bukan ditemukan sendiri |
+
+Yang pertama diperbaiki di **implementasinya**, bukan di ujinya. Godaan sebaliknya nyata:
+mengubah daftar kasus uji akan membuat suite hijau dalam satu suntingan.
+
+Yang ketiga patut dicatat sendiri: `gofmt -l` pada repo ini menyala untuk **seluruh berkas**
+karena repo memakai CRLF sementara `gofmt` menuntut LF, sehingga gerbang format yang sebenarnya
+tenggelam di antara ratusan positif palsu. Pemeriksaan yang dipakai kemudian menyalin berkasnya
+ke LF lebih dulu, lalu menjalankan `gofmt` atas salinan itu.
+
+### Teknik yang dipakai tanpa memanggil skill
+
+**Membaca XML Pega dengan parser sendiri, bukan dengan grep.** Berkas section-nya 240–530 KiB
+dan `pyLabelFieldValue` tidak berdampingan dengan properti yang dilabelinya. Yang dipakai:
+pemindaian berurutan atas dokumen sehingga pasangan label-properti terbaca **pada urutan
+dokumen**, bukan sebagai dua daftar terpisah yang harus dicocokkan dengan tebakan.
+
+**Membuktikan kegagalan pre-existing dengan stash, bukan dengan asumsi.** Tiga uji
+`master-rekening` gagal. Alih-alih menyatakan "bukan dari saya", ketiga berkas bersama yang
+saya sentuh di-stash sementara, berkas ujinya dijalankan sendiri, dan ketiganya **tetap
+gagal**. Stash dikembalikan utuh sesudahnya, dan kedua modul — milik saya dan milik sesi
+paralel — diperiksa masih berdampingan bersih.
+
+### Catatan untuk sesi berikutnya
+
+1. **Jawaban `-periksa` soal kolom `NAMA` harus dibawa ke Work Owner** begitu ia dijalankan
+   terhadap data nyata. Bila ia menjawab "NAMA berisi nama PANEL", jalur tulis Master Panel
+   perlu ditinjau **sebelum** dinyalakan di produksi.
+2. **Satu departure menunggu `D-54`**: nomor grup grup yang diikuti disimpan apa adanya alih-
+   alih lewat `TO_NUMBER`. Lihat `keputusan-implementasi.md` §36.6.
+3. `eslint` belum terpasang di repo ini. Gerbang lint frontend yang Steering §6 tuntut memang
+   belum ada.
+
+---
+
+## Sesi Master Tipe Sparepart (2026-09-22)
+
+Modul keempat dan terakhir di rumpun sparepart. Work Owner meminta
+`Harness/GCNMMasterSparepartType-Harness.xml` dijadikan rujukan, dan melarang menulis kode
+sebelum analisis selesai.
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menekan setiap premis ke bukti, lalu mengangkat yang tidak terbukti sebagai pertanyaan — bukan mengisinya dengan asumsi | menemukan gap pemuat dropdown (`R-16`) dan cakupan keunikan nama yang tidak lazim; keduanya jadi pertanyaan ke Work Owner |
+| `mattpocock-skills:domain-modeling` | saat menamai tipe | menolak nama yang mengikuti kolom tetapi menyesatkan pembaca | `PartType`, bukan `PartSection` — lihat `keputusan-implementasi.md` §37.7 |
+| `mattpocock-skills:codebase-design` | saat menentukan seam | memisahkan "apa isi master ini" dari "apa pilihan yang tersedia" | `LookupRepo` terpisah dari `Repo`, dengan `Store` yang menyatukan pemilihannya saja |
+
+### Kenapa `grilling` yang paling berpengaruh di sesi ini
+
+Tanpa disiplin itu, dua hal akan lolos sebagai asumsi yang tampak masuk akal:
+
+**Pertama, dropdown Kategori.** Mudah sekali menuliskan `APPROVAL = '1'` begitu saja — ia
+"jelas benar" secara bisnis. Yang menghentikannya adalah kebiasaan menanyakan *"dari rule
+mana ini dibaca?"*, dan jawabannya ternyata: **tidak ada**. Page `TempSparepartTypeClaimHE2`
+tidak dimuat satu pun rule di antara 2.634 berkas export.
+
+Nilainya akhirnya memang `'1'` — tetapi statusnya berbeda secara mendasar. Ia **rekonstruksi
+yang dinyatakan**, lengkap dengan rantai buktinya di tiga tempat, bukan fakta yang
+disamarkan. Perbedaan itu yang menentukan apakah ia dapat diuji ulang saat rule aslinya
+tiba.
+
+**Kedua, keunikan nama.** `ValidationSparepartType` tampak seperti pemeriksaan nama ganda
+biasa. Membacanya sampai klausa `WHERE`-nya memperlihatkan bahwa ia tidak menyaring
+`PART_CATEGORY_ID` — artinya satu nama tipe tidak dapat dipakai di dua kategori. Itu aturan
+yang berdampak langsung pada apa yang dapat diketik petugas, dan ia tidak akan pernah
+ditemukan dengan membaca sepintas.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | Uji `TestNameUniquenessCheckHasNoExtraFilter` memeriksa SELURUH teks kueri tidak memuat `APPROVAL` — padahal kolom itu memang ikut di-`SELECT` | uji gagal; yang salah **ujinya**, bukan kuerinya. Diperbaiki agar hanya memeriksa klausa `WHERE` |
+| 2 | Dua asersi uji frontend ambigu: `getByText('1')` dan `getByText(/Waiting Approval/)` | `Found multiple elements`; dipersempit ke dalam `<form>` lewat `within()` |
+| 3 | **`tsc` dinyatakan bersih sebelum berkas uji terakhir ditulis** | pemeriksaan berikutnya memunculkan dua galat di berkas uji itu sendiri |
+
+Yang ketiga yang paling layak diingat. Gerbang verifikasi dijalankan pada saat yang salah —
+bukan karena dilewati, melainkan karena dijalankan **terlalu cepat**. Pernyataan "nol galat"
+pada catatan pengembangan sudah dikoreksi agar mencerminkan urutan sebenarnya.
+
+Perbaikannya pun menghasilkan uji yang lebih baik: `getByRole('checkbox', { name: 'Pilih
+TRACK ROLLER' })` aman-tipe **sekaligus** membuktikan centangnya punya label yang dapat
+dibacakan pembaca layar — hal yang `getAllByRole(...)[0]` tidak pernah periksa.
+
+### Menghadapi jawaban yang tidak dapat langsung dieksekusi
+
+Pertanyaan kedua dijawab **"Sesuai PEGA"** atas rule yang tidak ada di Pega. Yang dilakukan
+bukan menanyakan ulang — jawabannya sudah jelas maksudnya — melainkan **menurunkan jawabannya
+dari pola Pega sendiri**, lalu melaporkan cara menurunkannya beserta buktinya.
+
+Itu pilihan yang disengaja: menanyakan ulang hal yang sudah dijawab memindahkan pekerjaan
+analisis kembali ke Work Owner, sementara buktinya ada di repositori dan dapat dibaca
+sendiri.
+
+### Catatan untuk sesi berikutnya
+
+1. **Penyaring `APPROVAL='1'` pada dropdown Kategori adalah rekonstruksi.** Bila Tim Pega
+   mengirim rule pemuat `TempSparepartTypeClaimHE2`, ia harus diperiksa terhadap asumsi ini —
+   lokasinya sudah ditandai di `lookup.go`, berkas `.sql`, dan konstanta `approvedLookup`.
+2. **Selisih LEFT JOIN akan muncul di gerbang 1** sebagai baris berlebih. Angkanya dilaporkan
+   `claimpnc -periksa` lewat `type_count_orphan_category`; jalankan lebih dulu supaya
+   selisihnya dapat dijelaskan sebelum pengujian, bukan sesudah.
+3. **Rumpun sparepart kini lengkap** — Sparepart, Grouping, Kategori, Tipe. Keempatnya
+   berbagi tabel dan saling menjadi acuan; perubahan pada salah satunya perlu memeriksa
+   ketiga yang lain.
+4. `eslint` masih belum terpasang di repo ini.

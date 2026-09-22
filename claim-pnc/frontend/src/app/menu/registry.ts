@@ -66,6 +66,34 @@ export const MENU_ROUTES: Record<string, string> = {
   // Nama kuncinya `SparePart_HE` dengan P besar di tengah, persis seperti yang tertulis
   // di POOLDATA.M_MENU_APLIKASI_PNC. Huruf besar-kecilnya dikirim server apa adanya.
   SparePart_HE: '/master/sparepart',
+  // MENU_ID 32 "Master Grouping Sparepart". Satu butir menu, satu layar, TIGA tab —
+  // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/PNCMasterGroupingSparepartHE-Section.xml`.
+  //
+  // Yang dikelolanya BUKAN penggolongan suku cadang melainkan penautan suku cadang ke
+  // panel bodi pada sebuah kendaraan, dikelompokkan menurut nomor rangka.
+  //
+  // Nama kuncinya `GroupingSparePart_HE` dengan P besar di tengah, persis seperti yang
+  // tertulis di POOLDATA.M_MENU_APLIKASI_PNC. Huruf besar-kecilnya dikirim server apa
+  // adanya.
+  GroupingSparePart_HE: '/master/grouping-sparepart',
+  // MENU_ID 33 "Master Kategori Sparepart". Satu butir menu, satu layar, TIGA tab —
+  // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/MasterKategoriSparepartHE-Section.xml`.
+  //
+  // Nama kuncinya `GCNMCatSparepart`, persis seperti yang tertulis di
+  // POOLDATA.M_MENU_APLIKASI_PNC — termasuk "Cat" yang merupakan singkatan dari Category,
+  // bukan salah ketik. Huruf besar-kecilnya dikirim server apa adanya.
+  GCNMCatSparepart: '/master/kategori-sparepart',
+  // MENU_ID 34 "Master Tipe Sparepart". Satu butir menu, satu layar, TIGA tab — Approve,
+  // Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/MasterTipeSparepartHE-Section.xml`.
+  //
+  // Nama kuncinya `GCNMMasterSparepartType`, persis seperti yang tertulis di
+  // POOLDATA.M_MENU_APLIKASI_PNC. Perhatikan bahwa nama programnya memakai "SparepartType"
+  // sementara seluruh caption layarnya menyebut "Tipe Sparepart"; rutenya mengikuti nama
+  // bisnis, kunci petanya mengikuti basis data.
+  GCNMMasterSparepartType: '/master/tipe-sparepart',
   // MENU_ID 29 "Master Supplier". Satu butir menu, satu layar, TANPA tab — layar lamanya
   // memang satu grid dengan tiga tombol (New Supplier, Edit, Refresh) dan tidak punya
   // penyaring status apa pun (`Section/InboxMasterSupplier-Section.xml`).

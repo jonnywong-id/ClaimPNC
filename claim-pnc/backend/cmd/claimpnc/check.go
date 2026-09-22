@@ -16,6 +16,9 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/mastergroupingsparepart"
+	"claim-pnc/internal/masterkategorisparepart"
+	"claim-pnc/internal/mastertipesparepart"
 	"claim-pnc/internal/masterpanel"
 	"claim-pnc/internal/masterpasal"
 	"claim-pnc/internal/masterpenolakan"
@@ -27,6 +30,9 @@ import (
 
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
+	mastergroupingsparepartsql "claim-pnc/internal/mastergroupingsparepart/repo/sqlstore"
+	masterkategorisparepartsql "claim-pnc/internal/masterkategorisparepart/repo/sqlstore"
+	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
@@ -89,6 +95,9 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkBengkel(ctx, primary, print)
 	checkPanel(ctx, primary, print)
 	checkSparepart(ctx, primary, print)
+	checkGrouping(ctx, primary, print)
+	checkPartCategory(ctx, primary, print)
+	checkPartType(ctx, primary, print)
 	checkPasal(ctx, primary, print)
 	checkSupplier(ctx, primary, print)
 
@@ -1215,5 +1224,621 @@ func checkSparepartLookup(
 		print("            Barisnya tetap terbaca dan tetap dapat disunting; yang tidak")
 		print("            tampil hanyalah NAMA acuannya. Menyimpan ulang baris seperti itu")
 		print("            menuntut petugas memilih kategori atau tipe yang sah.")
+	}
+}
+
+// checkPartCategory melaporkan kesiapan POOLDATA.GCNM_M_SPAREPART_CATEGORY.
+//
+// Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat dibaca"
+// di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi belum diberi
+// hak bacanya — keduanya urusan DBA.
+//
+// # Lima hal dilaporkan, dan tiga di antaranya tidak ada padanannya di master lain
+//
+//  1. Jumlah baris per status — apakah ketiga tab layar akan terisi.
+//  2. Ketersediaan penomoran. Berbeda dari Master Sparepart dan Master Panel, penomoran di
+//     sini TIDAK memakai sequence maupun kode situs: ia `MAX(PART_CATEGORY_ID)+1` atas
+//     tabelnya sendiri. Yang dapat gagal karena itu bukan ketiadaan sequence melainkan
+//     tipe kolom yang ternyata bukan angka.
+//  3. **Baris berstatus di luar '0', '1', dan '2'.** Baris seperti itu tidak muncul di satu
+//     pun tab — ia ada di basis data tetapi tidak dapat dilihat maupun diputuskan siapa pun
+//     dari layar. Sistem lama punya cacat yang sama dan tidak melaporkannya.
+//  4. **Nama yang dipakai lebih dari satu baris.** Modul ini menolak nama ganda, tetapi
+//     tidak ada constraint unik yang menjaganya (R-08). Baris kembar yang sudah terlanjur
+//     ada membuat penyimpanan yang sebenarnya sah ikut tertolak.
+//  5. **Sparepart yang menunjuk kategori yang tidak ada.** Ia pemeriksaan dari arah
+//     sebaliknya terhadap checkSparepartLookup, dan ia ada di sini karena modul INILAH yang
+//     kelak menolak sebuah kategori — sedangkan penolakan tidak memutuskan tautan yang
+//     sudah ada.
+func checkPartCategory(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := masterkategorisparepartsql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.GCNM_M_SPAREPART_CATEGORY belum dapat dibaca: %v", err)
+		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak bacanya ke DBA.")
+		print("            Tabel yang sama dibaca modul Master Sparepart sebagai daftar")
+		print("            acuan Kategori; bila yang ini gagal, dropdown di sana pun kosong.")
+		return
+	}
+
+	total := 0
+	pendingCount := 0
+	for _, s := range []masterkategorisparepart.ApprovalStatus{
+		masterkategorisparepart.StatusApproved,
+		masterkategorisparepart.StatusPending,
+		masterkategorisparepart.StatusRejected,
+	} {
+		count, err := repo.CountByStatus(ctx, s)
+		if err != nil {
+			print("  [GAGAL] GCNM_M_SPAREPART_CATEGORY status %q tidak dapat dihitung: %v", s, err)
+			return
+		}
+		if s == masterkategorisparepart.StatusPending {
+			pendingCount = count
+		}
+		total += count
+		print("            status %q %-16s %d baris", s, s.Label(), count)
+	}
+	print("  [ok]    POOLDATA.GCNM_M_SPAREPART_CATEGORY dapat dibaca: %d baris berstatus dikenal", total)
+
+	if pendingCount > 0 {
+		print("  [catat] %d kategori sparepart menunggu persetujuan.", pendingCount)
+	}
+
+	checkPartCategoryNumbering(ctx, repo, print)
+	checkPartCategoryIntegrity(ctx, repo, total, print)
+}
+
+// checkPartCategoryNumbering melaporkan kesiapan penomoran PART_CATEGORY_ID.
+//
+// Berbeda dari checkSparepartNumbering, ia TIDAK memakai satu nomor urut: penomoran di sini
+// `MAX(...)+1` atas tabelnya sendiri, bukan sequence, sehingga membacanya tidak mengubah
+// apa pun. Nomor yang dilaporkan adalah nomor yang benar-benar akan terpakai bila ada
+// penambahan saat ini juga.
+//
+// Kegagalannya hampir selalu berarti satu hal: PART_CATEGORY_ID ternyata bukan kolom angka.
+// Bila itu terjadi, penerbitan kunci tidak dapat dijalankan sama sekali, dan asumsi yang
+// dipakai seluruh berkas masterkategorisparepart.sql harus ditinjau ulang.
+func checkPartCategoryNumbering(
+	ctx context.Context,
+	repo *masterkategorisparepartsql.Repo,
+	print func(string, ...any),
+) {
+	id, err := repo.NextID(ctx)
+	if err != nil {
+		print("  [GAGAL] penomoran ID kategori sparepart tidak dapat dijalankan: %v", err)
+		print("            Penambahan kategori baru akan gagal. Penyebab paling mungkin:")
+		print("            PART_CATEGORY_ID bukan kolom angka, sehingga MAX(...)+1 gagal.")
+		print("            Bila benar begitu, asumsi masterkategorisparepart.sql harus")
+		print("            ditinjau ulang — bukan hanya kueri penomorannya.")
+		return
+	}
+	print("  [ok]    penomoran ID kategori sparepart siap; berikutnya: %s", id)
+	print("            (angka berurut dari MAX(PART_CATEGORY_ID)+1, bukan sequence)")
+	print("            (tidak ada nomor yang terpakai oleh pemeriksaan ini)")
+}
+
+// checkPartCategoryIntegrity melaporkan tiga keadaan data yang tidak dijaga constraint apa
+// pun, dan yang ketiganya baru terlihat sebagai keluhan pengguna bila tidak diperiksa.
+//
+// Ketiganya BUKAN kegagalan: aplikasi tetap berjalan dengan ketiganya. Yang dilaporkan
+// adalah keadaan, supaya ia diketahui sebelum petugas menanyakannya.
+func checkPartCategoryIntegrity(
+	ctx context.Context,
+	repo *masterkategorisparepartsql.Repo,
+	knownStatusRows int,
+	print func(string, ...any),
+) {
+	all, err := repo.CountAll(ctx)
+	if err != nil {
+		print("  [GAGAL] jumlah seluruh baris kategori tidak dapat dihitung: %v", err)
+		return
+	}
+	if all == 0 {
+		print("  [catat] Tabelnya KOSONG. Dropdown Kategori pada layar Master Sparepart")
+		print("            karena itu juga kosong, dan sparepart baru tidak dapat")
+		print("            digolongkan sampai ada kategori yang disetujui di sini.")
+		return
+	}
+
+	if unknown, err := repo.CountUnknownStatus(ctx); err != nil {
+		print("  [GAGAL] baris berstatus tak dikenal tidak dapat dihitung: %v", err)
+	} else if unknown > 0 {
+		print("  [catat] %d baris ber-APPROVAL di luar '0', '1', '2' (%d lainnya dikenal).",
+			unknown, knownStatusRows)
+		print("            Baris seperti itu TIDAK muncul di satu pun tab — ada di basis")
+		print("            data, tetapi tidak dapat dilihat maupun diputuskan dari layar.")
+		print("            Sistem lama punya cacat yang sama dan tidak melaporkannya.")
+	}
+
+	if duplicate, err := repo.CountDuplicateName(ctx); err != nil {
+		print("  [GAGAL] nama kategori ganda tidak dapat dihitung: %v", err)
+	} else if duplicate > 0 {
+		print("  [catat] %d nama kategori dipakai lebih dari satu baris.", duplicate)
+		print("            Tidak ada constraint unik yang menjaganya (R-08). Akibatnya")
+		print("            menyimpan salah satu baris kembar itu akan ditolak dengan")
+		print("            \"nama sudah dipakai\" — atas nama baris itu sendiri.")
+	}
+
+	if orphan, err := repo.CountOrphanSparepart(ctx); err != nil {
+		print("  [GAGAL] sparepart tanpa kategori yang sah tidak dapat dihitung: %v", err)
+	} else if orphan > 0 {
+		print("  [catat] %d sparepart menunjuk kategori yang tidak ada di tabel ini.", orphan)
+		print("            Barisnya tetap terbaca dan tetap dapat disunting; yang tidak")
+		print("            tampil hanyalah NAMA kategorinya.")
+	}
+}
+
+// checkPartType melaporkan kesiapan POOLDATA.GCNM_M_SPAREPART_TYPE.
+//
+// Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat dibaca"
+// di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi belum diberi
+// hak bacanya — keduanya urusan DBA.
+//
+// # Enam hal dilaporkan, dan dua di antaranya khas modul ini
+//
+//  1. Jumlah baris per status — apakah ketiga tab layar akan terisi.
+//  2. Ketersediaan penomoran, sama seperti Master Kategori Sparepart: `MAX(...)+1` atas
+//     tabelnya sendiri, bukan sequence.
+//  3. Baris berstatus di luar '0', '1', dan '2' — tidak muncul di satu pun tab.
+//  4. Nama yang dipakai lebih dari satu baris. Pencacahnya TIDAK mengelompokkan menurut
+//     kategori, meniru cakupan ValidationSparepartType apa adanya.
+//  5. **Tipe yang menunjuk kategori yang tidak ada.** Inilah baris yang di sistem lama
+//     HILANG dari layar karena inner join-nya, dan yang di modul ini justru TETAP terlihat.
+//     Selisih perilaku itu disengaja, dan jumlahnya dilaporkan di sini supaya ia dapat
+//     dijelaskan SEBELUM muncul sebagai selisih pada uji kesetaraan gerbang 1.
+//  6. **Sparepart yang menunjuk tipe yang tidak ada.** Pemeriksaan dari arah sebaliknya,
+//     ada di sini karena modul INILAH yang kelak menolak sebuah tipe — sedangkan penolakan
+//     tidak memutuskan tautan yang sudah ada.
+func checkPartType(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := mastertipesparepartsql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.GCNM_M_SPAREPART_TYPE belum dapat dibaca: %v", err)
+		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak bacanya ke DBA.")
+		print("            Tabel yang sama dibaca modul Master Sparepart sebagai daftar")
+		print("            acuan Tipe; bila yang ini gagal, dropdown di sana pun kosong.")
+		return
+	}
+
+	total := 0
+	pendingCount := 0
+	for _, s := range []mastertipesparepart.ApprovalStatus{
+		mastertipesparepart.StatusApproved,
+		mastertipesparepart.StatusPending,
+		mastertipesparepart.StatusRejected,
+	} {
+		count, err := repo.CountByStatus(ctx, s)
+		if err != nil {
+			print("  [GAGAL] GCNM_M_SPAREPART_TYPE status %q tidak dapat dihitung: %v", s, err)
+			return
+		}
+		if s == mastertipesparepart.StatusPending {
+			pendingCount = count
+		}
+		total += count
+		print("            status %q %-16s %d baris", s, s.Label(), count)
+	}
+	print("  [ok]    POOLDATA.GCNM_M_SPAREPART_TYPE dapat dibaca: %d baris berstatus dikenal", total)
+
+	if pendingCount > 0 {
+		print("  [catat] %d tipe sparepart menunggu persetujuan.", pendingCount)
+	}
+
+	checkPartTypeNumbering(ctx, repo, print)
+	checkPartTypeIntegrity(ctx, repo, total, print)
+}
+
+// checkPartTypeNumbering melaporkan kesiapan penomoran PART_SECTION_ID.
+//
+// Ia TIDAK memakai satu nomor urut: penomoran di sini `MAX(...)+1` atas tabelnya sendiri,
+// bukan sequence, sehingga membacanya tidak mengubah apa pun. Nomor yang dilaporkan adalah
+// nomor yang benar-benar akan terpakai bila ada penambahan saat ini juga.
+//
+// Kegagalannya hampir selalu berarti satu hal: PART_SECTION_ID ternyata bukan kolom angka.
+// Bila itu terjadi, penerbitan kunci tidak dapat dijalankan sama sekali, dan asumsi yang
+// dipakai seluruh berkas mastertipesparepart.sql harus ditinjau ulang.
+func checkPartTypeNumbering(
+	ctx context.Context,
+	repo *mastertipesparepartsql.Repo,
+	print func(string, ...any),
+) {
+	id, err := repo.NextID(ctx)
+	if err != nil {
+		print("  [GAGAL] penomoran ID tipe sparepart tidak dapat dijalankan: %v", err)
+		print("            Penambahan tipe baru akan gagal. Penyebab paling mungkin:")
+		print("            PART_SECTION_ID bukan kolom angka, sehingga MAX(...)+1 gagal.")
+		print("            Bila benar begitu, asumsi mastertipesparepart.sql harus")
+		print("            ditinjau ulang — bukan hanya kueri penomorannya.")
+		return
+	}
+	print("  [ok]    penomoran ID tipe sparepart siap; berikutnya: %s", id)
+	print("            (angka berurut dari MAX(PART_SECTION_ID)+1, bukan sequence)")
+	print("            (tidak ada nomor yang terpakai oleh pemeriksaan ini)")
+}
+
+// checkPartTypeIntegrity melaporkan empat keadaan data yang tidak dijaga constraint apa pun,
+// dan yang keempatnya baru terlihat sebagai keluhan pengguna bila tidak diperiksa.
+//
+// Keempatnya BUKAN kegagalan: aplikasi tetap berjalan dengan keempatnya. Yang dilaporkan
+// adalah keadaan, supaya ia diketahui sebelum petugas menanyakannya.
+func checkPartTypeIntegrity(
+	ctx context.Context,
+	repo *mastertipesparepartsql.Repo,
+	knownStatusRows int,
+	print func(string, ...any),
+) {
+	all, err := repo.CountAll(ctx)
+	if err != nil {
+		print("  [GAGAL] jumlah seluruh baris tipe tidak dapat dihitung: %v", err)
+		return
+	}
+	if all == 0 {
+		print("  [catat] Tabelnya KOSONG. Dropdown Tipe pada layar Master Sparepart karena")
+		print("            itu juga kosong, dan sparepart baru tidak dapat ditautkan ke")
+		print("            tipe mana pun sampai ada tipe yang disetujui di sini.")
+		return
+	}
+
+	if unknown, err := repo.CountUnknownStatus(ctx); err != nil {
+		print("  [GAGAL] baris berstatus tak dikenal tidak dapat dihitung: %v", err)
+	} else if unknown > 0 {
+		print("  [catat] %d baris ber-APPROVAL di luar '0', '1', '2' (%d lainnya dikenal).",
+			unknown, knownStatusRows)
+		print("            Baris seperti itu TIDAK muncul di satu pun tab — ada di basis")
+		print("            data, tetapi tidak dapat dilihat maupun diputuskan dari layar.")
+		print("            Sistem lama punya cacat yang sama dan tidak melaporkannya.")
+	}
+
+	if duplicate, err := repo.CountDuplicateName(ctx); err != nil {
+		print("  [GAGAL] nama tipe ganda tidak dapat dihitung: %v", err)
+	} else if duplicate > 0 {
+		print("  [catat] %d nama tipe dipakai lebih dari satu baris.", duplicate)
+		print("            Tidak ada constraint unik yang menjaganya (R-08). Akibatnya")
+		print("            menyimpan salah satu baris kembar itu akan ditolak dengan")
+		print("            \"nama sudah dipakai\" — atas nama baris itu sendiri.")
+		print("            Termasuk baris yang namanya sama di kategori BERBEDA:")
+		print("            ValidationSparepartType tidak menyaring kategori sama sekali.")
+	}
+
+	if orphan, err := repo.CountOrphanCategory(ctx); err != nil {
+		print("  [GAGAL] tipe tanpa kategori yang sah tidak dapat dihitung: %v", err)
+	} else if orphan > 0 {
+		print("  [catat] %d tipe menunjuk kategori yang tidak ada di master kategori.", orphan)
+		print("            SELISIH PERILAKU YANG DISENGAJA: di Pega baris ini HILANG dari")
+		print("            layar karena inner join-nya, di sini ia TETAP terlihat dengan")
+		print("            kolom Kategori kosong. Angka di atas adalah jumlah baris yang")
+		print("            akan tampak berlebih pada uji kesetaraan gerbang 1.")
+		print("            Barisnya hanya dapat disimpan ulang setelah kategorinya dipilih.")
+	}
+
+	if orphan, err := repo.CountOrphanSparepart(ctx); err != nil {
+		print("  [GAGAL] sparepart tanpa tipe yang sah tidak dapat dihitung: %v", err)
+	} else if orphan > 0 {
+		print("  [catat] %d sparepart menunjuk tipe yang tidak ada di tabel ini.", orphan)
+		print("            Barisnya tetap terbaca dan tetap dapat disunting; yang tidak")
+		print("            tampil hanyalah NAMA tipenya.")
+	}
+}
+
+// checkGrouping melaporkan kesiapan kedua tabel Master Grouping Sparepart.
+//
+// Keduanya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat dibaca"
+// di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi belum diberi
+// hak bacanya — keduanya urusan DBA.
+//
+// # Lima hal dilaporkan, dan yang KELIMA adalah alasan utama fungsi ini ada
+//
+//  1. Jumlah baris per status — apakah ketiga tab layar akan terisi.
+//
+//  2. **Berapa baris induk yang TIDAK punya pendamping.** Kedua sistem menggabungkan tabelnya
+//     dengan INNER JOIN, sehingga baris seperti itu tidak muncul di layar mana pun — di Pega
+//     maupun di sini. Jumlahnya menjelaskan selisih antara "jumlah baris tabel" dan "jumlah
+//     baris yang terlihat" sebelum ada yang mengiranya cacat.
+//
+//  3. **Berapa baris yang NO_RANGKA kedua tabelnya berbeda.** Sistem lama MENAMPILKAN
+//     `B.NO_RANGKA` tetapi MEMERIKSA keunikan atas `A.NO_RANGKA`; selama keduanya sama,
+//     perbedaannya tidak terlihat. Rinciannya di banner mastergroupingsparepart.sql.
+//
+//  4. Ketersediaan penomoran ID dan nomor grup. Keduanya `MAX+1`, bukan sequence, dan
+//     keduanya dibaca dari dua tempat sekaligus selama masa paralel.
+//
+//  5. **Apakah kolom NAMA pada POOLDATA.LOKASI_PANEL_HE berisi nama PANEL atau nama LOKASI.**
+//     Modul ini membaca daftar Sisi lewat `id_panel` DAN `nama`, meniru
+//     `RDB List/GetDataSisiPanel-SQL.xml` — dan nilai yang dikirimkannya berasal dari
+//     autocomplete atas `BrowseMasterPanel_HE_RD`, yakni NAMA PANEL. Modul Master Panel
+//     berasumsi sebaliknya dan menulis NAMA := LOKASI_PANEL.
+//
+//     Bila asumsi Master Panel yang salah, jalur tulisnya akan MEMATIKAN daftar Sisi di layar
+//     ini tanpa satu pun pesan galat. Pemeriksaan ini yang menjawabnya dari data nyata alih-
+//     alih dari tebakan salah satu pihak; lihat LookupRepo.ListSides.
+func checkGrouping(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := mastergroupingsparepartsql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.SPAREPART_HE_VIN_KEY belum dapat dibaca: %v", err)
+		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak bacanya ke DBA.")
+		return
+	}
+	if err := repo.CheckGroupTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.SPAREPART_HE_VIN_GROUP belum dapat dibaca: %v", err)
+		print("            Tanpa tabel pendamping ini, layar Master Grouping Sparepart")
+		print("            TIDAK akan menampilkan satu baris pun — kedua sistem")
+		print("            menggabungkannya dengan INNER JOIN.")
+		return
+	}
+
+	total := 0
+	pendingCount := 0
+	for _, s := range []mastergroupingsparepart.ApprovalStatus{
+		mastergroupingsparepart.StatusApproved,
+		mastergroupingsparepart.StatusPending,
+		mastergroupingsparepart.StatusRejected,
+	} {
+		count, err := repo.CountByStatus(ctx, s)
+		if err != nil {
+			print("  [GAGAL] SPAREPART_HE_VIN_KEY status %q tidak dapat dihitung: %v", s, err)
+			return
+		}
+		if s == mastergroupingsparepart.StatusPending {
+			pendingCount = count
+		}
+		total += count
+		print("            status %q %-16s %d baris", s, s.Label(), count)
+	}
+	print("  [ok]    POOLDATA.SPAREPART_HE_VIN_KEY dapat dibaca: %d baris terlihat di layar",
+		total)
+
+	if pendingCount > 0 {
+		print("  [catat] %d grouping menunggu persetujuan.", pendingCount)
+	}
+
+	checkGroupingCompanion(ctx, repo, print)
+	checkGroupingNumbering(ctx, repo, print)
+	checkGroupingLookup(ctx, repo, print)
+	checkGroupingPanelNameColumn(ctx, repo, print)
+}
+
+// checkGroupingCompanion melaporkan hubungan kedua tabel.
+//
+// Dua angka, dan keduanya menjelaskan hal yang sama dari sisi berbeda: berapa banyak baris
+// yang TIDAK terlihat, dan berapa banyak yang terlihat dengan nomor rangka yang berbeda dari
+// yang diperiksa keunikannya.
+func checkGroupingCompanion(
+	ctx context.Context,
+	repo *mastergroupingsparepartsql.Repo,
+	print func(string, ...any),
+) {
+	all, err := repo.CountAll(ctx)
+	if err != nil {
+		print("  [GAGAL] jumlah seluruh baris induk tidak dapat dihitung: %v", err)
+		return
+	}
+
+	orphan, err := repo.CountWithoutGroup(ctx)
+	if err != nil {
+		print("  [GAGAL] baris tanpa pendamping tidak dapat dihitung: %v", err)
+		return
+	}
+
+	switch {
+	case orphan == 0:
+		print("  [ok]    seluruh %d baris induk punya pendamping di _VIN_GROUP", all)
+	default:
+		print("  [WASPADA] %d dari %d baris induk TIDAK punya pendamping", orphan, all)
+		print("            Seluruhnya tidak muncul di layar, baik di Pega maupun di sini:")
+		print("            kedua sistem menggabungkannya dengan INNER JOIN. Angka ini yang")
+		print("            menjelaskan selisihnya sebelum ada yang mengiranya cacat.")
+	}
+
+	mismatch, err := repo.CountChassisMismatch(ctx)
+	if err != nil {
+		print("  [catat] selisih NO_RANGKA antartabel tidak dapat dihitung: %v", err)
+		return
+	}
+	if mismatch == 0 {
+		print("  [ok]    NO_RANGKA sama pada kedua tabel di seluruh baris yang terlihat")
+		return
+	}
+
+	print("  [WASPADA] %d baris punya NO_RANGKA yang BERBEDA antara kedua tabelnya", mismatch)
+	print("            Sistem lama MENAMPILKAN nomor rangka tabel pendamping tetapi")
+	print("            MEMERIKSA keunikan atas nomor rangka tabel induk. Pada baris ini")
+	print("            keduanya tidak sepakat, sehingga baris yang tampil sebagai duplikat")
+	print("            dapat lolos pemeriksaan — dan sebaliknya.")
+	print("            Penyimpanan modul ini menulis keduanya dengan nilai yang sama,")
+	print("            sehingga selisih baru tidak dapat lahir; yang lama tidak diperbaiki.")
+}
+
+// checkGroupingNumbering melaporkan kesiapan penomoran ID dan nomor grup.
+//
+// Ia benar-benar MENGAMBIL satu nomor, dan itu disengaja meski mode periksa tidak menulis apa
+// pun: keduanya `MAX+1` yang tidak menyisakan jejak, sehingga memanggilnya TIDAK memakai satu
+// nomor pun — berbeda dari sequence pada ketiga master alat berat lain.
+func checkGroupingNumbering(
+	ctx context.Context,
+	repo *mastergroupingsparepartsql.Repo,
+	print func(string, ...any),
+) {
+	id, err := repo.NextID(ctx)
+	if err != nil {
+		print("  [GAGAL] ID grouping berikutnya tidak dapat diterbitkan: %v", err)
+		print("            Penambahan akan gagal pada permintaan pertama.")
+	} else {
+		print("  [ok]    ID grouping berikutnya: %s", id)
+		print("            Bentuknya angka polos, TANPA kode situs dan tanpa pengisian nol —")
+		print("            meniru PEGA_M_GROUPING_SPAREPART_HE.prc:11, yang berbeda dari")
+		print("            ketiga master alat berat lain.")
+	}
+
+	group, err := repo.NextGroupNumber(ctx)
+	if err != nil {
+		print("  [GAGAL] nomor grup berikutnya tidak dapat diterbitkan: %v", err)
+	} else {
+		print("  [ok]    nomor grup berikutnya: %s", group)
+	}
+
+	if broken, err := repo.CountUnreadableGroupNumber(ctx); err != nil {
+		print("  [catat] nomor grup yang tidak terbaca tidak dapat dihitung: %v", err)
+	} else if broken > 0 {
+		print("  [catat] %d nomor grup tidak dapat dibaca sebagai angka.", broken)
+		print("            Nilainya dilewati saat menerbitkan nomor baru, sehingga ia tidak")
+		print("            menghentikan apa pun — tetapi baris yang memakainya tidak akan")
+		print("            pernah dapat diikuti sebagai grup.")
+	}
+
+	// Penyimpanan JSON milik Pega. Perbandingan jumlah barisnya adalah cara termurah
+	// mengetahui apakah keduanya satu sumber; lihat banner mastergroupingsparepart.sql.
+	if err := repo.CheckJSONMirror(ctx); err != nil {
+		print("  [catat] POOLDATA.M_SPAREPART_HE_VIN_KEY belum dapat dibaca: %v", err)
+		print("            Penomoran modul ini tetap berjalan, tetapi ia tidak lagi dapat")
+		print("            menghindari ID yang sedang diterbitkan Pega selama masa paralel.")
+		return
+	}
+
+	mirror, err := repo.CountJSONMirror(ctx)
+	if err != nil {
+		print("  [catat] jumlah baris penyimpanan JSON tidak dapat dihitung: %v", err)
+		return
+	}
+	live, err := repo.CountAll(ctx)
+	if err != nil {
+		return
+	}
+
+	switch {
+	case mirror == live:
+		print("  [ok]    SPAREPART_HE_VIN_KEY dan M_SPAREPART_HE_VIN_KEY sama-sama %d baris",
+			live)
+	default:
+		print("  [WASPADA] SPAREPART_HE_VIN_KEY %d baris, M_SPAREPART_HE_VIN_KEY %d baris",
+			live, mirror)
+		print("            Keduanya TIDAK satu sumber. Modul ini menulis kolom bernama ke")
+		print("            yang pertama dan berhenti menulis JSONDATA ke yang kedua (D-02,")
+		print("            D-68); bila Pega masih membaca yang kedua, tulisan di sini tidak")
+		print("            akan pernah sampai ke sana. Angkanya perlu dibawa ke DBA.")
+	}
+}
+
+// checkGroupingLookup melaporkan keempat sumber acuan layar ini.
+func checkGroupingLookup(
+	ctx context.Context,
+	repo *mastergroupingsparepartsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckVehicleTypeTable(ctx); err != nil {
+		print("  [catat] tabel branddetail belum dapat dibaca: %v", err)
+		print("            Isian Tipe Kendaraan akan tampil tanpa pilihan. Perhatikan bahwa")
+		print("            namanya memang DISEBUT TANPA SKEMA, mengikuti kueri aslinya —")
+		print("            yang terpakai adalah skema bawaan akun koneksi.")
+	} else if vehicle, err := repo.ListVehicleTypes(ctx); err != nil {
+		print("  [catat] daftar tipe kendaraan tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    %d tipe kendaraan aktif pada lini ANEKA", len(vehicle))
+	}
+
+	if panel, err := repo.ListPanels(ctx); err != nil {
+		print("  [catat] daftar panel tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    %d panel disetujui dan dapat dipilih", len(panel))
+		if len(panel) == 0 {
+			print("            Tanpa satu pun panel disetujui, isian Nama Panel tidak dapat")
+			print("            diisi sama sekali — dan Nama Panel adalah isian WAJIB.")
+		}
+	}
+
+	if orphan, err := repo.CountOrphanPart(ctx); err != nil {
+		print("  [catat] grouping tanpa sparepart yang sah tidak dapat dihitung: %v", err)
+	} else if orphan > 0 {
+		print("  [catat] %d grouping menunjuk nomor sparepart yang tidak ada di", orphan)
+		print("            POOLDATA.SPAREPART_HE. Barisnya tetap TERBACA, tetapi TIDAK DAPAT")
+		print("            DISIMPAN ULANG tanpa lebih dulu memperbaiki nomornya — modul ini")
+		print("            menolak nomor yang tidak ketemu, meniru SetDataSparepart.")
+	}
+
+	if orphan, err := repo.CountOrphanPanel(ctx); err != nil {
+		print("  [catat] grouping tanpa panel yang sah tidak dapat dihitung: %v", err)
+	} else if orphan > 0 {
+		print("  [catat] %d grouping menunjuk nama panel yang tidak ada di", orphan)
+		print("            POOLDATA.PANEL_HE. Barisnya tetap terbaca; menyimpannya ulang")
+		print("            menuntut memilih panel dari daftar.")
+	}
+}
+
+// checkGroupingPanelNameColumn menjawab pertanyaan yang menentukan apakah daftar Sisi terisi.
+//
+// Kolom `NAMA` pada POOLDATA.LOKASI_PANEL_HE tidak pernah muncul sebagai kolom yang DIBACA di
+// seluruh export — hanya sebagai penyaring pada `RDB List/GetDataSisiPanel-SQL.xml`. Dua
+// pembacaan sama-sama masuk akal, dan keduanya tidak dapat benar bersamaan:
+//
+//	(a) NAMA berisi nama LOKASI      -> asumsi modul Master Panel, yang menulis NAMA := LOKASI_PANEL
+//	(b) NAMA berisi nama PANEL       -> yang dituntut modul ini, karena nilainya berasal dari
+//	                                    autocomplete atas BrowseMasterPanel_HE_RD
+//
+// Yang dilaporkan di sini adalah PERBANDINGAN KEDUANYA terhadap data nyata. Modul Master
+// Panel tidak disunting dari sini; yang dikerjakan adalah menyediakan angkanya supaya
+// keputusannya diambil atas bukti.
+func checkGroupingPanelNameColumn(
+	ctx context.Context,
+	repo *mastergroupingsparepartsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckChildNameColumn(ctx); err != nil {
+		print("  [BELUM] kolom NAMA pada POOLDATA.LOKASI_PANEL_HE belum dapat dibaca: %v", err)
+		print("            Tanpa kolom itu, daftar Sisi TIDAK akan pernah terisi — dan Sisi")
+		print("            adalah isian WAJIB pada layar ini.")
+		return
+	}
+
+	rows, err := repo.CountChildRows(ctx)
+	if err != nil {
+		print("  [catat] jumlah baris lokasi panel tidak dapat dihitung: %v", err)
+		return
+	}
+	if rows == 0 {
+		print("  [WASPADA] POOLDATA.LOKASI_PANEL_HE kosong")
+		print("            Daftar Sisi tidak akan pernah terisi, sehingga tidak satu pun")
+		print("            grouping dapat ditambahkan. Isi Master Panel lebih dulu.")
+		return
+	}
+
+	asPanel, err := repo.CountChildNameAsPanel(ctx)
+	if err != nil {
+		print("  [catat] NAMA tidak dapat dibandingkan dengan nama panel: %v", err)
+		return
+	}
+	asLocation, err := repo.CountChildNameAsLocation(ctx)
+	if err != nil {
+		print("  [catat] NAMA tidak dapat dibandingkan dengan LOKASI_PANEL: %v", err)
+		return
+	}
+
+	print("            NAMA = nama PANEL   : %d dari %d baris", asPanel, rows)
+	print("            NAMA = LOKASI_PANEL : %d dari %d baris", asLocation, rows)
+
+	switch {
+	case asPanel >= rows && asLocation < rows:
+		print("  [ok]    NAMA berisi NAMA PANEL. Daftar Sisi layar ini akan terisi.")
+		print("            KONSEKUENSI UNTUK MASTER PANEL: jalur tulisnya mengisi NAMA")
+		print("            dengan nama LOKASI, dan itu akan MEMATIKAN daftar Sisi di sini")
+		print("            tanpa satu pun pesan galat. Bawa temuan ini ke Work Owner")
+		print("            sebelum jalur tulis Master Panel dinyalakan di produksi.")
+	case asLocation >= rows && asPanel < rows:
+		print("  [ok]    NAMA berisi NAMA LOKASI. Asumsi Master Panel TERBUKTI.")
+		print("            KONSEKUENSI UNTUK MODUL INI: daftar Sisi TIDAK akan terisi,")
+		print("            karena nilai yang dikirimkannya adalah nama PANEL. Kueri")
+		print("            grouping_side_list harus ditinjau sebelum layar dipakai.")
+	case asPanel >= rows && asLocation >= rows:
+		print("  [ok]    Keduanya sama — nama panel dan nama lokasinya memang sepadan pada")
+		print("            seluruh baris, sehingga kedua pembacaan menghasilkan hal yang")
+		print("            sama. Tidak ada yang perlu diputuskan hari ini.")
+	default:
+		print("  [WASPADA] Tidak satu pun pembacaan cocok pada SELURUH baris.")
+		print("            Kolom NAMA berisi sesuatu yang bukan keduanya, setidaknya pada")
+		print("            sebagian baris. Mintakan DDL dan contoh isi kedua kolom ke DBA")
+		print("            (R-08) sebelum layar Master Grouping Sparepart dipakai.")
 	}
 }

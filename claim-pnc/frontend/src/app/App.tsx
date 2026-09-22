@@ -11,6 +11,9 @@ import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
 import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
 import { PanelPage } from '@/modules/master-panel/PanelPage'
 import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
+import { GroupingPage } from '@/modules/master-grouping-sparepart/GroupingPage'
+import { PartCategoryPage } from '@/modules/master-kategori-sparepart/PartCategoryPage'
+import { PartTypePage } from '@/modules/master-tipe-sparepart/PartTypePage'
 import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
 import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
 import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
@@ -174,6 +177,73 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SparepartPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Grouping Sparepart (MENU_ID 32). Master keempat dari keluarga alat berat.
+
+        Yang dikelolanya BUKAN penggolongan suku cadang melainkan penautan suku cadang ke
+        panel bodi pada sebuah kendaraan — baris yang menunjuk kendaraan yang sama
+        dikumpulkan di bawah satu Nomor Grup.
+
+        Tiga hal membedakannya dari ketiga master alat berat lain: ia memakai DUA tabel yang
+        digabungkan INNER JOIN, kunci alaminya EMPAT KOLOM BERSAMA-SAMA alih-alih kolom yang
+        masing-masing unik, dan lima isiannya DITURUNKAN dari Master Sparepart alih-alih
+        diketik.
+      */}
+      <Route
+        path="/master/grouping-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <GroupingPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Kategori Sparepart (MENU_ID 33). Penggolongan suku cadang yang menjadi
+        pilihan Kategori di layar Master Sparepart — layar ini MENULIS tabel yang layar itu
+        hanya baca (P-1, satu tabel satu penulis).
+
+        Tabelnya hanya punya TIGA kolom, dan itu menentukan seluruh bentuk layarnya: satu
+        isian yang dapat diketik, tanpa kolom pencatat pelaku, tanpa stempel waktu, dan
+        tanpa isian Catatan pada penolakan.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
+        Master Bengkel, Panel, dan Sparepart: `Section/ApprovalMasterKategoriSparepartHE`
+        di Pega dipakai Inbox Manager, dan Inbox Manager belum dibangun. Di sini akibat
+        menundanya lebih berat — kategori yang tertahan tidak dapat dipakai sparepart mana
+        pun.
+      */}
+      <Route
+        path="/master/kategori-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <PartCategoryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Tipe Sparepart (MENU_ID 34). Penggolongan tingkat kedua di bawah kategori,
+        dan master pertama di rumpun sparepart yang menyimpan KUNCI ASING — setiap tipe
+        berinduk pada satu kategori yang dipilih dari dropdown.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
+        Master Kategori Sparepart: `Section/ApprovalMasterTipeSparepartHE` di Pega dipakai
+        Inbox Manager, dan Inbox Manager belum dibangun. Tipe yang tertahan tidak dapat
+        dipakai sparepart mana pun.
+      */}
+      <Route
+        path="/master/tipe-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <PartTypePage />
             </Protected>
           </SessionGuard>
         }

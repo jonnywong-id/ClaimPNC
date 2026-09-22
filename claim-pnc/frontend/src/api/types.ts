@@ -1607,3 +1607,502 @@ export const SparepartErrorCode = {
 
 export type SparepartErrorCode =
   (typeof SparepartErrorCode)[keyof typeof SparepartErrorCode]
+
+/**
+ * Posisi sebuah kategori sparepart dalam alur persetujuan.
+ *
+ * Sandinya "0"/"1"/"2" mengikuti kolom APPROVAL pada POOLDATA.GCNM_M_SPAREPART_CATEGORY.
+ * Ia tidak dapat dipilih bebas: tabel yang sama dibaca sistem lama (ADR-0004) DAN dibaca
+ * layar Master Sparepart sebagai daftar acuan, yang menyaring APPROVAL = '1'.
+ */
+export const PartCategoryStatus = {
+  menunggu: '0',
+  disetujui: '1',
+  ditolak: '2',
+} as const
+
+export type PartCategoryStatus =
+  (typeof PartCategoryStatus)[keyof typeof PartCategoryStatus]
+
+/**
+ * Satu baris Master Kategori Sparepart — satu baris POOLDATA.GCNM_M_SPAREPART_CATEGORY.
+ *
+ * # Kenapa namanya PartCategory, bukan SparepartCategory
+ *
+ * Karena `SparepartCategory` sudah dipakai untuk bentuk yang BERBEDA: ia DTO dropdown pada
+ * layar Master Sparepart, dan isinya hanya `{kode, nama}`. Yang di sini adalah barisnya
+ * sendiri beserta statusnya. Dua bentuk untuk satu tabel, dan keduanya memang dibutuhkan —
+ * menyamakannya akan memaksa dropdown membawa kolom yang tidak dipakainya.
+ *
+ * Namanya mengikuti awalan kolomnya sendiri, `PART_CATEGORY_*`.
+ *
+ * # Hanya empat field
+ *
+ * Tabelnya hanya punya tiga kolom, dan yang keempat diturunkan dari yang ketiga. Tidak ada
+ * pencatat pelaku maupun stempel waktu — tabelnya tidak punya kolomnya.
+ */
+export type PartCategory = {
+  /** Kolom PART_CATEGORY_ID. Teks, meski isinya angka berurut. */
+  id_kategori_sparepart: string
+  /** Kolom PART_CATEGORY_NAME — satu-satunya isian yang diketik pengguna. */
+  nama_kategori_sparepart: string
+  /** Kolom APPROVAL: "0", "1", atau "2". */
+  status: string
+  /** Sebutan status yang dibaca pengguna: "Waiting Approval", "Approve", "Reject". */
+  status_label: string
+}
+
+export type PartCategoryListResponse = {
+  kategori_sparepart: PartCategory[]
+  status: string
+  portal: string
+}
+
+export type PartCategoryResponse = {
+  kategori_sparepart: PartCategory
+  portal: string
+}
+
+export type PartCategoryDecisionResponse = {
+  /** Jumlah baris yang BENAR-BENAR berubah, bukan jumlah yang dicentang. */
+  jumlah_berubah: number
+  status: string
+  status_label: string
+  portal: string
+}
+
+/**
+ * Badan permintaan tambah dan simpan.
+ *
+ * SATU isian. ID tidak dikirim — pada penambahan ia diterbitkan server, dan pada
+ * penyimpanan ia ada di jalur URL. Status juga tidak: menyimpan selalu mengembalikan baris
+ * ke antrean persetujuan.
+ */
+export type PartCategoryInput = Pick<PartCategory, 'nama_kategori_sparepart'>
+
+/**
+ * Badan permintaan keputusan borongan.
+ *
+ * TANPA catatan: POOLDATA.GCNM_M_SPAREPART_CATEGORY tidak punya kolom penampungnya. Layar
+ * karena itu tidak menggambar isian catatan sama sekali.
+ */
+export type PartCategoryDecisionInput = {
+  id_kategori_sparepart: string[]
+  status: string
+}
+
+/**
+ * Kode galat modul Master Kategori Sparepart.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat seluruh
+ * aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const PartCategoryErrorCode = {
+  /**
+   * Nama sudah dipakai kategori lain — konflik keadaan, bukan isian yang cacat.
+   *
+   * Termasuk bila yang memakainya adalah baris yang sudah DITOLAK: pemeriksaan lamanya
+   * tidak menyaring APPROVAL sama sekali (P-5). Pesan pada `detail` yang menjelaskannya.
+   */
+  nameTaken: 'kunci_kategori_sparepart_sudah_ada',
+  unknownStatus: 'status_tidak_dikenal',
+} as const
+
+export type PartCategoryErrorCode =
+  (typeof PartCategoryErrorCode)[keyof typeof PartCategoryErrorCode]
+
+/**
+ * Posisi sebuah tipe sparepart dalam alur persetujuan.
+ *
+ * Sandinya "0"/"1"/"2" mengikuti kolom APPROVAL pada POOLDATA.GCNM_M_SPAREPART_TYPE. Ia
+ * tidak dapat dipilih bebas: tabel yang sama dibaca sistem lama (ADR-0004) DAN dibaca layar
+ * Master Sparepart sebagai daftar acuan, yang menyaring APPROVAL = '1'.
+ */
+export const PartTypeStatus = {
+  menunggu: '0',
+  disetujui: '1',
+  ditolak: '2',
+} as const
+
+export type PartTypeStatus = (typeof PartTypeStatus)[keyof typeof PartTypeStatus]
+
+/**
+ * Satu baris Master Tipe Sparepart — satu baris POOLDATA.GCNM_M_SPAREPART_TYPE.
+ *
+ * # Kenapa namanya PartType, bukan SparepartType
+ *
+ * Karena `SparepartType` sudah dipakai untuk bentuk yang BERBEDA: ia DTO dropdown pada
+ * layar Master Sparepart, dan isinya hanya `{kode, nama, kode_kategori}`. Yang di sini
+ * adalah barisnya sendiri beserta status dan nama kategori induknya. Dua bentuk untuk satu
+ * tabel, dan keduanya memang dibutuhkan — menyamakannya akan memaksa dropdown membawa kolom
+ * yang tidak dipakainya.
+ *
+ * Pasangannya `PartCategory`, yang menamai hal yang setara pada tabel kategori.
+ *
+ * # Enam field untuk tabel berkolom empat
+ *
+ * `nama_kategori_sparepart` bukan kolom tabel ini — ia milik tabel kategori dan dibaca lewat
+ * JOIN. `status_label` diturunkan dari `status`. Tidak ada pencatat pelaku maupun stempel
+ * waktu: tabelnya tidak punya kolomnya.
+ */
+export type PartType = {
+  /** Kolom PART_SECTION_ID. Teks, meski isinya angka berurut. */
+  id_tipe_sparepart: string
+  /** Kolom PART_SECTION_NAME. */
+  nama_tipe_sparepart: string
+  /** Kolom PART_CATEGORY_ID — kategori induk tipe ini. */
+  id_kategori_sparepart: string
+  /**
+   * Kolom PART_CATEGORY_NAME milik tabel kategori, dibaca lewat JOIN.
+   *
+   * Dapat KOSONG, dan itu bukan galat: kuerinya memakai LEFT JOIN, sehingga tipe yang
+   * menunjuk kategori yang tidak ada tetap terkirim. Di Pega baris seperti itu justru
+   * HILANG dari daftar. Layar menampilkannya sebagai "—" beserta keterangan.
+   */
+  nama_kategori_sparepart: string
+  /** Kolom APPROVAL: "0", "1", atau "2". */
+  status: string
+  /** Sebutan status yang dibaca pengguna: "Waiting Approval", "Approve", "Reject". */
+  status_label: string
+}
+
+export type PartTypeListResponse = {
+  tipe_sparepart: PartType[]
+  status: string
+  portal: string
+}
+
+export type PartTypeResponse = {
+  tipe_sparepart: PartType
+  portal: string
+}
+
+export type PartTypeDecisionResponse = {
+  /** Jumlah baris yang BENAR-BENAR berubah, bukan jumlah yang dicentang. */
+  jumlah_berubah: number
+  status: string
+  status_label: string
+  portal: string
+}
+
+/**
+ * Satu pilihan pada dropdown Kategori di layar Master Tipe Sparepart.
+ *
+ * Bentuknya sama persis dengan `SparepartCategory` — keduanya membaca tabel yang sama untuk
+ * keperluan yang sama. Ia tetap dinamai tersendiri supaya kedua layar dapat berubah
+ * sendiri-sendiri; menyatukannya akan membuat perubahan di satu layar menyeret layar lain.
+ */
+export type PartTypeCategory = {
+  /** Kolom PART_CATEGORY_ID; inilah yang tersimpan sebagai PART_CATEGORY_ID pada tipe. */
+  kode: string
+  /** Kolom PART_CATEGORY_NAME — yang dilihat pengguna. */
+  nama: string
+}
+
+/**
+ * Jawaban GET /api/master/tipe-sparepart/pilihan.
+ *
+ * Isinya DIBACA DARI BASIS DATA entitas yang sedang dibuka — kategori suku cadang berbeda
+ * antarentitas. Karena itu permintaannya menuntut portal.
+ */
+export type PartTypeOptionsResponse = {
+  kategori: PartTypeCategory[]
+  /**
+   * Daftarnya terpotong pada batas lookup.
+   *
+   * Dikirim supaya layar dapat mengatakannya. Tanpa itu, pemotongan terjadi diam-diam dan
+   * terbaca pengguna sebagai "kategorinya belum dibuat".
+   */
+  terpotong: boolean
+  portal: string
+}
+
+/**
+ * Badan permintaan tambah dan simpan.
+ *
+ * DUA isian. ID tidak dikirim — pada penambahan ia diterbitkan server, dan pada penyimpanan
+ * ia ada di jalur URL. Status juga tidak: menyimpan selalu mengembalikan baris ke antrean
+ * persetujuan. Nama kategori juga tidak: ia milik tabel kategori dan tidak pernah ditulis.
+ */
+export type PartTypeInput = Pick<
+  PartType,
+  'nama_tipe_sparepart' | 'id_kategori_sparepart'
+>
+
+/**
+ * Badan permintaan keputusan borongan.
+ *
+ * TANPA catatan: POOLDATA.GCNM_M_SPAREPART_TYPE tidak punya kolom penampungnya. Layar
+ * karena itu tidak menggambar isian catatan sama sekali.
+ */
+export type PartTypeDecisionInput = {
+  id_tipe_sparepart: string[]
+  status: string
+}
+
+/**
+ * Kode galat modul Master Tipe Sparepart.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat seluruh
+ * aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const PartTypeErrorCode = {
+  /**
+   * Nama sudah dipakai tipe lain — konflik keadaan, bukan isian yang cacat.
+   *
+   * Termasuk bila yang memakainya adalah tipe di KATEGORI LAIN, dan termasuk bila yang
+   * memakainya adalah baris yang sudah DITOLAK: pemeriksaan lamanya tidak menyaring
+   * keduanya (P-5). Pesan pada `detail` yang menjelaskannya.
+   */
+  nameTaken: 'kunci_tipe_sparepart_sudah_ada',
+  /**
+   * Kategori yang dipilih tidak ada, atau persetujuannya dicabut sementara form terbuka.
+   *
+   * Perbaikannya memuat ulang daftar pilihan, bukan membetulkan ketikan — pengguna
+   * memilihnya dari dropdown.
+   */
+  categoryNotFound: 'kategori_sparepart_tidak_ditemukan',
+  unknownStatus: 'status_tidak_dikenal',
+} as const
+
+export type PartTypeErrorCode =
+  (typeof PartTypeErrorCode)[keyof typeof PartTypeErrorCode]
+
+/**
+ * Posisi sebuah grouping sparepart dalam alur persetujuan.
+ *
+ * Sandinya "0"/"1"/"2" mengikuti kolom APPROVAL pada POOLDATA.SPAREPART_HE_VIN_KEY. Ia
+ * tidak dapat dipilih bebas selama tabel yang sama masih dibaca sistem lama (ADR-0004).
+ */
+export const GroupingStatus = {
+  menunggu: '0',
+  disetujui: '1',
+  ditolak: '2',
+} as const
+
+export type GroupingStatus = (typeof GroupingStatus)[keyof typeof GroupingStatus]
+
+/** Satu pilihan Nama Panel — satu baris POOLDATA.PANEL_HE yang sudah disetujui. */
+export type GroupingPanel = {
+  /** Kolom ID_PANEL; dikirim tersembunyi dan dipakai mencari daftar Sisi. */
+  kode: string
+  /** Kolom NAME — yang dilihat pengguna DAN yang tersimpan sebagai NAMA_PANEL. */
+  nama: string
+}
+
+/** Satu pilihan Tipe Kendaraan — satu baris `branddetail` yang aktif pada lini ANEKA. */
+export type GroupingVehicleType = {
+  /** Kolom `id`; dibawa untuk penelusuran, TIDAK disimpan. */
+  kode: string
+  /** Kolom TYPENAME — yang dilihat pengguna DAN yang disimpan sebagai TIPE. */
+  nama: string
+}
+
+/**
+ * Satu pilihan Sisi pada sebuah panel.
+ *
+ * Sandinya "-", "1" KIRI, "2" KANAN — nilai kolom SISI_PANEL pada
+ * POOLDATA.LOKASI_PANEL_HE. Sebutannya dihitung server, sehingga layar tidak menyimpan
+ * salinan ketiga sandinya.
+ */
+export type GroupingSide = {
+  kode: string
+  nama: string
+}
+
+/**
+ * Satu baris Master Grouping Sparepart.
+ *
+ * Cerminan dto di internal/mastergroupingsparepart/http. Menggantikan layar Pega
+ * `Harness/GroupingSparePart_HE-Harness.xml` (MENU_ID 32).
+ *
+ * # Lima isian yang TIDAK diketik pengguna
+ *
+ * `nama_sparepart`, `kategori_sparepart`, `tipe_sparepart`, `kode_sparepart`, dan
+ * `tanggal_produksi` seluruhnya DITURUNKAN dari Master Sparepart begitu Nomor Sparepart
+ * diisi — meniru `Activity/SetDataSparepart-Act.xml`. Server yang membacanya; klien tidak
+ * dapat mengirimnya.
+ *
+ * # Nama isiannya mengikuti ISINYA, bukan properti Pega yang dipinjam
+ *
+ * Layar lama menyimpan nama panel di properti bernama `PANJANG`, sisi di `LEBAR`, nomor
+ * rangka di `TINGGI`, tipe kendaraan di `QTY_PESAN`, dan catatan di `MAX_STOCK` — sisa
+ * salin-tempel dari layar Master Sparepart. Tidak satu pun dibawa.
+ */
+export type Grouping = {
+  /** Kolom ID — kunci baris, diterbitkan server. */
+  id_grouping: string
+
+  /** Kolom NO_PART — "Nomor Sparepart". Satu-satunya identitas sparepart yang diketik. */
+  nomor_sparepart: string
+
+  /** Keempat berikut diturunkan dari Master Sparepart; baca-saja di layar. */
+  nama_sparepart: string
+  kategori_sparepart: string
+  tipe_sparepart: string
+  kode_sparepart: string
+
+  /** Kolom PROD_DATE — TEKS, bukan tanggal. Diturunkan. */
+  tanggal_produksi: string
+
+  /** Kolom ID_PANEL — isian tersembunyi di balik pilihan Nama Panel. */
+  id_panel: string
+
+  /** Kolom NAMA_PANEL — "Nama Panel". Anggota kunci alami. */
+  nama_panel: string
+
+  /** Kolom SISI_PANEL — "Sisi", berisi sandi "-", "1", atau "2". Anggota kunci alami. */
+  sisi: string
+
+  /** Sebutan sandi sisi, dihitung server: "-", "KIRI", atau "KANAN". */
+  sisi_label: string
+
+  /** Kolom NO_RANGKA — "No Rangka". Anggota kunci alami. */
+  no_rangka: string
+
+  /** Kolom TIPE pada tabel pendamping — "Tipe Kendaraan". */
+  tipe_kendaraan: string
+
+  /**
+   * Kolom GROUPING_DGN_RANGKA — "Grouping Dengan No Rangka".
+   *
+   * Isinya sebuah NOMOR RANGKA, bukan nomor grup. Kosong berarti baris ini membuka grup
+   * sendiri.
+   */
+  grouping_dengan_no_rangka: string
+
+  /**
+   * Kolom NO_GROUP_RANGKA — nomor grup kendaraan, diterbitkan server.
+   *
+   * Baca-saja. Ia TIDAK digambar di layar lama sama sekali, dan tetap ditampilkan di sini
+   * supaya baris satu grup dapat dikenali — itulah satu-satunya cara pengguna melihat
+   * bahwa penggabungannya berhasil.
+   */
+  nomor_grup: string
+
+  /** Kolom CATATAN — "Catatan". */
+  catatan: string
+
+  /** Kolom APPROVAL. */
+  status: string
+  status_label: string
+}
+
+export type GroupingListResponse = {
+  grouping: Grouping[]
+  status: string
+  portal: string
+}
+
+export type GroupingResponse = {
+  grouping: Grouping
+  portal: string
+}
+
+export type GroupingDecisionResponse = {
+  jumlah_berubah: number
+  status: string
+  status_label: string
+  portal: string
+}
+
+/**
+ * Jawaban GET /api/master/grouping-sparepart/pilihan.
+ *
+ * Daftar Sisi TIDAK ada di sini: ia bergantung pada panel yang dipilih, sehingga baru
+ * dapat dibaca setelah pengguna memilih — persis seperti `Activity/GetSisiPanel-Act.xml`
+ * yang berjalan belakangan.
+ */
+export type GroupingOptionsResponse = {
+  panel: GroupingPanel[]
+  tipe_kendaraan: GroupingVehicleType[]
+  portal: string
+}
+
+/** Jawaban GET /api/master/grouping-sparepart/sisi. */
+export type GroupingSideResponse = {
+  sisi: GroupingSide[]
+  portal: string
+}
+
+/**
+ * Jawaban GET /api/master/grouping-sparepart/sparepart.
+ *
+ * Padanan `Activity/SetDataSparepart-Act.xml`: kelima isian turunan yang muncul begitu
+ * Nomor Sparepart selesai diketik.
+ */
+export type GroupingPartResponse = {
+  nomor_sparepart: string
+  nama_sparepart: string
+  kategori_sparepart: string
+  tipe_sparepart: string
+  kode_sparepart: string
+  tanggal_produksi: string
+  portal: string
+}
+
+/**
+ * Isian yang dikirim saat menambah dan menyimpan.
+ *
+ * Sepuluh kolom sengaja tidak ada: kunci baris, nomor grup, status beserta sebutannya,
+ * sebutan sisi, dan kelima isian turunan — seluruhnya diterbitkan atau dibaca server.
+ *
+ * Mengirim salah satunya DITOLAK sebagai permintaan cacat, bukan diabaikan: server
+ * memasang `DisallowUnknownFields`, supaya cacat pada klien terlihat saat pertama dicoba.
+ */
+export type GroupingInput = Omit<
+  Grouping,
+  | 'id_grouping'
+  | 'nama_sparepart'
+  | 'kategori_sparepart'
+  | 'tipe_sparepart'
+  | 'kode_sparepart'
+  | 'tanggal_produksi'
+  | 'sisi_label'
+  | 'nomor_grup'
+  | 'status'
+  | 'status_label'
+>
+
+/**
+ * Badan permintaan keputusan borongan.
+ *
+ * TANPA catatan: kedua tabel modul ini tidak punya kolom penampung alasan penolakan, dan
+ * layar persetujuan Pega pun tidak punya isian catatan.
+ */
+export type GroupingDecisionInput = {
+  id_grouping: string[]
+  status: string
+}
+
+/**
+ * Kode galat modul Master Grouping Sparepart.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat seluruh
+ * aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const GroupingErrorCode = {
+  /**
+   * Keempat kunci alami sudah dipakai baris lain — konflik keadaan, bukan isian yang
+   * cacat.
+   *
+   * SATU kode untuk keempatnya: kuncinya memang satu — nomor sparepart, nama panel, no
+   * rangka, dan sisi BERSAMA-SAMA — sehingga tidak ada pilihan isian mana yang harus
+   * disorot sendirian.
+   */
+  duplicate: 'grouping_sudah_ada',
+
+  /**
+   * Nomor sparepart yang diketik tidak ada di Master Sparepart.
+   *
+   * Dibedakan dari `tidak_ditemukan`: yang tidak ada bukan baris yang sedang dibuka,
+   * melainkan acuan yang diketik pengguna — dan layar menanganinya dengan menyorot
+   * isiannya, bukan dengan menutup form.
+   */
+  partNotFound: 'sparepart_tidak_ditemukan',
+
+  unknownStatus: 'status_tidak_dikenal',
+} as const
+
+export type GroupingErrorCode =
+  (typeof GroupingErrorCode)[keyof typeof GroupingErrorCode]

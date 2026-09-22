@@ -30,6 +30,9 @@ import (
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/mastergroupingsparepart"
+	"claim-pnc/internal/masterkategorisparepart"
+	"claim-pnc/internal/mastertipesparepart"
 	"claim-pnc/internal/masterpanel"
 	"claim-pnc/internal/masterpasal"
 	"claim-pnc/internal/masterpenolakan"
@@ -56,6 +59,18 @@ import (
 	masterbengkelmemory "claim-pnc/internal/masterbengkel/repo/memory"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	masterbengkelusecase "claim-pnc/internal/masterbengkel/usecase"
+	mastergroupingspareparthttp "claim-pnc/internal/mastergroupingsparepart/http"
+	mastergroupingsparepartmemory "claim-pnc/internal/mastergroupingsparepart/repo/memory"
+	mastergroupingsparepartsql "claim-pnc/internal/mastergroupingsparepart/repo/sqlstore"
+	mastergroupingsparepartusecase "claim-pnc/internal/mastergroupingsparepart/usecase"
+	masterkategorispareparthttp "claim-pnc/internal/masterkategorisparepart/http"
+	masterkategorisparepartmemory "claim-pnc/internal/masterkategorisparepart/repo/memory"
+	masterkategorisparepartsql "claim-pnc/internal/masterkategorisparepart/repo/sqlstore"
+	mastertipespareparthttp "claim-pnc/internal/mastertipesparepart/http"
+	mastertipesparepartmemory "claim-pnc/internal/mastertipesparepart/repo/memory"
+	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
+	mastertipesparepartusecase "claim-pnc/internal/mastertipesparepart/usecase"
+	masterkategorisparepartusecase "claim-pnc/internal/masterkategorisparepart/usecase"
 	masterpanelhttp "claim-pnc/internal/masterpanel/http"
 	masterpanelmemory "claim-pnc/internal/masterpanel/repo/memory"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
@@ -340,6 +355,84 @@ func run() error {
 		return err
 	}
 
+	// Master Grouping Sparepart memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	groupingHandler, err := mastergroupingspareparthttp.NewHandler(
+		mastergroupingspareparthttp.Options{
+			Service: assembly.masterGroupingSparepart,
+			// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+			// tidak saling mengimpor.
+			//
+			// Login yang DIKETIK pengguna, bukan NIK — sama seperti modul master lain. Di
+			// modul ini ia TIDAK tersimpan ke basis data: kedua tabelnya tidak punya satu pun
+			// kolom pencatat pelaku. Ia dipakai untuk mencatat siapa yang mengubah apa di log,
+			// satu-satunya tempat yang tersedia sampai S-5 Jejak Audit dibangun.
+			Caller: func(ctx context.Context) (mastergroupingspareparthttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return mastergroupingspareparthttp.Caller{}, false
+				}
+				return mastergroupingspareparthttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:        logger,
+			WriteResponse: writeJSON,
+			WriteError:    mastergroupingspareparthttp.ErrorWriter(writePortalAwareError),
+		})
+	if err != nil {
+		return err
+	}
+
+	// Master Kategori Sparepart memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	//
+	// Ia MENERIMA Caller meski tabelnya tidak punya kolom pencatat pelaku. Login-nya tidak
+	// tersimpan di basis data — ia hanya masuk ke log, dan log itulah satu-satunya tempat
+	// siapa yang menyetujui sebuah kategori terekam. Lihat masterkategorisparepart/usecase.Actor.
+	partCategoryHandler, err := masterkategorispareparthttp.NewHandler(
+		masterkategorispareparthttp.Options{
+			Service: assembly.masterKategoriSparepart,
+			Caller: func(ctx context.Context) (masterkategorispareparthttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return masterkategorispareparthttp.Caller{}, false
+				}
+				return masterkategorispareparthttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:        logger,
+			WriteResponse: writeJSON,
+			WriteError:    masterkategorispareparthttp.ErrorWriter(writePortalAwareError),
+		})
+	if err != nil {
+		return err
+	}
+
+	// Master Tipe Sparepart memakai penulis galat yang SAMA dengan modul bisnis lain: ia
+	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
+	// sudah dikenal frontend.
+	//
+	// Ia MENERIMA Caller meski tabelnya tidak punya kolom pencatat pelaku. Login-nya tidak
+	// tersimpan di basis data — ia hanya masuk ke log, dan log itulah satu-satunya tempat
+	// siapa yang menyetujui sebuah tipe terekam. Lihat mastertipesparepart/usecase.Actor.
+	partTypeHandler, err := mastertipespareparthttp.NewHandler(
+		mastertipespareparthttp.Options{
+			Service: assembly.masterTipeSparepart,
+			Caller: func(ctx context.Context) (mastertipespareparthttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return mastertipespareparthttp.Caller{}, false
+				}
+				return mastertipespareparthttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:        logger,
+			WriteResponse: writeJSON,
+			WriteError:    mastertipespareparthttp.ErrorWriter(writePortalAwareError),
+		})
+	if err != nil {
+		return err
+	}
+
 	// Master Pasal Kerugian memakai penulis galat yang SAMA dengan modul bisnis lain: ia
 	// menyentuh basis data entitas, sehingga galat portal harus dijawab dengan kode yang
 	// sudah dikenal frontend.
@@ -488,6 +581,29 @@ func run() error {
 				// dan tipe suku cadang dibaca dari basis data entitas, bukan dari
 				// konstanta yang ditanam di activity Pega.
 				masterspareparthttp.Mount(protected, sparepartHandler, activePortalDeps)
+				// Master Grouping Sparepart. SELURUH rutenya dipasangi pemeriksaan
+				// portal — kedua tabel groupingnya DAN keempat sumber acuannya
+				// (PANEL_HE, LOKASI_PANEL_HE, SPAREPART_HE, branddetail) ada di basis
+				// data setiap entitas. Tidak ada satu pun rutenya yang isinya konstanta
+				// milik aplikasi.
+				mastergroupingspareparthttp.Mount(protected, groupingHandler, activePortalDeps)
+				// Master Kategori Sparepart. SELURUH rutenya dipasangi pemeriksaan
+				// portal — tabelnya ada di basis data setiap entitas, dan tidak ada
+				// satu pun rutenya yang isinya milik aplikasi.
+				//
+				// Ia MENULIS tabel yang dibaca Master Sparepart di atas sebagai daftar
+				// acuan. Satu tabel, satu penulis (P-1).
+				masterkategorispareparthttp.Mount(protected, partCategoryHandler,
+					activePortalDeps)
+				// Master Tipe Sparepart. SELURUH rutenya dipasangi pemeriksaan portal —
+				// tabelnya ada di basis data setiap entitas, dan `/pilihan` membaca
+				// tabel kategori entitas itu juga.
+				//
+				// Ia MENULIS tabel yang dibaca Master Sparepart sebagai daftar acuan
+				// Tipe, dan MEMBACA tabel yang ditulis Master Kategori Sparepart di
+				// atas. Satu tabel, satu penulis (P-1).
+				mastertipespareparthttp.Mount(protected, partTypeHandler,
+					activePortalDeps)
 				// Master Pasal Kerugian. Rutenya memasang pemeriksaan portal sendiri di
 				// dalam Mount — SELURUHNYA kecuali daftar Kategori, yang isinya milik
 				// aplikasi dan bukan dibaca dari basis data entitas mana pun.
@@ -560,6 +676,25 @@ type assembly struct {
 	// alasan yang sama seperti master lain: POOLDATA.SPAREPART_HE beserta kedua tabel
 	// acuannya ada di basis data SETIAP entitas (ADR-0030).
 	masterSparepart *mastersparepartusecase.Service
+
+	// masterGroupingSparepart melayani layar Master Grouping Sparepart — penautan suku
+	// cadang ke panel bodi pada sebuah kendaraan, dikelompokkan menurut nomor rangka. Ia
+	// memakai pemilih repo per portal dengan alasan yang sama seperti master lain:
+	// POOLDATA.SPAREPART_HE_VIN_KEY, POOLDATA.SPAREPART_HE_VIN_GROUP, beserta keempat sumber
+	// acuannya ada di basis data SETIAP entitas (ADR-0030).
+	masterGroupingSparepart *mastergroupingsparepartusecase.Service
+
+	// masterKategoriSparepart melayani layar Master Kategori Sparepart — penggolongan suku
+	// cadang yang menjadi acuan Master Sparepart dan Master Tipe Sparepart. Ia memakai
+	// pemilih repo per portal dengan alasan yang sama seperti master lain:
+	// POOLDATA.GCNM_M_SPAREPART_CATEGORY ada di basis data SETIAP entitas (ADR-0030).
+	masterKategoriSparepart *masterkategorisparepartusecase.Service
+
+	// masterTipeSparepart melayani layar Master Tipe Sparepart — penggolongan tingkat kedua
+	// di bawah kategori, yang menjadi acuan Tipe pada Master Sparepart. Ia memakai pemilih
+	// repo per portal dengan alasan yang sama seperti master lain:
+	// POOLDATA.GCNM_M_SPAREPART_TYPE ada di basis data SETIAP entitas (ADR-0030).
+	masterTipeSparepart *mastertipesparepartusecase.Service
 
 	// masterPasal melayani layar Master Pasal Kerugian — daftar baku butir ketentuan polis
 	// yang dirujuk saat klaim dinilai. Ia memakai pemilih repo per portal dengan alasan
@@ -636,6 +771,23 @@ type storage struct {
 
 	// sparepartSelector memilih penyimpanan Master Sparepart milik satu portal.
 	sparepartSelector mastersparepart.RepoSelector
+
+	// groupingSelector memilih penyimpanan Master Grouping Sparepart milik satu portal.
+	// Kedua tabel groupingnya dan keempat sumber acuannya ada di basis data setiap entitas.
+	groupingSelector mastergroupingsparepart.RepoSelector
+
+	// partCategorySelector memilih penyimpanan Master Kategori Sparepart milik satu portal.
+	// POOLDATA.GCNM_M_SPAREPART_CATEGORY ada di basis data setiap entitas — tabel yang sama
+	// yang dibaca sparepartSelector sebagai daftar acuan, dan ditulis oleh yang ini.
+	partCategorySelector masterkategorisparepart.RepoSelector
+
+	// partTypeSelector memilih penyimpanan Master Tipe Sparepart milik satu portal.
+	// POOLDATA.GCNM_M_SPAREPART_TYPE ada di basis data setiap entitas — tabel yang sama yang
+	// dibaca sparepartSelector sebagai daftar acuan Tipe, dan ditulis oleh yang ini.
+	//
+	// Repo yang sama juga MEMBACA GCNM_M_SPAREPART_CATEGORY untuk dropdown Kategorinya;
+	// yang menulis tabel itu tetap partCategorySelector (P-1).
+	partTypeSelector mastertipesparepart.RepoSelector
 
 	// clauseSelector memilih penyimpanan Master Pasal Kerugian milik satu portal.
 	// POOLDATA.V_M_DATA_PASAL dan master lini bisnisnya ada di basis data setiap entitas.
@@ -772,6 +924,44 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Master Grouping Sparepart TIDAK menerima Clock, berbeda dari Master Sparepart: kedua
+	// tabelnya tidak punya satu pun kolom waktu, dan `Activity/UpdateGroupingSparepartHE_act`
+	// tidak memanggil @DateTime.CurrentDateTime() sama sekali. Menyuntikkan jam yang tidak
+	// akan pernah dipakai hanya akan menyesatkan pembaca berikutnya.
+	groupingService, err := mastergroupingsparepartusecase.NewService(
+		mastergroupingsparepartusecase.Options{
+			RepoSelector: store.groupingSelector,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Kategori Sparepart TIDAK menerima Clock, berbeda dari Master Sparepart yang
+	// bertetangga dengannya: POOLDATA.GCNM_M_SPAREPART_CATEGORY tidak punya satu pun kolom
+	// waktu, sehingga tidak ada yang perlu distempel. Menyerahkan jam yang tidak pernah
+	// dipakai hanya akan menyesatkan pembaca berikutnya.
+	partCategoryService, err := masterkategorisparepartusecase.NewService(
+		masterkategorisparepartusecase.Options{
+			RepoSelector: store.partCategorySelector,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Tipe Sparepart juga TIDAK menerima Clock, dengan alasan yang sama seperti
+	// tetangganya di atas: POOLDATA.GCNM_M_SPAREPART_TYPE tidak punya satu pun kolom waktu
+	// maupun kolom pelaku.
+	partTypeService, err := mastertipesparepartusecase.NewService(
+		mastertipesparepartusecase.Options{
+			RepoSelector: store.partTypeSelector,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Master Penolakan Klaim menerima Clock karena ia menulis kolom TANGGALKIRIM.
 	// Jam yang sama dipakai modul auth, sehingga waktu di seluruh aplikasi berasal dari
 	// satu sumber dan tidak ada satu pun penambahan 7 jam manual yang menyelinap masuk.
@@ -816,12 +1006,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatusProgres:  progressStatusService,
 		masterStatusProgres2: progressStatus2Service,
 
-		masterAutoClaim: autoClaimService,
-		masterBengkel:   workshopService,
-		masterPanel:     panelService,
-		masterSparepart: sparepartService,
-		masterPasal:     clauseService,
-		masterSupplier:  supplierService,
+		masterAutoClaim:         autoClaimService,
+		masterBengkel:           workshopService,
+		masterPanel:             panelService,
+		masterSparepart:         sparepartService,
+		masterGroupingSparepart: groupingService,
+		masterKategoriSparepart: partCategoryService,
+		masterTipeSparepart:     partTypeService,
+		masterPasal:             clauseService,
+		masterSupplier:          supplierService,
 
 		masterPenolakan:       rejectionService,
 		masterPenolakanKomite: rejectionKomiteService,
@@ -1014,6 +1207,27 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return mastersparepartsql.NewRepo(conn), nil
 		}
+		store.groupingSelector = func(alias string) (mastergroupingsparepart.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastergroupingsparepartsql.NewRepo(conn), nil
+		}
+		store.partCategorySelector = func(alias string) (masterkategorisparepart.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return masterkategorisparepartsql.NewRepo(conn), nil
+		}
+		store.partTypeSelector = func(alias string) (mastertipesparepart.Store, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return mastertipesparepartsql.NewRepo(conn), nil
+		}
 		store.clauseSelector = func(alias string) (masterpasal.Store, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -1056,6 +1270,9 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.workshopSelector = workshopSelectorMemory(cfg.PrimaryPortal)
 		store.panelSelector = panelSelectorMemory(cfg.PrimaryPortal)
 		store.sparepartSelector = sparepartSelectorMemory(cfg.PrimaryPortal)
+		store.groupingSelector = groupingSelectorMemory(cfg.PrimaryPortal)
+		store.partCategorySelector = partCategorySelectorMemory(cfg.PrimaryPortal)
+		store.partTypeSelector = partTypeSelectorMemory(cfg.PrimaryPortal)
 		store.clauseSelector = clauseSelectorMemory(cfg.PrimaryPortal)
 		store.supplierSelector = supplierSelectorMemory(cfg.PrimaryPortal)
 		store.rejectionSelector = rejectionSelectorMemory(cfg.PrimaryPortal)
@@ -1302,6 +1519,129 @@ func sparepartSelectorMemory(primaryAlias string) mastersparepart.RepoSelector {
 			return existing, nil
 		}
 		fresh := mastersparepartmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// groupingSelectorMemory menyusun penyimpanan Master Grouping Sparepart di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali.
+// Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan hilang pada
+// permintaan berikutnya dan layarnya tampak rusak tanpa sebab — dan pada modul ini akibatnya
+// lebih jauh: pencacah ID DAN nomor grup ikut mundur, sehingga dua grouping dapat lahir dengan
+// kunci yang sama dan dua kendaraan berbeda dapat berbagi satu nomor grup.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+//
+// Penyimpanan contoh memuat ketiga status persetujuan sekaligus beserta keempat sumber
+// acuannya, dan DUA baris yang berbagi satu nomor grup — tanpa itu, layar tidak pernah
+// memperlihatkan apa gunanya modul ini.
+func groupingSelectorMemory(primaryAlias string) mastergroupingsparepart.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]mastergroupingsparepart.Store{}
+
+	return func(alias string) (mastergroupingsparepart.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := mastergroupingsparepartmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// partCategorySelectorMemory menyusun penyimpanan Master Kategori Sparepart di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali.
+// Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan hilang pada
+// permintaan berikutnya — dan pada modul ini akibatnya lebih jauh: nomor urut yang lahir
+// dari `max+1` ikut mundur, sehingga dua kategori dapat lahir dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+//
+// # Satu hal yang TIDAK terjadi di modus memori, dan itu perlu disadari saat mencoba
+//
+// Modul ini dan Master Sparepart membaca tabel yang SAMA di produksi, tetapi punya
+// penyimpanan memori SENDIRI-SENDIRI di sini. Kategori yang ditambahkan lewat layar ini
+// karena itu tidak muncul di dropdown Kategori pada layar Master Sparepart selama aplikasi
+// berjalan tanpa Oracle.
+//
+// Menyatukan keduanya akan menuntut salah satu modul mengimpor penyimpanan modul lain —
+// tautan yang tidak ada di produksi, dan yang membuat modul selesai harus disunting setiap
+// kali tetangganya berubah. Keterbatasan ini dibiarkan dan dicatat, bukan ditambal.
+func partCategorySelectorMemory(primaryAlias string) masterkategorisparepart.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]masterkategorisparepart.Store{}
+
+	return func(alias string) (masterkategorisparepart.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := masterkategorisparepartmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// partTypeSelectorMemory menyusun penyimpanan Master Tipe Sparepart di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali.
+// Kalau dibuat ulang setiap permintaan, penambahan yang baru disimpan akan hilang pada
+// permintaan berikutnya — dan pada modul ini akibatnya lebih jauh: nomor urut yang lahir
+// dari `max+1` ikut mundur, sehingga dua tipe dapat lahir dengan kunci yang sama.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+//
+// # Dua hal yang TIDAK terjadi di modus memori, dan keduanya perlu disadari saat mencoba
+//
+//  1. Modul ini dan Master Sparepart membaca tabel tipe yang SAMA di produksi, tetapi punya
+//     penyimpanan memori SENDIRI-SENDIRI di sini. Tipe yang ditambahkan lewat layar ini
+//     tidak muncul di dropdown Tipe pada layar Master Sparepart selama berjalan tanpa
+//     Oracle.
+//  2. Dropdown Kategori pada layar ini dilayani SALINAN acuan milik penyimpanan ini sendiri
+//     (lihat SampleCategoryList), bukan oleh penyimpanan Master Kategori Sparepart.
+//     Kategori yang ditambahkan di layar itu karena itu tidak muncul di sini.
+//
+// Menyatukan keduanya akan menuntut salah satu modul mengimpor penyimpanan modul lain —
+// tautan yang tidak ada di produksi, dan yang membuat modul selesai harus disunting setiap
+// kali tetangganya berubah. Keterbatasan ini dibiarkan dan dicatat, bukan ditambal.
+func partTypeSelectorMemory(primaryAlias string) mastertipesparepart.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]mastertipesparepart.Store{}
+
+	return func(alias string) (mastertipesparepart.Store, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := mastertipesparepartmemory.NewSampleRepo()
 		store[clean] = fresh
 		return fresh, nil
 	}

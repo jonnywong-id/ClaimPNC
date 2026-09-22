@@ -318,6 +318,20 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `POST` | `/api/master/sparepart` | wajib | **wajib** | 20 isian, **4 wajib** (nomor, nama, kode, harga); `ID` diterbitkan server → `201` |
 | `PUT` | `/api/master/sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval |
 | `POST` | `/api/master/sparepart/keputusan` | wajib | **wajib** | `{id_sparepart: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: tabelnya tidak punya kolom penampungnya |
+| `GET` | `/api/master/grouping-sparepart/pilihan` | wajib | **wajib** | Panel dari `POOLDATA.PANEL_HE` (hanya yang disetujui) dan Tipe Kendaraan dari `branddetail`; **data entitas** |
+| `GET` | `/api/master/grouping-sparepart/sisi` | wajib | **wajib** | `?id_panel=&nama_panel=` — sandi Sisi milik satu panel, dari `POOLDATA.LOKASI_PANEL_HE`. Daftar kosong adalah jawaban yang **sah** |
+| `GET` | `/api/master/grouping-sparepart/sparepart` | wajib | **wajib** | `?nomor=` — lima isian turunan dari `POOLDATA.SPAREPART_HE`; `404` bila nomornya tidak ada |
+| `GET` | `/api/master/grouping-sparepart` | wajib | **wajib** | daftar dari `SPAREPART_HE_VIN_KEY` **di-JOIN** dengan `SPAREPART_HE_VIN_GROUP`, urut `ID` menaik; saringan `status` (`0`/`1`/`2`, bawaan `1`) dan `cari` (nomor & nama sparepart, nama panel, **no rangka**) |
+| `GET` | `/api/master/grouping-sparepart/{id}` | wajib | **wajib** | satu grouping, untuk dimuat ke form |
+| `POST` | `/api/master/grouping-sparepart` | wajib | **wajib** | 8 isian, **4 wajib** (nomor sparepart, nama panel, no rangka, sisi). Lima isian turunan **dibaca server**, bukan dikirim klien; `ID` dan nomor grup diterbitkan server → `201` |
+| `PUT` | `/api/master/grouping-sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval |
+| `POST` | `/api/master/grouping-sparepart/keputusan` | wajib | **wajib** | `{id_grouping: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: kedua tabelnya tidak punya kolom penampungnya |
+| `GET` | `/api/master/tipe-sparepart/pilihan` | wajib | **wajib** | Kategori dari `POOLDATA.GCNM_M_SPAREPART_CATEGORY` (**hanya yang disetujui**); **data entitas**. Penanda `terpotong` ikut dikirim bila daftarnya mencapai batas |
+| `GET` | `/api/master/tipe-sparepart` | wajib | **wajib** | daftar dari `GCNM_M_SPAREPART_TYPE` **LEFT JOIN** tabel kategori, urut `PART_SECTION_ID` menaik; saringan `status` (`0`/`1`/`2`, bawaan `1`) dan `cari` (nama tipe **dan nama kategori**) |
+| `GET` | `/api/master/tipe-sparepart/{id}` | wajib | **wajib** | satu tipe, untuk dimuat ke form |
+| `POST` | `/api/master/tipe-sparepart` | wajib | **wajib** | 2 isian, **keduanya wajib** (nama, kategori). Keberadaan kategori **diperiksa server**; ID diterbitkan server → `201` |
+| `PUT` | `/api/master/tipe-sparepart/{id}` | wajib | **wajib** | isian sama; menyimpan **selalu** mengembalikan baris ke Waiting Approval, dan **boleh memindahkan** tipe ke kategori lain |
+| `POST` | `/api/master/tipe-sparepart/keputusan` | wajib | **wajib** | `{id_tipe_sparepart: [...], status}` — keputusan **borongan**, paling banyak 200 baris. **Tanpa catatan**: tabelnya tidak punya kolom penampungnya |
 | `GET` | `/api/master/supplier` | wajib | **wajib** | daftar dari `M_SUPPLIER`; saringan `cari` (nama, kota, contact person) |
 | `GET` | `/api/master/supplier/{id}` | wajib | **wajib** | satu supplier, untuk dimuat ke form |
 | `POST` | `/api/master/supplier` | wajib | **wajib** | 23 isian, 15 wajib; ID diterbitkan server → `201`. Selalu lahir **belum aktif** |
@@ -750,6 +764,14 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/master/bengkel` | **Master Bengkel HE** — tiga tab: Approve, Reject, Waiting Approval; grid 6 kolom, 20 baris per halaman; keputusan **borongan** dengan centang |
 | `/master/panel` | **Master Panel HE** — tiga tab (Approve · Reject · Waiting Approval); satu-satunya layar master yang mengelola **baris anak** (daftar lokasi per panel) |
 | `/master/sparepart` | **Master Sparepart HE** — tiga tab (Approve · Reject · Waiting Approval); grid **5 kolom**, 30 baris per halaman; satu-satunya layar master yang mencatat **pelaku dan waktu** di tabelnya sendiri |
+<<<<<<< Updated upstream
+=======
+| `/master/grouping-sparepart` | **Master Grouping Sparepart HE** — menu 32; tiga tab (Approve · Reject · Waiting Approval); grid **6 kolom + nomor grup**, 15 baris per halaman. Satu-satunya layar master yang memakai **dua tabel**, yang kunci alaminya **empat kolom bersama-sama**, dan yang lima isiannya **diturunkan** dari master lain |
+| `/master/kategori-sparepart` | **Master Kategori Sparepart** — menu 33; tiga tab (Approve · Reject · Waiting Approval); grid **2 kolom**, 50 baris per halaman; master **terkecil** — tabelnya hanya tiga kolom, dan ia MENULIS tabel yang layar Master Sparepart hanya baca |
+| `/master/tipe-sparepart` | **Master Tipe Sparepart** — menu 34; tiga tab (Approve · Reject · Waiting Approval); grid **4 kolom**, 50 baris per halaman. Master pertama di rumpun sparepart yang menyimpan **kunci asing** — setiap tipe berinduk pada satu kategori. Satu-satunya layar yang **sengaja menampilkan lebih banyak baris daripada Pega**: inner join Pega diganti LEFT JOIN supaya baris tanpa kategori tetap dapat diperbaiki |
+| `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
+| `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
+>>>>>>> Stashed changes
 
 Seluruhnya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
