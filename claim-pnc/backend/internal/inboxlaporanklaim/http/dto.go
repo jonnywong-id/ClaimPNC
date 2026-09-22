@@ -98,6 +98,20 @@ type ListResponse struct {
 	Kategori []CategoryDTO    `json:"kategori"`
 	Halaman  PaginationDTO    `json:"halaman"`
 
+	/*
+		BatasCabang menyebut cabang yang membatasi daftar ini.
+
+		Kosong punya SATU arti: pengguna memilih kanwil, dan pilihan itu menggantikan
+		batas cabangnya. Ia tidak pernah berarti "batasnya hilang" — permintaan yang
+		cabangnya tidak dapat ditentukan dijawab `403 cabang_tidak_dikenali`, bukan
+		dijawab daftar tanpa batas.
+
+		Ia dikirim supaya layar dapat MENYATAKAN batasnya. Petugas yang tidak tahu
+		daftarnya sedang disaring akan menyimpulkan tidak ada pekerjaan, padahal yang
+		benar adalah tidak ada pekerjaan DI CABANGNYA.
+	*/
+	BatasCabang string `json:"batas_cabang"`
+
 	// Portal menyebut entitas yang benar-benar menjawab permintaan ini.
 	//
 	// Ia dikirim balik dengan sengaja: layar dapat memastikan data yang tampil memang

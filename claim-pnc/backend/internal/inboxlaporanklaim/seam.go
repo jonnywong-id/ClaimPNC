@@ -32,12 +32,52 @@ type Caller struct {
 	// harus bertambah lebih dulu adalah kontrak identitasnya.
 	Name string
 
-	// BranchCode adalah cabang petugas, hasil `GetIDCabang` di sistem lama.
+	// # Kenapa TIDAK ada BranchCode di sini
 	//
-	// Ia BATAS DATA, bukan kenyamanan: `SetListRCV_Act` selalu menempelkan penyaring
-	// cabang ke setiap kueri. Kosongnya menghasilkan ErrBranchUnknown saat membuat
-	// berkas — lihat catatan di sana.
-	BranchCode string
+	// Versi pertama modul ini membawa `auth.User.BranchCode` — kode cabang dari profil
+	// HCC/HCQ (`EmpResponse.Placement.BranchCode`) — lalu memakainya sebagai penyaring
+	// terhadap kolom `kodecabang_1`. Keduanya **sistem kode yang berbeda**, dan akibatnya
+	// tidak satu pun baris cocok: daftar tampil KOSONG tanpa satu pun pesan galat.
+	//
+	// Kode cabang yang dipakai layar ini adalah `POOLDATA.BRANCH.ID`, dan sistem lama
+	// menurunkannya lewat tiga tabel dan dua DB Link
+	// (`RDB List/GetIDCabang-SQL.xml`):
+	//
+	//	login petugas -> HRDASM.V_HRD_MST.login_aplikasi
+	//	              -> NIK
+	//	              -> LST_USER_ASURANSI.cab_id
+	//	              -> BRANCH.oldid
+	//	              -> BRANCH.id            <- inilah yang dibandingkan
+	//
+	// Perhatikan sambungan terakhir: ia lewat `oldid`, BUKAN `id`. Tidak ada satu pun
+	// jalan pintas dari profil HCC/HCQ ke nilai itu.
+	//
+	// Karena itu cabang TIDAK lagi dibawa di sini; ia diselesaikan BranchResolver dari
+	// Login. Membawanya sebagai field yang tampak sudah benar adalah persis yang membuat
+	// cacat ini luput — nilainya ada, bentuknya masuk akal, dan hasilnya salah diam-diam.
+}
+
+// BranchResolver menerjemahkan login petugas menjadi kode cabang klaimnya.
+//
+// # Kenapa ia seam tersendiri
+//
+// Karena penurunannya menyentuh dua basis data lain lewat DB Link, dan `D-25` menetapkan
+// seluruh DB Link kelak diganti pemanggilan API (`R-03`). Menaruhnya di balik seam berarti
+// penggantian itu kelak tidak menyentuh satu baris pun aturan modul ini.
+//
+// # Kegagalan BUKAN galat
+//
+// Nilai kedua false berarti cabangnya tidak dapat ditentukan — petugas non-karyawan tidak
+// ada di HRD, dan DB Link dapat sedang tidak dapat dihubungi. Pemanggil WAJIB
+// memperlakukannya sebagai "tanpa batas cabang", bukan sebagai "tidak ada berkas".
+//
+// Sistem lama memang berperilaku sebaliknya: ia merangkai `branch where ID=''` lalu
+// menampilkan daftar kosong. Perilaku itu TIDAK direplikasi, dan itu keputusan sadar —
+// `ID=''` bukan aturan bisnis melainkan akibat perangkaian teks `{ASIS:}` yang tidak
+// pernah memeriksa hasilnya. Daftar kosong yang tidak menjelaskan dirinya adalah kegagalan
+// yang paling mahal ditemukan.
+type BranchResolver interface {
+	Resolve(ctx context.Context, login string) (code string, resolved bool, err error)
 }
 
 // Clean memangkas spasi setiap isian identitas.
@@ -45,7 +85,6 @@ func (c Caller) Clean() Caller {
 	return Caller{
 		Login:      strings.TrimSpace(c.Login),
 		Name:       strings.TrimSpace(c.Name),
-		BranchCode: strings.TrimSpace(c.BranchCode),
 	}
 }
 

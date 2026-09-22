@@ -71,9 +71,11 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
 │   │   │   └── http/                    dto, galat, handler, rute
 │   │   ├── inboxlaporanklaim/       MODUL — Inbox Laporan Klaim (menu 64)
-│   │   │   ├── usecase/                 orkestrasi: daftar+ringkas, kanwil, ambil, buat
+│   │   │   ├── usecase/                 orkestrasi: daftar+ringkas, kanwil, ambil, buat,
+│   │   │   │                            simpan, penerjemahan cabang petugas
 │   │   │   ├── repo/                    sqlstore (PC_ASM_FW_GCNMFW_WORK dibaca +
-│   │   │   │                            CPNC_LAPORAN_KLAIM ditulis), memory
+│   │   │   │                            CPNC_LAPORAN_KLAIM ditulis, BRANCH lewat DB link
+│   │   │   │                            untuk cabang petugas), memory
 │   │   │   └── http/                    dto, galat, handler, ekspor CSV, rute
 │   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
@@ -238,7 +240,8 @@ Setelah migrasi selesai, ganti ke `PENYIMPANAN=oracle` — tidak ada perubahan k
 Untuk memeriksa tanpa menjalankan server sama sekali:
 
 ```bash
-./claimpnc.exe -periksa                       # koneksi, daftar portal, alamat HCQ, kesiapan tabel
+./claimpnc.exe -periksa                       # koneksi, daftar portal, alamat HCQ, kesiapan tabel,
+                                              # dan penerjemahan cabang klaim dari login
 
 read -s SANDI && echo "$SANDI" | \
   ./claimpnc.exe -periksa -login NAMA@sinarmas.id    # + coba masuk sungguhan
@@ -417,10 +420,52 @@ menggantikan dan idempoten.
 >
 > Dengan begitu `P-1` terpenuhi di tingkat tabel: tidak ada satu tabel pun yang ditulis dua sistem.
 
+**Daftar dibatasi ke cabang petugas**, dan kode cabangnya **diturunkan dari login**, bukan diambil
+dari profil HCQ. Keduanya sama-sama bernama "kode cabang" tetapi berasal dari sistem penomoran yang
+berbeda; yang dipakai layar ini adalah kunci baris `POOLDATA.BRANCH`, ditempuh persis seperti
+[`RDB List/GetIDCabang-SQL.xml`](../RDB%20List/GetIDCabang-SQL.xml):
+
+```
+login petugas ─► HRDASM.V_HRD_MST.login_aplikasi ─► NIK
+              ─► LST_USER_ASURANSI.cab_id
+              ─► BRANCH.oldid ─► BRANCH.id
+```
+
+Dua objek terakhir dibaca lewat **DB link** `@asmd.sinarmas.co.id` — tepat yang `D-25` tetapkan
+untuk diganti API dan `R-03` catat belum ada. Karena itu ia ditaruh di balik seam
+`BranchResolver`: ketika API-nya tersedia, yang berubah hanya satu adapter.
+
+> **Cabang yang tidak dapat ditentukan MENUTUP layar, bukan melebarkannya.** Ditetapkan Work Owner
+> 2026-09-22: petugas yang cabangnya tidak terbaca tidak boleh melihat seluruh cabang. Cabang
+> karena itu bukan kenyamanan penyaring melainkan **batas data** — dan batas yang tidak dapat
+> ditentukan berarti permintaannya tidak dapat dilayani.
+>
+> Daftar kosong sengaja **tidak** dipakai sebagai bentuk penolakan, meski itu yang dilakukan sistem
+> lama: kosong tidak terbedakan dari "tidak ada pekerjaan hari ini", dan ketidakterbedaan itulah
+> yang membuat cacat penyaring cabang bertahan tanpa ada yang melaporkannya. Yang dikirim adalah
+> penolakan yang menyebutkan sebabnya, dan kedua sebabnya dibedakan:
+>
+> | Keadaan | HTTP | Kode | Dibereskan di |
+> |---|---|---|---|
+> | Login petugas belum terdaftar di HRD | `403` | `cabang_tidak_dikenali` | data pegawai — menimpa satu orang |
+> | `POOLDATA.BRANCH` atau DB link tidak terbaca | `503` | `sumber_cabang_tidak_terbaca` | infrastruktur — menimpa **seluruh** petugas |
+>
+> Batas yang sedang berlaku tetap dikirim sebagai `batas_cabang`, supaya layar dapat menyatakannya:
+> petugas yang tidak tahu daftarnya sedang disaring akan menyimpulkan tidak ada pekerjaan, padahal
+> yang benar adalah tidak ada pekerjaan **di cabangnya**. Kosong pada field itu kini punya satu
+> arti saja — pengguna memilih kanwil.
+>
+> **Pembuatan berkas ditolak dengan syarat yang sama.** Berkas yang lahir tanpa cabang tidak akan
+> pernah terlihat siapa pun — pembuatnya tidak dapat membuka daftarnya, dan petugas cabang mana pun
+> tersaring darinya. Ini perluasan atas keputusan yang berbunyi tentang "melihat"; ditulis terbuka
+> agar dapat dikoreksi.
+
 | Kode galat tambahan | HTTP | Artinya |
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; laporan baru tidak dapat dibuat |
 | `laporan_hanya_baca` | 409 | berkas ada, tetapi penulisnya masih Pega. Bukan `validasi_gagal`: tidak ada isian yang dapat diperbaiki pengguna |
+| `cabang_tidak_dikenali` | 403 | cabang klaim petugas tidak dapat ditentukan dari login-nya; layar tidak dapat dibuka |
+| `sumber_cabang_tidak_terbaca` | 503 | sumber data cabang sedang tidak dapat dibaca. Dipisahkan dari yang di atas: yang ini menimpa **seluruh** petugas dan dibereskan di infrastruktur |
 
 ### Master Status Klaim
 

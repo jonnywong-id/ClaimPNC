@@ -2181,3 +2181,296 @@ Tombol Buat Baru kini bekerja penuh, tetapi dua hal dari form lama tetap terting
 menunggu modul lain: **rincian per dokumen** (`S-1`) dan **blok data pelapor beserta alamatnya**
 (area Heavy Equipment, di luar lingkup `D-34`). Keterbatasan itu disebutkan di kaki form, bukan
 disembunyikan.
+
+---
+
+## 18. Sesi kesebelas — daftar RCV yang kosong: kode cabang yang bukan kode cabang (2026-09-22)
+
+### 18.1 Permintaan
+
+> "kenapa tampilan list RCV laporan klaim kosong?"
+
+Satu pertanyaan, dan jawabannya ternyata cacat yang paling sulit ditemukan dari seluruh modul ini:
+**tidak ada galat, tidak ada peringatan, tidak ada baris.**
+
+### 18.2 Kenapa cacat seperti ini berbahaya
+
+Layar bekerja sempurna. Permintaan dijawab `200`, tab tergambar, lencana terisi, paginasi
+menyatakan "0 baris". Tidak ada satu pun bagian sistem yang merasa gagal — sehingga tidak ada satu
+pun tempat yang melaporkannya. Yang salah bukan mekanismenya, melainkan **nilai yang dipakai
+menyaring**.
+
+### 18.3 Diagnosis
+
+Penyaring cabang pada daftar dibandingkan dengan kolom `w.kodecabang_1` pada tabel warisan. Yang
+saya berikan ke penyaring itu adalah `Caller.BranchCode`, yang berasal dari:
+
+| Lapis | Isi |
+|---|---|
+| `internal/auth/identity.go:67` | `BranchCode string // HCQ: EmpResponse.Placement.BranchCode` |
+| `internal/auth/provider/hcq.go:211` | diisi dari respons HCQ apa adanya |
+
+**Keduanya kode cabang — tetapi bukan kode cabang yang sama.** Yang satu kode penempatan pegawai
+dari sistem identitas; yang lain kunci baris `POOLDATA.BRANCH`. Menyandingkannya tampak masuk akal
+karena namanya sama, dan itulah sebabnya cacat ini lolos sampai layarnya dicoba.
+
+### 18.4 Bukti dari sistem lama
+
+`RDB List/GetIDCabang-SQL.xml` — kueri inilah yang dipakai Pega, dan ia menjawab pertanyaannya
+secara tuntas:
+
+```sql
+select a.id AS "KodeCabang", a.branchname as "Remark", b.LUS_ID as "Keyword"
+  from branch a,
+       hrdasm.v_hrd_mst@asmd.sinarmas.co.id c,
+       lst_user_asuransi@asmd.sinarmas.co.id b
+ where c.login_aplikasi = {TempCabang.UserAdmin}
+   and c.nik = b.nik
+   and b.cab_id = a.oldid
+```
+
+Rantainya empat langkah, dan **tidak satu pun dapat dilewati**:
+
+```
+login petugas -> HRDASM.V_HRD_MST.login_aplikasi -> NIK
+              -> LST_USER_ASURANSI.cab_id
+              -> BRANCH.oldid -> BRANCH.id     <-- inilah yang menyaring daftar
+```
+
+Langkah terakhir yang paling mudah terlewat: sambungannya ke **`BRANCH.oldid`**, bukan ke
+`BRANCH.id`. Jadi bahkan bila kode dari sistem identitas kebetulan ada di tabel `BRANCH`, ia berada
+di kolom yang berbeda dari yang dipakai menyaring.
+
+Angka yang membuatnya pantas ditelusuri sampai ke sini: `GetIDCabang` dipanggil **13 aktivitas**,
+termasuk jalur registrasi — `16-RISK-ANALYSIS.md` menyebutnya "titik paling kritis" pada `R-03`.
+
+### 18.5 Perbaikannya: seam baru, bukan tambalan
+
+Menerjemahkan login menjadi kode cabang adalah **pengambilan data dari sistem lain**, bukan aturan
+bisnis. Karena itu ia menjadi seam, sejalan dengan `04-FUTURE-ARCHITECTURE.md` §3:
+
+```go
+// seam.go
+type BranchResolver interface {
+	Resolve(ctx context.Context, login string) (code string, resolved bool, err error)
+}
+```
+
+Tiga keluaran yang **sengaja dibedakan**, dan pembedaannya itulah inti perbaikan ini:
+
+| Keluaran | Artinya | Perlakuan |
+|---|---|---|
+| `code`, `true`, `nil` | cabang petugas diketahui | daftar disaring ke cabang itu |
+| `""`, `false`, `nil` | petugas memang tidak terdaftar di HRD | **bukan galat** — daftar tidak disaring |
+| `""`, `false`, `err` | sumbernya tidak dapat dibaca | galat, dan daftar tetap tidak disaring |
+
+Menggabungkan baris kedua dan ketiga akan mengulang cacat yang baru saja diperbaiki: "tidak
+diketahui" dan "tidak dapat dibaca" berakibat sama di layar, tetapi perbaikannya berbeda jauh —
+yang satu urusan data HRD, yang lain urusan hak baca atau DB link.
+
+**`BranchCode` dihapus seluruhnya dari `Caller`.** Dibiarkan ada, ia akan dipakai lagi oleh
+pembaca berikutnya yang menyangka kedua kode itu sama. Menghapusnya membuat kesalahan yang sama
+tidak mungkin diulang tanpa sengaja.
+
+### 18.6 Satu penyimpangan yang disengaja dari perilaku lama
+
+Di sistem lama, login yang tidak terdaftar di HRD menghasilkan `branch where ID = ''` — dan
+daftarnya kosong. Sistem baru **tidak menirunya**: cabang yang tidak terbaca berarti daftar
+**tidak disaring**.
+
+Alasannya bukan selera. Kekosongan itu **bukan aturan bisnis**, melainkan akibat perangkaian
+string `{ASIS:...}` (`03-CURRENT-ARCHITECTURE.md` §4.5): nilai kosong disisipkan ke teks SQL, dan
+hasilnya kebetulan tidak mencocokkan apa pun. Tidak ada satu pun rule yang menyatakan "petugas
+tanpa cabang tidak boleh melihat apa pun".
+
+`P-5` tetap terjaga, karena yang dipertahankan `P-5` adalah **hasil aturan bisnis**, bukan artefak
+perangkaian string. Konsekuensinya diterima dengan sadar dan **dikatakan di layar**, bukan
+disembunyikan:
+
+| Field respons | Isi |
+|---|---|
+| `batas_cabang` | cabang yang membatasi daftar; kosong berarti seluruh cabang |
+| `cabang_terbaca` | `false` berarti cabang petugas tidak dapat ditentukan |
+
+Keduanya dibedakan justru karena `batas_cabang` kosong punya **dua sebab berbeda**: pengguna
+memilih kanwil sendiri, atau cabangnya tidak terbaca. Yang pertama pilihannya, yang kedua keadaan
+yang perlu diberitahukan.
+
+### 18.7 Perubahan kode
+
+**Backend**
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxlaporanklaim/seam.go` | `BranchResolver` ditambahkan; `BranchCode` dihapus dari `Caller` beserta `Clean()`-nya |
+| `internal/inboxlaporanklaim/usecase/service.go` | `Options.BranchResolver` (opsional) |
+| `internal/inboxlaporanklaim/usecase/inbox.go` | `resolveBranch`; `buildFilter` menerima `branchCode`; `ListResult` diperluas `BranchScope`/`BranchResolved`; `Create` menurunkan cabang dengan cara yang SAMA |
+| `internal/inboxlaporanklaim/repo/sqlstore/branch.sql` | kueri `branch_of_login` — terikat parameter, `FETCH NEXT 1 ROWS ONLY`, tanpa `ROWNUM` |
+| `internal/inboxlaporanklaim/repo/sqlstore/branch.go` | `BranchResolver`; memangkas padding `CHAR`; `CheckTable` dengan login `"__periksa__"` |
+| `internal/inboxlaporanklaim/repo/memory/branch.go` | `BranchResolver` berbasis map; `SetError` untuk menguji jalur kegagalan |
+| `internal/inboxlaporanklaim/http/dto.go` | `ListResponse` diperluas `BatasCabang`/`CabangTerbaca` |
+| `internal/inboxlaporanklaim/http/handler.go` | `List` mengisi kedua field itu |
+| `cmd/claimpnc/main.go` | `storage.claimReportBranch` — sqlstore bila Oracle, memori bila tidak; jembatan `Caller` tidak lagi mengirim cabang |
+| `cmd/claimpnc/check.go` | `checkClaimReportBranch` ditambahkan ke `-periksa` |
+
+**Frontend**
+
+| Berkas | Perubahan |
+|---|---|
+| `types.ts` | `batas_cabang`, `cabang_terbaca` |
+| `ClaimReportInboxPage.tsx` | pemberitahuan `role="status"` berlatar amber ketika cabang tidak terbaca; lencana `BranchScope` pada baris tindakan tabel |
+
+### 18.8 Kenapa `-periksa` ikut diperluas
+
+Kegagalan penerjemahan cabang **tidak terlihat sebagai galat** — daftarnya tetap tampil, hanya
+tanpa batas cabang. Artinya petugas cabang melihat berkas seluruh cabang, dan tidak ada yang
+melaporkannya sampai ada yang menyadarinya sendiri.
+
+`checkClaimReportBranch` membuat keadaan itu dapat diketahui operator **sebelum** pengguna
+melaporkannya, dan membedakan kedua sebabnya: hak baca `POOLDATA.BRANCH`, atau DB link
+`@asmd.sinarmas.co.id` yang mati.
+
+### 18.9 Utang yang disadari: modul ini memakai DB link
+
+Kueri `branch_of_login` menembus **DB link** `@asmd.sinarmas.co.id` ke dua objek milik basis data
+lain — `HRDASM.V_HRD_MST` dan `LST_USER_ASURANSI`. Itu **tepat** yang `D-25` tetapkan untuk
+diganti pemanggilan API, dan `R-03` mencatat API itu belum ada.
+
+Yang dilakukan: memakai DB link seperti sistem lama, **dan menaruhnya di balik seam**. Ketika API
+Pegawai & Cabang (`20-DETAIL-KOMITE-DBLINK.md` §2.5 nomor 2) tersedia, yang berubah hanyalah satu
+adapter — `usecase` dan `domain` tidak tersentuh. Inilah gunanya seam ada di sini dan bukan di
+tempat lain.
+
+### 18.10 Uji yang ditambahkan
+
+Lima uji regresi pada `usecase/inbox_test.go`, masing-masing mengunci satu bagian cacatnya:
+
+| Nama uji | Yang dijaga |
+|---|---|
+| `TestCallerCarriesNoBranchCodeAtAll` | `Caller` tidak boleh membawa kode cabang lagi |
+| `TestUnresolvableBranchShowsEveryBranchInsteadOfNothing` | cabang tidak terbaca menghasilkan seluruh cabang, BUKAN kosong |
+| `TestBranchLookupFailureDoesNotEmptyTheList` | sumber cabang mati, daftar tetap terisi |
+| `TestBranchScopeIsReportedSoTheScreenCanSayIt` | batas cabang dilaporkan, bukan disimpulkan layar |
+| `TestNewReportLandsInTheBranchTheListFiltersBy` | berkas baru mendarat di cabang yang sama dengan yang menyaring daftar |
+
+Uji terakhir itu yang paling mudah terlupakan: bila `Create` menurunkan cabang dengan cara yang
+berbeda dari `List`, berkas yang baru dibuat akan langsung hilang dari daftar pembuatnya — cacat
+yang bentuknya persis sama dengan yang sedang diperbaiki.
+
+Tiga uji pada `ClaimReportInboxPage.test.tsx`: batas cabang disebut di layar; pemberitahuan muncul
+ketika cabang tidak terbaca **dan barisnya tetap tergambar**; tidak ada pemberitahuan ketika
+cabangnya terbaca.
+
+### 18.11 Kendala dan kesalahan sesi ini
+
+| Hal | Sebab | Penyelesaian |
+|---|---|---|
+| Uji baru gagal: `Found multiple elements with the role "status"` | Bilah paginasi juga `role="status"` | **Uji yang dibetulkan, bukan komponennya.** Keduanya memang status, dan masing-masing sudah menjelaskan dirinya sendiri saat dibacakan; yang salah adalah pemilih uji yang tidak spesifik |
+| Percobaan terhadap aplikasi berjalan tidak dilakukan | Work Owner menolak menjalankan instans sementara | Pembuktian bersandar pada kelima uji regresi, yang menutup jalur yang sama tanpa menyalakan server |
+
+### 18.12 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | seluruhnya lulus |
+| `npm run typecheck` | bersih |
+| `npm test` | **109 lulus**, 3 gagal |
+| `npm run build` | bersih |
+
+Ketiga kegagalan tetap kegagalan lama di `master-rekening/AccountPage.test.tsx`, yang sudah
+dibuktikan mendahului pekerjaan modul ini.
+
+### 18.13 Koreksi Work Owner pada hari yang sama — penyimpangan §18.6 dicabut
+
+Setelah perbaikan di atas diserahkan beserta dua pertanyaan terbukanya, Work Owner menjawab
+pertanyaan pertama:
+
+> "petugas yang cabangnya tidak terbaca tidak boleh melihat seluruh cabang"
+
+**Penyimpangan yang dijelaskan §18.6 karena itu dicabut.** Bagian §18.6 tidak disunting — ia
+rekaman keadaan yang benar-benar berlaku beberapa jam sebelumnya, dan menghapusnya akan
+menghilangkan jejak bahwa pilihan itu pernah diambil beserta alasannya. Yang berlaku sekarang
+adalah bagian ini dan `keputusan-implementasi.md` §20.
+
+#### Apa yang berubah
+
+| Hal | Sebelum koreksi | Sesudah koreksi |
+|---|---|---|
+| Cabang tidak terbaca | daftar menampilkan **seluruh cabang** | permintaan **ditolak** |
+| Bentuk pemberitahuan | pemberitahuan amber di layar | pesan penolakan yang menyebut sebabnya |
+| `cabang_terbaca` pada respons | `false` saat cabang tidak terbaca | **dihapus** — ia tidak dapat lagi bernilai `false` |
+| Pembuatan berkas | tetap dibuat tanpa cabang (meniru Pega) | **ditolak** dengan sebab yang sama |
+
+#### Kenapa penolakan, bukan daftar kosong
+
+Sistem lama menghasilkan daftar kosong dalam keadaan ini. Meniru itu **tidak dipilih**, dan
+alasannya persis cacat yang sedang diperbaiki sesi ini: **daftar kosong tidak terbedakan dari
+"tidak ada pekerjaan hari ini"**. Ketidakterbedaan itulah yang membuat penyaring cabang yang salah
+bertahan tanpa seorang pun melaporkannya.
+
+Penolakan menutup akses yang sama, dan sekaligus mengatakan apa yang harus dibetulkan.
+
+#### Dua sebab yang tetap dibedakan
+
+Pembedaan tiga keluaran `Resolve` yang dibuat di §18.5 terbayar di sini — ia langsung menjadi dua
+jawaban HTTP yang berbeda:
+
+| Keadaan | HTTP | Kode | Dibereskan di |
+|---|---|---|---|
+| Login belum terdaftar di HRD | `403` | `cabang_tidak_dikenali` | data pegawai — menimpa satu orang |
+| `POOLDATA.BRANCH` atau DB link mati | `503` | `sumber_cabang_tidak_terbaca` | infrastruktur — menimpa **seluruh** petugas |
+
+Menyatukannya akan membuat gangguan sekantor terbaca sebagai kesalahan satu pengguna, lalu dicari
+di tempat yang salah. `503` juga menyatakan keadaannya **sementara**, sehingga mencoba lagi memang
+masuk akal.
+
+#### Perluasan yang saya ambil sendiri, dan ditulis terbuka
+
+Keputusan Work Owner berbunyi tentang **melihat**. Saya memberlakukannya juga pada **membuat**,
+dengan alasan: sejak cabang menjadi batas yang mengikat, berkas yang lahir tanpa cabang **tidak
+akan pernah terlihat siapa pun** — pembuatnya tidak dapat membuka daftarnya, dan petugas cabang
+mana pun tersaring darinya. Membolehkannya berarti menerbitkan baris yang dijamin tidak dapat
+dikerjakan.
+
+Ditulis di komentar kode, di uji, dan di sini supaya dapat dikoreksi — bukan disisipkan diam-diam.
+
+#### Penegakannya di satu tempat
+
+`requireBranch` dipanggil `List` dan `Create`; **Ekspor menempuh `List`**, sehingga satu penjagaan
+menutup tiga permukaan. Batas yang ditegakkan pada daftar tetapi tidak pada ekspor bukan batas sama
+sekali — ia hanya menyulitkan.
+
+#### Akibat pada uji, dan satu hal yang tersingkap karenanya
+
+Sebelas uji memakai "cabang tidak terbaca" sebagai cara melihat seluruh berkas contoh — jalan yang
+kini justru ditutup. Keduanya diperbaiki dengan helper `wideList`, yang melebarkan lewat
+**pemilihan kanwil**: satu-satunya cara sah melihat lebih dari satu cabang di layar sungguhan.
+
+Itu menyingkap sesuatu yang sebelumnya tidak terlihat: **data contoh menaruh saksi sebuah aturan
+di tiga kanwil berbeda**, sehingga aturan kelompok bisnis khusus tidak dapat dicoba dari kursi mana
+pun. Satu berkas contoh (`RCV-0006`) dipindahkan ke cabang 1002 agar setiap aturan punya saksi di
+dalam lingkup yang benar-benar dapat dilihat — janji yang sudah tertulis di `SampleList` sejak awal
+dan baru sekarang benar-benar diuji.
+
+Satu angka harapan ikut berubah: tab *Data rejected* memuat **1** berkas dalam kanwil 01, bukan 2 —
+karena `RCV-0014` berada di kanwil 02. Angka itu kini mengikuti lingkup yang nyata, bukan seluruh
+tabel.
+
+#### Hasil verifikasi sesudah koreksi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` · `go test ./...` | bersih |
+| `npm run typecheck` | bersih |
+| `npm test` | **108 lulus**, 3 gagal (ketiganya kegagalan lama `master-rekening`) |
+| `npm run build` | bersih |
+
+#### Yang sekarang perlu jawaban Work Owner
+
+Koreksi ini menajamkan satu pertanyaan lama menjadi mendesak: **dropdown Kanwil masih membolehkan
+petugas mana pun melihat kanwil mana pun.** Bila cabang adalah batas data yang mengikat, maka
+kanwil yang bebas dipilih adalah pintu yang sama, hanya lebih lebar. Aturan yang menentukannya di
+sistem lama ada di antara 137 When rule yang hilang (`R-16`), sehingga tidak dapat dibaca dari
+sumber — dan karena itu ia keputusan, bukan temuan.

@@ -24,23 +24,39 @@ var (
 	// itu cacat pemrograman yang harus terlihat.
 	ErrCallerUnknown = errors.New("inboxlaporanklaim: identitas pemanggil tidak diketahui")
 
-	// # Kenapa TIDAK ada ErrBranchUnknown
+	// ErrBranchUnknown: cabang klaim petugas tidak dapat ditentukan dari login-nya.
 	//
-	// Versi pertama modul ini menolak pembuatan berkas ketika cabang pemanggil tidak
-	// terbaca, dengan alasan berkas tanpa cabang akan hilang dari daftar yang disaring
-	// cabang. Penolakan itu DICABUT setelah dibandingkan ke sumbernya.
+	// # Riwayatnya, karena ia sempat dicabut lalu dikembalikan dengan arti yang berbeda
 	//
-	// `Activity/CreateNewCaseRCV-Act.xml` langkah 19 mengisi cabang dari hasil
-	// `GetIDCabang`, dan TIDAK memeriksa hasilnya sama sekali: bila kueri itu tidak
-	// mengembalikan baris, nilainya kosong dan berkas tetap dibuat. Menolaknya adalah
-	// aturan BARU, bukan aturan yang dipindahkan — dan `P-5` menetapkan perilaku
-	// dipertahankan lebih dulu, kecuali untuk 13 butir yang `D-49` sebut satu per satu.
-	// Penolakan ini tidak ada di antaranya.
+	// Versi pertama modul ini memakai galat bernama sama untuk menolak PEMBUATAN berkas,
+	// dan itu dicabut dengan benar: `Activity/CreateNewCaseRCV-Act.xml` langkah 19
+	// mengisi cabang dari hasil `GetIDCabang` dan TIDAK memeriksa hasilnya sama sekali.
+	// Menolak di sana adalah aturan baru yang tidak ada di 13 butir `D-49`.
 	//
-	// Akibat yang disadari: berkas yang lahir tanpa cabang tetap terlihat pembuatnya —
-	// penyaring cabang tidak berlaku bagi pemanggil yang cabangnya kosong — tetapi TIDAK
-	// terlihat petugas cabang mana pun. Itu perilaku sistem lama, dan memperbaikinya
-	// adalah keputusan Work Owner, bukan keputusan modul ini.
+	// Yang sekarang berbeda sebabnya: **Work Owner menetapkan 2026-09-22 bahwa petugas
+	// yang cabangnya tidak terbaca TIDAK boleh melihat seluruh cabang.** Itu keputusan
+	// batas data, bukan tafsiran atas perilaku Pega — dan sebuah keputusan Work Owner
+	// adalah dasar yang sah untuk menyimpang, persis seperti butir-butir `D-49`.
+	//
+	// Di sistem lama keadaan ini menghasilkan `branch where ID=''` sehingga daftarnya
+	// kosong. Kekosongan itu tidak ditiru: daftar kosong tidak terbedakan dari "tidak ada
+	// pekerjaan hari ini", dan ketidakterbedaan itulah cacat yang membuat modul ini harus
+	// diperbaiki pada mulanya. Yang dikembalikan adalah penolakan yang MENYEBUTKAN
+	// sebabnya.
+	ErrBranchUnknown = errors.New("inboxlaporanklaim: cabang klaim petugas tidak dikenali")
+
+	// ErrBranchUnreadable: sumber data cabang tidak dapat dibaca.
+	//
+	// Dipisahkan dari ErrBranchUnknown meski akibatnya di layar sama — keduanya menutup
+	// layar. Sebab dan perbaikannya berbeda jauh:
+	//
+	//	ErrBranchUnknown     login petugas belum terdaftar di HRD → urusan data pegawai
+	//	ErrBranchUnreadable  POOLDATA.BRANCH atau DB link @asmd tidak terbaca → urusan
+	//	                     infrastruktur, dan ia menimpa SELURUH petugas sekaligus
+	//
+	// Menyatukan keduanya akan membuat gangguan infrastruktur terbaca sebagai kesalahan
+	// data satu orang, lalu dicari di tempat yang salah.
+	ErrBranchUnreadable = errors.New("inboxlaporanklaim: sumber cabang klaim tidak dapat dibaca")
 
 	// ErrNotFound: berkas laporan yang diminta tidak ada.
 	ErrNotFound = errors.New("inboxlaporanklaim: laporan klaim tidak ditemukan")

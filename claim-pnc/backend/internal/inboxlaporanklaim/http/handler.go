@@ -97,7 +97,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			Total:        result.Page.Total,
 			TotalHalaman: result.Page.TotalPages(),
 		},
-		Portal: active.Alias,
+		BatasCabang: result.BranchScope,
+		Portal:      active.Alias,
 	})
 }
 

@@ -14,14 +14,23 @@ import (
 
 // Service adalah pintu masuk seluruh perkara Inbox Laporan Klaim.
 type Service struct {
-	repoSelector inboxlaporanklaim.RepoSelector
-	clock        inboxlaporanklaim.Clock
+	repoSelector   inboxlaporanklaim.RepoSelector
+	branchResolver inboxlaporanklaim.BranchResolver
+	clock          inboxlaporanklaim.Clock
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	// RepoSelector memilih penyimpanan milik satu portal entitas. Wajib.
 	RepoSelector inboxlaporanklaim.RepoSelector
+
+	// BranchResolver menerjemahkan login petugas menjadi kode cabang klaimnya.
+	//
+	// OPSIONAL, dan ketiadaannya berarti tidak ada batas cabang yang berlaku — bukan
+	// berarti tidak ada berkas. Ia dibiarkan opsional supaya modul tetap dapat dirakit
+	// di lingkungan yang belum punya sumbernya, dengan akibat yang dinyatakan di layar
+	// alih-alih tersembunyi. Lihat inboxlaporanklaim.BranchResolver.
+	BranchResolver inboxlaporanklaim.BranchResolver
 
 	// Clock menyediakan waktu. Wajib.
 	//
@@ -42,7 +51,11 @@ func NewService(o Options) (*Service, error) {
 	if o.Clock == nil {
 		return nil, errors.New("inboxlaporanklaim/usecase: Clock wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, clock: o.Clock}, nil
+	return &Service{
+		repoSelector:   o.RepoSelector,
+		branchResolver: o.BranchResolver,
+		clock:          o.Clock,
+	}, nil
 }
 
 // Now mengembalikan waktu acuan yang dipakai layanan ini.

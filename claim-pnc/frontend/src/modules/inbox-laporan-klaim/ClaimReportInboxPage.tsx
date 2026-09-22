@@ -191,6 +191,7 @@ export function ClaimReportInboxPage() {
           }}
           actions={
             <>
+              <BranchScope code={list.data?.batas_cabang ?? ''} />
               {/*
                 Buat Baru MEMBUKA form isiannya, tidak berhenti setelah berkasnya dibuat.
                 Itulah yang dilakukan alur lama: `CreateNewCaseRCV` membuat berkas kosong,
@@ -470,6 +471,16 @@ function descriptionFor(category: ReportCategory | undefined): string {
     return 'Percakapan cabang dan kantor pusat pada berkas yang Anda buat.'
   }
   return 'Urut menurut tanggal aging, yang terbaru di atas — sama seperti layar lama.'
+}
+
+/** Keterangan batas cabang yang sedang berlaku, digambar di kanan judul tabel. */
+function BranchScope({ code }: { code: string }) {
+  if (code === '') return null
+  return (
+    <span className="rounded-kontrol bg-slate-100 px-2 py-1 text-xs text-slate-600">
+      Cabang <span className="font-medium text-slate-900">{code}</span>
+    </span>
+  )
 }
 
 function messageOf(failure: unknown): string {

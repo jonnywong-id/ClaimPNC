@@ -88,6 +88,17 @@ export type ClaimReportListResponse = {
   laporan: ClaimReport[]
   kategori: ReportCategory[]
   halaman: ReportPagination
+
+  /**
+   * Cabang yang membatasi daftar ini.
+   *
+   * Kosong punya SATU arti: pengguna memilih kanwil, dan pilihan itu menggantikan batas
+   * cabangnya. Ia tidak pernah berarti "batasnya hilang" — permintaan yang cabangnya
+   * tidak dapat ditentukan dijawab `403 cabang_tidak_dikenali`, bukan dijawab daftar
+   * tanpa batas.
+   */
+  batas_cabang: string
+
   portal: string
 }
 
@@ -232,6 +243,12 @@ export const ClaimReportErrorCode = {
 
   /** Berkas ada, tetapi penulisnya masih Pega selama masa paralel. */
   readOnly: 'laporan_hanya_baca',
+
+  /** Cabang klaim petugas tidak dapat ditentukan — layar tidak dapat dibuka. */
+  branchUnknown: 'cabang_tidak_dikenali',
+
+  /** Sumber data cabang sedang tidak dapat dibaca — keadaan sementara. */
+  branchUnreadable: 'sumber_cabang_tidak_terbaca',
 } as const
 
 export type ClaimReportErrorCode =

@@ -90,6 +90,7 @@ function listBody(over: { laporan?: Report[]; halaman?: Partial<Page> } = {}) {
     kategori: CATEGORY,
     laporan: over.laporan ?? [report()],
     halaman: { halaman: 1, ukuran: 10, total: 4, total_halaman: 1, ...over.halaman },
+    batas_cabang: '1001',
   }
 }
 
@@ -449,6 +450,49 @@ describe('tindakan', () => {
 
     expect(screen.getByText('Pilih entitas lebih dulu')).toBeInTheDocument()
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('batas cabang', () => {
+  it('menyebut cabang yang membatasi daftar', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    expect(screen.getByText('Cabang')).toBeInTheDocument()
+    expect(screen.getByText('1001')).toBeInTheDocument()
+  })
+
+  it('menjelaskan penolakan ketika cabang petugas tidak dapat ditentukan', async () => {
+    // Keputusan Work Owner 2026-09-22: petugas yang cabangnya tidak terbaca tidak boleh
+    // melihat seluruh cabang. Server menjawab 403, dan yang penting di layar adalah
+    // SEBABNYA terbaca — bukan sekadar "gagal memuat".
+    //
+    // Daftar kosong sengaja tidak dipakai sebagai bentuk penolakan: ia tidak terbedakan
+    // dari "tidak ada pekerjaan hari ini", dan ketidakterbedaan itulah yang membuat cacat
+    // penyaring cabang bertahan tanpa ada yang melaporkannya.
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? {
+              body: {
+                kode: 'cabang_tidak_dikenali',
+                pesan:
+                  'Cabang klaim Anda tidak dapat ditentukan, sehingga daftar laporan tidak dapat ditampilkan.',
+              },
+              status: 403,
+            }
+          : undefined,
+      ),
+    )
+    show()
+
+    expect(
+      await screen.findByText(/Cabang klaim Anda tidak dapat ditentukan/),
+    ).toBeInTheDocument()
+
+    // Tidak ada satu baris pun yang tergambar — penolakan, bukan daftar tanpa batas.
+    expect(screen.queryByRole('link', { name: 'RCV-0001' })).not.toBeInTheDocument()
   })
 })
 

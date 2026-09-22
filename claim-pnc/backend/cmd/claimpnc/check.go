@@ -73,6 +73,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
+	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
 
 	print("")
 	if login == "" {
@@ -158,6 +159,31 @@ func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, prin
 		return
 	}
 	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
+}
+
+// checkClaimReportBranch melaporkan apakah cabang klaim petugas dapat diterjemahkan.
+//
+// Pemeriksaan ini ada karena kegagalannya TIDAK terlihat sebagai galat di layar. Bila
+// penerjemahan cabang gagal, daftar Inbox Laporan Klaim tetap tampil — hanya saja tanpa
+// batas cabang, sehingga petugas cabang melihat berkas seluruh cabang. Itu keadaan yang
+// harus diketahui operator sebelum pengguna melaporkannya.
+//
+// Dua sebab kegagalan yang sifatnya berbeda:
+//
+//   - POOLDATA.BRANCH tidak dapat dibaca → hak baca akun aplikasi.
+//   - DB link @asmd.sinarmas.co.id mati → HRDASM.V_HRD_MST dan LST_USER_ASURANSI ada di
+//     basis data lain, dan `D-25` memang menugaskan penggantiannya dengan API (`R-03`).
+//     Sampai API itu ada, layar ini bergantung pada DB link tersebut.
+func checkClaimReportBranch(ctx context.Context, resolver *inboxlaporanklaimsql.BranchResolver, print func(string, ...any)) {
+	if err := resolver.CheckTable(ctx); err != nil {
+		print("  [BELUM] penerjemahan cabang klaim belum dapat dijalankan: %v", err)
+		print("            Sumbernya POOLDATA.BRANCH + LST_USER_ASURANSI dan HRDASM.V_HRD_MST")
+		print("            lewat DB link @asmd.sinarmas.co.id, sama seperti GetIDCabang di Pega.")
+		print("            Selama gagal, daftar Inbox Laporan Klaim TIDAK dibatasi per cabang —")
+		print("            layarnya memberitahu, tetapi batas cabangnya memang tidak berlaku.")
+		return
+	}
+	print("  [ok]    cabang klaim petugas dapat diterjemahkan dari login")
 }
 
 // checkClaimStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.
