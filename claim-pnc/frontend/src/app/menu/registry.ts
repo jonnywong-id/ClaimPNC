@@ -95,6 +95,18 @@ export const MENU_ROUTES: Record<string, string> = {
   // saudara yang berdiri sendiri dan BELUM dibangun; ia sengaja tidak dipetakan ke rute
   // yang sama, karena keduanya membaca kueri dan tabel yang berbeda.
   InboxClaimTreaty_Harness: '/inbox-claim-treaty-prop',
+
+  // MENU_ID 65 "Inbox Progress Claim". Inbox sungguhan menurut `D-79`: barisnya klaim
+  // yang menunggu ditindaklanjuti, hilang begitu klaimnya tutup, dan punya tenggat
+  // berupa Next Follow Up.
+  //
+  // Tiga butir lain milik cabang yang di-merge — `PNCInboxAdmin` (63),
+  // `InboxRCVApp_Harness` (64), dan `PNCSearchKlaim` (76) — SENGAJA tidak dipetakan di
+  // sini. Ketiga modulnya ada di repo, tetapi tidak satu pun rute API-nya terpasang di
+  // `cmd/claimpnc`, sehingga memetakannya berarti menghidupkan butir menu yang mengantar
+  // pengguna ke layar tanpa backend. Menyalakannya menuntut perakitan ketiga modul itu
+  // lebih dulu — keputusan tersendiri, bukan bagian dari merge ini.
+  ProgressClaim_Harness: '/inbox-progress-claim',
 }
 
 /**

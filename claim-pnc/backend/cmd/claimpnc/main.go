@@ -30,6 +30,7 @@ import (
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatyprop"
+	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastermasking"
@@ -60,6 +61,10 @@ import (
 	inboxclaimtreatypropmemory "claim-pnc/internal/inboxclaimtreatyprop/repo/memory"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxclaimtreatypropusecase "claim-pnc/internal/inboxclaimtreatyprop/usecase"
+	inboxprogressclaimhttp "claim-pnc/internal/inboxprogressclaim/http"
+	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
+	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
+	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
@@ -469,6 +474,26 @@ func run() error {
 			FallbackErrorWriter: inboxclaimtreatypropthttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
+	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
+	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
+	inboxProgressClaimHandler := inboxprogressclaimhttp.NewHandler(
+		inboxprogressclaimhttp.Options{
+			Service: assembly.inboxProgressClaim,
+			GetCaller: func(ctx context.Context) (inboxprogressclaimhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxprogressclaimhttp.Caller{}, false
+				}
+				return inboxprogressclaimhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxprogressclaimhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
 		// Galatnya dikembalikan lebih dulu, bukan dibungkus: nil bertipe *Service yang
@@ -598,6 +623,12 @@ func run() error {
 				// masa paralel (`P-1`).
 				inboxclaimtreatypropthttp.Mount(
 					protected, claimTreatyPropHandler, activePortalDeps)
+
+				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
+				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
+				// itu menuntut portal, sama seperti Inbox Admin.
+				inboxprogressclaimhttp.Mount(
+					protected, inboxProgressClaimHandler, activePortalDeps)
 			})
 		},
 	})
@@ -693,6 +724,9 @@ type assembly struct {
 	// sama seperti modul inbox lain.
 	inboxClaimTreatyProp *inboxclaimtreatypropusecase.Service
 
+	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
+	inboxProgressClaim *inboxprogressclaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -731,6 +765,12 @@ type storage struct {
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
 	// Ceding Co, dan keduanya milik satu badan hukum.
 	claimTreatyPropSelector inboxclaimtreatyprop.RepoSelector
+
+	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
+	//
+	// Ia fungsi dengan alasan yang sama: progres klaim satu badan hukum bukan progres
+	// badan hukum lain, dan barisnya memuat nama tertanggung (`ADR-0030`, `R-20`).
+	inboxProgressClaimSelector inboxprogressclaim.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -968,6 +1008,20 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
+	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
+	// mengikuti sistem lama yang juga tidak memaginasinya.
+	inboxProgressClaimService, err := inboxprogressclaimusecase.NewService(
+		inboxprogressclaimusecase.Options{
+			RepoSelector: store.inboxProgressClaimSelector,
+			Clock:        clock.System{},
+			Logger:       logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                   service,
 		portal:                 store.portal,
@@ -986,6 +1040,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAutoClaim:         autoClaimService,
 		inboxXOL:               inboxXOLService,
 		inboxClaimTreatyProp:   claimTreatyPropService,
+		inboxProgressClaim:     inboxProgressClaimService,
 		readyAliases:           store.readyAliases,
 		close:                  store.close,
 	}, nil
@@ -1269,6 +1324,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxclaimtreatypropsql.NewRepo(conn), nil
 		}
+
+		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxprogressclaimsql.NewRepo(conn), nil
+		}
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.accountSelector = accountSelectorMemory(cfg.PrimaryPortal)
@@ -1319,6 +1382,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
+		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -1952,6 +2016,33 @@ func claimTreatyPropSelectorMemory(primaryAlias string) inboxclaimtreatyprop.Rep
 			return existing, nil
 		}
 		fresh := inboxclaimtreatypropmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxProgressClaimSelectorMemory menyusun penyimpanan progres klaim di memori;
+// alasannya sama dengan claimTreatyPropSelectorMemory di atas.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+func inboxProgressClaimSelectorMemory(primaryAlias string) inboxprogressclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxprogressclaim.Repo{}
+
+	return func(alias string) (inboxprogressclaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxprogressclaimmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

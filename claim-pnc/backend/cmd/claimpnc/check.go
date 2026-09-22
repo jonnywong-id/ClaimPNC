@@ -25,6 +25,7 @@ import (
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
+	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
 	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
 	masterpicteknikdirectory "claim-pnc/internal/masterpicteknik/directory"
@@ -94,6 +95,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkCauseOfLoss(ctx, masterpenyebabkerugiansql.NewRepo(primary), print)
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
+	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 
 	print("")
 	if login == "" {
@@ -986,4 +988,30 @@ func checkClaimTreatyProp(
 			break
 		}
 	}
+}
+
+// checkInboxProgressClaim memastikan tabel yang dibaca layar Inbox Progress Claim
+// terjangkau.
+//
+// Sama seperti Inbox Admin, modul ini TIDAK menuntut satu pun migrasi: seluruh tabel yang
+// dibacanya sudah ada dan milik sistem lama. Yang dapat gagal karena itu bukan "tabelnya
+// belum dibuat", melainkan "akun aplikasi belum diberi hak SELECT atasnya".
+func checkInboxProgressClaim(
+	ctx context.Context,
+	repo *inboxprogressclaimsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.PEGA_DASHBOARDPNC tidak dapat dibaca: %v", err)
+		print("            Tanpa hak baca atasnya, seluruh bagian Inbox Progress Claim")
+		print("            kosong. Tabel ini milik sistem lama dan tidak dibuat migrasi")
+		print("            mana pun.")
+		return
+	}
+	print("  [ok]    POOLDATA.PEGA_DASHBOARDPNC dapat dibaca")
+	print("            Catatan: modul ini juga membaca GCNM_PROGRESS_CLAIM,")
+	print("            GCNM_PROGRESS_POSISI_PNC, GCNM_MST_PROGRESS_KLAIM,")
+	print("            GCNM_MST_PROGRESS, MST_USER_TEKNIK, dan T_CLAIM_PNC.")
+	print("            Penyaring Cabang BELUM aktif — sumbernya DB Link ke HRD yang")
+	print("            belum punya API pengganti (R-03).")
 }

@@ -310,7 +310,6 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/status-progres-1` | wajib | **wajib** | daftar master dari `POOLDATA.GCNM_MST_PROGRESS_KLAIM` |
 | `POST` | `/api/master/status-progres-1` | wajib | **wajib** | `{nama, kode_posisi}` → `201` + baris tersimpan; ID diterbitkan server |
 | `PUT` | `/api/master/status-progres-1/{id}` | wajib | **wajib** | `{nama, kode_posisi}`; ID tidak pernah ikut berubah |
-<<<<<<< HEAD
 | `GET` | `/api/inbox-auto-claim/tab` | wajib | — | tiga tab beserta tabel sumbernya; `bawaan` menyebut tab yang terbuka lebih dulu |
 | `GET` | `/api/inbox-auto-claim` | wajib | **wajib** | daftar batch; saringan `sumber`, `perusahaan`, `halaman`, `ukuran` |
 | `GET` | `/api/inbox-auto-claim/ringkasan` | wajib | **wajib** | jumlah batch per perusahaan untuk panel ringkasan; saringan `sumber` |
@@ -319,6 +318,32 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/inbox-auto-claim/{kode}/{batch}/ekspor` | wajib | **wajib** | berkas **CSV**; `hasil=berhasil` atau `hasil=gagal`, saringan `sumber` |
 | `POST` | `/api/inbox-auto-claim/unggah` | wajib | **wajib** | `multipart/form-data`, bagian `berkas`, saringan `sumber` → `201` + batch yang terbit dan baris yang ditolak |
 | `GET` | `/api/inbox-auto-claim/format-unggahan` | wajib | — | judul kolom yang diterima berkas unggahan |
+| `GET` | `/api/master/tipe-surveyor` | wajib | **wajib** | daftar golongan surveyor dari `POOLDATA.M_SURVEYORS` |
+| `GET` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/tipe-surveyor` | wajib | **wajib** | `{deskripsi}` → `201` + baris tersimpan; kode diterbitkan server |
+| `PUT` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | `{deskripsi}`; kode tidak pernah ikut berubah |
+| `GET` | `/api/master/status-klaim` | wajib | **wajib** | daftar status klaim + `total` |
+| `GET` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/status-klaim` | wajib | **wajib** | `{label}` → `201` + baris beserta kode yang dibuat sistem |
+| `PUT` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | `{label}` → `200` + baris setelah diubah |
+| `GET` | `/api/master/pic-teknik` | wajib | **wajib** | daftar petugas teknik dari `POOLDATA.MST_USER_TEKNIK` |
+| `GET` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
+| `POST` | `/api/master/pic-teknik` | wajib | **wajib** | mendaftarkan petugas baru; ID Operator diisi pengguna |
+| `PUT` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | mengubah petugas; ID Operator tidak ikut berubah |
+| `GET` | `/api/master-rekening` | wajib | **wajib** | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
+| `GET` | `/api/master-rekening/bank` | wajib | **wajib** | daftar bank untuk dropdown |
+| `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | satu rekening |
+| `POST` | `/api/master-rekening` | wajib | **wajib** | mengajukan rekening baru — selalu lahir berstatus menunggu |
+| `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | mengubah rekening yang **masih menunggu** keputusan |
+| `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | **wajib** | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
+| `GET` | `/api/master/recovery/form` | wajib | **wajib** | bekal awal layar: nomor batch **perkiraan** + pilihan tahun |
+| `GET` | `/api/master/recovery/principal` | wajib | **wajib** | pilihan principal dari `POOLDATA.MST_VIRTUAL_ACCOUNT_PNC` |
+| `GET` | `/api/master/recovery/polis/{nomor}` | wajib | **wajib** | identitas lini bisnis, cabang, agen, marketing dari `MST_DET_SALES@ASMD` |
+| `GET` | `/api/master/recovery/format-unggahan` | wajib | **wajib** | berkas contoh CSV daftar klaim; `text/csv`, bukan JSON |
+| `POST` | `/api/master/recovery/virtual-account` | wajib | **wajib** | terbitkan VA; `201` bila baru, `200` + `dipakai_ulang=true` bila principal sudah punya |
+| `POST` | `/api/master/recovery/bukti-bayar` | wajib | **wajib** | unggah bukti bayar (`multipart`, bagian `berkas`) → `id_dokumen` |
+| `POST` | `/api/master/recovery/baris-klaim` | wajib | **wajib** | baca CSV daftar klaim (`multipart`); **tidak menyimpan apa pun** |
+| `POST` | `/api/master/recovery` | wajib | **wajib** | Transfer Recovery; `sisa`, `nomor_batch`, identitas polis, dan `dicatat_oleh` **ditolak** bila dikirim klien |
 
 > `?sumber=` bernilai `aneka`, `kredit`, atau `travel`. Kosong berarti `aneka`; nilai lain
 > **ditolak**, tidak diam-diam dijatuhkan ke bawaannya.
@@ -409,34 +434,6 @@ menghasilkan tanggal yang salah tanpa satu pun galat.
 
 Unggahan bersifat **semua-atau-tidak sama sekali**: satu baris yang tidak lolos membatalkan
 seluruh berkas, dan semua pelanggaran dilaporkan sekaligus beserta nomor barisnya.
-=======
-| `GET` | `/api/master/tipe-surveyor` | wajib | **wajib** | daftar golongan surveyor dari `POOLDATA.M_SURVEYORS` |
-| `GET` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
-| `POST` | `/api/master/tipe-surveyor` | wajib | **wajib** | `{deskripsi}` → `201` + baris tersimpan; kode diterbitkan server |
-| `PUT` | `/api/master/tipe-surveyor/{kode}` | wajib | **wajib** | `{deskripsi}`; kode tidak pernah ikut berubah |
-| `GET` | `/api/master/status-klaim` | wajib | **wajib** | daftar status klaim + `total` |
-| `GET` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
-| `POST` | `/api/master/status-klaim` | wajib | **wajib** | `{label}` → `201` + baris beserta kode yang dibuat sistem |
-| `PUT` | `/api/master/status-klaim/{kode}` | wajib | **wajib** | `{label}` → `200` + baris setelah diubah |
-| `GET` | `/api/master/pic-teknik` | wajib | **wajib** | daftar petugas teknik dari `POOLDATA.MST_USER_TEKNIK` |
-| `GET` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | satu baris, untuk mengisi form ubah |
-| `POST` | `/api/master/pic-teknik` | wajib | **wajib** | mendaftarkan petugas baru; ID Operator diisi pengguna |
-| `PUT` | `/api/master/pic-teknik/{operatorID}` | wajib | **wajib** | mengubah petugas; ID Operator tidak ikut berubah |
-| `GET` | `/api/master-rekening` | wajib | **wajib** | daftar rekening; saringan `status`, `nomor_rekening`, `nama_pemilik`, `nama_bank`, `komite_saya`, `batas`, `lewati` |
-| `GET` | `/api/master-rekening/bank` | wajib | **wajib** | daftar bank untuk dropdown |
-| `GET` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | satu rekening |
-| `POST` | `/api/master-rekening` | wajib | **wajib** | mengajukan rekening baru — selalu lahir berstatus menunggu |
-| `PUT` | `/api/master-rekening/{kodeBank}/{noRek}` | wajib | **wajib** | mengubah rekening yang **masih menunggu** keputusan |
-| `POST` | `/api/master-rekening/{kodeBank}/{noRek}/keputusan` | wajib | **wajib** | keputusan komite: `status` `"1"` setuju / `"2"` tolak |
-| `GET` | `/api/master/recovery/form` | wajib | **wajib** | bekal awal layar: nomor batch **perkiraan** + pilihan tahun |
-| `GET` | `/api/master/recovery/principal` | wajib | **wajib** | pilihan principal dari `POOLDATA.MST_VIRTUAL_ACCOUNT_PNC` |
-| `GET` | `/api/master/recovery/polis/{nomor}` | wajib | **wajib** | identitas lini bisnis, cabang, agen, marketing dari `MST_DET_SALES@ASMD` |
-| `GET` | `/api/master/recovery/format-unggahan` | wajib | **wajib** | berkas contoh CSV daftar klaim; `text/csv`, bukan JSON |
-| `POST` | `/api/master/recovery/virtual-account` | wajib | **wajib** | terbitkan VA; `201` bila baru, `200` + `dipakai_ulang=true` bila principal sudah punya |
-| `POST` | `/api/master/recovery/bukti-bayar` | wajib | **wajib** | unggah bukti bayar (`multipart`, bagian `berkas`) → `id_dokumen` |
-| `POST` | `/api/master/recovery/baris-klaim` | wajib | **wajib** | baca CSV daftar klaim (`multipart`); **tidak menyimpan apa pun** |
-| `POST` | `/api/master/recovery` | wajib | **wajib** | Transfer Recovery; `sisa`, `nomor_batch`, identitas polis, dan `dicatat_oleh` **ditolak** bila dikirim klien |
->>>>>>> 3dc63dccaff5bb215be5fb885f83ab60b2e5e9ea
 
 Tidak ada `DELETE` pada master status progres, dan itu disengaja: sistem lama tidak punya
 satu pun pernyataan `DELETE` terhadap tabel itu, dan tabelnya tidak punya kolom penanda
@@ -490,14 +487,11 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
 | `/master/status-klaim` | **Master Status Klaim** |
-<<<<<<< HEAD
-| `/master-rekening` | **Master Rekening** |
-| `/inbox-auto-claim` | **Inbox Auto Claim** — layar inbox pertama |
-=======
-| `/master/rekening` | **Master Rekening** |
+| `/master/rekening` | **Master Rekening** — `/master-rekening` masih dialihkan ke sini |
 | `/master/tipe-surveyor` | **Master Tipe Surveyors** |
 | `/master/pic-teknik` | **Master PIC Teknik** |
->>>>>>> 3dc63dccaff5bb215be5fb885f83ab60b2e5e9ea
+| `/inbox-auto-claim` | **Inbox Auto Claim** — layar inbox pertama |
+| `/inbox-progress-claim` | **Inbox Progress Claim** |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
