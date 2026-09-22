@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
 import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
@@ -97,6 +98,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Outstanding menggantikan butir menu Pega "Inbox Outstanding", yang menunjuk
+        `InboxOutstanding_Harness` — harness yang TIDAK ADA di export (`K-33`).
+
+        Layar ini menampilkan SELURUH klaim yang masih berjalan pada satu entitas, bukan
+        pekerjaan pemanggil, sehingga ia layar pemantauan dan bukan Inbox menurut `D-79`.
+
+        Yang membatasi apa yang terlihat hanyalah lini bisnis pengguna — dan batas itu
+        belum berlaku bagi pengguna yang kolom LINEBUSINESS-nya belum diisi. Pemeriksaan
+        kewenangan menu adalah `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox-outstanding"
+        element={
+          <SessionGuard>
+            <Protected>
+              <OutstandingPage />
             </Protected>
           </SessionGuard>
         }

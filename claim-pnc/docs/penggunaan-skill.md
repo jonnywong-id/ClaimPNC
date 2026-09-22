@@ -546,3 +546,117 @@ Tidak ada skill yang akan menangkapnya. Yang menangkapnya adalah Work Owner yang
 `mattpocock-skills:tdd` dan `codebase-design` tetap menjadi yang relevan saat `B-2` Registrasi
 dikerjakan, dengan syarat yang sama: Go terpasang lebih dulu, sehingga siklus merah-hijau benar-benar
 dapat dijalankan alih-alih dibayangkan.
+
+---
+
+## Tambahan sesi ini: Modul Inbox Outstanding (19–20 September 2026)
+
+### `mattpocock-skills:grilling` — dipakai paling berat
+
+**Kapan.** Sebelum satu baris kode ditulis, dan diulang dua putaran.
+
+**Kenapa.** Tiga keputusan pada modul ini mengubah hasil kerja secara material dan tidak dapat
+diputuskan sendiri: sumber data selama masa paralel, lingkup aksi yang menulis, dan pengganti
+`pyPosition`. Menebak salah satunya berarti membangun di atas premis yang salah.
+
+**Disiplin yang benar-benar dipakai — bukan sekadar bertanya:**
+
+1. **Fakta dicari sendiri, keputusan diserahkan.** Setiap pertanyaan disertai bukti terukur
+   dengan `berkas:baris`, bukan "bagaimana menurut Anda". Pertanyaan sumber lini bisnis, misalnya,
+   disertai isi kolom `MST_USER_TEKNIK` yang sudah dibaca langsung.
+2. **Setiap pertanyaan disertai rekomendasi** beserta alasannya — termasuk yang akhirnya ditolak.
+3. **Kontradiksi diangkat, bukan diserap diam-diam.** Saat jawaban Work Owner (`M_LOGIN_PNC`)
+   bertabrakan dengan temuan saya (tabel itu hanya non-karyawan), pertentangannya disampaikan
+   terbuka beserta buktinya.
+
+**Hasilnya.** Empat keputusan tercatat di `keputusan-implementasi.md` §18.1. Dan satu rekomendasi
+saya **ditolak dengan alasan yang benar** — penolakan itu mencegah modul dibangun di atas tabel
+yang hanya memuat PIC Teknik.
+
+**Manfaat yang dapat diukur.** Tanpa putaran ini, modul akan dibangun membaca tabel Pega
+(`pc_asm_fw_gcnmfw_work`) yang justru dilarang Work Owner, dan memakai `MST_USER_TEKNIK` sebagai
+sumber identitas — dua kesalahan yang baru ketahuan setelah seluruh lapisan selesai.
+
+### `mattpocock-skills:codebase-design` — untuk seam dan batas modul
+
+**Kapan.** Saat menentukan bentuk `inboxoutstanding.go`.
+
+**Yang diterapkan:**
+
+- **Prinsip "dua adapter berarti seam nyata".** `Repo` punya dua pengisi (sqlstore dan memori),
+  begitu pula `LineBusinessRepo` — keduanya seam sungguhan, bukan abstraksi hipotetis.
+- **Interface dideklarasikan di paket yang memakainya.** Keduanya hidup di paket akar modul, diisi
+  subpaket di bawahnya.
+- **Uji deletion.** `usecase` modul ini tipis — hanya menurunkan batas data lalu membaca. Godaannya
+  besar untuk membuangnya dan menaruh logikanya di handler. Ia dipertahankan justru karena uji itu:
+  bila dihapus, **setiap rute baru harus mengingat menurunkan batas data sendiri**, dan yang lupa
+  tidak menghasilkan galat apa pun — hanya klaim lini lain yang ikut tampil.
+
+**Manfaatnya.** Keputusan mempertahankan `usecase` yang tampak tipis punya alasan tertulis, bukan
+sekadar mengikuti pola modul lain.
+
+### `mattpocock-skills:domain-modeling` — untuk membongkar alias
+
+**Kapan.** Saat memetakan 17 kolom kueri lama.
+
+**Kenapa perlu.** Kueri Outstanding memuat **tiga belas alias yang artinya berlawanan dengan
+isinya** — `policyno AS "District"`, `branchname AS "City"`, `pxCreateDateTime AS "StatusWork"`
+yang sebenarnya tanggal, dan `PXASSIGNEDOPERATORID AS "NamaSurveyor"` yang sama sekali bukan
+surveyor.
+
+**Yang dilakukan:** setiap alias disilangkan dengan kolom sumbernya, lalu dinamai ulang memakai
+padanan dari `CONTEXT.md`. Pemetaan tiga arah — kolom layar, alias Pega, kolom baru — ditulis di
+kepala `outstanding.sql`, satu-satunya tempat ketiganya dapat dibandingkan berdampingan.
+
+**Manfaatnya.** Tidak satu pun alias menyesatkan terbawa. Tanpa penyilangan ini, `District` hampir
+pasti akan dibaca sebagai wilayah, bukan nomor polis.
+
+### Catatan jujur: satu kesalahan yang skill tidak cegah
+
+Saya menyaring daftar judul kolom dengan kata kunci, dan penyaring itu membuang empat kolom yang
+namanya tidak memuat kata-kata tersebut — `Report Date`, `PIC Teknik`, `Admin PNC`, `Pilih`. Angka
+yang sempat saya laporkan (11 kolom) salah; yang benar 15.
+
+Yang menangkapnya bukan skill melainkan **verifikasi ulang tanpa penyaring**. Pelajarannya:
+penyaring yang dipakai untuk *menemukan* sesuatu tidak boleh dipakai untuk *menghitung* sesuatu.
+Script pengumpul bukti kini memperingatkan hal ini agar tidak terulang.
+
+---
+
+## Sesi 2026-09-22 — verifikasi terhadap data produksi
+
+### `mattpocock-skills:grilling` — dipakai pada diri sendiri
+
+**Waktu.** 2026-09-22, setelah Work Owner menyerahkan satu baris `INSERT` dari produksi.
+
+**Alasan memilihnya.** Disiplin inti skill ini adalah **mencari fakta sendiri sebelum
+menyimpulkan**, dan menguji premis sampai patah. Baris produksi itu kesempatan pertama sesi ini
+untuk menguji kode terhadap sesuatu yang **bukan saya yang mengarangnya**.
+
+**Yang dikerjakan.** Setiap nilai pada baris itu disilangkan dengan apa yang kode harapkan —
+bukan dibaca sekilas untuk mencari yang cocok. Tiga belas kolom diperiksa satu per satu.
+
+**Keluarannya — satu cacat nyata dan dua koreksi:**
+
+| Temuan | Cara ketahuan |
+|---|---|
+| Konstanta status masih `"BERJALAN"`/`"SELESAI"`/`"DITOLAK"` | `PYSTATUSWORK` baris itu bernilai `'New'` |
+| "Status ASM" bukan kode melainkan kemungkinan besar label | `STATUSCLAIM_1` **tidak ada** di DDL; `STATUSLOCK_1` selebar `VARCHAR2(100)` |
+| Tabrakan tabel `CPNC_KLAIM` versus `T_CLAIMLIST_ADMIN` | menjawab pertanyaan Work Owner, bukan dari uji |
+
+**Manfaatnya.** Cacat pertama **lolos seluruh 112 uji**. Uji ditulis dari premis yang sama
+dengan kodenya, sehingga ia mengukur konsistensi — bukan kebenaran. Tanpa satu baris data nyata,
+klaim yang sudah ditutup akan tampil "On Progress" tanpa ada yang menyadarinya.
+
+### Catatan jujur: batas yang baru terlihat sesi ini
+
+Empat koreksi sesi ini seluruhnya datang dari **Work Owner atau sumber Pega**, tidak satu pun
+dari uji yang saya tulis. Yang keempat berbeda dari tiga sebelumnya dalam satu hal: **ia punya
+uji, dan ujinya lulus.**
+
+> Uji hanya membuktikan kode sesuai dengan yang saya percayai. Yang membuktikan kepercayaan itu
+> benar hanyalah data nyata atau sumber Pega.
+
+Konsekuensi praktisnya untuk modul berikutnya: **data contoh tidak boleh dikarang dari kode.**
+Ia harus dibentuk dari baris nyata — dengan nilai pengenalnya diganti (`D-69`), tetapi bentuknya
+dipertahankan.

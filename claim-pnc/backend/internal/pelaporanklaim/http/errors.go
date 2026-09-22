@@ -52,7 +52,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			}
 		}
 		if status >= http.StatusInternalServerError {
-			logging.Dari(r.Context(), logger).Error("permintaan gagal",
+			logging.From(r.Context(), logger).Error("permintaan gagal",
 				slog.String("jalur", r.URL.Path),
 				slog.String("galat", err.Error()),
 			)

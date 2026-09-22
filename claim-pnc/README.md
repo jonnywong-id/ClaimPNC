@@ -326,6 +326,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/masuk` | masuk |
 | `/` | beranda sementara, memuat pemilih portal |
 | `/master/status-progres-1` | **Master Status Progres 1** |
+| `/inbox-outstanding` | **Inbox Outstanding** — pemantauan klaim yang masih berjalan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -362,6 +363,63 @@ sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `
 | `PUT` | `/api/pelaporan-klaim/{nomor}` | wajib | mengubah laporan yang **belum diregistrasi** |
 | `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | wajib | menandai laporan dikirim ke ASM pusat; `409` bila sudah |
 | `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | wajib | `{nomor_klaim}` — menautkan laporan ke klaim; `409` bila sudah |
+| `GET` | `/api/inbox-outstanding` | wajib | **portal wajib** — daftar klaim yang masih berjalan; saringan `cari`, `tahap`, `cabang`, `batas`, `lewati`, beserta `total` dan `batas_lini` |
+| `GET` | `/api/inbox-outstanding/unduh` | wajib | **portal wajib** — CSV seluruh hasil yang cocok; mengabaikan paginasi, tunduk pada batas data yang sama |
+
+### Inbox Outstanding
+
+Migrasi dari **`Harness/InboxRegister_Harness-Harness.xml`** beserta section yang dimuatnya,
+`Section/InboxRegister_Section-Section.xml` — layar yang di dalamnya sendiri berjudul
+**"Inbox Outstanding"** (`:2150`). Yang mengikat keduanya: properti sel di section itu persis
+alias kueri `BrowseInboxOutstanding1` (`.District` → Policy no, `.CountryID` → Insured name,
+`.City` → Branch name).
+
+Kolomnya mengikuti section itu, dengan judul berbahasa Inggris apa adanya (`D-13`):
+
+```
+Claim no · Policy no · Insured name · Business Name · Business source · Branch name
+Admin name · Register Date · Date of loss · Total Aging · Aging
+Claim status · Status ASM · ASM PIC
+```
+
+**Ini layar pemantauan, bukan Inbox** (`D-79`): isinya seluruh klaim yang masih berjalan pada satu
+entitas, bukan pekerjaan pemanggil. Definisinya diambil dari satu baris kueri lama —
+`PYSTATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')`.
+
+Sumber datanya **`POOLDATA.T_CLAIMLIST_ADMIN`** — tabel yang menggantikan
+`datapega.pc_asm_fw_gcnmfw_work`. Ia tabel **datar**: satu baris per klaim, memuat seluruh yang
+dibutuhkan layar **tanpa satu pun join**, sedangkan kueri lama menempuh empat tabel. Modul ini
+**hanya membaca**; yang mengisi tabel itu adalah sistem lama, dan `P-1` karena itu terpenuhi.
+
+> **`Aging` dibaca apa adanya** dari kolom `AGING`, tidak dihitung ulang — tabel itu juga punya
+> `DATEFORAGING_1` yang tampaknya menjadi acuannya, dan artinya belum dipastikan. Nilai yang belum
+> terisi tampil sebagai tanda hubung, bukan `0`.
+>
+> Kolom `Status ASM` dibaca dari `STATUSLOCK_1` dan **ditampilkan apa adanya** — layar tidak
+> menyatakan isinya kode atau label. Kueri lama mengambil labelnya lewat
+> `v_sts_claim` dari kolom `STATUSCLAIM_1`, dan **kolom itu tidak ada di `T_CLAIMLIST_ADMIN`**;
+> yang ada `STATUSLOCK_1` selebar `VARCHAR2(100)` — lebar untuk label, bukan kode empat digit.
+> Isinya sendiri belum pernah terlihat, jadi tidak diklaim.
+>
+> Kolom `Claim status` diturunkan dari `PYSTATUSWORK`: `New` → On Progress ·
+> `Resolved-Completed` → Close · `Resolved-Rejected` → Reject. Nilai di luar ketiganya
+> **ditampilkan apa adanya**, bukan dipaksa menjadi "On Progress" — status asing yang menyamar
+> tidak pernah ditanyakan pengguna.
+>
+> Section rujukan juga memuat beberapa **tab** — ALL Case, Communication, Loss Adjuster, Temporary
+> Close — yang masing-masing punya kolom tambahan. Yang dibangun baru daftar intinya.
+
+> **Batas data per lini bisnis belum berlaku.** Kolom `POOLDATA.M_LOGIN_PNC.LINEBUSINESS` —
+> pengganti `OperatorID.pyPosition` Pega — baru ada setelah
+> [`migrations/0004`](backend/migrations/0004_login_line_business.up.sql) dijalankan DBA. Sampai
+> itu terjadi, **setiap pengguna melihat klaim seluruh lini**, persis perilaku Pega bagi pengguna
+> tanpa `pyPosition` (keputusan Work Owner 2026-09-19). Layar menyatakan keadaan itu terang-terangan
+> supaya datanya cepat dilengkapi.
+
+**Satu perbedaan perilaku yang disengaja:** kueri lama memakai INNER JOIN ke assignment, sehingga
+klaim tanpa tugas terbuka **tidak muncul** dan klaim dengan dua tugas **muncul dua kali**. Di sini
+satu klaim selalu satu baris, dan klaim tanpa tugas tetap terlihat — ia justru pekerjaan yang
+terhenti. Ini akan memunculkan selisih pada uji kesetaraan `S-8` dan menunggu penegasan Work Owner.
 
 ### Pelaporan Klaim
 

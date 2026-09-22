@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/masterrekening"
 	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatusprogres"
@@ -42,6 +43,10 @@ import (
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
+	inboxoutstandinghttp "claim-pnc/internal/inboxoutstanding/http"
+	inboxoutstandingmemory "claim-pnc/internal/inboxoutstanding/repo/memory"
+	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
+	inboxoutstandingusecase "claim-pnc/internal/inboxoutstanding/usecase"
 	masterrekeningcashier "claim-pnc/internal/masterrekening/cashier"
 	masterrekeninghttp "claim-pnc/internal/masterrekening/http"
 	masterrekeningnotif "claim-pnc/internal/masterrekening/notification"
@@ -225,6 +230,27 @@ func run() error {
 		FallbackErrorWriter: pelaporanklaimhttp.ErrorWriter(writeAuthError),
 	})
 
+	outstandingHandler := inboxoutstandinghttp.NewHandler(inboxoutstandinghttp.Options{
+		Service: assembly.inboxOutstanding,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// Hanya Login yang diambil: dari sanalah lini bisnis pemanggil dibaca, dan
+		// batas data TIDAK PERNAH berasal dari badan permintaan maupun query string.
+		GetCaller: func(ctx context.Context) (inboxoutstandinghttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxoutstandinghttp.Caller{}, false
+			}
+			return inboxoutstandinghttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal dipetakan modul portal lebih dulu, sisanya jatuh ke pemeta galat
+		// auth. Rantai yang sama dipakai modul master status progres.
+		FallbackErrorWriter: inboxoutstandinghttp.ErrorWriter(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		Service: assembly.masterRekening,
 		// Jembatan satu arah dari modul auth ke modul master rekening. Ia dipasang di
@@ -281,6 +307,11 @@ func run() error {
 				// kejadian, dan alamat surel pelapor. Tidak satu pun boleh terbaca
 				// tanpa sesi.
 				pelaporanklaimhttp.Mount(protected, claimReportHandler)
+
+				// Seluruh rutenya menuntut portal aktif: POOLDATA.T_CLAIMLIST_ADMIN ada di basis data
+				// setiap entitas, dan permintaan tanpa X-Portal ditolak — tidak pernah
+				// dilayani portal utama sebagai cadangan (R-20).
+				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
 			})
 		},
 	})
@@ -314,6 +345,12 @@ type assembly struct {
 	// pelaporanKlaim melayani alur Pelaporan Klaim (Receive Document).
 	pelaporanKlaim *pelaporanklaimusecase.Service
 
+	// inboxOutstanding melayani layar pemantauan klaim yang masih berjalan.
+	//
+	// Ia memakai pemilih repo per portal, bukan repo tunggal: POOLDATA.T_CLAIMLIST_ADMIN ada di basis
+	// data SETIAP entitas (ADR-0030).
+	inboxOutstanding *inboxoutstandingusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -344,6 +381,21 @@ type storage struct {
 	// (ADR-0030). Satu repo bersama akan menulis data seluruh entitas ke satu tempat,
 	// kebocoran lintas badan hukum yang justru dicegah R-20.
 	progressStatusSelector masterstatusprogres.RepoSelector
+
+	// outstandingSelector memilih penyimpanan klaim milik satu portal.
+	//
+	// Alasannya sama dengan progressStatusSelector: POOLDATA.T_CLAIMLIST_ADMIN ada di basis data setiap
+	// entitas, dan satu repo bersama akan menampilkan klaim satu badan hukum di layar
+	// badan hukum lain — tanpa satu pun galat (R-20).
+	outstandingSelector inboxoutstanding.RepoSelector
+
+	// outstandingLines membaca M_LOGIN_PNC.LINEBUSINESS, pengganti OperatorID.pyPosition.
+	//
+	// Ia repo TUNGGAL, bukan pemilih, dan itu bukan kelalaian: M_LOGIN_PNC adalah master
+	// pengguna di portal utama, dan satu login berlaku di keempat entitas (D-78).
+	// Membacanya per portal akan membuat lini bisnis seseorang berubah mengikuti portal
+	// yang sedang dibukanya.
+	outstandingLines inboxoutstanding.LineBusinessRepo
 
 	// menu dibaca dari basis data portal UTAMA, sama seperti M_LOGIN_PNC dan
 	// M_PORTAL_PNC: peta menu dan kewenangan pemakainya adalah data lingkup
@@ -412,6 +464,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	outstandingService, err := inboxoutstandingusecase.NewService(
+		store.outstandingSelector,
+		store.outstandingLines,
+	)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                service,
 		portal:              store.portal,
@@ -420,6 +481,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatusProgres: progressStatusService,
 		menu:                menuService,
 		pelaporanKlaim:      claimReportService,
+		inboxOutstanding:    outstandingService,
 		readyAliases:        store.readyAliases,
 		close:               store.close,
 	}, nil
@@ -573,6 +635,25 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return masterstatusprogressql.NewRepo(conn), nil
 		}
+
+		// Klaim dibaca dari basis data entitasnya sendiri, dengan aturan yang sama:
+		// portal yang tidak dikenal atau belum siap menghasilkan galat dari For(),
+		// TIDAK pernah dialihkan ke koneksi utama.
+		store.outstandingSelector = func(alias string) (inboxoutstanding.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxoutstandingsql.NewRepo(conn), nil
+		}
+
+		// Lini bisnis dibaca dari portal UTAMA — lihat komentar field-nya.
+		//
+		// Kolom LINEBUSINESS belum ada sampai migrasi 0004 dijalankan DBA, sehingga
+		// pembacaannya gagal di setiap lingkungan hari ini. Kegagalan itu ditangani
+		// usecase sebagai "lini tidak diketahui" dan dicatat di log; layar tetap
+		// berjalan dengan seluruh lini terlihat, persis perilaku Pega.
+		store.outstandingLines = inboxoutstandingsql.NewLineBusinessRepo(primary)
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.account = masterrekeningmemory.NewRepo()
@@ -590,6 +671,20 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Klaim dapat dicoba tanpa Oracle dan tanpa menunggu migrasi 0003. Seluruh
 		// isinya karangan — lihat repo/memory/sample.go.
 		store.pelaporanKlaim = pelaporanklaimmemory.NewRepo(pelaporanklaimmemory.SampleReports()...)
+
+		// Satu penyimpanan klaim dipakai seluruh portal saat di memori, dan aliasnya
+		// diabaikan. Itu penyederhanaan yang disadari: memisahkan data per entitas di
+		// memori hanya menirukan bentuknya tanpa menguji apa pun, karena yang benar-benar
+		// memisahkan di produksi adalah KONEKSI basis data yang berbeda.
+		//
+		// Klaim contohnya mencakup lima Group Panel, sehingga batas data per lini dapat
+		// dicoba tanpa Oracle dan tanpa menunggu migrasi 0004. Seluruh isinya karangan —
+		// lihat repo/memory/sample.go.
+		outstandingMemory := inboxoutstandingmemory.NewRepoWithSamples()
+		store.outstandingSelector = func(string) (inboxoutstanding.Repo, error) {
+			return outstandingMemory, nil
+		}
+		store.outstandingLines = outstandingMemory
 	}
 
 	switch cfg.Storage {

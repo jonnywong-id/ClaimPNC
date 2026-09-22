@@ -2160,3 +2160,422 @@ yang aman dilihat siapa saja.
 | Daftar pilihan `Kurir` dan `Tipe Klaim` — tidak ada di export | Work Owner | Tidak menahan; keduanya teks bebas hari ini |
 | Kapan lampiran, utas komunikasi, dan penugasan menyusul | Work Owner | Paritas penuh dengan layar lama |
 | Go dan Node terpasang di mesin pengembangan | Work Owner / Tim Infra | **Seluruh verifikasi otomatis** |
+
+---
+
+## 18. Modul Inbox Outstanding (2026-09-19 … 2026-09-20)
+
+### 18.1 Keputusan Work Owner pada sesi ini
+
+| # | Keputusan | Kutipan |
+|---|---|---|
+| 1 | Membaca `CPNC_KLAIM` + `CPNC_TUGAS`; **tidak membuat tabel sendiri** | *"tabel baru akan menggantikan datapega.pc_asm_fw_gcnmfw_work, jangan buat tabel sendiri"* |
+| 2 | Seluruh aksi layar lama masuk lingkup | *"semuanya sesuai pega"* |
+| 3 | Lini bisnis dari **`M_LOGIN_PNC.LINEBUSINESS`**, bukan `MST_USER_TEKNIK` | *"tabel itu hanya berisikan pic teknik … m_login_pnc akan dipakai untuk karyawan juga"* |
+| 4 | `LINEBUSINESS` kosong → **tiru Pega**, tampilkan seluruh lini | *"samakan seperti pega dulu saja ya"* |
+
+### 18.2 "Outstanding" didefinisikan STATUS, bukan keberadaan tugas
+
+Definisinya mengikat dan terbaca dari satu baris —
+`RDB List/BrowseInboxOutstanding1-SQL.xml:125`:
+
+```sql
+AND pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected')
+```
+
+Layar ini karena itu **bukan Inbox** menurut `D-79`: isinya bukan pekerjaan pemanggil melainkan
+seluruh klaim yang belum tuntas. Barisnya tidak hilang setelah dikerjakan, dan tidak ada tombol
+"Ambil". Ia layar **pemantauan**.
+
+### 18.3 INNER JOIN diganti LEFT JOIN — perubahan perilaku yang disengaja
+
+Kueri lama menggabungkan klaim dengan assignment memakai inner join:
+
+```sql
+FROM datapega.pc_asm_fw_gcnmfw_work a, datapega.pc_assign_worklist b
+WHERE a.pzInsKey = b.pxrefobjectkey
+```
+
+Bentuk itu punya dua akibat yang tampaknya tidak disadari penulisnya:
+
+1. **Klaim tanpa assignment terbuka tidak muncul sama sekali** — meski statusnya masih berjalan,
+   yaitu masih outstanding menurut definisi kueri itu sendiri.
+2. **Klaim dengan dua assignment terbuka muncul dua kali.** Alur Register bercabang ke Compliance,
+   PUCL, Analyst Doctor, dan RCL Dokter, sehingga ini bukan kasus langka.
+
+Di sini dipakai LEFT JOIN beserta subquery yang memilih satu tugas, sehingga **satu klaim selalu
+satu baris** dan klaim tanpa tugas terbuka tetap terlihat.
+
+Alasannya: yang mendefinisikan outstanding adalah status klaim, bukan keberadaan assignment. Klaim
+berjalan yang tidak dipegang siapa pun justru yang paling perlu terlihat — ia pekerjaan yang
+terhenti.
+
+> **INI PERUBAHAN PERILAKU** dan akan memunculkan selisih pada uji kesetaraan `S-8`. Dinyatakan di
+> muka, bukan ditemukan sebagai kejutan, dan **menunggu penegasan Work Owner**.
+
+### 18.4 `{ASIS:}` diganti cabang di Go, bukan diterjemahkan apa adanya
+
+Batas data sistem lama disisipkan ke kueri sebagai potongan teks WHERE
+(`BrowseInboxOutstanding1-SQL.xml:129`), yang dipilih activity menurut `OperatorID.pyPosition`:
+
+| Jabatan | Potongan yang dipasang |
+|---|---|
+| `NONMBU` | `AND GROUPPANEL_1 in ('003','004','006') AND c.businessgroupid NOT IN (…)` |
+| `BONDING` | `AND c.businessgroupid NOT IN (…)` |
+| `PA` | `AND GROUPPANEL_1='002'` |
+| `TRAVEL` | `AND GROUPPANEL_1='005'` |
+
+Di sini cabangnya ditentukan di Go dan **nilainya lewat parameter binding**. Penanda `/*SCOPE*/`
+hanya diganti daftar **penanda** `:9, :10, …` — bukan nilainya. Sebuah uji menjaga pernyataan itu
+tetap benar dengan memeriksa nilai lini tidak pernah muncul di teks SQL.
+
+### 18.5 Aturan BONDING tidak dapat diterapkan, dan itu dinyatakan
+
+Potongan BONDING hanya mengecualikan `c.businessgroupid`, kolom yang datang dari
+`pooldata.businessgroup` lewat join. **Kolom itu tidak ada di `CPNC_KLAIM`.**
+
+Akibatnya BONDING berperilaku sama dengan tanpa batas, dan pengecualian business group juga hilang
+dari NONMBU. Ini penyimpangan yang disadari — membawanya berarti menarik join ke tabel Pega ke
+dalam modul baru, dan itu keputusan tersendiri yang belum diambil.
+
+### 18.6 Scope kosong gagal TERTUTUP
+
+Tiga keadaan batas data, dan yang ketiga yang paling penting:
+
+| Keadaan | Perilaku |
+|---|---|
+| `Unrestricted` | seluruh lini terlihat |
+| ada `GroupPanels` | hanya lini itu |
+| **keduanya kosong** | **tidak meloloskan apa pun** (`AND 1 = 0`) |
+
+Keadaan ketiga hampir pasti cacat pemrograman. Meloloskan semuanya akan mengubah cacat itu menjadi
+kebocoran data antar lini yang **tidak menghasilkan galat apa pun** — hanya baris yang seharusnya
+tersembunyi. Diuji khusus di adapter memori maupun sqlstore.
+
+### 18.7 Risiko yang diterima sadar: `LINEBUSINESS` kosong berarti melihat semuanya
+
+Work Owner menetapkan perilaku Pega ditiru apa adanya. Konsekuensinya perlu dinyatakan terang:
+
+**Petugas yang datanya belum dilengkapi admin melihat klaim seluruh lini bisnis, termasuk lini yang
+bukan haknya, dan tidak ada galat yang muncul.** Karena kolomnya baru ada setelah migrasi `0004`
+dijalankan, keadaan itu berlaku untuk **seluruh pengguna** pada mulanya.
+
+Yang dilakukan sebagai penyeimbang — tanpa mengubah perilaku:
+
+1. Layar **menyatakan** keadaannya: "Penyaringan lini bisnis belum berlaku", beserta saran
+   menghubungi administrator.
+2. Respons membawa `batas_lini`, sehingga keadaan itu terbaca klien mana pun.
+3. Kegagalan **membaca** lini dibedakan dari **tidak punya** lini lewat `Result.LineLookupError`,
+   dan handler wajib mencatatnya. Tanpa pembedaan itu, kegagalan basis data tidak dapat dibedakan
+   dari pengguna yang datanya memang belum diisi.
+
+### 18.8 Kegagalan membaca lini tidak mematikan layar
+
+Kolom `LINEBUSINESS` belum ada, sehingga pembacaannya gagal dengan `ORA-00904` di setiap lingkungan
+hari ini. Menghentikan permintaan berarti layar mati total sampai perubahan skema selesai.
+
+Yang dipilih: galat diperlakukan sama dengan "lini tidak diketahui" → jatuh ke tanpa batas, persis
+perilaku Pega. **Konsekuensinya diterima:** galat basis data yang sesungguhnya menghasilkan batas
+data yang sama dengan pengguna tanpa lini. Yang membedakannya hanyalah catatan di log — dan karena
+itu mencatatnya menjadi kewajiban, bukan kenyamanan.
+
+### 18.9 "Export Excel" ternyata CSV
+
+Tombolnya berbunyi "Export Excel", tetapi `Activity/ExportOutstanding_Act-Act.xml` memanggil
+**`pxConvertResultsToCSV`** (tiga kemunculan) — tidak ada konversi XLSX di mana pun.
+
+Dipakai `encoding/csv` dari pustaka standar. Itu **setara dengan sistem lama**, bukan
+penyederhanaan, dan tidak menambah satu pun dependensi — sejalan dengan Steering §1 yang menyuruh
+mengutamakan pustaka standar.
+
+Unduhan ditulis **sambil dibaca**, 500 baris sekali jalan, sehingga memori tetap datar. Batas
+10.000 baris dipilih sadar: sistem lama membatasi 500 lewat `pyMaxRecords` pada 54 dari 56
+laporannya, sehingga **tidak ada data historis yang sahih** untuk menentukan angkanya (`ADR-0011`).
+
+### 18.10 Per portal, karena klaim adalah data entitas
+
+`CPNC_KLAIM` ada di basis data **setiap** entitas (`ADR-0030`), sehingga modul ini memakai
+`RepoSelector` seperti master status progres — bukan repo tunggal. Seluruh rutenya menuntut header
+`X-Portal`; permintaan tanpanya **ditolak**, tidak pernah dilayani portal utama sebagai cadangan
+(`R-20`, `TKT-F6-002`). Diuji untuk **kedua** rute, termasuk unduhan.
+
+Sebaliknya `M_LOGIN_PNC` dibaca dari portal **utama**: ia master pengguna, dan satu login berlaku
+di keempat entitas (`D-78`). Membacanya per portal akan membuat lini bisnis seseorang berubah
+mengikuti portal yang sedang dibukanya.
+
+### 18.11 Empat kolom yang sumbernya belum terbukti
+
+Pemetaan kolom **tidak dapat ditentukan dari section**: `InboxOutstandingClaim_Section` memuat dua
+grid dan juga dipakai `DashboardClaim_Section1` serta `GCNMGetManagerCase_Act` dengan sumber data
+berbeda — terbukti dari sel yang mengikat `.Currency`, `.CauseOfLoss`, dan `.pyEndTime`, yang tidak
+ada di kueri Outstanding.
+
+| Kolom | Dipetakan ke | Dasarnya |
+|---|---|---|
+| `Report Date` | `TANGGAL_LAPOR` | `CONTEXT.md`: "Report Date — Tanggal Lapor" |
+| `Admin PNC` | `DIBUAT_OLEH` | petugas pencatat; `pyOrigUserID` pada kueri lama |
+| `Posisi Klaim` | `STATUS_POSISI_PROGRES` | **belum terbukti setara** |
+| `Progress Klaim` | — | **tidak ada padanan**; belum ditampilkan |
+
+Dua yang pertama dipakai dengan dasar yang dapat dipertanggungjawabkan; dua yang terakhir menunggu
+konfirmasi. Tidak ada yang ditebak diam-diam.
+
+### 18.12 Tidak ada rute tulis, dan ketiadaannya disengaja
+
+Klaim dimiliki modul `registrasi`, dan `P-1` menetapkan satu tabel ditulis satu sistem. Modul ini
+**hanya membaca** — seam-nya pun tidak punya method tulis.
+
+Aksi **Transfer** dan **Change New User** karena itu belum ada. Keduanya menyentuh penugasan,
+`UserTeknis`, penghitung beban PIC pada `MST_USER_TEKNIK` yang **masih ditulis Pega**, dan
+pengiriman surel yang modulnya (`S-3`) belum ada. Lingkupnya menunggu keputusan Work Owner.
+
+### 18.13 Kontrak API modul ini
+
+| Metode | Jalur | Sesi | Portal | Keterangan |
+|---|---|---|---|---|
+| `GET` | `/api/inbox-outstanding` | wajib | **wajib** | daftar klaim berjalan; saringan `cari`, `tahap`, `cabang`, `batas`, `lewati` — beserta `total` dan `batas_lini` |
+| `GET` | `/api/inbox-outstanding/unduh` | wajib | **wajib** | CSV seluruh hasil yang cocok; mengabaikan paginasi, tunduk pada batas data yang sama |
+
+`batas` di atas 100 **ditolak**, bukan dipangkas diam-diam: klien yang meminta seribu baris lalu
+menerima seratus tanpa diberi tahu akan menampilkan daftar yang ia kira lengkap.
+
+### 18.14 Pertanyaan terbuka yang ditinggalkan sesi ini
+
+| Yang belum diputuskan | Pemilik | Yang tertahan |
+|---|---|---|
+| Lingkup **Transfer** dan **Change New User** | Work Owner | dua aksi, dan tombol Select All |
+| Bolehkah menulis `COUNTER_QUOTA` pada `MST_USER_TEKNIK` | Work Owner | Transfer; `P-1` melarangnya hari ini |
+| LEFT JOIN menggantikan INNER JOIN — disetujui? | Work Owner | selisih terencana pada gerbang 1 |
+| Sumber **Posisi Klaim** dan **Progress Klaim** | Work Owner / Tim Pega | dua kolom |
+| Daftar nilai `LINEBUSINESS` yang sah | Work Owner | tidak menahan; nilai tak dikenal jatuh ke tanpa batas |
+| Persetujuan menjalankan migrasi `0004` | Work Owner + DBA (`D-63`) | batas data per lini benar-benar berlaku |
+| Siapa mengisi `LINEBUSINESS` per pengguna | Work Owner | idem; datanya tidak ada di export maupun basis data |
+
+### 18.15 Koreksi sumber kolom (2026-09-21) — menggantikan §18.11
+
+§18.11 menyatakan pemetaan kolom tidak dapat ditentukan karena
+`InboxOutstandingClaim_Section` melayani dua grid dan beberapa sumber data. Pernyataan itu
+benar **tentang section yang salah**.
+
+Section yang mengikat modul ini adalah **`Section/InboxRegister_Section-Section.xml`** —
+yang dimuat `Harness/InboxRegister_Harness-Harness.xml`, harness yang Work Owner tunjuk
+sejak awal, dan yang di dalamnya sendiri berjudul "Inbox Outstanding" (`:2150`).
+
+Pengikatnya terbukti: properti sel di section itu **persis alias kueri
+`BrowseInboxOutstanding1`** — `.District` untuk "Policy no", `.CountryID` untuk "Insured
+name", `.City` untuk "Branch name", `.ReporterName` untuk "Admin name".
+
+**Pemetaan yang berlaku sekarang:**
+
+| Kolom layar | Properti section | Kolom `CPNC_KLAIM` |
+|---|---|---|
+| Claim no | `.ClaimNo` | `NOMOR` |
+| Policy no | `.District` | `POLIS_NOMOR` |
+| Insured name | `.CountryID` | `POLIS_TERTANGGUNG` |
+| Business Name | `.Country` | `POLIS_JENIS_BISNIS` |
+| Branch name | `.City` | `POLIS_KODE_CABANG` |
+| Admin name | `.ReporterName` | `DIBUAT_OLEH` |
+| Register Date | `.pxCreateDateTime` | `DIBUAT_PADA` |
+| Date of loss | `.DateOfLoss` | `TANGGAL_KEJADIAN` |
+| Claim status | `.StatusClaim` | `STATUS_PROSES` → label tampil |
+| Status ASM | `.LSC_ID` | `STATUS_KLAIM` — **kode, bukan label** |
+| ASM PIC | — | `USER_TEKNIS` |
+| Total Aging | — | dihitung dari `DIBUAT_PADA` |
+
+Dua kolom sebelumnya diragukan — "Posisi Klaim" dan "Progress Klaim" — **bukan kolom layar
+ini sama sekali**. Keduanya milik section Outstanding yang dipakai dashboard.
+
+### 18.16 Tiga keterbatasan yang dicatat, bukan ditutupi
+
+| Hal | Keadaannya |
+|---|---|
+| **Business source** | `sobname` tidak ada di `CPNC_KLAIM`; kolomnya tidak dibangun |
+| **Aging** | tanggal acuannya (`.DateForAging`) tidak disediakan kueri; hanya "Total Aging" yang ada |
+| **Status ASM** | yang tampil KODE status, bukan labelnya — label hidup di master status, dan menariknya ke sini berarti menyentuh modul lain |
+
+Ketiadaan dua yang pertama **dijaga uji**, supaya tidak diam-diam diisi nilai yang
+dikarang di kemudian hari.
+
+### 18.17 `T-1` gugur: Transfer bukan bagian layar ini
+
+Tombol pada `Section/InboxRegister_Section-Section.xml` hanya **Cari · Export To Excel ·
+Input Claim** (`CreateInputKlaim`, `ExportDataDetailKlaim`, `ExportLostAdjuster`). Nol
+kemunculan `GCNMTransferDataKlaim` maupun "Change New User".
+
+Akibatnya tiga pertanyaan terbuka §18.14 ikut gugur:
+
+- lingkup Transfer / Change New User — **bukan bagian layar ini**
+- menulis penghitung beban ke tabel Pega — **tidak terjadi**
+- `P-1` atas `mst_user_teknis.TOTAL_JOB` — **tidak terjadi**
+
+Sekaligus mengoreksi laporan sebelumnya: penghitung yang disentuh Transfer adalah
+`mst_user_teknis.TOTAL_JOB`, **bukan** `MST_USER_TEKNIK.COUNTER_QUOTA`. Keduanya tabel
+berbeda yang namanya beda satu huruf; `COUNTER_QUOTA` milik routing pembagian beban
+(`B-6`), dan tidak pernah disentuh layar ini.
+
+### 18.18 Pertanyaan terbuka setelah koreksi
+
+| Yang belum diputuskan | Pemilik | Yang tertahan |
+|---|---|---|
+| **Tab-tab** pada section rujukan — ALL Case, Communication, Loss Adjuster, Temporary Close | Work Owner | masing-masing punya kolom tambahan; yang dibangun baru daftar intinya |
+| Tombol **Input Claim** | Work Owner | ia membuka alur registrasi, milik modul lain |
+| Sumber **Business source** dan **Aging** | Work Owner / DBA | dua kolom |
+| Label **Status ASM** | Work Owner | hari ini yang tampil kodenya |
+| LEFT JOIN menggantikan INNER JOIN | Work Owner | **ditunda atas arahan Work Owner**; kueri dibiarkan apa adanya |
+| Persetujuan migrasi `0004` | Work Owner + DBA (`D-63`) | batas data per lini benar-benar berlaku |
+
+### 18.19 Koreksi kedua: sumber datanya `POOLDATA.T_CLAIMLIST_ADMIN` (2026-09-21)
+
+Menggantikan §18.15 dan seluruh bagian §18 yang menyebut `CPNC_KLAIM`.
+
+**Yang menggantikan `datapega.pc_asm_fw_gcnmfw_work` adalah `POOLDATA.T_CLAIMLIST_ADMIN`**,
+ditetapkan Work Owner. `CPNC_KLAIM` yang sempat saya pakai adalah tabel rancangan modul
+`registrasi` yang belum pernah dibuat dan modulnya belum dipasang — layar akan selalu kosong
+tanpa satu pun galat.
+
+**Empat keterbatasan yang sebelumnya dicatat gugur seluruhnya:**
+
+| Dicatat sebelumnya | Keadaan sebenarnya |
+|---|---|
+| `Business source` tidak ada | kolom `SOBNAME` |
+| `Aging` tidak dapat dihitung | kolom `AGING`, sudah berupa angka |
+| aturan BONDING tidak dapat diterapkan | kolom `BUSINESSGROUPID` ada |
+| INNER JOIN versus LEFT JOIN | tabel datar — **tidak ada join sama sekali** |
+
+**Batas data kini lengkap.** NONMBU menyaring Group Panel **dan** mengecualikan kelompok
+bisnis; BONDING seluruhnya berupa pengecualian, tanpa menyaring lini. Sisi SQL memeriksa
+`BUSINESSGROUPID IS NULL` lebih dulu — tanpa itu, klaim yang kelompoknya belum terisi hilang
+dari layar oleh aritmetika tiga-nilai, bukan karena dikecualikan.
+
+**`AGING` dibaca apa adanya, tidak dihitung ulang.** Tabel juga punya `DATEFORAGING_1` yang
+tampaknya menjadi acuannya, tetapi artinya belum dipastikan; menghitung ulang berarti menebak
+dari tanggal mana. Nilai yang belum terisi dibedakan dari nol — pada layar tampil sebagai
+tanda hubung, pada CSV sebagai sel kosong.
+
+**Dua pemetaan yang BELUM PASTI, dicatat bukan dinyatakan selesai:**
+
+| Kolom | Dipakai | Keraguannya |
+|---|---|---|
+| `Status ASM` | `STATUSLOCK_1` | section mengikatnya ke `.LSC_ID`; kueri lain mengisi `.StatusLock` dari `v_sts_claim.lsc_note` |
+| `Register Date` | `REGISTERDATE_1` | tabel punya `PXCREATEDATETIME` juga; yang kedua dipakai sebagai cadangan saja |
+
+**Satu penyaring sengaja tidak ditambahkan:** `STS_AKTIF`. Kolomnya ada dan tabel datar
+biasanya memakainya untuk menandai baris aktif, tetapi kueri lama tidak menyebutnya —
+menambahkannya berarti mengubah perilaku tanpa dasar.
+
+### 18.20 Pertanyaan terbuka setelah koreksi kedua
+
+| Yang belum diputuskan | Pemilik | Yang tertahan |
+|---|---|---|
+| Arti `DATEFORAGING_1`, dan apakah `AGING` memang dihitung darinya | Work Owner / DBA | tidak menahan; `AGING` dibaca apa adanya |
+| Pemetaan `Status ASM` — `STATUSLOCK_1` atau label dari `v_sts_claim` | Work Owner | satu kolom |
+| Perlukah menyaring `STS_AKTIF` | Work Owner | baris non-aktif ikut tampil bila ada |
+| **Tab-tab** section rujukan — ALL Case, Communication, Loss Adjuster, Temporary Close | Work Owner | masing-masing punya kolom tambahan |
+| Tombol **Input Claim** | Work Owner | membuka alur registrasi, milik modul lain |
+| Persetujuan migrasi `0004` (`LINEBUSINESS`) | Work Owner + DBA (`D-63`) | batas data per lini benar-benar berlaku |
+
+Tiga pertanyaan §18.18 **gugur**: lingkup Transfer, penulisan penghitung beban, dan
+INNER/LEFT JOIN — ketiganya tidak berlaku pada layar dan tabel yang benar.
+
+### 18.21 Nilai `PYSTATUSWORK` diambil dari data, bukan dari tabel yang salah pakai (2026-09-22)
+
+**Keputusan.** Derivasi kolom "Claim status" memakai nilai yang benar-benar tersimpan:
+
+| `PYSTATUSWORK` | Kolom "Claim status" |
+|---|---|
+| `New` | On Progress |
+| `Resolved-Completed` | Close |
+| `Resolved-Rejected` | Reject |
+| **lainnya** | **ditampilkan apa adanya** |
+
+Pemetaannya sudah tertulis benar di dokumentasi tipe `DisplayStatus` sejak awal — bersumber
+`Activity/InboxOutstanding_Act-Act.xml` dan dikuatkan `RDB List/BrowseClaimALL-SQL.xml`.
+Yang keliru kodenya, yang masih membandingkan nilai `CPNC_KLAIM.STATUS_PROSES`.
+
+**Baris terakhir adalah perubahan perilaku yang disengaja.** Sebelumnya setiap nilai tak
+dikenal jatuh ke `default` dan keluar sebagai "On Progress" — termasuk klaim yang sudah
+ditutup. Menampilkannya apa adanya membuat nilai asing terlihat, bukan menyamar.
+
+Ini **bukan** selisih terhadap Pega: Pega pun hanya memetakan tiga nilai itu, dan `CASE WHEN`
+tanpa `ELSE` mengembalikan `NULL` untuk sisanya. Perbedaannya hanya pada apa yang tampil saat
+hal yang mestinya mustahil terjadi.
+
+### 18.22 "Status ASM" ditampilkan apa adanya, tanpa menyatakan kode atau label
+
+**Keputusan.** Isi `STATUSLOCK_1` dirender sebagai teks biasa. Layar **tidak** menyatakan
+apakah ia kode atau label.
+
+**Sebelumnya** ia dirender `font-mono` dengan tooltip "Kode status klaim; labelnya ada di
+master status" — pernyataan yang tidak berdasar. Buktinya justru menunjuk arah sebaliknya:
+
+| Bukti | Arahnya |
+|---|---|
+| Kueri lama mengambil label lewat `v_sts_claim` dari kolom `STATUSCLAIM_1` | kode disimpan terpisah |
+| `T_CLAIMLIST_ADMIN` **tidak punya** `STATUSCLAIM_1` | kodenya tidak dibawa ke tabel baru |
+| `STATUSLOCK_1` selebar `VARCHAR2(100)` | kode butuh 4 karakter; label butuh ±30 |
+
+**Belum dikonfirmasi** karena baris produksi yang diserahkan tidak menyertakan kolom itu.
+
+**Kenapa tidak menebak saja.** Menyatakan "ini kode" lalu menampilkan kalimat utuh membuat
+pengguna menyangka layarnya rusak. Menampilkan apa adanya benar pada kedua kemungkinan.
+
+### 18.23 Data contoh menyerap bentuk baris produksi, bukan isinya
+
+**Keputusan.** Satu baris contoh dibentuk dari baris produksi yang diserahkan Work Owner,
+dengan **nomor polis, nama tertanggung, nomor klaim, dan nama sumber bisnis diganti karangan**
+(`D-69`), sementara bentuknya dipertahankan utuh.
+
+`D-64` yang mengizinkan data produksi apa adanya berlaku untuk **isi lingkungan staging** —
+bukan untuk berkas yang di-commit. Keduanya berdiri sendiri.
+
+**Yang dipertahankan, dan tidak akan terpikir dikarang:** tanggal kejadian sesudah tanggal
+pendaftaran · `AGING` 618 hari yang tidak sejalan dengan umur sejak pendaftaran · "Status ASM"
+kosong · kelompok bisnis yang lolos dua lini sekaligus · nomor klaim berformat lama ·
+`PZINSKEY` berprefix kelas Pega.
+
+### 18.24 Pertanyaan terbuka — diperbarui
+
+| Yang belum diputuskan | Pemilik | Yang tertahan |
+|---|---|---|
+| Isi `STATUSLOCK_1`: kode atau label | Work Owner / DBA | tampilan satu kolom |
+| Arti `DATEFORAGING_1` | Work Owner / DBA | tidak menahan — `AGING` dibaca apa adanya |
+| Perlukah menyaring `STS_AKTIF` | Work Owner | baris non-aktif ikut tampil bila ada |
+| Tab-tab section rujukan — ALL Case, Communication, Loss Adjuster, Temporary Close | Work Owner | masing-masing punya kolom tambahan |
+| Tombol **Input Claim** | Work Owner | membuka alur registrasi, milik modul lain |
+| Persetujuan migrasi `0004` (`LINEBUSINESS`) | Work Owner + DBA (`D-63`) | batas data per lini benar-benar berlaku |
+
+**Satu pertanyaan §18.20 gugur sebagian:** pemetaan "Status ASM" bukan lagi pilihan antara
+`STATUSLOCK_1` dan kolom lain — tidak ada kolom lain. Yang tersisa hanya: apa isinya.
+
+### 18.25 Tabrakan tabel klaim dengan modul `registrasi` — belum diputuskan (2026-09-22)
+
+Ditemukan saat menjawab pertanyaan Work Owner tentang `CPNC_KLAIM`. **Bukan cacat hari ini**,
+tetapi akan menggigit saat `B-2` dipasang — dan diam-diam, tanpa galat.
+
+| Modul | Tabel klaim | Perannya | Terpasang? |
+|---|---|---|---|
+| `registrasi` (`B-2`) | `CPNC_KLAIM` | **menulis** | **tidak** — nol kemunculan di `main.go`, tidak diimpor paket mana pun |
+| `inboxoutstanding` | `POOLDATA.T_CLAIMLIST_ADMIN` | membaca | ya |
+| Pega | `POOLDATA.T_CLAIMLIST_ADMIN` | menulis | ya |
+
+**Akibatnya bila `registrasi` dipasang apa adanya:** klaim yang didaftarkan lewat Go masuk
+`CPNC_KLAIM`, sedangkan layar ini membaca `T_CLAIMLIST_ADMIN`. Klaim itu **tidak akan pernah
+muncul di Inbox Outstanding**, dan tidak ada galat yang menandainya — layarnya hanya tidak
+menampilkannya.
+
+Ini persis kelas kegagalan yang membuat modul ini salah pilih tabel (§17.15): bukan gagal,
+melainkan kosong.
+
+**Pertanyaannya milik `P-1`** — satu penulis per tabel selama masa paralel. Tiga kemungkinan,
+belum satu pun dipilih:
+
+1. `B-2` menulis ke `T_CLAIMLIST_ADMIN` juga — tetapi Pega penulisnya, sehingga melanggar `P-1`
+2. Inbox Outstanding kelak membaca dua sumber — melanggar "satu layar satu permintaan"
+3. `CPNC_KLAIM` ditinggalkan, dan `B-2` menulis ke tabel yang sama dengan Pega setelah
+   kepemilikannya berpindah (`ADR-0004`)
+
+**Pemilik: Work Owner.** Harus dijawab **sebelum** `registrasi` dipasang ke `main.go`, bukan
+sesudah — sesudahnya berarti klaim nyata sudah tersebar di dua tabel.
+
+> Tidak ada berkas `registrasi` maupun migrasinya yang disentuh sesi ini. Temuan ini
+> dilaporkan, bukan diperbaiki.

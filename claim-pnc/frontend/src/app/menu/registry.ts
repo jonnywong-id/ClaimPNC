@@ -30,6 +30,11 @@
  * `InboxOutstanding_Harness`, `InboxRequestSalvage`, `InboxServiceCenter`,
  * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas
  * `K-33`. Ditambah MENU_ID 83 "Report Adjuster" yang MENU_PROGRAM-nya memang kosong.
+ *
+ * Salah satu dari sembilan itu — `InboxOutstanding_Harness` — KINI SUDAH PUNYA LAYAR.
+ * Harness-nya tetap tidak ada di export; yang dipakai sebagai rujukan bentuk adalah
+ * `InboxRegister_Harness`, sedangkan perilakunya diambil dari kueri, activity, dan section
+ * Outstanding yang memang ada.
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
@@ -37,6 +42,9 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusProgress: '/master/status-progres-1',
   // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
   InboxRCVApp_Harness: '/pelaporan-klaim',
+  // Butir menu "Inbox Outstanding". Harness-nya tidak ada di export (`K-33`); layarnya
+  // dibangun dari kueri BrowseInboxOutstanding1 beserta activity dan section-nya.
+  InboxOutstanding_Harness: '/inbox-outstanding',
 }
 
 /**
