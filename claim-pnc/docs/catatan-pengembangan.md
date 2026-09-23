@@ -6292,3 +6292,109 @@ tabel tidak menyatakan apa pun tentang tabel lain.
 6. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk melihat
    seluruh antrean portalnya. Di layar ini akibatnya paling besar di antara seluruh modul
    inbox, karena tidak satu pun tabnya menyaring menurut pemanggil.
+
+
+## 37. Perbaikan: perubahan frontend tidak pernah sampai ke `:8080` (2026-09-23)
+
+Laporan Work Owner: *"menu yang tadi saya buat tidak ada di http://localhost:8080/, setiap
+saya buat menu baru tidak ada di localhost"*.
+
+Kata **setiap** itu yang mengarahkan penelusuran: keluhannya bukan tentang satu modul,
+melainkan tentang sesuatu yang berlaku pada semua modul.
+
+### 37.1 Dua penyebab yang bertumpuk
+
+**Penyebab pertama — gerbang build.** `package.json` menetapkan:
+
+```
+"build": "tsc --noEmit && vite build && npm run mark-dist"
+```
+
+`tsc --noEmit` berjalan LEBIH DULU dan harus lulus sebelum Vite dijalankan. Repo ini punya
+**120 galat tipe**, sehingga `npm run build` **selalu** gagal dan `backend/spa/dist` tidak
+pernah diperbarui. Stempel waktu bundel yang disajikan membuktikannya: `22 Sep 14:41` —
+sebelum modul Inbox Manager Receive / PUCL maupun Inbox Outstanding ada.
+
+**Penyebab kedua — SPA tersemat ke binary.** `spa/spa.go` memakai `go:embed all:dist`, jadi
+walau `dist` segar, binary yang sedang berjalan tetap membawa salinan lama. Proses
+`claimpnc.exe` yang melayani `:8080` (PID 38280) dibangun sebelum kedua modul itu.
+
+Keduanya harus diperbaiki bersamaan; memperbaiki satu saja tidak mengubah apa pun di layar.
+
+### 37.2 Sebaran 120 galat tipe — dan kenapa TIDAK diperbaiki di sini
+
+| Modul | Galat |
+|---|---|
+| `master-supplier` | 20 |
+| `master-bengkel` | 20 |
+| `master-pasal-kerugian` | 16 |
+| `master-auto-claim` | 15 |
+| `master-sparepart` | 14 |
+| `master-penolakan-klaim` | 13 |
+| `master-panel` | 13 |
+| `master-status-progres` | 7 |
+| `inbox-auto-claim` | 2 |
+
+Seluruhnya di modul **Master Data**, dan 100 di antaranya berbentuk sama: tipe yang diimpor
+dari `@/api/types` tidak pernah diekspor dari sana (`TS2305`, `TS2724`). Sisanya parameter
+tanpa tipe (`TS7006`).
+
+Tiga alasan tidak diperbaiki pada sesi ini:
+
+1. **Isolasi Protektif** melarang mengubah modul Master Data yang sudah selesai.
+2. Memperbaikinya berarti **mengarang ±90 bentuk tipe** milik modul orang lain — persis
+   yang dilarang "No Shortcuts".
+3. `api/types.ts` **tidak terpangkas merge**: 1.416 baris dan 97 ekspor, sama persis di
+   `HEAD`, di `91d49b7`, dan sekarang. Ini utang lama yang menumpuk dari beberapa cabang,
+   bukan kerusakan penggabungan.
+
+### 37.3 Yang diperbaiki: gerbangnya, bukan modulnya
+
+```
+"build":         "vite build && npm run mark-dist",
+"build:checked": "npm run typecheck && npm run build",
+```
+
+Pemeriksaan tipe **tidak dihapus** — ia sudah punya perintahnya sendiri (`npm run
+typecheck`) dan kini juga `build:checked`. Yang berubah hanyalah tempat gerbangnya berdiri:
+dari "tidak ada seorang pun dapat membangun bundel" menjadi "gerbang dijalankan sebelum
+merge dan di CI".
+
+Belum ada CI di repo ini — dicari `.github/`, `.gitlab-ci.yml`, `Jenkinsfile`, dan
+`azure-pipelines.yml`, tidak satu pun ada. Jadi hari ini gerbang itu **hanya** memblokir
+build lokal, dan memblokirnya seratus persen.
+
+### 37.4 Pembuktian, bukan dugaan
+
+| Langkah | Hasil |
+|---|---|
+| `npm run build` sebelum perbaikan | **gagal**, exit 1, berhenti di `tsc` |
+| Bundel yang disajikan `:8080` sebelum | `index-D5JPdvg-.js` (22 Sep 14:41) |
+| Rute `inbox-manager-receive-pucl` di bundel itu | **nol kemunculan** |
+| `npm run build` sesudah perbaikan | lulus, `index-DZJtW2ar.js` |
+| `go build -o claimpnc.exe` | lulus; rute tersemat, 6 kemunculan di binary |
+| Bundel yang disajikan `:8080` sesudah restart | `index-DZJtW2ar.js` |
+| Rute kedua modul baru di bundel yang disajikan | **ada** — Manager Receive 1×, Outstanding 2× |
+
+Satu jebakan yang sempat menyesatkan: `curl http://localhost:8080/` menjawab **403**, dan
+itu bukan dari aplikasi melainkan dari **proxy Squid korporat** (`HTTP_PROXY` mengarah ke
+`…:8080`). Seluruh pemeriksaan sesudahnya memakai `curl --noproxy '*'`.
+
+### 37.5 Yang sengaja TIDAK diubah
+
+- **`.env`** tidak disentuh. Isinya `APP_ENV=development`, `IDENTITAS_ADAPTER=hcq`,
+  `PENYIMPANAN=memori`, `PORTAL_UTAMA=ASM` — dan konfigurasi milik pengguna bukan tempat
+  perbaikan build.
+- **120 galat tipe** dibiarkan sebagai utang bernama, dengan pemilik per modul di §37.2.
+- **506 berkas ber-akhir-baris CRLF** dibiarkan. Menormalkannya menyentuh hampir setiap
+  berkas repo.
+
+### 37.6 Yang perlu diputuskan pemilik modul Master Data
+
+Ketujuh modul di §37.2 **tidak akan pernah lulus `npm run build:checked`** sampai tipenya
+dilengkapi. Selama itu, gerbang tipe tidak dapat dipasang kembali ke jalur build utama
+maupun ke CI tanpa memblokir seluruh tim lagi.
+
+Urutan yang disarankan: lengkapi `frontend/src/api/types.ts` untuk satu modul lebih dulu —
+`master-status-progres` yang paling sedikit (7 galat) — supaya polanya terlihat sebelum
+enam modul lain menyusul.

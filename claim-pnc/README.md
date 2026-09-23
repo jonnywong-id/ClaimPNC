@@ -180,6 +180,34 @@ tiruan. Keduanya **menolak berjalan di produksi**.
 `npm run build` menaruh hasilnya di `backend/spa/dist/`, dan `go build` menyematkannya ke dalam
 binary — produksi tetap menjalankan satu proses saja (`ADR-0002`).
 
+> **Perubahan frontend TIDAK muncul di `:8080` sampai keduanya dibangun ulang.** Rantainya
+> `frontend/src` → `npm run build` → `backend/spa/dist` → `go build` → binary → **restart**.
+> Melewatkan satu langkah saja membuat peramban tetap menerima bundel lama, dan tidak ada
+> satu pun pesan galat yang menandakannya — yang terlihat hanyalah layar atau butir menu
+> baru yang "tidak ada".
+>
+> Cara memastikannya dalam satu perintah:
+>
+> ```bash
+> curl -s http://localhost:8080/ | grep -o 'assets/index-[A-Za-z0-9_-]*\.js'
+> ```
+>
+> Bandingkan dengan nama berkas di `backend/spa/dist/assets/`. Bila berbeda, yang berjalan
+> adalah binary lama.
+
+**Dua perintah build, dan bedanya penting:**
+
+| Perintah | Isi | Kapan |
+|---|---|---|
+| `npm run build` | `vite build` saja | membangun bundel — dipakai sehari-hari |
+| `npm run build:checked` | `tsc --noEmit` lebih dulu, lalu build | sebelum merge, dan di CI kelak |
+
+Keduanya sengaja dipisah. Sebelumnya `build` menjalankan `tsc --noEmit` lebih dulu dan
+**gagal bila ada satu galat tipe di mana pun** — termasuk di modul milik tim lain. Akibatnya
+satu modul yang belum lengkap memblokir bundel SELURUH aplikasi, dan layar yang sudah jadi
+tidak pernah sampai ke `:8080`. Pemeriksaan tipenya tidak dihapus; ia pindah ke perintahnya
+sendiri (`npm run typecheck`) dan ke `build:checked`.
+
 Buka `http://localhost:8080`. Pengguna contoh ada di
 [`backend/internal/auth/provider/fake.go`](backend/internal/auth/provider/fake.go):
 

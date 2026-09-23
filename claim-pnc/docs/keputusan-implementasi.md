@@ -6106,3 +6106,61 @@ modul ini **tidak menulis satu pun** (`P-1`).
 | `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada) |
 | `npx vitest run` modul baru | **12 uji lulus** |
 | Baseline kegagalan uji frontend lain | **dibuktikan pra-ada** — lihat `catatan-pengembangan.md` §36.7 |
+
+---
+
+## 39. Gerbang tipe dipisahkan dari perintah build (2026-09-23)
+
+Prosesnya ada di [`catatan-pengembangan.md`](catatan-pengembangan.md) §37; berkas ini
+merekam **keputusannya**.
+
+### 39.1 Keadaan yang memaksanya
+
+`npm run build` menjalankan `tsc --noEmit` lebih dulu dan gagal bila ada satu galat tipe di
+mana pun di repo. Repo ini punya **120 galat**, seluruhnya di tujuh modul Master Data milik
+tim lain.
+
+Akibatnya bukan "peringatan yang diabaikan" melainkan **bundel yang tidak pernah terbentuk**:
+`backend/spa/dist` beku sejak 22 Sep 14:41, dan setiap layar yang dibangun sesudahnya —
+Inbox Outstanding, Inbox Manager Receive / PUCL — tidak pernah sampai ke `:8080`.
+
+Yang membuatnya sulit terlihat: **tidak ada satu pun pesan galat di peramban**. Aplikasinya
+berjalan normal, hanya menyajikan versi lama.
+
+### 39.2 Keputusan
+
+```
+"build":         "vite build && npm run mark-dist",
+"build:checked": "npm run typecheck && npm run build",
+```
+
+### 39.3 Kenapa bukan salah satu dari ketiga pilihan lain
+
+| Pilihan | Kenapa ditolak |
+|---|---|
+| Perbaiki ke-120 galatnya | Seluruhnya di modul **Master Data**, yang Isolasi Protektif larang diubah. 100 di antaranya menuntut **mengarang ±90 bentuk tipe** milik modul orang lain — dilarang "No Shortcuts" |
+| `tsc --noEmit \|\| true` di dalam `build` | Gerbangnya jadi hijau palsu. Galat tetap ada, tetapi tidak seorang pun melihatnya lagi |
+| Longgarkan `tsconfig` | Menyembunyikan cacat nyata — 18 di antaranya parameter tanpa tipe, yang justru kelas cacat yang `08-TECHNICAL-STRATEGY.md` §5 larang |
+
+### 39.4 Apa yang hilang, dan apa yang tidak
+
+**Tidak hilang:** pemeriksaan tipe itu sendiri. Ia sudah punya perintah sendiri sejak awal
+(`npm run typecheck`), dan kini juga dijalankan `build:checked`.
+
+**Hilang:** paksaan bahwa setiap bundel lokal bertipe bersih. Itu memang yang dilepas dengan
+sengaja — memaksanya hari ini berarti tidak ada seorang pun di tim yang dapat membangun
+apa pun.
+
+**Belum ada CI di repo ini** — `.github/`, `.gitlab-ci.yml`, `Jenkinsfile`, dan
+`azure-pipelines.yml` seluruhnya tidak ada. Jadi gerbang yang dilepas itu hari ini tidak
+menjaga apa pun selain memblokir pekerjaan sendiri. Begitu CI dipasang Tim GitLab (`D-33`),
+yang dipanggil adalah `build:checked`, bukan `build`.
+
+### 39.5 Utang yang dinyatakan, bukan disembunyikan
+
+Ketujuh modul Master Data di `catatan-pengembangan.md` §37.2 tidak akan lulus
+`build:checked` sampai tipenya dilengkapi. Selama itu, gerbang tipe **tidak dapat**
+dikembalikan ke jalur build utama tanpa memblokir seluruh tim lagi.
+
+Ini utang dengan pemilik yang jelas per modul, bukan utang tanpa alamat — dan itulah syarat
+yang `D-36` tetapkan supaya sebuah penghalang punya peluang hilang.
