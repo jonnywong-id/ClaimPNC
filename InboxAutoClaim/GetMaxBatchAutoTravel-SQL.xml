@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxHostId>jboss10373</pxHostId>
+<pxInsId>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETMAXBATCHAUTOTRAVEL</pxInsId>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyTemplateInputBox/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETMAXBATCHAUTOTRAVEL #20221020T071831.398 GMT</pzDocumentKey>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyClassName>ASM-FW-GCNMFW-Int-V_STS_CLAIM</pyClassName>
+<pyRuleParamsStreamName/>
+<pzChecksum>2125268756</pzChecksum>
+<pxOriginalCreateOpName/>
+<pyLabel>GetMaxBatchAutoTravel</pyLabel>
+<pxSaveDateTime>20221021T082837.402 GMT</pxSaveDateTime>
+<pyCircumstanceType/>
+<pxOriginalCreateDateTime/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetMaxBatchAutoTravel</pyRuleName>
+<pxUpdateDateTime>20221021T082837.396 GMT</pxUpdateDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyFormPost/>
+<pyLabelOld>GetMaxBatchAutoTravel</pyLabelOld>
+<pySpecialtyComponentData/>
+<pyCircumstanceDefinition/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyOpenSQL/>
+<pyShowJavaWindowName>GeneratedJava20260922T023622.939 GMT</pyShowJavaWindowName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETMAXBATCHAUTOTRAVEL #20221020T071831.398 GMT</pzInsKey>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveFromSystem/>
+<pyWorkKey/>
+<pyBrowseSQL>SELECT MAX(BATCH) AS "OLD_LSC_ID" FROM POOLDATA.TMP_BATCH_AUTO_TRAVEL WHERE INISIALID={inputcsv.SOBNAME}</pyBrowseSQL>
+<pxOriginalCreateSystemID/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyTemplate/>
+<pyHandlerFlow/>
+<pyCircumstanceDate/>
+<pxInstanceLockedKey/>
+<pyRuleFormStatusTime>20260922T023622.916 GMT</pyRuleFormStatusTime>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyMemo>done</pyMemo>
+<pxInstanceLockedRuleSet/>
+<pyStreamName/>
+<pxMoveImportDateTime>20221116T100636.754 GMT</pxMoveImportDateTime>
+<pyIsFromManageChangeLP/>
+<pyStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pyCircumstanceTemplate/>
+<pxInstanceLockedDateTime/>
+<pxCreateDateTime>20221020T071831.398 GMT</pxCreateDateTime>
+<pyCircumstanceDateProp/>
+<pxCommitDateTime>20221116T100637.000 GMT</pxCommitDateTime>
+<pySaveSQL>UPDATE POOLDATA.TMP_BATCH_CLAIM_KREDIT SET IDPEGA={InputData.CARI15},  ACCEPTNO={InputData.CARI16}, TMP_MESSAGE={InputData.CARI17}, NODEKLARASI={InputData.CARI19}
+WHERE NOPOLIS={InputData.CARI1} AND BATCH={inputcsv.PRODKE} AND AGENID={inputcsv.SOBNAME} AND NOASURANSI={InputData.CARI20} AND ACCEPTNO IS NULL</pySaveSQL>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDescription/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pyRelativePath/>
+<pyRuleEnds/>
+<pyDeleteSQL/>
+<pyRuleStarts/>
+<pyCircumstanceProp/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyMethodStatus/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_STS_CLAIM GCNM GetMaxBatchAutoTravel</pxTabLabel>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyDocumentTitle/>
+<pyCircumstanceVal/>
+<pyInterface/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRequestType>GetMaxBatchAutoTravel</pyRequestType>
+<pyUsage/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_STS_CLAIM!GCNM!GETMAXBATCHAUTOTRAVEL</pxInsName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxSiblingCount/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETMAXBATCHAUTOCLAIM #20220111T092624.958 GMT</pzOriginalInstanceKey>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxOriginalCreateOperator/>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyJavaStream/>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCompareVersion/>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyShowJava>false</pyShowJava>
+<pyRefresh>true</pyRefresh>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_STS_CLAIM GCNM!GETMAXBATCHAUTOTRAVEL #20221020T071831.398 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>
