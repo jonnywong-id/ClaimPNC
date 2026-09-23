@@ -31,6 +31,7 @@ import (
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
+	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
@@ -75,6 +76,10 @@ import (
 
 	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
 	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
+	inboxcloseclaimhttp "claim-pnc/internal/inboxcloseclaim/http"
+	inboxcloseclaimmemory "claim-pnc/internal/inboxcloseclaim/repo/memory"
+	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
+	inboxcloseclaimusecase "claim-pnc/internal/inboxcloseclaim/usecase"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
@@ -651,6 +656,32 @@ func run() error {
 		FallbackErrorWriter: inboxoutstandinghttp.ErrorWriter(writePortalAwareError),
 	})
 
+	closeClaimHandler := inboxcloseclaimhttp.NewHandler(inboxcloseclaimhttp.Options{
+		Service: assembly.inboxCloseClaim,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// DUA field diambil, berbeda dari modul yang hanya membaca: jejak permintaan
+		// menyimpan NAMA pemohon bersama login-nya, supaya jejak itu tetap terbaca utuh
+		// tanpa join ke tabel pengguna. Jejak yang namanya diambil lewat join akan berubah
+		// ketika orangnya berganti nama — dan jejak yang dapat berubah bukan jejak.
+		GetCaller: func(ctx context.Context) (inboxcloseclaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxcloseclaimhttp.Caller{}, false
+			}
+			return inboxcloseclaimhttp.Caller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+			}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal dipetakan modul portal lebih dulu, sisanya jatuh ke pemeta galat
+		// auth — rantai yang sama dipakai modul Inbox Outstanding tepat di atasnya.
+		FallbackErrorWriter: inboxcloseclaimhttp.ErrorWriter(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
 		// Galatnya dikembalikan lebih dulu, bukan dibungkus: nil bertipe *Service yang
@@ -713,6 +744,18 @@ func run() error {
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
+				// Inbox Close Claim — klaim yang sudah tutup, beserta permintaan
+				// membukanya kembali dan menyalinnya.
+				//
+				// Satu-satunya modul inbox yang MENULIS. Yang ditulisnya bukan klaim
+				// melainkan POOLDATA.CPNC_PERMINTAAN_KLAIM, tabel milik aplikasi ini
+				// sendiri — `P-1` menetapkan klaim masih ditulis Pega selama masa paralel.
+				//
+				// Kewenangannya belum diperiksa per peran (TKT-F3-005). Di Pega, butir
+				// menunya dijaga When rule yang membukanya bagi empat access group
+				// ditambah TIGA Operator ID perorangan yang tertanam di dalam rule —
+				// persis jenis hardcode yang D-15 hapus.
+				inboxcloseclaimhttp.Mount(protected, closeClaimHandler, activePortalDeps)
 				// Master Tipe Surveyors. Sama seperti di atas: pemeriksaan portal
 				// dipasang di dalam Mount, karena SELURUH rutenya menyentuh basis
 				// data entitas.
@@ -954,6 +997,13 @@ type assembly struct {
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
 
+	// inboxCloseClaim melayani layar Inbox Close Claim — klaim yang sudah TUTUP.
+	//
+	// Ia kebalikan tepat dari inboxOutstanding tepat di atasnya: keduanya menyaring dua
+	// nilai PYSTATUSWORK yang sama dengan arah yang berlawanan. Satu-satunya modul inbox
+	// yang MENULIS, dan yang ditulisnya bukan klaim melainkan permintaan atas klaim.
+	inboxCloseClaim *inboxcloseclaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -1036,6 +1086,17 @@ type storage struct {
 
 	// outstandingLines membaca M_LOGIN_PNC.LINEBUSINESS, pengganti OperatorID.pyPosition.
 	outstandingLines inboxoutstanding.LineBusinessRepo
+
+	// closeClaimSelector memilih penyimpanan klaim TUTUP milik satu portal.
+	closeClaimSelector inboxcloseclaim.RepoSelector
+
+	// closeClaimRequests memilih penyimpanan PERMINTAAN ReOpen dan Copy Klaim milik satu
+	// portal.
+	//
+	// Ia terpisah dari closeClaimSelector meski keduanya melayani satu layar, dan
+	// pembelahannya mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega,
+	// yang kedua menulis tabel milik aplikasi ini sendiri (`P-1`).
+	closeClaimRequests inboxcloseclaim.RequestRepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -1338,6 +1399,22 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Pembangkit pengenal dan jam dipasok di sini, bukan dibaca modul dari jam sistem.
+	//
+	// Keduanya seam supaya waktu permintaan dapat diuji secara deterministik — dan supaya
+	// tidak ada satu pun tempat di dalam modul yang memanggil time.Now() sendiri, yang
+	// persis pola `Set7Hours` sistem lama yang menambah tujuh jam manual di 118 titik.
+	closeClaimService, err := inboxcloseclaimusecase.NewService(inboxcloseclaimusecase.Options{
+		Claims:   store.closeClaimSelector,
+		Requests: store.closeClaimRequests,
+		IDs:      inboxcloseclaimmemory.IDGenerator{},
+		Clock:    clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Policy tidak dipasok: DefaultPolicy dipakai — mode kumulatif, dan hanya
 	// Non-MBU yang memakai pita dengan batas Rp 100.000.000 (`D-52`, `D-70`).
 	//
@@ -1399,6 +1476,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxLaporanKlaim:       claimReportService,
 		inboxOutstanding:        outstandingService,
+		inboxCloseClaim:         closeClaimService,
 		readyAliases:            store.readyAliases,
 		close:                   store.close,
 	}, nil
@@ -1660,6 +1738,35 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// berjalan dengan seluruh lini terlihat, persis perilaku Pega.
 		store.outstandingLines = inboxoutstandingsql.NewLineBusinessRepo(primary)
 
+		// Klaim TUTUP dibaca dari basis data entitasnya sendiri, dengan aturan yang sama
+		// seperti klaim berjalan di atasnya.
+		store.closeClaimSelector = func(alias string) (inboxcloseclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxcloseclaimsql.NewRepo(conn), nil
+		}
+
+		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
+		// klaimnya — bukan ke portal utama.
+		//
+		// Ini bukan pilihan kerapian: permintaan atas klaim milik satu badan hukum yang
+		// tercatat di basis data badan hukum lain adalah kebocoran yang persis `R-20`
+		// larang, dan pada modul ini akibatnya melampaui tampilan.
+		//
+		// Tabelnya dibuat migrasi `0006`, yang BELUM dijalankan DBA di lingkungan mana pun.
+		// Sampai itu terjadi, pembacaannya gagal dan usecase menanganinya sebagai
+		// "permintaan tidak dapat dibaca" — daftarnya tetap tampil, penandanya tidak muncul,
+		// dan kegagalannya dicatat di log.
+		store.closeClaimRequests = func(alias string) (inboxcloseclaim.RequestRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxcloseclaimsql.NewRequestRepo(conn), nil
+		}
+
 		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -1799,6 +1906,22 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return outstandingMemory, nil
 		}
 		store.outstandingLines = outstandingMemory
+
+		// Inbox Close Claim memakai SATU penyimpanan untuk klaim dan permintaannya.
+		//
+		// Berbeda dari perakitan SQL di atas, yang memisahkan keduanya karena tabelnya
+		// dimiliki sistem yang berbeda. Di memori tidak ada kepemilikan tabel, dan
+		// menyatukannya justru yang membuat permintaan yang dicatat langsung terlihat pada
+		// daftar — persis perilaku yang hendak dicoba tanpa Oracle.
+		//
+		// Seluruh isinya karangan — lihat repo/memory/sample.go.
+		closeClaimMemory := inboxcloseclaimmemory.NewStoreWithSamples()
+		store.closeClaimSelector = func(string) (inboxcloseclaim.Repo, error) {
+			return closeClaimMemory, nil
+		}
+		store.closeClaimRequests = func(string) (inboxcloseclaim.RequestRepo, error) {
+			return closeClaimMemory, nil
+		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
 		store.surveyorTypeSelector = surveyorTypeSelectorMemory(cfg.PrimaryPortal)

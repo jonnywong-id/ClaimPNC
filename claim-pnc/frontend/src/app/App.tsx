@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
 import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
+import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
@@ -391,6 +392,32 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <OutstandingPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Close Claim (`MENU_ID 59`) — KEBALIKAN TEPAT dari rute tepat di atasnya.
+
+        Keduanya menyaring dua nilai `PYSTATUSWORK` yang SAMA dengan arah yang berlawanan:
+        yang di atas `NOT IN`, yang ini `IN`. Rutenya karena itu terpisah dan tidak boleh
+        disatukan — menunjuk keduanya ke satu layar akan menampilkan kebalikan dari yang
+        diminta pengguna, tanpa satu pun tanda di layar.
+
+        Harness-nya juga TIDAK ADA di export (`K-33`); yang dipakai adalah kueri, activity,
+        dan section yang memang ada.
+
+        Ia satu-satunya layar inbox yang MENULIS. Yang ditulisnya bukan klaim melainkan
+        permintaan atas klaim — `P-1` menetapkan klaim masih ditulis Pega selama masa
+        paralel. Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada, dan di layar
+        ini taruhannya lebih besar: kedua tombolnya menyentuh klaim yang sudah tutup.
+      */}
+      <Route
+        path="/inbox-close-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CloseClaimPage />
             </Protected>
           </SessionGuard>
         }

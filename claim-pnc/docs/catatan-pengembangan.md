@@ -7937,3 +7937,293 @@ Penomoran bab di dokumen ini juga **ganda di banyak tempat** (§17 muncul empat 
 kali) akibat banyak cabang paralel yang masing-masing menempel di akhir. Menomori ulang
 seluruhnya berisiko memutus rujukan silang dan berada di luar lingkup tugas, sehingga bab ini
 memakai nomor yang benar-benar belum terpakai.
+
+---
+
+## 39. Sesi kedua puluh satu — modul Inbox Close Claim (2026-09-23)
+
+Menu `MENU_ID 59` "Inbox Close Claim", pengganti harness `InboxCloseClaim_Harness`. Berkas
+ini merekam **prosesnya**; keputusannya ada di
+[`keputusan-implementasi.md`](keputusan-implementasi.md) §41.
+
+### 39.1 Berkas rujukan yang diminta ternyata TIDAK ADA
+
+Tugasnya berbunyi: *"cek secara penuh aplikasi existing pada dokumen File
+InboxCloseClaim_Harness-Harness.xml jadikan ini sebagai referensi."*
+
+Pencarian pertama atas seluruh repo menghasilkan **nol**:
+
+```
+find . -iname "*InboxCloseClaim*"     ->  tidak ada
+ls Harness/ | wc -l                   ->  74 berkas, tidak satu pun bernama itu
+```
+
+Ini bukan kelalaian pencarian. Ia sudah tercatat sebelumnya di
+`frontend/src/app/menu/registry.ts:29` sebagai salah satu dari **sembilan** butir menu yang
+menunjuk harness yang tidak ada di export — bagian dari `K-33` dan `R-16`.
+
+**Yang dikerjakan alih-alih berhenti.** Preseden penanganannya sudah ada:
+`InboxOutstanding_Harness` juga hilang, dan modulnya tetap dibangun dari artefak yang memang
+ada (modul Inbox Outstanding, §17). Jalan yang sama ditempuh, dengan delapan artefak sebagai
+gantinya:
+
+| Artefak | Yang diberikannya |
+|---|---|
+| `Database/m_menu_aplikasi_pnc.csv:59` | nama dan kelompok butir menu |
+| `Navigation/pyCaseWorkerNavigation-Navigation.xml:16651,16695` | butir menu ke activity |
+| `Activity/GCNMGetManagerReopenCase_Act-Act.xml` | **seluruh** penyaring, batas lini, paginasi |
+| `RDB List/GcnmBrowseReopenCase_SQL-SQL.xml` | kueri daftar |
+| `RDB List/GCNMCountCloseClaim-SQL.xml` | kueri hitung |
+| `Section/InboxManagerReopen1_Sec-Section.xml` | judul layar, 11 kolom, 6 tombol |
+| `Activity/ExportDataCloseClaim-Act.xml` | Export to Excel |
+| `When/IsManagerPNC_CLOSE-When.xml` | siapa yang melihat menunya |
+
+Judul layarnya sendiri terbaca di `Section/InboxManagerReopen1_Sec-Section.xml` sebagai
+`<pyValue>Inbox Close Claim</pyValue>` — nama modulnya karena itu tidak dikarang.
+
+### 39.2 Pertanyaan konfirmasi ronde pertama, dan jawabannya
+
+Empat diajukan sebelum satu baris kode ditulis. Keempatnya mengubah lingkup secara material,
+dan tidak satu pun dapat dijawab dari export.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tabel mana yang dibaca — `PC_ASM_FW_GCNMFW_WORK` atau `T_CLAIMLIST_ADMIN`? | **`PC_ASM_FW_GCNMFW_WORK`**, sama dengan kueri lamanya |
+| 2 | Lingkup tulis — ReOpen dan Copy Klaim dibangun? | **Keduanya dibangun** |
+| 3 | Kolom "Lama Waktu Klaim" yang di Pega berisi tanggal | **Hitung umur dalam hari** |
+| 4 | Kueri hitung Pega kehilangan penyaring Status Bayar | **Samakan dengan kueri daftar** |
+
+Jawaban #1 menutup satu jalan buntu sebelum sempat ditempuh: `T_CLAIMLIST_ADMIN` **tidak
+punya `STATUSCLAIM_1`** sampai migrasi `0005` tahap 1 dijalankan DBA, dan kolom itulah yang
+dibutuhkan penyaring Status Bayar. Ia juga baru terisi **1.014 dari 7.703 klaim (13%)** —
+untuk layar yang isinya justru klaim lama, itu berarti sebagian besar barisnya hilang.
+
+### 39.3 Jawaban #2 melampaui yang dapat dibaca dari export — dan itu dinyatakan
+
+Jawaban "keduanya dibangun" menuntut sesuatu yang saya sendiri sudah nyatakan tidak tersedia.
+Alih-alih menerima lalu mengarang, penelusuran diulang lebih keras — karena aturan kerja
+berbunyi *"dilarang membuat dummy logic **jika proses bisnis aslinya dapat dipelajari**"*.
+
+Hasilnya nol pada setiap jalur:
+
+| Yang dicari | Hasil |
+|---|---|
+| `GCNMReopenConfirmation` · `GCNMCopyClaimConfirmation` · `FilterDashboardClaimclose` | **nol berkas** |
+| rule mana pun yang menulis status `1164` "Reopen Claim" | **nol** — dua kecocokan ternyata `pzChecksum` |
+| rule mana pun yang menyentuh `PYREOPENCOUNT` / `PYREOPENTIMESTAMP` | **nol** |
+| activity `*CopyClaim*` / `*CopyKlaim*` | **nol** |
+| Ticket rule atau Flow untuk reopen | **nol** — `Ticket/` hanya 8 berkas, `Flow/` hanya 4 |
+| `SaveReOpenAct` yang MEMANG ada | satu langkah `Property-Set`, **tidak menulis apa pun** |
+
+Yang tersisa hanyalah jejak bahwa reopen **pernah terjadi**: `PYREOPENTIMESTAMP` terisi pada
+47 klaim dan `PYREOPENCOUNT` punya 7 nilai berbeda — keduanya kolom bawaan Pega. Bahkan
+`Activity/UpdateStatus-Act.xml` (ruleset `Pega-ProcessEngine`) menyimpan catatannya sendiri di
+dalam langkah Java-nya: *"A resolved work object should be reopened first"*.
+
+Jadi reopen di sistem lama adalah **mekanisme platform Pega**, bukan rule bisnis yang dapat
+dibaca. Itu dilaporkan apa adanya, lalu ronde kedua diajukan.
+
+### 39.4 Pertanyaan konfirmasi ronde kedua
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Aturan ReOpen/Copy diambil dari mana | **Work Owner menyebutkannya sekarang** |
+| 2 | `P-1` — siapa yang menulis tabel klaim | **Go menulis lewat tabel PERMINTAAN miliknya sendiri** |
+| 3 | Apa yang berubah saat ReOpen | status kerja + status klaim + pencacah |
+| 4 | Copy Klaim menyalin apa | polis + objek + coverage, **tanpa nilai** |
+
+Jawaban #2 itulah yang membuat #3 dan #4 dapat dikerjakan tanpa melanggar `P-1`: yang
+tercatat adalah **niatnya**, bukan perubahannya. Klaimnya tetap ditulis Pega.
+
+### 39.5 Empat temuan yang tidak diminta, tetapi ditemukan saat membaca
+
+**a. Penyaring BONDING berlawanan arah dengan modul Inbox Outstanding.**
+
+| Modul | BONDING | NONMBU |
+|---|---|---|
+| **Inbox Close Claim** | `businessgroupid` **IN** | `('003','004','006')` |
+| Inbox Admin | `businessgroupid` **IN** | `('003','004','006','009')` |
+| Inbox Outstanding | `businessgroupid` **NOT IN** | `('003','004','006')` |
+
+Ketiganya disalin dari activity-nya masing-masing dan memang berbeda di Pega. Memakai ulang
+`inboxoutstanding.ScopeFor` — yang namanya mirip dan tampak dapat dipakai ulang — akan
+menampilkan **kebalikan** dari lini yang diminta, tanpa satu pun galat. Dijaga
+`TestBondingFiltersWithIN` dan `TestNonMBUDoesNotInclude009`.
+
+**b. Kueri hitung Pega kehilangan satu penyaring.** `GCNMCountCloseClaim-SQL.xml` memuat lima
+penanda `{ASIS:…}`; kueri daftarnya memuat enam. Yang hilang `{ASIS:TempFilter.DistrictID}` —
+penyaring **Status Bayar**. Akibatnya di Pega: total yang ditampilkan tidak cocok dengan
+baris yang dapat ditelusuri, tanpa galat. Menjadi pertanyaan konfirmasi #4.
+
+**c. Kolom "Lama Waktu Klaim" berisi tanggal.** Sel 54 dan 55 pada section rujukan keduanya
+terikat `.pxCreateDateTime`; yang kedua berformat `pxDateTime`. Sebuah kolom berjudul durasi
+yang isinya tanggal pendaftaran — untuk kedua kalinya. Menjadi pertanyaan konfirmasi #3.
+
+**d. Butir menunya dijaga tiga Operator ID perorangan.**
+`When/IsManagerPNC_CLOSE-When.xml` membuka aksesnya bagi empat access group —
+`Administrators`, `CaseManager`, `PncManagerAdmin`, `PNCKomiteTeknik` — **ditambah tiga nama
+orang yang tertanam di dalam rule**. Persis jenis hardcode yang `D-15` hapus. Di sistem baru
+ia tergantikan `M_OTORISASI_PNC` dengan sendirinya; dicatat supaya penggantian itu tidak
+disangka kelalaian.
+
+### 39.6 Kendala teknis dan penyelesaiannya
+
+**Penomoran bind yang dua modul lakukan berbeda.** `inboxadmin` mengulang penanda `:2` lima
+kali dan mengirim nilainya SEKALI; `inboxoutstanding` memberi nomor tersendiri pada setiap
+kemunculan, dengan catatan tegas bahwa pengulangan nomor menghasilkan **ORA-01008 not all
+variables bound**.
+
+Keduanya tidak dapat benar bersamaan. Yang menentukan: `inboxoutstanding` **sudah terpasang
+di `cmd/claimpnc` dan kuerinya sudah menyentuh Oracle sungguhan**, sedangkan `inboxadmin`
+belum dirakit sama sekali — SQL-nya belum pernah dijalankan. Yang diikuti karena itu pola
+yang terbukti, ditambah aturan tambahan: nomornya ditulis **menaik sesuai urutan
+kemunculan**, sehingga penafsiran driver mana pun menghasilkan pengikatan yang sama. Dijaga
+`TestBindMarkersAreUniqueAndAscending`.
+
+**Kunci klaim mengandung spasi.** Bentuknya `ASM-FW-GCNMFW-WORK PNC-9001` — nama kelas
+internal Pega, spasi, lalu nomor klaim. Menaruhnya di jalur URL menuntut penyandian yang benar
+di setiap sisi, dan satu sisi yang keliru menghasilkan "klaim tidak ditemukan" alih-alih galat
+yang jelas. Kedua aksi karena itu memakai **satu endpoint `POST /permintaan`** dengan kunci di
+badan permintaan.
+
+**`Button` tidak meneruskan ref.** Dialog konfirmasi mula-mula memindahkan fokus ke tombol
+Batal lewat `useRef`. Pemeriksaan `grep forwardRef components/Button.tsx` menghasilkan nol —
+ref yang dipasang di sana akan diam-diam tidak berfungsi, dan fokusnya tidak akan pernah
+pindah. Diganti `autoFocus`, yang diteruskan lewat sebaran prop.
+
+### 39.7 Kesalahan sendiri yang tercatat sesi ini
+
+**Helper uji yang salah membaca, bukan SQL yang salah.** `TestListAndCountShareTheSameWhere`
+gagal pada jalan pertama. Penyebabnya bukan kueri yang berbeda melainkan `whereClause` yang
+mencari kemunculan `WHERE` **pertama** — dan yang pertama ada di dalam subkueri label status
+klaim, bukan di syarat terluarnya.
+
+Yang dilakukan: **helper-nya diperbaiki**, bukan ujinya dilonggarkan. Ia kini menghitung
+kedalaman kurung dan hanya melihat kata kunci pada kedalaman nol. Perbedaannya penting —
+melonggarkan uji akan membuat penyimpangan WHERE yang sesungguhnya lolos tanpa terlihat, dan
+itulah cacat yang uji ini justru dibuat untuk menangkap.
+
+**Konvensi seam ID yang hampir menyimpang.** Seam pembangkit pengenal mula-mula dinamai
+`NewID()` dengan pembangkit berurut. Modul `komite` dan `registrasi` keduanya memakai `New()`
+dengan pengenal acak kriptografis, dan yang acak itu dipakai PRODUKSI. Disamakan sebelum
+dirakit — nama yang berbeda akan membuat seam yang sama tampak seperti seam yang lain.
+
+### 39.8 Perubahan basis data, API, komponen, dan dependensi
+
+| Jenis | Isi |
+|---|---|
+| **Basis data** | `migrations/0006_permintaan_klaim.up.sql` — satu tabel baru `POOLDATA.CPNC_PERMINTAAN_KLAIM`, satu indeks unik berbasis fungsi, dua indeks pendukung. **Tidak ada `ALTER` pada objek sistem lama.** Dijalankan EMPAT KALI, sekali per portal (`D-75`) |
+| **API** | 4 rute baru: `GET /api/inbox-close-claim`, `GET …/penyaring`, `GET …/unduh`, `POST …/permintaan` |
+| **Komponen frontend** | modul `inbox-close-claim` (4 berkas); **tidak ada** komponen bersama yang diubah — `DataTable`, `Button`, dan `ErrorMessage` dipakai apa adanya |
+| **Dependensi** | **tidak ada penambahan**, backend maupun frontend |
+| **Konfigurasi** | tidak ada variabel lingkungan baru |
+
+### 39.9 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | **seluruhnya lulus**, termasuk 5 paket modul ini |
+| `gofmt -l` pada modul ini | bersih |
+| `npx vitest run src/modules/inbox-close-claim` | **12 lulus** |
+| `npx tsc --noEmit` | **nol galat dari modul ini** |
+
+**Dua keadaan merah yang SUDAH ADA sebelum sesi ini, dan bukan akibat perubahan ini:**
+
+1. `tsc --noEmit` melaporkan **120 galat** di `master-auto-claim`, `master-bengkel`,
+   `master-panel`, `master-sparepart`, dan `inbox-auto-claim` — berkas yang tidak disentuh
+   sesi ini. Ini sejalan dengan commit `c73c69f` *"fix(build): pisahkan gerbang tipe dari
+   perintah build"*.
+2. `vitest run` penuh melaporkan **29 kegagalan pada 7 berkas**. Dua di antaranya
+   (`inbox-admin`, `riwayat-klaim`) MENGIMPOR `@/app/App`, yang sesi ini ubah — sehingga
+   ketidakterkaitannya tidak boleh diandaikan.
+
+   **Diverifikasi, bukan diasumsikan:** perubahan frontend di-stash
+   (`git stash push -u -- claim-pnc/frontend`), ketiga berkas dijalankan ulang, dan hasilnya
+   **29 kegagalan yang sama persis**. Perubahan lalu dikembalikan (`git stash pop`) dan uji
+   modul ini dijalankan ulang — 12 lulus. Keduanya karena itu pre-existing.
+
+---
+
+## 40. Inbox Close Claim — dua jawaban lanjutan Work Owner (2026-09-23)
+
+Lanjutan §39. Dua pertanyaan terbuka yang saya sampaikan di akhir sesi dijawab, dan keduanya
+mengubah kode — bukan hanya dokumen.
+
+### 40.1 "Klaim tanpa kode status ikut terbaca belum lunas?" — **tidak**
+
+Perilaku yang sudah ada TERNYATA BENAR, dan sekarang punya dasar yang lebih kuat daripada
+`P-5`. Klaim yang `STATUSCLAIM_1`-nya kosong bukan klaim "belum lunas"; ia klaim yang keadaan
+bayarnya **belum diketahui**.
+
+Tidak ada perubahan perilaku. Yang berubah: komentar di `unpaidMatches`, kepala
+`inboxcloseclaim.sql`, dan ujinya kini menyebut **larangan "memperbaikinya"** secara tegas —
+menambahkan `IS NULL OR` akan memasukkan baris yang justru tidak boleh ada di sana, tanpa
+menghasilkan galat apa pun. Pertanyaan terbukanya tertutup.
+
+### 40.2 "Siapa yang melakukan reopen dan copy?" — **`IsGCNMUser`**
+
+Jawaban ini saya periksa sebelum diterapkan, dan hasilnya menuntut satu ronde lagi.
+
+`When/IsGCNMUser-When.xml` ADA di export. Isinya satu kondisi:
+
+```
+pyConditionValue1 = @(Pega-RULES:ExpressionEvaluators).compareTwoValues(1, "=", 2)
+```
+
+**`1 = 2`** — tidak pernah benar. Penelusuran lanjutan: ia dipakai **13 kali** di navigasi
+untuk MENYEMBUNYIKAN butir menu ("Report Adjuster", "My Work", "Calendar", "Lost Adjuster",
+"Inbox Banding Harga Salvage"). Di Pega ia sakelar "jangan tampilkan ini".
+
+Juga diperiksa: tidak ada access group, privilege, atau artefak lain bernama `GCNMUser` —
+rujukannya hanya rule itu, di tiga berkas.
+
+**Yang saya lakukan: melaporkan akibatnya sebelum menerapkan.** Memakainya sebagai penjaga
+membuat ReOpen dan Copy Klaim tidak dapat dipakai siapa pun. Tiga alternatif ditawarkan.
+**Work Owner menegaskan pilihannya** — rule ditiru apa adanya. Keputusan dihormati dan
+diterapkan penuh.
+
+### 40.3 Satu persoalan yang muncul dari penerapannya
+
+Dengan gerbang tertanam mati, **seluruh jalur pengajuan menjadi tidak dapat diuji** —
+gerbangnya menolak sebelum apa pun berjalan. Empat uji HTTP dan sebagian uji usecase langsung
+gagal, dan yang lebih berat: hari gerbang itu dibuka, yang menyala adalah kode yang tidak
+pernah sekali pun dijalankan.
+
+**Penyelesaiannya:** gerbang dijadikan seam (`usecase.Options.CanRequest`) yang **bawaannya
+adalah aturan yang sesungguhnya**. Perakit yang lupa mengisinya mendapat perilaku yang benar,
+bukan yang terbuka — seam yang bawaannya meloloskan adalah seam yang cepat atau lambat akan
+meloloskan sesuatu. Di `cmd/claimpnc` ia tidak diisi.
+
+Tiga uji baru mengunci keadaannya dari tiga lapisan: `TestIsGCNMUserSelaluSalah` (domain),
+`TestRequestDitolakSaatGerbangTertutup` (usecase), dan
+`TestGerbangTertutupMenolakPengajuanDengan403` (transport). Ditambah
+`TestGerbangDiperiksaSebelumKlaimDicari`, yang menjaga keberadaan klaim tidak bocor lewat
+perbedaan galat.
+
+### 40.4 "Siapa yang menjalankan permintaan?" — **belum ada**
+
+Pertanyaan saya sebelumnya bermaksud menanyakan PELAKSANA; jawaban `IsGCNMUser` terbaca
+sebagai PENGAJU. Keduanya ditanyakan terpisah, dan jawabannya: pelaksananya belum ditetapkan,
+dan itu diterima untuk sekarang.
+
+**Dinyatakan tegas di layar** lewat `pelaksana_belum_ada`, dan hanya muncul bila pengajuannya
+terbuka — menampilkan keduanya sekaligus akan membuat pengguna mengira tombolnya mati karena
+pelaksananya belum ada, padahal sebabnya kewenangan.
+
+### 40.5 Perubahan yang dihasilkan
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxcloseclaim/authorization.go` | **baru** — rule, gerbang, dan alasan yang dibaca pengguna |
+| `internal/inboxcloseclaim/errors.go` | `ErrRequestNotAllowed` |
+| `internal/inboxcloseclaim/usecase/service.go` | seam `CanRequest`, penolakan paling awal, method `CanRequest()` |
+| `internal/inboxcloseclaim/http/errors.go` | pemetaan `403` + kode `tidak_berwenang` |
+| `internal/inboxcloseclaim/http/dto.go` | `boleh_mengajukan`, `alasan_tidak_boleh`, `pelaksana_belum_ada` |
+| `internal/inboxcloseclaim/http/handler.go` | mengisi ketiganya dari gerbang yang sama |
+| `repo/memory/memory.go` · `.sql` · uji | keterangan jawaban #1 dipertegas |
+| Frontend `types.ts` · `CloseClaimPage.tsx` · uji | tombol mati beserta alasannya, dua pemberitahuan |
+
+**Uji bertambah dari 12 menjadi 16 di frontend**, dan bertambah empat di backend. Seluruhnya
+lulus; `go build`, `go vet`, dan `go test ./...` bersih.

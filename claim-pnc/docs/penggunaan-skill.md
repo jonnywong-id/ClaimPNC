@@ -3711,3 +3711,173 @@ semuanya. Urutan pemeriksaannya, dari yang paling murah:
 
 Ketiganya bergejala identik: butir menu tampil, tidak dapat diklik, bertanda "belum tersedia".
 Yang membedakan hanya urutan pemeriksaan di atas.
+
+---
+
+## Sesi kedua puluh satu — Modul Inbox Close Claim (2026-09-23)
+
+### Ketersediaan skill pada sesi ini
+
+Registry skill sesi ini diperiksa lebih dulu. Skill `mattpocock-skills:*` — `grilling`,
+`domain-modeling`, `codebase-design`, `tdd`, dan lainnya — **TIDAK TERPASANG** di lingkungan
+ini. Yang tersedia hanyalah skill bawaan Claude Code (`code-review`, `simplify`, `run`,
+`dataviz`, `artifact-*`, dan sejenisnya), tidak satu pun relevan dengan pekerjaan sesi ini.
+
+Ini keadaan yang **berbeda dari sesi-sesi awal**, yang mencatat `grilling` dan
+`domain-modeling` sebagai terpasang. Perubahan itu dinyatakan di sini alih-alih didiamkan,
+supaya catatan skill tidak memberi kesan skill dipanggil padahal tidak.
+
+### Skill yang dipakai: TIDAK ADA — dan itu dinyatakan, bukan disembunyikan
+
+Tidak satu pun skill dipanggil. Yang dipakai adalah **tekniknya**, yang memang sudah menjadi
+cara kerja proyek ini sejak sesi pertama dan tercatat di berkas ini.
+
+### Teknik `grilling` — dipakai tanpa skill-nya
+
+**Kapan.** Sebelum satu baris kode ditulis, dan sekali lagi di tengah setelah jawaban ronde
+pertama diterima.
+
+**Kenapa.** Tugasnya menyebut satu berkas rujukan yang ternyata **tidak ada**. Menuliskan
+modul di atas premis itu tanpa memeriksanya akan menghasilkan layar yang seluruh perilakunya
+karangan — dan karangan yang rapi jauh lebih sulit dibantah daripada karangan yang kasar.
+
+**Keluarannya.** Delapan pertanyaan dalam dua ronde, seluruhnya disertai pilihan jawaban dan
+rekomendasi, seluruhnya dijawab Work Owner. Empat di antaranya mengubah lingkup secara
+material:
+
+| Yang dipertanyakan | Bila tidak ditanyakan |
+|---|---|
+| Sumber data | Modul dibangun di atas `T_CLAIMLIST_ADMIN`, yang **kehilangan satu penyaring** dan 87% barisnya |
+| Aturan ReOpen/Copy | Logika reopen dikarang, lalu terlihat seperti hasil pembacaan export |
+| Titik akhir "Lama Waktu Klaim" | Kolom durasi berisi tanggal, atau berisi angka yang terus tumbuh |
+| Kueri hitung yang menyimpang | Cacat totalnya ikut terbawa ke sistem baru |
+
+**Manfaat yang paling menentukan:** ronde kedua **tidak akan ada** tanpa disiplin ini.
+Jawaban ronde pertama untuk lingkup tulis adalah "keduanya dibangun", dan itu menuntut
+sesuatu yang sudah saya nyatakan tidak tersedia. Alih-alih menerima lalu mengarang,
+penelusuran diulang lebih keras — dan hasilnya nol pada setiap jalur, yang lalu dilaporkan
+apa adanya sebelum bertanya ulang.
+
+### Teknik `domain-modeling` — dipakai tanpa skill-nya
+
+**Kapan.** Saat menamai tipe, sebelum berkas domain ditulis.
+
+**Kenapa.** Layar ini memuat alias paling menyesatkan sejauh ini: **tiga dari sebelas
+kolomnya** dialias dengan nama yang artinya berlawanan dengan isinya — `ReinsurerName` berisi
+PIC Teknik, `MOName` berisi Admin PNC, dan `CoverNo` berisi **tanggal kejadian**. Enam
+properti penyaringnya sama menyesatkan.
+
+**Keluarannya.** Tabel pemetaan alias di `peta-penamaan.md`, dan tidak satu pun alias dibawa
+masuk. Ditambah satu pembedaan yang dipertegas di tipe: `ClaimID` (kunci teknis `PZINSKEY`)
+versus `ClaimNumber` (nomor klaim `PYID`) — di Pega keduanya dialias `CaseID` dan
+`CaseIDView`, dua nama yang hanya berbeda empat huruf untuk dua hal yang sama sekali berbeda.
+
+**Manfaatnya.** Kesalahan yang paling mahal di modul ini bukan salah hitung melainkan salah
+kolom: `TechnicalPIC` dan `AdminPNC` bersebelahan, keduanya teks nama orang, dan tertukarnya
+**tidak akan terlihat**. Komentar tegas pada `scanClaim` lahir dari kesadaran itu.
+
+### Teknik `codebase-design` — dipakai tanpa skill-nya
+
+**Kapan.** Saat memutuskan batas seam, khususnya pemisahan `Repo` dari `RequestRepo`.
+
+**Keluarannya.** Dua seam terpisah meski keduanya melayani satu layar, dan pembelahannya
+mengikuti **kepemilikan tabel**, bukan ukuran berkas: yang satu tidak boleh menulis apa pun,
+yang lain menulis ke tabel milik aplikasi ini sendiri.
+
+**Manfaatnya.** Aturan `P-1` menjadi sifat struktur, bukan kehati-hatian orang yang
+menyuntingnya berikutnya. `Repo` tidak punya satu pun method tulis, dan menambahkannya akan
+terlihat sebagai keputusan sadar di dalam review.
+
+### Satu teknik yang TIDAK dipakai, dan alasannya
+
+`tdd` tidak ditempuh secara harfiah — uji ditulis setelah tiap lapisan, bukan sebelumnya.
+Alasannya jujur: bentuk data dan penyaringnya baru pasti setelah activity Pega dibaca sampai
+habis, dan uji yang ditulis sebelum itu akan menguji bentuk yang ternyata salah.
+
+Yang tetap dipegang dari disiplinnya: **setiap uji menyebut alasan keberadaannya**, dan yang
+menjaga keputusan — bukan sekadar menjalankan kode — ditulis lebih dulu. `query_test.go`
+ditulis sebelum satu baris Go lain diuji, karena ia yang menjaga hal paling berbahaya:
+penomoran bind dan kesamaan WHERE antara kueri daftar dan kueri hitung.
+
+Itu terbayar seketika — lihat di bawah.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+**1. Helper uji yang salah membaca.** `TestListAndCountShareTheSameWhere` gagal pada jalan
+pertama, dan sempat terbaca seperti SQL yang menyimpang. Ternyata `whereClause` mencari
+kemunculan `WHERE` **pertama**, dan yang pertama ada di dalam subkueri label status klaim.
+
+Yang dilakukan: helper-nya diperbaiki supaya menghitung kedalaman kurung, **bukan ujinya
+dilonggarkan**. Melonggarkan uji akan membuat penyimpangan WHERE yang sesungguhnya lolos
+tanpa terlihat — cacat yang uji ini justru dibuat untuk menangkap.
+
+**2. Konvensi seam ID yang hampir menyimpang.** Seam pembangkit pengenal mula-mula dinamai
+`NewID()` dengan pembangkit berurut. Pemeriksaan ke `komite` dan `registrasi` menunjukkan
+keduanya memakai `New()` dengan pengenal acak kriptografis — dan yang acak itu dipakai
+PRODUKSI, bukan hanya uji. Disamakan sebelum dirakit.
+
+**3. Ref yang dipasang pada komponen yang tidak meneruskannya.** Dialog konfirmasi mula-mula
+memindahkan fokus lewat `useRef` ke `<Button>`. `grep forwardRef components/Button.tsx`
+menghasilkan nol — ref itu akan diam-diam tidak berfungsi dan fokusnya tidak pernah pindah.
+Diganti `autoFocus`.
+
+Ketiganya punya pola yang sama: **asumsi tentang kode yang sudah ada, diperiksa sebelum
+dipakai.** Yang ketiga hampir lolos karena ia tidak menghasilkan galat apa pun.
+
+### Satu kebiasaan yang dipakai dan layak dicatat
+
+**Kegagalan uji pre-existing diverifikasi, bukan diasumsikan.** `vitest run` penuh melaporkan
+29 kegagalan, dan dua berkasnya MENGIMPOR `@/app/App` yang sesi ini ubah. Menyatakannya
+pre-existing tanpa bukti akan menjadi klaim yang tidak dapat dipertanggungjawabkan.
+
+Yang dilakukan: perubahan frontend di-stash, ketiga berkas dijalankan ulang, hasilnya **29
+kegagalan yang sama persis**, lalu perubahan dikembalikan dan uji modul ini dijalankan ulang
+untuk memastikan pemulihannya utuh.
+
+### Catatan untuk sesi berikutnya
+
+1. **Skill `mattpocock-skills:*` tidak lagi terpasang.** Bila sesi berikutnya menemukannya
+   tersedia kembali, itu perubahan lingkungan yang layak dicatat — bukan kelalaian sesi ini.
+2. **Gerbang `IsGCNMUser` tertutup, dan itu keputusan — bukan cacat.** ReOpen dan Copy
+   Klaim ditolak untuk setiap pengguna karena rule-nya berisi `1 = 2`. Tiga uji mengunci
+   keadaan itu dari tiga lapisan. Bila kelak gerbangnya dibuka, `TestIsGCNMUserSelaluSalah`
+   yang gagal lebih dulu — itu pengingat, bukan kerusakan.
+
+3. **Dua modul memakai pola penomoran bind yang bertentangan.** `inboxadmin` mengulang nomor
+   penanda; `inboxoutstanding` tidak. Hanya yang kedua yang pernah menyentuh Oracle. Bila
+   `inboxadmin` kelak dirakit, pola itu perlu diperiksa terhadap Oracle sungguhan sebelum
+   dipercaya.
+4. ~~**`unpaidMatches` menyimpan pertanyaan terbuka.**~~ **TERTUTUP** (Work Owner,
+   2026-09-23): klaim tanpa kode status **tidak** boleh terbaca sebagai belum lunas. Perilaku
+   Pega di sini benar, bukan sekadar wajib ditiru — dan kode, SQL, serta ujinya sudah
+   menyebutkan larangan "memperbaikinya".
+
+### Lanjutan sesi kedua puluh satu — dua jawaban Work Owner (2026-09-23)
+
+**Teknik `grilling` dipakai untuk KETIGA kalinya di sesi ini**, dan kali ini pada jawaban —
+bukan pada premis.
+
+Jawaban "yg melakukan reopen dan copy adalah IsGCNMUser" tidak diterapkan begitu saja. Rule
+yang disebut diperiksa lebih dulu, dan isinya `compareTwoValues(1, "=", 2)` — selalu salah.
+Diperiksa pula apakah ada rujukan lain bernama serupa: tidak ada access group, privilege,
+maupun artefak apa pun bernama `GCNMUser`.
+
+Akibatnya dilaporkan sebelum diterapkan — memakainya sebagai penjaga mematikan kedua fitur
+yang baru dibangun — lalu tiga alternatif ditawarkan. Work Owner menegaskan pilihannya, dan
+keputusan itu diterapkan penuh.
+
+**Manfaatnya:** tanpa pemeriksaan itu, salah satu dari dua hal akan terjadi tanpa disadari
+siapa pun. Entah gerbangnya dipasang dan kedua tombol mati tanpa penjelasan apa pun di layar,
+entah "IsGCNMUser" ditafsirkan sendiri sebagai "semua pengguna GCNM" — sebuah keputusan
+kewenangan yang saya karang atas nama Work Owner.
+
+**Satu kesalahan yang hampir terjadi, dan tertangkap oleh penerapannya sendiri.** Gerbang
+mula-mula ditanam mati di dalam usecase. Uji langsung gagal, dan itu mengungkap hal yang
+lebih besar daripada uji yang merah: seluruh jalur pengajuan menjadi tidak dapat diuji, dan
+kode yang menyala pada hari gerbang dibuka adalah kode yang tidak pernah sekali pun
+dijalankan.
+
+Yang dilakukan: gerbang dijadikan seam yang **bawaannya adalah aturan yang sesungguhnya** —
+sehingga perakit yang lupa mengisinya mendapat perilaku yang benar, bukan yang terbuka. Itu
+penerapan langsung prinsip `codebase-design` tentang letak seam: seam ditaruh di tempat yang
+benar-benar bervariasi, dan bawaannya memihak pada keadaan yang aman.

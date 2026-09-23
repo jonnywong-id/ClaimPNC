@@ -1699,3 +1699,93 @@ bukan nama modul, mengikuti `AccountPage` pada `master-rekening` (`D-81`).
 Berkas frontend berbahasa Inggris sesuai `D-80`: `InboxKomitePage.tsx`, `InboxTabs.tsx`,
 `DecisionPanel.tsx`. "Inbox Komite" pada nama folder adalah **nama modulnya**, dan itu satu-satunya
 yang berbahasa Indonesia.
+
+---
+
+## Modul Inbox Close Claim (`MENU_ID 59`)
+
+### Nama folder — Indonesia, mengikuti nama menu (`D-81`)
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxcloseclaim` |
+| Frontend, folder | `src/modules/inbox-close-claim` |
+| Rute antarmuka | `/inbox-close-claim` |
+| Jalur API | `/api/inbox-close-claim` |
+
+Nama menunya sendiri berbahasa Inggris — "Inbox Close Claim" — sehingga nama folder dan nama
+modul kebetulan sama bentuknya. Yang mengikat tetap `D-81`: nama folder mengikuti **nama
+butir menu**, bukan nama harness-nya.
+
+Harness-nya sendiri, `InboxCloseClaim_Harness`, **tidak ada di export**. Nama yang dipakai
+karena itu diambil dari `Database/m_menu_aplikasi_pnc.csv:59` dan dari judul yang tertulis di
+dalam `Section/InboxManagerReopen1_Sec-Section.xml`.
+
+> Perhatikan: nama SECTION-nya menyebut "ManagerReopen", bukan "CloseClaim". Modul ini
+> sengaja TIDAK dinamai menurut section itu — yang dibaca Work Owner dan yang tertulis di
+> menu adalah "Inbox Close Claim".
+
+### Alias Pega yang sengaja TIDAK dibawa (`D-19`)
+
+Layar ini memuat alias paling menyesatkan di antara modul mana pun sejauh ini: **tiga dari
+sebelas kolomnya** dialias dengan nama yang artinya berlawanan dengan isinya.
+
+| Alias kueri lama | Isinya sebenarnya | Nama di sini |
+|---|---|---|
+| `ReinsurerName` | PIC Teknik (`USERTEKNIS_1`) | `TechnicalPIC` |
+| `MOName` | Admin PNC (`PXCREATEOPNAME`) | `AdminPNC` |
+| `CoverNo` | **tanggal kejadian** (`DATEOFLOSS_1`) | `LossDate` |
+| `CustomerName` | nama tertanggung (`QQNAME`) | `InsuredName` |
+| `CaseID` | kunci teknis (`PZINSKEY`) | `ClaimID` |
+| `CaseIDView` | nomor klaim (`PYID`) | `ClaimNumber` |
+| `Country` | pencacah hasil pada kueri hitung | — |
+
+Enam properti `TempFilter.*` pada activity lama juga tidak dibawa namanya, dan ketujuhnya
+sama menyesatkan: `TempFilter.CaseID` berisi penyaring **No Polis**, `TempFilter.City` berisi
+penyaring **No Klaim**, `TempFilter.CityID` berisi penyaring **PIC**, `TempFilter.District`
+berisi penyaring **transfer kasir**, dan `TempFilter.DistrictID` berisi penyaring **status
+bayar**.
+
+### Nama tipe dan isian — Inggris (`D-80`)
+
+| Pega | Di sini |
+|---|---|
+| baris klaim tutup | `ClosedClaim` |
+| permintaan atas klaim | `ClaimRequest` |
+| jenis permintaan | `RequestKind` — `RequestReopen`, `RequestCopy` |
+| keadaan permintaan | `RequestStatus` — `RequestPending`, `RequestExecuted`, `RequestCanceled` |
+| penyaring lini bisnis | `BusinessLine` |
+| penyaring transfer kasir | `TransferStatus` |
+| penyaring status bayar | `PaymentStatus` |
+
+### Nama kolom basis data — tetap Indonesia
+
+Tabel baru `POOLDATA.CPNC_PERMINTAAN_KLAIM` memakai nama kolom Indonesia, mengikuti
+pengecualian `D-80` yang sama dengan `CPNC_KOMITE_KEPUTUSAN`:
+
+`ID` · `JENIS` · `CASE_ID` · `NOMOR_KLAIM` · `ALASAN` · `STATUS` · `EFEK_STATUS_KERJA` ·
+`EFEK_STATUS_KLAIM` · `LINGKUP_SALIN` · `ACTOR_LOGIN` · `ACTOR_NAMA` · `PADA`
+
+Nilai kolom `JENIS` dan `STATUS` juga berbahasa Indonesia (`reopen`/`salin`,
+`menunggu`/`dijalankan`/`dibatalkan`) karena ia sama dengan nilai pada kontrak API.
+
+### Nama kueri `.sql`
+
+`close_claim_list` · `close_claim_count` · `close_claim_exists` · `request_insert` ·
+`request_pending_for` · `request_check_table`
+
+### Nama field JSON — tetap Indonesia
+
+`klaim_id` · `nomor_klaim` · `nomor_polis` · `nama_tertanggung` · `nama_bisnis` ·
+`sumber_bisnis` · `nama_cabang` · `pic_teknik` · `admin_pnc` · `tanggal_pendaftaran` ·
+`tanggal_kejadian` · `tanggal_tutup` · `lama_hari` · `status_tampil` · `status_klaim_kode` ·
+`status_klaim_label` · `sudah_transfer` · `permintaan_tertunda` · `permintaan_terbaca` ·
+`selisih_terencana`
+
+### Nama tipe frontend
+
+`KlaimTutup` · `PermintaanTertunda` · `DaftarResponse` · `PenyaringResponse` ·
+`PenyaringKlaimTutup` · `JenisPermintaan` · `PermintaanResponse`
+
+Komponennya: `CloseClaimPage` · `RequestDialog` · `PanelPenyaring` · `BarisTindakan` ·
+`LamaKlaim` · `SelisihTerencana`

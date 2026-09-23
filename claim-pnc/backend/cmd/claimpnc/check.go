@@ -13,6 +13,7 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/masterpenyebabkerugian"
@@ -30,6 +31,7 @@ import (
 
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
+	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -109,6 +111,10 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
+	checkCloseClaim(ctx,
+		inboxcloseclaimsql.NewRepo(primary),
+		inboxcloseclaimsql.NewRequestRepo(primary),
+		print)
 
 	print("")
 	if login == "" {
@@ -1265,4 +1271,68 @@ func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, print
 		print("            %-16s %-8s panel %-4s aging %-5s %s",
 			nomor, c.DisplayStatus(), c.GroupPanel, aging, c.CurrentStage)
 	}
+}
+
+// checkCloseClaim menjalankan kueri Inbox Close Claim terhadap Oracle sungguhan, lalu
+// memeriksa tabel permintaannya secara TERPISAH.
+//
+// # Kenapa dua pemeriksaan, bukan satu
+//
+// Keduanya dapat gagal karena sebab yang sama sekali berbeda, dan menyatukannya akan
+// menyembunyikan yang kedua:
+//
+//	kueri daftar     membaca tabel MILIK PEGA yang sudah ada — yang dapat gagal hanyalah
+//	                 hak SELECT-nya, atau kuerinya sendiri yang keliru
+//	tabel permintaan dibuat migrasi `0006` yang BELUM dijalankan DBA di mana pun, sehingga
+//	                 kegagalannya hari ini adalah keadaan yang DIHARAPKAN
+//
+// Layar tetap berguna meski yang kedua gagal: daftarnya tampil, hanya penanda "permintaan
+// terkirim" yang tidak muncul dan kedua tombolnya menjawab galat. Perilaku itu disengaja dan
+// diuji (`usecase.ListResult.PendingLookupError`).
+func checkCloseClaim(
+	ctx context.Context,
+	repo *inboxcloseclaimsql.Repo,
+	requests *inboxcloseclaimsql.RequestRepo,
+	print func(string, ...any),
+) {
+	// Tanpa penyaring: memeriksa tabelnya, bukan kewenangan seseorang.
+	page, err := repo.List(ctx, inboxcloseclaim.Filter{Limit: 5})
+	if err != nil {
+		print("  [BELUM] Klaim tutup tidak dapat dibaca: %v", err)
+		print("            Kuerinya menempuh DATAPEGA.PC_ASM_FW_GCNMFW_WORK,")
+		print("            POOLDATA.BUSINESS, POOLDATA.BUSINESSGROUP, POOLDATA.V_STS_CLAIM,")
+		print("            dan POOLDATA.T_CLAIM_ADJUSTMENT. Kelimanya milik sistem lama dan")
+		print("            tidak dibuat migrasi mana pun — yang kurang hampir pasti hak")
+		print("            SELECT atas salah satunya.")
+	} else {
+		print("  [ok]    Klaim tutup dapat dibaca: %d klaim sudah tutup", page.Total)
+		for _, c := range page.Claims {
+			nomor := c.ClaimNumber
+			if nomor == "" {
+				nomor = "(belum bernomor)"
+			}
+			transfer := "belum transfer"
+			if c.TransferredToCashier {
+				transfer = "sudah transfer"
+			}
+			// Nomor polis dan nama tertanggung SENGAJA tidak dicetak (`D-69`) — keluaran
+			// mode periksa sering disalin ke tiket dan percakapan.
+			print("            %-16s %-7s panel %-4s %-15s %s",
+				nomor, c.DisplayStatus(), c.GroupPanel, transfer, c.ClaimStatusLabel)
+		}
+	}
+
+	if err := requests.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.CPNC_PERMINTAAN_KLAIM tidak dapat dibaca: %v", err)
+		print("            Tabelnya dibuat migrasi 0006, yang BELUM dijalankan di lingkungan")
+		print("            mana pun. Sampai itu terjadi: daftar klaim tutup TETAP tampil,")
+		print("            tetapi penanda permintaan tidak muncul dan tombol ReOpen maupun")
+		print("            Copy Klaim menjawab galat.")
+		print("            Migrasi ini dijalankan EMPAT KALI — sekali per portal (D-75).")
+		return
+	}
+	print("  [ok]    POOLDATA.CPNC_PERMINTAAN_KLAIM dapat dibaca")
+	print("            Catatan: akun aplikasi hanya perlu SELECT dan INSERT. Hak UPDATE dan")
+	print("            DELETE sengaja TIDAK diberikan — yang memindahkan STATUS ke")
+	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
 }

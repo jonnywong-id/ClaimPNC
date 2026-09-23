@@ -6838,3 +6838,393 @@ Komite dan Ambang Komite punya rute tetapi tidak punya butir menu.
 Menambahkan butir menu untuk keduanya akan **mengarang data master** yang tidak ada di Pega —
 melanggar larangan dummy logic. Keduanya tetap dicapai lewat layar Inbox Komite atau URL
 langsung, persis seperti sistem lama.
+
+---
+
+## 41. Modul Inbox Close Claim (2026-09-23, sesi kedua puluh satu)
+
+Menu `MENU_ID 59` "Inbox Close Claim", pengganti harness `InboxCloseClaim_Harness`.
+Prosesnya ada di [`catatan-pengembangan.md`](catatan-pengembangan.md) §39; berkas ini
+merekam **keputusannya**.
+
+### 41.1 Pertanyaan konfirmasi dan jawabannya
+
+Delapan diajukan dalam dua ronde, seluruhnya sebelum satu baris kode ditulis.
+
+**Ronde pertama** — lingkup dan sumber data:
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tabel mana yang dibaca | **`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`**, sama dengan kueri lamanya |
+| 2 | Lingkup tulis | **ReOpen dan Copy Klaim keduanya dibangun** |
+| 3 | Kolom "Lama Waktu Klaim" | **Hitung umur dalam hari** |
+| 4 | Kueri hitung yang kehilangan penyaring | **Samakan dengan kueri daftar** |
+
+**Ronde kedua** — setelah dilaporkan bahwa aturan ReOpen/Copy tidak ada di export:
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 5 | Sumber aturannya | **Work Owner menyebutkannya sekarang** |
+| 6 | Kewenangan tulis terhadap `P-1` | **Go menulis lewat tabel permintaan miliknya sendiri** |
+| 7 | Efek ReOpen | status kerja + status klaim + pencacah |
+| 8 | Lingkup Copy Klaim | polis + objek + coverage, **tanpa nilai** |
+
+### 41.2 Harness rujukan tidak ada — dan apa yang dipakai sebagai gantinya
+
+`InboxCloseClaim_Harness` dirujuk butir menu tetapi **nol berkas** di antara 74 harness yang
+diekspor. Ia salah satu dari sembilan yang sudah tercatat di
+`frontend/src/app/menu/registry.ts:29` — `K-33` dan `R-16`.
+
+**Keputusan: dibangun dari delapan artefak yang memang ada**, mengikuti preseden
+`InboxOutstanding_Harness`. Yang menentukan modul ini tetap dapat dibangun dengan setia
+adalah `Activity/GCNMGetManagerReopenCase_Act-Act.xml`: ia menyebut **keenam penyaringnya
+satu per satu** beserta potongan SQL yang disisipkannya, sehingga panel penyaring yang
+hilang (`FilterDashboardClaimclose`) tidak perlu ditebak sama sekali.
+
+**Konsekuensi untuk gerbang 1:** daftar, penyaring, paginasi, dan ekspor dapat diuji setara
+dengan Pega — kedua kuerinya ada. Kedua aksi tulisnya **tidak dapat**, dan itu dibahas di
+§41.5.
+
+### 41.3 Sumber data: tabel Pega, bukan tabel datar
+
+`POOLDATA.T_CLAIMLIST_ADMIN` ditetapkan Work Owner 2026-09-21 sebagai pengganti
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, dan modul Inbox Outstanding sudah memakainya. Layar ini
+**tidak**.
+
+Dua alasan, keduanya terukur:
+
+1. **`STATUSCLAIM_1` belum ada di sana.** Ia baru ditambahkan `migrations/0005` tahap 1, yang
+   belum dijalankan DBA. Kolom itulah yang dibandingkan penyaring **Status Bayar** terhadap
+   `'1163'` — tanpa kolomnya, satu dari enam penyaring tidak dapat dibangun sama sekali.
+2. **Isinya 1.014 dari 7.703 klaim (13%).** Untuk layar yang isinya justru klaim LAMA, itu
+   berarti sebagian besar barisnya hilang — dan hilangnya tidak terlihat sebagai galat,
+   hanya sebagai daftar yang lebih pendek.
+
+Pola tiga tabel yang dipakai — objek kerja + `BUSINESS` + `BUSINESSGROUP` — sama dengan
+`inboxadmin`, `inboxlaporanklaim`, `inboxmanagerreceivepucl`, dan `komite`.
+
+**`INNER JOIN` ke `BUSINESSGROUP` dipertahankan meski tak satu pun kolomnya dibawa.** Ia
+MENYARING: klaim yang lini bisnisnya tidak punya baris di `BUSINESS` tidak muncul.
+Membuangnya akan menambah baris tanpa satu pun pesan galat.
+
+### 41.4 Penyaring lini bisnis TIDAK memakai ulang modul lain
+
+Ini keputusan yang paling mudah dilanggar oleh orang berikutnya, karena ketiganya bernama
+sama dan tampak dapat dipakai ulang.
+
+| Modul | BONDING | NONMBU |
+|---|---|---|
+| **Inbox Close Claim** | `businessgroupid` **IN** | `('003','004','006')` |
+| Inbox Admin | `businessgroupid` **IN** | `('003','004','006','009')` |
+| Inbox Outstanding | `businessgroupid` **NOT IN** | `('003','004','006')` |
+
+Ketiganya disalin dari activity-nya masing-masing dan memang berbeda di Pega.
+
+**Keputusan: `inboxcloseclaim.BusinessLine` berdiri sendiri**, tidak memakai ulang
+`inboxoutstanding.ScopeFor` maupun `inboxadmin.BusinessLine`. Kesamaan namanya kebetulan;
+isinya tidak sama, dan menyeragamkannya akan menampilkan **kebalikan** dari lini yang diminta
+pengguna tanpa satu pun galat.
+
+Dijaga `TestBondingFiltersWithIN` dan `TestNonMBUDoesNotInclude009` — keduanya menyebut modul
+pembanding di dalam komentarnya, supaya penyeragaman yang tampak rapi tertangkap saat
+ditulis.
+
+### 41.5 ReOpen dan Copy Klaim mencatat PERMINTAAN, bukan mengubah klaim
+
+**Aturannya bukan hasil pembacaan export.** Penelusuran seluruh export menghasilkan nol pada
+setiap jalur: ketiga rule modalnya tidak ada, tidak ada rule yang menulis status `1164`,
+tidak ada yang menyentuh `PYREOPENCOUNT`/`PYREOPENTIMESTAMP`, tidak ada activity Copy Klaim,
+dan `SaveReOpenAct` yang memang ada ternyata satu langkah `Property-Set` yang tidak menulis
+apa pun.
+
+Reopen di sistem lama adalah **mekanisme platform Pega** — `PYREOPENTIMESTAMP` terisi pada 47
+klaim, dan `UpdateStatus` OOTB menyimpan catatan *"A resolved work object should be reopened
+first"*.
+
+**Keputusan Work Owner 2026-09-23**, dicatat sebagai keputusannya dan bukan sebagai temuan:
+
+| Aksi | Efek yang dikehendaki |
+|---|---|
+| **ReOpen** | `PYSTATUSWORK` ke `'New'` · `STATUSCLAIM_1` ke `'1164'` (Reopen Claim) · `PYREOPENCOUNT` bertambah satu · `PYREOPENTIMESTAMP` diisi |
+| **Copy Klaim** | salin polis, objek pertanggungan, dan coverage; nilai estimasi/usulan/akseptasi/pembayaran **tidak** disalin. Klaim baru bernomor sendiri (`D-71`), mulai dari tahap registrasi |
+
+**Kewenangan tulisnya menempuh tabel permintaan, bukan klaimnya.** `P-1` dan `ADR-0004`
+menetapkan satu tabel ditulis satu sistem, dan `PC_ASM_FW_GCNMFW_WORK` hari ini ditulis Pega.
+Work Owner memilih: aplikasi ini menulis `POOLDATA.CPNC_PERMINTAAN_KLAIM` — tabelnya sendiri
+— dan eksekusinya tetap di Pega.
+
+Dengan begitu `P-1` utuh, jejak audit `S-5` terpenuhi, dan tidak ada dua sistem yang saling
+menimpa — kegagalan yang bila terjadi TIDAK menghasilkan galat apa pun, hanya data yang
+berubah sendiri.
+
+**Konsekuensi yang HARUS diketahui sebelum modul ini menyala di produksi:**
+
+1. **Klaim tidak berubah saat tombolnya ditekan.** Barisnya tetap tampil. Layar karena itu
+   WAJIB menandai baris yang permintaannya sudah terkirim — dan penanda itu **menggantikan**
+   tombolnya, bukan berdampingan dengannya.
+2. **Siapa yang menjalankan permintaan, dan seberapa sering, BELUM ditetapkan.** Sampai itu
+   ada, barisnya menumpuk dalam keadaan `menunggu` dan tidak ada yang terjadi.
+3. **Tidak ada pemberitahuan otomatis** kepada pemohon saat permintaannya dijalankan.
+
+Ketiganya dicatat di kepala `migrations/0006` supaya terbaca DBA sekaligus.
+
+### 41.6 Niat ikut disimpan pada setiap baris permintaan
+
+`EFEK_STATUS_KERJA`, `EFEK_STATUS_KLAIM`, dan `LINGKUP_SALIN` disimpan pada barisnya meski
+aturannya konstan di dalam kode.
+
+**Alasannya:** supaya permintaan yang dijalankan bulan depan dijalankan menurut aturan yang
+berlaku **saat ia diajukan**. Bila Work Owner kelak mengubah aturannya, baris lama tetap
+menyimpan niat aslinya, dan yang menjalankannya tidak perlu menebak aturan mana yang berlaku.
+Menyimpan aturan hanya di dalam kode membuat jejaknya hilang begitu kodenya berubah.
+
+Ini penting justru karena aturannya **bukan** dari export: ia keputusan yang dapat berubah,
+tidak seperti perilaku yang disalin.
+
+### 41.7 Satu permintaan menunggu per (jenis, klaim)
+
+Ditegakkan **indeks unik berbasis fungsi**, bukan constraint unik biasa:
+
+```sql
+CREATE UNIQUE INDEX POOLDATA.CPNC_PERMINTAAN_KLAIM_UK_PENDING
+    ON POOLDATA.CPNC_PERMINTAAN_KLAIM (
+        CASE WHEN STATUS = 'menunggu' THEN JENIS   END,
+        CASE WHEN STATUS = 'menunggu' THEN CASE_ID END
+    );
+```
+
+Yang harus unik bukan `(JENIS, CASE_ID)` — sebuah klaim boleh dibuka kembali hari ini dan
+diminta lagi tahun depan — melainkan `(JENIS, CASE_ID)` **di antara yang masih menunggu**.
+Oracle tidak mengindeks baris yang seluruh kunci indeksnya NULL, sehingga baris yang sudah
+dijalankan keluar dari indeks dengan sendirinya.
+
+**Kenapa ini bukan kerapian.** Lapisan usecase sudah memeriksanya lebih dulu, tetapi
+pemeriksaan dan penyimpanannya BUKAN satu operasi atomik: dua tab yang terbuka, keduanya
+ditekan, dapat lolos keduanya. Pada `salin`, dua baris yang lolos berarti **dua klaim baru
+dari satu tombol**.
+
+Bentroknya diterjemahkan menjadi `409` beserta pesan yang dapat dibaca, lewat konstanta
+`sqlstore.UniqueKeyName` yang namanya sama dengan nama constraint di migrasi.
+
+### 41.8 Tiga selisih terencana, dinyatakan DI LAYAR
+
+`D-54` menetapkan selisih di luar 13 butir `P-5` menuntut persetujuan Work Owner tertulis.
+Ketiganya sudah disetujui 2026-09-23, dan dikirim ke layar lewat `selisih_terencana` —
+**bukan disembunyikan sebagai detail teknis**.
+
+| # | Selisih | Sebabnya |
+|---|---|---|
+| 1 | Kolom "Lama Waktu Klaim" berisi **umur dalam hari** | Di Pega ia terikat `.pxCreateDateTime` berformat `pxDateTime` — tanggal pendaftaran, untuk kedua kalinya |
+| 2 | Jumlah total **mengikuti penyaring Status Bayar** | `GCNMCountCloseClaim` kehilangan `{ASIS:TempFilter.DistrictID}`, sehingga totalnya di Pega tidak cocok dengan barisnya |
+| 3 | ReOpen dan Copy Klaim mencatat **permintaan** | `P-1` — lihat §41.5 |
+
+Menyatakannya di layar itulah yang membuat keputusan itu terlihat oleh orang yang **memakai**
+layarnya, bukan hanya oleh yang membaca dokumen.
+
+### 41.9 Titik akhir "Lama Waktu Klaim" — dan dua kolom yang ditambahkan
+
+Work Owner menetapkan "hitung umur dalam hari" tanpa menyebut titik akhirnya. Yang dipakai:
+**sampai klaim ditutup**, bukan sampai hari ini — klaim yang tutup tiga tahun lalu bukan klaim
+berumur seribu hari.
+
+Urutan sumbernya:
+
+| # | Kolom | Terisi pada |
+|---|---|---|
+| 1 | `CLOSECLAIMDATE_1` | 514 klaim — tanggal penutupan menurut bisnis |
+| 2 | `PYRESOLVEDTIMESTAMP` | 3.142 klaim — waktu objek kerjanya diselesaikan Pega |
+| 3 | waktu sekarang | bila keduanya kosong |
+
+**Kedua kolom pertama TIDAK ada di kueri lama** dan sengaja ditambahkan; keduanya memang ada
+di tabel. Baris yang jatuh ke cadangan ketiga ditandai berbeda di layar (`900 hari*`), karena
+"dihitung sampai hari ini" adalah arti yang berbeda dari lamanya klaim berjalan.
+
+### 41.10 Penyaring "BELUM LUNAS" membuang baris tanpa kode status — ditiru apa adanya
+
+`A.STATUSCLAIM_1 <> '1163'`. Di Oracle, `NULL <> '1163'` bernilai UNKNOWN, dan baris
+ber-UNKNOWN dibuang WHERE. Jadi klaim yang kode statusnya kosong **hilang** saat penyaring
+"BELUM LUNAS" dipakai — meski secara bisnis ia jelas belum lunas.
+
+**Keputusan: ditiru apa adanya** — dan sejak 2026-09-23 alasannya lebih kuat daripada `P-5`.
+
+Ditanyakan tegas kepada Work Owner apakah klaim tanpa kode status seharusnya ikut terbaca
+sebagai belum lunas. **Jawabannya: tidak.**
+
+Artinya perilaku Pega di sini **benar**, bukan sekadar perilaku yang wajib ditiru. Klaim yang
+kode statusnya kosong bukan klaim "belum lunas"; ia klaim yang keadaan bayarnya **belum
+diketahui**, dan menempatkannya di bawah penyaring "Belum Lunas" akan menyatakan sesuatu yang
+tidak diketahui sebagai fakta.
+
+Ia ditiru **tegas**, bukan kebetulan: `unpaidMatches` di penyimpanan memori memeriksa kode
+kosong secara eksplisit, kepala `inboxcloseclaim.sql` menyebutnya beserta larangan
+"memperbaikinya", dan `TestUnpaidFilterDropsRowsWithoutStatusCode` menjaganya. Menambahkan
+`IS NULL OR` akan memasukkan baris yang justru tidak boleh ada di sana — dan penambahannya
+tidak menghasilkan galat apa pun.
+
+**Pertanyaan terbuka yang sebelumnya tercatat di sini: TERTUTUP** (Work Owner, 2026-09-23).
+
+### 41.11 Penomoran bind mengikuti pola yang TERBUKTI menyentuh Oracle
+
+Dua modul melakukannya berbeda, dan keduanya tidak dapat benar bersamaan:
+
+| Modul | Pola | Sudah menyentuh Oracle? |
+|---|---|---|
+| `inboxoutstanding` | satu nomor per KEMUNCULAN | **ya** — terpasang di `cmd/claimpnc` |
+| `inboxadmin` | nomor diulang, nilai dikirim sekali | **tidak** — modulnya belum dirakit |
+
+**Keputusan: mengikuti `inboxoutstanding`**, ditambah satu aturan: nomornya ditulis **menaik
+sesuai urutan kemunculan** di dalam teks, sehingga penafsiran driver mana pun — menurut nomor
+atau menurut urutan kemunculan — menghasilkan pengikatan yang sama.
+
+Akibatnya nilai lini bisnis dikirim lima kali, status transfer tiga kali, status bayar lima
+kali. Kesesuaian jumlahnya dijaga `TestFilterArgsMatchesBindCount` dan
+`TestBindMarkersAreUniqueAndAscending`.
+
+### 41.12 Kunci klaim di BADAN permintaan, bukan di jalur URL
+
+Kunci warisan berbentuk `ASM-FW-GCNMFW-WORK PNC-9001` — **mengandung spasi**, dan nama kelas
+internal Pega di dalamnya.
+
+**Keputusan: satu endpoint `POST /api/inbox-close-claim/permintaan`** yang melayani kedua
+aksi, dengan `jenis` dan `klaim_id` di badan permintaan.
+
+Dua alasan: penyandian jalur URL yang keliru di satu sisi menghasilkan "klaim tidak
+ditemukan" alih-alih galat yang jelas; dan `alasan` yang boleh sepanjang 1.500 karakter
+memang tempatnya di badan permintaan.
+
+Memisahkannya menjadi dua handler ditolak: keduanya menempuh pemeriksaan, penyimpanan, dan
+penolakan yang sama persis, dan menggandakannya membuka celah keduanya menyimpang.
+
+### 41.13 Daftar tetap tampil meski tabel permintaan belum ada
+
+Migrasi `0006` belum dijalankan DBA di lingkungan mana pun, sehingga pembacaan permintaan
+akan **gagal di setiap portal hari ini**.
+
+**Keputusan: kegagalan itu tidak menghentikan layar.** Daftarnya tetap tampil, penanda
+permintaan tidak muncul, dan `permintaan_terbaca: false` dikirim ke layar yang menyatakannya
+kepada pengguna.
+
+Mengembalikannya sebagai galat berarti layar ini **mati total** sampai perubahan skema
+selesai — padahal daftarnya sendiri sudah dapat dipakai dan tidak menyentuh tabel itu sama
+sekali.
+
+Kegagalannya tetap dicatat di log lewat `logPendingLookupFailure`, yang WAJIB dipanggil pada
+setiap jalur yang memakai hasilnya. Dijaga `TestListSurvivesMissingRequestTable`.
+
+### 41.14 Yang TIDAK dibangun, dan alasannya
+
+| Tidak dibangun | Alasan |
+|---|---|
+| Tautan `.CaseIDView` ke layar detail | Membuka harness `ViewTempDetailClaim`, milik modul lain yang belum ada |
+| Kotak centang "Pilih" | Diganti tombol per baris — pilihan dan tindakan tidak lagi terpisah, sehingga tidak mungkin menekan ReOpen tanpa menyadari baris mana yang dipilih |
+| Pembatalan permintaan | Aplikasi tidak punya hak `UPDATE` atas tabelnya; yang membatalkan adalah pelaksana |
+| Pemeriksaan peran per menu | `TKT-F3-005`, masih terhalang `TKT-F3-004` |
+
+### 41.15 Kewenangan: penjaganya `IsGCNMUser`, dan rule itu SELALU SALAH
+
+Ditanyakan siapa yang boleh melakukan ReOpen dan Copy Klaim. Jawaban Work Owner 2026-09-23:
+**`IsGCNMUser`**.
+
+Rule itu ADA di export, dan isinya satu kondisi tunggal (`When/IsGCNMUser-When.xml`):
+
+```
+pyConditionValue1 = @(Pega-RULES:ExpressionEvaluators).compareTwoValues(1, "=", 2)
+pyLogic           = A
+```
+
+Yaitu **`1 = 2`** — kondisi yang tidak pernah benar. Di sistem lama ia dipakai **13 kali** di
+navigasi untuk MENYEMBUNYIKAN butir menu ("Report Adjuster", "My Work", "Calendar",
+"Lost Adjuster", "Inbox Banding Harga Salvage"); ia sakelar "jangan tampilkan ini", bukan
+pemeriksaan peran.
+
+**Akibatnya dinyatakan lebih dulu kepada Work Owner:** memakainya sebagai penjaga membuat
+kedua tombol tidak dapat dipakai SIAPA PUN. Tiga alternatif ditawarkan — dibaca sebagai
+istilah bisnis "pengguna aplikasi GCNM", dipakai daftar empat access group yang menjaga butir
+menunya, atau Work Owner menyebutkan perannya sendiri.
+
+**Work Owner menegaskan pilihannya: rule ditiru apa adanya (`P-5`).** Keputusan itu dihormati
+dan diterapkan penuh.
+
+**Satu hal yang perlu dicatat supaya tidak salah dibaca kelak:** rule ini **tidak** menjaga
+kedua tombol di `Section/InboxManagerReopen1_Sec-Section.xml`. Di sana tombolnya tidak punya
+penjaga visibilitas sama sekali. Menjadikannya penjaga di sini karena itu **keputusan Work
+Owner**, bukan peniruan perilaku layar lama.
+
+#### Bagaimana ia diterapkan
+
+| Lapisan | Perilaku |
+|---|---|
+| Domain | `EvaluateIsGCNMUser()` menuliskan kedua angkanya apa adanya; `CanRequestAction()` memakainya |
+| Usecase | menolak dengan `ErrRequestNotAllowed` **sebelum** klaimnya dicari |
+| Transport | `403` beserta alasan yang datang dari domain, dan `boleh_mengajukan: false` pada daftar |
+| Layar | kedua tombol **dimatikan beserta alasannya**, ditambah pemberitahuan di kepala layar |
+
+**Kenapa diperiksa sebelum klaimnya dicari.** Memeriksanya belakangan berarti pemanggil yang
+tidak berwenang tetap dapat menanyakan keberadaan sebuah klaim lewat perbedaan galat yang ia
+terima — "tidak ditemukan" untuk kunci yang salah, "tidak berwenang" untuk kunci yang benar.
+Perbedaan itu cukup untuk menebak nomor klaim satu per satu. Dijaga
+`TestGerbangDiperiksaSebelumKlaimDicari`.
+
+**Kenapa tombolnya dimatikan, bukan disembunyikan.** Kolom "Tindakan" yang kosong tanpa sebab
+yang terbaca akan dilaporkan sebagai fitur yang hilang. Tombol mati yang menjelaskan dirinya
+sendiri lebih jujur daripada ruang kosong.
+
+#### Gerbangnya seam, dan itu keputusan tersendiri
+
+`usecase.Options.CanRequest` dapat diisi, dan bawaannya adalah aturan yang sesungguhnya.
+
+**Alasannya bukan melonggarkan aturan.** Tanpa seam ini, seluruh jalur pengajuan menjadi
+tidak dapat diuji: gerbangnya menolak sebelum apa pun berjalan, sehingga pemeriksaan klaim,
+pencatatan niat, penolakan permintaan ganda, dan pemetaan galatnya tidak pernah tersentuh
+satu uji pun.
+
+Akibatnya bukan sekadar cakupan uji yang turun. Hari ketika Work Owner membuka gerbangnya,
+yang menyala adalah kode yang **tidak pernah sekali pun dijalankan** — dan itu justru saat
+cacatnya paling mahal, karena kedua aksi menyentuh klaim yang sudah tutup.
+
+Di `cmd/claimpnc` seam itu **tidak diisi**, sehingga yang berlaku di aplikasi sungguhan tetap
+aturan yang sesungguhnya. Dijaga tiga uji: `TestIsGCNMUserSelaluSalah` (domain),
+`TestRequestDitolakSaatGerbangTertutup` (usecase), dan
+`TestGerbangTertutupMenolakPengajuanDengan403` (transport).
+
+#### Cara menyalakannya kelak
+
+Ganti isi `EvaluateIsGCNMUser` dengan aturan yang sesungguhnya, lalu hapus
+`TestIsGCNMUserSelaluSalah` yang sengaja mengunci keadaan hari ini. Tidak ada tempat lain
+yang perlu disentuh.
+
+### 41.16 Pelaksana permintaan BELUM ADA — dan layar menyatakannya
+
+Ditanyakan siapa yang MENJALANKAN permintaan yang sudah tercatat, mengubah klaimnya di sisi
+Pega. Jawaban Work Owner 2026-09-23: **belum ada pelaksananya**, dan itu diterima untuk
+sekarang.
+
+**Keputusan: dinyatakan tegas di layar**, lewat `pelaksana_belum_ada`. Pengguna yang
+mengajukan lalu menunggu perubahan yang tidak akan datang akan melaporkannya sebagai
+kegagalan sistem — dan yang ditelusuri orang berikutnya adalah cacat yang tidak ada.
+
+Keterangan itu muncul **hanya bila pengajuannya terbuka**. Menampilkan keduanya sekaligus
+akan membuat pengguna mengira tombolnya mati karena pelaksananya belum ada, padahal sebabnya
+kewenangan. Dijaga `TestDaftarMenyatakanPengajuanTertutup` dan
+`TestDaftarMenyatakanPelaksanaBelumAda`.
+
+**Akibat yang berlaku hari ini:** karena pengajuannya sendiri tertutup (§41.15), tidak akan
+ada baris permintaan yang tercatat sama sekali. Kedua keterangan ini baru saling bergantian
+ketika gerbang §41.15 dibuka.
+
+### 41.17 Kewenangan menu: yang masih belum ada
+
+Di Pega, butir menu ini dijaga `When/IsManagerPNC_CLOSE-When.xml` — empat access group
+(`Administrators`, `CaseManager`, `PncManagerAdmin`, `PNCKomiteTeknik`) **ditambah tiga
+Operator ID perorangan** yang namanya tertanam di dalam rule. Ketiga nama itu tidak dibawa
+(`D-15`); penggantinya `M_OTORISASI_PNC`, yang sudah menentukan siapa **melihat** butirnya.
+
+**Yang belum ada: pemeriksaan di endpoint.** Sampai `TKT-F3-005` dikerjakan, siapa pun yang
+punya sesi dapat memanggil `POST /permintaan`.
+
+Taruhannya di sini lebih besar daripada di layar yang hanya membaca, dan perlu dinyatakan
+terbuka: kedua aksinya menyentuh klaim yang **sudah tutup** — sebagian di antaranya sudah
+dibayar. `D-59` sudah menghapus pemisahan tugas, sehingga jejak permintaan inilah satu-satunya
+kontrol pengimbang yang tersisa.
+
+**RISIKO YANG DITERIMA SADAR**, dicatat supaya tidak ditemukan sebagai kejutan saat pentest.
