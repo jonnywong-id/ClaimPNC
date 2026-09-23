@@ -6098,3 +6098,318 @@ hak baca atas satu tabel tidak menyatakan apa pun tentang tabel lain.
    disatukan.
 3. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk melihat
    ketiga tab, termasuk antrean teknik yang bukan haknya.
+
+---
+
+## 36. Sesi kedua puluh — modul Input Req Protection dan Inbox Accept Open Protection (2026-09-23)
+
+Rujukan yang diminta Work Owner: **`Harness/InputReqProtection_Harness-Harness.xml`**.
+
+### 36.1 Yang ditemukan sebelum satu baris kode ditulis
+
+Harness yang diminta ternyata **bukan form**, melainkan **layar daftar**. Isinya
+`InboxReqProtection_Section` + `InboxReqOpenProtection_RD`, berjudul "Inbox Open
+Protection", dengan tujuh kolom dan satu tombol.
+
+Penelusuran `Flow/CreateProtection_Flow.xml` memperlihatkan alur bertiga langkah, dan
+harness yang diminta adalah langkah pertamanya:
+
+```
+Start -> InputProtection (worklist) -> AksepProtection (workbasket ProtectionPNC)
+      -> IsAccept -> Accept / Reject -> End
+```
+
+**Nama ketiga layar bersilang di Pega**, dan ini sempat saya sampaikan keliru sehingga
+dikoreksi Work Owner:
+
+| Butir menu | Harness | Judul di dalam harness |
+|---|---|---|
+| Input Req Protection | `InputReqProtection_Harness` | "Inbox Open Protection" |
+| Inbox Open Protection | `InputProtection_Harness` | **"Inbox Accept Open Protection"** |
+
+### 36.2 Pertanyaan konfirmasi dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Lingkup: satu layar, dua, atau ketiganya? | **Ketiganya** — daftar, form input, akseptasi |
+| 2 | Penyimpanan Open Protection | **Tabel datar tersendiri**, `POOLDATA.T_CLAIM_OPENPROTECTION` — **belum dibuat**, Work Owner yang membuat |
+| 3 | Primary key | Kolom `ID` dari sequence |
+| 4 | Penamaan modul | **Dua modul**, mengikuti dua butir menu |
+| 5 | Bentuk `pyID` Open Protection di Pega | **`OPC-XXX`** |
+| 6 | Nomor terbitan aplikasi baru | **`OPCN.YY.xxxx`**, mengikuti pola nomor klaim |
+
+### 36.3 Keberatan yang diajukan, dan bagaimana ia berubah
+
+Jawaban pertama butir 2 adalah "tetap pakai `T_CLAIMLIST_ADMIN`, tambahkan kolomnya".
+Keberatan diajukan beserta tiga buktinya:
+
+1. `Activity/CekStatusOPCKlaimPNCPengkinianData-Act.xml:1296` menulis
+   `ClaimDataProtect.OpenProtectionList(<APPEND>)` — satu klaim menampung **banyak**
+   proteksi, sedangkan `T_CLAIMLIST_ADMIN` satu baris per klaim;
+2. `Section/InboxReqProtection_Section-Section.xml:8657` menonaktifkan tautan baris ketika
+   `.CaseID` terisi — artinya baris yang **belum punya klaim** justru yang aktif, dan baris
+   itu tidak punya tempat di tabel klaim;
+3. `Activity/CreateCaseOpenProtection_act-Act.xml` membuat work object tersendiri dengan
+   `pyID` sendiri.
+
+Work Owner meralat: tabel datar tersendiri akan dibuat.
+
+### 36.4 Kesalahan saya sendiri yang dikoreksi Work Owner
+
+Ketiganya dicatat karena polanya lebih berguna daripada kesalahannya.
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | Menyebut layar ketiga hanya lewat nama butir menunya, tanpa menyebut judul harness-nya | Work Owner bertanya *"bukannya 1 lagi namanya Inbox Accept Open Protection ya?"* |
+| 2 | Menandai `PRON.YY.xxxx` **karangan sendiri** sebagai "(Rekomendasi)" berdampingan dengan `PNCN` (keputusan `D-22`/`D-71`) dan `RCVN` (tiruan tim pengembang) — ketiganya tampak sederajat | Work Owner bertanya *"format PNCN.YY.xxxx ini darimana ya? jangan memutuskan dulu"* |
+| 3 | Menyajikan `RCVN.YY.xxxx` setara `PNCN` padahal ia tidak pernah masuk Decision Log | ketahuan saat menelusuri butir 2 |
+
+Butir 2 disimpan sebagai aturan kerja: **sebutkan derajat bukti setiap usulan** — keputusan
+Work Owner (`D-nn`), tiruan tim pengembang, atau turunan saya sendiri.
+
+Pembuktian untuk butir 2: `PNCN` **nol kemunculan** di seluruh export Pega. Ia berasal dari
+kalimat Work Owner sendiri di `docs/Steering/00-DECISION-LOG.md:524` (`D-22`) lalu `:2023`
+(`D-71`).
+
+### 36.5 Cacat sistem lama yang TIDAK dibawa
+
+**`Activity/ValidationInputProtection-Act.xml:288`** menjalankan
+`@replaceAll(.CaseID, ".", "")` — membuang **seluruh titik** dari nomor klaim sebelum
+menyimpan, tanpa syarat.
+
+Itu tidak berbahaya ketika nomor klaim berbentuk `PNC-1865`. Terhadap `PNCN.YY.xxxx`
+(`D-71`), ia menghasilkan `PNCN260001` — **tautan proteksi ke klaim putus tanpa satu pun
+galat**. Penyimpanan berhasil, layar tampil normal, hanya nomornya tidak cocok dengan klaim
+mana pun.
+
+Tidak dibawa. Satu uji dipasang khusus menjaganya:
+`TestTitikPadaNomorKlaimTidakDibuang`.
+
+**Grid ketiga layar akseptasi** (`Section/InputProtection_Section-Section.xml:25104`) hanya
+muncul untuk **satu alamat Gmail pribadi**, dengan penyaring lebih longgar — tanpa syarat
+nomor klaim. Tidak dibawa (`D-15`, `D-67`). Dua grid lain juga memeriksa satu Operator ID
+tertentu (`:3989`, `:14717`); ketiganya masuk daftar 24 Operator ID dan 66 alamat yang `F-4`
+hapus.
+
+### 36.6 Yang dibangun
+
+| Lapisan | Modul `inputreqprotection` | Modul `inboxacceptopenprotection` |
+|---|---|---|
+| Domain | `inputreqprotection.go`, `validation.go`, `errors.go` | `inboxacceptopenprotection.go`, `errors.go` |
+| Usecase | `usecase/service.go` | `usecase/service.go` |
+| Penyimpanan | `repo/memory/` | `repo/memory/` |
+| Transport | `http/` — dto, errors, handler, routes | `http/` — dto, errors, handler, routes |
+| Layar | `input-req-protection/` — daftar + form | `inbox-accept-open-protection/` — antrean + akseptasi |
+
+**Adapter Oracle SENGAJA tidak ditulis.** Tabelnya belum ada, dan menulis adapter atas nama
+kolom yang ditebak akan gagal dengan pesan "tabel atau kolom tidak ada" — bukan pesan yang
+menyatakan tabelnya memang belum dibuat. Jalur Oracle karena itu memasang pemilih yang
+menolak dengan pesan yang menyebut sebabnya dan menunjuk `docs/kolom-open-protection.md`.
+
+Memasang repo memori di jalur Oracle juga ditolak: layar akan terisi **data karangan** di
+lingkungan yang mengira dirinya membaca basis data.
+
+### 36.7 Kepemilikan tulis: dua modul, satu tabel
+
+`P-1` menetapkan satu tabel ditulis satu sistem. Dua modul di atas menyentuh tabel yang
+sama, sehingga pembagiannya dibuat **per kolom**:
+
+| Modul | Kolom yang ditulis |
+|---|---|
+| `inputreqprotection` | nomor, polis, klaim, tipe, keterangan, detail perubahan |
+| `inboxacceptopenprotection` | `STATUS_AKSEPTASI`, `TANGGAL_AKSEPTASI`, `DIAKSEP_OLEH` |
+
+Tidak ada rute di modul kedua yang menyunting kolom kelompok pertama, dan sebaliknya.
+
+### 36.8 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| `gofmt` mengubah dua tanda kutip tunggal berurutan di komentar menjadi tanda kutip tipografis, merusak kutipan ekspresi Pega | Komentar ditulis ulang tanpa bentuk itu |
+| `gofmt -l` menandai `main.go` seluruhnya — 2.499 baris | Akhiran baris CRLF, persis §35.7. Selisih format **nyata** dicari dengan menyalin berkas lewat `tr -d` lebih dulu; hasilnya hanya 2 baris, dan hanya itu yang disunting |
+| Klien frontend membaca kunci `detail`, sedangkan DTO saya memakai `rincian` | DTO disesuaikan ke `detail` — mengikuti bentuk yang sudah dipakai `masterstatus`, bukan menambah bentuk keempat pada kontrak galat yang sudah punya tiga |
+| `cmd/claimpnc/check.go` ikut ditandai `gofmt -l` | **Tidak disentuh** — `git diff --numstat` membuktikan ia tidak berubah sama sekali; ia memang sudah begitu sebelum sesi ini |
+
+### 36.9 Bagaimana kegagalan pra-ada dibuktikan
+
+Menyatakan "galatnya sudah ada sebelumnya" tanpa membuktikannya sama saja dengan
+mengabaikannya.
+
+1. **125 galat typecheck** — `npx tsc --noEmit` disaring untuk berkas sesi ini: **nol
+   kecocokan**. Jumlahnya pun tidak berubah sebelum dan sesudah.
+2. **22 berkas uji frontend gagal** — kedua berkas bersama yang saya sunting (`App.tsx`,
+   `menu/registry.ts`) di-`git stash`, suite dijalankan ulang, hasilnya **identik**:
+   22 berkas gagal, 4 uji gagal, 2 galat. Stash dikembalikan sesudahnya.
+3. **`registry.ts(134,3)` duplikat kunci** — `InboxRCVApp_Harness` ada di baris 44 **dan**
+   134. Posisi galatnya sama persis sebelum dan sesudah suntingan saya. Dilaporkan, tidak
+   diperbaiki (di luar lingkup).
+
+### 36.10 Satu cacat nyata yang ditemukan uji, bukan sekadar uji yang gagal
+
+Uji jalur galat memunculkan **unhandled rejection** di peramban:
+
+```
+APIError: Isian belum lengkap atau belum benar.
+  callAPI src/api/client.ts:178
+```
+
+Sebabnya di kode layar, bukan di uji: `await create.mutateAsync(...)` dipanggil dari
+penangan `onSubmit` lewat `void submit(event)`. Galatnya **sudah** ditampilkan form lewat
+`create.error`, tetapi promise-nya tetap menolak dan tidak ada yang menangkapnya.
+
+Akibatnya di produksi: setiap penolakan validasi memunculkan galat kedua di konsol
+peramban — galat yang sama, yang tidak berguna bagi siapa pun, dan yang menutupi galat
+sungguhan saat menelusuri masalah.
+
+Diperbaiki di kedua layar dengan menangkapnya secara sadar. Form dan panel **tidak ditutup**
+saat gagal: pada layar akseptasi, kegagalan yang paling sering terjadi adalah `409` —
+proteksi sudah diputuskan petugas lain — dan menutup panelnya akan menyembunyikan pesan yang
+menjelaskannya.
+
+### 36.11 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./...` | bersih |
+| `gofmt` modul baru | bersih |
+| `go test ./...` | **119 paket lulus, 0 gagal** |
+| Uji aturan bisnis modul 1 | 22 lulus |
+| Uji aturan bisnis modul 2 | 13 lulus |
+| `npx tsc --noEmit` berkas sesi ini | bersih (125 galat lain pra-ada, dibuktikan) |
+| `npx vitest run` modul baru | **16 uji lulus, 0 unhandled rejection** |
+| `npx vitest run` seluruhnya | 22 berkas gagal — **angka yang sama persis** dengan sebelum sesi ini |
+
+### 36.12 Yang masih menunggu pihak lain
+
+1. **Tabel `POOLDATA.T_CLAIM_OPENPROTECTION`** — Work Owner. Daftar kolom beserta asalnya
+   di Pega sudah diserahkan sebagai `docs/kolom-open-protection.md`. Tanpanya kedua modul
+   hanya berjalan di atas repo memori.
+2. **Daftar lengkap tipe proteksi** — Work Owner. Hanya `2`, `7`, dan `8` yang artinya
+   terbukti; `1`, `3`, `4`, `5`, `6` dipakai tetapi labelnya tidak ada di export (`R-16`).
+   Sampai itu tiba, layar menampilkan kodenya apa adanya.
+3. **Siapa yang menulis tabel selama masa paralel** — Work Owner. Bila Pega ikut menulis,
+   `P-1` dilanggar dan akibatnya bukan galat melainkan data yang diam-diam tidak konsisten.
+4. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk dapat membuka
+   **kedua antrean akseptasi** dan menyetujui pembukaan proteksi.
+5. **Pencarian klaim pada form** — menembak modul klaim, yang rutenya belum terpasang.
+   Sampai itu ada, `.PNCCaseID` diisi manual dan keterbatasan itu dinyatakan di layar.
+
+### 36.13 Pemeriksaan langsung ke `DEV_PEGA83G`, dan apa yang ia koreksi
+
+Work Owner memberi tahu tabelnya sudah dibuat. Sebelum adapter ditulis, katalog Oracle
+dibaca langsung — **bukan** diasumsikan sesuai usulan. Perkakasnya sekali pakai dan dihapus
+di perintah yang sama; ia tidak masuk repositori (mengikuti `496f2ba`).
+
+Data nasabah **tidak dibaca**: yang dikueri hanya `ALL_TAB_COLUMNS`, `ALL_CONSTRAINTS`,
+`ALL_OBJECTS`, serta `GROUP BY` atas kolom **kode** (`PROTECTIONTYPE`, `APPROVALSTATUS`,
+`STATUSACTIVE`, `GROUPPANEL`). Nilai `IDPEGA` diperiksa sebagai **pola**, tidak pernah
+dicetak (`D-69`).
+
+**Tiga hal yang dikoreksi pemeriksaan ini:**
+
+1. **Tabelnya ada, tetapi 6 kolom — bukan 26 seperti yang diusulkan.** `ID`, `CREATEDATE`,
+   `CREATEDBY`, `RESOLVEDBY`, `RESOLVEDATETIME`, `RESOLVENOTE`. Tanpa primary key, tanpa
+   sequence, **0 baris**. Tiga dari tujuh kolom grid tidak punya sumbernya.
+
+2. **`ID` bertipe `VARCHAR2(100)`, bukan `NUMBER` dari sequence.** Ini berbeda dari arahan
+   awal, dan justru **benar**: nomor `OPCN.YY.xxxx` tidak muat di kolom angka. Usulan
+   sebelumnya yang memisahkan `ID` teknis dari `NO_PROTEKSI` karena itu dicabut — satu
+   kolom sudah cukup.
+
+3. **`POOLDATA.T_OPENPROTECTION` (6.353 baris) BUKAN sumber data modul ini.** Sempat tampak
+   menjanjikan karena punya `NOPOLIS`, `PROTECTIONTYPE`, `APPROVALSTATUS`. Datanya
+   membantah:
+
+   | Bukti | Artinya |
+   |---|---|
+   | `PROTECTIONTYPE` = `SourceOfBusiness` (5.940), `BlackList`, `BackDated`, `UsedVehicle`, `Rate` | pengecualian **underwriting saat penerbitan polis** |
+   | `IDPEGA` mengandung `PNC`: **0 dari 6.353** | bukan work object Claim PNC |
+   | `GROUPPANEL` memuat `007` | di luar Group Panel klaim |
+   | `APPROVALSTATUS` hanya `1`/`0`, tanpa NULL | tidak punya keadaan "belum diputuskan" |
+
+   Ia milik domain polis/underwriting (GISFW), bounded context tim lain (`D-03`). Awalan
+   `CLAIM` pada tabel baru itulah yang membedakan keduanya.
+
+**Yang diambil dari `T_OPENPROTECTION` adalah KOSAKATA KOLOMNYA, bukan datanya.** Usulan
+penyesuaian dibentuk memakai `NOPOLIS`, `PROTECTIONTYPE`, `APPROVALSTATUS`, `NOTES`,
+`OLDDATA`/`NEWDATA`, `STATUSACTIVE` — supaya dikenali DBA dan seragam dengan tabel proteksi
+yang sudah ada.
+
+Satu perbaikan yang dibawa oleh peminjaman itu: **sepasang `OLDDATA`/`NEWDATA` menggantikan
+empat kolom** yang diusulkan sebelumnya (`DOL_SEBELUM`, `DOL_BARU`, `COL_ID`,
+`COL_MASTER_ID`). Keduanya hal yang sama — nilai sebelum dan nilai sesudah — dan sepasang
+kolom melayani tipe `7` maupun `8`, serta tipe baru apa pun kelak.
+
+Satu nama yang **sengaja tidak ditiru**: `T_OPENPROTECTION` mengeja `OLDATA` (kurang satu
+`D`); view di atasnya mengejanya `OLDDATA`. Usulan memakai ejaan yang benar — tabel ini
+lahir kosong, jadi tidak ada yang memaksa mewarisi salah ketik (`03-CURRENT-ARCHITECTURE.md`
+§4.7).
+
+**Adapter Oracle tetap belum ditulis**, menunggu kolomnya ditambahkan. Menulisnya sekarang
+berarti mengarang nama kolom untuk data yang belum punya tempat.
+
+### 36.14 Satu baris data nyata disalin, dan apa yang ia koreksi
+
+Work Owner meminta satu baris OPC dari Pega disalin ke tabel baru untuk membuktikan jalur
+bacanya berfungsi. Yang dilakukan bukan menyusun baris karangan, melainkan menyalin baris
+sungguhan — karena baris karangan hanya membuktikan kueri berjalan, bukan bahwa ia cocok
+dengan bentuk data yang benar-benar ada.
+
+**Cara menyalinnya menentukan apakah `D-69` terjaga.** Dipakai `INSERT … SELECT`, sehingga
+nomor polis dan nomor klaim berpindah **di dalam basis data** dan tidak pernah dibaca ke
+memori aplikasi — karenanya tidak mungkin ikut tercetak ke log maupun ke dokumen ini.
+Membacanya lebih dulu lalu menyisipkannya kembali akan melewatkan keduanya melalui proses.
+
+`APPROVAL_STATUS` sengaja **tidak disebut** di daftar kolom sehingga jatuh ke `NULL` —
+keadaan "belum diakseptasi" yang §4 tuntut.
+
+Hasilnya terbaca lewat **adapter yang sama persis** yang dipakai layar, bukan lewat SQL
+mentah — karena yang perlu dibuktikan adalah adapternya, bukan tabelnya:
+
+```
+[ok] Input Req Protection  total=1  -> OPC-216 · tipe=9 · dapat disunting=false
+[ok] antrean non-premi     total=1
+[ok] antrean premi         total=0
+[ok] form akseptasi        menunggu keputusan=true · antrean=non-premi
+```
+
+`dapat disunting=false` **benar**: barisnya sudah tertaut klaim, dan
+`Section/InboxReqProtection_Section-Section.xml:8657` mematikan tautan suntingnya persis
+pada keadaan itu.
+
+**Tiga temuan yang hanya muncul karena datanya nyata:**
+
+| Temuan | Akibatnya |
+|---|---|
+| `TYPEPROTECTION` di produksi bernilai `1`–`9`; **`9` dipakai 25 baris dan NOL kemunculan di export** | Menguatkan keputusan menampilkan kode apa adanya untuk tipe yang labelnya tak terbukti. Daftar tipe yang ditebak dari export akan melewatkan `9` sepenuhnya |
+| `KETERANGAN_1` **nol terisi** pada 205 baris OPC; yang terisi `CLOSECLAIMNOTE_1` (139) | Kolom bernama "catatan tutup klaim" dipakai ulang untuk keterangan proteksi — alias menyesatkan seperti yang `03-CURRENT-ARCHITECTURE.md` §4.2 catat. Nama kolom yang paling cocok justru bukan sumbernya |
+| `PYSTATUSWORK`: `New` 134 · `Resolved-Completed` 69 · `Resolved-Rejected` 2 | Memetakan langsung ke `NULL` / `'1'` / `'2'`, sejalan dengan `When/IsAcceptProtection-When.xml` |
+
+Peta kolom asal lengkapnya ada di `docs/kolom-open-protection.md` §9, termasuk catatan bahwa
+`OLD_DATA`/`NEW_DATA` **tidak punya kolom asal** — detail perubahan DOL dan Cause of Loss
+tidak diekspos sebagai kolom di tabel kerja Pega.
+
+### 36.15 Index dibuat, dan satu hal yang perlu diluruskan tentangnya
+
+Work Owner menjalankan seluruh usulan §5. Diverifikasi lewat `ALL_INDEXES`,
+`ALL_IND_COLUMNS`, dan `ALL_CONSTRAINTS` — **bukan** dengan membaca kembali teks DDL-nya,
+karena yang perlu dibuktikan adalah keadaan basis data, bukan niat perintahnya.
+
+Empat objek, seluruhnya `VALID`: primary key, CHECK status, dan tiga index.
+
+**`IX_T_CLAIM_OPENPROT_INBOX` tercatat FUNCTION-BASED, dan itu normal.** `CREATE_DATE DESC`
+membuat Oracle menyimpan kolom virtual tersembunyi; katalog menampilkannya sebagai
+`SYS_NC00017$` alih-alih nama kolomnya, dengan `DESCEND = DESC` pada baris yang sama. Tanpa
+penjelasan ini, pemeriksa berikutnya akan membacanya sebagai index yang salah buat.
+
+Kolom keduanya bukan sekadar demi urutan, dan ini yang paling mudah terlewat: **B-tree
+Oracle tidak menyimpan entri yang seluruh kolomnya `NULL`**. Index berkolom tunggal atas
+`APPROVAL_STATUS` karena itu tidak akan pernah terpakai oleh penyaring `APPROVAL_STATUS IS
+NULL` — padahal itulah penyaring inti ketiga layar. Kolom kedua yang terisi membuat entrinya
+tetap tersimpan, sehingga `IS NULL` dapat di-index.
+
+**Yang belum dibuktikan, dan sengaja tidak diklaim:** rencana eksekusinya belum diperiksa.
+Pada tabel berisi satu baris pemeriksaan itu tidak bermakna — optimizer akan memilih
+pemindaian penuh apa pun index-nya, sehingga hasilnya akan menyesatkan ke dua arah
+sekaligus. Pengukuran yang sahih menunggu tabelnya terisi.

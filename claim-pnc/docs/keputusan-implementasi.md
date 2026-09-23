@@ -5893,3 +5893,171 @@ ada; modul ini **tidak menulis satu pun** (`P-1`).
 | `go test ./...` | **111 paket lulus, 0 gagal** |
 | `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada, dibuktikan) |
 | `npx vitest run` modul baru | **17 uji lulus** |
+
+---
+
+## 38. Modul Input Req Protection dan Inbox Accept Open Protection (2026-09-23, sesi kedua puluh)
+
+Dua modul, satu alur (`Flow/CreateProtection_Flow.xml`), satu tabel.
+
+### 38.1 Dua modul, bukan satu — dan bukan tiga
+
+**Keputusan Work Owner.** Penamaan mengikuti **dua butir menu Pega**, bukan tiga layar.
+
+| Modul | Butir menu | Harness | Layar |
+|---|---|---|---|
+| `inputreqprotection` | "Input Req Protection" | `InputReqProtection_Harness` | daftar + form input |
+| `inboxacceptopenprotection` | "Inbox Open Protection" | `InputProtection_Harness` | antrean + form akseptasi |
+
+**Nama modul kedua diambil dari JUDUL harness-nya** (`Inbox Accept Open Protection`), bukan
+dari nama butir menunya. Alasannya bukan selera: nama butir menunya — "Inbox Open
+Protection" — **bertabrakan dengan judul layar modul pertama**, yang juga berbunyi persis
+itu. Kedua nama di Pega memang bersilang, dan memakai nama butir menu untuk keduanya akan
+menghasilkan dua modul bernama sama.
+
+Menggabungkannya menjadi satu modul ditolak karena keduanya punya peran pemakai, kewenangan,
+dan tahap hidup yang berbeda. Memecahnya menjadi tiga ditolak Work Owner.
+
+### 38.2 Tabel tersendiri, bukan menumpang tabel klaim
+
+**Keputusan Work Owner**, setelah keberatan diajukan beserta buktinya (lihat
+`catatan-pengembangan.md` §36.3).
+
+`POOLDATA.T_CLAIM_OPENPROTECTION` — tabel datar baru, **belum dibuat**. Work Owner yang
+membuatnya; tidak ada satu pun `CREATE TABLE` di repositori ini untuk tabel tersebut.
+
+Daftar kolom beserta **asal setiap kolom di Pega** diserahkan sebagai
+`docs/kolom-open-protection.md`.
+
+Yang menentukan: satu klaim menampung **banyak** proteksi
+(`OpenProtectionList(<APPEND>)`), dan proteksi **lahir tanpa klaim** — justru baris tanpa
+klaim itulah yang masih dapat disunting pemohonnya.
+
+### 38.3 Nomor proteksi `OPCN.YY.xxxx`
+
+**Keputusan Work Owner.** Nomor warisan Pega berbentuk `OPC-XXX` dan dibaca apa adanya;
+keduanya hidup berdampingan permanen.
+
+Prefix dibedakan dengan alasan yang sama yang melahirkan `D-22` bagi nomor klaim
+(`docs/Steering/00-DECISION-LOG.md:528`): selama masa paralel Pega **juga masih
+menerbitkan** proteksi, dan pencacah `OPC-` miliknya ada di tabel engine yang tidak ikut
+diekspor — tidak dapat diikuti. Dua sistem yang menerbitkan `OPC-` dengan pencacah
+masing-masing akan menerbitkan nomor yang sama.
+
+Dua hal mengikuti `inboxlaporanklaim.FormatReportNumber`, bukan `D-71` apa adanya:
+
+1. nomor urut **dipadatkan nol** empat digit, supaya `.10` tidak mendahului `.9` saat
+   diurutkan sebagai teks (`D-71` butir 2);
+2. tahunnya datang dari **jam aplikasi**, bukan `SYSDATE` basis data (`D-71` catatan ketiga,
+   bertaut `R-12`).
+
+Derajat buktinya berbeda dan perlu dicatat: `OPCN` adalah **keputusan Work Owner**;
+`RCVN.YY.xxxx` yang polanya ditiru adalah **tiruan tim pengembang** atas `D-71`, tidak
+pernah masuk Decision Log.
+
+**Dua hal terbuka**, mewarisi `TKT-F2-006`: apakah pencacah direset tiap tahun, dan apakah
+lebar segmen terakhir dibuat tetap.
+
+Satu selisih fakta dicatat supaya menjadi pilihan sadar: Work Owner menyebut penomoran ini
+"seperti tabel klaim baru", padahal `CPNC_KLAIM.ID` sebenarnya **bukan** sequence — ia
+`VARCHAR2(32)` buatan aplikasi, dan yang memakai pencacah adalah kolom `NOMOR` lewat tabel
+`CPNC_NOMOR_KLAIM`. Daftar kolom mengikuti **instruksi Work Owner** (`ID` bertipe `NUMBER`
+dari sequence).
+
+### 38.4 Kepemilikan tulis dibagi PER KOLOM
+
+`P-1` menetapkan satu tabel ditulis satu sistem. Dua modul menyentuh satu tabel, sehingga
+pembagiannya dibuat per kolom:
+
+| Modul | Kolom |
+|---|---|
+| `inputreqprotection` | nomor, polis, klaim, tipe, keterangan, detail perubahan |
+| `inboxacceptopenprotection` | `STATUS_AKSEPTASI`, `TANGGAL_AKSEPTASI`, `DIAKSEP_OLEH` |
+
+Ditegakkan lewat **rute yang tidak didaftarkan**: modul kedua tidak punya rute yang
+menyunting kolom kelompok pertama, dan sebaliknya. Rute yang tidak ada dijawab chi dengan
+405, sehingga penambahannya kelak menjadi keputusan sadar.
+
+### 38.5 `STATUS_AKSEPTASI` disimpan NULL, bukan teks kosong
+
+Ketiga Report Definition menyaring dengan operator `IS NULL`. Baris yang menyimpan teks
+kosong **tidak cocok** dengan penyaring itu, sehingga ia **hilang dari seluruh inbox** —
+tanpa galat, tanpa pesan, tanpa gejala.
+
+Dicatat di sini karena ia keputusan penyimpanan yang tidak terlihat dari kode domain.
+
+### 38.6 Cacat yang sengaja TIDAK direplikasi
+
+| Cacat | Bukti | Sebab tidak dibawa |
+|---|---|---|
+| Titik dibuang dari nomor klaim | `Activity/ValidationInputProtection-Act.xml:288` | Terhadap `PNCN.YY.xxxx` ia memutus tautan ke klaim **tanpa galat** |
+| Grid ketiga hanya untuk satu alamat Gmail pribadi | `Section/InputProtection_Section-Section.xml:25104` | `D-15` hardcode, `D-67` akun pribadi |
+| Dua grid lain memeriksa satu Operator ID | `:3989`, `:14717` | sama |
+
+Ketiganya **selisih terencana** (`P-5`) dan harus dinyatakan di muka saat uji kesetaraan
+dijalankan. Yang pertama dijaga uji `TestTitikPadaNomorKlaimTidakDibuang`.
+
+### 38.7 Penambahan yang disadari
+
+| Penambahan | Alasan |
+|---|---|
+| Kotak pencarian pada kedua layar | Layar lama tidak punya. Daftarnya hanya dibatasi "belum diakseptasi", sehingga tumbuh tanpa batas seiring waktu |
+| Keterangan pada baris terkunci | Layar lama hanya mematikan tautannya; pengguna tidak punya cara mengetahui sebabnya |
+| Tipe proteksi ditampilkan sebagai KODE bila labelnya tidak diketahui | Menebak label akan diterima pengguna begitu saja; kode mentah segera ditanyakan |
+
+### 38.8 Kelemahan yang disadari dan belum tertutup
+
+1. **Antrean akseptasi dipilih lewat TAB**, sedangkan di Pega ia ditentukan access group.
+   Sampai `TKT-F3-004` dapat diisi, tidak ada yang mencegah pengguna membuka antrean yang
+   bukan haknya. Dinyatakan di layar, bukan disembunyikan.
+2. **Kewenangan menu belum ditegakkan** pada kedua modul. Layar pertama dibatasi empat
+   access group (`IsReqProtection`), layar kedua lima (`IsOpenProtectionPNC`). Taruhan
+   layar kedua lebih besar: di sana seseorang **menyetujui** pembukaan proteksi, dan `D-59`
+   menetapkan tidak ada pemisahan tugas formal — yang tersisa hanyalah jejak
+   `DIAKSEP_OLEH`.
+3. **Pencarian klaim pada form belum ada.** `.PNCCaseID` diisi manual. Backend tetap
+   menolak penyimpanan bila kosong, dengan pesan sistem lama apa adanya.
+4. **Repo memori kedua modul TERPISAH.** Saat mencoba lokal, proteksi yang baru dibuat di
+   layar pertama tidak muncul di layar kedua. Disengaja: satu objek bersama akan
+   menyembunyikan kesalahan pemetaan antar keduanya. Keduanya menyatu setelah tabelnya ada.
+5. **Adapter Oracle belum ada.** Jalur Oracle memasang pemilih yang menolak dengan pesan
+   yang menyebut sebabnya — bukan repo memori, yang akan mengisi layar dengan data karangan
+   di lingkungan yang mengira dirinya membaca basis data.
+
+### 38.9 Bentuk galat validasi mengikuti kontrak yang sudah ada
+
+DTO galat memakai kunci `detail` berisi senarai `{field, pesan}` — bentuk yang sudah dipakai
+`masterstatus` dan yang **dibaca klien bersama** (`frontend/src/api/client.ts`).
+
+Bentuk lain sempat dipakai (`rincian`) dan diubah setelah klien diperiksa. Memakai nama lain
+akan membuat pelanggaran validasi **tidak pernah sampai ke kolomnya** — pesannya hilang
+tanpa galat, dan pengguna hanya melihat "Isian belum lengkap" tanpa tahu yang mana.
+
+Penyeragaman ketiga bentuk yang hidup berdampingan hari ini adalah `TKT-F1-004`, yang masih
+terhalang. Yang benar sekarang adalah mengikuti bentuk yang sudah dibaca klien — bukan
+menambah bentuk keempat.
+
+### 38.10 Galat mutasi ditangkap di layar, bukan dibiarkan menolak
+
+`await mutateAsync(...)` yang dipanggil dari penangan `onSubmit` menghasilkan **unhandled
+rejection** bila galatnya tidak ditangkap — meski galat itu sudah ditampilkan lewat
+`mutation.error`.
+
+Keduanya karena itu ditangkap secara sadar, dengan dua akibat yang disengaja:
+
+1. **Form dan panel tidak ditutup saat gagal.** Isian pengguna dipertahankan, dan pada layar
+   akseptasi pesan `409` — "sudah diakseptasi petugas lain" — tetap terbaca.
+2. **Galat tidak muncul dua kali.** Satu di layar, dan tidak ada salinan di konsol peramban
+   yang menutupi galat sungguhan saat menelusuri masalah.
+
+### 38.11 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./...` | bersih |
+| `gofmt -l` modul baru | bersih |
+| `go test ./...` | **119 paket lulus, 0 gagal** |
+| Uji aturan bisnis | 35 lulus (22 + 13) |
+| `npx tsc --noEmit` berkas sesi ini | bersih (125 galat lain pra-ada, dibuktikan) |
+| `npx vitest run` modul baru | **16 uji lulus, 0 unhandled rejection** |

@@ -1523,3 +1523,78 @@ Ia kontrak, bukan nama internal: `id`, `nomor_klaim`, `tertanggung`, `nama_bisni
 | `serverPaging` | `DataTable` | mematikan saring & urut internal, menggambar kaki halaman |
 | `hideSearch` | `DataTable` | menyembunyikan kotak cari bawaan |
 | `ServerPaging` | `DataTable` | tipe baru yang diekspor |
+
+---
+
+## Tambahan 2026-09-23 — modul Input Req Protection (`inputreqprotection`) dan Inbox Accept Open Protection (`inboxacceptopenprotection`)
+
+### Nama modul: dua butir menu, dan namanya bersilang
+
+`D-81` menetapkan nama folder modul mengikuti nama yang dipakai Work Owner. Di sini nama itu
+**bersilang** di Pega, sehingga aturannya tidak dapat diterapkan mentah pada keduanya:
+
+| Butir menu (`pyCaptionPrompt`) | Harness | Judul di dalam harness | Nama modul |
+|---|---|---|---|
+| Input Req Protection | `InputReqProtection_Harness` | "Inbox Open Protection" | `inputreqprotection` |
+| Inbox Open Protection | `InputProtection_Harness` | **"Inbox Accept Open Protection"** | `inboxacceptopenprotection` |
+
+Modul pertama memakai nama **butir menunya**; modul kedua memakai **judul harness-nya**,
+karena nama butir menunya sudah dipakai judul layar modul pertama. Memakai nama butir menu
+untuk keduanya akan menghasilkan dua modul bernama sama.
+
+| Lapisan | Modul 1 | Modul 2 |
+|---|---|---|
+| Paket Go | `internal/inputreqprotection` | `internal/inboxacceptopenprotection` |
+| Folder frontend | `src/modules/input-req-protection` | `src/modules/inbox-accept-open-protection` |
+| Rute API | `/api/input-req-protection` | `/api/inbox-accept-open-protection` |
+| Rute layar | `/input-req-protection` | `/inbox-accept-open-protection` |
+
+### Istilah: "Proteksi" berarti DUA hal berbeda di repositori ini
+
+Ini jebakan nama yang paling mudah menjatuhkan orang berikutnya.
+
+| Istilah | Artinya | Tabelnya | Modul |
+|---|---|---|---|
+| **Open Protection** (Buka Proteksi) | permintaan pembukaan proteksi atas sebuah polis — konsep asuransi | `T_CLAIM_OPENPROTECTION` (baru) | `inputreqprotection`, `inboxacceptopenprotection` |
+| **Proteksi Data** | jatah pencarian data nasabah — kewenangan masking | `MST_PROTEKSI_DATA_PNC` | `mastermasking`, `riwayatklaim` |
+
+Keduanya **tidak berhubungan sama sekali**. Tabel `MST_PROTEKSI_DATA_PNC` berkolom `LOGIN`,
+`PASSWORD`, `STS_KTP`, `LOGSEARCH` — ia master kewenangan, bukan proteksi polis.
+
+### Penamaan properti Pega ke nama Inggris
+
+`D-80` menetapkan nama di dalam kode berbahasa Inggris; nama kolom basis data dan nama field
+JSON tetap Indonesia.
+
+| Properti Pega | Nama Go | Kolom (usulan) | Field JSON | Kolom layar |
+|---|---|---|---|---|
+| `.pyID` | `Number` | `NO_PROTEKSI` | `nomor_proteksi` | No Proteksi |
+| `.PolicyNo` | `PolicyNumber` | `NO_POLIS` | `nomor_polis` | No Polis |
+| `.CaseID` | `ClaimNumber` | `NO_KLAIM` | `nomor_klaim` | No Klaim |
+| `.PNCCaseID` | `ClaimReference` | `KLAIM_REF` | `referensi_klaim` | — |
+| `.TypeProtection` | `Type` | `TIPE_PROTEKSI` | `tipe_proteksi` | Tipe Proteksi |
+| `.InputDate` | `InputDate` | `TANGGAL_INPUT` | `tanggal_proteksi` | Tanggal Proteksi Dibuat |
+| `.Keterangan` | `Note` | `KETERANGAN` | `keterangan` | Keterangan |
+| `.pxCreateOpName` | `CreatedBy` | `DIBUAT_OLEH` | `user_create` | User Create |
+| `.AcceptStatus` | `AcceptStatus` | `STATUS_AKSEPTASI` | `status_akseptasi` | — |
+| `.AcceptDate` | `AcceptedAt` | `TANGGAL_AKSEPTASI` | `tanggal_akseptasi` | — |
+| `.AcceptOpName` | `AcceptedBy` | `DIAKSEP_OLEH` | `diaksep_oleh` | — |
+| `.IsUsedPNC` | `UsedByClaim` | `DIPAKAI_KLAIM` | — | — |
+| `.ClaimDataProtect.BeforeDateOfLoss` | `ChangeDetail.LossDateBefore` | `DOL_SEBELUM` | `dol_sebelum` | Current Date Of Loss |
+| `.ClaimDataProtect.DateOfLoss` | `ChangeDetail.LossDateAfter` | `DOL_BARU` | `dol_baru` | Next Date Of Loss |
+| `.ClaimDataProtect.CauseOfLossID` | `ChangeDetail.CauseOfLossID` | `COL_ID` | `penyebab_kerugian` | Cause Of Loss Sebelumnya |
+| `.ClaimDataProtect.IDMasterTONP` | `ChangeDetail.CauseOfLossMasterID` | `COL_MASTER_ID` | `penyebab_kerugian_master` | Cause Of Loss Dipilih |
+
+**`.CaseID` dan `.PNCCaseID` mudah tertukar dan artinya berbeda:** yang pertama nomor klaim
+yang **diketik** pengguna, yang kedua klaim yang benar-benar **ditemukan**. Sistem lama
+menolak penyimpanan saat yang kedua kosong, dengan pesan "Silakan Tulis dan Cari Ulang No
+Klaim" — mengetik saja tidak cukup.
+
+### Nomor proteksi
+
+| Bentuk | Asal | Contoh |
+|---|---|---|
+| `OPC-XXX` | warisan Pega, dibaca apa adanya | `OPC-201` |
+| `OPCN.YY.xxxx` | terbitan aplikasi ini (keputusan Work Owner 2026-09-23) | `OPCN.26.0001` |
+
+Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).

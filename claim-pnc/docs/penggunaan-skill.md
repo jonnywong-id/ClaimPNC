@@ -3305,3 +3305,72 @@ Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
    (`master-auto-claim`, `master-bengkel`, `master-supplier`, `riwayat-klaim`,
    `inbox-auto-claim`). Sebabnya sama dengan yang dicatat sesi kedelapan belas butir 2:
    `src/api/types.ts` kehilangan isinya pada merge `b764434`.
+
+---
+
+## Sesi kedua puluh (2026-09-23) — modul Input Req Protection dan Inbox Accept Open Protection
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasil |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | Menguji premis "harness ini adalah form input" terhadap isi berkasnya | Premisnya **gugur**. Harness rujukan ternyata layar DAFTAR, dan alur sebenarnya bertiga langkah. Enam pertanyaan konfirmasi lahir dari situ, seluruhnya dijawab Work Owner |
+| `mattpocock-skills:codebase-design` | saat membagi modul | Menentukan batas modul dan letak seam | Dua modul, bukan satu — dan kepemilikan tulis dibagi **per kolom**, bukan per tabel, sehingga `P-1` tetap berlaku tanpa menggabungkan keduanya |
+| `mattpocock-skills:domain-modeling` | saat menamai | Menjaga istilah tidak bertabrakan | Menemukan **"Proteksi" berarti dua hal berbeda** di repositori ini: Open Protection (polis) versus Proteksi Data (masking). Keduanya dicatat berdampingan di `peta-penamaan.md` supaya tidak tercampur |
+
+### Manfaat yang terukur
+
+**`grilling` mencegah membangun barang yang salah.** Bila premis awal dipakai apa adanya,
+yang terbangun adalah form input tunggal — sementara yang diminta rujukannya adalah layar
+daftar, dan dua layar lainnya tidak akan pernah muncul dalam rencana.
+
+**`codebase-design` menyelesaikan pertentangan `P-1`.** Dua modul menyentuh satu tabel
+tampak melanggar "satu tabel satu penulis". Membagi kepemilikan **per kolom** — kolom
+pembuatan versus kolom akseptasi — membuat keduanya dapat berdiri sendiri tanpa saling
+menimpa, dan pembagian itu ditegakkan lewat rute yang **tidak** didaftarkan.
+
+**`domain-modeling` menangkap jebakan nama.** Tanpa itu, modul ini berpeluang besar
+disambungkan ke `MST_PROTEKSI_DATA_PNC` — tabel yang namanya paling mirip dan yang sudah
+dipakai dua modul lain, tetapi isinya kewenangan masking, bukan proteksi polis.
+
+### Teknik yang dipakai tanpa skill
+
+1. **Membuktikan kegagalan pra-ada dengan `git stash`, bukan dengan menyatakan.** Kedua
+   berkas bersama yang disunting dikembalikan sementara, suite dijalankan ulang, hasilnya
+   identik. Baru setelah itu kegagalannya disebut pra-ada.
+2. **Mencari selisih `gofmt` yang NYATA di berkas ber-CRLF.** `gofmt -l` menandai seluruh
+   2.499 baris `main.go`. Menyalinnya lewat `tr -d` lebih dulu memisahkan soal akhiran baris
+   dari soal format; yang tersisa hanya 2 baris, dan hanya itu yang disunting. Tanpa langkah
+   ini, `gofmt -w` akan menghasilkan diff 2.499 baris yang menyentuh kode di luar lingkup.
+3. **Memeriksa kontrak klien sebelum menetapkan bentuk galat.** DTO galat sempat memakai
+   kunci `rincian`; pembacaan `frontend/src/api/client.ts` menunjukkan klien membaca
+   `detail`. Diubah mengikuti klien — bukan klien yang diubah mengikuti modul baru.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+Ketiganya dikoreksi Work Owner, dan ketiganya punya pola yang sama: **menyajikan sesuatu
+sebagai lebih pasti daripada buktinya.**
+
+| # | Kesalahan | Koreksi |
+|---|---|---|
+| 1 | Menyebut layar ketiga hanya lewat nama butir menunya | Work Owner menunjukkan judul harness-nya berbeda |
+| 2 | Menandai `PRON.YY.xxxx` karangan sendiri sebagai "(Rekomendasi)" sederajat dengan keputusan `D-22`/`D-71` | Work Owner menuntut asal-usulnya, dan meminta tidak memutuskan dulu |
+| 3 | Menyajikan `RCVN.YY.xxxx` setara `PNCN` padahal ia tiruan tim pengembang yang tidak pernah masuk Decision Log | ketahuan saat menelusuri butir 2 |
+| 4 | Mengusulkan menumpang `T_CLAIMLIST_ADMIN` sebagai opsi yang dapat dijalankan | Bukti sendiri (satu klaim banyak proteksi) membantahnya; Work Owner meralat ke tabel tersendiri |
+
+Butir 2 dan 3 disimpan sebagai aturan kerja untuk sesi berikutnya: **sebutkan derajat bukti
+setiap usulan** — keputusan Work Owner (`D-nn`), tiruan tim pengembang, atau turunan sendiri.
+Ketiganya tidak boleh disajikan setara.
+
+### Catatan untuk sesi berikutnya
+
+1. **Tabel `POOLDATA.T_CLAIM_OPENPROTECTION` belum ada.** Adapter Oracle kedua modul belum
+   ditulis, dan jalur Oracle sengaja menolak dengan pesan yang menyebut sebabnya.
+   `docs/kolom-open-protection.md` adalah dokumen serah-terimanya.
+2. **Daftar tipe proteksi masih sebagian.** Hanya `2`, `7`, `8` yang artinya terbukti.
+   Layar menampilkan kode apa adanya untuk sisanya — jangan diganti label tebakan.
+3. **`registry.ts` punya kunci kembar pra-ada** (`InboxRCVApp_Harness`, baris 44 dan 134).
+   Dilaporkan, tidak diperbaiki karena di luar lingkup.
+4. **125 galat typecheck dan 22 berkas uji frontend yang gagal masih terbuka** di modul
+   lain. Sebabnya tetap sama dengan yang dicatat sesi kesembilan belas: `src/api/types.ts`
+   kehilangan isinya pada merge `b764434`.

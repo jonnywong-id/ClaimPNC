@@ -132,6 +132,22 @@ export const MENU_ROUTES: Record<string, string> = {
   // rute API-nya di `cmd/claimpnc`. Alasan menahannya pada merge sebelumnya karena itu
   // sudah tidak berlaku untuk butir ini.
   InboxRCVApp_Harness: '/inbox/laporan-klaim',
+
+  // Butir menu "Input Req Protection" — permintaan pembukaan proteksi beserta form
+  // inputnya, langkah PERTAMA pada `Flow/CreateProtection_Flow.xml`.
+  InputReqProtection_Harness: '/input-req-protection',
+
+  // Butir menu "Inbox Open Protection" — antrean AKSEPTASI, langkah kedua alur yang sama.
+  //
+  // Perhatikan silangan namanya, dan jangan diperbaiki menjadi "seragam": butir menu
+  // bernama "Inbox Open Protection" membuka harness `InputProtection_Harness`, yang judul
+  // di dalamnya justru berbunyi "Inbox Accept Open Protection". Sebaliknya, butir menu
+  // "Input Req Protection" membuka harness yang judulnya "Inbox Open Protection".
+  //
+  // Rute di bawah memakai nama dari JUDUL harness-nya, karena nama butir menunya
+  // bertabrakan dengan judul layar di atas. Menukar keduanya akan mengantar petugas
+  // akseptasi ke layar pemohon, dan tidak ada apa pun di layar yang menandakannya.
+  InputProtection_Harness: '/inbox-accept-open-protection',
 }
 
 /**
