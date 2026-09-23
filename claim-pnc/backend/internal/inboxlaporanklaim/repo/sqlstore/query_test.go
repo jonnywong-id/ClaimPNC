@@ -1,6 +1,8 @@
 package sqlstore
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -20,6 +22,7 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"claim_report_message_count_body",
 		"claim_report_summary_body",
 		"claim_report_get_body",
+		"claim_report_get_own_body",
 		"claim_report_region_list",
 		"claim_report_next_sequence",
 		"claim_report_insert",
@@ -145,16 +148,196 @@ func TestUpdateSkipsRowsMarkedDeleted(t *testing.T) {
 func TestNoQueryWritesToLegacyPegaTable(t *testing.T) {
 	writing := []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE "}
 
+	// Kedua tabel sekaligus: yang lama tidak boleh kembali, dan yang menggantikannya
+	// diisi PROSES LAIN — aplikasi ini hanya membacanya (Work Owner, 2026-09-23).
+	readOnly := []string{"PC_ASM_FW_GCNMFW_WORK", "T_CLAIMLIST_ADMIN"}
+
 	for name, text := range query {
 		upperCase := strings.ToUpper(text)
 		for _, verb := range writing {
 			if !strings.Contains(upperCase, verb) {
 				continue
 			}
-			require.NotContainsf(t, upperCase, "PC_ASM_FW_GCNMFW_WORK",
-				"kueri %q memuat %q dan menyentuh tabel milik Pega", name, strings.TrimSpace(verb))
+			for _, table := range readOnly {
+				require.NotContainsf(t, upperCase, table,
+					"kueri %q memuat %q dan menyentuh %s yang hanya boleh dibaca",
+					name, strings.TrimSpace(verb), table)
+			}
 		}
 	}
+}
+
+// Daftar ditarik dari POOLDATA.T_CLAIMLIST_ADMIN, bukan lagi dari tabel kerja Pega.
+//
+// Diuji pada SUMBERNYA, bukan pada satu badan kueri: seluruh tab, pencacah, dan ekspor
+// menempel pada CTE yang sama, sehingga satu tempat inilah yang menentukan dari mana
+// daftar berasal.
+// Penanda bind harus MUNCUL dalam urutan menaik di teks kueri, tanpa nomor yang terlewat.
+//
+// # Kenapa ini invarian yang menentukan, bukan kerapian
+//
+// Oracle mengikat argumen menurut **urutan kemunculan** penanda di dalam teks kueri, bukan
+// menurut angka pada `:n`. Penanda `:22` yang muncul lebih dulu daripada `:1` karena itu
+// menerima argumen PERTAMA — dan seluruh argumen sesudahnya ikut bergeser.
+//
+// Itu benar-benar terjadi pada 2026-09-23: badan pencacah menaruh `:22..:30` di SELECT,
+// sebelum `:1..:21` di WHERE. Akibatnya penyaring cabang menerima NULL dan pencacah
+// komunikasi menerima kode cabang. Lencana di atas tab menyebut 115 sementara tabel di
+// bawahnya kosong — **tanpa satu pun galat**, karena setiap bind tetap terisi sesuatu.
+//
+// Uji ini tidak dapat membuktikan argumennya benar; ia membuktikan penomorannya tidak lagi
+// menyesatkan pembacanya. Itu yang gagal saat itu: penomorannya terbaca benar.
+func TestBindMarkersAppearInAscendingOrder(t *testing.T) {
+	marker := regexp.MustCompile(`:(\d+)`)
+
+	for name, text := range query {
+		seen := map[int]bool{}
+		order := make([]int, 0, 40)
+
+		for _, found := range marker.FindAllStringSubmatch(stripComments(text), -1) {
+			n, err := strconv.Atoi(found[1])
+			require.NoError(t, err)
+			if seen[n] {
+				continue
+			}
+			seen[n] = true
+			order = append(order, n)
+		}
+		if len(order) == 0 {
+			continue
+		}
+
+		for i, n := range order {
+			require.Equalf(t, i+1, n,
+				"kueri %q: penanda bind ke-%d yang muncul adalah :%d, seharusnya :%d — "+
+					"Oracle mengikat menurut urutan kemunculan, bukan menurut nomornya",
+				name, i+1, n, i+1)
+		}
+	}
+}
+
+// stripComments membuang baris komentar supaya contoh bind di dalam catatan tidak ikut
+// terhitung sebagai penanda yang sesungguhnya.
+func stripComments(text string) string {
+	line := strings.Split(text, "\n")
+	kept := make([]string, 0, len(line))
+	for _, l := range line {
+		if strings.HasPrefix(strings.TrimSpace(l), "--") {
+			continue
+		}
+		kept = append(kept, l)
+	}
+	return strings.Join(kept, "\n")
+}
+
+// Baris daftar ditarik dari TABEL KERJA PEGA — tabel yang sama dengan yang dibaca layar
+// lama, dan satu-satunya yang isinya cocok dengan angkanya.
+//
+// # Kenapa bukan T_CLAIMLIST_ADMIN
+//
+// Dibandingkan langsung pada 2026-09-23 dengan saringan Bisnis = NONMBU:
+//
+//	layar Pega                 ALL 671 · Outstanding 340 · Not Registered 123 · Not Transferred 42
+//	tabel kerja Pega           ALL 671 · Outstanding 340 · Not Registered 123 · Not Transferred 42
+//	T_CLAIMLIST_ADMIN          142 baris, `kodecabang_1` NULL pada SELURUHNYA
+//
+// Tabel admin adalah daftar pekerjaan outstanding, bukan daftar laporan yang utuh. Ia tetap
+// dibaca sebagai LEFT JOIN untuk empat kolom yang hanya ada di sana.
+func TestListIsDrawnFromThePegaWorkTable(t *testing.T) {
+	source := strings.ToUpper(getQuery("claim_report_source"))
+
+	require.Contains(t, source, "FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		"baris daftar tidak lagi ditarik dari tabel kerja Pega")
+	require.NotContains(t, source, "FROM POOLDATA.T_CLAIMLIST_ADMIN",
+		"tabel admin kembali menjadi tabel penggerak daftar — isinya hanya 5% dari daftar")
+	require.Contains(t, source, "LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN",
+		"tabel admin tidak lagi dibaca untuk sts_aktif, aging, kurir, dan keterangan")
+
+	// Penyaring jenis case DIPERTAHANKAN dari kueri lama: tabel ini memuat seluruh case
+	// Pega, bukan hanya Receive Document.
+	require.Contains(t, source, "ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT",
+		"penyaring pxobjclass hilang saat sumbernya ditukar")
+}
+
+// Posisi punya EMPAT keadaan, dan yang keempat tidak masuk tab mana pun.
+//
+// # Kenapa ini diuji
+//
+// Pemetaan sebelumnya menaruh seluruh sisanya di `ELSE` sebagai "Not Transferred". Itu
+// terbaca benar dan tidak menghasilkan galat apa pun — tetapi tab itu menyebut 208 di
+// tempat layar lama menyebut 42, karena 166 baris ber-nomor klaim tetapi belum terkunci
+// ikut tersapu ke sana.
+//
+// Keempat kombinasinya dihitung langsung pada 2026-09-23 dan sama persis dengan layar lama:
+// 42 · 123 · 340 · 166, berjumlah 671.
+func TestPositionHasFourStatesNotThree(t *testing.T) {
+	source := strings.ToUpper(getQuery("claim_report_source"))
+
+	for _, branch := range []string{
+		"WHEN W.PNCCASEID IS NOT NULL AND W.STATUSLOCK_1 IS NOT NULL THEN 'OUTSTANDING'",
+		"WHEN W.PNCCASEID IS NULL     AND W.STATUSLOCK_1 IS NOT NULL THEN 'NOT REGISTERED'",
+		"WHEN W.PNCCASEID IS NULL     AND W.STATUSLOCK_1 IS NULL     THEN 'NOT TRANSFERRED'",
+	} {
+		require.Containsf(t, source, branch, "cabang posisi hilang: %q", branch)
+	}
+
+	// Yang keempat TIDAK boleh dipaksakan ke salah satu tab.
+	require.NotContains(t, source, "ELSE 'NOT TRANSFERRED'",
+		"baris ber-nomor klaim yang belum terkunci ikut tersapu ke tab Not Transferred")
+}
+
+// Baris ber-STS_AKTIF '0' tidak ditampilkan (Work Owner, 2026-09-23), dan yang
+// dikecualikan HANYA yang bernilai '0' secara tegas.
+//
+// Kolomnya nullable. Menyaring dengan `= '1'` akan ikut menyembunyikan baris yang
+// penandanya belum ditetapkan — menghilangkan pekerjaan dari layar tanpa seorang pun tahu.
+func TestOnlyExplicitlyInactiveRowsAreHidden(t *testing.T) {
+	source := strings.ToUpper(getQuery("claim_report_source"))
+
+	require.Contains(t, source, "STS_AKTIF IS NULL OR TRIM(T.STS_AKTIF) <> '0'")
+	require.NotContains(t, source, "T.STS_AKTIF = '1'",
+		"penyaring menyembunyikan baris yang penandanya belum ditetapkan")
+}
+
+// Asal sebuah berkas kini diturunkan dari AWALAN NOMOR, bukan dari tabel asalnya —
+// tabelnya sudah satu.
+//
+// Awalan itu hidup di dua tempat: konstanta domain dan teks SQL. Uji ini yang menjaga
+// keduanya tidak berpisah diam-diam; kalau berpisah, setiap berkas terbaca sebagai milik
+// Pega dan form membukanya baca-saja tanpa satu pun galat.
+func TestOriginIsDerivedFromTheNumberPrefix(t *testing.T) {
+	source := getQuery("claim_report_source")
+
+	require.Contains(t, source, inboxlaporanklaim.ReportNumberPrefix+".",
+		"awalan nomor pada SQL tidak lagi sama dengan ReportNumberPrefix")
+	require.Contains(t, source, "'claimpnc'")
+	require.Contains(t, source, "'pega'")
+}
+
+// Berkas terbitan aplikasi ini dibaca dari tabelnya sendiri, dan pembacaannya menghormati
+// soft delete (ADR-0012).
+//
+// Jalur ini ada supaya berkas yang BARU DIBUAT dapat dibuka sebelum proses pengisi
+// T_CLAIMLIST_ADMIN menyalinnya. Tanpa itu, "Buat Baru" membuka form yang menjawab
+// "tidak ditemukan".
+func TestOwnReportIsReadFromItsOwnTable(t *testing.T) {
+	own := strings.ToUpper(getQuery("claim_report_get_own_body"))
+
+	require.Contains(t, own, "POOLDATA.CPNC_LAPORAN_KLAIM")
+	require.NotContains(t, own, "T_CLAIMLIST_ADMIN",
+		"pembacaan berkas sendiri ikut bergantung pada tabel yang diisi proses lain")
+	require.Contains(t, own, "DIHAPUS_PADA IS NULL",
+		"pembacaan berkas sendiri tidak menyaring baris yang ditandai terhapus")
+}
+
+// Kedua jalur pembacaan satu berkas dibaca scanDetailRow yang sama, dan ia membaca secara
+// POSISI. Kolom yang bergeser tidak menghasilkan galat — hanya kolom yang berisi isi
+// kolom sebelahnya.
+func TestBothDetailQueriesSelectTheSameColumns(t *testing.T) {
+	require.Equal(t,
+		selectedColumns(t, getQuery("claim_report_get_body")),
+		selectedColumns(t, getQuery("claim_report_get_own_body")),
+		"kedua jalur pembacaan berkas memilih kolom yang berbeda")
 }
 
 // Penghapusan fisik data bernilai bisnis dilarang (ADR-0012). Layar ini pun tidak

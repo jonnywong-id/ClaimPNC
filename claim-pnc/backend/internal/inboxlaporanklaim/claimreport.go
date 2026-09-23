@@ -39,7 +39,8 @@ func Rupiah(n int64) Money { return Money(n * 100) }
 type Origin string
 
 const (
-	// OriginLegacy: baris dibaca dari DATAPEGA.PC_ASM_FW_GCNMFW_WORK. Hanya dibaca.
+	// OriginLegacy: berkas warisan, dikenali dari nomornya yang TIDAK berawalan RCVN.
+	// Dibaca dari POOLDATA.T_CLAIMLIST_ADMIN, dan hanya dibaca.
 	OriginLegacy Origin = "pega"
 
 	// OriginNew: baris dibaca dari POOLDATA.CPNC_LAPORAN_KLAIM, tabel milik aplikasi ini.
@@ -181,9 +182,33 @@ type ClaimReport struct {
 	BranchCode string
 	BranchName string
 
-	// AgingAt adalah titik hitung umur berkas — `DateForAging_1`, kolom "Aging".
+	// AgingAt adalah titik hitung umur berkas — `DateForAging_1`.
 	// Ia juga kunci pengurutan seluruh kueri lama: ORDER BY DateForAging_1 DESC.
+	//
+	// Darinya dihitung kolom "Total Aging" pada grid. Ia BUKAN kolom "Aging" —
+	// lihat AgingValue.
 	AgingAt time.Time
+
+	// AgingValue adalah isi kolom `AGING` pada POOLDATA.T_CLAIMLIST_ADMIN, digambar apa
+	// adanya pada kolom "Aging" di grid.
+	//
+	// # Kenapa teks, bukan angka
+	//
+	// Kolomnya NUMBER dan nullable, dan layar membedakan "kosong" dari "nol". Angka
+	// bertipe int tidak dapat membedakan keduanya — 0 akan tergambar sebagai "0" padahal
+	// kolomnya memang belum diisi, dan pada layar contoh ia justru kosong di seluruh
+	// baris. Teks membawa keduanya apa adanya tanpa satu pun tafsiran.
+	//
+	// # Kenapa ia DIPISAH dari AgingAt
+	//
+	// Layar lama menggambar "Aging" dan "Total Aging" BERDAMPINGAN sebagai dua kolom.
+	// Yang kedua dihitung dari AgingAt oleh aplikasi; yang pertama dibaca dari kolom ini.
+	// Menyatukannya akan menghapus satu kolom yang memang ada di layar.
+	//
+	// **Artinya belum diketahui.** Tidak ada satu pun rule di export yang menyentuh kolom
+	// ini, dan pada layar contoh ia kosong di seluruh baris yang terlihat. Ia karena itu
+	// diteruskan apa adanya, bukan ditafsirkan.
+	AgingValue string
 
 	// Reason adalah keterangan kenapa berkas belum berpindah — `KETERANGAN_1`,
 	// kolom "Alasan" pada grid, dan isian "Keterangan Belum Transfer" pada form.

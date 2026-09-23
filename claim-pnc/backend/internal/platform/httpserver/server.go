@@ -59,6 +59,22 @@ func spa(files fs.FS) http.HandlerFunc {
 		if bersih == "." || bersih == "/" {
 			bersih = "index.html"
 		}
+		// Kerangka halaman tidak boleh di-cache: satu rilis baru harus langsung terpakai
+		// tanpa pengguna menekan muat ulang paksa.
+		//
+		// Header ini dipasang SEBELUM percabangan, bukan hanya di dalamnya. Sebelumnya ia
+		// terpasang pada jalur cadangan saja — sedangkan permintaan ke "/" menemukan
+		// index.html sebagai berkas nyata, sehingga jalur yang PALING SERING dipakai
+		// justru satu-satunya yang melewatinya. Akibatnya peramban dapat menahan kerangka
+		// halaman versi lama meski binary sudah dibangun ulang, dan fitur yang sudah
+		// diperbaiki tampak masih rusak tanpa satu pun galat.
+		//
+		// Berkas aset TIDAK ikut: namanya sudah memuat sidik isi (`index-<hash>.js`),
+		// sehingga rilis baru menghasilkan nama baru dan cache-nya tidak pernah basi.
+		if bersih == "index.html" {
+			w.Header().Set("Cache-Control", "no-store")
+		}
+
 		if _, err := fs.Stat(files, bersih); err != nil {
 			index, err := fs.ReadFile(files, "index.html")
 			if err != nil {
@@ -66,8 +82,6 @@ func spa(files fs.FS) http.HandlerFunc {
 				return
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			// Kerangka halaman tidak boleh di-cache: satu rilis baru harus langsung
-			// terpakai tanpa pengguna menekan muat ulang paksa.
 			w.Header().Set("Cache-Control", "no-store")
 			_, _ = w.Write(index)
 			return

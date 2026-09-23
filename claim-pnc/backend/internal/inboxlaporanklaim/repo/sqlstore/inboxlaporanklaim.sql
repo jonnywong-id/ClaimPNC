@@ -1,19 +1,20 @@
 -- Kueri Inbox Laporan Klaim.
 --
 -- ============================================================================
--- DUA TABEL, DAN KENAPA KEDUANYA DIBACA
+-- TIGA TABEL, DAN PERAN MASING-MASING
 -- ============================================================================
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK   berkas laporan warisan  — HANYA DIBACA
---   POOLDATA.CPNC_LAPORAN_KLAIM      berkas laporan baru     — ditulis aplikasi ini
+--   POOLDATA.T_CLAIMLIST_ADMIN       kumpulan BARIS daftar    — hanya dibaca
+--   DATAPEGA.PC_ASM_FW_GCNMFW_WORK   empat kolom penentu tab  — hanya dibaca
+--   POOLDATA.CPNC_LAPORAN_KLAIM      berkas terbitan sendiri  — dibaca DAN ditulis
 --
--- Work Owner menetapkan 2026-09-19: penulisan tidak lagi masuk ke tabel Pega. Selama
--- masa paralel, tepat satu sistem yang menulis sebuah tabel (ADR-0004, P-1) — dan
--- pembagian di atas memenuhinya tanpa satu baris pun dimiliki dua penulis.
+-- Work Owner menetapkan 2026-09-23 daftar ditarik dari T_CLAIMLIST_ADMIN. Tabel itu
+-- menentukan BARIS MANA yang tampil; empat kolom yang menentukan TAB tidak pernah terisi
+-- di sana dan diambil dari tabel kerja Pega — alasannya di catatan claim_report_source.
 --
--- Daftar yang dilihat petugas adalah GABUNGAN keduanya. Asal setiap baris dibawa apa
--- adanya di kolom ORIGIN supaya rekonsiliasi harian masa paralel dapat menjawab
--- "baris ini ditulis siapa" tanpa menebak.
+-- Penulisan tidak berubah dan tetap hanya ke CPNC_LAPORAN_KLAIM (Work Owner, 2026-09-19).
+-- Selama masa paralel, tepat satu sistem yang menulis sebuah tabel (ADR-0004, P-1); dua
+-- tabel pertama hanya dibaca, sehingga pembagian itu tetap utuh.
 --
 -- ============================================================================
 -- EMPAT ATURAN YANG MENGIKAT SELURUH BERKAS INI
@@ -62,30 +63,84 @@
 
 -- name: claim_report_source
 --
--- Sumber gabungan kedua tabel, dinormalkan ke satu bentuk kolom.
+-- Sumber daftar, dinormalkan ke bentuk kolom modul ini.
 --
 -- Ia BUKAN kueri utuh — ia awalan WITH yang disambung salah satu badan di bawahnya.
 -- Penyambungannya dilakukan Go atas teks dari berkas ini sendiri, tidak pernah atas
 -- nilai dari pengguna, sehingga aturan 2 di atas tetap utuh.
 --
--- Empat kolom turunan dihitung di sini supaya kesembilan tab menyaring atas dasar yang
--- sama persis, bukan atas sembilan tafsiran yang dapat menyimpang satu sama lain:
+-- # Tabel mana yang menentukan BARIS, dan kenapa
+--
+-- Barisnya berasal dari DATAPEGA.PC_ASM_FW_GCNMFW_WORK — tabel yang sama dengan yang
+-- dibaca layar lama.
+--
+-- POOLDATA.T_CLAIMLIST_ADMIN sempat dijadikan sumber baris (Work Owner, 2026-09-23), lalu
+-- dikembalikan setelah dibandingkan langsung dengan angka layar lama pada 2026-09-23:
+--
+--   layar Pega, saringan Bisnis = NONMBU      ALL 671 · Outstanding 340 · Not Registered 123 · Not Transferred 42
+--   tabel kerja Pega, saringan yang sama      ALL 671 · Outstanding 340 · Not Registered 123 · Not Transferred 42
+--   T_CLAIMLIST_ADMIN                         142 baris Receive Document, dan `kodecabang_1` NULL pada SELURUHNYA
+--
+-- Tabel admin adalah daftar pekerjaan OUTSTANDING (`OS_CATEGORY` = 'OS PELAPORAN KLAIM'),
+-- bukan daftar laporan yang utuh: 142 baris berbanding 2.800, tanpa kode cabang, dan tanpa
+-- kolom penentu tab. Dipakai sebagai sumber baris, layar kehilangan 95% isinya dan seluruh
+-- batas cabang.
+--
+-- Ia TETAP dibaca, tetapi untuk empat hal yang memang hanya ada di sana.
+--
+-- # Empat kolom yang datang dari tabel admin
+--
+--   sts_aktif        '0' berarti klaim sudah tidak aktif dan TIDAK ditampilkan lagi
+--   aging            kolom "Aging" pada grid, dibedakan dari "Total Aging"
+--   kurir            nama kurir pada form
+--   notregistnote_1  keterangan belum registrasi
+--
+-- Baris yang tidak ada di tabel admin ikut tampil: `sts_aktif` NULL berarti penandanya
+-- tidak ditetapkan, bukan tidak aktif. Menyembunyikannya akan menghapus 2.658 dari 2.800
+-- baris sekaligus.
+--
+-- # Empat kolom turunan
 --
 --   position   disalin dari CASE WHEN pada RDB List/ViewAllCase-SQL.xml
 --   accepted   EXISTS noakseptasi, dari ViewTableBrowseRCVAcc
 --   rejected   statuswork klaim, dari ViewTableBrowseRCVReject
---   origin     penanda tabel asal; tidak ada di sistem lama karena tabelnya satu
+--   origin     diturunkan dari AWALAN NOMOR, bukan dari tabel asal
+--
+-- `origin` diturunkan dari nomor: berawalan `RCVN.` berarti terbitan aplikasi ini (lihat
+-- ReportNumberPrefix di number.go), sisanya warisan Pega. Awalan itu sengaja dipilih pada
+-- `D-71` justru supaya asal sebuah berkas terbaca dari nomornya tanpa tabel pemetaan.
+--
+-- # Posisi punya EMPAT keadaan, bukan tiga
+--
+-- Pemetaan sebelumnya menaruh seluruh sisanya di `ELSE` sebagai "Not Transferred", dan itu
+-- SALAH — terbukti dari perbandingan langsung 2026-09-23 pada saringan NONMBU:
+--
+--   pnccaseid      statuslock_1    jumlah   tab
+--   NULL           NULL             42      Not Transferred
+--   NULL           terisi          123      Not Registered
+--   terisi         terisi          340      Outstanding
+--   terisi         NULL            166      TIDAK masuk tab mana pun
+--
+-- Keempat angka pertama sama persis dengan layar lama. Yang keempat — 166 baris ber-nomor
+-- klaim tetapi belum terkunci — di layar lama tidak muncul di ketiga tab itu, dan hanya
+-- ikut terhitung pada "All data" (42 + 123 + 340 + 166 = 671).
+--
+-- Karena itu posisinya NULL, bukan dipaksakan ke salah satu tab. `ELSE 'Not Transferred'`
+-- yang lama membuat tab itu menyebut 208 di tempat layar lama menyebut 42.
+--
+-- # Penyaring yang DIPERTAHANKAN
+--
+-- `pxobjclass` disaring persis seperti kueri lama: tabel ini memuat seluruh case Pega,
+-- bukan hanya Receive Document.
 WITH source AS (
     SELECT w.pyid                AS report_id,
            w.pnccaseid           AS claim_number,
            w.statuslock_1        AS assignment_ref,
            w.policyno            AS policy_number,
            w.qqname              AS insured_name,
-           -- Nama pelapor TIDAK dibaca dari tabel warisan: tidak satu pun dari kesembilan
-           -- kueri lama menyentuh kolomnya, sehingga namanya tidak diketahui (R-08).
-           -- Menebak nama kolom menghasilkan kueri yang gagal saat pertama dijalankan di
-           -- produksi — jauh lebih mahal daripada satu kolom yang kosong.
-           CAST(NULL AS VARCHAR(255)) AS reporter_name,
+           -- Nama pembuat berkas, sama seperti `Sender := OperatorID.pyUserName` pada
+           -- Activity/CreateNewCaseRCV-Act.xml. Hanya ada di tabel admin.
+           t.pxcreateopname      AS reporter_name,
            w.businessname        AS business_name,
            w.bookno_1            AS reference_number,
            w.dateofloss_1        AS date_of_loss,
@@ -93,34 +148,32 @@ WITH source AS (
            w.pxcreateoperator    AS created_by,
            w.kodecabang_1        AS branch_code,
            w.dateforaging_1      AS aging_at,
-           w.keterangan_1        AS reason,
-           w.subjectemail_1      AS email_subject,
+           -- Keduanya tidak dipakai dulu (Work Owner, 2026-09-23).
+           CAST(NULL AS VARCHAR(1000)) AS reason,
+           CAST(NULL AS VARCHAR(1000)) AS email_subject,
            w.pystatuswork        AS work_status,
            w.grouppanel_1        AS group_panel,
            b.businessgroupid     AS business_group,
-           'pega'                AS origin,
-           -- Kesepuluh isian form TIDAK dapat dibaca dari tabel warisan: tidak satu pun
-           -- dari kesembilan kueri lama menyentuh kolomnya, sehingga nama kolomnya di
-           -- tabel Pega tidak diketahui (R-08). Menebaknya menghasilkan kueri yang gagal
-           -- saat pertama dijalankan di produksi.
-           --
-           -- Itu tidak menghalangi apa pun: berkas warisan memang tidak dapat disunting
-           -- dari sini — penulisnya Pega selama masa paralel (ADR-0004, P-1) — sehingga
-           -- form membukanya dalam modus baca saja.
+           CASE
+               WHEN w.pyid LIKE 'RCVN.%' THEN 'claimpnc'
+               ELSE 'pega'
+           END                   AS origin,
            CAST(NULL AS DATE)         AS received_date,
            CAST(NULL AS VARCHAR(200)) AS reporter_email,
            CAST(NULL AS VARCHAR(64))  AS reporter_phone,
-           CAST(NULL AS VARCHAR(255)) AS courier_name,
+           t.kurir                    AS courier_name,
            CAST(NULL AS NUMBER)       AS estimate_value,
            CAST(NULL AS VARCHAR(500)) AS loss_location,
            CAST(NULL AS VARCHAR(4000)) AS chronology,
            CAST(NULL AS VARCHAR(4000)) AS damage_detail,
-           CAST(NULL AS VARCHAR(1000)) AS not_registered_note,
+           t.notregistnote_1          AS not_registered_note,
+           t.aging                    AS aging_value,
            CAST(NULL AS NUMBER)       AS document_count,
            CASE
                WHEN w.pnccaseid IS NOT NULL AND w.statuslock_1 IS NOT NULL THEN 'Outstanding'
-               WHEN w.statuslock_1 IS NOT NULL AND w.pnccaseid IS NULL     THEN 'Not Registered'
-               ELSE 'Not Transferred'
+               WHEN w.pnccaseid IS NULL     AND w.statuslock_1 IS NOT NULL THEN 'Not Registered'
+               WHEN w.pnccaseid IS NULL     AND w.statuslock_1 IS NULL     THEN 'Not Transferred'
+               ELSE NULL
            END                   AS position,
            CASE
                WHEN EXISTS (SELECT 1
@@ -139,63 +192,17 @@ WITH source AS (
                THEN '1' ELSE '0'
            END                   AS rejected
       FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-      LEFT JOIN POOLDATA.BUSINESS b ON b.id = w.businesscode_1
+      LEFT JOIN POOLDATA.BUSINESS b
+             ON b.id = w.businesscode_1
+      LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN t
+             ON t.pyid = w.pyid
+            AND t.pxobjclass = w.pxobjclass
      WHERE w.pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
-
-    UNION ALL
-
-    SELECT r.no_laporan          AS report_id,
-           r.no_klaim            AS claim_number,
-           CAST(NULL AS VARCHAR(255)) AS assignment_ref,
-           r.no_polis            AS policy_number,
-           r.nama_tertanggung    AS insured_name,
-           r.nama_pelapor        AS reporter_name,
-           r.nama_bisnis         AS business_name,
-           r.no_referensi        AS reference_number,
-           r.tgl_kejadian        AS date_of_loss,
-           r.dibuat_pada         AS created_at,
-           r.dibuat_oleh         AS created_by,
-           r.kode_cabang         AS branch_code,
-           r.tgl_aging           AS aging_at,
-           r.alasan              AS reason,
-           r.subjek_email        AS email_subject,
-           r.status_kerja        AS work_status,
-           r.group_panel         AS group_panel,
-           r.kode_group_bisnis   AS business_group,
-           'claimpnc'            AS origin,
-           r.tgl_terima_dokumen   AS received_date,
-           r.email_pelapor        AS reporter_email,
-           r.tlp_pelapor          AS reporter_phone,
-           r.nama_kurir           AS courier_name,
-           r.nilai_estimasi       AS estimate_value,
-           r.lokasi_kejadian      AS loss_location,
-           r.kronologis           AS chronology,
-           r.rincian_kerusakan    AS damage_detail,
-           r.ket_belum_registrasi AS not_registered_note,
-           r.jumlah_dokumen       AS document_count,
-           CASE
-               WHEN r.no_klaim IS NOT NULL AND r.sts_diserahkan = '1' THEN 'Outstanding'
-               WHEN r.sts_diserahkan = '1' AND r.no_klaim IS NULL     THEN 'Not Registered'
-               ELSE 'Not Transferred'
-           END                   AS position,
-           CASE
-               WHEN EXISTS (SELECT 1
-                              FROM POOLDATA.T_CLAIM_PNC p,
-                                   POOLDATA.T_CLAIM_ADJUSTMENT a
-                             WHERE p.claimid = a.claimid
-                               AND p.claimno = r.no_klaim
-                               AND a.noakseptasi IS NOT NULL)
-               THEN '1' ELSE '0'
-           END                   AS accepted,
-           CASE
-               WHEN EXISTS (SELECT 1
-                              FROM POOLDATA.T_CLAIM_PNC p
-                             WHERE p.claimno = r.no_klaim
-                               AND p.statuswork = 'Resolved-Rejected')
-               THEN '1' ELSE '0'
-           END                   AS rejected
-      FROM POOLDATA.CPNC_LAPORAN_KLAIM r
-     WHERE r.dihapus_pada IS NULL
+       -- '0' berarti klaim sudah tidak aktif dan tidak ditampilkan lagi (Work Owner,
+       -- 2026-09-23). Yang dikecualikan HANYA yang bernilai '0' secara tegas: baris yang
+       -- tidak ada di tabel admin ber-NULL, dan menyembunyikannya akan menghapus hampir
+       -- seluruh daftar.
+       AND (t.sts_aktif IS NULL OR TRIM(t.sts_aktif) <> '0')
 )
 
 -- name: claim_report_list_body
@@ -240,6 +247,7 @@ SELECT s.report_id,
        s.email_subject,
        s.position,
        s.origin,
+       s.aging_value,
        CAST(NULL AS VARCHAR(4000)) AS last_message
   FROM source s
  WHERE (:1 IS NULL OR s.branch_code = :2)
@@ -283,12 +291,12 @@ SELECT COUNT(1)
 -- dipertahankan karena ia memang sudah portabel.
 --
 -- URUTAN BIND:
---    :1..:21  sama persis dengan badan daftar
---    :22,:23  identitas pemanggil     penjaga + pembanding pembuat berkas
---    :24,:25  status percakapan       penjaga + pembanding (EXISTS)
---    :26,:27  pengirim yang DICARI    penjaga + pembanding (EXISTS)
---    :28,:29  pengirim yang DIHINDARI penjaga + pembanding (EXISTS)
---    :30..:35 keenam bind yang sama, untuk mengambil pesan terakhirnya
+--    :7..:27  sama persis dengan badan daftar
+--    :28,:29  identitas pemanggil     penjaga + pembanding pembuat berkas
+--    :30,:31  status percakapan       penjaga + pembanding (EXISTS)
+--    :32,:33  pengirim yang DICARI    penjaga + pembanding (EXISTS)
+--    :34,:35  pengirim yang DIHINDARI penjaga + pembanding (EXISTS)
+--    :1..:6 keenam bind yang sama, untuk mengambil pesan terakhirnya
 --    :36,:37  giliran
 SELECT s.report_id,
        s.claim_number,
@@ -308,28 +316,29 @@ SELECT s.report_id,
        s.email_subject,
        s.position,
        s.origin,
+       s.aging_value,
        (SELECT k.message
           FROM POOLDATA.M_KOMUNIKASI_PNC k
          WHERE k.caseid = s.report_id
-           AND (:30 IS NULL OR k.komunikasistatus = :31)
-           AND (:32 IS NULL OR k.sender = :33)
-           AND (:34 IS NULL OR k.sender <> :35)
+           AND (:1 IS NULL OR k.komunikasistatus = :2)
+           AND (:3 IS NULL OR k.sender = :4)
+           AND (:5 IS NULL OR k.sender <> :6)
          ORDER BY k.createddate DESC
          FETCH NEXT 1 ROWS ONLY) AS last_message
   FROM source s
- WHERE (:1 IS NULL OR s.branch_code = :2)
-   AND (:3 IS NULL OR s.branch_code IN (SELECT br.id FROM POOLDATA.BRANCH br WHERE br.basterritory = :4))
-   AND (:5 IS NULL OR s.report_id = :6)
-   AND (:7 IS NULL OR s.group_panel IN (:8, :9, :10, :11))
-   AND (:12 IS NULL OR s.business_group IN (:13, :14, :15, :16))
-   AND (:17 IS NULL OR s.business_group NOT IN (:18, :19, :20, :21))
-   AND (:22 IS NULL OR s.created_by = :23)
+ WHERE (:7 IS NULL OR s.branch_code = :8)
+   AND (:9 IS NULL OR s.branch_code IN (SELECT br.id FROM POOLDATA.BRANCH br WHERE br.basterritory = :10))
+   AND (:11 IS NULL OR s.report_id = :12)
+   AND (:13 IS NULL OR s.group_panel IN (:14, :15, :16, :17))
+   AND (:18 IS NULL OR s.business_group IN (:19, :20, :21, :22))
+   AND (:23 IS NULL OR s.business_group NOT IN (:24, :25, :26, :27))
+   AND (:28 IS NULL OR s.created_by = :29)
    AND EXISTS (SELECT 1
                  FROM POOLDATA.M_KOMUNIKASI_PNC k
                 WHERE k.caseid = s.report_id
-                  AND (:24 IS NULL OR k.komunikasistatus = :25)
-                  AND (:26 IS NULL OR k.sender = :27)
-                  AND (:28 IS NULL OR k.sender <> :29))
+                  AND (:30 IS NULL OR k.komunikasistatus = :31)
+                  AND (:32 IS NULL OR k.sender = :33)
+                  AND (:34 IS NULL OR k.sender <> :35))
  ORDER BY s.aging_at DESC, s.report_id DESC
 OFFSET :36 ROWS FETCH NEXT :37 ROWS ONLY
 
@@ -366,8 +375,8 @@ SELECT COUNT(1)
 -- pernah menghitungnya.
 --
 -- URUTAN BIND:
---    :1..:21  penyaring yang sama dengan daftar, TANPA penyaring kategori
---    :22..:30 identitas pemanggil, tiga kali tiga, untuk ketiga pencacah komunikasi.
+--    :10..:30  penyaring yang sama dengan daftar, TANPA penyaring kategori
+--    :1..:9 identitas pemanggil, tiga kali tiga, untuk ketiga pencacah komunikasi.
 --             Ia NULL bila pemanggil tidak dikenali, dan ketiga pencacahnya menjadi nol —
 --             bukan menghitung percakapan milik semua orang.
 SELECT COUNT(1) AS total,
@@ -376,42 +385,42 @@ SELECT COUNT(1) AS total,
        SUM(CASE WHEN s.position = 'Outstanding'     THEN 1 ELSE 0 END) AS outstanding,
        SUM(CASE WHEN s.accepted = '1'               THEN 1 ELSE 0 END) AS accepted,
        SUM(CASE
-               WHEN :22 IS NOT NULL
-                AND s.created_by = :23
+               WHEN :1 IS NOT NULL
+                AND s.created_by = :2
                 AND EXISTS (SELECT 1
                               FROM POOLDATA.M_KOMUNIKASI_PNC k
                              WHERE k.caseid = s.report_id
                                AND k.komunikasistatus = '0'
-                               AND k.sender <> :24)
+                               AND k.sender <> :3)
                THEN 1 ELSE 0
            END) AS message_unanswered,
        SUM(CASE
-               WHEN :25 IS NOT NULL
-                AND s.created_by = :26
+               WHEN :4 IS NOT NULL
+                AND s.created_by = :5
                 AND EXISTS (SELECT 1
                               FROM POOLDATA.M_KOMUNIKASI_PNC k
                              WHERE k.caseid = s.report_id
                                AND k.komunikasistatus = '0'
-                               AND k.sender = :27)
+                               AND k.sender = :6)
                THEN 1 ELSE 0
            END) AS message_waiting,
        SUM(CASE
-               WHEN :28 IS NOT NULL
-                AND s.created_by = :29
+               WHEN :7 IS NOT NULL
+                AND s.created_by = :8
                 AND EXISTS (SELECT 1
                               FROM POOLDATA.M_KOMUNIKASI_PNC k
                              WHERE k.caseid = s.report_id
                                AND k.komunikasistatus = '1'
-                               AND k.sender = :30)
+                               AND k.sender = :9)
                THEN 1 ELSE 0
            END) AS message_replied
   FROM source s
- WHERE (:1 IS NULL OR s.branch_code = :2)
-   AND (:3 IS NULL OR s.branch_code IN (SELECT br.id FROM POOLDATA.BRANCH br WHERE br.basterritory = :4))
-   AND (:5 IS NULL OR s.report_id = :6)
-   AND (:7 IS NULL OR s.group_panel IN (:8, :9, :10, :11))
-   AND (:12 IS NULL OR s.business_group IN (:13, :14, :15, :16))
-   AND (:17 IS NULL OR s.business_group NOT IN (:18, :19, :20, :21))
+ WHERE (:10 IS NULL OR s.branch_code = :11)
+   AND (:12 IS NULL OR s.branch_code IN (SELECT br.id FROM POOLDATA.BRANCH br WHERE br.basterritory = :13))
+   AND (:14 IS NULL OR s.report_id = :15)
+   AND (:16 IS NULL OR s.group_panel IN (:17, :18, :19, :20))
+   AND (:21 IS NULL OR s.business_group IN (:22, :23, :24, :25))
+   AND (:26 IS NULL OR s.business_group NOT IN (:27, :28, :29, :30))
    AND (s.work_status IS NULL OR s.work_status NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
 
 -- name: claim_report_get_body
@@ -441,6 +450,7 @@ SELECT s.report_id,
        s.email_subject,
        s.position,
        s.origin,
+       s.aging_value,
        s.received_date,
        s.reporter_email,
        s.reporter_phone,
@@ -554,6 +564,70 @@ SELECT r.no_laporan
  WHERE 1 = 0
 
 -- name: claim_report_check_legacy_table
-SELECT w.pyid
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+--
+-- Sumber daftar. Namanya tetap "legacy" karena isinya memang berkas warisan; yang berubah
+-- hanyalah tabelnya — dari DATAPEGA.PC_ASM_FW_GCNMFW_WORK menjadi tabel ini (Work Owner,
+-- 2026-09-23).
+SELECT t.pyid
+  FROM POOLDATA.T_CLAIMLIST_ADMIN t
  WHERE 1 = 0
+
+-- name: claim_report_get_own_body
+--
+-- Satu berkas TERBITAN APLIKASI INI, dibaca langsung dari POOLDATA.CPNC_LAPORAN_KLAIM.
+--
+-- # Kenapa jalur tersendiri, bukan lewat CTE source
+--
+-- Sejak daftar ditarik dari T_CLAIMLIST_ADMIN, berkas yang baru dibuat **belum ada di
+-- sana** sampai proses pengisinya berjalan. Tanpa jalur ini, menekan "Buat Baru" akan
+-- menerbitkan berkas lalu membuka form yang menjawab "laporan tidak ditemukan" — tombol
+-- yang tampak rusak, persis kelas kegagalan yang sudah dua kali menimpa layar ini.
+--
+-- # Kenapa dipilih menurut AWALAN NOMOR
+--
+-- Nomor berawalan `RCVN.` hanya diterbitkan aplikasi ini (`D-71`, ReportNumberPrefix).
+-- Pemilihannya karena itu pasti, tidak menuntut pembacaan dua tabel, dan tidak dapat
+-- salah sasaran. Lihat Repo.Get.
+--
+-- # Kenapa isian formnya lengkap
+--
+-- Berkas terbitan aplikasi ini adalah SATU-SATUNYA yang dapat disunting (ADR-0004, P-1),
+-- dan seluruh kesepuluh isiannya hidup di tabel ini — bukan di T_CLAIMLIST_ADMIN, yang
+-- hanya membawa dua di antaranya.
+SELECT r.no_laporan          AS report_id,
+       r.no_klaim            AS claim_number,
+       CAST(NULL AS VARCHAR(255)) AS assignment_ref,
+       r.no_polis            AS policy_number,
+       r.nama_tertanggung    AS insured_name,
+       r.nama_pelapor        AS reporter_name,
+       r.nama_bisnis         AS business_name,
+       r.no_referensi        AS reference_number,
+       r.tgl_kejadian        AS date_of_loss,
+       r.dibuat_pada         AS created_at,
+       r.dibuat_oleh         AS created_by,
+       r.kode_cabang         AS branch_code,
+       (SELECT br.branchname FROM POOLDATA.BRANCH br WHERE br.id = r.kode_cabang) AS branch_name,
+       r.tgl_aging           AS aging_at,
+       r.alasan              AS reason,
+       r.subjek_email        AS email_subject,
+       CASE
+           WHEN r.no_klaim IS NOT NULL AND r.sts_diserahkan = '1' THEN 'Outstanding'
+           WHEN r.sts_diserahkan = '1' AND r.no_klaim IS NULL     THEN 'Not Registered'
+           ELSE 'Not Transferred'
+       END                   AS position,
+       'claimpnc'            AS origin,
+       CAST(NULL AS NUMBER)  AS aging_value,
+       r.tgl_terima_dokumen   AS received_date,
+       r.email_pelapor        AS reporter_email,
+       r.tlp_pelapor          AS reporter_phone,
+       r.nama_kurir           AS courier_name,
+       r.nilai_estimasi       AS estimate_value,
+       r.lokasi_kejadian      AS loss_location,
+       r.kronologis           AS chronology,
+       r.rincian_kerusakan    AS damage_detail,
+       r.ket_belum_registrasi AS not_registered_note,
+       r.jumlah_dokumen       AS document_count,
+       CAST(NULL AS VARCHAR(4000)) AS last_message
+  FROM POOLDATA.CPNC_LAPORAN_KLAIM r
+ WHERE r.no_laporan = :1
+   AND r.dihapus_pada IS NULL

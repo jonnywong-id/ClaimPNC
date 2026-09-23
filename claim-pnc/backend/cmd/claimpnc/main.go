@@ -117,6 +117,13 @@ func run() error {
 		logger.Warn("antarmuka tidak tersedia; aplikasi hanya melayani API",
 			slog.String("sebab", err.Error()))
 		spaFiles = nil
+	} else {
+		// Kapan antarmuka yang TERSEMAT dibangun — bukan kapan `npm run build` terakhir
+		// dijalankan di folder frontend. Keduanya berbeda bila binary tidak ikut
+		// dibangun ulang, dan perbedaan itu tidak meninggalkan jejak lain sama sekali:
+		// aplikasi menyajikan layar versi lama tanpa satu pun galat, sehingga fitur yang
+		// sudah diperbaiki tampak masih rusak.
+		logger.Info("antarmuka tersemat", slog.String("dibangun", spaVersionText()))
 	}
 
 	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
@@ -768,4 +775,16 @@ func portalParameters(cfg config.Config) []db.Parameter {
 		})
 	}
 	return parameter
+}
+
+// spaVersionText menyebut kapan antarmuka tersemat dibangun, dalam bentuk yang aman
+// ditampilkan meski penandanya tidak ada.
+//
+// Binary yang dikompilasi sebelum penanda ini diperkenalkan tetap dapat berjalan; yang
+// hilang hanyalah kemampuan menjawab "antarmuka versi mana yang sedang disajikan".
+func spaVersionText() string {
+	if v := spa.Version(); v != "" {
+		return v
+	}
+	return "tidak diketahui (dibangun sebelum penanda versi ada)"
 }

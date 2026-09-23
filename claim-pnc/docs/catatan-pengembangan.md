@@ -2474,3 +2474,576 @@ petugas mana pun melihat kanwil mana pun.** Bila cabang adalah batas data yang m
 kanwil yang bebas dipilih adalah pintu yang sama, hanya lebih lebar. Aturan yang menentukannya di
 sistem lama ada di antara 137 When rule yang hilang (`R-16`), sehingga tidak dapat dibaca dari
 sumber — dan karena itu ia keputusan, bukan temuan.
+
+### 18.14 "Buat Baru masih tidak menjalankan apa-apa" — pembuktian dari luar
+
+Work Owner melaporkan tombolnya masih tidak melakukan apa pun. Pembacaan kode tidak menemukan satu
+pun jalur yang dapat diam tanpa jejak:
+
+| Jalur | Keadaan |
+|---|---|
+| Rute `POST /api/inbox/laporan-klaim` | terdaftar di `Mount` |
+| Tombol | memanggil `create.mutate`, lalu berpindah ke `/{id}` pada keberhasilan |
+| Kegagalan `POST` | digambar sebagai `ErrorMessage` tepat di atas tabel |
+| `callAPI` | **selalu** melempar pada jawaban tidak-OK; tidak ada jalur yang menelannya |
+
+Karena membaca kode tidak cukup membuktikan apa pun, **kontraknya diuji dari luar**: berkas baru
+`internal/inboxlaporanklaim/http/routes_test.go` merakit aplikasi utuh — sesi, middleware portal,
+jembatan `Caller` yang sama persis dengan `cmd/claimpnc` — lalu menembak HTTP sungguhan lewat
+`httptest`.
+
+| Uji | Yang dibuktikan |
+|---|---|
+| `TestCreateAnswersWithTheNewReportSoTheScreenCanOpenIt` | `201`, nomor berawalan `RCVN.`, cabang terisi dari penerjemahan login, **dan berkasnya benar-benar dapat dibuka di alamat yang dituju layar** |
+| `TestCreateWithoutBodyIsAcceptedBecausePegaAsksForNothing` | tombol tanpa isian tidak dijawab `400` |
+| `TestCreateWithoutPortalIsRefusedNotServedByThePrimary` | `R-20` — tanpa portal tidak jatuh ke koneksi utama |
+| `TestCreateWithoutSessionIsRefused` | rutenya memang di balik sesi |
+| `TestCreateIsRefusedWithAReasonWhenTheBranchIsUnknown` | penolakan **membawa sebab** (`403`, `cabang_tidak_dikenali`) — penolakan tanpa kode dan pesan adalah persis yang membuat tombol terbaca "tidak melakukan apa-apa" |
+| `TestUnreadableBranchSourceIsReportedAsTemporary` | `503`, `sumber_cabang_tidak_terbaca` |
+| `TestListAnswersWithTheShapeTheScreenReads` | keempat field tingkat atas yang dibaca layar ada |
+
+**Seluruhnya lulus.** Kontrak tombolnya benar dari ujung ke ujung.
+
+#### Sebab yang tersisa, dan buktinya
+
+SPA **disematkan ke binary saat `go build`** (`backend/spa/dist` lewat `go:embed`; direktif itu
+tidak dapat menjangkau `../`, lihat doc paket `spa`). Alurnya:
+
+```
+frontend/src → npm run build → backend/spa/dist → go build → satu binary
+```
+
+Artinya **`npm run build` saja tidak mengubah apa pun pada aplikasi yang sedang berjalan.** Binary
+yang dibangun sebelum 2026-09-22 17:51 — cap waktu `dist` saat ini — menyajikan antarmuka versi
+sebelumnya, yaitu versi yang hanya membuat berkas lalu mengumumkan nomornya tanpa membuka form.
+Dari kursi petugas, persis seperti tombol yang tidak bekerja.
+
+Pemeriksaan repo menguatkannya: **tidak ada satu pun `claimpnc.exe`** di pohon kerja, dan hanya ada
+satu worktree — sehingga yang dijalankan Work Owner dibangun di tempat lain atau pada waktu lain.
+
+#### Cara memastikannya dalam hitungan detik
+
+Buka Network pada peramban lalu tekan tombolnya:
+
+| Yang terlihat | Artinya |
+|---|---|
+| **Tidak ada permintaan sama sekali** | antarmuka lama — binary perlu dibangun ulang |
+| `POST` menjawab `201` tetapi alamat tidak berpindah | antarmuka lama |
+| `POST` menjawab `403 cabang_tidak_dikenali` | kode sudah baru; login belum terdaftar pada cabangnya |
+| `POST` menjawab `503 sumber_cabang_tidak_terbaca` | kode sudah baru; DB link `@asmd` atau `POOLDATA.BRANCH` tidak terbaca |
+
+### 18.15 Perbaikan: artefak dibangun ulang, dan penanda versi antarmuka ditambahkan
+
+Work Owner meminta tombolnya diperbaiki. Karena kontraknya sudah terbukti benar (§18.14), yang
+diperbaiki ada dua: **artefak yang dijalankan**, dan **sebab kekeliruan itu tidak terdeteksi**.
+
+#### Yang dikerjakan
+
+| # | Tindakan | Alasan |
+|---|---|---|
+| 1 | `npm run build` lalu `go build -o claimpnc.exe ./cmd/claimpnc` | Urutannya mengikat: antarmuka disematkan saat `go build`. Binary sekarang memuat antarmuka yang benar |
+| 2 | `npm run build` menulis `dist/versi.txt` berisi cap waktu ISO | Penanda versi antarmuka, ikut tersemat ke binary |
+| 3 | `spa.Version()` | Membaca penanda itu dari dalam binary |
+| 4 | Log saat start: `antarmuka tersemat dibangun=<cap waktu>` | Pertanyaan "antarmuka versi mana yang sedang disajikan" kini terjawab tanpa menebak |
+| 5 | `-periksa` mencetak baris `antarmuka : dibangun <cap waktu>` | Terjawab bahkan tanpa menyalakan server |
+
+#### Kenapa penanda versi, bukan sekadar membangun ulang
+
+Membangun ulang menyelesaikan hari ini. Penanda versi menyelesaikan **kelas kegagalannya**.
+
+Kekeliruan "frontend dibangun, binary tidak" **tidak meninggalkan jejak apa pun**: tidak ada galat,
+tidak ada log, tidak ada perbedaan yang terlihat di mana pun — hanya layar versi lama yang tampak
+seperti fitur rusak. Ia sudah memakan satu putaran penuh pelaporan dan penelusuran. Sekarang satu
+baris log menjawabnya.
+
+Pola yang sama dengan `checkClaimReportBranch` (§18.8): **kegagalan yang tidak terlihat sebagai
+kegagalan harus dibuat terlihat**, bukan diandalkan pada ingatan orang.
+
+#### Bukti bahwa penandanya benar-benar tersemat
+
+Dijalankan dari binary hasil build, tanpa menyalakan server:
+
+```
+Check integrasi Claim PNC
+  lingkungan       : development
+  portal utama     : ASM
+  adapter identitas: fake
+  antarmuka        : dibangun 2026-09-22T11:09:21.943Z
+```
+
+Cap waktunya sama dengan `dist/versi.txt` — artinya yang dibaca memang isi binary, bukan berkas di
+cakram.
+
+#### Satu hal yang sengaja dibiarkan
+
+`versi.txt` **ikut diabaikan git** (`backend/spa/dist/*`), sebagaimana seluruh hasil build. Pada
+klon bersih yang belum pernah menjalankan `npm run build`, `spa.Version()` mengembalikan kosong dan
+penandanya berbunyi *"tidak diketahui (dibangun sebelum penanda versi ada)"* — bukan gagal build.
+Artefak build tidak masuk repositori, dan penanda yang hilang tidak boleh menghentikan apa pun.
+
+### 18.16 Penjelasan pertama saya salah — dan apa yang sebenarnya ditemukan
+
+Work Owner menjalankan binary hasil build dan melaporkan tombolnya **masih** tidak melakukan apa
+pun. Dugaan "binary lama" (§18.14) karena itu **gugur**, dan dicatat apa adanya.
+
+#### Bagaimana ia dibuktikan gugur
+
+Penanda teks dicari langsung **di dalam berkas binary**:
+
+| Teks | Hasil |
+|---|---|
+| `Membuat…` (label tombol versi baru) | ada |
+| `Laporan baru tidak dapat dibuat` | ada |
+| `cabang_tidak_dikenali` | ada |
+
+Antarmuka baru memang tersemat. Lalu binary itu dijalankan sungguhan tanpa Oracle, dan `POST`
+dijawab **`201` dengan `RCVN.26.0001`**. Backend, antarmuka, dan artefaknya semuanya benar.
+
+> **Yang pertama saya lakukan seharusnya menjalankan, bukan menerangkan.** Penjelasan pertama masuk
+> akal, konsisten dengan seluruh bukti yang saya punya, dan salah. Yang membantahnya bukan
+> pembacaan ulang melainkan satu perintah `grep` ke berkas binary.
+
+#### Cacat yang sebenarnya ditemukan
+
+`internal/platform/httpserver/server.go` — kerangka halaman dapat **tertahan di cache peramban**:
+
+```go
+if _, err := fs.Stat(files, bersih); err != nil {
+    …
+    w.Header().Set("Cache-Control", "no-store")   // hanya di cabang INI
+    …
+}
+pelayan.ServeHTTP(w, r)                            // "/" lewat sini, TANPA header
+```
+
+Komentar di atasnya sudah menyatakan maksud yang benar — *"Kerangka halaman tidak boleh di-cache:
+satu rilis baru harus langsung terpakai tanpa pengguna menekan muat ulang paksa"* — tetapi
+headernya dipasang **di cabang yang salah**. Permintaan ke `/` menemukan `index.html` sebagai
+berkas nyata, sehingga jalur yang **paling sering dipakai** justru satu-satunya yang melewatinya.
+
+Akibatnya persis gejala yang dilaporkan: binary dibangun ulang, server dijalankan ulang, dan
+peramban tetap menjalankan antarmuka versi lama — **tanpa satu pun galat di mana pun**.
+
+#### Perbaikannya
+
+Header dipindahkan ke **sebelum** percabangan, dan hanya untuk kerangka halaman. Berkas aset
+sengaja tidak ikut: namanya sudah memuat sidik isi (`index-<hash>.js`), sehingga rilis baru
+menghasilkan nama baru dan cache-nya tidak pernah basi. Memaksa `no-store` di sana hanya membuat
+setiap muat ulang mengunduh ratusan kilobita tanpa manfaat.
+
+Dibuktikan dari binary sungguhan, bukan dari uji saja:
+
+```
+GET /                        → Cache-Control: no-store
+GET /assets/index-<hash>.js  → (tidak no-store)
+```
+
+Ditambah berkas uji baru `internal/platform/httpserver/server_test.go` — paket itu sebelumnya
+**tidak punya satu pun uji**:
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestPageSkeletonIsNeverCachedOnAnyPath` | ketiga jalur kerangka halaman menolak cache, termasuk `/` yang dulu melewatinya |
+| `TestHashedAssetsAreNotForcedOutOfCache` | kebalikannya juga dijaga — aset bersidik isi tetap boleh di-cache |
+
+#### Satu lagi yang ditutup sekalian: permintaan yang menggantung
+
+Penerjemahan cabang menembus **DB Link** ke basis data lain. Sambungan yang mati dapat menggantung
+sampai batas waktu TCP alih-alih menjawab galat — dan **permintaan yang menggantung tidak
+terbedakan dari tombol yang tidak bekerja**: tombolnya berbunyi "Membuat…", tidak ada pesan apa
+pun, dan pengguna menyerah sebelum jawabannya tiba.
+
+`branchTimeout = 5 detik` dipasang di adapter, sesuai `10-API-STRATEGY.md` §8.2 yang mewajibkan
+batas waktu pada setiap pemanggilan keluar. DB Link adalah pemanggilan keluar yang menyamar sebagai
+kueri biasa. Kehabisan waktu dibedakan dari galat basis data biasa, karena perbaikannya menunjuk
+sambungan ke HRD, bukan kueri maupun hak akses.
+
+---
+
+## 19. Sesi kedua belas — sumber daftar dipindahkan ke `POOLDATA.T_CLAIMLIST_ADMIN` (2026-09-23)
+
+### 19.1 Permintaan
+
+> "coba ubah tarikan data pelaporan agar data ditarik dari table POOLDATA.T_CLAIMLIST_ADMIN"
+
+### 19.2 Yang dicari lebih dulu, dan tidak ditemukan
+
+Tabel itu **nol kemunculan** di seluruh bahan: 2.634 berkas XML Pega, 63 objek `Database/`,
+dan seluruh dokumen proyek. Oracle sedang mati (`ORA-12514`), sehingga strukturnya juga tidak
+dapat diintrospeksi.
+
+Karena itu tidak ada satu pun kode ditulis sampai DDL-nya diterima. Menebak nama kolom
+menghasilkan kueri yang gagal pada eksekusi pertama di produksi — persis yang dilarang **No
+Shortcuts**, dan kesalahan yang sudah sekali saya buat sendiri pada sesi kesembilan
+(`kronologiskejadian_1`).
+
+### 19.3 Dua keputusan Work Owner
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Menggantikan sumber yang mana | **Kedua-duanya** — T_CLAIMLIST_ADMIN menjadi satu-satunya sumber daftar |
+| Siapa yang mengisinya | **Proses lain**; aplikasi ini hanya membaca |
+| Berkas baru yang belum ada di sana | **Pilihan 1** — proses pengisi diperluas agar ikut membaca `CPNC_LAPORAN_KLAIM` |
+
+### 19.4 Pemetaan kolom, dari DDL yang diterima
+
+| Kontrak modul | Kolom T_CLAIMLIST_ADMIN |
+|---|---|
+| `report_id` · `claim_number` · `assignment_ref` | `PYID` · `PNCCASEID` · `STATUSLOCK_1` |
+| `policy_number` · `insured_name` · `business_name` | `POLICYNO` · `QQNAME` · `BUSINESSNAME` |
+| `date_of_loss` · `created_at` · `aging_at` | `DATEOFLOSS_1` · `PXCREATEDATETIME` · `DATEFORAGING_1` |
+| `created_by` · `branch_code` | `PXCREATEOPERATOR` · `KODECABANG_1` |
+| `work_status` · `group_panel` · `business_group` | `PYSTATUSWORK` · `GROUPPANEL_1` · `BUSINESSGROUPID` |
+
+**Tiga yang membaik:**
+
+| Kolom | Sebelumnya | Sekarang |
+|---|---|---|
+| `reporter_name` | `NULL` — nama kolomnya di tabel warisan tidak diketahui (`R-08`) | `PXCREATEOPNAME` — sama artinya dengan `Sender := OperatorID.pyUserName` pada `CreateNewCaseRCV` |
+| `courier_name` | `NULL` | `KURIR` |
+| `not_registered_note` | `NULL` | `NOTREGISTNOTE_1` |
+
+Ditambah satu penyederhanaan: `BUSINESSGROUPID` sudah didenormalkan, sehingga `LEFT JOIN
+POOLDATA.BUSINESS` yang dulu diperlukan **hilang**.
+
+### 19.5 Tiga kolom yang menjadi kosong — regresi yang disadari
+
+| Kolom grid | Dulu dari | Di tabel baru |
+|---|---|---|
+| **Reference no** | `BOOKNO_1` | tidak ada |
+| **Alasan** | `KETERANGAN_1` | tidak ada |
+| **Subject Email** | `SUBJECTEMAIL_1` | tidak ada |
+
+Ketiganya dibuat `NULL`, **bukan dipetakan ke kolom lain yang kebetulan mirip**.
+`NOTREGISTNOTE_1` sangat menggoda untuk dijadikan "Alasan", padahal ia keterangan
+belum-registrasi yang sudah punya tempatnya sendiri di form. Memetakannya akan membuat dua isian
+berbeda tampil sebagai satu — dan salahnya tidak akan pernah terlihat sebagai galat.
+
+Kolomnya **tetap digambar** di grid, tidak disembunyikan: `D-13` menetapkan tata letak mengikuti
+Pega, dan kolom yang hilang adalah perubahan layar yang harus diputuskan Work Owner, bukan akibat
+sampingan penggantian sumber.
+
+### 19.6 Yang dipertahankan, dan satu yang sengaja tidak ditambahkan
+
+**Dipertahankan:** penyaring `pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'`. Tabel ini
+memuat kolom itu, dan tanpa penyaringnya daftar berisiko memuat case selain Receive Document bila
+ia ternyata melayani lebih dari satu jenis.
+
+**Tidak ditambahkan: `STS_AKTIF`.** Kolom itu ada, artinya belum diketahui, dan kueri lama tidak
+punya penyaring semacam itu — menambahkannya adalah **aturan baru** yang tidak ada di 13 butir
+`D-49` (`P-5`).
+
+Pilihan ini diambil sadar, dengan alasan yang dapat diperiksa: bila `STS_AKTIF` ternyata menandai
+baris yang tidak berlaku, daftar akan memuat baris berlebih — kekeliruan yang **terlihat dan
+dikeluhkan**. Bila saya menyaringnya berdasarkan tebakan dan tebakan itu salah, pekerjaan
+**hilang dari layar tanpa seorang pun tahu**. Layar ini sudah dua kali menderita kegagalan yang
+diam; saya tidak menambah yang ketiga atas dasar tebakan.
+
+### 19.7 `origin` berubah dasarnya
+
+Tabelnya kini satu, sehingga "dari tabel mana baris ini" tidak lagi dapat menjawab "milik siapa".
+Penggantinya adalah **awalan nomor**: `RCVN.` diterbitkan aplikasi ini, sisanya warisan.
+
+Itu bukan akal-akalan — `D-71` menetapkan awalan itu **justru supaya asal sebuah berkas terbaca
+dari nomornya tanpa tabel pemetaan**. Di sinilah ia terpakai.
+
+Awalan itu kini hidup di dua tempat (konstanta domain dan teks SQL), dan
+`TestOriginIsDerivedFromTheNumberPrefix` menjaga keduanya tidak berpisah diam-diam. Kalau
+berpisah, **setiap** berkas terbaca sebagai milik Pega dan form membukanya baca-saja tanpa satu
+pun galat.
+
+### 19.8 Jalur pembacaan berkas sendiri — supaya "Buat Baru" tidak rusak lagi
+
+Berkas yang baru dibuat **belum ada** di T_CLAIMLIST_ADMIN sampai proses pengisinya berjalan.
+Tanpa penanganan, menekan "Buat Baru" akan menerbitkan berkas lalu membuka form yang menjawab
+"laporan tidak ditemukan" — tombol yang tampak rusak, untuk **ketiga** kalinya.
+
+`claim_report_get_own_body` membaca langsung dari `CPNC_LAPORAN_KLAIM`, dan `Repo.Get` memilih
+jalur menurut awalan nomor lewat `IssuedHere()` yang sudah ada. Dua kueri, satu pembaca baris —
+`TestBothDetailQueriesSelectTheSameColumns` menjaga kolomnya tidak bergeser, karena `scanDetailRow`
+membaca secara **posisi**.
+
+### 19.9 Uji yang ditambahkan
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestListIsDrawnFromTheAdminClaimList` | sumber daftar memang T_CLAIMLIST_ADMIN, tabel kerja Pega tidak kembali, dan penyaring `pxobjclass` tidak hilang |
+| `TestOriginIsDerivedFromTheNumberPrefix` | awalan di SQL tetap sama dengan `ReportNumberPrefix` |
+| `TestOwnReportIsReadFromItsOwnTable` | berkas sendiri dibaca dari tabelnya sendiri dan menghormati soft delete |
+| `TestBothDetailQueriesSelectTheSameColumns` | kedua jalur detail memilih kolom identik |
+| `TestNoQueryWritesToLegacyPegaTable` **diperluas** | T_CLAIMLIST_ADMIN ikut dijaga hanya-baca |
+
+### 19.10 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` · `go test ./...` | bersih |
+| `npm run typecheck` · `npm run build` | bersih |
+| `npm test` | **108 lulus**, 3 gagal (ketiganya kegagalan lama `master-rekening`) |
+
+**Belum diuji terhadap basis data sungguhan** — Oracle masih `ORA-12514`. Kueri barunya karena itu
+belum pernah dieksekusi, dan itu dinyatakan apa adanya, bukan disamarkan sebagai selesai.
+
+### 19.11 Yang menunggu pihak lain
+
+1. **Proses pengisi T_CLAIMLIST_ADMIN diperluas** agar ikut membaca `CPNC_LAPORAN_KLAIM` —
+   tanpa itu, berkas terbitan aplikasi ini tidak akan pernah muncul di daftar.
+2. **Arti `STS_AKTIF`** — menentukan apakah penyaring perlu ditambahkan.
+3. **Ketiga kolom kosong** — apakah proses pengisi dapat menambahkan `BOOKNO_1`,
+   `KETERANGAN_1`, dan `SUBJECTEMAIL_1`, atau kolomnya dihapus dari grid.
+
+### 19.12 Tampilan disamakan dengan layar lama, dan `STS_AKTIF` ditetapkan (2026-09-23)
+
+Work Owner mengirim tangkapan layar Pega beserta tiga ketetapan.
+
+#### `STS_AKTIF` — pertanyaan terbuka §19.6 tertutup
+
+> "STS_AKTIF = 1 berarti claim masih aktif, sedangkan = 0 berarti claim sudah tidak aktif dan
+> tidak ditampilkan lagi"
+
+Penyaringnya dipasang **mengecualikan yang bernilai `'0'` secara tegas**, bukan "yang bukan `'1'`":
+
+```sql
+AND (t.sts_aktif IS NULL OR TRIM(t.sts_aktif) <> '0')
+```
+
+Kolomnya nullable, dan baris ber-`NULL` berarti penandanya tidak ditetapkan — bukan berarti tidak
+aktif. Menyembunyikannya akan menghilangkan pekerjaan dari layar tanpa seorang pun tahu; baris
+berlebih sebaliknya terlihat dan dikeluhkan. `TRIM` dipakai karena kolomnya `VARCHAR2(4)`: nilai
+berpadding spasi tidak akan pernah cocok dengan pembandingnya sendiri.
+
+#### `BOOKNO_1` — **tidak dapat dipenuhi**, dan ini perlu jawaban
+
+> "Isi bookno_1 sebagai noreferensi"
+
+**`BOOKNO_1` tidak ada di antara ke-53 kolom `T_CLAIMLIST_ADMIN`** pada DDL yang dikirim. Ia ada
+di tabel kerja Pega yang tidak lagi dibaca.
+
+Kolom "Reference no" karena itu **tetap kosong** — dan pada tangkapan layar yang dikirim, kolom itu
+pun kosong di seluruh baris yang terlihat. Menariknya kembali dengan JOIN ke
+`PC_ASM_FW_GCNMFW_WORK` akan membatalkan seluruh maksud pemindahan sumber, jadi tidak dilakukan
+sepihak.
+
+#### `KETERANGAN_1` dan `SUBJECTEMAIL_1` — tidak dipakai dulu
+
+Kolom "Alasan" **dihapus dari grid** sesuai ketetapan itu; pada tangkapan layar pun ia tidak ada.
+`subjek_email` tetap ada di kontrak API karena form masih memakainya.
+
+#### Tampilan grid disamakan dengan tangkapan layar
+
+| Hal | Sebelum | Sesudah |
+|---|---|---|
+| Urutan | Case ID · Case PNC · Polis no · Insured · Business … | **Case ID · Polis no · Case PNC · Reference no · Business Name · Insured Name** |
+| Kolom hilang | — | **Alasan** dibuang |
+| Kolom baru | — | **Reference no** · **Creator** · **Aging** |
+| Umur berkas | satu kolom "Total Aging", ditulis `10 hari` | **dua kolom**: "Aging" dan "Total Aging", ditulis `6y ago` |
+| Paginasi | "Menampilkan 11–20 dari 57" + Sebelumnya/Berikutnya, di BAWAH tabel | **"Total Data : 23767" + nomor halaman**, di ATAS tabel |
+
+**"Aging" ternyata kolom tersendiri.** Tabelnya memuat kolom `AGING` (NUMBER) yang selama ini
+diabaikan, dan layar lama menggambarnya **berdampingan** dengan "Total Aging" yang dihitung dari
+tanggal aging. Menyatukan keduanya akan menghapus satu kolom yang memang ada di layar.
+
+Ia dibawa sebagai **teks**, bukan angka: kolomnya nullable, dan layar membedakan "kosong" dari
+"nol". `int` tidak dapat membedakan keduanya — dan pada tangkapan layar ia justru kosong di seluruh
+baris. Artinya sendiri **belum diketahui**; tidak ada satu pun rule di export yang menyentuhnya,
+sehingga ia diteruskan apa adanya, bukan ditafsirkan.
+
+**Umur ditulis ringkas** (`relativeAge`). Dari tangkapan layar hanya bentuk TAHUN yang terbukti —
+seluruh baris berbunyi `6y ago`. Satuan bulan dan hari mengikuti bentuk ringkas yang sama karena
+itu satu-satunya yang dapat disandarkan pada bukti; bila Pega menuliskannya lain, yang berubah
+hanya satu fungsi.
+
+**Paginasi pindah ke atas tabel** dan menjadi nomor halaman. Pada daftar 23.767 baris, bilah di
+bawah menuntut pengguna menggulung seluruh halaman hanya untuk berpindah halaman. Jendela nomornya
+lima dan bergeser mengikuti halaman yang dibuka, sehingga halaman mana pun tetap terjangkau.
+Titik-titik `…` sengaja **bukan tombol**: apa yang terjadi saat ditekan tidak terlihat dari
+tangkapan layar, dan menebaknya berarti membuat perilaku yang tidak dapat dirujuk ke mana pun.
+
+#### Uji yang ditambahkan
+
+| Uji | Yang dijaga |
+|---|---|
+| `menggambar kolom dengan judul dan URUTAN persis seperti layar lama` | ketiga belas kolom beserta urutannya |
+| `menggambar Aging dan Total Aging sebagai DUA kolom yang berbeda` | keduanya tidak tergabung |
+| `menuliskan umur berkas secara ringkas seperti layar lama` | `today` · `5d ago` · `2mo ago` · `2y ago` |
+| `menyebut jumlah SELURUH baris, bukan jumlah yang tergambar` | "Total Data" |
+| `menggambar nomor halaman dan menandai halaman yang sedang dibuka` | `aria-current`, bukan hanya warna |
+
+#### Hasil verifikasi
+
+`go build` · `go vet` · `go test ./...` bersih · `typecheck` · `npm run build` bersih ·
+`npm test` **112 lulus**, 3 gagal (ketiganya kegagalan lama `master-rekening`).
+
+Kueri barunya **masih belum pernah dieksekusi** terhadap basis data sungguhan — Oracle tetap
+`ORA-12514`.
+
+### 19.13 Daftar tampil kosong pada tab bawaan — kolom penentu tab tidak pernah terisi
+
+Work Owner melaporkan tab "Outstanding Data" kosong, padahal lencana menyebut **115** berkas pada
+tab "Data hasn't been transferred" dan "All data".
+
+**Oracle sudah hidup** pada saat ini (`-periksa` menjawab `[ok] koneksi basis data: ASM`), sehingga
+untuk pertama kalinya tabelnya dapat dibaca langsung. Sebuah probe **baca-saja** dijalankan, lalu
+dihapus.
+
+#### Apa yang ditemukan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Isi `T_CLAIMLIST_ADMIN` | **1.014 baris**: 872 `Work-PNC` + 142 `Work-ReceiveDocument` |
+| `OS_CATEGORY` | `OS PELAPORAN KLAIM` (142) · `OS REGISTRASI KLAIM` (516) · `OS FOLLOW UP KE` (356) |
+| `STS_AKTIF` pada baris RCV | `1` → 115 · `0` → 27 — **cocok dengan lencana 115** |
+| **`PNCCASEID` pada baris RCV** | **NULL pada seluruh 142** |
+| **`STATUSLOCK_1` pada baris RCV** | **NULL pada seluruh 142** |
+| Ke-142 id yang SAMA, dibaca di `PC_ASM_FW_GCNMFW_WORK` | **Outstanding 22 · Not Registered 113 · Not Transferred 7** |
+
+Kedua kolom itu **penentu `position`**. Ada di DDL, tidak pernah terisi. Akibatnya seluruh baris
+jatuh ke cabang `ELSE` — "Not Transferred" — dan delapan dari sembilan tab tampil kosong **tanpa
+satu pun galat**.
+
+> Kelas kegagalan yang sama untuk ketiga kalinya di modul ini: **kolom yang ada tetapi kosong**
+> tidak menghasilkan galat, hanya hasil yang salah diam-diam. Yang menemukannya bukan pembacaan
+> kode melainkan membaca datanya.
+
+#### Perbaikannya
+
+`LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK` pada `pyid`, untuk **empat kolom saja**:
+
+| Kolom | Dari | Untuk |
+|---|---|---|
+| `claim_number` | `w.pnccaseid` | membedakan Outstanding dari Not Registered |
+| `assignment_ref` | `w.statuslock_1` | menandai sudah diserahkan atau belum |
+| `reference_number` | `w.bookno_1` | kolom "Reference no" — **sekaligus menutup permintaan `BOOKNO_1`** |
+| `position` | keduanya | penggolongan tab |
+
+**Baris mana yang tampil tetap ditentukan `T_CLAIMLIST_ADMIN`**; tabel kerja Pega hanya menempel
+sebagai `LEFT JOIN`, tidak pernah menjadi tabel penggerak di `FROM`. Uji
+`TestListIsDrawnFromTheAdminClaimList` menjaganya tetap begitu.
+
+Diuji lebih dulu lewat probe terhadap data sungguhan, sebelum satu baris pun ditulis ke berkas
+kueri — dari 115 baris aktif: **Outstanding 1 · Not Registered 113 · Not Transferred 1**, dan
+`BOOKNO_1` terisi (`KBRU-FW-CBFW-WORK CLM-362`, `CLM-429/235.301.1.0524.001245`, …).
+
+#### Uji yang ditambahkan
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestTabDecidingColumnsComeFromThePegaWorkTable` | keempat kolom tidak diam-diam kembali ke tabel admin — di sana namanya ada dan tampak benar, hanya isinya kosong |
+| `TestOnlyExplicitlyInactiveRowsAreHidden` | penyaring `STS_AKTIF` tidak berubah menjadi `= '1'` |
+| `TestListIsDrawnFromTheAdminClaimList` **ditulis ulang** | tabel kerja Pega boleh di-JOIN, TIDAK boleh menjadi tabel penggerak |
+
+#### Yang perlu diketahui Work Owner
+
+**`T_CLAIMLIST_ADMIN` bukan daftar laporan yang utuh.** Ia tabel *outstanding* — 142 baris RCV,
+sementara `PC_ASM_FW_GCNMFW_WORK` memuat **2.800** baris RCV di basis data yang sama. Tangkapan
+layar Pega yang dikirim sebelumnya menyebut **23.767** baris.
+
+Jadi setelah perbaikan ini layar akan menampilkan **115 baris**, bukan puluhan ribu. Bila yang
+dikehendaki adalah daftar utuh seperti layar lama, sumbernya harus kembali ke tabel kerja Pega —
+satu suntingan pada `FROM`, dan sisa kuerinya tidak berubah.
+
+### 19.14 Sumber dikembalikan ke tabel kerja Pega, dan dua cacat bind ditemukan
+
+Work Owner mengirim dua tangkapan layar berdampingan: Pega menampilkan **671** berkas dengan
+saringan Bisnis = NONMBU, sementara aplikasi baru menampilkan lencana **115** dengan tabel
+**kosong**.
+
+Oracle sudah hidup, sehingga seluruh temuan di bawah **diukur langsung**, bukan disimpulkan.
+
+#### Cacat 1 — urutan bind, dan kenapa ia lolos begitu lama
+
+Kueri pencacah dan kueri daftar dijalankan dengan bind yang **sama persis**. Hasilnya berbeda:
+
+```
+count_body    dengan cabang 100081  →   0
+summary_body  dengan cabang 100081  → 115
+```
+
+Sebabnya bukan data, melainkan **Oracle mengikat argumen menurut URUTAN KEMUNCULAN penanda di
+dalam teks kueri, bukan menurut angka pada `:n`**.
+
+Dua kueri menaruh penanda bernomor besar lebih dulu:
+
+| Kueri | Urutan kemunculan |
+|---|---|
+| `claim_report_summary_body` | `:22 … :30` (di SELECT), lalu `:1 … :21` (di WHERE) |
+| `claim_report_message_body` | `:30 … :35`, lalu `:1 … :29`, lalu `:36, :37` |
+
+Akibatnya pada pencacah: penyaring cabang menerima `NULL` dan pencacah komunikasi menerima kode
+cabang. Lencana menyebut 115, tabel menyebut 0 — **tanpa satu pun galat**, karena setiap bind
+tetap terisi sesuatu.
+
+Ditambah satu cacat kedua di jalur yang sama: `messageArgument[6:]` mengirim **2** nilai ke tempat
+yang menuntut **6**, sehingga ketiga tab komunikasi akan gagal saat ditembak.
+
+**Perbaikannya:** penanda dinomori ulang agar urutan kemunculannya menaik, dan argumen Go dikirim
+dalam urutan itu. `TestBindMarkersAppearInAscendingOrder` sekarang menjaga seluruh kueri — ia
+memeriksa **setiap** kueri, bukan hanya kedua yang rusak.
+
+> Uji lama sudah memeriksa "setiap nilai lewat parameter binding". Yang tidak diperiksa adalah
+> **urutannya** — dan itu justru yang salah. Penomoran `:1 … :30` terbaca benar oleh manusia dan
+> salah oleh Oracle.
+
+#### Cacat 2 — posisi ternyata punya EMPAT keadaan, bukan tiga
+
+Dihitung langsung pada saringan NONMBU:
+
+| `pnccaseid` | `statuslock_1` | Jumlah | Tab layar lama |
+|---|---|---|---|
+| NULL | NULL | **42** | Not Transferred |
+| NULL | terisi | **123** | Not Registered |
+| terisi | terisi | **340** | Outstanding |
+| terisi | NULL | **166** | **tidak masuk tab mana pun** |
+| | | **671** | All data |
+
+Keempatnya sama persis dengan angka di layar Pega. Pemetaan lama menaruh sisanya di `ELSE` sebagai
+"Not Transferred", sehingga tab itu menyebut **208** di tempat layar lama menyebut **42**.
+
+Sekarang keadaan keempat berposisi `NULL`: ia hanya ikut terhitung di "All data", persis seperti
+layar lama.
+
+#### Keputusan: sumber baris dikembalikan ke tabel kerja Pega
+
+`T_CLAIMLIST_ADMIN` **tidak dapat** menjadi sumber daftar, dan itu terukur:
+
+| | T_CLAIMLIST_ADMIN | PC_ASM_FW_GCNMFW_WORK |
+|---|---|---|
+| Baris Receive Document | **142** | **2.800** |
+| `kodecabang_1` | **NULL pada seluruhnya** | terisi; 801 baris di cabang 100081 |
+| `pnccaseid`, `statuslock_1` | NULL pada seluruhnya | terisi, dan inilah penentu tab |
+| Angka pada saringan NONMBU | — | **671 · 340 · 123 · 42**, sama persis dengan layar Pega |
+
+Tabel admin adalah daftar pekerjaan **outstanding** (`OS_CATEGORY = 'OS PELAPORAN KLAIM'`), bukan
+daftar laporan yang utuh. Dipakai sebagai sumber baris, layar kehilangan 95% isinya **dan** seluruh
+batas cabang.
+
+Ia **tetap dibaca**, sebagai `LEFT JOIN`, untuk empat hal yang memang hanya ada di sana:
+`sts_aktif`, `aging`, `kurir`, dan `notregistnote_1`.
+
+#### Angka yang sekarang dihasilkan, dan kenapa berbeda dari 671
+
+| Keadaan | Jumlah |
+|---|---|
+| Layar Pega, saringan NONMBU | **671** |
+| Aplikasi ini, saringan NONMBU, tanpa batas cabang | **644** |
+| Aplikasi ini, saringan NONMBU, cabang 100081 | **234** |
+
+Kedua selisihnya berasal dari aturan yang Work Owner sendiri tetapkan:
+
+1. **671 → 644**: 27 baris ber-`STS_AKTIF = '0'` disembunyikan (ketetapan 2026-09-23). Dari 27 itu,
+   21 berposisi Outstanding — sehingga tab itu menyebut 319, bukan 340.
+2. **644 → 234**: daftar dibatasi ke cabang petugas. **Layar Pega tampaknya TIDAK membatasinya** —
+   671 adalah angka tanpa batas cabang.
+
+Butir kedua menyentuh andaian yang sejak awal ditandai sebagai andaian di `usecase.buildFilter`:
+rule When yang menentukan kapan batas cabang berlaku termasuk 137 When rule yang hilang (`R-16`).
+Sekarang ada bukti bahwa layar lama tidak membatasinya — tetapi menghapus batas itu bertentangan
+dengan ketetapan 2026-09-22, sehingga **tidak diambil sepihak**.
+
+#### Hasil verifikasi
+
+`go build` · `go vet` · `go test ./...` bersih · `typecheck` · `npm run build` bersih ·
+`npm test` **112 lulus**, 3 gagal (kegagalan lama `master-rekening`).
+
+Untuk pertama kalinya, kuerinya **dijalankan terhadap basis data sungguhan** dan pencacah serta
+daftar terbukti menyebut angka yang sama.

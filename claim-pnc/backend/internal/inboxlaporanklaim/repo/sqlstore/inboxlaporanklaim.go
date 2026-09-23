@@ -10,13 +10,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxlaporanklaim"
 )
 
-// Repo membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan membaca-menulis
+// Repo membaca POOLDATA.T_CLAIMLIST_ADMIN dan membaca-menulis
 // POOLDATA.CPNC_LAPORAN_KLAIM.
 type Repo struct {
 	db    *sql.DB
@@ -95,10 +96,19 @@ func (r *Repo) listMessage(
 		return inboxlaporanklaim.Page{}, err
 	}
 
-	// Keenam bind percakapan dikirim DUA KALI: sekali untuk EXISTS pada WHERE, sekali
-	// untuk mengambil pesan terakhirnya di SELECT. Keduanya memakai penyaring yang sama
-	// persis — bila berbeda, baris dapat lolos EXISTS lalu menampilkan pesan kosong.
-	listArgument := append(append([]any(nil), countArgument...), messageArgument[6:]...)
+	// Keenam bind percakapan dikirim DUA KALI: sekali untuk mengambil pesan terakhirnya di
+	// SELECT, sekali untuk EXISTS pada WHERE. Keduanya memakai penyaring yang sama persis
+	// — bila berbeda, baris dapat lolos EXISTS lalu menampilkan pesan kosong.
+	//
+	// Yang di SELECT dikirim LEBIH DULU karena di teks kuerinya ia muncul lebih dulu.
+	// Oracle mengikat menurut urutan kemunculan, bukan menurut nomor pada `:n`.
+	//
+	// `messageArgument[2:]` — enam nilai: status percakapan, pengirim yang dicari, dan
+	// pengirim yang dihindari, masing-masing penjaga dan pembandingnya. Dua yang pertama
+	// (identitas pembuat berkas) hanya dipakai WHERE.
+	listArgument := make([]any, 0, len(countArgument)+8)
+	listArgument = append(listArgument, messageArgument[2:]...)
+	listArgument = append(listArgument, countArgument...)
 	listArgument = append(listArgument, page.Offset(), page.Size)
 
 	rows, err := r.query(ctx, "claim_report_message_body", listArgument)
@@ -116,10 +126,18 @@ func (r *Repo) Summarize(
 ) (inboxlaporanklaim.Summary, error) {
 	operator := emptyToNil(filter.Operator)
 
-	argument := scopeArguments(filter)
+	// Sembilan bind pencacah komunikasi DIKIRIM LEBIH DULU, karena di teks kuerinya
+	// merekalah yang muncul lebih dulu — ada di SELECT, sedangkan penyaring ada di WHERE.
+	//
+	// Oracle mengikat menurut URUTAN KEMUNCULAN, bukan menurut nomor pada `:n`. Sebelum
+	// ini argumennya dikirim dalam urutan nomor, sehingga penyaring cabang menerima NULL
+	// dan pencacahnya menerima kode cabang: lencana di atas tab menyebut 115 sementara
+	// tabel di bawahnya kosong. Gagal tanpa satu pun galat.
+	argument := make([]any, 0, 30)
 	for i := 0; i < 9; i++ {
 		argument = append(argument, operator)
 	}
+	argument = append(argument, scopeArguments(filter)...)
 
 	row := r.db.QueryRowContext(ctx, sourced("claim_report_summary_body"), argument...)
 
@@ -184,7 +202,25 @@ func (r *Repo) ListRegions(ctx context.Context) ([]inboxlaporanklaim.Region, err
 // sepuluh kolom lebih banyak daripada kueri daftar. Lihat catatan pada
 // claim_report_get_body.
 func (r *Repo) Get(ctx context.Context, id string) (inboxlaporanklaim.ClaimReport, error) {
-	rows, err := r.db.QueryContext(ctx, sourced("claim_report_get_body"), strings.TrimSpace(id))
+	clean := strings.TrimSpace(id)
+
+	// Dua jalur, dipilih menurut AWALAN NOMOR.
+	//
+	// Sejak daftar ditarik dari T_CLAIMLIST_ADMIN (Work Owner, 2026-09-23), berkas yang
+	// baru dibuat belum ada di sana sampai proses pengisinya berjalan. Membacanya lewat
+	// jalur daftar akan menjawab "tidak ditemukan" tepat sesudah tombol "Buat Baru"
+	// ditekan — tombol yang tampak rusak, kelas kegagalan yang sudah dua kali menimpa
+	// layar ini.
+	//
+	// Awalan `RCVN.` hanya diterbitkan aplikasi ini (`D-71`), sehingga pemilihannya pasti.
+	// Itu pula alasan awalan itu ditetapkan: asal sebuah berkas terbaca dari nomornya
+	// tanpa tabel pemetaan.
+	query := sourced("claim_report_get_body")
+	if inboxlaporanklaim.IssuedHere(clean) {
+		query = getQuery("claim_report_get_own_body")
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, clean)
 	if err != nil {
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca berkas: %w", err)
 	}
@@ -305,7 +341,7 @@ func (r *Repo) Insert(
 func (r *Repo) CheckTable(ctx context.Context) error {
 	for name, table := range map[string]string{
 		"claim_report_check_table":        "POOLDATA.CPNC_LAPORAN_KLAIM",
-		"claim_report_check_legacy_table": "DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		"claim_report_check_legacy_table": "POOLDATA.T_CLAIMLIST_ADMIN",
 	} {
 		rows, err := r.db.QueryContext(ctx, getQuery(name))
 		if err != nil {
@@ -472,6 +508,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		createdBy, branchCode, branchName       sql.NullString
 		reason, emailSubject                    sql.NullString
 		position, origin, lastMessage           sql.NullString
+		agingValue                              sql.NullInt64
 	)
 
 	// Urutan Scan mengikuti urutan kolom pada ketiga badan kueri pembaca, dan ketiganya
@@ -483,7 +520,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		&id, &claimNumber, &assignmentRef,
 		&policyNumber, &insuredName, &reporterName, &businessName, &referenceNumber,
 		&dateOfLoss, &createdAt, &createdBy, &branchCode, &branchName,
-		&agingAt, &reason, &emailSubject, &position, &origin, &lastMessage,
+		&agingAt, &reason, &emailSubject, &position, &origin, &agingValue, &lastMessage,
 	); err != nil {
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca baris: %w", err)
 	}
@@ -503,6 +540,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		BranchCode:      text(branchCode),
 		BranchName:      text(branchName),
 		AgingAt:         moment(agingAt),
+		AgingValue:      number(agingValue),
 		Reason:          text(reason),
 		EmailSubject:    text(emailSubject),
 		LastMessage:     text(lastMessage),
@@ -533,8 +571,9 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		createdBy, branchCode, branchName       sql.NullString
 		reason, emailSubject                    sql.NullString
 		position, origin                        sql.NullString
+		agingValue                              sql.NullInt64
 
-		receivedDate                sql.NullTime
+		receivedDate                 sql.NullTime
 		reporterEmail, reporterPhone sql.NullString
 		courierName, lossLocation    sql.NullString
 		estimateValue, documentCount sql.NullInt64
@@ -548,7 +587,7 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		&id, &claimNumber, &assignmentRef,
 		&policyNumber, &insuredName, &reporterName, &businessName, &referenceNumber,
 		&dateOfLoss, &createdAt, &createdBy, &branchCode, &branchName,
-		&agingAt, &reason, &emailSubject, &position, &origin,
+		&agingAt, &reason, &emailSubject, &position, &origin, &agingValue,
 		&receivedDate, &reporterEmail, &reporterPhone, &courierName,
 		&estimateValue, &lossLocation, &chronology, &damageDetail,
 		&notRegisteredNote, &documentCount,
@@ -572,6 +611,7 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		BranchCode:        text(branchCode),
 		BranchName:        text(branchName),
 		AgingAt:           moment(agingAt),
+		AgingValue:        number(agingValue),
 		Reason:            text(reason),
 		EmailSubject:      text(emailSubject),
 		Position:          inboxlaporanklaim.Position(text(position)),
@@ -594,6 +634,18 @@ func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 }
 
 func text(value sql.NullString) string { return strings.TrimSpace(value.String) }
+
+// number mengubah angka yang boleh NULL menjadi teks, dan NULL menjadi teks kosong.
+//
+// Ia dipakai kolom yang hanya DIGAMBAR, tidak pernah dihitung. Mengembalikan 0 untuk NULL
+// akan membuat kolom yang memang belum diisi tergambar sebagai angka nol — dua keadaan
+// berbeda yang tidak lagi dapat dibedakan pembacanya.
+func number(value sql.NullInt64) string {
+	if !value.Valid {
+		return ""
+	}
+	return strconv.FormatInt(value.Int64, 10)
+}
 
 // nullTime mengubah waktu nol menjadi NULL.
 //

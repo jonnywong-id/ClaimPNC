@@ -38,9 +38,14 @@ type ClaimReportDTO struct {
 	TanggalMasuk    string `json:"tanggal_masuk"`
 	TanggalAging    string `json:"tanggal_aging"`
 
-	// UmurHari adalah kolom "Total Aging", dihitung server terhadap satu waktu acuan
+	// UmurHari mendasari kolom "Total Aging", dihitung server terhadap satu waktu acuan
 	// untuk seluruh baris — bukan dihitung ulang tiap baris di peramban.
 	UmurHari int `json:"umur_hari"`
+
+	// Aging adalah kolom "Aging" pada grid: isi kolom AGING apa adanya, kosong bila
+	// memang belum diisi. Ia BUKAN "Total Aging" — layar lama menggambar keduanya
+	// berdampingan sebagai dua kolom.
+	Aging string `json:"aging"`
 
 	Pembuat    string `json:"pembuat"`
 	KodeCabang string `json:"kode_cabang"`
@@ -295,6 +300,7 @@ func toDTO(r inboxlaporanklaim.ClaimReport, now time.Time) ClaimReportDTO {
 		TanggalMasuk:    dateText(r.CreatedAt),
 		TanggalAging:    dateText(r.AgingAt),
 		UmurHari:        r.AgingDays(now),
+		Aging:           r.AgingValue,
 		Pembuat:         r.CreatedBy,
 		KodeCabang:      r.BranchCode,
 		NamaCabang:      r.BranchName,

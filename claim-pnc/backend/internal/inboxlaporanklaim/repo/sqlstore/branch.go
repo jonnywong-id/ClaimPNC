@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/inboxlaporanklaim"
 )
@@ -19,6 +20,27 @@ import (
 type BranchResolver struct {
 	db *sql.DB
 }
+
+// branchTimeout membatasi lama penerjemahan cabang.
+//
+// # Kenapa ada batas waktu di sini, dan tidak di kueri lain modul ini
+//
+// Kueri lain membaca basis data entitas sendiri. Yang ini menembus **DB Link** ke basis
+// data lain — dan `10-API-STRATEGY.md` §8.2 menetapkan batas waktu WAJIB pada setiap
+// pemanggilan keluar. DB Link adalah pemanggilan keluar yang menyamar sebagai kueri
+// biasa: ia melewati jaringan, dan sambungan yang mati dapat menggantung sampai batas
+// waktu TCP, bukan menjawab galat.
+//
+// # Kenapa itu lebih buruk daripada galat
+//
+// Permintaan yang menggantung **tidak terbedakan dari tombol yang tidak bekerja**.
+// Tombolnya tetap berbunyi "Membuat…", tidak ada pesan apa pun, dan pengguna menyerah
+// sebelum jawabannya tiba. Itu kelas kegagalan yang sama dengan daftar kosong yang
+// membuat modul ini harus diperbaiki pada mulanya: gagal tanpa mengatakan apa-apa.
+//
+// Lima detik: cukup longgar untuk DB Link yang sehat pada jaringan kantor, cukup pendek
+// untuk membuat kegagalannya terasa sebagai kegagalan, bukan sebagai kelambatan.
+const branchTimeout = 5 * time.Second
 
 // NewBranchResolver membentuk penerjemah; db wajib sudah terhubung.
 func NewBranchResolver(db *sql.DB) *BranchResolver {
@@ -41,10 +63,20 @@ func (r *BranchResolver) Resolve(ctx context.Context, login string) (string, boo
 		return "", false, nil
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, branchTimeout)
+	defer cancel()
+
 	var code sql.NullString
 	err := r.db.QueryRowContext(ctx, getQuery("branch_of_login"), clean).Scan(&code)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		// Dibedakan dari galat basis data biasa karena perbaikannya berbeda: yang ini
+		// menunjuk sambungan ke HRD, bukan kueri maupun hak akses.
+		return "", false, fmt.Errorf(
+			"inboxlaporanklaim/sqlstore: penerjemahan cabang %q tidak dijawab dalam %s; "+
+				"DB Link ke HRD kemungkinan tidak hidup", clean, branchTimeout)
 	}
 	if err != nil {
 		return "", false, fmt.Errorf("inboxlaporanklaim/sqlstore: menerjemahkan cabang %q: %w", clean, err)
