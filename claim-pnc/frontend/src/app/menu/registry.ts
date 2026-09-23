@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 71 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 70 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -158,6 +158,14 @@ export const MENU_ROUTES: Record<string, string> = {
   // Rutenya karena itu terpisah, dan tidak boleh disatukan: yang satu menyaring menurut
   // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
   ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
+
+  // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
+  //
+  // Di data contoh `m_otorisasi_pnc.csv`, butir ini hanya diberikan kepada grup `IT`.
+  // Anggota komite yang sesungguhnya — peran PNCKomite dan PNCKomiteTeknik — belum ada
+  // barisnya, sehingga mereka tidak akan melihat butirnya sampai otorisasinya diisi.
+  // Itu keadaan DATA, bukan cacat kode.
+  InboxKomite_Harness: '/komite/inbox',
 }
 
 /**

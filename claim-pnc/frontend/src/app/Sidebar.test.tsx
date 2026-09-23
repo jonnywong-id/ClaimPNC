@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MENU_ROUTES } from '@/app/menu/registry'
 import { useSession } from '@/app/session'
 
 import { Sidebar } from './Sidebar'
@@ -16,6 +17,26 @@ const SAMPLE_PROFILE = {
   email: '',
   perusahaan: 'ASM',
 }
+
+/**
+ * MENU_PROGRAM yang dipakai sebagai contoh butir "belum tersedia".
+ *
+ * Ia sengaja diangkat menjadi konstanta agar penggantinya cukup disunting di SATU tempat,
+ * dan agar uji penjaga di bawah dapat memeriksanya. Riwayat berkas ini menunjukkan kenapa
+ * itu perlu: contohnya sudah batal TIGA KALI karena modulnya keburu dibangun — "Master PIC
+ * Teknik", lalu "Master Surveyors", lalu `InboxOutstanding_Harness` pada 2026-09-23.
+ *
+ * Yang ketiga membatalkan sekaligus alasan yang tertulis di komentarnya sendiri: harness
+ * `InboxOutstanding_Harness` memang tidak ada di export, tetapi layarnya tetap dapat
+ * dibangun dari kueri `BrowseInboxOutstanding1` beserta activity dan section-nya. Jadi
+ * "harness-nya tidak ada di export" TIDAK menjamin modulnya tidak akan dibangun.
+ *
+ * Karena tidak ada kriteria yang benar-benar kebal, yang dipasang adalah penjaganya: uji
+ * `contoh butir "belum tersedia" masih sahih` gagal lebih dulu dengan pesan yang menyebut
+ * apa yang harus dilakukan, sehingga penggantinya tidak perlu ditelusuri dari kegagalan
+ * render yang membingungkan.
+ */
+const BELUM_DIBANGUN = 'DataMemberReas'
 
 /**
  * Bentuknya meniru jawaban GET /api/menu: dua kelompok, masing-masing dengan butir yang
@@ -47,7 +68,7 @@ const MENU = {
         // Butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT sama
         // sekali (`K-33`, 11 dari 47 harness target). Ia dipakai sebagai contoh butir
         // yang belum ada modulnya — lihat alasannya di uji yang memakainya.
-        { id: 91, nama: 'Outstanding Klaim', program: 'InboxOutstanding_Harness', submenu: [] },
+        { id: 91, nama: 'Data Member Reas', program: BELUM_DIBANGUN, submenu: [] },
       ],
     },
   ],
@@ -180,6 +201,22 @@ describe('butir yang sudah ada modulnya', () => {
 })
 
 describe('butir yang belum ada modulnya', () => {
+  // Penjaga, bukan uji perilaku. Ia menjawab satu hal saja: apakah contoh yang dipakai uji
+  // di bawahnya MASIH berupa butir yang belum punya layar.
+  //
+  // Tanpa ini, membangun modul `BELUM_DIBANGUN` akan menjatuhkan uji berikutnya dengan
+  // "expected document not to contain element" — kegagalan yang benar tetapi tidak
+  // menjelaskan apa pun, dan sudah tiga kali menghabiskan waktu orang untuk ditelusuri.
+  it('contoh butir "belum tersedia" masih sahih', () => {
+    expect(
+      MENU_ROUTES[BELUM_DIBANGUN],
+      `MENU_PROGRAM "${BELUM_DIBANGUN}" kini SUDAH punya layar di MENU_ROUTES, sehingga ` +
+        'ia tidak lagi sah sebagai contoh butir "belum tersedia". Ganti konstanta ' +
+        'BELUM_DIBANGUN di berkas ini dengan MENU_PROGRAM lain yang belum dipetakan — ' +
+        'daftar kandidatnya ada di komentar kepala src/app/menu/registry.ts.',
+    ).toBeUndefined()
+  })
+
   // Keputusan Work Owner 2026-09-18: tetap terlihat, tidak dapat diklik, bertanda.
   it('tampil dengan tanda "belum tersedia" dan bukan tautan', async () => {
     installFetch(() => jsonResponse(200, MENU))
@@ -188,20 +225,8 @@ describe('butir yang belum ada modulnya', () => {
 
     await user.click(await screen.findByRole('button', { name: /REPORT/ }))
 
-    // Contohnya butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT
-    // sama sekali (`K-33`) — bukan butir yang kebetulan belum dibangun saat uji ini
-    // ditulis.
-    //
-    // Pembedaan itu MAHAL dipelajari: uji ini pernah memakai "Master PIC Teknik", lalu
-    // batal sendiri begitu modul itu jadi. Ia lalu diganti "Master Surveyors" beserta
-    // komentar yang memperingatkan jebakan yang sama — dan pada 2026-09-20 ia batal lagi,
-    // persis karena alasan yang sudah tertulis di komentarnya sendiri.
-    //
-    // `InboxOutstanding_Harness` tidak dapat mengulangi itu: harness-nya tidak ada di
-    // export, sehingga tidak ada yang dapat membangun modulnya tanpa meminta artefaknya
-    // ke Tim Pega lebih dulu.
-    expect(screen.getByText('Outstanding Klaim')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Outstanding Klaim' })).not.toBeInTheDocument()
+    expect(screen.getByText('Data Member Reas')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Data Member Reas' })).not.toBeInTheDocument()
     expect(screen.getAllByText('belum tersedia').length).toBeGreaterThan(0)
   })
 

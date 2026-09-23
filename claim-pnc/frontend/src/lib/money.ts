@@ -1,24 +1,33 @@
 /**
- * Pemformatan dan pembacaan nilai uang.
+ * Pemformatan dan pembacaan nilai uang di sisi layar.
  *
- * # Kenapa ia di satu tempat, bukan di modul yang memakainya
+ * # Berkas ini memuat DUA perwakilan nilai uang, dan itu disengaja
  *
- * `docs/Steering/08-TECHNICAL-STRATEGY.md` §3 aturan 4 menetapkan seluruh pemformatan
- * angka dan mata uang melewati satu berkas bersama. Alasannya konkret dan berasal dari
- * sistem lama: di sana pemformatan dikerjakan `TO_CHAR` yang tersebar di 411 tempat, dan
- * akibatnya tanggal serta angka tampil dengan bentuk yang berbeda-beda antarlayar tanpa
- * ada yang berwenang menyeragamkannya.
+ * Keduanya lahir dari dua modul yang menerima bentuk data berbeda dari server, dan
+ * keduanya masih dipakai:
  *
- * Master Recovery adalah modul pertama yang menangani nilai uang, sehingga berkas ini
- * lahir bersamanya. Modul berikutnya memakainya kembali, bukan menulis versinya sendiri.
+ *	formatMoney / parseMoney / remainder    ANGKA rupiah utuh    — Master Recovery
+ *	formatRupiah / parseRupiah              TEKS desimal kanonik — Ambang Komite, Inbox Komite
  *
- * # Satuannya RUPIAH UTUH, bukan sen
+ * Menyatukannya menuntut salah satu modul mengubah kontrak API-nya, dan itu keputusan
+ * tersendiri — bukan efek samping penggabungan cabang. Sampai keputusan itu diambil,
+ * PILIH menurut bentuk yang dikirim endpoint yang Anda panggil:
  *
- * Backend mengirim dan menerima bilangan bulat rupiah, dan MENOLAK pecahan. Alasannya
- * beserta buktinya ada di `masterrecovery.Amount` — ringkasnya: kolomnya NUMBER tanpa
- * skala sehingga tidak membatasi apa pun, seluruh baris yang ada bilangan bulat, dan
- * float dilarang untuk nilai uang tanpa perkecualian.
+ *	angka JSON     -> formatMoney
+ *	teks "123.00"  -> formatRupiah
+ *
+ * Memakai yang salah TIDAK menghasilkan galat tipe pada nilai tertentu — `formatMoney`
+ * menerima number dan `formatRupiah` menerima string — tetapi menghasilkan tampilan yang
+ * keliru begitu bentuknya tidak cocok.
+ *
+ * # Kenapa berkas ini ada sama sekali
+ *
+ * `docs/Steering/08-TECHNICAL-STRATEGY.md` §3 aturan 4 menetapkan seluruh pemformatan angka
+ * dan mata uang melewati satu berkas bersama. Di sistem lama pemformatan dikerjakan
+ * `TO_CHAR` yang tersebar di 411 tempat, dan akibatnya angka tampil berbeda-beda antarlayar
+ * tanpa ada yang berwenang menyeragamkannya.
  */
+
 
 /**
  * formatMoney menampilkan nilai uang dengan pemisah ribuan Indonesia.
@@ -84,4 +93,90 @@ export function parseMoney(text: string): number | null {
 export function remainder(claimAmount: number, previousPayment: number, payment: number): number {
   if (previousPayment === 0) return claimAmount - payment
   return claimAmount - previousPayment
+}
+
+/* ========================================================================== */
+/* Perwakilan kedua: TEKS desimal kanonik — dipakai Ambang Komite dan Inbox   */
+/* Komite. Server mengirimnya sebagai teks, bukan angka JSON, karena angka    */
+/* JSON adalah floating point ganda di hampir seluruh peramban.               */
+/* ========================================================================== */
+
+
+/** Pemisah ribuan dan desimal mengikuti kebiasaan Indonesia: titik dan koma. */
+const THOUSANDS_SEPARATOR = '.'
+const DECIMAL_SEPARATOR = ','
+
+/**
+ * Mengubah bentuk kanonik dari server menjadi teks yang enak dibaca.
+ *
+ * `"50000001.00"` menjadi `"Rp 50.000.001"`, dan `"12.50"` menjadi `"Rp 12,50"`.
+ *
+ * Sen yang bernilai nol **dibuang**, karena seluruh isi master ambang komite berupa
+ * rupiah bulat dan menampilkan `,00` di setiap baris hanya menambah keramaian tanpa
+ * menambah keterangan. Sen yang tidak nol tetap ditampilkan — membuangnya akan
+ * menyembunyikan selisih yang justru menentukan.
+ */
+export function formatRupiah(canonical: string, options?: { withoutSymbol?: boolean }): string {
+  const trimmed = (canonical ?? '').trim()
+  if (trimmed === '') return '—'
+
+  const negative = trimmed.startsWith('-')
+  const unsigned = negative ? trimmed.slice(1) : trimmed
+
+  const [whole = '0', fraction = ''] = unsigned.split('.')
+  if (!/^\d+$/.test(whole)) return canonical
+
+  let formatted = groupThousands(whole)
+  if (fraction !== '' && /[1-9]/.test(fraction)) {
+    formatted += DECIMAL_SEPARATOR + fraction
+  }
+  if (!options?.withoutSymbol) formatted = `Rp ${formatted}`
+
+  // Tanda minus di depan lambang, bukan di antara lambang dan angka: "-Rp 7,25" terbaca
+  // sebagai satu nilai negatif, sedangkan "Rp -7,25" sekilas terbaca seperti salah ketik.
+  return negative ? `-${formatted}` : formatted
+}
+
+/**
+ * Mengubah apa yang diketik pengguna menjadi bentuk kanonik yang dipahami server.
+ *
+ * Pengguna boleh mengetik `50.000.000`, `50000000`, atau `50.000.000,50` — ketiganya
+ * diterima, karena itulah cara orang menuliskan rupiah. Server sendiri **menolak**
+ * pemisah ribuan, dan justru itu alasan pengubahan ini dikerjakan di sini: artinya
+ * berbeda antar bahasa, sehingga penafsirannya harus terjadi di tempat yang tahu
+ * bahasanya — layar — bukan di API yang melayani siapa saja.
+ *
+ * Mengembalikan `null` bila yang diketik bukan nilai uang yang sah.
+ */
+export function parseRupiah(input: string): string | null {
+  let cleaned = (input ?? '').trim()
+  if (cleaned === '') return null
+
+  cleaned = cleaned.replace(/^Rp\s*/i, '')
+  // Spasi dan spasi-tak-terputus kadang ikut saat pengguna menyalin dari layar lain.
+  cleaned = cleaned.replace(/[\s ]/g, '')
+
+  const negative = cleaned.startsWith('-')
+  if (negative || cleaned.startsWith('+')) cleaned = cleaned.slice(1)
+
+  // Pemisah ribuan dibuang; koma menjadi titik desimal.
+  cleaned = cleaned.split(THOUSANDS_SEPARATOR).join('')
+  cleaned = cleaned.replace(DECIMAL_SEPARATOR, '.')
+
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null
+
+  const [whole, fraction = ''] = cleaned.split('.')
+  const canonical = `${whole}.${(fraction + '00').slice(0, 2)}`
+  return negative ? `-${canonical}` : canonical
+}
+
+function groupThousands(digits: string): string {
+  // Dikerjakan dari belakang supaya kelompok terakhir yang boleh kurang dari tiga digit,
+  // bukan yang pertama.
+  let result = ''
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 === 0) result += THOUSANDS_SEPARATOR
+    result += digits[i]
+  }
+  return result
 }

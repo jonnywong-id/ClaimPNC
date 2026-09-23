@@ -832,6 +832,9 @@ export const ErrorCode = {
   claimFileEmpty: 'berkas_klaim_kosong',
   claimFileTooBig: 'berkas_klaim_terlalu_besar',
   claimFileUnreadable: 'berkas_klaim_tidak_terbaca',
+  // Milik modul Komite.
+  unknownLine: 'lini_tidak_dikenal',
+  malformedClaimValue: 'nilai_klaim_cacat',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -1414,3 +1417,304 @@ export type MaskingInput = {
 export type MaskingStatusInput = {
   aktif: boolean
 }
+/**
+ * Satu baris master ambang komite — satu jenjang persetujuan untuk satu lini bisnis.
+ *
+ * Nilai uang datang sebagai **teks desimal kanonik** (`"50000001.00"`), bukan angka JSON.
+ * Angka JSON adalah floating point ganda di peramban, dan `I-12` menetapkan nilai uang
+ * disimpan dengan presisi penuh. Pemformatannya lewat `@/lib/money`.
+ */
+export type KomiteThreshold = {
+  id: string
+  nama: string
+  operator_id: string
+  lini: string
+  /**
+   * Kolom `TYPE_KOMITE` apa adanya, dan kolom itu memikul **dua arti**: pita nilai di
+   * Non-MBU, varian jalur (PA reguler versus PA TKI) di PA. Jangan menafsirkannya di
+   * layar — pakai `berpita_nilai` pada respons penjenjangan.
+   */
+  jenis_komite: string
+  batas_bawah: string
+  /**
+   * `LIMIT_TOP`. **Tidak pernah** dipakai memilih baris — memakainya untuk menyaring
+   * akan mengembalikan tepat satu baris dan menghapus penjenjangan seluruhnya (`D-47`).
+   * Ia hanya bahan pemeriksaan integritas master.
+   */
+  batas_atas: string
+  /** `DEGREE` — penentu urutan, bukan jumlah jenjang. Boleh berulang dan boleh melompat. */
+  jenjang: number
+  aktif: boolean
+  untuk_adjustment: boolean
+  untuk_registrasi: boolean
+  untuk_penolakan: boolean
+  sedang_absen: boolean
+  /** Kesimpulan server: baris ini benar-benar ikut menyetujui nilai klaim. */
+  jenjang_persetujuan: boolean
+}
+
+/** Aturan pita nilai yang berlaku untuk sebuah lini. Hanya Non-MBU yang memakainya. */
+export type KomiteBandPolicy = {
+  lini: string
+  batas: string
+  pita_bawah: string
+  pita_atas: string
+}
+
+export type KomiteThresholdListResponse = {
+  ambang: KomiteThreshold[]
+  total: number
+  /** Hanya baris yang benar-benar ikut menyetujui. Selalu lebih kecil dari `total`. */
+  total_jenjang: number
+  /** Datang dari data, bukan dari daftar tetap di dalam kode (`D-15`). */
+  lini: string[]
+  kebijakan_pita: KomiteBandPolicy[]
+  /**
+   * Mode penjenjangan portal ini — `"kumulatif"` atau `"satu-penyetuju"`.
+   *
+   * Ditentukan per **portal**, bukan per lini. Layar memakainya untuk menentukan apakah
+   * isian Operator ID pengaju perlu ditampilkan sama sekali.
+   */
+  mode: string
+}
+
+/** Satu hal yang ditemukan pada master ambang. */
+export type KomiteFinding = {
+  /** `"cacat"` atau `"peringatan"`. Dibedakan lewat nilai ini, bukan teks pesannya. */
+  tingkat: string
+  jenis: string
+  lini: string
+  pita?: string
+  pesan: string
+  id_ambang: string[]
+}
+
+export type KomiteIntegrityResponse = {
+  temuan: KomiteFinding[]
+  jumlah_cacat: number
+  jumlah_peringatan: number
+}
+
+/** Satu orang yang harus menyetujui sebuah nilai klaim. */
+export type KomiteApprover = {
+  /** Selalu berurutan tanpa lompatan, 1 sampai jumlah penyetuju. */
+  urutan: number
+  /** `DEGREE` dari master. Boleh berulang — lihat `urutan_tidak_pasti`. */
+  jenjang: number
+  nama: string
+  operator_id: string
+  /** Ambang yang membuat orang ini ikut — alasannya, bukan sekadar hasilnya. */
+  batas_bawah: string
+  sedang_absen: boolean
+  id_ambang: string
+}
+
+/** Mode penjenjangan, ditentukan per portal. */
+export const KomiteMode = {
+  /** Non-MBU, PA, Travel, Bonding: setiap jenjang yang terlampaui ikut menyetujui. */
+  cumulative: 'kumulatif',
+  /** Simasnet: dipilih tepat satu penyetuju, diacak, penginput dikecualikan. */
+  singleApprover: 'satu-penyetuju',
+} as const
+
+export type KomiteMode = (typeof KomiteMode)[keyof typeof KomiteMode]
+
+export type KomiteTieringResponse = {
+  nilai: string
+  lini: string
+  mode: string
+  /** Membedakan "lini ini tidak memakai pita" dari "pitanya gagal dihitung". */
+  berpita_nilai: boolean
+  pita?: string
+  penyetuju: KomiteApprover[]
+  /**
+   * Hanya terisi pada mode satu-penyetuju: seluruh orang yang **layak** dipilih pada
+   * jenjang terendah, sebelum satu di antaranya diacak.
+   *
+   * Yang dapat diperiksa pada mode itu bukan siapa yang terpilih — itu acak — melainkan
+   * apakah kumpulan yang layak sudah benar.
+   */
+  kandidat?: KomiteApprover[]
+  /** Operator yang **diminta** dikecualikan karena dialah yang mengajukan. */
+  dikecualikan_penginput?: string
+  /**
+   * Orang yang **benar-benar** keluar karena pengecualian itu.
+   *
+   * Dibedakan dari `dikecualikan_penginput` dengan sengaja: penginput yang bukan anggota
+   * komite tidak mengubah apa pun. Isinya paling penting justru saat `penyetuju` kosong —
+   * ia satu-satunya keterangan yang menjelaskan kenapa.
+   */
+  tersingkir?: KomiteApprover[]
+  jumlah_jenjang: number
+  /** Keadaan, bukan galat: temuan tentang isi master yang harus dilihat Work Owner. */
+  tanpa_penyetuju: boolean
+  /**
+   * Dua penyetuju ber-`DEGREE` sama. Kueri sistem lama mengurutkan dengan
+   * `ORDER BY DEGREE` saja, sehingga saat seri urutannya ditentukan basis data.
+   */
+  urutan_tidak_pasti: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Inbox Komite (`TKT-B07-002`, MENU_ID 52 — harness `InboxKomite_Harness`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Kotak mana yang sedang dibuka.
+ *
+ * Ketiganya menggantikan tiga grid pada `Section/InboxKomite_section-Section.xml`:
+ * "Kotak Masuk Komite Outstanding", "…Diterima", dan "…Ditolak".
+ *
+ * Hanya yang pertama berisi **pekerjaan** dalam arti `D-79` — barisnya hilang setelah
+ * diputuskan dan punya tenggat. Dua sisanya riwayat.
+ */
+export const KomiteInboxKind = {
+  outstanding: 'outstanding',
+  accepted: 'diterima',
+  rejected: 'ditolak',
+} as const
+
+export type KomiteInboxKind = (typeof KomiteInboxKind)[keyof typeof KomiteInboxKind]
+
+/** Tiga keputusan yang dapat diberikan komite. */
+export const KomiteDecisionKind = {
+  approve: 'setuju',
+  reject: 'tolak',
+  return: 'kembalikan',
+} as const
+
+export type KomiteDecisionKind =
+  (typeof KomiteDecisionKind)[keyof typeof KomiteDecisionKind]
+
+/** Kesimpulan atas seluruh keputusan pada satu kasus. */
+export const KomiteOutcome = {
+  pending: 'menunggu',
+  approved: 'disetujui',
+  rejected: 'ditolak',
+  returned: 'dikembalikan',
+} as const
+
+export type KomiteOutcome = (typeof KomiteOutcome)[keyof typeof KomiteOutcome]
+
+/** Satu keputusan komite yang tercatat. Tidak pernah diubah dan tidak pernah dihapus. */
+export type KomiteDecision = {
+  id: string
+  jenjang: number
+  keputusan: KomiteDecisionKind
+  catatan?: string
+  oleh: string
+  nama_pemutus?: string
+  /** RFC 3339 dalam UTC. */
+  pada: string
+}
+
+/** Keadaan penjenjangan satu kasus menurut sistem ini. */
+export type KomiteProgress = {
+  kesimpulan: KomiteOutcome
+  /** Nol berarti **belum diketahui**, bukan nol jenjang — lihat penanda di bawah. */
+  jumlah_jenjang: number
+  jenjang_kini: number
+  jenjang_disetujui: number
+  /**
+   * Dikirim sebagai kesimpulan, bukan dibiarkan disimpulkan layar dari angka nol.
+   *
+   * Jumlah jenjang yang tidak diketahui lalu digambar sebagai "1 dari 1" akan membuat
+   * persetujuan pertama tampak menutup seluruh komite.
+   */
+  jumlah_jenjang_belum_diketahui: boolean
+  selesai: boolean
+  /** Layar memakainya menyembunyikan tombol; penegakannya tetap di server (409). */
+  sudah_saya_putuskan: boolean
+  keputusan: KomiteDecision[]
+}
+
+/**
+ * Satu baris Inbox Komite.
+ *
+ * Nama field di sini **sudah benar**, berbeda dari property Pega yang digantikannya:
+ * `.IBNR` → nilai ASM share, `.pyScore` → nilai OR ASM, `.DraftWordingID` → PIC klaim,
+ * `.StatusKlaim` → tipe komite (`D-19`).
+ */
+export type KomiteCase = {
+  nomor_case: string
+  nomor_klaim: string
+
+  nomor_polis: string
+  nama_tertanggung: string
+  nama_bisnis: string
+  sumber_bisnis: string
+  cabang: string
+  group_panel?: string
+  pic_klaim?: string
+
+  /** RFC 3339 dalam UTC; kosong berarti belum ada, bukan tahun 1. */
+  tanggal_komite?: string
+  tanggal_input?: string
+  /** Dihitung **server**, dalam hari kalender WIB. Jam peramban tidak dipakai. */
+  aging_komite: number
+
+  status_kerja?: string
+  tipe_komite?: string
+
+  /** Teks desimal kanonik — bukan angka JSON, yang akan dibulatkan diam-diam. */
+  nilai_klaim: string
+  nilai_asm_share: string
+  nilai_or_asm: string
+
+  note_komite?: string
+
+  /** Membedakan "belum dinilai AI" dari "dinilai dengan hasil kosong". */
+  ada_penilaian_ai: boolean
+  jawaban_ai?: string
+  note_ai_diterima?: string
+  note_ai_ditolak?: string
+  tanggal_ai?: string
+
+  /** Keputusan dan jenjang yang tercatat **di Pega**, bukan di sistem ini. */
+  keputusan_pega?: KomiteOutcome
+  jenjang_pega?: number
+
+  penjenjangan: KomiteProgress
+}
+
+export type KomiteInboxSummary = {
+  outstanding: number
+  diterima: number
+  ditolak: number
+}
+
+export type KomiteInboxListResponse = {
+  kasus: KomiteCase[]
+  /** Seluruh yang cocok, bukan isi halaman ini. */
+  total: number
+  lewati: number
+  batas: number
+  ringkasan: KomiteInboxSummary
+  /** Kotak yang benar-benar dipakai server — yang tidak dikenali jatuh ke outstanding. */
+  kotak: KomiteInboxKind
+  /**
+   * Operator yang dipakai menyaring, dipantulkan kembali.
+   *
+   * Dengan ini inbox yang kosong dapat dibedakan sebabnya: tidak ada pekerjaan, versus
+   * identitas sesi tidak cocok dengan satu pun `OPERATOR_ID` di data warisan — keadaan
+   * yang sangat mungkin selama pemetaan identitas HCC/HCQ belum ada (`ADR-0024`).
+   */
+  operator: string
+  /** Jam server yang dipakai menghitung aging. */
+  sekarang: string
+}
+
+export type KomiteCaseResponse = {
+  kasus: KomiteCase
+  sekarang: string
+}
+
+/** Kode galat khusus layar Inbox Komite. */
+export const KomiteInboxErrorCode = {
+  caseNotFound: 'kasus_tidak_ditemukan',
+  decisionClosed: 'komite_sudah_selesai',
+  malformedBody: 'permintaan_cacat',
+} as const
+
+export type KomiteInboxErrorCode =
+  (typeof KomiteInboxErrorCode)[keyof typeof KomiteInboxErrorCode]

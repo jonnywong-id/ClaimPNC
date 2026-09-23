@@ -178,3 +178,39 @@ export function CloseIcon(props: Props) {
     </Base>
   )
 }
+
+/**
+ * Tangga — dipakai menandai menu Ambang Komite.
+ *
+ * Bentuknya dipilih karena ia menggambarkan hal yang sebenarnya: jenjang persetujuan
+ * komite adalah tangga yang dinaiki bertingkat sesuai besarnya nilai klaim, dan setiap
+ * anak tangga yang terlampaui ikut menyetujui.
+ */
+export function StairsIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M3 20h5v-5h5v-5h5V5h3" />
+      <path d="M3 20v-1M8 15h5M13 10h5" />
+    </Base>
+  )
+}
+
+/** Segitiga peringatan — dipakai menandai temuan pada master ambang. */
+export function WarningIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M12 4.5 21 19.5H3L12 4.5Z" />
+      <path d="M12 10v4M12 17h.01" />
+    </Base>
+  )
+}
+
+/** Timbangan — dipakai menandai menu Penjenjangan Komite. */
+export function ScaleIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M12 4v16M7 20h10M4.5 8h15M12 4.5 4.5 8M12 4.5 19.5 8" />
+      <path d="M2 14a2.5 2.5 0 0 0 5 0L4.5 8 2 14ZM17 14a2.5 2.5 0 0 0 5 0L19.5 8 17 14Z" />
+    </Base>
+  )
+}
