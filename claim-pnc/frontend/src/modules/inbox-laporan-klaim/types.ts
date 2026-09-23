@@ -31,8 +31,15 @@ export type ClaimReport = {
   tanggal_masuk: string
   tanggal_aging: string
 
-  /** Umur berkas dalam hari, dihitung server terhadap satu waktu acuan. */
+  /** Umur berkas dalam hari, dihitung server terhadap satu waktu acuan. Dasar "Total Aging". */
   umur_hari: number
+
+  /**
+   * Kolom "Aging" pada grid — isi kolom `AGING` apa adanya, kosong bila belum diisi.
+   *
+   * BUKAN "Total Aging": layar lama menggambar keduanya berdampingan sebagai dua kolom.
+   */
+  aging: string
 
   pembuat: string
   kode_cabang: string

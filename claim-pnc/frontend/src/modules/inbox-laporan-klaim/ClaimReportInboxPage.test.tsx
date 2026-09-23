@@ -49,6 +49,7 @@ function report(over: Partial<Report> = {}): Report {
     tanggal_masuk: '2026-09-09',
     tanggal_aging: '2026-09-09',
     umur_hari: 10,
+    aging: '',
     pembuat: 'adminpnc',
     kode_cabang: '1001',
     nama_cabang: 'Cabang Contoh Jakarta 1',
@@ -73,6 +74,7 @@ type Report = {
   tanggal_masuk: string
   tanggal_aging: string
   umur_hari: number
+  aging: string
   pembuat: string
   kode_cabang: string
   nama_cabang: string
@@ -318,7 +320,7 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: 'Berikutnya' }))
+    await userEvent.click(screen.getByRole('button', { name: '2' }))
     await waitFor(() => expect(lastListCall()).toContain('halaman=2'))
 
     await userEvent.click(screen.getByRole('button', { name: /All data/ }))
@@ -359,7 +361,9 @@ describe('penyaring dan halaman', () => {
     await waitFor(() => expect(lastListCall()).toContain('cari=RCV-0003'))
   })
 
-  it('menyebut letak halaman, bukan hanya nomornya', async () => {
+  it('menyebut jumlah SELURUH baris, bukan jumlah yang tergambar', async () => {
+    // "Total Data" menjawab pertanyaan yang benar-benar ditanyakan petugas: berapa banyak
+    // berkas yang cocok — bukan berapa banyak yang muat di satu halaman.
     installFetch(
       defaultReply((call) =>
         call.method === 'GET' && !call.url.includes('/pilihan')
@@ -370,11 +374,11 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-    expect(screen.getByText(/Menampilkan/)).toBeInTheDocument()
+    expect(screen.getByText(/Total Data/)).toBeInTheDocument()
     expect(screen.getByText('57')).toBeInTheDocument()
   })
 
-  it('tombol Sebelumnya mati di halaman pertama', async () => {
+  it('menggambar nomor halaman dan menandai halaman yang sedang dibuka', async () => {
     installFetch(
       defaultReply((call) =>
         call.method === 'GET' && !call.url.includes('/pilihan')
@@ -385,8 +389,27 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-    expect(screen.getByRole('button', { name: 'Sebelumnya' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Berikutnya' })).toBeEnabled()
+
+    const nav = screen.getByRole('navigation', { name: 'Navigasi halaman' })
+    for (const n of ['1', '2', '3', '4']) {
+      expect(within(nav).getByRole('button', { name: n })).toBeInTheDocument()
+    }
+
+    // Halaman yang sedang dibuka ditandai `aria-current`, bukan hanya warna: pembedaan
+    // yang hanya warna tidak sampai ke pembaca layar.
+    expect(within(nav).getByRole('button', { name: '1' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(nav).getByRole('button', { name: '2' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('tidak menggambar nomor halaman bila semuanya muat di satu halaman', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    expect(screen.queryByRole('button', { name: '1' })).not.toBeInTheDocument()
   })
 })
 
@@ -493,6 +516,80 @@ describe('batas cabang', () => {
 
     // Tidak ada satu baris pun yang tergambar — penolakan, bukan daftar tanpa batas.
     expect(screen.queryByRole('link', { name: 'RCV-0001' })).not.toBeInTheDocument()
+  })
+})
+
+describe('kolom grid', () => {
+  it('menggambar kolom dengan judul dan URUTAN persis seperti layar lama', async () => {
+    // Urutannya ikut diuji, bukan hanya keberadaannya. Petugas membaca layar ini setiap
+    // hari dan membaca menurut posisi; kolom yang benar di tempat yang berbeda tetap
+    // memperlambat setiap pembacaan.
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    const heading = within(table)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent?.trim())
+
+    expect(heading).toEqual([
+      'Case ID',
+      'Polis no',
+      'Case PNC',
+      'Reference no',
+      'Business Name',
+      'Insured Name',
+      'Date of loss',
+      'Input Date',
+      'Creator',
+      'Cabang Klaim',
+      'Aging',
+      'Total Aging',
+      'Position',
+    ])
+  })
+
+  it('menggambar Aging dan Total Aging sebagai DUA kolom yang berbeda', async () => {
+    // Keduanya berbeda asalnya: "Aging" dibaca dari kolomnya sendiri di basis data,
+    // "Total Aging" dihitung server dari tanggal aging. Menyatukannya menghapus satu
+    // kolom yang memang ada di layar.
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? { body: listBody({ laporan: [report({ aging: '12', umur_hari: 2200 })] }) }
+          : undefined,
+      ),
+    )
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('12')).toBeInTheDocument()
+    expect(within(table).getByText('6y ago')).toBeInTheDocument()
+  })
+
+  it('menuliskan umur berkas secara ringkas seperti layar lama', async () => {
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? {
+              body: listBody({
+                laporan: [
+                  report({ id: 'RCV-A', umur_hari: 0 }),
+                  report({ id: 'RCV-B', umur_hari: 5 }),
+                  report({ id: 'RCV-C', umur_hari: 65 }),
+                  report({ id: 'RCV-D', umur_hari: 800 }),
+                ],
+              }),
+            }
+          : undefined,
+      ),
+    )
+    show()
+
+    const table = await screen.findByRole('table')
+    for (const text of ['today', '5d ago', '2mo ago', '2y ago']) {
+      expect(within(table).getByText(text)).toBeInTheDocument()
+    }
   })
 })
 
