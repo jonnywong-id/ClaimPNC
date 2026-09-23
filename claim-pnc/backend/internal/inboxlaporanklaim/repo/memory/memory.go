@@ -254,6 +254,38 @@ func (r *Repo) Insert(
 	return saved, nil
 }
 
+// Update menyimpan isian form ke atas berkas yang sudah ada.
+//
+// Penolakan terhadap baris milik Pega ada DI SINI pula, bukan hanya di adapter SQL.
+// Seam yang kedua pengisinya berperilaku berbeda adalah seam yang menyembunyikan cacat:
+// uji yang lulus terhadap memori tidak akan membuktikan apa pun tentang produksi.
+func (r *Repo) Update(_ context.Context, report inboxlaporanklaim.ClaimReport) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return r.failure
+	}
+
+	for i := range r.rows {
+		if r.rows[i].ID != report.ID {
+			continue
+		}
+		if r.rows[i].Origin == inboxlaporanklaim.OriginLegacy {
+			return inboxlaporanklaim.ErrReadOnlyOrigin
+		}
+
+		// Yang disimpan hanya isian form; kepala berkas dibiarkan apa adanya. Menimpa
+		// seluruh baris akan menghapus nomor, cabang, dan jejak pembuatannya bila
+		// pemanggil mengirim berkas yang tidak lengkap.
+		saved := inboxlaporanklaim.DetailOf(report).Apply(r.rows[i])
+		saved.UpdatedBy = report.UpdatedBy
+		saved.UpdatedAt = report.UpdatedAt
+		r.rows[i] = saved
+		return nil
+	}
+	return inboxlaporanklaim.ErrNotFound
+}
+
 // match menyaring seluruh baris menurut kategori dan penyaring lainnya.
 func (r *Repo) match(filter inboxlaporanklaim.Filter) []inboxlaporanklaim.ClaimReport {
 	var result []inboxlaporanklaim.ClaimReport

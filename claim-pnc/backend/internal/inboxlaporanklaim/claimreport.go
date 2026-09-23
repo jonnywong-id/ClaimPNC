@@ -13,6 +13,23 @@ import (
 // `pyID` berbentuk lain dan tidak pernah diterbitkan ulang.
 const ReportNumberPrefix = "RCVN"
 
+// Money adalah nilai rupiah dalam SEN. Rp 1.000 = 100_000.
+//
+// # Kenapa bilangan bulat, dan kenapa tidak mengimpornya dari modul lain
+//
+// `ADR-0016` menuntut nilai uang presisi penuh dan pembulatan hanya saat ditampilkan.
+// Tipe pecahan biner tidak dapat memenuhi itu: 0,1 tidak punya wakil yang tepat.
+//
+// Modul `registrasi` mendeklarasikan tipe yang sama untuk alasan yang sama, dan tipe itu
+// TIDAK diimpor ke sini: paket domain satu modul tidak boleh bergantung pada paket domain
+// modul lain — ketergantungan itu membuat kedua modul tidak dapat dipindahkan
+// sendiri-sendiri. Tipe uang bersama adalah milik `TKT-U2-004` yang belum ada; sampai ia
+// ada, pengulangan satu baris ini lebih murah daripada kopling antarmodul.
+type Money int64
+
+// Rupiah membentuk Money dari jumlah rupiah bulat.
+func Rupiah(n int64) Money { return Money(n * 100) }
+
 // Origin menyatakan sistem mana yang menerbitkan sebuah baris.
 //
 // Ia BUKAN kolom di basis data mana pun; ia diturunkan dari tabel asal barisnya saat
@@ -22,7 +39,8 @@ const ReportNumberPrefix = "RCVN"
 type Origin string
 
 const (
-	// OriginLegacy: baris dibaca dari DATAPEGA.PC_ASM_FW_GCNMFW_WORK. Hanya dibaca.
+	// OriginLegacy: berkas warisan, dikenali dari nomornya yang TIDAK berawalan RCVN.
+	// Dibaca dari POOLDATA.T_CLAIMLIST_ADMIN, dan hanya dibaca.
 	OriginLegacy Origin = "pega"
 
 	// OriginNew: baris dibaca dari POOLDATA.CPNC_LAPORAN_KLAIM, tabel milik aplikasi ini.
@@ -146,18 +164,96 @@ type ClaimReport struct {
 	// kolom "Creator".
 	CreatedBy string
 
+	// UpdatedBy dan UpdatedAt mencatat penyimpanan terakhir lewat form Input Receive
+	// Document.
+	//
+	// Keduanya TIDAK ada di sistem lama — objek kerja Pega mencatatnya sendiri di tabel
+	// engine yang tidak kita bawa. Ia BUKAN jejak audit: jejak audit adalah `S-5` yang
+	// mencatat nilai sebelum dan sesudah (`D-28`), dan modul itu belum ada. Yang ini
+	// hanya menjawab "siapa terakhir menyentuh berkas ini", dan itu pun sudah lebih
+	// banyak daripada yang dapat dijawab hari ini.
+	//
+	// Kosong untuk baris warisan dan untuk berkas yang belum pernah disunting.
+	UpdatedBy string
+	UpdatedAt time.Time
+
 	// BranchCode dan BranchName menyebut cabang klaim yang menangani — `kodecabang_1`
 	// dan hasil lookup POOLDATA.BRANCH, kolom "Cabang Klaim".
 	BranchCode string
 	BranchName string
 
-	// AgingAt adalah titik hitung umur berkas — `DateForAging_1`, kolom "Aging".
+	// AgingAt adalah titik hitung umur berkas — `DateForAging_1`.
 	// Ia juga kunci pengurutan seluruh kueri lama: ORDER BY DateForAging_1 DESC.
+	//
+	// Darinya dihitung kolom "Total Aging" pada grid. Ia BUKAN kolom "Aging" —
+	// lihat AgingValue.
 	AgingAt time.Time
 
+	// AgingValue adalah isi kolom `AGING` pada POOLDATA.T_CLAIMLIST_ADMIN, digambar apa
+	// adanya pada kolom "Aging" di grid.
+	//
+	// # Kenapa teks, bukan angka
+	//
+	// Kolomnya NUMBER dan nullable, dan layar membedakan "kosong" dari "nol". Angka
+	// bertipe int tidak dapat membedakan keduanya — 0 akan tergambar sebagai "0" padahal
+	// kolomnya memang belum diisi, dan pada layar contoh ia justru kosong di seluruh
+	// baris. Teks membawa keduanya apa adanya tanpa satu pun tafsiran.
+	//
+	// # Kenapa ia DIPISAH dari AgingAt
+	//
+	// Layar lama menggambar "Aging" dan "Total Aging" BERDAMPINGAN sebagai dua kolom.
+	// Yang kedua dihitung dari AgingAt oleh aplikasi; yang pertama dibaca dari kolom ini.
+	// Menyatukannya akan menghapus satu kolom yang memang ada di layar.
+	//
+	// **Artinya belum diketahui.** Tidak ada satu pun rule di export yang menyentuh kolom
+	// ini, dan pada layar contoh ia kosong di seluruh baris yang terlihat. Ia karena itu
+	// diteruskan apa adanya, bukan ditafsirkan.
+	AgingValue string
+
 	// Reason adalah keterangan kenapa berkas belum berpindah — `KETERANGAN_1`,
-	// kolom "Alasan".
+	// kolom "Alasan" pada grid, dan isian "Keterangan Belum Transfer" pada form.
+	//
+	// Ketiganya satu kolom yang sama: form mengikatnya ke `.ReceiveDocument.Keterangan`,
+	// dan procedure menyimpannya sebagai `ALASANBLMTRANSFER`.
 	Reason string
+
+	// # Isian form Input Receive Document
+	//
+	// Kesepuluh field berikut TIDAK digambar di sembilan grid mana pun; ia isi berkas
+	// yang dikumpulkan form `InputReceiveDocument` (`Flow/InputReceiveDocument.xml`).
+	//
+	// Seluruhnya KOSONG untuk baris warisan, dan itu bukan data yang hilang: tidak satu
+	// pun dari kesembilan kueri lama membaca kolomnya, sehingga nama kolomnya di tabel
+	// Pega tidak diketahui (`R-08`). Menebaknya menghasilkan kueri yang gagal saat
+	// pertama dijalankan di produksi — dan berkas warisan memang tidak dapat disunting
+	// dari sini (lihat ErrReadOnlyOrigin).
+
+	// ReceivedDate adalah Tanggal Terima Dokumen — `.ReceiveDocument.ReceivedDate`,
+	// disimpan procedure sebagai `TANGGALTERIMADOKUMEN`.
+	ReceivedDate time.Time
+
+	ReporterEmail string // .ReceiveDocument.EmailPengirim  — "Email Pengirim"
+	ReporterPhone string // .ReceiveDocument.TelpPengirim   — "No. HP Pengirim"
+	CourierName   string // .ReceiveDocument.Kurir          — "Nama Kurir ASM"
+
+	// EstimateValue adalah Estimasi Kerugian — `.ReceiveDocument.Estimasi`.
+	//
+	// Ia BUKAN nilai klaim: nilai klaim lahir di `B-5` setelah registrasi. Yang ada di
+	// sini angka yang disebut pelapor saat berkasnya masuk, dan ia tidak pernah dipakai
+	// menghitung apa pun di modul ini.
+	EstimateValue Money
+
+	LossLocation     string // .ReceiveDocument.LokasiKejadian     — "Lokasi Kejadian"
+	Chronology       string // .ReceiveDocument.KronologisKejadian — "Kronologis Kejadian"
+	DamageDetail     string // .ReceiveDocument.RincianKerusakan   — "Rincian Kerusakan"
+	NotRegisteredNote string // .ReceiveDocument.NotRegistNote     — "Keterangan Belum Registrasi"
+
+	// DocumentCount adalah Total Jumlah Dokumen — `.ReceiveDocument.NumberOfDocument`.
+	//
+	// Ia hanya ANGKA. Rincian dokumennya — nama, jenis, jumlah per baris, dan tautan
+	// melihatnya — terikat page list `.ReceiveDocument.DocumentList` dan menuntut
+	// penyimpanan dokumen (`S-1`) yang belum ada. Angkanya dibawa; daftarnya tidak.
+	DocumentCount int
 
 	// EmailSubject adalah judul surel laporan masuk — `SubjectEmail_1`,
 	// kolom "Subject Email".

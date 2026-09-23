@@ -152,7 +152,12 @@ func SampleList(now time.Time) []inboxlaporanklaim.ClaimReport {
 			PolicyNumber:  "POL-KHS-0006", InsuredName: "Tertanggung Contoh F",
 			BusinessName: "Kelompok khusus", ReferenceNumber: "REF-0006",
 			DateOfLoss: day(4), CreatedAt: day(4), CreatedBy: "adminpnc",
-			BranchCode: "2001", BranchName: "Cabang Contoh Bandung", AgingAt: day(4),
+			// Cabang 1002, bukan 2001: kelompok bisnis khusus harus punya saksi DI DALAM
+			// kanwil 01. Sejak cabang menjadi batas data yang mengikat, tidak ada lagi
+			// pandangan yang melihat seluruh berkas sekaligus — sehingga aturan yang
+			// saksinya tersebar di tiga kanwil menjadi aturan yang tidak dapat dicoba
+			// dari satu kursi mana pun.
+			BranchCode: "1002", BranchName: "Cabang Contoh Jakarta 2", AgingAt: day(4),
 			Reason: "Menunggu konfirmasi cabang",
 		},
 		{

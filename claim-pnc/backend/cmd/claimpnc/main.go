@@ -199,6 +199,13 @@ func run() error {
 		logger.Warn("antarmuka tidak tersedia; aplikasi hanya melayani API",
 			slog.String("sebab", err.Error()))
 		spaFiles = nil
+	} else {
+		// Kapan antarmuka yang TERSEMAT dibangun — bukan kapan `npm run build` terakhir
+		// dijalankan di folder frontend. Keduanya berbeda bila binary tidak ikut
+		// dibangun ulang, dan perbedaan itu tidak meninggalkan jejak lain sama sekali:
+		// aplikasi menyajikan layar versi lama tanpa satu pun galat, sehingga fitur yang
+		// sudah diperbaiki tampak masih rusak.
+		logger.Info("antarmuka tersemat", slog.String("dibangun", spaVersionText()))
 	}
 
 	// Satu penulis JSON dan satu penulis galat dipakai bersama seluruh modul, supaya
@@ -423,13 +430,14 @@ func run() error {
 			if !existing {
 				return inboxlaporanklaim.Caller{}, false
 			}
+			// Cabang SENGAJA tidak dibawa dari sini. `baseCtx.User.BranchCode` adalah
+			// kode cabang HCC/HCQ (`Placement.BranchCode`), dan layar itu membandingkan
+			// terhadap POOLDATA.BRANCH.ID — sistem kode yang berbeda. Memakainya membuat
+			// daftar tampil kosong tanpa satu pun pesan galat, dan itu benar-benar
+			// terjadi. Penerjemahannya kini tugas BranchResolver.
 			return inboxlaporanklaim.Caller{
 				Login: baseCtx.User.Login,
 				Name:  baseCtx.User.Name,
-				// Cabang menentukan batas data seluruh layar ini. Ia datang dari profil
-				// HCC/HCQ; pengguna non-karyawan tidak memilikinya, dan berkas baru
-				// karena itu ditolak dengan pesan yang menyebutkan sebabnya.
-				BranchCode: baseCtx.User.BranchCode,
 			}, true
 		},
 		Logger:        logger,
@@ -963,6 +971,15 @@ type storage struct {
 
 	// outstandingLines membaca M_LOGIN_PNC.LINEBUSINESS, pengganti OperatorID.pyPosition.
 	outstandingLines inboxoutstanding.LineBusinessRepo
+	// claimReportBranch menerjemahkan login petugas menjadi kode cabang klaimnya.
+	//
+	// Ia TIDAK diambil dari profil HCC/HCQ: kode cabang yang dipakai layar itu adalah
+	// POOLDATA.BRANCH.ID, diturunkan lewat HRD dan master pengguna asuransi — sistem kode
+	// yang berbeda dari Placement.BranchCode. Lihat inboxlaporanklaim.BranchResolver.
+	//
+	// Ia hidup di basis data PORTAL UTAMA, bukan per entitas: HRD dan master pengguna
+	// adalah data lingkup identitas, sama seperti M_LOGIN_PNC dan M_PORTAL_PNC.
+	claimReportBranch inboxlaporanklaim.BranchResolver
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -1069,8 +1086,9 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	claimReportService, err := inboxlaporanklaimusecase.NewService(inboxlaporanklaimusecase.Options{
-		RepoSelector: store.claimReportSelector,
-		Clock:        clock.System{},
+		RepoSelector:   store.claimReportSelector,
+		BranchResolver: store.claimReportBranch,
+		Clock:          clock.System{},
 	})
 	if err != nil {
 		store.close()
@@ -1627,6 +1645,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxprogressclaimsql.NewRepo(conn), nil
 		}
+		store.claimReportBranch = inboxlaporanklaimsql.NewBranchResolver(primary)
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.accountSelector = accountSelectorMemory(cfg.PrimaryPortal)
@@ -1683,6 +1702,8 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// modul, supaya dua keputusan yang paling mudah salah dapat dicoba sungguhan tanpa
 		// Oracle: bahwa "hapus" hanya menonaktifkan, dan bahwa sub modul boleh kosong.
 		store.maskingSelector = maskingSelectorMemory(cfg.PrimaryPortal)
+		store.claimReportBranch = inboxlaporanklaimmemory.NewBranchResolver(
+			inboxlaporanklaimmemory.SampleBranchOfLogin())
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -2468,4 +2489,16 @@ func matchPrimaryPortal(alias, primaryAlias string) (string, error) {
 		return "", fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
 	}
 	return clean, nil
+}
+
+// spaVersionText menyebut kapan antarmuka tersemat dibangun, dalam bentuk yang aman
+// ditampilkan meski penandanya tidak ada.
+//
+// Binary yang dikompilasi sebelum penanda ini diperkenalkan tetap dapat berjalan; yang
+// hilang hanyalah kemampuan menjawab "antarmuka versi mana yang sedang disajikan".
+func spaVersionText() string {
+	if v := spa.Version(); v != "" {
+		return v
+	}
+	return "tidak diketahui (dibangun sebelum penanda versi ada)"
 }

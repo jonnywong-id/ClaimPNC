@@ -6106,3 +6106,359 @@ modul ini **tidak menulis satu pun** (`P-1`).
 | `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada) |
 | `npx vitest run` modul baru | **12 uji lulus** |
 | Baseline kegagalan uji frontend lain | **dibuktikan pra-ada** — lihat `catatan-pengembangan.md` §36.7 |
+## 18. Form Input Receive Document (2026-09-22, sesi kesepuluh)
+
+Melengkapi §17. Tombol "Buat Baru" yang sebelumnya menerbitkan berkas kosong tanpa tempat
+mengisinya kini membuka form yang mengisinya — persis seperti alur
+`Flow/InputReceiveDocument.xml`.
+
+### 18.1 Apa yang salah sebelumnya
+
+Bukan bug pada permintaannya: `POST` menjawab `201` dan berkasnya tersimpan. Yang salah adalah
+**lingkup yang saya tetapkan sendiri** pada sesi sebelumnya.
+
+Saya membaca `CreateNewCaseRCV` dan menyimpulkan benar bahwa ia membuat berkas KOSONG, lalu
+berhenti — tanpa menelusuri ke mana berkas itu pergi sesudahnya. Jawabannya ada di alur yang
+memanggilnya: berkas lahir kosong JUSTRU supaya assignment "Receive Document" yang mengisinya.
+
+> **Pelajarannya, dicatat supaya tidak terulang:** membaca activity yang MEMBUAT sesuatu tidak
+> cukup. Yang menentukan artinya adalah alur yang menerimanya.
+
+### 18.2 Sumber yang dipakai, dan satu yang tidak ada
+
+| Artefak | Keadaan |
+|---|---|
+| `Flow/InputReceiveDocument.xml` | ada — Start → assignment `Receive Document` (WorkList, `PNCAdminRouterRCV`) → End |
+| `Flow Action/InputReceiveDocument-FlowAction.xml` | ada — merender section `InputReceiveDocument` |
+| **Section `InputReceiveDocument`** | **TIDAK ADA di export** (`R-16`) |
+| `Section/ViewInputReceiveDocument_sec` | ada, 1,24 MB — **dipakai sebagai pengganti sumber** |
+| `Database/PROCINSERTDATARECIVEDKLAIM.prc` | ada — menyilangkan isian form dengan kolom yang benar-benar disimpan |
+
+Section formnya sendiri hilang. Yang dipakai adalah **varian tampilnya**, yang memuat label dan
+properti terikat yang sama persis. Itu bukti terbaik yang tersedia, dan keterbatasannya ditulis di
+kepala `detail.go` alih-alih ditutupi.
+
+### 18.3 Lingkup form ditentukan oleh bentuk keterikatannya
+
+Properti pada section membelah dirinya sendiri, dan pembelahan itu yang dipakai — bukan penilaian
+saya tentang mana yang penting:
+
+| Kelompok | Terikat sebagai | Keputusan |
+|---|---|---|
+| 17 isian `.ReceiveDocument.*` | field tunggal | **dibawa** |
+| Blok pelapor + alamat | `.ReportHE.*`; alamatnya page list | **tidak** — `ReportHE` adalah area **Heavy Equipment**, dan `D-34` mengeluarkan Bengkel/Sparepart/Supplier beserta area HE dari lingkup migrasi |
+| Grid dokumen | page list `.ReceiveDocument.DocumentList` | **tidak** — menuntut `S-1`/`D-16`; angka totalnya tetap dibawa |
+| Riwayat komunikasi & progres | page list `tempHistoryKomunikasi`, `tempViewProgress` | **tidak** — menampilkan data milik modul lain, bukan isian form |
+
+### 18.4 Pemeriksaan isian: penjaga penyimpanan, bukan aturan bisnis
+
+Flow action `InputReceiveDocument` **tidak punya satu pun** validate rule maupun isian bertanda
+wajib — diperiksa langsung ke berkasnya. Pega menyimpan apa pun yang diketik.
+
+Yang diperiksa di sini karena itu hanya dua hal:
+
+| Pemeriksaan | Kenapa ia bukan aturan bisnis |
+|---|---|
+| **Panjang teks** terhadap lebar kolom migrasi 0004 | Tanpa ia, Oracle menolak dengan `ORA-12899` yang tidak menyebut isian mana. Dihitung dalam RUNE, bukan byte — satu huruf beraksen memakan dua byte, dan nama orang Indonesia memuatnya |
+| **Angka tidak negatif**, jumlah dokumen ≤ 9999 | Penjaga salah ketik. Angka enam digit pada "Total Jumlah Dokumen" hampir pasti bukan jumlah dokumen |
+
+**Aturan tanggal sengaja TIDAK ada.** DOL di dalam periode polis, Tanggal Lapor ≤ DOL + 7 hari, dan
+seterusnya adalah milik `B-2` (`02-BUSINESS-UNDERSTANDING.md` §3.1). Berkas laporan justru sering
+masuk sebelum tanggalnya dipastikan; menambahkannya di sini akan menolak berkas yang di Pega
+diterima — perubahan perilaku yang tidak ada di 13 butir `D-49`.
+
+### 18.5 Berkas Pega dibuka baca saja
+
+`Repo.Update` menolak baris ber-`Origin` warisan dengan `ErrReadOnlyOrigin`, dan penolakannya ada
+di **kedua** pengisi seam — SQL maupun memori. Seam yang kedua pengisinya berperilaku berbeda
+adalah seam yang menyembunyikan cacat.
+
+Penolakannya terjadi **sebelum** satu pun isian diperiksa: memberi pengguna daftar isian yang harus
+diperbaiki pada form yang memang tidak dapat disimpan sama sekali adalah menyesatkan.
+
+**Kewenangannya dikirim server** sebagai `dapat_disunting`, bukan disimpulkan layar dari kolom
+`asal`. Aturan siapa yang boleh menulis milik server; menyalinnya ke layar berarti satu aturan hidup
+di dua tempat, dan yang di layar akan tertinggal saat yang di server berubah.
+
+### 18.6 Kode galat tersendiri untuk penolakan itu
+
+Versi pertama menjawab `validasi_gagal` dengan `409`. **Dikoreksi menjadi `laporan_hanya_baca`.**
+
+Ia bukan kegagalan validasi: tidak ada satu pun isian yang dapat diperbaiki pengguna. Klien
+membedakan jenis galat lewat `kode`, dan memakai kode validasi akan membuat layar menunggu `detail`
+yang tidak pernah datang — lalu menampilkan form yang tampak dapat diperbaiki padahal tidak.
+
+`409`, bukan `403`: yang menolak bukan kewenangan pengguna melainkan **keadaan berkasnya**.
+Pengguna yang sama dapat menyimpan berkas lain tanpa masalah.
+
+### 18.7 Migrasi 0004 berdiri sendiri, bukan suntingan pada 0003
+
+0003 sudah diserahkan sebagai permintaan perubahan skema (`D-63`) dan mungkin sudah dijalankan DBA
+di salah satu portal. Menyuntingnya berarti dua orang memegang berkas bernomor sama dengan isi
+berbeda — dan yang menjalankan versi lama tidak punya cara mengetahuinya.
+
+0004 karena itu bersifat **menambah** dan aman dijalankan apa pun keadaannya, selama 0003 sudah
+lebih dulu. Seluruh kolomnya NULLABLE, sehingga versi aplikasi yang lama tetap berjalan terhadap
+skema ini (`P-4`).
+
+### 18.8 Kueri detail memilih lebih banyak kolom daripada kueri daftar
+
+Sepuluh kolom lebih banyak, dan dua di antaranya berlebar 4.000 karakter. Menariknya pada setiap
+halaman daftar berarti memindahkan ratusan kilobita yang tidak pernah digambar grid, pada tabel
+berpuluh juta baris (`D-10`).
+
+Biayanya: dua pembaca baris, bukan satu. Yang menjaganya adalah uji yang menuntut **urutan kolom
+daftar tetap menjadi AWALAN kolom detail** — `Scan` membaca secara posisi, dan menyisipkan kolom
+baru di tengah alih-alih di ujung akan menggeser salah satunya tanpa menghasilkan galat.
+
+### 18.9 Utang teknis yang bertambah
+
+1. **Batas panjang isian hidup di dua tempat** — `detail.go` dan `types.ts`. Server tetap yang
+   berwenang; yang di frontend hanya kenyamanan. Bila salah satu berubah, keduanya harus ikut.
+2. **Tipe `Money` diulang**, tidak diimpor dari modul `registrasi`. Paket domain satu modul tidak
+   boleh bergantung pada paket domain modul lain; tipe uang bersama adalah `TKT-U2-004` yang belum
+   ada.
+3. **`UpdatedBy`/`UpdatedAt` bukan jejak audit.** Jejak audit adalah `S-5` yang mencatat nilai
+   sebelum dan sesudah (`D-28`). Yang ini hanya menjawab "siapa terakhir menyentuh berkas ini".
+
+### 18.10 Pertanyaan terbuka yang bertambah
+
+| # | Pertanyaan | Kenapa ia penting |
+|---|---|---|
+| 6 | **Apakah berkas yang sudah diserahkan masih boleh disunting?** Form sekarang menerima penyimpanan pada berkas berposisi apa pun selama ia milik aplikasi ini. Di Pega, assignment-nya hilang setelah berkas berpindah tahap — sehingga formnya tidak lagi dapat dibuka. Perilaku itu **tidak** direplikasi karena mekanisme assignment-nya tidak dibawa, dan pembatasannya menuntut keputusan Work Owner |
+| 7 | **Siapa yang boleh mengisi form ini?** Sekarang setiap pengguna yang dapat membuka layarnya. Kewenangan per peran adalah `TKT-F3-005` yang belum ada; keadaannya sama dengan seluruh layar lain hari ini |
+
+---
+
+## 19. Penerjemahan cabang klaim (2026-09-22, sesi kesebelas)
+
+Melengkapi §17 dan §18. Daftar Inbox Laporan Klaim tampil **kosong tanpa satu pun galat**, dan
+sebabnya adalah satu nilai yang tampak benar namun berasal dari sistem penomoran yang berbeda.
+
+### 19.1 Keputusan: penerjemahan login menjadi cabang adalah seam, bukan fungsi pembantu
+
+**Pilihan yang ditimbang**
+
+| # | Pilihan | Kenapa ditolak / diambil |
+|---|---|---|
+| 1 | Menambah `JOIN` ke kueri daftar | Ditolak. Kueri daftar sudah membaca dua tabel lewat `UNION ALL`; menambah tiga tabel lagi — dua di antaranya lintas DB link — membuat setiap halaman daftar bergantung pada ketersediaan basis data lain |
+| 2 | Fungsi pembantu di dalam `sqlstore` | Ditolak. `usecase` tetap tidak dapat diuji tanpa basis data, padahal aturan "cabang tidak terbaca berarti tidak disaring" adalah aturan **usecase**, bukan aturan SQL |
+| 3 | **Seam `BranchResolver` yang dideklarasikan domain** | **Diambil** |
+
+**Alasannya.** Menerjemahkan login menjadi kode cabang adalah **pengambilan data dari sistem
+lain** — persis bentuk yang `04-FUTURE-ARCHITECTURE.md` §3.4 tetapkan sebagai seam. Ia juga
+memenuhi syarat "dua adapter nyata, bukan satu": adapter SQL untuk produksi, adapter memori untuk
+pengujian dan pengembangan lokal.
+
+Dan ada alasan kedua yang lebih mendesak: `D-25` menetapkan seluruh DB link diganti pemanggilan
+API, dan `R-03` mencatat API itu belum ada. Seam ini **adalah tempat penggantian itu kelak
+terjadi** — satu adapter ditukar, `usecase` dan `domain` tidak tersentuh.
+
+### 19.2 Keputusan: `Caller` tidak lagi membawa kode cabang sama sekali
+
+`Caller.BranchCode` dihapus, bukan diperbaiki isinya.
+
+**Kenapa dihapus dan bukan diisi dengan nilai yang benar.** Field bernama `BranchCode` pada profil
+pemanggil akan diisi lagi oleh pembaca berikutnya dari sumber terdekat yang bernama sama — yaitu
+`auth.User.BranchCode` dari HCQ. Selama namanya ada di sana, kesalahan yang sama dapat terjadi
+lagi tanpa seorang pun berniat salah.
+
+Ini penerapan `D-19` pada tempat yang tidak terduga: **nama yang tidak mencerminkan isi** adalah
+utang teknis yang sama dengan alias kolom Pega, hanya saja kali ini di kode baru.
+
+### 19.3 Keputusan: tiga keluaran penerjemahan dibedakan, bukan dua
+
+```go
+Resolve(ctx, login) (code string, resolved bool, err error)
+```
+
+| Keluaran | Arti | Perlakuan |
+|---|---|---|
+| `code`, `true`, `nil` | cabang diketahui | daftar disaring |
+| `""`, `false`, `nil` | petugas tidak terdaftar di HRD | **bukan galat**; daftar tidak disaring |
+| `""`, `false`, `err` | sumbernya tidak dapat dibaca | galat dicatat; daftar tidak disaring |
+
+**Kenapa baris kedua bukan galat.** Login yang tidak terdaftar di HRD adalah keadaan data yang
+wajar — pengguna non-karyawan sudah ada di sistem ini (`M_LOGIN_PNC`). Menjadikannya galat akan
+menutup layar bagi orang yang berhak membukanya.
+
+**Kenapa baris ketiga tetap galat meski akibatnya sama.** Akibatnya memang sama di layar, tetapi
+perbaikannya berbeda jauh: yang satu urusan data HRD, yang lain hak baca atau DB link mati. Pada
+sesi ini saya baru saja memperbaiki cacat yang lahir dari dua hal berbeda yang diperlakukan sama —
+mengulanginya di tempat lain akan menjadi lelucon yang mahal.
+
+### 19.4 Keputusan: cabang yang tidak terbaca TIDAK mengosongkan daftar
+
+Ini **penyimpangan yang disengaja** dari perilaku sistem lama, dan karena `P-5` menuntut setiap
+selisih dapat dipetakan, alasannya ditulis lengkap.
+
+**Perilaku lama.** `GetIDCabang` tidak mengembalikan baris; nilai kosong disisipkan ke teks SQL
+lewat `{ASIS:...}`; kueri menjadi `branch where ID = ''`; hasilnya nol baris.
+
+**Kenapa itu bukan aturan bisnis.** Kekosongan itu **akibat perangkaian string**, bukan keputusan
+siapa pun. Tidak ada satu pun rule, when, maupun dokumen yang menyatakan "petugas tanpa cabang
+tidak boleh melihat apa pun". `03-CURRENT-ARCHITECTURE.md` §4.5 mencatat pola `{ASIS:}` sebagai
+utang teknis yang justru harus dihapus — 538 kemunculan.
+
+**Kenapa ini tidak melanggar `P-5`.** Yang `P-5` pertahankan adalah **hasil aturan bisnis**.
+Menyalin akibat sampingan dari cacat teknis yang sedang kita hapus bukanlah kesetaraan; itu
+membawa cacatnya sekalian. Selisih ini juga **bukan** butir baru pada daftar 13 perbaikan `D-49`,
+karena ia tidak mengubah hasil aturan mana pun — ia mengubah apa yang terjadi ketika sebuah
+prasyarat tidak terpenuhi.
+
+**Harga yang dibayar, dan bagaimana ia ditagih.** Petugas yang cabangnya tidak terbaca melihat
+berkas seluruh cabang. Itu pelonggaran batas data, dan karena itu ia **dinyatakan**, bukan
+didiamkan:
+
+| Tempat | Bentuk |
+|---|---|
+| Respons API | `batas_cabang` dan `cabang_terbaca` |
+| Layar | pemberitahuan berlatar amber, `role="status"` |
+| `-periksa` | `checkClaimReportBranch` melaporkannya ke operator |
+
+Alternatifnya — meniru Pega dan menampilkan daftar kosong — menghasilkan layar yang **tampak
+rusak** tanpa memberi tahu apa yang harus dibetulkan, dan itulah persis cacat yang sedang
+diperbaiki sesi ini.
+
+### 19.5 Keputusan: dua field respons, bukan satu
+
+`batas_cabang` kosong punya **dua sebab yang berbeda artinya**:
+
+| Sebab | `batas_cabang` | `cabang_terbaca` |
+|---|---|---|
+| Pengguna memilih kanwil sendiri | `""` | `true` |
+| Cabang petugas tidak terbaca | `""` | `false` |
+
+Yang pertama pilihan pengguna dan tidak perlu dikomentari; yang kedua keadaan yang harus
+diberitahukan. Satu field tidak dapat membedakan keduanya, dan layar yang menebaknya akan
+memberitahu pada saat yang salah.
+
+### 19.6 Keputusan: `Create` menurunkan cabang dengan jalan yang sama dengan `List`
+
+Terlihat sepele, dan justru karena itu ditulis sebagai keputusan.
+
+Bila `Create` mengisi `BranchCode` berkas dari sumber yang berbeda dengan yang dipakai `List`
+menyaring, berkas yang baru dibuat **langsung hilang dari daftar pembuatnya** — cacat yang
+bentuknya persis sama dengan yang sedang diperbaiki, hanya lebih sulit dilihat karena hanya
+menimpa satu baris. `TestNewReportLandsInTheBranchTheListFiltersBy` menguncinya.
+
+### 19.7 Utang teknis yang ditambahkan dengan sadar
+
+1. **Modul ini memakai DB link.** `branch_of_login` menembus `@asmd.sinarmas.co.id` ke
+   `HRDASM.V_HRD_MST` dan `LST_USER_ASURANSI` — tepat yang `D-25` tetapkan untuk diganti API
+   (`R-03`). Dibiarkan demikian karena API-nya belum ada, dan ditaruh di balik seam supaya
+   penggantiannya kelak menyentuh satu adapter saja.
+2. **Satu kueri tambahan per permintaan daftar.** Penerjemahan cabang berjalan pada setiap
+   pemanggilan `List`. Belum di-cache; bila terbukti mahal, tempat cache-nya adalah adapter, dan
+   `14-NFR` §3.3 sudah menetapkan cache in-process untuk data yang jarang berubah.
+3. **Padding `CHAR` dipangkas di adapter.** `POOLDATA.BRANCH.ID` kemungkinan bertipe `CHAR`
+   sehingga nilainya dikembalikan dengan spasi di belakang; adapter memangkasnya. DDL-nya belum
+   pernah dilihat (`R-08`), jadi ini penjagaan, bukan pengetahuan.
+
+### 19.8 Pertanyaan terbuka yang bertambah
+
+| # | Pertanyaan | Kenapa ia penting |
+|---|---|---|
+| 8 | **Apakah petugas yang cabangnya tidak terbaca memang boleh melihat seluruh cabang?** Keputusan §19.4 diambil karena alternatifnya lebih buruk, bukan karena ada yang menyatakannya benar. Bila jawabannya "tidak", yang berubah bukan kodenya melainkan kebijakannya — dan layar harus menolak, bukan mengosongkan diam-diam |
+| 9 | **Siapa pemilik data pemetaan login menjadi cabang di sistem baru?** Hari ini ia dibaca lintas DB link dari HRD. Setelah `D-25` dijalankan, ia menjadi API milik tim lain — dan ketersediaannya menjadi prasyarat batas data layar ini |
+
+---
+
+## 20. Cabang sebagai batas data yang mengikat (2026-09-22, sesi kesebelas — koreksi)
+
+**Menyupersede §19.4.** Bagian itu tidak disunting: ia rekaman keputusan yang benar-benar berlaku
+beberapa jam sebelumnya beserta alasannya, dan menghapusnya menghilangkan jejak bahwa pilihan itu
+pernah diambil. Yang berlaku adalah bagian ini.
+
+### 20.1 Keputusan Work Owner
+
+> "petugas yang cabangnya tidak terbaca tidak boleh melihat seluruh cabang"
+
+Dengan itu **cabang bukan kenyamanan penyaring, melainkan batas data**. Konsekuensi logisnya
+langsung: batas data yang tidak dapat ditentukan berarti permintaannya **tidak dapat dilayani** —
+bukan berarti batasnya gugur.
+
+### 20.2 Keputusan: menolak, bukan mengembalikan daftar kosong
+
+Sistem lama menghasilkan daftar kosong dalam keadaan ini (`branch where ID=''`). Meniru itu
+**ditolak**, dan alasannya adalah cacat yang sedang diperbaiki sesi ini:
+
+| Bentuk penolakan | Yang terjadi di kursi petugas |
+|---|---|
+| Daftar kosong | tidak terbedakan dari "tidak ada pekerjaan hari ini" — dan justru ketidakterbedaan itu yang membuat penyaring cabang yang salah bertahan tanpa ada yang melaporkannya |
+| **Penolakan yang menyebut sebab** | akses tertutup sama rapatnya, **dan** petugas tahu apa yang harus dibetulkan |
+
+Keduanya sama-sama memenuhi keputusan Work Owner. Yang kedua dipilih karena ia tidak menukar satu
+kegagalan senyap dengan kegagalan senyap yang lain.
+
+### 20.3 Keputusan: dua sebab, dua jawaban HTTP
+
+Pembedaan tiga keluaran `BranchResolver.Resolve` (§19.3) terbayar di sini — ia menjadi dua jawaban
+yang berbeda, bukan satu:
+
+| Keadaan domain | HTTP | Kode | Dibereskan di |
+|---|---|---|---|
+| `ErrBranchUnknown` — login belum terdaftar di HRD | **403** | `cabang_tidak_dikenali` | data pegawai; menimpa **satu** orang |
+| `ErrBranchUnreadable` — `POOLDATA.BRANCH` atau DB link mati | **503** | `sumber_cabang_tidak_terbaca` | infrastruktur; menimpa **seluruh** petugas |
+
+**Kenapa 403 dan bukan 404 atau 422.** Pemanggilnya sudah masuk, alamatnya benar, dan tidak ada
+satu pun isian yang dapat diperbaiki. Yang tidak dapat ditetapkan adalah batas datanya —
+`10-API-STRATEGY.md` §5: *"sudah login tapi tidak berwenang"*.
+
+**Kenapa 503 dan bukan 403.** Yang gagal bukan kewenangan pemanggil melainkan sumber datanya, dan
+ia menimpa semua orang sekaligus. `503` juga menyatakan keadaannya **sementara**, sehingga mencoba
+lagi memang masuk akal. Sebab aslinya dibungkus dengan `%w` supaya log menyebut DB link atau tabel
+mana yang gagal, sementara peramban hanya menerima pesan umum.
+
+### 20.4 Keputusan: `cabang_terbaca` dihapus dari kontrak
+
+Field itu ditambahkan beberapa jam sebelumnya untuk menyatakan "batasnya sedang tidak berlaku".
+Sejak keadaan itu ditolak, ia **tidak dapat lagi bernilai `false`** — dan field yang hanya pernah
+bernilai satu macam adalah kebohongan yang menunggu giliran: pembaca berikutnya akan menulis cabang
+penanganan untuk keadaan yang tidak pernah terjadi.
+
+`batas_cabang` **tetap ada**, dan kosongnya kini punya satu arti saja: pengguna memilih kanwil.
+Alasannya bertahan: petugas yang tidak tahu daftarnya sedang disaring akan menyimpulkan tidak ada
+pekerjaan, padahal yang benar adalah tidak ada pekerjaan **di cabangnya**.
+
+### 20.5 Keputusan: penegakan di satu tempat, menutup tiga permukaan
+
+`requireBranch` dipanggil `List` dan `Create`; **Ekspor menempuh `List`**. Batas yang ditegakkan
+pada daftar tetapi tidak pada ekspor bukan batas sama sekali — ia hanya menyulitkan orang yang
+patuh. Satu uji mengunci bahwa ekspor memang menempuh jalur yang sama.
+
+### 20.6 Perluasan yang diambil sendiri: pembuatan berkas ikut ditolak
+
+**Keputusan Work Owner berbunyi tentang "melihat", bukan "membuat".** Perluasannya ditulis terbuka
+di sini, di komentar kode, dan di uji — supaya dapat dikoreksi.
+
+Alasannya: sejak cabang menjadi batas yang mengikat, berkas yang lahir tanpa cabang **tidak akan
+pernah terlihat siapa pun** — pembuatnya tidak dapat membuka daftarnya, dan petugas cabang mana pun
+tersaring darinya. Membolehkannya berarti menerbitkan baris yang dijamin tidak dapat dikerjakan,
+dan itu lebih buruk daripada menolak dengan sebab yang jelas.
+
+Ini juga mencabut alasan yang ditulis §19 dan sebelumnya: dulu pembuatan dibiarkan karena `P-5` dan
+karena `CreateNewCaseRCV` tidak memeriksa apa pun. Yang berubah bukan pembacaan atas Pega,
+melainkan **akibat** dari perilaku itu di sistem yang batas cabangnya kini mengikat.
+
+### 20.7 Akibat pada data contoh — dan apa yang tersingkap karenanya
+
+Sebelas uji memakai "cabang tidak terbaca" sebagai cara melihat seluruh berkas contoh. Jalan itu
+kini ditutup, dan penggantinya adalah pemilihan **kanwil** — satu-satunya cara sah melihat lebih
+dari satu cabang di layar sungguhan.
+
+Itu menyingkap sesuatu yang selama ini tersembunyi di balik pandangan tanpa batas: **data contoh
+menaruh saksi aturan kelompok bisnis khusus di kanwil 02 dan 03**, sehingga aturan itu tidak dapat
+dicoba dari kursi mana pun. Satu berkas (`RCV-0006`) dipindahkan ke cabang 1002.
+
+Ini bukan menyesuaikan data agar uji lulus. `SampleList` sejak awal berjanji "setiap penyaring
+punya baris yang cocok maupun yang tidak"; sejak tidak ada lagi pandangan tanpa batas, janji itu
+hanya bermakna **di dalam lingkup yang dapat dilihat** — dan baru sekarang ia benar-benar diuji.
+
+### 20.8 Pertanyaan terbuka yang menjadi mendesak
+
+| # | Pertanyaan | Kenapa ia kini mendesak |
+|---|---|---|
+| 10 | **Bolehkah petugas memilih kanwil mana pun?** Dropdown Kanwil menggantikan batas cabang, sehingga petugas Jakarta dapat melihat Surabaya. Bila cabang adalah batas data yang mengikat, kanwil yang bebas dipilih adalah **pintu yang sama, hanya lebih lebar**. Aturan yang menentukannya di sistem lama ada di antara 137 When rule yang hilang (`R-16`) — jadi ini keputusan, bukan temuan |
+| 11 | **Bolehkah sebuah berkas dibuka lewat nomornya tanpa memeriksa cabang?** `Get` dan `Save` tidak menyaring cabang; yang menjaganya hanyalah nomor berkas tidak diketahui dari luar daftar. Itu bukan penjagaan. Keadaannya **mendahului** sesi ini dan menimpa seluruh petugas, bukan hanya yang cabangnya tidak terbaca |
+| 9 (diperkuat) | **Siapa pemilik pemetaan login-ke-cabang setelah `D-25`?** Kini bukan lagi soal kenyamanan: bila sumbernya mati, **seluruh layar tertutup** bagi semua orang — bukan sekadar melebar |

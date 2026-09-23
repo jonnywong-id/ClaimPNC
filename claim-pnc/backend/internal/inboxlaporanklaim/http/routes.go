@@ -47,5 +47,6 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox/laporan-klaim/pilihan", h.Options)
 		perPortal.Get("/inbox/laporan-klaim/ekspor", h.Export)
 		perPortal.Get("/inbox/laporan-klaim/{id}", h.Get)
+		perPortal.Put("/inbox/laporan-klaim/{id}", h.Save)
 	})
 }

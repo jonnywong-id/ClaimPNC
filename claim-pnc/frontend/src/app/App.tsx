@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '@/modules/home/HomePage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
+import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
@@ -419,6 +420,21 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ManagerReceivePUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Form Input Receive Document. Ia berdiri sebagai rute tersendiri, bukan modal di
+        atas daftar: alamatnya dapat disalin dan dibuka kembali, dan itu yang dibutuhkan
+        petugas yang menerima nomor berkas lewat telepon.
+      */}
+      <Route
+        path="/inbox/laporan-klaim/:id"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportFormPage />
             </Protected>
           </SessionGuard>
         }

@@ -32,12 +32,52 @@ type Caller struct {
 	// harus bertambah lebih dulu adalah kontrak identitasnya.
 	Name string
 
-	// BranchCode adalah cabang petugas, hasil `GetIDCabang` di sistem lama.
+	// # Kenapa TIDAK ada BranchCode di sini
 	//
-	// Ia BATAS DATA, bukan kenyamanan: `SetListRCV_Act` selalu menempelkan penyaring
-	// cabang ke setiap kueri. Kosongnya menghasilkan ErrBranchUnknown saat membuat
-	// berkas — lihat catatan di sana.
-	BranchCode string
+	// Versi pertama modul ini membawa `auth.User.BranchCode` — kode cabang dari profil
+	// HCC/HCQ (`EmpResponse.Placement.BranchCode`) — lalu memakainya sebagai penyaring
+	// terhadap kolom `kodecabang_1`. Keduanya **sistem kode yang berbeda**, dan akibatnya
+	// tidak satu pun baris cocok: daftar tampil KOSONG tanpa satu pun pesan galat.
+	//
+	// Kode cabang yang dipakai layar ini adalah `POOLDATA.BRANCH.ID`, dan sistem lama
+	// menurunkannya lewat tiga tabel dan dua DB Link
+	// (`RDB List/GetIDCabang-SQL.xml`):
+	//
+	//	login petugas -> HRDASM.V_HRD_MST.login_aplikasi
+	//	              -> NIK
+	//	              -> LST_USER_ASURANSI.cab_id
+	//	              -> BRANCH.oldid
+	//	              -> BRANCH.id            <- inilah yang dibandingkan
+	//
+	// Perhatikan sambungan terakhir: ia lewat `oldid`, BUKAN `id`. Tidak ada satu pun
+	// jalan pintas dari profil HCC/HCQ ke nilai itu.
+	//
+	// Karena itu cabang TIDAK lagi dibawa di sini; ia diselesaikan BranchResolver dari
+	// Login. Membawanya sebagai field yang tampak sudah benar adalah persis yang membuat
+	// cacat ini luput — nilainya ada, bentuknya masuk akal, dan hasilnya salah diam-diam.
+}
+
+// BranchResolver menerjemahkan login petugas menjadi kode cabang klaimnya.
+//
+// # Kenapa ia seam tersendiri
+//
+// Karena penurunannya menyentuh dua basis data lain lewat DB Link, dan `D-25` menetapkan
+// seluruh DB Link kelak diganti pemanggilan API (`R-03`). Menaruhnya di balik seam berarti
+// penggantian itu kelak tidak menyentuh satu baris pun aturan modul ini.
+//
+// # Kegagalan BUKAN galat
+//
+// Nilai kedua false berarti cabangnya tidak dapat ditentukan — petugas non-karyawan tidak
+// ada di HRD, dan DB Link dapat sedang tidak dapat dihubungi. Pemanggil WAJIB
+// memperlakukannya sebagai "tanpa batas cabang", bukan sebagai "tidak ada berkas".
+//
+// Sistem lama memang berperilaku sebaliknya: ia merangkai `branch where ID=''` lalu
+// menampilkan daftar kosong. Perilaku itu TIDAK direplikasi, dan itu keputusan sadar —
+// `ID=''` bukan aturan bisnis melainkan akibat perangkaian teks `{ASIS:}` yang tidak
+// pernah memeriksa hasilnya. Daftar kosong yang tidak menjelaskan dirinya adalah kegagalan
+// yang paling mahal ditemukan.
+type BranchResolver interface {
+	Resolve(ctx context.Context, login string) (code string, resolved bool, err error)
 }
 
 // Clean memangkas spasi setiap isian identitas.
@@ -45,7 +85,6 @@ func (c Caller) Clean() Caller {
 	return Caller{
 		Login:      strings.TrimSpace(c.Login),
 		Name:       strings.TrimSpace(c.Name),
-		BranchCode: strings.TrimSpace(c.BranchCode),
 	}
 }
 
@@ -65,13 +104,15 @@ type Region struct {
 // tingkat kueri (`ADR-0030` Opsi 1). Tidak ada satu pun kueri di baliknya yang menyaring
 // menurut entitas, dan memang tidak boleh ada.
 //
-// # Kenapa tidak ada Update dan tidak ada Delete
+// # Kenapa ada Update, tetapi tidak ada Delete
 //
-// Layar ini tidak mengubah satu baris pun. Yang dilakukannya hanya membaca dan membuat
-// berkas baru; pengubahan isi berkas terjadi di layar lain (`B-14`), dan penghapusan
-// tidak pernah terjadi sama sekali — `ADR-0012` melarang penghapusan fisik data bernilai
-// bisnis. Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang ditulis
-// kemudian tanpa keputusan sadar.
+// Update ada karena form **Input Receive Document** mengisi berkas yang sudah dibuat
+// tombol "Buat Baru" — itulah assignment tunggal pada `Flow/InputReceiveDocument.xml`,
+// dan tanpa Update tombol itu hanya menerbitkan berkas kosong yang tidak dapat diapa-apakan.
+//
+// Delete TIDAK ada, dan tidak akan ada: `ADR-0012` melarang penghapusan fisik data
+// bernilai bisnis. Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang
+// ditulis kemudian tanpa keputusan sadar.
 type Repo interface {
 	// List mengembalikan satu halaman hasil beserta jumlah seluruh baris yang cocok.
 	//
@@ -97,6 +138,18 @@ type Repo interface {
 	// beberapa langkah kemudian: jarak antara mengambil nomor dan memakainya adalah
 	// jarak yang membuat dua penambahan bersamaan menerima nomor yang sama.
 	Insert(ctx context.Context, report ClaimReport) (ClaimReport, error)
+
+	// Update menyimpan isian form ke atas berkas yang sudah ada.
+	//
+	// ErrNotFound bila berkasnya hilang di antara pemuatan form dan penyimpanannya.
+	//
+	// Pengisi seam WAJIB menolak baris milik Pega dengan ErrReadOnlyOrigin. Ia bukan
+	// kenyamanan tampilan: selama masa paralel, tepat satu sistem yang menulis sebuah
+	// baris (`ADR-0004`, `P-1`), dan `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dibaca 116 rule
+	// Pega yang masih melayani produksi.
+	//
+	// Report sudah harus melewati Detail.Clean dan Detail.Check.
+	Update(ctx context.Context, report ClaimReport) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

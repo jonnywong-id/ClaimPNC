@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSelectedPortal } from '@/app/portal'
@@ -49,6 +49,7 @@ function report(over: Partial<Report> = {}): Report {
     tanggal_masuk: '2026-09-09',
     tanggal_aging: '2026-09-09',
     umur_hari: 10,
+    aging: '',
     pembuat: 'adminpnc',
     kode_cabang: '1001',
     nama_cabang: 'Cabang Contoh Jakarta 1',
@@ -73,6 +74,7 @@ type Report = {
   tanggal_masuk: string
   tanggal_aging: string
   umur_hari: number
+  aging: string
   pembuat: string
   kode_cabang: string
   nama_cabang: string
@@ -90,6 +92,7 @@ function listBody(over: { laporan?: Report[]; halaman?: Partial<Page> } = {}) {
     kategori: CATEGORY,
     laporan: over.laporan ?? [report()],
     halaman: { halaman: 1, ukuran: 10, total: 4, total_halaman: 1, ...over.halaman },
+    batas_cabang: '1001',
   }
 }
 
@@ -131,17 +134,36 @@ function defaultReply(extra?: (call: Call) => Reply | undefined) {
   }
 }
 
+/**
+ * Layar dirender bersama RUTE-nya, bukan sendirian.
+ *
+ * Perpindahan ke form adalah bagian dari apa yang dilakukan tombol Buat Baru — menguji
+ * tombolnya tanpa rute tujuan hanya membuktikan permintaan POST terkirim, bukan bahwa
+ * petugas sampai di tempat yang seharusnya.
+ *
+ * Halaman form sungguhan sengaja TIDAK ikut dirender: yang diuji di sini adalah layar
+ * daftar, dan menariknya serta akan membuat kegagalan form terbaca sebagai kegagalan
+ * daftar. Penanda sederhana sudah cukup membuktikan alamatnya berpindah dengan benar.
+ */
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <ClaimReportInboxPage />
+      <MemoryRouter initialEntries={['/inbox/laporan-klaim']}>
+        <Routes>
+          <Route path="/inbox/laporan-klaim" element={<ClaimReportInboxPage />} />
+          <Route path="/inbox/laporan-klaim/:id" element={<FormMarker />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
+}
+
+function FormMarker() {
+  const { id } = useParams()
+  return <div data-testid="form-berkas">{id}</div>
 }
 
 function startSession() {
@@ -339,7 +361,9 @@ describe('penyaring dan halaman', () => {
     await waitFor(() => expect(lastListCall()).toContain('cari=RCV-0003'))
   })
 
-  it('menyebut letak halaman, bukan hanya nomornya', async () => {
+  it('menyebut jumlah SELURUH baris, bukan jumlah yang tergambar', async () => {
+    // "Total Data" menjawab pertanyaan yang benar-benar ditanyakan petugas: berapa banyak
+    // berkas yang cocok — bukan berapa banyak yang muat di satu halaman.
     installFetch(
       defaultReply((call) =>
         call.method === 'GET' && !call.url.includes('/pilihan')
@@ -350,7 +374,7 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-    expect(screen.getByText(/Menampilkan/)).toBeInTheDocument()
+    expect(screen.getByText(/Total Data/)).toBeInTheDocument()
     expect(screen.getByText('57')).toBeInTheDocument()
   })
 
@@ -374,7 +398,14 @@ describe('penyaring dan halaman', () => {
 })
 
 describe('tindakan', () => {
-  it('Buat Baru mengirim POST tanpa badan dan mengumumkan nomornya', async () => {
+  it('Buat Baru membuat berkas lalu MEMBUKA form isiannya', async () => {
+    // Inilah yang membuat tombolnya berarti. Di sistem lama, `CreateNewCaseRCV` membuat
+    // berkas kosong lalu `Flow/InputReceiveDocument.xml` meneruskannya ke assignment
+    // "Receive Document" yang merender form `InputReceiveDocument`.
+    //
+    // Berhenti setelah berkasnya dibuat — seperti versi pertama layar ini — menerbitkan
+    // berkas yang tidak dapat diapa-apakan, dan berkasnya mendarat di tab lain daripada
+    // yang sedang dibuka. Dari kursi petugas, tombolnya tampak tidak bekerja.
     installFetch(defaultReply())
     show()
 
@@ -384,7 +415,19 @@ describe('tindakan', () => {
     await waitFor(() => {
       expect(calls.some((c) => c.method === 'POST')).toBe(true)
     })
-    expect(await screen.findByText(/RCVN\.26\.0001/)).toBeInTheDocument()
+
+    // Nomor berkas diterbitkan server, dan layar berpindah ke alamat form berkas itu.
+    expect(await screen.findByTestId('form-berkas')).toHaveTextContent('RCVN.26.0001')
+  })
+
+  it('nomor berkas pada daftar membuka form yang sama', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    await userEvent.click(within(table).getByRole('link', { name: 'RCV-0001' }))
+
+    expect(await screen.findByTestId('form-berkas')).toHaveTextContent('RCV-0001')
   })
 
   it('kegagalan memuat daftar ditampilkan tanpa mengosongkan layar', async () => {
@@ -414,6 +457,123 @@ describe('tindakan', () => {
 
     expect(screen.getByText('Pilih entitas lebih dulu')).toBeInTheDocument()
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('batas cabang', () => {
+  it('menyebut cabang yang membatasi daftar', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    expect(screen.getByText('Cabang')).toBeInTheDocument()
+    expect(screen.getByText('1001')).toBeInTheDocument()
+  })
+
+  it('menjelaskan penolakan ketika cabang petugas tidak dapat ditentukan', async () => {
+    // Keputusan Work Owner 2026-09-22: petugas yang cabangnya tidak terbaca tidak boleh
+    // melihat seluruh cabang. Server menjawab 403, dan yang penting di layar adalah
+    // SEBABNYA terbaca — bukan sekadar "gagal memuat".
+    //
+    // Daftar kosong sengaja tidak dipakai sebagai bentuk penolakan: ia tidak terbedakan
+    // dari "tidak ada pekerjaan hari ini", dan ketidakterbedaan itulah yang membuat cacat
+    // penyaring cabang bertahan tanpa ada yang melaporkannya.
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? {
+              body: {
+                kode: 'cabang_tidak_dikenali',
+                pesan:
+                  'Cabang klaim Anda tidak dapat ditentukan, sehingga daftar laporan tidak dapat ditampilkan.',
+              },
+              status: 403,
+            }
+          : undefined,
+      ),
+    )
+    show()
+
+    expect(
+      await screen.findByText(/Cabang klaim Anda tidak dapat ditentukan/),
+    ).toBeInTheDocument()
+
+    // Tidak ada satu baris pun yang tergambar — penolakan, bukan daftar tanpa batas.
+    expect(screen.queryByRole('link', { name: 'RCV-0001' })).not.toBeInTheDocument()
+  })
+})
+
+describe('kolom grid', () => {
+  it('menggambar kolom dengan judul dan URUTAN persis seperti layar lama', async () => {
+    // Urutannya ikut diuji, bukan hanya keberadaannya. Petugas membaca layar ini setiap
+    // hari dan membaca menurut posisi; kolom yang benar di tempat yang berbeda tetap
+    // memperlambat setiap pembacaan.
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    const heading = within(table)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent?.trim())
+
+    expect(heading).toEqual([
+      'Case ID',
+      'Polis no',
+      'Case PNC',
+      'Reference no',
+      'Business Name',
+      'Insured Name',
+      'Date of loss',
+      'Input Date',
+      'Creator',
+      'Cabang Klaim',
+      'Aging',
+      'Total Aging',
+      'Position',
+    ])
+  })
+
+  it('menggambar Aging dan Total Aging sebagai DUA kolom yang berbeda', async () => {
+    // Keduanya berbeda asalnya: "Aging" dibaca dari kolomnya sendiri di basis data,
+    // "Total Aging" dihitung server dari tanggal aging. Menyatukannya menghapus satu
+    // kolom yang memang ada di layar.
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? { body: listBody({ laporan: [report({ aging: '12', umur_hari: 2200 })] }) }
+          : undefined,
+      ),
+    )
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('12')).toBeInTheDocument()
+    expect(within(table).getByText('6y ago')).toBeInTheDocument()
+  })
+
+  it('menuliskan umur berkas secara ringkas seperti layar lama', async () => {
+    installFetch(
+      defaultReply((call) =>
+        call.method === 'GET' && !call.url.includes('/pilihan')
+          ? {
+              body: listBody({
+                laporan: [
+                  report({ id: 'RCV-A', umur_hari: 0 }),
+                  report({ id: 'RCV-B', umur_hari: 5 }),
+                  report({ id: 'RCV-C', umur_hari: 65 }),
+                  report({ id: 'RCV-D', umur_hari: 800 }),
+                ],
+              }),
+            }
+          : undefined,
+      ),
+    )
+    show()
+
+    const table = await screen.findByRole('table')
+    for (const text of ['today', '5d ago', '2mo ago', '2y ago']) {
+      expect(within(table).getByText(text)).toBeInTheDocument()
+    }
   })
 })
 

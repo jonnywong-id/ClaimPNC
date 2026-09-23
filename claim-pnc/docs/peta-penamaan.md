@@ -1620,3 +1620,123 @@ Berawalan nama tabnya, bukan nama modulnya — ketiganya membaca kombinasi tabel
 
 Komponennya `ManagerReceivePUCLPage` dan `ReceivePUCLTabs` — memakai nama **tipe domain**,
 bukan nama modul, mengikuti `AccountPage` pada `master-rekening` (`D-81`).
+## Tambahan 2026-09-22 — form Input Receive Document
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Isian (form) | Detail | isi berkas laporan yang dikumpulkan form; dibedakan dari `ClaimReport` yang memuat kepala berkasnya |
+| TanggalTerimaDokumen | ReceivedDate | |
+| Pelapor | Reporter | `ReporterName`, `ReporterEmail`, `ReporterPhone` |
+| Kurir | Courier | `CourierName` |
+| EstimasiKerugian | EstimateValue | bertipe `Money`; **bukan** nilai klaim |
+| LokasiKejadian | LossLocation | |
+| Kronologis | Chronology | |
+| RincianKerusakan | DamageDetail | |
+| KeteranganBelumRegistrasi | NotRegisteredNote | |
+| JumlahDokumen | DocumentCount | |
+| Uang | Money | bilangan bulat SEN (`ADR-0016`); diulang dari modul `registrasi`, tidak diimpor |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Simpan (form) | Save | lapisan usecase — dibedakan dari `Update` di lapisan repo |
+| Perbarui | Update | lapisan repo |
+| Terapkan | Apply | menuliskan isian form ke atas berkas yang sudah ada |
+| Bersihkan | Clean | memangkas spasi sebelum diperiksa |
+| Periksa | Check | menjalankan seluruh pemeriksaan sekaligus |
+
+### Nama kolom basis data — tetap Indonesia
+
+Migrasi 0004 menambah sepuluh kolom pada `POOLDATA.CPNC_LAPORAN_KLAIM`:
+`TGL_TERIMA_DOKUMEN`, `EMAIL_PELAPOR`, `TLP_PELAPOR`, `NAMA_KURIR`, `NILAI_ESTIMASI`,
+`LOKASI_KEJADIAN`, `KRONOLOGIS`, `RINCIAN_KERUSAKAN`, `KET_BELUM_REGISTRASI`, `JUMLAH_DOKUMEN`.
+
+### Nama kueri `.sql` tambahan
+
+`claim_report_update` — satu-satunya pernyataan pengubah pada modul ini.
+
+### Nama field JSON — tetap Indonesia
+
+`tanggal_terima_dokumen` · `nama_pelapor` · `email_pelapor` · `telepon_pelapor` · `nama_kurir` ·
+`estimasi_kerugian` · `lokasi_kejadian` · `kronologis` · `rincian_kerusakan` ·
+`keterangan_belum_registrasi` · `jumlah_dokumen` · `isian` · `dapat_disunting`
+
+### Kode galat tambahan
+
+| Kode | Artinya |
+|---|---|
+| `laporan_hanya_baca` | berkas ada, tetapi penulisnya masih Pega selama masa paralel |
+
+### Nama komponen
+
+`ClaimReportFormPage.tsx` — nama **tipe domain**, bukan nama modul, mengikuti aturan yang sama
+dengan `ClaimReportInboxPage.tsx` dan `AccountPage.tsx`.
+
+---
+
+## Tambahan 2026-09-22 — penerjemahan cabang klaim
+
+Sesi kesebelas menambah satu seam dan **menghapus** satu field. Yang dihapus justru lebih penting
+dicatat daripada yang ditambah.
+
+### Nama yang dihapus, dan kenapa
+
+| Nama lama | Keadaan | Alasan |
+|---|---|---|
+| `inboxlaporanklaim.Caller.BranchCode` | **dihapus** | Namanya tidak mencerminkan isinya. Ia diisi dari `auth.User.BranchCode` — kode penempatan pegawai dari HCQ — sementara yang dibutuhkan layar ini adalah kunci baris `POOLDATA.BRANCH`. Dua sistem penomoran berbeda dengan nama yang sama |
+
+Ini `D-19` yang berlaku pada kode baru, bukan pada warisan Pega: **nama yang tidak mencerminkan isi
+adalah utang teknis**, dan memperbaiki isinya sambil membiarkan namanya berarti orang berikutnya
+akan mengisinya salah lagi.
+
+### Nama baru
+
+| Nama | Lapisan | Alasan |
+|---|---|---|
+| `BranchResolver` | seam (`seam.go`) | Peran, bukan mekanisme. Ia menjawab "cabang klaim petugas ini apa", bukan "jalankan kueri HRD" |
+| `Resolve(ctx, login)` | seam | Kata kerja yang menyatakan penerjemahan, bukan pencarian. `Find`/`Get` menyiratkan kegagalan adalah ketiadaan baris; di sini "tidak terdaftar" dan "tidak terbaca" adalah dua hal berbeda |
+| `resolved bool` | seam | Menjadikan "terdaftar atau tidak" **bukan galat**, sehingga pemanggil tidak perlu membaca isi `error` untuk mengetahuinya |
+| `branch_of_login` | `branch.sql` | Dinamai menurut **pertanyaan yang dijawabnya**, sejalan dengan kueri lain modul ini (`claim_report_list_body`, `claim_report_summary_body`) |
+| `BranchScope` / `BranchResolved` | `usecase.ListResult` | Bukan `BranchCode`. `Scope` menyatakan ia **batas daftar**, bukan atribut pemanggil — perbedaan yang justru menjadi sebab cacat sesi ini |
+| `checkClaimReportBranch` | `cmd/claimpnc/check.go` | Mengikuti pola `checkClaimReport`, `checkClaimStatus`, `checkLoginTable` |
+
+### Nama kontrak API — tetap Indonesia (`D-80`)
+
+| Field | Arti |
+|---|---|
+| `batas_cabang` | cabang yang membatasi daftar; kosong berarti seluruh cabang |
+| `cabang_terbaca` | `false` berarti cabang petugas tidak dapat ditentukan |
+
+**`batas_cabang`, bukan `kode_cabang`.** Baris hasil sudah punya `kode_cabang` yang artinya "cabang
+milik berkas ini". Memakai nama yang sama untuk "cabang yang menyaring daftar" akan mengulang
+persis jenis kekeliruan yang sedang diperbaiki — dua hal berbeda dengan satu nama.
+
+### Padanan istilah yang kini punya arti tepat
+
+| Istilah | Arti dalam sistem ini | Jangan tertukar dengan |
+|---|---|---|
+| **kode cabang klaim** | kunci baris `POOLDATA.BRANCH.ID`, diturunkan dari login lewat HRD dan `LST_USER_ASURANSI` | **kode penempatan pegawai** dari HCQ (`EmpResponse.Placement.BranchCode`) — bukan nilai yang sama, dan bukan tabel yang sama |
+| **batas cabang** | cabang yang menyaring daftar seorang petugas | **cabang berkas** — cabang tempat sebuah berkas dicatat |
+
+Keduanya diusulkan masuk `CONTEXT.md`, dan tidak disunting sendiri: `CONTEXT.md` adalah dokumen
+Steering yang perubahannya ditulis sebagai keputusan (`D-72`), bukan ditambahkan menyusul.
+
+### Koreksi pada sesi yang sama — cabang menjadi batas kewenangan
+
+| Nama | Keadaan | Alasan |
+|---|---|---|
+| `cabang_terbaca` | **dihapus dari kontrak** | Sejak cabang yang tidak terbaca ditolak, ia tidak dapat lagi bernilai `false`. Field yang hanya pernah bernilai satu macam mengundang cabang penanganan untuk keadaan yang tidak pernah terjadi |
+| `ErrBranchUnknown` | baru | Cabang petugas tidak dapat ditentukan — urusan **data pegawai** |
+| `ErrBranchUnreadable` | baru | Sumber cabang tidak dapat dibaca — urusan **infrastruktur**. Dipisahkan meski akibatnya sama, karena perbaikannya berbeda dan yang satu menimpa seluruh petugas |
+| `requireBranch` | baru (`usecase`) | `require`, bukan `resolve`: namanya menyatakan bahwa kegagalannya MENGHENTIKAN permintaan. Nama lamanya, `resolveBranch`, menyiratkan kegagalan boleh dilanjutkan — dan itu memang perilakunya sebelum dikoreksi |
+| `wideList` | baru (uji) | Pandangan sah terluas — satu kanwil. Menggantikan pemakaian "cabang tidak terbaca" sebagai pintu belakang |
+
+**Kode galat kontrak API — tetap Indonesia (`D-80`)**
+
+| Kode | HTTP | Arti |
+|---|---|---|
+| `cabang_tidak_dikenali` | 403 | login petugas belum terdaftar pada cabangnya |
+| `sumber_cabang_tidak_terbaca` | 503 | sumber data cabang sedang tidak dapat dibaca |

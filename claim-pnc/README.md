@@ -75,9 +75,11 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (M_STS_CLAIM), memory + 33 baris contoh
 │   │   │   └── http/                    dto, galat, handler, rute
 │   │   ├── inboxlaporanklaim/       MODUL — Inbox Laporan Klaim (menu 64)
-│   │   │   ├── usecase/                 orkestrasi: daftar+ringkas, kanwil, ambil, buat
+│   │   │   ├── usecase/                 orkestrasi: daftar+ringkas, kanwil, ambil, buat,
+│   │   │   │                            simpan, penerjemahan cabang petugas
 │   │   │   ├── repo/                    sqlstore (PC_ASM_FW_GCNMFW_WORK dibaca +
-│   │   │   │                            CPNC_LAPORAN_KLAIM ditulis), memory
+│   │   │   │                            CPNC_LAPORAN_KLAIM ditulis, BRANCH lewat DB link
+│   │   │   │                            untuk cabang petugas), memory
 │   │   │   └── http/                    dto, galat, handler, ekspor CSV, rute
 │   │   ├── mastertipesurveyors/     MODUL — Master Tipe Surveyors (F-4), per portal
 │   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, ubah
@@ -149,9 +151,25 @@ kontrol bawaan peramban tidak ikut membalik mengikuti tema sistem pengguna.
 | Pembedaan penting | **Tidak pernah hanya warna.** Isian salah ditandai tepi + ikon + teks; nada pesan dibedakan bentuk ikonnya |
 | Font & ikon | Font sistem, ikon SVG di `components/Ikon.tsx`. **Tanpa Google Fonts dan tanpa pustaka ikon** — aplikasi berjalan di jaringan tertutup |
 
-> **SPA tersemat ke binary** lewat `go:embed`. Proses yang sedang berjalan memuat tampilan **lama**
-> sampai dibangun ulang: `cd frontend && npm run build`, lalu jalankan ulang binary-nya. Selama
-> mengerjakan antarmuka, `npm run dev` di port 5173 jauh lebih cepat.
+> **SPA tersemat ke binary** lewat `go:embed`, dan penyematannya terjadi saat **`go build`** — bukan
+> saat `npm run build`. Membangun ulang frontend saja karena itu **tidak mengubah apa pun** pada
+> aplikasi yang berjalan; urutannya mengikat:
+>
+> ```bash
+> cd frontend && npm run build          # menulis backend/spa/dist
+> cd ../backend && go build -o claimpnc.exe ./cmd/claimpnc
+> ```
+>
+> Melewatkan langkah kedua membuat fitur yang sudah diperbaiki tampak masih rusak, **tanpa satu pun
+> galat** — itu benar-benar terjadi pada 2026-09-22. Karena itu binary menyebutkan antarmuka mana
+> yang dibawanya, di log saat start maupun di `-periksa`:
+>
+> ```
+>   antarmuka        : dibangun 2026-09-22T11:09:21.943Z
+> ```
+>
+> Selama mengerjakan antarmuka, `npm run dev` di port 5173 jauh lebih cepat dan bebas dari jebakan
+> ini seluruhnya.
 
 Aturan 2 **belum ditegakkan perkakas** — lihat utang teknis nomor 1 di
 `docs/keputusan-implementasi.md`.
@@ -218,6 +236,8 @@ backend/migrations/0003_claim_report_inbox.down.sql
 backend/migrations/0004_master_surveyor.up.sql           kolom baru — WAJIB bagi modulnya
 backend/migrations/0005_master_penyebab_kerugian.up.sql  MENGUBAH objek milik sistem lama
 backend/migrations/0005_master_penyebab_kerugian.down.sql
+backend/migrations/0004_claim_report_detail.up.sql     MENAMBAH 10 kolom isian form pada tabel itu
+backend/migrations/0004_claim_report_detail.down.sql
 ```
 
 > **`0003` dijalankan di SETIAP portal entitas, bukan hanya di portal utama** — berbeda dari `0001`.
@@ -268,7 +288,8 @@ Setelah migrasi selesai, ganti ke `PENYIMPANAN=oracle` — tidak ada perubahan k
 Untuk memeriksa tanpa menjalankan server sama sekali:
 
 ```bash
-./claimpnc.exe -periksa                       # koneksi, daftar portal, alamat HCQ, kesiapan tabel
+./claimpnc.exe -periksa                       # koneksi, daftar portal, alamat HCQ, kesiapan tabel,
+                                              # dan penerjemahan cabang klaim dari login
 
 read -s SANDI && echo "$SANDI" | \
   ./claimpnc.exe -periksa -login NAMA@sinarmas.id    # + coba masuk sungguhan
@@ -508,6 +529,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox-progress-claim` | **Inbox Progress Claim** |
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — butir menu 64 |
 | `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
+| `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -612,26 +634,132 @@ daftar pilihan dropdown (isi "Pilih Kanwil" dibaca dari `POOLDATA.BRANCH` milik 
 | `GET` | `/api/inbox/laporan-klaim` | satu halaman daftar + lencana kesembilan tab. Saringan: `kategori`, `kanwil`, `bisnis`, `cari`, `halaman`, `ukuran` |
 | `GET` | `/api/inbox/laporan-klaim/pilihan` | isi ketiga dropdown: tab, bisnis, kanwil |
 | `GET` | `/api/inbox/laporan-klaim/ekspor` | unduhan CSV dengan saringan yang sama |
-| `GET` | `/api/inbox/laporan-klaim/{id}` | satu berkas laporan |
+| `GET` | `/api/inbox/laporan-klaim/{id}` | satu berkas laporan + isian formnya |
 | `POST` | `/api/inbox/laporan-klaim` | tombol "Buat Baru" — **tanpa badan permintaan** |
+| `PUT` | `/api/inbox/laporan-klaim/{id}` | tombol Simpan pada form Input Receive Document |
 
 `POST` tidak membaca badan permintaan, dan itu bukan kelalaian: tombolnya di sistem lama tidak
 meminta satu pun isian. `CreateNewCaseRCV` hanya mengisi lima nilai yang seluruhnya diturunkan dari
-petugas penekannya, lalu berkasnya lahir **kosong** untuk dilengkapi di layar berikutnya (`B-14`,
-belum dibangun).
+petugas penekannya, lalu berkasnya lahir **kosong**.
 
-> **Penulisan tidak lagi masuk ke `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`** (keputusan Work Owner
-> 2026-09-19). Berkas baru tinggal di `POOLDATA.CPNC_LAPORAN_KLAIM` — tabel milik aplikasi ini,
-> dibuat [`migrations/0003`](backend/migrations/0003_claim_report_inbox.up.sql) — sementara berkas
-> lama tetap **dibaca** di tempatnya. Daftar yang dilihat petugas adalah gabungan keduanya, dan
-> asal setiap baris terbaca dari kolom `asal` maupun dari nomornya: berkas terbitan aplikasi ini
-> berformat `RCVN.YY.xxxx`.
+Yang mengisinya adalah **form Input Receive Document**, dan itulah assignment tunggal pada
+[`Flow/InputReceiveDocument.xml`](../Flow/InputReceiveDocument.xml):
+
+```
+Start ─► Assignment "Receive Document" ─► End
+           WorkList, router PNCAdminRouterRCV
+           flow action: InputReceiveDocument
+```
+
+Karena itu menekan "Buat Baru" **membuat berkas lalu langsung membuka formnya** di
+`/inbox/laporan-klaim/{id}`. Berhenti setelah berkasnya dibuat menerbitkan berkas yang tidak dapat
+diapa-apakan — dan dari kursi petugas, tombolnya tampak tidak bekerja.
+
+`PUT`, bukan `PATCH`: form mengirim **seluruh** isian setiap kali disimpan, sehingga permintaannya
+menggantikan dan idempoten.
+
+> **Berkas milik Pega dibuka dalam modus baca saja.** Selama masa paralel, tepat satu sistem yang
+> menulis sebuah baris (`ADR-0004`, `P-1`). Kewenangannya dihitung server dan dikirim sebagai
+> `dapat_disunting`; layar tidak menyimpulkannya sendiri dari kolom `asal`.
+>
+> **Tiga bagian form lama belum ada**, dan masing-masing punya alasannya: blok data pelapor beserta
+> alamatnya terikat area **Heavy Equipment** yang `D-34` keluarkan dari lingkup migrasi; grid
+> rincian dokumen menunggu modul penyimpanan dokumen (`S-1`); riwayat komunikasi dan progres
+> dimiliki modul lain. Keterbatasannya disebutkan di kaki form, bukan disembunyikan.
+
+> **Daftar ditarik dari `POOLDATA.T_CLAIMLIST_ADMIN`** (keputusan Work Owner 2026-09-23) — tabel
+> rata yang diisi proses lain dan **hanya dibaca** aplikasi ini. Sebelumnya sumbernya gabungan
+> `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan tabel milik aplikasi ini.
+>
+> **Penulisan tidak berubah**: berkas baru tetap ditulis ke `POOLDATA.CPNC_LAPORAN_KLAIM`, dibuat
+> [`migrations/0003`](backend/migrations/0003_claim_report_inbox.up.sql). Proses pengisi
+> `T_CLAIMLIST_ADMIN` **diperluas agar ikut membaca tabel itu**, sehingga berkas terbitan aplikasi
+> ini masuk daftar lewat jalur yang sama dengan berkas Pega.
+>
+> | | |
+> |---|---|
+> | baris daftar | `POOLDATA.T_CLAIMLIST_ADMIN` — diisi proses lain, hanya dibaca |
+> | empat kolom penentu tab | `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` — hanya dibaca |
+> | menulis berkas | `POOLDATA.CPNC_LAPORAN_KLAIM` — hanya aplikasi ini |
+>
+> **Kenapa tabel kerja Pega masih ikut dibaca.** `PNCCASEID` dan `STATUSLOCK_1` ada di DDL
+> `T_CLAIMLIST_ADMIN` tetapi **tidak pernah terisi** untuk baris Receive Document — diperiksa
+> langsung 2026-09-23: `NULL` pada seluruh 142 baris. Keduanya penentu `Position`, sehingga tanpa
+> `LEFT JOIN` seluruh baris jatuh ke "Not Transferred" dan delapan dari sembilan tab tampil kosong.
+> `BOOKNO_1` ikut diambil dari sana; ia yang mengisi kolom **Reference no**.
+>
+> Yang di-JOIN hanya keempat kolom itu — **baris mana yang tampil tetap ditentukan
+> `T_CLAIMLIST_ADMIN`**, dan tabel kerja Pega tidak pernah menjadi tabel penggerak di `FROM`.
+>
+> **Catatan lingkup:** `T_CLAIMLIST_ADMIN` adalah tabel *outstanding*, bukan daftar utuh — 142
+> baris RCV, sementara tabel kerja Pega memuat 2.800 baris RCV di basis data yang sama.
 >
 > Dengan begitu `P-1` terpenuhi di tingkat tabel: tidak ada satu tabel pun yang ditulis dua sistem.
+> Asal setiap baris terbaca dari **nomornya** — berkas terbitan aplikasi ini berformat
+> `RCVN.YY.xxxx` (`D-71`) — bukan dari tabel asalnya, karena tabelnya kini satu.
+>
+> **Dua akibat yang diterima sadar.** Berkas yang baru dibuat **belum muncul di daftar** sampai
+> proses pengisi berjalan; ia tetap dapat dibuka langsung sesudah dibuat karena pembacaan satu
+> berkas menempuh jalur tersendiri ke `CPNC_LAPORAN_KLAIM`. Dan kolom **Reference no** kosong:
+> `BOOKNO_1` tidak ada di antara ke-53 kolom tabel baru, dan tidak dipetakan ke kolom lain yang
+> kebetulan mirip. Kolom **Alasan** dibuang dari grid sesuai ketetapan Work Owner 2026-09-23.
+>
+> **Baris ber-`STS_AKTIF = '0'` tidak ditampilkan.** Yang dikecualikan hanya yang bernilai `'0'`
+> secara tegas: kolomnya nullable, dan baris tanpa penanda berarti belum ditetapkan — bukan tidak
+> aktif. Menyembunyikannya akan menghilangkan pekerjaan dari layar tanpa seorang pun tahu.
+>
+> **Grid mengikuti layar lama**: Case ID · Polis no · Case PNC · Reference no · Business Name ·
+> Insured Name · Date of loss · Input Date · Creator · Cabang Klaim · **Aging** · **Total Aging** ·
+> Position. Dua kolom umur berdampingan — "Aging" dibaca dari kolom `AGING` apa adanya, "Total
+> Aging" dihitung aplikasi dan ditulis ringkas (`6y ago`). Paginasinya **di atas** tabel:
+> `Total Data : N` beserta nomor halaman.
+
+**Daftar dibatasi ke cabang petugas**, dan kode cabangnya **diturunkan dari login**, bukan diambil
+dari profil HCQ. Keduanya sama-sama bernama "kode cabang" tetapi berasal dari sistem penomoran yang
+berbeda; yang dipakai layar ini adalah kunci baris `POOLDATA.BRANCH`, ditempuh persis seperti
+[`RDB List/GetIDCabang-SQL.xml`](../RDB%20List/GetIDCabang-SQL.xml):
+
+```
+login petugas ─► HRDASM.V_HRD_MST.login_aplikasi ─► NIK
+              ─► LST_USER_ASURANSI.cab_id
+              ─► BRANCH.oldid ─► BRANCH.id
+```
+
+Dua objek terakhir dibaca lewat **DB link** `@asmd.sinarmas.co.id` — tepat yang `D-25` tetapkan
+untuk diganti API dan `R-03` catat belum ada. Karena itu ia ditaruh di balik seam
+`BranchResolver`: ketika API-nya tersedia, yang berubah hanya satu adapter.
+
+> **Cabang yang tidak dapat ditentukan MENUTUP layar, bukan melebarkannya.** Ditetapkan Work Owner
+> 2026-09-22: petugas yang cabangnya tidak terbaca tidak boleh melihat seluruh cabang. Cabang
+> karena itu bukan kenyamanan penyaring melainkan **batas data** — dan batas yang tidak dapat
+> ditentukan berarti permintaannya tidak dapat dilayani.
+>
+> Daftar kosong sengaja **tidak** dipakai sebagai bentuk penolakan, meski itu yang dilakukan sistem
+> lama: kosong tidak terbedakan dari "tidak ada pekerjaan hari ini", dan ketidakterbedaan itulah
+> yang membuat cacat penyaring cabang bertahan tanpa ada yang melaporkannya. Yang dikirim adalah
+> penolakan yang menyebutkan sebabnya, dan kedua sebabnya dibedakan:
+>
+> | Keadaan | HTTP | Kode | Dibereskan di |
+> |---|---|---|---|
+> | Login petugas belum terdaftar di HRD | `403` | `cabang_tidak_dikenali` | data pegawai — menimpa satu orang |
+> | `POOLDATA.BRANCH` atau DB link tidak terbaca | `503` | `sumber_cabang_tidak_terbaca` | infrastruktur — menimpa **seluruh** petugas |
+>
+> Batas yang sedang berlaku tetap dikirim sebagai `batas_cabang`, supaya layar dapat menyatakannya:
+> petugas yang tidak tahu daftarnya sedang disaring akan menyimpulkan tidak ada pekerjaan, padahal
+> yang benar adalah tidak ada pekerjaan **di cabangnya**. Kosong pada field itu kini punya satu
+> arti saja — pengguna memilih kanwil.
+>
+> **Pembuatan berkas ditolak dengan syarat yang sama.** Berkas yang lahir tanpa cabang tidak akan
+> pernah terlihat siapa pun — pembuatnya tidak dapat membuka daftarnya, dan petugas cabang mana pun
+> tersaring darinya. Ini perluasan atas keputusan yang berbunyi tentang "melihat"; ditulis terbuka
+> agar dapat dikoreksi.
 
 | Kode galat tambahan | HTTP | Artinya |
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; laporan baru tidak dapat dibuat |
+| `laporan_hanya_baca` | 409 | berkas ada, tetapi penulisnya masih Pega. Bukan `validasi_gagal`: tidak ada isian yang dapat diperbaiki pengguna |
+| `cabang_tidak_dikenali` | 403 | cabang klaim petugas tidak dapat ditentukan dari login-nya; layar tidak dapat dibuka |
+| `sumber_cabang_tidak_terbaca` | 503 | sumber data cabang sedang tidak dapat dibaca. Dipisahkan dari yang di atas: yang ini menimpa **seluruh** petugas dan dibereskan di infrastruktur |
 
 ### Inbox Manager Receive / PUCL
 

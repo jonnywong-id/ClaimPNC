@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,14 +15,57 @@ import (
 
 const portalAlias = "ASM"
 
-// adminJakarta adalah petugas yang membuat sebagian besar berkas contoh; cabangnya 1001.
+// adminBranch adalah cabang yang DITERJEMAHKAN dari login `adminpnc`.
+//
+// Ia tidak lagi dibawa di dalam Caller: kode cabang klaim adalah POOLDATA.BRANCH.ID, dan
+// profil HCC/HCQ mengirim sistem kode yang berbeda. Penerjemahannya tugas BranchResolver.
+const adminBranch = "1001"
+
+// adminJakarta adalah petugas yang membuat sebagian besar berkas contoh.
 var adminJakarta = inboxlaporanklaim.Caller{
-	Login:      "adminpnc",
-	Name:       "Petugas Contoh",
-	BranchCode: "1001",
+	Login: "adminpnc",
+	Name:  "Petugas Contoh",
+}
+
+// unknownBranch adalah petugas yang cabangnya TIDAK dapat diterjemahkan.
+//
+// Ia mewakili keadaan nyata, bukan kasus buatan: petugas non-karyawan — broker dan
+// surveyor independen — masuk lewat POOLDATA.M_LOGIN_PNC dan memang tidak pernah ada di
+// HRD.
+//
+// Permintaannya DITOLAK sejak Work Owner menetapkan 2026-09-22 bahwa petugas yang
+// cabangnya tidak terbaca tidak boleh melihat seluruh cabang.
+var unknownBranch = inboxlaporanklaim.Caller{Login: "tanpacabang", Name: "Tanpa Cabang"}
+
+// kanwilJakarta memuat cabang 1001 dan 1002 pada data contoh.
+const kanwilJakarta = "01"
+
+// wideList mengambil daftar dengan pandangan SAH TERLUAS yang tersedia — satu kanwil.
+//
+// # Kenapa helper ini ada
+//
+// Uji yang menguji aturan TAB, paginasi, dan lencana perlu melihat lebih dari satu
+// cabang. Dulu mereka memperolehnya dengan memakai petugas yang cabangnya tidak terbaca,
+// karena keadaan itu dulu MELEBARKAN daftar. Jalan itu kini ditutup — dan penutupannya
+// justru yang sedang dijaga uji lain.
+//
+// Menggantinya dengan pemilihan kanwil bukan sekadar akal-akalan uji: itulah satu-satunya
+// cara sah melihat lebih dari satu cabang di layar sungguhan.
+func wideList(t *testing.T, service *usecase.Service, query usecase.Query) usecase.ListResult {
+	t.Helper()
+	query.RegionCode = kanwilJakarta
+	return listOf(t, service, adminJakarta, query)
 }
 
 func newService(t *testing.T) (*usecase.Service, *memory.Repo) {
+	service, repo, _ := newServiceWith(t, memory.NewBranchResolver(memory.SampleBranchOfLogin()))
+	return service, repo
+}
+
+func newServiceWith(
+	t *testing.T,
+	resolver inboxlaporanklaim.BranchResolver,
+) (*usecase.Service, *memory.Repo, *clock.Fixed) {
 	t.Helper()
 
 	fixed := clock.FixedAt(time.Date(2026, 9, 19, 3, 0, 0, 0, time.UTC))
@@ -34,12 +78,13 @@ func newService(t *testing.T) (*usecase.Service, *memory.Repo) {
 			}
 			return repo, nil
 		},
-		Clock: fixed,
+		BranchResolver: resolver,
+		Clock:          fixed,
 	})
 	if err != nil {
 		t.Fatalf("membentuk layanan: %v", err)
 	}
-	return service, repo
+	return service, repo, fixed
 }
 
 func listOf(
@@ -71,9 +116,8 @@ func TestServiceRefusesToStartWithoutClock(t *testing.T) {
 func TestEachTabShowsOnlyItsOwnReports(t *testing.T) {
 	service, _ := newService(t)
 
-	// Cabang petugas dikosongkan supaya uji ini menguji ATURAN TAB, bukan batas cabang.
-	// Keduanya diuji terpisah; menggabungkannya membuat kegagalan sulit dibaca.
-	caller := inboxlaporanklaim.Caller{Login: "adminpnc"}
+	// Pandangan dilebarkan ke satu kanwil supaya uji ini menguji ATURAN TAB, bukan batas
+	// cabang. Keduanya diuji terpisah; menggabungkannya membuat kegagalan sulit dibaca.
 
 	suite := []struct {
 		category inboxlaporanklaim.Category
@@ -86,7 +130,7 @@ func TestEachTabShowsOnlyItsOwnReports(t *testing.T) {
 
 	for _, c := range suite {
 		t.Run(string(c.category), func(t *testing.T) {
-			result := listOf(t, service, caller, usecase.Query{Category: c.category})
+			result := wideList(t, service, usecase.Query{Category: c.category})
 			if result.Page.Total == 0 {
 				t.Fatalf("tab %q kosong; berkas contoh seharusnya memuat setiap tab", c.category)
 			}
@@ -101,12 +145,11 @@ func TestEachTabShowsOnlyItsOwnReports(t *testing.T) {
 
 func TestResolvedAndRejectedReportsAreHiddenFromEveryOpenTab(t *testing.T) {
 	service, _ := newService(t)
-	caller := inboxlaporanklaim.Caller{Login: "adminpnc"}
 
 	// RCV-0011 dan RCV-0014 ditolak, RCV-0013 selesai. Kueri lama menyaringnya dengan
 	// PYSTATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected') di setiap tab
 	// terbuka; tab Data rejected justru mencarinya.
-	open := listOf(t, service, caller, usecase.Query{
+	open := wideList(t, service, usecase.Query{
 		Category:   inboxlaporanklaim.CategoryAll,
 		Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
 	})
@@ -117,16 +160,19 @@ func TestResolvedAndRejectedReportsAreHiddenFromEveryOpenTab(t *testing.T) {
 		}
 	}
 
-	rejected := listOf(t, service, caller, usecase.Query{Category: inboxlaporanklaim.CategoryRejected})
-	if rejected.Page.Total != 2 {
-		t.Fatalf("tab Data rejected memuat %d berkas, ingin 2", rejected.Page.Total)
+	// Satu, bukan dua: RCV-0011 berada di kanwil 01, sedangkan RCV-0014 di kanwil 02.
+	// Angkanya mengikuti LINGKUP yang benar-benar dapat dilihat seorang petugas — tidak
+	// ada lagi pandangan yang memuat keduanya sekaligus.
+	rejected := wideList(t, service, usecase.Query{Category: inboxlaporanklaim.CategoryRejected})
+	if rejected.Page.Total != 1 {
+		t.Fatalf("tab Data rejected memuat %d berkas, ingin 1", rejected.Page.Total)
 	}
 }
 
 func TestAcceptedTabShowsOnlyReportsWithAcceptanceNumber(t *testing.T) {
 	service, _ := newService(t)
 
-	result := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+	result := wideList(t, service, usecase.Query{
 		Category: inboxlaporanklaim.CategoryAccepted,
 	})
 
@@ -153,9 +199,9 @@ func TestBranchOfCallerIsTheDefaultDataBoundary(t *testing.T) {
 		t.Fatal("daftar kosong untuk cabang petugas")
 	}
 	for _, report := range result.Page.Report {
-		if report.BranchCode != adminJakarta.BranchCode {
+		if report.BranchCode != adminBranch {
 			t.Fatalf("berkas cabang %q bocor ke petugas cabang %q",
-				report.BranchCode, adminJakarta.BranchCode)
+				report.BranchCode, adminBranch)
 		}
 	}
 }
@@ -186,9 +232,8 @@ func TestChoosingRegionWidensBeyondOwnBranch(t *testing.T) {
 
 func TestKeywordMatchesRegisterNumberExactlyNotPartially(t *testing.T) {
 	service, _ := newService(t)
-	caller := inboxlaporanklaim.Caller{Login: "adminpnc"}
 
-	exact := listOf(t, service, caller, usecase.Query{
+	exact := wideList(t, service, usecase.Query{
 		Category: inboxlaporanklaim.CategoryAll,
 		Keyword:  "RCV-0003",
 	})
@@ -198,7 +243,7 @@ func TestKeywordMatchesRegisterNumberExactlyNotPartially(t *testing.T) {
 
 	// Kueri lama memakai `a.pyid = '<cari>'`, bukan LIKE. Mengubahnya menjadi pencarian
 	// sebagian membuat kueri berhenti memakai index pada tabel berpuluh juta baris.
-	partial := listOf(t, service, caller, usecase.Query{
+	partial := wideList(t, service, usecase.Query{
 		Category: inboxlaporanklaim.CategoryAll,
 		Keyword:  "RCV",
 	})
@@ -209,14 +254,13 @@ func TestKeywordMatchesRegisterNumberExactlyNotPartially(t *testing.T) {
 
 func TestBusinessLineFilterSeparatesSpecialGroupFromNonMBU(t *testing.T) {
 	service, _ := newService(t)
-	caller := inboxlaporanklaim.Caller{Login: "adminpnc"}
 
-	special := listOf(t, service, caller, usecase.Query{
+	special := wideList(t, service, usecase.Query{
 		Category:     inboxlaporanklaim.CategoryAll,
 		BusinessLine: inboxlaporanklaim.BusinessLineSpecialGroup,
 		Pagination:   inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
 	})
-	nonMBU := listOf(t, service, caller, usecase.Query{
+	nonMBU := wideList(t, service, usecase.Query{
 		Category:     inboxlaporanklaim.CategoryAll,
 		BusinessLine: inboxlaporanklaim.BusinessLineNonMBU,
 		Pagination:   inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
@@ -260,13 +304,12 @@ func TestUnknownFilterValuesAreRejected(t *testing.T) {
 
 func TestPagingNeverRepeatsOrLosesARow(t *testing.T) {
 	service, _ := newService(t)
-	caller := inboxlaporanklaim.Caller{Login: "adminpnc"}
 
 	seen := map[string]bool{}
 	total := 0
 
 	for page := 1; page <= 5; page++ {
-		result := listOf(t, service, caller, usecase.Query{
+		result := wideList(t, service, usecase.Query{
 			Category:   inboxlaporanklaim.CategoryAll,
 			Pagination: inboxlaporanklaim.Pagination{Page: page, Size: 3},
 		})
@@ -291,7 +334,7 @@ func TestPagingNeverRepeatsOrLosesARow(t *testing.T) {
 func TestPageBeyondTheLastIsEmptyNotAnError(t *testing.T) {
 	service, _ := newService(t)
 
-	result := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+	result := wideList(t, service, usecase.Query{
 		Category:   inboxlaporanklaim.CategoryAll,
 		Pagination: inboxlaporanklaim.Pagination{Page: 99, Size: 10},
 	})
@@ -308,7 +351,7 @@ func TestBadgeCountsUseTheSameFilterAsTheTableBelowThem(t *testing.T) {
 
 	// Pencacah yang mengabaikan penyaring akan menyebut jumlah seluruh cabang padahal
 	// yang tampil satu cabang saja — dua angka berdampingan yang tidak berhubungan.
-	all := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+	all := wideList(t, service, usecase.Query{
 		Category: inboxlaporanklaim.CategoryAll,
 	})
 	scoped := listOf(t, service, adminJakarta, usecase.Query{
@@ -328,7 +371,7 @@ func TestBadgeCountsUseTheSameFilterAsTheTableBelowThem(t *testing.T) {
 func TestBadgePartsAddUpToTheTotal(t *testing.T) {
 	service, _ := newService(t)
 
-	result := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+	result := wideList(t, service, usecase.Query{
 		Category: inboxlaporanklaim.CategoryAll,
 	})
 	s := result.Summary
@@ -349,7 +392,7 @@ func TestCommunicationTabsShowOnlyTheCallersOwnReports(t *testing.T) {
 		inboxlaporanklaim.CategoryMessageWaiting,
 		inboxlaporanklaim.CategoryMessageReplied,
 	} {
-		result := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+		result := wideList(t, service, usecase.Query{
 			Category:   category,
 			Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
 		})
@@ -367,7 +410,7 @@ func TestCommunicationTabsShowOnlyTheCallersOwnReports(t *testing.T) {
 func TestLastMessageIsEmptyOutsideCommunicationTabs(t *testing.T) {
 	service, _ := newService(t)
 
-	result := listOf(t, service, inboxlaporanklaim.Caller{Login: "adminpnc"}, usecase.Query{
+	result := wideList(t, service, usecase.Query{
 		Category:   inboxlaporanklaim.CategoryAll,
 		Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
 	})
@@ -398,8 +441,8 @@ func TestNewReportIsBornBlankInTheNotTransferredTab(t *testing.T) {
 	if saved.Origin != inboxlaporanklaim.OriginNew {
 		t.Fatalf("asal berkas baru = %q, ingin %q", saved.Origin, inboxlaporanklaim.OriginNew)
 	}
-	if saved.BranchCode != adminJakarta.BranchCode {
-		t.Fatalf("cabang berkas baru = %q, ingin %q", saved.BranchCode, adminJakarta.BranchCode)
+	if saved.BranchCode != adminBranch {
+		t.Fatalf("cabang berkas baru = %q, ingin %q", saved.BranchCode, adminBranch)
 	}
 	if saved.ReporterName != adminJakarta.Name {
 		t.Fatalf("nama pelapor = %q, ingin nama petugas %q", saved.ReporterName, adminJakarta.Name)
@@ -436,22 +479,20 @@ func TestTwoNewReportsNeverShareANumber(t *testing.T) {
 	}
 }
 
-func TestReportWithoutBranchIsStillCreatedJustLikePega(t *testing.T) {
+func TestReportIsNotCreatedWhenNobodyCouldEverSeeIt(t *testing.T) {
 	service, _ := newService(t)
 
-	// `CreateNewCaseRCV` langkah 19 mengisi cabang dari hasil `GetIDCabang` dan TIDAK
-	// memeriksa hasilnya: kueri yang tidak mengembalikan baris menghasilkan cabang
-	// kosong, dan berkas tetap dibuat. Menolaknya adalah aturan BARU, dan `P-5`
-	// menetapkan perilaku dipertahankan lebih dulu.
-	saved, err := service.Create(context.Background(), portalAlias, inboxlaporanklaim.Caller{
-		Login: "adminpnc",
-		Name:  "Petugas Contoh",
-	})
-	if err != nil {
-		t.Fatalf("berkas tanpa cabang ditolak: %v", err)
-	}
-	if saved.BranchCode != "" {
-		t.Fatalf("cabang berkas = %q, ingin kosong", saved.BranchCode)
+	// `CreateNewCaseRCV` langkah 19 tidak memeriksa hasil `GetIDCabang`, dan versi
+	// sebelumnya uji ini meniru itu dengan benar.
+	//
+	// Yang berubah adalah AKIBATNYA. Sejak cabang menjadi batas data yang mengikat
+	// (Work Owner, 2026-09-22), berkas tanpa cabang tidak akan pernah terlihat siapa
+	// pun: pembuatnya tidak dapat membuka daftarnya, dan petugas cabang mana pun
+	// tersaring darinya. Menerbitkannya berarti menulis baris yang dijamin tidak dapat
+	// dikerjakan.
+	_, err := service.Create(context.Background(), portalAlias, unknownBranch)
+	if !errors.Is(err, inboxlaporanklaim.ErrBranchUnknown) {
+		t.Fatalf("galat = %v, ingin ErrBranchUnknown", err)
 	}
 }
 
@@ -461,9 +502,7 @@ func TestReportCannotBeCreatedWithoutIdentity(t *testing.T) {
 	// Tanpa identitas, tidak ada yang dapat dicatat sebagai pembuatnya — dan itu satu
 	// hal yang di sistem lama TIDAK mungkin terjadi: setiap tindakan di Pega punya
 	// operator. Ia menandakan jembatan ke konteks pemanggil tidak terpasang.
-	_, err := service.Create(context.Background(), portalAlias, inboxlaporanklaim.Caller{
-		BranchCode: "1001",
-	})
+	_, err := service.Create(context.Background(), portalAlias, inboxlaporanklaim.Caller{Name: "Tanpa Login"})
 	if !errors.Is(err, inboxlaporanklaim.ErrCallerUnknown) {
 		t.Fatalf("galat tanpa identitas = %v", err)
 	}
@@ -492,4 +531,269 @@ func TestStorageFailureIsReportedNotSwallowed(t *testing.T) {
 	if err == nil {
 		t.Fatal("kegagalan penyimpanan dijawab seolah berhasil")
 	}
+}
+
+func TestFormSavesOntoTheReportThatButtonCreated(t *testing.T) {
+	service, _ := newService(t)
+
+	created, err := service.Create(context.Background(), portalAlias, adminJakarta)
+	if err != nil {
+		t.Fatalf("membuat berkas: %v", err)
+	}
+
+	detail := inboxlaporanklaim.Detail{
+		ReceivedDate:  time.Date(2026, 9, 18, 0, 0, 0, 0, time.UTC),
+		DateOfLoss:    time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC),
+		ReporterName:  "Pelapor Contoh",
+		PolicyNumber:  "POL-CONTOH-1",
+		InsuredName:   "Tertanggung Contoh",
+		EstimateValue: inboxlaporanklaim.Rupiah(2_500_000),
+		Chronology:    "Kronologis contoh.",
+		DocumentCount: 3,
+	}
+
+	saved, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("menyimpan isian: %v", err)
+	}
+
+	if saved.ReporterName != "Pelapor Contoh" || saved.PolicyNumber != "POL-CONTOH-1" {
+		t.Fatalf("isian tidak tersimpan: %+v", saved)
+	}
+	if saved.UpdatedBy != adminJakarta.Login {
+		t.Fatalf("jejak penyimpan = %q, ingin %q", saved.UpdatedBy, adminJakarta.Login)
+	}
+	if saved.UpdatedAt.IsZero() {
+		t.Fatal("waktu penyimpanan tidak dicatat")
+	}
+
+	// Yang tersimpan harus terbaca kembali — bukan hanya dikembalikan oleh pemanggilnya.
+	reread, err := service.Get(context.Background(), portalAlias, created.ID)
+	if err != nil {
+		t.Fatalf("membaca ulang: %v", err)
+	}
+	if reread.Chronology != "Kronologis contoh." || reread.DocumentCount != 3 {
+		t.Fatalf("isian tidak bertahan: %+v", reread)
+	}
+}
+
+func TestSavingIsIdempotent(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	detail := inboxlaporanklaim.Detail{ReporterName: "Pelapor Contoh", DocumentCount: 2}
+
+	first, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("simpan pertama: %v", err)
+	}
+	second, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, detail)
+	if err != nil {
+		t.Fatalf("simpan kedua: %v", err)
+	}
+
+	// Menekan Simpan dua kali menghasilkan keadaan yang sama persis — itulah yang membuat
+	// PUT benar dan PATCH tidak.
+	if inboxlaporanklaim.DetailOf(first) != inboxlaporanklaim.DetailOf(second) {
+		t.Fatal("penyimpanan kedua menghasilkan isian yang berbeda")
+	}
+}
+
+func TestLegacyReportIsRefusedBeforeAnyFieldIsChecked(t *testing.T) {
+	service, _ := newService(t)
+
+	// Isiannya sengaja dibuat CACAT. Yang harus dijawab adalah penolakan asal berkas,
+	// bukan daftar galat isian: memberi pengguna daftar isian yang harus diperbaiki pada
+	// form yang memang tidak dapat disimpan sama sekali adalah menyesatkan.
+	broken := inboxlaporanklaim.Detail{
+		ReporterName: strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+	}
+
+	_, err := service.Save(context.Background(), portalAlias, "RCV-0001", adminJakarta, broken)
+	if !errors.Is(err, inboxlaporanklaim.ErrReadOnlyOrigin) {
+		t.Fatalf("galat menyimpan berkas Pega = %v, ingin ErrReadOnlyOrigin", err)
+	}
+}
+
+func TestSavingAReportThatDoesNotExistIsNotFound(t *testing.T) {
+	service, _ := newService(t)
+
+	_, err := service.Save(context.Background(), portalAlias, "RCVN.26.9999", adminJakarta,
+		inboxlaporanklaim.Detail{})
+	if !errors.Is(err, inboxlaporanklaim.ErrNotFound) {
+		t.Fatalf("galat = %v, ingin ErrNotFound", err)
+	}
+}
+
+func TestSavingRefusesInvalidFieldsWithEveryViolation(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	broken := inboxlaporanklaim.Detail{
+		ReporterName:  strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+		EstimateValue: -1,
+	}
+
+	_, err := service.Save(context.Background(), portalAlias, created.ID, adminJakarta, broken)
+
+	var failure *inboxlaporanklaim.ValidationError
+	if !errors.As(err, &failure) {
+		t.Fatalf("galat = %v, ingin ValidationError", err)
+	}
+	if len(failure.Violation) != 2 {
+		t.Fatalf("pelanggaran = %d, ingin 2", len(failure.Violation))
+	}
+}
+
+func TestSavingWithoutIdentityIsRefused(t *testing.T) {
+	service, _ := newService(t)
+
+	created, _ := service.Create(context.Background(), portalAlias, adminJakarta)
+	_, err := service.Save(context.Background(), portalAlias, created.ID,
+		inboxlaporanklaim.Caller{Name: "Tanpa Login"}, inboxlaporanklaim.Detail{})
+	if !errors.Is(err, inboxlaporanklaim.ErrCallerUnknown) {
+		t.Fatalf("galat = %v, ingin ErrCallerUnknown", err)
+	}
+}
+
+// ============================================================================
+// UJI REGRESI — cacat "daftar kosong" 2026-09-22
+// ============================================================================
+//
+// Versi pertama modul ini memakai `auth.User.BranchCode` — kode cabang dari profil
+// HCC/HCQ — sebagai penyaring terhadap POOLDATA.BRANCH.ID. Keduanya sistem kode yang
+// BERBEDA, sehingga tidak satu pun baris cocok dan daftar tampil KOSONG tanpa satu pun
+// pesan galat.
+//
+// Ketiga uji di bawah menjaga ketiga jalan keluarnya tetap tertutup.
+
+func TestCallerCarriesNoBranchCodeAtAll(t *testing.T) {
+	// Penjaga paling langsung: Caller TIDAK punya field cabang. Selama ia tidak ada,
+	// tidak ada yang dapat mengisinya dengan kode dari sistem lain lalu memakainya
+	// sebagai penyaring.
+	//
+	// Bila field itu kelak ditambahkan kembali, uji ini gagal kompilasi — dan itulah
+	// yang diinginkan: penambahannya harus menjadi keputusan sadar, bukan kelalaian.
+	caller := inboxlaporanklaim.Caller{Login: "adminpnc", Name: "Petugas Contoh"}
+	if caller.Clean() != caller {
+		t.Fatal("Caller memuat isian di luar Login dan Name")
+	}
+}
+
+func TestUnresolvableBranchIsRefusedInsteadOfWidened(t *testing.T) {
+	// Keputusan Work Owner 2026-09-22: petugas yang cabangnya tidak terbaca TIDAK boleh
+	// melihat seluruh cabang.
+	//
+	// Uji ini menjaga dua jalan keluar sekaligus, dan keduanya pernah ditempuh modul ini:
+	//
+	//	 daftar SELURUH cabang  → batas data bocor lintas cabang
+	//	 daftar KOSONG          → tidak terbedakan dari "tidak ada pekerjaan hari ini",
+	//	                          dan ketidakterbedaan itulah yang membuat cacat penyaring
+	//	                          cabang bertahan tanpa ada yang melaporkannya
+	//
+	// Yang benar adalah penolakan yang MENYEBUTKAN sebabnya.
+	service, _ := newService(t)
+
+	_, err := service.List(context.Background(), portalAlias, unknownBranch, usecase.Query{
+		Category:   inboxlaporanklaim.CategoryAll,
+		Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
+	})
+	if !errors.Is(err, inboxlaporanklaim.ErrBranchUnknown) {
+		t.Fatalf("galat = %v, ingin ErrBranchUnknown", err)
+	}
+}
+
+func TestExportCannotOutrunTheBoundaryTheListEnforces(t *testing.T) {
+	// Ekspor mengunduh data yang sama dalam satu berkas. Batas yang ditegakkan pada
+	// daftar tetapi tidak pada ekspor bukan batas sama sekali — ia hanya menyulitkan.
+	//
+	// Ekspor menempuh List, jadi yang diuji di sini adalah bahwa ia memang menempuhnya:
+	// permintaan berukuran besar pun tetap ditolak dengan sebab yang sama.
+	service, _ := newService(t)
+
+	_, err := service.List(context.Background(), portalAlias, unknownBranch, usecase.Query{
+		Category:   inboxlaporanklaim.CategoryAll,
+		Pagination: inboxlaporanklaim.Pagination{Page: 1, Size: inboxlaporanklaim.MaxPageSize},
+	})
+	if !errors.Is(err, inboxlaporanklaim.ErrBranchUnknown) {
+		t.Fatalf("galat = %v, ingin ErrBranchUnknown", err)
+	}
+}
+
+func TestUnreadableBranchSourceIsNotBlamedOnTheOperator(t *testing.T) {
+	// DB Link ke HRD dapat sedang tidak dapat dihubungi. Akibatnya di layar sama —
+	// keduanya menutup daftar — tetapi sebab dan perbaikannya berbeda jauh:
+	//
+	//	ErrBranchUnknown     satu login belum terdaftar → urusan data pegawai
+	//	ErrBranchUnreadable  sumbernya mati            → urusan infrastruktur, dan ia
+	//	                                                 menimpa SELURUH petugas
+	//
+	// Menyatukannya membuat gangguan sekantor terbaca sebagai kesalahan satu orang, lalu
+	// dicari di tempat yang salah.
+	resolver := memory.NewBranchResolver(memory.SampleBranchOfLogin())
+	resolver.SetError(errors.New("DB Link ke HRD tidak dapat dihubungi"))
+
+	service, _, _ := newServiceWith(t, resolver)
+
+	_, err := service.List(context.Background(), portalAlias, adminJakarta, usecase.Query{
+		Category:   inboxlaporanklaim.CategoryAll,
+		Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
+	})
+	if !errors.Is(err, inboxlaporanklaim.ErrBranchUnreadable) {
+		t.Fatalf("galat = %v, ingin ErrBranchUnreadable", err)
+	}
+	if errors.Is(err, inboxlaporanklaim.ErrBranchUnknown) {
+		t.Fatal("kegagalan sumber tertukar dengan login yang tidak terdaftar")
+	}
+
+	// Sebab aslinya harus ikut terbawa supaya log menyebut apa yang gagal.
+	if !strings.Contains(err.Error(), "DB Link") {
+		t.Fatalf("galat = %q, tidak menyebut sebab aslinya", err.Error())
+	}
+}
+
+func TestBranchScopeIsReportedSoTheScreenCanSayIt(t *testing.T) {
+	// Petugas yang tidak tahu daftarnya sedang disaring akan menyimpulkan tidak ada
+	// pekerjaan, padahal yang benar adalah tidak ada pekerjaan DI CABANGNYA.
+	service, _ := newService(t)
+
+	scoped := listOf(t, service, adminJakarta, usecase.Query{Category: inboxlaporanklaim.CategoryAll})
+	if scoped.BranchScope != adminBranch {
+		t.Fatalf("batas cabang = %q, ingin %q", scoped.BranchScope, adminBranch)
+	}
+
+	// Memilih kanwil menggantikan batas cabang; yang dilaporkan harus ikut berubah.
+	widened := listOf(t, service, adminJakarta, usecase.Query{
+		Category:   inboxlaporanklaim.CategoryAll,
+		RegionCode: "01",
+	})
+	if widened.BranchScope != "" {
+		t.Fatalf("batas cabang masih %q setelah kanwil dipilih", widened.BranchScope)
+	}
+}
+
+func TestNewReportLandsInTheBranchTheListFiltersBy(t *testing.T) {
+	// Berkas yang dibuat dengan cabang dari sumber yang BERBEDA dari yang dipakai
+	// menyaring daftar tidak akan pernah muncul di daftar pembuatnya sendiri — cacat
+	// yang sama, gejala yang berbeda.
+	service, _ := newService(t)
+
+	created, err := service.Create(context.Background(), portalAlias, adminJakarta)
+	if err != nil {
+		t.Fatalf("membuat berkas: %v", err)
+	}
+	if created.BranchCode != adminBranch {
+		t.Fatalf("cabang berkas baru = %q, ingin %q", created.BranchCode, adminBranch)
+	}
+
+	found := listOf(t, service, adminJakarta, usecase.Query{
+		Category:   inboxlaporanklaim.CategoryNotTransferred,
+		Pagination: inboxlaporanklaim.Pagination{Size: inboxlaporanklaim.MaxPageSize},
+	})
+	for _, report := range found.Page.Report {
+		if report.ID == created.ID {
+			return
+		}
+	}
+	t.Fatalf("berkas %q tidak muncul di daftar pembuatnya sendiri", created.ID)
 }
