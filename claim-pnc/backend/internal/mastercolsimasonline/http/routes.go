@@ -191,7 +191,6 @@ func (h *Handler) Business(w http.ResponseWriter, r *http.Request) {
 func requestToInput(request SaveRequest) mastercolsimasonline.Input {
 	return mastercolsimasonline.Input{
 		Description:   request.Name,
-		MasterCode:    request.MasterCode,
 		BusinessNames: request.Businesses,
 	}
 }

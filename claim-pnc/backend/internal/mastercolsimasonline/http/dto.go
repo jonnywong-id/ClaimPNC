@@ -22,9 +22,6 @@ type CauseOfLossDTO struct {
 	// Name adalah COL_DESC, berlabel "Nama Cause of loss" di layar.
 	Name string `json:"nama"`
 
-	// MasterCode adalah MST_COL_ID, berlabel "ID Master Kerugian" di layar.
-	MasterCode string `json:"id_master_kerugian"`
-
 	// Businesses adalah daftar bisnis yang memakai penyebab kerugian ini.
 	//
 	// Pada jawaban DAFTAR ia selalu kosong, dan itu disengaja: grid layar hanya
@@ -77,11 +74,6 @@ type BusinessListResponse struct {
 type SaveRequest struct {
 	Name string `json:"nama"`
 
-	// MasterCode adalah `id` cause of loss lain yang menjadi induk; kosong berarti tanpa
-	// induk. Lihat mastercolsimasonline.CauseOfLoss.MasterCode — ia rujukan-diri, bukan
-	// kode dari sistem sebelah.
-	MasterCode string `json:"id_master_kerugian"`
-
 	// Businesses berisi NAMA bisnis, bukan ID-nya.
 	//
 	// Nama yang dikirim karena itulah yang diketik dan dilihat petugas di layar Pega
@@ -113,7 +105,6 @@ func toDTO(row mastercolsimasonline.CauseOfLoss) CauseOfLossDTO {
 	return CauseOfLossDTO{
 		ID:         row.Code,
 		Name:       row.Description,
-		MasterCode: row.MasterCode,
 		Businesses: toBusinessListDTO(row.Businesses),
 	}
 }

@@ -83,20 +83,21 @@ SELECT ID,
 --
 -- Pembatasan plan dan jaminan milik SATU baris detail.
 --
--- Penyaringnya TRAVELDOCID, kolom yang menautkan baris coverage ke baris induknya.
--- Namanya terbaca dari `Activity/BrowseDocTravel-Act.xml`, yang menyebutnya pada
--- deskripsi langkah pemetaan kelas V_LST_DOC_TRAVEL_COVERAGE.
---
 -- Urutannya menurut nama plan lalu nama jaminan — bukan menurut ID. Yang dibaca petugas
 -- di grid adalah namanya, dan grid yang berpindah urutan setiap kali disimpan akan
 -- terbaca sebagai barisnya berubah padahal tidak.
+--
+-- Penyaringnya ID, bukan TRAVELDOCID. Kolom TRAVELDOCID tidak ada pada view ini — dan
+-- tidak ada pada objek POOLDATA mana pun. Definisi view-nya meratakan
+-- `LST_DOC_TRAVEL.JSON_DATA.COVERAGELIST[*]` dan membawa serta `a.ID` sebagai kunci
+-- induknya, sehingga ID inilah rujukan ke baris detailnya.
 SELECT ID,
        PLANID,
        PLANNAME,
        COVERAGEID,
        COVERAGENAME
   FROM POOLDATA.V_LST_DOC_TRAVEL_COVERAGE
- WHERE TRAVELDOCID = :1
+ WHERE ID = :1
  ORDER BY PLANNAME, COVERAGENAME
 
 -- name: detail_next_sequence
@@ -196,10 +197,18 @@ SELECT DOCID,
 -- sekali untuk setiap jaminan yang dimilikinya. Tanpa DISTINCT, daftar plan akan memuat
 -- nama yang sama berulang sebanyak jaminannya.
 --
--- HANYA SELECT. Tabel ini dimiliki GISFW (`D-03`).
-SELECT DISTINCT PLANID,
+-- HANYA SELECT. Objek ini dimiliki GISFW (`D-03`).
+--
+-- Dibaca dari view POOLDATA.PLANTRAVEL, bukan dari tabel M_PLANTRAVEL. Tabel itu hanya
+-- punya ID, OLDID, dan JSONDATA — nama plannya ada di dalam JSON-nya. View inilah yang
+-- sudah memaparkannya sebagai kolom, dan inilah yang dibaca Pega (keputusan Work Owner
+-- 2026-09-22: langsung ke basis data, bukan lewat JSON).
+--
+-- Kunci plannya bernama ID pada view ini, bukan PLANID. Aliasnya dijaga tetap PLANID
+-- supaya bentuk hasilnya tidak berubah bagi pemanggil.
+SELECT DISTINCT ID AS PLANID,
        PLANNAME
-  FROM POOLDATA.M_PLANTRAVEL
+  FROM POOLDATA.PLANTRAVEL
  ORDER BY PLANNAME
 
 -- name: coverage_list
@@ -212,12 +221,21 @@ SELECT DISTINCT PLANID,
 -- baris grid setiap kali plannya berganti. Penyaringannya dikerjakan layar atas daftar
 -- yang sudah di tangan.
 --
--- HANYA SELECT. Tabel ini dimiliki GISFW (`D-03`).
-SELECT COVERAGEID,
-       COVERAGENAME,
+-- HANYA SELECT. Objek ini dimiliki GISFW (`D-03`).
+--
+-- Dibaca dari view POOLDATA.COVERAGETRAVEL, dengan alasan yang sama seperti plan_list di
+-- atas: nama jaminan hidup di dalam JSON pada tabelnya, dan view inilah yang memaparkannya
+-- sebagai kolom.
+--
+-- INDCOVERAGENAME, bukan ENGCOVERAGENAME. Keduanya ada berdampingan di view itu, dan yang
+-- dipakai Pega untuk nama yang dilihat petugas adalah yang Indonesia —
+-- `Activity/InsertObjekTravel-Act.xml` menyalin `.INDCoverageName` ke nama item objek.
+-- Memilih yang salah tidak menimbulkan galat apa pun; daftarnya hanya berbahasa Inggris.
+SELECT ID AS COVERAGEID,
+       INDCOVERAGENAME AS COVERAGENAME,
        PLANID
-  FROM POOLDATA.M_PLANTRAVEL
- ORDER BY PLANID, COVERAGENAME
+  FROM POOLDATA.COVERAGETRAVEL
+ ORDER BY PLANID, INDCOVERAGENAME
 
 -- name: detail_check_table
 --
@@ -235,7 +253,6 @@ SELECT ID,
 
 -- name: detail_coverage_check_table
 SELECT ID,
-       TRAVELDOCID,
        PLANID,
        PLANNAME,
        COVERAGEID,
@@ -250,9 +267,7 @@ SELECT DOCID,
  WHERE 1 = 0
 
 -- name: plan_check_table
-SELECT PLANID,
-       PLANNAME,
-       COVERAGEID,
-       COVERAGENAME
-  FROM POOLDATA.M_PLANTRAVEL
+SELECT ID AS PLANID,
+       PLANNAME
+  FROM POOLDATA.PLANTRAVEL
  WHERE 1 = 0

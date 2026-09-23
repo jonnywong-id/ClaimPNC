@@ -1,0 +1,271 @@
+-- 0005 — Master Penyebab Kerugian: keterangan pindah dari JSON ke kolom (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Seperti migrasi 0002, berkas ini MENGUBAH objek milik sistem lama yang sedang melayani
+-- produksi:
+--
+--   * POOLDATA.M_CAUSE_OF_LOSS  — kolom COL_DESC diisi (dan ditambahkan bila belum ada)
+--   * POOLDATA.V_M_CAUSE_OF_LOSS — view-nya didefinisikan ulang
+--
+-- View itu dibaca 19 rule Pega, termasuk dasbor klaim per penyebab kerugian
+-- (RDB List/BrowseCaseClaimPerCauseOfLoss-SQL.xml) dan laporan XOL per bisnis
+-- (GetDataXOLPerBusiness-SQL.xml), yang keduanya MENGELOMPOKKAN hasilnya dengan
+-- GROUP BY COL_DESC. Bila definisinya salah, yang rusak bukan layar master ini melainkan
+-- laporan yang dibaca manajemen — dan rusaknya tidak menimbulkan galat, hanya kolom
+-- penyebab kerugian yang kosong.
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (D-63). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ============================================================================
+-- ## PERBEDAAN TERPENTING DARI MIGRASI 0002 — BACA INI LEBIH DULU
+-- ============================================================================
+--
+-- Pada M_STS_CLAIM, layar yang dipindahkan adalah SATU-SATUNYA penulis tabelnya,
+-- sehingga memindahkan layar memindahkan kepemilikan tabel secara utuh dan `P-1`
+-- terpenuhi. **Di sini tidak.**
+--
+-- DUA layar Pega menulis POOLDATA.M_CAUSE_OF_LOSS, keduanya lewat
+-- RDB List/UpdateMCauseOfLoss-SQL.xml → POOLDATA.PEGA_M_CAUSE_OF_LOSS:
+--
+--   MENU_ID 20  CauseOfLossInbox             digantikan aplikasi Go   <- sesi ini
+--   MENU_ID 21  CauseOfLossInboxSimasOnline  MASIH HIDUP DI PEGA
+--
+-- Selama layar kedua masih dipakai, ia menulis DOKUMEN JSON dan tidak mengisi kolom.
+-- Akibatnya, sesudah langkah 3 di bawah dijalankan:
+--
+--   * Baris yang ditambah/diubah lewat Simas Online punya JSON_DATA terisi tetapi
+--     COL_DESC KOSONG, sehingga di view ia tampil TANPA KETERANGAN.
+--   * Kegagalan itu TIDAK menimbulkan galat apa pun. Layar tampil normal, laporan tetap
+--     jalan, hanya kelompoknya menjadi kosong.
+--
+-- Work Owner menyetujui arah ini pada 2026-09-20 ("menggunakan tabel yang dibaca pada
+-- Pega, tidak pakai JSON lagi") setelah konsekuensi di atas disampaikan. Yang disetujui
+-- adalah ARAHNYA; yang BELUM diputuskan adalah cara menutup celahnya. Tiga kemungkinan,
+-- dan hanya butir pertama yang benar-benar menyelesaikannya:
+--
+--   1. Pindahkan juga layar Simas Online (MENU_ID 21) ke aplikasi Go, lalu `P-1`
+--      terpenuhi dan celah ini hilang seluruhnya.
+--   2. Jalankan ulang LANGKAH 1 berkala selama layar Simas Online masih hidup. Ini
+--      tambalan, bukan penyelesaian: antara dua penjalanan, barisnya tetap tampil kosong.
+--   3. Nonaktifkan butir menu MENU_ID 21 di POOLDATA.M_OTORISASI_PNC sampai layarnya
+--      dipindahkan. Menutup celahnya, tetapi mencabut satu layar yang masih dipakai.
+--
+-- **JANGAN menjalankan LANGKAH 3 sebelum salah satu dari ketiganya dipilih Work Owner.**
+-- Langkah 1 dan 2 aman dijalankan kapan pun — keduanya tidak mengubah apa yang dibaca
+-- Pega sedikit pun.
+--
+-- Mode periksa aplikasi melaporkan besarnya celah ini setiap kali dijalankan; lihat
+-- kueri cause_of_loss_count_pending_json di
+-- internal/masterpenyebabkerugian/repo/sqlstore/masterpenyebabkerugian.sql.
+--
+--
+-- ============================================================================
+-- ## KEADAAN SKEMA: APA YANG DIKETAHUI DAN APA YANG BELUM
+-- ============================================================================
+--
+-- Migrasi 0002 mula-mula ditulis dengan menebak isi skema dari source procedure, dan
+-- tebakan itu SALAH di dua tempat. Supaya kekeliruan yang sama tidak terulang, yang di
+-- bawah dipisahkan tegas antara yang terbaca dari bukti dan yang belum.
+--
+-- TERBACA DARI EXPORT — tidak perlu ditanyakan lagi:
+--
+--   M_COL_ID       ada di tabel   RDB List/GetJsonMasterPenyebabKerugian-SQL.xml
+--   OLD_M_COL_ID   ada di tabel   idem — dibaca langsung dari M_CAUSE_OF_LOSS
+--   JSON_DATA      ada di tabel   idem, dan diisi PEGA_M_CAUSE_OF_LOSS.prc:22
+--   COL_DESC       ada di VIEW    Report Definition/BrowseVMCauseOfLoss_RD-RD.xml
+--
+-- BELUM DIKETAHUI — dan setiap butirnya dapat menggagalkan migrasi ini di langkah
+-- pertama, persis seperti yang terjadi pada draf pertama 0002:
+--
+--   1. Apakah kolom COL_DESC SUDAH ADA di tabel dasar?
+--      Pada M_STS_CLAIM kolom tujuannya ternyata sudah ada dan ALTER TABLE-nya harus
+--      dicabut (ORA-01430). Di sini jawabannya belum dibaca siapa pun.
+--   2. Berapa lebar COL_DESC bila sudah ada?
+--      Kode Go membatasi 100 karakter mengikuti LSC_NOTE. Bila kolomnya lebih sempit,
+--      yang berubah cukup masterpenyebabkerugian.MaxDescriptionLength.
+--   3. Apa KUNCI JSON yang sebenarnya di dalam JSON_DATA?
+--      Pada M_STS_CLAIM ia '$.LSC_NOTE' — terbaca dari definisi view, bukan ditebak.
+--      LANGKAH 0 di bawah membacanya; JANGAN memakai tebakan '$.COL_DESC' begitu saja.
+--   4. Berapa lebar M_COL_ID, dan di mana posisi urutan M_CAUSE_SEQ sekarang?
+--      Procedure mendeklarasikan penampungnya varchar2(4). Bila kolomnya memang selebar
+--      itu, penyisipan ke-1000 akan DITOLAK (ORA-12899) — batas yang sama dengan
+--      M_STS_CLAIM, tetapi jaraknya belum diukur.
+--   5. Apakah M_CAUSE_SEQ berada di skema POOLDATA?
+--      Procedure menyebutnya tanpa nama skema. Kode Go mengualifikasikannya POOLDATA,
+--      mengikuti perlakuan M_STS_CLAIM_SEQ. Bila ternyata bukan, kueri urutan gagal.
+--   6. Apa nama constraint kunci utama M_CAUSE_OF_LOSS?
+--      Kode Go menebak M_CAUSE_OF_LOSS_PK, mengikuti pola M_STS_CLAIM_PK yang sudah
+--      terverifikasi. Tebakan yang meleset TIDAK merusak data — ia hanya membuat bentrok
+--      ID muncul sebagai 500 alih-alih 409.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 0 — YANG HARUS DIJALANKAN DAN DILAPORKAN DBA LEBIH DULU
+-- ============================================================================
+--
+-- Seluruhnya hanya MEMBACA. Jalankan di SETIAP portal entitas, dan lampirkan hasilnya
+-- pada permintaan perubahan skema. Bila salah satu jawabannya di luar dugaan, JANGAN
+-- lanjut — laporkan, karena artinya ada keadaan yang belum pernah kami lihat.
+--
+-- 0a. SIMPAN DEFINISI VIEW YANG SEKARANG, beserta daftar kolomnya. Langkah 3 dan
+--     migrasi turun membutuhkannya, dan ALL_VIEWS.TEXT tidak menyimpan daftar kolom:
+--
+--         SELECT DBMS_METADATA.GET_DDL('VIEW', 'V_M_CAUSE_OF_LOSS', 'POOLDATA') FROM DUAL;
+--
+--     Dari hasilnya, baca DUA hal: kunci JSON yang dipakai, dan URUTAN kolomnya.
+--
+-- 0b. DAFTAR KOLOM TABEL DASAR — menjawab pertanyaan 1, 2, dan 4 di atas:
+--
+--         SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE
+--           FROM ALL_TAB_COLUMNS
+--          WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'M_CAUSE_OF_LOSS'
+--          ORDER BY COLUMN_ID;
+--
+-- 0c. URUTAN DAN KUNCI UTAMA — menjawab pertanyaan 5 dan 6:
+--
+--         SELECT SEQUENCE_OWNER, SEQUENCE_NAME, LAST_NUMBER
+--           FROM ALL_SEQUENCES WHERE SEQUENCE_NAME = 'M_CAUSE_SEQ';
+--
+--         SELECT CONSTRAINT_NAME FROM ALL_CONSTRAINTS
+--          WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'M_CAUSE_OF_LOSS'
+--            AND CONSTRAINT_TYPE = 'P';
+--
+-- 0d. JUMLAH BARIS, dan berapa yang keterangannya lebih panjang dari 100 karakter.
+--     Yang kedua DIHARAPKAN nol; bila ada, lebar kolom dan konstanta Go harus
+--     disesuaikan SEBELUM langkah 1:
+--
+--         SELECT COUNT(*) FROM POOLDATA.M_CAUSE_OF_LOSS;
+--         SELECT M_COL_ID FROM POOLDATA.V_M_CAUSE_OF_LOSS WHERE LENGTH(COL_DESC) > 100;
+--
+-- 0e. ISI MASTERNYA, untuk menggantikan daftar contoh yang sekarang DIKARANG di
+--     internal/masterpenyebabkerugian/repo/memory/sample.go:
+--
+--         SELECT M_COL_ID, OLD_M_COL_ID, COL_DESC
+--           FROM POOLDATA.V_M_CAUSE_OF_LOSS ORDER BY M_COL_ID;
+--
+-- CATATAN: tidak ada pemeriksaan "keterangan ganda" di daftar ini, dan itu disengaja.
+-- Berbeda dari migrasi 0002 dan 0003, berkas ini TIDAK membuat indeks unik apa pun —
+-- keterangan ganda DITERIMA (keputusan Work Owner 2026-09-20, meniru Pega apa adanya).
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 1 — pindahkan keterangan dari JSON ke kolom.
+--
+-- JALANKAN BARIS ALTER TABLE HANYA BILA LANGKAH 0b MEMBUKTIKAN COL_DESC BELUM ADA.
+-- Bila ia sudah ada, baris itu akan gagal dengan ORA-01430 dan menghentikan seluruh
+-- migrasi di pernyataan pertama — persis kekeliruan yang ditemukan pada draf 0002.
+--
+-- Ganti '$.COL_DESC' dengan kunci yang BENAR-BENAR terbaca pada langkah 0a.
+--
+-- Backward-compatible: selama langkah 3 belum jalan, view masih membaca JSON_DATA dan
+-- Pega tidak terganggu sedetik pun (P-4).
+-- ---------------------------------------------------------------------------
+
+-- ALTER TABLE POOLDATA.M_CAUSE_OF_LOSS ADD (COL_DESC VARCHAR2(100));
+
+UPDATE POOLDATA.M_CAUSE_OF_LOSS
+   SET COL_DESC = JSON_VALUE(JSON_DATA, '$.COL_DESC')
+ WHERE JSON_DATA IS NOT NULL;
+
+COMMIT;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 2 — VERIFIKASI. Jangan lanjut bila salah satu jawabannya tidak seperti yang
+-- disebutkan. Setelah langkah 3 berjalan, kesalahan di sini tidak dapat lagi dideteksi
+-- dengan membandingkan ke view.
+-- ---------------------------------------------------------------------------
+
+-- 2a. Berapa baris yang keterangannya masih kosong padahal JSON-nya ada?  DIHARAPKAN: 0
+--
+--     SELECT COUNT(*) FROM POOLDATA.M_CAUSE_OF_LOSS
+--      WHERE JSON_DATA IS NOT NULL AND COL_DESC IS NULL;
+--
+--     Angka yang BUKAN nol paling sering berarti kunci JSON pada langkah 1 salah.
+--     Inilah kueri yang sama dengan yang dilaporkan mode periksa aplikasi.
+
+-- 2b. Adakah baris yang kolomnya berbeda dari view?  DIHARAPKAN: 0
+--
+--     SELECT COUNT(*)
+--       FROM POOLDATA.M_CAUSE_OF_LOSS m
+--       JOIN POOLDATA.V_M_CAUSE_OF_LOSS v ON v.M_COL_ID = m.M_COL_ID
+--      WHERE NVL(TRIM(m.COL_DESC), '~') <> NVL(TRIM(v.COL_DESC), '~');
+--
+--     NVL dipakai di sini dengan sengaja meski COALESCE yang portabel: berkas ini
+--     dijalankan DBA langsung di Oracle dan tidak pernah ikut ke PostgreSQL.
+
+-- 2c. Berapa jumlah barisnya, dan apakah sama dengan langkah 0d?
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 3 — definisikan ulang view supaya membaca kolom, bukan JSON.
+--
+-- ⚠ JANGAN JALANKAN sebelum celah penulis kedua diputuskan Work Owner — lihat bagian
+--   PERBEDAAN TERPENTING di kepala berkas ini. Inilah pernyataan yang membuat baris
+--   tulisan Simas Online tampil tanpa keterangan.
+--
+-- Sesudah ini, apa yang ditulis aplikasi Go langsung terlihat oleh 19 rule pembaca.
+--
+-- Tiga hal yang WAJIB dipertahankan:
+--
+--   * URUTAN KOLOM mengikuti definisi yang tersimpan pada langkah 0a, BUKAN urutan yang
+--     ditulis di bawah. Yang di bawah mengikuti pola V_STS_CLAIM (kunci, nomor lama,
+--     keterangan) dan BELUM diverifikasi. Menukarnya mengubah hasil setiap pembacaan
+--     posisional.
+--   * DAFTAR NAMA KOLOM ditulis eksplisit. Tanpa itu, kolom ketiga akan bernama
+--     "JSON_VALUE(JSON_DATA,'$.COL_DESC')" dan seluruh rule Pega kehilangan COL_DESC.
+--   * CREATE OR REPLACE, bukan DROP lalu CREATE. Yang pertama mempertahankan seluruh
+--     grant; yang kedua menghapusnya dan membuat Pega kehilangan hak baca.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE VIEW POOLDATA.V_M_CAUSE_OF_LOSS (M_COL_ID, OLD_M_COL_ID, COL_DESC) AS
+SELECT M_COL_ID,
+       OLD_M_COL_ID,
+       COL_DESC
+  FROM POOLDATA.M_CAUSE_OF_LOSS;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 4 — hak akses untuk akun aplikasi.
+--
+-- Haknya diberikan sesempit mungkin: SELECT, INSERT, dan UPDATE. TANPA DELETE — tidak
+-- ada satu pun jalur di aplikasi yang menghapus baris master, dan hak yang tidak
+-- diberikan tidak dapat disalahgunakan kode yang ditulis kemudian.
+--
+-- Hak atas M_SITE_DATABASE sudah diberikan migrasi 0002 di portal yang menjalankannya;
+-- barisnya diulang di sini supaya berkas ini tetap utuh dibaca sendirian.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya.
+-- ---------------------------------------------------------------------------
+
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.M_CAUSE_OF_LOSS TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SITE_DATABASE TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_CAUSE_SEQ TO <AKUN_APLIKASI>;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 5 — JSON_DATA setelah migrasi ini.
+--
+-- Kolomnya SENGAJA TIDAK DIHAPUS dan tidak dikosongkan. Tiga alasannya, dan yang ketiga
+-- tidak ada pada migrasi 0002:
+--
+--   1. Ia bahan pembanding bila ada yang meragukan hasil perpindahan ini.
+--   2. Ia satu-satunya bahan untuk migrasi turun.
+--   3. LAYAR SIMAS ONLINE MASIH MENULISINYA. Selama MENU_ID 21 hidup, JSON_DATA bukan
+--      peninggalan melainkan kolom yang masih aktif dipakai sistem lain.
+--
+-- Karena butir ketiga, keputusan membuang JSON_DATA TIDAK BOLEH diambil sebelum layar
+-- Simas Online dipindahkan — berbeda dari M_STS_CLAIM, yang penulisnya sudah berhenti
+-- seluruhnya.
+--
+-- Satu akibat lain yang harus disadari: baris yang ditulis aplikasi Go TIDAK punya
+-- dokumen JSON sama sekali. Bila kelak dibutuhkan, ia harus dibangun dari kolom — bukan
+-- dicari di JSON_DATA yang memang tidak pernah diisi.

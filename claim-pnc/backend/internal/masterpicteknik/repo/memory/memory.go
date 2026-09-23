@@ -1,136 +1,132 @@
-// Package memori memenuhi seam penyimpanan dan direktori Master PIC Teknik di dalam
-// memori.
+// Package memory adalah pengisi seam masterpicteknik.Repo yang hidup di dalam memori.
 //
-// Ia ada supaya aturan modul dapat diuji tanpa basis data dan tanpa jaringan sama
-// sekali — adapter keduanyalah yang membuat kedua seam menjadi seam nyata, bukan seam
-// hipotetis (docs/Steering/04-FUTURE-ARCHITECTURE.md §3.1).
+// Ia ada supaya modul dan layar yang memakainya dapat diuji tanpa basis data — adapter
+// kedua yang membuat seam ini nyata, bukan hipotetis
+// (`docs/Steering/04-FUTURE-ARCHITECTURE.md` §3).
 //
-// Adapter ini TIDAK dipakai di produksi: master yang hilang setiap kali proses
-// dijalankan ulang tidak ada gunanya.
+// Ia juga yang dipakai saat aplikasi berjalan tanpa Oracle, sehingga layar Master PIC
+// Teknik dapat dicoba lengkap — termasuk jalur "petugas nonaktif tidak muncul di daftar"
+// yang justru paling mudah terlewat bila hanya diuji dengan data aktif.
 package memory
 
 import (
 	"context"
 	"sort"
-	"strings"
 	"sync"
 
 	"claim-pnc/internal/masterpicteknik"
 )
 
-// Repo menyimpan master PIC teknik di memori, dikunci ID operator huruf besar.
+// Repo menyimpan master PIC teknik di memori.
+//
+// Dilindungi mutex karena satu instans dipakai bersama seluruh permintaan HTTP yang
+// berjalan bersamaan.
 type Repo struct {
-	mu  sync.RWMutex
-	content map[string]masterpicteknik.PICTeknik
+	mu     sync.RWMutex
+	rows   map[string]masterpicteknik.Technician
+	issues error
 }
 
-// RepoBaru membentuk store berisi baris awal yang diberikan.
-func NewRepo(initial ...masterpicteknik.PICTeknik) *Repo {
-	s := &Repo{content: map[string]masterpicteknik.PICTeknik{}}
-	for _, p := range initial {
-		clean := p.Clean()
-		s.content[masterpicteknik.IDKey(clean.OperatorID)] = clean
+// NewRepo membentuk repo berisi daftar yang diberikan.
+func NewRepo(list ...masterpicteknik.Technician) *Repo {
+	r := &Repo{rows: make(map[string]masterpicteknik.Technician, len(list))}
+	for _, t := range list {
+		clean := t.Clean()
+		r.rows[masterpicteknik.IDKey(clean.OperatorID)] = clean
 	}
-	return s
+	return r
 }
 
-// Daftar membaca seluruh PIC teknik, terurut menurut ID operator.
-func (s *Repo) List(context.Context) ([]masterpicteknik.PICTeknik, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// SetError membuat repo menjawab dengan galat, untuk menguji jalur gagal.
+func (r *Repo) SetError(err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.issues = err
+}
 
-	result := make([]masterpicteknik.PICTeknik, 0, len(s.content))
-	for _, p := range s.content {
-		result = append(result, p)
+// List mengembalikan petugas AKTIF saja, terurut menurut ID operator.
+//
+// Penyaringan ada di sini — bukan di usecase — supaya kedua pengisi seam berperilaku
+// sama. Di sqlstore penyaringnya bagian dari kueri; di sini ia harus ditiru, kalau tidak
+// pengujian terhadap memori akan meloloskan cacat yang muncul terhadap Oracle.
+func (r *Repo) List(_ context.Context) ([]masterpicteknik.Technician, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.issues != nil {
+		return nil, r.issues
 	}
-	// Urutan tetap, sama dengan ORDER BY di sqlstore. Tanpa itu daftar berubah urutan
-	// pada setiap permintaan, karena iterasi map Go sengaja acak.
+
+	result := make([]masterpicteknik.Technician, 0, len(r.rows))
+	for _, t := range r.rows {
+		if !t.Active {
+			continue
+		}
+		result = append(result, t)
+	}
 	sort.Slice(result, func(i, j int) bool {
-		return masterpicteknik.IDKey(result[i].OperatorID) < masterpicteknik.IDKey(result[j].OperatorID)
+		return result[i].OperatorID < result[j].OperatorID
 	})
 	return result, nil
 }
 
-// Ambil membaca satu PIC teknik.
-func (s *Repo) Get(_ context.Context, operatorID string) (masterpicteknik.PICTeknik, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	p, exists := s.content[masterpicteknik.IDKey(operatorID)]
-	if !exists {
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrNotFound
-	}
-	return p, nil
-}
-
-// Sisip menyimpan PIC teknik baru.
-func (s *Repo) Insert(_ context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	key := masterpicteknik.IDKey(p.OperatorID)
-	if _, exists := s.content[key]; exists {
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrAlreadyExists
-	}
-	clean := p.Clean()
-	s.content[key] = clean
-	return clean, nil
-}
-
-// Perbarui mengubah PIC teknik yang sudah ada.
-func (s *Repo) Update(_ context.Context, p masterpicteknik.PICTeknik) (masterpicteknik.PICTeknik, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	key := masterpicteknik.IDKey(p.OperatorID)
-	previous, exists := s.content[key]
-	if !exists {
-		return masterpicteknik.PICTeknik{}, masterpicteknik.ErrNotFound
+// Get mengembalikan satu petugas, aktif maupun tidak.
+func (r *Repo) Get(_ context.Context, operatorID string) (masterpicteknik.Technician, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.issues != nil {
+		return masterpicteknik.Technician{}, r.issues
 	}
 
-	clean := p.Clean()
-	// GrupPanel tidak pernah ditulis penyimpanan sungguhan; ia dipertahankan di sini
-	// juga supaya perilaku kedua adapter tidak berbeda.
-	clean.GrupPanel = previous.GrupPanel
-	s.content[key] = clean
-	return clean, nil
-}
-
-// Direktori memenuhi seam DirektoriOperator di dalam memori.
-type Directory struct {
-	mu   sync.RWMutex
-	name map[string]string
-}
-
-// DirektoriBaru membentuk direktori dari pasangan ID operator dan namanya.
-func NewDirectory(pairs map[string]string) *Directory {
-	content := make(map[string]string, len(pairs))
-	for id, name := range pairs {
-		content[masterpicteknik.IDKey(id)] = strings.TrimSpace(name)
+	t, existing := r.rows[masterpicteknik.IDKey(operatorID)]
+	if !existing {
+		return masterpicteknik.Technician{}, masterpicteknik.ErrNotFound
 	}
-	return &Directory{name: content}
+	return t, nil
 }
 
-// NamaOperator mencari nama petugas.
-func (d *Directory) OperatorName(_ context.Context, operatorID string) (string, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	name, exists := d.name[masterpicteknik.IDKey(operatorID)]
-	if !exists || name == "" {
-		return "", masterpicteknik.ErrUnknownOperator
+// Insert menyimpan petugas baru.
+func (r *Repo) Insert(_ context.Context, t masterpicteknik.Technician) (masterpicteknik.Technician, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.issues != nil {
+		return masterpicteknik.Technician{}, r.issues
 	}
-	return name, nil
+
+	t = t.Clean()
+	key := masterpicteknik.IDKey(t.OperatorID)
+	if _, clash := r.rows[key]; clash {
+		return masterpicteknik.Technician{}, masterpicteknik.ErrAlreadyExists
+	}
+
+	r.rows[key] = t
+	return t, nil
 }
 
-// Daftarkan menambahkan satu operator ke direktori. Dipakai pengujian.
-func (d *Directory) Add(operatorID, name string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.name[masterpicteknik.IDKey(operatorID)] = strings.TrimSpace(name)
+// Update mengubah petugas yang sudah ada.
+func (r *Repo) Update(_ context.Context, t masterpicteknik.Technician) (masterpicteknik.Technician, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.issues != nil {
+		return masterpicteknik.Technician{}, r.issues
+	}
+
+	t = t.Clean()
+	key := masterpicteknik.IDKey(t.OperatorID)
+	previous, existing := r.rows[key]
+	if !existing {
+		return masterpicteknik.Technician{}, masterpicteknik.ErrNotFound
+	}
+
+	// ID operator dipertahankan apa adanya dari baris yang tersimpan, bukan diambil dari
+	// masukan: besar-kecil hurufnya milik baris itu, dan menimpanya akan membuat ID
+	// berubah bentuk setiap kali seseorang mengetiknya berbeda.
+	t.OperatorID = previous.OperatorID
+	// Dua nilai yang tidak dikelola layar ini tidak pernah berubah lewat Update.
+	t.PanelGroup = previous.PanelGroup
+	t.Workload = previous.Workload
+
+	r.rows[key] = t
+	return t, nil
 }
 
-var (
-	_ masterpicteknik.Repo              = (*Repo)(nil)
-	_ masterpicteknik.OperatorDirectory = (*Directory)(nil)
-)
+var _ masterpicteknik.Repo = (*Repo)(nil)

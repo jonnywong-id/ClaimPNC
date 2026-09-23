@@ -18,8 +18,7 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"cause_of_loss_next_sequence",
 		"cause_of_loss_insert",
 		"cause_of_loss_update",
-		"cause_of_loss_business_deactivate_all",
-		"cause_of_loss_business_activate",
+		"cause_of_loss_business_update",
 		"cause_of_loss_business_insert",
 		"business_list",
 		"cause_of_loss_check_table",
@@ -96,8 +95,7 @@ func TestQueriesUseParameterBinding(t *testing.T) {
 		"cause_of_loss_business_list",
 		"cause_of_loss_insert",
 		"cause_of_loss_update",
-		"cause_of_loss_business_deactivate_all",
-		"cause_of_loss_business_activate",
+		"cause_of_loss_business_update",
 		"cause_of_loss_business_insert",
 	}
 	for _, name := range parameterised {
@@ -108,11 +106,50 @@ func TestQueriesUseParameterBinding(t *testing.T) {
 
 // Kolom M_COL_ID tidak boleh ikut di-SET saat memperbarui: ia kunci baris, dirujuk
 // D_CAUSE_OF_LOSS.M_COL_ID pada data yang sudah berjalan.
+// Dicocokkan sebagai NAMA KOLOM UTUH, bukan sebagai substring.
+//
+// Pencocokan substring dipakai di sini sampai 2026-09-23 dan langsung menghasilkan positif
+// palsu begitu kuerinya mengisi NAME_M_COL_ID: nama itu MEMUAT "M_COL_ID", sehingga uji
+// ini gagal atas kueri yang sebenarnya benar. Pelajarannya sama dengan `@contains` pada
+// toleransi spreading sistem lama, yang meloloskan 199.99.
 func TestUpdateNeverChangesRowKey(t *testing.T) {
-	text := strings.ToUpper(getQuery("cause_of_loss_update"))
-	setClause := text[strings.Index(text, "SET"):strings.Index(text, "WHERE")]
-	require.NotContains(t, setClause, "M_COL_ID",
+	assigned := assignedColumns(getQuery("cause_of_loss_update"))
+
+	require.NotContains(t, assigned, "M_COL_ID",
 		"M_COL_ID hanya boleh menyaring di WHERE, tidak pernah di-SET")
+
+	// Keduanya justru HARUS ada: deskripsi ditulis ke dua kolom sekaligus.
+	require.Contains(t, assigned, "NAME_M_COL_ID")
+	require.Contains(t, assigned, "COL_DESC")
+}
+
+// assignedColumns mengembalikan nama kolom yang benar-benar di-SET sebuah UPDATE.
+//
+// Ia mengurai klausa SET menjadi daftar nama, bukan memperlakukannya sebagai teks —
+// sehingga "M_COL_ID" tidak pernah cocok dengan "NAME_M_COL_ID".
+func assignedColumns(text string) []string {
+	upper := strings.ToUpper(text)
+
+	start := strings.Index(upper, " SET ")
+	if start < 0 {
+		return nil
+	}
+	body := upper[start+len(" SET "):]
+	if end := strings.Index(body, "WHERE"); end >= 0 {
+		body = body[:end]
+	}
+
+	var name []string
+	for _, assignment := range strings.Split(body, ",") {
+		before, _, found := strings.Cut(assignment, "=")
+		if !found {
+			continue
+		}
+		if column := strings.TrimSpace(before); column != "" {
+			name = append(name, column)
+		}
+	}
+	return name
 }
 
 // `D-66` menetapkan tidak ada penghapusan fisik pada data bernilai bisnis, dan secara
@@ -128,45 +165,87 @@ func TestNoPhysicalDeleteAnywhere(t *testing.T) {
 	}
 }
 
-// Setiap pembaca pemetaan bisnis WAJIB menyaring baris yang sudah ditandai tidak aktif.
+// Modul ini membaca dan menulis PASANGAN TABEL JALUR ONLINE — bukan master COL biasa.
 //
-// Ini konsekuensi langsung soft delete yang `09-DATABASE-STRATEGY.md` §8.1 sebut: satu
-// kueri yang lupa akan menampilkan data yang seharusnya sudah hilang — kelas cacat baru
-// yang tidak ada di sistem lama.
-func TestBusinessReaderFiltersInactiveRows(t *testing.T) {
-	text := strings.ToUpper(getQuery("cause_of_loss_business_list"))
-	require.Contains(t, text, "STS_AKTIF",
-		"pembaca pemetaan bisnis wajib menyaring baris yang ditandai tidak aktif")
+// Uji ini adalah penegak koreksi 2026-09-23, dan ia ada karena kekeliruannya TIDAK
+// menimbulkan galat: M_CAUSE_OF_LOSS dan M_CAUSE_OF_LOSS_ONLINE punya nama kolom yang sama
+// persis, sehingga kueri yang menunjuk tabel salah tetap berjalan dan hanya menampilkan
+// baris milik master yang lain. Tanpa uji ini, tidak ada apa pun yang akan menangkapnya.
+func TestQueriesTargetTheOnlineTables(t *testing.T) {
+	for name, text := range query {
+		uppercase := strings.ToUpper(text)
+
+		// Dicocokkan sebagai NAMA UTUH: "M_CAUSE_OF_LOSS" adalah awalan
+		// "M_CAUSE_OF_LOSS_ONLINE", sehingga pencocokan substring akan menuduh setiap
+		// kueri yang benar. Pelajaran yang sama dengan `@contains` pada toleransi
+		// spreading sistem lama, yang meloloskan 199.99.
+		for _, wrong := range []string{
+			"POOLDATA.M_CAUSE_OF_LOSS ",
+			"POOLDATA.M_CAUSE_OF_LOSS\n",
+			"POOLDATA.M_CAUSE_OF_LOSS_BUSINESS",
+			"POOLDATA.V_M_CAUSE_OF_LOSS",
+		} {
+			require.NotContainsf(t, uppercase+"\n", wrong,
+				"kueri %q menunjuk %s; layar Simas Online memakai pasangan tabel _ONLINE", name, strings.TrimSpace(wrong))
+		}
+	}
 }
 
-// Baris pemetaan dikenali menurut POSISINYA di grid, bukan menurut nama maupun ID.
+// Urutan yang dipakai adalah MILIK JALUR ONLINE.
 //
-// Keduanya gugur karena bukti: BISNISID boleh NULL (nama yang diketik bebas tidak punya
-// ID), dan NAMA_BISNIS tidak unik (grid Pega tidak punya penanda keunikan sama sekali,
-// sehingga satu bisnis boleh dipilih dua kali).
+// M_CAUSE_SEQ dan M_CAUSE_SEQ_ONLINE keduanya ada dan keduanya memasok master yang
+// BERBEDA. Tertukar berarti kode yang diterbitkan layar ini bertabrakan dengan deret milik
+// master COL biasa — dan tabrakannya baru terlihat setelah datanya menumpuk.
+func TestSequenceIsTheOnlineOne(t *testing.T) {
+	text := strings.ToUpper(getQuery("cause_of_loss_next_sequence"))
+	require.Contains(t, text, "M_CAUSE_SEQ_ONLINE.NEXTVAL")
+}
+
+// Pemetaan bisnis dibaca LANGSUNG dari tabelnya, bukan dengan mem-parse JSON.
 //
-// Mencocokkan menurut nama akan mengenai dua baris sekaligus saat namanya kembar;
-// mencocokkan menurut ID akan menyisipkan baris kembar setiap kali disimpan ulang.
-// Keduanya gejalanya baru terlihat setelah data menumpuk.
-func TestBusinessUpsertMatchesByRowPosition(t *testing.T) {
-	text := strings.ToUpper(getQuery("cause_of_loss_business_activate"))
+// Uji ini semula menuntut kebalikannya — JSON_TABLE atas OLD_M_COL_ID — karena tabel
+// pemetaannya disangka tidak ada. Yang tidak ada adalah M_CAUSE_OF_LOSS_BUSINESS, tabel
+// yang direncanakan migrasi 0004; POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL sudah ada dan
+// sudah berisi 282 baris untuk 55 induk.
+//
+// Membaca langsung dari tabel adalah yang diminta Work Owner 2026-09-22 ("langsung ke
+// database, tidak ke json"), dan sekaligus yang benar: hasil JSON_TABLE itu SELALU KOSONG
+// karena tidak satu pun OLD_M_COL_ID berisi JSON.
+func TestBusinessReaderReadsTheDetailTableDirectly(t *testing.T) {
+	text := strings.ToUpper(getQuery("cause_of_loss_business_list"))
+
+	require.Contains(t, text, "POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL")
+	require.NotContains(t, text, "JSON_TABLE",
+		"pemetaan dibaca dari kolom, bukan dari dokumen JSON")
+	require.NotContains(t, text, "OLD_M_COL_ID",
+		"kolom itu milik master COL biasa dan tidak pernah berisi JSON di sini")
+}
+
+// Baris pemetaan dikenali menurut NAMANYA, bukan menurut ID maupun posisinya.
+//
+// ID gugur karena boleh NULL — nama yang diketik bebas tidak punya ID sama sekali, dan
+// pada data hari ini memang ada satu baris seperti itu. Posisi gugur karena tabelnya tidak
+// punya kolom urutan.
+func TestBusinessUpsertMatchesByName(t *testing.T) {
+	text := strings.ToUpper(getQuery("cause_of_loss_business_update"))
 	whereClause := text[strings.Index(text, "WHERE"):]
 
-	require.Contains(t, whereClause, "URUTAN", "penyaringnya wajib memakai posisi baris")
-	require.NotContains(t, whereClause, "NAMA_BISNIS",
-		"nama tidak boleh menjadi penyaring: ia boleh kembar")
-	require.NotContains(t, whereClause, "BISNISID",
-		"BISNISID tidak boleh menjadi penyaring: ia boleh NULL")
+	require.Contains(t, whereClause, "NOTE", "penyaringnya wajib memakai nama bisnis")
+	require.NotContains(t, whereClause, "URUTAN",
+		"tabel ini tidak punya kolom urutan")
 }
 
-// Urutan baris disimpan dan dibaca kembali dari kolomnya sendiri.
+// Urutan tampilan mengikuti nama, dan itu keterbatasan yang DIKETAHUI.
 //
-// Mengurutkan menurut BISNISID akan menempatkan seluruh baris tanpa ID di satu ujung,
-// dan layar menampilkan urutan yang berbeda dari yang baru saja disimpan pengguna.
-func TestBusinessOrderComesFromItsOwnColumn(t *testing.T) {
+// POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL tidak punya kolom urutan, sehingga susunan baris
+// yang disimpan pengguna TIDAK dapat dipertahankan. Mengurutkan menurut ID akan
+// menempatkan baris tanpa ID di satu ujung — lebih membingungkan lagi.
+//
+// Uji ini memagari pilihan itu supaya ia tidak diam-diam berubah.
+func TestBusinessOrderFollowsName(t *testing.T) {
 	text := strings.ToUpper(getQuery("cause_of_loss_business_list"))
-	require.Contains(t, text, "ORDER BY URUTAN")
-	require.NotContains(t, text, "ORDER BY BISNISID")
+	require.Contains(t, text, "ORDER BY NOTE")
+	require.NotContains(t, text, "ORDER BY ID")
 }
 
 // POOLDATA.BUSINESS tidak boleh di-join pada pembacaan pemetaan.

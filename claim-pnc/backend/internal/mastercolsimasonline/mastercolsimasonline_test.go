@@ -30,7 +30,6 @@ func violationsOf(t *testing.T, err error) map[string]string {
 func validInput() mastercolsimasonline.Input {
 	return mastercolsimasonline.Input{
 		Description:   "KEBAKARAN",
-		MasterCode:    "1001",
 		BusinessNames: []string{"FIRE / PROPERTY", "ANEKA"},
 	}
 }
@@ -77,23 +76,6 @@ func TestLimitIsCountedInRunesNotBytes(t *testing.T) {
 	input.Description = strings.Repeat("é", mastercolsimasonline.MaxDescriptionLength)
 
 	require.NoError(t, input.Clean().Check())
-}
-
-// MST_COL_ID tidak diwajibkan — layar Pega pun tidak, dan baris tingkat atas memang tidak
-// punya induk.
-func TestMasterCodeMayBeEmpty(t *testing.T) {
-	input := validInput()
-	input.MasterCode = ""
-
-	require.NoError(t, input.Clean().Check())
-}
-
-func TestMasterCodeLongerThanLimitIsRejected(t *testing.T) {
-	input := validInput()
-	input.MasterCode = strings.Repeat("X", mastercolsimasonline.MaxMasterCodeLength+1)
-
-	violation := violationsOf(t, input.Clean().Check())
-	require.Contains(t, violation, mastercolsimasonline.FieldMasterCode)
 }
 
 // Bisnis boleh kosong: layar Pega tidak mewajibkan satu baris pun di grid-nya.
@@ -158,23 +140,20 @@ func TestNormalizeBusinessNameIgnoresCaseAndEdgeSpaces(t *testing.T) {
 func TestEveryViolationIsReportedAtOnce(t *testing.T) {
 	input := mastercolsimasonline.Input{
 		Description:   strings.Repeat("A", mastercolsimasonline.MaxDescriptionLength+1),
-		MasterCode:    strings.Repeat("X", mastercolsimasonline.MaxMasterCodeLength+1),
 		BusinessNames: []string{strings.Repeat("B", mastercolsimasonline.MaxBusinessNameLength+1)},
 	}
 
 	violation := violationsOf(t, input.Clean().Check())
-	require.Len(t, violation, 3, "ketiga isian yang salah harus dilaporkan bersamaan")
+	require.Len(t, violation, 2, "kedua isian yang salah harus dilaporkan bersamaan")
 }
 
 func TestCleanTrimsEverySpaceAtBothEnds(t *testing.T) {
 	clean := mastercolsimasonline.Input{
 		Description:   "  KEBAKARAN  ",
-		MasterCode:    "  1001  ",
 		BusinessNames: []string{"  ANEKA  "},
 	}.Clean()
 
 	require.Equal(t, "KEBAKARAN", clean.Description)
-	require.Equal(t, "1001", clean.MasterCode)
 	require.Equal(t, []string{"ANEKA"}, clean.BusinessNames)
 }
 
@@ -207,8 +186,6 @@ func TestCleanKeepsBusinessOrderAsTheUserArrangedIt(t *testing.T) {
 func TestLengthLimitsAreMirroredInTheFrontend(t *testing.T) {
 	require.Equal(t, 100, mastercolsimasonline.MaxDescriptionLength,
 		"bila berubah, ubah juga MAX_NAME_LENGTH di CauseOfLossForm.tsx")
-	require.Equal(t, 20, mastercolsimasonline.MaxMasterCodeLength,
-		"bila berubah, ubah juga MAX_MASTER_CODE_LENGTH di CauseOfLossForm.tsx")
 	require.Equal(t, 100, mastercolsimasonline.MaxBusinessNameLength,
 		"bila berubah, ubah juga MAX_BUSINESS_NAME_LENGTH di CauseOfLossForm.tsx")
 }
@@ -217,7 +194,6 @@ func TestLengthLimitsAreMirroredInTheFrontend(t *testing.T) {
 // dapat menyorot isiannya tanpa memetakan apa pun.
 func TestViolationFieldNamesMatchTheRequestContract(t *testing.T) {
 	require.Equal(t, "nama", mastercolsimasonline.FieldDescription)
-	require.Equal(t, "id_master_kerugian", mastercolsimasonline.FieldMasterCode)
 	require.Equal(t, "bisnis", mastercolsimasonline.FieldBusiness)
 }
 

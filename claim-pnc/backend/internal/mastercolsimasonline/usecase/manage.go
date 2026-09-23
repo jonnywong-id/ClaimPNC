@@ -87,7 +87,7 @@ func (s *Service) Create(ctx context.Context, portalAlias string, input masterco
 		return mastercolsimasonline.CauseOfLoss{}, err
 	}
 
-	clean, err := s.checkInput(ctx, portalAlias, repo, input)
+	clean, err := s.checkInput(ctx, portalAlias, input)
 	if err != nil {
 		return mastercolsimasonline.CauseOfLoss{}, err
 	}
@@ -114,7 +114,7 @@ func (s *Service) Update(ctx context.Context, portalAlias, code string, input ma
 		return mastercolsimasonline.CauseOfLoss{}, err
 	}
 
-	clean, err := s.checkInput(ctx, portalAlias, repo, input)
+	clean, err := s.checkInput(ctx, portalAlias, input)
 	if err != nil {
 		return mastercolsimasonline.CauseOfLoss{}, err
 	}
@@ -130,7 +130,6 @@ func (s *Service) toSaveData(
 ) mastercolsimasonline.SaveData {
 	return mastercolsimasonline.SaveData{
 		Description: clean.Description,
-		MasterCode:  clean.MasterCode,
 		Businesses:  s.resolveBusinesses(ctx, portalAlias, clean.BusinessNames),
 	}
 }
@@ -145,12 +144,10 @@ func (s *Service) EnsurePortalReady(portalAlias string) error {
 	return nil
 }
 
-// checkInput merapikan isian, menjalankan aturan murni, lalu memeriksa satu hal yang
-// menuntut penyimpanan: bahwa induk yang ditunjuk benar-benar ada.
+// checkInput merapikan isian lalu menjalankan seluruh aturan murni.
 //
-// SELURUH pelanggaran dikumpulkan: pemeriksaan ini digabungkan dengan hasil Check, bukan
-// menggantikannya, supaya pengguna yang salah pada dua hal sekaligus melihat keduanya
-// dalam satu kali simpan.
+// SELURUH pelanggaran dikumpulkan sekaligus, bukan yang pertama saja, supaya pengguna
+// yang salah pada dua hal melihat keduanya dalam satu kali simpan.
 //
 // # Apa yang TIDAK diperiksa di sini, dan kenapa
 //
@@ -159,12 +156,12 @@ func (s *Service) EnsurePortalReady(portalAlias string) error {
 // Yang dikerjakan atas nama bisnis bukan penolakan melainkan **penyelesaian ke ID** —
 // lihat resolveBusinesses.
 //
-// Rujukan-diri juga tidak diperiksa: dropdown Pega menawarkan baris itu sendiri, dan
-// tidak ada apa pun yang menelusuri jenjangnya. Lihat checkParent.
+// Induk juga tidak lagi diperiksa: isian "ID Master Kerugian" (`MST_COL_ID`) dicabut
+// seluruhnya pada 2026-09-23 atas keputusan Work Owner, sehingga tidak ada rujukan yang
+// perlu dibuktikan keberadaannya.
 func (s *Service) checkInput(
 	ctx context.Context,
 	portalAlias string,
-	repo mastercolsimasonline.Repo,
 	input mastercolsimasonline.Input,
 ) (mastercolsimasonline.Input, error) {
 	clean := input.Clean()
@@ -179,73 +176,10 @@ func (s *Service) checkInput(
 		violation = append(violation, validationError.Violation...)
 	}
 
-	if parentViolation, err := s.checkParent(ctx, repo, clean.MasterCode); err != nil {
-		return mastercolsimasonline.Input{}, err
-	} else if parentViolation != nil {
-		violation = append(violation, *parentViolation)
-	}
-
 	if len(violation) > 0 {
 		return mastercolsimasonline.Input{}, &mastercolsimasonline.ValidationError{Violation: violation}
 	}
 	return clean, nil
-}
-
-// checkParent memeriksa induk yang ditunjuk MST_COL_ID benar-benar ada.
-//
-// Nil berarti tidak ada pelanggaran. Galat yang dikembalikan adalah kegagalan
-// penyimpanan, bukan pelanggaran isian.
-//
-// # Kenapa pemeriksaan ini BUKAN penyimpangan dari Pega
-//
-// Di Pega, isiannya `pxDropdown` yang sumbernya `BrowseVMCauseOfLoss_RD`
-// (`Section/Online_BrowseCauseOfLoss-Section.xml:4546`). Dropdown hanya menawarkan kode
-// yang benar-benar ada, sehingga kode yang tidak ada TIDAK PERNAH dapat tersimpan lewat
-// layar itu. Aturannya sama; yang berbeda hanya TEMPAT penegakannya.
-//
-// Di sistem baru ia ditegakkan di server karena `D-59` menuntut setiap endpoint
-// memeriksa sendiri: API dapat ditembak tanpa melewati layar, dan kendali yang hanya ada
-// di dropdown hilang begitu itu terjadi. Presedennya sudah ada dan sudah disetujui —
-// `masterstatusprogres.Input.Check` menolak kode posisi yang tidak dikenal dengan alasan
-// yang sama persis.
-//
-// Kunci asing tidak dipakai untuk ini: penolakannya datang sebagai galat kunci asing
-// yang menjadi 500 di layar dan tidak menyebut kode mana yang salah.
-func (s *Service) checkParent(
-	ctx context.Context,
-	repo mastercolsimasonline.Repo,
-	masterCode string,
-) (*mastercolsimasonline.Violation, error) {
-	if masterCode == "" {
-		// Tanpa induk. Baris tingkat atas memang begitu, dan layar Pega tidak
-		// mewajibkannya (`pyRequiredNew=false`).
-		return nil, nil
-	}
-
-	// RUJUKAN-DIRI TIDAK DITOLAK, dan itu hasil pemeriksaan ulang ke export.
-	//
-	// Versi pertama modul ini menolaknya dengan alasan "membentuk lingkaran yang membuat
-	// penelusuran jenjang berputar tanpa henti". Alasan itu TERBANTAH: `MST_COL_ID`
-	// hanya dibaca di DUA tempat — `Section/Online_BrowseCauseOfLoss-Section.xml` dan
-	// `Activity/SetDataCauseofflossOnline-Act.xml`, keduanya bagian layar ini sendiri —
-	// dan nol kemunculan di seluruh source procedure. Tidak ada satu pun yang menelusuri
-	// jenjangnya, sehingga rujukan-diri adalah data mati, bukan lingkaran.
-	//
-	// Pega pun mengizinkannya: dropdown-nya bersumber `BrowseVMCauseOfLoss_RD` TANPA
-	// satu pun penyaring, sehingga baris itu sendiri ikut ditawarkan.
-	//
-	// Work Owner menetapkan 2026-09-21 layar disamakan dengan Pega.
-
-	switch _, err := repo.Get(ctx, masterCode); {
-	case errors.Is(err, mastercolsimasonline.ErrNotFound):
-		return &mastercolsimasonline.Violation{
-			Field:   mastercolsimasonline.FieldMasterCode,
-			Message: "Cause of loss " + masterCode + " tidak ada. Muat ulang daftarnya, lalu pilih kembali.",
-		}, nil
-	case err != nil:
-		return nil, err
-	}
-	return nil, nil
 }
 
 // resolveBusinesses mengubah nama bisnis menjadi pasangan nama dan ID.

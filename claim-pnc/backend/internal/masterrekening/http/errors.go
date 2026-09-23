@@ -92,16 +92,16 @@ func mapError(err error) (int, ErrorResponse) {
 // Diurutkan menurut nama field supaya jawaban atas permintaan yang sama selalu identik.
 // Tanpa itu, urutannya mengikuti iterasi map Go — yang sengaja acak — sehingga uji
 // kontrak menjadi rapuh dan log sulit dibandingkan.
-func violationsOf(g *masterrekening.ValidationError) []PelanggaranDTO {
-	name := make([]string, 0, len(g.Field))
-	for f := range g.Field {
-		name = append(name, f)
+func violationsOf(e *masterrekening.ValidationError) []PelanggaranDTO {
+	names := make([]string, 0, len(e.Field))
+	for f := range e.Field {
+		names = append(names, f)
 	}
-	sort.Strings(name)
+	sort.Strings(names)
 
-	result := make([]PelanggaranDTO, 0, len(name))
-	for _, f := range name {
-		result = append(result, PelanggaranDTO{Field: f, Pesan: g.Field[f]})
+	result := make([]PelanggaranDTO, 0, len(names))
+	for _, f := range names {
+		result = append(result, PelanggaranDTO{Field: f, Pesan: e.Field[f]})
 	}
 	return result
 }

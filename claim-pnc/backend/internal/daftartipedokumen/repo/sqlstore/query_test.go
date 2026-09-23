@@ -133,9 +133,32 @@ func TestNoQueryDeletesAnything(t *testing.T) {
 //
 // View V_LST_DOC_TYPE tetap dibaca sekurang-kurangnya sepuluh rule Pega selama masa
 // paralel; menulis lewatnya berarti bergantung pada definisi yang dimiliki pihak lain.
-func TestQueriesTouchTheBaseTableNotTheView(t *testing.T) {
-	for name, text := range query {
-		require.NotContainsf(t, strings.ToUpper(text), "V_LST_DOC_TYPE",
-			"kueri %q menyentuh view; yang dibaca dan ditulis adalah tabel dasarnya", name)
+// Membaca lewat view, menulis ke tabel dasar.
+//
+// Uji ini semula menuntut kebalikannya — seluruh kueri menyentuh tabel dasar — karena
+// migrasi `0005_daftar_tipe_dokumen` direncanakan memindahkan isi JSON_DATA menjadi kolom
+// bernama. Migrasi itu belum dijalankan, dan tabel dasarnya sampai sekarang hanya punya
+// ID, OLD_ID, dan JSON_DATA: setiap pembacaan gagal dengan `ORA-00904: "TGL_EDIT"` dan
+// layarnya tidak dapat dibuka sama sekali.
+//
+// Keputusan Work Owner 2026-09-22: ikuti Pega dan baca langsung dari basis data lewat view
+// yang sudah memaparkan kolomnya. Menulis tetap ke tabel dasar — view berisi ekspresi JSON
+// tidak dapat ditulisi.
+func TestReadsUseTheViewAndWritesUseTheBaseTable(t *testing.T) {
+	read := []string{"document_type_list", "document_type_get", "document_type_check_table"}
+	write := []string{"document_type_insert", "document_type_update"}
+
+	for _, name := range read {
+		text := strings.ToUpper(query[name])
+		require.Containsf(t, text, "POOLDATA.V_LST_DOC_TYPE",
+			"kueri baca %q harus membaca view: tabel dasarnya belum punya kolomnya", name)
+	}
+
+	for _, name := range write {
+		text := strings.ToUpper(query[name])
+		require.NotContainsf(t, text, "V_LST_DOC_TYPE",
+			"kueri tulis %q menyentuh view, padahal view berekspresi JSON tidak dapat ditulisi", name)
+		require.Containsf(t, text, "POOLDATA.LST_DOC_TYPE",
+			"kueri tulis %q harus menulis tabel dasarnya", name)
 	}
 }

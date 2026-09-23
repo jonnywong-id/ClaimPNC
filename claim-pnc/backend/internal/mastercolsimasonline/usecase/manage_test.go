@@ -3,7 +3,6 @@ package usecase_test
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -140,67 +139,6 @@ func TestBusinessOrderSurvivesSaving(t *testing.T) {
 	require.Equal(t, []string{"TRAVEL", "ANEKA", "MARINE CARGO"}, names)
 }
 
-// ID Master Kerugian menunjuk cause of loss LAIN. Kode yang tidak ada ditolak sebagai
-// pelanggaran isian biasa — bukan galat 500, dan pesannya menyebut kodenya.
-func TestUnknownMasterCodeIsRejectedAsAFieldViolation(t *testing.T) {
-	h := newHarness(t, memory.SampleList()...)
-
-	_, err := h.service.Create(context.Background(), portalAlias, mastercolsimasonline.Input{
-		Description: "BANJIR",
-		MasterCode:  "9999",
-	})
-
-	var validationError *mastercolsimasonline.ValidationError
-	require.ErrorAs(t, err, &validationError)
-	require.Len(t, validationError.Violation, 1)
-	require.Equal(t, mastercolsimasonline.FieldMasterCode, validationError.Violation[0].Field)
-	require.Contains(t, validationError.Violation[0].Message, "9999")
-}
-
-func TestExistingMasterCodeIsAccepted(t *testing.T) {
-	h := newHarness(t, memory.SampleList()...)
-
-	saved, err := h.service.Create(context.Background(), portalAlias, mastercolsimasonline.Input{
-		Description: "KEBAKARAN AKIBAT KORSLETING",
-		MasterCode:  "1001",
-	})
-	require.NoError(t, err)
-	require.Equal(t, "1001", saved.MasterCode)
-}
-
-// RUJUKAN-DIRI DITERIMA — kesetaraan dengan Pega, ditetapkan Work Owner 2026-09-21.
-//
-// Dropdown Pega bersumber `BrowseVMCauseOfLoss_RD` tanpa satu pun penyaring, sehingga
-// baris itu sendiri ikut ditawarkan. Dan `MST_COL_ID` hanya dibaca di dua tempat yang
-// keduanya bagian layar ini — tidak ada apa pun yang menelusuri jenjangnya, sehingga
-// rujukan-diri adalah data mati, bukan lingkaran.
-func TestRowMayBeItsOwnParentJustLikePega(t *testing.T) {
-	h := newHarness(t, memory.SampleList()...)
-
-	updated, err := h.service.Update(context.Background(), portalAlias, "1001", mastercolsimasonline.Input{
-		Description: "KEBAKARAN",
-		MasterCode:  "1001",
-	})
-	require.NoError(t, err)
-	require.Equal(t, "1001", updated.MasterCode)
-}
-
-// Pelanggaran isian murni dan pelanggaran yang menuntut penyimpanan dikumpulkan
-// BERSAMAAN, bukan dilaporkan bergantian. Pengguna yang salah pada dua hal sekaligus
-// harus melihat keduanya dalam satu kali simpan.
-func TestPureAndStorageBackedViolationsAreReportedTogether(t *testing.T) {
-	h := newHarness(t, memory.SampleList()...)
-
-	_, err := h.service.Create(context.Background(), portalAlias, mastercolsimasonline.Input{
-		Description: strings.Repeat("A", mastercolsimasonline.MaxDescriptionLength+1),
-		MasterCode:  "9999",
-	})
-
-	var validationError *mastercolsimasonline.ValidationError
-	require.ErrorAs(t, err, &validationError)
-	require.Len(t, validationError.Violation, 2)
-}
-
 func TestCreateTrimsBeforeStoring(t *testing.T) {
 	h := newHarness(t)
 
@@ -216,14 +154,12 @@ func TestUpdateChangesValuesButNeverTheCode(t *testing.T) {
 
 	updated, err := h.service.Update(context.Background(), portalAlias, "1002", mastercolsimasonline.Input{
 		Description:   "KEBAKARAN AKIBAT PETIR DAN KORSLETING",
-		MasterCode:    "1001",
 		BusinessNames: []string{"ANEKA"},
 	})
 	require.NoError(t, err)
 
 	require.Equal(t, "1002", updated.Code, "kode tidak pernah ikut berubah")
 	require.Equal(t, "KEBAKARAN AKIBAT PETIR DAN KORSLETING", updated.Description)
-	require.Equal(t, "1001", updated.MasterCode)
 }
 
 // Pemetaan bisnis DIGANTI seluruhnya, bukan digabung: layar mengirim keadaan akhir grid

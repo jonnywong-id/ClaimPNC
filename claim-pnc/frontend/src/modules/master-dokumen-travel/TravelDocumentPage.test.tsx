@@ -321,7 +321,10 @@ describe('kesetiaan pada layar Pega', () => {
     expect(screen.getByText('Dokumen 50')).toBeInTheDocument()
     expect(screen.queryByText('Dokumen 51')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Berikutnya' }))
+    // Nama tombolnya "Halaman berikutnya", bukan "Berikutnya": paginator DataTable memakai
+    // nomor halaman seperti `pyGridPaginator` ber-`pyPageMode = Numeric`, dan tombol majunya
+    // bergambar panah dengan nama aksesibilitas itu.
+    await userEvent.click(screen.getByRole('button', { name: 'Halaman berikutnya' }))
     expect(screen.getByText('Dokumen 51')).toBeInTheDocument()
     expect(screen.queryByText('Dokumen 50')).not.toBeInTheDocument()
   })
@@ -333,6 +336,8 @@ describe('kesetiaan pada layar Pega', () => {
     show()
     await screen.findByText('Paspor')
 
-    expect(screen.queryByRole('button', { name: 'Berikutnya' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Halaman berikutnya' }),
+    ).not.toBeInTheDocument()
   })
 })

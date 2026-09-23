@@ -87,7 +87,6 @@ func (r *Repo) List(_ context.Context) ([]mastercolsimasonline.CauseOfLoss, erro
 		result = append(result, mastercolsimasonline.CauseOfLoss{
 			Code:        row.Code,
 			Description: row.Description,
-			MasterCode:  row.MasterCode,
 		})
 	}
 	// `ORDER BY M_COL_ID` pada basis data adalah pengurutan TEKS bila kolomnya bertipe
@@ -111,7 +110,6 @@ func (r *Repo) Get(_ context.Context, code string) (mastercolsimasonline.CauseOf
 			return mastercolsimasonline.CauseOfLoss{
 				Code:        row.Code,
 				Description: row.Description,
-				MasterCode:  row.MasterCode,
 				Businesses:  copyBusinesses(row.Businesses),
 			}, nil
 		}
@@ -130,7 +128,6 @@ func (r *Repo) Insert(_ context.Context, data mastercolsimasonline.SaveData) (ma
 	fresh := mastercolsimasonline.CauseOfLoss{
 		Code:        r.nextCode(),
 		Description: data.Description,
-		MasterCode:  data.MasterCode,
 		Businesses:  copyBusinesses(data.Businesses),
 	}
 	r.rows = append(r.rows, fresh)
@@ -152,7 +149,6 @@ func (r *Repo) Update(_ context.Context, code string, data mastercolsimasonline.
 		}
 		// Code tidak ikut ditimpa dari luar: ia kunci baris, bukan isian.
 		r.rows[i].Description = data.Description
-		r.rows[i].MasterCode = data.MasterCode
 		// Pemetaan bisnis DIGANTI seluruhnya, bukan digabung. Layar mengirim keadaan
 		// akhir grid apa adanya, sehingga baris yang dihapus pengguna memang harus
 		// hilang — menggabungkannya akan membuat baris yang dihapus muncul kembali.
@@ -288,15 +284,11 @@ func SampleBusinessList() []mastercolsimasonline.Business {
 // data.
 //
 // PERINGATAN — INI BUKAN DATA PRODUKSI, dengan alasan yang sama seperti
-// SampleBusinessList: isi POOLDATA.M_CAUSE_OF_LOSS tidak ada di export.
+// SampleBusinessList: isi POOLDATA.M_CAUSE_OF_LOSS_ONLINE tidak ada di export.
 //
 // Nama-nama di bawah SUSUNAN SENDIRI, dipilih agar bentuk kodenya benar
 // (`id_site` + tiga digit) dan agar pemetaan ke lebih dari satu bisnis dapat dicoba di
 // layar. Ia tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1.
-// MST_COL_ID pada contoh di bawah menunjuk Code baris LAIN di senarai yang sama —
-// `1002` dan `1003` bernaung di bawah `1001`. Itu memang artinya sejak Work Owner
-// menegaskannya pada 2026-09-21; ia bukan kode dari sistem sebelah.
-//
 // Baris `1004` sengaja punya satu bisnis yang TIDAK ada di SampleBusinessList
 // ("KENDARAAN BERMOTOR"), supaya keadaan "nama diketik bebas, tanpa ID" ikut terlihat
 // saat pengembangan — itu keadaan sah yang harus ditangani setiap layar dan setiap
@@ -306,7 +298,6 @@ func SampleList() []mastercolsimasonline.CauseOfLoss {
 		{
 			Code:        "1001",
 			Description: "KEBAKARAN",
-			MasterCode:  "",
 			Businesses: []mastercolsimasonline.Business{
 				{ID: "006", Name: "FIRE / PROPERTY"},
 				{ID: "003", Name: "ANEKA"},
@@ -315,7 +306,6 @@ func SampleList() []mastercolsimasonline.CauseOfLoss {
 		{
 			Code:        "1002",
 			Description: "KEBAKARAN AKIBAT PETIR",
-			MasterCode:  "1001",
 			Businesses: []mastercolsimasonline.Business{
 				{ID: "006", Name: "FIRE / PROPERTY"},
 			},
@@ -323,7 +313,6 @@ func SampleList() []mastercolsimasonline.CauseOfLoss {
 		{
 			Code:        "1003",
 			Description: "KECELAKAAN DIRI",
-			MasterCode:  "",
 			Businesses: []mastercolsimasonline.Business{
 				{ID: "002", Name: "PERSONAL ACCIDENT"},
 			},
@@ -331,7 +320,6 @@ func SampleList() []mastercolsimasonline.CauseOfLoss {
 		{
 			Code:        "1004",
 			Description: "KERUSAKAN DALAM PENGANGKUTAN",
-			MasterCode:  "",
 			Businesses: []mastercolsimasonline.Business{
 				{ID: "004", Name: "MARINE CARGO"},
 				{ID: "", Name: "KENDARAAN BERMOTOR"},

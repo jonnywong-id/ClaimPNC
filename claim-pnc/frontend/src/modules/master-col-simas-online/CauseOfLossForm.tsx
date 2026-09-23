@@ -4,20 +4,20 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Business, type CauseOfLoss } from '@/api/types'
+import { ErrorCode, type Business, type SimasOnlineCauseOfLoss } from '@/api/types'
 import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
 import { ComboField } from '@/components/ComboField'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Button } from '@/components/Button'
 
 /**
- * Ketiga batas harus sama dengan MaxDescriptionLength, MaxMasterCodeLength, dan
- * MaxBusinessNameLength di `internal/mastercolsimasonline/mastercolsimasonline.go`.
+ * Kedua batas harus sama dengan MaxDescriptionLength dan MaxBusinessNameLength di
+ * `internal/mastercolsimasonline/mastercolsimasonline.go`.
  *
- * PERINGATAN: ketiganya PENJAGA, bukan lebar kolom yang diketahui — DDL
- * POOLDATA.M_CAUSE_OF_LOSS belum ada (`R-08`), dan layar Pega sendiri tidak membatasi
- * apa pun. Angkanya diperiksa di dua tempat dengan sengaja: di sini supaya pengguna tahu
+ * Kolomnya berlebar VARCHAR2(200) di POOLDATA.M_CAUSE_OF_LOSS_ONLINE dan
+ * POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL; angka di bawah sengaja ditahan di separuhnya,
+ * dan layar Pega sendiri tidak membatasi apa pun. Angkanya diperiksa di dua tempat
+ * dengan sengaja: di sini supaya pengguna tahu
  * sebelum mengirim, dan di server karena API dapat ditembak tanpa melewati layar ini.
  * Server tetap yang berwenang.
  *
@@ -25,15 +25,13 @@ import { Button } from '@/components/Button'
  * `TestLengthLimitsAreMirroredInTheFrontend` yang menjaga pengingat itu tetap terlihat.
  */
 const MAX_NAME_LENGTH = 100
-const MAX_MASTER_CODE_LENGTH = 20
 const MAX_BUSINESS_NAME_LENGTH = 100
 
 /**
  * Yang diperiksa di layar hanyalah PANJANG, dan itu disengaja.
  *
  * Layar Pega menandai seluruh isiannya `pyRequired=false` dan tidak punya satu pun
- * Validate rule, sehingga nama kosong, bisnis kembar, maupun induk yang menunjuk dirinya
- * sendiri semuanya sah. Work Owner menetapkan 2026-09-21 layar disamakan dengan Pega.
+ * Validate rule, sehingga nama kosong maupun bisnis kembar sama-sama sah. Work Owner menetapkan 2026-09-21 layar disamakan dengan Pega.
  *
  * Batas panjang tetap ada karena ia bukan aturan bisnis melainkan penjaga terhadap lebar
  * kolom basis data — tanpa itu, nilai yang kepanjangan ditolak Oracle dengan ORA-12899
@@ -44,13 +42,6 @@ const schema = z.object({
     .string()
     .trim()
     .max(MAX_NAME_LENGTH, `Nama Cause of loss paling panjang ${MAX_NAME_LENGTH} karakter.`),
-  id_master_kerugian: z
-    .string()
-    .trim()
-    .max(
-      MAX_MASTER_CODE_LENGTH,
-      `ID Master Kerugian paling panjang ${MAX_MASTER_CODE_LENGTH} karakter.`,
-    ),
   // Disimpan sebagai senarai objek, bukan senarai teks, karena useFieldArray menuntut
   // setiap barisnya berupa objek agar dapat memberinya kunci yang stabil.
   bisnis: z.array(
@@ -70,18 +61,9 @@ export type CauseOfLossFields = z.infer<typeof schema>
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: CauseOfLoss | null
+  edited: SimasOnlineCauseOfLoss | null
   /** Saran bisnis, dibaca dari POOLDATA.BUSINESS milik entitas yang aktif. */
   businesses: Business[]
-  /**
-   * Cause of loss yang dapat dipilih sebagai induk.
-   *
-   * Baris yang sedang disunting IKUT di dalamnya. Dropdown Pega bersumber
-   * `BrowseVMCauseOfLoss_RD` tanpa satu pun penyaring, sehingga baris itu sendiri memang
-   * ditawarkan — dan tidak ada apa pun yang menelusuri jenjangnya, sehingga rujukan-diri
-   * tidak berakibat apa-apa.
-   */
-  parentOptions: CauseOfLoss[]
   /** Pemetaan bisnis baris yang disunting masih dimuat. */
   isLoadingBusinessMapping: boolean
   isSaving: boolean
@@ -156,10 +138,9 @@ function violationsOf(error: unknown): Record<string, string> {
 }
 
 /** Menyusun nilai awal form dari baris yang disunting. */
-function valuesOf(edited: CauseOfLoss | null): CauseOfLossFields {
+function valuesOf(edited: SimasOnlineCauseOfLoss | null): CauseOfLossFields {
   return {
     nama: edited?.nama ?? '',
-    id_master_kerugian: edited?.id_master_kerugian ?? '',
     bisnis: (edited?.bisnis ?? []).map((b) => ({ nama: b.nama })),
   }
 }
@@ -178,13 +159,14 @@ function valuesOf(edited: CauseOfLoss | null): CauseOfLossFields {
  * (`D-13`: tata letak ditiru supaya pengguna tidak perlu belajar ulang):
  *
  *	baris 4301  ID Kerugian          M_COL_ID     read-only
- *	baris 4489  ID Master Kerugian   MST_COL_ID   daftar cause of loss lain
  *	baris 4813  Nama Cause of loss   COL_DESC
  *	baris 5874  Bisnis               BISNISID     repeat grid, banyak baris
  *
- * Perhatikan ID Master Kerugian berada DI ATAS Nama Cause of loss, dan label isian
- * pertama adalah "ID Kerugian" — bukan "ID". Keduanya sempat keliru pada versi pertama
- * modul ini dan dikoreksi setelah Work Owner memeriksanya pada 2026-09-21.
+ * Isian "ID Master Kerugian" (MST_COL_ID) yang dulu berada di antara keduanya DICABUT
+ * 2026-09-23 atas keputusan Work Owner — kolomnya sudah tidak dipakai.
+ *
+ * Perhatikan label isian pertama adalah "ID Kerugian", bukan "ID". Itu sempat keliru pada
+ * versi pertama modul ini dan dikoreksi setelah Work Owner memeriksanya pada 2026-09-21.
  *
  * Judulnya pun SAMA untuk kedua modus — "Memperbaharui Data Simas Online" — persis
  * seperti layar lama, yang menandai modusnya lewat `pyLabel` dan bukan lewat judul.
@@ -192,7 +174,6 @@ function valuesOf(edited: CauseOfLoss | null): CauseOfLossFields {
 export function CauseOfLossForm({
   edited,
   businesses,
-  parentOptions,
   isLoadingBusinessMapping,
   isSaving,
   error,
@@ -230,7 +211,7 @@ export function CauseOfLossForm({
   // (`P-5`), dan itu hanya berguna bila layar menyorotnya satu per satu.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama' || column === 'id_master_kerugian') {
+      if (column === 'nama') {
         setError(column, { type: 'server', message })
       } else if (column === 'bisnis') {
         setError('bisnis', { type: 'server', message })
@@ -243,13 +224,6 @@ export function CauseOfLossForm({
   // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat
   // dari ada-tidaknya baris "ID Kerugian" di bawahnya.
   const title = 'Memperbaharui Data Simas Online'
-
-  // Label pilihan induk menyebut kode DAN namanya — sama seperti autocomplete Pega yang
-  // nilainya `.M_COL_ID` dan promptnya `.COL_DESC`.
-  const parentChoices = parentOptions.map((row) => ({
-    value: row.id,
-    label: `${row.id} — ${row.nama}`,
-  }))
 
   const businessSuggestions = businesses.map((b) => b.nama)
 
@@ -278,18 +252,6 @@ export function CauseOfLossForm({
           </p>
         </div>
       )}
-
-      {/* ID Master Kerugian menunjuk cause of loss LAIN yang menjadi induk. Dropdown,
-          bukan teks bebas: di Pega isiannya adalah daftar yang sumbernya
-          `BrowseVMCauseOfLoss_RD` atas master yang sama. */}
-      <SelectField
-        id="id_master_kerugian"
-        label="ID Master Kerugian"
-        options={parentChoices}
-        emptyText="— tanpa induk —"
-        error={errors.id_master_kerugian?.message}
-        {...register('id_master_kerugian')}
-      />
 
       <Field
         id="nama"

@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 72 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 50 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -33,7 +33,7 @@
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
-  MasterRekening: '/master-rekening',
+  MasterRekening: '/master/rekening',
   StatusProgress: '/master/status-progres-1',
   // MENU_ID 22 "Master Dokumen Travel", di bawah kelompok MASTER.
   //
@@ -53,10 +53,10 @@ export const MENU_ROUTES: Record<string, string> = {
   // POOLDATA.M_MENU_APLIKASI_PNC, dan memperbaikinya di sini akan membuat layar
   // menampilkan teks yang berbeda dari isi tabel — perbaikannya menempuh `D-63`.
   //
-  // JANGAN tertukar dengan MENU_ID 20 "Master Penyebab Kerugian" (`CauseOfLossInbox`),
-  // layar Master COL biasa atas tabel yang SAMA tetapi tanpa isian ID Master Kerugian
-  // dan tanpa pemetaan bisnis. Ia belum dibangun, dan butirnya tetap tampil sebagai
-  // "belum tersedia".
+  // JANGAN tertukar dengan MENU_ID 20 "Master Penyebab Kerugian" (`CauseOfLossInbox`)
+  // di bawah, layar Master COL biasa atas tabel yang SAMA tetapi tanpa isian ID Master
+  // Kerugian dan tanpa pemetaan bisnis. Keduanya sudah dibangun dan menulis tabel yang
+  // sama — perbedaannya hanya pada isian yang ditampilkan.
   CauseOfLossInboxSimasOnline: '/master/col-simas-online',
   // MENU_ID 40 "Daftar Tipe Dokumen", di bawah kelompok MASTER.
   //
@@ -68,6 +68,97 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Keduanya tetap tampil sebagai "belum tersedia".
   ListDocumentTypeInbox: '/master/tipe-dokumen',
+  // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
+  SurveyorsInbox: '/master/tipe-surveyor',
+  // MENU_ID 15 "Master Surveyors" — daftar ORANGNYA, anak dari butir di atas. Keduanya
+  // bernama mirip dan mudah tertukar; yang membedakan adalah `Detail` di awal nama
+  // programnya.
+  DetailSurveyorsInbox: '/master/surveyor',
+  // MENU_ID 13 "Master PIC Teknik". Namanya mengandung "Inbox" tetapi ia layar MASTER,
+  // bukan daftar pekerjaan (`D-79`) — barisnya data acuan, tidak hilang setelah
+  // ditindaklanjuti, dan tidak punya tenggat.
+  UserTeknisInbox: '/master/pic-teknik',
+  // MENU_ID 16 "Master Recovery". Berbeda dari butir master lain di daftar ini: layarnya
+  // FORM ENTRI, bukan pengelola data acuan — tidak ada satu pun kueri di export yang
+  // membaca kembali tabelnya. Letaknya tetap di bawah kelompok MASTER karena di situlah
+  // butir menunya berada (`MENU_ID_LEADER 1`).
+  MasterRecovery: '/master/recovery',
+  // MENU_ID 18 "Master Dominan Factor". Namanya diawali `Detail` seperti
+  // `DetailSurveyorsInbox`, tetapi di sini awalan itu TIDAK menandakan tingkat kedua —
+  // tidak ada master "Dominan Factor" di atasnya. Ia layar master yang berdiri sendiri.
+  DetailDominanFactor: '/master/dominan-factor',
+  // MENU_ID 20 "Master Penyebab Kerugian" — tingkat GOLONGAN (`M_CAUSE_OF_LOSS`).
+  //
+  // Satu butir menu bersaudara sengaja TIDAK dipetakan di sini, dan ia mudah tertukar
+  // dengannya:
+  //
+  //   MENU_ID 38  DetailCauseOfLoss  rinciannya (`D_CAUSE_OF_LOSS`), belum ada
+  //
+  // MENU_ID 21 `CauseOfLossInboxSimasOnline` — varian Simas Online — sudah dipetakan di
+  // atas. Ia menulis TABEL YANG SAMA dengan layar ini, sehingga keduanya harus dijaga
+  // tetap sepakat soal aturan isiannya. Lihat
+  // backend/migrations/0005_master_penyebab_kerugian.up.sql.
+  CauseOfLossInbox: '/master/penyebab-kerugian',
+  // MENU_ID 17 "Master Masking". Nama programnya panjang dan tidak menyebut "masking"
+  // sama sekali — rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`), karena
+  // itulah nama yang dipakai Work Owner dan yang tertulis di menu.
+  //
+  // Isinya kewenangan melihat data pribadi nasabah, sehingga layar ini yang paling berat
+  // akibatnya bila terbuka oleh peran yang tidak berhak. Penegakan izin per menu masih
+  // TKT-F3-005 dan belum ada.
+  MasterProteksiVisibilityData: '/master/masking',
+  // MENU_ID 19 "Master XOL". Satu-satunya butir master yang layarnya BERTINGKAT EMPAT —
+  // induk, grup bisnis, layer, dan reas tiap layer — dan satu-satunya yang menyimpannya
+  // sekaligus mengajukan ke komite.
+  DetailMasterXOL: '/master/xol',
+
+  // ── Butir yang layar DAN backend-nya baru tersambung ────────────────────────────
+  //
+  // Kesepuluh butir di bawah sudah punya layar lengkap beserta ujinya sejak lama, tetapi
+  // perakitan backend-nya hilang pada penggabungan cabang — rutenya tidak pernah
+  // terdaftar, sehingga setiap layarnya menjawab 404. Perakitannya dipulihkan di
+  // `backend/cmd/claimpnc/modules.go`, dan `TestExtraModulesMounted` menjaganya tidak
+  // lepas lagi.
+  //
+  // Setiap nama kunci di bawah DICOCOKKAN ke `Database/m_menu_aplikasi_pnc.csv`, bukan
+  // ditebak dari nama modulnya: kunci yang meleset tidak menimbulkan galat apa pun —
+  // butirnya sekadar tetap "belum tersedia" — sehingga mencocokkannya ke tabel adalah
+  // satu-satunya cara memastikannya benar.
+  //
+  // `StatusProgress2` (MENU_ID 24) sengaja TIDAK ada di sini meski layarnya sudah ada:
+  // backend-nya belum pernah ditulis di commit mana pun, dan `/api/master/status-progres-2`
+  // tidak ada. Memetakannya hanya akan mengubah label jujur "belum tersedia" menjadi layar
+  // yang tampak rusak.
+
+  // MENU_ID 25. SATU layar untuk DUA master — Penolakan Klaim dan Penolakan Komite —
+  // karena di Pega pun keduanya satu butir menu. Pemilihannya tab di dalam layar.
+  PNC_MasterTolakKlaim: '/master/penolakan-klaim',
+  // MENU_ID 26. Empat tab atas tabel yang sama, hanya berbeda saringan.
+  AutoKlaim: '/master/auto-claim',
+  // MENU_ID 27 "Master Pasal Kerugian". Nama programnya menyebut "Rejected" tetapi
+  // layarnya master pasal, bukan daftar penolakan — nama itu dibaca apa adanya dari tabel
+  // menu, dan memperbaikinya menempuh `D-63`.
+  DetailMasterPasalRejected: '/master/pasal-kerugian',
+
+  // MENU_ID 28, 30, 31 — keluarga alat berat, berbagi satu activity persetujuan yang sama
+  // di Pega (`Activity/SetApprovalAllMaster`). Ketiganya beserta Master Supplier di bawah
+  // membaca tabel yang `D-34` keluarkan dari lingkup migrasi; Work Owner memutuskan pada
+  // 2026-09-22 bahwa seluruh modul dari cabang `fran-masuk-master` harus ada. Lihat
+  // catatan di kepala `backend/cmd/claimpnc/modules.go`.
+  BengkelHE: '/master/bengkel',
+  MasterPanel_HE: '/master/panel',
+  SparePart_HE: '/master/sparepart',
+  // MENU_ID 29. Seluruh isinya tinggal di satu kolom JSONDATA.
+  MasterSupplier: '/master/supplier',
+
+  // MENU_ID 63, di bawah kelompok INBOX — bukan MASTER. Ia Inbox sungguhan menurut `D-79`:
+  // barisnya pekerjaan, hilang setelah ditindaklanjuti, dan punya tenggat.
+  PNCInboxAdmin: '/inbox-admin',
+  // MENU_ID 64 "Inbox Laporan Klaim". Nama programnya `InboxRCVApp_Harness` dan tidak
+  // menyebut laporan sama sekali; rutenya mengikuti nama BUTIR MENU (`D-81`).
+  InboxRCVApp_Harness: '/pelaporan-klaim',
+  // MENU_ID 76 "View History Claim", di bawah kelompok VIEW.
+  PNCSearchKlaim: '/riwayat-klaim',
 }
 
 /**

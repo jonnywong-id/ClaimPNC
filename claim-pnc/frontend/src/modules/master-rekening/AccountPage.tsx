@@ -15,12 +15,20 @@ import { useAccountList, useDecideAccount, type AccountFilter } from './api'
  * BrowseMasterRekeningReject — yang isinya nyaris sama dan karena itu berbeda-beda di
  * tempat yang tidak disengaja. Di sini kelimanya satu layar dengan saringan berbeda.
  */
+/*
+ * Label tab SENGAJA dibedakan dari label tombol aksi (`Approve` dan `Reject`).
+ *
+ * Sebelumnya keduanya memakai kata yang sama persis, sehingga "tombol bernama Approve"
+ * menunjuk dua hal berbeda di satu layar — tab penyaring dan tombol yang benar-benar
+ * memutuskan rekening. Itu menyesatkan pengguna dan membuat uji tidak dapat menunjuk
+ * tombol yang dimaksudnya.
+ */
 const TABS = [
   { id: 'cari', label: 'Cari Data Rekening' },
-  { id: 'komite', label: 'Komite Approval' },
-  { id: 'menunggu', label: 'Waiting Approval' },
-  { id: 'disetujui', label: 'Approve' },
-  { id: 'ditolak', label: 'Reject' },
+  { id: 'komite', label: 'Antrean Komite Saya' },
+  { id: 'menunggu', label: 'Menunggu Approval' },
+  { id: 'disetujui', label: 'Sudah Disetujui' },
+  { id: 'ditolak', label: 'Sudah Ditolak' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -85,21 +93,30 @@ export function AccountPage() {
   const list = useAccountList(filter)
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <header className="mb-6">
+        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+          <ol className="flex items-center gap-1.5">
+            <li>Master Data</li>
+            <li aria-hidden="true" className="text-slate-300">
+              /
+            </li>
+            <li className="text-slate-700">Rekening</li>
+          </ol>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
           Master Rekening
         </h1>
 
-        <p className="mt-1 text-sm text-slate-600">
-          Rekening tujuan pembayaran klaim. Rekening baru menunggu decision komite
-          before dapat dipakai.
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+          Rekening tujuan pembayaran klaim. Rekening baru menunggu keputusan komite
+          sebelum dapat dipakai.
         </p>
       </header>
 
       <nav
         aria-label="Tab master rekening"
-        className="mt-4 flex flex-wrap gap-1 border-b border-slate-200"
+        className="flex flex-wrap gap-1 border-b border-slate-200"
       >
         {TABS.map((t) => (
           <button
@@ -208,7 +225,7 @@ export function AccountPage() {
         {list.data && list.data.jumlah > list.data.rekening.length && (
           <p className="mt-3 text-sm text-slate-500">
             Menampilkan {list.data.rekening.length} dari {list.data.jumlah}{' '}
-            rekening. Persempit search untuk melihat rest.
+            rekening. Persempit pencarian untuk melihat sisanya.
           </p>
         )}
       </section>

@@ -2,83 +2,77 @@ package memory
 
 import "claim-pnc/internal/masterpicteknik"
 
-// DaftarContoh adalah baris awal untuk menjalankan aplikasi tanpa basis data.
+// SampleList adalah baris awal untuk menjalankan aplikasi tanpa basis data.
 //
-// # Isinya karangan, dan itu disengaja
+// # Isinya karangan, dan itu dinyatakan terang-terangan
 //
-// Berbeda dari Master Status Klaim yang 33 barisnya adalah isi master yang sungguhan,
-// isi MST_USER_TEKNIK **tidak ada di dalam export** — tidak ada CSV, tidak ada dump.
-// Yang terbaca dari export hanyalah bentuk tabelnya.
+// Berbeda dari Master Status Klaim yang 33 barisnya adalah isi master sungguhan, isi
+// MST_USER_TEKNIK **tidak ada di dalam export** — tidak ada CSV, tidak ada dump. Yang
+// terbaca dari export hanyalah bentuk tabelnya.
 //
-// Karena itu baris di bawah adalah contoh yang dikarang, bukan data nyata: nama, surel,
-// dan ID operatornya tidak merujuk pegawai mana pun. Mengarang data yang berpura-pura
-// nyata justru yang dilarang `docs/AGENTS.md` aturan 5; yang dilakukan di sini adalah
-// sebaliknya — contoh yang jelas-jelas contoh, memakai domain `example.invalid` yang
-// memang dicadangkan supaya tidak mungkin tertukar dengan alamat sungguhan.
+// Karena itu baris di bawah adalah contoh yang dikarang: nama, surel, dan ID operatornya
+// tidak merujuk pegawai mana pun. Mengarang data yang BERPURA-PURA nyata justru yang
+// dilarang; yang dilakukan di sini sebaliknya — contoh yang jelas-jelas contoh, memakai
+// domain `example.invalid` yang memang dicadangkan supaya tidak mungkin tertukar dengan
+// alamat sungguhan.
 //
-// Struktur grup dan atasannya dibuat menyerupai keadaan nyata secukupnya untuk menguji
-// layar: ada atasan, ada bawahan, ada yang nonaktif, dan ada yang kuotanya nol.
-func SampleList() []masterpicteknik.PICTeknik {
-	return []masterpicteknik.PICTeknik{
+// # Kenapa susunannya seperti ini
+//
+// Keempat baris dipilih supaya setiap jalur layar dapat dicoba tanpa basis data:
+//
+//	PICTEKNIK01  atasan, kuota besar          — muncul di daftar
+//	PICTEKNIK02  bawahan, beban di bawah kuota — muncul di daftar
+//	PICTEKNIK03  beban SAMA DENGAN kuota       — menguji tampilan "kuota penuh"
+//	PICTEKNIK04  NONAKTIF                      — TIDAK muncul di daftar, tetapi dapat
+//	                                             dibuka lewat ID dan diaktifkan kembali
+//
+// Baris keempat itulah yang membuat keputusan "daftar hanya menampilkan yang aktif" dapat
+// diuji sungguhan, bukan hanya dipercaya.
+func SampleList() []masterpicteknik.Technician {
+	return []masterpicteknik.Technician{
 		{
-			OperatorID: "PICTEKNIK01",
-			Name:       "Contoh Kepala Teknik",
-			Email:      "contoh.kepalateknik@example.invalid",
+			OperatorID:   "PICTEKNIK01",
+			Name:         "Contoh Kepala Teknik",
+			Email:        "contoh.kepalateknik@example.invalid",
 			BusinessLine: "NONMBU",
-			Group:       "TEKNIK JAKARTA",
-			Quota:      20,
-			ExternalQuota:  0,
-			Active:      true,
+			Group:        "TEKNIK JAKARTA",
+			Quota:        20,
+			Workload:     6,
+			Active:       true,
 		},
 		{
-			OperatorID: "PICTEKNIK02",
-			Name:       "Contoh Adjuster Madya",
-			Email:      "contoh.adjuster@example.invalid",
+			OperatorID:   "PICTEKNIK02",
+			Name:         "Contoh Adjuster Madya",
+			Email:        "contoh.adjuster@example.invalid",
 			BusinessLine: "NONMBU",
-			Group:       "TEKNIK JAKARTA",
-			Supervisor:     "PICTEKNIK01",
-			Quota:      15,
-			ExternalQuota:  3,
-			Active:      true,
+			Group:        "TEKNIK JAKARTA",
+			Supervisor:   "PICTEKNIK01",
+			Quota:        15,
+			Workload:     9,
+			Active:       true,
 		},
 		{
-			OperatorID: "PICTEKNIK03",
-			Name:       "Contoh Adjuster Muda",
-			Email:      "contoh.adjustermuda@example.invalid",
-			BusinessLine: "NONMBU",
-			Group:       "TEKNIK SURABAYA",
-			Supervisor:     "PICTEKNIK01",
-			Quota:      10,
-			ExternalQuota:  0,
-			Active:      true,
+			OperatorID:    "PICTEKNIK03",
+			Name:          "Contoh Petugas Teknik",
+			Email:         "contoh.petugas@example.invalid",
+			BusinessLine:  "NONMBU",
+			Group:         "TEKNIK SURABAYA",
+			Supervisor:    "PICTEKNIK01",
+			Quota:         10,
+			ExternalQuota: 3,
+			Workload:      10,
+			Active:        true,
 		},
 		{
-			// Nonaktif: tidak menerima penugasan baru, tetapi tetap terbaca karena
-			// klaim lama merujuknya. Inilah yang menggantikan penghapusan.
-			OperatorID: "PICTEKNIK04",
-			Name:       "Contoh Petugas Mutasi",
-			Email:      "contoh.mutasi@example.invalid",
+			OperatorID:   "PICTEKNIK04",
+			Name:         "Contoh Petugas Nonaktif",
+			Email:        "contoh.nonaktif@example.invalid",
 			BusinessLine: "NONMBU",
-			Group:       "TEKNIK SURABAYA",
-			Supervisor:     "PICTEKNIK01",
-			Quota:      0,
-			ExternalQuota:  0,
-			Active:      false,
+			Group:        "TEKNIK SURABAYA",
+			Supervisor:   "PICTEKNIK01",
+			Quota:        0,
+			Workload:     0,
+			Active:       false,
 		},
-	}
-}
-
-// DirektoriContoh adalah direktori operator untuk lingkungan tanpa basis data.
-//
-// Ia memuat keempat contoh di atas DITAMBAH satu ID yang belum terdaftar di master —
-// supaya alur "tambah petugas baru yang sudah ada di direktori" dapat dicoba, dan alur
-// "ID yang tidak dikenal ditolak" dapat dicoba pula dengan ID mana pun di luar daftar.
-func SampleDirectory() map[string]string {
-	return map[string]string{
-		"PICTEKNIK01": "Contoh Kepala Teknik",
-		"PICTEKNIK02": "Contoh Adjuster Madya",
-		"PICTEKNIK03": "Contoh Adjuster Muda",
-		"PICTEKNIK04": "Contoh Petugas Mutasi",
-		"PICTEKNIK05": "Contoh Petugas Baru",
 	}
 }

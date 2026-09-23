@@ -1,3 +1,36 @@
+-- ============================================================================
+-- DICABUT 2026-09-23 — JANGAN DIJALANKAN.
+-- ============================================================================
+--
+-- Berkas ini menyasar POOLDATA.M_CAUSE_OF_LOSS, dan itu TABEL YANG SALAH untuk layar
+-- Master COL Simas Online.
+--
+-- Empat bukti yang menetapkannya:
+--
+--   1. Jalur Simpan layar Simas Online (`Activity/Online_nsertCauseOfLoss_act-Act.xml`)
+--      memanggil `UpdateMCauseOfLoss_online`, BUKAN `UpdateMCauseOfLoss`.
+--   2. `Database/PEGA_M_CAUSE_OF_LOSS_ONLINE` menulis POOLDATA.M_CAUSE_OF_LOSS_ONLINE
+--      dan memakai urutan M_CAUSE_SEQ_ONLINE.
+--   3. Dari 55 induk yang dirujuk POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL, **55 cocok**
+--      dengan M_CAUSE_OF_LOSS_ONLINE dan hanya **1** cocok dengan M_CAUSE_OF_LOSS.
+--   4. Keduanya sudah ada dan sudah berisi data: 55 induk dan 282 baris pemetaan.
+--
+-- Karena kedua tabel yang benar SUDAH ADA beserta kolomnya, tidak ada satu pun DDL yang
+-- dibutuhkan modul ini. Kolom MST_COL_ID yang hendak ditambahkan berkas ini pun sudah
+-- dicabut seluruhnya atas keputusan Work Owner 2026-09-23.
+--
+-- Berkas ini DISIMPAN, bukan dihapus, karena ia sempat diserahkan ke DBA — dan menghapus
+-- berkas yang sudah beredar hanya membuat orang menjalankan salinan lamanya tanpa
+-- peringatan ini.
+--
+-- Satu-satunya perubahan skema yang masih diminta modul ini ada di
+-- `0007_col_simas_online_sts_aktif.up.sql`.
+--
+-- ============================================================================
+-- Isi asli berkas ini dibiarkan apa adanya di bawah, sebagai rekaman.
+-- ============================================================================
+
+
 -- 0004 turun — mengembalikan Master COL Simas Online ke penyimpanan JSON.
 --
 -- ============================================================================

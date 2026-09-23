@@ -300,13 +300,12 @@ func TestCreateAnswers201WithTheStoredRow(t *testing.T) {
 	s := newTestServer(t)
 
 	response, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"1001","bisnis":["FIRE / PROPERTY"]}`)
+		`{"nama":"BANJIR","bisnis":["FIRE / PROPERTY"]}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	row := content["cause_of_loss"].(map[string]any)
 	require.NotEmpty(t, row["id"])
 	require.Equal(t, "BANJIR", row["nama"])
-	require.Equal(t, "1001", row["id_master_kerugian"])
 	require.Len(t, row["bisnis"], 1)
 }
 
@@ -317,7 +316,7 @@ func TestCreateResolvesBusinessNameToItsID(t *testing.T) {
 	s := newTestServer(t)
 
 	_, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"","bisnis":["FIRE / PROPERTY"]}`)
+		`{"nama":"BANJIR","bisnis":["FIRE / PROPERTY"]}`)
 
 	row := content["cause_of_loss"].(map[string]any)
 	business := row["bisnis"].([]any)[0].(map[string]any)
@@ -332,7 +331,7 @@ func TestBusinessNameOutsideTheMasterIsAcceptedWithoutAnID(t *testing.T) {
 	s := newTestServer(t)
 
 	response, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"","bisnis":["BENGKEL BARU"]}`)
+		`{"nama":"BANJIR","bisnis":["BENGKEL BARU"]}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	row := content["cause_of_loss"].(map[string]any)
@@ -345,8 +344,13 @@ func TestBusinessNameOutsideTheMasterIsAcceptedWithoutAnID(t *testing.T) {
 func TestValidationFailureIs422(t *testing.T) {
 	s := newTestServer(t)
 
+	// Nama yang melebihi batas panjang. Sejak "ID Master Kerugian" dicabut
+	// (`Work Owner 2026-09-23`), panjang isian adalah satu-satunya aturan yang tersisa —
+	// layar ini memang tidak memvalidasi apa pun selain itu.
+	tooLong := strings.Repeat("A", mastercolsimasonline.MaxDescriptionLength+1)
+
 	response, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"9999","bisnis":[]}`)
+		`{"nama":"`+tooLong+`","bisnis":[]}`)
 	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
 	require.Equal(t, mastercolhttp.CodeValidationFailed, content["kode"])
 }
@@ -357,7 +361,7 @@ func TestEmptyNameIsAcceptedJustLikePega(t *testing.T) {
 	s := newTestServer(t)
 
 	response, _ := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"","id_master_kerugian":"","bisnis":[]}`)
+		`{"nama":"","bisnis":[]}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 }
 
@@ -366,45 +370,18 @@ func TestDuplicateBusinessIsAcceptedJustLikePega(t *testing.T) {
 	s := newTestServer(t)
 
 	response, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"","bisnis":["ANEKA","ANEKA"]}`)
+		`{"nama":"BANJIR","bisnis":["ANEKA","ANEKA"]}`)
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	row := content["cause_of_loss"].(map[string]any)
 	require.Len(t, row["bisnis"], 2, "kedua baris kembar tersimpan apa adanya")
 }
 
-// ID Master Kerugian menunjuk cause of loss LAIN. Kode yang tidak ada ditolak sebagai
-// pelanggaran isian, bukan galat 500.
-func TestUnknownMasterCodeIsRejectedWithAFieldViolation(t *testing.T) {
-	s := newTestServer(t)
-
-	response, content := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"9999","bisnis":[]}`)
-	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-
-	detail := content["detail"].([]any)
-	first := detail[0].(map[string]any)
-	require.Equal(t, mastercolsimasonline.FieldMasterCode, first["kolom"])
-}
-
-// Rujukan-diri DITERIMA — dropdown Pega menawarkan baris itu sendiri, dan tidak ada
-// apa pun yang menelusuri jenjangnya.
-func TestSelfReferenceIsAcceptedJustLikePega(t *testing.T) {
-	s := newTestServer(t)
-
-	response, content := s.call(t, http.MethodPut, routeList+"/1001", "ASM",
-		`{"nama":"KEBAKARAN","id_master_kerugian":"1001","bisnis":[]}`)
-	require.Equal(t, http.StatusOK, response.StatusCode)
-
-	row := content["cause_of_loss"].(map[string]any)
-	require.Equal(t, "1001", row["id_master_kerugian"])
-}
-
 func TestUpdateChangesTheRowButNotItsID(t *testing.T) {
 	s := newTestServer(t)
 
 	response, content := s.call(t, http.MethodPut, routeList+"/1001", "ASM",
-		`{"nama":"KEBAKARAN DAN PETIR","id_master_kerugian":"","bisnis":["ANEKA"]}`)
+		`{"nama":"KEBAKARAN DAN PETIR","bisnis":["ANEKA"]}`)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 
 	row := content["cause_of_loss"].(map[string]any)
@@ -417,7 +394,7 @@ func TestUpdateMissingRowIs404(t *testing.T) {
 	s := newTestServer(t)
 
 	response, _ := s.call(t, http.MethodPut, routeList+"/9999", "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"","bisnis":[]}`)
+		`{"nama":"BANJIR","bisnis":[]}`)
 	require.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
@@ -447,7 +424,7 @@ func TestTrailingJSONDocumentIsRejected(t *testing.T) {
 	s := newTestServer(t)
 
 	response, _ := s.call(t, http.MethodPost, routeList, "ASM",
-		`{"nama":"BANJIR","id_master_kerugian":"","bisnis":[]}{"nama":"LAIN"}`)
+		`{"nama":"BANJIR","bisnis":[]}{"nama":"LAIN"}`)
 	require.Equal(t, http.StatusBadRequest, response.StatusCode)
 }
 

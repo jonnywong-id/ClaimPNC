@@ -30,12 +30,23 @@ type ListResponse struct {
 	// Total dikirim eksplisit, bukan dibiarkan dihitung klien dari panjang senarai.
 	// Salah satu acceptance criteria TKT-F4-005 berbunyi "memuat TEPAT 33 kode,
 	// dihitung dan dilaporkan angkanya" — angka itu harus datang dari server.
+	//
+	// Sejak modul ini menjadi per portal (2026-09-19), angkanya adalah isi master
+	// ENTITAS YANG MENJAWAB — bukan angka yang sama untuk seluruh aplikasi.
 	Total int `json:"total"`
+
+	// Portal menyebut entitas yang BENAR-BENAR menjawab permintaan ini.
+	//
+	// Ia dikirim pada setiap jawaban, bukan diandaikan sama dengan yang diminta: satu
+	// aplikasi melayani empat badan hukum dengan basis data terpisah (`ADR-0030`), dan
+	// "data siapa ini" tidak boleh hanya ditebak dari keadaan layar (`R-20`).
+	Portal string `json:"portal"`
 }
 
 // SingleResponse adalah jawaban untuk satu status klaim: ambil, tambah, dan ubah.
 type SingleResponse struct {
 	ClaimStatus ClaimStatusDTO `json:"status_klaim"`
+	Portal      string         `json:"portal"`
 }
 
 // SaveRequest adalah isian form tambah dan ubah.

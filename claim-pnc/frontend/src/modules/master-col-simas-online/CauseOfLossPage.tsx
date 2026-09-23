@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type CauseOfLoss } from '@/api/types'
+import { ErrorCode, type SimasOnlineCauseOfLoss } from '@/api/types'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { DataTable, type Column } from '@/components/DataTable'
 import { Button } from '@/components/Button'
@@ -21,7 +21,7 @@ const CLOSED = 'closed'
 /** Form terbuka dalam mode tambah. */
 const CREATE = 'create'
 
-type FormState = typeof CLOSED | typeof CREATE | CauseOfLoss
+type FormState = typeof CLOSED | typeof CREATE | SimasOnlineCauseOfLoss
 
 type MessageContent = { title: string; description: string; tone: ErrorTone }
 
@@ -105,20 +105,13 @@ export function CauseOfLossPage() {
   const isSaving = create.isPending || update.isPending
   const saveError = openedRow ? update.error : create.error
 
-  // Pilihan induk diambil dari daftar yang sudah dimuat — tidak ada permintaan tambahan.
-  //
-  // Baris yang sedang disunting IKUT ditawarkan, dan itu bukan kelalaian: dropdown Pega
-  // bersumber `BrowseVMCauseOfLoss_RD` TANPA penyaring, sehingga ia pun menawarkan baris
-  // itu sendiri. Work Owner menetapkan 2026-09-21 layar disamakan dengan Pega.
-  const parentOptions = list.data?.cause_of_loss ?? []
-
   function openCreate() {
     create.reset()
     update.reset()
     setForm(CREATE)
   }
 
-  function openEdit(row: CauseOfLoss) {
+  function openEdit(row: SimasOnlineCauseOfLoss) {
     create.reset()
     update.reset()
     setForm(row)
@@ -133,7 +126,6 @@ export function CauseOfLossPage() {
   function save(values: CauseOfLossFields) {
     const input = {
       nama: values.nama,
-      id_master_kerugian: values.id_master_kerugian,
       // NAMA yang dikirim, bukan ID: itulah yang diketik dan dilihat petugas, dan nama
       // yang diketik bebas memang tidak punya ID. Server yang menyelesaikannya menjadi
       // ID dengan mencocokkan ke master.
@@ -156,24 +148,14 @@ export function CauseOfLossPage() {
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup.
-  const columns: Column<CauseOfLoss>[] = [
+  const columns: Column<SimasOnlineCauseOfLoss>[] = [
     { key: 'id', title: 'ID', width: 'w-28', value: (row) => row.id },
     {
       key: 'nama',
       title: 'Description',
-      // Kode induknya ikut ke `value` supaya pencarian menemukan seluruh anak dari satu
-      // induk dengan mengetik kode induknya. Ia ditampilkan kecil di samping nama —
-      // penambahan terhadap grid Pega yang hanya menampilkan ID dan Description, dan
-      // disengaja: tanpa itu, jenjang induk-anak tidak terlihat sama sekali di daftar.
-      value: (row) => `${row.nama} ${row.id_master_kerugian}`,
-      render: (row) => (
-        <span>
-          {row.nama}
-          {row.id_master_kerugian !== '' && (
-            <span className="ml-2 text-xs text-slate-500">induk {row.id_master_kerugian}</span>
-          )}
-        </span>
-      ),
+      // Grid Pega hanya menampilkan ID dan Description, dan sejak MST_COL_ID dicabut
+      // (Work Owner 2026-09-23) tidak ada lagi yang perlu ditampilkan di sampingnya.
+      value: (row) => row.nama,
     },
     {
       key: 'aksi',
@@ -237,9 +219,7 @@ export function CauseOfLossPage() {
           )}
           <CauseOfLossForm
             edited={edited}
-            businesses={businesses.data?.bisnis ?? []}
-            parentOptions={parentOptions}
-            isLoadingBusinessMapping={openedRow !== null && detail.isPending}
+            businesses={businesses.data?.bisnis ?? []}            isLoadingBusinessMapping={openedRow !== null && detail.isPending}
             isSaving={isSaving}
             error={saveError}
             onSave={save}

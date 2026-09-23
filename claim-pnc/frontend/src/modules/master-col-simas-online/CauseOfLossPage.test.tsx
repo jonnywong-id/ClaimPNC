@@ -21,8 +21,8 @@ const BUSINESSES = {
 const LIST = {
   portal: 'ASM',
   cause_of_loss: [
-    { id: '1001', nama: 'KEBAKARAN', id_master_kerugian: '', bisnis: [] },
-    { id: '1002', nama: 'KEBAKARAN AKIBAT PETIR', id_master_kerugian: '1001', bisnis: [] },
+    { id: '1001', nama: 'KEBAKARAN', bisnis: [] },
+    { id: '1002', nama: 'KEBAKARAN AKIBAT PETIR', bisnis: [] },
   ],
 }
 
@@ -38,7 +38,6 @@ const DETAIL = {
   cause_of_loss: {
     id: '1001',
     nama: 'KEBAKARAN',
-    id_master_kerugian: '',
     bisnis: [
       { id: '006', nama: 'FIRE / PROPERTY' },
       { id: '', nama: 'BENGKEL BARU' },
@@ -156,13 +155,14 @@ describe('daftar master COL Simas Online', () => {
     expect(within(table).getByRole('columnheader', { name: 'Description' })).toBeInTheDocument()
   })
 
-  it('menampilkan baris beserta kode induknya', async () => {
+  // Grid menampilkan ID dan Description saja — persis seperti Pega. Kolom "induk" yang
+  // sempat ada di sini ikut hilang bersama MST_COL_ID (Work Owner 2026-09-23).
+  it('menampilkan ID dan namanya', async () => {
     installFetch(defaultReply())
     show()
 
     expect(await screen.findByText('1002')).toBeInTheDocument()
     expect(screen.getByText('KEBAKARAN AKIBAT PETIR')).toBeInTheDocument()
-    expect(screen.getByText('induk 1001')).toBeInTheDocument()
   })
 
   // Entitas yang menjawab disebut terang-terangan: satu aplikasi melayani empat badan
@@ -204,12 +204,11 @@ describe('susunan form mengikuti layar Pega', () => {
     const form = await openEditForm()
 
     const labels = within(form)
-      .getAllByText(/^(ID Kerugian|ID Master Kerugian|Nama Cause of loss|Bisnis)$/)
+      .getAllByText(/^(ID Kerugian|Nama Cause of loss|Bisnis)$/)
       .map((element) => element.textContent)
 
     expect(labels).toEqual([
       'ID Kerugian',
-      'ID Master Kerugian',
       'Nama Cause of loss',
       'Bisnis',
     ])
@@ -252,53 +251,6 @@ describe('susunan form mengikuti layar Pega', () => {
   })
 })
 
-describe('ID Master Kerugian menunjuk cause of loss lain', () => {
-  it('menawarkan cause of loss lain sebagai pilihan induk', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Memperbaharui Data Simas Online' })
-
-    const parent = within(form).getByLabelText('ID Master Kerugian')
-    expect(within(parent).getByRole('option', { name: '1001 — KEBAKARAN' })).toBeInTheDocument()
-  })
-
-  // Baris yang sedang disunting IKUT ditawarkan — dropdown Pega bersumber
-  // `BrowseVMCauseOfLoss_RD` tanpa penyaring, sehingga ia pun menawarkan baris itu
-  // sendiri. Kesetaraan dengan Pega, ditetapkan Work Owner 2026-09-21.
-  it('tetap menawarkan baris yang sedang disunting, sama seperti Pega', async () => {
-    installFetch(defaultReply())
-    show()
-    const form = await openEditForm()
-
-    const parent = within(form).getByLabelText('ID Master Kerugian')
-    expect(within(parent).getByRole('option', { name: '1001 — KEBAKARAN' })).toBeInTheDocument()
-    expect(
-      within(parent).getByRole('option', { name: '1002 — KEBAKARAN AKIBAT PETIR' }),
-    ).toBeInTheDocument()
-  })
-
-  it('mengirim kode induk yang dipilih', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Memperbaharui Data Simas Online' })
-
-    await userEvent.type(within(form).getByLabelText('Nama Cause of loss'), 'BANJIR')
-    await userEvent.selectOptions(within(form).getByLabelText('ID Master Kerugian'), '1001')
-    await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() => {
-      const posted = calls.find((c) => c.method === 'POST')
-      expect((posted?.body as { id_master_kerugian: string }).id_master_kerugian).toBe('1001')
-    })
-  })
-})
-
 describe('isian Bisnis boleh diketik bebas', () => {
   // PERILAKU PEGA YANG DIPERTAHANKAN (`pyAllowFreeFormInput=true`): nama bisnis di luar
   // daftar tetap dapat diketik dan disimpan.
@@ -319,7 +271,6 @@ describe('isian Bisnis boleh diketik bebas', () => {
       const posted = calls.find((c) => c.method === 'POST')
       expect(posted?.body).toEqual({
         nama: 'BANJIR',
-        id_master_kerugian: '',
         bisnis: ['BENGKEL BARU'],
       })
     })
@@ -445,7 +396,7 @@ describe('menambah dan menyunting', () => {
         body: {
           kode: 'validasi_gagal',
           pesan: 'Ada isian yang belum benar.',
-          detail: [{ kolom: 'id_master_kerugian', pesan: 'Cause of loss 9999 tidak ada.' }],
+          detail: [{ kolom: 'nama', pesan: 'Nama Cause of loss paling panjang 100 karakter.' }],
         },
         status: 422,
       })),
@@ -458,7 +409,9 @@ describe('menambah dan menyunting', () => {
     await userEvent.type(within(form).getByLabelText('Nama Cause of loss'), 'BANJIR')
     await userEvent.click(within(form).getByRole('button', { name: 'Simpan' }))
 
-    expect(await within(form).findByText('Cause of loss 9999 tidak ada.')).toBeInTheDocument()
+    expect(
+      await within(form).findByText('Nama Cause of loss paling panjang 100 karakter.'),
+    ).toBeInTheDocument()
   })
 
   // Inti modul ini: daftar TIDAK membawa pemetaan bisnis, sehingga baris yang dibuka

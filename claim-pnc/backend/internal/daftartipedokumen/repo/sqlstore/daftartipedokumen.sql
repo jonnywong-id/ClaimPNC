@@ -2,11 +2,26 @@
 --
 -- # Tabel mana yang dibaca, dan tabel mana yang ditulis
 --
--- Keduanya LST_DOC_TYPE — tabel dasarnya, bukan view POOLDATA.V_LST_DOC_TYPE. View itu
--- tetap ada dan tetap dibaca sekurang-kurangnya sepuluh rule Pega selama masa paralel;
--- aplikasi ini tidak menyentuhnya. Membaca dari tabel dasar membuat apa yang kita tulis
--- dan apa yang kita baca kembali pasti sama, tanpa bergantung pada definisi view yang
--- dimiliki pihak lain.
+-- MEMBACA lewat view POOLDATA.V_LST_DOC_TYPE — sama seperti Pega. MENULIS ke tabel
+-- dasarnya, POOLDATA.LST_DOC_TYPE.
+--
+-- Keduanya semula membaca tabel dasar, karena migrasi `0005_daftar_tipe_dokumen`
+-- direncanakan memindahkan isi JSON_DATA menjadi kolom bernama. Migrasi itu belum
+-- dijalankan, dan tabel dasarnya sampai sekarang hanya punya ID, OLD_ID, dan JSON_DATA —
+-- sehingga setiap pembacaan gagal dengan `ORA-00904: "TGL_EDIT": invalid identifier` dan
+-- layarnya tidak dapat dibuka sama sekali.
+--
+-- Keputusan Work Owner 2026-09-22: ikuti Pega dan baca langsung dari basis data, bukan
+-- lewat JSON. View inilah yang Pega baca, dan ia sudah memaparkan TYPE_DOCUMENT,
+-- STS_PROSES, USER_EDIT, dan TGL_EDIT sebagai kolom.
+--
+-- # Yang BELUM dapat dikerjakan, dan kenapa
+--
+-- MENYIMPAN masih menuntut migrasi 0005. Kolom TYPE_DOCUMENT, STS_PROSES, USER_EDIT, dan
+-- TGL_EDIT tidak ada pada tabel dasarnya, dan view berisi ekspresi JSON tidak dapat
+-- ditulisi. Hanya ada dua jalan: menulis JSON_DATA — yang justru dilarang keputusan di
+-- atas — atau menjalankan migrasinya. Sampai itu terjadi, layarnya DAPAT DIBUKA dan
+-- menampilkan isi, tetapi tombol Tambah dan Simpan akan menolak.
 --
 -- # Kenapa tidak lagi lewat PEGA_LST_DOC_TYPE
 --
@@ -57,14 +72,14 @@
 SELECT ID,
        TYPE_DOCUMENT,
        STS_PROSES
-  FROM POOLDATA.LST_DOC_TYPE
+  FROM POOLDATA.V_LST_DOC_TYPE
  ORDER BY ID
 
 -- name: document_type_get
 SELECT ID,
        TYPE_DOCUMENT,
        STS_PROSES
-  FROM POOLDATA.LST_DOC_TYPE
+  FROM POOLDATA.V_LST_DOC_TYPE
  WHERE ID = :1
 
 -- name: document_type_site
@@ -138,5 +153,5 @@ SELECT ID,
        STS_PROSES,
        USER_EDIT,
        TGL_EDIT
-  FROM POOLDATA.LST_DOC_TYPE
+  FROM POOLDATA.V_LST_DOC_TYPE
  WHERE 1 = 0

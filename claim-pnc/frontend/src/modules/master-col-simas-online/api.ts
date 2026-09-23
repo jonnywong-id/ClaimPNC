@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { callAPI } from '@/api/client'
 import type {
   BusinessListResponse,
-  CauseOfLossInput,
-  CauseOfLossListResponse,
-  CauseOfLossResponse,
+  SimasOnlineCauseOfLossInput,
+  SimasOnlineCauseOfLossListResponse,
+  SimasOnlineCauseOfLossResponse,
 } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
@@ -50,7 +50,7 @@ export function useCauseOfLossList() {
 
   return useQuery({
     queryKey: listKey(portal, token),
-    queryFn: () => callAPI<CauseOfLossListResponse>(ROUTE, { token, portal }),
+    queryFn: () => callAPI<SimasOnlineCauseOfLossListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
   })
 }
@@ -71,7 +71,7 @@ export function useCauseOfLoss(id: string | null) {
   return useQuery({
     queryKey: detailKey(id ?? '', portal, token),
     queryFn: () =>
-      callAPI<CauseOfLossResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, { token, portal }),
+      callAPI<SimasOnlineCauseOfLossResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, { token, portal }),
     enabled: token !== null && portal !== null && id !== null,
   })
 }
@@ -104,8 +104,8 @@ export function useCreateCauseOfLoss() {
   const client = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: CauseOfLossInput) =>
-      callAPI<CauseOfLossResponse>(ROUTE, {
+    mutationFn: (input: SimasOnlineCauseOfLossInput) =>
+      callAPI<SimasOnlineCauseOfLossResponse>(ROUTE, {
         metode: 'POST',
         body: input,
         token,
@@ -128,8 +128,8 @@ export function useUpdateCauseOfLoss() {
   const client = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: CauseOfLossInput }) =>
-      callAPI<CauseOfLossResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
+    mutationFn: ({ id, input }: { id: string; input: SimasOnlineCauseOfLossInput }) =>
+      callAPI<SimasOnlineCauseOfLossResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
         metode: 'PUT',
         body: input,
         token,

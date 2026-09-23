@@ -123,6 +123,62 @@ func (r *Repo2) InsertNew(ctx context.Context, input masterstatusprogres.Input2)
 // CheckTable memastikan tabelnya ada dan dapat dibaca akun aplikasi.
 //
 // Ia tidak mengambil satu baris pun, sehingga aman dijalankan terhadap produksi.
+// Update menyimpan perubahan nama dan induk pada baris yang sudah ada.
+//
+// # Kenapa satu transaksi, bukan satu pernyataan
+//
+// Karena induknya boleh berpindah, dan STS_PROGRESS1 adalah SALINAN nama induk. Nama itu
+// harus dibaca dari tabel induk pada saat yang sama dengan penulisannya — bila dibaca di
+// luar transaksi, induknya dapat diganti nama di antara keduanya dan salinannya lahir sudah
+// usang.
+//
+// Alurnya karena itu persis seperti InsertNew: baca induk di dalam transaksi, lalu tulis.
+//
+// # Kenapa jumlah baris terpengaruh diperiksa
+//
+// UPDATE yang mengenai nol baris berarti ID-nya tidak ada. Membiarkannya lewat akan
+// menjawab "berhasil" untuk penyimpanan yang tidak menyimpan apa pun.
+func (r *Repo2) Update(ctx context.Context, id string, input masterstatusprogres.Input2) (masterstatusprogres.ProgressStatus2, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return masterstatusprogres.ProgressStatus2{}, fmt.Errorf("masterstatusprogres2/sqlstore: memulai transaksi ubah: %w", err)
+	}
+	// Rollback setelah Commit tidak berbahaya — ia menjadi operasi kosong.
+	defer func() { _ = tx.Rollback() }()
+
+	parent, err := getParent(ctx, tx, input.ParentID)
+	if err != nil {
+		return masterstatusprogres.ProgressStatus2{}, err
+	}
+
+	updated := masterstatusprogres.ProgressStatus2{
+		ID:       id,
+		Name:     input.Name,
+		ParentID: parent.ID,
+		// Disalin dari baris induk yang baru saja dibaca, bukan dari layar.
+		ParentName: parent.Name,
+		// TIPE sengaja tidak ikut: ia tidak pernah ditulis aplikasi ini, dan kueri
+		// update pun tidak menyebutnya. Nilai yang tersimpan tetap utuh.
+	}
+
+	result, err := tx.ExecContext(ctx, getQuery("progress_status2_update"),
+		updated.Name, updated.ParentID, updated.ParentName, id,
+	)
+	if err != nil {
+		return masterstatusprogres.ProgressStatus2{}, fmt.Errorf("masterstatusprogres2/sqlstore: memperbarui %q: %w", id, err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err == nil && affected == 0 {
+		return masterstatusprogres.ProgressStatus2{}, masterstatusprogres.ErrNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return masterstatusprogres.ProgressStatus2{}, fmt.Errorf("masterstatusprogres2/sqlstore: menutup transaksi ubah: %w", err)
+	}
+	return updated, nil
+}
+
 func (r *Repo2) CheckTable(ctx context.Context) error {
 	rows, err := r.db.QueryContext(ctx, getQuery("progress_status2_check_table"))
 	if err != nil {

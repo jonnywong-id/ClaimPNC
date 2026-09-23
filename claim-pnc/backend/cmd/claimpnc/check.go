@@ -14,14 +14,41 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/masterautoclaim"
+	"claim-pnc/internal/masterbengkel"
+	"claim-pnc/internal/masterdominanfactor"
+	"claim-pnc/internal/masterpanel"
+	"claim-pnc/internal/masterpenyebabkerugian"
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/mastersupplier"
+	"claim-pnc/internal/mastersurveyors"
+	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
+	daftartipedokumensql "claim-pnc/internal/daftartipedokumen/repo/sqlstore"
+	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
+	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
+	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
+	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
+	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
+	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
+	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
+	masterpicteknikdirectory "claim-pnc/internal/masterpicteknik/directory"
+	masterpictekniksql "claim-pnc/internal/masterpicteknik/repo/sqlstore"
+	masterrecoverysql "claim-pnc/internal/masterrecovery/repo/sqlstore"
+	masterrecoveryva "claim-pnc/internal/masterrecovery/virtualaccount"
+	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
+	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
+	mastersurveyorssql "claim-pnc/internal/mastersurveyors/repo/sqlstore"
+	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
+	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 )
 
@@ -73,8 +100,16 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAppTables(ctx, legacy, print)
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
-	checkCauseOfLoss(ctx, mastercolsql.NewRepo(primary), mastercolsql.NewBusinessRepo(primary), print)
+	checkSimasOnlineCauseOfLoss(ctx, mastercolsql.NewRepo(primary), mastercolsql.NewBusinessRepo(primary), print)
 	checkTravelDocumentDetail(ctx, primary, print)
+	checkPicTeknik(ctx, masterpictekniksql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
+	checkRecovery(ctx, masterrecoverysql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
+	checkDominantFactor(ctx, masterdominanfactorsql.NewRepo(primary), print)
+	checkCauseOfLoss(ctx, masterpenyebabkerugiansql.NewRepo(primary), print)
+	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
+	checkSurveyors(ctx, mastersurveyorssql.NewRepo(primary), print)
+	checkDocumentType(ctx, daftartipedokumensql.NewRepo(primary), print)
+	checkAssembledModules(ctx, primary, print)
 
 	print("")
 	if login == "" {
@@ -180,16 +215,20 @@ func countEmptyLabels(list []masterstatus.ClaimStatus) int {
 	return empty
 }
 
-// checkCauseOfLoss memeriksa kesiapan Master COL Simas Online.
+// checkSimasOnlineCauseOfLoss memeriksa kesiapan Master COL Simas Online.
+//
+// Namanya dibedakan dari checkCauseOfLoss di bawah dengan sengaja: keduanya memang
+// "penyebab kerugian", tetapi modul dan tabelnya berbeda.
 //
 // Ketiganya diperiksa TERPISAH — tabel COL, tabel pemetaan bisnis, dan master bisnis —
 // karena ketiganya gagal karena sebab yang berbeda, dan menyatukan laporannya membuat
 // pembaca menebak mana yang sebenarnya kurang:
 //
-//	tabel COL dan pemetaannya  migrasi 0004 belum dijalankan
-//	POOLDATA.BUSINESS          hak baca belum diberikan; tabel itu milik GISFW dan
-//	                           sampai modul ini aplikasi tidak pernah menyentuhnya
-func checkCauseOfLoss(
+//	M_CAUSE_OF_LOSS_ONLINE          hak baca; tabelnya sendiri sudah ada
+//	M_CAUSE_OF_LOSS_ONLINE_DETAIL   hak baca; tabelnya sendiri sudah ada
+//	POOLDATA.BUSINESS               hak baca belum diberikan; tabel itu milik GISFW dan
+//	                                sampai modul ini aplikasi tidak pernah menyentuhnya
+func checkSimasOnlineCauseOfLoss(
 	ctx context.Context,
 	repo *mastercolsql.Repo,
 	business *mastercolsql.BusinessRepo,
@@ -197,16 +236,16 @@ func checkCauseOfLoss(
 ) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Master COL Simas Online belum siap: %v", err)
-		print("            Kolom COL_DESC dan MST_COL_ID serta tabel")
-		print("            M_CAUSE_OF_LOSS_BUSINESS dibuat migrasi 0004. Selama belum")
-		print("            dijalankan, layarnya tidak dapat dipakai terhadap Oracle —")
-		print("            tetapi seluruh bagian lain tetap jalan.")
+		print("            Yang dibaca modul ini adalah POOLDATA.M_CAUSE_OF_LOSS_ONLINE")
+		print("            dan POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL — keduanya sudah ada")
+		print("            di basis data, jadi kegagalan di sini hampir pasti HAK BACA,")
+		print("            bukan tabel yang belum dibuat.")
 	} else {
 		list, err := repo.List(ctx)
 		if err != nil {
-			print("  [GAGAL] POOLDATA.M_CAUSE_OF_LOSS tidak dapat dibaca isinya: %v", err)
+			print("  [GAGAL] POOLDATA.M_CAUSE_OF_LOSS_ONLINE tidak dapat dibaca isinya: %v", err)
 		} else {
-			print("  [ok]    POOLDATA.M_CAUSE_OF_LOSS dapat dibaca: %d cause of loss", len(list))
+			print("  [ok]    POOLDATA.M_CAUSE_OF_LOSS_ONLINE dapat dibaca: %d cause of loss", len(list))
 		}
 	}
 
@@ -225,6 +264,363 @@ func checkCauseOfLoss(
 		return
 	}
 	print("  [ok]    POOLDATA.BUSINESS dapat dibaca: %d bisnis", len(list))
+}
+
+// checkDominantFactor melaporkan kesiapan POOLDATA.M_DOMINAN_FACTOR.
+//
+// Berbeda dari checkClaimStatus, di sini TIDAK ADA angka yang diharapkan: isi master ini
+// belum pernah diterima dari DBA, sehingga berapa pun jumlah barisnya tidak dapat disebut
+// benar atau salah. Yang dilaporkan karena itu apa adanya — dan angka itulah yang menjadi
+// jawaban permintaan yang sedang menggantung.
+//
+// Modul ini tidak menuntut satu pun migrasi: kedua kolom yang dipakainya, ID dan NAME,
+// sudah ada sejak tabelnya dibuat. Kegagalan di sini karena itu hampir pasti soal HAK
+// BACA, bukan soal migrasi yang belum dijalankan.
+func checkDominantFactor(ctx context.Context, repo *masterdominanfactorsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.M_DOMINAN_FACTOR tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — kolom ID dan NAME sudah ada.")
+		print("            Periksa hak SELECT, INSERT, dan UPDATE akun aplikasi atas tabel itu.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.M_DOMINAN_FACTOR tidak dapat dibaca isinya: %v", err)
+		return
+	}
+
+	print("  [ok]    POOLDATA.M_DOMINAN_FACTOR dapat dibaca: %d faktor dominan", len(list))
+
+	// Nama kosong DITERIMA modul ini (keputusan Work Owner 2026-09-20), sehingga ini
+	// bukan galat. Ia tetap dilaporkan karena akibatnya terlihat di tempat lain: laporan
+	// Outstanding per Cabang merangkai nama faktor dengan LISTAGG, dan nama kosong muncul
+	// di sana sebagai entri kosong di antara koma.
+	if empty := countEmptyFactorNames(list); empty > 0 {
+		print("  [CATATAN] %d faktor bernama kosong — sah, tetapi akan tampil sebagai", empty)
+		print("            entri kosong pada LISTAGG laporan Outstanding per Cabang.")
+	}
+
+	// ID bukan bilangan tidak akan menghentikan aplikasi ini — ia hanya dipindahkan ke
+	// belakang daftar. Tetapi ia MENGHENTIKAN procedure lama, yang memakai to_number(ID)
+	// saat membentuk nomor berikutnya. Selama Pega masih dapat menulis tabel ini,
+	// keadaan itu perlu diketahui.
+	if odd := countNonNumericIDs(list); odd > 0 {
+		print("  [WASPADA] %d baris ber-ID bukan bilangan — PEGA_M_DOMINAN_FACTOR akan", odd)
+		print("            gagal dengan ORA-01722 bila penambahan dilakukan dari Pega.")
+	}
+}
+
+// checkXOL melaporkan kesiapan keempat tabel Master XOL, dan memeriksa TIGA hal yang
+// tidak dapat diketahui dari "tabelnya dapat dibaca" saja.
+//
+// Ketiganya dipilih karena masing-masing pernah benar-benar terjadi, dan seluruhnya
+// terbukti di portal ASM pada 2026-09-20:
+//
+//  1. **Layer dan reas yatim.** Hapus di sistem lama tidak berkaskade, sehingga induk yang
+//     terbuang meninggalkan anaknya. Induk 10003 sudah terhapus tetapi 2 layer dan 3 baris
+//     bisnisnya masih ada. Aplikasi ini berkaskade, jadi ia tidak akan menambah yatim baru
+//     — tetapi yang sudah ada tidak hilang sendiri, dan pembersihannya menempuh DBA.
+//  2. **Layer yang total share-nya bukan 100%.** Sah menurut aturan modul ini — ia
+//     peringatan, bukan penolakan — tetapi angkanya menyatakan berapa banyak struktur
+//     treaty yang pembagian klaimnya belum lengkap.
+//  3. **CONVERT_LIMIT yang tidak sama dengan LIMIT × KURSVALUE.** Itu satu-satunya cara
+//     mengetahui apakah ada baris yang nilainya pernah disimpan dengan kurs yang berbeda.
+//
+// Modul ini TIDAK menuntut satu pun migrasi: keempat tabelnya beserta seluruh kolom yang
+// dipakai sudah ada. Kegagalan di sini karena itu hampir pasti soal HAK BACA.
+func checkXOL(ctx context.Context, repo *masterxolsql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel MST_XOL_* tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — keempat tabelnya sudah ada.")
+		print("            Periksa hak SELECT, INSERT, UPDATE, dan DELETE akun aplikasi atas")
+		print("            MST_XOL_PNC, MST_XOL_BUSINESS, MST_XOL_LAYER, dan MST_XOL_REAS.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.MST_XOL_PNC tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.MST_XOL_PNC dapat dibaca: %d master XOL", len(list))
+
+	// Pilihan Tahun dan pilihan grup bisnis dibaca dari tabel milik SISTEM LAIN
+	// (M_TREATYYEAR, BUSINESS, BUSINESSGROUP, PROPORTIONALARRG). Hak bacanya tidak dijamin
+	// oleh hak baca atas MST_XOL_*, sehingga ia diperiksa tersendiri — tanpa ini, layar
+	// terbuka tetapi kedua dropdown-nya kosong tanpa sebab yang terbaca.
+	year, err := repo.ListYear(ctx)
+	if err != nil {
+		print("  [GAGAL] Pilihan Tahun tidak dapat dibaca dari POOLDATA.M_TREATYYEAR: %v", err)
+	} else {
+		print("  [ok]    Pilihan Tahun terbaca: %d tahun treaty", len(year))
+	}
+
+	business, err := repo.ListBusinessGroup(ctx, masterxol.TypeProperty)
+	if err != nil {
+		print("  [GAGAL] Pilihan grup bisnis tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    Pilihan grup bisnis Type 1 terbaca: %d pilihan", len(business))
+	}
+
+	// Ketiga angka di bawah dihitung dengan MEMBACA tiap induk satu per satu, bukan dengan
+	// kueri agregat. Jumlah induknya delapan di produksi, sehingga biayanya tidak berarti
+	// — dan yang dipakai adalah jalur baca yang sama dengan yang dipakai layar, sehingga
+	// pemeriksaan ini sekaligus menguji jalur itu.
+	var layerCount, incomplete, mismatched int
+	for _, m := range list {
+		full, err := repo.Get(ctx, m.ID)
+		if err != nil {
+			print("  [GAGAL] Master XOL %s tidak dapat dibaca utuh: %v", m.ID, err)
+			return
+		}
+		for _, l := range full.Layer {
+			layerCount++
+			if l.TotalShare() != masterxol.FullShare {
+				incomplete++
+			}
+			if l.ConvertedLimit != masterxol.ConvertedLimit(l.Limit, full.ExchangeRate) {
+				mismatched++
+			}
+		}
+	}
+	print("  [ok]    Layer terbaca utuh beserta reas-nya: %d layer", layerCount)
+
+	// Baris yatim dilaporkan TERPISAH dari hitungan di atas, dan memang harus: layer yatim
+	// tidak pernah ikut terbaca lewat Get, karena induknya tidak ada untuk dibuka. Tanpa
+	// hitungan tersendiri, keberadaannya tidak akan pernah terlihat dari layar mana pun.
+	if orphan, err := repo.OrphanCount(ctx); err != nil {
+		print("  [GAGAL] Jumlah baris yatim tidak dapat dihitung: %v", err)
+	} else if total := orphan["layer"] + orphan["bisnis"] + orphan["reas"]; total > 0 {
+		print("  [WASPADA] %d baris anak yatim: %d layer, %d bisnis, %d reas.",
+			total, orphan["layer"], orphan["bisnis"], orphan["reas"])
+		print("            Induknya sudah terhapus lewat layar lama, yang TIDAK berkaskade.")
+		print("            Aplikasi ini berkaskade sehingga tidak menambah yang baru; yang")
+		print("            sudah ada dibersihkan lewat jalur DBA (`D-63`).")
+	}
+
+	if incomplete > 0 {
+		print("  [CATATAN] %d layer total share-nya belum 100%% — sah menurut aturan modul ini,", incomplete)
+		print("            tetapi pembagian klaim pada layer itu belum lengkap.")
+	}
+	if mismatched > 0 {
+		print("  [WASPADA] %d layer CONVERT_LIMIT-nya tidak sama dengan LIMIT × KURSVALUE.", mismatched)
+		print("            Aplikasi ini menghitung ulang saat membaca, jadi layar tetap benar —")
+		print("            tetapi nilai yang TERSIMPAN berbeda sampai barisnya disimpan ulang.")
+	}
+}
+
+// checkCauseOfLoss melaporkan kesiapan POOLDATA.M_CAUSE_OF_LOSS sesudah migrasi 0005.
+//
+// Ia melaporkan TIGA hal, bukan sekadar "dapat dibaca", dan ketiganya menjawab pertanyaan
+// yang berbeda:
+//
+//  1. Apakah kolom COL_DESC sudah ada — yakni apakah migrasi 0005 sudah dijalankan.
+//  2. Berapa barisnya — angka yang menggantikan daftar contoh yang sekarang dikarang.
+//  3. Berapa baris yang JSON-nya ada tetapi kolomnya kosong — inilah yang mengukur celah
+//     penulis kedua, dan tidak ada modul lain yang punya pertanyaan seperti ini.
+func checkCauseOfLoss(ctx context.Context, repo *masterpenyebabkerugiansql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.M_CAUSE_OF_LOSS belum siap: %v", err)
+		print("            Kolom COL_DESC diisi migrasi 0005 — dan mungkin baru DITAMBAHKAN")
+		print("            olehnya; apakah kolomnya sudah ada belum pernah diperiksa (R-08).")
+		print("            Selama belum dijalankan, layar Master Penyebab Kerugian tidak dapat")
+		print("            dipakai terhadap Oracle — tetapi seluruh bagian lain tetap jalan.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.M_CAUSE_OF_LOSS tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.M_CAUSE_OF_LOSS dapat dibaca: %d penyebab kerugian", len(list))
+
+	// Keterangan kosong DITERIMA modul ini (keputusan Work Owner 2026-09-20), sehingga ini
+	// bukan galat. Ia tetap dilaporkan karena akibatnya terlihat di tempat lain: dasbor
+	// klaim per penyebab kerugian dan laporan XOL per bisnis mengelompokkan hasilnya
+	// dengan GROUP BY COL_DESC, dan keterangan kosong muncul di sana sebagai kelompok
+	// tanpa nama.
+	if empty := countEmptyCauseDescriptions(list); empty > 0 {
+		print("  [CATATAN] %d penyebab kerugian berketerangan kosong — sah, tetapi akan", empty)
+		print("            tampil sebagai kelompok tanpa nama pada laporan yang memakai")
+		print("            GROUP BY COL_DESC.")
+	}
+
+	// Inilah pemeriksaan yang khas modul ini, dan ia mengukur satu hal yang tidak dapat
+	// dilihat dari layar mana pun: berapa baris yang ditulis PENULIS KEDUA — layar Simas
+	// Online (MENU_ID 21) yang masih hidup di Pega dan hanya mengisi JSON_DATA.
+	//
+	// Nol berarti seluruh baris siap. Angka yang naik dari waktu ke waktu berarti layar
+	// itu masih dipakai, dan barisnya tampil TANPA KETERANGAN di 19 rule pembaca tanpa
+	// satu pun pesan galat.
+	pending, err := repo.CountPendingJSON(ctx)
+	if err != nil {
+		// Bukan kegagalan yang menghentikan apa pun: kolom JSON_DATA mungkin sudah
+		// dibuang, atau haknya tidak diberikan. Layarnya tetap berfungsi penuh.
+		print("  [CATATAN] jumlah baris yang belum dipindahkan tidak dapat dihitung: %v", err)
+		return
+	}
+	if pending > 0 {
+		print("  [WASPADA] %d baris punya JSON_DATA tetapi COL_DESC kosong.", pending)
+		print("            Dua sebab yang mungkin, dan keduanya perlu ditindaklanjuti:")
+		print("            (a) langkah 1 migrasi 0005 belum dijalankan, atau kunci JSON-nya salah;")
+		print("            (b) layar Simas Online (MENU_ID 21) masih menulis tabel ini dari Pega.")
+		print("            Baris itu tampil TANPA KETERANGAN di 19 rule pembaca, tanpa galat.")
+		return
+	}
+	print("  [ok]    tidak ada baris yang tertinggal di JSON_DATA")
+}
+
+func countEmptyCauseDescriptions(list []masterpenyebabkerugian.CauseOfLoss) int {
+	empty := 0
+	for _, c := range list {
+		if strings.TrimSpace(c.Description) == "" {
+			empty++
+		}
+	}
+	return empty
+}
+
+func countEmptyFactorNames(list []masterdominanfactor.DominantFactor) int {
+	empty := 0
+	for _, f := range list {
+		if strings.TrimSpace(f.Name) == "" {
+			empty++
+		}
+	}
+	return empty
+}
+
+func countNonNumericIDs(list []masterdominanfactor.DominantFactor) int {
+	odd := 0
+	for _, f := range list {
+		if _, isNumber := masterdominanfactor.NumericID(f.ID); !isNumber {
+			odd++
+		}
+	}
+	return odd
+}
+
+// checkPicTeknik melaporkan kesiapan ketiga bahan modul Master PIC Teknik.
+//
+// Ketiganya diperiksa TERPISAH karena ketiganya dapat gagal sendiri-sendiri, dan tindak
+// lanjutnya berbeda:
+//
+//	tabel  MST_USER_TEKNIK     objek lama yang sudah pasti ada; gagal = soal hak baca
+//	view   V_MST_USER_TEKNIS   nama kolomnya BELUM terverifikasi dari export
+//	baris  GCNM_CONNECT_REST   tanpa ini, menambah PIC tidak mungkin sama sekali
+//
+// Yang kedua dan ketiga adalah dua pertanyaan terbuka ke DBA. Menaruhnya di sini membuat
+// jawabannya terbaca dengan satu perintah, bukan ditemukan pengguna sebagai layar yang
+// gagal dimuat.
+func checkPicTeknik(
+	ctx context.Context,
+	repo *masterpictekniksql.Repo,
+	legacy *sqlstore.Legacy,
+	alias string,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [GAGAL] POOLDATA.MST_USER_TEKNIK tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    POOLDATA.MST_USER_TEKNIK dapat dibaca")
+	}
+
+	if err := repo.CheckView(ctx); err != nil {
+		print("  [BELUM] POOLDATA.V_MST_USER_TEKNIS tidak dapat dibaca: %v", err)
+		print("            Daftar PIC Teknik dibaca dari view ini karena TOTAL_JOB tidak ada")
+		print("            di tabelnya. Nama kolomnya belum terverifikasi dari export —")
+		print("            mintakan definisinya ke DBA:")
+		print("              SELECT text FROM all_views")
+		print("               WHERE owner = 'POOLDATA' AND view_name = 'V_MST_USER_TEKNIS';")
+		print("            Bila kolomnya berbeda, yang disesuaikan hanya kueri")
+		print("            technician_list di repo/sqlstore/technician.sql.")
+	} else {
+		print("  [ok]    POOLDATA.V_MST_USER_TEKNIS dapat dibaca beserta TOTAL_JOB")
+	}
+
+	// Direktori pegawai dipakai SETIAP kali PIC ditambah atau diubah: nama tidak pernah
+	// diketik, selalu dicari. Tanpa barisnya, layar tetap dapat menampilkan daftar tetapi
+	// tidak dapat menyimpan satu pun perubahan.
+	address, err := legacy.ServiceAddress(ctx, alias, masterpicteknikdirectory.DefaultServiceKind)
+	switch {
+	case errors.Is(err, provider.ErrServiceNotRegistered):
+		print("  [BELUM] alamat layanan direktori pegawai belum terdaftar:")
+		print("            APP=%q TYPESERVICE=%q di POOLDATA.GCNM_CONNECT_REST",
+			alias, masterpicteknikdirectory.DefaultServiceKind)
+		print("            Tanpa baris ini, menambah dan mengubah PIC Teknik tidak dapat")
+		print("            dilakukan — nama petugas dicari ke layanan itu, tidak diketik.")
+	case err != nil:
+		print("  [GAGAL] alamat layanan direktori pegawai tidak dapat dibaca: %v", err)
+	default:
+		// Alamatnya tidak dicetak: ia hostname sistem internal, dan aturan penulisan
+		// `D-69` melarang menuliskannya di keluaran yang dapat tersalin ke mana-mana.
+		_ = address
+		print("  [ok]    alamat layanan direktori pegawai terbaca untuk APP=%q", alias)
+	}
+}
+
+// checkRecovery melaporkan kesiapan keempat bahan modul Master Recovery.
+//
+// Keempatnya diperiksa TERPISAH karena keempatnya dapat gagal sendiri-sendiri, dan tindak
+// lanjutnya berbeda jauh:
+//
+//	tabel   MST_RECOVERY_ASM_PENJAMINAN  batch-nya sendiri; gagal = modul tidak dapat dipakai
+//	tabel   MST_VIRTUAL_ACCOUNT_PNC      pilihan principal; gagal = isian tidak punya pilihan
+//	tabel   DATA_ATTACHFILE              bukti bayar; gagal = unggahan tidak dapat disimpan
+//	DB Link MST_DET_SALES@ASMD           identitas polis; gagal TIDAK menghalangi pencatatan
+//	baris   GCNM_CONNECT_REST            penerbit VA; gagal = VA baru tidak dapat diterbitkan
+//
+// Perbedaan derajat itu yang membuat pemeriksaan ini berguna: DB Link yang mati hanya
+// membuat empat kolom identitas kosong — batch tetap tersimpan — sementara tabel batch
+// yang tidak terbaca membuat seluruh layar tidak dapat dipakai. Melaporkan keduanya
+// dengan nada yang sama akan menyesatkan orang yang membacanya.
+func checkRecovery(
+	ctx context.Context,
+	repo *masterrecoverysql.Repo,
+	legacy *sqlstore.Legacy,
+	alias string,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [GAGAL] tabel Master Recovery tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    POOLDATA.MST_RECOVERY_ASM_PENJAMINAN, MST_VIRTUAL_ACCOUNT_PNC,")
+		print("            dan DATA_ATTACHFILE dapat dibaca")
+	}
+
+	// Kegagalan di sini sengaja bertanda [BELUM], bukan [GAGAL]: ia tidak menghalangi
+	// pencatatan batch sama sekali.
+	if err := repo.CheckPolicyLink(ctx); err != nil {
+		print("  [BELUM] DB Link MST_DET_SALES@ASMD tidak dapat ditembak: %v", err)
+		print("            Akibatnya TERBATAS: batch recovery tetap tersimpan, tetapi")
+		print("            keempat kolom identitas polis (LBU_ID, LDC_ID, LAG_AGEN_ID,")
+		print("            LMO_ID) kosong. Penggantinya adalah API Master Sales pada")
+		print("            D-25, yang belum dibangun (R-03).")
+	} else {
+		print("  [ok]    DB Link MST_DET_SALES@ASMD dapat ditembak")
+	}
+
+	// Penerbit VA dipakai setiap kali principal BARU didaftarkan. Tanpa barisnya, layar
+	// tetap dapat mencatat batch untuk principal yang sudah punya VA — hanya penerbitan
+	// yang baru yang tidak mungkin.
+	address, err := legacy.ServiceAddress(ctx, alias, masterrecoveryva.DefaultServiceKind)
+	switch {
+	case errors.Is(err, provider.ErrServiceNotRegistered):
+		print("  [BELUM] alamat layanan penerbit virtual account belum terdaftar:")
+		print("            APP=%q TYPESERVICE=%q di POOLDATA.GCNM_CONNECT_REST",
+			alias, masterrecoveryva.DefaultServiceKind)
+		print("            Tanpa baris ini, VA untuk principal BARU tidak dapat")
+		print("            diterbitkan. Principal yang sudah punya VA tetap dapat dipakai.")
+	case err != nil:
+		print("  [GAGAL] alamat layanan penerbit virtual account tidak dapat dibaca: %v", err)
+	default:
+		// Alamatnya tidak dicetak: ia hostname sistem internal, dan aturan penulisan
+		// `D-69` melarang menuliskannya di keluaran yang dapat tersalin ke mana-mana.
+		_ = address
+		print("  [ok]    alamat layanan penerbit virtual account terbaca untuk APP=%q", alias)
+	}
 }
 
 func checkLoginTable(ctx context.Context, legacy *sqlstore.Legacy, print func(string, ...any)) {
@@ -387,4 +783,133 @@ func checkTravelDocumentDetail(ctx context.Context, primary *sql.DB, print func(
 		return
 	}
 	print("  [ok]    POOLDATA.M_PLANTRAVEL dapat dibaca: %d plan, %d jaminan", len(plans), len(coverages))
+}
+
+// checkSurveyors melaporkan kesiapan POOLDATA.D_SURVEYORS — daftar ORANGNYA.
+//
+// Ia sempat TIDAK ADA di mode periksa ini, dan ketiadaannya berakibat nyata: layarnya
+// gagal memuat di produksi sementara laporan periksa menyatakan semuanya siap. Yang
+// diperiksa sekarang dua langkah, karena keduanya gagal dengan sebab yang berbeda —
+// tabelnya tidak terbaca, atau terbaca tetapi kueri daftarnya yang menolak.
+func checkSurveyors(ctx context.Context, repo *mastersurveyorssql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Master Surveyors belum siap: %v", err)
+		print("            Periksa keberadaan POOLDATA.D_SURVEYORS beserta hak SELECT akun")
+		print("            aplikasi atasnya.")
+		return
+	}
+
+	list, total, err := repo.List(ctx, mastersurveyors.Filter{})
+	if err != nil {
+		print("  [GAGAL] POOLDATA.D_SURVEYORS tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.D_SURVEYORS dapat dibaca: %d surveyor (%d terbaca)", total, len(list))
+}
+
+// checkDocumentType melaporkan kesiapan POOLDATA.LST_DOC_TYPE.
+//
+// Ditambahkan bersama checkSurveyors di atas dan dengan alasan yang sama: modulnya sudah
+// dipakai layar, tetapi kesiapannya tidak pernah ikut diperiksa.
+func checkDocumentType(ctx context.Context, repo *daftartipedokumensql.Repo, print func(string, ...any)) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Daftar Tipe Dokumen belum siap: %v", err)
+		print("            Kolomnya dibuat migrasi 0005_daftar_tipe_dokumen. Selama belum")
+		print("            dijalankan, layarnya tidak dapat dipakai terhadap Oracle.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.LST_DOC_TYPE tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.LST_DOC_TYPE dapat dibaca: %d tipe dokumen", len(list))
+}
+
+// checkAssembledModules melaporkan kesiapan sepuluh modul yang perakitannya dipulihkan di
+// modules.go.
+//
+// # Kenapa satu fungsi, bukan sepuluh
+//
+// Yang diperiksa di sini SATU hal yang sama untuk semuanya: apakah tabelnya terbaca. Tidak
+// ada angka yang berarti khusus per modul seperti "33 status" pada Master Status Klaim,
+// sehingga sepuluh fungsi terpisah hanya akan mengulang bentuk yang sama sepuluh kali.
+//
+// Ia ditambahkan setelah tiga layar ditemukan gagal di produksi sementara laporan periksa
+// menyatakan semuanya siap — celahnya bukan pada modulnya, melainkan pada apa yang
+// diperiksa laporan ini.
+func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	autoClaim := masterautoclaimsql.NewRepo(primary)
+	workshop := masterbengkelsql.NewRepo(primary)
+	panel := masterpanelsql.NewRepo(primary)
+	clause := masterpasalsql.NewRepo(primary)
+	rejection := masterpenolakansql.NewRepo(primary)
+	supplier := mastersuppliersql.NewRepo(primary)
+	claimReport := pelaporanklaimsql.NewRepo(primary)
+
+	// `list` menjalankan kueri DAFTAR yang sesungguhnya, bukan sekadar menyentuh tabelnya.
+	//
+	// Pembedaan itu yang menentukan: `CheckTable` hanya membuktikan tabelnya ada dan
+	// terbaca, sedangkan yang membuat layar gagal biasanya kueri daftarnya — ia menyentuh
+	// lebih banyak kolom, dan sering lebih dari satu tabel. Master Surveyors gagal persis
+	// begitu: tabelnya ada, satu kolomnya tidak.
+	probe := []struct {
+		name  string
+		check func(context.Context) error
+		list  func(context.Context) (int, error)
+	}{
+		{"Inbox Admin", inboxadminsql.NewRepo(primary).CheckTable, nil},
+		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := autoClaim.List(ctx, masterautoclaim.Filter{})
+			return len(row), err
+		}},
+		{"Master Bengkel", workshop.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := workshop.List(ctx, masterbengkel.Filter{})
+			return len(row), err
+		}},
+		{"Master Panel", panel.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := panel.List(ctx, masterpanel.Filter{})
+			return len(row), err
+		}},
+		{"Master Pasal Kerugian", clause.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := clause.List(ctx)
+			return len(row), err
+		}},
+		{"Master Penolakan Klaim", rejection.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := rejection.ListParent(ctx)
+			return len(row), err
+		}},
+		{"Master Sparepart", mastersparepartsql.NewRepo(primary).CheckTable, nil},
+		{"Master Supplier", supplier.CheckTable, func(ctx context.Context) (int, error) {
+			row, err := supplier.List(ctx, mastersupplier.Filter{})
+			return len(row), err
+		}},
+		{"Inbox Laporan Klaim", claimReport.CheckTable, func(ctx context.Context) (int, error) {
+			page, err := claimReport.List(ctx, pelaporanklaim.Filter{})
+			return page.Total, err
+		}},
+	}
+
+	for _, p := range probe {
+		if err := p.check(ctx); err != nil {
+			print("  [BELUM] %s belum siap: %v", p.name, err)
+			continue
+		}
+		if p.list != nil {
+			if n, err := p.list(ctx); err != nil {
+				print("  [GAGAL] %s: tabelnya terbaca, tetapi kueri DAFTARNYA menolak: %v", p.name, err)
+				continue
+			} else {
+				print("  [ok]    %s dapat dibaca: %d baris", p.name, n)
+				continue
+			}
+		}
+		print("  [ok]    %s dapat dibaca", p.name)
+	}
+
+	// View History Claim tidak punya CheckTable — ia membaca beberapa tabel sekaligus
+	// menurut tipe pencarian yang dipilih, sehingga tidak ada satu tabel yang mewakilinya.
+	print("  [CATATAN] View History Claim tidak diperiksa di sini: ia membaca tabel yang")
+	print("            berbeda menurut tipe pencarian, tanpa satu tabel yang mewakilinya.")
 }

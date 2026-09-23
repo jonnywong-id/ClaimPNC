@@ -8,13 +8,16 @@
 // # Kenapa modul ini boleh MENULIS ke tabel milik sistem lama
 //
 // `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem selama masa paralel —
-// bukan bahwa tabel lama tidak boleh ditulis sama sekali. Layar Master COL adalah
-// satu-satunya penulis M_CAUSE_OF_LOSS di sistem lama (`RDB List/UpdateMCauseOfLoss`,
-// pemanggil tunggal PEGA_M_CAUSE_OF_LOSS), sehingga memindahkan layarnya memindahkan
-// kepemilikan tabelnya secara utuh. Pega berubah menjadi pembaca saja lewat
-// V_M_CAUSE_OF_LOSS.
+// bukan bahwa tabel lama tidak boleh ditulis sama sekali. Layar Simas Online adalah
+// satu-satunya penulis M_CAUSE_OF_LOSS_ONLINE di sistem lama: jalur Simpan-nya
+// (`Activity/Online_nsertCauseOfLoss_act-Act.xml`) memanggil `UpdateMCauseOfLoss_online`,
+// pemanggil tunggal `PEGA_M_CAUSE_OF_LOSS_ONLINE`. Memindahkan layarnya karena itu
+// memindahkan kepemilikan tabelnya secara utuh.
 //
-// POOLDATA.BUSINESS TIDAK termasuk: ia milik GISFW dan hanya dibaca (`D-03`).
+// POOLDATA.M_CAUSE_OF_LOSS — master COL biasa — TIDAK disentuh modul ini sama sekali. Ia
+// milik layar yang lain, dan keduanya sempat tertukar karena nama kolomnya sama persis.
+//
+// POOLDATA.BUSINESS juga TIDAK termasuk: ia milik GISFW dan hanya dibaca (`D-03`).
 package sqlstore
 
 import (
@@ -28,7 +31,8 @@ import (
 	"claim-pnc/internal/mastercolsimasonline"
 )
 
-// Repo membaca dan menulis POOLDATA.M_CAUSE_OF_LOSS beserta tabel pemetaan bisnisnya.
+// Repo membaca dan menulis POOLDATA.M_CAUSE_OF_LOSS_ONLINE beserta tabel pemetaan
+// bisnisnya, POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL.
 type Repo struct {
 	db *sql.DB
 }
@@ -79,7 +83,7 @@ func (r *Repo) Get(ctx context.Context, code string) (mastercolsimasonline.Cause
 // Insert menerbitkan kode baru lalu menyimpan barisnya beserta pemetaan bisnisnya.
 //
 // Seluruh langkahnya berada dalam SATU transaksi. Ini memperbaiki cacat nyata sistem
-// lama: `PEGA_M_CAUSE_OF_LOSS.prc` menjalankan COMMIT sendiri di dalam cabang INSERT,
+// lama: `PEGA_M_CAUSE_OF_LOSS_ONLINE` menjalankan COMMIT sendiri di dalam cabang INSERT,
 // sementara satu-satunya ROLLBACK-nya berada di handler terluar yang berjalan SESUDAH
 // commit itu — sehingga tidak memulihkan apa pun. `D-68` menetapkan kepemilikan
 // transaksi berpindah ke Go persis karena pola seperti itu.
@@ -95,17 +99,19 @@ func (r *Repo) Insert(ctx context.Context, data mastercolsimasonline.SaveData) (
 			return mastercolsimasonline.CauseOfLoss{}, err
 		}
 
-		if _, err := tx.ExecContext(ctx, getQuery("cause_of_loss_insert"), code, data.Description, nullIfEmpty(data.MasterCode)); err != nil {
+		// Deskripsi ditulis DUA KALI — ke NAME_M_COL_ID dan ke COL_DESC. Alasannya ada
+		// pada kueri cause_of_loss_insert: keduanya sama persis pada seluruh baris yang
+		// ada, procedure lama hanya mengisi yang pertama, dan grid membaca yang kedua.
+		if _, err := tx.ExecContext(ctx, getQuery("cause_of_loss_insert"), code, data.Description, data.Description); err != nil {
 			return mastercolsimasonline.CauseOfLoss{}, fmt.Errorf("mastercolsimasonline/sqlstore: menyisipkan %q: %w", code, err)
 		}
-		if err := replaceBusinesses(ctx, tx, code, data.Businesses); err != nil {
+		if err := saveBusinesses(ctx, tx, code, data.Businesses); err != nil {
 			return mastercolsimasonline.CauseOfLoss{}, err
 		}
 
 		return mastercolsimasonline.CauseOfLoss{
 			Code:        code,
 			Description: data.Description,
-			MasterCode:  data.MasterCode,
 		}, nil
 	})
 	if err != nil {
@@ -120,7 +126,7 @@ func (r *Repo) Insert(ctx context.Context, data mastercolsimasonline.SaveData) (
 // Update menyimpan perubahan pada baris yang sudah ada beserta pemetaan bisnisnya.
 func (r *Repo) Update(ctx context.Context, code string, data mastercolsimasonline.SaveData) (mastercolsimasonline.CauseOfLoss, error) {
 	_, err := r.inTransaction(ctx, func(tx *sql.Tx) (mastercolsimasonline.CauseOfLoss, error) {
-		result, err := tx.ExecContext(ctx, getQuery("cause_of_loss_update"), data.Description, nullIfEmpty(data.MasterCode), code)
+		result, err := tx.ExecContext(ctx, getQuery("cause_of_loss_update"), data.Description, data.Description, code)
 		if err != nil {
 			return mastercolsimasonline.CauseOfLoss{}, fmt.Errorf("mastercolsimasonline/sqlstore: memperbarui %q: %w", code, err)
 		}
@@ -133,7 +139,7 @@ func (r *Repo) Update(ctx context.Context, code string, data mastercolsimasonlin
 			return mastercolsimasonline.CauseOfLoss{}, mastercolsimasonline.ErrNotFound
 		}
 
-		if err := replaceBusinesses(ctx, tx, code, data.Businesses); err != nil {
+		if err := saveBusinesses(ctx, tx, code, data.Businesses); err != nil {
 			return mastercolsimasonline.CauseOfLoss{}, err
 		}
 		return mastercolsimasonline.CauseOfLoss{}, nil
@@ -152,8 +158,8 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 		queryName string
 		object    string
 	}{
-		{"cause_of_loss_check_table", "POOLDATA.M_CAUSE_OF_LOSS (kolom COL_DESC dan MST_COL_ID dari migrasi 0004)"},
-		{"cause_of_loss_business_check_table", "POOLDATA.M_CAUSE_OF_LOSS_BUSINESS (tabel dari migrasi 0004)"},
+		{"cause_of_loss_check_table", "POOLDATA.M_CAUSE_OF_LOSS_ONLINE"},
+		{"cause_of_loss_business_check_table", "POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL"},
 	} {
 		rows, err := r.db.QueryContext(ctx, getQuery(check.queryName))
 		if err != nil {
@@ -204,13 +210,9 @@ func (r *Repo) businessesOf(ctx context.Context, code string) ([]mastercolsimaso
 	result := make([]mastercolsimasonline.Business, 0)
 	for rows.Next() {
 		var id, name sql.NullString
-		var order sql.NullInt64
-		if err := rows.Scan(&id, &name, &order); err != nil {
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, fmt.Errorf("mastercolsimasonline/sqlstore: membaca baris pemetaan bisnis: %w", err)
 		}
-		// Urutan hanya dipakai basis data untuk mengurutkan; ia tidak ikut ke domain —
-		// posisi di dalam senarai sudah menyatakan hal yang sama, dan membawanya dua kali
-		// berarti keduanya dapat berbeda.
 		result = append(result, mastercolsimasonline.Business{
 			ID:   strings.TrimSpace(id.String),
 			Name: strings.TrimSpace(name.String),
@@ -222,34 +224,33 @@ func (r *Repo) businessesOf(ctx context.Context, code string) ([]mastercolsimaso
 	return result, nil
 }
 
-// replaceBusinesses menggantikan seluruh pemetaan bisnis satu penyebab kerugian.
+// saveBusinesses menyimpan pemetaan bisnis satu penyebab kerugian.
 //
-// Caranya tandai-semua-tidak-aktif lalu hidupkan yang dipilih, BUKAN hapus lalu sisip
-// ulang — lihat alasan panjangnya pada kueri cause_of_loss_business_deactivate_all.
+// Barisnya dikenali menurut NAMANYA, bukan menurut ID maupun posisinya di grid: ID boleh
+// kosong pada nama yang diketik bebas, dan POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL tidak
+// punya kolom urutan. Alasan lengkapnya pada kueri cause_of_loss_business_update.
 //
-// Barisnya dikenali menurut POSISINYA di grid, bukan menurut nama maupun ID: ID boleh
-// kosong pada nama yang diketik bebas, dan nama boleh kembar karena Pega mengizinkannya.
-// Lihat catatan panjang pada kueri cause_of_loss_business_activate.
-func replaceBusinesses(ctx context.Context, tx *sql.Tx, code string, businesses []mastercolsimasonline.Business) error {
-	if _, err := tx.ExecContext(ctx, getQuery("cause_of_loss_business_deactivate_all"), code); err != nil {
-		return fmt.Errorf("mastercolsimasonline/sqlstore: menonaktifkan pemetaan bisnis %q: %w", code, err)
-	}
-
-	for position, business := range businesses {
-		// Nomor urut dimulai dari 1, bukan 0: ia dibaca manusia saat DBA menelusuri
-		// tabelnya, dan baris pertama yang bernomor nol selalu menimbulkan pertanyaan.
-		order := position + 1
-
-		result, err := tx.ExecContext(ctx, getQuery("cause_of_loss_business_activate"),
-			nullIfEmpty(business.ID), business.Name, code, order)
+// # Namanya BUKAN replaceBusinesses, dan itu disengaja
+//
+// Ia tidak menggantikan: bisnis yang dicabut pengguna dari grid TIDAK terhapus. Tabelnya
+// tidak punya penanda aktif, dan `D-66` melarang penghapusan fisik — sehingga pencabutan
+// belum dapat disimpan sama sekali. Satu kolom `STS_AKTIF` dari DBA menutupnya; lihat
+// peringatan pada kueri cause_of_loss_business_insert.
+//
+// Nama fungsinya menyatakan itu supaya pemanggil berikutnya tidak menyangka pencabutan
+// sudah tertangani.
+func saveBusinesses(ctx context.Context, tx *sql.Tx, code string, businesses []mastercolsimasonline.Business) error {
+	for _, business := range businesses {
+		result, err := tx.ExecContext(ctx, getQuery("cause_of_loss_business_update"),
+			nullIfEmpty(business.ID), code, business.Name)
 		if err != nil {
-			return fmt.Errorf("mastercolsimasonline/sqlstore: mengaktifkan pemetaan bisnis baris %d: %w", order, err)
+			return fmt.Errorf("mastercolsimasonline/sqlstore: memperbarui pemetaan bisnis %q: %w", business.Name, err)
 		}
 
 		affected, err := result.RowsAffected()
 		if err != nil {
 			// Driver yang tidak dapat melaporkan jumlah baris membuat upsert ini tidak
-			// dapat memutuskan apa pun. Menyisipkan secara membabi buta berisiko kunci
+			// dapat memutuskan apa pun. Menyisipkan secara membabi buta berisiko baris
 			// ganda, jadi kegagalannya dinyatakan terang-terangan.
 			return fmt.Errorf("mastercolsimasonline/sqlstore: jumlah baris pemetaan bisnis tidak terbaca: %w", err)
 		}
@@ -258,15 +259,15 @@ func replaceBusinesses(ctx context.Context, tx *sql.Tx, code string, businesses 
 		}
 
 		if _, err := tx.ExecContext(ctx, getQuery("cause_of_loss_business_insert"),
-			code, nullIfEmpty(business.ID), business.Name, order); err != nil {
-			return fmt.Errorf("mastercolsimasonline/sqlstore: menyisipkan pemetaan bisnis baris %d: %w", order, err)
+			code, nullIfEmpty(business.ID), business.Name); err != nil {
+			return fmt.Errorf("mastercolsimasonline/sqlstore: menyisipkan pemetaan bisnis %q: %w", business.Name, err)
 		}
 	}
 	return nil
 }
 
-// issueCode membentuk M_COL_ID persis seperti `Database/PEGA_M_CAUSE_OF_LOSS.prc`
-// baris 12 dan 19: kode situs disambung nomor urut tiga digit.
+// issueCode membentuk M_COL_ID persis seperti `Database/PEGA_M_CAUSE_OF_LOSS_ONLINE`:
+// kode situs disambung nomor urut tiga digit, memakai urutan M_CAUSE_SEQ_ONLINE.
 //
 // Perangkaian dan pemformatannya dikerjakan di Go, bukan di SQL — LPAD dan TO_CHAR
 // termasuk yang dilarang `09-DATABASE-STRATEGY.md` §4 karena keduanya mengikat kueri
@@ -331,18 +332,18 @@ type rowScanner interface{ Scan(to ...any) error }
 
 // scanRow membaca satu baris hasil kueri menjadi CauseOfLoss.
 //
-// Ketiga kolom dibaca lewat sql.NullString lalu dipangkas. Dua sebab: kolom yang bertipe
+// Kedua kolom dibaca lewat sql.NullString lalu dipangkas. Dua sebab: kolom yang bertipe
 // CHAR berlebar tetap memadatkan nilainya dengan spasi tanpa memberi tanda apa pun, dan
-// baris lama dapat memuat NULL karena constraint tabel ini belum diketahui (`R-08`).
+// keduanya nullable di katalog — M_COL_ID sekalipun, karena tabel ini tidak punya satu
+// pun constraint PK, UK, maupun FK.
 func scanRow(rows rowScanner) (mastercolsimasonline.CauseOfLoss, error) {
-	var code, description, masterCode sql.NullString
-	if err := rows.Scan(&code, &description, &masterCode); err != nil {
+	var code, description sql.NullString
+	if err := rows.Scan(&code, &description); err != nil {
 		return mastercolsimasonline.CauseOfLoss{}, err
 	}
 	return mastercolsimasonline.CauseOfLoss{
 		Code:        strings.TrimSpace(code.String),
 		Description: strings.TrimSpace(description.String),
-		MasterCode:  strings.TrimSpace(masterCode.String),
 	}, nil
 }
 

@@ -2,16 +2,23 @@
 //
 // # Apa yang dimodelkan di sini
 //
-// COL adalah singkatan **Cause of Loss** — penyebab kerugian (`CONTEXT.md`). Sistem lama
-// menyimpannya berjenjang dua tingkat, dan modul ini mengerjakan tingkat SATU:
+// COL adalah singkatan **Cause of Loss** — penyebab kerugian (`CONTEXT.md`). Jalur Simas
+// Online punya PASANGAN TABELNYA SENDIRI, terpisah dari master COL biasa:
 //
-//	Master COL   POOLDATA.M_CAUSE_OF_LOSS   <- yang dikerjakan paket ini
-//	  └─ Detail COL  POOLDATA.D_CAUSE_OF_LOSS  <- anak, merujuk M_COL_ID
+//	POOLDATA.M_CAUSE_OF_LOSS_ONLINE          <- induk, yang dikerjakan paket ini
+//	  └─ POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL  <- pemetaan ke lini bisnis
 //
-// Yang membuatnya "Simas Online" bukan tabelnya — tabelnya sama — melainkan **layarnya**.
-// Layar Simas Online menampilkan dua hal yang tidak ada di layar Master COL biasa:
-// **ID Master Kerugian** (`MST_COL_ID`, kunci padanan di sistem Simas Online) dan
-// **daftar Bisnis** yang memakai penyebab kerugian itu.
+// # Dua kekeliruan yang dikoreksi 2026-09-23
+//
+// Versi sebelumnya paket ini menyatakan "tabelnya sama" dengan master COL biasa dan
+// membaca POOLDATA.M_CAUSE_OF_LOSS. Itu KELIRU. Jalur Simpan layar Simas Online
+// (`Activity/Online_nsertCauseOfLoss_act-Act.xml`) memanggil `UpdateMCauseOfLoss_online`,
+// bukan `UpdateMCauseOfLoss`; dan dari 55 induk yang dirujuk tabel detailnya, 55 cocok
+// dengan tabel ONLINE sedangkan hanya 1 cocok dengan M_CAUSE_OF_LOSS.
+//
+// Yang kedua: **ID Master Kerugian** (`MST_COL_ID`) DICABUT seluruhnya atas keputusan
+// Work Owner 2026-09-23 — kolomnya sudah tidak dipakai. Yang tersisa sebagai pembeda layar
+// Simas Online karena itu adalah **daftar Bisnis** yang memakai penyebab kerugian itu.
 //
 // # Asal setiap aturan di berkas ini
 //
@@ -24,8 +31,9 @@
 //	                                                  pyPageListProperty (banyak baris)
 //	Activity/PageNewForSetSimasOnlineCOL-Act.xml      tombol Tambah -> form kosong
 //	Activity/SetDataCauseofflossOnline-Act.xml        klik baris -> muat ke form
-//	Activity/Online_nsertCauseOfLoss_act-Act.xml      Simpan; M_COL_ID kosong => baru
-//	Database/PEGA_M_CAUSE_OF_LOSS.prc                 bentuk kode dan tabel sebenarnya
+//	Activity/Online_nsertCauseOfLoss_act-Act.xml      Simpan; M_COL_ID kosong => baru,
+//	                                                  lewat UpdateMCauseOfLoss_online
+//	Database/PEGA_M_CAUSE_OF_LOSS_ONLINE              bentuk kode dan tabel sebenarnya
 //	RDB List/GetLBUID_SQL-SQL.xml                     pemetaan COL -> Bisnis, dan
 //	                                                  BUSINESS(ID, NOTE) sebagai sumber
 //
@@ -61,34 +69,27 @@ import (
 // memetakan apa pun: apa yang dikirim salah adalah apa yang disorot.
 const (
 	FieldDescription = "nama"
-	FieldMasterCode  = "id_master_kerugian"
 	FieldBusiness    = "bisnis"
 )
 
-// Batas panjang ketiga isian teks.
+// Batas panjang kedua isian teks.
 //
-// # PERINGATAN — ketiga angka ini PENJAGA, bukan lebar kolom yang diketahui
+// Keduanya kini BERDASAR KATALOG, bukan terkaan. Pemeriksaan langsung ke basis data
+// 2026-09-23 memberi lebar sebenarnya:
 //
-// DDL `POOLDATA.M_CAUSE_OF_LOSS` tidak ada di export (`R-08`), dan kolom COL_DESC serta
-// MST_COL_ID belum pernah dilihat katalognya. Layar Pega sendiri tidak membatasi apa pun
-// — `Section/Online_BrowseCauseOfLoss-Section.xml` tidak memuat `pyMaxLength` pada isian
-// mana pun.
+//	POOLDATA.M_CAUSE_OF_LOSS_ONLINE.COL_DESC            VARCHAR2(200)
+//	POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL.NOTE         VARCHAR2(200)
 //
-// Angka di bawah karena itu dipilih mengikuti modul Master Status Klaim yang lebar
-// kolomnya sudah diketahui (VARCHAR2(100)), sebagai penjaga yang menolak lebih awal
-// daripada dibiarkan basis data menolaknya dengan ORA-12899 yang tidak dapat dibaca
-// pengguna.
+// Angka di bawah sengaja ditahan di 100 — separuh lebar kolomnya — dan itu keputusan
+// sadar, bukan kelalaian membaca katalog. Modul Master Status Klaim memakai 100 atas
+// kolom berlebar sama, layar Pega sendiri tidak memuat `pyMaxLength` pada isian mana pun
+// (`Section/Online_BrowseCauseOfLoss-Section.xml`), dan nama terpanjang pada data hari ini
+// jauh di bawah itu. Menaikkannya kelak tidak merusak apa pun; menurunkannya merusak.
 //
-// KETIGANYA WAJIB DISESUAIKAN begitu DBA mengirimkan DDL-nya, dan berubahnya harus
-// serentak dengan `CauseOfLossForm.tsx` di frontend. Uji di `mastercolsimasonline_test.go`
-// yang menjaga duplikasi itu tetap terlihat.
+// Keduanya harus berubah SERENTAK dengan `CauseOfLossForm.tsx` di frontend. Uji di
+// `mastercolsimasonline_test.go` yang menjaga duplikasi itu tetap terlihat.
 const (
 	MaxDescriptionLength = 100
-
-	// MaxMasterCodeLength membatasi MST_COL_ID. Sejak 2026-09-21 isinya adalah M_COL_ID
-	// baris lain (lihat CauseOfLoss.MasterCode), sehingga panjangnya terikat lebar kode —
-	// bukan lebar teks bebas. Penjaga ini sengaja longgar sampai lebar M_COL_ID diketahui.
-	MaxMasterCodeLength = 20
 
 	// MaxBusinessNameLength membatasi nama bisnis yang diketik bebas.
 	//
@@ -107,24 +108,6 @@ type CauseOfLoss struct {
 
 	// Description adalah COL_DESC, berlabel "Nama Cause of loss" di layar.
 	Description string
-
-	// MasterCode adalah MST_COL_ID, berlabel "ID Master Kerugian" di layar.
-	//
-	// # Ia RUJUKAN-DIRI, bukan kode dari sistem sebelah
-	//
-	// Dugaan pertama — bahwa isinya kode padanan di sistem Simas Online — TERBANTAH oleh
-	// export. `Section/Online_BrowseCauseOfLoss-Section.xml:4594-4604` menunjukkan
-	// isiannya berupa daftar yang sumbernya `BrowseVMCauseOfLoss_RD` ber-`pyAppliesTo`
-	// `ASM-FW-GCNMFW-Int-V_M_CAUSE_OF_LOSS`, dengan `pyValue = .M_COL_ID` dan
-	// `pyPrompt = .COL_DESC`.
-	//
-	// Artinya isinya adalah **Code milik baris LAIN di master yang sama** — penyebab
-	// kerugian ini bernaung di bawah penyebab kerugian itu. Ditetapkan Work Owner
-	// 2026-09-21.
-	//
-	// Boleh kosong: layar Pega tidak mewajibkannya, dan baris tingkat atas memang tidak
-	// punya induk.
-	MasterCode string
 
 	// Businesses adalah daftar bisnis yang memakai penyebab kerugian ini.
 	//
@@ -166,9 +149,6 @@ type Business struct {
 // penambahan ia diterbitkan penyimpanan; pada penyuntingan ia diambil dari jalur URL.
 type Input struct {
 	Description string
-
-	// MasterCode adalah Code baris lain yang menjadi induk. Kosong berarti tanpa induk.
-	MasterCode string
 
 	// BusinessNames adalah NAMA bisnis, bukan ID-nya.
 	//
@@ -231,7 +211,6 @@ func (i Input) Clean() Input {
 
 	return Input{
 		Description:   strings.TrimSpace(i.Description),
-		MasterCode:    strings.TrimSpace(i.MasterCode),
 		BusinessNames: businessNames,
 	}
 }
@@ -273,16 +252,6 @@ func (i Input) Check() error {
 		violation = append(violation, Violation{
 			Field:   FieldDescription,
 			Message: "Nama Cause of loss paling panjang " + itoa(MaxDescriptionLength) + " karakter.",
-		})
-	}
-
-	// MST_COL_ID sengaja TIDAK diwajibkan — layar Pega pun tidak, dan baris tingkat atas
-	// memang tidak punya induk. Yang diperiksa di sini hanya panjangnya; keberadaan
-	// induknya menuntut membaca penyimpanan dan karena itu ada di usecase.
-	if utf8.RuneCountInString(i.MasterCode) > MaxMasterCodeLength {
-		violation = append(violation, Violation{
-			Field:   FieldMasterCode,
-			Message: "ID Master Kerugian paling panjang " + itoa(MaxMasterCodeLength) + " karakter.",
 		})
 	}
 
@@ -355,7 +324,8 @@ func itoa(n int) string {
 //
 // Tidak ada operasi hapus, dan itu bukan kelalaian: `D-66` menetapkan tidak ada
 // penghapusan fisik pada data bernilai bisnis, dan sistem lama pun tidak punya satu pun
-// pernyataan DELETE terhadap M_CAUSE_OF_LOSS. Baris ini dirujuk D_CAUSE_OF_LOSS.M_COL_ID
+// pernyataan DELETE terhadap M_CAUSE_OF_LOSS_ONLINE. Baris ini dirujuk
+// M_CAUSE_OF_LOSS_ONLINE_DETAIL.M_COL_ID
 // pada data yang sudah berjalan.
 type Repo interface {
 	// List mengembalikan seluruh baris, terurut seperti kueri lama.
@@ -395,7 +365,6 @@ type Repo interface {
 // repo tampak boleh dipanggil dengan nama mentah, padahal tidak.
 type SaveData struct {
 	Description string
-	MasterCode  string
 
 	// Businesses sudah berurutan sesuai susunan pengguna. Name selalu terisi; ID boleh
 	// kosong untuk nama yang diketik bebas dan tidak ada di master.

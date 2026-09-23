@@ -147,12 +147,12 @@ func (r *Repo) Update(_ context.Context, sp masterstatusprogres.ProgressStatus) 
 // dari `Database/m_portal_pnc.csv`.
 func SampleList() []masterstatusprogres.ProgressStatus {
 	return []masterstatusprogres.ProgressStatus{
-		{ID: "01", Name: "DOKUMEN DITERIMA", PositionCode: "002"},
-		{ID: "02", Name: "DOKUMEN BELUM LENGKAP", PositionCode: "002"},
-		{ID: "03", Name: "MENUNGGU JADWAL SURVEI", PositionCode: "004"},
-		{ID: "04", Name: "SURVEI SELESAI", PositionCode: "004"},
-		{ID: "05", Name: "MENUNGGU PERSETUJUAN KOMITE", PositionCode: "006"},
-		{ID: "06", Name: "MENUNGGU AKSEPTASI", PositionCode: "007"},
+		{ID: "01", Name: "DOKUMEN DITERIMA", PositionCode: "REGISTER"},
+		{ID: "02", Name: "DOKUMEN BELUM LENGKAP", PositionCode: "REGISTER"},
+		{ID: "03", Name: "MENUNGGU JADWAL SURVEI", PositionCode: "SURVEY"},
+		{ID: "04", Name: "SURVEI SELESAI", PositionCode: "SURVEY"},
+		{ID: "05", Name: "MENUNGGU PERSETUJUAN KOMITE", PositionCode: "KOMITE"},
+		{ID: "06", Name: "MENUNGGU AKSEPTASI", PositionCode: "AKSEPTASI"},
 	}
 }
 
