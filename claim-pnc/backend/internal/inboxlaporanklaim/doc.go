@@ -31,24 +31,47 @@
 //	RDB List/BrowseClaimRCV_Aksep-SQL.xml           delapan pencacah di atas layar
 //	Database/PROCINSERTDATARECIVEDKLAIM.prc         isi baris laporan yang disimpan
 //
-// # Dua tabel, dan kenapa keduanya perlu dibaca
+// # Dari mana daftar ditarik, dan ke mana berkas baru ditulis
 //
-// Sistem lama menyimpan satu laporan di DUA tempat sekaligus:
+// Sistem lama menyimpan satu laporan di DUA tempat sekaligus — kepala berkas di
+// `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` milik engine Pega, rincian di
+// `POOLDATA.T_CLAIM_RECIVEDCLAIM`. Modul ini pernah membaca yang pertama secara langsung.
 //
-//	DATAPEGA.PC_ASM_FW_GCNMFW_WORK    kepala berkas — milik ENGINE Pega
-//	POOLDATA.T_CLAIM_RECIVEDCLAIM     rincian laporan — tabel bisnis
+// **Sejak 2026-09-23 (Work Owner), daftar ditarik dari `POOLDATA.T_CLAIMLIST_ADMIN`** —
+// tabel rata yang diisi proses lain, dan yang **hanya dibaca** aplikasi ini.
 //
-// Work Owner menetapkan 2026-09-19: **penulisan tidak lagi masuk ke
-// PC_ASM_FW_GCNMFW_WORK.** Laporan yang dibuat aplikasi ini karena itu tinggal di tabel
-// miliknya sendiri, `POOLDATA.CPNC_LAPORAN_KLAIM` (migrasi 0003), sementara laporan lama
-// tetap dibaca dari tabel Pega.
+// Penulisan tidak berubah: berkas yang dibuat aplikasi ini tetap ditulis ke tabel miliknya
+// sendiri, `POOLDATA.CPNC_LAPORAN_KLAIM` (migrasi 0003 dan 0004). Work Owner menetapkan
+// **proses pengisi T_CLAIMLIST_ADMIN diperluas agar ikut membaca tabel itu**, sehingga
+// berkas terbitan aplikasi ini masuk ke daftar lewat jalur yang sama dengan berkas Pega.
 //
-// Itulah bentuk nyata `ADR-0004` penulis tunggal per tabel: selama masa paralel, Pega
-// tetap satu-satunya yang menulis tabelnya sendiri dan aplikasi ini hanya MEMBACA-nya;
-// aplikasi ini satu-satunya yang menulis tabelnya sendiri. Daftar yang dilihat pengguna
-// adalah gabungan keduanya, dan asal setiap baris terbaca langsung dari nomornya
-// (lihat ReportNumberPrefix) tanpa perlu tabel pemetaan — prinsip yang sama dipakai
-// `D-71` untuk nomor klaim.
+//	membaca daftar   POOLDATA.T_CLAIMLIST_ADMIN     diisi proses lain
+//	menulis berkas   POOLDATA.CPNC_LAPORAN_KLAIM    hanya aplikasi ini
+//
+// Itulah bentuk nyata `ADR-0004` penulis tunggal per tabel: tidak ada satu tabel pun yang
+// ditulis dua sistem.
+//
+// Asal setiap baris terbaca dari NOMORNYA (lihat ReportNumberPrefix) — bukan dari tabel
+// asalnya, karena tabelnya kini satu. Awalan `RCVN.` ditetapkan `D-71` justru untuk itu.
+//
+// # Dua akibat yang diterima secara sadar
+//
+//  1. **Berkas yang baru dibuat belum muncul di daftar** sampai proses pengisi berjalan.
+//     Ia tetap dapat dibuka langsung sesudah dibuat — pembacaan satu berkas menempuh
+//     jalur tersendiri ke CPNC_LAPORAN_KLAIM, lihat claim_report_get_own_body.
+//
+//  2. **Tiga kolom grid menjadi kosong**: "Reference no", "Alasan", dan "Subject Email".
+//     Ketiganya tidak punya padanan di T_CLAIMLIST_ADMIN, dan sengaja TIDAK dipetakan ke
+//     kolom lain yang kebetulan mirip.
+//
+// # STS_AKTIF
+//
+// T_CLAIMLIST_ADMIN memuat kolom STS_AKTIF: '1' klaim masih aktif, '0' sudah tidak aktif
+// dan TIDAK ditampilkan lagi (Work Owner, 2026-09-23).
+//
+// Yang dikecualikan hanya yang bernilai '0' secara tegas, bukan "yang bukan 1". Kolomnya
+// nullable, dan baris ber-NULL berarti penandanya tidak ditetapkan — menyembunyikannya
+// berarti menghilangkan pekerjaan dari layar tanpa seorang pun tahu.
 //
 // # Yang DILARANG masuk ke paket ini
 //

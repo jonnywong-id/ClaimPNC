@@ -236,6 +236,16 @@ export function DataTable<T>({
         </div>
       )}
 
+      {/*
+        Bilah halaman digambar DI ATAS tabel, seperti layar lama: jumlah seluruh baris dan
+        nomor halaman berada di atas kepala kolom, bukan di bawah baris terakhir. Pada
+        tabel berisi ribuan baris, menaruhnya di bawah berarti pengguna harus menggulung
+        seluruh halaman hanya untuk berpindah halaman.
+      */}
+      {serverPaging && !error && !isLoading && (
+        <PagingBar paging={serverPaging} shown={visible.length} />
+      )}
+
       {error ? (
         <div className="p-5">{error}</div>
       ) : isLoading ? (
@@ -339,9 +349,6 @@ export function DataTable<T>({
         </div>
       )}
 
-      {serverPaging && !error && !isLoading && (
-        <PagingBar paging={serverPaging} shown={visible.length} />
-      )}
     </section>
   )
 }
@@ -357,62 +364,105 @@ export function DataTable<T>({
  * menuntut jumlah halaman yang bermakna, dan pada tabel yang barisnya terus bertambah
  * sementara pengguna membacanya, halaman ke-4.132 tidak menunjuk apa pun yang tetap.
  */
-function PagingBar({ paging, shown }: { paging: ServerPaging; shown: number }) {
-  const { page, pageSize, total, totalPages, onPageChange } = paging
+/**
+ * Bilah halaman bergaya layar lama: `Total Data : 23767` lalu nomor-nomor halaman.
+ *
+ * # Kenapa nomor, bukan Sebelumnya/Berikutnya
+ *
+ * Layar lama menggambar nomor halaman, dan `D-13` menetapkan tata letak mengikutinya.
+ * Pada daftar berisi ribuan halaman, nomor juga lebih berguna: satu klik memindahkan
+ * lebih jauh daripada satu langkah.
+ *
+ * Jendela nomornya LIMA, bergeser mengikuti halaman yang sedang dibuka, sehingga halaman
+ * mana pun tetap terjangkau dengan berjalan satu jendela setiap kali.
+ */
+function PagingBar({ paging }: { paging: ServerPaging; shown: number }) {
+  const { page, total, totalPages, onPageChange } = paging
 
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const to = total === 0 ? 0 : from + shown - 1
+  const window = pageWindow(page, totalPages)
 
   return (
     <nav
       aria-label="Navigasi halaman"
-      className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 border-b border-slate-200 bg-white px-5 py-3 sm:flex-row sm:items-center sm:justify-end"
     >
       {/*
         role="status" supaya pembaca layar mengumumkan perpindahan halaman. Tanpa itu,
-        menekan Berikutnya tidak menghasilkan satu pun umpan balik yang terdengar — isi
-        tabel berganti di tempat, dan fokus tetap tinggal di tombol.
+        menekan nomor tidak menghasilkan satu pun umpan balik yang terdengar — isi tabel
+        berganti di tempat, dan fokus tetap tinggal di tombol.
       */}
-      <p className="text-xs text-slate-600" role="status">
-        {total === 0 ? (
-          'Tidak ada baris.'
-        ) : (
-          <>
-            Menampilkan{' '}
-            <span className="font-medium text-slate-900">
-              {from}–{to}
-            </span>{' '}
-            dari <span className="font-medium text-slate-900">{total}</span> baris
-          </>
-        )}
+      <p className="text-xs text-slate-600 sm:mr-4" role="status">
+        Total Data : <span className="font-medium text-slate-900">{total}</span>
+        <span className="sr-only">
+          , halaman {page} dari {totalPages}
+        </span>
       </p>
 
-      <div className="flex items-center gap-2">
-        <PagingButton
-          label="Sebelumnya"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        />
-        <span className="px-1 text-xs text-slate-600">
-          Halaman {page} dari {totalPages}
-        </span>
-        <PagingButton
-          label="Berikutnya"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-        />
-      </div>
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center gap-1">
+          {window.first > 1 && <PagingEllipsis />}
+          {range(window.first, window.last).map((n) => (
+            <PagingButton
+              key={n}
+              label={String(n)}
+              current={n === page}
+              onClick={() => onPageChange(n)}
+            />
+          ))}
+          {window.last < totalPages && <PagingEllipsis />}
+        </div>
+      )}
     </nav>
+  )
+}
+
+/** range mengembalikan deret bilangan dari first sampai last, inklusif. */
+function range(first: number, last: number): number[] {
+  const result: number[] = []
+  for (let n = first; n <= last; n++) result.push(n)
+  return result
+}
+
+/**
+ * pageWindow memilih lima nomor halaman yang digambar.
+ *
+ * Ia bergeser mengikuti halaman yang sedang dibuka dan dijepit pada kedua ujungnya,
+ * sehingga jendelanya selalu penuh selama halamannya cukup — tanpa itu, halaman pertama
+ * dan terakhir menampilkan nomor lebih sedikit daripada halaman tengah.
+ */
+function pageWindow(page: number, totalPages: number): { first: number; last: number } {
+  const width = 5
+  if (totalPages <= width) return { first: 1, last: totalPages }
+
+  const first = Math.min(Math.max(1, page - Math.floor(width / 2)), totalPages - width + 1)
+  return { first, last: first + width - 1 }
+}
+
+/**
+ * Penanda bahwa masih ada halaman di luar jendela.
+ *
+ * Ia sengaja BUKAN tombol. Layar lama menggambarnya, tetapi apa yang terjadi saat ditekan
+ * tidak terlihat dari tangkapan layar — dan menebaknya berarti membuat perilaku yang
+ * tidak dapat dirujuk ke mana pun. Halaman di luar jendela tetap terjangkau dengan
+ * menekan nomor terjauh, yang menggeser jendelanya.
+ */
+function PagingEllipsis() {
+  return (
+    <span aria-hidden="true" className="px-1 text-xs text-slate-400">
+      …
+    </span>
   )
 }
 
 function PagingButton({
   label,
   disabled,
+  current,
   onClick,
 }: {
   label: string
-  disabled: boolean
+  disabled?: boolean
+  current?: boolean
   onClick: () => void
 }) {
   return (
@@ -420,13 +470,17 @@ function PagingButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      // aria-current menyatakan halaman yang sedang dibuka kepada pembaca layar. Warna
+      // saja tidak menyampaikannya, dan pembedaan yang hanya warna dilarang sistem desain.
+      aria-current={current ? 'page' : undefined}
       className={[
-        'rounded-kontrol border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700',
+        'min-w-[2rem] rounded-kontrol border px-2.5 py-1 text-xs font-medium',
         'transition-[background-color,border-color,box-shadow] duration-150 ease-halus',
-        'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+        current
+          ? 'border-blue-500 bg-blue-600 text-white'
+          : 'border-slate-300 bg-white text-blue-700 hover:border-slate-400 hover:bg-slate-50',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        'disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:text-slate-700',
       ].join(' ')}
     >
       {label}

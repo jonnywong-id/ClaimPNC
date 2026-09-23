@@ -44,6 +44,10 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	print("  lingkungan       : %s", cfg.Environment)
 	print("  portal utama     : %s", cfg.PrimaryPortal)
 	print("  adapter identitas: %s", cfg.IdentityAdapter)
+	// Antarmuka disematkan saat `go build`, bukan saat `npm run build`. Tanpa baris ini,
+	// binary yang dibangun sebelum antarmukanya diperbaiki tidak dapat dibedakan dari
+	// yang sesudahnya — dan perbedaan itu tampak sebagai fitur yang tidak bekerja.
+	print("  antarmuka        : dibangun %s", spaVersionText())
 	print("")
 
 	if cfg.Storage != config.StorageOracle {
@@ -73,6 +77,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkLoginTable(ctx, legacy, print)
 	checkClaimStatus(ctx, masterstatussql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
+	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
 
 	print("")
 	if login == "" {
@@ -142,22 +147,47 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 //
 // Ia memeriksa DUA hal yang sifatnya berbeda, dan membedakannya penting:
 //
-//	POOLDATA.CPNC_LAPORAN_KLAIM     tabel BARU, dibuat migrasi 0003 — dibaca DAN ditulis
-//	DATAPEGA.PC_ASM_FW_GCNMFW_WORK  tabel warisan Pega — hanya DIBACA
+//	POOLDATA.CPNC_LAPORAN_KLAIM   tabel BARU, dibuat migrasi 0003 — dibaca DAN ditulis
+//	POOLDATA.T_CLAIMLIST_ADMIN    sumber daftar, diisi proses lain — hanya DIBACA
 //
-// Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada sejak
-// lama, dan kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang
-// tampak mirip di layar tetapi perbaikannya berbeda jauh.
+// Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada, dan
+// kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang tampak mirip
+// di layar tetapi perbaikannya berbeda jauh.
 func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, print func(string, ...any)) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Inbox Laporan Klaim belum siap: %v", err)
 		print("            CPNC_LAPORAN_KLAIM dibuat migrasi backend/migrations/0003,")
 		print("            dan ia dijalankan di SETIAP portal entitas — bukan hanya portal utama.")
-		print("            PC_ASM_FW_GCNMFW_WORK sudah ada sejak lama; bila justru ia yang gagal,")
-		print("            yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
+		print("            T_CLAIMLIST_ADMIN diisi proses lain dan hanya dibaca; bila justru ia")
+		print("            yang gagal, yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
 		return
 	}
 	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
+}
+
+// checkClaimReportBranch melaporkan apakah cabang klaim petugas dapat diterjemahkan.
+//
+// Pemeriksaan ini ada karena kegagalannya TIDAK terlihat sebagai galat di layar. Bila
+// penerjemahan cabang gagal, daftar Inbox Laporan Klaim tetap tampil — hanya saja tanpa
+// batas cabang, sehingga petugas cabang melihat berkas seluruh cabang. Itu keadaan yang
+// harus diketahui operator sebelum pengguna melaporkannya.
+//
+// Dua sebab kegagalan yang sifatnya berbeda:
+//
+//   - POOLDATA.BRANCH tidak dapat dibaca → hak baca akun aplikasi.
+//   - DB link @asmd.sinarmas.co.id mati → HRDASM.V_HRD_MST dan LST_USER_ASURANSI ada di
+//     basis data lain, dan `D-25` memang menugaskan penggantiannya dengan API (`R-03`).
+//     Sampai API itu ada, layar ini bergantung pada DB link tersebut.
+func checkClaimReportBranch(ctx context.Context, resolver *inboxlaporanklaimsql.BranchResolver, print func(string, ...any)) {
+	if err := resolver.CheckTable(ctx); err != nil {
+		print("  [BELUM] penerjemahan cabang klaim belum dapat dijalankan: %v", err)
+		print("            Sumbernya POOLDATA.BRANCH + LST_USER_ASURANSI dan HRDASM.V_HRD_MST")
+		print("            lewat DB link @asmd.sinarmas.co.id, sama seperti GetIDCabang di Pega.")
+		print("            Selama gagal, daftar Inbox Laporan Klaim TIDAK dibatasi per cabang —")
+		print("            layarnya memberitahu, tetapi batas cabangnya memang tidak berlaku.")
+		return
+	}
+	print("  [ok]    cabang klaim petugas dapat diterjemahkan dari login")
 }
 
 // checkClaimStatus melaporkan kesiapan POOLDATA.M_STS_CLAIM sesudah migrasi 0002.

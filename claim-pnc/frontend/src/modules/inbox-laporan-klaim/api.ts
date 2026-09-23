@@ -5,6 +5,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  ClaimReportDetail,
   ClaimReportListResponse,
   ClaimReportOptionResponse,
   ClaimReportQuery,
@@ -117,6 +118,56 @@ export function useCreateClaimReport() {
     // lencana kesembilan tab ikut berubah — daftar yang disusun sendiri di peramban akan
     // berbeda dari isi tabel yang sebenarnya.
     onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+    },
+  })
+}
+
+/**
+ * Hook satu berkas laporan beserta isian formnya.
+ *
+ * Dipakai form Input Receive Document saat dibuka. Ia membaca ULANG dari server alih-alih
+ * memakai baris yang kebetulan ada di cache daftar: daftar hanya membawa kolom yang
+ * digambar grid, sedangkan form membutuhkan sepuluh isian yang tidak ada di sana.
+ */
+export function useClaimReport(id: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-laporan-klaim-berkas', portal, token, id],
+    queryFn: () =>
+      callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, { token, portal }),
+    enabled: token !== null && portal !== null && id !== '',
+  })
+}
+
+/**
+ * Hook tombol Simpan pada form Input Receive Document.
+ *
+ * PUT, bukan PATCH: form mengirim SELURUH isian setiap kali disimpan, sehingga
+ * permintaannya menggantikan dan idempoten — menekan Simpan dua kali menghasilkan
+ * keadaan yang sama persis.
+ */
+export function useSaveClaimReport(id: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (detail: ClaimReportDetail) =>
+      callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
+        metode: 'PUT',
+        body: detail,
+        token,
+        portal,
+      }),
+
+    // Dua hal dimuat ulang, dan keduanya perlu: berkasnya sendiri, dan daftar yang
+    // menampilkannya. Mengisi nomor polis atau tanggal kejadian mengubah apa yang
+    // tergambar di grid, dan daftar yang tidak dimuat ulang akan menampilkan isi lama.
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim-berkas', portal, token, id] })
       void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
     },
   })

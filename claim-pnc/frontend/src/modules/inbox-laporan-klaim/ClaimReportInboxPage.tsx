@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -43,6 +44,7 @@ export function ClaimReportInboxPage() {
   const [query, setQuery] = useState<ClaimReportQuery>(EMPTY_QUERY)
   const [keyword, setKeyword] = useState('')
 
+  const navigate = useNavigate()
   const portal = useSelectedPortal((state) => state.alias)
   const options = useClaimReportOptions()
   const list = useClaimReportList(query)
@@ -161,14 +163,6 @@ export function ClaimReportInboxPage() {
         </div>
       )}
 
-      {create.isSuccess && (
-        <p className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900">
-          Laporan <span className="font-medium">{create.data.laporan.id}</span> dibuat dan
-          menunggu dilengkapi. Ia muncul di tab{' '}
-          <span className="font-medium">Data hasn&apos;t been transferred</span>.
-        </p>
-      )}
-
       <div className="mt-4">
         <DataTable<ClaimReport>
           columns={columnsFor(active?.komunikasi ?? false)}
@@ -197,10 +191,27 @@ export function ClaimReportInboxPage() {
           }}
           actions={
             <>
+              <BranchScope code={list.data?.batas_cabang ?? ''} />
+              {/*
+                Buat Baru MEMBUKA form isiannya, tidak berhenti setelah berkasnya dibuat.
+                Itulah yang dilakukan alur lama: `CreateNewCaseRCV` membuat berkas kosong,
+                lalu `Flow/InputReceiveDocument.xml` meneruskannya ke assignment "Receive
+                Document" yang merender form `InputReceiveDocument`.
+
+                Berhenti di sini — seperti versi pertama layar ini — menerbitkan berkas
+                yang tidak dapat diapa-apakan, dan berkasnya pun mendarat di tab lain
+                daripada yang sedang dibuka. Dari kursi petugas, tombolnya tampak tidak
+                bekerja sama sekali.
+              */}
               <Button
                 type="button"
                 tone="utama"
-                onClick={() => create.mutate()}
+                onClick={() =>
+                  create.mutate(undefined, {
+                    onSuccess: (hasil) =>
+                      navigate(`/inbox/laporan-klaim/${encodeURIComponent(hasil.laporan.id)}`),
+                  })
+                }
                 disabled={create.isPending}
               >
                 <AddIcon className="mr-1.5 h-4 w-4" />
@@ -229,10 +240,9 @@ export function ClaimReportInboxPage() {
       </div>
 
       <p className="mt-4 text-xs text-slate-500">
-        Membuka isi sebuah laporan belum tersedia di sini: layar rinciannya adalah modul
-        Receive Document (<code>B-14</code>) yang belum dibangun. Kolom{' '}
-        <span className="font-medium">Asal</span> menyebutkan sistem yang memegang setiap
-        berkas selama masa paralel.
+        Tekan nomor berkas untuk membuka isiannya. Berkas bertanda{' '}
+        <span className="font-medium">Pega</span> dibuka dalam modus baca saja — selama masa
+        paralel, hanya satu sistem yang boleh menulis sebuah berkas.
       </p>
     </PageFrame>
   )
@@ -337,17 +347,30 @@ function columnsFor(message: boolean): Column<ClaimReport>[] {
       title: 'Case ID',
       value: (r) => r.id,
       width: '12rem',
+      // Nomor berkas menjadi tautan pembuka form. Di layar lama, barisnya dibuka dengan
+      // menekannya; tautan dipilih di sini supaya alamatnya dapat disalin, dibuka di tab
+      // baru, dan dijangkau papan ketik — tiga hal yang tidak diberikan baris yang hanya
+      // menanggapi klik.
       render: (r) => (
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          <span className="font-medium text-slate-900">{r.id}</span>
+          <Link
+            to={`/inbox/laporan-klaim/${encodeURIComponent(r.id)}`}
+            className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 hover:decoration-blue-600"
+          >
+            {r.id}
+          </Link>
           <OriginBadge origin={r.asal} />
         </span>
       ),
     },
-    { key: 'klaim', title: 'Case PNC', value: (r) => r.nomor_klaim, width: '9rem' },
+    // Urutan kolom mengikuti layar lama apa adanya (`D-13`): Polis no mendahului Case
+    // PNC, dan Business Name mendahului Insured Name. Urutan yang "lebih masuk akal"
+    // tetap urutan yang berbeda, dan petugas membaca layar ini setiap hari.
     { key: 'polis', title: 'Polis no', value: (r) => r.nomor_polis, width: '10rem' },
-    { key: 'tertanggung', title: 'Insured Name', value: (r) => r.tertanggung },
+    { key: 'klaim', title: 'Case PNC', value: (r) => r.nomor_klaim, width: '9rem' },
+    { key: 'rujukan', title: 'Reference no', value: (r) => r.nomor_rujukan, width: '9rem' },
     { key: 'bisnis', title: 'Business Name', value: (r) => r.nama_bisnis, width: '10rem' },
+    { key: 'tertanggung', title: 'Insured Name', value: (r) => r.tertanggung },
     {
       key: 'kejadian',
       title: 'Date of loss',
@@ -362,12 +385,16 @@ function columnsFor(message: boolean): Column<ClaimReport>[] {
       width: '9rem',
       render: (r) => formatDate(r.tanggal_masuk),
     },
+    { key: 'pembuat', title: 'Creator', value: (r) => r.pembuat, width: '10rem' },
     { key: 'cabang', title: 'Cabang Klaim', value: (r) => r.nama_cabang, width: '11rem' },
+    // Dua kolom umur, berdampingan seperti di layar lama. "Aging" dibaca dari kolomnya
+    // sendiri di basis data; "Total Aging" dihitung aplikasi dari tanggal aging.
+    { key: 'aging', title: 'Aging', value: (r) => r.aging, width: '6rem' },
     {
-      key: 'aging',
+      key: 'total-aging',
       title: 'Total Aging',
       value: (r) => String(r.umur_hari),
-      width: '7rem',
+      width: '8rem',
       render: (r) => <AgingBadge days={r.umur_hari} />,
     },
     {
@@ -377,7 +404,6 @@ function columnsFor(message: boolean): Column<ClaimReport>[] {
       width: '9rem',
       render: (r) => <PositionBadge position={r.posisi} />,
     },
-    { key: 'alasan', title: 'Alasan', value: (r) => r.alasan },
   ]
 
   if (message) {
@@ -419,13 +445,28 @@ function OriginBadge({ origin }: { origin: string }) {
  * TAT sungguhan adalah lingkup `S-7`. Ia murni penanda baca — karena itu angkanya tetap
  * terbaca apa adanya, dan warnanya tidak pernah menjadi satu-satunya pembeda.
  */
+/**
+ * Umur berkas dalam bentuk ringkas, seperti layar lama: `6y ago`.
+ *
+ * # Apa yang benar-benar terbukti, dan apa yang tidak
+ *
+ * Dari layar lama hanya bentuk TAHUN yang terlihat — seluruh baris pada tangkapan layar
+ * berbunyi `6y ago`. Satuan bulan dan hari mengikuti bentuk ringkas yang sama karena itu
+ * satu-satunya bentuk yang dapat disandarkan pada bukti; bila Pega ternyata menuliskannya
+ * lain, yang berubah hanya fungsi ini.
+ *
+ * Teksnya sengaja TIDAK diterjemahkan (`D-13`, `D-80`): ia teks layar yang dibaca petugas
+ * setiap hari, dan mengubahnya berarti mengubah layar, bukan menerjemahkan kode.
+ */
 function AgingBadge({ days }: { days: number }) {
-  const long = days >= 30
-  return (
-    <span className={long ? 'font-medium text-amber-700 tabular-nums' : 'tabular-nums'}>
-      {days} hari
-    </span>
-  )
+  return <span className="tabular-nums">{relativeAge(days)}</span>
+}
+
+function relativeAge(days: number): string {
+  if (days <= 0) return 'today'
+  if (days >= 365) return `${Math.floor(days / 365)}y ago`
+  if (days >= 30) return `${Math.floor(days / 30)}mo ago`
+  return `${days}d ago`
 }
 
 function PositionBadge({ position }: { position: string }) {
@@ -452,6 +493,16 @@ function descriptionFor(category: ReportCategory | undefined): string {
     return 'Percakapan cabang dan kantor pusat pada berkas yang Anda buat.'
   }
   return 'Urut menurut tanggal aging, yang terbaru di atas — sama seperti layar lama.'
+}
+
+/** Keterangan batas cabang yang sedang berlaku, digambar di kanan judul tabel. */
+function BranchScope({ code }: { code: string }) {
+  if (code === '') return null
+  return (
+    <span className="rounded-kontrol bg-slate-100 px-2 py-1 text-xs text-slate-600">
+      Cabang <span className="font-medium text-slate-900">{code}</span>
+    </span>
+  )
 }
 
 function messageOf(failure: unknown): string {

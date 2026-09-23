@@ -502,3 +502,127 @@ tidak saya curigai.
   seperti catatan sesi sebelumnya tentang `Menu` dan `Otorisasi`.
 - **Lima pertanyaan terbuka menunggu Work Owner**, dan yang pertama menyentuh batas data:
   lihat `keputusan-implementasi.md` §17.11.
+
+# Penggunaan Skill — Sesi 2026-09-22 (form Input Receive Document)
+
+## Ringkasan
+
+**Tidak satu pun skill dipanggil.** Dicatat apa adanya, sama seperti sesi sebelumnya.
+
+Pekerjaannya satu jenis: membaca alur Pega sampai ke dasarnya, lalu membangun apa yang ternyata
+hilang. Tidak ada keputusan arsitektur baru — seluruh polanya sudah ditetapkan sesi-sesi sebelumnya.
+
+## Skill yang ditimbang
+
+| Skill | Ditimbang untuk | Kenapa tidak dipakai |
+|---|---|---|
+| `mattpocock-skills:domain-modeling` | Menamai ketujuh belas isian form | Namanya **tidak dikarang**: label dibaca apa adanya dari `pyLabelFieldValue`, dan pemetaan ke kolom disilangkan dengan parameter procedure. Yang dibutuhkan pembacaan sumber, bukan penajaman istilah |
+| `mattpocock-skills:grilling` | Lingkup form | Lingkupnya ditentukan **bentuk keterikatan properti**, bukan pendapat: field tunggal dibawa, page list tidak. Tidak ada yang perlu ditanyakan |
+| `mattpocock-skills:tdd` | Uji form | Sama seperti sesi lalu: perilaku dibaca dari sumber Pega lebih dulu, uji ditulis sesudahnya |
+
+## Teknik yang berbuah pada sesi ini
+
+| Teknik | Hasilnya |
+|---|---|
+| **Telusuri satu tingkat lebih jauh dari yang ditanyakan** | Work Owner menunjuk `Flow/InputReceiveDocument.xml`. Berhenti di situ hanya memberi diagram tiga kotak; flow action-nya yang menyebut section, dan section itulah yang memuat formnya |
+| **Biarkan struktur data menentukan lingkup** | Field tunggal versus page list membelah form menjadi dua kelompok tanpa satu pun penilaian saya. Ketiga blok yang tidak dibawa masing-masing punya alasan yang dapat ditunjuk — bukan "terlalu besar" |
+| **Periksa apakah aturan yang akan ditambahkan memang ADA di sumbernya** | Sebelum menulis validasi, flow action-nya diperiksa: nol validate rule, nol isian wajib. Yang ditulis akhirnya hanya penjaga lebar kolom — dan itu dicatat sebagai bukan-aturan-bisnis |
+| **Percayai uji invarian yang gagal** | Uji kolom gagal saat kueri detail sengaja dibedakan. Itu bukan uji yang rewel; itu uji yang bekerja. Yang diperbarui adalah invariannya, dengan alasan tertulis |
+| **Bedakan jenis galat dari akibatnya** | Penolakan berkas Pega semula memakai kode validasi. Keduanya menolak penyimpanan, tetapi satu dapat diperbaiki pengguna dan satu tidak — dan klien membedakannya lewat `kode` |
+
+## Kesalahan sendiri yang tercatat
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | **Menghentikan penelusuran terlalu awal pada sesi sebelumnya.** Membaca `CreateNewCaseRCV`, menyimpulkan benar bahwa berkasnya lahir kosong, lalu tidak menelusuri ke mana ia pergi | Work Owner melaporkan tombolnya tidak bekerja. Ia benar, dan sebabnya bukan bug melainkan lingkup yang saya tetapkan sendiri |
+| 2 | **Menebak nama kolom `kronologiskejadian_1`** pada tabel warisan, di tengah menulis kueri sumber | Tertangkap oleh saya sendiri satu langkah kemudian: tidak ada satu pun kueri lama yang menyentuh kolom itu, dan `KronologisKejadian` yang saya ingat ternyata sebuah ALIAS pencacah, bukan nama kolom. Dicabut sebelum sempat dijalankan |
+
+Kesalahan kedua layak diperhatikan justru karena saya sudah menuliskan larangannya sendiri di berkas
+yang sama beberapa baris di atasnya. **Menulis aturan tidak membuat seseorang mematuhinya**; yang
+menangkapnya adalah kebiasaan menanyakan "dari mana saya tahu ini" pada setiap nama yang ditulis.
+
+## Catatan untuk sesi berikutnya
+
+- **Dua pertanyaan terbuka bertambah**, keduanya menyangkut kewenangan: apakah berkas yang sudah
+  diserahkan masih boleh disunting, dan siapa yang boleh mengisi form ini. Lihat
+  `keputusan-implementasi.md` §18.10.
+- **Rincian per dokumen menunggu `S-1`.** Ia satu-satunya bagian form lama yang tertinggal karena
+  infrastruktur, bukan karena keputusan lingkup.
+
+# Penggunaan Skill — Sesi 2026-09-22 (daftar RCV yang kosong)
+
+## Ringkasan
+
+**Tidak satu pun skill dipanggil.** Dicatat apa adanya, sama seperti dua sesi sebelumnya.
+
+Pekerjaannya satu jenis: menemukan sebab sebuah daftar kosong yang **tidak melaporkan apa pun**,
+lalu memperbaikinya tanpa menutupi penyimpangan yang lahir dari perbaikan itu.
+
+## Skill yang ditimbang
+
+| Skill | Ditimbang untuk | Kenapa tidak dipakai |
+|---|---|---|
+| `mattpocock-skills:diagnosing-bugs` | Cacat daftar kosong | Skill ini menyusun hipotesis lalu mempersempitnya lewat percobaan. Di sini hipotesisnya **sudah pasti sejak awal** — hanya ada satu penyaring yang dapat mengosongkan daftar tanpa galat — dan yang dibutuhkan adalah membaca sumber Pega, bukan mempersempit ruang dugaan |
+| `mattpocock-skills:codebase-design` | Menempatkan `BranchResolver` | Kriterianya sudah tertulis di `04-FUTURE-ARCHITECTURE.md` §3, dan kosakatanya — seam, adapter, "dua adapter nyata bukan satu" — sudah dipakai sejak sesi pertama modul ini |
+| `mattpocock-skills:grilling` | Penyimpangan §19.4 | Sempat terasa perlu, tetapi pertanyaannya bukan untuk saya melainkan untuk Work Owner, dan ia sudah dicatat sebagai pertanyaan terbuka nomor 8. Menggrill diri sendiri atas pertanyaan yang pemiliknya orang lain hanya menghasilkan jawaban yang tidak mengikat |
+
+## Teknik yang berbuah pada sesi ini
+
+| Teknik | Hasilnya |
+|---|---|
+| **Curigai nilai, bukan mekanisme, ketika tidak ada yang melaporkan galat** | Seluruh jalur bekerja: `200`, tab, lencana, paginasi. Yang tidak mungkin bekerja adalah nilai penyaringnya. Itu memangkas ruang pencarian dari seluruh modul menjadi satu field |
+| **Cari kueri Pega yang MENGHASILKAN nilai, bukan yang memakainya** | `GetIDCabang` menjawabnya tuntas, termasuk detail yang tidak akan pernah saya tebak: sambungannya ke `BRANCH.oldid`, bukan `BRANCH.id` |
+| **Hapus nama yang menyesatkan, jangan diperbaiki isinya** | `Caller.BranchCode` dihapus seluruhnya. Dibiarkan ada, ia akan diisi lagi dari sumber terdekat yang bernama sama oleh pembaca berikutnya |
+| **Bedakan "tidak ada" dari "tidak terbaca" pada setiap batas sistem** | Ini cacat yang baru saja diperbaiki, muncul lagi dalam bentuk lain di seam yang sama. `Resolve` mengembalikan tiga keluaran, bukan dua |
+| **Tanyakan apakah perilaku lama itu aturan atau artefak** | Daftar kosong di Pega ternyata akibat perangkaian `{ASIS:}`, bukan keputusan siapa pun. Itu yang membuat penyimpangannya sah terhadap `P-5` — dan alasannya ditulis, bukan diasumsikan |
+| **Perluas alat pemeriksaan ketika kegagalan tidak terlihat di layar** | `checkClaimReportBranch` ditambahkan justru karena kegagalannya **melonggarkan** batas data alih-alih menghentikan sesuatu |
+
+## Kesalahan sendiri yang tercatat
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 1 | **Menyandingkan dua kode cabang dari sistem penomoran berbeda** karena namanya sama | Work Owner melaporkan daftarnya kosong. Tidak ada satu pun uji, lint, maupun pemeriksaan tipe yang dapat menangkapnya — keduanya `string`, keduanya bernama kode cabang |
+| 2 | **Memilih elemen uji lewat `role="status"` tanpa memeriksa apakah ia unik** | Uji baru gagal: ada dua elemen berperan sama. Yang dibetulkan ujinya, bukan komponennya — bilah paginasi memang sepatutnya sebuah status, dan keduanya sudah menjelaskan dirinya sendiri saat dibacakan |
+
+Kesalahan pertama layak diperhatikan karena ia **tidak dapat ditangkap alat apa pun**. Yang
+menangkapnya adalah seseorang yang membuka layarnya. Pelajarannya bukan "uji lebih banyak",
+melainkan: **setiap nilai yang menyeberangi batas sistem harus ditanyakan dari sistem penomoran
+mana ia berasal** — nama yang sama bukan bukti.
+
+## Catatan untuk sesi berikutnya
+
+- **Dua pertanyaan terbuka bertambah**, keduanya menyentuh batas data: apakah petugas tanpa cabang
+  memang boleh melihat seluruh cabang, dan siapa pemilik pemetaan login-ke-cabang setelah `D-25`
+  dijalankan. Lihat `keputusan-implementasi.md` §19.8.
+- **Modul lain kemungkinan memakai `auth.User.BranchCode` dengan anggapan yang sama.** Belum
+  diperiksa pada sesi ini karena Isolasi Protektif melarang menyentuh modul yang sudah selesai —
+  tetapi bila ada, cacatnya berbentuk sama dan sama diamnya.
+- **`CONTEXT.md` masih belum memuat `Laporan Klaim`, `Position`, dan `Kanwil`**, dan kini bertambah
+  satu lagi: **kode cabang klaim** sebagai istilah yang berbeda dari kode penempatan pegawai.
+  Perbedaan itulah yang, bila tertulis sejak awal, akan mencegah sesi ini terjadi.
+
+## Tambahan sesi yang sama — koreksi Work Owner atas batas cabang
+
+**Teknik yang berbuah, dan satu yang terbayar belakangan**
+
+| Teknik | Hasilnya |
+|---|---|
+| **Membedakan sebab sejak di seam, meski akibatnya sama** | Pembedaan tiga keluaran `Resolve` dibuat ketika akibatnya identik (daftar tidak disaring). Beberapa jam kemudian ia langsung menjadi **dua jawaban HTTP yang berbeda** tanpa satu baris pun dirancang ulang. Membedakan sesuatu sebelum perbedaannya berguna ternyata bukan pemborosan |
+| **Hapus field yang tidak dapat lagi bernilai dua macam** | `cabang_terbaca` dicabut dari kontrak begitu keadaan `false`-nya ditolak. Field yang hanya pernah bernilai satu macam adalah kebohongan yang menunggu giliran |
+| **Sebutkan perluasan yang diambil sendiri** | Keputusan Work Owner berbunyi tentang "melihat"; saya memberlakukannya pada "membuat" juga. Ditulis di kode, di uji, dan di dokumen — bukan disisipkan diam-diam |
+| **Biarkan uji yang gagal menunjukkan lubang di DATA, bukan hanya di kode** | Sebelas uji gagal setelah penegakan dipasang. Satu di antaranya menyingkap bahwa data contoh menaruh saksi sebuah aturan di tiga kanwil berbeda — aturan yang karenanya tidak dapat dicoba dari kursi mana pun |
+
+**Kesalahan yang tercatat**
+
+| # | Kesalahan | Bagaimana ketahuan |
+|---|---|---|
+| 3 | **Memakai "cabang tidak terbaca" sebagai pintu belakang di sebelas uji** untuk melihat seluruh data | Uji-uji itu runtuh serempak begitu pintunya ditutup. Pintu belakang di uji selalu menjadi utang: ia membuat uji bergantung pada keadaan yang tidak seorang pun ingin benar-benar ada |
+
+**Catatan untuk sesi berikutnya**
+
+- **Dua pertanyaan menjadi mendesak, bukan sekadar terbuka**: kanwil yang bebas dipilih siapa pun,
+  dan berkas yang dapat dibuka lewat nomornya tanpa memeriksa cabang. Keduanya pintu yang sama
+  dengan yang baru saja ditutup. Lihat `keputusan-implementasi.md` §20.8.
+- **`CONTEXT.md` kini punya alasan yang lebih kuat lagi** untuk memuat "kode cabang klaim" sebagai
+  istilah yang berbeda dari kode penempatan pegawai: ia bukan lagi penyaring, melainkan batas
+  kewenangan.

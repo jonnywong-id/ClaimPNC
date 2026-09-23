@@ -10,13 +10,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxlaporanklaim"
 )
 
-// Repo membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan membaca-menulis
+// Repo membaca POOLDATA.T_CLAIMLIST_ADMIN dan membaca-menulis
 // POOLDATA.CPNC_LAPORAN_KLAIM.
 type Repo struct {
 	db    *sql.DB
@@ -95,10 +96,19 @@ func (r *Repo) listMessage(
 		return inboxlaporanklaim.Page{}, err
 	}
 
-	// Keenam bind percakapan dikirim DUA KALI: sekali untuk EXISTS pada WHERE, sekali
-	// untuk mengambil pesan terakhirnya di SELECT. Keduanya memakai penyaring yang sama
-	// persis — bila berbeda, baris dapat lolos EXISTS lalu menampilkan pesan kosong.
-	listArgument := append(append([]any(nil), countArgument...), messageArgument[6:]...)
+	// Keenam bind percakapan dikirim DUA KALI: sekali untuk mengambil pesan terakhirnya di
+	// SELECT, sekali untuk EXISTS pada WHERE. Keduanya memakai penyaring yang sama persis
+	// — bila berbeda, baris dapat lolos EXISTS lalu menampilkan pesan kosong.
+	//
+	// Yang di SELECT dikirim LEBIH DULU karena di teks kuerinya ia muncul lebih dulu.
+	// Oracle mengikat menurut urutan kemunculan, bukan menurut nomor pada `:n`.
+	//
+	// `messageArgument[2:]` — enam nilai: status percakapan, pengirim yang dicari, dan
+	// pengirim yang dihindari, masing-masing penjaga dan pembandingnya. Dua yang pertama
+	// (identitas pembuat berkas) hanya dipakai WHERE.
+	listArgument := make([]any, 0, len(countArgument)+8)
+	listArgument = append(listArgument, messageArgument[2:]...)
+	listArgument = append(listArgument, countArgument...)
 	listArgument = append(listArgument, page.Offset(), page.Size)
 
 	rows, err := r.query(ctx, "claim_report_message_body", listArgument)
@@ -116,10 +126,18 @@ func (r *Repo) Summarize(
 ) (inboxlaporanklaim.Summary, error) {
 	operator := emptyToNil(filter.Operator)
 
-	argument := scopeArguments(filter)
+	// Sembilan bind pencacah komunikasi DIKIRIM LEBIH DULU, karena di teks kuerinya
+	// merekalah yang muncul lebih dulu — ada di SELECT, sedangkan penyaring ada di WHERE.
+	//
+	// Oracle mengikat menurut URUTAN KEMUNCULAN, bukan menurut nomor pada `:n`. Sebelum
+	// ini argumennya dikirim dalam urutan nomor, sehingga penyaring cabang menerima NULL
+	// dan pencacahnya menerima kode cabang: lencana di atas tab menyebut 115 sementara
+	// tabel di bawahnya kosong. Gagal tanpa satu pun galat.
+	argument := make([]any, 0, 30)
 	for i := 0; i < 9; i++ {
 		argument = append(argument, operator)
 	}
+	argument = append(argument, scopeArguments(filter)...)
 
 	row := r.db.QueryRowContext(ctx, sourced("claim_report_summary_body"), argument...)
 
@@ -177,16 +195,98 @@ func (r *Repo) ListRegions(ctx context.Context) ([]inboxlaporanklaim.Region, err
 	return result, nil
 }
 
-// Get membaca satu berkas laporan dari tabel mana pun asalnya.
+// Get membaca satu berkas laporan dari tabel mana pun asalnya, LENGKAP dengan isian
+// formnya.
+//
+// Ia memakai badan kuerinya sendiri dan pembaca barisnya sendiri: kueri detail memilih
+// sepuluh kolom lebih banyak daripada kueri daftar. Lihat catatan pada
+// claim_report_get_body.
 func (r *Repo) Get(ctx context.Context, id string) (inboxlaporanklaim.ClaimReport, error) {
-	rows, err := r.query(ctx, "claim_report_get_body", []any{strings.TrimSpace(id)})
+	clean := strings.TrimSpace(id)
+
+	// Dua jalur, dipilih menurut AWALAN NOMOR.
+	//
+	// Sejak daftar ditarik dari T_CLAIMLIST_ADMIN (Work Owner, 2026-09-23), berkas yang
+	// baru dibuat belum ada di sana sampai proses pengisinya berjalan. Membacanya lewat
+	// jalur daftar akan menjawab "tidak ditemukan" tepat sesudah tombol "Buat Baru"
+	// ditekan — tombol yang tampak rusak, kelas kegagalan yang sudah dua kali menimpa
+	// layar ini.
+	//
+	// Awalan `RCVN.` hanya diterbitkan aplikasi ini (`D-71`), sehingga pemilihannya pasti.
+	// Itu pula alasan awalan itu ditetapkan: asal sebuah berkas terbaca dari nomornya
+	// tanpa tabel pemetaan.
+	query := sourced("claim_report_get_body")
+	if inboxlaporanklaim.IssuedHere(clean) {
+		query = getQuery("claim_report_get_own_body")
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, clean)
+	if err != nil {
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca berkas: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca berkas: %w", err)
+		}
+		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrNotFound
+	}
+
+	report, err := scanDetailRow(rows)
 	if err != nil {
 		return inboxlaporanklaim.ClaimReport{}, err
 	}
-	if len(rows) == 0 {
-		return inboxlaporanklaim.ClaimReport{}, inboxlaporanklaim.ErrNotFound
+	return report, nil
+}
+
+// Update menyimpan isian form ke atas berkas yang sudah ada.
+func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport) error {
+	// Baris milik Pega ditolak SEBELUM menyentuh basis data. Pernyataan UPDATE-nya
+	// memang hanya mengenai tabel milik aplikasi ini, sehingga baris warisan akan
+	// menghasilkan "nol baris" yang terbaca sebagai ErrNotFound — pesan yang menyesatkan
+	// untuk berkas yang sebenarnya ADA tetapi bukan milik kita.
+	if report.Origin == inboxlaporanklaim.OriginLegacy {
+		return inboxlaporanklaim.ErrReadOnlyOrigin
 	}
-	return rows[0], nil
+
+	result, err := r.db.ExecContext(ctx, getQuery("claim_report_update"),
+		nullTime(report.ReceivedDate),
+		nullTime(report.DateOfLoss),
+		emptyToNil(report.ReporterName),
+		emptyToNil(report.ReporterEmail),
+		emptyToNil(report.ReporterPhone),
+		emptyToNil(report.CourierName),
+		emptyToNil(report.PolicyNumber),
+		emptyToNil(report.InsuredName),
+		emptyToNil(report.BusinessName),
+		emptyToNil(report.ReferenceNumber),
+		int64(report.EstimateValue),
+		emptyToNil(report.LossLocation),
+		emptyToNil(report.EmailSubject),
+		emptyToNil(report.Chronology),
+		emptyToNil(report.DamageDetail),
+		emptyToNil(report.Reason),
+		emptyToNil(report.NotRegisteredNote),
+		report.DocumentCount,
+		emptyToNil(report.UpdatedBy),
+		nullTime(report.UpdatedAt),
+		report.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q: %w", report.ID, err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
+		// kegagalan: pernyataannya sendiri sudah berhasil.
+		return nil
+	}
+	if affected == 0 {
+		return inboxlaporanklaim.ErrNotFound
+	}
+	return nil
 }
 
 // Insert menerbitkan nomor lalu menyimpan berkas baru — ke tabel milik aplikasi ini.
@@ -241,7 +341,7 @@ func (r *Repo) Insert(
 func (r *Repo) CheckTable(ctx context.Context) error {
 	for name, table := range map[string]string{
 		"claim_report_check_table":        "POOLDATA.CPNC_LAPORAN_KLAIM",
-		"claim_report_check_legacy_table": "DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		"claim_report_check_legacy_table": "POOLDATA.T_CLAIMLIST_ADMIN",
 	} {
 		rows, err := r.db.QueryContext(ctx, getQuery(name))
 		if err != nil {
@@ -408,6 +508,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		createdBy, branchCode, branchName       sql.NullString
 		reason, emailSubject                    sql.NullString
 		position, origin, lastMessage           sql.NullString
+		agingValue                              sql.NullInt64
 	)
 
 	// Urutan Scan mengikuti urutan kolom pada ketiga badan kueri pembaca, dan ketiganya
@@ -419,7 +520,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		&id, &claimNumber, &assignmentRef,
 		&policyNumber, &insuredName, &reporterName, &businessName, &referenceNumber,
 		&dateOfLoss, &createdAt, &createdBy, &branchCode, &branchName,
-		&agingAt, &reason, &emailSubject, &position, &origin, &lastMessage,
+		&agingAt, &reason, &emailSubject, &position, &origin, &agingValue, &lastMessage,
 	); err != nil {
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca baris: %w", err)
 	}
@@ -439,6 +540,7 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 		BranchCode:      text(branchCode),
 		BranchName:      text(branchName),
 		AgingAt:         moment(agingAt),
+		AgingValue:      number(agingValue),
 		Reason:          text(reason),
 		EmailSubject:    text(emailSubject),
 		LastMessage:     text(lastMessage),
@@ -453,7 +555,109 @@ func scanRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
 	return report, nil
 }
 
+// scanDetailRow membaca satu baris kueri detail — kolom daftar ditambah sepuluh isian
+// form.
+//
+// Ia terpisah dari scanRow karena kueri detail memang memilih lebih banyak kolom. Dua
+// pembaca untuk dua bentuk kueri, bukan satu pembaca yang menebak: `Scan` membaca secara
+// posisi, dan satu kolom yang bergeser TIDAK menghasilkan galat — hanya kolom yang berisi
+// isi kolom sebelahnya.
+func scanDetailRow(rows *sql.Rows) (inboxlaporanklaim.ClaimReport, error) {
+	var (
+		id, claimNumber, assignmentRef          sql.NullString
+		policyNumber, insuredName, businessName sql.NullString
+		reporterName, referenceNumber           sql.NullString
+		dateOfLoss, createdAt, agingAt          sql.NullTime
+		createdBy, branchCode, branchName       sql.NullString
+		reason, emailSubject                    sql.NullString
+		position, origin                        sql.NullString
+		agingValue                              sql.NullInt64
+
+		receivedDate                 sql.NullTime
+		reporterEmail, reporterPhone sql.NullString
+		courierName, lossLocation    sql.NullString
+		estimateValue, documentCount sql.NullInt64
+		chronology, damageDetail     sql.NullString
+		notRegisteredNote            sql.NullString
+
+		lastMessage sql.NullString
+	)
+
+	if err := rows.Scan(
+		&id, &claimNumber, &assignmentRef,
+		&policyNumber, &insuredName, &reporterName, &businessName, &referenceNumber,
+		&dateOfLoss, &createdAt, &createdBy, &branchCode, &branchName,
+		&agingAt, &reason, &emailSubject, &position, &origin, &agingValue,
+		&receivedDate, &reporterEmail, &reporterPhone, &courierName,
+		&estimateValue, &lossLocation, &chronology, &damageDetail,
+		&notRegisteredNote, &documentCount,
+		&lastMessage,
+	); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: membaca baris detail: %w", err)
+	}
+
+	report := inboxlaporanklaim.ClaimReport{
+		ID:                id.String,
+		ClaimNumber:       text(claimNumber),
+		AssignmentRef:     text(assignmentRef),
+		PolicyNumber:      text(policyNumber),
+		InsuredName:       text(insuredName),
+		ReporterName:      text(reporterName),
+		BusinessName:      text(businessName),
+		ReferenceNumber:   text(referenceNumber),
+		DateOfLoss:        moment(dateOfLoss),
+		CreatedAt:         moment(createdAt),
+		CreatedBy:         text(createdBy),
+		BranchCode:        text(branchCode),
+		BranchName:        text(branchName),
+		AgingAt:           moment(agingAt),
+		AgingValue:        number(agingValue),
+		Reason:            text(reason),
+		EmailSubject:      text(emailSubject),
+		Position:          inboxlaporanklaim.Position(text(position)),
+		Origin:            inboxlaporanklaim.Origin(text(origin)),
+		ReceivedDate:      moment(receivedDate),
+		ReporterEmail:     text(reporterEmail),
+		ReporterPhone:     text(reporterPhone),
+		CourierName:       text(courierName),
+		EstimateValue:     inboxlaporanklaim.Money(estimateValue.Int64),
+		LossLocation:      text(lossLocation),
+		Chronology:        text(chronology),
+		DamageDetail:      text(damageDetail),
+		NotRegisteredNote: text(notRegisteredNote),
+		DocumentCount:     int(documentCount.Int64),
+		LastMessage:       text(lastMessage),
+	}
+	report.ID = strings.TrimSpace(report.ID)
+	report.Transferred = report.Position != inboxlaporanklaim.PositionNotTransferred
+	return report, nil
+}
+
 func text(value sql.NullString) string { return strings.TrimSpace(value.String) }
+
+// number mengubah angka yang boleh NULL menjadi teks, dan NULL menjadi teks kosong.
+//
+// Ia dipakai kolom yang hanya DIGAMBAR, tidak pernah dihitung. Mengembalikan 0 untuk NULL
+// akan membuat kolom yang memang belum diisi tergambar sebagai angka nol — dua keadaan
+// berbeda yang tidak lagi dapat dibedakan pembacanya.
+func number(value sql.NullInt64) string {
+	if !value.Valid {
+		return ""
+	}
+	return strconv.FormatInt(value.Int64, 10)
+}
+
+// nullTime mengubah waktu nol menjadi NULL.
+//
+// Tanpa ini, tanggal yang memang belum diisi tersimpan sebagai tahun 1 — dan tanggal itu
+// tampak sah, lolos setiap pemeriksaan, lalu muncul di layar sebagai berkas paling
+// tertunggak yang pernah ada.
+func nullTime(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return value
+}
 
 func moment(value sql.NullTime) time.Time {
 	if !value.Valid {

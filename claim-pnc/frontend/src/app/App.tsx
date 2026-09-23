@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
+import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
@@ -94,6 +95,21 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Form Input Receive Document. Ia berdiri sebagai rute tersendiri, bukan modal di
+        atas daftar: alamatnya dapat disalin dan dibuka kembali, dan itu yang dibutuhkan
+        petugas yang menerima nomor berkas lewat telepon.
+      */}
+      <Route
+        path="/inbox/laporan-klaim/:id"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportFormPage />
             </Protected>
           </SessionGuard>
         }
