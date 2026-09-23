@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && npm run mark-dist",
+    "build": "vite build && npm run mark-dist",
+    "build:checked": "npm run typecheck && npm run build",
     "mark-dist": "node -e \"const f=require('fs');f.writeFileSync('../backend/spa/dist/.gitkeep','');f.writeFileSync('../backend/spa/dist/versi.txt',new Date().toISOString())\"",
     "preview": "vite preview",
     "test": "vitest run",

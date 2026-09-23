@@ -2,10 +2,14 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
+import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
+import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
+import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
@@ -394,6 +398,32 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox Close Claim (`MENU_ID 59`) — KEBALIKAN TEPAT dari rute tepat di atasnya.
+
+        Keduanya menyaring dua nilai `PYSTATUSWORK` yang SAMA dengan arah yang berlawanan:
+        yang di atas `NOT IN`, yang ini `IN`. Rutenya karena itu terpisah dan tidak boleh
+        disatukan — menunjuk keduanya ke satu layar akan menampilkan kebalikan dari yang
+        diminta pengguna, tanpa satu pun tanda di layar.
+
+        Harness-nya juga TIDAK ADA di export (`K-33`); yang dipakai adalah kueri, activity,
+        dan section yang memang ada.
+
+        Ia satu-satunya layar inbox yang MENULIS. Yang ditulisnya bukan klaim melainkan
+        permintaan atas klaim — `P-1` menetapkan klaim masih ditulis Pega selama masa
+        paralel. Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada, dan di layar
+        ini taruhannya lebih besar: kedua tombolnya menyentuh klaim yang sudah tutup.
+      */}
+      <Route
+        path="/inbox-close-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CloseClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Manager Receive / PUCL — pandangan penyelia atas DUA antrean sekaligus,
         pengganti harness `ReceiveDoucument_Harness` (`MENU_ID 56`).
 
@@ -450,6 +480,53 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <AccountPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/ambang-komite"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ThresholdPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Penjenjangan berada di bawah /komite, bukan /master, karena ia bukan data acuan
+        melainkan aturan bisnis modul B-7. Tangga ambangnya milik F-4, cara membacanya
+        milik B-7 — dan batas itu ikut terlihat di alamat halamannya.
+      */}
+      <Route
+        path="/komite/penjenjangan"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TieringPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Komite — menggantikan harness `InboxKomite_Harness`, MENU_ID 52.
+
+        Ia berada di bawah /komite bersama penjenjangan, bukan di bawah /master: isinya
+        pekerjaan dan keputusan, bukan data acuan. Batas kepemilikan itu ikut terlihat di
+        alamat halamannya.
+
+        Pemeriksaan kewenangan menu — di data contoh, MENU_ID 52 hanya diberikan kepada
+        grup `IT` — adalah `TKT-F3-005` yang belum ada. Sampai itu ada, setiap pengguna
+        yang dapat masuk dapat membukanya; yang membatasi isinya adalah penyaring pemilik
+        di server, bukan rute ini.
+      */}
+      <Route
+        path="/komite/inbox"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxKomitePage />
             </Protected>
           </SessionGuard>
         }

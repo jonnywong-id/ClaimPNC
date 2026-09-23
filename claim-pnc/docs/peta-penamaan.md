@@ -1133,6 +1133,79 @@ menyatakan ISI — dan yang dibaca klien adalah isinya.
 `POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.
 
 ## Tambahan 2026-09-20 — modul Inbox XOL (`inboxxol`)
+## Tambahan 2026-09-20 — modul Inbox Komite
+
+### Alias Pega yang TIDAK dibawa
+
+Ini bagian terpenting dari peta modul ini. Lima property pada section lama bernama sesuatu yang
+sama sekali tidak mencerminkan isinya — utang teknis `03-CURRENT-ARCHITECTURE.md` §4.2. Nama yang
+dipakai di sini diturunkan dari **apa yang benar-benar dihitung SQL-nya**, bukan dari nama
+property-nya (`D-19`).
+
+| Property Pega | Caption di layar lama | Isi sebenarnya | Nama di kode |
+|---|---|---|---|
+| `.IBNR` | Nilai ASM Share | `NILAIKLAIM × SHAREASM / 100` | `ASMShareValue` |
+| `.pyScore` | Nilai OR ASM | `NILAIKLAIM × Σ PRSN_*` | `ORValue` |
+| `.DraftWordingID` | PIC Klaim | `T_CLAIM_PNC.PICTEKNIK` | `ClaimPIC` |
+| `.RejectedCode` | Alasan Reject | `NOTEKOMITE` | `CommitteeNote` |
+| `.StatusKlaim` | Tipe Komite | `TYPEKOMITE × PAYMENTTYPE` | `CommitteeKind` |
+
+`.StatusKlaim` patut disebut khusus: ia **bukan** Status Klaim dalam arti `D-18`. Menyalin namanya
+akan menambah tafsir kelima pada konsep yang `D-18` sudah susah payah pisahkan menjadi empat.
+
+### Istilah domain baru
+
+| Indonesia (`CONTEXT.md`) | Inggris | Contoh |
+|---|---|---|
+| Kasus komite | `CommitteeCase` | `CommitteeCase`, `FindCase`, `ListCases` |
+| Kotak masuk | `InboxKind` | `InboxOutstanding`, `InboxAccepted`, `InboxRejected` |
+| Keputusan | `Decision` | `Decision`, `DecisionKind`, `DecisionCommand` |
+| Setuju · Tolak · Kembalikan | `Approve` · `Reject` · `Return` | `DecisionApprove`, `DecisionReject`, `DecisionReturn` |
+| Kesimpulan | `Outcome` | `OutcomePending`, `OutcomeApproved`, `OutcomeRejected`, `OutcomeReturned` |
+| Penjenjangan (keadaan) | `Progress` | `Progress`, `Evaluate`, `TierCountUnknown` |
+| Umur menunggu | `Aging` | `AgingDays` |
+| Pemutus | `Actor` | `Actor`, `ActorLogin`, `ActorName` |
+| Tipe komite | `CommitteeKind` | `CommitteeKindOf` |
+| Warisan (dari Pega) | `Legacy` | `LegacyOutcome`, `LegacyTier` |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Putuskan | `Decide` | aksi bisnis, bukan `Update` — ia punya invarian dan meninggalkan jejak |
+| Catat | `Record` | append-only; sengaja BUKAN `Save`, yang menyiratkan dapat menimpa |
+| Ringkas | `Summarize` | jumlah per kotak dalam satu perjalanan |
+| Tumpangkan | `withProgress` | menumpangkan keputusan kita di atas kasus warisan |
+
+### Nama kueri `.sql` tambahan
+
+Berawalan menurut **apa yang dilayaninya**, bukan menurut nama tabelnya — karena satu kueri di
+sini menyentuh enam tabel sekaligus:
+
+    inbox_list · inbox_count · inbox_summary · inbox_get · inbox_check_table
+    decision_list_for_cases · decision_insert · decision_check_table
+
+`decision_insert` adalah **satu-satunya pernyataan tulis di seluruh paket**, dan ia terdaftar
+eksplisit di `kueriYangBolehMenulis` pada ujinya.
+
+### Nama tabel dan kolom — tetap Indonesia
+
+`POOLDATA.CPNC_KOMITE_KEPUTUSAN` beserta seluruh kolomnya (`CASE_ID`, `NOMOR_KLAIM`, `JENJANG`,
+`KEPUTUSAN`, `CATATAN`, `ACTOR_LOGIN`, `ACTOR_NAMA`, `PADA`) berbahasa Indonesia mengikuti `D-80`:
+nama basis data dimiliki bersama Pega selama masa paralel, dan perubahannya menempuh `D-63`.
+
+Dua kolom memakai awalan `ACTOR_` yang berbahasa Inggris. Itu disengaja: ia menghindari kata
+"pengguna", yang di tabel ini akan menyesatkan — pemutusnya belum tentu ada di tabel pengguna
+aplikasi ini, dan nilainya adalah login warisan.
+
+### Nama field JSON — tetap Indonesia
+
+`nomor_case`, `nomor_klaim`, `aging_komite`, `tipe_komite`, `nilai_asm_share`, `nilai_or_asm`,
+`penjenjangan`, `kesimpulan`, `keputusan`, `catatan`, `kotak`, `ringkasan` — seluruhnya kontrak
+API, bukan nama internal (`D-80`).
+
+Nilai enumnya pun Indonesia dan sengaja sama dengan yang tersimpan di kolom `KEPUTUSAN`:
+`setuju` · `tolak` · `kembalikan`, dan `outstanding` · `diterima` · `ditolak`.
 
 ### Nama modul
 
@@ -1740,3 +1813,99 @@ Steering yang perubahannya ditulis sebagai keputusan (`D-72`), bukan ditambahkan
 |---|---|---|
 | `cabang_tidak_dikenali` | 403 | login petugas belum terdaftar pada cabangnya |
 | `sumber_cabang_tidak_terbaca` | 503 | sumber data cabang sedang tidak dapat dibaca |
+| Backend | tidak ada folder baru — ia bagian `internal/komite/` (`D-81`) |
+| Frontend | `src/modules/inbox-komite/` — nama modul yang disebut Work Owner |
+
+Berkas frontend berbahasa Inggris sesuai `D-80`: `InboxKomitePage.tsx`, `InboxTabs.tsx`,
+`DecisionPanel.tsx`. "Inbox Komite" pada nama folder adalah **nama modulnya**, dan itu satu-satunya
+yang berbahasa Indonesia.
+
+---
+
+## Modul Inbox Close Claim (`MENU_ID 59`)
+
+### Nama folder — Indonesia, mengikuti nama menu (`D-81`)
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxcloseclaim` |
+| Frontend, folder | `src/modules/inbox-close-claim` |
+| Rute antarmuka | `/inbox-close-claim` |
+| Jalur API | `/api/inbox-close-claim` |
+
+Nama menunya sendiri berbahasa Inggris — "Inbox Close Claim" — sehingga nama folder dan nama
+modul kebetulan sama bentuknya. Yang mengikat tetap `D-81`: nama folder mengikuti **nama
+butir menu**, bukan nama harness-nya.
+
+Harness-nya sendiri, `InboxCloseClaim_Harness`, **tidak ada di export**. Nama yang dipakai
+karena itu diambil dari `Database/m_menu_aplikasi_pnc.csv:59` dan dari judul yang tertulis di
+dalam `Section/InboxManagerReopen1_Sec-Section.xml`.
+
+> Perhatikan: nama SECTION-nya menyebut "ManagerReopen", bukan "CloseClaim". Modul ini
+> sengaja TIDAK dinamai menurut section itu — yang dibaca Work Owner dan yang tertulis di
+> menu adalah "Inbox Close Claim".
+
+### Alias Pega yang sengaja TIDAK dibawa (`D-19`)
+
+Layar ini memuat alias paling menyesatkan di antara modul mana pun sejauh ini: **tiga dari
+sebelas kolomnya** dialias dengan nama yang artinya berlawanan dengan isinya.
+
+| Alias kueri lama | Isinya sebenarnya | Nama di sini |
+|---|---|---|
+| `ReinsurerName` | PIC Teknik (`USERTEKNIS_1`) | `TechnicalPIC` |
+| `MOName` | Admin PNC (`PXCREATEOPNAME`) | `AdminPNC` |
+| `CoverNo` | **tanggal kejadian** (`DATEOFLOSS_1`) | `LossDate` |
+| `CustomerName` | nama tertanggung (`QQNAME`) | `InsuredName` |
+| `CaseID` | kunci teknis (`PZINSKEY`) | `ClaimID` |
+| `CaseIDView` | nomor klaim (`PYID`) | `ClaimNumber` |
+| `Country` | pencacah hasil pada kueri hitung | — |
+
+Enam properti `TempFilter.*` pada activity lama juga tidak dibawa namanya, dan ketujuhnya
+sama menyesatkan: `TempFilter.CaseID` berisi penyaring **No Polis**, `TempFilter.City` berisi
+penyaring **No Klaim**, `TempFilter.CityID` berisi penyaring **PIC**, `TempFilter.District`
+berisi penyaring **transfer kasir**, dan `TempFilter.DistrictID` berisi penyaring **status
+bayar**.
+
+### Nama tipe dan isian — Inggris (`D-80`)
+
+| Pega | Di sini |
+|---|---|
+| baris klaim tutup | `ClosedClaim` |
+| permintaan atas klaim | `ClaimRequest` |
+| jenis permintaan | `RequestKind` — `RequestReopen`, `RequestCopy` |
+| keadaan permintaan | `RequestStatus` — `RequestPending`, `RequestExecuted`, `RequestCanceled` |
+| penyaring lini bisnis | `BusinessLine` |
+| penyaring transfer kasir | `TransferStatus` |
+| penyaring status bayar | `PaymentStatus` |
+
+### Nama kolom basis data — tetap Indonesia
+
+Tabel baru `POOLDATA.CPNC_PERMINTAAN_KLAIM` memakai nama kolom Indonesia, mengikuti
+pengecualian `D-80` yang sama dengan `CPNC_KOMITE_KEPUTUSAN`:
+
+`ID` · `JENIS` · `CASE_ID` · `NOMOR_KLAIM` · `ALASAN` · `STATUS` · `EFEK_STATUS_KERJA` ·
+`EFEK_STATUS_KLAIM` · `LINGKUP_SALIN` · `ACTOR_LOGIN` · `ACTOR_NAMA` · `PADA`
+
+Nilai kolom `JENIS` dan `STATUS` juga berbahasa Indonesia (`reopen`/`salin`,
+`menunggu`/`dijalankan`/`dibatalkan`) karena ia sama dengan nilai pada kontrak API.
+
+### Nama kueri `.sql`
+
+`close_claim_list` · `close_claim_count` · `close_claim_exists` · `request_insert` ·
+`request_pending_for` · `request_check_table`
+
+### Nama field JSON — tetap Indonesia
+
+`klaim_id` · `nomor_klaim` · `nomor_polis` · `nama_tertanggung` · `nama_bisnis` ·
+`sumber_bisnis` · `nama_cabang` · `pic_teknik` · `admin_pnc` · `tanggal_pendaftaran` ·
+`tanggal_kejadian` · `tanggal_tutup` · `lama_hari` · `status_tampil` · `status_klaim_kode` ·
+`status_klaim_label` · `sudah_transfer` · `permintaan_tertunda` · `permintaan_terbaca` ·
+`selisih_terencana`
+
+### Nama tipe frontend
+
+`KlaimTutup` · `PermintaanTertunda` · `DaftarResponse` · `PenyaringResponse` ·
+`PenyaringKlaimTutup` · `JenisPermintaan` · `PermintaanResponse`
+
+Komponennya: `CloseClaimPage` · `RequestDialog` · `PanelPenyaring` · `BarisTindakan` ·
+`LamaKlaim` · `SelisihTerencana`

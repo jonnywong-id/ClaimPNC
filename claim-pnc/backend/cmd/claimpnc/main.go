@@ -31,11 +31,13 @@ import (
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
+	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxxol"
+	"claim-pnc/internal/komite"
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpenyebabkerugian"
@@ -53,6 +55,7 @@ import (
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/portal"
 	"claim-pnc/spa"
 
@@ -73,6 +76,10 @@ import (
 
 	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
 	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
+	inboxcloseclaimhttp "claim-pnc/internal/inboxcloseclaim/http"
+	inboxcloseclaimmemory "claim-pnc/internal/inboxcloseclaim/repo/memory"
+	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
+	inboxcloseclaimusecase "claim-pnc/internal/inboxcloseclaim/usecase"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
@@ -91,6 +98,10 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
+	komitehttp "claim-pnc/internal/komite/http"
+	komitememory "claim-pnc/internal/komite/repo/memory"
+	komitesql "claim-pnc/internal/komite/repo/sqlstore"
+	komiteusecase "claim-pnc/internal/komite/usecase"
 	masterdominanfactorhttp "claim-pnc/internal/masterdominanfactor/http"
 	masterdominanfactormemory "claim-pnc/internal/masterdominanfactor/repo/memory"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
@@ -216,6 +227,37 @@ func run() error {
 	writeAuthError := authhttp.WriteError(logger)
 
 	handlerAuth := authhttp.NewHandler(assembly.auth, logger)
+	handlerKomite := komitehttp.NewHandler(komitehttp.Options{
+		Service:             assembly.komite,
+		Logger:              logger,
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
+	})
+	handlerKomiteInbox := komitehttp.NewInboxHandler(komitehttp.InboxHandlerOptions{
+		Service: assembly.komiteInbox,
+		// Jembatan satu arah dari modul auth ke modul Komite. Ia dipasang di sini, bukan
+		// di dalam salah satu modul, supaya keduanya tetap tidak saling mengimpor — yang
+		// tahu keduanya hanyalah berkas perakitan ini.
+		//
+		// Yang dijembatani LOGIN, bukan NIK. Inbox disaring terhadap `PXASSIGNEDOPERATORID`
+		// pada worklist Pega, yang berisi nama seperti `ELLENSUPRIYATI` — dan Work Owner
+		// menetapkan kunci pencocokannya adalah login yang DIKETIK pengguna
+		// (`docs/keputusan-implementasi.md` §16.5).
+		Caller: func(ctx context.Context) (komitehttp.InboxCaller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return komitehttp.InboxCaller{}, false
+			}
+			return komitehttp.InboxCaller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+			}, true
+		},
+		Logger:              logger,
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: komitehttp.ErrorWriter(writeAuthError),
+	})
+
 	handlerPortal := portalhttp.NewHandler(portalhttp.Options{
 		Repo:         assembly.portal,
 		ReadyAliases: assembly.readyAliases,
@@ -622,6 +664,32 @@ func run() error {
 		FallbackErrorWriter: inboxoutstandinghttp.ErrorWriter(writePortalAwareError),
 	})
 
+	closeClaimHandler := inboxcloseclaimhttp.NewHandler(inboxcloseclaimhttp.Options{
+		Service: assembly.inboxCloseClaim,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		//
+		// DUA field diambil, berbeda dari modul yang hanya membaca: jejak permintaan
+		// menyimpan NAMA pemohon bersama login-nya, supaya jejak itu tetap terbaca utuh
+		// tanpa join ke tabel pengguna. Jejak yang namanya diambil lewat join akan berubah
+		// ketika orangnya berganti nama — dan jejak yang dapat berubah bukan jejak.
+		GetCaller: func(ctx context.Context) (inboxcloseclaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxcloseclaimhttp.Caller{}, false
+			}
+			return inboxcloseclaimhttp.Caller{
+				Login: baseCtx.User.Login,
+				Name:  baseCtx.User.Name,
+			}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal dipetakan modul portal lebih dulu, sisanya jatuh ke pemeta galat
+		// auth — rantai yang sama dipakai modul Inbox Outstanding tepat di atasnya.
+		FallbackErrorWriter: inboxcloseclaimhttp.ErrorWriter(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
 		// Galatnya dikembalikan lebih dulu, bukan dibungkus: nil bertipe *Service yang
@@ -684,6 +752,18 @@ func run() error {
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
+				// Inbox Close Claim — klaim yang sudah tutup, beserta permintaan
+				// membukanya kembali dan menyalinnya.
+				//
+				// Satu-satunya modul inbox yang MENULIS. Yang ditulisnya bukan klaim
+				// melainkan POOLDATA.CPNC_PERMINTAAN_KLAIM, tabel milik aplikasi ini
+				// sendiri — `P-1` menetapkan klaim masih ditulis Pega selama masa paralel.
+				//
+				// Kewenangannya belum diperiksa per peran (TKT-F3-005). Di Pega, butir
+				// menunya dijaga When rule yang membukanya bagi empat access group
+				// ditambah TIGA Operator ID perorangan yang tertanam di dalam rule —
+				// persis jenis hardcode yang D-15 hapus.
+				inboxcloseclaimhttp.Mount(protected, closeClaimHandler, activePortalDeps)
 				// Master Tipe Surveyors. Sama seperti di atas: pemeriksaan portal
 				// dipasang di dalam Mount, karena SELURUH rutenya menyentuh basis
 				// data entitas.
@@ -734,6 +814,23 @@ func run() error {
 				// daftar kode, melainkan daftar siapa yang boleh membuka nomor KTP
 				// dan nomor telepon nasabah badan hukum lain (`R-20`).
 				mastermaskinghttp.Mount(protected, maskingHandler, activePortalDeps)
+
+				// Modul Komite memasang tiga kelompok rute sekaligus: master ambang di
+				// bawah master/, perhitungan penjenjangan di bawah komite/, dan Inbox
+				// Komite di bawah komite/inbox.
+				//
+				// Dua yang pertama DIBACA SAJA — tidak ada satu pun jalur yang menulis ke
+				// POOLDATA.EMAILKOMITE selama masa paralel (P-1, keputusan Work Owner
+				// 2026-09-17).
+				//
+				// Yang ketiga MENULIS, dan hanya ke satu tempat: tabel keputusan milik
+				// aplikasi ini sendiri (migrasi 0004). Kasusnya tetap dibaca saja dari
+				// tabel warisan.
+				//
+				// Isi layar ini memperlihatkan siapa yang berwenang menyetujui uang, dan
+				// setiap barisnya memuat nilai klaim serta nama tertanggung. Tidak satu
+				// pun boleh terbaca tanpa sesi.
+				komitehttp.Mount(protected, handlerKomite, handlerKomiteInbox)
 
 				// Inbox XOL memuat nilai klaim agregat satu perjanjian reasuransi,
 				// nama reasuradur, dan alamat surelnya. Tidak satu pun boleh terbaca
@@ -806,6 +903,13 @@ type assembly struct {
 	// POOLDATA.LST_ACCOUNT dibaca dan ditulis per entitas, bukan dari portal utama saja.
 	masterRekening func(string) (*masterrekeningusecase.Service, error)
 	masterStatus   *masterstatususecase.Service
+
+	// komite membaca master ambang dan menghitung penjenjangan persetujuan (B-7).
+	komite *komiteusecase.Service
+
+	// komiteInbox melayani layar Inbox Komite: daftar pekerjaan anggota komite dan
+	// pencatatan keputusannya (`TKT-B07-002`, MENU_ID 52).
+	komiteInbox *komiteusecase.InboxService
 
 	// masterStatusProgres memakai pemilih repo per portal, bukan repo tunggal:
 	// tabelnya ada di basis data SETIAP entitas (ADR-0030).
@@ -901,6 +1005,13 @@ type assembly struct {
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
 
+	// inboxCloseClaim melayani layar Inbox Close Claim — klaim yang sudah TUTUP.
+	//
+	// Ia kebalikan tepat dari inboxOutstanding tepat di atasnya: keduanya menyaring dua
+	// nilai PYSTATUSWORK yang sama dengan arah yang berlawanan. Satu-satunya modul inbox
+	// yang MENULIS, dan yang ditulisnya bukan klaim melainkan permintaan atas klaim.
+	inboxCloseClaim *inboxcloseclaimusecase.Service
+
 	readyAliases func() []string
 	close        func()
 }
@@ -913,6 +1024,18 @@ type storage struct {
 	// claimStatusSelector memilih penyimpanan master status klaim milik satu portal.
 	// Sejak 2026-09-19 tabelnya dibaca per entitas, bukan dari portal utama saja.
 	claimStatusSelector masterstatus.RepoSelector
+
+	// komite adalah master ambang POOLDATA.EMAILKOMITE — DIBACA SAJA.
+	komite komite.Repo
+
+	// komiteInbox membaca kasus komite dari tabel warisan; komiteDecision menulis
+	// keputusannya ke tabel milik aplikasi ini.
+	//
+	// Keduanya dinyatakan TERPISAH meski satu objek yang sama dapat mengisi keduanya
+	// (adapter memori memang demikian). Pembelahannya mengikuti kepemilikan tabel:
+	// yang satu tidak boleh menulis apa pun, yang lain menulis.
+	komiteInbox    komite.InboxRepo
+	komiteDecision komite.DecisionRepo
 
 	// accountSelector memilih penyimpanan master rekening milik satu portal entitas.
 	// Repo dan BankRepo dipilih bersamaan karena keduanya hidup di basis data yang sama.
@@ -980,6 +1103,17 @@ type storage struct {
 	// Ia hidup di basis data PORTAL UTAMA, bukan per entitas: HRD dan master pengguna
 	// adalah data lingkup identitas, sama seperti M_LOGIN_PNC dan M_PORTAL_PNC.
 	claimReportBranch inboxlaporanklaim.BranchResolver
+
+	// closeClaimSelector memilih penyimpanan klaim TUTUP milik satu portal.
+	closeClaimSelector inboxcloseclaim.RepoSelector
+
+	// closeClaimRequests memilih penyimpanan PERMINTAAN ReOpen dan Copy Klaim milik satu
+	// portal.
+	//
+	// Ia terpisah dari closeClaimSelector meski keduanya melayani satu layar, dan
+	// pembelahannya mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega,
+	// yang kedua menulis tabel milik aplikasi ini sendiri (`P-1`).
+	closeClaimRequests inboxcloseclaim.RequestRepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -1283,12 +1417,66 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Pembangkit pengenal dan jam dipasok di sini, bukan dibaca modul dari jam sistem.
+	//
+	// Keduanya seam supaya waktu permintaan dapat diuji secara deterministik — dan supaya
+	// tidak ada satu pun tempat di dalam modul yang memanggil time.Now() sendiri, yang
+	// persis pola `Set7Hours` sistem lama yang menambah tujuh jam manual di 118 titik.
+	closeClaimService, err := inboxcloseclaimusecase.NewService(inboxcloseclaimusecase.Options{
+		Claims:   store.closeClaimSelector,
+		Requests: store.closeClaimRequests,
+		IDs:      inboxcloseclaimmemory.IDGenerator{},
+		Clock:    clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Policy tidak dipasok: DefaultPolicy dipakai — mode kumulatif, dan hanya
+	// Non-MBU yang memakai pita dengan batas Rp 100.000.000 (`D-52`, `D-70`).
+	//
+	// Ia BELUM bergantung pada portal yang sedang melayani, dan itu batas yang disadari:
+	// entitas Simasnet memakai mode satu-penyetuju, dan entitas SMI memakai batas pita
+	// USD 7.000 — keduanya ada di rule yang sama (`Activity/SetEmailKomite-Act.xml`).
+	// Menyambungkannya ke portal aktif adalah `TKT-F6-002`, yang menuntut portal melekat
+	// pada permintaan alih-alih pada keadaan global (`R-20`).
+	//
+	// Randomizer dipasok sekarang meski portal ASM tidak memakainya: bila kelak portal
+	// diganti ke mode satu-penyetuju, pemilihannya langsung acak — bukan diam-diam
+	// selalu jatuh ke orang yang sama.
+	komiteService, err := komiteusecase.NewService(komiteusecase.Options{
+		Repo:       store.komite,
+		Randomizer: random.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Inbox Komite memakai jam sistem dalam UTC, sama dengan modul lain. Ia dipasok
+	// eksplisit — bukan dibiarkan memakai bawaan — supaya jelas terbaca bahwa Aging
+	// dihitung dari jam SERVER, bukan jam peramban. Satu kenyataan tidak boleh punya dua
+	// umur.
+	komiteInboxService, err := komiteusecase.NewInboxService(komiteusecase.InboxOptions{
+		Cases:     store.komiteInbox,
+		Decisions: store.komiteDecision,
+		IDs:       komitememory.IDGenerator{},
+		Clock:     clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	return assembly{
 		auth:                    service,
 		portal:                  store.portal,
 		masterRekening:          buildMasterRekening(cfg, store, logger),
 		masterStatus:            claimStatusService,
 		masterStatusProgres:     progressStatusService,
+		komite:                  komiteService,
+		komiteInbox:             komiteInboxService,
 		masterTipeSurveyors:     surveyorTypeService,
 		masterSurveyors:         surveyorService,
 		masterPicTeknik:         picTeknikService,
@@ -1306,6 +1494,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxLaporanKlaim:       claimReportService,
 		inboxOutstanding:        outstandingService,
+		inboxCloseClaim:         closeClaimService,
 		readyAliases:            store.readyAliases,
 		close:                   store.close,
 	}, nil
@@ -1490,6 +1679,35 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.accountInOracle = true
 		store.readyAliases = pool.Available
 		store.menu = menusql.NewRepo(primary)
+
+		// Master ambang komite dipasang pada koneksi UTAMA, dan itu CACAT YANG DISADARI —
+		// bukan sekadar sementara.
+		//
+		// Work Owner menegaskan 2026-09-19 bahwa setiap server punya POOLDATA-nya sendiri,
+		// dan isi EMAILKOMITE BERBEDA antar server: baris SIMASNET hanya ada di POOLDATA
+		// server Simasnet. Selama repo ini terpasang pada koneksi utama, portal mana pun
+		// yang dipilih pengguna akan membaca tangga ambang milik portal UTAMA.
+		//
+		// Akibatnya bukan galat melainkan angka yang salah tanpa tanda: layar menampilkan
+		// jenjang persetujuan entitas lain, dan tidak ada yang terlihat keliru. Itu kelas
+		// kegagalan yang sama dengan `R-20`.
+		//
+		// Hari ini belum menimbulkan kerugian karena hanya portal utama yang dilayani.
+		// Memperbaikinya adalah `TKT-F6-002` — koneksi diambil dari portal AKTIF, yang
+		// menuntut portal melekat pada permintaan alih-alih pada keadaan global.
+		store.komite = komitesql.NewRepo(primary)
+
+		// Inbox Komite membaca tabel WARISAN — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`,
+		// `PC_ASSIGN_WORKLIST`, `T_CLAIM_KOMITE_LIST`, `T_CLAIM_DATA_RESULTS_AI` — dan
+		// menulis keputusannya ke tabel MILIK APLIKASI INI (`CPNC_KOMITE_KEPUTUSAN`,
+		// migrasi 0004). Keduanya dipasang pada koneksi yang sama.
+		//
+		// Cacat portalnya SAMA PERSIS dengan master ambang di atas, dan di sini akibatnya
+		// lebih berat: yang salah portal bukan angka acuan melainkan DAFTAR PEKERJAAN
+		// beserta nilai klaim dan nama tertanggung milik badan hukum lain. Itu `R-20`
+		// secara harfiah, dan penutupannya `TKT-F6-002`.
+		store.komiteInbox = komitesql.NewInboxRepo(primary)
+		store.komiteDecision = komitesql.NewDecisionRepo(primary)
 		store.close = pool.Close
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
@@ -1537,6 +1755,35 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// usecase sebagai "lini tidak diketahui" dan dicatat di log; layar tetap
 		// berjalan dengan seluruh lini terlihat, persis perilaku Pega.
 		store.outstandingLines = inboxoutstandingsql.NewLineBusinessRepo(primary)
+
+		// Klaim TUTUP dibaca dari basis data entitasnya sendiri, dengan aturan yang sama
+		// seperti klaim berjalan di atasnya.
+		store.closeClaimSelector = func(alias string) (inboxcloseclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxcloseclaimsql.NewRepo(conn), nil
+		}
+
+		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
+		// klaimnya — bukan ke portal utama.
+		//
+		// Ini bukan pilihan kerapian: permintaan atas klaim milik satu badan hukum yang
+		// tercatat di basis data badan hukum lain adalah kebocoran yang persis `R-20`
+		// larang, dan pada modul ini akibatnya melampaui tampilan.
+		//
+		// Tabelnya dibuat migrasi `0006`, yang BELUM dijalankan DBA di lingkungan mana pun.
+		// Sampai itu terjadi, pembacaannya gagal dan usecase menanganinya sebagai
+		// "permintaan tidak dapat dibaca" — daftarnya tetap tampil, penandanya tidak muncul,
+		// dan kegagalannya dicatat di log.
+		store.closeClaimRequests = func(alias string) (inboxcloseclaim.RequestRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxcloseclaimsql.NewRequestRepo(conn), nil
+		}
 
 		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
 			conn, err := pool.For(alias)
@@ -1652,6 +1899,18 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Ke-33 status nyata ikut dimuat, sehingga layar Master Status Klaim dapat
 		// dicoba lengkap tanpa Oracle dan tanpa menunggu migrasi 0002.
 		store.readyAliases = func() []string { return []string{cfg.PrimaryPortal} }
+		// Isi master ambang yang sebenarnya ikut dimuat, sehingga layar Ambang Komite
+		// dan simulasi penjenjangan dapat dicoba lengkap tanpa Oracle — termasuk
+		// ketujuh kasus pada spec B-7.
+		store.komite = komitememory.NewSampleRepo()
+		// Kasus komite contoh ikut dimuat, sehingga layar Inbox Komite dapat dicoba
+		// LENGKAP — termasuk alur keputusannya — tanpa Oracle dan tanpa menunggu migrasi
+		// 0004. Seluruh isinya KARANGAN, berbeda dari master ambang di atas: tidak ada
+		// satu pun ekstrak antrean komite yang pernah diserahkan kepada kami. Lihat
+		// repo/memory/inbox_sample.go.
+		inboxStore := komitememory.NewSampleInboxStore()
+		store.komiteInbox = inboxStore
+		store.komiteDecision = inboxStore
 		store.progressStatusSelector = progressStatusSelectorMemory(cfg.PrimaryPortal)
 		store.autoClaimSelector = autoClaimSelectorMemory(cfg.PrimaryPortal)
 		store.claimReportSelector = claimReportSelectorMemory(cfg.PrimaryPortal)
@@ -1666,6 +1925,22 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return outstandingMemory, nil
 		}
 		store.outstandingLines = outstandingMemory
+
+		// Inbox Close Claim memakai SATU penyimpanan untuk klaim dan permintaannya.
+		//
+		// Berbeda dari perakitan SQL di atas, yang memisahkan keduanya karena tabelnya
+		// dimiliki sistem yang berbeda. Di memori tidak ada kepemilikan tabel, dan
+		// menyatukannya justru yang membuat permintaan yang dicatat langsung terlihat pada
+		// daftar — persis perilaku yang hendak dicoba tanpa Oracle.
+		//
+		// Seluruh isinya karangan — lihat repo/memory/sample.go.
+		closeClaimMemory := inboxcloseclaimmemory.NewStoreWithSamples()
+		store.closeClaimSelector = func(string) (inboxcloseclaim.Repo, error) {
+			return closeClaimMemory, nil
+		}
+		store.closeClaimRequests = func(string) (inboxcloseclaim.RequestRepo, error) {
+			return closeClaimMemory, nil
+		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
 		store.surveyorTypeSelector = surveyorTypeSelectorMemory(cfg.PrimaryPortal)

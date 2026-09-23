@@ -20,7 +20,7 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 71 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 70 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
@@ -31,10 +31,12 @@
  * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas
  * `K-33`. Ditambah MENU_ID 83 "Report Adjuster" yang MENU_PROGRAM-nya memang kosong.
  *
- * Salah satu dari sembilan itu — `InboxOutstanding_Harness` — KINI SUDAH PUNYA LAYAR.
- * Harness-nya tetap tidak ada di export; yang dipakai sebagai rujukan bentuk adalah
- * `InboxRegister_Harness`, sedangkan perilakunya diambil dari kueri, activity, dan section
- * Outstanding yang memang ada.
+ * DUA dari sembilan itu KINI SUDAH PUNYA LAYAR, dan keduanya dibangun dengan cara yang
+ * sama — dari kueri, activity, dan section yang memang ada, bukan dari harness-nya:
+ *
+ *   `InboxOutstanding_Harness`   rujukan bentuknya `InboxRegister_Harness`
+ *   `InboxCloseClaim_Harness`    rujukan bentuknya `InboxManagerReopen1_Sec`, section yang
+ *                                di dalamnya sendiri berjudul "Inbox Close Claim"
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
@@ -158,6 +160,28 @@ export const MENU_ROUTES: Record<string, string> = {
   // Rutenya karena itu terpisah, dan tidak boleh disatukan: yang satu menyaring menurut
   // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
   ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
+
+  // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
+  //
+  // Di data contoh `m_otorisasi_pnc.csv`, butir ini hanya diberikan kepada grup `IT`.
+  // Anggota komite yang sesungguhnya — peran PNCKomite dan PNCKomiteTeknik — belum ada
+  // barisnya, sehingga mereka tidak akan melihat butirnya sampai otorisasinya diisi.
+  // Itu keadaan DATA, bukan cacat kode.
+  InboxKomite_Harness: '/komite/inbox',
+
+  // MENU_ID 59 "Inbox Close Claim", kelompok INBOX. Harness-nya TIDAK ADA di export
+  // (`K-33`); layarnya dibangun dari `GcnmBrowseReopenCase_SQL`, `GCNMCountCloseClaim`,
+  // `GCNMGetManagerReopenCase_Act`, dan `InboxManagerReopen1_Sec` yang memang ada.
+  //
+  // Bedakan dari `InboxOutstanding_Harness` di dekat kepala daftar. Keduanya menyaring DUA
+  // NILAI PYSTATUSWORK YANG SAMA dengan arah yang BERLAWANAN — yang satu klaim berjalan,
+  // yang lain klaim tutup — sehingga menunjuk keduanya ke satu rute akan menampilkan
+  // kebalikan dari yang diminta pengguna, dan tidak ada apa pun di layar yang menandakannya.
+  //
+  // Di Pega butir ini dijaga `When/IsManagerPNC_CLOSE-When.xml`: empat access group ditambah
+  // TIGA Operator ID perorangan yang tertanam di dalam rule. Ketiga nama itu tidak dibawa
+  // (`D-15`); yang menentukan siapa melihat butirnya sekarang adalah `M_OTORISASI_PNC`.
+  InboxCloseClaim_Harness: '/inbox-close-claim',
 }
 
 /**
