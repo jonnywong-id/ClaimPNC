@@ -5395,3 +5395,216 @@ ada; modul ini **tidak menulis satu pun** (`P-1`).
 | `go test ./...` | **111 paket lulus, 0 gagal** |
 | `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada, dibuktikan) |
 | `npx vitest run` modul baru | **17 uji lulus** |
+
+---
+
+## 38. Modul Inbox Manager Receive / PUCL (2026-09-22 … 2026-09-23, sesi kedua puluh)
+
+Menu `MENU_ID 56` "Inbox Manager Receive / PUCL", pengganti harness
+`ReceiveDoucument_Harness`. Prosesnya ada di
+[`catatan-pengembangan.md`](catatan-pengembangan.md) §36; berkas ini merekam
+**keputusannya**.
+
+### 38.1 Pertanyaan konfirmasi dan jawabannya
+
+Tiga diajukan sebelum satu baris kode ditulis. Ketiganya mengubah lingkup secara material,
+dan tidak satu pun dapat dijawab dari export.
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | `.ReceiveDocument.TypeOfClaim` — pembeda kedua grid Receive — ditandai `unexposed` di Report Definition-nya, sehingga SQL tidak dapat menyaringnya. Bagaimana? | **Pakai Group Panel sebagai pengganti** |
+| 2 | Filter `pxAssignedOrgUnit = Param.OrgUnit` ada di RD, tetapi parameternya tidak pernah diisi satu pun activity. Apa yang berlaku? | **Ikuti export apa adanya — tanpa saring** |
+| 3 | Lingkup tulis modul ini | **Baca saja + ekspor** |
+
+### 38.2 Jenis Klaim diturunkan dari Group Panel
+
+**Buktinya, dan kenapa tidak ada jalan lain.**
+`Report Definition/ManagementRecieveView-RD.xml` menandai propertinya sendiri sebagai
+`pzPropertyType` bernilai `unexposed`, ditambah dua peringatan Pega — "Not optimized for
+reporting" dan "Not optimized for filtering" — yang **keduanya menyebut properti itu
+satu-satunya**.
+
+Penelusuran seluruh export menguatkannya: `TYPEOFCLAIM_1`, `SENDER_1`, dan
+`NUMBEROFDOCUMENT_1` **nol kemunculan**, sementara 15 kueri lain pada kelas yang sama
+memakai `STATUSLOCK_1`, `KODECABANG_1`, `DATEFORAGING_1`, `BUSINESSCODE_1`, `DATEOFLOSS_1`,
+`BOOKNO_1`, dan `GROUPPANEL_1`.
+
+**Penggantinya.** `GROUPPANEL_1` punya kolom, memang dibaca kueri lain pada kelas yang sama
+(`RDB List/GetDataRCVallKlaimPATravel-SQL.xml:10`), dan memang membedakan Personal Accident
+dari lini lain — `002` adalah PA (`CONTEXT.md`, Business Understanding §1).
+
+**Akibat yang diterima secara sadar:** berkas yang Group Panel-nya kosong tidak muncul di
+tab mana pun. Pembanding ketidaksamaan tidak menangkap NULL di Oracle maupun PostgreSQL.
+Itu perilaku yang **sama** dengan layar lama, tempat berkas tanpa `TypeOfClaim` tidak cocok
+dengan grid mana pun — dan diuji tegas lewat
+`TestDocumentWithoutGroupPanelAppearsInNoReceiveTab` supaya keadaan itu menjadi keputusan
+yang tercatat, bukan kebetulan yang kelak "diperbaiki".
+
+Penerjemahannya tinggal di **domain** (`ClaimTypeOf`), bukan di SQL: penyimpanan SQL dan
+penyimpanan memori wajib menghasilkan teks yang sama persis, kalau tidak uji yang lulus di
+atas memori tidak menyatakan apa pun tentang Oracle.
+
+### 38.3 Tab RCL/PUCL menyaring antrean bersama — penyaring yang TIDAK ada di RD-nya
+
+Ini keputusan yang paling jauh dari "salin apa adanya", dan alasannya perlu dibaca utuh.
+
+`Report Definition/InboxRCLPUCL_RD-RD.xml`:
+
+- `pyJoinInfo`-nya **kosong** — tidak ada gabungan sama sekali;
+- satu-satunya filter: `pyStatusWork` tidak sama dengan `Resolved-Completed`;
+- punya parameter bernama `assign` yang **dideklarasikan tetapi tidak dirujuk satu filter
+  pun**.
+
+Ditiru apa adanya, tab itu menampilkan **seluruh klaim PNC yang belum selesai**. Pada basis
+data berisi puluhan juta baris (`D-10`), hasilnya bukan sekadar keliru melainkan tidak dapat
+dipakai.
+
+Dua kueri Pega pada domain yang **sama** menyaringnya dengan cara yang sama persis:
+
+| Rule | Penyaring |
+|---|---|
+| `RDB List/CountKlaimPUCL-SQL.xml` | `PXASSIGNEDOPERATORID` = akun antrean RCLPUCL |
+| `RDB List/ReminderPUCL-SQL.xml` | `PXASSIGNEDOPERATORID` = akun antrean RCLPUCL |
+
+**Keputusan:** penyaring itu dipakai. Arahnya **menyempitkan** — lebih sedikit baris, bukan
+lebih banyak — sehingga kekeliruan yang mungkin tersisa tidak dapat membocorkan baris yang
+seharusnya tersembunyi. Nama parameter `assign` yang menganggur itu sendiri adalah petunjuk
+bahwa penyaringnya memang pernah ada dan hilang.
+
+Ia dinyatakan ke pengguna lewat `PlannedDifferences`, **bukan** disembunyikan sebagai detail
+kueri, dan `-periksa` menyebutnya eksplisit bila tab itu kosong.
+
+**Tiga penyaring yang TIDAK ikut dibawa** dari `ReminderPUCL-SQL.xml`:
+`TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL`, `PUCLAPPROVE_1` tidak sama dengan 1, dan `MSIG_1`
+kosong. Ketiganya milik **job pengingat** — klaim yang suratnya sudah dicetak tetapi belum
+disetujui — bukan milik antrean inbox. Membawanya akan menyembunyikan klaim yang suratnya
+belum dicetak, padahal justru itu yang menunggu tindakan. Dijaga
+`TestReminderOnlyFiltersAreNotCarried`.
+
+### 38.4 Dua grid bertumpuk menjadi tiga tab
+
+`Section/InboxManagerReceive_Section-Section.xml` punya **dua** judul tab (`Receive` dan
+`RCL/PUCL`) tetapi **tiga** grid: tab "Receive" memuat `ManagementRecieveView` **dua kali**,
+satu dijalankan dengan parameter `Position1` bernilai `PA` dan satu dengan `NONMBU`.
+Keduanya ber-`pyVisible` `ALWAYS`, dan **keduanya tanpa judul apa pun** — penelusuran
+seluruh section tidak menemukan satu pun label di antara keduanya.
+
+**Keputusan: tiga tab, dan kedua tab Receive diberi judul.** Dua alasan:
+
+1. **Paginasi.** Masing-masing grid punya halamannya sendiri (`pyPageSize` 50, penomoran
+   Numeric). Dua tabel berhalaman yang bertumpuk menghasilkan dua penomoran yang mudah
+   tertukar.
+2. **Kejujuran.** Dua tabel berkolom identik tanpa judul adalah cacat tampilan yang tidak
+   perlu dibawa — dan di layar ini akibatnya nyata, karena yang membedakan keduanya adalah
+   lini bisnis klaimnya.
+
+Polanya bukan hal baru: modul Inbox Claim Treaty Non Prop menempuh hal yang sama pada tiga
+kontainer yang di Pega dipilih oleh keadaan pemanggil (§37).
+
+Judul yang **ada** di Pega dipertahankan apa adanya, termasuk garis miring pada "RCL/PUCL".
+Judul kedua tab Receive memakai ejaan yang sama dengan nilai parameter RD-nya — "PA" dan
+"NONMBU" — bukan ejaan yang lebih rapi.
+
+### 38.5 Dua kolom dibaca dari tabel cermin yang tidak pernah dibaca sistem lama
+
+"Nama Pengirim" dan "Tanggal Terima Dokumen" tidak punya kolom pada objek kerja. Yang ada
+adalah `POOLDATA.T_CLAIM_RECIVEDCLAIM`, diisi `Database/PROCINSERTDATARECIVEDKLAIM.prc`
+dengan kunci `CLAIMID` yang berisi `pzInsKey` apa adanya.
+
+**Bahwa `NAMAPELAPOR` memang "nama pengirim"** terbaca dari label layar input:
+`Section/ViewInputReceiveDocument_sec-Section.xml` memberi `.ReceiveDocument.Sender` judul
+**"Nama Pengirim / Pelapor Dokumen"**. Ia BUKAN `NAMAKURIRASM`, yang berjudul "Nama Kurir
+ASM". Tanpa label itu keduanya sama-sama masuk akal, dan pilihan yang salah tidak
+menghasilkan galat apa pun.
+
+**Risiko yang disadari:** tabel itu **tidak pernah dibaca** sistem lama — satu-satunya
+penyentuhnya adalah procedure yang menulisinya. Kelengkapan isinya belum terverifikasi,
+sehingga gabungannya `LEFT JOIN`: baris tanpa pasangan tetap muncul dengan kedua kolom
+kosong, bukan hilang. `-periksa` menyebutnya bila seluruh baris begitu.
+
+`TANGGALTERIMADOKUMEN` dibawa sebagai **teks**, dan itu bukan pilihan: parameter procedure
+yang mengisinya bertipe `varchar2` sementara parameter tanggal lain pada procedure yang sama
+bertipe `DATE`.
+
+### 38.6 Satu kolom yang SELALU kosong, dan tetap digambar
+
+"Jumlah Lembar Dokumen" (`.ReceiveDocument.NumberOfDocument`) tidak punya kolom basis data
+mana pun, dan `T_CLAIM_RECIVEDCLAIM` tidak menyimpannya — procedure yang mengisinya menerima
+26 parameter dan tidak satu pun berisi jumlah lembar.
+
+**Kolomnya tetap digambar.** Menghilangkannya membuat layar tampak setara dengan Pega
+padahal ada isian yang belum terbawa — persis yang tidak boleh terjadi pada uji kesetaraan
+gerbang 1. Selnya digambar sebagai tanda pisah, yang menyatakan "tidak ada isinya" alih-alih
+"gagal dimuat".
+
+### 38.7 Filter unit organisasi tidak dibawa
+
+`newAssignPage.pxAssignedOrgUnit = Param.OrgUnit` ada di RD, tetapi section mengirim
+`OrgUnit` **kosong** dan tidak ada satu pun activity di seluruh export yang mengisinya.
+Penyaringnya karena itu **tidak pernah berlaku** — ia tidak dihilangkan, melainkan memang
+tidak ada.
+
+**Akibatnya pada bentuk modul:** ini satu-satunya layar inbox yang **tidak satu pun tabnya
+menyaring menurut pemanggil**. Modul inbox lain setidaknya punya satu tab "milik saya".
+Konsekuensinya dua, dan keduanya ditangani:
+
+1. Sifat itu **dinyatakan di layar**, bukan hanya di kode — tanpa keterangan, petugas yang
+   terbiasa dengan inbox lain akan mengira daftarnya keliru karena memuat pekerjaan orang
+   lain.
+2. **Setiap** pembukaan dicatat, bukan hanya yang mencurigakan. Modul lain mencatat saat
+   penyaring kepemilikan dilepas; di sini penyaring itu memang tidak pernah ada. Sampai
+   `TKT-F3-004` selesai, jejak itulah satu-satunya kontrol pengimbang (`D-59`).
+
+Identitas pemanggil karena itu tetap **wajib** meski tidak dipakai menyaring: permintaan
+tanpa identitas ditolak, karena pembukaan layar ini harus tercatat atas nama seseorang.
+
+### 38.8 Ekspor adalah kemampuan BARU
+
+Layar lama **tidak punya** tombol ekspor: tidak ada activity ekspor yang dirujuk harness
+maupun section-nya, dan tidak ada rule `Generate*CSV` maupun `MSOGenerateExcelFile` di
+antara keduanya.
+
+Penambahannya diputuskan Work Owner, dan dinyatakan ke pengguna sebagai selisih terencana —
+bukan disajikan seolah fitur yang dipindahkan.
+
+Susunan kolom berkasnya **mengikuti tab yang sedang terbuka**, karena ketiga tab punya kolom
+yang berbeda. Judul dan barisnya dibangun dari **senarai kolom yang sama**, bukan dari dua
+daftar yang kebetulan sejalan — penambahan kolom di `tab.go` karena itu tidak dapat
+menggeser isi berkas tanpa menggeser judulnya sekaligus.
+
+### 38.9 `INNER JOIN` dipertahankan, meski ia dapat menggandakan baris
+
+Report Definition-nya memakai gabungan dalam ke tabel penugasan, sehingga objek kerja yang
+punya **dua** penugasan terbuka muncul dua kali. Itu perilaku sistem lama apa adanya
+(`P-5`).
+
+Menggantinya dengan `EXISTS` akan mengubah jumlah baris yang terlihat pengguna **tanpa satu
+pun keputusan yang mendasarinya**. Ia dicatat di kepala berkas `.sql`, bukan diperbaiki
+diam-diam.
+
+### 38.10 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `inboxmanagerreceivepucl.go`, `tab.go`, `query.go`, `errors.go` |
+| Usecase | `usecase/list.go` |
+| Repo | `repo/sqlstore/` (3 kueri daftar + 2 pemeriksa), `repo/memory/` |
+| Transport | `http/` — dto, errors, handler, export, routes |
+| Uji | 16 uji aturan modul + 19 uji kueri + 12 uji layar |
+| Perakitan | `cmd/claimpnc/main.go` (8 titik), `check.go` (pemeriksa tersendiri) |
+| Frontend | `modules/inbox-manager-receive-pucl/`, rute `App.tsx`, peta `registry.ts` |
+
+**Tidak ada migrasi basis data.** Seluruh tabel yang dibaca milik sistem lama dan sudah ada;
+modul ini **tidak menulis satu pun** (`P-1`).
+
+### 38.11 Yang diverifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet` modul baru + `cmd/...` | bersih |
+| `gofmt -l` modul baru | bersih |
+| `go test ./...` | seluruh paket lulus, 0 gagal |
+| `npx tsc --noEmit` modul baru | **bersih** (120 galat lain pra-ada) |
+| `npx vitest run` modul baru | **12 uji lulus** |
+| Baseline kegagalan uji frontend lain | **dibuktikan pra-ada** — lihat `catatan-pengembangan.md` §36.7 |

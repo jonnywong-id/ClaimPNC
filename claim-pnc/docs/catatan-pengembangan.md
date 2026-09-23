@@ -5534,3 +5534,197 @@ hak baca atas satu tabel tidak menyatakan apa pun tentang tabel lain.
    disatukan.
 3. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk melihat
    ketiga tab, termasuk antrean teknik yang bukan haknya.
+
+
+## 36. Sesi kedua puluh — modul Inbox Manager Receive / PUCL (2026-09-22 … 2026-09-23)
+
+Keputusan desainnya ada di [`keputusan-implementasi.md`](keputusan-implementasi.md) §38;
+berkas ini merekam **prosesnya**.
+
+Permintaannya menyebut satu berkas sebagai acuan: `ReceiveDoucument_Harness-Harness.xml`.
+
+### 36.1 Analisis pra-implementasi
+
+Dilakukan sebelum satu baris kode ditulis, sesuai larangan di kepala permintaan.
+
+**Langkah pertama bukan membaca harness, melainkan memastikan modulnya yang mana.**
+Nama menu yang diminta — "Inbox Manager Receive / PUCL" — dicari lebih dulu ke
+`backend/internal/menu/repo/memory/sample.go`, dan ditemukan di baris 73: `MENU_ID 56`,
+program `ReceiveDoucument_Harness`, kelompok Proses Produksi, urutan 1146. Itu memastikan
+berkas acuan yang diberikan memang milik menu yang dimaksud, bukan salah satu dari tiga
+harness lain yang namanya mirip (`InboxRCVApp_Harness`, `RCLPUCL_Harness`,
+`InboxManagerAdmin_Harness`).
+
+**Berkas acuannya 519 KiB — terlalu besar untuk dibaca utuh.** Yang dikerjakan adalah
+mengekstrak bagian yang menentukan bentuk layar:
+
+| Yang dicari | Cara | Hasil |
+|---|---|---|
+| Section yang dirujuk | `pyRuleName` + `pxRuleObjClass` di harness | satu: `InboxManagerReceive_Section` |
+| Report Definition | idem | dua: `ManagementRecieveView`, `InboxRCLPUCL_RD` |
+| Judul kolom | pola `pyCaption <teks>` | 18 judul |
+| Bentuk kontainer | `pyTitle` + penanda `TABBED` | 2 judul tab, 3 grid |
+| Properti yang digambar | pola `.ReceiveDocument.*` dan `.ClaimData.*` | 17 properti |
+
+**Harness-nya sendiri hampir seluruhnya boilerplate portal Pega.** Yang menentukan bentuk
+layar ada di section dan di kedua Report Definition-nya.
+
+### 36.2 Dua kejutan yang mengubah rencana sebelum kode ditulis
+
+**Pertama: tab "Receive" punya DUA grid, bukan satu.** Terbaca dari pencarian offset:
+
+```
+ 36.990  Position1 = "PA"        grid ManagementRecieveView
+170.101  Position1 = "NONMBU"    grid ManagementRecieveView  (yang sama, parameter beda)
+317.320  grid InboxRCLPUCL_RD
+```
+
+Dua judul tab, tiga grid. Keduanya ber-`pyVisible` `ALWAYS`, dan pencarian label di antara
+keduanya tidak menemukan apa pun — pengguna Pega melihat dua tabel berkolom identik
+bertumpuk tanpa penanda.
+
+**Kedua: pembeda kedua grid itu tidak punya kolom basis data.** `Position1` mengisi filter
+atas `.ReceiveDocument.TypeOfClaim`, dan RD-nya menandai properti itu `unexposed`. Artinya
+inti layar ini — pemisahan PA dari Non-MBU — **tidak dapat direplikasi dengan SQL**.
+
+Kedua temuan itu yang membuat pertanyaan konfirmasi diajukan, bukan diasumsikan.
+
+### 36.3 Pertanyaan konfirmasi
+
+Tiga diajukan, seluruhnya disertai bukti `berkas:baris`. Jawaban lengkapnya di
+`keputusan-implementasi.md` §38.1.
+
+Yang perlu dicatat di sini adalah **kenapa ketiganya layak ditanyakan**:
+
+1. **Jenis Klaim** — jawabannya menentukan apakah tab Receive berfungsi, terhalang, atau
+   digabung menjadi satu tanpa pemisahan. Tiga bentuk modul yang berbeda.
+2. **Filter unit organisasi** — menentukan apakah layar ini pandangan penyelia atau antrean
+   per unit. Keduanya menuntut sumber data yang berbeda.
+3. **Lingkup tulis** — pencetakan surat PUCL menulis ke objek kerja klaim; membangunnya
+   berarti menyentuh kepemilikan tabel (`P-1`).
+
+### 36.4 Temuan yang ditemukan SETELAH jawaban masuk, dan menghentikan pekerjaan sebentar
+
+Saat menulis kueri tab RCL/PUCL, `InboxRCLPUCL_RD` dibaca ulang untuk mengambil
+penyaringnya. Hasilnya: **`pyJoinInfo`-nya kosong**, dan satu-satunya filternya adalah
+status kerja.
+
+Ditiru apa adanya, tab itu akan menampilkan seluruh klaim PNC yang belum selesai — bukan
+antrean RCL/PUCL. Pada tabel berisi puluhan juta baris, itu layar yang tidak dapat dipakai.
+
+**Yang menyelesaikannya:** pencarian `PUCL` ke seluruh `RDB List/`, yang menemukan
+`CountKlaimPUCL-SQL.xml` dan `ReminderPUCL-SQL.xml` — keduanya membaca domain yang sama dan
+keduanya menyaring `PXASSIGNEDOPERATORID` ke akun antrean `RCLPUCL`. Ditambah satu petunjuk
+dari RD-nya sendiri: parameternya bernama `assign`, dideklarasikan tetapi tidak dipakai satu
+filter pun.
+
+Keputusannya (§38.3) diambil ke arah yang **menyempitkan**, dan dilaporkan ke Work Owner
+sebagai temuan tersendiri — bukan diselesaikan diam-diam di dalam kueri.
+
+### 36.5 Kesalahan yang nyaris masuk: mengira `BOOKNO_1` adalah nama pengirim
+
+`RDB List/ViewTableBrowseRCVInProcess-SQL.xml` mengaliaskan `BookNo_1 as "Sender"`, dan itu
+hampir dipakai sebagai sumber kolom "Nama Pengirim" — aliasnya tampak menjawab persis
+pertanyaannya.
+
+**Yang menghentikannya:** pemetaan kolom di modul `inboxlaporanklaim` yang sudah ada, yang
+sesi sebelumnya sudah menyimpulkan `w.bookno_1` adalah **nomor referensi**, bukan pengirim
+— aliasnya salah satu dari alias menyesatkan warisan (utang teknis §4.2).
+
+**Yang menyelesaikannya:** membaca layar INPUT-nya, bukan layar daftarnya.
+`Section/ViewInputReceiveDocument_sec-Section.xml` memberi `.ReceiveDocument.Sender` judul
+**"Nama Pengirim / Pelapor Dokumen"** dan `.ReceiveDocument.Kurir` judul **"Nama Kurir
+ASM"** — dua isian yang berbeda, dan keduanya tersimpan di
+`POOLDATA.T_CLAIM_RECIVEDCLAIM` sebagai `NAMAPELAPOR` dan `NAMAKURIRASM`.
+
+**Pelajarannya:** di codebase ini, alias pada kueri DAFTAR tidak dapat dipercaya; label pada
+layar INPUT dapat. Yang pertama dipaksa cocok dengan properti klipboard yang sudah ada, yang
+kedua dibaca pengguna setiap hari.
+
+### 36.6 Tabel yang tidak pernah dibaca siapa pun
+
+`POOLDATA.T_CLAIM_RECIVEDCLAIM` ditemukan lewat `Database/PROCINSERTDATARECIVEDKLAIM.prc`.
+Pencarian balik ke seluruh `RDB List/`, `Activity/`, dan `Report Definition/` menemukan
+**satu-satunya penyentuhnya adalah procedure yang menulisinya** — tidak ada satu pun kueri
+yang membacanya.
+
+Itu tidak membatalkan pemakaiannya: ia satu-satunya tempat kedua kolom itu ada, kuncinya
+jelas (`CLAIMID` diisi `pzInsKey`), dan gabungannya `LEFT JOIN` sehingga tabel yang kosong
+menghasilkan kolom kosong alih-alih baris yang hilang.
+
+Yang dilakukan sebagai gantinya: keadaannya **dicatat di tiga tempat** — komentar berkas
+`.sql`, `PlannedDifferences` yang tampil di layar, dan pemeriksa `-periksa` yang menyebutnya
+bila seluruh baris kosong.
+
+### 36.7 Kegagalan uji frontend yang BUKAN milik sesi ini — dan cara memastikannya
+
+`npx vitest run` penuh melaporkan **29 uji gagal di 7 berkas**: `master-supplier`,
+`master-auto-claim`, `master-bengkel`, `master-panel`, `master-sparepart`, `inbox-admin`,
+dan `riwayat-klaim`.
+
+Tidak satu pun disentuh sesi ini — tetapi dua di antaranya (`inbox-admin`, `riwayat-klaim`)
+menggambar `AppRoute`, dan sesi ini **menyunting `App.tsx`**. Menganggapnya pra-ada tanpa
+bukti berarti menebak.
+
+**Cara memastikannya:** `git stash push` atas **hanya** `App.tsx` dan `registry.ts`, lalu
+menjalankan ketiga berkas uji itu kembali. Hasilnya **29 gagal yang sama persis**, lalu
+`git stash pop`. Baseline terbukti, bukan diasumsikan.
+
+Hal yang sama dilakukan untuk `npx tsc --noEmit`: 120 galat tipe, **nol** di antaranya dari
+berkas sesi ini — disaring dengan `grep` atas nama modul dan kedua berkas `app/` yang
+disunting.
+
+### 36.8 `gofmt` melaporkan 506 dari 522 berkas
+
+Terlihat mengkhawatirkan, ternyata bukan: `gofmt -d` atas berkas yang **tidak** disentuh
+sesi ini menunjukkan selisihnya semata **akhir baris CRLF**. Repo ini disimpan dengan akhir
+baris Windows dan tidak punya `.gitattributes`.
+
+Berkas baru sesi ini ditulis dengan LF dan **tidak** muncul di daftar `gofmt -l`. Tidak ada
+yang diubah pada 506 berkas lain: menormalkan akhir baris seluruh repo adalah perubahan yang
+menyentuh hampir setiap berkas, dan itu keputusan tersendiri — bukan efek samping penambahan
+satu modul.
+
+### 36.9 Yang disentuh dan yang tidak
+
+| Berkas | Perubahan |
+|---|---|
+| `backend/internal/inboxmanagerreceivepucl/**` | **baru** — 13 berkas |
+| `backend/cmd/claimpnc/main.go` | 8 titik perakitan |
+| `backend/cmd/claimpnc/check.go` | impor + satu pemanggilan + satu pemeriksa |
+| `frontend/src/modules/inbox-manager-receive-pucl/**` | **baru** — 5 berkas |
+| `frontend/src/app/App.tsx` | satu impor + satu rute |
+| `frontend/src/app/menu/registry.ts` | satu baris peta `ReceiveDoucument_Harness` |
+
+**Modul Login, Home, dan Master Data tidak disentuh** (Isolasi Protektif). Modul inbox lain
+juga tidak — pemeriksa `-periksa`-nya sengaja tidak digabung, karena hak baca atas satu
+tabel tidak menyatakan apa pun tentang tabel lain.
+
+### 36.10 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | lulus |
+| `go vet ./internal/inboxmanagerreceivepucl/... ./cmd/...` | bersih |
+| `gofmt -l` modul baru | bersih |
+| `go test ./...` | seluruh paket lulus, 0 gagal |
+| `npx tsc --noEmit` berkas sesi ini | bersih |
+| `npx vitest run` modul baru | 12 uji lulus |
+| Baseline kegagalan uji lain | dibuktikan pra-ada lewat `git stash` — §36.7 |
+
+### 36.11 Yang masih menunggu pihak lain
+
+1. **Kode Group Panel Personal Accident di produksi** — DBA / tim bisnis. Bila `002` bukan
+   PA di sebuah entitas, seluruh isi tab Receive PA pindah ke tab NONMBU **tanpa satu pun
+   galat**. `-periksa` menyebutnya bila tab itu kosong.
+2. **Nama akun antrean `RCLPUCL`** — tim Pega. Bila berubah, tab RCL/PUCL kosong tanpa
+   galat. `-periksa` menyebutnya pula.
+3. **Isi `POOLDATA.T_CLAIM_RECIVEDCLAIM`** — DBA. Tabel itu tidak pernah dibaca sistem lama,
+   sehingga kelengkapannya belum terverifikasi. Dua kolom tab Receive bergantung padanya.
+4. **Sumber "Jumlah Lembar Dokumen"** — tim Pega. Ia ada di layar input Pega tetapi tidak
+   punya kolom basis data mana pun; kolomnya digambar kosong sampai sumbernya diketahui.
+5. **DDL `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`** (`R-08`) — DBA. Seluruh nama kolom di modul ini
+   dibaca dari kueri Pega, bukan dari DDL.
+6. **Tabel peran (`TKT-F3-004`)** — tanpanya setiap pengguna yang dapat masuk melihat
+   seluruh antrean portalnya. Di layar ini akibatnya paling besar di antara seluruh modul
+   inbox, karena tidak satu pun tabnya menyaring menurut pemanggil.

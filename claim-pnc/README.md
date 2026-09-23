@@ -506,6 +506,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox-auto-claim` | **Inbox Auto Claim** — layar inbox pertama |
 | `/inbox-progress-claim` | **Inbox Progress Claim** |
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — butir menu 64 |
+| `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
 lebar, deret mendatar di layar sempit (`D-12`: surveyor memakai tablet dan ponsel).
@@ -552,6 +553,51 @@ belum dibangun).
 | Kode galat tambahan | HTTP | Artinya |
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas pemanggil tidak terbaca; laporan baru tidak dapat dibuat |
+
+### Inbox Manager Receive / PUCL
+
+Menggantikan harness `ReceiveDoucument_Harness` (`MENU_ID 56`). Seluruh rutenya menuntut header
+`X-Portal`, termasuk rute keterangan layar.
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox-manager-receive-pucl/tab` | ketiga tab beserta kolomnya dan selisih terencana |
+| `GET` | `/api/inbox-manager-receive-pucl` | satu halaman daftar. Saringan: `tab`, `halaman`, `ukuran` |
+| `GET` | `/api/inbox-manager-receive-pucl/ekspor` | unduhan CSV, susunan kolom mengikuti `tab` |
+| `POST` | `/api/inbox-manager-receive-pucl/tindakan` | **selalu 501** — lihat di bawah |
+
+**Tiga tab, dua antrean, dua kelas objek kerja yang berbeda:**
+
+| Tab | Sumber | Penyaring |
+|---|---|---|
+| `1` Receive PA | `PC_ASM_FW_GCNMFW_WORK` + `PC_ASSIGN_WORKLIST` + `T_CLAIM_RECIVEDCLAIM` | kelas `Work-ReceiveDocument`, Group Panel `002` |
+| `2` Receive NONMBU | idem | kelas `Work-ReceiveDocument`, Group Panel selain `002` |
+| `3` RCL/PUCL | `PC_ASM_FW_GCNMFW_WORK` + `PC_ASSIGN_WORKBASKET` | kelas `Work-PNC`, antrean `RCLPUCL`, status kerja belum selesai |
+
+> **Layar ini MEMBACA saja, dan tidak satu pun tabnya menyaring menurut pemanggil.** Ia memang
+> pandangan penyelia: Report Definition-nya menyaring unit organisasi, dan parameternya tidak
+> pernah diisi di Pega. Akibatnya setiap pengguna yang dapat masuk melihat seluruh antrean
+> portalnya sampai `TKT-F3-004` selesai — karena itu **setiap pembukaannya dicatat**, bukan hanya
+> yang mencurigakan (`D-59`).
+>
+> `POST /tindakan` menjawab **501 dengan alasan**, bukan 404: tindakan yang di Pega menulis —
+> terutama pencetakan surat PUCL/RCL, yang mengisi `TANGGALCETAKDOKUMENPUCL_1` — menyentuh tabel
+> yang selama masa paralel masih dimiliki Pega (`P-1`).
+
+**Tiga selisih terencana yang paling perlu diketahui penguji** (daftar lengkapnya dikirim server
+dan tampil di bawah tabel):
+
+1. **"Jenis Klaim" diturunkan dari Group Panel.** Properti aslinya ditandai `unexposed` di Report
+   Definition — ia hidup di blob Pega dan tidak dapat disaring SQL.
+2. **Tab RCL/PUCL menyaring antrean `RCLPUCL`.** Report Definition-nya sendiri **tidak punya
+   gabungan sama sekali**; penyaringnya diambil dari `CountKlaimPUCL` dan `ReminderPUCL`.
+3. **"Jumlah Lembar Dokumen" selalu kosong.** Tidak ada kolom basis data untuknya di seluruh
+   export. Kolomnya tetap digambar supaya ketiadaannya terlihat.
+
+| Kode galat tambahan | HTTP | Artinya |
+|---|---|---|
+| `profil_pemanggil_tidak_lengkap` | 409 | identitas tidak terbaca; pembukaan layar ini wajib tercatat atas nama seseorang |
+| `belum_tersedia` | 501 | tindakan yang menulis, masih dimiliki Pega |
 
 ### Master Status Klaim
 

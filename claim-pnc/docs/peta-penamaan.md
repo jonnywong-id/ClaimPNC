@@ -1523,3 +1523,100 @@ Ia kontrak, bukan nama internal: `id`, `nomor_klaim`, `tertanggung`, `nama_bisni
 | `serverPaging` | `DataTable` | mematikan saring & urut internal, menggambar kaki halaman |
 | `hideSearch` | `DataTable` | menyembunyikan kotak cari bawaan |
 | `ServerPaging` | `DataTable` | tipe baru yang diekspor |
+
+---
+
+## Modul Inbox Manager Receive / PUCL (`MENU_ID 56`)
+
+### Nama folder — Indonesia, mengikuti nama menu (`D-81`)
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxmanagerreceivepucl` |
+| Frontend, folder | `src/modules/inbox-manager-receive-pucl` |
+| Rute antarmuka | `/inbox-manager-receive-pucl` |
+| Jalur API | `/api/inbox-manager-receive-pucl` |
+
+Nama menunya "Inbox Manager Receive / PUCL". Garis miring dan spasinya dibuang pada nama
+folder — Go tidak mengizinkan tanda hubung pada nama paket, dan garis miring bukan karakter
+yang sah pada nama berkas.
+
+**Nama harness-nya TIDAK dipakai.** `ReceiveDoucument_Harness` menyimpan salah ketik
+(`Doucument`) dan hanya menyebut separuh isi layarnya — tab RCL/PUCL tidak tersirat sama
+sekali di sana. Yang dipakai adalah nama butir menu, sesuai `D-81`.
+
+Salah ketiknya tetap **dipertahankan apa adanya** di satu tempat: kunci peta
+`MENU_ROUTES`, yang harus sama persis dengan `MENU_PROGRAM` di
+`POOLDATA.M_MENU_APLIKASI_PNC`. Membetulkannya di sana akan membuat butir menunya tampak
+belum tersedia selamanya.
+
+### Nama tipe dan isian — Inggris (`D-80`)
+
+| Properti Pega | Isian Go | Field JSON |
+|---|---|---|
+| `.pzInsKey` | `Reference` | `referensi` |
+| `.pyID` | `CaseID` | `no_case` |
+| `.ReceiveDocument.PolicyNo` / `.Policy.PolicyNo` | `PolicyNumber` | `no_polis` |
+| `.ReceiveDocument.PNCCaseID` | `ClaimNumber` | `no_klaim_pnc` |
+| `.ReceiveDocument.QQName` / `.Policy.QQName` | `InsuredName` | `nama_tertanggung` |
+| `.ReceiveDocument.DateOfLoss` | `LossDate` | `tanggal_kejadian` |
+| `.ReceiveDocument.TypeOfClaim` | `ClaimType` | `jenis_klaim` |
+| `.ReceiveDocument.Sender` | `SenderName` | `nama_pengirim` |
+| `.ReceiveDocument.ReceivedDate` | `DocumentReceivedDate` | `tanggal_terima_dokumen` |
+| `.ReceiveDocument.NumberOfDocument` | `DocumentSheetCount` | `jumlah_lembar_dokumen` |
+| `.pxCreateDateTime` | `InboxEntryAt` | `tanggal_masuk_inbox` |
+| `.ClaimData.PUCLStatus.KomentarAnalisator` | `AnalystNote` | `deskripsi_analyst` |
+| `.ClaimData.PUCLStatus.RCL_PUCL` | `Track` | `rcl_pucl` |
+| `.ClaimData.PUCLStatus.StatusKlaim` | `TrackStatus` | `status_rcl_pucl` |
+| `.ClaimData.PUCLStatus.TanggalCetakDokumenPUCL` | `LetterPrintedAt` | `tanggal_cetak_surat` |
+| `.ClaimData.PUCLStatus.LamaKlaim` | `ClaimAge` | `lama_klaim` |
+| `.ClaimData.PUCLStatus.StatusCase` | `ExpiryStatus` | `status_kadaluarsa` |
+
+### Alias Pega yang sengaja TIDAK dibawa (`D-19`)
+
+Lima kolom di modul ini dialiaskan dengan nama yang **tidak menyatakan isinya**, dan dua di
+antaranya dialiaskan **berbeda di dua rule yang berbeda**:
+
+| Kolom | Alias di `GetReminderPUCL` | Alias di `ReminderPUCL` |
+|---|---|---|
+| `QQNAME` | `NewTelpTertanggung` | `CABANG` |
+| `KOMENTARANALISATOR_1` | `NoteKomite` | `LOGSEARCH` |
+| `LAMAKLAIM_1` | `LOGSEEN` | `MODUL` |
+| `STATUSKLAIM_1` | `StsAcceptance` | `STS_EMAIL` |
+| `STATUSCASE_1` | — | `ClaimData.PUCLStatus.Stat25L` |
+
+Baris pertama yang paling jelas: satu kolom berisi **nama tertanggung** dialiaskan "CABANG"
+di satu rule dan "NewTelpTertanggung" di rule lain. Itu utang teknis §4.2 apa adanya.
+
+Yang terakhir adalah nama yang **terpotong batas panjang alias Oracle** — `Stat25L` bukan
+singkatan, melainkan sisa pemotongan.
+
+### Dua nama kolom yang hanya berbeda satu huruf
+
+| Kolom | Artinya |
+|---|---|
+| `STATUSKLAIM_1` | status jalur RCL/PUCL — **yang digambar layar ini** |
+| `STATUSCLAIM_1` | Status Klaim ber-33 kode `1134`–`1166` (`R-06`) — tidak digambar |
+
+Keduanya ada pada tabel yang sama dan keduanya muncul di Report Definition yang sama.
+Menukarnya **tidak menghasilkan galat apa pun**.
+
+### Nama kueri `.sql`
+
+Berawalan nama tabnya, bukan nama modulnya — ketiganya membaca kombinasi tabel yang berbeda:
+
+`list_receive_pa` · `list_receive_non_mbu` · `list_rclpucl` · `check_receive` ·
+`check_rclpucl`
+
+### Nama tipe frontend
+
+| Tipe | Keterangan |
+|---|---|
+| `WorkItem` | satu baris, melayani ketiga tab |
+| `WorkItemField` | `keyof WorkItem`, dipakai memilih sel |
+| `TabColumn`, `Tab` | bentuk grid yang datang dari server |
+| `PageInfo` | keterangan halaman |
+| `MetadataResponse`, `ListResponse` | jawaban kedua endpoint |
+
+Komponennya `ManagerReceivePUCLPage` dan `ReceivePUCLTabs` — memakai nama **tipe domain**,
+bukan nama modul, mengikuti `AccountPage` pada `master-rekening` (`D-81`).

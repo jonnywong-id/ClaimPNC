@@ -122,6 +122,24 @@ export const MENU_ROUTES: Record<string, string> = {
   // rute API-nya di `cmd/claimpnc`. Alasan menahannya pada merge sebelumnya karena itu
   // sudah tidak berlaku untuk butir ini.
   InboxRCVApp_Harness: '/inbox/laporan-klaim',
+
+  // MENU_ID 56 "Inbox Manager Receive / PUCL", kelompok INBOX.
+  //
+  // Nama programnya menyimpan salah ketik yang dipertahankan — `ReceiveDoucument`, bukan
+  // `ReceiveDocument`. Ia disalin apa adanya dari POOLDATA.M_MENU_APLIKASI_PNC: kuncinya
+  // harus sama persis dengan yang dikirim server, dan membetulkannya di sini akan membuat
+  // butir menunya tampak belum tersedia selamanya.
+  //
+  // Bedakan dari `InboxRCVApp_Harness` tepat di atasnya. Keduanya menyentuh berkas
+  // penerimaan dokumen, dan hanya itu kesamaannya:
+  //
+  //   Inbox Laporan Klaim (64)   berkas MILIK petugas, lengkap dengan komunikasi cabang
+  //   layar ini (56)             pandangan PENYELIA atas berkas SELURUH petugas,
+  //                              ditambah antrean klaim RCL/PUCL yang tidak ada di sana
+  //
+  // Rutenya karena itu terpisah, dan tidak boleh disatukan: yang satu menyaring menurut
+  // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
+  ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
 }
 
 /**

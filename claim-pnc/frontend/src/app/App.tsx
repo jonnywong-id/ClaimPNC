@@ -18,6 +18,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
@@ -365,6 +366,31 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimTreatyNonPropPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Manager Receive / PUCL — pandangan penyelia atas DUA antrean sekaligus,
+        pengganti harness `ReceiveDoucument_Harness` (`MENU_ID 56`).
+
+        Layar ini MEMBACA SAJA, dengan satu pengecualian yang tetap hanya membaca: tombol
+        ekspor berfungsi penuh, karena menghasilkan berkas tidak menyentuh kepemilikan
+        tabel (`P-1`). Tindakan yang di Pega menulis — antara lain mencetak surat PUCL/RCL
+        — menolak dengan alasan.
+
+        Berbeda dari seluruh layar inbox lain di berkas ini, TIDAK SATU PUN tabnya
+        menyaring menurut pengguna yang login: Report Definition-nya menyaring unit
+        organisasi, dan parameternya tidak pernah diisi di Pega. Sampai `TKT-F3-004`
+        selesai, setiap pengguna yang dapat masuk melihat seluruh antrean portalnya —
+        itulah sebabnya setiap pembukaannya dicatat di sisi peladen.
+      */}
+      <Route
+        path="/inbox-manager-receive-pucl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ManagerReceivePUCLPage />
             </Protected>
           </SessionGuard>
         }
