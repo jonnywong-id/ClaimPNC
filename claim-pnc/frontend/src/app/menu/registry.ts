@@ -182,6 +182,22 @@ export const MENU_ROUTES: Record<string, string> = {
   // TIGA Operator ID perorangan yang tertanam di dalam rule. Ketiga nama itu tidak dibawa
   // (`D-15`); yang menentukan siapa melihat butirnya sekarang adalah `M_OTORISASI_PNC`.
   InboxCloseClaim_Harness: '/inbox-close-claim',
+
+  // MENU_ID 60 "Inbox Analyst Doctor", kelompok INBOX.
+  //
+  // Berbeda dari dua butir di atasnya, harness-nya ADA di export
+  // (`Harness/inboxAnalystDoctor_Harness-Harness.xml`) beserta section dan Report
+  // Definition-nya — sehingga kedelapan judul kolom dan ketiga penyaringnya terbaca dari
+  // bukti, bukan disusun ulang.
+  //
+  // Di Pega butir ini dijaga `When/IsAnalystDoctor-When.xml` berkelas `@baseclass`:
+  // `(Administrators OR PncAnalystDoctor) AND NOT ViewClaimPNC`. Aturan itu BELUM ditegakkan
+  // (`TKT-F3-005`); yang menentukan siapa melihat butirnya sekarang adalah `M_OTORISASI_PNC`.
+  //
+  // Yang meredam akibatnya untuk sementara adalah penyaring identitas di server: antreannya
+  // milik satu orang, sehingga pengguna yang tidak punya tugas Analyst Doctor melihat layar
+  // kosong — bukan antrean orang lain. Itu peredam, bukan kendali.
+  inboxAnalystDoctor_Harness: '/inbox-analyst-doctor',
 }
 
 /**

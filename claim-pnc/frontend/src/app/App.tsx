@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
 import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
+import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
@@ -419,6 +420,30 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <CloseClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Analyst Doctor — antrean penilaian medis milik SATU petugas, pengganti harness
+        `inboxAnalystDoctor_Harness` (`MENU_ID 60`).
+
+        Layar ini MEMBACA SAJA. Menyelesaikan tugasnya berarti menjalankan Flow Action
+        `SendAnalystDoctor`, yang memindahkan penugasan — dan penugasan masih dimiliki Pega
+        selama masa paralel (`P-1`).
+
+        Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada. Di layar ini
+        akibatnya diredam penyaring identitas di server: antreannya disaring dengan Operator
+        ID pemanggil, sehingga pengguna lain melihat layar kosong, bukan tugas medis orang
+        lain. Itu peredam, bukan kendali — dan barisnya menyangkut data medis yang `FR-R2`
+        batasi.
+      */}
+      <Route
+        path="/inbox-analyst-doctor"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AnalystDoctorPage />
             </Protected>
           </SessionGuard>
         }

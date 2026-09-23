@@ -9227,3 +9227,271 @@ pelaksananya belum ada, padahal sebabnya kewenangan.
 
 **Uji bertambah dari 12 menjadi 16 di frontend**, dan bertambah empat di backend. Seluruhnya
 lulus; `go build`, `go vet`, dan `go test ./...` bersih.
+
+---
+
+## 41. Modul Inbox Analyst Doctor (2026-09-23)
+
+Antrean **penilaian medis** milik satu petugas — butir menu `MENU_ID 60`, pengganti harness
+`inboxAnalystDoctor_Harness`. Cabang `feat/reonardh-Inbox-Analyst-Doctor`.
+
+### 41.1 Berbeda dari dua modul sebelumnya: artefaknya LENGKAP
+
+`inboxcloseclaim` dan `inboxoutstanding` dibangun tanpa harness — keduanya termasuk sembilan
+yang hilang (`K-33`). Layar ini tidak: harness, section, dan Report Definition-nya **ada
+seluruhnya** di export, sehingga hampir setiap keputusan bentuk terbaca dari bukti dan bukan
+disusun ulang.
+
+| Artefak | Yang diambil darinya |
+|---|---|
+| `Harness/inboxAnalystDoctor_Harness-Harness.xml` | judul layar dan **8 judul kolom** (rule `pyCaption …`) |
+| `Section/InboxAnalystDoctor_Section-Section.xml` | grid, 8 sel berkepala, 1 sel tautan baris |
+| `Report Definition/InboxAnalystDoctor_RD-RD.xml` | **seluruh penyaring**, urutan, isian, gabungan |
+| `When/IsAnalystDoctor-When.xml` | siapa yang melihat butir menunya |
+| `Flow/Register_Flow.xml` | dari mana tugasnya datang (`Decision7` → `Assignment13`) |
+| `Flow Action/SendAnalystDoctor-FA.xml` | aksi yang mengeluarkan tugas dari antrean |
+
+### 41.2 Ketiga penyaringnya, dibaca langsung dari Report Definition
+
+`pyFilterLogic = "A AND B AND C"`, ditambah gabungan dalam ke `Assign-Worklist`:
+
+```
+A  .ClaimData.isComplianceTransfer    =  "2"
+B  newAssignPage.pxAssignedOperatorID =  Param.assign
+C  .pyStatusWork                      != "Resolved-Completed"
+
+INNER JOIN Assign-Worklist ON pxRefObjectKey = .pzInsKey
+ORDER BY .pxCreateDateTime DESC, .pzInsKey DESC
+```
+
+Penyaring B membuat layar ini **Inbox sungguhan** menurut `D-79`: barisnya pekerjaan milik
+pemanggil, bukan data acuan.
+
+### 41.3 Temuan yang paling menentukan: DUA properti tidak terekspos
+
+Report Definition menandainya sendiri:
+
+```xml
+<pzPropertyType>unexposed</pzPropertyType>
+```
+
+pada `.ClaimData.isComplianceTransfer` **dan** `.ClaimData.AnalystDoctorRemaks`. Properti tak
+terekspos hidup di dalam blob Pega, bukan sebagai kolom SQL. Pega tetap dapat menyaringnya
+karena ia memuat blob lalu menyaring di memori; Go tidak dapat menempuh jalan itu.
+
+Yang pertama **penyaring utama layar ini** — bukan kolom tampilan. Tanpa kolom SQL, layar ini
+tidak dapat dibangun terhadap Oracle sama sekali.
+
+Diperiksa pula: `InboxRegisterCompliance_RD` menandai properti yang sama sebagai `unexposed`,
+sehingga ini bukan keanehan satu Report Definition.
+
+### 41.4 Pertanyaan yang diajukan, dan jawabannya
+
+Tiga pilihan diajukan ke Work Owner: minta DBA mengeksposnya · pakai
+`POOLDATA.PEGA_DASHBOARDPNC.SURPLUS1` (tempat nilainya memang mendarat, terbukti dari
+`a.surplus1 AS "isComplianceTransfer"` di `GetExportDataDetailKlaim-SQL.xml`) · atau tanya DBA
+dulu.
+
+**Jawaban Work Owner: "nilainya langsung di-set 2".**
+
+Artinya ia memang nilai tersimpan, dan yang dibutuhkan hanyalah nama kolomnya. Yang dipakai
+mengikuti konvensi `_1` yang terbukti berlaku pada properti `ClaimData` lain di tabel yang
+sama (`STATUSKLAIM_1`, `RCL_PUCL_1`, `LAMAKLAIM_1`, `DATEOFLOSS_1`, `USERTEKNIS_1`):
+
+```
+.ClaimData.isComplianceTransfer  ->  ISCOMPLIANCETRANSFER_1   ** perlu konfirmasi DBA **
+.ClaimData.AnalystDoctorRemaks   ->  ANALYSTDOCTORREMAKS_1    ** perlu konfirmasi DBA **
+```
+
+Keduanya **tidak ada** di `docs/kolom-t-claimlist-admin.md`, yang disusun dari katalog Oracle
+langsung. Dokumen itu hanya memuat kolom yang dibutuhkan, bukan seluruh 186 — sehingga
+ketiadaannya di sana belum membuktikan ketiadaannya di tabel.
+
+**Kegagalannya dibuat berisik, bukan disamarkan.** Bila kolomnya tidak ada, kuerinya gagal
+dengan ORA-00904 yang menyebut nama kolomnya. Alternatifnya — menghilangkan penyaringnya
+supaya kuerinya jalan — akan menampilkan seluruh tugas worklist pemanggil sebagai tugas medis,
+tanpa satu pun pesan galat.
+
+`-periksa` menembaknya lebih dulu lewat kueri `check_columns` terpisah, beserta kueri katalog
+yang harus dijalankan DBA.
+
+### 41.5 Delapan kolom layar
+
+Judulnya dari harness apa adanya (`D-13`), urutannya dari sel berkepala pada section.
+
+| Judul di layar | Properti Pega | Kolom Oracle |
+|---|---|---|
+| Nomor Case | `.pyID` | `PYID` |
+| No Polis | `.Policy.PolicyNo` | `POLICYNO` |
+| Nama Tertanggung | `.Policy.QQName` | `QQNAME` |
+| Nama Cabang | `.Policy.Quotation.BranchName` | `BRANCHNAME` |
+| Tanggal Pendaftaran | `.pxCreateDateTime` | `PXCREATEDATETIME` |
+| Nama Admin | `.pyOrigUserID` | `PYORIGUSERID` |
+| Komentar dari PIC Teknis | `.ClaimData.AnalystDoctorRemaks` | **tidak terekspos** |
+| Lama Waktu Klaim | — | **dihitung** |
+
+**Satu isian diambil tetapi tidak digambar:** `.ClaimData.UserTeknis`. Report Definition
+mengambilnya dengan label "Nama PIC Teknik", tetapi harness **tidak punya caption untuknya**.
+Ia tetap dikirim ke layar dan dipakai sebagai keterangan di bawah kolom komentar —
+menggambarnya sebagai kolom berarti menambah kolom yang tidak pernah ada.
+
+**Salah ketik caption tidak dibawa.** Harness memuat dua rule yang nyaris sama: "Komentar dari
+PIC Teknis" dan "Komentar dari PIC Tekniks". Yang kedua salah ketik; ia tidak dibawa, sejalan
+dengan `Broswse*` dan `Complience` (§4.7). Satu uji menguncinya.
+
+### 41.6 Kolom yang belum terbawa tetap DIGAMBAR
+
+Kolom "Komentar dari PIC Teknis" masih kosong terhadap Oracle. Ia tidak dihilangkan dari tabel
+maupun dari kontrak API: selnya menampilkan **"belum terbawa"** beserta keterangan sebabnya,
+bukan dibiarkan hampa.
+
+Sel kosong terbaca sebagai "PIC Teknis memang tidak menulis apa-apa" — dan tidak ada seorang
+pun yang menanyakannya. Preseden yang sama dipakai `inboxmanagerreceivepucl` pada kolom
+"Jumlah Lembar Dokumen".
+
+### 41.7 Penyaring PXOBJCLASS yang tidak ada di Report Definition
+
+`PC_ASM_FW_GCNMFW_WORK` menampung dua kelas objek kerja. Report Definition tidak menyaringnya
+karena engine Pega yang menambahkannya dari `pyClassName`; SQL langsung harus menuliskannya
+sendiri.
+
+Melupakannya tidak menghasilkan galat — ia mencampur berkas penerimaan dokumen ke dalam antrean
+medis, dengan kolom yang kebetulan terisi. Pelajaran ini sudah dibayar sekali di
+`inboxmanagerreceivepucl`, dan satu uji menguncinya di sini.
+
+### 41.8 `Resolved-Rejected` TETAP MUNCUL — dan itu berbeda dari Inbox Outstanding
+
+Filter C mengecualikan `Resolved-Completed` **saja**. Klaim yang ditolak tetap berada di antrean
+penilaian medis.
+
+`inboxoutstanding` mengecualikan **keduanya**. Menyamakannya — yang sangat mudah terjadi saat
+menyalin kueri antarmodul — akan menghilangkan klaim yang ditolak tanpa satu pun galat.
+Perbedaannya dibawa (`P-5`) dan dikunci dua uji: satu di penyimpanan memori, satu di kuerinya.
+
+### 41.9 Perbandingan operator tidak peka huruf besar-kecil
+
+`UPPER(a.PXASSIGNEDOPERATORID) = UPPER(:2)`, dan itu punya harga: indeks biasa pada kolom itu
+tidak terpakai.
+
+Tetap dipilih karena `11-SECURITY.md` §3.1 mencatat kapitalisasi identitas di sistem lama memang
+tidak seragam — `ViewClaimPNC`/`VIEWCLAIMPNC`, `PncReceive`/`PNCRECEIVE`. Perbandingan persis
+akan membuat antrean tampak **kosong** bagi pengguna yang login-nya tersimpan berbeda huruf, dan
+antrean kosong tidak pernah dilaporkan siapa pun sebagai kerusakan.
+
+Bila pengukuran nyata menunjukkan ia menjadi hambatan, penyelesaiannya function-based index dari
+DBA — bukan melonggarkan perbandingannya.
+
+### 41.10 Identitas tidak terbaca dijawab 409, bukan daftar kosong
+
+Ini keputusan terpenting di lapisan transport modul ini. Antreannya milik satu orang, sehingga
+tanpa identitas jawaban yang jujur bukan "tidak ada pekerjaan" melainkan "belum diketahui
+pekerjaan siapa".
+
+Menjawab 200 dengan daftar kosong membuat petugas mengira ia tidak punya tugas — jawaban yang
+tidak pernah dilaporkan sebagai kerusakan, dan karena itu justru paling berbahaya. Satu uji HTTP
+menguncinya, termasuk bahwa jawabannya tidak membawa `data` sama sekali.
+
+### 41.11 Tiga selisih terencana, dinyatakan di layar
+
+`D-54` menuntut selisih di luar 13 butir `P-5` dinyatakan. Ketiganya dikirim server dan digambar
+di bawah tabel — bukan disimpan sebagai catatan teknis:
+
+1. **"Lama Waktu Klaim" dihitung.** Report Definition tidak mengambil satu pun properti durasi.
+   `LAMAKLAIM_1` memang ada (86 nilai berbeda) tetapi tidak dibaca layar ini, dan artinya tidak
+   terbaca dari export mana pun. Mengikuti preseden `inboxcloseclaim` yang sudah disetujui
+   2026-09-23.
+2. **Halaman dipotong basis data.** Layar lama menarik semuanya, memotongnya di
+   `pyMaxRecords=500`, lalu menomori di klipboard. Antrean di atas 500 kini terlihat utuh.
+3. **Kotak cari adalah tambahan.** Layar lama tidak punya penyaring apa pun; tanpa pencarian
+   sisi server, satu klaim sulit ditemukan begitu antreannya dipaginasi.
+
+### 41.12 Data contoh sengaja TIDAK memakai `DRRATNA`
+
+`Flow/Register_Flow.xml` menempatkan seluruh tugas tahap ini pada satu Operator ID yang tertanam
+di dalam alur — salah satu dari 24 hardcode yang `D-15` perintahkan dihapus.
+
+`D-69` mengizinkan nama Operator ID ditulis di **dokumen** supaya tiket dapat menunjuk hardcode
+mana yang dibuang. Izin itu untuk dokumen, bukan untuk data yang dijalankan: menuliskannya
+sebagai data contoh akan memindahkan hardcode itu ke sistem baru lewat pintu belakang. Satu uji
+menguncinya.
+
+Akibatnya dinyatakan sebagai keterbatasan di layar: selama penugasannya belum pindah ke master
+data, pengguna lain melihat antrean kosong — dan itu berarti "bukan milik Anda", bukan "tidak
+ada pekerjaan".
+
+### 41.13 Satu ketidakcocokan di modul lain yang DITEMUKAN tetapi tidak diubah
+
+`internal/registrasi/claim.go:257` memodelkan `ComplianceTransfer` sebagai **`bool`**, dengan
+komentar yang menyebut nilai `"1"` mengarahkan klaim ke Compliance.
+
+Domainnya ternyata bukan biner: `"1"` Compliance dan `"2"` Analyst Doctor. `bool` tidak dapat
+membawa keduanya, sehingga `flow_register.go:237` — cabang `IsCompliance` — akan bernilai benar
+untuk klaim yang sebenarnya menuju Analyst Doctor.
+
+**Tidak diubah pada sesi ini.** Ia menyentuh alur registrasi yang di luar lingkup tugas ini, dan
+mengubah tipe sebuah field yang dipakai DTO, handler, dan empat uji adalah perubahan tersendiri
+yang menuntut keputusannya sendiri. Dicatat di sini supaya tidak hilang.
+
+### 41.14 Perubahan basis data, API, komponen, dan dependensi
+
+| Jenis | Isi |
+|---|---|
+| **Basis data** | **tidak ada migrasi.** Kedua tabelnya milik sistem lama dan sudah ada. Yang dibutuhkan bukan tabel baru melainkan **konfirmasi dua nama kolom** — lihat §41.4 |
+| **API** | 2 rute baru: `GET /api/inbox-analyst-doctor`, `GET …/keterangan` |
+| **Komponen frontend** | modul `inbox-analyst-doctor` (4 berkas); **tidak ada** komponen bersama yang diubah — `DataTable`, `Button`, `ErrorMessage`, dan `Icon` dipakai apa adanya |
+| **Dependensi** | **tidak ada penambahan**, backend maupun frontend |
+| **Konfigurasi** | tidak ada variabel lingkungan baru |
+| **Berkas di luar modul** | `cmd/claimpnc/main.go` (perakitan) · `cmd/claimpnc/check.go` (`-periksa`) · `app/App.tsx` (rute) · `app/menu/registry.ts` (peta menu) |
+
+### 41.15 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | **133 paket lulus, 0 gagal** |
+| `gofmt -l` pada modul ini | bersih |
+| `npx vitest run src/modules/inbox-analyst-doctor` | **13 lulus** |
+| `npx tsc --noEmit` | **nol galat dari modul ini** |
+
+**Tiga keadaan yang SUDAH ADA sebelum sesi ini, dan bukan akibat perubahan ini:**
+
+1. `tsc --noEmit` melaporkan **120 galat** — angka yang sama persis sebelum dan sesudah, dan
+   seluruhnya di berkas yang tidak disentuh sesi ini (§39.9 mencatatnya lebih dulu).
+2. `vitest run` penuh melaporkan **29 kegagalan pada 7 berkas**. Dua di antaranya
+   (`inbox-admin`, `riwayat-klaim`) mengimpor `@/app/App`, yang sesi ini ubah — sehingga
+   ketidakterkaitannya **tidak boleh diandaikan**.
+
+   **Diverifikasi, bukan diasumsikan:** perubahan frontend di-stash
+   (`git stash push -u -- claim-pnc/frontend`), ketiga berkas dijalankan ulang, dan hasilnya
+   **29 kegagalan yang sama persis**. Perubahan lalu dikembalikan dan uji modul ini dijalankan
+   ulang — 13 lulus.
+3. `gofmt -l` menandai **590 berkas** di seluruh repo. Sebabnya bukan format melainkan
+   `core.autocrlf=true`: berkas lama ber-CRLF di working tree, dan gofmt menormalkannya ke LF.
+   Modul baru **tidak** termasuk yang tertandai. Menormalkan 590 berkas akan menghasilkan diff
+   besar yang tidak berhubungan dengan tugas ini, sehingga tidak dilakukan.
+
+**ESLint tidak dijalankan** karena proyek ini tidak memilikinya: tidak ada `eslint.config.*`
+maupun `.eslintrc.*`, dan `package.json` tidak punya skrip `lint`. Gerbang frontend yang ada
+adalah `typecheck` dan `test`, dan keduanya lulus.
+
+### 41.16 Dua kesalahan saya sendiri pada sesi ini
+
+Keduanya tertangkap oleh uji yang saya tulis sendiri, dan keduanya patut dicatat karena polanya
+berulang: **aturan yang terlalu kasar, dan kode yang masuk akal tetapi tidak pernah berjalan.**
+
+**Pertama — larangan anti-perangkaian yang menolak yang benar.** Uji melarang `' ||` di dalam
+kueri sebagai penjaga terhadap perangkaian nilai. Ia menolak pola
+`LIKE '%' || UPPER(:4) || '%'` yang justru BENAR: yang dirangkai hanyalah tanda persen, dan
+nilainya tetap lewat bind. Larangan sekasar itu menolak yang benar sekaligus meloloskan
+`|| TempFilter.Nama ||` yang berbahaya. Ujinya diperbaiki — pola yang sah dibuang lebih dulu,
+lalu dituntut tidak ada perangkaian tersisa.
+
+**Kedua — kode mati yang terlihat masuk akal.** Halaman mencabangkan pesan "antrean kosong"
+menurut isi kotak cari. `DataTable` ternyata SUDAH menggantinya sendiri saat `serverSearch`
+terisi, sehingga cabang itu tidak pernah berjalan. Cabangnya dibuang; pesan pencarian diserahkan
+ke komponen bersama, sehingga layar ini berbunyi sama dengan layar lain.
+
+Ditambah satu perbaikan rancangan sebelum sempat menjadi kesalahan: peta `renderer` kolom
+mula-mula memanggil pembuka klaim lewat **variabel modul yang bisa berubah**, dengan setter yang
+tidak pernah dipanggil. Ia diubah menjadi parameter biasa sebelum uji pertama dijalankan.

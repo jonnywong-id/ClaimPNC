@@ -7584,3 +7584,135 @@ dibayar. `D-59` sudah menghapus pemisahan tugas, sehingga jejak permintaan inila
 kontrol pengimbang yang tersisa.
 
 **RISIKO YANG DITERIMA SADAR**, dicatat supaya tidak ditemukan sebagai kejutan saat pentest.
+
+---
+
+## 42. Modul Inbox Analyst Doctor (2026-09-23, sesi kedua puluh dua)
+
+Keputusan implementasi modul `inboxanalystdoctor` — antrean penilaian medis, `MENU_ID 60`.
+Jalannya pengerjaan ada di `catatan-pengembangan.md` §41.
+
+### 42.1 Nama modul: `inboxanalystdoctor` / `inbox-analyst-doctor`
+
+`D-81` menetapkan nama modul mengikuti nama yang dipakai Work Owner. Butir menunya berbunyi
+**"Inbox Analyst Doctor"** (`m_menu_aplikasi_pnc.csv`, `MENU_ID 60`), dan judul di dalam
+harness-nya sama persis.
+
+Nama itu berbahasa Inggris **di sumbernya sendiri**, sehingga tidak ada yang perlu
+diterjemahkan — berbeda dari `masterrekening` dan `masterstatus` yang nama Indonesianya
+memang nama bisnisnya. Isinya tetap berbahasa Inggris (`D-80`).
+
+### 42.2 Penyaring dan urutan disalin dari Report Definition, bukan dari kueri lain
+
+Tiga penyaring (`A AND B AND C`), gabungan dalam ke `Assign-Worklist`, dan urutan
+`PXCREATEDATETIME DESC, PZINSKEY DESC` seluruhnya dari
+`Report Definition/InboxAnalystDoctor_RD-RD.xml`.
+
+**Tidak satu pun dipinjam dari modul inbox lain**, meski beberapa terlihat mirip. Dua
+perbedaan yang paling mudah diseragamkan tanpa sengaja:
+
+| Hal | Modul ini | Modul lain |
+|---|---|---|
+| Status yang dikecualikan | `Resolved-Completed` **saja** | `inboxoutstanding` mengecualikan **keduanya** |
+| Tabel penugasan | `PC_ASSIGN_WORKLIST` (per orang) | tab RCL/PUCL memakai `PC_ASSIGN_WORKBASKET` |
+
+Keduanya dikunci uji, karena keduanya gagal **tanpa galat** — yang berubah hanya isi layar.
+
+### 42.3 Nama kolom untuk dua properti tak terekspos: konvensi `_1`, menunggu DBA
+
+**Keputusan:** memakai `ISCOMPLIANCETRANSFER_1` dan `ANALYSTDOCTORREMAKS_1`, mengikuti
+konvensi yang terbukti berlaku pada properti `ClaimData` lain di tabel yang sama.
+
+**Dasarnya:** jawaban Work Owner 2026-09-23 — *"nilainya langsung di-set 2"* — menutup
+pertanyaan apakah nilainya perlu dicarikan sumber pengganti. Ia nilai tersimpan; yang tersisa
+hanyalah namanya.
+
+**Yang TIDAK dipilih, dan kenapa:**
+
+| Pilihan | Alasan tidak diambil |
+|---|---|
+| `POOLDATA.PEGA_DASHBOARDPNC.SURPLUS1` | Ia tabel **cermin laporan** yang disegarkan berkala (`LastRefresh_act`). Inbox yang membaca cermin akan menampilkan keadaan basi: tugas yang sudah ditangani masih muncul, yang baru masuk belum muncul |
+| Menghilangkan penyaingnya supaya kuerinya jalan | Akan menampilkan **seluruh** tugas worklist pemanggil sebagai tugas medis, tanpa satu pun galat |
+| Menunda modul sampai DBA menjawab | Menahan seluruh pekerjaan — domain, layar, uji — yang sama sekali tidak bergantung pada jawaban itu |
+
+**Konsekuensi yang diterima sadar:** jalur Oracle **belum terbukti**. Bila kolomnya tidak ada,
+kuerinya gagal dengan ORA-00904 yang menyebut namanya. Kegagalan yang menyebut sebabnya dipilih
+di atas layar yang terlihat benar.
+
+`-periksa` memeriksanya dalam **dua langkah terpisah** — tabel dan kolom — karena keduanya
+gagal karena sebab yang berbeda, dan galat yang menyebut sebab yang salah mengirim orang yang
+memperbaikinya ke arah yang keliru.
+
+### 42.4 Kolom yang belum terbawa tetap ada di kontrak API
+
+`komentar_pic_teknis` tetap dikirim meski selalu kosong terhadap Oracle. Menghilangkannya dari
+jawaban akan membuat layar berhenti menggambarnya — dan isian yang belum terbawa menjadi tidak
+terlihat oleh siapa pun.
+
+Preseden: `inboxmanagerreceivepucl` memakai `CAST(NULL …)` pada "Jumlah Lembar Dokumen" dengan
+alasan yang sama.
+
+### 42.5 "Lama Waktu Klaim" dihitung di Go, bukan di SQL dan bukan dari `LAMAKLAIM_1`
+
+Tiga pilihan, dan dua ditolak:
+
+| Pilihan | Alasan |
+|---|---|
+| Baca `LAMAKLAIM_1` | Kolomnya ada (86 nilai berbeda) tetapi **tidak dibaca layar ini**, dan artinya — dihitung sampai kapan, diperbarui kapan — tidak terbaca dari export mana pun |
+| Hitung di SQL | "Hari" yang dimaksud pengguna adalah hari **WIB** sementara kolomnya UTC. Menaruh konversi zona waktu di dalam SQL adalah cara tercepat menyebarkannya — persis cacat `Set7Hours` sistem lama, 118 titik di 36 activity |
+| **Hitung di Go lewat seam Clock** | Terpusat di satu tempat (`F-5`), dan dapat diuji tanpa bergantung jam mesin |
+
+Dihitung terhadap **pergantian tanggal**, bukan selisih jam dibagi 24: tugas yang masuk pukul
+23.00 dan dilihat pukul 01.00 keesokan harinya sudah berumur satu hari bagi pengguna.
+
+### 42.6 Identitas pemanggil diperiksa SEBELUM portal dan penyimpanan
+
+Urutannya mengikat, dan diuji. Dua alasan:
+
+1. Memilih repo untuk permintaan yang pasti ditolak adalah perjalanan yang terbuang.
+2. Yang lebih penting: urutan ini membuat kegagalan sesi terbaca **sebagai kegagalan sesi** —
+   bukan sebagai antrean kosong.
+
+Galatnya dipetakan **409**, bukan 401 dan bukan 200 berisi daftar kosong. 401 akan melempar
+pengguna ke halaman masuk lalu mengembalikannya ke galat yang sama; 200 berisi daftar kosong
+akan membuatnya mengira ia tidak punya pekerjaan.
+
+### 42.7 Perbandingan operator memakai `UPPER` di kedua sisi
+
+Diputuskan meski mengorbankan pemakaian indeks biasa. Dasarnya `11-SECURITY.md` §3.1: nama
+identitas di sistem lama terbukti muncul dalam dua kapitalisasi.
+
+Kegagalan yang dihindari bersifat **senyap** — antrean kosong bagi pengguna yang login-nya
+tersimpan berbeda huruf. Kegagalan yang diterima bersifat **terukur** — kueri lebih lambat,
+yang dapat dilihat dan diperbaiki dengan function-based index.
+
+Penyimpanan memori memakai `strings.EqualFold` supaya keduanya sepakat; tanpa itu, uji yang
+lulus di memori tidak menyatakan apa pun tentang Oracle.
+
+### 42.8 Modul ini TIDAK menulis apa pun, dan ketiadaannya disengaja
+
+Menyelesaikan tugas Analyst Doctor berarti menjalankan Flow Action `SendAnalystDoctor`, yang
+menulis objek kerja **dan** memindahkan penugasannya. Keduanya milik Pega selama masa paralel
+(`P-1`).
+
+Membawanya ke sini menuntut modul alur kerja tersendiri — bukan satu method di antrean. Seam
+`Repo` karena itu hanya punya `List`, dan ketiadaan method tulis dinyatakan di komentarnya.
+
+### 42.9 Data contoh tidak memakai Operator ID sungguhan
+
+`DRRATNA` tertanam di `Flow/Register_Flow.xml` sebagai penerima seluruh tugas tahap ini —
+salah satu dari 24 hardcode yang `D-15` hapus.
+
+`D-69` mengizinkannya ditulis di **dokumen** agar tiket dapat menunjuk hardcode mana yang
+dibuang; izin itu tidak berlaku untuk **data yang dijalankan**. Data contoh memakai
+`ADMINKLAIM` dan `ADMINLAIN`, dan satu uji menjaga `DRRATNA` tidak masuk.
+
+### 42.10 Utang teknis yang disadari
+
+| # | Utang | Pemilik |
+|---|---|---|
+| 1 | **Dua nama kolom belum dikonfirmasi DBA** — `ISCOMPLIANCETRANSFER_1`, `ANALYSTDOCTORREMAKS_1`. Sampai dijawab, jalur Oracle belum terbukti | DBA |
+| 2 | **Penerima tugas tahap ini masih satu operator yang tertanam di alur Pega.** Selama belum pindah ke master data, hanya satu orang yang melihat isi antrean | Work Owner + `F-4` |
+| 3 | **Pemeriksaan kewenangan menu belum ada** (`TKT-F3-005`). Yang meredamnya penyaring identitas — peredam, bukan kendali. Barisnya menyangkut data medis yang `FR-R2` batasi | `TKT-F3-005` |
+| 4 | **`registrasi.Claim.ComplianceTransfer` bertipe `bool`** padahal domainnya `"1"` dan `"2"`. Cabang `IsCompliance` akan bernilai benar untuk klaim yang menuju Analyst Doctor. Di luar lingkup sesi ini — lihat `catatan-pengembangan.md` §41.13 | keputusan tersendiri |
+| 5 | **Penanda bind gaya Oracle `:n`** belum portabel ke PostgreSQL. Utang yang sudah ada sebelum modul ini dan berlaku untuk seluruh berkas `.sql` | `09-DATABASE-STRATEGY.md` §10 |

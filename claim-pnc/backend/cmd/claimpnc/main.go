@@ -28,6 +28,7 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/inboxanalystdoctor"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -74,12 +75,16 @@ import (
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxclaimtreatypropusecase "claim-pnc/internal/inboxclaimtreatyprop/usecase"
 
-	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
-	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
+	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
+	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
+	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
+	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
 	inboxcloseclaimhttp "claim-pnc/internal/inboxcloseclaim/http"
 	inboxcloseclaimmemory "claim-pnc/internal/inboxcloseclaim/repo/memory"
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
 	inboxcloseclaimusecase "claim-pnc/internal/inboxcloseclaim/usecase"
+	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
+	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
@@ -643,6 +648,31 @@ func run() error {
 			FallbackErrorWriter: inboxprogressclaimhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Analyst Doctor. Jembatan pemanggilnya membawa LOGIN, dan di modul ini ia bukan
+	// kenyamanan melainkan syarat: Report Definition menyaring
+	// `PC_ASSIGN_WORKLIST.PXASSIGNEDOPERATORID` dengan identitas pemanggil, sehingga memakai
+	// NIK di sini akan membuat antrean tampak KOSONG bagi setiap pengguna — dan antrean
+	// kosong tidak pernah dilaporkan siapa pun sebagai kerusakan.
+	//
+	// Clock disuntikkan karena kolom "Lama Waktu Klaim" dihitung darinya (`F-5`).
+	inboxAnalystDoctorHandler := inboxanalystdoctorhttp.NewHandler(
+		inboxanalystdoctorhttp.Options{
+			Service: assembly.inboxAnalystDoctor,
+			GetCaller: func(ctx context.Context) (inboxanalystdoctorhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxanalystdoctorhttp.Caller{}, false
+				}
+				return inboxanalystdoctorhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Clock:     clock.System{},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxanalystdoctorhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	outstandingHandler := inboxoutstandinghttp.NewHandler(inboxoutstandinghttp.Options{
 		Service: assembly.inboxOutstanding,
 		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
@@ -879,6 +909,14 @@ func run() error {
 				// itu menuntut portal, sama seperti Inbox Admin.
 				inboxprogressclaimhttp.Mount(
 					protected, inboxProgressClaimHandler, activePortalDeps)
+
+				// Inbox Analyst Doctor memuat nama tertanggung dan klaim Personal
+				// Accident. Rutenya menuntut portal karena alasan yang sama dengan
+				// modul di atasnya, ditambah satu yang khas: `FR-R2` membatasi akses
+				// data medis, dan pembatasan itu tidak bermakna bila datanya datang
+				// dari entitas yang salah.
+				inboxanalystdoctorhttp.Mount(
+					protected, inboxAnalystDoctorHandler, activePortalDeps)
 			})
 		},
 	})
@@ -997,6 +1035,10 @@ type assembly struct {
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
+	// inboxAnalystDoctor melayani layar Inbox Analyst Doctor (`MENU_ID 60`) — antrean
+	// penilaian medis milik satu petugas.
+	inboxAnalystDoctor *inboxanalystdoctorusecase.Service
+
 	// inboxLaporanKlaim melayani layar Inbox Laporan Klaim. Sama seperti master status
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
 	// milik satu badan hukum (ADR-0030).
@@ -1081,6 +1123,15 @@ type storage struct {
 	// Ia fungsi dengan alasan yang sama: progres klaim satu badan hukum bukan progres
 	// badan hukum lain, dan barisnya memuat nama tertanggung (`ADR-0030`, `R-20`).
 	inboxProgressClaimSelector inboxprogressclaim.RepoSelector
+
+	// inboxAnalystDoctorSelector memilih penyimpanan antrean penilaian medis milik satu
+	// portal.
+	//
+	// Alasannya sama dengan selector di atasnya, ditambah satu yang lebih berat: barisnya
+	// adalah klaim Personal Accident, dan `FR-R2` memperlakukan data medis secara khusus.
+	// Jatuh ke koneksi bawaan di sini bukan sekadar menampilkan entitas yang salah — ia
+	// menampilkan data medis entitas yang salah.
+	inboxAnalystDoctorSelector inboxanalystdoctor.RepoSelector
 
 	// claimReportSelector memilih penyimpanan berkas laporan klaim milik satu portal.
 	//
@@ -1408,6 +1459,18 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Inbox Analyst Doctor tidak menerima Clock di sini: waktu hanya dibutuhkan saat
+	// menyusun jawaban — kolom "Lama Waktu Klaim" — bukan saat mengambil antreannya.
+	// Menaruhnya di usecase akan menambah ketergantungan yang tidak dipakai satu baris pun.
+	inboxAnalystDoctorService, err := inboxanalystdoctorusecase.NewService(
+		inboxanalystdoctorusecase.Options{
+			RepoSelector: store.inboxAnalystDoctorSelector,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	outstandingService, err := inboxoutstandingusecase.NewService(
 		store.outstandingSelector,
 		store.outstandingLines,
@@ -1492,6 +1555,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxClaimTreatyNonProp: claimTreatyNonPropService,
 		inboxManagerReceivePUCL: managerReceivePUCLService,
 		inboxProgressClaim:      inboxProgressClaimService,
+		inboxAnalystDoctor:      inboxAnalystDoctorService,
 		inboxLaporanKlaim:       claimReportService,
 		inboxOutstanding:        outstandingService,
 		inboxCloseClaim:         closeClaimService,
@@ -1892,6 +1956,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxprogressclaimsql.NewRepo(conn), nil
 		}
+
+		store.inboxAnalystDoctorSelector = func(alias string) (inboxanalystdoctor.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxanalystdoctorsql.NewRepo(conn), nil
+		}
+
 		store.claimReportBranch = inboxlaporanklaimsql.NewBranchResolver(primary)
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
@@ -1993,6 +2066,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// benar-benar bekerja.
 		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
+		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -2748,6 +2822,38 @@ func inboxProgressClaimSelectorMemory(primaryAlias string) inboxprogressclaim.Re
 			return existing, nil
 		}
 		fresh := inboxprogressclaimmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxAnalystDoctorSelectorMemory menyusun penyimpanan antrean penilaian medis di memori;
+// alasannya sama dengan inboxProgressClaimSelectorMemory di atas.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+//
+// Satu salinan per portal, bukan satu yang dibagi. Modul ini memang tidak menulis, sehingga
+// hari ini tidak ada yang dapat saling menimpa — tetapi berbagi penyimpanan antarportal
+// adalah bentuk kebocoran yang persis dilarang `R-20`, dan mencegahnya sejak awal jauh lebih
+// murah daripada menemukannya kelak.
+func inboxAnalystDoctorSelectorMemory(primaryAlias string) inboxanalystdoctor.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxanalystdoctor.Repo{}
+
+	return func(alias string) (inboxanalystdoctor.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxanalystdoctormemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

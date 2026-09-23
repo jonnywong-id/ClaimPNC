@@ -4004,3 +4004,116 @@ Yang dilakukan: gerbang dijadikan seam yang **bawaannya adalah aturan yang sesun
 sehingga perakit yang lupa mengisinya mendapat perilaku yang benar, bukan yang terbuka. Itu
 penerapan langsung prinsip `codebase-design` tentang letak seam: seam ditaruh di tempat yang
 benar-benar bervariasi, dan bawaannya memihak pada keadaan yang aman.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-23 (modul Inbox Analyst Doctor)
+
+## Ringkasan
+
+**Tidak ada skill Matt Pocock yang dipanggil pada sesi ini, dan kali ini bukan karena
+dipertimbangkan lalu ditolak — melainkan karena tidak satu pun terpasang di lingkungan sesi
+ini.**
+
+Perbedaan itu dicatat tegas supaya catatan ini tidak terbaca seolah keputusan yang sama
+diambil ulang. Daftar skill yang tersedia pada sesi ini seluruhnya milik lingkungan Claude
+(`artifact-*`, `dataviz`, `code-review`, `simplify`, `run`, `init`, `security-review`,
+`anthropic-skills:*`); tidak ada `mattpocock-skills:*` di antaranya.
+
+## Skill lingkungan yang tersedia, dan kenapa tidak dipakai
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `code-review` | Ia meninjau diff terhadap bug korektnes. Pekerjaan sesi ini adalah **menulis** modul baru, dan peninjauannya sudah dikerjakan gerbang yang lebih keras: `go vet`, 133 paket uji, `tsc --noEmit`, dan uji yang ditulis berdampingan dengan kodenya |
+| `simplify` | Ia menyederhanakan kode yang sudah ada. Dua penyederhanaan yang memang perlu ditemukan sendiri dan diterapkan langsung — lihat "Kesalahan sendiri" di bawah |
+| `security-review` | Permukaan keamanan modul ini sudah ditinjau eksplisit di dalam pekerjaannya: parameter binding tanpa perkecualian (diuji), penolakan tanpa portal (diuji), dan penyaring identitas (diuji). Yang tersisa — kewenangan menu — adalah `TKT-F3-005` yang memang belum ada, bukan temuan baru |
+| `dataviz`, `artifact-*` | Tidak ada bagan maupun halaman yang dibuat |
+| `run` | Aplikasinya tidak dijalankan: yang dibuktikan adalah uji dan gerbang tipe, dan menjalankan binary tidak membuktikan apa pun yang belum dibuktikan keduanya |
+
+## Teknik yang DIPAKAI, meski skill-nya tidak terpasang
+
+Dicatat karena ketentuan VI.2 menuntut metode yang dipakai, bukan hanya nama skill yang
+dipanggil. Ketiganya sudah menjadi kebiasaan kerja repo ini dan tercatat di sesi-sesi
+sebelumnya.
+
+### Disiplin `grilling` — menekan premis sampai patah, sebelum menulis kode
+
+Dipakai paling berat pada sesi ini, dan ia yang menghasilkan temuan terpentingnya.
+
+Penyaring utama layar ini mula-mula tampak sepele: `isComplianceTransfer = "2"`. Alih-alih
+menuliskannya, ia ditelusuri — dan Report Definition ternyata **menandai propertinya sendiri**
+sebagai `unexposed`. Penelusuran lanjutan membuktikan itu bukan keanehan satu berkas:
+`InboxRegisterCompliance_RD` menandai properti yang sama.
+
+Penelusuran ke mana nilainya mendarat menemukan `POOLDATA.PEGA_DASHBOARDPNC.SURPLUS1` —
+sebuah kolom bernama "surplus" yang berisi penanda antrean, contoh utang teknis §4.2 apa
+adanya.
+
+**Manfaatnya:** tanpa penelusuran itu, kuerinya akan ditulis dengan nama kolom yang diduga
+benar, dan kegagalannya baru muncul di tangan DBA — tanpa keterangan apa pun tentang
+sebabnya. Yang terjadi sebaliknya: pertanyaannya diajukan ke Work Owner dengan tiga pilihan
+beserta konsekuensi masing-masing, dijawab, lalu keadaannya dibuat terlihat lewat `-periksa`
+dan lewat kueri katalog yang siap dijalankan DBA.
+
+### Disiplin `domain-modeling` — menolak istilah yang menyamar
+
+Tiga hal yang tampak kecil dan ternyata menentukan:
+
+1. **`isComplianceTransfer` bukan penanda biner.** Namanya berbunyi "transfer ke compliance",
+   tetapi nilainya `"1"` Compliance dan `"2"` Analyst Doctor. Keduanya ditulis berdampingan
+   sebagai konstanta justru supaya tidak dapat tertukar saat dibaca.
+2. **"Komentar dari PIC Teknis" punya DUA caption di harness**, dan yang satu salah ketik
+   ("Tekniks"). Salah ketiknya tidak dibawa — sejalan dengan `Broswse*` dan `Complience`.
+3. **"Nomor Case" bukan "Nomor Klaim".** Judul itu dipertahankan apa adanya (`D-13`) meski
+   isinya nomor klaim, karena itulah yang dibaca pengguna di layar lama.
+
+Yang pertama meluas ke luar modul ini: `registrasi.Claim.ComplianceTransfer` bertipe `bool`,
+dan `bool` tidak dapat membawa dua nilai. Ditemukan, dilaporkan, **tidak diubah** — ia di luar
+lingkup tugas ini.
+
+### Disiplin `codebase-design` — seam ditaruh di tempat yang benar-benar bervariasi
+
+Empat seam, dan masing-masing punya minimal dua pengisi:
+
+| Seam | Pengisi |
+|---|---|
+| `Repo` | `sqlstore` (Oracle) · `memory` (uji dan pengembangan lokal) |
+| `RepoSelector` | koneksi per portal · pemilih memori portal utama |
+| `Clock` | jam sistem · jam tetap di uji |
+| `CallerReader` | jembatan dari modul auth · tiruan di uji |
+
+Satu keputusan letak yang patut dicatat: **`Clock` dipasang di lapisan transport, bukan di
+usecase.** Waktu hanya dibutuhkan saat menyusun jawaban — kolom "Lama Waktu Klaim" — bukan
+saat mengambil antreannya. Menaruhnya di usecase akan menambah ketergantungan yang tidak
+dipakai satu baris pun.
+
+## Kesalahan sendiri, dan bagaimana tertangkap
+
+Dicatat karena polanya lebih berguna daripada kesalahannya.
+
+**Aturan yang terlalu kasar menolak yang benar.** Uji anti-perangkaian SQL melarang `' ||`,
+dan ia menolak pola `LIKE '%' || UPPER(:4) || '%'` yang justru benar — yang dirangkai hanyalah
+tanda persen. Larangan sekasar itu punya dua cacat sekaligus: menolak yang benar, dan tetap
+meloloskan `|| TempFilter.Nama ||` yang berbahaya. Ujinya ditulis ulang supaya memeriksa apa
+yang **tersisa** setelah pola sah dibuang.
+
+**Kode mati yang terlihat masuk akal.** Halaman mencabangkan pesan "antrean kosong" menurut
+isi kotak cari; `DataTable` ternyata sudah menggantinya sendiri. Cabangnya dibuang, dan
+akibatnya layar ini kini berbunyi sama dengan layar lain untuk keadaan yang sama.
+
+**Satu rancangan diperbaiki sebelum sempat menjadi kesalahan.** Peta `renderer` kolom mula-mula
+memanggil pembuka klaim lewat variabel modul yang bisa berubah, dengan setter yang tidak pernah
+dipanggil — dan komentarnya sendiri terbaca ragu. Ia diubah menjadi parameter biasa sebelum uji
+pertama dijalankan.
+
+## Catatan untuk tahap berikutnya
+
+Bila `mattpocock-skills:*` kelak terpasang, dua di antaranya paling berguna pada modul
+berikutnya:
+
+- **`codebase-design`** saat modul yang MENULIS mulai dikerjakan. Modul ini hanya membaca,
+  sehingga letak seam-nya sederhana; begitu penugasan berpindah ke Go, batas kepemilikan tabel
+  (`P-1`) menjadi keputusan rancangan yang sesungguhnya.
+- **`tdd`** pada modul yang acceptance criteria-nya berangka. Di modul ini spesifikasinya
+  datang dari Report Definition, dan uji ditulis berdampingan dengan kode — siklus formalnya
+  tidak menambah apa pun di atas itu.

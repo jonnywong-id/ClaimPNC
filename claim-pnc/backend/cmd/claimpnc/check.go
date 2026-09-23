@@ -29,6 +29,7 @@ import (
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	inboxclaimtreatynonpropsql "claim-pnc/internal/inboxclaimtreatynonprop/repo/sqlstore"
 
+	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
@@ -113,6 +114,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
+	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
 	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
@@ -1262,6 +1264,57 @@ func checkInboxProgressClaim(
 	print("            GCNM_MST_PROGRESS, MST_USER_TEKNIK, dan T_CLAIM_PNC.")
 	print("            Penyaring Cabang BELUM aktif — sumbernya DB Link ke HRD yang")
 	print("            belum punya API pengganti (R-03).")
+}
+
+// checkInboxAnalystDoctor memastikan tabel DAN dua kolom yang dibaca layar Inbox Analyst
+// Doctor terjangkau.
+//
+// # Kenapa modul ini diperiksa dalam DUA langkah, tidak seperti modul lain
+//
+// Karena dua hal yang berbeda dapat gagal di sini, dan yang kedua SUDAH DIDUGA akan gagal:
+//
+//	tabel   hak SELECT belum diberikan — sama seperti modul lain
+//	kolom   nama kolomnya belum dikonfirmasi DBA — khas modul ini
+//
+// `Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai `.ClaimData.isComplianceTransfer`
+// dan `.ClaimData.AnalystDoctorRemaks` sebagai `unexposed` — keduanya hidup di dalam blob
+// Pega, bukan sebagai kolom SQL. Nama kolom yang dipakai mengikuti konvensi `_1` yang berlaku
+// pada properti `ClaimData` lain, dan konvensi itu belum dibuktikan untuk kedua nama ini.
+//
+// Inilah satu-satunya tempat keadaan itu diketahui SEBELUM ada pengguna yang membuka
+// layarnya. Tanpa pemeriksaan ini, yang pertama menemukannya adalah petugas medis yang
+// layarnya gagal dimuat.
+func checkInboxAnalystDoctor(
+	ctx context.Context,
+	repo *inboxanalystdoctorsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel Inbox Analyst Doctor tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan")
+		print("            DATAPEGA.PC_ASSIGN_WORKLIST. Keduanya milik sistem lama dan tidak")
+		print("            dibuat migrasi mana pun.")
+		return
+	}
+	print("  [ok]    Tabel Inbox Analyst Doctor dapat dibaca")
+
+	if err := repo.CheckColumns(ctx); err != nil {
+		print("  [BELUM] Kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 tidak ada: %v", err)
+		print("            INI SUDAH DIDUGA. Kedua properti Pega-nya ditandai `unexposed`,")
+		print("            sehingga keduanya tidak punya kolom SQL yang terbukti. Yang")
+		print("            pertama adalah PENYARING UTAMA layar ini; tanpanya layar tidak")
+		print("            dapat dipakai sama sekali terhadap Oracle.")
+		print("            Yang diminta ke DBA — satu kueri katalog:")
+		print("              SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS")
+		print("               WHERE OWNER = 'DATAPEGA' AND TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'")
+		print("                 AND (COLUMN_NAME LIKE '%%COMPLIANCE%%'")
+		print("                      OR COLUMN_NAME LIKE '%%ANALYSTDOCTOR%%');")
+		return
+	}
+	print("  [ok]    Kolom ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1 ada")
+	print("            Catatan: antrean ini disaring dengan Operator ID pemanggil, sehingga")
+	print("            pengguna tanpa tugas Analyst Doctor melihatnya kosong — dan itu")
+	print("            jawaban yang benar, bukan kerusakan.")
 }
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
