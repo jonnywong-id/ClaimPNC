@@ -40,8 +40,6 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master/rekening',
   StatusProgress: '/master/status-progres-1',
-  // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
-  InboxRCVApp_Harness: '/pelaporan-klaim',
   // Butir menu "Inbox Outstanding". Harness-nya tidak ada di export (`K-33`); layarnya
   // dibangun dari kueri BrowseInboxOutstanding1 beserta activity dan section-nya.
   InboxOutstanding_Harness: '/inbox-outstanding',
@@ -131,7 +129,35 @@ export const MENU_ROUTES: Record<string, string> = {
   // Ia SUDAH dipetakan — berbeda dari kedua butir di atas — karena merge ini memasang
   // rute API-nya di `cmd/claimpnc`. Alasan menahannya pada merge sebelumnya karena itu
   // sudah tidak berlaku untuk butir ini.
+  //
+  // Butir ini sempat TERDAFTAR DUA KALI. Cabang tujuan memetakannya pula ke
+  // `/pelaporan-klaim` di dekat kepala daftar, sementara baris ini memetakannya ke
+  // `/inbox/laporan-klaim`. Yang kedua itu yang benar — `/pelaporan-klaim` tidak ada di
+  // `App.tsx` maupun di berkas mana pun — dan yang pertama dibuang saat merge Inbox
+  // Manager Receive / PUCL (2026-09-23).
+  //
+  // Kunci ganda pada object literal TIDAK menghasilkan galat saat dijalankan: yang
+  // terakhir menang, sehingga perilakunya kebetulan benar. Yang menangkapnya adalah
+  // `tsc` (TS1117), bukan uji mana pun.
   InboxRCVApp_Harness: '/inbox/laporan-klaim',
+
+  // MENU_ID 56 "Inbox Manager Receive / PUCL", kelompok INBOX.
+  //
+  // Nama programnya menyimpan salah ketik yang dipertahankan — `ReceiveDoucument`, bukan
+  // `ReceiveDocument`. Ia disalin apa adanya dari POOLDATA.M_MENU_APLIKASI_PNC: kuncinya
+  // harus sama persis dengan yang dikirim server, dan membetulkannya di sini akan membuat
+  // butir menunya tampak belum tersedia selamanya.
+  //
+  // Bedakan dari `InboxRCVApp_Harness` tepat di atasnya. Keduanya menyentuh berkas
+  // penerimaan dokumen, dan hanya itu kesamaannya:
+  //
+  //   Inbox Laporan Klaim (64)   berkas MILIK petugas, lengkap dengan komunikasi cabang
+  //   layar ini (56)             pandangan PENYELIA atas berkas SELURUH petugas,
+  //                              ditambah antrean klaim RCL/PUCL yang tidak ada di sana
+  //
+  // Rutenya karena itu terpisah, dan tidak boleh disatukan: yang satu menyaring menurut
+  // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
+  ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
 }
 
 /**

@@ -31,6 +31,8 @@ import (
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	"claim-pnc/internal/inboxmanagerreceivepucl"
+	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
@@ -103,6 +105,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
+	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
@@ -1091,6 +1094,111 @@ func checkClaimTreatyNonProp(
 			print("            PXREFOBJECTKEY = PZINSKEY tidak menemukan pasangannya.")
 			break
 		}
+	}
+}
+
+// checkManagerReceivePUCL memeriksa modul Inbox Manager Receive / PUCL (`MENU_ID 56`).
+//
+// # Kenapa pemeriksaannya lebih rinci daripada modul inbox lain
+//
+// Karena TIGA hal di modul ini dibangun di atas kesimpulan yang belum dapat diverifikasi
+// tanpa basis data nyata, dan ketiganya gagal TANPA GALAT bila kesimpulannya keliru:
+//
+//   - Group Panel `002` sebagai pengganti `.ReceiveDocument.TypeOfClaim`. Bila kodenya
+//     berbeda di produksi, tab PA kosong dan seluruh isinya pindah ke tab NONMBU.
+//   - Akun antrean `RCLPUCL`. Ia diambil dari dua kueri Pega lain karena Report Definition
+//     tab itu tidak punya penyaring antrean sama sekali. Bila namanya berubah, tab RCL/PUCL
+//     kosong.
+//   - POOLDATA.T_CLAIM_RECIVEDCLAIM. Tabel itu TIDAK PERNAH DIBACA sistem lama, sehingga
+//     kelengkapan isinya belum terverifikasi. Gabungannya LEFT JOIN, sehingga tabel yang
+//     kosong menghasilkan dua kolom kosong — bukan galat.
+//
+// Ketiganya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
+// bukan saat pengguna melaporkan "tabnya kosong".
+func checkManagerReceivePUCL(
+	ctx context.Context,
+	repo *inboxmanagerreceivepuclsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel Inbox Manager Receive / PUCL tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas")
+		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK, DATAPEGA.PC_ASSIGN_WORKLIST,")
+		print("            DATAPEGA.PC_ASSIGN_WORKBASKET, dan POOLDATA.T_CLAIM_RECIVEDCLAIM.")
+		return
+	}
+	print("  [ok]    Keempat tabel Inbox Manager Receive / PUCL dapat dibaca")
+
+	page := inboxmanagerreceivepucl.Pagination{Page: 1, Size: 5}
+
+	// Ketiga tab diperiksa, bukan satu.
+	//
+	// Kedua tab Receive membaca tabel penugasan yang berbeda dari tab RCL/PUCL, dan
+	// keduanya dipisahkan penyaring yang justru paling mungkin keliru. Memeriksa satu tab
+	// saja akan menyatakan modulnya sehat sementara dua pertiganya belum tersentuh.
+	counts := map[string]int{}
+
+	for _, code := range []string{
+		inboxmanagerreceivepucl.TabReceivePA,
+		inboxmanagerreceivepucl.TabReceiveNonMBU,
+		inboxmanagerreceivepucl.TabRCLPUCL,
+	} {
+		tab, found := inboxmanagerreceivepucl.FindTab(code)
+		if !found {
+			print("  [GAGAL] Tab %s tidak terdaftar di modul", code)
+			return
+		}
+
+		result, err := repo.List(
+			ctx, inboxmanagerreceivepucl.Query{Tab: tab}, page)
+		if err != nil {
+			print("  [GAGAL] Tab %q tidak dapat dibaca: %v", tab.Name, err)
+			print("            Bila galatnya menyebut kolom, periksa apakah nama kolom")
+			print("            pada DATAPEGA.PC_ASM_FW_GCNMFW_WORK masih sama — DDL tabel")
+			print("            itu belum pernah diterima (`R-08`), dan seluruh nama kolom")
+			print("            di modul ini dibaca dari kueri Pega, bukan dari DDL.")
+			return
+		}
+
+		counts[code] = result.Total
+		print("  [ok]    Tab %q terbaca: %d baris", tab.Name, result.Total)
+
+		// Kedua kolom dari tabel cermin diperiksa pada tab Receive saja — hanya di sana
+		// gabungannya dipakai.
+		if tab.ClaimType == "" {
+			continue
+		}
+		for _, item := range result.Items {
+			if item.SenderName == "" && item.DocumentReceivedDate == "" {
+				print("  [PERIKSA] %s: Nama Pengirim dan Tanggal Terima Dokumen kosong.",
+					item.CaseID)
+				print("            Keduanya dibaca dari POOLDATA.T_CLAIM_RECIVEDCLAIM lewat")
+				print("            LEFT JOIN CLAIMID = PZINSKEY. Bila SELURUH baris begitu,")
+				print("            tabel itu kosong atau kunci gabungannya tidak cocok —")
+				print("            bukan datanya yang belum diisi.")
+				break
+			}
+		}
+	}
+
+	if counts[inboxmanagerreceivepucl.TabReceivePA] == 0 {
+		print("  [PERIKSA] Tab Receive PA kosong.")
+		print("            Periksa apakah Group Panel Personal Accident masih bernilai %q",
+			inboxmanagerreceivepucl.GroupPanelPA)
+		print("            di produksi. Kode itu menggantikan `.ReceiveDocument.TypeOfClaim`")
+		print("            yang tidak punya kolom basis data; bila berbeda, seluruh isi tab")
+		print("            ini pindah ke tab NONMBU tanpa satu pun galat.")
+	}
+
+	if counts[inboxmanagerreceivepucl.TabRCLPUCL] == 0 {
+		print("  [PERIKSA] Tab RCL/PUCL kosong.")
+		print("            Periksa apakah akun antrean bersama masih bernama %q.",
+			inboxmanagerreceivepucl.RCLPUCLWorkbasket)
+		print("            Penyaring itu TIDAK ADA di Report Definition layar ini — ia")
+		print("            diambil dari RDB List/CountKlaimPUCL-SQL.xml dan")
+		print("            ReminderPUCL-SQL.xml. Bila namanya berubah, tab ini kosong tanpa")
+		print("            satu pun galat.")
 	}
 }
 

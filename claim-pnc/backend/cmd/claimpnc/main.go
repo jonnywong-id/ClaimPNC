@@ -32,6 +32,7 @@ import (
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	"claim-pnc/internal/inboxlaporanklaim"
+	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxxol"
@@ -74,6 +75,10 @@ import (
 	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
+	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
+	inboxmanagerreceivepuclmemory "claim-pnc/internal/inboxmanagerreceivepucl/repo/memory"
+	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
+	inboxmanagerreceivepuclusecase "claim-pnc/internal/inboxmanagerreceivepucl/usecase"
 	inboxoutstandinghttp "claim-pnc/internal/inboxoutstanding/http"
 	inboxoutstandingmemory "claim-pnc/internal/inboxoutstanding/repo/memory"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
@@ -544,6 +549,30 @@ func run() error {
 			FallbackErrorWriter: inboxclaimtreatynonprophttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Manager Receive / PUCL (`MENU_ID 56`).
+	//
+	// Jembatan pemanggilnya membawa LOGIN seperti modul inbox lain, tetapi ALASANNYA
+	// berbeda dan perlu dibaca sebelum disamakan: di sini login TIDAK dipakai menyaring
+	// satu pun kueri. Layar ini pandangan penyelia atas pekerjaan seluruh petugas, dan
+	// identitasnya dipakai untuk JEJAK — setiap pembukaan dicatat, bukan hanya yang
+	// mencurigakan (lihat `internal/inboxmanagerreceivepucl/usecase`).
+	managerReceivePUCLHandler := inboxmanagerreceivepuclhttp.NewHandler(
+		inboxmanagerreceivepuclhttp.Options{
+			Service: assembly.inboxManagerReceivePUCL,
+			GetCaller: func(ctx context.Context) (inboxmanagerreceivepuclhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxmanagerreceivepuclhttp.Caller{}, false
+				}
+				return inboxmanagerreceivepuclhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxmanagerreceivepuclhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -731,6 +760,15 @@ func run() error {
 				inboxclaimtreatynonprophttp.Mount(
 					protected, claimTreatyNonPropHandler, activePortalDeps)
 
+				// Inbox Manager Receive / PUCL memuat nomor polis dan nama
+				// tertanggung dari DUA antrean sekaligus, dan tidak satu pun
+				// tabnya menyaring menurut pemanggil — ia memang pandangan
+				// penyelia. Justru karena itu pemeriksaan portalnya tidak boleh
+				// lebih longgar: yang terlihat di sini adalah seluruh berkas dan
+				// seluruh klaim RCL/PUCL milik satu badan hukum.
+				inboxmanagerreceivepuclhttp.Mount(
+					protected, managerReceivePUCLHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -837,6 +875,13 @@ type assembly struct {
 	// dibacanya, penanda objek kerjanya, dan kolom gridnya berbeda.
 	inboxClaimTreatyNonProp *inboxclaimtreatynonpropusecase.Service
 
+	// inboxManagerReceivePUCL melayani layar Inbox Manager Receive / PUCL (`MENU_ID 56`).
+	//
+	// Ia menyatukan DUA antrean yang kelas objek kerjanya berbeda — berkas penerimaan
+	// dokumen dan klaim RCL/PUCL — karena begitulah harness `ReceiveDoucument_Harness`
+	// menyusunnya.
+	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
+
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
@@ -890,6 +935,15 @@ type storage struct {
 	// claimTreatyNonPropSelector memilih penyimpanan Inbox Claim Treaty Non Prop milik
 	// satu portal, dengan alasan yang sama persis dengan selector di atasnya.
 	claimTreatyNonPropSelector inboxclaimtreatynonprop.RepoSelector
+
+	// managerReceivePUCLSelector memilih penyimpanan Inbox Manager Receive / PUCL milik
+	// satu portal.
+	//
+	// Alasannya sama dengan selector di atasnya, dan di modul ini taruhannya paling besar:
+	// tidak satu pun tabnya menyaring menurut pemanggil, sehingga jatuh ke koneksi bawaan
+	// berarti memperlihatkan SELURUH antrean satu badan hukum kepada petugas badan hukum
+	// lain (`R-20`).
+	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 
 	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
 	//
@@ -1171,6 +1225,23 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	managerReceivePUCLService, err := inboxmanagerreceivepuclusecase.NewService(
+		inboxmanagerreceivepuclusecase.Options{
+			RepoSelector: store.managerReceivePUCLSelector,
+
+			// Logger di sini WAJIB, bukan pelengkap. Modul lain mencatat hanya saat
+			// penyaring kepemilikan dilepas; di modul ini penyaring itu memang tidak
+			// pernah ada — layarnya pandangan penyelia, dan SETIAP pembukaannya dicatat.
+			//
+			// Sampai pemeriksaan peran ada (`TKT-F3-004`), jejak itulah satu-satunya
+			// kontrol yang menyatakan siapa membuka antrean seluruh petugas (`D-59`).
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
 	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
 	// mengikuti sistem lama yang juga tidak memaginasinya.
@@ -1213,6 +1284,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxXOL:                inboxXOLService,
 		inboxClaimTreatyProp:    claimTreatyPropService,
 		inboxClaimTreatyNonProp: claimTreatyNonPropService,
+		inboxManagerReceivePUCL: managerReceivePUCLService,
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxLaporanKlaim:       claimReportService,
 		inboxOutstanding:        outstandingService,
@@ -1538,6 +1610,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxclaimtreatynonpropsql.NewRepo(conn), nil
 		}
 
+		store.managerReceivePUCLSelector = func(
+			alias string,
+		) (inboxmanagerreceivepucl.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxmanagerreceivepuclsql.NewRepo(conn), nil
+		}
+
 		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -1608,6 +1690,12 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
+		// Sepuluh baris contoh ikut dimuat, dan lima di antaranya sengaja TIDAK muncul di
+		// tab mana pun — berkas tanpa Group Panel, klaim yang bocor ke tabel penugasan per
+		// orang, klaim yang sudah selesai, dan klaim di antrean bersama lain. Tanpa baris
+		// yang tertolak, layar pengembangan tidak dapat menunjukkan bahwa penyaringnya
+		// benar-benar bekerja.
+		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 	}
 
@@ -2303,6 +2391,40 @@ func claimTreatyNonPropSelectorMemory(
 			return existing, nil
 		}
 		fresh := inboxclaimtreatynonpropmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// managerReceivePUCLSelectorMemory menyusun penyimpanan Inbox Manager Receive / PUCL di
+// memori; alasannya sama dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isi contohnya mencakup KEEMPAT penyaring layar ini sekaligus, dan lima dari sepuluh
+// barisnya sengaja TERTOLAK: berkas tanpa Group Panel, klaim yang berada di tabel penugasan
+// per orang, klaim yang sudah selesai, dan klaim di antrean bersama lain. Baris yang lolos
+// saja tidak membuktikan apa pun — yang membuktikan penyaringnya bekerja adalah baris yang
+// seharusnya tidak muncul dan memang tidak muncul. Lihat
+// inboxmanagerreceivepucl/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func managerReceivePUCLSelectorMemory(
+	primaryAlias string,
+) inboxmanagerreceivepucl.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxmanagerreceivepucl.Repo{}
+
+	return func(alias string) (inboxmanagerreceivepucl.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxmanagerreceivepuclmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

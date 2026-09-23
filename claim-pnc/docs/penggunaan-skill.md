@@ -3305,3 +3305,102 @@ Ketiganya dilaporkan saat ditemukan, bukan dirapikan diam-diam.
    (`master-auto-claim`, `master-bengkel`, `master-supplier`, `riwayat-klaim`,
    `inbox-auto-claim`). Sebabnya sama dengan yang dicatat sesi kedelapan belas butir 2:
    `src/api/types.ts` kehilangan isinya pada merge `b764434`.
+
+---
+
+# Sesi kedua puluh — modul Inbox Manager Receive / PUCL (2026-09-22 … 2026-09-23)
+
+## Skill yang dipakai: TIDAK ADA — dan itu keputusan, bukan kelalaian
+
+Registry skill sesi ini diperiksa lebih dulu. Yang tersedia: `dataviz`, `artifact-design`,
+`artifact-diagramming`, `artifact-capabilities`, `update-config`, `keybindings-help`,
+`code-review`, `simplify`, `fewer-permission-prompts`, `loop`, `schedule`, `claude-api`,
+`workflow-authoring`, `run`, `init`, `security-review`, ditambah paket `anthropic-skills:*`
+(docs, docx, pptx, xlsx, pdf, skill-creator, import-memory, morning).
+
+**Tidak satu pun skill Matt Pocock terpasang di sesi ini** — tidak ada `grilling`,
+`domain-modeling`, `codebase-design`, `tdd`, maupun `writing-for-agents`. Ketiadaan itu
+sudah tercatat sejak sesi kesembilan belas dan belum berubah.
+
+Dari yang tersedia, dua sempat ditimbang dan keduanya ditolak dengan alasan:
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `code-review` | Ia meninjau **diff yang sudah jadi** untuk mencari cacat. Pekerjaan sesi ini adalah menulis modul baru dari nol, dan peninjauannya sudah dikerjakan lebih ketat oleh 47 uji yang ditulis berbarengan — termasuk 19 uji yang menguji TEKS KUERI-nya, bukan hanya hasilnya |
+| `simplify` | Ia mencari peluang penyederhanaan. Modul ini sengaja TIDAK disederhanakan di tiga tempat — dua kueri Receive yang hampir kembar, `INNER JOIN` yang dapat menggandakan baris, dan kolom yang selalu kosong — dan ketiganya punya alasan tertulis. Menjalankannya akan menghasilkan usulan yang seluruhnya harus ditolak |
+
+`security-review` juga ditimbang. Ia tidak dijalankan karena lingkup keamanannya sudah
+ditegakkan uji yang ada dan lebih spesifik: `TestNoValueIsConcatenatedIntoSQL`,
+`TestQueriesNeverWrite`, `TestQueriesNeverCrossDBLink`, dan `TestQueriesTouchOnlyTheExpectedTables`
+— keempatnya menguji berkas `.sql` apa adanya, bukan menyimpulkan dari pola.
+
+## Teknik yang dipakai tanpa skill
+
+Keempatnya berulang dari sesi sebelumnya dan terbukti lagi di sini.
+
+### 1. Ekstraksi bertarget atas XML besar, bukan pembacaan berurutan
+
+Harness 519 KiB dan section 484 KiB tidak dibaca utuh. Yang dijalankan adalah pencarian
+pola: `pyRuleName` + `pxRuleObjClass` untuk menemukan rule yang dirujuk, `pyCaption` untuk
+judul kolom, `pyTitle` untuk judul tab, dan **offset kemunculan** untuk menyimpulkan
+susunan layar.
+
+Yang terakhir itu yang paling berguna di sesi ini: membandingkan offset `Position1="PA"`
+(36.990) dengan `Position1="NONMBU"` (170.101) dan `InboxRCLPUCL_RD` (317.320) terhadap
+offset kedua `pyTitle` (7.800 dan 281.855) membuktikan tab pertama memuat **dua** grid —
+fakta yang menentukan seluruh bentuk modul, dan yang tidak akan terlihat dari daftar rule
+yang dirujuk.
+
+### 2. Memverifikasi ketiadaan, bukan hanya keberadaan
+
+Tiga keputusan sesi ini bersandar pada **kolom yang tidak ada**: `TYPEOFCLAIM_1`,
+`SENDER_1`, `NUMBEROFDOCUMENT_1`. Ketiganya dibuktikan dengan pencarian ke seluruh
+direktori `RDB List/`, `Database/`, dan `Activity/` — nol kemunculan.
+
+Ketiadaan yang dibuktikan berbeda artinya dari ketiadaan yang diasumsikan: yang pertama
+membenarkan `CAST(NULL …)` beserta keterangannya, yang kedua hanya menunda kekeliruan.
+
+### 3. Mencari jawaban di layar INPUT saat layar DAFTAR menyesatkan
+
+Dipakai menyelesaikan asal kolom "Nama Pengirim" — lihat `catatan-pengembangan.md` §36.5.
+Alias pada kueri daftar dipaksa cocok dengan properti klipboard yang sudah ada dan karena
+itu tidak dapat dipercaya; label pada layar input dibaca pengguna setiap hari dan karena
+itu dapat.
+
+### 4. Membuktikan baseline dengan `git stash`, bukan mengasumsikannya
+
+29 uji frontend gagal, dua berkasnya menggambar `AppRoute` yang sesi ini sunting. Alih-alih
+menyatakannya pra-ada, kedua berkas yang disunting distash, uji dijalankan ulang, hasilnya
+identik, lalu stash dipop.
+
+Itu tiga perintah, dan ia mengubah "kemungkinan bukan saya" menjadi "terbukti bukan saya".
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+1. **Hampir memakai `BOOKNO_1` sebagai nama pengirim** karena aliasnya berbunyi `"Sender"`.
+   Tertangkap oleh pemetaan kolom modul `inboxlaporanklaim` yang sudah menyimpulkan
+   sebaliknya. Diselesaikan lewat label layar input.
+2. **Menulis kueri pemeriksa `-periksa` yang memilih kolom dengan `WHERE 1 = 0`**, yang
+   tidak mengembalikan baris sama sekali sehingga pemindaiannya menghasilkan
+   `sql.ErrNoRows` — terbaca sebagai kegagalan hak baca padahal tabelnya justru terbaca.
+   Tertangkap saat membandingkan dengan pemeriksa modul lain, yang memakai `COUNT(*)`.
+   Diperbaiki, dan satu uji ditambahkan supaya tidak terulang
+   (`TestBothCheckQueriesReturnExactlyOneRow`).
+3. **Heredoc bash putus** saat menulis dokumentasi karena isinya memuat tanda kutip. Bukan
+   kesalahan yang berdampak pada kode, tetapi dicatat karena solusinya berulang: tulis ke
+   berkas lewat alat tulis, lalu `cat` ke tujuannya.
+
+## Catatan untuk sesi berikutnya
+
+- **Uji yang menguji TEKS kueri terbukti paling berharga di modul ini.** Sembilan dari 17
+  kolom dikirim sebagai `CAST(NULL …)` pada salah satu kueri, dan pergeseran satu posisi
+  menghasilkan kolom kosong — bentuk yang mudah dikira "data memang belum diisi".
+  `TestEveryListQueryReturnsTheSameAliases` yang menjaganya.
+- **Pola "dua kueri hampir kembar yang sengaja tidak disatukan" muncul lagi.** Sama seperti
+  `list_admin` dan `list_admin_all` pada modul Non Prop. Alasannya di sini berbeda dan lebih
+  tajam: yang berbeda adalah ARAH pembanding, dan penyaring yang artinya berbalik menurut
+  nilai bind adalah tempat paling mudah menampilkan lini bisnis yang salah.
+- **Tiga modul inbox berturut-turut menemukan Report Definition yang cacat atau hilang.**
+  Non Prop kehilangan kueri komite; modul ini menemukan RD tanpa gabungan dan parameter yang
+  menganggur. Layak diangkat sebagai pola ke Tim Pega saat export ulang diminta (`D-39`,
+  `R-16`), bukan ditangani satu per satu di tiap modul.
