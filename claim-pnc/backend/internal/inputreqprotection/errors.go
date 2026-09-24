@@ -26,6 +26,17 @@ var ErrLocked = errors.New("inputreqprotection: proteksi sudah tertaut klaim dan
 // untuk keduanya akan membuat pengguna menunggu sesuatu yang tidak akan datang.
 var ErrAccepted = errors.New("inputreqprotection: proteksi sudah diakseptasi dan tidak dapat disunting")
 
+// ErrClaimNotFound dikembalikan ClaimRepo ketika nomor klaim tidak ditemukan.
+//
+// Ia MENGGANTIKAN pesan sistem lama "Silakan Tulis dan Cari Ulang No Klaim" — yang di Pega
+// menegur pengguna yang mengetik nomor tanpa menekan tombol CARI. Di sini pencariannya
+// berjalan sendiri, sehingga yang tersisa adalah keadaan yang benar-benar salah: nomornya
+// tidak menunjuk klaim mana pun.
+//
+// Perbedaan itu penting untuk uji kesetaraan: pesannya berbeda karena SEBABNYA berbeda,
+// bukan karena teksnya diterjemahkan ulang.
+var ErrClaimNotFound = errors.New("inputreqprotection: klaim tidak ditemukan")
+
 // ── Kesalahan validasi ───────────────────────────────────────────────────────────
 
 // FieldError adalah satu pelanggaran aturan bisnis pada satu field.

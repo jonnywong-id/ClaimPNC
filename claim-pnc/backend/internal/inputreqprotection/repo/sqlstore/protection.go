@@ -15,13 +15,16 @@ import (
 //
 // # Kolom yang ditulisnya, dan yang TIDAK
 //
-// Ia menulis kolom PEMBUATAN saja: `ID`, `POLICY_NO`, `CLAIM_NO`, `ID_CLAIM`, `PROTECTION_TYPE`,
-// `CREATE_DATE`, `CREATED_BY`, `NOTES`, `OLD_DATA`, `NEW_DATA`, `OBJECT_NAME`, `BRANCH_NAME`,
-// `STATUS_ACTIVE`.
+// Ia menulis kolom PEMBUATAN saja: `OPEN_PROTECTION_ID`, `POLICY_NO`, `CLAIM_NO`,
+// `ID_CLAIM`, `PROTECTION_TYPE_ID`, `CREATE_DATE`, `CREATED_BY`, `NOTES`, `OLD_DATA`,
+// `NEW_DATA`, `OBJECT_NAME`, `BRANCH_NAME`, `STATUS_ACTIVE`.
 //
-// Kolom AKSEPTASI — `APPROVAL_STATUS`, `RESOLVED_BY`, dan `RESOLVED_DATE_TIME` —
+// Kolom AKSEPTASI — `APPROVAL_STATUS`, `RESOLVED_BY`, dan `RESOLVED_DATETIME` —
 // tidak pernah disentuh di sini; ketiganya milik modul `inboxacceptopenprotection`.
 // Pembagian itu yang menjaga `P-1` tetap berlaku meski dua modul menyentuh satu tabel.
+//
+// Master `POOLDATA.M_CLAIM_PROTECTION_TYPE` dibaca lewat LEFT JOIN untuk nama tipenya, dan
+// TIDAK PERNAH ditulis: modul ini memakai masternya, bukan mengelolanya.
 type Repo struct {
 	db *sql.DB
 }
@@ -112,50 +115,34 @@ func (r *Repo) HasDuplicate(
 	return jumlah > 0, nil
 }
 
-// createAttempts adalah banyaknya percobaan penyisipan saat nomornya bentrok.
-//
-// Bentrok hanya mungkin terjadi bila dua permintaan menerbitkan nomor yang sama, dan itu
-// dijawab dengan mengambil nomor berikutnya — bukan dengan menolak permintaan pengguna.
-//
-// Tiga sudah lebih dari cukup: setiap percobaan membaca ulang nomor tertinggi, sehingga
-// dua permintaan bersamaan paling banyak menabrak sekali.
-//
-// CATATAN: percobaan ulang ini HANYA berfungsi bila ada constraint unik pada kolom ID.
-// Constraint itu belum ada — lihat protection.sql, kueri protection_next_sequence.
-const createAttempts = 3
-
 // Create menyimpan permintaan baru beserta nomor yang terbit.
 //
-// Penerbitan nomor dan penyisipan barisnya berada DI DALAM SATU TRANSAKSI. Memisahkannya
-// berarti nomor dapat terbit lalu barisnya gagal disimpan, meninggalkan lubang pada deret —
-// dan pada deret yang dibaca manusia, lubang akan terus ditanyakan.
+// # Kenapa TIDAK ADA percobaan ulang di sini
+//
+// Versi sebelumnya menurunkan nomor dari `MAX(...)+1` dan mencoba ulang sampai tiga kali
+// saat kena `ORA-00001`, karena dua permintaan bersamaan dapat membaca nilai yang sama.
+//
+// Sejak `POOLDATA.CLAIM_PROTECTION_SEQ` dibuat (Work Owner, 2026-09-24), setiap pemanggil
+// `NEXTVAL` menerima nilai yang berbeda TANPA membaca isi tabel. Bentroknya tidak lagi
+// mungkin, sehingga percobaan ulangnya dihapus — bukan disederhanakan.
+//
+// Percobaan ulang yang dipertahankan setelah sebabnya hilang justru berbahaya: ia
+// menyembunyikan bentrok yang sebenarnya menandakan hal lain, misalnya nomor yang disisipkan
+// tangan ke tabel.
+//
+// # Kenapa tetap satu transaksi
+//
+// Penerbitan nomor dan penyisipan barisnya tetap berada DI DALAM SATU TRANSAKSI. Alasannya
+// berubah: bukan lagi untuk mempersempit balapan, melainkan supaya kegagalan penyisipan
+// tidak menyisakan pekerjaan setengah jalan.
+//
+// Perlu dicatat apa yang TIDAK dijamin transaksi itu: nomor yang sudah diambil dari sequence
+// TIDAK kembali saat rollback — itu sifat sequence, di Oracle maupun PostgreSQL. Deret nomor
+// proteksi karena itu dapat berlubang, dan lubang itu bukan tanda kerusakan.
 func (r *Repo) Create(
 	ctx context.Context,
 	draft inputreqprotection.Draft,
-	by string,
-	at time.Time,
-) (inputreqprotection.Protection, error) {
-	var terakhir error
-
-	for percobaan := 0; percobaan < createAttempts; percobaan++ {
-		p, err := r.createOnce(ctx, draft, by, at)
-		if err == nil {
-			return p, nil
-		}
-		if !isUniqueViolation(err) {
-			return inputreqprotection.Protection{}, err
-		}
-		terakhir = err
-	}
-
-	return inputreqprotection.Protection{}, fmt.Errorf(
-		"inputreqprotection/sqlstore: nomor proteksi bentrok setelah %d percobaan: %w",
-		createAttempts, terakhir)
-}
-
-func (r *Repo) createOnce(
-	ctx context.Context,
-	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -168,31 +155,36 @@ func (r *Repo) createOnce(
 	// sudah berjalan lebih dulu.
 	defer func() { _ = tx.Rollback() }()
 
-	year := at.Year()
-	pola := fmt.Sprintf("%s.%02d.%%", inputreqprotection.NumberPrefix, year%100)
-
 	var urut int64
-	if err := tx.QueryRowContext(ctx, query("protection_next_sequence"), pola).Scan(&urut); err != nil {
+	if err := tx.QueryRowContext(ctx, query("protection_next_sequence")).Scan(&urut); err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf(
 			"inputreqprotection/sqlstore: menerbitkan nomor proteksi: %w", err)
 	}
 
-	nomor := inputreqprotection.FormatNumber(year, urut)
-	lama, baru := encodeChangeDetail(draft.Type, draft.ChangeDetail)
+	nomor := inputreqprotection.FormatNumber(at.Year(), urut)
+	detail := deriveChangeDetail(draft, claim)
+	lama, baru := encodeChangeDetail(draft.Type, detail)
 
 	if _, err := tx.ExecContext(ctx, query("protection_insert"),
 		nomor,
-		nullIfEmpty(draft.PolicyNumber),
+		// Nomor polis DITURUNKAN dari klaim, bukan diterima dari form — persis yang
+		// dilakukan `Activity/OpenProtection-Act.xml` saat klaim dicari.
+		nullIfEmpty(claim.PolicyNumber),
 		nullIfEmpty(draft.ClaimNumber),
-		nullIfEmpty(draft.ClaimReference),
+		// ID_CLAIM DITURUNKAN dari nomor klaim, bukan diterima dari form.
+		//
+		// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang
+		// sama. Menanyakannya dua kali akan membuat keduanya berbeda cepat atau lambat —
+		// tanpa galat, hanya proteksi yang menunjuk dua klaim berbeda.
+		nullIfEmpty(draft.ClaimNumber),
 		nullIfEmpty(draft.Type),
 		at.UTC(),
 		nullIfEmpty(by),
 		nullIfEmpty(draft.Note),
 		lama,
 		baru,
-		nullIfEmpty(draft.ChangeDetail.ObjectName),
-		nullIfEmpty(draft.ChangeDetail.BranchName),
+		nullIfEmpty(detail.ObjectName),
+		nullIfEmpty(detail.BranchName),
 	); err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf(
 			"inputreqprotection/sqlstore: menyimpan permintaan proteksi: %w", err)
@@ -205,16 +197,16 @@ func (r *Repo) createOnce(
 
 	return inputreqprotection.Protection{
 		Number:         nomor,
-		PolicyNumber:   draft.PolicyNumber,
+		PolicyNumber:   claim.PolicyNumber,
 		ClaimNumber:    draft.ClaimNumber,
-		ClaimReference: draft.ClaimReference,
+		ClaimReference: draft.ClaimNumber,
 		Type:           draft.Type,
 		InputDate:      at,
 		Note:           draft.Note,
 		AcceptStatus:   inputreqprotection.AcceptPending,
 		CreatedBy:      by,
 		CreatedAt:      at,
-		ChangeDetail:   draft.ChangeDetail,
+		ChangeDetail:   detail,
 	}, nil
 }
 
@@ -228,21 +220,30 @@ func (r *Repo) Update(
 	ctx context.Context,
 	number string,
 	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
-	lama, baru := encodeChangeDetail(draft.Type, draft.ChangeDetail)
+	detail := deriveChangeDetail(draft, claim)
+	lama, baru := encodeChangeDetail(draft.Type, detail)
 
 	hasil, err := r.db.ExecContext(ctx, query("protection_update"),
-		nullIfEmpty(draft.PolicyNumber),
+		// Nomor polis DITURUNKAN dari klaim, bukan diterima dari form — persis yang
+		// dilakukan `Activity/OpenProtection-Act.xml` saat klaim dicari.
+		nullIfEmpty(claim.PolicyNumber),
 		nullIfEmpty(draft.ClaimNumber),
-		nullIfEmpty(draft.ClaimReference),
+		// ID_CLAIM DITURUNKAN dari nomor klaim, bukan diterima dari form.
+		//
+		// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang
+		// sama. Menanyakannya dua kali akan membuat keduanya berbeda cepat atau lambat —
+		// tanpa galat, hanya proteksi yang menunjuk dua klaim berbeda.
+		nullIfEmpty(draft.ClaimNumber),
 		nullIfEmpty(draft.Type),
 		nullIfEmpty(draft.Note),
 		lama,
 		baru,
-		nullIfEmpty(draft.ChangeDetail.ObjectName),
-		nullIfEmpty(draft.ChangeDetail.BranchName),
+		nullIfEmpty(detail.ObjectName),
+		nullIfEmpty(detail.BranchName),
 		kunci(number),
 	)
 	if err != nil {
@@ -287,12 +288,17 @@ func scanProtection(row pemindai) (inputreqprotection.Protection, error) {
 	var (
 		id                                string
 		nopolis, noklaim, idpega, tipe    sql.NullString
+		namaTipe                          sql.NullString
 		dibuatPada                        sql.NullTime
 		notes, status, dibuatOleh         sql.NullString
 		lama, baru, namaObjek, namaCabang sql.NullString
 	)
 
-	if err := row.Scan(&id, &nopolis, &noklaim, &idpega, &tipe,
+	// namaTipe datang dari LEFT JOIN ke master, sehingga ia NULL untuk dua keadaan yang
+	// berbeda: kode tipenya kosong, atau kodenya ada tetapi tidak terdaftar di master.
+	// Keduanya diperlakukan sama di sini — yang membedakannya adalah lapisan tampilan,
+	// yang menampilkan kode apa adanya saat namanya tidak ada.
+	if err := row.Scan(&id, &nopolis, &noklaim, &idpega, &tipe, &namaTipe,
 		&dibuatPada, &notes, &status, &dibuatOleh,
 		&lama, &baru, &namaObjek, &namaCabang); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -308,6 +314,7 @@ func scanProtection(row pemindai) (inputreqprotection.Protection, error) {
 		ClaimNumber:    teks(noklaim),
 		ClaimReference: teks(idpega),
 		Type:           teks(tipe),
+		TypeName:       teks(namaTipe),
 		Note:           teks(notes),
 		AcceptStatus:   teks(status),
 		CreatedBy:      teks(dibuatOleh),
@@ -446,14 +453,137 @@ func nullIfEmpty(s string) any {
 	return strings.TrimSpace(s)
 }
 
-// isUniqueViolation menyatakan galat berasal dari pelanggaran constraint unik.
+// TypeRepo membaca master tipe proteksi.
 //
-// Diperiksa lewat TEKS galatnya, bukan lewat tipe driver: `godror` tidak mengekspor tipe
-// galat yang stabil untuk ini, dan memeriksa kode ORA di dalam pesannya adalah jalan yang
-// sama yang ditempuh adapter modul lain.
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+// Terpisah dari Repo dengan sengaja — lihat alasannya pada deklarasi seam-nya di
+// `inputreqprotection.TypeRepo`. Keduanya memakai koneksi yang SAMA, sehingga proteksi dan
+// nama tipenya tidak pernah datang dari portal yang berbeda.
+type TypeRepo struct {
+	db *sql.DB
+}
+
+// NewTypeRepo membentuk repo master; db wajib koneksi portal yang sama dengan Repo.
+func NewTypeRepo(db *sql.DB) *TypeRepo { return &TypeRepo{db: db} }
+
+// ListTypes membaca seluruh tipe proteksi beserta namanya.
+//
+// Baris ber-kode kosong DILEWATI. Ia tidak dapat dipilih pengguna — menyimpannya akan
+// menghasilkan proteksi tanpa tipe, yang kemudian lenyap dari kedua antrean akseptasi
+// karena penyaringnya membandingkan kode.
+func (r *TypeRepo) ListTypes(ctx context.Context) ([]inputreqprotection.ProtectionType, error) {
+	rows, err := r.db.QueryContext(ctx, query("protection_type_list"))
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca master tipe proteksi: %w", err)
 	}
-	return strings.Contains(err.Error(), "ORA-00001")
+	defer rows.Close()
+
+	daftar := make([]inputreqprotection.ProtectionType, 0, 16)
+	for rows.Next() {
+		var kode, nama sql.NullString
+		if err := rows.Scan(&kode, &nama); err != nil {
+			return nil, fmt.Errorf(
+				"inputreqprotection/sqlstore: memindai master tipe proteksi: %w", err)
+		}
+		id := teks(kode)
+		if id == "" {
+			continue
+		}
+		daftar = append(daftar, inputreqprotection.ProtectionType{ID: id, Name: teks(nama)})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"inputreqprotection/sqlstore: membaca baris master tipe proteksi: %w", err)
+	}
+	return daftar, nil
+}
+
+// ── Pencarian klaim ──────────────────────────────────────────────────────────────
+
+// ClaimRepo mencari klaim yang hendak ditaut.
+//
+// # Ia HANYA membaca
+//
+// Ketiga tabel yang dibacanya dimiliki Pega selama masa paralel. `P-1` melarang dua sistem
+// MENULIS satu tabel; membaca tidak dilarang. Tidak ada satu pun method di sini yang
+// menulis, dan itu bukan kebetulan melainkan batas yang dijaga.
+type ClaimRepo struct {
+	db *sql.DB
+}
+
+// NewClaimRepo membentuk repo pencarian klaim; db wajib koneksi portal yang dituju.
+func NewClaimRepo(db *sql.DB) *ClaimRepo { return &ClaimRepo{db: db} }
+
+// FindClaim mencari klaim menurut nomornya.
+func (r *ClaimRepo) FindClaim(
+	ctx context.Context,
+	number string,
+) (inputreqprotection.Claim, error) {
+	var (
+		id                 string
+		polis, tertanggung sql.NullString
+		dol                sql.NullTime
+		penyebab           sql.NullString
+		cabang, namaObjek  sql.NullString
+	)
+
+	err := r.db.QueryRowContext(ctx, query("claim_find"), kunci(number)).
+		Scan(&id, &polis, &tertanggung, &dol, &penyebab, &cabang, &namaObjek)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inputreqprotection.Claim{}, inputreqprotection.ErrClaimNotFound
+	}
+	if err != nil {
+		return inputreqprotection.Claim{}, fmt.Errorf(
+			"inputreqprotection/sqlstore: mencari klaim: %w", err)
+	}
+
+	klaim := inputreqprotection.Claim{
+		Number:       strings.TrimSpace(id),
+		PolicyNumber: teks(polis),
+		InsuredName:  teks(tertanggung),
+		CauseOfLoss:  teks(penyebab),
+		BranchName:   teks(cabang),
+		ObjectName:   teks(namaObjek),
+	}
+	if dol.Valid {
+		waktu := dol.Time
+		klaim.LossDate = &waktu
+	}
+	return klaim, nil
+}
+
+// deriveChangeDetail menyusun isi panel Detail Perubahan dari DUA sumber.
+//
+// # Kenapa dua sumber, bukan satu
+//
+// Panel di Pega punya dua sisi yang asalnya berbeda, dan itulah inti cacat yang diperbaiki
+// pada 2026-09-24:
+//
+//	Current Date Of Loss   dari KLAIM     (`.ClaimDataProtect.BeforeDateOfLoss`)
+//	Next Date Of Loss      dari PENGGUNA
+//	Cause Of Loss Dipilih  dari KLAIM
+//	Next Cause Of Loss     dari PENGGUNA
+//	Object Name            dari KLAIM
+//	Branch Name            dari KLAIM
+//
+// Implementasi pertama menerima KEENAMNYA dari form. Akibatnya seseorang dapat menyimpan
+// permintaan "ubah DOL" yang menyebut DOL sebelum yang tidak pernah menjadi DOL klaim itu —
+// dan petugas akseptasi menyetujuinya tanpa cara mengetahuinya.
+//
+// Fungsi ini dipanggil di adapter, bukan di lapisan atas, supaya TIDAK ADA jalur penyimpanan
+// yang dapat melewatinya.
+func deriveChangeDetail(
+	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
+) inputreqprotection.ChangeDetail {
+	return inputreqprotection.ChangeDetail{
+		// Sisi KLAIM.
+		LossDateBefore: claim.LossDate,
+		CauseOfLossID:  claim.CauseOfLoss,
+		ObjectName:     claim.ObjectName,
+		BranchName:     claim.BranchName,
+
+		// Sisi PENGGUNA.
+		LossDateAfter:       draft.Change.LossDateAfter,
+		CauseOfLossMasterID: draft.Change.CauseOfLossAfter,
+	}
 }

@@ -25,12 +25,19 @@ func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
 	t.Helper()
 
 	repo := memory.NewRepo()
+	// Master tipe dan klaim ikut dibentuk: ketiganya datang dari koneksi yang sama, dan
+	// pemilih yang mengembalikan nil akan membuat uji panic alih-alih gagal dengan pesan.
+	stores := inputreqprotection.Stores{
+		Protections: repo,
+		Types:       memory.NewTypeRepoWithSamples(),
+		Claims:      memory.NewClaimRepoWithSamples(),
+	}
 	service, err := usecase.NewService(usecase.Options{
-		Protections: func(alias string) (inputreqprotection.Repo, error) {
+		Protections: func(alias string) (inputreqprotection.Stores, error) {
 			if alias != portal {
-				return nil, errors.New("portal tidak dikenal")
+				return inputreqprotection.Stores{}, errors.New("portal tidak dikenal")
 			}
-			return repo, nil
+			return stores, nil
 		},
 		Now:      func() time.Time { return at },
 		Location: wib,
@@ -42,11 +49,9 @@ func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
 
 func draft() inputreqprotection.Draft {
 	return inputreqprotection.Draft{
-		PolicyNumber:   "99.001.2026.00000001",
-		ClaimNumber:    "PNCN.26.0007",
-		ClaimReference: "KLAIM-CONTOH-0007",
-		Type:           "1",
-		Note:           "Keterangan contoh.",
+		ClaimNumber: "PNCN.26.0007",
+		Type:        "1",
+		Note:        "Keterangan contoh.",
 	}
 }
 
@@ -152,9 +157,15 @@ func TestProteksiSamaDiHariBerbedaDiterima(t *testing.T) {
 
 	besok := hariIni.AddDate(0, 0, 1)
 	serviceBesok, err := usecase.NewService(usecase.Options{
-		Protections: func(string) (inputreqprotection.Repo, error) { return repo, nil },
-		Now:         func() time.Time { return besok },
-		Location:    wib,
+		Protections: func(string) (inputreqprotection.Stores, error) {
+			return inputreqprotection.Stores{
+				Protections: repo,
+				Types:       memory.NewTypeRepoWithSamples(),
+				Claims:      memory.NewClaimRepoWithSamples(),
+			}, nil
+		},
+		Now:      func() time.Time { return besok },
+		Location: wib,
 	})
 	require.NoError(t, err)
 
@@ -219,7 +230,6 @@ func TestMenyuntingTanpaMengubahPolisTidakDitolakOlehDirinyaSendiri(t *testing.T
 	// Baris ini belum tertaut klaim supaya dapat disunting.
 	revisi := draft()
 	revisi.ClaimNumber = ""
-	revisi.ClaimReference = ""
 
 	_, err = service.Update(context.Background(), usecase.SaveCommand{
 		PortalAlias: portal, Number: saved.Number, Draft: revisi, By: "ADMINCONTOH",

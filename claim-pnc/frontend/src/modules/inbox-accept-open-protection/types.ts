@@ -23,8 +23,15 @@ export type Protection = {
   nomor_polis: string // kolom "No Polis"
   nomor_klaim: string // kolom "No Klaim"
 
-  /** Kolom "Tipe Proteksi" — KODE, bukan label; lihat `protectionTypeLabel`. */
+  /** Kolom "Tipe Proteksi" — KODE (`PROTECTION_TYPE_ID`). Ia yang menentukan antrean. */
   tipe_proteksi: string
+
+  /**
+   * Nama tipe dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
+   *
+   * KOSONG bila kodenya tidak terdaftar — lihat `protectionTypeLabel`.
+   */
+  nama_tipe_proteksi: string
 
   /** YYYY-MM-DD dalam WIB; backend yang mengonversinya dari UTC. */
   tanggal_proteksi: string // kolom "Tanggal Proteksi Dibuat"
@@ -72,23 +79,24 @@ export type ProtectionFilter = {
 }
 
 /**
- * Label tipe proteksi yang boleh ditampilkan.
+ * Menampilkan nama tipe proteksi, atau kodenya apa adanya bila namanya tidak ada.
  *
- * Hanya tiga yang artinya terbukti dari export Pega; sisanya ditampilkan sebagai kodenya.
- * Alasannya sama dengan modul `input-req-protection` — daftar nilainya tinggal di rule
- * Property yang tidak ikut diekspor (`R-16`).
+ * # Kenapa daftar label di berkas ini DIHAPUS
  *
- * Konstanta ini SENGAJA diulang di sini alih-alih diimpor dari modul sebelah: fitur tidak
- * boleh mengimpor dari fitur lain (`08-TECHNICAL-STRATEGY.md` §3 aturan 1). Ia akan hilang
- * dari keduanya sekaligus begitu daftar tipe pindah ke master data (`F-4`).
+ * Sampai 2026-09-24 berkas ini memuat salinan tiga label yang artinya terbukti dari export,
+ * SENGAJA diulang dari modul sebelah karena fitur tidak boleh mengimpor dari fitur lain
+ * (`08-TECHNICAL-STRATEGY.md` §3 aturan 1).
+ *
+ * Master `M_CLAIM_PROTECTION_TYPE` kemudian diterima berisi kesembilan tipe beserta namanya,
+ * dan backend mengirimkannya bersama setiap baris. Duplikasinya hilang dengan sendirinya —
+ * bukan karena aturannya dilonggarkan, melainkan karena yang diduplikasi sudah tidak ada.
+ *
+ * # Kenapa kode, bukan tanda hubung
+ *
+ * Petugas yang menyetujui pembukaan proteksi berhak tahu bahwa tipe yang dihadapinya tidak
+ * dikenal sistem. Tanda hubung menyembunyikan itu.
  */
-const PROTECTION_TYPE_LABEL: Record<string, string> = {
-  '2': 'Proteksi Klaim PREMI',
-  '7': 'Perubahan DOL',
-  '8': 'Perubahan Cause Of Loss',
-}
-
-/** Menampilkan label tipe proteksi bila diketahui, atau kodenya apa adanya bila tidak. */
-export function protectionTypeLabel(code: string): string {
-  return PROTECTION_TYPE_LABEL[code] ?? code
+export function protectionTypeLabel(code: string, name?: string): string {
+  const nama = name?.trim()
+  return nama ? nama : code
 }

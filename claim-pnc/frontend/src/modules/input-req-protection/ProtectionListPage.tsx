@@ -14,11 +14,11 @@ import {
   useCreateProtection,
   useProtectionDetail,
   useProtectionList,
+  useProtectionTypes,
   useUpdateProtection,
 } from './api'
 import { ProtectionForm } from './ProtectionForm'
 import {
-  PROTECTION_TYPE_LABEL,
   protectionTypeLabel,
   type Protection,
   type ProtectionFields,
@@ -80,6 +80,12 @@ export function ProtectionListPage() {
 
   const list = useProtectionList({ search, offset })
   const detail = useProtectionDetail(editing !== null && editing !== '' ? editing : null)
+
+  // Master tipe dibaca SEKALI di layar ini lalu diteruskan ke form sebagai props.
+  // Memanggil hook-nya lagi di dalam form akan membuat dua komponen memegang keadaan
+  // pemuatan yang sama — dan yang satu dapat menampilkan pilihan sementara yang lain masih
+  // memuat.
+  const types = useProtectionTypes()
   const create = useCreateProtection()
   const update = useUpdateProtection()
 
@@ -123,16 +129,20 @@ export function ProtectionListPage() {
   }
 
   /**
-   * Pilihan tipe proteksi.
+   * Pilihan tipe proteksi, dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
    *
-   * Hanya tiga yang berlabel, karena hanya tiga yang artinya terbukti dari export (`R-16`).
-   * Nilai lain tetap dapat masuk lewat data lama dan ditampilkan sebagai kodenya di tabel,
-   * tetapi TIDAK ditawarkan untuk dipilih — menawarkan kode tanpa arti berarti meminta
-   * pengguna menebak.
+   * Sampai 2026-09-24 daftarnya HANYA TIGA — satu-satunya yang artinya terbukti dari export
+   * (`R-16`) — dan kode lain ditampilkan apa adanya tanpa pernah ditawarkan untuk dipilih.
+   * Master yang diterima memuat kesembilannya, sehingga pilihannya kini lengkap.
+   *
+   * Bila masternya gagal dibaca, daftarnya KOSONG — bukan jatuh ke daftar cadangan di kode.
+   * Pilihan yang berasal dari kode akan membuat master yang bermasalah tampak beres, dan
+   * proteksi tersimpan dengan tipe yang tidak dikenal basis datanya sendiri.
    */
-  const typeOptions: SelectOption[] = Object.entries(PROTECTION_TYPE_LABEL).map(
-    ([value, label]) => ({ value, label }),
-  )
+  const typeOptions: SelectOption[] = (types.data?.tipe ?? []).map((t) => ({
+    value: t.kode,
+    label: protectionTypeLabel(t.kode, t.nama),
+  }))
 
   /** Ketujuh kolom mengikuti `Section/InboxReqProtection_Section-Section.xml`. */
   const columns: Column<Protection>[] = [
@@ -192,7 +202,7 @@ export function ProtectionListPage() {
       value: (p) => p.tipe_proteksi,
       render: (p) => (
         <span className="truncate">
-          {protectionTypeLabel(p.tipe_proteksi)}
+          {protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}
           {p.premi && (
             <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-100">
               PREMI

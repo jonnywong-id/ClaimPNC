@@ -162,7 +162,18 @@ type Protection struct {
 	Number       string // kolom "No Proteksi"
 	PolicyNumber string // kolom "No Polis"
 	ClaimNumber  string // kolom "No Klaim"
-	Type         string // kolom "Tipe Proteksi"
+	Type         string // kolom "Tipe Proteksi" — PROTECTION_TYPE_ID
+
+	// TypeName adalah nama tipe dari `POOLDATA.M_CLAIM_PROTECTION_TYPE`, yang DILIHAT
+	// petugas akseptasi.
+	//
+	// Dibaca lewat LEFT JOIN, bukan disimpan di tabel proteksi — sehingga mengganti nama
+	// sebuah tipe langsung berlaku pada seluruh baris lama.
+	//
+	// KOSONG bila kodenya tidak terdaftar di master. Layar menampilkan kodenya apa adanya
+	// dalam keadaan itu: petugas yang menyetujui pembukaan proteksi berhak tahu bahwa tipe
+	// yang dihadapinya tidak dikenal sistem.
+	TypeName string
 
 	InputDate time.Time // kolom "Tanggal Proteksi Dibuat"
 	Note      string    // kolom "Keterangan"

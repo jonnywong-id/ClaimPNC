@@ -2,6 +2,7 @@ package inputreqprotection_test
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -80,11 +81,9 @@ func TestNomorWarisanPegaTidakDiakuiSebagaiTerbitanSendiri(t *testing.T) {
 
 func draftLengkap() inputreqprotection.Draft {
 	return inputreqprotection.Draft{
-		PolicyNumber:   "99.001.2026.00000001",
-		ClaimNumber:    "PNCN.26.0007",
-		ClaimReference: "KLAIM-CONTOH-0007",
-		Type:           "1",
-		Note:           "Keterangan contoh.",
+		ClaimNumber: "PNCN.26.0007",
+		Type:        "1",
+		Note:        "Keterangan contoh.",
 	}
 }
 
@@ -92,33 +91,42 @@ func TestIsianLengkapDiterima(t *testing.T) {
 	require.NoError(t, draftLengkap().Validate())
 }
 
-func TestEmpatFieldWajibDiperiksaSeluruhnya(t *testing.T) {
-	// `Activity/InsertOpenProtectionCase-Act.xml:921` menuntut keempatnya terisi.
-	//
-	// Yang diuji di sini bukan hanya penolakannya, melainkan bahwa SELURUH pesan datang
-	// sekaligus — `11-CROSSCUTTING` §1.2 butir 1 menetapkannya sebagai kesetaraan perilaku.
+// TestFieldWajibDiperiksaSeluruhnya menjaga dua hal sekaligus.
+//
+// Pertama, SELURUH pesan datang bersamaan — `11-CROSSCUTTING` §1.2 butir 1 menetapkannya
+// sebagai kesetaraan perilaku dengan Pega, yang menampilkan semuanya sekaligus.
+//
+// Kedua, yang wajib diisi PENGGUNA tinggal TIGA, bukan empat.
+// `Activity/InsertOpenProtectionCase-Act.xml:921` memang menuntut empat, tetapi keempatnya
+// termasuk `.PolicyNo` — yang diisi `Activity/OpenProtection-Act.xml` dari klaim, bukan
+// diketik. Syarat itu terpenuhi oleh ditemukannya klaim, bukan oleh isian.
+func TestFieldWajibDiperiksaSeluruhnya(t *testing.T) {
 	err := inputreqprotection.Draft{}.Validate()
 	require.Error(t, err)
 
 	var v *inputreqprotection.ValidationError
 	require.True(t, errors.As(err, &v))
-	require.Len(t, v.Errors, 4, "keempat field wajib harus dilaporkan sekaligus, bukan satu per satu")
+	require.Len(t, v.Errors, 3, "seluruh field wajib harus dilaporkan sekaligus, bukan satu per satu")
 
 	fields := map[string]bool{}
 	for _, fe := range v.Errors {
 		fields[fe.Field] = true
 	}
-	require.True(t, fields[inputreqprotection.FieldPolicyNumber])
+	require.False(t, fields[inputreqprotection.FieldPolicyNumber],
+		"No Polis diturunkan dari klaim; ia tidak boleh dituntut sebagai isian")
 	require.True(t, fields[inputreqprotection.FieldClaimNumber])
 	require.True(t, fields[inputreqprotection.FieldType])
 	require.True(t, fields[inputreqprotection.FieldNote])
 }
 
-func TestNomorKlaimYangBelumDicariDitolakDenganPesanTersendiri(t *testing.T) {
-	// `Activity/ValidationInputProtection-Act.xml`: mengetik nomor klaim tidak cukup —
-	// klaimnya harus ditemukan. Pesannya disalin apa adanya dari sistem lama.
+// TestNomorKlaimTerlaluPanjangDitolakSebelumMenyentuhOracle menjaga pesan, bukan data.
+//
+// Tanpa pemeriksaan ini, nomor yang melebihi lebar kolom ditolak Oracle dengan `ORA-12899`:
+// kalimat berbahasa Inggris yang menyebut nama kolom basis data, muncul SETELAH tombol
+// simpan ditekan, dan tidak menunjuk field mana pun di layar.
+func TestNomorKlaimTerlaluPanjangDitolakSebelumMenyentuhOracle(t *testing.T) {
 	d := draftLengkap()
-	d.ClaimReference = ""
+	d.ClaimNumber = strings.Repeat("X", inputreqprotection.MaxClaimNumberLength+1)
 
 	err := d.Validate()
 	require.Error(t, err)
@@ -127,7 +135,21 @@ func TestNomorKlaimYangBelumDicariDitolakDenganPesanTersendiri(t *testing.T) {
 	require.True(t, errors.As(err, &v))
 	require.Len(t, v.Errors, 1)
 	require.Equal(t, inputreqprotection.FieldClaimNumber, v.Errors[0].Field)
-	require.Contains(t, v.Errors[0].Message, "Cari Ulang No Klaim")
+	require.Contains(t, v.Errors[0].Message, "terlalu panjang")
+}
+
+// TestDraftTidakMenerimaClaimIDTerpisah menjaga keputusan 2026-09-24.
+//
+// Work Owner menegaskan ClaimNo dan ClaimID berisi nilai yang sama. Menanyakannya dua kali
+// akan membuat keduanya berbeda cepat atau lambat — tanpa galat, hanya proteksi yang
+// menunjuk dua klaim berbeda.
+//
+// Uji ini memakai refleksi karena yang dijaga adalah KETIADAAN sebuah field: menambahkannya
+// kembali akan lolos setiap uji perilaku, dan baru terlihat sebagai data yang tidak cocok.
+func TestDraftTidakMenerimaClaimIDTerpisah(t *testing.T) {
+	_, ada := reflect.TypeOf(inputreqprotection.Draft{}).FieldByName("ClaimReference")
+	require.False(t, ada,
+		"ClaimID diturunkan dari ClaimNumber; ia tidak boleh menjadi isian tersendiri")
 }
 
 func TestPerubahanDOLMenuntutTanggalBaru(t *testing.T) {
@@ -140,11 +162,16 @@ func TestPerubahanDOLMenuntutTanggalBaru(t *testing.T) {
 
 	// Tanggal sebelumnya TIDAK wajib — ia keadaan lama, yang boleh saja belum tercatat.
 	baru := time.Date(2026, time.August, 17, 0, 0, 0, 0, time.UTC)
-	d.ChangeDetail.LossDateAfter = &baru
+	d.Change.LossDateAfter = &baru
 	require.NoError(t, d.Validate())
 }
 
-func TestPerubahanCauseOfLossMenuntutKeduaPenyebab(t *testing.T) {
+// TestPerubahanCauseOfLossMenuntutNextCauseOfLossSaja menjaga koreksi 2026-09-24.
+//
+// Semula KEDUA penyebab kerugian wajib diisi pengguna. Itu keliru: "Cause Of Loss Dipilih"
+// DITURUNKAN dari klaim (`Activity/OpenProtection-Act.xml`), sehingga memvalidasinya di sini
+// akan menolak isian yang pengguna tidak punya cara memperbaikinya.
+func TestPerubahanCauseOfLossMenuntutNextCauseOfLossSaja(t *testing.T) {
 	d := draftLengkap()
 	d.Type = inputreqprotection.TypeChangeCauseOfLoss
 
@@ -153,10 +180,9 @@ func TestPerubahanCauseOfLossMenuntutKeduaPenyebab(t *testing.T) {
 
 	var v *inputreqprotection.ValidationError
 	require.True(t, errors.As(err, &v))
-	require.Len(t, v.Errors, 2)
+	require.Len(t, v.Errors, 1, "hanya Next Cause Of Loss yang diisi pengguna")
 
-	d.ChangeDetail.CauseOfLossID = "12002"
-	d.ChangeDetail.CauseOfLossMasterID = "COL-CONTOH-1"
+	d.Change.CauseOfLossAfter = "COL-CONTOH-1"
 	require.NoError(t, d.Validate())
 }
 
@@ -165,7 +191,7 @@ func TestDetailPerubahanDiabaikanUntukTipeLain(t *testing.T) {
 	// terkirim tidak boleh MENOLAK penyimpanan — pengguna tidak punya cara memperbaikinya.
 	d := draftLengkap()
 	d.Type = "1"
-	d.ChangeDetail.CauseOfLossID = "terbawa"
+	d.Change.CauseOfLossAfter = "terbawa"
 
 	require.NoError(t, d.Validate())
 }
@@ -200,7 +226,7 @@ func TestHariDitentukanDiZonaWIBBukanUTC(t *testing.T) {
 	// 2026-09-22 22.30 UTC = 2026-09-23 05.30 WIB.
 	at := time.Date(2026, time.September, 22, 22, 30, 0, 0, time.UTC)
 
-	key := inputreqprotection.DuplicateKeyFor(draftLengkap(), at, wib)
+	key := inputreqprotection.DuplicateKeyFor("99.001.2026.00000001", draftLengkap(), at, wib)
 
 	year, month, day := key.Day.Date()
 	require.Equal(t, 2026, year)
@@ -214,7 +240,7 @@ func TestKunciGandaMemakaiPolisDanTipeSaja(t *testing.T) {
 	d := draftLengkap()
 	d.Type = "3"
 
-	key := inputreqprotection.DuplicateKeyFor(d, time.Now(), time.UTC)
+	key := inputreqprotection.DuplicateKeyFor("99.001.2026.00000001", d, time.Now(), time.UTC)
 
 	require.Equal(t, "99.001.2026.00000001", key.PolicyNumber)
 	require.Equal(t, "3", key.Type)

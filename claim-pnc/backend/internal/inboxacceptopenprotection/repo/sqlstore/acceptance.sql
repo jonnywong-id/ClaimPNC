@@ -22,8 +22,8 @@
 -- PEMISAHAN ANTREAN PREMI / NON PREMI
 -- ============================================================================
 --
---     InboxOpenProtection2_RD_collection   PROTECTION_TYPE  = '2'   -> PREMI
---     InboxOpenProtection2_RD              PROTECTION_TYPE <> '2'   -> NON PREMI
+--     InboxOpenProtection2_RD_collection   PROTECTION_TYPE_ID  = '2'   -> PREMI
+--     InboxOpenProtection2_RD              PROTECTION_TYPE_ID <> '2'   -> NON PREMI
 --
 -- Kedua antrean memakai KUERI YANG SAMA dengan parameter pembeda, bukan dua kueri terpisah.
 -- Dua kueri yang nyaris sama akan berbeda isinya cepat atau lambat, dan yang berbeda akan
@@ -50,9 +50,9 @@
 --
 --     APPROVAL_STATUS   keputusan: '1' disetujui, '2' ditolak
 --     RESOLVED_BY       pelakunya
---     RESOLVED_DATE_TIME  waktunya
+--     RESOLVED_DATETIME  waktunya
 --
--- Kolom pembuatan — ID, POLICY_NO, CLAIM_NO, ID_CLAIM, PROTECTION_TYPE, CREATE_DATE, CREATED_BY,
+-- Kolom pembuatan — OPEN_PROTECTION_ID, POLICY_NO, CLAIM_NO, ID_CLAIM, PROTECTION_TYPE_ID, CREATE_DATE, CREATED_BY,
 -- NOTES, OLD_DATA, NEW_DATA, OBJECT_NAME, BRANCH_NAME — dimiliki modul `inputreqprotection` dan
 -- TIDAK PERNAH disentuh di sini (`P-1`). Dijaga uji di query_test.go.
 
@@ -65,10 +65,10 @@ SELECT COUNT(*)
    AND CLAIM_NO IS NOT NULL
    AND POLICY_NO IS NOT NULL
    AND (STATUS_ACTIVE IS NULL OR TRIM(STATUS_ACTIVE) = '1')
-   AND ( ( :1 = 1 AND TRIM(PROTECTION_TYPE) = :2 )
-         OR ( :3 = 0 AND (PROTECTION_TYPE IS NULL OR TRIM(PROTECTION_TYPE) <> :4) ) )
+   AND ( ( :1 = 1 AND TRIM(PROTECTION_TYPE_ID) = :2 )
+         OR ( :3 = 0 AND (PROTECTION_TYPE_ID IS NULL OR TRIM(PROTECTION_TYPE_ID) <> :4) ) )
    AND ( :5 IS NULL
-         OR UPPER(ID)      LIKE :6
+         OR UPPER(OPEN_PROTECTION_ID)      LIKE :6
          OR UPPER(POLICY_NO) LIKE :7
          OR UPPER(CLAIM_NO) LIKE :8 )
 
@@ -78,28 +78,31 @@ SELECT COUNT(*)
 --
 -- Diurutkan MENURUN menurut tanggal permintaan dibuat, dengan nomor sebagai pemutus seri
 -- supaya paginasi tidak menampilkan satu baris dua kali.
-SELECT ID,
-       POLICY_NO,
-       CLAIM_NO,
-       PROTECTION_TYPE,
-       CREATE_DATE,
-       NOTES,
-       CREATED_BY,
-       APPROVAL_STATUS,
-       RESOLVED_DATE_TIME,
-       RESOLVED_BY
-  FROM POOLDATA.T_CLAIM_OPENPROTECTION
- WHERE APPROVAL_STATUS IS NULL
-   AND CLAIM_NO IS NOT NULL
-   AND POLICY_NO IS NOT NULL
-   AND (STATUS_ACTIVE IS NULL OR TRIM(STATUS_ACTIVE) = '1')
-   AND ( ( :1 = 1 AND TRIM(PROTECTION_TYPE) = :2 )
-         OR ( :3 = 0 AND (PROTECTION_TYPE IS NULL OR TRIM(PROTECTION_TYPE) <> :4) ) )
+SELECT p.OPEN_PROTECTION_ID,
+       p.POLICY_NO,
+       p.CLAIM_NO,
+       p.PROTECTION_TYPE_ID,
+       t.PROTECTION_TYPE_NAME,
+       p.CREATE_DATE,
+       p.NOTES,
+       p.CREATED_BY,
+       p.APPROVAL_STATUS,
+       p.RESOLVED_DATETIME,
+       p.RESOLVED_BY
+  FROM POOLDATA.T_CLAIM_OPENPROTECTION p
+  LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
+         ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
+ WHERE p.APPROVAL_STATUS IS NULL
+   AND p.CLAIM_NO IS NOT NULL
+   AND p.POLICY_NO IS NOT NULL
+   AND (p.STATUS_ACTIVE IS NULL OR TRIM(p.STATUS_ACTIVE) = '1')
+   AND ( ( :1 = 1 AND TRIM(p.PROTECTION_TYPE_ID) = :2 )
+         OR ( :3 = 0 AND (p.PROTECTION_TYPE_ID IS NULL OR TRIM(p.PROTECTION_TYPE_ID) <> :4) ) )
    AND ( :5 IS NULL
-         OR UPPER(ID)      LIKE :6
-         OR UPPER(POLICY_NO) LIKE :7
-         OR UPPER(CLAIM_NO) LIKE :8 )
- ORDER BY CREATE_DATE DESC, ID DESC
+         OR UPPER(p.OPEN_PROTECTION_ID) LIKE :6
+         OR UPPER(p.POLICY_NO)          LIKE :7
+         OR UPPER(p.CLAIM_NO)           LIKE :8 )
+ ORDER BY p.CREATE_DATE DESC, p.OPEN_PROTECTION_ID DESC
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 
@@ -110,19 +113,22 @@ OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 -- (`Flow/CreateProtection_Flow.xml` menempatkannya di workbasket ProtectionPNC), sehingga
 -- sebuah baris dapat diputuskan petugas lain kapan saja. Form harus tetap terbuka supaya
 -- pesannya dapat menyatakan keputusan siapa dan kapan — bukan sekadar "tidak ditemukan".
-SELECT ID,
-       POLICY_NO,
-       CLAIM_NO,
-       PROTECTION_TYPE,
-       CREATE_DATE,
-       NOTES,
-       CREATED_BY,
-       APPROVAL_STATUS,
-       RESOLVED_DATE_TIME,
-       RESOLVED_BY
-  FROM POOLDATA.T_CLAIM_OPENPROTECTION
- WHERE UPPER(TRIM(ID)) = :1
-   AND (STATUS_ACTIVE IS NULL OR TRIM(STATUS_ACTIVE) = '1')
+SELECT p.OPEN_PROTECTION_ID,
+       p.POLICY_NO,
+       p.CLAIM_NO,
+       p.PROTECTION_TYPE_ID,
+       t.PROTECTION_TYPE_NAME,
+       p.CREATE_DATE,
+       p.NOTES,
+       p.CREATED_BY,
+       p.APPROVAL_STATUS,
+       p.RESOLVED_DATETIME,
+       p.RESOLVED_BY
+  FROM POOLDATA.T_CLAIM_OPENPROTECTION p
+  LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
+         ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
+ WHERE UPPER(TRIM(p.OPEN_PROTECTION_ID)) = :1
+   AND (p.STATUS_ACTIVE IS NULL OR TRIM(p.STATUS_ACTIVE) = '1')
 
 
 -- name: acceptance_decide
@@ -138,8 +144,8 @@ SELECT ID,
 UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
    SET APPROVAL_STATUS  = :1,
        RESOLVED_BY      = :2,
-       RESOLVED_DATE_TIME = :3
- WHERE UPPER(TRIM(ID)) = :4
+       RESOLVED_DATETIME = :3
+ WHERE UPPER(TRIM(OPEN_PROTECTION_ID)) = :4
    AND APPROVAL_STATUS IS NULL
    AND CLAIM_NO IS NOT NULL
    AND POLICY_NO IS NOT NULL

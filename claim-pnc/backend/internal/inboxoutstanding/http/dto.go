@@ -72,21 +72,50 @@ type listResponse struct {
 	Klaim []claimDTO `json:"klaim"`
 	Total int        `json:"total"`
 
-	// BatasLini menyatakan batas data yang berlaku saat daftar ini dibaca.
+	// Pemilik adalah operator yang pekerjaannya ditampilkan.
 	//
-	// Ia ada supaya layar dapat MENYATAKANNYA kepada pengguna. Tanpa itu, seorang petugas
-	// yang lini bisnisnya belum diisi admin melihat klaim seluruh lini tanpa cara apa pun
-	// untuk mengetahui bahwa yang dilihatnya lebih luas dari haknya.
-	BatasLini scopeDTO `json:"batas_lini"`
+	// Ia ada supaya layar dapat MENYATAKANNYA kepada pengguna. Daftar kosong pada layar
+	// bernama "My Inbox" punya dua sebab yang tampak sama: memang tidak ada pekerjaan, atau
+	// penyaringnya salah orang. Menyebut pemiliknya membedakan keduanya.
+	//
+	// Nilainya selalu identitas pemanggil — tidak pernah datang dari klien.
+	Pemilik string `json:"pemilik"`
 }
 
-// scopeDTO menjelaskan batas data yang berlaku.
-type scopeDTO struct {
-	// TanpaBatas true berarti pengguna melihat seluruh lini.
-	TanpaBatas bool `json:"tanpa_batas"`
+// statusDTO adalah satu tab status dokumen.
+type statusDTO struct {
+	// Kode dipakai klien untuk menyaring; ia stabil, sedangkan judulnya teks layar.
+	Kode  string `json:"kode"`
+	Judul string `json:"judul"`
 
-	// GroupPanel adalah lini yang boleh dilihat; kosong saat TanpaBatas.
-	GroupPanel []string `json:"group_panel"`
+	// Jumlah bernilai `null` bila tab ini BELUM dapat dihitung, dan itu berbeda dari nol.
+	//
+	// Pointer, bukan int, supaya perbedaannya sampai ke klien apa adanya. Layar tidak
+	// menggambar lencana untuk yang null — konvensi yang sama dengan tab "Data rejected"
+	// pada Inbox Laporan Klaim, karena lencana bertuliskan 0 menyatakan "tidak ada" dan
+	// itu tidak benar.
+	Jumlah *int `json:"jumlah"`
+
+	// DapatDipilih menandai tab yang benar-benar dapat menyaring daftar.
+	//
+	// Yang belum dapat dihitung juga belum dapat menyaring — kuerinya belum ada. Ia tetap
+	// DITAMPILKAN supaya petugas Pega mengenali layarnya, tetapi tidak dapat ditekan.
+	DapatDipilih bool `json:"dapat_dipilih"`
+}
+
+// summaryResponse adalah badan respons ringkasan.
+type summaryResponse struct {
+	Status []statusDTO `json:"status"`
+
+	// Total adalah seluruh pekerjaan pemanggil — baris "All" pada tabel di samping donut.
+	//
+	// Ia dikirim TERPISAH, bukan dijumlahkan di peramban: hari ini penjumlahannya kebetulan
+	// benar, dan akan diam-diam salah begitu ada status yang tidak termasuk keduanya.
+	Total int `json:"total"`
+
+	// Pemilik sama artinya dengan pada daftar — donut kosong punya dua sebab yang tampak
+	// sama, dan menyebut pemiliknya membedakan keduanya.
+	Pemilik string `json:"pemilik"`
 }
 
 // toClaimDTO mengubah satu klaim menjadi bentuk kiriman.

@@ -4,7 +4,11 @@ import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { OutstandingFilter, OutstandingListResponse } from './types'
+import type {
+  OutstandingFilter,
+  OutstandingListResponse,
+  OutstandingSummaryResponse,
+} from './types'
 
 const PATH = '/api/inbox-outstanding'
 
@@ -28,15 +32,31 @@ const keys = {
       f.search ?? '',
       f.stage ?? '',
       f.branch ?? '',
+      f.documentStatus ?? '',
       f.offset ?? 0,
     ] as const,
+
+  // Ringkasan sengaja TIDAK memuat status maupun offset pada kuncinya.
+  //
+  // Ia tidak berubah oleh keduanya — donut harus tetap menampilkan seluruh status supaya
+  // irisan yang sedang dipilih terlihat dan dapat dibatalkan. Memasukkannya ke kunci akan
+  // menembak ulang ringkasan setiap kali pengguna mengeklik irisan atau berpindah halaman,
+  // dan hasilnya selalu sama.
+  summary: (portal: string | null, token: string | null, f: OutstandingFilter) =>
+    ['inbox-outstanding', 'ringkasan', portal, token, f.search ?? '', f.stage ?? '', f.branch ?? ''] as const,
 }
 
-function buildPath(f: OutstandingFilter): string {
+function filterParams(f: OutstandingFilter): URLSearchParams {
   const params = new URLSearchParams()
   if (f.search?.trim()) params.set('cari', f.search.trim())
   if (f.stage?.trim()) params.set('tahap', f.stage.trim())
   if (f.branch?.trim()) params.set('cabang', f.branch.trim())
+  return params
+}
+
+function buildPath(f: OutstandingFilter): string {
+  const params = filterParams(f)
+  if (f.documentStatus) params.set('status_dokumen', f.documentStatus)
   if (f.offset) params.set('lewati', String(f.offset))
   params.set('batas', String(PAGE_SIZE))
 
@@ -78,7 +98,49 @@ export function useOutstandingList(filter: OutstandingFilter) {
 }
 
 /**
- * Menyusun URL unduhan CSV beserta penyaring yang sedang berlaku.
+ * Hook ringkasan inbox per status kelengkapan dokumen — sumber donut.
+ *
+ * # Ia permintaan TERSENDIRI, bukan bagian respons daftar
+ *
+ * Keduanya berubah pada irama yang berbeda: daftar ditembak ulang setiap kali pengguna
+ * berpindah halaman atau mengetik pencarian, sedangkan ringkasan hanya perlu berubah saat
+ * penyaring di luar status berubah. Menyatukannya berarti menghitung ulang donut pada
+ * setiap penekanan tombol paginasi.
+ */
+export function useOutstandingSummary(filter: OutstandingFilter) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.summary(portal, token, filter),
+    queryFn: () => {
+      const params = filterParams(filter)
+      const query = params.toString()
+      return callAPI<OutstandingSummaryResponse>(
+        query ? `${PATH}/ringkasan?${query}` : `${PATH}/ringkasan`,
+        { token, portal },
+      )
+    },
+    enabled: token !== null && portal !== null,
+    staleTime: 0,
+  })
+}
+
+/**
+ * Mengunduh CSV.
+ *
+ * # Unduhan TIDAK mengikuti penyaring layar, dan itu disengaja
+ *
+ * Fungsi ini sempat mengirim `cari`, `tahap`, dan `cabang` — penyaring yang sedang berlaku
+ * di layar. Backend sekarang mengabaikannya, dan pengirimannya dihentikan supaya kode di
+ * sini tidak menjanjikan hal yang tidak terjadi.
+ *
+ * Sebabnya: unduhan dan daftar adalah dua hal yang berbeda di sistem lama.
+ * `RDB List/ExportDataDetailKlaim-SQL.xml` tidak menyaring pemilik pekerjaan maupun
+ * penyaring layar; yang membatasinya hanyalah LINI BISNIS petugas dan rentang tanggal.
+ * Berkasnya memang berkas pemantauan satu lini, bukan salinan layar.
+ *
+ * Layar menyatakan perbedaan ini kepada pengguna — lihat OutstandingPage.
  *
  * # Kenapa bukan hook, dan kenapa tidak lewat callAPI
  *
@@ -90,18 +152,8 @@ export function useOutstandingList(filter: OutstandingFilter) {
  * objek URL. Konsekuensinya berkas dimuat seluruhnya ke memori peramban lebih dulu, dan
  * itu diterima — backend sudah membatasi jumlah barisnya.
  */
-export async function downloadOutstandingCSV(
-  filter: OutstandingFilter,
-  token: string,
-  portal: string,
-): Promise<void> {
-  const params = new URLSearchParams()
-  if (filter.search?.trim()) params.set('cari', filter.search.trim())
-  if (filter.stage?.trim()) params.set('tahap', filter.stage.trim())
-  if (filter.branch?.trim()) params.set('cabang', filter.branch.trim())
-
-  const query = params.toString()
-  const url = query ? `${PATH}/unduh?${query}` : `${PATH}/unduh`
+export async function downloadOutstandingCSV(token: string, portal: string): Promise<void> {
+  const url = `${PATH}/unduh`
 
   const response = await fetch(url, {
     headers: {

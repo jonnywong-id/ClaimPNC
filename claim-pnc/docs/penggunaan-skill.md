@@ -3374,3 +3374,61 @@ Ketiganya tidak boleh disajikan setara.
 4. **125 galat typecheck dan 22 berkas uji frontend yang gagal masih terbuka** di modul
    lain. Sebabnya tetap sama dengan yang dicatat sesi kesembilan belas: `src/api/types.ts`
    kehilangan isinya pada merge `b764434`.
+
+---
+
+## Sesi kedua puluh satu (2026-09-24) — My Inbox: memisahkan unduhan dari daftar
+
+### Skill yang dipakai
+
+| Skill | Dipakai untuk |
+|---|---|
+| `mattpocock-skills:grilling` | menguji premis "unduhan sama dengan daftar" terhadap export Pega, alih-alih menerimanya |
+| `mattpocock-skills:codebase-design` | memutuskan `ExportFilter` menjadi tipe TERSENDIRI, bukan `Filter` dengan satu field tambahan |
+
+### Yang paling menentukan pada sesi ini
+
+Bukan skill, melainkan **urutan**: fakta dibuktikan dulu ke sumbernya, baru kode ditulis.
+
+Sebelum satu baris pun disentuh, `ExportDataDetailKlaim-SQL.xml` dibaca seluruhnya, kedua
+fragmen `{ASIS:…}` ditelusuri ke activity-nya, lalu kesembilan kolom yang dipakai diperiksa
+keberadaannya di katalog Oracle — bukan diandaikan dari ingatan. Jumlah baris tiap cakupan
+dihitung lebih dulu dengan SQL tangan (862 / 354 / 1 / 0 / 0), baru dicocokkan dengan
+keluaran kode Go.
+
+Itu yang membuat perbaikan ini tidak perlu diperbaiki lagi setelah dijalankan.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+**Kesimpulan yang lengkap separuh.** Sesi sebelumnya saya membuang `pxflowname NOT IN`,
+`PXTASKLABEL NOT IN`, dan `branchname != 'ASNET'` dari daftar karena `InboxRegister_RD`
+tidak memilikinya. Alasannya benar; kesimpulannya tidak lengkap. Ketiganya bukan tidak
+dipakai — ketiganya milik **export**. Hal yang sama terjadi pada
+`M_LOGIN_PNC.LINE_BUSINESS`, yang saya cabut dari modul padahal justru di export ia
+menentukan segalanya.
+
+> Membuktikan sesuatu **tidak ada di tempat A** bukan bukti bahwa ia tidak ada di tempat
+> mana pun. Pertanyaan berikutnya yang tidak saya ajukan waktu itu: *kalau bukan di sini,
+> lalu di mana?*
+
+**Dua uji yang mengunci perilaku keliru.** `TestUnduhTundukPadaPemilikYangSama` menuntut
+unduhan berisi pekerjaan pemanggil saja, dengan alasan keamanan yang terdengar meyakinkan —
+dan lulus, karena export memanggil ulang daftar. Di frontend, uji bernama "meminta unduhan
+dengan penyaring yang sedang berlaku" tidak pernah memeriksa satu pun penyaring.
+
+> Uji yang ditulis dari premis yang sama dengan kodenya tidak dapat membantahnya. Yang
+> membantah keduanya bukan uji lain, melainkan **kalimat Work Owner** dan **satu berkas
+> XML**.
+
+**Konstanta bernama salah ketik.** Sempat menulis `inboxeoutstandingLineKosong` sebagai
+alias untuk `LineUnknown` — konstanta yang tidak perlu, dengan nama yang salah ketik.
+Dibuang sebelum dibangun.
+
+### Catatan untuk sesi berikutnya
+
+- Nama modul masih `inboxoutstanding` / `inbox-outstanding` padahal layarnya **My Inbox**
+  (MENU_ID 51). Penggantiannya menyentuh backend, frontend, dan tiket sekaligus (`D-81`).
+- `src/app/menu/registry.ts` memuat `InboxRCVApp_Harness` **dua kali** (`TS1117`), dibawa
+  commit `6c06f81` dari sesi lain. Dilaporkan, tidak disentuh.
+- `gofmt -l` menandai **532 berkas** di seluruh repo, sama persis sebelum dan sesudah sesi
+  ini — gejala CRLF menyeluruh, bukan akibat perubahan modul mana pun.

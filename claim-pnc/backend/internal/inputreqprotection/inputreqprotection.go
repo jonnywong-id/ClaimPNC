@@ -65,26 +65,33 @@ import (
 
 // ── Tipe proteksi ────────────────────────────────────────────────────────────────
 
-// Nilai `TIPE_PROTEKSI` yang TERBUKTI dari export.
+// Tiga nilai `PROTECTION_TYPE_ID` yang MENGUBAH PERILAKU.
 //
-// Ketiganya diturunkan dari perilaku yang dapat dilihat, bukan dari daftar nilai — daftar
-// itu tinggal di rule Property, dan folder `Property/` tidak ikut diekspor (`R-16`).
+// # Bedakan dari label
 //
-//	'2'  dipisahkan menjadi antrean tersendiri milik peran PncCollection
+// Sejak master `POOLDATA.M_CLAIM_PROTECTION_TYPE` diterima (Work Owner, 2026-09-24), NAMA
+// setiap tipe datang dari data — kesembilannya, termasuk yang dulu tidak diketahui.
+// Ketiga konstanta di bawah TETAP di kode karena ia bukan label melainkan PERCABANGAN:
+//
+//	'2'  memisahkan antrean akseptasi menjadi PREMI dan NON PREMI
 //	     (`InboxOpenProtection2_RD_collection` menyaring `= "2"`, dan
 //	      `InboxOpenProtection2_RD` menyaring `!= "2"` untuk peran lain)
 //	'7'  memunculkan panel "Detail Perubahan DOL"
 //	     (`Section/InputProtectionSection-Section.xml:2728`)
 //	'8'  memunculkan panel "Detail Perubahan Cause Of Loss" (`:3638`)
 //
-// Nilai '1', '3', '4', '5', dan '6' juga dipakai di berbagai activity, tetapi LABELNYA
-// TIDAK DIKETAHUI. Modul ini karena itu tidak memetakan kode ke label sama sekali: layar
-// menampilkan kodenya apa adanya sampai Work Owner menyerahkan daftarnya.
+// Mengganti NAMA sebuah tipe di master tidak boleh mengubah satu pun dari ketiganya, dan
+// tidak akan — yang dibandingkan kodenya, bukan namanya.
 //
-// Menebak labelnya akan lebih buruk daripada menampilkan kode. Kode mentah di layar segera
-// ditanyakan pengguna; label yang salah diterima begitu saja.
+// # Kenapa ketiganya tidak ikut dipindah ke master
+//
+// Master hanya memuat `PROTECTION_TYPE_ID` dan `PROTECTION_TYPE_NAME`; tidak ada kolom yang
+// menyatakan "tipe ini masuk antrean premi" atau "tipe ini menuntut detail perubahan".
+// Menurunkan perilaku dari nama akan membuat satu suntingan ejaan mengubah antrean
+// akseptasi — tanpa galat dan tanpa gejala.
 const (
 	// TypePremium adalah proteksi klaim PREMI, yang diakseptasi peran penagihan premi.
+	// Master menamainya "Premi Belum Lunas".
 	TypePremium = "2"
 
 	// TypeChangeLossDate adalah permintaan perubahan Tanggal Kejadian (DOL).
@@ -93,6 +100,18 @@ const (
 	// TypeChangeCauseOfLoss adalah permintaan perubahan Penyebab Kerugian.
 	TypeChangeCauseOfLoss = "8"
 )
+
+// ProtectionType adalah satu baris master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
+//
+// Dipakai mengisi pilihan tipe pada form dan menampilkan namanya di daftar. Sengaja hanya
+// dua field: itulah seluruh isi tabelnya.
+type ProtectionType struct {
+	// ID adalah `PROTECTION_TYPE_ID`, `VARCHAR2(2)`. Nilai yang ada hari ini '1'…'9'.
+	ID string
+
+	// Name adalah `PROTECTION_TYPE_NAME`, yang dilihat pengguna.
+	Name string
+}
 
 // IsPremium menyatakan sebuah tipe proteksi masuk antrean PREMI.
 //
@@ -138,13 +157,9 @@ const (
 type Protection struct {
 	// Number adalah kolom layar **"No Proteksi"** — `.pyID` di Pega.
 	//
-	// Ia SEKALIGUS kunci baris: kolom `ID` pada `POOLDATA.T_CLAIM_OPENPROTECTION` bertipe
-	// `VARCHAR2(100)` dan berisi nomor ini apa adanya. Tidak ada kunci teknis terpisah.
-	//
-	// Sempat ada field `ID int64` di sini, dengan anggapan nomornya diterbitkan sequence
-	// dan disimpan terpisah dari kunci baris. Pembacaan katalog Oracle pada 2026-09-23
-	// membantahnya — dan menyimpan field yang selalu bernilai nol lebih menyesatkan
-	// daripada tidak menyimpannya sama sekali.
+	// Ia SEKALIGUS kunci baris: kolom `OPEN_PROTECTION_ID` pada
+	// `POOLDATA.T_CLAIM_OPENPROTECTION` bertipe `VARCHAR2(20)` dan berisi nomor ini apa
+	// adanya. Tidak ada kunci teknis terpisah.
 	//
 	// Dua bentuk hidup berdampingan permanen:
 	//
@@ -154,25 +169,66 @@ type Protection struct {
 	// Lihat FormatNumber untuk alasan prefixnya dibedakan.
 	Number string
 
-	// PolicyNumber — kolom **"No Polis"**, `.PolicyNo`. Wajib diisi.
+	// PolicyNumber — kolom **"No Polis"**, `.PolicyNo`. Wajib diisi. `VARCHAR2(20)`.
 	PolicyNumber string
 
-	// ClaimNumber — kolom **"No Klaim"**, `.CaseID`.
+	// ClaimNumber — kolom **"No Klaim"**, `.CaseID`. Kolom `CLAIM_NO`.
 	//
 	// KOSONG selama proteksi belum ditautkan ke klaim, dan justru saat kosong itulah
 	// pemohon masih boleh menyuntingnya. Lihat Editable.
+	//
+	// # Bentuknya
+	//
+	//	PNC-xxxx        warisan Pega — 118 dari 160 baris produksi tepat delapan huruf
+	//	PNCN.YY.xxxx    sistem baru (`D-71`) — dua belas huruf
+	//
+	// # Kolomnya terlalu sempit, dan ini BELUM tertutup
+	//
+	// `CLAIM_NO` bertipe `VARCHAR2(10)`, sedangkan `PNCN.YY.xxxx` butuh dua belas. Yang
+	// muat hanya sampai klaim ke-99.
+	//
+	// Di produksi pun ada dua baris ber-`CASEID` sebelas dan enam belas huruf; keduanya
+	// TIDAK berpola `PNC-` sama sekali — kolomnya teks bebas di Pega, sehingga salah ketik
+	// ikut tersimpan.
+	//
+	// `MaxClaimNumberLength` karena itu ditetapkan menurut lebar SASARAN, bukan lebar hari
+	// ini. Sampai kolomnya dilebarkan, penyimpanan nomor klaim baru gagal `ORA-12899` —
+	// dan itu memang yang seharusnya terlihat: memvalidasi pada sepuluh akan menolak
+	// seluruh nomor klaim sistem baru dengan pesan yang seolah-olah menyalahkan pengguna.
 	ClaimNumber string
 
-	// ClaimReference adalah klaim yang BENAR-BENAR DITEMUKAN, `.PNCCaseID`.
+	// ClaimReference adalah **ClaimID**, `.PNCCaseID`. Kolom `ID_CLAIM`, `VARCHAR2(100)`.
 	//
-	// Ia berbeda dari ClaimNumber: yang satu diketik pengguna, yang satu hasil pencarian.
-	// `Activity/ValidationInputProtection-Act.xml` menolak penyimpanan ketika field ini
-	// kosong, dengan pesan "Silakan Tulis dan Cari Ulang No Klaim" — mengetik nomor klaim
-	// saja tidak cukup.
+	// # Pada baris BARU ia sama dengan ClaimNumber
+	//
+	// Work Owner menegaskan pada 2026-09-24 bahwa ClaimNo dan ClaimID kini berisi nilai
+	// yang sama, yaitu `PNCN.YY.xxxx`. Adapter karena itu MENURUNKANNYA dari ClaimNumber;
+	// form tidak menanyakannya kedua kalinya.
+	//
+	// # Pada baris WARISAN ia BERBEDA, dan karena itu field ini tetap ada
+	//
+	// Data Pega menyimpan kunci teknisnya di sini — `ASM-FW-GCNMFW-WORK PNC-xxxx`, yaitu
+	// nama kelas work pool ditambah nomor klaim (102 dari 103 baris terisi berpola itu).
+	// `D-22` membuang prefix tersebut dari data baru.
+	//
+	// Menghapus field ini dan menampilkan ClaimNumber sebagai gantinya akan membuat baris
+	// warisan TAMPAK seolah ClaimID-nya sama dengan nomor klaimnya — padahal tidak.
 	ClaimReference string
 
-	// Type — kolom **"Tipe Proteksi"**, `.TypeProtection`. Lihat konstanta di atas.
+	// Type — kolom **"Tipe Proteksi"**, `.TypeProtection`. Kolom `PROTECTION_TYPE_ID`,
+	// `VARCHAR2(2)`. Lihat konstanta di atas.
 	Type string
+
+	// TypeName adalah nama tipe dari master, yang DILIHAT pengguna.
+	//
+	// Ia hasil pembacaan `POOLDATA.M_CLAIM_PROTECTION_TYPE`, bukan kolom di tabel proteksi
+	// — sehingga mengganti nama sebuah tipe langsung berlaku pada seluruh baris lama tanpa
+	// satu pun pembaruan data.
+	//
+	// KOSONG bila kodenya tidak ada di master. Layar menampilkan kodenya apa adanya dalam
+	// keadaan itu, bukan tanda hubung: kode yang tak dikenal adalah data yang perlu
+	// ditanyakan, dan menyembunyikannya membuatnya tidak pernah ditanyakan.
+	TypeName string
 
 	// InputDate — kolom **"Tanggal Proteksi Dibuat"**, `.InputDate`.
 	InputDate time.Time
@@ -269,26 +325,48 @@ const NumberPrefix = "OPCN"
 
 // FormatNumber menyusun nomor proteksi berbentuk `OPCN.YY.xxxx`.
 //
-// # Dua hal yang mengikuti nomor laporan, bukan mengikuti D-71 apa adanya
+// # Pencacahnya sequence, bukan MAX+1
 //
-//  1. Nomor urut DIPADATKAN NOL sampai empat digit. `D-71` butir 2 mencatat bahwa
-//     `TO_CHAR(seq.NEXTVAL)` tanpa format mask membuat lebar segmen terakhir berubah-ubah,
-//     sehingga ".10" mendahului ".9" saat diurutkan sebagai teks. Cacat itu diketahui
-//     sebelum satu pun nomor terbit, dan memperbaikinya sekarang tidak memutus data
+// Work Owner menetapkan `POOLDATA.CLAIM_PROTECTION_SEQ` pada 2026-09-24. Adapter membaca
+// `NEXTVAL`-nya, lalu fungsi ini menyusun bentuk teksnya.
+//
+// Sequence itu GLOBAL — tidak direset tiap awal tahun — sehingga nomor urut menembus
+// pergantian tahun (`OPCN.26.0009` diikuti `OPCN.27.0010`). Segmen tahun karena itu
+// PENANDA, bukan penghitung per tahun. Konsekuensinya diterima: yang harus unik adalah
+// nomornya, dan sequence menjaminnya tanpa bergantung pada isi tabel.
+//
+// # Dua hal yang BERBEDA dari sintaks yang Work Owner tuliskan
+//
+// Sintaks yang diberikan berbunyi
+// `'OPCN' || '.' || TO_CHAR(SYSDATE,'RR') || '.' || TO_CHAR(seq.NEXTVAL)`. Yang dipakai di
+// sini berbeda pada dua hal, keduanya disengaja dan keduanya dilaporkan:
+//
+//  1. Nomor urut DIPADATKAN NOL sampai empat digit. `TO_CHAR(seq.NEXTVAL)` tanpa format
+//     mask membuat lebar segmen terakhir berubah-ubah, sehingga ".10" mendahului ".9" saat
+//     diurutkan sebagai teks — dan daftar proteksi memang diurutkan sebagai teks pada
+//     pemutus serinya. `D-71` butir 2 mencatat cacat yang sama untuk nomor klaim. Ia
+//     diketahui sebelum satu pun nomor terbit, sehingga memperbaikinya tidak memutus data
 //     historis apa pun.
 //
-//  2. Tahunnya datang dari PEMANGGIL, bukan dari `SYSDATE` basis data. `D-71` catatan
-//     ketiga mencatat bahwa nomor yang terbit di sekitar pergantian tahun akan mengambil
-//     tahun dari jam server basis data — bertaut dengan `R-12`. Di sini sumber waktunya
-//     satu dan dapat diuji.
+//  2. Tahunnya datang dari PEMANGGIL, bukan dari `SYSDATE`. `SYSDATE` adalah jam server
+//     basis data; nomor yang terbit di sekitar pergantian tahun akan mengambil tahun dari
+//     sana dan bergeser terhadap tanggal WIB (`R-12`, `D-71` catatan ketiga). Di sini
+//     sumber waktunya satu dan dapat diuji.
 //
 // Keduanya menyalin perlakuan `inboxlaporanklaim.FormatReportNumber` atas `RCVN.YY.xxxx`.
 // Perlu dicatat derajatnya: bentuk `RCVN` itu tiruan tim pengembang atas `D-71`, BUKAN
 // keputusan Work Owner — sedangkan `OPCN` di sini memang keputusan Work Owner.
 //
+// # Batas kolomnya
+//
+// `OPEN_PROTECTION_ID` bertipe `VARCHAR2(20)`, sedangkan delapan huruf terpakai awalan dan
+// pemisah. Tersisa dua belas digit untuk nomor urut, sementara `MAXVALUE` sequence memuat
+// lima belas. Selisih itu baru menggigit pada nomor urut ke-1.000.000.000.000 dan dicatat
+// di `docs/kolom-open-protection.md`, bukan dijaga di kode.
+//
 // Nomor urut yang melewati empat digit TIDAK dipotong; ia tumbuh menjadi lima digit.
 // Memotongnya akan menerbitkan nomor ganda, dan nomor ganda jauh lebih mahal daripada
-// kolom yang melebar.
+// segmen yang melebar.
 func FormatNumber(year int, sequence int64) string {
 	return fmt.Sprintf("%s.%02d.%04d", NumberPrefix, year%100, sequence)
 }
@@ -402,7 +480,11 @@ type Repo interface {
 	// penyisipan barisnya. Memisahkannya berarti nomor dapat terbit lalu barisnya gagal
 	// disimpan, meninggalkan lubang pada deret — dan pada deret yang dibaca manusia,
 	// lubang akan terus ditanyakan.
-	Create(ctx context.Context, draft Draft, by string, at time.Time) (Protection, error)
+	//
+	// claim adalah klaim yang SUDAH DITEMUKAN pemanggil. Adapter menurunkan darinya nomor
+	// polis, nama objek, nama cabang, dan kedua nilai "sebelum" pada panel detail perubahan —
+	// nilai-nilai yang di Pega disalin `Activity/OpenProtection-Act.xml`, bukan diketik.
+	Create(ctx context.Context, draft Draft, claim Claim, by string, at time.Time) (Protection, error)
 
 	// Update menyunting proteksi yang belum tertaut klaim.
 	//
@@ -410,10 +492,30 @@ type Repo interface {
 	// diakseptasi, meski pemanggil sudah memeriksanya lebih dulu. Pemeriksaan di lapisan
 	// atas menjaga pengguna dari kesalahan; pemeriksaan di penyimpanan menjaga data dari
 	// dua permintaan yang tiba bersamaan.
-	Update(ctx context.Context, number string, draft Draft, by string, at time.Time) (Protection, error)
+	Update(ctx context.Context, number string, draft Draft, claim Claim, by string, at time.Time) (Protection, error)
 }
 
-// RepoSelector memilih Repo milik satu portal entitas.
+// TypeRepo adalah seam ke master tipe proteksi.
+//
+// # Kenapa seam TERSENDIRI, bukan method tambahan pada Repo
+//
+// Ia membaca TABEL LAIN (`POOLDATA.M_CLAIM_PROTECTION_TYPE`), isinya berubah dengan irama
+// yang sama sekali berbeda, dan ia MURNI BACA — tidak ada satu pun jalur di modul ini yang
+// menulis master. Menggabungkannya ke Repo akan membuat setiap fake pengujian proteksi
+// terpaksa ikut memalsukan master, padahal sebagian besar pengujian tidak memedulikannya.
+//
+// Modul `inboxacceptopenprotection` mendeklarasikan seam-nya SENDIRI atas tabel yang sama.
+// Itu disengaja: keduanya paket domain yang tidak boleh saling mengimpor, dan yang dibagi
+// hanyalah tabelnya — bukan tipenya.
+type TypeRepo interface {
+	// ListTypes membaca seluruh tipe proteksi, terurut menurut kodenya.
+	//
+	// Tidak ada penyaring aktif/nonaktif: masternya hanya punya dua kolom, dan menambahkan
+	// penyaring yang tidak punya kolom berarti mengarang.
+	ListTypes(ctx context.Context) ([]ProtectionType, error)
+}
+
+// RepoSelector memilih Repo dan TypeRepo milik satu portal entitas.
 //
 // # Kenapa per portal
 //
@@ -426,4 +528,83 @@ type Repo interface {
 // Portal yang tidak dikenal menghasilkan galat — TIDAK PERNAH dialihkan ke koneksi utama.
 // Jatuh ke koneksi default berarti menampilkan proteksi satu badan hukum di layar badan
 // hukum lain tanpa satu pun pesan galat (`R-20`, `TKT-F6-002`).
-type RepoSelector func(portalAlias string) (Repo, error)
+//
+// Ketiganya dikembalikan BERSAMAAN karena ketiganya berasal dari koneksi yang sama.
+// Memilihnya lewat pemanggilan terpisah membuka kemungkinan proteksi dibaca dari portal yang
+// satu dan klaimnya dari portal yang lain — kelas cacat yang tidak menghasilkan galat apa
+// pun, hanya data milik badan hukum yang keliru.
+type RepoSelector func(portalAlias string) (Stores, error)
+
+// Stores mengumpulkan seluruh seam penyimpanan milik SATU portal.
+//
+// Dibungkus struct, bukan dikembalikan sebagai beberapa nilai berjejer, karena jumlahnya
+// sudah tiga dan masih mungkin bertambah. Setiap penambahan pada bentuk berjejer mengubah
+// tanda tangan fungsi dan menyentuh setiap pemanggil beserta setiap uji — biaya yang tidak
+// dibayar oleh manfaat apa pun.
+type Stores struct {
+	// Protections menyimpan permintaan proteksi. Wajib.
+	Protections Repo
+
+	// Types membaca master tipe proteksi. Wajib.
+	Types TypeRepo
+
+	// Claims mencari klaim yang ditaut. Wajib.
+	Claims ClaimRepo
+}
+
+// ── Pencarian klaim ──────────────────────────────────────────────────────────────
+
+// Claim adalah data klaim yang DITURUNKAN ke form, bukan diketik pengguna.
+//
+// # Kenapa modul ini membaca data klaim sama sekali
+//
+// `Activity/OpenProtection-Act.xml` — yang di Pega dipicu field **No Klaim** — memuat
+// klaimnya lewat Report Definition `BrowseCaseList`, lalu MENYALIN KELUAR nilai-nilai di
+// bawah ke halaman proteksi. Jadi di sistem lama pun nilai-nilai ini tidak pernah diketik:
+// ia ditimpa setiap kali klaim dicari.
+//
+// Implementasi pertama modul ini keliru menjadikannya isian bebas. Akibatnya bukan sekadar
+// merepotkan: seseorang dapat menyimpan permintaan "ubah DOL" yang menyebut DOL SEBELUM
+// yang tidak pernah menjadi DOL klaim itu — dan petugas akseptasi menyetujuinya tanpa cara
+// mengetahuinya.
+//
+// # Sumbernya tabel milik Pega, dan itu HANYA DIBACA
+//
+// `P-1` melarang dua sistem MENULIS satu tabel; membaca tidak dilarang. Tidak ada satu pun
+// pernyataan tulis ke tabel klaim di modul ini.
+type Claim struct {
+	// Number adalah nomor klaim itu sendiri, sebagaimana ditemukan.
+	Number string
+
+	// PolicyNumber — `.PolicyNo`, disalin `OpenProtection` ke `pyWorkPage.PolicyNo`.
+	PolicyNumber string
+
+	// InsuredName — `.Policy.QQName`, "Nama Tertanggung" pada form.
+	InsuredName string
+
+	// LossDate adalah DOL klaim, yang menjadi **Current Date Of Loss** pada panel tipe '7'.
+	//
+	// Pointer supaya "klaim tidak punya DOL" dapat dibedakan dari "1 Januari tahun 1".
+	LossDate *time.Time
+
+	// CauseOfLoss adalah penyebab kerugian klaim, yang menjadi **Cause Of Loss Dipilih**
+	// pada panel tipe '8'.
+	CauseOfLoss string
+
+	// ObjectName dan BranchName melengkapi kedua panel.
+	ObjectName string
+	BranchName string
+}
+
+// ClaimRepo adalah seam ke pencarian klaim.
+//
+// Dideklarasikan di sini, di paket yang memakainya. Ia MURNI BACA — tidak ada satu pun
+// method yang menulis, dan itu bukan kebetulan melainkan batas yang dijaga `P-1`.
+type ClaimRepo interface {
+	// FindClaim mencari klaim menurut nomornya.
+	//
+	// Mengembalikan ErrClaimNotFound bila tidak ada — bukan Claim kosong. Claim kosong akan
+	// membuat form terisi nilai kosong seolah klaimnya ditemukan tanpa data, dan permintaan
+	// tersimpan menunjuk klaim yang tidak pernah ada.
+	FindClaim(ctx context.Context, number string) (Claim, error)
+}

@@ -24,6 +24,8 @@ import (
 // supaya handler dapat diuji tanpa membentuk seluruh layanan beserta penyimpanannya.
 type Service interface {
 	List(ctx context.Context, q usecase.ListQuery) (inputreqprotection.Page, error)
+	ListTypes(ctx context.Context, portalAlias string) ([]inputreqprotection.ProtectionType, error)
+	FindClaim(ctx context.Context, portalAlias, number string) (inputreqprotection.Claim, error)
 	Get(ctx context.Context, portalAlias, number string) (inputreqprotection.Protection, error)
 	Create(ctx context.Context, cmd usecase.SaveCommand) (inputreqprotection.Protection, error)
 	Update(ctx context.Context, cmd usecase.SaveCommand) (inputreqprotection.Protection, error)
@@ -124,6 +126,40 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, listResponse{Proteksi: rows, Total: page.Total})
+}
+
+// ListTypes melayani pembacaan master tipe proteksi untuk pilihan pada form.
+//
+// # Kenapa endpoint tersendiri, bukan disertakan pada daftar
+//
+// Daftar proteksi dibaca berkali-kali — setiap paginasi, setiap pencarian — sedangkan
+// pilihan tipe dibutuhkan sekali saat form dibuka. Menyertakannya pada setiap tanggapan
+// daftar berarti mengirim data yang sama berulang kali kepada layar yang tidak memakainya.
+//
+// # Tidak berhalaman, dan itu disengaja
+//
+// Masternya sembilan baris. Paginasi atas sembilan baris hanya menambah bentuk yang harus
+// ditangani frontend tanpa menyelesaikan masalah apa pun. Bila kelak tumbuh sampai ratusan,
+// yang berubah bukan endpoint ini melainkan cara form memilihnya — kotak cari, bukan
+// halaman.
+func (h *Handler) ListTypes(w http.ResponseWriter, r *http.Request) {
+	alias, ok := h.requirePortal(w, r)
+	if !ok {
+		return
+	}
+
+	types, err := h.service.ListTypes(r.Context(), alias)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	rows := make([]protectionTypeDTO, 0, len(types))
+	for _, t := range types {
+		rows = append(rows, protectionTypeDTO{Kode: t.ID, Nama: t.Name})
+	}
+
+	h.writeJSON(w, r, http.StatusOK, protectionTypeListResponse{Tipe: rows})
 }
 
 // Get melayani pembacaan satu permintaan proteksi beserta isian formnya.
@@ -306,4 +342,36 @@ func (h *Handler) readOffset(w http.ResponseWriter, r *http.Request) (int, bool)
 		return 0, false
 	}
 	return offset, true
+}
+
+// FindClaim melayani pencarian klaim yang hendak ditaut.
+//
+// # Kenapa layar memanggilnya, padahal server mencarinya lagi saat menyimpan
+//
+// Keduanya melayani hal berbeda. Yang ini membuat pengguna MELIHAT apa yang akan tersimpan
+// sebelum menekan Simpan — termasuk Current Date Of Loss dan Cause Of Loss Dipilih, yang
+// tidak dapat ia ketik. Yang saat menyimpan MENENTUKAN apa yang benar-benar tersimpan.
+//
+// Menghapus salah satunya menghilangkan hal yang berbeda: tanpa yang pertama pengguna
+// menyimpan sesuatu yang belum pernah ia lihat; tanpa yang kedua nilai "sebelum" dapat
+// dipalsukan lewat permintaan yang dirakit tangan.
+func (h *Handler) FindClaim(w http.ResponseWriter, r *http.Request) {
+	number := strings.TrimSpace(chi.URLParam(r, "nomor"))
+	if number == "" {
+		writeBadRequest(h.writeJSON, w, r, "Nomor klaim wajib disebutkan.")
+		return
+	}
+
+	alias, ok := h.requirePortal(w, r)
+	if !ok {
+		return
+	}
+
+	claim, err := h.service.FindClaim(r.Context(), alias, number)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toClaimDTO(claim, h.location))
 }

@@ -137,7 +137,7 @@ export function AcceptQueuePage() {
       title: 'Tipe Proteksi',
       width: '12rem',
       value: (p) => p.tipe_proteksi,
-      render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi)}</span>,
+      render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}</span>,
     },
     {
       key: 'tanggal_proteksi',
@@ -239,7 +239,7 @@ export function AcceptQueuePage() {
                 />
                 <Detail
                   label="Tipe Proteksi"
-                  value={protectionTypeLabel(detail.data.tipe_proteksi)}
+                  value={protectionTypeLabel(detail.data.tipe_proteksi, detail.data.nama_tipe_proteksi)}
                 />
                 <Detail
                   label="Tanggal Input"

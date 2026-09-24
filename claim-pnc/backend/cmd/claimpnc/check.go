@@ -105,7 +105,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
-	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
+	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
 
 	print("")
 	if login == "" {
@@ -1128,20 +1128,89 @@ func checkInboxProgressClaim(
 // Yang dibuktikan di sini: SQL-nya diterima Oracle, penanda bind-nya benar, dan
 // pembacaan 21 kolomnya cocok dengan tipe kolom yang sebenarnya. Yang TIDAK dibuktikan:
 // kesetaraan hasilnya dengan layar Pega — itu gerbang 1, milik `S-8`.
-func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, print func(string, ...any)) {
-	// Tanpa batas lini: memeriksa tabelnya, bukan kewenangan seseorang.
+func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, login string, print func(string, ...any)) {
+	// Daftar TANPA pemilik tidak lagi mungkin, dan itu memang yang dikehendaki: layar ini
+	// menyaring `PXASSIGNEDOPERATORID = pemanggil`, sehingga memeriksanya tanpa identitas
+	// berarti memeriksa sesuatu yang tidak pernah dijalankan aplikasi.
+	// Unduhan diperiksa LEBIH DULU, dan sengaja TANPA -login.
+	//
+	// Ia tidak menyaring pemilik pekerjaan sama sekali, sehingga ia satu-satunya bagian
+	// modul ini yang dapat dibuktikan tanpa identitas. Menaruhnya sesudah penjagaan login
+	// di bawah akan membuatnya ikut terlewat — persis anggapan keliru yang membuat export
+	// dulu memanggil ulang daftar.
+	checkOutstandingExport(ctx, repo, login, print)
+
+	if login == "" {
+		print("  [lewat] My Inbox: butuh -login <nama pengguna> — daftarnya menyaring per pemilik")
+		return
+	}
+
+	// Identitas lama dibaca dulu, dan hasilnya DICETAK.
+	//
+	// Tanpa baris ini, "0 pekerjaan" punya dua sebab yang tampak sama: memang tidak ada
+	// pekerjaan, atau identitas login tidak pernah dipetakan ke nama operator Pega.
+	legacy, err := repo.LegacyOperatorFor(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.T_ACCESS_GROUP_PNC tidak dapat dibaca: %v", err)
+		return
+	}
+	if legacy == "" {
+		print("  [catat] %s tidak punya identitas lama — hanya identitas ini yang dicocokkan", login)
+	} else {
+		print("  [ok]    identitas lama %s: %s", login, legacy)
+	}
+
 	page, err := repo.List(ctx, inboxoutstanding.Filter{
-		Scope: inboxoutstanding.LineScope{Unrestricted: true},
-		Limit: 5,
+		AssignedTo:       login,
+		AssignedToLegacy: legacy,
+		Limit:            5,
 	})
 	if err != nil {
 		print("  [BELUM] POOLDATA.T_CLAIMLIST_ADMIN tidak dapat dibaca: %v", err)
 		print("            Tabelnya milik sistem lama, bukan dibuat migrasi. Selama belum ada,")
-		print("            layar Inbox Outstanding tidak dapat dipakai terhadap Oracle.")
+		print("            layar My Inbox tidak dapat dipakai terhadap Oracle.")
 		return
 	}
 
-	print("  [ok]    POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: %d klaim masih berjalan", page.Total)
+	print("  [ok]    POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: %d pekerjaan milik %s", page.Total, login)
+
+	// Ringkasan donut diperiksa terhadap Oracle sungguhan.
+	//
+	// Yang dibuktikan di sini bukan angkanya melainkan JUMLAHNYA: irisan-irisan wajib
+	// menjumlah menjadi total. Donut yang bagian-bagiannya tidak menjumlah menjadi
+	// keseluruhan tetap tergambar rapi, dan tidak ada galat yang menandainya.
+	ringkasan, err := repo.SummarizeDocumentStatus(ctx, inboxoutstanding.Filter{
+		AssignedTo:       login,
+		AssignedToLegacy: legacy,
+	})
+	if err != nil {
+		print("  [BELUM] ringkasan status dokumen tidak dapat dihitung: %v", err)
+	} else {
+		// Hanya tab yang BENAR-BENAR dihitung ikut dijumlahkan.
+		//
+		// Yang jumlahnya nil belum punya kueri, dan memperlakukannya sebagai nol akan
+		// membuat pemeriksaan ini lulus karena alasan yang salah.
+		jumlah := 0
+		for _, s := range ringkasan.Status {
+			if s.Count == nil {
+				print("            %-28s (belum dihitung)", s.Label)
+				continue
+			}
+			print("            %-28s %d klaim", s.Label, *s.Count)
+
+			// "ALL Case" adalah totalnya sendiri, bukan salah satu bagiannya.
+			if s.Status == inboxoutstanding.StatusAll {
+				continue
+			}
+			jumlah += *s.Count
+		}
+		if jumlah != ringkasan.Total {
+			print("  [GAGAL] tab berjumlah %d, total %d — donut akan berbohong",
+				jumlah, ringkasan.Total)
+		} else {
+			print("  [ok]    tab yang terhitung menjumlah tepat menjadi %d", ringkasan.Total)
+		}
+	}
 
 	for _, c := range page.Claims {
 		nomor := c.ClaimNumber
@@ -1157,4 +1226,49 @@ func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, print
 		print("            %-16s %-8s panel %-4s aging %-5s %s",
 			nomor, c.DisplayStatus(), c.GroupPanel, aging, c.CurrentStage)
 	}
+}
+
+// checkOutstandingExport membuktikan kueri unduhan sah dan TIDAK terikat pemilik.
+//
+// Ia mencetak jumlah baris untuk kelima cakupan sekaligus. Angka-angka itulah yang
+// membedakan "cakupannya bekerja" dari "cakupannya diabaikan": bila kelimanya sama, berarti
+// penyaring lini bisnis tidak menggigit sama sekali.
+func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo, login string, print func(string, ...any)) {
+	cakupan := []struct {
+		nama string
+		line inboxoutstanding.LineBusiness
+	}{
+		{"tanpa cakupan", inboxoutstanding.LineUnknown},
+		{"NONMBU", inboxoutstanding.LineNonMBU},
+		{"PA", inboxoutstanding.LinePA},
+		{"TRAVEL", inboxoutstanding.LineTravel},
+		{"BONDING", inboxoutstanding.LineBonding},
+	}
+
+	for i, c := range cakupan {
+		// Limit 1: yang dicari jumlahnya, bukan isinya.
+		page, err := repo.Export(ctx, inboxoutstanding.ExportFilter{LineBusiness: c.line, Limit: 1})
+		if err != nil {
+			print("  [BELUM] unduhan My Inbox tidak dapat dijalankan: %v", err)
+			return
+		}
+		if i == 0 {
+			print("  [ok]    unduhan My Inbox berjalan TANPA penyaring pemilik pekerjaan")
+		}
+		print("            cakupan %-14s %d baris", c.nama, page.Total)
+	}
+
+	if login == "" {
+		return
+	}
+	line, err := repo.LineBusinessFor(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.M_LOGIN_PNC.LINE_BUSINESS tidak dapat dibaca: %v", err)
+		return
+	}
+	if line == inboxoutstanding.LineUnknown {
+		print("  [catat] %s belum punya LINE_BUSINESS — unduhannya memakai cakupan penuh", login)
+		return
+	}
+	print("  [ok]    lini bisnis %s: %s", login, line)
 }

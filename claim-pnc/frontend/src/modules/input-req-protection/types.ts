@@ -21,13 +21,19 @@ export type Protection = {
   nomor_klaim: string
 
   /**
-   * Kolom "Tipe Proteksi" — KODE, bukan label.
+   * Kolom "Tipe Proteksi" — KODE (`PROTECTION_TYPE_ID`).
    *
-   * Label untuk sebagian besar nilai tidak diketahui: daftarnya tinggal di rule Property
-   * Pega yang tidak ikut diekspor (`R-16`). Yang terbukti hanya tiga — lihat
-   * `PROTECTION_TYPE_LABEL`.
+   * Tetap dikirim meski namanya sudah ada: kodenya yang dipakai form saat menyunting, dan
+   * kodenya yang menentukan antrean akseptasi.
    */
   tipe_proteksi: string
+
+  /**
+   * Nama tipe dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
+   *
+   * KOSONG bila kodenya tidak terdaftar di master — lihat `protectionTypeLabel`.
+   */
+  nama_tipe_proteksi: string
 
   /** YYYY-MM-DD dalam WIB; backend yang mengonversinya dari UTC. */
   tanggal_proteksi: string // kolom "Tanggal Proteksi Dibuat"
@@ -65,10 +71,13 @@ export type ChangeDetail = {
 /** Satu permintaan proteksi beserta isian formnya. */
 export type ProtectionDetail = Protection & {
   /**
-   * Klaim yang benar-benar DITEMUKAN, bukan yang diketik.
+   * **ClaimID**, kolom `ID_CLAIM`. HANYA DIBACA.
    *
-   * Kosongnya berarti pengguna baru mengetik nomor klaim tanpa mencarinya, dan backend
-   * menolak penyimpanan dengan pesan "Silakan Tulis dan Cari Ulang No Klaim".
+   * Pada baris baru nilainya SAMA dengan `nomor_klaim` — server menurunkannya, dan form
+   * tidak mengirimkannya (Work Owner, 2026-09-24).
+   *
+   * Pada baris WARISAN ia berbeda: Pega menyimpan kunci teknisnya di sana,
+   * `ASM-FW-GCNMFW-WORK PNC-xxxx`. Form menampilkannya hanya ketika berbeda.
    */
   referensi_klaim: string
 
@@ -80,14 +89,49 @@ export type ProtectionListResponse = {
   total: number
 }
 
-/** Isian form yang dikirim saat menyimpan. */
+/**
+ * Isian form yang dikirim saat menyimpan.
+ *
+ * # Yang TIDAK ada di sini, dan kenapa
+ *
+ * `nomor_polis`, `nama_objek`, `nama_cabang`, `dol_sebelum`, dan `penyebab_kerugian` semuanya
+ * DITURUNKAN dari klaim — `Activity/OpenProtection-Act.xml` mengisinya saat klaim dicari,
+ * dan di sistem lama pun keenamnya tidak pernah diketik.
+ *
+ * Mengirimnya dari sini berarti mempercayai peramban untuk menyatakan keadaan klaim yang
+ * bukan miliknya. Server menurunkannya ULANG saat menyimpan, sehingga apa pun yang dikirim
+ * dari sini tidak akan terpakai.
+ */
 export type ProtectionFields = {
-  nomor_polis: string
   nomor_klaim: string
-  referensi_klaim: string
   tipe_proteksi: string
   keterangan: string
-  detail_perubahan: ChangeDetail
+  detail_perubahan: ChangeRequestFields
+}
+
+/** Bagian panel Detail Perubahan yang benar-benar DIPILIH pengguna. */
+export type ChangeRequestFields = {
+  /** "Next Date Of Loss" — wajib untuk tipe `7`. */
+  dol_baru: string
+
+  /** "Next Cause Of Loss" — wajib untuk tipe `8`. */
+  penyebab_kerugian_baru: string
+}
+
+/** Hasil pencarian klaim; seluruhnya HANYA DIBACA di layar. */
+export type ClaimLookup = {
+  nomor_klaim: string
+  nomor_polis: string
+  nama_tertanggung: string
+
+  /** "Current Date Of Loss". Kosong bila klaimnya tidak punya DOL tercatat. */
+  dol: string
+
+  /** "Cause Of Loss Dipilih". */
+  penyebab_kerugian: string
+
+  nama_objek: string
+  nama_cabang: string
 }
 
 /** Penyaring daftar. Seluruhnya opsional; kosong berarti tidak menyaring. */
@@ -112,27 +156,43 @@ export const TYPE_CHANGE_LOSS_DATE = '7'
 export const TYPE_CHANGE_CAUSE_OF_LOSS = '8'
 
 /**
- * Label tipe proteksi yang boleh ditampilkan.
+ * Satu pilihan tipe proteksi, dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
  *
- * # Kenapa daftarnya pendek, dan kenapa itu disengaja
- *
- * Nilai `1`, `3`, `4`, `5`, dan `6` juga dipakai di sistem lama, tetapi LABELNYA TIDAK
- * DIKETAHUI — daftarnya ada di rule Property yang tidak ikut diekspor (`R-16`).
- *
- * Kode yang tidak ada di sini ditampilkan APA ADANYA. Menebak labelnya akan lebih buruk
- * daripada menampilkan kode: kode mentah di layar segera ditanyakan pengguna, label yang
- * salah diterima begitu saja.
- *
- * Begitu Work Owner menyerahkan daftarnya, isian ini pindah ke master data (`F-4`) dan
- * konstanta ini dibuang.
+ * Fieldnya `kode` dan `nama`, bukan `id` dan `label`: keduanya menyebut apa yang dilihat
+ * pengguna, dan `kode` itulah yang tampil di layar ketika namanya tidak ada.
  */
-export const PROTECTION_TYPE_LABEL: Record<string, string> = {
-  [TYPE_PREMIUM]: 'Proteksi Klaim PREMI',
-  [TYPE_CHANGE_LOSS_DATE]: 'Perubahan DOL',
-  [TYPE_CHANGE_CAUSE_OF_LOSS]: 'Perubahan Cause Of Loss',
+export type ProtectionType = {
+  kode: string
+  nama: string
 }
 
-/** Menampilkan label tipe proteksi bila diketahui, atau kodenya apa adanya bila tidak. */
-export function protectionTypeLabel(code: string): string {
-  return PROTECTION_TYPE_LABEL[code] ?? code
+/** Tanggapan endpoint master tipe. */
+export type ProtectionTypeListResponse = {
+  tipe: ProtectionType[]
+}
+
+/**
+ * Menampilkan nama tipe proteksi, atau kodenya apa adanya bila namanya tidak ada.
+ *
+ * # Kenapa daftarnya TIDAK lagi ada di berkas ini
+ *
+ * Sampai 2026-09-24 berkas ini memuat `PROTECTION_TYPE_LABEL` berisi tiga label yang
+ * artinya terbukti dari export. Lima nilai lain dipakai tanpa label yang diketahui
+ * (`R-16`), dan kodenya ditampilkan apa adanya.
+ *
+ * Master `M_CLAIM_PROTECTION_TYPE` kemudian diterima berisi KESEMBILAN tipe beserta
+ * namanya — termasuk `9` "Nama Rekening Tidak Sesuai", yang dipakai 25 baris produksi dan
+ * NOL kemunculan di export. Daftar tebakan mana pun akan melewatkannya.
+ *
+ * Karena itu nama datang dari server, dan berkas ini tidak lagi memetakan kode ke nama.
+ * Yang tersisa hanyalah aturan tampilannya: nama bila ada, kode bila tidak.
+ *
+ * # Kenapa kode, bukan tanda hubung
+ *
+ * Kode tipe yang tidak terdaftar adalah data yang perlu ditanyakan manusia. Menggantinya
+ * dengan tanda hubung membuatnya tidak pernah ditanyakan.
+ */
+export function protectionTypeLabel(code: string, name?: string): string {
+  const nama = name?.trim()
+  return nama ? nama : code
 }

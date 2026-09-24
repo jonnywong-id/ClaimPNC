@@ -22,6 +22,7 @@ function protection(partial: Partial<Protection> = {}): Protection {
     nomor_polis: '99.001.2026.00000001',
     nomor_klaim: '',
     tipe_proteksi: '1',
+    nama_tipe_proteksi: 'General',
     tanggal_proteksi: '2026-09-16',
     keterangan: 'Permintaan contoh.',
     user_create: 'ADMINCONTOH',
@@ -46,9 +47,58 @@ function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
+/**
+ * Master tipe proteksi, sebagaimana dikirim `GET /api/input-req-protection/tipe`.
+ *
+ * Kesembilannya disalin dari `POOLDATA.M_CLAIM_PROTECTION_TYPE`. Uji yang memakai daftar
+ * karangan akan lulus sambil menyembunyikan salah pemetaan kode ke nama — dan salah itu
+ * baru terlihat di layar pengguna.
+ */
+const KLAIM = {
+  nomor_klaim: 'PNCN.26.0007',
+  nomor_polis: '99.001.2026.00000001',
+  nama_tertanggung: 'TERTANGGUNG CONTOH',
+  dol: '2026-08-01',
+  penyebab_kerugian: 'Kebakaran',
+  nama_objek: 'OBJEK CONTOH',
+  nama_cabang: 'CABANG CONTOH',
+}
+
+const TIPE = {
+  tipe: [
+    { kode: '1', nama: 'General' },
+    { kode: '2', nama: 'Premi Belum Lunas' },
+    { kode: '3', nama: 'Asuransi Kredit' },
+    { kode: '4', nama: 'Pengkinian Data' },
+    { kode: '5', nama: 'Currency Klaim' },
+    { kode: '6', nama: 'Klaim >= 50 M' },
+    { kode: '7', nama: 'Perubahan DOL' },
+    { kode: '8', nama: 'Perubahan COL' },
+    { kode: '9', nama: 'Nama Rekening Tidak Sesuai' },
+  ],
+}
+
+/**
+ * Memasang tiruan fetch.
+ *
+ * Permintaan master tipe DIJAWAB SENDIRI di sini dan tidak pernah sampai ke `answer`. Layar
+ * membacanya pada setiap render, dan tanpa jawaban yang benar pilihan tipe menjadi kosong —
+ * sehingga uji yang sama sekali tidak berurusan dengan master pun ikut gagal.
+ *
+ * Tiruan yang menjawab SATU bentuk untuk semua URL memang lebih ringkas, tetapi ia berhenti
+ * dapat dipercaya begitu layar menembak lebih dari satu endpoint: yang diuji menjadi
+ * kebetulan, bukan kontrak.
+ *
+ * Uji yang kelak perlu menguji KEGAGALAN master memasang `vi.stubGlobal` sendiri. Belum ada
+ * yang membutuhkannya, dan menyiapkan sakelar untuk kebutuhan yang belum ada hanya menambah
+ * bentuk yang harus dibaca.
+ */
 function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promise<Response>) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
+
+    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
+    if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(200, KLAIM))
     return Promise.resolve(answer(url, init))
   })
 }
@@ -138,16 +188,28 @@ it('menyatakan proteksi yang belum tertaut klaim, bukan membiarkan selnya kosong
   expect(await screen.findByText('belum tertaut')).toBeInTheDocument()
 })
 
-// Kode tipe yang labelnya tidak diketahui ditampilkan APA ADANYA (`R-16`). Menebak label
-// akan diterima pengguna begitu saja; kode mentah segera ditanyakan.
-it('menampilkan kode tipe proteksi yang belum berlabel apa adanya', async () => {
+// Nama tipe datang BERSAMA barisnya, dari master `M_CLAIM_PROTECTION_TYPE`. Kode yang tidak
+// terdaftar di master tetap TAMPIL sebagai kodenya — bukan kosong dan bukan tanda hubung.
+//
+// Aturan itu yang menyelamatkan tipe '9': ia dipakai 25 baris produksi dan NOL kemunculan di
+// export Pega, sehingga daftar tebakan mana pun akan melewatkannya.
+it('menampilkan nama tipe dari master, dan kodenya apa adanya bila tak terdaftar', async () => {
   stubFetch(() =>
     jsonResponse(
       200,
       listResponse({
         proteksi: [
-          protection({ nomor_proteksi: 'OPCN.26.0001', tipe_proteksi: '7' }),
-          protection({ nomor_proteksi: 'OPCN.26.0002', tipe_proteksi: '5' }),
+          protection({
+            nomor_proteksi: 'OPCN.26.0001',
+            tipe_proteksi: '7',
+            nama_tipe_proteksi: 'Perubahan DOL',
+          }),
+          // Kode yang tidak ada di master: namanya kosong, sehingga kodenya yang tampil.
+          protection({
+            nomor_proteksi: 'OPCN.26.0002',
+            tipe_proteksi: '99',
+            nama_tipe_proteksi: '',
+          }),
         ],
         total: 2,
       }),
@@ -156,7 +218,7 @@ it('menampilkan kode tipe proteksi yang belum berlabel apa adanya', async () => 
   renderPage()
 
   expect(await screen.findByText('Perubahan DOL')).toBeInTheDocument()
-  expect(screen.getByText('5')).toBeInTheDocument()
+  expect(screen.getByText('99')).toBeInTheDocument()
 })
 
 // Pencarian dikerjakan SERVER: daftarnya hanya dibatasi "belum diakseptasi", sehingga
@@ -187,7 +249,39 @@ it('membuka form kosong saat tombol Input Open Protection ditekan', async () => 
   expect(screen.getByRole('heading', { name: 'Input Open Protection' })).toBeInTheDocument()
   // Pencocokan label PERSIS, bukan pola: judul kolom tabel memuat teks yang sama, dan pola
   // akan menemukan keduanya.
-  expect(screen.getByLabelText('No Polis')).toHaveValue('')
+  expect(screen.getByLabelText('No Polis (dari klaim)')).toHaveValue('')
+})
+
+// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang SAMA, dan
+// server menurunkan ClaimID dari No Klaim.
+//
+// Dua isian yang wajib sama tetapi diketik terpisah akan berbeda cepat atau lambat, dan
+// perbedaannya tidak menghasilkan galat apa pun — hanya proteksi yang menunjuk dua klaim
+// berbeda. Uji ini menggagalkan pengembalian isian kedua itu.
+it('tidak menanyakan ClaimID kedua kalinya, dan tidak mengirimkannya', async () => {
+  let badan: Record<string, unknown> = {}
+
+  stubFetch((_url, init) => {
+    if (init?.method === 'POST') {
+      badan = JSON.parse(String(init.body)) as Record<string, unknown>
+      return jsonResponse(201, {})
+    }
+    return jsonResponse(200, listResponse())
+  })
+  renderPage()
+
+  await screen.findByText('OPCN.26.0001')
+  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
+
+  expect(screen.queryByLabelText(/Referensi Klaim/)).not.toBeInTheDocument()
+
+  await userEvent.type(screen.getByLabelText('No Klaim'), 'PNCN.26.0007')
+  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '1')
+  await userEvent.type(screen.getByLabelText('Keterangan'), 'Keterangan contoh.')
+  await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+  await waitFor(() => expect(badan['nomor_klaim']).toBe('PNCN.26.0007'))
+  expect(badan).not.toHaveProperty('referensi_klaim')
 })
 
 // Pelanggaran validasi dikirim backend SEKALIGUS dan ditempelkan ke kolomnya masing-masing
@@ -200,7 +294,7 @@ it('menempelkan pelanggaran validasi ke kolomnya masing-masing', async () => {
         kode: 'validasi_gagal',
         pesan: 'Isian belum lengkap atau belum benar.',
         detail: [
-          { field: 'no_polis', pesan: 'No Polis wajib diisi.' },
+          { field: 'no_klaim', pesan: 'No Klaim wajib diisi.' },
           { field: 'keterangan', pesan: 'Keterangan wajib diisi.' },
         ],
       })
@@ -215,19 +309,14 @@ it('menempelkan pelanggaran validasi ke kolomnya masing-masing', async () => {
   // Isian wajib diisi lebih dulu supaya peramban benar-benar MENGIRIM permintaannya —
   // isian ber-`required` yang kosong ditahan peramban, dan penolakan backend tidak akan
   // pernah terjadi. Yang diuji di sini adalah penolakan BACKEND, bukan penolakan peramban.
-  await userEvent.type(screen.getByLabelText('No Polis'), '99.001.2026.00000001')
   await userEvent.type(screen.getByLabelText('No Klaim'), 'PNCN.26.0007')
-  await userEvent.type(
-    screen.getByLabelText('Referensi Klaim (hasil pencarian)'),
-    'KLAIM-CONTOH-0007',
-  )
   await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '7')
   await userEvent.type(screen.getByLabelText('Next Date Of Loss'), '2026-08-17')
   await userEvent.type(screen.getByLabelText('Keterangan'), 'Keterangan contoh.')
 
   await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
-  expect(await screen.findByText('No Polis wajib diisi.')).toBeInTheDocument()
+  expect(await screen.findByText('No Klaim wajib diisi.')).toBeInTheDocument()
   expect(screen.getByText('Keterangan wajib diisi.')).toBeInTheDocument()
 })
 

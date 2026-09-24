@@ -17,6 +17,7 @@ function protection(partial: Partial<Protection> = {}): Protection {
     nomor_polis: '99.001.2026.00000001',
     nomor_klaim: 'PNCN.26.0007',
     tipe_proteksi: '1',
+    nama_tipe_proteksi: 'General',
     tanggal_proteksi: '2026-09-17',
     keterangan: 'Menunggu akseptasi.',
     user_create: 'ADMINCONTOH',

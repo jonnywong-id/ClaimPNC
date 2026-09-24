@@ -28,12 +28,22 @@ type protectionDTO struct {
 	NomorPolis string `json:"nomor_polis"` // kolom "No Polis"
 	NomorKlaim string `json:"nomor_klaim"` // kolom "No Klaim"
 
-	// TipeProteksi dikirim sebagai KODE, bukan label.
+	// TipeProteksi adalah KODE tipe, `PROTECTION_TYPE_ID`.
 	//
-	// Labelnya tidak diketahui untuk sebagian besar nilai — daftarnya tinggal di rule
-	// Property yang tidak ikut diekspor (`R-16`). Mengirim label yang ditebak akan
-	// diterima pengguna begitu saja; mengirim kode membuatnya segera ditanyakan.
+	// Ia tetap dikirim meski namanya sudah ada, karena kodenya yang dipakai form saat
+	// menyunting dan yang menentukan antrean akseptasi.
 	TipeProteksi string `json:"tipe_proteksi"`
+
+	// NamaTipeProteksi adalah nama dari `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
+	//
+	// KOSONG bila kodenya tidak terdaftar di master. Layar menampilkan kodenya apa adanya
+	// dalam keadaan itu — BUKAN tanda hubung, dan bukan tebakan.
+	//
+	// Sebelum master diterima (2026-09-24), seluruh layar memang menampilkan kode: label
+	// '1', '3', '4', '5', '6', dan '9' tidak ada di satu pun berkas export (`R-16`).
+	// Keputusan menampilkan kode apa adanya saat itu ternyata menyelamatkan tipe '9', yang
+	// dipakai 25 baris produksi dan nol kemunculan di export.
+	NamaTipeProteksi string `json:"nama_tipe_proteksi"`
 
 	// TanggalProteksi adalah kolom **"Tanggal Proteksi Dibuat"**.
 	//
@@ -68,7 +78,14 @@ type protectionDTO struct {
 type detailDTO struct {
 	protectionDTO
 
-	// ReferensiKlaim adalah klaim yang benar-benar DITEMUKAN, bukan yang diketik.
+	// ReferensiKlaim adalah **ClaimID**, kolom `ID_CLAIM`.
+	//
+	// Hanya DIBACA — form tidak lagi mengirimkannya, karena server menurunkannya dari
+	// nomor klaim (Work Owner, 2026-09-24: keduanya berisi nilai yang sama).
+	//
+	// Tetap dikirim ke klien karena pada baris WARISAN nilainya BERBEDA: Pega menyimpan
+	// kunci teknisnya di sana, `ASM-FW-GCNMFW-WORK PNC-xxxx`. Menghilangkannya akan membuat
+	// baris warisan tampak seolah ClaimID-nya sama dengan nomor klaimnya.
 	ReferensiKlaim string `json:"referensi_klaim"`
 
 	// DetailPerubahan terisi hanya untuk tipe '7' dan '8'.
@@ -76,17 +93,45 @@ type detailDTO struct {
 }
 
 // detailPerubahanDTO adalah isi panel "Detail Perubahan" pada form.
+// Seluruh field di sini HANYA DIBACA. Yang dikirim klien saat menyimpan ada di
+// detailPerubahanRequest, dan isinya hanya dua.
 type detailPerubahanDTO struct {
-	// DOLSebelum dan DOLBaru dipakai tipe '7'. Kosong berarti tidak diisi.
+	// DOLSebelum adalah **Current Date Of Loss** — dari KLAIM, bukan dari isian.
 	DOLSebelum string `json:"dol_sebelum"`
-	DOLBaru    string `json:"dol_baru"`
 
-	// PenyebabKerugian dan PenyebabKerugianMaster dipakai tipe '8'.
-	PenyebabKerugian       string `json:"penyebab_kerugian"`
+	// DOLBaru adalah **Next Date Of Loss** — dipilih pengguna.
+	DOLBaru string `json:"dol_baru"`
+
+	// PenyebabKerugian adalah **Cause Of Loss Dipilih** — dari KLAIM.
+	PenyebabKerugian string `json:"penyebab_kerugian"`
+
+	// PenyebabKerugianMaster adalah **Next Cause Of Loss** — dipilih pengguna.
+	//
+	// Namanya menyesatkan dan dipertahankan apa adanya supaya kontraknya tidak berubah dua
+	// kali dalam satu hari. Yang menjadi acuan adalah label Pega di atas.
 	PenyebabKerugianMaster string `json:"penyebab_kerugian_master"`
 
+	// NamaObjek dan NamaCabang — dari KLAIM.
 	NamaObjek  string `json:"nama_objek"`
 	NamaCabang string `json:"nama_cabang"`
+}
+
+// detailPerubahanRequest adalah bagian panel yang BENAR-BENAR dikirim klien.
+//
+// # Kenapa bentuknya berbeda dari yang dibaca
+//
+// Empat dari enam field pada panel berasal dari KLAIM, bukan dari isian — lihat
+// `Activity/OpenProtection-Act.xml`. Menerimanya dari klien berarti mempercayai pengirim
+// untuk menyatakan keadaan klaim yang bukan miliknya.
+//
+// Bentuk yang berbeda antara baca dan tulis di sini bukan ketidakrapian melainkan
+// pernyataan: yang dapat dikirim hanyalah yang memang milik pengirim.
+type detailPerubahanRequest struct {
+	// DOLBaru — "Next Date Of Loss". Wajib untuk tipe '7'.
+	DOLBaru string `json:"dol_baru"`
+
+	// PenyebabKerugianBaru — "Next Cause Of Loss". Wajib untuk tipe '8'.
+	PenyebabKerugianBaru string `json:"penyebab_kerugian_baru"`
 }
 
 // listResponse adalah badan respons daftar.
@@ -95,20 +140,49 @@ type listResponse struct {
 	Total    int             `json:"total"`
 }
 
+// protectionTypeDTO adalah satu pilihan tipe proteksi pada form.
+//
+// Nama fieldnya `kode` dan `nama`, bukan `id` dan `label`: keduanya menyebut apa yang
+// dilihat pengguna, dan `kode` itulah yang muncul di layar ketika namanya tidak ada.
+type protectionTypeDTO struct {
+	Kode string `json:"kode"`
+	Nama string `json:"nama"`
+}
+
+// protectionTypeListResponse membungkus daftar tipe.
+//
+// Dibungkus objek, bukan dikirim sebagai array telanjang. Array di akar tanggapan tidak
+// punya tempat untuk menambahkan keterangan kelak — dan setiap penambahan setelahnya
+// menjadi perubahan yang merusak klien.
+type protectionTypeListResponse struct {
+	Tipe []protectionTypeDTO `json:"tipe"`
+}
+
 // saveRequest adalah badan permintaan simpan, dipakai membuat maupun menyunting.
 //
 // Ia TIDAK memuat nomor proteksi, pembuat, maupun waktu pembuatan. Ketiganya diterbitkan
 // server: nomor dari pencacah, pembuat dari sesi, waktu dari jam aplikasi. Menerimanya dari
 // klien akan membuat siapa pun dapat menentukan nomor proteksinya sendiri dan menyimpan
 // atas nama orang lain.
+// # `referensi_klaim` TIDAK diterima di sini, dan itu disengaja
+//
+// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang sama.
+// `ID_CLAIM` karena itu diturunkan server dari `nomor_klaim`.
+//
+// Menerimanya lalu MENGABAIKANNYA diam-diam akan lebih buruk daripada menolaknya: klien
+// yang mengirimnya akan mengira nilainya tersimpan. Field yang tidak dikenal pada badan
+// JSON diabaikan `encoding/json` tanpa galat — itu perilaku yang diterima, dan bentuk
+// tanggapannya yang memberi tahu nilai sebenarnya yang tersimpan.
 type saveRequest struct {
-	NomorPolis     string `json:"nomor_polis"`
-	NomorKlaim     string `json:"nomor_klaim"`
-	ReferensiKlaim string `json:"referensi_klaim"`
-	TipeProteksi   string `json:"tipe_proteksi"`
-	Keterangan     string `json:"keterangan"`
+	// NomorPolis TIDAK diterima di sini, dan itu disengaja.
+	//
+	// `Activity/OpenProtection-Act.xml` mengisi `pyWorkPage.PolicyNo` dari klaim yang
+	// ditemukan — di sistem lama pun ia tidak pernah diketik. Server menurunkannya.
+	NomorKlaim   string `json:"nomor_klaim"`
+	TipeProteksi string `json:"tipe_proteksi"`
+	Keterangan   string `json:"keterangan"`
 
-	DetailPerubahan detailPerubahanDTO `json:"detail_perubahan"`
+	DetailPerubahan detailPerubahanRequest `json:"detail_perubahan"`
 }
 
 // ── Penerjemahan ─────────────────────────────────────────────────────────────────
@@ -119,15 +193,16 @@ const tanggalFormat = "2006-01-02"
 // toProtectionDTO menerjemahkan satu proteksi menjadi baris layar.
 func toProtectionDTO(p inputreqprotection.Protection, location *time.Location) protectionDTO {
 	return protectionDTO{
-		NomorProteksi:   p.Number,
-		NomorPolis:      p.PolicyNumber,
-		NomorKlaim:      p.ClaimNumber,
-		TipeProteksi:    p.Type,
-		TanggalProteksi: formatDate(p.InputDate, location),
-		Keterangan:      p.Note,
-		UserCreate:      p.CreatedBy,
-		DapatDisunting:  p.Editable(),
-		Premi:           inputreqprotection.IsPremium(p.Type),
+		NomorProteksi:    p.Number,
+		NomorPolis:       p.PolicyNumber,
+		NomorKlaim:       p.ClaimNumber,
+		TipeProteksi:     p.Type,
+		NamaTipeProteksi: p.TypeName,
+		TanggalProteksi:  formatDate(p.InputDate, location),
+		Keterangan:       p.Note,
+		UserCreate:       p.CreatedBy,
+		DapatDisunting:   p.Editable(),
+		Premi:            inputreqprotection.IsPremium(p.Type),
 	}
 }
 
@@ -155,18 +230,12 @@ func toDetailDTO(p inputreqprotection.Protection, location *time.Location) detai
 // galat bentuk yang menyembunyikan pelanggaran lain yang juga ada.
 func toDraft(req saveRequest, location *time.Location) inputreqprotection.Draft {
 	return inputreqprotection.Draft{
-		PolicyNumber:   req.NomorPolis,
-		ClaimNumber:    req.NomorKlaim,
-		ClaimReference: req.ReferensiKlaim,
-		Type:           req.TipeProteksi,
-		Note:           req.Keterangan,
-		ChangeDetail: inputreqprotection.ChangeDetail{
-			LossDateBefore:      parseDate(req.DetailPerubahan.DOLSebelum, location),
-			LossDateAfter:       parseDate(req.DetailPerubahan.DOLBaru, location),
-			CauseOfLossID:       req.DetailPerubahan.PenyebabKerugian,
-			CauseOfLossMasterID: req.DetailPerubahan.PenyebabKerugianMaster,
-			ObjectName:          req.DetailPerubahan.NamaObjek,
-			BranchName:          req.DetailPerubahan.NamaCabang,
+		ClaimNumber: req.NomorKlaim,
+		Type:        req.TipeProteksi,
+		Note:        req.Keterangan,
+		Change: inputreqprotection.ChangeRequest{
+			LossDateAfter:    parseDate(req.DetailPerubahan.DOLBaru, location),
+			CauseOfLossAfter: req.DetailPerubahan.PenyebabKerugianBaru,
 		},
 	}
 }
@@ -202,4 +271,42 @@ func parseDate(s string, location *time.Location) *time.Time {
 		return nil
 	}
 	return &parsed
+}
+
+// claimDTO adalah hasil pencarian klaim, untuk mengisi field TURUNAN pada form.
+//
+// Seluruh isinya hanya-baca di layar. Ia dikirim supaya pengguna MELIHAT apa yang akan
+// tersimpan sebelum menekan Simpan — bukan supaya layar mengirimkannya kembali.
+type claimDTO struct {
+	NomorKlaim string `json:"nomor_klaim"`
+
+	// NomorPolis dan NamaTertanggung mengisi kepala form.
+	NomorPolis      string `json:"nomor_polis"`
+	NamaTertanggung string `json:"nama_tertanggung"`
+
+	// DateOfLoss adalah **Current Date Of Loss** pada panel tipe '7'.
+	//
+	// KOSONG bila klaimnya tidak punya DOL tercatat. Itu keadaan yang sah: hanya 1.740 dari
+	// 2.166 baris `T_CLAIM_PNC` memilikinya, dan menolak klaim seperti itu akan menolak
+	// klaim yang jelas-jelas ada.
+	DateOfLoss string `json:"dol"`
+
+	// PenyebabKerugian adalah **Cause Of Loss Dipilih** pada panel tipe '8'.
+	PenyebabKerugian string `json:"penyebab_kerugian"`
+
+	NamaObjek  string `json:"nama_objek"`
+	NamaCabang string `json:"nama_cabang"`
+}
+
+// toClaimDTO menerjemahkan hasil pencarian menjadi bentuk layar.
+func toClaimDTO(c inputreqprotection.Claim, location *time.Location) claimDTO {
+	return claimDTO{
+		NomorKlaim:       c.Number,
+		NomorPolis:       c.PolicyNumber,
+		NamaTertanggung:  c.InsuredName,
+		DateOfLoss:       formatDatePtr(c.LossDate, location),
+		PenyebabKerugian: c.CauseOfLoss,
+		NamaObjek:        c.ObjectName,
+		NamaCabang:       c.BranchName,
+	}
 }

@@ -40,17 +40,24 @@ type Repo struct {
 
 	protections []inputreqprotection.Protection
 
-	// counters memetakan tahun ke nomor urut terakhir yang terbit pada tahun itu.
+	// counter adalah nomor urut terakhir yang terbit, TANPA dipisah per tahun.
 	//
-	// Bentuknya menirukan tabel pencacah `CPNC_NOMOR_KLAIM (TAHUN, TERAKHIR)` yang dipakai
-	// nomor klaim, bukan sequence global — karena `OPCN.YY.xxxx` membawa tahun di dalam
-	// nomornya, dan tanpa reset tahunan segmen itu tidak membedakan apa pun.
-	counters map[int]int64
+	// # Kenapa global, dan kenapa ini berubah
+	//
+	// Semula ia `map[int]int64` yang memisahkan pencacah per tahun, menirukan tabel
+	// pencacah `CPNC_NOMOR_KLAIM (TAHUN, TERAKHIR)`. Sejak Work Owner membuat
+	// `POOLDATA.CLAIM_PROTECTION_SEQ` pada 2026-09-24 — satu sequence global tanpa reset
+	// tahunan — bentuk itu justru MENYESATKAN.
+	//
+	// Fake yang berperilaku lebih rapi daripada aslinya adalah fake yang berbohong: uji
+	// yang lulus atasnya tidak membuktikan apa pun tentang produksi. Di sini nomor urut
+	// karena itu menembus pergantian tahun persis seperti sequence-nya.
+	counter int64
 }
 
 // NewRepo membentuk repo kosong.
 func NewRepo() *Repo {
-	return &Repo{counters: map[int]int64{}}
+	return &Repo{}
 }
 
 // NewRepoWithSamples membentuk repo berisi proteksi contoh.
@@ -179,6 +186,7 @@ func (r *Repo) HasDuplicate(
 func (r *Repo) Create(
 	ctx context.Context,
 	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -191,21 +199,22 @@ func (r *Repo) Create(
 
 	// Tahun diambil dari waktu yang DISERAHKAN pemanggil, bukan dari time.Now di sini —
 	// supaya nomor yang terbit dapat diuji, dan supaya sumber waktunya satu.
-	year := at.Year()
-	r.counters[year]++
+	//
+	// Pencacahnya TIDAK dipisah per tahun, menirukan sequence Oracle. Lihat field counter.
+	r.counter++
 
 	p := inputreqprotection.Protection{
-		Number:         inputreqprotection.FormatNumber(year, r.counters[year]),
-		PolicyNumber:   draft.PolicyNumber,
+		Number:         inputreqprotection.FormatNumber(at.Year(), r.counter),
+		PolicyNumber:   claim.PolicyNumber,
 		ClaimNumber:    draft.ClaimNumber,
-		ClaimReference: draft.ClaimReference,
+		ClaimReference: draft.ClaimNumber,
 		Type:           draft.Type,
 		InputDate:      at,
 		Note:           draft.Note,
 		AcceptStatus:   inputreqprotection.AcceptPending,
 		CreatedBy:      by,
 		CreatedAt:      at,
-		ChangeDetail:   draft.ChangeDetail,
+		ChangeDetail:   deriveChangeDetail(draft, claim),
 	}
 	r.protections = append(r.protections, p)
 
@@ -221,6 +230,7 @@ func (r *Repo) Update(
 	ctx context.Context,
 	number string,
 	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -249,12 +259,12 @@ func (r *Repo) Update(
 	// waktu yang salah.
 	//
 	// Kolom akseptasi juga tidak disentuh — ia milik modul inboxacceptopenprotection.
-	existing.PolicyNumber = draft.PolicyNumber
+	existing.PolicyNumber = claim.PolicyNumber
 	existing.ClaimNumber = draft.ClaimNumber
-	existing.ClaimReference = draft.ClaimReference
+	existing.ClaimReference = draft.ClaimNumber
 	existing.Type = draft.Type
 	existing.Note = draft.Note
-	existing.ChangeDetail = draft.ChangeDetail
+	existing.ChangeDetail = deriveChangeDetail(draft, claim)
 
 	r.protections[index] = existing
 	return existing, nil
@@ -301,4 +311,70 @@ func sameDay(a, b time.Time, location *time.Location) bool {
 
 func normalize(s string) string {
 	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+// deriveChangeDetail menyusun panel Detail Perubahan dari dua sumber: klaim dan isian.
+//
+// Sengaja DIULANG dari adapter Oracle alih-alih diimpor darinya. Paket memori tidak boleh
+// bergantung pada paket sqlstore — keduanya adalah dua adapter sejajar di balik seam yang
+// sama, dan satu yang mengimpor yang lain akan menyeret driver basis data ke dalam setiap
+// pengujian.
+//
+// Yang dijaga bukan ketiadaan duplikasi melainkan HASILNYA: uji memastikan keduanya
+// menurunkan nilai yang sama.
+func deriveChangeDetail(
+	draft inputreqprotection.Draft,
+	claim inputreqprotection.Claim,
+) inputreqprotection.ChangeDetail {
+	return inputreqprotection.ChangeDetail{
+		LossDateBefore:      claim.LossDate,
+		CauseOfLossID:       claim.CauseOfLoss,
+		ObjectName:          claim.ObjectName,
+		BranchName:          claim.BranchName,
+		LossDateAfter:       draft.Change.LossDateAfter,
+		CauseOfLossMasterID: draft.Change.CauseOfLossAfter,
+	}
+}
+
+// ClaimRepo memenuhi seam inputreqprotection.ClaimRepo di dalam proses.
+type ClaimRepo struct {
+	mu     sync.Mutex
+	claims map[string]inputreqprotection.Claim
+}
+
+// NewClaimRepo membentuk repo klaim kosong.
+func NewClaimRepo() *ClaimRepo {
+	return &ClaimRepo{claims: map[string]inputreqprotection.Claim{}}
+}
+
+// Add mendaftarkan sebuah klaim. Dipakai pengujian dan mode memori.
+func (r *ClaimRepo) Add(claims ...inputreqprotection.Claim) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, c := range claims {
+		r.claims[strings.ToUpper(strings.TrimSpace(c.Number))] = c
+	}
+}
+
+// FindClaim mencari klaim menurut nomornya.
+//
+// Nomor yang tidak terdaftar menghasilkan ErrClaimNotFound — bukan Claim kosong. Claim
+// kosong akan membuat proteksi tersimpan menunjuk klaim yang tidak pernah ada, dan itu
+// persis kegagalan yang seam ini dibuat untuk mencegahnya.
+func (r *ClaimRepo) FindClaim(
+	ctx context.Context,
+	number string,
+) (inputreqprotection.Claim, error) {
+	if err := ctx.Err(); err != nil {
+		return inputreqprotection.Claim{}, err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	c, ada := r.claims[strings.ToUpper(strings.TrimSpace(number))]
+	if !ada {
+		return inputreqprotection.Claim{}, inputreqprotection.ErrClaimNotFound
+	}
+	return c, nil
 }

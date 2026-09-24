@@ -81,7 +81,7 @@ func TestKeputusanHanyaMenulisTigaKolom(t *testing.T) {
 			"keputusan akseptasi tidak boleh menulis %s (P-1)", kolom)
 	}
 
-	for _, kolom := range []string{"APPROVAL_STATUS", "RESOLVED_BY", "RESOLVED_DATE_TIME"} {
+	for _, kolom := range []string{"APPROVAL_STATUS", "RESOLVED_BY", "RESOLVED_DATETIME"} {
 		require.Contains(t, bagianSet, kolom, "keputusan akseptasi harus menulis %s", kolom)
 	}
 }

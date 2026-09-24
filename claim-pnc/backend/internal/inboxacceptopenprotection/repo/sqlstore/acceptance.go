@@ -160,13 +160,16 @@ func scanProtection(row pemindai) (inboxacceptopenprotection.Protection, error) 
 	var (
 		id                        string
 		nopolis, noklaim, tipe    sql.NullString
+		namaTipe                  sql.NullString
 		dibuatPada                sql.NullTime
 		notes, dibuatOleh, status sql.NullString
 		diputuskanPada            sql.NullTime
 		diputuskanOleh            sql.NullString
 	)
 
-	if err := row.Scan(&id, &nopolis, &noklaim, &tipe, &dibuatPada,
+	// namaTipe datang dari LEFT JOIN ke master; NULL berarti kodenya kosong ATAU tidak
+	// terdaftar. Keduanya diperlakukan sama di sini — pembedanya urusan lapisan tampilan.
+	if err := row.Scan(&id, &nopolis, &noklaim, &tipe, &namaTipe, &dibuatPada,
 		&notes, &dibuatOleh, &status, &diputuskanPada, &diputuskanOleh); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return inboxacceptopenprotection.Protection{}, err
@@ -180,6 +183,7 @@ func scanProtection(row pemindai) (inboxacceptopenprotection.Protection, error) 
 		PolicyNumber: teks(nopolis),
 		ClaimNumber:  teks(noklaim),
 		Type:         teks(tipe),
+		TypeName:     teks(namaTipe),
 		Note:         teks(notes),
 		CreatedBy:    teks(dibuatOleh),
 		AcceptStatus: teks(status),

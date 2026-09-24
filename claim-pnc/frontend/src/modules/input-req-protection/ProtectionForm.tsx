@@ -7,11 +7,10 @@ import { FormField } from '@/components/FormField'
 import { SelectField, type SelectOption } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
 
+import { useClaimLookup } from './api'
 import {
-  PROTECTION_TYPE_LABEL,
   TYPE_CHANGE_CAUSE_OF_LOSS,
   TYPE_CHANGE_LOSS_DATE,
-  type ChangeDetail,
   type ProtectionDetail,
   type ProtectionFields,
 } from './types'
@@ -65,15 +64,6 @@ type Props = {
   failure: unknown
 }
 
-const EMPTY_CHANGE_DETAIL: ChangeDetail = {
-  dol_sebelum: '',
-  dol_baru: '',
-  penyebab_kerugian: '',
-  penyebab_kerugian_master: '',
-  nama_objek: '',
-  nama_cabang: '',
-}
-
 export function ProtectionForm({
   existing,
   typeOptions,
@@ -82,14 +72,24 @@ export function ProtectionForm({
   isSubmitting,
   failure,
 }: Props) {
-  const [policyNumber, setPolicyNumber] = useState(existing?.nomor_polis ?? '')
   const [claimNumber, setClaimNumber] = useState(existing?.nomor_klaim ?? '')
-  const [claimReference, setClaimReference] = useState(existing?.referensi_klaim ?? '')
   const [type, setType] = useState(existing?.tipe_proteksi ?? '')
   const [note, setNote] = useState(existing?.keterangan ?? '')
-  const [detail, setDetail] = useState<ChangeDetail>(
-    existing?.detail_perubahan ?? EMPTY_CHANGE_DETAIL,
+
+  // HANYA nilai "sesudah" yang disimpan sebagai keadaan form. Nilai "sebelum" datang dari
+  // pencarian klaim di bawah dan tidak pernah menjadi keadaan yang dapat diubah pengguna.
+  const [lossDateAfter, setLossDateAfter] = useState(existing?.detail_perubahan.dol_baru ?? '')
+  const [causeAfter, setCauseAfter] = useState(
+    existing?.detail_perubahan.penyebab_kerugian_master ?? '',
   )
+
+  // Pencarian klaim menggantikan tombol CARI pada form Pega.
+  //
+  // `Activity/OpenProtection-Act.xml` mengisi No Polis, Nama Tertanggung, Object Name,
+  // Branch Name, Current Date Of Loss, dan Cause Of Loss Dipilih dari klaim yang ditemukan.
+  // Keenamnya TIDAK PERNAH diketik, dan di sini pun tidak.
+  const claim = useClaimLookup(claimNumber)
+  const found = claim.data ?? null
 
   const violations = failure instanceof APIError ? failure.violations() : {}
 
@@ -101,19 +101,16 @@ export function ProtectionForm({
   const changesLossDate = type === TYPE_CHANGE_LOSS_DATE
   const changesCauseOfLoss = type === TYPE_CHANGE_CAUSE_OF_LOSS
 
-  function patchDetail(patch: Partial<ChangeDetail>) {
-    setDetail((current) => ({ ...current, ...patch }))
-  }
-
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     await onSubmit({
-      nomor_polis: policyNumber,
       nomor_klaim: claimNumber,
-      referensi_klaim: claimReference,
       tipe_proteksi: type,
       keterangan: note,
-      detail_perubahan: detail,
+      detail_perubahan: {
+        dol_baru: lossDateAfter,
+        penyebab_kerugian_baru: causeAfter,
+      },
     })
   }
 
@@ -128,14 +125,17 @@ export function ProtectionForm({
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        {/*
+          HANYA-BACA. `Activity/OpenProtection-Act.xml` mengisi `pyWorkPage.PolicyNo` dari
+          klaim yang ditemukan — di sistem lama pun ia tidak pernah diketik.
+        */}
         <FormField
           id="nomor-polis"
-          label="No Polis"
-          value={policyNumber}
-          onChange={(event) => setPolicyNumber(event.target.value)}
-          required
+          label="No Polis (dari klaim)"
+          value={found?.nomor_polis ?? ''}
+          onChange={() => {}}
+          readOnly
           autoComplete="off"
-          {...(violations['no_polis'] ? { failure: violations['no_polis'] } : {})}
         />
 
         <SelectField
@@ -162,23 +162,30 @@ export function ProtectionForm({
         />
 
         {/*
-          Referensi klaim adalah hasil PENCARIAN, bukan ketikan bebas.
-          `Activity/ValidationInputProtection-Act.xml` menolak penyimpanan saat ia kosong,
-          dengan pesan "Silakan Tulis dan Cari Ulang No Klaim".
+          Isian "Referensi Klaim" DIHAPUS pada 2026-09-24.
 
-          Pencarian klaimnya sendiri BELUM ADA di sini: ia menembak modul klaim, yang
-          rutenya belum tersedia. Sampai itu ada, isian ini diisi manual dan keterbatasan
-          itu dinyatakan di layar — bukan disembunyikan dengan tombol cari yang tidak
-          berfungsi.
+          Sampai saat itu ada dua isian nomor klaim: No Klaim dan Referensi Klaim, meniru
+          Pega yang mengisi `.PNCCaseID` dari hasil pencarian. Work Owner menegaskan
+          keduanya kini berisi NILAI YANG SAMA, sehingga server menurunkan ClaimID dari
+          No Klaim.
+
+          Dua isian yang WAJIB sama tetapi diketik terpisah akan berbeda cepat atau
+          lambat, dan perbedaannya tidak menghasilkan galat apa pun — hanya proteksi yang
+          menunjuk dua klaim berbeda.
+
+          Nilai ClaimID baris WARISAN tetap ditampilkan di bawah, karena di sana ia memang
+          berbeda: Pega menyimpan kunci teknisnya, `ASM-FW-GCNMFW-WORK PNC-xxxx`.
         */}
-        <FormField
-          id="referensi-klaim"
-          label="Referensi Klaim (hasil pencarian)"
-          value={claimReference}
-          onChange={(event) => setClaimReference(event.target.value)}
-          autoComplete="off"
-          {...(violations['no_klaim'] ? { failure: violations['no_klaim'] } : {})}
-        />
+        {existing?.referensi_klaim && existing.referensi_klaim !== existing.nomor_klaim && (
+          <FormField
+            id="referensi-klaim"
+            label="ID Klaim (warisan Pega)"
+            value={existing.referensi_klaim}
+            onChange={() => {}}
+            readOnly
+            autoComplete="off"
+          />
+        )}
       </div>
 
       {changesLossDate && (
@@ -188,19 +195,29 @@ export function ProtectionForm({
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            {/*
+              HANYA-BACA, dan itu inti koreksi 2026-09-24.
+
+              Di Pega nilai ini disalin dari klaim setiap kali klaim dicari
+              (`.ClaimDataProtect.BeforeDateOfLoss := TempPNCOPEN.ClaimData.DateOfLoss`).
+              Implementasi pertama menjadikannya isian bebas — sehingga seseorang dapat
+              meminta "ubah DOL" dengan menyebut DOL sebelum yang tidak pernah menjadi DOL
+              klaim itu, dan petugas akseptasi menyetujuinya tanpa cara mengetahuinya.
+            */}
             <FormField
               id="dol-sebelum"
-              label="Current Date Of Loss"
+              label="Current Date Of Loss (dari klaim)"
               type="date"
-              value={detail.dol_sebelum}
-              onChange={(event) => patchDetail({ dol_sebelum: event.target.value })}
+              value={found?.dol ?? ''}
+              onChange={() => {}}
+              readOnly
             />
             <FormField
               id="dol-baru"
               label="Next Date Of Loss"
               type="date"
-              value={detail.dol_baru}
-              onChange={(event) => patchDetail({ dol_baru: event.target.value })}
+              value={lossDateAfter}
+              onChange={(event) => setLossDateAfter(event.target.value)}
               required
               {...(violations['dol_baru'] ? { failure: violations['dol_baru'] } : {})}
             />
@@ -215,24 +232,20 @@ export function ProtectionForm({
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* HANYA-BACA — dari klaim, sama alasannya dengan Current Date Of Loss. */}
             <FormField
               id="penyebab-kerugian"
-              label="Cause Of Loss Sebelumnya"
-              value={detail.penyebab_kerugian}
-              onChange={(event) => patchDetail({ penyebab_kerugian: event.target.value })}
-              required
+              label="Cause Of Loss Dipilih (dari klaim)"
+              value={found?.penyebab_kerugian ?? ''}
+              onChange={() => {}}
+              readOnly
               autoComplete="off"
-              {...(violations['penyebab_kerugian']
-                ? { failure: violations['penyebab_kerugian'] }
-                : {})}
             />
             <FormField
               id="penyebab-kerugian-master"
-              label="Cause Of Loss Dipilih"
-              value={detail.penyebab_kerugian_master}
-              onChange={(event) =>
-                patchDetail({ penyebab_kerugian_master: event.target.value })
-              }
+              label="Next Cause Of Loss"
+              value={causeAfter}
+              onChange={(event) => setCauseAfter(event.target.value)}
               required
               autoComplete="off"
               {...(violations['penyebab_kerugian_master']
@@ -245,18 +258,21 @@ export function ProtectionForm({
 
       {(changesLossDate || changesCauseOfLoss) && (
         <div className="grid gap-4 sm:grid-cols-2">
+          {/* Keduanya HANYA-BACA — dari klaim, sama alasannya dengan No Polis. */}
           <FormField
             id="nama-objek"
-            label="Object Name"
-            value={detail.nama_objek}
-            onChange={(event) => patchDetail({ nama_objek: event.target.value })}
+            label="Object Name (dari klaim)"
+            value={found?.nama_objek ?? ''}
+            onChange={() => {}}
+            readOnly
             autoComplete="off"
           />
           <FormField
             id="nama-cabang"
-            label="Branch Name"
-            value={detail.nama_cabang}
-            onChange={(event) => patchDetail({ nama_cabang: event.target.value })}
+            label="Branch Name (dari klaim)"
+            value={found?.nama_cabang ?? ''}
+            onChange={() => {}}
+            readOnly
             autoComplete="off"
           />
         </div>
@@ -287,11 +303,15 @@ export function ProtectionForm({
         )}
       </div>
 
-      <p className="text-xs text-slate-500">
-        Tipe proteksi yang belum berlabel ditampilkan sebagai kodenya. Daftar lengkapnya
-        belum diserahkan — lihat {Object.keys(PROTECTION_TYPE_LABEL).length} tipe yang sudah
-        dikenali.
-      </p>
+      {typeOptions.length === 0 && (
+        // Master yang kosong DITAMPILKAN apa adanya, bukan ditutupi daftar cadangan di
+        // kode. Pilihan yang berasal dari kode akan membuat master yang bermasalah tampak
+        // beres — dan proteksi tersimpan dengan tipe yang tidak dikenal basis datanya.
+        <p className="text-xs text-amber-700">
+          Master tipe proteksi belum dapat dibaca, sehingga pilihan tipe kosong. Permintaan
+          tidak dapat disimpan tanpa tipe.
+        </p>
+      )}
     </form>
   )
 }

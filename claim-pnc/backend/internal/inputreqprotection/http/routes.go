@@ -60,6 +60,27 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		protection.Get("/", h.List)
 		protection.Post("/", h.Create)
 
+		// Master tipe proteksi, untuk pilihan pada form.
+		//
+		// Didaftarkan SEBELUM rute `/{nomor}` dengan sengaja. chi mencocokkan pola statis
+		// lebih dulu, sehingga urutannya sebenarnya tidak menentukan — tetapi menaruhnya di
+		// atas membuat hubungan itu terbaca oleh yang menambah rute berikutnya.
+		//
+		// Hanya GET. Pengelolaan masternya belum punya layar, dan rute tulis yang tidak
+		// didaftarkan dijawab chi dengan 405 — sehingga penambahannya kelak menjadi
+		// keputusan sadar.
+		protection.Get("/tipe", h.ListTypes)
+
+		// Pencarian klaim, menggantikan tombol CARI pada form Pega.
+		//
+		// `Activity/OpenProtection-Act.xml` — yang di Pega dipicu field No Klaim — memuat
+		// klaimnya lalu mengisi No Polis, Nama Tertanggung, Object Name, Branch Name,
+		// Current Date Of Loss, dan Cause Of Loss Dipilih. Keenamnya tidak pernah diketik.
+		//
+		// Hanya GET, dan hanya MEMBACA. Tabel klaim dimiliki Pega selama masa paralel;
+		// `P-1` melarang menulisnya, tidak melarang membacanya.
+		protection.Get("/klaim/{nomor}", h.FindClaim)
+
 		// Nomor proteksi dipakai sebagai kunci jalur, bukan ID teknis.
 		//
 		// Ia yang dilihat dan disebut pengguna, dan ia pula yang muncul di tautan yang

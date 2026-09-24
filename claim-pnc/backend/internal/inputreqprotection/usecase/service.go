@@ -93,12 +93,12 @@ type ListQuery struct {
 
 // List membaca satu halaman proteksi yang belum diakseptasi.
 func (s *Service) List(ctx context.Context, q ListQuery) (inputreqprotection.Page, error) {
-	repo, err := s.protections(q.PortalAlias)
+	stores, err := s.protections(q.PortalAlias)
 	if err != nil {
 		return inputreqprotection.Page{}, err
 	}
 
-	page, err := repo.List(ctx, inputreqprotection.Filter{
+	page, err := stores.Protections.List(ctx, inputreqprotection.Filter{
 		Search: q.Search,
 		Limit:  q.Limit,
 		Offset: q.Offset,
@@ -114,11 +114,63 @@ func (s *Service) List(ctx context.Context, q ListQuery) (inputreqprotection.Pag
 // Galat ErrNotFound diteruskan APA ADANYA, tidak dibungkus pesan lain, supaya transport
 // dapat mengenalinya dengan errors.Is dan menjawab 404 alih-alih 500.
 func (s *Service) Get(ctx context.Context, portalAlias, number string) (inputreqprotection.Protection, error) {
-	repo, err := s.protections(portalAlias)
+	stores, err := s.protections(portalAlias)
 	if err != nil {
 		return inputreqprotection.Protection{}, err
 	}
-	return repo.Get(ctx, number)
+	return stores.Protections.Get(ctx, number)
+}
+
+// ListTypes membaca master tipe proteksi milik portal yang sedang dibuka.
+//
+// # Kenapa lewat portal, padahal isinya master
+//
+// `ADR-0030` menetapkan satu basis data per entitas, dan master pun tinggal di dalamnya.
+// Membacanya dari portal utama akan menampilkan tipe milik Asuransi Sinar Mas di layar
+// Simas Insurtech — kesalahan yang tidak menghasilkan galat apa pun, hanya pilihan tipe
+// yang keliru.
+//
+// # Kenapa tidak di-cache di sini
+//
+// Masternya kecil dan jarang berubah, sehingga cache akan menggoda. Tempatnya bukan di
+// sini: cache per portal menuntut invalidasi yang belum ada pemiliknya, dan pilihan tipe
+// yang basi setelah master disunting jauh lebih membingungkan daripada satu kueri
+// tambahan. `14-NFR` §3.3 menetapkan cache ditambahkan setelah TERBUKTI perlu.
+func (s *Service) ListTypes(ctx context.Context, portalAlias string) ([]inputreqprotection.ProtectionType, error) {
+	stores, err := s.protections(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	daftar, err := stores.Types.ListTypes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/usecase: membaca master tipe proteksi: %w", err)
+	}
+	return daftar, nil
+}
+
+// FindClaim mencari klaim yang hendak ditaut, untuk mengisi field turunan pada form.
+//
+// # Kenapa layar memanggilnya, padahal server mencarinya lagi saat menyimpan
+//
+// Keduanya melayani hal berbeda. Pemanggilan dari layar membuat pengguna MELIHAT apa yang
+// akan tersimpan sebelum ia menekan Simpan — termasuk DOL sebelum dan Cause of Loss
+// sekarang, yang tidak dapat ia ketik.
+//
+// Pencarian saat menyimpan yang MENENTUKAN apa yang benar-benar tersimpan. Menghapus salah
+// satunya menghilangkan hal yang berbeda: tanpa yang pertama pengguna menyimpan sesuatu yang
+// belum pernah ia lihat; tanpa yang kedua nilai "sebelum" dapat dipalsukan.
+//
+// Galat `ErrClaimNotFound` diteruskan APA ADANYA supaya transport menjawab 404, bukan 500.
+func (s *Service) FindClaim(
+	ctx context.Context,
+	portalAlias, number string,
+) (inputreqprotection.Claim, error) {
+	stores, err := s.protections(portalAlias)
+	if err != nil {
+		return inputreqprotection.Claim{}, err
+	}
+	return stores.Claims.FindClaim(ctx, number)
 }
 
 // ── Menulis ──────────────────────────────────────────────────────────────────────
@@ -162,17 +214,30 @@ func (s *Service) Create(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 		return inputreqprotection.Protection{}, err
 	}
 
-	repo, err := s.protections(cmd.PortalAlias)
+	stores, err := s.protections(cmd.PortalAlias)
+	if err != nil {
+		return inputreqprotection.Protection{}, err
+	}
+
+	// Klaimnya dicari DI SINI, bukan dipercaya dari klien.
+	//
+	// Layar memang sudah mencarinya saat pengguna mengetik nomor klaim, dan mengisi field
+	// turunannya dari sana. Tetapi pencarian itu terjadi di peramban, dan badan permintaan
+	// yang dirakit tangan dapat menyebut nilai "sebelum" apa pun.
+	//
+	// Mengulangnya di sini bukan pemborosan: inilah satu-satunya pembacaan yang hasilnya
+	// benar-benar tersimpan.
+	claim, err := stores.Claims.FindClaim(ctx, draft.ClaimNumber)
 	if err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
 	at := s.now()
-	if err := s.rejectDuplicate(ctx, repo, draft, at, ""); err != nil {
+	if err := s.rejectDuplicate(ctx, stores.Protections, claim, draft, at, ""); err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
-	saved, err := repo.Create(ctx, draft, cmd.By, at)
+	saved, err := stores.Protections.Create(ctx, draft, claim, cmd.By, at)
 	if err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf("inputreqprotection/usecase: menyimpan proteksi: %w", err)
 	}
@@ -192,12 +257,12 @@ func (s *Service) Update(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 		return inputreqprotection.Protection{}, fmt.Errorf("inputreqprotection/usecase: identitas pemanggil kosong")
 	}
 
-	repo, err := s.protections(cmd.PortalAlias)
+	stores, err := s.protections(cmd.PortalAlias)
 	if err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
-	existing, err := repo.Get(ctx, cmd.Number)
+	existing, err := stores.Protections.Get(ctx, cmd.Number)
 	if err != nil {
 		return inputreqprotection.Protection{}, err
 	}
@@ -215,12 +280,19 @@ func (s *Service) Update(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 		return inputreqprotection.Protection{}, err
 	}
 
-	at := s.now()
-	if err := s.rejectDuplicate(ctx, repo, draft, at, existing.Number); err != nil {
+	// Dicari ulang juga saat menyunting: nomor klaimnya boleh berubah, dan nilai "sebelum"
+	// harus mengikuti klaim yang BARU — bukan tertinggal pada klaim sebelumnya.
+	claim, err := stores.Claims.FindClaim(ctx, draft.ClaimNumber)
+	if err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
-	saved, err := repo.Update(ctx, cmd.Number, draft, cmd.By, at)
+	at := s.now()
+	if err := s.rejectDuplicate(ctx, stores.Protections, claim, draft, at, existing.Number); err != nil {
+		return inputreqprotection.Protection{}, err
+	}
+
+	saved, err := stores.Protections.Update(ctx, cmd.Number, draft, claim, cmd.By, at)
 	if err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf("inputreqprotection/usecase: menyunting proteksi: %w", err)
 	}
@@ -235,11 +307,15 @@ func (s *Service) Update(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 func (s *Service) rejectDuplicate(
 	ctx context.Context,
 	repo inputreqprotection.Repo,
+	claim inputreqprotection.Claim,
 	draft inputreqprotection.Draft,
 	at time.Time,
 	exceptNumber string,
 ) error {
-	key := inputreqprotection.DuplicateKeyFor(draft, at, s.location)
+	// Nomor polis datang dari KLAIM, bukan dari isian. Memakai isian akan membuat pemeriksaan
+	// ganda berjalan atas polis yang belum tentu polis klaimnya — dan proteksi ganda yang
+	// sebenarnya lolos.
+	key := inputreqprotection.DuplicateKeyFor(claim.PolicyNumber, draft, at, s.location)
 
 	duplicate, err := repo.HasDuplicate(ctx, key, exceptNumber)
 	if err != nil {

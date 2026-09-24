@@ -15,13 +15,21 @@ import (
 // Nama field berbahasa Indonesia karena ia KONTRAK yang dibaca frontend — salah satu dari
 // lima pengecualian `D-80`.
 type protectionDTO struct {
-	NomorProteksi   string `json:"nomor_proteksi"`   // kolom "No Proteksi"
-	NomorPolis      string `json:"nomor_polis"`      // kolom "No Polis"
-	NomorKlaim      string `json:"nomor_klaim"`      // kolom "No Klaim"
-	TipeProteksi    string `json:"tipe_proteksi"`    // kolom "Tipe Proteksi" — KODE, bukan label
-	TanggalProteksi string `json:"tanggal_proteksi"` // kolom "Tanggal Proteksi Dibuat"
-	Keterangan      string `json:"keterangan"`       // kolom "Keterangan"
-	UserCreate      string `json:"user_create"`      // kolom "User Create"
+	NomorProteksi string `json:"nomor_proteksi"` // kolom "No Proteksi"
+	NomorPolis    string `json:"nomor_polis"`    // kolom "No Polis"
+	NomorKlaim    string `json:"nomor_klaim"`    // kolom "No Klaim"
+	// TipeProteksi adalah KODE tipe, PROTECTION_TYPE_ID. Ia yang menentukan antrean.
+	TipeProteksi string `json:"tipe_proteksi"`
+
+	// NamaTipeProteksi adalah nama dari POOLDATA.M_CLAIM_PROTECTION_TYPE.
+	//
+	// KOSONG bila kodenya tidak terdaftar di master. Layar menampilkan kodenya apa adanya
+	// dalam keadaan itu: petugas yang menyetujui pembukaan proteksi berhak tahu bahwa tipe
+	// yang dihadapinya tidak dikenal sistem.
+	NamaTipeProteksi string `json:"nama_tipe_proteksi"`
+	TanggalProteksi  string `json:"tanggal_proteksi"` // kolom "Tanggal Proteksi Dibuat"
+	Keterangan       string `json:"keterangan"`       // kolom "Keterangan"
+	UserCreate       string `json:"user_create"`      // kolom "User Create"
 
 	// Antrean menyatakan baris ini milik antrean mana. Diturunkan di server dari tipe
 	// proteksi, bukan dihitung ulang di peramban.
@@ -74,14 +82,15 @@ const tanggalFormat = "2006-01-02"
 
 func toProtectionDTO(p inboxacceptopenprotection.Protection, location *time.Location) protectionDTO {
 	return protectionDTO{
-		NomorProteksi:   p.Number,
-		NomorPolis:      p.PolicyNumber,
-		NomorKlaim:      p.ClaimNumber,
-		TipeProteksi:    p.Type,
-		TanggalProteksi: formatDate(p.InputDate, location),
-		Keterangan:      p.Note,
-		UserCreate:      p.CreatedBy,
-		Antrean:         string(inboxacceptopenprotection.QueueOf(p.Type)),
+		NomorProteksi:    p.Number,
+		NomorPolis:       p.PolicyNumber,
+		NomorKlaim:       p.ClaimNumber,
+		TipeProteksi:     p.Type,
+		NamaTipeProteksi: p.TypeName,
+		TanggalProteksi:  formatDate(p.InputDate, location),
+		Keterangan:       p.Note,
+		UserCreate:       p.CreatedBy,
+		Antrean:          string(inboxacceptopenprotection.QueueOf(p.Type)),
 	}
 }
 

@@ -31,10 +31,9 @@
  * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas
  * `K-33`. Ditambah MENU_ID 83 "Report Adjuster" yang MENU_PROGRAM-nya memang kosong.
  *
- * Salah satu dari sembilan itu — `InboxOutstanding_Harness` — KINI SUDAH PUNYA LAYAR.
- * Harness-nya tetap tidak ada di export; yang dipakai sebagai rujukan bentuk adalah
- * `InboxRegister_Harness`, sedangkan perilakunya diambil dari kueri, activity, dan section
- * Outstanding yang memang ada.
+ * `InboxOutstanding_Harness` (MENU_ID 79) tetap **belum punya layar**. Yang kini punya
+ * layar adalah `InboxRegister_Harness` (MENU_ID 51 "My Inbox") — lihat catatan pada
+ * barisnya di bawah, termasuk kekeliruan yang sempat menukar keduanya.
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
@@ -42,9 +41,30 @@ export const MENU_ROUTES: Record<string, string> = {
   StatusProgress: '/master/status-progres-1',
   // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
   InboxRCVApp_Harness: '/pelaporan-klaim',
-  // Butir menu "Inbox Outstanding". Harness-nya tidak ada di export (`K-33`); layarnya
-  // dibangun dari kueri BrowseInboxOutstanding1 beserta activity dan section-nya.
-  InboxOutstanding_Harness: '/inbox-outstanding',
+  // MENU_ID 51 **"My Inbox"** — layar daftar klaim yang masih berjalan.
+  //
+  // # Kuncinya sempat salah, dan menunya karena itu tidak pernah muncul
+  //
+  // Semula didaftarkan sebagai `InboxOutstanding_Harness`, karena judul DI DALAM
+  // `Section/InboxRegister_Section-Section.xml:2150` berbunyi "Inbox Outstanding".
+  // Judul itu memang ada, tetapi ia judul section — bukan nama butir menu.
+  //
+  // `POOLDATA.M_MENU_APLIKASI_PNC` memuat KEDUANYA sebagai butir yang BERBEDA:
+  //
+  //	MENU_ID 51 · "My Inbox"          · InboxRegister_Harness      <- layar ini
+  //	MENU_ID 79 · "Inbox Outstanding" · InboxOutstanding_Harness   <- layar LAIN
+  //
+  // Jadi kunci lama bukan sekadar salah nama: ia menempelkan layar ini pada butir
+  // menu MILIK LAYAR LAIN. Pengguna yang menekan "Inbox Outstanding" akan mendapat
+  // layar My Inbox, sedangkan "My Inbox" sendiri tidak mengarah ke mana-mana.
+  //
+  // MENU_ID 79 tetap belum punya layar — harness-nya tidak ada di export (`K-33`),
+  // dan isinya belum pernah diketahui.
+  //
+  // Nama modul dan alamat rutenya sengaja DIBIARKAN `inbox-outstanding` sampai Work
+  // Owner memutuskan — mengganti nama modul menyentuh backend, frontend, dan tiket
+  // sekaligus (`D-81`), sedangkan memperbaiki kunci ini memulihkan menunya sekarang.
+  InboxRegister_Harness: '/inbox-outstanding',
   InboxAutoClaim: '/inbox-auto-claim',
   // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
   SurveyorsInbox: '/master/tipe-surveyor',

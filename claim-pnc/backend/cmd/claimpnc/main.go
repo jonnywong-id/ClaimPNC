@@ -973,9 +973,6 @@ type storage struct {
 	// outstandingSelector memilih penyimpanan klaim milik satu portal.
 	outstandingSelector inboxoutstanding.RepoSelector
 
-	// outstandingLines membaca M_LOGIN_PNC.LINEBUSINESS, pengganti OperatorID.pyPosition.
-	outstandingLines inboxoutstanding.LineBusinessRepo
-
 	// protectionRequestSelector memilih penyimpanan permintaan proteksi milik satu portal.
 	//
 	// Ia fungsi, bukan repo tunggal, karena POOLDATA.T_CLAIM_OPENPROTECTION ada di basis
@@ -1263,10 +1260,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	outstandingService, err := inboxoutstandingusecase.NewService(
-		store.outstandingSelector,
-		store.outstandingLines,
-	)
+	outstandingService, err := inboxoutstandingusecase.NewService(store.outstandingSelector)
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -1547,7 +1541,6 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// pembacaannya gagal di setiap lingkungan hari ini. Kegagalan itu ditangani
 		// usecase sebagai "lini tidak diketahui" dan dicatat di log; layar tetap
 		// berjalan dengan seluruh lini terlihat, persis perilaku Pega.
-		store.outstandingLines = inboxoutstandingsql.NewLineBusinessRepo(primary)
 
 		// Open Protection: DUA repo di atas SATU tabel, POOLDATA.T_CLAIM_OPENPROTECTION.
 		//
@@ -1561,12 +1554,20 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		//
 		// Portal yang tidak dikenal atau belum siap menghasilkan galat dari For(), TIDAK
 		// pernah dialihkan ke koneksi utama (`R-20`).
-		store.protectionRequestSelector = func(alias string) (inputreqprotection.Repo, error) {
+		// Repo proteksi dan repo master tipe dibentuk dari SATU koneksi yang sama, dan
+		// dikembalikan bersamaan. Memilih keduanya lewat dua pemanggilan terpisah membuka
+		// kemungkinan proteksi dibaca dari portal yang satu dan nama tipenya dari portal
+		// yang lain — kelas cacat yang tidak menghasilkan galat apa pun.
+		store.protectionRequestSelector = func(alias string) (inputreqprotection.Stores, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
-				return nil, err
+				return inputreqprotection.Stores{}, err
 			}
-			return inputreqprotectionsql.NewRepo(conn), nil
+			return inputreqprotection.Stores{
+				Protections: inputreqprotectionsql.NewRepo(conn),
+				Types:       inputreqprotectionsql.NewTypeRepo(conn),
+				Claims:      inputreqprotectionsql.NewClaimRepo(conn),
+			}, nil
 		}
 		store.protectionAcceptSelector = func(alias string) (inboxacceptopenprotection.Repo, error) {
 			conn, err := pool.For(alias)
@@ -1692,7 +1693,6 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.outstandingSelector = func(string) (inboxoutstanding.Repo, error) {
 			return outstandingMemory, nil
 		}
-		store.outstandingLines = outstandingMemory
 
 		// Open Protection: DUA penyimpanan memori yang berbeda, dan itu disengaja.
 		//
@@ -1705,9 +1705,21 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Input Req Protection TIDAK muncul di layar akseptasi, dan sebaliknya. Keduanya
 		// menyatu hanya setelah tabelnya ada. Seluruh isi contohnya karangan — lihat
 		// masing-masing repo/memory/sample.go.
+		// Master tipe proteksi ikut dimuat berisi kesembilan tipe yang benar-benar ada di
+		// `POOLDATA.M_CLAIM_PROTECTION_TYPE`, sehingga pilihan tipe pada form menampilkan
+		// nama yang SAMA dengan produksi tanpa Oracle. Ia salinan, bukan cadangan — tidak
+		// ada jalur yang jatuh ke sini saat master di Oracle kosong.
 		protectionRequestMemory := inputreqprotectionmemory.NewRepoWithSamples()
-		store.protectionRequestSelector = func(string) (inputreqprotection.Repo, error) {
-			return protectionRequestMemory, nil
+		protectionTypeMemory := inputreqprotectionmemory.NewTypeRepoWithSamples()
+		// Klaim contoh ikut dimuat supaya form tipe 7 dan 8 dapat dicoba utuh tanpa
+		// Oracle — termasuk field turunan yang tidak dapat diketik.
+		protectionClaimMemory := inputreqprotectionmemory.NewClaimRepoWithSamples()
+		store.protectionRequestSelector = func(string) (inputreqprotection.Stores, error) {
+			return inputreqprotection.Stores{
+				Protections: protectionRequestMemory,
+				Types:       protectionTypeMemory,
+				Claims:      protectionClaimMemory,
+			}, nil
 		}
 
 		protectionAcceptMemory := inboxacceptopenprotectionmemory.NewRepoWithSamples()
