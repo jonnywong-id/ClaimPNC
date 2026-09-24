@@ -77,6 +77,7 @@ package inboxrclpucl
 
 import (
 	"context"
+	"errors"
 	"strings"
 )
 
@@ -532,6 +533,164 @@ func (d DateRange) IsZero() bool {
 	return strings.TrimSpace(d.From) == "" && strings.TrimSpace(d.To) == ""
 }
 
+// ClaimDetail adalah isi LAYAR KERJA RCL/PUCL untuk satu klaim.
+//
+// # Layar apa ini, dan kenapa ia ada di modul antrean
+//
+// Ia yang terbuka di Pega saat petugas mengklik nomor klaim di antrean ini. Tautannya
+// menjalankan `SetAssignmentInboxPUCL_act(inskey = .pzInsKey)` — Open Assignment — dan yang
+// menunggu di sana adalah flow action `SendtoRCLPUCL`, yang menyisipkan section bernama
+// sama.
+//
+// Section itu SEMPAT HILANG dari export dan diterima Work Owner pada 2026-09-24. Isinya
+// kontainer dua bagian, keduanya terbaca dari buktinya sendiri:
+//
+//	SectionLampiranSuratPUCL      "Lampiran Surat"     -> Letter
+//	SectionPenerimaanDokumenPUCL  "Penerimaan Dokumen" -> DocumentReceipt
+//
+// # Di Pega ia layar TULIS; di sini ia BACA saja
+//
+// Memo penulis rule-nya sendiri pada bagian kedua berbunyi "add button save". Bagian
+// pertama menyusun lampiran surat RCL/PUCL — itulah tindakan "Cetak Surat" yang mengisi
+// `TANGGALCETAKDOKUMENPUCL_1` dan memindahkan klaimnya antartab.
+//
+// Keduanya menulis objek kerja, dan selama masa paralel tabel itu milik Pega (`P-1`).
+// Yang dibawa ke sini karena itu hanya PEMBACAANNYA.
+//
+// # Satu catatan visibilitas yang terbaca dari rule-nya
+//
+// `pyMemo` pada `SendtoRCLPUCL` berbunyi:
+//
+//	visibility when .ClaimData.PUCLStatus.RCL_PUCL != 3
+//
+// Jadi ada nilai jalur **`3`** — di luar `1` (RCL) dan `2` (PUCL) — yang menyembunyikan
+// seluruh layar ini. Artinya belum diketahui, dan `TrackOf` memang mengembalikan teks
+// kosong untuknya. Lihat TrackHidden.
+type ClaimDetail struct {
+	// Reference adalah `PZINSKEY`, kunci yang dipakai membukanya.
+	Reference string
+
+	// ClaimNumber adalah nomor case — `PYID`, yang digambar sebagai judul layar.
+	ClaimNumber string
+
+	// Letter adalah bagian "Lampiran Surat".
+	Letter LetterDraft
+
+	// DocumentReceipt adalah bagian "Penerimaan Dokumen".
+	DocumentReceipt DocumentReceipt
+}
+
+// LetterDraft adalah bagian "Lampiran Surat" — bahan surat RCL/PUCL.
+//
+// # Tiga isiannya DITURUNKAN, bukan disimpan
+//
+// `Activity/SetDataLampiranSuratRCLPUCL_Act-Act.xml` mengisinya dari anak-anak klaim, dan
+// ketiganya hanya diisi bila masih kosong (precondition `.<isian>==""`):
+//
+//	.UP            <- pyWorkPage.ClaimData.ObjectList(1).ObjectName
+//	.NamaPeserta   <- pyWorkPage.ClaimData.ObjectList(1).ObjectName
+//	.JumlahTagihan <- pyWorkPage.ClaimData.ObjectList(1).ObjectCoverageList(1).AdjustmentList(1).ProposeValue
+//
+// Perhatikan indeksnya SELALU `(1)` — objek pertama, coverage pertama, adjustment pertama.
+// Klaim dengan banyak objek hanya membawa yang pertama ke suratnya, dan itu perilaku
+// sistem lama apa adanya.
+type LetterDraft struct {
+	// Track adalah jalur penanganan — "RCL" atau "PUCL". Dari `RCL_PUCL_1`.
+	Track string
+
+	// TrackCode adalah kode jalur MENTAH.
+	//
+	// Ia dibawa selain Track karena nilai `3` menyembunyikan seluruh layar ini di Pega,
+	// dan teks kosong dari `TrackOf` tidak dapat dibedakan dari kode yang memang kosong.
+	// Lapisan atas memakainya untuk menjelaskan layar yang seharusnya tidak terbuka.
+	TrackCode string
+
+	// AnalystNote adalah "Deskripsi Analyst" — `KOMENTARANALISATOR_1`.
+	AnalystNote string
+
+	// PolicyNumber adalah `.Policy.PolicyNo` — `POLICYNO`.
+	PolicyNumber string
+
+	// LossDate adalah `.ClaimData.DateOfLoss` — `DATEOFLOSS_1`.
+	LossDate string
+
+	// InsuredName adalah "Nama Peserta" — DITURUNKAN dari objek pertama.
+	InsuredName string
+
+	// SumInsured adalah "UP" (Uang Pertanggungan) — DITURUNKAN, dan isinya NAMA OBJEK.
+	//
+	// # Ia diisi dari SUMBER YANG SAMA dengan InsuredName, dan itu MEMANG BENAR
+	//
+	// Kedua penetapan di `SetDataLampiranSuratRCLPUCL_Act` menunjuk ekspresi yang sama
+	// persis: `pyWorkPage.ClaimData.ObjectList(1).ObjectName`. Kolom "UP" di layar surat
+	// karena itu berisi nama objek, bukan angka.
+	//
+	// # Kenapa catatan ini panjang
+	//
+	// Karena ia terbaca seperti cacat, dan pernah diperlakukan sebagai cacat. Pada
+	// 2026-09-24 ia sempat "diperbaiki" menjadi `SumTSI` pada coverage pertama — lengkap
+	// dengan subkueri, uji, dan pernyataan selisih terencana. Work Owner **meralatnya pada
+	// hari yang sama**: UP memang ObjectName.
+	//
+	// Perbaikan itu dicabut seluruhnya, dan `P-5` kembali berlaku apa adanya: perilaku
+	// direplikasi kecuali perbaikannya diputuskan eksplisit — dan untuk yang ini TIDAK.
+	//
+	// Siapa pun yang hendak "memperbaikinya" lagi: nama isian ini menyesatkan, tetapi
+	// isinya tidak. Yang bernama Uang Pertanggungan di sini bukan nilai pertanggungan.
+	SumInsured string
+
+	// BillAmount adalah "Jumlah Tagihan" — DITURUNKAN dari `PROPOSE_VALUE` adjustment
+	// pertama pada coverage pertama objek pertama.
+	BillAmount string
+}
+
+// DocumentReceipt adalah bagian "Penerimaan Dokumen".
+//
+// Hanya satu isiannya punya kolom yang diketahui. Sisanya — tanggal terima dokumen PUCL,
+// email LOD, dan daftar berulang "Tanggal terima Dokumen / Tanggal / Keterangan" —
+// TIDAK punya kolom yang dapat ditemukan di seluruh export.
+//
+// Isian itu tetap DIGAMBAR di layar, bukan dihilangkan: isian yang belum terbawa harus
+// terlihat, bukan tersamar sebagai layar yang sudah setara. Preseden yang sama dipakai
+// "Jumlah Lembar Dokumen" pada modul Inbox Manager Receive / PUCL.
+type DocumentReceipt struct {
+	// PUCLNote adalah `.ClaimData.PUCLStatus.KomentarPUCL` — `KOMENTARPUCL_1`.
+	//
+	// Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL". Itu
+	// `pyLabelFieldValue` pada selnya, dan `D-13` menetapkan teks layar dibawa apa adanya.
+	//
+	// Ia berpasangan dengan "Catatan dari Analyst" di bagian Lampiran Surat: yang satu
+	// catatan Analyst untuk PUCL, yang satu balasan PUCL untuk Analyst. Menyamakan
+	// keduanya akan menukar arah percakapannya.
+	//
+	// Satu-satunya isian bagian ini yang punya kolom terverifikasi; ia muncul di
+	// `RDB List/ReminderPUCL-SQL.xml` sebagai `KOMENTARPUCL_1`.
+	PUCLNote string
+}
+
+// TrackHidden adalah kode jalur yang MENYEMBUNYIKAN layar kerja ini di Pega.
+//
+// Dari `pyMemo` pada rule `SendtoRCLPUCL`: *"visibility when
+// .ClaimData.PUCLStatus.RCL_PUCL != 3"*.
+//
+// # Ia SENGAJA TIDAK DITEGAKKAN
+//
+// Keputusan Work Owner 2026-09-24: **"tidak usah pakai when dulu"**. Layar kerja karena itu
+// terbuka untuk kode jalur apa pun, termasuk `3`.
+//
+// Konstantanya tetap ada karena ia merekam temuan yang nyata dan akan dibutuhkan bila
+// syaratnya kelak diberlakukan — bukan karena ada kode yang memakainya. Artinya pun belum
+// diketahui: tidak ada master yang menerjemahkan kode jalur di export mana pun, dan `CASE`
+// penerjemah di `GetReminderPUCL-SQL.xml` hanya mengenal `1` dan `2`, sementara kolomnya
+// punya TIGA nilai berbeda di produksi (`docs/kolom-t-claimlist-admin.md` §B.3).
+const TrackHidden = "3"
+
+// ErrClaimNotFound dikembalikan saat kunci klaim tidak ditemukan di portal yang dipilih.
+//
+// Ia dibedakan dari galat teknis dengan sengaja: kunci yang benar pada portal yang SALAH
+// menghasilkan keadaan ini, dan itu keterangan yang harus sampai ke pengguna (`R-20`).
+var ErrClaimNotFound = errors.New("inboxrclpucl: klaim tidak ditemukan")
+
 // Repo adalah seam ke antrean RCL/PUCL pada SATU portal.
 //
 // Dideklarasikan DI SINI, di paket yang memakainya — bukan di paket yang memenuhinya. Diisi
@@ -561,6 +720,15 @@ type Repo interface {
 	// potong demi potong ke jawaban, dan menariknya sekaligus akan memaksa seluruh baris
 	// berkumpul di memori lebih dulu.
 	DailyReport(ctx context.Context, rng DateRange, page Pagination) ([]DailyReportRow, int, error)
+
+	// Detail mengembalikan isi layar kerja RCL/PUCL untuk satu klaim.
+	//
+	// Kuncinya `pzInsKey` — parameter yang sama dengan `inskey` pada tautan Pega.
+	//
+	// Kunci yang tidak ditemukan menghasilkan ErrClaimNotFound, BUKAN nilai kosong: klaim
+	// yang tidak ada dan klaim yang seluruh isiannya kosong terlihat sama di layar, dan
+	// hanya yang pertama yang merupakan kekeliruan.
+	Detail(ctx context.Context, reference string) (ClaimDetail, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

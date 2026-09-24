@@ -352,3 +352,103 @@ func TestSampleStoreCoversEveryFilterInBothDirections(t *testing.T) {
 	require.Less(t, shown, total,
 		"setiap penyaring harus punya baris yang tertolak olehnya")
 }
+
+// ---------------------------------------------------------------------------
+// Layar kerja satu klaim
+// ---------------------------------------------------------------------------
+
+// detailOf mengambil layar kerja satu klaim dari penyimpanan contoh.
+func detailOf(t *testing.T, reference string) inboxrclpucl.ClaimDetail {
+	t.Helper()
+
+	store := memory.NewSampleStore()
+	detail, err := store.Detail(context.Background(), reference)
+	require.NoError(t, err)
+	return detail
+}
+
+func TestDetailReadsTheClaimByItsKey(t *testing.T) {
+	// Kuncinya `pzInsKey` — parameter yang sama dengan `inskey` pada tautan Pega.
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700001")
+
+	require.Equal(t, "PNC-700001", detail.ClaimNumber)
+	require.Equal(t, "CONTOH-RCL-0001", detail.Letter.PolicyNumber)
+	require.Equal(t, inboxrclpucl.TrackRCL, detail.Letter.Track)
+}
+
+func TestDetailFillsInsuredNameAndSumInsuredFromTheSameSource(t *testing.T) {
+	// Uji yang paling penting di berkas ini, dan ia menjaga sebuah REPLIKASI.
+	//
+	// `SetDataLampiranSuratRCLPUCL_Act` menetapkan `.UP` DAN `.NamaPeserta` dari ekspresi
+	// yang sama persis: `pyWorkPage.ClaimData.ObjectList(1).ObjectName`. Kolom "UP" (Uang
+	// Pertanggungan) karena itu berisi NAMA OBJEK.
+	//
+	// Itu terbaca seperti salin-tempel yang keliru, dan pada 2026-09-24 ia sempat
+	// "diperbaiki" menjadi `SumTSI` pada coverage pertama. Work Owner MERALATNYA pada hari
+	// yang sama: UP memang ObjectName.
+	//
+	// Uji ini ada supaya perbaikan itu tidak lahir kembali. Siapa pun yang mengubah UP
+	// tanpa keputusan tertulis akan membuatnya gagal — dan itulah gunanya.
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700001")
+
+	require.Equal(t, "Objek Contoh Satu", detail.Letter.InsuredName)
+	require.Equal(t, detail.Letter.InsuredName, detail.Letter.SumInsured,
+		"UP dan Nama Peserta diisi dari sumber yang SAMA — dikonfirmasi Work Owner")
+}
+
+func TestDetailDerivesBillAmountFromTheFirstAdjustment(t *testing.T) {
+	// `.JumlahTagihan <- ObjectList(1).ObjectCoverageList(1).AdjustmentList(1).ProposeValue`
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700001")
+	require.Equal(t, "15000000", detail.Letter.BillAmount)
+}
+
+func TestDetailLeavesDerivedFieldsEmptyWhenTheClaimHasNoObject(t *testing.T) {
+	// Klaim tanpa objek menghasilkan subkueri yang tidak mengembalikan baris. Itu keadaan
+	// yang SAH — bukan kegagalan — dan layar menggambarnya sebagai sel kosong.
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700002")
+
+	require.Empty(t, detail.Letter.InsuredName)
+	require.Empty(t, detail.Letter.SumInsured)
+	require.Empty(t, detail.Letter.BillAmount)
+
+	// Isian yang TERSIMPAN tetap terisi — yang kosong hanya yang diturunkan.
+	require.Equal(t, "PNC-700002", detail.ClaimNumber)
+	require.Equal(t, inboxrclpucl.TrackPUCL, detail.Letter.Track)
+}
+
+func TestDetailCarriesTheRawTrackCode(t *testing.T) {
+	// Nilai `3` menyembunyikan seluruh layar ini di Pega (`pyMemo` pada rule SendtoRCLPUCL),
+	// dan teks kosong dari penerjemah tidak dapat dibedakan dari kode yang memang kosong.
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700001")
+	require.Equal(t, inboxrclpucl.TrackCodeRCL, detail.Letter.TrackCode)
+}
+
+func TestDetailIsReachableEvenForClaimsNoTabShows(t *testing.T) {
+	// Layar kerja dibuka dengan KUNCI, bukan lewat antrean — begitu pula di Pega. Klaim
+	// yang sudah selesai tidak muncul di tab mana pun, tetapi kuncinya tetap dapat dibuka;
+	// menolaknya akan membuat layar gagal justru pada keadaan yang paling sering terjadi.
+	detail := detailOf(t, "ASM-FW-GCNMFW-WORK PNC-700009")
+	require.Equal(t, "PNC-700009", detail.ClaimNumber)
+}
+
+func TestDetailRejectsAnUnknownKey(t *testing.T) {
+	// "Tidak ditemukan" DIBEDAKAN dari "kosong": keduanya terlihat sama di layar, dan hanya
+	// yang pertama yang merupakan kekeliruan — paling sering karena portal yang salah.
+	store := memory.NewSampleStore()
+	_, err := store.Detail(context.Background(), "ASM-FW-GCNMFW-WORK PNC-999999")
+
+	require.ErrorIs(t, err, inboxrclpucl.ErrClaimNotFound)
+}
+
+func TestDetailRejectsAKeyFromAnotherWorkClass(t *testing.T) {
+	// Penyaring kelas objek kerja menutup kekeliruan yang tidak menghasilkan galat: kunci
+	// milik kelas lain mengembalikan baris berkolom PUCL kosong, terbaca persis seperti
+	// klaim yang belum diisi.
+	store := memory.NewStore(memory.Row{
+		Item:      inboxrclpucl.WorkItem{Reference: "ASM-FW-GCNMFW-WORK RCV-1", CaseID: "RCV-1"},
+		WorkClass: "ASM-FW-GCNMFW-Work-ReceiveDocument",
+	})
+
+	_, err := store.Detail(context.Background(), "ASM-FW-GCNMFW-WORK RCV-1")
+	require.ErrorIs(t, err, inboxrclpucl.ErrClaimNotFound)
+}

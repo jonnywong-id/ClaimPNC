@@ -401,3 +401,152 @@ SELECT COUNT(w.TANGGALCETAKDOKUMENPUCL_1)
      + COUNT(w.TANGGALKIRIMPUCL_1) AS PROBE
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
  WHERE 1 = 0
+
+-- name: detail
+-- LAYAR KERJA RCL/PUCL untuk SATU klaim — yang terbuka saat nomor klaim diklik.
+-- — Section/SendtoRCLPUCL-Section.xml, kontainer dua bagian
+-- — Section/SectionLampiranSuratPUCL-Section.xml      bagian "Lampiran Surat"
+-- — Section/SectionPenerimaanDokumenPUCL-Section.xml  bagian "Penerimaan Dokumen"
+-- — Activity/SetDataLampiranSuratRCLPUCL_Act-Act.xml  asal ketiga isian TURUNAN
+--
+-- ============================================================================
+-- TIGA ISIAN DITURUNKAN, BUKAN DIBACA DARI KOLOMNYA SENDIRI
+-- ============================================================================
+--
+-- Activity penyusun lampiran mengisinya dari anak-anak klaim, dan ketiganya hanya diisi
+-- bila masih kosong (precondition `.<isian>==""`):
+--
+--   .UP            <- pyWorkPage.ClaimData.ObjectList(1).ObjectName
+--   .NamaPeserta   <- pyWorkPage.ClaimData.ObjectList(1).ObjectName
+--   .JumlahTagihan <- pyWorkPage.ClaimData.ObjectList(1).ObjectCoverageList(1)
+--                                          .AdjustmentList(1).ProposeValue
+--
+-- Indeksnya SELALU `(1)`. Klaim dengan banyak objek hanya membawa yang PERTAMA ke suratnya,
+-- dan itu perilaku sistem lama apa adanya (`P-5`) — bukan penyederhanaan di sini.
+--
+-- PERHATIKAN BARIS PERTAMA DAN KEDUA MENUNJUK EKSPRESI YANG SAMA PERSIS. Kolom "UP" (Uang
+-- Pertanggungan) di Pega karena itu berisi NAMA OBJEK, bukan nilai pertanggungan — salin-tempel
+-- yang keliru, dan termasuk kelas cacat `R-19` (cacat pada aturan yang menyangkut uang).
+--
+-- ============================================================================
+-- PERBAIKAN YANG DIPUTUSKAN EKSPLISIT: "UP" MENGAMBIL NILAI PERTANGGUNGAN
+-- ============================================================================
+--
+-- Keputusan Work Owner 2026-09-24, menjawab pertanyaan terbuka yang diajukan bersama modul
+-- ini: **"Iya nilai pertanggungan"**.
+--
+-- `P-5` menetapkan perilaku direplikasi KECUALI perbaikan yang diputuskan eksplisit, dan
+-- inilah keputusan itu — mekanisme yang sama dengan ketiga belas butir `D-49`.
+--
+-- Yang dipakai:
+--
+--   .UP <- pyWorkPage.ClaimData.ObjectList(1).ObjectCoverageList(1).SumTSI
+--
+-- Navigasinya SAMA PERSIS dengan `.JumlahTagihan` — objek pertama, coverage pertamanya —
+-- hanya berhenti satu tingkat lebih dangkal, pada isian yang memang berarti nilai
+-- pertanggungan. Ia bukan jalur karangan: `SumTSI` adalah properti kelas
+-- `ASM-FW-GCNMFW-Data-ObjectCoverage` (terbaca sebagai `pxRuleClassName` di sembilan
+-- activity), dan kolomnya `SUMTSI` pada `POOLDATA.T_CLAIM_OBJECTCOVERAGE`, dibaca
+-- `RDB List/GetDataSlinkAllFOG-SQL.xml` dengan kunci `CLAIMID` + `OBJECTID`.
+--
+-- SELISIH YANG AKAN MUNCUL PADA UJI KESETARAAN: kolom "UP" berisi angka di sistem baru dan
+-- teks nama objek di Pega. Itu selisih yang DIRENCANAKAN dan dinyatakan lewat
+-- PlannedDifferences — bukan bug.
+--
+-- ============================================================================
+-- APA ARTI "PERTAMA" DI SINI
+-- ============================================================================
+--
+-- Di Pega, `(1)` adalah entri pertama pada page list KLIPBOARD, dan urutannya ditentukan
+-- cara halaman itu dimuat — sesuatu yang TIDAK terbaca dari export mana pun.
+--
+-- Di sini "pertama" ditetapkan tegas: `OBJECTID` terkecil untuk objek, lalu `COVERAGEID`
+-- dan `ADJUSTMENTID` terkecil untuk adjustment-nya. Itu SELISIH TERENCANA — urutan yang
+-- tidak ditetapkan membuat isian surat berubah-ubah antar pemanggilan pada klaim yang punya
+-- lebih dari satu objek.
+--
+-- ============================================================================
+-- PEMETAAN KOLOM
+-- ============================================================================
+--
+--   isian layar            properti Pega                              kolom
+--   ---------------------- ------------------------------------------ --------------------
+--   (kunci)                .pzInsKey                                  w.PZINSKEY
+--   judul layar            .pyID                                      w.PYID
+--   RCL/PUCL               .ClaimData.PUCLStatus.RCL_PUCL             w.RCL_PUCL_1
+--   Deskripsi Analyst      .ClaimData.PUCLStatus.KomentarAnalisator   w.KOMENTARANALISATOR_1
+--   No Polis               .Policy.PolicyNo                           w.POLICYNO
+--   Tanggal Kejadian       .ClaimData.DateOfLoss                      w.DATEOFLOSS_1
+--   Tanggal Cetak Surat    .ClaimData.PUCLStatus.TanggalCetakDokumenPUCL w.TANGGALCETAKDOKUMENPUCL_1
+--   Tanggal Kirim          .ClaimData.PUCLStatus.TanggalKirimPUCL     w.TANGGALKIRIMPUCL_1
+--   Komentar PUCL          .ClaimData.PUCLStatus.KomentarPUCL         w.KOMENTARPUCL_1
+--   Nama Peserta           .ClaimData.PUCLStatus.NamaPeserta          TURUNAN (objek pertama)
+--   UP                     .ClaimData.PUCLStatus.UP                   TURUNAN (SUMTSI coverage pertama)
+--   Jumlah Tagihan         .ClaimData.PUCLStatus.JumlahTagihan        TURUNAN (adjustment pertama)
+--
+-- ============================================================================
+-- DELAPAN ISIAN YANG TIDAK PUNYA KOLOM — dan ini BUKAN kelalaian
+-- ============================================================================
+--
+-- NIK · BusinessUnitSeksi · Perihal · Keterangan1 · Keterangan2 · Keterangan3 ·
+-- TanggalTerimaDokumenPUCL · EmailLOD, ditambah daftar berulang
+-- "Tanggal terima Dokumen / Tanggal / Keterangan" pada bagian kedua.
+--
+-- Penelusuran SELURUH export — `RDB List/`, `Database/*.prc`, `*.fnc`, dan kedua berkas CSV
+-- master — tidak menemukan satu pun kolom untuk kedelapannya. Inventaris katalog Oracle
+-- (`docs/kolom-t-claimlist-admin.md`, dibaca 2026-09-22) pun tidak mendaftarkannya di
+-- kelompok "Alur PUCL/RCL", yang justru memuat keenam kolom PUCL lain secara lengkap.
+--
+-- Dua di antaranya patut disebut khusus:
+--
+--   * `ID_PERIHAL` dan `PERIHAL_NAME` pada pemilih "Perihal" BUKAN master Perihal. Kedua
+--     properti itu dipakai ulang untuk hal yang sama sekali berbeda di
+--     `RDB List/CheckHoliday_SQL-SQL.xml`, tempat keduanya menampung TANGGAL
+--     (`to_date({InputCheckDate.ID_PERIHAL DateTime},'dd/mm/yyyy')`). Itu utang teknis §4.2
+--     apa adanya.
+--   * `TANGGALTERIMADOKUMEN` ADA di export, tetapi pada
+--     `POOLDATA.T_CLAIM_RECIVEDCLAIM` — tabel BERKAS PENERIMAAN DOKUMEN, bukan kolom PUCL
+--     pada objek kerja klaim. Keduanya bernama mirip dan mudah tertukar.
+--
+-- Kedelapannya tetap DIGAMBAR di layar sebagai isian kosong, bukan dihilangkan: isian yang
+-- belum terbawa harus terlihat. Mengarangnya melanggar larangan paling dasar proyek ini.
+--
+-- Bind: :1 kunci klaim (PZINSKEY) · :2 kelas objek kerja
+SELECT w.PZINSKEY                       AS REFERENCE,
+       w.PYID                           AS CLAIM_NUMBER,
+       w.RCL_PUCL_1                     AS TRACK_CODE,
+       w.KOMENTARANALISATOR_1           AS ANALYST_NOTE,
+       w.POLICYNO                       AS POLICY_NUMBER,
+       w.DATEOFLOSS_1                   AS LOSS_DATE,
+       w.KOMENTARPUCL_1                 AS PUCL_NOTE,
+       (SELECT o.OBJECTNAME
+          FROM POOLDATA.T_CLAIM_OBJECTLIST o
+         WHERE o.CLAIMID = w.PZINSKEY
+         ORDER BY o.OBJECTID
+         FETCH FIRST 1 ROWS ONLY)       AS FIRST_OBJECT_NAME,
+       (SELECT j.PROPOSE_VALUE
+          FROM POOLDATA.T_CLAIM_ADJUSTMENT j
+         WHERE j.CLAIMID = w.PZINSKEY
+           AND j.OBJECTID = (SELECT o2.OBJECTID
+                               FROM POOLDATA.T_CLAIM_OBJECTLIST o2
+                              WHERE o2.CLAIMID = w.PZINSKEY
+                              ORDER BY o2.OBJECTID
+                              FETCH FIRST 1 ROWS ONLY)
+         ORDER BY j.COVERAGEID, j.ADJUSTMENTID
+         FETCH FIRST 1 ROWS ONLY)       AS FIRST_PROPOSE_VALUE
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+ WHERE w.PZINSKEY = :1
+   AND w.PXOBJCLASS = :2
+
+-- name: check_detail
+-- Memastikan kedua tabel anak yang dipakai isian TURUNAN terbaca.
+--
+-- Terpisah dari check_rclpucl karena tabelnya memang berbeda, dan galat yang menyebut tabel
+-- yang salah menyesatkan orang yang memperbaikinya. Tanpa keduanya, layar kerja tetap
+-- terbuka tetapi "Nama Peserta", "UP", dan "Jumlah Tagihan" diam-diam kosong.
+SELECT COUNT(*) AS PROBE
+  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+       INNER JOIN POOLDATA.T_CLAIM_ADJUSTMENT j
+               ON j.CLAIMID = o.CLAIMID
+              AND j.OBJECTID = o.OBJECTID
+ WHERE 1 = 0

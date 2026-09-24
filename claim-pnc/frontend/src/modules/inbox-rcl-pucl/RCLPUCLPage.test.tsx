@@ -13,6 +13,7 @@ import type { MetadataResponse, Tab, WorkItem } from './types'
 const PATH = '/api/inbox-rcl-pucl'
 const TAB_PATH = `${PATH}/tab`
 const EXPORT_PATH = `${PATH}/ekspor`
+const CLAIM_PATH = `${PATH}/klaim/`
 
 const SAMPLE_PROFILE = {
   identitas: '90000004',
@@ -135,10 +136,39 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
   })
 }
 
-/** Peladen tiruan yang menjawab bentuk layar dan satu baris antrean. */
+/**
+ * Jawaban layar kerja satu klaim.
+ *
+ * `up` sengaja SAMA dengan `nama_peserta`: begitulah Pega mengisinya — kedua penetapan di
+ * `SetDataLampiranSuratRCLPUCL_Act` menunjuk ekspresi yang sama persis. Uji di bawah
+ * memastikan layar menjelaskannya alih-alih membiarkannya terbaca sebagai kerusakan.
+ */
+const DETAIL = {
+  referensi: BARIS.referensi,
+  no_case: BARIS.no_case,
+  lampiran_surat: {
+    rcl_pucl: 'RCL',
+    kode_rcl_pucl: '1',
+    deskripsi_analyst: 'Dokumen pendukung tidak lengkap.',
+    no_polis: 'CONTOH-RCL-0001',
+    tanggal_kejadian: '2026-09-01',
+    nama_peserta: 'Objek Contoh Satu',
+    up: '250000000',
+    jumlah_tagihan: '15000000',
+    tanggal_cetak_surat: '',
+    tanggal_kirim_rcl_pucl: '2026-09-10 09:30:00',
+  },
+  penerimaan_dokumen: { komentar_pucl: 'Menunggu kelengkapan dari cabang.' },
+  isian_belum_terpetakan: ['NIK', 'Perihal', 'Email LOD'],
+  tindakan_masih_di_pega: true,
+  portal: 'ASM',
+}
+
+/** Peladen tiruan yang menjawab bentuk layar, satu baris antrean, dan layar kerjanya. */
 function stubDefaultFetch(rows: WorkItem[] = [BARIS]) {
   stubFetch((url) => {
     if (url === TAB_PATH) return jsonResponse(200, METADATA)
+    if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('Nomor Case\nPNC-700001\n', {
         status: 200,
@@ -409,6 +439,76 @@ describe('isi tabel', () => {
 
     await screen.findByText('PNC-700001')
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('menggambar Nomor Case sebagai TAUTAN, bukan teks biasa', async () => {
+    // Begitulah bentuknya di ketiga section RCL/PUCL: sel "Nomor Case" adalah
+    // `pyUIElement = link` ber-`pyLabel = .pyID` (`D-13`).
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByRole('button', { name: /PNC-700001/ })).toBeInTheDocument()
+  })
+
+  it('TIDAK menggambar kolom tombol "Lihat Detail"', async () => {
+    // Versi pertama modul ini menambahkan kolom tombol yang TIDAK ADA di Pega sama sekali.
+    // Uji ini menjaga agar ia tidak kembali: kolom yang tidak pernah ada membuat pengguna
+    // mengira ada dua cara berbeda membuka baris, dan menggeser lebar kolom lain.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByText('Tertanggung Contoh Satu')
+    expect(screen.queryByRole('button', { name: /Lihat Detail/ })).not.toBeInTheDocument()
+  })
+
+  it('membuka LAYAR KERJA klaim, bukan panel di halaman antrean', async () => {
+    // Di Pega, tautannya menjalankan `SetAssignmentInboxPUCL_act` dengan satu parameter:
+    // `inskey = .pzInsKey`, dan Open Assignment membuka klaimnya pada tahap alur kerjanya.
+    // Yang dituju karena itu layar TERSENDIRI — section `SendtoRCLPUCL` — bukan pratinjau
+    // baris di bawah tabel.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(await screen.findByRole('button', { name: /PNC-700001/ }))
+
+    expect(await screen.findByText('Lampiran Surat')).toBeInTheDocument()
+    expect(screen.getByText('Penerimaan Dokumen')).toBeInTheDocument()
+
+    // Antreannya BENAR-BENAR ditinggalkan: bilah tab tidak lagi tergambar.
+    expect(screen.queryByRole('tab', { name: /Cetak Surat/ })).not.toBeInTheDocument()
+  })
+
+  it('membawa kunci klaim yang TERKODEKAN ke alamat layar kerja', async () => {
+    // `pzInsKey` memuat SPASI (`ASM-FW-GCNMFW-WORK PNC-700001`). Spasi mentah di dalam
+    // alamat bukan alamat yang sah, dan permintaannya akan berangkat dengan kunci yang
+    // rusak — tanpa satu pun galat di sisi layar.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(await screen.findByRole('button', { name: /PNC-700001/ }))
+    await screen.findByText('Lampiran Surat')
+
+    const claimCall = [...calls].reverse().find((c) => c.url.startsWith(CLAIM_PATH))
+    expect(claimCall?.url).toContain('ASM-FW-GCNMFW-WORK%20PNC-700001')
+  })
+
+  it('mengembalikan tab dan halaman yang sama saat kembali dari layar kerja', async () => {
+    // Tanpa ini, petugas yang membuka satu klaim dari tab kedua mendarat kembali di tab
+    // pertama — dan antrean ini dikerjakan berpuluh baris sehari.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await screen.findByText(/Klaim yang suratnya SUDAH dicetak/)
+
+    await userEvent.click(await screen.findByRole('button', { name: /PNC-700001/ }))
+    await screen.findByText('Lampiran Surat')
+
+    await userEvent.click(screen.getByRole('button', { name: /Kembali ke antrean/ }))
+
+    expect(
+      await screen.findByRole('tab', { name: /Kelengkapan Dokumen/, selected: true }),
+    ).toBeInTheDocument()
   })
 
   it('menjelaskan antrean kosong menurut sebabnya', async () => {

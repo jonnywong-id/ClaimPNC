@@ -845,6 +845,7 @@ Menggantikan harness `RCLPUCL_Harness` (`MENU_ID 61`). Seluruh rutenya menuntut 
 | `GET` | `/api/inbox-rcl-pucl/tab` | ketiga tab, kolomnya, kolom laporan, dan selisih terencana |
 | `GET` | `/api/inbox-rcl-pucl` | satu halaman daftar. Saringan: `tab`, `halaman`, `ukuran` |
 | `GET` | `/api/inbox-rcl-pucl/ekspor` | unduhan CSV. **Isinya berbeda menurut tab** — lihat di bawah |
+| `GET` | `/api/inbox-rcl-pucl/klaim/{referensi}` | **layar kerja satu klaim** — lihat di bawah |
 | `POST` | `/api/inbox-rcl-pucl/tindakan` | **selalu 501** — lihat di bawah |
 
 **Satu antrean, tiga partisi.** Ketiga tab membaca antrean bersama yang **sama** (`RCLPUCL`)
@@ -883,7 +884,48 @@ suratnya sudah dicetak, memuat klaim yang sudah selesai, dan ber-`UNION` dengan 
 yang mengambil seluruh klaim ber-Group Panel `002` **tanpa gabungan antrean bersama**. Kolomnya
 pun berbeda — ada `Status Klaim`, tidak ada `Lama Klaim`.
 
-**Empat selisih terencana yang paling perlu diketahui penguji** (daftar lengkapnya dikirim
+**Layar kerja satu klaim** — rute `/inbox-rcl-pucl/klaim/:referensi`. Di Pega, mengklik nomor
+klaim menjalankan Open Assignment (`SetAssignmentInboxPUCL_act`, `inskey = .pzInsKey`) dan
+membuka flow action `SendtoRCLPUCL` — kontainer dua bagian: **Lampiran Surat** (13 isian +
+tombol Cetak) dan **Penerimaan Dokumen** (grid + 3 isian + 2 tombol). Ia **halaman tersendiri**,
+bukan panel: di Pega pun ia layar tujuan. Tab dan nomor halaman antrean ikut di alamat supaya
+tombol kembali mendarat di tempat yang sama.
+
+Di sini ia **baca saja**; ketiga tombolnya menyimpan data, dan tabelnya masih milik Pega
+(`P-1`). Sembilan dari tujuh belas isiannya **tersimpan di clipboard Pega**, bukan sebagai
+kolom tabel — digambar di tempatnya dengan penanda `di clipboard Pega`, bukan dihilangkan dan
+bukan dibiarkan kosong.
+
+> Judul isian mengikuti **section**, bukan kolom grid. Ketiganya berbeda untuk isian yang sama:
+> "Catatan dari Analyst" (grid: Deskripsi Analyst), "Catatan untuk Analyst" (grid: Komentar
+> PUCL), dan "Status RCL / PUCL / MSIG" (grid: Status RCL/PUCL).
+
+Tiga isian suratnya **diturunkan**, bukan disimpan — dari objek dan adjustment pertama klaim:
+
+| Isian | Asal |
+|---|---|
+| Nama Peserta | `T_CLAIM_OBJECTLIST.OBJECTNAME`, objek pertama |
+| UP | **sumber yang sama** dengan Nama Peserta — lihat di bawah |
+| Jumlah Tagihan | `T_CLAIM_ADJUSTMENT.PROPOSE_VALUE`, adjustment pertama objek itu |
+
+> **Kolom "UP" berisi nama objek, dan itu memang benar.** Kedua penetapan di
+> `SetDataLampiranSuratRCLPUCL_Act` menunjuk ekspresi yang sama persis, sehingga UP dan Nama
+> Peserta selalu sama. Ia terbaca seperti salin-tempel yang keliru dan sempat "diperbaiki"
+> menjadi nilai pertanggungan pada 2026-09-24; **Work Owner meralatnya hari itu juga**.
+> Perbaikannya dicabut seluruhnya dan `P-5` berlaku apa adanya. Layar menjelaskannya di
+> tempat supaya tidak dilaporkan sebagai kerusakan.
+>
+> **Syarat `when` layar kerja belum diberlakukan.** `pyMemo` pada `SendtoRCLPUCL` mencatat
+> `visibility when .ClaimData.PUCLStatus.RCL_PUCL != 3`; arti kode `3` tidak diketahui.
+> Work Owner, 2026-09-24: belum diberlakukan. Layar kerja karena itu terbuka untuk seluruh
+> klaim di antrean ini, termasuk yang di Pega tersembunyi.
+>
+> Delapan isian layar lama **belum punya kolom** — NIK, Business Unit/Seksi, Perihal,
+> Keterangan 1–3, Tanggal Terima Dokumen PUCL, Email LOD, dan daftar penerimaan dokumen.
+> Ketiadaannya **disebutkan** lewat `isian_belum_terpetakan`, bukan digambar sebagai isian
+> kosong: kolom yang belum ditemukan dan data yang memang kosong adalah dua hal berbeda.
+
+**Lima selisih terencana yang paling perlu diketahui penguji** (daftar lengkapnya dikirim
 server dan tampil di bawah tabel):
 
 1. **Tab "Klaim MSIG" kemungkinan selalu kosong.** `MSIG_1` tidak muncul di inventaris kolom
@@ -896,6 +938,8 @@ server dan tampil di bawah tabel):
 4. **Judul "Status RCL/PUCL" dan "Status Kadaluarsa" menunjuk kolom yang berbeda** dari layar
    Inbox Manager Receive / PUCL, dan keduanya bersilangan. Masing-masing layar membawa
    pemetaannya sendiri (`D-13`).
+5. **Sembilan isian layar kerja tidak terisi** karena tersimpan di clipboard Pega, bukan
+   sebagai kolom tabel. Bukan data yang kosong, dan bukan kolom yang belum ditemukan.
 
 
 ### Master Status Klaim

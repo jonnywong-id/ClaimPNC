@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"claim-pnc/internal/inboxrclpucl"
@@ -214,6 +215,40 @@ func (r *Repo) DailyReport(
 	return rows, total, nil
 }
 
+// Detail mengambil isi layar kerja RCL/PUCL untuk satu klaim.
+//
+// # Kenapa kelas objek kerja ikut disaring
+//
+// Karena `PZINSKEY` memang unik, tetapi penyaring kelas menutup satu kelas kekeliruan yang
+// tidak menghasilkan galat: kunci milik kelas objek kerja LAIN yang kebetulan sampai ke
+// sini akan mengembalikan baris yang kolom PUCL-nya seluruhnya kosong — terbaca persis
+// seperti klaim RCL/PUCL yang belum diisi.
+//
+// # Kenapa "tidak ditemukan" dibedakan dari "kosong"
+//
+// Klaim yang tidak ada dan klaim yang seluruh isiannya kosong terlihat SAMA di layar, dan
+// hanya yang pertama yang merupakan kekeliruan. Yang paling mungkin menyebabkannya: kunci
+// yang benar dibuka pada PORTAL YANG SALAH — dan itu keterangan yang harus sampai ke
+// pengguna, bukan layar kosong tanpa sebab (`R-20`).
+func (r *Repo) Detail(
+	ctx context.Context,
+	reference string,
+) (inboxrclpucl.ClaimDetail, error) {
+	row := r.db.QueryRowContext(ctx, query("detail"),
+		reference,
+		inboxrclpucl.WorkClassClaim,
+	)
+
+	detail, err := scanDetail(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxrclpucl.ClaimDetail{}, inboxrclpucl.ErrClaimNotFound
+	}
+	if err != nil {
+		return inboxrclpucl.ClaimDetail{}, fmt.Errorf("membaca layar kerja klaim: %w", err)
+	}
+	return detail, nil
+}
+
 // CheckTable memastikan tabel DAN kolom yang disentuh modul ini terbaca dari koneksi yang
 // dipakai.
 //
@@ -235,6 +270,16 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 		return fmt.Errorf(
 			"membaca kolom penyaring PUCL (TANGGALCETAKDOKUMENPUCL_1, STATUSCASE_1, "+
 				"PUCLAPPROVE_1, MSIG_1, TANGGALKIRIMPUCL_1): %w", err)
+	}
+
+	// Kedua tabel anak diperiksa TERPISAH: tanpa keduanya, layar kerja tetap terbuka
+	// tetapi "Nama Peserta", "UP", dan "Jumlah Tagihan" diam-diam kosong — dan kosong
+	// adalah keadaan yang sah bagi klaim tanpa objek, sehingga tidak dapat dibedakan dari
+	// kerusakan.
+	if err := r.db.QueryRowContext(ctx, query("check_detail")).Scan(&ignored); err != nil {
+		return fmt.Errorf(
+			"membaca POOLDATA.T_CLAIM_OBJECTLIST atau "+
+				"POOLDATA.T_CLAIM_ADJUSTMENT: %w", err)
 	}
 	return nil
 }
@@ -305,6 +350,63 @@ func scanWorkItem(row scanner) (inboxrclpucl.WorkItem, int, error) {
 		ClaimAge:        claimAge.String,
 		ExpiryStatus:    expiryStatus.String,
 	}, int(total.Int64), nil
+}
+
+// scanDetail memindai satu baris layar kerja.
+//
+// Urutannya WAJIB sama dengan detailColumns dan dengan urutan kolom kueri `detail`.
+//
+// Kedua isian TURUNAN dipindai sebagai teks yang mengizinkan NULL, dan keduanya memang
+// sering kosong: klaim tanpa objek, atau objek tanpa adjustment, menghasilkan subkueri yang
+// tidak mengembalikan baris. Itu keadaan yang sah — bukan kegagalan.
+func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
+	var (
+		reference, claimNumber, trackCode sql.NullString
+		analystNote, policyNumber         sql.NullString
+		lossDate, puclNote                sql.NullString
+		firstObjectName, firstPropose     sql.NullString
+	)
+
+	err := row.Scan(
+		&reference, &claimNumber, &trackCode, &analystNote, &policyNumber,
+		&lossDate, &puclNote,
+		&firstObjectName, &firstPropose,
+	)
+	if err != nil {
+		return inboxrclpucl.ClaimDetail{}, err
+	}
+
+	return inboxrclpucl.ClaimDetail{
+		Reference:   reference.String,
+		ClaimNumber: claimNumber.String,
+
+		Letter: inboxrclpucl.LetterDraft{
+			Track:        inboxrclpucl.TrackOf(trackCode.String),
+			TrackCode:    trackCode.String,
+			AnalystNote:  analystNote.String,
+			PolicyNumber: policyNumber.String,
+			LossDate:     lossDate.String,
+
+			// Kedua isian diisi dari SATU sumber, dan itu memang benar.
+			//
+			// `SetDataLampiranSuratRCLPUCL_Act` menetapkan `.UP` dan `.NamaPeserta` dari
+			// ekspresi yang sama persis, dan Work Owner menegaskan 2026-09-24 bahwa kolom
+			// "UP" pada surat RCL/PUCL memang berisi NAMA OBJEK — bukan nilai
+			// pertanggungan.
+			//
+			// Ditulis berdampingan dengan sengaja: keduanya terbaca sebagai salin-tempel
+			// yang keliru, dan pernah "diperbaiki" atas dasar itu. Lihat
+			// `inboxrclpucl.LetterDraft.SumInsured`.
+			InsuredName: firstObjectName.String,
+			SumInsured:  firstObjectName.String,
+
+			BillAmount: firstPropose.String,
+		},
+
+		DocumentReceipt: inboxrclpucl.DocumentReceipt{
+			PUCLNote: puclNote.String,
+		},
+	}, nil
 }
 
 // scanReportRow memindai satu baris laporan harian beserta jumlah seluruh baris.

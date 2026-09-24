@@ -1278,7 +1278,13 @@ func checkRCLPUCL(
 		print("            DDL, yang belum pernah diterima (`R-08`).")
 		return
 	}
-	print("  [ok]    Tabel dan kolom penyaring Inbox RCL/PUCL dapat dibaca")
+	print("  [ok]    Tabel, kolom penyaring, dan tabel anak Inbox RCL/PUCL dapat dibaca")
+	print("            Tabel anak memasok isian LAYAR KERJA yang diturunkan:")
+	print("            T_CLAIM_OBJECTLIST  -> Nama Peserta DAN UP (keduanya ObjectName,")
+	print("                                   dan itu memang benar — dikonfirmasi 2026-09-24),")
+	print("            T_CLAIM_ADJUSTMENT  -> Jumlah Tagihan.")
+	print("            Sembilan isian lain adalah properti clipboard Pega; ia tidak punya")
+	print("            kolom, sehingga tidak ada yang perlu diperiksa di sini.")
 
 	page := inboxrclpucl.Pagination{Page: 1, Size: 5}
 	counts := map[string]int{}

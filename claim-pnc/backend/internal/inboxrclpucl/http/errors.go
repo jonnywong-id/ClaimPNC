@@ -18,6 +18,7 @@ const (
 	CodeCallerUnknown      = "profil_pemanggil_tidak_lengkap"
 	CodeWriteNotAvailable  = "belum_tersedia"
 	CodeReportNotAvailable = "laporan_tidak_tersedia"
+	CodeClaimNotFound      = "klaim_tidak_ditemukan"
 	CodeInternalError      = "galat_internal"
 )
 
@@ -99,6 +100,20 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Message: "Identitas Anda tidak terbaca. Antrean RCL/PUCL adalah antrean " +
 				"bersama, sehingga pembukaannya wajib tercatat atas nama seseorang. " +
 				"Masuk ulang lalu coba lagi.",
+		}, true
+
+	case errors.Is(err, inboxrclpucl.ErrClaimNotFound):
+		// 404, dan pesannya menyebut PORTAL.
+		//
+		// Penyebab paling mungkin bukan klaim yang benar-benar tidak ada, melainkan kunci
+		// yang benar dibuka pada portal yang salah — dan itu keadaan yang tidak
+		// menghasilkan satu pun tanda lain (`R-20`). Pesan "tidak ditemukan" tanpa
+		// menyebut portal akan membuat pengguna menyimpulkan datanya hilang.
+		return http.StatusNotFound, ErrorResponse{
+			Code: CodeClaimNotFound,
+			Message: "Klaim tidak ditemukan pada entitas yang sedang dipilih. " +
+				"Periksa pilihan portal di bilah atas — kunci klaim milik entitas lain " +
+				"tidak dapat dibuka dari sini.",
 		}, true
 
 	case errors.Is(err, inboxrclpucl.ErrReportNotAvailable):

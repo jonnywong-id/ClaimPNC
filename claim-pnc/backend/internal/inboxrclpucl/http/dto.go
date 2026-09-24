@@ -133,6 +133,70 @@ type ListResponse struct {
 	Portal     string        `json:"portal"`
 }
 
+// LetterDraftDTO adalah bagian "Lampiran Surat" pada layar kerja.
+//
+// Tiga isiannya DITURUNKAN dari anak klaim, bukan dibaca dari kolomnya sendiri — lihat
+// `inboxrclpucl.LetterDraft`. Nama fieldnya tetap berbahasa Indonesia karena ia kontrak yang
+// dibaca layar (`D-80`), dan mengikuti judul isian di section aslinya (`D-13`).
+type LetterDraftDTO struct {
+	Track string `json:"rcl_pucl"`
+
+	// TrackCode adalah kode jalur MENTAH.
+	//
+	// Dikirim selain `rcl_pucl` karena nilai `3` menyembunyikan seluruh layar ini di Pega,
+	// dan teks kosong dari penerjemah tidak dapat dibedakan dari kode yang memang kosong.
+	TrackCode string `json:"kode_rcl_pucl"`
+
+	AnalystNote  string `json:"deskripsi_analyst"`
+	PolicyNumber string `json:"no_polis"`
+	LossDate     string `json:"tanggal_kejadian"`
+
+	// InsuredName dan SumInsured sama-sama DITURUNKAN dari anak klaim, tetapi dari kolom
+	// yang BERBEDA — dan itu selisih terencana terhadap Pega, tempat keduanya diisi dari
+	// ekspresi yang sama persis sehingga "UP" ikut berisi nama objek.
+	//
+	// `up` karena itu berisi ANGKA di sini. Lihat `inboxrclpucl.LetterDraft.SumInsured`
+	// untuk keputusannya dan bukti sumbernya.
+	InsuredName string `json:"nama_peserta"`
+	SumInsured  string `json:"up"`
+
+	BillAmount string `json:"jumlah_tagihan"`
+}
+
+// DocumentReceiptDTO adalah bagian "Penerimaan Dokumen".
+//
+// Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali — dan
+// itu disengaja: mengirim isian kosong yang tidak punya sumber akan membuat layar mengira
+// datanya memang belum diisi, padahal kolomnya yang belum ditemukan. Yang menjelaskan
+// ketiadaannya adalah `UnmappedFields`.
+type DocumentReceiptDTO struct {
+	PUCLNote string `json:"komentar_pucl"`
+}
+
+// ClaimDetailResponse adalah jawaban GET /api/inbox-rcl-pucl/klaim/{referensi}.
+type ClaimDetailResponse struct {
+	Reference   string `json:"referensi"`
+	ClaimNumber string `json:"no_case"`
+
+	Letter          LetterDraftDTO     `json:"lampiran_surat"`
+	DocumentReceipt DocumentReceiptDTO `json:"penerimaan_dokumen"`
+
+	// UnmappedFields menyebut isian layar lama yang BELUM punya kolom terverifikasi.
+	//
+	// Ia dikirim sebagai DATA, bukan ditulis tetap di layar, supaya daftarnya menyusut di
+	// satu tempat begitu kolomnya ditemukan — dan supaya pengguna yang membandingkan kedua
+	// layar berdampingan tahu mana yang belum terbawa alih-alih mengira datanya hilang.
+	UnmappedFields []string `json:"isian_belum_terpetakan"`
+
+	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
+	//
+	// Layar memakainya untuk menjelaskan mengapa tidak ada satu pun tombol simpan di sini,
+	// alih-alih membiarkan pengguna mencarinya.
+	WriteBlocked bool `json:"tindakan_masih_di_pega"`
+
+	Portal string `json:"portal"`
+}
+
 // ViolationDTO adalah satu pelanggaran pada satu isian.
 type ViolationDTO struct {
 	Field   string `json:"field"`
@@ -224,6 +288,84 @@ func toPaginationDTO(page inboxrclpucl.Page) PaginationDTO {
 		Size:       page.Pagination.Size,
 		Total:      page.Total,
 		TotalPages: page.TotalPages(),
+	}
+}
+
+// unmappedLetterFields adalah isian layar kerja yang tidak dapat diisi dari kolom tabel.
+//
+// # Sebabnya BUKAN kolom yang hilang
+//
+// Work Owner menjelaskan 2026-09-24: kesembilannya diambil dari **clipboard** Pega —
+// `.ClaimData.PUCLStatus.NIK`, `.BusinessUnitSeksi`, `.Perihal`, `.Keterangan1`…`3`,
+// `.ClaimData.EmailLOD`, `.TanggalTerimaDokumenPUCL`, dan daftar `.DateReceivedDocument`.
+//
+// Properti clipboard yang tidak dioptimasi TIDAK punya kolom sendiri; nilainya hidup di
+// dalam objek kerja Pega. Itu menjelaskan mengapa pencarian ke seluruh export tidak
+// menemukan satu pun kolomnya, dan mengapa mencarinya lagi tidak akan menemukannya.
+//
+// Akibatnya berbeda dari "kolom belum ditemukan": ini bukan pertanyaan yang dapat dijawab
+// DBA dengan menunjuk kolom, melainkan keadaan yang baru berubah bila propertinya diekspos
+// sebagai kolom, atau bila modul ini kelak memiliki tabelnya sendiri.
+//
+// Namanya diambil dari `pyLabelFieldValue` pada sel masing-masing, bukan dari nama properti
+// Pega — yang membacanya petugas klaim. Satu di antaranya patut disadari: label **"No
+// Kontrak"** menempel pada properti `.ClaimData.PUCLStatus.NIK`. Label dan properti di situ
+// memang tidak sejalan, dan yang dibawa adalah LABEL-nya (`D-13`).
+//
+// Kesembilannya juga dicari di SELURUH export — `RDB List/`, `Database/*.prc`, `*.fnc`, dan kedua
+// berkas CSV master — tanpa satu pun kemunculan sebagai kolom. Inventaris katalog Oracle
+// (`docs/kolom-t-claimlist-admin.md`, 2026-09-22) pun tidak mendaftarkannya, sementara
+// keenam kolom PUCL lain lengkap di sana.
+//
+// Ia ditulis sebagai kalimat yang dibaca pengguna, bukan nama properti Pega: yang membacanya
+// petugas klaim, bukan orang yang menelusuri rule.
+var unmappedLetterFields = []string{
+	"No Kontrak",
+	"Business Unit / Seksi",
+	"Perihal",
+	"Keterangan Pembuka",
+	"Keterangan Isi",
+	"Keterangan Penutup",
+	"Email Tertanggung",
+	"Tanggal Kelengkapan Dokumen",
+	"Tanggal terima Dokumen (Tanggal · Keterangan)",
+}
+
+// toClaimDetailResponse merakit jawaban layar kerja satu klaim.
+func toClaimDetailResponse(
+	detail inboxrclpucl.ClaimDetail,
+	portalAlias string,
+) ClaimDetailResponse {
+	unmapped := make([]string, 0, len(unmappedLetterFields))
+	unmapped = append(unmapped, unmappedLetterFields...)
+
+	return ClaimDetailResponse{
+		Reference:   detail.Reference,
+		ClaimNumber: detail.ClaimNumber,
+
+		Letter: LetterDraftDTO{
+			Track:        detail.Letter.Track,
+			TrackCode:    detail.Letter.TrackCode,
+			AnalystNote:  detail.Letter.AnalystNote,
+			PolicyNumber: detail.Letter.PolicyNumber,
+			LossDate:     detail.Letter.LossDate,
+			InsuredName:  detail.Letter.InsuredName,
+			SumInsured:   detail.Letter.SumInsured,
+			BillAmount:   detail.Letter.BillAmount,
+		},
+
+		DocumentReceipt: DocumentReceiptDTO{
+			PUCLNote: detail.DocumentReceipt.PUCLNote,
+		},
+
+		UnmappedFields: unmapped,
+
+		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
+		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya
+		// berpindah (`P-1`).
+		WriteBlocked: true,
+
+		Portal: portalAlias,
 	}
 }
 

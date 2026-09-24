@@ -59,6 +59,26 @@ var reportColumns = []string{
 	"ANALYST_NOTE", "LETTER_PRINTED_AT", "TRACK_CODE", "CLAIM_STATUS", "TOTAL_ROWS",
 }
 
+// detailColumns adalah ke-9 alias yang dikembalikan kueri layar kerja.
+//
+// Ia BERBEDA dari listColumns, dan perbedaannya bukan kelalaian — ia mengikuti SECTION,
+// bukan grid:
+//
+//   - membawa DUA isian TURUNAN dari anak klaim (`FIRST_OBJECT_NAME`,
+//     `FIRST_PROPOSE_VALUE`) yang tidak ada di grid mana pun. `FIRST_OBJECT_NAME` mengisi
+//     DUA isian sekaligus — "Nama Peserta" dan "UP" — karena begitulah Pega mengisinya;
+//   - TIDAK membawa "Lama Klaim" maupun "Status Kadaluarsa", yang hanya dipakai grid;
+//   - TIDAK membawa tanggal cetak surat maupun tanggal kirim RCL/PUCL. Keduanya sempat
+//     dibawa ke sini dan itu KELIRU: `Section/SectionLampiranSuratPUCL-Section.xml` tidak
+//     memuat satu pun dari keduanya. Layar kerja menggambar apa yang digambar section-nya,
+//     bukan apa yang kebetulan sudah ada di tangan (`D-13`).
+
+var detailColumns = []string{
+	"REFERENCE", "CLAIM_NUMBER", "TRACK_CODE", "ANALYST_NOTE", "POLICY_NUMBER",
+	"LOSS_DATE", "PUCL_NOTE",
+	"FIRST_OBJECT_NAME", "FIRST_PROPOSE_VALUE",
+}
+
 // listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
 var listQueries = []string{
 	"list_cetak_surat", "list_kelengkapan_dokumen", "list_klaim_msig",

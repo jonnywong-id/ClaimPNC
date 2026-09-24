@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -40,9 +40,23 @@ import type { DateRange, ReportColumn, Tab, TabColumn, WorkItem } from './types'
  * ada di tab ini dan tidak di tab sebelah.
  */
 export function RCLPUCLPage() {
-  const [tabCode, setTabCode] = useState('')
-  const [page, setPage] = useState(1)
+  // Tab dan nomor halaman hidup di ALAMAT, bukan di state komponen.
+  //
+  // Alasannya satu dan nyata: mengklik Nomor Case membuka layar kerja di rute lain, dan
+  // komponen ini dilepas. State yang hanya ada di memori akan hilang, sehingga petugas yang
+  // kembali dari sebuah klaim mendarat di tab pertama halaman pertama — padahal ia sedang
+  // mengerjakan halaman ketiga tab kedua. Pada antrean yang dibuka berpuluh kali sehari,
+  // itu bukan ketidaknyamanan kecil.
+  //
+  // Rentang tanggal TIDAK ikut ke alamat: ia hanya dipakai tombol ekspor, tidak menyaring
+  // tabel, dan menaruhnya di alamat akan menyiratkan ia bagian dari apa yang sedang dilihat.
+  const [params, setParams] = useSearchParams()
   const [range, setRange] = useState<DateRange>({ dari: '', sampai: '' })
+
+  const navigate = useNavigate()
+
+  const tabCode = params.get('tab') ?? ''
+  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
 
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useRCLPUCLMetadata()
@@ -65,8 +79,24 @@ export function RCLPUCLPage() {
    * layar yang ketiga tabnya tampak sama, itu sangat mudah disalahartikan.
    */
   function selectTab(code: string) {
-    setTabCode(code)
-    setPage(1)
+    setParams({ tab: code, halaman: '1' }, { replace: true })
+  }
+
+  /** Berpindah halaman, menjaga tab yang sedang terbuka. */
+  function setPage(next: number) {
+    setParams({ tab: active, halaman: String(next) }, { replace: true })
+  }
+
+  /**
+   * Membuka layar kerja klaim — yang di Pega dijalankan Open Assignment.
+   *
+   * Tab dan halaman ikut ke alamat tujuan supaya tombol kembali mendarat di tempat yang
+   * sama. Kuncinya dikodekan: `pzInsKey` memuat SPASI (`ASM-FW-GCNMFW-WORK PNC-1234`), dan
+   * spasi mentah di dalam alamat bukan alamat yang sah.
+   */
+  function openCase(row: WorkItem) {
+    const back = new URLSearchParams({ tab: active, halaman: String(page) })
+    navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.referensi)}?${back}`)
   }
 
   if (portal === null) {
@@ -128,7 +158,9 @@ export function RCLPUCLPage() {
           ) : (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                columns={columnsFor(tab, (row) => (
+                  <CaseLink item={row} onOpen={openCase} />
+                ))}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.no_case}`}
                 title={tab.nama}
@@ -392,29 +424,73 @@ function WriteActionsNotice() {
 }
 
 /**
- * Tombol rincian.
+ * Tautan pada kolom "Nomor Case".
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun mengikuti modul inbox lain, dan tujuannya
- * diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * # Kenapa TAUTAN pada nomor case, bukan tombol di ujung baris
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega. Dengan begitu menyalakan layar
- * rincian kelak tidak menuntut perubahan kontrak API modul ini.
+ * Karena begitulah layar lama. Ketiga section RCL/PUCL menggambar sel "Nomor Case" sebagai
+ * `pyUIElement = link` ber-`pyLabel = .pyID`, dan `D-13` menetapkan tampilan mengikuti Pega.
+ *
+ * Versi pertama modul ini keliru di sini: ia menambahkan kolom tombol "Lihat Detail" yang
+ * **tidak ada di Pega sama sekali**. Itu bukan sekadar beda tampilan — kolom yang tidak
+ * pernah ada membuat pengguna mengira ada dua cara berbeda membuka baris, dan menggeser
+ * lebar seluruh kolom lain.
+ *
+ * # Apa yang sebenarnya terjadi saat diklik di Pega
+ *
+ * `pyEvent = click` menjalankan `pyAction = runActivity` atas
+ * `SetAssignmentInboxPUCL_act`, dengan satu parameter: `inskey = .pzInsKey`.
+ *
+ * Activity itu sendiri **nyaris kosong** — `pyUsage = FLOW`, satu `Property-Set` ke
+ * `TempIns.pyNote`. Ia kait pra-proses; yang bekerja adalah **Open Assignment** bawaan
+ * Pega, yang membuka klaim pada tahap alur kerjanya saat itu supaya petugas dapat
+ * MENGERJAKANNYA — bukan membacanya.
+ *
+ * Itu jalur TULIS: Open Assignment mengunci objek kerja, dan flow action yang menunggu di
+ * sana (`SendtoRCLPUCL` → `SetDataLampiranSuratRCLPUCL_Act`) menyiapkan lampiran surat
+ * RCL/PUCL — persis tindakan "Cetak Surat". Selama masa paralel, objek kerja dan
+ * penugasannya masih dimiliki Pega (`P-1`).
+ *
+ * # Apa yang dibuka di sini
+ *
+ * Layar kerja `SendtoRCLPUCL` — kedua bagiannya, "Lampiran Surat" dan "Penerimaan
+ * Dokumen". Ia **BACA SAJA**: bagian yang menulis masih dimiliki Pega (`P-1`).
+ *
+ * Section-nya sempat tidak ada di export dan modul ini sempat hanya menampilkan isi baris
+ * grid. Work Owner menambahkan ketiga rule yang hilang pada 2026-09-24 — induknya beserta
+ * kedua sub-section-nya — sehingga isinya kini terbaca dari bukti, bukan ditebak.
+ *
+ * # Kenapa PANEL, bukan halaman tujuan
+ *
+ * Karena yang dibuka bukan halaman baru melainkan tahap alur kerja klaim yang sama, dan
+ * petugas kembali ke antreannya begitu selesai. Panel di halaman yang sama menjaga daftar
+ * tetap di tempatnya — nomor halaman, tab, dan rentang tanggalnya tidak hilang.
+ *
+ * Mengarahkannya ke layar View Claim akan keliru: `ViewTempDetailClaim` memang ada, tetapi
+ * dibuka `PNCInboxAdmin`, `PNCSearchKlaim`, `InboxManagerReopen1_Sec`, dan
+ * `InputProgressClaim` — **tidak satu pun dari RCL/PUCL**.
  */
-function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const key = item.referensi || item.no_case
+function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) => void }) {
+  if (item.no_case === '') return <span className="text-slate-400">—</span>
 
   return (
-    <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      title={`Buka klaim ${item.no_case}`}
+      className={[
+        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
+        'transition-colors duration-150 ease-halus hover:underline',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+        'disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline',
+      ].join(' ')}
     >
-      Lihat Detail
-    </Button>
+      {item.no_case}
+    </button>
   )
 }
+
+
 
 /**
  * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
@@ -444,26 +520,30 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
- * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
- * dan backend tidak tahu apa pun tentang rute antarmuka.
+ * # TIDAK ada kolom aksi tambahan
+ *
+ * Layar lama tidak punya satu pun, dan versi pertama modul ini keliru menambahkannya.
+ * Yang membuka baris adalah **tautan pada sel "Nomor Case"** — itulah bentuknya di ketiga
+ * section RCL/PUCL (`D-13`).
+ *
+ * `value` tetap mengembalikan TEKS polos meski selnya digambar sebagai tautan. Keduanya
+ * dipisah dengan sengaja oleh `DataTable`: yang dicari dan diurutkan adalah teksnya, yang
+ * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri
+ * markup alih-alih nomor case.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => cellText(row, column),
-  }))
+function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+  return tab.kolom.map((column) => {
+    const base: Column<WorkItem> = {
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => cellText(row, column),
+    }
 
-  columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
-    render: action,
-    noSort: true,
-    alignRight: true,
+    if (column.kunci === 'no_case') {
+      return { ...base, render: openCase }
+    }
+    return base
   })
-
-  return columns
 }
 
 /**

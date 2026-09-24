@@ -106,6 +106,26 @@ type Row struct {
 	// tidak urut. Menyamakan keduanya di sini akan menyembunyikan hal itu dari uji.
 	CreatedAt time.Time
 
+	// LossDate adalah `DATEOFLOSS_1` — Tanggal Kejadian, digambar layar kerja.
+	//
+	// Ia tidak ada di grid mana pun, sehingga tidak masuk WorkItem.
+	LossDate string
+
+	// FirstObjectName meniru `ObjectList(1).ObjectName` —
+	// `POOLDATA.T_CLAIM_OBJECTLIST.OBJECTNAME` pada objek ber-`OBJECTID` terkecil.
+	//
+	// Ia mengisi DUA isian layar kerja sekaligus, "Nama Peserta" DAN "UP", karena
+	// `SetDataLampiranSuratRCLPUCL_Act` memang menunjuk ekspresi yang sama untuk keduanya.
+	FirstObjectName string
+
+	// FirstProposeValue meniru `ObjectList(1).ObjectCoverageList(1).AdjustmentList(1)
+	// .ProposeValue` — `POOLDATA.T_CLAIM_ADJUSTMENT.PROPOSE_VALUE`.
+	FirstProposeValue string
+
+	// PUCLNote adalah `KOMENTARPUCL_1` — satu-satunya isian bagian "Penerimaan Dokumen"
+	// yang punya kolom terverifikasi.
+	PUCLNote string
+
 	// SentAt adalah `TANGGALKIRIMPUCL_1` sebagai waktu — dasar penyaring dan pengurutan
 	// LAPORAN HARIAN.
 	//
@@ -284,6 +304,67 @@ func (s *Store) DailyReport(
 		rows = append(rows, row.row)
 	}
 	return rows, total, nil
+}
+
+// Detail mengembalikan isi layar kerja RCL/PUCL untuk satu klaim.
+//
+// # Kenapa ia meniru penyaring kelas objek kerja pula
+//
+// Karena kueri SQL-nya begitu, dan penyaring itu menutup kelas kekeliruan yang tidak
+// menghasilkan galat: kunci milik kelas lain mengembalikan baris berkolom PUCL kosong yang
+// terbaca seperti klaim yang belum diisi.
+//
+// # Kenapa ia TIDAK menyaring antrean maupun status kerja
+//
+// Karena kuerinya juga tidak. Layar kerja dibuka dengan KUNCI, bukan lewat antrean — dan
+// klaim yang sudah berpindah antrean sejak daftarnya dimuat tetap harus dapat dibuka.
+func (s *Store) Detail(
+	_ context.Context,
+	reference string,
+) (inboxrclpucl.ClaimDetail, error) {
+	wanted := strings.TrimSpace(reference)
+
+	for _, candidate := range s.rows {
+		if candidate.WorkClass != inboxrclpucl.WorkClassClaim {
+			continue
+		}
+		if candidate.Item.Reference != wanted {
+			continue
+		}
+		return detailOf(candidate), nil
+	}
+
+	return inboxrclpucl.ClaimDetail{}, inboxrclpucl.ErrClaimNotFound
+}
+
+// detailOf menyusun isi layar kerja dari satu baris contoh.
+//
+// Ketiga isian TURUNAN dihitung di sini dengan cara yang sama seperti kueri SQL — termasuk
+// "UP" yang mengambil sumber yang SAMA dengan "Nama Peserta". Menyimpangkannya akan membuat
+// uji yang berjalan di atas memori menyatakan hal yang tidak benar tentang Oracle, dan justru
+// pada isian yang paling mudah disangka cacat.
+func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
+	return inboxrclpucl.ClaimDetail{
+		Reference:   candidate.Item.Reference,
+		ClaimNumber: candidate.Item.CaseID,
+
+		Letter: inboxrclpucl.LetterDraft{
+			Track:        inboxrclpucl.TrackOf(candidate.TrackCode),
+			TrackCode:    candidate.TrackCode,
+			AnalystNote:  candidate.Item.AnalystNote,
+			PolicyNumber: candidate.Item.PolicyNumber,
+			LossDate:     candidate.LossDate,
+
+			InsuredName: candidate.FirstObjectName,
+			SumInsured:  candidate.FirstObjectName,
+
+			BillAmount: candidate.FirstProposeValue,
+		},
+
+		DocumentReceipt: inboxrclpucl.DocumentReceipt{
+			PUCLNote: candidate.PUCLNote,
+		},
+	}
 }
 
 // decorate mengisi isian yang di sistem baru DITURUNKAN, bukan disimpan.

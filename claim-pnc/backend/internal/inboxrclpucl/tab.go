@@ -344,6 +344,37 @@ var PlannedDifferences = []string{
 		"kueri lain pada domain yang sama sudah menerjemahkannya. Angka mentah di dalam " +
 		"berkas Excel tidak berarti apa pun bagi pembacanya.",
 
+	"Mengklik Nomor Case membuka layar kerja klaim sebagai panel di halaman yang sama, " +
+		"bukan sebagai halaman tersendiri. Isinya mengikuti kedua bagian layar lama — " +
+		"\"Lampiran Surat\" dan \"Penerimaan Dokumen\" — dan ketiga isian turunannya " +
+		"diambil dari anak klaim, sama seperti di Pega. Yang belum ada adalah TINDAKAN " +
+		"pada layar itu: di Pega, membuka baris berarti mengambil penugasannya untuk " +
+		"dikerjakan, dan itu menulis ke tabel penugasan yang masih dimiliki Pega selama " +
+		"kedua sistem berjalan berdampingan. Di sini layarnya dibaca, belum dikerjakan.",
+
+	"Delapan isian layar kerja lama TIDAK punya kolom di seluruh export, sehingga tidak " +
+		"dapat diisi. Ia disebutkan satu per satu di bawah panelnya alih-alih digambar " +
+		"sebagai sel kosong — sel kosong tidak dapat dibedakan dari data yang memang " +
+		"belum diisi, dan perbedaannya menentukan siapa yang harus dimintai.",
+
+	"Sembilan isian layar kerja TIDAK terisi, dan sebabnya bukan data yang kosong. " +
+		"Kesembilannya adalah properti clipboard pada objek kerja Pega — No Kontrak, " +
+		"Business Unit / Seksi, Perihal, ketiga Keterangan, Email Tertanggung, Tanggal " +
+		"Kelengkapan Dokumen, dan daftar Tanggal terima Dokumen. Ia tidak diekspos " +
+		"sebagai kolom tabel, sehingga tidak dapat dibaca dengan kueri biasa selama " +
+		"objek kerjanya masih dimiliki Pega. Isian itu tetap digambar di tempatnya, " +
+		"bertanda, supaya ketiadaannya terlihat alih-alih tersamar sebagai isian yang " +
+		"memang belum diisi.",
+
+	"Layar kerja terbuka untuk SELURUH klaim di antrean ini. Layar lama " +
+		"menyembunyikannya bagi satu nilai kode jalur tertentu, dan arti nilai itu tidak " +
+		"diketahui: tidak ada master yang menerjemahkan kode jalur di export mana pun, " +
+		"sementara kolomnya punya tiga nilai berbeda di produksi. Keputusan Work Owner " +
+		"2026-09-24: syarat itu belum diberlakukan. Akibatnya, bila nilai ketiga itu " +
+		"memang menandai klaim yang seharusnya tidak dikerjakan lewat layar ini, klaimnya " +
+		"tetap dapat dibuka di sini padahal di Pega tidak. Temuan ini dicatat dan " +
+		"menunggu arti kode jalurnya dipastikan.",
+
 	"Tindakan \"Cetak Surat\" dan \"Reminder PUCL\" belum tersedia. Keduanya MENULIS — " +
 		"yang pertama mengisi tanggal cetak sehingga klaimnya berpindah tab, yang kedua " +
 		"mengirim pengingat. Selama Pega dan sistem baru berjalan berdampingan, tabel " +

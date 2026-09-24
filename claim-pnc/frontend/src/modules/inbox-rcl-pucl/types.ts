@@ -169,6 +169,92 @@ export type ListResponse = {
   portal: string
 }
 
+/**
+ * Bagian "Lampiran Surat" pada layar kerja RCL/PUCL.
+ *
+ * # Tiga isiannya DITURUNKAN, bukan disimpan
+ *
+ * `SetDataLampiranSuratRCLPUCL_Act` mengisinya dari anak-anak klaim — objek pertama dan
+ * adjustment pertamanya. Klaim tanpa objek karena itu menghasilkan ketiganya KOSONG, dan
+ * itu keadaan yang sah.
+ */
+export type LetterDraft = {
+  /** Jalur penanganan — "RCL" atau "PUCL". Kosong bila kodenya tidak dikenali. */
+  rcl_pucl: string
+
+  /**
+   * Kode jalur MENTAH.
+   *
+   * Dibaca layar untuk membedakan "kode tidak dikenali" dari "kode memang kosong" — dan
+   * khususnya untuk mengenali nilai `3`, yang di Pega MENYEMBUNYIKAN seluruh layar ini.
+   */
+  kode_rcl_pucl: string
+
+  deskripsi_analyst: string
+  no_polis: string
+  tanggal_kejadian: string
+
+  /** Diturunkan dari nama objek pertama. */
+  nama_peserta: string
+
+  /**
+   * "UP" (Uang Pertanggungan) — diturunkan dari SUMBER YANG SAMA dengan `nama_peserta`.
+   *
+   * Kedua penetapan di `SetDataLampiranSuratRCLPUCL_Act` menunjuk ekspresi yang sama persis
+   * (`ObjectList(1).ObjectName`), sehingga isian ini berisi NAMA OBJEK — bukan angka.
+   *
+   * Itu terbaca seperti salin-tempel yang keliru, dan sempat "diperbaiki" menjadi nilai
+   * pertanggungan pada 2026-09-24. Work Owner MERALATNYA hari itu juga: UP memang
+   * ObjectName. Perbaikannya dicabut, dan `P-5` berlaku apa adanya.
+   */
+  up: string
+
+  /** Diturunkan dari `PROPOSE_VALUE` adjustment pertama pada objek pertama. */
+  jumlah_tagihan: string
+}
+
+/**
+ * Bagian "Penerimaan Dokumen".
+ *
+ * Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali —
+ * yang menjelaskan ketiadaannya adalah `isian_belum_terpetakan`.
+ */
+export type DocumentReceipt = {
+  /**
+   * Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL".
+   *
+   * Nama isian JSON-nya tetap `komentar_pucl` karena ia KONTRAK, bukan nama yang dilihat
+   * pengguna (`D-80`). Yang mengikuti section adalah judul di layar.
+   */
+  komentar_pucl: string
+}
+
+/** Jawaban GET /api/inbox-rcl-pucl/klaim/{referensi}. */
+export type ClaimDetailResponse = {
+  referensi: string
+  no_case: string
+
+  lampiran_surat: LetterDraft
+  penerimaan_dokumen: DocumentReceipt
+
+  /**
+   * Isian layar lama yang tersimpan di CLIPBOARD Pega, bukan sebagai kolom tabel.
+   *
+   * Work Owner menjelaskan 2026-09-24: kesembilannya properti clipboard pada objek kerja
+   * (`.ClaimData.PUCLStatus.NIK` dan seterusnya). Properti clipboard yang tidak dioptimasi
+   * tidak punya kolom sendiri — jadi ini BUKAN daftar "kolom yang belum ditemukan".
+   *
+   * Datang dari server sebagai kalimat siap baca, bukan nama properti Pega — yang
+   * membacanya petugas klaim.
+   */
+  isian_belum_terpetakan: string[]
+
+  /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
+  tindakan_masih_di_pega: boolean
+
+  portal: string
+}
+
 /** Rentang tanggal laporan harian, berbentuk `YYYY-MM-DD`. */
 export type DateRange = {
   dari: string

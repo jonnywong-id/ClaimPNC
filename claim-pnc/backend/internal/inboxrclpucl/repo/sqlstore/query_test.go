@@ -403,3 +403,111 @@ func TestColumnProbeNamesEveryFilteringColumn(t *testing.T) {
 		require.Containsf(t, text, column, "kolom %s tidak ikut diperiksa", column)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Layar kerja satu klaim
+// ---------------------------------------------------------------------------
+
+func TestDetailReturnsItsOwnAliases(t *testing.T) {
+	// Layar kerja TIDAK memakai alias yang sama dengan grid: ia membawa dua isian TURUNAN
+	// dari anak klaim, dan tidak membawa "Lama Klaim" maupun "Status Kadaluarsa".
+	require.Equal(t, detailColumns, aliasesOf(query("detail")))
+}
+
+func TestDetailIsKeyedByInsKeyAndWorkClass(t *testing.T) {
+	// Kuncinya `pzInsKey` — parameter yang sama dengan `inskey` pada tautan Pega.
+	//
+	// Penyaring kelas ikut karena ia menutup kekeliruan yang TIDAK menghasilkan galat:
+	// kunci milik kelas objek kerja lain mengembalikan baris berkolom PUCL kosong, dan itu
+	// terbaca persis seperti klaim yang belum diisi.
+	text := query("detail")
+	require.Contains(t, text, "w.PZINSKEY = :1")
+	require.Contains(t, text, "w.PXOBJCLASS = :2")
+}
+
+func TestDetailDoesNotFilterByQueueOrWorkStatus(t *testing.T) {
+	// Layar kerja dibuka dengan KUNCI, bukan lewat antrean — begitu pula di Pega, tempat
+	// tautannya mengirim `inskey` tanpa satu pun penyaring antrean. Klaim yang sudah
+	// berpindah antrean sejak daftarnya dimuat tetap harus dapat dibuka.
+	text := query("detail")
+	require.NotContains(t, text, "PC_ASSIGN_WORKBASKET")
+	require.NotContains(t, text, "PYSTATUSWORK")
+}
+
+func TestDetailDerivesBothLetterFieldsFromTheFirstObject(t *testing.T) {
+	// `SetDataLampiranSuratRCLPUCL_Act` memakai indeks `(1)` di setiap tingkat. "Pertama"
+	// di sini ditetapkan tegas dengan `ORDER BY`, karena urutan page list klipboard Pega
+	// tidak terbaca dari export mana pun — dan urutan yang tidak ditetapkan membuat isian
+	// surat berubah-ubah antar pemanggilan.
+	text := query("detail")
+
+	require.Contains(t, text, "POOLDATA.T_CLAIM_OBJECTLIST")
+	require.Contains(t, text, "POOLDATA.T_CLAIM_ADJUSTMENT")
+	require.Contains(t, text, "ORDER BY o.OBJECTID")
+	require.Contains(t, text, "ORDER BY j.COVERAGEID, j.ADJUSTMENTID")
+
+	// Adjustment-nya WAJIB terikat pada objek pertama, bukan sekadar adjustment pertama
+	// klaim — jalur Pega-nya `ObjectList(1).ObjectCoverageList(1).AdjustmentList(1)`.
+	require.Contains(t, text, "j.OBJECTID = (SELECT o2.OBJECTID")
+}
+
+func TestDetailCarriesOnlyWhatTheSectionDraws(t *testing.T) {
+	// Layar kerja menggambar `Section/SectionLampiranSuratPUCL-Section.xml`, bukan grid.
+	//
+	// Kedua kolom di bawah ADA di tabel yang sama dan sudah dipakai ketiga kueri daftar,
+	// sehingga membawanya ke sini nyaris tanpa biaya — dan itulah jebakannya. Section-nya
+	// tidak memuat satu pun dari keduanya: seluruh properti yang dirujuknya adalah
+	// `RCL_PUCL`, `KomentarAnalisator`, `UP`, `NIK`, `Policy.PolicyNo`, `BusinessUnitSeksi`,
+	// `NamaPeserta`, `JumlahTagihan`, `Perihal`, `DateOfLoss`, dan `Keterangan1..3`.
+	//
+	// Versi pertama modul ini membawa keduanya karena keduanya "sudah di tangan". Uji ini
+	// menahan pengulangannya: layar kerja mengikuti section-nya (`D-13`), bukan apa yang
+	// kebetulan mudah diambil.
+	text := query("detail")
+
+	require.NotContains(t, text, "LETTER_PRINTED_AT")
+	require.NotContains(t, text, "SENT_AT")
+	require.NotContains(t, text, "TANGGALCETAKDOKUMENPUCL_1")
+	require.NotContains(t, text, "TANGGALKIRIMPUCL_1")
+
+	// Yang memang milik section tetap ada.
+	require.Contains(t, text, "w.RCL_PUCL_1")
+	require.Contains(t, text, "w.KOMENTARANALISATOR_1")
+	require.Contains(t, text, "w.DATEOFLOSS_1")
+	require.Contains(t, text, "w.KOMENTARPUCL_1")
+}
+
+func TestDetailFillsInsuredNameAndSumInsuredFromOneSubquery(t *testing.T) {
+	// "Nama Peserta" dan "UP" diisi dari SATU subkueri — `ObjectList(1).ObjectName` —
+	// karena begitulah `SetDataLampiranSuratRCLPUCL_Act` mengisinya, dan Work Owner
+	// menegaskan 2026-09-24 bahwa itu memang benar.
+	//
+	// Pernah ditambahkan subkueri kedua ke `T_CLAIM_OBJECTCOVERAGE` untuk mengambil
+	// `SUMTSI` sebagai "UP". Itu dicabut. Uji ini menahannya lahir kembali: tabel coverage
+	// TIDAK disentuh kueri ini sama sekali.
+	text := query("detail")
+
+	require.Contains(t, text, "FIRST_OBJECT_NAME")
+	require.NotContains(t, text, "FIRST_SUM_TSI")
+	require.NotContains(t, text, "SUMTSI")
+	require.NotContains(t, text, "T_CLAIM_OBJECTCOVERAGE")
+}
+
+func TestDetailUsesProposeValueNotAdjustmentValue(t *testing.T) {
+	// `PROPOSE_VALUE` dan `ADJUSTMENTVALUE` keduanya ada di tabel yang sama, dan keduanya
+	// nilai uang yang masuk akal. Yang ditunjuk `.ProposeValue` adalah yang pertama;
+	// menukarnya menampilkan jumlah tagihan yang salah TANPA satu pun galat.
+	text := query("detail")
+	require.Contains(t, text, "j.PROPOSE_VALUE")
+	require.NotContains(t, text, "ADJUSTMENTVALUE")
+}
+
+func TestDetailProbeTouchesBothChildTables(t *testing.T) {
+	// Tanpa kedua tabel anak, layar kerja tetap terbuka tetapi "Nama Peserta", "UP", dan
+	// "Jumlah Tagihan" diam-diam kosong — dan kosong adalah keadaan yang sah bagi klaim
+	// tanpa objek, sehingga tidak dapat dibedakan dari kerusakan.
+	text := query("check_detail")
+	require.Contains(t, text, "POOLDATA.T_CLAIM_OBJECTLIST")
+	require.Contains(t, text, "POOLDATA.T_CLAIM_ADJUSTMENT")
+	require.Contains(t, text, "WHERE 1 = 0")
+}

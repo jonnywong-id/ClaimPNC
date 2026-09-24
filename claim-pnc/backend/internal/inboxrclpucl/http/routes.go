@@ -58,6 +58,14 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-rcl-pucl/tab", h.Metadata)
 		perPortal.Get("/inbox-rcl-pucl", h.List)
 
+		// Layar kerja satu klaim — yang di Pega terbuka lewat Open Assignment saat nomor
+		// klaim diklik.
+		//
+		// Kuncinya di JALUR, bukan parameter query: ia mengidentifikasi sumber daya, bukan
+		// menyaringnya (`10-API-STRATEGY.md` §2). Bersarang satu tingkat, sesuai batas dua
+		// tingkat pada aturan yang sama.
+		perPortal.Get("/inbox-rcl-pucl/klaim/{referensi}", h.Detail)
+
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
 		// membuat unduhannya dapat dipicu tautan biasa — termasuk dibuka ulang dari
 		// riwayat peramban dengan rentang tanggal yang sama.

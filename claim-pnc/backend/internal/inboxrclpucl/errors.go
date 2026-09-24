@@ -48,6 +48,9 @@ const (
 	FieldTab      = "tab"
 	FieldDateFrom = "dari"
 	FieldDateTo   = "sampai"
+
+	// FieldReference menunjuk kunci klaim pada permintaan layar kerja.
+	FieldReference = "referensi"
 )
 
 // Violation adalah satu pelanggaran pada satu isian.

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxrclpucl/usecase"
 	"claim-pnc/internal/portal"
@@ -107,6 +109,34 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toListResponse(listed, active.Alias))
+}
+
+// Detail menangani GET /api/inbox-rcl-pucl/klaim/{referensi}.
+//
+// Ia layar kerja RCL/PUCL — yang di Pega terbuka saat nomor klaim diklik, lewat Open
+// Assignment. Di sini ia BACA saja; lihat `inboxrclpucl.ClaimDetail`.
+//
+// Kuncinya diambil dari JALUR, bukan dari parameter query, karena ia mengidentifikasi sumber
+// daya — bukan menyaringnya (`10-API-STRATEGY.md` §2). Ia di-decode chi lebih dulu, sehingga
+// kunci Pega yang memuat spasi (`ASM-FW-GCNMFW-WORK PNC-700001`) sampai utuh.
+func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	detail, err := h.service.Detail(
+		r.Context(),
+		active.Alias,
+		caller,
+		chi.URLParam(r, "referensi"),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toClaimDetailResponse(detail, active.Alias))
 }
 
 // RejectWrite menjawab aksi tulis yang belum tersedia.

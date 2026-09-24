@@ -4,7 +4,12 @@ import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { DateRange, ListResponse, MetadataResponse } from './types'
+import type {
+  ClaimDetailResponse,
+  DateRange,
+  ListResponse,
+  MetadataResponse,
+} from './types'
 
 const PATH = '/api/inbox-rcl-pucl'
 
@@ -24,6 +29,9 @@ const keys = {
 
   list: (portal: string | null, token: string | null, tab: string, page: number) =>
     ['inbox-rcl-pucl', 'daftar', portal, token, tab, page] as const,
+
+  detail: (portal: string | null, token: string | null, reference: string) =>
+    ['inbox-rcl-pucl', 'klaim', portal, token, reference] as const,
 }
 
 /**
@@ -89,6 +97,41 @@ export function useRCLPUCLList(tab: string, page: number, enabled: boolean) {
 
     // Antrean berubah saat petugas lain mengerjakan pekerjaannya, jadi cache-nya pendek —
     // sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
+    staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * Hook layar kerja satu klaim — yang di Pega terbuka lewat Open Assignment saat nomor klaim
+ * diklik.
+ *
+ * # Kenapa ia mengambil data sendiri, bukan memakai baris yang sudah di tangan
+ *
+ * Karena isinya BERBEDA dari baris grid. Tiga isian surat — Nama Peserta, UP, dan Jumlah
+ * Tagihan — diturunkan dari objek dan adjustment klaim, dan tidak satu pun ada di daftar.
+ * Menggambarnya dari baris grid berarti menampilkan layar yang kolomnya benar tetapi isinya
+ * tidak lengkap.
+ *
+ * # Kenapa cache-nya per KUNCI, bukan per nomor case
+ *
+ * Karena kuncinya yang dikirim ke server, dan nomor case tidak dijamin unik antar entitas.
+ * Portal ikut menjadi bagian kunci dengan alasan yang sama seperti hook lain (`R-20`).
+ */
+export function useRCLPUCLClaim(reference: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, reference ?? ''),
+    queryFn: () =>
+      callAPI<ClaimDetailResponse>(
+        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}`,
+        { token, portal },
+      ),
+    enabled: reference !== null && reference !== '' && token !== null && portal !== null,
+
+    // Isi layar kerja berubah saat petugas lain mengerjakannya di Pega — dan selama masa
+    // paralel itulah satu-satunya tempat ia berubah. Cache-nya sependek daftar.
     staleTime: 15 * 1000,
   })
 }

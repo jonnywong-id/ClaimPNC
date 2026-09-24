@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"claim-pnc/internal/inboxrclpucl"
 )
@@ -144,6 +145,74 @@ func (s *Service) List(
 	}
 
 	return Listed{Page: result, Query: query}, nil
+}
+
+// Detail mengambil isi layar kerja RCL/PUCL untuk satu klaim.
+//
+// # Kenapa ia TIDAK memeriksa apakah klaimnya ada di antrean pemanggil
+//
+// Karena layar kerja dibuka dengan KUNCI, bukan lewat antrean — begitu pula di Pega, tempat
+// tautannya mengirim `inskey` dan tidak satu pun penyaring antrean ikut. Klaim yang sudah
+// berpindah antrean sejak daftarnya dimuat tetap harus dapat dibuka; menolaknya akan
+// membuat layar gagal justru pada keadaan yang paling sering terjadi.
+//
+// Batas yang tetap berlaku adalah PORTAL: kuncinya dicari di basis data entitas yang sedang
+// dipilih, dan kunci milik entitas lain menghasilkan "tidak ditemukan" — bukan diam-diam
+// dilayani koneksi lain (`R-20`).
+func (s *Service) Detail(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxrclpucl.Caller,
+	reference string,
+) (inboxrclpucl.ClaimDetail, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return inboxrclpucl.ClaimDetail{}, inboxrclpucl.ErrCallerUnknown
+	}
+
+	key := strings.TrimSpace(reference)
+	if key == "" {
+		return inboxrclpucl.ClaimDetail{}, inboxrclpucl.NewValidationError(
+			[]inboxrclpucl.Violation{{
+				Field:   inboxrclpucl.FieldReference,
+				Message: "Kunci klaim tidak disebutkan.",
+			}})
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxrclpucl.ClaimDetail{}, err
+	}
+
+	detail, err := repo.Detail(ctx, key)
+	if err != nil {
+		// "Tidak ditemukan" diteruskan APA ADANYA, tidak dibungkus: lapisan transport
+		// memetakannya ke 404 dengan keterangan yang menyebut portal, dan pembungkusan
+		// akan membuat `errors.Is` di sana gagal mengenalinya.
+		if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+			return inboxrclpucl.ClaimDetail{}, err
+		}
+		return inboxrclpucl.ClaimDetail{}, fmt.Errorf(
+			"mengambil layar kerja klaim %s: %w", key, err)
+	}
+
+	// Pembukaan satu klaim dicatat TERPISAH dari pembukaan daftar, dan kuncinya ikut.
+	//
+	// Alasannya bukan kelengkapan: daftar menampilkan ringkasan, sementara layar ini
+	// menampilkan bahan surat berisi nama peserta dan jumlah tagihan satu klaim tertentu.
+	// Yang harus dapat ditelusuri adalah KLAIM MANA yang dibuka, bukan sekadar bahwa
+	// seseorang membuka layarnya.
+	if s.logger != nil {
+		s.logger.Info(
+			"layar kerja RCL/PUCL dibuka",
+			slog.String("modul", "inbox-rcl-pucl"),
+			slog.String("pemanggil", cleanCaller.Login),
+			slog.String("portal", portalAlias),
+			slog.String("klaim", detail.ClaimNumber),
+		)
+	}
+
+	return detail, nil
 }
 
 // Reported adalah satu halaman laporan harian beserta permintaan yang dipakai.

@@ -7939,3 +7939,316 @@ pada `WorkItem.Track` dan `WorkItem.ExpiryStatus`, kepala berkas `.sql`, dan uji
 | Penyaring apa pun pada grid | Seluruh penyaringnya TETAP di Pega; tidak satu pun dapat diubah pengguna |
 | Migrasi basis data | Seluruh tabelnya milik Pega (`P-1`); modul ini hanya membaca |
 | Pemeriksaan peran | `When/IsRCLPUCL` membatasi menu pada `PncRCLPUCL` + `Administrators`, bukan `ViewClaimPNC`. Penegakannya `TKT-F3-004`, belum ada — dan di layar ini tidak ada peredam apa pun, karena antreannya bersama |
+
+## 44. Inbox RCL/PUCL — aksi klik Nomor Case (2026-09-24)
+
+Melengkapi §43 setelah dua koreksi Work Owner atas penelusuran aksi klik baris.
+
+### 44.1 Keputusan: tautan pindah ke sel "Nomor Case", kolom tombol dibuang
+
+Bukti: ketiga section RCL/PUCL menggambar sel Nomor Case sebagai `pyUIElement = link`
+ber-`pyLabel = .pyID`, menjalankan `SetAssignmentInboxPUCL_act` dengan `inskey = .pzInsKey`.
+Tidak ada kolom tombol di mana pun.
+
+Kolom tombol "Lihat Detail" pada versi pertama modul ini adalah **kemampuan yang dikarang**,
+dan dibuang. `D-13` menetapkan tampilan mengikuti layar lama.
+
+### 44.2 Keputusan: TIDAK berpindah halaman, dan tidak diarahkan ke View Claim
+
+Dua kemungkinan tujuan diperiksa, dan keduanya ditolak dengan alasan:
+
+| Tujuan | Kenapa ditolak |
+|---|---|
+| Layar kerja `SendtoRCLPUCL` | **Section-nya tidak ada di export** (`R-16`). Isinya belum pernah terbaca; membangunnya berarti menebak |
+| Layar rincian `ViewTempDetailClaim` | Memang ada, tetapi dibuka `PNCInboxAdmin`, `PNCSearchKlaim`, `InboxManagerReopen1_Sec`, `InputProgressClaim`, dan `DashboardClaimShow_Sec` — **tidak satu pun dari RCL/PUCL**. Mengarahkan ke sana menambah kemampuan yang tidak pernah ada di layar ini |
+
+Yang dibangun: **panel di halaman yang sama**, menggambar kesembilan isian baris yang sudah
+diambil, ditambah `pzInsKey` dan keterangan yang menyebut nama artefak yang hilang.
+
+Tidak ada permintaan tambahan ke server, dan tidak ada isian yang dikarang — konsekuensi
+langsung dari larangan "No Shortcuts" pada proses bisnis yang **tidak dapat** dipelajari.
+
+### 44.3 Konsekuensi yang diterima
+
+1. Petugas **tidak dapat mengerjakan** klaim dari layar ini — hanya memantau dan mengunduh.
+   Itu bukan pilihan rancangan melainkan akibat `P-1` ditambah rule yang hilang.
+2. Panelnya **bukan** pengganti layar kerja, dan tidak boleh tumbuh menjadi begitu. Begitu
+   section `SendtoRCLPUCL` diterima, yang dibangun adalah layar aslinya — bukan perluasan
+   panel ini.
+3. `ViewTempDetailClaim` tetap layak menjadi modul tersendiri untuk keempat layar yang
+   memang membukanya. Pemetaannya sudah selesai: 8 tab, 106 properti terikat, hampir tanpa
+   section bersarang.
+
+## 45. Layar kerja RCL/PUCL (2026-09-24)
+
+Menggantikan §44.2 setelah Work Owner menambahkan rule `Section SendtoRCLPUCL` yang hilang.
+
+### 45.1 Keputusan: layar kerjanya dibangun BACA SAJA
+
+Di Pega ia layar tulis — bagian pertama menyusun lampiran surat RCL/PUCL (tindakan "Cetak
+Surat"), bagian kedua mencatat penerimaan dokumen (memo penulisnya: *"add button save"*).
+Keduanya menulis objek kerja, yang selama masa paralel dimiliki Pega (`P-1`).
+
+Yang dibawa hanya pembacaannya. Layar menyatakan itu sendiri lewat `tindakan_masih_di_pega`,
+sebagai DATA dari server — bukan teks tetap — supaya ia berubah di satu tempat begitu
+kepemilikan tabelnya berpindah.
+
+### 45.2 Keputusan: `UP` DIPERBAIKI menjadi nilai pertanggungan
+
+> **DICABUT 2026-09-24 oleh §47.1.** Work Owner meralat: UP memang `ObjectName`. Isi di bawah
+> dibiarkan utuh sebagai rekaman keputusan yang pernah diambil, bukan sebagai aturan yang
+> berlaku.
+
+`SetDataLampiranSuratRCLPUCL_Act` menetapkan `.UP` **dan** `.NamaPeserta` dari ekspresi yang
+sama persis (`ObjectList(1).ObjectName`). Kolom "UP" di Pega karena itu berisi nama objek,
+bukan nilai pertanggungan — cacat kelas `R-19`, karena ia menyangkut uang.
+
+Ia **tidak diperbaiki sepihak**. Ia diangkat sebagai pertanyaan terbuka, dan dijawab
+**Work Owner pada 2026-09-24: "Iya nilai pertanggungan"**.
+
+`P-5` menetapkan perilaku dibawa **kecuali** perbaikannya diputuskan eksplisit, dan inilah
+keputusan itu — mekanisme yang sama persis dengan ketiga belas butir `D-49`, hanya lebih muda.
+
+**Sumber penggantinya tidak dikarang:**
+
+```
+.UP <- pyWorkPage.ClaimData.ObjectList(1).ObjectCoverageList(1).SumTSI
+```
+
+`SumTSI` adalah properti kelas `ASM-FW-GCNMFW-Data-ObjectCoverage`, kolomnya `SUMTSI` pada
+`POOLDATA.T_CLAIM_OBJECTCOVERAGE`, dan `GetDataSlinkAllFOG-SQL.xml` membacanya dari tabel itu.
+Navigasinya **sama persis** dengan `JumlahTagihan` di sebelahnya, hanya berhenti satu tingkat
+lebih dangkal — perbaikan ini karena itu tidak memperkenalkan jalur baru, ia memotong jalur
+yang sudah terbukti dipakai.
+
+**Satu jalan pintas yang ditolak:** mengambil UP dari `T_CLAIM_ADJUSTMENT`, tabel yang
+subkuerinya sudah ditulis untuk jumlah tagihan. Itu lebih sedikit kode, dan akan menampilkan
+**nilai usulan sebagai nilai pertanggungan** — dua angka yang sama-sama masuk akal, tanpa satu
+pun galat bila tertukar.
+
+**Uji lama dibalik, bukan dihapus.** Yang dulu menuntut kedua isian SAMA kini menuntut
+keduanya BERBEDA. Uji yang dihapus tidak menahan siapa pun mengembalikan salin-tempel lama
+atas nama "menyetarakan dengan Pega"; uji yang dibalik menahannya.
+
+Selisihnya terhadap Pega dinyatakan di muka lewat selisih terencana — pada uji kesetaraan,
+isian ini akan berbeda pada **setiap** klaim yang punya objek.
+
+### 45.2b Keputusan: syarat `when` pada layar kerja BELUM DIBERLAKUKAN
+
+`pyMemo` pada `SendtoRCLPUCL` mencatat `visibility when .ClaimData.PUCLStatus.RCL_PUCL != 3`
+— ada satu nilai kode jalur yang menyembunyikan seluruh layar ini di Pega.
+
+**Work Owner, 2026-09-24: "tidak usah pakai when dulu".** Layar kerja karena itu terbuka untuk
+kode jalur apa pun.
+
+Yang dikerjakan justru **tidak menambah kode**: tidak ada penjaga, tidak ada penolakan, tidak
+ada cabang. Konstanta `TrackHidden` tetap ada — tidak dipakai kode mana pun — karena ia
+memegang satu-satunya rekaman bahwa syarat itu ada, dan syaratnya baru dapat ditegakkan
+setelah arti kode `3` diketahui.
+
+Akibatnya dinyatakan apa adanya lewat selisih terencana: bila nilai itu memang menandai klaim
+yang seharusnya tidak dikerjakan lewat layar ini, klaimnya **tetap dapat dibuka di sini
+padahal di Pega tidak**.
+
+### 45.3 Keputusan: "pertama" ditetapkan tegas dengan `ORDER BY`
+
+Pega memakai indeks `(1)` pada page list klipboard, dan urutannya tidak terbaca dari export
+mana pun. Di sini: `OBJECTID` terkecil untuk objek, lalu `COVERAGEID` dan `ADJUSTMENTID`
+terkecil untuk adjustment-nya.
+
+Ini **selisih terencana**. Membiarkannya tidak ditetapkan akan membuat isian surat
+berubah-ubah antar pemanggilan pada klaim yang punya lebih dari satu objek — cacat yang tidak
+menghasilkan satu pun galat.
+
+Adjustment-nya terikat pada **objek pertama**, bukan sekadar adjustment pertama klaim, karena
+jalur Pega-nya `ObjectList(1).ObjectCoverageList(1).AdjustmentList(1)`.
+
+### 45.4 Keputusan: penyaringnya HANYA kunci dan kelas objek kerja
+
+Tanpa antrean, tanpa status kerja — persis seperti Pega, tempat tautannya mengirim `inskey`
+tanpa satu pun penyaring antrean.
+
+Alasannya bukan kemudahan: klaim yang sudah berpindah antrean sejak daftarnya dimuat tetap
+harus dapat dibuka, dan menolaknya akan membuat layar gagal justru pada keadaan yang paling
+sering terjadi.
+
+Kelas objek kerja tetap disaring karena ia menutup kekeliruan yang **tidak menghasilkan
+galat**: kunci milik kelas lain mengembalikan baris berkolom PUCL kosong, terbaca persis
+seperti klaim yang belum diisi.
+
+### 45.5 Keputusan: "tidak ditemukan" menyebut PORTAL
+
+`ErrClaimNotFound` dijawab **404** dengan pesan yang menyebut entitas yang sedang dipilih.
+Penyebab paling mungkin bukan klaim yang hilang melainkan kunci yang benar dibuka pada portal
+yang salah — keadaan yang tidak menghasilkan satu pun tanda lain (`R-20`).
+
+### 45.6 Keputusan: delapan isian tanpa kolom tetap DISEBUTKAN
+
+NIK · Business Unit/Seksi · Perihal · Keterangan 1–3 · Tanggal Terima Dokumen PUCL ·
+Email LOD · daftar penerimaan dokumen.
+
+Kedelapannya dikirim sebagai `isian_belum_terpetakan` — DATA dari server, bukan teks tetap di
+layar — supaya daftarnya menyusut di satu tempat begitu kolomnya ditemukan.
+
+Mereka **tidak** dikirim sebagai isian kosong: isian kosong membuat layar mengira datanya
+memang belum diisi, padahal kolomnya yang belum ditemukan. Itu dua hal yang berbeda, dan
+hanya yang kedua yang menuntut permintaan ke DBA.
+
+## 46. Layar kerja RCL/PUCL menjadi rute tersendiri (2026-09-24)
+
+### 46.1 Keputusan: rute `/inbox-rcl-pucl/klaim/:referensi`, bukan panel
+
+Di Pega, mengklik Nomor Case menjalankan Open Assignment dan klaimnya terbuka pada tahap alur
+kerjanya **untuk dikerjakan**. Panel di bawah tabel menyiratkan pratinjau baris; itu bukan yang
+terjadi.
+
+Rute ini TIDAK dipakai modul lain. Enam inbox lain menuju `/view-claim/:referensi` — layar
+"View Claim" yang belum dibangun. RCL/PUCL berbeda karena layar tujuannya sudah diketahui:
+ketiga rule section-nya diterima 2026-09-24.
+
+**Konsekuensi yang wajib ditangani bersamaan:** berpindah rute melepas komponen antrean, dan
+tab serta nomor halaman yang hanya hidup di `useState` akan hilang. Keduanya karena itu pindah
+ke **alamat**. Tanpa itu, petugas yang membuka satu klaim dari halaman ketiga tab kedua mendarat
+kembali di tab pertama halaman pertama — pada antrean yang dikerjakan berpuluh baris sehari, itu
+bukan ketidaknyamanan kecil.
+
+Rentang tanggal **tidak** ikut ke alamat: ia hanya dipakai tombol ekspor dan tidak menyaring
+tabel. Menaruhnya di alamat akan menyiratkan ia bagian dari apa yang sedang dilihat.
+
+### 46.2 Keputusan: judul isian mengikuti SECTION, bukan kolom grid
+
+Judul grid dan judul section berbeda untuk isian yang sama, dan keduanya sama-sama masuk akal
+dibaca — sehingga tertukarnya tidak menghasilkan satu pun galat:
+
+| Isian | Judul grid | **Judul section** |
+|---|---|---|
+| `KOMENTARANALISATOR_1` | Deskripsi Analyst | **Catatan dari Analyst** |
+| `KOMENTARPUCL_1` | Komentar PUCL | **Catatan untuk Analyst** |
+| `RCL_PUCL_1` | Status RCL/PUCL | **Status RCL / PUCL / MSIG** |
+
+Yang dibawa adalah judul section (`D-13`). Dua yang pertama berpasangan — yang satu catatan
+Analyst untuk PUCL, yang satu balasan PUCL untuk Analyst — sehingga menyamakannya menukar arah
+percakapannya, bukan sekadar mengganti kata.
+
+Satu label sengaja dibawa meski tidak sejalan dengan propertinya: **"No Kontrak"** menempel pada
+`.ClaimData.PUCLStatus.NIK`. Yang dibawa label-nya, bukan nama propertinya.
+
+### 46.3 Keputusan: layar kerja TIDAK membawa isian yang bukan milik section
+
+"Tanggal Cetak Surat" dan "Tanggal Kirim RCL/PUCL" dihapus dari layar kerja dan dari kueri
+`detail`. Keduanya kolom **grid**; section tidak memuat satu pun dari keduanya.
+
+Keduanya ada di tabel yang sama dan sudah diambil ketiga kueri daftar, sehingga membawanya
+nyaris tanpa biaya — dan itulah sebabnya ia perlu ditahan uji
+(`TestDetailCarriesOnlyWhatTheSectionDraws`). Aturannya: layar kerja menggambar apa yang
+digambar section-nya, bukan apa yang kebetulan mudah diambil.
+
+`detailColumns` karena itu turun dari 12 menjadi **10 alias**.
+
+### 46.4 Keputusan: isian tanpa kolom digambar DI TEMPATNYA, dengan penanda tersendiri
+
+Sembilan dari tujuh belas isian tidak punya kolom yang dapat ditemukan di export. Tiga
+perlakuan mungkin, dan dua buruk:
+
+| Perlakuan | Akibat |
+|---|---|
+| Dihilangkan | Layar tampak setara padahal tidak |
+| Digambar sebagai sel kosong | Kolom yang belum ditemukan tidak dapat dibedakan dari data yang memang belum diisi |
+| **Digambar dengan penanda `belum terpetakan`** | Dipakai |
+
+Bedanya bukan kosmetik: isian kosong urusan **petugas**, isian belum terpetakan urusan **DBA**.
+Tanda pisah `—` sudah dipakai untuk yang pertama, sehingga yang kedua wajib berbeda.
+
+Grid "Tanggal terima Dokumen" digambar sebagai tabel berkerangka dua kolom, bukan diganti satu
+isian tanggal — menggantinya menyembunyikan bahwa layar lama menerima BANYAK tanggal.
+
+### 46.5 Keputusan: ketiga tombol digambar, seluruhnya mati, alasannya di sebelahnya
+
+"Cetak", "Unggah Dokumen", dan "Kirim ke PIC Teknik" seluruhnya MENULIS, dan tabelnya masih
+dimiliki Pega selama masa paralel (`P-1`).
+
+Tombol yang dihilangkan menyembunyikan bahwa tindakannya ada; tombol yang hidup akan menulis ke
+tabel yang bukan miliknya. Alasannya ditulis **di sebelah tombol**, bukan di balik pesan yang
+baru muncul setelah ditekan — tombol mati tanpa keterangan terbaca sebagai kerusakan, dan
+petugas akan menekannya berulang kali.
+
+## 47. Pencabutan perbaikan `UP`, dan sifat isian clipboard (2026-09-24)
+
+### 47.1 Keputusan: perbaikan `UP` DICABUT — ia direplikasi apa adanya
+
+§45.2 memutuskan UP diperbaiki menjadi `SumTSI`. **Work Owner meralatnya pada hari yang
+sama:** kolom UP memang berisi `ObjectName`, sama dengan Nama Peserta.
+
+Seluruh jejak perbaikan itu dibongkar — subkueri, alias, isian penyimpanan memori, kedua uji,
+butir selisih terencana, keterangan layar, dan petunjuk `-periksa`. `P-5` berlaku apa adanya.
+
+**Dua uji dipasang sebagai gantinya, bukan satu.** Yang di memori menuntut UP dan Nama Peserta
+**sama**; yang di kueri menuntut `T_CLAIM_OBJECTCOVERAGE` **tidak disentuh sama sekali**.
+Isian ini sudah dua kali terbaca sebagai cacat; dua lapis penahan sepadan dengan itu.
+
+**Catatan cara kerja, dan ini yang sebenarnya perlu diperbaiki.** Cacatnya saya ajukan sebagai
+pertanyaan — itu benar. Tetapi pertanyaannya membawa kesimpulan: dokumen sudah menyebutnya
+*"sumber yang SALAH"* dan kelas `R-19` sebelum ada yang mengonfirmasi, dan sumber penggantinya
+sudah saya siapkan. Pertanyaan yang membawa kesimpulan mengundang jawaban yang mengiyakan.
+
+Yang seharusnya ditanyakan: *"kolom bernama UP berisi nama objek — apakah itu memang yang
+dikehendaki?"*
+
+### 47.2 Keputusan: kesembilan isian dinyatakan sebagai properti CLIPBOARD, bukan kolom hilang
+
+Work Owner menjelaskan kesembilannya diambil dari clipboard Pega
+(`.ClaimData.PUCLStatus.NIK` dan seterusnya). Properti clipboard yang tidak dioptimasi tidak
+punya kolom sendiri.
+
+Itu mengubah tiga hal sekaligus:
+
+| Hal | Sebelum | Sesudah |
+|---|---|---|
+| Sebab | "kolom belum ditemukan" | "tidak ada kolomnya" |
+| Pemilik pertanyaan | DBA | **Tim Pega + Work Owner** — apakah propertinya akan diekspos |
+| Penanda di layar | `belum terpetakan`, amber | `di clipboard Pega`, abu-abu miring |
+
+Warnanya ikut berubah dengan sengaja. Amber menyiratkan pekerjaan yang tertunda; ini keadaan
+yang dinyatakan. Yang tidak berubah adalah pemisahannya dari sel kosong — dan alasannya kini
+lebih tajam: sel kosong berarti **belum diisi**, "di clipboard Pega" berarti **ada nilainya,
+tetapi tidak terbaca dari tabel**.
+
+## 48. Layar digambar selalu, dan `/api` tidak lagi jatuh ke SPA (2026-09-24)
+
+### 48.1 Keputusan: `/api` yang tidak terdaftar dijawab JSON 404
+
+Sebelumnya `r.NotFound(spa(...))` berlaku juga di dalam `/api`, sehingga alamat API yang salah
+dijawab `index.html` dengan status **200**. Bagi peramban itu jawaban yang berhasil; bagi klien
+API ia badan yang tidak dapat diurai — dan `callAPI` mengubahnya menjadi `null`, bukan galat.
+
+Gejalanya bukan pesan yang salah melainkan **layar kosong tanpa petunjuk**, dan itu berlaku
+untuk setiap modul, bukan hanya RCL/PUCL.
+
+`NotFound` dan `MethodNotAllowed` dipisah: alamat yang salah dan metode yang salah menuntut
+perbaikan yang berbeda.
+
+**Ini kode bersama.** Dikerjakan karena ia sebab langsung laporan Work Owner, perbaikannya
+terkurung di satu tempat, dan seluruh 138 paket uji tetap lulus — tidak ada modul yang
+bergantung pada jawaban HTML untuk alamat API. Yang tidak ikut berubah, dan diuji supaya tetap
+begitu: rute halaman milik router peramban.
+
+### 48.2 Keputusan: layar kerja digambar SELALU, keadaannya dinyatakan di atasnya
+
+Permintaan Work Owner: *"kalau datanya tidak bisa diambil, buat kosong aja dulu"*.
+
+Pilihan yang diambil bukan sekadar menurutinya. Versi sebelumnya **mengganti** seluruh badan
+halaman dengan pesan memuat atau kotak galat, sehingga satu keadaan yang tidak terduga —
+`data` bernilai `null` — menghasilkan halaman yang tidak menggambar apa pun.
+
+Sekarang: kerangka selalu tergambar, keterangan keadaan berada **di atasnya**. Empat keadaan,
+dan keempatnya punya tampilan — termasuk yang dulu tidak ada:
+
+| Keadaan | Tampilan |
+|---|---|
+| memuat | teks + kerangka |
+| galat | kotak galat + kerangka |
+| **kosong** (`data` `null`) | "Isi klaim tidak terbaca" + **alamat yang harus diperiksa** + kerangka |
+| siap | kerangka terisi |
+
+Alasannya bukan selera: bentuk layar ini tidak bergantung pada data — ia tetap kedua bagian
+dengan isian yang sama, dan sembilan di antaranya memang tidak pernah terisi (§47.2).

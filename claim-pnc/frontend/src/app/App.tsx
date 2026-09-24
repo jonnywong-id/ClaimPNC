@@ -27,6 +27,7 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
@@ -506,6 +507,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Layar kerja satu klaim RCL/PUCL — section `SendtoRCLPUCL`, yang di Pega dibuka Open
+        Assignment saat Nomor Case diklik.
+        Ia rute TERSENDIRI, bukan panel di dalam antrean, karena di Pega pun ia layar tujuan:
+        klaimnya terbuka pada tahap alur kerjanya untuk dikerjakan. Alamatnya karena itu dapat
+        disalin dan dibuka kembali — dan `pzInsKey` di dalamnya wajib terkodekan, sebab kunci
+        itu memuat spasi.
+        Rute ini TIDAK dipakai modul lain. Enam inbox lain menuju `/view-claim/:referensi`,
+        layar "View Claim" yang belum dibangun; RCL/PUCL berbeda karena layar tujuannya sudah
+        diketahui — ketiga rule section-nya diterima 2026-09-24.
+      */}
+      <Route
+        path="/inbox-rcl-pucl/klaim/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SendtoRCLPUCLPage />
             </Protected>
           </SessionGuard>
         }

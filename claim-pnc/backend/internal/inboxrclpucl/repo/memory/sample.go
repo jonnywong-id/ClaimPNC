@@ -83,6 +83,16 @@ func SampleRows() []Row {
 		GroupPanel:       "006",
 		CreatedAt:        base.Add(-3 * time.Hour),
 		SentAt:           at1,
+
+		// Isian layar kerja. Ketiganya HANYA dipakai Detail, bukan oleh grid mana pun.
+		//
+		// FirstObjectName mengisi DUA isian sekaligus di layar kerja — "Nama Peserta" dan
+		// "UP" — karena activity penyusun lampiran memang menunjuk ekspresi yang sama
+		// untuk keduanya.
+		LossDate:          "2026-09-01",
+		FirstObjectName:   "Objek Contoh Satu",
+		FirstProposeValue: "15000000",
+		PUCLNote:          "Menunggu kelengkapan dari cabang.",
 	})
 
 	at2, text2 := sent(11)
@@ -107,6 +117,11 @@ func SampleRows() []Row {
 		GroupPanel:       "004",
 		CreatedAt:        base.Add(-2 * time.Hour),
 		SentAt:           at2,
+
+		// SENGAJA tanpa objek dan tanpa adjustment: subkueri yang tidak mengembalikan
+		// baris menghasilkan isian turunan KOSONG, dan itu keadaan yang sah — bukan
+		// kegagalan. Uji layar kerja memakai baris ini untuk membuktikannya.
+		LossDate: "2026-09-02",
 	})
 
 	// ---- TERTOLAK tab Cetak Surat: STATUSCASE_1 bukan '0' --------------------------
@@ -162,6 +177,11 @@ func SampleRows() []Row {
 		GroupPanel:       "006",
 		CreatedAt:        base.Add(-75 * time.Minute),
 		SentAt:           at4,
+
+		LossDate:          "2026-09-04",
+		FirstObjectName:   "Objek Contoh Empat",
+		FirstProposeValue: "8750000",
+		PUCLNote:          "Surat sudah dikirim ke tertanggung.",
 	})
 
 	at5, text5 := sent(14)
