@@ -4250,3 +4250,111 @@ menghasilkan galat** melainkan kolom yang tertukar di layar.
 Definition: urutannya memang sudah "baca bukti → tulis uji dari bukti → tulis kode". Ia akan
 mulai berguna pada modul yang **menulis**, tempat perilaku yang benar tidak dapat dibaca dari
 kueri mana pun.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-24 (modul Inbox Komunikasi Cabang)
+
+## Ringkasan
+
+**Tidak ada skill Matt Pocock yang dipanggil pada sesi ini**, dan alasannya sama dengan sesi
+sebelumnya: tidak satu pun `mattpocock-skills:*` terpasang di lingkungan sesi ini. Daftar yang
+tersedia seluruhnya milik lingkungan Claude (`artifact-*`, `dataviz`, `code-review`,
+`simplify`, `run`, `init`, `security-review`, `update-config`, `workflow-authoring`,
+`loop`, `schedule`, `claude-api`, `anthropic-skills:*`).
+
+Satu skill lingkungan **dipertimbangkan dan ditolak dengan alasan tercatat**; sisanya tidak
+relevan.
+
+## Skill lingkungan yang tersedia, dan kenapa tidak dipakai
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `code-review` | Ia menelaah **diff** untuk cacat. Modul ini hampir seluruhnya berkas baru, dan yang menjaganya adalah 40 uji yang ditulis berdampingan dengan kodenya. Layak dipakai **setelah** modul ini di-review manusia, bukan sebagai penggantinya |
+| `simplify` | Menelaah kode jadi untuk penyederhanaan. Struktur modul ini mengikuti preseden yang sudah disepakati (`inboxrclpucl`, `inboxlaporanklaim`); menyederhanakannya sepihak justru membuatnya menyimpang dari modul saudaranya — dan di sini penyimpangan itu berbahaya, karena `BranchResolver` sengaja **disalin** alih-alih dipakai ulang |
+| `run` | Menjalankan aplikasi untuk melihat perubahan. Oracle tidak tersedia di sesi ini, sehingga menjalankannya hanya memperlihatkan data contoh yang sudah diuji langsung — dan uji layarnya sudah menembak jalur yang sama lewat peladen tiruan |
+| `security-review` | Dipertimbangkan, dan **ditolak dengan alasan** — lihat di bawah |
+| `dataviz` | Layar ini punya dua pencacah yang di Pega berupa diagram lingkaran. Ia **tidak** digambar ulang sebagai diagram (lihat di bawah), sehingga tidak ada visualisasi yang dibuat |
+| `artifact-*` | Tidak ada halaman yang diterbitkan; seluruh keluaran sesi ini adalah kode dan dokumen repo |
+| `anthropic-skills:docx/xlsx/pdf` | Dokumentasi proyek ini Markdown, bukan berkas kantor |
+| `init`, `update-config`, `workflow-authoring`, `loop`, `schedule` | Tidak ada konfigurasi harness, orkestrasi, maupun penjadwalan yang diminta |
+
+## `security-review` — dipertimbangkan, ditolak, tetapi pemeriksaannya tetap dikerjakan
+
+Modul ini menyentuh tiga hal yang biasanya memanggil telaah keamanan:
+
+1. **Batas data lintas cabang** yang diturunkan dari identitas pemanggil;
+2. **Perangkaian teks SQL** di sistem lama (`{ASIS:TempView.CaseID}`) yang harus diganti;
+3. **DB Link** ke dua basis data lain.
+
+Ia tetap **tidak dipanggil**, karena ketiganya bukan pertanyaan terbuka melainkan keputusan
+yang sudah tertulis di Steering, dan yang dibutuhkan adalah **menegakkannya** — bukan
+menemukannya. Pemeriksaannya dikerjakan sebagai **uji**, yang bertahan setelah sesi ini
+berakhir:
+
+| Yang diperiksa | Ujinya |
+|---|---|
+| Setiap kueri yang menyentuh data menyaring cabang | `TestEveryQueryTouchingDataFiltersByBranch` |
+| Daftar kueri yang wajib disaring tidak menyusut diam-diam | `TestBranchFilteredQueriesCoverEveryDataQuery` |
+| Tidak ada perangkaian nilai ke teks SQL | `TestNoQueryConcatenatesValuesIntoItsText` |
+| Penanda bind menaik menurut urutan kemunculan | `TestBindMarkersAppearInAscendingOrder` |
+| Batas cabang kosong menampilkan **nol** baris, bukan seluruhnya | `TestAnEmptyBranchFilterShowsNothingRatherThanEverything` |
+| Layar detail tidak menjadi pintu samping ke cabang lain | `TestDetailRefusesAConversationBelongingToAnotherBranch` |
+
+Uji kedua patut disebut: ia menjaga **penjagaannya sendiri**. Kueri baru yang lupa didaftarkan
+akan lolos dari uji pertama tanpa ketahuan.
+
+## `dataviz` — relevan di permukaan, ditolak setelah membaca buktinya
+
+Layar lama memasok dua pencacah ke sebuah diagram lingkaran (`.pyTemplateChart` pada section),
+berlabel "Answered" dan "Not Answered". Itu terbaca seperti undangan memakai `dataviz`.
+
+**Ditolak, dan alasannya bukan kemalasan.** Diagram lingkaran atas **dua** nilai tidak
+menyampaikan apa pun yang tidak disampaikan dua angka — ia justru menuntut ruang yang lebih
+besar dan membuat angka persisnya lebih sulit dibaca. Yang dibutuhkan pengguna layar ini adalah
+"berapa yang menunggu dijawab", dan itu sebuah **angka**.
+
+Penggantinya: kedua angka menjadi **lencana pada bilah tab**, tempat ia justru lebih berguna
+daripada di Pega — ia menyatakan berapa yang menunggu di tab **sebelah**, yang di layar lama
+tidak diperlukan karena kedua grid tampak sekaligus.
+
+## Teknik yang DIPAKAI, meski skill-nya tidak terpasang
+
+| Teknik | Bagaimana dipakai di sesi ini |
+|---|---|
+| **Membaca bukti sebelum menulis** | Harness 720 KB, section 686 KB, empat activity, dan sembilan rule SQL dibaca lebih dulu. Tidak ada satu pun kolom yang dinamai tanpa dapat ditunjuk barisnya di export |
+| **Bertanya sebelum memutuskan hal yang tidak dapat disimpulkan** | Tiga pertanyaan diajukan sebelum satu baris kode ditulis. Dua di antaranya menyangkut hal yang **tidak ada jawabannya di export** — perlakuan cabang yang tidak terbaca, dan lingkup lampiran |
+| **Memeriksa angka yang "sudah jelas"** | Ukuran halaman hampir ditulis `25` mengikuti kebiasaan modul lain; section menyebut `20`. Diperbaiki sebelum masuk ke uji mana pun |
+| **Memisahkan pra-ada dari yang baru** | 120 galat tipe dan 29 kegagalan Vitest diperiksa asalnya, bukan diasumsikan. Suntingan `App.tsx` **di-stash sementara** untuk membuktikan `inbox-admin` memang sudah gagal sebelumnya |
+| **Menolak menyeragamkan yang tampak seperti cacat** | Tiga cacat sistem lama ditemukan; dua tidak dibawa, satu dibawa apa adanya. Pembedanya: apakah ia mengubah **angka yang dibaca orang setiap hari** |
+
+## Kesalahan sendiri, dan bagaimana tertangkap
+
+| # | Kesalahan | Tertangkap oleh |
+|---|---|---|
+| 1 | Menduga layar ini punya satu grid sembilan kolom | Pencarian offset judul di section: dua kelompok terpisah jauh, dengan jumlah kolom berbeda |
+| 2 | Menduga "Cabang", "To", "Jumlah", "Status Register" adalah kolom grid | Offsetnya berada di area form dan pencacah, bukan di area grid |
+| 3 | Menulis ukuran halaman `25` dari kebiasaan | `grep` ke `pyPageSize` pada section — nilainya `20`, tiga kali |
+| 4 | Uji `PlannedDifferences` mencari frasa huruf kecil sementara teksnya huruf besar | Uji gagal |
+| 5 | **Uji pencacah membandingkan agregat yang salah** | Uji gagal `6 is not less than 5`. Sebabnya dua selisih berlawanan arah yang saling menutupi — diperiksa dengan uji sementara, lalu klaimnya dipersempit |
+| 6 | Uji frontend membaca kolom dan lencana **serentak** setelah metadata tiba | Uji gagal; keduanya tiba bersama jawaban **daftar**, bukan metadata |
+
+Kesalahan ke-5 yang paling layak dicatat: ujinya gagal karena **premisnya** salah, bukan karena
+kodenya. Angka yang dibandingkan lebih lebar daripada klaim yang sedang diuji, sehingga ia dapat
+gagal — dan dapat pula **lulus** — karena sebab yang bukan yang diuji.
+
+## Catatan untuk tahap berikutnya
+
+1. **Dua artefak Pega masih hilang** dan keduanya menyentuh layar Detail Komunikasi:
+   `GetInboxKomunikasiCabang_detail` dan `PNCReplyMessageCabang`. Yang dibangun adalah bentuk
+   yang terbaca dari section-nya; bila utas yang tampil berbeda dari Pega, itu tempat pertama
+   yang harus diperiksa.
+2. **Arti `KOMUNIKASISTATUS` tidak diketahui.** Tidak ada master yang menerjemahkannya di export
+   mana pun. Ia dibawa mentah dan tidak digambar sebagai kolom; bila artinya kelak diketahui, ia
+   layak menjadi kolom.
+3. **Keputusan §49.2 patut ditinjau ulang setelah ada data.** Petugas yang cabangnya tidak
+   terbaca melihat percakapan kantor pusat, dan jejak `Warn` di peladen adalah satu-satunya
+   sumber untuk menjawab "siapa saja yang terkena". Angka itu perlu dilihat sebelum keputusan
+   ini dianggap selesai.
+4. **`-periksa` sudah menyiapkan kuerinya** untuk ketiga hal di atas — sebaran `CASEID`, dan
+   selisih pencacah terhadap tabel — sehingga DBA tidak perlu menyusunnya sendiri.

@@ -8252,3 +8252,264 @@ dan keempatnya punya tampilan — termasuk yang dulu tidak ada:
 
 Alasannya bukan selera: bentuk layar ini tidak bergantung pada data — ia tetap kedua bagian
 dengan isian yang sama, dan sembilan di antaranya memang tidak pernah terisi (§47.2).
+
+## 49. Modul Inbox Komunikasi Cabang (2026-09-24, sesi kedua puluh empat)
+
+Butir menu `MENU_ID 70`, pengganti `Harness/InboxKomunikasiCabang`. Layar ini adalah kotak
+percakapan antara **kantor pusat** dan **cabang** seputar klaim yang sedang berjalan.
+
+### 49.1 Nama modul
+
+`inboxkomunikasicabang` (backend) dan `inbox-komunikasi-cabang` (frontend), mengikuti `D-81`:
+nama modul diambil dari nama yang dipakai Work Owner. Butir menunya sendiri berbunyi
+**"Inbox Komunikasi Cabang"** di `Database/m_menu_aplikasi_pnc.csv` baris 65. Isi modulnya
+berbahasa Inggris sesuai `D-80`.
+
+### 49.2 Keputusan: cabang yang tidak terbaca direplikasi apa adanya, BERBEDA dari §20
+
+**Masalahnya.** Penyaring layar ini adalah
+`(COMMUNICATE_TO = :kode OR COMMUNICATE_FROM = :kode)`, dan `:kode` diturunkan dari login
+lewat `GetIDCabang`. Precondition `PNCCountKomunikasiCabang_Act` langkah 8–9 menyatukan **dua
+keadaan yang berbeda**:
+
+```
+KodeCabang == "100081"   petugas kantor pusat
+KodeCabang == ""         cabangnya tidak dapat diturunkan sama sekali
+```
+
+dan memperlakukan keduanya sebagai kantor pusat.
+
+**Tiga pilihan diajukan:** `100081` = pusat sementara yang tidak terbaca ditolak · replikasi
+apa adanya · keduanya ditolak.
+
+**Jawaban Work Owner: replikasi apa adanya (`P-5`).**
+
+**Kenapa ini patut dicatat panjang.** Jawabannya **berlawanan** dengan keputusan §20 pada
+modul Inbox Laporan Klaim, yang justru menolak permintaan saat cabang tidak terbaca. Kedua
+keputusan itu benar untuk layarnya masing-masing, dan perbedaannya disengaja — §20 diambil
+untuk layar itu, dan Work Owner menetapkan layar INI mengikuti Pega.
+
+**Akibat yang diterima secara sadar:** petugas non-karyawan — broker dan surveyor independen
+masuk lewat `POOLDATA.M_LOGIN_PNC` dan memang tidak pernah ada di HRD — melihat percakapan
+**kantor pusat**. Itu pelebaran batas data yang **tidak menghasilkan satu pun galat**.
+
+**Yang dikerjakan supaya keputusan ini tidak berubah diam-diam:**
+
+- `BranchFilter.Resolved` memisahkan kedua keadaan yang Pega satukan, meski keduanya
+  menghasilkan penyaring yang sama;
+- setiap permintaan dari petugas yang cabangnya tidak terbaca **dicatat sebagai `Warn`**
+  beserta penanda keputusannya, sehingga "siapa saja yang terkena" dapat dijawab bila
+  keputusan ini kelak ditinjau ulang;
+- layar **menyatakannya ke pengguna** lewat `batas_cabang.keterangan`, bernada peringatan;
+- satu butir `PlannedDifferences` dan tiga uji menjaganya.
+
+### 49.3 Keputusan: sumber cabang yang MATI menutup layar, bukan melebarkannya
+
+Ini pembedaan yang menyertai §49.2 dan sama pentingnya. Tiga keadaan, **dua** jawaban:
+
+| Keadaan | Jawaban | HTTP |
+|---|---|---|
+| cabang ditemukan | batas cabangnya | 200 |
+| tidak terdaftar di HRD | batas KANTOR PUSAT (`P-5`) | 200 |
+| sumbernya tidak terbaca | **layar tertutup** | **503** |
+
+Menyamakan baris kedua dan ketiga berarti petugas melihat percakapan kantor pusat ketika yang
+sebenarnya terjadi adalah **DB Link sedang mati** — daftar yang tampak wajar padahal isinya
+salah, kegagalan paling mahal yang ada.
+
+`503`, bukan `403`: yang gagal bukan kewenangan pemanggil melainkan sumber datanya, ia menimpa
+semua orang sekaligus, dan keadaannya **sementara** sehingga mencoba lagi memang masuk akal.
+
+### 49.4 Keputusan: satu alias untuk dua kolom — yang menang adalah yang TERAKHIR
+
+`GetInboxKomunikasiCabang-SQL.xml` memakai alias `UserName` **dua kali** dalam satu `SELECT`:
+
+```sql
+sendername       AS "UserName"    -- kolom ketiga
+COMMUNICATE_FROM AS "UserName"    -- kolom terakhir, enam baris kemudian
+```
+
+Yang menang terbukti dari pemakaiannya sendiri: `PNCGetInboxKomunikasiCabang_Act` langkah 5
+memeriksa `.UserName == "1"` lalu menimpanya dengan `"PUSAT"` — perbandingan yang hanya masuk
+akal untuk **kode asal**, bukan nama orang.
+
+**Keputusan: `SENDERNAME` tidak dipilih sama sekali.** Ia tidak pernah sampai ke layar di Pega
+pun. Memilihnya berarti membawa kolom yang harus dijelaskan mengapa diabaikan. Satu uji
+memastikan nama pengirim memang tidak muncul, dan satu butir `PlannedDifferences`
+menyatakannya.
+
+### 49.5 Keputusan: asimetri kolom asal dan tujuan direplikasi
+
+Langkah 5, 6, dan 7 memperlakukan kedua kolom **berbeda**:
+
+```
+.UserName        == "1"      -> "PUSAT"     ; selain itu TETAP kode cabangnya
+.UserTeknisEmail == "1"      -> "PUSAT"
+.UserTeknisEmail != "PUSAT"  -> "CABANG"    ; menyapu SISANYA, termasuk kosong
+```
+
+Akibatnya kolom **asal** menyebut cabang mana, sementara kolom **tujuan** hanya berbunyi
+"CABANG". Itu terbaca seperti kelalaian penulisnya, dan mungkin memang begitu.
+
+**Direplikasi (`P-5`):** memperbaikinya berarti menampilkan kode cabang di tempat pengguna
+hari ini membaca kata "CABANG". Penerjemahnya ada di **domain** (`OriginOf`, `RecipientOf`),
+bukan di SQL, supaya penyimpanan SQL dan memori tidak dapat berselisih.
+
+### 49.6 Keputusan: selisih satu kolom antara grid dan pencacah dibawa apa adanya
+
+| | Penyaring balasan | Menyaring pengirim/pesan? |
+|---|---|---|
+| Kedua kueri grid | `REPLYMESSAGE` saja | **ya** |
+| Kedua kueri pencacah | `REPLYFROM` **dan** `REPLYMESSAGE` | **tidak** |
+
+Dua akibat yang berlawanan arah, dan keduanya nyata:
+
+- percakapan yang dibalas **tanpa penjawab tercatat** muncul di tabel tetapi **tidak terhitung
+  di pencacah mana pun** — bukan di "Answered" karena `REPLYFROM` kosong, bukan pula di "Not
+  Answered" karena `REPLYMESSAGE` terisi;
+- baris yang pengirim atau pesannya kosong **terhitung** tetapi **tidak tampil**.
+
+Keduanya dibawa apa adanya. Penyimpanan memori menirunya lewat `countsAsAnswered` dan
+`countsAsNotAnswered` yang terpisah dari `answered`, dan uji alias kueri melarang keduanya
+diseragamkan.
+
+> Satu uji sempat ditulis salah di sini: ia membandingkan **total** pencacah dengan **total**
+> kedua tab, dan kedua efek di atas saling menutupi — totalnya justru lebih besar. Ia
+> diperbaiki menjadi perbandingan **terisolasi** pada pencacah "Answered" saja.
+
+### 49.7 Keputusan: kedua daftar dipisahkan menjadi tab
+
+Layar lama menggambar kedua grid **bertumpuk** pada satu halaman tanpa kontainer tab sama
+sekali — yang sudah dijawab di atas (offset ~363.000 pada section), yang belum dijawab di
+bawah (~527.000).
+
+**Dipisahkan menjadi tab**, dengan tab "Belum Dijawab" terbuka lebih dulu. Isinya,
+penyaringnya, dan urutannya **tidak berubah**; yang berubah hanya cara berpindah.
+
+**Satu hal yang hilang karenanya, dan diganti:** layar lama memperlihatkan kedua pencacah
+sekaligus lewat diagram lingkaran. Begitu keduanya menjadi tab, angka itu dipindahkan menjadi
+**lencana pada bilah tab** — sehingga sifat "melihat berapa yang menunggu di tab sebelah tanpa
+berpindah" tetap ada. Tanpa itu, pemisahannya akan menjadi selisih yang **merugikan**.
+
+### 49.8 Keputusan: urutan kedua tab BERLAWANAN, dan itu bukan kekeliruan
+
+```
+Belum Dijawab   ORDER BY CREATEDDATE ASC       yang paling lama menunggu di atas
+Sudah Dijawab   ORDER BY CREATEDATEREPLY DESC  yang paling baru dibalas di atas
+```
+
+Direplikasi apa adanya, dan dinyatakan lewat `PlannedDifferences` — tabel yang terbaca tidak
+konsisten saat berpindah tab akan dilaporkan sebagai kerusakan tanpa penjelasan itu.
+
+**Satu hal ditambahkan:** pemutus seri `KOMUNIKASIID`. Kueri lama mengurutkan hanya menurut
+tanggal, dan pada daftar yang **dipaginasi** urutan yang tidak tetap membuat sebuah baris
+terlewat di halaman satu lalu muncul dua kali di halaman dua. Ia tidak mengubah baris mana
+yang tampil.
+
+### 49.9 Keputusan: kotak "Filter" layar lama TIDAK dibawa
+
+`PNCGetInboxKomunikasiCabang_Act` langkah 2 menyalin kedua isian filter ke variabel lokal —
+
+```
+Local.filterPengirim := TempInputFilterKomunikasi.City
+Local.filterUrutan   := TempInputFilterKomunikasi.ClaimID
+```
+
+— lalu **tidak memakainya lagi**. Tidak satu pun muncul di langkah berikutnya, dan tidak satu
+pun kueri grid menyaring menurut pengirim maupun mengubah urutannya.
+
+Jadi kotak Filter layar lama **tidak berfungsi**. Yang direplikasi adalah perilakunya, dan
+perilakunya adalah "tidak menyaring apa pun" (`P-5`). Menghidupkannya adalah kemampuan baru
+yang belum diputuskan siapa pun.
+
+### 49.10 Keputusan: layar Detail Komunikasi dibangun dari section, karena kuerinya HILANG
+
+Tombol "Detail Komunikasi" menjalankan `Data Transform/DetailKomunikasi_dt-DT.xml` —
+
+```
+TempView2       := Param.KOMID        nomor percakapan
+TempView2.City  := Param.KODECABANG   kode cabangnya
+```
+
+— lalu flow action `DETAILKOMUNIKASICABANG_11` menyisipkan
+`Section/BalasKomunikasiCabang-Section.xml`, yang menggambar **tiga kolom** (Tanggal,
+Pengirim, Pesan) beserta kotak "Masukkan Balasan" dan tombol "Balas".
+
+**DUA artefaknya HILANG dari export** (kelas `R-16`): kueri pemasok grid-nya
+(`GetInboxKomunikasiCabang_detail`) dan activity tombol Balas (`PNCReplyMessageCabang`).
+
+**Keputusan: dibangun dari bentuk yang MEMANG terbaca, tanpa mengarang penyaring.** Yang
+dipakai hanyalah nomor percakapan — satu-satunya parameter yang data transform-nya
+benar-benar kirimkan — ditambah batas cabang yang sama dengan grid. `CASEID` **tidak**
+disaring, karena menutup percakapan yang sudah selesai adalah aturan yang tidak dapat dibaca
+dari mana pun.
+
+**Satu hal ditambahkan dan dinyatakan:** balasan digambar sebagai **baris tersendiri** di
+bawah pesannya. Section lama tidak menampilkannya sama sekali, padahal satu baris tabel
+menyimpan pesan **dan** balasannya — sehingga utasnya terbaca separuh. Ketiga kolom aslinya
+tetap utuh.
+
+### 49.11 Keputusan: lampiran dibangun, BACA-SAJA
+
+**Jawaban Work Owner: ya, sekalian dibangun (baca-saja).**
+
+Sumbernya `RDB List/GetDocumentKomunikasi1-SQL.xml`, contoh utang teknis §4.2 paling padat di
+modul ini — **tujuh alias, tujuh kali salah**: `BranchCode` berisi nomor percakapan,
+`BranchName` berisi kode kategori, `ClaimID` berisi kode jenis, `ObjectName` berisi nama
+rincian dokumen, `ObjectLocation` berisi nama jenis dokumen, `Date` berisi tanggal unggah,
+`IdCompliance` berisi id dokumen. Tidak satu pun dibawa (`D-19`).
+
+**Satu cacat TIDAK dibawa.** `BrowseKomunikasiDokumenCabang-SQL.xml` menyimpulkan status
+unggah dari `when COUNT(...) < 0 then 'Sudah Upload'` — dan sebuah `COUNT` tidak pernah
+negatif, sehingga cabang itu **tidak pernah dipilih** dan seluruh baris selalu berbunyi
+"Belum Upload". Di sini kesimpulannya diambil **per lampiran** dari kolom `UPLOADDATE`-nya
+sendiri.
+
+**`INNER JOIN` ke kedua master dipertahankan** (`P-5`): lampiran yang jenisnya tidak ada di
+master tidak muncul sama sekali, dan `LEFT JOIN` akan **menambah** baris yang di Pega tidak
+pernah terlihat.
+
+### 49.12 Keputusan: keempat aksi tulis digambar tetapi ditolak beralasan
+
+Layar lama punya **empat** tindakan yang menulis, seluruhnya ke tabel milik Pega (`P-1`):
+
+| Tindakan | Jalur | Catatan |
+|---|---|---|
+| Kirim Pesan | `PNCSendMessageKomunikasiCabang` → `ReplyKomunikasiCabang` | INSERT |
+| Balas | `PNCReplyMessageCabang` | **HILANG dari export** |
+| Selesai Komunikasi | `EndKomunikasiCabang` → `ENDMessageCABANG_PNC` | UPDATE `CASEID` → `CABANG SELESAI` |
+| Tambah | — | form pesan baru |
+
+Mengikuti preseden `RejectWrite` pada modul Inbox RCL/PUCL: **tombol digambar, aksi ditolak
+dengan `501`**. Bukan 403 (pengguna berwenang), bukan 404 (tombolnya akan terbaca rusak).
+
+**Yang kedua patut disebut khusus:** ia tidak dapat dibangun **sekalipun diputuskan** —
+activity-nya tidak ada di export mana pun, sehingga tidak ada yang dapat dibaca untuk ditulis
+ulang. Mengarangnya dilarang.
+
+**Satu pengecualian bentuk:** kotak isian balasan **tidak digambar sama sekali**, berbeda dari
+tombol. Kotak yang tampak dapat diketik tetapi menolak saat dikirim lebih buruk daripada tidak
+ada — pengguna sudah mengetik kalimatnya, dan kalimat itu hilang.
+
+### 49.13 Keputusan: tombol unduh adalah kemampuan BARU, dan dinyatakan begitu
+
+Layar lama **tidak punya** tombol ekspor sama sekali. Ia ditambahkan karena percakapan yang
+menumpuk tidak dapat ditelusuri lewat layar berhalaman, dan karena modul inbox lain sudah
+memilikinya.
+
+Berkasnya memuat **delapan kolom** — termasuk tiga yang tidak digambar tabel mana pun (tujuan,
+tanggal jawaban, status register), yang memang sudah diambil kueri lama lalu dibuang di layar.
+
+**Nama berkasnya menyebut CABANG**, berbeda dari modul inbox lain. Alasannya khas layar ini:
+isi berkas bergantung pada **siapa** yang mengunduhnya — dua petugas yang mengunduh tab yang
+sama pada saat yang sama menerima berkas yang isinya berbeda. Tanpa itu, dua berkas dari dua
+cabang bernama sama dan saling menimpa di folder unduhan.
+
+### 49.14 Yang TIDAK dibangun, dan alasannya
+
+| Tidak dibangun | Alasan |
+|---|---|
+| Kotak cari | Kedua kueri grid tidak menyaring kata kunci sama sekali, dan kotak "Filter" layar lama tidak berfungsi (§49.9) |
+| Unduhan berkas lampiran | Berkasnya hidup di penyimpanan dokumen internal (`D-16`); seam pengambilnya belum dibangun di modul ini |
+| Migrasi basis data | Seluruh tabelnya milik Pega (`P-1`); modul ini hanya membaca |
+| Pemeriksaan peran | `TKT-F3-004` belum ada. Yang membatasi taruhannya di sini adalah **cabang**, bukan peran — dan itu ditegakkan di setiap rute yang menyentuh data |

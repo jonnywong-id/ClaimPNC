@@ -230,6 +230,18 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+
+  // Inbox Komunikasi Cabang — `MENU_ID 70`, kotak percakapan antara kantor pusat dan cabang.
+  //
+  // Butir menunya tidak dibatasi When rule mana pun yang dapat ditemukan di export; yang
+  // menentukan siapa melihatnya sekarang adalah `M_OTORISASI_PNC`, sama seperti butir lain
+  // (`TKT-F3-004` belum ada).
+  //
+  // Yang membatasi taruhannya di layar ini BUKAN peran melainkan CABANG: daftarnya disaring
+  // menurut cabang pemanggil, diturunkan di sisi peladen dari login. Petugas yang membuka
+  // menunya tanpa berhak tetap tidak melihat percakapan cabang lain — kecuali cabangnya
+  // sendiri tidak dapat diturunkan, yang menjatuhkannya ke percakapan kantor pusat (`P-5`).
+  InboxKomunikasiCabang: '/inbox-komunikasi-cabang',
 }
 
 /**

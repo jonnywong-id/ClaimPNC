@@ -26,6 +26,7 @@ import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
+import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
@@ -507,6 +508,29 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Komunikasi Cabang (`MENU_ID 70`), pengganti harness `InboxKomunikasiCabang`.
+
+        Ia SATU rute, bukan dua seperti RCL/PUCL: layar "Detail Komunikasi" di Pega bukan
+        layar tujuan melainkan flow action yang menyisipkan section ke halaman yang sama,
+        dan petugas kembali ke daftarnya begitu selesai membaca. Nomor percakapan yang
+        sedang dibuka hidup di parameter alamat, sehingga alamatnya tetap dapat disalin.
+
+        Berbeda dari modul inbox lain, daftar layar ini DISARING menurut cabang pemanggilnya
+        — batas itu diselesaikan di sisi peladen dari login, bukan dari pilihan di layar.
+        Petugas yang cabangnya tidak dapat diturunkan dilayani sebagai kantor pusat (`P-5`),
+        dan layarnya menyatakan keadaan itu apa adanya.
+      */}
+      <Route
+        path="/inbox-komunikasi-cabang"
+        element={
+          <SessionGuard>
+            <Protected>
+              <KomunikasiCabangPage />
             </Protected>
           </SessionGuard>
         }

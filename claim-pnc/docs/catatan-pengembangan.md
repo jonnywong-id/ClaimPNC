@@ -10418,3 +10418,188 @@ tetap tergambar, satu menuntut kerangka sudah ada **sebelum** datanya tiba.
 | `tsc --noEmit` modul ini | bersih |
 | `vitest` RCL/PUCL | **39/39** (naik dari 37) |
 | End-to-end binary baru | `/api/...` salah → `404 application/json` · rute halaman → `200 text/html` |
+
+## 48. Sesi kedua puluh empat — modul Inbox Komunikasi Cabang (2026-09-24)
+
+Permintaan Work Owner: *"lanjutkan untuk penambahan modul Inbox Komunikasi Cabang, cek secara
+penuh aplikasi existing pada dokumen File InboxKomunikasiCabang-Harness.xml jadikan ini sebagai
+referensi."*
+
+### 48.1 Harness 720 KB yang hampir tidak memuat apa pun
+
+Berkas rujukannya **697.911 karakter**, dan pembacaan pertama nyaris tidak menghasilkan apa-apa:
+seluruh `pyCaption`-nya hanya berisi satu nilai, `"Label"`. Yang berguna justru **indeks rujukan
+rule** di dalamnya, yang menyebut nama-nama berikut:
+
+```
+Section        InboxKomunikasi · PengirimKomunikasi · PenjawabKomunikasi
+Data Transform DetailKomunikasi_dt
+When           IsUpdateKomunikasi
+Field value    pyButtonLabel Detail Komunikasi / Filter / Kirim Pesan / Refresh /
+               Selesai Komunikasi / Tambah
+               pyCaption Cabang / Jawaban Terakhir / Jumlah / Pengirim(Dari) /
+               Penjawab(Dari) / Pesan / Status Register / Tanggal / To
+```
+
+Dari sana penelusuran berpindah ke `Section/InboxKomunikasi-Section.xml` (686 KB), yang memuat
+bentuk sebenarnya, dan ke direktori `RDB List/` yang memuat 22 rule ber-nama "Komunikasi".
+
+### 48.2 Dua grid, bukan satu — dan urutannya di berkas TERBALIK dari yang disangka
+
+Pencarian judul kolom di dalam section menghasilkan dua kelompok offset yang terpisah jauh:
+
+| Offset | Judul yang ditemukan | Tafsiran |
+|---|---|---|
+| ~363.000 | Tanggal · Pengirim(Dari) · Pesan · Jawaban Terakhir · Penjawab(Dari) | grid **Sudah Dijawab** |
+| ~527.000 | Tanggal · Pengirim(Dari) · Pesan | grid **Belum Dijawab** |
+
+Judul lain — Cabang, To, Jumlah, Status Register — ternyata **bukan** kolom grid: offsetnya
+(181.000–288.000) berada di area **form pesan baru** dan **pencacah**, bukan di area grid.
+
+Itu koreksi pertama sesi ini. Dugaan awal menyusun sembilan kolom dalam satu grid; yang
+sebenarnya ada adalah **dua grid dengan jumlah kolom berbeda**.
+
+### 48.3 Kolom "Pengirim(Dari)" ternyata bukan satu sel, melainkan sebuah section
+
+Data cell yang ditemukan hanya tiga (`.CloseClaimDate`, `.Email`, `.CloseClaimNote`) untuk lima
+judul. Selisihnya terjawab oleh dua section yang namanya sudah terbaca di indeks harness:
+
+```
+PengirimKomunikasi   -> UserName (UserTeknis)       "asal (operator)"
+PenjawabKomunikasi   -> UserAdmin (UserTeknisEmail) "nama (tujuan)"
+```
+
+Keduanya menggambar tanda kurung sebagai **teks tetap** (`pyCaption (` dan `pyCaption )`).
+
+Perhatikan susunannya **terbalik** satu sama lain — yang satu menaruh asal di depan, yang satu
+menaruh nama di depan. Itu dibawa apa adanya.
+
+### 48.4 Temuan yang paling menentukan: satu alias untuk dua kolom
+
+`GetInboxKomunikasiCabang-SQL.xml` memakai alias `UserName` **dua kali**:
+
+```sql
+sendername       AS "UserName"
+...
+COMMUNICATE_FROM AS "UserName"
+```
+
+Yang menentukan mana yang menang bukan dugaan, melainkan **pemakaiannya sendiri**:
+`PNCGetInboxKomunikasiCabang_Act` langkah 5 memeriksa `.UserName == "1"` lalu menimpanya dengan
+`"PUSAT"`. Perbandingan dengan `"1"` hanya masuk akal untuk kode asal, bukan nama orang.
+
+Jadi **nama pengirim tidak pernah sampai ke layar di Pega pun** — dan kolom yang pengguna baca
+sebagai "Pengirim(Dari)" sebenarnya berisi asal pesannya, bukan namanya.
+
+### 48.5 Angka `1` dan `100081` — dua kode yang MUDAH tertukar dan berakibat fatal
+
+Penelusuran `PNCCountKomunikasiCabang_Act` memunculkan dua angka yang keduanya berarti "kantor
+pusat" tetapi hidup di tempat berbeda:
+
+| Nilai | Kolom | Dipakai di |
+|---|---|---|
+| `100081` | `POOLDATA.BRANCH.ID` | precondition, hasil `GetIDCabang` |
+| `1` | `COMMUNICATE_FROM` / `COMMUNICATE_TO` | penyaring kueri, dan teks layar |
+
+Menukar keduanya menghasilkan **daftar kosong tanpa satu pun galat** — kelas cacat yang sama
+dengan yang tercatat pada modul Inbox Laporan Klaim (§19.3 pada keputusan-implementasi).
+`ResolveBranch` karena itu menerjemahkan `100081` menjadi `1`, dan satu uji menjaganya.
+
+### 48.6 Pertanyaan yang diajukan, dan satu yang dijawab dengan pengalihan
+
+Tiga pertanyaan diajukan sebelum satu baris kode ditulis:
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Perlakuan tiga aksi tulis | **dialihkan** — "di button detail komunikasi ada flow action DETAILKOMUNIKASICABANG_11 dan Data Transform DetailKomunikasi_dt ikuti alur nya" |
+| 2 | Cabang yang tidak terbaca | **replikasi apa adanya (`P-5`)** |
+| 3 | Lampiran masuk lingkup? | **ya, dibangun baca-saja** |
+
+Jawaban pertama **bukan jawaban atas pertanyaannya**, melainkan perintah menelusuri jalur yang
+belum tertelusur. Ia dikerjakan lebih dulu, dan hasilnya mengubah pemahaman layar: tombol
+"Detail Komunikasi" bukan pembuka lampiran seperti yang diduga saat pertanyaan disusun,
+melainkan pembuka **utas percakapan beserta kotak balasan**.
+
+Aksi tulisnya sendiri kemudian diputuskan mengikuti preseden yang sudah ada
+(`RejectWrite`, 501), dan alasannya diperkuat satu temuan: **activity di balik tombol "Balas"
+tidak ada di export mana pun**, sehingga ia tidak dapat direplikasi sekalipun diputuskan.
+
+### 48.7 Dua artefak yang HILANG, dan bagaimana ketiadaannya ditangani
+
+| Artefak | Dirujuk oleh | Akibat |
+|---|---|---|
+| `GetInboxKomunikasiCabang_detail` | `Section/DETAILKOMUNIKASICABANG_ACT-Act.xml` langkah 3 | bentuk utas layar detail tidak diketahui |
+| `PNCReplyMessageCabang` | `Section/BalasKomunikasiCabang-Section.xml` | logika tombol Balas tidak dapat dibaca |
+
+Keduanya kelas `R-16`. Yang dibangun adalah bentuk yang **memang terbaca** — tiga kolom dari
+section, dan satu-satunya parameter yang data transform-nya benar-benar kirimkan. Tidak ada
+penyaring yang ditambahkan di luar itu.
+
+### 48.8 Cacat sistem lama yang ditemukan sambil jalan
+
+Tiga, dan ketiganya diperlakukan berbeda:
+
+| Cacat | Perlakuan |
+|---|---|
+| `when COUNT(...) < 0 then 'Sudah Upload'` pada `BrowseKomunikasiDokumenCabang` — sebuah `COUNT` tidak pernah negatif, sehingga jawabannya SELALU "Belum Upload" | **tidak dibawa** — kesimpulannya diambil per lampiran dari kolomnya sendiri |
+| Kotak "Filter" yang isinya disalin ke variabel lokal lalu tidak pernah dipakai | **tidak dibawa** — yang direplikasi adalah perilakunya, dan perilakunya "tidak menyaring apa pun" |
+| Pencacah memeriksa dua kolom balasan sementara grid hanya satu | **dibawa apa adanya** (`P-5`) — ia mengubah ANGKA yang dilihat pengguna |
+
+Pembedaannya bukan selera: yang pertama dan kedua adalah kode yang tidak pernah berjalan
+sebagaimana dimaksud penulisnya; yang ketiga **berjalan** dan angkanya dibaca orang setiap hari.
+
+### 48.9 Dua uji yang saya tulis salah, dan apa yang tersingkap karenanya
+
+**Pertama — `TestPlannedDifferencesNameTheBranchWideningDecision`.** Ia mencari frasa
+`"tidak dapat"` sementara teksnya berbunyi `"TIDAK DAPAT DITURUNKAN"`. Kekeliruan sepele, tetapi
+ia memaksa pemeriksaan bahwa frasa yang dicari memang ada — dan itu menambah uji kedua untuk
+aksi tulis.
+
+**Kedua — dan ini yang menarik.** `TestARepliedConversationWithoutARecordedReplier...` semula
+membandingkan **total** pencacah dengan **total** kedua tab, dan mengharapkan yang pertama lebih
+kecil. Ia gagal: `6` tidak kurang dari `5`.
+
+Sebabnya bukan kode melainkan **premis ujinya**. Ada DUA selisih yang berlawanan arah:
+
+```
+KOM-0006  dibalas tanpa penjawab  -> tampil di tabel, TIDAK terhitung   (-1)
+KOM-0008  tanpa pengirim          -> terhitung, TIDAK tampil            (+1)
+KOM-0009  tanpa pesan             -> terhitung, TIDAK tampil            (+1)
+```
+
+Keduanya saling menutupi, dan totalnya justru lebih besar. Ujinya diperbaiki menjadi
+perbandingan **terisolasi** — tab "Sudah Dijawab" punya 3 baris sementara pencacahnya menyebut
+2 — dan efek kedua diuji terpisah.
+
+> Pelajaran yang layak dicatat: uji yang membandingkan **agregat** dapat lulus maupun gagal
+> karena alasan yang bukan yang sedang diuji. Angka yang dibandingkan harus sesempit klaimnya.
+
+Angkanya diperiksa langsung dengan uji sementara sebelum diperbaiki, bukan disimpulkan.
+
+### 48.10 Satu angka yang hampir ditulis salah
+
+Ukuran halaman sempat ditulis **25** berdasarkan kebiasaan modul lain. Pemeriksaan ke section
+memberi `<pyPageSize>20</pyPageSize>`, muncul **tiga kali** dengan nilai yang sama. Diperbaiki
+sebelum sempat masuk ke uji mana pun.
+
+Ini kebiasaan yang layak dipertahankan: setiap angka yang "sudah jelas" tetap diperiksa ke
+sumbernya, karena angka yang salah di sini tidak menghasilkan galat apa pun — hanya baris yang
+tidak terlihat tanpa menggulir.
+
+### 48.11 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./internal/inboxkomunikasicabang/...` | bersih |
+| `gofmt -l internal/inboxkomunikasicabang` | bersih |
+| `go test ./...` | **seluruhnya lulus** |
+| Uji modul ini | 22 Go + 18 Vitest, seluruhnya lulus |
+| `npm run build` | bundel terbentuk |
+| `npm run typecheck` | **tetap 120 galat**, seluruhnya pra-ada di modul Master Data tim lain (§39) — modul ini menambah **nol** |
+| `npx vitest run` | 29 gagal, **seluruhnya pra-ada** |
+
+Ke-29 kegagalan Vitest diperiksa penyebabnya, bukan diasumsikan: `App.tsx` yang saya sunting
+diimpor **setiap** uji layar, sehingga satu kekeliruan di sana akan tampak seperti kerusakan
+modul lain. Kedua suntingan itu **di-stash sementara**, uji `inbox-admin` dijalankan ulang, dan
+ia tetap gagal 13 — pra-ada. Suntingannya lalu dikembalikan dan modul ini diuji ulang.
