@@ -281,6 +281,49 @@ func TestNoticeOfLargeLosses(t *testing.T) {
 		require.NotEmpty(t, messages[0].Recipients)
 	})
 
+	// Sistem lama merakit penerima dari LIMA sumber lalu menyambungnya menjadi satu
+	// string (`Activity/SendEmailLargeLoss_act.xml` langkah 7 dan 8). Satu sumber yang
+	// kosong memperpendek sambungan itu; ia tidak pernah menghentikan registrasi.
+	//
+	// Uji ini menjaga arah yang paling mudah keliru: memperlakukan master yang belum
+	// diisi sebagai galat akan MENOLAK setiap klaim di atas Rp 1 miliar — perilaku yang
+	// tidak ada di sistem lama.
+	t.Run("penerima yang belum diisi tidak menggagalkan pendaftaran", func(t *testing.T) {
+		l := setup(t)
+		l.parameter.SetGeneral(nil)
+		l.parameter.SetRecipients(registrasi.LineFire, nil)
+
+		_, task := l.upToInputRegister(t, firePolicy)
+		input := validInput(task.ID)
+		input.EstimateValue = registrasi.Rupiah(1_000_000_001)
+		input.InsuredItem[0].Coverage[0].TSI = registrasi.Rupiah(5_000_000_000)
+
+		result, err := l.service.SaveRegister(context.Background(), input, l.caller)
+		require.NoError(t, err, "klaim harus tetap terdaftar meski penerima kosong")
+		require.True(t, result.LargeLoss)
+
+		messages := l.store.Notification()
+		require.Len(t, messages, 1, "peristiwanya tetap terbit dan tercatat")
+		require.Empty(t, messages[0].Recipients)
+	})
+
+	// Langkah 7 memakai subjek biasa selama `FlagNOLL` kosong, langkah 8 memakai
+	// "(REVISE)" setelah ia bernilai "1", dan langkah 11 mengisinya tepat sesudah surel
+	// dikirim. Tanpa penanda itu setiap pemberitahuan terbaca sebagai yang pertama.
+	t.Run("pemberitahuan kedua ditandai revisi", func(t *testing.T) {
+		l := setup(t)
+		_, task := l.upToInputRegister(t, firePolicy)
+
+		input := validInput(task.ID)
+		input.EstimateValue = registrasi.Rupiah(1_000_000_001)
+		input.InsuredItem[0].Coverage[0].TSI = registrasi.Rupiah(5_000_000_000)
+
+		first, err := l.service.SaveRegister(context.Background(), input, l.caller)
+		require.NoError(t, err)
+		require.False(t, l.store.Notification()[0].Revision, "yang pertama bukan revisi")
+		require.True(t, first.Claim.LargeLossNoticed, "penanda dinaikkan setelah terbit")
+	})
+
 	t.Run("ambang diubah tanpa deployment mengubah titik pemicu", func(t *testing.T) {
 		l := setup(t)
 		l.parameter.SetThreshold(registrasi.Rupiah(5_000_000))

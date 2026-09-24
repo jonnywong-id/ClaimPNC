@@ -169,6 +169,17 @@ func (p *Parameter) SetThreshold(u registrasi.Money) {
 	p.threshold = u
 }
 
+// SetGeneral mengubah penerima yang berlaku untuk seluruh lini.
+//
+// Dipakai pengujian untuk membuat master BENAR-BENAR kosong. Itu keadaan yang nyata:
+// `PNC.PENERIMA_KERUGIAN_BESAR` belum diisi di lingkungan mana pun, dan yang harus
+// dibuktikan adalah pendaftaran klaim tetap berjalan.
+func (p *Parameter) SetGeneral(address []string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.general = append([]string(nil), address...)
+}
+
 // SetRecipients mengubah penerima pemberitahuan untuk satu lini.
 func (p *Parameter) SetRecipients(line registrasi.LineOfBusiness, address []string) {
 	p.mu.Lock()

@@ -148,6 +148,7 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Start(r.Context(), usecase.StartCommand{
 		PolicyNumber: body.PolicyNumber,
+		RCVID:        body.RCVID,
 		Portal:       body.Portal,
 	}, caller)
 	if err != nil {

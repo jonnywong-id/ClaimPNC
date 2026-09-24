@@ -10052,3 +10052,339 @@ Yang **belum ada**, dan satu di antaranya keputusan Work Owner:
 
 Ketiganya belum diputuskan, dan **tidak diputuskan sendiri**: pilihan ini menentukan siapa
 penulis tabel klaim selama masa paralel (`P-1`), dan itu kewenangan Work Owner.
+
+## 45. Tombol "Register Klaim" menyala — modul `B-2` tersambung (2026-09-24)
+
+Ini kelanjutan langsung bab 44, yang berhenti pada satu pertanyaan: **ke mana baris klaim
+ditulis.** Work Owner menjawabnya, dan jawabannya membuka sisa pekerjaan.
+
+### 45.1 Jawaban Work Owner, dan apa yang ia batalkan
+
+> *"baris klaim ditulis langsung ke T_CLAIM_PNC, tidak perlu menjalankan
+> PEGA_CONVERT_JSONKLAIM_PNC lagi. Ruang lingkup berjalan sekalian layar registrasinya"*
+
+Ini memilih kemungkinan **1** dari tiga yang diajukan bab 44.5, dan membatalkan rancangan
+`internal/registrasi` yang semula menulis ke tabel buatan sendiri lewat migrasi `0002`.
+
+Yang **ikut dibatalkan** karenanya: `CPNC_KLAIM`, `CPNC_KLAIM_OBJEK`,
+`CPNC_KLAIM_COVERAGE`, `CPNC_KLAIM_SPREADING`, dan `CPNC_NOMOR_KLAIM`. Kelimanya tidak
+pernah dibuat di lingkungan mana pun, sehingga pembatalannya tidak meninggalkan data.
+Migrasi `0002`, `0003`, dan `0004` diberi banner **DICABUT — JANGAN DIJALANKAN**, bukan
+dihapus: berkas yang hilang tidak menjelaskan apa pun kepada orang berikutnya.
+
+Yang **tetap dibuat**, karena tidak punya padanan di Pega sama sekali:
+
+| Tabel | Kenapa tidak bisa memakai tabel lama |
+|---|---|
+| `CPNC_TUGAS` | Penugasan Pega hidup di `PC_ASSIGN_WORKLIST`/`WORKBASKET` — tabel engine, bukan tabel bisnis, dan `D-21` menetapkan keduanya digantikan tabel aplikasi |
+| `CPNC_JEJAK_AUDIT` | Sistem lama **tidak punya jejak audit nilai sama sekali** (`T-14`) |
+
+`CPNC_NOTIFIKASI` **tidak** dibuat. Pemberitahuan untuk sementara hanya dicatat di memori;
+kotak keluar tahan-mati adalah pekerjaan `S-3`, dan membuat tabelnya sekarang berarti
+menulis separuh modul orang lain.
+
+### 45.2 Tiga migrasi baru, dan kenapa dua di antaranya menambah kolom
+
+`T_CLAIM_PNC` memuat seratusan kolom Pega, tetapi **tidak seluruh isi domain klaim baru**.
+Yang kurang ditambahkan sebagai kolom, bukan ditumpangkan ke kolom lain yang artinya
+berbeda — persis utang teknis 4.2 Steering (alias kolom yang menyesatkan) yang tidak boleh
+terulang.
+
+| Migrasi | Isi |
+|---|---|
+| `0007` | 19 kolom pada `T_CLAIM_PNC` — antara lain `TAHAP_KINI`, `NILAI_ESTIMASI_SEN`, `POLIS_MULAI`/`POLIS_AKHIR`, `FLAG_KLAIM`, `STATUS_POSISI_PROGRES`, `DIHAPUS_PADA` |
+| `0008` | 3 kolom pada `T_CLAIM_OBJECTLIST`, 3 pada `T_CLAIM_OBJECTCOVERAGE`, dan tabel baru `T_CLAIM_SPREADING` |
+| `0009` | `CPNC_TUGAS` dan `CPNC_JEJAK_AUDIT` |
+
+Ketiganya ditulis sebagai **blok PL/SQL idempoten** — dijalankan dua kali tidak menghasilkan
+galat. Alasannya bukan kerapian: migrasi ini dijalankan **empat kali, sekali per portal**
+(`D-75`), dan yang paling mungkin terjadi saat menjalankan sesuatu empat kali secara manual
+adalah menjalankannya lima kali pada salah satunya.
+
+**`T_CLAIM_SPREADING` adalah tabel baru, bukan `CPNC_KLAIM_SPREADING` yang diganti nama.**
+Work Owner meminta demikian, dan namanya mengikuti kerabatnya (`T_CLAIM_OBJECTLIST`,
+`T_CLAIM_OBJECTCOVERAGE`) supaya ia terbaca sebagai bagian dari pohon klaim.
+
+### 45.3 Satu foreign key sengaja tidak dipasang
+
+`CPNC_TUGAS.KLAIM_ID` semula ber-FK ke `CPNC_KLAIM`. Setelah tujuannya berpindah ke
+`T_CLAIM_PNC`, FK itu **dibuang** — bukan diarahkan ulang.
+
+Sebabnya diverifikasi, bukan diduga: `T_CLAIM_PNC` **tidak punya satu pun constraint unik**,
+termasuk pada `CLAIMID`. Oracle menolak FK ke kolom yang tidak unik, dan menambahkan unique
+constraint pada tabel yang dibaca ratusan rule Pega adalah perubahan yang dapat menghentikan
+produksi bila ternyata ada duplikat historis.
+
+Yang menjaga keterkaitannya sekarang adalah kode, bukan basis data. Itu lebih lemah, dan
+dicatat sebagai utang teknis.
+
+### 45.4 Empat adapter SQL baru — dan sumbernya ternyata sudah ada
+
+Steering mencatat keempat sumber ini menunggu DBA. Pemeriksaan langsung menemukan
+**keempatnya sudah ada di basis data**:
+
+| Seam | Sumber | Yang ditemukan |
+|---|---|---|
+| `PolicyRepo` | `POOLDATA.JSON_POLIS` | 211.580 polis |
+| `ExchangeRateSource` | `POOLDATA.M_CURRENCYSTANDARD` | 6.995 baris, 40 mata uang |
+| `Parameter` | `POOLDATA.M_PARAMETER` | ada; ambang terisi, penerima belum |
+| `Assigner` | `POOLDATA.MST_USER_TEKNIK` | NONMBU 15 petugas, BONDING 5, PA 3, TRAVEL 1 |
+
+Empat hal yang hanya terlihat dengan membaca datanya, dan sebagian akan menjadi cacat
+senyap bila ditebak:
+
+1. **Mata uang disebut dengan KODE ANGKA, bukan simbol ISO.** `10001` USD, `10025` EUR,
+   `10026` IDR. Kode itu pula yang dibawa polis pada `$.Currency`. Memeriksanya dengan
+   `"USD"` menjawab "tidak ada" — dan jawaban itu menyesatkan, karena tampak seperti kurs
+   yang belum dimuat.
+2. **IDR ikut tersimpan, bernilai 1.** Klaim rupiah menempuh jalur yang sama persis; tidak
+   ada cabang khusus di mana pun.
+3. **`CURRENCYVALUE` bertipe `VARCHAR2` dan memakai KOMA** sebagai pemisah desimal
+   (`21509,68`). Penguraiannya dilakukan Go — `TO_NUMBER` dengan format mask bergantung
+   pada NLS server, sehingga nilai yang sama dapat terbaca berbeda di dua lingkungan.
+4. **Kunci JSON polis bersarang di bawah `$.Quotation`**, bukan di tingkat atas. Ini
+   mengoreksi kesimpulan saya sendiri pada sesi sebelumnya, yang memakai `INSTR` — dan
+   `INSTR` hanya membuktikan sebuah kata ADA di suatu tempat, bukan di mana.
+
+### 45.5 Satu jebakan go-ora yang memakan waktu, dan cara mengenalinya
+
+Kueri parameter menjawab `ORA-00900: invalid SQL statement`, sementara kueri yang sama
+berjalan normal lewat klien lain.
+
+Dua hipotesis pertama **gugur setelah diuji**: bukan titik dua di dalam komentar (kueri
+lain memuatnya dan berjalan), bukan pula panjang komentar (memendekkannya tidak menolong).
+
+Sebabnya: **sepasang tanda kutip ganda yang MEMBENTANG beberapa baris komentar.** Pengurai
+bind go-ora membaca komentar apa adanya, dan kutip yang dibuka di satu baris lalu ditutup
+di baris kelima membuat seluruh teks di antaranya terbaca sebagai literal — termasuk
+penanda bind-nya.
+
+Yang membuatnya sulit: menghapus **satu** baris komentar tidak memperbaiki apa pun, karena
+yang tersisa justru kutip yang tidak berpasangan. Kutip berpasangan **di dalam satu baris**
+aman. Catatannya ditaruh di kepala `internal/registrasi/repo/sqlstore/query.go`, tempat
+orang berikutnya akan mencarinya.
+
+### 45.6 Penjagaan portal, dan kenapa modul ini baru melayani satu portal
+
+Modul registrasi dirakit di atas **satu koneksi**, yaitu portal utama. Sepuluh seam-nya
+dibentuk dari `*sql.DB` tunggal, dan mengubahnya menjadi sadar-portal menuntut pemilih repo
+per permintaan — pekerjaan tersendiri.
+
+Sampai itu ada, jalurnya **dijaga menolak portal lain** (`cmd/claimpnc/portalguard.go`),
+bukan dibiarkan diam-diam melayani seluruhnya dari satu basis data. Perbedaannya besar:
+yang kedua adalah `R-20` — kebocoran data antar badan hukum, yang gagalnya **tidak terlihat
+sebagai galat**. Layar tampil normal; yang salah hanya milik siapa datanya.
+
+### 45.7 Satu akibat yang perlu diputuskan Work Owner
+
+Penerima Notice of Large Losses (`PNC.PENERIMA_KERUGIAN_BESAR`) belum diisi. Akibatnya
+**bukan sekadar pemberitahuan tidak terkirim**: daftar penerima dibaca **sebelum** klaim
+disimpan, sehingga pendaftaran klaim yang melampaui Rp 1.000.000.000 **gagal seluruhnya**.
+Klaim di bawah ambang tidak terpengaruh.
+
+Apakah itu yang dikehendaki — menolak, atau menyimpan klaim lalu mencatat pemberitahuan
+tanpa tujuan — belum diputuskan, dan tidak diputuskan sendiri. `-periksa` menyebutkannya
+apa adanya supaya ia tidak ditemukan pertama kali oleh klaim sungguhan.
+
+### 45.8 Keadaan setelah sesi ini
+
+`-periksa` terhadap Oracle sungguhan:
+
+```
+Registrasi Klaim (B-2)
+  [ok]    POOLDATA.T_CLAIM_PNC dapat dibaca
+  [ok]    POOLDATA.T_CLAIM_OBJECTLIST dapat dibaca
+  [ok]    POOLDATA.T_CLAIM_OBJECTCOVERAGE dapat dibaca
+  [ok]    POOLDATA.T_CLAIM_SPREADING dapat dibaca
+  [ok]    POOLDATA.CPNC_TUGAS dapat dibaca
+  [ok]    POOLDATA.CPNC_JEJAK_AUDIT dapat dibaca
+  [ok]    nomor klaim berikutnya: PNCN.26.0001
+  [ok]    kurs USD (10001) terbaca: 17753.0000
+  [ok]    kurs IDR (10026) terbaca: 1.0000
+  [ok]    ambang Notice of Large Losses: Rp 1000000000
+  [BELUM] penerima Notice of Large Losses KOSONG
+  [ok]    POOLDATA.JSON_POLIS dapat dibaca
+```
+
+Tombol "Register Klaim" **tidak lagi mati**. Menekannya memanggil
+`POST /api/registrasi/klaim`, yang membuat klaim, mengambil snapshot polis, menerbitkan
+nomor `PNCN.YY.xxxx`, mengisi `RCVID` dengan nomor laporan asalnya, lalu membuka klaimnya.
+
+Yang **belum** dikerjakan dan disadari:
+
+| Hal | Sifatnya |
+|---|---|
+| Registrasi hanya melayani portal utama | pekerjaan — pemilih repo per portal |
+| Penomoran kehilangan jaminan `FOR UPDATE` | utang teknis — dijaga penyisipan-ulang, lebih lemah |
+| `CPNC_NOTIFIKASI` belum ada | menunggu `S-3` |
+| Perilaku saat penerima kosong | **keputusan Work Owner** |
+
+## 46. `SendEmailLargeLoss_act.xml` dibaca — Notice of Large Losses (2026-09-24)
+
+Bab 45.7 menutup dengan satu pertanyaan terbuka: apa yang benar ketika daftar penerima
+kosong. Work Owner menjawabnya dengan menunjuk berkasnya:
+
+> *"Notice of Large Losses dikirim apabila Pendaftaran klaim yang melampaui
+> Rp 1.000.000.000 sesuai dengan file SendEmailLargeLoss_act.xml"*
+
+Berkas itu dibaca seluruhnya — 12 langkah tingkat atas pada activity `SendEmailLargeLoss`
+kelas `ASM-FW-GCNMFW-Data-Object`, ruleset GCNMFW `01-03-11`. Yang ditemukan **mengubah
+jawaban saya**, bukan sekadar menguatkannya.
+
+### 46.1 Ambangnya memang `> Rp 1.000.000.000`, dan sudah benar
+
+Dua langkah menjaganya, keduanya dengan operator yang sama:
+
+| Langkah | Precondition |
+|---|---|
+| 4 — perakitan alamat | `@toDecimal(Local.estimasi) > 1000000000` |
+| 10 — `Call SendSimpleEmail` | `@toDecimal(Local.estimasi) > 1000000000` |
+
+**Lebih besar, bukan sama dengan.** Implementasi yang sudah ada (`rupiahValue > threshold`)
+memang sudah sesuai; tidak ada yang perlu diubah di sini. Nilai tepat Rp 1.000.000.000
+tidak memicu apa pun.
+
+### 46.2 Penerima dirakit dari LIMA sumber, bukan satu daftar master
+
+Ini yang membatalkan rancangan sebelumnya. Langkah 7 merangkai:
+
+```
+allemail = UWEmail + "," + EmailPimpinan + "," + ClaimData.UserTeknisEmail
+                   + "," + emailacc + ",'" + emailcabang
+```
+
+| Sumber | Asalnya di Pega | Sifatnya |
+|---|---|---|
+| `UWEmail` | hardcode, **dipilih menurut Group Panel** (`006`, `003`, `004`) | master data (`D-15`) |
+| `EmailPimpinan` | hardcode | master data |
+| `ClaimData.UserTeknisEmail` | **data klaim** — email PIC teknisnya | bukan master |
+| `emailacc` | hardcode, **hanya pada pemberitahuan pertama** | master data |
+| `emailcabang` | **kueri** `GetEmailCabang_SQL` (langkah 5–6) | bukan master |
+
+Dua di antaranya karena itu **tidak akan pernah** datang dari
+`PNC.PENERIMA_KERUGIAN_BESAR`, dan satu lagi hanya berlaku pada notice pertama.
+
+Catatan kecil yang perlu diketahui saat membandingkan keluaran: rangkaian langkah 7 memuat
+`",'"` — sebuah **petik tunggal yang menempel** sebelum `emailcabang`. Itu cacat ketik yang
+sudah berjalan bertahun-tahun; sistem baru tidak membawanya.
+
+### 46.3 Karena itu, penerima kosong TIDAK menggagalkan pendaftaran
+
+Di Pega, sumber yang kosong hanya memperpendek sambungannya. Tidak ada satu pun langkah
+yang menghentikan alur karena alamat tidak ditemukan.
+
+Perilaku yang saya bangun sebelumnya — membaca penerima dan **menggagalkan** registrasi
+bila masternya belum diisi — karena itu **bukan kesetaraan, melainkan perubahan perilaku**
+yang menolak setiap klaim di atas Rp 1 miliar. Ia dicabut:
+
+```go
+recipients, err = l.parameter.LargeLossRecipients(ctx, claim.Policy.Line)
+if err != nil {
+    recipients = nil   // peristiwanya tetap terbit, hanya tanpa tujuan
+}
+```
+
+Pertanyaan terbuka bab 45.7 **tertutup oleh sumbernya**, bukan oleh keputusan baru.
+
+### 46.4 Ada pemberitahuan REVISI, dan sistem baru belum punya tempat menyimpannya
+
+Langkah 7 dan 8 memakai precondition yang berlawanan atas satu properti:
+
+| Langkah | Syarat | Subjek |
+|---|---|---|
+| 7 | `ClaimData.FlagNOLL == ""` | `NOTICE OF LARGE LOSSES : <nama tertanggung>` |
+| 8 | `ClaimData.FlagNOLL == "1"` | `NOTICE OF LARGE LOSSES (REVISE) : <nama tertanggung>` |
+| 11 | — | mengisi `FlagNOLL := "1"` **setelah** surel dikirim |
+
+Perbedaannya bukan kosmetik: penerima membaca subjek untuk tahu apakah angka yang datang
+**menggantikan** angka sebelumnya.
+
+`FlagNOLL` **tidak punya kolom di mana pun** — terverifikasi: nol kolom bernama `%NOLL%` di
+POOLDATA maupun DATAPEGA. Di Pega ia hidup di dalam BLOB work object. Migrasi `0010`
+menambahkan `FLAG_NOLL VARCHAR2(1)` pada `T_CLAIM_PNC`, dan nilainya memakai `"1"`/kosong
+seperti aslinya — bukan `"Y"`/`"N"` seperti penanda lain di modul ini, karena kolom ini akan
+dibaca berdampingan dengan data Pega selama masa paralel.
+
+### 46.5 Cacat yang ditemukan justru karena membaca berkas ini
+
+Modul registrasi merakit **pengisi SQL** untuk seam Notifier, sedangkan
+`CPNC_NOTIFIKASI` **tidak pernah dibuat** — bab 45.1 menundanya dengan alasan pengirimannya
+milik `S-3`.
+
+Alasan itu benar untuk pengiriman, salah untuk pencatatan. Akibatnya: klaim yang melampaui
+Rp 1 miliar akan menabrak `ORA-00942` **di dalam transaksi**, dan seluruh pendaftarannya
+dibatalkan. Persis kegagalan yang baru saja dicabut di §46.3, lewat jalur yang berbeda.
+
+Menggantinya dengan pencatat di memori tidak menutupnya, hanya memindahkannya: peristiwanya
+hilang saat aplikasi berhenti, dan janji `TKT-B02-004` — satu klaim menerbitkan **tepat
+satu** peristiwa — menjadi janji yang tidak dijaga apa pun.
+
+Migrasi `0011` karena itu membuat `CPNC_NOTIFIKASI`, dengan satu kolom tambahan `REVISI`.
+
+### 46.6 Yang TIDAK dibawa, dan alasannya
+
+| Di Pega | Perlakuan |
+|---|---|
+| Langkah 4 bercabang pada `pxRequestor.pxReqServer == "pega.sinarmas.co.id"` | **tidak dibawa** — Cross-Cutting §3.4 melarang perilaku yang ditentukan nama server; pembedaannya menjadi konfigurasi lingkungan |
+| Langkah 9 menimpa seluruh penerima dengan dua alamat penguji bila host `pegadev` | **tidak dibawa** — lihat di bawah |
+| Alamat hardcode (termasuk satu Gmail pada blok pimpinan) | **tidak dibawa** — master Penerima Notifikasi, mailbox fungsional saja (`D-15`, `D-67`) |
+| `",'"` pada rangkaian langkah 7 | **tidak dibawa** — cacat ketik |
+
+**Langkah 9 patut dicatat terpisah.** Ia berpola sama dengan blok `// TESTING` yang
+Steering §4.3 sebut ada di `InputRegister_act`, tetapi **berbeda dalam satu hal yang
+menentukan**: ia dipagari `pxReqServer == "pegadev.sinarmas.co.id"`, sehingga di produksi
+tidak pernah berjalan. Ia bukan kebocoran yang sedang berlangsung — dan menyamakannya
+dengan temuan `InputRegister_act` akan keliru.
+
+### 46.7 Satu sumber penerima yang benar-benar hilang dari export
+
+Langkah 5 memanggil RDB rule:
+
+```
+RequestType = GetEmailCabang_SQL
+ClassName   = ASM-FW-GCNMFW-Int-V_MST_USER_TEKNIS_BUSINESS
+Access      = GCNM
+BrowsePage  = tempEmailCabang
+```
+
+Rule dengan kelas itu **tidak ada di export**. Yang ada hanya `GetEmailCabang_SQL` berkelas
+`ASM-FW-GISFW-Int-POOLDATA`, dan isinya bukan alamat surel:
+
+```sql
+select id as "HASIL1" from branch where branchparentid <> '100081' and status = '1' ...
+```
+
+Dirujuk **dua** activity — `SendEmailLargeLoss_act` dan `GetEmailCabang` — dan keduanya
+membaca hasilnya sebagai `.BISNISID`, nama properti yang **tidak berarti alamat surel**.
+Itu pola alias menyesatkan yang sama dengan utang teknis 4.2 Steering.
+
+Ditambahkan ke `R-16`. Ia **tidak direkonstruksi**: menebak kueri yang menentukan siapa
+menerima pemberitahuan bernilai miliaran bukan hal yang boleh dikarang.
+
+### 46.8 Yang diverifikasi terhadap Oracle sungguhan
+
+| Yang diuji | Hasil |
+|---|---|
+| Migrasi `0010` dan `0011`, dijalankan **dua kali** | idempoten, tanpa galat |
+| Sisip klaim → `FLAG_NOLL` terbaca `false` | ✔ |
+| Perbarui klaim → `FLAG_NOLL` terbaca `true` | ✔ |
+| Ambil per nomor → `PNCN.26.9999`, `FLAG_NOLL true` | ✔ |
+| Kotak keluar: notice pertama `REVISI` kosong, revisi `REVISI = 1` | ✔ |
+| Penerima **kosong** ditulis tanpa galat | ✔ |
+| Seluruh baris uji dibersihkan | ✔ tersisa 0 |
+
+Ditambah empat kasus uji baru pada `TestNoticeOfLargeLosses`, seluruhnya lulus — termasuk
+"penerima yang belum diisi tidak menggagalkan pendaftaran", yang menjaga arah paling mudah
+keliru.
+
+### 46.9 Yang masih ditunggu
+
+| Hal | Dari siapa |
+|---|---|
+| Isi `PNC.PENERIMA_KERUGIAN_BESAR` — mailbox fungsional per Group Panel | Work Owner |
+| RDB rule `GetEmailCabang_SQL` kelas `V_MST_USER_TEKNIS_BUSINESS` | Tim Pega (`R-16`) |
+| Correspondence `NoticeOfLargeLosses_Email` — isi surelnya | Tim Pega (`R-16`) |
+
+Yang ketiga baru terlihat sekarang: langkah 10 mengirim dengan `Message` **kosong** dan
+`CorrName = NoticeOfLargeLosses_Email`, artinya seluruh isi surat ada di rule
+correspondence — dan **tidak ada satu pun direktori `Correspondence/` di export**.

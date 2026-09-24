@@ -146,13 +146,29 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 			return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca ambang large losses: %w", err)
 		}
 		// Ambang dilampaui berarti LEBIH BESAR, bukan sama dengan. Sistem lama memakai
-		// `> 1000000000` (langkah 53), dan `TKT-B02-004` menegaskan nilai TEPAT pada
-		// threshold tidak memicu apa pun.
+		// `> 1000000000` pada precondition langkah 4 dan langkah 10
+		// `Activity/SendEmailLargeLoss_act.xml`, dan `TKT-B02-004` menegaskan nilai TEPAT
+		// pada threshold tidak memicu apa pun.
 		if rupiahValue > threshold {
 			largeLoss = true
+
+			// Penerima yang belum lengkap TIDAK menggagalkan pendaftaran.
+			//
+			// Ini mengikuti sistem lama, bukan melonggarkannya. Di sana penerima dirakit
+			// dari LIMA sumber — UW menurut Group Panel, jajaran pimpinan, email PIC
+			// teknis klaim, daftar akunting, dan email cabang/GL/Pincab dari sebuah
+			// kueri — lalu disambung menjadi satu string (langkah 7 dan 8). Satu sumber
+			// yang kosong hanya membuat sambungannya lebih pendek; ia tidak pernah
+			// menghentikan registrasi.
+			//
+			// Memperlakukan master yang belum diisi sebagai galat akan MENOLAK setiap
+			// klaim di atas Rp 1 miliar — perilaku yang tidak ada di sistem lama, dan
+			// yang akibatnya jauh lebih besar daripada pemberitahuan tanpa tujuan.
+			// Peristiwanya tetap terbit dan tercatat; yang kosong adalah daftar
+			// penerimanya, dan itu terlihat di jejak audit maupun di mode periksa.
 			recipients, err = l.parameter.LargeLossRecipients(ctx, claim.Policy.Line)
 			if err != nil {
-				return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca penerima large losses: %w", err)
+				recipients = nil
 			}
 		}
 
@@ -218,14 +234,28 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		if !largeLoss {
 			return nil
 		}
-		return l.notifier.Send(ctx, registrasi.Notification{
+		// Revisi ditentukan oleh keadaan SEBELUM pemberitahuan ini terbit, lalu
+		// penandanya dinaikkan — urutan yang sama dengan langkah 7/8 lalu langkah 11.
+		revision := claim.LargeLossNoticed
+		if err := l.notifier.Send(ctx, registrasi.Notification{
 			Kind:         registrasi.NotificationLargeLoss,
 			ClaimNumber:  claim.Number,
 			PolicyNumber: claim.Policy.Number,
 			Recipients:   recipients,
 			RupiahValue:  rupiahValue,
+			Revision:     revision,
 			At:           now,
-		})
+		}); err != nil {
+			return err
+		}
+		if revision {
+			return nil
+		}
+		// Penanda disimpan lewat Save kedua, bukan dengan memindahkan Save ke belakang:
+		// urutannya harus tetap simpan-klaim → tugas → audit → beritahu, dan keduanya
+		// berada di dalam transaksi yang sama sehingga tidak dapat terpisah.
+		claim.LargeLossNoticed = true
+		return l.claim.Save(ctx, claim)
 	})
 	if err != nil {
 		return RegisterResult{}, err

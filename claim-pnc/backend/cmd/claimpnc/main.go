@@ -87,6 +87,10 @@ import (
 	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
+	registrasihttp "claim-pnc/internal/registrasi/http"
+	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
+	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
+	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
 	inboxmanagerreceivepuclmemory "claim-pnc/internal/inboxmanagerreceivepucl/repo/memory"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -495,6 +499,30 @@ func run() error {
 		return err
 	}
 
+	// Registrasi Klaim. Handlernya nil bila aplikasi berjalan tanpa Oracle; rutenya
+	// tidak dipasang, dan layar registrasi menjawab 404 alih-alih data karangan.
+	var registrationHandler *registrasihttp.Handler
+	if assembly.registrasi != nil {
+		registrationHandler = registrasihttp.NewHandler(registrasihttp.Options{
+			Service: assembly.registrasi,
+			Logger:  logger,
+			Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(r.Context())
+				if !existing {
+					return registrasiusecase.Caller{}, false
+				}
+				// Peran dan workbasket belum datang dari tabel peran (TKT-F3-004).
+				// Dikosongkan, BUKAN diisi tebakan: daftar workbasket menentukan tugas
+				// siapa yang terlihat, dan menebaknya berarti menebak batas data.
+				return registrasiusecase.Caller{
+					Identity: baseCtx.User.Login,
+					Name:     baseCtx.User.Name,
+				}, true
+			},
+			WriteResponse: writeJSON,
+		})
+	}
+
 	picTeknikHandler, err := masterpicteknikhttp.NewHandler(masterpicteknikhttp.Options{
 		Service:       assembly.masterPicTeknik,
 		Logger:        logger,
@@ -781,6 +809,29 @@ func run() error {
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
+
+				// Registrasi Klaim (B-2) beserta alur Register_Flow.
+				//
+				// # Kenapa dipagari portal utama, bukan dilayani seluruh portal
+				//
+				// Modul ini terikat pada SATU koneksi: seam-nya menerima *sql.DB, bukan
+				// pemilih repo per portal seperti modul inbox. Dipasang apa adanya, petugas
+				// yang sedang membuka portal Syariah akan menulis klaimnya ke basis data
+				// ASM — persis kebocoran antar badan hukum yang R-20 sebut, dan yang tidak
+				// menampakkan diri sebagai galat: layarnya tampak normal, angkanya masuk
+				// akal, yang salah hanya MILIK SIAPA data itu.
+				//
+				// Karena itu rutenya menolak portal selain portal utama. Batasnya nyata dan
+				// terlihat, bukan diserahkan pada harapan bahwa tidak ada yang berpindah.
+				// Melayani seluruh portal menuntut modulnya menerima pemilih repo — pekerjaan
+				// tersendiri, bukan penyesuaian di tempat pemasangan.
+				if registrationHandler != nil {
+					protected.Group(func(sub chi.Router) {
+						sub.Use(portalhttp.ActivePortal(activePortalDeps))
+						sub.Use(onlyPrimaryPortal(cfg.PrimaryPortal, writePortalAwareError))
+						registrasihttp.Mount(sub, registrationHandler)
+					})
+				}
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
 				// Inbox Close Claim — klaim yang sudah tutup, beserta permintaan
 				// membukanya kembali dan menyalinnya.
@@ -1044,6 +1095,15 @@ type assembly struct {
 	// milik satu badan hukum (ADR-0030).
 	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
 
+	// registrasi melayani modul Registrasi Klaim (B-2) beserta alur Register_Flow.
+	//
+	// Ia TERIKAT PADA SATU KONEKSI, tidak memakai pemilih repo per portal seperti modul
+	// inbox. Itu bentuk modulnya, bukan pilihan di sini — dan karena itu rutenya dipagari
+	// agar hanya melayani portal utama. Lihat catatan di tempat ia dipasang.
+	//
+	// Bernilai nil bila aplikasi berjalan tanpa Oracle; rutenya tidak dipasang.
+	registrasi *registrasiusecase.Service
+
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
 
@@ -1278,6 +1338,43 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	if err != nil {
 		store.close()
 		return assembly{}, err
+	}
+
+	// Registrasi Klaim (B-2). Dirakit HANYA bila Oracle tersedia.
+	//
+	// Modul ini menulis klaim ke POOLDATA.T_CLAIM_PNC beserta pohon objek, coverage, dan
+	// spreading di bawahnya (Work Owner, 2026-09-24). Tanpa koneksi, tidak ada satu pun
+	// adapter yang dapat diisi data sungguhan, dan mengisinya dengan data contoh berarti
+	// layar registrasi berjalan di atas polis dan kurs karangan.
+	var registrationService *registrasiusecase.Service
+	if store.legacy != nil {
+		primaryDB := store.legacy.DB()
+		registrationService, err = registrasiusecase.NewService(registrasiusecase.Options{
+			ClaimRepo:          registrasisql.NewClaimStore(primaryDB),
+			TaskRepo:           registrasisql.NewTaskStore(primaryDB),
+			PolicyRepo:         registrasisql.NewPolicyRepo(primaryDB),
+			NumberIssuer:       registrasisql.NewNumberIssuer(primaryDB),
+			Parameter:          registrasisql.NewParameter(primaryDB),
+			ExchangeRateSource: registrasisql.NewExchangeRateSource(primaryDB),
+			Assigner:           registrasisql.NewAssigner(primaryDB),
+
+			// Kotak keluar pemberitahuan DITUNDA (Work Owner, 2026-09-24): tabelnya tidak
+			// dibuat. Yang dipakai mencatat di memori, sehingga peristiwa tetap terbit di
+			// dalam transaksi yang sama tanpa menuntut tabel yang belum ada.
+			//
+			// Akibatnya disadari: pemberitahuan TIDAK bertahan melewati restart, dan
+			// pengirimannya (S-3) belum ada. Klaimnya sendiri tetap tersimpan.
+			Notifier: registrasimemory.NewStore(),
+
+			AuditRecorder: registrasisql.NewAuditRecorder(primaryDB, registrasimemory.IDGenerator{}),
+			IDGenerator:   registrasimemory.IDGenerator{},
+			UnitOfWork:    registrasisql.NewUnitOfWork(primaryDB),
+			Clock:         clock.System{},
+		})
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
 	}
 
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
@@ -1557,6 +1654,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxAnalystDoctor:      inboxAnalystDoctorService,
 		inboxLaporanKlaim:       claimReportService,
+		registrasi:              registrationService,
 		inboxOutstanding:        outstandingService,
 		inboxCloseClaim:         closeClaimService,
 		readyAliases:            store.readyAliases,

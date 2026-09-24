@@ -7904,3 +7904,250 @@ dibuang; izin itu tidak berlaku untuk **data yang dijalankan**. Data contoh mema
 | 3 | **Pemeriksaan kewenangan menu belum ada** (`TKT-F3-005`). Yang meredamnya penyaring identitas — peredam, bukan kendali. Barisnya menyangkut data medis yang `FR-R2` batasi | `TKT-F3-005` |
 | 4 | **`registrasi.Claim.ComplianceTransfer` bertipe `bool`** padahal domainnya `"1"` dan `"2"`. Cabang `IsCompliance` akan bernilai benar untuk klaim yang menuju Analyst Doctor. Di luar lingkup sesi ini — lihat `catatan-pengembangan.md` §41.13 | keputusan tersendiri |
 | 5 | **Penanda bind gaya Oracle `:n`** belum portabel ke PostgreSQL. Utang yang sudah ada sebelum modul ini dan berlaku untuk seluruh berkas `.sql` | `09-DATABASE-STRATEGY.md` §10 |
+
+---
+
+## 23. Klaim ditulis langsung ke `T_CLAIM_PNC`, dan lingkupnya sekalian layar registrasi (2026-09-24)
+
+### Keputusan Work Owner
+
+| # | Pertanyaan | Keputusan |
+|---|---|---|
+| 1 | Ke mana baris klaim ditulis | **langsung ke `POOLDATA.T_CLAIM_PNC`**; `PEGA_CONVERT_JSONKLAIM_PNC` **tidak** dijalankan lagi |
+| 2 | Lingkup | **sekalian layar registrasinya** — modul `B-2` utuh, bukan hanya sisi datanya |
+
+Keputusan 1 melanjutkan pola yang sama dengan `D-73`/§22: memakai tabel bisnis yang sudah
+ada alih-alih membuat tabel baru milik aplikasi.
+
+### Yang ini ubah dari alur Pega
+
+Pega menulis klaim dalam **tiga lapis**: work object di `PC_ASM_FW_GCNMFW_WORK`, dokumen di
+`JSON_KLAIM`, lalu `PEGA_CONVERT_JSONKLAIM_PNC` meratakannya ke `T_CLAIM_PNC` dan 12 tabel
+lain.
+
+Sistem baru **memotong dua lapis pertama**. Akibat yang harus disadari:
+
+1. **`JSON_KLAIM` tidak lagi terisi** untuk klaim terbitan aplikasi ini. Rule lama yang
+   membaca `JSON_KLAIM` (222 pemakaian `JSON_VALUE`/`JSON_TABLE` di 29 rule) **tidak akan
+   menemukan** klaim baru. Mana saja yang masih dipakai belum ditelusuri.
+2. **Tidak ada `STS_KONVERSI`** untuk klaim baru — proses apa pun yang menunggu penanda itu
+   akan mengabaikannya.
+3. Ke-12 tabel lain yang biasanya diisi konversi **harus ditulis modul ini sendiri** bila
+   isinya dibutuhkan.
+
+### Bentuk kunci yang dipakai
+
+`T_CLAIM_PNC` **tidak punya satu pun constraint unik** — ketiga indeksnya `NONUNIQUE`.
+Pencegahan klaim ganda karena itu **sepenuhnya tanggung jawab aplikasi**; basis data tidak
+akan menolaknya.
+
+| Kolom | Isi |
+|---|---|
+| `CLAIMID` | `PNCN.YY.xxxx` — tanpa prefix `ASM-FW-GCNMFW-WORK` (`D-22`) |
+| `CLAIMNO` | sama |
+| `RCVID` | nomor berkas RCV asalnya — kolomnya sudah ada di tabel |
+
+### Pemetaan RCV ke klaim, dari kolom yang benar-benar ada
+
+| `T_CLAIM_RECIVEDCLAIM` | `T_CLAIM_PNC` |
+|---|---|
+| `CLAIMID` | `RCVID` |
+| `NOPOLIS` | `NOPOLIS` |
+| `NAMATERTANGGUNG` | `QQNAME` |
+| `DOL` | `DATEOFLOSS` |
+| `BUSINESSCODE` · `GROUPPANEL` | `BUSINESSCODE` · `GROUPPANEL` |
+| `KODECABANG` | `KODE_CABANG` dan `BRANCHCODE` |
+| `NAMAPELAPOR` | `REPORTERNAME` |
+| `TLPPENGIRIM` | `NO_HP` |
+| `NOREFERENSI` | `NOREFBROKER` |
+| `LOKASIKEJADIAN` | `LOCATION` |
+| `KRONOLOGIKEJADIAN` | `KRONOLOGI` |
+| `SUBJECTEMAIL` | `SUBJECTEMAIL` |
+| `TANGGALINPUTDOKUMEN` | `RCVDATE` · `RECEIVEDATE` |
+| `USERINPUT` | `ADMINKLAIM` |
+
+### Pertentangan yang ditemukan, dan belum diselesaikan
+
+Modul **`B-2` ternyata SUDAH ADA** di repositori — `internal/registrasi/` beserta layar
+`frontend/src/modules/registrasi/` — dan ia menulis ke **tabel baru milik aplikasi**:
+`CPNC_KLAIM`, `CPNC_KLAIM_OBJEK`, `CPNC_KLAIM_COVERAGE`, `CPNC_KLAIM_SPREADING`,
+`CPNC_NOMOR_KLAIM`, `CPNC_JEJAK_AUDIT`, `CPNC_NOTIFIKASI`, lewat migrasi `0002`.
+
+Itu **berlawanan dengan keputusan 1 di atas**, dan keputusan itu diambil tanpa mengetahui
+modulnya sudah ada.
+
+Keadaan modul itu hari ini:
+
+| Hal | Status |
+|---|---|
+| Kode domain, usecase, repo, http | ada; tes usecase lulus |
+| Layar `InboxPage`, `ClaimPage`, `StagePath` | ada |
+| Dirakit di `cmd/claimpnc/main.go` | **tidak** — nol rujukan |
+| Dirutekan di `App.tsx` | **tidak** — nol rujukan |
+| Migrasi `0002` dijalankan DBA | **belum** |
+
+Jadi ia **terbangun tetapi belum tersambung**, dan belum satu baris pun tersimpan dengan
+bentuk mana pun. Membalikkan pilihan penyimpanannya karena itu masih murah — sama seperti
+`CPNC_LAPORAN_KLAIM` yang dibatalkan sebelum sempat dibuat.
+
+**Belum diputuskan:** apakah `internal/registrasi` diarahkan ulang ke `T_CLAIM_PNC`
+mengikuti keputusan 1, atau migrasi `0002` dijalankan dan keputusan 1 berlaku hanya untuk
+jalur lain. Pertanyaan ini dikembalikan ke Work Owner karena ia menyentuh modul yang sudah
+ditulis, bukan berkas kosong.
+
+### Pertentangan bab 23 diselesaikan (2026-09-24)
+
+Bab 23 berhenti pada satu hal yang belum diputuskan: apakah `internal/registrasi` diarahkan
+ulang ke `T_CLAIM_PNC`, atau migrasi `0002` dijalankan dan keputusan itu berlaku hanya untuk
+jalur lain.
+
+**Work Owner memilih yang pertama:** *"Arahkan ulang registrasi ke T_CLAIM_PNC."*
+
+Yang mengikuti dari itu, seluruhnya sudah dikerjakan:
+
+| Hal | Hasil |
+|---|---|
+| Migrasi `0002`, `0003`, `0004` | **dicabut** — diberi banner, tidak dihapus |
+| `CPNC_KLAIM` dan empat kerabatnya | tidak dibuat; tujuannya `T_CLAIM_PNC` beserta pohon anaknya |
+| `CPNC_NOMOR_KLAIM` | tidak dibuat; nomor diturunkan dari isi `T_CLAIM_PNC` |
+| `CPNC_KLAIM_SPREADING` | diganti tabel baru `T_CLAIM_SPREADING` (`0008`), atas permintaan Work Owner |
+| `CPNC_TUGAS`, `CPNC_JEJAK_AUDIT` | **tetap dibuat** (`0009`) — tidak ada padanannya di Pega |
+| `CPNC_NOTIFIKASI` | tidak dibuat; pemberitahuan dicatat di memori sampai `S-3` ada |
+
+---
+
+## 24. Sepuluh dari sebelas seam registrasi membaca data nyata (2026-09-24)
+
+`assembleRegistration` semula memakai penyimpanan memori untuk empat seam — polis,
+parameter, kurs, dan penugasan — dengan alasan yang tertulis di komentarnya: sumbernya
+belum ada.
+
+**Alasan itu tidak lagi benar.** Keempat sumbernya sudah ada di basis data, dan keempat
+adapter SQL-nya sudah ditulis. Yang tertinggal hanyalah menyambungkannya.
+
+### Kenapa "sebagian memori, sebagian Oracle" ditolak
+
+Tanpa Oracle, **seluruh** seam memakai memori. Bukan sebagian. Modul yang separuh membaca
+data nyata dan separuh membaca contoh menghasilkan klaim yang **sebagian benar**, dan itu
+jauh lebih sulit dikenali daripada modul yang jelas berjalan atas data contoh.
+
+### Yang tetap di memori
+
+Hanya `IDGenerator`, dan ia memang tidak pernah butuh basis data.
+
+### Dua hal yang tetap diperingatkan saat start
+
+Bukan karena adapternya belum ada, melainkan karena **isinya** belum lengkap:
+
+1. `PNC.PENERIMA_KERUGIAN_BESAR` belum diisi.
+2. Pemilihan petugas **direkonstruksi** dari kueri beban (`BrowsePICRandomTeam-SQL`), bukan
+   dibaca dari rule aslinya — ketiga router alur Register tidak ada di export (`R-04`).
+
+Keduanya disebut apa adanya, bukan ditambal, supaya tidak dikira sudah lengkap.
+
+---
+
+## 25. Mode `-periksa` mencakup modul registrasi, dan tidak boleh menyentuh datanya (2026-09-24)
+
+`-periksa` sebelumnya tidak menyebut modul registrasi sama sekali, sehingga tidak ada cara
+mengetahui apakah tabelnya sudah ada di sebuah lingkungan selain dengan mencoba mendaftarkan
+klaim sungguhan.
+
+Blok `checkRegistration` ditambahkan. Ia memeriksa enam tabel, penomoran, kurs, ambang,
+penerima, dan polis.
+
+### Seam Penugasan sengaja TIDAK diperiksa
+
+`Assign` **menaikkan pencacah beban petugas**. Memeriksanya berarti mengubah data, dan mode
+ini berjanji tidak menulis apa pun. Ketiadaannya disebutkan di keluarannya, bukan
+dibiarkan tampak seperti kelalaian.
+
+### Polis diperiksa dengan nomor yang pasti tidak ada
+
+Jawaban "tidak ditemukan" sudah membuktikan kuerinya jalan dan `JSON_POLIS` terbaca — tanpa
+menyentuh data nasabah mana pun (`D-69`). Memakai nomor polis sungguhan akan membuat
+keluaran mode periksa memuat data nasabah, dan keluaran itu sering disalin ke tiket.
+
+### Kurs diperiksa dengan KODE, bukan simbol
+
+Percobaan pertama memakai `"USD"` dan menjawab "tidak ada" — jawaban yang menyesatkan,
+karena tampak seperti kurs yang belum dimuat. Mata uang di `M_CURRENCYSTANDARD` disebut
+dengan kode angka (`10001` USD, `10026` IDR), dan kode itu pula yang dibawa polis.
+
+Keduanya kini diperiksa, termasuk IDR — supaya terbukti klaim rupiah pun menempuh jalur
+yang sama dan tidak punya cabang khusus.
+
+## 26. Penerima Notice of Large Losses dirakit, bukan dibaca dari satu daftar (2026-09-24)
+
+Bab 24 menyambungkan `Parameter` ke `POOLDATA.M_PARAMETER` dan memperlakukan
+`PNC.PENERIMA_KERUGIAN_BESAR` sebagai **satu-satunya** sumber penerima. Pembacaan
+`Activity/SendEmailLargeLoss_act.xml` membuktikan itu keliru.
+
+### Keputusan
+
+1. **Penerima yang belum lengkap tidak menggagalkan pendaftaran.** Master yang kosong
+   memperpendek daftar; ia tidak menghentikan registrasi.
+2. **Peristiwanya tetap terbit dan tercatat**, meski tanpa tujuan. Yang kosong terlihat di
+   kotak keluar, di jejak audit, dan di mode periksa — bukan disembunyikan.
+3. **Pemberitahuan kedua ditandai revisi**, lewat kolom baru `FLAG_NOLL`.
+
+### Kenapa bukan "tolak saja klaimnya"
+
+Itulah yang dibangun sebelumnya, dan itu **bukan kesetaraan**. Sistem lama merakit
+penerima dari lima sumber lalu menyambungnya menjadi satu string; tidak satu pun langkah
+menghentikan alur karena salah satunya kosong. Menolak klaim di atas Rp 1 miliar adalah
+perilaku baru yang tidak pernah ada, dengan akibat jauh lebih besar daripada pemberitahuan
+tanpa tujuan.
+
+### Dua sumber yang tidak akan pernah datang dari master
+
+| Sumber | Asal sebenarnya |
+|---|---|
+| `ClaimData.UserTeknisEmail` | **data klaim** — email PIC teknisnya |
+| `emailcabang` | **kueri** `GetEmailCabang_SQL`, yang **hilang dari export** (`R-16`) |
+
+Karena itu `LargeLossRecipients` tidak akan pernah menjadi daftar yang utuh, berapa pun
+lengkapnya master diisi. Merakit kedua sumber itu adalah pekerjaan yang belum dikerjakan,
+dan disebutkan apa adanya.
+
+---
+
+## 27. `CPNC_NOTIFIKASI` akhirnya dibuat — menyupersede penundaannya (2026-09-24)
+
+Bab 45.1 catatan pengembangan menunda tabel ini dengan alasan pengirimannya milik `S-3`.
+
+**Alasan itu benar untuk pengiriman, salah untuk pencatatan.** Modul registrasi merakit
+pengisi SQL untuk seam Notifier, sedangkan tabelnya tidak ada — sehingga klaim yang
+melampaui Rp 1 miliar akan menabrak `ORA-00942` di dalam transaksi dan membatalkan seluruh
+pendaftarannya.
+
+### Kenapa bukan pencatat di memori
+
+Ia tidak menutup cacatnya, hanya memindahkannya: peristiwanya hilang saat aplikasi
+berhenti, dan janji `TKT-B02-004` — satu klaim menerbitkan **tepat satu** peristiwa —
+menjadi janji yang tidak dijaga apa pun.
+
+Batas transaksi hanya berarti bila kedua sisinya berada di basis data yang sama.
+
+### Yang dibuat
+
+Migrasi `0011`: `POOLDATA.CPNC_NOTIFIKASI`, mengikuti bentuk yang sudah dirancang migrasi
+`0002` yang dicabut, ditambah satu kolom **`REVISI`**.
+
+Ia tetap **kotak keluar, bukan pengirim**: baris disisipkan di dalam transaksi penyimpanan
+klaim; `DIKIRIM_PADA` diisi `S-3` di luar transaksi.
+
+---
+
+## 28. `FLAG_NOLL` memakai "1"/kosong, bukan "Y"/"N" (2026-09-24)
+
+Seluruh penanda biner lain di modul ini memakai `"Y"`/`"N"` lewat `yesNo`. Kolom ini
+sengaja tidak.
+
+Sistem lama memakai `"1"` dan kosong (`Activity/SendEmailLargeLoss_act.xml` langkah 8 dan
+11), dan kolomnya duduk di `T_CLAIM_PNC` — tabel yang **dibaca Pega** selama masa paralel.
+Menulis `"Y"` akan membuat klaim yang sudah diberitahukan terbaca sebagai belum oleh sisi
+yang lain.
+
+Aturannya karena itu: **kolom pada tabel bersama mengikuti bentuk nilai sistem lama;
+konsistensi gaya internal mengalah pada keterbacaan lintas sistem.**

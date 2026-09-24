@@ -12,6 +12,16 @@ import (
 type StartCommand struct {
 	PolicyNumber string
 	Portal       string
+
+	// RCVID menautkan klaim ke berkas laporan asalnya.
+	//
+	// Di Pega, tombol Register Klaim pada form Input Receive Document memanggil
+	// CreateRegisterKlaimPNC, yang membuat case klaim DARI berkas RCV yang sedang
+	// dibuka. Tautan itu bukan hiasan: kolom NOKLAIM pada baris RCV diisi dari sini,
+	// dan itulah yang memindahkan berkasnya keluar dari tab Not Transferred.
+	//
+	// Kosong berarti klaim dimulai langsung dari layar registrasi, tanpa berkas RCV.
+	RCVID string
 }
 
 // StartResult adalah klaim yang baru dibuka beserta tugas pertamanya.
@@ -51,6 +61,9 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		Policy: policy,
 
 		Currency: policy.Currency,
+
+		// Tautan ke berkas laporan asalnya; kosong bila klaim dimulai tanpa RCV.
+		RCVID: strings.TrimSpace(p.RCVID),
 
 		ProcessStatus:          registrasi.ProcessRunning,
 		ClaimStatus:            "",

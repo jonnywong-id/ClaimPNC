@@ -12,6 +12,8 @@ import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPag
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
+import { ClaimPage as RegistrationClaimPage } from '@/modules/registrasi/ClaimPage'
+import { InboxPage as RegistrationInboxPage } from '@/modules/registrasi/InboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
 import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
@@ -490,6 +492,33 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Registrasi Klaim (B-2) beserta alur Register_Flow. Dua layar: daftar tugas, dan
+        satu klaim beserta jalur tahapnya.
+
+        Alamat klaim memuat pengenalnya, sehingga satu klaim dapat dibuka kembali dari
+        tautan — alasan yang sama dengan form Input Receive Document.
+      */}
+      <Route
+        path="/registrasi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/registrasi/klaim/:claimID"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationClaimPage />
             </Protected>
           </SessionGuard>
         }

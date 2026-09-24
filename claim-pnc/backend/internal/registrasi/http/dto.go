@@ -164,7 +164,12 @@ type InboxResponse struct {
 // StartRequest adalah badan POST /api/registrasi/klaim.
 type StartRequest struct {
 	PolicyNumber string `json:"nomor_polis"`
-	Portal       string `json:"portal"`
+
+	// RCVID menautkan klaim ke berkas laporan asalnya. Diisi tombol Register Klaim pada
+	// form Input Receive Document; kosong bila klaim dimulai langsung dari layar ini.
+	RCVID string `json:"nomor_laporan,omitempty"`
+
+	Portal string `json:"portal"`
 }
 
 // RegisterRequest adalah badan POST /api/registrasi/register.

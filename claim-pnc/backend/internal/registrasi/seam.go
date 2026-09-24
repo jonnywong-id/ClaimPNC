@@ -132,6 +132,17 @@ type Notification struct {
 	// RupiahValue adalah nilai estimasi setelah konversi kurs, dalam sen.
 	RupiahValue Money
 
+	// Revision menandai pemberitahuan KEDUA dan seterusnya atas klaim yang sama.
+	//
+	// Sistem lama membedakan keduanya lewat subjek surel, bukan lewat penerima:
+	// `Activity/SendEmailLargeLoss_act.xml` langkah 7 memakai subjek
+	// "NOTICE OF LARGE LOSSES" ketika `ClaimData.FlagNOLL` masih kosong, dan langkah 8
+	// memakai "NOTICE OF LARGE LOSSES (REVISE)" ketika ia sudah bernilai "1".
+	//
+	// Perbedaannya bukan kosmetik: penerima membaca subjek untuk tahu apakah angka yang
+	// dikirim menggantikan angka sebelumnya.
+	Revision bool
+
 	At time.Time
 }
 

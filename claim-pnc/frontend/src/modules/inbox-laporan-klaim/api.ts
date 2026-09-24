@@ -243,3 +243,54 @@ function downloadBlob(blob: Blob, filename: string): void {
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Hook tombol "Register Klaim" pada form Input Receive Document.
+ *
+ * # Apa yang dikerjakannya
+ *
+ * Memulai klaim dari berkas laporan yang sedang dibuka — itulah yang
+ * `Activity/CreateRegisterKlaimPNC_act.xml` lakukan pada langkah pertamanya,
+ * `Call CreateInputKlaim`.
+ *
+ * Ia memanggil modul Registrasi Klaim (`B-2`), bukan modul ini: klaim bukan milik Inbox
+ * Laporan Klaim, dan menerbitkannya dari sini akan menaruh aturan registrasi di modul
+ * yang lingkupnya berkas laporan masuk.
+ *
+ * # Kenapa nomor polis wajib
+ *
+ * Registrasi mengambil SNAPSHOT POLIS saat klaim dibuat (`D-04`), dan snapshot itu tidak
+ * dapat diambil tanpa nomornya. Berkas RCV yang baru dibuat belum punya nomor polis;
+ * tombolnya karena itu menolak lebih dulu, dengan menyebutkan isian mana yang harus
+ * diisi — bukan mengirim permintaan yang sudah pasti gagal.
+ */
+export function useRegisterClaim() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ nomorLaporan, nomorPolis }: { nomorLaporan: string; nomorPolis: string }) => {
+      if (nomorPolis.trim() === '') {
+        return Promise.reject(
+          new Error(
+            'Nomor Polis harus diisi lebih dulu. Registrasi mengambil snapshot polis ' +
+              'saat klaim dibuat, dan snapshot itu tidak dapat diambil tanpa nomornya.',
+          ),
+        )
+      }
+      return callAPI<{ klaim: { id: string; nomor: string } }>('/api/registrasi/klaim', {
+        metode: 'POST',
+        token,
+        portal,
+        body: { nomor_polis: nomorPolis, nomor_laporan: nomorLaporan },
+      })
+    },
+
+    // Daftar laporan dimuat ulang: begitu klaim terbit, NOKLAIM pada baris RCV terisi dan
+    // berkasnya berpindah keluar dari tab Not Transferred.
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+    },
+  })
+}

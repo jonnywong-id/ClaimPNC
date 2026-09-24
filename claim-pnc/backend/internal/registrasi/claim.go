@@ -242,6 +242,20 @@ type Claim struct {
 	// TechnicalPIC adalah PIC teknik yang menerima klaim setelah registrasi.
 	TechnicalPIC string
 
+	// LargeLossNoticed menandai Notice of Large Losses sudah pernah terbit untuk klaim
+	// ini — `ClaimData.FlagNOLL` di sistem lama.
+	//
+	// Ia menentukan SUBJEK pemberitahuan berikutnya, bukan apakah ia dikirim:
+	// `Activity/SendEmailLargeLoss_act.xml` langkah 7 memakai subjek biasa selama flag
+	// masih kosong, langkah 8 memakai "(REVISE)" setelah ia bernilai "1", dan langkah 11
+	// mengisinya tepat setelah surel dikirim.
+	//
+	// Di Pega ia hidup di dalam BLOB work object dan TIDAK punya kolom sendiri —
+	// terverifikasi 2026-09-24: tidak ada satu pun kolom bernama `%NOLL%` di POOLDATA
+	// maupun DATAPEGA. Di sini ia diberi kolom `FLAG_NOLL` (migrasi `0010`), karena tanpa
+	// tempat menyimpannya setiap pemberitahuan akan selamanya terbaca sebagai yang pertama.
+	LargeLossNoticed bool
+
 	// RCVID menautkan klaim ke pencatatan penerimaan dokumen (`B-14`). Kosong berarti
 	// klaim tidak berasal dari Receive Document.
 	RCVID string

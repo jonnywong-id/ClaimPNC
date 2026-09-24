@@ -7,7 +7,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
 
-import { useClaimReport, useSaveClaimReport } from './api'
+import { useClaimReport, useRegisterClaim, useSaveClaimReport } from './api'
 import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail } from './types'
 
 /**
@@ -36,6 +36,7 @@ export function ClaimReportFormPage() {
 
   const berkas = useClaimReport(id)
   const simpan = useSaveClaimReport(id)
+  const daftar = useRegisterClaim()
 
   const [values, setValues] = useState<ClaimReportDetail>(EMPTY_DETAIL)
   const [estimateText, setEstimateText] = useState('')
@@ -316,23 +317,37 @@ export function ClaimReportFormPage() {
           {/*
             Register Klaim ADA di layar lama dan tempatnya di sini — tombol keempat pada
             deret bawah `Section/InputReceiveDocument_sect.xml`, memanggil activity
-            `CreateRegisterKlaimPNC`.
+            `CreateRegisterKlaimPNC`, yang langkah pertamanya `Call CreateInputKlaim`.
 
-            Ia digambar TIDAK AKTIF, bukan disembunyikan. Menyembunyikannya membuat layar
-            tampak sudah lengkap padahal satu langkah alurnya belum ada, dan petugas baru
-            menemukannya saat mencari tombol yang biasa mereka tekan. Yang tidak aktif
-            menyatakan dirinya sendiri.
+            Di sini ia memanggil `POST /api/registrasi/klaim`, yang mengerjakan langkah itu:
+            membuat klaim, mengambil snapshot polis, menerbitkan nomor `PNCN.YY.xxxx`, dan
+            mengisi `RCVID` dengan nomor laporan ini. Tautan balik itulah yang membuat baris
+            RCV-nya berpindah keluar dari tab "Not Transferred".
 
-            Ia belum dapat dibuat karena DUA hal, bukan satu:
-              1. `CreateRegisterKlaimPNC` tidak ada di export — dirujuk, tidak terkirim
-                 (`R-16`), sehingga perilakunya tidak diketahui.
-              2. Modul `B-2` Registrasi Klaim, tujuan langkah ini, belum dibangun.
+            # Kenapa ia ikut mati saat berkas tidak dapat disunting
 
-            Menebak perilakunya berarti mengarang aturan bisnis yang menerbitkan nomor
-            klaim — persis yang dilarang.
+            Mendaftarkan klaim MENULIS ke berkas laporan — `NOKLAIM`-nya terisi. Berkas milik
+            Pega hanya boleh dibaca selama masa paralel (`P-1`, `ADR-0004`), sehingga tombol
+            ini tunduk pada kewenangan yang sama dengan Simpan. Kewenangannya dihitung
+            server, bukan disimpulkan layar.
+
+            # Kenapa nomor polis tidak diperiksa di sini
+
+            Ia diperiksa di `useRegisterClaim`, satu tempat, supaya pesan penolakannya sama
+            dari mana pun pendaftaran dimulai.
           */}
-          <Button type="button" tone="kedua" disabled title={REGISTER_BELUM_TERSEDIA}>
-            Register Klaim
+          <Button
+            type="button"
+            tone="kedua"
+            disabled={!editable || daftar.isPending}
+            onClick={() =>
+              daftar.mutate(
+                { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+              )
+            }
+          >
+            {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
           </Button>
 
           <Button
@@ -344,7 +359,15 @@ export function ClaimReportFormPage() {
           </Button>
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">{REGISTER_BELUM_TERSEDIA}</p>
+        {daftar.isError && (
+          <div className="mt-3">
+            <ErrorMessage
+              title="Klaim tidak dapat didaftarkan"
+              description={messageOf(daftar.error)}
+              tone={toneOf(daftar.error)}
+            />
+          </div>
+        )}
       </form>
 
       <p className="mt-6 text-xs text-slate-500">
@@ -469,28 +492,6 @@ function TextArea({
 }
 
 /**
- * Alasan tombol Register Klaim belum dapat ditekan.
- *
- * Disimpan sebagai konstanta karena dipakai dua kali — pada tooltip tombolnya dan pada
- * keterangan di bawah deret tombol. Dua salinan kalimat yang sama akan berpisah.
- *
- * # Alasannya BERUBAH pada 2026-09-24, dan tinggal satu
- *
- * Semula ada dua penghalang: rule-nya hilang dari export, dan modul tujuannya belum ada.
- * Work Owner mengirimkan `Activity/CreateRegisterKlaimPNC_act.xml`, sehingga penghalang
- * pertama lepas — perilakunya kini terbaca, 47 langkah, dan enam dari tujuh activity yang
- * dipanggilnya sudah ada di export.
- *
- * Yang tersisa bukan artefak melainkan PEKERJAAN: langkah pertamanya
- * `Call CreateInputKlaim` membuat case klaim, dan case klaim adalah modul `B-2`.
- * Menuliskannya di sini berarti membangun `B-2` di dalam modul yang salah.
- */
-export const REGISTER_BELUM_TERSEDIA =
-  'Register Klaim belum dapat dijalankan: langkah pertamanya membuat case klaim ' +
-  '(CreateInputKlaim), dan modul B-2 Registrasi Klaim belum dibangun. Perilaku ' +
-  'lengkapnya sudah diketahui dari Activity/CreateRegisterKlaimPNC_act.xml.'
-
-/**
  * backToListPath mengembalikan alamat daftar pada TAB TEMPAT BERKAS INI BERADA.
  *
  * # Kenapa bukan sekadar kembali ke daftar
@@ -520,4 +521,16 @@ function messageOf(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * toneOf memisahkan penolakan dari gangguan.
+ *
+ * "Nomor Polis harus diisi" adalah pekerjaan pengguna; "penyimpanan belum siap" bukan.
+ * Menggambarkan keduanya dengan warna yang sama membuat petugas mencoba memperbaiki hal
+ * yang tidak dapat mereka perbaiki.
+ */
+function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
+  if (failure instanceof APIError && failure.status >= 500) return 'gangguan'
+  return 'penolakan'
 }

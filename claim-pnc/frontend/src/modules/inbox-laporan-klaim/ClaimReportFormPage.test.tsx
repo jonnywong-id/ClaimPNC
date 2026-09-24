@@ -93,6 +93,7 @@ function show(id = 'RCVN.26.0001') {
         <Routes>
           <Route path="/inbox/laporan-klaim/:id" element={<ClaimReportFormPage />} />
           <Route path="/inbox/laporan-klaim" element={<div data-testid="daftar" />} />
+          <Route path="/registrasi/klaim/:klaimID" element={<div data-testid="klaim" />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -288,27 +289,67 @@ describe('kembali ke daftar', () => {
 
 describe('tombol Register Klaim', () => {
   // Tombol ini ADA di layar lama (Section/InputReceiveDocument_sect.xml, memanggil
-  // CreateRegisterKlaimPNC). Ia digambar tidak aktif, bukan disembunyikan.
+  // CreateRegisterKlaimPNC, yang langkah pertamanya Call CreateInputKlaim). Sejak
+  // 2026-09-24 ia bekerja: memanggil POST /api/registrasi/klaim.
   //
-  // Uji ini menjaga dua arah sekaligus. Menghapus tombolnya membuat layar tampak lengkap
-  // padahal satu langkah alurnya hilang; mengaktifkannya sebelum modul B-2 ada membuat
-  // petugas menekan tombol yang tidak menuju ke mana pun.
-  it('tampil tetapi tidak dapat ditekan, dan menyebutkan sebabnya', async () => {
-    installFetch(() => ({ body: berkas() }))
-        show()
+  // Yang diuji di sini adalah tautannya, bukan isi modul registrasi. Nomor laporan WAJIB
+  // ikut terkirim — itulah yang mengisi RCVID pada klaim, dan tanpanya baris RCV-nya tidak
+  // pernah berpindah keluar dari tab "Not Transferred".
+  it('mengirim nomor polis beserta nomor laporan asalnya', async () => {
+    installFetch((call) =>
+      call.url.includes('/api/registrasi/klaim')
+        ? { body: { klaim: { id: 'KLM-1', nomor: 'PNCN.26.0007' } } }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
 
-    const tombol = await screen.findByRole('button', { name: 'Register Klaim' })
-    expect(tombol).toBeDisabled()
-    expect(tombol).toHaveAttribute('title', expect.stringContaining('CreateRegisterKlaimPNC'))
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    await waitFor(() => {
+      const kirim = calls.find((c) => c.url.includes('/api/registrasi/klaim'))
+      expect(kirim?.method).toBe('POST')
+      expect(kirim?.body).toEqual({
+        nomor_polis: '01.002.2026.00001',
+        nomor_laporan: 'RCVN.26.0001',
+      })
+    })
   })
 
-  // Sebabnya disebut di layar, bukan hanya pada tooltip: tooltip tidak terbaca di
-  // peramban sentuh, dan petugas surveyor memakai tablet (D-12).
-  it('menuliskan sebabnya di layar, bukan hanya pada tooltip', async () => {
-    installFetch(() => ({ body: berkas() }))
-        show()
+  // Setelah klaim terbit, petugas dibawa ke klaimnya — bukan ditinggalkan di form laporan
+  // tanpa tanda apa pun bahwa sesuatu terjadi.
+  it('membuka klaim yang baru terbit', async () => {
+    installFetch((call) =>
+      call.url.includes('/api/registrasi/klaim')
+        ? { body: { klaim: { id: 'KLM-1', nomor: 'PNCN.26.0007' } } }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
 
-    expect(await screen.findByText(/CreateRegisterKlaimPNC/)).toBeInTheDocument()
-    expect(screen.getByText(/B-2 Registrasi Klaim/)).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    expect(await screen.findByTestId('klaim')).toBeInTheDocument()
+  })
+
+  // Berkas milik Pega hanya dapat dibaca (P-1). Mendaftarkan klaim MENULIS ke berkas itu —
+  // NOKLAIM-nya terisi — sehingga tombol ini tunduk pada kewenangan yang sama dengan
+  // Simpan. Kewenangannya datang dari server, bukan disimpulkan layar.
+  it('mati pada berkas yang hanya dapat dibaca', async () => {
+    installFetch(() => ({ body: berkas({ dapat_disunting: false }) }))
+    show()
+
+    expect(await screen.findByRole('button', { name: 'Register Klaim' })).toBeDisabled()
+  })
+
+  // Nomor polis kosong ditolak SEBELUM permintaan berangkat: registrasi mengambil snapshot
+  // polis, dan snapshot tidak dapat diambil tanpa nomornya. Menolaknya di layar memberi
+  // petugas kalimat yang dapat ditindaklanjuti, bukan galat server.
+  it('menolak tanpa nomor polis, tanpa memanggil server', async () => {
+    installFetch(() => ({ body: berkas() }))
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    expect(await screen.findByText(/Nomor Polis harus diisi/)).toBeInTheDocument()
+    expect(calls.some((c) => c.url.includes('/api/registrasi/klaim'))).toBe(false)
   })
 })

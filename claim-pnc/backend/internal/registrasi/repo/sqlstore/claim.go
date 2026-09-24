@@ -86,6 +86,7 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 		k.UpdatedBy,
 		k.UpdatedAt.UTC(),
 		timePtrOrNil(k.DeletedAt),
+		flagNOLL(k.LargeLossNoticed),
 		k.ID,
 	}
 
@@ -122,9 +123,16 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 
 		for j, c := range o.Coverage {
 			coverageSeq := j + 1
+			// o.ID ikut dikirim karena OBJECTID `NOT NULL` di POOLDATA.T_CLAIM_OBJECTCOVERAGE.
+			// Coverage memang milik sebuah objek; tabel warisan menuntutnya dinyatakan, dan
+			// domain sudah memilikinya di tangan.
 			if err := upsert(ctx, exec,
-				"coverage_perbarui", []any{c.ID, c.CauseOfLoss, int64(c.TSI), k.ID, itemSeq, coverageSeq},
-				"coverage_sisip", []any{c.ID, c.CauseOfLoss, int64(c.TSI), k.ID, itemSeq, coverageSeq},
+				"coverage_perbarui", []any{
+					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq,
+					k.ID, itemSeq, coverageSeq},
+				"coverage_sisip", []any{
+					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, now,
+					k.ID, itemSeq, coverageSeq},
 			); err != nil {
 				return fmt.Errorf("registrasi/sqlstore: menyimpan coverage %d.%d: %w", itemSeq, coverageSeq, err)
 			}
@@ -212,6 +220,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		createdBy, updatedBy                    sql.NullString
 		createdAt, updatedAt                    sql.NullTime
 		deletedAt                               sql.NullTime
+		flagNoll                                sql.NullString
 	)
 
 	row := exec.QueryRowContext(ctx, loadQuery(queryName), value)
@@ -227,6 +236,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&processStatus, &claimStatus, &claimFlag, &positionStatus,
 		&currentStage,
 		&createdBy, &createdAt, &updatedBy, &updatedAt, &deletedAt,
+		&flagNoll,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -287,6 +297,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		t := deletedAt.Time
 		k.DeletedAt = &t
 	}
+	k.LargeLossNoticed = fromFlagNOLL(flagNoll.String)
 
 	if err := r.loadTree(ctx, exec, &k); err != nil {
 		return registrasi.Claim{}, err

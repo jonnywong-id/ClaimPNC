@@ -96,3 +96,18 @@ func yesNo(b bool) string {
 }
 
 func fromYesNo(s string) bool { return s == "Y" || s == "y" }
+
+// flagNOLL memetakan penanda Notice of Large Losses ke bentuk yang dipakai sistem lama.
+//
+// Ia sengaja TIDAK memakai "Y"/"N" seperti penanda lain di modul ini: sistem lama memakai
+// `"1"` dan kosong (`Activity/SendEmailLargeLoss_act.xml` langkah 8 dan 11), dan kolom
+// ini kelak dibaca berdampingan dengan data yang ditulis Pega selama masa paralel.
+// Menulis "Y" akan membuat klaim yang sudah diberitahukan terbaca sebagai belum.
+func flagNOLL(b bool) any {
+	if b {
+		return "1"
+	}
+	return nil
+}
+
+func fromFlagNOLL(s string) bool { return s == "1" }
