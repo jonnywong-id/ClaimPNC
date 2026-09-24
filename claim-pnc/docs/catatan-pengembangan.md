@@ -16647,3 +16647,240 @@ Ke-29 kegagalan Vitest diperiksa penyebabnya, bukan diasumsikan: `App.tsx` yang 
 diimpor **setiap** uji layar, sehingga satu kekeliruan di sana akan tampak seperti kerusakan
 modul lain. Kedua suntingan itu **di-stash sementara**, uji `inbox-admin` dijalankan ulang, dan
 ia tetap gagal 13 — pra-ada. Suntingannya lalu dikembalikan dan modul ini diuji ulang.
+
+## 49. Dua tombol yang tidak terpasang — dan jarak antara yang ditulis dan yang dibangun (2026-09-24)
+
+Laporan Work Owner satu kalimat: *"Button Detail Komunikasi dan Selesai Komunikasi tidak
+terpasang."*
+
+### 49.1 Ia benar, dan dokumen saya sendiri yang membuktikannya
+
+`keputusan-implementasi.md` §49.12 yang saya tulis beberapa jam sebelumnya berbunyi
+**"tombol digambar, aksi ditolak beralasan"**. Yang dibangun hanyalah panel keterangan di
+bawah tabel.
+
+Jaraknya lahir dari satu langkah yang dilewati: saya menyalin **alasan** dari preseden modul
+Inbox RCL/PUCL — tempat kalimat itu memang benar — tanpa memeriksa apakah **bentuknya** ikut
+tersalin. Di modul itu tombolnya memang tidak ada di grid; di sini ada.
+
+Tidak satu pun dari 40 uji menangkapnya, dan sebabnya jelas: seluruhnya menguji apa yang
+**dibangun**, tidak satu pun menguji apakah yang dibangun **selengkap layar lama**.
+
+### 49.2 Penelusuran: keduanya kolom di dalam grid, bukan bilah aksi
+
+Pencarian label tombol menurut offset langsung menjawabnya:
+
+```
+Detail Komunikasi   [432068, 569984]   <- dua kali: sekali per grid
+Selesai Komunikasi  [443422, 585877]   <- idem
+Kirim Pesan         [295866]           <- area FORM, bukan grid
+Tambah              [53165, 57103]     <- area atas
+Filter              [333285, 489341]   <- sebelum tiap grid
+```
+
+Rentang kedua grid sudah diketahui dari sesi sebelumnya (~363k–450k dan ~527k–590k), sehingga
+penempatannya terbaca tanpa menafsirkan apa pun.
+
+Judul kolomnya dipastikan lewat `>Button<`: offset 424.608 dan 439.774 (grid pertama),
+567.606 dan 583.351 (grid kedua) — **dua kolom tombol per grid**, keduanya berjudul `Button`.
+
+### 49.3 Parameter tombol — dan satu perangkap penamaan lagi
+
+```
+Detail   pyName KOMID      <- .ClaimNo    (KOMUNIKASIID)
+         pyName KODECABANG <- .pzInsKey   (CASEID)
+Selesai  pyName KOMID      <- .ClaimNo
+```
+
+`KODECABANG` menerima `CASEID`, yaitu penanda kanal `CABANG` — **bukan kode cabang**. Ini
+perangkap penamaan ketiga di modul ini, setelah `ClaimNo` yang bukan nomor klaim dan `Email`
+yang bukan alamat surel.
+
+Ia tidak dibawa. Yang dikirim modul ini hanya nomor percakapannya.
+
+### 49.4 Satu keputusan yang berubah karena temuan ini
+
+Tautan pada sel "Pesan" **dicabut**. Ia invensi saya, dan §44.1 pada modul Inbox RCL/PUCL
+sudah mencatat pelajaran yang sama persis dari arah sebaliknya: kolom yang tidak pernah ada di
+Pega membuat pengguna mengira ada dua cara berbeda membuka baris.
+
+Satu uji ditambahkan untuk mengunci pencabutannya, bukan hanya menghapus kodenya.
+
+### 49.5 "Refresh" dibangun sungguhan — dan satu kekeliruan yang tertangkap saat mengujinya
+
+Ia tidak menulis apa pun, sehingga `P-1` tidak menahannya sama sekali.
+
+Uji `menggambar Refresh dan Tambah` gagal, dan sebabnya bukan tombolnya tidak ada melainkan
+**labelnya**: probe menunjukkan `["…","Menyegarkan…","Tambah","Export To Excel",…]`.
+
+Tombolnya memakai `list.isFetching`, yang **juga** bernilai benar selama pemuatan pertama.
+Akibatnya ia berbunyi "Menyegarkan…" sebelum seorang pun menekannya — menyatakan sesuatu
+sedang dikerjakan atas perintah pengguna padahal tidak.
+
+Diganti `isRefetching`. Ini cacat UX nyata yang ditemukan uji, bukan uji yang perlu
+dilonggarkan — dan itu pembedaan yang layak dijaga: ujinya benar, kodenya yang salah.
+
+### 49.6 Satu uji lama yang menjadi ambigu, dan kenapa itu justru tanda baik
+
+`menyebut keempat tindakan yang masih dikerjakan lewat Pega` gagal karena `getByText('Tambah')`
+kini menemukan **dua** elemen — panel keterangan DAN tombolnya.
+
+Ia diperbaiki dengan membatasi pencarian ke dalam panelnya sendiri. Ambiguitas itu justru
+bukti bahwa tombolnya benar-benar terpasang.
+
+### 49.7 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet` · `gofmt` | bersih |
+| `go test ./...` | seluruhnya lulus |
+| Uji modul | **68 Go + 25 Vitest** (naik dari 64 + 18) |
+| `npm run build` | bundel terbentuk |
+| `npm run typecheck` | tetap **120**, nol di modul ini |
+
+### 49.8 Yang saya sampaikan sendiri sebagai masih kurang
+
+Dua tombol layar lama **sengaja belum ada**, dan keduanya disebut terbuka alih-alih menunggu
+dilaporkan:
+
+- **Kirim Pesan** — ia tombol kirim di dalam form "Tambah" yang belum digambar. Menggambar
+  form yang menolak saat dikirim berarti pengguna kehilangan kalimat yang sudah diketiknya.
+- **Filter** — penyaringnya tidak berfungsi di Pega (isiannya disalin ke variabel lokal lalu
+  tidak pernah dipakai), sehingga membawanya berarti membangun kemampuan baru.
+
+Keduanya keputusan, bukan kelalaian, dan keduanya dapat dikoreksi.
+
+## 50. Tombol yang sudah dibangun tetapi tidak terlihat — binary yang tidak pernah memuatnya (2026-09-24)
+
+Laporan Work Owner, **sesudah** kedua tombol dibangun pada §49: *"Button Detail komunikasi dan
+Selesai komunikasi belum ada."* Ditambah satu penegasan: *"Filter tidak dipakai."*
+
+### 50.1 Penegasan yang menutup satu pertanyaan terbuka
+
+**"Filter tidak dipakai"** mengunci keputusan §49.9 — kotak Filter layar lama memang tidak
+berfungsi (isiannya disalin ke variabel lokal lalu tidak pernah dipakai), dan ia **tidak
+dibawa**. Ia berhenti menjadi pertanyaan terbuka.
+
+### 50.2 Tombolnya ada di kode, dan itu terbukti sebelum apa pun disentuh
+
+Sebelum menambah satu baris pun, tiga hal diperiksa:
+
+| Bukti | Hasil |
+|---|---|
+| `tab.go` mendaftarkan kedua kolom | ada sejak §49 |
+| 25 uji Vitest, termasuk `menggambar kedua tombol pada setiap baris, di KEDUA tab` | lulus |
+| Bundel SPA | 15:41, **sesudah** tombolnya dibangun |
+
+Jadi kodenya benar. Yang salah ada di luar kode.
+
+### 50.3 Sebabnya: binary yang berumur tiga jam lebih tua daripada modulnya
+
+```
+claimpnc.exe                                    11:07
+internal/inboxkomunikasicabang/*.go       14:32 ...
+internal/inboxkomunikasicabang/tab.go           15:34
+```
+
+Binary yang dijalankan **tidak pernah memuat modul ini sama sekali** — bukan versi lamanya,
+melainkan tidak ada.
+
+**Kenapa ini fatal khusus di layar ini, dan tidak selalu terlihat di layar lain.** Bentuk grid
+layar ini — termasuk kedua kolom tombolnya — ditetapkan PELADEN dan dikirim lewat `/tab`.
+Layar menggambar tombol hanya bila kolomnya ada di jawaban itu. Jadi:
+
+> Bundel SPA yang baru **tetap tidak menggambar tombol apa pun** bila peladen yang melayaninya
+> belum mengenal kolomnya.
+
+Membangun ulang frontend saja tidak cukup, dan itu tidak terbaca sebagai kegagalan — tidak ada
+galat, hanya kolom yang tidak ada.
+
+### 50.4 Celah uji yang membiarkannya lolos, dan penutupnya
+
+Modul ini punya 65 uji yang seluruhnya lulus sementara tombolnya tidak sampai ke layar.
+Sebabnya satu: **tidak satu pun menguji jawaban HTTP-nya**. Direktori
+`internal/inboxkomunikasicabang/http` berbunyi `[no test files]` sejak awal.
+
+Uji domain membuktikan kolomnya **terdaftar**; uji Vitest membuktikan layar **menggambarnya
+bila dikirim** — dengan fixture yang saya tulis sendiri. Tidak satu pun membuktikan peladen
+benar-benar **mengirimkannya**.
+
+`internal/inboxkomunikasicabang/http/routes_test.go` ditambahkan, merakit peladen utuh
+(auth + portal + rute) dan menembaknya dari luar. Sebelas uji, dan yang pertama justru yang
+seharusnya ada sejak awal:
+
+```
+TestMetadataSendsBothActionColumnsForEveryTab
+TestMetadataKeepsTheLiteralButtonHeading
+TestListAnswersWithTheTabShapeSoTheScreenDrawsTheSameColumns
+TestListCarriesTheConversationNumberEachButtonNeeds
+TestFinishActionIsAnsweredWithAReasonNotSilence
+TestDetailIsReachableWithTheNumberTheButtonSends
+TestDetailOfAnotherBranchIsRefused
+TestEveryRouteRefusesARequestWithoutAPortal
+TestHeadOfficeStaffSeesHeadOfficeConversations
+TestExportGoesThroughTheSameBranchBoundaryAsTheList
+```
+
+Uji ketiga patut disebut: layar menggambar kolom dari `tab` pada jawaban **daftar**, bukan dari
+metadata yang diambil sekali. Bila keduanya berbeda, tombolnya muncul lalu hilang saat
+berpindah halaman — tanpa satu pun galat.
+
+### 50.5 Pembuktian ujung-ke-ujung, bukan hanya uji
+
+Peladen dijalankan sungguhan (`PENYIMPANAN=memori`, `IDENTITAS_ADAPTER=fake`, `:8099`) dan
+ditembak langsung:
+
+```
+GET /api/inbox-komunikasi-cabang/tab
+  TAB: Belum Dijawab   -> tanggal · pengirim · pesan · aksi_detail · aksi_selesai
+  TAB: Sudah Dijawab   -> tanggal · pengirim · pesan · jawaban_terakhir ·
+                          penjawab · aksi_detail · aksi_selesai
+
+GET /api/inbox-komunikasi-cabang
+  batas cabang: 1001 | terbaca: True
+  ringkasan: belum_dijawab 4 · sudah_dijawab 2 · total 6
+  baris: KOM-0001 | 1001 (pictekniks) | Mohon konfirmasi kelengkapan dokumen …
+         KOM-0005 | 1001 (pictekniks) | Tertanggung menanyakan perkiraan …
+
+POST /api/inbox-komunikasi-cabang/tindakan?tindakan=selesai-komunikasi&komunikasi=KOM-0001
+  HTTP 501 · kode belum_tersedia · "…belum tersedia di sistem baru…"
+
+GET /api/inbox-komunikasi-cabang/komunikasi/KOM-0001
+  komunikasi KOM-0001 | asal 1001 | 1 pesan
+```
+
+Dua hal ikut terbukti sambil jalan, dan keduanya perilaku yang memang diputuskan:
+
+- **batas cabang bekerja** — petugas cabang 1001 melihat dua baris, bukan seluruhnya;
+- **pencacah 4+2 berbeda dari 2 baris yang tampil** — persis selisih satu kolom yang §49.6
+  putuskan dibawa apa adanya.
+
+### 50.6 Dua langkah yang WAJIB, dan urutannya tidak boleh terbalik
+
+```
+1. npm run build          <- di claim-pnc/frontend, menulis ke backend/spa/dist
+2. go build -o claimpnc.exe ./cmd/claimpnc   <- MENYEMATKAN dist ke dalam binary
+3. restart
+```
+
+Urutannya mengikat: binary **menyematkan** bundel SPA, dan log peladen menyebutkan tanggalnya
+sendiri —
+
+```
+"msg":"antarmuka tersemat","dibangun":"2026-09-24T08:58:15.796Z"
+```
+
+Membangun binary lebih dulu lalu frontend menghasilkan binary yang membawa bundel LAMA, dan
+baris log itulah satu-satunya tempat perbedaannya terlihat. `catatan-pengembangan.md` §37
+sudah mencatat kelas kegagalan yang sama dari arah lain — bundel yang tidak pernah terbentuk —
+dan keduanya punya gejala yang sama: **aplikasi berjalan normal, hanya menyajikan versi lama**.
+
+### 50.7 Keadaan akhir
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` · `go vet` · `gofmt` | bersih |
+| `go test ./...` | seluruhnya lulus |
+| Uji modul | **77 Go + 25 Vitest** (naik dari 67 + 25) |
+| Bundel SPA | dibangun ulang, lalu disematkan |
+| `claimpnc.exe` | dibangun ulang **sesudah** bundelnya |

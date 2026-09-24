@@ -94,10 +94,27 @@ export type Conversation = {
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
 export type ConversationField = keyof Conversation
 
+/**
+ * Nama kolom TOMBOL.
+ *
+ * Keduanya BUKAN isian pada baris: yang digambar adalah tombolnya, dan yang dibawanya adalah
+ * `komunikasi` yang sudah ada di barisnya.
+ *
+ * Keduanya kolom sungguhan di layar lama — berada DI DALAM kedua grid, bukan di bilah aksi
+ * di atas tabel. Versi pertama modul ini melewatkannya dan menggantinya dengan tautan pada
+ * sel "Pesan", yang di Pega tidak ada sama sekali.
+ */
+export type ActionField = 'aksi_detail' | 'aksi_selesai'
+
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: ConversationField
+  kunci: ConversationField | ActionField
   judul: string
+}
+
+/** isActionField menyatakan sebuah kolom menggambar tombol, bukan isian baris. */
+export function isActionField(kunci: string): kunci is ActionField {
+  return kunci === 'aksi_detail' || kunci === 'aksi_selesai'
 }
 
 /** Satu kolom berkas unduhan. */

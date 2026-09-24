@@ -12,9 +12,11 @@ import { ConversationDetail } from './ConversationDetail'
 import { KomunikasiCabangTabs } from './KomunikasiCabangTabs'
 import {
   useExportKomunikasiCabang,
+  useKomunikasiCabangAction,
   useKomunikasiCabangList,
   useKomunikasiCabangMetadata,
 } from './api'
+import { isActionField } from './types'
 import type {
   BranchScope,
   Conversation,
@@ -68,6 +70,13 @@ export function KomunikasiCabangPage() {
   const tab = tabs.find((candidate) => candidate.kode === active)
 
   const list = useKomunikasiCabangList(active, page, meta.isSuccess)
+
+  // Aksi tulis dikumpulkan dalam SATU mutation, bukan satu per tombol.
+  //
+  // Keempatnya dijawab peladen dengan alasan yang sama, dan yang membedakannya hanyalah nama
+  // tindakan yang ikut dicatat. Memisahkannya menjadi empat hook akan menggandakan
+  // penanganan galat yang identik.
+  const action = useKomunikasiCabangAction()
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama dan MENUTUP panel detail.
@@ -131,6 +140,13 @@ export function KomunikasiCabangPage() {
       exportable={(list.data?.paginasi.total ?? 0) > 0}
       exportColumns={meta.data?.kolom_ekspor ?? []}
       branch={list.data?.batas_cabang}
+      onRefresh={() => void list.refetch()}
+      // `isRefetching`, BUKAN `isFetching`: yang kedua juga bernilai benar selama pemuatan
+      // PERTAMA, sehingga tombolnya berbunyi "Menyegarkan…" sebelum seorang pun menekannya —
+      // menyatakan sesuatu sedang dikerjakan atas perintah pengguna, padahal tidak.
+      refreshing={list.isRefetching}
+      onAdd={() => action.mutate({ tindakan: 'tambah' })}
+      adding={action.isPending}
     >
       <div className="mt-4">
         <KomunikasiCabangTabs
@@ -147,11 +163,26 @@ export function KomunikasiCabangPage() {
 
           {tab.catatan && <TabNotice text={tab.catatan} />}
 
+          {/*
+            Jawaban aksi tulis digambar DI ATAS tabel, bukan di dekat tombolnya.
+
+            Tombolnya ada di dalam baris, dan baris dapat berada jauh di bawah layar yang
+            terlihat. Pesan yang muncul di sebelahnya akan terlewat justru oleh orang yang
+            menekannya.
+          */}
+          {action.isError && <ActionNotice message={messageOf(action.error)} />}
+
           <div className="mt-4">
             <DataTable<Conversation>
-              columns={columnsFor(tab, (row) => (
-                <MessageLink item={row} onOpen={openConversation} />
-              ))}
+              columns={columnsFor(tab, {
+                onOpen: openConversation,
+                onFinish: (row) =>
+                  action.mutate({
+                    tindakan: 'selesai-komunikasi',
+                    komunikasi: row.komunikasi,
+                  }),
+                finishing: action.isPending,
+              })}
               rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.komunikasi}|${row.tanggal}`}
               title={tab.nama}
@@ -201,6 +232,10 @@ function PageFrame({
   exportable,
   exportColumns = [],
   branch,
+  onRefresh,
+  refreshing,
+  onAdd,
+  adding,
   children,
 }: {
   tab: Tab | undefined
@@ -208,6 +243,17 @@ function PageFrame({
   exportable: boolean
   exportColumns?: ExportColumn[]
   branch?: BranchScope | undefined
+
+  /**
+   * Kedua tombol bilah atas dibiarkan OPSIONAL supaya kerangka ini tetap dapat dipakai
+   * pada keadaan galat, tempat keduanya memang tidak berguna — layar yang tidak dapat
+   * memuat daftarnya tidak punya apa pun untuk disegarkan.
+   */
+  onRefresh?: () => void
+  refreshing?: boolean
+  onAdd?: () => void
+  adding?: boolean
+
   children: ReactNode
 }) {
   return (
@@ -222,7 +268,13 @@ function PageFrame({
           </p>
           {branch && <BranchNotice branch={branch} />}
         </div>
-        <ExportButton tab={tab} enabled={exportable} columns={exportColumns} />
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {onRefresh && <RefreshButton onRefresh={onRefresh} busy={refreshing === true} />}
+            {onAdd && <AddButton onAdd={onAdd} busy={adding === true} />}
+          </div>
+          <ExportButton tab={tab} enabled={exportable} columns={exportColumns} />
+        </div>
       </header>
       {children}
       <WriteActionsNotice />
@@ -271,6 +323,71 @@ function TabNotice({ text }: { text: string }) {
     <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-xs text-slate-700">{text}</p>
     </div>
+  )
+}
+
+/**
+ * Jawaban peladen atas aksi tulis yang belum tersedia.
+ *
+ * Kalimatnya datang dari PELADEN, bukan ditulis di sini: ia menyebut mengapa tindakannya
+ * belum ada dan ke mana pengguna harus pergi, dan menuliskannya di dua tempat berarti yang
+ * di layar akan tetap berbunyi "belum tersedia" lama setelah tindakannya tersedia.
+ *
+ * `role="alert"` supaya pembaca layar mengumumkannya — tombolnya ditekan, dan jawabannya
+ * muncul di tempat lain di halaman.
+ */
+function ActionNotice({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      className="mt-3 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3"
+    >
+      <p className="text-xs text-slate-700">{message}</p>
+    </div>
+  )
+}
+
+/**
+ * Tombol **"Refresh"**.
+ *
+ * # Satu-satunya tombol layar lama yang benar-benar BEKERJA di sini
+ *
+ * Ia ada di kedua grid layar lama (`pyAction = refresh`), dan ia **tidak menulis apa pun** —
+ * sehingga tidak ada satu pun alasan menahannya (`P-1` hanya menyangkut penulisan).
+ *
+ * Ia lebih berguna di sini daripada di Pega: kotak percakapan berubah saat petugas lain
+ * membalas, dan cache layar ini berumur 15 detik. Tanpa tombol ini, satu-satunya cara
+ * memaksa pembacaan ulang adalah menyegarkan seluruh halaman — yang ikut membuang tab dan
+ * nomor halaman yang sedang dibuka.
+ */
+function RefreshButton({ onRefresh, busy }: { onRefresh: () => void; busy: boolean }) {
+  return (
+    <Button tone="kedua" disabled={busy} onClick={onRefresh}>
+      {busy ? 'Menyegarkan…' : 'Refresh'}
+    </Button>
+  )
+}
+
+/**
+ * Tombol **"Tambah"** — membuka percakapan baru.
+ *
+ * # Kenapa tombolnya ada tetapi formnya tidak
+ *
+ * Karena form yang dapat diisi tetapi menolak saat dikirim lebih buruk daripada tidak ada:
+ * pengguna sudah mengetik pesannya, dan pesan itu hilang. Alasan yang sama dipakai kotak
+ * balasan pada layar detail.
+ *
+ * Tombolnya tetap digambar karena ia ADA di layar lama, dan tombol yang hilang tanpa
+ * penjelasan dilaporkan sebagai kerusakan. Penekanannya menjawab alasan dari peladen.
+ *
+ * "Kirim Pesan" — tombol kirim di dalam form itu — karena itu belum punya tempat di sini.
+ * Ia akan lahir bersama formnya, bila kepemilikan tabelnya kelak berpindah (`P-1`).
+ */
+function AddButton({ onAdd, busy }: { onAdd: () => void; busy: boolean }) {
+  return (
+    <Button tone="kedua" disabled={busy} onClick={onAdd}>
+      Tambah
+    </Button>
   )
 }
 
@@ -355,40 +472,90 @@ function WriteActionsNotice() {
 }
 
 /**
- * Tautan pada kolom "Pesan".
+ * Tombol **"Detail Komunikasi"** — satu per baris.
  *
- * # Kenapa pada sel Pesan, bukan kolom tombol tersendiri
+ * # Ia kolom sungguhan di layar lama, bukan tambahan
  *
- * Karena layar lama TIDAK punya kolom tombol di dalam grid — tombol "Detail Komunikasi"
- * berada di bilah aksi, dan yang menentukan percakapan mana yang dibuka adalah baris yang
- * sedang dipilih.
+ * Kedua grid menggambarnya sebagai kolom tersendiri berjudul "Button", dan aksinya terbaca
+ * dari section apa adanya: `runDataTransform` atas `DetailKomunikasi_dt` dengan parameter
+ * `KOMID = .ClaimNo`, lalu `localAction` `DETAILKOMUNIKASICABANG_11`.
  *
- * Menaruh tautannya pada sel "Pesan" mempertahankan jumlah kolom apa adanya (`D-13`)
- * sekaligus memberi sasaran klik yang jelas per baris. Kolom "Pesan" dipilih karena ia satu-
- * satunya kolom yang ada di KEDUA tab dan selalu terisi — penyaring kedua grid menuntut
- * pesannya tidak kosong.
+ * Versi pertama modul ini melewatkannya dan menggantinya dengan tautan pada sel "Pesan" —
+ * yang di Pega tidak ada sama sekali. Itu bukan sekadar beda tampilan: sel yang menjadi
+ * tautan mengubah cara seluruh kolom terbaca, dan tombol yang hilang membuat pengguna
+ * mencarinya di bilah aksi yang memang tidak memilikinya.
  */
-function MessageLink({
+function DetailButton({
   item,
   onOpen,
 }: {
   item: Conversation
   onOpen: (row: Conversation) => void
 }) {
-  if (item.pesan === '') return <span className="text-slate-400">—</span>
-
   return (
     <button
       type="button"
       onClick={() => onOpen(item)}
-      title={`Buka percakapan ${item.komunikasi}`}
+      // Nama lengkapnya dibaca pembaca layar, sementara yang terlihat tetap pendek supaya
+      // kolomnya tidak melebar. Kedua kolom tombol berjudul "Button" yang sama, sehingga
+      // tanpa nama ini keduanya tidak dapat dibedakan tanpa melihat.
+      aria-label={`Detail Komunikasi percakapan ${item.komunikasi}`}
+      title={`Buka utas percakapan ${item.komunikasi}`}
       className={[
-        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
-        'transition-colors duration-150 ease-halus hover:underline',
+        'rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium',
+        'whitespace-nowrap text-slate-700',
+        'transition-colors duration-150 ease-halus hover:bg-slate-100',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
       ].join(' ')}
     >
-      {item.pesan}
+      Detail Komunikasi
+    </button>
+  )
+}
+
+/**
+ * Tombol **"Selesai Komunikasi"** — satu per baris.
+ *
+ * # Apa yang dilakukannya di Pega, dan kenapa itu penting diketahui
+ *
+ * `runActivity` atas `EndKomunikasiCabang` dengan `KOMID = .ClaimNo`, lalu me-refresh grid.
+ * Activity itu mengubah `CASEID` menjadi `CABANG SELESAI` — sehingga barisnya **hilang dari
+ * kedua tab**. Ia bukan penanda yang dapat dibatalkan; ia mengeluarkan percakapan dari layar.
+ *
+ * # Kenapa tombolnya tetap digambar meski pasti ditolak
+ *
+ * Karena ia ADA di layar lama, dan layar yang kehilangan tombolnya tanpa penjelasan
+ * dilaporkan sebagai kerusakan. Penekanannya menjawab alasan dari peladen (`501`) — bukan
+ * diam, dan bukan halaman kosong.
+ *
+ * Nadanya sengaja **tidak** merah: ia bukan tombol berbahaya yang sedang dicegah, melainkan
+ * tombol yang belum tersedia.
+ */
+function FinishButton({
+  item,
+  onFinish,
+  busy,
+}: {
+  item: Conversation
+  onFinish: (row: Conversation) => void
+  busy: boolean
+}) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => onFinish(item)}
+      aria-label={`Selesai Komunikasi percakapan ${item.komunikasi}`}
+      title={`Tutup percakapan ${item.komunikasi}`}
+      className={[
+        'rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium',
+        'whitespace-nowrap text-slate-700',
+        'transition-colors duration-150 ease-halus hover:bg-slate-100',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+        'disabled:cursor-not-allowed disabled:opacity-55',
+      ].join(' ')}
+    >
+      Selesai Komunikasi
     </button>
   )
 }
@@ -427,19 +594,42 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
  */
 function columnsFor(
   tab: Tab,
-  openConversation: (row: Conversation) => ReactNode,
+  actions: {
+    onOpen: (row: Conversation) => void
+    onFinish: (row: Conversation) => void
+    finishing: boolean
+  },
 ): Column<Conversation>[] {
   return tab.kolom.map((column) => {
-    const base: Column<Conversation> = {
+    // Kolom TOMBOL tidak punya isian pada baris. `value` dibiarkan kosong dengan sengaja —
+    // itulah yang dicari dan diurutkan `DataTable`, dan mengurutkan menurut markup tombol
+    // tidak berarti apa pun.
+    if (isActionField(column.kunci)) {
+      const render =
+        column.kunci === 'aksi_detail'
+          ? (row: Conversation) => <DetailButton item={row} onOpen={actions.onOpen} />
+          : (row: Conversation) => (
+              <FinishButton
+                item={row}
+                onFinish={actions.onFinish}
+                busy={actions.finishing}
+              />
+            )
+
+      return {
+        key: column.kunci,
+        title: column.judul,
+        value: () => '',
+        noSort: true,
+        render,
+      }
+    }
+
+    return {
       key: column.kunci,
       title: column.judul,
       value: (row) => cellText(row, column),
     }
-
-    if (column.kunci === 'pesan') {
-      return { ...base, render: openConversation }
-    }
-    return base
   })
 }
 
@@ -455,6 +645,9 @@ function columnsFor(
  *    yang gagal dimuat.
  */
 function cellText(row: Conversation, column: TabColumn): string {
+  // Kolom tombol tidak pernah sampai ke sini; columnsFor menanganinya lebih dulu.
+  if (isActionField(column.kunci)) return ''
+
   const value = row[column.kunci]
 
   if (value === null || value === undefined || value === '') return '—'

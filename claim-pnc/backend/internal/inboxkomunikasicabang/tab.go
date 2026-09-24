@@ -30,6 +30,47 @@ const (
 	FieldRecipient = "tujuan"
 )
 
+// Nama kolom TOMBOL pada grid.
+//
+// # Kenapa ia kolom, bukan hiasan yang ditambahkan layar sendiri
+//
+// Karena begitulah bentuknya di layar lama. Kedua tombol berada DI DALAM grid sebagai kolom
+// tersendiri — bukan di bilah aksi di atas tabel — dan itu terbaca dari offsetnya sendiri:
+// keduanya muncul di dalam rentang kedua grid, dua kali, sekali untuk tiap grid.
+//
+//	Detail Komunikasi   offset 432.068 (grid Sudah Dijawab) · 569.984 (grid Belum Dijawab)
+//	Selesai Komunikasi  offset 443.422                      · 585.877
+//
+// Menaruhnya di layar alih-alih di sini akan membuat bentuk grid hidup di dua tempat, dan
+// yang satu akan tertinggal — persis alasan seluruh kolom lain pun datang dari server.
+//
+// Keduanya TIDAK punya isian pada baris: yang digambar adalah tombolnya, dan yang dibawanya
+// adalah nomor percakapan yang sudah ada di `Conversation.ID`.
+const (
+	// FieldActionDetail menggambar tombol **"Detail Komunikasi"**.
+	//
+	// Di Pega ia menjalankan `runDataTransform` atas `DetailKomunikasi_dt` dengan dua
+	// parameter, lalu membuka `localAction` `DETAILKOMUNIKASICABANG_11`:
+	//
+	//	KOMID      = .ClaimNo    <- KOMUNIKASIID, nomor percakapan
+	//	KODECABANG = .pzInsKey   <- CASEID
+	//
+	// PERANGKAP PENAMAAN: parameter bernama `KODECABANG` menerima `CASEID`, yaitu penanda
+	// kanal (`CABANG`) — BUKAN kode cabang. Ia satu lagi nama Pega yang menyebut hal lain,
+	// dan tidak dibawa (`D-19`). Yang dikirim modul ini hanyalah nomor percakapannya.
+	FieldActionDetail = "aksi_detail"
+
+	// FieldActionFinish menggambar tombol **"Selesai Komunikasi"**.
+	//
+	// Di Pega ia menjalankan `EndKomunikasiCabang` dengan satu parameter —
+	// `KOMID = .ClaimNo` — lalu me-refresh grid. Activity itu mengubah `CASEID` menjadi
+	// `CABANG SELESAI`, sehingga barisnya HILANG dari kedua tab.
+	//
+	// Ia MENULIS, dan tabelnya milik Pega selama masa paralel (`P-1`). Tombolnya tetap
+	// digambar; penekanannya dijawab dengan alasan. Lihat ErrWriteNotAvailable.
+	FieldActionFinish = "aksi_selesai"
+)
+
 // Kode tab.
 //
 // # Kenapa angka, dan kenapa bukan nilai sistem lama
@@ -109,11 +150,11 @@ type Tab struct {
 // Kolom balasan dan penjawab TIDAK digambar di sini, dan itu bukan kelalaian: penyaring tab
 // ini `REPLYMESSAGE IS NULL`, sehingga keduanya dijamin kosong pada setiap baris.
 func notAnsweredColumns() []Column {
-	return []Column{
+	return append([]Column{
 		{Key: FieldCreatedAt, Title: "Tanggal"},
 		{Key: FieldSender, Title: "Pengirim(Dari)"},
 		{Key: FieldMessage, Title: "Pesan"},
-	}
+	}, actionColumns()...)
 }
 
 // Kolom tab "Sudah Dijawab" — LIMA kolom.
@@ -131,13 +172,42 @@ func notAnsweredColumns() []Column {
 // aslinya dan dibawa apa adanya (`D-13`), meski membaca "siapa" sesudah "apa" terasa
 // terbalik.
 func answeredColumns() []Column {
-	return []Column{
+	return append([]Column{
 		{Key: FieldCreatedAt, Title: "Tanggal"},
 		{Key: FieldSender, Title: "Pengirim(Dari)"},
 		{Key: FieldMessage, Title: "Pesan"},
 		{Key: FieldReply, Title: "Jawaban Terakhir"},
 		{Key: FieldReplier, Title: "Penjawab(Dari)"},
+	}, actionColumns()...)
+}
+
+// Kedua kolom TOMBOL, IDENTIK di kedua tab.
+//
+// # Judulnya memang "Button", dan itu bukan kelalaian penyalinan
+//
+// Kedua kolom menuliskan `pyCaption Button` sebagai judulnya — terbaca pada offset 424.608
+// dan 439.774 (grid Sudah Dijawab), 567.606 dan 583.351 (grid Belum Dijawab). Dua kolom
+// berjudul sama di satu tabel memang tidak membantu, tetapi `D-13` menetapkan teks yang
+// dilihat pengguna mengikuti layar lama apa adanya.
+//
+// Yang DITAMBAHKAN di sistem baru bukan judulnya melainkan nama yang dibaca pembaca layar:
+// setiap tombol membawa label lengkap beserta nomor percakapannya, sehingga kedua kolom
+// tetap dapat dibedakan tanpa melihat.
+//
+// Urutannya mengikuti urutan di section: Detail lebih dulu, Selesai sesudahnya.
+func actionColumns() []Column {
+	return []Column{
+		{Key: FieldActionDetail, Title: "Button"},
+		{Key: FieldActionFinish, Title: "Button"},
 	}
+}
+
+// IsAction menyatakan sebuah kolom menggambar TOMBOL, bukan isian baris.
+//
+// Ia dipakai berkas ekspor dan uji: kolom tombol tidak punya nilai yang dapat ditulis ke
+// berkas, dan menuliskannya sebagai sel kosong akan menggeser seluruh kolom sesudahnya.
+func IsAction(key string) bool {
+	return key == FieldActionDetail || key == FieldActionFinish
 }
 
 // tabs adalah kedua tab beserta kolomnya, berurutan seperti tampilnya.

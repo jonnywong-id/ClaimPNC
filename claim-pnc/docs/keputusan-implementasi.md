@@ -13730,3 +13730,123 @@ cabang bernama sama dan saling menimpa di folder unduhan.
 | Unduhan berkas lampiran | Berkasnya hidup di penyimpanan dokumen internal (`D-16`); seam pengambilnya belum dibangun di modul ini |
 | Migrasi basis data | Seluruh tabelnya milik Pega (`P-1`); modul ini hanya membaca |
 | Pemeriksaan peran | `TKT-F3-004` belum ada. Yang membatasi taruhannya di sini adalah **cabang**, bukan peran — dan itu ditegakkan di setiap rute yang menyentuh data |
+
+## 50. Inbox Komunikasi Cabang — dua tombol yang tidak terpasang (2026-09-24, koreksi)
+
+Melengkapi §49 setelah Work Owner melaporkan: *"Button Detail Komunikasi dan Selesai
+Komunikasi tidak terpasang."*
+
+### 50.1 Cacatnya nyata, dan §49.12 menuliskan yang tidak dikerjakan
+
+§49.12 berbunyi **"tombol digambar, aksi ditolak beralasan"**. Yang benar-benar dibangun
+hanyalah **panel keterangan** di bawah tabel; tidak satu pun tombol digambar.
+
+"Detail Komunikasi" pun tidak ada sebagai tombol — ia diganti **tautan pada sel "Pesan"**,
+yang di layar lama **tidak ada sama sekali**.
+
+Ini kelas kekeliruan yang sama dengan yang tercatat pada modul Inbox RCL/PUCL (§44.1): sebuah
+kolom yang tidak pernah ada di Pega ditambahkan, dan cara membuka baris menjadi berbeda dari
+yang dikenal pengguna. Bedanya, di sini arahnya terbalik — yang ada dihilangkan.
+
+### 50.2 Di mana kedua tombol sebenarnya berada
+
+Bukan di bilah aksi, melainkan **kolom di dalam kedua grid**. Terbaca dari offsetnya sendiri
+pada `Section/InboxKomunikasi-Section.xml`:
+
+| Tombol | Grid "Sudah Dijawab" | Grid "Belum Dijawab" |
+|---|---|---|
+| Detail Komunikasi | 432.068 | 569.984 |
+| Selesai Komunikasi | 443.422 | 585.877 |
+| judul kolomnya (`pyCaption Button`) | 424.608 · 439.774 | 567.606 · 583.351 |
+
+Jadi **setiap grid punya dua kolom tombol**, keduanya berjudul `Button`.
+
+### 50.3 Aksi dan parameter — dibaca, bukan disimpulkan
+
+| Tombol | Aksi | Parameter |
+|---|---|---|
+| Detail Komunikasi | `runDataTransform` → `DetailKomunikasi_dt`, lalu `localAction` → `DETAILKOMUNIKASICABANG_11` | `KOMID = .ClaimNo` · `KODECABANG = .pzInsKey` |
+| Selesai Komunikasi | `runActivity` → `EndKomunikasiCabang`, lalu `refresh` | `KOMID = .ClaimNo` |
+
+**Satu perangkap penamaan baru, dan ia sejenis dengan yang lain di modul ini.** Parameter
+bernama `KODECABANG` menerima `.pzInsKey`, yaitu alias dari `CASEID` — **penanda kanal**
+(`CABANG`), bukan kode cabang. Ia tidak dibawa (`D-19`); yang dikirim modul ini hanyalah nomor
+percakapannya.
+
+### 50.4 Keputusan: judul kolom tetap "Button", nama pembaca layar yang ditambahkan
+
+Dua kolom berjudul sama di satu tabel memang tidak membantu. Ia tetap dibawa apa adanya
+(`D-13`) — mengubahnya berarti mengubah teks yang dibaca pengguna hari ini.
+
+Yang **ditambahkan** bukan judulnya melainkan `aria-label` pada tiap tombol, lengkap dengan
+nomor percakapannya (*"Detail Komunikasi percakapan KOM-9001"*). Dengan begitu kedua kolom
+tetap dapat dibedakan tanpa melihat, sementara yang terlihat tidak berubah.
+
+### 50.5 Keputusan: tautan pada sel "Pesan" DICABUT
+
+Ia tidak pernah ada di Pega. Dua cara berbeda membuka baris membuat pengguna mengira keduanya
+melakukan hal yang berbeda, dan sel yang menjadi tautan mengubah cara seluruh kolom terbaca.
+
+Satu uji menjaganya (`sel Pesan TIDAK lagi menjadi tautan pembuka`).
+
+### 50.6 Keputusan: "Refresh" dibangun SUNGGUHAN, bukan ditolak
+
+Ia ada di kedua grid layar lama (`pyAction = refresh`), dan ia **tidak menulis apa pun** —
+`P-1` hanya menyangkut penulisan, sehingga tidak ada satu pun alasan menahannya.
+
+Ia justru lebih berguna di sini daripada di Pega: cache layar ini berumur 15 detik, dan tanpa
+tombol ini satu-satunya cara memaksa pembacaan ulang adalah menyegarkan seluruh halaman —
+yang ikut membuang tab dan nomor halaman yang sedang dibuka.
+
+**Satu kekeliruan yang tertangkap saat mengujinya:** tombolnya semula memakai `isFetching`,
+yang **juga** bernilai benar selama pemuatan pertama — sehingga ia berbunyi "Menyegarkan…"
+sebelum seorang pun menekannya, menyatakan sesuatu sedang dikerjakan atas perintah pengguna
+padahal tidak. Diganti `isRefetching`.
+
+### 50.7 Keputusan: "Tambah" digambar, "Kirim Pesan" belum punya tempat
+
+"Tambah" membuka form percakapan baru; "Kirim Pesan" adalah tombol kirim **di dalam form
+itu** (offset 295.866, di area form — bukan di grid).
+
+Tombol "Tambah" digambar dan penekanannya dijawab alasan. **Formnya tidak digambar**, dengan
+alasan yang sama seperti kotak balasan pada layar detail: form yang dapat diisi tetapi menolak
+saat dikirim lebih buruk daripada tidak ada — pengguna sudah mengetik pesannya, dan pesan itu
+hilang.
+
+"Kirim Pesan" karena itu **belum punya tempat** di layar ini. Ia akan lahir bersama formnya,
+bila kepemilikan tabelnya kelak berpindah.
+
+### 50.8 Keputusan: kolom tombol datang dari SERVER, seperti kolom lain
+
+Keduanya ditambahkan sebagai kolom di `tab.go` (`aksi_detail`, `aksi_selesai`), bukan
+ditempelkan layar sendiri.
+
+Alasannya sama dengan seluruh kolom lain: bentuk grid adalah hasil pembacaan export, dan
+tempat pembacaan itu tercatat adalah backend. Menempelkannya di layar berarti bentuk grid
+hidup di dua tempat.
+
+`IsAction` menjaga keduanya **tidak pernah ikut ke berkas ekspor** — kolom tombol tidak punya
+nilai, dan menuliskannya sebagai sel kosong akan menggeser seluruh kolom sesudahnya tanpa satu
+pun galat.
+
+### 50.9 Yang masih BELUM terpasang, dan alasannya
+
+Disebutkan terbuka supaya tidak ada lagi jarak antara yang ditulis dan yang dibangun:
+
+| Tombol layar lama | Keadaan di sini | Alasan |
+|---|---|---|
+| Detail Komunikasi | **terpasang** | — |
+| Selesai Komunikasi | **terpasang**, ditolak `501` | menulis; tabel milik Pega (`P-1`) |
+| Refresh | **terpasang dan bekerja** | tidak menulis |
+| Tambah | **terpasang**, ditolak `501` | menulis |
+| **Kirim Pesan** | **tidak ada** | ia tombol kirim di dalam form "Tambah" yang belum digambar |
+| **Filter** | **tidak ada** | penyaringnya tidak berfungsi di Pega — lihat §49.9 |
+
+Dua yang terakhir adalah **keputusan**, bukan kelalaian, dan keduanya dapat dikoreksi bila
+Work Owner menghendaki sebaliknya.
+
+### 50.10 Filter — ditegaskan TIDAK dipakai (2026-09-24)
+
+Work Owner menegaskan: **"Filter tidak dipakai."** Dengan itu §49.9 berhenti menjadi
+pertanyaan terbuka: kotak Filter layar lama tidak dibawa, dan penyaring apa pun pada grid
+tetap tidak ada. Menghidupkannya kelak adalah kemampuan BARU, bukan paritas.
