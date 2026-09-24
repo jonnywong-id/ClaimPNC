@@ -10,7 +10,8 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { downloadOutstandingCSV, PAGE_SIZE, useOutstandingList } from './api'
-import type { LineScope, OutstandingClaim } from './types'
+import { DocumentStatusSummary } from './DocumentStatusSummary'
+import type { DocumentStatusCode, OutstandingClaim } from './types'
 
 /**
  * Layar Inbox Outstanding.
@@ -58,7 +59,24 @@ export function OutstandingPage() {
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
 
-  const list = useOutstandingList({ search, offset })
+  // Status dokumen yang sedang dipilih. Diisi HANYA lewat panel ringkasan — tidak ada
+  // dropdown terpisah, sama seperti Inbox Auto Claim dan sama seperti Pega, yang juga
+  // memakai tab pada panelnya sebagai satu-satunya cara memilih.
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatusCode | ''>('')
+
+  const list = useOutstandingList({ search, documentStatus, offset })
+
+  /**
+   * Mengganti status mengembalikan paginasi ke halaman pertama.
+   *
+   * Tanpa ini, pengguna yang sedang di halaman 5 lalu memilih status yang hanya punya 12
+   * baris akan melihat grid KOSONG — dan tidak ada yang memberi tahu bahwa sebabnya
+   * halaman, bukan penyaringnya.
+   */
+  function changeDocumentStatus(next: DocumentStatusCode | '') {
+    setDocumentStatus(next)
+    setOffset(0)
+  }
   const portal = useSelectedPortal((state) => state.alias)
   const token = useSession((state) => state.token)
 
@@ -81,7 +99,8 @@ export function OutstandingPage() {
     setDownloading(true)
     setDownloadError(null)
     try {
-      await downloadOutstandingCSV({ search }, token, portal)
+      // Penyaring layar TIDAK dikirim: unduhan mencakup lini bisnis, bukan isi layar.
+      await downloadOutstandingCSV(token, portal)
     } catch (failure) {
       setDownloadError(errorMessage(failure))
     } finally {
@@ -254,7 +273,7 @@ export function OutstandingPage() {
         </p>
       </header>
 
-      {list.data && <ScopeNotice scope={list.data.batas_lini} />}
+      {list.data && <OwnerNotice pemilik={list.data.pemilik} />}
 
       {portal === null && (
         <div className="mt-6">
@@ -275,6 +294,19 @@ export function OutstandingPage() {
           />
         </div>
       )}
+
+      {/*
+        Panel ringkasan diletakkan DI ATAS grid, mengikuti tata letak Pega — donut dan
+        tabnya berada di atas daftar klaim, bukan di sampingnya.
+
+        Ia memakai penyaring layar yang sama kecuali status, supaya angka donut selalu
+        meringkas apa yang sedang dilihat pengguna.
+      */}
+      <DocumentStatusSummary
+        filter={{ search }}
+        selected={documentStatus}
+        onSelect={changeDocumentStatus}
+      />
 
       <div className="mt-6">
         <DataTable
@@ -299,13 +331,22 @@ export function OutstandingPage() {
                 <ReloadIcon className="h-4 w-4" />
                 {list.isFetching ? 'Memuat…' : 'Muat ulang'}
               </Button>
+              {/*
+                Tombol ini SENGAJA tidak lagi dimatikan saat daftar kosong.
+
+                Sebelumnya `disabled` memuat `total === 0`, sehingga petugas yang tidak
+                sedang memegang satu pun tugas tidak dapat menekannya sama sekali. Itu
+                keliru: unduhan tidak menyaring pemilik pekerjaan, sehingga berkasnya tetap
+                berisi meski inbox-nya kosong.
+
+                Terbukti pada data ASM: seorang petugas berlini NONMBU dengan 0 pekerjaan
+                di inbox tetap mengunduh 354 baris.
+              */}
               <Button
                 tone="kedua"
                 onClick={() => void download()}
-                disabled={downloading || portal === null || total === 0}
-                title={
-                  total === 0 ? 'Tidak ada baris untuk diunduh.' : 'Unduh seluruh hasil sebagai CSV'
-                }
+                disabled={downloading || portal === null}
+                title="Unduh seluruh klaim berjalan dalam lini bisnis Anda — bukan hanya isi layar ini"
               >
                 {downloading ? 'Menyiapkan…' : 'Unduh CSV'}
               </Button>
@@ -334,35 +375,7 @@ export function OutstandingPage() {
   )
 }
 
-/**
- * Menyatakan batas data yang sedang berlaku.
- *
- * Ini bukan hiasan. Work Owner menetapkan pengguna yang lini bisnisnya belum diisi tetap
- * melihat SELURUH lini, persis perilaku Pega — dan di Pega keadaan itu tidak diberitahukan
- * sama sekali. Menyatakannya di sini tidak mengubah perilaku; ia hanya membuat keadaannya
- * terlihat sehingga datanya cepat dilengkapi.
- */
-function ScopeNotice({ scope }: { scope: LineScope }) {
-  if (!scope.tanpa_batas) {
-    return (
-      <p className="mt-4 text-sm text-slate-600">
-        Menampilkan lini bisnis{' '}
-        <span className="font-medium text-slate-900">{scope.group_panel.join(', ')}</span> sesuai
-        hak akses Anda.
-      </p>
-    )
-  }
-
-  return (
-    <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 p-4">
-      <p className="text-sm font-medium text-amber-900">Penyaringan lini bisnis belum berlaku</p>
-      <p className="mt-1 text-sm text-amber-800">
-        Anda melihat klaim dari seluruh lini bisnis karena lini Anda belum ditetapkan admin.
-        Hubungi administrator bila yang seharusnya terlihat hanya lini tertentu.
-      </p>
-    </div>
-  )
-}
+/** * OwnerNotice menyatakan pekerjaan SIAPA yang sedang ditampilkan. * * Ini bukan hiasan. Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang * tampak persis sama — memang tidak ada pekerjaan, atau penyaringnya salah orang — dan * tanpa keterangan ini pengguna tidak punya cara membedakannya. */function OwnerNotice({ pemilik }: { pemilik: string }) {  return (    <p className="mt-4 text-sm text-slate-600">      Menampilkan pekerjaan milik{' '}      <span className="font-medium text-slate-900">{pemilik}</span>.    </p>  )}
 
 /**
  * Umur klaim, dengan penegasan pada yang sudah lama.

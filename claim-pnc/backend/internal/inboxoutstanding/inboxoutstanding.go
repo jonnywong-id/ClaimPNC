@@ -1,63 +1,55 @@
-// Package inboxoutstanding adalah inti modul Inbox Outstanding.
+// Package inboxoutstanding adalah inti modul **My Inbox** (MENU_ID 51).
 //
-// # Nama modul ini
+// # Nama paketnya belum diganti, dan itu disengaja
 //
-// Diambil dari nama yang dipakai Work Owner dan dari layar lamanya sendiri: butir menu
-// `Navigation/pyCaseWorkerNavigation-Navigation.xml` berbunyi **"Inbox Outstanding"**, dan
-// `Section/InboxRegister_Section-Section.xml:2150` memuat judul yang sama di dalam
-// layarnya. `D-81` menetapkan nama modul mengikuti nama yang dipakai Work Owner.
+// Modul ini semula dinamai "Inbox Outstanding" — judul yang memang ada di dalam
+// `Section/InboxRegister_Section-Section.xml:2150`. Tetapi itu judul SECTION, bukan nama
+// butir menu. `POOLDATA.M_MENU_APLIKASI_PNC` memuat keduanya sebagai butir BERBEDA:
+//
+//	MENU_ID 51 · "My Inbox"          · InboxRegister_Harness      <- modul ini
+//	MENU_ID 79 · "Inbox Outstanding" · InboxOutstanding_Harness   <- layar LAIN
+//
+// MENU_ID 79 belum punya layar: harness-nya tidak ada di export (`K-33`). Penggantian nama
+// paket menyentuh backend, frontend, dan tiket sekaligus (`D-81`) sehingga ditunda sampai
+// Work Owner memutuskan; yang sudah diperbaiki adalah kunci menunya.
 //
 // # Yang dimigrasikan
 //
-//	Harness/InboxRegister_Harness-Harness.xml    layar rujukan
-//	Section/InboxRegister_Section-Section.xml    kolom beserta judulnya
-//	RDB List/BrowseInboxOutstanding1-SQL.xml     kueri inti
-//	Activity/InboxOutstanding_Act-Act.xml        batas data + derivasi tampilan
+//	Harness/InboxRegister_Harness-Harness.xml       layar rujukan
+//	Section/InboxRegister_Section-Section.xml       kolom beserta judulnya
+//	Report Definition/InboxRegister_RD-RD.xml       kueri dan kelima penyaringnya
+//	Activity/SetClaimPNC-Act.xml                    tab status dokumen (BELUM dibangun)
 //
-// Yang mengikat section rujukan dengan kueri itu: properti selnya PERSIS alias kuerinya —
-// `.District` untuk "Policy no", `.CountryID` untuk "Insured name", `.City` untuk
-// "Branch name", `.ReporterName` untuk "Admin name".
+// > Kueri dan batas data sempat diambil dari `BrowseInboxOutstanding1-SQL.xml` dan
+// > `InboxOutstanding_Act-Act.xml`. Keduanya TIDAK pernah dipanggil harness maupun section
+// > ini — pemanggilnya `SetDashboardClaim`, `ExportOutstanding`, dan `AlertPendingPLADLA`.
+// > Akibatnya layar ini sempat berperilaku sebagai dashboard, bukan sebagai inbox.
 //
-// Butir menu "Inbox Outstanding" sendiri menunjuk `InboxOutstanding_Harness`, yang tidak
-// ada di export (`K-33`). Section bernama serupa — `InboxOutstandingClaim_Section` —
-// dipakai dashboard dengan sumber data berbeda, dan BUKAN rujukan modul ini.
+// # Apa yang membuatnya "My"
 //
-// # Apa itu "Outstanding"
+// `InboxRegister_RD` menyaring lima syarat ber-AND, dan yang pertama menentukan segalanya:
 //
-// Definisinya mengikat dan terbaca dari satu baris —
-// `RDB List/BrowseInboxOutstanding1-SQL.xml:125`:
+//	A  Operator ID   =  Param.assign   <- OperatorID.pyUserIdentifier
+//	B  GroupPanel    =  Param.panel
+//	C  RCV_ID        =  Param.idRCV
+//	D  Work Status  !=  "Resolved-Completed"
+//	E  Work Status  !=  "Resolved-Rejected"
 //
-//	AND pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-//
-// Jadi Outstanding adalah SELURUH klaim yang masih berjalan, beserta siapa yang sedang
-// memegang tugasnya. Ia BUKAN Inbox menurut `D-79`: isinya bukan "pekerjaan saya"
-// melainkan "semua klaim yang belum tuntas", sehingga barisnya tidak hilang setelah
-// seseorang mengerjakannya dan tidak punya tombol "Ambil".
-//
-// Bedakan dari inbox modul `registrasi`, yang memang berisi pekerjaan pemanggil.
+// Syarat D dan E itulah definisi "outstanding"; syarat A yang membuat daftarnya milik
+// pemanggil. Tanpa A, layar ini menampilkan pekerjaan SELURUH operator — terisi, tampak
+// wajar, dan salah tanpa satu pun galat.
 //
 // # Sumber datanya: POOLDATA.T_CLAIMLIST_ADMIN
 //
-// Work Owner menetapkan tabel itulah yang menggantikan
-// `datapega.pc_asm_fw_gcnmfw_work` (2026-09-21), dan modul ini TIDAK membuat tabel
-// sendiri.
-//
-// Ia tabel DATAR: satu baris per klaim, memuat seluruh yang dibutuhkan layar tanpa satu
-// pun join — termasuk `AGING` yang sudah berupa angka, `SOBNAME`, `GROUPPANEL_1`, dan
-// `BUSINESSGROUPID` yang di sistem lama harus ditarik lewat empat tabel.
+// Work Owner menetapkan tabel itulah yang menggantikan `datapega.pc_asm_fw_gcnmfw_work`
+// beserta `pc_assign_worklist`. Ia tabel DATAR: satu baris per klaim, tanpa satu pun join.
 //
 // Modul ini hanya MEMBACA. Yang mengisi tabel itu adalah sistem lama.
-//
-// > Sempat dibangun di atas `CPNC_KLAIM` — tabel rancangan modul `registrasi` yang belum
-// > pernah dibuat dan modulnya belum dipasang. Itu salah tafsir atas arahan "tabel baru",
-// > dikoreksi Work Owner. Riwayatnya di `docs/catatan-pengembangan.md`.
 //
 // # Alias Pega tidak dibawa masuk
 //
 // Kueri lama mengalias kolom secara MENYESATKAN — `a.policyno AS "District"`,
-// `a.qqname AS "CountryID"`, `a.branchname AS "City"`, dan
-// `to_char(a.pxCreateDateTime,…) AS "StatusWork"` yang sebenarnya tanggal pendaftaran.
-// Tiga belas alias semacam itu ada di satu kueri. Tidak satu pun dibawa; nama di sini
+// `a.qqname AS "CountryID"`, `a.branchname AS "City"`. Tidak satu pun dibawa; nama di sini
 // mengikuti padanan Inggris dari `CONTEXT.md` (`D-19`, `D-80`).
 //
 // Lapisan Domain — dilarang mengimpor HTTP, SQL, driver basis data, maupun bentuk JSON.
@@ -65,6 +57,7 @@ package inboxoutstanding
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 )
@@ -148,15 +141,15 @@ type OutstandingClaim struct {
 	BranchName     string // "Branch name"     <- BRANCHNAME    (alias lama: City)
 
 	// GroupPanel adalah lini bisnis: 002 PA · 003/009 Aneka · 004 Marine · 005 Travel ·
-	// 006 Fire. Ia yang dipakai batas data — lihat LineScope.
+	// 006 Fire. Dipakai penyaring opsional `Param.panel`; layar ini TIDAK punya batas data
+	// per lini — lihat catatan pada Filter.GroupPanel.
 	GroupPanel string
 
-	// BusinessGroupID dipakai batas data untuk MENGECUALIKAN kelompok bisnis tertentu.
+	// RCVID — nomor register dokumen (`PNCCASEID`), padanan `.ClaimData.RCV_ID` pada RD.
 	//
-	// Di sistem lama ia datang lewat join ke `pooldata.businessgroup`; di tabel datar ini
-	// ia kolom tersendiri, sehingga aturan pengecualian dapat diterapkan tanpa join —
-	// termasuk aturan BONDING yang seluruhnya bersandar padanya.
-	BusinessGroupID string
+	// Dipakai penyaring opsional `Param.idRCV`. TIDAK ditampilkan sebagai kolom; section
+	// rujukan tidak punya kolomnya.
+	RCVID string
 
 	// RegisteredAt — kolom "Register Date" <- REGISTERDATE_1.
 	//
@@ -242,6 +235,17 @@ type OutstandingClaim struct {
 
 	// CurrentStage adalah tahap tempat klaim berada <- PXTASKLABEL. Tidak ditampilkan.
 	CurrentStage string
+
+	// DocumentComplete menandai dokumen klaim sudah lengkap <- DOKUMENLENGKAP_1 = '1'.
+	//
+	// Bertipe bool, bukan tiga keadaan, karena aturan Pega memang hanya mengenal dua:
+	// `= '1'` lengkap, `= '0' ATAU NULL` belum (`SetClaimPNC-Act.xml:1630`, `:1799`). NULL
+	// bukan "tidak diketahui" di sana melainkan "belum lengkap", dan itulah yang membuat
+	// donut tetap bermakna meski kolomnya belum pernah diisi.
+	//
+	// TIDAK ditampilkan sebagai kolom; section rujukan tidak punya kolomnya. Ia dibaca
+	// untuk ringkasan dan untuk menyaring lewat irisan donut.
+	DocumentComplete bool
 }
 
 // DisplayStatus menurunkan label kolom "Claim status".
@@ -313,110 +317,6 @@ func (c OutstandingClaim) AgeInDays(now time.Time, location *time.Location) int 
 	return days
 }
 
-// LineScope adalah batas data: lini bisnis mana yang boleh dilihat seorang pengguna.
-//
-// # Asalnya di sistem lama
-//
-// `Activity/InboxOutstanding_Act-Act.xml` memilih potongan WHERE berdasarkan
-// `OperatorID.pyPosition`, lalu menyisipkannya ke kueri lewat `{ASIS:TempView.pyNote}`:
-//
-//	pyPosition  potongan yang dipasang                                   baris
-//	NONMBU      AND GROUPPANEL_1 in ('003','004','006') AND c.business…  :905
-//	BONDING     AND c.businessgroupid NOT IN (…)                         :1081
-//	PA          AND GROUPPANEL_1='002'                                   :1235
-//	TRAVEL      AND GROUPPANEL_1='005'                                   :1374
-//
-// Penyisipan `{ASIS:…}` itu adalah PERANGKAIAN SQL dan tidak dibawa. Yang dipakai di sini:
-// cabang ditentukan di Go, nilainya lewat parameter binding.
-//
-// # Penggantinya di sistem baru
-//
-// `OperatorID.pyPosition` diganti kolom BARU `POOLDATA.M_LOGIN_PNC.LINEBUSINESS`
-// (keputusan Work Owner 2026-09-19). Tabel itu dipakai untuk karyawan juga, bukan hanya
-// non-karyawan seperti sekarang.
-type LineScope struct {
-	// Unrestricted menandai pengguna melihat SELURUH lini.
-	//
-	// Terjadi bila LINEBUSINESS-nya kosong atau bernilai di luar yang dikenali. Work Owner
-	// menetapkan perilaku ini ditiru dari Pega apa adanya: di sana potongan WHERE-nya tidak
-	// terbentuk, sehingga kueri berjalan tanpa penyaring dan pengguna melihat semuanya —
-	// tanpa satu pun pesan.
-	//
-	// RISIKO YANG DITERIMA SADAR: petugas yang datanya belum dilengkapi admin ikut melihat
-	// lini yang bukan haknya, dan kegagalan itu tidak terlihat sebagai galat. Dicatat di
-	// docs/keputusan-implementasi.md.
-	Unrestricted bool
-
-	// GroupPanels adalah daftar GROUPPANEL yang boleh dilihat. Kosong berarti tidak
-	// menyaring berdasarkan lini — perhatikan bahwa itu hanya sah bila Unrestricted,
-	// ATAU bila ExcludedBusinessGroups terisi (aturan BONDING).
-	GroupPanels []string
-
-	// ExcludedBusinessGroups adalah kelompok bisnis yang DIKECUALIKAN.
-	//
-	// Aturan NONMBU dan BONDING keduanya memuat `c.businessgroupid NOT IN (…)`. Di sistem
-	// lama nilai itu datang lewat join ke `pooldata.businessgroup`; di tabel datar
-	// `T_CLAIMLIST_ADMIN` ia kolom `BUSINESSGROUPID`, sehingga aturannya dapat diterapkan
-	// apa adanya tanpa join.
-	ExcludedBusinessGroups []string
-}
-
-// Nilai LINEBUSINESS yang dikenali.
-//
-// Keempatnya terbukti dipakai layar ini. Nilai lain mungkin ada — `pyPosition` di rule
-// lain memuat sekurangnya satu nilai lagi — dan daftar pastinya BELUM DIPUTUSKAN.
-//
-// Karena itu tidak ada constraint maupun enum yang mengunci di basis data: nilai yang
-// tidak dikenali jatuh ke Unrestricted, bukan ditolak. Mengunci daftarnya sekarang berarti
-// mendahului keputusan yang sengaja ditinggalkan terbuka.
-const (
-	LineNonMBU  = "NONMBU"
-	LineBonding = "BONDING"
-	LinePA      = "PA"
-	LineTravel  = "TRAVEL"
-)
-
-// Group Panel per lini, dari potongan WHERE sistem lama.
-var (
-	groupPanelsNonMBU = []string{"003", "004", "006"}
-	groupPanelsPA     = []string{"002"}
-	groupPanelsTravel = []string{"005"}
-)
-
-// excludedBusinessGroups adalah kelompok bisnis yang dikecualikan NONMBU dan BONDING.
-//
-// Keempat nilainya disalin apa adanya dari potongan WHERE sistem lama
-// (`Activity/InboxOutstanding_Act-Act.xml:905` dan `:1081`). Artinya tidak diketahui — ia
-// kode di master `businessgroup` yang tidak ada di export — sehingga nilainya
-// dipertahankan tanpa ditafsirkan.
-var excludedBusinessGroups = []string{"10008", "10010", "10015", "10023"}
-
-// ScopeFor menerjemahkan nilai LINEBUSINESS menjadi batas data.
-//
-// Keempat cabang di bawah adalah salinan apa adanya dari potongan WHERE sistem lama —
-// termasuk BONDING, yang seluruh aturannya bersandar pada pengecualian kelompok bisnis dan
-// karena itu TIDAK menyaring Group Panel sama sekali.
-func ScopeFor(lineBusiness string) LineScope {
-	switch strings.ToUpper(strings.TrimSpace(lineBusiness)) {
-	case LinePA:
-		return LineScope{GroupPanels: groupPanelsPA}
-	case LineTravel:
-		return LineScope{GroupPanels: groupPanelsTravel}
-	case LineNonMBU:
-		return LineScope{
-			GroupPanels:            groupPanelsNonMBU,
-			ExcludedBusinessGroups: excludedBusinessGroups,
-		}
-	case LineBonding:
-		// BONDING melihat SELURUH Group Panel, dikurangi kelompok bisnis yang
-		// dikecualikan. Ia karena itu bukan Unrestricted — pengecualiannya nyata.
-		return LineScope{ExcludedBusinessGroups: excludedBusinessGroups}
-	default:
-		// Termasuk nilai kosong. Lihat LineScope.Unrestricted.
-		return LineScope{Unrestricted: true}
-	}
-}
-
 // Filter adalah penyaring dan paginasi yang diminta layar.
 type Filter struct {
 	// Search mencari pada No Klaim, No Polis, dan PIC Teknik sekaligus.
@@ -427,9 +327,54 @@ type Filter struct {
 	// memberi tahu pengguna bahwa sesuatu tidak ada padahal ia ada di halaman lain.
 	Search string
 
-	// Scope adalah batas data pemanggil. Ia BUKAN pilihan pengguna dan tidak pernah datang
-	// dari badan permintaan — ia diturunkan dari identitasnya di server.
-	Scope LineScope
+	// AssignedTo adalah pemilik pekerjaan — inti layar ini, dan satu-satunya penyaring
+	// yang WAJIB terisi.
+	//
+	// Ia BUKAN pilihan pengguna dan tidak pernah datang dari badan permintaan maupun query
+	// string: ia diturunkan dari identitas pemanggil di server. Membiarkannya datang dari
+	// klien berarti siapa pun dapat membaca pekerjaan orang lain dengan mengubah satu
+	// parameter.
+	//
+	// Asalnya `Param.assign` pada `Report Definition/InboxRegister_RD-RD.xml`, yang diisi
+	// `OperatorID.pyUserIdentifier` oleh section rujukan.
+	AssignedTo string
+
+	// AssignedToLegacy adalah identitas LAMA orang yang sama; kosong berarti tidak ada.
+	//
+	// # Kenapa satu orang punya dua identitas
+	//
+	// Login baru memakai **email** lewat HCC, sedangkan klaim warisan tertugas ke **nama
+	// operator Pega**. Keduanya tidak akan pernah cocok, dan jembatannya adalah
+	// `POOLDATA.T_ACCESS_GROUP_PNC` yang memetakan `OPERATOR_ID` → `OLD_OPERATOR_ID`.
+	//
+	// Sistem lama melakukan hal yang sama: `BrowseInboxPicTeknik-SQL.xml:21` menyaring
+	// `pxassignedoperatorid IN {ASIS:TempOperator.CityID}`, dan daftar itu dirangkai
+	// `Activity/SetClaimPNC-Act.xml:554` dari identitas lama DAN identitas sekarang.
+	//
+	// # Kenapa ini bukan kenyamanan, melainkan syarat agar layarnya berfungsi
+	//
+	// Terukur pada data ASM: **20 dari 29 operator** punya identitas lama yang berbeda,
+	// dan salah satunya memegang **79 klaim berjalan yang seluruhnya tersimpan di
+	// identitas lamanya** — nol di identitas barunya. Tanpa field ini, ia membuka My Inbox
+	// dan melihat layar kosong yang tampak rapi, tanpa satu pun galat.
+	AssignedToLegacy string
+
+	// GroupPanel menyaring satu lini bisnis; kosong berarti seluruh lini.
+	//
+	// Di sistem lama ia `Param.panel` — PARAMETER, bukan pita tetap per pengguna. Layar ini
+	// karena itu tidak punya batas data per lini, dan tidak membaca LINEBUSINESS.
+	GroupPanel string
+
+	// RCVID menyaring satu nomor register dokumen; kosong berarti seluruhnya.
+	// Asalnya `Param.idRCV`.
+	RCVID string
+
+	// DocumentStatus menyaring satu status kelengkapan dokumen; kosong berarti seluruhnya.
+	//
+	// Ia diisi saat pengguna mengeklik irisan donut, dan itulah satu-satunya cara mengisinya
+	// — sama seperti panel ringkasan Inbox Auto Claim yang menjadi satu-satunya penyaring
+	// perusahaannya.
+	DocumentStatus DocumentStatus
 
 	// Stage menyaring satu tahap tertentu; kosong berarti seluruh tahap.
 	Stage string
@@ -454,6 +399,10 @@ const (
 // Normalize mengembalikan filter dengan nilai yang dijamin masuk akal.
 func (f Filter) Normalize() Filter {
 	f.Search = strings.TrimSpace(f.Search)
+	f.AssignedTo = strings.TrimSpace(f.AssignedTo)
+	f.AssignedToLegacy = strings.TrimSpace(f.AssignedToLegacy)
+	f.GroupPanel = strings.TrimSpace(f.GroupPanel)
+	f.RCVID = strings.TrimSpace(f.RCVID)
 	f.Stage = strings.TrimSpace(f.Stage)
 	f.BranchCode = strings.TrimSpace(f.BranchCode)
 
@@ -468,6 +417,315 @@ func (f Filter) Normalize() Filter {
 	}
 	return f
 }
+
+// DocumentStatus adalah status kelengkapan dokumen sebuah klaim.
+//
+// # Ia hanya DUA, padahal Pega punya sebelas tab
+//
+// `Section/InboxRegister_Section-Section.xml` memuat sebelas tab di bawah judul
+// "Document status", disetel ke `TempVisibility.Email` 0…10. Tetapi kesebelasnya **tidak
+// menghitung populasi yang sama**, sehingga tidak dapat menjadi irisan satu donut:
+//
+//	tab                          sumber                          dapat dihitung di sini?
+//	---------------------------  ------------------------------  -----------------------
+//	Complete / Not complete      Work-PNC + DOKUMENLENGKAP_1      ya — membagi habis
+//	Loss Adjuster                Work-SurveyClaim SURVEYORTYPE=2  tidak — case type lain
+//	Internal Surveyor            Work-SurveyClaim SURVEYORTYPE=1  tidak — case type lain
+//	Temporary Close              Resolved-Completed + PendingClose  di LUAR himpunan ini
+//	Not Answered / Replied       tabel komunikasi                 tidak
+//
+// `POOLDATA.T_CLAIMLIST_ADMIN` hanya memuat `Work-PNC` (870 baris) dan
+// `Work-ReceiveDocument` (142) — tidak ada satu pun `Work-SurveyClaim`.
+//
+// Yang dijadikan irisan karena itu hanya kedua status yang **membagi habis** inbox
+// pemanggil. Menggambar yang lain sebagai irisan bernilai nol akan membuat donutnya
+// berbohong: bagian-bagiannya tidak menjumlah menjadi keseluruhan.
+type DocumentStatus string
+
+const (
+	// StatusComplete — tab "Complete documents" (Email 1).
+	StatusComplete DocumentStatus = "lengkap"
+
+	// StatusIncomplete — tab "Documents not complete" (Email 0).
+	//
+	// NULL ikut dihitung "belum lengkap", persis seperti fragmen Pega
+	// (`Activity/SetClaimPNC-Act.xml:1630`). Bukan penyederhanaan: kolomnya NULL pada
+	// SELURUH 1.012 baris hari ini, sehingga tanpa aturan itu donutnya kosong sama sekali.
+	StatusIncomplete DocumentStatus = "belum-lengkap"
+
+	// StatusTemporaryClose — tab "Temporary Close" (Email 8).
+	StatusTemporaryClose DocumentStatus = "temporary-close"
+
+	// StatusDeadlineTemporaryClose — tab "Deadline To Temporary Close" (Email 9, non-PA).
+	StatusDeadlineTemporaryClose DocumentStatus = "deadline-temporary-close"
+
+	// StatusLossAdjuster — tab "Loss Adjuster" (Email 2).
+	StatusLossAdjuster DocumentStatus = "loss-adjuster"
+
+	// StatusInternalSurveyor — tab "Internal Surveyor" (Email 4).
+	StatusInternalSurveyor DocumentStatus = "internal-surveyor"
+
+	// StatusAll — tab "ALL Case" (Email 3).
+	StatusAll DocumentStatus = "semua"
+
+	// StatusCommunication — tab "Communication" (Email 5).
+	//
+	// SATU tab, bukan tiga. Nilai 6 dan 7 adalah keadaan DI DALAMNYA — "Not Replied From
+	// Receiver" dan "Replied From Receiver" — dan section menyatakannya begitu:
+	// `TempVisibility.Email=5 || 6 || 7` pada satu blok yang sama (`:27503`).
+	StatusCommunication DocumentStatus = "komunikasi"
+
+	// StatusTKA — tab "TKA" (Email 9, tetapi hanya bila `OperatorID.pyPosition == 'PA'`).
+	//
+	// Nilai 9 karena itu berarti DUA hal berbeda tergantung jabatan pemakainya —
+	// `Section/InboxRegister_Section-Section.xml:12129` dan `:13312`. Di sistem baru
+	// keduanya kode tersendiri, supaya artinya tidak bergantung pada siapa yang melihat.
+	StatusTKA DocumentStatus = "tka"
+)
+
+// statusDefinition memuat seluruh yang membedakan satu tab dari tab lain.
+//
+// Ia satu tabel data, bukan rangkaian switch yang tersebar — bentuk yang sama dengan
+// `categoryOrder` pada modul Inbox Laporan Klaim, dan dipilih dengan alasan yang sama:
+// definisi baru dan tab lama dapat dibandingkan baris per baris saat `S-8` dijalankan.
+type statusDefinition struct {
+	status DocumentStatus
+	title  string
+
+	// legacy adalah nilai `TempVisibility.Email` di Pega. Ia disimpan supaya uji
+	// kesetaraan dapat memanggil cabang yang sama persis.
+	legacy string
+
+	// countable menandai tab yang jumlahnya dapat dihitung dari `T_CLAIMLIST_ADMIN`.
+	//
+	// Yang tidak dapat dihitung TIDAK diberi angka nol — ia dikirim tanpa jumlah, dan
+	// layar tidak menggambar lencananya. Alasannya sama persis dengan tab "Data rejected"
+	// pada Inbox Laporan Klaim: lencana bertuliskan 0 menyatakan "tidak ada", dan itu
+	// tidak benar — yang benar adalah "belum dihitung".
+	countable bool
+}
+
+// statusOrder adalah urutan tab PERSIS seperti di layar Pega.
+//
+// Dibaca dari label tebal `Section/InboxRegister_Section-Section.xml` berurutan:
+// `:11438`, `:11626`, `:11841`, `:12023`, `:12170`, `:12632`, `:12825`, `:12971`,
+// `:13184`. Menata ulangnya — misalnya menaruh "ALL Case" di depan karena terasa wajar —
+// akan memindahkan tab yang sudah dihafal petugas.
+//
+// # Kenapa hanya tiga yang dapat dihitung
+//
+//	Complete / Not complete   Work-PNC + DOKUMENLENGKAP_1        dapat
+//	ALL Case                  seluruh inbox                      dapat
+//	Temporary Close           Resolved-Completed + PendingClose  populasi LAIN
+//	Deadline To Temp. Close   idem                               populasi LAIN
+//	Loss Adjuster             Work-SurveyClaim SURVEYORTYPE=2    case type lain
+//	Internal Surveyor         Work-SurveyClaim SURVEYORTYPE=1    case type lain
+//	Communication             tabel komunikasi                   bukan klaim
+//	TKA                       kolom TKA_1                        kolomnya TIDAK ADA
+//
+// `T_CLAIMLIST_ADMIN` hanya memuat `Work-PNC` (870 baris) dan `Work-ReceiveDocument`
+// (142) — nol `Work-SurveyClaim`.
+var statusOrder = []statusDefinition{
+	{StatusComplete, "Complete documents", "1", true},
+	{StatusIncomplete, "Documents not complete", "0", true},
+	{StatusTemporaryClose, "Temporary Close", "8", false},
+	{StatusDeadlineTemporaryClose, "Deadline To Temporary Close", "9", false},
+	{StatusLossAdjuster, "Loss Adjuster", "2", false},
+	{StatusInternalSurveyor, "Internal Surveyor", "4", false},
+	{StatusAll, "ALL Case", "3", true},
+	{StatusCommunication, "Communication", "5", false},
+	{StatusTKA, "TKA", "9", false},
+}
+
+// FindDocumentStatus mencari tab dari kodenya. Nilai kedua false bila kodenya tidak dikenal.
+//
+// Kode tak dikenal DITOLAK, tidak diam-diam diartikan "semua" — pola yang sama dengan
+// `FindCategory` pada Inbox Laporan Klaim, dan alasannya sama: salah ketik yang jatuh ke
+// "semua" menghasilkan daftar yang tampak wajar tetapi bukan yang diminta.
+func FindDocumentStatus(code string) (DocumentStatus, bool) {
+	clean := DocumentStatus(strings.ToLower(strings.TrimSpace(code)))
+	for _, d := range statusOrder {
+		if d.status == clean {
+			return d.status, true
+		}
+	}
+	return "", false
+}
+
+// Title mengembalikan judul tab sebagaimana tertulis di layar Pega (`D-13`).
+func (s DocumentStatus) Title() string {
+	for _, d := range statusOrder {
+		if d.status == s {
+			return d.title
+		}
+	}
+	return string(s)
+}
+
+// Countable menyatakan apakah jumlah tab ini dapat dihitung dari tabel yang ada.
+func (s DocumentStatus) Countable() bool {
+	for _, d := range statusOrder {
+		if d.status == s {
+			return d.countable
+		}
+	}
+	return false
+}
+
+// StatusCount adalah satu tab beserta jumlahnya.
+type StatusCount struct {
+	Status DocumentStatus
+	Label  string
+
+	// Count nil berarti **belum dihitung**, dan itu BERBEDA dari nol.
+	//
+	// Layar tidak menggambar lencana untuk yang nil. Memberinya angka nol akan menyatakan
+	// "tidak ada satu pun", padahal yang benar "sumber datanya belum dimigrasikan" —
+	// perbedaan yang menentukan bagi petugas yang mencari pekerjaannya.
+	Count *int
+}
+
+// Summary adalah ringkasan inbox pemanggil.
+//
+// Total sengaja IKUT dikembalikan, bukan dijumlahkan di peramban: ia mengisi tab
+// "ALL Case", dan ia wajib cocok dengan total paginasi grid. Menjumlahkan tab di frontend
+// akan diam-diam salah, karena sebagian tab tidak punya angka sama sekali.
+type Summary struct {
+	Status []StatusCount
+	Total  int
+}
+
+// BuildSummary menyusun kesembilan tab dalam urutan layar.
+//
+// Penyimpanan cukup menyerahkan angka yang BERHASIL dihitungnya; sisanya otomatis
+// dikirim tanpa jumlah. Bentuk ini dipilih supaya daftar tab hidup di SATU tempat —
+// `statusOrder` — dan bukan tersebar di tiap adapter. Adapter yang lupa satu tab akan
+// menghilangkannya dari layar tanpa satu pun galat.
+func BuildSummary(counted map[DocumentStatus]int, total int) Summary {
+	status := make([]StatusCount, 0, len(statusOrder))
+	for _, d := range statusOrder {
+		item := StatusCount{Status: d.status, Label: d.title}
+		if d.countable {
+			if n, ada := counted[d.status]; ada {
+				angka := n
+				item.Count = &angka
+			}
+		}
+		status = append(status, item)
+	}
+	return Summary{Status: status, Total: total}
+}
+
+// LineBusiness adalah lini bisnis seorang petugas.
+//
+// # Ia hanya berlaku pada EXPORT, tidak pada daftar
+//
+// Daftar menyaring `PXASSIGNEDOPERATORID` dan tidak mengenal lini bisnis sama sekali
+// (`Report Definition/InboxRegister_RD-RD.xml` memperlakukan panel sebagai PARAMETER).
+// Export berbeda: `RDB List/ExportDataDetailKlaim-SQL.xml` **tidak menyaring operator
+// sama sekali**, dan sebagai gantinya menyuntikkan cakupan lini bisnis lewat
+// `{ASIS:TempBisnis.BUSINESSTYPE}`.
+//
+// Nilainya dipilih `Activity/ExportDataDetailKlaim-Act.xml` dari `OperatorID.pyPosition`.
+// Di sistem baru padanannya `M_LOGIN_PNC.LINE_BUSINESS`.
+type LineBusiness string
+
+const (
+	LinePA      LineBusiness = "PA"
+	LineTravel  LineBusiness = "TRAVEL"
+	LineNonMBU  LineBusiness = "NONMBU"
+	LineBonding LineBusiness = "BONDING"
+
+	// LineUnknown adalah petugas yang lini bisnisnya belum terisi.
+	//
+	// Sistem lama memperlakukannya sebagai **tanpa cakupan** — step terakhir
+	// `ExportDataDetailKlaim-Act` menyetel `TempBisnis.BUSINESSTYPE` menjadi `""`,
+	// sehingga export mengembalikan seluruh klaim yang masih berjalan.
+	//
+	// Perilaku itu DIPERTAHANKAN (`P-5`), dan konsekuensinya dicatat, bukan disembunyikan:
+	// petugas tanpa lini bisnis mengunduh lebih banyak daripada petugas yang punya. Ini
+	// bukan `R-20` — keempat cakupan berada di dalam SATU badan hukum, dan pemisahan antar
+	// entitas tetap dijaga `RepoSelector`. Yang tepat memperbaikinya adalah mengisi
+	// `M_LOGIN_PNC.LINE_BUSINESS`, bukan mengubah perilaku export di sini.
+	LineUnknown LineBusiness = ""
+)
+
+// NormalizeLineBusiness membakukan nilai yang dibaca dari basis data.
+//
+// Nilai yang tidak dikenali menjadi LineUnknown — bukan ditolak. Kolomnya bebas isi dan
+// baru terisi pada sebagian petugas; menolak nilai asing akan membuat export GAGAL bagi
+// mereka, padahal sistem lama justru melayaninya tanpa cakupan.
+func NormalizeLineBusiness(raw string) LineBusiness {
+	switch LineBusiness(strings.ToUpper(strings.TrimSpace(raw))) {
+	case LinePA:
+		return LinePA
+	case LineTravel:
+		return LineTravel
+	case LineNonMBU:
+		return LineNonMBU
+	case LineBonding:
+		return LineBonding
+	default:
+		return LineUnknown
+	}
+}
+
+// ExportFilter adalah penyaring unduhan CSV.
+//
+// # Kenapa ia TIPE TERSENDIRI, bukan Filter dengan satu field tambahan
+//
+// Keduanya menyaring hal yang berbeda, dan menyatukannya sempat membuat export salah:
+// export dulu memanggil ulang daftar, sehingga ikut terkena penyaring
+// `PXASSIGNEDOPERATORID` dan **mengembalikan berkas kosong bagi petugas yang inbox-nya
+// kosong** — padahal di Pega ia tetap berisi.
+//
+//	                  daftar (RD)          export (ExportDataDetailKlaim)
+//	operator          WAJIB disaring       TIDAK disaring sama sekali
+//	lini bisnis       tidak dikenal        menentukan cakupannya
+//	rentang tanggal   tidak ada            ada, opsional
+//	alur & tugas      tidak disaring       disaring
+//
+// Tipe terpisah membuat perbedaan itu tidak mungkin tertukar lagi.
+type ExportFilter struct {
+	// LineBusiness menentukan cakupan baris. LineUnknown berarti tanpa cakupan.
+	LineBusiness LineBusiness
+
+	// From dan To menyaring tanggal pembuatan klaim; nil berarti tidak menyaring.
+	//
+	// Asalnya `{ASIS:TempBisnis.REGISTERID}`, yang dirangkai dari `TempBisnis.EDMDATE` dan
+	// `TempBisnis.ENDDATE`; bila keduanya kosong, fragmennya kosong dan tidak ada penyaring
+	// tanggal sama sekali.
+	//
+	// Keduanya TANGGAL, bukan timestamp. Pemanggil mengirim awal hari WIB pada From dan
+	// awal hari BERIKUTNYA pada To; lihat catatan batas atas pada berkas SQL.
+	From *time.Time
+	To   *time.Time
+
+	Limit  int
+	Offset int
+}
+
+// Normalize mengembalikan penyaring export dengan nilai yang dijamin masuk akal.
+func (f ExportFilter) Normalize() ExportFilter {
+	f.LineBusiness = NormalizeLineBusiness(string(f.LineBusiness))
+	if f.Limit <= 0 {
+		f.Limit = DefaultLimit
+	}
+	if f.Limit > MaxExportBatch {
+		f.Limit = MaxExportBatch
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	return f
+}
+
+// MaxExportBatch adalah batas baris sekali ambil saat mengekspor.
+//
+// Ia lebih longgar dari MaxLimit karena export TIDAK dilihat manusia sebagai halaman —
+// ia dibaca sekumpulan demi sekumpulan lalu langsung dialirkan ke berkas. Batas jumlah
+// baris seluruhnya ada di lapisan transport, bukan di sini.
+const MaxExportBatch = 1000
 
 // Page adalah satu halaman hasil beserta jumlah seluruh baris yang cocok.
 //
@@ -489,6 +747,35 @@ type Page struct {
 // dimiliki modul `registrasi`, dan `P-1` menetapkan satu tabel hanya ditulis satu pemilik.
 type Repo interface {
 	List(ctx context.Context, f Filter) (Page, error)
+
+	// Export membaca baris untuk unduhan CSV — TANPA menyaring pemilik pekerjaan.
+	//
+	// Ia sengaja method tersendiri, bukan List dengan penyaring dikosongkan: List MENOLAK
+	// filter tanpa pemilik (ErrAssigneeRequired), dan penolakan itu justru pengaman yang
+	// tidak boleh dilemahkan demi export.
+	Export(ctx context.Context, f ExportFilter) (Page, error)
+
+	// LineBusinessFor membaca lini bisnis seorang petugas dari `M_LOGIN_PNC`.
+	//
+	// Petugas yang tidak punya baris, atau punya baris tetapi kolomnya kosong,
+	// mengembalikan LineUnknown TANPA galat — keduanya keadaan yang sah, dan sistem lama
+	// melayaninya sebagai "tanpa cakupan".
+	LineBusinessFor(ctx context.Context, loginID string) (LineBusiness, error)
+
+	// LegacyOperatorFor membaca identitas LAMA seorang petugas dari
+	// `POOLDATA.T_ACCESS_GROUP_PNC`.
+	//
+	// Petugas yang tidak punya baris mengembalikan string kosong TANPA galat: ia berarti
+	// identitasnya tidak pernah berganti, bukan bahwa ada yang salah.
+	LegacyOperatorFor(ctx context.Context, loginID string) (string, error)
+
+	// SummarizeDocumentStatus menghitung isi inbox per status kelengkapan dokumen.
+	//
+	// Penyaring status pada filter DIABAIKAN di sini — ringkasan harus tetap memuat seluruh
+	// status supaya irisan yang sedang dipilih tetap terlihat. Menghormatinya akan membuat
+	// donut menyusut menjadi satu irisan begitu pengguna mengeklik salah satunya, dan tidak
+	// ada jalan kembali selain memuat ulang halaman.
+	SummarizeDocumentStatus(ctx context.Context, f Filter) (Summary, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.
@@ -507,17 +794,13 @@ type Repo interface {
 // `TKT-F6-002`).
 type RepoSelector func(portalAlias string) (Repo, error)
 
-// LineBusinessRepo adalah seam ke POOLDATA.M_LOGIN_PNC.LINEBUSINESS.
+// ErrAssigneeRequired dikembalikan bila pemilik pekerjaan tidak terisi.
 //
-// Kolom itu BELUM ADA; ia ditambahkan migrasi 0004 yang menempuh `D-63` dan belum
-// dijalankan DBA di lingkungan mana pun. Sampai itu terjadi, adapter Oracle akan gagal
-// membacanya — dan kegagalannya ditangani sebagai "tidak diketahui", yang jatuh ke
-// Unrestricted persis seperti pengguna tanpa lini.
-type LineBusinessRepo interface {
-	// LineBusinessFor mengembalikan nilai LINEBUSINESS seorang pengguna, atau string
-	// kosong bila barisnya tidak ada maupun kolomnya belum terisi.
-	//
-	// Ia TIDAK mengembalikan galat untuk "tidak ditemukan": pengguna yang tidak punya baris
-	// di M_LOGIN_PNC adalah keadaan biasa hari ini, bukan kegagalan.
-	LineBusinessFor(ctx context.Context, loginID string) (string, error)
-}
+// Ia sengaja GAGAL, bukan jatuh ke "tampilkan semuanya". Layar ini bernama "My Inbox" dan
+// satu-satunya yang membuatnya "My" adalah penyaring `PXASSIGNEDOPERATORID`; menjalankan
+// kueri tanpa penyaring itu akan menampilkan pekerjaan SELURUH operator — terisi, tampak
+// wajar, dan salah tanpa satu pun galat.
+//
+// Pola yang sama dipakai `TKT-F6-002` untuk portal: permintaan tanpa portal ditolak, tidak
+// dilayani portal utama sebagai cadangan.
+var ErrAssigneeRequired = errors.New("inboxoutstanding: pemilik pekerjaan wajib terisi")

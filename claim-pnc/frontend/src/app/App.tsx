@@ -38,6 +38,8 @@ import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
+import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
+import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
@@ -937,6 +939,24 @@ export function AppRoute() {
         }
       />
       {/*
+        Input Req Protection — permintaan pembukaan proteksi beserta form inputnya.
+
+        Layar lama dibatasi `When/IsReqProtection-When.xml` pada empat access group:
+        PncAdmin, PncPICTeknik, PNCKomiteTeknik, dan Administrators. Pembatasan itu
+        BELUM ada di sini; ia `TKT-F3-005`, yang bergantung pada tabel peran yang dapat
+        dibangun tetapi belum dapat diisi.
+      */}
+      <Route
+        path="/input-req-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ProtectionListPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Analyst Doctor — antrean penilaian medis milik SATU petugas, pengganti harness
         `inboxAnalystDoctor_Harness` (`MENU_ID 60`).
 
@@ -1053,6 +1073,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Accept Open Protection — antrean akseptasi atas permintaan yang sama.
+
+        Taruhannya lebih besar daripada layar di atas: di sini seseorang MENYETUJUI
+        pembukaan proteksi. Layar lama membatasinya pada lima access group
+        (`When/IsOpenProtectionPNC-When.xml`), dan memisahkan antrean PREMI khusus peran
+        penagihan premi.
+
+        Sampai TKT-F3-005 dikerjakan, yang tersisa sebagai kontrol hanyalah jejak
+        DIAKSEP_OLEH — `D-59` menetapkan tidak ada pemisahan tugas formal.
+      */}
+      <Route
+        path="/inbox-accept-open-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AcceptQueuePage />
             </Protected>
           </SessionGuard>
         }

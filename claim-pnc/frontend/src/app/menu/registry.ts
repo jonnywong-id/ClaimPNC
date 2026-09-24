@@ -38,12 +38,15 @@
  * Dua yang dulu ada di daftar itu SUDAH DITERIMA pada 2026-09-22 dan karena itu
  * dikeluarkan: `DataMemberReas` dan `DetailMasterPasalAI` — keduanya kini punya layar.
  *
- * DUA dari ketujuh yang tersisa KINI SUDAH PUNYA LAYAR, dan keduanya dibangun dengan cara
- * yang sama — dari kueri, activity, dan section yang memang ada, bukan dari harness-nya:
+ * SATU dari ketujuh yang tersisa KINI SUDAH PUNYA LAYAR, dibangun dari kueri,
+ * activity, dan section yang memang ada — bukan dari harness-nya:
  *
- *   `InboxOutstanding_Harness`   rujukan bentuknya `InboxRegister_Harness`
- *   `InboxCloseClaim_Harness`    rujukan bentuknya `InboxManagerReopen1_Sec`, section yang
- *                                di dalamnya sendiri berjudul "Inbox Close Claim"
+ *   `InboxCloseClaim_Harness`    rujukan bentuknya `InboxManagerReopen1_Sec`, section
+ *                                yang di dalamnya sendiri berjudul "Inbox Close Claim"
+ *
+ * `InboxOutstanding_Harness` (MENU_ID 79) TETAP belum punya layar. Yang kini punya
+ * layar adalah `InboxRegister_Harness` (MENU_ID 51 "My Inbox") — butir menu yang
+ * BERBEDA, dan keduanya sempat tertukar. Lihat catatan pada barisnya di bawah.
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
@@ -119,9 +122,30 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Keduanya terbaca berdampingan di `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26`.
   ListDocumentObject: '/master/objek-dokumen',
-  // Butir menu "Inbox Outstanding". Harness-nya tidak ada di export (`K-33`); layarnya
-  // dibangun dari kueri BrowseInboxOutstanding1 beserta activity dan section-nya.
-  InboxOutstanding_Harness: '/inbox-outstanding',
+  // MENU_ID 51 **"My Inbox"** — layar daftar klaim yang masih berjalan.
+  //
+  // # Kuncinya sempat salah, dan menunya karena itu tidak pernah muncul
+  //
+  // Semula didaftarkan sebagai `InboxOutstanding_Harness`, karena judul DI DALAM
+  // `Section/InboxRegister_Section-Section.xml:2150` berbunyi "Inbox Outstanding".
+  // Judul itu memang ada, tetapi ia judul section — bukan nama butir menu.
+  //
+  // `POOLDATA.M_MENU_APLIKASI_PNC` memuat KEDUANYA sebagai butir yang BERBEDA:
+  //
+  //	MENU_ID 51 · "My Inbox"          · InboxRegister_Harness      <- layar ini
+  //	MENU_ID 79 · "Inbox Outstanding" · InboxOutstanding_Harness   <- layar LAIN
+  //
+  // Jadi kunci lama bukan sekadar salah nama: ia menempelkan layar ini pada butir
+  // menu MILIK LAYAR LAIN. Pengguna yang menekan "Inbox Outstanding" akan mendapat
+  // layar My Inbox, sedangkan "My Inbox" sendiri tidak mengarah ke mana-mana.
+  //
+  // MENU_ID 79 tetap belum punya layar — harness-nya tidak ada di export (`K-33`),
+  // dan isinya belum pernah diketahui.
+  //
+  // Nama modul dan alamat rutenya sengaja DIBIARKAN `inbox-outstanding` sampai Work
+  // Owner memutuskan — mengganti nama modul menyentuh backend, frontend, dan tiket
+  // sekaligus (`D-81`), sedangkan memperbaiki kunci ini memulihkan menunya sekarang.
+  InboxRegister_Harness: '/inbox-outstanding',
   InboxAutoClaim: '/inbox-auto-claim',
   // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
   SurveyorsInbox: '/master/tipe-surveyor',
@@ -466,6 +490,21 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+  // Butir menu "Input Req Protection" — permintaan pembukaan proteksi beserta form
+  // inputnya, langkah PERTAMA pada `Flow/CreateProtection_Flow.xml`.
+  InputReqProtection_Harness: '/input-req-protection',
+
+  // Butir menu "Inbox Open Protection" — antrean AKSEPTASI, langkah kedua alur yang sama.
+  //
+  // Perhatikan silangan namanya, dan jangan diperbaiki menjadi "seragam": butir menu
+  // bernama "Inbox Open Protection" membuka harness `InputProtection_Harness`, yang judul
+  // di dalamnya justru berbunyi "Inbox Accept Open Protection". Sebaliknya, butir menu
+  // "Input Req Protection" membuka harness yang judulnya "Inbox Open Protection".
+  //
+  // Rute di bawah memakai nama dari JUDUL harness-nya, karena nama butir menunya
+  // bertabrakan dengan judul layar di atas. Menukar keduanya akan mengantar petugas
+  // akseptasi ke layar pemohon, dan tidak ada apa pun di layar yang menandakannya.
+  InputProtection_Harness: '/inbox-accept-open-protection',
 }
 
 /**

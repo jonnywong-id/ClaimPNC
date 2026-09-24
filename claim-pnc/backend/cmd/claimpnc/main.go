@@ -34,6 +34,7 @@ import (
 	"claim-pnc/internal/daftartipedokumen"
 	"claim-pnc/internal/daftartipedokumenbisnis"
 	"claim-pnc/internal/detailpenyebab"
+	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
@@ -108,6 +109,10 @@ import (
 	detailpenyebabmemory "claim-pnc/internal/detailpenyebab/repo/memory"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	detailpenyebabusecase "claim-pnc/internal/detailpenyebab/usecase"
+	inboxacceptopenprotectionhttp "claim-pnc/internal/inboxacceptopenprotection/http"
+	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
+	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
+	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
@@ -161,6 +166,11 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
+	"claim-pnc/internal/inputreqprotection"
+	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
+	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
+	inputreqprotectionsql "claim-pnc/internal/inputreqprotection/repo/sqlstore"
+	inputreqprotectionusecase "claim-pnc/internal/inputreqprotection/usecase"
 	komitehttp "claim-pnc/internal/komite/http"
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
@@ -1369,6 +1379,40 @@ func run() error {
 		FallbackErrorWriter: inboxoutstandinghttp.ErrorWriter(writePortalAwareError),
 	})
 
+	// Input Req Protection. Pembuat permintaan diambil dari SESI, bukan dari badan
+	// permintaan — ia satu-satunya jejak siapa yang meminta pembukaan proteksi.
+	protectionRequestHandler := inputreqprotectionhttp.NewHandler(inputreqprotectionhttp.Options{
+		Service: assembly.inputReqProtection,
+		GetCaller: func(ctx context.Context) (inputreqprotectionhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inputreqprotectionhttp.Caller{}, false
+			}
+			return inputreqprotectionhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: inputreqprotectionhttp.ErrorWriter(writePortalAwareError),
+	})
+
+	// Inbox Accept Open Protection. Pelaku akseptasi juga diambil dari sesi: `D-59`
+	// menetapkan tidak ada pemisahan tugas formal, sehingga kolom DIAKSEP_OLEH adalah
+	// satu-satunya kontrol pengimbang yang tersisa atas persetujuan ini.
+	protectionAcceptHandler := inboxacceptopenprotectionhttp.NewHandler(
+		inboxacceptopenprotectionhttp.Options{
+			Service: assembly.inboxAcceptOpenProtection,
+			GetCaller: func(ctx context.Context) (inboxacceptopenprotectionhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxacceptopenprotectionhttp.Caller{}, false
+				}
+				return inboxacceptopenprotectionhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:              logger,
+			WriteJSON:           writeJSON,
+			FallbackErrorWriter: inboxacceptopenprotectionhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	closeClaimHandler := inboxcloseclaimhttp.NewHandler(inboxcloseclaimhttp.Options{
 		Service: assembly.inboxCloseClaim,
 		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
@@ -1633,6 +1677,8 @@ func run() error {
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
+				inputreqprotectionhttp.Mount(protected, protectionRequestHandler, activePortalDeps)
+				inboxacceptopenprotectionhttp.Mount(protected, protectionAcceptHandler, activePortalDeps)
 				// Inbox Close Claim — klaim yang sudah tutup, beserta permintaan
 				// membukanya kembali dan menyalinnya.
 				//
@@ -2060,6 +2106,17 @@ type assembly struct {
 	// nilai PYSTATUSWORK yang sama dengan arah yang berlawanan. Satu-satunya modul inbox
 	// yang MENULIS, dan yang ditulisnya bukan klaim melainkan permintaan atas klaim.
 	inboxCloseClaim *inboxcloseclaimusecase.Service
+	// inputReqProtection melayani layar Input Req Protection — permintaan pembukaan
+	// proteksi beserta form inputnya.
+	inputReqProtection *inputreqprotectionusecase.Service
+
+	// inboxAcceptOpenProtection melayani layar Inbox Accept Open Protection — antrean
+	// akseptasi atas permintaan yang sama.
+	//
+	// Kedua modul menyentuh SATU tabel, tetapi menulis kolom yang berbeda: yang pertama
+	// kolom pembuatan, yang kedua kolom akseptasi. Pembagian itu yang menjaga P-1 tetap
+	// berlaku tanpa menggabungkan keduanya menjadi satu modul.
+	inboxAcceptOpenProtection *inboxacceptopenprotectionusecase.Service
 
 	readyAliases func() []string
 	close        func()
@@ -2188,8 +2245,17 @@ type storage struct {
 	// outstandingSelector memilih penyimpanan klaim milik satu portal.
 	outstandingSelector inboxoutstanding.RepoSelector
 
-	// outstandingLines membaca M_LOGIN_PNC.LINEBUSINESS, pengganti OperatorID.pyPosition.
-	outstandingLines inboxoutstanding.LineBusinessRepo
+	// protectionRequestSelector memilih penyimpanan permintaan proteksi milik satu portal.
+	//
+	// Ia fungsi, bukan repo tunggal, karena POOLDATA.T_CLAIM_OPENPROTECTION ada di basis
+	// data SETIAP entitas (ADR-0030).
+	protectionRequestSelector inputreqprotection.RepoSelector
+
+	// protectionAcceptSelector memilih penyimpanan antrean akseptasi milik satu portal.
+	//
+	// Ia menunjuk tabel yang SAMA dengan protectionRequestSelector; yang berbeda adalah
+	// kolom yang ditulisnya.
+	protectionAcceptSelector inboxacceptopenprotection.RepoSelector
 	// claimReportBranch menerjemahkan login petugas menjadi kode cabang klaimnya.
 	//
 	// Ia TIDAK diambil dari profil HCC/HCQ: kode cabang yang dipakai layar itu adalah
@@ -3011,10 +3077,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	outstandingService, err := inboxoutstandingusecase.NewService(
-		store.outstandingSelector,
-		store.outstandingLines,
-	)
+	outstandingService, err := inboxoutstandingusecase.NewService(store.outstandingSelector)
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3067,6 +3130,25 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		IDs:       komitememory.IDGenerator{},
 		Clock:     clock.System{},
 	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Jam dan zona keduanya diserahkan, bukan dibaca di dalam modul: aturan "proteksi ganda
+	// di hari yang sama" bergantung pada TANGGAL WIB, dan aturan yang membaca jam sendiri
+	// tidak dapat diuji tanpa menunggu pergantian hari.
+	protectionRequestService, err := inputreqprotectionusecase.NewService(
+		inputreqprotectionusecase.Options{Protections: store.protectionRequestSelector},
+	)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	protectionAcceptService, err := inboxacceptopenprotectionusecase.NewService(
+		inboxacceptopenprotectionusecase.Options{Protections: store.protectionAcceptSelector},
+	)
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3128,6 +3210,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
 		inboxLaporanKlaim:         claimReportService,
 		inboxOutstanding:          outstandingService,
+		inputReqProtection:        protectionRequestService,
+		inboxAcceptOpenProtection: protectionAcceptService,
 		inboxCloseClaim:           closeClaimService,
 	}, nil
 }
@@ -3711,13 +3795,28 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxoutstandingsql.NewRepo(conn), nil
 		}
 
-		// Lini bisnis dibaca dari portal UTAMA — lihat komentar field-nya.
-		//
-		// Kolom LINEBUSINESS belum ada sampai migrasi 0004 dijalankan DBA, sehingga
-		// pembacaannya gagal di setiap lingkungan hari ini. Kegagalan itu ditangani
-		// usecase sebagai "lini tidak diketahui" dan dicatat di log; layar tetap
-		// berjalan dengan seluruh lini terlihat, persis perilaku Pega.
-		store.outstandingLines = inboxoutstandingsql.NewLineBusinessRepo(primary)
+		// Repo proteksi dan repo master tipe dibentuk dari SATU koneksi yang sama, dan
+		// dikembalikan bersamaan. Memilih keduanya lewat dua pemanggilan terpisah membuka
+		// kemungkinan proteksi dibaca dari portal yang satu dan nama tipenya dari portal
+		// yang lain — kelas cacat yang tidak menghasilkan galat apa pun.
+		store.protectionRequestSelector = func(alias string) (inputreqprotection.Stores, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return inputreqprotection.Stores{}, err
+			}
+			return inputreqprotection.Stores{
+				Protections: inputreqprotectionsql.NewRepo(conn),
+				Types:       inputreqprotectionsql.NewTypeRepo(conn),
+				Claims:      inputreqprotectionsql.NewClaimRepo(conn),
+			}, nil
+		}
+		store.protectionAcceptSelector = func(alias string) (inboxacceptopenprotection.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxacceptopenprotectionsql.NewRepo(conn), nil
+		}
 
 		// Klaim TUTUP dibaca dari basis data entitasnya sendiri, dengan aturan yang sama
 		// seperti klaim berjalan di atasnya.
@@ -3975,8 +4074,28 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.outstandingSelector = func(string) (inboxoutstanding.Repo, error) {
 			return outstandingMemory, nil
 		}
-		store.outstandingLines = outstandingMemory
 
+		// Master tipe proteksi ikut dimuat berisi kesembilan tipe yang benar-benar ada di
+		// `POOLDATA.M_CLAIM_PROTECTION_TYPE`, sehingga pilihan tipe pada form menampilkan
+		// nama yang SAMA dengan produksi tanpa Oracle. Ia salinan, bukan cadangan — tidak
+		// ada jalur yang jatuh ke sini saat master di Oracle kosong.
+		protectionRequestMemory := inputreqprotectionmemory.NewRepoWithSamples()
+		protectionTypeMemory := inputreqprotectionmemory.NewTypeRepoWithSamples()
+		// Klaim contoh ikut dimuat supaya form tipe 7 dan 8 dapat dicoba utuh tanpa
+		// Oracle — termasuk field turunan yang tidak dapat diketik.
+		protectionClaimMemory := inputreqprotectionmemory.NewClaimRepoWithSamples()
+		store.protectionRequestSelector = func(string) (inputreqprotection.Stores, error) {
+			return inputreqprotection.Stores{
+				Protections: protectionRequestMemory,
+				Types:       protectionTypeMemory,
+				Claims:      protectionClaimMemory,
+			}, nil
+		}
+
+		protectionAcceptMemory := inboxacceptopenprotectionmemory.NewRepoWithSamples()
+		store.protectionAcceptSelector = func(string) (inboxacceptopenprotection.Repo, error) {
+			return protectionAcceptMemory, nil
+		}
 		// Inbox Close Claim memakai SATU penyimpanan untuk klaim dan permintaannya.
 		//
 		// Berbeda dari perakitan SQL di atas, yang memisahkan keduanya karena tabelnya
