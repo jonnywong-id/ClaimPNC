@@ -326,21 +326,60 @@ describe('daftar master sparepart', () => {
   })
 })
 
-describe('tombol unggah', () => {
+describe('grid saat tidak ada baris', () => {
   /*
-    Kedua tombolnya digambar DALAM KEADAAN MATI, bukan dihapus.
-
-    Keduanya ada di layar Pega, dan Work Owner meminta layarnya "seperti aplikasi PEGA"
-    (2026-09-20). Rule yang menjalankannya tidak ada di export (R-16), sehingga membuatnya
-    berfungsi berarti mengarang bentuk berkas dan aturannya.
+    Grid Pega menggambar kepala kolomnya beserta pyGridNoResultsMessage di bawahnya saat
+    hasilnya nol. Layar ini mengikutinya: kolom tetap terlihat, keterangannya di dalam grid.
   */
-  it('menggambar kedua tombol unggah Pega dalam keadaan mati', async () => {
+  it('tetap menggambar kelima kolom saat daftarnya kosong', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/sparepart/pilihan')) return { body: OPTIONS }
+      return { body: { sparepart: [], status: '1', portal: 'ASM' } }
+    })
+    show()
+
+    const table = await screen.findByRole('table')
+    for (const header of [
+      'ID Sparepart',
+      'Nama Sparepart',
+      'Harga Jual',
+      'User Update',
+      'Tanggal Update',
+    ]) {
+      expect(within(table).getByRole('columnheader', { name: header })).toBeInTheDocument()
+    }
+    expect(screen.getByText('Data tidak ada')).toBeInTheDocument()
+  })
+
+  /*
+    Gagal dan kosong memakai kalimat yang SAMA — keputusan Work Owner (2026-09-24).
+
+    Layar karena itu tidak dapat dipakai membedakan "tabelnya memang kosong" dari "tabelnya
+    gagal dibaca"; yang membedakannya adalah log backend dan `claimpnc -periksa`. Uji ini
+    mengunci keputusan itu supaya perubahannya kelak disengaja, bukan tergelincir.
+  */
+  it('memakai kalimat yang sama saat pemuatan gagal', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/sparepart/pilihan')) return { body: OPTIONS }
+      return { body: { kode: 'kesalahan_sistem', pesan: 'gagal' }, status: 500 }
+    })
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'ID Sparepart' })).toBeInTheDocument()
+    expect(screen.getByText('Data tidak ada')).toBeInTheDocument()
+  })
+
+  // Kedua tombol unggah layar Pega ditarik atas permintaan Work Owner (2026-09-24).
+  it('tidak menggambar tombol unggah', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByText('FILTER OLI MESIN')
-    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Upload Data Master Sparepart' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Upload Document' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Upload Data Master Sparepart' }),
+    ).not.toBeInTheDocument()
   })
 })
 

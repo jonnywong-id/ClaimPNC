@@ -14,10 +14,16 @@ import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
 import { GroupingPage } from '@/modules/master-grouping-sparepart/GroupingPage'
 import { PartCategoryPage } from '@/modules/master-kategori-sparepart/PartCategoryPage'
 import { PartTypePage } from '@/modules/master-tipe-sparepart/PartTypePage'
+import { ClauseAIPage } from '@/modules/master-pasal-ai/ClauseAIPage'
 import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
 import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
+import { SurveyorLoginPage } from '@/modules/master-login/SurveyorLoginPage'
+import { DetailPage as CauseOfLossDetailPage } from '@/modules/detail-penyebab-kerugian/DetailPage'
+import { ReasMemberPage } from '@/modules/master-reas/ReasMemberPage'
 import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { InvestigatorInboxPage } from '@/modules/inbox-investigator/InvestigatorInboxPage'
+import { ReceiveTKAInboxPage } from '@/modules/inbox-receive-tka/ReceiveTKAInboxPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { APIError } from '@/api/client'
@@ -266,6 +272,30 @@ export function AppRoute() {
         }
       />
       {/*
+        Master Pasal AI (MENU_ID 36). Kembaran layar di atas — section-nya Save-As darinya —
+        tetapi sudah dipangkas menjadi layar PENCARIAN BACA-SAJA: hanya Cari dan Refresh,
+        tanpa satu pun jalur tulis.
+
+        Satu-satunya layar master yang paginasinya dikerjakan SERVER (25 baris). Itu bukan
+        pilihan kami: grid Pega-nya ber-`pyPageMode = None`, dan jendelanya sudah dihitung
+        activity lewat `FirstRow`/`LastRow` sejak dulu.
+
+        Tabelnya `POOLDATA.MST_PASAL_AI`, dengan kolom `WP_PASAL`, `WP_AYAT`, dan
+        `WP_KEJADIAN`. Ketiga nama itu baru terbaca setelah activity dan kedua Connect-SQL-nya
+        diterima: properti yang mengikatnya di layar Pega bernama warisan — `.City`,
+        `.CityID`, dan `.District` — sisa Save-As dari layar surveyor tahun 2017.
+      */}
+      <Route
+        path="/master/pasal-ai"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClauseAIPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Master Supplier (MENU_ID 29). TANPA tab — layar lamanya memang satu grid dengan
         tiga tombol, tanpa penyaring status apa pun.
 
@@ -285,6 +315,63 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SupplierPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Login (MENU_ID 37). Satu butir menu, satu layar, TANPA tab — layar lamanya
+        memang satu grid dengan dua tombol dan tidak punya penyaring status apa pun.
+
+        Layar master paling sederhana di aplikasi ini, dan itu bukan kebetulan:
+        POOLDATA.MST_LOGIN_SURVEYOR hanya punya tujuh kolom, dan tidak satu pun berupa
+        APPROVAL, pencatat pelaku, stempel waktu, maupun penanda aktif. Akibatnya tidak ada
+        alur persetujuan, tidak ada jejak siapa mengubah apa, dan tidak ada cara menyatakan
+        sebuah login sudah tidak berlaku.
+
+        Kuncinya DITURUNKAN dari Nama, bukan diterbitkan sequence — satu-satunya master di
+        aplikasi ini yang begitu.
+      */}
+      {/*
+        Master Reas (MENU_ID 35). Satu butir menu, satu layar, TANPA tab dan TANPA tombol
+        simpan — harness lamanya memang satu grid dengan satu tombol Refresh, dan
+        POOLDATA.T_REINSURER tidak punya kolom persetujuan.
+
+        Satu-satunya layar master yang BACA-SAJA, dan itu keputusan berdasar bukti:
+        satu-satunya penulis tabel itu di sistem lama adalah alur PLA/DLA lewat
+        `Database/UPDATEREAS.prc` — dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2`,
+        bukan layar master ini.
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
+        `m_otorisasi_pnc.csv` membatasi MENU_ID 35 pada grup `IT` saja — adalah
+        `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/master/reas"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReasMemberPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/detail-penyebab-kerugian"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CauseOfLossDetailPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/login"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SurveyorLoginPage />
             </Protected>
           </SessionGuard>
         }
@@ -313,6 +400,50 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Investigator (MENU_ID 48) — layar INBOX pertama, menggantikan harness
+        `InboxInvestigator_Harness`.
+
+        Isinya antrean bersama workbasket `InvestigatorPNC`. Ia inbox, bukan layar daftar:
+        barisnya PEKERJAAN, hilang setelah dikerjakan, dan punya tenggat (`D-79`).
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu — di
+        sistem lama `When/IsInvestigator-When.xml` membatasinya pada access group
+        `PncInvestigator` dan `Administrators` — adalah `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox/investigator"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InvestigatorInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Receive TKA (MENU_ID 49) — layar INBOX kedua, menggantikan harness
+        `InboxTKA_Harness`.
+
+        Isinya klaim TKA yang tanggal penerimaan dokumen aslinya belum diisi. Berbeda dari
+        Inbox Investigator yang baca-saja, layar ini MENULIS: pengguna mengisi tanggal
+        langsung di dalam tabel lalu menekan Submit, dan barisnya hilang dari daftar — ciri
+        kedua Inbox pada `D-79` yang di sini benar-benar terjadi lewat layar ini sendiri.
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu adalah
+        `TKT-F3-005` yang belum ada, dan untuk layar ini sistem lama tidak memberi petunjuk
+        apa pun: tidak ada When rule yang menjaga MENU_ID 49.
+      */}
+      <Route
+        path="/inbox/receive-tka"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReceiveTKAInboxPage />
             </Protected>
           </SessionGuard>
         }

@@ -14,33 +14,40 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/inboxinvestigator"
+	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/mastergroupingsparepart"
 	"claim-pnc/internal/masterkategorisparepart"
-	"claim-pnc/internal/mastertipesparepart"
 	"claim-pnc/internal/masterpanel"
 	"claim-pnc/internal/masterpasal"
 	"claim-pnc/internal/masterpenolakan"
 	"claim-pnc/internal/mastersparepart"
 	"claim-pnc/internal/masterstatus"
+	"claim-pnc/internal/mastertipesparepart"
 	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
 	"claim-pnc/internal/riwayatklaim"
 
+	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
+	inboxinvestigatorsql "claim-pnc/internal/inboxinvestigator/repo/sqlstore"
+	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastergroupingsparepartsql "claim-pnc/internal/mastergroupingsparepart/repo/sqlstore"
 	masterkategorisparepartsql "claim-pnc/internal/masterkategorisparepart/repo/sqlstore"
-	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
+	masterloginsql "claim-pnc/internal/masterlogin/repo/sqlstore"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpenolakansql "claim-pnc/internal/masterpenolakan/repo/sqlstore"
+	masterreassql "claim-pnc/internal/masterreas/repo/sqlstore"
 	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
 	masterstatussql "claim-pnc/internal/masterstatus/repo/sqlstore"
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
+	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
@@ -104,8 +111,13 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkPartType(ctx, primary, print)
 	checkPasal(ctx, primary, print)
 	checkSupplier(ctx, primary, print)
+	checkSurveyorLogin(ctx, primary, print)
+	checkReinsurerMember(ctx, primary, print)
+	checkCauseOfLossDetail(ctx, primary, print)
 	checkClaimReport(ctx, pelaporanklaimsql.NewRepo(primary), print)
 	checkClaimHistoryGate(ctx, riwayatklaimsql.NewProtectionRepo(primary), print)
+	checkInvestigatorInbox(ctx, primary, print)
+	checkReceiveTKAInbox(ctx, primary, print)
 
 	print("")
 	if login == "" {
@@ -1153,11 +1165,37 @@ func checkSparepart(ctx context.Context, primary *sql.DB, print func(string, ...
 
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] POOLDATA.SPAREPART_HE belum dapat dibaca: %v", err)
-		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
-		print("            Mintakan hak bacanya ke DBA.")
+		print("            Objeknya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
 		print("            Catatan: kueri pemeriksaan ini menyebut PROD_DATE dan")
 		print("            TGL_UPDATE_HARGA; bila yang gagal justru salah satunya, tipe")
 		print("            kolomnya berbeda dari asumsi mastersparepart.sql.")
+		if strings.Contains(err.Error(), "ORA-04063") {
+			// ORA-04063 BUKAN soal hak akses. Ia berarti objeknya ADA tetapi
+			// definisinya sendiri tidak dapat dikompilasi — pada sebuah view, biasanya
+			// karena objek yang dirujuknya berubah atau hilang.
+			//
+			// Dibedakan dengan sengaja: "mintakan hak bacanya ke DBA" akan menyesatkan
+			// di sini, dan menghabiskan satu putaran percakapan dengan DBA untuk hal
+			// yang bukan penyebabnya.
+			print("            ORA-04063 berarti objeknya ADA tetapi definisinya RUSAK —")
+			print("            bukan soal hak akses. Bila ia view, kemungkinan besar objek")
+			print("            yang dirujuknya berubah atau hilang. Yang menjawabnya:")
+			print("              SELECT object_type, status FROM all_objects")
+			print("               WHERE owner='POOLDATA' AND object_name='SPAREPART_HE';")
+			print("              SELECT line, position, text FROM all_errors")
+			print("               WHERE owner='POOLDATA' AND name='SPAREPART_HE' ORDER BY sequence;")
+			print("            Pega membaca objek yang SAMA, sehingga layar Master Sparepart")
+			print("            di Pega semestinya ikut gagal — patut dipastikan ke tim Pega.")
+		} else {
+			print("            Mintakan hak bacanya ke DBA.")
+		}
+
+		// Pemeriksaan TIDAK berhenti di sini, berbeda dari master lain.
+		//
+		// Bila SPAREPART_HE memang view di atas M_SPAREPART_HE_BU, pertanyaan DBA
+		// berikutnya pasti "apakah datanya masih ada" — dan menjawabnya menuntut satu
+		// pemeriksaan lagi yang justru TIDAK menyentuh objek yang rusak.
+		checkSparepartStore(ctx, repo, print)
 		return
 	}
 
@@ -1188,6 +1226,59 @@ func checkSparepart(ctx context.Context, primary *sql.DB, print func(string, ...
 	checkSparepartNumbering(ctx, repo, print)
 	checkSparepartMirror(ctx, repo, print)
 	checkSparepartLookup(ctx, repo, print)
+}
+
+// checkSparepartStore melaporkan POOLDATA.M_SPAREPART_HE_BU sendirian.
+//
+// Ia dipanggil pada jalur GAGAL checkSparepart, bukan pada jalur normal, dan itu
+// disengaja: kalau SPAREPART_HE tidak dapat dibaca, pertanyaan yang tersisa bukan lagi
+// "berapa barisnya" melainkan **"apakah datanya masih ada"**.
+//
+// Keduanya adalah dua objek yang berbeda. Bila SPAREPART_HE memang view di atas
+// JSONDATA milik M_SPAREPART_HE_BU — dugaan yang dicatat di banner mastersparepart.sql —
+// maka view yang rusak TIDAK berarti datanya hilang, dan membedakan keduanya menentukan
+// apakah yang diminta ke DBA adalah "perbaiki definisinya" atau "pulihkan datanya".
+func checkSparepartStore(
+	ctx context.Context,
+	repo *mastersparepartsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckJSONMirror(ctx); err != nil {
+		print("  [catat] POOLDATA.M_SPAREPART_HE_BU juga tidak dapat dibaca: %v", err)
+
+		if strings.Contains(err.Error(), "ORA-00942") {
+			// ORA-00942 tidak membedakan "objeknya tidak ada" dari "objeknya ada tetapi
+			// akun ini tidak diberi hak bacanya". Keduanya menuntut tindakan yang
+			// berbeda, dan menebak salah satunya akan membuang satu putaran dengan DBA.
+			print("            ORA-00942 berarti objeknya tidak ADA **atau** ada tetapi")
+			print("            akun aplikasi tidak diberi hak bacanya — keduanya tidak")
+			print("            dapat dibedakan dari sini.")
+			print("            Patut diduga KEDUANYA SATU SEBAB: bila SPAREPART_HE adalah")
+			print("            view di atas objek ini, objek yang hilang membuat view-nya")
+			print("            ikut tidak dapat dikompilasi (ORA-04063 di atas).")
+			print("            Yang menjawabnya:")
+			print("              SELECT owner, object_type, status FROM all_objects")
+			print("               WHERE object_name='M_SPAREPART_HE_BU';")
+			print("              SELECT referenced_owner, referenced_name, referenced_type")
+			print("                FROM all_dependencies")
+			print("               WHERE owner='POOLDATA' AND name='SPAREPART_HE';")
+			return
+		}
+
+		print("            Mintakan ke DBA keadaan kedua objek itu, bukan hanya salah satunya.")
+		return
+	}
+
+	total, err := repo.CountJSONMirror(ctx)
+	if err != nil {
+		print("  [catat] POOLDATA.M_SPAREPART_HE_BU terbaca, tetapi barisnya tidak dapat dihitung: %v", err)
+		return
+	}
+
+	print("  [ok]    POOLDATA.M_SPAREPART_HE_BU tetap terbaca: %d baris", total)
+	print("            Datanya ADA. Yang rusak hanyalah objek yang membacanya, sehingga")
+	print("            yang diminta ke DBA adalah memperbaiki definisinya — bukan")
+	print("            memulihkan data.")
 }
 
 // checkSparepartNumbering melaporkan kesiapan penomoran ID.
@@ -1930,4 +2021,605 @@ func checkGroupingPanelNameColumn(
 		print("            sebagian baris. Mintakan DDL dan contoh isi kedua kolom ke DBA")
 		print("            (R-08) sebelum layar Master Grouping Sparepart dipakai.")
 	}
+}
+
+// checkSurveyorLogin melaporkan kesiapan POOLDATA.MST_LOGIN_SURVEYOR.
+//
+// Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat dibaca"
+// di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi belum diberi
+// hak bacanya — keduanya urusan DBA.
+//
+// # Empat keadaan dilaporkan, dan ketiganya khas modul ini
+//
+//  1. Jumlah baris. TANPA rincian per status: tabelnya tidak punya kolom APPROVAL, dan
+//     layar lamanya tidak bertab — berbeda dari seluruh master di rumpun sparepart.
+//  2. **LOGIN yang dipakai lebih dari satu baris, dan LOGIN yang kosong.** Keduanya
+//     berakibat LANGSUNG, bukan sekadar merepotkan: setiap pernyataan simpan menyaring
+//     `where login = ...`, sehingga satu penyimpanan mengubah SELURUH baris berlogin sama
+//     sekaligus. Tidak ada constraint unik yang menjaganya (R-08), dan sistem lama pun
+//     tidak punya — pemeriksaan gandanya bahkan menembak tabel operator Pega, bukan tabel
+//     ini.
+//  3. **LOGINLEADER yang menunjuk login yang tidak ada.** Ia belum berakibat apa pun hari
+//     ini; ia baru berarti bila cakupan daftar kelak diputuskan disaring per tim. Lihat
+//     masterlogin.Filter.
+//  4. **EMAIL atau TELP yang kosong.** Keduanya WAJIB di layar Pega tetapi tidak pernah
+//     ditegakkan di server sana, sehingga baris tanpa surel benar-benar mungkin ada. Modul
+//     ini MENOLAKNYA saat disimpan ulang — dan jumlahnya perlu diketahui sebelum petugas
+//     menemukan bahwa baris yang selama ini tersimpan tidak lagi dapat disimpan.
+func checkSurveyorLogin(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := masterloginsql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.MST_LOGIN_SURVEYOR belum dapat dibaca: %v", err)
+		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak baca dan tulisnya ke DBA.")
+		print("            Ketujuh kolom yang dipakai: NAMA, LOGIN, EMAIL, TELP, ALAMAT,")
+		print("            STSLOGIN, LOGINLEADER.")
+		return
+	}
+
+	total, err := repo.CountAll(ctx)
+	if err != nil {
+		print("  [GAGAL] MST_LOGIN_SURVEYOR tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.MST_LOGIN_SURVEYOR dapat dibaca: %d baris", total)
+	print("            (tanpa rincian status — tabelnya tidak punya kolom APPROVAL)")
+
+	checkSurveyorLoginKey(ctx, repo, print)
+	checkSurveyorLoginIntegrity(ctx, repo, print)
+}
+
+// checkSurveyorLoginKey melaporkan keadaan KUNCI tabel — dan inilah pemeriksaan terpenting
+// di modul ini.
+//
+// LOGIN adalah satu-satunya kunci, tidak dijaga constraint apa pun (R-08), dan dipakai
+// sebagai penyaring pada SETIAP pernyataan simpan. Dua keadaan merusaknya, dan keduanya
+// merusak dalam diam:
+//
+//	kembar  satu penyimpanan mengubah lebih dari satu orang sekaligus
+//	kosong  barisnya tidak dapat dibuka maupun disunting dari layar mana pun
+//
+// Keduanya BUKAN kegagalan aplikasi: layar tetap berjalan. Yang dilaporkan adalah keadaan,
+// supaya ia diketahui sebelum perubahan mengenai orang yang salah.
+func checkSurveyorLoginKey(
+	ctx context.Context,
+	repo *masterloginsql.Repo,
+	print func(string, ...any),
+) {
+	duplicate, errOne := repo.CountDuplicateKey(ctx)
+	empty, errTwo := repo.CountEmptyKey(ctx)
+	if errOne != nil || errTwo != nil {
+		print("  [catat] keadaan kunci LOGIN tidak dapat diperiksa")
+		return
+	}
+
+	if duplicate == 0 && empty == 0 {
+		print("  [ok]    seluruh LOGIN terisi dan tidak ada yang kembar")
+		return
+	}
+
+	if duplicate > 0 {
+		print("  [PENTING] %d LOGIN dipakai lebih dari satu baris.", duplicate)
+		print("            Setiap penyimpanan menyaring `where login = ...`, sehingga satu")
+		print("            perubahan mengenai SELURUH baris berlogin sama sekaligus — dan")
+		print("            layar hanya menampilkan salah satunya tanpa menyebut ada yang")
+		print("            lain. Mintakan pembersihannya ke DBA sebelum jalur tulis dipakai.")
+	}
+	if empty > 0 {
+		print("  [PENTING] %d baris LOGIN-nya kosong.", empty)
+		print("            Baris seperti itu tidak dapat dibuka maupun disunting dari layar:")
+		print("            kuncinya kosong. Ia terbaca di daftar, dan tombol Ubah-nya tidak")
+		print("            akan menemukan barisnya.")
+	}
+}
+
+// checkSurveyorLoginIntegrity melaporkan dua keadaan data yang tidak dijaga apa pun.
+//
+// Keduanya BUKAN kegagalan — aplikasi tetap berjalan dengan keduanya. Yang dilaporkan
+// adalah keadaan, supaya ia diketahui sebelum petugas menanyakannya.
+func checkSurveyorLoginIntegrity(
+	ctx context.Context,
+	repo *masterloginsql.Repo,
+	print func(string, ...any),
+) {
+	orphan, errOne := repo.CountOrphanLeader(ctx)
+	missing, errTwo := repo.CountMissingContact(ctx)
+	if errOne != nil || errTwo != nil {
+		print("  [catat] keutuhan LOGINLEADER dan kelengkapan kontak tidak dapat diperiksa")
+		return
+	}
+
+	if orphan > 0 {
+		print("  [catat] %d baris LOGINLEADER-nya menunjuk login yang tidak ada.", orphan)
+		print("            Belum berakibat apa pun hari ini: daftarnya memuat seluruh baris.")
+		print("            Ia baru berarti bila cakupan daftar kelak disaring per tim —")
+		print("            pertanyaan terbuka pada masterlogin.Filter.")
+	}
+
+	if missing > 0 {
+		print("  [catat] %d baris EMAIL atau TELP-nya kosong.", missing)
+		print("            Keduanya WAJIB di layar Pega, tetapi kewajiban itu tidak pernah")
+		print("            ditegakkan di server sana. Modul ini MENOLAKNYA saat barisnya")
+		print("            disimpan ulang, sehingga petugas yang membuka baris seperti itu")
+		print("            harus melengkapinya lebih dulu. Baris yang tidak disentuh tetap")
+		print("            terbaca apa adanya.")
+	} else {
+		print("  [ok]    seluruh baris punya EMAIL dan TELP")
+	}
+}
+
+// checkInvestigatorInbox melaporkan kesiapan antrean Inbox Investigator.
+//
+// # Kenapa pemeriksaan ini berbeda dari pemeriksaan modul master
+//
+// Ia menyentuh EMPAT tabel di DUA skema sekaligus — DATAPEGA untuk header pekerjaan dan
+// penugasannya, POOLDATA untuk objek pertanggungan dan hasil survei. Hak baca yang kurang
+// pada salah satu skema saja tidak menghasilkan galat yang terbaca petugas: layarnya gagal
+// memuat, dan sebabnya hanya terlihat di log server.
+//
+// Keempatnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat
+// dibaca" berarti tabelnya tidak ada di entitas itu, atau akun aplikasi belum diberi hak
+// bacanya — keduanya urusan DBA.
+//
+// # Hak BACA saja yang dibutuhkan
+//
+// Modul ini tidak menulis satu baris pun; mengambil pekerjaan dari antrean dan mencatat
+// hasil investigasi terjadi di layar kerja yang belum dibangun. Selama itu benar, `P-1`
+// terpenuhi tanpa negosiasi kepemilikan: Pega tetap satu-satunya penulis tabelnya sendiri.
+//
+// # Dua angka dilaporkan, dan yang kedua menjawab pertanyaan yang layar tidak dapat jawab
+//
+//  1. **Berapa pekerjaan yang menunggu.** Layar memotong pada 500 baris; angka ini tidak.
+//     Ia satu-satunya cara mengetahui seberapa jauh antreannya melampaui batas itu.
+//  2. **Berapa yang tidak punya baris survei.** Tanggal survei mengisi kolom KESEMBILAN
+//     grid — yang captionnya di layar lama berbunyi "Lama Masuk Inbox" meski isinya tanggal.
+//     Pekerjaan tanpa baris survei karena itu tampil dengan sel kosong di kolom itu. Bila
+//     angkanya besar, kolom itu kosong bagi sebagian besar antrean — keadaan yang hanya
+//     dapat diketahui dari data produksi, bukan dari export.
+func checkInvestigatorInbox(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := inboxinvestigatorsql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] antrean Inbox Investigator belum dapat dibaca: %v", err)
+		print("            Empat tabel warisan Pega, di DUA skema:")
+		print("              DATAPEGA.PC_ASM_FW_GCNMFW_WORK   header pekerjaan")
+		print("              DATAPEGA.PC_ASSIGN_WORKBASKET    antrean bersama")
+		print("              POOLDATA.T_CLAIM_OBJECTLIST      nama peserta")
+		print("              POOLDATA.T_SURVEYORLIST          tanggal survei")
+		print("            Mintakan hak BACA keempatnya ke DBA — modul ini tidak menulis.")
+		return
+	}
+
+	waiting, err := repo.CountWaiting(ctx)
+	if err != nil {
+		print("  [GAGAL] antrean Inbox Investigator tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    antrean Inbox Investigator dapat dibaca: %d pekerjaan menunggu",
+		waiting)
+	print("            (workbasket %q, tanpa yang berstatus Resolved-Completed)",
+		inboxinvestigator.Workbasket)
+
+	if waiting > inboxinvestigator.MaxRows {
+		print("  [catat] antrean MELAMPAUI batas %d baris yang dikirim ke layar",
+			inboxinvestigator.MaxRows)
+		print("            Layar menyatakan dirinya terpotong, tidak memotong diam-diam")
+		print("            seperti pyMaxRecords=500 pada sistem lama. Tetapi %d pekerjaan",
+			waiting-inboxinvestigator.MaxRows)
+		print("            tetap tidak terlihat tanpa memakai penyaring pencarian.")
+	}
+
+	checkInvestigatorInboxSurvey(ctx, repo, waiting, print)
+}
+
+// checkInvestigatorInboxSurvey melaporkan pekerjaan yang tidak punya baris survei.
+//
+// Lihat butir 2 pada checkInvestigatorInbox untuk alasan angka ini layak dilaporkan.
+func checkInvestigatorInboxSurvey(
+	ctx context.Context,
+	repo *inboxinvestigatorsql.Repo,
+	waiting int,
+	print func(string, ...any),
+) {
+	if waiting == 0 {
+		return
+	}
+
+	without, err := repo.CountWithoutSurvey(ctx)
+	if err != nil {
+		print("  [catat] pekerjaan tanpa baris survei tidak dapat diperiksa")
+		return
+	}
+
+	if without == 0 {
+		print("  [ok]    seluruh pekerjaan punya tanggal survei")
+		return
+	}
+
+	print("  [catat] %d dari %d pekerjaan TIDAK punya tanggal survei", without, waiting)
+	print("            Kolom kesembilan pada baris itu tampil KOSONG. Captionnya di layar")
+	print("            lama berbunyi \"Lama Masuk Inbox\" meski isinya tanggal survei —")
+	print("            ketidakcocokan itu dibawa apa adanya dari Pega (P-5).")
+}
+
+// checkReceiveTKAInbox melaporkan kesiapan sumber daftar Inbox Receive TKA.
+//
+// # Sumbernya sama dengan Report Definition Pega
+//
+// `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, disaring `TKA_1 = '1'` — kolom yang sama yang dipakai
+// layar lama. Angka "pekerjaan menunggu" di bawah karena itu dapat dibandingkan LANGSUNG
+// dengan jumlah baris pada layar Pega; selisihnya berarti ada yang perlu ditelusuri.
+//
+// # Modul ini MENULIS, dan hanya satu kolom
+//
+// `POOLDATA.T_CLAIM_PNC.TGLDOKLENGKAP`. Tabel engine Pega tidak pernah disentuh, karena
+// nilai yang ditulis ke sana akan tertimpa dari BLOB kasus tanpa satu pun tanda.
+func checkReceiveTKAInbox(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := inboxreceivetkasql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] daftar Inbox Receive TKA belum dapat dibaca: %v", err)
+		print("            Tiga tabel, di DUA skema:")
+		print("              DATAPEGA.PC_ASM_FW_GCNMFW_WORK   antrean klaim TKA")
+		print("              POOLDATA.T_CLAIM_PNC             klaim sebenarnya")
+		print("              POOLDATA.T_GENERAL               nama peserta, dari polis")
+		print("            Mintakan hak BACA ketiganya ke DBA.")
+		return
+	}
+
+	if err := repo.CheckClaimColumn(ctx); err != nil {
+		print("  [BELUM] kolom POOLDATA.T_CLAIM_PNC.TGLDOKLENGKAP tidak dapat dibaca: %v", err)
+	}
+	print("  [catat] Submit modul ini MENULIS satu kolom:")
+	print("              POOLDATA.T_CLAIM_PNC.TGLDOKLENGKAP")
+	print("            Tabel engine Pega sengaja TIDAK ditulis — nilainya akan tertimpa dari")
+	print("            BLOB kasus. Kolom itu hari ini dimiliki Pega (P-1); serah-terima")
+	print("            kepemilikan tulisnya menempuh D-63. Hak UPDATE tidak diperiksa di sini.")
+
+	waiting, err := repo.CountWaiting(ctx)
+	if err != nil {
+		print("  [GAGAL] daftar Inbox Receive TKA tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    daftar Inbox Receive TKA dapat dibaca: %d pekerjaan menunggu", waiting)
+	print("            (TKA_1='1', tanggal dokumen belum diisi, belum Resolved-Completed)")
+	print("            Angka ini SEHARUSNYA sama dengan jumlah baris pada layar TKA di Pega.")
+
+	if waiting > inboxreceivetka.MaxRows {
+		print("  [catat] daftar MELAMPAUI batas %d baris yang dikirim ke layar",
+			inboxreceivetka.MaxRows)
+		print("            Layar menyatakan dirinya terpotong, tidak memotong diam-diam")
+		print("            seperti pyMaxRecords=500 pada sistem lama. Tetapi %d pekerjaan",
+			waiting-inboxreceivetka.MaxRows)
+		print("            tetap tidak terlihat tanpa memakai penyaring pencarian.")
+	}
+
+	checkReceiveTKADivergence(ctx, repo, waiting, print)
+	checkReceiveTKARegisterDate(ctx, repo, print)
+}
+
+// checkReceiveTKADivergence melaporkan ketiga selisih yang dapat terjadi antara layar ini
+// dan layar Pega.
+func checkReceiveTKADivergence(
+	ctx context.Context,
+	repo *inboxreceivetkasql.Repo,
+	waiting int,
+	print func(string, ...any),
+) {
+	if pegaOnly, err := repo.CountPegaOnly(ctx); err == nil && pegaOnly > 0 {
+		print("  [catat] %d pekerjaan sudah diisi lewat aplikasi ini tetapi MASIH tampil di Pega",
+			pegaOnly)
+		print("            Itu harga dari tidak menulis ke tabel engine Pega, dan memang")
+		print("            disengaja. Bila menumpuk, petugas Pega akan mengisi ulang tanggal")
+		print("            yang sebenarnya sudah diisi — angkanya perlu dipantau.")
+	}
+
+	if orphan, err := repo.CountOrphanClaim(ctx); err == nil && orphan > 0 {
+		print("  [catat] %d pekerjaan klaimnya TIDAK ADA di POOLDATA.T_CLAIM_PNC", orphan)
+		print("            Baris itu TETAP TAMPIL — gabungannya sengaja LEFT, sama seperti")
+		print("            Pega — tetapi Submit atasnya ditolak, dan layar mematikan isiannya")
+		print("            lebih dulu. Yang perlu ditinjau kelengkapan T_CLAIM_PNC.")
+	}
+
+	if waiting == 0 {
+		return
+	}
+
+	if missing, err := repo.CountMissingParticipant(ctx); err == nil && missing > 0 {
+		print("  [catat] %d dari %d pekerjaan nama pesertanya tidak ditemukan di tabel polis",
+			missing, waiting)
+		print("            `.Policy.TheInsured` tidak di-expose sebagai kolom pada tabel kerja")
+		print("            Pega, sehingga nilainya diambil dari POOLDATA.T_GENERAL lewat")
+		print("            NOPOLIS + PRODKE. Bila angkanya besar, penggantinya keliru.")
+	}
+}
+
+// checkReceiveTKARegisterDate memastikan format kolom tanggal registrasi seragam.
+//
+// Kolomnya `VARCHAR2(32)`, bukan tanggal, dan isinya terverifikasi berformat `yyyymmdd`
+// pada DUA baris saja. Kueri ini memperlihatkan apakah bentuk itu berlaku pada seluruh
+// daftar — bentuk yang menyimpang diurai menjadi kosong, dan kolom Aging pada baris itu
+// tampil sebagai tanda hubung.
+func checkReceiveTKARegisterDate(
+	ctx context.Context,
+	repo *inboxreceivetkasql.Repo,
+	print func(string, ...any),
+) {
+	sample, err := repo.SampleRegisteredOn(ctx)
+	if err != nil || len(sample) == 0 {
+		return
+	}
+
+	var odd []string
+	for _, one := range sample {
+		if len(one) < 8 {
+			odd = append(odd, one)
+			continue
+		}
+		if _, parseErr := time.Parse("20060102", one[:8]); parseErr != nil {
+			odd = append(odd, one)
+		}
+	}
+
+	if len(odd) == 0 {
+		print("  [ok]    kolom REGISTERDATE_1 berformat yyyymmdd pada seluruh %d contoh",
+			len(sample))
+		return
+	}
+
+	print("  [catat] kolom REGISTERDATE_1: %d dari %d contoh bentuknya TIDAK dikenali",
+		len(odd), len(sample))
+	print("            Contohnya: %s", strings.Join(odd, " | "))
+	print("            Baris seperti itu tampil dengan kolom Aging bertanda hubung, bukan")
+	print("            dengan lama menunggu yang salah.")
+}
+
+// checkReinsurerMember melaporkan kesiapan POOLDATA.T_REINSURER.
+//
+// Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini, sehingga "belum dapat dibaca"
+// di sini berarti tabelnya memang tidak ada di entitas itu, atau akun aplikasi belum diberi
+// hak bacanya — keduanya urusan DBA.
+//
+// # Hak BACA saja yang dibutuhkan, dan itu perlu disebut ke DBA
+//
+// Modul Master Reas tidak menulis satu baris pun; lihat banner paket masterreas. Meminta hak
+// tulis untuk tabel ini berarti meminta kewenangan yang tidak dipakai — dan pada tabel yang
+// menentukan ke mana pemberitahuan klaim dikirim, kewenangan yang menganggur adalah risiko
+// yang tidak berimbalan.
+//
+// # Empat keadaan dilaporkan, dan dua di antaranya khas tabel ini
+//
+//  1. Jumlah baris. TANPA rincian per status: tabelnya tidak punya kolom persetujuan, dan
+//     layar lamanya tidak bertab.
+//  2. **Kunci alami yang kembar** — REINSURERID + REINSURERNAME + TYPE. Ia kunci yang
+//     dipakai `UPDATEREAS` untuk memutuskan menyisipkan atau memperbarui, dan tidak dijaga
+//     constraint apa pun yang diketahui (`R-08`).
+//  3. **LOGIN yang dipakai lebih dari satu kode reas, dan LOGIN yang kosong.** Inilah
+//     pemeriksaan bertaruh paling tinggi di modul ini; lihat checkReinsurerMemberLogin.
+//  4. **EMAIL kosong, dan perusahaan tanpa baris cadangan.** Keduanya berakibat sama:
+//     pemberitahuan PLA/DLA yang tidak pernah sampai, tanpa satu pun galat.
+func checkReinsurerMember(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := masterreassql.NewRepo(primary)
+
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] POOLDATA.T_REINSURER belum dapat dibaca: %v", err)
+		print("            Tabelnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak BACA-nya ke DBA — modul Master Reas tidak menulis.")
+		print("            Keenam kolom yang dipakai: REINSURERID, REINSURERNAME, LOGIN,")
+		print("            EMAIL, COUNTRY, TYPE. COUNTRYID sengaja tidak dibaca.")
+		return
+	}
+
+	total, err := repo.CountAll(ctx)
+	if err != nil {
+		print("  [GAGAL] T_REINSURER tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.T_REINSURER dapat dibaca: %d baris", total)
+	print("            (tanpa rincian status — tabelnya tidak punya kolom persetujuan)")
+
+	checkReinsurerMemberKey(ctx, repo, print)
+	checkReinsurerMemberLogin(ctx, repo, print)
+	checkReinsurerMemberDelivery(ctx, repo, print)
+}
+
+// checkReinsurerMemberKey melaporkan kunci alami yang kembar.
+//
+// Kuncinya TIGA kolom — REINSURERID + REINSURERNAME + TYPE — dibaca dari
+// `Database/UPDATEREAS.prc`, yang memeriksa keberadaan baris dengan ketiganya sekaligus.
+//
+// Baris kembar berakibat pada KEDUA arah: `UPDATEREAS` memperbarui seluruhnya sekaligus
+// karena UPDATE-nya tidak membatasi jumlah baris, sementara pembacaan PLA/DLA memakai
+// `fetch next 1 row only` dan hanya melihat salah satunya. Surel yang dipakai mengirim
+// dokumen karena itu belum tentu surel yang terakhir diubah petugas.
+func checkReinsurerMemberKey(
+	ctx context.Context,
+	repo *masterreassql.Repo,
+	print func(string, ...any),
+) {
+	duplicate, err := repo.CountDuplicateKey(ctx)
+	if err != nil {
+		print("  [catat] keadaan kunci alami tidak dapat diperiksa")
+		return
+	}
+
+	if duplicate == 0 {
+		print("  [ok]    tidak ada kunci alami yang kembar (REINSURERID + NAMA + TYPE)")
+		return
+	}
+
+	print("  [PENTING] %d kunci alami dipakai lebih dari satu baris.", duplicate)
+	print("            UPDATEREAS memperbarui SELURUHNYA sekaligus, sementara pembacaan")
+	print("            PLA/DLA memakai `fetch next 1 row only` dan hanya melihat salah")
+	print("            satunya. Surel yang dipakai mengirim dokumen karena itu belum tentu")
+	print("            surel yang terakhir diubah petugas. Mintakan pembersihannya ke DBA.")
+}
+
+// checkReinsurerMemberLogin melaporkan keadaan LOGIN — pemeriksaan bertaruh paling tinggi
+// di modul ini.
+//
+// LOGIN menentukan klaim mana yang dilihat seorang mitra reasuransi: lima kueri inbox
+// menyaringnya dengan `where login = {OperatorID.pyUserIdentifier}`. Dua keadaan
+// merusaknya, dan keduanya merusak dalam diam:
+//
+//	berbagi  satu orang berpotensi melihat klaim milik mitra lain
+//	kosong   mitranya tidak akan pernah melihat klaimnya sendiri
+//
+// Sistem lama TAHU keadaan pertama mungkin terjadi, dan menyelesaikannya dengan memilih
+// sembarang satu — `RDB List/GetPNCList_PLA1-SQL.xml` membaca `order by reinsurerid desc
+// fetch next 1 row only`. Yang dilaporkan di sini adalah berapa kali ia benar-benar terjadi.
+func checkReinsurerMemberLogin(
+	ctx context.Context,
+	repo *masterreassql.Repo,
+	print func(string, ...any),
+) {
+	shared, errOne := repo.CountSharedLogin(ctx)
+	empty, errTwo := repo.CountEmptyLogin(ctx)
+	if errOne != nil || errTwo != nil {
+		print("  [catat] keadaan LOGIN tidak dapat diperiksa")
+		return
+	}
+
+	if shared == 0 && empty == 0 {
+		print("  [ok]    seluruh LOGIN terisi dan tidak ada yang dipakai dua kode reas")
+		return
+	}
+
+	if shared > 0 {
+		print("  [PENTING] %d LOGIN dipakai lebih dari satu kode reasuransi.", shared)
+		print("            LOGIN menentukan klaim mana yang dilihat seorang mitra — lima")
+		print("            kueri inbox menyaringnya. Satu login yang menunjuk beberapa kode")
+		print("            berarti seseorang berpotensi melihat klaim milik mitra lain, dan")
+		print("            layarnya tampil normal tanpa satu pun tanda. Bawa temuan ini ke")
+		print("            Work Owner sebelum layar mitra reasuransi dibuka (R-20).")
+	}
+	if empty > 0 {
+		print("  [PENTING] %d baris LOGIN-nya kosong.", empty)
+		print("            Mitra pada baris itu tidak dapat dipakai masuk oleh siapa pun,")
+		print("            sehingga ia tidak akan pernah melihat klaimnya sendiri — dan")
+		print("            tidak ada apa pun di layar lama yang menunjukkannya.")
+	}
+}
+
+// checkReinsurerMemberDelivery melaporkan dua keadaan yang membuat pemberitahuan PLA/DLA
+// tidak sampai.
+//
+// Keduanya BUKAN kegagalan — aplikasi tetap berjalan dengan keduanya. Yang dilaporkan adalah
+// keadaan, supaya ia diketahui sebelum seseorang menanyakan mengapa dokumennya tidak pernah
+// diterima mitra.
+func checkReinsurerMemberDelivery(
+	ctx context.Context,
+	repo *masterreassql.Repo,
+	print func(string, ...any),
+) {
+	missing, errOne := repo.CountMissingEmail(ctx)
+	orphan, errTwo := repo.CountWithoutFallback(ctx)
+	if errOne != nil || errTwo != nil {
+		print("  [catat] kelengkapan surel dan baris cadangan tidak dapat diperiksa")
+		return
+	}
+
+	if missing > 0 {
+		print("  [PENTING] %d baris EMAIL-nya kosong.", missing)
+		print("            Surel pada baris ini adalah tujuan pemberitahuan PLA, Pre-DLA,")
+		print("            dan DLA. Baris tanpa surel gagal dalam diam: dokumennya terbit,")
+		print("            tercatat terkirim, dan tidak pernah sampai ke siapa pun.")
+	} else {
+		print("  [ok]    seluruh baris punya EMAIL tujuan")
+	}
+
+	if orphan > 0 {
+		print("  [catat] %d kode reasuransi tidak punya baris cadangan (TYPE '1').", orphan)
+		print("            BrowseEmailReas memakai baris TYPE '1' ketika tidak ada baris")
+		print("            yang cocok dengan jenis dokumen yang sedang dikirim. Tanpa baris")
+		print("            itu, jenis dokumen lain tidak menemukan surel tujuannya sama")
+		print("            sekali. Keadaan ini dapat tercipta sistem lama sendiri: UPDATEREAS")
+		print("            mengubah baris '1' menjadi tipe yang diminta alih-alih menyisipkan")
+		print("            baris baru, sehingga cadangannya habis terpakai.")
+	}
+}
+
+// checkCauseOfLossDetail memeriksa kelima objek yang dipakai modul Detail Penyebab
+// Kerugian.
+//
+// # Kenapa LIMA, bukan satu
+//
+// Modul ini menyentuh objek yang kewenangannya berbeda-beda, dan hak akses atas salah
+// satunya TIDAK menyiratkan hak atas yang lain:
+//
+//	POOLDATA.D_CAUSE_OF_LOSS             DITULIS  — tabel fisik, D_COL_ID + JSONDATA
+//	POOLDATA.V_D_CAUSE_OF_LOSS           dibaca   — view berkolom atas tabel di atas
+//	POOLDATA.V_D_CAUSE_OF_LOSS_BUSINESS  dibaca   — lini bisnis per detail
+//	POOLDATA.V_M_CAUSE_OF_LOSS           dibaca   — master induk
+//	POOLDATA.BUSINESS                    dibaca   — master lini bisnis, milik GISFW
+//
+// Yang paling mudah terlewat adalah pasangan pertama: hak BACA atas view tidak berarti hak
+// TULIS atas tabel di belakangnya. Layar akan tampil penuh dan baru gagal saat petugas
+// menekan Simpan.
+//
+// # Yang TIDAK dapat diperiksa di sini, dan itu penting
+//
+// Pemetaan kunci JSON ke kolom view adalah REKONSTRUKSI — definisi view-nya tidak ada di
+// export (`R-08`). Bila kuncinya berbeda dari yang diduga, kolom view akan KOSONG tanpa
+// satu pun galat.
+//
+// Pemeriksaan ini hanya dapat menunjukkan gejalanya: bila barisnya ada tetapi kolom
+// DESCRIPTION seluruhnya kosong, hampir pasti kuncinya berbeda. Itulah sebabnya jumlah
+// baris ber-DESCRIPTION terisi ikut dihitung, bukan hanya jumlah barisnya.
+func checkCauseOfLossDetail(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	repo := detailpenyebabsql.NewRepo(primary)
+
+	result := repo.CheckTables(ctx)
+	blocked := false
+	for _, object := range []string{
+		"POOLDATA.V_D_CAUSE_OF_LOSS",
+		"POOLDATA.D_CAUSE_OF_LOSS",
+		"POOLDATA.V_D_CAUSE_OF_LOSS_BUSINESS",
+		"POOLDATA.V_M_CAUSE_OF_LOSS",
+		"POOLDATA.BUSINESS",
+	} {
+		if err := result[object]; err != nil {
+			print("  [BELUM] %s belum dapat dibaca: %v", object, err)
+			blocked = true
+			continue
+		}
+		print("  [ok]    %s dapat dibaca", object)
+	}
+
+	if blocked {
+		print("            Seluruhnya warisan Pega dan TIDAK dibuat migrasi aplikasi ini.")
+		print("            Mintakan hak BACA kelimanya, dan hak TULIS pada")
+		print("            POOLDATA.D_CAUSE_OF_LOSS — itu satu-satunya yang ditulis modul ini.")
+		print("            Dibutuhkan pula sequence D_CAUSE_SEQ dan baris CURRENT_SITE='1'")
+		print("            pada POOLDATA.M_SITE_DATABASE untuk menerbitkan D_COL_ID.")
+		return
+	}
+
+	// Gejala kunci JSON yang tidak cocok — lihat doc comment di atas.
+	var total, described int
+	err := primary.QueryRowContext(ctx,
+		`SELECT COUNT(D_COL_ID) FROM POOLDATA.V_D_CAUSE_OF_LOSS`).Scan(&total)
+	if err != nil {
+		print("  [GAGAL] V_D_CAUSE_OF_LOSS tidak dapat dihitung: %v", err)
+		return
+	}
+	err = primary.QueryRowContext(ctx,
+		`SELECT COUNT(D_COL_ID) FROM POOLDATA.V_D_CAUSE_OF_LOSS WHERE DESCRIPTION IS NOT NULL`).
+		Scan(&described)
+	if err != nil {
+		print("  [GAGAL] V_D_CAUSE_OF_LOSS tidak dapat dihitung: %v", err)
+		return
+	}
+
+	print("  [ok]    POOLDATA.V_D_CAUSE_OF_LOSS dapat dibaca: %d baris", total)
+	if total > 0 && described == 0 {
+		print("  [CURIGA] SELURUH %d barisnya ber-DESCRIPTION kosong.", total)
+		print("            Kolom view terisi dari kunci di dalam JSONDATA, dan kunci yang")
+		print("            dipakai modul ini REKONSTRUKSI (`R-08`). Kosong seluruhnya hampir")
+		print("            pasti berarti kuncinya berbeda — mintakan definisi view-nya ke DBA")
+		print("            SEBELUM modul ini dipakai menyimpan.")
+		return
+	}
+	print("            %d di antaranya ber-DESCRIPTION terisi", described)
 }

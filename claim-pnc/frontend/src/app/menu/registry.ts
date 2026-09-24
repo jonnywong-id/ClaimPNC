@@ -20,16 +20,23 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 62 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 57 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
  *
- * Sembilan di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
- * (`DataMemberReas`, `DetailMasterPasalAI`, `InboxCloseClaim_Harness`,
- * `InboxOutstanding_Harness`, `InboxRequestSalvage`, `InboxServiceCenter`,
- * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas
- * `K-33`. Ditambah MENU_ID 83 "Report Adjuster" yang MENU_PROGRAM-nya memang kosong.
+ * Angka 75 adalah MENU_PROGRAM tidak kosong yang UNIK pada
+ * `Database/m_menu_aplikasi_pnc.csv` — dari 80 barisnya, empat adalah judul kelompok
+ * (MASTER, INBOX, VIEW, REPORT) dan satu adalah MENU_ID 83 "Report Adjuster" yang
+ * MENU_PROGRAM-nya memang kosong.
+ *
+ * TUJUH di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
+ * (`InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `InboxRequestSalvage`,
+ * `InboxServiceCenter`, `LostAdjuster_harness`, `PNCViewClaim`,
+ * `ReportProduksiPA_harnes`) — memperjelas `K-33`.
+ *
+ * Dua yang dulu ada di daftar itu SUDAH DITERIMA pada 2026-09-22 dan karena itu
+ * dikeluarkan: `DataMemberReas` dan `DetailMasterPasalAI` — keduanya kini punya layar.
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
@@ -48,6 +55,17 @@ export const MENU_ROUTES: Record<string, string> = {
   // judul di layarnya "Detail Pasal Kerugian", dan yang dikelolanya bukan penolakan
   // melainkan butir ketentuan polis — jaminan, pengecualian, dan notifikasi.
   DetailMasterPasalRejected: '/master/pasal-kerugian',
+  // MENU_ID 36 "Master Pasal AI". Kembaran Master Pasal Kerugian di atas — section-nya
+  // memang Save-As darinya — tetapi sudah dipangkas menjadi layar PENCARIAN BACA-SAJA:
+  // tanpa tab, tanpa Tambah/Simpan/Hapus, hanya Cari dan Refresh.
+  //
+  // Ia satu-satunya layar master yang paginasinya dikerjakan SERVER, dan itu bukan pilihan
+  // kami: grid Pega-nya ber-`pyPageMode = None` dengan jendela dihitung activity.
+  //
+  // Tabelnya `POOLDATA.MST_PASAL_AI`; kolomnya `WP_PASAL`, `WP_AYAT`, dan `WP_KEJADIAN` —
+  // nama yang baru terbaca setelah activity dan kedua Connect-SQL-nya diterima, karena
+  // propertinya di layar Pega bernama warisan (`.City`, `.CityID`, `.District`).
+  DetailMasterPasalAI: '/master/pasal-ai',
   // MENU_ID 28 "Master Bengkel". Satu butir menu, satu layar, TIGA tab — Approve,
   // Waiting Approval, dan Reject — persis seperti ketiga tab pada
   // `Section/BrowseMasterHE-Section.xml`.
@@ -101,6 +119,62 @@ export const MENU_ROUTES: Record<string, string> = {
   // Satu-satunya master yang seluruh isinya tinggal di SATU kolom JSONDATA: `M_SUPPLIER`
   // hanya punya ID, OLDID, dan JSONDATA.
   MasterSupplier: '/master/supplier',
+  // MENU_ID 37 "Master Login". Satu butir menu, satu layar, TANPA tab — layar lamanya
+  // memang satu grid dengan dua tombol (Tambah, Refresh) dan tidak punya penyaring status
+  // apa pun, karena POOLDATA.MST_LOGIN_SURVEYOR tidak punya kolom APPROVAL.
+  //
+  // Nama kuncinya `MasterLoginSurvey` — menyebut "Survey", sementara MENU_DESC-nya hanya
+  // "Master Login". Rutenya mengikuti nama menu, kunci petanya mengikuti basis data.
+  MasterLoginSurvey: '/master/login',
+  // MENU_ID 35 "Master Reas". Satu butir menu, satu layar, TANPA tab dan TANPA tombol
+  // simpan — harness lamanya memang satu grid dengan satu tombol Refresh, dan
+  // POOLDATA.T_REINSURER tidak punya kolom persetujuan.
+  //
+  // Satu-satunya layar master yang BACA-SAJA. Tabelnya ditulis alur PLA/DLA lewat
+  // `Database/UPDATEREAS.prc` — dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2` —
+  // bukan oleh layar ini.
+  //
+  // Harness-nya dulu termasuk yang dicatat di atas sebagai TIDAK ADA di export; ia
+  // diterima pada 2026-09-22. Yang MASIH hilang adalah section gridnya,
+  // `BrowseListMemberReas` — sehingga daftar kolom layarnya tetap rekonstruksi (`R-16`).
+  DataMemberReas: '/master/reas',
+  // MENU_ID 38 "Detail Penyebab Kerugian". Satu butir menu, satu layar, TANPA tab —
+  // harness lamanya memang satu grid dengan form penyuntingan di bawahnya, dan
+  // POOLDATA.D_CAUSE_OF_LOSS tidak punya kolom persetujuan.
+  //
+  // Ia ANAK dari "Master Penyebab Kerugian" (MENU_ID 20, `CauseOfLossInbox`) yang belum
+  // punya layar. Layar ini hanya MEMBACA master itu sebagai daftar pilihan; induk baru
+  // belum dapat dibuat dari sini.
+  //
+  // Report Definition pengisi gridnya, `BrowseVDCauseOfLoss_RD`, HILANG dari export
+  // (`R-16`) — sehingga cakupan daftarnya rekonstruksi dari dua rule lain atas view yang
+  // sama. Lihat banner paket `detailpenyebab`.
+  DetailCauseOfLoss: '/master/detail-penyebab-kerugian',
+
+  // MENU_ID 48 "Inbox Investigator". Layar INBOX pertama yang dibangun, dan yang pertama
+  // berada di bawah awalan `/inbox/...` — INBOX adalah kelompok menu tersendiri di sistem
+  // lama (`MENU_ID 2`, induk dari 30 butir).
+  //
+  // Isinya antrean bersama workbasket `InvestigatorPNC`: barisnya PEKERJAAN, hilang setelah
+  // selesai dikerjakan, dan punya tenggat — keempat ciri Inbox pada `D-79`. Itu yang
+  // membedakannya dari layar master dan dari View History Claim.
+  //
+  // Baca-saja. Mengambil pekerjaan dari antrean dan mencatat hasil investigasi ada di layar
+  // kerja yang tidak digambar harness ini dan belum dibangun.
+  InboxInvestigator_Harness: '/inbox/investigator',
+
+  // MENU_ID 49 "Inbox Receive TKA". Layar INBOX kedua, dan yang PERTAMA yang menulis:
+  // pengguna mengisi Tanggal Dokumen Lengkap langsung di dalam tabel lalu menekan Submit,
+  // dan barisnya hilang dari daftar.
+  //
+  // Sumbernya BUKAN antrean penugasan Pega melainkan POOLDATA.T_CLAIM_TKA_H — tabel yang
+  // ketujuh kolomnya sama persis dengan ketujuh kolom grid layar lama. Report Definition
+  // lamanya mendeklarasikan halaman workbasket tetapi tidak pernah merujuknya; itu sisa
+  // Save-As, dan penanda TKA-lah yang menentukan keanggotaan daftar.
+  //
+  // Submit menulis DUA tabel dalam satu transaksi: T_CLAIM_PNC.TGLDOKLENGKAP agar
+  // tanggalnya sampai ke klaim, dan T_CLAIM_TKA_H.TGL_DOC_LENGKAP agar barisnya hilang.
+  InboxTKA_Harness: '/inbox/receive-tka',
 
   // MENU_ID 64 "Inbox Laporan Klaim" — case ASM-FW-GCNMFW-Work-ReceiveDocument.
   InboxRCVApp_Harness: '/pelaporan-klaim',

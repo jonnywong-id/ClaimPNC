@@ -2219,3 +2219,604 @@ export const GroupingErrorCode = {
 
 export type GroupingErrorCode =
   (typeof GroupingErrorCode)[keyof typeof GroupingErrorCode]
+
+/**
+ * Satu baris Master Login — satu baris POOLDATA.MST_LOGIN_SURVEYOR.
+ *
+ * # Kenapa namanya SurveyorLogin, bukan Login
+ *
+ * Karena `Login` sudah dipakai untuk hal yang sama sekali berbeda di aplikasi ini: masuknya
+ * pengguna ke sistem. Yang di sini adalah barisnya sendiri — daftar orang yang boleh bekerja
+ * sebagai surveyor, beserta kontaknya.
+ *
+ * Menyamakan keduanya akan membuat dua hal yang tidak berhubungan terlihat berhubungan, dan
+ * pada modul ini kekeliruan itu paling mudah terjadi: menyimpan baris di sini TIDAK
+ * menerbitkan akun siapa pun. Lihat catatan pada `status_login`.
+ *
+ * # Ketujuh kolomnya, dan DUA yang tidak pernah digambar layar Pega
+ *
+ * Kelima yang pertama adalah isian di layar. Kedua yang terakhir — `status_login` dan
+ * `login_leader` — ditulis sistem lama tetapi tidak muncul sekali pun di
+ * `Section/BrowseLoginSurveyor-Section.xml`. Keduanya tetap dikirim server, dan layar baru
+ * MENAMPILKANNYA sebagai keterangan baca-saja: nilainya menentukan peran dan tim seseorang,
+ * dan menyembunyikan hal yang tersimpan tidak membuatnya tidak tersimpan.
+ *
+ * Ketiadaan kolom lain juga bermakna: tidak ada APPROVAL, tidak ada pencatat pelaku, tidak
+ * ada stempel waktu, dan tidak ada penanda aktif. Itu sebabnya layar ini tidak bertab, dan
+ * sebabnya tidak ada cara menyatakan sebuah login sudah tidak berlaku.
+ */
+export type SurveyorLogin = {
+  /** Kolom NAMA — caption "Nama". Login diturunkan darinya, sehingga ia TERKUNCI saat diubah. */
+  nama: string
+  /**
+   * Kolom LOGIN — caption "Login", dan KUNCI baris ini.
+   *
+   * Tidak diketik pengguna: server menurunkannya dari `nama` dengan membuang spasi, titik,
+   * koma, dan tanda hubung. Ia yang dipakai pada jalur URL, bukan sebuah ID terpisah.
+   */
+  login: string
+  /** Kolom EMAIL — caption "Email". Wajib. */
+  email: string
+  /** Kolom TELP — caption "Telp". Wajib. Properti klipboard Pega-nya bernama `Ekst`. */
+  telp: string
+  /** Kolom ALAMAT — caption "Alamat". Tidak wajib. */
+  alamat: string
+  /**
+   * Kolom STSLOGIN. Tidak ada di layar Pega; selalu "Member" pada penambahan.
+   *
+   * Ia BUKAN penanda bahwa akun aplikasinya sudah diterbitkan — tidak ada akun yang
+   * diterbitkan sama sekali; lihat catatan pada SurveyorLoginPage.
+   */
+  status_login: string
+  /**
+   * Kolom LOGINLEADER — login orang yang menjadi leader baris ini.
+   *
+   * Tidak ada di layar Pega. Server menurunkannya dari leader milik pengguna yang menyimpan
+   * — bukan dari login pengguna itu sendiri. Kosong adalah nilai yang sah.
+   */
+  login_leader: string
+}
+
+/** Jawaban GET /api/master/login. */
+export type SurveyorLoginListResponse = {
+  login_surveyor: SurveyorLogin[]
+  portal: string
+}
+
+/** Jawaban satu baris — dipakai Get, Create, dan Save. */
+export type SurveyorLoginResponse = {
+  login_surveyor: SurveyorLogin
+  portal: string
+}
+
+/**
+ * Badan permintaan tambah dan simpan.
+ *
+ * KEEMPAT isian yang diketik pengguna. Ketiga kolom turunan — `login`, `status_login`, dan
+ * `login_leader` — dikirim KELUAR pada setiap jawaban tetapi tidak dapat dikirim MASUK.
+ *
+ * Mengirim salah satunya DITOLAK sebagai permintaan cacat, bukan diabaikan: server memasang
+ * `DisallowUnknownFields`, supaya cacat pada klien terlihat saat pertama dicoba.
+ */
+export type SurveyorLoginInput = Pick<
+  SurveyorLogin,
+  'nama' | 'email' | 'telp' | 'alamat'
+>
+
+/**
+ * Kode galat modul Master Login.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat seluruh
+ * aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const SurveyorLoginErrorCode = {
+  /**
+   * LOGIN yang diturunkan sudah dipakai baris lain — konflik keadaan, bukan isian cacat.
+   *
+   * Yang bentrok bukan Nama melainkan LOGIN yang DITURUNKAN darinya, sehingga dua nama yang
+   * terlihat berbeda — "Budi Hartono" dan "Budi.Hartono" — menghasilkan login yang sama.
+   */
+  loginTaken: 'kunci_login_surveyor_sudah_ada',
+
+  /**
+   * Nama yang dikirim berbeda dari yang tersimpan.
+   *
+   * Tidak seharusnya terlihat pengguna: layar mengunci isiannya. Bila ia muncul, daftarnya
+   * sudah basi — atau permintaannya tidak datang dari layar ini.
+   */
+  nameLocked: 'nama_login_surveyor_terkunci',
+} as const
+
+export type SurveyorLoginErrorCode =
+  (typeof SurveyorLoginErrorCode)[keyof typeof SurveyorLoginErrorCode]
+
+/**
+ * Satu baris Master Reas — satu baris POOLDATA.T_REINSURER.
+ *
+ * # Apa yang diwakilinya
+ *
+ * Satu **member reasuransi**: pihak yang menerima pemberitahuan PLA, Pre-DLA, dan DLA atas
+ * klaim entitas ini, beserta login portal dan alamat surel tujuannya.
+ *
+ * # Satu perusahaan dapat punya BEBERAPA baris
+ *
+ * Yang membedakannya adalah `tipe` — karakter pertama nomor dokumen PLA/DLA yang dilayani
+ * baris itu. Tanpa mengetahui hal ini, daftar akan terlihat memuat nama yang sama berkali-
+ * kali tanpa sebab. Lihat catatan pada `tipe`.
+ *
+ * # Enam kolom, dan SATU kolom tabel yang sengaja tidak dikirim
+ *
+ * `COUNTRYID` ditulis `Database/UPDATEREAS.prc` — diterjemahkan dari COUNTRY lewat tabel
+ * COUNTRY — lalu **tidak dibaca satu pun rule di seluruh export Pega**. Ia tidak dikirim:
+ * membawa kolom yang tidak ada pembacanya berarti mengarang kegunaan yang tidak dapat
+ * ditunjukkan.
+ */
+export type ReasMember = {
+  /**
+   * Kolom REINSURERID — kode perusahaan reasuransi.
+   *
+   * Ia yang menghubungkan baris ini ke dokumen PLA/DLA: `T_PLALIST.REINSCODE`,
+   * `T_DLALIST.REINSCODE`, dan `IDREAS` pada kedua tabel XOL menunjuk ke sini.
+   */
+  kode_reas: string
+  /** Kolom REINSURERNAME — nama perusahaan reasuransi. */
+  nama_reas: string
+  /**
+   * Kolom LOGIN — identitas yang dipakai mitra reasuransi saat masuk.
+   *
+   * Kolom bertaruh paling tinggi di tabel ini: lima kueri inbox menyaring klaim yang boleh
+   * dilihat seseorang dengan membandingkannya terhadap identitas pemanggil. Ia TIDAK pernah
+   * diketik orang — alur PLA/DLA menurunkannya dari nama perusahaan.
+   */
+  login: string
+  /** Kolom EMAIL — tujuan pemberitahuan PLA, Pre-DLA, dan DLA. */
+  email: string
+  /**
+   * Kolom COUNTRY — negara asal perusahaan reasuransi.
+   *
+   * Isinya sampai ke pihak luar: `GetDataPreDLA` dan `BrowseAllDataXOL_PLA` menempatkannya
+   * pada dokumen PLA/DLA. Kosong adalah nilai yang mungkin — baris yang lahir dari
+   * `GetListDataLoginReas` memang disisipkan tanpa kolom ini sama sekali.
+   */
+  negara: string
+  /**
+   * Kolom TYPE — karakter pertama nomor dokumen PLA/DLA yang dilayani baris ini.
+   *
+   * Terbukti dari `GetDataPreDLA`: `... and substr(a.NODLA,0,1) = TYPE`.
+   *
+   * **Arti tiap nilainya dalam bahasa bisnis TIDAK diketahui** — tidak ada master, tidak ada
+   * daftar nilai sah, dan tidak ada satu pun rule yang menerjemahkannya menjadi label
+   * (`R-16`). Layar menampilkannya apa adanya alih-alih mengarang keterangan.
+   */
+  tipe: string
+  /**
+   * Penanda baris CADANGAN (`TYPE = '1'`).
+   *
+   * TURUNAN, bukan kolom — dihitung server supaya layar tidak perlu mengetahui bahwa `'1'`
+   * punya arti khusus.
+   *
+   * Artinya: `BrowseEmailReas` memakai baris ini ketika tidak ada baris yang cocok dengan
+   * jenis dokumen yang sedang dikirim (`... or type = '1'`). Perusahaan tanpa baris cadangan
+   * karena itu hanya terlayani untuk jenis dokumen yang kebetulan sudah punya barisnya
+   * sendiri.
+   */
+  cadangan: boolean
+}
+
+/** Jawaban GET /api/master/reas. */
+export type ReasMemberListResponse = {
+  member_reas: ReasMember[]
+  portal: string
+}
+
+// ── Detail Penyebab Kerugian ─────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/detailpenyebab/http. Menggantikan layar Pega
+// `Harness/DetailCauseOfLoss-Harness.xml` (MENU_ID 38) atas POOLDATA.D_CAUSE_OF_LOSS.
+//
+// Tabelnya hanya punya DUA kolom — D_COL_ID dan JSONDATA — dan seluruh isi selain ID
+// hidup di dalam dokumen JSON pada kolom kedua, dibentangkan kembali menjadi kolom oleh
+// view POOLDATA.V_D_CAUSE_OF_LOSS. Bentuk di bawah adalah dokumen itu sesudah dibongkar
+// server; layar tidak pernah melihat JSON-nya.
+
+/** Satu lini bisnis tempat sebuah detail penyebab kerugian berlaku. */
+export type CauseOfLossBusiness = {
+  id: string
+  nama: string
+}
+
+/**
+ * Satu baris Detail Penyebab Kerugian.
+ *
+ * Ketiga field yang DIKIRIM server tetapi TIDAK dapat dikirim balik — `id`, `nama_master`,
+ * dan `label_status_aktif` — sengaja tetap ada di tipe ini: layar menampilkan ketiganya.
+ * Yang boleh dikirim balik dipisahkan sebagai CauseOfLossDetailInput.
+ */
+export type CauseOfLossDetail = {
+  /** D_COL_ID. Diterbitkan server; layar tidak pernah mengetiknya. */
+  id: string
+
+  /**
+   * OLD_D_COL_ID — ID baris ini pada sistem sebelum Pega.
+   *
+   * Ia TIDAK digambar di layar, tetapi tetap dikirim balik saat menyimpan. Tanpa itu,
+   * tautan ke sistem lama lenyap pada setiap penyuntingan — server memang menjaganya, tapi
+   * mengirimkannya membuat layar tidak bergantung pada penjagaan itu.
+   */
+  id_lama: string
+
+  /** M_COL_ID — kunci induk di V_M_CAUSE_OF_LOSS. */
+  id_master: string
+
+  /**
+   * COL_DESC — sebutan induk, hanya untuk ditampilkan.
+   *
+   * Kosong berarti induknya tidak ditemukan — baris yatim, yang mungkin ada karena tidak
+   * ada foreign key yang diketahui (`R-08`).
+   */
+  nama_master: string
+
+  /** DESCRIPTION, berlabel "Deskripsi Kerugian" di layar. */
+  deskripsi_kerugian: string
+
+  /** LOSS_CODE, berlabel "Kode Kehilangan" di layar. */
+  kode_kehilangan: string
+
+  /** STS_AKTIF — "1" aktif, "0" tidak aktif, kosong belum pernah diisi. */
+  status_aktif: string
+
+  /** Sebutan status yang siap ditampilkan; DITURUNKAN server. */
+  label_status_aktif: string
+
+  /**
+   * Lini bisnis tempat detail ini berlaku.
+   *
+   * KOSONG pada jawaban daftar dan terisi pada jawaban satu baris — grid layar lama pun
+   * tidak menampilkannya.
+   */
+  bisnis: CauseOfLossBusiness[]
+}
+
+/** Satu pilihan pada isian "ID Master Kerugian". */
+export type CauseOfLossMasterOption = {
+  id: string
+  nama: string
+  /** Gabungan kode dan sebutannya; disusun server supaya kedua sisi menampilkannya sama. */
+  label: string
+}
+
+/** Satu pilihan pada dropdown Status Aktif. */
+export type CauseOfLossActiveOption = {
+  kode: string
+  label: string
+}
+
+/** Jawaban GET /api/master/detail-penyebab. */
+export type CauseOfLossDetailListResponse = {
+  detail: CauseOfLossDetail[]
+  portal: string
+}
+
+/** Jawaban GET satu baris, POST, dan PUT. */
+export type CauseOfLossDetailResponse = {
+  detail: CauseOfLossDetail
+  portal: string
+}
+
+/** Jawaban pencarian daftar pilihan. Hanya SATU daftar terisi per permintaan. */
+export type CauseOfLossLookupResponse = {
+  master: CauseOfLossMasterOption[]
+  bisnis: CauseOfLossBusiness[]
+  portal: string
+}
+
+/** Jawaban GET /api/master/detail-penyebab/pilihan. */
+export type CauseOfLossOptionsResponse = {
+  status_aktif: CauseOfLossActiveOption[]
+}
+
+/**
+ * Badan permintaan POST dan PUT.
+ *
+ * `id`, `nama_master`, dan `label_status_aktif` TIDAK boleh ikut: server menolak field yang
+ * tidak dikenal dengan `permintaan_cacat`, bukan mengabaikannya diam-diam.
+ */
+export type CauseOfLossDetailInput = Pick<
+  CauseOfLossDetail,
+  | 'id_lama'
+  | 'id_master'
+  | 'deskripsi_kerugian'
+  | 'kode_kehilangan'
+  | 'status_aktif'
+  | 'bisnis'
+>
+
+/**
+ * Kode galat khas modul Detail Penyebab Kerugian.
+ *
+ * Terpisah dari ErrorCode karena ia milik satu modul, sementara ErrorCode mengikat seluruh
+ * aplikasi. Keduanya dibaca dari field `kode` yang sama.
+ */
+export const CauseOfLossDetailErrorCode = {
+  /**
+   * Nomor yang diterbitkan sequence sudah dipakai baris lain.
+   *
+   * BUKAN kesalahan pengguna: isiannya sudah benar, dan yang bermasalah adalah penomoran
+   * di basis data. Layar mengatakannya demikian alih-alih menyuruh petugas membetulkan
+   * isian yang tidak salah.
+   */
+  idTaken: 'kunci_detail_penyebab_sudah_ada',
+} as const
+
+export type CauseOfLossDetailErrorCode =
+  (typeof CauseOfLossDetailErrorCode)[keyof typeof CauseOfLossDetailErrorCode]
+
+// ── Inbox Investigator ───────────────────────────────────────────────────────────
+
+/**
+ * Satu baris Inbox Investigator — satu **pekerjaan** yang menunggu Investigator.
+ *
+ * # Ia pekerjaan, bukan klaim
+ *
+ * Yang didaftar layar ini adalah Tugas: satuan pekerjaan yang menunggu dikerjakan pada satu
+ * tahap klaim. Klaim yang sama dapat muncul di beberapa inbox pada waktu yang berbeda, dan
+ * yang membedakannya adalah penugasannya — bukan klaimnya (`CONTEXT.md`, `D-26`).
+ *
+ * Itulah yang membuat layar ini INBOX dan bukan layar daftar biasa: barisnya HILANG setelah
+ * selesai dikerjakan, dan "hanya yang jadi tanggung jawab saya" adalah aturan kewenangan,
+ * bukan sekadar penyaring (`D-79`).
+ *
+ * # Nama field mengikuti CAPTION GRID layar lama
+ *
+ * Bukan nama kolom basis data dan bukan nama properti Pega. `D-13` menetapkan tampilan
+ * meniru Pega supaya pengguna tidak perlu belajar ulang, dan caption itulah yang selama ini
+ * mereka baca di `Section/InputInvestigator_Section-Section.xml`.
+ */
+export type InvestigatorTask = {
+  /**
+   * Kunci teknis Pega (`pzInsKey`), dibutuhkan untuk MEMBUKA pekerjaannya.
+   *
+   * Ia dikirim tetapi **tidak ditampilkan**. Layar kerja Investigator belum dibangun; begitu
+   * ia ada, inilah yang dipakai membukanya — sehingga menyalakannya kelak tidak menuntut
+   * perubahan kontrak.
+   */
+  referensi: string
+  /** Caption "Nomor Case" — `pyID`. Dua format hidup berdampingan: `PNC-xxxx` dan `PNCN.YY.xxxx` (`D-71`). */
+  nomor_case: string
+  /** Caption "No Polis". */
+  nomor_polis: string
+  /** Caption "Nama Tertanggung". */
+  nama_tertanggung: string
+  /**
+   * Caption "Nama Peserta" — objek pertanggungan **pertama** pada klaim itu.
+   *
+   * Captionnya menyebut "Peserta", bukan "Objek", dan itu dipakai apa adanya (`D-13`):
+   * investigasi paling sering menyangkut lini Personal Accident, tempat objek pertanggungan
+   * memang seorang peserta.
+   *
+   * Klaim berobjek banyak tampil seolah berobjek satu — perilaku sistem lama yang
+   * direplikasi apa adanya (`P-5`).
+   */
+  nama_peserta: string
+  /** Caption "Nama Bisnis" — lini bisnis klaim. */
+  nama_bisnis: string
+  /** Caption "Nama Cabang". */
+  nama_cabang: string
+  /**
+   * Caption "Nama Admin" — `pyOrigUserID`, yaitu **pembuat** kasus.
+   *
+   * Bukan petugas yang sedang memegangnya: pekerjaan di workbasket memang belum bertuan
+   * (`D-26`) — itulah yang membuatnya antrean bersama. Kosong berarti kasusnya dibuat proses
+   * terjadwal, bukan orang (`D-57`).
+   */
+  nama_admin: string
+  /** Caption "Tanggal Pendaftaran", ISO 8601 UTC. Null bila kosong. */
+  tanggal_pendaftaran: string | null
+  /**
+   * Kolom **kesembilan**, yang di layar lama bercaption **"Lama Masuk Inbox"** —
+   * `.ClaimData.SurveyResults(1).SurveyDate`.
+   *
+   * # Captionnya menyebut durasi, isinya TANGGAL
+   *
+   * Bukan salah baca. Penelusuran sel per sel pada
+   * `Section/InputInvestigator_Section-Section.xml` memasangkan kesembilan caption dengan
+   * kesembilan sel datanya satu lawan satu, dan yang kesembilan berpasangan dengan properti
+   * di atas.
+   *
+   * Sebabnya terbaca: section ini Save-As dari inbox Compliance, tempat kolom bernama sama
+   * memang berisi lama menunggu. Di sini selnya diikat ulang ke tanggal survei dan
+   * **captionnya tidak ikut diganti**.
+   *
+   * Nama field mengikuti ISI supaya kontraknya tidak berbohong tentang tipe datanya; yang
+   * mengikuti Pega adalah **judul kolom di layar** (`D-13`).
+   *
+   * ISO 8601 UTC. Null bila klaimnya belum punya baris survei.
+   */
+  tanggal_survey: string | null
+}
+
+export type InvestigatorInboxResponse = {
+  tugas: InvestigatorTask[]
+  /**
+   * Masih ada pekerjaan yang cocok tetapi TIDAK terkirim.
+   *
+   * Ia ada karena sistem lama memotong pada 500 baris **tanpa memberi tahu siapa pun**
+   * (`pyMaxRecords`). Batas yang diketahui adalah batas; batas yang senyap adalah data yang
+   * hilang. Layar WAJIB menyebutkannya saat bernilai `true`.
+   */
+  terpotong: boolean
+  /** Batas baris yang berlaku, dikirim supaya layar tidak menuliskan angkanya sendiri. */
+  batas_baris: number
+  portal: string
+}
+
+// ── Inbox Receive TKA ────────────────────────────────────────────────────────────
+
+/**
+ * Satu baris Inbox Receive TKA — satu klaim TKA yang tanggal kelengkapan dokumennya belum
+ * diisi.
+ *
+ * # Ia inbox yang DIKERJAKAN, bukan hanya dibaca
+ *
+ * Berbeda dari Inbox Investigator yang baca-saja, layar ini punya tombol Submit: pengguna
+ * mengisi tanggal kelengkapan dokumen, dan barisnya HILANG dari daftar. Ciri kedua Inbox
+ * pada `D-79` — baris hilang setelah dikerjakan — di sini benar-benar terjadi lewat layar
+ * ini sendiri.
+ *
+ * # Nama field mengikuti CAPTION GRID layar lama, dengan satu pengecualian
+ *
+ * `D-13` menetapkan tampilan meniru Pega supaya pengguna tidak perlu belajar ulang, dan
+ * caption itulah yang selama ini mereka baca di `Section/InboxTKA_Section-Section.xml`.
+ * Pengecualiannya `tanggal_kejadian`; lihat di bawah.
+ */
+export type ReceiveTKATask = {
+  /**
+   * Kunci teknis Pega (`pzInsKey`), dan **kunci baris** layar ini.
+   *
+   * Dikirim tetapi tidak ditampilkan. Selalu terisi — sumbernya tabel yang menggerakkan
+   * kuerinya, bukan hasil gabungan.
+   */
+  referensi: string
+  /**
+   * Klaimnya ditemukan di data klaim utama.
+   *
+   * # Kenapa layar perlu mengetahuinya sebelum Submit ditekan
+   *
+   * Pekerjaan yang ada di antrean Pega tetapi belum ada di tabel klaim bisnis **tetap
+   * tampil** — gabungannya sengaja LEFT, sama seperti Pega yang juga menampilkannya.
+   * Tetapi tanggalnya tidak dapat disimpan: tidak ada baris klaim yang dapat diperbarui.
+   *
+   * Bernilai `false`, layar mematikan isian dan tombolnya beserta alasannya — alih-alih
+   * membiarkan pengguna mengetik tanggal lalu ditolak.
+   */
+  klaim_tersedia: boolean
+  /** Caption "Nomor Klaim" — `pyID`. */
+  nomor_klaim: string
+  /** Caption "No Polis". */
+  nomor_polis: string
+  /**
+   * Caption "Nama Tertanggung" — kolom `QQNAME`.
+   *
+   * Pemasangannya sempat diragukan: `InboxTKA_RD` melabeli properti ini dan `nama_peserta`
+   * secara TERBALIK. Yang benar adalah Section, dan buktinya datang dari sumber ketiga yang
+   * berdiri sendiri — `HTML/NotificationKelengkapanTKA-HTML.xml` memberi label
+   * "Nama Tertanggung" pada nilai yang diisi dari `Param.QQName`.
+   */
+  nama_tertanggung: string
+  /**
+   * Caption "Nama Peserta" — `POOLDATA.T_GENERAL.THEINSURED`.
+   *
+   * `.Policy.TheInsured` tidak di-expose sebagai kolom pada tabel kerja Pega, sehingga
+   * nilainya diambil dari tabel polis. Dapat kosong bila polisnya tidak ditemukan; layar
+   * menuliskannya sebagai tanda hubung.
+   */
+  nama_peserta: string
+  /**
+   * Kolom kelima, yang di layar lama bercaption **"Date Of Loss"**.
+   *
+   * Nama fieldnya bahasa Indonesia meski captionnya bahasa Inggris: `D-80` menetapkan nama
+   * field JSON memakai bahasa Indonesia, dan `CONTEXT.md` sudah menetapkan padanan
+   * resminya — **Tanggal Kejadian**. Yang tetap mengikuti Pega adalah **judul kolom di
+   * layar**.
+   *
+   * Tanggal ISO (`YYYY-MM-DD`) tanpa jam, karena kolomnya memang tanggal kalender.
+   * Mengirimkannya sebagai stempel waktu akan mengarang bagian jam yang dapat menggeser
+   * tanggalnya satu hari saat ditampilkan dalam WIB (`R-12`). Null bila kosong.
+   */
+  tanggal_kejadian: string | null
+  /**
+   * Mengisi kolom yang di layar lama bercaption **"Aging"** — `.ClaimData.RegisterDate`.
+   *
+   * # Yang dikirim adalah TANGGAL, bukan lama menunggu
+   *
+   * Pega menampilkan kolom itu sebagai waktu relatif — "2 years 6 months ago" — tetapi yang
+   * disimpannya adalah tanggal registrasi. Terverifikasi: klaim ber-`REGISTERDATE_1 =
+   * 20240319` ditampilkan Pega sebagai "2 years 6 months ago", tepat selisihnya terhadap
+   * hari pembacaan.
+   *
+   * **Layar yang menyusun kalimatnya**, karena "berapa lama menunggu" bergantung pada kapan
+   * ia dibaca. Menghitungnya di server berarti nilainya membeku pada saat permintaan.
+   *
+   * Tanggal ISO (`YYYY-MM-DD`). Null bila kosong atau bentuk sumbernya tidak dikenali —
+   * dan null **bukan** nol hari: yang satu "tidak diketahui", yang lain "baru masuk hari
+   * ini".
+   */
+  tanggal_registrasi: string | null
+}
+
+export type ReceiveTKAInboxResponse = {
+  tugas: ReceiveTKATask[]
+  /**
+   * Masih ada pekerjaan yang cocok tetapi TIDAK terkirim.
+   *
+   * Ia ada karena sistem lama memotong pada 500 baris **tanpa memberi tahu siapa pun**
+   * (`pyMaxRecords`). Layar WAJIB menyebutkannya saat bernilai `true`.
+   */
+  terpotong: boolean
+  /** Batas baris yang berlaku, dikirim supaya layar tidak menuliskan angkanya sendiri. */
+  batas_baris: number
+  portal: string
+}
+
+/** Badan permintaan tombol Submit: satu baris, satu tanggal. */
+export type ReceiveTKACompleteRequest = {
+  nomor_klaim: string
+  /** Tanggal kelengkapan dokumen, berformat `YYYY-MM-DD`. */
+  tanggal_dokumen_lengkap: string
+}
+
+export type ReceiveTKACompleteResponse = {
+  nomor_klaim: string
+  tanggal_dokumen_lengkap: string
+  /**
+   * Bernilai `false` bila pemberitahuan memang **tidak dipasang** di lingkungan ini.
+   *
+   * Dipisahkan dari `pemberitahuan_terkirim` supaya layar dapat membedakan "belum dipasang"
+   * dari "gagal dikirim". Menyatukan keduanya akan membuat lingkungan pengembangan yang
+   * memang tidak punya server surel terus-menerus menampilkan peringatan gagal — dan
+   * peringatan yang selalu muncul berhenti dibaca.
+   */
+  pemberitahuan_dicoba: boolean
+  /**
+   * Bernilai `true` hanya bila surelnya benar-benar terkirim.
+   *
+   * Surel yang gagal **tidak** membatalkan penyimpanan; tanggalnya tetap tersimpan. Itu
+   * perbedaan yang disengaja terhadap sistem lama, yang mengirim surel sebelum `Commit`
+   * sehingga kegagalannya membuang seluruh pekerjaan pengguna.
+   */
+  pemberitahuan_terkirim: boolean
+  portal: string
+}
+
+/**
+ * Kode galat modul Inbox Receive TKA.
+ *
+ * Ketiganya dibedakan karena TINDAKAN penggunanya berbeda, bukan demi kerapian.
+ */
+export const ReceiveTKAErrorCode = {
+  /**
+   * Barisnya sudah tidak ada di inbox — tidak pernah ada, atau sudah diisi orang lain.
+   *
+   * Tindakannya: segarkan daftar.
+   */
+  taskNotFound: 'pekerjaan_tidak_ditemukan',
+  /**
+   * Barisnya ada di inbox, tetapi klaimnya tidak ada di data klaim utama.
+   *
+   * Tindakannya BUKAN menyegarkan daftar — barisnya akan muncul lagi dan gagal lagi. Yang
+   * perlu terjadi adalah perbaikan data, dan layar mengatakannya begitu.
+   */
+  claimMissing: 'klaim_tidak_ditemukan',
+  /**
+   * Satu nomor klaim menunjuk lebih dari satu baris.
+   *
+   * Mungkin terjadi karena tidak ada satu pun constraint keunikan pada kedua tabel
+   * (`R-08`). Penulisan dihentikan, bukan diteruskan atas salah satu barisnya.
+   */
+  claimAmbiguous: 'nomor_klaim_ganda',
+  /** Tanggal kelengkapan dokumen kosong. */
+  dateRequired: 'tanggal_dokumen_wajib_diisi',
+} as const
+
+export type ReceiveTKAErrorCode =
+  (typeof ReceiveTKAErrorCode)[keyof typeof ReceiveTKAErrorCode]

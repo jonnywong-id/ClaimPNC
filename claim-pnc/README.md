@@ -81,6 +81,46 @@ claim-pnc/
 │   │   │   ├── usecase/                 catat, ubah, transfer, tautkan klaim, daftar
 │   │   │   ├── repo/                    sqlstore (CPNC_LAPORAN_KLAIM), memory + 6 contoh
 │   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── masterlogin/             MODUL — Master Login (menu 37)
+│   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, simpan
+│   │   │   ├── repo/                    sqlstore (MST_LOGIN_SURVEYOR), memory + 6 contoh
+│   │   │   └── http/                    dto, galat, handler, rute
+│   │   │                                TANPA IDSource — kuncinya diturunkan dari NAMA
+│   │   ├── masterreas/              MODUL — Master Reas (menu 35)
+│   │   │   ├── usecase/                 orkestrasi: daftar. TANPA tambah dan simpan
+│   │   │   ├── repo/                    sqlstore (T_REINSURER) — hanya SELECT,
+│   │   │   │                            memory + 7 baris contoh
+│   │   │   └── http/                    dto, galat, rute — hanya GET
+│   │   │                                BACA-SAJA — tabelnya ditulis alur PLA/DLA
+│   │   ├── detailpenyebab/          MODUL — Detail Penyebab Kerugian (menu 38)
+│   │   │   ├── usecase/                 orkestrasi: daftar, ambil, tambah, simpan, cari
+│   │   │   ├── repo/                    sqlstore — TULIS ke D_CAUSE_OF_LOSS,
+│   │   │   │                            BACA dari V_D_CAUSE_OF_LOSS (+3 view lain);
+│   │   │   │                            memory + 8 baris contoh
+│   │   │   └── http/                    dto, galat, handler, rute — TANPA DELETE
+│   │   │                                Isi baris hidup di JSONDATA; view membentangkannya
+│   │   ├── inboxreceivetka/         MODUL — Inbox Receive TKA (menu 49)
+│   │   │   ├── usecase/                 orkestrasi: daftar + isi tanggal + beri tahu
+│   │   │   ├── repo/                    sqlstore — BACA dari PC_ASM_FW_GCNMFW_WORK
+│   │   │   │                            (+ T_CLAIM_PNC, T_GENERAL); TULIS hanya
+│   │   │   │                            T_CLAIM_PNC.TGLDOKLENGKAP — tabel engine
+│   │   │   │                            Pega TIDAK PERNAH ditulis maupun dikunci
+│   │   │   ├── notification/            seam Notifier — SMTP dan perekam
+│   │   │   └── http/                    dto, galat, handler, rute — GET + POST
+│   │   │                                Modul INBOX pertama yang MENULIS
+│   │   ├── inboxinvestigator/       MODUL — Inbox Investigator (menu 48)
+│   │   │   ├── usecase/                 orkestrasi: daftar + hitung lama menunggu
+│   │   │   ├── repo/                    sqlstore — PC_ASM_FW_GCNMFW_WORK +
+│   │   │   │                            PC_ASSIGN_WORKBASKET + T_CLAIM_OBJECTLIST +
+│   │   │   │                            T_SURVEYORLIST, hanya SELECT;
+│   │   │   │                            memory + 8 baris contoh
+│   │   │   └── http/                    dto, galat, rute — hanya GET
+│   │   │                                INBOX pertama; BACA-SAJA — layar kerjanya
+│   │   │                                belum ada. 4 tabel di 2 skema.
+│   │   │                                Kolom ke-9 bercaption "Lama Masuk Inbox"
+│   │   │                                tetapi BERISI tanggal survei — apa adanya
+│   │   │                                dari Pega. Export Data Investigation
+│   │   │                                TIDAK dibawa (keputusan Work Owner)
 │   │   ├── riwayatklaim/            MODUL — View History Claim (menu 76)
 │   │   │   ├── usecase/                 buka layar (gerbang proteksi), cari
 │   │   │   ├── repo/                    sqlstore — 11 kueri pencarian atas T_CLAIM_PNC
@@ -371,6 +411,148 @@ penyimpanan di memori keduanya hidup di dalam proses.
 | `GET` | `/api/master/supplier/negara` | wajib | **wajib** | daftar negara dari `COUNTRY` |
 | `GET` | `/api/master/supplier/bank` | wajib | **wajib** | daftar bank dari `GENERAL.LST_BANK_GROUP` |
 | `GET` | `/api/master/supplier/sandi` | wajib | **wajib** | **kelima** daftar dropdown bersandi sekaligus; lihat catatan di bawah |
+| `GET` | `/api/master/login` | wajib | **wajib** | daftar dari `POOLDATA.MST_LOGIN_SURVEYOR`, urut `NAMA`; saringan `cari` (nama, login, email). **Tanpa saringan status** — tabelnya tidak punya kolom `APPROVAL` |
+| `GET` | `/api/master/login/{login}` | wajib | **wajib** | satu baris, untuk dimuat ke form. Jalurnya memakai **LOGIN**, bukan ID terpisah |
+| `POST` | `/api/master/login` | wajib | **wajib** | **4 isian**, 3 wajib (nama, email, telp); `LOGIN`, `STSLOGIN`, dan `LOGINLEADER` **diturunkan server** → `201` |
+| `PUT` | `/api/master/login/{login}` | wajib | **wajib** | isian sama; **nama ditolak bila berbeda** dari yang tersimpan. Ketiga kolom turunan tidak pernah ikut berubah |
+| `GET` | `/api/master/reas` | wajib | **wajib** | daftar dari `POOLDATA.T_REINSURER`, urut `REINSURERNAME, TYPE, REINSURERID`; saringan `cari` (kode, nama, login, email). **Satu-satunya modul master tanpa endpoint tulis** — lihat catatan di bawah |
+
+### Master Reas
+
+Menggantikan harness Pega `DataMemberReas` (MENU_ID 35) atas `POOLDATA.T_REINSURER` —
+**tujuh kolom, enam dibaca, nol isian**.
+
+Ia **satu-satunya layar master yang BACA-SAJA**, dan itu keputusan berdasar bukti, bukan
+pekerjaan yang belum selesai.
+
+#### Kenapa tidak ada endpoint tulis
+
+Satu-satunya penulis tabel ini di sistem lama adalah **alur PLA/DLA**, bukan layar master.
+Penelusuran pemanggilnya berhenti di dua berkas, dan keduanya layar detail:
+
+```
+Database/UPDATEREAS.prc              prosedur upsert-nya
+  ← RDB List/UpdateEmailReas-SQL.xml     satu-satunya Connect-SQL yang memanggilnya
+      ← Activity/UpdateDetailPLA2-Act.xml    layar detail PLA
+      ← Activity/UpdateDetailDLA2-Act.xml    layar detail DLA
+```
+
+Harness-nya sendiri hanya memuat satu grid dan satu tombol **Refresh**. Jadi baris
+reasuransi lahir dan berubah sebagai efek samping pengiriman PLA/DLA (`B-9`).
+
+**Keterbatasan buktinya dinyatakan, bukan ditutupi:** section grid `BrowseListMemberReas`
+tidak ada di export (`R-16`), sehingga ini rekonstruksi. Penambahan jalur tulis kelak
+menyentuh `Repo.Insert`/`Update` dan rutenya; domainnya tidak perlu berubah — dan tiga
+kelompok uji sengaja akan gagal lebih dulu supaya penambahan itu menjadi keputusan yang
+disadari.
+
+#### Tujuh kolom, satu ditulis tetapi tidak pernah dibaca
+
+| Kolom | Alias klipboard Pega | Dikirim | Catatan |
+|---|---|---|---|
+| `REINSURERID` | `CityID` | ya | penghubung ke `T_PLALIST.REINSCODE` dan `IDREAS` |
+| `REINSURERNAME` | `District` | ya | bagian kunci alami |
+| `LOGIN` | `DistrictID` | ya | **menentukan klaim yang dilihat mitra** |
+| `EMAIL` | `City` | ya | tujuan pemberitahuan PLA/DLA |
+| `COUNTRY` | `Country` | ya | ikut tercetak di dokumen PLA/DLA |
+| `TYPE` | — | ya | karakter pertama nomor dokumen PLA/DLA |
+| `COUNTRYID` | — | **tidak** | ditulis `UPDATEREAS`, **nol pembaca di seluruh export** |
+
+Aliasnya contoh telak utang `03-CURRENT-ARCHITECTURE.md` §4.2: alamat surel menjadi `City`,
+nama perusahaan reasuransi menjadi `District`.
+
+#### Kunci alaminya TIGA kolom
+
+`UPDATEREAS` memeriksa keberadaan baris dengan `REINSURERID + REINSURERNAME + TYPE`
+sekaligus. Akibatnya **satu perusahaan dapat muncul beberapa kali** di daftar — satu baris
+per jenis dokumen, dengan surel yang berbeda-beda.
+
+Baris ber-`TYPE = '1'` adalah **cadangan**: `BrowseEmailReas` memakainya ketika tidak ada
+baris yang cocok dengan jenis dokumen yang sedang dikirim. Layar menandainya, dan
+`-periksa` mencacah perusahaan yang tidak punya baris cadangan.
+
+#### Enam pemeriksaan pada `claimpnc -periksa`
+
+Dua di antaranya khas tabel ini: `LOGIN` yang dipakai lebih dari satu kode reasuransi —
+keadaan yang sistem lama sendiri akui mungkin terjadi (`order by reinsurerid desc fetch
+next 1 row only`) dan yang berarti seseorang berpotensi melihat klaim mitra lain (`R-20`) —
+dan perusahaan tanpa baris cadangan.
+
+Hak yang perlu diminta ke DBA untuk tabel ini adalah **BACA saja**.
+
+### Master Login
+
+Menggantikan harness Pega `MasterLoginSurvey` (MENU_ID 37) atas
+`POOLDATA.MST_LOGIN_SURVEYOR` — **tujuh kolom, lima isian, tanpa tab**.
+
+Ia **master paling sederhana di aplikasi ini**, dan itu bukan kebetulan melainkan akibat
+bentuk tabelnya. Yang **tidak** ada di sana menentukan bentuk layarnya:
+
+| Yang tidak ada | Akibatnya |
+|---|---|
+| kolom `APPROVAL` | tanpa tab, tanpa alur persetujuan, tanpa keputusan borongan |
+| kolom pelaku dan waktu | **siapa mengubah apa tidak tersimpan di mana pun** |
+| penanda aktif | **tidak ada cara menyatakan sebuah login sudah tidak berlaku** |
+
+#### Kuncinya DITURUNKAN, bukan diterbitkan — satu-satunya master yang begitu
+
+`Activity/SetLoginSurveyor_act` membentuk `LOGIN` dari `NAMA` dengan membuang **spasi,
+titik, koma, dan tanda hubung**, tanpa mengubah huruf besar-kecil. Tidak ada sequence dan
+tidak ada `MAX(...)+1`.
+
+Satu perbedaan yang disengaja: **penurunannya pindah ke server.** Di Pega ia dihitung di layar
+lalu dikirim kembali sebagai isian biasa, sehingga permintaan yang tidak datang dari layar
+dapat mengirim `LOGIN` apa pun — dan `LOGIN` adalah kunci baris, penyaring `WHERE` setiap
+pernyataan simpan. Layar tetap memperlihatkan hasilnya saat pengguna mengetik; ia
+menghitungnya untuk **ditampilkan**, bukan untuk dikirim.
+
+Akibat lanjutannya: **Nama terkunci setelah baris tersimpan** (`pyDisabledWhen` pada kontrol
+Nama di Pega), dan **server ikut menolaknya** — penguncian di antarmuka adalah kenyamanan
+tampilan, dan permintaan yang tidak datang dari layar tidak tersentuh olehnya.
+
+> **Akun aplikasi TIDAK diterbitkan, dan layar menyatakannya.** Di Pega, menyimpan baris baru
+> ikut memanggil `GCNMCreateOperator` dengan **kata sandi yang sama untuk setiap orang**, dan
+> pesan suksesnya menyebut kata sandi itu terang-terangan.
+>
+> Tiga hal menghalanginya: tidak ada operator Pega untuk diterbitkan, kontrak identitas `F-3`
+> belum ada (`R-14`), dan mengumumkan kata sandi bagi akun yang tidak diterbitkan adalah
+> **keterangan yang salah** — petugas akan menyampaikannya kepada surveyor yang kemudian
+> tidak dapat masuk. Perlakuan yang sama dipakai Master Bengkel.
+
+> **Dua kolom ditulis tetapi tidak pernah digambar layar Pega.** `STSLOGIN` (selalu
+> `"Member"`) dan `LOGINLEADER` diturunkan sistem dan **tidak dapat dikirim klien** —
+> mengirimnya ditolak sebagai permintaan cacat. Keduanya tetap **ditampilkan baca-saja** di
+> form: nilainya menentukan peran dan tim seseorang, dan menyembunyikan hal yang tersimpan
+> tidak membuatnya tidak tersimpan.
+>
+> `LOGINLEADER` diturunkan dari **leader milik pengguna yang menyimpan**, bukan dari login
+> pengguna itu sendiri — sehingga surveyor yang menambahkan rekannya memberi rekan itu leader
+> yang sama dengan dirinya.
+
+> **Cakupan daftarnya adalah REKONSTRUKSI.** Rule yang mengisi grid Pega
+> (`LoginMemberSurvey.pxResults`) **tidak ada di export** (`R-16`); yang ada hanyalah pemuat
+> satu baris untuk tombol Ubah. Yang dipakai adalah bentuk kueri yang benar-benar ada, tanpa
+> penyaring — sehingga daftarnya memuat seluruh baris entitas itu.
+>
+> Bacaan lain yang mungkin: daftarnya disaring per tim, sehingga seorang leader hanya melihat
+> anggotanya. Perbedaan keduanya menentukan **siapa yang boleh menyunting login milik tim
+> lain**, dan itu pertanyaan terbuka untuk Work Owner.
+
+> **Pemeriksaan login ganda juga REKONSTRUKSI.** Pega memeriksanya terhadap **tabel operator
+> Pega** (`Data-Admin-Operator-ID` lewat report definition `GCNMGetListOfOperators`), yang
+> tidak ada di sistem baru. Penggantinya keunikan `LOGIN` pada tabel modul ini sendiri — kunci
+> alaminya — dengan pesan Pega apa adanya: *"Login sudah terdaftar dengan nama yang sama"*.
+
+#### Grid — lima kolom, satu-lawan-satu dengan Pega
+
+`Nama · Login · Email · Telp · Alamat`, dibaca dari `pyLabelFieldValue` pada
+`Section/BrowseLoginSurveyor-Section.xml`. `Status Login` dan `Login Leader` **tidak ada di
+grid** karena Pega pun tidak punya; keduanya hanya muncul saat sebuah baris dibuka.
+
+Paginasi **15 baris**, dari `pyPageSizeOther` pada grid itu. Satu selisih yang disadari:
+gridnya memakai `pyPageMode = "Next Previous"` sedangkan `DataTable` menomori halamannya —
+modenya diseragamkan dengan seluruh layar master lain agar tidak ada dua gaya paginasi hidup
+berdampingan.
 
 ### Master Supplier
 
@@ -798,6 +980,8 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/master/kategori-sparepart` | **Master Kategori Sparepart** — menu 33; tiga tab (Approve · Reject · Waiting Approval); grid **2 kolom**, 50 baris per halaman; master **terkecil** — tabelnya hanya tiga kolom, dan ia MENULIS tabel yang layar Master Sparepart hanya baca |
 | `/master/tipe-sparepart` | **Master Tipe Sparepart** — menu 34; tiga tab (Approve · Reject · Waiting Approval); grid **4 kolom**, 50 baris per halaman. Master pertama di rumpun sparepart yang menyimpan **kunci asing** — setiap tipe berinduk pada satu kategori. Satu-satunya layar yang **sengaja menampilkan lebih banyak baris daripada Pega**: inner join Pega diganti LEFT JOIN supaya baris tanpa kategori tetap dapat diperbaiki |
 | `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
+| `/inbox/investigator` | **Inbox Investigator** — menu 48; antrean bersama workbasket `InvestigatorPNC`. **Layar INBOX pertama**, dan yang pertama di bawah awalan `/inbox/`. Grid **9 kolom**, 50 baris per halaman (`pyPageSize` grid lamanya). Baca-saja: mengambil pekerjaan dan mencatat hasil investigasi ada di layar kerja yang belum dibangun. **Export Data Investigation TIDAK dibawa** — dihapus atas keputusan Work Owner 2026-09-24; pemetaan 3 dari 13 kolom CSV-nya tidak dapat ditelusuri (lihat `docs/permintaan-artefak-pega.md` §2) |
+| `/inbox/receive-tka` | **Inbox Receive TKA** — menu 49; klaim TKA yang tanggal penerimaan dokumen aslinya belum diisi. **Layar INBOX kedua, dan yang PERTAMA menulis**: pengguna mengisi tanggal di dalam tabel lalu menekan **Submit per baris**, dan barisnya hilang dari daftar. Grid **7 kolom + kolom aksi**, 50 baris per halaman. Dibaca dari **tabel yang sama dengan Report Definition Pega** — `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `TKA_1 = '1'`, tanggal kelengkapan masih kosong, dan status kerja belum selesai; nama peserta diambil dari `T_GENERAL` karena kolomnya pada tabel kerja kosong. Submit menulis **satu kolom saja** (`T_CLAIM_PNC.TGLDOKLENGKAP`) lalu melepaskan pemberitahuan **di luar** transaksi — surel yang gagal tidak membatalkan penyimpanan. **Tabel engine Pega tidak pernah ditulis**: nilainya akan tertimpa tanpa jejak saat Pega menyimpan kasus itu lagi, sehingga selama masa paralel layar Pega masih menampilkan klaim itu sebagai belum lengkap — selisih yang dicacah `claimpnc -periksa` dan disebutkan di kaki layar. Baris yang klaimnya tidak ditemukan **tetap tampil** dengan isian dimatikan (lihat `docs/permintaan-artefak-pega.md` §3) |
 | `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
 | `/pelaporan-klaim` | **Pelaporan Klaim** — menu 64 |
 | `/riwayat-klaim` | **View History Claim** — menu 76, pencarian riwayat klaim |
@@ -837,6 +1021,9 @@ sejajar dengan backend, tempat modul baru cukup menambah satu `Pasang(...)` di `
 | `PUT` | `/api/pelaporan-klaim/{nomor}` | wajib | mengubah laporan yang **belum diregistrasi** |
 | `POST` | `/api/pelaporan-klaim/{nomor}/transfer` | wajib | menandai laporan dikirim ke ASM pusat; `409` bila sudah |
 | `POST` | `/api/pelaporan-klaim/{nomor}/klaim` | wajib | `{nomor_klaim}` — menautkan laporan ke klaim; `409` bila sudah |
+| `GET` | `/api/inbox/investigator` | wajib | antrean Inbox Investigator; saringan `cari`; terpotong pada 500 baris dan **menyatakannya** lewat `terpotong` |
+| `GET` | `/api/inbox/receive-tka` | wajib | daftar Inbox Receive TKA; saringan `cari`; terpotong pada 500 baris dan **menyatakannya** lewat `terpotong` |
+| `POST` | `/api/inbox/receive-tka/kelengkapan-dokumen` | wajib | `{nomor_klaim, tanggal_dokumen_lengkap}` — mengisi **satu kolom**, `T_CLAIM_PNC.TGLDOKLENGKAP`; `422` bila tanggal kosong, `409` bila barisnya sudah diisi orang lain / klaimnya tidak ditemukan / nomor klaimnya ganda. **Tidak idempoten**: permintaan kedua ditolak, sehingga surel ganda tidak dapat terjadi |
 | `POST` | `/api/riwayat-klaim/buka` | wajib | menjalankan gerbang proteksi; memakai satu jatah pencarian |
 | `GET` | `/api/riwayat-klaim` | wajib | pencarian riwayat klaim; saringan `tipe`, `nilai`, `tanggal_pencarian`, `tanggal_lahir`, `halaman`, `ukuran` |
 
