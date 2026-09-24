@@ -7,18 +7,24 @@
 //   - `SELECT *` dilarang. Kolom disebut namanya.
 //   - Tidak ada `DELETE` atas data bernilai bisnis (`ADR-0012`). Baris yang tidak lagi
 //     terpakai DITANDAI, tidak dihapus.
-// # Satu jebakan driver yang sudah menggigit sekali
+// # Satu jebakan driver yang sudah menggigit DUA kali
 //
-// JANGAN menulis pasangan kutip ganda yang MEMBENTANG ANTAR-BARIS di dalam komentar SQL.
-// go-ora memindai teks pernyataan untuk menemukan bind variable dan TIDAK melewati
-// komentar, sehingga kutip yang terbuka di satu baris dan tertutup di baris lain membuat
-// penanda bind tidak terbaca. Hasilnya ORA-00900 pada pernyataan yang sebenarnya sah.
+// JANGAN menulis pasangan kutip yang MEMBENTANG ANTAR-BARIS di dalam komentar SQL —
+// ganda (`"`) maupun TUNGGAL (`'`). go-ora memindai teks pernyataan untuk menemukan bind
+// variable dan TIDAK melewati komentar, sehingga kutip yang terbuka di satu baris dan
+// tertutup di baris lain membuat penanda bind tidak terbaca. Hasilnya ORA-00900 pada
+// pernyataan yang sebenarnya sah.
 //
-// Kutip ganda yang berpasangan DI DALAM SATU BARIS aman; beberapa kueri di sini
-// memakainya dan berjalan normal. Yang berbahaya hanya yang membentang.
+// Kutip yang berpasangan DI DALAM SATU BARIS aman; beberapa kueri di sini memakainya dan
+// berjalan normal. Yang berbahaya hanya yang membentang.
 //
 // Gejalanya menyesatkan: membuang satu baris komentar mana pun TIDAK memperbaikinya,
 // karena yang tersisa justru kutip yang tidak berpasangan.
+//
+// Kali pertama (kueri parameter) penyebabnya kutip ganda, dan catatan ini semula hanya
+// menyebut yang ganda. Kali kedua (kueri polis) penyebabnya kutip TUNGGAL — sebuah kalimat
+// bahasa Indonesia yang mengutip pesan galat, dan tanda kutipnya jatuh di dua baris yang
+// berbeda. Catatan yang hanya menyebut separuh sebab tidak mencegah kejadian kedua.
 package sqlstore
 
 import (

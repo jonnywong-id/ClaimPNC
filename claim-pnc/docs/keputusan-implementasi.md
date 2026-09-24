@@ -8151,3 +8151,138 @@ yang lain.
 
 Aturannya karena itu: **kolom pada tabel bersama mengikuti bentuk nilai sistem lama;
 konsistensi gaya internal mengalah pada keterbacaan lintas sistem.**
+
+## 29. Tautan klaim ke berkas laporan menjadi seam, bukan pemanggilan langsung (2026-09-24)
+
+Modul registrasi perlu menulis dua kolom pada `POOLDATA.T_CLAIM_RECIVEDCLAIM` — tabel yang
+dimiliki modul Inbox Laporan Klaim. Tiga cara dipertimbangkan.
+
+| Cara | Kenapa tidak |
+|---|---|
+| Registrasi memanggil repo modul lain langsung | Domain akan mengimpor repo, melanggar arah ketergantungan (`08-TECHNICAL-STRATEGY` §2) |
+| Layar yang memanggil dua endpoint berurutan | Klaim dan tautannya berpisah transaksi; kegagalan di tengah meninggalkan klaim tanpa berkas yang berpindah |
+| **Seam `ClaimReportLink`** ✔ | Domain menyatakan APA yang dibutuhkan; pengisinya SQL, dan seluruhnya masuk transaksi yang sama |
+
+### Dua method, bukan satu
+
+`MarkHandedOver` dan `AttachClaimNumber` terjadi pada saat berbeda — nomor klaim belum ada
+saat klaim dibuka. Menyatukannya berarti salah satunya dipanggil dengan nilai kosong, dan
+**kolom berisi string kosong tidak sama dengan kolom `NULL`** bagi kueri posisi.
+
+### Nol baris terpengaruh adalah GALAT, bukan keberhasilan diam
+
+Pengisi SQL menjelaskan sebabnya lewat kueri keadaan terpisah: barisnya tidak ada, barisnya
+milik Pega (`P-1`), atau urutan penulisannya terbalik. Menganggap nol baris sebagai
+"berhasil" akan mengulang kegagalan yang seam ini justru ada untuk menutupnya — yang
+berhasil tetapi tidak berakibat apa-apa.
+
+### Pengecualian yang disengaja
+
+`MarkHandedOver` atas berkas yang **sudah** diserahkan **tidak** dianggap galat: tanggal
+penyerahannya sengaja tidak digeser, dan pendaftaran boleh lanjut.
+
+---
+
+## 30. `applyInput` hanya menambah RCVID, tidak pernah mengosongkannya (2026-09-24)
+
+`applyInput` menimpa seluruh medan klaim dengan isian form, termasuk `RCVID`. Layar Input
+Register tidak mengirim medan itu, sehingga setiap penyimpanan **memutus tautan** ke berkas
+laporan yang dibuat saat klaim dibuka.
+
+Akibatnya tidak pernah muncul sebagai galat: klaim tersimpan, nomor terbit, dan berkasnya
+berhenti di "Not Registered" selamanya.
+
+### Aturan yang berlaku sejak sekarang
+
+**Medan yang dimiliki TAHAP LAIN hanya boleh ditambah oleh form, tidak dikosongkan.**
+Bentuknya:
+
+```go
+if p.RCVID != "" {
+    k.RCVID = p.RCVID
+}
+```
+
+Ini berbeda dari medan yang memang milik form itu — `Location`, `Chronology`, `Reporter` —
+yang justru HARUS dapat dikosongkan, karena mengosongkannya adalah tindakan petugas yang
+sah.
+
+Cacat ini ditemukan uji yang menjaga **akibat yang dilihat pengguna** (berkas berpindah
+tab), bukan uji yang memanggil method baru. Uji jenis kedua akan lulus dengan cacat ini
+tetap ada.
+
+## 31. Satu tempat merakit satu modul (2026-09-24)
+
+Modul Registrasi sempat dirakit di dua tempat dengan daftar seam masing-masing, dan yang
+disunting sepanjang tiga sesi adalah yang **tidak pernah dipanggil**. Akibatnya baru muncul
+saat aplikasi dijalankan.
+
+### Aturan
+
+**Setiap modul dirakit di tepat satu fungsi.** `build` memanggilnya; ia tidak menyusun
+Options sendiri.
+
+Menyinkronkan dua daftar bukan penyelesaian — dua tempat yang harus dijaga tetap sama
+adalah dua tempat yang cepat atau lambat berbeda, dan perbedaannya tidak menghasilkan galat
+kompilasi.
+
+### Kenapa `go vet` tidak menolong
+
+Ia tidak menandai **fungsi** yang tidak terpakai; hanya variabel lokal dan impor. Fungsi
+perakitan yang mati karena itu lolos seluruh pemeriksaan statis.
+
+### Penjagaan yang dipasang
+
+Uji yang merakit modul lewat fungsi perakitannya, pada **kedua cabang** — dengan dan tanpa
+Oracle. Cabang Oracle memakai `sql.OpenDB` di atas connector tiruan, karena `database/sql`
+tidak menghubungi driver sampai kueri pertama.
+
+Uji itu dibuktikan merah lebih dulu dengan melepas satu seam. Uji yang tidak pernah dilihat
+merah bukan penjagaan.
+
+## 32. Galat yang dapat diperbaiki pengguna wajib punya sentinel (2026-09-24)
+
+`PolicyRepo.Get` mengembalikan `fmt.Errorf` biasa, sehingga "polis tidak ditemukan" jatuh
+ke cabang terakhir `mapError` dan sampai ke layar sebagai **"Terjadi kesalahan pada
+sistem"** dengan status 500.
+
+Pesan itu benar untuk galat tak terduga (`09-API-STRATEGY` §5: detail internal tidak
+dibocorkan), tetapi salah di sini: nomor polis yang keliru adalah hal yang **petugas dapat
+perbaiki sendiri dalam tiga detik**, dan pesan itu menyuruh mereka menunggu bantuan.
+
+### Aturan
+
+**Setiap keadaan yang dapat diperbaiki pemanggil wajib punya sentinel error dan pemetaan
+sendiri.** Yang tersisa di cabang terakhir hanyalah yang benar-benar tak terduga.
+
+Pembedanya bukan "apakah ini galat teknis", melainkan **apakah ada tindakan yang masuk akal
+bagi orang yang melihatnya**.
+
+### Status yang dipakai
+
+`ErrPolicyNotFound` → **422**, bukan 404. Yang tidak ditemukan bukan alamat yang diminta,
+melainkan ISI permintaannya. 404 akan membuat layar menyimpulkan endpoint-nya salah.
+
+---
+
+## 33. Kutip di komentar SQL dijaga uji, bukan ingatan (2026-09-24)
+
+Jebakan go-ora — kutip yang membentang antar-baris komentar membuat penanda bind tidak
+terbaca — menggigit **dua kali**. Kali pertama kutip ganda, kali kedua kutip tunggal di
+dalam kalimat bahasa Indonesia yang mengutip pesan galat.
+
+Catatan yang ditulis setelah kejadian pertama hanya menyebut kutip **ganda**, dan karena
+itu tidak mencegah kejadian kedua.
+
+### Aturan
+
+Di dalam baris komentar berkas `.sql`, **kutip wajib berpasangan dalam satu baris** —
+ganda maupun tunggal.
+
+### Penjagaannya
+
+`TestCommentQuotesBalancedPerLine` memindai seluruh berkas kueri. Ia dibuktikan merah lebih
+dulu dengan menyisipkan kutip lintas baris.
+
+Catatan di kepala berkas tetap ada, tetapi ia menjelaskan **kenapa** — bukan yang menjaga.
+Aturan yang hanya hidup di komentar sudah terbukti gagal sekali.

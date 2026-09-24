@@ -38,7 +38,7 @@ func NewPolicyStore(policy ...registrasi.Policy) *PolicyStore {
 func (r *PolicyStore) Get(_ context.Context, number string) (registrasi.Policy, error) {
 	p, ok := r.list[strings.ToUpper(strings.TrimSpace(number))]
 	if !ok {
-		return registrasi.Policy{}, fmt.Errorf("registrasi/memori: polis %q tidak ditemukan", number)
+		return registrasi.Policy{}, fmt.Errorf("%w: %s", registrasi.ErrPolicyNotFound, number)
 	}
 	return p, nil
 }
@@ -374,3 +374,64 @@ var (
 	_ registrasi.Assigner           = (*Assigner)(nil)
 	_ registrasi.IDGenerator        = IDGenerator{}
 )
+
+// ── Tautan ke berkas laporan ─────────────────────────────────────────────────────
+
+// ClaimReportLink merekam tautan klaim ke berkas laporan di memori.
+//
+// Ia MEREKAM, bukan sekadar mengabaikan: pengujian perlu membuktikan tautannya benar
+// terjadi, dan pada urutan yang benar. Tanpa rekaman, "berkas tidak berpindah tab" —
+// keluhan yang melahirkan seam ini — tidak dapat dijaga oleh satu uji pun.
+type ClaimReportLink struct {
+	mu          sync.Mutex
+	handedOver  map[string]time.Time
+	claimNumber map[string]string
+}
+
+// NewClaimReportLink membentuk penaut kosong.
+func NewClaimReportLink() *ClaimReportLink {
+	return &ClaimReportLink{
+		handedOver:  map[string]time.Time{},
+		claimNumber: map[string]string{},
+	}
+}
+
+// MarkHandedOver menandai berkas sudah diserahkan; pemanggilan ulang tidak menggeser
+// waktunya, sama seperti pengisi SQL.
+func (p *ClaimReportLink) MarkHandedOver(_ context.Context, reportID string, at time.Time) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, sudah := p.handedOver[reportID]; !sudah {
+		p.handedOver[reportID] = at
+	}
+	return nil
+}
+
+// AttachClaimNumber memasang nomor klaim, dan MENOLAK bila berkasnya belum diserahkan —
+// urutan yang sama dengan pengisi SQL, supaya uji yang lulus di sini tidak gagal di sana.
+func (p *ClaimReportLink) AttachClaimNumber(_ context.Context, reportID, claimNumber string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, sudah := p.handedOver[reportID]; !sudah {
+		return fmt.Errorf("registrasi/memori: laporan %s belum ditandai diserahkan", reportID)
+	}
+	p.claimNumber[reportID] = claimNumber
+	return nil
+}
+
+// HandedOver menyebut apakah sebuah berkas sudah ditandai diserahkan.
+func (p *ClaimReportLink) HandedOver(reportID string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	_, ok := p.handedOver[reportID]
+	return ok
+}
+
+// ClaimNumber menyebut nomor klaim yang terpasang pada sebuah berkas.
+func (p *ClaimReportLink) ClaimNumber(reportID string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.claimNumber[reportID]
+}
+
+var _ registrasi.ClaimReportLink = (*ClaimReportLink)(nil)

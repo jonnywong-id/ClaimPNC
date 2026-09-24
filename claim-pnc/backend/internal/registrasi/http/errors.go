@@ -15,6 +15,7 @@ import (
 // bentuk ini mengikuti bentuk yang sudah berjalan.
 const (
 	CodeValidationFailed     = "validasi_gagal"
+	CodePolicyNotFound       = "polis_tidak_ditemukan"
 	CodeClaimNotFound        = "klaim_tidak_ditemukan"
 	CodeTaskNotFound         = "tugas_tidak_ditemukan"
 	CodeTaskAlreadyClaimed   = "tugas_sudah_diambil"
@@ -40,6 +41,16 @@ func mapError(err error) (int, ErrorResponse) {
 			Code:      CodeValidationFailed,
 			Message:   shortMessage(validation),
 			Violation: violationsDTO(validation),
+		}
+
+	case errors.Is(err, registrasi.ErrPolicyNotFound):
+		// 422, bukan 404: yang tidak ditemukan bukan alamat yang diminta melainkan ISI
+		// permintaannya, dan petugas dapat memperbaikinya sendiri. Pesannya menyebut
+		// tindakan yang mungkin, bukan sekadar menyatakan kegagalan.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code: CodePolicyNotFound,
+			Message: "Nomor Polis tidak ditemukan. Periksa kembali nomornya, " +
+				"atau pastikan polisnya sudah terbit di sistem polis.",
 		}
 
 	case errors.Is(err, registrasi.ErrClaimNotFound):

@@ -88,8 +88,6 @@ import (
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	inboxlaporanklaimusecase "claim-pnc/internal/inboxlaporanklaim/usecase"
 	registrasihttp "claim-pnc/internal/registrasi/http"
-	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
-	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	inboxmanagerreceivepuclhttp "claim-pnc/internal/inboxmanagerreceivepucl/http"
 	inboxmanagerreceivepuclmemory "claim-pnc/internal/inboxmanagerreceivepucl/repo/memory"
@@ -1346,31 +1344,16 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// spreading di bawahnya (Work Owner, 2026-09-24). Tanpa koneksi, tidak ada satu pun
 	// adapter yang dapat diisi data sungguhan, dan mengisinya dengan data contoh berarti
 	// layar registrasi berjalan di atas polis dan kurs karangan.
+	// Perakitannya ada di assembleRegistration, dan TIDAK boleh disalin ke sini.
+	//
+	// Sebelum 2026-09-24 kedua tempat ini memuat daftar seam masing-masing, dan yang
+	// disunting adalah yang SALAH: `assembleRegistration` tidak pernah dipanggil, sehingga
+	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
+	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
+	// aplikasi dijalankan.
 	var registrationService *registrasiusecase.Service
 	if store.legacy != nil {
-		primaryDB := store.legacy.DB()
-		registrationService, err = registrasiusecase.NewService(registrasiusecase.Options{
-			ClaimRepo:          registrasisql.NewClaimStore(primaryDB),
-			TaskRepo:           registrasisql.NewTaskStore(primaryDB),
-			PolicyRepo:         registrasisql.NewPolicyRepo(primaryDB),
-			NumberIssuer:       registrasisql.NewNumberIssuer(primaryDB),
-			Parameter:          registrasisql.NewParameter(primaryDB),
-			ExchangeRateSource: registrasisql.NewExchangeRateSource(primaryDB),
-			Assigner:           registrasisql.NewAssigner(primaryDB),
-
-			// Kotak keluar pemberitahuan DITUNDA (Work Owner, 2026-09-24): tabelnya tidak
-			// dibuat. Yang dipakai mencatat di memori, sehingga peristiwa tetap terbit di
-			// dalam transaksi yang sama tanpa menuntut tabel yang belum ada.
-			//
-			// Akibatnya disadari: pemberitahuan TIDAK bertahan melewati restart, dan
-			// pengirimannya (S-3) belum ada. Klaimnya sendiri tetap tersimpan.
-			Notifier: registrasimemory.NewStore(),
-
-			AuditRecorder: registrasisql.NewAuditRecorder(primaryDB, registrasimemory.IDGenerator{}),
-			IDGenerator:   registrasimemory.IDGenerator{},
-			UnitOfWork:    registrasisql.NewUnitOfWork(primaryDB),
-			Clock:         clock.System{},
-		})
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
 		if err != nil {
 			store.close()
 			return assembly{}, err

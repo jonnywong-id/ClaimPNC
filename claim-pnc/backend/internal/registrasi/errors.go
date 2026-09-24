@@ -43,6 +43,20 @@ var ErrExchangeRateNotFound = errors.New("registrasi: kurs tanggal kejadian tida
 // ulang. Nomor klaim tidak dapat ditarik kembali dan tidak diterbitkan dua kali.
 var ErrClaimNumberAlreadyIssued = errors.New("registrasi: nomor klaim sudah pernah terbit")
 
+// ErrPolicyNotFound dikembalikan bila nomor polis tidak ada di sumber polis.
+//
+// # Kenapa ia punya sentinel sendiri
+//
+// Ini keadaan yang PALING SERING ditemui petugas, dan satu-satunya yang dapat mereka
+// perbaiki sendiri — dengan membetulkan nomornya. Tanpa sentinel, ia jatuh ke cabang
+// terakhir pemetaan galat dan sampai ke layar sebagai "Terjadi kesalahan pada sistem":
+// kalimat yang benar secara teknis, tetapi menyuruh orang menunggu bantuan untuk salah
+// ketik yang bisa mereka betulkan dalam tiga detik.
+//
+// Itu bukan kemungkinan teoretis — ia terjadi pada 2026-09-24, dan menghabiskan waktu
+// justru karena pesannya tidak menyebutkan apa pun.
+var ErrPolicyNotFound = errors.New("registrasi: polis tidak ditemukan")
+
 // ViolationCode menamai satu aturan validasi.
 //
 // Klien membedakan pelanggaran lewat kode ini, bukan dengan mencocokkan teks pesan —

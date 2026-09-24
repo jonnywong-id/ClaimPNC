@@ -60,21 +60,54 @@ SELECT CURRENCYVALUE
 --
 -- JSON_VALUE dipakai, bukan penguraian di Go: ia portabel ke PostgreSQL 17+ (`D-24`),
 -- dan membaca sepuluh field tanpa mengangkut CLOB berukuran puluhan kilobyte ke aplikasi.
-SELECT JSON_VALUE(p.POLICYDATA, '$.PolicyNo'),
-       JSON_VALUE(p.POLICYDATA, '$.Quotation.GroupPanel'),
-       JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessType'),
-       JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessName'),
-       JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
-       JSON_VALUE(p.POLICYDATA, '$.EndDateTime'),
-       JSON_VALUE(p.POLICYDATA, '$.TypeOfPolicy'),
-       JSON_VALUE(p.POLICYDATA, '$.Currency'),
-       JSON_VALUE(p.POLICYDATA, '$.TheInsured'),
-       JSON_VALUE(p.POLICYDATA, '$.QQName'),
-       JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchCode'),
-       JSON_VALUE(p.POLICYDATA, '$.SpreadingStatus')
+-- # DUA kolom memuat dokumennya, dan TIDAK ADA yang lengkap
+--
+-- Terverifikasi 2026-09-24 atas 211.590 baris:
+--
+--   POLICYDATA (CLOB)     terisi pada 168.298
+--   DATA_JSONBLOB (BLOB)  terisi pada 197.687
+--   keduanya kosong       pada  13.732
+--
+-- Membaca salah satu saja menolak polis yang sebenarnya ada. Versi pertama kueri ini
+-- hanya membaca POLICYDATA, dan akibatnya tombol Register Klaim menjawab galat umum
+-- untuk 29.389 polis yang dokumennya hanya ada di BLOB.
+--
+-- # Kenapa POLICYDATA didahulukan
+--
+-- Pada 168.127 baris keduanya terisi, dan pada 199 dari 200 contoh keduanya menyebut
+-- nomor polis yang sama. Mendahulukan POLICYDATA membuat polis yang SUDAH terbaca
+-- sebelumnya tetap terbaca sama persis; perubahan ini hanya MENAMBAH yang tadinya
+-- gagal. Satu contoh yang berbeda dicatat sebagai pertanyaan terbuka — mana yang benar
+-- saat keduanya tidak sepakat belum diketahui.
+--
+SELECT
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.PolicyNo'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.PolicyNo')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.GroupPanel'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.GroupPanel')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessType'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessType')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessName'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessName')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.StartDateTime'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.StartDateTime')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.EndDateTime'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.EndDateTime')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TypeOfPolicy'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.TypeOfPolicy')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Currency'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Currency')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TheInsured'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.TheInsured')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.QQName'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.QQName')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchCode'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BranchCode')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.SpreadingStatus'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.SpreadingStatus'))
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
-   AND p.POLICYDATA IS NOT NULL
+   AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
  ORDER BY p.TGL_INPUT DESC
  FETCH FIRST 1 ROWS ONLY
 

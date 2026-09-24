@@ -187,3 +187,40 @@ type AuditRecorder interface {
 type IDGenerator interface {
 	New() string
 }
+
+// ClaimReportLink menautkan klaim kembali ke berkas Receive Document asalnya.
+//
+// # Kenapa seam ini ada, dan apa yang gagal tanpanya
+//
+// Berkas laporan menentukan posisinya dari DUA kolom pada
+// `POOLDATA.T_CLAIM_RECIVEDCLAIM`, dan ketiga keadaannya persis yang dipakai layar lama:
+//
+//	NOKLAIM kosong, TRANSFERASM kosong  → Not Transferred
+//	NOKLAIM kosong, TRANSFERASM terisi  → Not Registered
+//	NOKLAIM terisi, TRANSFERASM terisi  → Outstanding
+//
+// Tanpa seam ini, menekan Register Klaim BENAR-BENAR membuat klaim — tetapi berkasnya
+// tetap duduk di Not Transferred, dan petugas menyimpulkan tombolnya tidak bekerja. Itu
+// keluhan nyata (Work Owner, 2026-09-24), dan kelas kegagalan yang paling mahal: yang
+// berhasil tetapi tampak gagal.
+//
+// # Kenapa DUA method, bukan satu
+//
+// Keduanya terjadi pada saat yang berbeda. Berkas diserahkan begitu klaim dibuka,
+// sedangkan nomor klaim baru terbit di UJUNG tahap Input Register (`ADR-0009`) — sampai
+// saat itu tidak ada nomor untuk dituliskan. Menyatukannya menjadi satu method berarti
+// salah satunya dipanggil dengan nilai kosong, dan kolom yang terisi string kosong TIDAK
+// sama dengan kolom yang masih NULL bagi kueri di atas.
+//
+// # Batas yang mengikat pengisinya
+//
+// Selama masa paralel, tepat satu sistem menulis sebuah baris (`P-1`, `ADR-0004`).
+// Berkas milik Pega hanya boleh dibaca, dan pengisi WAJIB menolak menulis ke sana —
+// bukan mengandalkan layar yang sudah mematikan tombolnya.
+type ClaimReportLink interface {
+	// MarkHandedOver menandai berkas sudah diserahkan untuk diregistrasi.
+	MarkHandedOver(ctx context.Context, reportID string, at time.Time) error
+
+	// AttachClaimNumber menuliskan nomor klaim yang terbit dari berkas itu.
+	AttachClaimNumber(ctx context.Context, reportID, claimNumber string) error
+}

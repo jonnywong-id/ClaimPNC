@@ -10388,3 +10388,332 @@ keliru.
 Yang ketiga baru terlihat sekarang: langkah 10 mengirim dengan `Message` **kosong** dan
 `CorrName = NoticeOfLargeLosses_Email`, artinya seluruh isi surat ada di rule
 correspondence — dan **tidak ada satu pun direktori `Correspondence/` di export**.
+
+## 47. Berkas RCV berpindah tab — tautan balik klaim ke laporan (2026-09-24)
+
+Bab 46 menutup dengan satu hal tersisa, dan Work Owner meminta ia dikerjakan:
+
+> *"Terutamakan portal ASM dulu, yang lainya bisa nanti."*
+
+### 47.1 Kegagalan yang tidak menghasilkan satu pun galat
+
+Sebelum sesi ini, menekan Register Klaim **benar-benar membuat klaim** — tetapi berkas
+RCV-nya tetap duduk di tab "Not Transferred". Tidak ada galat, tidak ada peringatan; dari
+layar, tombolnya tampak tidak bekerja.
+
+Ini keluhan yang sama persis dengan yang dilaporkan pada tombol "Buat Baru" (bab 42), dan
+kelas kegagalan yang paling mahal: **yang berhasil tetapi tampak gagal**, karena petugas
+akan menekannya lagi.
+
+### 47.2 Posisi berkas ditentukan dua kolom, diisi pada dua saat berbeda
+
+Kueri posisi (`inboxlaporanklaim.sql`, cabang kedua) membaca:
+
+| `NOKLAIM` | `TRANSFERASM` | Tab |
+|---|---|---|
+| kosong | kosong | **Not Transferred** |
+| kosong | terisi | **Not Registered** |
+| terisi | terisi | **Outstanding** |
+| **terisi** | **kosong** | **tidak ada tab sama sekali** |
+
+Baris terakhir bukan kemungkinan teoretis: kueri mengembalikan `NULL` lewat cabang `ELSE`,
+dan **1.127 baris warisan berada di dalamnya** — terverifikasi 2026-09-24 dari 1.470
+ber-`NOKLAIM` berbanding 343 ber-`TRANSFERASM`. Berkas-berkas itu tidak muncul di tab mana
+pun.
+
+Karena itu urutan penulisannya mengikat: **TRANSFERASM dulu, NOKLAIM kemudian.**
+
+### 47.3 Dua method, bukan satu, dan alasannya bukan selera
+
+Seam baru `ClaimReportLink` punya dua method karena keduanya terjadi pada saat berbeda:
+
+| Method | Kapan | Akibat |
+|---|---|---|
+| `MarkHandedOver` | klaim dibuka (`Start`) | Not Transferred → **Not Registered** |
+| `AttachClaimNumber` | nomor terbit (`SaveRegister`) | Not Registered → **Outstanding** |
+
+Nomor klaim **tidak ada** saat klaim dibuka — ia terbit di ujung Input Register
+(`ADR-0009`). Menyatukan keduanya berarti salah satunya dipanggil dengan nilai kosong, dan
+kolom berisi string kosong **tidak sama** dengan kolom yang masih `NULL` bagi kueri di
+atas.
+
+Di Pega keduanya memang ditulis satu procedure — `PROCINSERTDATARECIVEDKLAIM`, parameter
+`TNOKLAIM` dan `TTRANSFERASM` — tetapi di sana form RCV disimpan ulang setelah case klaim
+dibuat, sehingga keduanya sudah tersedia pada saat yang sama. Di sini alurnya berbeda, dan
+memaksakan satu method akan menghasilkan justru kombinasi tanpa tab.
+
+### 47.4 Pagar `P-1` ada di pengisi, bukan di layar
+
+Tabel `T_CLAIM_RECIVEDCLAIM` dimiliki bersama dengan Pega. Yang memisahkan kepemilikan
+adalah **awalan kunci**: baris terbitan aplikasi ini ber-`CLAIMID` `RCVN.%`.
+
+Kedua `UPDATE` menyaring `CLAIMID LIKE 'RCVN.%'`. Layar memang sudah mematikan tombolnya
+pada berkas milik Pega, tetapi **layar bukan tempat menegakkan kepemilikan data** — satu
+permintaan yang dibuat di luar layar akan melewatinya.
+
+Nol baris terpengaruh **tidak** dianggap berhasil. Ia dijelaskan lewat kueri keadaan yang
+membedakan tiga sebab: barisnya tidak ada, barisnya milik Pega, atau urutannya terbalik.
+Terbukti terhadap Oracle:
+
+```
+[ok] berkas milik Pega ditolak: laporan ASM-FW-GCNMFW-WORK dimiliki sistem lama
+     dan hanya dapat dibaca (P-1)
+[ok] berkas tidak ada ditolak: laporan RCVN.00.0000 tidak ditemukan
+```
+
+### 47.5 Satu cacat yang ditemukan karena uji ini ditulis
+
+Uji "nomor terbit memasang NOKLAIM" **gagal pada percobaan pertama**, dan sebabnya bukan
+kode yang baru ditulis:
+
+```go
+k.RCVID = p.RCVID   // applyInput, dipanggil setiap SaveRegister
+```
+
+Form Input Register **menimpa** `RCVID` dengan nilai dari isiannya. Layar registrasi tidak
+mengirim medan itu, sehingga setiap penyimpanan **memutus tautan** yang dibuat saat klaim
+dibuka.
+
+Akibatnya tidak akan terlihat sebagai galat: klaim tersimpan, nomor terbit, dan berkasnya
+diam-diam berhenti di "Not Registered" selamanya. Diperbaiki menjadi hanya-menambah:
+
+```go
+if p.RCVID != "" {
+    k.RCVID = p.RCVID
+}
+```
+
+Ini alasan konkret menulis uji yang menjaga **akibat yang dilihat pengguna**, bukan hanya
+memanggil method yang baru dibuat.
+
+### 47.6 Yang diverifikasi
+
+Terhadap Oracle sungguhan, di dalam transaksi yang dibatalkan:
+
+| Yang diuji | Hasil |
+|---|---|
+| `TRANSFERASM` terisi → Not Registered | ✔ |
+| `NOKLAIM` terisi → Outstanding | ✔ |
+| Berkas milik Pega **ditolak** | ✔ |
+| Berkas tidak ada **ditolak** | ✔ |
+| Rollback bersih | ✔ 0 baris berubah |
+
+Ditambah empat kasus uji baru `TestClaimReportMovesTabs`, termasuk dua yang menjaga arah
+paling mudah keliru: **tombol Back tidak memasang nomor**, dan **klaim tanpa berkas asal
+tidak menyentuh laporan mana pun**.
+
+`-periksa` kini melaporkan sebarannya:
+
+```
+[ok] berkas laporan milik aplikasi ini: 9 Not Transferred · 0 Not Registered · 0 Outstanding
+```
+
+Bila kombinasi tanpa tab pernah lahir, ia dilaporkan sebagai `[BELUM]` beserta sebabnya —
+urutan penulisan yang terbalik.
+
+### 47.7 Keadaan tombol "Register Klaim" setelah sesi ini
+
+Seluruh rantainya tersambung dan terbukti berjalan: polis dibaca dari `JSON_POLIS`, petugas
+dipilih dari beban `MST_USER_TEKNIK`, klaim dan tugas tersimpan, jejak audit tercatat,
+berkas RCV berpindah tab, dan nomor `PNCN.YY.xxxx` terbit di ujung Input Register.
+
+Yang **masih terbatas**, dan disadari:
+
+| Hal | Sifatnya |
+|---|---|
+| Hanya portal **ASM** | keputusan Work Owner — portal lain menyusul |
+| 25 dari 2.107 RCV bernomor polis tidak ketemu di `JSON_POLIS` | data |
+| 696 RCV tanpa nomor polis ditolak di layar | data |
+| Penerima Notice of Large Losses kosong | menunggu Work Owner |
+| Email cabang/GL/Pincab | `R-16` — rule-nya hilang dari export |
+
+## 48. Dua daftar seam, dan yang disunting adalah yang mati (2026-09-24)
+
+Aplikasi menolak menyala:
+
+```
+gagal menjalankan aplikasi: registrasi/usecase: seam belum terpasang: [TautanLaporan]
+```
+
+### 48.1 Sebabnya
+
+Modul Registrasi dirakit di **dua tempat**, masing-masing dengan daftar seam sendiri:
+
+| Tempat | Dipanggil? |
+|---|---|
+| `cmd/claimpnc/registration.go` — `assembleRegistration` | **TIDAK PERNAH** |
+| `cmd/claimpnc/main.go` — di dalam `build`, disalin utuh | ya |
+
+Sepanjang bab 44–47, yang saya sunting adalah `assembleRegistration`: empat adapter SQL
+(polis, kurs, parameter, penugasan), pengisi SQL untuk Notifier, dan seam
+`ClaimReportLink`. **Tidak satu pun sampai ke aplikasi yang berjalan.**
+
+### 48.2 Kenapa tidak ketahuan lebih awal
+
+Ini bagian yang perlu dicatat, karena bukan kelalaian sekali jalan melainkan lubang di cara
+saya memverifikasi:
+
+| Yang saya jalankan | Kenapa lolos |
+|---|---|
+| `go build`, `go vet` | `go vet` **tidak menandai fungsi yang tidak terpakai** — hanya variabel lokal dan impor |
+| `go test ./...` | uji usecase **merakit layanannya sendiri**, tidak lewat `build` |
+| `-periksa` | mode itu **tidak merakit** modul registrasi sama sekali |
+| probe langsung ke Oracle | saya menyusun Options **dengan tangan** di dalam probe |
+
+Keempatnya memeriksa hal yang benar dan tidak satu pun menyentuh jalur start. Yang kurang
+bukan ketelitian membaca, melainkan **satu pemeriksaan yang benar-benar menjalankan
+aplikasinya**.
+
+### 48.3 Yang diperbaiki
+
+Duplikasinya **dihapus**, bukan disinkronkan. `build` kini memanggil
+`assembleRegistration`, sehingga hanya ada satu daftar seam. Dua tempat yang harus
+dijaga tetap sama adalah dua tempat yang cepat atau lambat berbeda.
+
+Satu akibat sampingan yang ikut terbawa: `main.go` masih memakai **notifier memori**
+dengan komentar "tabelnya tidak dibuat" — pernyataan yang sudah tidak benar sejak migrasi
+`0011`. Dengan duplikasinya hilang, pengisi SQL yang sudah ada di `assembleRegistration`
+langsung berlaku, dan pemberitahuan kini bertahan melewati restart.
+
+### 48.4 Penjagaannya
+
+`TestRegistrationAssemblesOnBothBranches` merakit modulnya lewat `assembleRegistration` di
+**kedua cabang** — dengan dan tanpa Oracle. Cabang Oracle memakai `sql.OpenDB` di atas
+connector tiruan: `database/sql` tidak menghubungi driver sampai kueri pertama, sehingga
+yang diuji adalah daftar seam-nya, bukan SQL-nya.
+
+Uji itu **dibuktikan menangkap cacatnya**: seam SQL sengaja dilepas sekali, dan hasilnya
+merah dengan pesan yang sama persis dengan yang dilihat Work Owner —
+
+```
+--- FAIL: TestRegistrationAssemblesOnBothBranches/dengan_Oracle
+    registrasi/usecase: seam belum terpasang: [TautanLaporan]
+```
+
+Uji yang tidak pernah dilihat merah bukan penjagaan.
+
+### 48.5 Aplikasi menyala
+
+```
+INFO  koneksi portal terbuka                 portal=[ASM]
+WARN  modul registrasi berjalan, dengan dua sumber yang belum lengkap
+      penerima_kerugian_besar=... routing=...
+INFO  antarmuka tersemat                     dibangun=2026-09-24T08:08:35Z
+INFO  server menyala                         alamat=:8080
+```
+
+Baris peringatan itu sekaligus buktinya: kalimat tersebut hanya ada di
+`assembleRegistration`. Sebelum perbaikan ini, ia tidak pernah muncul.
+
+## 49. "Terjadi kesalahan pada sistem" — dua sebab, dan pesan yang menyembunyikan keduanya (2026-09-24)
+
+Tombol Register Klaim menjawab satu kalimat yang tidak menyebutkan apa pun. Di baliknya ada
+**dua cacat berbeda**, dan yang ketiga adalah pesannya sendiri.
+
+### 49.1 Polis dibaca dari kolom yang salah
+
+`JSON_POLIS` menyimpan dokumen polis di **dua kolom**, dan tidak satu pun lengkap —
+terverifikasi atas 211.590 baris:
+
+| Kolom | Terisi |
+|---|---|
+| `POLICYDATA` (CLOB) | 168.298 |
+| `DATA_JSONBLOB` (BLOB) | 197.687 |
+| keduanya kosong | 13.732 |
+
+Kueri `polis_ambil` hanya membaca `POLICYDATA`, dan penyaringnya bahkan menuntut
+`POLICYDATA IS NOT NULL`. Akibatnya **29.389 polis yang dokumennya hanya ada di BLOB
+dinyatakan tidak ada** — termasuk berkas yang dicoba Work Owner.
+
+Diperbaiki dengan membaca dari mana pun dokumennya berada:
+
+```sql
+COALESCE(JSON_VALUE(p.POLICYDATA,    '$.PolicyNo'),
+         JSON_VALUE(p.DATA_JSONBLOB, '$.PolicyNo'))
+```
+
+`POLICYDATA` didahulukan dengan sengaja: pada 168.127 baris keduanya terisi dan pada 199
+dari 200 contoh keduanya menyebut nomor polis yang sama, sehingga polis yang **sudah**
+terbaca tetap terbaca sama persis. Perubahan ini hanya menambah yang tadinya gagal.
+
+**Satu contoh dari 200 tidak sepakat.** Mana yang benar saat keduanya berbeda belum
+diketahui, dan dicatat sebagai pertanyaan terbuka.
+
+### 49.2 Jebakan go-ora menggigit untuk kedua kalinya
+
+Perbaikan di atas gagal pada percobaan pertama dengan `ORA-00900` — galat yang sama seperti
+pada kueri parameter (bab 46.5).
+
+Sebabnya sekelas, tetapi **bukan yang dicatat**: catatan lama menyebut **kutip ganda** yang
+membentang antar-baris komentar. Kali ini penyebabnya **kutip TUNGGAL** — sebuah kalimat
+bahasa Indonesia yang mengutip pesan galat, dan tanda kutipnya jatuh di dua baris berbeda:
+
+```
+-- ... menjawab 'Terjadi
+-- kesalahan pada sistem' untuk 29.389 polis ...
+```
+
+Catatan yang hanya menyebut separuh sebab tidak mencegah kejadian kedua. Catatannya
+diperbaiki, dan kali ini **dipasangi penjagaan**:
+
+`TestCommentQuotesBalancedPerLine` memindai setiap baris komentar di seluruh berkas `.sql`
+dan menolak kutip yang tidak berpasangan dalam satu baris — ganda maupun tunggal. Ia
+**dibuktikan merah lebih dulu** dengan menyisipkan kutip lintas baris:
+
+```
+lookup.sql:63 kutip ' tidak berpasangan di dalam komentar
+```
+
+Ini memindahkan penemuannya dari "saat petugas menekan tombol" menjadi "saat berkasnya
+disimpan".
+
+### 49.3 Pesannya sendiri adalah cacat ketiga
+
+Galat sebenarnya — *polis tidak ditemukan* — adalah satu-satunya keadaan di sini yang
+**dapat diperbaiki petugas sendiri**, dengan membetulkan nomornya. Ia sampai ke layar
+sebagai:
+
+> Terjadi kesalahan pada sistem.
+
+Sebabnya: `PolicyRepo.Get` mengembalikan `fmt.Errorf` biasa, sehingga ia jatuh ke cabang
+terakhir `mapError` dan menjadi `500` dengan pesan umum — perilaku yang memang benar untuk
+galat tak terduga (`09-API-STRATEGY` §5), tetapi salah untuk yang ini.
+
+Ditambahkan sentinel `registrasi.ErrPolicyNotFound`, dipetakan ke **422** dengan kalimat
+yang menyebut tindakan:
+
+> Nomor Polis tidak ditemukan. Periksa kembali nomornya, atau pastikan polisnya sudah
+> terbit di sistem polis.
+
+**Ini yang membuat diagnosisnya lama.** Pesan yang tidak menyebutkan apa pun memaksa
+penelusuran dari nol, padahal galatnya sudah diketahui persis di sisi server.
+
+### 49.4 Terbukti setelah perbaikan
+
+Kedua berkas yang menunggu dan bernomor polis, dijalankan lewat alur sungguhnya lalu
+dibatalkan:
+
+```
+RCVN.26.0002  BERHASIL  lini=006 tahap=view-polis petugas=SURYAFEBRI
+RCVN.26.0009  BERHASIL  lini=006 tahap=view-polis petugas=SURYAFEBRI
+```
+
+Sebelum perbaikan, keduanya menjawab *polis tidak ditemukan*.
+
+### 49.5 Pelajaran yang dicatat, bukan disembunyikan
+
+Tiga sesi berturut-turut, cacat yang sama polanya: **verifikasi saya tidak menempuh jalur
+yang benar-benar dipakai.**
+
+| Sesi | Yang terlewat |
+|---|---|
+| bab 48 | merakit modul di fungsi yang tidak pernah dipanggil |
+| bab 49 | menguji `Start` dengan polis yang saya pilih sendiri dari `JSON_POLIS`, bukan polis yang benar-benar ada di berkas RCV |
+
+Pada bab 46 saya mengambil polis contoh dengan `JSON_VALUE(DATA_JSONBLOB, ...)` — kolom
+yang **berbeda** dari yang dibaca adapternya. Uji itu lulus justru karena memakai jalan
+yang berbeda dari jalan yang diuji.
+
+Yang dipasang sebagai gantinya bukan niat untuk lebih teliti, melainkan dua uji yang
+**dibuktikan merah lebih dulu**: perakitan modul di kedua cabang, dan kutip komentar di
+seluruh berkas kueri.

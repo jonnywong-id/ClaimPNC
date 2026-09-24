@@ -135,7 +135,7 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 	)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return registrasi.Policy{}, fmt.Errorf("registrasi/sqlstore: polis %q tidak ditemukan", number)
+		return registrasi.Policy{}, fmt.Errorf("%w: %s", registrasi.ErrPolicyNotFound, number)
 	case err != nil:
 		return registrasi.Policy{}, fmt.Errorf("registrasi/sqlstore: membaca polis %q: %w", number, err)
 	}

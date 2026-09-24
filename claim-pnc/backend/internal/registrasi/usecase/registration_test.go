@@ -46,6 +46,7 @@ type environment struct {
 	service   *usecase.Service
 	store     *memory.Store
 	parameter *memory.Parameter
+	link      *memory.ClaimReportLink
 	clock     *clock.Fixed
 	caller    usecase.Caller
 }
@@ -56,6 +57,7 @@ func setup(t *testing.T, roles ...string) environment {
 	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
 	parameter := memory.NewParameter()
+	link := memory.NewClaimReportLink()
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
@@ -67,6 +69,7 @@ func setup(t *testing.T, roles ...string) environment {
 		Assigner:           memory.NewAssigner(testTeams()),
 		Notifier:           store,
 		AuditRecorder:      store,
+		ClaimReportLink:    link,
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -77,6 +80,7 @@ func setup(t *testing.T, roles ...string) environment {
 		service:   service,
 		store:     store,
 		parameter: parameter,
+		link:      link,
 		clock:     clock,
 		caller: usecase.Caller{
 			Identity:   testOperator,
@@ -140,6 +144,89 @@ func validInput(taskID string) usecase.RegisterCommand {
 			}},
 		}},
 	}
+}
+
+// TestClaimReportMovesTabs menjaga satu-satunya hal yang membuat tombol Register Klaim
+// TERLIHAT bekerja oleh petugas.
+//
+// Berkas laporan menentukan tabnya dari dua kolom, dan keduanya diisi pada saat yang
+// berbeda: TRANSFERASM saat klaim dibuka, NOKLAIM saat nomornya terbit. Tanpa uji ini,
+// klaim tetap terbuat sementara berkasnya duduk diam di "Not Transferred" — persis
+// keluhan yang melahirkan seam ini, dan kegagalan yang tidak menghasilkan satu pun galat.
+func TestClaimReportMovesTabs(t *testing.T) {
+	const laporan = "RCVN.26.0001"
+
+	t.Run("klaim dibuka menandai berkas diserahkan", func(t *testing.T) {
+		l := setup(t)
+
+		_, err := l.service.Start(context.Background(), usecase.StartCommand{
+			PolicyNumber: firePolicy,
+			Portal:       "ASM",
+			RCVID:        laporan,
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.True(t, l.link.HandedOver(laporan), "berkas harus pindah dari Not Transferred")
+		require.Empty(t, l.link.ClaimNumber(laporan), "nomor klaim belum terbit di tahap View Polis")
+	})
+
+	t.Run("nomor terbit memasang NOKLAIM", func(t *testing.T) {
+		l := setup(t)
+		ctx := context.Background()
+
+		start, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+
+		lanjut, err := l.service.CompleteStage(ctx, usecase.CompleteCommand{
+			TaskID: start.Task.ID, Action: registrasi.ActionViewPolicy,
+		}, l.caller)
+		require.NoError(t, err)
+
+		hasil, err := l.service.SaveRegister(ctx, validInput(lanjut.NextTask.ID), l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, hasil.Claim.Number, l.link.ClaimNumber(laporan))
+	})
+
+	// Menekan Back tidak menerbitkan nomor. Memasang nomor kosong akan membuat berkasnya
+	// lenyap dari SELURUH tab — kombinasi "NOKLAIM terisi, TRANSFERASM kosong" yang
+	// kuerinya kembalikan sebagai NULL.
+	t.Run("tombol Back tidak memasang nomor", func(t *testing.T) {
+		l := setup(t)
+		ctx := context.Background()
+
+		start, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+		lanjut, err := l.service.CompleteStage(ctx, usecase.CompleteCommand{
+			TaskID: start.Task.ID, Action: registrasi.ActionViewPolicy,
+		}, l.caller)
+		require.NoError(t, err)
+
+		input := validInput(lanjut.NextTask.ID)
+		input.Return = true
+		_, err = l.service.SaveRegister(ctx, input, l.caller)
+		require.NoError(t, err)
+
+		require.Empty(t, l.link.ClaimNumber(laporan))
+		require.True(t, l.link.HandedOver(laporan), "penyerahannya tidak ditarik kembali")
+	})
+
+	// Klaim yang dimulai dari layar registrasi tidak punya berkas asal, dan menautkannya
+	// ke berkas mana pun akan memindahkan laporan orang lain.
+	t.Run("klaim tanpa berkas asal tidak menyentuh laporan apa pun", func(t *testing.T) {
+		l := setup(t)
+
+		_, err := l.service.Start(context.Background(), usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM",
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.False(t, l.link.HandedOver(laporan))
+	})
 }
 
 func TestRegistrationUntilNumberIssued(t *testing.T) {
@@ -361,6 +448,7 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		Assigner:           memory.NewAssigner(testTeams()),
 		Notifier:           failSend{},
 		AuditRecorder:      store,
+		ClaimReportLink:    memory.NewClaimReportLink(),
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,

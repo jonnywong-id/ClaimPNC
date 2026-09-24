@@ -231,6 +231,17 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		}); err != nil {
 			return err
 		}
+		// Nomor klaim baru terbit di atas, jadi inilah saat berkas laporannya dapat
+		// dipasangi NOKLAIM — yang memindahkannya ke "Outstanding".
+		//
+		// Hanya pada pendaftaran maju: menekan Back tidak menerbitkan nomor, dan
+		// memasang nomor kosong akan membuat berkasnya lenyap dari seluruh tab.
+		if !p.Return && claim.RCVID != "" && claim.Number != "" {
+			if err := l.reportLink.AttachClaimNumber(ctx, claim.RCVID, claim.Number); err != nil {
+				return err
+			}
+		}
+
 		if !largeLoss {
 			return nil
 		}
@@ -307,7 +318,16 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.SLIKNumber = p.SLIKNumber
 	k.ExGratia = p.ExGratia
 	k.TechnicalPIC = p.TechnicalPIC
-	k.RCVID = p.RCVID
+
+	// RCVID hanya DITAMBAHKAN, tidak pernah dikosongkan oleh form ini.
+	//
+	// Tautan ke berkas Receive Document dibuat saat klaim dibuka, dan form Input Register
+	// tidak memilikinya. Menimpanya apa adanya membuat layar yang tidak mengirim medan ini
+	// MEMUTUS tautannya — dan akibatnya baru terlihat jauh kemudian, sebagai berkas yang
+	// tidak pernah berpindah dari "Not Registered" ke "Outstanding".
+	if p.RCVID != "" {
+		k.RCVID = p.RCVID
+	}
 
 	k.PUCLStatus = p.PUCLStatus
 	k.ComplianceTransfer = p.ComplianceTransfer

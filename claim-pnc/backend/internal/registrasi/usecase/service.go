@@ -36,18 +36,19 @@ type Caller struct {
 type Service struct {
 	flow registrasi.Definition
 
-	claim     registrasi.ClaimRepo
-	task      registrasi.TaskRepo
-	policy    registrasi.PolicyRepo
-	number    registrasi.NumberIssuer
-	parameter registrasi.Parameter
-	rate      registrasi.ExchangeRateSource
-	assigner  registrasi.Assigner
-	notifier  registrasi.Notifier
-	audit     registrasi.AuditRecorder
-	id        registrasi.IDGenerator
-	unit      registrasi.UnitOfWork
-	clock     clock.Clock
+	claim      registrasi.ClaimRepo
+	task       registrasi.TaskRepo
+	policy     registrasi.PolicyRepo
+	number     registrasi.NumberIssuer
+	parameter  registrasi.Parameter
+	rate       registrasi.ExchangeRateSource
+	assigner   registrasi.Assigner
+	notifier   registrasi.Notifier
+	audit      registrasi.AuditRecorder
+	reportLink registrasi.ClaimReportLink
+	id         registrasi.IDGenerator
+	unit       registrasi.UnitOfWork
+	clock      clock.Clock
 
 	validateOnReturn bool
 }
@@ -63,6 +64,7 @@ type Options struct {
 	Assigner           registrasi.Assigner
 	Notifier           registrasi.Notifier
 	AuditRecorder      registrasi.AuditRecorder
+	ClaimReportLink    registrasi.ClaimReportLink
 	IDGenerator        registrasi.IDGenerator
 	UnitOfWork         registrasi.UnitOfWork
 	Clock              clock.Clock
@@ -107,6 +109,7 @@ func NewService(o Options) (*Service, error) {
 	check("Penugasan", o.Assigner != nil)
 	check("Notifier", o.Notifier != nil)
 	check("PerekamAudit", o.AuditRecorder != nil)
+	check("TautanLaporan", o.ClaimReportLink != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -126,6 +129,7 @@ func NewService(o Options) (*Service, error) {
 		assigner:         o.Assigner,
 		notifier:         o.Notifier,
 		audit:            o.AuditRecorder,
+		reportLink:       o.ClaimReportLink,
 		id:               o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,

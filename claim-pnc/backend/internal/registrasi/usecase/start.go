@@ -90,13 +90,29 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		if err := l.task.Save(ctx, task); err != nil {
 			return err
 		}
-		return l.audit.Record(ctx, registrasi.AuditTrail{
+		if err := l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID,
 			Event:   "KLAIM_DIBUKA",
 			Actor:   by.Identity,
 			At:      now,
 			Note:    "Polis " + policy.Number + " dibuka pada tahap " + firstStage.Name,
-		})
+		}); err != nil {
+			return err
+		}
+
+		// Berkas laporan asalnya ditandai DISERAHKAN, sehingga ia berpindah dari
+		// "Not Transferred" ke "Not Registered".
+		//
+		// Ia berada DI DALAM transaksi yang sama dengan pembuatan klaim, dan itu
+		// disengaja: klaim yang lahir tanpa berkasnya berpindah adalah keadaan yang
+		// tampak seperti tombol tidak bekerja, dan petugas akan menekannya lagi.
+		//
+		// Nomor klaim belum ada di sini — ia terbit di ujung Input Register (`ADR-0009`).
+		// Karena itu yang terisi baru TRANSFERASM; NOKLAIM menyusul di SaveRegister.
+		if claim.RCVID == "" {
+			return nil
+		}
+		return l.reportLink.MarkHandedOver(ctx, claim.RCVID, now)
 	})
 	if err != nil {
 		return StartResult{}, err
