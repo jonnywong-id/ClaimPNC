@@ -169,7 +169,11 @@ type StartRequest struct {
 	// form Input Receive Document; kosong bila klaim dimulai langsung dari layar ini.
 	RCVID string `json:"nomor_laporan,omitempty"`
 
-	Portal string `json:"portal"`
+	// Portal TIDAK ada di sini dengan sengaja.
+	//
+	// Ia diambil dari portal aktif — header yang sudah diperiksa middleware — bukan dari
+	// badan permintaan. Portal menentukan milik badan hukum mana data yang ditulis
+	// (`D-75`), dan menerimanya dari pemanggil membuka `R-20`.
 }
 
 // RegisterRequest adalah badan POST /api/registrasi/register.

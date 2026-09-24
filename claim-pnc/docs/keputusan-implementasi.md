@@ -8286,3 +8286,47 @@ dulu dengan menyisipkan kutip lintas baris.
 
 Catatan di kepala berkas tetap ada, tetapi ia menjelaskan **kenapa** — bukan yang menjaga.
 Aturan yang hanya hidup di komentar sudah terbukti gagal sekali.
+
+## 34. Portal SELALU diambil dari portal aktif, tidak pernah dari badan permintaan (2026-09-24)
+
+Handler `Start` modul registrasi membaca portal dari `body.Portal`. Seluruh modul lain
+membacanya dari `portalhttp.ActivePortalFrom(r.Context())`.
+
+### Kenapa badan permintaan salah
+
+Portal menentukan basis data mana yang ditulis, yakni **milik badan hukum mana** (`D-75`).
+Badan permintaan dikendalikan pemanggil, sehingga satu permintaan yang disusun tangan dapat
+menuliskan klaim atas nama entitas lain — `R-20`, yang gagalnya **tidak terlihat sebagai
+galat**: layar tampil normal, angkanya masuk akal, dan yang salah hanya milik siapa datanya.
+
+### Aturan
+
+**Tidak ada endpoint yang menerima portal dari badan permintaan atau parameter kueri.**
+Portal datang dari header yang sudah diperiksa middleware, dan handler hanya memakai
+hasilnya.
+
+Medan `portal` dicabut dari `StartRequest` — bukan diabaikan. Medan yang diabaikan tetap
+mengundang pemanggil mengisinya dan menduga ia berpengaruh.
+
+---
+
+## 35. Setiap panggilan API modul ber-portal wajib membawa portal (2026-09-24)
+
+Modul registrasi ditulis sebelum portal ada. Begitu ia dipasang di belakang middleware
+portal, **seluruh tujuh panggilannya** ditolak — termasuk layar klaim yang terbuka tepat
+setelah tombol Register Klaim berhasil.
+
+Yang membuatnya mahal: klaimnya **benar-benar terbuat**. Yang gagal hanya menampilkannya,
+dan dari layar keduanya tampak sama saja.
+
+### Aturan
+
+Modul yang dipasang di belakang `ActivePortal` wajib mengirim portal pada **setiap**
+panggilan. Memasang modul lama di belakang middleware portal berarti memeriksa seluruh
+pemanggilan API-nya, bukan hanya merutekannya.
+
+### Penjagaannya memindai sumber
+
+`api.portal.test.ts` memeriksa setiap `callAPI` di modul menyebut `portal`. Ia membaca kode
+karena yang dijaga satu kata pada tujuh tempat, dan pemindaian ikut menjaga panggilan
+kedelapan yang ditulis besok. Dibuktikan merah lebih dulu.

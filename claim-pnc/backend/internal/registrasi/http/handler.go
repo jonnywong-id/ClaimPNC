@@ -10,6 +10,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/portal"
+	portalhttp "claim-pnc/internal/portal/http"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -146,10 +148,25 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Portal diambil dari portal AKTIF, bukan dari badan permintaan.
+	//
+	// Badan permintaan dikendalikan pemanggil, dan portal menentukan MILIK SIAPA data
+	// yang ditulis (`D-75`). Menerima nilainya dari sana berarti satu permintaan yang
+	// disusun tangan dapat menuliskan klaim atas nama badan hukum lain — kegagalan
+	// `R-20`, yang tidak terlihat sebagai galat karena layarnya tampak normal.
+	//
+	// Middleware ActivePortal sudah memeriksa haknya; yang dilakukan di sini hanya
+	// memakai hasilnya.
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.failure(w, r, portal.ErrNotStated)
+		return
+	}
+
 	result, err := h.service.Start(r.Context(), usecase.StartCommand{
 		PolicyNumber: body.PolicyNumber,
 		RCVID:        body.RCVID,
-		Portal:       body.Portal,
+		Portal:       active.Alias,
 	}, caller)
 	if err != nil {
 		h.failure(w, r, err)

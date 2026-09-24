@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { APIError, callAPI } from '@/api/client'
+import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import {
@@ -15,6 +16,12 @@ import {
 
 // Seluruh panggilan API modul ini lewat hook di berkas ini. Tidak ada `fetch` di dalam
 // komponen — aturan 9 pada README repository.
+//
+// SETIAP panggilan membawa portal aktif. Modul ini ditulis sebelum portal ada, dan
+// ketiadaannya membuat seluruh layarnya menjawab "Portal entitas belum dipilih" begitu
+// ia dipasang di belakang middleware ActivePortal (2026-09-24). Portal menentukan
+// basis data mana yang dibaca (`D-75`); panggilan tanpa portal DITOLAK, bukan jatuh ke
+// portal bawaan — itulah yang mencegah `R-20`.
 
 const inboxKey = ['registrasi', 'inbox'] as const
 const flowKey = ['registrasi', 'alur'] as const
@@ -31,10 +38,11 @@ function claimKey(claimID: string) {
  */
 export function useFlow() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
     queryKey: [...flowKey, token],
-    queryFn: () => callAPI<FlowResponse>('/api/registrasi/alur', { token }),
+    queryFn: () => callAPI<FlowResponse>('/api/registrasi/alur', { token, portal }),
     enabled: token !== null,
     staleTime: 30 * 60 * 1000,
   })
@@ -43,10 +51,11 @@ export function useFlow() {
 /** Daftar pekerjaan yang menunggu pengguna (`D-79`). */
 export function useInbox() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
     queryKey: [...inboxKey, token],
-    queryFn: () => callAPI<InboxResponse>('/api/registrasi/inbox', { token }),
+    queryFn: () => callAPI<InboxResponse>('/api/registrasi/inbox', { token, portal }),
     enabled: token !== null,
   })
 }
@@ -54,10 +63,11 @@ export function useInbox() {
 /** Satu klaim beserta tugas terbukanya dan jalur tahap yang akan dilaluinya. */
 export function useClaim(claimID: string | undefined) {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
     queryKey: [...claimKey(claimID ?? ''), token],
-    queryFn: () => callAPI<ClaimResponse>(`/api/registrasi/klaim/${claimID}`, { token }),
+    queryFn: () => callAPI<ClaimResponse>(`/api/registrasi/klaim/${claimID}`, { token, portal }),
     enabled: token !== null && Boolean(claimID),
   })
 }
@@ -65,11 +75,14 @@ export function useClaim(claimID: string | undefined) {
 /** Membuka klaim baru dari sebuah polis. */
 export function useStartClaim() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const apiClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (content: { nomor_polis: string; portal: string }) =>
-      callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token }),
+    // Portal TIDAK ikut di badan permintaan: server mengambilnya dari portal aktif,
+    // supaya pemanggil tidak dapat menuliskan klaim atas nama entitas lain (`R-20`).
+    mutationFn: (content: { nomor_polis: string }) =>
+      callAPI<ClaimResponse>('/api/registrasi/klaim', { metode: 'POST', body: content, token, portal }),
     onSuccess: () => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
     },
@@ -79,11 +92,12 @@ export function useStartClaim() {
 /** Menyimpan tahap Input Register, atau mengembalikannya dengan tombol Back. */
 export function useSaveRegister() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const apiClient = useQueryClient()
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token }),
+      callAPI<ClaimResponse>('/api/registrasi/register', { metode: 'POST', body: content, token, portal }),
     onSuccess: (result) => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
       void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
@@ -94,11 +108,12 @@ export function useSaveRegister() {
 /** Mengambil tugas dari antrean bersama. */
 export function useClaimTask() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const apiClient = useQueryClient()
 
   return useMutation({
     mutationFn: (taskID: string) =>
-      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token }),
+      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token, portal }),
     onSuccess: (tugas) => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
       void apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
@@ -109,6 +124,7 @@ export function useClaimTask() {
 /** Menutup tahap yang aturan isiannya milik modul lain. */
 export function useCompleteStage() {
   const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
   const apiClient = useQueryClient()
 
   return useMutation({
@@ -117,6 +133,7 @@ export function useCompleteStage() {
         metode: 'POST',
         body: { action: content.action, kembali: content.kembali ?? false },
         token,
+        portal,
       }),
     onSuccess: (result) => {
       void apiClient.invalidateQueries({ queryKey: inboxKey })

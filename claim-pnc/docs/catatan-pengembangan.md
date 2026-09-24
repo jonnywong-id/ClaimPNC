@@ -10717,3 +10717,88 @@ yang berbeda dari jalan yang diuji.
 Yang dipasang sebagai gantinya bukan niat untuk lebih teliti, melainkan dua uji yang
 **dibuktikan merah lebih dulu**: perakitan modul di kedua cabang, dan kutip komentar di
 seluruh berkas kueri.
+
+## 50. Modul registrasi tidak pernah mengirim portal (2026-09-24)
+
+Tombol Register Klaim **berhasil** — klaimnya terbuat dan layar berpindah ke
+`/registrasi/klaim/{id}`. Yang gagal layar berikutnya:
+
+> Portal entitas belum dipilih. Pilih portal lebih dulu sebelum membuka data entitas.
+
+### 50.1 Sebabnya, dan kenapa ia menyentuh SELURUH layar modul
+
+Modul registrasi ditulis **sebelum** portal ada. Ketujuh pemanggilan API-nya —
+alur, inbox, buka klaim, buat klaim, simpan register, ambil tugas, tutup tahap —
+**tidak satu pun membawa header portal**.
+
+Ia berjalan selama modulnya belum terpasang. Begitu ia dipasang di belakang
+`portalhttp.ActivePortal` (bab 45.6), seluruh layarnya ditolak middleware.
+
+Penolakan itu **benar**: portal menentukan basis data mana yang dibaca, yakni milik badan
+hukum mana (`D-75`). Panggilan tanpa portal ditolak, bukan jatuh ke portal bawaan — itulah
+yang mencegah `R-20`. Yang salah bukan middleware-nya, melainkan pemanggilnya.
+
+### 50.2 Cacat kedua di tempat yang sama: portal diambil dari badan permintaan
+
+Handler `Start` membaca portal dari **badan permintaan**:
+
+```go
+Portal: body.Portal,
+```
+
+Dua hal salah sekaligus:
+
+1. Layar tidak pernah mengirimnya, jadi `claim.Portal` selalu kosong.
+2. Badan permintaan **dikendalikan pemanggil**. Menerima portal dari sana berarti satu
+   permintaan yang disusun tangan dapat menuliskan klaim atas nama badan hukum lain —
+   persis `R-20`, dan kegagalannya tidak terlihat sebagai galat karena layarnya tampak
+   normal.
+
+Seluruh modul lain sudah memakai pola yang benar
+(`portalhttp.ActivePortalFrom(r.Context())`); registrasi satu-satunya yang tidak.
+Diperbaiki, dan medan `portal` **dicabut** dari `StartRequest` supaya ia tidak dapat
+dikirim lagi.
+
+### 50.3 Penjagaannya memindai sumber, dan alasannya
+
+`api.portal.test.ts` memeriksa bahwa **setiap** `callAPI` di modul ini menyebut `portal`,
+dan bahwa setiap hook yang membaca token juga membaca portal aktif.
+
+Ia membaca kode, bukan menjalankan layar. Alasannya: tujuh pemanggilan di tujuh hook, dan
+yang dijaga hanya SATU kata pada satu objek. Menguji lewat layarnya menuntut tujuh berkas
+uji dengan tujuh perakitan halaman; pemindaian menjaga ketujuhnya sekaligus — **dan ikut
+menjaga panggilan kedelapan yang ditulis besok.**
+
+Dibuktikan merah lebih dulu dengan melepas portal dari satu panggilan:
+
+```
+AssertionError: panggilan berikut tidak menyebut portal: expected [ Array(1) ] to deeply equal []
+```
+
+### 50.4 Pola yang berulang, dan apa yang akhirnya menghentikannya
+
+Empat sesi berturut-turut, cacat yang sama bentuknya: **bagian yang saya bangun benar,
+tetapi jalur yang benar-benar dipakai tidak pernah saya tempuh.**
+
+| Bab | Yang terlewat | Ditemukan oleh |
+|---|---|---|
+| 48 | modul dirakit di fungsi yang tidak pernah dipanggil | Work Owner menjalankan aplikasi |
+| 49 | polis diuji lewat kolom yang berbeda dari yang dibaca adapter | Work Owner menekan tombol |
+| 50 | layar tidak mengirim portal; modulnya baru dipasang di belakang middleware | Work Owner membuka layar berikutnya |
+
+Ketiganya lolos `go build`, `go vet`, seluruh uji, dan `-periksa`. Yang menemukannya selalu
+orang yang memakai aplikasinya.
+
+Yang dipasang bukan niat untuk lebih teliti, melainkan tiga uji yang **dibuktikan merah
+lebih dulu**:
+
+| Uji | Menjaga |
+|---|---|
+| `TestRegistrationAssemblesOnBothBranches` | seam terpasang di kedua cabang perakitan |
+| `TestCommentQuotesBalancedPerLine` | kutip komentar SQL tidak memecah pengurai bind |
+| `api.portal.test.ts` | setiap panggilan API membawa portal entitas |
+
+### 50.5 Keadaan setelah perbaikan
+
+Backend dan frontend dibangun ulang; aplikasi menyala dengan antarmuka tertanggal
+`2026-09-24T11:16Z`. Seluruh uji backend lulus, dan 17 uji modul registrasi lulus.
