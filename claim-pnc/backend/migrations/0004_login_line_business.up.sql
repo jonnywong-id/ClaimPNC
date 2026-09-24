@@ -1,0 +1,118 @@
+-- 0004 — Lini bisnis pengguna pada M_LOGIN_PNC (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Berkas ini MENGUBAH objek milik sistem lama yang sedang melayani produksi:
+--
+--   * POOLDATA.M_LOGIN_PNC — satu kolom BARU ditambahkan: LINEBUSINESS
+--
+-- Tabel itu dipakai jalur masuk aplikasi ini (provider identitas kedua, untuk pengguna
+-- non-karyawan) dan dibaca sistem lama. Penambahan kolom nullable TIDAK mengubah perilaku
+-- pembaca mana pun yang menyebut kolomnya satu per satu — dan seluruh kueri aplikasi ini
+-- memang menyebutnya, karena `SELECT *` dilarang (`08-TECHNICAL-STRATEGY.md` §4.3).
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (`D-63`). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ## Apa yang digantikan kolom ini
+--
+-- `OperatorID.pyPosition` pada Pega — properti operator yang menentukan LINI BISNIS mana
+-- yang boleh dilihat seorang petugas. Ia dipakai di 42 activity, dan pada layar Inbox
+-- Outstanding ia menentukan potongan WHERE yang disisipkan ke kueri:
+--
+--   Activity/InboxOutstanding_Act-Act.xml
+--     :987  pyPosition == "NONMBU"   -> :905  AND GROUPPANEL_1 in ('003','004','006') …
+--     :1057 pyPosition == "BONDING"  -> :1081 AND c.businessgroupid NOT IN (…)
+--     :1298 pyPosition == "PA"       -> :1235 AND GROUPPANEL_1='002'
+--     :1422 pyPosition == "TRAVEL"   -> :1374 AND GROUPPANEL_1='005'
+--
+--   RDB List/BrowseInboxOutstanding1-SQL.xml:129   {ASIS:TempView.pyNote}
+--
+--
+-- ## Kenapa M_LOGIN_PNC, dan bukan MST_USER_TEKNIK
+--
+-- `POOLDATA.MST_USER_TEKNIK` sudah memuat kolom `TYPE_BUSINESS` dengan domain nilai yang
+-- sama persis, dan sempat diusulkan sebagai sumbernya — usul itu akan menghindarkan
+-- perubahan skema ini seluruhnya.
+--
+-- Usul itu DITOLAK Work Owner (2026-09-19) dengan alasan yang menentukan: tabel tersebut
+-- hanya memuat **PIC Teknik**, bukan seluruh pengguna aplikasi. `M_LOGIN_PNC` dipilih
+-- karena ia akan dipakai untuk karyawan juga — mengatur group akses dan akses menu —
+-- bukan hanya non-karyawan seperti yang berlaku hari ini.
+--
+--
+-- ## Nilai yang ditampung
+--
+-- Empat nilai terbukti dipakai layar Inbox Outstanding:
+--
+--   NONMBU · BONDING · PA · TRAVEL
+--
+-- TIDAK ADA CHECK CONSTRAINT yang mengunci daftar itu, dan ketiadaannya disengaja.
+-- `pyPosition` di rule lain memuat sekurangnya satu nilai lagi (`TRAVELOKA`), sehingga
+-- daftar lengkapnya BELUM DIPUTUSKAN. Mengunci daftarnya sekarang akan mendahului
+-- keputusan yang sengaja ditinggalkan terbuka, dan penambahan nilai kelak akan menuntut
+-- migrasi lagi terhadap tabel produksi.
+--
+-- Aplikasi memperlakukan nilai yang tidak dikenali sama dengan kolom kosong: pengguna
+-- melihat seluruh lini. Itu perilaku Pega apa adanya, ditetapkan Work Owner.
+--
+--
+-- ## Panjang kolom
+--
+-- VARCHAR2(16) cukup untuk nilai terpanjang yang diketahui (`TRAVELOKA`, 9 karakter)
+-- dengan ruang lapang. Ia dipilih pendek dengan sengaja: kolom lebar mengundang isian
+-- bebas, sedangkan yang dimaksud adalah sandi pendek dari daftar tertutup.
+
+ALTER TABLE POOLDATA.M_LOGIN_PNC ADD (LINEBUSINESS VARCHAR2(16));
+
+COMMENT ON COLUMN POOLDATA.M_LOGIN_PNC.LINEBUSINESS IS
+    'Lini bisnis yang boleh dilihat pengguna; pengganti OperatorID.pyPosition Pega. Kosong = seluruh lini';
+
+
+-- ============================================================================
+-- VERIFIKASI — dijalankan SESUDAH pernyataan di atas, SEBELUM dinyatakan selesai
+-- ============================================================================
+--
+-- 1. Kolomnya ada, nullable, dan bertipe benar:
+--
+--      SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE
+--        FROM ALL_TAB_COLUMNS
+--       WHERE OWNER = 'POOLDATA'
+--         AND TABLE_NAME = 'M_LOGIN_PNC'
+--         AND COLUMN_NAME = 'LINEBUSINESS';
+--
+--    Diharapkan: VARCHAR2, 16, NULLABLE = 'Y'.
+--
+-- 2. Tidak ada baris yang berubah — seluruhnya masih NULL:
+--
+--      SELECT COUNT(*) AS TERISI
+--        FROM POOLDATA.M_LOGIN_PNC
+--       WHERE LINEBUSINESS IS NOT NULL;
+--
+--    Diharapkan: 0.
+--
+-- 3. Aplikasi dapat membacanya:
+--
+--      ./claimpnc.exe -periksa
+--
+--    Baris "kolom LINEBUSINESS dapat dibaca" harus [ok].
+--
+-- 4. Pega masih berjalan normal terhadap skema hasil perubahan (`D-63`) — khususnya
+--    jalur masuk non-karyawan, yang membaca tabel ini.
+--
+--
+-- ## Pengisian datanya BUKAN bagian migrasi ini
+--
+-- Siapa memperoleh lini bisnis apa adalah keputusan bisnis, bukan keputusan skema, dan
+-- daftarnya tidak ada di export maupun di basis data (`11-SECURITY.md` §3.1 — penugasan
+-- operator ke peran tidak ada di mana pun).
+--
+-- Sampai kolomnya diisi, SELURUH pengguna melihat seluruh lini. Itu perilaku yang sama
+-- dengan Pega hari ini bagi pengguna tanpa `pyPosition`, dan ia diterima secara sadar —
+-- bukan keadaan sementara yang luput dari perhatian.

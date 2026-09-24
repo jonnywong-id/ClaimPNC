@@ -79,6 +79,22 @@ type Config struct {
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
 	Portal map[string]Database
+
+	// BulkSelectExcludedBusinesses adalah kode lini bisnis yang TIDAK ikut terpilih oleh
+	// tombol "Pilih semua" pada layar Daftar Tipe Dokumen Bisnis.
+	//
+	// Di Pega kelimanya ditulis langsung di dalam rule
+	// (`Activity/SetAllBusiness-Act.xml:984`) sebagai syarat yang mengeluarkan baris dari
+	// perulangan — kelimanya lini MBU, yang aturan dokumennya tidak dikelola layar ini.
+	//
+	// `D-15` melarang nilai bisnis di dalam kode, sehingga daftarnya pindah ke sini:
+	// perilakunya sama persis dengan Pega, tetapi kelima kodenya dapat diubah tanpa
+	// menyentuh kode. Ia BELUM dapat diubah pengguna bisnis sendiri — masternya belum
+	// ada — dan itu keadaan yang sama dengan XOLCommitteeRecipients di atas.
+	//
+	// Ditulis sebagai daftar dipisah koma di BISNIS_DIKECUALIKAN_PILIH_SEMUA. Kosong
+	// berarti "Pilih semua" benar-benar memilih semuanya.
+	BulkSelectExcludedBusinesses []string
 }
 
 // Sesi memuat parameter masa hidup sesi milik aplikasi.
@@ -164,6 +180,25 @@ type SMTP struct {
 	// penerimanya diubah tanpa deploy. Sampai master itu ada, variabel lingkungan
 	// adalah tempat terdekat yang memenuhi `D-15` — nilainya tidak berada di dalam kode.
 	TKARecipients []string
+
+	// XOLCommitteeRecipients adalah mailbox komite yang menerima pemberitahuan pengajuan
+	// Master XOL. Ditulis sebagai daftar dipisah koma di XOL_PENERIMA_KOMITE.
+	//
+	// # Kenapa ia konfigurasi, dan kenapa hanya SEMENTARA
+	//
+	// `Activity/SendDataMasterXOLToKomites-Act.xml` menuliskan dua alamat PERORANGAN
+	// langsung di dalam activity-nya, dan yang kedua menimpa yang pertama ketika berjalan
+	// di host dev. Pola itu persis yang `D-15` larang dibawa, dan `D-67` menegaskan tidak
+	// ada akun pribadi yang ikut ke sistem baru.
+	//
+	// Tempat yang benar bagi daftar ini adalah master **Penerima Notifikasi** (`F-4`),
+	// dan master itu belum dibangun. Sampai ia ada, daftarnya ditaruh di konfigurasi —
+	// tetap dapat diubah tanpa menyentuh kode, tetapi belum dapat diubah pengguna bisnis
+	// sendiri. Dicatat terbuka di docs/keputusan-implementasi.md.
+	//
+	// Kosong berarti pemberitahuan TIDAK dikirim: cmd memasang tiruan yang mencatat, dan
+	// penyimpanan Master XOL tetap berhasil.
+	XOLCommitteeRecipients []string
 
 	Timeout time.Duration
 }
@@ -313,10 +348,21 @@ func Load() (Config, error) {
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
 			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
-			Timeout:         smtpTimeout,
+
+			XOLCommitteeRecipients: splitAddress(os.Getenv("XOL_PENERIMA_KOMITE")),
+
+			Timeout: smtpTimeout,
 		},
 		PrimaryPortal: primaryPortal,
 		Portal:        portal,
+
+		// Nilai bawaannya adalah kelima kode yang benar-benar ada di
+		// `Activity/SetAllBusiness-Act.xml:984`, sehingga tanpa konfigurasi apa pun
+		// perilakunya sudah sama dengan Pega. Mengosongkannya secara sengaja tetap
+		// mungkin — cukup setel variabelnya menjadi satu spasi.
+		BulkSelectExcludedBusinesses: splitAddress(
+			get("BISNIS_DIKECUALIKAN_PILIH_SEMUA", "10028,10164,10114,10084,10093"),
+		),
 	}
 
 	issues = append(issues, checkDependencies(k)...)

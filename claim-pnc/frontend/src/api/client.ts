@@ -90,21 +90,24 @@ type RequestOptions = {
    * PUT dipakai pengubahan master: seluruh isi yang boleh diubah dikirim setiap kali,
    * sehingga permintaannya menggantikan dan idempoten.
    *
-   * # DELETE ditambahkan pada 2026-09-19, dan inilah keputusan sadarnya
+   * DELETE semula sengaja TIDAK ada, dengan alasan bahwa tidak satu pun layar menghapus
+   * data dan metode yang tidak tersedia tidak dapat dipakai kode yang ditulis kemudian
+   * tanpa keputusan sadar. **Keputusan sadar itu diambil pada 2026-09-20**: Master XOL
+   * adalah layar pertama yang menghapus, dan Work Owner memilih hapus fisik BERKASKADE —
+   * menghapus satu induk XOL ikut membuang grup bisnis, layer, dan reas di bawahnya.
    *
-   * Sampai sebelum itu, DELETE sengaja TIDAK ada di sini — tidak satu pun layar menghapus
-   * data, dan komentar ini menuntut keputusan sadar sebelum metodenya dibuka. Keputusan
-   * itu kini ada.
+   * Layar lama pun punya tombol Hapus pada ketiga gridnya
+   * (`Activity/DeleteFromTabelMst-Act.xml.xml`), dan tombol itu menghapus SEKETIKA tanpa
+   * menunggu Simpan. Yang diperbaiki hanyalah kaskadenya: sistem lama menghapus satu
+   * tabel saja dan meninggalkan baris yatim yang masih ada di produksi hari ini.
+   */
+   
+  /**
+   * Badan permintaan.
    *
-   * **Master Pasal Kerugian** (MENU_ID 27) adalah layar pertama yang menghapus. Layar
-   * lamanya memang punya tombolnya — `Section/BrowsePasalDeatailMaster-Section.xml`
-   * memanggil `CNMInsertPasalDataMaster(DeleteFlag="1")`, yang menjalankan
-   * `DELETE FROM POOLDATA.V_M_DATA_PASAL`. `D-66` menetapkan soft delete menyeluruh,
-   * tetapi tabelnya hanya punya tiga kolom dan tidak punya penanda terhapus; menambah
-   * kolom menempuh `D-63`. Work Owner memilih "jalankan as is".
-   *
-   * Yang dibuka di sini hanyalah METODENYA. Penghapusan tetap permanen dan tetap hanya
-   * dimiliki satu modul; layar lain yang memakainya tetap menuntut keputusan tersendiri.
+   * `FormData` dikirim apa adanya untuk unggahan berkas; selain itu badan diubah menjadi
+   * JSON. Perbedaannya ditangani di sini, bukan di layar, supaya tetap ada SATU tempat
+   * `fetch` dipanggil di seluruh aplikasi.
    */
   metode?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
@@ -135,8 +138,14 @@ export const HEADER_PORTAL = 'X-Portal'
 export async function callAPI<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { metode = 'GET', body, token, portal } = options
 
+  const isForm = body instanceof FormData
+
   const header: Record<string, string> = { Accept: 'application/json' }
-  if (body !== undefined) header['Content-Type'] = 'application/json'
+  // Content-Type SENGAJA tidak diisi untuk FormData. Peramban yang mengisinya, lengkap
+  // dengan `boundary` yang dibangkitkannya sendiri — menuliskannya di sini akan
+  // menghilangkan boundary itu, dan server menolak badan permintaan yang tidak dapat
+  // dipecah.
+  if (body !== undefined && !isForm) header['Content-Type'] = 'application/json'
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
   if (token) header['Authorization'] = `Bearer ${token}`
@@ -147,7 +156,7 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
     response = await fetch(path, {
       method: metode,
       headers: header,
-      body: body === undefined ? null : JSON.stringify(body),
+      body: body === undefined ? null : isForm ? body : JSON.stringify(body),
     })
   } catch {
     throw new NetworkError()
@@ -160,6 +169,116 @@ export async function callAPI<T>(path: string, options: RequestOptions = {}): Pr
     // detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya
     // bentuknya: badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun
     // saat berjalan.
+    const error = content as {
+      kode?: string
+      pesan?: string
+      detail?: unknown
+      field?: unknown
+    } | null
+    throw new APIError(
+      error?.kode ?? ErrorCode.internalError,
+      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
+      response.status,
+      Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
+      fieldMap(error?.field),
+    )
+  }
+  return content as T
+}
+
+/**
+ * downloadAPI mengambil satu berkas dari endpoint yang terlindungi sesi dan portal.
+ *
+ * # Kenapa tidak cukup `<a href>`
+ *
+ * Rute yang dilindungi menuntut header Authorization dan X-Portal, dan peramban TIDAK
+ * mengirim keduanya pada navigasi biasa. Tautan polos karena itu selalu dijawab 401.
+ *
+ * Berkasnya diambil sebagai blob lalu diserahkan ke peramban sebagai unduhan. Alamat
+ * objeknya dilepas setelah dipakai — tanpa itu, isi berkas tetap dipegang peramban selama
+ * halaman terbuka.
+ */
+export async function downloadAPI(
+  path: string,
+  filename: string,
+  options: { token?: string | null; portal?: string | null } = {},
+): Promise<void> {
+  const header: Record<string, string> = {}
+  if (options.token) header['Authorization'] = `Bearer ${options.token}`
+  if (options.portal) header[HEADER_PORTAL] = options.portal
+
+  let response: Response
+  try {
+    response = await fetch(path, { headers: header })
+  } catch {
+    throw new NetworkError()
+  }
+
+  if (!response.ok) {
+    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
+    throw new APIError(
+      error?.kode ?? ErrorCode.internalError,
+      error?.pesan ?? 'Berkas tidak dapat diunduh.',
+      response.status,
+    )
+  }
+
+  const url = URL.createObjectURL(await response.blob())
+  try {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+type UploadOptions = {
+  /** Berkas yang diunggah. Dikirim pada bagian bernama `berkas`, sama dengan backend. */
+  berkas: File
+  /** Keterangan singkat, hanya dipakai sebagian endpoint. */
+  keterangan?: string
+  token?: string | null
+  portal?: string | null
+}
+
+/**
+ * uploadAPI mengirim satu berkas sebagai `multipart/form-data`.
+ *
+ * # Kenapa ia ada di sini, bukan di modul yang memakainya
+ *
+ * Aturan yang mengikat seluruh frontend adalah "tidak ada `fetch` di dalam komponen"
+ * (`docs/Steering/08-TECHNICAL-STRATEGY.md` §3). Tanpa fungsi ini, modul pertama yang
+ * perlu mengunggah berkas akan memanggil `fetch` sendiri — dan modul berikutnya akan
+ * menirunya, masing-masing dengan cara menangani galat yang sedikit berbeda.
+ *
+ * Ia berbagi seluruh penanganan galat dengan callAPI, sehingga layar menghadapi APIError
+ * dan NetworkError yang sama persis, apa pun bentuk permintaannya.
+ *
+ * `Content-Type` sengaja TIDAK disetel: peramban menyusunnya sendiri lengkap dengan
+ * `boundary`, dan menuliskannya sendiri justru merusak permintaannya.
+ */
+export async function uploadAPI<T>(path: string, options: UploadOptions): Promise<T> {
+  const { berkas, keterangan, token, portal } = options
+
+  const form = new FormData()
+  form.append('berkas', berkas)
+  if (keterangan) form.append('keterangan', keterangan)
+
+  const header: Record<string, string> = { Accept: 'application/json' }
+  if (token) header['Authorization'] = `Bearer ${token}`
+  if (portal) header[HEADER_PORTAL] = portal
+
+  let response: Response
+  try {
+    response = await fetch(path, { method: 'POST', headers: header, body: form })
+  } catch {
+    throw new NetworkError()
+  }
+
+  const content = await readJSON(response)
+  if (!response.ok) {
     const error = content as
       | { kode?: string; pesan?: string; detail?: unknown; field?: unknown }
       | null
@@ -200,4 +319,97 @@ async function readJSON(response: Response): Promise<unknown> {
   } catch {
     return null
   }
+}
+
+/** Berkas yang diunduh dari API, beserta nama yang disarankan server. */
+export type DownloadedFile = {
+  namaBerkas: string
+  blob: Blob
+}
+
+/**
+ * unduhBerkas mengambil respons yang badannya BUKAN JSON — berkas CSV ekspor.
+ *
+ * # Kenapa bukan sekadar menaruh URL di `<a download>`
+ *
+ * Karena permintaannya butuh dua header yang tidak dapat disertakan pada navigasi
+ * peramban biasa: `Authorization` dan `X-Portal`. Tanpa keduanya, unduhan akan dijawab
+ * "sesi tidak sah" atau — lebih buruk — dilayani entitas yang salah.
+ *
+ * Menaruh token di URL sebagai gantinya jelas tidak boleh: nilai di URL ikut tercatat di
+ * log peramban, log proxy, dan header Referer.
+ *
+ * # Jalur galatnya tetap JSON
+ *
+ * Server menjawab galat dengan bentuk `{kode, pesan}` yang sama seperti endpoint lain,
+ * sehingga layar menanganinya persis seperti galat mana pun.
+ */
+export async function unduhBerkas(
+  path: string,
+  options: RequestOptions = {},
+): Promise<DownloadedFile> {
+  const { token, portal } = options
+
+  const header: Record<string, string> = {}
+  if (token) header['Authorization'] = `Bearer ${token}`
+  if (portal) header[HEADER_PORTAL] = portal
+
+  let response: Response
+  try {
+    response = await fetch(path, { method: 'GET', headers: header })
+  } catch {
+    throw new NetworkError()
+  }
+
+  if (!response.ok) {
+    const content = (await readJSON(response)) as {
+      kode?: string
+      pesan?: string
+    } | null
+    throw new APIError(
+      content?.kode ?? ErrorCode.internalError,
+      content?.pesan ?? 'Berkas tidak dapat diunduh.',
+      response.status,
+    )
+  }
+
+  return {
+    namaBerkas: fileNameFromHeader(response.headers.get('Content-Disposition')),
+    blob: await response.blob(),
+  }
+}
+
+/**
+ * simpanBerkas meminta peramban menyimpan sebuah blob dengan nama tertentu.
+ *
+ * URL objeknya DILEPAS setelah dipakai. Tanpa itu, setiap unduhan menahan isi berkasnya
+ * di memori tab sampai halaman ditutup — dan pada ekspor beruntun itu bertumpuk.
+ */
+export function simpanBerkas(file: DownloadedFile): void {
+  const url = URL.createObjectURL(file.blob)
+  const tautan = document.createElement('a')
+  tautan.href = url
+  tautan.download = file.namaBerkas
+  document.body.appendChild(tautan)
+  tautan.click()
+  document.body.removeChild(tautan)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * fileNameFromHeader membaca nama berkas dari Content-Disposition.
+ *
+ * Nilainya dipakai sebagai nama berkas di komputer pengguna, jadi ia dibersihkan lebih
+ * dulu: pemisah jalur dibuang supaya server — atau siapa pun yang dapat mempengaruhi
+ * responsnya — tidak dapat mengarahkan simpanan ke luar folder Unduhan.
+ */
+function fileNameFromHeader(value: string | null): string {
+  const cadangan = 'unduhan.csv'
+  if (!value) return cadangan
+
+  const cocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(value)
+  if (!cocok?.[1]) return cadangan
+
+  const nama = decodeURIComponent(cocok[1]).replace(/[\/]/g, '').trim()
+  return nama === '' ? cadangan : nama
 }

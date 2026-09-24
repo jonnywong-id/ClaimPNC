@@ -1,0 +1,115 @@
+-- 0008 — Daftar Objek Dokumen: pembatalan
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Urutannya KEBALIKAN dari migrasi naiknya: langkah 5 lebih dulu, langkah 1 terakhir.
+-- Membalikkan langkah 4 sebelum langkah 5 akan membuat view-nya menunjuk kolom yang haknya
+-- sudah dicabut.
+--
+--
+-- ## SATU HAL YANG TIDAK DAPAT DIBATALKAN
+--
+-- Baris yang sudah ditulis aplikasi Go TIDAK punya dokumen JSON. Pembatalan ini tidak
+-- menyusunnya kembali, dan memang tidak bisa: `KET_DOC_OBJ` adalah satu-satunya isian, dan
+-- bentuk dokumen JSON yang ditulis Pega belum pernah dilihat siapa pun — kedua activity
+-- penulisnya hilang dari export (`R-16`).
+--
+-- Akibatnya, bila layar Pega dihidupkan kembali SESUDAH aplikasi Go sempat menyimpan baris
+-- baru, baris-baris itu akan terbaca sebagai kosong oleh jalur mana pun yang membaca lewat
+-- JSON. Yang membaca lewat kolom — termasuk view V_LST_DOC_OBJ — tetap benar.
+--
+-- Bila pembatalan ini benar-benar diperlukan, langkah 1 di bawah menyusun dokumen JSON-nya
+-- dari kolom sebagai perkiraan terbaik. Bentuknya DUGAAN, dan harus diperiksa DBA terhadap
+-- baris warisan yang JSON_DATA-nya masih asli sebelum dijalankan.
+--
+--
+-- ============================================================================
+-- LANGKAH 5' — MENCABUT HAK AKSES
+-- ============================================================================
+--
+-- REVOKE SELECT                 ON POOLDATA.V_LST_DOC_OBJ        FROM <akun aplikasi>;
+-- REVOKE SELECT, INSERT, UPDATE ON POOLDATA.LST_DOC_OBJ          FROM <akun aplikasi>;
+-- REVOKE SELECT, INSERT, UPDATE ON POOLDATA.LST_DOC_OBJ_BUSINESS FROM <akun aplikasi>;
+-- REVOKE SELECT                 ON POOLDATA.SET_LST_DOC_OBJ      FROM <akun aplikasi>;
+--
+-- POOLDATA.BUSINESS dan POOLDATA.M_SITE_DATABASE sengaja TIDAK dicabut: keduanya dipakai
+-- modul lain yang tidak ikut dibatalkan.
+--
+--
+-- ============================================================================
+-- LANGKAH 4' — MENGEMBALIKAN VIEW KE BENTUK SEMULA
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA langkah 4 pernah dijalankan, yaitu bila view-nya semula membongkar
+-- JSON. Bentuk semula itu harus diambil dari hasil kueri 0.1 pada migrasi naiknya —
+-- SIMPAN HASIL ITU sebelum menjalankan migrasi naik, karena tanpa itu bentuk semulanya
+-- tidak dapat disusun ulang.
+--
+-- CREATE OR REPLACE VIEW POOLDATA.V_LST_DOC_OBJ (ID, KET_DOC_OBJ, OLD_ID) AS
+--   SELECT ID,
+--          JSON_VALUE(JSON_DATA, '$.KET_DOC_OBJ'),
+--          OLD_ID
+--     FROM POOLDATA.LST_DOC_OBJ;
+--
+--
+-- ============================================================================
+-- LANGKAH 3' — MEMBUANG TABEL PEMETAAN BISNIS
+-- ============================================================================
+--
+-- ## JANGAN JALANKAN TANPA MENYALIN ISINYA LEBIH DULU
+--
+-- Tabel ini satu-satunya tempat pemetaan objek dokumen ke bisnis tersimpan. Membuangnya
+-- MENGHILANGKAN DATA yang tidak ada duanya di mana pun — tidak seperti kolom KET_DOC_OBJ,
+-- yang isinya masih ada di JSON_DATA pada baris warisan.
+--
+-- Salin lebih dulu:
+--
+--   CREATE TABLE POOLDATA.LST_DOC_OBJ_BUSINESS_ARSIP AS
+--     SELECT * FROM POOLDATA.LST_DOC_OBJ_BUSINESS;
+--
+-- Lalu, HANYA setelah salinannya diperiksa:
+--
+--   DROP TABLE POOLDATA.LST_DOC_OBJ_BUSINESS;
+--
+--
+-- ============================================================================
+-- LANGKAH 2' — MEMBUANG URUTAN
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA langkah 2 yang membuatnya, yaitu bila kueri 0.4 semula menghasilkan
+-- nol baris. Bila urutannya sudah ada sebelum migrasi ini, JANGAN dibuang — ia milik
+-- sistem lama.
+--
+-- DROP SEQUENCE POOLDATA.SET_LST_DOC_OBJ;
+--
+--
+-- ============================================================================
+-- LANGKAH 1' — MENYUSUN KEMBALI DOKUMEN JSON, LALU MEMBUANG KOLOM
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA langkah 1 pernah dijalankan.
+--
+-- Bentuk dokumen di bawah adalah DUGAAN — lihat peringatan di kepala berkas ini. Periksa
+-- terhadap baris warisan yang JSON_DATA-nya masih asli sebelum menjalankannya:
+--
+--   SELECT JSON_DATA FROM POOLDATA.LST_DOC_OBJ
+--    WHERE JSON_DATA IS NOT NULL AND ROWNUM <= 3;
+--
+-- UPDATE POOLDATA.LST_DOC_OBJ
+--    SET JSON_DATA = JSON_OBJECT('ID' VALUE ID, 'KET_DOC_OBJ' VALUE KET_DOC_OBJ)
+--  WHERE JSON_DATA IS NULL
+--    AND KET_DOC_OBJ IS NOT NULL;
+-- COMMIT;
+--
+-- Verifikasi — DIHARAPKAN 0:
+--
+--   SELECT COUNT(*) FROM POOLDATA.LST_DOC_OBJ
+--    WHERE JSON_DATA IS NULL AND KET_DOC_OBJ IS NOT NULL;
+--
+-- Pembuangan kolomnya sengaja DIKOMENTARI. Ia tidak diperlukan untuk kembali ke perilaku
+-- lama — view yang sudah dikembalikan di langkah 4' sudah membaca JSON lagi — dan
+-- menjalankannya membuang satu-satunya salinan yang bentuknya pasti benar.
+--
+-- ALTER TABLE POOLDATA.LST_DOC_OBJ DROP COLUMN KET_DOC_OBJ;

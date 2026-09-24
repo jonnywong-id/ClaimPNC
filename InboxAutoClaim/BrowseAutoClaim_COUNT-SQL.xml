@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabelOld>BrowseAutoClaim_COUNT</pyLabelOld>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyWindowTitle/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCommitDateTime>20220126T101719.000 GMT</pxCommitDateTime>
+<pxOriginalCreateOperator/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceProp/>
+<pxInstanceLockedKey/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK_COUNT #20220113T021500.691 GMT</pzOriginalInstanceKey>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pzRuleSetVersionPatch>96</pzRuleSetVersionPatch>
+<pySpecialtyComponentData/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxMoveFromSystem/>
+<pxSiblingCount/>
+<pyTemporaryObject/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportDateTime>20220126T101718.879 GMT</pxMoveImportDateTime>
+<pyRuleStarts/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM BrowseAutoClaim_COUNT</pxTabLabel>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyCircumstanceType/>
+<pyWorkKey/>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSEAUTOCLAIM_COUNT</pxInsId>
+<pxInstanceLockedRuleSetVersion/>
+<pyTemplate/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyHandlerFlow/>
+<pyLabel>BrowseAutoClaim_COUNT</pyLabel>
+<pyRequestType>BrowseAutoClaim_COUNT</pyRequestType>
+<pyDeletedObject/>
+<pyStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260919T062548.283 GMT</pyShowJavaWindowName>
+<pyJavaStream/>
+<pxSaveDateTime>20220113T065243.049 GMT</pxSaveDateTime>
+<pzChecksum>1809899217</pzChecksum>
+<pyRuleSetVersion>01-01-96</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateSystemID/>
+<pyMethodStatus/>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateOpName/>
+<pyDescription/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyDocumentTitle/>
+<pyCircumstanceVal/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSEAUTOCLAIM_COUNT #20220113T023326.245 GMT</pzDocumentKey>
+<pyRuleFormStatusTime>20260919T062548.260 GMT</pyRuleFormStatusTime>
+<pxUpdateDateTime>20220113T065243.034 GMT</pxUpdateDateTime>
+<pySaveSQL/>
+<pxHostId>jboss10362</pxHostId>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSEAUTOCLAIM_COUNT #20220113T023326.245 GMT</pzInsKey>
+<pyTemplateInputBox/>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM BrowseAutoClaim_COUNT</pyRuleName>
+<pxInstanceLockedBy/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedDateTime/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceDateProp/>
+<pyRuleEnds/>
+<pxOriginalCreateDateTime/>
+<pyCheckInRuleSet>GCNMFW</pyCheckInRuleSet>
+<pyOpenSQL/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyHistoryObject>false</pyHistoryObject>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsFromManageChangeLP/>
+<pyDeleteSQL/>
+<pxCreateDateTime>20220113T023326.245 GMT</pxCreateDateTime>
+<pyMemo>done</pyMemo>
+<pyCircumstanceTemplate/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRelativePath/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyTempText>saved</pyTempText>
+<pyUsage/>
+<pyBrowseSQL>select COUNT(1) AS "HASIL1 "
+FROM pooldata.TMP_BATCH_AUTO_CLAIM a
+where a.inisialid = {TempSearchDetail.CityID}
+and batch = {ASIS:TempSearchDetail.City}</pyBrowseSQL>
+<pyInterface/>
+<pyStatus/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyFormPost/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSEAUTOCLAIM_COUNT</pxInsName>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyV2/>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyAvailability>false</pyAvailability>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyNew>true</pyNew>
+<pyLaunch>true</pyLaunch>
+<pyForward>true</pyForward>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelegates>false</pyDelegates>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pyPreview>false</pyPreview>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-01-96 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSEAUTOCLAIM_COUNT #20220113T023326.245 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MENU_ROUTES } from '@/app/menu/registry'
 import { useSession } from '@/app/session'
 
 import { Sidebar } from './Sidebar'
@@ -18,6 +19,26 @@ const SAMPLE_PROFILE = {
 }
 
 /**
+ * MENU_PROGRAM yang dipakai sebagai contoh butir "belum tersedia".
+ *
+ * Ia sengaja diangkat menjadi konstanta agar penggantinya cukup disunting di SATU tempat,
+ * dan agar uji penjaga di bawah dapat memeriksanya. Riwayat berkas ini menunjukkan kenapa
+ * itu perlu: contohnya sudah batal TIGA KALI karena modulnya keburu dibangun — "Master PIC
+ * Teknik", lalu "Master Surveyors", lalu `InboxOutstanding_Harness` pada 2026-09-23.
+ *
+ * Yang ketiga membatalkan sekaligus alasan yang tertulis di komentarnya sendiri: harness
+ * `InboxOutstanding_Harness` memang tidak ada di export, tetapi layarnya tetap dapat
+ * dibangun dari kueri `BrowseInboxOutstanding1` beserta activity dan section-nya. Jadi
+ * "harness-nya tidak ada di export" TIDAK menjamin modulnya tidak akan dibangun.
+ *
+ * Karena tidak ada kriteria yang benar-benar kebal, yang dipasang adalah penjaganya: uji
+ * `contoh butir "belum tersedia" masih sahih` gagal lebih dulu dengan pesan yang menyebut
+ * apa yang harus dilakukan, sehingga penggantinya tidak perlu ditelusuri dari kegagalan
+ * render yang membingungkan.
+ */
+const BELUM_DIBANGUN = 'ReportProduksiPA_harnes'
+
+/**
  * Bentuknya meniru jawaban GET /api/menu: dua kelompok, masing-masing dengan butir yang
  * sudah punya layar dan butir yang belum.
  */
@@ -30,6 +51,10 @@ const MENU = {
       submenu: [
         { id: 11, nama: 'Master Status Klaim', program: 'StatusClaimInbox', submenu: [] },
         { id: 13, nama: 'Master PIC Teknik', program: 'UserTeknisInbox', submenu: [] },
+        // MENU_ID 15 adalah daftar ORANG surveyor (D_SURVEYORS) — bedakan dari MENU_ID 14
+        // "Master Tipe Surveyors" yang berisi golongannya. Modulnya SUDAH dibangun
+        // (2026-09-20), sehingga ia kini contoh butir yang PUNYA layar.
+        { id: 15, nama: 'Master Surveyors', program: 'DetailSurveyorsInbox', submenu: [] },
         { id: 23, nama: 'Master Status Progress 1', program: 'StatusProgress', submenu: [] },
       ],
     },
@@ -40,6 +65,10 @@ const MENU = {
       submenu: [
         // MENU_ID 83 ada di master TANPA MENU_PROGRAM. Ia tetap dikirim server.
         { id: 83, nama: 'Report Adjuster', program: '', submenu: [] },
+        // Butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT sama
+        // sekali (`K-33`, 11 dari 47 harness target). Ia dipakai sebagai contoh butir
+        // yang belum ada modulnya — lihat alasannya di uji yang memakainya.
+        { id: 86, nama: 'Report Produksi Klaim PA', program: BELUM_DIBANGUN, submenu: [] },
       ],
     },
   ],
@@ -172,16 +201,34 @@ describe('butir yang sudah ada modulnya', () => {
 })
 
 describe('butir yang belum ada modulnya', () => {
+  // Penjaga, bukan uji perilaku. Ia menjawab satu hal saja: apakah contoh yang dipakai uji
+  // di bawahnya MASIH berupa butir yang belum punya layar.
+  //
+  // Tanpa ini, membangun modul `BELUM_DIBANGUN` akan menjatuhkan uji berikutnya dengan
+  // "expected document not to contain element" — kegagalan yang benar tetapi tidak
+  // menjelaskan apa pun, dan sudah tiga kali menghabiskan waktu orang untuk ditelusuri.
+  it('contoh butir "belum tersedia" masih sahih', () => {
+    expect(
+      MENU_ROUTES[BELUM_DIBANGUN],
+      `MENU_PROGRAM "${BELUM_DIBANGUN}" kini SUDAH punya layar di MENU_ROUTES, sehingga ` +
+        'ia tidak lagi sah sebagai contoh butir "belum tersedia". Ganti konstanta ' +
+        'BELUM_DIBANGUN di berkas ini dengan MENU_PROGRAM lain yang belum dipetakan — ' +
+        'daftar kandidatnya ada di komentar kepala src/app/menu/registry.ts.',
+    ).toBeUndefined()
+  })
+
   // Keputusan Work Owner 2026-09-18: tetap terlihat, tidak dapat diklik, bertanda.
   it('tampil dengan tanda "belum tersedia" dan bukan tautan', async () => {
     installFetch(() => jsonResponse(200, MENU))
     show()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /MASTER/ }))
+    await user.click(await screen.findByRole('button', { name: /REPORT/ }))
 
-    expect(screen.getByText('Master PIC Teknik')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Master PIC Teknik' })).not.toBeInTheDocument()
+    expect(screen.getByText('Report Produksi Klaim PA')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Report Produksi Klaim PA' }),
+    ).not.toBeInTheDocument()
     expect(screen.getAllByText('belum tersedia').length).toBeGreaterThan(0)
   })
 

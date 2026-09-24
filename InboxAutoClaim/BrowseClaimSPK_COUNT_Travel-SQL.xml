@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyInterface/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20221027T034748.499 GMT</pxUpdateDateTime>
+<pxCreateOperator>ANDREWHANDOKO</pxCreateOperator>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimSPK_COUNT_Travel</pyRuleName>
+<pxUpdateOpName>ABDREW HANDOKO</pxUpdateOpName>
+<pyOpenSQL/>
+<pxInstanceLockedKey/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyMethodStatus/>
+<pyLabelOld>BrowseClaimSPK_COUNT_Travel</pyLabelOld>
+<pxInstanceLockedDateTime/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDateProp/>
+<pyTemplate/>
+<pyBaseRule>false</pyBaseRule>
+<pyTempText>saved</pyTempText>
+<pyCircumstanceTemplate/>
+<pyFormPost/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveFromSystem/>
+<pyRuleStarts/>
+<pyWindowTitle/>
+<pyStreamName/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyMemo>browseclaimspk travel</pyMemo>
+<pxUpdateOperator>ANDREWHANDOKO</pxUpdateOperator>
+<pzChecksum>-550919552</pzChecksum>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOperator/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleParamsStreamName/>
+<pyIsFromManageChangeLP/>
+<pyRuleFormStatusTime>20260919T063536.090 GMT</pyRuleFormStatusTime>
+<pyRelativePath/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyBrowseSQL>select COUNT(1) AS "HASIL1 "
+FROM pooldata.TMP_BATCH_AUTO_TRAVEL a
+where a.inisialid = {TempSearchDetail.CityID}
+and batch = {ASIS:TempSearchDetail.City}</pyBrowseSQL>
+<pxCreateDateTime>20221026T041501.861 GMT</pxCreateDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHandlerFlow/>
+<pxInsId>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSPK_COUNT_TRAVEL</pxInsId>
+<pySaveSQL/>
+<pxTabLabel>ASM-FW-GCNMFW-Work-PNC GCNM BrowseClaimSPK_COUNT_Travel</pxTabLabel>
+<pxOriginalCreateOpName/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceType/>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pxInstanceLockedRuleSetVersion/>
+<pxInstanceLockedBy/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyDeleteSQL/>
+<pyCircumstanceVal/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK_COUNT_TRAVEL #20221026T041501.861 GMT</pzInsKey>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceDate/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLabel>BrowseClaimSPK_COUNT_Travel</pyLabel>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyDescription/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleEnds/>
+<pyCircumstanceProp/>
+<pxOriginalCreateSystemID/>
+<pyStatus/>
+<pyShowJavaWindowName>GeneratedJava20260919T063536.111 GMT</pyShowJavaWindowName>
+<pySPRuleSetName>ANDREWHANDOKO@</pySPRuleSetName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxCommitDateTime>20221116T100637.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK_COUNT #20210127T064626.276 GMT</pzOriginalInstanceKey>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxMoveImportDateTime>20221116T100636.838 GMT</pxMoveImportDateTime>
+<pxCreateOpName>ABDREW HANDOKO</pxCreateOpName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxHostId>jboss10373</pxHostId>
+<pxSaveDateTime>20221027T034748.571 GMT</pxSaveDateTime>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxSiblingCount/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK_COUNT_TRAVEL #20221026T041501.861 GMT</pzDocumentKey>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRequestType>BrowseClaimSPK_COUNT_Travel</pyRequestType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!GCNM!BROWSECLAIMSPK_COUNT_TRAVEL</pxInsName>
+<pyDeletedObject/>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pySave>false</pySave>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCompareVersion/>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySiblings>true</pySiblings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyPreview>false</pyPreview>
+<pyNew>true</pyNew>
+<pyRun>false</pyRun>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-WORK-PNC GCNM!BROWSECLAIMSPK_COUNT_TRAVEL #20221026T041501.861 GMT</pzInsKey>
+<pyLabel>01-01-99 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

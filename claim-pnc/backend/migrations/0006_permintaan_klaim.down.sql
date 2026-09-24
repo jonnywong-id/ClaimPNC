@@ -1,0 +1,22 @@
+-- 0006 turun — membatalkan tabel permintaan ReOpen dan Copy Klaim.
+--
+-- ============================================================================
+-- MENJALANKAN BERKAS INI MENGHAPUS JEJAK PERMINTAAN
+-- ============================================================================
+--
+-- Isinya SIAPA meminta apa dan KAPAN. `D-59` menghapus pemisahan tugas — satu orang dapat
+-- membuat, menyetujui, dan membayarkan satu klaim bila perannya memiliki ketiga menu itu —
+-- sehingga jejak semacam ini adalah kontrol pengimbang, bukan data pelengkap.
+--
+-- Jalankan hanya setelah memastikan salah satu dari dua hal:
+--
+--   1. tabelnya masih KOSONG — migrasi baru saja dijalankan dan modulnya belum dipakai;
+--      atau
+--   2. isinya sudah disalin ke tempat yang disetujui Work Owner dan Compliance.
+--
+-- `P-4` mewajibkan setiap migrasi punya `down` yang benar-benar berfungsi, dan itulah
+-- sebabnya berkas ini ada. Ia BUKAN anjuran untuk menjalankannya.
+--
+-- Ketiga indeks ikut terhapus bersama tabelnya; menghapusnya lebih dulu tidak diperlukan.
+
+DROP TABLE POOLDATA.CPNC_PERMINTAAN_KLAIM;

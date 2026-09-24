@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from 'react'
  * Nada menentukan berat sebuah tombol, bukan sekadar warnanya.
  *
  * - `utama`   — tindakan yang dituju pengguna di layar itu. Satu saja per kelompok.
- * - `kedua`   — tindakan yang sah tetapi bukan yang utama: Ubah, Muat ulang.
+ * - `kedua`   — tindakan yang sah tetapi bukan yang utama: Ubah, Refresh.
  * - `halus`   — tindakan yang membatalkan atau menutup. Tidak menarik perhatian.
  *
  * Membedakannya penting pada layar master: Simpan dan Batal berdampingan, dan tombol
