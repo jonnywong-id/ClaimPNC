@@ -60,14 +60,50 @@ export const MENU_ROUTES: Record<string, string> = {
   CauseOfLossInboxSimasOnline: '/master/col-simas-online',
   // MENU_ID 40 "Daftar Tipe Dokumen", di bawah kelompok MASTER.
   //
-  // JANGAN tertukar dengan dua master TURUNANNYA, yang merujuk ID milik layar ini dan
-  // keduanya belum dibangun:
+  // JANGAN tertukar dengan kedua master TURUNANNYA, yang merujuk ID milik layar ini:
   //
-  //   `ListDetTypeDocument`   "Daftar Detail Tipe Dokumen"      (V_LST_DET_TYPE_DOC)
-  //   `DetTypeDocumenBisnis`  "Detail Tipe Dokumen per Bisnis"  (LST_TYPE_DOC_BUSINESS)
-  //
-  // Keduanya tetap tampil sebagai "belum tersedia".
+  //   `ListDetTypeDocument`   "Daftar Detail Tipe Dokumen"   (V_LST_DET_TYPE_DOC)  ada di bawah
+  //   `DetTypeDocumenBisnis`  "Daftar Tipe Dokumen Bisnis"   (LST_TYPE_DOC_BUSINESS) ada di bawah
   ListDocumentTypeInbox: '/master/tipe-dokumen',
+  // MENU_ID 41 "Daftar Detail Tipe Dokumen", di bawah kelompok MASTER.
+  //
+  // Master TURUNAN atas V_LST_DET_TYPE_DOC: ia merujuk ID milik MENU_ID 40 di atas dan
+  // menambahkan rinciannya — dokumen apa persisnya yang diminta, melekat pada objek apa,
+  // dipicu penyebab kerugian mana, dan wajib pada lini bisnis mana.
+  //
+  // JANGAN tertukar dengan MENU_ID 42 tepat di bawahnya. Namanya mirip, tetapi tabelnya
+  // sama sekali berbeda: yang ini V_LST_DET_TYPE_DOC, yang itu LST_TYPE_DOC_BUSINESS —
+  // dan yang itu justru MEMBACA ID baris layar ini lewat DOC_TYPE_DT_ID.
+  //
+  // Rutenya `detail-tipe-dokumen`, bukan nama modulnya utuh, supaya hubungan ketiganya
+  // terbaca dari URL: /master/tipe-dokumen (induk), /master/detail-tipe-dokumen (ini),
+  // /master/objek-dokumen (master yang dirujuknya).
+  ListDetTypeDocument: '/master/detail-tipe-dokumen',
+  // MENU_ID 42 "Daftar Tipe Dokumen Bisnis", di bawah kelompok MASTER.
+  //
+  // Master TURUNAN atas V_LST_DOC_TYPE: ia merujuk ID milik MENU_ID 40 di atas dan
+  // menjawab pertanyaan yang lebih sempit — dokumen apa yang harus diunggah, untuk lini
+  // bisnis mana, pada tahap klaim mana.
+  //
+  // Judul layarnya berbunyi "Detail Tipe Dokumen Bisnis", berbeda dari MENU_DESC di
+  // tabel menu yang berbunyi "Daftar Tipe Dokumen Bisnis". Keduanya ditiru apa adanya:
+  // yang di menu dibaca dari POOLDATA.M_MENU_APLIKASI_PNC, yang di layar dari
+  // `Section/DetTypeDocumenBisnis_Portal-Section.xml` (`D-13`).
+  //
+  // Rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`), dan jalur itu sudah
+  // dicadangkan sejak modul MENU_ID 40 dibangun.
+  DetTypeDocumenBisnis: '/master/tipe-dokumen-bisnis',
+  // MENU_ID 43 "Daftar Objek Dokumen", di bawah kelompok MASTER.
+  //
+  // JANGAN tertukar dengan `ListDocumentTypeInbox` tepat di atasnya. Keduanya master acuan
+  // yang dirujuk BERSAMAAN oleh satu tabel yang sama, dan bedanya ada di pertanyaan yang
+  // dijawabnya:
+  //
+  //   Daftar Tipe Dokumen    dokumennya JENISNYA apa   LST_TYPE_DOC_BUSINESS.DOCUMENT_TYPE_ID
+  //   Daftar Objek Dokumen   dokumennya MELEKAT PADA APA  LST_TYPE_DOC_BUSINESS.OBJECT_DOC_ID
+  //
+  // Keduanya terbaca berdampingan di `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26`.
+  ListDocumentObject: '/master/objek-dokumen',
   // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
   SurveyorsInbox: '/master/tipe-surveyor',
   // MENU_ID 15 "Master Surveyors" — daftar ORANGNYA, anak dari butir di atas. Keduanya
@@ -151,6 +187,15 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 29. Seluruh isinya tinggal di satu kolom JSONDATA.
   MasterSupplier: '/master/supplier',
 
+  // MENU_ID 47 "Inbox Compliance", di bawah kelompok INBOX, urutan 1137 — tepat sebelum
+  // Inbox Investigator (1138). Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang
+  // menunggu di workbasket `CompliancePNC`, hilang setelah klaimnya selesai, dan punya
+  // tenggat berupa kolom Aging.
+  //
+  // Ini mengoreksi `22-INVENTARIS-HARNESS.md`, yang menandainya JANGGAL dengan alasan
+  // `RD 0`. Report Definition-nya ADA dan dua buah — keduanya tinggal di dalam section,
+  // bukan di harness, sehingga tidak terhitung pada tingkat harness.
+  inboxCompliance_Harness: '/inbox-compliance',
   // MENU_ID 63, di bawah kelompok INBOX — bukan MASTER. Ia Inbox sungguhan menurut `D-79`:
   // barisnya pekerjaan, hilang setelah ditindaklanjuti, dan punya tenggat.
   PNCInboxAdmin: '/inbox-admin',

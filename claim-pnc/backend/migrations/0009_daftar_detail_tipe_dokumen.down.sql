@@ -1,0 +1,40 @@
+-- 0009 turun — Daftar Detail Tipe Dokumen
+--
+-- ============================================================================
+-- TIDAK ADA YANG DIBATALKAN DI SINI, DAN ITU DISENGAJA.
+-- ============================================================================
+--
+-- Migrasi naiknya tidak membuat objek baru. Yang dikerjakannya tiga:
+--
+--   1. mengisi kolom yang sudah ada dari dokumen JSON (LANGKAH 1)
+--   2. memberi hak akses kepada akun aplikasi (LANGKAH 2)
+--   3. mungkin mendefinisikan ulang dua view supaya membaca kolom (LANGKAH 3)
+--
+-- Ketiganya tidak layak dibatalkan secara otomatis:
+--
+-- **Mengosongkan kembali kolomnya** akan MENGHAPUS isi baris yang sejak itu ditambahkan
+-- atau diubah lewat aplikasi Go — baris yang JSON_DATA-nya memang tidak pernah diisi
+-- (keputusan Work Owner 2026-09-23). Yang hilang bukan hasil migrasi, melainkan data
+-- yang ditulis petugas sesudahnya.
+--
+-- **Mencabut hak akses** akan mematikan layarnya tanpa memulihkan apa pun.
+--
+-- **Mengembalikan definisi view** hanya benar bila definisi lamanya masih disimpan, dan
+-- hanya DBA yang memilikinya. Mengarangnya di sini justru berisiko memutus ke-34 rule
+-- Pega yang membacanya — termasuk seluruh jalur validasi unggah dokumen.
+--
+-- # Bila perubahan ini benar-benar harus dibatalkan
+--
+-- Prosedurnya sama dengan `D-63`, ditempuh tiga pihak, dan langkahnya:
+--
+--   1. Kembalikan definisi kedua view ke bentuk yang DBA simpan sebelum LANGKAH 3.
+--      Ini langkah yang benar-benar memulihkan perilaku lama, dan cukup dengan ini saja
+--      Pega kembali membaca apa yang dibacanya dulu.
+--   2. Cabut hak INSERT, UPDATE, dan DELETE akun aplikasi bila layarnya memang
+--      dihentikan. Hak SELECT dibiarkan — mencabutnya hanya menambah satu kegagalan baru.
+--   3. JANGAN mengosongkan kolomnya. Baris yang ditulis aplikasi Go hanya ada di sana.
+--      Bila Pega harus kembali membacanya, isi kolom itu justru perlu DISALIN KE JSON —
+--      kebalikan arah LANGKAH 1 — dan itu pekerjaan tersendiri yang bentuknya bergantung
+--      pada jawaban Q3 pada migrasi naiknya.
+--
+-- Perlakuan yang sama dipakai migrasi 0005 dan 0008, dengan alasan yang sama.

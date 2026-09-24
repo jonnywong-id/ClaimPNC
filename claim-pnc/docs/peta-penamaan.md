@@ -1478,3 +1478,421 @@ Teks yang **bukan** dari Pega, ditulis sebagai tambahan dalam bahasa Indonesia: 
 ID Dokumen yang menyebutkan nama dokumen menurut master, dan kalimat *"Dibiarkan kosong berarti
 aturan dokumen ini berlaku untuk seluruh plan dan jaminan"* — yang terakhir ada karena grid kosong
 di layar lama tidak menjelaskan apa artinya kosong.
+
+---
+
+## Modul Daftar Objek Dokumen (2026-09-23)
+
+| | |
+|---|---|
+| Kunci menu | `ListDocumentObject` |
+| MENU_ID | 43, di bawah kelompok MASTER |
+| Rute layar | `/master/objek-dokumen` |
+| Rute API | `/api/master/objek-dokumen` |
+| Paket Go | `daftarobjekdokumen` |
+| Folder frontend | `daftar-objek-dokumen` |
+
+### Apa yang dimodelkan, dan bedanya dengan tetangganya
+
+Objek Dokumen menyatakan sebuah dokumen **melekat pada APA**. Ia mudah tertukar dengan Tipe Dokumen,
+yang menyatakan dokumen itu **JENISNYA apa** — dan keduanya dirujuk bersamaan oleh satu tabel yang
+sama:
+
+```
+POOLDATA.LST_TYPE_DOC_BUSINESS
+  ├─ DOCUMENT_TYPE_ID  ──► LST_DOC_TYPE   (MENU_ID 40, Daftar Tipe Dokumen)
+  └─ OBJECT_DOC_ID     ──► LST_DOC_OBJ    (MENU_ID 43, modul ini)
+```
+
+Terbaca berdampingan di `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26`. Itulah sebab `ID` sebuah
+objek dokumen tidak pernah berubah dan barisnya tidak pernah dihapus.
+
+### Pemetaan nama
+
+| Kolom basis data | Field JSON | Nama Go | Label layar |
+|---|---|---|---|
+| `ID` | `id` | `ID` | "ID" |
+| `KET_DOC_OBJ` | `objek_dokumen` | `Description` | **"Daftar Objek Dokumen"** |
+| `OLD_ID` | `id_lama` | `OldID` | *(tidak ditampilkan)* |
+| `BISNISID` | `bisnis[].id` | `Business.ID` | *(tersembunyi)* |
+| `NOTE` | `bisnis[].nama` | `Business.Name` | "ID Bisnis" |
+
+**`objek_dokumen`, bukan `keterangan`.** Field JSON mengikuti label layar supaya namanya
+mencerminkan isinya. Kata "Daftar" di depan label itu milik layarnya — ia daftar objek dokumen —
+sedangkan nilai satu barisnya adalah satu objek dokumen.
+
+**`Description` di Go, bukan `ObjectDocument`.** Nama internal berbahasa Inggris (`D-80`), dan yang
+dinamai adalah perannya di dalam baris: ia keterangan barisnya. Nama modulnya sendiri tetap
+Indonesia (`D-81`).
+
+### Objek basis data — mana yang pasti, mana yang dugaan
+
+| Objek | Status | Sumber |
+|---|---|---|
+| `POOLDATA.V_LST_DOC_OBJ` | **pasti** | `Report Definition/BrowseVLstDocObj_RD-RD.xml` |
+| `POOLDATA.M_SITE_DATABASE` | **pasti** | `Database/PEGA_LST_DOC_TYPE.prc:11` |
+| `POOLDATA.BUSINESS` | **pasti** | `RDB List/GetLBUID_SQL-SQL.xml` |
+| `POOLDATA.LST_DOC_OBJ` | **DUGAAN** | diturunkan dari nama view-nya |
+| `POOLDATA.SET_LST_DOC_OBJ` | **DUGAAN** | diturunkan dari `SET_LST_DOC_TYPE` |
+| `POOLDATA.LST_DOC_OBJ_BUSINESS` | **DUGAAN** | tabel baru, dirancang di migrasi 0010 |
+
+Ketiga dugaan diisolasi di `repo/sqlstore/daftarobjekdokumen.sql`. Tidak ada nama tabel yang tercecer
+di dalam kode Go.
+
+### Bentuk ID — empat digit, bukan tiga
+
+```
+ID = M_SITE_DATABASE.ID || lpad(SET_LST_DOC_OBJ.nextval, 4, '0')
+```
+
+Mengikuti `Database/PEGA_LST_DOC_TYPE.prc:21`, procedure tabel bersaudara di rumpun `LST_*`.
+
+**Rumpun `M_CAUSE_OF_LOSS` memakai TIGA digit.** Lebar nomor urut harus dibaca dari procedure
+rumpunnya masing-masing, tidak pernah disalin dari modul tetangga. Menyalinnya menghasilkan ID
+berbentuk salah yang tidak terlihat sampai baris pertama disimpan ke Oracle.
+
+Pemadatan nolnya dikerjakan **di Go**, bukan dengan `LPAD` — `LPAD` termasuk yang dilarang
+`09-DATABASE-STRATEGY.md` §4.
+
+### Kode galat
+
+| Kode | Keadaan |
+|---|---|
+| `validasi_gagal` | isian melanggar batas panjang; 422 |
+| `tidak_ditemukan` | baris yang diminta tidak ada; 404 |
+| `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field tak dikenal; 400 |
+
+Ketiganya kode UMUM yang sudah dikenali klien, bukan kode baru milik modul ini. Kode baru untuk arti
+yang sama hanya menambah cabang di frontend tanpa menambah keterangan apa pun.
+
+### Teks layar — mengikuti Pega apa adanya
+
+| Tempat | Teks | Sumber |
+|---|---|---|
+| Judul layar | "Daftar Objek Dokumen" | `Section/BrowseDocumentObject-Section.xml:6715` |
+| Header kolom | "ID", "Daftar Objek Dokumen" | section yang sama |
+| Judul form | "Memperbaharui Data" — **termasuk pada mode tambah** | `:10859` |
+| Label isian | "Daftar Objek Dokumen" | `:11801` |
+| Judul grid dalam form | "ID Bisnis" | `:14180` |
+| Aksi per baris | "Ubah" | `pyButtonLabel` pada section |
+| Tombol | "Tambah", "Refresh", "Simpan", "Ubah", "Batal" | kedua section |
+
+Teks yang **bukan** dari Pega, ditulis sebagai tambahan dalam bahasa Indonesia: kalimat pengantar di
+bawah judul layar, keterangan *"Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat
+disimpan."* — yang ada karena grid kosong di layar lama tidak menjelaskan apa artinya kosong — dan
+pesan saat daftar bisnis gagal dimuat.
+
+Satu isian Pega **tidak dibawa**: `TempDocObj.pyNote` berlabel "Catatan" (`:3097`). Ia kotak
+read-only tempat Pega menaruh kalimat yang dikembalikan procedure lewat `ErrMsg`; `D-68` menetapkan
+kontrak galat berbasis teks itu tidak dibawa.
+
+---
+
+## Daftar Tipe Dokumen Bisnis — MENU_ID 42 (2026-09-23)
+
+Nama modul: **`daftartipedokumenbisnis`** (backend), **`daftar-tipe-dokumen-bisnis`** (frontend),
+mengikuti MENU_DESC "Daftar Tipe Dokumen Bisnis" (`D-81`). Tipe domainnya `DocumentRule`, sehingga
+berkas frontend bernama `BusinessDocumentRule*.tsx` — **nama tipe, bukan nama modul** (`D-80`).
+
+### Kolom basis data → nama di kode
+
+`POOLDATA.LST_TYPE_DOC_BUSINESS`:
+
+| Kolom | Go | JSON | Keterangan |
+|---|---|---|---|
+| `ID` | `ID` | `id` | `kode_situs` + 4 digit |
+| `BUSINESSID` | `BusinessID` | `id_bisnis` | **tidak dapat diubah** setelah baris dibuat |
+| `DOCUMENT_TYPE_ID` | `DocumentTypeID` | `id_tipe_dokumen` | → `V_LST_DOC_TYPE` |
+| `OBJECT_DOC_ID` | `ObjectDocID` | `id_object_dokumen` | → `V_LST_DOC_OBJ`; boleh NULL |
+| `DOC_TYPE_DT_ID` | `DetailTypeDocID` | `id_detail_dokumen` | → `V_LST_DET_TYPE_DOC` |
+| `DETAIL_DOKUMEN` | `DetailDocument` | `detail_dokumen` | `"-"` menyembunyikan baris |
+| `STS_WAJIB` | `Mandatory` | `status_wajib` | **teks** `'1'`/`'0'`, bukan angka |
+| `MIN_DOC` | `MinDocument` | `minimum_dokumen` | |
+| `EDIT_DATE` | `Editor.At` | — | jejak simpan, tidak dikirim klien |
+| `USER_EDIT` | `Editor.Identity` | — | jejak simpan, tidak dikirim klien |
+| `FLAGTYPES` | — | — | **tidak ditulis**; menentukan urutan di layar unggah |
+| `CREDENTIAL`, `DURATION` | — | — | **tidak ditulis**; dibaca `BrowseRegisterCvg` |
+
+`POOLDATA.COVERAGE_DOC_BUSINESS`:
+
+| Kolom | Go | JSON | Keterangan |
+|---|---|---|---|
+| `ID` | — | — | rujukan ke baris aturan, bukan kunci sendiri |
+| `BUSINESSID` | — | — | diturunkan dari baris aturannya |
+| `COVERAGEID` | `Coverage.ID` | anggota `jenis_klaim` | |
+| `NOKLAIM` | — | — | **tidak pernah ditulis**; milik jalur klaim, disaring `IS NULL` |
+
+Nama hasil join yang **tidak tersimpan** di baris: `nama_bisnis` (`BUSINESS.NOTE`), `tipe_dokumen`
+(`V_LST_DOC_TYPE.TYPE_DOCUMENT`), `object_dokumen` (`V_LST_DOC_OBJ.KET_DOC_OBJ`).
+
+### Sebelas alias menyesatkan yang DIBUANG
+
+`Select_TYPE_DOCUMENT` memaksakan kolomnya masuk kelas Pega generik `T_GENERAL`, sehingga nama
+aliasnya tidak ada hubungannya dengan isinya. Pemetaannya, untuk siapa pun yang membandingkan kueri
+lama dan penggantinya:
+
+| Alias lama | Isinya sebenarnya |
+|---|---|
+| `IDPEGA` | `LST_TYPE_DOC_BUSINESS.ID` |
+| `BUSINESSCODE` | `BUSINESS.ID` |
+| `BUSINESSNAME` | `BUSINESS.NOTE` |
+| `ACCUMCODE` | `V_LST_DOC_TYPE.ID` |
+| `BRANCHNAME` | `V_LST_DOC_TYPE.TYPE_DOCUMENT` — tahap klaim |
+| `BUSINESSTYPE` | `OBJECT_DOC_ID` |
+| `CLIENTID` | `V_LST_DET_TYPE_DOC.ID` |
+| `EDMNO` | `V_LST_DET_TYPE_DOC.DETAIL_DOCUMENT` |
+| `EDMTYPE` | `STS_WAJIB` |
+| `FOLLOWEDPOLICY` | `MIN_DOC` |
+| `MARKETINGCODE` | `USER_EDIT` |
+
+Ditambah satu di `BrowseLSTDetailDocument_sql`: `b.note AS DOCUMENT_TYPE_ID` — **nama bisnis**
+dialias sebagai kode tipe dokumen.
+
+### Kode galat
+
+| Kode | Kapan |
+|---|---|
+| `tipe_dokumen_bisnis_tidak_ditemukan` | baris yang dituju tidak ada |
+| `nama_bisnis_belum_diisi` | tidak satu pun lini bisnis dipilih — **ditiru dari layar lama** |
+| `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field tak dikenal |
+
+Hanya **satu** kode isian, dan itu cerminan layar lamanya: `nama_bisnis_belum_diisi` meniru
+satu-satunya validasi yang benar-benar ada di sana
+(`Activity/InsertDetailTypeDocumentBusiness_act-Act.xml:209`), beserta ejaan kalimatnya.
+
+> **Dikoreksi 2026-09-23.** Daftar ini semula memuat dua kode lagi —
+> `baris_dokumen_belum_diisi` dan `jenis_klaim_belum_dipilih`. Keduanya penambahan saya sendiri
+> dengan alasan mengganti kegagalan senyap menjadi kegagalan yang terbaca, dan **dicabut** atas
+> keputusan Work Owner ("seperti aplikasi Pega saja"): di Pega kedua keadaan itu dilewati
+> diam-diam, bukan ditolak. Lihat `catatan-pengembangan.md` §23.12.
+
+### Teks layar — mengikuti Pega apa adanya
+
+| Tempat | Teks | Sumber |
+|---|---|---|
+| Judul layar | "Detail Tipe Dokumen Bisnis" | `Section/DetTypeDocumenBisnis_Portal-Section.xml` |
+| Header kolom grid kedua | "Tipe Dokumen", "Object Dokumen", "Detail Dokumen", "Status Wajib", "Minimum Dokumen" | `Section/InputListDetailTypeDocumentBusiness_sect-Section.xml` |
+| Header kolom grid pertama | "ID", "Nama Bisnis", "Aksi" | `Section/BrowseListDetailTypeDocumentBusiness_sect-Section.xml` |
+| Judul form ubah | "Update Data" | kedua section |
+| Tombol | "Tambah", "Refresh", "Simpan", "Batal", "Detail" | kedua section |
+| Pesan validasi | "Nama Bisnis belum di isi" — **termasuk ejaan terpisahnya** | `Activity/InsertDetailTypeDocumentBusiness_act-Act.xml:209` |
+| Label jaminan | "Jenis Klaim" | `InputListDetailTypeDocumentBusiness_sect` |
+
+Judul layar **sengaja berbeda** dari `MENU_DESC` di tabel menu yang berbunyi "Daftar Tipe Dokumen
+Bisnis". Keduanya ditiru di tempatnya masing-masing: yang di menu dibaca dari basis data, yang di
+layar dari section Pega (`D-13`). Ketidakcocokan itu ada di sistem lama, bukan diperkenalkan di
+sini.
+
+Ejaan **"Object Dokumen"** dengan "c" dipertahankan pada label yang dilihat pengguna, sementara
+jalur API-nya memakai `objek` mengikuti modul yang memiliki tabelnya. Keduanya disengaja.
+
+Teks yang **bukan** dari Pega, ditulis sebagai tambahan: judul form tambah **"Tambah Data"** (Pega
+memakai judul yang sama untuk keduanya), peringatan **"Wajib di sini belum berarti wajib di
+klaim"**, keterangan **"— disembunyikan"** pada baris ber-`DETAIL_DOKUMEN` `"-"`, kalimat jumlah
+baris yang akan lahir pada form tambah, dan kalimat *"Jenis klaim hanya dapat ditambahkan, tidak
+dapat dibuang"*. Kelimanya menjelaskan aturan yang **sudah ada** tetapi tidak terlihat di layar
+lama.
+
+### Konfigurasi
+
+| Variabel | Isi |
+|---|---|
+| `BISNIS_DIKECUALIKAN_PILIH_SEMUA` | Kode lini bisnis yang dilewati tombol "Pilih semua", dipisah koma. Bawaannya `10028,10164,10114,10084,10093` — kelima kode lini MBU yang di Pega ditulis langsung di dalam rule (`Activity/SetAllBusiness-Act.xml:984`) |
+
+Nama variabelnya berbahasa Indonesia mengikuti `D-80`: variabel lingkungan sifatnya **kontrak**
+dengan berkas `.env` dan skrip deployment, bukan nama internal.
+
+Daftarnya ditaruh di konfigurasi, bukan di master data, karena masternya belum ada — keadaan yang
+sama dengan `XOL_PENERIMA_KOMITE`. Ia sudah memenuhi `D-15` ("dapat diubah tanpa deploy"), tetapi
+**belum** dapat diubah pengguna bisnis sendiri.
+
+---
+
+## Daftar Detail Tipe Dokumen — MENU_ID 41 (2026-09-23)
+
+Nama modulnya **`daftardetailtipedokumen`** di backend dan **`daftar-detail-tipe-dokumen`** di
+frontend, mengikuti MENU_DESC "Daftar Detail Tipe Dokumen" (`D-81`). Tipe domainnya `DetailType`,
+sehingga nama modul (Indonesia) dan nama tipe (Inggris) memang berbeda — itu yang dikehendaki.
+
+**Jalur API-nya `/master/detail-tipe-dokumen`, lebih pendek dari nama modulnya.** Sebabnya:
+hubungan ketiga master dokumen harus terbaca dari URL-nya.
+
+    /master/tipe-dokumen           MENU_ID 40   induk
+    /master/detail-tipe-dokumen    MENU_ID 41   ini
+    /master/objek-dokumen          MENU_ID 43   master yang dirujuknya
+
+### Kolom basis data ke field domain
+
+| Kolom | Field JSON API | Field Go | Label layar Pega |
+|---|---|---|---|
+| `ID` | `id` | `ID` | "ID" |
+| `DOC_TYPE_ID` | `id_tipe_dokumen` | `DocumentTypeID` | **"ID Tipe Dokumen"** |
+| `TYPE_DOCUMENT` | `nama_tipe_dokumen` | `DocumentTypeName` | (tidak ada — hasil join) |
+| `DETAIL_DOCUMENT` | `detail_dokumen` | `Detail` | **"Detail Dokumen"** |
+| `STS_INSURED` | `status_tertanggung` | `InsuredStatus` | **"Status Tertanggung"** |
+| `DOC_COL_ID` | `id_penyebab_kerugian` | `CauseOfLossID` | (tidak ada — target tersembunyi) |
+| `DOC_COL_INFO` | `keterangan_penyebab_kerugian` | `CauseOfLossDescription` | **"Dokumen kolom ID"** |
+| `OBJ_DOC` | `id_objek_dokumen` | `ObjectDocumentID` | (tidak ada — target tersembunyi) |
+| `OBJ_DOC_DESC` | `keterangan_objek_dokumen` | `ObjectDocumentDescription` | **"Objek Dokumen"** |
+| `RISK` | `resiko` | `Risk` | **"Resiko"** |
+| `DFT_BISNIS_ID` | `id_bisnis` | `BusinessID` | **"ID Bisnis"** |
+| `STS_WAJIB` | `status_wajib` | `Mandatory` | **"Status Wajib"** |
+| `MIN_DOC` | `minimum_dokumen` | `MinDocument` | **"Minimum Dokumen"** |
+
+Perhatikan **`DOC_COL_ID` → `CauseOfLossID`**: nama kolomnya menyebut "kolom dokumen", sementara
+isinya rujukan ke `M_CAUSE_OF_LOSS.M_COL_ID` — penyebab kerugian. Nama Go mengikuti **isinya**,
+bukan nama kolomnya, persis yang `D-19` perintahkan.
+
+Perhatikan pula ke mana label **"Dokumen kolom ID"** melekat: bukan ke `DOC_COL_ID` melainkan ke
+`DOC_COL_INFO`. Labelnya menyebut "ID" padahal isiannya **keterangan** — dan kodenya justru tidak
+punya label sama sekali karena ia target tersembunyi autocomplete. Label itu ditiru apa adanya
+(`D-13`); yang tidak ditiru adalah kekeliruannya. Hal yang sama berlaku pada "Objek Dokumen", yang
+melekat ke `OBJ_DOC_DESC`.
+
+Hal yang sama berlaku pada **`DFT_BISNIS_ID`**: awalan `DFT_` tidak berarti apa pun bagi
+pembacanya, dan nama Go-nya cukup `BusinessID`.
+
+### Teks yang dilihat pengguna
+
+| Tempat | Teks | Sumber |
+|---|---|---|
+| Judul layar | "Detail Tipe Dokumen" | `Section/DetTypeDocument-Section.xml` (`pyCaption Detail Tipe Dokumen`) |
+| Tombol | "Tambah", "Refresh" | section yang sama |
+| Tombol form | "Simpan", "Ubah" | `Section/BrowseListDetailTypeDocument-Section.xml` |
+| Header kolom grid | "ID", "Tipe Dokumen", "Detail Dokumen" | section yang sama |
+| Label isian | ketujuhnya pada tabel di atas | section yang sama, elemen `pyLabelPreview` |
+| Pilihan Status Wajib | "Ya", "Tidak" | nilai yang **tersimpan**, bukan hanya tampilan |
+
+Teks yang **bukan** dari Pega, ditulis sebagai tambahan:
+
+- Kalimat penjelas di bawah judul layar.
+- Dua header kolom grid tambahan: **"Objek Dokumen"** dan **"Penyebab Kerugian"** — grid Pega tidak
+  memuat keduanya, dan alasannya ada di `keputusan-implementasi.md` §25.8.
+- Keterangan di bawah isian rujukan: **"Tipe dokumen: …"**, **"Penyebab kerugian: …"**, **"Objek
+  dokumen: …"** — menggantikan peran daftar autocomplete Pega setelah pilihannya ditutup.
+- Kalimat **"Kosong dibaca sebagai nol, sama seperti di layar lama"** pada isian Resiko.
+- Kalimat **"Belum ada lini bisnis…"** pada grid yang kosong.
+- Peringatan **"Sebagian daftar pilihan tidak dapat dimuat"**, beserta nama master yang hilang.
+
+Keenamnya menjelaskan aturan yang **sudah ada** tetapi tidak terlihat di layar lama.
+
+### Nama yang sengaja TIDAK dipakai
+
+| Tidak dipakai | Dipakai | Alasan |
+|---|---|---|
+| `DetailTypeDoc`, `DetTypeDoc` | `DetailType` | Singkatan Pega tidak dibawa (`D-19`) |
+| `DocColID` | `CauseOfLossID` | Nama mengikuti isinya, bukan nama kolomnya |
+| `DftBisnisID` | `BusinessID` | Awalan `DFT_` tidak bermakna bagi pembacanya |
+| `Wajib`, `StatusWajib` | `Mandatory` | Identifier di dalam kode berbahasa Inggris (`D-80`) |
+| `/master/daftar-detail-tipe-dokumen` | `/master/detail-tipe-dokumen` | Hubungan ketiga master terbaca dari URL-nya |
+
+---
+
+## Inbox Compliance — MENU_ID 47 (2026-09-24)
+
+Nama modulnya **Indonesia** (`D-81`), isinya **Inggris** (`D-80`).
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `inboxcompliance` — huruf kecil, tanpa tanda hubung |
+| Folder backend | `internal/inboxcompliance/` |
+| Folder frontend | `src/modules/inbox-compliance/` |
+| Rute layar | `/inbox-compliance` |
+| Jalur API | `/api/inbox-compliance`, `/api/inbox-compliance/tab` |
+
+Nama modulnya diambil dari `MENU_DESC` pada `Database/m_menu_aplikasi_pnc.csv` — "Inbox
+Compliance" — bukan dari nama harness-nya. Kebetulan keduanya mirip di sini, berbeda dari beberapa
+modul lain yang nama programnya tidak menyebut isinya sama sekali.
+
+### Tipe dan fungsi
+
+| Pega | Kode ini | Catatan |
+|---|---|---|
+| — | `WorkItem` | satu baris antrean |
+| — | `Tab`, `Column` | bentuk grid, ditetapkan server |
+| — | `Query`, `QueryInput` | permintaan isi satu tab |
+| — | `Pagination`, `Page` | paginasi server-side |
+| `GETSELISIHJAM` | `AgingHoursBetween` | hitungan jam, potong akhir pekan |
+| `GetSelisihJam_sql` | `FormatAging` | pemformatan teks Aging |
+| `weekends2` | `weekendDaysWIB` | **tafsir**; source aslinya tidak dikirim (`R-01`) |
+| `Param.Operator` | `WorkbasketCompliance` | konstanta bernilai `CompliancePNC` |
+
+### Properti Pega ke field Go ke field JSON
+
+Kolom tab **Compliance**, berurutan seperti di grid:
+
+| Properti Report Definition | Kolom Oracle | Field Go | Field JSON | Judul layar |
+|---|---|---|---|---|
+| `.pyID` | `A.PYID` | `CaseID` | `nomor_case` | Nomor Case |
+| `.pzInsKey` | `A.PZINSKEY` | `Reference` | `referensi` | *(tidak digambar)* |
+| `.Policy.PolicyNo` | `A.POLICYNO` | `PolicyNumber` | `no_polis` | No Polis |
+| `.Policy.QQName` | `A.QQNAME` | `InsuredName` | `nama_tertanggung` | Nama Tertanggung |
+| `.Policy.Quotation.BusinessName` | `A.BUSINESSNAME` | `BusinessName` | `nama_bisnis` | Nama Bisnis |
+| `.Policy.Quotation.BranchName` | `A.BRANCHNAME` | `BranchName` | `nama_cabang` | Nama Cabang |
+| `.pyOrigUserID` | `A.PYORIGUSERID` | `AdminName` | `nama_admin` | Nama Admin |
+| `.ClaimData.TanggalBuatCompliance` | `p.COMPLIANCE_CREATEDATE` | `ComplianceSentDate` | `tanggal_kirim_compliance` | Tanggal Kirim Compliance |
+| `.ClaimData.AgingKlaim` | *(dihitung di Go)* | `AgingHours` | `aging`, `aging_jam` | Aging |
+
+Kolom tab **Post Audit**. Sumbernya `POOLDATA.T_CLAIM_COMPLIANCE_H` — tabel datar yang DDL-nya
+diterima 2026-09-24, **bukan** tabel DATAPEGA seperti yang dibaca Report Definition lama:
+
+Ketujuh kolomnya, berurutan seperti di layar Pega:
+
+| # | Judul layar | Properti RD | Kolom Oracle | Field Go | Field JSON |
+|---|---|---|---|---|---|
+| 1 | Nomor Case | `.pyID` | `h.CASEID` | `CaseID` | `nomor_case` |
+| 2 | No Klaim | `.pxCoverInsKey` | `h.NO_KLAIM` | `ClaimNumber` | `no_klaim` |
+| 3 | Nama Tertanggung | `subr.Nama_Tertanggung` | `h.NAMA_TERTANGGUNG` | `InsuredName` | `nama_tertanggung` |
+| 4 | No Polis | `subr.No_Polis` | `h.NO_POLIS` | `PolicyNumber` | `no_polis` |
+| 5 | Catatan | `.ComplianceRemarks` | `h.REMARKS` | `ComplianceRemarks` | `catatan_compliance` |
+| 6 | Tanggal Kirim Audit Compliance | `.TanggalKirimPostAudit` | `h.TGL_KIRIM_POST_AUDIT` | `PostAuditSentDate` | `tanggal_kirim_post_audit` |
+| 7 | OutStanding | `.pyNote` | *(dihitung di Go)* | `Outstanding` | `outstanding` |
+
+**Koreksi 2026-09-24.** Versi pertama tabel ini memetakan `NO_KLAIM` ke "Case ID" dan
+menyembunyikan `CASEID` — kebalikan dari yang benar — serta hanya memuat lima kolom dengan judul
+dari Report Definition. Tangkapan layar Pega yang berjalan membetulkan keduanya:
+
+```
+Nomor Case : CPL-19
+No Klaim   : ASM-FW-GCNMFW-WORK PNC-2114
+```
+
+Jadi **`CASEID` berisi nomor kasus Work-Compliance** dan **`NO_KLAIM` justru berisi kunci teknis
+Pega**. Kolom berjudul "No Klaim" tidak memuat nomor klaim — nama yang menyesatkan, ditiru apa
+adanya sesuai `D-13`.
+
+Judul kolomnya diambil dari `pyCaption` pada section, **bukan** dari label Report Definition.
+Keduanya berbeda, dan yang dibaca pengguna adalah yang pertama.
+
+Tiga properti Report Definition lama **tidak punya padanan** di tabel ini, dan ketiadaannya nyata —
+bukan kelalaian pemetaan: `.pyStatusWork`, `.pxCreateDateTime`, dan `.pyOrigUserID`. Akibatnya ada
+di `keputusan-implementasi.md` §27 dan §28.
+
+### Dua nama yang mudah tertukar
+
+| Nama | Artinya di sini | Yang mirip, tetapi BUKAN ini |
+|---|---|---|
+| `.ComplianceRemarks` | catatan petugas Compliance | `"ComplianceRemark"` (tanpa `s`) pada `RDB List/BrowseClaimStudy-SQL.xml:85` — alias untuk `SUM(TOTAL_CLAIM * CURRENCYVALUE)`, sama sekali bukan catatan |
+| `CARI1`, `CARI2` | dua argumen **tanggal** untuk `GETSELISIHJAM` | Di modul lain nama yang sama berarti isi kotak pencarian. Layar ini tidak punya kotak pencarian |
+
+### Nama kode tab
+
+Berbeda dari modul Inbox Admin yang mempertahankan angka Pega (`3`, `7`, `9`, `11`), kode tab di
+sini berupa kata: `compliance` dan `post-audit`. Alasannya bukan selera — layar ini **tidak punya
+properti pemilih tab** di Pega, sehingga tidak ada angka yang perlu dipertahankan sebagai jalan
+telusur balik.
+
+### Jalur tulis — pengiriman ke Post Audit (2026-09-24)
+
+| Konsep | Kode ini | Kontrak API | Kolom Oracle |
+|---|---|---|---|
+| Permintaan kirim | `PostAuditInput` | `{ referensi, catatan }` | — |
+| Baris yang ditulis | `PostAuditEntry` | — | keenam kolom `T_CLAIM_COMPLIANCE_H` |
+| Nomor terbit | `BuildCaseID` | `nomor_case` | `CASEID` |
+| Penerbit nomor | — | — | `POOLDATA.CPNC_POST_AUDIT_SEQ` |
+
+Bentuk nomornya `CPL-100001` — **meniru bentuk Pega** atas keputusan Work Owner, bukan tiga segmen
+bertitik seperti `PNCN.YY.xxxx` (`D-71`) dan `LPK.YY.xxxx` (Pelaporan Klaim). Pemisahan dari
+terbitan Pega dilakukan lewat **rentang angka**, bukan lewat bentuk.
+
+Rute: `POST /api/inbox-compliance/post-audit`. Ia satu-satunya rute modul ini yang mengubah data.

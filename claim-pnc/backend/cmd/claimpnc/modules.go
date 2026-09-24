@@ -37,6 +37,7 @@ import (
 	"claim-pnc/internal/portal"
 
 	"claim-pnc/internal/inboxadmin"
+	"claim-pnc/internal/inboxcompliance"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/masterpanel"
@@ -54,6 +55,10 @@ import (
 	inboxadminmemory "claim-pnc/internal/inboxadmin/repo/memory"
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
 	inboxadminusecase "claim-pnc/internal/inboxadmin/usecase"
+	inboxcompliancehttp "claim-pnc/internal/inboxcompliance/http"
+	inboxcompliancememory "claim-pnc/internal/inboxcompliance/repo/memory"
+	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
+	inboxcomplianceusecase "claim-pnc/internal/inboxcompliance/usecase"
 	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
 	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
@@ -103,6 +108,7 @@ import (
 // modulnya sendiri belum punya.
 type extraSelectors struct {
 	inboxAdmin      inboxadmin.RepoSelector
+	inboxCompliance inboxcompliance.RepoSelector
 	autoClaim       masterautoclaim.RepoSelector
 	workshop        masterbengkel.RepoSelector
 	panel           masterpanel.RepoSelector
@@ -119,6 +125,7 @@ type extraSelectors struct {
 // extraServices memegang layanan kesebelas modul setelah terpasang.
 type extraServices struct {
 	inboxAdmin      *inboxadminusecase.Service
+	inboxCompliance *inboxcomplianceusecase.Service
 	autoClaim       *masterautoclaimusecase.Service
 	workshop        *masterbengkelusecase.Service
 	panel           *masterpanelusecase.Service
@@ -144,6 +151,13 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 			return nil, err
 		}
 		return inboxadminsql.NewRepo(conn), nil
+	}
+	store.extra.inboxCompliance = func(alias string) (inboxcompliance.Repo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxcompliancesql.NewRepo(conn), nil
 	}
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		conn, err := pool.For(alias)
@@ -248,6 +262,14 @@ func setExtraMemorySelectors(primaryAlias string, store *storage) {
 		return inboxAdminStore, nil
 	}
 
+	inboxComplianceStore := inboxcompliancememory.NewSampleStore()
+	store.extra.inboxCompliance = func(alias string) (inboxcompliance.Repo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxComplianceStore, nil
+	}
+
 	autoClaimRepo := masterautoclaimmemory.NewSampleRepo()
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		if err := onlyPrimary(primaryAlias, alias); err != nil {
@@ -343,6 +365,14 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 
 	if result.inboxAdmin, err = inboxadminusecase.NewService(inboxadminusecase.Options{
 		RepoSelector: store.extra.inboxAdmin,
+		Clock:        clock.System{},
+		Logger:       logger,
+	}); err != nil {
+		return extraServices{}, err
+	}
+
+	if result.inboxCompliance, err = inboxcomplianceusecase.NewService(inboxcomplianceusecase.Options{
+		RepoSelector: store.extra.inboxCompliance,
 		Clock:        clock.System{},
 		Logger:       logger,
 	}); err != nil {
@@ -461,6 +491,24 @@ func mountExtra(
 		FallbackErrorWriter: writeError,
 	})
 	inboxadminhttp.Mount(protected, inboxAdminHandler, portalDeps)
+
+	// Jembatan Caller di modul ini hanya dipakai jalur TULIS. Kedua jalur bacanya tidak
+	// membutuhkannya — antreannya workbasket, yang isinya sama bagi setiap petugas —
+	// sedangkan pengiriman ke Post Audit memerlukannya untuk MENCATAT siapa yang mengirim.
+	inboxComplianceHandler := inboxcompliancehttp.NewHandler(inboxcompliancehttp.Options{
+		Service: service.inboxCompliance,
+		GetCaller: func(ctx context.Context) (inboxcompliancehttp.Caller, bool) {
+			base, ok := authhttp.CallerFromContext(ctx)
+			if !ok {
+				return inboxcompliancehttp.Caller{}, false
+			}
+			return inboxcompliancehttp.Caller{Login: base.User.Login}, true
+		},
+		Logger:              logger,
+		WriteJSON:           inboxcompliancehttp.JSONWriter(writeJSON),
+		FallbackErrorWriter: inboxcompliancehttp.ErrorWriter(writeError),
+	})
+	inboxcompliancehttp.Mount(protected, inboxComplianceHandler, portalDeps)
 
 	autoClaimHandler, err := masterautoclaimhttp.NewHandler(masterautoclaimhttp.Options{
 		Service: service.autoClaim,

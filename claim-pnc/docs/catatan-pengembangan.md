@@ -5166,3 +5166,1454 @@ Ini bukti tambahan bahwa inventaris rule harus dibangun dari `pyRuleName`, bukan
 Ke **tim frontend** (bukan penghalang): komponen `Field` bersama tidak menandai pesan galatnya
 dengan `role="alert"` sementara `ComboField` menandainya. Penyeragamannya menyentuh seluruh modul
 yang sudah selesai, sehingga tidak dikerjakan sepihak dari modul ini.
+
+---
+
+## 22. Sesi ketiga belas — modul Daftar Objek Dokumen (2026-09-23)
+
+Permintaan: menambahkan modul **Daftar Objek Dokumen**, dengan
+`Harness/ListDocumentObject-Harness.xml` sebagai acuan.
+
+### 22.1 Urutan pengerjaan
+
+Tidak ada satu baris kode pun ditulis sebelum dua hal selesai: pembacaan aplikasi lama sampai ke
+rule turunannya, dan dua pertanyaan yang jawabannya mengubah bentuk pekerjaan.
+
+**Pembacaan** menempuh rantai ini, bukan berhenti di harness-nya:
+
+```
+Harness/ListDocumentObject-Harness.xml
+  └─ Section/ListDocumentObject-Section.xml        bingkai layar, tombol Tambah & Refresh
+      └─ Section/BrowseDocumentObject-Section.xml  grid, form modal, grid "ID Bisnis"
+          ├─ Report Definition/BrowseVLstDocObj_RD-RD.xml   sumber data & ketiga kolomnya
+          ├─ Data Transform/CNMRefreshListDocumentObject_dt  perilaku tombol Refresh
+          ├─ CNMInsertLstDocObj_act    HILANG dari export (R-16)
+          └─ SetsLstDocObjValue_act    HILANG dari export (R-16)
+```
+
+Dua rule yang hilang itu yang menentukan seluruh bentuk pekerjaan berikutnya — lihat §22.3.
+
+**Dua pertanyaan** diajukan sebelum menulis kode, dan keduanya dijawab Work Owner:
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Grid "ID Bisnis" di dalam form ikut dibangun? | **Ikut dibangun penuh** |
+| Jalur simpan: kolom atau `JSON_DATA`? | **Tulis ke kolom `KET_DOC_OBJ`** |
+
+Keduanya disajikan beserta rekomendasi dan akibatnya, bukan sebagai pertanyaan terbuka.
+
+### 22.2 Preseden yang dipakai, dan kenapa yang itu
+
+Enam modul master sudah ada. Yang dipakai sebagai acuan bentuk adalah **Master COL Simas Online**
+(§18), karena ia satu-satunya yang bentuknya sama persis: satu master ditambah grid bisnis banyak
+baris yang membaca `POOLDATA.BUSINESS` milik GISFW.
+
+Modul **Daftar Tipe Dokumen** (§21) dipakai untuk hal yang berbeda: ia saudara sekandung di rumpun
+tabel `LST_*`, sehingga **bentuk penerbitan ID** diambil dari sana — empat digit, bukan tiga.
+
+Membedakan kedua preseden itu penting. Menyalin bentuk ID dari §18 akan menghasilkan ID berbentuk
+salah, dan kesalahannya tidak akan terlihat sampai baris pertama disimpan ke Oracle.
+
+### 22.3 Keadaan yang sama dengan §22 sebelumnya: jalur simpan harus disusun
+
+`CNMInsertLstDocObj_act` dan `SetsLstDocObjValue_act` tidak ada di export, dan tidak ada
+`PEGA_LST_DOC_OBJ.prc`. Yang dapat dibaca hanya sisi BACANYA.
+
+Perlakuannya sama dengan modul Daftar Detail Dokumen Travel, ditambah satu:
+
+1. Seluruh nama objek diisolasi di `repo/sqlstore/daftarobjekdokumen.sql`, dengan tanda mana yang
+   terbaca dan mana yang dugaan.
+2. Migrasi `0010` ditulis sebagai **daftar pertanyaan** — sembilan kueri katalog di bagian 0.
+3. **Mode `-periksa` menguji ketiga objek satu per satu**, sehingga laporannya menyebut MANA dugaan
+   yang keliru. Ini yang belum ada pada modul sebelumnya.
+
+Satu kueri di migrasi itu sengaja dirancang untuk dapat **membatalkan sebagian migrasinya sendiri**:
+kueri 0.7 mencari tabel mana pun yang sudah memetakan objek dokumen ke bisnis. Layar lama jelas
+menyimpan pemetaan itu, sehingga tabelnya kemungkinan sudah ada dengan nama yang tidak dapat
+ditebak — dan bila begitu, pembuatan tabel baru tidak perlu dijalankan sama sekali.
+
+### 22.4 Satu tempat yang sengaja LEBIH BAIK dari presedennya
+
+Tabel pemetaan bisnis pada §18 tidak punya kolom urutan maupun penanda aktif, dan akibatnya tercatat
+di sana sebagai utang teknis: urutan yang disusun pengguna hilang, nama kembar menyatu, dan
+**pencabutan pilihan tidak dapat disimpan sama sekali**.
+
+Tabel modul ini **belum ada**, sehingga kedua kolom itu dirancang sejak awal — `URUTAN` dan
+`STS_AKTIF`. Mewarisi kekurangan yang sudah diketahui ke tabel yang bahkan belum dibuat berarti
+menciptakan utang yang sama secara sukarela.
+
+Perbedaan itu terbaca dari nama fungsinya: di sini `replaceBusinesses`, di sana sengaja BUKAN
+bernama replace karena ia memang tidak menggantikan.
+
+### 22.5 Satu kesalahan sendiri, dan yang menangkapnya
+
+Data contoh di `repo/memory` mula-mula memakai ID `1001` — pola tiga digit milik rumpun
+`M_CAUSE_OF_LOSS`, bukan empat digit milik rumpun `LST_*`.
+
+`TestIDDiterbitkanPenyimpanan` gagal dengan `expected "1005", actual "10005"`. Yang salah data
+contohnya, bukan kodenya. Ujilah yang menangkapnya, dan ia menangkapnya justru karena bentuk ID
+ditegaskan secara eksplisit — bukan sekadar "ada ID yang terbit".
+
+Satu uji frontend juga perlu diperbaiki: ia memeriksa tombol **Refresh** sebelum daftar selesai
+dimuat, padahal selama pemuatan tombol itu memang berbunyi "Memuat…". Yang salah ujinya — ia menguji
+keadaan sesaat, bukan tombolnya.
+
+### 22.6 Hasil uji
+
+| Lapisan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `internal/daftarobjekdokumen/...` | 4 paket, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `DocumentObjectPage.test.tsx` | 15 lulus |
+
+Uji `query_test.go` menegakkan disiplin SQL portabel (`D-20`) sebagai perkakas, bukan sebagai
+ingatan: sembilan bentuk terlarang diperiksa pada setiap kueri, `FROM DUAL` dijaga hanya berada di
+kueri urutan, dan `DELETE` dilarang di mana pun (`D-66`).
+
+### 22.7 Yang perlu diminta
+
+Ke **DBA**, lewat migrasi `0008_daftar_objek_dokumen.up.sql` bagian 0 — sembilan kueri, dan tiga di
+antaranya memblokir:
+
+- **Definisi `V_LST_DOC_OBJ`.** Pertanyaan terpenting: ia yang menyebut nama tabel dasarnya, dan
+  apakah view itu membaca kolom atau membongkar JSON.
+- Apakah `LST_DOC_OBJ` dan `SET_LST_DOC_OBJ` memang bernama itu — keduanya dugaan yang diturunkan
+  dari tabel bersaudaranya, bukan dibaca dari mana pun.
+- **Apakah tabel pemetaan objek ke bisnis sudah ada dengan nama lain.** Bila ada, tabel baru tidak
+  perlu dibuat sama sekali.
+- Lebar kolom `ID`, `BUSINESS.ID`, dan `BUSINESS.NOTE` — tidak memblokir; batas panjang sementara
+  dipasang 100 karakter.
+- Nomor urut tertinggi yang sudah terpakai, untuk `START WITH` bila urutannya harus dibuat. Memulai
+  dari 1 akan menerbitkan ID yang bertabrakan dengan baris yang sudah ada.
+- `GRANT SELECT` atas `POOLDATA.BUSINESS` — tidak memblokir; yang hilang hanya saran nama bisnis,
+  karena namanya memang boleh diketik sendiri.
+- Isi tabel yang sebenarnya. Contoh di `repo/memory/memory.go` adalah **susunan sendiri**, bukan data
+  produksi, dan tidak boleh dipakai sebagai dasar uji kesetaraan gerbang 1.
+
+Ke **Tim Pega**, menambah `R-16`: `CNMInsertLstDocObj_act` dan `SetsLstDocObjValue_act` — dua rule
+yang dirujuk layar ini tetapi tidak ada di export.
+
+---
+
+## 23. Sesi keempat belas — modul Daftar Tipe Dokumen Bisnis (2026-09-23)
+
+Modul **`DetTypeDocumenBisnis`**, MENU_ID 42, di bawah kelompok MASTER. Ia master **turunan
+kedua** atas `V_LST_DOC_TYPE`: yang pertama sudah dibangun sesi kesebelas, dan berkas
+`registry.ts` sesi itu sudah menyebut namanya sebagai "belum dibangun".
+
+### 23.1 Apa yang dibaca dari Pega sebelum satu baris kode ditulis
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `Harness/DetTypeDocumenBisnis-Harness.xml` | dua section yang dirakitnya |
+| `Section/DetTypeDocumenBisnis_Portal-Section.xml` | judul layar, tombol Refresh dan Tambah |
+| `Section/BrowseListDetailTypeDocumentBusiness_sect-Section.xml` | kolom kedua grid, tujuh tombolnya |
+| `Section/InputListDetailTypeDocumentBusiness_sect-Section.xml` | label isian, keempat autocomplete, konstanta `10028` |
+| `RDB List/BrowseLSTDetailDocument_sql-SQL.xml` | grid tingkat pertama |
+| `RDB List/Select_TYPE_DOCUMENT-SQL.xml` | grid tingkat kedua |
+| `RDB List/UpdateDetTypeDocBusiness_SQL-SQL.xml` | pemetaan 12 parameter simpan |
+| `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc` | **jalur tulis yang sebenarnya** |
+| `Activity/InsertDetailTypeDocumentBusiness_act-Act.xml` | jalur tambah, satu-satunya validasi |
+| `Activity/UpdateDetailTypeDocumentBusiness_act-Act.xml` | jalur muat untuk Ubah dan Copy |
+| `Activity/SetAllBusiness-Act.xml` | tombol pilih semua, lima kode bisnis hardcode |
+| enam `RDB List/Browse*_upload*-SQL.xml` | **siapa yang membaca aturan ini, dan bagaimana** |
+
+**Berbeda dari dua modul sesi sebelumnya, jalur TULIS layar ini ADA di export.** Nama tabel,
+nama kolom, nama urutan, dan lebar padding ID karena itu **dibaca**, bukan diturunkan dari nama
+view. Itu menghapus seluruh kelompok "nama objek yang masih dugaan" yang membebani migrasi 0006.
+
+### 23.2 Temuan yang paling menentukan: wajib di sini belum berarti wajib di klaim
+
+`STS_WAJIB` bukan jawaban akhir. Ia disaring lagi oleh daftar jaminan baris itu saat klaim
+berjalan — `RDB List/BrowseRegisterCvg-SQL.xml`:
+
+```sql
+WHEN sts_wajib = '1' AND (select count(a.coverageid) from coverage_doc_business a
+     where a.id=b.id and a.businessid=b.businessid
+       and coverageid in (...)) > 0  THEN 'Ya'
+WHEN sts_wajib = '1' AND (...) = 0   THEN 'Tidak'
+```
+
+Baris ber-`STS_WAJIB=1` yang daftar jaminannya **kosong tidak pernah menjadi wajib pada klaim
+mana pun.** Di layar lama keadaan itu tidak terlihat sama sekali — petugas mencentang "Status
+Wajib", menyimpan, dan yakin telah mewajibkan dokumen yang sebenarnya tetap opsional.
+
+Modul ini **menampilkannya**: form memunculkan peringatan ketika baris ditandai wajib sementara
+daftar jenis klaimnya kosong. Itu tambahan penjelasan, bukan perubahan aturan — yang tersimpan
+tetap sama persis.
+
+### 23.3 Enam tahap klaim, dibaca bukan ditebak
+
+`DOCUMENT_TYPE_ID` menunjuk `V_LST_DOC_TYPE`, dan `TYPE_DOCUMENT` di sana adalah **tahap klaim**.
+Keenam nilainya terbaca dari keenam kueri yang mencarinya dengan teks persis:
+
+`REGISTER` · `SURVEY` · `COMMITEE` · `PAYMENT` · `SALVAGE` · `COLLECTING DOCUMENT`
+
+Salah ketik **"COMMITEE"** dengan satu T ada **di dalam data**, dan dipertahankan: memperbaikinya
+membuat contoh tidak lagi cocok dengan kueri yang mencarinya.
+
+### 23.4 Empat temuan atas sistem lama, tiga di antaranya cacat
+
+Ketiganya ditemukan dengan menelusuri **precondition setiap langkah**, bukan dengan membaca
+komentarnya — dan komentarnyalah yang menyesatkan.
+
+| # | Temuan | Akibat |
+|---|---|---|
+| 1 | **Jalur "Tambah" tidak menulis apa pun** sebagaimana diekspor: langkah induknya menuntut `pyLabel=="tambah"`, langkah anaknya yang memanggil basis data menuntut `update` atau `copy` — tidak dapat benar bersamaan. Keduanya ditambahkan pada hari yang sama, 2022-06-03 | uji kesetaraan pada jalur Tambah **akan menunjukkan selisih** |
+| 2 | **Jalur "Copy" membuka layar kosong**: pemuatannya menuntut `Tipe=="update"`, dan perulangannya dilewati bila `Tipe=="COPY"` huruf besar — sementara tombolnya mengirim `"copy"` | Copy tidak dibangun; lihat §23.7 |
+| 3 | **Tidak ada pemeriksaan ganda** pada tabel utamanya — hanya pada baris jaminan | ditiru apa adanya (`P-5`) |
+| 4 | **Lima kode bisnis hardcode** pada tombol "Tamban semua bisnis NONMBU", plus kewenangan berdasarkan `OperatorID.pyPosition='NONMBU'` | tidak dibawa (`D-15`, `D-59`) |
+
+Temuan 1 adalah yang paling penting untuk gerbang 1, dan ia **tidak dapat diselesaikan tim
+pengembang**: yang dibangun modul ini adalah perilaku yang **dimaksudkan**, sebagaimana tertulis
+pada komentar langkahnya sendiri ("kalo tambah > bisa banyak bisnis & banyak dokumen"), bukan
+perilaku yang benar-benar berjalan. Pertanyaannya untuk Work Owner: apakah layar lama memang
+sudah rusak sejak 2022, atau ada jalur lain yang tidak ikut terekspor.
+
+### 23.5 Yang dibangun
+
+**Backend** — `internal/daftartipedokumenbisnis/`: domain, `usecase/manage.go`, `repo/sqlstore`
+(lima seam), `repo/memory`, dan `http/` dengan **sepuluh rute**:
+
+```
+GET  /api/master/tipe-dokumen-bisnis                     grid tingkat pertama (bisnis)
+POST /api/master/tipe-dokumen-bisnis                     tambah, jamak kali jamak
+GET  /api/master/tipe-dokumen-bisnis/bisnis/{businessID} grid tingkat kedua
+GET  /api/master/tipe-dokumen-bisnis/{id}                satu baris + jaminannya
+PUT  /api/master/tipe-dokumen-bisnis/{id}                ubah satu baris
+POST /api/master/tipe-dokumen-bisnis/{id}/jenis-klaim    tambah satu jaminan
+GET  /api/master/bisnis-pilihan                          BUSINESS           (GISFW)
+GET  /api/master/tipe-dokumen-pilihan                    V_LST_DOC_TYPE     (MENU_ID 40)
+GET  /api/master/detail-dokumen-pilihan                  V_LST_DET_TYPE_DOC (MENU_ID 41)
+GET  /api/master/objek-dokumen-pilihan                   V_LST_DOC_OBJ      (Daftar Objek Dokumen)
+```
+
+Keempat daftar pilihan berakhiran `-pilihan` supaya tidak bertabrakan dengan jalur CRUD milik
+pemiliknya — `/master/bisnis`, `/master/tipe-dokumen`, dan `/master/objek-dokumen` **sudah
+terpakai tiga modul lain**, dan chi akan panik saat start bila keduanya didaftarkan bersamaan.
+
+**Frontend** — `src/modules/daftar-tipe-dokumen-bisnis/`: `api.ts`, `BusinessDocumentRulePage.tsx`,
+`BusinessDocumentRuleForm.tsx`, `BusinessDocumentRuleCreateForm.tsx`, beserta pengujiannya.
+Ditambah tipe baru di `api/types.ts`, satu rute di `App.tsx`, dan satu baris di
+`app/menu/registry.ts` sehingga butir MENU_ID 42 hidup.
+
+**Migrasi** — `0010_daftar_tipe_dokumen_bisnis.up.sql` / `.down.sql`. Berbeda dari migrasi 0002,
+0004, dan 0005, ia **tidak memuat satu pun ALTER TABLE maupun CREATE OR REPLACE VIEW**: tabelnya
+sudah berbentuk kolom sejak semula. Yang tersisa hanyalah hak akses dan **enam pertanyaan** ke
+DBA, empat di antaranya memblokir.
+
+### 23.6 Keputusan rancangan yang perlu diketahui pembaca berikutnya
+
+**Jaminan DITAMBAHKAN, tidak diganti seluruhnya.** Ini **berbeda** dari modul Daftar Detail
+Dokumen Travel, yang mengganti daftar anaknya secara menyeluruh — dan perbedaannya bukan
+ketidakkonsistenan melainkan pembacaan atas sistem lama. `PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:55`
+hanya menyisipkan bila belum ada, dan **tidak ada satu pun DELETE terhadap tabel itu** di seluruh
+export — tidak di procedure, tidak di satu pun rule SQL. Penggantian menyeluruh menuntut
+penghapusan, dan menghapus jaminan mengubah dokumen yang tadinya wajib menjadi tidak wajib pada
+klaim yang sedang berjalan.
+
+**Bisnis tidak dapat diubah saat menyunting.** Procedure lama pun tidak mengubah `BUSINESSID`
+(`:39-41`). Aturan dokumen **disalin** ke lini bisnis lain, bukan dipindahkan — dan itulah guna
+tombol Copy di layar lama. Badan permintaan `PUT` karena itu menolak field `bisnis` sama sekali;
+menerimanya lalu mengabaikannya akan membuat klien mengira perpindahan berhasil.
+
+**Ketiga isian rujukan adalah autocomplete ketik-cari, sama seperti Pega.** Keempat isian rujukan
+di sana `pyAutoComplete` ber-`pyAllowFreeFormInput=true` yang menampilkan **nama** dan menyalin
+**kode** ke properti tersembunyi. Teks di luar daftar tetap boleh diketik; yang terjadi hanyalah
+kodenya tidak terisi — dan itu ditiru apa adanya.
+
+> Versi pertama modul ini memakai **dropdown**, dengan alasan "yang tersimpan hanya kode, sehingga
+> isian bebas tidak bermakna". Itu penilaian saya sendiri dan ia menghapus kemampuan ketik-cari.
+> **Dicabut 2026-09-23** atas keputusan Work Owner — lihat §23.12.
+
+**Pilihan Detail Dokumen menyempit mengikuti Tipe Dokumen.** `BrowseVLstDetTypeDoc_RD` menerima
+parameter `idDocument` yang diisi tahap dokumen pada baris yang sama. Penyaringannya dikerjakan
+**layar** atas daftar yang sudah di tangan, bukan server per permintaan — grid dapat memuat banyak
+baris dengan tahap berbeda-beda, dan menyaring di server berarti satu permintaan per baris setiap
+kali tahapnya berganti. Pola dan alasannya sama dengan daftar jaminan pada Daftar Detail Dokumen
+Travel.
+
+**Bentuk join meniru kueri lama.** Tiga master disamakan secara ketat; hanya `V_LST_DOC_OBJ` yang
+`LEFT`, karena `OBJECT_DOC_ID` memang boleh kosong dan procedure lama mengosongkannya dengan
+sengaja.
+
+Akibatnya perlu diketahui: baris yang masternya sudah hilang **tidak muncul di layar** — sementara
+keenam kueri unggah tetap memakainya, karena mereka membaca tabelnya langsung tanpa join. Aturan
+yang tak terlihat tetap berlaku pada klaim, dan petugas tidak dapat memperbaikinya dari sini.
+
+> Versi pertama modul ini memakai `LEFT JOIN` untuk ketiganya supaya baris yatim tetap terlihat.
+> Itu penyimpangan saya sendiri; **dicabut 2026-09-23** — lihat §23.12. Persoalan baris yatimnya
+> **tidak hilang**, ia berpindah menjadi pertanyaan ke Work Owner, bukan perbaikan sepihak.
+
+**Nilai `"-"` pada Detail Dokumen ditiru apa adanya.** Keenam kueri unggah menyaring
+`AND DETAIL_DOKUMEN != '-'`, sehingga baris itu tersembunyi dari seluruh layar klaim. Ia **tidak**
+diubah menjadi sakelar aktif/non-aktif: mengubahnya berarti menebak bahwa setiap "-" yang ada hari
+ini memang dimaksudkan sebagai penyembunyian, padahal ia sama mungkinnya sekadar isian kosong yang
+diisi tanda hubung. Di grid ia dirender "— disembunyikan" beserta keterangannya.
+
+**Satu transaksi untuk seluruh perkalian.** Sistem lama memanggil procedure-nya sekali per baris,
+masing-masing dengan `COMMIT`-nya sendiri, sehingga kegagalan di tengah meninggalkan sebagian
+bisnis terisi dan sebagian tidak — tanpa satu pun tanda, dan petugas yang mengulanginya memperoleh
+baris kembar pada bisnis yang sudah telanjur berhasil (`D-68`).
+
+### 23.7 Yang sengaja TIDAK dibangun
+
+| Tidak dibangun | Alasan |
+|---|---|
+| **Tombol Copy** | jalurnya rusak di export (§23.4 temuan 2), dan bentuk yang benar tidak dapat dibaca dari rule yang tidak pernah berjalan |
+| **"Simpan Doc PA"** | satu-satunya pengisi `COVERAGE_DOC_BUSINESS.NOKLAIM`; properti yang mengisinya, `DFT_KLAIMTYPE_ID`, **tidak muncul di satu pun rule lain di seluruh export** — cabang itu tidak pernah berjalan, dan kolomnya tidak dibaca siapa pun |
+| **Pengecualian lima kode bisnis** pada "Pilih semua" | kode bisnis di dalam kode adalah persis yang `D-15` perintahkan dihapus |
+| **Penghapusan jaminan** | tidak ada jalurnya di sistem lama; mengarangnya dapat mengubah dokumen wajib menjadi tidak wajib pada klaim berjalan |
+| **Menulis `FLAGTYPES`, `CREDENTIAL`, `DURATION`** | procedure lama pun tidak mengisinya, dan `FLAGTYPES` menentukan **urutan** dokumen di layar registrasi klaim — mengisinya sembarangan mengubah layar yang tidak sedang dimigrasikan |
+
+### 23.8 Kendala yang muncul dan penyelesaiannya
+
+**Sub-agen penelusur Pega hilang dua kali** karena sesinya berakhir sebelum ia selesai. Penelusuran
+activity akhirnya dikerjakan langsung dengan `awk` atas rentang baris — dan itu justru yang
+memunculkan temuan §23.4, karena membaca precondition satu per satu memang tidak dapat dipercepat.
+
+**Ekstraktor XML berbasis regex gagal diam-diam** pada berkas ber-CRLF: ia mengembalikan nol
+kecocokan tanpa galat apa pun, sehingga tampak seperti "tidak ada SQL di berkas itu". Ketahuan
+karena `grep` biasa menemukan tag yang sama. Diganti `tr -d` disusul `awk` rentang baris, dan
+seluruh pembacaan XML sesudahnya memakai jalur itu.
+
+**`exact` bukan opsi `ByRoleOptions`.** Dipakai untuk membedakan dua tombol "Tambah" pada satu
+layar, dan ditolak `tsc`. Yang keliru bukan pengujiannya melainkan layarnya: kedua tombol itu
+memang berbunyi sama sambil melakukan hal yang sangat berbeda — yang satu membuka form, yang lain
+menyimpan jaminan seketika dan tidak dapat dibatalkan. Diperbaiki dengan memberi tombol jaminan
+`aria-label` tersendiri.
+
+**Nomor migrasi bertabrakan, dan ketahuan hanya karena diperiksa ulang di akhir.** Isi
+`migrations/` didaftar lebih dulu sebelum berkasnya dibuat — `0007` sudah terpakai, sehingga modul
+ini mengambil `0008`. Tetapi **sesi lain mengambil `0008` juga** untuk Daftar Objek Dokumen, dan
+tabrakan itu baru terlihat pada pemeriksaan menjelang selesai. Modul ini pindah ke **`0010`**,
+karena `0009` sudah diambil Daftar Detail Tipe Dokumen.
+
+Pelajarannya bukan "periksa lebih teliti" — pemeriksaannya sudah dilakukan dan benar pada saat itu.
+Pelajarannya: **nomor migrasi tidak dapat dipesan lebih dulu ketika beberapa sesi bekerja
+bersamaan**, sehingga ia harus diperiksa ulang tepat sebelum pekerjaan diserahkan.
+
+Satu keadaan yang ditemukan sambil lalu: `migrations/` **sudah** memuat empat nomor kembar sebelum
+sesi ini — `0002`, `0003`, `0004`, dan `0005` masing-masing dipakai dua sampai tiga modul — ditambah
+`0004_master_surveyor` yang tidak punya berkas `.down.sql`. Keduanya **tidak diperbaiki dari sini**:
+berkasnya milik modul yang sudah selesai, dan menyentuhnya melanggar Isolasi Protektif. Dicatat
+sebagai temuan.
+
+**Dua modul bersaudara lahir di sesi lain pada waktu yang sama.** Daftar Detail Tipe Dokumen
+(MENU_ID 41) dan Daftar Objek Dokumen (MENU_ID 43) muncul di tengah pengerjaan, dan keduanya
+memiliki tabel yang modul ini baca. Akibatnya dua hal: komentar yang menyebut keduanya "belum
+dibangun" dikoreksi, dan **seluruh jalur rute diperiksa terhadap tabrakan** — lihat §23.9. Seam
+baca-saja yang sudah dibuat tidak perlu diubah: ia memang sudah menyatakan tabelnya milik modul
+lain, hanya belum tahu modul itu sekarang ada.
+
+### 23.9 Verifikasi yang benar-benar dijalankan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | **lulus** |
+| `go vet ./internal/daftartipedokumenbisnis/...` | **lulus** |
+| `gofmt -l internal/daftartipedokumenbisnis/` | satu berkas tidak rapi (`http/dto.go`), **sudah diperbaiki**, sekarang bersih |
+| `go test ./internal/daftartipedokumenbisnis/...` | **lulus** — 12 uji domain, 22 uji rute, 12 uji disiplin SQL |
+| `go test ./...` (seluruh backend) | **lulus**, nol kegagalan |
+| `npx tsc --noEmit` | **lulus** |
+| `npx vitest run …/BusinessDocumentRulePage.test.tsx` | **lulus** — 14 uji |
+
+**Satu kegagalan yang BUKAN dari kode ini, dan bagaimana dipastikan.** Jalankan pertama vitest
+berakhir dengan `[vitest-pool]: Failed to start forks worker … Timeout waiting for worker to
+respond` — nol uji berjalan. Ia **gejala lingkungan yang sudah tercatat sesi kedua belas**, bukan
+cacat modul ini, dan itu dibuktikan dua kali:
+
+1. Menjalankan modul yang **sudah ada sebelumnya** dengan perintah yang sama berperilaku serupa
+   pada jalankan dingin.
+2. Berkas uji yang **sama persis**, tanpa satu pun perubahan, lulus 14 dari 14 pada jalankan
+   berikutnya.
+
+Dicatat apa adanya alih-alih diulang diam-diam sampai hijau, karena "lulus pada percobaan kedua"
+adalah keterangan yang berbeda dari "lulus".
+
+Pemeriksaan tambahan yang khusus dijalankan sesi ini: **tabrakan jalur rute**. Dua sesi lain
+menambahkan modul bersaudara secara bersamaan — Daftar Detail Tipe Dokumen (MENU_ID 41) dan Daftar
+Objek Dokumen (MENU_ID 43) — sehingga keempat jalur `-pilihan` modul ini diperiksa terhadap seluruh
+`internal/*/http/routes.go`. Tidak ada yang bertabrakan. Pemeriksaan itu perlu karena chi **panik
+saat start** bila dua modul mendaftarkan jalur yang sama, dan uji rute satu modul tidak dapat
+menangkapnya.
+
+### 23.10 Yang bertambah ke daftar tagihan
+
+Ke **DBA**, seluruhnya sebagai Bagian 1 migrasi 0010 — empat yang pertama **memblokir jalur
+simpan**:
+
+- **Bentuk kedua tabel**: lebar `ID` (penyisipan ke-10000 menghasilkan ID satu karakter lebih
+  panjang), tipe `MIN_DOC` (procedure meneruskannya sebagai `VARCHAR2`), dan tipe `STS_WAJIB`.
+- **Posisi urutan `LST_TYPE_DOC_BUSINESS_SEQ`** beserta `MAX(ID)` yang sudah ada.
+- **Apakah `ID` benar-benar unik.** Aplikasi menyuntingnya `WHERE ID = :1`; kedua kueri jaminan
+  sistem lama menyaring dengan `ID` **dan** `BUSINESSID` sekaligus — pola yang masuk akal hanya
+  bila `ID` pernah tidak unik.
+- **Jumlah baris ber-`NOKLAIM`** pada `COVERAGE_DOC_BUSINESS`.
+- Isi ketiga kolom yang tidak ditulis siapa pun, dan jumlah baris ber-`DETAIL_DOKUMEN = '-'`.
+
+Ke **Work Owner**: temuan 1 dan 2 pada §23.4 — keduanya cacat pada layar produksi yang berjalan
+hari ini, dan keputusan atasnya menentukan apa yang dibandingkan pada gerbang 1. Ditambah lima
+pertanyaan rancangan yang diputuskan sendiri berdasarkan preseden dan dicatat di
+`keputusan-implementasi.md` §24 — seluruhnya dapat dicabut.
+
+Ke **Tim Pega**, menambah `R-16`: **`DetailCoverageDoc`** — aksi lokal tempat petugas menambahkan
+jaminan, dirujuk kedua section tetapi tidak ada di export. Bentuk penyimpanannya tetap diketahui
+dari procedure; bentuk **layarnya** tidak.
+
+---
+
+## 24. Sesi kelima belas — modul Daftar Detail Tipe Dokumen (2026-09-23)
+
+Modul **`ListDetTypeDocument`**, MENU_ID 41, di bawah kelompok MASTER. Ia master **turunan
+pertama** atas `V_LST_DOC_TYPE`, dan rumpun tiga master dokumen itu kini lengkap:
+
+    LST_DOC_TYPE                MENU_ID 40   sesi kesebelas
+      ├─ V_LST_DET_TYPE_DOC     MENU_ID 41   sesi ini
+      └─ LST_TYPE_DOC_BUSINESS  MENU_ID 42   sesi keempat belas
+
+Tiga berkas sudah menyebut modul ini sebagai "belum dibangun" sejak sesi kesebelas. **Hanya satu
+yang diperbarui di sesi ini**, dan itu disengaja:
+
+| Berkas | Diperbarui? | Alasan |
+|---|---|---|
+| `frontend/src/app/menu/registry.ts` | **ya** | Berkas ini memang harus disunting untuk mendaftarkan rute modul baru; komentar tetangganya diperbarui di blok yang sama |
+| `backend/internal/daftartipedokumen/daftartipedokumen.go` | **tidak** | Modul Master Data yang sudah selesai. Isolasi Protektif melarang menyentuhnya, dan komentar yang usang bukan alasan yang cukup untuk melanggarnya |
+| `backend/internal/daftartipedokumenbisnis/**` dan blok rakitannya di `main.go` | **tidak** | Pekerjaan sesi lain yang **belum di-commit**. Menyuntingnya berisiko bertabrakan dengan sesi yang sedang berjalan |
+
+Keduanya dicatat di sini supaya pembaca berikutnya tahu komentar itu usang **secara sadar**, bukan
+karena terlewat — dan supaya pembaruannya dapat dikerjakan bersamaan saat kedua berkas itu memang
+sedang disentuh.
+
+### 24.1 Apa yang dibaca dari Pega sebelum satu baris kode ditulis
+
+| Berkas | Yang diambil darinya |
+|---|---|
+| `Harness/ListDetTypeDocument-Harness.xml` | section yang dirakitnya, judul, tombol Tambah dan Refresh |
+| `Section/DetTypeDocument-Section.xml` | bingkai layar |
+| `Section/BrowseListDetailTypeDocument-Section.xml` | 3 kolom grid, 7 isian form, grid bisnis, `pyRequired=false` pada SELURUH isian |
+| `Report Definition/BrowseVLstDetTypeDoc_RD-RD.xml` | 13 kolom view induk, urutan menurut ID, `pyMaxRecords=500` |
+| `RDB List/GetLbuDetType-SQL.xml` | 4 kolom view anak beserta join-nya ke `BUSINESS` |
+| `RDB List/UpdateDetTypeDoc-SQL.xml` | pemanggilan procedure penyimpan |
+| `Database/PEGA_LST_DET_TYPE_DOC.prc` | **jalur tulis yang sebenarnya** — dan penemuan terpenting sesi ini |
+| `Activity/CNMInsertDetailTypeDocument_act-Act.xml` | urutan langkah simpan, sentinel `UnknownID`, jejak `USER_EDIT`/`TGL_EDIT` |
+| `Activity/CNMSetDetailTypeDocument_act-Act.xml` | jalur muat untuk Ubah — DUA langkah, induk lalu anaknya |
+| `Function/GetPageJSONString-Function.xml` | `stepPage.getJSON(false)` — bentuk dokumen JSON-nya |
+| `Activity/SetTypePDFAdjustment-Act.xml` | arti `STS_WAJIB` dan `RISK` |
+| `Activity/ValidationUploadDocument_act-Act.xml`, `ValidationUploadRegister-Act.xml` | keempat nilai `STS_WAJIB` yang benar-benar ada di produksi |
+
+### 24.2 Penemuan yang membentuk seluruh modul: tabelnya hanya `(ID, JSON_DATA)`
+
+`Database/PEGA_LST_DET_TYPE_DOC.prc:22` menyisipkan tepat dua kolom, dan seluruh isian layar
+disimpan sebagai satu dokumen JSON hasil `stepPage.getJSON(false)`. Kedua view membongkarnya
+kembali menjadi kolom.
+
+Ini berbeda dari preseden `M_CAUSE_OF_LOSS` (migrasi 0005), yang punya kolom asli **di samping**
+`JSON_DATA` sehingga keputusan "pakai kolom, bukan JSON" tinggal dijalankan. Di sini tidak ada
+kolom untuk ditulis — sehingga pertanyaannya diajukan ke Work Owner sebelum apa pun ditulis.
+
+**Jawaban Work Owner 2026-09-23:** *"Tidak menggunakan data JSON lagi, POOLDATA.LST_DET_TYPE_DOC
+sudah memiliki kolom selain ID dan JSONDATA, baca datanya dari kolom baru tersebut."*
+
+Akibatnya nama kolom yang dipakai aplikasi **diturunkan dari nama kolom view-nya** — bukti terkuat
+yang tersedia, karena procedure hanya menyebut dua kolom dan DDL-nya tidak ada di export (`R-08`).
+Seluruh nama itu diisolasi di satu berkas `.sql`, dan migrasi `0009` ditulis sebagai **daftar
+pertanyaan untuk DBA** dengan enam pertanyaan bernomor.
+
+### 24.2a Koreksi setelah pemeriksaan ulang — dua keterangan ternyata TERSIMPAN
+
+Rancangan pertama menganggap **ketiga** keterangan pada view induk — `TYPE_DOCUMENT`,
+`DOC_COL_INFO`, `OBJ_DOC_DESC` — hasil join ke masternya masing-masing, dan tidak menulisi satu
+pun. **Itu keliru pada dua dari tiga**, dan ketahuan saat Work Owner meminta pemeriksaan ulang
+("seperti PEGA saja namun tidak ke JSON, langsung ke basis").
+
+Yang menyelesaikannya: membandingkan kolom view dengan isi halaman `TempDTDoc`.
+`Activity/CNMSetDetailTypeDocument_act-Act.xml` mengisi tepat 12 properti —
+
+    ID · DOC_TYPE_ID · DETAIL_DOCUMENT · STS_INSURED · DOC_COL_ID · DOC_COL_INFO
+    OBJ_DOC · OBJ_DOC_DESC · RISK · TGL_EDIT · USER_EDIT · DFT_BISNIS_ID
+
+— dan halaman itulah yang diserialisasi `stepPage.getJSON(false)` menjadi dokumen yang disimpan
+procedure. Jadi apa yang ADA di halaman pasti tersimpan, dan apa yang TIDAK ADA mustahil tersimpan:
+
+| Kolom view | Ada di `TempDTDoc`? | Kesimpulan |
+|---|---|---|
+| `TYPE_DOCUMENT` | **tidak** | hasil JOIN — satu-satunya |
+| `DOC_COL_INFO` | ya | **TERSIMPAN** |
+| `OBJ_DOC_DESC` | ya | **TERSIMPAN** |
+
+Bukti pendukungnya dari section, dan ini yang membuat kekeliruan tadi berakibat nyata:
+
+```
+Dokumen kolom ID  -> isian terlihat = TempDTDoc.DOC_COL_INFO   (KETERANGAN)
+                     target tersembunyi = TempDTDoc.DOC_COL_ID ← .M_COL_ID
+Objek Dokumen     -> isian terlihat = TempDTDoc.OBJ_DOC_DESC   (KETERANGAN)
+                     target tersembunyi = TempDTDoc.OBJ_DOC    ← .ID
+pyAllowFreeFormInput = true
+```
+
+Kedua isian itu berisi **keterangan**, bukan kode — dan keterangan di luar master boleh diketik.
+Bila keterangannya dijoin dari master, isian bebas seperti itu **tidak punya tempat untuk
+disimpan**, dan apa yang baru saja diketik petugas hilang tanpa satu pun pesan.
+
+Yang berubah karena koreksi ini:
+
+| Berkas | Perubahan |
+|---|---|
+| `daftardetailtipedokumen.go` | `Input` menerima kedua keterangan; batas panjangnya dipisah dari batas kode |
+| `daftardetailtipedokumen.sql` | INSERT 9 → **11 kolom**; UPDATE 8 → **10 kolom**; pemeriksaan tulis ikut |
+| `repo/memory` | `withReferences` berhenti menimpa kedua keterangan; dua pencari yang tidak terpakai dibuang |
+| `http/dto.go` | `SaveRequest` menerima kedua keterangan |
+| Form layar | kedua isian bekerja atas **keterangan**, kodenya dicarikan saat menyimpan |
+| Migrasi 0009 Q4 | ditulis ulang: bukan lagi "apakah ketiganya join", melainkan "benarkah hanya `TYPE_DOCUMENT` yang join" |
+
+**Bandingkan dengan view ANAK, yang berperilaku sebaliknya.** Nama bisnis ADA di halaman (setiap
+elemen `DFT_BISNIS_ID` punya `.Note`), tetapi `V_LST_DET_TYPE_DOC_BISNIS` **tidak** memaparkannya
+— `RDB List/GetLbuDetType-SQL.xml` menjoin `POOLDATA.BUSINESS` untuk mendapatkannya. Asimetri itu
+nyata, dan ditiru apa adanya: di grid bisnis, isiannya bekerja atas **kode**.
+
+Pelajaran yang dicatat: **"ada di halaman" adalah syarat perlu, bukan syarat cukup.** Yang
+menentukan tetap apa yang dipaparkan view-nya, dan keduanya harus diperiksa bersamaan.
+
+### 24.3 Fan-out baca terbesar dari seluruh master yang sudah dibangun
+
+Penghitungan langsung atas export: **34 rule Pega** membaca `V_LST_DET_TYPE_DOC`, di antaranya
+SELURUH jalur validasi unggah dokumen — `ValidationUploadDocument_act`, `ValidationUploadRegister`,
+`RequiredDocument_act`, `RequiredDocPA`, `InsertDokumenPNC` — ditambah arsip dokumen dan tujuh
+kueri pencarian klaim.
+
+Konsekuensinya dicatat di kepala migrasi 0009: bila view-nya salah didefinisikan, yang rusak bukan
+layar master ini melainkan **kelengkapan dokumen pada klaim yang sedang berjalan** — dan rusaknya
+tidak menimbulkan galat, hanya dokumen yang berhenti diminta.
+
+Sebaliknya, `P-1` justru **terpenuhi utuh**: `UpdateDetTypeDoc-SQL` adalah satu-satunya rule yang
+memanggil procedure penyimpannya, dan tidak ada rule lain yang menyentuh tabelnya.
+
+### 24.4 `STS_WAJIB` memuat empat nilai berbeda di produksi
+
+Pemindaian literal atas seluruh export menemukan kolom ini dibandingkan dengan `"Ya"`, `"Tidak"`,
+`"1"`, **dan** `"0"` — dan ketiga pembacanya tidak sepakat:
+
+| Pembaca | Nilai yang dikenalinya |
+|---|---|
+| `Activity/SetTypePDFAdjustment-Act.xml` | **hanya `"Ya"`** |
+| `Activity/ValidationUploadDocument_act-Act.xml` | keempatnya |
+| `Activity/ValidationUploadRegister-Act.xml` | keempatnya |
+
+Pertanyaannya diajukan ke Work Owner, dan jawabannya **`"Ya"`/`"Tidak"`** — yang ternyata
+dibenarkan bukti: menulis `"1"` akan membuat `SetTypePDFAdjustment` berhenti mengenali dokumen
+wajib, tanpa satu pun galat, hanya jenis PDF yang salah pilih.
+
+Penulisannya karena itu **tegas** (selalu `"Ya"`/`"Tidak"`) sementara pembacaannya **longgar**
+(menerima keempatnya). Keduanya dikunci uji domain.
+
+### 24.5 Pekerjaan sesi lain yang mengubah rencana di tengah jalan
+
+Saat analisis dimulai, `git status` memperlihatkan dua modul yang **belum di-commit**:
+`daftarobjekdokumen` (MENU_ID 43) dan `daftartipedokumenbisnis` (MENU_ID 42). Keduanya dikerjakan
+sesi lain.
+
+Dua akibat langsung:
+
+1. Pertanyaan ketiga ke Work Owner — dari mana daftar pilihan **Objek Dokumen** diambil — sudah
+   punya jawaban yang lebih baik daripada ketiga opsi yang ditawarkan: masternya **sudah ada**.
+   Modul ini tinggal membacanya, sesuai jawaban Work Owner ("endpoint baca-saja di modul ini").
+2. `cmd/claimpnc/main.go` **berubah di tengah pengerjaan**. Satu `grep` yang dijalankan di awal
+   tidak menemukan `daftartipedokumenbisnis`; `grep` yang sama belakangan menemukannya di 27
+   tempat. Setiap suntingan ke berkas itu karena itu dibaca ulang lebih dulu, dan tidak satu pun
+   memakai penanda posisi baris.
+
+### 24.6 Dua penyimpangan dari kueri lama, keduanya disengaja
+
+**LEFT JOIN, bukan INNER JOIN, pada daftar bisnis.** `GetLbuDetType-SQL.xml` merangkai
+`V_LST_DET_TYPE_DOC_BISNIS` dan `BUSINESS` dengan koma lalu menyamakannya di `WHERE`, sehingga
+baris yang `DFT_BISNIS_ID`-nya sudah tidak ada di master **hilang dari form** tanpa pesan apa pun.
+Itu berbahaya di layar master: baris yang tidak terlihat tidak dapat diperbaiki petugas, dan
+menyimpan form akan **menghapusnya** karena grid mengirim susunan akhir.
+
+**Kolom yang dibaca `a.DFT_BISNIS_ID`, bukan `b.ID`.** Keduanya sama nilainya pada INNER JOIN,
+tetapi pada LEFT JOIN `b.ID` menjadi NULL tepat pada baris yang ingin diselamatkan penyimpangan
+pertama.
+
+Keduanya dikunci uji — `TestRowsWithMissingMasterReferencesAreStillReturned` di backend dan
+"menampilkan baris yang rujukannya sudah tidak ada di master" di frontend.
+
+### 24.7 Kendala teknis dan penyelesaiannya
+
+| Kendala | Penyelesaian |
+|---|---|
+| `go build ./...` dan `go test` melewati batas 120 detik pada mesin ini | Dijalankan di latar, hasilnya dibaca dari berkas keluarannya. Bukan kegagalan — hanya kompilasi pertama yang belum ter-cache |
+| `grep -rl` atas seluruh repo (297 MiB export) habis waktu | Dipersempit ke tujuh direktori rule yang relevan; pencarian menyeluruh dijalankan di latar |
+| Adapter memori tidak punya join, sementara tiga keterangan di layar datang dari join view | `Repo.UseReferences` — repo memori memegang rujukan ke `ReferenceRepo` dan mengisi keterangannya saat dibaca. Tanpa itu, baris yang baru disimpan tampil tanpa nama tipe dokumen di pengembangan tanpa Oracle, dan itu mudah disalahartikan sebagai cacat aplikasi |
+| `/pilihan` dan `/{id}` berada di sub-rute yang sama | `/pilihan` didaftarkan lebih dulu, dan diuji tersendiri (`TestReferenceRouteIsNotSwallowedByTheIDRoute`). chi memang mendahulukan jalur tetap, tetapi bergantung pada perilaku pustaka tanpa uji berarti perubahan urutan kelak akan lolos diam-diam |
+
+
+### 24.9 Layarnya gagal memuat, dan katalog Oracle yang menyelesaikannya
+
+Setelah modul dirakit, layarnya menampilkan **"Daftar tidak dapat dimuat"**. Penelusurannya
+dicatat lengkap karena urutannya yang membuatnya cepat selesai — bukan menebak lebih dulu.
+
+| Langkah | Yang diperiksa | Hasil |
+|---|---|---|
+| 1 | Apakah rutenya ada di server yang berjalan | `curl` → **401**, bukan 404. Rute ada, sesi kurang — jadi bukan binary basi |
+| 2 | Penyimpanan apa yang dipakai | `.env` menyebut `PENYIMPANAN=memori`, tetapi `needsOracle()` bernilai **true** karena `IDENTITAS_ADAPTER=hcq`. Seluruh pemilih penyimpanan berada di cabang itu, sehingga modul master **tetap membaca Oracle** |
+| 3 | Objek mana yang gagal | `claimpnc -periksa` → `ORA-00904: "TYPE_DOCUMENT": invalid identifier` |
+| 4 | Bentuk skema sebenarnya | Katalog dibaca langsung: `ALL_TAB_COLUMNS` dan `ALL_VIEWS` |
+
+Langkah 2 layak dicatat tersendiri: **`PENYIMPANAN=memori` tidak berarti modul master
+memakai memori.** Selama `IDENTITAS_ADAPTER=hcq`, `needsOracle()` benar dan cabang Oracle-lah
+yang dipakai. Menyimpulkan sebaliknya dari nama variabelnya akan mengirim penelusuran ke arah
+yang salah.
+
+Untuk langkah 4 saya membuat perkakas sementara `cmd/kolomsementara` yang hanya membaca
+katalog, menjalankannya sekali, lalu **membuangnya** — ia tidak ikut ter-commit.
+
+### 24.10 Apa yang sebenarnya ada di Oracle
+
+Tiga fakta, dan ketiganya mengubah kode:
+
+**1. Tabel induk SUDAH lengkap kolomnya.** `POOLDATA.LST_DET_TYPE_DOC` memuat `DOC_COL_INFO`
+dan `OBJ_DOC_DESC` sebagai kolom nyata — sehingga koreksi §24.2a terbukti benar, dan penulisan
+sebelas kolom memang tepat. `TGL_EDIT` ternyata `VARCHAR2`, bukan `DATE`.
+
+**2. View induk TIDAK punya `TYPE_DOCUMENT`.** Definisinya sekadar
+
+```
+SELECT a.ID, a.OLD_ID, a.DOC_TYPE_ID, a.DETAIL_DOCUMENT, a.USER_EDIT, a.TGL_EDIT,
+       a.STS_INSURED, a.DOC_COL_ID, a.OBJ_DOC, a.DOC_COL_INFO, a.RISK, a.OBJ_DOC_DESC
+  FROM LST_DET_TYPE_DOC a
+```
+
+— tanpa JSON dan tanpa join. Inilah yang menggagalkan layarnya. Report Definition Pega memang
+menyebut `TYPE_DOCUMENT` sebagai properti kelasnya, tetapi **properti kelas Pega tidak sama
+dengan kolom view** — itu kekeliruan saya, dan pelajarannya dicatat di `penggunaan-skill.md`.
+Perbaikannya: `LEFT JOIN POOLDATA.V_LST_DOC_TYPE` sendiri, persis yang dilakukan modul MENU_ID 42.
+
+**3. Tabel anaknya BELUM ADA.** `POOLDATA.LST_DET_TYPE_DOC_BISNIS` tidak ada di katalog, dan
+`V_LST_DET_TYPE_DOC_BISNIS` ternyata `JSON_TABLE` atas `JSON_DATA` tabel induknya:
+
+```
+FROM LST_DET_TYPE_DOC a,
+     json_table(JSON_DATA, '$.DFT_BISNIS_ID[*]'
+       COLUMNS (BISNISID VARCHAR2(10) PATH '$.ID',
+                STSWAJIB VARCHAR2(10) PATH '$.STS_WAJIB',
+                MINDOC   VARCHAR2(10) PATH '$.MIN_DOC'))
+```
+
+Artinya **perpindahan dari JSON ke kolom baru selesai setengah**: induknya sudah, daftar lini
+bisnisnya belum. Itulah satu-satunya objek basis data yang benar-benar harus diminta ke DBA.
+
+### 24.11 Akibatnya, dan kenapa ia tidak boleh dibiarkan diam-diam
+
+Baris yang ditulis aplikasi mengisi kolom dan membiarkan `JSON_DATA` kosong. Karena
+`json_table` atas CLOB kosong tidak menghasilkan satu baris pun, rincian dokumen baru akan
+tampil utuh di view induk tetapi **tanpa satu pun lini bisnis** — di layar ini maupun di Pega.
+
+Itu bukan gangguan tampilan. Sembilan rule membaca view anak, di antaranya
+`Section/ViewUploadDocument-Section.xml` dan `Activity/InsertDocumentPendukungPA_-Act.xml` —
+jalur yang menentukan dokumen apa yang diminta pada klaim. Rincian tanpa lini bisnis berarti
+dokumennya tidak pernah diminta, dan tidak ada galat apa pun yang menandainya.
+
+Karena itu jalur tulis **sengaja dibiarkan gagal** alih-alih ditambal: mode periksa
+melaporkannya sebagai `[GAGAL]` dengan sebab dan langkah perbaikannya, dan layarnya
+**baca-saja** sampai migrasi 0009 LANGKAH 1 dijalankan. Menambalnya dengan menulis JSON
+berdampingan akan menghidupkan kembali `R-10` — dua salinan satu data yang dapat menyimpang.
+
+### 24.12 Empat perbaikan kode yang mengikuti
+
+| Berkas | Perubahan |
+|---|---|
+| `daftardetailtipedokumen.sql` | ketiga kueri baca kini `LEFT JOIN POOLDATA.V_LST_DOC_TYPE`; kepala berkas ditulis ulang dengan hasil katalog |
+| `repo/sqlstore` | `pegaTimestamp()` — `TGL_EDIT` ditulis sebagai teks `20060102T150405.000 GMT` dalam UTC, bukan `time.Time` |
+| `repo/sqlstore` | `minimumFrom()` — `MIN_DOC` dibaca dari kolom TEKS, isi yang bukan angka dijawab nol |
+| `cmd/claimpnc/check.go` | pesan `[GAGAL]` jalur tulis menyebut sebab sebenarnya dan menunjuk LANGKAH 1 |
+| `migrations/0009` | ditulis ulang: dari daftar pertanyaan menjadi **permintaan DDL konkret** — tabel anak, pemindahan isi JSON, dan definisi ulang view |
+
+Uji baru mengunci format `TGL_EDIT` beserta konversi UTC-nya, dan pembacaan longgar `MIN_DOC`.
+
+### 24.13 Keadaan sesudah perbaikan
+
+```
+[ok]    POOLDATA.V_LST_DET_TYPE_DOC dapat dibaca: 159 detail tipe dokumen
+[GAGAL] tabel dasar ... tidak dapat ditulis: ORA-00942 (LST_DET_TYPE_DOC_BISNIS)
+```
+
+Layarnya **memuat dan menampilkan 159 baris**. Menyimpan belum dapat dilakukan, dan sebabnya
+satu: tabel anak belum ada.
+
+### 24.14 Yang diminta ke luar
+
+Daftar ini **menggantikan** enam pertanyaan yang sempat ditulis di migrasi 0009 LANGKAH 0.
+Kelimanya sudah terjawab sendiri lewat katalog Oracle (§24.10), sehingga yang tersisa bukan lagi
+pertanyaan melainkan **permintaan perubahan skema yang konkret**.
+
+Ke **DBA**, lewat `migrations/0009_daftar_detail_tipe_dokumen.up.sql` LANGKAH 1 — satu satuan
+kerja, tiga bagian yang tidak boleh dipisah:
+
+| Bagian | Isi |
+|---|---|
+| 1a | `CREATE TABLE POOLDATA.LST_DET_TYPE_DOC_BISNIS` (ID, DFT_BISNIS_ID, STS_WAJIB, MIN_DOC) + index pada ID |
+| 1b | Pindahkan `JSON_DATA.DFT_BISNIS_ID[*]` yang sudah ada ke tabel itu |
+| 1c | `CREATE OR REPLACE VIEW V_LST_DET_TYPE_DOC_BISNIS` agar membaca tabel itu, dengan nama dan urutan kolom yang **sama persis** |
+
+Ditambah LANGKAH 2: `GRANT SELECT, INSERT, UPDATE, DELETE` atas tabel anak itu. Hak baca atas
+view induk dan keempat master rujukan **sudah ada** — mode periksa membaca 159 baris.
+
+Ke **Work Owner**, dua keputusan yang tidak dapat diambil tim pengembang:
+
+1. **Nasib `JSON_DATA` pada baris lama** sesudah 1c — dibiarkan sebagai arsip, dikosongkan, atau
+   tetap diisi berdampingan. Yang ketiga bertentangan dengan keputusan 2026-09-23 dan
+   menghidupkan kembali `R-10`.
+2. **Kapan layar Pega MENU_ID 41 dinonaktifkan.** `UpdateDetTypeDoc-SQL` masih menulis
+   `JSON_DATA`, bukan kolom. Selama layar itu hidup berdampingan dengan LANGKAH 1c, baris yang
+   disimpannya akan kehilangan seluruh lini bisnisnya — `P-1` menuntut keduanya terjadi
+   bersamaan, bukan berurutan.
+
+Ke **Tim Pega**: tidak ada. Seluruh rule yang dibutuhkan modul ini ada di export.
+
+### 23.12 Pemeriksaan ulang atas permintaan Work Owner (2026-09-23)
+
+Work Owner meminta dua hal setelah modul dinyatakan selesai:
+
+> 1. untuk penyimpanan tidak json lagi, menggunakan ke basis langsung seperti PEGA
+> 2. seperti aplikasi PEGA saja coba cek lagi
+
+**Butir 1 sudah terpenuhi sejak awal, dan itu diperiksa ulang, bukan dijawab dari ingatan.**
+`Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:25-26` menyisipkan **sepuluh kolom bernama**, dan
+tidak ada satu pun kolom JSON pada kedua tabel modul ini. Kueri modul ini menulis sepuluh kolom
+yang sama persis. Tabel ini memang **tidak pernah** memakai JSON — berbeda dari `M_STS_CLAIM`,
+`M_CAUSE_OF_LOSS`, dan `LST_DOC_TYPE` yang migrasinya memindahkan isi JSON ke kolom.
+
+**Butir 2 menghasilkan tiga pencabutan.** Seluruh penyimpangan saya didaftar ulang dan diuji
+terhadap export satu per satu:
+
+| # | Penyimpangan | Pega | Tindakan |
+|---|---|---|---|
+| A | Isian rujukan berupa **dropdown** | `pyAutoComplete` ber-`pyAllowFreeFormInput=true` | **dicabut** — jadi ketik-cari |
+| B | **`LEFT JOIN`** ketiga master | koma-join, baris yatim tersembunyi | **dicabut** — kecuali `V_LST_DOC_OBJ` |
+| C | Menolak **baris dokumen kosong** dan **jaminan kosong** | keduanya dilewati diam-diam | **dicabut** |
+| D | "Pilih semua" tanpa 5 kode bisnis dikecualikan | mengecualikan 5 kode, hanya untuk `pyPosition='NONMBU'` | **ditanyakan** |
+| E | Tombol **Copy** tidak dibangun | ada, tetapi rusak di export | **ditanyakan** |
+| F | Jalur **Tambah menyimpan** | tidak menulis apa pun | **ditanyakan** |
+
+Ketiga yang dicabut punya sifat yang sama: **murni penilaian saya sendiri, dan mencabutnya tidak
+menghilangkan kemampuan apa pun.** Ketiga yang ditanyakan punya sifat yang juga sama: menirunya
+persis berarti mereplikasi sesuatu yang **rusak** (E, F) atau **melanggar keputusan proyek yang
+sudah ada** (D — `D-15` melarang kode bisnis di dalam kode, `D-59` mengganti kewenangan berbasis
+properti operator dengan izin per menu).
+
+Satu pengecualian yang **tidak** dicabut, dan alasannya perlu dibaca: join ke `V_LST_DOC_OBJ`
+tetap `LEFT`. Menyamakannya ketat akan menghilangkan **setiap baris yang tidak punya objek
+dokumen** — dan itu bukan perilaku Pega, karena kueri lama pun tidak menyaringnya di `WHERE`.
+Meniru Pega berarti meniru **hasilnya**, bukan menyalin bentuk sintaksnya secara buta.
+
+#### Satu cacat nyata yang ditemukan pengujian saat pencabutan A dikerjakan
+
+Mengganti dropdown menjadi isian ketik memunculkan cacat yang **tidak mungkin terlihat tanpa
+menjalankannya**: nilai isian semula diturunkan dari kode hasil pencarian, sehingga setiap ketikan
+yang belum cocok dengan master menghasilkan kode kosong — dan isiannya **terhapus sendiri pada
+setiap huruf yang diketik**. Isian itu mustahil diisi.
+
+Dua uji gagal dan menunjukkannya langsung. Perbaikannya: teks yang diketik disimpan berdampingan
+dengan kodenya, bukan diturunkan darinya. Ini contoh kedua sesi ini bahwa **uji yang gagal adalah
+keterangan, bukan gangguan**.
+
+#### Verifikasi setelah pencabutan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./internal/daftartipedokumenbisnis/...` | **lulus** |
+| `go vet` + `gofmt` | **bersih** |
+| `go test ./internal/daftartipedokumenbisnis/...` | **lulus** — domain, rute, disiplin SQL |
+| `npx tsc --noEmit` | **lulus** |
+| `npx vitest` modul ini | **14 lulus** (setelah dua kegagalan yang menemukan cacat di atas) |
+
+Uji yang ikut berubah, dan **arahnya dibalik dengan sengaja**:
+`TestPenambahanTanpaBarisDokumenDiterimaTanpaMenyimpan` dan
+`TestPenambahanJaminanKosongDilewatiBukanDitolak` sekarang menjaga bahwa penolakan itu **tidak
+dipasang kembali**. Tanpa keduanya, seseorang yang kelak menambahkan validasi "supaya lebih aman"
+akan mulai menolak penyimpanan yang di sistem lama berhasil.
+
+### 23.13 Ketiga hal yang tersisa diputuskan "ikut Pega" (2026-09-23)
+
+Work Owner menjawab ketiga pertanyaan §23.12 dengan satu kalimat: **"3 hal itu ikutin PEGA aja"**.
+
+#### Yang diverifikasi ulang lebih dulu
+
+Butir ketiga — "jalur Tambah di Pega tidak menulis apa pun" — sampai saat itu **hanya berasal
+dari laporan sub-agen** dan belum pernah saya buktikan sendiri. Karena konsekuensinya besar
+(tombol Simpan yang tidak menyimpan), ia dibaca ulang langsung dari export sebelum satu baris pun
+diubah.
+
+Aturan pasangannya ditemukan lebih dulu: pada berkas activity ini, ekspresi precondition muncul
+**sesudah** `pyStepsDescription` milik langkahnya, di dalam blok `Embed-ActivityPreConditions`.
+Dengan itu strukturnya terbaca:
+
+```
+langkah "kalo tambah"                 precondition: pyLabel=="tambah"        (:1945)
+└── langkah "kalo edit / copy"        precondition: pyLabel="update"||"copy" (:1892)
+                                                    TempDTDoc.OBJECT_DOC_ID=="" (:1861)
+    └── RDB-List UpdateDetTypeDocBusiness_SQL       ← satu-satunya tulis     (:1233)
+```
+
+Tulis kedua (`:2804`) berada di langkah "kalo edit / copy > 1 bisnis banyak dokumen", yang
+precondition-nya juga `update||copy` (`:2267`).
+
+**Terkonfirmasi**: saat `pyLabel=="tambah"`, tidak ada satu pun pemanggilan basis data.
+
+#### Apa yang "ikut Pega" berarti, dan apa yang tidak
+
+Ketiga butir ternyata **tidak sejenis**, dan menyamakan perlakuannya justru akan tidak konsisten:
+
+| Butir | Sifat di Pega | Diikuti dengan |
+|---|---|---|
+| Pilih semua | **aturan yang berjalan** — 5 kode dikecualikan, tombol hanya untuk `pyPosition='NONMBU'` | **ditiru penuh** |
+| Copy | **cacat ketik** — `Tipe=="COPY"` diperiksa terhadap `"copy"` yang dikirim tombolnya | ditiru **maksudnya**, bukan cacatnya |
+| Tambah | **cacat precondition** — dua syarat saling meniadakan sejak 2022-06-03 | ditiru **maksudnya**, bukan cacatnya |
+
+Alasan Copy dan Tambah diperlakukan sama: **keduanya cacat sejenis** — sebuah syarat yang
+ditambahkan belakangan dan mematikan jalur yang jelas dimaksudkan bekerja. Memperbaiki yang satu
+sambil mereplikasi yang lain berarti memperlakukan dua cacat identik dengan dua ukuran berbeda,
+tanpa dasar.
+
+Dan menirunya berdua secara harfiah menghasilkan layar master yang **tidak dapat membuat satu
+baris pun** — hanya menyunting yang sudah ada. Itu bukan layar yang pernah dimaksudkan siapa pun.
+
+Keputusan ini **mudah dicabut** bila Work Owner memang menghendaki keduanya mati: satu baris di
+`Validate` dan satu tombol di layar.
+
+#### Yang dibangun
+
+**Pilih semua — kini persis Pega.** Kelima kode lini MBU dilewati, dan tombolnya hanya tampil bagi
+`pyPosition='NONMBU'`.
+
+Kelima kodenya **tidak ditanam di kode** (`D-15`): ia konfigurasi
+`BISNIS_DIKECUALIKAN_PILIH_SEMUA`, bawaannya sudah berisi kelima kode yang benar-benar ada di
+`SetAllBusiness-Act.xml:984` sehingga tanpa konfigurasi apa pun perilakunya sudah sama. Pola dan
+alasannya sama dengan `XOL_PENERIMA_KOMITE` yang juga menunggu masternya dibangun.
+
+Gerbang `pyPosition` ditiru sebagai **penyembunyian tampilan**, bukan dinaikkan menjadi kewenangan
+— di Pega pun ia `pyVisible`, bukan privilege. Menjadikannya izin berarti memperkenalkan model
+kewenangan berbasis properti operator, yang justru `D-59` gantikan dengan izin per menu. Tombol itu
+tidak membuka kemampuan baru: bisnis yang sama tetap dapat dicentang satu per satu.
+
+Bisnis yang dikecualikan **tetap muncul di daftarnya dan tetap dapat dipilih sendiri** — di Pega
+pun pengecualiannya hanya berlaku pada tombolnya.
+
+**Copy — dibangun.** Ia menyalin seluruh aturan sebuah bisnis ke form Tambah **tanpa ID-nya**,
+lalu petugas memilih bisnis tujuan. Bentuk itu dibaca dari `UpdateDetailTypeDocumentBusiness_act`:
+cabang salinnya memetakan kolom yang sama persis dengan cabang ubah, tetapi **tidak pernah
+mengisi `.ID`** — dan itulah yang membuat penyimpanan berikutnya menerbitkan baris baru.
+
+Copy ada karena aturan dokumen **tidak dapat dipindahkan** antar lini bisnis: `BUSINESSID` tidak
+ikut diubah saat menyunting. Menyalin adalah satu-satunya cara memakai ulang susunan yang sudah
+ada.
+
+**Tambah — tidak berubah.** Tetap menyimpan, dengan alasan di tabel di atas.
+
+#### Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | **lulus** |
+| `gofmt` | bersih |
+| `go test ./internal/daftartipedokumenbisnis/...` | **lulus** |
+| `npx tsc --noEmit` | **lulus** |
+| `npx vitest` modul ini | **18 lulus** (bertambah 4 dari sebelumnya) |
+
+Empat uji baru menjaga tepat hal-hal yang mudah "dirapikan" kembali:
+`TestBisnisYangDikecualikanTetapMunculDiDaftarnya` (pengecualian hanya pada tombolnya, bukan pada
+daftar), `TestPenandaPilihSemuaMengikutiPosisiPemanggil` (dan bahwa datanya tetap terkirim utuh),
+serta dua uji Copy — salah satunya memastikan badan permintaan salinan **tidak membawa `id`**
+sehingga ia selalu menjadi baris baru.
+
+Contoh di `SampleBusinessList` ikut ditambah satu kode lini MBU (`10028`). Tanpa satu pun di
+contoh, pengecualiannya tidak pernah teruji saat pengembangan — persis kelemahan yang sudah
+tercatat pada modul sebelumnya untuk bisnis tanpa aturan.
+
+### 23.14 Satu kelalaian yang ditemukan pertanyaan, bukan perkakas
+
+Work Owner bertanya "beres 100% berarti ya". Memeriksanya alih-alih mengiyakan menemukan bahwa
+modul ini **tidak terdaftar di mode `claimpnc -periksa`** — padahal `CheckTable` untuk kedua
+tabelnya sudah ditulis sejak awal, dan **seluruh** modul bersaudara ada di sana.
+
+Kelalaian ini tidak menggagalkan satu pun gerbang: build lulus, vet lulus, seluruh uji lulus,
+layarnya berfungsi penuh terhadap adapter memori. Yang hilang hanya kemampuan **membuktikan modul
+ini terhadap Oracle sebelum dipakai** — dan itu justru yang paling dibutuhkan, karena jalur
+simpannya memang belum pernah diuji di sana.
+
+`checkBusinessDocumentRule` ditambahkan. Ia berbeda dari padanannya di modul lain dalam dua hal,
+dan keduanya disengaja:
+
+1. **Keempat master rujukan tidak ikut diperiksa.** Masing-masing sudah diperiksa modul
+   PEMILIKNYA, dan memeriksanya lagi hanya menggandakan baris laporan — bila salah satunya gagal,
+   pembacanya akan melihat kegagalan yang sama dilaporkan dua kali dari dua modul berbeda.
+2. **Laporannya menyatakan terang-terangan apa yang TIDAK dibuktikannya.** Ia mencetak "yang
+   terbukti hanya jalur BACA", karena jalur tulis bergantung pada urutan dan pada keunikan kolom
+   `ID` — keduanya masih pertanyaan terbuka, dan memeriksanya dari mode ini berarti
+   **menghabiskan satu nomor urut**, efek samping yang tidak pantas dimiliki mode periksa.
+
+Pesan kegagalannya juga disesuaikan dengan sifat modul ini: berbeda dari modul lain yang objeknya
+memang belum ada, **kedua tabel modul ini sudah ada di sistem lama**. Kegagalan di sini karena itu
+hampir selalu berarti grant-nya belum diberikan, bukan objeknya belum dibuat — dan menyebutkannya
+menghemat satu putaran penelusuran.
+
+**Satu temuan yang TIDAK diperbaiki dari sini**: tidak ada satu pun uji yang menjaga bahwa modul
+yang dirakit di `main.go` benar-benar ter-mount. `TestExtraModulesMounted` hanya menjaga sepuluh
+modul di `modules.go`. Modul ini, Daftar Tipe Dokumen, dan Daftar Detail Dokumen Travel sama-sama
+tidak terjaga — dan proyek ini **pernah kehilangan sepuluh modul** persis karena perakitan yang
+lepas pada penggabungan cabang. Menambahkan penjaganya berarti memperkenalkan pola baru di berkas
+bersama, sehingga dicatat sebagai temuan untuk diputuskan, bukan dikerjakan sepihak.
+
+---
+
+## 25. Sesi keenam belas — modul Inbox Compliance (2026-09-24)
+
+Modul pertama di luar kelompok Master Data pada rangkaian sesi ini: **`MENU_ID 47` "Inbox
+Compliance"**, harness `inboxCompliance_Harness`, kelompok menu `2` (Proses Produksi), urutan
+**1137** — tepat sebelum Inbox Investigator (1138) dan jauh sebelum Inbox Admin (1153).
+
+### 25.1 Analisis sebelum satu baris kode ditulis
+
+Instruksi sesi ini melarang langsung menulis kode. Yang dibaca lebih dulu, berurutan:
+
+| Bahan | Yang diambil darinya |
+|---|---|
+| `Harness/inboxCompliance_Harness-Harness.xml` | Pembungkus layar; tiga caption rule; satu include section |
+| `Section/InputCompliance_Section-Section.xml` | **Pembungkus dua tab**, tanpa satu pun field |
+| `Section/InputComplianceDtl_Section-Section.xml` | Grid tab Compliance — 9 sel header, 7 label kolom |
+| `Section/InputPostAuditDtl_Section-Section.xml` | Grid tab Post Audit — 8 sel header |
+| `Report Definition/InboxRegisterCompliance_RD-RD.xml` | Kelas, join, filter, urutan, dan batas tab Compliance |
+| `Report Definition/InboxCompliance_RD-RD.xml` | Idem untuk tab Post Audit |
+| `Activity/GetInboxRegisterCompliance-Act.xml` | Perakitan kolom Aging; asal `CARI1`/`CARI2` |
+| `RDB List/GetSelisihJam_sql-SQL.xml` | Bentuk teks Aging |
+| `Database/GETSELISIHJAM.fnc` | Hitungan jam Aging |
+| `Flow/Register_Flow.xml` | Nama workbasket: `CompliancePNC` |
+| `When/IsCompliance-When.xml` | Gerbang alur: `isComplianceTransfer = "1"` |
+| `internal/inboxadmin/**` | Pola modul antrean kerja yang sudah berjalan |
+
+### 25.2 Tiga temuan yang mengubah pemahaman awal
+
+**(a) Inventaris harness keliru, dan koreksinya penting.**
+`22-INVENTARIS-HARNESS.md` menandai harness ini **JANGGAL** dengan alasan `RD 0` — "antrean kerja
+tanpa sumber data tidak masuk akal". Premisnya salah: Report Definition-nya **ada dan dua buah**,
+hanya saja tinggal di dalam *section*, bukan di harness, sehingga tidak terhitung pada tingkat
+harness. Sidik jari 145 KB itu kecil karena harness ini memang cangkang tipis.
+
+**(b) Layar ini bukan satu grid, melainkan dua tab.**
+Pembacaan awal harness menyimpulkan tiga tab, karena ada tiga caption rule. Setelah
+`InputCompliance_Section` diterima dan dibaca, susunannya jelas: satu caption adalah **judul
+layar**, dua sisanya **judul tab** — dua kontainer `TABBED` pada `:985` dan `:2315`.
+
+**(c) `CARI1`/`CARI2` BUKAN kotak cari.**
+Ini nyaris menjadi kesalahan yang mahal. Nama itu di modul lain memang berarti kotak pencarian, dan
+sempat direncanakan sebagai penyaring di bagian atas layar. Pembacaan langkah activity
+membatalkannya — `InputParam.CARI1` bernilai `"SYSDATE"` (`:750`) dan `InputParam.CARI2` bernilai
+`TanggalBuatCompliance` yang diubah ke tanggal Oracle lalu ditambah `(7/24)` (`:815`).
+
+Keduanya argumen TANGGAL untuk `GETSELISIHJAM(tglakhir, tglawal)`. Layar ini **tidak punya
+penyaring apa pun** — dan `InputCompliance_Section` yang kemudian diterima membenarkannya: nol
+field masukan. Kotak cari yang sempat direncanakan dibatalkan.
+
+### 25.3 Pertanyaan yang diajukan dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tab Post Audit membaca kolom yang nama Oracle-nya tidak ada di export mana pun — bagaimana? | **Ambil dari `POOLDATA.T_CLAIM_COMPLIANCE_H`**, bukan dari tabel DATAPEGA |
+| 2 | `InputCompliance_Section` hilang dari export — bagian atas layar diisi apa? | **Berkasnya akan ditambahkan**, periksa lagi |
+| 3 | Aging dihitung bagaimana? | **Tulis ulang di Go, potong akhir pekan** |
+| 4 | Daftar kolom `T_CLAIM_COMPLIANCE_H`? | **Tabelnya sudah ditambahkan**, periksa lagi |
+
+Jawaban 2 **terbukti**: `Section/InputCompliance_Section-Section.xml` muncul pada 2026-09-23 pukul
+18:20 dan langsung dibaca. Isinya pembungkus tab, sehingga gap-nya jinak.
+
+Jawaban 4 **tidak terbukti**: penelusuran seluruh repo — `Database/`, `RDB List/`, `Report
+Definition/`, ditambah pemindaian berkas yang berubah sejak 2026-09-20 — tidak menemukan satu pun
+artefak yang mendefinisikan `POOLDATA.T_CLAIM_COMPLIANCE_H`. Satu-satunya kecocokan teks adalah
+**substring palsu** di dalam `inboxCompliance_Harness` pada baris menu CSV. Keadaan itu dilaporkan
+apa adanya, dan tab Post Audit dibangun sebagai tab yang **menyatakan penghalangnya**, bukan
+ditebak nama kolomnya.
+
+### 25.4 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `inboxcompliance.go`, `aging.go`, `tab.go`, `query.go`, `errors.go` |
+| Usecase | `usecase/list.go` |
+| Transport | `http/dto.go`, `http/errors.go`, `http/handler.go`, `http/routes.go` |
+| Repo | `repo/sqlstore/{query.go, inboxcompliance.go, inboxcompliance.sql}`, `repo/memory/{memory.go, sample.go}` |
+| Uji | `aging_test.go`, `query_test.go`, `usecase/list_test.go`, `repo/sqlstore/query_test.go`, `http/routes_test.go` |
+| Frontend | `modules/inbox-compliance/{types.ts, api.ts, ComplianceTabs.tsx, InboxCompliancePage.tsx, InboxCompliancePage.test.tsx}` |
+| Wiring | `cmd/claimpnc/modules.go`, `cmd/claimpnc/check.go`, `app/App.tsx`, `app/menu/registry.ts` |
+
+**Tanpa migrasi basis data.** Modul ini hanya MEMBACA tabel warisan Pega; tidak ada objek baru yang
+dibuat, sehingga tidak ada berkas `migrations/`.
+
+### 25.5 Kendala dan penyelesaiannya
+
+**(a) Pencarian menyeluruh ke export selalu melewati batas waktu.**
+Export berisi ribuan XML besar. Penyelesaiannya: batasi pencarian ke direktori yang relevan, pecah
+XML satu baris menjadi baris-baris yang dapat dicari nomor barisnya, dan pakai `Get-ChildItem`
+PowerShell untuk pencarian berbasis waktu ubah. Satu pencarian yang terlanjur berjalan dipindahkan
+ke latar dan hasilnya dibaca kemudian.
+
+**(b) Kolom `TanggalBuatCompliance` di tabel kerja Pega tidak diketahui namanya.**
+Pola `_1` (`STATUSCLAIM_1`, `GROUPPANEL_1`) membuat `TANGGALBUATCOMPLIANCE_1` masuk akal — tetapi
+itu tebakan, dan DDL-nya belum ada (`R-08`). Penyelesaiannya: pakai
+`POOLDATA.T_CLAIM_PNC.COMPLIANCE_CREATEDATE`, yang **terbukti ada** karena ditulis
+`Database/PEGA_CONVERT_JSONKLAIM_PNC.prc:513` dari kunci JSON `TanggalBuatCompliance` (`:419`).
+Join-nya LEFT, bukan INNER, supaya pekerjaan tidak hilang dari antrean hanya karena konversi
+tabel datarnya tertinggal.
+
+**(c) `weekends2` dan `POOLDATA.datediff` tidak ikut dikirim.**
+Keduanya bagian dari 12 dependensi `R-01`. Tafsir yang dipakai — jumlah Sabtu dan Minggu pada
+rentang **setengah terbuka** — dipilih karena satu-satunya yang tidak pernah memotong lebih banyak
+daripada waktu yang berlalu; tafsir inklusif menghasilkan Aging **negatif** pada dua waktu di satu
+hari Sabtu yang sama. Asumsinya ditulis terbuka di `aging.go`.
+
+### 25.6 Tiga kesalahan sendiri, dan bagaimana ketahuannya
+
+Ketiganya ditangkap oleh uji atau oleh pembacaan ulang, bukan oleh review — dan ketiganya dicatat
+karena polanya lebih berguna daripada kesalahannya.
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Komentar di `aging.go` mengklaim urutan pemotongan dan sisa bagi menghasilkan angka berbeda | Pembacaan ulang: untuk jam positif keduanya **selalu sama**. Komentarnya diganti dengan dua hal yang memang perlu dipertahankan — pemotongan desimal dan bentuk jamak yang tidak diperbaiki |
+| Uji usecase memakai basis hari **Senin**, sehingga "26 jam lalu" jatuh di hari Minggu dan Aging-nya dipotong 24 jam | Uji GAGAL. Kodenya benar; ekspektasinya yang salah. Basis dipindah ke Rabu, dan alasannya ditulis di komentar supaya tidak dikembalikan |
+| Komentar DTO menjanjikan `aging_jam` dipakai "menandai baris yang terlalu lama menunggu" | Saat menulis layar: `DataTable` tidak punya kait nilai-urut, dan ambang "terlalu lama" adalah aturan bisnis yang tidak ada sumbernya. Komentarnya diselaraskan, dan kolom Aging ditandai `noSort` beserta alasannya |
+
+Satu lagi yang bukan kesalahan tetapi hampir: uji frontend mengharapkan permintaan halaman pertama
+tanpa parameter `tab`. Kenyataannya layar menyebut tabnya eksplisit begitu metadata tiba — dan itu
+**lebih baik**, karena kunci cache dan jejak log menjadi menyebut antrean mana yang dibaca.
+Ekspektasinya yang diperbaiki, bukan kodenya.
+
+### 25.7 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` (seluruh backend) | **lulus**, tanpa kegagalan |
+| `gofmt -l` | tidak ada berkas yang perlu diformat |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` (seluruh frontend) | **35 berkas, 557 uji, lulus** |
+
+`npx eslint` tidak dapat dijalankan: project ini **tidak punya `eslint.config.*`**. Itu keadaan yang
+sudah ada sebelum sesi ini, bukan akibatnya, dan dicatat sebagai temuan — `08-TECHNICAL-STRATEGY.md`
+§6 menuntut ESLint memblokir merge.
+
+---
+
+## 26. Sesi keenam belas, lanjutan — tab Post Audit dihidupkan (2026-09-24)
+
+Melanjutkan §25. DDL `POOLDATA.T_CLAIM_COMPLIANCE_H` diterima pada hari yang sama, sehingga
+penghalang yang dicatat di §25.3 gugur.
+
+### 26.1 Apa yang diterima
+
+Satu berkas DDL berisi enam kolom: `CASEID`, `NO_KLAIM`, `NAMA_TERTANGGUNG`, `NO_POLIS`, `REMARKS`,
+`TGL_KIRIM_POST_AUDIT`. Tanpa primary key, tanpa constraint unik, tanpa satu pun `NOT NULL`.
+
+Sebelum memetakannya, dua hal diperiksa lebih dulu ke export:
+
+| Yang diperiksa | Hasil | Gunanya |
+|---|---|---|
+| Preseden `CLAIMID` versus `CLAIMNO` di `T_CLAIM_PNC` | 66 banding 8 pemakaian di prosedur konversi | Menguatkan bacaan `CASEID` = kunci teknis, `NO_KLAIM` = nomor yang dibaca orang |
+| Adakah rule yang MENULIS tabel ini | **Nol** — tidak di `Database/`, `RDB List/`, maupun `Activity/` | Pengisinya berada di luar export; dicatat sebagai pertanyaan terbuka |
+
+### 26.2 Yang diubah
+
+| Berkas | Perubahan |
+|---|---|
+| `tab.go` | `Available: false` → `true`, `Blocker` dihapus |
+| `repo/sqlstore/inboxcompliance.sql` | `list_post_audit`, `count_post_audit`, `check_table_post_audit` |
+| `repo/sqlstore/query.go` | `resultColumns` dipecah menjadi `complianceColumns` dan `postAuditColumns` |
+| `repo/sqlstore/inboxcompliance.go` | `plans` per tab, `scanPostAuditItem`, `CheckTable` dua kueri |
+| `repo/memory/memory.go` | `Row.Tab`, penyaring per tab, kunci urut per tab |
+| `repo/memory/sample.go` | tiga baris contoh Post Audit, satu di antaranya bertanggal kosong |
+| `http/dto.go` | keterbatasan "belum menampilkan data" diganti keterbatasan penyaring status |
+
+**Frontend: nol perubahan pada kode layar.** Hanya berkas ujinya yang disunting, karena uji lama
+menyatakan Post Audit terhalang — pernyataan yang sudah tidak benar.
+
+### 26.3 Lima uji sengaja dibiarkan GAGAL lebih dulu
+
+Setelah `Available` dibalik, lima uji langsung merah — dan itu memang yang diharapkan: kelimanya
+menyatakan keadaan "terhalang" yang sudah tidak berlaku. Membalik penanda tanpa melihat uji mana
+yang jatuh berarti kehilangan daftar tempat yang perlu disesuaikan.
+
+| Uji | Menjadi |
+|---|---|
+| `TestNewQueryTabBelumTersedia` | `TestNewQueryTabPostAudit` — sekarang berhasil, bukan menolak |
+| `TestTabsMenyertakanTabYangBelumTersedia` | `TestTabs` — kedua tab tersedia |
+| `TestListTabBelumTersedia` | `TestListTabPostAudit` + `TestListMemisahkanBarisAntarTab` |
+| `TestKeteranganLayarMenyebutKeduaTab` | menuntut `tersedia: true` dan penghalang kosong |
+| `TestTabBelumTersediaDijawab503` | `TestTabPostAuditDilayani` |
+
+Satu lagi gagal karena sebab berbeda — `repo/sqlstore/query_test.go` **gagal dikompilasi** karena
+`resultColumns` dipecah dua. Itu justru yang diinginkan dari uji semacam itu: perubahan bentuk
+alias tidak dapat lolos diam-diam.
+
+### 26.4 Mekanisme "tab belum siap" dipertahankan, bukan dibuang
+
+Godaannya besar: penghalangnya hilang, jadi hapus saja `TabNotReadyError`, `Tab.Available`,
+jawaban 503, dan panel penjelasnya. Itu **tidak** dilakukan.
+
+Alasannya ada di `keputusan-implementasi.md` §27.6. Konsekuensinya pada uji: dibuatkan **tab
+buatan** `contoh-belum-siap` di uji frontend dan `TabNotReadyError` diuji langsung di uji domain,
+sehingga mekanismenya tetap terjaga tanpa satu pun tab nyata yang memakainya.
+
+### 26.5 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...`, `go vet ./...` | bersih |
+| `go test ./...` (seluruh backend) | **lulus** |
+| `gofmt -l` pada berkas modul ini | bersih |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` (seluruh frontend) | **35 berkas, 559 uji, lulus** — naik dari 557 |
+
+### 26.6 Tiga pertanyaan yang dibawa keluar sesi ini
+
+Ketiganya tidak menghalangi modul berjalan, tetapi ketiganya nyata:
+
+1. **Apakah tabel itu berisi seluruh riwayat atau hanya yang belum ditindaklanjuti?** Menentukan
+   perlu-tidaknya penyaring pengganti `pyStatusWork = "New"`.
+2. **Benarkah `NO_KLAIM` yang ditampilkan dan `CASEID` kunci teknisnya?** Tidak ada satu pun rule
+   di export yang membaca tabel ini sebagai pembanding.
+3. **Siapa yang mengisi tabel itu?** Nol penulis di export. Modul ini hanya membaca sehingga `P-1`
+   tidak dilanggar, tetapi kepemilikan tabelnya tetap harus jelas sebelum masa paralel.
+
+---
+
+## 27. Sesi keenam belas, koreksi — tab Post Audit dibetulkan dari layar Pega (2026-09-24)
+
+Melanjutkan §26. Work Owner mengirim tangkapan layar tab Post Audit di Pega yang berjalan, lalu
+bertanya kenapa layar baru kosong sementara Pega berisi. Jawabannya dua hal berbeda, dan yang kedua
+adalah kesalahan saya.
+
+### 27.1 Kenapa layar baru kosong — bukan JSON
+
+Dugaan yang diajukan: "karena Pega membaca JSON sedangkan yang sekarang langsung ke tabel".
+Dugaan itu **diperiksa dan tidak terbukti**:
+
+```
+grep -oiE "JSON_VALUE|JSON_TABLE|JSON_QUERY|JSON_KLAIM|DATA_JSONBLOB"
+     Report Definition/InboxCompliance_RD-RD.xml
+     Section/InputPostAuditDtl_Section-Section.xml
+  → nol kemunculan
+```
+
+Tidak ada JSON sama sekali di jalur Post Audit Pega. Ia membaca tabel kerja Pega untuk kelas
+`ASM-FW-GCNMFW-Work-Compliance` — barisnya `CPL-nn` — dengan sub-report ke Work-PNC.
+
+Sebab kosongnya ada di tempat lain: `POOLDATA.T_CLAIM_COMPLIANCE_H` **baru dibuat dan belum
+berisi**. DDL-nya diawali `DROP TABLE … CASCADE CONSTRAINTS` lalu `CREATE TABLE`, dan pencarian
+seluruh export tidak menemukan satu pun rule maupun prosedur yang MENULIS ke tabel itu. Tidak ada
+yang mengisinya.
+
+### 27.2 Kesalahan saya: pemetaan `CASEID` dan `NO_KLAIM` terbalik
+
+Tangkapan layar Pega menunjukkan:
+
+| Kolom Pega | Isinya |
+|---|---|
+| Nomor Case | `CPL-19` |
+| No Klaim | `ASM-FW-GCNMFW-WORK PNC-2114` |
+
+Jadi `CASEID` berisi nomor kasus Work-Compliance dan `NO_KLAIM` justru berisi **kunci teknis
+Pega** — kebalikan dari yang saya tulis di §26.
+
+Dasar keputusan saya waktu itu adalah preseden `POOLDATA.T_CLAIM_PNC`, yang memisahkan `CLAIMID`
+(kunci teknis, 66 pemakaian) dari `CLAIMNO` (nomor yang dibaca orang, 8 pemakaian). Penalarannya
+masuk akal dan tetap salah, karena tabel baru ini tidak mengikuti preseden itu.
+
+**Pelajarannya bukan "jangan memakai preseden".** Preseden tetap dasar terbaik yang tersedia saat
+itu. Yang kurang adalah menyatakan kesimpulannya sebagai **pertanyaan terbuka yang perlu
+diverifikasi ke layar** — dan itu memang dilakukan di §26.8 butir 2, sehingga koreksinya datang
+satu putaran kemudian alih-alih ditemukan di produksi.
+
+### 27.3 Kesalahan kedua: kolomnya tujuh, bukan lima
+
+Judul kolom yang saya pakai diambil dari label Report Definition — "Case ID", "Compliance
+Remarks", "Tanggal Kirim Post Audit". Ketiganya salah, dan dua kolom hilang sama sekali.
+
+Yang benar, dan cocok persis dengan layar Pega:
+
+| # | Judul | Sumber |
+|---|---|---|
+| 1 | Nomor Case | `CASEID` |
+| 2 | No Klaim | `NO_KLAIM` |
+| 3 | Nama Tertanggung | `NAMA_TERTANGGUNG` |
+| 4 | No Polis | `NO_POLIS` |
+| 5 | Catatan | `REMARKS` |
+| 6 | Tanggal Kirim Audit Compliance | `TGL_KIRIM_POST_AUDIT` |
+| 7 | OutStanding | dihitung |
+
+**Kenapa terlewat.** Ekstraksi pertama mencari `pyLabelFieldValue`, dan elemen itu memang **kosong**
+di section ini — sehingga pencarian tidak menemukan apa pun dan jatuh ke label Report Definition
+sebagai gantinya. Judul sebenarnya tersimpan sebagai `pyCaption`, dan baru terlihat setelah dicari
+sebagai **teks biasa**, bukan sebagai nama elemen tertentu:
+
+```
+grep -oE "Nomor Case|No Klaim|Catatan|OutStanding|Tanggal Kirim[^<]*"
+  → ketujuhnya muncul
+```
+
+Pelajaran yang layak diulang: ketika pencarian berbasis nama elemen mengembalikan **nol hasil**,
+itu sinyal elemennya salah — bukan sinyal datanya tidak ada.
+
+### 27.4 Kolom OutStanding — dan bukti bahwa ia bukan Aging
+
+Layar Pega menampilkan `1 year 5 months ago` untuk baris bertanggal `22/04/25 13:46`.
+
+Itu **bukan** keluaran `GETSELISIHJAM`, yang berbunyi "N days M hours ago". Dan ia juga bukan
+hitungan yang memotong akhir pekan — hal itu dapat dibuktikan dari angkanya sendiri:
+
+| Cara hitung | 22 Apr 2025 → 24 Sep 2026 | Bunyinya |
+|---|---|---|
+| Kalender | 520 hari = 1 tahun 5 bulan 2 hari | "1 year 5 months ago" ✅ cocok |
+| Potong akhir pekan | ±371 hari | "1 year 0 months ago" ❌ tidak cocok |
+
+Karena Pega menampilkan yang pertama, OutStanding adalah **waktu kalender apa adanya**. Ia
+karena itu diberi fungsi sendiri, `FormatElapsed`, bukan dititipkan ke perhitungan Aging.
+
+**Yang direkonstruksi, dan dinyatakan sebagai rekonstruksi.** Rule penyusunnya tidak ada di export
+— pencarian "months ago" di `RDB List/`, `Database/`, `Activity/`, dan `Section/` nol hasil. Section
+menaruhnya di `.pyNote`, properti tampungan. Hanya cabang **tahun** yang teramati langsung; cabang
+bulan, hari, jam, dan menit adalah rekonstruksi dari bentuk baku pemformat waktu relatif Pega, dan
+statusnya ditulis terbuka di komentar fungsinya.
+
+### 27.5 Satu kolom membawa jam, dan itu disengaja
+
+Pega menampilkan `22/04/25 13:46`. Kolom tanggal lain di modul ini tidak menampilkan jam.
+
+Karena `D-13` menetapkan tampilan ditiru, DTO modul ini kini punya DUA pemformat:
+`toDateString` (`YYYY-MM-DD`) dan `toDateTimeString` (`YYYY-MM-DD HH:MM`), yang kedua dipakai satu
+kolom saja. Layar menempelkan jamnya setelah memformat tanggalnya lewat fungsi bersama yang sama,
+sehingga bentuk tanggalnya tetap seragam.
+
+Zonanya WIB, dan di kolom ini akibatnya lebih besar daripada di kolom tanggal: yang bergeser bukan
+hanya tanggalnya melainkan jam yang benar-benar terbaca. Pukul 13.46 WIB adalah pukul 06.46 UTC.
+
+### 27.6 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build`, `go vet`, `go test ./...` | bersih |
+| `gofmt -l` pada berkas modul ini dan `cmd/` | bersih |
+| `npx tsc --noEmit` | bersih — satu galat `string \| undefined` pada hasil regex diperbaiki |
+| `npx vitest run` | **35 berkas, 560 uji, lulus** |
+
+Uji baru yang ditambahkan menahan ketiga koreksi di atas supaya tidak terbalik lagi: satu uji
+mematok `1 year 5 months ago` sebagai kasus yang teramati langsung dari Pega, satu uji
+membandingkan hitungan kalender dengan hitungan potong-akhir-pekan, dan satu uji mematok bahwa
+kolom "No Klaim" memang berisi kunci teknis — supaya tidak ada yang "memperbaikinya" tanpa
+keputusan.
+
+### 27.7 Yang masih terbuka
+
+Dua dari tiga pertanyaan §26.6 masih berlaku, dan satu tertutup:
+
+| Pertanyaan | Status |
+|---|---|
+| `CASEID` versus `NO_KLAIM` | ✅ **tertutup** oleh tangkapan layar Pega |
+| Apakah tabelnya berisi seluruh riwayat atau hanya yang belum ditindaklanjuti | **terbuka** |
+| Siapa yang mengisi tabelnya | **terbuka, dan kini mendesak** — tabelnya kosong, sehingga tanpa pengisi tab ini tidak akan pernah berisi |
+
+Ditambah satu yang baru: **bentuk OutStanding untuk rentang pendek** belum dapat diverifikasi.
+Satu-satunya baris berisi di Pega berumur 1,5 tahun.
+
+---
+
+## 28. Sesi keenam belas, koreksi kedua — disesuaikan ke aplikasi Pega (2026-09-24)
+
+Melanjutkan §27. Work Owner menjawab ketiga pertanyaan terbuka, dan dua di antaranya berbunyi
+sama: **"sesuaikan sama aplikasi PEGA aja"** dan **"coba di cek lagi"**. Keduanya diperlakukan
+sebagai perintah menyisir ulang export, bukan sebagai persetujuan atas yang sudah ada.
+
+### 28.1 Pemformat OutStanding ditemukan — ia bawaan Pega, bukan rule custom
+
+Penyisiran diteruskan ke dua direktori yang belum tersentuh, `HTML/` dan `Function/`. Nol hasil di
+keduanya. Yang menemukannya justru pembacaan ulang section:
+
+```
+Section/InputPostAuditDtl_Section-Section.xml:4036
+  <pyDateTimeFormat>DateTime-Frame</pyDateTimeFormat>
+```
+
+`DateTime-Frame` adalah format waktu relatif **bawaan platform Pega**. Itu menjelaskan kenapa
+pencarian teks "months ago" nol hasil di seluruh export: kodenya ada di platform, yang memang tidak
+ikut dalam export rule aplikasi.
+
+Dua hal lain ikut jelas karenanya:
+
+1. **OutStanding bukan properti tersendiri.** Ia properti yang SAMA dengan kolom Tanggal Kirim
+   Audit Compliance — itulah sebabnya `.TanggalKirimPostAudit` muncul dua kali di section — hanya
+   digambar dengan mode kontrol kedua.
+2. **Format yang sama dipakai belasan section Inbox lain**: `DashboardClaim_Section1`,
+   `InboxAnalystDoctor_Section`, `InboxManagerAdmin_Section`, `InboxOutstandingClaim_Section`, dan
+   seterusnya. Penulisan ulangnya di sini akan dipakai ulang modul-modul itu kelak.
+
+Dugaan awal bahwa OutStanding tersimpan di `.pyNote` **gugur**: `SetAssignmentCompliance` memang
+menulis `.pyNote`, tetapi isinya kunci assignment untuk tautan —
+`"ASSIGN-WORKBASKET " + param.inskey + "!Compliance_Flow"` — bukan teks waktu.
+
+### 28.2 Urutan barisnya TEKS, dan saya salah
+
+Ini temuan yang tidak dicari dan justru paling menentukan. Urutan baris di layar Pega:
+
+```
+CPL-3, CPL-2, CPL-19, CPL-17, CPL-16, CPL-15, CPL-1
+```
+
+Itu bukan urutan angka — `CPL-19` akan berada paling atas bila angkanya yang diurutkan. Diperiksa
+dengan mengurutkan ketujuh nilainya sebagai teks menurun: **cocok persis, ketujuh-tujuhnya**.
+
+Kueri saya mengurutkan `TGL_KIRIM_POST_AUDIT DESC` lebih dulu. Itu salah, dan penyebabnya sama
+seperti koreksi sebelumnya: saya memilih yang "paling masuk akal bagi antrean" alih-alih yang
+benar-benar dilakukan sistem lama. Kunci urutnya dibetulkan menjadi `CASEID DESC` sebagai kunci
+pertama.
+
+Yang dicatat di komentar kueri, karena ia akan terlihat seperti kesalahan bagi pembaca berikutnya:
+**mengurutkan angkanya justru yang menyimpang dari Pega.** Bentuk yang tampak lebih rapi adalah
+bentuk yang salah.
+
+### 28.3 Bentuk jamak diperbaiki dari satu contoh yang teramati
+
+`"1 year 5 months ago"` memuat tunggal dan jamak berdampingan dalam satu kalimat — "1 year", bukan
+"1 years". Dari situ dua hal diterapkan:
+
+- Pemformat memakai bentuk tunggal/jamak per satuan.
+- Sisa nol bulan tidak ditulis: satu tahun tepat berbunyi `"1 year ago"`, bukan
+  `"1 year 0 months ago"`.
+
+Versi pertama menulis `"%d year %d months ago"` apa adanya, sehingga dua tahun akan berbunyi
+`"2 year 0 months ago"` — salah pada kedua satuannya sekaligus.
+
+### 28.4 Hak akses — diperiksa, tidak ada yang perlu diubah
+
+Jawaban Work Owner: belum mengurus hak akses, pastikan pengguna JONNY bisa, dan jangan hardcode.
+Ketiganya diperiksa alih-alih diasumsikan:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Identitas di-hardcode di modul ini | **nol** — tidak ada `JONNY`, `adminpnc`, maupun Operator ID mana pun di kode non-uji |
+| Gerbang peran di modul ini | **tidak ada** — setiap pengguna yang sudah masuk dapat membukanya |
+| Apakah JONNY melihat menunya | **ya** — terbukti dari tangkapan layar Work Owner: butir "Inbox Compliance" tampil aktif di menu kiri |
+| Apakah isi antrean bergantung identitas | **tidak** — antreannya workbasket, isinya sama bagi setiap pengguna |
+
+Jadi tidak ada perubahan yang diperlukan. Yang tetap dicatat: ketiadaan gerbang peran adalah utang
+`TKT-F3-005`, dan di modul ini akibatnya lebih berat daripada di modul master — barisnya memuat
+nomor polis dan nama tertanggung klaim yang sedang diperiksa kepatuhannya.
+
+### 28.5 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build`, `go vet`, `go test ./...` | bersih |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` | **35 berkas, 560 uji, lulus** |
+
+Uji baru: satu mematok urutan ketujuh nomor case persis seperti di layar Pega — sehingga ia gagal
+begitu ada yang "merapikannya" menjadi urutan angka — dan satu lagi mematok keenam bentuk tunggal.
+
+### 28.6 Yang masih terbuka
+
+| # | Pertanyaan | Status |
+|---|---|---|
+| 1 | Siapa yang mengisi `T_CLAIM_COMPLIANCE_H` | **terbuka, mendesak** — tabelnya kosong, tab tidak akan pernah berisi tanpa pengisi |
+| 2 | Bunyi OutStanding untuk rentang pendek | **terbuka** — hanya cabang tahun yang teramati; sisanya mengikuti bentuk baku `DateTime-Frame` dan belum dapat dibandingkan |
+| 3 | Penyaring status | ✅ **tertutup** — isinya mengikuti aplikasi Pega, dan tabelnya purpose-built untuk tab ini |
+| 4 | `CASEID` versus `NO_KLAIM` | ✅ **tertutup** oleh tangkapan layar |
+
+---
+
+## 29. Sesi keenam belas, lanjutan — JONNY dapat mengisi Post Audit (2026-09-24)
+
+Melanjutkan §28. Work Owner menjawab dua pertanyaan terbuka: tabelnya diisi lewat aplikasi
+("biarkan JONNY bisa mengisi"), alurnya "seperti aplikasi PEGA saja", dan nomornya "CPL-100001 —
+meniru bentuk Pega".
+
+### 29.1 Yang dipelajari lebih dulu, dan yang ternyata tidak ada
+
+| Yang dicari | Hasil |
+|---|---|
+| `Compliance_Flow` — alur pembuat baris Post Audit | **TIDAK ADA di export**. Dirujuk `SetAssignmentCompliance-Act.xml:423` sebagai `"!Compliance_Flow"`, tetapi `Flow/` hanya memuat empat flow |
+| Activity pembuat Work-Compliance | tidak ditemukan; `CheckerSendEmailApproveReject` hanya menulis `CPLPostAuditValidDate` pada klaimnya |
+| Tombol aksi di `InputCompliance_Section` | **nol** — section itu murni pembungkus tab |
+| Sequence `CPL` di export atau DDL | **nol** |
+
+Jadi langkah persis alurnya **tidak dapat dipelajari**. Itu penting untuk dicatat: prinsip
+"dilarang membuat dummy logic jika proses bisnisnya dapat dipelajari" di sini tidak dapat dipenuhi
+sepenuhnya, karena artefaknya memang hilang.
+
+Yang DAPAT dibaca, dan menjadi dasar bentuknya: keenam kolom `T_CLAIM_COMPLIANCE_H` cocok satu per
+satu dengan data klaim yang sudah tampil di tab Compliance ditambah satu catatan dan satu tanggal
+kirim; catatan di layar Pega berbunyi "to compilance", kalimat bebas yang diketik; dan tanggalnya
+waktu pengiriman, bukan tanggal yang dipilih.
+
+### 29.2 Yang dibangun
+
+**Backend**
+
+| Berkas | Isi |
+|---|---|
+| `migrations/0011_post_audit_compliance.up/down.sql` | sequence `CPNC_POST_AUDIT_SEQ` mulai 100001 |
+| `postaudit.go` | `PostAuditInput`, `PostAuditEntry`, validasi |
+| `repo/sqlstore/number.go` | `BuildCaseID` — `CPL-` + angka |
+| `repo/sqlstore/inboxcompliance.sql` | `find_compliance_claim`, `post_audit_next_sequence`, `insert_post_audit` |
+| `usecase/send.go` | `SendToPostAudit` |
+| `http/*` | `POST /api/inbox-compliance/post-audit`, jembatan Caller, tiga kode galat baru |
+
+**Frontend**: tombol "Kirim ke Post Audit" per baris tab Compliance, form satu isian, penyegaran
+kedua daftar setelah berhasil.
+
+### 29.3 Empat keputusan yang diambil karena alurnya tidak terbaca
+
+Keempatnya memilih perilaku yang **paling sedikit mengarang**, dan keempatnya ditulis terbuka di
+kode:
+
+1. **Klaimnya dicari di ANTREAN, bukan di seluruh tabel klaim.** Pengiriman atas klaim yang tidak
+   sedang diperiksa ditolak — meniru Pega, yang menuntut assignment-nya ada.
+2. **Nama tertanggung dan nomor polis DISALIN dari klaimnya**, tidak diketik ulang. Mengetiknya
+   ulang membuka kemungkinan baris Post Audit menyebut nama yang berbeda dari klaim yang
+   dirujuknya, dan tabelnya tidak punya foreign key yang menolaknya.
+3. **Catatan BOLEH kosong.** Kolomnya nullable dan tidak ada bukti bahwa ia wajib; membuatnya wajib
+   berarti mengarang aturan yang menahan pekerjaan petugas.
+4. **Tidak ada status klaim yang diubah, tidak ada notifikasi yang dikirim.** Keduanya mungkin ada
+   di `Compliance_Flow`, dan menebaknya berarti mengarang perilaku yang akan terlihat sebagai
+   selisih di gerbang 1.
+
+### 29.4 Dua kekurangan yang disadari, bukan terlewat
+
+**Tidak ada kunci idempotensi.** `10-API-STRATEGY.md` §7 menuntutnya untuk aksi berakibat, dan di
+sini akibatnya nyata: menekan tombol dua kali menghasilkan dua baris, dan tabelnya tidak punya
+constraint unik yang menolaknya. Penahannya hari ini hanya tombol yang nonaktif selama permintaan
+berjalan — yang tidak berlaku bagi permintaan langsung.
+
+Menambahkan penyaring "sudah pernah dikirim" **tidak** dilakukan: di Pega satu klaim tampaknya
+dapat punya lebih dari satu pemeriksaan, dan `CPL-1` sampai `CPL-19` di layar Pega tidak memberi
+tahu apakah sebagiannya merujuk klaim yang sama.
+
+**Tabelnya tidak punya kolom pengirim.** Hanya kapan, tidak siapa. Identitas pemanggil karena itu
+hanya tercatat di LOG — dan log bukan jejak audit: ia berputar, dan retensinya bukan retensi audit.
+`D-28` menuntut pelakunya tercatat permanen, dan `D-59` menjadikan jejak audit satu-satunya kontrol
+pengimbang karena tidak ada pemisahan tugas. Kekurangan ini dicatat sebagai temuan: **tabelnya
+perlu kolom pengirim**, atau `S-5` harus ada sebelum jalur ini dipakai di produksi.
+
+### 29.5 Hasil pemeriksaan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build`, `go vet`, `go test ./...` | bersih |
+| `gofmt -l` | bersih |
+| `npx tsc --noEmit` | bersih |
+| `npx vitest run` | **35 berkas, 566 uji, lulus** |
+
+Uji baru menahan hal-hal yang mudah bergeser: nomor terbit berurutan mulai `CPL-100001`, klaim
+selesai dan klaim antrean lain DITOLAK, catatan kosong DITERIMA, catatan melebihi 4000 ditolak di
+aplikasi bukan oleh Oracle, dan form tetap terbuka saat pengiriman gagal supaya catatan yang sudah
+diketik tidak hilang.

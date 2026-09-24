@@ -79,6 +79,22 @@ type Config struct {
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
 	Portal map[string]Database
+
+	// BulkSelectExcludedBusinesses adalah kode lini bisnis yang TIDAK ikut terpilih oleh
+	// tombol "Pilih semua" pada layar Daftar Tipe Dokumen Bisnis.
+	//
+	// Di Pega kelimanya ditulis langsung di dalam rule
+	// (`Activity/SetAllBusiness-Act.xml:984`) sebagai syarat yang mengeluarkan baris dari
+	// perulangan — kelimanya lini MBU, yang aturan dokumennya tidak dikelola layar ini.
+	//
+	// `D-15` melarang nilai bisnis di dalam kode, sehingga daftarnya pindah ke sini:
+	// perilakunya sama persis dengan Pega, tetapi kelima kodenya dapat diubah tanpa
+	// menyentuh kode. Ia BELUM dapat diubah pengguna bisnis sendiri — masternya belum
+	// ada — dan itu keadaan yang sama dengan XOLCommitteeRecipients di atas.
+	//
+	// Ditulis sebagai daftar dipisah koma di BISNIS_DIKECUALIKAN_PILIH_SEMUA. Kosong
+	// berarti "Pilih semua" benar-benar memilih semuanya.
+	BulkSelectExcludedBusinesses []string
 }
 
 // Sesi memuat parameter masa hidup sesi milik aplikasi.
@@ -302,6 +318,14 @@ func Load() (Config, error) {
 		},
 		PrimaryPortal: primaryPortal,
 		Portal:        portal,
+
+		// Nilai bawaannya adalah kelima kode yang benar-benar ada di
+		// `Activity/SetAllBusiness-Act.xml:984`, sehingga tanpa konfigurasi apa pun
+		// perilakunya sudah sama dengan Pega. Mengosongkannya secara sengaja tetap
+		// mungkin — cukup setel variabelnya menjadi satu spasi.
+		BulkSelectExcludedBusinesses: splitAddress(
+			get("BISNIS_DIKECUALIKAN_PILIH_SEMUA", "10028,10164,10114,10084,10093"),
+		),
 	}
 
 	issues = append(issues, checkDependencies(k)...)

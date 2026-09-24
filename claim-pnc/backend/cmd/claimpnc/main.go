@@ -29,7 +29,10 @@ import (
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
 	"claim-pnc/internal/daftardetaildokumentravel"
+	"claim-pnc/internal/daftardetailtipedokumen"
+	"claim-pnc/internal/daftarobjekdokumen"
 	"claim-pnc/internal/daftartipedokumen"
+	"claim-pnc/internal/daftartipedokumenbisnis"
 	"claim-pnc/internal/mastercolsimasonline"
 	"claim-pnc/internal/masterdokumentravel"
 	"claim-pnc/internal/masterdominanfactor"
@@ -57,10 +60,22 @@ import (
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
 	daftardetaildokumentravelusecase "claim-pnc/internal/daftardetaildokumentravel/usecase"
+	daftardetailtipedokumenhttp "claim-pnc/internal/daftardetailtipedokumen/http"
+	daftardetailtipedokumenmemory "claim-pnc/internal/daftardetailtipedokumen/repo/memory"
+	daftardetailtipedokumensql "claim-pnc/internal/daftardetailtipedokumen/repo/sqlstore"
+	daftardetailtipedokumenusecase "claim-pnc/internal/daftardetailtipedokumen/usecase"
+	daftarobjekdokumenhttp "claim-pnc/internal/daftarobjekdokumen/http"
+	daftarobjekdokumenmemory "claim-pnc/internal/daftarobjekdokumen/repo/memory"
+	daftarobjekdokumensql "claim-pnc/internal/daftarobjekdokumen/repo/sqlstore"
+	daftarobjekdokumenusecase "claim-pnc/internal/daftarobjekdokumen/usecase"
 	daftartipedokumenhttp "claim-pnc/internal/daftartipedokumen/http"
 	daftartipedokumenmemory "claim-pnc/internal/daftartipedokumen/repo/memory"
 	daftartipedokumensql "claim-pnc/internal/daftartipedokumen/repo/sqlstore"
 	daftartipedokumenusecase "claim-pnc/internal/daftartipedokumen/usecase"
+	daftartipedokumenbisnishttp "claim-pnc/internal/daftartipedokumenbisnis/http"
+	daftartipedokumenbisnismemory "claim-pnc/internal/daftartipedokumenbisnis/repo/memory"
+	daftartipedokumenbisnissql "claim-pnc/internal/daftartipedokumenbisnis/repo/sqlstore"
+	daftartipedokumenbisnisusecase "claim-pnc/internal/daftartipedokumenbisnis/usecase"
 	mastercolhttp "claim-pnc/internal/mastercolsimasonline/http"
 	mastercolmemory "claim-pnc/internal/mastercolsimasonline/repo/memory"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -396,6 +411,22 @@ func run() error {
 		return err
 	}
 
+	// Daftar Objek Dokumen. Tabelnya ada di basis data SETIAP entitas, termasuk
+	// POOLDATA.BUSINESS yang hanya dibacanya.
+	//
+	// Tidak memakai Caller: tabelnya tidak punya kolom jejak simpan, sehingga tidak ada
+	// yang perlu diisi dengan identitas pemanggil. Menambahkannya "untuk berjaga-jaga"
+	// akan menyiratkan ada jejak yang sebenarnya tidak tersimpan di mana pun.
+	documentObjectHandler, err := daftarobjekdokumenhttp.NewHandler(daftarobjekdokumenhttp.Options{
+		Service:       assembly.daftarObjekDokumen,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError:    daftarobjekdokumenhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
 	// Daftar Detail Dokumen Travel. Seperti keempat modul di atas, seluruh tabelnya ada
 	// di basis data SETIAP entitas — termasuk POOLDATA.M_DOCTRAVEL dan
 	// POOLDATA.M_PLANTRAVEL yang hanya dibacanya sebagai daftar pilihan.
@@ -404,6 +435,61 @@ func run() error {
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError:    daftardetaildokumentravelhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Daftar Detail Tipe Dokumen (MENU_ID 41). Seluruh tabelnya ada di basis data SETIAP
+	// entitas — termasuk keempat master yang hanya dibacanya sebagai daftar pilihan.
+	//
+	// Ia MEMBUTUHKAN identitas pemanggil: activity lamanya mengisi USER_EDIT dari
+	// `OperatorID.pyUserIdentifier` sebelum halamannya diserialisasi
+	// (`Activity/CNMInsertDetailTypeDocument_act-Act.xml` langkah 1), sehingga
+	// meniadakannya akan mengosongkan kolom yang hari ini terisi. Jembatannya dipasang di
+	// sini, bukan di dalam salah satu modul, supaya keduanya tetap tidak saling
+	// mengimpor.
+	detailDocumentTypeHandler, err := daftardetailtipedokumenhttp.NewHandler(daftardetailtipedokumenhttp.Options{
+		Service: assembly.daftarDetailTipeDokumen,
+		Logger:  logger,
+		Caller: func(ctx context.Context) (daftardetailtipedokumenhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return daftardetailtipedokumenhttp.Caller{}, false
+			}
+			return daftardetailtipedokumenhttp.Caller{Identity: baseCtx.User.Identity}, true
+		},
+		WriteResponse: writeJSON,
+		WriteError:    daftardetailtipedokumenhttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Daftar Tipe Dokumen Bisnis. Seperti modul di atas, seluruh tabelnya ada di basis
+	// data SETIAP entitas — termasuk keempat master yang hanya dibacanya sebagai daftar
+	// pilihan.
+	//
+	// Berbeda dari modul di atas, ia MEMBUTUHKAN identitas pemanggil: procedure lamanya
+	// mengisi USER_EDIT dari `OperatorID.pyUserIdentifier`
+	// (`InsertDetailTypeDocumentBusiness_act:574`), sehingga meniadakannya akan
+	// mengosongkan kolom yang hari ini terisi. Jembatannya dipasang di sini, bukan di
+	// dalam salah satu modul, supaya keduanya tetap tidak saling mengimpor.
+	businessDocumentRuleHandler, err := daftartipedokumenbisnishttp.NewHandler(daftartipedokumenbisnishttp.Options{
+		Service: assembly.daftarTipeDokumenBisnis,
+		Logger:  logger,
+		Caller: func(ctx context.Context) (daftartipedokumenbisnishttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return daftartipedokumenbisnishttp.Caller{}, false
+			}
+			return daftartipedokumenbisnishttp.Caller{
+				Identity: baseCtx.User.Identity,
+				Position: baseCtx.User.Position,
+			}, true
+		},
+		WriteResponse: writeJSON,
+		WriteError:    daftartipedokumenbisnishttp.ErrorWriter(writePortalAwareError),
 	})
 	if err != nil {
 		return err
@@ -538,6 +624,10 @@ func run() error {
 				// Daftar Tipe Dokumen. Seluruh rutenya menyentuh basis data entitas,
 				// sehingga pemeriksaan portal dipasang atas semuanya.
 				daftartipedokumenhttp.Mount(protected, documentTypeHandler, activePortalDeps)
+				// Daftar Objek Dokumen. Seluruh rutenya menyentuh basis data entitas.
+				// Ia TIDAK mendaftarkan /master/bisnis — rute itu sudah dimiliki Master
+				// COL Simas Online di atas, dan layar modul ini memakainya bersama.
+				daftarobjekdokumenhttp.Mount(protected, documentObjectHandler, activePortalDeps)
 				// Daftar Detail Dokumen Travel. Ia juga memasang
 				// /master/dokumen-travel-pilihan dan /master/plan-travel — dua daftar
 				// acuan yang tabelnya dimiliki modul lain dan tim lain, dan hanya
@@ -546,6 +636,29 @@ func run() error {
 				// mendaftarkannya bersamaan, dan itu justru yang membuat kekeliruan itu
 				// mustahil lolos diam-diam.
 				daftardetaildokumentravelhttp.Mount(protected, travelDocumentDetailHandler, activePortalDeps)
+				// Daftar Detail Tipe Dokumen (MENU_ID 41). Keempat daftar acuannya
+				// dikirim lewat SATU rute di bawah sub-rutenya sendiri —
+				// /master/detail-tipe-dokumen/pilihan — bukan sebagai empat rute
+				// sejajar seperti modul di bawah.
+				//
+				// Bedanya bukan selera: yang dikembalikan bukan salah satu master
+				// melainkan GABUNGAN keempatnya dalam bentuk yang hanya berarti bagi
+				// form itu, sehingga ia tidak menyiratkan kepemilikan tabel mana pun.
+				// Form-nya pun cukup satu permintaan, bukan empat.
+				daftardetailtipedokumenhttp.Mount(protected, detailDocumentTypeHandler, activePortalDeps)
+				// Daftar Tipe Dokumen Bisnis. Ia juga memasang EMPAT daftar acuan —
+				// /master/bisnis-pilihan, /master/tipe-dokumen-pilihan,
+				// /master/detail-dokumen-pilihan, dan /master/objek-dokumen-pilihan —
+				// yang keempat tabelnya dimiliki modul lain dan tim lain, dan hanya
+				// dibacanya.
+				//
+				// Akhiran `-pilihan` membuat keempatnya tidak bertabrakan dengan jalur
+				// CRUD milik pemiliknya: /master/bisnis sudah dipakai Master COL Simas
+				// Online, /master/tipe-dokumen oleh Daftar Tipe Dokumen, dan
+				// /master/objek-dokumen oleh Daftar Objek Dokumen. Bila kelak salah
+				// satunya dipindahkan, chi akan panik saat start — dan itu justru yang
+				// membuat kekeliruan itu mustahil lolos diam-diam.
+				daftartipedokumenbisnishttp.Mount(protected, businessDocumentRuleHandler, activePortalDeps)
 				// Master Tipe Surveyors. Sama seperti di atas: pemeriksaan portal
 				// dipasang di dalam Mount, karena SELURUH rutenya menyentuh basis
 				// data entitas.
@@ -652,11 +765,35 @@ type assembly struct {
 	// dari kode situs milik basis data itu (`PEGA_LST_DOC_TYPE.prc:12`).
 	daftarTipeDokumen *daftartipedokumenusecase.Service
 
+	// daftarObjekDokumen memakai DUA pemilih per portal: satu untuk tabelnya sendiri,
+	// satu untuk POOLDATA.BUSINESS milik GISFW yang hanya dibacanya — bentuk yang sama
+	// persis dengan masterCOLSimasOnline di atas, karena grid "ID Bisnis" pada kedua layar
+	// membaca master yang sama.
+	daftarObjekDokumen *daftarobjekdokumenusecase.Service
+
 	// daftarDetailDokumenTravel memakai TIGA pemilih per portal: satu untuk kedua
 	// tabelnya sendiri, satu untuk POOLDATA.M_DOCTRAVEL milik modul Master Dokumen
 	// Travel, dan satu untuk POOLDATA.M_PLANTRAVEL milik GISFW. Ketiganya hidup di basis
 	// data entitas yang sama, tetapi mengisi seam yang berbeda.
 	daftarDetailDokumenTravel *daftardetaildokumentravelusecase.Service
+
+	// daftarDetailTipeDokumen memakai DUA pemilih per portal: satu untuk kedua tabelnya
+	// sendiri, dan satu untuk KEEMPAT master yang hanya dibacanya.
+	//
+	// Keempat master itu berada di satu seam, bukan empat seperti pada modul di bawah,
+	// karena keempatnya dibutuhkan bersamaan oleh SATU form dan gagal dengan cara yang
+	// sama — daftar pilihannya kosong sementara isiannya tetap dapat diketik sendiri.
+	// Memisahkannya akan menghasilkan empat selector yang selalu dipilih bersamaan dan
+	// empat jalur galat yang ditangani dengan cara yang persis sama.
+	daftarDetailTipeDokumen *daftardetailtipedokumenusecase.Service
+
+	// daftarTipeDokumenBisnis memakai LIMA pemilih per portal: satu untuk kedua tabelnya
+	// sendiri, dan empat untuk master yang hanya dibacanya — POOLDATA.BUSINESS milik
+	// GISFW, V_LST_DOC_TYPE milik modul Daftar Tipe Dokumen, V_LST_DET_TYPE_DOC milik
+	// MENU_ID 41 yang belum dibangun, dan V_LST_DOC_OBJ milik modul Daftar Objek Dokumen.
+	// Kelimanya hidup di basis data entitas yang sama, tetapi mengisi seam yang berbeda —
+	// dan pemisahannya itulah yang menegakkan `P-1` tanpa bergantung pada ingatan.
+	daftarTipeDokumenBisnis *daftartipedokumenbisnisusecase.Service
 
 	// masterTipeSurveyors juga per portal, dengan alasan yang sama: POOLDATA.M_SURVEYORS
 	// ada di basis data setiap entitas, dan golongan surveyor satu badan hukum tidak
@@ -764,6 +901,20 @@ type storage struct {
 	// dengan alasan yang sama seperti ketiga pemilih di atas.
 	documentTypeSelector daftartipedokumen.RepoSelector
 
+	// documentObjectSelector memilih penyimpanan daftar objek dokumen milik satu portal,
+	// dengan alasan yang sama seperti pemilih di atas.
+	documentObjectSelector daftarobjekdokumen.RepoSelector
+
+	// documentObjectBusinessSelector memilih pembaca POOLDATA.BUSINESS untuk modul Daftar
+	// Objek Dokumen.
+	//
+	// Terpisah dari businessSelector di bawah meski keduanya membaca tabel yang SAMA,
+	// karena keduanya mengisi seam milik modul yang berbeda. Menyatukannya akan membuat
+	// modul Daftar Objek Dokumen mengimpor tipe modul Master COL Simas Online — dan sejak
+	// itu, perubahan di salah satunya merambat ke yang lain tanpa alasan. Perlakuan yang
+	// sama sudah dipakai travelChoiceSelector terhadap travelDocumentSelector di atas.
+	documentObjectBusinessSelector daftarobjekdokumen.BusinessRepoSelector
+
 	// detailTravelSelector memilih penyimpanan detail dokumen travel milik satu portal,
 	// dengan alasan yang sama seperti keempat pemilih di atas.
 	detailTravelSelector daftardetaildokumentravel.RepoSelector
@@ -779,6 +930,27 @@ type storage struct {
 	// travelPlanSelector memilih pembaca POOLDATA.M_PLANTRAVEL milik GISFW yang HANYA
 	// DIBACA (`D-03`), sejajar dengan businessSelector di bawah.
 	travelPlanSelector daftardetaildokumentravel.PlanRepoSelector
+
+	// Kedua pemilih modul Daftar Detail Tipe Dokumen (MENU_ID 41).
+	//
+	// Yang kedua melayani KEEMPAT master rujukannya sekaligus, berbeda dari modul di
+	// bawah yang memisahkannya menjadi empat. Alasannya ada pada komentar
+	// `assembly.daftarDetailTipeDokumen`.
+	detailDocumentTypeSelector          daftardetailtipedokumen.RepoSelector
+	detailDocumentTypeReferenceSelector daftardetailtipedokumen.ReferenceRepoSelector
+
+	// Kelima pemilih modul Daftar Tipe Dokumen Bisnis.
+	//
+	// Keempat yang terakhir membaca tabel yang SAMA dengan pemilih modul lain di berkas
+	// ini — BUSINESS dibaca tiga modul, V_LST_DOC_OBJ dua modul — dan tetap dibiarkan
+	// terpisah, dengan alasan yang sama seperti travelChoiceSelector di atas: keduanya
+	// mengisi seam milik modul yang berbeda, dan menyatukannya akan membuat satu modul
+	// mengimpor tipe modul lain.
+	businessDocumentRuleSelector  daftartipedokumenbisnis.RepoSelector
+	businessDocumentRuleBusiness  daftartipedokumenbisnis.BusinessRepoSelector
+	businessDocumentRuleDocType   daftartipedokumenbisnis.DocumentTypeRepoSelector
+	businessDocumentRuleDetailDoc daftartipedokumenbisnis.DetailTypeDocRepoSelector
+	businessDocumentRuleObjectDoc daftartipedokumenbisnis.ObjectDocRepoSelector
 
 	// businessSelector memilih master bisnis milik satu portal.
 	//
@@ -895,10 +1067,54 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Daftar Objek Dokumen. Tidak memakai Clock: tabelnya tidak punya kolom jejak simpan
+	// (USER_EDIT / TGL_EDIT) — Report Definition-nya hanya memuat ID, KET_DOC_OBJ, dan
+	// OLD_ID — sehingga tidak ada waktu yang perlu dibaca.
+	documentObjectService, err := daftarobjekdokumenusecase.NewService(daftarobjekdokumenusecase.Options{
+		RepoSelector:     store.documentObjectSelector,
+		BusinessSelector: store.documentObjectBusinessSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	travelDocumentDetailService, err := daftardetaildokumentravelusecase.NewService(daftardetaildokumentravelusecase.Options{
 		RepoSelector:     store.detailTravelSelector,
 		DocumentSelector: store.travelChoiceSelector,
 		PlanSelector:     store.travelPlanSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Alasan yang sama seperti di bawah: jam sistem lewat seam Clock (`F-5`), supaya
+	// TGL_EDIT tidak mengikuti zona waktu server basis data (`R-12`).
+	detailDocumentTypeService, err := daftardetailtipedokumenusecase.NewService(daftardetailtipedokumenusecase.Options{
+		RepoSelector:      store.detailDocumentTypeSelector,
+		ReferenceSelector: store.detailDocumentTypeReferenceSelector,
+		Clock:             clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Jam sistem disuntikkan lewat seam Clock (`F-5`), bukan dipanggil di dalam repo dan
+	// bukan diambil dari jam basis data lewat SQL. Tanpa itu, EDIT_DATE mengikuti zona
+	// waktu server basis data (`R-12`) dan penyimpanan tidak dapat diuji deterministik.
+	businessDocumentRuleService, err := daftartipedokumenbisnisusecase.NewService(daftartipedokumenbisnisusecase.Options{
+		RepoSelector:          store.businessDocumentRuleSelector,
+		BusinessSelector:      store.businessDocumentRuleBusiness,
+		DocumentTypeSelector:  store.businessDocumentRuleDocType,
+		DetailTypeDocSelector: store.businessDocumentRuleDetailDoc,
+		ObjectDocSelector:     store.businessDocumentRuleObjectDoc,
+		Clock:                 clock.System{},
+		// Kelima kode lini MBU yang dilewati tombol "Pilih semua". Nilainya dari
+		// konfigurasi, bukan konstanta di dalam kode (`D-15`) — bawaannya sudah sama
+		// dengan `Activity/SetAllBusiness-Act.xml:984`.
+		BulkSelectExcludedBusinesses: cfg.BulkSelectExcludedBusinesses,
 	})
 	if err != nil {
 		store.close()
@@ -1036,7 +1252,10 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterDokumenTravel:       travelDocumentService,
 		masterCOLSimasOnline:      simasOnlineCauseOfLossService,
 		daftarTipeDokumen:         documentTypeService,
+		daftarObjekDokumen:        documentObjectService,
 		daftarDetailDokumenTravel: travelDocumentDetailService,
+		daftarDetailTipeDokumen:   detailDocumentTypeService,
+		daftarTipeDokumenBisnis:   businessDocumentRuleService,
 		masterTipeSurveyors:       surveyorTypeService,
 		masterSurveyors:           surveyorService,
 		masterPicTeknik:           picTeknikService,
@@ -1285,6 +1504,26 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return daftartipedokumensql.NewRepo(conn), nil
 		}
 
+		// Daftar Objek Dokumen memakai DUA pemilih di atas koneksi yang sama, sama seperti
+		// Master COL Simas Online: satu untuk tabelnya sendiri, satu untuk
+		// POOLDATA.BUSINESS yang hanya dibacanya. Keduanya lewat pool.For yang sama,
+		// sehingga daftar bisnis yang tampil pasti berasal dari entitas yang sedang
+		// dipilih pengguna — bukan dari entitas lain.
+		store.documentObjectSelector = func(alias string) (daftarobjekdokumen.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftarobjekdokumensql.NewRepo(conn), nil
+		}
+		store.documentObjectBusinessSelector = func(alias string) (daftarobjekdokumen.BusinessRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftarobjekdokumensql.NewBusinessRepo(conn), nil
+		}
+
 		// Daftar Detail Dokumen Travel memakai TIGA pemilih di atas koneksi yang sama:
 		// satu untuk kedua tabelnya sendiri, satu untuk M_DOCTRAVEL, satu untuk
 		// M_PLANTRAVEL. Ketiganya lewat pool.For yang sama, sehingga daftar pilihan yang
@@ -1310,6 +1549,63 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				return nil, err
 			}
 			return daftardetaildokumentravelsql.NewPlanRepo(conn), nil
+		}
+
+		// Daftar Detail Tipe Dokumen memakai DUA pemilih di atas koneksi yang sama.
+		// Keempat master rujukannya dilayani satu repo — bukan empat — karena keempatnya
+		// hidup di basis data entitas yang sama dan selalu dibaca bersamaan.
+		store.detailDocumentTypeSelector = func(alias string) (daftardetailtipedokumen.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftardetailtipedokumensql.NewRepo(conn), nil
+		}
+		store.detailDocumentTypeReferenceSelector = func(alias string) (daftardetailtipedokumen.ReferenceRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftardetailtipedokumensql.NewReferenceRepo(conn), nil
+		}
+
+		// Daftar Tipe Dokumen Bisnis memakai LIMA pemilih di atas koneksi yang sama, dengan
+		// alasan yang sama seperti ketiga pemilih di atas: seluruh daftar pilihan yang
+		// tampil pasti berasal dari entitas yang sedang dipilih pengguna (`R-20`).
+		store.businessDocumentRuleSelector = func(alias string) (daftartipedokumenbisnis.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumenbisnissql.NewRepo(conn), nil
+		}
+		store.businessDocumentRuleBusiness = func(alias string) (daftartipedokumenbisnis.BusinessRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumenbisnissql.NewBusinessRepo(conn), nil
+		}
+		store.businessDocumentRuleDocType = func(alias string) (daftartipedokumenbisnis.DocumentTypeRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumenbisnissql.NewDocumentTypeRepo(conn), nil
+		}
+		store.businessDocumentRuleDetailDoc = func(alias string) (daftartipedokumenbisnis.DetailTypeDocRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumenbisnissql.NewDetailTypeDocRepo(conn), nil
+		}
+		store.businessDocumentRuleObjectDoc = func(alias string) (daftartipedokumenbisnis.ObjectDocRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return daftartipedokumenbisnissql.NewObjectDocRepo(conn), nil
 		}
 
 		store.surveyorTypeSelector = func(alias string) (mastertipesurveyors.Repo, error) {
@@ -1395,12 +1691,44 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.businessSelector = businessSelectorMemory(cfg.PrimaryPortal, simasOnlineBusiness)
 		store.documentTypeSelector = documentTypeSelectorMemory(cfg.PrimaryPortal)
 
+		// Kedua pemilih Daftar Objek Dokumen dirakit bersamaan dengan alasan yang sama
+		// seperti pasangan COL di atas: objek dokumen dan bisnis hidup di basis data yang
+		// SAMA pada satu entitas.
+		//
+		// Master bisnisnya instans TERSENDIRI, bukan simasOnlineBusiness di atas, karena
+		// tipenya memang berbeda — setiap modul mendeklarasikan seam-nya sendiri. Isinya
+		// sengaja sama persis, sehingga kedua layar tetap menampilkan master yang sama.
+		documentObjectBusiness := daftarobjekdokumenmemory.NewBusinessRepo(daftarobjekdokumenmemory.SampleBusinessList()...)
+		store.documentObjectSelector = documentObjectSelectorMemory(cfg.PrimaryPortal)
+		store.documentObjectBusinessSelector = documentObjectBusinessSelectorMemory(cfg.PrimaryPortal, documentObjectBusiness)
+
 		// Ketiga pemilih Daftar Detail Dokumen Travel dirakit bersamaan, meniru
 		// kenyataannya: detail, master dokumen, dan master plan hidup di basis data yang
 		// SAMA pada satu entitas.
 		store.detailTravelSelector = detailTravelSelectorMemory(cfg.PrimaryPortal)
 		store.travelChoiceSelector = travelChoiceSelectorMemory(cfg.PrimaryPortal)
 		store.travelPlanSelector = travelPlanSelectorMemory(cfg.PrimaryPortal)
+
+		// Kedua pemilih Daftar Detail Tipe Dokumen. Pembaca masternya dirakit LEBIH DULU
+		// lalu disambungkan ke repo detailnya — tanpa itu, baris yang baru disimpan akan
+		// tampil tanpa nama tipe dokumen dan tanpa nama bisnis, karena di Oracle ketiga
+		// keterangan itu datang dari join view dan tidak tersimpan di barisnya.
+		detailDocumentTypeReference := daftardetailtipedokumenmemory.NewSampleReferenceRepo()
+		store.detailDocumentTypeSelector = detailDocumentTypeSelectorMemory(cfg.PrimaryPortal, detailDocumentTypeReference)
+		store.detailDocumentTypeReferenceSelector = detailDocumentTypeReferenceMemory(cfg.PrimaryPortal, detailDocumentTypeReference)
+
+		// Kelima pemilih Daftar Tipe Dokumen Bisnis, dirakit bersamaan dengan alasan yang
+		// sama: aturan dokumen beserta keempat masternya hidup di basis data yang SAMA
+		// pada satu entitas.
+		//
+		// Keempat master pilihan memakai instans TERSENDIRI meski dua di antaranya
+		// membaca tabel yang sama dengan modul lain di atas — tipenya memang berbeda,
+		// karena setiap modul mendeklarasikan seam-nya sendiri.
+		store.businessDocumentRuleSelector = businessDocumentRuleSelectorMemory(cfg.PrimaryPortal)
+		store.businessDocumentRuleBusiness = businessDocumentRuleBusinessMemory(cfg.PrimaryPortal)
+		store.businessDocumentRuleDocType = businessDocumentRuleDocTypeMemory(cfg.PrimaryPortal)
+		store.businessDocumentRuleDetailDoc = businessDocumentRuleDetailDocMemory(cfg.PrimaryPortal)
+		store.businessDocumentRuleObjectDoc = businessDocumentRuleObjectDocMemory(cfg.PrimaryPortal)
 
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
@@ -1587,6 +1915,53 @@ func documentTypeSelectorMemory(primaryAlias string) daftartipedokumen.RepoSelec
 	}
 }
 
+// documentObjectSelectorMemory menyusun penyimpanan Daftar Objek Dokumen di memori.
+//
+// Bentuknya sama persis dengan documentTypeSelectorMemory di atas, dan kesamaannya
+// disengaja: hanya portal UTAMA yang dilayani, dan alias lain DITOLAK — bukan diam-diam
+// dialihkan ke portal utama. Menjalankan tanpa basis data tidak boleh mengubah aturan
+// pemisahan entitas, karena justru di lingkungan itulah pelanggarannya paling mudah lolos
+// (`R-20`).
+func documentObjectSelectorMemory(primaryAlias string) daftarobjekdokumen.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]daftarobjekdokumen.Repo{}
+
+	return func(alias string) (daftarobjekdokumen.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := daftarobjekdokumenmemory.NewRepo(daftarobjekdokumenmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// documentObjectBusinessSelectorMemory melayani master bisnis milik modul Daftar Objek
+// Dokumen di memori.
+//
+// Master yang sama dipakai untuk setiap portal yang dilayani — dan karena hanya portal utama
+// yang dilayani tanpa basis data, tidak ada dua entitas yang berbagi satu master di sini.
+// Penolakan portal lain tetap sama seperti di produksi.
+func documentObjectBusinessSelectorMemory(
+	primaryAlias string,
+	business *daftarobjekdokumenmemory.BusinessRepo,
+) daftarobjekdokumen.BusinessRepoSelector {
+	return func(alias string) (daftarobjekdokumen.BusinessRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return business, nil
+	}
+}
+
 // surveyorSelectorMemory menyusun penyimpanan Master Surveyors di memori.
 //
 // Bentuknya sama persis dengan surveyorTypeSelectorMemory, dan kesamaannya disengaja:
@@ -1613,12 +1988,151 @@ func surveyorSelectorMemory(primaryAlias string) mastersurveyors.RepoSelector {
 	}
 }
 
+// businessDocumentRuleSelectorMemory menyusun penyimpanan aturan dokumen bisnis di
+// memori.
+//
+// Bentuknya sama persis dengan pemilih memori modul lain, dan kesamaannya disengaja:
+// seluruhnya melayani modul yang datanya hidup per entitas, sehingga seluruhnya WAJIB
+// menolak portal selain portal utama alih-alih diam-diam melayaninya dari satu tempat
+// (`R-20`).
+func businessDocumentRuleSelectorMemory(primaryAlias string) daftartipedokumenbisnis.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]daftartipedokumenbisnis.Repo{}
+
+	return func(alias string) (daftartipedokumenbisnis.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := daftartipedokumenbisnismemory.NewRepo(daftartipedokumenbisnismemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// businessDocumentRuleBusinessMemory menyusun pembaca master lini bisnis di memori.
+func businessDocumentRuleBusinessMemory(primaryAlias string) daftartipedokumenbisnis.BusinessRepoSelector {
+	shared := daftartipedokumenbisnismemory.NewBusinessRepo(daftartipedokumenbisnismemory.SampleBusinessList()...)
+
+	return func(alias string) (daftartipedokumenbisnis.BusinessRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
+// Ketiga pemilih daftar pilihan di bawah sengaja ditulis terpisah meski isinya nyaris
+// sama.
+//
+// Menyatukannya menuntut satu fungsi yang mengembalikan tiga tipe antarmuka berbeda, dan
+// itu hanya mungkin dengan generik atau dengan menukar tipe kembaliannya menjadi tipe
+// beton — yang pertama menambah satu konsep demi menghemat enam baris, yang kedua
+// melemahkan seam-nya. Ketiganya dibiarkan apa adanya.
+
+// businessDocumentRuleDocTypeMemory menyusun pembaca master tahap dokumen di memori.
+func businessDocumentRuleDocTypeMemory(primaryAlias string) daftartipedokumenbisnis.DocumentTypeRepoSelector {
+	shared := daftartipedokumenbisnismemory.NewReferenceRepo(daftartipedokumenbisnismemory.SampleDocumentTypeList()...)
+
+	return func(alias string) (daftartipedokumenbisnis.DocumentTypeRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
+// businessDocumentRuleDetailDocMemory menyusun pembaca master rincian dokumen di memori.
+func businessDocumentRuleDetailDocMemory(primaryAlias string) daftartipedokumenbisnis.DetailTypeDocRepoSelector {
+	shared := daftartipedokumenbisnismemory.NewReferenceRepo(daftartipedokumenbisnismemory.SampleDetailTypeDocList()...)
+
+	return func(alias string) (daftartipedokumenbisnis.DetailTypeDocRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
+// businessDocumentRuleObjectDocMemory menyusun pembaca master objek dokumen di memori.
+func businessDocumentRuleObjectDocMemory(primaryAlias string) daftartipedokumenbisnis.ObjectDocRepoSelector {
+	shared := daftartipedokumenbisnismemory.NewReferenceRepo(daftartipedokumenbisnismemory.SampleObjectDocList()...)
+
+	return func(alias string) (daftartipedokumenbisnis.ObjectDocRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return shared, nil
+	}
+}
+
 // detailTravelSelectorMemory menyusun penyimpanan detail dokumen travel di memori.
 //
 // Bentuknya sengaja sama persis dengan documentTypeSelectorMemory di atas, termasuk
 // alasannya: satu portal mendapat satu penyimpanan yang dibuat saat pertama diminta lalu
 // dipakai kembali, dan portal selain portal utama ditolak dengan galat yang sama seperti
 // di produksi — sehingga perilaku penolakannya ikut teruji saat pengembangan.
+// detailDocumentTypeSelectorMemory menyiapkan penyimpanan Daftar Detail Tipe Dokumen di
+// memori untuk portal utama saja.
+//
+// Pembaca masternya diterima sebagai argumen, bukan dibuat di dalam, supaya repo yang
+// dikembalikan membaca DAFTAR YANG SAMA dengan yang dilayani rute `/pilihan`. Bila
+// keduanya dibuat terpisah, layar akan menampilkan keterangan yang tidak pernah cocok
+// dengan pilihan yang ditawarkannya sendiri — kelas kebingungan yang tidak ada di Oracle,
+// tempat keduanya memang satu basis data.
+func detailDocumentTypeSelectorMemory(
+	primaryAlias string,
+	reference *daftardetailtipedokumenmemory.ReferenceRepo,
+) daftardetailtipedokumen.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]daftardetailtipedokumen.Repo{}
+
+	return func(alias string) (daftardetailtipedokumen.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := daftardetailtipedokumenmemory.NewRepo(daftardetailtipedokumenmemory.SampleList()...)
+		fresh.UseReferences(reference)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// detailDocumentTypeReferenceMemory melayani keempat master rujukan di memori.
+//
+// Satu instans dibagi seluruh permintaan portal utama — bukan satu per permintaan —
+// karena isinya memang data acuan yang sama, dan karena repo detailnya sudah memegang
+// instans yang sama ini lewat UseReferences.
+func detailDocumentTypeReferenceMemory(
+	primaryAlias string,
+	reference *daftardetailtipedokumenmemory.ReferenceRepo,
+) daftardetailtipedokumen.ReferenceRepoSelector {
+	return func(alias string) (daftardetailtipedokumen.ReferenceRepo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+		return reference, nil
+	}
+}
+
 func detailTravelSelectorMemory(primaryAlias string) daftardetaildokumentravel.RepoSelector {
 	var lock sync.Mutex
 	store := map[string]daftardetaildokumentravel.Repo{}

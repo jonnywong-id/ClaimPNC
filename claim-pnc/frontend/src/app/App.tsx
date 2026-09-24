@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { HomePage } from '@/modules/home/HomePage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
+import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
 import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
 import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
 import { PanelPage } from '@/modules/master-panel/PanelPage'
@@ -20,6 +21,9 @@ import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 // dalam tiap modul tetap sesuai layarnya sendiri.
 import { CauseOfLossPage as SimasOnlineCauseOfLossPage } from '@/modules/master-col-simas-online/CauseOfLossPage'
 import { DocumentTypePage } from '@/modules/daftar-tipe-dokumen/DocumentTypePage'
+import { BusinessDocumentRulePage } from '@/modules/daftar-tipe-dokumen-bisnis/BusinessDocumentRulePage'
+import { DetailDocumentTypePage } from '@/modules/daftar-detail-tipe-dokumen/DetailDocumentTypePage'
+import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjectPage'
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
@@ -271,6 +275,42 @@ export function AppRoute() {
         }
       />
       {/*
+        Daftar Detail Tipe Dokumen (MENU_ID 41). JANGAN tertukar dengan dua tetangganya:
+        /master/tipe-dokumen di atas (MENU_ID 40) adalah INDUKNYA, dan
+        /master/tipe-dokumen-bisnis di bawah (MENU_ID 42) adalah tabel yang BERBEDA —
+        ia justru merujuk ID baris layar ini lewat DOC_TYPE_DT_ID.
+      */}
+      <Route
+        path="/master/detail-tipe-dokumen"
+        element={
+          <SessionGuard>
+            <Protected>
+              <DetailDocumentTypePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/tipe-dokumen-bisnis"
+        element={
+          <SessionGuard>
+            <Protected>
+              <BusinessDocumentRulePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/objek-dokumen"
+        element={
+          <SessionGuard>
+            <Protected>
+              <DocumentObjectPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Tiga layar berikut RUTENYA PERNAH ADA lalu hilang pada penggabungan cabang
         sebelumnya — `/pelaporan-klaim` dan `/riwayat-klaim` ada di commit efa135e,
         sementara modulnya ikut terbawa. Akibatnya ketiganya menjadi layar yang lengkap
@@ -289,6 +329,23 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxAdminPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Compliance — MENU_ID 47, di bawah kelompok INBOX.
+
+        Berbeda dari ketiga rute di atas, butir menunya SUDAH ada di
+        POOLDATA.M_MENU_APLIKASI_PNC, sehingga layar ini dapat dicapai dari menu kiri
+        begitu pemetaannya terdaftar di app/menu/registry.ts.
+      */}
+      <Route
+        path="/inbox-compliance"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxCompliancePage />
             </Protected>
           </SessionGuard>
         }

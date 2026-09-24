@@ -809,6 +809,360 @@ export type TravelDocumentDetailCoverageInput = {
   nama_jaminan: string
 }
 
+/**
+ * Satu rincian dokumen klaim — baris V_LST_DET_TYPE_DOC.
+ *
+ * Layar "Daftar Detail Tipe Dokumen" (MENU_ID 41), pengganti
+ * `Harness/ListDetTypeDocument-Harness.xml`.
+ *
+ * JANGAN tertukar dengan dua saudaranya:
+ *
+ *   MENU_ID 40  `DocumentType`              induk — hanya ID dan nama tipe dokumen
+ *   MENU_ID 41  `DetailDocumentType`        ini   — rinciannya
+ *   MENU_ID 42  `BusinessDocumentRule`      aturan per lini bisnis, TABEL BERBEDA
+ *
+ * Yang ketiga bernama mirip tetapi tabelnya sama sekali berbeda
+ * (`LST_TYPE_DOC_BUSINESS`), dan ia justru MEMBACA `id` di sini lewat `DOC_TYPE_DT_ID`.
+ *
+ * Nama fieldnya mengikuti label isian di layar Pega
+ * (`Section/BrowseListDetailTypeDocument-Section.xml`), supaya satu istilah berlaku dari
+ * layar sampai ke kontrak.
+ */
+export type DetailDocumentType = {
+  /** Kunci baris. Diterbitkan server; tidak pernah diisi pengguna. */
+  id: string
+  /** Kolom DOC_TYPE_ID — label layar "ID Tipe Dokumen". Rujukan ke master MENU_ID 40. */
+  id_tipe_dokumen: string
+  /**
+   * Kolom TYPE_DOCUMENT — nama tipe dokumen menurut masternya.
+   *
+   * HANYA DIBACA: ia datang dari join view, bukan dari baris ini. KOSONG berarti
+   * rujukannya sudah tidak ada di master — dan barisnya tetap dikirim, bukan
+   * disembunyikan, supaya petugas dapat memperbaikinya.
+   */
+  nama_tipe_dokumen: string
+  /** Kolom DETAIL_DOCUMENT — label layar "Detail Dokumen". Nama yang dibaca petugas. */
+  detail_dokumen: string
+  /**
+   * Kolom STS_INSURED — label layar "Status Tertanggung".
+   *
+   * TEKS BEBAS, bukan penanda. Di form Pega ia isian biasa tanpa satu pun daftar pilihan
+   * — sama seperti STS_PROSES pada master MENU_ID 40, yang namanya juga menyiratkan
+   * status padahal bukan.
+   */
+  status_tertanggung: string
+  /**
+   * Kolom DOC_COL_ID — kode penyebab kerugian, rujukan ke Master Penyebab Kerugian.
+   *
+   * Ia TARGET TERSEMBUNYI, bukan isian yang dilihat petugas: di layar Pega ia hanya diisi
+   * autocomplete saat sebuah pilihan dipilih (`pyPropertyTarget`). KOSONG bila
+   * keterangannya diketik bebas.
+   */
+  id_penyebab_kerugian: string
+  /**
+   * Kolom DOC_COL_INFO — label layar **"Dokumen kolom ID"**.
+   *
+   * **TERSIMPAN, bukan hasil join.** Inilah isian yang benar-benar dilihat dan diketik
+   * petugas. Karena `pyAllowFreeFormInput=true`, keterangan di luar master tetap sah — dan
+   * pada keadaan itu `id_penyebab_kerugian` kosong.
+   */
+  keterangan_penyebab_kerugian: string
+  /**
+   * Kolom OBJ_DOC — kode objek dokumen, rujukan ke master MENU_ID 43.
+   *
+   * Target tersembunyi, sama seperti `id_penyebab_kerugian`.
+   */
+  id_objek_dokumen: string
+  /**
+   * Kolom OBJ_DOC_DESC — label layar **"Objek Dokumen"**.
+   *
+   * **TERSIMPAN**, dengan alasan yang sama seperti keterangan di atas.
+   */
+  keterangan_objek_dokumen: string
+  /**
+   * Kolom RISK — label layar "Resiko".
+   *
+   * TEKS, bukan angka, karena itulah bentuk kolomnya dan karena baris warisan dapat
+   * memuat isi yang bukan angka. Isinya dibaca sebagai bilangan oleh
+   * `Activity/SetTypePDFAdjustment-Act.xml` (`@toDecimal(.RISK)<=0`), dan kosong di sana
+   * berarti nol.
+   */
+  resiko: string
+  /**
+   * Aturan per lini bisnis — baris V_LST_DET_TYPE_DOC_BISNIS.
+   *
+   * SELALU kosong pada hasil daftar; hanya terisi pada pengambilan satu baris. Layar
+   * karena itu WAJIB memuat ulang barisnya saat dibuka untuk disunting — memakai baris
+   * dari daftar akan membuat form tampak seolah seluruh lini bisnisnya sudah dihapus, dan
+   * menyimpannya benar-benar menghapusnya.
+   */
+  bisnis: DetailDocumentTypeBusiness[]
+}
+
+/** Aturan dokumen pada satu lini bisnis. */
+export type DetailDocumentTypeBusiness = {
+  /** Kolom DFT_BISNIS_ID — label layar "ID Bisnis". */
+  id_bisnis: string
+  /** NOTE pada POOLDATA.BUSINESS. HANYA DIBACA; kosong bila bisnisnya sudah tidak ada. */
+  nama_bisnis: string
+  /**
+   * Kolom STS_WAJIB — label layar "Status Wajib".
+   *
+   * Boolean di kontrak; yang tersimpan TEKS "Ya"/"Tidak" (keputusan Work Owner
+   * 2026-09-23). Data lama bercampur — kolomnya memuat "Ya", "Tidak", "1", dan "0" —
+   * dan server yang menjembataninya.
+   */
+  status_wajib: boolean
+  /** Kolom MIN_DOC — label layar "Minimum Dokumen". Nol berarti tanpa tuntutan jumlah. */
+  minimum_dokumen: number
+}
+
+export type DetailDocumentTypeListResponse = {
+  detail_tipe_dokumen: DetailDocumentType[]
+  /** Datang dari server, bukan dihitung dari panjang senarai. */
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type DetailDocumentTypeResponse = {
+  detail_tipe_dokumen: DetailDocumentType
+  portal: string
+}
+
+/**
+ * Keempat daftar pilihan form Daftar Detail Tipe Dokumen.
+ *
+ * Dikirim dalam SATU respons meski berasal dari empat master, karena form selalu
+ * membutuhkan keempatnya bersamaan.
+ */
+export type DetailDocumentTypeReferenceResponse = {
+  tipe_dokumen: DetailDocumentTypeChoice[]
+  penyebab_kerugian: DetailDocumentTypeChoice[]
+  objek_dokumen: DetailDocumentTypeChoice[]
+  bisnis: DetailDocumentTypeChoice[]
+  /**
+   * Master mana yang gagal dibaca. Kosong berarti keempatnya terbaca.
+   *
+   * Ia ada supaya layar dapat membedakan "masternya kosong" dari "masternya tidak dapat
+   * dibaca" — dua keadaan yang tampak sama persis (daftar pilihan kosong) tetapi menuntut
+   * kalimat yang berbeda kepada petugas.
+   */
+  tidak_tersedia: string[]
+  portal: string
+}
+
+/** Satu pilihan pada isian berdaftar milik layar Daftar Detail Tipe Dokumen. */
+export type DetailDocumentTypeChoice = {
+  id: string
+  nama: string
+}
+
+/** Badan permintaan penambahan dan penyuntingan detail tipe dokumen. */
+export type DetailDocumentTypeInput = {
+  id_tipe_dokumen: string
+  detail_dokumen: string
+  status_tertanggung: string
+  /**
+   * Kode DAN keterangan dikirim BERPASANGAN.
+   *
+   * Keterangannya yang diketik petugas; kodenya diisi layar saat keterangan itu cocok
+   * dengan salah satu pilihan master. Keterangan di luar master tetap dikirim dengan kode
+   * kosong — persis `pyAllowFreeFormInput=true` di layar lama. Mengirim kodenya saja akan
+   * membuang isian yang sah.
+   */
+  id_penyebab_kerugian: string
+  keterangan_penyebab_kerugian: string
+  id_objek_dokumen: string
+  keterangan_objek_dokumen: string
+  resiko: string
+  /**
+   * Susunan AKHIR yang dikehendaki petugas — server menggantikan seluruh daftar lamanya,
+   * bukan menambahinya.
+   */
+  bisnis: DetailDocumentTypeBusinessInput[]
+}
+
+/**
+ * Satu baris grid bisnis yang dikirim layar.
+ *
+ * Tanpa nama bisnis: namanya milik master dan dibaca lewat join, tidak disimpan di baris
+ * ini. Mengirimkannya hanya akan menyimpan salinan yang dapat menyimpang dari masternya.
+ */
+export type DetailDocumentTypeBusinessInput = {
+  id_bisnis: string
+  status_wajib: boolean
+  minimum_dokumen: number
+}
+
+/* ── Daftar Tipe Dokumen Bisnis — MENU_ID 42 ──────────────────────────────────
+ *
+ * Satu baris menjawab: DOKUMEN APA yang harus diunggah, untuk LINI BISNIS mana, pada
+ * TAHAP KLAIM mana. Tabelnya POOLDATA.LST_TYPE_DOC_BUSINESS, dan pembacanya bukan layar
+ * ini melainkan enam layar unggah dokumen di sepanjang perjalanan klaim.
+ *
+ * Layarnya BERTINGKAT DUA, dan itu tercermin di dua tipe jawaban yang berbeda: daftar
+ * bisnis lebih dulu, lalu aturan dokumen milik bisnis yang dipilih.
+ */
+
+/** Satu lini bisnis — POOLDATA.BUSINESS (ID, NOTE). */
+export type BusinessChoice = {
+  id: string
+  nama_bisnis: string
+  /**
+   * Bisnis yang DILEWATI tombol "Pilih semua" — kelimanya lini MBU.
+   *
+   * Di Pega kodenya ditulis di dalam rule (`SetAllBusiness-Act.xml:984`); di sini
+   * daftarnya datang dari konfigurasi. Bisnis bertanda ini **tetap dapat dipilih satu
+   * per satu**: pengecualiannya hanya berlaku pada pemilihan massal.
+   */
+  dikecualikan_pilih_semua: boolean
+}
+
+export type BusinessChoiceListResponse = {
+  bisnis: BusinessChoice[]
+  total: number
+  portal: string
+  /**
+   * Apakah tombol "Pilih semua" ditampilkan — meniru `pyVisible` layar lama, yang
+   * menuntut `OperatorID.pyPosition='NONMBU'`.
+   *
+   * Ia penyembunyian TAMPILAN, bukan kewenangan: bisnis yang sama tetap dapat dipilih
+   * satu per satu oleh siapa pun yang membuka layarnya.
+   */
+  boleh_pilih_semua: boolean
+}
+
+/** Satu aturan kelengkapan dokumen. */
+export type BusinessDocumentRule = {
+  /** LST_TYPE_DOC_BUSINESS.ID — diterbitkan penyimpanan, tidak pernah diisi pengguna. */
+  id: string
+
+  /**
+   * BUSINESSID. TIDAK dapat diubah setelah baris dibuat — procedure lama pun tidak
+   * mengubahnya. Aturan dokumen disalin ke lini bisnis lain, bukan dipindahkan.
+   */
+  id_bisnis: string
+  /** BUSINESS.NOTE hasil join; tidak pernah dikirim saat menyimpan. */
+  nama_bisnis: string
+
+  /** DOCUMENT_TYPE_ID → V_LST_DOC_TYPE. */
+  id_tipe_dokumen: string
+  /**
+   * V_LST_DOC_TYPE.TYPE_DOCUMENT hasil join — TAHAP klaim tempat dokumen ini diminta.
+   *
+   * Enam nilainya: REGISTER, SURVEY, COMMITEE (salah ketik ada di datanya), PAYMENT,
+   * SALVAGE, COLLECTING DOCUMENT.
+   */
+  tipe_dokumen: string
+
+  /** OBJECT_DOC_ID → V_LST_DOC_OBJ. Boleh kosong. */
+  id_object_dokumen: string
+  /** V_LST_DOC_OBJ.KET_DOC_OBJ hasil join. */
+  object_dokumen: string
+
+  /** DOC_TYPE_DT_ID → V_LST_DET_TYPE_DOC. */
+  id_detail_dokumen: string
+  /**
+   * DETAIL_DOKUMEN — nama dokumen yang dibaca petugas di layar unggah.
+   *
+   * Nilai tepat "-" MENYEMBUNYIKAN baris ini dari SELURUH layar unggah: keenam kueri
+   * pembacanya menyaring `AND DETAIL_DOKUMEN != '-'`. Barisnya tetap ada dan tetap
+   * tampil di layar master ini.
+   */
+  detail_dokumen: string
+
+  /**
+   * STS_WAJIB.
+   *
+   * WAJIB DI SINI BELUM TENTU WAJIB DI KLAIM. Baris ber-`status_wajib` true yang daftar
+   * `jenis_klaim`-nya KOSONG tidak pernah menjadi wajib pada klaim mana pun — kueri
+   * klaim menghitung jaminannya lebih dulu, dan nol jaminan berarti "Tidak".
+   */
+  status_wajib: boolean
+
+  /** MIN_DOC — berkas paling sedikit yang harus diunggah. */
+  minimum_dokumen: number
+
+  /**
+   * Jaminan yang membuat baris ini benar-benar wajib — COVERAGE_DOC_BUSINESS.COVERAGEID.
+   *
+   * Hanya terisi pada pengambilan SATU baris; pada daftar ia selalu kosong. Ia
+   * DITAMBAHKAN, tidak pernah diganti maupun dibuang — tidak ada satu pun jalur hapus
+   * terhadap tabel itu di seluruh sistem lama.
+   */
+  jenis_klaim: string[]
+}
+
+export type BusinessDocumentRuleListResponse = {
+  tipe_dokumen_bisnis: BusinessDocumentRule[]
+  total: number
+  portal: string
+}
+
+export type BusinessDocumentRuleResponse = {
+  tipe_dokumen_bisnis: BusinessDocumentRule
+  portal: string
+}
+
+/**
+ * Jawaban penambahan, yang menghasilkan BANYAK baris sekaligus.
+ *
+ * Bentuknya berbeda dari `BusinessDocumentRuleResponse` karena penambahan di layar ini
+ * memang perkalian bisnis kali baris dokumen.
+ */
+export type BusinessDocumentRuleCreateResponse = {
+  tipe_dokumen_bisnis: BusinessDocumentRule[]
+  total: number
+  portal: string
+}
+
+/** Satu baris aturan yang dikirim layar. */
+export type BusinessDocumentRuleInput = {
+  id_tipe_dokumen: string
+  id_object_dokumen: string
+  id_detail_dokumen: string
+  detail_dokumen: string
+  status_wajib: boolean
+  minimum_dokumen: number
+}
+
+/**
+ * Badan permintaan penambahan: beberapa bisnis dikali beberapa baris dokumen.
+ *
+ * Bentuk jamak-kali-jamak ini bukan kenyamanan yang ditambahkan, melainkan perilaku layar
+ * lama — aturan kelengkapan dokumen berulang nyaris sama di banyak lini bisnis.
+ */
+export type BusinessDocumentRuleBatchInput = {
+  bisnis: string[]
+  dokumen: BusinessDocumentRuleInput[]
+}
+
+/** Badan permintaan penambahan satu jaminan. */
+export type BusinessDocumentRuleCoverageInput = {
+  id_jenis_klaim: string
+}
+
+/** Satu pilihan pada isian yang merujuk master lain. */
+export type MasterChoice = {
+  id: string
+  nama: string
+  /**
+   * Hanya terisi pada daftar Detail Dokumen, dan di sana ia id tahap dokumen pemiliknya.
+   *
+   * Layar memakainya untuk menyempitkan pilihan Detail Dokumen mengikuti Tipe Dokumen
+   * yang sudah dipilih pada baris yang sama — persis parameter `idDocument` pada
+   * autocomplete `BrowseVLstDetTypeDoc_RD`.
+   */
+  id_induk: string
+}
+
+export type MasterChoiceListResponse = {
+  pilihan: MasterChoice[]
+  total: number
+  portal: string
+}
+
 /** Satu pilihan pada isian ID Dokumen, dibaca dari POOLDATA.M_DOCTRAVEL. */
 export type TravelDocumentChoice = {
   id: string
@@ -972,6 +1326,21 @@ export const ErrorCode = {
    * menetapkan layar itu meniru Pega apa adanya tanpa validasi.
    */
   documentTypeNotFound: 'tipe_dokumen_tidak_ditemukan',
+
+  /**
+   * Milik modul Daftar Tipe Dokumen Bisnis.
+   *
+   * HANYA DUA, dan itu cerminan layar lamanya:
+   * `businessDocumentRuleBusinessRequired` meniru satu-satunya validasi yang benar-benar
+   * ada di sana (`InsertDetailTypeDocumentBusiness_act:209`), beserta kalimatnya.
+   *
+   * Dua kode lain sempat ada — baris dokumen kosong dan jenis klaim kosong — lalu dicabut
+   * pada 2026-09-23. Keduanya penambahan saya sendiri; di Pega kedua keadaan itu DILEWATI
+   * diam-diam, bukan ditolak, dan Work Owner menetapkan layar ini mengikuti Pega apa
+   * adanya.
+   */
+  businessDocumentRuleNotFound: 'tipe_dokumen_bisnis_tidak_ditemukan',
+  businessDocumentRuleBusinessRequired: 'nama_bisnis_belum_diisi',
 
   // Milik modul Master Dominan Factor.
   //
@@ -1254,6 +1623,74 @@ export type BusinessListResponse = {
   bisnis: Business[]
   /** Entitas yang benar-benar menjawab permintaan ini. */
   portal: string
+}
+
+/**
+ * Satu baris Daftar Objek Dokumen (MENU_ID 43).
+ *
+ * Objek Dokumen menyatakan sebuah dokumen melekat pada APA — objek pertanggungan mana, atau
+ * pihak mana. Ia data acuan yang dirujuk master lain lewat
+ * `LST_TYPE_DOC_BUSINESS.OBJECT_DOC_ID`, sehingga `id`-nya tidak pernah berubah.
+ *
+ * JANGAN tertukar dengan `DocumentType` (MENU_ID 40, "Daftar Tipe Dokumen"), yang menyatakan
+ * dokumen itu JENISNYA apa. Keduanya dirujuk bersamaan oleh master yang sama, dan di layar
+ * Pega pun keduanya berdampingan.
+ */
+export type DocumentObject = {
+  /** Kolom ID. Diterbitkan server, tidak pernah berubah. */
+  id: string
+  /**
+   * Kolom KET_DOC_OBJ.
+   *
+   * Namanya mengikuti LABEL layar — "Daftar Objek Dokumen" — bukan nama kolomnya. Kata
+   * "Daftar" di depan label itu milik LAYARNYA; nilai satu barisnya adalah satu objek
+   * dokumen.
+   */
+  objek_dokumen: string
+  /**
+   * Kolom OLD_ID: penomoran sebelum sistem ini dibangun.
+   *
+   * Dikirim server, tetapi TIDAK ditampilkan di layar — grid Pega hanya memuat dua kolom.
+   * Ketiadaannya di layar dijaga uji, supaya menampilkannya kembali menjadi keputusan dan
+   * bukan perbaikan yang menyelinap.
+   */
+  id_lama: string
+  /**
+   * Bisnis yang memakai objek dokumen ini.
+   *
+   * Pada jawaban DAFTAR ia selalu kosong — grid hanya menampilkan dua kolom, sehingga
+   * server tidak menariknya untuk seluruh baris. Layar memuatnya lewat permintaan satu
+   * baris saat baris itu dibuka untuk disunting.
+   */
+  bisnis: Business[]
+}
+
+export type DocumentObjectListResponse = {
+  objek_dokumen: DocumentObject[]
+  total: number
+  /** Entitas yang benar-benar menjawab permintaan ini. */
+  portal: string
+}
+
+export type DocumentObjectResponse = {
+  objek_dokumen: DocumentObject
+  portal: string
+}
+
+/**
+ * Badan permintaan penambahan dan penyuntingan Daftar Objek Dokumen.
+ *
+ * `bisnis` berisi NAMA bisnis, bukan ID-nya — sama seperti Master COL Simas Online, dan
+ * dengan alasan yang sama: itulah yang diketik dan dilihat petugas, dan nama yang diketik
+ * bebas memang tidak punya ID. Server yang menyelesaikannya menjadi ID dengan mencocokkan
+ * ke master; nama yang tidak cocok tetap diterima dan disimpan tanpa ID.
+ *
+ * `id` dan `id_lama` sengaja tidak ada: yang pertama diterbitkan server atau diambil dari
+ * jalur URL, yang kedua jejak sejarah yang bukan isian.
+ */
+export type DocumentObjectInput = {
+  objek_dokumen: string
+  bisnis: string[]
 }
 
 /** Bekal awal layar: nomor batch perkiraan dan pilihan tahun, dalam satu permintaan. */

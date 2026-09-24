@@ -63,6 +63,7 @@ func TestExtraModulesMounted(t *testing.T) {
 	// modulnya lepas dari perakitan, jalur inilah yang pertama hilang.
 	for _, want := range []string{
 		"GET /inbox-admin",
+		"GET /inbox-compliance",
 		"GET /master/auto-claim",
 		"GET /master/bengkel",
 		"GET /master/panel",

@@ -14,6 +14,7 @@ import (
 	"claim-pnc/internal/auth"
 	"claim-pnc/internal/auth/provider"
 	"claim-pnc/internal/auth/repo/sqlstore"
+	"claim-pnc/internal/inboxcompliance"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/masterdominanfactor"
@@ -29,8 +30,12 @@ import (
 	"claim-pnc/internal/portal"
 
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
+	daftardetailtipedokumensql "claim-pnc/internal/daftardetailtipedokumen/repo/sqlstore"
+	daftarobjekdokumensql "claim-pnc/internal/daftarobjekdokumen/repo/sqlstore"
 	daftartipedokumensql "claim-pnc/internal/daftartipedokumen/repo/sqlstore"
+	daftartipedokumenbisnissql "claim-pnc/internal/daftartipedokumenbisnis/repo/sqlstore"
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -109,6 +114,9 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkXOL(ctx, masterxolsql.NewRepo(primary), print)
 	checkSurveyors(ctx, mastersurveyorssql.NewRepo(primary), print)
 	checkDocumentType(ctx, daftartipedokumensql.NewRepo(primary), print)
+	checkDocumentObject(ctx, daftarobjekdokumensql.NewRepo(primary), daftarobjekdokumensql.NewBusinessRepo(primary), print)
+	checkBusinessDocumentRule(ctx, daftartipedokumenbisnissql.NewRepo(primary), print)
+	checkDetailDocumentType(ctx, daftardetailtipedokumensql.NewRepo(primary), daftardetailtipedokumensql.NewReferenceRepo(primary), print)
 	checkAssembledModules(ctx, primary, print)
 
 	print("")
@@ -827,6 +835,167 @@ func checkDocumentType(ctx context.Context, repo *daftartipedokumensql.Repo, pri
 	print("  [ok]    POOLDATA.LST_DOC_TYPE dapat dibaca: %d tipe dokumen", len(list))
 }
 
+// checkDocumentObject melaporkan kesiapan Daftar Objek Dokumen.
+//
+// # Kenapa laporannya lebih rinci daripada modul master lain
+//
+// Karena dua dari tiga objek yang dipakainya adalah DUGAAN. Jalur simpan layar lama —
+// `CNMInsertLstDocObj_act` dan `SetsLstDocObjValue_act` — hilang dari export (`R-16`), dan
+// tidak ada `PEGA_LST_DOC_OBJ.prc` di `Database/`. Nama tabel dasar dan nama tabel pemetaan
+// bisnisnya karena itu diturunkan dari pola tabel bersaudaranya, bukan dibaca.
+//
+// Laporan ini adalah tempat dugaan itu dibuktikan benar atau salah — sebelum pengguna
+// pertama menekan Simpan, bukan sesudahnya. Karena itu ketiga objeknya diperiksa SATU PER
+// SATU: mengetahui MANA yang gagal adalah seluruh gunanya.
+// checkDetailDocumentType melaporkan kesiapan Daftar Detail Tipe Dokumen (MENU_ID 41).
+//
+// Diperiksa TIGA langkah, bukan satu, karena ketiganya gagal dengan sebab yang berbeda dan
+// menuntut tindakan yang berbeda pula:
+//
+//	baca     kedua view ada dan dapat dibaca        -> layarnya dapat menampilkan data
+//	tulis    kolom tabel dasarnya sesuai dugaan     -> layarnya dapat MENYIMPAN
+//	rujukan  keempat master dapat dibaca            -> daftar pilihannya terisi
+//
+// Langkah kedua yang paling penting, dan ia satu-satunya yang membuktikan dugaan nama
+// kolom pada migrasi 0009 LANGKAH 0 Q1 benar. Tanpa pemisahan ini, layar yang dapat
+// menampilkan data tetapi gagal menyimpan akan terbaca [ok] sampai pengguna pertama
+// menekan Simpan.
+func checkDetailDocumentType(
+	ctx context.Context,
+	repo *daftardetailtipedokumensql.Repo,
+	reference *daftardetailtipedokumensql.ReferenceRepo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Daftar Detail Tipe Dokumen belum siap: %v", err)
+		print("            Dua kemungkinan, dan galat di atas membedakannya:")
+		print("            - ORA-00942 pada LST_DET_TYPE_DOC_BISNIS: tabel anaknya BELUM")
+		print("              ADA. Daftar lini bisnis masih hidup di dalam JSON_DATA")
+		print("              induknya. Keputusan Work Owner 2026-09-23 menetapkan modul")
+		print("              ini tidak lagi menyentuh JSON, sehingga tabelnya harus")
+		print("              dibuat — migrations/0009 LANGKAH 1.")
+		print("            - galat hak akses: mintakan GRANT untuk akun aplikasi,")
+		print("              migrations/0009 LANGKAH 2.")
+		print("            Selama belum selesai, layarnya tidak dapat dipakai terhadap")
+		print("            Oracle; bagian lain tetap jalan.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.V_LST_DET_TYPE_DOC tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.V_LST_DET_TYPE_DOC dapat dibaca: %d detail tipe dokumen", len(list))
+
+	// Jalur TULIS diperiksa terpisah, dan kegagalannya BUKAN sekadar catatan: nama kolom
+	// tabel dasarnya diturunkan dari nama kolom view-nya, bukan dibaca dari procedure —
+	// procedure lama hanya menyebut (ID, JSON_DATA). Bila tabelnya ternyata masih
+	// berbentuk itu, kueri ini gagal dengan ORA-00904.
+	if err := repo.CheckWriteTable(ctx); err != nil {
+		print("  [GAGAL] tabel dasar Daftar Detail Tipe Dokumen tidak dapat ditulis: %v", err)
+		print("            DAFTARNYA tetap dapat dimuat. Yang terblokir adalah MEMBUKA")
+		print("            SATU BARIS dan MENYIMPAN — keduanya menyentuh tabel anaknya.")
+		print("")
+		print("            Sebabnya sudah diverifikasi ke katalog Oracle 2026-09-23:")
+		print("            POOLDATA.LST_DET_TYPE_DOC sudah lengkap kolomnya, tetapi")
+		print("            POOLDATA.LST_DET_TYPE_DOC_BISNIS BELUM ADA — daftar bisnis")
+		print("            masih hidup di dalam JSON_DATA induknya, dan view anaknya")
+		print("            adalah JSON_TABLE atas kolom itu.")
+		print("")
+		print("            Yang harus diminta ke DBA ada di migrations/0009 LANGKAH 1:")
+		print("            membuat tabel anaknya, memindahkan isi JSON yang sudah ada,")
+		print("            lalu mendefinisikan ulang V_LST_DET_TYPE_DOC_BISNIS agar")
+		print("            membacanya. Sampai itu selesai, layarnya BACA-SAJA.")
+	}
+
+	// Keempat master rujukan diperiksa terakhir, dan kegagalannya hanya CATATAN: keempat
+	// kodenya boleh diketik sendiri — layar lama pun memakai autocomplete yang menerima
+	// ketikan di luar daftar — sehingga yang hilang hanya kenyamanan memilih.
+	if err := reference.CheckTable(ctx); err != nil {
+		print("  [catat] master rujukan Daftar Detail Tipe Dokumen tidak dapat dibaca: %v", err)
+		print("            Layar tetap dapat dipakai; yang hilang hanya SARAN pada isian")
+		print("            Tipe Dokumen, Dokumen kolom ID, Objek Dokumen, dan ID Bisnis.")
+	}
+}
+
+func checkDocumentObject(
+	ctx context.Context,
+	repo *daftarobjekdokumensql.Repo,
+	business *daftarobjekdokumensql.BusinessRepo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Daftar Objek Dokumen belum siap: %v", err)
+		print("            Objeknya disiapkan migrasi 0008_daftar_objek_dokumen, yang ditulis")
+		print("            sebagai DAFTAR PERTANYAAN untuk DBA — bukan DDL yang tinggal")
+		print("            dijalankan. Bagian 0-nya menanyakan tiga nama yang masih dugaan:")
+		print("            POOLDATA.LST_DOC_OBJ, POOLDATA.SET_LST_DOC_OBJ, dan")
+		print("            POOLDATA.LST_DOC_OBJ_BUSINESS. Selama belum dijawab, layarnya")
+		print("            tidak dapat dipakai terhadap Oracle.")
+		return
+	}
+
+	list, err := repo.List(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.V_LST_DOC_OBJ tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.V_LST_DOC_OBJ dapat dibaca: %d objek dokumen", len(list))
+
+	// Master bisnis diperiksa terpisah: ia milik GISFW (`D-03`) dan hak bacanya diminta
+	// sendiri ke DBA. Kegagalannya TIDAK membuat layar tidak dapat dipakai — nama bisnis
+	// boleh diketik sendiri — sehingga ia dilaporkan sebagai catatan, bukan sebagai gagal.
+	if err := business.CheckTable(ctx); err != nil {
+		print("  [catat] POOLDATA.BUSINESS tidak dapat dibaca: %v", err)
+		print("            Layar tetap dapat dipakai; yang hilang hanya SARAN nama bisnis,")
+		print("            karena namanya memang boleh diketik sendiri.")
+	}
+}
+
+// checkBusinessDocumentRule melaporkan kesiapan modul Daftar Tipe Dokumen Bisnis.
+//
+// # Kenapa keempat master rujukannya TIDAK ikut diperiksa di sini
+//
+// Keempatnya sudah diperiksa modul PEMILIKNYA masing-masing: POOLDATA.BUSINESS dan
+// V_LST_DOC_OBJ oleh Daftar Objek Dokumen, V_LST_DOC_TYPE oleh Daftar Tipe Dokumen, dan
+// V_LST_DET_TYPE_DOC oleh Daftar Detail Tipe Dokumen. Memeriksanya lagi di sini hanya
+// menggandakan baris laporan tanpa menambah keterangan — dan bila salah satunya gagal,
+// pembacanya akan melihat kegagalan yang sama dilaporkan dua kali dari dua modul berbeda.
+//
+// Kegagalan keempatnya pun TIDAK membuat layar ini tidak dapat dipakai: yang hilang hanya
+// SARAN pada isian, karena keempat isian rujukannya boleh diketik sendiri — persis seperti
+// autocomplete ber-`pyAllowFreeFormInput=true` di Pega.
+func checkBusinessDocumentRule(
+	ctx context.Context,
+	repo *daftartipedokumenbisnissql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Daftar Tipe Dokumen Bisnis belum siap: %v", err)
+		print("            Kedua tabelnya SUDAH ADA di sistem lama — modul ini tidak menuntut")
+		print("            perubahan bentuk apa pun. Yang dituntut migrasi")
+		print("            0010_daftar_tipe_dokumen_bisnis hanyalah HAK AKSES, ditambah enam")
+		print("            pertanyaan ke DBA. Kegagalan di sini karena itu hampir selalu")
+		print("            berarti grant-nya belum diberikan, bukan objeknya belum dibuat.")
+		return
+	}
+
+	list, err := repo.ListBusinesses(ctx)
+	if err != nil {
+		print("  [GAGAL] POOLDATA.LST_TYPE_DOC_BUSINESS tidak dapat dibaca isinya: %v", err)
+		return
+	}
+	print("  [ok]    POOLDATA.LST_TYPE_DOC_BUSINESS dapat dibaca: %d lini bisnis beraturan dokumen", len(list))
+
+	// Yang TIDAK dibuktikan mode ini, dan perlu dinyatakan supaya laporannya tidak terbaca
+	// sebagai "siap": jalur TULIS. Ia bergantung pada urutan LST_TYPE_DOC_BUSINESS_SEQ dan
+	// pada keunikan kolom ID — keduanya pertanyaan yang masih terbuka di migrasi 0010
+	// Bagian 1, dan memeriksanya dari sini berarti MENGHABISKAN satu nomor urut.
+	print("            Yang terbukti hanya jalur BACA. Jalur simpan menunggu jawaban DBA")
+	print("            atas migrasi 0010 Bagian 1 — terutama apakah kolom ID benar-benar unik.")
+}
+
 // checkAssembledModules melaporkan kesiapan sepuluh modul yang perakitannya dipulihkan di
 // modules.go.
 //
@@ -847,6 +1016,13 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	rejection := masterpenolakansql.NewRepo(primary)
 	supplier := mastersuppliersql.NewRepo(primary)
 	claimReport := pelaporanklaimsql.NewRepo(primary)
+	inboxCompliance := inboxcompliancesql.NewRepo(primary)
+
+	// Tab Compliance dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
+	// memakai tab yang BENAR-BENAR terdaftar. Tab yang tidak ditemukan membuat kueri
+	// daftarnya dilewati — bukan memanggil repo dengan tab kosong yang pasti gagal dan
+	// terbaca seperti tabel yang tidak dapat dibaca.
+	complianceTab, complianceTabKnown := inboxcompliance.FindTab(inboxcompliance.TabCompliance)
 
 	// `list` menjalankan kueri DAFTAR yang sesungguhnya, bukan sekadar menyentuh tabelnya.
 	//
@@ -860,6 +1036,31 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 		list  func(context.Context) (int, error)
 	}{
 		{"Inbox Admin", inboxadminsql.NewRepo(primary).CheckTable, nil},
+
+		// Kueri daftarnya ikut dijalankan, bukan hanya tabelnya disentuh, dan di modul ini
+		// pembedaan itu paling berharga: `list_compliance` menyentuh dua kolom yang
+		// keberadaannya DISIMPULKAN, bukan dibuktikan dari DDL yang belum ada (`R-08`) —
+		// `PC_ASM_FW_GCNMFW_WORK.PYORIGUSERID` dan
+		// `T_CLAIM_PNC.COMPLIANCE_CREATEDATE`. Bila salah satunya ternyata bernama lain,
+		// perintah `-periksa` yang menemukannya saat start, bukan petugas Compliance yang
+		// menemukannya saat membuka layar.
+		{"Inbox Compliance", inboxCompliance.CheckTable, func(ctx context.Context) (int, error) {
+			if !complianceTabKnown {
+				return 0, fmt.Errorf(
+					"tab %q tidak terdaftar di inboxcompliance.Tabs()",
+					inboxcompliance.TabCompliance)
+			}
+
+			page, err := inboxCompliance.List(
+				ctx,
+				inboxcompliance.Query{
+					Tab:        complianceTab,
+					Workbasket: inboxcompliance.WorkbasketCompliance,
+				},
+				inboxcompliance.Pagination{Page: 1, Size: 1},
+			)
+			return page.Total, err
+		}},
 		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {
 			row, err := autoClaim.List(ctx, masterautoclaim.Filter{})
 			return len(row), err
