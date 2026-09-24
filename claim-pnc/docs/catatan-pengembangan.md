@@ -3047,3 +3047,278 @@ dengan ketetapan 2026-09-22, sehingga **tidak diambil sepihak**.
 
 Untuk pertama kalinya, kuerinya **dijalankan terhadap basis data sungguhan** dan pencacah serta
 daftar terbukti menyebut angka yang sama.
+
+---
+
+## 20. Sesi ketiga belas — "Buat Baru" gagal dengan pesan yang tidak menjelaskan apa pun (2026-09-23)
+
+### 20.1 Keluhan
+
+Daftar laporan sudah tampil benar — pencacah Outstanding 93, Unregistered 120, Not transferred
+101, Accepted 13, All data 361, dengan penanda `Cabang 100081`. Tetapi menekan **Buat Baru**
+memunculkan spanduk merah:
+
+> **Laporan baru tidak dapat dibuat**
+> Terjadi kesalahan pada sistem.
+
+Work Owner menyatakan seharusnya ia lanjut ke alur `InputReceiveDocument` seperti di Pega.
+
+### 20.2 Sebabnya ditemukan pemeriksa bawaan, bukan dengan menebak
+
+`PENYIMPANAN=oracle ./claimpnc.exe -periksa` menjawabnya langsung:
+
+```
+[BELUM] CPNC_PENGGUNA tidak dapat dibaca: ORA-00942: table or view does not exist
+[BELUM] CPNC_SESI_AKTIF tidak dapat dibaca: ORA-00942: table or view does not exist
+          Migrasi backend/migrations/0001 tampaknya belum dijalankan DBA.
+[BELUM] Inbox Laporan Klaim belum siap:
+        POOLDATA.CPNC_LAPORAN_KLAIM tidak dapat dibaca: ORA-00942
+```
+
+**Tabel tempat modul ini menulis belum dibuat.** Migrasi `0003_claim_report_inbox` dan
+`0004_claim_report_detail` belum dijalankan DBA pada basis data portal ASM.
+
+Kenapa daftarnya tetap tampil sementara tombolnya gagal: keduanya menyentuh tabel yang berbeda.
+Daftar membaca tabel **warisan Pega** (`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, `T_CLAIMLIST_ADMIN`)
+yang memang sudah ada; pembuatan menulis ke tabel **milik aplikasi ini**
+(`POOLDATA.CPNC_LAPORAN_KLAIM`) yang belum ada.
+
+Terbukti ulang terhadap Oracle sungguhan lewat instans uji di porta 8099 — bahkan `/api/masuk`
+gagal dengan sebab yang sama:
+
+```
+"jalur":"/api/masuk","galat":"usecase: memuat pengguna: sqlstore: membaca pengguna:
+ ORA-00942: table or view does not exist\n error occur at position: 240"
+```
+
+### 20.3 Yang diperbaiki bukan penyebabnya — itu bukan kewenangan saya
+
+Membuat tabelnya sendiri akan melanggar `D-63`: perubahan skema **diminta tertulis, disetujui
+Work Owner, dijalankan DBA**, lalu diuji dengan menjalankan Pega dan Go bersamaan. Selama masa
+paralel ada tabel yang dibaca 116 rule Pega yang sedang melayani produksi; satu `ALTER` yang
+keliru menghentikannya.
+
+**Yang cacat dan memang milik saya adalah pesannya.** Aplikasi sudah tahu persis apa yang kurang
+— pemeriksa bawaannya menyebutkannya dalam satu baris — tetapi layar justru berkata "Terjadi
+kesalahan pada sistem". Kalimat itu mengirim orang mencari cacat di aplikasi, dan pencarian itu
+tidak akan menemukan apa pun.
+
+### 20.4 Pengetahuan driver ditaruh di `platform/db`, bukan di modul
+
+`internal/platform/db/missing.go` — `IsMissingObject(err)` mengenali tiga kode Oracle:
+
+| Kode | Arti |
+|---|---|
+| `ORA-00942` | tabel atau view tidak ada |
+| `ORA-02289` | sequence tidak ada |
+| `ORA-04043` | procedure atau function tidak ada |
+
+`ORA-02289` sengaja ikut: migrasi dapat gagal separuh jalan — tabelnya terbentuk, sequence-nya
+tidak — dan keadaan separuh itu tanpa kode ini jatuh kembali ke galat umum.
+
+Dua hal yang disengaja:
+
+1. **Rumahnya di `platform/db`.** Modul bisnis tidak boleh mengenali driver
+   (`03-FUTURE-ARCHITECTURE.md` §2), dan paket itu sudah memegang pilihan driver, sehingga
+   pertukaran go-ora ↔ godror tetap menyentuh satu paket saja.
+2. **Dicocokkan sebagai kode, bukan sebagai tipe galat.** Mencocokkan tipe menuntut impor paket
+   internal driver — justru mengikat aplikasi pada driver yang `08-TECHNICAL-STRATEGY.md` §1
+   sebut akan ditukar. Kode `ORA-nnnnn` adalah kontrak Oracle sendiri: sama pada driver mana pun.
+   Yang dicocokkan **kodenya**, bukan kalimat pesannya — pesan dapat berganti bahasa mengikuti
+   NLS, kode tidak.
+
+### 20.5 Hanya tabel MILIK SENDIRI yang diterjemahkan
+
+`ownTable()` di adapter membungkus galat menjadi `ErrStorageNotReady`, dan ia dipasang **hanya**
+pada jalur yang menyentuh `POOLDATA.CPNC_LAPORAN_KLAIM`: `Insert` (sequence dan penyisipan),
+`Update`, dan `Get` pada cabang berkas sendiri.
+
+Jalur yang membaca tabel warisan dibiarkan apa adanya. Bedanya penting: tabel Pega yang hilang
+berarti **basis datanya salah portal atau hak akses akun aplikasi kurang** — perbaikan yang sama
+sekali berbeda dari menjalankan migrasi. Menyarankan migrasi di sana akan menyuruh DBA
+menjalankan yang sudah jalan, lalu sebab yang sebenarnya dicari paling akhir.
+
+### 20.6 Pesan yang menyebut langkah perbaikannya
+
+`CodePenyimpananBelumSiap = "penyimpanan_belum_siap"` → **503**, bukan 500:
+
+> Laporan baru belum dapat dibuat karena tabel penyimpanannya belum ada di basis data portal ini.
+> Minta DBA menjalankan migrasi 0003_claim_report_inbox dan 0004_claim_report_detail (tabel
+> POOLDATA.CPNC_LAPORAN_KLAIM). Daftar laporan tetap dapat dibuka.
+
+**503, bukan 500**, karena aplikasinya sehat — yang belum siap basis datanya, dan keadaan itu
+berakhir begitu migrasi dijalankan. 500 menyatakan cacat pemrograman dan menyuruh orang mencari
+di tempat yang salah.
+
+Menyebut nama tabel dan berkas migrasi **bukan** pelanggaran `11-CROSSCUTTING.md` §1.2 aturan 5.
+Larangan itu menyangkut struktur data dan jejak tumpukan yang berguna bagi penyerang; di sini
+yang disebut adalah **langkah pemasangan**, dan justru petugas yang membaca layar inilah yang
+meneruskannya ke DBA.
+
+Kalimat terakhir — "Daftar laporan tetap dapat dibuka" — disengaja: tanpa itu, petugas akan
+mengira seluruh layar mati.
+
+### 20.7 Nada pesan diturunkan dari galatnya, bukan dipatok di layar
+
+`ErrorMessage` punya dua nada dengan arti tegas: `penolakan` berarti ada yang dapat pengguna
+perbaiki, `gangguan` berarti sistemnya bermasalah dan mengulang tidak menolong. Spanduk "Buat
+Baru" memaku `tone="penolakan"`.
+
+Satu tombol dapat gagal karena keduanya — isian yang belum benar (422) atau tabel yang belum
+dibuat (503) — sehingga nada yang dipatok pasti salah untuk salah satunya. `toneOf()` kini
+menurunkannya dari status galat.
+
+Arah yang paling merugikan: kegagalan pemasangan yang tampil sebagai penolakan membuat petugas
+mengubah-ubah isiannya berkali-kali, padahal tidak ada isian yang salah.
+
+### 20.8 Kesalahan lama yang TIDAK terulang
+
+Pada sesi sebelumnya saya mematikan server yang sedang dipakai Work Owner, dan itu memutus
+login mereka. Kali ini instans uji dijalankan di **porta 8099** dengan `APP_ALAMAT`, dan yang
+dihentikan hanya PID milik instans itu. Server di porta 8080 (PID 123444) terbukti masih menyala
+sesudah seluruh pekerjaan selesai.
+
+### 20.9 Hasil verifikasi
+
+`go vet ./internal/...` bersih · `go test ./internal/...` seluruhnya lulus · `typecheck` bersih ·
+`npm run build` bersih · `npm test` **112 lulus**, 3 gagal — ketiganya kegagalan lama di
+`master-rekening`, modul yang tidak tersentuh perubahan ini (`git diff --stat` atasnya kosong).
+
+Tes baru:
+
+| Berkas | Yang dijaga |
+|---|---|
+| `platform/db/missing_test.go` | tiga kode dikenali · galat yang dibungkus tetap dikenali · **kegagalan lain tidak ikut terbaca** |
+| `sqlstore/storage_test.go` | teks galat **nyata dari Oracle produksi** berubah menjadi `ErrStorageNotReady`, dan kode ORA-nya tetap terbawa ke log |
+| `http/errors_test.go` | 503 + pesan menyebut migrasi · **ketiga keadaan yang menutup layar berkode berbeda** |
+
+Sisi negatif sengaja diuji lebih tegas daripada sisi positifnya: salah mengenali akan menyuruh
+DBA menjalankan migrasi yang sudah jalan.
+
+### 20.10 Yang masih harus dikerjakan pihak lain
+
+| Yang kurang | Pemilik |
+|---|---|
+| Migrasi `0001` (`CPNC_PENGGUNA`, `CPNC_SESI_AKTIF`) — **login pun bergantung padanya** | DBA |
+| Migrasi `0003` dan `0004` (`POOLDATA.CPNC_LAPORAN_KLAIM`) | DBA |
+| Keduanya dijalankan **per basis data portal** (`ADR-0030`), bukan sekali untuk semua | DBA |
+
+Sampai itu dijalankan, daftar laporan tetap dapat dibuka dan dibaca; yang tertahan hanyalah
+pembuatan dan penyimpanan.
+
+---
+
+## 21. Sesi ketiga belas, lanjutan — tabel tujuan dipindahkan ke tabel bisnis Pega (2026-09-23)
+
+### 21.1 Satu pertanyaan yang membatalkan rancangan
+
+Setelah §20 menjelaskan bahwa `POOLDATA.CPNC_LAPORAN_KLAIM` belum dibuat, Work Owner
+bertanya: **tabel itu buatan siapa, dan kenapa harus memakainya padahal di Pega tidak
+ada?**
+
+Pertanyaan itu membuka kelalaian sesi-sesi sebelumnya. Yang pernah ditelusuri hanyalah
+**di mana Pega menyimpan kepala berkas** (tabel engine `PC_ASM_FW_GCNMFW_WORK`); yang
+tidak pernah ditanyakan adalah **apakah Pega punya tabel bisnis sendiri untuk RCV**.
+
+Ia punya.
+
+### 21.2 Jejak yang ditelusuri
+
+```
+Flow/InputReceiveDocument
+  └─ RDB List/Rcv_ProcInsertRecivedDocument-SQL.xml   27 parameter
+       └─ Database/PROCINSERTDATARECIVEDKLAIM.prc
+            ├─ INSERT INTO pooldata.T_CLAIM_RECIVEDCLAIM   (4 kolom saja)
+            └─ UPDATE      pooldata.T_CLAIM_RECIVEDCLAIM   (24 kolom)
+```
+
+Bentuk **sisip-lalu-ubah** itu persis alur layar: "Buat Baru" melahirkan berkas hampir
+kosong, form mengisinya. Itu yang kini ditiru apa adanya (`P-5`).
+
+### 21.3 Diperiksa langsung ke Oracle, bukan disimpulkan
+
+| Pertanyaan | Jawaban |
+|---|---|
+| tabelnya ada dan terbaca? | ya — **2.788 baris**, 31 kolom |
+| akun aplikasi siapa? | **`POOLDATA`** — pemilik skema |
+| ada trigger? | tidak ada |
+| dapat ditulis? | **ya** — `INSERT` diuji lalu di-rollback |
+| bentuk kuncinya? | `ASM-FW-GCNMFW-WORK RCV-3149` |
+| baris bisnis tanpa baris kerja? | **0** — ia satelit, bukan tabel berdiri sendiri |
+| rule Pega yang MEMBACAnya? | **nol** di seluruh `RDB List/` |
+
+Satu kesimpulan sempat saya ambil dan **salah**: "142 baris `T_CLAIMLIST_ADMIN` tidak punya
+pasangan". Saya menggabungkan kunci sebagai `pxobjclass || ' ' || pyid`, padahal kuncinya
+`'ASM-FW-GCNMFW-WORK ' || pyid` — huruf besar dan tanpa nama kelas lengkap. Setelah
+diperbaiki: **142 dari 142 cocok**. Kesalahan itu saya laporkan saat ditemukan, bukan
+dirapikan diam-diam.
+
+### 21.4 Yang berubah di kode
+
+| Berkas | Perubahan |
+|---|---|
+| `inboxlaporanklaim.sql` — `claim_report_source` | **cabang kedua `UNION ALL`** membaca `T_CLAIM_RECIVEDCLAIM` untuk kunci berawalan `RCVN.` |
+| `claim_report_next_sequence` | sequence → `MAX(...)+1` per tahun |
+| `claim_report_insert` | → `T_CLAIM_RECIVEDCLAIM`, **4 kolom + nama pelapor**, meniru cabang INSERT procedure |
+| `claim_report_update` | → `T_CLAIM_RECIVEDCLAIM`, 16 kolom, dipagari `LIKE 'RCVN.%'` |
+| `claim_report_get_own_body` | → `T_CLAIM_RECIVEDCLAIM` |
+| `claim_report_check_table` | → `T_CLAIM_RECIVEDCLAIM` |
+| `Repo.Insert` | dipecah menjadi `insertOnce` + pengulangan saat kunci bertabrakan |
+| `platform/db` | `IsDuplicateKey` (`ORA-00001`) |
+| migrasi `0003`, `0004` | diberi banner **DICABUT — JANGAN DIJALANKAN** |
+
+Dua cabang, bukan satu, karena tabel bisnis itu **satelit**: seluruh barisnya hari ini
+punya pasangan di tabel kerja. Memakainya sebagai sumber baris tunggal akan mengulang
+persis kesalahan `T_CLAIMLIST_ADMIN` pada §19.
+
+Pemisahan kedua cabang mutlak: yang pertama menyaring `pxobjclass`, yang kedua menyaring
+awalan `RCVN.`. Tidak ada satu baris pun yang dapat muncul di keduanya.
+
+### 21.5 Dua tes yang harus DIUBAH, bukan dihapus
+
+Keduanya menjaga keputusan yang berubah, sehingga menghapusnya akan menghapus pagarnya
+juga:
+
+| Sebelum | Sesudah |
+|---|---|
+| `TestUpdateSkipsRowsMarkedDeleted` — menuntut `DIHAPUS_PADA IS NULL` | `TestUpdateCannotReachPegaRows` — menuntut `LIKE 'RCVN.%'` |
+| `TestOwnReportIsReadFromItsOwnTable` | `TestOwnReportIsReadFromTheBusinessTable` |
+
+Yang pertama berpindah maksud karena **pagarnya berpindah**: dulu yang dijaga adalah
+berkas terhapus, sekarang yang dijaga adalah berkas milik Pega. Daftar kolom terlarang
+pada `TestUpdateNeverTouchesTheseColumns` ikut disesuaikan ke nama kolom tabel lama.
+
+### 21.6 Hasil verifikasi
+
+`go vet ./...` bersih · `go test ./...` seluruhnya lulus · `-periksa` menjawab
+**`[ok] kedua tabel Inbox Laporan Klaim dapat dibaca`**.
+
+Seluruh rantai tulis dijalankan terhadap **Oracle produksi** di dalam satu transaksi yang
+selalu di-rollback:
+
+```
+INSERT berhasil: RCVN.26.9999
+terbaca di daftar: RCVN.26.9999 posisi=Not Transferred asal=claimpnc
+UPDATE mengenai baris: 1
+berkas sendiri terbaca: polis=POL-1 tgl_terima=2026-09-20
+UPDATE atas baris PEGA mengenai: 0   (harus 0)
+rollback — tidak ada baris yang tertinggal
+```
+
+Baris terakhir adalah yang terpenting: pagar `P-1` terbukti bekerja terhadap data nyata,
+bukan hanya terhadap tes.
+
+### 21.7 Yang harus diketahui sebelum dijalankan
+
+`.env` memuat **`PENYIMPANAN=memori`**. Dengan nilai itu, tombol "Buat Baru" menulis ke
+memori dan hilang saat aplikasi berhenti. Untuk menulis ke Oracle, jalankan dengan
+`PENYIMPANAN=oracle`.
+
+### 21.8 Yang masih menunggu keputusan
+
+| Hal | Sebabnya |
+|---|---|
+| **Soft delete (`ADR-0012`) tidak dapat ditegakkan** | tabel lama tidak punya kolom penanda hapus |
+| **Jejak "diubah oleh/kapan" hilang** | tabel lama tidak punya kolomnya — bersinggungan dengan `D-28` |
+| `TRANSFERASM` sebagai padanan `statuslock_1` | asumsi yang masuk akal, belum dikonfirmasi pemilik bisnis |
+| Nama bisnis diturunkan dari `BUSINESS.NOTE` | kolom mana yang benar-benar dipakai layar lama belum dipastikan |

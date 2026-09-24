@@ -44,6 +44,14 @@ const (
 	// dan dibereskan di infrastruktur. Satu kode untuk keduanya akan membuat gangguan
 	// yang menimpa seluruh kantor terbaca sebagai masalah satu pengguna.
 	CodeBranchUnreadable = "sumber_cabang_tidak_terbaca"
+
+	// CodePenyimpananBelumSiap: tabel tempat modul ini menulis belum dibuat.
+	//
+	// Kode tersendiri, bukan galat umum 500, karena perbaikannya pasti dan tunggal:
+	// menjalankan migrasi pada basis data portal itu. Pesan umum "terjadi kesalahan pada
+	// sistem" mengirim orang mencari cacat di aplikasi, dan itu pencarian yang tidak akan
+	// menemukan apa pun.
+	CodePenyimpananBelumSiap = "penyimpanan_belum_siap"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -155,6 +163,24 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code: CodeBranchUnreadable,
 			Message: "Data cabang sedang tidak dapat dibaca, sehingga daftar laporan belum " +
 				"dapat ditampilkan. Coba lagi beberapa saat, dan laporkan bila berulang.",
+		}, true
+
+	case errors.Is(err, inboxlaporanklaim.ErrStorageNotReady):
+		// 503, bukan 500: aplikasinya sehat, yang belum siap adalah basis datanya — dan
+		// keadaan itu SEMENTARA, berakhir begitu migrasi dijalankan. 500 akan menyatakan
+		// cacat pemrograman, dan menyuruh orang mencari di tempat yang salah.
+		//
+		// Pesannya menyebut nama tabel dan berkas migrasinya. Itu bukan "membocorkan
+		// detail internal" yang dilarang `11-CROSSCUTTING.md` §1.2 aturan 5 — larangan itu
+		// menyangkut struktur data dan jejak tumpukan yang berguna bagi penyerang.
+		// Di sini yang disebut adalah LANGKAH PEMASANGAN, dan justru petugas yang membaca
+		// layar inilah yang harus meneruskannya ke DBA.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodePenyimpananBelumSiap,
+			Message: "Laporan baru belum dapat dibuat karena tabel penyimpanannya belum ada " +
+				"di basis data portal ini. Minta DBA menjalankan migrasi " +
+				"0003_claim_report_inbox dan 0004_claim_report_detail " +
+				"(tabel POOLDATA.CPNC_LAPORAN_KLAIM). Daftar laporan tetap dapat dibuka.",
 		}, true
 
 	case errors.Is(err, inboxlaporanklaim.ErrReadOnlyOrigin):

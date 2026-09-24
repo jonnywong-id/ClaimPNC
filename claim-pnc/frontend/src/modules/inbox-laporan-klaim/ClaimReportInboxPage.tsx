@@ -148,7 +148,7 @@ export function ClaimReportInboxPage() {
           <ErrorMessage
             title="Laporan baru tidak dapat dibuat"
             description={messageOf(create.error)}
-            tone="penolakan"
+            tone={toneOf(create.error)}
           />
         </div>
       )}
@@ -158,7 +158,7 @@ export function ClaimReportInboxPage() {
           <ErrorMessage
             title="Berkas ekspor tidak dapat diunduh"
             description={messageOf(exportData.error)}
-            tone="penolakan"
+            tone={toneOf(exportData.error)}
           />
         </div>
       )}
@@ -509,4 +509,22 @@ function messageOf(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * toneOf memilih nada pesan dari GALATNYA, bukan dari tempat pesan itu muncul.
+ *
+ * Kedua nada punya arti yang tegas (lihat ErrorMessage): `penolakan` berarti ada yang
+ * dapat pengguna perbaiki, `gangguan` berarti sistemnya yang bermasalah dan mengulang
+ * tidak menolong. Satu tombol dapat gagal karena keduanya — isian yang belum benar
+ * (422) atau tabel penyimpanan yang belum dibuat DBA (503) — sehingga nada yang dipatok
+ * di satu tempat pasti salah untuk salah satunya.
+ *
+ * Yang paling merugikan adalah arah ini: kegagalan pemasangan yang ditampilkan sebagai
+ * penolakan membuat petugas mengubah-ubah isiannya berkali-kali, padahal tidak ada
+ * isian yang salah.
+ */
+function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
+  if (failure instanceof APIError && failure.status >= 500) return 'gangguan'
+  return 'penolakan'
 }

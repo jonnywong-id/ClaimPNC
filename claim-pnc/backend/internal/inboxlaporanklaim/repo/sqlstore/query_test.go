@@ -118,23 +118,29 @@ func TestUpdateNeverTouchesProtectedColumns(t *testing.T) {
 	upper := strings.ToUpper(setClause)
 
 	for column, reason := range map[string]string{
-		"NO_LAPORAN":     "kunci baris; ia menyaring, tidak pernah berubah",
-		"NO_KLAIM":       "terbit saat registrasi (B-2), bukan dari form ini",
-		"KODE_CABANG":    "batas data; memindahkan berkas antarcabang bukan tindakan form ini",
-		"STS_DISERAHKAN": "perpindahan tahap adalah tindakan tersendiri",
-		"DIBUAT_OLEH":    "jejak pembuatan tidak pernah ditulis ulang",
-		"DIHAPUS_PADA":   "penghapusan dinyatakan lewat penanda (ADR-0012), bukan di sini",
+		"CLAIMID":     "kunci baris; ia menyaring, tidak pernah berubah",
+		"NOKLAIM":     "terbit saat registrasi (B-2), bukan dari form ini",
+		"KODECABANG":  "batas data; memindahkan berkas antarcabang bukan tindakan form ini",
+		"TRANSFERASM": "perpindahan tahap adalah tindakan tersendiri",
+		"USERINPUT":   "jejak pembuatan tidak pernah ditulis ulang",
 	} {
 		require.NotContainsf(t, upper, column+" ",
 			"klausa SET menyentuh %s — %s", column, reason)
 	}
 }
 
-// Berkas yang sudah ditandai terhapus tidak boleh dapat disunting lewat alamat yang masih
-// dipegang peramban seseorang.
-func TestUpdateSkipsRowsMarkedDeleted(t *testing.T) {
-	require.Contains(t, strings.ToUpper(getQuery("claim_report_update")), "DIHAPUS_PADA IS NULL",
-		"penyimpanan tidak menyaring baris yang sudah ditandai terhapus")
+// Penyimpanan tidak boleh dapat mengenai baris milik Pega.
+//
+// Sejak berkas baru ditulis ke POOLDATA.T_CLAIM_RECIVEDCLAIM — tabel yang juga ditulis
+// Pega lewat PROCINSERTDATARECIVEDKLAIM — pemisahan penulis tidak lagi dijamin oleh
+// TABEL yang berbeda, melainkan oleh KUNCI yang berbeda. Penyaring awalan inilah yang
+// menegakkan `P-1` sekarang, dan tanpanya satu nomor yang salah dapat menimpa berkas
+// yang penulisnya Pega.
+func TestUpdateCannotReachPegaRows(t *testing.T) {
+	upper := strings.ToUpper(getQuery("claim_report_update"))
+
+	require.Contains(t, upper, "LIKE 'RCVN.%'",
+		"penyimpanan tidak memagari dirinya pada berkas terbitan aplikasi ini")
 }
 
 // Modul ini TIDAK MENULIS satu baris pun ke tabel milik Pega.
@@ -314,20 +320,20 @@ func TestOriginIsDerivedFromTheNumberPrefix(t *testing.T) {
 	require.Contains(t, source, "'pega'")
 }
 
-// Berkas terbitan aplikasi ini dibaca dari tabelnya sendiri, dan pembacaannya menghormati
-// soft delete (ADR-0012).
+// Berkas terbitan aplikasi ini dibaca dari tabel bisnis yang sama dengan yang dipakai
+// Pega, dan pembacaannya dipagari pada berkas milik sendiri.
 //
 // Jalur ini ada supaya berkas yang BARU DIBUAT dapat dibuka sebelum proses pengisi
 // T_CLAIMLIST_ADMIN menyalinnya. Tanpa itu, "Buat Baru" membuka form yang menjawab
 // "tidak ditemukan".
-func TestOwnReportIsReadFromItsOwnTable(t *testing.T) {
+func TestOwnReportIsReadFromTheBusinessTable(t *testing.T) {
 	own := strings.ToUpper(getQuery("claim_report_get_own_body"))
 
-	require.Contains(t, own, "POOLDATA.CPNC_LAPORAN_KLAIM")
+	require.Contains(t, own, "POOLDATA.T_CLAIM_RECIVEDCLAIM")
 	require.NotContains(t, own, "T_CLAIMLIST_ADMIN",
 		"pembacaan berkas sendiri ikut bergantung pada tabel yang diisi proses lain")
-	require.Contains(t, own, "DIHAPUS_PADA IS NULL",
-		"pembacaan berkas sendiri tidak menyaring baris yang ditandai terhapus")
+	require.Contains(t, own, "LIKE 'RCVN.%'",
+		"pembacaan berkas sendiri tidak dipagari pada berkas terbitan aplikasi ini")
 }
 
 // Kedua jalur pembacaan satu berkas dibaca scanDetailRow yang sama, dan ia membaca secara

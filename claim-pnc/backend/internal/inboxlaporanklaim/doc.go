@@ -40,13 +40,25 @@
 // **Sejak 2026-09-23 (Work Owner), daftar ditarik dari `POOLDATA.T_CLAIMLIST_ADMIN`** —
 // tabel rata yang diisi proses lain, dan yang **hanya dibaca** aplikasi ini.
 //
-// Penulisan tidak berubah: berkas yang dibuat aplikasi ini tetap ditulis ke tabel miliknya
-// sendiri, `POOLDATA.CPNC_LAPORAN_KLAIM` (migrasi 0003 dan 0004). Work Owner menetapkan
-// **proses pengisi T_CLAIMLIST_ADMIN diperluas agar ikut membaca tabel itu**, sehingga
-// berkas terbitan aplikasi ini masuk ke daftar lewat jalur yang sama dengan berkas Pega.
+// **Sejak 2026-09-23 (Work Owner), berkas baru ditulis ke `POOLDATA.T_CLAIM_RECIVEDCLAIM`**
+// — tabel bisnis yang dipakai Pega sendiri lewat `Database/PROCINSERTDATARECIVEDKLAIM.prc`.
+// Tabel `POOLDATA.CPNC_LAPORAN_KLAIM` yang sempat dirancang (migrasi 0003 dan 0004)
+// **dibatalkan dan tidak pernah dibuat**; kedua berkas migrasinya bertanda DICABUT.
 //
-//	membaca daftar   POOLDATA.T_CLAIMLIST_ADMIN     diisi proses lain
-//	menulis berkas   POOLDATA.CPNC_LAPORAN_KLAIM    hanya aplikasi ini
+//	sumber baris Pega    DATAPEGA.PC_ASM_FW_GCNMFW_WORK   hanya dibaca
+//	empat kolom tambahan POOLDATA.T_CLAIMLIST_ADMIN       hanya dibaca
+//	berkas sendiri       POOLDATA.T_CLAIM_RECIVEDCLAIM    dibaca dan ditulis
+//
+// # Bagaimana `P-1` tetap ditegakkan di tabel yang penulisnya dua
+//
+// Tabel bisnis itu juga ditulis Pega, sehingga pemisahan penulis tidak lagi dijamin oleh
+// tabel yang berbeda melainkan oleh **kunci yang berbeda**: baris Pega berkunci
+// `ASM-FW-GCNMFW-WORK <pyID>`, baris aplikasi ini berkunci `RCVN.YY.xxxx` (`D-71`).
+//
+// Karena itu setiap pernyataan tulis modul ini memagari dirinya dengan
+// `CLAIMID LIKE 'RCVN.%'` — bukan kerapian, melainkan satu-satunya hal yang mencegah satu
+// nomor yang salah menimpa berkas yang penulisnya Pega. Dijaga uji
+// TestUpdateCannotReachPegaRows.
 //
 // Itulah bentuk nyata `ADR-0004` penulis tunggal per tabel: tidak ada satu tabel pun yang
 // ditulis dua sistem.

@@ -203,6 +203,102 @@ WITH source AS (
        -- tidak ada di tabel admin ber-NULL, dan menyembunyikannya akan menghapus hampir
        -- seluruh daftar.
        AND (t.sts_aktif IS NULL OR TRIM(t.sts_aktif) <> '0')
+
+    UNION ALL
+
+    -- ========================================================================
+    -- CABANG KEDUA — berkas terbitan APLIKASI INI
+    -- ========================================================================
+    --
+    -- Work Owner menetapkan 2026-09-23 bahwa berkas baru TIDAK ditulis ke tabel milik
+    -- aplikasi ini, melainkan ke tabel bisnis yang dipakai Pega sendiri:
+    -- POOLDATA.T_CLAIM_RECIVEDCLAIM. Itulah tabel yang diisi
+    -- Database/PROCINSERTDATARECIVEDKLAIM.prc lewat
+    -- RDB List/Rcv_ProcInsertRecivedDocument-SQL.xml saat Pega menyimpan RCV.
+    --
+    -- (Ejaan "RECIVED" adalah salah ketik milik sistem lama yang dipertahankan —
+    -- `03-CURRENT-ARCHITECTURE.md` §4.7.)
+    --
+    -- # Kenapa dua cabang, bukan satu
+    --
+    -- Tabel bisnis itu adalah SATELIT: kuncinya `ASM-FW-GCNMFW-WORK <pyID>`, dan seluruh
+    -- 2.788 barisnya hari ini punya pasangan di tabel kerja Pega — terverifikasi langsung
+    -- 2026-09-23. Ia karena itu tidak dapat menggantikan tabel kerja sebagai sumber baris;
+    -- ia hanya menambahkan baris yang TIDAK punya pasangan di sana, yaitu baris terbitan
+    -- aplikasi ini.
+    --
+    -- Pemisahannya mutlak dan tidak dapat tumpang tindih: cabang pertama menyaring
+    -- `pxobjclass`, cabang ini menyaring awalan `RCVN.` yang hanya diterbitkan aplikasi
+    -- ini (`D-71`). Tidak ada satu baris pun yang dapat muncul di keduanya.
+    SELECT r.claimid             AS report_id,
+           r.noklaim             AS claim_number,
+           -- Tidak ada padanan `statuslock_1` di tabel bisnis. TRANSFERASM yang dipakai
+           -- sebagai penanda "sudah diserahkan", dan nilainya tanggal, bukan kunci
+           -- penugasan milik engine Pega — itu justru yang dikehendaki.
+           CASE WHEN r.transferasm IS NULL THEN NULL ELSE 'transferred' END AS assignment_ref,
+           r.nopolis             AS policy_number,
+           r.namatertanggung     AS insured_name,
+           r.namapelapor         AS reporter_name,
+           -- Tabel bisnis TIDAK menyimpan nama bisnis, hanya kodenya. Namanya karena itu
+           -- diturunkan dari master — bukan disalin seperti pada tabel kerja Pega.
+           b2.note               AS business_name,
+           r.noreferensi         AS reference_number,
+           r.dol                 AS date_of_loss,
+           r.tanggalinputdokumen AS created_at,
+           r.userinput           AS created_by,
+           r.kodecabang          AS branch_code,
+           r.tanggalinputdokumen AS aging_at,
+           r.alasanblmtransfer   AS reason,
+           r.subjectemail        AS email_subject,
+           r.pystatuswork        AS work_status,
+           r.grouppanel          AS group_panel,
+           b2.businessgroupid    AS business_group,
+           'claimpnc'            AS origin,
+           -- TANGGALTERIMADOKUMEN bertipe VARCHAR2 di tabel lama, dan Pega mengisinya
+           -- dengan ReferenceId — bukan tanggal (lihat Rcv_ProcInsertRecivedDocument).
+           -- Baris di cabang ini HANYA ditulis aplikasi ini, dan aplikasi ini selalu
+           -- menuliskannya dalam bentuk ISO, sehingga penafsirannya pasti.
+           TO_DATE(r.tanggalterimadokumen, 'YYYY-MM-DD') AS received_date,
+           r.emailpengirim       AS reporter_email,
+           r.tlppengirim         AS reporter_phone,
+           r.namakurirasm        AS courier_name,
+           r.estimationvalue     AS estimate_value,
+           r.lokasikejadian      AS loss_location,
+           r.kronologikejadian   AS chronology,
+           r.rinciankerusakan    AS damage_detail,
+           r.keteranganblmregist AS not_registered_note,
+           CAST(NULL AS NUMBER)  AS aging_value,
+           CAST(NULL AS NUMBER)  AS document_count,
+           -- Empat keadaan yang sama dengan cabang pertama, dengan pasangan kolom yang
+           -- setara: NOKLAIM menggantikan pnccaseid, TRANSFERASM menggantikan statuslock_1.
+           -- Berkas yang baru dibuat ber-NULL pada keduanya, sehingga ia lahir sebagai
+           -- "Not Transferred" — persis seperti di sistem lama.
+           CASE
+               WHEN r.noklaim IS NOT NULL AND r.transferasm IS NOT NULL THEN 'Outstanding'
+               WHEN r.noklaim IS NULL     AND r.transferasm IS NOT NULL THEN 'Not Registered'
+               WHEN r.noklaim IS NULL     AND r.transferasm IS NULL     THEN 'Not Transferred'
+               ELSE NULL
+           END                   AS position,
+           CASE
+               WHEN EXISTS (SELECT 1
+                              FROM POOLDATA.T_CLAIM_PNC p,
+                                   POOLDATA.T_CLAIM_ADJUSTMENT a
+                             WHERE p.claimid = a.claimid
+                               AND p.claimno = r.noklaim
+                               AND a.noakseptasi IS NOT NULL)
+               THEN '1' ELSE '0'
+           END                   AS accepted,
+           CASE
+               WHEN EXISTS (SELECT 1
+                              FROM POOLDATA.T_CLAIM_PNC p
+                             WHERE p.claimno = r.noklaim
+                               AND p.statuswork = 'Resolved-Rejected')
+               THEN '1' ELSE '0'
+           END                   AS rejected
+      FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
+      LEFT JOIN POOLDATA.BUSINESS b2
+             ON b2.id = r.businesscode
+     WHERE r.claimid LIKE 'RCVN.%'
 )
 
 -- name: claim_report_list_body
@@ -485,11 +581,28 @@ SELECT DISTINCT br.basterritory
 --
 -- Nomor urut berikutnya untuk berkas yang diterbitkan aplikasi ini.
 --
--- Sequence-nya milik aplikasi ini sendiri dan dibuat migrasi 0003; ia TIDAK memakai
--- POOLDATA.CLAIM_NO_NONPEGA_SEQ yang `D-71` peruntukkan bagi nomor klaim. Dua deret
--- nomor untuk dua hal yang berbeda, supaya nomor klaim dan nomor laporan tidak saling
--- memakan urutan.
-SELECT POOLDATA.CPNC_LAPORAN_KLAIM_SEQ.NEXTVAL FROM DUAL
+-- # Kenapa BUKAN sequence
+--
+-- Sequence menuntut `CREATE SEQUENCE`, dan perubahan skema menempuh permintaan tertulis,
+-- persetujuan Work Owner, dan pelaksanaan DBA (`D-63`). Work Owner menetapkan 2026-09-23
+-- bahwa modul ini berjalan **tanpa objek basis data baru sama sekali**, sehingga nomornya
+-- diturunkan dari isi tabel.
+--
+-- # Kenapa MAX aman dipakai di sini
+--
+-- Nomor berbentuk `RCVN.YY.0001` — lebar tetap dan dipadatkan nol, sehingga urutan teks
+-- sama dengan urutan angka. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian
+-- tahun tidak membuat deretnya melompat.
+--
+-- # Yang TIDAK dijamin kueri ini, dan bagaimana ditangani
+--
+-- Dua permintaan bersamaan dapat membaca nomor yang sama. Yang menjaganya bukan kueri ini
+-- melainkan **kunci utama tabel**: penyisipan kedua gagal dengan ORA-00001, dan Repo.Insert
+-- mengulang dengan nomor berikutnya. Menjaganya di sini — lewat penguncian baris — akan
+-- menyerialkan seluruh pembuatan berkas hanya demi kejadian yang jarang.
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(claimid, 9))), 0) + 1
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
+ WHERE claimid LIKE 'RCVN.' || :1 || '.%'
 
 -- name: claim_report_insert
 --
@@ -499,13 +612,17 @@ SELECT POOLDATA.CPNC_LAPORAN_KLAIM_SEQ.NEXTVAL FROM DUAL
 -- lama membuat berkas KOSONG dan menyerahkan pengisiannya ke layar berikutnya
 -- (`B-14`). Lihat Activity/CreateNewCaseRCV-Act.xml, yang hanya mengisi lima nilai.
 --
--- DIHAPUS_PADA sengaja ada meski tidak pernah diisi modul ini: `ADR-0012` melarang
--- penghapusan fisik data bernilai bisnis, dan kolomnya harus sudah ada sejak baris
--- pertama supaya penghapusan kelak tidak menuntut perubahan skema di tengah masa
--- paralel (D-63).
-INSERT INTO POOLDATA.CPNC_LAPORAN_KLAIM
-    (NO_LAPORAN, NAMA_PELAPOR, KODE_CABANG, DIBUAT_OLEH, DIBUAT_PADA, TGL_AGING, STS_DISERAHKAN)
-VALUES (:1, :2, :3, :4, :5, :6, '0')
+-- # Empat kolom, persis seperti Pega
+--
+-- Cabang INSERT pada Database/PROCINSERTDATARECIVEDKLAIM.prc juga hanya mengisi empat:
+-- CLAIMID, TANGGALINPUTDOKUMEN, KODECABANG, USERINPUT. Sisanya diisi cabang UPDATE-nya
+-- saat form disimpan. Bentuk itu ditiru apa adanya (`P-5`).
+--
+-- NAMAPELAPOR ikut diisi di sini, mengikuti `Sender := OperatorID.pyUserName` pada
+-- Activity/CreateNewCaseRCV-Act.xml; ia ditimpa nama pelapor sebenarnya di form.
+INSERT INTO POOLDATA.T_CLAIM_RECIVEDCLAIM
+    (CLAIMID, TANGGALINPUTDOKUMEN, KODECABANG, USERINPUT, NAMAPELAPOR)
+VALUES (:1, :2, :3, :4, :5)
 
 -- name: claim_report_update
 --
@@ -527,40 +644,46 @@ VALUES (:1, :2, :3, :4, :5, :6, '0')
 --   DIBUAT_OLEH/PADA jejak pembuatan tidak pernah ditulis ulang
 --   DIHAPUS_PADA     penghapusan dinyatakan lewat penanda (`ADR-0012`), bukan di sini
 --
--- # Penyaring `DIHAPUS_PADA IS NULL`
+-- # Penyaring awalan `RCVN.`
 --
--- Bukan kerapian: tanpa itu, berkas yang sudah ditandai terhapus tetap dapat disunting
--- lewat alamat yang masih dipegang peramban seseorang.
-UPDATE POOLDATA.CPNC_LAPORAN_KLAIM
-   SET TGL_TERIMA_DOKUMEN   = :1,
-       TGL_KEJADIAN         = :2,
-       NAMA_PELAPOR         = :3,
-       EMAIL_PELAPOR        = :4,
-       TLP_PELAPOR          = :5,
-       NAMA_KURIR           = :6,
-       NO_POLIS             = :7,
-       NAMA_TERTANGGUNG     = :8,
-       NAMA_BISNIS          = :9,
-       NO_REFERENSI         = :10,
-       NILAI_ESTIMASI       = :11,
-       LOKASI_KEJADIAN      = :12,
-       SUBJEK_EMAIL         = :13,
-       KRONOLOGIS           = :14,
-       RINCIAN_KERUSAKAN    = :15,
-       ALASAN               = :16,
-       KET_BELUM_REGISTRASI = :17,
-       JUMLAH_DOKUMEN       = :18,
-       DIUBAH_OLEH          = :19,
-       DIUBAH_PADA          = :20
- WHERE NO_LAPORAN = :21
-   AND DIHAPUS_PADA IS NULL
+-- Bukan kerapian melainkan penegakan `P-1`: ia memastikan pernyataan ini tidak akan
+-- pernah mengenai baris milik Pega, bahkan bila nomor yang salah sampai ke sini. Baris
+-- Pega di tabel yang sama berkunci `ASM-FW-GCNMFW-WORK <pyID>`.
+--
+-- # Tiga isian yang TIDAK punya kolom di tabel ini
+--
+--   nama bisnis      hanya kodenya yang tersimpan; namanya diturunkan dari POOLDATA.BUSINESS
+--   jumlah dokumen   tidak ada kolomnya
+--   pengubah/waktu   tidak ada kolom jejak perubahan
+--
+-- Ketiganya konsekuensi memakai tabel lama alih-alih tabel baru, dan dicatat di
+-- docs/keputusan-implementasi.md — bukan disembunyikan sebagai detail teknis.
+UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
+   SET TANGGALTERIMADOKUMEN = :1,
+       DOL                  = :2,
+       NAMAPELAPOR          = :3,
+       EMAILPENGIRIM        = :4,
+       TLPPENGIRIM          = :5,
+       NAMAKURIRASM         = :6,
+       NOPOLIS              = :7,
+       NAMATERTANGGUNG      = :8,
+       NOREFERENSI          = :9,
+       ESTIMATIONVALUE      = :10,
+       LOKASIKEJADIAN       = :11,
+       SUBJECTEMAIL         = :12,
+       KRONOLOGIKEJADIAN    = :13,
+       RINCIANKERUSAKAN     = :14,
+       ALASANBLMTRANSFER    = :15,
+       KETERANGANBLMREGIST  = :16
+ WHERE CLAIMID = :17
+   AND CLAIMID LIKE 'RCVN.%'
 
 -- name: claim_report_check_table
 --
 -- Memastikan kedua tabel ada dan dapat dibaca akun aplikasi, tanpa mengambil satu baris
 -- pun. Dipakai mode periksa, mengikuti pola modul-modul sebelumnya.
-SELECT r.no_laporan
-  FROM POOLDATA.CPNC_LAPORAN_KLAIM r
+SELECT r.claimid
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
  WHERE 1 = 0
 
 -- name: claim_report_check_legacy_table
@@ -574,7 +697,7 @@ SELECT t.pyid
 
 -- name: claim_report_get_own_body
 --
--- Satu berkas TERBITAN APLIKASI INI, dibaca langsung dari POOLDATA.CPNC_LAPORAN_KLAIM.
+-- Satu berkas TERBITAN APLIKASI INI, dibaca langsung dari POOLDATA.T_CLAIM_RECIVEDCLAIM.
 --
 -- # Kenapa jalur tersendiri, bukan lewat CTE source
 --
@@ -594,40 +717,43 @@ SELECT t.pyid
 -- Berkas terbitan aplikasi ini adalah SATU-SATUNYA yang dapat disunting (ADR-0004, P-1),
 -- dan seluruh kesepuluh isiannya hidup di tabel ini — bukan di T_CLAIMLIST_ADMIN, yang
 -- hanya membawa dua di antaranya.
-SELECT r.no_laporan          AS report_id,
-       r.no_klaim            AS claim_number,
-       CAST(NULL AS VARCHAR(255)) AS assignment_ref,
-       r.no_polis            AS policy_number,
-       r.nama_tertanggung    AS insured_name,
-       r.nama_pelapor        AS reporter_name,
-       r.nama_bisnis         AS business_name,
-       r.no_referensi        AS reference_number,
-       r.tgl_kejadian        AS date_of_loss,
-       r.dibuat_pada         AS created_at,
-       r.dibuat_oleh         AS created_by,
-       r.kode_cabang         AS branch_code,
-       (SELECT br.branchname FROM POOLDATA.BRANCH br WHERE br.id = r.kode_cabang) AS branch_name,
-       r.tgl_aging           AS aging_at,
-       r.alasan              AS reason,
-       r.subjek_email        AS email_subject,
+SELECT r.claimid             AS report_id,
+       r.noklaim             AS claim_number,
+       CASE WHEN r.transferasm IS NULL THEN NULL ELSE 'transferred' END AS assignment_ref,
+       r.nopolis             AS policy_number,
+       r.namatertanggung     AS insured_name,
+       r.namapelapor         AS reporter_name,
+       b2.note               AS business_name,
+       r.noreferensi         AS reference_number,
+       r.dol                 AS date_of_loss,
+       r.tanggalinputdokumen AS created_at,
+       r.userinput           AS created_by,
+       r.kodecabang          AS branch_code,
+       (SELECT br.branchname FROM POOLDATA.BRANCH br WHERE br.id = r.kodecabang) AS branch_name,
+       r.tanggalinputdokumen AS aging_at,
+       r.alasanblmtransfer   AS reason,
+       r.subjectemail        AS email_subject,
        CASE
-           WHEN r.no_klaim IS NOT NULL AND r.sts_diserahkan = '1' THEN 'Outstanding'
-           WHEN r.sts_diserahkan = '1' AND r.no_klaim IS NULL     THEN 'Not Registered'
-           ELSE 'Not Transferred'
+           WHEN r.noklaim IS NOT NULL AND r.transferasm IS NOT NULL THEN 'Outstanding'
+           WHEN r.noklaim IS NULL     AND r.transferasm IS NOT NULL THEN 'Not Registered'
+           WHEN r.noklaim IS NULL     AND r.transferasm IS NULL     THEN 'Not Transferred'
+           ELSE NULL
        END                   AS position,
        'claimpnc'            AS origin,
        CAST(NULL AS NUMBER)  AS aging_value,
-       r.tgl_terima_dokumen   AS received_date,
-       r.email_pelapor        AS reporter_email,
-       r.tlp_pelapor          AS reporter_phone,
-       r.nama_kurir           AS courier_name,
-       r.nilai_estimasi       AS estimate_value,
-       r.lokasi_kejadian      AS loss_location,
-       r.kronologis           AS chronology,
-       r.rincian_kerusakan    AS damage_detail,
-       r.ket_belum_registrasi AS not_registered_note,
-       r.jumlah_dokumen       AS document_count,
+       TO_DATE(r.tanggalterimadokumen, 'YYYY-MM-DD') AS received_date,
+       r.emailpengirim       AS reporter_email,
+       r.tlppengirim         AS reporter_phone,
+       r.namakurirasm        AS courier_name,
+       r.estimationvalue     AS estimate_value,
+       r.lokasikejadian      AS loss_location,
+       r.kronologikejadian   AS chronology,
+       r.rinciankerusakan    AS damage_detail,
+       r.keteranganblmregist AS not_registered_note,
+       CAST(NULL AS NUMBER)  AS document_count,
        CAST(NULL AS VARCHAR(4000)) AS last_message
-  FROM POOLDATA.CPNC_LAPORAN_KLAIM r
- WHERE r.no_laporan = :1
-   AND r.dihapus_pada IS NULL
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
+  LEFT JOIN POOLDATA.BUSINESS b2
+         ON b2.id = r.businesscode
+ WHERE r.claimid = :1
+   AND r.claimid LIKE 'RCVN.%'
