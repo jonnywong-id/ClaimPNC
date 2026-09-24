@@ -145,19 +145,31 @@ type ErrorResponse struct {
 	Code    string `json:"kode"`
 	Message string `json:"pesan"`
 
-	// Detail hanya terisi pada galat validasi, dan memuat SELURUH pelanggaran
-	// sekaligus supaya layar dapat menaruh pesannya di kolom yang benar alih-alih
-	// menumpuknya di atas formulir (TKT-U2-002).
+	// Field menyebut kesalahan per kolom pada galat validasi, supaya layar dapat
+	// menaruh pesannya di kolom yang benar alih-alih menumpuknya di atas formulir
+	// (TKT-U2-002).
 	//
-	// Bentuknya SAMA dengan modul masterstatus, dan itu disengaja: klien menangani
-	// galat validasi seluruh aplikasi dengan satu jalur. Modul ini semula memakai
-	// `field` sebagai map, lalu diselaraskan ke bentuk bersama ini — modul yang
-	// menumpang kontrak bersama harus mengikutinya, bukan memaksa kontraknya membawa
-	// dua bentuk.
+	// Ia bentuk LAMA dan dipertahankan supaya klien yang masih membacanya tidak putus.
+	// Yang dikirim sekarang adalah Detail di bawah.
+	Field map[string]string `json:"field,omitempty"`
+
+	// Detail menyebut kesalahan per kolom sebagai SENARAI TERURUT.
+	//
+	// Ia menggantikan Field karena urutan peta Go sengaja acak, sehingga dua permintaan
+	// yang sama dapat menghasilkan badan respons yang berbeda — uji kontrak menjadi
+	// rapuh dan log sulit dibandingkan. Penyusunnya ada di errors.go (`violationsFrom`).
+	//
+	// Kedua bentuk dikenali klien: `APIError.violations()` menggabungkan `field` dan
+	// `detail` menjadi satu peta, sehingga layar tidak perlu memilih di antara keduanya.
+	// Penyeragaman kontraknya masuk TKT-F1-004.
 	Detail []PelanggaranDTO `json:"detail,omitempty"`
 }
 
-// PelanggaranDTO adalah satu aturan yang dilanggar beserta isian yang melanggarnya.
+// PelanggaranDTO adalah satu aturan yang dilanggar beserta kolom yang melanggarnya.
+//
+// Nama kuncinya `field`, sama dengan modul `masterstatus`. Modul `masterstatusprogres`
+// memakai `kolom` untuk hal yang sama — perbedaan yang belum diseragamkan, dan yang
+// ditelan `APIError.violations()` di sisi klien sampai TKT-F1-004 menyelesaikannya.
 type PelanggaranDTO struct {
 	Field string `json:"field"`
 	Pesan string `json:"pesan"`

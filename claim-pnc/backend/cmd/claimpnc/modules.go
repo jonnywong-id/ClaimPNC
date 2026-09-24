@@ -1,4 +1,4 @@
-// Perakitan sebelas modul yang KODENYA sudah lengkap tetapi tidak pernah dirakit.
+// Perakitan sepuluh modul yang KODENYA sudah lengkap tetapi tidak pernah dirakit.
 //
 // # Kenapa berkas tersendiri
 //
@@ -45,7 +45,6 @@ import (
 	"claim-pnc/internal/masterpenolakan"
 	"claim-pnc/internal/mastersparepart"
 	"claim-pnc/internal/mastersupplier"
-	"claim-pnc/internal/pelaporanklaim"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/riwayatklaim"
@@ -87,10 +86,6 @@ import (
 	mastersuppliermemory "claim-pnc/internal/mastersupplier/repo/memory"
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	mastersupplierusecase "claim-pnc/internal/mastersupplier/usecase"
-	pelaporanklaimhttp "claim-pnc/internal/pelaporanklaim/http"
-	pelaporanklaimmemory "claim-pnc/internal/pelaporanklaim/repo/memory"
-	pelaporanklaimsql "claim-pnc/internal/pelaporanklaim/repo/sqlstore"
-	pelaporanklaimusecase "claim-pnc/internal/pelaporanklaim/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	registrasihttp "claim-pnc/internal/registrasi/http"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
@@ -100,7 +95,7 @@ import (
 	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 )
 
-// extraSelectors memegang pemilih penyimpanan kesebelas modul ini.
+// extraSelectors memegang pemilih penyimpanan kesepuluh modul ini.
 //
 // Seluruhnya PER PORTAL, dengan satu pengecualian yang disengaja: `claimReport` adalah
 // repo tunggal, karena modul Pelaporan Klaim memang menerima `Repo`, bukan pemilih.
@@ -117,12 +112,11 @@ type extraSelectors struct {
 	rejectionKomite masterpenolakan.RepoSelectorKomite
 	sparepart       mastersparepart.RepoSelector
 	supplier        mastersupplier.RepoSelector
-	claimReport     pelaporanklaim.Repo
 	claimHistory    riwayatklaim.RepoSelector
 	protection      riwayatklaim.ProtectionRepoSelector
 }
 
-// extraServices memegang layanan kesebelas modul setelah terpasang.
+// extraServices memegang layanan kesepuluh modul setelah terpasang.
 type extraServices struct {
 	inboxAdmin      *inboxadminusecase.Service
 	inboxCompliance *inboxcomplianceusecase.Service
@@ -134,7 +128,6 @@ type extraServices struct {
 	rejectionKomite *masterpenolakanusecase.ServiceKomite
 	sparepart       *mastersparepartusecase.Service
 	supplier        *mastersupplierusecase.Service
-	claimReport     *pelaporanklaimusecase.Service
 	claimHistory    *riwayatklaimusecase.Service
 	registration    *registrasiusecase.Service
 }
@@ -230,9 +223,6 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 		return riwayatklaimsql.NewProtectionRepo(conn), nil
 	}
 
-	// Pelaporan Klaim memakai koneksi portal UTAMA, karena modulnya menerima satu repo
-	// dan bukan pemilih. Itu keterbatasan modulnya, bukan keputusan yang diambil di sini.
-	store.extra.claimReport = pelaporanklaimsql.NewRepo(pool.Primary())
 }
 
 // onlyPrimary menolak alias selain portal utama.
@@ -353,10 +343,9 @@ func setExtraMemorySelectors(primaryAlias string, store *storage) {
 		return protectionRepo, nil
 	}
 
-	store.extra.claimReport = pelaporanklaimmemory.NewRepo(pelaporanklaimmemory.SampleReports()...)
 }
 
-// buildExtraServices menyusun layanan kesebelas modul di balik seam-nya.
+// buildExtraServices menyusun layanan kesepuluh modul di balik seam-nya.
 func buildExtraServices(store storage, logger *slog.Logger) (extraServices, error) {
 	var (
 		result extraServices
@@ -432,13 +421,6 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
-	if result.claimReport, err = pelaporanklaimusecase.NewService(pelaporanklaimusecase.Options{
-		Repo:  store.extra.claimReport,
-		Clock: clock.System{},
-	}); err != nil {
-		return extraServices{}, err
-	}
-
 	if result.claimHistory, err = riwayatklaimusecase.NewService(riwayatklaimusecase.Options{
 		RepoSelector:       store.extra.claimHistory,
 		ProtectionSelector: store.extra.protection,
@@ -461,7 +443,7 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 	return result, nil
 }
 
-// mountExtra memasang rute kesebelas modul di dalam kelompok yang sudah dijaga sesi.
+// mountExtra memasang rute kesepuluh modul di dalam kelompok yang sudah dijaga sesi.
 //
 // Pemeriksaan portal dipasang modulnya sendiri di dalam `Mount`, sama seperti modul master
 // lain — kecuali Pelaporan Klaim dan Registrasi, yang `Mount`-nya memang tidak menerima
@@ -629,24 +611,6 @@ func mountExtra(
 		return err
 	}
 	mastersupplierhttp.Mount(protected, supplierHandler, portalDeps)
-
-	claimReportHandler := pelaporanklaimhttp.NewHandler(pelaporanklaimhttp.Options{
-		Service: service.claimReport,
-		GetCaller: func(ctx context.Context) (pelaporanklaimhttp.Caller, bool) {
-			base, ok := authhttp.CallerFromContext(ctx)
-			if !ok {
-				return pelaporanklaimhttp.Caller{}, false
-			}
-			return pelaporanklaimhttp.Caller{
-				Login:      base.User.Login,
-				BranchCode: base.User.BranchCode,
-			}, true
-		},
-		Logger:              logger,
-		WriteJSON:           writeJSON,
-		FallbackErrorWriter: writeError,
-	})
-	pelaporanklaimhttp.Mount(protected, claimReportHandler)
 
 	claimHistoryHandler := riwayatklaimhttp.NewHandler(riwayatklaimhttp.Options{
 		Service: service.claimHistory,

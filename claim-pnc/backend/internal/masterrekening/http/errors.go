@@ -51,6 +51,9 @@ func mapError(err error) (int, ErrorResponse) {
 			Code:    CodeInvalidInput,
 			Message: "Ada isian yang belum benar. Periksa kolom yang ditandai.",
 			Detail:  violationsOf(validasi),
+			// Field adalah bentuk LAMA, tetap dikirim supaya klien yang masih
+			// membacanya tidak putus. Lihat catatan pada ErrorResponse di dto.go.
+			Field: validasi.Field,
 		}
 
 	case errors.Is(err, masterrekening.ErrNotFound):

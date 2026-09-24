@@ -13,11 +13,11 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 )
 
-// Sebelas modul yang dirakit modules.go BENAR-BENAR terpasang rutenya.
+// Sepuluh modul yang dirakit modules.go BENAR-BENAR terpasang rutenya.
 //
 // # Kenapa uji ini ada
 //
-// Kesebelas modul itu pernah hidup berbulan-bulan dengan usecase, penyimpanan SQL,
+// Kesepuluh modul itu pernah hidup berbulan-bulan dengan usecase, penyimpanan SQL,
 // penyimpanan memori, dan ujinya sendiri LENGKAP dan LULUS — tetapi tidak satu pun rutenya
 // terdaftar, karena perakitannya hilang pada penggabungan cabang. Setiap uji modul lulus,
 // `go build` lulus, `go vet` lulus, dan layarnya tetap menjawab 404.
@@ -71,7 +71,9 @@ func TestExtraModulesMounted(t *testing.T) {
 		"GET /master/penolakan-klaim",
 		"GET /master/sparepart",
 		"GET /master/supplier",
-		"GET /pelaporan-klaim",
+		// Laporan Klaim TIDAK disebut di sini: modulnya dinamai ulang menjadi
+		// inboxlaporanklaim dan perakitannya pindah ke main.go, sehingga rutenya tidak
+		// lagi lewat mountExtra.
 		"GET /riwayat-klaim",
 		"POST /registrasi/klaim",
 	} {
@@ -80,7 +82,7 @@ func TestExtraModulesMounted(t *testing.T) {
 	}
 }
 
-// Pemilih penyimpanan kesebelas modul menolak portal selain portal utama.
+// Pemilih penyimpanan kesepuluh modul menolak portal selain portal utama.
 //
 // Tanpa basis data, godaannya adalah melayani alias apa pun dari satu penyimpanan. Itu
 // membuat berpindah entitas TAMPAK berhasil padahal datanya itu-itu juga — dan justru

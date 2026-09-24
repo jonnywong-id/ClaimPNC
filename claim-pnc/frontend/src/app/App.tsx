@@ -2,6 +2,8 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
+import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
 import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
@@ -13,7 +15,6 @@ import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
 import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
 import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
-import { ClaimReportPage } from '@/modules/pelaporan-klaim/ClaimReportPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 // Dua modul mengekspor komponen bernama sama, dan keduanya memang layar "penyebab
 // kerugian" — yang satu varian Simas Online (MENU_ID 21), yang satu tingkat golongan
@@ -26,6 +27,13 @@ import { DetailDocumentTypePage } from '@/modules/daftar-detail-tipe-dokumen/Det
 import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjectPage'
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
+import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
+import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
+import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
+import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
+import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
+import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
+import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
 import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
@@ -38,6 +46,13 @@ import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
 import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
+import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
+import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
+import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
+import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
+import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
 import { useSession } from '@/app/session'
@@ -311,9 +326,9 @@ export function AppRoute() {
         }
       />
       {/*
-        Tiga layar berikut RUTENYA PERNAH ADA lalu hilang pada penggabungan cabang
-        sebelumnya — `/pelaporan-klaim` dan `/riwayat-klaim` ada di commit efa135e,
-        sementara modulnya ikut terbawa. Akibatnya ketiganya menjadi layar yang lengkap
+        Dua layar berikut RUTENYA PERNAH ADA lalu hilang pada penggabungan cabang
+        sebelumnya — `/riwayat-klaim` ada di commit efa135e, sementara modulnya ikut
+        terbawa. Akibatnya keduanya menjadi layar yang lengkap
         beserta ujinya tetapi tidak dapat dibuka sama sekali: setiap alamatnya jatuh ke
         rute `*`.
 
@@ -351,16 +366,6 @@ export function AppRoute() {
         }
       />
       <Route
-        path="/pelaporan-klaim"
-        element={
-          <SessionGuard>
-            <Protected>
-              <ClaimReportPage />
-            </Protected>
-          </SessionGuard>
-        }
-      />
-      <Route
         path="/riwayat-klaim"
         element={
           <SessionGuard>
@@ -376,6 +381,10 @@ export function AppRoute() {
         MENAMPILKAN kunci yang diterimanya, sehingga menyalakan layar itu kelak tidak
         menuntut perubahan kontrak. Berkas penampungnya sudah ada; hanya rutenya yang
         hilang pada penggabungan sebelumnya.
+
+        Ia juga tujuan tombol "Lihat Detail Klaim" dan keenam inbox lain: rute ini
+        menyatakan keadaan itu apa adanya alih-alih melempar pengguna ke beranda tanpa
+        penjelasan. Kedua cabang menambahkannya sendiri-sendiri; di sini ia SATU rute.
       */}
       <Route
         path="/view-claim/:referensi"
@@ -423,6 +432,36 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox Laporan Klaim — modul bisnis pertama pada kelompok menu INBOX. Ia memakai
+        kerangka yang sama dengan layar master, sehingga bilah atas, menu, dan pemilih
+        portal tersedia di dalamnya.
+      */}
+      <Route
+        path="/inbox/laporan-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Auto Claim. Ia layar INBOX pertama yang dibangun — barisnya pekerjaan yang
+        menunggu diproses, bukan data acuan (`D-79`).
+      */}
+      <Route
+        path="/inbox-auto-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AutoClaimInboxPage />
+              </Protected>
+          </SessionGuard>
+        }
+      />
+
+             {/*  
         Master Dominan Factor juga membaca basis data ENTITAS yang sedang dipilih.
         Akibat salah entitas di sini halus tetapi luas: keterangan faktor ikut terbaca
         laporan Outstanding per Cabang lewat LISTAGG, sehingga yang keliru bukan satu
@@ -468,6 +507,25 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SurveyorTypePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Progress Claim — pemantauan progres klaim berjalan, menggantikan harness
+        `ProgressClaim_Harness` (`MENU_ID 65`). Bagiannya bertumpuk, bukan bertab: itulah
+        bentuknya di Pega.
+
+        Bagian "Approval Progress Klaim" milik sistem lama tidak dibawa — ia satu-satunya
+        bagian yang menulis, dan tabelnya masih dimiliki Pega selama masa berjalan
+        paralel (keputusan Work Owner 2026-09-21).
+      */}
+      <Route
+        path="/inbox-progress-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxProgressClaimPage />
             </Protected>
           </SessionGuard>
         }
@@ -566,6 +624,239 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox XOL — akumulasi klaim per perjanjian Excess of Loss, pengganti harness
+        `Inbox_XOL_Harness` (`MENU_ID 53`).
+
+        Layar ini MEMBACA SAJA: keempat tabel yang ditulis sistem lama masih dimiliki
+        Pega selama masa paralel (`P-1`), keputusan Work Owner 2026-09-20.
+
+        Di sistem lama kedua tabnya dijaga access group yang berbeda — PncPICTeknik dan
+        CaseManager. Pembedaan itu belum dapat ditegakkan (`TKT-F3-004`), sehingga setiap
+        pengguna yang dapat masuk melihat keduanya.
+      */}
+      <Route
+        path="/inbox-xol"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxXOLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Claim Treaty Prop — antrean klaim treaty proporsional, pengganti harness
+        `InboxClaimTreaty_Harness` (`MENU_ID 54`).
+
+        Layar ini MEMBACA SAJA: pembuatan klaim treaty menulis objek kerja di tabel yang
+        selama masa paralel masih dimiliki Pega (`P-1`), keputusan Work Owner 2026-09-21.
+
+        Di sistem lama ketiga antreannya dipisahkan KEADAAN pemanggil — apakah ia
+        memegang akun antrean teknik, dan apakah Operator ID-nya terdaftar di
+        POOLDATA.EMAILKOMITE. Pembedaan itu belum dapat ditegakkan (`TKT-F3-004`),
+        sehingga setiap pengguna yang dapat masuk melihat ketiganya.
+      */}
+      <Route
+        path="/inbox-claim-treaty-prop"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimTreatyPropPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Claim Treaty Non Prop — antrean klaim treaty NON-proporsional, pengganti
+        harness `InboxClaimNonProp_Harness` (`MENU_ID 55`).
+
+        Rutenya sengaja terpisah dari layar saudaranya di atas: keduanya membaca tabel,
+        kolom, dan penanda objek kerja yang berbeda. Menyatukannya akan menampilkan
+        antrean lini bisnis yang salah tanpa satu pun tanda di layar.
+
+        Layar ini MEMBACA SAJA, dengan satu pengecualian yang tetap hanya membaca: tombol
+        ekspor berfungsi penuh, karena menghasilkan berkas tidak menyentuh kepemilikan
+        tabel (`P-1`). Pembuatan klaim tetap menolak dengan alasan.
+      */}
+      <Route
+        path="/inbox-claim-treaty-non-prop"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimTreatyNonPropPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Outstanding menggantikan butir menu Pega "Inbox Outstanding", yang menunjuk
+        `InboxOutstanding_Harness` — harness yang TIDAK ADA di export (`K-33`).
+
+        Layar ini menampilkan SELURUH klaim yang masih berjalan pada satu entitas, bukan
+        pekerjaan pemanggil, sehingga ia layar pemantauan dan bukan Inbox menurut `D-79`.
+
+        Yang membatasi apa yang terlihat hanyalah lini bisnis pengguna — dan batas itu
+        belum berlaku bagi pengguna yang kolom LINEBUSINESS-nya belum diisi. Pemeriksaan
+        kewenangan menu adalah `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox-outstanding"
+        element={
+          <SessionGuard>
+            <Protected>
+              <OutstandingPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Close Claim (`MENU_ID 59`) — KEBALIKAN TEPAT dari rute tepat di atasnya.
+
+        Keduanya menyaring dua nilai `PYSTATUSWORK` yang SAMA dengan arah yang berlawanan:
+        yang di atas `NOT IN`, yang ini `IN`. Rutenya karena itu terpisah dan tidak boleh
+        disatukan — menunjuk keduanya ke satu layar akan menampilkan kebalikan dari yang
+        diminta pengguna, tanpa satu pun tanda di layar.
+
+        Harness-nya juga TIDAK ADA di export (`K-33`); yang dipakai adalah kueri, activity,
+        dan section yang memang ada.
+
+        Ia satu-satunya layar inbox yang MENULIS. Yang ditulisnya bukan klaim melainkan
+        permintaan atas klaim — `P-1` menetapkan klaim masih ditulis Pega selama masa
+        paralel. Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada, dan di layar
+        ini taruhannya lebih besar: kedua tombolnya menyentuh klaim yang sudah tutup.
+      */}
+      <Route
+        path="/inbox-close-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CloseClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Analyst Doctor — antrean penilaian medis milik SATU petugas, pengganti harness
+        `inboxAnalystDoctor_Harness` (`MENU_ID 60`).
+
+        Layar ini MEMBACA SAJA. Menyelesaikan tugasnya berarti menjalankan Flow Action
+        `SendAnalystDoctor`, yang memindahkan penugasan — dan penugasan masih dimiliki Pega
+        selama masa paralel (`P-1`).
+
+        Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada. Di layar ini
+        akibatnya diredam penyaring identitas di server: antreannya disaring dengan Operator
+        ID pemanggil, sehingga pengguna lain melihat layar kosong, bukan tugas medis orang
+        lain. Itu peredam, bukan kendali — dan barisnya menyangkut data medis yang `FR-R2`
+        batasi.
+      */}
+      <Route
+        path="/inbox-analyst-doctor"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AnalystDoctorPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Manager Receive / PUCL — pandangan penyelia atas DUA antrean sekaligus,
+        pengganti harness `ReceiveDoucument_Harness` (`MENU_ID 56`).
+
+        Layar ini MEMBACA SAJA, dengan satu pengecualian yang tetap hanya membaca: tombol
+        ekspor berfungsi penuh, karena menghasilkan berkas tidak menyentuh kepemilikan
+        tabel (`P-1`). Tindakan yang di Pega menulis — antara lain mencetak surat PUCL/RCL
+        — menolak dengan alasan.
+
+        Ia BERSAUDARA dekat dengan Inbox Outstanding tepat di atasnya, dan keduanya mudah
+        tertukar: sama-sama layar pemantauan yang tidak menyaring menurut pemanggil. Yang
+        membedakan adalah ISI antreannya — yang di atas seluruh klaim berjalan pada satu
+        entitas, yang ini berkas penerimaan dokumen ditambah klaim RCL/PUCL. Rutenya karena
+        itu terpisah.
+
+        Berbeda dari seluruh layar inbox lain di berkas ini, TIDAK SATU PUN tabnya
+        menyaring menurut pengguna yang login: Report Definition-nya menyaring unit
+        organisasi, dan parameternya tidak pernah diisi di Pega. Sampai `TKT-F3-004`
+        selesai, setiap pengguna yang dapat masuk melihat seluruh antrean portalnya —
+        itulah sebabnya setiap pembukaannya dicatat di sisi peladen.
+      */}
+      <Route
+        path="/inbox-manager-receive-pucl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ManagerReceivePUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox RCL/PUCL (`MENU_ID 61`) — klaim yang ditolak atau diproses ulang.
+
+        Ia BERSAUDARA dekat dengan layar tepat di atasnya, dan keduanya membaca antrean
+        bersama yang SAMA. Yang membedakan adalah seberapa halus antrean itu dipartisi:
+
+          Inbox Manager Receive / PUCL (56)  satu tab RCL/PUCL, tanpa penyaring halus —
+                                             pandangan penyelia, superset layar ini
+          layar ini (61)                     tiga tab menurut perjalanan surat PUCL,
+                                             untuk petugas yang mengerjakannya
+
+        Rutenya terpisah, dan tidak boleh disatukan: Pega pun punya dua menu dan dua
+        harness untuk keduanya, ditujukan pada peran yang berbeda.
+
+        Seperti saudaranya, TIDAK SATU PUN tabnya menyaring menurut pengguna yang login —
+        penyaringnya akun antrean bersama, bukan orang. Di Pega, butir menunya dijaga
+        `When/IsRCLPUCL-When.xml`: `(Administrators OR PncRCLPUCL) AND NOT ViewClaimPNC`.
+        Aturan itu belum ditegakkan (`TKT-F3-004`), dan sampai saat itu setiap pembukaan
+        dicatat di sisi peladen — termasuk rentang tanggal laporan hariannya.
+      */}
+      <Route
+        path="/inbox-rcl-pucl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Layar kerja satu klaim RCL/PUCL — section `SendtoRCLPUCL`, yang di Pega dibuka Open
+        Assignment saat Nomor Case diklik.
+        Ia rute TERSENDIRI, bukan panel di dalam antrean, karena di Pega pun ia layar tujuan:
+        klaimnya terbuka pada tahap alur kerjanya untuk dikerjakan. Alamatnya karena itu dapat
+        disalin dan dibuka kembali — dan `pzInsKey` di dalamnya wajib terkodekan, sebab kunci
+        itu memuat spasi.
+        Rute ini TIDAK dipakai modul lain. Enam inbox lain menuju `/view-claim/:referensi`,
+        layar "View Claim" yang belum dibangun; RCL/PUCL berbeda karena layar tujuannya sudah
+        diketahui — ketiga rule section-nya diterima 2026-09-24.
+      */}
+      <Route
+        path="/inbox-rcl-pucl/klaim/:referensi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SendtoRCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Form Input Receive Document. Ia berdiri sebagai rute tersendiri, bukan modal di
+        atas daftar: alamatnya dapat disalin dan dibuka kembali, dan itu yang dibutuhkan
+        petugas yang menerima nomor berkas lewat telepon.
+      */}
+      <Route
+        path="/inbox/laporan-klaim/:id"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Master rekening berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan
         menu — siapa yang boleh membuka layar master mana — adalah TKT-F3-005 yang
         belum ada; sampai itu ada, setiap pengguna yang dapat masuk dapat membukanya.
@@ -576,6 +867,53 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <AccountPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/ambang-komite"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ThresholdPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Penjenjangan berada di bawah /komite, bukan /master, karena ia bukan data acuan
+        melainkan aturan bisnis modul B-7. Tangga ambangnya milik F-4, cara membacanya
+        milik B-7 — dan batas itu ikut terlihat di alamat halamannya.
+      */}
+      <Route
+        path="/komite/penjenjangan"
+        element={
+          <SessionGuard>
+            <Protected>
+              <TieringPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Komite — menggantikan harness `InboxKomite_Harness`, MENU_ID 52.
+
+        Ia berada di bawah /komite bersama penjenjangan, bukan di bawah /master: isinya
+        pekerjaan dan keputusan, bukan data acuan. Batas kepemilikan itu ikut terlihat di
+        alamat halamannya.
+
+        Pemeriksaan kewenangan menu — di data contoh, MENU_ID 52 hanya diberikan kepada
+        grup `IT` — adalah `TKT-F3-005` yang belum ada. Sampai itu ada, setiap pengguna
+        yang dapat masuk dapat membukanya; yang membatasi isinya adalah penyaring pemilik
+        di server, bukan rute ini.
+      */}
+      <Route
+        path="/komite/inbox"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxKomitePage />
             </Protected>
           </SessionGuard>
         }

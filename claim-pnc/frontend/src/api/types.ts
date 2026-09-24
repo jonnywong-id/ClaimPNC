@@ -1342,6 +1342,8 @@ export const ErrorCode = {
   businessDocumentRuleNotFound: 'tipe_dokumen_bisnis_tidak_ditemukan',
   businessDocumentRuleBusinessRequired: 'nama_bisnis_belum_diisi',
 
+  /** Milik Inbox Auto Claim: berkas unggahan tidak memuat satu baris data pun. */
+  emptyUpload: 'unggahan_kosong',
   // Milik modul Master Dominan Factor.
   //
   // Tidak ada kode "nama sudah dipakai" di sini, dan itu disengaja: nama ganda DITERIMA
@@ -1442,6 +1444,9 @@ export const ErrorCode = {
   claimFileEmpty: 'berkas_klaim_kosong',
   claimFileTooBig: 'berkas_klaim_terlalu_besar',
   claimFileUnreadable: 'berkas_klaim_tidak_terbaca',
+  // Milik modul Komite.
+  unknownLine: 'lini_tidak_dikenal',
+  malformedClaimValue: 'nilai_klaim_cacat',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -1528,6 +1533,119 @@ export const AccountErrorCode = {
   alreadyDecided: 'keputusan_sudah_diambil',
   invalidInput: 'isian_tidak_sah',
 } as const
+
+
+
+// ── Inbox Auto Claim ──────────────────────────────────────────────────────────────
+//
+// Cerminan dto di internal/inboxautoclaim/http. Menggantikan layar Pega
+// `Harness/InboxAutoClaim-Harness.xml` atas POOLDATA.TMP_BATCH_AUTO_CLAIM yang dijoin ke
+// POOLDATA.M_AUTO_CLAIM_PNC.
+//
+// Nama field di sini sudah dinamai ulang mengikuti `D-19`. Grid lama mengikat kedelapan
+// kolomnya ke property yang namanya tidak ada hubungannya dengan isinya — `.CaseID` untuk
+// kode perusahaan, `.CauseOfLoss` untuk nomor batch, `.ClaimID` untuk jumlah gagal.
+
+/**
+ * Satu baris grid Inbox Auto Claim: satu unggahan milik satu perusahaan rekanan.
+ *
+ * Perusahaan mengirim klaimnya BORONGAN sebagai berkas, bukan satu per satu lewat layar
+ * Register. Satu baris di sini adalah satu pasangan (kode perusahaan × nomor batch).
+ */
+export type AutoClaimBatch = {
+  /** Kolom INISIALID — kode singkat perusahaan rekanan. */
+  kode_perusahaan: string
+  /** Dapat KOSONG bila kodenya tidak ada di Master Auto Claim; barisnya tetap tampil. */
+  nama_perusahaan: string
+  /** Kolom BATCH — nomor unggahan, unik di dalam satu perusahaan. */
+  batch: string
+
+  /**
+   * Kolom TGLPROSES, dan ia bagian KUNCI PENGELOMPOKAN grid — bukan sekadar tampilan.
+   *
+   * Satu nomor batch yang diunggah pada dua tanggal berbeda tampil sebagai DUA baris.
+   * Tanpa kolomnya, kedua baris itu tampak kembar tanpa sebab.
+   */
+  tanggal_proses: string
+
+  jumlah_upload: number
+  jumlah_proses: number
+  jumlah_berhasil: number
+  jumlah_gagal: number
+  /** Dihitung server dari selisih upload dan proses; layar tidak menghitungnya sendiri. */
+  jumlah_belum_proses: number
+
+  /** Kolom USERINPUT — pengguna yang mengunggah batch ini. */
+  user_upload: string
+}
+
+/** Keadaan satu baris klaim di dalam batch. */
+export const AutoClaimResult = {
+  succeeded: 'berhasil',
+  failed: 'gagal',
+  /** Belum tersentuh pemrosesan. BUKAN sama dengan gagal. */
+  pending: 'belum',
+} as const
+
+export type AutoClaimResult = (typeof AutoClaimResult)[keyof typeof AutoClaimResult]
+
+/**
+ * Satu baris klaim di dalam sebuah batch — isi layar DETAIL.
+ *
+ * Seluruh nilainya bertipe teks, termasuk tanggal dan nilai uang. Tanggal karena kolomnya
+ * memang menyimpan teks `dd/mm/yyyy` dan mengubahnya berarti mengubah isinya; nilai uang
+ * karena `I-12` menuntut presisi penuh dan pembulatan hanya saat ditampilkan.
+ */
+export type AutoClaimLine = {
+  nomor_polis: string
+  prod_ke: string
+  /** Terbit setelah baris berhasil diproses; kosong selama belum. */
+  nomor_klaim: string
+  nomor_aksep: string
+  /** KODE mata uang hasil lookup ke POOLDATA.CURRENCY, bukan id yang tersimpan. */
+  mata_uang: string
+  nilai_klaim: string
+  penyebab_kerugian: string
+  tanggal_kejadian: string
+  tanggal_lapor: string
+  /** Kolom TGLPROSES — kolom kedua pada grid rincian Pega. */
+  tanggal_proses: string
+  catatan: string
+  keyword: string
+  /**
+   * Dua kolom yang tidak tampil di grid rincian Pega dan tidak terbaca dari kueri mana
+   * pun; keberadaannya baru diketahui dari DDL. Dibawa apa adanya supaya isinya dapat
+   * diperiksa saat gerbang 1, bukan karena artinya sudah dipahami.
+   */
+  nama_objek: string
+  flag_tidak_bayar: string
+  /** Kolom TMP_MESSAGE apa adanya. Kosong berarti belum diproses. */
+  keterangan: string
+  /** Keadaan barisnya, dipakai memilih lencana — bukan mencocokkan teks keterangan. */
+  hasil: AutoClaimResult
+}
+
+/** Satu pilihan pada penyaring Nama Perusahaan. */
+export type AutoClaimCompany = {
+  kode: string
+  nama: string
+}
+
+/** Keterangan halaman pada daftar yang dipaginasi server. */
+export type Pagination = {
+  halaman: number
+  ukuran: number
+  total: number
+  /** Dikirim server, bukan dihitung layar — pembulatannya mudah salah pada sisa halaman. */
+  total_halaman: number
+}
+
+export type AutoClaimBatchListResponse = {
+  batch: AutoClaimBatch[]
+  paginasi: Pagination
+  /** Entitas yang benar-benar menjawab permintaan ini. Cerminan BatchListResponse.Portal. */
+  portal: string
+}
 
 export type AccountErrorCode =
   (typeof AccountErrorCode)[keyof typeof AccountErrorCode]
@@ -1693,6 +1811,12 @@ export type DocumentObjectInput = {
   bisnis: string[]
 }
 
+export type AutoClaimLineListResponse = {
+  kode_perusahaan: string
+  batch: string
+  baris: AutoClaimLine[]
+  paginasi: Pagination
+}
 /** Bekal awal layar: nomor batch perkiraan dan pilihan tahun, dalam satu permintaan. */
 export type RecoveryFormResponse = {
   /**
@@ -1758,7 +1882,57 @@ export type RecoveryDocumentResponse = {
 }
 
 /**
- * Badan permintaan Transfer Recovery.
+ * Satu tab pada layar Inbox Auto Claim.
+ *
+ * Ketiganya berasal dari satu harness Pega dan hanya berbeda TABEL batch-nya:
+ *
+ *   aneka   TMP_BATCH_AUTO_CLAIM    kolom INISIALID
+ *   kredit  TMP_BATCH_CLAIM_KREDIT  kolom AGENID
+ *   travel  TMP_BATCH_AUTO_TRAVEL   kolom INISIALID
+ *
+ * Daftarnya datang dari SERVER, tidak ditulis di sini: tab adalah pengetahuan tentang
+ * tabel mana yang ada, dan itu milik backend.
+ */
+export type AutoClaimTab = {
+  kode: string
+  /** Teks tab, disalin dari pyCaption harness Pega: ANEKA, Asuransi Kredit, Travel. */
+  label: string
+  /** Tabel Oracle yang dibaca tab ini, ditampilkan sebagai keterangan sumber grid. */
+  tabel: string
+}
+
+export type AutoClaimTabListResponse = {
+  tab: AutoClaimTab[]
+  bawaan: string
+}
+
+export type AutoClaimCompanyListResponse = {
+  perusahaan: AutoClaimCompany[]
+  portal: string
+}
+
+/**
+ * Satu irisan grafik sekaligus satu baris tabel ringkasan.
+ *
+ * Yang dihitung adalah BATCH, bukan baris klaim — satuannya sama dengan satu baris grid.
+ * Dengan begitu angka di sini dan total paginasi setelah disaring selalu cocok: pengguna
+ * yang melihat "3" lalu mengeklik perusahaan itu mendapat tepat tiga baris.
+ */
+export type AutoClaimCompanySummary = {
+  kode: string
+  /** Dapat kosong bila kodenya tidak ada di Master Auto Claim; irisannya tetap ada. */
+  nama: string
+  jumlah_batch: number
+}
+
+export type AutoClaimSummaryResponse = {
+  perusahaan: AutoClaimCompanySummary[]
+  /** Baris "All". Dikirim server, bukan dijumlahkan layar. */
+  total: number
+  portal: string
+}
+
+/* Badan permintaan Transfer Recovery.
  *
  * Empat hal sengaja TIDAK ada di sini, dan backend MENOLAK badan yang memuatnya:
  * `nomor_batch` (diterbitkan penyimpanan), `sisa` (dihitung server), keempat identitas
@@ -1928,12 +2102,72 @@ export type SimasOnlineCauseOfLossInput = {
 
 /**
  * Badan permintaan penambahan dan penyuntingan Master Masking.
+ * Satu batch yang terbentuk dari sebuah unggahan.
+ *
+ * Perusahaannya TIDAK diketik pengunggah — ia diturunkan dari nomor polis tiap baris.
+ * Akibatnya satu berkas dapat menghasilkan beberapa batch sekaligus.
+ */
+export type AutoClaimUploadBatch = {
+  kode_perusahaan: string
+  nama_perusahaan: string
+  batch: string
+  jumlah_baris: number
+
+  /**
+   * Hasil PEMERIKSAAN SAAT UNGGAH, bukan hasil pemrosesan menjadi klaim.
+   *
+   * Baris "lolos" berarti lolos pemeriksaan polis dan MENUNGGU diproses — ia belum
+   * menjadi klaim apa pun. Kata "berhasil" sengaja dihindari supaya tidak tertukar
+   * dengan hasil akhir yang tampil di grid.
+   */
+  jumlah_lolos: number
+  jumlah_bertanda: number
+}
+
+/** Satu baris berkas yang TIDAK disisipkan sama sekali. */
+export type AutoClaimUploadRejected = {
+  /** Nomor baris di dalam berkas, terhitung sejak baris judul. */
+  baris: number
+  nomor_polis: string
+  pesan: string
+}
+
+/**
+ * Hasil satu unggahan, membedakan TIGA keadaan:
+ *
+ * - lolos — disisipkan, menunggu diproses
+ * - bertanda — disisipkan beserta pesan galatnya, persis perilaku Pega
+ * - ditolak — TIDAK disisipkan karena perusahaannya tidak dapat diturunkan dari polis
+ *
+ * Yang bertanda masih ada di tabel dan masih terlihat di grid; yang ditolak tidak ada di
+ * mana pun. Pengguna yang mengira keduanya sama akan mencari baris yang tidak pernah
+ * tersimpan.
+ */
+export type AutoClaimUploadResponse = {
+  batch: AutoClaimUploadBatch[]
+  jumlah_baris: number
+  ditolak: AutoClaimUploadRejected[]
+  portal: string
+}
+
+/**
+ * Bentuk berkas yang diterima unggahan.
+ *
+ * Dilayani server, tidak disalin ke sini: bila flow action Pega yang asli akhirnya tiba
+ * dan judul kolomnya ternyata berbeda, yang berubah hanya satu tempat.
+ */
+export type AutoClaimUploadTemplateResponse = {
+  kolom_wajib: string[]
+  kolom_opsional: string[]
+  batas_baris: number
+ /* Badan permintaan penambahan dan penyuntingan.
  *
  * Empat hal sengaja TIDAK ada: `id`, `nama_cabang`, `aktif`, dan `dicatat_oleh`. Server
  * menolak badan permintaan yang memuat salah satunya. Yang paling penting di antaranya
  * adalah `aktif` — tanpa pemisahan itu, menyimpan form yang dibuka dari baris nonaktif
  * akan diam-diam mengembalikan kewenangan membuka data pribadi.
  */
+}
 export type MaskingInput = {
   cabang: string
   login: string
@@ -3351,3 +3585,304 @@ export const ClaimReportErrorCode = {
 
 export type ClaimReportErrorCode =
   (typeof ClaimReportErrorCode)[keyof typeof ClaimReportErrorCode]
+/**
+ * Satu baris master ambang komite — satu jenjang persetujuan untuk satu lini bisnis.
+ *
+ * Nilai uang datang sebagai **teks desimal kanonik** (`"50000001.00"`), bukan angka JSON.
+ * Angka JSON adalah floating point ganda di peramban, dan `I-12` menetapkan nilai uang
+ * disimpan dengan presisi penuh. Pemformatannya lewat `@/lib/money`.
+ */
+export type KomiteThreshold = {
+  id: string
+  nama: string
+  operator_id: string
+  lini: string
+  /**
+   * Kolom `TYPE_KOMITE` apa adanya, dan kolom itu memikul **dua arti**: pita nilai di
+   * Non-MBU, varian jalur (PA reguler versus PA TKI) di PA. Jangan menafsirkannya di
+   * layar — pakai `berpita_nilai` pada respons penjenjangan.
+   */
+  jenis_komite: string
+  batas_bawah: string
+  /**
+   * `LIMIT_TOP`. **Tidak pernah** dipakai memilih baris — memakainya untuk menyaring
+   * akan mengembalikan tepat satu baris dan menghapus penjenjangan seluruhnya (`D-47`).
+   * Ia hanya bahan pemeriksaan integritas master.
+   */
+  batas_atas: string
+  /** `DEGREE` — penentu urutan, bukan jumlah jenjang. Boleh berulang dan boleh melompat. */
+  jenjang: number
+  aktif: boolean
+  untuk_adjustment: boolean
+  untuk_registrasi: boolean
+  untuk_penolakan: boolean
+  sedang_absen: boolean
+  /** Kesimpulan server: baris ini benar-benar ikut menyetujui nilai klaim. */
+  jenjang_persetujuan: boolean
+}
+
+/** Aturan pita nilai yang berlaku untuk sebuah lini. Hanya Non-MBU yang memakainya. */
+export type KomiteBandPolicy = {
+  lini: string
+  batas: string
+  pita_bawah: string
+  pita_atas: string
+}
+
+export type KomiteThresholdListResponse = {
+  ambang: KomiteThreshold[]
+  total: number
+  /** Hanya baris yang benar-benar ikut menyetujui. Selalu lebih kecil dari `total`. */
+  total_jenjang: number
+  /** Datang dari data, bukan dari daftar tetap di dalam kode (`D-15`). */
+  lini: string[]
+  kebijakan_pita: KomiteBandPolicy[]
+  /**
+   * Mode penjenjangan portal ini — `"kumulatif"` atau `"satu-penyetuju"`.
+   *
+   * Ditentukan per **portal**, bukan per lini. Layar memakainya untuk menentukan apakah
+   * isian Operator ID pengaju perlu ditampilkan sama sekali.
+   */
+  mode: string
+}
+
+/** Satu hal yang ditemukan pada master ambang. */
+export type KomiteFinding = {
+  /** `"cacat"` atau `"peringatan"`. Dibedakan lewat nilai ini, bukan teks pesannya. */
+  tingkat: string
+  jenis: string
+  lini: string
+  pita?: string
+  pesan: string
+  id_ambang: string[]
+}
+
+export type KomiteIntegrityResponse = {
+  temuan: KomiteFinding[]
+  jumlah_cacat: number
+  jumlah_peringatan: number
+}
+
+/** Satu orang yang harus menyetujui sebuah nilai klaim. */
+export type KomiteApprover = {
+  /** Selalu berurutan tanpa lompatan, 1 sampai jumlah penyetuju. */
+  urutan: number
+  /** `DEGREE` dari master. Boleh berulang — lihat `urutan_tidak_pasti`. */
+  jenjang: number
+  nama: string
+  operator_id: string
+  /** Ambang yang membuat orang ini ikut — alasannya, bukan sekadar hasilnya. */
+  batas_bawah: string
+  sedang_absen: boolean
+  id_ambang: string
+}
+
+/** Mode penjenjangan, ditentukan per portal. */
+export const KomiteMode = {
+  /** Non-MBU, PA, Travel, Bonding: setiap jenjang yang terlampaui ikut menyetujui. */
+  cumulative: 'kumulatif',
+  /** Simasnet: dipilih tepat satu penyetuju, diacak, penginput dikecualikan. */
+  singleApprover: 'satu-penyetuju',
+} as const
+
+export type KomiteMode = (typeof KomiteMode)[keyof typeof KomiteMode]
+
+export type KomiteTieringResponse = {
+  nilai: string
+  lini: string
+  mode: string
+  /** Membedakan "lini ini tidak memakai pita" dari "pitanya gagal dihitung". */
+  berpita_nilai: boolean
+  pita?: string
+  penyetuju: KomiteApprover[]
+  /**
+   * Hanya terisi pada mode satu-penyetuju: seluruh orang yang **layak** dipilih pada
+   * jenjang terendah, sebelum satu di antaranya diacak.
+   *
+   * Yang dapat diperiksa pada mode itu bukan siapa yang terpilih — itu acak — melainkan
+   * apakah kumpulan yang layak sudah benar.
+   */
+  kandidat?: KomiteApprover[]
+  /** Operator yang **diminta** dikecualikan karena dialah yang mengajukan. */
+  dikecualikan_penginput?: string
+  /**
+   * Orang yang **benar-benar** keluar karena pengecualian itu.
+   *
+   * Dibedakan dari `dikecualikan_penginput` dengan sengaja: penginput yang bukan anggota
+   * komite tidak mengubah apa pun. Isinya paling penting justru saat `penyetuju` kosong —
+   * ia satu-satunya keterangan yang menjelaskan kenapa.
+   */
+  tersingkir?: KomiteApprover[]
+  jumlah_jenjang: number
+  /** Keadaan, bukan galat: temuan tentang isi master yang harus dilihat Work Owner. */
+  tanpa_penyetuju: boolean
+  /**
+   * Dua penyetuju ber-`DEGREE` sama. Kueri sistem lama mengurutkan dengan
+   * `ORDER BY DEGREE` saja, sehingga saat seri urutannya ditentukan basis data.
+   */
+  urutan_tidak_pasti: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Inbox Komite (`TKT-B07-002`, MENU_ID 52 — harness `InboxKomite_Harness`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Kotak mana yang sedang dibuka.
+ *
+ * Ketiganya menggantikan tiga grid pada `Section/InboxKomite_section-Section.xml`:
+ * "Kotak Masuk Komite Outstanding", "…Diterima", dan "…Ditolak".
+ *
+ * Hanya yang pertama berisi **pekerjaan** dalam arti `D-79` — barisnya hilang setelah
+ * diputuskan dan punya tenggat. Dua sisanya riwayat.
+ */
+export const KomiteInboxKind = {
+  outstanding: 'outstanding',
+  accepted: 'diterima',
+  rejected: 'ditolak',
+} as const
+
+export type KomiteInboxKind = (typeof KomiteInboxKind)[keyof typeof KomiteInboxKind]
+
+/** Tiga keputusan yang dapat diberikan komite. */
+export const KomiteDecisionKind = {
+  approve: 'setuju',
+  reject: 'tolak',
+  return: 'kembalikan',
+} as const
+
+export type KomiteDecisionKind =
+  (typeof KomiteDecisionKind)[keyof typeof KomiteDecisionKind]
+
+/** Kesimpulan atas seluruh keputusan pada satu kasus. */
+export const KomiteOutcome = {
+  pending: 'menunggu',
+  approved: 'disetujui',
+  rejected: 'ditolak',
+  returned: 'dikembalikan',
+} as const
+
+export type KomiteOutcome = (typeof KomiteOutcome)[keyof typeof KomiteOutcome]
+
+/** Satu keputusan komite yang tercatat. Tidak pernah diubah dan tidak pernah dihapus. */
+export type KomiteDecision = {
+  id: string
+  jenjang: number
+  keputusan: KomiteDecisionKind
+  catatan?: string
+  oleh: string
+  nama_pemutus?: string
+  /** RFC 3339 dalam UTC. */
+  pada: string
+}
+
+/** Keadaan penjenjangan satu kasus menurut sistem ini. */
+export type KomiteProgress = {
+  kesimpulan: KomiteOutcome
+  /** Nol berarti **belum diketahui**, bukan nol jenjang — lihat penanda di bawah. */
+  jumlah_jenjang: number
+  jenjang_kini: number
+  jenjang_disetujui: number
+  /**
+   * Dikirim sebagai kesimpulan, bukan dibiarkan disimpulkan layar dari angka nol.
+   *
+   * Jumlah jenjang yang tidak diketahui lalu digambar sebagai "1 dari 1" akan membuat
+   * persetujuan pertama tampak menutup seluruh komite.
+   */
+  jumlah_jenjang_belum_diketahui: boolean
+  selesai: boolean
+  /** Layar memakainya menyembunyikan tombol; penegakannya tetap di server (409). */
+  sudah_saya_putuskan: boolean
+  keputusan: KomiteDecision[]
+}
+
+/**
+ * Satu baris Inbox Komite.
+ *
+ * Nama field di sini **sudah benar**, berbeda dari property Pega yang digantikannya:
+ * `.IBNR` → nilai ASM share, `.pyScore` → nilai OR ASM, `.DraftWordingID` → PIC klaim,
+ * `.StatusKlaim` → tipe komite (`D-19`).
+ */
+export type KomiteCase = {
+  nomor_case: string
+  nomor_klaim: string
+
+  nomor_polis: string
+  nama_tertanggung: string
+  nama_bisnis: string
+  sumber_bisnis: string
+  cabang: string
+  group_panel?: string
+  pic_klaim?: string
+
+  /** RFC 3339 dalam UTC; kosong berarti belum ada, bukan tahun 1. */
+  tanggal_komite?: string
+  tanggal_input?: string
+  /** Dihitung **server**, dalam hari kalender WIB. Jam peramban tidak dipakai. */
+  aging_komite: number
+
+  status_kerja?: string
+  tipe_komite?: string
+
+  /** Teks desimal kanonik — bukan angka JSON, yang akan dibulatkan diam-diam. */
+  nilai_klaim: string
+  nilai_asm_share: string
+  nilai_or_asm: string
+
+  note_komite?: string
+
+  /** Membedakan "belum dinilai AI" dari "dinilai dengan hasil kosong". */
+  ada_penilaian_ai: boolean
+  jawaban_ai?: string
+  note_ai_diterima?: string
+  note_ai_ditolak?: string
+  tanggal_ai?: string
+
+  /** Keputusan dan jenjang yang tercatat **di Pega**, bukan di sistem ini. */
+  keputusan_pega?: KomiteOutcome
+  jenjang_pega?: number
+
+  penjenjangan: KomiteProgress
+}
+
+export type KomiteInboxSummary = {
+  outstanding: number
+  diterima: number
+  ditolak: number
+}
+
+export type KomiteInboxListResponse = {
+  kasus: KomiteCase[]
+  /** Seluruh yang cocok, bukan isi halaman ini. */
+  total: number
+  lewati: number
+  batas: number
+  ringkasan: KomiteInboxSummary
+  /** Kotak yang benar-benar dipakai server — yang tidak dikenali jatuh ke outstanding. */
+  kotak: KomiteInboxKind
+  /**
+   * Operator yang dipakai menyaring, dipantulkan kembali.
+   *
+   * Dengan ini inbox yang kosong dapat dibedakan sebabnya: tidak ada pekerjaan, versus
+   * identitas sesi tidak cocok dengan satu pun `OPERATOR_ID` di data warisan — keadaan
+   * yang sangat mungkin selama pemetaan identitas HCC/HCQ belum ada (`ADR-0024`).
+   */
+  operator: string
+  /** Jam server yang dipakai menghitung aging. */
+  sekarang: string
+}
+
+export type KomiteCaseResponse = {
+  kasus: KomiteCase
+  sekarang: string
+}
+
+/** Kode galat khusus layar Inbox Komite. */
+export const KomiteInboxErrorCode = {
+  caseNotFound: 'kasus_tidak_ditemukan',
+  decisionClosed: 'komite_sudah_selesai',
+  malformedBody: 'permintaan_cacat',
+} as const
+
+export type KomiteInboxErrorCode =
+  (typeof KomiteInboxErrorCode)[keyof typeof KomiteInboxErrorCode]

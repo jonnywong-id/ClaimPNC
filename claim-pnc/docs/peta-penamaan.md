@@ -360,6 +360,95 @@ untuk modul yang Work Owner sebut dengan nama bisnisnya.
 
 ---
 
+## Tambahan 2026-09-19 — modul Inbox Auto Claim
+
+Nama modulnya **Indonesia** (`inboxautoclaim` di backend, `inbox-auto-claim` di frontend)
+mengikuti `D-81`: ia nama modul bisnis yang disebut Work Owner. Isinya **Inggris**.
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Batch | Batch | sudah Inggris; satu unggahan milik satu perusahaan |
+| Baris klaim | Line | satu klaim di dalam sebuah batch |
+| Perusahaan rekanan | Company | bank dan lembaga pembiayaan pengirim klaim borongan |
+| Halaman | PageRequest · BatchPage · LinePage | permintaan halaman dan hasilnya |
+| Penyaring | BatchFilter · LineQuery | |
+| Hasil pemrosesan | Result | `berhasil` · `gagal` · kosong berarti belum |
+| Baris unggahan | UploadRow | satu baris berkas CSV sesudah dibaca |
+| Ringkasan unggahan | UploadResult · BatchRef | |
+| Bentuk berkas ekspor | ExportSpec | judul kolom + cara memetakan barisnya |
+| Berkas unduhan | ExportFile · DownloadedFile | Go dan TypeScript |
+
+### Tambahan 2026-09-20 — tiga tab
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Tab / jenis klaim | **Source** | enum tertutup: `aneka` · `kredit` · `travel` |
+| Keterangan tab | **SourceInfo** | label, nama tabel, nama kolom perusahaan |
+| Ringkasan per perusahaan | **Summary · CompanySummary** | satuannya **jumlah batch** |
+
+Tiga catatan penamaan yang sengaja:
+
+1. **`Source`, bukan `Tab`.** Yang dipilih pengguna memang tampak sebagai tab, tetapi yang
+   ditentukannya **sumber data** — tabel mana yang dibaca. Menamainya `Tab` mengikat nama
+   domain pada bentuk tampilan, dan bentuk itu dapat berubah tanpa sumbernya berubah.
+2. **Nilai enum-nya Indonesia** (`aneka`, `kredit`, `travel`) karena ia **kontrak API** —
+   `?sumber=kredit` dipakai peramban dan tertulis di README, sama sifatnya dengan nama field
+   JSON.
+3. **Label tab tidak diturunkan dari nama rule.** Rule-nya `BrowseClaimSPKAutoClaim`, tetapi
+   `pyCaption` harness menyebut **ANEKA**. Label datang dari harness, dan dikirim server —
+   bukan diketik di layar.
+
+### Penamaan ulang delapan kolom grid (`D-19`)
+
+Alias Pega-nya **tidak dibawa**; ketiganya contoh utang teknis §4.2:
+
+| Judul kolom layar | Properti Pega | Nama di kode | Kolom tabel |
+|---|---|---|---|
+| KODE | `.CaseID` | `CompanyCode` | `INISIALID` |
+| Nama Perusahaan | `.AlasanTerlambat` | `CompanyName` | `NAMA_PENERIMA` |
+| Batch | `.CauseOfLoss` | `BatchNumber` | `BATCH` |
+| Jumlah data yang di upload | `.ChronologicalOfIncodent` | `Uploaded` | `COUNT(*)` |
+| Jumlah data yang telah diproses | `.City` | `Processed` | turunan `TMP_MESSAGE` |
+| Jumlah Berhasil | `.CityID` | `Succeeded` | turunan `TMP_MESSAGE` |
+| Jumlah Gagal | `.ClaimID` | `Failed` | turunan `TMP_MESSAGE` |
+| User Upload | `.AnaylstRemarks` | `UploadedBy` | `USERINPUT` |
+
+> `.CauseOfLoss` pada grid adalah **nomor batch**, sementara kolom `COL_ID` pada tabel yang
+> sama adalah **penyebab kerugian yang sungguhan** — dan itu yang dinamai `CauseOfLoss` di
+> kode. Dua hal berbeda dengan satu nama Pega.
+
+### Nama JSON tetap Indonesia
+
+`kode_perusahaan`, `nama_perusahaan`, `batch`, `jumlah_upload`, `jumlah_proses`,
+`jumlah_berhasil`, `jumlah_gagal`, `jumlah_belum_proses`, `user_upload`, `paginasi`,
+`baris`, `hasil`, `keterangan`.
+
+### Judul kolom berkas CSV — TIDAK diterjemahkan dan TIDAK diperbaiki
+
+`Inisial`, `No Polis`, `No Klaim`, `No Ref Bank`, `No Aksep`, `Currency`, `Nilai Klaim`,
+`No Objek`, `Keterangan`.
+
+Beberapa di antaranya menyesatkan ("No Objek" berisi nomor produk), tetapi berkas ini
+dibaca **perusahaan rekanan di luar Sinarmas**. Judulnya kontrak keluaran, bukan nama
+internal — penamaan ulang berhenti di batas berkas.
+
+### Judul kolom berkas UNGGAHAN — nama kolom basis data
+
+`inisialid`, `nopolis`, `prodke`, `tglkejadian`, `tgllapor`, `col_id`, `nilaiklaim`,
+`currency`, `note`, `keyword`.
+
+Flow action Pega-nya hilang dari export, sehingga judul aslinya tidak diketahui. Yang
+dipakai nama kolom tabel — satu-satunya nama yang dapat ditelusuri ke buktinya.
+
+### Prop baru pada komponen bersama
+
+| Prop | Komponen | Arti |
+|---|---|---|
+| `pagination` | `DataTable` | paginasi sisi server; opsional |
+| `hideSearch` | `DataTable` | menyembunyikan kotak pencarian peramban; opsional |
+| `unduhBerkas` · `simpanBerkas` | `api/client.ts` | mengambil respons non-JSON dan menyimpannya |
 ## Tambahan 2026-09-19 — modul Master Tipe Surveyors
 
 Modul ini **dinamai dengan nama bisnisnya** (`D-81`), dan namanya tidak dikarang: ia tertulis di
@@ -1148,6 +1237,44 @@ istilah bisnis; yang di bawah adalah padanan Inggris yang dipakai di kode.
 | `STS_AKTIF` | `active` (hanya di SQL) | penanda soft delete pada tabel pemetaan; tidak muncul sebagai field domain |
 | Penyebab Kerugian | CauseOfLoss | |
 | Bisnis / Lini Bisnis | Business | |
+**Nama tabel baru** tetap Indonesia karena ia milik basis data (`D-80`):
+`POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.
+
+## Tambahan 2026-09-20 — modul Inbox XOL (`inboxxol`)
+## Tambahan 2026-09-20 — modul Inbox Komite
+
+### Alias Pega yang TIDAK dibawa
+
+Ini bagian terpenting dari peta modul ini. Lima property pada section lama bernama sesuatu yang
+sama sekali tidak mencerminkan isinya — utang teknis `03-CURRENT-ARCHITECTURE.md` §4.2. Nama yang
+dipakai di sini diturunkan dari **apa yang benar-benar dihitung SQL-nya**, bukan dari nama
+property-nya (`D-19`).
+
+| Property Pega | Caption di layar lama | Isi sebenarnya | Nama di kode |
+|---|---|---|---|
+| `.IBNR` | Nilai ASM Share | `NILAIKLAIM × SHAREASM / 100` | `ASMShareValue` |
+| `.pyScore` | Nilai OR ASM | `NILAIKLAIM × Σ PRSN_*` | `ORValue` |
+| `.DraftWordingID` | PIC Klaim | `T_CLAIM_PNC.PICTEKNIK` | `ClaimPIC` |
+| `.RejectedCode` | Alasan Reject | `NOTEKOMITE` | `CommitteeNote` |
+| `.StatusKlaim` | Tipe Komite | `TYPEKOMITE × PAYMENTTYPE` | `CommitteeKind` |
+
+`.StatusKlaim` patut disebut khusus: ia **bukan** Status Klaim dalam arti `D-18`. Menyalin namanya
+akan menambah tafsir kelima pada konsep yang `D-18` sudah susah payah pisahkan menjadi empat.
+
+### Istilah domain baru
+
+| Indonesia (`CONTEXT.md`) | Inggris | Contoh |
+|---|---|---|
+| Kasus komite | `CommitteeCase` | `CommitteeCase`, `FindCase`, `ListCases` |
+| Kotak masuk | `InboxKind` | `InboxOutstanding`, `InboxAccepted`, `InboxRejected` |
+| Keputusan | `Decision` | `Decision`, `DecisionKind`, `DecisionCommand` |
+| Setuju · Tolak · Kembalikan | `Approve` · `Reject` · `Return` | `DecisionApprove`, `DecisionReject`, `DecisionReturn` |
+| Kesimpulan | `Outcome` | `OutcomePending`, `OutcomeApproved`, `OutcomeRejected`, `OutcomeReturned` |
+| Penjenjangan (keadaan) | `Progress` | `Progress`, `Evaluate`, `TierCountUnknown` |
+| Umur menunggu | `Aging` | `AgingDays` |
+| Pemutus | `Actor` | `Actor`, `ActorLogin`, `ActorName` |
+| Tipe komite | `CommitteeKind` | `CommitteeKindOf` |
+| Warisan (dari Pega) | `Legacy` | `LegacyOutcome`, `LegacyTier` |
 
 ### Kata kerja tambahan
 
@@ -1896,3 +2023,740 @@ bertitik seperti `PNCN.YY.xxxx` (`D-71`) dan `LPK.YY.xxxx` (Pelaporan Klaim). Pe
 terbitan Pega dilakukan lewat **rentang angka**, bukan lewat bentuk.
 
 Rute: `POST /api/inbox-compliance/post-audit`. Ia satu-satunya rute modul ini yang mengubah data.
+| Putuskan | `Decide` | aksi bisnis, bukan `Update` — ia punya invarian dan meninggalkan jejak |
+| Catat | `Record` | append-only; sengaja BUKAN `Save`, yang menyiratkan dapat menimpa |
+| Ringkas | `Summarize` | jumlah per kotak dalam satu perjalanan |
+| Tumpangkan | `withProgress` | menumpangkan keputusan kita di atas kasus warisan |
+
+### Nama kueri `.sql` tambahan
+
+Berawalan menurut **apa yang dilayaninya**, bukan menurut nama tabelnya — karena satu kueri di
+sini menyentuh enam tabel sekaligus:
+
+    inbox_list · inbox_count · inbox_summary · inbox_get · inbox_check_table
+    decision_list_for_cases · decision_insert · decision_check_table
+
+`decision_insert` adalah **satu-satunya pernyataan tulis di seluruh paket**, dan ia terdaftar
+eksplisit di `kueriYangBolehMenulis` pada ujinya.
+
+### Nama tabel dan kolom — tetap Indonesia
+
+`POOLDATA.CPNC_KOMITE_KEPUTUSAN` beserta seluruh kolomnya (`CASE_ID`, `NOMOR_KLAIM`, `JENJANG`,
+`KEPUTUSAN`, `CATATAN`, `ACTOR_LOGIN`, `ACTOR_NAMA`, `PADA`) berbahasa Indonesia mengikuti `D-80`:
+nama basis data dimiliki bersama Pega selama masa paralel, dan perubahannya menempuh `D-63`.
+
+Dua kolom memakai awalan `ACTOR_` yang berbahasa Inggris. Itu disengaja: ia menghindari kata
+"pengguna", yang di tabel ini akan menyesatkan — pemutusnya belum tentu ada di tabel pengguna
+aplikasi ini, dan nilainya adalah login warisan.
+
+### Nama field JSON — tetap Indonesia
+
+`nomor_case`, `nomor_klaim`, `aging_komite`, `tipe_komite`, `nilai_asm_share`, `nilai_or_asm`,
+`penjenjangan`, `kesimpulan`, `keputusan`, `catatan`, `kotak`, `ringkasan` — seluruhnya kontrak
+API, bukan nama internal (`D-80`).
+
+Nilai enumnya pun Indonesia dan sengaja sama dengan yang tersimpan di kolom `KEPUTUSAN`:
+`setuju` · `tolak` · `kembalikan`, dan `outstanding` · `diterima` · `ditolak`.
+
+### Nama modul
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder dan paket Go | `internal/inboxxol` |
+| Frontend, folder modul | `src/modules/inbox-xol` |
+| Rute antarmuka | `/inbox-xol` |
+| Awalan rute API | `/api/inbox-xol` |
+
+Mengikuti `D-81`: nama modulnya diambil dari nama yang dipakai Work Owner dan tertulis di
+menu — "Inbox XOL". Isinya tetap berbahasa Inggris (`D-80`).
+
+### Properti Pega → arti sebenarnya → nama di kode
+
+Alias di layar ini menyesatkan lebih parah daripada modul mana pun sebelumnya: namanya
+bukan singkatan tidak lazim, melainkan **berarti hal lain**.
+
+**Grid "DATA XOL BASED ON DOL AND COL"** — dari `GetDataXOL_Calulation`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.ASMFull` | `DOL` | Tanggal Kejadian | `ClaimSummary.LossDate` |
+| `.AcceptedNo` | `CAUSEOFLOSS` | Penyebab Kerugian | `ClaimSummary.CauseOfLoss` |
+| `.Currency` | `SUM(OSVALUE)` | Nilai Outstanding | `ClaimSummary.OutstandingValue` |
+| `.CurrencyID` | `SUM(AKSEPVALUE)` | Nilai Akseptasi | `ClaimSummary.AcceptedValue` |
+| `.BranchOfBank` | — (dari master) | Nama Group Business | `ClaimSummary.BusinessGroup` |
+
+**Grid "PILIH MASTER XOL"** — dari `GetDataMasterXOL` kelas `Data-Adjustment`, yang
+**tidak ada di export** dan direkonstruksi:
+
+| Properti Pega | Artinya | Nama di kode |
+|---|---|---|
+| `.CurrencyName` | Tahun XOL | `MasterXOL.Year` |
+| `.AcceptedNo` | Kurs perjanjian | `MasterXOL.ExchangeRate` |
+| `.Currency` | Nama group business | `MasterXOL.BusinessGroups[].Name` |
+| `.CurrencyID` | Kode group business | `MasterXOL.BusinessGroups[].ID` |
+| `.Notes` | Kode master XOL | `MasterXOL.ID` |
+
+**Grid rincian `Sec_Detail_claim_XOL`** — dari `GetDataMasterXOL` kelas `Data-ClaimData`
+dan `GetDataXOLPerBusiness`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.BranchID` | `MST_XOL_PNC.ID` | Kode Master XOL | `MasterXOL.ID` |
+| `.UserName` | `MST_XOL_PNC.NAMA` | Nama Master XOL | `MasterXOL.Name` |
+| `.UserAdmin` | `MST_XOL_PNC.TAHUN` | Tahun XOL | `MasterXOL.Year` |
+| `.Amount` | `MST_XOL_PNC.KURSVALUE` | Kurs | `MasterXOL.ExchangeRate` |
+| `.FlagASO` | `STSKOMITE` | Status Komite | `MasterXOL.CommitteeStatus` |
+| `.NoteKasir` | `REMARKKOMITE` | Catatan Komite | `MasterXOL.CommitteeNote` |
+| `.CABANG` | `TYPEXOL` | Tipe Master | `MasterXOL.Type` |
+| `.CloseClaimNote` | `REMARKPIC` | Catatan PIC | `MasterXOL.PICNote` |
+| `.Country` | `businessgroup.NOTE` | Nama Group Business | `BusinessBreakdown.BusinessGroup` |
+| `.IsDLA` | `COUNT(DISTINCT claimno)` | Jumlah Klaim | `BusinessBreakdown.ClaimCount` |
+| `.DLAShare` | `SUM(os_value)` | Nilai Outstanding | `BusinessBreakdown.OutstandingValue` |
+| `.KlaimAmount` | `SUM(aksep_value)` | Nilai Akseptasi | `BusinessBreakdown.AcceptedValue` |
+| `.IsKirim` | `businessgroupid` | Kode Group Business | `BusinessBreakdown.BusinessGroupID` |
+
+**Grid PLA/DLA** — dari `BrowseAllDataXOL_PLA`:
+
+| Properti Pega | Kolom sumber | Artinya | Nama di kode |
+|---|---|---|---|
+| `.ResponseCode` / `.CaseID` / `.ref_no` | `NO_PLADLAXOL` | Nomor PLA/DLA | `Advice.Number` |
+| `.CoverInsKey` | `NAMAREAS` | Nama Reasuradur | `Advice.ReinsurerName` |
+| `.CABANG` | `NAMALAYER` | Nama Layer | `Advice.LayerName` |
+| `.ClaimFrom` | `TAHUN` | Tahun XOL | `Advice.Year` |
+| `.PNCSearch` | `KURS` | Kurs | `Advice.ExchangeRate` |
+| `.ERROR` | `PERCENT` | Share Percent | `Advice.SharePercent` |
+| `.NOTE` | `EMAIL` | Alamat Surel | `Advice.Email` |
+| `.HASIL5` | `REMARKREAS` | Catatan Reasuradur | `Advice.Remark` |
+| `.HASIL2` | `REMARKAPPROVE` | Catatan Persetujuan | `Advice.ApprovalNote` |
+| `.AlasanQuotationStock` | `REMARKPIC` | Catatan PIC | `Advice.PICNote` |
+| `.Status` | `LIMIT_XOL` | Batas Layer | `Advice.Limit` |
+| `.SISI` | `STATUSAPPROVE` | Status Persetujuan | `Advice.ApprovalStatus` |
+| `.CARI6` | `IDLAYER` | Kode Layer | `Advice.LayerID` |
+| `.pyBPNotes` | `IDMASTER` | Kode Master XOL | `Advice.MasterID` |
+| `.LastNoteBy` | `USERINPUT` | Penerbit | `Advice.InputBy` |
+| `.pyCaseID` | `CAUSEOFLOSS` | Penyebab Kerugian | `Advice.CauseOfLoss` |
+| `.source` | `REVISI` | Nomor Revisi | `Advice.Revision` |
+| `.pyCountry` | `T_REINSURER.COUNTRY` | Negara Reasuradur | `Advice.Country` |
+| `.pyEmailApprovalAllowed` | `MST_USER_TEKNIK.EMAIL` | Surel Penerbit | `Advice.InputByEmail` |
+
+**Grid Approval XOL dan DATA MASTER XOL** — dari `GetDataXOLForKomiteApprove` dan
+`GetDataMasterXOLForKomiteApprove`:
+
+| Properti Pega | Artinya | Nama di kode |
+|---|---|---|
+| `.City` | Tahun XOL (grid Approval) / Kode Master (grid Master) | `ApprovalItem.Year` / `MasterXOL.ID` |
+| `.CityID` | Penyebab Kerugian / Nama Master | `ApprovalItem.CauseOfLoss` / `MasterXOL.Name` |
+| `.Type` | Tipe PLA/DLA / Operator Pengaju | `ApprovalItem.Type` / `MasterXOL.PIC` |
+| `.NoteKasir` | Tanggal Insert / Kode Group Business | `ApprovalItem.LastInsertedAt` |
+| `.Country` | Tahun XOL | `MasterXOL.Year` |
+| `.CountryID` | Kurs | `MasterXOL.ExchangeRate` |
+
+> Perhatikan `.City`, `.CityID`, `.Type`, dan `.NoteKasir`: keempatnya dipakai untuk **dua
+> arti berbeda** pada dua grid di layar yang sama. Itu sebabnya nama properti tidak dapat
+> dipakai sebagai acuan apa pun.
+
+### Nama kueri `.sql`
+
+`master_list` · `master_pending_committee` · `master_business_list` · `claim_summary` ·
+`breakdown_business` · `breakdown_treaty_inward` · `advice_list_pla` · `advice_list_dla` ·
+`approval_advice_queue` · `cause_of_loss_list`
+
+### Nama yang sengaja TIDAK diterjemahkan
+
+Judul kolom di layar dibiarkan seperti di Pega (`D-13`): "Date Of Loss", "Cause Of Loss",
+"Group Business", "OS Value", "Accepted Value", "NO PLA / DLA", "Nama Insurance", "Nama
+Layer", "Share Percent", "ID XOL", "Nama XOL", "Tahun XOL", "Kurs Value", "TIPE",
+"Tanggal Insert", "Total Klaim", "Type Master", "ID Master".
+
+Termasuk **judul yang menyesatkan**: kolom "Date Of Loss" pada grid Approval XOL berisi
+tahun perjanjian, bukan tanggal kejadian. Judulnya dipertahankan; keterangannya dinyatakan
+di bawah tabel, dan namanya di kode dibetulkan menjadi `Year`.
+
+### Istilah domain baru
+
+| Indonesia / Pega | Inggris di kode | Keterangan |
+|---|---|---|
+| Perjanjian XOL | `MasterXOL` | satu tahun, satu kurs, sekumpulan group business |
+| Pemberitahuan PLA/DLA | `Advice`, `AdviceType` | `AdvicePLA`, `AdviceDLA` |
+| Akumulasi klaim | `ClaimSummary` | per Tanggal Kejadian × Penyebab Kerugian |
+| Rincian per group business | `BusinessBreakdown` | dua sumber: `SourceOwnBusiness`, `SourceTreatyInward` |
+| Antrean persetujuan | `ApprovalItem`, `ApprovalQueue` | satu baris = sekumpulan pemberitahuan |
+| Penyebab Kerugian | `CauseOfLoss` | yang tersimpan DESKRIPSI-nya, bukan kodenya |
+| Kurs tidak tersedia | `RateMissing` | pengganti `RETURN 1` pada function kurs lama |
+
+---
+
+## Tambahan 2026-09-22 — modul Inbox Claim Treaty Prop (`inboxclaimtreatyprop`)
+
+Menu `MENU_ID 54`, pengganti harness `InboxClaimTreaty_Harness`.
+
+### Kenapa modul ini kasus terburuk sejauh ini
+
+Di modul sebelumnya, nama properti Pega MENYESATKAN — `.ASMFull` berarti Tanggal Kejadian,
+`.RCVID` berarti sumber bisnis. Di sini nama propertinya **tidak menyatakan apa pun**:
+seluruh kolom bernama `CARI` ditambah nomor urut.
+
+Dan nomornya tidak stabil. Tanggal Kejadian bernomor `CARI10` di dua kueri dan `CARI13` di
+kueri ketiga — perbedaan yang menjadi cacat nyata, karena grid-nya terikat ke `CARI10`
+saja.
+
+### Pemetaan tiga arah
+
+| Alias Pega | Asal sebenarnya | Nama di kode | Field JSON | Judul kolom |
+|---|---|---|---|---|
+| `CARI1` | `a.PXREFOBJECTKEY` | `WorkKey` | — (tidak dikirim) | — |
+| `CARI2` | `a.PXREFOBJECTINSNAME` | `ClaimID` | `claim_id` | Claim ID |
+| `CARI3` | `a.PXASSIGNEDOPERATORID` | `AssignedOperator` | — (tidak dikirim) | — |
+| `CARI4` | `a.PZINSKEY` | `Reference` | `referensi` | — (tidak digambar) |
+| `CARI5` | `b.NOPOLIS` | `PolicyNumber` | `no_polis` | Policy No |
+| `CARI6` | `$.QuotationData.BusinessName` | `BusinessName` | `nama_bisnis` | Business Name |
+| `CARI7` | `$.QuotationData.SobName` | `BusinessSource` | `sumber_bisnis` | Source Of Business |
+| `CARI8` | `$.QuotationData.CedingCoName` | `CedingCompany` | `ceding_co` | Ceding Co Name |
+| `CARI9` | `$.InsuredName` | `InsuredName` | `nama_tertanggung` | Insured Name |
+| `CARI10` (!) | `$.DateOfLoss` | `LossDate` | `tanggal_kejadian` | Date Of Loss |
+| `CARI13` (!) | `$.DateOfLoss` | `LossDate` | `tanggal_kejadian` | Date Of Loss |
+| `CARI14` | `$.IsSubjectivity` | `Subjectivity` | `subjectivity` | Subjectivity |
+| `CARI15` | `$.IDMaster` | `MasterID` | `id_master` | ID Master |
+| `CARI43` | checkbox layar | `Query.SeeAll` | `lihat_semua` | See All Claim |
+
+Tanda (!) menandai satu nilai yang punya DUA nomor alias. Di sistem baru keduanya menjadi
+satu kolom `LOSS_DATE` — perbaikan `P-5` yang disetujui Work Owner 2026-09-21.
+
+### Properti yang BUKAN kolom data
+
+| Properti Pega | Artinya sebenarnya | Di sistem baru |
+|---|---|---|
+| `InputData.CARI13` | pemanggil adalah anggota komite (`EMAILKOMITE.OPERATOR_ID`) | tidak dibawa — ketiga kontainer menjadi tab yang dapat dipilih |
+| `SearchWorkbasket.CARI1` | login pemanggil, dibandingkan ke `TreatyinPNCTeknik` | `Caller.Login` dan konstanta `TechnicalWorkbasket` |
+| `SearchWorkbasket.CARI43` | checkbox "See All Claim" | `Query.SeeAll` |
+
+Perhatikan `CARI1`: ia berarti **dua hal berbeda** tergantung halamannya. Pada
+`DataPNC.pxResults` ia kunci objek kerja; pada `SearchWorkbasket` ia login pemanggil. Nama
+yang sama, arti yang sama sekali berbeda — persis pola `03-CURRENT-ARCHITECTURE.md` §4.2.
+
+### Judul yang dipertahankan apa adanya (`D-13`)
+
+| Di Pega | Dibawa? | Alasan |
+|---|---|---|
+| "Work List Treatyin **Propotional**" | ya, salah ejanya ikut | Membetulkannya menjadi "Proportional" membuat tab tidak dikenali pengguna yang mencarinya |
+| "Work Teknik Treatyin " (spasi di ujung) | ya, TANPA spasinya | Spasi itu artefak pengetikan, bukan teks yang dibaca; membawanya hanya menggagalkan pembandingan judul |
+| "Business Name" vs "Class Of Business" | keduanya | Isi yang sama berjudul berbeda antar grid; perbedaannya dijaga lewat `Tab.Columns` |
+
+### Nama modul dan berkas (`D-80`, `D-81`)
+
+| Lapisan | Bentuk |
+|---|---|
+| Paket Go | `inboxclaimtreatyprop` — huruf kecil, tanpa tanda hubung |
+| Folder frontend | `inbox-claim-treaty-prop` — `kebab-case` |
+| Rute antarmuka | `/inbox-claim-treaty-prop` |
+| Jalur API | `/api/inbox-claim-treaty-prop` |
+| Komponen layar | `ClaimTreatyPropPage` — nama TIPE, bukan nama modul |
+
+Nama modulnya berbahasa Indonesia mengikuti nama yang disebut Work Owner ("Inbox Claim
+Treaty Prop"); isinya berbahasa Inggris. Satu jalur berkas karena itu memuat dua bahasa —
+`internal/inboxclaimtreatyprop/repo/sqlstore/inboxclaimtreatyprop.go` — dan itu memang
+yang dikehendaki `D-81`.
+
+## Tambahan 2026-09-21 — modul Inbox Progress Claim (`inboxprogressclaim`)
+
+Modul ini punya ciri yang **tidak ada di modul mana pun sebelumnya**: dua alias tidak
+sekadar salah arti, melainkan **tertukar satu sama lain**. `CaseID` berisi nomor klaim
+sementara `ClaimNo` berisi nomor polis — persis terbalik dari yang dijanjikan namanya.
+
+### Nama modul
+
+`inboxprogressclaim` di backend, `inbox-progress-claim` di frontend. Ia mengikuti `D-81`:
+nama modulnya diambil dari nama yang dipakai Work Owner dan tertulis di menu
+(`MENU_ID 65` "Inbox Progress Claim"), sementara isinya berbahasa Inggris.
+
+### Kode bagian — kata, bukan angka
+
+Berbeda dari Inbox Admin, di sini tidak ada nomor warisan yang perlu dipertahankan. Layar
+lama **tidak punya pemilih bagian sama sekali** — kelima bagiannya ditumpuk dan
+masing-masing memuat datanya sendiri.
+
+| Kode | Bagian | Activity lama | Kueri lama |
+|---|---|---|---|
+| `outstanding` | Outstanding | `GetDataProgressClaim` | `DataProgressClaim` + `GcnmCountProgressClaim_SQL` |
+| `next-fu` | Next Follow Up | `GetNextFUdata_act` | sama + saringan jatuh tempo |
+| `per-pic` | Progress Klaim per PIC | `GetProgressPerPIC` | `GetProgressPIC` |
+| `evaluasi` | Evaluasi Progress Klaim | `Refreshpage_act` | **tidak ada** |
+
+Bagian "Approval Progress Klaim" **tidak dibangun** (keputusan Work Owner 2026-09-21): ia
+satu-satunya bagian yang menulis.
+
+### Tiga lapis nama, dan ketiganya sengaja berbeda
+
+Layar ini satu-satunya tempat ketiga lapis itu **tidak sama**, dan itu keputusan sadar:
+
+| Lapis | Contoh | Aturannya |
+|---|---|---|
+| Judul yang dibaca pengguna | `District` | alias Pega apa adanya (Work Owner 2026-09-21, `D-13`) |
+| Nama field JSON | `nama_tertanggung` | Indonesia, menyebut isinya (`D-80` pengecualian kontrak) |
+| Nama di dalam kode | `InsuredName` | Inggris, menyebut isinya (`D-19`, `D-80`) |
+
+Arti sebenarnya ikut dikirim server sebagai `kolom[].keterangan`, dan layar menggambarnya
+sebagai tooltip kolom. Tanpa itu, keputusan memakai alias apa adanya akan membuat layar
+baru sama tidak terbacanya dengan layar lama.
+
+### Alias grid Pega → arti sebenarnya → nama di kode
+
+**Bagian Outstanding dan Next Follow Up:**
+
+| Alias Pega | Kolom basis data | Arti bagi pengguna | Nama di kode | Field JSON |
+|---|---|---|---|---|
+| `CaseID` ⚠ | `a.NOKLAIM` | Nomor Klaim | `ClaimNumber` | `no_klaim` |
+| `ClaimNo` ⚠⚠ | `a.NOPOLIS` | **Nomor Polis** | `PolicyNumber` | `no_polis` |
+| `NoKTP` ⚠ | `a.NOPOLIS` | nomor polis, KEMBAR | tidak dibawa | — |
+| `District` ⚠ | `T_CLAIM_PNC.QQNAME` | Nama Tertanggung | `InsuredName` | `nama_tertanggung` |
+| `DateForAging` ⚠ | `a.TGLKLAIM` | Tanggal Registrasi | `RegisterDate` | `tanggal_registrasi` |
+| `DateOfLoss` | `a.DATEOFLOSS` | Tanggal Kejadian | `LossDate` | `tanggal_kejadian` |
+| `Country` ⚠ | `a.LGB_NOTE` | Catatan LGB | `LGBNote` | `catatan_lgb` |
+| `UserTeknis` ⚠ | `a.PIC` | PIC Klaim | `TechnicalPIC` | `pic_klaim` |
+| `City` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'POSISI')` | Posisi berjalan | `Position.Name` | `posisi` |
+| `CityID` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'sts_prg1')` | Status Progres 1 | `Position.Status1` | `status_progres_1` |
+| `CountryID` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'sts_prg2')` | Status Progres 2 | `Position.Status2` | `status_progres_2` |
+| `AnalystTransferDate` ⚠ | `GET_POSISI_PROGRESS_PNC(…,'nextfu')` | Next Follow Up | `Position.NextFollowUp` | `next_follow_up` |
+| `KomiteApproveDate` ⚠ | `MIN(GCNM_PROGRESS_CLAIM.NEXT_FOLLOWUP)` | Follow Up terawal | `EarliestFollowUp` | `follow_up_terawal` |
+| `TanggalAnalystSendRCL` ⚠ | `a.TGL_PROSES` | Tanggal Proses | `ProcessDate` | `tanggal_proses` |
+| `ProdKe` | `a.PROD_KE` | Prod ke- | `ProdKe` | `prod_ke` |
+
+⚠⚠ menandai alias yang **tertukar** dengan alias lain di grid yang sama.
+
+`KomiteApproveDate` layak diperhatikan khusus: namanya menyebut persetujuan komite, padahal
+ia tidak berhubungan dengan komite sama sekali — isinya tenggat tindak lanjut paling awal
+pada klaim itu.
+
+**Bagian Progress Klaim per PIC** — empat dari enam aliasnya menyebut atribut klaim padahal
+seluruhnya hasil `COUNT`:
+
+| Alias Pega | Arti bagi pengguna | Nama di kode | Field JSON |
+|---|---|---|---|
+| `PIC` | Nama petugas | `PIC` | `pic` |
+| `NOKLAIM` ⚠ | Jumlah klaim yang ditangani | `ClaimCount` | `jumlah_klaim` |
+| `NOAKSEP` ⚠ | Jumlah pembaruan progres, di luar `AUTO%` | `UpdateCount` | `jumlah_pembaruan` |
+| `REINSURER` ⚠ | Tindak lanjut jatuh tempo hari ini | `DueTodayCount` | `jatuh_tempo_hari_ini` |
+| `STSKLAIM` ⚠ | Tindak lanjut tepat waktu | `OnTimeCount` | `tepat_waktu` |
+| `NOPOLIS` ⚠ | Tindak lanjut terlambat | `LateCount` | `terlambat` |
+
+### Nama properti penyaring
+
+| Properti Pega | Isinya | Nama di kode | Parameter query |
+|---|---|---|---|
+| `TempRefresh.ClaimNo` ⚠ | kata kunci pencarian | `Keyword` | `cari` |
+| `TempRefresh.DateOfLoss` | kotak tanggal yang **tidak menyaring apa pun** | tidak dibawa | — |
+| `TempRefresh.Remark` ⚠ | tanggal registrasi AWAL | `From` | `dari` |
+| `TempRefresh.City` ⚠ | tanggal registrasi AKHIR | `To` | `sampai` |
+| `tempgetpic.MCL_NAME` ⚠ | potongan SQL penyaring | tidak dibawa — diganti bind | — |
+| `tempgetpic.CaseID` ⚠ | potongan SQL lini bisnis yang **tidak pernah dibaca** | tidak dibawa | — |
+| `TempCabang.District` ⚠ | potongan SQL penyaring cabang | belum dibawa (`R-03`) | — |
+| `TempBisnis.GROUP_PANEL` | potongan SQL lini bisnis yang benar-benar dipakai | `Business` | `bisnis` |
+| `TempBisnis.NOAKSEP` ⚠ | potongan SQL **rentang tanggal**, bukan nomor akseptasi | `From`/`To` | `dari`/`sampai` |
+| `OperatorID.pyPosition` ⚠ | lini bisnis petugas, bukan jabatannya | belum ada padanannya | — |
+
+`TempRefresh.Remark` dan `TempRefresh.City` layak dicatat: keduanya adalah **sepasang batas
+tanggal**, dan tidak ada satu pun pada namanya yang menyatakan itu.
+
+### Nama tabel yang dibaca
+
+Tidak ada yang dinamai ulang — nama tabel dan kolom milik basis data, pengecualian `D-80`,
+dan perubahannya menempuh `D-63`.
+
+| Tabel | Dipakai untuk |
+|---|---|
+| `POOLDATA.PEGA_DASHBOARDPNC` | tabel ringkasan klaim; sumber utama ketiga bagian |
+| `POOLDATA.T_CLAIM_PNC` | nama tertanggung |
+| `POOLDATA.GCNM_PROGRESS_CLAIM` | riwayat progres dan tenggat tindak lanjut |
+| `POOLDATA.GCNM_PROGRESS_POSISI_PNC` | posisi yang sedang berjalan |
+| `POOLDATA.GCNM_MST_PROGRESS_KLAIM` | master Status Progres 1 |
+| `POOLDATA.GCNM_MST_PROGRESS` | master Status Progres 2 |
+| `POOLDATA.MST_USER_TEKNIK` | daftar petugas per lini bisnis |
+
+Keempat tabel progres itu sudah dimodelkan modul `masterstatusprogres`; modul ini hanya
+membacanya.
+
+---
+
+## Tambahan 2026-09-19 — modul Inbox Laporan Klaim
+
+Nama modulnya **nama bisnis dalam bahasa Indonesia** (`D-81`), isinya **berbahasa Inggris**
+(`D-80`) — sama seperti ketiga modul master sebelumnya.
+
+| Nama modul bisnis (Work Owner) | Folder backend / paket Go | Folder frontend |
+|---|---|---|
+| Inbox Laporan Klaim | `internal/inboxlaporanklaim` | `src/modules/inbox-laporan-klaim` |
+
+**Komponennya memakai nama tipe domain, bukan nama modul** — karena itu
+`ClaimReportInboxPage.tsx`, bukan `InboxLaporanKlaimPage.tsx`.
+| LaporanKlaim | ClaimReport | berkas laporan kerugian yang masuk, sebelum menjadi klaim bernomor |
+| Posisi (berkas) | Position | Outstanding · Not Registered · Not Transferred — **teks layar Pega, tidak diterjemahkan** |
+| Asal (baris) | Origin | `pega` atau `claimpnc`; menyebut sistem yang menerbitkan baris |
+| Kategori / Tab | Category | sembilan tab layar |
+| Pencacah | Summary | delapan angka lencana dalam satu kueri |
+| LiniBisnis | BusinessLine | dropdown "Bisnis" |
+| Kanwil | Region | dropdown "Pilih Kanwil"; sumbernya `BRANCH.BASTERRITORY` |
+| Pemanggil | Caller | identitas petugas yang mengirim permintaan |
+| Umur berkas | AgingDays | kolom "Total Aging" |
+| Pesan terakhir | LastMessage | kolom "Last message" pada ketiga tab komunikasi |
+| Diserahkan | Transferred | menggantikan `statuslock_1` yang TIDAK NULL |
+| RujukanPenugasan | AssignmentRef | isi `statuslock_1` apa adanya, untuk membuka berkasnya di Pega |
+| Halaman | Pagination · Page | `Pagination` yang diminta, `Page` yang dikembalikan |
+
+### Alias Pega yang TIDAK dibawa
+
+Kelimanya menyebut hal yang sama sekali lain dari isinya (`D-19`):
+
+| Kolom | Alias Pega lama | Nama di sini |
+|---|---|---|
+| `BUSINESSNAME` | `Kurir` | `BusinessName` |
+| `br.branchname` | `UserAdmin` | `BranchName` |
+| `pxcreateoperator` | `KodeCabang` | `CreatedBy` |
+| `kodecabang_1` | `StatusKomunikasi` | `BranchCode` |
+| `KETERANGAN_1` | `SIM` | `Reason` |
+| `BookNo_1` | `Sender` | `ReferenceNumber` |
+| `k.message` | `EmailPengirim` | `LastMessage` |
+
+### Nama kolom basis data — tetap Indonesia
+
+Tabel baru `POOLDATA.CPNC_LAPORAN_KLAIM` memakai nama kolom berbahasa Indonesia, mengikuti
+`CPNC_PENGGUNA` dan `CPNC_SESI_AKTIF`: `NO_LAPORAN`, `NO_KLAIM`, `NAMA_PELAPOR`, `KODE_CABANG`,
+`STS_DISERAHKAN`, `TGL_AGING`, `DIBUAT_OLEH`, `DIHAPUS_PADA`, dan seterusnya.
+
+### Nama kueri `.sql`
+
+Berawalan `claim_report_`, mengikuti nama domainnya:
+
+`claim_report_source` · `claim_report_list_body` · `claim_report_count_body` ·
+`claim_report_message_body` · `claim_report_message_count_body` · `claim_report_summary_body` ·
+`claim_report_get_body` · `claim_report_region_list` · `claim_report_next_sequence` ·
+`claim_report_insert` · `claim_report_check_table` · `claim_report_check_legacy_table`
+
+Akhiran `_body` menandai fragmen yang **bukan kueri utuh** — ia disambung `claim_report_source`
+lebih dulu. Lihat `sourced()` di `repo/sqlstore/query.go`.
+
+### Nama field JSON — tetap Indonesia
+
+Ia kontrak, bukan nama internal: `id`, `nomor_klaim`, `tertanggung`, `nama_bisnis`,
+`tanggal_kejadian`, `umur_hari`, `nama_cabang`, `pesan_akhir`, `posisi`, `asal`, `rujukan_pega`,
+`kategori`, `halaman`, `total_halaman`.
+
+### Prop komponen bersama yang bertambah
+
+| Prop | Komponen | Keterangan |
+|---|---|---|
+| `serverPaging` | `DataTable` | mematikan saring & urut internal, menggambar kaki halaman |
+| `hideSearch` | `DataTable` | menyembunyikan kotak cari bawaan |
+| `ServerPaging` | `DataTable` | tipe baru yang diekspor |
+
+---
+
+## Modul Inbox Manager Receive / PUCL (`MENU_ID 56`)
+
+### Nama folder — Indonesia, mengikuti nama menu (`D-81`)
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxmanagerreceivepucl` |
+| Frontend, folder | `src/modules/inbox-manager-receive-pucl` |
+| Rute antarmuka | `/inbox-manager-receive-pucl` |
+| Jalur API | `/api/inbox-manager-receive-pucl` |
+
+Nama menunya "Inbox Manager Receive / PUCL". Garis miring dan spasinya dibuang pada nama
+folder — Go tidak mengizinkan tanda hubung pada nama paket, dan garis miring bukan karakter
+yang sah pada nama berkas.
+
+**Nama harness-nya TIDAK dipakai.** `ReceiveDoucument_Harness` menyimpan salah ketik
+(`Doucument`) dan hanya menyebut separuh isi layarnya — tab RCL/PUCL tidak tersirat sama
+sekali di sana. Yang dipakai adalah nama butir menu, sesuai `D-81`.
+
+Salah ketiknya tetap **dipertahankan apa adanya** di satu tempat: kunci peta
+`MENU_ROUTES`, yang harus sama persis dengan `MENU_PROGRAM` di
+`POOLDATA.M_MENU_APLIKASI_PNC`. Membetulkannya di sana akan membuat butir menunya tampak
+belum tersedia selamanya.
+
+### Nama tipe dan isian — Inggris (`D-80`)
+
+| Properti Pega | Isian Go | Field JSON |
+|---|---|---|
+| `.pzInsKey` | `Reference` | `referensi` |
+| `.pyID` | `CaseID` | `no_case` |
+| `.ReceiveDocument.PolicyNo` / `.Policy.PolicyNo` | `PolicyNumber` | `no_polis` |
+| `.ReceiveDocument.PNCCaseID` | `ClaimNumber` | `no_klaim_pnc` |
+| `.ReceiveDocument.QQName` / `.Policy.QQName` | `InsuredName` | `nama_tertanggung` |
+| `.ReceiveDocument.DateOfLoss` | `LossDate` | `tanggal_kejadian` |
+| `.ReceiveDocument.TypeOfClaim` | `ClaimType` | `jenis_klaim` |
+| `.ReceiveDocument.Sender` | `SenderName` | `nama_pengirim` |
+| `.ReceiveDocument.ReceivedDate` | `DocumentReceivedDate` | `tanggal_terima_dokumen` |
+| `.ReceiveDocument.NumberOfDocument` | `DocumentSheetCount` | `jumlah_lembar_dokumen` |
+| `.pxCreateDateTime` | `InboxEntryAt` | `tanggal_masuk_inbox` |
+| `.ClaimData.PUCLStatus.KomentarAnalisator` | `AnalystNote` | `deskripsi_analyst` |
+| `.ClaimData.PUCLStatus.RCL_PUCL` | `Track` | `rcl_pucl` |
+| `.ClaimData.PUCLStatus.StatusKlaim` | `TrackStatus` | `status_rcl_pucl` |
+| `.ClaimData.PUCLStatus.TanggalCetakDokumenPUCL` | `LetterPrintedAt` | `tanggal_cetak_surat` |
+| `.ClaimData.PUCLStatus.LamaKlaim` | `ClaimAge` | `lama_klaim` |
+| `.ClaimData.PUCLStatus.StatusCase` | `ExpiryStatus` | `status_kadaluarsa` |
+
+### Alias Pega yang sengaja TIDAK dibawa (`D-19`)
+
+Lima kolom di modul ini dialiaskan dengan nama yang **tidak menyatakan isinya**, dan dua di
+antaranya dialiaskan **berbeda di dua rule yang berbeda**:
+
+| Kolom | Alias di `GetReminderPUCL` | Alias di `ReminderPUCL` |
+|---|---|---|
+| `QQNAME` | `NewTelpTertanggung` | `CABANG` |
+| `KOMENTARANALISATOR_1` | `NoteKomite` | `LOGSEARCH` |
+| `LAMAKLAIM_1` | `LOGSEEN` | `MODUL` |
+| `STATUSKLAIM_1` | `StsAcceptance` | `STS_EMAIL` |
+| `STATUSCASE_1` | — | `ClaimData.PUCLStatus.Stat25L` |
+
+Baris pertama yang paling jelas: satu kolom berisi **nama tertanggung** dialiaskan "CABANG"
+di satu rule dan "NewTelpTertanggung" di rule lain. Itu utang teknis §4.2 apa adanya.
+
+Yang terakhir adalah nama yang **terpotong batas panjang alias Oracle** — `Stat25L` bukan
+singkatan, melainkan sisa pemotongan.
+
+### Dua nama kolom yang hanya berbeda satu huruf
+
+| Kolom | Artinya |
+|---|---|
+| `STATUSKLAIM_1` | status jalur RCL/PUCL — **yang digambar layar ini** |
+| `STATUSCLAIM_1` | Status Klaim ber-33 kode `1134`–`1166` (`R-06`) — tidak digambar |
+
+Keduanya ada pada tabel yang sama dan keduanya muncul di Report Definition yang sama.
+Menukarnya **tidak menghasilkan galat apa pun**.
+
+### Nama kueri `.sql`
+
+Berawalan nama tabnya, bukan nama modulnya — ketiganya membaca kombinasi tabel yang berbeda:
+
+`list_receive_pa` · `list_receive_non_mbu` · `list_rclpucl` · `check_receive` ·
+`check_rclpucl`
+
+### Nama tipe frontend
+
+| Tipe | Keterangan |
+|---|---|
+| `WorkItem` | satu baris, melayani ketiga tab |
+| `WorkItemField` | `keyof WorkItem`, dipakai memilih sel |
+| `TabColumn`, `Tab` | bentuk grid yang datang dari server |
+| `PageInfo` | keterangan halaman |
+| `MetadataResponse`, `ListResponse` | jawaban kedua endpoint |
+
+Komponennya `ManagerReceivePUCLPage` dan `ReceivePUCLTabs` — memakai nama **tipe domain**,
+bukan nama modul, mengikuti `AccountPage` pada `master-rekening` (`D-81`).
+## Tambahan 2026-09-22 — form Input Receive Document
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Isian (form) | Detail | isi berkas laporan yang dikumpulkan form; dibedakan dari `ClaimReport` yang memuat kepala berkasnya |
+| TanggalTerimaDokumen | ReceivedDate | |
+| Pelapor | Reporter | `ReporterName`, `ReporterEmail`, `ReporterPhone` |
+| Kurir | Courier | `CourierName` |
+| EstimasiKerugian | EstimateValue | bertipe `Money`; **bukan** nilai klaim |
+| LokasiKejadian | LossLocation | |
+| Kronologis | Chronology | |
+| RincianKerusakan | DamageDetail | |
+| KeteranganBelumRegistrasi | NotRegisteredNote | |
+| JumlahDokumen | DocumentCount | |
+| Uang | Money | bilangan bulat SEN (`ADR-0016`); diulang dari modul `registrasi`, tidak diimpor |
+
+### Kata kerja tambahan
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Simpan (form) | Save | lapisan usecase — dibedakan dari `Update` di lapisan repo |
+| Perbarui | Update | lapisan repo |
+| Terapkan | Apply | menuliskan isian form ke atas berkas yang sudah ada |
+| Bersihkan | Clean | memangkas spasi sebelum diperiksa |
+| Periksa | Check | menjalankan seluruh pemeriksaan sekaligus |
+
+### Nama kolom basis data — tetap Indonesia
+
+Migrasi 0004 menambah sepuluh kolom pada `POOLDATA.CPNC_LAPORAN_KLAIM`:
+`TGL_TERIMA_DOKUMEN`, `EMAIL_PELAPOR`, `TLP_PELAPOR`, `NAMA_KURIR`, `NILAI_ESTIMASI`,
+`LOKASI_KEJADIAN`, `KRONOLOGIS`, `RINCIAN_KERUSAKAN`, `KET_BELUM_REGISTRASI`, `JUMLAH_DOKUMEN`.
+
+### Nama kueri `.sql` tambahan
+
+`claim_report_update` — satu-satunya pernyataan pengubah pada modul ini.
+
+### Nama field JSON — tetap Indonesia
+
+`tanggal_terima_dokumen` · `nama_pelapor` · `email_pelapor` · `telepon_pelapor` · `nama_kurir` ·
+`estimasi_kerugian` · `lokasi_kejadian` · `kronologis` · `rincian_kerusakan` ·
+`keterangan_belum_registrasi` · `jumlah_dokumen` · `isian` · `dapat_disunting`
+
+### Kode galat tambahan
+
+| Kode | Artinya |
+|---|---|
+| `laporan_hanya_baca` | berkas ada, tetapi penulisnya masih Pega selama masa paralel |
+
+### Nama komponen
+
+`ClaimReportFormPage.tsx` — nama **tipe domain**, bukan nama modul, mengikuti aturan yang sama
+dengan `ClaimReportInboxPage.tsx` dan `AccountPage.tsx`.
+
+---
+
+## Tambahan 2026-09-22 — penerjemahan cabang klaim
+
+Sesi kesebelas menambah satu seam dan **menghapus** satu field. Yang dihapus justru lebih penting
+dicatat daripada yang ditambah.
+
+### Nama yang dihapus, dan kenapa
+
+| Nama lama | Keadaan | Alasan |
+|---|---|---|
+| `inboxlaporanklaim.Caller.BranchCode` | **dihapus** | Namanya tidak mencerminkan isinya. Ia diisi dari `auth.User.BranchCode` — kode penempatan pegawai dari HCQ — sementara yang dibutuhkan layar ini adalah kunci baris `POOLDATA.BRANCH`. Dua sistem penomoran berbeda dengan nama yang sama |
+
+Ini `D-19` yang berlaku pada kode baru, bukan pada warisan Pega: **nama yang tidak mencerminkan isi
+adalah utang teknis**, dan memperbaiki isinya sambil membiarkan namanya berarti orang berikutnya
+akan mengisinya salah lagi.
+
+### Nama baru
+
+| Nama | Lapisan | Alasan |
+|---|---|---|
+| `BranchResolver` | seam (`seam.go`) | Peran, bukan mekanisme. Ia menjawab "cabang klaim petugas ini apa", bukan "jalankan kueri HRD" |
+| `Resolve(ctx, login)` | seam | Kata kerja yang menyatakan penerjemahan, bukan pencarian. `Find`/`Get` menyiratkan kegagalan adalah ketiadaan baris; di sini "tidak terdaftar" dan "tidak terbaca" adalah dua hal berbeda |
+| `resolved bool` | seam | Menjadikan "terdaftar atau tidak" **bukan galat**, sehingga pemanggil tidak perlu membaca isi `error` untuk mengetahuinya |
+| `branch_of_login` | `branch.sql` | Dinamai menurut **pertanyaan yang dijawabnya**, sejalan dengan kueri lain modul ini (`claim_report_list_body`, `claim_report_summary_body`) |
+| `BranchScope` / `BranchResolved` | `usecase.ListResult` | Bukan `BranchCode`. `Scope` menyatakan ia **batas daftar**, bukan atribut pemanggil — perbedaan yang justru menjadi sebab cacat sesi ini |
+| `checkClaimReportBranch` | `cmd/claimpnc/check.go` | Mengikuti pola `checkClaimReport`, `checkClaimStatus`, `checkLoginTable` |
+
+### Nama kontrak API — tetap Indonesia (`D-80`)
+
+| Field | Arti |
+|---|---|
+| `batas_cabang` | cabang yang membatasi daftar; kosong berarti seluruh cabang |
+| `cabang_terbaca` | `false` berarti cabang petugas tidak dapat ditentukan |
+
+**`batas_cabang`, bukan `kode_cabang`.** Baris hasil sudah punya `kode_cabang` yang artinya "cabang
+milik berkas ini". Memakai nama yang sama untuk "cabang yang menyaring daftar" akan mengulang
+persis jenis kekeliruan yang sedang diperbaiki — dua hal berbeda dengan satu nama.
+
+### Padanan istilah yang kini punya arti tepat
+
+| Istilah | Arti dalam sistem ini | Jangan tertukar dengan |
+|---|---|---|
+| **kode cabang klaim** | kunci baris `POOLDATA.BRANCH.ID`, diturunkan dari login lewat HRD dan `LST_USER_ASURANSI` | **kode penempatan pegawai** dari HCQ (`EmpResponse.Placement.BranchCode`) — bukan nilai yang sama, dan bukan tabel yang sama |
+| **batas cabang** | cabang yang menyaring daftar seorang petugas | **cabang berkas** — cabang tempat sebuah berkas dicatat |
+
+Keduanya diusulkan masuk `CONTEXT.md`, dan tidak disunting sendiri: `CONTEXT.md` adalah dokumen
+Steering yang perubahannya ditulis sebagai keputusan (`D-72`), bukan ditambahkan menyusul.
+
+### Koreksi pada sesi yang sama — cabang menjadi batas kewenangan
+
+| Nama | Keadaan | Alasan |
+|---|---|---|
+| `cabang_terbaca` | **dihapus dari kontrak** | Sejak cabang yang tidak terbaca ditolak, ia tidak dapat lagi bernilai `false`. Field yang hanya pernah bernilai satu macam mengundang cabang penanganan untuk keadaan yang tidak pernah terjadi |
+| `ErrBranchUnknown` | baru | Cabang petugas tidak dapat ditentukan — urusan **data pegawai** |
+| `ErrBranchUnreadable` | baru | Sumber cabang tidak dapat dibaca — urusan **infrastruktur**. Dipisahkan meski akibatnya sama, karena perbaikannya berbeda dan yang satu menimpa seluruh petugas |
+| `requireBranch` | baru (`usecase`) | `require`, bukan `resolve`: namanya menyatakan bahwa kegagalannya MENGHENTIKAN permintaan. Nama lamanya, `resolveBranch`, menyiratkan kegagalan boleh dilanjutkan — dan itu memang perilakunya sebelum dikoreksi |
+| `wideList` | baru (uji) | Pandangan sah terluas — satu kanwil. Menggantikan pemakaian "cabang tidak terbaca" sebagai pintu belakang |
+
+**Kode galat kontrak API — tetap Indonesia (`D-80`)**
+
+| Kode | HTTP | Arti |
+|---|---|---|
+| `cabang_tidak_dikenali` | 403 | login petugas belum terdaftar pada cabangnya |
+| `sumber_cabang_tidak_terbaca` | 503 | sumber data cabang sedang tidak dapat dibaca |
+| Backend | tidak ada folder baru — ia bagian `internal/komite/` (`D-81`) |
+| Frontend | `src/modules/inbox-komite/` — nama modul yang disebut Work Owner |
+
+Berkas frontend berbahasa Inggris sesuai `D-80`: `InboxKomitePage.tsx`, `InboxTabs.tsx`,
+`DecisionPanel.tsx`. "Inbox Komite" pada nama folder adalah **nama modulnya**, dan itu satu-satunya
+yang berbahasa Indonesia.
+
+---
+
+## Modul Inbox Close Claim (`MENU_ID 59`)
+
+### Nama folder — Indonesia, mengikuti nama menu (`D-81`)
+
+| Lapisan | Nama |
+|---|---|
+| Backend, folder + paket Go | `internal/inboxcloseclaim` |
+| Frontend, folder | `src/modules/inbox-close-claim` |
+| Rute antarmuka | `/inbox-close-claim` |
+| Jalur API | `/api/inbox-close-claim` |
+
+Nama menunya sendiri berbahasa Inggris — "Inbox Close Claim" — sehingga nama folder dan nama
+modul kebetulan sama bentuknya. Yang mengikat tetap `D-81`: nama folder mengikuti **nama
+butir menu**, bukan nama harness-nya.
+
+Harness-nya sendiri, `InboxCloseClaim_Harness`, **tidak ada di export**. Nama yang dipakai
+karena itu diambil dari `Database/m_menu_aplikasi_pnc.csv:59` dan dari judul yang tertulis di
+dalam `Section/InboxManagerReopen1_Sec-Section.xml`.
+
+> Perhatikan: nama SECTION-nya menyebut "ManagerReopen", bukan "CloseClaim". Modul ini
+> sengaja TIDAK dinamai menurut section itu — yang dibaca Work Owner dan yang tertulis di
+> menu adalah "Inbox Close Claim".
+
+### Alias Pega yang sengaja TIDAK dibawa (`D-19`)
+
+Layar ini memuat alias paling menyesatkan di antara modul mana pun sejauh ini: **tiga dari
+sebelas kolomnya** dialias dengan nama yang artinya berlawanan dengan isinya.
+
+| Alias kueri lama | Isinya sebenarnya | Nama di sini |
+|---|---|---|
+| `ReinsurerName` | PIC Teknik (`USERTEKNIS_1`) | `TechnicalPIC` |
+| `MOName` | Admin PNC (`PXCREATEOPNAME`) | `AdminPNC` |
+| `CoverNo` | **tanggal kejadian** (`DATEOFLOSS_1`) | `LossDate` |
+| `CustomerName` | nama tertanggung (`QQNAME`) | `InsuredName` |
+| `CaseID` | kunci teknis (`PZINSKEY`) | `ClaimID` |
+| `CaseIDView` | nomor klaim (`PYID`) | `ClaimNumber` |
+| `Country` | pencacah hasil pada kueri hitung | — |
+
+Enam properti `TempFilter.*` pada activity lama juga tidak dibawa namanya, dan ketujuhnya
+sama menyesatkan: `TempFilter.CaseID` berisi penyaring **No Polis**, `TempFilter.City` berisi
+penyaring **No Klaim**, `TempFilter.CityID` berisi penyaring **PIC**, `TempFilter.District`
+berisi penyaring **transfer kasir**, dan `TempFilter.DistrictID` berisi penyaring **status
+bayar**.
+
+### Nama tipe dan isian — Inggris (`D-80`)
+
+| Pega | Di sini |
+|---|---|
+| baris klaim tutup | `ClosedClaim` |
+| permintaan atas klaim | `ClaimRequest` |
+| jenis permintaan | `RequestKind` — `RequestReopen`, `RequestCopy` |
+| keadaan permintaan | `RequestStatus` — `RequestPending`, `RequestExecuted`, `RequestCanceled` |
+| penyaring lini bisnis | `BusinessLine` |
+| penyaring transfer kasir | `TransferStatus` |
+| penyaring status bayar | `PaymentStatus` |
+
+### Nama kolom basis data — tetap Indonesia
+
+Tabel baru `POOLDATA.CPNC_PERMINTAAN_KLAIM` memakai nama kolom Indonesia, mengikuti
+pengecualian `D-80` yang sama dengan `CPNC_KOMITE_KEPUTUSAN`:
+
+`ID` · `JENIS` · `CASE_ID` · `NOMOR_KLAIM` · `ALASAN` · `STATUS` · `EFEK_STATUS_KERJA` ·
+`EFEK_STATUS_KLAIM` · `LINGKUP_SALIN` · `ACTOR_LOGIN` · `ACTOR_NAMA` · `PADA`
+
+Nilai kolom `JENIS` dan `STATUS` juga berbahasa Indonesia (`reopen`/`salin`,
+`menunggu`/`dijalankan`/`dibatalkan`) karena ia sama dengan nilai pada kontrak API.
+
+### Nama kueri `.sql`
+
+`close_claim_list` · `close_claim_count` · `close_claim_exists` · `request_insert` ·
+`request_pending_for` · `request_check_table`
+
+### Nama field JSON — tetap Indonesia
+
+`klaim_id` · `nomor_klaim` · `nomor_polis` · `nama_tertanggung` · `nama_bisnis` ·
+`sumber_bisnis` · `nama_cabang` · `pic_teknik` · `admin_pnc` · `tanggal_pendaftaran` ·
+`tanggal_kejadian` · `tanggal_tutup` · `lama_hari` · `status_tampil` · `status_klaim_kode` ·
+`status_klaim_label` · `sudah_transfer` · `permintaan_tertunda` · `permintaan_terbaca` ·
+`selisih_terencana`
+
+### Nama tipe frontend
+
+`KlaimTutup` · `PermintaanTertunda` · `DaftarResponse` · `PenyaringResponse` ·
+`PenyaringKlaimTutup` · `JenisPermintaan` · `PermintaanResponse`
+
+Komponennya: `CloseClaimPage` · `RequestDialog` · `PanelPenyaring` · `BarisTindakan` ·
+`LamaKlaim` · `SelisihTerencana`
