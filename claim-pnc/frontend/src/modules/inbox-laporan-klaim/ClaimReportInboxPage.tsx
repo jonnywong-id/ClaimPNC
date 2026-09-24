@@ -182,12 +182,13 @@ export function ClaimReportInboxPage() {
             ) : undefined
           }
           emptyMessage="Tidak ada laporan pada tab ini."
-          serverPaging={{
+          pagination={{
             page: list.data?.halaman.halaman ?? 1,
-            pageSize: list.data?.halaman.ukuran ?? 10,
+            size: list.data?.halaman.ukuran ?? 10,
             total: list.data?.halaman.total ?? 0,
-            totalPages: list.data?.halaman.total_halaman ?? 1,
+            totalPage: list.data?.halaman.total_halaman ?? 1,
             onPageChange: (halaman) => setQuery((previous) => ({ ...previous, halaman })),
+            isLoading: list.isFetching,
           }}
           actions={
             <>

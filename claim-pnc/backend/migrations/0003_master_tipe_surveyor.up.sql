@@ -1,0 +1,238 @@
+-- 0003 — Master Tipe Surveyors: keunikan nama tipe (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Berkas ini JAUH lebih ringan daripada migrasi 0002, dan perbedaannya penting untuk
+-- diketahui sebelum menyetujuinya:
+--
+--   * TIDAK memindahkan data apa pun.
+--   * TIDAK mendefinisikan ulang view mana pun.
+--   * TIDAK menyentuh satu baris pun yang sudah ada.
+--
+-- Yang dilakukannya hanya SATU: membuat indeks unik atas nama tipe surveyor, ditambah
+-- beberapa GRANT yang mungkin sudah ada.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ## Status persetujuan
+--
+-- DISETUJUI WORK OWNER 2026-09-19, untuk dijalankan di SELURUH PORTAL ENTITAS.
+--
+-- Prasyaratnya sudah diperiksa untuk portal ASM dan hasilnya BERSIH (lihat tabel di
+-- bawah). Lima portal lain BELUM dapat diperiksa dari aplikasi — kredensial basis
+-- datanya belum terisi di lingkungan pengembangan — sehingga pemeriksaannya menjadi
+-- bagian permintaan ini, bukan sesuatu yang sudah selesai.
+--
+--   Portal   Prasyarat diperiksa?  Hasil
+--   ------   --------------------  --------------------------------------------------
+--   ASM      YA, 2026-09-19        4 baris · nama ganda 0 · >100 karakter 0 ·
+--                                  kolom sepakat dengan JSON · situs '1' · SEQ 11 ·
+--                                  indeks belum ada
+--   ASI      BELUM                 kredensial belum terisi; DBA menjalankan langkah 0
+--   SMAS     BELUM                 idem
+--   SMI      BELUM                 idem
+--   SPK      BELUM                 idem
+--   SPKS     BELUM                 idem
+--
+-- DBA menjalankan LANGKAH 0 lebih dulu di setiap portal. Bila salah satu menghasilkan
+-- baris, JANGAN lanjut di portal itu — laporkan hasilnya, karena artinya ada keadaan
+-- yang belum pernah kami lihat.
+--
+--
+-- ## Kenapa modul ini TIDAK menuntut pemindahan data
+--
+-- Ini pertanyaan pertama yang wajar setelah migrasi 0002, dan jawabannya dibaca langsung
+-- dari katalog basis data portal ASM pada 2026-09-19 — bukan ditebak dari pola master
+-- sebelumnya:
+--
+--   POOLDATA.M_SURVEYORS
+--     M_SURVEY_ID      CHAR(4)        NOT NULL   <- kunci utama, constraint M_SURVEYORS_PK
+--     OLD_M_SURVEY_ID  CHAR(4)        NULL       <- KOSONG pada seluruh 4 baris
+--     JSON_DATA        CLOB           NULL       <- terisi pada 4 baris, IS JSON (STRICT)
+--     DESCRIPTION      VARCHAR2(4000) NULL       <- SUDAH TERISI pada seluruh 4 baris
+--
+--   POOLDATA.V_M_SURVEYORS, definisi sekarang:
+--     SELECT M_SURVEY_ID, OLD_M_SURVEY_ID, DESCRIPTION FROM M_SURVEYORS
+--
+-- View-nya SUDAH membaca kolom, bukan JSON. Itu berbeda dari M_STS_CLAIM, yang labelnya
+-- masih diambil lewat JSON_VALUE sehingga menuntut view didefinisikan ulang.
+--
+-- Akibatnya: begitu aplikasi Go menulis ke kolom DESCRIPTION, hasilnya LANGSUNG terlihat
+-- oleh setiap rule Pega yang membaca V_M_SURVEYORS — tanpa satu pun pernyataan DDL.
+-- Modul Master Tipe Surveyors karena itu BEKERJA PENUH walau berkas ini belum dijalankan.
+--
+--
+-- ## Kalau begitu, apa yang hilang bila berkas ini tidak dijalankan
+--
+-- Satu hal saja: penegakan keunikan nama di basis data.
+--
+-- Aplikasi tetap menolak nama ganda — pemeriksaannya ada di
+-- internal/mastertipesurveyors/usecase/manage.go. Yang tidak ada tanpa indeks ini adalah
+-- penjagaan terhadap DUA PERMINTAAN YANG TIBA BERSAMAAN: keduanya membaca daftar,
+-- keduanya tidak menemukan bentrok, lalu keduanya menyisipkan nama yang sama.
+--
+-- Jendelanya sempit dan layar ini jarang dipakai, sehingga risikonya kecil — tetapi ia
+-- nyata, dan satu-satunya tempat yang dapat menutupnya adalah basis data.
+--
+--
+-- ## Temuan yang perlu diketahui Work Owner sebelum menyetujui
+--
+-- Ditemukan saat membaca source procedure dan katalog berdampingan, dan ia BUKAN akibat
+-- dari migrasi ini — ia keadaan yang sudah berjalan hari ini:
+--
+--   POOLDATA.PEGA_M_SURVEYORS menulis HANYA ke JSON_DATA:
+--     INSERT INTO POOLDATA.M_SURVEYORS(M_SURVEY_ID, JSON_DATA) VALUES (...)
+--     UPDATE POOLDATA.M_SURVEYORS SET JSON_DATA = DataPega WHERE M_SURVEY_ID = IDPega
+--
+--   sementara V_M_SURVEYORS membaca kolom DESCRIPTION, dan TIDAK ADA TRIGGER pada tabel
+--   itu (ALL_TRIGGERS: nol baris).
+--
+-- Artinya layar Master Tipe Surveyors di Pega tampak berhasil menyimpan, tetapi hasilnya
+-- TIDAK terlihat di view — dan tipe yang ditambahkan dari sana akan muncul dengan
+-- deskripsi kosong. Keempat baris yang ada sekarang konsisten (DESCRIPTION sama persis
+-- dengan isi JSON-nya), jadi selisih itu belum pernah terjadi pada data yang ada.
+--
+-- Migrasi ini tidak memperbaikinya dan tidak perlu: begitu aplikasi Go menjadi penulis
+-- tunggal, yang ditulis adalah kolom yang memang dibaca.
+--
+--
+-- ---------------------------------------------------------------------------
+-- LANGKAH 0 — PEMERIKSAAN PRASYARAT. Jalankan di SETIAP portal entitas sebelum
+-- menjalankan langkah 1 di portal itu.
+--
+-- Keempatnya BACA-SAJA. Ketiga yang pertama diharapkan mengembalikan NOL BARIS atau
+-- nol; yang keempat hanya laporan keadaan.
+-- ---------------------------------------------------------------------------
+
+-- 0a. ADAKAH NAMA GANDA?  DIHARAPKAN: nol baris
+--
+--     Langkah 1 membuat indeks unik dan akan GAGAL bila ada dua tipe bernama sama.
+--
+--     SELECT UPPER(TRIM(DESCRIPTION)) AS nama, COUNT(*) AS jumlah
+--       FROM POOLDATA.M_SURVEYORS
+--      GROUP BY UPPER(TRIM(DESCRIPTION))
+--     HAVING COUNT(*) > 1;
+
+-- 0b. ADAKAH NAMA LEBIH PANJANG DARI 100 KARAKTER?  DIHARAPKAN: 0
+--
+--     Aplikasi menolak isian lebih dari 100 karakter (keputusan Work Owner 2026-09-19).
+--     Baris lama yang melanggarnya tidak akan hilang, tetapi TIDAK DAPAT DISUNTING lewat
+--     layar baru sampai namanya dipendekkan — dan itu harus diketahui sebelum, bukan
+--     sesudah, pengguna pertama mencoba.
+--
+--     SELECT COUNT(*) FROM POOLDATA.M_SURVEYORS
+--      WHERE LENGTH(TRIM(DESCRIPTION)) > 100;
+
+-- 0c. ADAKAH BARIS YANG KOLOMNYA BERBEDA DARI ISI JSON-NYA?  DIHARAPKAN: 0
+--
+--     Menguji cacat yang dijelaskan di bawah. Bila ada, artinya seseorang pernah
+--     menyimpan lewat layar Pega dan hasilnya tidak pernah terlihat — laporkan
+--     sebelum melanjutkan.
+--
+--     SELECT M_SURVEY_ID, DESCRIPTION, JSON_VALUE(JSON_DATA,'$.DESCRIPTION') AS dari_json
+--       FROM POOLDATA.M_SURVEYORS
+--      WHERE NVL(TRIM(DESCRIPTION),'~') <> NVL(TRIM(JSON_VALUE(JSON_DATA,'$.DESCRIPTION')),'~');
+--
+--     NVL dipakai dengan sengaja meski COALESCE yang portabel: berkas ini dijalankan DBA
+--     langsung di Oracle dan tidak pernah ikut ke PostgreSQL.
+
+-- 0d. BAHAN PEMBENTUK KODE BARU — laporan keadaan, bukan penghalang.
+--
+--     Baris situs WAJIB ada; tanpanya kode baru tidak dapat dibentuk sama sekali dan
+--     penambahan akan gagal dengan pesan yang menyebut tabel ini.
+--
+--     SELECT ID FROM POOLDATA.M_SITE_DATABASE WHERE CURRENT_SITE = '1';
+--     SELECT LAST_NUMBER FROM ALL_SEQUENCES WHERE SEQUENCE_NAME = 'M_SURVEYORS_SEQ';
+--
+--     Pada ASM: situs '1', urutan 11 → kode berikutnya 1011.
+--
+--
+-- ## Kenapa DI SETIAP PORTAL, bukan hanya portal utama
+--
+-- Modul ini membaca dan menulis basis data entitas yang sedang dipilih pengguna
+-- (`ADR-0030`, `D-75` butir 4), sehingga indeksnya dibutuhkan di setiap basis data yang
+-- melayaninya. Portal yang dilewati tetap bekerja — hanya tanpa penegakan keunikan di
+-- basis data.
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 1 — indeks unik atas nama tipe surveyor.
+--
+-- Keunikan nama adalah KEBUTUHAN BARU yang diputuskan Work Owner 2026-09-19, sejalan
+-- dengan keputusan yang sama untuk Master Status Klaim (2026-09-17). Sistem lama tidak
+-- memvalidasi apa pun pada layar ini, dan satu-satunya constraint kunci di tabel sampai
+-- hari ini adalah M_SURVEYORS_PK.
+--
+-- Indeksnya atas UPPER(TRIM(...)), bukan atas kolom apa adanya, supaya "Expert" dan
+-- "EXPERT  " dikenali sebagai nama yang sama. Ekspresi ini HARUS sama persis dengan
+-- mastertipesurveyors.DescriptionKey di kode Go — bila keduanya berbeda, aplikasi akan
+-- menerima nama yang kemudian ditolak basis data.
+--
+-- Namanya dipakai kode Go untuk menerjemahkan galat bentrok menjadi pesan yang dapat
+-- dibaca pengguna (konstanta DescriptionIndexName di
+-- internal/mastertipesurveyors/repo/sqlstore/mastertipesurveyors.go). Mengganti namanya di
+-- sini tanpa mengganti konstanta itu akan membuat bentrok nama muncul sebagai galat 500.
+--
+-- CATATAN: baris ber-DESCRIPTION NULL tidak masuk indeks ini — Oracle tidak mengindeks
+-- kunci yang seluruhnya NULL. Itu justru yang diinginkan: baris warisan yang deskripsinya
+-- kosong tidak menghalangi pembuatan indeks, sementara aplikasi tetap menolak isian
+-- kosong.
+-- ---------------------------------------------------------------------------
+
+CREATE UNIQUE INDEX POOLDATA.UX_M_SURVEYORS_DESC
+    ON POOLDATA.M_SURVEYORS (UPPER(TRIM(DESCRIPTION)));
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 2 — hak akses untuk akun aplikasi.
+--
+-- Pemeriksaan ALL_TAB_PRIVS pada 2026-09-19 menunjukkan akun aplikasi SUDAH memiliki
+-- SELECT, INSERT, UPDATE, dan DELETE atas POOLDATA.M_SURVEYORS di portal ASM. Ketiga
+-- pernyataan di bawah karena itu kemungkinan besar TIDAK PERLU di portal itu — ia
+-- disediakan untuk portal entitas lain, yang haknya belum diperiksa.
+--
+-- DELETE sengaja tidak diminta: tidak ada satu pun jalur di aplikasi yang menghapus baris
+-- master, dan hak yang tidak diberikan tidak dapat disalahgunakan kode yang ditulis
+-- kemudian. Bila hak DELETE sudah telanjur ada, mencabutnya BUKAN bagian migrasi ini —
+-- ia keputusan tersendiri, karena hak itu mungkin dipakai proses lain.
+--
+-- Hak atas urutan dan tabel situs dibutuhkan karena keduanya dipakai membentuk kode baru.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya.
+-- ---------------------------------------------------------------------------
+
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.M_SURVEYORS TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SITE_DATABASE TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SURVEYORS_SEQ TO <AKUN_APLIKASI>;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 3 — JSON_DATA setelah migrasi ini.
+--
+-- Kolomnya SENGAJA TIDAK DIHAPUS dan tidak dikosongkan. Ia dibiarkan berisi nilai terakhir
+-- yang ditulis Pega, sebagai bahan pembanding bila ada yang meragukan hasil perpindahan
+-- ini.
+--
+-- Akibat yang harus disadari: baris BARU yang ditulis aplikasi Go meninggalkan JSON_DATA
+-- bernilai NULL, dan baris LAMA yang diubah akan memuat JSON yang usang. Keduanya sah —
+-- constraint VALID_JSON_DATA1 (`JSON_DATA IS JSON (STRICT)`) menghasilkan UNKNOWN untuk
+-- NULL sehingga barisnya diterima — dan tidak ada rule Pega yang membacanya. Satu-satunya
+-- yang menyentuhnya adalah procedure PEGA_M_SURVEYORS, yang sejak sekarang tidak dipanggil
+-- siapa pun.
+--
+-- Kapan JSON_DATA boleh dibuang adalah keputusan tersendiri, dan sebaiknya diambil setelah
+-- masa pengamatan berjalan — bukan di berkas ini.
+--
+--
+-- ## Satu batas yang perlu diketahui, walau belum mendesak
+--
+-- M_SURVEY_ID bertipe CHAR(4), dan kode dibentuk kode_situs || lpad(urutan, 3, '0').
+-- POOLDATA.M_SURVEYORS_SEQ berada di 11 pada 2026-09-19, sementara kode tertinggi yang
+-- terpakai baru 1004. Saat urutan mencapai 1000, kodenya menjadi lima karakter dan
+-- penyisipan akan DITOLAK dengan ORA-12899.
+--
+-- Itu sekitar 989 penambahan lagi pada daftar yang isinya empat baris — praktis tidak akan
+-- tercapai, tetapi dicatat supaya tidak perlu ditemukan ulang.

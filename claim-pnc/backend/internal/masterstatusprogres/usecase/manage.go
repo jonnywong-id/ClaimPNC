@@ -72,7 +72,7 @@ func (l *Service) Create(ctx context.Context, portalAlias string, input masterst
 	return repo.InsertNew(ctx, clean)
 }
 
-// Update menyimpan perubahan Nama dan KodePosisi pada baris yang sudah ada.
+// Update menyimpan perubahan Name dan PositionCode pada baris yang sudah ada.
 //
 // ID tidak pernah ikut berubah. Di layar lama pun ia begitu: `UpdateStatusProgress1_act`
 // memuat baris lalu menandai modalnya "Update", dan `UpdateStatusProgress1_sql`
@@ -111,8 +111,8 @@ func (l *Service) Update(ctx context.Context, portalAlias, id string, input mast
 
 // Position mengembalikan daftar posisi klaim untuk dropdown di layar.
 //
-// Ia dilayani dari sini, bukan disalin ke frontend, supaya keempat nilainya hidup di
-// SATU tempat. Frontend yang memuat daftarnya sendiri akan menjadi tempat kedua yang
+// Ia dilayani dari sini, bukan disalin ke frontend, supaya nilainya hidup di SATU
+// tempat. Frontend yang memuat daftarnya sendiri akan menjadi tempat kedua yang
 // harus diingat saat daftarnya kelak pindah menjadi master data `F-4`.
 func (l *Service) Position() []masterstatusprogres.Position {
 	return masterstatusprogres.ListPositions()

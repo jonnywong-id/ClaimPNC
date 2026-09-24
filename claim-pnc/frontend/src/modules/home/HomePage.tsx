@@ -2,17 +2,19 @@ import { Link } from 'react-router-dom'
 
 import { PortalList, PortalPicker } from '@/modules/portal/PortalPicker'
 import { UserKind } from '@/api/types'
-import { ListIcon } from '@/components/Icon'
+import { CardIcon, ListIcon, ReloadIcon } from '@/components/Icon'
 import { useSession } from '@/app/session'
 
 /**
- * Beranda sementara.
+ * Beranda.
  *
- * Kerangka portal yang sebenarnya — navigasi samping, jejak lokasi, dan peta rute dari
- * 74 harness — adalah lingkup TKT-U1-001 dan TKT-U1-004; yang terakhir masih terhalang
- * 7 harness yang hilang dari export. Halaman ini membuktikan dua hal: sesi yang
- * diterbitkan benar-benar dikenali server, dan daftar portal terbaca dari
- * POOLDATA.M_PORTAL_PNC.
+ * Navigasi samping sudah ada dan isinya dibaca dari POOLDATA.M_MENU_APLIKASI_PNC — lihat
+ * `app/Sidebar.tsx`. Yang masih menjadi lingkup TKT-U1-004 adalah peta rute lengkap ke
+ * 74 harness, dan itu masih terhalang 7 harness yang hilang dari export.
+ *
+ * Halaman ini karena itu bukan lagi penampung menu, melainkan titik mulai: sesi yang
+ * diterbitkan benar-benar dikenali server, daftar portal terbaca dari
+ * POOLDATA.M_PORTAL_PNC, dan modul yang sudah punya layar dapat dicapai satu ketukan.
  *
  * # Yang PINDAH ke bilah atas pada penataan ulang 2026-09-17
  *
@@ -33,7 +35,7 @@ export function HomePage() {
           {pengguna ? `Selamat datang, ${pengguna.nama}.` : 'Anda sudah masuk.'}
         </h1>
         <p className="mt-1.5 text-sm text-slate-600">
-          Pilih menu di atas untuk mulai bekerja.
+          Pilih menu di samping kiri untuk mulai bekerja.
         </p>
       </header>
 
@@ -82,13 +84,45 @@ export function HomePage() {
       </section>
 
       <p className="mt-6 rounded-kartu border border-slate-200 bg-slate-100/70 p-4 text-sm text-slate-600">
-        Menu di atas belum mengikuti izin peran. Daftar 22 peran beserta 51 izin menunya
-        adalah TKT-F3-004 — masih menunggu daftar penugasan operator per peran dari DBA
-        dan Work Owner.
+        Menu di samping kiri sudah disaring POOLDATA.M_OTORISASI_PNC terhadap login Anda.
+        Yang belum ada adalah pemeriksaan kewenangan menu di server pada setiap endpoint
+        (TKT-F3-005) — sampai itu ada, tautan yang dibuka langsung lewat alamat peramban
+        tidak tertahan meski menunya tidak tampil.
       </p>
     </div>
   )
 }
+
+/**
+ * Modul yang layarnya SUDAH ada, beserta rutenya.
+ *
+ * Rutenya ditulis sama persis dengan yang didaftarkan `AppRoute` dan dipetakan
+ * `app/menu/registry.ts`. Daftar ini sengaja terpisah dari peta menu server: server
+ * memutuskan butir menu mana yang boleh DILIHAT, halaman ini memajang yang sudah punya
+ * layar — dan keduanya memang dapat berbeda.
+ */
+const SHORTCUTS = [
+  {
+    to: '/master/status-klaim',
+    Icon: ListIcon,
+    title: 'Master Status Klaim',
+    description:
+      '33 keadaan bisnis sebuah klaim — Register, Claim Committee, Paid, dan seterusnya.',
+  },
+  {
+    to: '/master/rekening',
+    Icon: CardIcon,
+    title: 'Master Rekening',
+    description:
+      'Rekening tujuan pembayaran klaim, beserta antrean persetujuan komitenya.',
+  },
+  {
+    to: '/master/status-progres-1',
+    Icon: ReloadIcon,
+    title: 'Master Status Progres 1',
+    description: 'Tahapan progres yang dilalui klaim, dicatat terpisah dari alur kerja.',
+  },
+] as const
 
 /**
  * Pintasan ke modul yang sudah dapat dipakai.
@@ -99,39 +133,40 @@ export function HomePage() {
 function MenuShortcut() {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Link
-        to="/master/status-klaim"
-        className={[
-          'group flex flex-col gap-3 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut',
-          'transition-[box-shadow,transform,border-color] duration-200 ease-halus',
-          'hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-angkat',
-          'active:translate-y-0 active:shadow-lembut',
-          'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25',
-        ].join(' ')}
-      >
-        <span
-          aria-hidden="true"
+      {SHORTCUTS.map(({ to, Icon, title, description }) => (
+        <Link
+          key={to}
+          to={to}
           className={[
-            'flex h-10 w-10 items-center justify-center rounded-kontrol bg-blue-50 text-blue-600',
-            'transition-colors duration-200 ease-halus',
-            'group-hover:bg-blue-600 group-hover:text-white',
+            'group flex flex-col gap-3 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut',
+            'transition-[box-shadow,transform,border-color] duration-200 ease-halus',
+            'hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-angkat',
+            'active:translate-y-0 active:shadow-lembut',
+            'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25',
           ].join(' ')}
         >
-          <ListIcon className="h-5 w-5" />
-        </span>
-        <span>
-          <span className="block text-sm font-semibold text-slate-900">Master Status Klaim</span>
-          <span className="mt-1 block text-sm text-slate-600">
-            33 keadaan bisnis sebuah klaim — Register, Claim Committee, Paid, dan seterusnya.
+          <span
+            aria-hidden="true"
+            className={[
+              'flex h-10 w-10 items-center justify-center rounded-kontrol bg-blue-50 text-blue-600',
+              'transition-colors duration-200 ease-halus',
+              'group-hover:bg-blue-600 group-hover:text-white',
+            ].join(' ')}
+          >
+            <Icon className="h-5 w-5" />
           </span>
-        </span>
-      </Link>
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">{title}</span>
+            <span className="mt-1 block text-sm text-slate-600">{description}</span>
+          </span>
+        </Link>
+      ))}
 
       <div className="flex flex-col justify-center gap-2 rounded-kartu border border-dashed border-slate-300 bg-slate-50/60 p-5">
         <span className="text-sm font-medium text-slate-600">Modul berikutnya menyusul</span>
         <span className="text-sm text-slate-500">
           Registrasi klaim, komite, akseptasi, dan laporan dikerjakan bertahap sesuai
-          sort gelombang migrasi.
+          urutan gelombang migrasi.
         </span>
       </div>
     </div>

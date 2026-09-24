@@ -60,6 +60,17 @@ export function SearchIcon(props: Props) {
   )
 }
 
+/** Kartu — rekening bank. Dipakai menu Master Rekening. */
+export function CardIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18" />
+      <path d="M6.5 14.5h3.5" />
+    </Base>
+  )
+}
+
 export function AddIcon(props: Props) {
   return (
     <Base {...props}>
@@ -73,6 +84,25 @@ export function EditIcon(props: Props) {
     <Base {...props}>
       <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4Z" />
       <path d="m13.5 6.5 4 4" />
+    </Base>
+  )
+}
+
+/**
+ * Tempat sampah — aksi hapus.
+ *
+ * Ia ditambahkan bersama modul Master XOL, layar pertama yang benar-benar punya tombol
+ * Hapus. Bentuknya tetap garis seperti ikon lain; yang membedakan tindakan merusak dari
+ * tindakan biasa adalah TEKS tombol dan konfirmasinya, bukan warna ikonnya — sekitar satu
+ * dari dua belas laki-laki tidak dapat membedakan merah dari abu-abu.
+ */
+export function TrashIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </Base>
   )
 }
@@ -145,6 +175,42 @@ export function CloseIcon(props: Props) {
   return (
     <Base {...props}>
       <path d="m6 6 12 12M18 6 6 18" />
+    </Base>
+  )
+}
+
+/**
+ * Tangga — dipakai menandai menu Ambang Komite.
+ *
+ * Bentuknya dipilih karena ia menggambarkan hal yang sebenarnya: jenjang persetujuan
+ * komite adalah tangga yang dinaiki bertingkat sesuai besarnya nilai klaim, dan setiap
+ * anak tangga yang terlampaui ikut menyetujui.
+ */
+export function StairsIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M3 20h5v-5h5v-5h5V5h3" />
+      <path d="M3 20v-1M8 15h5M13 10h5" />
+    </Base>
+  )
+}
+
+/** Segitiga peringatan — dipakai menandai temuan pada master ambang. */
+export function WarningIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M12 4.5 21 19.5H3L12 4.5Z" />
+      <path d="M12 10v4M12 17h.01" />
+    </Base>
+  )
+}
+
+/** Timbangan — dipakai menandai menu Penjenjangan Komite. */
+export function ScaleIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M12 4v16M7 20h10M4.5 8h15M12 4.5 4.5 8M12 4.5 19.5 8" />
+      <path d="M2 14a2.5 2.5 0 0 0 5 0L4.5 8 2 14ZM17 14a2.5 2.5 0 0 0 5 0L19.5 8 17 14Z" />
     </Base>
   )
 }

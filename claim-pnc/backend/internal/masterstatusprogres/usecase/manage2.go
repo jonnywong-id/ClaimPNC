@@ -101,6 +101,29 @@ func (l *Service2) Create(ctx context.Context, portalAlias string, input masters
 	return repo.InsertNew(ctx, clean)
 }
 
+// Update menyimpan perubahan nama dan induk, lalu mengembalikan baris tersimpannya.
+//
+// ID tidak pernah berubah: ia penyaring, bukan isian. Nama induk juga tidak diterima dari
+// layar — ia disalin repo dari baris induk yang dibacanya sendiri.
+//
+// Berbeda dari tingkat 1, barisnya TIDAK dimuat lebih dulu dengan Get. Repo tingkat 2
+// sudah membuka transaksi untuk membaca induknya, dan pemeriksaan "baris ada atau tidak"
+// dikerjakan di dalam transaksi itu lewat jumlah baris terpengaruh. Memuatnya lebih dulu
+// di sini hanya menambah satu perjalanan ke basis data yang jawabannya dapat basi sebelum
+// transaksi dimulai.
+func (l *Service2) Update(ctx context.Context, portalAlias, id string, input masterstatusprogres.Input2) (masterstatusprogres.ProgressStatus2, error) {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
+		return masterstatusprogres.ProgressStatus2{}, err
+	}
+
+	clean := input.Clean()
+	if err := clean.Check(); err != nil {
+		return masterstatusprogres.ProgressStatus2{}, err
+	}
+	return repo.Update(ctx, id, clean)
+}
+
 // EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.
 //
 // Dipakai transport untuk menolak lebih awal, sebelum badan permintaan dibaca.

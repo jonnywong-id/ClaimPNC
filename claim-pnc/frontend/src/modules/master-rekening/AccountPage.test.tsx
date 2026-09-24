@@ -26,7 +26,13 @@ function installFakeFetch() {
         body: options?.body ? JSON.parse(String(options.body)) : undefined,
       })
 
-      const key = [...reply.keys()].find((k) => path.startsWith(k))
+      // Kunci TERPANJANG yang cocok, bukan yang pertama ditemukan. `/api/master-rekening`
+      // adalah awalan dari `/api/master-rekening/014/.../keputusan`, sehingga pencocokan
+      // berdasar urutan akan menjawab POST keputusan dengan badan daftar rekening — dan
+      // uji galatnya lulus palsu karena tidak pernah melihat galat yang dipasangnya.
+      const key = [...reply.keys()]
+        .filter((k) => path.startsWith(k))
+        .sort((a, b) => b.length - a.length)[0]
       const result = key ? reply.get(key)! : { status: 404, body: null }
       return new Response(JSON.stringify(result.body), {
         status: result.status,
@@ -95,10 +101,10 @@ describe('AccountPage', () => {
 
     for (const label of [
       'Cari Data Rekening',
-      'Komite Approval',
-      'Waiting Approval',
-      'Approve',
-      'Reject',
+      'Antrean Komite Saya',
+      'Menunggu Approval',
+      'Sudah Disetujui',
+      'Sudah Ditolak',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
@@ -145,7 +151,7 @@ describe('AccountPage', () => {
     const pengguna = userEvent.setup()
     render(wrap(<AccountPage />))
 
-    await pengguna.click(screen.getByRole('button', { name: 'Komite Approval' }))
+    await pengguna.click(screen.getByRole('button', { name: 'Antrean Komite Saya' }))
 
     await waitFor(() => {
       expect(
@@ -159,7 +165,7 @@ describe('AccountPage', () => {
     const pengguna = userEvent.setup()
     render(wrap(<AccountPage />))
 
-    await pengguna.click(screen.getByRole('button', { name: 'Reject' }))
+    await pengguna.click(screen.getByRole('button', { name: 'Sudah Ditolak' }))
 
     await waitFor(() => {
       expect(request.some((p) => p.path.includes('status=2'))).toBe(true)
@@ -174,7 +180,7 @@ describe('AccountPage', () => {
     expect(await screen.findByText('1234567890')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
 
-    await pengguna.click(screen.getByRole('button', { name: 'Waiting Approval' }))
+    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Approve' }).length).toBeGreaterThan(0)
     })
@@ -188,7 +194,7 @@ describe('AccountPage', () => {
     })
 
     render(wrap(<AccountPage />))
-    await pengguna.click(screen.getByRole('button', { name: 'Waiting Approval' }))
+    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
 
     const catatan = await screen.findByPlaceholderText('Keterangan approval atasan')
     await pengguna.type(catatan, 'Disetujui atasan.')
@@ -210,7 +216,7 @@ describe('AccountPage', () => {
     })
 
     render(wrap(<AccountPage />))
-    await pengguna.click(screen.getByRole('button', { name: 'Waiting Approval' }))
+    await pengguna.click(screen.getByRole('button', { name: 'Menunggu Approval' }))
 
     const button = await screen.findAllByRole('button', { name: 'Approve' })
     await pengguna.click(button[0]!)

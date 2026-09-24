@@ -2,6 +2,8 @@ package masterrekeninghttp
 
 import (
 	"github.com/go-chi/chi/v5"
+
+	portalhttp "claim-pnc/internal/portal/http"
 )
 
 // Mount mendaftarkan rute modul master rekening ke router yang diberikan.
@@ -18,7 +20,26 @@ import (
 // peran TKT-F3-004 dan belum dikerjakan. Sampai itu ada, setiap pengguna yang dapat
 // masuk dapat membuka layar ini — dicatat sebagai penghalang di
 // docs/keputusan-implementasi.md, bukan diam-diam dianggap selesai.
-func Mount(r chi.Router, h *Handler) {
+// # Portal entitas (2026-09-19)
+//
+// Middleware ActivePortal dipasang DI SINI, bukan di cmd, karena SELURUH rute modul ini
+// menyentuh basis data entitas. Permintaan tanpa portal ditolak, TIDAK PERNAH dialihkan
+// ke portal utama sebagai cadangan (`R-20`, `TKT-F6-002`).
+//
+// Modul ini semula dilayani portal utama saja — artinya rekening pembayaran SELURUH
+// entitas terbaca dan tertulis di satu basis data. Penyelarasannya diputuskan Work Owner
+// 2026-09-19, sekaligus mencabut Isolasi Protektif untuk modul ini.
+//
+// Akibat yang paling perlu disadari: pendaftaran ke Kasir kini memakai alias entitas yang
+// benar-benar dipilih, bukan alias portal utama yang dipatok saat start.
+func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
+	r.Group(func(perPortal chi.Router) {
+		perPortal.Use(portalhttp.ActivePortal(portalDeps))
+		mountRoutes(perPortal, h)
+	})
+}
+
+func mountRoutes(r chi.Router, h *Handler) {
 	r.Route("/master-rekening", func(routes chi.Router) {
 		routes.Get("/", h.List)
 		routes.Post("/", h.Submit)

@@ -45,3 +45,15 @@ func DaysBetween(a, b time.Time) int {
 func AddDays(t time.Time, n int) time.Time {
 	return DateWIB(t).AddDate(0, 0, n)
 }
+
+// TwoDigitYearWIB mengembalikan dua digit terakhir tahun WIB dari sebuah waktu.
+//
+// Ia dipakai generator nomor terbitan. Dua digit, bukan empat, mengikuti bentuk nomor
+// klaim yang `D-71` tetapkan: `PNCN.YY.xxxx`.
+//
+// Yang dipakai adalah tahun WIB, bukan tahun UTC. Keduanya berbeda selama tujuh jam
+// setiap pergantian tahun — dari pukul 07:00 WIB tanggal 1 Januari ke belakang — dan
+// laporan yang masuk pada rentang itu akan bernomor tahun lalu bila UTC yang dipakai.
+func TwoDigitYearWIB(t time.Time) int {
+	return t.In(ZoneWIB).Year() % 100
+}

@@ -26,7 +26,7 @@ export function AccountTable({ rows, loading, actions }: Props) {
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-slate-500">
-        Tidak ada rekening yang cocok dengan search Anda.
+        Tidak ada rekening yang cocok dengan pencarian Anda.
       </p>
     )
   }

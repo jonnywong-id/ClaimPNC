@@ -1,0 +1,313 @@
+-- 0004 — Master Surveyors: kolom jejak keputusan dan keunikan (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Berkas ini BERBEDA SIFATNYA dari migrasi 0003, dan perbedaannya harus diketahui sebelum
+-- menyetujuinya:
+--
+--   * 0003 OPSIONAL — modulnya bekerja penuh tanpa dijalankan.
+--   * 0004 **WAJIB** — modul Master Surveyors menyentuh lima kolom baru pada SETIAP
+--     pembacaan dan SETIAP penyimpanan. Tanpa berkas ini, layarnya gagal dengan ORA-00904
+--     ("invalid identifier") pada permintaan pertama.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ## Status persetujuan
+--
+-- **BELUM DISETUJUI. BELUM DIPERIKSA PRASYARATNYA DI PORTAL MANA PUN.**
+--
+-- Ini berbeda dari migrasi 0003, yang prasyaratnya sudah diperiksa di portal ASM sebelum
+-- diajukan. Work Owner menetapkan modul Master Surveyors dirancang **dari export rule Pega
+-- saja, tanpa kueri katalog basis data** (2026-09-19), sehingga tidak satu pun angka di
+-- bawah berasal dari basis data yang berjalan.
+--
+--   Portal   Prasyarat diperiksa?  Keterangan
+--   ------   --------------------  --------------------------------------------------
+--   ASM      BELUM                 DBA menjalankan LANGKAH 0
+--   ASI      BELUM                 idem
+--   SMAS     BELUM                 idem
+--   SMI      BELUM                 idem
+--   SPK      BELUM                 idem
+--   SPKS     BELUM                 idem
+--
+-- DBA menjalankan LANGKAH 0 lebih dulu di setiap portal, dan **melaporkan hasilnya sebelum
+-- melanjutkan**. Langkah 0a dan 0b adalah penghalang sungguhan: keduanya membuat langkah 2
+-- GAGAL bila menghasilkan baris. Langkah 0c sampai 0f hanya laporan keadaan.
+--
+--
+-- ## Pertanyaan terbesar SUDAH TERJAWAB — dan jawabannya memperkecil migrasi ini
+--
+-- **POOLDATA.V_D_SURVEYORS membaca KOLOM, tidak memakai JSON_DATA lagi.**
+-- Ditegaskan Work Owner pada 2026-09-20.
+--
+-- Artinya berkas ini TIDAK mendefinisikan ulang view mana pun. Begitu aplikasi Go menulis
+-- ke kolom, hasilnya langsung terlihat oleh setiap rule Pega yang membaca view itu — sama
+-- seperti yang sudah terbukti pada M_SURVEYORS di migrasi 0003.
+--
+-- Yang tersisa di berkas ini karena itu hanya DUA hal: lima kolom baru dan dua indeks unik.
+--
+--
+-- ## Satu akibat yang perlu diketahui Tim Pega, dan BUKAN akibat migrasi ini
+--
+-- `Database/PEGA_D_SURVEYORS.prc` menulis HANYA ke JSON_DATA:
+--
+--     INSERT INTO POOLDATA.D_SURVEYORS(D_SURVEY_ID, JSON_DATA) VALUES (...)
+--     UPDATE POOLDATA.D_SURVEYORS SET JSON_DATA = DataPega WHERE D_SURVEY_ID = IDPega
+--
+-- View membaca kolom, procedure menulis JSON. Baris yang ditulis LAYAR PEGA karena itu
+-- meninggalkan kolomnya kosong, dan tampak hilang di view — cacat yang sama persis dengan
+-- yang tercatat di migrasi 0003 untuk M_SURVEYORS. Ia sudah berjalan hari ini.
+--
+-- Bahwa 43 baris yang ada TERBACA lewat view berarti kolomnya memang terisi, sehingga
+-- barisnya pasti diisi lewat jalur lain. Langkah 0d di bawah memeriksanya — sebagai
+-- LAPORAN KEADAAN untuk Tim Pega, bukan sebagai penghalang migrasi ini.
+--
+-- Migrasi ini tidak memperbaikinya dan tidak perlu: begitu aplikasi Go menjadi penulis
+-- tunggal, yang ditulis adalah kolom yang memang dibaca.
+--
+--
+-- ## Siapa yang menulis tabel ini sesudah migrasi
+--
+-- Aplikasi Go, sendirian. Layar Detail Surveyors adalah SATU-SATUNYA penulis D_SURVEYORS
+-- di sistem lama, dan itu diperiksa ke seluruh export rule:
+--
+--     Database/PEGA_D_SURVEYORS.prc            satu-satunya yang memuat INSERT/UPDATE
+--     RDB List/UpdateDetailSurveyors-SQL.xml   satu-satunya pemanggil procedure itu
+--     Activity/CNMInsertDetailSurveyors_act    satu-satunya pemanggil rule itu
+--
+-- Pembacanya banyak — ketiga `BrowseSurveyorType*-SQL.xml` dan setiap layar penugasan
+-- surveyor — tetapi pembaca tidak memindahkan kepemilikan (`P-1`).
+--
+--
+-- ---------------------------------------------------------------------------
+-- LANGKAH 0 — PEMERIKSAAN PRASYARAT. Jalankan di SETIAP portal entitas sebelum
+-- menjalankan langkah mana pun di portal itu.
+--
+-- Seluruhnya BACA-SAJA. Laporkan hasil 0a, 0b, dan 0d SEBELUM melanjutkan.
+-- ---------------------------------------------------------------------------
+
+-- 0a. ADAKAH NAMA GANDA?  DIHARAPKAN: nol baris
+--
+--     Langkah 2 membuat indeks unik dan akan GAGAL bila ada dua surveyor bernama sama
+--     menurut aturan pembanding sistem lama — yaitu huruf diseragamkan DAN seluruh spasi
+--     dibuang (`Activity/ValidasiMasterSurveyor-Act.xml`).
+--
+--     Perhatikan: dua baris bernama "BUDI SANTOSO" dan "BudiSantoso" AKAN terhitung ganda
+--     di sini, walau terlihat berbeda di layar. Itu memang aturan yang berlaku hari ini.
+--
+--     SELECT UPPER(REPLACE(NAME,' ','')) AS nama, COUNT(*) AS jumlah
+--       FROM POOLDATA.D_SURVEYORS
+--      GROUP BY UPPER(REPLACE(NAME,' ',''))
+--     HAVING COUNT(*) > 1;
+
+-- 0b. ADAKAH LOGIN APLIKASI GANDA?  DIHARAPKAN: nol baris
+--
+--     Langkah 2 juga membuat indeks unik atas login. Baris ber-LOGIN_APLIKASI kosong
+--     sengaja tidak ikut: surveyor eksternal memang tidak punya login.
+--
+--     SELECT UPPER(TRIM(LOGIN_APLIKASI)) AS login, COUNT(*) AS jumlah
+--       FROM POOLDATA.D_SURVEYORS
+--      WHERE LOGIN_APLIKASI IS NOT NULL AND TRIM(LOGIN_APLIKASI) IS NOT NULL
+--      GROUP BY UPPER(TRIM(LOGIN_APLIKASI))
+--     HAVING COUNT(*) > 1;
+
+-- 0c. ADAKAH NAMA LEBIH PANJANG DARI 100 KARAKTER?  DIHARAPKAN: 0
+--
+--     Aplikasi menolak isian lebih dari 100 karakter. Baris lama yang melanggarnya tidak
+--     akan hilang, tetapi TIDAK DAPAT DISUNTING lewat layar baru sampai namanya
+--     dipendekkan — dan itu harus diketahui sebelum, bukan sesudah, pengguna pertama
+--     mencoba.
+--
+--     Sekalian laporkan panjang kolomnya: batas 100 di aplikasi adalah ASUMSI yang belum
+--     pernah diadu dengan kolomnya. Bila DATA_LENGTH ternyata lebih kecil dari 100,
+--     angka di kode Go (mastersurveyors.MaxNameLength) harus TURUN mengikutinya.
+--
+--     SELECT COUNT(*) FROM POOLDATA.D_SURVEYORS WHERE LENGTH(TRIM(NAME)) > 100;
+--
+--     SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE
+--       FROM ALL_TAB_COLUMNS
+--      WHERE OWNER='POOLDATA' AND TABLE_NAME='D_SURVEYORS'
+--      ORDER BY COLUMN_ID;
+
+-- 0d. LAPORAN KEADAAN VIEW DAN TRIGGER — bukan penghalang.
+--
+--     Work Owner sudah menegaskan V_D_SURVEYORS membaca KOLOM (2026-09-20), sehingga
+--     migrasi ini tidak menyentuh view. Kedua kueri di bawah hanya MEREKAM keadaannya
+--     supaya tercatat bersama migrasinya, dan untuk menjawab satu pertanyaan yang tersisa
+--     bagi Tim Pega: bila view membaca kolom sementara PEGA_D_SURVEYORS menulis JSON,
+--     dari mana kolom 43 baris yang ada terisi?
+--
+--     SELECT VIEW_NAME, TEXT FROM ALL_VIEWS
+--      WHERE OWNER='POOLDATA' AND VIEW_NAME='V_D_SURVEYORS';
+--
+--     SELECT TRIGGER_NAME, TRIGGERING_EVENT, STATUS FROM ALL_TRIGGERS
+--      WHERE TABLE_OWNER='POOLDATA' AND TABLE_NAME='D_SURVEYORS';
+--
+--     Trigger yang ADA menjelaskannya; nol trigger berarti barisnya diisi lewat jalur lain
+--     — migrasi data atau penyisipan langsung. Laporkan hasilnya, jangan menahan migrasi.
+
+-- 0e. BAHAN PEMBENTUK ID BARU — laporan keadaan, bukan penghalang.
+--
+--     Baris situs WAJIB ada; tanpanya ID baru tidak dapat dibentuk sama sekali dan
+--     penambahan akan gagal dengan pesan yang menyebut tabel ini.
+--
+--     PERHATIKAN urutannya: D_SURVEYORS_SEQ, BUKAN M_SURVEYORS_SEQ. Keduanya ada dan
+--     bernama mirip, dan keduanya membentuk kode dengan jumlah digit berbeda — enam untuk
+--     surveyor, tiga untuk tipe surveyor.
+--
+--     SELECT ID FROM POOLDATA.M_SITE_DATABASE WHERE CURRENT_SITE = '1';
+--     SELECT SEQUENCE_NAME, LAST_NUMBER FROM ALL_SEQUENCES
+--      WHERE SEQUENCE_NAME IN ('D_SURVEYORS_SEQ','M_SURVEYORS_SEQ');
+
+-- 0f. HAK AKSES AKUN APLIKASI — laporan keadaan.
+--
+--     SELECT TABLE_NAME, PRIVILEGE FROM ALL_TAB_PRIVS
+--      WHERE TABLE_SCHEMA='POOLDATA' AND TABLE_NAME LIKE '%SURVEY%';
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 1 — lima kolom jejak keputusan dan jejak input.
+--
+-- Kelimanya BARU. Kedua Report Definition yang ada — BrowseVDSurveyors_RD dan
+-- SelectVDSurveyors_RD — tidak memuat satu pun dari kelimanya, jadi ini penambahan, bukan
+-- pemakaian kembali kolom yang sudah ada.
+--
+-- ## Kenapa ditambahkan, dan bukan dianggap kerapian
+--
+-- `D-59` menetapkan satuan izin adalah MENU dan **tidak ada pemisahan tugas formal** —
+-- satu orang dapat mengajukan surveyor lalu menyetujuinya sendiri bila perannya memiliki
+-- menu itu. Tidak ada kontrol teknis yang mencegahnya.
+--
+-- Akibatnya jejak audit menjadi SATU-SATUNYA kontrol pengimbang yang tersisa. Keputusan
+-- komite tanpa pencatat dan tanpa waktu tidak dapat ditelusuri siapa pun.
+--
+-- Sistem lama TIDAK menyimpan keduanya, dan itu bukan kelalaian pembacaan: kolomnya tidak
+-- ada. Ini karena itu PENAMBAHAN KEMAMPUAN, bukan pemindahan perilaku — dan seperti
+-- seluruh penambahan semacam itu, ia dicatat terbuka alih-alih diselipkan.
+--
+-- ## Kenapa seluruhnya NULLABLE
+--
+-- `P-4` mewajibkan migrasi backward-compatible: selama rolling deployment, versi lama dan
+-- versi baru aplikasi berjalan bersamaan terhadap skema yang sama. Kolom NOT NULL tanpa
+-- nilai bawaan akan membuat versi lama gagal menyisipkan.
+--
+-- Dan ada alasan kedua yang lebih kuat: 43 baris yang sudah ada tidak punya nilai untuk
+-- kelimanya, dan tidak ada cara jujur mengarang siapa yang dulu menginputnya.
+--
+-- ## Penamaan kolom
+--
+-- Berbahasa Indonesia, mengikuti `D-80` yang menetapkan nama tabel dan kolom basis data
+-- tetap Indonesia karena ia dimiliki bersama Pega selama masa paralel. Bandingkan dengan
+-- kolom lama di tabel yang sama (NAME, ADDRESS, BRANCH) yang berbahasa Inggris — campuran
+-- itu memang sudah ada dan tidak diseragamkan di sini, karena mengganti nama kolom lama
+-- akan memutus rule Pega yang masih membacanya.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE POOLDATA.D_SURVEYORS ADD (
+    TGL_APPROVE_KOMITE  TIMESTAMP       NULL,
+    CATATAN_KOMITE      VARCHAR2(4000)  NULL,
+    USER_INPUT          VARCHAR2(100)   NULL,
+    TGL_INPUT           TIMESTAMP       NULL,
+    USER_UPDATE         VARCHAR2(100)   NULL
+);
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 2 — dua indeks unik.
+--
+-- ## Indeks nama
+--
+-- Ekspresinya `UPPER(REPLACE(NAME,' ',''))`, dan ia HARUS sama persis dengan
+-- mastersurveyors.NameKey di kode Go. Bila keduanya berbeda, aplikasi akan menerima nama
+-- yang kemudian ditolak basis data — dan pengguna melihat galat 500 alih-alih pesan yang
+-- dapat ditindaklanjuti.
+--
+-- Aturannya BUKAN karangan: ia meniru `Activity/ValidasiMasterSurveyor-Act.xml`, yang
+-- membandingkan `@toUpperCase(@replaceAll(.NAME," ",""))`. Perhatikan bahwa ini LEBIH
+-- KETAT daripada indeks nama tipe surveyor pada migrasi 0003 (`UPPER(TRIM(...))`), dan
+-- perbedaannya disengaja — kedua layar memang memvalidasi dengan aturan yang berbeda di
+-- sistem lama.
+--
+-- ## Indeks login
+--
+-- Baris ber-LOGIN_APLIKASI NULL tidak masuk indeks ini — Oracle tidak mengindeks kunci
+-- yang seluruhnya NULL. Itu justru yang diinginkan: surveyor eksternal boleh tidak punya
+-- login, dan puluhan baris tanpa login tidak boleh saling menghalangi.
+--
+-- ## Nama indeksnya dipakai kode Go
+--
+-- Keduanya dicocokkan di internal/mastersurveyors/repo/sqlstore/mastersurveyors.go
+-- (konstanta NameIndexName dan LoginIndexName) untuk menerjemahkan galat bentrok menjadi
+-- pesan yang dapat dibaca pengguna. Mengganti namanya di sini tanpa mengganti konstanta itu
+-- akan membuat bentrok muncul sebagai galat 500.
+-- ---------------------------------------------------------------------------
+
+CREATE UNIQUE INDEX POOLDATA.UX_D_SURVEYORS_NAME
+    ON POOLDATA.D_SURVEYORS (UPPER(REPLACE(NAME, ' ', '')));
+
+CREATE UNIQUE INDEX POOLDATA.UX_D_SURVEYORS_LOGIN
+    ON POOLDATA.D_SURVEYORS (UPPER(TRIM(LOGIN_APLIKASI)));
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 3 — TIDAK ADA. View tidak disentuh.
+--
+-- Rancangan berkas ini sempat menyediakan definisi ulang V_D_SURVEYORS untuk berjaga-jaga
+-- bila view itu ternyata membaca JSON_DATA. Work Owner menegaskan pada 2026-09-20 bahwa ia
+-- membaca KOLOM, sehingga langkah itu DICABUT — bukan dibiarkan sebagai pernyataan
+-- berkomentar yang mengundang dijalankan tanpa perlu.
+--
+-- Mendefinisikan ulang view yang dibaca rule Pega yang sedang melayani produksi adalah
+-- tindakan berisiko; menyediakannya "untuk jaga-jaga" pada berkas yang dijalankan DBA
+-- adalah undangan yang tidak perlu ada.
+--
+-- Nomor langkahnya sengaja dipertahankan kosong supaya penomoran langkah 4 dan 5 tidak
+-- bergeser — berkas ini sudah dirujuk di kode dan dokumen dengan nomor langkahnya.
+-- ---------------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 4 — hak akses untuk akun aplikasi.
+--
+-- DELETE sengaja tidak diminta: tidak ada satu pun jalur di aplikasi yang menghapus baris
+-- master (`D-66` melarang penghapusan fisik data bernilai bisnis), dan hak yang tidak
+-- diberikan tidak dapat disalahgunakan kode yang ditulis kemudian.
+--
+-- Hak atas urutan dan tabel situs dibutuhkan karena keduanya dipakai membentuk ID baru.
+-- Hak baca atas M_SURVEYORS dibutuhkan karena daftar surveyor menggabungkan deskripsi
+-- tipenya — modul ini hanya MEMBACA tabel itu, tidak pernah menulisnya.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya.
+-- ---------------------------------------------------------------------------
+
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.D_SURVEYORS TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SURVEYORS TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SITE_DATABASE TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.D_SURVEYORS_SEQ TO <AKUN_APLIKASI>;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 5 — JSON_DATA setelah migrasi ini.
+--
+-- Kolomnya SENGAJA TIDAK DIHAPUS dan tidak dikosongkan. Ia dibiarkan berisi nilai terakhir
+-- yang ditulis Pega, sebagai bahan pembanding bila ada yang meragukan hasil perpindahan
+-- ini.
+--
+-- Akibat yang harus disadari: baris BARU yang ditulis aplikasi Go meninggalkan JSON_DATA
+-- bernilai NULL, dan baris LAMA yang diubah akan memuat JSON yang usang.
+--
+-- Kapan JSON_DATA boleh dibuang adalah keputusan tersendiri, dan sebaiknya diambil setelah
+-- masa pengamatan berjalan — bukan di berkas ini.
+--
+--
+-- ## Satu batas yang perlu diketahui
+--
+-- D_SURVEY_ID dibentuk kode_situs || lpad(urutan, 6, '0'). Bila kolomnya bertipe CHAR
+-- atau VARCHAR2 dengan panjang tepat tujuh, maka saat urutan mencapai 1.000.000 kodenya
+-- menjadi delapan karakter dan penyisipan akan DITOLAK dengan ORA-12899.
+--
+-- Panjang kolomnya BELUM diperiksa — lihat 0c. Dengan 43 baris yang ada hari ini, batas
+-- itu praktis tidak akan tercapai, tetapi dicatat supaya tidak perlu ditemukan ulang.

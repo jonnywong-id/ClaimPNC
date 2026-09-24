@@ -1,0 +1,11 @@
+# Hasil build, bukan sumber.
+#
+# `claimpnc.exe~` sempat ikut terlacak dan berukuran 28 MB. Ia bertabrakan pada SETIAP
+# merge — dua orang membangun binary yang berbeda dari sumber yang sama, dan git tidak
+# punya cara menggabungkan keduanya. Berkasnya tetap ada di komputer masing-masing;
+# yang dihentikan hanyalah pelacakannya.
+*.exe
+*.exe~
+
+# Rahasia. `.env.example` tetap terlacak sebagai contoh yang isinya kosong.
+.env

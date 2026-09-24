@@ -1,5 +1,7 @@
 # Biner hasil build
 *.exe
+# Go menyisakan berkas ~ saat menimpa binary yang sedang berjalan; 28 MB dan bukan sumber.
+*.exe~
 backend/claimpnc
 
 # Hasil build SPA — dihasilkan `npm run build` di frontend/, disematkan saat go build.

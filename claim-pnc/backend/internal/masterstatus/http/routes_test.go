@@ -12,17 +12,47 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 
+	"claim-pnc/internal/masterstatus"
 	"claim-pnc/internal/masterstatus/repo/memory"
 	"claim-pnc/internal/masterstatus/usecase"
+	"claim-pnc/internal/portal"
 
 	masterstatushttp "claim-pnc/internal/masterstatus/http"
+	portalhttp "claim-pnc/internal/portal/http"
+	portalmemory "claim-pnc/internal/portal/repo/memory"
 )
 
-func testServer(t *testing.T) http.Handler {
+// portalASM adalah entitas yang dipakai hampir seluruh uji di berkas ini. Ia disebut
+// eksplisit pada setiap permintaan — persis seperti yang dituntut aplikasi sungguhan.
+const portalASM = "ASM"
+
+// entities memegang penyimpanan tiap entitas supaya uji dapat memeriksa bahwa yang
+// tersentuh memang entitas yang diminta, bukan entitas lain.
+type entities struct {
+	handler http.Handler
+	asm     *memory.Repo
+	asi     *memory.Repo
+}
+
+func testServer(t *testing.T) *entities {
 	t.Helper()
 
-	repo := memory.NewRepo(memory.SampleList()...)
-	service, err := usecase.NewService(usecase.Options{Repo: repo})
+	asm := memory.NewRepo(memory.SampleList()...)
+	// ASI sengaja KOSONG; ia yang membuktikan pemisahan antarentitas.
+	asi := memory.NewRepo()
+
+	service, err := usecase.NewService(usecase.Options{
+		RepoSelector: func(alias string) (masterstatus.Repo, error) {
+			switch alias {
+			case "ASM":
+				return asm, nil
+			case "ASI":
+				return asi, nil
+			default:
+				return nil, portal.ErrNotReady
+			}
+		},
+	})
 	require.NoError(t, err)
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -33,21 +63,47 @@ func testServer(t *testing.T) http.Handler {
 			_ = json.NewEncoder(w).Encode(body)
 		}
 	}
+	// Dirantai sama seperti cmd/claimpnc: galat portal dipetakan modul portal. Tanpa
+	// rantai ini, uji penolakan portal lulus di sini tetapi gagal di aplikasi sungguhan.
+	writeError := portalhttp.WithPortalError(
+		func(w http.ResponseWriter, r *http.Request, err error) {
+			writeJSON(w, r, http.StatusInternalServerError, map[string]string{
+				"kode": "galat_internal", "pesan": err.Error(),
+			})
+		},
+		writeJSON,
+	)
 
 	handler := masterstatushttp.NewHandler(masterstatushttp.Options{
-		Service:       service,
-		Logger:        logger,
-		WriteResponse: writeJSON,
+		Service:             service,
+		Logger:              logger,
+		WriteResponse:       writeJSON,
+		FallbackErrorWriter: masterstatushttp.ErrorWriter(writeError),
 	})
+
+	// Hanya ASM dan ASI yang koneksinya "hidup"; SMAS ada di daftar tetapi belum siap.
+	portalDeps := portalhttp.ActivePortalDeps{
+		Repo:         portalmemory.NewRepo(portalmemory.SampleList()...),
+		ReadyAliases: func() []string { return []string{"ASM", "ASI"} },
+		Logger:       logger,
+		WriteError:   writeError,
+	}
 
 	router := chi.NewRouter()
 	router.Route("/api", func(api chi.Router) {
-		masterstatushttp.Mount(api, handler)
+		masterstatushttp.Mount(api, handler, portalDeps)
 	})
-	return router
+	return &entities{handler: router, asm: asm, asi: asi}
 }
 
-func call(t *testing.T, server http.Handler, metode, filePath string, body any) *httptest.ResponseRecorder {
+// call menembak dengan portal ASM. Uji yang menguji portal lain memakai callPortal.
+func call(t *testing.T, server *entities, metode, filePath string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	return callPortal(t, server, metode, filePath, portalASM, body)
+}
+
+// callPortal menembak dengan portal tertentu. Alias kosong berarti header tidak dikirim.
+func callPortal(t *testing.T, server *entities, metode, filePath, portalAlias string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 
 	var content io.Reader
@@ -60,9 +116,12 @@ func call(t *testing.T, server http.Handler, metode, filePath string, body any) 
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
+	if portalAlias != "" {
+		request.Header.Set(portalhttp.HeaderPortal, portalAlias)
+	}
 
 	rekaman := httptest.NewRecorder()
-	server.ServeHTTP(rekaman, request)
+	server.handler.ServeHTTP(rekaman, request)
 	return rekaman
 }
 
@@ -181,9 +240,10 @@ func TestMalformedRequestBodyAnswered400(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/api/master/status-klaim",
 		bytes.NewReader([]byte("{bukan json")))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set(portalhttp.HeaderPortal, portalASM)
 
 	rekaman := httptest.NewRecorder()
-	server.ServeHTTP(rekaman, request)
+	server.handler.ServeHTTP(rekaman, request)
 
 	require.Equal(t, http.StatusBadRequest, rekaman.Code, "400 berarti klien salah membentuk permintaan")
 
@@ -200,9 +260,10 @@ func TestCodeInRequestBodyIgnored(t *testing.T) {
 	mentah := []byte(`{"kode":"7777","label":"Status Percobaan"}`)
 	request := httptest.NewRequest(http.MethodPost, "/api/master/status-klaim", bytes.NewReader(mentah))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set(portalhttp.HeaderPortal, portalASM)
 
 	rekaman := httptest.NewRecorder()
-	server.ServeHTTP(rekaman, request)
+	server.handler.ServeHTTP(rekaman, request)
 	require.Equal(t, http.StatusCreated, rekaman.Code)
 
 	var respons masterstatushttp.SingleResponse
@@ -228,8 +289,109 @@ func TestOversizedRequestBodyRejected(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodPost, "/api/master/status-klaim", bytes.NewReader(mentah))
 	request.Header.Set("Content-Type", "application/json")
+	// Portal WAJIB disebut, kalau tidak permintaannya ditolak pemeriksaan portal dan uji
+	// ini lulus karena alasan yang salah — 400 yang sama, sebab yang berbeda.
+	request.Header.Set(portalhttp.HeaderPortal, portalASM)
 
 	rekaman := httptest.NewRecorder()
-	server.ServeHTTP(rekaman, request)
+	server.handler.ServeHTTP(rekaman, request)
 	require.Equal(t, http.StatusBadRequest, rekaman.Code)
+
+	// Kodenya diperiksa, bukan hanya statusnya: itulah yang membedakan "badan permintaan
+	// ditolak" dari "portal tidak disebut".
+	var issues masterstatushttp.ErrorResponse
+	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &issues))
+	require.Equal(t, masterstatushttp.ErrCodeBadRequest, issues.Code)
+}
+
+// ── Portal entitas ──────────────────────────────────────────────────────────────
+
+// PERMINTAAN TANPA PORTAL DITOLAK, bukan dilayani portal utama (TKT-F6-002, R-20).
+//
+// Ini uji terpenting yang lahir dari penyelarasan 2026-09-19. Sebelumnya modul ini selalu
+// membaca basis data portal utama; bila permintaan tanpa portal jatuh ke sana lagi, status
+// klaim satu badan hukum akan terbaca di badan hukum lain — dan layarnya tampak normal,
+// karena isinya masuk akal. Yang salah hanya milik siapa data itu.
+func TestWithoutPortalRejected(t *testing.T) {
+	server := testServer(t)
+
+	for _, perkara := range []struct {
+		nama, metode, jalur string
+		badan               any
+	}{
+		{"membaca daftar", http.MethodGet, "/api/master/status-klaim", nil},
+		{"membaca satu baris", http.MethodGet, "/api/master/status-klaim/1163", nil},
+		{"menambah", http.MethodPost, "/api/master/status-klaim", masterstatushttp.SaveRequest{Label: "Uji"}},
+		{"mengubah", http.MethodPut, "/api/master/status-klaim/1163", masterstatushttp.SaveRequest{Label: "Uji"}},
+	} {
+		t.Run(perkara.nama, func(t *testing.T) {
+			rekaman := callPortal(t, server, perkara.metode, perkara.jalur, "", perkara.badan)
+			require.Equal(t, http.StatusBadRequest, rekaman.Code)
+
+			var issues masterstatushttp.ErrorResponse
+			require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &issues))
+			require.Equal(t, portalhttp.CodeNotStated, issues.Code)
+		})
+	}
+
+	// Dan tidak ada satu baris pun yang berubah di entitas mana pun.
+	isiASM, err := server.asm.List(t.Context())
+	require.NoError(t, err)
+	require.Len(t, isiASM, 33)
+	isiASI, err := server.asi.List(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, isiASI)
+}
+
+// "Tidak ada" dibedakan dari "belum tersedia": keduanya menuntut tindak lanjut berbeda.
+func TestUnknownAndNotReadyPortalAreDistinguished(t *testing.T) {
+	server := testServer(t)
+
+	rekaman := callPortal(t, server, http.MethodGet, "/api/master/status-klaim", "TIDAKADA", nil)
+	require.Equal(t, http.StatusBadRequest, rekaman.Code)
+	var takDikenal masterstatushttp.ErrorResponse
+	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &takDikenal))
+	require.Equal(t, portalhttp.CodeUnknown, takDikenal.Code)
+
+	rekaman = callPortal(t, server, http.MethodGet, "/api/master/status-klaim", "SMAS", nil)
+	require.Equal(t, http.StatusServiceUnavailable, rekaman.Code)
+	var belumSiap masterstatushttp.ErrorResponse
+	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &belumSiap))
+	require.Equal(t, portalhttp.CodeNotReady, belumSiap.Code)
+}
+
+// Setiap entitas menjawab dengan isinya sendiri, dan menyebut namanya.
+func TestEachPortalAnswersWithItsOwnRows(t *testing.T) {
+	server := testServer(t)
+
+	rekaman := callPortal(t, server, http.MethodGet, "/api/master/status-klaim", "ASM", nil)
+	var isiASM masterstatushttp.ListResponse
+	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &isiASM))
+	require.Equal(t, 33, isiASM.Total)
+	require.Equal(t, "ASM", isiASM.Portal)
+
+	rekaman = callPortal(t, server, http.MethodGet, "/api/master/status-klaim", "ASI", nil)
+	require.Equal(t, http.StatusOK, rekaman.Code)
+	var isiASI masterstatushttp.ListResponse
+	require.NoError(t, json.Unmarshal(rekaman.Body.Bytes(), &isiASI))
+	require.Equal(t, 0, isiASI.Total, "ASI kosong; isinya TIDAK diwarisi dari ASM")
+	require.Equal(t, "ASI", isiASI.Portal)
+	require.NotNil(t, isiASI.ClaimStatus, "kosong dikirim sebagai senarai kosong, bukan null")
+}
+
+// Menambah di satu entitas tidak menyentuh entitas lain.
+func TestCreateTouchesOnlyRequestedPortal(t *testing.T) {
+	server := testServer(t)
+
+	rekaman := callPortal(t, server, http.MethodPost, "/api/master/status-klaim", "ASI",
+		masterstatushttp.SaveRequest{Label: "Status Khusus ASI"})
+	require.Equal(t, http.StatusCreated, rekaman.Code)
+
+	isiASI, err := server.asi.List(t.Context())
+	require.NoError(t, err)
+	require.Len(t, isiASI, 1)
+
+	isiASM, err := server.asm.List(t.Context())
+	require.NoError(t, err)
+	require.Len(t, isiASM, 33, "entitas lain tidak ikut bertambah")
 }

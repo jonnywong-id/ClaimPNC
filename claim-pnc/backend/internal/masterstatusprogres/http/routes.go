@@ -145,8 +145,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Position menangani GET /master/posisi-klaim.
 //
-// Rutenya TIDAK dipasangi PortalAktif: keempat posisi klaim adalah daftar milik
-// aplikasi, bukan isi basis data entitas mana pun (lihat masterstatusprogres/posisi.go).
+// Rutenya TIDAK dipasangi PortalAktif: daftar posisi klaim adalah milik aplikasi, bukan
+// isi basis data entitas mana pun (lihat masterstatusprogres/position.go).
 // Menuntut portal di sini akan membuat dropdown gagal justru saat pengguna belum memilih
 // portal — padahal tidak ada satu baris data entitas pun yang dibacanya.
 func (h *Handler) Position(w http.ResponseWriter, r *http.Request) {

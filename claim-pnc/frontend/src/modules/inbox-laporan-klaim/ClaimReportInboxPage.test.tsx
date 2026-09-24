@@ -320,7 +320,7 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-    await userEvent.click(screen.getByRole('button', { name: '2' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Halaman berikutnya' }))
     await waitFor(() => expect(lastListCall()).toContain('halaman=2'))
 
     await userEvent.click(screen.getByRole('button', { name: /All data/ }))
@@ -378,7 +378,10 @@ describe('penyaring dan halaman', () => {
     expect(screen.getByText('57')).toBeInTheDocument()
   })
 
-  it('menggambar nomor halaman dan menandai halaman yang sedang dibuka', async () => {
+  // Nama tombolnya `aria-label` milik PageBar di DataTable — "Halaman sebelumnya",
+  // bukan teks yang terlihat ("Previous"). Label yang terlihat disingkat pada layar
+  // sempit, sehingga yang dipegang uji ini adalah nama yang dibacakan pembaca layar.
+  it('tombol halaman sebelumnya mati di halaman pertama', async () => {
     installFetch(
       defaultReply((call) =>
         call.method === 'GET' && !call.url.includes('/pilihan')
@@ -389,27 +392,8 @@ describe('penyaring dan halaman', () => {
     show()
 
     await screen.findByRole('table')
-
-    const nav = screen.getByRole('navigation', { name: 'Navigasi halaman' })
-    for (const n of ['1', '2', '3', '4']) {
-      expect(within(nav).getByRole('button', { name: n })).toBeInTheDocument()
-    }
-
-    // Halaman yang sedang dibuka ditandai `aria-current`, bukan hanya warna: pembedaan
-    // yang hanya warna tidak sampai ke pembaca layar.
-    expect(within(nav).getByRole('button', { name: '1' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    expect(within(nav).getByRole('button', { name: '2' })).not.toHaveAttribute('aria-current')
-  })
-
-  it('tidak menggambar nomor halaman bila semuanya muat di satu halaman', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await screen.findByRole('table')
-    expect(screen.queryByRole('button', { name: '1' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Halaman sebelumnya' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Halaman berikutnya' })).toBeEnabled()
   })
 })
 

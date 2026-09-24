@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppRoute } from '@/app/App'
+import { HEADER_PORTAL } from '@/api/client'
 import { useSession } from '@/app/session'
 
 const ROUTES = '/api/master/status-klaim'
@@ -76,7 +77,7 @@ function installDefaultFetch() {
       const kode = url.slice(ROUTES.length + 1)
       return jsonResponse(200, { status_klaim: { kode, label: readLabel(init), kode_lama: '' } })
     }
-    return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length })
+    return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length, portal: 'ASM' })
   })
 }
 
@@ -140,6 +141,37 @@ describe('daftar', () => {
 
     const header = request?.init?.headers as Record<string, string>
     expect(header['Authorization']).toBe('Bearer token-uji')
+  })
+
+  /*
+    Portal entitas WAJIB ikut di setiap permintaan sejak penyelarasan 2026-09-19.
+
+    Sebelumnya modul ini selalu membaca basis data portal utama. Tanpa header ini backend
+    menolak permintaannya — dan itu memang yang diinginkan: jatuh diam-diam ke portal
+    utama berarti menampilkan status klaim badan hukum lain tanpa satu pun tanda di layar
+    (`R-20`).
+
+    Portalnya tidak di-set uji ini secara langsung: pemilih portal di bilah atas memilih
+    portal utama dari server, persis seperti yang dialami pengguna.
+  */
+  it('membawa portal entitas di header, bukan di URL', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('Paid')
+
+    const request = calls.find((p) => p.url === ROUTES)
+    expect(request?.url).not.toContain('ASM')
+
+    const header = request?.init?.headers as Record<string, string>
+    expect(header[HEADER_PORTAL]).toBe('ASM')
+  })
+
+  it('menyebut entitas yang menjawab, bukan hanya yang diminta', async () => {
+    installDefaultFetch()
+    show()
+    await screen.findByText('Paid')
+
+    expect(screen.getByText(/Portal entitas:/)).toBeInTheDocument()
   })
 
   it('menyaring baris saat pengguna mengetik di kotak cari', async () => {
@@ -254,7 +286,7 @@ describe('tambah', () => {
           pesan: 'Status dengan nama itu sudah ada. Pakai nama lain.',
         })
       }
-      return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length })
+      return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length, portal: 'ASM' })
     })
 
     const pengguna = userEvent.setup()
@@ -280,7 +312,7 @@ describe('tambah', () => {
           detail: [{ field: 'label', pesan: 'Status paling panjang 100 karakter.' }],
         })
       }
-      return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length })
+      return jsonResponse(200, { status_klaim: SAMPLE, total: SAMPLE.length, portal: 'ASM' })
     })
 
     const pengguna = userEvent.setup()
