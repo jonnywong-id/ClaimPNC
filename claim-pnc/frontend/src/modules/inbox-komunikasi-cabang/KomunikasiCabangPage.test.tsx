@@ -35,12 +35,18 @@ const PORTAL_LIST = {
 }
 
 /**
- * Kedua tab menggambar JUMLAH KOLOM yang berbeda — tiga dan lima.
+ * Kedua kolom TOMBOL, identik di kedua tab dan berjudul "Button" apa adanya.
  *
- * Itu bukan pilihan tampilan melainkan akibat langsung penyaringnya: pada tab "Belum
- * Dijawab", kolom balasan dan penjawab dijamin kosong oleh penyaring `REPLYMESSAGE IS
- * NULL`, dan section lama memang tidak menggambarnya.
+ * Keduanya ada di KEDUA grid layar lama, sebagai kolom DI DALAM grid — bukan di bilah aksi.
+ *
+ * Kedua tab tetap berbeda jumlah kolom ISIAN-nya (tiga dan lima), karena pada tab "Belum
+ * Dijawab" kolom balasan dan penjawab dijamin kosong oleh penyaring `REPLYMESSAGE IS NULL`.
  */
+const KOLOM_TOMBOL: Tab['kolom'] = [
+  { kunci: 'aksi_detail', judul: 'Button' },
+  { kunci: 'aksi_selesai', judul: 'Button' },
+]
+
 const TAB_BELUM: Tab = {
   kode: '1',
   nama: 'Belum Dijawab',
@@ -49,6 +55,7 @@ const TAB_BELUM: Tab = {
     { kunci: 'tanggal', judul: 'Tanggal' },
     { kunci: 'pengirim', judul: 'Pengirim(Dari)' },
     { kunci: 'pesan', judul: 'Pesan' },
+    ...KOLOM_TOMBOL,
   ],
 }
 
@@ -62,6 +69,7 @@ const TAB_SUDAH: Tab = {
     { kunci: 'pesan', judul: 'Pesan' },
     { kunci: 'jawaban_terakhir', judul: 'Jawaban Terakhir' },
     { kunci: 'penjawab', judul: 'Penjawab(Dari)' },
+    ...KOLOM_TOMBOL,
   ],
   catatan: 'Tab ini menampilkan BALASAN TERAKHIR pada setiap percakapan.',
 }
@@ -383,12 +391,129 @@ describe('perpindahan tab', () => {
   })
 })
 
+describe('kolom tombol', () => {
+  it('menggambar kedua tombol pada setiap baris, di KEDUA tab', async () => {
+    // Keduanya kolom sungguhan di dalam grid layar lama, dua kali — sekali untuk tiap grid.
+    // Versi pertama modul ini melewatkan keduanya.
+    await renderLoaded()
+
+    expect(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
+
+    expect(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9002/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Selesai Komunikasi percakapan KOM-9002/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('mempertahankan judul kolom "Button" apa adanya seperti layar lama', async () => {
+    // Dua kolom berjudul sama memang tidak membantu, tetapi `D-13` menetapkan teks layar
+    // mengikuti Pega. Yang ditambahkan adalah nama yang dibaca pembaca layar, bukan judulnya.
+    await renderLoaded()
+
+    expect(await screen.findAllByRole('columnheader', { name: 'Button' })).toHaveLength(2)
+  })
+
+  it('sel Pesan TIDAK lagi menjadi tautan pembuka', async () => {
+    // Layar lama tidak punya tautan pada sel Pesan sama sekali. Dua cara berbeda membuka
+    // baris membuat pengguna mengira keduanya melakukan hal yang berbeda.
+    await renderLoaded()
+
+    await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ })
+    expect(
+      screen.queryByRole('button', { name: /^Mohon lengkapi berita acara/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('menjawab "Selesai Komunikasi" dengan alasan dari peladen, bukan dengan diam', async () => {
+    // Tindakan ini MENULIS — ia mengubah kanal percakapan sehingga barisnya hilang dari
+    // kedua tab — dan tabelnya milik Pega selama masa paralel. Tombol yang diam saat ditekan
+    // tidak terbedakan dari tombol yang rusak.
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url.startsWith(`${PATH}/tindakan`)) {
+        return jsonResponse(501, {
+          kode: 'belum_tersedia',
+          pesan:
+            'Mengirim pesan, membalas, menutup percakapan, dan menambah percakapan belum ' +
+            'tersedia di sistem baru. Kerjakan lewat Pega.',
+        })
+      }
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [BARIS],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Kerjakan lewat Pega/)
+  })
+
+  it('mengirim nama tindakan ke peladen supaya pemakaiannya tercatat', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    )
+
+    const call = [...calls].reverse().find((c) => c.url.startsWith(`${PATH}/tindakan`))
+    expect(call).toBeDefined()
+
+    const url = new URL(call?.url ?? '', 'http://uji.invalid')
+    expect(url.searchParams.get('tindakan')).toBe('selesai-komunikasi')
+    expect(url.searchParams.get('komunikasi')).toBe('KOM-9001')
+    expect(call?.init?.method).toBe('POST')
+  })
+})
+
+describe('tombol bilah atas', () => {
+  it('menggambar Refresh dan Tambah', async () => {
+    await renderLoaded()
+
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tambah' })).toBeInTheDocument()
+  })
+
+  it('Refresh benar-benar mengambil ulang daftar, bukan ditolak', async () => {
+    // Satu-satunya tombol layar lama yang bekerja di sini: ia tidak menulis apa pun,
+    // sehingga tidak ada alasan menahannya.
+    await renderLoaded()
+
+    const before = calls.filter((c) => c.url.startsWith(PATH) && !c.url.includes('/tab')).length
+
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+
+    await screen.findByRole('columnheader', { name: 'Tanggal' })
+    const after = calls.filter((c) => c.url.startsWith(PATH) && !c.url.includes('/tab')).length
+
+    expect(after).toBeGreaterThan(before)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
 describe('detail komunikasi', () => {
   it('membuka panel utas saat sel Pesan diklik', async () => {
     await renderLoaded()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /Mohon lengkapi berita acara/ }),
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
     expect(await screen.findByRole('region', { name: /Detail komunikasi/ })).toBeInTheDocument()
@@ -401,7 +526,7 @@ describe('detail komunikasi', () => {
     await renderLoaded()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /Mohon lengkapi berita acara/ }),
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
     expect(await screen.findByText(/Berita acara sudah diunggah/)).toBeInTheDocument()
@@ -411,7 +536,7 @@ describe('detail komunikasi', () => {
     await renderLoaded()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /Mohon lengkapi berita acara/ }),
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
     expect(await screen.findByText(/Sudah Upload/)).toBeInTheDocument()
@@ -424,7 +549,7 @@ describe('detail komunikasi', () => {
     await renderLoaded()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /Mohon lengkapi berita acara/ }),
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
     expect(await screen.findByText(/Membalas belum tersedia di sini/)).toBeInTheDocument()
@@ -436,15 +561,20 @@ describe('keterangan yang wajib terlihat', () => {
   it('menyebut keempat tindakan yang masih dikerjakan lewat Pega', async () => {
     // Layar yang kehilangan tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan,
     // dan penggunanya tidak akan tahu ia masih harus mengerjakannya lewat Pega.
+    //
+    // Pencariannya DIBATASI pada panel itu sendiri: sejak tombolnya benar-benar digambar,
+    // teks "Selesai Komunikasi" dan "Tambah" muncul pula sebagai tombol — dan pencarian
+    // seluruh halaman akan menemukan lebih dari satu.
     await renderLoaded()
 
-    const panel = await screen.findByText(/Yang masih dikerjakan lewat Pega/)
-    expect(panel).toBeInTheDocument()
+    const heading = await screen.findByText(/Yang masih dikerjakan lewat Pega/)
+    const panel = heading.closest('section')
+    expect(panel).not.toBeNull()
 
-    expect(screen.getByText('Kirim Pesan')).toBeInTheDocument()
-    expect(screen.getByText('Balas')).toBeInTheDocument()
-    expect(screen.getByText('Selesai Komunikasi')).toBeInTheDocument()
-    expect(screen.getByText('Tambah')).toBeInTheDocument()
+    const within = panel as HTMLElement
+    for (const label of ['Kirim Pesan', 'Balas', 'Selesai Komunikasi', 'Tambah']) {
+      expect(within.textContent).toContain(label)
+    }
   })
 
   it('menggambar selisih terencana dari peladen', async () => {

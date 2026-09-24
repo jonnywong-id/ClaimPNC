@@ -142,6 +142,42 @@ export function useKomunikasiCabangDetail(id: string | null) {
 }
 
 /**
+ * Hook aksi TULIS — "Selesai Komunikasi", "Kirim Pesan", "Balas", dan "Tambah".
+ *
+ * # Kenapa ia ditembakkan sama sekali, padahal pasti ditolak
+ *
+ * Karena tombol yang diam saat ditekan tidak terbedakan dari tombol yang rusak. Yang
+ * dibutuhkan pengguna adalah **alasan**, dan alasan itu ditulis di satu tempat — di peladen —
+ * supaya ia berubah sekali saja ketika kepemilikan tabelnya kelak berpindah (`P-1`).
+ *
+ * Peladen menjawab `501` beserta kalimat yang menyebut mengapa dan ke mana harus pergi.
+ * Menuliskannya di layar berarti dua kalimat yang dapat menyimpang, dan yang di layar akan
+ * tetap berbunyi "belum tersedia" lama setelah tindakannya tersedia.
+ *
+ * # Kenapa nama tindakannya ikut dikirim
+ *
+ * Karena peladen mencatatnya. Selama masa paralel, catatan itu satu-satunya tanda seberapa
+ * sering pengguna benar-benar membutuhkan tiap tindakan — dan itulah dasar memutuskan mana
+ * yang dipindahkan lebih dulu.
+ */
+export function useKomunikasiCabangAction() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: async (input: { tindakan: string; komunikasi?: string }) => {
+      const params = new URLSearchParams({ tindakan: input.tindakan })
+      if (input.komunikasi) params.set('komunikasi', input.komunikasi)
+
+      return await callAPI<{ pesan?: string }>(
+        `${PATH}/tindakan?${params.toString()}`,
+        { token, portal, metode: 'POST' },
+      )
+    },
+  })
+}
+
+/**
  * Hook tombol unduh.
  *
  * # Kenapa berkasnya diambil dengan fetch, bukan dengan tautan unduh biasa

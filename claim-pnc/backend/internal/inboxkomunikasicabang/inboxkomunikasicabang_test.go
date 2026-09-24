@@ -120,19 +120,66 @@ func TestDefaultTabIsTheOneHoldingWaitingWork(t *testing.T) {
 		"tab bawaan harus yang BELUM dijawab — itulah pekerjaan yang menunggu")
 }
 
-func TestNotAnsweredTabDrawsFewerColumnsThanAnsweredTab(t *testing.T) {
-	// Kedua grid section memang berbeda jumlah kolomnya: tiga dan lima. Kolom balasan dan
-	// penjawab tidak digambar pada tab pertama karena penyaringnya menjamin keduanya kosong.
+func TestNotAnsweredTabDrawsFewerDataColumnsThanAnsweredTab(t *testing.T) {
+	// Kedua grid section memang berbeda jumlah kolom ISIAN-nya: tiga dan lima. Kolom balasan
+	// dan penjawab tidak digambar pada tab pertama karena penyaringnya menjamin keduanya
+	// kosong.
 	notAnswered, _ := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabNotAnswered)
 	answered, _ := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabAnswered)
 
-	require.Len(t, notAnswered.Columns, 3)
-	require.Len(t, answered.Columns, 5)
+	require.Len(t, dataColumns(notAnswered), 3)
+	require.Len(t, dataColumns(answered), 5)
 
 	for _, column := range notAnswered.Columns {
 		require.NotEqual(t, inboxkomunikasicabang.FieldReply, column.Key)
 		require.NotEqual(t, inboxkomunikasicabang.FieldReplier, column.Key)
 	}
+}
+
+func TestBothTabsDrawTheTwoActionButtonColumns(t *testing.T) {
+	// Keduanya ada di KEDUA grid layar lama — terbaca dari offsetnya sendiri, dua kali
+	// masing-masing. Versi pertama modul ini melewatkan keduanya dan menggantinya dengan
+	// tautan pada sel "Pesan", yang di Pega tidak ada sama sekali.
+	for _, tab := range inboxkomunikasicabang.Tabs() {
+		keys := []string{}
+		for _, column := range tab.Columns {
+			if inboxkomunikasicabang.IsAction(column.Key) {
+				keys = append(keys, column.Key)
+			}
+		}
+
+		require.Equalf(t,
+			[]string{
+				inboxkomunikasicabang.FieldActionDetail,
+				inboxkomunikasicabang.FieldActionFinish,
+			},
+			keys,
+			"tab %q harus menggambar kedua kolom tombol, berurutan", tab.Name)
+	}
+}
+
+func TestActionColumnsKeepTheLiteralPegaHeading(t *testing.T) {
+	// `pyCaption Button` pada keempat kolomnya. Dua kolom berjudul sama memang tidak
+	// membantu, tetapi `D-13` menetapkan teks layar mengikuti Pega apa adanya — yang
+	// ditambahkan adalah nama yang dibaca pembaca layar, bukan judul kolomnya.
+	tab, _ := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabNotAnswered)
+
+	for _, column := range tab.Columns {
+		if inboxkomunikasicabang.IsAction(column.Key) {
+			require.Equal(t, "Button", column.Title)
+		}
+	}
+}
+
+// dataColumns menyaring kolom yang benar-benar menggambar isian baris.
+func dataColumns(tab inboxkomunikasicabang.Tab) []inboxkomunikasicabang.Column {
+	result := []inboxkomunikasicabang.Column{}
+	for _, column := range tab.Columns {
+		if !inboxkomunikasicabang.IsAction(column.Key) {
+			result = append(result, column)
+		}
+	}
+	return result
 }
 
 func TestTabsCannotBeMutatedThroughTheReturnedSlice(t *testing.T) {
@@ -142,7 +189,7 @@ func TestTabsCannotBeMutatedThroughTheReturnedSlice(t *testing.T) {
 	require.NotEqual(t, "diubah", inboxkomunikasicabang.Tabs()[0].Name)
 }
 
-func TestEveryGridColumnKeyIsAlsoAnExportColumnKey(t *testing.T) {
+func TestEveryGridDataColumnIsAlsoAnExportColumn(t *testing.T) {
 	// Berkas ekspor memuat SELURUH isian, termasuk tiga yang tidak digambar tabel mana pun.
 	// Yang tidak boleh terjadi adalah sebaliknya: kolom yang tampil di layar tetapi hilang
 	// dari berkas, karena orang yang mencocokkan keduanya akan mengira ada baris yang
@@ -153,10 +200,20 @@ func TestEveryGridColumnKeyIsAlsoAnExportColumnKey(t *testing.T) {
 	}
 
 	for _, tab := range inboxkomunikasicabang.Tabs() {
-		for _, column := range tab.Columns {
+		for _, column := range dataColumns(tab) {
 			require.True(t, exported[column.Key],
 				"kolom %q pada tab %q tidak ada di berkas ekspor", column.Key, tab.Name)
 		}
+	}
+}
+
+func TestActionColumnsAreNeverExported(t *testing.T) {
+	// Kolom tombol tidak punya nilai yang dapat ditulis ke berkas. Menuliskannya sebagai sel
+	// kosong akan menggeser seluruh kolom sesudahnya — dan itu tidak menghasilkan satu pun
+	// galat, hanya berkas yang isinya tidak sejajar dengan judulnya.
+	for _, column := range inboxkomunikasicabang.ExportColumns {
+		require.Falsef(t, inboxkomunikasicabang.IsAction(column.Key),
+			"kolom tombol %q tidak boleh ikut ke berkas ekspor", column.Key)
 	}
 }
 
