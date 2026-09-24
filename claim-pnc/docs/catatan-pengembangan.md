@@ -9495,3 +9495,181 @@ ke komponen bersama, sehingga layar ini berbunyi sama dengan layar lain.
 Ditambah satu perbaikan rancangan sebelum sempat menjadi kesalahan: peta `renderer` kolom
 mula-mula memanggil pembuka klaim lewat **variabel modul yang bisa berubah**, dengan setter yang
 tidak pernah dipanggil. Ia diubah menjadi parameter biasa sebelum uji pertama dijalankan.
+
+## 42. Modul Inbox RCL/PUCL (2026-09-23 … 2026-09-24)
+
+Antrean **klaim yang ditolak (RCL) atau diproses ulang (PUCL)** — butir menu `MENU_ID 61`,
+pengganti harness `RCLPUCL_Harness`. Cabang `feat/reonardh-Inbox-RCL/PUCL`.
+
+### 42.1 Artefaknya lengkap, dan itu menentukan hampir seluruh bentuknya
+
+Seperti Inbox Analyst Doctor dan berbeda dari `inboxcloseclaim`, layar ini **utuh** di export.
+Sebelas artefak dibaca:
+
+| Artefak | Yang diambil darinya |
+|---|---|
+| `Harness/RCLPUCL_Harness-Harness.xml` | judul layar, susunan tab |
+| `Section/InputPUCL-RCL_Section-Section.xml` | kontainer tab — **tidak punya grid sendiri** |
+| `Section/InboxCetakSuratPUCLRCL_Section-Section.xml` | grid tab 1, **dua isian tanggal** |
+| `Section/InboxKelengkapanDocPUCLRCL_Section-Section.xml` | grid tab 2, tombol Reminder PUCL |
+| `Section/InboxAJSMSIG_Section-Section.xml` | grid tab 3 |
+| `Report Definition/InboxPUCL_RD-RD.xml` | penyaring tab 1 |
+| `Report Definition/InboxPUCLCetakSurat_RD-RD.xml` | penyaring tab 2 |
+| `Report Definition/InboxMISG_RD-RD.xml` | penyaring tab 3 |
+| `RDB List/ReminderPUCL-SQL.xml` | **SQL hasil generate RD tab 2** — sumber nama kolom |
+| `RDB List/GetDataPUCLRCLForDailyReport-SQL.xml` | kueri ekspor tab 1 |
+| `Activity/ExportCetakSurat_act` · `ExportKelengkapanDoc_act` · `ExportAJSMSIGDoc_act` | apa yang dijalankan tiap tombol ekspor |
+
+Nama RD-nya **tertukar** terhadap nama section-nya: section *CetakSurat* memakai
+`InboxPUCL_RD`, section *KelengkapanDoc* memakai `InboxPUCLCetakSurat_RD`. Itu kekacauan
+penamaan Pega, bukan salah baca, dan tidak dibawa.
+
+### 42.2 Satu antrean, tiga partisi
+
+Ketiga tab membaca **workbasket yang sama** (`RCLPUCL`, dari `pyRDParams → assign`) pada tabel
+yang sama. Yang membedakan hanya tiga penyaring, dan ketiganya mengikuti **perjalanan surat
+PUCL**:
+
+| Tab | Penyaring pembeda |
+|---|---|
+| Cetak Surat | `TANGGALCETAKDOKUMENPUCL_1 IS NULL` **dan** `STATUSCASE_1 = '0'` |
+| Kelengkapan Dokumen | `IS NOT NULL` · `PUCLAPPROVE_1 <> '1'` · `MSIG_1 IS NULL` |
+| Klaim MSIG | sama, tetapi `MSIG_1 = 'MSIG'` |
+
+Ditambah `PYSTATUSWORK <> 'Resolved-Completed'`. Satu klaim **berpindah tab dengan sendirinya**
+begitu suratnya dicetak.
+
+`RDB List/ReminderPUCL-SQL.xml` memuat SQL hasil generate RD tab 2 **kata demi kata**, termasuk
+literal `'RCLPUCL'` dan `ORDER BY 5 DESC, 7 DESC` — sehingga penyaring, nama kolom, dan
+urutannya tidak perlu ditebak sama sekali.
+
+### 42.3 Kesembilan kolom, dan dua perangkap penamaan
+
+Judul dan propertinya dibaca dari **sel grid** ketiga section, bukan dari `pyListFields` Report
+Definition — RD mengambil 17–25 isian sementara yang digambar hanya sembilan.
+
+Dua judul yang sama menunjuk kolom yang **berbeda** di layar ini dan di Inbox Manager Receive /
+PUCL, dan keduanya bersilangan:
+
+| Judul kolom | layar ini | Inbox Manager Receive / PUCL |
+|---|---|---|
+| Status RCL/PUCL | `RCL_PUCL_1` | `STATUSKLAIM_1` |
+| Status Kadaluarsa | `STATUSKLAIM_1` | `STATUSCASE_1` |
+
+Keduanya diverifikasi dari sel grid section masing-masing. Menyalin pemetaan satu layar ke
+layar lain akan menampilkan kolom yang salah **tanpa satu pun galat**. `STATUSCASE_1` sendiri
+**menyaring** tab 1 tetapi tidak digambar satu sel pun di layar ini.
+
+### 42.4 Empat pertanyaan yang diajukan, dan jawabannya
+
+| Pertanyaan | Jawaban Work Owner |
+|---|---|
+| `MSIG_1` tidak ada di inventaris kolom terisi — bagaimana tab ketiga? | **Bangun apa adanya, tandai sebagai temuan** |
+| Isian tanggal hanya menyetir ekspor, bukan grid | **Replikasi apa adanya (`P-5`)** |
+| Tombol "Cetak Surat" dan "Reminder PUCL" yang menulis | **Tombol digambar, aksi ditolak beralasan** |
+| Lingkup — sekalian `RCL_Harness` (`MENU_ID 62`)? | **Hanya Inbox RCL/PUCL (`MENU_ID 61`)** |
+
+### 42.5 Temuan yang paling menentukan: `MSIG_1` tampaknya tidak pernah terisi
+
+`docs/kolom-t-claimlist-admin.md` dibaca **langsung dari katalog Oracle** pada 2026-09-22 dan
+mendaftar seluruh kolom ber-`NUM_DISTINCT > 0`. `RCL_PUCL_1` (3), `TANGGALKIRIMPUCL_1` (88),
+`TANGGALCETAKDOKUMENPUCL_1` (74), `PUCLAPPROVE_1` (2), dan `STATUSCASE_1` (3) semuanya ada di
+sana — **`MSIG_1` tidak**. Kolomnya nyata (dipakai tiga rule SQL), tetapi tampaknya kosong.
+
+Akibatnya: **tab "Klaim MSIG" kemungkinan selalu kosong**, dan tab "Kelengkapan Dokumen"
+(`MSIG_1 IS NULL`) menampung seluruhnya.
+
+Tabnya **tidak** ditandai `Blocked`. Itu pembedaan yang disengaja: kuerinya dapat dijalankan,
+dan kosongnya adalah **jawaban** — bukan ketidakmampuan menjawab. Menandainya terhalang akan
+menolak permintaannya di `NewQuery`, sehingga baris yang mungkin memang ada tidak pernah
+ditampilkan. Kosongnya dinyatakan lewat `Tab.Notice` di atas grid dan lewat
+`PlannedDifferences`, dan `-periksa` mencetak kueri yang DBA perlu jalankan.
+
+### 42.6 Temuan kedua: `PUCLAPPROVE_1 <> '1'` tidak menangkap NULL
+
+`NULL <> '1'` bernilai **UNKNOWN** — bukan TRUE — di Oracle maupun PostgreSQL. Klaim yang
+penanda persetujuannya belum pernah diisi karena itu **tidak muncul** di tab Kelengkapan
+Dokumen maupun Klaim MSIG, meski suratnya sudah dicetak dan ia jelas belum disetujui.
+
+Kolomnya hanya punya **dua nilai berbeda** di produksi, sehingga jumlah baris yang terdampak
+bisa besar.
+
+Perilakunya **ditiru apa adanya**. Memperbaikinya menjadi `(… IS NULL OR … <> :x)` akan
+**menambah** baris yang di Pega tidak pernah terlihat — itu perubahan perilaku pada layar yang
+sedang diuji kesetaraannya, bukan perbaikan yang sudah diputuskan. Ia ditiru pula di
+penyimpanan memori (`matchesApproval`), diuji (`TestAnEmptyApprovalFlagAlsoHidesTheRow`),
+dinyatakan lewat `PlannedDifferences`, dan `-periksa` mencetak kueri sebaran nilainya.
+
+### 42.7 Satu tombol ekspor, dua isi berkas
+
+Ketiga tab punya "Export To Excel", tetapi activity di baliknya berbeda:
+
+| Tab | Activity | Sumber |
+|---|---|---|
+| Cetak Surat | `ExportCetakSurat_act` | `GetDataPUCLRCLForDailyReport` — **kueri berbeda** |
+| Kelengkapan Dokumen | `ExportKelengkapanDoc_act` | `InboxPUCLCetakSurat_RD` — grid itu sendiri |
+| Klaim MSIG | `ExportAJSMSIGDoc_act` | `InboxMISG_RD` — grid itu sendiri |
+
+Laporan harian tab 1 **tidak sama dengan isi tabelnya** dalam empat hal: disaring rentang
+tanggal, memuat klaim yang suratnya sudah dicetak, memuat klaim yang sudah selesai, dan
+ber-`UNION` dengan cabang kedua yang mengambil seluruh klaim ber-`GROUPPANEL_1 = '002'`
+**tanpa gabungan antrean bersama sama sekali**. Kolomnya pun berbeda: ada `STATUSCLAIM_1`
+(Status Klaim, 33 kode) yang tidak ada di grid, dan tidak ada `LAMAKLAIM_1` yang ada di grid.
+
+`UNION` dipertahankan, **bukan** `UNION ALL`: klaim PA yang berada di antrean RCL/PUCL memenuhi
+kedua cabang, dan `UNION ALL` akan memunculkannya dua kali.
+
+### 42.8 Perubahan terhadap sistem lama, dan alasannya
+
+| Yang berubah | Alasan |
+|---|---|
+| Paginasi di basis data (`OFFSET … FETCH NEXT`), ukuran tetap 50 | Grid lama memotong di 500 baris **setelah** seluruhnya ditarik |
+| Nilai penyaring lewat **bind**, tanpa perkecualian | Kueri laporan menyisipkan kedua tanggal yang **diketik pengguna** langsung ke teks SQL |
+| `TRUNC(kolom)` menjadi rentang **setengah terbuka** | `TRUNC` dilarang (`09-DATABASE-STRATEGY.md` §4), mematikan index, dan tidak portabel; rentang setengah terbuka memilih baris yang sama persis |
+| `ORDER BY` ditambahkan pada laporan | Kueri lama tidak punya sama sekali — satu baris dapat muncul di dua halaman begitu dipotong |
+| Kode jalur diterjemahkan di berkas laporan | Kueri lama menulis angka mentah `1`/`2` ke dalam Excel |
+| Dua isian tanggal diberi peringatan tegas di layar | Keduanya **tidak** menyaring tabel; tanpa peringatan itu akan dilaporkan sebagai kerusakan |
+
+**Urutan baris TIDAK diubah.** Ia mengikuti `PXCREATEDATETIME DESC, PYID DESC` apa adanya —
+meski kolom itu **tidak ditampilkan**, sementara yang tampil sebagai "Tanggal Masuk Inbox"
+adalah `TANGGALKIRIMPUCL_1`. Keduanya dapat terpaut berbulan-bulan, sehingga tabel dapat
+terbaca tidak urut. Mengganti kunci urut mengubah baris mana yang ada di halaman pertama, dan
+itu selisih yang belum diputuskan siapa pun.
+
+### 42.9 Yang dibangun
+
+**Backend** — `internal/inboxrclpucl/`: domain, `tab.go`, `query.go`, `errors.go`,
+`repo/sqlstore` (5 kueri: tiga daftar, satu laporan, dua pemeriksa), `repo/memory`, `usecase`,
+`http` (metadata · daftar · ekspor · penolak aksi tulis). Dirakit di `cmd/claimpnc/main.go` dan
+`check.go`.
+
+**Frontend** — `src/modules/inbox-rcl-pucl/`: `types.ts`, `api.ts`, `RCLPUCLTabs.tsx`,
+`RCLPUCLPage.tsx`. Rute `/inbox-rcl-pucl` di `App.tsx`, pemetaan `RCLPUCL_Harness` di
+`app/menu/registry.ts`.
+
+**Tidak ada migrasi basis data.** Seluruh tabelnya milik Pega (`P-1`), dan modul ini hanya
+membaca.
+
+### 42.10 Hasil uji
+
+| Lapisan | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` | bersih |
+| `go test ./internal/inboxrclpucl/...` | **lulus** — domain, sqlstore, memory |
+| `go test ./...` | lulus, tanpa regresi |
+| `tsc --noEmit` pada modul baru | bersih |
+| `vitest run src/modules/inbox-rcl-pucl` | **22/22 lulus** |
+
+**Yang gagal dan BUKAN akibat modul ini:** 120 galat `tsc` dan 29 uji frontend di
+`master-auto-claim`, `master-bengkel`, `master-panel`, `master-sparepart`, `master-supplier`,
+`inbox-admin`, dan `riwayat-klaim`. Dibuktikan dengan menyimpan sementara kedua berkas yang
+disunting (`git stash`) lalu menjalankan ulang: **29 uji yang sama tetap gagal**.
+
+### 42.11 Yang masih menunggu jawaban
+
+1. **Apakah `MSIG_1` memang kosong di produksi?** — DBA. Menentukan apakah tab ketiga punya isi
+   sama sekali.
+2. **Apakah `PUCLAPPROVE_1` yang kosong memang harus menyembunyikan barisnya?** — Work Owner.
+   Perilakunya direplikasi; memperbaikinya adalah keputusan tersendiri.
+3. **Arti nilai `STATUSCASE_1`** — tidak ada master yang menerjemahkannya di export mana pun.
+   Yang diketahui hanya `'0'` yang dipakai penyaring.

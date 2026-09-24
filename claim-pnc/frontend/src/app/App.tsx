@@ -26,6 +26,7 @@ import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
+import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
@@ -475,6 +476,36 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ManagerReceivePUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox RCL/PUCL (`MENU_ID 61`) — klaim yang ditolak atau diproses ulang.
+
+        Ia BERSAUDARA dekat dengan layar tepat di atasnya, dan keduanya membaca antrean
+        bersama yang SAMA. Yang membedakan adalah seberapa halus antrean itu dipartisi:
+
+          Inbox Manager Receive / PUCL (56)  satu tab RCL/PUCL, tanpa penyaring halus —
+                                             pandangan penyelia, superset layar ini
+          layar ini (61)                     tiga tab menurut perjalanan surat PUCL,
+                                             untuk petugas yang mengerjakannya
+
+        Rutenya terpisah, dan tidak boleh disatukan: Pega pun punya dua menu dan dua
+        harness untuk keduanya, ditujukan pada peran yang berbeda.
+
+        Seperti saudaranya, TIDAK SATU PUN tabnya menyaring menurut pengguna yang login —
+        penyaringnya akun antrean bersama, bukan orang. Di Pega, butir menunya dijaga
+        `When/IsRCLPUCL-When.xml`: `(Administrators OR PncRCLPUCL) AND NOT ViewClaimPNC`.
+        Aturan itu belum ditegakkan (`TKT-F3-004`), dan sampai saat itu setiap pembukaan
+        dicatat di sisi peladen — termasuk rentang tanggal laporan hariannya.
+      */}
+      <Route
+        path="/inbox-rcl-pucl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RCLPUCLPage />
             </Protected>
           </SessionGuard>
         }

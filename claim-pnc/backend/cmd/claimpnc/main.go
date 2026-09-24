@@ -37,6 +37,7 @@ import (
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
+	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/masterdominanfactor"
@@ -99,6 +100,10 @@ import (
 	inboxprogressclaimmemory "claim-pnc/internal/inboxprogressclaim/repo/memory"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	inboxprogressclaimusecase "claim-pnc/internal/inboxprogressclaim/usecase"
+	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
+	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
+	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
+	inboxrclpuclusecase "claim-pnc/internal/inboxrclpucl/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
@@ -628,6 +633,31 @@ func run() error {
 			FallbackErrorWriter: inboxmanagerreceivepuclhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox RCL/PUCL (`MENU_ID 61`).
+	//
+	// Jembatan pemanggilnya membawa LOGIN dengan alasan yang sama seperti Inbox Manager
+	// Receive / PUCL, dan perlu dibaca sebelum disamakan dengan modul inbox lain: di sini
+	// login TIDAK dipakai menyaring satu pun kueri. Antreannya BERSAMA — penyaringnya akun
+	// `RCLPUCL`, bukan pengguna — sehingga setiap petugas melihat daftar yang sama.
+	// Identitasnya dipakai untuk JEJAK, dan pada permintaan laporan harian rentang
+	// tanggalnya ikut dicatat (lihat `internal/inboxrclpucl/usecase`).
+	rclPUCLHandler := inboxrclpuclhttp.NewHandler(
+		inboxrclpuclhttp.Options{
+			Service: assembly.inboxRCLPUCL,
+			GetCaller: func(ctx context.Context) (inboxrclpuclhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxrclpuclhttp.Caller{}, false
+				}
+				return inboxrclpuclhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxrclpuclhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -904,6 +934,18 @@ func run() error {
 				inboxmanagerreceivepuclhttp.Mount(
 					protected, managerReceivePUCLHandler, activePortalDeps)
 
+				// Inbox RCL/PUCL memuat nomor polis dan nama tertanggung dari
+				// antrean BERSAMA — tidak satu pun tabnya menyaring menurut
+				// pemanggil, karena penyaringnya akun antrean. Pemeriksaan
+				// portalnya karena itu tidak boleh lebih longgar: yang terlihat
+				// di sini adalah seluruh klaim RCL/PUCL milik satu badan hukum.
+				//
+				// Rute ekspornya menuntut hal yang sama dan sedikit lebih:
+				// berkas laporan hariannya dapat diunduh dan dibawa keluar,
+				// dengan rentang tanggal yang ditentukan penggunanya sendiri.
+				inboxrclpuclhttp.Mount(
+					protected, rclPUCLHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -1031,6 +1073,7 @@ type assembly struct {
 	// dokumen dan klaim RCL/PUCL — karena begitulah harness `ReceiveDoucument_Harness`
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
+	inboxRCLPUCL            *inboxrclpuclusecase.Service
 
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
@@ -1117,6 +1160,7 @@ type storage struct {
 	// berarti memperlihatkan SELURUH antrean satu badan hukum kepada petugas badan hukum
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
+	rclPUCLSelector            inboxrclpucl.RepoSelector
 
 	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
 	//
@@ -1445,6 +1489,22 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	rclPUCLService, err := inboxrclpuclusecase.NewService(
+		inboxrclpuclusecase.Options{
+			RepoSelector: store.rclPUCLSelector,
+
+			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
+			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan
+			// sama sekali — dan berkas laporan hariannya dapat diunduh dengan rentang
+			// tanggal yang ditentukan penggunanya sendiri. Rentang yang lebar adalah hal
+			// yang harus dapat ditelusuri setelahnya (`D-59`).
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
 	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
 	// mengikuti sistem lama yang juga tidak memaginasinya.
@@ -1554,6 +1614,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxClaimTreatyProp:    claimTreatyPropService,
 		inboxClaimTreatyNonProp: claimTreatyNonPropService,
 		inboxManagerReceivePUCL: managerReceivePUCLService,
+		inboxRCLPUCL:            rclPUCLService,
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxAnalystDoctor:      inboxAnalystDoctorService,
 		inboxLaporanKlaim:       claimReportService,
@@ -1949,6 +2010,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxmanagerreceivepuclsql.NewRepo(conn), nil
 		}
 
+		store.rclPUCLSelector = func(alias string) (inboxrclpucl.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxrclpuclsql.NewRepo(conn), nil
+		}
+
 		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -2065,6 +2134,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// yang tertolak, layar pengembangan tidak dapat menunjukkan bahwa penyaringnya
 		// benar-benar bekerja.
 		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
+		store.rclPUCLSelector = rclPUCLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
 	}
@@ -2795,6 +2865,42 @@ func managerReceivePUCLSelectorMemory(
 			return existing, nil
 		}
 		fresh := inboxmanagerreceivepuclmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
+// dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isi contohnya mencakup KEENAM penyaring layar ini, dan enam dari sebelas barisnya sengaja
+// TERTOLAK: penanda kasus yang berbeda, klaim yang sudah disetujui, klaim yang penanda
+// persetujuannya KOSONG, klaim yang sudah selesai, klaim di antrean bersama lain, dan klaim
+// Personal Accident di luar antrean. Baris yang lolos saja tidak membuktikan apa pun — yang
+// membuktikan penyaringnya bekerja adalah baris yang seharusnya tidak muncul dan memang
+// tidak muncul.
+//
+// Baris terakhir punya tugas tambahan: ia TIDAK muncul di tab mana pun tetapi IKUT di
+// laporan harian, dan itulah satu-satunya hal yang membuktikan laporan dan tabel memang
+// berbeda isinya. Lihat inboxrclpucl/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func rclPUCLSelectorMemory(primaryAlias string) inboxrclpucl.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxrclpucl.Repo{}
+
+	return func(alias string) (inboxrclpucl.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxrclpuclmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

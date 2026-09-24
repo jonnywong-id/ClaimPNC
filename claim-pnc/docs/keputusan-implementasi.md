@@ -7716,3 +7716,226 @@ dibuang; izin itu tidak berlaku untuk **data yang dijalankan**. Data contoh mema
 | 3 | **Pemeriksaan kewenangan menu belum ada** (`TKT-F3-005`). Yang meredamnya penyaring identitas — peredam, bukan kendali. Barisnya menyangkut data medis yang `FR-R2` batasi | `TKT-F3-005` |
 | 4 | **`registrasi.Claim.ComplianceTransfer` bertipe `bool`** padahal domainnya `"1"` dan `"2"`. Cabang `IsCompliance` akan bernilai benar untuk klaim yang menuju Analyst Doctor. Di luar lingkup sesi ini — lihat `catatan-pengembangan.md` §41.13 | keputusan tersendiri |
 | 5 | **Penanda bind gaya Oracle `:n`** belum portabel ke PostgreSQL. Utang yang sudah ada sebelum modul ini dan berlaku untuk seluruh berkas `.sql` | `09-DATABASE-STRATEGY.md` §10 |
+
+## 43. Modul Inbox RCL/PUCL (2026-09-24, sesi kedua puluh tiga)
+
+Butir menu `MENU_ID 61`, pengganti `Harness/RCLPUCL_Harness`. Layar ini adalah antrean klaim
+yang **ditolak (RCL)** atau **diproses ulang (PUCL)**, dipartisi menurut perjalanan surat PUCL.
+
+### 43.1 Nama modul
+
+`inboxrclpucl` (backend) dan `inbox-rcl-pucl` (frontend), mengikuti `D-81`: nama modul diambil
+dari nama yang dipakai Work Owner. Butir menunya sendiri berbunyi **"Inbox RCL/PUCL"**, dan
+harness-nya memuat judul yang sama (`pyCaption Inbox RCL/PUCL`). Isi modulnya berbahasa
+Inggris sesuai `D-80`; yang berbahasa Indonesia hanya nama modul, nama field JSON, dan teks
+yang dilihat pengguna.
+
+### 43.2 Keputusan: tab "Klaim MSIG" dibangun apa adanya meski kemungkinan selalu kosong
+
+**Masalahnya.** Penyaring tab ketiga adalah `MSIG_1 = 'MSIG'`. Kolom itu **tidak muncul** di
+inventaris kolom terisi yang dibaca langsung dari katalog Oracle pada 2026-09-22
+(`docs/kolom-t-claimlist-admin.md` §B.3), sementara keempat kolom PUCL lain semuanya ada di
+sana. Artinya kolomnya ada tetapi tampaknya belum pernah diisi.
+
+**Tiga pilihan diajukan:** bangun apa adanya dan tandai sebagai temuan · tunggu konfirmasi DBA
+lebih dulu · tab MSIG tidak dibawa.
+
+**Jawaban Work Owner: bangun apa adanya, tandai sebagai temuan.**
+
+**Yang mengikuti dari jawaban itu, dan satu pembedaan yang disengaja.** Tabnya **tidak**
+ditandai `Blocked`, meski layar ini sudah punya mekanisme tab terhalang yang dipakai modul
+lain. Alasannya: tab terhalang DITOLAK di `NewQuery` sebelum menyentuh penyimpanan, sehingga
+menandainya begitu akan membuat baris yang **mungkin memang ada** tidak pernah ditampilkan.
+Kuerinya dapat dijalankan, dan kosongnya adalah **jawaban** — bukan ketidakmampuan menjawab.
+
+Yang dipakai sebagai gantinya tiga lapis, seluruhnya berupa DATA dari server:
+
+- `Tab.Notice` — keterangan di atas grid, hanya pada tab itu;
+- `PlannedDifferences` — butir pertama, di bawah tabel;
+- `-periksa` — mencetak kueri `SELECT COUNT(*) … WHERE MSIG_1 IS NOT NULL` yang DBA perlu
+  jalankan.
+
+Ketiganya hilang dengan sendirinya begitu keterangannya diubah di satu tempat.
+
+### 43.3 Keputusan: `PUCLAPPROVE_1 <> '1'` direplikasi meski menyembunyikan baris
+
+**Masalahnya.** `NULL <> '1'` bernilai **UNKNOWN** di Oracle maupun PostgreSQL — bukan TRUE.
+Klaim yang penanda persetujuannya belum pernah diisi karena itu tidak muncul di tab Kelengkapan
+Dokumen maupun Klaim MSIG, meski suratnya sudah dicetak dan ia jelas belum disetujui. Kolomnya
+hanya punya **dua nilai berbeda** di produksi, sehingga jumlah baris terdampak bisa besar.
+
+**Keputusan: direplikasi apa adanya (`P-5`).** Memperbaikinya menjadi
+`(… IS NULL OR … <> :x)` akan **menambah** baris yang di Pega tidak pernah terlihat — itu
+perubahan perilaku pada layar yang sedang diuji kesetaraannya, bukan perbaikan yang sudah
+diputuskan siapa pun.
+
+**Yang dikerjakan supaya keputusan ini tidak berubah diam-diam:**
+
+- penyimpanan memori meniru semantik UNKNOWN secara eksplisit (`matchesApproval` menolak nilai
+  kosong lebih dulu, alih-alih menulis `!=` yang akan meloloskannya);
+- satu uji khusus menjaganya (`TestAnEmptyApprovalFlagAlsoHidesTheRow`), beserta satu baris
+  contoh yang memang tertolak karenanya;
+- dinyatakan ke pengguna lewat `PlannedDifferences`;
+- `-periksa` mencetak kueri sebaran nilainya saat tabnya kosong.
+
+**Pembanding diikat sebagai TEKS**, mengikuti `CountKlaimPUCL-SQL.xml` (`<> '1'`).
+`ReminderPUCL-SQL.xml` menulis `<> 1` tanpa kutip pada kolom yang sama — dua rule Pega yang
+tidak sepakat tentang tipe kolomnya sendiri. Yang dipilih bentuk bertanda kutip karena DDL-nya
+tidak tersedia (`R-08`) dan seluruh kolom ber-akhiran `_1` lain dibaca sebagai teks.
+
+### 43.4 Keputusan: rentang tanggal hanya menyetir ekspor, bukan grid
+
+**Masalahnya.** Tab "Cetak Surat" punya dua isian tanggal ("FROM RCL/PUCL", "TO RCL/PUCL")
+di atas grid, tetapi Report Definition grid-nya **tidak menyaring tanggal sama sekali**.
+Keduanya memasok `GetDataPUCLRCLForDailyReport-SQL.xml` — kueri berbeda di balik tombol ekspor.
+
+**Tiga pilihan diajukan:** replikasi apa adanya · tanggal menyaring grid DAN ekspor · tanggal
+menyaring grid, ekspor mengikuti grid.
+
+**Jawaban Work Owner: replikasi apa adanya (`P-5`).**
+
+**Akibat yang harus ditangani di antarmuka.** Pengguna akan mengisi tanggal, melihat tabel
+tidak berubah, lalu melaporkannya sebagai kerusakan. Karena itu:
+
+- peringatan tegas di bawah kedua isian — *"Kedua tanggal ini hanya dipakai tombol unduh"* —
+  ditambah penjelasan bahwa isi berkasnya pun berbeda;
+- rentang tanggal **tidak ikut dikirim** pada permintaan daftar, supaya lalu lintas jaringan
+  tidak menyiratkan sebaliknya (diuji);
+- butir tersendiri di `PlannedDifferences`.
+
+Kedua tanggal ditaruh di `ReportRequest`, **bukan** di `Query`. Menaruhnya di `Query` akan
+membuat pembaca kode mengira grid-nya ikut tersaring.
+
+### 43.5 Keputusan: laporan harian adalah tipe tersendiri, bukan `WorkItem`
+
+`DailyReportRow` dipisah dari `WorkItem` karena isinya memang berbeda, dan menyamakannya akan
+menyembunyikan perbedaan yang justru harus terlihat:
+
+| | Grid | Laporan harian |
+|---|---|---|
+| Penyaring status kerja | ya | **tidak** |
+| Penyaring tanggal cetak / persetujuan | ya | **tidak** |
+| Rentang tanggal | tidak | **ya** |
+| Cabang Personal Accident tanpa antrean | — | **ya** (`UNION`) |
+| `STATUSCLAIM_1` (Status Klaim, 33 kode) | tidak digambar | **digambar** |
+| `LAMAKLAIM_1` | digambar | **tidak ada** |
+
+`UNION` dipertahankan, bukan `UNION ALL`: klaim PA yang berada di antrean RCL/PUCL memenuhi
+kedua cabang, dan `UNION ALL` akan memunculkannya dua kali di berkas.
+
+**`STATUSCLAIM_1` versus `STATUSKLAIM_1`** hanya berbeda satu huruf dan artinya berbeda jauh.
+Keduanya dipisah sebagai isian tersendiri di penyimpanan memori supaya tertukarnya dapat
+tertangkap uji (`TestDailyReportCarriesClaimStatusNotExpiryStatus`).
+
+### 43.6 Keputusan: satu rute ekspor, percabangan di sifat tab
+
+Ketiga tab memakai `GET /api/inbox-rcl-pucl/ekspor` yang sama; yang menentukan isi berkasnya
+adalah `Tab.HasDateRangeReport`, **bukan** kode tab yang ditulis tetap di lapisan transport.
+
+Alasannya dua: di Pega pun tombolnya satu dan sama (hanya activity di baliknya yang berbeda),
+dan menaruh nomor tab di transport akan membuat penambahan tab kelak menuntut suntingan di dua
+tempat.
+
+Nama berkasnya dibedakan — `rcl-pucl-kelengkapan-dokumen.csv`, `rcl-pucl-klaim-msig.csv`,
+`laporan-harian-rcl-pucl-<dari>-sd-<sampai>.csv`. Di layar ini alasannya lebih kuat daripada
+biasa: ketiga tab punya kolom **identik**, sehingga berkas yang tertimpa di folder unduhan
+tidak dapat dikenali dari isinya sama sekali.
+
+### 43.7 Keputusan: kode jalur diterjemahkan di Go, bukan di SQL
+
+`RCL_PUCL_1` dikembalikan **mentah** sebagai `TRACK_CODE`; penerjemahannya menjadi "RCL"/"PUCL"
+dikerjakan `inboxrclpucl.TrackOf`.
+
+Ini **berbeda** dari modul Inbox Manager Receive / PUCL, yang menuliskan `CASE` penerjemah di
+dalam SQL-nya. Yang dipakai di sini adalah pola `ClaimTypeOf` pada modul itu, dan alasannya
+sama: penyimpanan SQL dan penyimpanan memori wajib menghasilkan teks yang sama persis, dan dua
+penerjemah di dua tempat dapat menyimpang tanpa ketahuan.
+
+Hasilnya identik dengan `CASE` tanpa `ELSE` di sistem lama: kode di luar `1` dan `2`
+menghasilkan teks kosong.
+
+**Satu selisih terencana:** kueri laporan lama menulis angka mentah ke dalam berkas Excel. Di
+sini ia diterjemahkan, supaya berkas dan layar menyebut hal yang sama dengan kata yang sama.
+
+### 43.8 Keputusan: urutan baris TIDAK diubah, meski kuncinya tidak terlihat
+
+Urutan mengikuti `PXCREATEDATETIME DESC, PYID DESC` — terbaca dari `ORDER BY 5 DESC, 7 DESC`
+pada SQL hasil generate Pega.
+
+Kolom itu **tidak ditampilkan** di layar; yang tampil sebagai "Tanggal Masuk Inbox" adalah
+`TANGGALKIRIMPUCL_1`, dan keduanya dapat terpaut berbulan-bulan. Tabel karena itu dapat terbaca
+tidak urut oleh penggunanya.
+
+Sempat dipertimbangkan mengganti kunci urut ke kolom yang terlihat. **Tidak diambil**:
+mengganti kunci urut mengubah baris mana yang ada di halaman pertama, dan itu selisih yang
+belum diputuskan siapa pun (`P-5`). Ia dinyatakan lewat `PlannedDifferences`, bukan diperbaiki
+sepihak.
+
+### 43.9 Keputusan: `TRUNC` pada kolom tanggal diganti rentang setengah terbuka
+
+Kueri lama menulis `trunc(TANGGALKIRIMPUCL_1) >= … AND trunc(…) <= …`. `TRUNC` pada kolom
+dilarang (`09-DATABASE-STRATEGY.md` §4), mematikan index, dan tidak portabel ke PostgreSQL.
+
+Penggantinya `>= awal AND < akhir + INTERVAL '1' DAY`, yang **memilih baris yang sama persis**
+— termasuk baris yang punya komponen jam — dan tetap dapat memakai index. Menuliskannya sebagai
+`<= akhir` akan membuang seluruh baris yang jamnya bukan tengah malam, dan kesalahan itu hanya
+terlihat pada data nyata. Satu uji menjaganya (`TestDailyReportIncludesTheWholeLastDay`).
+
+### 43.10 Keputusan: aksi tulis digambar tetapi ditolak beralasan
+
+Layar lama punya dua tindakan yang menulis: **mencetak surat PUCL/RCL** — yang mengisi
+`TANGGALCETAKDOKUMENPUCL_1` sehingga klaimnya **berpindah tab** — dan **Reminder PUCL**.
+
+**Jawaban Work Owner: tombol digambar, aksi ditolak beralasan.** Mengikuti preseden
+`RejectWrite` pada modul Inbox Manager Receive / PUCL.
+
+Jawabannya **501**, bukan 403 maupun 404: 403 akan menyatakan pengguna tidak berwenang padahal
+ia berwenang; 404 akan membuat tombolnya terbaca sebagai kerusakan. 501 menyatakan yang
+sebenarnya — alamatnya ada, permintaannya sah, kemampuannya yang belum dibangun.
+
+Di antarmuka, keduanya dinyatakan lewat panel **"Yang masih dikerjakan lewat Pega"** di bawah
+tabel. Tanpa itu, layar yang kehilangan tombolnya akan dilaporkan sebagai kerusakan, dan
+penggunanya tidak akan tahu ia masih harus mengerjakannya di Pega.
+
+### 43.11 Keputusan: layar ini TIDAK disatukan dengan Inbox Manager Receive / PUCL
+
+Keduanya membaca **workbasket yang sama** (`RCLPUCL`) pada tabel yang sama. Yang membedakan
+adalah seberapa halus antrean itu dipartisi:
+
+| | Cakupan |
+|---|---|
+| Inbox Manager Receive / PUCL (`MENU_ID 56`) | satu tab RCL/PUCL tanpa penyaring halus — **superset** layar ini, untuk penyelia |
+| Inbox RCL/PUCL (`MENU_ID 61`) | tiga tab menurut perjalanan surat PUCL, untuk petugas yang mengerjakannya |
+
+**Jawaban Work Owner: hanya `MENU_ID 61` yang dikerjakan; keduanya tetap terpisah.** Pega pun
+punya dua menu dan dua harness untuk keduanya, ditujukan pada peran yang berbeda. Menunjuk
+keduanya ke satu rute akan menghilangkan partisi yang justru menjadi inti layar ini.
+
+`MENU_ID 62` "Inbox RCL" (`RCL_Harness`) **belum dipetakan** — ia harness tersendiri dan belum
+dianalisis sama sekali.
+
+### 43.12 Perangkap penamaan yang didokumentasikan, bukan diseragamkan
+
+Dua judul kolom yang sama menunjuk kolom basis data yang **berbeda** di kedua layar, dan
+keduanya bersilangan:
+
+| Judul | Inbox RCL/PUCL | Inbox Manager Receive / PUCL |
+|---|---|---|
+| Status RCL/PUCL | `RCL_PUCL_1` | `STATUSKLAIM_1` |
+| Status Kadaluarsa | `STATUSKLAIM_1` | `STATUSCASE_1` |
+
+Keduanya diverifikasi dari sel grid section masing-masing, bukan disimpulkan. Masing-masing
+layar membawa pemetaannya sendiri (`D-13`, `P-5`); menyamakannya akan menampilkan kolom yang
+salah **tanpa satu pun galat**, karena keempat nilainya sama-sama teks yang masuk akal.
+
+Perangkapnya ditulis di tiga tempat yang akan dibaca orang yang hendak menyamakannya: komentar
+pada `WorkItem.Track` dan `WorkItem.ExpiryStatus`, kepala berkas `.sql`, dan uji alias kueri.
+
+### 43.13 Yang TIDAK dibangun, dan alasannya
+
+| Tidak dibangun | Alasan |
+|---|---|
+| Kotak cari | Ketiga Report Definition tidak menyaring kata kunci sama sekali. Menambahkannya adalah kemampuan baru pada layar yang sedang diuji kesetaraannya |
+| Penyaring apa pun pada grid | Seluruh penyaringnya TETAP di Pega; tidak satu pun dapat diubah pengguna |
+| Migrasi basis data | Seluruh tabelnya milik Pega (`P-1`); modul ini hanya membaca |
+| Pemeriksaan peran | `When/IsRCLPUCL` membatasi menu pada `PncRCLPUCL` + `Administrators`, bukan `ViewClaimPNC`. Penegakannya `TKT-F3-004`, belum ada — dan di layar ini tidak ada peredam apa pun, karena antreannya bersama |

@@ -557,6 +557,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox-progress-claim` | **Inbox Progress Claim** |
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — butir menu 64 |
 | `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
+| `/inbox-rcl-pucl` | **Inbox RCL/PUCL** — butir menu 61. Antrean bersama, tiga tab |
 | `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
@@ -833,6 +834,69 @@ dan tampil di bawah tabel):
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas tidak terbaca; pembukaan layar ini wajib tercatat atas nama seseorang |
 | `belum_tersedia` | 501 | tindakan yang menulis, masih dimiliki Pega |
+
+### Inbox RCL/PUCL
+
+Menggantikan harness `RCLPUCL_Harness` (`MENU_ID 61`). Seluruh rutenya menuntut header
+`X-Portal`, termasuk rute keterangan layar.
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/inbox-rcl-pucl/tab` | ketiga tab, kolomnya, kolom laporan, dan selisih terencana |
+| `GET` | `/api/inbox-rcl-pucl` | satu halaman daftar. Saringan: `tab`, `halaman`, `ukuran` |
+| `GET` | `/api/inbox-rcl-pucl/ekspor` | unduhan CSV. **Isinya berbeda menurut tab** — lihat di bawah |
+| `POST` | `/api/inbox-rcl-pucl/tindakan` | **selalu 501** — lihat di bawah |
+
+**Satu antrean, tiga partisi.** Ketiga tab membaca antrean bersama yang **sama** (`RCLPUCL`)
+pada tabel yang sama; yang membedakan hanya penyaringnya, dan ketiganya mengikuti perjalanan
+surat PUCL:
+
+| Tab | Penyaring pembeda |
+|---|---|
+| `1` Cetak Surat | `TANGGALCETAKDOKUMENPUCL_1 IS NULL` **dan** `STATUSCASE_1 = '0'` |
+| `2` Kelengkapan Dokumen | `IS NOT NULL` · `PUCLAPPROVE_1 <> '1'` · `MSIG_1 IS NULL` |
+| `3` Klaim MSIG | sama seperti `2`, tetapi `MSIG_1 = 'MSIG'` |
+
+Ketiganya ditambah `PYSTATUSWORK <> 'Resolved-Completed'`. Satu klaim **berpindah tab dengan
+sendirinya** begitu suratnya dicetak.
+
+> **Layar ini MEMBACA saja, dan antreannya BERSAMA** — penyaringnya akun antrean, bukan
+> pengguna, sehingga setiap petugas melihat daftar yang sama. Berbeda dari Inbox Analyst
+> Doctor, tidak ada peredam apa pun di sini: pengguna yang tidak berhak melihat isi penuhnya,
+> bukan layar kosong. Sampai `TKT-F3-004` selesai, **setiap pembukaannya dicatat** — termasuk
+> rentang tanggal laporan (`D-59`).
+>
+> `POST /tindakan` menjawab **501 dengan alasan**, bukan 404. Dua tindakan layar lama menulis:
+> pencetakan surat PUCL/RCL — yang mengisi `TANGGALCETAKDOKUMENPUCL_1` sehingga klaimnya
+> berpindah tab — dan Reminder PUCL. Keduanya menyentuh tabel yang masih dimiliki Pega (`P-1`).
+
+**Ekspor: satu jalur, dua isi berkas.** Percabangannya mengikuti sifat tab, sama seperti di
+Pega (tombolnya satu, activity di baliknya berbeda):
+
+| Tab | Isi berkas |
+|---|---|
+| `1` Cetak Surat | **laporan harian** berbasis rentang tanggal. Saringan wajib: `dari`, `sampai` (`YYYY-MM-DD`) |
+| `2`, `3` | salinan tabel yang sedang dilihat |
+
+Laporan harian **tidak sama dengan isi tabel**: ia disaring rentang tanggal, memuat klaim yang
+suratnya sudah dicetak, memuat klaim yang sudah selesai, dan ber-`UNION` dengan cabang kedua
+yang mengambil seluruh klaim ber-Group Panel `002` **tanpa gabungan antrean bersama**. Kolomnya
+pun berbeda — ada `Status Klaim`, tidak ada `Lama Klaim`.
+
+**Empat selisih terencana yang paling perlu diketahui penguji** (daftar lengkapnya dikirim
+server dan tampil di bawah tabel):
+
+1. **Tab "Klaim MSIG" kemungkinan selalu kosong.** `MSIG_1` tidak muncul di inventaris kolom
+   terisi yang dibaca dari katalog Oracle — kolomnya ada, tetapi tampaknya belum pernah diisi.
+   Menunggu pemastian DBA; `-periksa` mencetak kuerinya.
+2. **Kedua isian tanggal TIDAK menyaring tabel**, hanya berkas unduhan. Itu perilaku layar lama
+   apa adanya.
+3. **Klaim yang `PUCLAPPROVE_1`-nya kosong tidak muncul** di tab `2` maupun `3` —
+   `NULL <> '1'` bernilai UNKNOWN, bukan TRUE. Direplikasi, bukan diperbaiki.
+4. **Judul "Status RCL/PUCL" dan "Status Kadaluarsa" menunjuk kolom yang berbeda** dari layar
+   Inbox Manager Receive / PUCL, dan keduanya bersilangan. Masing-masing layar membawa
+   pemetaannya sendiri (`D-13`).
+
 
 ### Master Status Klaim
 

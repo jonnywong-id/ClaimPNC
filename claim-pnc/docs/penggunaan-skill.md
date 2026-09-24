@@ -4117,3 +4117,136 @@ berikutnya:
 - **`tdd`** pada modul yang acceptance criteria-nya berangka. Di modul ini spesifikasinya
   datang dari Report Definition, dan uji ditulis berdampingan dengan kode — siklus formalnya
   tidak menambah apa pun di atas itu.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-24 (modul Inbox RCL/PUCL)
+
+## Ringkasan
+
+**Tidak ada skill Matt Pocock yang dipanggil pada sesi ini**, dan alasannya sama dengan sesi
+sebelumnya: tidak satu pun `mattpocock-skills:*` terpasang di lingkungan sesi ini. Daftar yang
+tersedia seluruhnya milik lingkungan Claude (`artifact-*`, `dataviz`, `code-review`,
+`simplify`, `run`, `init`, `security-review`, `update-config`, `workflow-authoring`,
+`anthropic-skills:*`).
+
+Satu skill lingkungan **dipertimbangkan dan ditolak dengan alasan tercatat**; sisanya tidak
+relevan.
+
+## Skill lingkungan yang tersedia, dan kenapa tidak dipakai
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `code-review` | Ia menelaah **diff** untuk cacat. Modul ini seluruhnya berkas baru, dan yang menjaganya adalah uji yang ditulis berdampingan dengan kodenya. Layak dipakai **setelah** modul ini di-review manusia, bukan sebagai pengganti |
+| `simplify` | Menelaah kode yang sudah jadi untuk penyederhanaan. Struktur modul ini mengikuti preseden yang sudah disepakati (`inboxmanagerreceivepucl`); menyederhanakannya sepihak justru akan membuatnya menyimpang dari modul saudaranya |
+| `run` | Menjalankan aplikasi untuk melihat perubahan. Tidak dipakai karena verifikasinya di sini adalah **uji**, dan Oracle tidak tersedia di sesi ini — menjalankan aplikasi hanya akan memperlihatkan data contoh yang sudah diuji langsung |
+| `security-review` | Dipertimbangkan, dan **ditolak dengan alasan** — lihat di bawah |
+| `dataviz`, `artifact-*` | Tidak ada visualisasi maupun halaman yang dibuat |
+| `anthropic-skills:docx/xlsx/pdf` | Dokumentasi proyek ini Markdown, bukan berkas kantor |
+| `init`, `update-config`, `workflow-authoring` | Tidak ada konfigurasi harness maupun orkestrasi yang diminta |
+
+## `security-review` — dipertimbangkan, ditolak, tetapi pemeriksaannya tetap dikerjakan
+
+Modul ini menyentuh tiga hal yang biasanya memanggil telaah keamanan: **rentang tanggal yang
+diketik pengguna masuk ke SQL**, **berkas yang dapat diunduh berisi nomor polis dan nama
+tertanggung**, dan **layar tanpa pemeriksaan peran**.
+
+Skill-nya tetap tidak dipanggil, karena ketiganya sudah punya aturan tertulis di proyek ini
+yang lebih spesifik daripada telaah umum — dan aturan itulah yang ditegakkan:
+
+| Risiko | Yang dikerjakan | Dijaga oleh |
+|---|---|---|
+| Injeksi lewat rentang tanggal | Seluruh nilai lewat **bind**; kueri lama menyisipkan `{TempRCLPUCLReport.AlasanKlaim}` langsung ke teks SQL | `TestNoQueryInlinesAFilterValue` |
+| Kebocoran antarbadan hukum | Seluruh rute di balik pemeriksaan portal; tidak ada jalur cadangan ke portal utama (`R-20`) | `Mount` + uji portal di frontend |
+| Berkas unduhan mengendap di cache | `Cache-Control: no-store` pada kedua jalur ekspor | — |
+| Token di alamat URL | Ekspor memakai `fetch` berheader, **bukan** `<a href>` | — |
+| Tidak ada pemeriksaan peran | Dinyatakan apa adanya di `routes.go` dan `registry.ts`; setiap pembukaan dicatat, termasuk **rentang tanggal** laporan | `usecase.DailyReport` |
+
+Satu hal yang perlu disebut terus terang: **jejak audit bukan pengganti kewenangan.** Ia hanya
+membuat pembukaannya dapat ditelusuri setelah terjadi. `D-59` menjadikannya satu-satunya
+kontrol pengimbang justru untuk keadaan seperti ini, dan di layar ini tidak ada peredam apa pun
+— berbeda dari Inbox Analyst Doctor, yang antreannya milik satu orang sehingga pengguna tak
+berhak melihat layar kosong.
+
+## Teknik yang DIPAKAI, meski skill-nya tidak terpasang
+
+### `grilling` — dipakai pada bukti, bukan pada pengguna
+
+Empat pertanyaan diajukan ke Work Owner, dan keempatnya baru diajukan **setelah** jawabannya
+dibuktikan tidak dapat diambil dari export. Yang dicari sendiri lebih dulu:
+
+- jumlah dan urutan tab (dari `InputPUCL-RCL_Section`);
+- seluruh penyaring tiap tab (dari tiga Report Definition);
+- nama kolom sebenarnya (dari `ReminderPUCL-SQL.xml`, yang memuat SQL hasil generate Pega);
+- apa yang dijalankan tiap tombol ekspor (dari tiga activity).
+
+Yang **tidak** dapat dijawab sendiri — apakah `MSIG_1` memang kosong, apakah rentang tanggal
+boleh ikut menyaring grid, apa yang dilakukan pada tombol tulis, dan seberapa luas lingkupnya —
+itulah yang ditanyakan. Setiap pertanyaan disertai rekomendasi dan konsekuensinya, bukan
+sekadar pilihan.
+
+### `domain-modeling` — dipakai menajamkan dua nama yang bersilangan
+
+Temuan terpenting sesi ini bukan cacat kode melainkan **cacat penamaan yang diwarisi**: dua
+judul kolom yang sama menunjuk kolom basis data yang berbeda di layar ini dan di Inbox Manager
+Receive / PUCL, dan keduanya bersilangan.
+
+Cara menemukannya adalah cara `domain-modeling`: **menyilangkan pernyataan dengan kode**.
+Pemetaan tidak disalin dari modul saudaranya — ia dibaca ulang dari sel grid ketiga section
+layar ini, satu per satu, lalu dibandingkan. Tanpa langkah itu, pemetaan yang salah akan lolos
+tanpa satu pun galat, karena keempat nilainya sama-sama teks yang masuk akal.
+
+Hasilnya ditulis di tiga tempat yang akan dibaca orang yang hendak menyamakannya, bukan di satu
+tempat saja.
+
+### `codebase-design` — dipakai memutuskan letak penerjemah
+
+Satu keputusan kecil yang berakibat panjang: kode jalur (`1`/`2` → RCL/PUCL) diterjemahkan di
+**domain**, bukan di dalam SQL — meski modul saudaranya menulis `CASE` di SQL.
+
+Alasannya persis alasan seam: penyimpanan SQL dan penyimpanan memori wajib menghasilkan teks
+yang sama persis, dan dua penerjemah di dua tempat dapat menyimpang tanpa ketahuan. Uji yang
+berjalan di atas memori baru menyatakan sesuatu tentang Oracle bila keduanya memakai penerjemah
+yang sama.
+
+Prinsip yang sama dipakai memutuskan **tab MSIG tidak ditandai `Blocked`**: mekanisme tab
+terhalang sudah ada, tetapi ia menolak permintaan di `NewQuery` — dan memakainya untuk keadaan
+"mungkin kosong" akan menyembunyikan baris yang mungkin memang ada. Seam yang salah dipakai
+lebih berbahaya daripada seam yang tidak ada.
+
+## Kesalahan sendiri, dan bagaimana tertangkap
+
+**Satu butir `PlannedDifferences` menyatakan hal yang tidak dikerjakan kode.** Saat menulis
+daftar selisih, saya menyatakan urutan baris diubah ke kolom yang terlihat. Saat menulis
+SQL-nya, saya memutuskan sebaliknya — mereplikasi urutan Pega — tetapi butirnya belum
+disesuaikan. Selama beberapa menit, layar akan memberi tahu pengguna sesuatu yang **tidak
+benar tentang dirinya sendiri**.
+
+Tertangkap saat menulis kueri, bukan oleh uji mana pun: tidak ada uji yang membandingkan isi
+`PlannedDifferences` dengan perilaku SQL. Butirnya ditulis ulang menjadi pernyataan yang
+sebenarnya — urutan mengikuti Pega, **dan** kolomnya tidak ditampilkan, sehingga tabel dapat
+terbaca tidak urut.
+
+Pelajarannya: **teks yang dikirim ke pengguna adalah kode juga**, dan ia tidak punya kompiler.
+
+**Satu uji frontend ditulis dengan asumsi yang salah.** Uji judul kolom pada tab MSIG memakai
+stub bawaan, yang sengaja menjawab tab itu **kosong** untuk menguji pesan antrean kosong —
+sementara tabel kosong tidak menggambar satu pun kepala kolom. Yang salah asumsinya, bukan
+kodenya. Ujinya diberi stub sendiri, dengan alasannya ditulis di tempat.
+
+**Satu galat tipe terlewat sampai `tsc`.** `exactOptionalPropertyTypes` membuat
+`range?: DateRange` berarti "boleh tidak ada" tetapi bukan "boleh `undefined`", sementara
+pemanggilnya memang mengirim `undefined`. Ditulis eksplisit sebagai `DateRange | undefined`
+beserta alasannya.
+
+## Catatan untuk tahap berikutnya
+
+**`code-review` layak dipanggil pada diff modul ini** setelah ia di-review manusia — bukan
+sebagai gantinya. Yang paling berguna ditelaahnya: kesesuaian antara `listColumns`, urutan
+kolom `.sql`, dan urutan `scanWorkItem`, karena pergeseran satu posisi di sana **tidak
+menghasilkan galat** melainkan kolom yang tertukar di layar.
+
+**`tdd` masih belum menambah apa pun** pada modul yang spesifikasinya datang dari Report
+Definition: urutannya memang sudah "baca bukti → tulis uji dari bukti → tulis kode". Ia akan
+mulai berguna pada modul yang **menulis**, tempat perilaku yang benar tidak dapat dibaca dari
+kueri mana pun.

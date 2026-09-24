@@ -198,6 +198,38 @@ export const MENU_ROUTES: Record<string, string> = {
   // milik satu orang, sehingga pengguna yang tidak punya tugas Analyst Doctor melihat layar
   // kosong — bukan antrean orang lain. Itu peredam, bukan kendali.
   inboxAnalystDoctor_Harness: '/inbox-analyst-doctor',
+
+  // MENU_ID 61 "Inbox RCL/PUCL", kelompok INBOX.
+  //
+  // Harness-nya ADA di export (`Harness/RCLPUCL_Harness-Harness.xml`) beserta keempat
+  // section dan ketiga Report Definition-nya — sehingga kesembilan judul kolom dan keenam
+  // penyaringnya terbaca dari bukti, bukan disusun ulang.
+  //
+  // Bedakan dari `ReceiveDoucument_Harness` di atas. Keduanya membaca antrean bersama yang
+  // SAMA (`RCLPUCL`) pada tabel yang sama, dan hanya itu yang perlu diingat agar tidak
+  // menyatukannya:
+  //
+  //   Inbox Manager Receive / PUCL (56)  SATU tab RCL/PUCL tanpa penyaring halus —
+  //                                      superset layar ini, untuk penyelia
+  //   layar ini (61)                     TIGA tab menurut perjalanan surat PUCL,
+  //                                      untuk petugas yang mengerjakannya
+  //
+  // Pega pun memisahkannya menjadi dua menu dan dua harness, ditujukan pada peran yang
+  // berbeda. Menunjuk keduanya ke satu rute akan menghilangkan partisi yang justru menjadi
+  // inti layar ini.
+  //
+  // Bedakan pula dari `MENU_ID 62` "Inbox RCL" (`RCL_Harness`), yang BELUM dipetakan: ia
+  // harness tersendiri dan belum dianalisis sama sekali.
+  //
+  // Di Pega butir ini dijaga `When/IsRCLPUCL-When.xml`:
+  // `(Administrators OR PncRCLPUCL) AND NOT ViewClaimPNC`. Aturan itu BELUM ditegakkan
+  // (`TKT-F3-004`); yang menentukan siapa melihat butirnya sekarang adalah
+  // `M_OTORISASI_PNC`.
+  //
+  // Berbeda dari Inbox Analyst Doctor, TIDAK ADA peredam sementara di sini: antreannya
+  // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
+  // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
+  RCLPUCL_Harness: '/inbox-rcl-pucl',
 }
 
 /**

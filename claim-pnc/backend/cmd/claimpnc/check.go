@@ -38,6 +38,8 @@ import (
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxrclpucl"
+	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
 	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
 	masterpicteknikdirectory "claim-pnc/internal/masterpicteknik/directory"
@@ -113,6 +115,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
+	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
@@ -1237,6 +1240,116 @@ func checkManagerReceivePUCL(
 		print("            diambil dari RDB List/CountKlaimPUCL-SQL.xml dan")
 		print("            ReminderPUCL-SQL.xml. Bila namanya berubah, tab ini kosong tanpa")
 		print("            satu pun galat.")
+	}
+}
+
+// checkRCLPUCL memeriksa modul Inbox RCL/PUCL (`MENU_ID 61`).
+//
+// # Kenapa pemeriksaannya lebih rinci daripada modul inbox lain
+//
+// Karena EMPAT hal di modul ini gagal TANPA GALAT bila kesimpulannya keliru, dan ketiga tab
+// layar ini punya kolom yang IDENTIK — sehingga tidak ada apa pun di antarmuka yang
+// menandakan isinya tertukar:
+//
+//   - Kolom `MSIG_1` tampaknya tidak pernah terisi. Bila memang begitu, tab "Klaim MSIG"
+//     selalu kosong dan tab "Kelengkapan Dokumen" menampung seluruhnya.
+//   - `PUCLAPPROVE_1 <> '1'` tidak menangkap nilai kosong. Klaim yang penandanya belum
+//     pernah diisi hilang dari DUA tab sekaligus.
+//   - Akun antrean `RCLPUCL`. Bila namanya berubah, KETIGA tab kosong sekaligus.
+//   - `STATUSCASE_1 = '0'`. Artinya tidak diketahui, dan tidak ada master yang
+//     menerjemahkannya di export mana pun. Bila nilainya berbeda di produksi, tab
+//     "Cetak Surat" kosong sementara dua tab lain terisi normal.
+//
+// Keempatnya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
+// bukan saat pengguna melaporkan "tabnya kosong".
+func checkRCLPUCL(
+	ctx context.Context,
+	repo *inboxrclpuclsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Inbox RCL/PUCL tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Bila galatnya menyebut TABEL, periksa hak SELECT akun aplikasi")
+		print("            atas DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan")
+		print("            DATAPEGA.PC_ASSIGN_WORKBASKET.")
+		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
+		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
+		print("            DDL, yang belum pernah diterima (`R-08`).")
+		return
+	}
+	print("  [ok]    Tabel dan kolom penyaring Inbox RCL/PUCL dapat dibaca")
+
+	page := inboxrclpucl.Pagination{Page: 1, Size: 5}
+	counts := map[string]int{}
+
+	// Ketiga tab diperiksa, bukan satu.
+	//
+	// Ketiganya membaca tabel yang sama dan dipisahkan HANYA oleh penyaring — dan justru
+	// penyaring itulah yang paling mungkin keliru. Memeriksa satu tab saja akan menyatakan
+	// modulnya sehat sementara dua pertiganya belum tersentuh.
+	for _, code := range []string{
+		inboxrclpucl.TabCetakSurat,
+		inboxrclpucl.TabKelengkapanDokumen,
+		inboxrclpucl.TabKlaimMSIG,
+	} {
+		tab, found := inboxrclpucl.FindTab(code)
+		if !found {
+			print("  [GAGAL] Tab %s tidak terdaftar di modul", code)
+			return
+		}
+
+		result, err := repo.List(ctx, inboxrclpucl.Query{Tab: tab}, page)
+		if err != nil {
+			print("  [GAGAL] Tab %q tidak dapat dibaca: %v", tab.Name, err)
+			return
+		}
+
+		counts[code] = result.Total
+		print("  [ok]    Tab %q terbaca: %d baris", tab.Name, result.Total)
+	}
+
+	if counts[inboxrclpucl.TabCetakSurat] == 0 &&
+		counts[inboxrclpucl.TabKelengkapanDokumen] == 0 &&
+		counts[inboxrclpucl.TabKlaimMSIG] == 0 {
+		print("  [PERIKSA] KETIGA tab kosong sekaligus.")
+		print("            Periksa apakah akun antrean bersama masih bernama %q.",
+			inboxrclpucl.RCLPUCLWorkbasket)
+		print("            Ketiga tab memakai akun yang sama, sehingga namanya yang")
+		print("            berubah mengosongkan seluruh layar tanpa satu pun galat.")
+		return
+	}
+
+	if counts[inboxrclpucl.TabCetakSurat] == 0 {
+		print("  [PERIKSA] Tab \"Cetak Surat\" kosong sementara tab lain terisi.")
+		print("            Periksa apakah STATUSCASE_1 masih bernilai %q untuk klaim yang",
+			inboxrclpucl.ExpiryStatusActive)
+		print("            suratnya belum dicetak. Arti kolom itu tidak diketahui — tidak")
+		print("            ada master yang menerjemahkannya di export mana pun — dan nilai")
+		print("            yang berbeda mengosongkan tab ini saja.")
+	}
+
+	if counts[inboxrclpucl.TabKlaimMSIG] == 0 {
+		print("  [PERIKSA] Tab \"Klaim MSIG\" kosong. Ini yang DIPERKIRAKAN terjadi.")
+		print("            Kolom MSIG_1 tidak muncul di inventaris kolom terisi yang")
+		print("            dibaca dari katalog Oracle pada 2026-09-22, sehingga ia")
+		print("            tampaknya ada tetapi belum pernah diisi. Bila memang begitu,")
+		print("            seluruh klaim bersurat berada di tab \"Kelengkapan Dokumen\".")
+		print("            Mohon DBA memastikannya:")
+		print("            SELECT COUNT(*) FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
+		print("             WHERE MSIG_1 IS NOT NULL;")
+	}
+
+	if counts[inboxrclpucl.TabKelengkapanDokumen] == 0 {
+		print("  [PERIKSA] Tab \"Kelengkapan Dokumen\" kosong.")
+		print("            Kemungkinan terbesarnya BUKAN antrean yang sepi melainkan")
+		print("            penyaring PUCLAPPROVE_1 <> %q: perbandingan itu tidak pernah",
+			inboxrclpucl.PUCLApproved)
+		print("            bernilai benar untuk nilai KOSONG, sehingga klaim yang")
+		print("            penandanya belum pernah diisi tidak muncul. Perilakunya")
+		print("            direplikasi dari Pega dengan sengaja; periksa sebarannya:")
+		print("            SELECT PUCLAPPROVE_1, COUNT(*) FROM")
+		print("             DATAPEGA.PC_ASM_FW_GCNMFW_WORK GROUP BY PUCLAPPROVE_1;")
 	}
 }
 
