@@ -41,6 +41,7 @@ import (
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxinvestigator"
+	"claim-pnc/internal/inboxkomunikasicabang"
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	"claim-pnc/internal/inboxoutstanding"
@@ -137,6 +138,10 @@ import (
 	inboxinvestigatormemory "claim-pnc/internal/inboxinvestigator/repo/memory"
 	inboxinvestigatorsql "claim-pnc/internal/inboxinvestigator/repo/sqlstore"
 	inboxinvestigatorusecase "claim-pnc/internal/inboxinvestigator/usecase"
+	inboxkomunikasicabanghttp "claim-pnc/internal/inboxkomunikasicabang/http"
+	inboxkomunikasicabangmemory "claim-pnc/internal/inboxkomunikasicabang/repo/memory"
+	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
+	inboxkomunikasicabangusecase "claim-pnc/internal/inboxkomunikasicabang/usecase"
 	inboxlaporanklaimhttp "claim-pnc/internal/inboxlaporanklaim/http"
 	inboxlaporanklaimmemory "claim-pnc/internal/inboxlaporanklaim/repo/memory"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
@@ -1313,6 +1318,31 @@ func run() error {
 			FallbackErrorWriter: inboxrclpuclhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Komunikasi Cabang. Jembatan pemanggilnya membawa LOGIN, dan di sini alasannya
+	// paling keras di antara seluruh modul inbox: login BUKAN sekadar jejak, melainkan
+	// bahan yang diterjemahkan menjadi KODE CABANG — dan kode cabang itulah batas datanya.
+	//
+	// Memakai NIK di sini akan membuat penerjemahan gagal pada setiap pengguna, karena yang
+	// dicocokkan `GetIDCabang` adalah `V_HRD_MST.login_aplikasi`. Akibatnya bukan daftar
+	// kosong melainkan yang lebih buruk: setiap petugas jatuh ke jalur kantor pusat dan
+	// melihat percakapan yang bukan haknya (`P-5`, lihat inboxkomunikasicabang.BranchFilter).
+	komunikasiCabangHandler := inboxkomunikasicabanghttp.NewHandler(
+		inboxkomunikasicabanghttp.Options{
+			Service: assembly.inboxKomunikasiCabang,
+			GetCaller: func(ctx context.Context) (inboxkomunikasicabanghttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxkomunikasicabanghttp.Caller{}, false
+				}
+				return inboxkomunikasicabanghttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxkomunikasicabanghttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -1824,6 +1854,13 @@ func run() error {
 				inboxrclpuclhttp.Mount(
 					protected, rclPUCLHandler, activePortalDeps)
 
+				// Inbox Komunikasi Cabang memuat percakapan antarpetugas tentang
+				// klaim yang sedang berjalan — milik satu badan hukum, bukan milik
+				// badan hukum lain. Rutenya menuntut portal DAN disaring cabang;
+				// batas kedua itu diselesaikan di dalam modulnya, bukan di sini.
+				inboxkomunikasicabanghttp.Mount(
+					protected, komunikasiCabangHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -2085,6 +2122,12 @@ type assembly struct {
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 	inboxRCLPUCL            *inboxrclpuclusecase.Service
 
+	// inboxKomunikasiCabang melayani layar Inbox Komunikasi Cabang (`MENU_ID 70`).
+	//
+	// Berbeda dari modul inbox di atasnya, layar ini DISARING menurut cabang pemanggilnya —
+	// bukan antrean bersama. Batas itu diturunkan dari login lewat BranchResolver.
+	inboxKomunikasiCabang *inboxkomunikasicabangusecase.Service
+
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
@@ -2219,6 +2262,20 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 	rclPUCLSelector            inboxrclpucl.RepoSelector
+
+	// komunikasiCabangSelector memilih penyimpanan percakapan milik satu portal.
+	komunikasiCabangSelector inboxkomunikasicabang.RepoSelector
+
+	// komunikasiCabangBranch menerjemahkan login petugas menjadi kode cabang klaimnya.
+	//
+	// Ia SALINAN seam yang sama dengan claimReportBranch, bukan pemakaian ulangnya, dan itu
+	// disengaja: seam dideklarasikan di paket yang MEMAKAINYA (`08-TECHNICAL-STRATEGY.md`
+	// §2 aturan 2), sehingga kedua modul dapat berpindah ke API pengganti DB Link (`D-25`,
+	// `R-03`) pada waktu yang berbeda tanpa saling menunggu.
+	//
+	// Ia hidup di basis data PORTAL UTAMA, bukan per entitas: HRD dan master pengguna
+	// asuransi adalah data lingkup identitas, sama seperti M_LOGIN_PNC dan M_PORTAL_PNC.
+	komunikasiCabangBranch inboxkomunikasicabang.BranchResolver
 
 	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
 	//
@@ -3051,6 +3108,30 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	komunikasiCabangService, err := inboxkomunikasicabangusecase.NewService(
+		inboxkomunikasicabangusecase.Options{
+			RepoSelector: store.komunikasiCabangSelector,
+
+			// BranchResolver WAJIB — dan modul ini menolak dibentuk tanpanya.
+			//
+			// Tanpa penerjemah, batas data layar ini tidak dapat ditentukan sama sekali,
+			// dan satu-satunya jalan yang tersisa adalah menampilkan percakapan siapa saja.
+			// Membiarkannya nil lalu "menanganinya nanti" adalah persis cara batas data
+			// menghilang tanpa ada yang menyadarinya.
+			BranchResolver: store.komunikasiCabangBranch,
+
+			// Logger WAJIB, dengan satu alasan tambahan yang khas layar ini: petugas yang
+			// kode cabangnya TIDAK terbaca dilayani sebagai kantor pusat (`P-5`), dan itu
+			// pelebaran batas data yang tidak menghasilkan satu pun galat. Jejaknya adalah
+			// satu-satunya hal yang dapat menjawab "siapa saja yang terkena" bila keputusan
+			// itu kelak ditinjau ulang (`D-59`).
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
 	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
 	// mengikuti sistem lama yang juga tidak memaginasinya.
@@ -3206,6 +3287,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
 		inboxRCLPUCL:              rclPUCLService,
+		inboxKomunikasiCabang:     komunikasiCabangService,
 		inboxProgressClaim:        inboxProgressClaimService,
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
 		inboxLaporanKlaim:         claimReportService,
@@ -3958,6 +4040,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxrclpuclsql.NewRepo(conn), nil
 		}
 
+		store.komunikasiCabangSelector = func(
+			alias string,
+		) (inboxkomunikasicabang.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxkomunikasicabangsql.NewRepo(conn), nil
+		}
+
 		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -3975,6 +4067,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		}
 
 		store.claimReportBranch = inboxlaporanklaimsql.NewBranchResolver(primary)
+
+		// Penerjemah cabang KEDUA, milik modul Inbox Komunikasi Cabang.
+		//
+		// Ia membaca objek yang sama lewat kueri yang sama, dan itu BUKAN pengulangan yang
+		// terlewat: seam-nya dideklarasikan di paket yang memakainya, sehingga kedua modul
+		// dapat berpindah ke API pengganti DB Link (`D-25`) pada waktu yang berbeda.
+		//
+		// Keduanya menunjuk `primary` dengan alasan yang sama — HRD dan master pengguna
+		// asuransi adalah data lingkup identitas, bukan data per entitas.
+		store.komunikasiCabangBranch = inboxkomunikasicabangsql.NewBranchResolver(primary)
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
 		store.accountSelector = accountSelectorMemory(cfg.PrimaryPortal)
@@ -4150,6 +4252,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		setExtraMemorySelectors(cfg.PrimaryPortal, &store)
 		store.claimReportBranch = inboxlaporanklaimmemory.NewBranchResolver(
 			inboxlaporanklaimmemory.SampleBranchOfLogin())
+
+		// Pemetaan contohnya SENGAJA berbeda dari milik Inbox Laporan Klaim: di sana
+		// `adminpnc` berada di cabang 1001, di sini ia berada di kantor pusat.
+		//
+		// Perbedaan itu bukan kelalaian. Layar ini punya jalur kantor pusat yang tidak ada
+		// di layar itu, dan tanpa saksi yang cabangnya BENAR-BENAR terbaca sebagai kantor
+		// pusat, jalur itu hanya dapat dicapai lewat kegagalan penerjemahan — sehingga
+		// "petugas pusat" dan "cabang tidak terbaca" tidak akan pernah dapat dibedakan saat
+		// pengembangan.
+		store.komunikasiCabangBranch = inboxkomunikasicabangmemory.NewSampleBranchResolver()
 		// NewDevRepo, bukan NewSampleRepo: isi contoh m_login_group_pnc.csv hanya
 		// memuat satu login, dan login provider tiruan tidak ada di dalamnya. Tanpa
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
@@ -4164,6 +4276,11 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// benar-benar bekerja.
 		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
 		store.rclPUCLSelector = rclPUCLSelectorMemory(cfg.PrimaryPortal)
+		// Sepuluh percakapan contoh ikut dimuat, empat di antaranya SENGAJA tertolak —
+		// percakapan yang sudah ditutup, yang tanpa pengirim, yang tanpa pesan, dan yang
+		// milik cabang lain. Tanpa keempatnya, penyaring yang hilang tidak akan ketahuan
+		// saat pengembangan.
+		store.komunikasiCabangSelector = komunikasiCabangSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
 	}
@@ -5594,6 +5711,39 @@ func rclPUCLSelectorMemory(primaryAlias string) inboxrclpucl.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxrclpuclmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// komunikasiCabangSelectorMemory menyusun penyimpanan percakapan cabang di memori.
+//
+// Sepuluh baris contohnya memegang satu janji: SETIAP penyaring punya baris yang cocok
+// MAUPUN yang tidak. Yang membuktikan penyaringnya bekerja bukan baris yang muncul,
+// melainkan baris yang seharusnya tidak muncul dan memang tidak muncul — di sini ada empat,
+// masing-masing untuk kanal percakapan, pengirim kosong, pesan kosong, dan batas cabang.
+//
+// Satu baris punya tugas tambahan: KOM-0006 dibalas TANPA penjawab tercatat, sehingga ia
+// muncul di tabel tetapi tidak terhitung di pencacah mana pun. Itulah satu-satunya hal yang
+// membuktikan selisih satu kolom antara grid dan pencacah benar-benar ditiru.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func komunikasiCabangSelectorMemory(primaryAlias string) inboxkomunikasicabang.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxkomunikasicabang.Repo{}
+
+	return func(alias string) (inboxkomunikasicabang.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxkomunikasicabangmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

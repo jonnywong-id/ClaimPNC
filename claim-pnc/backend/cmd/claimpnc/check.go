@@ -62,6 +62,8 @@ import (
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxkomunikasicabang"
+	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
@@ -180,6 +182,10 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
+	checkKomunikasiCabang(ctx,
+		inboxkomunikasicabangsql.NewRepo(primary),
+		inboxkomunikasicabangsql.NewBranchResolver(primary),
+		print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
@@ -3132,6 +3138,127 @@ func checkRCLPUCL(
 		print("            direplikasi dari Pega dengan sengaja; periksa sebarannya:")
 		print("            SELECT PUCLAPPROVE_1, COUNT(*) FROM")
 		print("             DATAPEGA.PC_ASM_FW_GCNMFW_WORK GROUP BY PUCLAPPROVE_1;")
+	}
+}
+
+// checkKomunikasiCabang memastikan layar Inbox Komunikasi Cabang dapat dijalankan.
+//
+// Tiga hal diperiksa, dan ketiganya gagal dengan cara yang berbeda:
+//
+//   - Tabel percakapan tidak terbaca → layar tidak dapat dipakai sama sekali.
+//   - Tabel lampiran tidak terbaca → layar tetap dapat dipakai, lampirannya saja kosong.
+//   - Penerjemahan cabang gagal → layar TERTUTUP bagi semua orang, dan itu disengaja.
+//
+// Yang ketiga patut dibaca dua kali. Di modul Inbox Laporan Klaim, penerjemahan cabang yang
+// gagal hanya melebarkan daftar. Di sini ia MENUTUP layar, karena batas datanya memang
+// batas itu — dan `P-5` menetapkan petugas yang cabangnya tidak terbaca dilayani sebagai
+// kantor pusat, sehingga tidak ada cara membedakan "DB Link mati" dari "Anda petugas pusat"
+// selain dengan menolak.
+func checkKomunikasiCabang(
+	ctx context.Context,
+	repo *inboxkomunikasicabangsql.Repo,
+	resolver *inboxkomunikasicabangsql.BranchResolver,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Inbox Komunikasi Cabang tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas POOLDATA.M_KOMUNIKASI_PNC,")
+		print("            POOLDATA.D_KOMUNIKASI_PNC, POOLDATA.V_LST_DOC_TYPE, dan")
+		print("            POOLDATA.V_LST_DET_TYPE_DOC.")
+		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
+		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
+		print("            DDL, yang belum pernah diterima (`R-08`).")
+		return
+	}
+	print("  [ok]    Tabel percakapan dan tabel lampiran Inbox Komunikasi Cabang terbaca")
+
+	if err := resolver.CheckTable(ctx); err != nil {
+		print("  [BELUM] penerjemahan cabang komunikasi belum dapat dijalankan: %v", err)
+		print("            Sumbernya POOLDATA.BRANCH + LST_USER_ASURANSI dan HRDASM.V_HRD_MST")
+		print("            lewat DB link @asmd.sinarmas.co.id, sama seperti GetIDCabang di Pega.")
+		print("            BERBEDA dari Inbox Laporan Klaim: selama gagal, layar ini TERTUTUP")
+		print("            bagi semua orang — bukan melebar. Batas datanya memang cabang itu,")
+		print("            dan melayaninya tanpa batas berarti menampilkan percakapan cabang")
+		print("            lain tanpa satu pun galat (`R-20`).")
+		return
+	}
+	print("  [ok]    cabang petugas dapat diterjemahkan dari login")
+
+	// Kedua pencacah dijalankan pada batas KANTOR PUSAT.
+	//
+	// Bukan pada cabang tertentu: `-periksa` tidak punya petugas yang sedang masuk, dan
+	// kantor pusat adalah satu-satunya batas yang dapat disusun tanpa login siapa pun.
+	// Angkanya karena itu menyatakan kesehatan kueri, bukan beban kerja sebuah cabang.
+	filter := inboxkomunikasicabang.ResolveBranch(
+		inboxkomunikasicabang.HeadOfficeBranch, true)
+
+	summary, err := repo.Summarize(ctx, filter)
+	if err != nil {
+		print("  [GAGAL] pencacah percakapan tidak dapat dijalankan: %v", err)
+		return
+	}
+	print("  [ok]    Percakapan kantor pusat: %d belum dijawab, %d sudah dijawab",
+		summary.NotAnswered, summary.Answered)
+
+	if summary.Total() == 0 {
+		print("  [PERIKSA] Tidak ada satu pun percakapan kantor pusat yang berjalan.")
+		print("            Periksa apakah kanal percakapan masih bernama %q:",
+			inboxkomunikasicabang.CaseOpen)
+		print("            SELECT CASEID, COUNT(*) FROM POOLDATA.M_KOMUNIKASI_PNC")
+		print("             GROUP BY CASEID;")
+		print("            Nilai penutupnya %q, dan keduanya BERAWALAN sama — sehingga",
+			inboxkomunikasicabang.CaseClosed)
+		print("            kanal yang berubah mengosongkan layar tanpa satu pun galat.")
+		return
+	}
+
+	// Kedua tab dijalankan, bukan satu.
+	//
+	// Keduanya membaca tabel yang sama dan dipisahkan HANYA oleh satu penyaring — dan
+	// justru penyaring itulah yang paling mungkin keliru. Memeriksa satu tab saja akan
+	// menyatakan modulnya sehat sementara separuhnya belum tersentuh.
+	page := inboxkomunikasicabang.Pagination{Page: 1, Size: 5}
+	rows := map[string]int{}
+
+	for _, code := range []string{
+		inboxkomunikasicabang.TabNotAnswered,
+		inboxkomunikasicabang.TabAnswered,
+	} {
+		tab, found := inboxkomunikasicabang.FindTab(code)
+		if !found {
+			print("  [GAGAL] Tab %s tidak terdaftar di modul", code)
+			return
+		}
+
+		result, err := repo.List(
+			ctx,
+			inboxkomunikasicabang.Query{Tab: tab, Branch: filter},
+			page,
+		)
+		if err != nil {
+			print("  [GAGAL] Tab %q tidak dapat dibaca: %v", tab.Name, err)
+			return
+		}
+
+		rows[code] = result.Total
+		print("  [ok]    Tab %q terbaca: %d baris", tab.Name, result.Total)
+	}
+
+	// Selisih antara pencacah dan tabel BUKAN cacat, dan justru karena itu ia dijelaskan
+	// di sini — orang yang membandingkan keempat angka di atas akan mengira ada yang rusak.
+	if rows[inboxkomunikasicabang.TabAnswered] != summary.Answered ||
+		rows[inboxkomunikasicabang.TabNotAnswered] != summary.NotAnswered {
+		print("  [catatan] Angka pencacah dan jumlah baris tabel BERBEDA, dan itu memang")
+		print("            perilaku sistem lama. Pencacah memeriksa DUA kolom balasan")
+		print("            (REPLYFROM dan REPLYMESSAGE) sementara tabel hanya memeriksa")
+		print("            satu, dan pencacah TIDAK menyaring pengirim maupun pesan kosong")
+		print("            sementara tabel menyaringnya. Sebarannya:")
+		print("            SELECT COUNT(*) FROM POOLDATA.M_KOMUNIKASI_PNC")
+		print("             WHERE CASEID = '%s' AND REPLYMESSAGE IS NOT NULL",
+			inboxkomunikasicabang.CaseOpen)
+		print("               AND REPLYFROM IS NULL;")
+		print("            Baris sejumlah itu muncul di tabel tetapi tidak di pencacah.")
 	}
 }
 

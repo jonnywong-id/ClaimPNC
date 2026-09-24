@@ -3664,3 +3664,146 @@ Klaim" — mengetik saja tidak cukup.
 | `OPCN.YY.xxxx` | terbitan aplikasi ini (keputusan Work Owner 2026-09-23) | `OPCN.26.0001` |
 
 Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
+
+---
+
+## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
+
+Nama modul mengikuti `D-81`: folder backend `internal/inboxkomunikasicabang` (tanpa tanda
+hubung, karena Go tidak mengizinkannya), folder frontend
+`src/modules/inbox-komunikasi-cabang`. Namanya **tidak dikarang** — ia tertulis di
+`Database/m_menu_aplikasi_pnc.csv` baris 65 sebagai `MENU_ID 70`, **"Inbox Komunikasi
+Cabang"**. Isinya berbahasa Inggris sesuai `D-80`.
+
+### Alias Pega yang TIDAK dibawa — dan kenapa hampir seluruhnya menyesatkan
+
+Kueri layar ini mengalias hampir setiap kolom dengan nama yang menyebut hal lain. Tidak satu
+pun dibawa (`D-19`):
+
+| Alias Pega | Kolom sebenarnya | Isi sebenarnya | Nama di sini |
+|---|---|---|---|
+| `CloseClaimDate` | `CREATEDDATE` | tanggal pesan — tidak ada klaim yang ditutup | `CreatedAt` |
+| `Email` | `MESSAGE` | **isi pesan**, bukan alamat surel | `Message` |
+| `UserTeknis` | `SENDER` | Operator ID pengirim | `SenderOperator` |
+| `pzInsKey` | `CASEID` | **penanda kanal** (`CABANG`), bukan kunci objek kerja Pega | — (tidak dipilih) |
+| `ClaimNo` | `KOMUNIKASIID` | **nomor percakapan**, bukan nomor klaim | `ID` |
+| `CloseClaimNote` | `REPLYMESSAGE` | isi balasan | `Reply` |
+| `StatusClaim` | `KOMUNIKASISTATUS` | status percakapan — **bukan** Status Klaim ber-33 kode (`R-06`) | `Status` |
+| `AnalystTransferDate` | `CREATEDATEREPLY` | tanggal balasan | `RepliedAt` |
+| `UserAdmin` | `REPLYFROMNAME` | nama penjawab | `ReplierName` |
+| `UserName` | `COMMUNICATE_FROM` | kode asal | `SenderOrigin` |
+| `UserTeknisEmail` | `COMMUNICATE_TO` | kode tujuan | `RecipientOrigin` |
+
+Tiga baris pertama patut disebut khusus: tabel ini **tidak memuat nomor klaim sama sekali**,
+`Email` bukan alamat, dan `pzInsKey` bukan kunci Pega.
+
+### Alias lampiran — tujuh nama, tujuh kali salah
+
+Dari `RDB List/GetDocumentKomunikasi1-SQL.xml`, contoh utang teknis §4.2 paling padat yang
+ditemukan sejauh ini:
+
+| Alias Pega | Kolom | Isi | Nama di sini |
+|---|---|---|---|
+| `BranchCode` | `A.KOMUNIKASI_ID` | nomor percakapan | — (penyaring) |
+| `BranchName` | `A.CATEGORYID` | kode kategori dokumen | — (gabungan) |
+| `ClaimID` | `A.TYPEID` | kode jenis dokumen | — (gabungan) |
+| `ObjectName` | `C.DETAIL_DOCUMENT` | nama rincian dokumen | `DetailName` |
+| `ObjectLocation` | `D.TYPE_DOCUMENT` | nama jenis dokumen | `TypeName` |
+| `Comment` | `A.NOTE` | catatan | `Note` |
+| `Date` | `A.UPLOADDATE` | tanggal unggah | `UploadedAt` |
+| `IdCompliance` | `A.DOCUMENTID` | id dokumen di penyimpanan | `DocumentID` |
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Percakapan | `Conversation` | satu baris grid: satu pesan beserta balasannya |
+| Utas | `ThreadMessage` · `ConversationDetail` | isi layar Detail Komunikasi |
+| Lampiran | `Attachment` | metadata dokumen; berkasnya di penyimpanan lain (`D-16`) |
+| Kanal percakapan | `CaseOpen` · `CaseClosed` | nilai `CASEID`: `CABANG` dan `CABANG SELESAI` |
+| Asal / Tujuan | `SenderOrigin` · `RecipientOrigin` | sudah diterjemahkan; kode mentahnya tidak dibawa ke layar |
+| Batas cabang | `BranchFilter` | kode, penanda kantor pusat, dan penanda **terbaca** |
+| Penerjemah cabang | `BranchResolver` | seam ke HRD lewat DB Link (`D-25`, `R-03`) |
+| Pencacah | `Summary` | dua angka di atas grid, pengganti diagram lingkaran |
+
+**Istilah yang sengaja TIDAK dipakai:** `SenderName`. Kolomnya ada (`SENDERNAME`) tetapi
+**tidak pernah sampai ke layar** — alias `UserName` yang sama dipakai dua kali dalam satu
+`SELECT`, dan yang menang adalah `COMMUNICATE_FROM`. Membawanya berarti menyimpan nama yang
+harus dijelaskan mengapa diabaikan.
+
+### Dua konstanta yang MUDAH tertukar, dan akibatnya fatal
+
+| Konstanta | Nilai | Kolom |
+|---|---|---|
+| `HeadOfficeBranch` | `100081` | `POOLDATA.BRANCH.ID` |
+| `HeadOfficeCode` | `1` | `COMMUNICATE_FROM` / `COMMUNICATE_TO` |
+
+Keduanya berarti "kantor pusat" tetapi hidup di kolom yang berbeda. Menukarnya menghasilkan
+**daftar kosong tanpa satu pun galat**. `ResolveBranch` menerjemahkan yang pertama menjadi yang
+kedua, dan satu uji menjaganya
+(`TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode`).
+
+### Nama field JSON — tetap Indonesia
+
+Ia **kontrak**, bukan nama internal (`D-80`):
+
+`komunikasi` · `tanggal` · `pengirim` · `asal` · `operator_pengirim` · `pesan` ·
+`jawaban_terakhir` · `penjawab` · `tujuan` · `status_register` · `tanggal_jawaban` ·
+`ringkasan` · `belum_dijawab` · `sudah_dijawab` · `batas_cabang` · `kantor_pusat` ·
+`terbaca` · `lampiran` · `jenis_dokumen` · `rincian_dokumen` · `sudah_diunggah` ·
+`tindakan_masih_di_pega`
+
+`komunikasi`, bukan `no_klaim` — tabel ini tidak memuat nomor klaim sama sekali.
+
+### Kode galat — tetap Indonesia
+
+`validasi_gagal` · `profil_pemanggil_tidak_lengkap` · `sumber_cabang_tidak_terbaca` ·
+`belum_tersedia` · `komunikasi_tidak_ditemukan` · `galat_internal`
+
+`sumber_cabang_tidak_terbaca` dipisahkan dari `profil_pemanggil_tidak_lengkap` dengan sengaja:
+yang satu menimpa **semua orang** dan sementara (503), yang satu menimpa **satu orang** (409).
+
+### Nama kueri `.sql`
+
+Berawalan menurut perannya, bukan menurut nama tabelnya:
+
+`list_not_answered` · `list_answered` · `count_answered` · `count_not_answered` ·
+`detail_thread` · `detail_attachments` · `check_table` · `check_attachment_table` ·
+`branch_of_login`
+
+`branch_of_login` **sengaja sama namanya** dengan milik modul Inbox Laporan Klaim, dan
+berkasnya **disalin, bukan diimpor**: seam dideklarasikan di paket yang memakainya
+(`08-TECHNICAL-STRATEGY.md` §2 aturan 2), sehingga kedua modul dapat berpindah ke API
+pengganti DB Link pada waktu yang berbeda.
+
+### Nama komponen frontend
+
+Komponen memakai nama **konsep layarnya**, bukan nama modul:
+
+| Berkas | Komponen |
+|---|---|
+| `KomunikasiCabangPage.tsx` | `KomunikasiCabangPage` |
+| `KomunikasiCabangTabs.tsx` | `KomunikasiCabangTabs` |
+| `ConversationDetail.tsx` | `ConversationDetail` |
+
+Yang ketiga memakai nama **tipe domain**, mengikuti preseden `AccountPage.tsx` pada modul
+`master-rekening` — ia menggambar sebuah `ConversationDetailResponse`, bukan sebuah layar
+bernama modul.
+
+### Nama uji
+
+Berbahasa **Inggris** di Go, **Indonesia** di Vitest, mengikuti pola yang sudah berlaku, dan
+menyebutkan **aturannya** alih-alih nama fungsinya:
+
+```go
+func TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode(t *testing.T)
+func TestUnreadableBranchIsServedAsHeadOfficeButMarkedUnresolved(t *testing.T)
+func TestSenderOriginKeepsBranchCodeButRecipientOriginDoesNot(t *testing.T)
+func TestARepliedConversationWithoutARecordedReplierAppearsButIsCountedNowhere(t *testing.T)
+```
+
+```ts
+it('memperingatkan bila kode cabang pemanggil tidak terbaca', ...)
+it('menggambar TIGA kolom pada tab "Belum Dijawab", tanpa kolom balasan', ...)
+it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)
+```
