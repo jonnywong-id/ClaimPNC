@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -41,7 +41,20 @@ import { EMPTY_QUERY, type ClaimReport, type ClaimReportQuery, type ReportCatego
  * bedanya" yang tidak punya jawaban.
  */
 export function ClaimReportInboxPage() {
-  const [query, setQuery] = useState<ClaimReportQuery>(EMPTY_QUERY)
+  // Tab awal dibaca dari ALAMAT, bukan selalu tab bawaan.
+  //
+  // Form mengembalikan petugas ke tab tempat berkasnya berada (lihat backToListPath).
+  // Tanpa ini, berkas yang baru dibuat — berposisi "Not Transferred" — tidak terlihat
+  // saat petugas kembali ke daftar yang selalu terbuka di Outstanding, dan pembuatannya
+  // tampak gagal padahal barisnya tersimpan.
+  //
+  // Alamatnya sekaligus menjadi dapat disalin dan ditandai, sama seperti alasan form
+  // dibuat sebagai rute tersendiri.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState<ClaimReportQuery>(() => {
+    const kategori = searchParams.get('kategori')
+    return kategori === null ? EMPTY_QUERY : { ...EMPTY_QUERY, kategori }
+  })
   const [keyword, setKeyword] = useState('')
 
   const navigate = useNavigate()
@@ -82,7 +95,13 @@ export function ClaimReportInboxPage() {
       <CategoryTabs
         category={category}
         active={query.kategori}
-        onSelect={(kode) => applyFilter({ kategori: kode })}
+        onSelect={(kode) => {
+          applyFilter({ kategori: kode })
+          // Alamat ikut berubah supaya memuat ulang halaman tidak melemparkan petugas
+          // kembali ke tab bawaan. `replace` dipakai agar tombol Back peramban tidak
+          // menelusuri setiap tab yang sempat dibuka.
+          setSearchParams({ kategori: kode }, { replace: true })
+        }}
       />
 
       <form

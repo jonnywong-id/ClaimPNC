@@ -313,10 +313,38 @@ export function ClaimReportFormPage() {
               {simpan.isPending ? 'Menyimpan…' : 'Simpan'}
             </Button>
           )}
-          <Button type="button" tone="kedua" onClick={() => navigate('/inbox/laporan-klaim')}>
+          {/*
+            Register Klaim ADA di layar lama dan tempatnya di sini — tombol keempat pada
+            deret bawah `Section/InputReceiveDocument_sect.xml`, memanggil activity
+            `CreateRegisterKlaimPNC`.
+
+            Ia digambar TIDAK AKTIF, bukan disembunyikan. Menyembunyikannya membuat layar
+            tampak sudah lengkap padahal satu langkah alurnya belum ada, dan petugas baru
+            menemukannya saat mencari tombol yang biasa mereka tekan. Yang tidak aktif
+            menyatakan dirinya sendiri.
+
+            Ia belum dapat dibuat karena DUA hal, bukan satu:
+              1. `CreateRegisterKlaimPNC` tidak ada di export — dirujuk, tidak terkirim
+                 (`R-16`), sehingga perilakunya tidak diketahui.
+              2. Modul `B-2` Registrasi Klaim, tujuan langkah ini, belum dibangun.
+
+            Menebak perilakunya berarti mengarang aturan bisnis yang menerbitkan nomor
+            klaim — persis yang dilarang.
+          */}
+          <Button type="button" tone="kedua" disabled title={REGISTER_BELUM_TERSEDIA}>
+            Register Klaim
+          </Button>
+
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={() => navigate(backToListPath(berkas.data?.laporan.posisi))}
+          >
             Kembali ke daftar
           </Button>
         </div>
+
+        <p className="mt-3 text-xs text-slate-500">{REGISTER_BELUM_TERSEDIA}</p>
       </form>
 
       <p className="mt-6 text-xs text-slate-500">
@@ -438,6 +466,54 @@ function TextArea({
       )}
     </div>
   )
+}
+
+/**
+ * Alasan tombol Register Klaim belum dapat ditekan.
+ *
+ * Disimpan sebagai konstanta karena dipakai dua kali — pada tooltip tombolnya dan pada
+ * keterangan di bawah deret tombol. Dua salinan kalimat yang sama akan berpisah.
+ *
+ * # Alasannya BERUBAH pada 2026-09-24, dan tinggal satu
+ *
+ * Semula ada dua penghalang: rule-nya hilang dari export, dan modul tujuannya belum ada.
+ * Work Owner mengirimkan `Activity/CreateRegisterKlaimPNC_act.xml`, sehingga penghalang
+ * pertama lepas — perilakunya kini terbaca, 47 langkah, dan enam dari tujuh activity yang
+ * dipanggilnya sudah ada di export.
+ *
+ * Yang tersisa bukan artefak melainkan PEKERJAAN: langkah pertamanya
+ * `Call CreateInputKlaim` membuat case klaim, dan case klaim adalah modul `B-2`.
+ * Menuliskannya di sini berarti membangun `B-2` di dalam modul yang salah.
+ */
+export const REGISTER_BELUM_TERSEDIA =
+  'Register Klaim belum dapat dijalankan: langkah pertamanya membuat case klaim ' +
+  '(CreateInputKlaim), dan modul B-2 Registrasi Klaim belum dibangun. Perilaku ' +
+  'lengkapnya sudah diketahui dari Activity/CreateRegisterKlaimPNC_act.xml.'
+
+/**
+ * backToListPath mengembalikan alamat daftar pada TAB TEMPAT BERKAS INI BERADA.
+ *
+ * # Kenapa bukan sekadar kembali ke daftar
+ *
+ * Daftar selalu terbuka pada tab Outstanding — sama seperti layar lama. Berkas yang baru
+ * dibuat berposisi "Not Transferred" karena belum bernomor klaim dan belum diserahkan,
+ * sehingga ia TIDAK ada di tab itu.
+ *
+ * Akibatnya petugas yang menekan "Buat Baru" lalu kembali melihat daftar tanpa berkasnya,
+ * dan menyimpulkan pembuatannya gagal — padahal barisnya tersimpan. Itu keluhan nyata
+ * (Work Owner, 2026-09-24), dan kelas kegagalan yang paling mahal: yang berhasil tetapi
+ * tampak gagal.
+ *
+ * Posisi yang tidak dikenali mengembalikan tab bawaan, bukan menebak.
+ */
+export function backToListPath(position: string | undefined): string {
+  const tab: Record<string, string> = {
+    Outstanding: 'outstanding',
+    'Not Registered': 'belum-registrasi',
+    'Not Transferred': 'belum-diserahkan',
+  }
+  const kode = position === undefined ? undefined : tab[position]
+  return kode === undefined ? '/inbox/laporan-klaim' : `/inbox/laporan-klaim?kategori=${kode}`
 }
 
 function messageOf(failure: unknown): string {

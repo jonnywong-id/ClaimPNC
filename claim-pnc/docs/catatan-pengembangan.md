@@ -9770,3 +9770,285 @@ ke komponen bersama, sehingga layar ini berbunyi sama dengan layar lain.
 Ditambah satu perbaikan rancangan sebelum sempat menjadi kesalahan: peta `renderer` kolom
 mula-mula memanggil pembuka klaim lewat **variabel modul yang bisa berubah**, dengan setter yang
 tidak pernah dipanggil. Ia diubah menjadi parameter biasa sebelum uji pertama dijalankan.
+
+
+---
+
+## 42. Dua keluhan sesudah "Buat Baru" berjalan (2026-09-24)
+
+### 42.1 "RCV baru tidak tersimpan" — ternyata tersimpan, tetapi di tab lain
+
+Lima baris terbukti ada di basis data, dibuat pengguna JONNY, cabang 100081:
+
+```
+RCVN.26.0001 … RCVN.26.0005   cabang=100081  user=JONNY
+```
+
+Dan kelimanya **muncul** di daftar, di urutan paling atas — total 366 (361 + 5), diurutkan
+`aging_at DESC`.
+
+Sebabnya: layar terbuka pada tab **Outstanding** (`DEFAULT_CATEGORY`), sedangkan berkas
+yang baru dibuat belum bernomor klaim dan belum diserahkan, sehingga posisinya
+**Not Transferred**. Ia tidak ada di tab yang sedang dibuka.
+
+Ini kelas kegagalan yang paling mahal: **berhasil tetapi tampak gagal**. Tidak ada galat,
+tidak ada yang salah di basis data, dan satu-satunya petunjuk adalah tab yang tidak
+dilihat orang.
+
+**Perbaikannya** — form mengembalikan petugas ke tab tempat berkasnya berada
+(`backToListPath`), dan daftar membaca tab awal dari alamat (`?kategori=`). Tab bawaan
+**tidak diubah**, karena itu perilaku layar lama (`D-13`).
+
+Posisi yang tidak dikenali jatuh ke tab bawaan, bukan ditebak — menebak akan membuka tab
+yang salah, persis kegagalan yang fungsi ini ada untuk menutupnya. Dijaga dua tes.
+
+Satu manfaat sampingan: alamat daftar kini membawa tabnya, sehingga dapat disalin dan
+ditandai — alasan yang sama dengan mengapa form dibuat sebagai rute tersendiri.
+
+### 42.2 Tombol "Register Klaim" — ADA di Pega, dan kesimpulan pertama saya salah
+
+Kesimpulan pertama saya: *"tombol itu tidak ada di layar ini; registrasi dimulai dari Inbox
+Register"*. **Itu salah.** Work Owner mengirim tangkapan layar Pega yang berjalan, dan deret
+tombol di bawah form memuat empat:
+
+```
+Simpan | Simpan & Transfer data ke ASM | Pengecheckan OCR | Register Klaim
+```
+
+**Sebab kekeliruannya, supaya tidak terulang.** Saya mencari string `"Registrasi Klaim"`,
+sedangkan labelnya `"Register Klaim"`. Ditambah satu kesalahan metode: saya membaca caption
+lewat pola `<pyCaption>`, padahal label tombol di section ini tersimpan sebagai
+**field value** (`pyButtonLabel Register Klaim`). Pencarian yang gagal saya perlakukan
+sebagai bukti ketiadaan — padahal ia hanya bukti bahwa polanya tidak cocok.
+
+Aturan yang saya tarik: **pencarian yang tidak menemukan apa-apa bukan bukti**, selama pola
+pencariannya belum diuji pada kasus yang jelas ada.
+
+**Yang benar, setelah ditelusuri ulang** — keempat tombol ada di
+`Section/InputReceiveDocument_sect.xml`:
+
+| Tombol | Activity | Ada di export? |
+|---|---|---|
+| Simpan | — | sudah dibangun |
+| Simpan & Transfer data ke ASM | — | belum ditelusuri |
+| Pengecheckan OCR | `InsertOCRData` | **hilang** |
+| **Register Klaim** | **`CreateRegisterKlaimPNC`** | **hilang** |
+
+`CreateRegisterKlaimPNC` **dirujuk tetapi tidak ikut terkirim** — hanya muncul di section
+yang memanggilnya, nol berkas activity. Demikian pula `InsertOCRData`,
+`SendAttachmentToPNC`, dan `PrintReceiverDocument_Act`. Keempatnya bertambah ke daftar
+`R-16`.
+
+**Yang dikerjakan.** Tombol "Register Klaim" **digambar di tempatnya, tidak aktif**, dengan
+sebabnya tertulis di layar — bukan disembunyikan.
+
+Menyembunyikannya akan membuat layar tampak sudah lengkap padahal satu langkah alurnya
+belum ada, dan petugas baru menemukannya saat mencari tombol yang biasa mereka tekan.
+Mengaktifkannya menuntut mengarang aturan yang menerbitkan nomor klaim — dilarang, dan di
+sini bahkan tidak dapat dipelajari karena rule-nya hilang.
+
+Sebabnya ditulis **di layar**, bukan hanya pada tooltip: tooltip tidak terbaca di peramban
+sentuh, dan surveyor memakai tablet (`D-12`).
+
+**Dua penghalang, bukan satu:**
+
+1. `CreateRegisterKlaimPNC` hilang dari export (`R-16`) — perilakunya tidak diketahui.
+2. Modul `B-2` Registrasi Klaim, tujuan langkah ini, belum dibangun.
+
+Kaitannya ke RCV sudah terbaca dan tidak menuntut kode tambahan: kolom `NOKLAIM` pada
+`POOLDATA.T_CLAIM_RECIVEDCLAIM` diisi lewat `Rcv_ProcInsertRecivedDocument` yang menerima
+`TampunganPages.NoClaim`. Begitu kolom itu terisi, posisi berkas berpindah sendiri dari
+Not Transferred.
+
+**Yang harus diminta ke Tim Pega:** export ulang `CreateRegisterKlaimPNC`, `InsertOCRData`,
+`SendAttachmentToPNC`, dan `PrintReceiverDocument_Act`.
+
+### 42.3 Catatan atas cara membangun antarmuka pada sesi ini
+
+`npm run build` tidak dapat dipakai: gerbang `tsc --noEmit` di depannya gagal oleh
+**120 galat tipe pada sembilan modul cabang dev** yang sudah rusak sebelum digabung (lihat
+catatan merge). SPA karena itu dibangun dengan `npx vite build` langsung, lalu
+`versi.txt` ditulis manual.
+
+Itu **melewati gerbang tipe**, dan dicatat di sini supaya tidak terbaca sebagai kelalaian.
+Modul yang disunting sesi ini diperiksa terpisah dan bersih: nol galat tipe, 30 tes lulus.
+
+---
+
+## 43. `CreateRegisterKlaimPNC` diterima — perilaku tombol "Register Klaim" terbaca (2026-09-24)
+
+Work Owner mengirimkan `Activity/CreateRegisterKlaimPNC_act.xml` (445 KB, **47 langkah**),
+menutup penghalang pertama pada §42.2. Isinya dibaca, bukan disimpulkan.
+
+Catatan bentuk berkas: namanya berakhiran `_act.xml`, **bukan** `-Act.xml` seperti 900-an
+activity lain. Pencarian berdasarkan pola nama berkas akan melewatkannya — sudah pernah
+menjadi sebab kekeliruan sekali di sesi ini, dan dicatat supaya tidak terulang.
+
+### 43.1 Apa yang dikerjakan tombol itu
+
+Urutan yang menentukan, disarikan dari `pyStepsActivityName` dan `pyStepsDescription`:
+
+| Langkah | Metode | Maksudnya |
+|---|---|---|
+| 1 | `Call CreateInputKlaim` | **membuat case klaim bila belum ada** |
+| 2 | `Obj-Open-By-Handle` | membuka `pyWorkPage` |
+| 5–6 | — · `Obj-Save` | "Update auto progress" |
+| 8 | `Obj-Open-By-Handle` | membuka `PNCWorkPage` — case klaim yang baru |
+| 9 | — | "cari Cause Of Loss Name jika kosong", per objek per coverage |
+| 10–12 | `Page-Copy` | **menyalin ObjectList RCV ke case klaim** |
+| 13–19 | `RDB-List` | mengambil kode cabang, "kalo dari service jump" |
+| 27 | `Call SetTicket` | **lompatan lateral** ke tahap berikutnya |
+| 29 | `Call PNCInsertProgressClaim` | mencatat progres |
+| 32–33 | `Obj-Save` · `Commit` | menyimpan case klaim |
+| 35 | `Call PNC_insertingDataFlatter` | mengisi tabel rata |
+| 36 | `Call SendEmailtoReporter` | memberi tahu pelapor |
+
+**Tiga langkah bertanda prasyarat `false`** — nonaktif di sistem yang berjalan: penyimpanan
+ID dokumen beserta `Call UploadDataPNC_OCR_KTP`, penetapan RCV ID untuk surel pelapor, dan
+properti pengiriman surel. Jalur OCR karena itu memang mati, sejalan dengan keputusan Work
+Owner 2026-09-24 untuk mengabaikan OCR.
+
+### 43.2 Dependensinya nyaris lengkap
+
+| Dipanggil | Ada di export? |
+|---|---|
+| `CreateInputKlaim` | ✅ 6 langkah — memanggil `svcAddWorkObject`, `InsertHistoryClaimPNC` |
+| `PNCInsertProgressClaim` | ✅ 8 langkah |
+| `PNC_insertingDataFlatter` | ✅ 6 langkah |
+| `SendEmailtoReporter` | ✅ 12 langkah — memanggil `SendSimpleEmail` |
+| `SetTicket` | ✅ bawaan Pega |
+| `InsertObject_act` | ✅ |
+| `UploadDataPNC_OCR_KTP` | ❌ — **di dalam cabang mati**, tidak menghalangi |
+
+### 43.3 Kenapa tombolnya tetap belum aktif
+
+Penghalangnya **berpindah**, bukan hilang. Semula: rule-nya tidak ada. Sekarang: langkah
+pertamanya **membuat case klaim**, dan case klaim adalah modul **`B-2` Registrasi Klaim**
+yang belum dibangun.
+
+Menuliskannya di dalam modul Inbox Laporan Klaim berarti membangun `B-2` di tempat yang
+salah — menerbitkan nomor klaim, menyalin objek dan coverage, dan menulis `T_CLAIM_PNC`
+dari modul yang lingkupnya berkas laporan masuk.
+
+Keterangan pada tombol karena itu **diperbarui**, bukan dibiarkan: ia tidak lagi menyebut
+rule yang hilang, dan menyebut satu penghalang yang benar-benar tersisa.
+
+### 43.4 Yang sudah siap saat `B-2` dikerjakan
+
+Sisi Inbox Laporan Klaim **tidak menuntut perubahan lagi**. Kolom `NOKLAIM` pada
+`POOLDATA.T_CLAIM_RECIVEDCLAIM` sudah dibaca daftar dan sudah menentukan posisi berkas:
+
+```
+noklaim NULL     + transferasm NULL      -> Not Transferred
+noklaim NULL     + transferasm terisi    -> Not Registered
+noklaim terisi   + transferasm terisi    -> Outstanding
+```
+
+Begitu `B-2` mengisi `NOKLAIM`, berkasnya berpindah tab dengan sendirinya. Yang perlu
+ditambahkan hanyalah **pemanggilan** dari tombol ini ke `B-2`, bukan perubahan model data.
+
+---
+
+## 44. Telusur `CreateInputKlaim` dan `svcAddWorkObject` — apa yang dibutuhkan "Register Klaim" (2026-09-24)
+
+Diminta Work Owner agar tahap berikutnya dapat diselesaikan. Seluruh isi bab ini dibaca
+dari export dan diperiksa langsung ke Oracle, bukan disimpulkan.
+
+### 44.1 `CreateInputKlaim` — enam langkah, dan hanya satu yang bermakna
+
+| Langkah | Metode |
+|---|---|
+| 1 | `Property-Set` — menyiapkan empat parameter |
+| 2 | `Call svcAddWorkObject` pada `curWorkPage` |
+| 3 | `Commit` |
+| 5 | `Call InsertHistoryClaimPNC` |
+
+Keempat parameter itulah isinya, dan terbaca apa adanya:
+
+```
+param.classname = "ASM-FW-GCNMFW-Work-PNC"    kelas case klaim
+param.modelname = "pyDefault"
+param.workPage  = "curWorkPage"
+param.FlowType  = "pyStartCase"               memulai Register_Flow
+```
+
+### 44.2 `svcAddWorkObject` bukan aturan bisnis
+
+Enam belas langkahnya seluruhnya **plumbing engine Pega**: `Page-Remove`,
+`Call createWorkPage`, `Call pzApplyPageInstructions`, `Page-Validate`, membuat work
+object, `Commit`, `Call performAssignmentCheck`, `Call WorkUnlock`.
+
+Tidak ada satu pun aturan klaim di dalamnya. Artinya **isi bisnis "Register Klaim"
+seluruhnya ada di `CreateRegisterKlaimPNC`** (bab 43), dan yang dilakukan
+`svcAddWorkObject` di sistem baru menjadi satu kalimat: *terbitkan klaim baru, simpan,
+mulai alurnya*.
+
+### 44.3 Di mana baris klaim sebenarnya tinggal — dan ini yang mengubah rencana
+
+Pemeriksaan langsung ke Oracle:
+
+| Tabel | Baris | Catatan |
+|---|---|---|
+| `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` (Work-PNC) | 2.634 | work object milik engine |
+| `POOLDATA.JSON_KLAIM` | 16.020 | dokumen klaim utuh |
+| `POOLDATA.T_CLAIM_PNC` | 2.166 | **75 kolom, NOL kolom NOT NULL** |
+| `POOLDATA.T_CLAIM_OBJECTLIST` | 2.603 | objek pertanggungan |
+
+**Hanya SATU rule SQL yang menulis `T_CLAIM_PNC`**, dan itu pembaruan catatan
+(`SaveRemarksRecommendation_sql`). Tabel itu **tidak diisi aplikasi** melainkan oleh
+**proses konversi** `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` dari `JSON_KLAIM`.
+
+Jalur tulis Pega karena itu **tiga lapis**, bukan satu:
+
+```
+1. work object     DATAPEGA.PC_ASM_FW_GCNMFW_WORK   engine, pyID = PNC-xxxx
+2. dokumen JSON    POOLDATA.JSON_KLAIM              PNC_insertingDataFlatter
+3. tabel rata      POOLDATA.T_CLAIM_PNC + 12 tabel  PEGA_CONVERT_JSONKLAIM_PNC
+```
+
+Ini **berbeda dari RCV**. Berkas laporan ditulis langsung ke tabel bisnisnya
+(`T_CLAIM_RECIVEDCLAIM`) oleh satu procedure; klaim tidak.
+
+### 44.4 Bentuk kunci dan nomor
+
+| Hal | Nilai terverifikasi |
+|---|---|
+| `T_CLAIM_PNC.claimid` | `ASM-FW-GCNMFW-WORK PNC-996` — prefix Pega, utang teknis §4.1 |
+| `T_CLAIM_PNC.claimno` | `PNC-996` |
+| berkunci `PNC-` | 1.729 baris |
+| berkunci `RCV-` | **436 baris** — klaim yang masih berkunci nomor RCV-nya |
+| `claimno` berbentuk `PNC-` | 1.687 |
+| nomor urut PNC tertinggi | **782112** |
+| `POOLDATA.CLAIM_NO_NONPEGA_SEQ` (`D-71`) | **belum ada** |
+
+436 baris berkunci `RCV-` patut diperhatikan saat `B-2` dirancang: tabel klaim ternyata
+memuat baris yang kuncinya belum berpindah ke nomor klaim.
+
+### 44.5 Apa yang tersisa untuk menyalakan tombolnya
+
+Yang **sudah siap**, tanpa perubahan lagi:
+
+- Kolom `NOKLAIM` pada `T_CLAIM_RECIVEDCLAIM` sudah dibaca daftar dan sudah menentukan
+  posisi berkas. Begitu terisi, berkasnya berpindah tab sendiri.
+- Pola penomoran tanpa sequence sudah terbukti dipakai `RCVN.YY.xxxx`, dan `PNCN.YY.xxxx`
+  (`D-71`) dapat memakai cara yang sama.
+
+Yang **belum ada**, dan satu di antaranya keputusan Work Owner:
+
+| Hal | Sifatnya |
+|---|---|
+| **Ke mana baris klaim ditulis** | **keputusan** — sama seperti pertanyaan yang muncul pada RCV |
+| Modul `B-2` Registrasi Klaim | pekerjaan |
+| `Register_Flow` beserta assignment-nya | pekerjaan |
+
+**Tiga kemungkinan untuk pertanyaan pertama**, dan ketiganya punya akibat berbeda:
+
+1. **`T_CLAIM_PNC` langsung** — meniru pilihan RCV. Tetapi di Pega tabel itu **hasil
+   konversi**, bukan sumber; menulisnya langsung berarti aplikasi ini menjadi penulis
+   kedua atas tabel yang diisi procedure, dengan risiko tertimpa saat konversi berjalan.
+2. **`JSON_KLAIM` + membiarkan konversi meratakannya** — paling setia pada alur Pega,
+   tetapi menyerahkan bentuk akhir data pada procedure yang `D-02` justru tinggalkan.
+3. **Tabel klaim milik aplikasi** — bersih dan aman, tetapi inilah yang ditolak pada RCV.
+
+Ketiganya belum diputuskan, dan **tidak diputuskan sendiri**: pilihan ini menentukan siapa
+penulis tabel klaim selama masa paralel (`P-1`), dan itu kewenangan Work Owner.

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { ClaimReportFormPage } from './ClaimReportFormPage'
+import { backToListPath, ClaimReportFormPage } from './ClaimReportFormPage'
 
 const ISIAN_KOSONG = {
   tanggal_terima_dokumen: '',
@@ -264,5 +264,51 @@ describe('form Input Receive Document', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kembali ke daftar' }))
 
     expect(await screen.findByTestId('daftar')).toBeInTheDocument()
+  })
+})
+
+describe('kembali ke daftar', () => {
+  // Berkas yang baru dibuat berposisi "Not Transferred", sedangkan daftar selalu
+  // terbuka di Outstanding. Tanpa pemetaan ini petugas kembali ke tab yang TIDAK
+  // memuat berkasnya, lalu menyimpulkan pembuatannya gagal — padahal barisnya
+  // tersimpan (keluhan Work Owner, 2026-09-24).
+  it('membuka tab tempat berkas itu benar-benar berada', () => {
+    expect(backToListPath('Not Transferred')).toContain('kategori=belum-diserahkan')
+    expect(backToListPath('Not Registered')).toContain('kategori=belum-registrasi')
+    expect(backToListPath('Outstanding')).toContain('kategori=outstanding')
+  })
+
+  // Posisi yang tidak dikenali TIDAK ditebak. Menebak akan membuka tab yang salah,
+  // dan itu persis kegagalan yang fungsi ini ada untuk menutupnya.
+  it('jatuh ke tab bawaan bila posisinya tidak dikenali', () => {
+    expect(backToListPath(undefined)).toBe('/inbox/laporan-klaim')
+    expect(backToListPath('Entah Apa')).toBe('/inbox/laporan-klaim')
+  })
+})
+
+describe('tombol Register Klaim', () => {
+  // Tombol ini ADA di layar lama (Section/InputReceiveDocument_sect.xml, memanggil
+  // CreateRegisterKlaimPNC). Ia digambar tidak aktif, bukan disembunyikan.
+  //
+  // Uji ini menjaga dua arah sekaligus. Menghapus tombolnya membuat layar tampak lengkap
+  // padahal satu langkah alurnya hilang; mengaktifkannya sebelum modul B-2 ada membuat
+  // petugas menekan tombol yang tidak menuju ke mana pun.
+  it('tampil tetapi tidak dapat ditekan, dan menyebutkan sebabnya', async () => {
+    installFetch(() => ({ body: berkas() }))
+        show()
+
+    const tombol = await screen.findByRole('button', { name: 'Register Klaim' })
+    expect(tombol).toBeDisabled()
+    expect(tombol).toHaveAttribute('title', expect.stringContaining('CreateRegisterKlaimPNC'))
+  })
+
+  // Sebabnya disebut di layar, bukan hanya pada tooltip: tooltip tidak terbaca di
+  // peramban sentuh, dan petugas surveyor memakai tablet (D-12).
+  it('menuliskan sebabnya di layar, bukan hanya pada tooltip', async () => {
+    installFetch(() => ({ body: berkas() }))
+        show()
+
+    expect(await screen.findByText(/CreateRegisterKlaimPNC/)).toBeInTheDocument()
+    expect(screen.getByText(/B-2 Registrasi Klaim/)).toBeInTheDocument()
   })
 })
