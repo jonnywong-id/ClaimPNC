@@ -12990,3 +12990,254 @@ dan keempatnya punya tampilan — termasuk yang dulu tidak ada:
 
 Alasannya bukan selera: bentuk layar ini tidak bergantung pada data — ia tetap kedua bagian
 dengan isian yang sama, dan sembilan di antaranya memang tidak pernah terisi (§47.2).
+
+## 49. Archive Dokumen Klaim (2026-09-25)
+
+Modul `MENU_ID 77`, pengganti harness `PNCArchiveDokumen`. Rute layar
+`/archive-dokumen-klaim`; paket backend `internal/archivedokumenklaim`, folder frontend
+`src/modules/archive-dokumen-klaim` (`D-81`).
+
+### 49.1 Pertanyaan konfirmasi dan jawabannya
+
+Tiga hal ditanyakan sebelum satu baris kode ditulis, karena jawabannya mengubah pekerjaan
+secara berarti — bukan memilih di antara default yang setara.
+
+| Pertanyaan | Jawaban Work Owner |
+|---|---|
+| Lingkup: satu bagian, dua, atau ketiganya? | **"seperti aplikasi PEGA"** — ketiganya |
+| Pemilih Kode Filling, yang masternya hilang dari export | **"samakan dengan PEGA"** |
+| Penomoran `ID_ARCHIVE` yang memakai `max(ID)+1` | **"Replikasi apa adanya (P-5 murni)"** |
+
+Jawaban ketiga **menolak usul saya** untuk memperbaikinya sebagai selisih terencana.
+Keputusan dihormati dan dijalankan; yang saya kerjakan sebagai gantinya adalah membuat
+akibatnya terbaca di tiga tempat, bukan tersembunyi di satu.
+
+### 49.2 Jawaban "samakan dengan PEGA" pada hal yang tidak ada di Pega
+
+Pemilih Kode Filling digambar oleh `SecCariKodeArchiveDoc`; yang mengisinya activity
+`SetKodeandSearchArchiveDoc`, dan **activity itu tidak ada di export** (`R-16`). Tidak ada
+tabel master kode arsip di seluruh 2.634 berkas.
+
+Jadi "samakan dengan PEGA" hanya dapat dipenuhi pada **bentuknya**. Keputusan:
+
+- Bentuknya ditiru: tombol "Pilih Kode", dialog berisi pencarian dan daftar, tombol Pilih.
+- Sumber datanya **direkonstruksi** dari kode filling yang sudah pernah dipakai baris
+  arsip.
+- Kolom "Desc Archive" **tidak digambar** — isinya berasal dari master yang tidak ada.
+  Penggantinya jumlah pemakaian.
+- Isian Kode Filling **tetap dapat diketik langsung**, karena layar lama pun menyediakan
+  "Input Kode" dan "Generated Kode".
+- Layar **menyatakan** asal daftarnya. Tanpa itu, pengguna akan menyimpulkan kode barunya
+  ditolak.
+
+Alasan rekonstruksi ini dipilih alih-alih menunggu artefaknya: kedua tombol pembuat kode
+membuktikan kode memang dibuat **dari layar itu**, bukan dipilih dari master tetap — jadi
+kumpulan kode yang sudah dipakai adalah pendekatan terdekat yang datanya benar-benar ada.
+
+### 49.3 Penomoran ID direplikasi, dan cacatnya disebut terang
+
+`Database/INSERTDATASFILLINGARCHIVE.prc` memberi nomor dengan `max(ID_ARCHIVE)+1`. Dua
+penyimpanan bersamaan membaca angka yang sama dan yang kedua menimpa baris yang pertama —
+tanpa galat, tanpa jejak.
+
+Keputusan Work Owner: **replikasi**. Yang dikerjakan:
+
+| Tempat | Isi |
+|---|---|
+| kueri `next_archive_id` | cacatnya ditulis lengkap di komentar, beserta siapa yang memutuskannya |
+| komentar `Repo.Save` | menyatakan transaksinya **tidak** menutup celah itu |
+| `permintaan-artefak-pega.md` | pertanyaannya diajukan kembali, terbuka |
+
+Kedua cabang prosedurnya disatukan menjadi `NVL(MAX(ID_ARCHIVE),0)+1`. Ia menghasilkan
+angka yang **sama persis** pada kedua cabang, termasuk saat tabel kosong — jadi
+penyederhanaan ini bukan perubahan perilaku.
+
+### 49.4 Tiga kolom yang ditulis meski `.prc` tidak menulisnya
+
+Prosedur di export menerima **15 parameter**; pemanggilnya mengirim **17**. Prosedur itu
+revisi yang lebih tua, dan yang diikuti adalah pemanggilnya.
+
+| Kolom | Keputusan | Alasan |
+|---|---|---|
+| `GROUPPANEL` | **ditulis** | ia menentukan siapa melihat barisnya di daftar kirim ke cabang |
+| `KODECABANG` | **ditulis** dari kode cabang pemanggil | pembacaan paling lurus atas `TempCabang.KodeCabang`; ditandai sebagai **simpulan** |
+| `CABANGSTATUS` | **ditulis `'0'` eksplisit** | prosedurnya tidak menulisnya sama sekali, dan DDL-nya tidak ada (`R-08`) — bila bawaannya bukan `'0'`, berkas baru tidak akan pernah muncul di daftar pengiriman |
+
+Yang ketiga adalah **perbedaan yang disengaja**, dan ia memperbaiki alur yang putus, bukan
+mengubah aturan bisnis.
+
+### 49.5 Perbedaan lain terhadap sistem lama, dan alasannya
+
+| # | Perbedaan | Sifat |
+|---|---|---|
+| 1 | Parameter binding menggantikan `{ASIS:...}` | menutup celah injeksi; tidak dikecualikan oleh "replikasi apa adanya" |
+| 2 | Paginasi + `ORDER BY ARCHIVE_ID DESC` | **perubahan perilaku yang disadari** (`09-DATABASE-STRATEGY.md` §6.3) |
+| 3 | Kata kunci dibesarkan hurufnya di kedua sisi | **memperbaiki**: nomor klaim huruf kecil dulu tidak pernah cocok |
+| 4 | Nama dokumen lewat `LEFT JOIN`, bukan 2 kueri per baris | hasil identik; menghapus kueri di dalam perulangan |
+| 5 | `GROUPPANEL IS NULL` **diloloskan** saringan lini | `not in (...)` Oracle tidak meloloskan NULL — berkas tanpa lini akan hilang dari daftar tanpa tanda |
+| 6 | `TGLKIRIMDOK` **diisi** saat pengiriman | sistem lama menampilkan kolomnya tetapi tidak pernah mengisinya |
+| 7 | Dua `UPDATE` pengiriman disatukan menjadi satu | menutup keadaan "jawaban tersimpan tetapi status belum" |
+| 8 | Pemeriksaan "sudah pernah dikirim" | sistem lama tidak punya; menekan tombol dua kali mengirim dua kali |
+| 9 | Validasi formulir | sistem lama tidak memeriksa satu isian pun |
+| 10 | `ErrMsg` berbasis teks tidak dibawa | `D-68` |
+
+Butir 5, 6, 8, dan 9 adalah **penambahan**, bukan penyalinan. Keempatnya disebut di sini
+supaya tidak terbaca sebagai perbaikan diam-diam.
+
+Yang **tidak** diubah meski menggoda: pencocokan kata kunci tetap `=`, bukan `LIKE`.
+Mengubahnya memunculkan baris yang dulu tidak pernah muncul, dan pada tabel arsip itu
+tidak dapat ditarik kembali.
+
+### 49.6 Saringan lini bisnis direplikasi meski tampak terbalik
+
+`OperatorID.pyPosition` menentukan lini yang **disembunyikan**: `PA` menyembunyikan Group
+Panel `002` (Personal Accident), `TRAVEL` menyembunyikan `005` (Travel).
+
+Dipasangkan ulang dengan posisi byte sebelum dipercaya, dan pasangannya benar. Direplikasi
+(`P-5` murni), **diuji** supaya tetap terlihat sebagai keputusan, dan **diumumkan di
+layar** supaya berkas yang hilang dari daftar tidak dilaporkan berulang kali sebagai
+kerusakan modul.
+
+Satu hal **diperbaiki**: perbandingan jabatannya tidak lagi peka besar-kecil huruf. Sistem
+lama memakai `==` apa adanya, sehingga jabatan yang tersimpan huruf kecil jatuh ke cabang
+"tanpa saringan" dan petugasnya melihat seluruh lini. Alasannya sama dengan penormalan
+kapitalisasi peran pada `D-58`.
+
+### 49.7 Alamat layanan Arsip adalah DATA, bukan konfigurasi
+
+Alamatnya dibaca dari `POOLDATA.GCNM_CONNECT_REST` lewat seam `ServiceCatalog` yang sudah
+dipakai provider HCC/HCQ dan direktori pegawai — dengan `TYPESERVICE` baru
+**`ARCHIVE-INJECT`**.
+
+Tiga akibat: perpindahan endpoint menjadi pekerjaan DBA, tiap portal boleh punya alamat
+Arsip sendiri, dan **hostname produksi tidak masuk repository** (`D-69`).
+
+**Barisnya belum ada.** Sampai ia masuk, pengiriman gagal dengan **503** dan pesan yang
+menyebut tepat apa yang kurang. Di mode tanpa basis data, perekam dipakai dan jawabannya
+**menyatakan terang** bahwa berkasnya tidak dikirim.
+
+### 49.8 Bentuk API
+
+| Rute | Metode | Isi |
+|---|---|---|
+| `/api/arsip-dokumen/buka` | GET | isi dropdown + cakupan lini pemanggil |
+| `/api/arsip-dokumen` | GET | grid ARCHIVE FILE KLAIM, berhalaman |
+| `/api/arsip-dokumen` | POST | simpan — `id` nol berarti baris baru |
+| `/api/arsip-dokumen/klaim` | GET | calon klaim |
+| `/api/arsip-dokumen/kode-filling` | GET | isi pemilih Kode Filling |
+| `/api/arsip-dokumen/kirim-cabang` | GET | berkas yang belum dikirim |
+| `/api/arsip-dokumen/{id}/kirim-cabang` | POST | kirim satu berkas |
+
+`buka` memakai **GET**, berbeda dari View History Claim yang POST: membuka layar ini tidak
+mengubah apa pun dan tidak memakai jatah, sehingga mengulangnya aman.
+
+Simpan memakai **satu** endpoint untuk sisip dan ubah. Layar lama punya satu tombol "Save
+To Archive" yang melayani keduanya; memisahkannya memaksa layar menebak lebih dulu, dan
+tebakan yang salah menyisipkan baris ganda alih-alih mengubah yang ada.
+
+### 49.9 Ketiga bagian layar menjadi tab, bukan tiga rute
+
+Bagian yang terbuka adalah keadaan **di dalam** layar. Memberi masing-masing alamat
+sendiri akan menjanjikan tautan-dalam yang isinya bergantung pada pencarian yang belum
+dijalankan.
+
+### 49.10 Yang TIDAK dikerjakan
+
+- **Tombol hapus.** Layar lama tidak punya, dan `D-66` menetapkan soft delete menyeluruh —
+  keduanya menuntut keputusan tersendiri.
+- **Kunci idempotensi** pada pengiriman (`10-API-STRATEGY.md` §7): kontrak sistem Arsip
+  tidak menyediakan tempat membawanya. Yang menahan pengiriman ganda adalah pemeriksaan
+  status di server.
+- **Pemeriksaan peran** (`TKT-F3-005`): belum ada di modul mana pun.
+
+## 50. Archive Dokumen Klaim — tiga keputusan setelah selisih UI ditemukan (2026-09-25)
+
+Work Owner menanyakan perbedaan UI terhadap Pega. Pemeriksaan ulang memunculkan empat
+selisih yang belum tercatat, dan tiga di antaranya diputuskan.
+
+### 50.1 Pertanyaan konfirmasi dan jawabannya
+
+| Pertanyaan | Jawaban Work Owner |
+|---|---|
+| Simpan di Pega ikut mengirim ke layanan Arsip, tanpa menandai status — sehingga berkasnya terkirim dua kali. Bagaimana? | **"Samakan dengan Pega — Simpan ikut mengirim"** |
+| Empat tombol Pega belum dibangun. Mana yang dikejar? | **"Export To Excel"** |
+| Tombol Ubah adalah tambahan saya; Pega tidak punya jalur sunting. Dipertahankan? | **"Hapus — samakan dengan Pega"** |
+
+Ketiganya menolak rekomendasi saya. Semuanya dijalankan apa adanya.
+
+### 50.2 Simpan ikut mengirim, dan pengiriman gandanya direplikasi
+
+Sumbernya `Activity/SaveAttachArchiveToDatabase-Act.xml` langkah 5, yang memanggil
+`SendDataArchiveDOcumentByService` tepat setelah prosedur penyisipannya selesai.
+
+**Yang menentukan bentuk implementasinya** adalah apa yang TIDAK dilakukan jalur itu:
+`UpdateDataArchiveKlaimSetelahService` hanya menyentuh `KODESERVICE`, `NOTESERVICE`, dan
+`HITARCHIVE` — bukan `CABANGSTATUS`. Hanya jalur Dokument Cabang yang menandainya.
+
+Karena itu seam `Repo` punya **dua** operasi penyimpanan jawaban, dan keduanya wajib tetap
+berbeda:
+
+| Operasi | Menandai `CABANGSTATUS`? | Dipakai jalur |
+|---|---|---|
+| `StoreReceipt` | **tidak** | Simpan |
+| `MarkSent` | ya, `'1'` | Kirim ke Cabang |
+
+Menyatukannya menjadi satu operasi akan menghapus pengiriman kedua — perubahan perilaku,
+bukan pembersihan. `TestKeduaPenyimpananJawabanBerbedaHanyaPadaCabangStatus` menahannya.
+
+**Kegagalan mengirim TIDAK menggagalkan penyimpanan.** Barisnya sudah tersimpan — di
+sistem lama pun prosedurnya `COMMIT` sebelum langkah pengiriman dijalankan. Mengembalikan
+galat akan membuat layar melaporkan "gagal menyimpan" atas berkas yang sebenarnya ADA, dan
+pengguna akan menyimpannya lagi: baris ganda yang tidak dapat dihapus dari layar ini.
+
+Yang dikerjakan sebagai gantinya: `SaveResponse` membawa `terkirim`, `kode_layanan`,
+`catatan_layanan`, dan `galat_kirim`; pesannya menyebutkan keadaannya; dan berkasnya tetap
+berada di daftar Dokument Cabang sehingga pengirimannya dapat diulang dari sana.
+
+### 50.3 Export To Excel dibangun sebagai CSV
+
+`pxConvertResultsToCSV` pada langkah 17 activity pencarian. Labelnya menyebut Excel karena
+berkas CSV memang dibuka dengan Excel — label dipertahankan (`D-13`), mekanismenya
+mengikuti aslinya.
+
+Membuat `.xlsx` sungguhan menambah satu dependensi DAN mengubah bentuk keluaran terhadap
+sistem lama; keduanya keputusan tersendiri yang tidak diambil di sini.
+
+| Hal | Ketetapan | Alasan |
+|---|---|---|
+| Bentuk | CSV | mengikuti `pxConvertResultsToCSV` |
+| Penyaring | sama persis dengan daftar yang tampil | ekspor yang mengabaikan penyaring menghasilkan berkas yang tidak dapat dicocokkan dengan apa pun di layar |
+| Aliran | potong demi potong, 100 baris | memori tetap datar berapa pun jumlah barisnya |
+| Batas | 50.000 baris, **dengan baris penanda** | `ADR-0011` belum menjawab berapa yang wajib dilayani; pemotongan senyap adalah cacat sistem lama |
+| Bentuk tanggal | `YYYY-MM-DD` | berkas ini diurutkan di Excel; `dd/mm/yyyy` terurut sebagai teks yang salah |
+| Galat | dijawab **sebelum** satu byte pun ditulis | setelah header terkirim, galat tidak dapat lagi dijawab sebagai JSON |
+
+### 50.4 Tombol Ubah dicabut; gridnya baca-saja
+
+Penanda `flags` pada prosedur simpan hanya pernah disetel `"insert"` di seluruh export.
+Cabang `update`-nya ada di prosedur tetapi **tidak pernah dipanggil dari layar ini**.
+
+Yang dicabut hanyalah **jalur layarnya**. Backend tetap menerima `id` bukan nol pada
+endpoint simpan, karena prosedurnya memang punya cabang itu dan tombol "Update Box" yang
+ditunda kemungkinan memakainya. Keadaan itu ditulis terang di `types.ts` — endpoint yang
+tidak punya pemanggil adalah hal yang harus disebut, bukan ditinggalkan untuk ditemukan.
+
+### 50.5 Empat selisih yang TETAP terbuka
+
+| Selisih | Status |
+|---|---|
+| `Tambah`, `Update Box`, `Transfer To Pusat` | **wiring tidak dapat ditelusuri** dari export; ketujuh activity yang dipanggil section sudah dikenali seluruhnya, dan tidak ada yang kedelapan |
+| `Input Kode`, `Generated Kode` pada pemilih kode | menunggu aturan pembentukan kode dari pemilik bisnis |
+| `Refresh` | tidak dibangun sebagai tombol — tabel memuat ulang sendiri setelah menyimpan dan mengirim |
+| Kolom "Desc Archive" pada pemilih kode | masternya tidak ada; diganti jumlah pemakaian |
+
+Ketiga yang pertama tercatat di `permintaan-artefak-pega.md` §4.
+
+### 50.6 Catatan atas cara memverifikasi
+
+`tsc --noEmit | head -30` **menyembunyikan kegagalan**: exit code yang terbaca milik
+`head`. Dua galat tipe lolos karenanya pada sesi sebelumnya.
+
+Sejak keputusan ini: `tsc` dijalankan tanpa pipe, dan exit code-nya dicetak eksplisit.
+Aturan yang sama berlaku untuk setiap alat verifikasi — **exit code pipeline bukan exit
+code alatnya.**

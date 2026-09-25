@@ -3592,3 +3592,96 @@ Nilai kolom `JENIS` dan `STATUS` juga berbahasa Indonesia (`reopen`/`salin`,
 
 Komponennya: `CloseClaimPage` · `RequestDialog` · `PanelPenyaring` · `BarisTindakan` ·
 `LamaKlaim` · `SelisihTerencana`
+
+---
+
+## Modul Archive Dokumen Klaim (`MENU_ID 77`, `archivedokumenklaim`)
+
+Layar lama memakai properti klipboard yang sudah ada alih-alih membuat properti baru.
+Akibatnya **sebelas dari lima belas** nama properti tidak menyatakan isinya — utang teknis
+`03-CURRENT-ARCHITECTURE.md` §4.2 dalam bentuk paling pekat setelah View History Claim.
+
+Sumbernya `RDB List/SearchDataArchiveFillingCase-SQL.xml` (alias kolomnya) dan caption
+harness `PNCArchiveDokumen` (arti bagi pengguna).
+
+### Grid ARCHIVE FILE KLAIM — `POOLDATA.T_CLAIM_ARCHIVE_FILE`
+
+| Arti bagi pengguna | Properti klipboard Pega | Kolom sebenarnya | Nama di kode | Field JSON |
+|---|---|---|---|---|
+| kunci baris | `.IDMasterTONP` (!) | `ID_ARCHIVE` | `ID` | `id` |
+| No Klaim | `.CaseID` | `NOKLAIM` | `ClaimNumber` | `nomor_klaim` |
+| No Polis | `.PolicyNo` | `NOPOLIS` | `PolicyNumber` | `nomor_polis` |
+| Nama Tertanggung | `.NIK` (!) | `TERTANGGUNG` | `InsuredName` | `nama_tertanggung` |
+| Tgl Kejadian | `.DateOfLoss` | `DOL` | `LossDate` | `tanggal_kejadian` |
+| PIC Teknis | `.UserTeknis` | `PICTEKNIK` | `TechnicalPIC` | `pic_teknis` |
+| Tgl Terima Dokumen | `.TanggalCetakDLA` (!) | `TGLTERIMADOK` | `DocumentReceivedDate` | `tanggal_terima_dokumen` |
+| TGL INPUT | `.TanggalAnalystSendRCL` (!) | `TGLINPUT` | `InputDate` | `tanggal_input` |
+| Jumlah Lembar | `.AgingAmount` (!) | `JUMLAHLEMBAR` | `SheetCount` | `jumlah_lembar` |
+| Tipe Dokumen | `.RWID` (!) | `TIPEDOK` | `DocumentTypeCode` | `kode_tipe_dokumen` |
+| Jenis Dokumen | `.TelpTertanggung` (!) | `JENISDOK` | `DocumentKindCode` | `kode_jenis_dokumen` |
+| Nama BOX | `.CABANG` (!) | `NAMABOX` | `BoxName` | `nama_box` |
+| Kode Filling | `.KodeCabang` (!) | `KODEFILLING` | `FillingCode` | `kode_filling` |
+| User Input | `.UserName` | `USERINPUT` | `InputUser` | `user_input` |
+| Tanggal Kirim Dok | `.TanggalAI` (!) | `TGLKIRIMDOK` | `SentDate` | `tanggal_kirim_dokumen` |
+
+Tanda (!) menandai nama yang sama sekali tidak menyatakan isinya.
+
+**Enam yang mudah tertukar, dan perlu diucapkan terpisah:**
+
+- `.NIK` **bukan** NIK. Isinya nama tertanggung.
+- `.CABANG` **bukan** cabang. Isinya nama boks arsip.
+- `.KodeCabang` **bukan** kode cabang. Isinya kode filling.
+- `.TelpTertanggung` **bukan** nomor telepon. Isinya kode jenis dokumen.
+- `.TanggalCetakDLA` **bukan** tanggal cetak DLA. Isinya tanggal terima dokumen.
+- `.AgingAmount` **bukan** nilai uang. Isinya jumlah lembar kertas.
+
+### Enam kolom yang tidak pernah muncul di grid, tetapi menentukan perilaku
+
+| Kolom | Nama di kode | Perannya |
+|---|---|---|
+| `GROUPPANEL` | `GroupPanel` | menentukan **siapa melihat barisnya** di daftar kirim ke cabang |
+| `CABANGSTATUS` | `BranchStatus` | `'0'` belum dikirim, `'1'` sudah |
+| `KODECABANG` | `BranchCode` (pada `Draft`) | tidak dibaca satu pun rule di export |
+| `KODESERVICE` | `ServiceCode` | jawaban `ResponseCode` sistem Arsip |
+| `NOTESERVICE` | `ServiceNote` | jawaban `ResponseMessage` sistem Arsip |
+| `HITARCHIVE` | `Receipt.Request` | **badan permintaan** yang dikirimkan, bukan jawaban |
+
+Yang terakhir itu mudah salah dibaca dari namanya: "hit archive" terdengar seperti hasil,
+tetapi isinya jejak apa yang dikirim.
+
+### Grid Input Data Archive — `POOLDATA.T_CLAIM_PNC`
+
+Kueri lamanya memakai lapisan alias kedua yang berbeda lagi dari grid di atas.
+
+| Arti bagi pengguna | Properti klipboard | Kolom sebenarnya | Nama di kode |
+|---|---|---|---|
+| No Klaim | `.Notes` (!) | `CLAIMNO` | `Number` |
+| No Polis | `.BranchOfBank` (!) | `NOPOLIS` | `PolicyNumber` |
+| Nama Tertanggung | `.NameOfBank` (!) | `QQNAME` | `InsuredName` |
+| Tgl Kejadian | `.DateTransferPajak` (!) | `DATEOFLOSS` | `LossDate` |
+| Bisnis | `.Receiver` (!) | `BUSINESSNAME` | `BusinessName` |
+| Cabang | `.BatasLapor` (!) | `BRANCHNAME` | `BranchName` |
+| Status | `.StatusClaim` (!) | `STATUSWORK` | `WorkStatus` |
+| Posisi Klaim | `.BranchOfBank2` (!) | `V_STS_CLAIM.LSC_NOTE` | `ClaimPosition` |
+| Tanggal Close | `.AcceptedDate` (!) | `CLOSECLAIMDATE` | `CloseDate` |
+| Catatan Close | `.NoteAkseptasi` (!) | `CLOSECLAIMNOTE` | `CloseNote` |
+| PIC Teknis | `.CAUSE_OF_LOSS` (!) | `PICTEKNIK` | `TechnicalPIC` |
+| Group Panel | `.Initial` (!) | `GROUPPANEL` | `GroupPanel` |
+
+**Dua belas dari dua belas menyesatkan.** `.CAUSE_OF_LOSS` untuk PIC Teknis dan
+`.StatusClaim` untuk status alur kerja adalah dua yang paling berbahaya: keduanya
+**bertabrakan dengan konsep lain yang benar-benar ada** di domain ini.
+
+### Istilah yang dipakai di layar, dan yang tidak
+
+| Yang dipakai | Yang TIDAK dipakai | Alasan |
+|---|---|---|
+| **Berkas arsip** | "dokumen" | "dokumen" sudah dipakai modul Daftar Tipe Dokumen untuk hal lain |
+| **Nama BOX** | "kotak", "boks" | teks yang dibaca pengguna di layar lama (`D-13`) |
+| **Kode Filling** | "kode arsip", "kode berkas" | idem |
+| **Kirim ke Cabang** | "kirim ke arsip" | nama yang dipakai activity lama, meski tujuannya sistem Arsip |
+
+Yang terakhir patut disadari: bagian itu bernama "Kirim ke Cabang" tetapi tidak mengirim
+apa pun **ke cabang** — ia menembak satu layanan REST bernama injeksi arsip. Namanya
+dipertahankan karena itu yang dikenal pengguna, dan perbedaannya dicatat di sini alih-alih
+diperbaiki diam-diam.

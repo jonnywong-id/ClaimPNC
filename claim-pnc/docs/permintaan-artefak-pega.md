@@ -417,3 +417,215 @@ Kunci baris pada daftar sendiri sudah aman: `PZINSKEY` dijamin unik oleh Pega.
 | `SubmitTanggalLengkapTKA` dan `NotificationKelengkapanTKA` | sudah ada; isi surel sudah dipetakan |
 | `SendEmailNotification` | **bawaan Pega** (`Pega-IntegrationEngine`), bukan rule buatan sendiri |
 | Kunci dan indeks `POOLDATA.T_CLAIM_TKA_H` | ditarik — lihat §3.1 |
+
+---
+
+## 4. Archive Dokumen Klaim — `MENU_ID 77`
+
+Modulnya **sudah dibangun dan berjalan** dengan rekonstruksi di tempat yang artefaknya
+hilang. Yang diminta di bawah bukan penghalang pekerjaan, melainkan hal-hal yang membuat
+rekonstruksi itu dapat diganti dengan yang sebenarnya — dan satu hal yang memblokir satu
+fungsi.
+
+### 4.1 Koreksi dari pihak kami — dicatat lebih dulu
+
+`Section/KodeArchiveDoc-Section.xml` **bukan** berisi rule bernama `KodeArchiveDoc`. Isinya
+rule bernama **`SecCariKodeArchiveDoc`** (`pzDocumentKey: RULE-HTML-SECTION DATA-PORTAL
+SECCARIKODEARCHIVEDOC`).
+
+Nama berkas dan nama rule berbeda. Ini kasus kedua setelah dua berkas yang sudah tercatat
+pada `D-39`, dan ia menguatkan ketetapan yang sama: **inventaris rule dibangun dari
+`pyRuleName`, bukan dari nama berkas.**
+
+### 4.2 Yang memblokir — ke DBA
+
+**Satu baris di `POOLDATA.GCNM_CONNECT_REST`.**
+
+Fungsi "Kirim ke Cabang" mengirim berkas arsip ke sistem Arsip lewat REST. Alamatnya
+dibaca dari tabel katalog layanan — cara yang sama dengan alamat login HCQ yang sudah ada
+di sana — dengan:
+
+| Kolom | Nilai |
+|---|---|
+| `APP` | alias portal entitas (`ASM`, `SMI`, …) |
+| `TYPESERVICE` | **`ARCHIVE-INJECT`** |
+| `SERVICENAME` | alamat lengkap endpoint injeksi arsip |
+
+Alamatnya **tidak kami tuliskan di sini** sesuai `D-69`; ia ada di rule
+`Connect REST/InjectDataArchiveDokumentKlaim-ConnectREST.xml` pada elemen `pyBaseURL` dan
+`pyResourcePath`, dan Tim Infra sudah memegangnya lewat dokumen serah-terima terpisah.
+
+Sampai barisnya ada, pengiriman gagal dengan **503** dan pesan yang menyebut tepat apa yang
+kurang. Ketiga fungsi lain modul ini berjalan normal.
+
+**Satu pertanyaan yang menyertainya, ke Tim Infra/Security:** rule lamanya
+ber-`pyUseAuthentication=false`. Apakah layanan Arsip memang tanpa autentikasi, atau
+autentikasinya ditangani di lapisan lain? Bila ia menuntut kredensial, kami perlu tahu
+bentuknya sebelum barisnya dipasang.
+
+### 4.3 DDL `POOLDATA.T_CLAIM_ARCHIVE_FILE` — ke DBA
+
+Tabelnya **tidak punya DDL di export** (`R-08`), dan tiga hal bergantung padanya:
+
+| Yang tidak diketahui | Akibatnya hari ini |
+|---|---|
+| Panjang kolom teks | batas panjang isian kami pasang longgar sebagai pengaman, bukan sebagai cerminan skema |
+| Nilai bawaan `CABANGSTATUS` | kami menulisnya **`'0'` eksplisit**; lihat §4.4 |
+| Ada tidaknya constraint unik | tidak diketahui apakah basis data menahan ID ganda; lihat §4.5 |
+
+Yang diminta: `DBMS_METADATA.GET_DDL('TABLE','T_CLAIM_ARCHIVE_FILE','POOLDATA')`.
+
+### 4.4 Prosedur di export lebih tua daripada pemanggilnya — ke Tim Pega
+
+`Database/INSERTDATASFILLINGARCHIVE.prc` menerima **15 parameter + ErrMsg**.
+`RDB List/InsertToClaimArchive-SQL.xml` memanggilnya dengan **17 + out**, menambahkan
+`TKODECABANG` dan `TGROUPPANEL`.
+
+Salah satu dari keduanya bukan versi yang berjalan di produksi. Yang kami ikuti adalah
+**pemanggilnya**, karena `GROUPPANEL` menentukan siapa melihat barisnya di daftar kirim ke
+cabang.
+
+**Yang diminta:** source prosedur yang benar-benar terpasang di produksi hari ini —
+`DBMS_METADATA.GET_DDL('PROCEDURE','INSERTDATASFILLINGARCHIVE','POOLDATA')`.
+
+**Yang perlu dikonfirmasi bersamaan:** prosedur di export **tidak menulis `CABANGSTATUS`
+sama sekali**. Bila bawaan kolomnya bukan `'0'`, maka di sistem lama **setiap berkas yang
+baru diarsipkan tidak pernah muncul di daftar pengiriman ke cabang** — dan tidak pernah
+sampai ke sistem Arsip. Apakah itu keadaan yang sedang berjalan?
+
+### 4.5 Penomoran ID — ke Work Owner, diajukan kembali
+
+Prosedurnya memberi nomor dengan `select max(ID_ARCHIVE) into counts_id ... +1`. Dua
+penyimpanan yang berjalan bersamaan membaca angka yang sama, dan yang kedua **menimpa**
+baris yang pertama. Tidak ada galat dan tidak ada jejak; yang terjadi hanyalah satu berkas
+arsip hilang.
+
+Work Owner memutuskan 2026-09-25: **replikasi apa adanya** (`P-5` murni). Keputusan itu
+dijalankan, dan perilakunya kini sama persis dengan sistem lama.
+
+**Yang kami mintakan sebagai tindak lanjut, bukan sebagai bantahan:**
+
+1. **Ke DBA** — apakah `T_CLAIM_ARCHIVE_FILE` punya constraint unik pada `ID_ARCHIVE`?
+   Bila ya, penyimpanan kedua akan **gagal dengan galat** alih-alih menimpa diam-diam, dan
+   akibatnya jauh lebih ringan daripada yang kami khawatirkan.
+2. **Ke DBA** — berapa baris yang ID-nya pernah tertimpa? Dapat diperiksa dengan
+   membandingkan `COUNT(*)` dan `COUNT(DISTINCT ID_ARCHIVE)`.
+3. **Ke Work Owner** — bila jawaban (1) "tidak ada constraint" dan (2) menunjukkan baris
+   yang hilang, apakah keputusan replikasi ditinjau ulang? Penggantinya satu sequence, dan
+   perubahannya menempuh `D-63`.
+
+### 4.6 Saringan lini bisnis yang tampak terbalik — ke Work Owner dan pemilik bisnis
+
+`Activity/GetDataArchiveCabangKlaim-Act.xml` menyaring daftar kirim ke cabang menurut
+`OperatorID.pyPosition`:
+
+| Jabatan | Klausa | Artinya |
+|---|---|---|
+| `NONMBU` | `GROUPPANEL not in ('002','005')` | tidak melihat PA maupun Travel |
+| `PA` | `GROUPPANEL not in ('002')` | **tidak melihat Personal Accident** |
+| `TRAVEL` | `GROUPPANEL not in ('005')` | **tidak melihat Travel** |
+| lainnya | — | melihat seluruh lini |
+
+Pasangan prakondisi dan nilainya sudah kami periksa ulang dengan posisi byte, dan ia benar
+— jadi ini bukan salah baca.
+
+Direplikasi apa adanya (`P-5`), diuji, dan diumumkan di layar supaya berkas yang hilang
+dari daftar tidak dilaporkan sebagai kerusakan modul.
+
+**Pertanyaannya:** apakah petugas PA memang tidak boleh mengirimkan berkas klaim PA ke
+sistem Arsip, dan petugas Travel tidak boleh mengirimkan berkas Travel? Bila jawabannya
+"seharusnya sebaliknya", perubahannya **satu baris per lini** di kueri kami — tetapi ia
+mengubah siapa mengerjakan apa, sehingga tidak kami ambil sendiri.
+
+### 4.7 Pemilih Kode Filling — ke Tim Pega
+
+Tiga rule dirujuk `SecCariKodeArchiveDoc` dan **tidak ada satu pun di export**:
+
+| Rule | Tipe | Perannya |
+|---|---|---|
+| `SetKodeandSearchArchiveDoc` | Activity | **mengisi daftar kodenya** |
+| `CariKodeArchiveDoc` | (tidak diketahui) | dirujuk dari section yang sama |
+| — | tabel master | tidak ada satu pun tabel kode arsip di 2.634 berkas |
+
+Ketiganya masuk lingkup export ulang berbasis Product rule (`D-39`), jadi **tidak perlu
+permintaan terpisah** — cukup dipastikan ikut terbawa.
+
+Sementara itu daftarnya kami susun dari kode yang sudah pernah dipakai. Bila masternya
+kelak tiba, yang berubah **satu kueri bernama** (`filling_codes`), bukan layarnya.
+
+**Satu pertanyaan ke pemilik bisnis:** tombol "Input Kode" dan "Generated Kode" pada layar
+lama — apakah keduanya membuat kode baru, dan apakah ada aturan pembentukannya? Bila ada,
+kami dapat menggantikan daftar rekonstruksi dengan pembuat kode yang benar.
+
+### 4.8 Yang TIDAK perlu dikirim
+
+- Harness `PNCArchiveDokumen` dan section `SecArchiveDokumen`: sudah dibaca, dan isinya
+  hampir seluruhnya boilerplate template.
+- Kedua RDB List pencarian klaim: sudah dibaca lengkap.
+- `Connect REST/InjectDataArchiveDokumentKlaim`: sudah dibaca; yang kurang hanya baris
+  katalognya (§4.2).
+
+### 4.9 Tiga tombol yang wiring-nya tidak dapat ditelusuri — ke Tim Pega dan pemilik bisnis
+
+Harness `PNCArchiveDokumen` dan section `SecArchiveDokumen` memuat **sebelas** tombol.
+Delapan sudah kami kenali dan bangun. Tiga sisanya tidak dapat dipetakan ke aksi mana pun:
+
+| Tombol | Yang kami ketahui |
+|---|---|
+| **Tambah** | hanya labelnya |
+| **Update Box** | hanya labelnya; namanya menyiratkan pengubahan nama boks secara massal |
+| **Transfer To Pusat** | hanya labelnya; berbeda dari **Transfer To Archive** yang sudah kami bangun |
+
+**Cara kami mencoba menelusurinya, supaya tidak diulang:**
+
+1. Mengambil `<pyActivity>` terdekat di sekitar posisi labelnya — nihil. Definisi label
+   tersimpan di bagian belakang section (posisi byte 1.211.574 ke atas), jauh dari tempat
+   aksinya dipasang (52.322–1.165.508).
+2. Mendaftar **seluruh** `<pyActivity>` di section itu — hasilnya **tujuh**, dan ketujuhnya
+   sudah kami kenali: `FlagForArchiveData`, `SearchDataArchiveFilling`,
+   `SaveAttachArchiveToDatabase`, `GetDataArchiveCabangKlaim`, `ShowInsertArchiveKlaim_Act`,
+   `SetDataArchiveDokumentCase`, `SENDDATACABANGKEARCHIVE`.
+
+Tidak ada activity kedelapan. Jadi ketiga tombol itu **tidak memanggil activity sama
+sekali** — kemungkinannya aksi klien murni, atau Flow Action yang tidak ikut terekspor.
+
+**Yang kami minta, salah satu saja sudah cukup:**
+
+- **Ke pemilik bisnis** — apa yang terjadi saat ketiga tombol itu ditekan? Satu kalimat per
+  tombol sudah memadai, atau tangkapan layar Pega-nya.
+- **Ke Tim Pega** — bila ketiganya memanggil Flow Action, ia termasuk tipe rule yang belum
+  pernah diaudit (`R-16`) dan seharusnya ikut pada export ulang berbasis Product rule
+  (`D-39`). Cukup dipastikan ikut terbawa.
+
+Sampai salah satunya tiba, ketiga tombol itu **tidak kami bangun**. Menebak fungsinya pada
+layar yang menulis ke sistem Arsip milik tim lain bukan risiko yang sepadan.
+
+### 4.10 Dua tombol pemilih Kode Filling — ke pemilik bisnis
+
+`SecCariKodeArchiveDoc` punya **Input Kode** dan **Generated Kode** di samping Cari Kode
+dan Pilih. Keduanya menyiratkan kode arsip memang DIBUAT dari layar itu — dan itulah dasar
+rekonstruksi daftar kode kami (§4.7).
+
+**Pertanyaannya:** apakah ada aturan pembentukan kodenya — misalnya awalan tahun, nomor
+urut per boks, atau kode cabang? Bila ada, kami dapat menggantikan daftar rekonstruksi
+dengan pembuat kode yang benar, dan tombol "Generated Kode" menjadi dapat dibangun.
+
+Bila tidak ada aturan dan kodenya memang diketik bebas, cukup dinyatakan begitu — isian
+Kode Filling kami sudah menerima ketikan langsung, sehingga tidak ada yang perlu berubah.
+
+### 4.11 Satu perilaku yang perlu dikonfirmasi ke pemilik bisnis
+
+Menyimpan berkas di Pega **langsung mengirimkannya** ke sistem Arsip
+(`SaveAttachArchiveToDatabase` langkah 5), tetapi **tidak menandai** `CABANGSTATUS`.
+Akibatnya berkas yang sama dikirim **dua kali**: sekali saat disimpan, sekali lagi dari
+layar Dokument Cabang yang masih memuatnya.
+
+Work Owner memutuskan 2026-09-25 perilaku itu direplikasi apa adanya, dan sudah kami
+terapkan.
+
+**Yang kami mintakan sebagai tindak lanjut, bukan sebagai bantahan:** apakah sistem Arsip
+menerima dokumen yang sama dua kali tanpa menghasilkan dua catatan arsip? Bila ia
+membuat duplikat, yang terlihat bukan cacat aplikasi kami melainkan dua berkas arsip untuk
+satu klaim — dan itu baru ketahuan saat berkas fisiknya dicari.
+
+Ditujukan ke **tim pemilik sistem Arsip**.

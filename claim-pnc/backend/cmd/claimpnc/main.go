@@ -83,6 +83,12 @@ import (
 	"claim-pnc/internal/portal"
 	"claim-pnc/spa"
 
+	"claim-pnc/internal/archivedokumenklaim"
+	archivedokumenklaimgateway "claim-pnc/internal/archivedokumenklaim/gateway"
+	archivedokumenklaimhttp "claim-pnc/internal/archivedokumenklaim/http"
+	archivedokumenklaimmemory "claim-pnc/internal/archivedokumenklaim/repo/memory"
+	archivedokumenklaimsql "claim-pnc/internal/archivedokumenklaim/repo/sqlstore"
+	archivedokumenklaimusecase "claim-pnc/internal/archivedokumenklaim/usecase"
 	authhttp "claim-pnc/internal/auth/http"
 	daftardetaildokumentravelhttp "claim-pnc/internal/daftardetaildokumentravel/http"
 	daftardetaildokumentravelmemory "claim-pnc/internal/daftardetaildokumentravel/repo/memory"
@@ -284,6 +290,7 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+
 	"claim-pnc/internal/riwayatklaim"
 	riwayatklaimhttp "claim-pnc/internal/riwayatklaim/http"
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
@@ -1414,6 +1421,33 @@ func run() error {
 		FallbackErrorWriter: riwayatklaimhttp.ErrorWriter(writePortalAwareError),
 	})
 
+	// Archive Dokumen Klaim. Jembatan pemanggilnya membawa TIGA hal, dan ketiganya
+	// dipakai untuk keperluan yang berbeda:
+	//
+	//	Login       mengisi kolom USERINPUT — siapa yang mengarsipkan berkasnya
+	//	Position    menentukan lini bisnis yang tampak di daftar kirim ke cabang
+	//	BranchCode  mengisi kolom KODECABANG
+	//
+	// Yang kedua itu KENDALI AKSES, bukan kenyamanan tampilan: penyaringannya ditegakkan
+	// di server, sejalan dengan `D-59`.
+	archiveDocumentHandler := archivedokumenklaimhttp.NewHandler(archivedokumenklaimhttp.Options{
+		Service: assembly.archiveDokumenKlaim,
+		GetCaller: func(ctx context.Context) (archivedokumenklaimhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return archivedokumenklaimhttp.Caller{}, false
+			}
+			return archivedokumenklaimhttp.Caller{
+				Login:      baseCtx.User.Login,
+				Position:   baseCtx.User.Position,
+				BranchCode: baseCtx.User.BranchCode,
+			}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: archivedokumenklaimhttp.ErrorWriter(writePortalAwareError),
+	})
+
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
 		// Galatnya dikembalikan lebih dulu, bukan dibungkus: nil bertipe *Service yang
@@ -1628,6 +1662,11 @@ func run() error {
 				// klaim seorang nasabah. Selain sesi, ia dijaga gerbang proteksi data
 				// yang jatahnya berkurang tiap kali layar dibuka.
 				riwayatklaimhttp.Mount(protected, claimHistoryHandler, activePortalDeps)
+
+				// Archive Dokumen Klaim memuat nomor klaim, nomor polis, dan nama
+				// tertanggung, dan salah satu rutenya MENGIRIM berkas ke sistem milik
+				// tim lain. Seluruh rutenya memasang pemeriksaan portal di dalam Mount.
+				archivedokumenklaimhttp.Mount(protected, archiveDocumentHandler, activePortalDeps)
 				// Inbox Laporan Klaim. Seluruh rutenya memasang pemeriksaan portal di
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
@@ -2100,6 +2139,9 @@ type assembly struct {
 
 	// riwayatKlaim melayani layar View History Claim (`MENU_ID 76`).
 	riwayatKlaim *riwayatklaimusecase.Service
+
+	// archiveDokumenKlaim melayani layar Archive Dokumen Klaim (`MENU_ID 77`).
+	archiveDokumenKlaim *archivedokumenklaimusecase.Service
 }
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
@@ -2455,6 +2497,13 @@ type storage struct {
 	claimHistorySelector riwayatklaim.RepoSelector
 
 	claimProtectionSelector riwayatklaim.ProtectionRepoSelector
+
+	// archiveSelector memilih penyimpanan Archive Dokumen Klaim milik satu portal.
+	//
+	// Ia fungsi, bukan repo tunggal, karena berkas arsip adalah data bisnis milik satu
+	// badan hukum (`ADR-0030`). Satu repo bersama akan mengarsipkan berkas satu entitas
+	// ke basis data entitas lain — kebocoran lintas badan hukum yang dicegah `R-20`.
+	archiveSelector archivedokumenklaim.RepoSelector
 }
 
 // build menyusun seluruh modul di balik seam-nya masing-masing.
@@ -2898,6 +2947,17 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	archiveDokumenKlaimService, err := archivedokumenklaimusecase.NewService(
+		archivedokumenklaimusecase.Options{
+			RepoSelector: store.archiveSelector,
+			Gateway:      buildArchiveGateway(store.legacy, logger),
+			Clock:        clock.System{},
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	masterAutoClaimService, err := masterautoclaimusecase.NewService(masterautoclaimusecase.Options{
 		RepoSelector: store.masterAutoClaimSelector,
 	})
@@ -3097,6 +3157,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterPenolakan:           rejectionService,
 		masterPenolakanKomite:     rejectionKomiteService,
 		riwayatKlaim:              claimHistoryService,
+		archiveDokumenKlaim:       archiveDokumenKlaimService,
 		masterDokumenTravel:       travelDocumentService,
 		masterCOLSimasOnline:      simasOnlineCauseOfLossService,
 		daftarTipeDokumen:         documentTypeService,
@@ -3550,6 +3611,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return riwayatklaimsql.NewProtectionRepo(conn), nil
 		}
 
+		store.archiveSelector = func(alias string) (archivedokumenklaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return archivedokumenklaimsql.NewRepo(conn), nil
+		}
+
 		// Master COL Simas Online memakai DUA pemilih di atas koneksi yang sama: satu
 		// untuk tabelnya sendiri, satu untuk POOLDATA.BUSINESS yang hanya dibacanya.
 		// Keduanya memakai pool.For yang sama, sehingga daftar bisnis yang tampil pasti
@@ -3948,6 +4017,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.masterAutoClaimSelector = masterAutoClaimSelectorMemory(cfg.PrimaryPortal)
 		store.claimHistorySelector = claimHistorySelectorMemory(cfg.PrimaryPortal)
 		store.claimProtectionSelector = claimProtectionSelectorMemory(cfg.PrimaryPortal)
+		store.archiveSelector = archiveSelectorMemory(cfg.PrimaryPortal)
 		store.workshopSelector = workshopSelectorMemory(cfg.PrimaryPortal)
 		store.panelSelector = panelSelectorMemory(cfg.PrimaryPortal)
 		store.sparepartSelector = sparepartSelectorMemory(cfg.PrimaryPortal)
@@ -4789,6 +4859,87 @@ func detailTravelSelectorMemory(primaryAlias string) daftardetaildokumentravel.R
 			return existing, nil
 		}
 		fresh := daftardetaildokumentravelmemory.NewRepo(daftardetaildokumentravelmemory.SampleList()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// buildArchiveGateway menyusun seam layanan Arsip milik modul Archive Dokumen Klaim.
+//
+// # Kenapa alamatnya dibaca dari katalog, bukan dari konfigurasi
+//
+// Karena begitulah alamat layanan luar sudah diperlakukan di aplikasi ini — provider
+// HCC/HCQ dan direktori pegawai membacanya dari tabel yang sama. Tiga hal mengikuti dari
+// itu: perpindahan endpoint menjadi perubahan data yang dilakukan DBA, tiap portal
+// entitas boleh punya alamat Arsip sendiri, dan hostname produksi tidak pernah masuk ke
+// berkas yang di-commit (`D-69`).
+//
+// `legacy` adalah pembaca katalog yang dipakai ulang apa adanya dari modul auth. Ia
+// disuntikkan sebagai antarmuka sempit yang dideklarasikan modul archivedokumenklaim
+// sendiri, sehingga kedua modul tetap tidak saling mengimpor — yang tahu keduanya hanyalah
+// berkas perakitan ini.
+//
+// # Kapan perekam dipakai sebagai gantinya
+//
+// Saat koneksi basis data tidak dibuka, sehingga katalognya pun tidak ada. Perekam
+// MENCATAT pengiriman alih-alih mengirimkannya, dan perbedaannya diumumkan di log, bukan
+// dibiarkan senyap: layar yang melaporkan "berkas dikirim ke sistem Arsip" padahal tidak
+// ada yang terkirim adalah kegagalan yang baru ketahuan saat berkas fisiknya dicari.
+func buildArchiveGateway(
+	legacy *sqlstore.Legacy,
+	logger *slog.Logger,
+) archivedokumenklaim.Gateway {
+	if legacy == nil {
+		logger.Warn("layanan Arsip memakai perekam; pengiriman TIDAK sampai ke sistem Arsip",
+			slog.String("modul", "archivedokumenklaim"),
+			slog.String("sebab", "koneksi basis data tidak dibuka, sehingga katalog alamat layanan tidak ada"),
+		)
+		return archivedokumenklaimgateway.NewRecorder()
+	}
+
+	client, err := archivedokumenklaimgateway.NewHTTP(archivedokumenklaimgateway.Options{
+		Catalog: legacy,
+	})
+	if err != nil {
+		// Tidak mungkin terjadi selama legacy bukan nil, dan justru karena itu ia tidak
+		// boleh menjatuhkan aplikasi: modul lain tidak ada urusannya dengan layanan
+		// Arsip, dan mematikan seluruh aplikasi karena satu seam adalah harga yang tidak
+		// sepadan. Pengirimannya gagal dengan pesan yang jelas; sisanya tetap berjalan.
+		logger.Error("klien layanan Arsip gagal dirakit; memakai perekam",
+			slog.String("modul", "archivedokumenklaim"),
+			slog.String("galat", err.Error()),
+		)
+		return archivedokumenklaimgateway.NewRecorder()
+	}
+
+	return client
+}
+
+// archiveSelectorMemory menyusun penyimpanan Archive Dokumen Klaim di memori.
+//
+// Bentuknya sama persis dengan claimHistorySelectorMemory: hanya portal UTAMA yang
+// dilayani, dan alias lain DITOLAK — bukan diam-diam dialihkan ke portal utama.
+// Menjalankan tanpa basis data tidak boleh mengubah aturan pemisahan entitas, karena
+// justru di lingkungan itulah pelanggarannya paling mudah lolos (`R-20`).
+//
+// Instans disimpan per alias supaya berkas yang disimpan pengguna bertahan selama aplikasi
+// hidup; membuat repo baru setiap permintaan akan membuang setiap penyimpanan.
+func archiveSelectorMemory(primaryAlias string) archivedokumenklaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]archivedokumenklaim.Repo{}
+
+	return func(alias string) (archivedokumenklaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := archivedokumenklaimmemory.NewSampleRepo()
 		store[clean] = fresh
 		return fresh, nil
 	}

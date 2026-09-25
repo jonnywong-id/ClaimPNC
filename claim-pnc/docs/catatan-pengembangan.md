@@ -15555,3 +15555,426 @@ tetap tergambar, satu menuntut kerangka sudah ada **sebelum** datanya tiba.
 | `tsc --noEmit` modul ini | bersih |
 | `vitest` RCL/PUCL | **39/39** (naik dari 37) |
 | End-to-end binary baru | `/api/...` salah → `404 application/json` · rute halaman → `200 text/html` |
+
+## 48. Archive Dokumen Klaim — membaca layar yang tidak punya master (2026-09-25)
+
+Modul ke sekian, dan yang pertama menulis ke sistem milik tim lain. Referensinya
+`Harness/PNCArchiveDokumen-Harness.xml`, dan yang dibaca bukan hanya harness itu.
+
+### 48.1 Apa yang ada di export, dan apa yang tidak
+
+Harness-nya 1,3 MiB dan hampir seluruhnya boilerplate template Pega. Yang benar-benar
+menjelaskan perilakunya ada di tempat lain:
+
+| Artefak | Yang dijawabnya |
+|---|---|
+| `RDB List/SearchDataArchiveFillingCase-SQL.xml` | kolom grid ARCHIVE FILE KLAIM, dan tabelnya |
+| `RDB List/SearchArchiveInsert(Polis)-SQL.xml` | grid Input Data Archive |
+| `RDB List/InsertToClaimArchive-SQL.xml` | pemanggilan prosedur simpan, beserta parameternya |
+| `Database/INSERTDATASFILLINGARCHIVE.prc` | **logika simpannya, utuh** |
+| `Activity/SearchDataArchiveFilling-Act.xml` | dua mode pencarian + pengayaan nama dokumen |
+| `Activity/GetDataArchiveCabangKlaim-Act.xml` | saringan jabatan pada daftar kirim ke cabang |
+| `Activity/SENDDATACABANGKEARCHIVE-Act.xml` | urutan kirim lalu tandai |
+| `Connect REST/InjectDataArchiveDokumentKlaim` | alamat dan bentuk layanan Arsip |
+
+Tabelnya **`POOLDATA.T_CLAIM_ARCHIVE_FILE`**, dan ia hanya disebut **tiga berkas** di
+seluruh export — dua SQL rule dan satu prosedur. Itu yang membuat kepemilikannya jelas:
+layar ini satu-satunya penulisnya, sehingga `P-1` terpenuhi tanpa negosiasi.
+
+**DDL-nya tidak ada** (`R-08`). Tidak ada satu pun keterangan panjang kolom, tipe, maupun
+nilai bawaan. Akibatnya nyata dan disebut di §48.5.
+
+### 48.2 Satu berkas bernama salah, dan sebuah pemilih yang tidak punya sumber
+
+`Section/KodeArchiveDoc-Section.xml` ternyata berisi rule bernama **`SecCariKodeArchiveDoc`**
+— nama berkas dan nama rule-nya berbeda. Ini persis kelas cacat export yang `D-39`
+tetapkan: **inventaris dibangun dari `pyRuleName`, bukan dari nama berkas.**
+
+Isinya pemilih Kode Filling: tiga kolom (Kode Archive, Desc Archive, Nama Box) dan empat
+tombol (Cari Kode, **Input Kode**, **Generated Kode**, Pilih). Yang mengisinya activity
+`SetKodeandSearchArchiveDoc` — dan activity itu **tidak ada di export**. Begitu pula
+`CariKodeArchiveDoc`. Ketiganya hanya dirujuk dari dalam satu berkas itu.
+
+Pencarian tabel master kode arsip di seluruh 2.634 berkas: **nihil**.
+
+Work Owner menjawab "samakan dengan PEGA". Yang dapat disamakan adalah **bentuknya**;
+sumber datanya tidak dapat dikarang. Yang dipakai: daftar disusun dari kode filling yang
+**sudah pernah dipakai** baris arsip. Dua tombol "Input Kode" dan "Generated Kode" itulah
+yang membuat rekonstruksi ini beralasan — kode memang dapat DIBUAT dari layar itu, bukan
+hanya dipilih dari master tetap.
+
+Kolom "Desc Archive" tidak digambar; penggantinya jumlah pemakaian, keterangan yang
+benar-benar ada. Dan layar **menyatakan** asal daftarnya, supaya pengguna tidak
+menyimpulkan kode barunya ditolak.
+
+### 48.3 Saringan yang tampak terbalik — dan diperiksa dua kali sebelum dipercaya
+
+`GetDataArchiveCabangKlaim` menyusun saringan dari `OperatorID.pyPosition`:
+
+```
+NONMBU   AND GROUPPANEL not in ('002','005')
+PA       AND GROUPPANEL not in ('002')
+TRAVEL   AND GROUPPANEL not in ('005')
+```
+
+Group Panel `002` adalah Personal Accident dan `005` Travel. Jadi **petugas PA tidak
+melihat berkas PA**.
+
+Pembacaan pertama saya meragukannya — pasangan prakondisi dan nilai bisa saja tergeser
+satu langkah oleh pengurai saya. Jadi saya hitung ulang dengan **posisi byte** setiap
+`<pyStepsActivityName>`, `<pyStepsPreCondParamsWhen>`, dan `<PropertiesValue>`:
+
+```
+16712 STEP -> 17888 VAL not in ('002','005') -> 21434 WHEN pyPosition=="NONMBU"
+22685 STEP -> 24667 WHEN pyPosition=="PA"    -> 25685 VAL not in ('002')
+28709 STEP -> 30003 VAL not in ('005')       -> 32724 WHEN pyPosition=="TRAVEL"
+```
+
+Ketiganya berada di dalam blok langkah yang sama. Pasangannya benar; keanehannya nyata.
+
+Work Owner memilih **replikasi `P-5` murni**. Ia direplikasi, **diuji supaya tetap
+terlihat sebagai keputusan**, dan ditanyakan di `permintaan-artefak-pega.md`.
+
+### 48.4 Prosedur simpan: sumbernya ada, tetapi lebih tua daripada pemanggilnya
+
+`INSERTDATASFILLINGARCHIVE.prc` menerima **15 parameter + ErrMsg**. Pemanggilnya,
+`InsertToClaimArchive-SQL.xml`, mengirim **17 + out** — dua lebih banyak: `TKODECABANG`
+dan `TGROUPPANEL`.
+
+Artinya prosedur di export **revisi yang lebih tua daripada pemanggilnya**. Yang diikuti
+pemanggilnya, dan alasannya bukan selera: **`GROUPPANEL` menentukan siapa melihat
+barisnya** pada daftar kirim ke cabang. Tanpa kolom itu, setiap berkas yang baru
+diarsipkan akan muncul bagi semua orang atau bagi tak seorang pun — bergantung pada
+bacaan `NULL`, yang tidak dapat dipastikan tanpa DDL.
+
+### 48.5 Tiga hal yang prosedurnya TIDAK tulis, dan salah satunya memutus alurnya
+
+| Kolom | Keadaan di `.prc` | Yang dilakukan di sini |
+|---|---|---|
+| `GROUPPANEL` | tidak ditulis | **ditulis** — lihat §48.4 |
+| `KODECABANG` | tidak ditulis | ditulis dari kode cabang pemanggil; **simpulan**, dan ditandai begitu |
+| `CABANGSTATUS` | **tidak ditulis sama sekali** | **ditulis `'0'` eksplisit** |
+
+Yang ketiga itu bukan kerapian. Daftar kirim ke cabang menyaring `CABANGSTATUS = '0'`.
+Bila bawaan kolomnya bukan `'0'` — dan tanpa DDL itu tidak dapat dipastikan — **berkas
+yang baru diarsipkan tidak akan pernah muncul di daftar pengiriman**, sehingga tidak akan
+pernah sampai ke sistem Arsip. Menulisnya eksplisit membuat perilakunya sama pada bawaan
+mana pun.
+
+### 48.6 Penomoran ID: cacatnya direplikasi, atas keputusan Work Owner
+
+```sql
+select count(*) into counts_id from T_CLAIM_ARCHIVE_FILE;
+if counts_id=0 then counts_id := 1;
+elsif flags='insert' then select max(ID_ARCHIVE) into counts_id ...; counts_id:=counts_id+1;
+```
+
+Dua penyimpanan bersamaan membaca angka yang sama, dan yang kedua **menimpa** baris yang
+pertama. Tidak ada galat, tidak ada jejak — satu berkas hilang.
+
+Saya usulkan memperbaikinya sebagai selisih terencana. **Work Owner memilih replikasi apa
+adanya.** Keputusan dihormati; yang dikerjakan sebagai gantinya adalah menyebutnya terang
+di tempat yang akan dibaca orang berikutnya: di kuerinya, di komentar `Save`, dan di
+`permintaan-artefak-pega.md`.
+
+Kedua cabangnya disatukan menjadi `NVL(MAX(ID_ARCHIVE),0)+1` — menghasilkan angka yang
+sama persis, termasuk saat tabelnya kosong.
+
+### 48.7 Kontrak galat `ErrMsg` tidak dibawa
+
+Prosedurnya mengembalikan `'1/'||id` saat berhasil, `'1'` saat mengubah, dan
+`'Error exec Insert Data Filling Archive'` saat gagal — satu kolom teks yang memikul dua
+arti. Dan `WHEN OTHERS` menelan galat apa pun lalu **mengembalikannya sebagai teks**,
+bukan sebagai kegagalan.
+
+Ini persis pola yang `D-68` tetapkan tidak dibawa. Penggantinya galat Go bertipe, dan
+`UPDATE` yang tidak mengenai satu baris pun kini **gagal** alih-alih melaporkan berhasil.
+
+### 48.8 Pengiriman ke sistem Arsip: urutannya dipilih, bukan kebetulan
+
+```
+1 baca barisnya         memastikan ia ada DAN belum pernah dikirim
+2 kirim ke layanan luar DI LUAR transaksi basis data
+3 simpan jawabannya     sekaligus menandai CABANGSTATUS='1'
+```
+
+Langkah 1 **tidak ada** di sistem lama: `SENDDATACABANGKEARCHIVE` menerima ID dari tombol
+lalu langsung mengirim, sehingga menekan tombolnya dua kali mengirim berkas yang sama dua
+kali. Pemeriksaannya ditegakkan **di server** — menonaktifkan tombol di layar hanyalah
+kenyamanan tampilan (`D-59`).
+
+Langkah 2 di luar transaksi karena pemanggilan sistem eksternal tidak boleh menahan kunci
+baris (`10-API-STRATEGY.md` §8.2). Konsekuensinya diterima sadar dan ditulis di kode:
+berhenti tepat antara 2 dan 3 meninggalkan berkas yang sudah sampai tetapi belum
+tertandai. Menukar urutannya hanya memindahkan masalahnya ke sisi yang lebih buruk.
+
+Sistem lama menyimpannya dengan **dua** pernyataan terpisah — jawaban layanan dulu, status
+belakangan. Keduanya disatukan menjadi satu `UPDATE`.
+
+### 48.9 Alamat layanan Arsip: tidak masuk repository
+
+Connect REST-nya menunjuk satu host dengan `pyUseAuthentication=false`. Hostname produksi
+tidak pernah ditulis ke berkas yang di-commit (`D-69`), dan menaruhnya di konfigurasi pun
+hanya memindahkan masalahnya.
+
+Yang dipakai: seam `ServiceCatalog` yang **sudah ada** — provider HCC/HCQ dan direktori
+pegawai membacanya dari `POOLDATA.GCNM_CONNECT_REST` dengan bentuk yang sama. Alamatnya
+menjadi **data**, dan perpindahan endpoint menjadi pekerjaan DBA.
+
+**Barisnya belum ada.** `Database/gcnm_connect_rest.csv` hanya memuat satu baris, yaitu
+login HCQ. Pengiriman karena itu gagal dengan **503** dan pesan yang menyebut tepat apa
+yang kurang — bukan 500 yang akan dilaporkan sebagai bug aplikasi.
+
+### 48.10 Pengayaan nama dokumen: 2N+1 kueri menjadi dua JOIN
+
+Sistem lama menjalankan **dua kueri tambahan untuk setiap baris hasil** (langkah 12–16),
+di dalam perulangan. Di sini keduanya menjadi dua `LEFT JOIN`.
+
+`LEFT`, bukan `INNER`: kueri lama yang tidak mengembalikan baris meninggalkan namanya
+kosong, dan barisnya **tetap tampil**. `INNER JOIN` akan menghilangkan baris yang kode
+dokumennya tidak ada di master — mengubah isi grid, bukan mempercepatnya. Data contoh
+memuat satu baris seperti itu justru untuk menahan perbedaannya.
+
+### 48.11 Empat perbedaan lain terhadap kueri lama, dan alasannya
+
+| Perbedaan | Sebab |
+|---|---|
+| Parameter binding, bukan `{ASIS:...}` | klausa WHERE lama **seluruhnya** dirangkai dari kata kunci yang diketik pengguna |
+| Paginasi + `ORDER BY ARCHIVE_ID DESC` | kueri lama tanpa `MaxRecords` dan **tanpa ORDER BY** sama sekali |
+| Kata kunci dibesarkan hurufnya di **kedua** sisi | lama: `UPPER(NOKLAIM)='<nilai apa adanya>'` — nomor klaim huruf kecil tidak pernah cocok |
+| `trunc(TGLINPUT)` menjadi perbandingan rentang | `trunc` pada kolom mematikan index |
+
+Yang **tidak** diubah, meski menggoda: pencocokan `=`, bukan `LIKE '%…%'`. Mengubahnya
+akan memunculkan baris yang dulu tidak pernah muncul — dan pada tabel arsip yang tumbuh
+terus, itu tidak dapat ditarik kembali diam-diam.
+
+### 48.12 Tiga bagian layar menjadi tiga tab
+
+Layar lama menggambar ketiganya di satu halaman, saling menampakkan dan menyembunyikan
+lewat `FalgArchiveData.FlagASO` dan `.ContractNo`. Itu tab yang digambar dengan cara lain.
+Menirunya apa adanya menghasilkan halaman yang isinya berganti **tanpa ada yang
+menunjukkan bahwa ia berganti**.
+
+### 48.13 Hasil uji
+
+| Lapisan | Hasil |
+|---|---|
+| `go build` · `go vet` · `gofmt` | bersih |
+| `go test ./...` | **204 paket lulus** |
+| `tsc --noEmit` | bersih (exit 0) |
+| `vitest run` seluruh frontend | **988 uji, 60 berkas — lulus** |
+| `vitest` modul ini | **11/11** |
+
+### 48.14 Uji asap terhadap binary — bukan hanya uji unit
+
+Dijalankan `PENYIMPANAN=memori`, lewat HTTP sungguhan:
+
+| Yang diuji | Hasil |
+|---|---|
+| `/api/arsip-dokumen/buka` tanpa sesi | `401 application/json` — bukan `index.html` |
+| alamat `/api` salah ketik | `404 application/json` |
+| rute halaman `/archive-dokumen-klaim` | `200 text/html` — SPA tidak ikut berubah |
+| tanpa header portal | **400 `portal_tidak_disebut`** — tidak jatuh ke portal utama |
+| portal `SMI` yang belum siap | **503 `portal_belum_siap`** |
+| cari `box-a-01` (huruf kecil) | **2 baris** — perbaikan huruf besar-kecil terbukti |
+| cari `BOX-A` (sebagian) | **0 baris** — pencocokan persis, sama seperti Pega |
+| rentang tanggal terbalik | `422` menunjuk isian `tanggal_sampai` |
+| formulir kosong | `422` dengan **tujuh** pelanggaran sekaligus |
+| simpan berkas baru | `201`, ID **6** — melanjutkan nomor tertinggi 5 |
+| kode filling sesudah menyimpan | berkas baru **langsung muncul** di daftar kode |
+| kirim berkas 1 | `200`, jawaban perekam menyatakan terang ia **tidak** dikirim |
+| kirim ulang berkas 1 | **409 `berkas_sudah_dikirim`** |
+| kirim berkas 9999 | **404 `berkas_tidak_ditemukan`** |
+| daftar kirim ke cabang | berkas 2 yang sudah terkirim **tidak muncul** |
+
+## 49. Archive Dokumen Klaim — selisih UI yang baru ketahuan setelah ditanya (2026-09-25)
+
+Work Owner bertanya: "apakah ada perbedaan antara Pega dan Golang dari segi UI-nya?"
+
+Pertanyaan itu memunculkan tiga hal yang **tidak saya laporkan** pada §48, dan salah
+satunya perbedaan perilaku, bukan sekadar tombol yang kurang.
+
+### 49.1 Yang saya lewatkan: Pega punya 11 tombol, saya membangun 5
+
+Penghitungan ulang langsung dari `pyButtonLabel` pada harness dan section:
+
+```
+PNCArchiveDokumen + SecArchiveDokumen
+  Pilih Kode · Detail · Save To Archive · Refresh · Export To Excel · Cari
+  Transfer To Pusat · Tambah · Update Box · Transfer To Archive · Dokument Cabang
+
+KodeArchiveDoc (= SecCariKodeArchiveDoc)
+  Cari Kode · Pilih · Input Kode · Generated Kode
+```
+
+Yang sudah ada: Cari, Detail, Save To Archive, Pilih Kode, Transfer To Archive (sebagai
+"Kirim"), Dokument Cabang (sebagai tab), Cari Kode, Pilih.
+
+**Kenapa ini luput pada §48.** Saya membaca harness untuk mencari *alur* dan *kolom
+grid*, dan menemukan ketiganya dengan benar. Saya tidak pernah menghitung tombolnya.
+Label tombol tersimpan sebagai definisi rule di **bagian belakang** section — pada posisi
+byte 1.211.574 ke atas, jauh dari tempat aksinya dipasang (52.322–1.165.508 — lihat
+§49.3). Pembacaan yang mencari alur tidak melewatinya.
+
+Pelajaran yang dapat dipakai modul berikutnya: **hitung `pyButtonLabel` lebih dulu**, lalu
+cocokkan dengan yang dibangun. Ia satu perintah, dan ia menangkap seluruh permukaan layar
+sekaligus.
+
+### 49.2 Perbedaan perilaku: Simpan di Pega IKUT MENGIRIM
+
+`Activity/SaveAttachArchiveToDatabase-Act.xml` adalah handler **Save To Archive**:
+
+```
+1 flags := "insert" ; USERINPUT := operator
+2 pesan gagal disiapkan lebih dulu
+3 RDB-List  -> InsertToClaimArchive (prosedur simpan)
+4 baca ErrMsg '1/<id>' -> ambil id-nya setelah '/'
+5 Call SendDataArchiveDOcumentByService     <-- KIRIM KE LAYANAN ARSIP
+6 Page-Remove
+```
+
+Langkah 5 itu yang saya lewatkan. Rancangan saya memisahkan Simpan dan Kirim menjadi dua
+tindakan.
+
+**Dan ada lanjutannya yang lebih penting.** `SendDataArchiveDOcumentByService` menyimpan
+jawaban layanan lewat `UpdateDataArchiveKlaimSetelahService` — yang **hanya** menyentuh
+`KODESERVICE`, `NOTESERVICE`, dan `HITARCHIVE`. Ia **tidak** menyetel `CABANGSTATUS`.
+Yang menyetelnya `'1'` hanya jalur `SENDDATACABANGKEARCHIVE`, yaitu layar Dokument Cabang.
+
+Akibatnya di Pega: **satu berkas dikirim dua kali** — sekali saat disimpan, sekali lagi
+dari layar Dokument Cabang yang masih memuatnya karena statusnya belum berubah.
+
+Work Owner memutuskan: **samakan dengan Pega**. Diterapkan apa adanya, termasuk pengiriman
+gandanya.
+
+### 49.3 Tiga tombol yang tidak dapat ditelusuri
+
+`Tambah`, `Update Box`, dan `Transfer To Pusat` — wiring-nya tidak dapat dipetakan dari
+export. Saya coba dua cara dan keduanya gagal:
+
+| Cara | Hasil |
+|---|---|
+| ambil `<pyActivity>` terdekat di sekitar label | nihil — labelnya terpisah jauh dari aksinya |
+| daftar seluruh `<pyActivity>` di section, berurutan | **tujuh** activity, semuanya sudah saya kenali |
+
+Ketujuhnya: `FlagForArchiveData` (×5, pergantian bagian), `SearchDataArchiveFilling` (×4),
+`SaveAttachArchiveToDatabase` (×4), `GetDataArchiveCabangKlaim` (×2),
+`ShowInsertArchiveKlaim_Act` (×2), `SetDataArchiveDokumentCase` (×2),
+`SENDDATACABANGKEARCHIVE` (×2).
+
+Tidak ada activity kedelapan. Jadi ketiga tombol itu **tidak memanggil activity** — mereka
+mungkin aksi klien murni, atau memanggil Flow Action yang tidak ikut terekspor. Saya tidak
+menebak fungsinya; pertanyaannya masuk ke `permintaan-artefak-pega.md`.
+
+### 49.4 Tombol Ubah dicabut
+
+Grid arsip saya beri tombol "Ubah". Pemeriksaan membuktikan itu **tambahan**, bukan
+replikasi: penanda `flags` hanya pernah disetel `"insert"` di seluruh export —
+
+```
+grep -l "HideKTP" Activity/*.xml
+  EksportDataAllKPIPICKlaim · ExportDataDetailKlaim · PNCTATReport1_Act
+  SaveAttachArchiveToDatabase   <-- satu-satunya yang relevan, nilainya "insert"
+```
+
+Ketiga yang lain memakai nama properti yang sama untuk laporan KPI, tidak berhubungan.
+
+Cabang `update` pada prosedurnya **ada tetapi tidak pernah dipanggil dari layar ini**.
+Work Owner memilih menyamakannya dengan Pega, jadi tombolnya dicabut dan gridnya menjadi
+baca-saja.
+
+Backend tetap menerima `id` bukan nol pada endpoint simpan — prosedurnya memang punya
+cabang itu — dan tidak ada satu pun jalur layar yang memakainya sekarang. Itu disebut
+terang di `types.ts`, bukan ditinggalkan diam-diam.
+
+### 49.5 Export To Excel dibangun — dan ia CSV
+
+`Activity/SearchDataArchiveFilling-Act.xml` langkah 17 memanggil `pxConvertResultsToCSV`.
+Jadi tombolnya berbunyi Excel tetapi **isinya CSV**, dan itu dipertahankan: labelnya
+mengikuti layar lama (`D-13`), bentuk keluarannya mengikuti mekanismenya.
+
+Membuat `.xlsx` sungguhan akan menambah satu dependensi DAN mengubah bentuk keluaran
+terhadap sistem lama. Keduanya keputusan tersendiri.
+
+Bentuknya mengikuti ekspor modul Inbox Laporan Klaim: dialirkan potong demi potong
+(`exportChunk` = 100 baris), batas `exportLimit` 50.000 dengan **baris penanda** bila
+terpotong, `Cache-Control: no-store`, dan penyaring yang sama persis dengan daftar yang
+sedang tampil.
+
+Satu hal yang berbeda dari layar: **tanggal ditulis `YYYY-MM-DD`**, bukan `dd/mm/yyyy`.
+Berkas ini diurutkan di Excel, dan bentuk hari-di-depan terurut sebagai teks yang salah —
+persis cacat `TO_CHAR` yang `09-DATABASE-STRATEGY.md` §3.2 hapus dari SQL.
+
+### 49.6 Dua galat tipe yang selama ini luput
+
+`tsc --noEmit` yang saya jalankan pada §48 dilaporkan bersih. Ia **tidak** bersih:
+
+```
+ArchiveDocumentPage.tsx(235,16): TS2375  pagination: ... | undefined
+BranchQueue.tsx(144,10):        TS2375  pagination: ... | undefined
+```
+
+Keduanya melanggar `exactOptionalPropertyTypes`. Penyebab luputnya: perintahnya saya
+rangkai sebagai `npx tsc --noEmit 2>&1 | head -30`, dan **exit code yang terbaca adalah
+milik `head`**, bukan milik `tsc`. Jadi "exit 0" yang saya laporkan itu benar — dan tidak
+berarti apa-apa.
+
+Ini kesalahan alat ukur yang keempat pada proyek ini, dan polanya sama dengan ketiga
+sebelumnya: **hasil dipercaya tanpa memastikan alatnya benar-benar mengukur**. Sejak ini,
+`tsc` dijalankan tanpa pipe dan exit code-nya dicetak eksplisit.
+
+Perbaikannya mengikuti pola modul lain: `pagination` selalu dikirim dengan nilai cadangan
+(`?? 20`, `?? 0`, `?? 1`), tidak pernah `undefined`.
+
+### 49.7 Satu uji yang menangkap kelalaian saya sendiri
+
+`TestTidakAdaKueriYatim` gagal begitu `store_receipt` ditambahkan ke berkas `.sql` tetapi
+belum didaftarkan di daftar kueri yang dipakai:
+
+```
+kueri "store_receipt" ada di berkas .sql tetapi tidak dipanggil kode mana pun
+```
+
+Uji dua arah itu memang ditulis untuk ini. Ia menahan SQL mati yang tetap ikut di-review
+dan dipelihara.
+
+Ditambah satu uji baru yang menahan perbedaan yang paling mudah "dirapikan" keliru:
+
+> `TestKeduaPenyimpananJawabanBerbedaHanyaPadaCabangStatus` — `mark_sent` menandai,
+> `store_receipt` tidak. Keempat kolom lainnya wajib sama. Tanpa uji ini, orang berikutnya
+> yang membaca keduanya berdampingan akan mengira salah satunya salinan lalu
+> menyatukannya — dan pengiriman kedua hilang tanpa satu pun tanda.
+
+### 49.8 Hasil uji
+
+| Lapisan | Hasil |
+|---|---|
+| `go build` · `go vet` · `gofmt` | bersih |
+| `go test ./...` | **203 paket lulus, 0 gagal** |
+| `tsc --noEmit` | **exit 0**, dijalankan tanpa pipe |
+| `vitest run` seluruh frontend | **990 uji, 60 berkas — lulus** |
+| `vitest` modul ini | **13/13** (naik dari 11) |
+
+### 49.9 Uji asap terhadap binary baru
+
+| Yang diuji | Hasil |
+|---|---|
+| simpan berkas | `terkirim: true`, `kode_layanan: "200"` — **Simpan ikut mengirim** |
+| berkas 6 di daftar kirim ke cabang | **`sudah_dikirim: false`** dengan `kode_layanan` sudah terisi — pengiriman ganda Pega terreplikasi |
+| `GET /ekspor` | `200 text/csv`, `Content-Disposition` berisi nama berkas, `Cache-Control: no-store` |
+| isi berkas ekspor | 14 kolom, dua baris, tanggal `YYYY-MM-DD`, sel kosong untuk Tanggal Kirim Dok yang belum ada |
+| ekspor rentang terbalik | **422 JSON**, bukan CSV separuh jadi — galat dijawab SEBELUM satu byte pun ditulis |
+
+### 49.10 Binary dan SPA dibangun ulang
+
+Pada §48 keduanya tertinggal — itulah sebab laporan "Alamat API tidak dikenal". Urutannya
+tidak boleh dibalik:
+
+```
+frontend/  npm run build   -> backend/spa/dist
+backend/   go build        -> claimpnc.exe
+```
+
+Membangun binary lebih dulu menghasilkan aplikasi ber-API baru tetapi **berlayar lama**,
+dan bedanya tidak meninggalkan satu pun galat: menunya tidak muncul, seolah modulnya belum
+dibuat.

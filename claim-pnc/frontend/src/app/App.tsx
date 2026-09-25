@@ -24,6 +24,7 @@ import { DetailPage as CauseOfLossDetailPage } from '@/modules/detail-penyebab-k
 import { ReasMemberPage } from '@/modules/master-reas/ReasMemberPage'
 import { InvestigatorInboxPage } from '@/modules/inbox-investigator/InvestigatorInboxPage'
 import { ReceiveTKAInboxPage } from '@/modules/inbox-receive-tka/ReceiveTKAInboxPage'
+import { ArchiveDocumentPage } from '@/modules/archive-dokumen-klaim/ArchiveDocumentPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 // Dua modul mengekspor komponen bernama sama, dan keduanya memang layar "penyebab
 // kerugian" — yang satu varian Simas Online (MENU_ID 21), yang satu tingkat golongan
@@ -572,6 +573,25 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimHistoryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Archive Dokumen Klaim — `MENU_ID 77`, di bawah kelompok VIEW.
+
+        Satu rute untuk ketiga bagiannya. Bagian yang sedang dibuka adalah keadaan di
+        dalam layar, bukan alamat tersendiri: layar lama pun menampakkan dan
+        menyembunyikan ketiganya di satu halaman, dan memberi masing-masing alamat sendiri
+        akan menjanjikan tautan-dalam yang isinya bergantung pada pencarian yang belum
+        dijalankan.
+      */}
+      <Route
+        path="/archive-dokumen-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ArchiveDocumentPage />
             </Protected>
           </SessionGuard>
         }

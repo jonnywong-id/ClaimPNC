@@ -326,6 +326,14 @@ export const MENU_ROUTES: Record<string, string> = {
   // `InboxRCVApp_Harness` di bawah, yang menunjuk `/inbox/laporan-klaim`.
   // MENU_ID 76 "View History Claim", di bawah kelompok VIEW.
   PNCSearchKlaim: '/riwayat-klaim',
+  // MENU_ID 77 "Archive Dokumen Klaim", di bawah kelompok VIEW, urutan 1167 — tepat
+  // sesudah View History Claim.
+  //
+  // Ia BUKAN Inbox menurut `D-79`: barisnya berkas fisik yang sudah diarsipkan, tidak
+  // hilang setelah ditindaklanjuti, dan tidak punya tenggat. Itu pula yang membedakannya
+  // dari bagian "Kirim ke Cabang" di dalamnya — yang ITU memang daftar pekerjaan, tetapi
+  // ia satu bagian dari layar ini, bukan menu tersendiri di sistem lama.
+  PNCArchiveDokumen: '/archive-dokumen-klaim',
   // MENU_ID 53 "Inbox XOL". Akumulasi klaim per perjanjian Excess of Loss beserta
   // pemberitahuan PLA/DLA kepada reasuradur. MEMBACA SAJA untuk sekarang — keempat
   // tabel yang ditulis sistem lama masih dimiliki Pega selama masa paralel (`P-1`).

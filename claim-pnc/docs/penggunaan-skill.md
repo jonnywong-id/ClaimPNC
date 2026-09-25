@@ -6870,3 +6870,163 @@ menghasilkan galat** melainkan kolom yang tertukar di layar.
 Definition: urutannya memang sudah "baca bukti → tulis uji dari bukti → tulis kode". Ia akan
 mulai berguna pada modul yang **menulis**, tempat perilaku yang benar tidak dapat dibaca dari
 kueri mana pun.
+
+---
+
+## Sesi Archive Dokumen Klaim (2026-09-25)
+
+### Skill yang tersedia, dan yang dipakai
+
+Tidak satu pun skill Matt Pocock terpasang di lingkungan ini — sama seperti sesi-sesi
+sebelumnya. Yang dipakai adalah **tekniknya**, dan dicatat di sini apa adanya supaya tidak
+terbaca seolah skill-nya dipanggil.
+
+| Teknik | Dari skill | Kapan dipakai | Hasilnya |
+|---|---|---|---|
+| **grilling** | `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | tiga pertanyaan konfirmasi yang jawabannya mengubah pekerjaan secara berarti; dua di antaranya dijawab berbeda dari rekomendasi saya |
+| **domain-modeling** | `mattpocock-skills:domain-modeling` | saat menamai isian modul | pemetaan sebelas properti Pega yang namanya tidak menyatakan isinya, ditulis berdampingan di satu tempat |
+| **codebase-design** | `mattpocock-skills:codebase-design` | saat menentukan seam | seam `Gateway` dibuat karena ada **dua** adapter nyata, bukan satu |
+
+### `grilling` — bertanya sebelum menebak
+
+Tiga hal ditanyakan, dan pemilihannya sendiri memakai aturan skill ini: **hanya tanyakan
+yang jawabannya mengubah pekerjaan**, bukan yang punya default yang jelas.
+
+Yang ditanyakan: lingkup (satu bagian atau tiga), sumber pemilih Kode Filling yang
+masternya hilang, dan penomoran ID yang cacat.
+
+Yang **tidak** ditanyakan, karena jawabannya sudah ada di dokumen atau di kode: bentuk
+rute, letak paket, bahasa penamaan, bentuk galat. Keempatnya sudah ditetapkan `D-80`,
+`D-81`, dan pola modul yang ada.
+
+**Dua dari tiga dijawab berbeda dari rekomendasi saya.** Lingkup dijawab "seperti aplikasi
+PEGA" — ketiganya, bukan dua seperti yang saya usulkan — dan penomoran ID dijawab
+"replikasi apa adanya", menolak usul memperbaikinya. Keduanya dijalankan apa adanya.
+
+Manfaatnya terukur: tanpa pertanyaan pertama, saya akan membangun dua dari tiga bagian
+lalu harus membongkar perakitan `cmd` dan rute untuk menambahkan yang ketiga.
+
+### `domain-modeling` — menajamkan nama sebelum menulis tipe
+
+Layar ini memakai properti klipboard yang sudah ada alih-alih membuat properti baru,
+sehingga **sebelas dari lima belas** namanya tidak menyatakan isinya:
+
+```
+.AgingAmount      -> JUMLAHLEMBAR   Jumlah Lembar
+.RWID             -> TIPEDOK        Tipe Dokumen
+.TelpTertanggung  -> JENISDOK       Jenis Dokumen
+.CABANG           -> NAMABOX        Nama BOX
+.KodeCabang       -> KODEFILLING    Kode Filling
+.NIK              -> TERTANGGUNG    Nama Tertanggung
+```
+
+Teknik skill ini yang dipakai: **menyilangkan pernyataan dengan kode** sebelum menamai.
+Nama barunya diambil dari apa yang DIBACA PENGGUNA di kolom grid, bukan dari nama
+propertinya — dan ketiga arahnya ditulis berdampingan di kepala `archivedokumenklaim.sql`,
+satu-satunya tempat ketiganya dapat dibandingkan sekaligus.
+
+Tanpa langkah ini, tipe Go-nya akan membawa `AgingAmount` untuk jumlah lembar — mewariskan
+kekacauan yang justru menjadi alasan migrasi.
+
+### `codebase-design` — satu adapter berarti seam hipotetis
+
+Penyaring yang dipakai: **seam dibuat hanya bila ada dua adapter nyata.**
+
+| Seam | Adapter 1 | Adapter 2 | Nyata? |
+|---|---|---|---|
+| `Repo` | `sqlstore` | `memory` | ya |
+| `Gateway` | klien HTTP | perekam | ya |
+| `Clock` | jam sistem | jam tetap di uji | ya |
+
+Yang **tidak** dibuat: seam untuk pemilih Kode Filling. Ia sempat terpikir — sumbernya
+kelak akan berubah begitu masternya tiba — tetapi hari ini hanya ada satu pengisi, dan
+seam untuk satu pengisi adalah abstraksi yang harus dibaca tanpa memberi apa pun.
+Penggantinya satu kueri bernama yang komentarnya menjelaskan apa yang akan berubah.
+
+Uji deletion pada `Gateway`: bila dihapus, usecase harus tahu alamat, bentuk JSON, batas
+waktu, dan pembedaan "alamat belum ada" dari "layanan menolak". Ia membayar dirinya
+sendiri.
+
+### Kesalahan sendiri pada sesi ini
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Pengurai langkah activity saya memasangkan prakondisi dengan nilai **langkah berikutnya** | hasilnya tampak mustahil (PA menyembunyikan PA), jadi saya hitung ulang dengan posisi byte | hasil yang tampak mustahil layak diperiksa dengan alat kedua sebelum dipercaya — tetapi juga sebelum ditolak |
+| Menulis `formatID` sendiri, menyalin `strconv.FormatInt` | terbaca saat membaca ulang berkasnya | menulis ulang pustaka standar bukan kehati-hatian |
+| Menyisipkan `errNotUsed` hanya supaya impor `errors` tetap terpakai | terbaca saat membaca ulang | impor yang tidak dipakai dihapus, bukan dipelihara dengan variabel boneka |
+| Uji frontend mencari `PT CONTOH KEDUA` di seluruh halaman | vitest gagal: **dua** elemen cocok | pencarian yang tidak membedakan tempat akan tetap lulus meski formulirnya kosong — diperbaiki menjadi pencarian pada `<dt>`-nya |
+
+Keempatnya diperbaiki sebelum diserahkan. Yang pertama paling berharga dicatat: pengurai
+XML buatan sendiri **bukan alat ukur yang sudah tervalidasi**, dan menerima keluarannya
+tanpa pembanding adalah cara yang sama dengan tiga kesalahan alat ukur pada sesi keempat.
+
+### Teknik yang dipakai tanpa nama skill
+
+**Uji asap terhadap binary, bukan hanya uji unit.** Ketiga belas jalur dijalankan lewat
+HTTP sungguhan dengan `PENYIMPANAN=memori`, termasuk jalur penolakan. Yang hanya terbukti
+di sana: rute benar-benar terpasang di `cmd`, penolakan tanpa header portal berbentuk JSON
+dan bukan `index.html`, dan berkas yang baru disimpan langsung muncul di daftar kode
+filling — membuktikan rekonstruksi §49.2 bekerja dari ujung ke ujung.
+
+Uji unit tidak dapat membuktikan satu pun dari ketiganya.
+
+---
+
+## Sesi lanjutan Archive Dokumen Klaim — perbandingan UI (2026-09-25)
+
+### `grilling` — dipakai pada diri sendiri, dan menemukan yang saya lewatkan
+
+Pertanyaan Work Owner "apakah ada perbedaan UI" saya perlakukan sebagai pemicu
+pemeriksaan ulang, bukan sebagai pertanyaan yang dijawab dari ingatan.
+
+Teknik skill yang dipakai: **cari fakta sendiri sebelum menjawab.** Satu perintah
+menghitung `pyButtonLabel` di harness dan kedua section, dan hasilnya langsung memperlihatkan
+selisihnya — Pega 11 tombol, saya 5.
+
+Kalau pertanyaannya saya jawab dari ingatan, jawabannya akan berbunyi "hanya beda tab
+versus satu halaman" — benar pada tingkat alur, dan menyesatkan pada tingkat permukaan.
+
+Manfaat terukurnya: tiga hal yang tidak pernah saya laporkan menjadi terbuka, salah satunya
+**perbedaan perilaku** (Simpan ikut mengirim), bukan sekadar tombol yang kurang.
+
+### `grilling` — ronde kedua ke Work Owner
+
+Setelah selisihnya jelas, tiga pertanyaan diajukan. Pemilihannya memakai aturan yang sama:
+hanya tanyakan yang jawabannya mengubah pekerjaan.
+
+**Ketiganya dijawab berbeda dari rekomendasi saya**, dan ketiganya dijalankan apa adanya.
+Yang paling berarti: Work Owner memilih mereplikasi pengiriman ganda, sementara saya
+merekomendasikan memisahkannya. Keputusan itu membentuk seam `Repo` menjadi punya DUA
+operasi penyimpanan jawaban, bukan satu.
+
+### `codebase-design` — penyaring dua-adapter dipakai lagi
+
+Saat menambahkan `StoreReceipt`, godaan pertamanya adalah memberi `MarkSent` sebuah
+parameter boolean. Yang dipilih: **dua method pada seam**, satu pernyataan SQL masing-masing,
+dan satu helper bersama di dalam repo.
+
+Alasannya bukan selera: seam adalah tempat perilaku diganti, dan perbedaan
+"menandai versus tidak menandai" adalah perbedaan yang dilihat PEMANGGIL — bukan detail
+implementasi. Parameter boolean akan menyembunyikannya di tempat yang salah, dan pemanggil
+berikutnya akan mengirim `true` karena itu yang tampak lebih lengkap.
+
+### Kesalahan sendiri pada sesi ini — yang keempat dari jenis yang sama
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Melaporkan `tsc --noEmit` bersih padahal ada **dua** galat tipe | dijalankan ulang tanpa pipe | `cmd \| head` mengembalikan exit code **head**, bukan exit code cmd — "exit 0" yang saya laporkan benar dan tidak berarti apa-apa |
+| Melewatkan 6 tombol dan 1 perbedaan perilaku pada laporan §48 | pertanyaan Work Owner | membaca untuk mencari ALUR tidak sama dengan membaca untuk mencari PERMUKAAN; hitung `pyButtonLabel` lebih dulu |
+| Menulis `\n` di dalam string Python yang menghasilkan berkas TS | vitest gagal mengurai | berkas yang dibuat lewat skrip perlu dibaca ulang, bukan dipercaya karena skripnya selesai tanpa galat |
+
+Yang pertama adalah **kesalahan alat ukur keempat** pada proyek ini, dan polanya persis
+sama dengan ketiga sebelumnya (lebar tabel `.docx`, penanda korelasi harness, pengurai
+langkah activity): **hasil dipercaya tanpa memastikan alatnya benar-benar mengukur.**
+
+Aturan yang berlaku sejak sekarang: setiap alat verifikasi dijalankan **tanpa pipe**, dan
+exit code-nya dicetak eksplisit.
+
+### Satu uji yang membayar dirinya sendiri
+
+`TestTidakAdaKueriYatim` — uji dua arah antara kueri di berkas `.sql` dan kueri yang
+dipanggil kode — gagal tepat saat `store_receipt` ditambahkan tetapi belum didaftarkan.
+Ia menangkap kelalaian saya dalam hitungan detik, sebelum satu pun uji perilaku dijalankan.
