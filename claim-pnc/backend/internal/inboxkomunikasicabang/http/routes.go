@@ -38,12 +38,16 @@ import (
 // (`TKT-F3-004`) — butir menunya di `M_OTORISASI_PNC` yang menentukan siapa melihatnya
 // sekarang.
 //
-// Yang membatasi taruhannya, dan keduanya perlu disebut apa adanya:
+// Sejak 2026-09-24 taruhannya NAIK: modul ini tidak lagi membaca saja. Dua rutenya menulis,
+// dan salah satunya tidak dapat dibatalkan. Yang membatasinya tinggal satu hal, dan ia harus
+// disebut apa adanya:
 //
-//   - Modul ini MEMBACA saja. Tidak ada satu pun aksi yang mengubah data.
-//   - Batas cabang ditegakkan di SETIAP rute yang menyentuh data, termasuk layar detail dan
-//     ekspor — bukan hanya di daftar. Batas yang berlaku pada daftar tetapi tidak pada
-//     detail bukan batas sama sekali; ia hanya menyulitkan orang yang patuh.
+//   - Batas cabang ditegakkan di SETIAP rute yang menyentuh data — daftar, detail, ekspor,
+//     DAN kedua rute tulis. Pada rute tulis ia diselesaikan ULANG, bukan dipercaya dari
+//     permintaan sebelumnya, dan ikut sebagai penyaring pada pernyataan SQL-nya sendiri.
+//     Batas yang berlaku pada pembacaan tetapi tidak pada penulisan bukan batas sama sekali:
+//     balasan yang telanjur tersimpan di percakapan cabang lain tidak dapat ditarik kembali
+//     lewat layar mana pun.
 //
 // # Kenapa jalurnya tanpa /v1
 //
@@ -74,12 +78,38 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// terlewat. Satu uji mengunci itu.
 		perPortal.Get("/inbox-komunikasi-cabang/ekspor", h.Export)
 
-		// Aksi tulis sistem lama. Rutenya ADA supaya tindakan di layar menjawab dengan
-		// alasan, bukan dengan "halaman tidak ditemukan" — lihat Handler.RejectWrite.
+		// DUA aksi yang MENULIS, ditambahkan 2026-09-24.
 		//
-		// Empat yang nyata di layar ini: "Kirim Pesan", "Balas", "Selesai Komunikasi" yang
-		// mengubah kanal percakapan sehingga barisnya HILANG dari kedua tab, dan "Tambah".
-		// Seluruhnya menyentuh tabel yang selama masa paralel masih dimiliki Pega (`P-1`).
-		perPortal.Post("/inbox-komunikasi-cabang/tindakan", h.RejectWrite)
+		// Keduanya bersarang di bawah nomor percakapannya, bukan berdiri sebagai satu
+		// endpoint "tindakan" bersama. Alasannya bukan kerapian: satu endpoint yang menerima
+		// nama tindakan sebagai isian akan membuat "balas" dan "tutup percakapan" berbagi satu
+		// bentuk permintaan, satu bentuk jawaban, dan satu baris di log akses — padahal yang
+		// satu dapat diulang dan yang satu tidak dapat dibatalkan.
+		//
+		// POST, bukan PUT maupun DELETE. Keduanya peristiwa yang ditambahkan pada percakapan,
+		// bukan penggantian maupun penghapusan sumber daya (`10-API-STRATEGY.md` §2); dan
+		// `D-66` melarang penghapusan fisik, sehingga DELETE akan menjanjikan hal yang memang
+		// tidak terjadi.
+		perPortal.Post("/inbox-komunikasi-cabang/komunikasi/{komunikasi}/balas", h.Reply)
+		perPortal.Post("/inbox-komunikasi-cabang/komunikasi/{komunikasi}/selesai", h.Finish)
+
+		// Pembuatan percakapan BARU — tombol "Kirim Pesan" pada form yang dibuka "Tambah".
+		//
+		// Ia TIDAK bersarang di bawah nomor percakapan, dan itu konsekuensi langsung dari apa
+		// yang dilakukannya: nomornya belum ada sampai permintaan ini selesai.
+		perPortal.Post("/inbox-komunikasi-cabang/pesan", h.SendMessage)
+
+		// Daftar cabang untuk pemilih tujuan pada form itu.
+		//
+		// GET, dan TIDAK disaring menurut cabang pemanggil — yang dibatasi adalah percakapan,
+		// bukan daftar cabang. Menyaringnya akan mengosongkan pemilihnya bagi setiap petugas
+		// cabang, sehingga tidak seorang pun dapat mengirim pesan ke mana pun.
+		perPortal.Get("/inbox-komunikasi-cabang/cabang", h.Branches)
+
+		// CATATAN. Rute `POST /inbox-komunikasi-cabang/tindakan` DIHAPUS pada 2026-09-24.
+		//
+		// Ia menjawab keempat tindakan tulis layar lama dengan alasan, dan keempatnya kini
+		// benar-benar bekerja. Yang terakhir menyusul — "Tambah" ternyata tombol yang hanya
+		// MEMBUKA form, tidak menyentuh peladen sama sekali.
 	})
 }

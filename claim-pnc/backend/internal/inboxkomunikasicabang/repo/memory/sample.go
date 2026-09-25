@@ -213,3 +213,96 @@ func SampleRows() []Row {
 		},
 	}
 }
+
+// SampleHistory adalah baris contoh `POOLDATA.M_KOMUNIKASI_CABANG` — UTAS percakapan.
+//
+// # Kenapa ia ada sejak 2026-09-24
+//
+// Karena layar detail membaca tabel ini, bukan tabel percakapan. Penyimpanan tanpa riwayat
+// akan menampilkan layar detail yang KOSONG untuk setiap percakapan contoh — dan uji yang
+// memakainya gagal karena alasan yang tidak ada hubungannya dengan yang diujinya.
+//
+// # Kesejajaran yang dijaga
+//
+// Setiap baris di sini menunjuk percakapan yang BENAR-BENAR ada di SampleRows, dan isinya
+// sejalan: percakapan yang sudah dijawab punya DUA ucapan — pesan lalu balasan — sementara
+// yang belum dijawab punya satu.
+//
+// Tanggalnya pula dijaga sejalan: ucapan pertama bertanggal sama dengan `CreatedAt` barisnya,
+// ucapan kedua dengan `RepliedAt`. Riwayat yang tanggalnya menyimpang dari kepalanya akan
+// membuat utas terbaca dengan urutan yang tidak masuk akal.
+//
+// # SATU percakapan sengaja TIDAK punya riwayat
+//
+// KOM-0003 punya kepala tetapi tidak satu pun baris di sini. Ia saksi keadaan yang nyata di
+// produksi: percakapan yang dibuat lewat jalur lain, atau data warisan sebelum tabel riwayat
+// dipakai, punya kepala tanpa utas.
+//
+// Tanpa saksi itu, "utas kosong" dan "percakapan tidak ada" tidak dapat dibuktikan berbeda —
+// dan menyamakan keduanya akan menjawab "tidak ditemukan" untuk percakapan yang nyata.
+func SampleHistory() []ReplyHistory {
+	return []ReplyHistory{
+		{
+			ConversationID: "KOM-0001",
+			Sender:         "pictekniks",
+			Message:        "Mohon konfirmasi kelengkapan dokumen survei untuk objek kedua.",
+			Channel:        "1",
+			CreatedAt:      "2026-09-01 08:15",
+		},
+
+		// KOM-0002 — DUA ucapan: pesannya, lalu balasannya.
+		{
+			ConversationID: "KOM-0002",
+			Sender:         "adminpnc",
+			Message:        "Dokumen sudah kami terima, mohon tunggu proses akseptasi.",
+			Channel:        "1001",
+			CreatedAt:      "2026-09-02 09:30",
+		},
+		{
+			ConversationID: "KOM-0002",
+			Sender:         "pictekniks",
+			Message:        "Baik, kami tunggu kabarnya.",
+			Channel:        inboxkomunikasicabang.CaseOpen,
+			CreatedAt:      "2026-09-03 10:05",
+		},
+
+		// KOM-0004 — dua ucapan pula.
+		{
+			ConversationID: "KOM-0004",
+			Sender:         "adminpnc",
+			Message:        "Mohon lengkapi berita acara kerugian.",
+			Channel:        "1001",
+			CreatedAt:      "2026-09-05 11:00",
+		},
+		{
+			ConversationID: "KOM-0004",
+			Sender:         "pictekniks",
+			Message:        "Berita acara sudah diunggah hari ini.",
+			Channel:        inboxkomunikasicabang.CaseOpen,
+			CreatedAt:      "2026-09-12 16:20",
+		},
+
+		{
+			ConversationID: "KOM-0005",
+			Sender:         "pictekniks",
+			Message:        "Tertanggung menanyakan perkiraan tanggal pembayaran.",
+			Channel:        "1",
+			CreatedAt:      "2026-09-10 07:50",
+		},
+
+		{
+			ConversationID: "KOM-0006",
+			Sender:         "adminpnc",
+			Message:        "Mohon kirim ulang rincian biaya perbaikan.",
+			Channel:        "1001",
+			CreatedAt:      "2026-09-06 13:15",
+		},
+		{
+			ConversationID: "KOM-0006",
+			Sender:         "adminpnc",
+			Message:        "Rincian menyusul.",
+			Channel:        inboxkomunikasicabang.CaseOpen,
+			CreatedAt:      "2026-09-07 08:00",
+		},
+	}
+}

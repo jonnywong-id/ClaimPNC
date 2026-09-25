@@ -58,10 +58,10 @@ var listColumns = []string{
 // Ia BERBEDA dari listColumns, dan perbedaannya bukan kelalaian — layar detail tidak
 // menggambar nomor percakapan (ia judulnya), tidak menggambar kode tujuan, dan tidak
 // menggambar status. Ketiganya tidak dipilih.
-var threadColumns = []string{
-	"CREATED_AT", "ORIGIN_CODE", "SENDER_OPERATOR", "MESSAGE",
-	"REPLY_MESSAGE", "REPLIER_NAME", "REPLIED_AT",
-}
+var threadColumns = []string{"CREATED_AT", "SENDER_OPERATOR", "MESSAGE"}
+
+// headerColumns adalah kedua alias kueri kepala percakapan.
+var headerColumns = []string{"ORIGIN_CODE", "RECIPIENT_CODE"}
 
 // attachmentColumns adalah kelima alias yang dikembalikan kueri lampiran.
 var attachmentColumns = []string{
@@ -83,10 +83,39 @@ var countQueries = []string{"count_answered", "count_not_answered"}
 // Ia didaftar di satu tempat supaya uji dapat memeriksa SETIAP satunya, bukan hanya yang
 // kebetulan teringat. Kueri yang lupa menyaring cabang tidak menghasilkan satu pun galat —
 // ia hanya menampilkan percakapan cabang lain, dan itu kelas cacat yang `R-20` catat.
+//
+// KEDUA PERNYATAAN TULIS ikut di sini, dan justru merekalah yang paling menuntutnya: batas
+// yang hilang pada pembacaan menampilkan percakapan cabang lain, sementara batas yang hilang
+// pada penulisan MENGUBAHNYA — dan balasan yang telanjur tersimpan di percakapan cabang lain
+// tidak dapat ditarik kembali lewat layar mana pun.
 var branchFilteredQueries = []string{
 	"list_not_answered", "list_answered",
 	"count_answered", "count_not_answered",
-	"detail_thread", "detail_attachments",
+	"detail_header", "detail_thread", "detail_attachments",
+	"reply_update", "finish_update",
+}
+
+// writeQueries adalah pernyataan yang MENGUBAH data.
+//
+// Ia didaftar terpisah karena dua aturan hanya berlaku padanya: tabelnya tidak boleh diberi
+// alias (PostgreSQL menolak awalan alias pada klausa SET, `D-20`), dan seluruhnya wajib
+// menyaring kanal percakapan supaya percakapan yang sudah ditutup tidak dapat diubah lagi.
+//
+// `reply_history_insert` TIDAK di sini meski ia menulis: ia INSERT murni tanpa klausa WHERE,
+// sehingga tidak ada yang dapat disaring. Yang menjaganya adalah transaksi — ia hanya ikut
+// tersimpan bila reply_update mengenai satu baris yang lolos batas cabang.
+var writeQueries = []string{"reply_update", "finish_update"}
+
+// insertQueries adalah pernyataan yang MENYISIPKAN baris.
+//
+// Ia terpisah dari writeQueries karena aturannya berbeda: INSERT tidak punya klausa WHERE,
+// sehingga tidak ada batas cabang maupun kanal yang dapat disaring padanya. Yang menjaganya
+// adalah TRANSAKSI dan nilai yang disisipkan — bukan penyaring.
+//
+// Didaftar supaya uji dapat memastikan tidak satu pun di antaranya merangkai nilai ke dalam
+// teksnya sendiri, dan supaya INSERT yang ditambahkan kelak ikut terperiksa.
+var insertQueries = []string{
+	"reply_history_insert", "message_insert", "message_history_insert",
 }
 
 // loadQueries membaca setiap berkas .sql dan memecahnya pada penanda "-- name: <nama>",

@@ -2052,3 +2052,185 @@ it('memperingatkan bila kode cabang pemanggil tidak terbaca', ...)
 it('menggambar TIGA kolom pada tab "Belum Dijawab", tanpa kolom balasan', ...)
 it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)
 ```
+
+### Tambahan aksi tulis (2026-09-24)
+
+Nama yang lahir bersama tombol "Balas" dan "Selesai Komunikasi".
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `Param.Pesan` | `ReplyInput.Message` | — |
+| `Param.IDKomunikasi` | `ReplyInput.ID` | — |
+| `tempReply.ADDRESS` | `ReplyCommand.Message` | nama Pega menyebut "ADDRESS" untuk isi pesan; tidak dibawa (`D-19`) |
+| `tempReply.M_SURVEY_ID` | `ReplyCommand.ID` | menyebut "SURVEY" untuk nomor percakapan; tidak dibawa (`D-19`) |
+| `tempReply.NAME` / `Param.kodecabang` | `inboxkomunikasicabang.CaseOpen` | **perangkap penamaan**: isinya `CASEID`, bukan kode cabang |
+| `temp.AnalystTransferDate` | `ReplyCommand.RepliedAt` | menyebut "Analyst" untuk waktu balasan; tidak dibawa |
+| `OperatorID.pyUserIdentifier` | `Caller.Login` | — |
+| `OperatorID.pyUserName` | `Caller.Name` | — |
+| `REPLYFROM` (kolom) | `Conversation.ReplyFrom` | kolom basis data tetap Indonesia (`D-80`) |
+| `REPLYFROMNAME` (kolom) | `Conversation.ReplierName` | — |
+| `KOMUNIKASISTATUS = '1'` | `StatusAnswered` | artinya baru diketahui 2026-09-24 |
+| `CASEID = 'CABANG SELESAI'` | `CaseClosed` | — |
+| `EndKomunikasiCabang` (activity) | `Service.Finish` · `Repo.Finish` | — |
+| `PNCReplyMessageCabang` (activity) | `Service.Reply` · `Repo.Reply` | — |
+
+Nama field JSON tetap berbahasa Indonesia — ia kontrak (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `pesan` (badan permintaan balas) | isi balasan |
+| `komunikasi` (jawaban aksi) | nomor percakapan yang dikenai tindakan |
+| `pesan` (jawaban aksi) | kalimat siap baca tentang apa yang terjadi |
+| `balas_tersedia` | **menggantikan** `tindakan_masih_di_pega`, artinya KEBALIKAN |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/balas
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/selesai
+```
+
+Nama uji yang lahir bersamanya:
+
+```go
+func TestAReplyMovesTheConversationFromOneTabToTheOther(t *testing.T)
+func TestAReplyToAClosedConversationIsRefused(t *testing.T)
+func TestFinishingATwiceIsRefusedInsteadOfSilentlySucceeding(t *testing.T)
+func TestReplyMeasuresLengthInCharactersNotBytes(t *testing.T)
+func TestEveryWriteStatementRefusesAClosedConversation(t *testing.T)
+func TestWriteStatementsCarryNoTableAlias(t *testing.T)
+```
+
+```ts
+it('menggambar kotak "Masukkan Balasan" yang benar-benar dapat dipakai', ...)
+it('meminta penegasan lebih dulu, tidak langsung menutup percakapan', ...)
+it('menahan kalimat yang sudah diketik bila balasannya ditolak', ...)
+```
+
+> Uji `it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)`
+> yang tercantum di atasnya **dihapus** pada 2026-09-24: pernyataannya tidak lagi benar.
+
+### Tambahan "Kirim Pesan" (2026-09-24, lanjutan)
+
+Nama yang lahir bersama form pembuatan percakapan baru. Tujuh di antaranya menggantikan nama
+Pega yang **seluruhnya** menyebut hal lain.
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `TempInputKomunikasi.CaseID` | `NewMessageInput.Destination` | "CaseID" untuk sebuah pilihan PUSAT/CABANG |
+| `TempInputKomunikasi.CityID` | (isian pemilih cabang di layar) | "CityID" untuk sebuah cabang |
+| **`TempInputKomunikasi.City`** | **`NewMessageInput.Message`** | "City" untuk **isi pesan** |
+| `TempInputKomunikasi.DistrictID` | `NewMessageInput.BranchCode` | "DistrictID" untuk kode cabang |
+| `TempInputKomunikasi.District` | `BranchOption.Email` | "District" untuk alamat surel |
+| `TempInputKomunikasi.pyLabel` | (tidak dibawa) | penanda keadaan layar; di React `useState` |
+| `TempInputKomunikasi2.pxResults[].City` | `Destinations()` | daftar dua pilihan dropdown |
+| `TempResultSurveyor.pxResults` | `[]BranchOption` | halaman sumber autocomplete |
+| `.BRANCHNAME` | `BranchOption.Name` | — |
+| `.BRANCH` | `BranchOption.Code` | — |
+| `.EMAIL` | `BranchOption.Email` | — |
+
+Tujuh properti `TempEmail.*` pada activity, dan tidak satu pun berarti seperti namanya:
+
+| Pega | Kolom yang diisinya | Kode baru |
+|---|---|---|
+| `TempEmail.IDSurvey` | `CASEID` | `CaseOpen` |
+| `TempEmail.BodyLetterAttn` | `SENDER` | `Caller.Login` |
+| **`TempEmail.BodyLetterEmail`** | **`MESSAGE`** | `NewMessageCommand.Message` |
+| `TempEmail.BodyLetterOP` | `SENDERNAME` | `Caller.Name` |
+| **`TempEmail.BranchToTransfer`** | **`KOMUNIKASISTATUS`** | `StatusNotAnswered` |
+| `TempEmail.InsuredPIC` | `COMMUNICATE_TO` | `NewMessageCommand.RecipientCode()` |
+| `TempEmail.IDSurveyCase` | `COMMUNICATE_FROM` | `BranchFilter.Code` |
+
+Rule dan artefak:
+
+| Pega | Kode baru |
+|---|---|
+| `PNCSendMessageKomunikasiCabang` (activity) | `Service.SendMessage` · `Repo.SendMessage` |
+| `CNMShowInsertKomunikasi_dt` (data transform) | `useState` pada layar — tidak ada padanan di peladen |
+| `IsInsertKomunikasi` / `IsUpdateKomunikasi` (when) | idem |
+| `InsertMessageCABANG_PNC` (SQL) | `message_insert` |
+| `GetIDMaxKom_cabang` (SQL) | `message_max_id` |
+| `ReplyKomunikasiCabang` (SQL, jalur kirim) | `message_history_insert` |
+| *(kueri pemasok cabang — tidak ada di export)* | `branch_options` — **penyaringnya ditebak** |
+
+Nama field JSON tetap Indonesia (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `tujuan` (permintaan) | `"PUSAT"` atau `"CABANG"` |
+| `cabang` (permintaan) | kode cabang tujuan |
+| `pesan` (permintaan) | isi pesannya |
+| `tujuan` (jawaban `/cabang`) | kedua pilihan dropdown |
+| `cabang` (jawaban `/cabang`) | daftar cabang — **tanpa alamat surel** |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/pesan     membuat percakapan baru (201)
+GET  /api/inbox-komunikasi-cabang/cabang    daftar cabang + kedua tujuan
+```
+
+Uji yang lahir bersamanya:
+
+```go
+func TestAMessageToTheBranchNeedsABranchChosen(t *testing.T)
+func TestABranchLeftOverFromASwitchedDestinationIsIgnoredNotRefused(t *testing.T)
+func TestTheBranchListIsNotFilteredByTheCallerBranch(t *testing.T)
+func TestANewMessageCanBeRepliedToImmediately(t *testing.T)
+func TestTheNewMessageInsertLeavesTheCreatedDateToTheDatabase(t *testing.T)
+func TestEveryLoadedQueryIsListedInAllQueryNames(t *testing.T)
+func TestTheBranchPickerNeverLeaksBranchEmailAddresses(t *testing.T)
+func TestTheRemovedActionRouteIsGone(t *testing.T)
+```
+
+```ts
+it('menampilkan form saat "Tambah" ditekan, bukan menolak dengan alasan', ...)
+it('tidak menyentuh peladen hanya untuk membuka formnya', ...)
+it('menyembunyikan pemilih cabang selama tujuannya PUSAT', ...)
+it('mengosongkan cabang yang tertinggal saat tujuannya kembali ke PUSAT', ...)
+it('TIDAK lagi menggambar panel "Yang masih dikerjakan lewat Pega"', ...)
+```
+
+> **DICABUT pada 2026-09-24:** `RejectWrite` · rute `/tindakan` · `ErrWriteNotAvailable` ·
+> `CodeWriteNotAvailable` (`"belum_tersedia"`) · `WriteActionsNotice` ·
+> `useKomunikasiCabangAction`. Keempat tindakan tulis layar lama kini bekerja.
+
+### Koreksi utas layar detail (2026-09-24, lanjutan kedua)
+
+Layar detail membaca **`POOLDATA.M_KOMUNIKASI_CABANG`**, bukan `M_KOMUNIKASI_PNC`. Pemetaannya:
+
+| Pega | Kolom | Kode baru |
+|---|---|---|
+| `.CloseClaimDate` | `CREATEDDATE` *(nama DITEBAK)* | `ThreadMessage.CreatedAt` |
+| `.UserName` | `SENDER` | `ThreadMessage.SenderOperator` |
+| `.Email` | `MESSAGE` | `ThreadMessage.Message` |
+| `TEMPHISTORYCABANGDETAIL.pxResults` | — | `[]ThreadMessage` |
+| `GetInboxKomunikasiCabang_detail` *(hilang)* | — | `detail_thread` |
+| *(tidak ada padanan)* | — | `detail_header` — pemeriksa keberadaan |
+| `DETAILKOMUNIKASICABANG_ACT` | — | `Repo.Detail` |
+
+Isian JSON tiap ucapan menyusut menjadi **tiga**, persis kolom section-nya:
+
+| Field JSON | Isinya |
+|---|---|
+| `tanggal` | tanggal ucapannya |
+| `pengirim` | Operator ID, **apa adanya** — tidak dirakit seperti di grid |
+| `pesan` | isi ucapannya |
+
+> **DICABUT:** `jawaban` · `penjawab` · `tanggal_jawaban` · `asal` · `operator_pengirim` pada
+> ucapan. Balasan BUKAN isian pada sebuah ucapan — ia ucapan tersendiri.
+
+Uji yang lahir bersamanya:
+
+```go
+func TestTheThreadGrowsWithEveryUtteranceNotJustTheLatestOne(t *testing.T)
+func TestAConversationWithoutAnyHistoryIsStillFound(t *testing.T)
+func TestTheConversationOriginComesFromTheHeaderNotTheThread(t *testing.T)
+func TestTheThreadIsReadFromTheHistoryTableNotTheConversationTable(t *testing.T)
+func TestEachUtteranceCarriesExactlyTheThreeFieldsTheSectionDraws(t *testing.T)
+```
+
+```ts
+it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', ...)
+it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', ...)
+```

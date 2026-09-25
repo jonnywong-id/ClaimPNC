@@ -214,25 +214,30 @@ type AttachmentDTO struct {
 	Uploaded bool `json:"sudah_diunggah"`
 }
 
-// ThreadMessageDTO adalah satu baris pada utas layar detail.
+// ThreadMessageDTO adalah satu UCAPAN pada utas layar detail.
+//
+// Ketiga isiannya persis ketiga kolom `Section/BalasKomunikasiCabang-Section.xml` — Tanggal,
+// Pengirim, Pesan.
+//
+// # Kenapa tidak ada isian balasan di sini
+//
+// Karena balasan BUKAN isian pada sebuah ucapan — ia ucapan tersendiri. Utas dibaca dari
+// `M_KOMUNIKASI_CABANG`, tempat setiap pesan dan setiap balasan menempati barisnya sendiri.
+//
+// Versi sebelumnya membacanya dari `M_KOMUNIKASI_PNC` dan karena itu membawa `jawaban`,
+// `penjawab`, dan `tanggal_jawaban` pada setiap ucapan — bentuk yang lahir dari tabel yang
+// keliru, dan yang menghasilkan utas berisi tepat satu baris betapapun panjang percakapannya.
 type ThreadMessageDTO struct {
 	CreatedAt string `json:"tanggal"`
 
-	// Sender adalah kolom "Pengirim", sudah dirakit — sama bentuknya dengan di grid.
-	Sender         string `json:"pengirim"`
-	SenderOrigin   string `json:"asal"`
-	SenderOperator string `json:"operator_pengirim"`
+	// Sender adalah kolom "Pengirim" — Operator ID pengirimnya, APA ADANYA.
+	//
+	// Ia TIDAK dirakit menjadi `asal (operator)` seperti di grid, dan itu bukan pilihan:
+	// tabel riwayat tidak memuat kolom asal sama sekali, sehingga tidak ada yang dapat
+	// dirakit.
+	Sender string `json:"pengirim"`
 
 	Message string `json:"pesan"`
-
-	// Reply digambar sebagai baris tersendiri di bawah pesannya, bukan sebagai kolom.
-	//
-	// Section lama tidak menggambarnya sama sekali; ia ditambahkan karena satu baris tabel
-	// menyimpan pesan DAN balasannya, sehingga utas yang membuangnya terbaca separuh. Lihat
-	// PlannedDifferences.
-	Reply       string `json:"jawaban"`
-	ReplierName string `json:"penjawab"`
-	RepliedAt   string `json:"tanggal_jawaban"`
 }
 
 // ConversationDetailResponse adalah jawaban
@@ -246,14 +251,52 @@ type ConversationDetailResponse struct {
 	Messages    []ThreadMessageDTO `json:"pesan"`
 	Attachments []AttachmentDTO    `json:"lampiran"`
 
-	// WriteStillInPega menyatakan kotak balasan digambar tetapi belum dapat dipakai.
+	// ReplyEnabled menyatakan kotak balasan dapat dipakai.
 	//
-	// Ia dikirim sebagai DATA, bukan ditulis tetap di layar, supaya penghidupan tombolnya
-	// kelak tidak menuntut suntingan frontend.
-	WriteStillInPega bool `json:"tindakan_masih_di_pega"`
+	// Ia dikirim sebagai DATA, bukan ditulis tetap di layar. Nilainya berubah dari false
+	// menjadi true pada 2026-09-24 — persis alasan field ini ada: penghidupan tombolnya tidak
+	// menuntut satu pun suntingan frontend.
+	//
+	// Field lamanya bernama `tindakan_masih_di_pega` dan artinya KEBALIKAN dari ini. Ia
+	// diganti, bukan dibalik nilainya, karena nama yang artinya berlawanan dengan isinya
+	// adalah cacat yang menunggu giliran.
+	ReplyEnabled bool `json:"balas_tersedia"`
 
 	Branch BranchDTO `json:"batas_cabang"`
 	Portal string    `json:"portal"`
+}
+
+// ReplyRequest adalah badan permintaan POST .../komunikasi/{komunikasi}/balas.
+//
+// Hanya SATU isian. Nomor percakapannya tidak ada di sini melainkan di jalur, dan itu bukan
+// pengulangan yang dihemat: nomor yang boleh datang dari badan permintaan dapat berbeda dari
+// nomor di jalur, dan mana yang menang menjadi pertanyaan yang tidak perlu ada.
+//
+// Penjawabnya juga TIDAK ada di sini. Ia diambil dari sesi — `OperatorID.pyUserIdentifier` dan
+// `pyUserName` pada `ReplyKomunikasi-SQL`. Menerimanya dari badan permintaan berarti siapa pun
+// dapat membalas atas nama orang lain, dan `D-59` sudah menjadikan jejak audit satu-satunya
+// kontrol pengimbang — jejak yang isinya ditentukan pengirim permintaan bukan jejak.
+type ReplyRequest struct {
+	// Message adalah isi balasan — `Param.Pesan` pada `PNCReplyMessageCabang`.
+	Message string `json:"pesan"`
+}
+
+// ActionResponse adalah jawaban aksi tulis yang berhasil.
+//
+// Ia TIDAK mengembalikan percakapannya dalam bentuk baru. Alasannya bukan kemalasan: menyusun
+// jawabannya menuntut pembacaan ulang yang menembus DB Link sekali lagi untuk satu permintaan,
+// sementara layar memang perlu menyegarkan DAFTAR dan RINGKASAN juga — keduanya tidak ada di
+// jawaban ini betapapun lengkapnya. Layar menyegarkan keduanya sekaligus setelah menerima ini.
+type ActionResponse struct {
+	// ID adalah nomor percakapan yang dikenai tindakan.
+	ID string `json:"komunikasi"`
+
+	// Message adalah kalimat siap baca tentang apa yang barusan terjadi.
+	Message string `json:"pesan"`
+
+	// Portal ikut dikirim dengan alasan yang sama seperti pada jawaban lain: layar dapat
+	// memastikan tindakannya mengenai entitas yang sedang dipilih (`R-20`).
+	Portal string `json:"portal"`
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -357,14 +400,9 @@ func toConversationDetailResponse(
 	messages := make([]ThreadMessageDTO, 0, len(detail.Messages))
 	for _, message := range detail.Messages {
 		messages = append(messages, ThreadMessageDTO{
-			CreatedAt:      message.CreatedAt,
-			Sender:         joinWithParenthesis(message.SenderOrigin, message.SenderOperator),
-			SenderOrigin:   message.SenderOrigin,
-			SenderOperator: message.SenderOperator,
-			Message:        message.Message,
-			Reply:          message.Reply,
-			ReplierName:    message.ReplierName,
-			RepliedAt:      message.RepliedAt,
+			CreatedAt: message.CreatedAt,
+			Sender:    message.SenderOperator,
+			Message:   message.Message,
 		})
 	}
 
@@ -381,13 +419,16 @@ func toConversationDetailResponse(
 	}
 
 	return ConversationDetailResponse{
-		ID:               detail.ID,
-		Origin:           detail.Origin,
-		Messages:         messages,
-		Attachments:      attachments,
-		WriteStillInPega: true,
-		Branch:           toBranchDTO(branch),
-		Portal:           portalAlias,
+		ID:          detail.ID,
+		Origin:      detail.Origin,
+		Messages:    messages,
+		Attachments: attachments,
+		// Tetap KONSTANTA, bukan dibaca dari konfigurasi. Kotak balasan hidup sejak modul ini
+		// menulis, dan itu berlaku di seluruh portal sekaligus — tidak ada keadaan tempat satu
+		// entitas boleh membalas sementara yang lain tidak.
+		ReplyEnabled: true,
+		Branch:       toBranchDTO(branch),
+		Portal:       portalAlias,
 	}
 }
 

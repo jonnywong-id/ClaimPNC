@@ -1,21 +1,30 @@
 // Package usecase mengorkestrasi modul Inbox Komunikasi Cabang.
 //
-// Empat operasi:
+// Lima operasi:
 //
 //	Metadata   menyerahkan daftar tab, kolomnya, dan selisih terencana yang berlaku
 //	List       mengambil isi satu tab beserta kedua pencacahnya
 //	Detail     mengambil isi layar "Detail Komunikasi" satu percakapan
+//	Reply      MENULIS — menyimpan balasan
+//	Finish     MENULIS — menutup percakapan
 //	Export     TIDAK ada di sini — lihat catatan di bawah
 //
-// Ekspor tidak menjadi operasi kelima: ia memanggil List berulang kali, halaman demi
+// Ekspor tidak menjadi operasi tersendiri: ia memanggil List berulang kali, halaman demi
 // halaman, dan menuliskan hasilnya langsung ke jawaban. Menaruhnya di sini akan memaksa
 // seluruh baris berkumpul di memori lebih dulu — persis yang dilarang
 // `15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6. Perakitannya ada di http/export.go.
 //
-// Tidak ada operasi yang menulis. Layar lama punya EMPAT tindakan yang menulis — Kirim
-// Pesan, Balas, Selesai Komunikasi, dan Tambah — dan seluruhnya menyentuh tabel yang masih
-// dimiliki Pega selama masa paralel (`P-1`). Satu di antaranya bahkan tidak dapat
-// direplikasi sama sekali: activity di balik tombol "Balas" tidak ada di export mana pun.
+// # DUA operasi yang menulis, ditambahkan 2026-09-24
+//
+// Sampai tanggal itu modul ini membaca saja. Keputusan Work Owner mengubahnya setelah kedua
+// artefak yang sempat hilang diterima — `Activity/PNCReplyMessageCabang-Act.xml` dan
+// `RDB List/ReplyKomunikasi-SQL.xml`.
+//
+// Yang berpindah karena itu adalah KEPEMILIKAN TABEL, bukan sekadar dua endpoint. Lihat
+// catatan pada `inboxkomunikasicabang.Repo`.
+//
+// Satu tindakan lama TETAP belum dibangun: "Kirim Pesan"/"Tambah", karena formnya belum
+// digambar. Ia masih dijawab dengan alasan lewat Handler.RejectWrite.
 //
 // # Di mana batas cabang diselesaikan, dan kenapa di sini
 //
@@ -43,6 +52,7 @@ import (
 type Service struct {
 	repoSelector inboxkomunikasicabang.RepoSelector
 	branch       inboxkomunikasicabang.BranchResolver
+	clock        inboxkomunikasicabang.Clock
 	logger       *slog.Logger
 }
 
@@ -58,6 +68,13 @@ type Options struct {
 	// tanpa ada yang menyadarinya.
 	BranchResolver inboxkomunikasicabang.BranchResolver
 
+	// Clock menentukan waktu balasan — `@CurrentDateTime()` di sistem lama.
+	//
+	// Ia WAJIB sejak modul ini menulis. Membiarkannya nil lalu memakai `time.Now()` sebagai
+	// cadangan akan membuat waktu balasan tidak dapat diuji, dan uji yang tidak dapat
+	// memastikan waktunya tidak dapat memastikan urutan tab "Sudah Dijawab" pula.
+	Clock inboxkomunikasicabang.Clock
+
 	// Logger boleh nil; bila nil, jejaknya tidak ditulis dan tidak ada yang gagal karenanya.
 	Logger *slog.Logger
 }
@@ -70,9 +87,13 @@ func NewService(o Options) (*Service, error) {
 	if o.BranchResolver == nil {
 		return nil, errors.New("inboxkomunikasicabang/usecase: BranchResolver wajib diisi")
 	}
+	if o.Clock == nil {
+		return nil, errors.New("inboxkomunikasicabang/usecase: Clock wajib diisi")
+	}
 	return &Service{
 		repoSelector: o.RepoSelector,
 		branch:       o.BranchResolver,
+		clock:        o.Clock,
 		logger:       o.Logger,
 	}, nil
 }
@@ -300,6 +321,118 @@ func (s *Service) resolveBranch(
 	}
 
 	return filter, nil
+}
+
+// Reply menyimpan balasan atas sebuah percakapan.
+//
+// # Kenapa batas cabang diselesaikan ULANG di sini
+//
+// Karena balasan dapat dikirim tanpa pernah membuka daftarnya — alamatnya cukup. Batas yang
+// hanya berlaku bila daftarnya dibuka lebih dulu bukan batas sama sekali, dan pada operasi
+// yang MENULIS akibatnya lebih berat daripada pada pembacaan: balasan yang tersimpan di
+// percakapan cabang lain tidak dapat ditarik kembali lewat layar mana pun.
+func (s *Service) Reply(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxkomunikasicabang.Caller,
+	input inboxkomunikasicabang.ReplyInput,
+) error {
+	cleanCaller := caller.Clean()
+
+	command, err := inboxkomunikasicabang.NewReplyCommand(input, cleanCaller, s.clock.Now())
+	if err != nil {
+		return err
+	}
+
+	filter, err := s.resolveBranch(ctx, cleanCaller)
+	if err != nil {
+		return err
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return err
+	}
+
+	if err := repo.Reply(ctx, command, filter); err != nil {
+		if errors.Is(err, inboxkomunikasicabang.ErrConversationNotFound) {
+			return err
+		}
+		return fmt.Errorf("menyimpan balasan percakapan %s: %w", command.ID, err)
+	}
+
+	// Penulisan dicatat SELALU, dan lebih lengkap daripada pembacaan.
+	//
+	// Sejak modul ini menulis, jejak inilah satu-satunya yang menjawab siapa mengubah apa —
+	// dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang justru untuk keadaan
+	// ini, tempat pemeriksaan peran belum ada (`TKT-F3-004`).
+	if s.logger != nil {
+		s.logger.Info(
+			"balasan komunikasi cabang disimpan",
+			slog.String("modul", "inbox-komunikasi-cabang"),
+			slog.String("pemanggil", cleanCaller.Login),
+			slog.String("portal", portalAlias),
+			slog.String("komunikasi", command.ID),
+			slog.String("batas_cabang", filter.Code),
+			slog.Bool("cabang_terbaca", filter.Resolved),
+			// Isi balasannya TIDAK dicatat — ia percakapan tentang klaim nasabah, dan log
+			// disimpan lebih longgar daripada basis data (`11-CROSSCUTTING.md` §2.4).
+			// Yang dicatat panjangnya saja, cukup untuk menelusuri tanpa membocorkan.
+			slog.Int("panjang_pesan", len([]rune(command.Message))),
+		)
+	}
+
+	return nil
+}
+
+// Finish menutup sebuah percakapan — tombol "Selesai Komunikasi".
+//
+// Tindakan ini menghilangkan barisnya dari kedua tab, dan tidak ada satu pun tindakan di
+// layar lama yang mengembalikannya. Karena itu ia dicatat dengan tingkat yang sama dengan
+// balasan, bukan sebagai pembacaan biasa.
+func (s *Service) Finish(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxkomunikasicabang.Caller,
+	input inboxkomunikasicabang.DetailInput,
+) error {
+	cleanCaller := caller.Clean()
+
+	id, err := inboxkomunikasicabang.NewDetailRequest(input, cleanCaller)
+	if err != nil {
+		return err
+	}
+
+	filter, err := s.resolveBranch(ctx, cleanCaller)
+	if err != nil {
+		return err
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return err
+	}
+
+	if err := repo.Finish(ctx, id, filter); err != nil {
+		if errors.Is(err, inboxkomunikasicabang.ErrConversationNotFound) {
+			return err
+		}
+		return fmt.Errorf("menutup percakapan %s: %w", id, err)
+	}
+
+	if s.logger != nil {
+		s.logger.Info(
+			"percakapan cabang ditutup",
+			slog.String("modul", "inbox-komunikasi-cabang"),
+			slog.String("pemanggil", cleanCaller.Login),
+			slog.String("portal", portalAlias),
+			slog.String("komunikasi", id),
+			slog.String("batas_cabang", filter.Code),
+			slog.Bool("cabang_terbaca", filter.Resolved),
+		)
+	}
+
+	return nil
 }
 
 // logOpen mencatat pembukaan daftar.

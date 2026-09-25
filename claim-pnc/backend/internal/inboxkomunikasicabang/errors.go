@@ -39,14 +39,12 @@ var (
 	ErrBranchUnreadable = errors.New(
 		"inboxkomunikasicabang: sumber kode cabang tidak dapat dibaca")
 
-	// ErrWriteNotAvailable berarti aksi tulis diminta pada modul yang hanya membaca.
+	// CATATAN. ErrWriteNotAvailable DIHAPUS pada 2026-09-24.
 	//
-	// Ia ADA supaya keempat tindakan yang di layar lama menulis — Kirim Pesan, Balas,
-	// Selesai Komunikasi, dan Tambah — dapat dijawab dengan alasan alih-alih dengan
-	// "halaman tidak ditemukan". Keduanya terlihat sangat berbeda bagi pengguna, dan hanya
-	// yang pertama yang memberi tahu apa yang harus dilakukannya.
-	ErrWriteNotAvailable = errors.New(
-		"inboxkomunikasicabang: modul ini belum menulis apa pun")
+	// Ia menjawab keempat tindakan tulis layar lama dengan alasan. Keempatnya kini bekerja —
+	// "Balas", "Selesai Komunikasi", "Kirim Pesan", dan "Tambah" yang ternyata tombol pembuka
+	// form belaka. Galat yang tidak lagi dapat terjadi tetap dipelihara dan tetap menyatakan
+	// kepada pembacanya bahwa ada sesuatu yang belum tersedia.
 )
 
 // Nama isian yang dapat ditunjuk sebuah pelanggaran validasi.
@@ -58,6 +56,25 @@ const (
 
 	// FieldConversation menunjuk nomor percakapan pada permintaan layar detail.
 	FieldConversation = "komunikasi"
+
+	// FieldReplyMessage menunjuk isi kotak balasan.
+	//
+	// Namanya sama dengan nama field JSON-nya, supaya layar dapat menandai isian yang
+	// ditolak tanpa memetakan apa pun.
+	FieldReplyMessage = "pesan"
+
+	// FieldDestination menandai dropdown tujuan pada form "Kirim Pesan".
+	FieldDestination = "tujuan"
+
+	// FieldBranch menandai pemilih cabang pada form "Kirim Pesan".
+	FieldBranch = "cabang"
+
+	// FieldMessageBody menandai isi pesan pada form "Kirim Pesan".
+	//
+	// Ia BERBEDA dari FieldReplyMessage meski keduanya bernilai sama-sama "pesan" di mata
+	// pengguna: yang satu isian pada form pembuatan, yang satu isian pada kotak balasan.
+	// Layar menandai isian yang berbeda, dan keduanya tidak pernah tampil bersamaan.
+	FieldMessageBody = "pesan"
 )
 
 // Violation adalah satu pelanggaran pada satu isian.

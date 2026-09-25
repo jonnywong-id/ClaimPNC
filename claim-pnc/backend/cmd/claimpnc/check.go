@@ -33,13 +33,13 @@ import (
 	"claim-pnc/internal/inboxclaimtreatyprop"
 	inboxclaimtreatypropsql "claim-pnc/internal/inboxclaimtreatyprop/repo/sqlstore"
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
+	"claim-pnc/internal/inboxkomunikasicabang"
+	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
-	"claim-pnc/internal/inboxkomunikasicabang"
-	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
@@ -1388,8 +1388,12 @@ func checkKomunikasiCabang(
 		print("  [BELUM] Inbox Komunikasi Cabang tidak dapat dibaca: %v", err)
 		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
 		print("            Periksa hak SELECT akun aplikasi atas POOLDATA.M_KOMUNIKASI_PNC,")
-		print("            POOLDATA.D_KOMUNIKASI_PNC, POOLDATA.V_LST_DOC_TYPE, dan")
-		print("            POOLDATA.V_LST_DET_TYPE_DOC.")
+		print("            POOLDATA.D_KOMUNIKASI_PNC, POOLDATA.M_KOMUNIKASI_CABANG,")
+		print("            POOLDATA.V_LST_DOC_TYPE, dan POOLDATA.V_LST_DET_TYPE_DOC.")
+		print("            Bila galatnya menyebut M_KOMUNIKASI_CABANG.CREATEDDATE: nama kolom")
+		print("            itu DITEBAK. Tidak satu pun INSERT mengisinya, dan DDL-nya belum")
+		print("            ada (`R-08`). Sebutkan nama kolom tanggal yang sebenarnya, dan")
+		print("            perbaikannya satu kata di detail_thread.")
 		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
 		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
 		print("            DDL, yang belum pernah diterima (`R-08`).")
@@ -1424,6 +1428,37 @@ func checkKomunikasiCabang(
 	}
 	print("  [ok]    Percakapan kantor pusat: %d belum dijawab, %d sudah dijawab",
 		summary.NotAnswered, summary.Answered)
+
+	// Daftar cabang untuk pemilih tujuan "Kirim Pesan".
+	//
+	// Ia diperiksa TERPISAH karena sumbernya pun terpisah — `POOLDATA.V_D_SURVEYORS`, bukan
+	// tabel percakapan — sehingga kegagalannya berakibat berbeda: layar tetap dapat dibaca
+	// dan dibalas, hanya pembuatan percakapan baru yang lumpuh.
+	//
+	// Ia juga satu-satunya kueri modul ini yang PENYARINGNYA DITEBAK: kueri asli yang mengisi
+	// pemilih itu tidak ada di export mana pun, dan yang terbaca hanyalah kelas halamannya.
+	// Angka di bawah adalah cara tercepat menguji tebakan itu terhadap basis data sungguhan.
+	branches, err := repo.Branches(ctx)
+	if err != nil {
+		print("  [BELUM] daftar cabang tujuan tidak dapat dibaca: %v", err)
+		print("            Sumbernya POOLDATA.V_D_SURVEYORS, kolom BRANCH, BRANCHNAME, EMAIL.")
+		print("            Selama gagal, layar tetap dapat DIBACA dan DIBALAS — yang lumpuh")
+		print("            hanya tombol \"Kirim Pesan\".")
+		print("            PERHATIAN: kueri ini penyaringnya DITEBAK. Kueri Pega yang")
+		print("            sebenarnya mengisi pemilih cabang tidak ada di export mana pun")
+		print("            (`R-16`); yang terbaca hanya kelas halamannya. Bila galatnya")
+		print("            menyebut kolom, kolom itu memang bukan yang dipakai Pega.")
+		return
+	}
+	print("  [ok]    Daftar cabang tujuan terbaca: %d cabang", len(branches))
+
+	if len(branches) == 0 {
+		print("  [PERIKSA] Tidak ada satu pun cabang yang dapat dipilih sebagai tujuan.")
+		print("            Tombol \"Kirim Pesan\" akan tampil tetapi tidak dapat dipakai untuk")
+		print("            mengirim ke cabang. Jalankan:")
+		print("              SELECT COUNT(DISTINCT BRANCH) FROM POOLDATA.V_D_SURVEYORS")
+		print("               WHERE BRANCH IS NOT NULL AND BRANCHNAME IS NOT NULL;")
+	}
 
 	if summary.Total() == 0 {
 		print("  [PERIKSA] Tidak ada satu pun percakapan kantor pusat yang berjalan.")

@@ -2,6 +2,8 @@ package inboxkomunikasicabanghttp
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -27,6 +29,18 @@ type Caller struct {
 	// Ia yang diterjemahkan menjadi kode cabang, dan karena itu MENENTUKAN apa yang
 	// terlihat — bukan sekadar mengisi jejak log seperti di sebagian modul inbox lain.
 	Login string
+
+	// Name adalah nama pengguna yang terbaca manusia.
+	//
+	// Ia dibutuhkan SEJAK 2026-09-24, ketika modul ini mulai menulis: balasan menyimpannya
+	// di `REPLYFROMNAME`, dan itulah yang digambar kolom "Penjawab(Dari)". Ia disimpan
+	// bersama balasannya, bukan diambil lewat join saat dibaca — jejak yang namanya diambil
+	// lewat join berubah ketika orangnya berganti nama, dan jejak yang dapat berubah bukan
+	// jejak.
+	//
+	// Pada rute BACA ia tidak dipakai sama sekali, sehingga rute baca tetap dilayani meski
+	// nama tidak terbaca. Yang menolak adalah NewReplyCommand, di lapisan domain.
+	Name string
 }
 
 // CallerReader membaca identitas pemanggil dari konteks permintaan.
@@ -147,40 +161,114 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		toConversationDetailResponse(detailed.Detail, detailed.Branch, active.Alias))
 }
 
-// RejectWrite menjawab aksi tulis yang belum tersedia.
+// maxReplyBodyBytes membatasi badan permintaan balasan yang dibaca.
 //
-// Ia sengaja BUKAN 404. Layar lama punya EMPAT tindakan yang menulis — "Kirim Pesan",
-// "Balas", "Selesai Komunikasi", dan "Tambah" — dan tindakan yang dijawab "halaman tidak
-// ditemukan" terbaca sebagai kerusakan, sementara yang dibutuhkan pengguna adalah tahu ke
-// mana ia harus pergi.
+// Ia dinyatakan dalam BITA, sementara batas panjang balasan dinyatakan dalam rune
+// (`maxReplyLength`, 4.000). Keduanya bukan aturan yang sama dan tidak boleh disamakan:
+// yang ini menjaga MEMORI server terhadap kiriman yang tidak berniat baik, yang itu
+// menjaga isian agar masuk akal bagi manusia dan basis data.
 //
-// Salah satunya bahkan TIDAK DAPAT dibangun sekalipun diputuskan: activity di balik tombol
-// "Balas" (`PNCReplyMessageCabang`) tidak ada di export mana pun, sehingga tidak ada yang
-// dapat dibaca untuk ditulis ulang.
+// Nilainya longgar dengan sengaja — 4.000 rune UTF-8 dapat memakan sampai 16.000 bita, dan
+// batas yang lebih ketat akan menolak balasan yang panjangnya SAH dengan pesan yang
+// menyesatkan ("badan permintaan tidak dapat dibaca") alih-alih pesan yang menyebut
+// panjangnya.
+const maxReplyBodyBytes = 64 << 10
+
+// Reply menangani POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/balas.
 //
-// Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang menyebut
-// portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar mengira ia
-// sudah berada di portal yang benar.
-func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
-	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
-		h.writeError(w, r, portal.ErrNotStated)
+// Ia menulis. Yang terjadi di balik satu permintaan ini ada dua: `M_KOMUNIKASI_PNC` diperbarui
+// dan satu baris riwayat masuk ke `M_KOMUNIKASI_CABANG` — keduanya dalam SATU transaksi, yang
+// di sistem lama tidak demikian. Lihat catatan pada repo/sqlstore.
+//
+// POST, bukan PUT. Balasan bukan penggantian sumber daya yang sudah ada melainkan peristiwa
+// yang ditambahkan padanya, dan setiap pemanggilan menambah satu baris riwayat lagi —
+// sehingga ia memang tidak idempoten (`10-API-STRATEGY.md` §2).
+func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
 		return
 	}
 
-	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda seberapa
-	// sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi dasar
-	// memutuskan kapan kepemilikan tabelnya dipindahkan (`P-1`).
-	if h.logger != nil {
-		h.logger.Info(
-			"aksi tulis diminta pada modul yang belum menulis",
-			slog.String("modul", "inbox-komunikasi-cabang"),
-			slog.String("jalur", r.URL.Path),
-			slog.String("tindakan", strings.TrimSpace(r.URL.Query().Get("tindakan"))),
-		)
+	var body ReplyRequest
+
+	decoder := json.NewDecoder(io.LimitReader(r.Body, maxReplyBodyBytes))
+
+	// Isian yang tidak dikenal DITOLAK, bukan diabaikan diam-diam. Layar yang salah menamai
+	// isiannya akan mengirim balasan kosong tanpa satu pun tanda, dan balasan kosong yang
+	// tersimpan memindahkan percakapan ke tab "Sudah Dijawab" — terbaca sudah dijawab padahal
+	// tidak ada jawabannya.
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&body); err != nil {
+		h.writeError(w, r, inboxkomunikasicabang.NewValidationError(
+			[]inboxkomunikasicabang.Violation{{
+				Field:   inboxkomunikasicabang.FieldReplyMessage,
+				Message: "Balasan tidak dapat dibaca dari permintaan.",
+			}},
+		))
+		return
 	}
 
-	h.writeError(w, r, inboxkomunikasicabang.ErrWriteNotAvailable)
+	err := h.service.Reply(r.Context(), active.Alias, caller, inboxkomunikasicabang.ReplyInput{
+		ID:      chi.URLParam(r, "komunikasi"),
+		Message: body.Message,
+	})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// 200, bukan 201. Tidak ada sumber daya baru yang punya alamat sendiri — yang berubah
+	// adalah percakapan yang alamatnya sudah ada.
+	h.writeJSON(w, r, http.StatusOK, ActionResponse{
+		ID: strings.TrimSpace(chi.URLParam(r, "komunikasi")),
+		Message: "Balasan tersimpan. Percakapan ini berpindah ke tab \"Sudah Dijawab\", " +
+			"dan cabang tujuan melihatnya sebagai jawaban terakhir.",
+		Portal: active.Alias,
+	})
 }
+
+// Finish menangani POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/selesai.
+//
+// Ia tombol "Selesai Komunikasi", dan akibatnya TIDAK DAPAT DIBATALKAN dari layar mana pun:
+// barisnya hilang dari kedua tab, dan sistem lama tidak punya satu pun tindakan yang
+// membukanya kembali.
+//
+// Tidak ada badan permintaan. Nomornya di jalur, pelakunya dari sesi, dan tidak ada isian
+// ketiga — menerima badan permintaan yang isinya tidak dipakai hanya membuka pertanyaan
+// tentang apa yang terjadi bila ia diisi.
+func (h *Handler) Finish(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	id := chi.URLParam(r, "komunikasi")
+
+	err := h.service.Finish(r.Context(), active.Alias, caller,
+		inboxkomunikasicabang.DetailInput{ID: id})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, ActionResponse{
+		ID: strings.TrimSpace(id),
+		Message: "Percakapan ditutup. Ia tidak lagi tampil di kedua tab, dan tidak dapat " +
+			"dibuka kembali dari layar ini.",
+		Portal: active.Alias,
+	})
+}
+
+// CATATAN. Handler.RejectWrite DIHAPUS pada 2026-09-24.
+//
+// Ia menjawab keempat tindakan tulis layar lama dengan alasan, dan keempatnya kini benar-benar
+// bekerja: "Balas", "Selesai Komunikasi", "Kirim Pesan", dan "Tambah" — yang terakhir ternyata
+// tombol yang hanya MEMBUKA form, tidak menyentuh peladen sama sekali.
+//
+// Jalur penolakan yang tidak lagi dicapai siapa pun lebih buruk daripada tidak ada: ia tetap
+// dipelihara, tetap diuji, dan tetap menyatakan kepada pembacanya bahwa ada sesuatu yang belum
+// tersedia. Bersamanya ikut dicabut rute `/tindakan` dan galat ErrWriteNotAvailable.
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
 //
@@ -226,7 +314,12 @@ func (h *Handler) readCaller(r *http.Request) (inboxkomunikasicabang.Caller, boo
 	if !exists || strings.TrimSpace(caller.Login) == "" {
 		return inboxkomunikasicabang.Caller{}, false
 	}
-	return inboxkomunikasicabang.Caller{Login: caller.Login}, true
+
+	// Nama BOLEH kosong di sini, dan itu disengaja: seluruh rute baca hanya membutuhkan
+	// login, dan menolak permintaan baca karena nama tidak terbaca akan mematikan layar
+	// untuk keadaan yang tidak menghalangi apa pun. Yang menuntut nama hanyalah balasan,
+	// dan penolakannya terjadi di NewReplyCommand — satu tempat, bukan dua.
+	return inboxkomunikasicabang.Caller{Login: caller.Login, Name: caller.Name}, true
 }
 
 // positiveNumber membaca angka dari parameter query.

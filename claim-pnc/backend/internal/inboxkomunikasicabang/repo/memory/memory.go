@@ -29,6 +29,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 
 	"claim-pnc/internal/inboxkomunikasicabang"
 )
@@ -111,22 +112,84 @@ type Row struct {
 	Attachments []inboxkomunikasicabang.Attachment
 }
 
+// ReplyHistory adalah satu baris `POOLDATA.M_KOMUNIKASI_CABANG`.
+//
+// Ia disimpan terpisah dari Row karena tabelnya memang terpisah: Reply menulis ke KEDUANYA,
+// dan uji harus dapat membuktikan baris riwayatnya benar-benar lahir — bukan hanya bahwa
+// percakapannya berubah.
+type ReplyHistory struct {
+	Sender         string
+	Message        string
+	ConversationID string
+
+	// Channel adalah kolom `KODECABANG`.
+	//
+	// Isinya BERBEDA tergantung tombol yang menulisnya: dari "Balas" ia menerima CASEID
+	// (penanda kanal), dari "Kirim Pesan" ia menerima kode cabang tujuan. Dua konvensi dalam
+	// satu kolom, keduanya direplikasi. Lihat catatan pada berkas .sql.
+	Channel string
+
+	// CreatedAt adalah tanggal ucapannya.
+	//
+	// Kolomnya TIDAK diisi INSERT mana pun di sistem lama — ia diisi basis data. Di sini
+	// tidak ada basis data yang dapat mengisinya, sehingga waktu perintah dipakai.
+	//
+	// Ia DIBUTUHKAN sejak layar detail membaca tabel ini: tanpanya utas tidak dapat
+	// diurutkan, dan kolom "Tanggal" pada layar detail akan kosong.
+	CreatedAt string
+}
+
 // Store adalah penyimpanan percakapan di memori.
 //
-// Ia tidak dilindungi mutex karena tidak pernah berubah setelah dibentuk: modul ini hanya
-// membaca, dan tidak ada satu pun operasi yang menulis.
+// # Ia DILINDUNGI mutex sejak 2026-09-24
+//
+// Sampai tanggal itu modul ini hanya membaca, sehingga isinya tidak pernah berubah setelah
+// dibentuk. Sejak Balas dan Selesai Komunikasi dibangun, ia berubah — dan penyimpanan yang
+// dipakai bersama beberapa permintaan tanpa penguncian akan rusak diam-diam justru pada
+// keadaan yang paling sulit ditiru.
 type Store struct {
-	rows []Row
+	mutex   sync.Mutex
+	rows    []Row
+	history []ReplyHistory
+
+	// branches adalah daftar cabang yang dapat dipilih sebagai tujuan pesan baru.
+	//
+	// Ia TERPISAH dari rows karena sumbernya pun terpisah: percakapan datang dari
+	// `M_KOMUNIKASI_PNC`, daftar cabang dari `V_D_SURVEYORS`. Menurunkannya dari rows akan
+	// membuat cabang yang belum pernah berkirim pesan tidak dapat dipilih sama sekali.
+	branches []inboxkomunikasicabang.BranchOption
 }
 
 // NewStore membentuk penyimpanan berisi baris yang diberikan.
+//
+// Daftar cabangnya diisi contoh, bukan dibiarkan kosong: penyimpanan tanpa cabang membuat
+// pemilih tujuan kosong, dan uji yang memakainya akan gagal karena alasan yang tidak ada
+// hubungannya dengan yang diujinya. Yang menghendaki daftar lain memakai WithBranches.
 func NewStore(rows ...Row) *Store {
-	return &Store{rows: rows}
+	return &Store{rows: rows, branches: SampleBranches()}
 }
 
-// NewSampleStore membentuk penyimpanan berisi baris contoh.
+// NewSampleStore membentuk penyimpanan berisi baris contoh BESERTA utasnya.
+//
+// Riwayatnya ikut diisi sejak layar detail membacanya: penyimpanan tanpa riwayat akan
+// menampilkan layar detail yang kosong untuk setiap percakapan contoh.
 func NewSampleStore() *Store {
-	return NewStore(SampleRows()...)
+	store := NewStore(SampleRows()...)
+	store.history = SampleHistory()
+	return store
+}
+
+// WithBranches mengganti daftar cabang penyimpanan ini.
+//
+// Ia mengembalikan penyimpanan yang sama supaya dapat dirangkai pada satu baris, dan ada
+// terutama untuk menguji keadaan yang tidak dapat dibuat lewat data contoh — daftar cabang
+// yang KOSONG, yang di layar berarti pemilih tujuan tidak punya satu pun pilihan.
+func (s *Store) WithBranches(branches ...inboxkomunikasicabang.BranchOption) *Store {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.branches = branches
+	return s
 }
 
 // List mengembalikan satu halaman percakapan yang cocok.
@@ -135,6 +198,9 @@ func (s *Store) List(
 	query inboxkomunikasicabang.Query,
 	page inboxkomunikasicabang.Pagination,
 ) (inboxkomunikasicabang.Page, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	matched := []Row{}
 	for _, row := range s.rows {
 		if !matchesGrid(row, query.Branch) {
@@ -164,6 +230,9 @@ func (s *Store) Summarize(
 	_ context.Context,
 	filter inboxkomunikasicabang.BranchFilter,
 ) (inboxkomunikasicabang.Summary, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	summary := inboxkomunikasicabang.Summary{}
 
 	for _, row := range s.rows {
@@ -202,27 +271,49 @@ func (s *Store) Detail(
 	id string,
 	filter inboxkomunikasicabang.BranchFilter,
 ) (inboxkomunikasicabang.ConversationDetail, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	wanted := strings.TrimSpace(id)
 
-	thread := []Row{}
-	for _, row := range s.rows {
-		if strings.TrimSpace(row.ID) != wanted {
+	// KEPALA percakapan diperiksa lebih dulu, sama seperti pengisi SQL.
+	//
+	// Sejak utas dibaca dari riwayat, utas yang kosong tidak lagi berarti percakapannya
+	// tidak ada — percakapan yang riwayatnya belum pernah ditulis punya kepala tanpa utas.
+	var header *Row
+	attachments := []inboxkomunikasicabang.Attachment{}
+
+	for i := range s.rows {
+		if strings.TrimSpace(s.rows[i].ID) != wanted {
 			continue
 		}
-		if !matchesBranch(row, filter) {
+		if !matchesBranch(s.rows[i], filter) {
 			continue
 		}
-		thread = append(thread, row)
+		if header == nil {
+			header = &s.rows[i]
+		}
+		attachments = append(attachments, s.rows[i].Attachments...)
 	}
 
-	if len(thread) == 0 {
+	if header == nil {
 		return inboxkomunikasicabang.ConversationDetail{},
 			inboxkomunikasicabang.ErrConversationNotFound
 	}
 
-	// Utas SELALU menaik menurut tanggal pesan, pada kedua tab.
+	// UTAS dibaca dari RIWAYAT, bukan dari baris percakapan.
 	//
-	// Layar detail adalah percakapan, dan percakapan dibaca dari awal. Urutan menurun tab
+	// Satu baris riwayat adalah satu UCAPAN — pesan maupun balasan. Membacanya dari baris
+	// percakapan akan menghasilkan utas yang selalu berisi tepat satu baris, betapapun
+	// panjang percakapannya.
+	thread := []ReplyHistory{}
+	for _, entry := range s.history {
+		if strings.TrimSpace(entry.ConversationID) == wanted {
+			thread = append(thread, entry)
+		}
+	}
+
+	// Utas SELALU menaik menurut tanggal — percakapan dibaca dari awal. Urutan menurun tab
 	// "Sudah Dijawab" berlaku untuk DAFTARNYA, bukan untuk isi satu percakapan.
 	sort.SliceStable(thread, func(i, j int) bool {
 		return thread[i].CreatedAt < thread[j].CreatedAt
@@ -231,21 +322,18 @@ func (s *Store) Detail(
 	detail := inboxkomunikasicabang.ConversationDetail{
 		ID:          wanted,
 		Messages:    make([]inboxkomunikasicabang.ThreadMessage, 0, len(thread)),
-		Attachments: []inboxkomunikasicabang.Attachment{},
-		Origin:      inboxkomunikasicabang.OriginOf(thread[0].CommunicateFrom),
+		Attachments: attachments,
+
+		// Asal datang dari KEPALA. Tabel riwayat tidak memuat kolom asal sama sekali.
+		Origin: inboxkomunikasicabang.OriginOf(header.CommunicateFrom),
 	}
 
-	for _, row := range thread {
+	for _, entry := range thread {
 		detail.Messages = append(detail.Messages, inboxkomunikasicabang.ThreadMessage{
-			CreatedAt:      row.CreatedAt,
-			SenderOrigin:   inboxkomunikasicabang.OriginOf(row.CommunicateFrom),
-			SenderOperator: row.Sender,
-			Message:        row.Message,
-			Reply:          row.ReplyMessage,
-			ReplierName:    row.ReplyFromName,
-			RepliedAt:      row.RepliedAt,
+			CreatedAt:      entry.CreatedAt,
+			SenderOperator: entry.Sender,
+			Message:        entry.Message,
 		})
-		detail.Attachments = append(detail.Attachments, row.Attachments...)
 	}
 
 	return detail, nil
@@ -375,6 +463,108 @@ func sortForTab(rows []Row, answered bool) {
 		}
 		return left.ID < right.ID
 	})
+}
+
+// replyTimeLayout adalah bentuk tanggal balasan di penyimpanan ini.
+//
+// Ia sama dengan bentuk yang dipakai seluruh baris contoh, supaya baris yang baru dibalas
+// dapat diurutkan berdampingan dengan baris warisan. Bentuk kolomnya di Oracle tidak
+// diketahui (`R-08`); yang dipastikan hanyalah keduanya dapat diurutkan sebagai teks.
+const replyTimeLayout = "2006-01-02 15:04"
+
+// Reply menyimpan balasan atas sebuah percakapan.
+//
+// Ia meniru `ReplyKomunikasi` kolom demi kolom, TERMASUK menyetel status menjadi
+// StatusAnswered — sehingga uji dapat membuktikan kolom itu memang ikut berubah, bukan hanya
+// isi balasannya.
+//
+// Riwayatnya ikut dicatat, sama seperti langkah keempat activity aslinya.
+func (s *Store) Reply(
+	_ context.Context,
+	command inboxkomunikasicabang.ReplyCommand,
+	filter inboxkomunikasicabang.BranchFilter,
+) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	wanted := strings.TrimSpace(command.ID)
+
+	for i := range s.rows {
+		if strings.TrimSpace(s.rows[i].ID) != wanted {
+			continue
+		}
+
+		// Kanal DAN batas cabang, sama persis dengan `WHERE` pada reply_update. Kanal ikut
+		// diperiksa supaya percakapan yang sudah ditutup tidak dapat dibalas — penyimpanan
+		// memori yang lebih longgar daripada SQL akan meloloskan uji untuk perilaku yang
+		// tidak terjadi di Oracle.
+		if !matchesChannel(s.rows[i]) || !matchesBranch(s.rows[i], filter) {
+			continue
+		}
+
+		s.rows[i].ReplyMessage = command.Message
+		s.rows[i].ReplyFrom = command.Caller.Login
+		s.rows[i].ReplyFromName = command.Caller.Name
+		s.rows[i].RepliedAt = command.RepliedAt.Format(replyTimeLayout)
+		s.rows[i].Status = inboxkomunikasicabang.StatusAnswered
+
+		s.history = append(s.history, ReplyHistory{
+			Sender:         command.Caller.Login,
+			Message:        command.Message,
+			ConversationID: wanted,
+			Channel:        inboxkomunikasicabang.CaseOpen,
+			CreatedAt:      command.RepliedAt.Format(replyTimeLayout),
+		})
+		return nil
+	}
+
+	// Tidak ada baris yang cocok: percakapannya tidak ada, sudah ditutup, atau milik cabang
+	// lain. Ketiganya dijawab sama — persis seperti pengisi SQL, yang tidak dapat
+	// membedakannya dari jumlah baris terdampak.
+	return inboxkomunikasicabang.ErrConversationNotFound
+}
+
+// Finish menutup sebuah percakapan.
+//
+// Ia menolak percakapan yang SUDAH tertutup, meniru syarat `CASEID = :2` pada pengisi SQL.
+// Tanpa itu, penekanan kedua akan dilaporkan berhasil di memori dan gagal di Oracle — dan
+// seam yang kedua pengisinya tidak sepakat adalah seam yang menyembunyikan cacat.
+func (s *Store) Finish(
+	_ context.Context,
+	id string,
+	filter inboxkomunikasicabang.BranchFilter,
+) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	wanted := strings.TrimSpace(id)
+
+	for i := range s.rows {
+		if strings.TrimSpace(s.rows[i].ID) != wanted {
+			continue
+		}
+		if !matchesChannel(s.rows[i]) || !matchesBranch(s.rows[i], filter) {
+			continue
+		}
+
+		s.rows[i].CaseID = inboxkomunikasicabang.CaseClosed
+		return nil
+	}
+
+	return inboxkomunikasicabang.ErrConversationNotFound
+}
+
+// History mengembalikan salinan baris riwayat balasan.
+//
+// Ia dipakai uji saja. Salinan, bukan senarai aslinya: uji tidak boleh dapat mengubah isi
+// penyimpanan dengan menulisi hasilnya.
+func (s *Store) History() []ReplyHistory {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	result := make([]ReplyHistory, len(s.history))
+	copy(result, s.history)
+	return result
 }
 
 var _ inboxkomunikasicabang.Repo = (*Store)(nil)

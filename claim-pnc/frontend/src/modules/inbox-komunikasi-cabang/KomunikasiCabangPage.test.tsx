@@ -19,6 +19,23 @@ const PATH = '/api/inbox-komunikasi-cabang'
 const TAB_PATH = `${PATH}/tab`
 const EXPORT_PATH = `${PATH}/ekspor`
 const DETAIL_PATH = `${PATH}/komunikasi/`
+const BRANCH_PATH = `${PATH}/cabang`
+const MESSAGE_PATH = `${PATH}/pesan`
+
+/**
+ * Daftar cabang untuk pemilih tujuan.
+ *
+ * Isinya KARANGAN — `D-69` melarang data perusahaan ditulis di berkas yang di-commit, dan
+ * larangan itu berlaku untuk data uji sama seperti untuk dokumen.
+ */
+const BRANCH_LIST = {
+  cabang: [
+    { kode: '1001', nama: 'CABANG CONTOH SATU' },
+    { kode: '1002', nama: 'CABANG CONTOH DUA' },
+  ],
+  tujuan: ['PUSAT', 'CABANG'],
+  portal: 'ASM',
+}
 
 const SAMPLE_PROFILE = {
   identitas: '90000007',
@@ -144,19 +161,26 @@ const BARIS_DIJAWAB: Conversation = {
 }
 
 /** Jawaban layar Detail Komunikasi. */
+/**
+ * Jawaban layar Detail Komunikasi.
+ *
+ * Utasnya DUA ucapan, masing-masing tiga isian — bentuk yang dibaca dari tabel riwayat.
+ * Sampai 2026-09-24 ia satu ucapan berisi pesan DAN balasannya, karena utasnya dibaca dari
+ * tabel percakapan.
+ */
 const DETAIL = {
   komunikasi: 'KOM-9001',
   asal: 'PUSAT',
   pesan: [
     {
       tanggal: '2026-09-10 09:30',
-      pengirim: 'PUSAT (adminpnccontoh)',
-      asal: 'PUSAT',
-      operator_pengirim: 'adminpnccontoh',
+      pengirim: 'adminpnccontoh',
       pesan: 'Mohon lengkapi berita acara kerugian.',
-      jawaban: 'Berita acara sudah diunggah hari ini.',
-      penjawab: 'Petugas Cabang Contoh',
-      tanggal_jawaban: '2026-09-12 16:20',
+    },
+    {
+      tanggal: '2026-09-12 16:20',
+      pengirim: 'petugascabangcontoh',
+      pesan: 'Berita acara sudah diunggah hari ini.',
     },
   ],
   lampiran: [
@@ -177,7 +201,7 @@ const DETAIL = {
       sudah_diunggah: false,
     },
   ],
-  tindakan_masih_di_pega: true,
+  balas_tersedia: true,
   batas_cabang: CABANG_TERBACA,
   portal: 'ASM',
 }
@@ -208,6 +232,14 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
 function stubDefaultFetch(branch: BranchScope = CABANG_TERBACA) {
   stubFetch((url) => {
     if (url === TAB_PATH) return jsonResponse(200, METADATA)
+    if (url === BRANCH_PATH) return jsonResponse(200, BRANCH_LIST)
+    if (url === MESSAGE_PATH) {
+      return jsonResponse(201, {
+        komunikasi: 'KOM-9100',
+        pesan: 'Pesan terkirim. Ia muncul di tab "Belum Dijawab" milik kantor pusat.',
+        portal: 'ASM',
+      })
+    }
     if (url.startsWith(DETAIL_PATH)) return jsonResponse(200, DETAIL)
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('Tanggal\n2026-09-10\n', {
@@ -433,18 +465,69 @@ describe('kolom tombol', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('menjawab "Selesai Komunikasi" dengan alasan dari peladen, bukan dengan diam', async () => {
-    // Tindakan ini MENULIS — ia mengubah kanal percakapan sehingga barisnya hilang dari
-    // kedua tab — dan tabelnya milik Pega selama masa paralel. Tombol yang diam saat ditekan
-    // tidak terbedakan dari tombol yang rusak.
+  it('meminta penegasan lebih dulu, tidak langsung menutup percakapan', async () => {
+    // Menutup percakapan TIDAK DAPAT DIBATALKAN — barisnya hilang dari kedua tab, dan
+    // sistem lama tidak punya satu pun tindakan yang membukanya kembali. Tombolnya pun
+    // berada di dalam baris tabel, tempat satu klik meleset mengenai baris tetangga.
+    //
+    // Penegasan ini SELISIH YANG DISENGAJA terhadap Pega, yang menutupnya seketika.
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    )
+
+    expect(
+      await screen.findByRole('alertdialog', { name: /Tutup percakapan KOM-9001/ }),
+    ).toBeInTheDocument()
+
+    // Belum satu pun permintaan tulis terkirim. Penegasan yang sudah mengirim lebih dulu
+    // bukan penegasan.
+    expect(calls.some((c) => c.url.includes('/selesai'))).toBe(false)
+  })
+
+  it('membatalkan penegasan tidak menutup apa pun', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Batal' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(calls.some((c) => c.url.includes('/selesai'))).toBe(false)
+  })
+
+  it('menutup percakapan lewat alamatnya sendiri setelah ditegaskan', async () => {
+    // Alamatnya bersarang di bawah nomor percakapan, BUKAN satu endpoint "tindakan"
+    // bersama: yang satu dapat diulang dan yang satu tidak dapat dibatalkan, sehingga
+    // keduanya tidak boleh berbagi satu bentuk permintaan dan satu baris log akses.
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+    )
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Ya, tutup percakapan/ }),
+    )
+
+    const call = [...calls].reverse().find((c) => c.url.includes('/selesai'))
+    expect(call).toBeDefined()
+    expect(call?.url).toBe(`${PATH}/komunikasi/KOM-9001/selesai`)
+    expect(call?.init?.method).toBe('POST')
+  })
+
+  it('menyatakan alasan dari peladen bila penutupan ditolak', async () => {
+    // Dua orang dapat menekan tombol yang sama pada layar yang sama-sama usang. Yang kedua
+    // harus tahu bahwa BUKAN dia yang menutupnya.
     stubFetch((url) => {
       if (url === TAB_PATH) return jsonResponse(200, METADATA)
-      if (url.startsWith(`${PATH}/tindakan`)) {
-        return jsonResponse(501, {
-          kode: 'belum_tersedia',
+      if (url.includes('/selesai')) {
+        return jsonResponse(404, {
+          kode: 'komunikasi_tidak_ditemukan',
           pesan:
-            'Mengirim pesan, membalas, menutup percakapan, dan menambah percakapan belum ' +
-            'tersedia di sistem baru. Kerjakan lewat Pega.',
+            'Percakapan tidak ditemukan. Ia mungkin sudah ditutup orang lain — segarkan ' +
+            'daftar, lalu periksa pilihan portal di bilah atas.',
         })
       }
       return jsonResponse(200, {
@@ -462,24 +545,11 @@ describe('kolom tombol', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
     )
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Kerjakan lewat Pega/)
-  })
-
-  it('mengirim nama tindakan ke peladen supaya pemakaiannya tercatat', async () => {
-    await renderLoaded()
-
     await userEvent.click(
-      await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
+      await screen.findByRole('button', { name: /Ya, tutup percakapan/ }),
     )
 
-    const call = [...calls].reverse().find((c) => c.url.startsWith(`${PATH}/tindakan`))
-    expect(call).toBeDefined()
-
-    const url = new URL(call?.url ?? '', 'http://uji.invalid')
-    expect(url.searchParams.get('tindakan')).toBe('selesai-komunikasi')
-    expect(url.searchParams.get('komunikasi')).toBe('KOM-9001')
-    expect(call?.init?.method).toBe('POST')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/sudah ditutup orang lain/)
   })
 })
 
@@ -519,17 +589,55 @@ describe('detail komunikasi', () => {
     expect(await screen.findByRole('region', { name: /Detail komunikasi/ })).toBeInTheDocument()
   })
 
-  it('menggambar balasan sebagai baris tersendiri di bawah pesannya', async () => {
-    // Section lama hanya menggambar tiga kolom dan tidak menampilkan balasan sama sekali,
-    // padahal satu baris tabel menyimpan pesan DAN balasannya — sehingga utasnya terbaca
-    // separuh. Yang ditambahkan adalah barisnya, bukan kolomnya.
+  it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', async () => {
+    // Sampai 2026-09-24 utas dibaca dari tabel percakapan, sehingga layar detail selalu
+    // menampilkan tepat SATU ucapan — betapapun panjang percakapannya — dengan balasannya
+    // digambar sebagai blok di dalamnya.
+    //
+    // Keterangan Work Owner mengoreksinya: utas dibaca dari tabel RIWAYAT, tempat setiap
+    // pesan dan setiap balasan menempati barisnya sendiri.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    expect(await screen.findByText(/Berita acara sudah diunggah/)).toBeInTheDocument()
+    // Pencarian DIBATASI pada panel detail: kalimat yang sama muncul pula di sel "Pesan"
+    // pada grid di atasnya, dan pencarian seluruh halaman akan menemukan dua.
+    const panel = await screen.findByRole('region', { name: /Detail komunikasi/ })
+
+    expect(panel.textContent).toContain('Mohon lengkapi berita acara')
+    expect(panel.textContent).toContain('Berita acara sudah diunggah')
+
+    // Dua ucapan = dua baris daftar, bukan satu baris berisi keduanya.
+    expect(panel.querySelectorAll('ol > li')).toHaveLength(2)
+  })
+
+  it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', async () => {
+    // Percakapan yang dibuat lewat layar lain punya kepala tanpa utas. Ia harus terbuka
+    // dengan keterangan, BUKAN dijawab "tidak ditemukan".
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url.startsWith(DETAIL_PATH)) {
+        return jsonResponse(200, { ...DETAIL, pesan: [], lampiran: [] })
+      }
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [BARIS],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+
+    expect(await screen.findByText(/belum memuat satu pun ucapan/)).toBeInTheDocument()
   })
 
   it('membedakan lampiran yang sudah diunggah dari yang belum', async () => {
@@ -543,38 +651,113 @@ describe('detail komunikasi', () => {
     expect(screen.getByText('Belum Upload')).toBeInTheDocument()
   })
 
-  it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', async () => {
-    // Kotak isian yang tampak dapat diketik tetapi menolak saat dikirim lebih buruk
-    // daripada tidak ada: pengguna sudah mengetik kalimatnya, dan kalimat itu hilang.
+  it('menggambar kotak "Masukkan Balasan" yang benar-benar dapat dipakai', async () => {
+    // Sampai 2026-09-24 yang digambar di sini hanyalah KETERANGAN bahwa membalas belum
+    // tersedia — karena activity di baliknya tidak ada di export mana pun. Ia diterima, dan
+    // kotaknya menjadi isian sungguhan.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    expect(await screen.findByText(/Membalas belum tersedia di sini/)).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: /balasan/i })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('textbox', { name: /Masukkan Balasan/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Membalas belum tersedia di sini/)).not.toBeInTheDocument()
+  })
+
+  it('menonaktifkan tombol Balas selama isiannya masih kosong', async () => {
+    // Balasan kosong yang tersimpan menyetel status menjadi "sudah dijawab", sehingga
+    // percakapannya berpindah tab — terbaca sudah dijawab padahal tidak ada jawabannya.
+    // Peladen menolaknya; layar tidak perlu membiarkannya terkirim lebih dulu.
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Balas' })).toBeDisabled()
+
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: /Masukkan Balasan/ }),
+      'Sudah kami tindak lanjuti.',
+    )
+    expect(screen.getByRole('button', { name: 'Balas' })).toBeEnabled()
+  })
+
+  it('mengirim balasan ke alamat percakapannya sendiri', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: /Masukkan Balasan/ }),
+      'Sudah kami tindak lanjuti.',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Balas' }))
+
+    const call = [...calls].reverse().find((c) => c.url.includes('/balas'))
+    expect(call).toBeDefined()
+    expect(call?.url).toBe(`${PATH}/komunikasi/KOM-9001/balas`)
+    expect(call?.init?.method).toBe('POST')
+
+    // Hanya isi balasannya. Penjawabnya diambil dari sesi di peladen — jejak yang isinya
+    // ditentukan pengirim permintaan bukan jejak.
+    expect(JSON.parse(String(call?.init?.body))).toEqual({
+      pesan: 'Sudah kami tindak lanjuti.',
+    })
+  })
+
+  it('menahan kalimat yang sudah diketik bila balasannya ditolak', async () => {
+    // Kalimat yang sudah diketik adalah pekerjaan penggunanya. Mengosongkannya saat
+    // permintaan ditolak membuang pekerjaan itu tanpa ia sempat menyalinnya.
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url.includes('/balas')) {
+        return jsonResponse(503, {
+          kode: 'sumber_cabang_tidak_terbaca',
+          pesan: 'Sumber data cabang sedang tidak dapat dibaca.',
+        })
+      }
+      if (url.startsWith(DETAIL_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [BARIS],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+
+    const box = await screen.findByRole('textbox', { name: /Masukkan Balasan/ })
+    await userEvent.type(box, 'Kalimat yang tidak boleh hilang.')
+    await userEvent.click(screen.getByRole('button', { name: 'Balas' }))
+
+    expect(
+      await screen.findByText(/Sumber data cabang sedang tidak dapat dibaca/),
+    ).toBeInTheDocument()
+    expect(box).toHaveValue('Kalimat yang tidak boleh hilang.')
   })
 })
 
 describe('keterangan yang wajib terlihat', () => {
-  it('menyebut keempat tindakan yang masih dikerjakan lewat Pega', async () => {
-    // Layar yang kehilangan tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan,
-    // dan penggunanya tidak akan tahu ia masih harus mengerjakannya lewat Pega.
-    //
-    // Pencariannya DIBATASI pada panel itu sendiri: sejak tombolnya benar-benar digambar,
-    // teks "Selesai Komunikasi" dan "Tambah" muncul pula sebagai tombol — dan pencarian
-    // seluruh halaman akan menemukan lebih dari satu.
+  it('TIDAK lagi menggambar panel "Yang masih dikerjakan lewat Pega"', async () => {
+    // Panel itu menyebutkan tindakan yang masih harus dikerjakan lewat Pega. Sejak KEEMPAT
+    // tindakan tulis layar lama bekerja di sini, ia tidak punya satu pun isi yang benar —
+    // dan panel yang menyatakan ada sesuatu yang belum tersedia akan membuat pembacanya
+    // mencari apa.
     await renderLoaded()
 
-    const heading = await screen.findByText(/Yang masih dikerjakan lewat Pega/)
-    const panel = heading.closest('section')
-    expect(panel).not.toBeNull()
-
-    const within = panel as HTMLElement
-    for (const label of ['Kirim Pesan', 'Balas', 'Selesai Komunikasi', 'Tambah']) {
-      expect(within.textContent).toContain(label)
-    }
+    expect(screen.queryByText(/Yang masih dikerjakan lewat Pega/)).not.toBeInTheDocument()
   })
 
   it('menggambar selisih terencana dari peladen', async () => {
@@ -601,5 +784,195 @@ describe('portal', () => {
     renderPage()
 
     expect(await screen.findByText(/Pilih entitas lebih dulu/)).toBeInTheDocument()
+  })
+})
+
+describe('kirim pesan', () => {
+  it('menampilkan form saat "Tambah" ditekan, bukan menolak dengan alasan', async () => {
+    // Sampai 2026-09-24 tombol ini dijawab 501: formnya dikira tidak ada di export. Ia ada —
+    // tersembunyi sebagai blok bersyarat di dalam section daftar, bukan section tersendiri.
+    await renderLoaded()
+
+    expect(screen.queryByRole('form', { name: /Kirim pesan baru/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+
+    expect(
+      await screen.findByRole('form', { name: /Kirim pesan baru/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('tidak menyentuh peladen hanya untuk membuka formnya', async () => {
+    // Di Pega "Tambah" menjalankan data transform lalu me-refresh section — ia menyetel
+    // penanda di server tanpa menulis apa pun. Di sini keadaan layar tinggal di layar.
+    await renderLoaded()
+
+    const before = calls.length
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    // Yang boleh bertambah hanyalah pengambilan daftar cabang.
+    const baru = calls.slice(before).filter((c) => !c.url.startsWith(BRANCH_PATH))
+    expect(baru).toHaveLength(0)
+  })
+
+  it('menyembunyikan pemilih cabang selama tujuannya PUSAT', async () => {
+    // Isian wajib yang tampak tetapi tidak berlaku adalah sumber kebingungan yang lebih
+    // besar daripada isian yang muncul saat dibutuhkan.
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    expect(screen.queryByLabelText(/Cabang/)).not.toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('Tujuan'), 'CABANG')
+    expect(await screen.findByLabelText(/Cabang/)).toBeInTheDocument()
+  })
+
+  it('menahan tombol kirim sampai cabang dipilih bila tujuannya CABANG', async () => {
+    // Peladen menolaknya juga, dengan kalimat yang dibawa apa adanya dari activity lama.
+    // Layar tidak perlu membiarkannya terkirim lebih dulu untuk memberi tahu apa yang sudah
+    // terlihat kosong di layarnya sendiri.
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    await userEvent.selectOptions(screen.getByLabelText('Tujuan'), 'CABANG')
+    await userEvent.type(screen.getByLabelText('Pesan'), 'Mohon konfirmasi.')
+
+    expect(screen.getByRole('button', { name: 'Kirim Pesan' })).toBeDisabled()
+
+    await userEvent.selectOptions(await screen.findByLabelText(/Cabang/), '1002')
+    expect(screen.getByRole('button', { name: 'Kirim Pesan' })).toBeEnabled()
+  })
+
+  it('mengirim ketiga isian ke alamat pembuatan percakapan', async () => {
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    await userEvent.selectOptions(screen.getByLabelText('Tujuan'), 'CABANG')
+    await userEvent.selectOptions(await screen.findByLabelText(/Cabang/), '1002')
+    await userEvent.type(screen.getByLabelText('Pesan'), 'Mohon konfirmasi.')
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Pesan' }))
+
+    const call = [...calls].reverse().find((c) => c.url === MESSAGE_PATH)
+    expect(call).toBeDefined()
+    expect(call?.init?.method).toBe('POST')
+    expect(JSON.parse(String(call?.init?.body))).toEqual({
+      tujuan: 'CABANG',
+      cabang: '1002',
+      pesan: 'Mohon konfirmasi.',
+    })
+  })
+
+  it('mengosongkan cabang yang tertinggal saat tujuannya kembali ke PUSAT', async () => {
+    // Pilihan yang tertinggal tak terlihat lalu ikut terkirim akan mengirim pesan ke cabang
+    // yang sudah tidak dimaksudkan penggunanya.
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    await userEvent.selectOptions(screen.getByLabelText('Tujuan'), 'CABANG')
+    await userEvent.selectOptions(await screen.findByLabelText(/Cabang/), '1002')
+    await userEvent.selectOptions(screen.getByLabelText('Tujuan'), 'PUSAT')
+
+    await userEvent.type(screen.getByLabelText('Pesan'), 'Mohon konfirmasi.')
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Pesan' }))
+
+    const call = [...calls].reverse().find((c) => c.url === MESSAGE_PATH)
+    expect(JSON.parse(String(call?.init?.body))).toEqual({
+      tujuan: 'PUSAT',
+      cabang: '',
+      pesan: 'Mohon konfirmasi.',
+    })
+  })
+
+  it('menutup form dan menyatakan hasilnya setelah pesannya terkirim', async () => {
+    // Perilaku yang sama dengan sistem lama, yang mengosongkan `pyLabel` pada langkah
+    // terakhir activity-nya sehingga bloknya tertutup sendiri.
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    await userEvent.type(screen.getByLabelText('Pesan'), 'Mohon konfirmasi.')
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Pesan' }))
+
+    expect(await screen.findByText(/Pesan terkirim/)).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: /Kirim pesan baru/ })).not.toBeInTheDocument()
+  })
+
+  it('membatalkan form tidak mengirim apa pun', async () => {
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Batal' }))
+
+    expect(screen.queryByRole('form', { name: /Kirim pesan baru/ })).not.toBeInTheDocument()
+    expect(calls.some((c) => c.url === MESSAGE_PATH)).toBe(false)
+  })
+
+  it('menahan isian yang sudah diketik bila pengirimannya ditolak', async () => {
+    // Kalimat yang sudah diketik adalah pekerjaan penggunanya. Menutup form saat permintaan
+    // ditolak membuang pekerjaan itu tanpa ia sempat menyalinnya.
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url === BRANCH_PATH) return jsonResponse(200, BRANCH_LIST)
+      if (url === MESSAGE_PATH) {
+        return jsonResponse(503, {
+          kode: 'sumber_cabang_tidak_terbaca',
+          pesan: 'Sumber data cabang sedang tidak dapat dibaca.',
+        })
+      }
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [BARIS],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('form', { name: /Kirim pesan baru/ })
+
+    const box = screen.getByLabelText('Pesan')
+    await userEvent.type(box, 'Kalimat yang tidak boleh hilang.')
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Pesan' }))
+
+    expect(
+      await screen.findByText(/Sumber data cabang sedang tidak dapat dibaca/),
+    ).toBeInTheDocument()
+    expect(box).toHaveValue('Kalimat yang tidak boleh hilang.')
+  })
+
+  it('menyatakan keadaan ketika tidak ada satu pun cabang yang dapat dipilih', async () => {
+    // Nyata di produksi bila `V_D_SURVEYORS` kosong atau kueri yang menyusun daftarnya salah
+    // sasaran — dan kuerinya memang DITEBAK: yang asli tidak ada di export mana pun.
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url === BRANCH_PATH) {
+        return jsonResponse(200, { cabang: [], tujuan: ['PUSAT', 'CABANG'], portal: 'ASM' })
+      }
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [BARIS],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await userEvent.selectOptions(await screen.findByLabelText('Tujuan'), 'CABANG')
+
+    expect(await screen.findByText(/Tidak ada cabang yang dapat dipilih/)).toBeInTheDocument()
   })
 })

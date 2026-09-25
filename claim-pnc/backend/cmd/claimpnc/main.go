@@ -671,6 +671,10 @@ func run() error {
 	// dicocokkan `GetIDCabang` adalah `V_HRD_MST.login_aplikasi`. Akibatnya bukan daftar
 	// kosong melainkan yang lebih buruk: setiap petugas jatuh ke jalur kantor pusat dan
 	// melihat percakapan yang bukan haknya (`P-5`, lihat inboxkomunikasicabang.BranchFilter).
+	//
+	// NAMA ikut dibawa sejak 2026-09-24, ketika modul ini mulai menulis. Ia tersimpan sebagai
+	// `REPLYFROMNAME` bersama balasannya — bukan diambil lewat join saat dibaca, karena jejak
+	// yang namanya diambil lewat join berubah ketika orangnya berganti nama.
 	komunikasiCabangHandler := inboxkomunikasicabanghttp.NewHandler(
 		inboxkomunikasicabanghttp.Options{
 			Service: assembly.inboxKomunikasiCabang,
@@ -679,7 +683,10 @@ func run() error {
 				if !existing {
 					return inboxkomunikasicabanghttp.Caller{}, false
 				}
-				return inboxkomunikasicabanghttp.Caller{Login: baseCtx.User.Login}, true
+				return inboxkomunikasicabanghttp.Caller{
+					Login: baseCtx.User.Login,
+					Name:  baseCtx.User.Name,
+				}, true
 			},
 			Logger:    logger,
 			WriteJSON: writeJSON,
@@ -1574,11 +1581,25 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			// menghilang tanpa ada yang menyadarinya.
 			BranchResolver: store.komunikasiCabangBranch,
 
+			// Clock WAJIB sejak modul ini menulis (2026-09-24). Ia mengisi
+			// `CREATEDATEREPLY` — tanggal balasan, yang menjadi DASAR PENGURUTAN tab
+			// "Sudah Dijawab".
+			//
+			// Waktunya datang dari aplikasi, bukan dari basis data. Sistem lama memakai
+			// `@CurrentDateTime()` pada `PNCReplyMessageCabang`, yaitu jam server aplikasi —
+			// bukan `SYSDATE`. Itu direplikasi, dan sekaligus memenuhi `F-5`: satu-satunya
+			// tempat waktu dibaca adalah seam ini, sehingga tidak ada penambahan 7 jam manual
+			// yang dapat terselip.
+			Clock: clock.System{},
+
 			// Logger WAJIB, dengan satu alasan tambahan yang khas layar ini: petugas yang
 			// kode cabangnya TIDAK terbaca dilayani sebagai kantor pusat (`P-5`), dan itu
 			// pelebaran batas data yang tidak menghasilkan satu pun galat. Jejaknya adalah
 			// satu-satunya hal yang dapat menjawab "siapa saja yang terkena" bila keputusan
 			// itu kelak ditinjau ulang (`D-59`).
+			//
+			// Sejak modul ini menulis, jejaknya menjawab lebih daripada itu: siapa membalas
+			// percakapan mana, dan siapa menutup percakapan yang tidak dapat dibuka kembali.
 			Logger: logger,
 		})
 	if err != nil {
