@@ -3,6 +3,7 @@ package memory_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -42,6 +43,60 @@ func listOf(
 	)
 	require.NoError(t, err)
 	return page.Items
+}
+
+// listVia menjalankan satu tab terhadap penyimpanan YANG SUDAH ADA.
+//
+// Ia dipisah dari listOf karena uji aksi tulis harus membaca penyimpanan yang BARU SAJA
+// ditulisnya. listOf membuat penyimpanan baru setiap dipanggil — sempurna untuk uji baca,
+// dan tidak berguna sama sekali untuk membuktikan sebuah tulisan benar-benar terlihat.
+func listVia(
+	t *testing.T,
+	store *memory.Store,
+	tabCode string,
+	filter inboxkomunikasicabang.BranchFilter,
+) []inboxkomunikasicabang.Conversation {
+	t.Helper()
+
+	tab, found := inboxkomunikasicabang.FindTab(tabCode)
+	require.True(t, found)
+
+	page, err := store.List(
+		context.Background(),
+		inboxkomunikasicabang.Query{
+			Tab:    tab,
+			Branch: filter,
+			Caller: inboxkomunikasicabang.Caller{Login: "pictekniks"},
+		},
+		inboxkomunikasicabang.Pagination{Page: 1, Size: 100},
+	)
+	require.NoError(t, err)
+	return page.Items
+}
+
+// historyOf mengumpulkan baris riwayat satu percakapan.
+func historyOf(store *memory.Store, id string) []memory.ReplyHistory {
+	result := []memory.ReplyHistory{}
+	for _, entry := range store.History() {
+		if entry.ConversationID == id {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+// historyAddedTo mengembalikan baris riwayat TERAKHIR sebuah percakapan, dan memastikan
+// jumlahnya bertambah sebanyak yang diharapkan.
+//
+// Ia ada karena penyimpanan contoh sudah memuat utas setiap percakapannya — sejak layar
+// detail membaca tabel riwayat. Uji yang memeriksa `History()` secara utuh karena itu akan
+// menghitung baris contoh pula.
+func historyAddedTo(store *memory.Store, id string, expectedAdded int) memory.ReplyHistory {
+	entries := historyOf(store, id)
+	if len(entries) < expectedAdded {
+		panic("riwayat percakapan " + id + " kurang dari yang diharapkan")
+	}
+	return entries[len(entries)-1]
 }
 
 // idsOf mengumpulkan nomor percakapan dari sederet baris.
@@ -297,4 +352,256 @@ func TestSampleBranchMappingReachesEveryVisibilityPath(t *testing.T) {
 	require.Equal(t, inboxkomunikasicabang.HeadOfficeBranch, mapping["adminpnc"],
 		"jalur kantor pusat butuh saksi yang cabangnya BENAR-BENAR terbaca")
 	require.Equal(t, "1001", mapping["pictekniks"])
+}
+
+// ── Aksi tulis ────────────────────────────────────────────────────────────────
+
+// replyTo menyusun perintah balasan atas satu percakapan.
+func replyTo(id string) inboxkomunikasicabang.ReplyCommand {
+	command, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{ID: id, Message: "Sudah kami tindak lanjuti."},
+		inboxkomunikasicabang.Caller{Login: "pictekniks", Name: "PIC Teknik Surabaya"},
+		time.Date(2026, 9, 24, 3, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		panic("uji menyusun perintah balasan yang tidak sah: " + err.Error())
+	}
+	return command
+}
+
+func TestAReplyMovesTheConversationFromOneTabToTheOther(t *testing.T) {
+	// Inilah yang dilihat pengguna setelah menekan "Balas": barisnya berpindah tab. Menguji
+	// kolomnya saja tidak membuktikannya — yang membuktikannya adalah kedua daftar itu
+	// sendiri, sebelum dan sesudah.
+	store := memory.NewSampleStore()
+
+	require.Contains(t, idsOf(listVia(t, store, "1", branch1001())), "KOM-0005")
+
+	require.NoError(t, store.Reply(context.Background(), replyTo("KOM-0005"), branch1001()))
+
+	require.NotContains(t, idsOf(listVia(t, store, "1", branch1001())), "KOM-0005",
+		"percakapan yang sudah dibalas tidak boleh tertinggal di tab Belum Dijawab")
+	require.Contains(t, idsOf(listVia(t, store, "2", branch1001())), "KOM-0005")
+}
+
+func TestAReplyIsWrittenWithTheNameOfWhoeverSentIt(t *testing.T) {
+	// Kolom "Penjawab(Dari)" dirakit dari REPLYFROMNAME. Balasan yang tersimpan tanpa nama
+	// muncul sebagai baris berpenjawab kosong — tidak terbedakan dari baris warisan yang
+	// memang tidak punya nama penjawab (KOM-0006), yang justru saksi selisih pencacah.
+	store := memory.NewSampleStore()
+
+	require.NoError(t, store.Reply(context.Background(), replyTo("KOM-0005"), branch1001()))
+
+	for _, item := range listVia(t, store, "2", branch1001()) {
+		if item.ID == "KOM-0005" {
+			require.Equal(t, "Sudah kami tindak lanjuti.", item.Reply)
+			require.Equal(t, "PIC Teknik Surabaya", item.ReplierName)
+			require.Equal(t, inboxkomunikasicabang.StatusAnswered, item.Status)
+			return
+		}
+	}
+	t.Fatal("percakapan yang dibalas tidak ditemukan di tab Sudah Dijawab")
+}
+
+func TestAReplyAlsoLeavesARowInTheBranchHistoryTable(t *testing.T) {
+	// `PNCReplyMessageCabang` menjalankan DUA pernyataan: memperbarui percakapan, lalu
+	// menyisipkan riwayatnya ke M_KOMUNIKASI_CABANG. Yang kedua mudah terlupakan karena tidak
+	// ada satu pun layar yang menampilkannya — dan justru karena itu ia harus diuji.
+	store := memory.NewSampleStore()
+
+	require.NoError(t, store.Reply(context.Background(), replyTo("KOM-0005"), branch1001()))
+
+	// Riwayat yang BARU, bukan seluruh riwayat: penyimpanan contoh sudah memuat utas setiap
+	// percakapannya sejak layar detail membacanya.
+	added := historyAddedTo(store, "KOM-0005", 1)
+
+	require.Equal(t, "pictekniks", added.Sender)
+	require.Equal(t, "Sudah kami tindak lanjuti.", added.Message)
+
+	// Kolomnya bernama `kodecabang` tetapi menerima CASEID. Perangkap penamaan itu
+	// direplikasi apa adanya (`P-5`) — lihat catatan pada reply_history_insert.
+	require.Equal(t, inboxkomunikasicabang.CaseOpen, added.Channel)
+}
+
+func TestAReplyToAnotherBranchConversationIsRefused(t *testing.T) {
+	// Yang paling berat di antara seluruh penolakan di berkas ini. Balasan yang telanjur
+	// tersimpan di percakapan cabang lain TIDAK DAPAT ditarik kembali lewat layar mana pun
+	// (`R-20`).
+	store := memory.NewSampleStore()
+
+	err := store.Reply(context.Background(), replyTo("KOM-0010"), branch1001())
+
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrConversationNotFound)
+	require.Empty(t, historyOf(store, "KOM-0010"),
+		"riwayat tidak boleh tercatat untuk balasan yang ditolak")
+}
+
+func TestAReplyToAClosedConversationIsRefused(t *testing.T) {
+	// Tanpa penolakan ini, balasannya akan "berhasil" pada baris yang tetap tidak muncul di
+	// kedua tab — lalu dijawab layar dengan kalimat tentang perpindahan tab yang tidak
+	// terjadi.
+	store := memory.NewSampleStore()
+
+	err := store.Reply(context.Background(), replyTo("KOM-0007"), headOffice())
+
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrConversationNotFound)
+}
+
+func TestFinishingAConversationRemovesItFromBothTabs(t *testing.T) {
+	// Tombol "Selesai Komunikasi" mengubah CASEID menjadi `CABANG SELESAI`, dan kedua grid
+	// menyaring `CASEID = 'CABANG'`. Akibatnya TIDAK DAPAT DIBATALKAN dari layar mana pun.
+	store := memory.NewSampleStore()
+
+	require.Contains(t, idsOf(listVia(t, store, "1", branch1001())), "KOM-0005")
+
+	require.NoError(t, store.Finish(context.Background(), "KOM-0005", branch1001()))
+
+	require.NotContains(t, idsOf(listVia(t, store, "1", branch1001())), "KOM-0005")
+	require.NotContains(t, idsOf(listVia(t, store, "2", branch1001())), "KOM-0005")
+}
+
+func TestFinishingATwiceIsRefusedInsteadOfSilentlySucceeding(t *testing.T) {
+	// Penekanan kedua pada tombol yang sama TIDAK mengubah satu baris pun, dan pemanggil
+	// harus dapat mengatakannya. Tanpa syarat `CASEID` pada pernyataannya, ia akan menimpa
+	// nilai yang sama lalu melapor berhasil — dan layar akan menyatakan percakapan baru saja
+	// ditutup untuk kedua kalinya.
+	store := memory.NewSampleStore()
+
+	require.NoError(t, store.Finish(context.Background(), "KOM-0005", branch1001()))
+
+	err := store.Finish(context.Background(), "KOM-0005", branch1001())
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrConversationNotFound)
+}
+
+func TestFinishingAnotherBranchConversationIsRefused(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	err := store.Finish(context.Background(), "KOM-0010", branch1001())
+
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrConversationNotFound)
+}
+
+func TestTheCountersFollowTheWriteImmediately(t *testing.T) {
+	// Kedua pencacah di atas grid dibaca dari kueri TERSENDIRI, bukan dihitung dari baris
+	// yang tampil. Kalau ia tidak ikut berubah, pengguna melihat barisnya berpindah tab
+	// sementara angkanya tetap — dan angka yang tidak sejalan dengan daftarnya sendiri
+	// membuat seluruh layar diragukan.
+	store := memory.NewSampleStore()
+
+	before, err := store.Summarize(context.Background(), branch1001())
+	require.NoError(t, err)
+
+	require.NoError(t, store.Reply(context.Background(), replyTo("KOM-0005"), branch1001()))
+
+	after, err := store.Summarize(context.Background(), branch1001())
+	require.NoError(t, err)
+
+	require.Equal(t, before.NotAnswered-1, after.NotAnswered)
+	require.Equal(t, before.Answered+1, after.Answered)
+}
+
+// ── Utas layar detail ─────────────────────────────────────────────────────────
+
+func TestTheThreadGrowsWithEveryUtteranceNotJustTheLatestOne(t *testing.T) {
+	// INILAH koreksi terbesar pada modul ini. Sampai 2026-09-24 utas dibaca dari tabel
+	// PERCAKAPAN, yang menyimpan satu baris per percakapan — sehingga layar detail selalu
+	// menampilkan tepat satu ucapan, betapapun panjang percakapannya.
+	//
+	// Keterangan Work Owner: layar detail membaca tabel RIWAYAT, tempat setiap pesan dan
+	// setiap balasan menempati barisnya sendiri.
+	store := memory.NewSampleStore()
+
+	before, err := store.Detail(context.Background(), "KOM-0005", branch1001())
+	require.NoError(t, err)
+	require.Len(t, before.Messages, 1)
+
+	require.NoError(t, store.Reply(context.Background(), replyTo("KOM-0005"), branch1001()))
+
+	after, err := store.Detail(context.Background(), "KOM-0005", branch1001())
+	require.NoError(t, err)
+	require.Len(t, after.Messages, 2, "balasan adalah UCAPAN tersendiri, bukan isian")
+	require.Equal(t, "Sudah kami tindak lanjuti.", after.Messages[1].Message)
+	require.Equal(t, "pictekniks", after.Messages[1].SenderOperator)
+}
+
+func TestAnAnsweredConversationAlreadyHasTwoUtterances(t *testing.T) {
+	// KOM-0002 sudah dijawab, sehingga utasnya berisi pesannya DAN balasannya — dua baris,
+	// bukan satu baris berisi keduanya.
+	store := memory.NewSampleStore()
+
+	detail, err := store.Detail(context.Background(), "KOM-0002", branch1001())
+	require.NoError(t, err)
+	require.Len(t, detail.Messages, 2)
+
+	require.Equal(t, "Dokumen sudah kami terima, mohon tunggu proses akseptasi.",
+		detail.Messages[0].Message)
+	require.Equal(t, "Baik, kami tunggu kabarnya.", detail.Messages[1].Message)
+}
+
+func TestAConversationWithoutAnyHistoryIsStillFound(t *testing.T) {
+	// KOM-0003 punya kepala tanpa satu pun baris riwayat — keadaan yang nyata di produksi
+	// untuk percakapan yang dibuat lewat jalur lain, atau data warisan sebelum tabel riwayat
+	// dipakai.
+	//
+	// Ia HARUS terbuka dengan utas kosong, BUKAN dijawab "tidak ditemukan": percakapannya
+	// nyata, dan jawaban "tidak ditemukan" akan dilaporkan sebagai kerusakan.
+	store := memory.NewSampleStore()
+
+	detail, err := store.Detail(context.Background(), "KOM-0003", headOffice())
+
+	require.NoError(t, err)
+	require.Equal(t, "KOM-0003", detail.ID)
+	require.Empty(t, detail.Messages)
+}
+
+func TestTheThreadIsOrderedOldestFirst(t *testing.T) {
+	// Percakapan dibaca dari awal. Urutan MENURUN tab "Sudah Dijawab" berlaku untuk
+	// daftarnya, bukan untuk isi satu percakapan.
+	store := memory.NewSampleStore()
+
+	detail, err := store.Detail(context.Background(), "KOM-0004", branch1001())
+	require.NoError(t, err)
+	require.Len(t, detail.Messages, 2)
+
+	require.Less(t, detail.Messages[0].CreatedAt, detail.Messages[1].CreatedAt)
+}
+
+func TestTheConversationOriginComesFromTheHeaderNotTheThread(t *testing.T) {
+	// Tabel riwayat tidak memuat kolom asal sama sekali. Asal percakapan karena itu HARUS
+	// datang dari kepalanya — dan percakapan yang utasnya kosong pun tetap punya asal.
+	store := memory.NewSampleStore()
+
+	withThread, err := store.Detail(context.Background(), "KOM-0002", branch1001())
+	require.NoError(t, err)
+	require.Equal(t, inboxkomunikasicabang.OriginHeadOffice, withThread.Origin)
+
+	withoutThread, err := store.Detail(context.Background(), "KOM-0003", headOffice())
+	require.NoError(t, err)
+	require.Equal(t, "1002", withoutThread.Origin,
+		"asal tetap terbaca meski utasnya kosong")
+}
+
+func TestAnotherBranchConversationHasNoReadableThread(t *testing.T) {
+	// Batas cabang berlaku pada layar detail pula. Nomor percakapan berurutan dan mudah
+	// ditebak, sehingga tanpa batas ini layar detail menjadi pintu samping ke percakapan
+	// cabang mana pun (`R-20`).
+	store := memory.NewSampleStore()
+
+	_, err := store.Detail(context.Background(), "KOM-0010", branch1001())
+
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrConversationNotFound)
+}
+
+func TestANewMessageIsImmediatelyReadableAsAOneUtteranceThread(t *testing.T) {
+	// Uji rantai: "Kirim Pesan" menulis ke KEDUA tabel, dan layar detail membaca yang kedua.
+	// Bila salah satunya terlewat, percakapan baru akan terbuka dengan utas kosong.
+	store := memory.NewSampleStore()
+
+	id, err := store.SendMessage(context.Background(), messageTo("PUSAT", ""), "1001")
+	require.NoError(t, err)
+
+	detail, err := store.Detail(context.Background(), id, branch1001())
+	require.NoError(t, err)
+	require.Len(t, detail.Messages, 1)
+	require.Equal(t, "Mohon konfirmasi kelengkapan dokumen.", detail.Messages[0].Message)
 }

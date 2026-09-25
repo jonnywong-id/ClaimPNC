@@ -1,13 +1,16 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  ActionResponse,
+  BranchListResponse,
   ConversationDetailResponse,
   ListResponse,
   MetadataResponse,
+  NewMessageRequest,
 } from './types'
 
 const PATH = '/api/inbox-komunikasi-cabang'
@@ -37,6 +40,9 @@ const keys = {
 
   detail: (portal: string | null, token: string | null, id: string) =>
     ['inbox-komunikasi-cabang', 'komunikasi', portal, token, id] as const,
+
+  branches: (portal: string | null, token: string | null) =>
+    ['inbox-komunikasi-cabang', 'cabang', portal, token] as const,
 }
 
 /**
@@ -142,37 +148,140 @@ export function useKomunikasiCabangDetail(id: string | null) {
 }
 
 /**
- * Hook aksi TULIS — "Selesai Komunikasi", "Kirim Pesan", "Balas", dan "Tambah".
+ * Hook tombol "Balas".
  *
- * # Kenapa ia ditembakkan sama sekali, padahal pasti ditolak
+ * # Kenapa ia menyegarkan TIGA hal, bukan satu
  *
- * Karena tombol yang diam saat ditekan tidak terbedakan dari tombol yang rusak. Yang
- * dibutuhkan pengguna adalah **alasan**, dan alasan itu ditulis di satu tempat — di peladen —
- * supaya ia berubah sekali saja ketika kepemilikan tabelnya kelak berpindah (`P-1`).
+ * Karena satu balasan mengubah tiga hal sekaligus di layar: utas percakapannya, daftar yang
+ * sedang terbuka (barisnya BERPINDAH tab), dan kedua pencacah di atas grid.
  *
- * Peladen menjawab `501` beserta kalimat yang menyebut mengapa dan ke mana harus pergi.
- * Menuliskannya di layar berarti dua kalimat yang dapat menyimpang, dan yang di layar akan
- * tetap berbunyi "belum tersedia" lama setelah tindakannya tersedia.
+ * Yang paling mudah terlupakan adalah yang ketiga. Pencacah dibaca dari kueri TERSENDIRI di
+ * peladen, bukan dihitung dari baris yang tampil — sehingga membiarkannya akan membuat
+ * pengguna melihat barisnya berpindah tab sementara angkanya tetap. Angka yang tidak sejalan
+ * dengan daftarnya sendiri membuat seluruh layar diragukan.
  *
- * # Kenapa nama tindakannya ikut dikirim
- *
- * Karena peladen mencatatnya. Selama masa paralel, catatan itu satu-satunya tanda seberapa
- * sering pengguna benar-benar membutuhkan tiap tindakan — dan itulah dasar memutuskan mana
- * yang dipindahkan lebih dulu.
+ * Karena pencacah datang BERSAMA daftar, menyegarkan daftarnya sudah menyegarkan keduanya —
+ * dan itulah sebabnya keduanya memang dilayani satu permintaan.
  */
-export function useKomunikasiCabangAction() {
+export function useKomunikasiCabangReply() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: { komunikasi: string; pesan: string }) =>
+      await callAPI<{ komunikasi: string; pesan: string }>(
+        `${PATH}/komunikasi/${encodeURIComponent(input.komunikasi)}/balas`,
+        { token, portal, metode: 'POST', body: { pesan: input.pesan } },
+      ),
+
+    onSuccess: (_result, input) => {
+      void queryClient.invalidateQueries({
+        queryKey: keys.detail(portal, token, input.komunikasi),
+      })
+
+      // SELURUH daftar modul ini, bukan hanya tab dan halaman yang sedang terbuka: barisnya
+      // meninggalkan satu tab dan masuk ke tab lain, dan halaman berapa ia mendarat tidak
+      // dapat diketahui dari sini.
+      void queryClient.invalidateQueries({
+        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
+      })
+    },
+  })
+}
+
+/**
+ * Hook tombol "Selesai Komunikasi".
+ *
+ * Akibatnya TIDAK DAPAT DIBATALKAN: percakapannya hilang dari kedua tab, dan sistem lama
+ * tidak punya satu pun tindakan yang membukanya kembali. Layar karena itu meminta penegasan
+ * lebih dulu — lihat KomunikasiCabangPage.
+ *
+ * Utasnya ikut disegarkan meski barisnya hilang dari daftar: seseorang yang sedang membuka
+ * layar detail percakapan itu harus melihat keadaannya yang baru, bukan yang sudah usang.
+ */
+export function useKomunikasiCabangFinish() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (komunikasi: string) =>
+      await callAPI<{ komunikasi: string; pesan: string }>(
+        `${PATH}/komunikasi/${encodeURIComponent(komunikasi)}/selesai`,
+        { token, portal, metode: 'POST' },
+      ),
+
+    onSuccess: (_result, komunikasi) => {
+      void queryClient.invalidateQueries({
+        queryKey: keys.detail(portal, token, komunikasi),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
+      })
+    },
+  })
+}
+
+/**
+ * Hook daftar cabang untuk pemilih tujuan pada form "Kirim Pesan".
+ *
+ * # Kenapa TERPISAH dari metadata layar
+ *
+ * Karena masa hidupnya berbeda. Bentuk grid dibaca dari kode dan tidak pernah berubah selama
+ * aplikasi hidup, sehingga cache-nya `Infinity`. Daftar cabang datang dari basis data dan
+ * dapat bertambah — menyatukannya akan memaksa keduanya punya masa cache yang sama.
+ *
+ * # Kenapa hanya diambil saat formnya terbuka
+ *
+ * Karena mayoritas pembukaan layar ini tidak berakhir dengan pengiriman pesan. Mengambilnya
+ * bersama daftar berarti satu perjalanan jaringan tambahan pada setiap pembukaan, untuk
+ * daftar yang hampir selalu tidak terpakai.
+ */
+export function useKomunikasiCabangBranches(enabled: boolean) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
-  return useMutation({
-    mutationFn: async (input: { tindakan: string; komunikasi?: string }) => {
-      const params = new URLSearchParams({ tindakan: input.tindakan })
-      if (input.komunikasi) params.set('komunikasi', input.komunikasi)
+  return useQuery({
+    queryKey: keys.branches(portal, token),
+    queryFn: () => callAPI<BranchListResponse>(`${PATH}/cabang`, { token, portal }),
+    enabled: enabled && token !== null && portal !== null,
 
-      return await callAPI<{ pesan?: string }>(
-        `${PATH}/tindakan?${params.toString()}`,
-        { token, portal, metode: 'POST' },
-      )
+    // Daftar cabang berubah sangat jarang — ia master, bukan data transaksi. Lima menit
+    // menghindari pengambilan ulang setiap kali form dibuka-tutup dalam satu sesi kerja.
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook tombol "Kirim Pesan" — pembuatan percakapan BARU.
+ *
+ * # Kenapa ia menyegarkan SELURUH daftar
+ *
+ * Karena percakapan baru mendarat di tab "Belum Dijawab", dan halaman berapa ia mendarat
+ * tidak dapat diketahui dari sini — urutannya menurut tanggal, dan tanggalnya diisi basis
+ * data.
+ *
+ * Kedua pencacah ikut tersegarkan karena keduanya datang BERSAMA daftar.
+ */
+export function useKomunikasiCabangSendMessage() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: NewMessageRequest) =>
+      await callAPI<ActionResponse>(`${PATH}/pesan`, {
+        token,
+        portal,
+        metode: 'POST',
+        body: input,
+      }),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
+      })
     },
   })
 }

@@ -7102,3 +7102,143 @@ gagal — dan dapat pula **lulus** — karena sebab yang bukan yang diuji.
    ini dianggap selesai.
 4. **`-periksa` sudah menyiapkan kuerinya** untuk ketiga hal di atas — sebaran `CASEID`, dan
    selisih pencacah terhadap tabel — sehingga DBA tidak perlu menyusunnya sendiri.
+
+---
+
+## Sesi 2026-09-24 (lanjutan) — menghidupkan aksi tulis Inbox Komunikasi Cabang
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:codebase-design` | sebelum menulis satu baris pun | menentukan **di mana** transaksi tinggal, dan apakah `Reply` menjadi satu operasi seam atau dua | Satu operasi. Dua operasi (`UpdateReply` + `InsertHistory`) akan memaksa `*sql.Tx` bocor lewat seam, sehingga lapisan domain harus menyebut tipe `database/sql`. Kosakata **depth** menjawabnya: `Reply` adalah satu interface kecil yang menyembunyikan dua pernyataan — bukan dua interface yang pemanggilnya harus tahu urutannya |
+| `mattpocock-skills:domain-modeling` | saat membaca `ReplyKomunikasi-SQL` | menguji apakah kolom `kodecabang` benar-benar berisi kode cabang | **Tidak.** Penelusuran `tempReply.NAME ← Param.kodecabang ← TempView2.City ← .pzInsKey` membuktikan isinya `CASEID`. Ini perangkap yang **sama bentuknya** dengan yang §49.10 catat — dan tanpa disiplin "silangkan pernyataan dengan kode", nama kolomnya akan dipercaya |
+| `mattpocock-skills:grilling` | pada diri sendiri, saat hendak menyalin `reply_update` apa adanya | menanyakan "apa yang terjadi bila percakapannya sudah ditutup?" | Jawabannya: balasannya **berhasil** pada baris yang tetap tidak muncul di kedua tab, lalu dijawab layar dengan kalimat tentang perpindahan tab yang tidak terjadi. Penjagaan `CASEID` ditambahkan, dan dinyatakan sebagai selisih terencana |
+
+### Yang TIDAK dipakai, dan sebabnya
+
+| Skill | Sebab |
+|---|---|
+| `mattpocock-skills:tdd` | Bentuk seam-nya ditentukan oleh pernyataan SQL yang sudah ada, bukan oleh desain yang perlu ditemukan lewat uji. Ujinya ditulis **bersamaan**, bukan mendahului — dan itu dicatat apa adanya alih-alih diklaim TDD |
+| `mattpocock-skills:diagnosing-bugs` | Tidak ada cacat yang sedang ditelusuri; yang dikerjakan penambahan kemampuan |
+| `mattpocock-skills:research` | Seluruh fakta ada di dalam repositori — dua artefak Pega yang baru diterima, dan kode yang sudah ada |
+
+### Pelajaran yang layak dibawa ke modul berikutnya
+
+1. **Uji guard yang mendaftar nama kueri harus ikut mendaftarkan yang MENULIS.**
+   `TestEveryQueryTouchingDataFiltersByBranch` sudah ada sejak §49 dan lulus sepanjang waktu —
+   tetapi daftarnya hanya memuat kueri baca. Pernyataan tulis pertama yang ditambahkan lolos
+   dari penjagaan yang dibangun justru untuk menjaganya. Daftar penjaga perlu diperiksa setiap
+   kali kategori baru masuk, bukan hanya saat anggotanya bertambah.
+
+2. **Uji yang menjaga perilaku lama pada modul yang berubah lebih buruk daripada tidak ada uji.**
+   Empat uji sesi ini lulus sambil menyatakan hal yang keliru — "Selesai Komunikasi dijawab
+   501", "membalas belum tersedia". Menghapusnya adalah pekerjaan, bukan kelalaian, dan
+   penghapusannya dicatat di tempat uji itu berada.
+
+3. **Field penanda yang artinya berbalik harus DIGANTI, bukan dibalik nilainya.**
+   `tindakan_masih_di_pega: false` akan menyatakan hal yang benar dengan nama yang salah. Biaya
+   menggantinya hari ini satu suntingan; biaya membiarkannya adalah setiap pembaca berikutnya.
+
+4. **Nilai yang nyaris disalin sebagai literal SQL layak diperiksa dulu.**
+   `komunikasistatus = '1'` hampir disalin apa adanya. Menjadikannya konstanta domain memaksa
+   pertanyaan "apa artinya '1'?" — dan jawabannya menutup pertanyaan terbuka §49.6 yang sudah
+   berdiri sejak modul ini dibangun.
+
+---
+
+## Sesi 2026-09-24 (lanjutan kedua) — membangun "Kirim Pesan"
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:domain-modeling` | saat membaca ketujuh properti `TempEmail.*` | menguji apakah satu pun namanya berarti seperti bunyinya | **Tidak satu pun.** `BodyLetterEmail` berisi ISI PESAN, `BranchToTransfer` berisi STATUS. Tanpa disiplin "silangkan pernyataan dengan kode", `BodyLetterEmail` akan dibaca sebagai alamat surel dan dipetakan ke kolom yang salah — cacat yang tidak menghasilkan satu pun galat |
+| `mattpocock-skills:grilling` | pada diri sendiri, sebelum menulis `SendMessage` | menanyakan "apa yang terjadi bila dua orang mengirim bersamaan?" | `MAX(KOMUNIKASIID)` dibaca **setelah** INSERT tanpa transaksi. Dua pengiriman bersamaan membaca nomor yang sama dan riwayat yang satu tertaut ke percakapan yang lain. Dibungkus satu transaksi, dan **keterbatasannya dinyatakan**: isolasi bawaan tidak menutupnya sepenuhnya, dan yang menutupnya butuh DDL yang belum ada |
+| `mattpocock-skills:codebase-design` | saat memutuskan bentuk `Repo.Branches` | apakah daftar cabang menerima batas cabang seperti operasi lain | **Tidak.** Yang dibatasi adalah percakapan, bukan daftar cabang. Menyaringnya akan mengosongkan pemilih tujuan bagi setiap petugas cabang — sehingga tidak seorang pun dapat mengirim pesan ke mana pun. Kosakata **interface** menjawabnya: tanda tangan yang menerima batas cabang akan **mengundang** pengisi seam menyaringnya |
+
+### Yang TIDAK dipakai, dan sebabnya
+
+| Skill | Sebab |
+|---|---|
+| `mattpocock-skills:tdd` | Bentuk seam-nya ditentukan pernyataan SQL yang sudah ada, bukan desain yang perlu ditemukan lewat uji. Ujinya ditulis bersamaan, bukan mendahului — dicatat apa adanya alih-alih diklaim TDD |
+| `mattpocock-skills:research` | Seluruh fakta ada di dalam repositori |
+
+### Kekeliruan saya, dan bagaimana ketahuan
+
+| Kekeliruan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Menyatakan form "Kirim Pesan" tidak dapat direplikasi** | Work Owner menunjukkan tempatnya | Saya mencari berdasarkan **nama berkas**, bukan **isi** section yang sudah di tangan. Blok bersyarat tidak punya berkas sendiri |
+| **§51.3: kolom `KODECABANG` berisi `CASEID`** | Membaca jalur kirim pesan, yang mengisinya dengan kode cabang | Satu jalur tidak membuktikan satu konvensi. Kolom yang ditulis dari dua tempat perlu diperiksa dari **kedua** tempat |
+| `requirePortal` sempat ditulis lalu tidak terpakai | `go build` | — |
+
+### Pelajaran yang layak dibawa ke modul berikutnya
+
+1. **Cari `pyContainerVisibleWhen` di setiap section yang dibaca.**
+   Blok bersyarat tidak punya berkas sendiri dan tidak akan muncul dalam pencarian berbasis
+   nama berkas. Satu layar dapat memuat beberapa "layar" yang saling menutupi, dan yang
+   tersembunyi persis yang paling mudah dinyatakan "tidak ada".
+
+2. **Daftar penjaga harus diperiksa setiap kali KATEGORI baru masuk — bukan saat anggotanya
+   bertambah.** Dua celah dengan pola yang sama ditemukan dua hari berturut-turut:
+   `branchFilteredQueries` melewatkan pernyataan `UPDATE`, `allQueryNames` melewatkan seluruh
+   pernyataan tulis. Keduanya kini dijaga oleh uji yang menjaga penjaganya sendiri.
+
+3. **Nilai literal di dalam SQL layak dibaca sebagai bukti, bukan disalin.**
+   `KOMUNIKASISTATUS = '0'` pada INSERT mengonfirmasi arti kode status dari sisi yang
+   berlawanan dengan yang dibaca kemarin. Dua pembacaan yang saling menguatkan jauh lebih kuat
+   daripada satu — dan keduanya baru terlihat karena nilainya dijadikan konstanta domain,
+   bukan disalin apa adanya ke dalam teks SQL.
+
+4. **Tebakan yang tidak dapat dihindari harus dinyatakan di tempat orang akan membacanya.**
+   Penyaring daftar cabang ditebak karena kuerinya tidak ada di export. Ia dinyatakan di
+   **empat** tempat: komentar kueri, `PlannedDifferences` yang tampil di layar, `-periksa` yang
+   mengujinya terhadap basis data sungguhan, dan satu uji yang memaksa pernyataan itu tetap
+   ada selama tebakannya masih tebakan.
+
+5. **Jalur penolakan yang tidak lagi dicapai siapa pun harus DICABUT, bukan ditinggalkan.**
+   `RejectWrite`, rutenya, galatnya, kodenya, panel layarnya, dan hook-nya — enam artefak yang
+   kehilangan seluruh isinya sekaligus. Yang tertinggal akan tetap dipelihara, tetap diuji,
+   dan tetap menyatakan kepada pembacanya bahwa ada sesuatu yang belum tersedia.
+
+---
+
+## Sesi 2026-09-24 (lanjutan ketiga) — koreksi utas layar detail
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:domain-modeling` | saat keterangan Work Owner masuk | menguji apakah kedua tabel memang menyimpan hal yang berbeda | **Ya**, dan pembedaannya menjelaskan seluruh rancangan: `M_KOMUNIKASI_PNC` satu baris per PERCAKAPAN (kepala), `M_KOMUNIKASI_CABANG` satu baris per UCAPAN (utas). Itu pula yang menjelaskan mengapa "Kirim Pesan" dan "Balas" sama-sama menyisipkan ke tabel kedua — fakta yang dua sesi sebelumnya dicatat tanpa dapat dijelaskan gunanya |
+| `mattpocock-skills:grilling` | pada diri sendiri, sebelum menulis ulang | menanyakan "apa arti utas yang KOSONG sekarang?" | Bukan lagi "percakapan tidak ada". Percakapan yang dibuat lewat jalur lain punya kepala tanpa riwayat, dan menyamakan keduanya akan menjawab `404` untuk percakapan yang nyata. `detail_header` lahir dari pertanyaan itu |
+| `mattpocock-skills:codebase-design` | saat memutuskan bentuk `ThreadMessage` | apakah isian balasan tetap dibawa | **Tidak.** Balasan bukan isian pada sebuah ucapan — ia ucapan tersendiri. Tipe menyusut dari tujuh isian menjadi tiga, dan ketiganya persis kolom yang digambar section |
+
+### Kekeliruan saya — yang KEDUA berturut-turut, dengan akar yang sama
+
+| # | Kekeliruan | Akarnya |
+|---|---|---|
+| §52 | "form Kirim Pesan tidak ada di export" | mencari berdasarkan **nama berkas**; formnya blok bersyarat tanpa berkas sendiri |
+| §53 | "utas dibaca dari `M_KOMUNIKASI_PNC`" | kuerinya hilang, dan saya **mengisi kekosongan dengan tabel terdekat** alih-alih menyatakan tidak tahu |
+
+Ditambah satu hal yang memperburuk keduanya: `Section/DETAILKOMUNIKASICABANG_ACT-Act.xml`
+**ada di export sejak awal**. Ia terlewat karena sebuah Activity tersimpan di direktori
+`Section/`, dan penelusuran saya mempercayai nama direktori.
+
+### Pelajaran yang layak dibawa ke modul berikutnya
+
+1. **Ketika sebuah kueri hilang, TABELNYA pun tidak diketahui.**
+   Bukan hanya penyaring dan urutannya. Menyebut tabel terdekat sebagai sumber adalah tebakan
+   yang tidak dinyatakan — dan tebakan yang tidak dinyatakan tidak dapat dikoreksi siapa pun.
+   Bandingkan dengan daftar cabang §52.8, tempat tebakannya dinyatakan di empat tempat dan
+   karena itu aman.
+
+2. **Jangan percaya nama direktori pada export Pega.**
+   Sebuah Activity berada di `Section/`. Dua sesi berturut-turut kehilangan artefak karena
+   penelusuran berbasis nama — sekali nama berkas, sekali nama direktori. Yang dapat dipercaya
+   hanyalah `pyRuleName` di dalam berkasnya, dan `D-39` sudah menetapkan itu.
+
+3. **Cacat yang tidak menghasilkan galat adalah yang paling mahal.**
+   Utas berisi satu ucapan terbuka normal, berkolom benar, bertanggal masuk akal. Yang hilang
+   hanyalah sisa percakapannya — dan tidak ada apa pun di layar yang menandainya. Tiga sesi
+   berturut-turut menemukan kelas cacat yang sama: tombol yang hilang, nomor `MAX()` yang
+   bentrok, dan utas yang terpotong.

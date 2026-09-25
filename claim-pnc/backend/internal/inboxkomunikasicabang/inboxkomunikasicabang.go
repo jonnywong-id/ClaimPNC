@@ -82,6 +82,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 )
 
 // Conversation adalah satu baris pada grid — satu percakapan antara pusat dan cabang.
@@ -173,13 +174,73 @@ type Caller struct {
 	// Login adalah nama pengguna yang DIKETIK saat masuk —
 	// `OperatorID.pyUserIdentifier` di sistem lama. Bukan NIK.
 	//
-	// Ia yang dicocokkan `GetIDCabang` ke `V_HRD_MST.login_aplikasi`.
+	// Ia yang dicocokkan `GetIDCabang` ke `V_HRD_MST.login_aplikasi`, DAN yang tersimpan
+	// sebagai `REPLYFROM` saat sebuah percakapan dibalas.
 	Login string
+
+	// Name adalah nama lengkap petugas — `OperatorID.pyUserName` di sistem lama.
+	//
+	// Ia tersimpan sebagai `REPLYFROMNAME`, dan itulah yang digambar kolom
+	// "Penjawab(Dari)". Tanpa isian ini, setiap balasan yang ditulis sistem baru akan
+	// muncul di layar tanpa nama penjawabnya — terbaca seperti data yang hilang.
+	Name string
 }
 
 // Clean memangkas spasi setiap isian identitas.
 func (c Caller) Clean() Caller {
-	return Caller{Login: strings.TrimSpace(c.Login)}
+	return Caller{
+		Login: strings.TrimSpace(c.Login),
+		Name:  strings.TrimSpace(c.Name),
+	}
+}
+
+// Nilai `KOMUNIKASISTATUS`.
+//
+// # Artinya akhirnya diketahui, dan bukan dari master
+//
+// Tidak ada master yang menerjemahkan kolom ini di export mana pun — itu sempat dicatat
+// sebagai pertanyaan terbuka. Yang menjawabnya adalah `RDB List/ReplyKomunikasi-SQL.xml`,
+// yang diterima 2026-09-24: perintah balasannya menyetel `komunikasistatus='1'` berbarengan
+// dengan mengisi `replymessage`.
+//
+// Jadi `1` berarti SUDAH DIJAWAB. Nilai `0` pada baris yang belum dibalas mengikuti dari
+// situ, dan itu sejalan dengan data contoh yang sudah ada.
+//
+// StatusAnswered dipakai MENULIS, bukan menyaring: kedua grid menyaring `REPLYMESSAGE`,
+// bukan kolom ini. Perbedaan itu dipertahankan — lihat catatan pada berkas .sql.
+const (
+	StatusAnswered    = "1"
+	StatusNotAnswered = "0"
+)
+
+// ReplyCommand adalah satu balasan yang sudah tervalidasi.
+//
+// Ia hanya lahir lewat NewReplyCommand.
+type ReplyCommand struct {
+	// ID adalah nomor percakapan yang dibalas — `Param.IDKomunikasi`.
+	ID string
+
+	// Message adalah isi balasannya — `Param.Pesan`.
+	Message string
+
+	// Caller adalah penjawabnya. Login mengisi `REPLYFROM`, Name mengisi `REPLYFROMNAME`.
+	Caller Caller
+
+	// RepliedAt adalah waktu balasannya — `@CurrentDateTime()` di sistem lama.
+	//
+	// Ia DITENTUKAN di lapisan aplikasi lewat seam Clock, bukan oleh basis data. Alasannya
+	// bukan gaya: `09-DATABASE-STRATEGY.md` §4 melarang `SYSDATE`, dan waktu yang lahir di
+	// dua tempat berbeda (Oracle dan aplikasi) tidak dapat diuji secara deterministik.
+	RepliedAt time.Time
+}
+
+// Clock adalah seam ke waktu.
+//
+// Ia ada supaya waktu balasan dapat diuji secara deterministik. Seluruh waktu yang
+// dihasilkannya UTC; pengubahan ke WIB terjadi di satu tempat saja dan tidak pernah dengan
+// menambahkan tujuh jam secara manual (`F-5`).
+type Clock interface {
+	Now() time.Time
 }
 
 // CaseOpen adalah nilai `CASEID` yang menandai percakapan MASIH BERJALAN.
@@ -458,37 +519,19 @@ func (a Attachment) Uploaded() bool {
 // penyaring yang tidak dapat dibaca dari mana pun: yang dipakai hanyalah nomor percakapan,
 // satu-satunya parameter yang data transform-nya benar-benar kirimkan.
 type ThreadMessage struct {
-	// CreatedAt — kolom **"Tanggal"**.
+	// CreatedAt — kolom **"Tanggal"** (`.CloseClaimDate` pada section).
 	CreatedAt string
 
-	// SenderOrigin adalah asal pesan, sudah diterjemahkan lewat OriginOf.
-	SenderOrigin string
-
-	// SenderOperator adalah Operator ID pengirimnya.
+	// SenderOperator — kolom **"Pengirim"** (`.UserName` pada section).
 	//
-	// Bersama SenderOrigin ia menyusun kolom **"Pengirim"**, digambar dengan pola yang
-	// sama seperti di grid — asal, lalu operator di dalam kurung.
+	// Ia Operator ID pengirimnya, apa adanya. BERBEDA dari kolom "Pengirim(Dari)" pada grid,
+	// yang dirakit menjadi `asal (operator)` — dan perbedaannya bukan pilihan melainkan
+	// akibat langsung dari tabelnya: `M_KOMUNIKASI_CABANG` tidak memuat kolom asal sama
+	// sekali, sehingga tidak ada yang dapat dirakit.
 	SenderOperator string
 
-	// Message — kolom **"Pesan"**.
+	// Message — kolom **"Pesan"** (`.Email` pada section).
 	Message string
-
-	// Reply adalah balasan pada baris yang sama, bila ada.
-	//
-	// Section lama TIDAK menggambar kolom balasan di layar detail; ia hanya menggambar
-	// Tanggal, Pengirim, dan Pesan. Isian ini tetap dibawa karena satu baris
-	// `M_KOMUNIKASI_PNC` menyimpan pesan DAN balasannya, dan layar yang membuang balasannya
-	// akan menampilkan percakapan yang separuh isinya hilang.
-	//
-	// Ia digambar sebagai baris tersendiri di bawah pesannya, bukan sebagai kolom keempat —
-	// sehingga ketiga kolom section lama tetap utuh (`D-13`).
-	Reply string
-
-	// ReplierName adalah nama penjawabnya, digambar bersama balasannya.
-	ReplierName string
-
-	// RepliedAt adalah tanggal balasannya.
-	RepliedAt string
 }
 
 // ConversationDetail adalah isi layar Detail Komunikasi untuk satu percakapan.
@@ -652,22 +695,26 @@ func (s Summary) Total() int {
 // Dideklarasikan DI SINI, di paket yang memakainya — bukan di paket yang memenuhinya. Diisi
 // `repo/sqlstore` terhadap Oracle dan `repo/memory` untuk pengujian.
 //
-// # Tidak ada satu pun operasi yang menulis, dan itu keputusan
+// # DUA operasi menulis, dan itu KEPEMILIKAN TABEL yang berpindah
 //
-// Layar lama punya TIGA tindakan yang menulis, dan ketiganya menyentuh tabel yang selama
-// masa paralel dimiliki Pega (`P-1`):
+// Sampai 2026-09-24 modul ini membaca saja, dan kedua tindakan yang menulis dijawab `501`.
+// Keputusan Work Owner pada tanggal itu mengubahnya: **Balas** dan **Selesai Komunikasi**
+// dibangun sungguhan.
 //
-//	Kirim Pesan         PNCSendMessageKomunikasiCabang -> ReplyKomunikasiCabang (INSERT)
-//	Balas               PNCReplyMessageCabang          -> HILANG dari export
-//	Selesai Komunikasi  EndKomunikasiCabang            -> ENDMessageCABANG_PNC (UPDATE)
+// Yang berubah karena itu bukan sekadar dua endpoint, melainkan **pemilik tabel**.
+// `P-1` menetapkan tepat satu sistem menulis sebuah tabel selama masa paralel, dan
+// kepemilikan berpindah saat modulnya pindah — bukan saat keduanya menulis bersamaan.
+// Sejak keputusan ini, `POOLDATA.M_KOMUNIKASI_PNC` dan `POOLDATA.M_KOMUNIKASI_CABANG`
+// ditulis SISTEM BARU, dan layar Pega yang sama wajib berhenti menulisinya.
 //
-// Yang kedua tidak dapat direplikasi sama sekali — activity-nya tidak ada di export mana
-// pun, sehingga tidak ada yang dapat dibaca untuk ditulis ulang. Mengarang logikanya
-// dilarang: aturan kerja proyek ini melarang logika karangan bila proses aslinya dapat
-// dipelajari, dan di sini ia justru TIDAK dapat dipelajari.
+// Ketiga tindakan lama dan keadaannya sekarang:
 //
-// Tombolnya tetap digambar dan penekanannya dijawab dengan alasan; lihat
-// ErrWriteNotAvailable dan preseden `RejectWrite` pada modul Inbox RCL/PUCL.
+//	Balas               PNCReplyMessageCabang -> ReplyKomunikasi (UPDATE)
+//	                                          -> ReplyKomunikasiCabang (INSERT riwayat)   DIBANGUN
+//	Selesai Komunikasi  EndKomunikasiCabang   -> ENDMessageCABANG_PNC (UPDATE)            DIBANGUN
+//	Kirim Pesan/Tambah  PNCSendMessageKomunikasiCabang                                    BELUM
+//
+// Yang ketiga belum dibangun karena formnya belum digambar; ia tetap dijawab dengan alasan.
 type Repo interface {
 	// List mengembalikan SATU HALAMAN percakapan yang cocok beserta jumlah seluruhnya.
 	//
@@ -687,6 +734,62 @@ type Repo interface {
 	// percakapan yang tidak ada dan percakapan yang isinya kosong terlihat sama di layar,
 	// dan hanya yang pertama yang merupakan kekeliruan.
 	Detail(ctx context.Context, id string, filter BranchFilter) (ConversationDetail, error)
+
+	// Reply menyimpan balasan atas sebuah percakapan.
+	//
+	// Ia menempuh DUA penulisan, persis seperti `PNCReplyMessageCabang`:
+	//
+	//	UPDATE m_komunikasi_pnc     isi balasan, penjawab, waktunya, status '1'
+	//	INSERT m_komunikasi_cabang  riwayat balasan cabang
+	//
+	// Pengisi seam WAJIB menjalankan keduanya sebagai SATU transaksi. Sistem lama
+	// menjalankannya sebagai dua langkah activity tanpa transaksi apa pun, sehingga
+	// kegagalan pada langkah kedua meninggalkan balasan yang tersimpan tanpa riwayat.
+	// Lihat catatan atomisitas pada berkas .sql.
+	//
+	// Batas cabang WAJIB ditegakkan: nomor percakapan milik cabang lain menghasilkan
+	// ErrConversationNotFound, bukan balasan yang tersimpan di tempat yang salah.
+	Reply(ctx context.Context, command ReplyCommand, filter BranchFilter) error
+
+	// Finish menutup sebuah percakapan — tombol "Selesai Komunikasi".
+	//
+	// Ia menyetel `CASEID` menjadi CaseClosed, sehingga barisnya HILANG dari kedua tab.
+	// Itu bukan penanda yang dapat dibatalkan lewat layar ini: tidak ada satu pun tindakan
+	// di layar lama yang mengembalikannya.
+	//
+	// Batas cabang WAJIB ditegakkan, dengan alasan yang sama seperti Reply.
+	Finish(ctx context.Context, id string, filter BranchFilter) error
+
+	// Branches mengembalikan daftar cabang yang dapat dipilih sebagai tujuan pesan baru.
+	//
+	// Ia TIDAK menerima batas cabang, dan itu disengaja: yang dibatasi adalah percakapan,
+	// bukan daftar cabang. Petugas cabang Surabaya boleh mengirim pesan ke cabang Bandung —
+	// yang tidak boleh adalah MELIHAT percakapan cabang Bandung dengan pihak lain.
+	//
+	// Menyaringnya akan mengosongkan pemilih cabang bagi setiap petugas cabang, sehingga
+	// tidak seorang pun dapat mengirim pesan ke mana pun.
+	Branches(ctx context.Context) ([]BranchOption, error)
+
+	// SendMessage membuat percakapan BARU — tombol "Kirim Pesan".
+	//
+	// Ia menempuh TIGA penulisan, persis seperti `PNCSendMessageKomunikasiCabang`:
+	//
+	//	INSERT m_komunikasi_pnc     percakapan baru, KOMUNIKASISTATUS '0'
+	//	SELECT max(komunikasiid)    nomor percakapan yang baru saja terbit
+	//	INSERT m_komunikasi_cabang  riwayat pesan cabang
+	//
+	// Pengisi seam WAJIB menjalankan ketiganya sebagai SATU transaksi — alasannya sama
+	// dengan Reply, dan di sini lebih tajam lagi: langkah kedua membaca `max()`, sehingga
+	// dua pengiriman yang berjalan bersamaan tanpa transaksi dapat membaca nomor yang sama
+	// dan menautkan riwayat ke percakapan milik orang lain.
+	//
+	// Nomor percakapan yang terbit dikembalikan supaya pemanggil dapat menyebutnya kepada
+	// pengguna dan mencatatnya di jejak.
+	//
+	// Cabang ASAL diterima sebagai `origin`, BUKAN diturunkan di sini: penurunannya
+	// menembus DB Link dan sudah dikerjakan usecase, dan mengulanginya di setiap pengisi
+	// seam berarti dua penurunan untuk satu permintaan.
+	SendMessage(ctx context.Context, command NewMessageCommand, origin string) (string, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

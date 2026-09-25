@@ -3,6 +3,7 @@ package inboxkomunikasicabang_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -339,15 +340,157 @@ func TestPlannedDifferencesNameTheBranchWideningDecision(t *testing.T) {
 		"selisih terencana harus menyebut petugas yang cabangnya tidak terbaca")
 }
 
-func TestPlannedDifferencesNameTheWriteActionsThatStayInPega(t *testing.T) {
-	// Keempat tombol tetap digambar, dan penggunanya harus tahu MENGAPA ia tidak bekerja.
-	// Tombol yang diam tanpa keterangan dilaporkan sebagai kerusakan.
+func TestPlannedDifferencesAnnounceThatEveryWriteActionNowWorks(t *testing.T) {
+	// Uji ini MENGGANTIKAN TestPlannedDifferencesNameTheWriteActionThatStaysInPega, yang
+	// membuktikan "Kirim Pesan" masih ditolak. Pernyataan itu tidak lagi benar sejak
+	// 2026-09-24: formnya ternyata tidak hilang dari export melainkan tersembunyi sebagai
+	// blok bersyarat di dalam section daftar.
+	//
+	// Yang dijaga sekarang kebalikannya — panel selisih TIDAK BOLEH lagi menyuruh pengguna
+	// pergi ke Pega untuk pekerjaan yang dapat ia selesaikan di layar ini.
 	found := false
 	for _, difference := range inboxkomunikasicabang.PlannedDifferences {
 		if strings.Contains(difference, "Kirim Pesan") &&
-			strings.Contains(difference, "Selesai Komunikasi") {
+			strings.Contains(difference, "SUDAH dapat dikerjakan") {
 			found = true
 		}
 	}
-	require.True(t, found, "selisih terencana harus menyebut aksi tulis yang belum tersedia")
+	require.True(t, found,
+		"selisih terencana harus menyatakan keempat aksi tulis sudah bekerja")
+}
+
+func TestPlannedDifferencesAdmitTheBranchListIsAGuess(t *testing.T) {
+	// Kueri yang mengisi pemilih cabang TIDAK ADA di export mana pun — yang terbaca hanyalah
+	// kelas halamannya dan ketiga kolom yang dipakainya. Penyaring dan urutannya karena itu
+	// ditebak.
+	//
+	// Tebakan yang tidak dinyatakan akan ditemukan orang lain sebagai cacat. Uji ini memaksa
+	// pernyataannya tetap ada selama tebakannya masih tebakan.
+	found := false
+	for _, difference := range inboxkomunikasicabang.PlannedDifferences {
+		if strings.Contains(difference, "V_D_SURVEYORS") &&
+			strings.Contains(difference, "tidak ada di export") {
+			found = true
+		}
+	}
+	require.True(t, found,
+		"selisih terencana harus menyatakan daftar cabang disusun dari tebakan")
+}
+
+func TestPlannedDifferencesAnnounceTheMissingEmailNotification(t *testing.T) {
+	// Sistem lama memberi tahu cabang tujuan lewat surel; sistem baru tidak. Penerima tetap
+	// melihat pesannya di kotak masuk, tetapi ia tidak lagi diberi tahu — dan orang yang
+	// terbiasa menunggu surel itu akan mengira pesannya tidak terkirim.
+	found := false
+	for _, difference := range inboxkomunikasicabang.PlannedDifferences {
+		if strings.Contains(difference, "Notifikasi Komunikasi Cabang Baru") &&
+			strings.Contains(difference, "TIDAK dikirim") {
+			found = true
+		}
+	}
+	require.True(t, found, "selisih terencana harus menyatakan surel tidak dikirim")
+}
+
+func TestPlannedDifferencesAnnounceTheTableOwnershipTransfer(t *testing.T) {
+	// `P-1` menuntut TEPAT SATU sistem menulis satu tabel selama masa paralel. Sejak modul
+	// ini membalas dan menutup percakapan, layar Pega yang sama HARUS berhenti menulis ke
+	// kedua tabelnya.
+	//
+	// Itu bukan detail teknis yang boleh hidup di kepala pengembang saja: yang harus
+	// mematikannya adalah tim Pega, dan mereka membacanya dari sini.
+	found := false
+	for _, difference := range inboxkomunikasicabang.PlannedDifferences {
+		if strings.Contains(difference, "M_KOMUNIKASI_PNC") &&
+			strings.Contains(difference, "P-1") {
+			found = true
+		}
+	}
+	require.True(t, found,
+		"selisih terencana harus menyatakan perpindahan kepemilikan tabel")
+}
+
+func TestReplyRefusesACallerWithoutAName(t *testing.T) {
+	// Nama penjawab tersimpan sebagai REPLYFROMNAME, dan itulah yang digambar kolom
+	// "Penjawab(Dari)". Balasan tanpa nama akan muncul sebagai baris yang penjawabnya
+	// kosong — tidak terbedakan dari baris warisan yang memang tidak punya nama penjawab,
+	// dan justru itulah saksi selisih pencacah yang sudah ada.
+	_, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{ID: "KOM-0001", Message: "sudah dicek"},
+		inboxkomunikasicabang.Caller{Login: "pictekniks"},
+		time.Now(),
+	)
+
+	require.ErrorIs(t, err, inboxkomunikasicabang.ErrCallerUnknown)
+}
+
+func TestReplyRefusesAnEmptyMessage(t *testing.T) {
+	// Balasan kosong yang tersimpan menyetel KOMUNIKASISTATUS menjadi "1", sehingga
+	// percakapannya berpindah ke tab "Sudah Dijawab" — terbaca sudah dijawab padahal tidak
+	// ada jawabannya. Itu bukan kerapian; itu baris yang hilang dari antrean kerja orang.
+	_, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{ID: "KOM-0001", Message: "   "},
+		inboxkomunikasicabang.Caller{Login: "pictekniks", Name: "Contoh PIC Teknik"},
+		time.Now(),
+	)
+
+	var validation *inboxkomunikasicabang.ValidationError
+	require.ErrorAs(t, err, &validation)
+	require.Len(t, validation.Violations, 1)
+	require.Equal(t, inboxkomunikasicabang.FieldReplyMessage, validation.Violations[0].Field)
+}
+
+func TestReplyMeasuresLengthInCharactersNotBytes(t *testing.T) {
+	// Satu huruf beraksen memakan dua bita. Membatasi menurut bita akan menolak kalimat yang
+	// LEBIH PENDEK daripada yang dijanjikan pesannya sendiri — penolakan yang, bagi
+	// penggunanya, tampak sebagai kebohongan.
+	//
+	// 4.000 huruf beraksen = 8.000 bita. Ia harus LOLOS.
+	message := strings.Repeat("é", 4000)
+
+	command, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{ID: "KOM-0001", Message: message},
+		inboxkomunikasicabang.Caller{Login: "pictekniks", Name: "Contoh PIC Teknik"},
+		time.Now(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, 4000, len([]rune(command.Message)))
+	require.Greater(t, len(command.Message), 4000, "uji ini kehilangan maknanya bila "+
+		"pesannya ternyata satu bita per huruf")
+}
+
+func TestReplyKeepsTheMessageTrimmedButOtherwiseUntouched(t *testing.T) {
+	// Isi balasan disimpan APA ADANYA selain pemangkasan tepi. Ia teks yang ditulis manusia
+	// untuk dibaca manusia; setiap "perbaikan" di jalur ini — merapikan spasi ganda,
+	// membuang baris kosong — mengubah tulisan orang tanpa ia tahu.
+	command, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{
+			ID:      "  KOM-0001  ",
+			Message: "  baris satu\n\n  baris tiga  ",
+		},
+		inboxkomunikasicabang.Caller{Login: "pictekniks", Name: "Contoh PIC Teknik"},
+		time.Now(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, "KOM-0001", command.ID)
+	require.Equal(t, "baris satu\n\n  baris tiga", command.Message)
+}
+
+func TestReplyStoresTheTimestampInUTC(t *testing.T) {
+	// Waktu disimpan UTC, dikonversi ke WIB hanya saat ditampilkan (`F-5`). Jam yang masuk
+	// dengan zona lain harus keluar sebagai UTC — bukan disimpan apa adanya lalu bergeser
+	// tujuh jam tanpa ada yang menyadarinya (`R-12`).
+	jakarta := time.FixedZone("WIB", 7*60*60)
+	local := time.Date(2026, 9, 24, 10, 0, 0, 0, jakarta)
+
+	command, err := inboxkomunikasicabang.NewReplyCommand(
+		inboxkomunikasicabang.ReplyInput{ID: "KOM-0001", Message: "sudah dicek"},
+		inboxkomunikasicabang.Caller{Login: "pictekniks", Name: "Contoh PIC Teknik"},
+		local,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, time.UTC, command.RepliedAt.Location())
+	require.Equal(t, 3, command.RepliedAt.Hour())
 }

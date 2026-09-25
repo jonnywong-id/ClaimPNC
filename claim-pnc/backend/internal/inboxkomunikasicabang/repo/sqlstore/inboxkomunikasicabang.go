@@ -159,18 +159,26 @@ func (r *Repo) Detail(
 			inboxkomunikasicabang.ErrConversationNotFound
 	}
 
-	messages, err := r.thread(ctx, wanted, code)
+	// KEBERADAAN diperiksa LEBIH DULU, terpisah dari utasnya.
+	//
+	// Sejak utas dibaca dari tabel riwayat, utas yang kosong tidak lagi berarti percakapannya
+	// tidak ada: percakapan yang dibuat lewat jalur lain punya baris kepala tanpa satu pun
+	// baris riwayat. Menyamakan keduanya akan menjawab "tidak ditemukan" untuk percakapan
+	// yang nyata — dan itu akan dilaporkan sebagai kerusakan.
+	origin, found, err := r.header(ctx, wanted, code)
 	if err != nil {
 		return inboxkomunikasicabang.ConversationDetail{}, err
 	}
-
-	// Utas KOSONG berarti percakapannya tidak ada, ATAU ia milik cabang lain. Keduanya
-	// dijawab sama — "tidak ditemukan" — dan itu disengaja: jawaban yang membedakan keduanya
-	// akan menyatakan bahwa nomor itu ada di tempat lain, dan itu keterangan yang tidak
-	// berhak diterima pemanggilnya.
-	if len(messages) == 0 {
+	if !found {
+		// Tidak ada, ATAU milik cabang lain. Keduanya dijawab sama dengan sengaja: jawaban
+		// yang membedakannya akan menyatakan bahwa nomor itu ada di tempat lain.
 		return inboxkomunikasicabang.ConversationDetail{},
 			inboxkomunikasicabang.ErrConversationNotFound
+	}
+
+	messages, err := r.thread(ctx, wanted, code)
+	if err != nil {
+		return inboxkomunikasicabang.ConversationDetail{}, err
 	}
 
 	attachments, err := r.attachments(ctx, wanted, code)
@@ -182,11 +190,47 @@ func (r *Repo) Detail(
 		ID:          wanted,
 		Messages:    messages,
 		Attachments: attachments,
-		Origin:      messages[0].SenderOrigin,
+
+		// Asal percakapan datang dari KEPALA, bukan dari utasnya. Tabel riwayat tidak memuat
+		// kolom asal sama sekali.
+		Origin: origin,
 	}, nil
 }
 
-// thread mengambil utas pesan satu percakapan.
+// header memeriksa keberadaan percakapan dan membaca asalnya.
+//
+// Nilai kedua menyatakan percakapannya ditemukan DAN terlihat oleh batas cabang yang
+// diberikan. Keduanya dijadikan satu jawaban dengan sengaja — pemanggil tidak berhak
+// membedakan "tidak ada" dari "bukan milik Anda".
+func (r *Repo) header(ctx context.Context, id, code string) (string, bool, error) {
+	var originCode, recipientCode sql.NullString
+
+	err := r.db.QueryRowContext(
+		ctx,
+		getQuery("detail_header"),
+		id,   // :1 nomor percakapan
+		code, // :2 tujuan
+		code, // :3 asal
+	).Scan(&originCode, &recipientCode)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf(
+			"inboxkomunikasicabang/sqlstore: menjalankan detail_header: %w", err)
+	}
+
+	// Penerjemahan dikerjakan DOMAIN, bukan SQL — supaya penyimpanan ini dan penyimpanan
+	// memori tidak dapat berselisih.
+	return inboxkomunikasicabang.OriginOf(text(originCode)), true, nil
+}
+
+// thread membaca utas percakapan dari TABEL RIWAYAT.
+//
+// Bukan dari tabel percakapan. Setiap pesan dan setiap balasan adalah satu baris di sana,
+// sehingga utas yang panjang terbaca utuh — sementara tabel percakapan hanya menyimpan pesan
+// dan balasan TERAKHIR. Lihat catatan pada berkas .sql.
 func (r *Repo) thread(
 	ctx context.Context, id, code string,
 ) ([]inboxkomunikasicabang.ThreadMessage, error) {
@@ -194,39 +238,29 @@ func (r *Repo) thread(
 		ctx,
 		getQuery("detail_thread"),
 		id,   // :1 nomor percakapan
-		code, // :2 tujuan
-		code, // :3 asal
+		id,   // :2 nomor percakapan (sisi gabungan)
+		code, // :3 tujuan
+		code, // :4 asal
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"inboxkomunikasicabang/sqlstore: menjalankan detail_thread: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	messages := []inboxkomunikasicabang.ThreadMessage{}
 	for rows.Next() {
-		var createdAt, originCode, sender, message sql.NullString
-		var reply, replierName, repliedAt sql.NullString
+		var createdAt, sender, message sql.NullString
 
-		if err := rows.Scan(
-			&createdAt, &originCode, &sender, &message,
-			&reply, &replierName, &repliedAt,
-		); err != nil {
+		if err := rows.Scan(&createdAt, &sender, &message); err != nil {
 			return nil, fmt.Errorf(
 				"inboxkomunikasicabang/sqlstore: membaca baris detail_thread: %w", err)
 		}
 
 		messages = append(messages, inboxkomunikasicabang.ThreadMessage{
-			CreatedAt: text(createdAt),
-
-			// Penerjemahan asal dikerjakan DOMAIN, bukan SQL — supaya penyimpanan ini dan
-			// penyimpanan memori tidak dapat berselisih.
-			SenderOrigin:   inboxkomunikasicabang.OriginOf(text(originCode)),
+			CreatedAt:      text(createdAt),
 			SenderOperator: text(sender),
 			Message:        text(message),
-			Reply:          text(reply),
-			ReplierName:    text(replierName),
-			RepliedAt:      text(repliedAt),
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -237,7 +271,6 @@ func (r *Repo) thread(
 	return messages, nil
 }
 
-// attachments mengambil lampiran satu percakapan.
 func (r *Repo) attachments(
 	ctx context.Context, id, code string,
 ) ([]inboxkomunikasicabang.Attachment, error) {
@@ -281,6 +314,138 @@ func (r *Repo) attachments(
 	return result, nil
 }
 
+// Reply menyimpan balasan atas sebuah percakapan.
+//
+// # Kedua penulisannya dibungkus SATU transaksi, berbeda dari sistem lama
+//
+// `PNCReplyMessageCabang` menjalankan keduanya sebagai dua langkah activity terpisah tanpa
+// transaksi apa pun (langkah 3 lalu langkah 4). Kegagalan pada langkah kedua meninggalkan
+// balasan yang tersimpan tanpa riwayat, dan tidak ada apa pun yang memulihkannya.
+//
+// Di sini keduanya atomik. Itu mengikuti preseden `D-68`, yang membuat `B-4` dan `B-9`
+// atomik dengan alasan yang sama — dan seperti di sana, ia MENGUBAH keadaan akhir saat
+// gagal: sistem lama meninggalkan sebagian, sistem ini tidak meninggalkan apa pun.
+//
+// Transaksinya dimulai di sini, BUKAN di lapisan aplikasi, dan itu pengecualian yang
+// disadari terhadap `08-TECHNICAL-STRATEGY.md` §4.5. Alasannya: keduanya satu tindakan
+// bisnis yang tidak pernah dipakai terpisah, dan menaikkannya ke usecase berarti membocorkan
+// `*sql.Tx` melewati seam Repo — yang justru menghapus gunanya seam itu.
+func (r *Repo) Reply(
+	ctx context.Context,
+	command inboxkomunikasicabang.ReplyCommand,
+	filter inboxkomunikasicabang.BranchFilter,
+) error {
+	code := strings.TrimSpace(filter.Code)
+	if code == "" {
+		return errors.New(
+			"inboxkomunikasicabang/sqlstore: batas cabang kosong; balasan tidak disimpan")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: memulai transaksi balasan: %w", err)
+	}
+	// Rollback dipanggil tanpa syarat. Setelah Commit berhasil ia tidak melakukan apa pun,
+	// sehingga menaruhnya di defer menutup SETIAP jalur keluar — termasuk yang ditambahkan
+	// kemudian oleh orang yang lupa.
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(
+		ctx,
+		getQuery("reply_update"),
+		command.Message,                      // :1 isi balasan
+		command.Caller.Login,                 // :2 penjawab
+		command.RepliedAt,                    // :3 waktu balasan
+		command.Caller.Name,                  // :4 nama penjawab
+		inboxkomunikasicabang.StatusAnswered, // :5 status
+		command.ID,                           // :6 nomor percakapan
+		inboxkomunikasicabang.CaseOpen,       // :7 kanal berjalan
+		code,                                 // :8 tujuan
+		code,                                 // :9 asal
+	)
+	if err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: menyimpan balasan: %w", err)
+	}
+
+	// Nol baris berarti percakapannya tidak ada, SUDAH DITUTUP, atau milik cabang lain.
+	// Ketiganya dijawab sama, dan itu disengaja — jawaban yang membedakannya akan menyatakan
+	// bahwa nomor itu ada di tempat lain.
+	//
+	// Memeriksanya PENTING: tanpa ini, balasan atas nomor yang tidak ada akan dilaporkan
+	// berhasil, dan pengguna mengira pesannya terkirim.
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: membaca hasil balasan: %w", err)
+	}
+	if affected == 0 {
+		return inboxkomunikasicabang.ErrConversationNotFound
+	}
+
+	if _, err := tx.ExecContext(
+		ctx,
+		getQuery("reply_history_insert"),
+		command.Caller.Login, // :1 pengirim
+		command.Message,      // :2 isi balasan
+		command.ID,           // :3 nomor percakapan
+		// :4 penanda kanal — kolomnya bernama `kodecabang` tetapi menerima CASEID; lihat
+		// catatan pada berkas .sql.
+		inboxkomunikasicabang.CaseOpen,
+	); err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: mencatat riwayat balasan: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: menutup transaksi balasan: %w", err)
+	}
+	return nil
+}
+
+// Finish menutup sebuah percakapan.
+//
+// Ia satu pernyataan, sehingga tidak menuntut transaksi.
+func (r *Repo) Finish(
+	ctx context.Context,
+	id string,
+	filter inboxkomunikasicabang.BranchFilter,
+) error {
+	code := strings.TrimSpace(filter.Code)
+	wanted := strings.TrimSpace(id)
+
+	if code == "" || wanted == "" {
+		return inboxkomunikasicabang.ErrConversationNotFound
+	}
+
+	result, err := r.db.ExecContext(
+		ctx,
+		getQuery("finish_update"),
+		inboxkomunikasicabang.CaseClosed, // :1 kanal penutup
+		inboxkomunikasicabang.CaseOpen,   // :2 kanal berjalan
+		wanted,                           // :3 nomor percakapan
+		code,                             // :4 tujuan
+		code,                             // :5 asal
+	)
+	if err != nil {
+		return fmt.Errorf("inboxkomunikasicabang/sqlstore: menutup percakapan: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf(
+			"inboxkomunikasicabang/sqlstore: membaca hasil penutupan: %w", err)
+	}
+
+	// Nol baris punya TIGA sebab yang mungkin: percakapannya tidak ada, milik cabang lain,
+	// atau SUDAH ditutup. Ketiganya dijawab ErrConversationNotFound.
+	//
+	// Yang ketiga patut disadari: menekan tombolnya dua kali menghasilkan "tidak ditemukan"
+	// pada penekanan kedua, bukan "berhasil". Itu lebih jujur daripada melaporkan berhasil
+	// atas baris yang tidak berubah — dan barisnya memang sudah hilang dari layar.
+	if affected == 0 {
+		return inboxkomunikasicabang.ErrConversationNotFound
+	}
+	return nil
+}
+
 // CheckTable memastikan tabel yang dibutuhkan dapat dibaca akun aplikasi.
 //
 // Kedua pemeriksaan DIPISAH karena kegagalannya berbeda artinya, dan perbaikannya menempuh
@@ -292,6 +457,8 @@ func (r *Repo) attachments(
 func (r *Repo) CheckTable(ctx context.Context) error {
 	var total int
 
+	// Sentinelnya TEKS di sini, dan itu benar: yang disaring `CASEID`, kolom kanal
+	// percakapan yang memang berisi teks (`CABANG`).
 	err := r.db.QueryRowContext(
 		ctx, getQuery("check_table"), "__periksa__",
 	).Scan(&total)
@@ -301,8 +468,30 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 			err)
 	}
 
+	// Tabel RIWAYAT — sumber utas layar detail, dan satu-satunya tempat nama kolom ditebak.
+	//
+	// Ia diperiksa SEBELUM lampiran karena akibatnya lebih besar: tanpa riwayat, layar detail
+	// tidak menampilkan satu pun ucapan.
+	// Sentinelnya ANGKA, bukan teks: `KOMUNIKASIID` pada tabel ini bertipe NUMBER, dan
+	// sentinel bertipe teks menghasilkan `ORA-01722` — galat yang terbaca seolah tabelnya
+	// bermasalah padahal yang salah pemeriksanya sendiri.
 	err = r.db.QueryRowContext(
-		ctx, getQuery("check_attachment_table"), "__periksa__",
+		ctx, getQuery("check_history_table"), 0,
+	).Scan(&total)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf(
+			"inboxkomunikasicabang/sqlstore: POOLDATA.M_KOMUNIKASI_CABANG tidak dapat dibaca "+
+				"(nama kolom tanggalnya DITEBAK): %w", err)
+	}
+
+	// Sentinelnya ANGKA, sama seperti pemeriksa riwayat: `KOMUNIKASI_ID` bertipe NUMBER.
+	//
+	// Sampai 2026-09-25 ia mengirim teks, sehingga pemeriksaan ini SELALU gagal dengan
+	// `ORA-01722` — dan kegagalannya terbaca seolah ketiga tabel lampiran tidak dapat
+	// dibaca. Cacatnya ada sejak pemeriksa ini ditulis, dan baru terlihat ketika
+	// `-periksa` benar-benar dijalankan terhadap basis data sungguhan.
+	err = r.db.QueryRowContext(
+		ctx, getQuery("check_attachment_table"), 0,
 	).Scan(&total)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf(

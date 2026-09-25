@@ -1,6 +1,10 @@
 package inboxkomunikasicabang
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
 // QueryInput adalah isian mentah dari layar, belum divalidasi.
 //
@@ -121,6 +125,94 @@ func ResolveBranch(code string, resolved bool) BranchFilter {
 type DetailInput struct {
 	// ID adalah nomor percakapan — `Param.KOMID` pada `DetailKomunikasi_dt`.
 	ID string
+}
+
+// ReplyInput adalah isian mentah kotak balasan.
+type ReplyInput struct {
+	// ID adalah nomor percakapan — `Param.IDKomunikasi` pada `PNCReplyMessageCabang`.
+	ID string
+
+	// Message adalah isi balasan — `Param.Pesan`.
+	Message string
+}
+
+// maxReplyLength membatasi panjang balasan.
+//
+// # Angkanya dari mana, dan kenapa ia ADA padahal Pega tidak punya
+//
+// DDL `M_KOMUNIKASI_PNC` tidak tersedia (`R-08`), sehingga lebar `REPLYMESSAGE` tidak
+// diketahui. Sistem lama tidak memeriksa apa pun — ia mengirim isian apa adanya dan
+// menyerahkan penolakannya ke basis data, yang menjawab dengan galat mentah.
+//
+// Batas di sini BUKAN tebakan atas lebar kolomnya melainkan penjaga terhadap kiriman yang
+// jelas tidak masuk akal, dan pesannya terbaca pengguna. Bila kelak DDL-nya tiba dan
+// kolomnya ternyata lebih sempit, penolakan basis data tetap terjadi — hanya saja pada
+// kiriman yang jauh lebih jarang.
+//
+// Ia dinyatakan lewat PlannedDifferences supaya bukan perbedaan yang ditemukan sendiri.
+const maxReplyLength = 4000
+
+// NewReplyCommand membentuk balasan yang sah, atau menyatakan apa yang salah.
+//
+// # Kenapa nama penjawab ikut diwajibkan
+//
+// Karena ia tersimpan sebagai `REPLYFROMNAME`, dan itulah yang digambar kolom
+// "Penjawab(Dari)". Balasan yang tersimpan tanpa nama akan muncul di layar sebagai baris
+// yang penjawabnya kosong — tidak terbedakan dari baris warisan yang memang tidak punya
+// nama penjawab, dan itu justru saksi selisih pencacah yang sudah ada (lihat KOM-0006 pada
+// data contoh).
+//
+// Bila nama tidak terbaca dari sesi, permintaannya DITOLAK — bukan disimpan dengan nama
+// kosong.
+func NewReplyCommand(input ReplyInput, caller Caller, now time.Time) (ReplyCommand, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" || cleanCaller.Name == "" {
+		return ReplyCommand{}, ErrCallerUnknown
+	}
+
+	id := strings.TrimSpace(input.ID)
+	message := strings.TrimSpace(input.Message)
+
+	violations := []Violation{}
+
+	if id == "" {
+		violations = append(violations, Violation{
+			Field:   FieldConversation,
+			Message: "Nomor percakapan tidak disebutkan.",
+		})
+	}
+
+	// Balasan kosong DITOLAK, dan itu bukan kehati-hatian berlebih: menyimpannya akan
+	// menyetel `komunikasistatus = '1'` sehingga percakapannya berpindah ke tab
+	// "Sudah Dijawab" — terbaca sudah dijawab padahal tidak ada jawabannya.
+	if message == "" {
+		violations = append(violations, Violation{
+			Field:   FieldReplyMessage,
+			Message: "Balasan tidak boleh kosong.",
+		})
+	}
+
+	// Panjangnya dihitung dalam RUNE, bukan bita: satu huruf beraksen memakan dua bita, dan
+	// membatasi menurut bita akan menolak kalimat yang lebih pendek daripada yang dijanjikan
+	// pesannya sendiri.
+	if length := len([]rune(message)); length > maxReplyLength {
+		violations = append(violations, Violation{
+			Field: FieldReplyMessage,
+			Message: "Balasan terlalu panjang — " + strconv.Itoa(length) +
+				" karakter, sementara batasnya " + strconv.Itoa(maxReplyLength) + ".",
+		})
+	}
+
+	if len(violations) > 0 {
+		return ReplyCommand{}, NewValidationError(violations)
+	}
+
+	return ReplyCommand{
+		ID:        id,
+		Message:   message,
+		Caller:    cleanCaller,
+		RepliedAt: now.UTC(),
+	}, nil
 }
 
 // NewDetailRequest memeriksa permintaan layar detail.

@@ -17,12 +17,36 @@ import (
 // Ia ditulis tangan, bukan dibaca dari map `queries`: daftar yang dihitung sendiri oleh uji
 // akan ikut menyusut bila sebuah kueri terhapus, dan uji yang menyusut bersama cacatnya tidak
 // menjaga apa pun.
+//
+// CELAH YANG PERNAH ADA DI SINI. Sampai 2026-09-24 daftar ini memuat kueri BACA saja,
+// sehingga uji urutan penanda bind — dua uji tepat di bawahnya — tidak pernah memeriksa satu
+// pun pernyataan tulis. Penjagaan yang dibangun untuk menangkap cacat bind justru melewatkan
+// pernyataan yang paling berbahaya bila bind-nya tertukar.
+//
+// Itu celah yang sama bentuknya dengan yang ditemukan pada branchFilteredQueries di hari yang
+// sama, dan pelajarannya satu: daftar penjaga harus diperiksa setiap kali KATEGORI baru masuk,
+// bukan hanya saat anggotanya bertambah.
 var allQueryNames = []string{
 	"list_not_answered", "list_answered",
 	"count_answered", "count_not_answered",
-	"detail_thread", "detail_attachments",
-	"check_table", "check_attachment_table",
+	"detail_header", "detail_thread", "detail_attachments",
+	"check_table", "check_attachment_table", "check_history_table",
 	"branch_of_login",
+	"reply_update", "reply_history_insert", "finish_update",
+	"branch_options", "message_insert", "message_max_id", "message_history_insert",
+}
+
+func TestEveryLoadedQueryIsListedInAllQueryNames(t *testing.T) {
+	// Penjagaan atas penjagaannya sendiri. Kueri baru yang lupa didaftarkan di atas akan lolos
+	// dari SELURUH uji di berkas ini tanpa satu pun tanda — persis yang terjadi pada ketiga
+	// pernyataan tulis sampai 2026-09-24.
+	loaded := make([]string, 0, len(queries))
+	for name := range queries {
+		loaded = append(loaded, name)
+	}
+
+	require.ElementsMatch(t, loaded, allQueryNames,
+		"setiap kueri yang termuat harus terdaftar di allQueryNames, dan sebaliknya")
 }
 
 func TestEveryNamedQueryIsLoadable(t *testing.T) {
@@ -103,7 +127,11 @@ func TestEveryQueryTouchingDataFiltersByBranch(t *testing.T) {
 
 		// `OR`, bukan `AND`. Menukarnya mengosongkan seluruh layar, karena tidak ada
 		// percakapan yang asal dan tujuannya sama.
-		require.Containsf(t, text, "OR k.COMMUNICATE_FROM",
+		//
+		// Awalan aliasnya dibiarkan bebas: kueri baca memakai alias `k.`, sementara kedua
+		// pernyataan tulis TIDAK boleh beralias sama sekali (PostgreSQL menolak awalan alias
+		// pada klausa SET). Yang diperiksa adalah operatornya, bukan ejaan aliasnya.
+		require.Regexpf(t, `OR\s+(k\.)?COMMUNICATE_FROM`, text,
 			"kueri %q menyambung kedua sisi batas cabang dengan operator yang salah", name)
 	}
 }
@@ -114,10 +142,41 @@ func TestBranchFilteredQueriesCoverEveryDataQuery(t *testing.T) {
 	dataQueries := []string{
 		"list_not_answered", "list_answered",
 		"count_answered", "count_not_answered",
-		"detail_thread", "detail_attachments",
+		"detail_header", "detail_thread", "detail_attachments",
+		"reply_update", "finish_update",
 	}
 
 	require.ElementsMatch(t, dataQueries, branchFilteredQueries)
+}
+
+func TestWriteStatementsCarryNoTableAlias(t *testing.T) {
+	// Oracle mengizinkan `UPDATE tabel alias SET alias.kolom = …`; PostgreSQL TIDAK.
+	//
+	// Cacatnya tidak akan terlihat sampai cutover PostgreSQL (`D-24`), dan pada saat itu
+	// memperbaikinya jauh lebih mahal daripada menahannya sekarang. Uji ini yang menahannya.
+	for _, name := range writeQueries {
+		text := getQuery(name)
+
+		require.NotRegexpf(t, `(?i)UPDATE\s+\S+\s+\w+\s+SET`, text,
+			"pernyataan %q memberi alias pada tabelnya; PostgreSQL menolaknya", name)
+		require.NotContainsf(t, text, "SET k.",
+			"pernyataan %q memberi awalan alias pada klausa SET", name)
+	}
+}
+
+func TestEveryWriteStatementRefusesAClosedConversation(t *testing.T) {
+	// Kedua pernyataan tulis WAJIB menyaring `CASEID`.
+	//
+	// Pada finish_update ia mencegah penutupan ganda; pada reply_update ia mencegah balasan
+	// atas percakapan yang sudah ditutup — yang tanpa syarat ini akan "berhasil" lalu dijawab
+	// layar dengan kalimat tentang perpindahan tab yang tidak terjadi.
+	//
+	// Keduanya diperiksa di satu tempat supaya pernyataan tulis yang ditambahkan kelak ikut
+	// terperiksa begitu namanya didaftarkan di writeQueries.
+	for _, name := range writeQueries {
+		require.Containsf(t, getQuery(name), "CASEID =",
+			"pernyataan %q tidak menyaring kanal percakapan", name)
+	}
 }
 
 func TestBothListQueriesReturnTheSameAliasesInTheSameOrder(t *testing.T) {
@@ -130,11 +189,38 @@ func TestBothListQueriesReturnTheSameAliasesInTheSameOrder(t *testing.T) {
 	}
 }
 
-func TestThreadQueryReturnsItsOwnAliasSetWhichIsNotTheListSet(t *testing.T) {
-	// Layar detail tidak menggambar nomor percakapan (ia judulnya), tidak menggambar kode
-	// tujuan, dan tidak menggambar status. Ketiganya memang tidak dipilih.
+func TestThreadQueryReturnsExactlyTheThreeColumnsTheSectionDraws(t *testing.T) {
+	// `Section/BalasKomunikasiCabang-Section.xml` menggambar TIGA kolom: Tanggal, Pengirim,
+	// Pesan. Tidak lebih.
+	//
+	// Versi sebelumnya mengembalikan tujuh, karena ia membaca tabel percakapan dan membawa
+	// serta balasan beserta penjawabnya. Sejak utas dibaca dari tabel riwayat, balasan BUKAN
+	// isian pada sebuah ucapan — ia ucapan tersendiri.
 	require.Equal(t, threadColumns, aliasesOf(getQuery("detail_thread")))
+	require.Len(t, threadColumns, 3)
 	require.NotEqual(t, listColumns, threadColumns)
+}
+
+func TestTheThreadIsReadFromTheHistoryTableNotTheConversationTable(t *testing.T) {
+	// Keterangan Work Owner 2026-09-24. Tabel percakapan menyimpan pesan dan balasan
+	// TERAKHIR saja; tabel riwayat menyimpan setiap ucapan sebagai barisnya sendiri.
+	//
+	// Membacanya dari tabel percakapan menghasilkan utas yang SELALU berisi tepat satu baris,
+	// betapapun panjang percakapannya — dan itu tidak terlihat sebagai galat.
+	text := getQuery("detail_thread")
+
+	require.Contains(t, text, "M_KOMUNIKASI_CABANG")
+	require.Contains(t, text, "JOIN",
+		"batas cabang hanya dapat ditegakkan lewat gabungan: tabel riwayat tidak memuat "+
+			"kolom asal maupun tujuan")
+}
+
+func TestTheHeaderQueryExistsSoAnEmptyThreadIsNotMistakenForAMissingConversation(t *testing.T) {
+	// Percakapan yang riwayatnya belum pernah ditulis punya kepala tanpa utas. Tanpa
+	// pemeriksaan terpisah, ia akan dijawab "tidak ditemukan" — dan itu akan dilaporkan
+	// sebagai kerusakan.
+	require.Equal(t, headerColumns, aliasesOf(getQuery("detail_header")))
+	require.Contains(t, getQuery("detail_header"), "M_KOMUNIKASI_PNC")
 }
 
 func TestAttachmentQueryReturnsItsOwnAliasSet(t *testing.T) {
@@ -302,4 +388,72 @@ func aliasesOf(text string) []string {
 		aliases = append(aliases, strings.ToUpper(match[1]))
 	}
 	return aliases
+}
+
+// ── Pernyataan pembuatan percakapan baru ─────────────────────────────────────
+
+func TestEveryInsertBindsItsValuesInsteadOfConcatenatingThem(t *testing.T) {
+	// INSERT tidak punya klausa WHERE, sehingga tidak ada batas cabang maupun kanal yang
+	// dapat menjaganya. Yang tersisa sebagai penjaga adalah parameter binding — dan
+	// pemeriksaan ini yang memastikannya masih ada.
+	for _, name := range insertQueries {
+		text := getQuery(name)
+
+		require.Containsf(t, text, ":1", "pernyataan %q tidak mengikat satu pun nilai", name)
+		require.NotContainsf(t, text, "||",
+			"pernyataan %q merangkai nilai ke dalam teksnya sendiri", name)
+	}
+}
+
+func TestTheNewMessageInsertNamesEverySevenColumnItFills(t *testing.T) {
+	// `InsertMessageCABANG_PNC` mengisi TUJUH kolom, dan tidak satu pun boleh hilang: yang
+	// hilang akan diisi basis data dengan nilai bawaan, dan dua di antaranya — COMMUNICATE_TO
+	// dan COMMUNICATE_FROM — menentukan siapa melihat percakapannya.
+	text := getQuery("message_insert")
+
+	for _, column := range []string{
+		"CASEID", "SENDER", "MESSAGE", "SENDERNAME", "KOMUNIKASISTATUS",
+		"COMMUNICATE_TO", "COMMUNICATE_FROM",
+	} {
+		require.Containsf(t, text, column, "kolom %q tidak diisi", column)
+	}
+
+	// Tujuh kolom, tujuh penanda bind.
+	require.Contains(t, text, ":7")
+	require.NotContains(t, text, ":8")
+}
+
+func TestTheNewMessageInsertLeavesTheCreatedDateToTheDatabase(t *testing.T) {
+	// `InsertMessageCABANG_PNC` TIDAK menyebut CREATEDDATE, sehingga tanggalnya diisi basis
+	// data. Itu direplikasi apa adanya: kolom itu DASAR PENGURUTAN tab "Belum Dijawab", dan
+	// baris baru yang tanggalnya diisi aplikasi akan berperilaku berbeda dari seluruh baris
+	// yang sudah ada.
+	require.NotContains(t, getQuery("message_insert"), "CREATEDDATE")
+}
+
+func TestTheBranchListQueryRemovesDuplicates(t *testing.T) {
+	// `V_D_SURVEYORS` adalah view SURVEYOR, bukan view cabang: satu cabang hampir pasti
+	// muncul sekali per surveyor. Tanpa DISTINCT, pemilih tujuan menampilkan nama cabang yang
+	// sama berulang-ulang.
+	text := getQuery("branch_options")
+
+	require.Contains(t, text, "DISTINCT")
+	require.Contains(t, text, "V_D_SURVEYORS")
+	require.Contains(t, text, "ORDER BY")
+}
+
+func TestTheBranchListQueryTakesNoParameters(t *testing.T) {
+	// Ia TIDAK disaring menurut cabang pemanggil — yang dibatasi adalah percakapan, bukan
+	// daftar cabang. Menyaringnya akan mengosongkan pemilihnya bagi setiap petugas cabang,
+	// sehingga tidak seorang pun dapat mengirim pesan ke mana pun.
+	require.NotContains(t, getQuery("branch_options"), ":1")
+}
+
+func TestTheMaxIdQueryReadsTheSameTableTheInsertWrote(t *testing.T) {
+	// Nomornya ditemukan kembali lewat `MAX()` karena INSERT-nya tidak menyebut KOMUNIKASIID.
+	// Bila keduanya membaca tabel yang berbeda, nomor yang dikembalikan milik percakapan
+	// orang lain — dan riwayatnya tertaut ke tempat yang salah.
+	require.Contains(t, getQuery("message_max_id"), "M_KOMUNIKASI_PNC")
+	require.Contains(t, getQuery("message_insert"), "M_KOMUNIKASI_PNC")
+	require.Contains(t, getQuery("message_max_id"), "MAX(KOMUNIKASIID)")
 }

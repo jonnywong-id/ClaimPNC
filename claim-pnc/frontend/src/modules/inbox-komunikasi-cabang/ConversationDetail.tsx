@@ -1,8 +1,10 @@
+import { useState } from 'react'
+
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
-import { useKomunikasiCabangDetail } from './api'
+import { useKomunikasiCabangDetail, useKomunikasiCabangReply } from './api'
 import type { Attachment, ThreadMessage } from './types'
 
 type Props = {
@@ -24,15 +26,17 @@ type Props = {
  * Section itu menggambar TIGA kolom — Tanggal, Pengirim, Pesan — beserta kotak "Masukkan
  * Balasan" dan tombol "Balas".
  *
- * # DUA ARTEFAKNYA HILANG DARI EXPORT
+ * # SATU ARTEFAKNYA MASIH HILANG DARI EXPORT
  *
- * Kueri pemasok grid-nya (`GetInboxKomunikasiCabang_detail`) dan activity tombol Balas
- * (`PNCReplyMessageCabang`) TIDAK ADA di export mana pun — keduanya kelas `R-16`.
+ * Kueri pemasok grid-nya (`GetInboxKomunikasiCabang_detail`) TIDAK ADA di export mana pun —
+ * kelas `R-16`. Yang dibangun karena itu adalah bentuk yang terbaca dari section-nya sendiri.
+ * Ia TIDAK mengarang penyaring yang tidak dapat dibaca dari mana pun; yang dipakai hanyalah
+ * nomor percakapan, satu-satunya parameter yang benar-benar dikirim tombolnya. Dinyatakan
+ * lewat `selisih_terencana`.
  *
- * Yang dibangun karena itu adalah bentuk yang terbaca dari section-nya sendiri. Ia TIDAK
- * mengarang penyaring yang tidak dapat dibaca dari mana pun; yang dipakai hanyalah nomor
- * percakapan, satu-satunya parameter yang benar-benar dikirim tombolnya. Dinyatakan lewat
- * `selisih_terencana`.
+ * Activity tombol Balas (`PNCReplyMessageCabang`) sempat hilang pula, dan DITERIMA pada
+ * 2026-09-24 bersama `RDB List/ReplyKomunikasi-SQL.xml`. Sejak itu kotak balasan di bawah
+ * bukan lagi keterangan melainkan isian yang benar-benar menyimpan.
  *
  * # Kenapa PANEL, bukan halaman tujuan
  *
@@ -78,7 +82,7 @@ export function ConversationDetail({ id, onClose }: Props) {
           <>
             <Thread messages={detail.data.pesan} />
             <Attachments items={detail.data.lampiran} />
-            {detail.data.tindakan_masih_di_pega && <ReplyBoxNotice />}
+            {detail.data.balas_tersedia && <ReplyBox id={id} />}
           </>
         )}
       </div>
@@ -98,12 +102,23 @@ export function ConversationDetail({ id, onClose }: Props) {
  *
  * Ketiga isian section tetap digambar seluruhnya dan dengan judul yang sama; yang berubah
  * hanya tata letaknya. Itu selisih tampilan, bukan selisih isi.
+ *
+ * # Balasan adalah UCAPAN, bukan isian
+ *
+ * Sampai 2026-09-24 komponen ini menggambar balasan sebagai blok tersendiri DI DALAM setiap
+ * ucapan, karena utasnya dibaca dari tabel percakapan — yang menyimpan pesan dan balasan pada
+ * satu baris.
+ *
+ * Keterangan Work Owner mengoreksinya: utas dibaca dari tabel RIWAYAT, tempat setiap pesan
+ * dan setiap balasan menempati barisnya sendiri. Blok balasan karena itu dicabut — ia kini
+ * satu `<li>` seperti ucapan lainnya.
  */
 function Thread({ messages }: { messages: ThreadMessage[] }) {
   if (messages.length === 0) {
     return (
       <p className="text-sm text-slate-500">
-        Percakapan ini tidak memuat satu pun pesan.
+        Percakapan ini belum memuat satu pun ucapan. Ia mungkin dibuat lewat layar lain, atau
+        sebelum riwayat percakapan mulai dicatat.
       </p>
     )
   }
@@ -112,7 +127,7 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
     <ol className="space-y-3">
       {messages.map((message, index) => (
         <li
-          key={`${message.tanggal}|${message.operator_pengirim}|${index}`}
+          key={`${message.tanggal}|${message.pengirim}|${index}`}
           className="rounded-kartu border border-slate-200 bg-slate-50 px-3 py-2.5"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -127,31 +142,6 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
           <p className="mt-1.5 text-sm whitespace-pre-wrap text-slate-800">
             {message.pesan || '—'}
           </p>
-
-          {/*
-            Balasan digambar sebagai baris TERSENDIRI di bawah pesannya, bukan sebagai kolom
-            keempat.
-
-            Section lama tidak menampilkannya sama sekali, padahal satu baris tabel menyimpan
-            pesan DAN balasannya — sehingga utasnya terbaca separuh. Ketiga kolom aslinya
-            tetap utuh; yang ditambahkan adalah barisnya. Dinyatakan lewat
-            `selisih_terencana`.
-          */}
-          {message.jawaban !== '' && (
-            <div className="mt-2 border-l-2 border-blue-300 pl-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-xs font-medium text-blue-800">
-                  Jawaban{message.penjawab ? ` · ${message.penjawab}` : ''}
-                </span>
-                <span className="text-xs tabular-nums text-slate-500">
-                  {message.tanggal_jawaban || '—'}
-                </span>
-              </div>
-              <p className="mt-1 text-sm whitespace-pre-wrap text-slate-800">
-                {message.jawaban}
-              </p>
-            </div>
-          )}
         </li>
       ))}
     </ol>
@@ -233,31 +223,97 @@ function Attachments({ items }: { items: Attachment[] }) {
 }
 
 /**
- * Keterangan kotak balasan yang belum dapat dipakai.
+ * Kotak **"Masukkan Balasan"** beserta tombol **"Balas"**.
  *
- * # Kenapa kotaknya TIDAK digambar sama sekali
+ * # Apa yang digantikan
  *
- * Karena kotak isian yang tampak dapat diketik tetapi menolak saat dikirim lebih buruk
- * daripada tidak ada: pengguna sudah mengetik kalimatnya, dan kalimat itu hilang. Yang
- * digambar karena itu keterangannya saja.
+ * `Section/BalasKomunikasiCabang-Section.xml` menggambar satu kotak isian berlabel "Masukkan
+ * Balasan" dan satu tombol "Balas", yang menjalankan `PNCReplyMessageCabang` dengan tiga
+ * parameter: nomor percakapan, isi balasan, dan `kodecabang`.
  *
- * Ini BERBEDA dari tombol pada bilah atas, yang tetap digambar — tombol yang hilang membuat
- * layar terbaca rusak, sementara tombol yang menjawab alasan justru mengarahkan. Kotak
- * isian tidak punya sifat itu.
+ * Yang ketiga TIDAK dikirim dari sini, dan itu disengaja. Namanya menyebut kode cabang tetapi
+ * isinya `TempView2.City`, yang berasal dari `CASEID` — penanda kanal, bukan kode cabang.
+ * Peladen mengisinya sendiri dari konstanta domainnya; mengirimkannya dari layar berarti
+ * penanda yang menentukan baris mana yang boleh diubah datang dari permintaan.
  *
- * Tindakannya sendiri belum dapat dibangun sekalipun diputuskan: activity di balik tombol
- * "Balas" (`PNCReplyMessageCabang`) TIDAK ADA di export mana pun, sehingga tidak ada yang
- * dapat dibaca untuk ditulis ulang.
+ * Penjawabnya juga tidak dikirim: ia diambil dari sesi. Jejak yang isinya ditentukan pengirim
+ * permintaan bukan jejak, dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang.
+ *
+ * # Kenapa isiannya TIDAK dikosongkan saat gagal
+ *
+ * Karena kalimat yang sudah diketik adalah pekerjaan penggunanya. Mengosongkannya saat
+ * permintaan ditolak — jaringan putus, cabang tidak terbaca, percakapan baru saja ditutup
+ * orang lain — membuang pekerjaan itu tanpa ia sempat menyalinnya.
+ *
+ * Yang dikosongkan hanyalah yang BERHASIL tersimpan, dan hanya setelah peladen menjawab.
  */
-function ReplyBoxNotice() {
+function ReplyBox({ id }: { id: string }) {
+  const [message, setMessage] = useState('')
+  const reply = useKomunikasiCabangReply()
+
+  const trimmed = message.trim()
+
   return (
-    <div className="mt-5 rounded-kartu border border-amber-200 bg-amber-50 px-3 py-2.5">
-      <p className="text-xs text-slate-700">
-        <span className="font-medium">Membalas belum tersedia di sini.</span> Balasan
-        menulis ke tabel komunikasi, dan selama Pega dan sistem baru berjalan berdampingan
-        tabel itu hanya boleh ditulis satu sistem — hari ini Pega. Balas lewat Pega.
-      </p>
-    </div>
+    <form
+      className="mt-5 border-t border-slate-200 pt-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (trimmed === '' || reply.isPending) return
+
+        reply.mutate(
+          { komunikasi: id, pesan: trimmed },
+          { onSuccess: () => setMessage('') },
+        )
+      }}
+    >
+      <label
+        htmlFor={`balasan-${id}`}
+        className="block text-xs font-medium text-slate-800"
+      >
+        Masukkan Balasan
+      </label>
+
+      <textarea
+        id={`balasan-${id}`}
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
+        rows={3}
+        maxLength={4000}
+        placeholder="Tulis balasan untuk percakapan ini…"
+        className="mt-1.5 w-full rounded-kartu border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+      />
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        {/*
+          Pencacah huruf digambar SETELAH 3.500, bukan sepanjang waktu. Angka yang selalu
+          terlihat mengalihkan perhatian dari menulis; yang muncul saat batasnya mendekat
+          justru memberi tahu tepat ketika ia berguna.
+        */}
+        <span className="text-xs text-slate-500">
+          {message.length >= 3500 ? `${message.length} / 4.000 karakter` : ''}
+        </span>
+
+        <Button type="submit" disabled={trimmed === '' || reply.isPending}>
+          {reply.isPending ? 'Menyimpan…' : 'Balas'}
+        </Button>
+      </div>
+
+      {reply.isError && (
+        <div className="mt-2">
+          <ErrorMessage
+            title="Balasan tidak tersimpan"
+            description={messageOf(reply.error)}
+            tone="gangguan"
+          />
+        </div>
+      )}
+
+      {reply.isSuccess && (
+        <p className="mt-2 text-xs text-emerald-700" role="status">
+          {reply.data.pesan}
+        </p>
+      )}
+    </form>
   )
 }
 

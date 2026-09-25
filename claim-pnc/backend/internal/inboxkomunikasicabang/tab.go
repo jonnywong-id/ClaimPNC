@@ -66,8 +66,9 @@ const (
 	// `KOMID = .ClaimNo` — lalu me-refresh grid. Activity itu mengubah `CASEID` menjadi
 	// `CABANG SELESAI`, sehingga barisnya HILANG dari kedua tab.
 	//
-	// Ia MENULIS, dan tabelnya milik Pega selama masa paralel (`P-1`). Tombolnya tetap
-	// digambar; penekanannya dijawab dengan alasan. Lihat ErrWriteNotAvailable.
+	// Ia MENULIS, dan sejak 2026-09-24 ia benar-benar menulis di sini — bukan lagi ditolak
+	// dengan alasan. Akibatnya TIDAK DAPAT DIBATALKAN dari layar mana pun: sistem lama tidak
+	// punya satu pun tindakan yang membuka kembali percakapan yang sudah ditutup.
 	FieldActionFinish = "aksi_selesai"
 )
 
@@ -331,26 +332,77 @@ var PlannedDifferences = []string{
 		"mana. Asimetri itu ada di layar lama dan tidak diperbaiki: memperbaikinya berarti " +
 		"menampilkan kode cabang di tempat pengguna hari ini membaca kata \"CABANG\".",
 
-	"Tindakan \"Kirim Pesan\", \"Balas\", \"Selesai Komunikasi\", dan \"Tambah\" belum " +
-		"tersedia. Keempatnya MENULIS ke tabel komunikasi, dan selama Pega dan sistem baru " +
-		"berjalan berdampingan tabel itu hanya boleh ditulis satu sistem — hari ini Pega. " +
-		"Satu di antaranya bahkan tidak dapat direplikasi sama sekali: activity di balik " +
-		"tombol \"Balas\" TIDAK ADA di export mana pun, sehingga tidak ada yang dapat " +
-		"dibaca untuk ditulis ulang. Tombolnya tetap digambar supaya keberadaannya " +
-		"terlihat, dan penekanannya menjawab alasan — bukan halaman kosong.",
+	"Tindakan \"Balas\" dan \"Selesai Komunikasi\" SUDAH dapat dikerjakan di sini sejak " +
+		"24 September 2026. Sejak itu tabel POOLDATA.M_KOMUNIKASI_PNC dan " +
+		"M_KOMUNIKASI_CABANG ditulis sistem baru, dan `P-1` menuntut layar Pega yang sama " +
+		"BERHENTI menulis ke keduanya — dua sistem yang sama-sama menulis satu tabel " +
+		"menghasilkan konflik yang hampir mustahil dilacak.",
 
-	"Layar \"Detail Komunikasi\" dibangun dari bentuk section-nya sendiri, karena kueri " +
-		"pemasoknya HILANG dari export. Yang terbaca dari section adalah ketiga kolomnya " +
-		"— Tanggal, Pengirim, Pesan — beserta kotak balasan; yang TIDAK terbaca adalah " +
-		"penyaring persisnya. Yang dipakai di sini hanyalah nomor percakapan, satu-satunya " +
-		"parameter yang benar-benar dikirim tombolnya. Bila utas yang tampil berbeda dari " +
+	"Tindakan \"Kirim Pesan\" dan \"Tambah\" SUDAH dapat dikerjakan di sini. Formnya " +
+		"ternyata tidak hilang dari export melainkan tersembunyi: ia blok bersyarat di dalam " +
+		"section daftar, bukan section tersendiri. Dengan itu KEEMPAT tindakan tulis layar " +
+		"lama bekerja di sistem baru.",
+
+	"Daftar cabang pada pemilih tujuan disusun dari seluruh baris POOLDATA.V_D_SURVEYORS " +
+		"yang punya kode dan nama, tanpa duplikat, urut menurut nama. Kueri yang sebenarnya " +
+		"MENGISI daftar itu tidak ada di export mana pun — yang terbaca hanyalah kelas " +
+		"halamannya dan ketiga kolom yang dipakainya. Bila daftar yang tampil berbeda dari " +
 		"Pega, inilah tempat pertama yang harus diperiksa.",
 
-	"Balasan digambar sebagai baris tersendiri di bawah pesannya pada layar Detail " +
-		"Komunikasi. Section lama hanya menggambar tiga kolom dan tidak menampilkan " +
-		"balasan sama sekali, padahal satu baris tabel menyimpan pesan DAN balasannya — " +
-		"sehingga utasnya terbaca separuh. Ketiga kolomnya tetap utuh; yang ditambahkan " +
-		"adalah barisnya, bukan kolomnya.",
+	"Surel \"Notifikasi Komunikasi Cabang Baru\" TIDAK dikirim. Sistem lama mengirimkannya " +
+		"ke alamat cabang tujuan pada langkah terakhir, dan activity-nya memuat satu alamat " +
+		"surel PRIBADI yang ter-hardcode di jalur produksi — yang tidak boleh dibawa apa pun " +
+		"yang terjadi (`D-15`, `D-67`). Penggantinya menuntut seam Notifier beserta master " +
+		"Penerima Notifikasi, dan keduanya belum ada di modul ini. Penerima tetap melihat " +
+		"pesannya di kotak masuk; yang hilang adalah pemberitahuan lewat surel.",
+
+	"Kolom KODECABANG pada tabel riwayat menerima DUA jenis nilai, tergantung tombol yang " +
+		"menulisnya: dari \"Balas\" ia berisi penanda kanal, dari \"Kirim Pesan\" ia berisi " +
+		"kode cabang tujuan. Keduanya direplikasi apa adanya — tidak ada satu pun layar yang " +
+		"membaca kolom itu, sehingga tidak ada yang dapat membuktikan mana yang benar.",
+
+	"Balasan atas percakapan yang SUDAH DITUTUP ditolak, sementara pernyataan SQL lama " +
+		"tidak punya syarat itu. Di Pega syaratnya memang tidak dibutuhkan — layar balasan " +
+		"hanya dapat dicapai dari grid, yang sudah menyaring percakapan berjalan. Di sistem " +
+		"baru alamatnya dapat dipanggil langsung, dan tanpa penjagaan ini balasannya akan " +
+		"\"berhasil\" pada baris yang tetap tidak muncul di kedua tab.",
+
+	"Menyimpan balasan memperbarui percakapan DAN mencatat riwayatnya dalam SATU " +
+		"transaksi. Sistem lama menjalankan keduanya sebagai dua langkah terpisah, sehingga " +
+		"kegagalan di antara keduanya meninggalkan percakapan yang terbarui tanpa riwayat. " +
+		"Selisihnya hanya muncul SAAT GAGAL, dan karena itu tidak akan terlihat pada uji " +
+		"kesetaraan yang jalannya mulus (`D-68`).",
+
+	"Panjang balasan dibatasi 4.000 karakter. Sistem lama tidak memeriksa apa pun dan " +
+		"menyerahkan penolakannya ke basis data, yang menjawab dengan galat mentah. Lebar " +
+		"kolom REPLYMESSAGE yang sebenarnya belum diketahui karena DDL-nya belum ada " +
+		"(`R-08`); angka ini penjaga terhadap kiriman yang jelas tidak masuk akal, bukan " +
+		"tebakan atas lebar kolomnya.",
+
+	"Layar \"Detail Komunikasi\" menampilkan UTAS percakapan — setiap pesan dan setiap " +
+		"balasan sebagai barisnya sendiri, urut dari yang paling awal. Ia dibaca dari tabel " +
+		"riwayat komunikasi cabang, bukan dari tabel percakapan yang hanya menyimpan pesan " +
+		"dan balasan TERAKHIR.",
+
+	"Kueri pemasok layar \"Detail Komunikasi\" TIDAK ADA di export mana pun. Yang terbaca " +
+		"adalah ketiga kolom yang digambar section-nya — Tanggal, Pengirim, Pesan — beserta " +
+		"nama kueri yang dipanggil activity-nya. Penyaring dan urutannya karena itu disusun " +
+		"dari bentuk itu: nomor percakapan, urut tanggal. Bila utas yang tampil berbeda dari " +
+		"Pega, inilah tempat pertama yang harus diperiksa.",
+
+	"Satu nama kolom pada tabel riwayat DITEBAK: kolom tanggalnya. Tidak satu pun INSERT " +
+		"mengisinya — ia diisi basis data — dan DDL-nya belum ada. Namanya disamakan dengan " +
+		"konvensi tabel saudaranya di skema yang sama. Bila tebakannya salah, layar detail " +
+		"menampilkan galat basis data, bukan baris yang keliru.",
+
+	"Kolom \"Pengirim\" pada layar detail menampilkan Operator ID APA ADANYA, berbeda dari " +
+		"kolom \"Pengirim(Dari)\" pada grid yang dirakit menjadi `asal (operator)`. Itu bukan " +
+		"pilihan tampilan: tabel riwayat tidak memuat kolom asal sama sekali.",
+
+	"Percakapan yang belum punya satu pun baris riwayat tetap DAPAT DIBUKA, dengan utas " +
+		"kosong dan keterangannya. Ia keadaan yang nyata untuk percakapan yang dibuat lewat " +
+		"layar lain. Menjawabnya \"tidak ditemukan\" akan menyatakan percakapan yang nyata " +
+		"itu tidak ada.",
 
 	"Daftar lampiran percakapan dapat DIBACA, tetapi berkasnya belum dapat diunduh dan " +
 		"lampiran baru belum dapat ditambahkan. Yang ditampilkan adalah jenis dokumen, " +

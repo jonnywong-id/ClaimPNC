@@ -13,11 +13,13 @@ import (
 //
 // Nilainya tetap berbahasa Indonesia karena ia KONTRAK yang dibaca frontend, sama halnya
 // dengan nama field JSON (`D-80`); yang berbahasa Inggris hanya nama konstantanya.
+//
+// CATATAN. CodeWriteNotAvailable ("belum_tersedia") DIHAPUS pada 2026-09-24 bersama
+// ErrWriteNotAvailable — tidak ada lagi tindakan di layar ini yang ditolak dengan alasan itu.
 const (
 	CodeValidationFail       = "validasi_gagal"
 	CodeCallerUnknown        = "profil_pemanggil_tidak_lengkap"
 	CodeBranchUnreadable     = "sumber_cabang_tidak_terbaca"
-	CodeWriteNotAvailable    = "belum_tersedia"
 	CodeConversationNotFound = "komunikasi_tidak_ditemukan"
 	CodeInternalError        = "galat_internal"
 )
@@ -121,33 +123,26 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		}, true
 
 	case errors.Is(err, inboxkomunikasicabang.ErrConversationNotFound):
-		// 404, dan pesannya menyebut DUA kemungkinan sebab.
+		// 404, dan pesannya menyebut TIGA kemungkinan sebab.
 		//
-		// Keduanya menghasilkan jawaban yang sama dengan sengaja — jawaban yang membedakan
-		// "tidak ada" dari "milik cabang lain" akan menyatakan bahwa nomor itu ada di tempat
-		// lain, dan itu keterangan yang tidak berhak diterima pemanggilnya.
+		// Dua yang pertama menghasilkan jawaban yang sama dengan sengaja — jawaban yang
+		// membedakan "tidak ada" dari "milik cabang lain" akan menyatakan bahwa nomor itu ada
+		// di tempat lain, dan itu keterangan yang tidak berhak diterima pemanggilnya.
 		//
 		// Portal ikut disebut karena kunci yang benar pada portal yang SALAH menghasilkan
 		// keadaan yang sama, dan itu tidak menghasilkan satu pun tanda lain (`R-20`).
+		//
+		// Sebab KETIGA ditambahkan 2026-09-24 bersama aksi tulis: percakapan yang SUDAH
+		// ditutup juga menjawab begini, karena kedua pernyataan tulisnya menyaring
+		// `CASEID = 'CABANG'`. Ia bukan sebab yang sama, tetapi jawabannya tepat — baris yang
+		// sudah ditutup memang hilang dari kedua tab, sehingga layar yang masih menampilkannya
+		// sedang usang. Menyebutnya membuat pengguna tahu harus menyegarkan, bukan menduga
+		// datanya rusak.
 		return http.StatusNotFound, ErrorResponse{
 			Code: CodeConversationNotFound,
-			Message: "Percakapan tidak ditemukan. Ia mungkin milik cabang lain, atau " +
-				"milik entitas lain — periksa pilihan portal di bilah atas.",
-		}, true
-
-	case errors.Is(err, inboxkomunikasicabang.ErrWriteNotAvailable):
-		// 501, bukan 403 maupun 404.
-		//
-		// 403 akan menyatakan pengguna tidak berwenang — padahal ia berwenang, dan
-		// wewenangnya bukan yang menghalangi. 404 akan menyatakan alamatnya tidak ada,
-		// sehingga tombolnya terbaca sebagai kerusakan. 501 menyatakan yang sebenarnya:
-		// alamatnya ada, permintaannya sah, kemampuannya yang belum dibangun.
-		return http.StatusNotImplemented, ErrorResponse{
-			Code: CodeWriteNotAvailable,
-			Message: "Mengirim pesan, membalas, menutup percakapan, dan menambah " +
-				"percakapan belum tersedia di sistem baru. Keempatnya menulis ke tabel " +
-				"komunikasi, dan selama Pega dan sistem baru berjalan berdampingan tabel " +
-				"itu hanya boleh ditulis satu sistem — hari ini Pega. Kerjakan lewat Pega.",
+			Message: "Percakapan tidak ditemukan. Ia mungkin sudah ditutup orang lain, milik " +
+				"cabang lain, atau milik entitas lain — segarkan daftar, lalu periksa pilihan " +
+				"portal di bilah atas.",
 		}, true
 
 	default:

@@ -251,24 +251,19 @@ export type Attachment = {
 
 /** Satu baris pada utas layar detail. */
 export type ThreadMessage = {
+  /** Kolom "Tanggal". */
   tanggal: string
 
-  /** Kolom "Pengirim", sudah dirakit — sama bentuknya dengan di grid. */
-  pengirim: string
-  asal: string
-  operator_pengirim: string
-
-  pesan: string
-
   /**
-   * Balasan pada baris yang sama.
+   * Kolom "Pengirim" — Operator ID pengirimnya, APA ADANYA.
    *
-   * Digambar sebagai baris tersendiri di bawah pesannya, bukan sebagai kolom keempat —
-   * sehingga ketiga kolom section lama tetap utuh (`D-13`).
+   * Ia TIDAK dirakit menjadi `asal (operator)` seperti di grid, dan itu bukan pilihan: tabel
+   * riwayat tidak memuat kolom asal sama sekali, sehingga tidak ada yang dapat dirakit.
    */
-  jawaban: string
-  penjawab: string
-  tanggal_jawaban: string
+  pengirim: string
+
+  /** Kolom "Pesan". */
+  pesan: string
 }
 
 /** Jawaban GET /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}. */
@@ -282,13 +277,59 @@ export type ConversationDetailResponse = {
   lampiran: Attachment[]
 
   /**
-   * Kotak balasan digambar tetapi belum dapat dipakai.
+   * Kotak balasan dapat dipakai.
    *
-   * Dikirim sebagai DATA, bukan ditulis tetap di layar, supaya penghidupan tombolnya kelak
-   * tidak menuntut suntingan frontend.
+   * Dikirim sebagai DATA, bukan ditulis tetap di layar. Nilainya berubah dari `false` menjadi
+   * `true` pada 2026-09-24 — persis alasan penanda ini ada.
+   *
+   * Field lamanya bernama `tindakan_masih_di_pega` dan artinya KEBALIKAN dari ini. Ia diganti,
+   * bukan dibalik nilainya: nama yang artinya berlawanan dengan isinya adalah cacat yang
+   * menunggu giliran.
    */
-  tindakan_masih_di_pega: boolean
+  balas_tersedia: boolean
 
   batas_cabang: BranchScope
+  portal: string
+}
+
+/**
+ * Satu pilihan pada pemilih cabang tujuan.
+ *
+ * Alamat surelnya TIDAK ada di sini, dan itu disengaja: layar tidak membutuhkannya, dan
+ * alamat surel yang dikirim ke peramban ikut tercatat di cache, log proxy, dan alat
+ * pengembang. Peladen membacanya untuk keperluan notifikasi dan tidak pernah meneruskannya.
+ */
+export type BranchOption = {
+  kode: string
+  nama: string
+}
+
+/** Jawaban `GET /api/inbox-komunikasi-cabang/cabang`. */
+export type BranchListResponse = {
+  cabang: BranchOption[]
+
+  /**
+   * Kedua pilihan dropdown tujuan — "PUSAT" dan "CABANG".
+   *
+   * Datang dari peladen, bukan ditulis tetap di layar: keduanya hasil pembacaan export
+   * (`CNMShowInsertKomunikasi_dt` mengisinya secara harfiah), dan tempat pembacaan itu
+   * tercatat adalah backend.
+   */
+  tujuan: string[]
+
+  portal: string
+}
+
+/** Badan permintaan `POST /api/inbox-komunikasi-cabang/pesan`. */
+export type NewMessageRequest = {
+  tujuan: string
+  cabang: string
+  pesan: string
+}
+
+/** Jawaban aksi tulis yang berhasil — balas, selesai, dan kirim pesan. */
+export type ActionResponse = {
+  komunikasi: string
+  pesan: string
   portal: string
 }

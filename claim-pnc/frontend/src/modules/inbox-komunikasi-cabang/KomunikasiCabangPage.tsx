@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
@@ -10,9 +10,10 @@ import { formatDate } from '@/components/format'
 
 import { ConversationDetail } from './ConversationDetail'
 import { KomunikasiCabangTabs } from './KomunikasiCabangTabs'
+import { NewMessageForm } from './NewMessageForm'
 import {
   useExportKomunikasiCabang,
-  useKomunikasiCabangAction,
+  useKomunikasiCabangFinish,
   useKomunikasiCabangList,
   useKomunikasiCabangMetadata,
 } from './api'
@@ -71,12 +72,37 @@ export function KomunikasiCabangPage() {
 
   const list = useKomunikasiCabangList(active, page, meta.isSuccess)
 
-  // Aksi tulis dikumpulkan dalam SATU mutation, bukan satu per tombol.
+  // Form "Kirim Pesan" terbuka atau tidak.
   //
-  // Keempatnya dijawab peladen dengan alasan yang sama, dan yang membedakannya hanyalah nama
-  // tindakan yang ikut dicatat. Memisahkannya menjadi empat hook akan menggandakan
-  // penanganan galat yang identik.
-  const action = useKomunikasiCabangAction()
+  // Di Pega keadaan ini tinggal di SERVER: `CNMShowInsertKomunikasi_dt` menyetel
+  // `TempInputKomunikasi.pyLabel = "Insert"`, dan `IsInsertKomunikasi` membacanya untuk
+  // memutuskan apakah bloknya digambar. Di sini ia tinggal di layar, tempat keadaan layar
+  // memang seharusnya tinggal.
+  const [composing, setComposing] = useState(false)
+
+  // Kalimat keberhasilan pengiriman, datang dari peladen.
+  //
+  // Ia disimpan DI SINI, bukan dibaca dari mutation di dalam form, karena formnya ditutup
+  // begitu pesannya terkirim — dan kalimat yang hidup di dalam komponen yang baru saja
+  // dilepas tidak akan pernah terbaca.
+  const [sent, setSent] = useState('')
+
+  // "Selesai Komunikasi" punya hook TERSENDIRI, bukan ikut mutation di atas.
+  //
+  // Ia benar-benar menulis sejak 2026-09-24, dan menyatukannya dengan tindakan yang ditolak
+  // akan membuat keduanya berbagi satu `isPending` dan satu penanganan galat — sehingga
+  // menekan "Tambah" akan menonaktifkan seluruh tombol "Selesai Komunikasi" di tabel.
+  const finish = useKomunikasiCabangFinish()
+
+  // Percakapan yang menunggu PENEGASAN sebelum ditutup.
+  //
+  // Penegasannya ada karena tindakan ini TIDAK DAPAT DIBATALKAN: barisnya hilang dari kedua
+  // tab, dan sistem lama tidak punya satu pun tindakan yang membukanya kembali. Tombolnya pun
+  // berada di dalam baris tabel, tempat satu klik meleset mengenai baris tetangga.
+  //
+  // Ia BUKAN `window.confirm`: dialog peramban tidak dapat diuji, tidak dapat diberi gaya,
+  // dan memblokir seluruh halaman.
+  const [confirming, setConfirming] = useState<Conversation | null>(null)
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama dan MENUTUP panel detail.
@@ -145,8 +171,17 @@ export function KomunikasiCabangPage() {
       // PERTAMA, sehingga tombolnya berbunyi "Menyegarkan…" sebelum seorang pun menekannya —
       // menyatakan sesuatu sedang dikerjakan atas perintah pengguna, padahal tidak.
       refreshing={list.isRefetching}
-      onAdd={() => action.mutate({ tindakan: 'tambah' })}
-      adding={action.isPending}
+      // "Tambah" TIDAK menyentuh peladen. Ia hanya membuka form — persis seperti di Pega,
+      // yang menjalankan data transform lalu me-refresh section tanpa menulis apa pun.
+      //
+      // Membukanya menutup panel detail: keduanya tampil di tempat yang sama, dan dua panel
+      // terbuka sekaligus membuat layar tidak terbaca.
+      onAdd={() => {
+        setComposing(true)
+        setSent('')
+        if (opened !== '') closeConversation()
+      }}
+      adding={false}
     >
       <div className="mt-4">
         <KomunikasiCabangTabs
@@ -170,18 +205,64 @@ export function KomunikasiCabangPage() {
             terlihat. Pesan yang muncul di sebelahnya akan terlewat justru oleh orang yang
             menekannya.
           */}
-          {action.isError && <ActionNotice message={messageOf(action.error)} />}
+          {finish.isError && <ActionNotice message={messageOf(finish.error)} />}
+
+          {composing && (
+            <NewMessageForm
+              onClose={() => setComposing(false)}
+              onSent={(pesan) => {
+                // Formnya ditutup setelah terkirim — perilaku yang sama dengan sistem lama,
+                // yang mengosongkan `pyLabel` pada langkah terakhir activity-nya.
+                setComposing(false)
+                setSent(pesan)
+              }}
+            />
+          )}
+
+          {sent !== '' && (
+            <p
+              className="mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
+              role="status"
+            >
+              {sent}
+            </p>
+          )}
+
+          {finish.isSuccess && (
+            <p
+              className="mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
+              role="status"
+            >
+              {finish.data.pesan}
+            </p>
+          )}
+
+          {confirming && (
+            <FinishConfirmation
+              item={confirming}
+              pending={finish.isPending}
+              onCancel={() => setConfirming(null)}
+              onConfirm={() => {
+                finish.mutate(confirming.komunikasi, {
+                  // Penegasan ditutup hanya setelah peladen menjawab BERHASIL. Menutupnya
+                  // lebih awal akan membuat penolakan — percakapan yang baru saja ditutup
+                  // orang lain, atau cabang yang tidak terbaca — muncul tanpa konteks apa
+                  // pun tentang percakapan mana yang dimaksud.
+                  onSuccess: () => {
+                    setConfirming(null)
+                    if (opened === confirming.komunikasi) closeConversation()
+                  },
+                })
+              }}
+            />
+          )}
 
           <div className="mt-4">
             <DataTable<Conversation>
               columns={columnsFor(tab, {
                 onOpen: openConversation,
-                onFinish: (row) =>
-                  action.mutate({
-                    tindakan: 'selesai-komunikasi',
-                    komunikasi: row.komunikasi,
-                  }),
-                finishing: action.isPending,
+                onFinish: (row) => setConfirming(row),
+                finishing: finish.isPending,
               })}
               rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.komunikasi}|${row.tanggal}`}
@@ -277,7 +358,6 @@ function PageFrame({
         </div>
       </header>
       {children}
-      <WriteActionsNotice />
     </div>
   )
 }
@@ -439,37 +519,14 @@ function ExportButton({
   )
 }
 
-/**
- * Keterangan keempat tindakan yang ada di layar lama tetapi belum tersedia di sini.
- *
- * # Kenapa dinyatakan, bukan dibiarkan hilang begitu saja
- *
- * Karena keempatnya adalah pekerjaan NYATA yang dilakukan pengguna layar ini setiap hari.
- * Layar yang kehilangan tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan, dan
- * penggunanya tidak akan tahu ia masih harus mengerjakannya lewat Pega.
- *
- * Satu di antaranya bahkan tidak dapat dibangun sekalipun diputuskan: activity di balik
- * tombol "Balas" tidak ada di export mana pun.
- */
-function WriteActionsNotice() {
-  return (
-    <section className="mt-6 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-amber-900">
-        Yang masih dikerjakan lewat Pega
-      </h2>
-      <p className="mt-2 text-xs text-slate-700">
-        <span className="font-medium">Kirim Pesan</span>,{' '}
-        <span className="font-medium">Balas</span>,{' '}
-        <span className="font-medium">Selesai Komunikasi</span>, dan{' '}
-        <span className="font-medium">Tambah</span> belum tersedia di sini. Keempatnya
-        mengubah isi percakapan — menutup percakapan bahkan menghilangkannya dari kedua tab
-        — dan selama Pega dan sistem baru berjalan berdampingan, data itu hanya boleh diubah
-        dari satu sistem. Layar ini untuk membaca dan mengunduh; tindakannya kerjakan di
-        Pega.
-      </p>
-    </section>
-  )
-}
+// CATATAN. WriteActionsNotice DIHAPUS pada 2026-09-24.
+//
+// Panel itu menyebutkan tindakan yang masih harus dikerjakan lewat Pega. Sejak KEEMPAT
+// tindakan tulis layar lama bekerja di sini — "Balas", "Selesai Komunikasi", "Kirim Pesan",
+// dan "Tambah" — ia tidak punya satu pun isi yang benar.
+//
+// Panel kosong yang tetap digambar lebih buruk daripada panel yang hilang: ia menyatakan ada
+// sesuatu yang belum tersedia, dan pembacanya akan mencari apa.
 
 /**
  * Tombol **"Detail Komunikasi"** — satu per baris.
@@ -516,20 +573,24 @@ function DetailButton({
 /**
  * Tombol **"Selesai Komunikasi"** — satu per baris.
  *
- * # Apa yang dilakukannya di Pega, dan kenapa itu penting diketahui
+ * # Apa yang dilakukannya, dan kenapa itu penting diketahui
  *
- * `runActivity` atas `EndKomunikasiCabang` dengan `KOMID = .ClaimNo`, lalu me-refresh grid.
- * Activity itu mengubah `CASEID` menjadi `CABANG SELESAI` — sehingga barisnya **hilang dari
- * kedua tab**. Ia bukan penanda yang dapat dibatalkan; ia mengeluarkan percakapan dari layar.
+ * Di Pega: `runActivity` atas `EndKomunikasiCabang` dengan `KOMID = .ClaimNo`, lalu
+ * me-refresh grid. Activity itu mengubah `CASEID` menjadi `CABANG SELESAI` — sehingga
+ * barisnya **hilang dari kedua tab**. Ia bukan penanda yang dapat dibatalkan; ia mengeluarkan
+ * percakapan dari layar, dan sistem lama tidak punya satu pun tindakan yang mengembalikannya.
  *
- * # Kenapa tombolnya tetap digambar meski pasti ditolak
+ * Sejak 2026-09-24 ia benar-benar melakukannya di sini pula.
  *
- * Karena ia ADA di layar lama, dan layar yang kehilangan tombolnya tanpa penjelasan
- * dilaporkan sebagai kerusakan. Penekanannya menjawab alasan dari peladen (`501`) — bukan
- * diam, dan bukan halaman kosong.
+ * # Kenapa ia TIDAK langsung menutup
  *
- * Nadanya sengaja **tidak** merah: ia bukan tombol berbahaya yang sedang dicegah, melainkan
- * tombol yang belum tersedia.
+ * Karena akibatnya tidak dapat dibatalkan, dan tombolnya berada di dalam baris tabel —
+ * tempat satu klik meleset mengenai baris tetangga. Ia membuka penegasan lebih dulu; lihat
+ * FinishConfirmation.
+ *
+ * Nadanya sengaja **tidak** merah. Menutup percakapan yang sudah selesai adalah pekerjaan
+ * normal sehari-hari, bukan tindakan darurat — tombol merah pada pekerjaan rutin membuat
+ * warna merah berhenti berarti apa pun di layar lain.
  */
 function FinishButton({
   item,
@@ -546,7 +607,7 @@ function FinishButton({
       disabled={busy}
       onClick={() => onFinish(item)}
       aria-label={`Selesai Komunikasi percakapan ${item.komunikasi}`}
-      title={`Tutup percakapan ${item.komunikasi}`}
+      title={`Tutup percakapan ${item.komunikasi} — akan diminta penegasan lebih dulu`}
       className={[
         'rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium',
         'whitespace-nowrap text-slate-700',
@@ -557,6 +618,71 @@ function FinishButton({
     >
       Selesai Komunikasi
     </button>
+  )
+}
+
+/**
+ * Penegasan sebelum sebuah percakapan ditutup.
+ *
+ * # Kenapa ia ada, padahal tidak ada di Pega
+ *
+ * Karena tindakannya **tidak dapat dibatalkan**: percakapannya hilang dari kedua tab, dan
+ * sistem lama tidak punya satu pun tindakan yang membukanya kembali. Tombolnya pun berada di
+ * dalam baris tabel, tempat satu klik meleset mengenai baris tetangga.
+ *
+ * Pega menutupnya seketika saat tombolnya ditekan. Penegasan ini karena itu **selisih yang
+ * disengaja** — dan satu-satunya selisih di modul ini yang menambah langkah, bukan
+ * menghapusnya.
+ *
+ * # Kenapa ia menyebut isi pesannya
+ *
+ * Karena nomor percakapan saja tidak cukup untuk mengenali baris mana yang sedang ditutup.
+ * Nomornya tidak dibaca orang; kalimat pertamanya dibaca.
+ */
+function FinishConfirmation({
+  item,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  item: Conversation
+  pending: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <section
+      className="mt-3 rounded-kartu border border-amber-300 bg-amber-50 px-4 py-3"
+      role="alertdialog"
+      aria-label={`Tutup percakapan ${item.komunikasi}`}
+    >
+      <h2 className="text-sm font-medium text-amber-900">
+        Tutup percakapan ini?
+      </h2>
+
+      <p className="mt-1.5 text-xs text-slate-700">
+        <span className="font-medium tabular-nums">{item.komunikasi}</span>
+        {item.pengirim ? ` · dari ${item.pengirim}` : ''}
+      </p>
+
+      {item.pesan && (
+        <p className="mt-1 line-clamp-2 text-xs italic text-slate-600">“{item.pesan}”</p>
+      )}
+
+      <p className="mt-2 text-xs text-slate-700">
+        Percakapan yang ditutup <span className="font-medium">hilang dari kedua tab</span> dan
+        tidak dapat dibuka kembali dari layar ini.
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button onClick={onConfirm} disabled={pending}>
+          {pending ? 'Menutup…' : 'Ya, tutup percakapan'}
+        </Button>
+        <Button tone="kedua" onClick={onCancel} disabled={pending}>
+          Batal
+        </Button>
+      </div>
+    </section>
   )
 }
 
