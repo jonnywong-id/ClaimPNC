@@ -11,10 +11,19 @@ import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
 import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
 import { PanelPage } from '@/modules/master-panel/PanelPage'
 import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
+import { ClauseAIPage } from '@/modules/master-pasal-ai/ClauseAIPage'
 import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
 import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
+import { GroupingPage } from '@/modules/master-grouping-sparepart/GroupingPage'
+import { PartCategoryPage } from '@/modules/master-kategori-sparepart/PartCategoryPage'
+import { PartTypePage } from '@/modules/master-tipe-sparepart/PartTypePage'
 import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
 import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
+import { SurveyorLoginPage } from '@/modules/master-login/SurveyorLoginPage'
+import { DetailPage as CauseOfLossDetailPage } from '@/modules/detail-penyebab-kerugian/DetailPage'
+import { ReasMemberPage } from '@/modules/master-reas/ReasMemberPage'
+import { InvestigatorInboxPage } from '@/modules/inbox-investigator/InvestigatorInboxPage'
+import { ReceiveTKAInboxPage } from '@/modules/inbox-receive-tka/ReceiveTKAInboxPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 // Dua modul mengekspor komponen bernama sama, dan keduanya memang layar "penyebab
 // kerugian" — yang satu varian Simas Online (MENU_ID 21), yang satu tingkat golongan
@@ -29,6 +38,8 @@ import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
+import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
+import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
@@ -48,6 +59,7 @@ import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
+import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
@@ -233,6 +245,73 @@ export function AppRoute() {
         }
       />
       {/*
+        Master Grouping Sparepart (MENU_ID 32). Master keempat dari keluarga alat berat.
+
+        Yang dikelolanya BUKAN penggolongan suku cadang melainkan penautan suku cadang ke
+        panel bodi pada sebuah kendaraan — baris yang menunjuk kendaraan yang sama
+        dikumpulkan di bawah satu Nomor Grup.
+
+        Tiga hal membedakannya dari ketiga master alat berat lain: ia memakai DUA tabel yang
+        digabungkan INNER JOIN, kunci alaminya EMPAT KOLOM BERSAMA-SAMA alih-alih kolom yang
+        masing-masing unik, dan lima isiannya DITURUNKAN dari Master Sparepart alih-alih
+        diketik.
+      */}
+      <Route
+        path="/master/grouping-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <GroupingPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Kategori Sparepart (MENU_ID 33). Penggolongan suku cadang yang menjadi
+        pilihan Kategori di layar Master Sparepart — layar ini MENULIS tabel yang layar itu
+        hanya baca (P-1, satu tabel satu penulis).
+
+        Tabelnya hanya punya TIGA kolom, dan itu menentukan seluruh bentuk layarnya: satu
+        isian yang dapat diketik, tanpa kolom pencatat pelaku, tanpa stempel waktu, dan
+        tanpa isian Catatan pada penolakan.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
+        Master Bengkel, Panel, dan Sparepart: `Section/ApprovalMasterKategoriSparepartHE`
+        di Pega dipakai Inbox Manager, dan Inbox Manager belum dibangun. Di sini akibat
+        menundanya lebih berat — kategori yang tertahan tidak dapat dipakai sparepart mana
+        pun.
+      */}
+      <Route
+        path="/master/kategori-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <PartCategoryPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Tipe Sparepart (MENU_ID 34). Penggolongan tingkat kedua di bawah kategori,
+        dan master pertama di rumpun sparepart yang menyimpan KUNCI ASING — setiap tipe
+        berinduk pada satu kategori yang dipilih dari dropdown.
+
+        Tombol Approve dan Reject ada DI DALAM layar ini dengan alasan yang sama seperti
+        Master Kategori Sparepart: `Section/ApprovalMasterTipeSparepartHE` di Pega dipakai
+        Inbox Manager, dan Inbox Manager belum dibangun. Tipe yang tertahan tidak dapat
+        dipakai sparepart mana pun.
+      */}
+      <Route
+        path="/master/tipe-sparepart"
+        element={
+          <SessionGuard>
+            <Protected>
+              <PartTypePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Master Pasal Kerugian (MENU_ID 27). Layar pertama yang MENGHAPUS data secara
         permanen — `D-66` menetapkan soft delete menyeluruh, tetapi tabelnya tidak punya
         kolom penanda terhapus dan Work Owner memilih "jalankan as is" pada 2026-09-19.
@@ -243,6 +322,30 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClausePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Pasal AI (MENU_ID 36). Kembaran layar di atas — section-nya Save-As darinya —
+        tetapi sudah dipangkas menjadi layar PENCARIAN BACA-SAJA: hanya Cari dan Refresh,
+        tanpa satu pun jalur tulis.
+
+        Satu-satunya layar master yang paginasinya dikerjakan SERVER (25 baris). Itu bukan
+        pilihan kami: grid Pega-nya ber-`pyPageMode = None`, dan jendelanya sudah dihitung
+        activity lewat `FirstRow`/`LastRow` sejak dulu.
+
+        Tabelnya `POOLDATA.MST_PASAL_AI`, dengan kolom `WP_PASAL`, `WP_AYAT`, dan
+        `WP_KEJADIAN`. Ketiga nama itu baru terbaca setelah activity dan kedua Connect-SQL-nya
+        diterima: properti yang mengikatnya di layar Pega bernama warisan — `.City`,
+        `.CityID`, dan `.District` — sisa Save-As dari layar surveyor tahun 2017.
+      */}
+      <Route
+        path="/master/pasal-ai"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ClauseAIPage />
             </Protected>
           </SessionGuard>
         }
@@ -267,6 +370,63 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SupplierPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Master Login (MENU_ID 37). Satu butir menu, satu layar, TANPA tab — layar lamanya
+        memang satu grid dengan dua tombol dan tidak punya penyaring status apa pun.
+
+        Layar master paling sederhana di aplikasi ini, dan itu bukan kebetulan:
+        POOLDATA.MST_LOGIN_SURVEYOR hanya punya tujuh kolom, dan tidak satu pun berupa
+        APPROVAL, pencatat pelaku, stempel waktu, maupun penanda aktif. Akibatnya tidak ada
+        alur persetujuan, tidak ada jejak siapa mengubah apa, dan tidak ada cara menyatakan
+        sebuah login sudah tidak berlaku.
+
+        Kuncinya DITURUNKAN dari Nama, bukan diterbitkan sequence — satu-satunya master di
+        aplikasi ini yang begitu.
+      */}
+      {/*
+        Master Reas (MENU_ID 35). Satu butir menu, satu layar, TANPA tab dan TANPA tombol
+        simpan — harness lamanya memang satu grid dengan satu tombol Refresh, dan
+        POOLDATA.T_REINSURER tidak punya kolom persetujuan.
+
+        Satu-satunya layar master yang BACA-SAJA, dan itu keputusan berdasar bukti:
+        satu-satunya penulis tabel itu di sistem lama adalah alur PLA/DLA lewat
+        `Database/UPDATEREAS.prc` — dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2`,
+        bukan layar master ini.
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu —
+        `m_otorisasi_pnc.csv` membatasi MENU_ID 35 pada grup `IT` saja — adalah
+        `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/master/reas"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReasMemberPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/detail-penyebab-kerugian"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CauseOfLossDetailPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/master/login"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SurveyorLoginPage />
             </Protected>
           </SessionGuard>
         }
@@ -323,6 +483,50 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <DocumentObjectPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Investigator (MENU_ID 48) — layar INBOX pertama, menggantikan harness
+        `InboxInvestigator_Harness`.
+
+        Isinya antrean bersama workbasket `InvestigatorPNC`. Ia inbox, bukan layar daftar:
+        barisnya PEKERJAAN, hilang setelah dikerjakan, dan punya tenggat (`D-79`).
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu — di
+        sistem lama `When/IsInvestigator-When.xml` membatasinya pada access group
+        `PncInvestigator` dan `Administrators` — adalah `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox/investigator"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InvestigatorInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Receive TKA (MENU_ID 49) — layar INBOX kedua, menggantikan harness
+        `InboxTKA_Harness`.
+
+        Isinya klaim TKA yang tanggal penerimaan dokumen aslinya belum diisi. Berbeda dari
+        Inbox Investigator yang baca-saja, layar ini MENULIS: pengguna mengisi tanggal
+        langsung di dalam tabel lalu menekan Submit, dan barisnya hilang dari daftar — ciri
+        kedua Inbox pada `D-79` yang di sini benar-benar terjadi lewat layar ini sendiri.
+
+        Rutenya berada di balik penjaga sesi yang sama. Pemeriksaan kewenangan menu adalah
+        `TKT-F3-005` yang belum ada, dan untuk layar ini sistem lama tidak memberi petunjuk
+        apa pun: tidak ada When rule yang menjaga MENU_ID 49.
+      */}
+      <Route
+        path="/inbox/receive-tka"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReceiveTKAInboxPage />
             </Protected>
           </SessionGuard>
         }
@@ -738,6 +942,24 @@ export function AppRoute() {
         }
       />
       {/*
+        Input Req Protection — permintaan pembukaan proteksi beserta form inputnya.
+
+        Layar lama dibatasi `When/IsReqProtection-When.xml` pada empat access group:
+        PncAdmin, PncPICTeknik, PNCKomiteTeknik, dan Administrators. Pembatasan itu
+        BELUM ada di sini; ia `TKT-F3-005`, yang bergantung pada tabel peran yang dapat
+        dibangun tetapi belum dapat diisi.
+      */}
+      <Route
+        path="/input-req-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ProtectionListPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Analyst Doctor — antrean penilaian medis milik SATU petugas, pengganti harness
         `inboxAnalystDoctor_Harness` (`MENU_ID 60`).
 
@@ -856,7 +1078,30 @@ export function AppRoute() {
         element={
           <SessionGuard>
             <Protected>
-              <ReportKlaimPage />
+              <ReportKlaimPage /></Protected>
+          </SessionGuard>
+        }
+      />
+
+        {/* 
+        Inbox Komunikasi Cabang (`MENU_ID 70`), pengganti harness `InboxKomunikasiCabang`.
+
+        Ia SATU rute, bukan dua seperti RCL/PUCL: layar "Detail Komunikasi" di Pega bukan
+        layar tujuan melainkan flow action yang menyisipkan section ke halaman yang sama,
+        dan petugas kembali ke daftarnya begitu selesai membaca. Nomor percakapan yang
+        sedang dibuka hidup di parameter alamat, sehingga alamatnya tetap dapat disalin.
+
+        Berbeda dari modul inbox lain, daftar layar ini DISARING menurut cabang pemanggilnya
+        — batas itu diselesaikan di sisi peladen dari login, bukan dari pilihan di layar.
+        Petugas yang cabangnya tidak dapat diturunkan dilayani sebagai kantor pusat (`P-5`),
+        dan layarnya menyatakan keadaan itu apa adanya.
+        */}
+      <Route
+        path="/inbox-komunikasi-cabang"
+        element={
+          <SessionGuard>
+            <Protected>
+              <KomunikasiCabangPage />
             </Protected>
           </SessionGuard>
         }
@@ -893,6 +1138,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Accept Open Protection — antrean akseptasi atas permintaan yang sama.
+
+        Taruhannya lebih besar daripada layar di atas: di sini seseorang MENYETUJUI
+        pembukaan proteksi. Layar lama membatasinya pada lima access group
+        (`When/IsOpenProtectionPNC-When.xml`), dan memisahkan antrean PREMI khusus peran
+        penagihan premi.
+
+        Sampai TKT-F3-005 dikerjakan, yang tersisa sebagai kontrol hanyalah jejak
+        DIAKSEP_OLEH — `D-59` menetapkan tidak ada pemisahan tugas formal.
+      */}
+      <Route
+        path="/inbox-accept-open-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AcceptQueuePage />
             </Protected>
           </SessionGuard>
         }

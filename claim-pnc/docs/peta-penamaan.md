@@ -1240,6 +1240,94 @@ istilah bisnis; yang di bawah adalah padanan Inggris yang dipakai di kode.
 **Nama tabel baru** tetap Indonesia karena ia milik basis data (`D-80`):
 `POOLDATA.CPNC_PEMAKAIAN_PROTEKSI`.
 
+---
+
+## Master Kategori Sparepart (2026-09-21)
+
+Modul `masterkategorisparepart` — nama folder mengikuti nama modul bisnis yang disebut Work
+Owner (`D-81`): backend `internal/masterkategorisparepart`, frontend
+`src/modules/master-kategori-sparepart`.
+
+Paket transportnya `masterkategorispareparthttp` — nama modul ditambah akhiran `http` tanpa
+tanda hubung, karena Go tidak mengizinkannya. Pola yang sama dipakai `masterspareparthttp`
+dan `masterpanelhttp`.
+
+### Kolom POOLDATA.GCNM_M_SPAREPART_CATEGORY
+
+Hanya **tiga kolom**, dan itu dipastikan dari kesembilan rule Pega yang menyentuh tabel ini —
+bukan dari satu rule browse saja. Label layar dibaca dari `pyLabelFieldValue` pada
+`Section/MasterKategoriSparepartHEApproval-Section.xml`.
+
+| Kolom | Label layar Pega | Nama di kode (Inggris) | Nama JSON (Indonesia) |
+|---|---|---|---|
+| `PART_CATEGORY_ID` | ID Kategori Sparepart | `ID` | `id_kategori_sparepart` |
+| `PART_CATEGORY_NAME` | Nama Kategori Sparepart | `Name` | `nama_kategori_sparepart` |
+| `APPROVAL` | — | `Status` | `status` |
+
+Satu field JSON yang **tidak punya kolom**: `status_label`. Ia diturunkan dari `status`
+supaya layar tidak perlu menyimpan petanya sendiri.
+
+### Alias kolom Pega yang TIDAK dibawa
+
+Seluruh rule browse mengalias kolomnya menjadi nama yang tidak ada hubungannya dengan isinya
+— bentuk utang yang `03-CURRENT-ARCHITECTURE.md` §4.2 catat:
+
+| Kolom asli | Alias Pega | Dibawa? |
+|---|---|---|
+| `PART_CATEGORY_ID` | `"CityID"` | tidak |
+| `PART_CATEGORY_NAME` | `"City"` | tidak |
+
+Pada jalur SIMPAN, penyesatannya berbeda lagi dan lebih jauh —
+`RDB List/UpdateMasterSparepartCategory_sql2-SQL.xml` memakai tiga property yang namanya
+tidak satu pun cocok dengan apa yang dibawanya:
+
+| Property Pega | Yang sebenarnya dibawanya |
+|---|---|
+| `InputKategori.CITY_ID` | **nama** kategori |
+| `InputKategori.LOGIN_APLIKASI` | **status** persetujuan |
+| `InputKategori.ACCOUNT_ID` | **kunci** baris |
+
+Ketiganya disebut apa adanya di kode baru.
+
+### Nama tipe: PartCategory, bukan Category
+
+| Lapisan | Nama | Kenapa |
+|---|---|---|
+| Domain Go | `PartCategory` | `Category` terlalu umum untuk tipe yang menempati paket bernama modul, dan `mastersparepart` sudah memakai nama itu untuk DTO lookup-nya. `PartCategory` mengikuti awalan kolomnya sendiri, `PART_CATEGORY_*` |
+| TypeScript | `PartCategory` | `SparepartCategory` sudah dipakai untuk bentuk BERBEDA — DTO dropdown `{kode, nama}` pada layar Master Sparepart. Dua bentuk untuk satu tabel, dan keduanya memang dibutuhkan |
+| Komponen React | `PartCategoryPage`, `PartCategoryForm` | memakai nama **tipe domain**, bukan nama modul — sama seperti `AccountPage` pada `master-rekening` |
+
+### Jalur API
+
+| Operasi | Jalur |
+|---|---|
+| Daftar | `GET /api/master/kategori-sparepart?status=&cari=` |
+| Satu baris | `GET /api/master/kategori-sparepart/{id}` |
+| Tambah | `POST /api/master/kategori-sparepart` |
+| Simpan | `PUT /api/master/kategori-sparepart/{id}` |
+| Keputusan borongan | `POST /api/master/kategori-sparepart/keputusan` |
+
+Tidak ada `DELETE`, dan tidak ada `/pilihan` — lihat `keputusan-implementasi.md` §35.6.
+
+### Nama kueri pada berkas .sql
+
+Seluruhnya berawalan `category_`, bukan `partcategory_` maupun `kategori_`: awalan itu hanya
+dipakai di dalam satu berkas milik satu modul, dan awalan yang lebih pendek membuat
+pernyataannya terbaca tanpa mengulang nama modul di setiap baris.
+
+| Nama kueri | Padanan Pega |
+|---|---|
+| `category_list` | `BrowseMasterSparepartCategoryClaimHE` |
+| `category_list_search` | — (ditambahkan) |
+| `category_get` | `BrowseSparepartCategoryClaimHE_sql` |
+| `category_find_by_name` | `ValidationSparepartCat` |
+| `category_lock_table` | — (ditambahkan, menutup balapan `max+1`) |
+| `category_next_id` | bagian `nvl(max(...),0)+1` pada `InsertMasterSparepartCategory_sql` |
+| `category_insert` | `InsertMasterSparepartCategory_sql` |
+| `category_update` | `UpdateMasterSparepartCategory_sql2` |
+| `category_set_status` | **direkonstruksi** — `UpdateSparepartCategoryClaimHE_sql` hilang (`R-16`) |
+| `category_count_by_status` | `CountMasterKatSparepartManager` |
+| `category_count_all` · `category_check_table` · `category_count_unknown_status` · `category_count_duplicate_name` · `category_count_orphan_sparepart` | — (pemeriksaan, ditambahkan) |
 ## Tambahan 2026-09-20 — modul Inbox XOL (`inboxxol`)
 ## Tambahan 2026-09-20 — modul Inbox Komite
 
@@ -1582,6 +1670,22 @@ sejalan dengan `AccountPage.tsx` pada `master-rekening`.
 
 | Kode | Kapan |
 |---|---|
+| `validasi_gagal` | isian tidak lolos pemeriksaan — 422 |
+| `kunci_kategori_sparepart_sudah_ada` | nama sudah dipakai baris lain — 409 |
+| `status_tidak_dikenal` | status di luar `"0"`, `"1"`, `"2"` — 422 |
+| `tidak_ditemukan` | baris tidak ada — 404 |
+| `permintaan_cacat` | badan JSON tidak dapat dibaca — 400 |
+
+Namanya `kunci_kategori_sparepart_sudah_ada`, bukan `nama_...`, supaya sebentuk dengan
+`kunci_sparepart_sudah_ada` pada Master Sparepart — keduanya menyatakan kunci alami yang
+bentrok, dan kebetulan modul ini hanya punya satu.
+
+## Master Grouping Sparepart (2026-09-21)
+
+Modul dengan **pemetaan nama paling menyesatkan** sejauh ini. Layarnya salinan layar Master
+Sparepart — `Harness/GroupingSparePart_HE-Harness.xml` menyebut asalnya sendiri lewat
+`pzOriginalInstanceKey = RULE-HTML-HARNESS DATA-PORTAL SPAREPART_HE` — sehingga kolom grouping
+dipetakan ke properti klipboard milik modul lain.
 | `detail_dokumen_travel_tidak_ditemukan` | baris yang dituju tidak ada |
 | `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field tak dikenal |
 
@@ -2062,6 +2166,734 @@ Nilai enumnya pun Indonesia dan sengaja sama dengan yang tersimpan di kolom `KEP
 
 | Lapisan | Nama |
 |---|---|
+| Backend, folder dan paket | `internal/mastergroupingsparepart` |
+| Frontend, folder | `src/modules/master-grouping-sparepart` |
+| Rute layar | `/master/grouping-sparepart` |
+| Jalur API | `/api/master/grouping-sparepart` |
+| MENU_PROGRAM | `GroupingSparePart_HE` (MENU_ID 32) |
+
+Nama modulnya berbahasa Indonesia mengikuti `D-81`; isinya berbahasa Inggris mengikuti `D-80`.
+
+### Properti Pega → arti sebenarnya → nama di kode
+
+Inilah inti utang penamaan modul ini. Kolom kiri adalah nama properti yang dipakai layar Pega;
+tidak satu pun ada hubungannya dengan isinya.
+
+| Properti Pega | Kolom basis data | Label layar | Domain (Go) | Kontrak (JSON) |
+|---|---|---|---|---|
+| `TempSparepart.ID` | `ID` | ID | `ID` | `id_grouping` |
+| `TempSparepart.NO_SPART` | `NO_PART` | Nomor Sparepart | `PartNumber` | `nomor_sparepart` |
+| `TempSparepart.NAMA_SPART` | `NAMA_PART` | Nama Sparepart | `PartName` | `nama_sparepart` |
+| `TempSparepart.KATEGORI_SPART` | `KATEGORI_SPART` | Kategory Sparepart | `CategoryID` | `kategori_sparepart` |
+| `TempSparepart.TIPE_SPART` | `TIPE_SPART` | Type Sparepart | `TypeID` | `tipe_sparepart` |
+| `TempSparepart.KODE_SPART` | `KODE_PART` | *(tidak digambar)* | `PartCode` | `kode_sparepart` |
+| `TempSparepart.PROD_DATE` | `PROD_DATE` | *(tidak digambar)* | `ProductionDate` | `tanggal_produksi` |
+| **`TempSparepart.PANJANG`** | `NAMA_PANEL` | **Nama Panel** | `PanelName` | `nama_panel` |
+| **`TempSparepart.MIN_STOCK`** | `ID_PANEL` | *(tersembunyi)* | `PanelID` | `id_panel` |
+| **`TempSparepart.LEBAR`** | `SISI_PANEL` | **Sisi** | `PanelSide` | `sisi` |
+| **`TempSparepart.TINGGI`** | `B.NO_RANGKA` | **No Rangka** | `ChassisNumber` | `no_rangka` |
+| **`TempSparepart.QTY_PESAN`** | `B.TIPE` | **Tipe Kendaraan** | `VehicleType` | `tipe_kendaraan` |
+| **`TempSparepart.BERAT`** | `GROUPING_DGN_RANGKA` | **Grouping Dengan No Rangka** | `GroupWithChassis` | `grouping_dengan_no_rangka` |
+| **`TempSparepart.pyID`** | `NO_GROUP_RANGKA` | *(tidak digambar)* | `GroupNumber` | `nomor_grup` |
+| **`TempSparepart.MAX_STOCK`** | `CATATAN` | **Catatan** | `Note` | `catatan` |
+| — | `APPROVAL` | *(tab)* | `Status` | `status` |
+
+Tujuh baris bertanda tebal adalah properti yang namanya **sama sekali tidak mencerminkan
+isinya**. Nama panel benar-benar tersimpan di properti bernama `PANJANG`, dan catatan di
+properti bernama `MAX_STOCK`.
+
+`pyID` patut diperhatikan sendiri: ia properti **bawaan Pega** yang dipinjam untuk memikul
+nomor grup kendaraan.
+
+### Alias kolom SQL yang TIDAK dibawa
+
+`RDB List/GetDataMasterGrouping-SQL.xml` menamai ulang kolomnya agar cocok dengan properti di
+atas:
+
+| Ditulis kueri lama | Kolom sebenarnya |
+|---|---|
+| `A.NAMA_PANEL AS "PANJANG"` | nama panel |
+| `A.SISI_PANEL AS "LEBAR"` | sisi panel |
+| `B.NO_RANGKA AS "TINGGI"` | nomor rangka |
+| `B.TIPE AS "QTY_PESAN"` | tipe kendaraan |
+| `A.GROUPING_DGN_RANGKA AS "BERAT"` | nomor rangka yang diikuti |
+| `A.CATATAN AS "MAX_STOCK"` | catatan |
+| `A.ID_PANEL AS "MIN_STOCK"` | id panel |
+| `A.NO_GROUP_RANGKA AS "pyID"` | nomor grup |
+| `A.NO_PART AS "NO_SPART"` | nomor sparepart |
+| `A.NAMA_PART AS "NAMA_SPART"` | nama sparepart |
+| `A.KODE_PART AS "KODE_SPART"` | kode sparepart |
+
+Dua alias lagi di luar kueri itu:
+
+| Ditulis kueri lama | Kolom sebenarnya | Di mana |
+|---|---|---|
+| `id AS "BANK_ID"` | id tipe kendaraan | `BrowseTypeHE_Sql` |
+| `TYPENAME AS "NAMA_BANK"` | nama tipe kendaraan | idem |
+| `COUNT(A.ID) AS "City"` | jumlah antrean persetujuan | `CountMasterGrupSparepartManager` |
+| `sisi_panel AS "NAME"` | sandi sisi | `GetDataSisiPanel` |
+
+Alias `"NAMA_BANK"` itulah sebabnya properti bernama bank muncul di section Master Grouping
+Sparepart, padahal tidak ada satu pun bank di layar ini.
+
+### Judul dan caption yang berbeda antara grid dan form
+
+Keduanya dipertahankan di tempatnya masing-masing (`D-13`), bukan diseragamkan:
+
+| Kolom | Judul di GRID | Label di FORM |
+|---|---|---|
+| `NO_PART` | No Sparepart | Nomor Sparepart |
+| `SISI_PANEL` | Sisi Panel | Sisi |
+
+Ejaan **"Kategory Sparepart"** dengan y juga dipertahankan apa adanya — itulah yang tertulis
+di layar lama.
+
+### Dua tabel, dan kolom bernama sama di keduanya
+
+| Tabel | Peran | Kolom |
+|---|---|---|
+| `POOLDATA.SPAREPART_HE_VIN_KEY` | induk | `ID`, `NO_PART`, `NAMA_PART`, `KODE_PART`, `KATEGORI_SPART`, `TIPE_SPART`, `PROD_DATE`, `ID_PANEL`, `NAMA_PANEL`, `SISI_PANEL`, **`NO_RANGKA`**, `GROUPING_DGN_RANGKA`, `NO_GROUP_RANGKA`, `CATATAN`, `APPROVAL` |
+| `POOLDATA.SPAREPART_HE_VIN_GROUP` | pendamping, satu-lawan-satu | `ID`, **`NO_RANGKA`**, `TIPE` |
+
+`NO_RANGKA` ada di **keduanya**, dan sistem lama memakai yang berbeda-beda: daftar menampilkan
+milik pendamping, pemeriksaan duplikat menyaring milik induk. Lihat
+`keputusan-implementasi.md` §36.4.
+
+### Penyimpanan JSON yang TIDAK ditulis lagi
+
+| Tabel | Perlakuan |
+|---|---|
+| `POOLDATA.M_SPAREPART_HE_VIN_KEY` | ditulis Pega lewat `PEGA_M_GROUPING_SPAREPART_HE`; **hanya DIBACA** aplikasi ini, untuk menghindari tabrakan ID selama masa paralel |
+
+Perhatikan namanya: tabel baca berawalan `SPAREPART_HE_VIN_KEY`, tabel JSON berawalan
+`M_SPAREPART_HE_VIN_KEY`. Keduanya berbeda hanya pada satu huruf di depan — dan yang pertama
+adalah **substring** dari yang kedua, sehingga pemeriksaan berbasis substring biasa akan selalu
+salah. Uji `TestOnlyOwnedTablesAreWritten` memakai pembanding berbasis kata untuk itu.
+
+### Empat sumber acuan yang hanya DIBACA
+
+| Sumber | Untuk isian | Nama tipe di Go |
+|---|---|---|
+| `POOLDATA.PANEL_HE` | Nama Panel | `Panel` |
+| `POOLDATA.LOKASI_PANEL_HE` | Sisi | `Side` |
+| `branddetail` | Tipe Kendaraan | `VehicleType` |
+| `POOLDATA.SPAREPART_HE` | lima isian turunan | `PartRef` |
+
+`branddetail` disebut **tanpa skema**, persis seperti kueri aslinya — tidak satu pun rule di
+export menyebut skemanya, sehingga melengkapinya akan menjadi tebakan.
+
+### Nama tipe: Grouping, bukan Group
+
+`Group` terlalu umum dan bertabrakan dengan `Group` sebagai komponen tata letak di frontend.
+`Grouping` mengikuti nama modul bisnis yang disebut Work Owner.
+
+Nama tipe lainnya:
+
+| Konsep | Nama di Go | Kenapa |
+|---|---|---|
+| Kunci alami empat kolom | `NaturalKey` | Tipe tersendiri, bukan empat argumen berjajar — keempatnya bertipe string dan urutannya tidak boleh dapat tertukar |
+| Pasangan penentu daftar Sisi | `SideKey` | Dua nilai yang selalu dipakai bersama |
+| Kelima isian turunan | `PartRef` | Ia **rujukan** ke Master Sparepart, bukan salinan sparepartnya |
+
+### Nama kueri pada berkas .sql
+
+Seluruhnya berawalan `grouping_`, mengikuti pola modul lain:
+
+| Kelompok | Nama |
+|---|---|
+| Baca | `grouping_list`, `grouping_list_search`, `grouping_get`, `grouping_find_by_key` |
+| Tulis | `grouping_insert`, `grouping_update`, `grouping_group_insert`, `grouping_group_update`, `grouping_set_status` |
+| Kunci | `grouping_lock_by_key` |
+| Penomoran | `grouping_max_id`, `grouping_max_id_mirror`, `grouping_group_numbers`, `grouping_group_by_chassis` |
+| Acuan | `grouping_panel_list`, `grouping_side_list`, `grouping_vehicle_type_list`, `grouping_part_find` |
+| Periksa | `grouping_check_*`, `grouping_count_*` |
+
+### Kode galat
+
+| Kode | Kapan |
+|---|---|
+| `grouping_sudah_ada` | keempat kunci alami sudah dipakai baris lain — 409 |
+| `sparepart_tidak_ditemukan` | nomor sparepart yang diketik tidak ada di Master Sparepart — 404 |
+| `validasi_gagal` | isian tidak lolos pemeriksaan — 422 |
+| `status_tidak_dikenal` | status di luar 0/1/2 — 422 |
+| `tidak_ditemukan` | baris yang dibuka tidak ada — 404 |
+| `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field yang tidak dikenal — 400 |
+
+---
+
+## Master Tipe Sparepart (2026-09-22)
+
+Modul `mastertipesparepart` — nama folder mengikuti nama modul bisnis yang disebut Work Owner
+(`D-81`): backend `internal/mastertipesparepart`, frontend
+`src/modules/master-tipe-sparepart`.
+
+Paket transportnya `mastertipespareparthttp`.
+
+### Kenapa tipenya bernama `PartType`, bukan `PartSection`
+
+Awalan kolomnya `PART_SECTION_*`, dan `masterkategorisparepart.PartCategory` memang mengikuti
+awalan kolomnya sendiri. Mengikuti pola itu di sini menghasilkan `PartSection` — dan itu
+**menyesatkan**: tidak ada satu pun layar, menu, maupun caption yang menyebut "section". Yang
+dilihat dan diucapkan pengguna adalah "Tipe Sparepart", dan nama tabelnya sendiri
+`GCNM_M_SPAREPART_TYPE`.
+
+`Type` sendiri tidak dapat dipakai — kata kunci Go. `PartType` juga sama dengan
+`mastersparepart.PartType`, yang lebih dulu menamai hal yang sama pada lookup-nya.
+
+### Kolom POOLDATA.GCNM_M_SPAREPART_TYPE
+
+**Empat kolom**, dipastikan dari kesembilan rule Pega yang menyentuh tabel ini. Label layar
+dibaca dari caption pada `Section/MasterTipeSparepartHEApproval-Section.xml`.
+
+| Kolom | Label layar Pega | Nama di kode (Inggris) | Nama JSON (Indonesia) |
+|---|---|---|---|
+| `PART_SECTION_ID` | ID Tipe Sparepart | `ID` | `id_tipe_sparepart` |
+| `PART_SECTION_NAME` | Nama Tipe Sparepart | `Name` | `nama_tipe_sparepart` |
+| `PART_CATEGORY_ID` | ID Kategori Sparepart | `CategoryID` | `id_kategori_sparepart` |
+| `APPROVAL` | — | `Status` | `status` |
+
+Satu field **bukan kolom tabel ini** dan tidak pernah ditulis:
+
+| Asal | Label layar Pega | Nama di kode | Nama JSON |
+|---|---|---|---|
+| `GCNM_M_SPAREPART_CATEGORY.PART_CATEGORY_NAME` lewat LEFT JOIN | Kategori Sparepart | `CategoryName` | `nama_kategori_sparepart` |
+
+### Alias Pega yang TIDAK dibawa
+
+Yang paling menyesatkan dari seluruh rumpun sparepart — dua alias terakhir **tertukar**
+terhadap pola "…ID" yang dipakai dua alias sebelumnya:
+
+| Alias Pega | Isi sebenarnya |
+|---|---|
+| `"CityID"` | `PART_SECTION_ID` |
+| `"City"` | `PART_SECTION_NAME` |
+| `"District"` | `PART_CATEGORY_ID` |
+| `"DistrictID"` | `PART_CATEGORY_NAME` — **bukan sebuah ID** |
+
+Properti input pada jalur simpan dipinjam dari kelas **Master Bengkel**
+(`ASM-FW-GCNMFW-Int-BENGKEL_HE`), dan keempatnya pun tidak bernama seperti isinya:
+
+| Properti Pega | Membawa |
+|---|---|
+| `InputKategori.CITY_ID` | nama tipe |
+| `InputKategori.DISC_JASA` | ID kategori |
+| `InputKategori.NO_ACCOUNT` | status persetujuan |
+| `InputKategori.ACCOUNT_ID` | kunci baris |
+
+### Nama kueri
+
+| Kelompok | Nama |
+|---|---|
+| Daftar | `type_list`, `type_list_search` |
+| Satu baris | `type_get`, `type_find_by_name` |
+| Tulis | `type_lock_table`, `type_next_id`, `type_insert`, `type_update`, `type_set_status` |
+| Acuan | `type_category_list` |
+| Periksa | `type_check_table`, `type_count_*` |
+
+### Rute dan kunci menu
+
+| Hal | Nilai |
+|---|---|
+| MENU_ID | 34 |
+| `MENU_PROGRAM` | `GCNMMasterSparepartType` |
+| Rute frontend | `/master/tipe-sparepart` |
+| Jalur API | `/api/master/tipe-sparepart`, `+/pilihan`, `+/keputusan` |
+
+Perhatikan selisihnya: **nama program memakai "SparepartType", rutenya memakai "tipe"**.
+Kunci petanya mengikuti basis data; rutenya mengikuti nama bisnis.
+
+### Kode galat
+
+| Kode | Kapan |
+|---|---|
+| `kunci_tipe_sparepart_sudah_ada` | nama sudah dipakai tipe lain — termasuk di kategori berbeda, termasuk yang ditolak — 409 |
+| `kategori_sparepart_tidak_ditemukan` | kategori yang dipilih tidak ada atau tidak lagi disetujui — 409 |
+| `validasi_gagal` | isian tidak lolos pemeriksaan — 422 |
+| `status_tidak_dikenal` | status di luar 0/1/2 — 422 |
+| `tidak_ditemukan` | baris yang dibuka tidak ada — 404 |
+| `permintaan_cacat` | badan JSON tidak dapat dibaca, atau memuat field yang tidak dikenal — 400 |
+---
+
+## Master Reas (2026-09-22)
+
+Modul `DataMemberReas` (MENU_ID 35) atas `POOLDATA.T_REINSURER`. **Baca-saja** — tidak ada
+nama untuk jalur tulis karena jalurnya memang tidak ada.
+
+### Nama modul dan paket (`D-80`, `D-81`)
+
+| Lapisan | Nama | Catatan |
+|---|---|---|
+| Folder backend | `internal/masterreas` | nama modul bisnis, tanpa tanda hubung (Go tidak mengizinkannya) |
+| Paket domain | `masterreas` | |
+| Paket transport | `masterreashttp` | akhiran `http` tanpa tanda hubung |
+| Folder frontend | `src/modules/master-reas` | `kebab-case` |
+| Komponen layar | `ReasMemberPage` | memakai nama **tipe domain**, bukan nama modul |
+
+### Kolom — aliasnya DIBUANG, namanya mengikuti isi
+
+Inilah contoh telak utang `03-CURRENT-ARCHITECTURE.md` §4.2 pada modul ini. Rule lamanya
+mengalias setiap kolom menjadi properti klipboard yang namanya tidak ada hubungannya dengan
+isinya:
+
+| Kolom basis data | Alias Pega | Field Go | Field JSON | Judul kolom layar |
+|---|---|---|---|---|
+| `REINSURERID` | `CityID` | `ReinsurerID` | `kode_reas` | Kode Reas |
+| `REINSURERNAME` | `District` | `ReinsurerName` | `nama_reas` | Nama Reas |
+| `LOGIN` | `DistrictID` | `Login` | `login` | Login |
+| `EMAIL` | **`City`** | `Email` | `email` | Email |
+| `COUNTRY` | `Country` | `Country` | `negara` | Negara |
+| `TYPE` | — | `Type` | `tipe` | Tipe |
+| `COUNTRYID` | — | **tidak ada** | **tidak dikirim** | **tidak ditampilkan** |
+
+Alamat surel dialiaskan menjadi `City`, dan nama perusahaan reasuransi menjadi `District`.
+Membaca rule lama berarti menelusuri kelimanya sampai ke pemanggilnya untuk tahu isian mana
+yang mana.
+
+**`COUNTRYID` tidak punya nama di mana pun**, dan itu disengaja: ia ditulis
+`Database/UPDATEREAS.prc` lalu tidak dibaca satu pun rule di seluruh export.
+
+### Satu nama yang sengaja TIDAK dibuat
+
+| Yang tidak dinamai | Kenapa |
+|---|---|
+| Arti tiap nilai `TYPE` | Yang terbukti hanyalah ia dicocokkan dengan karakter pertama nomor dokumen PLA/DLA (`substr(a.NODLA,0,1) = TYPE`). Apa arti tiap nilainya **tidak diketahui** (`R-16`), sehingga nama seperti `DocumentType` atau `JenisDokumen` akan menjadi tebakan yang tersamar sebagai fakta |
+
+Yang **dinamai** hanyalah nilai yang artinya terbukti dari dua tempat sekaligus:
+
+| Nama | Nilai | Bukti |
+|---|---|---|
+| `masterreas.FallbackType` | `"1"` | `BrowseEmailReas` (`or type = '1'`) dan `UPDATEREAS.prc` (`AND TYPE = '1'` lalu `SET TYPE = tTYPE`) |
+| field `cadangan` (JSON) | turunan | dihitung server, supaya layar tidak perlu tahu `'1'` punya arti khusus |
+
+### Nama kueri
+
+Seluruhnya berawalan `reas_`, dan **seluruhnya membaca**.
+
+| Kelompok | Nama |
+|---|---|
+| Daftar | `reas_list`, `reas_list_search` |
+| Periksa | `reas_check_table`, `reas_count_all`, `reas_count_duplicate_key`, `reas_count_shared_login`, `reas_count_empty_login`, `reas_count_missing_email`, `reas_count_without_fallback` |
+
+Tidak ada kelompok **Tulis** dan tidak ada kelompok **Acuan** — yang pertama karena modulnya
+tidak menulis, yang kedua karena tabel acuannya (`COUNTRY`) tidak dibaca satu pun rule di
+export.
+
+### Rute dan kunci menu
+
+| Hal | Nilai |
+|---|---|
+| MENU_ID | 35 |
+| `MENU_PROGRAM` | `DataMemberReas` |
+| Rute frontend | `/master/reas` |
+| Jalur API | `/api/master/reas` — **hanya `GET`** |
+
+Perhatikan selisihnya: **nama program memakai "DataMember", judul menunya "Master Reas", dan
+caption section lamanya "Data Member"**. Kunci petanya mengikuti basis data, rutenya
+mengikuti nama menu, dan caption lamanya dipakai sebagai keterangan di bawah judul layar.
+
+### Kode galat
+
+| Kode | Kapan |
+|---|---|
+| `permintaan_cacat` | kata pencarian melampaui 100 karakter — 400 |
+
+Hanya satu, dan itu bukan kelalaian: modul yang tidak menulis tidak punya keadaan yang dapat
+ditolak atas dasar aturan bisnis. Galat portal dipetakan `portalhttp.WithPortalError`, dan
+galat teknis diserahkan ke penulis galat bersama.
+
+## Detail Penyebab Kerugian (2026-09-23)
+
+Modul `internal/detailpenyebab` (backend) dan `src/modules/detail-penyebab-kerugian`
+(frontend), atas `POOLDATA.D_CAUSE_OF_LOSS`. Nama modulnya berbahasa Indonesia sesuai
+`D-81`; isinya berbahasa Inggris sesuai `D-80`.
+
+### Istilah
+
+| Kolom basis data | Identifier Go | Field JSON API | Label layar | Catatan |
+|---|---|---|---|---|
+| `D_COL_ID` | `ID` | `id` | ID | diterbitkan server; `pyReadOnly` di Pega |
+| `OLD_D_COL_ID` | `LegacyID` | `id_lama` | — | tidak digambar; **bukan** penampung lain — lihat di bawah |
+| `M_COL_ID` | `MasterID` | `id_master` | ID Master Kerugian | kunci induk |
+| `COL_DESC` | `MasterLabel` | `nama_master` | — | milik induk; tidak tersimpan di baris ini |
+| `DESCRIPTION` | `Description` | `deskripsi_kerugian` | Deskripsi Kerugian | pengurut daftar |
+| `LOSS_CODE` | `LossCode` | `kode_kehilangan` | Kode Kehilangan | |
+| `STS_AKTIF` | `Active` | `status_aktif` | Status Aktif | `"1"` / `"0"` |
+| — | `ActiveLabel()` | `label_status_aktif` | — | diturunkan server |
+| `BISNISID[]` | `Business[]` | `bisnis` | Bisnis | di dalam JSON; dibaca dari view |
+| `BUSINESS.ID` | `Business.ID` | `bisnis[].id` | — | |
+| `BUSINESS.NOTE` | `Business.Name` | `bisnis[].nama` | — | |
+
+### Tiga nama Pega yang TIDAK dibawa, dan alasannya
+
+| Nama Pega | Kenapa tidak dipakai |
+|---|---|
+| `OLD_D_COL_ID` | Ia bukan "ID lama dari sesuatu" melainkan **ID baris ini pada sistem sebelum Pega**. Lebih buruk lagi: properti bernama sama dipakai sebagai **pengangkut dokumen JSON** pada jalur simpan — dua arti, dua page berbeda |
+| `LOSS_CODE` | Ia **bukan** kode penyebab kerugian. Pada Master Pasal Kerugian, nama yang sama memuat sebutan kategori; pada kueri lain ia nama lini bisnis. Satu nama, tiga isi |
+| `M_COL_ID` / `D_COL_ID` | Tidak menyebutkan isinya sama sekali; huruf "COL" adalah singkatan *cause of loss* yang tidak terbaca siapa pun di luar konteksnya |
+
+### Rute dan kunci menu
+
+| Hal | Nilai |
+|---|---|
+| MENU_ID | 38 |
+| `MENU_PROGRAM` | `DetailCauseOfLoss` |
+| Rute frontend | `/master/detail-penyebab-kerugian` |
+| Jalur API | `/api/master/detail-penyebab` — `GET`, `POST`, `PUT` |
+| Jalur pilihan | `/pilihan` (tanpa portal) · `/pilihan/master` · `/pilihan/bisnis` |
+
+**Tidak ada `DELETE`** — layar lamanya tidak punya tombolnya, dan `D-66` melarang
+penghapusan fisik. Baris yang tidak lagi dipakai ditandai lewat Status Aktif.
+
+Perhatikan selisih namanya: **rute frontend memakai "penyebab-kerugian" lengkap** mengikuti
+`MENU_DESC`, sedangkan **jalur API memendekkannya menjadi `detail-penyebab`** dan **paket Go
+menjadi `detailpenyebab`**. Kunci petanya mengikuti basis data (`DetailCauseOfLoss`).
+
+### Kode galat
+
+| Kode | Kapan | Status |
+|---|---|---|
+| `validasi_gagal` | Status Aktif di luar kedua pilihannya | 422 |
+| `kunci_detail_penyebab_sudah_ada` | nomor dari sequence sudah dipakai baris lain | 409 |
+| `tidak_ditemukan` | baris tidak ada | 404 |
+| `permintaan_cacat` | badan tidak terbaca, field tak dikenal, atau kata cari terlalu panjang | 400 |
+
+`kunci_detail_penyebab_sudah_ada` sebentuk dengan `kunci_login_surveyor_sudah_ada` dan
+`kunci_sparepart_sudah_ada` — ketiganya menyatakan kunci yang bentrok. Bedanya: yang ini
+**bukan kesalahan pengguna**, karena nomornya diterbitkan sequence dan bukan diketik.
+
+---
+
+## Inbox Investigator (2026-09-23)
+
+`MENU_ID 48` → harness `InboxInvestigator_Harness`. Modul INBOX pertama.
+
+### Nama modul dan paket (`D-80`, `D-81`)
+
+| Lapisan | Nama | Bentuk |
+|---|---|---|
+| Folder backend | `internal/inboxinvestigator` | huruf kecil, tanpa tanda hubung |
+| Paket Go | `inboxinvestigator` | idem |
+| Paket transport | `inboxinvestigatorhttp` | nama modul + `http` |
+| Folder frontend | `src/modules/inbox-investigator` | `kebab-case` |
+| Komponen layar | `InvestigatorInboxPage` | **Inggris**, mengikuti tipe domainnya |
+
+Nama modulnya **"Inbox Investigator"** — nama yang disebut Work Owner dan yang tertulis di
+menu (`MENU_DESC` pada `m_menu_aplikasi_pnc.csv`). Isi modulnya berbahasa Inggris (`D-80`).
+
+Perhatikan komponen layarnya: `InvestigatorInboxPage`, bukan `InboxInvestigatorPage`. Ia
+mengikuti tata bahasa Inggris — inbox milik investigator — sama seperti `AccountPage` mengikuti
+tipe `Account`, bukan nama modul `masterrekening`.
+
+### Istilah — Tugas, bukan Klaim
+
+Pembedaan paling menentukan di modul ini.
+
+| `CONTEXT.md` | Di kode | Kenapa |
+|---|---|---|
+| **Tugas** | `Task` | yang didaftar layar ini adalah PEKERJAAN pada satu tahap klaim |
+| Workbasket | `Workbasket` | antrean bersama yang belum bertuan (`D-26`) |
+| Klaim | — | **tidak dipakai** sebagai nama entitas di modul ini |
+
+Menamainya `Claim` akan membuat penyaring workbasket terbaca sebagai penyaring tambahan,
+padahal ia **definisi** isi layarnya.
+
+### Kolom — caption grid Pega → nama Go → nama JSON
+
+Nama JSON mengikuti **caption grid layar lama** (`D-13`), bukan nama kolom basis data dan
+bukan nama properti Pega.
+
+| Caption grid | Properti Pega | Kolom fisik | Nama Go | JSON |
+|---|---|---|---|---|
+| — (tidak tampil) | `.pzInsKey` | `PZINSKEY` | `Reference` | `referensi` |
+| Nomor Case | `.pyID` | `PYID` | `CaseNumber` | `nomor_case` |
+| No Polis | `.Policy.PolicyNo` | `POLICYNO` | `PolicyNumber` | `nomor_polis` |
+| Nama Tertanggung | `.Policy.QQName` | `QQNAME` | `InsuredName` | `nama_tertanggung` |
+| Nama Peserta | `.ClaimData.ObjectList(1).ObjectName` | `T_CLAIM_OBJECTLIST.OBJECTNAME` | `ParticipantName` | `nama_peserta` |
+| Nama Bisnis | `.Policy.Quotation.BusinessName` | `BUSINESSNAME` | `BusinessName` | `nama_bisnis` |
+| Nama Cabang | `.Policy.Quotation.BranchName` | `BRANCHNAME` | `BranchName` | `nama_cabang` |
+| Nama Admin | `.pyOrigUserID` | `PYORIGUSERID` | `AdminName` | `nama_admin` |
+| Tanggal Pendaftaran | `.pxCreateDateTime` | `PXCREATEDATETIME` | `RegisteredAt` | `tanggal_pendaftaran` |
+| **Lama Masuk Inbox** | `.ClaimData.SurveyResults(1).SurveyDate` | `T_SURVEYORLIST.SURVEYDATE` | `SurveyDate` | `tanggal_survey` |
+
+**SEMBILAN kolom, bukan sepuluh.** Tidak ada kolom "Tanggal Survey" terpisah, dan `.pyNote`
+bukan kolom — ia hanya muncul di dalam definisi kontrol tautan pada kolom pertama.
+
+**Kolom kesembilan adalah satu-satunya tempat nama field TIDAK mengikuti caption**, dan itu
+pengecualian yang disengaja: captionnya menyebut durasi ("Lama Masuk Inbox"), isinya tanggal.
+Menamainya `lama_masuk_inbox` akan membuat kontraknya berbohong tentang tipe datanya sendiri.
+Yang tetap mengikuti Pega adalah **judul kolom di layar** (`D-13`).
+
+Ketidakcocokan judul-isi itu ADA di sistem lama: section ini Save-As dari inbox Compliance,
+tempat kolom bernama sama memang berisi lama menunggu. Selnya diikat ulang ke tanggal survei
+dan captionnya tidak ikut diganti.
+
+### Empat nama Pega yang TIDAK dibawa, dan alasannya
+
+| Nama Pega | Kenapa tidak dibawa |
+|---|---|
+| **"Nama Bisinis"** | salah ketik pada caption **penyaring** section; caption kolomnya sendiri sudah benar "Nama Bisnis" |
+| **`QQNAME as "CABANG"`** | alias pada `ReminderPUCL-SQL.xml` — isinya nama tertanggung, bukan cabang. Utang `03-CURRENT-ARCHITECTURE.md` §4.2 |
+| **`.pyNote`** | properti generik Pega yang dipakai menampung teks lama menunggu. Di sini nilainya dihitung, bukan dititipkan ke properti serbaguna |
+| **`Param.Operator`** | nama parameter RD yang isinya nama **workbasket**, bukan operator. Di sini: `Workbasket` |
+
+### Istilah baru di modul ini
+
+| Go | Arti | Asal |
+|---|---|---|
+| `Workbasket` | antrean bersama yang isinya ditampilkan layar ini | `pyReportDefParams` section |
+| `ResolvedWorkStatus` | nilai `pyStatusWork` yang menandai pekerjaan tuntas | penyaring RD |
+| `MaxRows` | batas baris yang dikirim satu permintaan | `pyMaxRecords = 500` |
+| `Page.Truncated` | penanda hasil terpotong | **baru** — sistem lama memotong dalam diam |
+
+### Nama kueri
+
+| Nama | Isi |
+|---|---|
+| `investigator_inbox_list` | antrean, tanpa penyaring kata kunci |
+| `investigator_inbox_search` | idem, ditambah penyaring 7 kolom |
+| `investigator_inbox_check_table` | pembuktian keempat tabel dapat dibaca |
+| `investigator_inbox_count_waiting` | cacah seluruh pekerjaan menunggu, tanpa dipotong |
+| `investigator_inbox_count_without_survey` | cacah yang lama menunggunya akan kosong |
+
+Seluruh alias kolomnya **sama dan seurut** pada ketiga kueri yang barisnya dipindai —
+dijaga uji `TestScannedQueriesShareTheSameColumnOrder`.
+
+### Rute dan kunci menu
+
+| Hal | Nilai |
+|---|---|
+| Kunci `MENU_ROUTES` | `InboxInvestigator_Harness` |
+| Rute frontend | `/inbox/investigator` |
+| Endpoint | `GET /api/inbox/investigator` |
+
+**Awalan `/inbox/` diperkenalkan modul ini.** INBOX adalah kelompok menu tersendiri di sistem
+lama (`MENU_ID 2`, induk dari 30 butir), sehingga modul inbox berikutnya punya tempat yang
+sudah jelas — seperti `/master/...` yang sudah berlaku untuk 20 butir.
+
+### Kode galat
+
+Satu saja: `permintaan_cacat` (`CodeMalformedRequest`), untuk kata kunci yang terlalu panjang.
+
+Modul ini **tidak punya galat domain** — ia hanya membaca, sehingga tidak ada keadaan yang
+dapat ditolak atas dasar aturan bisnis. Antrean yang **kosong bukan galat**; ia justru keadaan
+yang diharapkan pada inbox yang sudah dikerjakan.
+
+Galat portal dipetakan `portalhttp.WithPortalError`, sama seperti seluruh modul lain.
+
+### Export Data Investigation — nama yang TIDAK dibawa (2026-09-24)
+
+Export-nya belum dibangun (lihat `keputusan-implementasi.md` §45), tetapi pemetaan namanya
+dicatat sekarang supaya tidak perlu ditelusuri ulang saat artefaknya tiba.
+
+`Activity/ExportDataInvestigator-Act.xml` mengalias **sepuluh properti sumber** menjadi
+**sebelas kolom CSV** yang namanya **sama sekali tidak menyatakan isinya**:
+
+| Properti sumber (`SurveyList(1).*`) | Kolom CSV di Pega | Isi sebenarnya |
+|---|---|---|
+| `AlamatRSKlinik` | `ClaimNo` | alamat rumah sakit / klinik |
+| `NoRekapMedis` | `Location` | nomor rekap medis |
+| `PasienTerdaftar` | `NewTelpTertanggung` | status pasien terdaftar |
+| `SelectRS` | `ProdKe` | `"1"` → "Rumah Sakit" |
+| `KonfirmasiModelKwitansi` | `IsCFS_PNC` | konfirmasi model kuitansi |
+| `NoTelpDiHubungi` | `NewEmail` | nomor telepon yang dihubungi |
+| `Remaks` | `NoKTP` | catatan investigasi |
+| `CheckBoxAsuransiLain` | `ComplianceRemark` | penanda asuransi lain |
+| `CheckBoxPasien` | `Country` **dan** `NoteKasir` | penanda pasien |
+| `CheckBoxTidakadapembayaran` | `Email` | penanda tidak ada pembayaran |
+
+**Tidak satu pun alias itu dibawa.** Alamat rumah sakit yang bernama `ClaimNo` dan catatan
+investigasi yang bernama `NoKTP` adalah bentuk utang `03-CURRENT-ARCHITECTURE.md` §4.2 dalam
+wujud paling berbahaya — ia sampai ke berkas yang dibuka orang di luar aplikasi.
+
+Saat export dibangun kelak, nama kolomnya mengikuti **isi**, dan pemetaan di atas dipakai
+untuk mencocokkannya dengan berkas lama.
+
+#### Nama komponen layar
+
+| Hal | Nama | Catatan |
+|---|---|---|
+| Komponen panel | `ExportPanel` | Inggris (`D-80`), di dalam modul `inbox-investigator` |
+| Judul panel di layar | "Export Data Investigation" | caption Pega apa adanya (`D-13`) |
+| Label isian | "Pilih Investigation", "Dari", "Sampai" | caption Pega apa adanya |
+| Label tombol | "Export Data" | `pyButtonLabel` Pega apa adanya |
+
+## Inbox Receive TKA (2026-09-24)
+
+`MENU_ID 49` → harness `InboxTKA_Harness`. Modul INBOX kedua, dan yang pertama menulis.
+
+### Nama modul dan paket (`D-80`, `D-81`)
+
+| Lapisan | Nama | Bentuk |
+|---|---|---|
+| Folder backend | `internal/inboxreceivetka` | huruf kecil, tanpa tanda hubung |
+| Paket Go | `inboxreceivetka` | idem |
+| Paket transport | `inboxreceivetkahttp` | nama modul + `http` |
+| Paket notifikasi | `notification` | subpaket, bukan nama modul |
+| Folder frontend | `src/modules/inbox-receive-tka` | `kebab-case` |
+| Komponen layar | `ReceiveTKAInboxPage` | **Inggris**, mengikuti tata bahasanya |
+
+Nama modulnya **"Inbox Receive TKA"** — `MENU_DESC` pada `m_menu_aplikasi_pnc.csv`, dan
+caption berformat `Heading 1` pada `InboxTKA_Section` berbunyi sama. Isi modulnya berbahasa
+Inggris (`D-80`).
+
+Komponen layarnya `ReceiveTKAInboxPage`, bukan `InboxReceiveTKAPage` — mengikuti tata bahasa
+Inggris (inbox untuk penerimaan TKA), sama seperti `InvestigatorInboxPage` pada modul
+sebelumnya.
+
+### Istilah — Tugas, dan satu yang baru
+
+| `CONTEXT.md` | Di kode | Kenapa |
+|---|---|---|
+| **Tugas** | `Task` | yang didaftar layar ini PEKERJAAN, bukan klaim |
+| — | `Completion` | satuan kerja tombol Submit: satu baris, satu tanggal |
+| — | `Notice` | peristiwa domain "dokumen sudah lengkap" |
+
+`Completion`, bukan `Update`: yang terjadi bukan penyuntingan field melainkan **penyelesaian
+pekerjaan** — barisnya keluar dari inbox dan pemberitahuan dilepaskan.
+
+`Notice` menyatakan APA YANG TERJADI, bukan siapa yang harus diberi tahu — itulah yang
+membuat penerimanya menjadi urusan konfigurasi (`04-FUTURE-ARCHITECTURE.md` §3.6).
+
+**Tanpa `Workbasket`.** Berbeda dari Inbox Investigator, layar ini tidak punya antrean
+penugasan sama sekali; Report Definition-nya mendeklarasikan halaman workbasket tetapi tidak
+pernah merujuknya.
+
+### Kolom — caption grid Pega → kolom fisik → nama Go → nama JSON
+
+Nama JSON mengikuti **caption grid layar lama** (`D-13`), dengan satu pengecualian.
+
+> **Dikoreksi 2026-09-24.** Tabel di bawah semula memetakan seluruh kolom ke
+> `POOLDATA.T_CLAIM_TKA_H`. Tabel itu **tidak dipakai sama sekali** — lihat
+> `catatan-pengembangan.md` §46 dan `keputusan-implementasi.md` §48.
+
+| Caption grid | Kolom fisik | Nama Go | JSON |
+|---|---|---|---|
+| — (tidak tampil) | `PC_ASM_FW_GCNMFW_WORK.PZINSKEY` | `Reference` | `referensi` |
+| — (tidak tampil) | `T_CLAIM_PNC.CLAIMID` | `ClaimKey` | `klaim_tersedia` |
+| Nomor Klaim | `PC_ASM_FW_GCNMFW_WORK.PYID` | `ClaimNumber` | `nomor_klaim` |
+| No Polis | `PC_ASM_FW_GCNMFW_WORK.POLICYNO` | `PolicyNumber` | `nomor_polis` |
+| Nama Tertanggung | `PC_ASM_FW_GCNMFW_WORK.QQNAME` | `InsuredName` | `nama_tertanggung` |
+| Nama Peserta | `POOLDATA.T_GENERAL.THEINSURED` | `ParticipantName` | `nama_peserta` |
+| **Date Of Loss** | `PC_ASM_FW_GCNMFW_WORK.DATEOFLOSS_1` | `DateOfLoss` | **`tanggal_kejadian`** |
+| Aging | `PC_ASM_FW_GCNMFW_WORK.REGISTERDATE_1` | `RegisteredOn` | `tanggal_registrasi` |
+| Tanggal Dokumen Lengkap | `T_CLAIM_PNC.TGLDOKLENGKAP` | — (isian) | `tanggal_dokumen_lengkap` |
+
+**Pengecualian pada kolom Date Of Loss.** Captionnya berbahasa Inggris — sementara
+`D-80` menetapkan nama field JSON berbahasa Indonesia dan `CONTEXT.md` sudah menetapkan
+padanan resminya: **Tanggal Kejadian**. Yang mengikuti Pega adalah **judul kolom di layar**;
+yang mengikuti glossary adalah nama kontraknya.
+
+**Kolom "Aging" mengirim TANGGAL, bukan kalimat.** Pega menampilkan `.ClaimData.RegisterDate`
+sebagai waktu relatif ("2 years 6 months ago"). Server mengirim `tanggal_registrasi` apa
+adanya dan **layar yang menyusun kalimatnya**, karena "berapa lama menunggu" bergantung pada
+kapan ia dibaca. Kolom fisiknya `VARCHAR2(32)` berisi `yyyymmdd`; penguraiannya di adapter,
+bukan di SQL (`D-20` melarang `TO_DATE`). Bentuk yang tidak dikenali menjadi **null**, bukan
+tanggal karangan.
+
+**Dua kolom yang TIDAK di-expose, dan penggantinya.** `.ClaimData.ClaimNo` diganti `PYID`
+(nilainya sama dengan yang tampil di layar Pega), dan `.Policy.TheInsured` diganti
+`T_GENERAL.THEINSURED` lewat `NOPOLIS` + `PRODKE` — karena `INSUREDNAME` pada tabel kerja
+terbukti kosong. Properti yang sekadar ditampilkan tidak menuntut kolom; Pega membacanya dari
+BLOB kasus, dan kita tidak bisa.
+
+**`klaim_tersedia` menggantikan `referensi` kosong** sebagai penanda baris yatim. `referensi`
+kini selalu terisi karena sumbernya tabel yang menggerakkan kueri, bukan hasil gabungan.
+
+### Caption yang pemasangannya sempat terbalik
+
+| Sumber | `.Policy.QQName` | `.Policy.TheInsured` |
+|---|---|---|
+| `InboxTKA_Section` | Nama Tertanggung | Nama Peserta |
+| `InboxTKA_RD` (`pyFieldLabel`) | Nama Peserta | Nama Tertanggung |
+| `NotificationKelengkapanTKA` | **Nama Tertanggung** | **Nama Peserta** |
+
+Yang dipakai adalah Section, dikuatkan badan surel. Label Report Definition tidak dibawa.
+
+### Nama properti Pega yang TIDAK dibawa
+
+`SubmitTanggalLengkapTKA` menampung nilai surel pada properti yang namanya menyesatkan —
+bentuk yang sama dengan alias pada `03-CURRENT-ARCHITECTURE.md` §4.2:
+
+| Properti Pega | Isi sebenarnya | Nama di sistem baru |
+|---|---|---|
+| `TempHTML.District` | nama tertanggung | `Notice.InsuredName` |
+| `TempHTML.DistrictID` | nama peserta | `Notice.ParticipantName` |
+| `TempHTML.Country` | Date Of Loss | `Notice.DateOfLoss` |
+| `TempHTML.CountryID` | tanggal kelengkapan dokumen | `Notice.CompletedAt` |
+
+### Galat — nama Go → kode JSON
+
+| Nama Go | Kode JSON | HTTP |
+|---|---|---|
+| `ErrClaimNumberRequired` | `permintaan_cacat` | 400 |
+| `ErrDateRequired` | `tanggal_dokumen_wajib_diisi` | 422 |
+| `ErrTaskNotFound` | `pekerjaan_tidak_ditemukan` | 409 |
+| `ErrClaimMissing` | `klaim_tidak_ditemukan` | 409 |
+| `ErrClaimAmbiguous` | `nomor_klaim_ganda` | 409 |
+
+### Rute dan variabel lingkungan
+
+| Hal | Nilai |
+|---|---|
+| Rute layar | `/inbox/receive-tka` |
+| Endpoint daftar | `GET /api/inbox/receive-tka` |
+| Endpoint Submit | `POST /api/inbox/receive-tka/kelengkapan-dokumen` |
+| Kunci peta menu | `InboxTKA_Harness` — persis seperti `MENU_PROGRAM` |
+| Variabel lingkungan baru | `SMTP_PENERIMA_TKA` |
+
+Nama variabel lingkungan tetap **bahasa Indonesia** (`D-80`): ia dipakai berkas `.env` dan
+skrip deployment, sehingga sifatnya kontrak — sama seperti `SMTP_PENERIMA_PERINGATAN` yang
+sudah ada.
+
+### Nama kueri SQL
+
+Berawalan `tka_` supaya tidak bentrok dengan modul lain di dalam satu berkas `.sql` yang
+dimuat lewat penanda `-- name:`.
+
+| Kelompok | Nama |
+|---|---|
+| Baca | `tka_inbox_list`, `tka_inbox_search`, `tka_inbox_find_one` |
+| Tulis | `tka_claim_set_document_date` — **satu kueri, satu kolom** |
+| Periksa | `tka_inbox_check_table`, `tka_inbox_check_claim_column` |
+| Cacah | `tka_inbox_count_waiting`, `..._pega_only`, `..._orphan_claim`, `..._missing_participant` |
+| Contoh | `tka_inbox_sample_registered_on` |
+
+**Tanpa kueri penguncian.** `SELECT ... FOR UPDATE` dicabut: menahan kunci pada tabel yang
+sedang dilayani Pega dapat menghentikan alur kerja yang berjalan di atas kasus yang sama.
+Penggantinya penjaga `AND TGLDOKLENGKAP IS NULL` pada UPDATE ditambah pemeriksaan jumlah
+baris terpengaruh. `TestNoQueryLocksThePegaWorkTable` dan `TestPegaWorkTableIsNeverWritten`
+menjaga keduanya.
+
+#### Tabel penampungnya ketemu (2026-09-24)
+
+`POOLDATA.INVESTIGATIONREPORT` — 36 kolom, berkunci `CASEID`. Strukturnya **enam pasang
+tanya-jawab**, masing-masing satu penanda `CHAR(1)` dan satu keterangan `VARCHAR2(4000)`:
+
+```
+ISPATIENTREGIST / PATIENTDESC      ISBILLPAID     / BILLPAIDDESC
+ISDATECORRECT   / DATEDESC         ISADDRESSCORR  / ADDRESSDESC
+ISBILLCORRECT   / BILLDESC         STSKWITANSI    / KWITANSIDESC
+```
+
+**Pemetaan isian CSV ke kolom BELUM PASTI** dan sengaja tidak ditebak. Yang sudah kuat:
+
+| Isian CSV lama | Kolom | Keyakinan |
+|---|---|---|
+| Status pasien terdaftar | `ISPATIENTREGIST` | kuat |
+| Konfirmasi model kwitansi | `STSKWITANSI` | kuat |
+| Alamat rumah sakit / klinik | `ADDRESS` | kuat |
+| Catatan investigasi | `NOTE` | kuat |
+| Nomor telepon yang dihubungi | `TELPRS` | kuat |
+| Penanda tidak ada pembayaran | `ISBILLPAID` | sedang |
+| Penanda asuransi lain | `PAIDBY` | sedang |
+| Penanda pasien | bertabrakan `ISPATIENTREGIST` | lemah |
+| **Nomor rekap medis** | **tidak ada** | — |
+| **Pilihan RS / non-RS** | **tidak ada** | — |
+
+Pemetaan final ditetapkan setelah tiga pertanyaan pada `permintaan-artefak-pega.md` §2.5
+terjawab — **bukan** dari kemiripan nama. Nama kolom di sistem ini sudah terbukti menyesatkan
+(`03-CURRENT-ARCHITECTURE.md` §4.2), dan pada layar ini sudah sekali menjebak: kolom
+bercaption "Lama Masuk Inbox" ternyata berisi tanggal survei.
 | Backend, folder dan paket Go | `internal/inboxxol` |
 | Frontend, folder modul | `src/modules/inbox-xol` |
 | Rute antarmuka | `/inbox-xol` |
@@ -2760,3 +3592,400 @@ Nilai kolom `JENIS` dan `STATUS` juga berbahasa Indonesia (`reopen`/`salin`,
 
 Komponennya: `CloseClaimPage` · `RequestDialog` · `PanelPenyaring` · `BarisTindakan` ·
 `LamaKlaim` · `SelisihTerencana`
+## Tambahan 2026-09-23 — modul Input Req Protection (`inputreqprotection`) dan Inbox Accept Open Protection (`inboxacceptopenprotection`)
+
+### Nama modul: dua butir menu, dan namanya bersilang
+
+`D-81` menetapkan nama folder modul mengikuti nama yang dipakai Work Owner. Di sini nama itu
+**bersilang** di Pega, sehingga aturannya tidak dapat diterapkan mentah pada keduanya:
+
+| Butir menu (`pyCaptionPrompt`) | Harness | Judul di dalam harness | Nama modul |
+|---|---|---|---|
+| Input Req Protection | `InputReqProtection_Harness` | "Inbox Open Protection" | `inputreqprotection` |
+| Inbox Open Protection | `InputProtection_Harness` | **"Inbox Accept Open Protection"** | `inboxacceptopenprotection` |
+
+Modul pertama memakai nama **butir menunya**; modul kedua memakai **judul harness-nya**,
+karena nama butir menunya sudah dipakai judul layar modul pertama. Memakai nama butir menu
+untuk keduanya akan menghasilkan dua modul bernama sama.
+
+| Lapisan | Modul 1 | Modul 2 |
+|---|---|---|
+| Paket Go | `internal/inputreqprotection` | `internal/inboxacceptopenprotection` |
+| Folder frontend | `src/modules/input-req-protection` | `src/modules/inbox-accept-open-protection` |
+| Rute API | `/api/input-req-protection` | `/api/inbox-accept-open-protection` |
+| Rute layar | `/input-req-protection` | `/inbox-accept-open-protection` |
+
+### Istilah: "Proteksi" berarti DUA hal berbeda di repositori ini
+
+Ini jebakan nama yang paling mudah menjatuhkan orang berikutnya.
+
+| Istilah | Artinya | Tabelnya | Modul |
+|---|---|---|---|
+| **Open Protection** (Buka Proteksi) | permintaan pembukaan proteksi atas sebuah polis — konsep asuransi | `T_CLAIM_OPENPROTECTION` (baru) | `inputreqprotection`, `inboxacceptopenprotection` |
+| **Proteksi Data** | jatah pencarian data nasabah — kewenangan masking | `MST_PROTEKSI_DATA_PNC` | `mastermasking`, `riwayatklaim` |
+
+Keduanya **tidak berhubungan sama sekali**. Tabel `MST_PROTEKSI_DATA_PNC` berkolom `LOGIN`,
+`PASSWORD`, `STS_KTP`, `LOGSEARCH` — ia master kewenangan, bukan proteksi polis.
+
+### Penamaan properti Pega ke nama Inggris
+
+`D-80` menetapkan nama di dalam kode berbahasa Inggris; nama kolom basis data dan nama field
+JSON tetap Indonesia.
+
+| Properti Pega | Nama Go | Kolom (usulan) | Field JSON | Kolom layar |
+|---|---|---|---|---|
+| `.pyID` | `Number` | `NO_PROTEKSI` | `nomor_proteksi` | No Proteksi |
+| `.PolicyNo` | `PolicyNumber` | `NO_POLIS` | `nomor_polis` | No Polis |
+| `.CaseID` | `ClaimNumber` | `NO_KLAIM` | `nomor_klaim` | No Klaim |
+| `.PNCCaseID` | `ClaimReference` | `KLAIM_REF` | `referensi_klaim` | — |
+| `.TypeProtection` | `Type` | `TIPE_PROTEKSI` | `tipe_proteksi` | Tipe Proteksi |
+| `.InputDate` | `InputDate` | `TANGGAL_INPUT` | `tanggal_proteksi` | Tanggal Proteksi Dibuat |
+| `.Keterangan` | `Note` | `KETERANGAN` | `keterangan` | Keterangan |
+| `.pxCreateOpName` | `CreatedBy` | `DIBUAT_OLEH` | `user_create` | User Create |
+| `.AcceptStatus` | `AcceptStatus` | `STATUS_AKSEPTASI` | `status_akseptasi` | — |
+| `.AcceptDate` | `AcceptedAt` | `TANGGAL_AKSEPTASI` | `tanggal_akseptasi` | — |
+| `.AcceptOpName` | `AcceptedBy` | `DIAKSEP_OLEH` | `diaksep_oleh` | — |
+| `.IsUsedPNC` | `UsedByClaim` | `DIPAKAI_KLAIM` | — | — |
+| `.ClaimDataProtect.BeforeDateOfLoss` | `ChangeDetail.LossDateBefore` | `DOL_SEBELUM` | `dol_sebelum` | Current Date Of Loss |
+| `.ClaimDataProtect.DateOfLoss` | `ChangeDetail.LossDateAfter` | `DOL_BARU` | `dol_baru` | Next Date Of Loss |
+| `.ClaimDataProtect.CauseOfLossID` | `ChangeDetail.CauseOfLossID` | `COL_ID` | `penyebab_kerugian` | Cause Of Loss Sebelumnya |
+| `.ClaimDataProtect.IDMasterTONP` | `ChangeDetail.CauseOfLossMasterID` | `COL_MASTER_ID` | `penyebab_kerugian_master` | Cause Of Loss Dipilih |
+
+**`.CaseID` dan `.PNCCaseID` mudah tertukar dan artinya berbeda:** yang pertama nomor klaim
+yang **diketik** pengguna, yang kedua klaim yang benar-benar **ditemukan**. Sistem lama
+menolak penyimpanan saat yang kedua kosong, dengan pesan "Silakan Tulis dan Cari Ulang No
+Klaim" — mengetik saja tidak cukup.
+
+### Nomor proteksi
+
+| Bentuk | Asal | Contoh |
+|---|---|---|
+| `OPC-XXX` | warisan Pega, dibaca apa adanya | `OPC-201` |
+| `OPCN.YY.xxxx` | terbitan aplikasi ini (keputusan Work Owner 2026-09-23) | `OPCN.26.0001` |
+
+Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
+
+---
+
+## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
+
+Nama modul mengikuti `D-81`: folder backend `internal/inboxkomunikasicabang` (tanpa tanda
+hubung, karena Go tidak mengizinkannya), folder frontend
+`src/modules/inbox-komunikasi-cabang`. Namanya **tidak dikarang** — ia tertulis di
+`Database/m_menu_aplikasi_pnc.csv` baris 65 sebagai `MENU_ID 70`, **"Inbox Komunikasi
+Cabang"**. Isinya berbahasa Inggris sesuai `D-80`.
+
+### Alias Pega yang TIDAK dibawa — dan kenapa hampir seluruhnya menyesatkan
+
+Kueri layar ini mengalias hampir setiap kolom dengan nama yang menyebut hal lain. Tidak satu
+pun dibawa (`D-19`):
+
+| Alias Pega | Kolom sebenarnya | Isi sebenarnya | Nama di sini |
+|---|---|---|---|
+| `CloseClaimDate` | `CREATEDDATE` | tanggal pesan — tidak ada klaim yang ditutup | `CreatedAt` |
+| `Email` | `MESSAGE` | **isi pesan**, bukan alamat surel | `Message` |
+| `UserTeknis` | `SENDER` | Operator ID pengirim | `SenderOperator` |
+| `pzInsKey` | `CASEID` | **penanda kanal** (`CABANG`), bukan kunci objek kerja Pega | — (tidak dipilih) |
+| `ClaimNo` | `KOMUNIKASIID` | **nomor percakapan**, bukan nomor klaim | `ID` |
+| `CloseClaimNote` | `REPLYMESSAGE` | isi balasan | `Reply` |
+| `StatusClaim` | `KOMUNIKASISTATUS` | status percakapan — **bukan** Status Klaim ber-33 kode (`R-06`) | `Status` |
+| `AnalystTransferDate` | `CREATEDATEREPLY` | tanggal balasan | `RepliedAt` |
+| `UserAdmin` | `REPLYFROMNAME` | nama penjawab | `ReplierName` |
+| `UserName` | `COMMUNICATE_FROM` | kode asal | `SenderOrigin` |
+| `UserTeknisEmail` | `COMMUNICATE_TO` | kode tujuan | `RecipientOrigin` |
+
+Tiga baris pertama patut disebut khusus: tabel ini **tidak memuat nomor klaim sama sekali**,
+`Email` bukan alamat, dan `pzInsKey` bukan kunci Pega.
+
+### Alias lampiran — tujuh nama, tujuh kali salah
+
+Dari `RDB List/GetDocumentKomunikasi1-SQL.xml`, contoh utang teknis §4.2 paling padat yang
+ditemukan sejauh ini:
+
+| Alias Pega | Kolom | Isi | Nama di sini |
+|---|---|---|---|
+| `BranchCode` | `A.KOMUNIKASI_ID` | nomor percakapan | — (penyaring) |
+| `BranchName` | `A.CATEGORYID` | kode kategori dokumen | — (gabungan) |
+| `ClaimID` | `A.TYPEID` | kode jenis dokumen | — (gabungan) |
+| `ObjectName` | `C.DETAIL_DOCUMENT` | nama rincian dokumen | `DetailName` |
+| `ObjectLocation` | `D.TYPE_DOCUMENT` | nama jenis dokumen | `TypeName` |
+| `Comment` | `A.NOTE` | catatan | `Note` |
+| `Date` | `A.UPLOADDATE` | tanggal unggah | `UploadedAt` |
+| `IdCompliance` | `A.DOCUMENTID` | id dokumen di penyimpanan | `DocumentID` |
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Percakapan | `Conversation` | satu baris grid: satu pesan beserta balasannya |
+| Utas | `ThreadMessage` · `ConversationDetail` | isi layar Detail Komunikasi |
+| Lampiran | `Attachment` | metadata dokumen; berkasnya di penyimpanan lain (`D-16`) |
+| Kanal percakapan | `CaseOpen` · `CaseClosed` | nilai `CASEID`: `CABANG` dan `CABANG SELESAI` |
+| Asal / Tujuan | `SenderOrigin` · `RecipientOrigin` | sudah diterjemahkan; kode mentahnya tidak dibawa ke layar |
+| Batas cabang | `BranchFilter` | kode, penanda kantor pusat, dan penanda **terbaca** |
+| Penerjemah cabang | `BranchResolver` | seam ke HRD lewat DB Link (`D-25`, `R-03`) |
+| Pencacah | `Summary` | dua angka di atas grid, pengganti diagram lingkaran |
+
+**Istilah yang sengaja TIDAK dipakai:** `SenderName`. Kolomnya ada (`SENDERNAME`) tetapi
+**tidak pernah sampai ke layar** — alias `UserName` yang sama dipakai dua kali dalam satu
+`SELECT`, dan yang menang adalah `COMMUNICATE_FROM`. Membawanya berarti menyimpan nama yang
+harus dijelaskan mengapa diabaikan.
+
+### Dua konstanta yang MUDAH tertukar, dan akibatnya fatal
+
+| Konstanta | Nilai | Kolom |
+|---|---|---|
+| `HeadOfficeBranch` | `100081` | `POOLDATA.BRANCH.ID` |
+| `HeadOfficeCode` | `1` | `COMMUNICATE_FROM` / `COMMUNICATE_TO` |
+
+Keduanya berarti "kantor pusat" tetapi hidup di kolom yang berbeda. Menukarnya menghasilkan
+**daftar kosong tanpa satu pun galat**. `ResolveBranch` menerjemahkan yang pertama menjadi yang
+kedua, dan satu uji menjaganya
+(`TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode`).
+
+### Nama field JSON — tetap Indonesia
+
+Ia **kontrak**, bukan nama internal (`D-80`):
+
+`komunikasi` · `tanggal` · `pengirim` · `asal` · `operator_pengirim` · `pesan` ·
+`jawaban_terakhir` · `penjawab` · `tujuan` · `status_register` · `tanggal_jawaban` ·
+`ringkasan` · `belum_dijawab` · `sudah_dijawab` · `batas_cabang` · `kantor_pusat` ·
+`terbaca` · `lampiran` · `jenis_dokumen` · `rincian_dokumen` · `sudah_diunggah` ·
+`tindakan_masih_di_pega`
+
+`komunikasi`, bukan `no_klaim` — tabel ini tidak memuat nomor klaim sama sekali.
+
+### Kode galat — tetap Indonesia
+
+`validasi_gagal` · `profil_pemanggil_tidak_lengkap` · `sumber_cabang_tidak_terbaca` ·
+`belum_tersedia` · `komunikasi_tidak_ditemukan` · `galat_internal`
+
+`sumber_cabang_tidak_terbaca` dipisahkan dari `profil_pemanggil_tidak_lengkap` dengan sengaja:
+yang satu menimpa **semua orang** dan sementara (503), yang satu menimpa **satu orang** (409).
+
+### Nama kueri `.sql`
+
+Berawalan menurut perannya, bukan menurut nama tabelnya:
+
+`list_not_answered` · `list_answered` · `count_answered` · `count_not_answered` ·
+`detail_thread` · `detail_attachments` · `check_table` · `check_attachment_table` ·
+`branch_of_login`
+
+`branch_of_login` **sengaja sama namanya** dengan milik modul Inbox Laporan Klaim, dan
+berkasnya **disalin, bukan diimpor**: seam dideklarasikan di paket yang memakainya
+(`08-TECHNICAL-STRATEGY.md` §2 aturan 2), sehingga kedua modul dapat berpindah ke API
+pengganti DB Link pada waktu yang berbeda.
+
+### Nama komponen frontend
+
+Komponen memakai nama **konsep layarnya**, bukan nama modul:
+
+| Berkas | Komponen |
+|---|---|
+| `KomunikasiCabangPage.tsx` | `KomunikasiCabangPage` |
+| `KomunikasiCabangTabs.tsx` | `KomunikasiCabangTabs` |
+| `ConversationDetail.tsx` | `ConversationDetail` |
+
+Yang ketiga memakai nama **tipe domain**, mengikuti preseden `AccountPage.tsx` pada modul
+`master-rekening` — ia menggambar sebuah `ConversationDetailResponse`, bukan sebuah layar
+bernama modul.
+
+### Nama uji
+
+Berbahasa **Inggris** di Go, **Indonesia** di Vitest, mengikuti pola yang sudah berlaku, dan
+menyebutkan **aturannya** alih-alih nama fungsinya:
+
+```go
+func TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode(t *testing.T)
+func TestUnreadableBranchIsServedAsHeadOfficeButMarkedUnresolved(t *testing.T)
+func TestSenderOriginKeepsBranchCodeButRecipientOriginDoesNot(t *testing.T)
+func TestARepliedConversationWithoutARecordedReplierAppearsButIsCountedNowhere(t *testing.T)
+```
+
+```ts
+it('memperingatkan bila kode cabang pemanggil tidak terbaca', ...)
+it('menggambar TIGA kolom pada tab "Belum Dijawab", tanpa kolom balasan', ...)
+it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)
+```
+
+### Tambahan aksi tulis (2026-09-24)
+
+Nama yang lahir bersama tombol "Balas" dan "Selesai Komunikasi".
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `Param.Pesan` | `ReplyInput.Message` | — |
+| `Param.IDKomunikasi` | `ReplyInput.ID` | — |
+| `tempReply.ADDRESS` | `ReplyCommand.Message` | nama Pega menyebut "ADDRESS" untuk isi pesan; tidak dibawa (`D-19`) |
+| `tempReply.M_SURVEY_ID` | `ReplyCommand.ID` | menyebut "SURVEY" untuk nomor percakapan; tidak dibawa (`D-19`) |
+| `tempReply.NAME` / `Param.kodecabang` | `inboxkomunikasicabang.CaseOpen` | **perangkap penamaan**: isinya `CASEID`, bukan kode cabang |
+| `temp.AnalystTransferDate` | `ReplyCommand.RepliedAt` | menyebut "Analyst" untuk waktu balasan; tidak dibawa |
+| `OperatorID.pyUserIdentifier` | `Caller.Login` | — |
+| `OperatorID.pyUserName` | `Caller.Name` | — |
+| `REPLYFROM` (kolom) | `Conversation.ReplyFrom` | kolom basis data tetap Indonesia (`D-80`) |
+| `REPLYFROMNAME` (kolom) | `Conversation.ReplierName` | — |
+| `KOMUNIKASISTATUS = '1'` | `StatusAnswered` | artinya baru diketahui 2026-09-24 |
+| `CASEID = 'CABANG SELESAI'` | `CaseClosed` | — |
+| `EndKomunikasiCabang` (activity) | `Service.Finish` · `Repo.Finish` | — |
+| `PNCReplyMessageCabang` (activity) | `Service.Reply` · `Repo.Reply` | — |
+
+Nama field JSON tetap berbahasa Indonesia — ia kontrak (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `pesan` (badan permintaan balas) | isi balasan |
+| `komunikasi` (jawaban aksi) | nomor percakapan yang dikenai tindakan |
+| `pesan` (jawaban aksi) | kalimat siap baca tentang apa yang terjadi |
+| `balas_tersedia` | **menggantikan** `tindakan_masih_di_pega`, artinya KEBALIKAN |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/balas
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/selesai
+```
+
+Nama uji yang lahir bersamanya:
+
+```go
+func TestAReplyMovesTheConversationFromOneTabToTheOther(t *testing.T)
+func TestAReplyToAClosedConversationIsRefused(t *testing.T)
+func TestFinishingATwiceIsRefusedInsteadOfSilentlySucceeding(t *testing.T)
+func TestReplyMeasuresLengthInCharactersNotBytes(t *testing.T)
+func TestEveryWriteStatementRefusesAClosedConversation(t *testing.T)
+func TestWriteStatementsCarryNoTableAlias(t *testing.T)
+```
+
+```ts
+it('menggambar kotak "Masukkan Balasan" yang benar-benar dapat dipakai', ...)
+it('meminta penegasan lebih dulu, tidak langsung menutup percakapan', ...)
+it('menahan kalimat yang sudah diketik bila balasannya ditolak', ...)
+```
+
+> Uji `it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)`
+> yang tercantum di atasnya **dihapus** pada 2026-09-24: pernyataannya tidak lagi benar.
+
+### Tambahan "Kirim Pesan" (2026-09-24, lanjutan)
+
+Nama yang lahir bersama form pembuatan percakapan baru. Tujuh di antaranya menggantikan nama
+Pega yang **seluruhnya** menyebut hal lain.
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `TempInputKomunikasi.CaseID` | `NewMessageInput.Destination` | "CaseID" untuk sebuah pilihan PUSAT/CABANG |
+| `TempInputKomunikasi.CityID` | (isian pemilih cabang di layar) | "CityID" untuk sebuah cabang |
+| **`TempInputKomunikasi.City`** | **`NewMessageInput.Message`** | "City" untuk **isi pesan** |
+| `TempInputKomunikasi.DistrictID` | `NewMessageInput.BranchCode` | "DistrictID" untuk kode cabang |
+| `TempInputKomunikasi.District` | `BranchOption.Email` | "District" untuk alamat surel |
+| `TempInputKomunikasi.pyLabel` | (tidak dibawa) | penanda keadaan layar; di React `useState` |
+| `TempInputKomunikasi2.pxResults[].City` | `Destinations()` | daftar dua pilihan dropdown |
+| `TempResultSurveyor.pxResults` | `[]BranchOption` | halaman sumber autocomplete |
+| `.BRANCHNAME` | `BranchOption.Name` | — |
+| `.BRANCH` | `BranchOption.Code` | — |
+| `.EMAIL` | `BranchOption.Email` | — |
+
+Tujuh properti `TempEmail.*` pada activity, dan tidak satu pun berarti seperti namanya:
+
+| Pega | Kolom yang diisinya | Kode baru |
+|---|---|---|
+| `TempEmail.IDSurvey` | `CASEID` | `CaseOpen` |
+| `TempEmail.BodyLetterAttn` | `SENDER` | `Caller.Login` |
+| **`TempEmail.BodyLetterEmail`** | **`MESSAGE`** | `NewMessageCommand.Message` |
+| `TempEmail.BodyLetterOP` | `SENDERNAME` | `Caller.Name` |
+| **`TempEmail.BranchToTransfer`** | **`KOMUNIKASISTATUS`** | `StatusNotAnswered` |
+| `TempEmail.InsuredPIC` | `COMMUNICATE_TO` | `NewMessageCommand.RecipientCode()` |
+| `TempEmail.IDSurveyCase` | `COMMUNICATE_FROM` | `BranchFilter.Code` |
+
+Rule dan artefak:
+
+| Pega | Kode baru |
+|---|---|
+| `PNCSendMessageKomunikasiCabang` (activity) | `Service.SendMessage` · `Repo.SendMessage` |
+| `CNMShowInsertKomunikasi_dt` (data transform) | `useState` pada layar — tidak ada padanan di peladen |
+| `IsInsertKomunikasi` / `IsUpdateKomunikasi` (when) | idem |
+| `InsertMessageCABANG_PNC` (SQL) | `message_insert` |
+| `GetIDMaxKom_cabang` (SQL) | `message_max_id` |
+| `ReplyKomunikasiCabang` (SQL, jalur kirim) | `message_history_insert` |
+| *(kueri pemasok cabang — tidak ada di export)* | `branch_options` — **penyaringnya ditebak** |
+
+Nama field JSON tetap Indonesia (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `tujuan` (permintaan) | `"PUSAT"` atau `"CABANG"` |
+| `cabang` (permintaan) | kode cabang tujuan |
+| `pesan` (permintaan) | isi pesannya |
+| `tujuan` (jawaban `/cabang`) | kedua pilihan dropdown |
+| `cabang` (jawaban `/cabang`) | daftar cabang — **tanpa alamat surel** |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/pesan     membuat percakapan baru (201)
+GET  /api/inbox-komunikasi-cabang/cabang    daftar cabang + kedua tujuan
+```
+
+Uji yang lahir bersamanya:
+
+```go
+func TestAMessageToTheBranchNeedsABranchChosen(t *testing.T)
+func TestABranchLeftOverFromASwitchedDestinationIsIgnoredNotRefused(t *testing.T)
+func TestTheBranchListIsNotFilteredByTheCallerBranch(t *testing.T)
+func TestANewMessageCanBeRepliedToImmediately(t *testing.T)
+func TestTheNewMessageInsertLeavesTheCreatedDateToTheDatabase(t *testing.T)
+func TestEveryLoadedQueryIsListedInAllQueryNames(t *testing.T)
+func TestTheBranchPickerNeverLeaksBranchEmailAddresses(t *testing.T)
+func TestTheRemovedActionRouteIsGone(t *testing.T)
+```
+
+```ts
+it('menampilkan form saat "Tambah" ditekan, bukan menolak dengan alasan', ...)
+it('tidak menyentuh peladen hanya untuk membuka formnya', ...)
+it('menyembunyikan pemilih cabang selama tujuannya PUSAT', ...)
+it('mengosongkan cabang yang tertinggal saat tujuannya kembali ke PUSAT', ...)
+it('TIDAK lagi menggambar panel "Yang masih dikerjakan lewat Pega"', ...)
+```
+
+> **DICABUT pada 2026-09-24:** `RejectWrite` · rute `/tindakan` · `ErrWriteNotAvailable` ·
+> `CodeWriteNotAvailable` (`"belum_tersedia"`) · `WriteActionsNotice` ·
+> `useKomunikasiCabangAction`. Keempat tindakan tulis layar lama kini bekerja.
+
+### Koreksi utas layar detail (2026-09-24, lanjutan kedua)
+
+Layar detail membaca **`POOLDATA.M_KOMUNIKASI_CABANG`**, bukan `M_KOMUNIKASI_PNC`. Pemetaannya:
+
+| Pega | Kolom | Kode baru |
+|---|---|---|
+| `.CloseClaimDate` | `CREATEDDATE` *(nama DITEBAK)* | `ThreadMessage.CreatedAt` |
+| `.UserName` | `SENDER` | `ThreadMessage.SenderOperator` |
+| `.Email` | `MESSAGE` | `ThreadMessage.Message` |
+| `TEMPHISTORYCABANGDETAIL.pxResults` | — | `[]ThreadMessage` |
+| `GetInboxKomunikasiCabang_detail` *(hilang)* | — | `detail_thread` |
+| *(tidak ada padanan)* | — | `detail_header` — pemeriksa keberadaan |
+| `DETAILKOMUNIKASICABANG_ACT` | — | `Repo.Detail` |
+
+Isian JSON tiap ucapan menyusut menjadi **tiga**, persis kolom section-nya:
+
+| Field JSON | Isinya |
+|---|---|
+| `tanggal` | tanggal ucapannya |
+| `pengirim` | Operator ID, **apa adanya** — tidak dirakit seperti di grid |
+| `pesan` | isi ucapannya |
+
+> **DICABUT:** `jawaban` · `penjawab` · `tanggal_jawaban` · `asal` · `operator_pengirim` pada
+> ucapan. Balasan BUKAN isian pada sebuah ucapan — ia ucapan tersendiri.
+
+Uji yang lahir bersamanya:
+
+```go
+func TestTheThreadGrowsWithEveryUtteranceNotJustTheLatestOne(t *testing.T)
+func TestAConversationWithoutAnyHistoryIsStillFound(t *testing.T)
+func TestTheConversationOriginComesFromTheHeaderNotTheThread(t *testing.T)
+func TestTheThreadIsReadFromTheHistoryTableNotTheConversationTable(t *testing.T)
+func TestEachUtteranceCarriesExactlyTheThreeFieldsTheSectionDraws(t *testing.T)
+```
+
+```ts
+it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', ...)
+it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', ...)
+```

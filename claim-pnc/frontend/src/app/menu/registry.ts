@@ -20,29 +20,39 @@
  *
  * # Yang TIDAK ada di sini, dan itu bukan kelalaian
  *
- * 50 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
- * 70 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
+ * 25 dari 75 butir menu belum punya layar. Butirnya tetap tampil di menu, tidak dapat
  * diklik, dan bertanda "belum tersedia" — keputusan Work Owner 2026-09-18. Dengan
  * begitu kemajuan migrasi terbaca langsung dari layar, dan pengguna tidak melaporkan
  * menu yang "hilang".
  *
- * Sembilan di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
- * (`DataMemberReas`, `DetailMasterPasalAI`, `InboxCloseClaim_Harness`,
- * `InboxOutstanding_Harness`, `InboxRequestSalvage`, `InboxServiceCenter`,
- * `LostAdjuster_harness`, `PNCViewClaim`, `ReportProduksiPA_harnes`) — memperjelas
- * `K-33`. Ditambah MENU_ID 83 "Report Adjuster" yang MENU_PROGRAM-nya memang kosong.
+ * Angka 75 adalah MENU_PROGRAM tidak kosong yang UNIK pada
+ * `Database/m_menu_aplikasi_pnc.csv` — dari 80 barisnya, empat adalah judul kelompok
+ * (MASTER, INBOX, VIEW, REPORT) dan satu adalah MENU_ID 83 "Report Adjuster" yang
+ * MENU_PROGRAM-nya memang kosong.
  *
- * DUA dari sembilan itu KINI SUDAH PUNYA LAYAR, dan keduanya dibangun dengan cara yang
- * sama — dari kueri, activity, dan section yang memang ada, bukan dari harness-nya:
+ * TUJUH di antaranya bahkan menunjuk harness yang TIDAK ADA di export Pega
+ * (`InboxCloseClaim_Harness`, `InboxOutstanding_Harness`, `InboxRequestSalvage`,
+ * `InboxServiceCenter`, `LostAdjuster_harness`, `PNCViewClaim`,
+ * `ReportProduksiPA_harnes`) — memperjelas `K-33`.
  *
- *   `InboxOutstanding_Harness`   rujukan bentuknya `InboxRegister_Harness`
- *   `InboxCloseClaim_Harness`    rujukan bentuknya `InboxManagerReopen1_Sec`, section yang
- *                                di dalamnya sendiri berjudul "Inbox Close Claim"
+ * Dua yang dulu ada di daftar itu SUDAH DITERIMA pada 2026-09-22 dan karena itu
+ * dikeluarkan: `DataMemberReas` dan `DetailMasterPasalAI` — keduanya kini punya layar.
+ *
+ * SATU dari ketujuh yang tersisa KINI SUDAH PUNYA LAYAR, dibangun dari kueri,
+ * activity, dan section yang memang ada — bukan dari harness-nya:
+ *
+ *   `InboxCloseClaim_Harness`    rujukan bentuknya `InboxManagerReopen1_Sec`, section
+ *                                yang di dalamnya sendiri berjudul "Inbox Close Claim"
+ *
+ * `InboxOutstanding_Harness` (MENU_ID 79) TETAP belum punya layar. Yang kini punya
+ * layar adalah `InboxRegister_Harness` (MENU_ID 51 "My Inbox") — butir menu yang
+ * BERBEDA, dan keduanya sempat tertukar. Lihat catatan pada barisnya di bawah.
  */
 export const MENU_ROUTES: Record<string, string> = {
   StatusClaimInbox: '/master/status-klaim',
   MasterRekening: '/master/rekening',
   StatusProgress: '/master/status-progres-1',
+  StatusProgress2: '/master/status-progres-2',
   // MENU_ID 22 "Master Dokumen Travel", di bawah kelompok MASTER.
   //
   // JANGAN tertukar dengan MENU_ID 39 di bawahnya: yang ini master INDUK — hanya DOCID
@@ -112,9 +122,30 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Keduanya terbaca berdampingan di `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26`.
   ListDocumentObject: '/master/objek-dokumen',
-  // Butir menu "Inbox Outstanding". Harness-nya tidak ada di export (`K-33`); layarnya
-  // dibangun dari kueri BrowseInboxOutstanding1 beserta activity dan section-nya.
-  InboxOutstanding_Harness: '/inbox-outstanding',
+  // MENU_ID 51 **"My Inbox"** — layar daftar klaim yang masih berjalan.
+  //
+  // # Kuncinya sempat salah, dan menunya karena itu tidak pernah muncul
+  //
+  // Semula didaftarkan sebagai `InboxOutstanding_Harness`, karena judul DI DALAM
+  // `Section/InboxRegister_Section-Section.xml:2150` berbunyi "Inbox Outstanding".
+  // Judul itu memang ada, tetapi ia judul section — bukan nama butir menu.
+  //
+  // `POOLDATA.M_MENU_APLIKASI_PNC` memuat KEDUANYA sebagai butir yang BERBEDA:
+  //
+  //	MENU_ID 51 · "My Inbox"          · InboxRegister_Harness      <- layar ini
+  //	MENU_ID 79 · "Inbox Outstanding" · InboxOutstanding_Harness   <- layar LAIN
+  //
+  // Jadi kunci lama bukan sekadar salah nama: ia menempelkan layar ini pada butir
+  // menu MILIK LAYAR LAIN. Pengguna yang menekan "Inbox Outstanding" akan mendapat
+  // layar My Inbox, sedangkan "My Inbox" sendiri tidak mengarah ke mana-mana.
+  //
+  // MENU_ID 79 tetap belum punya layar — harness-nya tidak ada di export (`K-33`),
+  // dan isinya belum pernah diketahui.
+  //
+  // Nama modul dan alamat rutenya sengaja DIBIARKAN `inbox-outstanding` sampai Work
+  // Owner memutuskan — mengganti nama modul menyentuh backend, frontend, dan tiket
+  // sekaligus (`D-81`), sedangkan memperbaiki kunci ini memulihkan menunya sekarang.
+  InboxRegister_Harness: '/inbox-outstanding',
   InboxAutoClaim: '/inbox-auto-claim',
   // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
   SurveyorsInbox: '/master/tipe-surveyor',
@@ -173,10 +204,10 @@ export const MENU_ROUTES: Record<string, string> = {
   // butirnya sekadar tetap "belum tersedia" — sehingga mencocokkannya ke tabel adalah
   // satu-satunya cara memastikannya benar.
   //
-  // `StatusProgress2` (MENU_ID 24) sengaja TIDAK ada di sini meski layarnya sudah ada:
-  // backend-nya belum pernah ditulis di commit mana pun, dan `/api/master/status-progres-2`
-  // tidak ada. Memetakannya hanya akan mengubah label jujur "belum tersedia" menjadi layar
-  // yang tampak rusak.
+  // `StatusProgress2` (MENU_ID 24) dulu sengaja TIDAK ada di sini karena backend-nya belum
+  // pernah ditulis. Itu berubah pada penggabungan 2026-09-24: `/api/master/status-progres-2`
+  // kini ada di `internal/masterstatusprogres/http/routes2.go`, sehingga butirnya dipetakan
+  // di atas bersama `StatusProgress`.
 
   // MENU_ID 25. SATU layar untuk DUA master — Penolakan Klaim dan Penolakan Komite —
   // karena di Pega pun keduanya satu butir menu. Pemilihannya tab di dalam layar.
@@ -187,17 +218,121 @@ export const MENU_ROUTES: Record<string, string> = {
   // layarnya master pasal, bukan daftar penolakan — nama itu dibaca apa adanya dari tabel
   // menu, dan memperbaikinya menempuh `D-63`.
   DetailMasterPasalRejected: '/master/pasal-kerugian',
+  // MENU_ID 36 "Master Pasal AI". Kembaran Master Pasal Kerugian di atas — section-nya
+  // memang Save-As darinya — tetapi sudah dipangkas menjadi layar PENCARIAN BACA-SAJA:
+  // tanpa tab, tanpa Tambah/Simpan/Hapus, hanya Cari dan Refresh.
+  //
+  // Ia satu-satunya layar master yang paginasinya dikerjakan SERVER, dan itu bukan pilihan
+  // kami: grid Pega-nya ber-`pyPageMode = None` dengan jendela dihitung activity.
+  //
+  // Tabelnya `POOLDATA.MST_PASAL_AI`; kolomnya `WP_PASAL`, `WP_AYAT`, dan `WP_KEJADIAN` —
+  // nama yang baru terbaca setelah activity dan kedua Connect-SQL-nya diterima, karena
+  // propertinya di layar Pega bernama warisan (`.City`, `.CityID`, `.District`).
+  DetailMasterPasalAI: '/master/pasal-ai',
 
   // MENU_ID 28, 30, 31 — keluarga alat berat, berbagi satu activity persetujuan yang sama
   // di Pega (`Activity/SetApprovalAllMaster`). Ketiganya beserta Master Supplier di bawah
   // membaca tabel yang `D-34` keluarkan dari lingkup migrasi; Work Owner memutuskan pada
   // 2026-09-22 bahwa seluruh modul dari cabang `fran-masuk-master` harus ada. Lihat
   // catatan di kepala `backend/cmd/claimpnc/modules.go`.
+  //
+  // MENU_ID 28 "Master Bengkel". Satu butir menu, satu layar, TIGA tab — Approve,
+  // Waiting Approval, dan Reject — persis seperti ketiga tab pada
+  // `Section/BrowseMasterHE-Section.xml`.
   BengkelHE: '/master/bengkel',
   MasterPanel_HE: '/master/panel',
   SparePart_HE: '/master/sparepart',
-  // MENU_ID 29. Seluruh isinya tinggal di satu kolom JSONDATA.
+  // MENU_ID 32 "Master Grouping Sparepart". Satu butir menu, satu layar, TIGA tab —
+  // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/PNCMasterGroupingSparepartHE-Section.xml`.
+  //
+  // Yang dikelolanya BUKAN penggolongan suku cadang melainkan penautan suku cadang ke
+  // panel bodi pada sebuah kendaraan, dikelompokkan menurut nomor rangka.
+  //
+  // Nama kuncinya `GroupingSparePart_HE` dengan P besar di tengah, persis seperti yang
+  // tertulis di POOLDATA.M_MENU_APLIKASI_PNC. Huruf besar-kecilnya dikirim server apa
+  // adanya.
+  GroupingSparePart_HE: '/master/grouping-sparepart',
+  // MENU_ID 33 "Master Kategori Sparepart". Satu butir menu, satu layar, TIGA tab —
+  // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/MasterKategoriSparepartHE-Section.xml`.
+  //
+  // Nama kuncinya `GCNMCatSparepart`, persis seperti yang tertulis di
+  // POOLDATA.M_MENU_APLIKASI_PNC — termasuk "Cat" yang merupakan singkatan dari Category,
+  // bukan salah ketik. Huruf besar-kecilnya dikirim server apa adanya.
+  GCNMCatSparepart: '/master/kategori-sparepart',
+  // MENU_ID 34 "Master Tipe Sparepart". Satu butir menu, satu layar, TIGA tab — Approve,
+  // Reject, dan Waiting Approval — persis seperti ketiga section pada
+  // `Section/MasterTipeSparepartHE-Section.xml`.
+  //
+  // Nama kuncinya `GCNMMasterSparepartType`, persis seperti yang tertulis di
+  // POOLDATA.M_MENU_APLIKASI_PNC. Perhatikan bahwa nama programnya memakai "SparepartType"
+  // sementara seluruh caption layarnya menyebut "Tipe Sparepart"; rutenya mengikuti nama
+  // bisnis, kunci petanya mengikuti basis data.
+  GCNMMasterSparepartType: '/master/tipe-sparepart',
+  // MENU_ID 29 "Master Supplier". Satu butir menu, satu layar, TANPA tab — layar lamanya
+  // memang satu grid dengan tiga tombol (New Supplier, Edit, Refresh) dan tidak punya
+  // penyaring status apa pun (`Section/InboxMasterSupplier-Section.xml`).
+  //
+  // Satu-satunya master yang seluruh isinya tinggal di SATU kolom JSONDATA: `M_SUPPLIER`
+  // hanya punya ID, OLDID, dan JSONDATA.
   MasterSupplier: '/master/supplier',
+  // MENU_ID 37 "Master Login". Satu butir menu, satu layar, TANPA tab — layar lamanya
+  // memang satu grid dengan dua tombol (Tambah, Refresh) dan tidak punya penyaring status
+  // apa pun, karena POOLDATA.MST_LOGIN_SURVEYOR tidak punya kolom APPROVAL.
+  //
+  // Nama kuncinya `MasterLoginSurvey` — menyebut "Survey", sementara MENU_DESC-nya hanya
+  // "Master Login". Rutenya mengikuti nama menu, kunci petanya mengikuti basis data.
+  MasterLoginSurvey: '/master/login',
+  // MENU_ID 35 "Master Reas". Satu butir menu, satu layar, TANPA tab dan TANPA tombol
+  // simpan — harness lamanya memang satu grid dengan satu tombol Refresh, dan
+  // POOLDATA.T_REINSURER tidak punya kolom persetujuan.
+  //
+  // Satu-satunya layar master yang BACA-SAJA. Tabelnya ditulis alur PLA/DLA lewat
+  // `Database/UPDATEREAS.prc` — dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2` —
+  // bukan oleh layar ini.
+  //
+  // Harness-nya dulu termasuk yang dicatat di atas sebagai TIDAK ADA di export; ia
+  // diterima pada 2026-09-22. Yang MASIH hilang adalah section gridnya,
+  // `BrowseListMemberReas` — sehingga daftar kolom layarnya tetap rekonstruksi (`R-16`).
+  DataMemberReas: '/master/reas',
+  // MENU_ID 38 "Detail Penyebab Kerugian". Satu butir menu, satu layar, TANPA tab —
+  // harness lamanya memang satu grid dengan form penyuntingan di bawahnya, dan
+  // POOLDATA.D_CAUSE_OF_LOSS tidak punya kolom persetujuan.
+  //
+  // Ia ANAK dari "Master Penyebab Kerugian" (MENU_ID 20, `CauseOfLossInbox`) yang belum
+  // punya layar. Layar ini hanya MEMBACA master itu sebagai daftar pilihan; induk baru
+  // belum dapat dibuat dari sini.
+  //
+  // Report Definition pengisi gridnya, `BrowseVDCauseOfLoss_RD`, HILANG dari export
+  // (`R-16`) — sehingga cakupan daftarnya rekonstruksi dari dua rule lain atas view yang
+  // sama. Lihat banner paket `detailpenyebab`.
+  DetailCauseOfLoss: '/master/detail-penyebab-kerugian',
+
+  // MENU_ID 48 "Inbox Investigator". Layar INBOX pertama yang dibangun, dan yang pertama
+  // berada di bawah awalan `/inbox/...` — INBOX adalah kelompok menu tersendiri di sistem
+  // lama (`MENU_ID 2`, induk dari 30 butir).
+  //
+  // Isinya antrean bersama workbasket `InvestigatorPNC`: barisnya PEKERJAAN, hilang setelah
+  // selesai dikerjakan, dan punya tenggat — keempat ciri Inbox pada `D-79`. Itu yang
+  // membedakannya dari layar master dan dari View History Claim.
+  //
+  // Baca-saja. Mengambil pekerjaan dari antrean dan mencatat hasil investigasi ada di layar
+  // kerja yang tidak digambar harness ini dan belum dibangun.
+  InboxInvestigator_Harness: '/inbox/investigator',
+
+  // MENU_ID 49 "Inbox Receive TKA". Layar INBOX kedua, dan yang PERTAMA yang menulis:
+  // pengguna mengisi Tanggal Dokumen Lengkap langsung di dalam tabel lalu menekan Submit,
+  // dan barisnya hilang dari daftar.
+  //
+  // Sumbernya BUKAN antrean penugasan Pega melainkan POOLDATA.T_CLAIM_TKA_H — tabel yang
+  // ketujuh kolomnya sama persis dengan ketujuh kolom grid layar lama. Report Definition
+  // lamanya mendeklarasikan halaman workbasket tetapi tidak pernah merujuknya; itu sisa
+  // Save-As, dan penanda TKA-lah yang menentukan keanggotaan daftar.
+  //
+  // Submit menulis DUA tabel dalam satu transaksi: T_CLAIM_PNC.TGLDOKLENGKAP agar
+  // tanggalnya sampai ke klaim, dan T_CLAIM_TKA_H.TGL_DOC_LENGKAP agar barisnya hilang.
+  InboxTKA_Harness: '/inbox/receive-tka',
 
   // MENU_ID 47 "Inbox Compliance", di bawah kelompok INBOX, urutan 1137 — tepat sebelum
   // Inbox Investigator (1138). Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang
@@ -380,6 +515,33 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`).
   PNCTATReport: '/report-klaim',
+  // Butir menu "Input Req Protection" — permintaan pembukaan proteksi beserta form
+  // inputnya, langkah PERTAMA pada `Flow/CreateProtection_Flow.xml`.
+  InputReqProtection_Harness: '/input-req-protection',
+
+  // Butir menu "Inbox Open Protection" — antrean AKSEPTASI, langkah kedua alur yang sama.
+  //
+  // Perhatikan silangan namanya, dan jangan diperbaiki menjadi "seragam": butir menu
+  // bernama "Inbox Open Protection" membuka harness `InputProtection_Harness`, yang judul
+  // di dalamnya justru berbunyi "Inbox Accept Open Protection". Sebaliknya, butir menu
+  // "Input Req Protection" membuka harness yang judulnya "Inbox Open Protection".
+  //
+  // Rute di bawah memakai nama dari JUDUL harness-nya, karena nama butir menunya
+  // bertabrakan dengan judul layar di atas. Menukar keduanya akan mengantar petugas
+  // akseptasi ke layar pemohon, dan tidak ada apa pun di layar yang menandakannya.
+  InputProtection_Harness: '/inbox-accept-open-protection',
+
+  // Inbox Komunikasi Cabang — `MENU_ID 70`, kotak percakapan antara kantor pusat dan cabang.
+  //
+  // Butir menunya tidak dibatasi When rule mana pun yang dapat ditemukan di export; yang
+  // menentukan siapa melihatnya sekarang adalah `M_OTORISASI_PNC`, sama seperti butir lain
+  // (`TKT-F3-004` belum ada).
+  //
+  // Yang membatasi taruhannya di layar ini BUKAN peran melainkan CABANG: daftarnya disaring
+  // menurut cabang pemanggil, diturunkan di sisi peladen dari login. Petugas yang membuka
+  // menunya tanpa berhak tetap tidak melihat percakapan cabang lain — kecuali cabangnya
+  // sendiri tidak dapat diturunkan, yang menjatuhkannya ke percakapan kantor pusat (`P-5`).
+  InboxKomunikasiCabang: '/inbox-komunikasi-cabang',
 }
 
 /**

@@ -195,6 +195,30 @@ type SMTP struct {
 	// MEMPERBAIKI kegagalan, bukan ke pengguna yang kebetulan memicunya.
 	AlertRecipients []string
 
+	// TKARecipients adalah mailbox penerima pemberitahuan kelengkapan dokumen klaim
+	// TKA. Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_TKA.
+	//
+	// # Kenapa daftarnya TERPISAH dari AlertRecipients
+	//
+	// Keduanya punya pembaca yang berbeda. AlertRecipients adalah Tim IT, yang
+	// menerima kabar bahwa sebuah integrasi gagal dan dapat memperbaikinya.
+	// TKARecipients adalah pihak bisnis, yang menerima kabar bahwa dokumen asli satu
+	// klaim sudah lengkap — peristiwa yang sepenuhnya normal dan tidak menuntut
+	// perbaikan apa pun. Menyatukan keduanya akan mengirimi Tim IT surel setiap kali
+	// seorang petugas menyelesaikan pekerjaannya.
+	//
+	// # Ia menggantikan penerima yang di-hardcode di sistem lama
+	//
+	// `Activity/SubmitTanggalLengkapTKA-Act.xml` memilih penerimanya dengan bercabang
+	// pada tiga Operator ID yang tertanam di dalam rule — salah satu cabangnya menunjuk
+	// akun surel pribadi di jalur produksi. Percabangan itu dicabut (`D-15`, `D-67`),
+	// sebagaimana pola yang sama sudah dicabut pada `D-52` untuk penjenjangan komite.
+	//
+	// Kelak ia pindah ke master Penerima Notifikasi (`F-4`), yang memungkinkan
+	// penerimanya diubah tanpa deploy. Sampai master itu ada, variabel lingkungan
+	// adalah tempat terdekat yang memenuhi `D-15` — nilainya tidak berada di dalam kode.
+	TKARecipients []string
+
 	// XOLCommitteeRecipients adalah mailbox komite yang menerima pemberitahuan pengajuan
 	// Master XOL. Ditulis sebagai daftar dipisah koma di XOL_PENERIMA_KOMITE.
 	//
@@ -215,6 +239,18 @@ type SMTP struct {
 	XOLCommitteeRecipients []string
 
 	Timeout time.Duration
+}
+
+// TKAActive menyatakan pemberitahuan kelengkapan dokumen TKA dapat dikirim.
+//
+// Ia TERPISAH dari Active(): server surel yang sama dapat terkonfigurasi untuk peringatan
+// Tim IT tanpa punya penerima TKA, dan sebaliknya. Memakai satu penanda untuk keduanya akan
+// membuat modul yang penerimanya belum diisi tetap mencoba mengirim ke daftar kosong.
+func (s SMTP) TKAActive() bool {
+	return strings.TrimSpace(s.Host) != "" &&
+		s.Port > 0 &&
+		strings.TrimSpace(s.From) != "" &&
+		len(s.TKARecipients) > 0
 }
 
 // Aktif menyatakan konfigurasi ini cukup untuk mengirim surel.
@@ -368,6 +404,7 @@ func Load() (Config, error) {
 			Password:        os.Getenv("SMTP_PASSWORD"),
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
+			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
 
 			XOLCommitteeRecipients: splitAddress(os.Getenv("XOL_PENERIMA_KOMITE")),
 
@@ -559,6 +596,7 @@ func (k Config) Summary() map[string]any {
 		"hcq_sandi_diisi":    k.HCQ.Password != "",
 		"kasir_aktif":        k.Cashier.Active(),
 		"smtp_aktif":         k.SMTP.Active(),
+		"smtp_tka_aktif":     k.SMTP.TKAActive(),
 	}
 }
 

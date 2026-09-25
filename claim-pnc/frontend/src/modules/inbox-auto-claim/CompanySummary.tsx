@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-
 import { NetworkError } from '@/api/client'
 import type { AutoClaimCompanySummary } from '@/api/types'
 import { ErrorMessage } from '@/components/ErrorMessage'

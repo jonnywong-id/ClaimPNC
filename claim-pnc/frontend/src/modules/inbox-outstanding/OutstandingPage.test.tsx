@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -8,7 +8,11 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { OutstandingPage } from './OutstandingPage'
-import type { OutstandingClaim, OutstandingListResponse } from './types'
+import type {
+  OutstandingClaim,
+  OutstandingListResponse,
+  OutstandingSummaryResponse,
+} from './types'
 
 /**
  * Data uji seluruhnya KARANGAN.
@@ -49,7 +53,48 @@ function listResponse(partial: Partial<OutstandingListResponse> = {}): Outstandi
   return {
     klaim: [claim()],
     total: 1,
-    batas_lini: { tanpa_batas: false, group_panel: ['006'] },
+    pemilik: 'ADMINPNC',
+    ...partial,
+  }
+}
+
+/**
+ * Ringkasan status dokumen — sumber donut.
+ *
+ * Uji di berkas ini menstub SATU fungsi fetch untuk seluruh URL, sehingga tanpa ini
+ * `/ringkasan` ikut menerima bentuk respons daftar. Itu pernah terjadi dan menjatuhkan
+ * seluruh layar, bukan hanya panelnya.
+ */
+function summaryResponse(
+  partial: Partial<OutstandingSummaryResponse> = {},
+): OutstandingSummaryResponse {
+  return {
+    // Kesembilan tab dalam urutan layar Pega — enam di antaranya tanpa jumlah, persis
+    // seperti yang dikirim backend. Uji yang hanya memuat dua tab yang terhitung akan
+    // lulus tanpa pernah menyentuh perilaku "tab tanpa lencana".
+    status: [
+      { kode: 'lengkap', judul: 'Complete documents', jumlah: 0, dapat_dipilih: true },
+      { kode: 'belum-lengkap', judul: 'Documents not complete', jumlah: 1, dapat_dipilih: true },
+      { kode: 'temporary-close', judul: 'Temporary Close', jumlah: null, dapat_dipilih: false },
+      {
+        kode: 'deadline-temporary-close',
+        judul: 'Deadline To Temporary Close',
+        jumlah: null,
+        dapat_dipilih: false,
+      },
+      { kode: 'loss-adjuster', judul: 'Loss Adjuster', jumlah: null, dapat_dipilih: false },
+      {
+        kode: 'internal-surveyor',
+        judul: 'Internal Surveyor',
+        jumlah: null,
+        dapat_dipilih: false,
+      },
+      { kode: 'semua', judul: 'ALL Case', jumlah: 1, dapat_dipilih: true },
+      { kode: 'komunikasi', judul: 'Communication', jumlah: null, dapat_dipilih: false },
+      { kode: 'tka', judul: 'TKA', jumlah: null, dapat_dipilih: false },
+    ],
+    total: 1,
+    pemilik: 'ADMINPNC',
     ...partial,
   }
 }
@@ -68,6 +113,15 @@ function jsonResponse(status: number, body: unknown): Response {
 function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promise<Response>) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, init })
+
+    // `/ringkasan` dijawab di sini kecuali uji yang bersangkutan menjawabnya sendiri.
+    //
+    // Tanpa cabang ini, setiap uji harus mengingat untuk menjawab endpoint yang tidak
+    // sedang diujinya — dan yang lupa tidak gagal dengan jelas, melainkan menjatuhkan
+    // seluruh layar.
+    if (url.includes('/ringkasan')) {
+      return Promise.resolve(jsonResponse(200, summaryResponse()))
+    }
     return Promise.resolve(answer(url, init))
   })
 }
@@ -159,7 +213,9 @@ it('menampilkan isi kolom klaim', async () => {
   expect(await screen.findByText('PNCN.26.0001')).toBeInTheDocument()
   expect(screen.getByText('PT Bumi Contoh Sentosa')).toBeInTheDocument()
   expect(screen.getByText('POL-FIRE-0001')).toBeInTheDocument()
-  expect(screen.getByText('ADMINPNC')).toBeInTheDocument()
+  // ADMINPNC muncul DUA KALI: di kolom "Admin name" dan di keterangan pemilik daftar.
+  // getByText akan gagal pada kecocokan ganda, dan itu bukan cacat yang diuji di sini.
+  expect(screen.getAllByText('ADMINPNC').length).toBeGreaterThan(0)
   expect(screen.getByText('BUDISANTOSO')).toBeInTheDocument()
   expect(screen.getByText('1147')).toBeInTheDocument()
 })
@@ -223,28 +279,17 @@ it('tidak menampilkan tahap maupun pemegang tugas sebagai kolom', async () => {
 
 // Inilah uji yang menjaga janji terpenting layar ini.
 //
-// Work Owner menetapkan pengguna tanpa lini bisnis tetap melihat SELURUH lini, persis
-// perilaku Pega. Yang berbeda dari Pega: keadaannya dinyatakan, sehingga datanya cepat
-// dilengkapi admin.
-it('menyatakan ketika penyaringan lini bisnis belum berlaku', async () => {
-  stubFetch(() =>
-    jsonResponse(
-      200,
-      listResponse({ batas_lini: { tanpa_batas: true, group_panel: [] } }),
-    ),
-  )
+// Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang tampak persis sama —
+// memang tidak ada pekerjaan, atau penyaringnya salah orang. Menyebut pemiliknya di layar
+// membedakan keduanya.
+it("menyatakan pekerjaan siapa yang ditampilkan", async () => {
+  stubFetch(() => jsonResponse(200, listResponse({ pemilik: "DEWILESTARI" })))
   renderPage()
 
-  expect(await screen.findByText('Penyaringan lini bisnis belum berlaku')).toBeInTheDocument()
+  expect(await screen.findByText(/Menampilkan pekerjaan milik/)).toBeInTheDocument()
+  expect(screen.getByText("DEWILESTARI")).toBeInTheDocument()
 })
 
-it('menyebutkan lini yang berlaku ketika penyaringan aktif', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
-
-  expect(await screen.findByText(/Menampilkan lini bisnis/)).toBeInTheDocument()
-  expect(screen.getByText('006')).toBeInTheDocument()
-})
 
 // Pencarian dikerjakan SERVER. Bila ia dikerjakan di peramban, hasilnya hanya menyentuh
 // halaman yang sedang terbuka — dan pengguna diberi tahu bahwa klaimnya tidak ada padahal
@@ -264,7 +309,15 @@ it('mengirim kata pencarian ke server, tidak menyaring di peramban', async () =>
   })
 })
 
-it('meminta unduhan dengan penyaring yang sedang berlaku', async () => {
+/**
+ * Unduhan TIDAK membawa penyaring layar.
+ *
+ * Nama uji ini sempat berbunyi "meminta unduhan dengan penyaring yang sedang berlaku",
+ * padahal isinya tidak pernah memeriksa satu pun penyaring — ia hanya memeriksa `/unduh`
+ * dan header portal. Namanya menjanjikan hal yang tidak diujinya, dan hal itu sekarang
+ * justru tidak lagi benar: backend mengabaikan penyaring layar pada unduhan.
+ */
+it('meminta unduhan tanpa membawa penyaring layar', async () => {
   stubFetch((url) => {
     if (url.includes('/unduh')) {
       return new Response('No Klaim\nPNCN.26.0001\n', {
@@ -295,6 +348,50 @@ it('meminta unduhan dengan penyaring yang sedang berlaku', async () => {
     const request = calls.find((c) => c.url.includes('/unduh'))
     expect(request).toBeDefined()
     expect(new Headers(request?.init?.headers).get('X-Portal')).toBe('ASM')
+    expect(request?.url).not.toContain('cari=')
+    expect(request?.url).not.toContain('tahap=')
+    expect(request?.url).not.toContain('cabang=')
+  })
+})
+
+/**
+ * Tombol unduh tetap dapat ditekan meski daftarnya kosong.
+ *
+ * Ini sisi LAYAR dari cacat yang ditemukan Work Owner. Tombolnya dulu dimatikan lewat
+ * `disabled={… || total === 0}`, sehingga petugas yang tidak sedang memegang satu pun tugas
+ * tidak dapat menekannya sama sekali — padahal berkasnya tetap berisi.
+ *
+ * Terbukti pada data ASM: seorang petugas berlini NONMBU dengan 0 pekerjaan di inbox tetap
+ * mengunduh 354 baris.
+ */
+it('tetap mengizinkan unduhan ketika daftar kosong', async () => {
+  stubFetch((url) => {
+    if (url.includes('/unduh')) {
+      return new Response('No Klaim\nPNCN.26.0009\n', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="inbox-outstanding-20260924.csv"',
+        },
+      })
+    }
+    return jsonResponse(200, { klaim: [], total: 0, pemilik: 'ADMINPNC' })
+  })
+
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:uji'),
+    revokeObjectURL: vi.fn(),
+  })
+
+  renderPage()
+
+  const tombol = await screen.findByRole('button', { name: /Unduh CSV/ })
+  expect(tombol).toBeEnabled()
+
+  await userEvent.click(tombol)
+  await waitFor(() => {
+    expect(calls.find((c) => c.url.includes('/unduh'))).toBeDefined()
   })
 })
 
@@ -326,4 +423,124 @@ it('menyembunyikan paginasi ketika tidak ada klaim', async () => {
 
   expect(await screen.findByText('Tidak ada klaim yang masih berjalan.')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Berikutnya' })).not.toBeInTheDocument()
+})
+
+/**
+ * Panel ringkasan menampilkan jumlah per status dokumen.
+ *
+ * Donutnya sendiri `aria-hidden` — deret tab di atasnya yang menjadi sumber resminya, dan
+ * itulah yang diperiksa di sini. Memeriksa SVG-nya akan menguji Recharts, bukan modul ini.
+ */
+it('menampilkan kesembilan tab status dokumen dalam urutan layar Pega', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  renderPage()
+
+  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  const judul = within(tabs)
+    .getAllByRole('button')
+    .map((b) => b.textContent?.replace(/\d+$/, '').trim())
+
+  // Urutannya dibaca dari label tebal `Section/InboxRegister_Section-Section.xml`.
+  // Menata ulangnya akan memindahkan tab yang sudah dihafal petugas.
+  expect(judul).toEqual([
+    'Complete documents',
+    'Documents not complete',
+    'Temporary Close',
+    'Deadline To Temporary Close',
+    'Loss Adjuster',
+    'Internal Surveyor',
+    'ALL Case',
+    'Communication',
+    'TKA',
+  ])
+})
+
+/**
+ * Tab yang sumber datanya belum dimigrasikan TIDAK diberi lencana, dan tidak dapat
+ * ditekan.
+ *
+ * BUKAN lencana bertuliskan nol: nol menyatakan "tidak ada satu pun", padahal yang benar
+ * "belum dihitung". Konvensi yang sama dipakai tab "Data rejected" pada Inbox Laporan
+ * Klaim, dan dengan alasan yang sama.
+ */
+it('tidak memberi lencana pada tab yang belum dapat dihitung', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  renderPage()
+
+  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  const utils = within(tabs)
+
+  const lossAdjuster = utils.getByRole('button', { name: 'Loss Adjuster, belum tersedia' })
+  expect(lossAdjuster).toBeDisabled()
+  // Tidak ada angka menempel pada judulnya.
+  expect(lossAdjuster.textContent).toBe('Loss Adjuster')
+
+  // Yang terhitung justru punya angkanya.
+  expect(
+    utils.getByRole('button', { name: 'Documents not complete, 1 klaim' }),
+  ).toBeInTheDocument()
+})
+
+/**
+ * Panel ringkasan TETAP TAMPIL meski inbox kosong.
+ *
+ * Versi pertama mengembalikan `null` saat total nol, sehingga petugas yang tidak sedang
+ * memegang satu pun tugas tidak melihat panelnya sama sekali — dan tidak ada cara
+ * membedakan "saya tidak punya pekerjaan" dari "fiturnya tidak ada". Persis kegagalan yang
+ * sama dengan tombol Unduh yang dulu dimatikan saat daftar kosong.
+ */
+it('tetap menampilkan panel ringkasan ketika inbox kosong', async () => {
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+    calls.push({ url, init })
+    if (url.includes('/ringkasan')) {
+      return Promise.resolve(
+        jsonResponse(
+          200,
+          summaryResponse({
+            status: [
+              { kode: 'lengkap', judul: 'Complete documents', jumlah: 0, dapat_dipilih: true },
+              {
+                kode: 'belum-lengkap',
+                judul: 'Documents not complete',
+                jumlah: 0,
+                dapat_dipilih: true,
+              },
+              { kode: 'semua', judul: 'ALL Case', jumlah: 0, dapat_dipilih: true },
+            ],
+            total: 0,
+          }),
+        ),
+      )
+    }
+    return Promise.resolve(jsonResponse(200, listResponse({ klaim: [], total: 0 })))
+  })
+
+  renderPage()
+
+  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  expect(within(tabs).getByRole('button', { name: 'ALL Case, 0 klaim' })).toBeInTheDocument()
+  expect(screen.getByText('Tidak ada klaim berjalan untuk diringkas.')).toBeInTheDocument()
+})
+
+/** Mengeklik satu status menyaring grid lewat parameter `status_dokumen`. */
+it('menyaring daftar saat satu status dokumen dipilih', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  renderPage()
+
+  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  await userEvent.click(
+    within(tabs).getByRole('button', { name: 'Documents not complete, 1 klaim' }),
+  )
+
+  await waitFor(() => {
+    expect(calls.find((c) => c.url.includes('status_dokumen=belum-lengkap'))).toBeDefined()
+  })
+
+  // Ringkasan TIDAK ikut disaring — seluruh irisan harus tetap terlihat supaya pilihannya
+  // dapat dibatalkan. Tanpa ini, donut menyusut menjadi satu irisan begitu diklik dan
+  // tidak ada jalan kembali selain memuat ulang halaman.
+  const ringkasanTersaring = calls.find(
+    (c) => c.url.includes('/ringkasan') && c.url.includes('status_dokumen'),
+  )
+  expect(ringkasanTersaring).toBeUndefined()
 })
