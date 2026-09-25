@@ -61,22 +61,63 @@ export type OutstandingClaim = {
   pemegang_tugas: string
 }
 
-/**
- * Batas data yang berlaku saat daftar dibaca.
- *
- * Ia dipakai layar untuk MENYATAKAN keadaannya kepada pengguna. Tanpa itu, petugas yang
- * lini bisnisnya belum diisi admin melihat klaim seluruh lini tanpa cara apa pun untuk
- * mengetahui bahwa yang dilihatnya lebih luas dari haknya.
- */
-export type LineScope = {
-  tanpa_batas: boolean
-  group_panel: string[]
-}
-
 export type OutstandingListResponse = {
   klaim: OutstandingClaim[]
   total: number
-  batas_lini: LineScope
+
+  /**
+   * Operator yang pekerjaannya ditampilkan — selalu pemanggil sendiri.
+   *
+   * Layar menyatakannya karena daftar kosong punya dua sebab yang tampak sama: memang
+   * tidak ada pekerjaan, atau penyaringnya salah orang.
+   */
+  pemilik: string
+}
+
+/**
+ * Kode status kelengkapan dokumen.
+ *
+ * Hanya DUA, padahal Pega punya sebelas tab di bawah judul "Document status". Kesembilan
+ * sisanya menghitung populasi yang berbeda — sebagian dari case type lain yang tidak ada
+ * di tabel ini — sehingga tidak dapat menjadi irisan satu donut. Alasannya di backend,
+ * pada tipe `DocumentStatus`.
+ */
+export type DocumentStatusCode =
+  | 'lengkap'
+  | 'belum-lengkap'
+  | 'temporary-close'
+  | 'deadline-temporary-close'
+  | 'loss-adjuster'
+  | 'internal-surveyor'
+  | 'semua'
+  | 'komunikasi'
+  | 'tka'
+
+/** Satu tab status dokumen. */
+export type DocumentStatusCount = {
+  kode: DocumentStatusCode
+  judul: string
+
+  /**
+   * `null` berarti **belum dihitung**, dan itu berbeda dari nol.
+   *
+   * Lencana tidak digambar untuk yang null — konvensi yang sama dengan tab "Data
+   * rejected" pada Inbox Laporan Klaim: lencana bertuliskan 0 menyatakan "tidak ada", dan
+   * itu tidak benar.
+   */
+  jumlah: number | null
+
+  /** Tab yang belum dapat dihitung juga belum dapat menyaring. */
+  dapat_dipilih: boolean
+}
+
+export type OutstandingSummaryResponse = {
+  status: DocumentStatusCount[]
+
+  /** Seluruh pekerjaan pemanggil — baris "All" pada tabel di samping donut. */
+  total: number
+
+  pemilik: string
 }
 
 /** Penyaring daftar. Seluruhnya opsional; kosong berarti tidak menyaring. */
@@ -84,5 +125,9 @@ export type OutstandingFilter = {
   search?: string
   stage?: string
   branch?: string
+
+  /** Diisi saat pengguna mengeklik irisan donut; kosong berarti seluruh status. */
+  documentStatus?: DocumentStatusCode | ''
+
   offset?: number
 }

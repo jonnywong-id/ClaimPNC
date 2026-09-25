@@ -39,6 +39,8 @@ import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
+import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
+import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
 import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
 import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
@@ -58,7 +60,10 @@ import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
+import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
+import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
@@ -957,6 +962,24 @@ export function AppRoute() {
         }
       />
       {/*
+        Input Req Protection — permintaan pembukaan proteksi beserta form inputnya.
+
+        Layar lama dibatasi `When/IsReqProtection-When.xml` pada empat access group:
+        PncAdmin, PncPICTeknik, PNCKomiteTeknik, dan Administrators. Pembatasan itu
+        BELUM ada di sini; ia `TKT-F3-005`, yang bergantung pada tabel peran yang dapat
+        dibangun tetapi belum dapat diisi.
+      */}
+      <Route
+        path="/input-req-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ProtectionListPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Analyst Doctor — antrean penilaian medis milik SATU petugas, pengganti harness
         `inboxAnalystDoctor_Harness` (`MENU_ID 60`).
 
@@ -1042,6 +1065,68 @@ export function AppRoute() {
         }
       />
       {/*
+        MENU_ID 84 "Report KPI PNC" — harness `ReportKPIHarness`.
+
+        CATATAN PEMULIHAN: rute ini sempat TERHAPUS pada 2026-09-25 oleh `git checkout`
+        yang dijalankan sesi lain untuk membatalkan pemformatan ulang Prettier. Kodenya
+        dipulihkan apa adanya; komentar aslinya tidak dapat dipulihkan utuh dan yang ada
+        di sini ditulis ulang. Modulnya sendiri tidak pernah tersentuh.
+      */}
+      <Route
+        path="/report-kpi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReportKPIPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 85 "Report Klaim" — harness `PNCTATReport`.
+
+        Namanya menyesatkan: ia bukan layar laporan TAT melainkan halaman peluncur berisi
+        28 panel laporan, yang REPORT TAT hanya salah satunya. Layarnya tidak menampilkan
+        satu baris data pun — keluarannya berkas CSV.
+
+        Tiga dari 28 panel TERHALANG dan tetap tampil bertanda sebabnya: Compliance
+        (isinya properti klipboard Pega, bukan kolom), Adjuster (Report Definition-nya
+        tidak ada di export), dan Mitra (penyaring barisnya menempuh DB Link `@ASMD`).
+      */}
+      <Route
+        path="/report-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReportKlaimPage /></Protected>
+          </SessionGuard>
+        }
+      />
+
+        {/* 
+        Inbox Komunikasi Cabang (`MENU_ID 70`), pengganti harness `InboxKomunikasiCabang`.
+
+        Ia SATU rute, bukan dua seperti RCL/PUCL: layar "Detail Komunikasi" di Pega bukan
+        layar tujuan melainkan flow action yang menyisipkan section ke halaman yang sama,
+        dan petugas kembali ke daftarnya begitu selesai membaca. Nomor percakapan yang
+        sedang dibuka hidup di parameter alamat, sehingga alamatnya tetap dapat disalin.
+
+        Berbeda dari modul inbox lain, daftar layar ini DISARING menurut cabang pemanggilnya
+        — batas itu diselesaikan di sisi peladen dari login, bukan dari pilihan di layar.
+        Petugas yang cabangnya tidak dapat diturunkan dilayani sebagai kantor pusat (`P-5`),
+        dan layarnya menyatakan keadaan itu apa adanya.
+        */}
+      <Route
+        path="/inbox-komunikasi-cabang"
+        element={
+          <SessionGuard>
+            <Protected>
+              <KomunikasiCabangPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Layar kerja satu klaim RCL/PUCL — section `SendtoRCLPUCL`, yang di Pega dibuka Open
         Assignment saat Nomor Case diklik.
         Ia rute TERSENDIRI, bukan panel di dalam antrean, karena di Pega pun ia layar tujuan:
@@ -1073,6 +1158,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Accept Open Protection — antrean akseptasi atas permintaan yang sama.
+
+        Taruhannya lebih besar daripada layar di atas: di sini seseorang MENYETUJUI
+        pembukaan proteksi. Layar lama membatasinya pada lima access group
+        (`When/IsOpenProtectionPNC-When.xml`), dan memisahkan antrean PREMI khusus peran
+        penagihan premi.
+
+        Sampai TKT-F3-005 dikerjakan, yang tersisa sebagai kontrol hanyalah jejak
+        DIAKSEP_OLEH — `D-59` menetapkan tidak ada pemisahan tugas formal.
+      */}
+      <Route
+        path="/inbox-accept-open-protection"
+        element={
+          <SessionGuard>
+            <Protected>
+              <AcceptQueuePage />
             </Protected>
           </SessionGuard>
         }

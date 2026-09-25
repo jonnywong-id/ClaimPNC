@@ -57,6 +57,8 @@ import (
 	inboxcloseclaimsql "claim-pnc/internal/inboxcloseclaim/repo/sqlstore"
 	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	inboxinvestigatorsql "claim-pnc/internal/inboxinvestigator/repo/sqlstore"
+	"claim-pnc/internal/inboxkomunikasicabang"
+	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
@@ -88,6 +90,9 @@ import (
 	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	"claim-pnc/internal/reportkpi"
+	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
+	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
 )
 
@@ -138,6 +143,23 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	primary := pool.Primary()
 	legacy := sqlstore.NewLegacy(primary)
 
+	// Koneksi KEDUA portal utama — pengganti DB Link `@ASMD`.
+	//
+	// Ia dibuka di sini, bukan di dalam pemeriksaannya, supaya ketiadaannya terbaca
+	// sebagai satu keadaan rakitan alih-alih sebagai kegagalan satu pemeriksaan. Dan ia
+	// TIDAK menghentikan mode periksa: aplikasi memang berjalan tanpanya.
+	anekaPool := db.NewOptionalPool(ctx, anekaParameters(cfg), func(alias string, err error) {
+		print("  [lewat] koneksi kedua portal %-5s tidak dapat dibuka: %v", alias, err)
+	})
+	defer anekaPool.Close()
+
+	var anekaPrimary *sql.DB
+	if anekaPool.Has(cfg.PrimaryPortal) {
+		if conn, err := anekaPool.For(cfg.PrimaryPortal); err == nil {
+			anekaPrimary = conn
+		}
+	}
+
 	portalList := checkPortal(ctx, portalsql.NewRepo(primary), print)
 	address := checkCatalog(ctx, legacy, cfg.PrimaryPortal, print)
 	checkAppTables(ctx, legacy, print)
@@ -180,10 +202,17 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
+	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
+	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
+	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
+	checkKomunikasiCabang(ctx,
+		inboxkomunikasicabangsql.NewRepo(primary),
+		inboxkomunikasicabangsql.NewBranchResolver(primary),
+		print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
-	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), print)
+	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
 	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
 	checkCloseClaim(ctx,
 		inboxcloseclaimsql.NewRepo(primary),
@@ -3135,6 +3164,162 @@ func checkRCLPUCL(
 	}
 }
 
+// checkKomunikasiCabang memastikan layar Inbox Komunikasi Cabang dapat dijalankan.
+//
+// Tiga hal diperiksa, dan ketiganya gagal dengan cara yang berbeda:
+//
+//   - Tabel percakapan tidak terbaca → layar tidak dapat dipakai sama sekali.
+//   - Tabel lampiran tidak terbaca → layar tetap dapat dipakai, lampirannya saja kosong.
+//   - Penerjemahan cabang gagal → layar TERTUTUP bagi semua orang, dan itu disengaja.
+//
+// Yang ketiga patut dibaca dua kali. Di modul Inbox Laporan Klaim, penerjemahan cabang yang
+// gagal hanya melebarkan daftar. Di sini ia MENUTUP layar, karena batas datanya memang
+// batas itu — dan `P-5` menetapkan petugas yang cabangnya tidak terbaca dilayani sebagai
+// kantor pusat, sehingga tidak ada cara membedakan "DB Link mati" dari "Anda petugas pusat"
+// selain dengan menolak.
+func checkKomunikasiCabang(
+	ctx context.Context,
+	repo *inboxkomunikasicabangsql.Repo,
+	resolver *inboxkomunikasicabangsql.BranchResolver,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Inbox Komunikasi Cabang tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas POOLDATA.M_KOMUNIKASI_PNC,")
+		print("            POOLDATA.D_KOMUNIKASI_PNC, POOLDATA.M_KOMUNIKASI_CABANG,")
+		print("            POOLDATA.V_LST_DOC_TYPE, dan POOLDATA.V_LST_DET_TYPE_DOC.")
+		print("            Bila galatnya menyebut M_KOMUNIKASI_CABANG.CREATEDDATE: nama kolom")
+		print("            itu DITEBAK. Tidak satu pun INSERT mengisinya, dan DDL-nya belum")
+		print("            ada (`R-08`). Sebutkan nama kolom tanggal yang sebenarnya, dan")
+		print("            perbaikannya satu kata di detail_thread.")
+		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
+		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
+		print("            DDL, yang belum pernah diterima (`R-08`).")
+		return
+	}
+	print("  [ok]    Tabel percakapan dan tabel lampiran Inbox Komunikasi Cabang terbaca")
+
+	if err := resolver.CheckTable(ctx); err != nil {
+		print("  [BELUM] penerjemahan cabang komunikasi belum dapat dijalankan: %v", err)
+		print("            Sumbernya POOLDATA.BRANCH + LST_USER_ASURANSI dan HRDASM.V_HRD_MST")
+		print("            lewat DB link @asmd.sinarmas.co.id, sama seperti GetIDCabang di Pega.")
+		print("            BERBEDA dari Inbox Laporan Klaim: selama gagal, layar ini TERTUTUP")
+		print("            bagi semua orang — bukan melebar. Batas datanya memang cabang itu,")
+		print("            dan melayaninya tanpa batas berarti menampilkan percakapan cabang")
+		print("            lain tanpa satu pun galat (`R-20`).")
+		return
+	}
+	print("  [ok]    cabang petugas dapat diterjemahkan dari login")
+
+	// Kedua pencacah dijalankan pada batas KANTOR PUSAT.
+	//
+	// Bukan pada cabang tertentu: `-periksa` tidak punya petugas yang sedang masuk, dan
+	// kantor pusat adalah satu-satunya batas yang dapat disusun tanpa login siapa pun.
+	// Angkanya karena itu menyatakan kesehatan kueri, bukan beban kerja sebuah cabang.
+	filter := inboxkomunikasicabang.ResolveBranch(
+		inboxkomunikasicabang.HeadOfficeBranch, true)
+
+	summary, err := repo.Summarize(ctx, filter)
+	if err != nil {
+		print("  [GAGAL] pencacah percakapan tidak dapat dijalankan: %v", err)
+		return
+	}
+	print("  [ok]    Percakapan kantor pusat: %d belum dijawab, %d sudah dijawab",
+		summary.NotAnswered, summary.Answered)
+
+	// Daftar cabang untuk pemilih tujuan "Kirim Pesan".
+	//
+	// Ia diperiksa TERPISAH karena sumbernya pun terpisah — `POOLDATA.V_D_SURVEYORS`, bukan
+	// tabel percakapan — sehingga kegagalannya berakibat berbeda: layar tetap dapat dibaca
+	// dan dibalas, hanya pembuatan percakapan baru yang lumpuh.
+	//
+	// Ia juga satu-satunya kueri modul ini yang PENYARINGNYA DITEBAK: kueri asli yang mengisi
+	// pemilih itu tidak ada di export mana pun, dan yang terbaca hanyalah kelas halamannya.
+	// Angka di bawah adalah cara tercepat menguji tebakan itu terhadap basis data sungguhan.
+	branches, err := repo.Branches(ctx)
+	if err != nil {
+		print("  [BELUM] daftar cabang tujuan tidak dapat dibaca: %v", err)
+		print("            Sumbernya POOLDATA.V_D_SURVEYORS, kolom BRANCH, BRANCHNAME, EMAIL.")
+		print("            Selama gagal, layar tetap dapat DIBACA dan DIBALAS — yang lumpuh")
+		print("            hanya tombol \"Kirim Pesan\".")
+		print("            PERHATIAN: kueri ini penyaringnya DITEBAK. Kueri Pega yang")
+		print("            sebenarnya mengisi pemilih cabang tidak ada di export mana pun")
+		print("            (`R-16`); yang terbaca hanya kelas halamannya. Bila galatnya")
+		print("            menyebut kolom, kolom itu memang bukan yang dipakai Pega.")
+		return
+	}
+	print("  [ok]    Daftar cabang tujuan terbaca: %d cabang", len(branches))
+
+	if len(branches) == 0 {
+		print("  [PERIKSA] Tidak ada satu pun cabang yang dapat dipilih sebagai tujuan.")
+		print("            Tombol \"Kirim Pesan\" akan tampil tetapi tidak dapat dipakai untuk")
+		print("            mengirim ke cabang. Jalankan:")
+		print("              SELECT COUNT(DISTINCT BRANCH) FROM POOLDATA.V_D_SURVEYORS")
+		print("               WHERE BRANCH IS NOT NULL AND BRANCHNAME IS NOT NULL;")
+	}
+
+	if summary.Total() == 0 {
+		print("  [PERIKSA] Tidak ada satu pun percakapan kantor pusat yang berjalan.")
+		print("            Periksa apakah kanal percakapan masih bernama %q:",
+			inboxkomunikasicabang.CaseOpen)
+		print("            SELECT CASEID, COUNT(*) FROM POOLDATA.M_KOMUNIKASI_PNC")
+		print("             GROUP BY CASEID;")
+		print("            Nilai penutupnya %q, dan keduanya BERAWALAN sama — sehingga",
+			inboxkomunikasicabang.CaseClosed)
+		print("            kanal yang berubah mengosongkan layar tanpa satu pun galat.")
+		return
+	}
+
+	// Kedua tab dijalankan, bukan satu.
+	//
+	// Keduanya membaca tabel yang sama dan dipisahkan HANYA oleh satu penyaring — dan
+	// justru penyaring itulah yang paling mungkin keliru. Memeriksa satu tab saja akan
+	// menyatakan modulnya sehat sementara separuhnya belum tersentuh.
+	page := inboxkomunikasicabang.Pagination{Page: 1, Size: 5}
+	rows := map[string]int{}
+
+	for _, code := range []string{
+		inboxkomunikasicabang.TabNotAnswered,
+		inboxkomunikasicabang.TabAnswered,
+	} {
+		tab, found := inboxkomunikasicabang.FindTab(code)
+		if !found {
+			print("  [GAGAL] Tab %s tidak terdaftar di modul", code)
+			return
+		}
+
+		result, err := repo.List(
+			ctx,
+			inboxkomunikasicabang.Query{Tab: tab, Branch: filter},
+			page,
+		)
+		if err != nil {
+			print("  [GAGAL] Tab %q tidak dapat dibaca: %v", tab.Name, err)
+			return
+		}
+
+		rows[code] = result.Total
+		print("  [ok]    Tab %q terbaca: %d baris", tab.Name, result.Total)
+	}
+
+	// Selisih antara pencacah dan tabel BUKAN cacat, dan justru karena itu ia dijelaskan
+	// di sini — orang yang membandingkan keempat angka di atas akan mengira ada yang rusak.
+	if rows[inboxkomunikasicabang.TabAnswered] != summary.Answered ||
+		rows[inboxkomunikasicabang.TabNotAnswered] != summary.NotAnswered {
+		print("  [catatan] Angka pencacah dan jumlah baris tabel BERBEDA, dan itu memang")
+		print("            perilaku sistem lama. Pencacah memeriksa DUA kolom balasan")
+		print("            (REPLYFROM dan REPLYMESSAGE) sementara tabel hanya memeriksa")
+		print("            satu, dan pencacah TIDAK menyaring pengirim maupun pesan kosong")
+		print("            sementara tabel menyaringnya. Sebarannya:")
+		print("            SELECT COUNT(*) FROM POOLDATA.M_KOMUNIKASI_PNC")
+		print("             WHERE CASEID = '%s' AND REPLYMESSAGE IS NOT NULL",
+			inboxkomunikasicabang.CaseOpen)
+		print("               AND REPLYFROM IS NULL;")
+		print("            Baris sejumlah itu muncul di tabel tetapi tidak di pencacah.")
+	}
+}
+
 // checkInboxProgressClaim memastikan tabel yang dibaca layar Inbox Progress Claim
 // terjangkau.
 //
@@ -3220,20 +3405,89 @@ func checkInboxAnalystDoctor(
 // Yang dibuktikan di sini: SQL-nya diterima Oracle, penanda bind-nya benar, dan
 // pembacaan 21 kolomnya cocok dengan tipe kolom yang sebenarnya. Yang TIDAK dibuktikan:
 // kesetaraan hasilnya dengan layar Pega — itu gerbang 1, milik `S-8`.
-func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, print func(string, ...any)) {
-	// Tanpa batas lini: memeriksa tabelnya, bukan kewenangan seseorang.
+func checkOutstanding(ctx context.Context, repo *inboxoutstandingsql.Repo, login string, print func(string, ...any)) {
+	// Daftar TANPA pemilik tidak lagi mungkin, dan itu memang yang dikehendaki: layar ini
+	// menyaring `PXASSIGNEDOPERATORID = pemanggil`, sehingga memeriksanya tanpa identitas
+	// berarti memeriksa sesuatu yang tidak pernah dijalankan aplikasi.
+	// Unduhan diperiksa LEBIH DULU, dan sengaja TANPA -login.
+	//
+	// Ia tidak menyaring pemilik pekerjaan sama sekali, sehingga ia satu-satunya bagian
+	// modul ini yang dapat dibuktikan tanpa identitas. Menaruhnya sesudah penjagaan login
+	// di bawah akan membuatnya ikut terlewat — persis anggapan keliru yang membuat export
+	// dulu memanggil ulang daftar.
+	checkOutstandingExport(ctx, repo, login, print)
+
+	if login == "" {
+		print("  [lewat] My Inbox: butuh -login <nama pengguna> — daftarnya menyaring per pemilik")
+		return
+	}
+
+	// Identitas lama dibaca dulu, dan hasilnya DICETAK.
+	//
+	// Tanpa baris ini, "0 pekerjaan" punya dua sebab yang tampak sama: memang tidak ada
+	// pekerjaan, atau identitas login tidak pernah dipetakan ke nama operator Pega.
+	legacy, err := repo.LegacyOperatorFor(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.T_ACCESS_GROUP_PNC tidak dapat dibaca: %v", err)
+		return
+	}
+	if legacy == "" {
+		print("  [catat] %s tidak punya identitas lama — hanya identitas ini yang dicocokkan", login)
+	} else {
+		print("  [ok]    identitas lama %s: %s", login, legacy)
+	}
+
 	page, err := repo.List(ctx, inboxoutstanding.Filter{
-		Scope: inboxoutstanding.LineScope{Unrestricted: true},
-		Limit: 5,
+		AssignedTo:       login,
+		AssignedToLegacy: legacy,
+		Limit:            5,
 	})
 	if err != nil {
 		print("  [BELUM] POOLDATA.T_CLAIMLIST_ADMIN tidak dapat dibaca: %v", err)
 		print("            Tabelnya milik sistem lama, bukan dibuat migrasi. Selama belum ada,")
-		print("            layar Inbox Outstanding tidak dapat dipakai terhadap Oracle.")
+		print("            layar My Inbox tidak dapat dipakai terhadap Oracle.")
 		return
 	}
 
-	print("  [ok]    POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: %d klaim masih berjalan", page.Total)
+	print("  [ok]    POOLDATA.T_CLAIMLIST_ADMIN dapat dibaca: %d pekerjaan milik %s", page.Total, login)
+
+	// Ringkasan donut diperiksa terhadap Oracle sungguhan.
+	//
+	// Yang dibuktikan di sini bukan angkanya melainkan JUMLAHNYA: irisan-irisan wajib
+	// menjumlah menjadi total. Donut yang bagian-bagiannya tidak menjumlah menjadi
+	// keseluruhan tetap tergambar rapi, dan tidak ada galat yang menandainya.
+	ringkasan, err := repo.SummarizeDocumentStatus(ctx, inboxoutstanding.Filter{
+		AssignedTo:       login,
+		AssignedToLegacy: legacy,
+	})
+	if err != nil {
+		print("  [BELUM] ringkasan status dokumen tidak dapat dihitung: %v", err)
+	} else {
+		// Hanya tab yang BENAR-BENAR dihitung ikut dijumlahkan.
+		//
+		// Yang jumlahnya nil belum punya kueri, dan memperlakukannya sebagai nol akan
+		// membuat pemeriksaan ini lulus karena alasan yang salah.
+		jumlah := 0
+		for _, s := range ringkasan.Status {
+			if s.Count == nil {
+				print("            %-28s (belum dihitung)", s.Label)
+				continue
+			}
+			print("            %-28s %d klaim", s.Label, *s.Count)
+
+			// "ALL Case" adalah totalnya sendiri, bukan salah satu bagiannya.
+			if s.Status == inboxoutstanding.StatusAll {
+				continue
+			}
+			jumlah += *s.Count
+		}
+		if jumlah != ringkasan.Total {
+			print("  [GAGAL] tab berjumlah %d, total %d — donut akan berbohong",
+				jumlah, ringkasan.Total)
+		} else {
+			print("  [ok]    tab yang terhitung menjumlah tepat menjadi %d", ringkasan.Total)
+		}
+	}
 
 	for _, c := range page.Claims {
 		nomor := c.ClaimNumber
@@ -3315,6 +3569,226 @@ func checkCloseClaim(
 	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
 }
 
+// checkReportKPI memeriksa kesiapan tab KPI Adjuster pada Report KPI PNC.
+//
+// # Apa yang benar-benar dijawab pemeriksaan ini
+//
+// Tiga hal, dan ketiganya adalah hal yang TIDAK dapat diketahui dari kode:
+//
+//  1. Tabelnya ada dan akun aplikasi boleh membacanya. Modul ini tidak menuntut satu pun
+//     migrasi — `POOLDATA.DETAIL_KPI_ADJUSTER` sudah ada dan diisi Pega — sehingga
+//     kegagalan di sini hampir pasti soal hak SELECT, bukan soal objek yang belum dibuat.
+//
+//  2. Tabelnya BERISI. Tabel kosong bukan kegagalan: Pega baru mengisinya ketika seseorang
+//     membuka tab KPI Adjuster di sana. Tetapi ia perlu DISEBUT, karena layar yang kosong
+//     dengan tabel kosong dan layar yang kosong karena penyaringnya keliru terlihat sama
+//     persis bagi pengguna.
+//
+//  3. Nilai `TIPE` yang benar-benar ada. Kedua tipe yang dikenal modul ini — OUTSTANDING
+//     dan FINAL — dibaca dari LITERAL di dalam `GetSummaryKPIAdjusterALL-SQL.xml`, bukan
+//     dari master mana pun. Bila produksi memuat nilai ketiga, dropdown tidak akan pernah
+//     menampilkannya dan barisnya tidak akan pernah terlihat — tanpa satu pun galat.
+//
+// Butir ketiga itulah alasan utama fungsi ini ada.
+func checkReportKPI(
+	ctx context.Context,
+	repo *reportkpisql.Repo,
+	print func(string, ...any),
+) {
+	state, err := repo.CheckSource(ctx)
+	if err != nil {
+		print("  [BELUM] Report KPI (tab KPI Adjuster) tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — %s sudah ada dan diisi Pega.",
+			reportkpi.SourceTable)
+		print("            Periksa hak SELECT akun aplikasi atas tabel itu.")
+		return
+	}
+
+	print("  [ok]    %s dapat dibaca: %d baris", reportkpi.SourceTable, state.Rows)
+
+	if state.Rows == 0 {
+		print("  [PERIKSA] Tabelnya KOSONG, dan itu belum tentu keliru.")
+		print("            Barisnya ditulis Pega saat seseorang membuka tab KPI Adjuster")
+		print("            di sana; entitas yang belum pernah memakainya memang kosong.")
+		print("            Yang perlu dipastikan: apakah entitas ini memang belum pernah")
+		print("            memakai layar itu — bukan bahwa tabelnya salah.")
+		return
+	}
+
+	// Nilai TIPE dibandingkan dengan yang dikenal modul. Yang tidak dikenal disebut satu
+	// per satu, karena satu nilai asing berarti ada baris yang tidak akan pernah terlihat.
+	known := map[string]bool{}
+	for _, t := range reportkpi.ReportTypes() {
+		known[string(t.Code)] = true
+	}
+
+	var unknown []string
+	for _, value := range state.Types {
+		if !known[value] {
+			unknown = append(unknown, value)
+		}
+	}
+
+	print("  [ok]    Nilai TIPE di basis data: %s", strings.Join(state.Types, ", "))
+
+	if len(unknown) > 0 {
+		print("  [PERIKSA] %d nilai TIPE TIDAK dikenal modul: %s",
+			len(unknown), strings.Join(unknown, ", "))
+		print("            Kedua tipe yang dikenal (OUTSTANDING, FINAL) dibaca dari literal")
+		print("            di dalam GetSummaryKPIAdjusterALL-SQL.xml, bukan dari master.")
+		print("            Baris ber-tipe di atas TIDAK akan pernah terlihat di layar,")
+		print("            dan tidak ada galat yang menandakannya. Tambahkan tipenya di")
+		print("            internal/reportkpi/component.go setelah artinya dipastikan.")
+		return
+	}
+
+	print("            Seluruhnya dikenal modul, sehingga tidak ada baris yang tersembunyi.")
+	print("            Catatan: modul ini MEMBACA saja. Yang mengisi tabel itu adalah")
+	print("            Pega lewat INSERT_KPIADJUSTER; selama masa paralel tepat satu")
+	print("            sistem yang boleh menulisnya (P-1).")
+}
+
+// checkReportKlaim memeriksa kesiapan modul Report Klaim (28 panel ekspor).
+//
+// # Apa yang benar-benar dijawab pemeriksaan ini
+//
+// Dua hal, dan keduanya adalah keadaan yang TIDAK terlihat sebagai kegagalan di layar:
+//
+//  1. Koneksi KEDUA portal (`ANEKA_<PORTAL_ALIAS>_*`) terpasang dan kalender liburnya
+//     dapat dibaca. Tanpanya, kolom hari kerja pada Report TAT ditandai tidak diketahui —
+//     bukan salah, tetapi juga bukan angka yang dapat dipakai menilai kinerja. Berkasnya
+//     tetap terunduh, dan tidak ada satu pun pesan galat yang muncul.
+//
+//  2. Laporan mana yang kuerinya BELUM selesai dipindahkan dari export. Ia disebutkan
+//     per lini bisnis, karena laporan yang sama berjalan normal pada lini lain — dan
+//     menyebut nama laporannya saja akan terbaca seolah seluruh laporan itu mati.
+//
+// Butir kedua dihitung dari rencana dan berkas .sql yang ada, bukan dari daftar tulisan
+// tangan, supaya kemajuan pemindahan ikut terbaca tanpa menyunting berkas ini.
+func checkReportKlaim(
+	ctx context.Context,
+	repo *reportklaimsql.Repo,
+	print func(string, ...any),
+) {
+	state := repo.CheckSource(ctx)
+
+	switch {
+	case !state.SecondConnection:
+		print("  [PERIKSA] Report Klaim: koneksi KEDUA portal tidak terpasang.")
+		print("            Isi blok ANEKA_<PORTAL_ALIAS>_* di .env bila kolom hari kerja")
+		print("            pada Report TAT memang harus terisi. Tanpanya laporan tetap")
+		print("            terunduh, dan kolom itu ditandai tidak diketahui (R-03).")
+	case state.HolidayError != nil:
+		print("  [PERIKSA] Report Klaim: kalender libur tidak dapat dibaca: %v", state.HolidayError)
+		print("            Koneksi keduanya hidup, jadi ini hampir pasti soal hak SELECT")
+		print("            akun aplikasi atas GENERAL.HRD_LBR — bukan objek yang belum ada.")
+	case state.HolidayDays == 0:
+		print("  [PERIKSA] Report Klaim: kalender libur %d KOSONG.", state.HolidayYear)
+		print("            Perhitungan hari kerja akan memotong akhir pekan saja, dan")
+		print("            hasilnya terlihat wajar. Pastikan tahun berjalan memang belum")
+		print("            diisi, bukan bahwa tabelnya salah.")
+	default:
+		print("  [ok]    Report Klaim: kalender libur %d dapat dibaca: %d hari",
+			state.HolidayYear, state.HolidayDays)
+	}
+
+	belum := reportklaimsql.NotPorted()
+	if len(belum) == 0 {
+		print("  [ok]    Seluruh kueri laporan sudah dipindahkan dari export.")
+		return
+	}
+
+	print("  [PERIKSA] %d kombinasi laporan x lini bisnis kuerinya BELUM dipindahkan:", len(belum))
+	for _, item := range belum {
+		print("            %-28s lini %-4s (%s)", item.Report, item.BusinessLine, item.Query)
+	}
+	print("            Permintaannya DITOLAK dengan sebab yang menyebut keduanya, bukan")
+	print("            dijawab berkas kosong. Lini lain pada laporan yang sama tetap jalan.")
+}
+
+// checkReportKPIPICTeknik memeriksa kesiapan tab KPI PIC Teknik.
+//
+// # Kenapa pemeriksaan ini terpisah dari checkReportKPI
+//
+// Karena tabnya membaca tabel yang BERBEDA. Tab KPI Adjuster membaca penilaian yang sudah
+// jadi; tab ini menghitungnya sendiri, dan SELURUH nilainya berasal dari tangga
+// `POOLDATA.M_KPI_PNC`. Satu tangga yang hilang membuat seluruh kolom Nilai kosong — tanpa
+// satu pun galat.
+//
+// # Yang dijawabnya, dan tidak dapat diketahui dari kode
+//
+//  1. Keempat tangga ada dan berisi.
+//  2. ARAH tiap tangga. Dua di antaranya tersusun MENURUN di produksi hari ini, dan itulah
+//     sebab nilai tertinggi justru diberikan kepada persentase terkecil. Arahnya dibaca dari
+//     DATA — kalau kelak isinya diperbaiki, pemeriksaan ini yang pertama menunjukkannya.
+//  3. Lubang dan tumpang tindih antar pita. Tumpang tindih di titik batas ADA hari ini dan
+//     itu yang membuat hasil Pega di sana bergantung urutan baris.
+func checkReportKPIPICTeknik(
+	ctx context.Context,
+	repo *reportkpisql.Repo,
+	print func(string, ...any),
+) {
+	jobs := []struct {
+		job      string
+		expected bool
+	}{
+		{reportkpi.JobProgress, true},
+		{reportkpi.JobAnalysis, false},
+		{reportkpi.JobAcceptance, false},
+		{reportkpi.JobSLA, true},
+	}
+
+	for _, item := range jobs {
+		state, err := repo.CheckBands(ctx, item.job)
+		if err != nil {
+			print("  [BELUM] Tangga nilai %q tidak dapat dibaca: %v", item.job, err)
+			print("            Seluruh kolom Nilai tab KPI PIC Teknik berasal dari %s.",
+				reportkpi.BandTable)
+			print("            Periksa hak SELECT akun aplikasi atas tabel itu.")
+			return
+		}
+
+		if state.Bands == 0 {
+			print("  [PERIKSA] Tangga nilai %q KOSONG di entitas ini.", item.job)
+			print("            Komponen itu akan tampil tanpa nilai — bukan bernilai nol.")
+			continue
+		}
+
+		arah := "menaik"
+		if state.Descending {
+			arah = "MENURUN"
+		}
+		print("  [ok]    Tangga %q: %d pita, tersusun %s", item.job, state.Bands, arah)
+
+		// Arah yang BERBEDA dari yang direplikasi modul adalah kabar penting, bukan galat.
+		// Ia berarti isi tabelnya sudah diperbaiki di produksi, dan replikasi cacatnya di
+		// modul ini menjadi selisih yang harus dicabut.
+		if state.Descending != item.expected {
+			print("  [PERIKSA] Arahnya BERBEDA dari yang direplikasi modul.")
+			print("            Modul mereplikasi keadaan Pega saat dibaca: %q tersusun %s.",
+				item.job, arahDari(item.expected))
+			print("            Bila isi tabelnya sudah diperbaiki, butir selisih terencana")
+			print("            tentang tangga terbalik perlu dicabut — lihat")
+			print("            internal/reportkpi/screen.go.")
+		}
+
+		for _, gap := range state.Gaps {
+			print("  [PERIKSA] Tangga %q: %s", item.job, gap)
+		}
+	}
+
+	print("            Catatan: tumpang tindih di titik batas MEMANG ada di produksi, dan")
+	print("            itu sebab hasil Pega di sana bergantung urutan baris. Modul ini")
+	print("            membacanya terurut ID dan memakai yang pertama cocok.")
+}
+
+// arahDari menggambar arah tangga sebagai kata.
+func arahDari(descending bool) string {
+	if descending {
+		return "MENURUN"
+	}
+	return "menaik"
+}
 // checkRejection melaporkan kesiapan ketiga tabel Master Penolakan Klaim.
 //
 // Ketiganya tabel WARISAN — tidak satu pun dibuat migrasi aplikasi ini, sehingga "tidak
@@ -4315,4 +4789,49 @@ func checkMasterAutoClaim(ctx context.Context, primary *sql.DB, print func(strin
 	default:
 		print("  [ok]    penyetuju komite Master Auto Claim: %s", operator)
 	}
+}
+
+// checkOutstandingExport membuktikan kueri unduhan sah dan TIDAK terikat pemilik.
+//
+// Ia mencetak jumlah baris untuk kelima cakupan sekaligus. Angka-angka itulah yang
+// membedakan "cakupannya bekerja" dari "cakupannya diabaikan": bila kelimanya sama, berarti
+// penyaring lini bisnis tidak menggigit sama sekali.
+func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo, login string, print func(string, ...any)) {
+	cakupan := []struct {
+		nama string
+		line inboxoutstanding.LineBusiness
+	}{
+		{"tanpa cakupan", inboxoutstanding.LineUnknown},
+		{"NONMBU", inboxoutstanding.LineNonMBU},
+		{"PA", inboxoutstanding.LinePA},
+		{"TRAVEL", inboxoutstanding.LineTravel},
+		{"BONDING", inboxoutstanding.LineBonding},
+	}
+
+	for i, c := range cakupan {
+		// Limit 1: yang dicari jumlahnya, bukan isinya.
+		page, err := repo.Export(ctx, inboxoutstanding.ExportFilter{LineBusiness: c.line, Limit: 1})
+		if err != nil {
+			print("  [BELUM] unduhan My Inbox tidak dapat dijalankan: %v", err)
+			return
+		}
+		if i == 0 {
+			print("  [ok]    unduhan My Inbox berjalan TANPA penyaring pemilik pekerjaan")
+		}
+		print("            cakupan %-14s %d baris", c.nama, page.Total)
+	}
+
+	if login == "" {
+		return
+	}
+	line, err := repo.LineBusinessFor(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.M_LOGIN_PNC.LINE_BUSINESS tidak dapat dibaca: %v", err)
+		return
+	}
+	if line == inboxoutstanding.LineUnknown {
+		print("  [catat] %s belum punya LINE_BUSINESS — unduhannya memakai cakupan penuh", login)
+		return
+	}
+	print("  [ok]    lini bisnis %s: %s", login, line)
 }

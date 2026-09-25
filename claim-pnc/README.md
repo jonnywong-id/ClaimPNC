@@ -826,6 +826,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — butir menu 64 |
 | `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
 | `/inbox-rcl-pucl` | **Inbox RCL/PUCL** — butir menu 61. Antrean bersama, tiga tab |
+| `/report-kpi` | **Report KPI PNC** — butir menu 84. **Ketiga tab selesai** |
 | `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
@@ -1214,6 +1215,147 @@ server dan tampil di bawah tabel):
 5. **Sembilan isian layar kerja tidak terisi** karena tersimpan di clipboard Pega, bukan
    sebagai kolom tabel. Bukan data yang kosong, dan bukan kolom yang belum ditemukan.
 
+
+### Report KPI PNC
+
+Menggantikan harness `ReportKPIHarness` (`MENU_ID 84`). Seluruh rutenya menuntut header
+`X-Portal`, termasuk rute keterangan layar.
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/report-kpi/tab` | ketiga tab, kedua grid, kesembilan komponen, ketiga tipe report, dan selisih terencana |
+| `GET` | `/api/report-kpi/adjuster/ringkasan` | grid **Summary** — satu baris per adjuster, nilai dirata-ratakan |
+| `GET` | `/api/report-kpi/adjuster` | grid **Detail** — satu baris per kasus survei, dipaginasi |
+| `GET` | `/api/report-kpi/adjuster/pilihan` | isi dropdown Adjuster |
+| `GET` | `/api/report-kpi/adjuster/ekspor` | unduhan CSV; `grid=ringkasan` (bawaan) atau `grid=rincian` |
+| `GET` | `/api/report-kpi/admin/kartu-skor` | **kartu skor** tab KPI Admin — identitas, metrik berurutan, kesimpulan |
+| `GET` | `/api/report-kpi/admin` | grid **Rincian Klaim**, dipaginasi |
+| `GET` | `/api/report-kpi/admin/ekspor` | unduhan CSV grid rincian |
+| `GET` | `/api/report-kpi/pic-teknik` | **kartu skor** tab KPI PIC Teknik — satu kartu per petugas, ditutup rekapitulasi |
+| `GET` | `/api/report-kpi/pic-teknik/ekspor` | unduhan CSV, kartu diratakan menjadi tabel |
+| `POST` | `/api/report-kpi/tindakan` | **selalu 501** — lihat di bawah |
+
+Ketiga rute tab KPI Admin memakai saringannya sendiri: `kelompok` (`NONMBU` · `PA`), `dari`,
+`sampai`. **Ketiganya wajib** — layar lama pun menolak tanpa periode, dengan pesan
+"Periode tanggal masih kosong".
+
+Saringan keempat rute data sama persis: `tipe_report` (`OUTSTANDING` · `FINAL` · `ALL`),
+`adjuster`, `dari`, `sampai` (`YYYY-MM-DD`). **Ketiganya kecuali `adjuster` wajib.**
+
+**Ketiga tab selesai.**
+
+| Tab | Yang dinilai | Bentuk keluaran |
+|---|---|---|
+| **KPI PIC Teknik** | PIC Teknik | kartu skor per petugas, empat komponen |
+| **KPI Adjuster** | adjuster eksternal | dua tabel |
+| **KPI Admin** | tim admin registrasi | kartu skor + satu tabel |
+
+> ### ⚠ Tab KPI PIC Teknik — baca ini sebelum menilai angkanya
+>
+> **Dua dari empat komponen bernilai TERBALIK, dan itu direplikasi dari Pega.** Tangga nilai
+> `UPDATE PROGRESS KLAIM` dan `SLA KLAIM` pada `POOLDATA.M_KPI_PNC` tersusun **menurun**
+> (0–20 bernilai 5; 35–100 bernilai 1) — artinya tabelnya disusun untuk persentase
+> **terlambat**. Tetapi activity lama mengirim persentase **tepat waktu**.
+>
+> Akibatnya PIC yang **95% tepat waktu bernilai 1**, sedangkan yang **10% tepat waktu
+> bernilai 5**. Dua komponen lain (`ANALISA`, `AKSEPTASI`) tangganya menaik dan tidak
+> terdampak.
+>
+> **Gejala yang dapat diperiksa langsung di Pega hari ini:** dua PIC yang sama-sama tampil
+> "99%" akan bernilai **5** dan **1** — yang pertama sebenarnya 100% dan dibulatkan turun
+> oleh tambalan `@if(... >= 100, 5, ...)` yang ada di rule.
+>
+> **Ketiganya sudah diputuskan tetap mengikuti Pega** (Work Owner, 2026-09-25). Ini bukan
+> daftar tunggu: mengubahnya kelak memerlukan keputusan baru, bukan sekadar merapikan kode.
+> Uji di `internal/reportkpi/picteknik_test.go` menjaganya.
+>
+> **Panel selisih terencana DIHAPUS dari layar** atas keputusan yang sama, karena layarnya
+> mengikuti Pega apa adanya. Keterangannya **tidak hilang** — ia tetap dikirim pada
+> `GET /api/report-kpi/tab` (`selisih_terencana_pic`) dan tetap tertulis di
+> `docs/keputusan-implementasi.md` §54.13, tempat penguji gerbang 1 membacanya.
+>
+> Yang tersisa di layar hanyalah penanda **↓** pada baris bertangga menurun, beserta
+> tooltip-nya.
+>
+> Satu lapis agregasi **sengaja tidak dibangun**: rekapitulasi per kelompok tim memakai
+> pembagi 2, 4, dan 5 yang syaratnya tidak dapat ditentukan dari export. Ditinggalkan, bukan
+> ditebak.
+
+> **Tab KPI Admin mengukur hal yang berbeda, bukan varian tab Adjuster.** Yang dinilai tim
+> **admin registrasi**, bukan adjuster eksternal; sumbernya `T_CLAIM_PNC` +
+> `T_CLAIM_ADJUSTMENT`, bukan `DETAIL_KPI_ADJUSTER`; dan keluarannya **kartu skor**, bukan
+> tabel. Enam Operator ID, nama koordinator, NIK, bobot, dan ambang SLA **dipertahankan
+> apa adanya** dari kueri Pega (`P-5`) meski seluruhnya kandidat `D-15` — memindahkannya ke
+> master sekarang akan mengubah angka sebelum gerbang 1 pernah dijalankan.
+>
+> Empat keanehan yang dipertahankan itu masing-masing dikunci satu uji, sehingga tidak dapat
+> "dirapikan" diam-diam: penyaring Group Panel yang **berbeda** antara kartu skor (`009`
+> ikut) dan rinciannya (`009` tidak ikut) · rentang **1 Jan – 10 Nov 2023** yang tertanam di
+> kueri PA · ambang SLA `> 1` hari pada NON-MBU versus `> 0` pada PA · dan keenam operator
+> itu sendiri.
+>
+> **Satu penyimpangan yang disengaja:** pembagian dijaga `NULLIF`. Kueri Pega melemparkan
+> `ORA-01476` pada periode tanpa klaim; di sini hasilnya kosong dan digambar sebagai tanda
+> hubung — **bukan `0%`**, karena keduanya berarti hal yang sangat berbeda pada kartu
+> penilaian kinerja.
+
+> **Layar ini MEMBACA saja, dan itu bukan pekerjaan yang tertinggal.** Di Pega, menekan
+> Cari **menghitung ulang** penilaian tiap kasus survei lalu **menyimpannya** ke
+> `POOLDATA.DETAIL_KPI_ADJUSTER` lewat `INSERT_KPIADJUSTER`. Selama masa paralel tepat satu
+> sistem yang boleh menulis sebuah tabel (`P-1`), dan penulisnya masih Pega — karena itu
+> `POST /tindakan` menjawab **501 dengan alasan**, bukan 404.
+>
+> Penilaiannya juga tidak dapat direproduksi setia: keempat sub-activity penilainya
+> berjumlah ~900 KB langkah Java, dan ambang nilainya hidup di `POOLDATA.M_KPI_PNC` yang
+> isinya tidak ada di export — keadaan yang sama persis dengan `GCNM_FEE_SCALE` pada `B-5`.
+>
+> **Akibat yang diterima:** kasus survei yang belum pernah dihitung Pega belum muncul di
+> sini.
+
+**Kesembilan komponen** dibaca dari `Database/INSERT_KPIADJUSTER.prc`, satu-satunya artefak
+yang menulis tabel itu dan karena itu menyebut kolomnya lengkap — tabelnya sendiri tidak
+punya DDL di export (`R-08`):
+
+```
+PENJADWALAN SURVEY · IMMEDIATE ADVICE · PRELIMINARY ADVICE · INTERIM REPORT
+UPDATE PROGRESS · TANGGAPAN KOMUNIKASI · PROPOSE ADJUSTMENT · FINAL REPORT · NILAI
+```
+
+> **`NILAI` adalah kolom TERSENDIRI, bukan jumlah kedelapan komponen di sebelahnya.** Ia
+> dibaca apa adanya dan tidak pernah dihitung ulang; menghitungnya sendiri akan
+> menghasilkan angka yang berbeda dari Pega **tanpa satu pun galat**.
+
+**Lima selisih terencana yang paling perlu diketahui penguji** (daftar lengkapnya dikirim
+server pada `/tab`, tetapi **tidak lagi digambar** sebagai panel — lihat §54.13):
+
+1. **Layar MEMBACA saja** — lihat catatan di atas.
+2. **Isi dropdown Adjuster diambil dari kolom `ADJUSTER` tabel penilaian**, bukan dari
+   master surveyor. Rule Pega pengisinya (`BrowseAdjsuterExternal`) tidak ada di export
+   (`R-16`). Akibatnya adjuster yang belum punya satu pun penilaian tidak muncul — dan
+   sebagai gantinya, setiap pilihan yang muncul pasti menghasilkan baris.
+3. **Periode WAJIB untuk ketiga tipe report.** Di Pega kedua tanggal disisipkan langsung ke
+   teks SQL, sehingga mengosongkannya menghasilkan galat basis data mentah — bukan hasil
+   yang lebih luas. Yang berubah adalah cara galatnya disampaikan.
+4. **Pada tipe `ALL`, satu adjuster tampil DUA baris** di grid Summary — satu OUTSTANDING,
+   satu FINAL. Itu bukan baris ganda: kueri lamanya memang ber-`UNION ALL`, dan kolom
+   `TIPE` yang membedakan keduanya **ada di kueri itu pula** sebagai literal
+   (`'OUTSTANDING' "StatusWork"`). Pada tipe tunggal kolom itu **tidak digambar**, persis
+   seperti di Pega — kueri tipe tunggal di sana memang tidak mengembalikannya.
+5. **Nilai komponen yang kosong ditampilkan sebagai tanda hubung, bukan 0.** Kolomnya
+   bertipe teks di basis data, dan komponen yang belum dinilai berbeda artinya dari
+   komponen yang dinilai nol.
+
+**Tidak ada migrasi skema yang perlu dijalankan** — tabelnya sudah ada dan diisi Pega.
+Jalankan `./claimpnc.exe -periksa` untuk memastikan tiga hal: tabelnya terbaca, berisi, dan
+**nilai `TIPE` yang benar-benar ada di sana**. Yang ketiga itulah alasan utama
+pemeriksaannya ada: kedua tipe yang dikenal modul dibaca dari literal di dalam
+`GetSummaryKPIAdjusterALL-SQL.xml`, bukan dari master — bila produksi memuat nilai ketiga,
+barisnya tidak akan pernah terlihat tanpa satu pun galat.
+
+| Kode galat tambahan | HTTP | Artinya |
+|---|---|---|
+| `profil_pemanggil_tidak_lengkap` | 409 | identitas tidak terbaca; pembukaan laporan penilaian kinerja wajib tercatat atas nama seseorang |
+| `belum_tersedia` | 501 | menghitung ulang penilaian — masih dimiliki Pega (`P-1`) |
 
 ### Master Status Klaim
 

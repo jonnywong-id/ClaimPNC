@@ -23,6 +23,14 @@ import (
 // supaya handler dapat diuji tanpa membentuk seluruh layanan beserta penyimpanannya.
 type Service interface {
 	List(ctx context.Context, q usecase.Query) (usecase.Result, error)
+
+	// Export dipisahkan dari List karena keduanya menyaring hal yang BERBEDA: List terikat
+	// pada pemilik pekerjaan, Export pada lini bisnis. Menyatukannya di satu method adalah
+	// persis cara export dulu mewarisi penyaring operator tanpa disadari.
+	Export(ctx context.Context, q usecase.ExportQuery) (usecase.ExportResult, error)
+
+	// Summary menghitung isi inbox per status kelengkapan dokumen — sumber donut.
+	Summary(ctx context.Context, q usecase.Query) (usecase.SummaryResult, error)
 }
 
 // Caller adalah identitas pengguna yang sedang masuk, sejauh yang dibutuhkan modul ini.
@@ -119,7 +127,6 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		h.writeErrorF(w, r, err)
 		return
 	}
-	h.logLineLookupFailure(r, result)
 
 	now := h.now()
 	claims := make([]claimDTO, 0, len(result.Page.Claims))
@@ -128,12 +135,44 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, listResponse{
-		Klaim: claims,
-		Total: result.Page.Total,
-		BatasLini: scopeDTO{
-			TanpaBatas: result.Scope.Unrestricted,
-			GroupPanel: result.Scope.GroupPanels,
-		},
+		Klaim:   claims,
+		Total:   result.Page.Total,
+		Pemilik: result.AssignedTo,
+	})
+}
+
+// Summary menangani GET /api/inbox-outstanding/ringkasan.
+//
+// Ia memakai queryFrom yang SAMA dengan daftar, supaya penyaring layar berlaku pada
+// keduanya. Yang diabaikan hanyalah paginasi dan penyaring status itu sendiri —
+// keduanya dibuang di lapisan penyimpanan, bukan di sini.
+func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
+	q, err := h.queryFrom(r)
+	if err != nil {
+		writeBadRequest(h.writeJSON, w, r, err.Error())
+		return
+	}
+
+	result, err := h.service.Summary(r.Context(), q)
+	if err != nil {
+		h.writeErrorF(w, r, err)
+		return
+	}
+
+	status := make([]statusDTO, 0, len(result.Summary.Status))
+	for _, s := range result.Summary.Status {
+		status = append(status, statusDTO{
+			Kode:         string(s.Status),
+			Judul:        s.Label,
+			Jumlah:       s.Count,
+			DapatDipilih: s.Status.Countable(),
+		})
+	}
+
+	h.writeJSON(w, r, http.StatusOK, summaryResponse{
+		Status:  status,
+		Total:   result.Summary.Total,
+		Pemilik: result.AssignedTo,
 	})
 }
 
@@ -168,7 +207,7 @@ const exportMaxRows = 10000
 // keluarannya CSV. Memakai `encoding/csv` dari pustaka standar karena itu SETARA dengan
 // sistem lama, bukan penyederhanaan, dan tidak menambah satu pun dependensi.
 func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
-	q, err := h.queryFrom(r)
+	q, err := h.exportQueryFrom(r)
 	if err != nil {
 		writeBadRequest(h.writeJSON, w, r, err.Error())
 		return
@@ -179,12 +218,11 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	q.Offset = 0
 	q.Limit = exportBatchSize
 
-	first, err := h.service.List(r.Context(), q)
+	first, err := h.service.Export(r.Context(), q)
 	if err != nil {
 		h.writeErrorF(w, r, err)
 		return
 	}
-	h.logLineLookupFailure(r, first)
 
 	// Header ditulis SEBELUM baris pertama dikirim. Setelah badan respons mulai mengalir,
 	// status HTTP tidak dapat diubah lagi — sehingga galat yang terjadi di tengah tidak
@@ -233,12 +271,86 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		}
 
 		q.Offset = written
-		page, err = h.service.List(r.Context(), q)
+		page, err = h.service.Export(r.Context(), q)
 		if err != nil {
 			h.logExportInterrupted(r, err)
 			return
 		}
 	}
+}
+
+// exportQueryFrom membaca permintaan unduhan dari query string.
+//
+// # Kenapa ia TERPISAH dari queryFrom
+//
+// queryFrom menyusun penyaring DAFTAR, yang wajib terikat pada pemilik pekerjaan. Export
+// tidak terikat pada siapa pun — ia terikat pada lini bisnis. Memakai satu pembaca untuk
+// keduanya adalah persis cara cacatnya dulu masuk: export mewarisi penyaring operator
+// tanpa satu pun baris kode yang menyatakannya.
+//
+// Penyaring layar (cari, tahap, cabang, panel) sengaja TIDAK dibawa. Sistem lama pun tidak
+// membawanya: `ExportDataDetailKlaim` hanya mengenal cakupan lini bisnis dan rentang
+// tanggal. Membawanya berarti berkas yang diunduh menyaring lebih sempit daripada berkas
+// yang sama di Pega.
+func (h *Handler) exportQueryFrom(r *http.Request) (usecase.ExportQuery, error) {
+	caller, found := h.getCaller(r.Context())
+	if !found || strings.TrimSpace(caller.Login) == "" {
+		return usecase.ExportQuery{}, fmt.Errorf("identitas pemanggil tidak dikenali")
+	}
+
+	activePortal, portalFound := portalhttp.ActivePortalFrom(r.Context())
+	if !portalFound {
+		return usecase.ExportQuery{}, fmt.Errorf("portal aktif tidak dikenali")
+	}
+
+	q := r.URL.Query()
+
+	from, err := dateParam(q.Get("dari"), h.location)
+	if err != nil {
+		return usecase.ExportQuery{}, fmt.Errorf("parameter dari tidak sah; format YYYY-MM-DD")
+	}
+	to, err := dateParam(q.Get("sampai"), h.location)
+	if err != nil {
+		return usecase.ExportQuery{}, fmt.Errorf("parameter sampai tidak sah; format YYYY-MM-DD")
+	}
+	if to != nil {
+		// Batas atas dijadikan EKSKLUSIF di sini, sekali, dengan menambah satu hari.
+		//
+		// Pengguna yang mengetik 2026-09-24 bermaksud "termasuk hari itu". Menyerahkan
+		// penambahannya ke SQL memaksa `TRUNC` pada kolom, yang mematikan index-nya; lihat
+		// catatan pada outstanding.sql.
+		next := to.AddDate(0, 0, 1)
+		to = &next
+	}
+	if from != nil && to != nil && !from.Before(*to) {
+		return usecase.ExportQuery{}, fmt.Errorf("parameter dari tidak boleh melewati sampai")
+	}
+
+	return usecase.ExportQuery{
+		LoginID:     caller.Login,
+		PortalAlias: activePortal.Alias,
+		From:        from,
+		To:          to,
+	}, nil
+}
+
+// dateParam membaca tanggal YYYY-MM-DD sebagai awal hari WIB.
+//
+// Kosong berarti tidak menyaring, bukan galat — kedua parameter memang opsional, sama
+// seperti `TempBisnis.EDMDATE` dan `ENDDATE` yang boleh kosong di sistem lama.
+func dateParam(raw string, loc *time.Location) (*time.Time, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil, nil
+	}
+	if loc == nil {
+		loc = time.UTC
+	}
+	parsed, err := time.ParseInLocation("2006-01-02", trimmed, loc)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }
 
 // exportHeader adalah judul kolom CSV.
@@ -316,14 +428,34 @@ func (h *Handler) queryFrom(r *http.Request) (usecase.Query, error) {
 		return usecase.Query{}, fmt.Errorf("parameter lewati tidak sah")
 	}
 
+	// Status dokumen hanya menerima kode yang dikenal DAN yang benar-benar dapat menyaring.
+	//
+	// Nilai asing DITOLAK, bukan diabaikan: mengabaikannya akan menampilkan seluruh inbox
+	// kepada pengguna yang mengira sedang melihat satu status saja. Tab yang belum dapat
+	// dihitung juga ditolak — kuerinya belum ada, dan melayaninya dengan daftar penuh
+	// persis kegagalan yang sama.
+	var status inboxoutstanding.DocumentStatus
+	if raw := strings.TrimSpace(q.Get("status_dokumen")); raw != "" {
+		found, known := inboxoutstanding.FindDocumentStatus(raw)
+		if !known {
+			return usecase.Query{}, fmt.Errorf("parameter status_dokumen tidak dikenal")
+		}
+		if !found.Countable() {
+			return usecase.Query{}, fmt.Errorf(
+				"status_dokumen %q belum dapat dipakai menyaring", raw)
+		}
+		status = found
+	}
+
 	return usecase.Query{
-		LoginID:     caller.Login,
-		PortalAlias: activePortal.Alias,
-		Search:      strings.TrimSpace(q.Get("cari")),
-		Stage:       strings.TrimSpace(q.Get("tahap")),
-		BranchCode:  strings.TrimSpace(q.Get("cabang")),
-		Limit:       limit,
-		Offset:      offset,
+		LoginID:        caller.Login,
+		PortalAlias:    activePortal.Alias,
+		Search:         strings.TrimSpace(q.Get("cari")),
+		Stage:          strings.TrimSpace(q.Get("tahap")),
+		BranchCode:     strings.TrimSpace(q.Get("cabang")),
+		DocumentStatus: status,
+		Limit:          limit,
+		Offset:         offset,
 	}, nil
 }
 
@@ -338,21 +470,6 @@ func positiveInt(raw string, fallback int) (int, error) {
 		return 0, fmt.Errorf("bukan bilangan bulat tak negatif")
 	}
 	return value, nil
-}
-
-// logLineLookupFailure mencatat kegagalan membaca lini bisnis.
-//
-// Ia WAJIB dipanggil pada setiap jalur yang memakai Result. Kegagalan itu menghasilkan
-// batas data "tanpa batas" — sama dengan pengguna yang memang belum punya lini — sehingga
-// tanpa catatan ini, kegagalan basis data menjadi tidak terlihat oleh siapa pun.
-func (h *Handler) logLineLookupFailure(r *http.Request, result usecase.Result) {
-	if result.LineLookupError == nil {
-		return
-	}
-	logging.From(r.Context(), h.logger).Warn("lini bisnis tidak dapat dibaca; batas data tidak berlaku",
-		slog.String("jalur", r.URL.Path),
-		slog.String("galat", result.LineLookupError.Error()),
-	)
 }
 
 // logExportInterrupted mencatat export yang berhenti di tengah.

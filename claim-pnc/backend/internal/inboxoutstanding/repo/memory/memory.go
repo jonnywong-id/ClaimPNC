@@ -27,17 +27,22 @@ import (
 type Repo struct {
 	claims []inboxoutstanding.OutstandingClaim
 
-	// lines memetakan LOGIN_ID ke nilai LINEBUSINESS.
+	// lines memetakan LOGIN_ID ke lini bisnisnya — padanan `M_LOGIN_PNC.LINE_BUSINESS`.
 	//
-	// Kuncinya disimpan dalam huruf besar supaya pencocokannya tidak peka besar-kecil —
-	// sama dengan sqlstore, yang memakai UPPER(TRIM(...)) karena kolom LOGIN_ID di sistem
-	// lama tidak diseragamkan.
-	lines map[string]string
+	// Ia HANYA dipakai export. Daftar tidak mengenal lini bisnis sama sekali.
+	lines map[string]inboxoutstanding.LineBusiness
+
+	// legacy memetakan identitas login ke identitas LAMA orang yang sama — padanan
+	// `T_ACCESS_GROUP_PNC.OPERATOR_ID` → `OLD_OPERATOR_ID`.
+	legacy map[string]string
 }
 
 // NewRepo membentuk repo kosong.
 func NewRepo() *Repo {
-	return &Repo{lines: map[string]string{}}
+	return &Repo{
+		lines:  map[string]inboxoutstanding.LineBusiness{},
+		legacy: map[string]string{},
+	}
 }
 
 // NewRepoWithSamples membentuk repo berisi klaim contoh.
@@ -47,26 +52,12 @@ func NewRepo() *Repo {
 func NewRepoWithSamples() *Repo {
 	r := NewRepo()
 	r.claims = sampleClaims()
-	r.lines = sampleLines()
 	return r
-}
-
-// SetLineBusiness menetapkan lini bisnis seorang pengguna. Dipakai pengujian.
-func (r *Repo) SetLineBusiness(loginID, lineBusiness string) {
-	r.lines[normalize(loginID)] = lineBusiness
 }
 
 // Add menambahkan klaim. Dipakai pengujian.
 func (r *Repo) Add(claims ...inboxoutstanding.OutstandingClaim) {
 	r.claims = append(r.claims, claims...)
-}
-
-// LineBusinessFor memenuhi inboxoutstanding.LineBusinessRepo.
-//
-// Pengguna yang tidak terdaftar mengembalikan string kosong TANPA galat — itu keadaan
-// biasa, bukan kegagalan. Lihat komentar seam-nya.
-func (r *Repo) LineBusinessFor(_ context.Context, loginID string) (string, error) {
-	return r.lines[normalize(loginID)], nil
 }
 
 // List memenuhi inboxoutstanding.Repo.
@@ -111,9 +102,189 @@ func (r *Repo) List(_ context.Context, f inboxoutstanding.Filter) (inboxoutstand
 	return inboxoutstanding.Page{Claims: page, Total: total}, nil
 }
 
+// SetLineBusiness menetapkan lini bisnis seorang petugas. Dipakai pengujian.
+func (r *Repo) SetLineBusiness(loginID string, line inboxoutstanding.LineBusiness) {
+	if r.lines == nil {
+		r.lines = map[string]inboxoutstanding.LineBusiness{}
+	}
+	r.lines[normalize(loginID)] = line
+}
+
+// SummarizeDocumentStatus memenuhi inboxoutstanding.Repo.
+//
+// Penyaring status sengaja DIKOSONGKAN sebelum menghitung — ringkasan harus memuat seluruh
+// status, bukan hanya yang sedang dipilih. Lihat catatan pada kueri produksinya.
+func (r *Repo) SummarizeDocumentStatus(_ context.Context, f inboxoutstanding.Filter) (inboxoutstanding.Summary, error) {
+	f = f.Normalize()
+	if f.AssignedTo == "" {
+		return inboxoutstanding.Summary{}, inboxoutstanding.ErrAssigneeRequired
+	}
+	f.DocumentStatus = ""
+
+	var lengkap, belum int
+	for _, c := range r.claims {
+		if !matches(c, f) {
+			continue
+		}
+		if documentStatusOf(c) == inboxoutstanding.StatusComplete {
+			lengkap++
+			continue
+		}
+		belum++
+	}
+
+	return inboxoutstanding.BuildSummary(map[inboxoutstanding.DocumentStatus]int{
+		inboxoutstanding.StatusComplete:   lengkap,
+		inboxoutstanding.StatusIncomplete: belum,
+		inboxoutstanding.StatusAll:        lengkap + belum,
+	}, lengkap+belum), nil
+}
+
+// documentStatusOf menirukan `DOKUMENLENGKAP_1 = '1'` versus `'0' atau NULL`.
+//
+// OutstandingClaim tidak memuat kolom itu — ia memuat apa yang ditampilkan. Yang dipakai
+// di sini adalah DocumentComplete pada klaim contoh, yang sengaja ditambahkan supaya
+// adapter memori dapat membedakan keduanya tanpa membocorkan nama kolom ke domain.
+func documentStatusOf(c inboxoutstanding.OutstandingClaim) inboxoutstanding.DocumentStatus {
+	if c.DocumentComplete {
+		return inboxoutstanding.StatusComplete
+	}
+	return inboxoutstanding.StatusIncomplete
+}
+
+// SetLegacyOperator menetapkan identitas lama seorang petugas. Dipakai pengujian.
+func (r *Repo) SetLegacyOperator(loginID, legacy string) {
+	if r.legacy == nil {
+		r.legacy = map[string]string{}
+	}
+	r.legacy[normalize(loginID)] = normalize(legacy)
+}
+
+// LegacyOperatorFor memenuhi inboxoutstanding.Repo.
+func (r *Repo) LegacyOperatorFor(_ context.Context, loginID string) (string, error) {
+	return r.legacy[normalize(loginID)], nil
+}
+
+// LineBusinessFor memenuhi inboxoutstanding.Repo.
+//
+// Petugas yang tidak terdaftar mengembalikan LineUnknown tanpa galat — sama seperti
+// sqlstore, dan sama seperti Pega memperlakukan pyPosition yang tidak cocok satu pun.
+func (r *Repo) LineBusinessFor(_ context.Context, loginID string) (inboxoutstanding.LineBusiness, error) {
+	return r.lines[normalize(loginID)], nil
+}
+
+// Export memenuhi inboxoutstanding.Repo — TANPA menyaring pemilik pekerjaan.
+//
+// # Dua penyaring produksi yang TIDAK dapat ditirukan di sini
+//
+// `my_inbox_export` juga menyaring `PXFLOWNAME`, `ISPENDINGCLOSE`, dan `BUSINESSGROUPID`.
+// Ketiga kolom itu TIDAK ada pada OutstandingClaim — ia memuat apa yang ditampilkan, bukan
+// salinan utuh baris. Menambahkannya semata demi adapter memori berarti membocorkan detail
+// penyimpanan ke lapisan domain.
+//
+// Akibatnya disebut terang-terangan, bukan disembunyikan: cakupan **BONDING** dan kedua
+// penyaring itu hanya terbukti terhadap Oracle, bukan di sini. Pengujian yang
+// menyangkutnya harus dijalankan terhadap basis data sungguhan.
+func (r *Repo) Export(_ context.Context, f inboxoutstanding.ExportFilter) (inboxoutstanding.Page, error) {
+	f = f.Normalize()
+
+	matched := make([]inboxoutstanding.OutstandingClaim, 0, len(r.claims))
+	for _, c := range r.claims {
+		if matchesExport(c, f) {
+			matched = append(matched, c)
+		}
+	}
+
+	sort.SliceStable(matched, func(i, j int) bool {
+		if matched[i].RegisteredAt.Equal(matched[j].RegisteredAt) {
+			return matched[i].ClaimID < matched[j].ClaimID
+		}
+		return matched[i].RegisteredAt.After(matched[j].RegisteredAt)
+	})
+
+	total := len(matched)
+	if f.Offset >= total {
+		return inboxoutstanding.Page{Claims: []inboxoutstanding.OutstandingClaim{}, Total: total}, nil
+	}
+	end := f.Offset + f.Limit
+	if end > total {
+		end = total
+	}
+
+	page := make([]inboxoutstanding.OutstandingClaim, end-f.Offset)
+	copy(page, matched[f.Offset:end])
+
+	return inboxoutstanding.Page{Claims: page, Total: total}, nil
+}
+
+// matchesExport menerapkan cakupan lini bisnis dan rentang tanggal.
+func matchesExport(c inboxoutstanding.OutstandingClaim, f inboxoutstanding.ExportFilter) bool {
+	// Status berjalan disaring kueri produksi di dalam WHERE; di sini diperiksa eksplisit
+	// supaya data contoh yang memuat klaim tertutup tidak ikut terbawa unduhan.
+	switch strings.TrimSpace(c.ProcessStatus) {
+	case "Resolved-Completed", "Resolved-Rejected":
+		return false
+	}
+
+	if !inScope(c, f.LineBusiness) {
+		return false
+	}
+	if f.From != nil && c.RegisteredAt.Before(*f.From) {
+		return false
+	}
+	// Batas atas EKSKLUSIF, sama seperti `PXCREATEDATETIME < :9` pada SQL.
+	if f.To != nil && !c.RegisteredAt.Before(*f.To) {
+		return false
+	}
+	return true
+}
+
+// inScope menerapkan cakupan lini bisnis seperti pada my_inbox_export.
+func inScope(c inboxoutstanding.OutstandingClaim, line inboxoutstanding.LineBusiness) bool {
+	panel := normalize(c.GroupPanel)
+
+	switch line {
+	case inboxoutstanding.LinePA:
+		return panel == "002"
+	case inboxoutstanding.LineTravel:
+		return panel == "005"
+	case inboxoutstanding.LineBonding:
+		// Tidak dapat ditirukan: BUSINESSGROUPID tidak ada pada OutstandingClaim.
+		// Mengembalikan false akan MEMBOHONGI pengujian dengan berkas kosong yang tampak
+		// sah, jadi seluruh baris diloloskan dan keterbatasannya disebut di atas.
+		return true
+	case inboxoutstanding.LineNonMBU:
+		switch panel {
+		case "003", "004", "006":
+		default:
+			return false
+		}
+		if strings.EqualFold(strings.TrimSpace(c.BranchName), "ASNET") {
+			return false
+		}
+		return strings.TrimSpace(c.TechnicalPIC) != ""
+	default:
+		// LineUnknown: tanpa cakupan, persis seperti fragmen kosong di Pega.
+		return true
+	}
+}
+
 // matches menerapkan seluruh penyaring pada satu klaim.
 func matches(c inboxoutstanding.OutstandingClaim, f inboxoutstanding.Filter) bool {
-	if !withinScope(c, f.Scope) {
+	// Dua identitas untuk satu orang — lihat Filter.AssignedToLegacy.
+	if f.AssignedTo != "" {
+		cocok := strings.EqualFold(c.CurrentHolder, f.AssignedTo)
+		if !cocok && f.AssignedToLegacy != "" {
+			cocok = strings.EqualFold(c.CurrentHolder, f.AssignedToLegacy)
+		}
+		if !cocok {
+			return false
+		}
+	}
+	if f.GroupPanel != "" && !strings.EqualFold(c.GroupPanel, f.GroupPanel) {
+		return false
+	}
+	if f.RCVID != "" && !strings.EqualFold(c.RCVID, f.RCVID) {
 		return false
 	}
 	if f.Stage != "" && !strings.EqualFold(c.CurrentStage, f.Stage) {
@@ -122,52 +293,11 @@ func matches(c inboxoutstanding.OutstandingClaim, f inboxoutstanding.Filter) boo
 	if f.BranchCode != "" && !strings.EqualFold(c.BranchName, f.BranchCode) {
 		return false
 	}
+	if f.DocumentStatus != "" && documentStatusOf(c) != f.DocumentStatus {
+		return false
+	}
 	if f.Search != "" && !matchesSearch(c, f.Search) {
 		return false
-	}
-	return true
-}
-
-// withinScope memeriksa batas data.
-//
-// Inilah aturan yang paling berbahaya bila salah, karena kesalahannya tidak menghasilkan
-// galat — hanya baris yang seharusnya tidak terlihat.
-func withinScope(c inboxoutstanding.OutstandingClaim, scope inboxoutstanding.LineScope) bool {
-	if scope.Unrestricted {
-		return true
-	}
-	if len(scope.GroupPanels) == 0 && len(scope.ExcludedBusinessGroups) == 0 {
-		// Batas yang tidak menyebut apa pun, dan tidak pula menyatakan dirinya tanpa
-		// batas, tidak meloloskan apa pun. Gagal TERTUTUP: sebuah scope kosong hampir
-		// pasti cacat pemrograman, dan meloloskan semuanya akan mengubah cacat itu
-		// menjadi kebocoran data yang senyap.
-		return false
-	}
-
-	// Penyaring lini hanya berlaku bila scope menyebutkannya. BONDING sengaja tidak
-	// menyebut satu pun Group Panel — seluruh aturannya ada pada pengecualian di bawah.
-	if len(scope.GroupPanels) > 0 {
-		cocok := false
-		for _, panel := range scope.GroupPanels {
-			if c.GroupPanel == panel {
-				cocok = true
-				break
-			}
-		}
-		if !cocok {
-			return false
-		}
-	}
-
-	// Kelompok bisnis yang KOSONG tidak pernah dikecualikan — sama dengan sisi SQL, yang
-	// memeriksa `BUSINESSGROUPID IS NULL` lebih dulu supaya baris tanpa kelompok tidak
-	// hilang oleh aritmetika tiga-nilai.
-	if c.BusinessGroupID != "" {
-		for _, group := range scope.ExcludedBusinessGroups {
-			if c.BusinessGroupID == group {
-				return false
-			}
-		}
 	}
 	return true
 }
@@ -186,4 +316,15 @@ func matchesSearch(c inboxoutstanding.OutstandingClaim, search string) bool {
 
 func normalize(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
+}
+
+// Claims mengembalikan seluruh klaim yang tersimpan, TANPA penyaring apa pun.
+//
+// Dipakai pengujian yang memeriksa ISI data contoh — bukan hasil List. Keduanya berbeda
+// sejak daftar terikat pada pemiliknya: sebagian keadaan yang sengaja diwakili data contoh,
+// seperti tugas yang belum bertuan, memang tidak boleh muncul di My Inbox.
+func (r *Repo) Claims() []inboxoutstanding.OutstandingClaim {
+	out := make([]inboxoutstanding.OutstandingClaim, len(r.claims))
+	copy(out, r.claims)
+	return out
 }

@@ -3685,3 +3685,400 @@ Yang terakhir patut disadari: bagian itu bernama "Kirim ke Cabang" tetapi tidak 
 apa pun **ke cabang** — ia menembak satu layanan REST bernama injeksi arsip. Namanya
 dipertahankan karena itu yang dikenal pengguna, dan perbedaannya dicatat di sini alih-alih
 diperbaiki diam-diam.
+## Tambahan 2026-09-23 — modul Input Req Protection (`inputreqprotection`) dan Inbox Accept Open Protection (`inboxacceptopenprotection`)
+
+### Nama modul: dua butir menu, dan namanya bersilang
+
+`D-81` menetapkan nama folder modul mengikuti nama yang dipakai Work Owner. Di sini nama itu
+**bersilang** di Pega, sehingga aturannya tidak dapat diterapkan mentah pada keduanya:
+
+| Butir menu (`pyCaptionPrompt`) | Harness | Judul di dalam harness | Nama modul |
+|---|---|---|---|
+| Input Req Protection | `InputReqProtection_Harness` | "Inbox Open Protection" | `inputreqprotection` |
+| Inbox Open Protection | `InputProtection_Harness` | **"Inbox Accept Open Protection"** | `inboxacceptopenprotection` |
+
+Modul pertama memakai nama **butir menunya**; modul kedua memakai **judul harness-nya**,
+karena nama butir menunya sudah dipakai judul layar modul pertama. Memakai nama butir menu
+untuk keduanya akan menghasilkan dua modul bernama sama.
+
+| Lapisan | Modul 1 | Modul 2 |
+|---|---|---|
+| Paket Go | `internal/inputreqprotection` | `internal/inboxacceptopenprotection` |
+| Folder frontend | `src/modules/input-req-protection` | `src/modules/inbox-accept-open-protection` |
+| Rute API | `/api/input-req-protection` | `/api/inbox-accept-open-protection` |
+| Rute layar | `/input-req-protection` | `/inbox-accept-open-protection` |
+
+### Istilah: "Proteksi" berarti DUA hal berbeda di repositori ini
+
+Ini jebakan nama yang paling mudah menjatuhkan orang berikutnya.
+
+| Istilah | Artinya | Tabelnya | Modul |
+|---|---|---|---|
+| **Open Protection** (Buka Proteksi) | permintaan pembukaan proteksi atas sebuah polis — konsep asuransi | `T_CLAIM_OPENPROTECTION` (baru) | `inputreqprotection`, `inboxacceptopenprotection` |
+| **Proteksi Data** | jatah pencarian data nasabah — kewenangan masking | `MST_PROTEKSI_DATA_PNC` | `mastermasking`, `riwayatklaim` |
+
+Keduanya **tidak berhubungan sama sekali**. Tabel `MST_PROTEKSI_DATA_PNC` berkolom `LOGIN`,
+`PASSWORD`, `STS_KTP`, `LOGSEARCH` — ia master kewenangan, bukan proteksi polis.
+
+### Penamaan properti Pega ke nama Inggris
+
+`D-80` menetapkan nama di dalam kode berbahasa Inggris; nama kolom basis data dan nama field
+JSON tetap Indonesia.
+
+| Properti Pega | Nama Go | Kolom (usulan) | Field JSON | Kolom layar |
+|---|---|---|---|---|
+| `.pyID` | `Number` | `NO_PROTEKSI` | `nomor_proteksi` | No Proteksi |
+| `.PolicyNo` | `PolicyNumber` | `NO_POLIS` | `nomor_polis` | No Polis |
+| `.CaseID` | `ClaimNumber` | `NO_KLAIM` | `nomor_klaim` | No Klaim |
+| `.PNCCaseID` | `ClaimReference` | `KLAIM_REF` | `referensi_klaim` | — |
+| `.TypeProtection` | `Type` | `TIPE_PROTEKSI` | `tipe_proteksi` | Tipe Proteksi |
+| `.InputDate` | `InputDate` | `TANGGAL_INPUT` | `tanggal_proteksi` | Tanggal Proteksi Dibuat |
+| `.Keterangan` | `Note` | `KETERANGAN` | `keterangan` | Keterangan |
+| `.pxCreateOpName` | `CreatedBy` | `DIBUAT_OLEH` | `user_create` | User Create |
+| `.AcceptStatus` | `AcceptStatus` | `STATUS_AKSEPTASI` | `status_akseptasi` | — |
+| `.AcceptDate` | `AcceptedAt` | `TANGGAL_AKSEPTASI` | `tanggal_akseptasi` | — |
+| `.AcceptOpName` | `AcceptedBy` | `DIAKSEP_OLEH` | `diaksep_oleh` | — |
+| `.IsUsedPNC` | `UsedByClaim` | `DIPAKAI_KLAIM` | — | — |
+| `.ClaimDataProtect.BeforeDateOfLoss` | `ChangeDetail.LossDateBefore` | `DOL_SEBELUM` | `dol_sebelum` | Current Date Of Loss |
+| `.ClaimDataProtect.DateOfLoss` | `ChangeDetail.LossDateAfter` | `DOL_BARU` | `dol_baru` | Next Date Of Loss |
+| `.ClaimDataProtect.CauseOfLossID` | `ChangeDetail.CauseOfLossID` | `COL_ID` | `penyebab_kerugian` | Cause Of Loss Sebelumnya |
+| `.ClaimDataProtect.IDMasterTONP` | `ChangeDetail.CauseOfLossMasterID` | `COL_MASTER_ID` | `penyebab_kerugian_master` | Cause Of Loss Dipilih |
+
+**`.CaseID` dan `.PNCCaseID` mudah tertukar dan artinya berbeda:** yang pertama nomor klaim
+yang **diketik** pengguna, yang kedua klaim yang benar-benar **ditemukan**. Sistem lama
+menolak penyimpanan saat yang kedua kosong, dengan pesan "Silakan Tulis dan Cari Ulang No
+Klaim" — mengetik saja tidak cukup.
+
+### Nomor proteksi
+
+| Bentuk | Asal | Contoh |
+|---|---|---|
+| `OPC-XXX` | warisan Pega, dibaca apa adanya | `OPC-201` |
+| `OPCN.YY.xxxx` | terbitan aplikasi ini (keputusan Work Owner 2026-09-23) | `OPCN.26.0001` |
+
+Sejajar dengan `PNC-xxxx` versus `PNCN.YY.xxxx` pada nomor klaim (`D-22`, `D-71`).
+
+---
+
+## Tambahan 2026-09-24 — modul Inbox Komunikasi Cabang (`inboxkomunikasicabang`)
+
+Nama modul mengikuti `D-81`: folder backend `internal/inboxkomunikasicabang` (tanpa tanda
+hubung, karena Go tidak mengizinkannya), folder frontend
+`src/modules/inbox-komunikasi-cabang`. Namanya **tidak dikarang** — ia tertulis di
+`Database/m_menu_aplikasi_pnc.csv` baris 65 sebagai `MENU_ID 70`, **"Inbox Komunikasi
+Cabang"**. Isinya berbahasa Inggris sesuai `D-80`.
+
+### Alias Pega yang TIDAK dibawa — dan kenapa hampir seluruhnya menyesatkan
+
+Kueri layar ini mengalias hampir setiap kolom dengan nama yang menyebut hal lain. Tidak satu
+pun dibawa (`D-19`):
+
+| Alias Pega | Kolom sebenarnya | Isi sebenarnya | Nama di sini |
+|---|---|---|---|
+| `CloseClaimDate` | `CREATEDDATE` | tanggal pesan — tidak ada klaim yang ditutup | `CreatedAt` |
+| `Email` | `MESSAGE` | **isi pesan**, bukan alamat surel | `Message` |
+| `UserTeknis` | `SENDER` | Operator ID pengirim | `SenderOperator` |
+| `pzInsKey` | `CASEID` | **penanda kanal** (`CABANG`), bukan kunci objek kerja Pega | — (tidak dipilih) |
+| `ClaimNo` | `KOMUNIKASIID` | **nomor percakapan**, bukan nomor klaim | `ID` |
+| `CloseClaimNote` | `REPLYMESSAGE` | isi balasan | `Reply` |
+| `StatusClaim` | `KOMUNIKASISTATUS` | status percakapan — **bukan** Status Klaim ber-33 kode (`R-06`) | `Status` |
+| `AnalystTransferDate` | `CREATEDATEREPLY` | tanggal balasan | `RepliedAt` |
+| `UserAdmin` | `REPLYFROMNAME` | nama penjawab | `ReplierName` |
+| `UserName` | `COMMUNICATE_FROM` | kode asal | `SenderOrigin` |
+| `UserTeknisEmail` | `COMMUNICATE_TO` | kode tujuan | `RecipientOrigin` |
+
+Tiga baris pertama patut disebut khusus: tabel ini **tidak memuat nomor klaim sama sekali**,
+`Email` bukan alamat, dan `pzInsKey` bukan kunci Pega.
+
+### Alias lampiran — tujuh nama, tujuh kali salah
+
+Dari `RDB List/GetDocumentKomunikasi1-SQL.xml`, contoh utang teknis §4.2 paling padat yang
+ditemukan sejauh ini:
+
+| Alias Pega | Kolom | Isi | Nama di sini |
+|---|---|---|---|
+| `BranchCode` | `A.KOMUNIKASI_ID` | nomor percakapan | — (penyaring) |
+| `BranchName` | `A.CATEGORYID` | kode kategori dokumen | — (gabungan) |
+| `ClaimID` | `A.TYPEID` | kode jenis dokumen | — (gabungan) |
+| `ObjectName` | `C.DETAIL_DOCUMENT` | nama rincian dokumen | `DetailName` |
+| `ObjectLocation` | `D.TYPE_DOCUMENT` | nama jenis dokumen | `TypeName` |
+| `Comment` | `A.NOTE` | catatan | `Note` |
+| `Date` | `A.UPLOADDATE` | tanggal unggah | `UploadedAt` |
+| `IdCompliance` | `A.DOCUMENTID` | id dokumen di penyimpanan | `DocumentID` |
+
+### Istilah domain baru
+
+| Indonesia | Inggris | Catatan |
+|---|---|---|
+| Percakapan | `Conversation` | satu baris grid: satu pesan beserta balasannya |
+| Utas | `ThreadMessage` · `ConversationDetail` | isi layar Detail Komunikasi |
+| Lampiran | `Attachment` | metadata dokumen; berkasnya di penyimpanan lain (`D-16`) |
+| Kanal percakapan | `CaseOpen` · `CaseClosed` | nilai `CASEID`: `CABANG` dan `CABANG SELESAI` |
+| Asal / Tujuan | `SenderOrigin` · `RecipientOrigin` | sudah diterjemahkan; kode mentahnya tidak dibawa ke layar |
+| Batas cabang | `BranchFilter` | kode, penanda kantor pusat, dan penanda **terbaca** |
+| Penerjemah cabang | `BranchResolver` | seam ke HRD lewat DB Link (`D-25`, `R-03`) |
+| Pencacah | `Summary` | dua angka di atas grid, pengganti diagram lingkaran |
+
+**Istilah yang sengaja TIDAK dipakai:** `SenderName`. Kolomnya ada (`SENDERNAME`) tetapi
+**tidak pernah sampai ke layar** — alias `UserName` yang sama dipakai dua kali dalam satu
+`SELECT`, dan yang menang adalah `COMMUNICATE_FROM`. Membawanya berarti menyimpan nama yang
+harus dijelaskan mengapa diabaikan.
+
+### Dua konstanta yang MUDAH tertukar, dan akibatnya fatal
+
+| Konstanta | Nilai | Kolom |
+|---|---|---|
+| `HeadOfficeBranch` | `100081` | `POOLDATA.BRANCH.ID` |
+| `HeadOfficeCode` | `1` | `COMMUNICATE_FROM` / `COMMUNICATE_TO` |
+
+Keduanya berarti "kantor pusat" tetapi hidup di kolom yang berbeda. Menukarnya menghasilkan
+**daftar kosong tanpa satu pun galat**. `ResolveBranch` menerjemahkan yang pertama menjadi yang
+kedua, dan satu uji menjaganya
+(`TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode`).
+
+### Nama field JSON — tetap Indonesia
+
+Ia **kontrak**, bukan nama internal (`D-80`):
+
+`komunikasi` · `tanggal` · `pengirim` · `asal` · `operator_pengirim` · `pesan` ·
+`jawaban_terakhir` · `penjawab` · `tujuan` · `status_register` · `tanggal_jawaban` ·
+`ringkasan` · `belum_dijawab` · `sudah_dijawab` · `batas_cabang` · `kantor_pusat` ·
+`terbaca` · `lampiran` · `jenis_dokumen` · `rincian_dokumen` · `sudah_diunggah` ·
+`tindakan_masih_di_pega`
+
+`komunikasi`, bukan `no_klaim` — tabel ini tidak memuat nomor klaim sama sekali.
+
+### Kode galat — tetap Indonesia
+
+`validasi_gagal` · `profil_pemanggil_tidak_lengkap` · `sumber_cabang_tidak_terbaca` ·
+`belum_tersedia` · `komunikasi_tidak_ditemukan` · `galat_internal`
+
+`sumber_cabang_tidak_terbaca` dipisahkan dari `profil_pemanggil_tidak_lengkap` dengan sengaja:
+yang satu menimpa **semua orang** dan sementara (503), yang satu menimpa **satu orang** (409).
+
+### Nama kueri `.sql`
+
+Berawalan menurut perannya, bukan menurut nama tabelnya:
+
+`list_not_answered` · `list_answered` · `count_answered` · `count_not_answered` ·
+`detail_thread` · `detail_attachments` · `check_table` · `check_attachment_table` ·
+`branch_of_login`
+
+`branch_of_login` **sengaja sama namanya** dengan milik modul Inbox Laporan Klaim, dan
+berkasnya **disalin, bukan diimpor**: seam dideklarasikan di paket yang memakainya
+(`08-TECHNICAL-STRATEGY.md` §2 aturan 2), sehingga kedua modul dapat berpindah ke API
+pengganti DB Link pada waktu yang berbeda.
+
+### Nama komponen frontend
+
+Komponen memakai nama **konsep layarnya**, bukan nama modul:
+
+| Berkas | Komponen |
+|---|---|
+| `KomunikasiCabangPage.tsx` | `KomunikasiCabangPage` |
+| `KomunikasiCabangTabs.tsx` | `KomunikasiCabangTabs` |
+| `ConversationDetail.tsx` | `ConversationDetail` |
+
+Yang ketiga memakai nama **tipe domain**, mengikuti preseden `AccountPage.tsx` pada modul
+`master-rekening` — ia menggambar sebuah `ConversationDetailResponse`, bukan sebuah layar
+bernama modul.
+
+### Nama uji
+
+Berbahasa **Inggris** di Go, **Indonesia** di Vitest, mengikuti pola yang sudah berlaku, dan
+menyebutkan **aturannya** alih-alih nama fungsinya:
+
+```go
+func TestHeadOfficeIsFilteredByChannelCodeNotByBranchCode(t *testing.T)
+func TestUnreadableBranchIsServedAsHeadOfficeButMarkedUnresolved(t *testing.T)
+func TestSenderOriginKeepsBranchCodeButRecipientOriginDoesNot(t *testing.T)
+func TestARepliedConversationWithoutARecordedReplierAppearsButIsCountedNowhere(t *testing.T)
+```
+
+```ts
+it('memperingatkan bila kode cabang pemanggil tidak terbaca', ...)
+it('menggambar TIGA kolom pada tab "Belum Dijawab", tanpa kolom balasan', ...)
+it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)
+```
+
+### Tambahan aksi tulis (2026-09-24)
+
+Nama yang lahir bersama tombol "Balas" dan "Selesai Komunikasi".
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `Param.Pesan` | `ReplyInput.Message` | — |
+| `Param.IDKomunikasi` | `ReplyInput.ID` | — |
+| `tempReply.ADDRESS` | `ReplyCommand.Message` | nama Pega menyebut "ADDRESS" untuk isi pesan; tidak dibawa (`D-19`) |
+| `tempReply.M_SURVEY_ID` | `ReplyCommand.ID` | menyebut "SURVEY" untuk nomor percakapan; tidak dibawa (`D-19`) |
+| `tempReply.NAME` / `Param.kodecabang` | `inboxkomunikasicabang.CaseOpen` | **perangkap penamaan**: isinya `CASEID`, bukan kode cabang |
+| `temp.AnalystTransferDate` | `ReplyCommand.RepliedAt` | menyebut "Analyst" untuk waktu balasan; tidak dibawa |
+| `OperatorID.pyUserIdentifier` | `Caller.Login` | — |
+| `OperatorID.pyUserName` | `Caller.Name` | — |
+| `REPLYFROM` (kolom) | `Conversation.ReplyFrom` | kolom basis data tetap Indonesia (`D-80`) |
+| `REPLYFROMNAME` (kolom) | `Conversation.ReplierName` | — |
+| `KOMUNIKASISTATUS = '1'` | `StatusAnswered` | artinya baru diketahui 2026-09-24 |
+| `CASEID = 'CABANG SELESAI'` | `CaseClosed` | — |
+| `EndKomunikasiCabang` (activity) | `Service.Finish` · `Repo.Finish` | — |
+| `PNCReplyMessageCabang` (activity) | `Service.Reply` · `Repo.Reply` | — |
+
+Nama field JSON tetap berbahasa Indonesia — ia kontrak (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `pesan` (badan permintaan balas) | isi balasan |
+| `komunikasi` (jawaban aksi) | nomor percakapan yang dikenai tindakan |
+| `pesan` (jawaban aksi) | kalimat siap baca tentang apa yang terjadi |
+| `balas_tersedia` | **menggantikan** `tindakan_masih_di_pega`, artinya KEBALIKAN |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/balas
+POST /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}/selesai
+```
+
+Nama uji yang lahir bersamanya:
+
+```go
+func TestAReplyMovesTheConversationFromOneTabToTheOther(t *testing.T)
+func TestAReplyToAClosedConversationIsRefused(t *testing.T)
+func TestFinishingATwiceIsRefusedInsteadOfSilentlySucceeding(t *testing.T)
+func TestReplyMeasuresLengthInCharactersNotBytes(t *testing.T)
+func TestEveryWriteStatementRefusesAClosedConversation(t *testing.T)
+func TestWriteStatementsCarryNoTableAlias(t *testing.T)
+```
+
+```ts
+it('menggambar kotak "Masukkan Balasan" yang benar-benar dapat dipakai', ...)
+it('meminta penegasan lebih dulu, tidak langsung menutup percakapan', ...)
+it('menahan kalimat yang sudah diketik bila balasannya ditolak', ...)
+```
+
+> Uji `it('menyatakan bahwa membalas belum tersedia alih-alih menggambar kotak isian', ...)`
+> yang tercantum di atasnya **dihapus** pada 2026-09-24: pernyataannya tidak lagi benar.
+
+### Tambahan "Kirim Pesan" (2026-09-24, lanjutan)
+
+Nama yang lahir bersama form pembuatan percakapan baru. Tujuh di antaranya menggantikan nama
+Pega yang **seluruhnya** menyebut hal lain.
+
+| Pega | Kode baru | Sebab |
+|---|---|---|
+| `TempInputKomunikasi.CaseID` | `NewMessageInput.Destination` | "CaseID" untuk sebuah pilihan PUSAT/CABANG |
+| `TempInputKomunikasi.CityID` | (isian pemilih cabang di layar) | "CityID" untuk sebuah cabang |
+| **`TempInputKomunikasi.City`** | **`NewMessageInput.Message`** | "City" untuk **isi pesan** |
+| `TempInputKomunikasi.DistrictID` | `NewMessageInput.BranchCode` | "DistrictID" untuk kode cabang |
+| `TempInputKomunikasi.District` | `BranchOption.Email` | "District" untuk alamat surel |
+| `TempInputKomunikasi.pyLabel` | (tidak dibawa) | penanda keadaan layar; di React `useState` |
+| `TempInputKomunikasi2.pxResults[].City` | `Destinations()` | daftar dua pilihan dropdown |
+| `TempResultSurveyor.pxResults` | `[]BranchOption` | halaman sumber autocomplete |
+| `.BRANCHNAME` | `BranchOption.Name` | — |
+| `.BRANCH` | `BranchOption.Code` | — |
+| `.EMAIL` | `BranchOption.Email` | — |
+
+Tujuh properti `TempEmail.*` pada activity, dan tidak satu pun berarti seperti namanya:
+
+| Pega | Kolom yang diisinya | Kode baru |
+|---|---|---|
+| `TempEmail.IDSurvey` | `CASEID` | `CaseOpen` |
+| `TempEmail.BodyLetterAttn` | `SENDER` | `Caller.Login` |
+| **`TempEmail.BodyLetterEmail`** | **`MESSAGE`** | `NewMessageCommand.Message` |
+| `TempEmail.BodyLetterOP` | `SENDERNAME` | `Caller.Name` |
+| **`TempEmail.BranchToTransfer`** | **`KOMUNIKASISTATUS`** | `StatusNotAnswered` |
+| `TempEmail.InsuredPIC` | `COMMUNICATE_TO` | `NewMessageCommand.RecipientCode()` |
+| `TempEmail.IDSurveyCase` | `COMMUNICATE_FROM` | `BranchFilter.Code` |
+
+Rule dan artefak:
+
+| Pega | Kode baru |
+|---|---|
+| `PNCSendMessageKomunikasiCabang` (activity) | `Service.SendMessage` · `Repo.SendMessage` |
+| `CNMShowInsertKomunikasi_dt` (data transform) | `useState` pada layar — tidak ada padanan di peladen |
+| `IsInsertKomunikasi` / `IsUpdateKomunikasi` (when) | idem |
+| `InsertMessageCABANG_PNC` (SQL) | `message_insert` |
+| `GetIDMaxKom_cabang` (SQL) | `message_max_id` |
+| `ReplyKomunikasiCabang` (SQL, jalur kirim) | `message_history_insert` |
+| *(kueri pemasok cabang — tidak ada di export)* | `branch_options` — **penyaringnya ditebak** |
+
+Nama field JSON tetap Indonesia (`D-80`):
+
+| Field JSON | Isinya |
+|---|---|
+| `tujuan` (permintaan) | `"PUSAT"` atau `"CABANG"` |
+| `cabang` (permintaan) | kode cabang tujuan |
+| `pesan` (permintaan) | isi pesannya |
+| `tujuan` (jawaban `/cabang`) | kedua pilihan dropdown |
+| `cabang` (jawaban `/cabang`) | daftar cabang — **tanpa alamat surel** |
+
+Alamat rutenya:
+
+```
+POST /api/inbox-komunikasi-cabang/pesan     membuat percakapan baru (201)
+GET  /api/inbox-komunikasi-cabang/cabang    daftar cabang + kedua tujuan
+```
+
+Uji yang lahir bersamanya:
+
+```go
+func TestAMessageToTheBranchNeedsABranchChosen(t *testing.T)
+func TestABranchLeftOverFromASwitchedDestinationIsIgnoredNotRefused(t *testing.T)
+func TestTheBranchListIsNotFilteredByTheCallerBranch(t *testing.T)
+func TestANewMessageCanBeRepliedToImmediately(t *testing.T)
+func TestTheNewMessageInsertLeavesTheCreatedDateToTheDatabase(t *testing.T)
+func TestEveryLoadedQueryIsListedInAllQueryNames(t *testing.T)
+func TestTheBranchPickerNeverLeaksBranchEmailAddresses(t *testing.T)
+func TestTheRemovedActionRouteIsGone(t *testing.T)
+```
+
+```ts
+it('menampilkan form saat "Tambah" ditekan, bukan menolak dengan alasan', ...)
+it('tidak menyentuh peladen hanya untuk membuka formnya', ...)
+it('menyembunyikan pemilih cabang selama tujuannya PUSAT', ...)
+it('mengosongkan cabang yang tertinggal saat tujuannya kembali ke PUSAT', ...)
+it('TIDAK lagi menggambar panel "Yang masih dikerjakan lewat Pega"', ...)
+```
+
+> **DICABUT pada 2026-09-24:** `RejectWrite` · rute `/tindakan` · `ErrWriteNotAvailable` ·
+> `CodeWriteNotAvailable` (`"belum_tersedia"`) · `WriteActionsNotice` ·
+> `useKomunikasiCabangAction`. Keempat tindakan tulis layar lama kini bekerja.
+
+### Koreksi utas layar detail (2026-09-24, lanjutan kedua)
+
+Layar detail membaca **`POOLDATA.M_KOMUNIKASI_CABANG`**, bukan `M_KOMUNIKASI_PNC`. Pemetaannya:
+
+| Pega | Kolom | Kode baru |
+|---|---|---|
+| `.CloseClaimDate` | `CREATEDDATE` *(nama DITEBAK)* | `ThreadMessage.CreatedAt` |
+| `.UserName` | `SENDER` | `ThreadMessage.SenderOperator` |
+| `.Email` | `MESSAGE` | `ThreadMessage.Message` |
+| `TEMPHISTORYCABANGDETAIL.pxResults` | — | `[]ThreadMessage` |
+| `GetInboxKomunikasiCabang_detail` *(hilang)* | — | `detail_thread` |
+| *(tidak ada padanan)* | — | `detail_header` — pemeriksa keberadaan |
+| `DETAILKOMUNIKASICABANG_ACT` | — | `Repo.Detail` |
+
+Isian JSON tiap ucapan menyusut menjadi **tiga**, persis kolom section-nya:
+
+| Field JSON | Isinya |
+|---|---|
+| `tanggal` | tanggal ucapannya |
+| `pengirim` | Operator ID, **apa adanya** — tidak dirakit seperti di grid |
+| `pesan` | isi ucapannya |
+
+> **DICABUT:** `jawaban` · `penjawab` · `tanggal_jawaban` · `asal` · `operator_pengirim` pada
+> ucapan. Balasan BUKAN isian pada sebuah ucapan — ia ucapan tersendiri.
+
+Uji yang lahir bersamanya:
+
+```go
+func TestTheThreadGrowsWithEveryUtteranceNotJustTheLatestOne(t *testing.T)
+func TestAConversationWithoutAnyHistoryIsStillFound(t *testing.T)
+func TestTheConversationOriginComesFromTheHeaderNotTheThread(t *testing.T)
+func TestTheThreadIsReadFromTheHistoryTableNotTheConversationTable(t *testing.T)
+func TestEachUtteranceCarriesExactlyTheThreeFieldsTheSectionDraws(t *testing.T)
+```
+
+```ts
+it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', ...)
+it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', ...)
+```
