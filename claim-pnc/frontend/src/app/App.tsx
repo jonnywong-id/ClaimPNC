@@ -49,6 +49,8 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
+import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
@@ -816,6 +818,45 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 84 "Report KPI PNC" — harness `ReportKPIHarness`.
+
+        CATATAN PEMULIHAN: rute ini sempat TERHAPUS pada 2026-09-25 oleh `git checkout`
+        yang dijalankan sesi lain untuk membatalkan pemformatan ulang Prettier. Kodenya
+        dipulihkan apa adanya; komentar aslinya tidak dapat dipulihkan utuh dan yang ada
+        di sini ditulis ulang. Modulnya sendiri tidak pernah tersentuh.
+      */}
+      <Route
+        path="/report-kpi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReportKPIPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 85 "Report Klaim" — harness `PNCTATReport`.
+
+        Namanya menyesatkan: ia bukan layar laporan TAT melainkan halaman peluncur berisi
+        28 panel laporan, yang REPORT TAT hanya salah satunya. Layarnya tidak menampilkan
+        satu baris data pun — keluarannya berkas CSV.
+
+        Tiga dari 28 panel TERHALANG dan tetap tampil bertanda sebabnya: Compliance
+        (isinya properti klipboard Pega, bukan kolom), Adjuster (Report Definition-nya
+        tidak ada di export), dan Mitra (penyaring barisnya menempuh DB Link `@ASMD`).
+      */}
+      <Route
+        path="/report-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ReportKlaimPage />
             </Protected>
           </SessionGuard>
         }

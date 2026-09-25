@@ -72,6 +72,9 @@ import (
 	mastersurveyorssql "claim-pnc/internal/mastersurveyors/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	"claim-pnc/internal/reportkpi"
+	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
+	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
 )
 
 // check menjalankan pemeriksaan integrasi dan mencetak hasilnya, lalu berhenti.
@@ -121,6 +124,23 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	primary := pool.Primary()
 	legacy := sqlstore.NewLegacy(primary)
 
+	// Koneksi KEDUA portal utama — pengganti DB Link `@ASMD`.
+	//
+	// Ia dibuka di sini, bukan di dalam pemeriksaannya, supaya ketiadaannya terbaca
+	// sebagai satu keadaan rakitan alih-alih sebagai kegagalan satu pemeriksaan. Dan ia
+	// TIDAK menghentikan mode periksa: aplikasi memang berjalan tanpanya.
+	anekaPool := db.NewOptionalPool(ctx, anekaParameters(cfg), func(alias string, err error) {
+		print("  [lewat] koneksi kedua portal %-5s tidak dapat dibuka: %v", alias, err)
+	})
+	defer anekaPool.Close()
+
+	var anekaPrimary *sql.DB
+	if anekaPool.Has(cfg.PrimaryPortal) {
+		if conn, err := anekaPool.For(cfg.PrimaryPortal); err == nil {
+			anekaPrimary = conn
+		}
+	}
+
 	portalList := checkPortal(ctx, portalsql.NewRepo(primary), print)
 	address := checkCatalog(ctx, legacy, cfg.PrimaryPortal, print)
 	checkAppTables(ctx, legacy, print)
@@ -147,6 +167,9 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
+	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
+	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
+	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
@@ -2009,4 +2032,225 @@ func checkCloseClaim(
 	print("            Catatan: akun aplikasi hanya perlu SELECT dan INSERT. Hak UPDATE dan")
 	print("            DELETE sengaja TIDAK diberikan — yang memindahkan STATUS ke")
 	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
+}
+
+// checkReportKPI memeriksa kesiapan tab KPI Adjuster pada Report KPI PNC.
+//
+// # Apa yang benar-benar dijawab pemeriksaan ini
+//
+// Tiga hal, dan ketiganya adalah hal yang TIDAK dapat diketahui dari kode:
+//
+//  1. Tabelnya ada dan akun aplikasi boleh membacanya. Modul ini tidak menuntut satu pun
+//     migrasi — `POOLDATA.DETAIL_KPI_ADJUSTER` sudah ada dan diisi Pega — sehingga
+//     kegagalan di sini hampir pasti soal hak SELECT, bukan soal objek yang belum dibuat.
+//
+//  2. Tabelnya BERISI. Tabel kosong bukan kegagalan: Pega baru mengisinya ketika seseorang
+//     membuka tab KPI Adjuster di sana. Tetapi ia perlu DISEBUT, karena layar yang kosong
+//     dengan tabel kosong dan layar yang kosong karena penyaringnya keliru terlihat sama
+//     persis bagi pengguna.
+//
+//  3. Nilai `TIPE` yang benar-benar ada. Kedua tipe yang dikenal modul ini — OUTSTANDING
+//     dan FINAL — dibaca dari LITERAL di dalam `GetSummaryKPIAdjusterALL-SQL.xml`, bukan
+//     dari master mana pun. Bila produksi memuat nilai ketiga, dropdown tidak akan pernah
+//     menampilkannya dan barisnya tidak akan pernah terlihat — tanpa satu pun galat.
+//
+// Butir ketiga itulah alasan utama fungsi ini ada.
+func checkReportKPI(
+	ctx context.Context,
+	repo *reportkpisql.Repo,
+	print func(string, ...any),
+) {
+	state, err := repo.CheckSource(ctx)
+	if err != nil {
+		print("  [BELUM] Report KPI (tab KPI Adjuster) tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — %s sudah ada dan diisi Pega.",
+			reportkpi.SourceTable)
+		print("            Periksa hak SELECT akun aplikasi atas tabel itu.")
+		return
+	}
+
+	print("  [ok]    %s dapat dibaca: %d baris", reportkpi.SourceTable, state.Rows)
+
+	if state.Rows == 0 {
+		print("  [PERIKSA] Tabelnya KOSONG, dan itu belum tentu keliru.")
+		print("            Barisnya ditulis Pega saat seseorang membuka tab KPI Adjuster")
+		print("            di sana; entitas yang belum pernah memakainya memang kosong.")
+		print("            Yang perlu dipastikan: apakah entitas ini memang belum pernah")
+		print("            memakai layar itu — bukan bahwa tabelnya salah.")
+		return
+	}
+
+	// Nilai TIPE dibandingkan dengan yang dikenal modul. Yang tidak dikenal disebut satu
+	// per satu, karena satu nilai asing berarti ada baris yang tidak akan pernah terlihat.
+	known := map[string]bool{}
+	for _, t := range reportkpi.ReportTypes() {
+		known[string(t.Code)] = true
+	}
+
+	var unknown []string
+	for _, value := range state.Types {
+		if !known[value] {
+			unknown = append(unknown, value)
+		}
+	}
+
+	print("  [ok]    Nilai TIPE di basis data: %s", strings.Join(state.Types, ", "))
+
+	if len(unknown) > 0 {
+		print("  [PERIKSA] %d nilai TIPE TIDAK dikenal modul: %s",
+			len(unknown), strings.Join(unknown, ", "))
+		print("            Kedua tipe yang dikenal (OUTSTANDING, FINAL) dibaca dari literal")
+		print("            di dalam GetSummaryKPIAdjusterALL-SQL.xml, bukan dari master.")
+		print("            Baris ber-tipe di atas TIDAK akan pernah terlihat di layar,")
+		print("            dan tidak ada galat yang menandakannya. Tambahkan tipenya di")
+		print("            internal/reportkpi/component.go setelah artinya dipastikan.")
+		return
+	}
+
+	print("            Seluruhnya dikenal modul, sehingga tidak ada baris yang tersembunyi.")
+	print("            Catatan: modul ini MEMBACA saja. Yang mengisi tabel itu adalah")
+	print("            Pega lewat INSERT_KPIADJUSTER; selama masa paralel tepat satu")
+	print("            sistem yang boleh menulisnya (P-1).")
+}
+
+// checkReportKlaim memeriksa kesiapan modul Report Klaim (28 panel ekspor).
+//
+// # Apa yang benar-benar dijawab pemeriksaan ini
+//
+// Dua hal, dan keduanya adalah keadaan yang TIDAK terlihat sebagai kegagalan di layar:
+//
+//  1. Koneksi KEDUA portal (`ANEKA_<PORTAL_ALIAS>_*`) terpasang dan kalender liburnya
+//     dapat dibaca. Tanpanya, kolom hari kerja pada Report TAT ditandai tidak diketahui —
+//     bukan salah, tetapi juga bukan angka yang dapat dipakai menilai kinerja. Berkasnya
+//     tetap terunduh, dan tidak ada satu pun pesan galat yang muncul.
+//
+//  2. Laporan mana yang kuerinya BELUM selesai dipindahkan dari export. Ia disebutkan
+//     per lini bisnis, karena laporan yang sama berjalan normal pada lini lain — dan
+//     menyebut nama laporannya saja akan terbaca seolah seluruh laporan itu mati.
+//
+// Butir kedua dihitung dari rencana dan berkas .sql yang ada, bukan dari daftar tulisan
+// tangan, supaya kemajuan pemindahan ikut terbaca tanpa menyunting berkas ini.
+func checkReportKlaim(
+	ctx context.Context,
+	repo *reportklaimsql.Repo,
+	print func(string, ...any),
+) {
+	state := repo.CheckSource(ctx)
+
+	switch {
+	case !state.SecondConnection:
+		print("  [PERIKSA] Report Klaim: koneksi KEDUA portal tidak terpasang.")
+		print("            Isi blok ANEKA_<PORTAL_ALIAS>_* di .env bila kolom hari kerja")
+		print("            pada Report TAT memang harus terisi. Tanpanya laporan tetap")
+		print("            terunduh, dan kolom itu ditandai tidak diketahui (R-03).")
+	case state.HolidayError != nil:
+		print("  [PERIKSA] Report Klaim: kalender libur tidak dapat dibaca: %v", state.HolidayError)
+		print("            Koneksi keduanya hidup, jadi ini hampir pasti soal hak SELECT")
+		print("            akun aplikasi atas GENERAL.HRD_LBR — bukan objek yang belum ada.")
+	case state.HolidayDays == 0:
+		print("  [PERIKSA] Report Klaim: kalender libur %d KOSONG.", state.HolidayYear)
+		print("            Perhitungan hari kerja akan memotong akhir pekan saja, dan")
+		print("            hasilnya terlihat wajar. Pastikan tahun berjalan memang belum")
+		print("            diisi, bukan bahwa tabelnya salah.")
+	default:
+		print("  [ok]    Report Klaim: kalender libur %d dapat dibaca: %d hari",
+			state.HolidayYear, state.HolidayDays)
+	}
+
+	belum := reportklaimsql.NotPorted()
+	if len(belum) == 0 {
+		print("  [ok]    Seluruh kueri laporan sudah dipindahkan dari export.")
+		return
+	}
+
+	print("  [PERIKSA] %d kombinasi laporan x lini bisnis kuerinya BELUM dipindahkan:", len(belum))
+	for _, item := range belum {
+		print("            %-28s lini %-4s (%s)", item.Report, item.BusinessLine, item.Query)
+	}
+	print("            Permintaannya DITOLAK dengan sebab yang menyebut keduanya, bukan")
+	print("            dijawab berkas kosong. Lini lain pada laporan yang sama tetap jalan.")
+}
+
+// checkReportKPIPICTeknik memeriksa kesiapan tab KPI PIC Teknik.
+//
+// # Kenapa pemeriksaan ini terpisah dari checkReportKPI
+//
+// Karena tabnya membaca tabel yang BERBEDA. Tab KPI Adjuster membaca penilaian yang sudah
+// jadi; tab ini menghitungnya sendiri, dan SELURUH nilainya berasal dari tangga
+// `POOLDATA.M_KPI_PNC`. Satu tangga yang hilang membuat seluruh kolom Nilai kosong — tanpa
+// satu pun galat.
+//
+// # Yang dijawabnya, dan tidak dapat diketahui dari kode
+//
+//  1. Keempat tangga ada dan berisi.
+//  2. ARAH tiap tangga. Dua di antaranya tersusun MENURUN di produksi hari ini, dan itulah
+//     sebab nilai tertinggi justru diberikan kepada persentase terkecil. Arahnya dibaca dari
+//     DATA — kalau kelak isinya diperbaiki, pemeriksaan ini yang pertama menunjukkannya.
+//  3. Lubang dan tumpang tindih antar pita. Tumpang tindih di titik batas ADA hari ini dan
+//     itu yang membuat hasil Pega di sana bergantung urutan baris.
+func checkReportKPIPICTeknik(
+	ctx context.Context,
+	repo *reportkpisql.Repo,
+	print func(string, ...any),
+) {
+	jobs := []struct {
+		job      string
+		expected bool
+	}{
+		{reportkpi.JobProgress, true},
+		{reportkpi.JobAnalysis, false},
+		{reportkpi.JobAcceptance, false},
+		{reportkpi.JobSLA, true},
+	}
+
+	for _, item := range jobs {
+		state, err := repo.CheckBands(ctx, item.job)
+		if err != nil {
+			print("  [BELUM] Tangga nilai %q tidak dapat dibaca: %v", item.job, err)
+			print("            Seluruh kolom Nilai tab KPI PIC Teknik berasal dari %s.",
+				reportkpi.BandTable)
+			print("            Periksa hak SELECT akun aplikasi atas tabel itu.")
+			return
+		}
+
+		if state.Bands == 0 {
+			print("  [PERIKSA] Tangga nilai %q KOSONG di entitas ini.", item.job)
+			print("            Komponen itu akan tampil tanpa nilai — bukan bernilai nol.")
+			continue
+		}
+
+		arah := "menaik"
+		if state.Descending {
+			arah = "MENURUN"
+		}
+		print("  [ok]    Tangga %q: %d pita, tersusun %s", item.job, state.Bands, arah)
+
+		// Arah yang BERBEDA dari yang direplikasi modul adalah kabar penting, bukan galat.
+		// Ia berarti isi tabelnya sudah diperbaiki di produksi, dan replikasi cacatnya di
+		// modul ini menjadi selisih yang harus dicabut.
+		if state.Descending != item.expected {
+			print("  [PERIKSA] Arahnya BERBEDA dari yang direplikasi modul.")
+			print("            Modul mereplikasi keadaan Pega saat dibaca: %q tersusun %s.",
+				item.job, arahDari(item.expected))
+			print("            Bila isi tabelnya sudah diperbaiki, butir selisih terencana")
+			print("            tentang tangga terbalik perlu dicabut — lihat")
+			print("            internal/reportkpi/screen.go.")
+		}
+
+		for _, gap := range state.Gaps {
+			print("  [PERIKSA] Tangga %q: %s", item.job, gap)
+		}
+	}
+
+	print("            Catatan: tumpang tindih di titik batas MEMANG ada di produksi, dan")
+	print("            itu sebab hasil Pega di sana bergantung urutan baris. Modul ini")
+	print("            membacanya terurut ID dan memakai yang pertama cocok.")
+}
+
+// arahDari menggambar arah tangga sebagai kata.
+func arahDari(descending bool) string {
+	if descending {
+		return "MENURUN"
+	}
+	return "menaik"
 }

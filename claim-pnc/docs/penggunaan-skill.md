@@ -5628,3 +5628,537 @@ menghasilkan galat** melainkan kolom yang tertukar di layar.
 Definition: urutannya memang sudah "baca bukti → tulis uji dari bukti → tulis kode". Ia akan
 mulai berguna pada modul yang **menulis**, tempat perilaku yang benar tidak dapat dibaca dari
 kueri mana pun.
+
+## Sesi Report Klaim (2026-09-24)
+
+### Skill Matt Pocock: TIDAK ADA yang terpasang di lingkungan ini
+
+Daftar skill yang tersedia pada sesi ini diperiksa lebih dulu, dan **tidak satu pun skill
+`mattpocock-skills:*` ada di dalamnya**. Yang tersedia adalah skill bawaan Claude Code
+(`code-review`, `simplify`, `security-review`, `run`, `init`, `artifact-*`, `dataviz`,
+dan sejenisnya) ditambah `anthropic-skills:*`.
+
+Karena itu tidak ada skill yang dipanggil. Yang dikerjakan adalah **tekniknya**, dan
+ketiganya dicatat di bawah supaya dapat diperiksa.
+
+### Teknik `grilling` — dipakai pada diri sendiri, sebelum bertanya
+
+Tiga pertanyaan diajukan ke Work Owner, dan **ketiganya baru diajukan setelah angkanya
+dikumpulkan sendiri** — bukan ditanyakan lebih dulu:
+
+| Sebelum bertanya | Yang dikumpulkan |
+|---|---|
+| "berapa besar modul ini" | 28 panel, 24 activity, 26 rule SQL, 33 susunan kolom — dihitung dari harness 1,1 MiB |
+| "mana yang dapat dibangun" | ketersediaan setiap activity dan rule SQL diperiksa satu per satu |
+| "apa yang menghalangi" | tiga penghalang ditemukan beserta `berkas:baris`-nya |
+
+Manfaatnya terukur: pertanyaan cakupan dapat disajikan dengan ukuran nyata, dan Work Owner
+menjawabnya dalam satu putaran.
+
+### Teknik `domain-modeling` — satu label yang sengaja TIDAK diperbaiki
+
+Dropdown berlabel **"Treaty"** ternyata mengisi penyaring **lini bisnis**. Godaannya
+memperbaiki label; yang dikerjakan adalah menanyakannya, dan Work Owner memilih menirunya
+(`D-13`).
+
+Yang tetap dikerjakan: nama di dalam kode mengikuti ISINYA (`BusinessLine`), dan
+ketidakcocokan antara label layar dan nama internal ditulis di satu tempat. Dengan begitu
+pengguna tidak belajar ulang, dan pembaca kode tidak tertipu.
+
+Label kelima pilihannya **tidak ada di export** — dropdown-nya ber-`pyListSource`
+`associated`, dan tidak ada satu pun rule Property di export ini. Nama pilihannya karena
+itu diturunkan dari **potongan SQL yang dipasang tiap pilihan**, bukan ditebak, dan
+asalnya ditulis di komentarnya.
+
+### Teknik `codebase-design` — satu pemindai untuk 26 kueri
+
+Pertanyaan "apa yang sebenarnya bervariasi di sini" dijawab: **susunan kolomnya**, bukan
+cara membacanya. Karena itu setiap kueri mengalias kolomnya ke nama properti CSV, dan satu
+pemindai generik melayani seluruh laporan — tanpa satu baris pun kode pemetaan per
+laporan.
+
+Satu kekecualian dibuat sadar: satu laporan membutuhkan periode berbentuk `"2026-09"` yang
+di sistem lama dibuat `TO_CHAR` — fungsi yang dilarang dan dijaga uji. Penggantinya kait
+`derive` yang hanya dimiliki laporan itu, bukan pelonggaran aturan untuk semuanya.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Bagaimana tertangkap |
+|---|---|
+| Menghitung **34 susunan kolom** padahal 33 | Dua blok berdaftar kolom identik — Pega menyimpan parameter langkah dua kali |
+| Menyimpulkan REPORT MITRA "terhalang sebagian, kolomnya saja" | Membaca kuerinya sampai `FROM`: DB Link-nya INNER JOIN, jadi ia menentukan **baris** |
+| Menetapkan REPORT DATA KASIR "tanpa penyaring" | Penyaringnya ada, disisipkan lewat `{ASIS:}` dari activity — tidak terlihat di kuerinya |
+| Menetapkan PENGIRIMAN PLA memakai penyaring lini bisnis | Activity-nya tidak pernah mengisi properti itu |
+
+Keempatnya tertangkap sebelum kode ditulis, kecuali yang kedua — yang tertangkap oleh uji
+katalog sendiri (`TestLaporanTerhalangMenyebutkanSebabnya` gagal karena jumlah laporan
+terhalang berubah dari dua menjadi tiga).
+
+---
+
+## Sesi Report KPI PNC — tab KPI Adjuster (2026-09-24)
+
+### Skill Claude Code yang tersedia, dan kenapa tidak dipakai
+
+Terpasang di lingkungan ini: `code-review`, `simplify`, `security-review`, `run`,
+`workflow-authoring`, `dataviz`, `artifact-design`, dan sejumlah skill artefak.
+
+| Skill | Alasan tidak dipakai |
+|---|---|
+| `run` | Layar sudah teruji lewat `vitest` terhadap peladen tiruan, dan menjalankan aplikasi menuntut Oracle yang belum tersedia. Pengujian nyata adalah gerbang 1 (`S-8`), masih terhalang `ADR-0027` |
+| `code-review` | Kode ini baru ditulis dan belum ada diff terhadap `master` yang layak direview terpisah. Pemeriksaannya dikerjakan sebagai bagian penulisan — lihat "Teknik yang dipakai" |
+| `simplify` | Ia mencari peluang penyederhanaan pada kode yang sudah berjalan. Modul ini justru mengikuti pola modul sebelumnya dengan sengaja; menyederhanakannya menjauh dari pola akan membuat modul berikutnya kehilangan contoh |
+| `security-review` | Dipertimbangkan. Permukaan modul ini kecil — lima rute GET, satu POST yang selalu menolak, tanpa satu pun jalur tulis — dan tiga hal yang biasanya ia tangkap sudah ditangani sebagai bagian penulisan: parameter binding tanpa perkecualian, portal wajib di setiap rute, dan nilai sensitif tidak masuk log maupun berkas contoh |
+| `dataviz` | Layar ini TABEL, bukan bagan. `GetSummaryKPIAdjusterKuartal` tampaknya memasok bagan di Pega, tetapi komponen penggambarnya tidak ada di export — jadi tidak ada bagan yang perlu ditiru |
+| skill artefak | Keluarannya kode di repositori ini, bukan halaman yang dibagikan |
+
+### Teknik yang DIPAKAI, meski skill-nya tidak terpasang
+
+**`grilling` — memaksa jawaban sebelum menulis.** Empat pertanyaan diajukan dengan pilihan
+yang setiap satunya menyebutkan KONSEKUENSINYA, bukan sekadar menawarkan opsi. Dua di
+antaranya mengubah pekerjaan secara mendasar: jawaban lingkup memilih tab yang penghalangnya
+paling sedikit, dan jawaban hardcode menetapkan `P-5` apa adanya alih-alih memperbaiki
+sepuluh cacat sambil jalan.
+
+Yang paling berguna: setiap pilihan menyebut apa yang akan RUSAK bila dipilih. Pilihan
+"ketiga tab sekaligus" menyatakan terang-terangan bahwa tab PIC Teknik akan lahir dengan
+kolom NILAI kosong. Tanpa itu, jawabannya mungkin berbeda dan pekerjaannya sia-sia.
+
+**`codebase-design` — seam dan kedalamannya.** Seam `Repo` dideklarasikan di paket yang
+MEMAKAINYA (`internal/reportkpi`), bukan di paket yang mengisinya. Ia punya DUA pengisi
+nyata — SQL dan memori — sehingga memenuhi syarat "dua adapter berarti seam nyata".
+Pengisi memori sengaja MENIRU aturan SQL (tipe ALL menghasilkan dua baris, rentang setengah
+terbuka, nilai bukan angka diabaikan dari rata-rata) alih-alih menyederhanakannya; pengisi
+yang lebih longgar dari aslinya membuat uji lulus tanpa membuktikan apa pun.
+
+**`domain-modeling` — menajamkan istilah sebelum menamai.** Tiga istilah dipertajam:
+
+| Istilah Pega | Isinya | Nama di sini |
+|---|---|---|
+| `UserTeknisGroup` | nama adjuster | `Adjuster` |
+| `NameOfBank` | nama adjuster (pada penyaring) | `Adjuster` |
+| `AlasanKlaim` | nilai komponen Propose Adjustment | `PROPOSE` |
+
+Ketiganya dicatat sebagai `LegacyAlias` di `component.go` — bukan dibuang — supaya
+penelusuran ke sistem lama tetap mungkin, dan supaya terlihat betapa jauh alias itu dari
+isinya.
+
+Satu lagi yang lebih halus: `Score` dibuat sebagai tipe dengan penanda `Present`, bukan
+`float64` telanjang. Dasarnya pembacaan DDL: kolomnya TEKS, sehingga "belum dinilai" dan
+"dinilai nol" adalah dua keadaan yang nyata-nyata berbeda — dan pada laporan penilaian
+kinerja, menyamakan keduanya menurunkan rata-rata tanpa seorang pun tahu.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+Tiga, dan ketiganya tertangkap sebelum sampai ke berkas yang berjalan:
+
+| # | Kesalahan | Bagaimana tertangkap |
+|---|---|---|
+| 1 | Menulis `TO_NUMBER(... DEFAULT NULL ON CONVERSION ERROR)` supaya baris rusak tidak menggagalkan laporan | Membaca ulang akibatnya terhadap `AVG`: NULL hilang dari pembagi, jadi ia MENGUBAH ANGKA — bukan hanya menangani galat. Melanggar `P-5` dan menambah pengecualian portabilitas keempat. Dicabut, lalu dijaga uji |
+| 2 | Menulis `TRUNC(k.TANGGAL)` dan `TO_CHAR(k.TANGGAL,…)` mengikuti kueri lama | Membandingkan dengan daftar bentuk khas Oracle pada `D-20` dan dengan `inboxrclpucl.sql`, yang sudah memakai rentang setengah terbuka. Diganti |
+| 3 | Menganggap snapshot git di kepala percakapan masih berlaku | `git status` sebelum menyentuh `config.go` menunjukkan tujuh berkas sudah berubah oleh sesi paralel. Diperiksa dulu, tidak ditimpa |
+
+Kesalahan ketiga yang paling mahal bila lolos: menulis ulang konfigurasi `ANEKA_*` akan
+menghapus pekerjaan sesi lain yang sudah selesai dan sudah punya uji.
+
+### Manfaat terhadap proyek
+
+1. **Lingkup dipilih berdasarkan penghalang, bukan urutan tab.** Tab yang dibangun adalah
+   satu-satunya yang tidak menyentuh DB link, `M_KPI_PNC`, maupun hardcode operator —
+   sehingga ia dapat selesai UTUH alih-alih tiga tab yang semuanya separuh.
+2. **Satu temuan yang mengubah bentuk modul ditemukan lebih awal**, bukan saat
+   implementasi: grid Detail di Pega MENULIS, dan `P-1` melarang modul ini menirunya.
+3. **Delapan selisih terhadap Pega dinyatakan di muka** dan digambar di layar, sehingga
+   penguji gerbang 1 tidak melaporkannya sebagai kerusakan.
+
+### Catatan untuk tahap berikutnya
+
+- Tab **KPI PIC Teknik** menuntut isi `POOLDATA.M_KPI_PNC` (tangga penilaian) dan
+  perhitungan jam kerja. Keduanya belum ada; yang kedua kini punya jalan keluar lewat
+  koneksi `ANEKA_<ALIAS>_*`.
+- Tab **KPI Admin** menuntut satu master baru berisi anggota tim, bobot, dan ambang SLA —
+  sekarang seluruhnya literal di dalam kueri.
+- `GetSummaryKPIAdjusterKuartal` belum dipakai. Ia meringkas per TAHUN dan tampaknya
+  memasok bagan yang komponennya tidak ada di export; memutuskan nasibnya menuntut
+  keterangan dari Work Owner, bukan pembacaan export lebih lanjut.
+
+
+---
+
+## Sesi Report Klaim — layar dan perakitan (2026-09-25)
+
+Lanjutan sesi 2026-09-24. Yang dikerjakan: lapisan HTTP, layar React, perakitan `cmd`, dan
+entri mode periksa.
+
+### Skill yang tersedia, dan yang dipakai
+
+| Skill | Dipakai | Alasan |
+|---|---|---|
+| `mattpocock-skills:codebase-design` | **ya** | menentukan letak seam dan bentuk antarmuka modul |
+| `mattpocock-skills:domain-modeling` | **ya** | mempertajam istilah sebelum masuk ke kontrak API |
+| `mattpocock-skills:grilling` | **ya**, pada diri sendiri | setiap angka diuji ke export lebih dulu |
+| `mattpocock-skills:tdd` | tidak | uji ditulis berdampingan, bukan merah-hijau berurutan |
+| `security-review` | tidak terpasang; pemeriksaannya tetap dikerjakan manual | lihat di bawah |
+
+### `codebase-design` — apa yang benar-benar ia ubah
+
+Dua keputusan bentuk datang dari kosakata skill ini:
+
+**`Repo` menerima dua koneksi lewat konstruktor, bukan lewat setter.** Pertanyaan
+"perilaku apa yang bervariasi di sini" menjawabnya: yang bervariasi adalah **ada atau
+tidaknya** koneksi kedua, dan itu tetap sepanjang umur repo. Setter akan menciptakan
+keadaan antara — repo sudah dapat dipakai tetapi koneksi keduanya belum terpasang — dan
+pada keadaan itu laporan mengosongkan kolom yang sebenarnya dapat diisi, tanpa ada yang
+terlihat keliru.
+
+**`NotPorted()` dihitung, bukan didaftar.** Uji deletion-nya sederhana: bila daftar itu
+ditulis tangan, apa yang muncul kembali? Jawabannya "daftar yang usang di tempat lain" —
+dan usangnya tidak akan terdeteksi apa pun. Menghitungnya dari `plans` dan berkas `.sql`
+membuat satu-satunya sumber kebenaran tetap satu.
+
+### `domain-modeling` — satu label yang sengaja TIDAK diperbaiki
+
+Dropdown lini bisnis di Pega berlabel **"Treaty"**, dan isinya bukan treaty. Godaannya
+memperbaiki nama itu di layar baru.
+
+Skill ini justru menahannya: yang dipertajam adalah **istilah di dalam kode**, bukan teks
+yang dilihat pengguna. `D-13` menetapkan layar meniru Pega supaya pengguna tidak belajar
+ulang. Jadi kodenya memakai `BusinessLine` — nama yang benar — sementara labelnya tetap
+"Treaty", dengan catatan tertulis yang menyatakan ketidaksesuaiannya disengaja. Tanpa
+catatan itu, orang berikutnya akan "memperbaikinya" dan mengubah layar yang dihafal
+pengguna.
+
+### Pemeriksaan keamanan yang tetap dikerjakan meski skill-nya tidak ada
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Perangkaian SQL dari nilai pengguna | nihil — seluruh kueri memakai parameter binding, dijaga uji |
+| Nama kolom sort/filter dari klien | nihil — tidak ada satu pun parameter yang menjadi bagian teks SQL |
+| Rute tanpa pemeriksaan portal | nihil — **seluruh** rute, termasuk katalog, di balik `ActivePortal` |
+| Berkas dilayani entitas yang salah | ditutup di dua tempat: header `X-Portal` wajib, dan koneksi dipilih per permintaan |
+| Data sensitif masuk log | log ekspor memuat kode laporan, penyaring, dan login pemanggil — **bukan** isi barisnya |
+
+Satu hal yang **tidak** tertutup dan dinyatakan apa adanya: **tidak ada pemeriksaan peran**
+pada modul ini. Siapa pun yang dapat masuk dan memilih portal dapat mengunduh seluruh 25
+laporan lintas cabang. Itu keadaan `D-59` — satuan izin adalah menu, tanpa pemisahan tugas
+— dan penutupannya `TKT-F3-004`, bukan pekerjaan modul ini.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| # | Kesalahan | Bagaimana tertangkap | Biayanya |
+|---|---|---|---|
+| 1 | Menjalankan `npx prettier --write` di pohon **tanpa konfigurasi prettier** | Diff membengkak menjadi ratusan baris gaya, bukan baris isi | sedang |
+| 2 | `git checkout --` atas dua berkas **bersama** untuk memulihkan kesalahan nomor 1 | Diff berubah menjadi penghapusan; pekerjaan **sesi lain** yang belum ter-commit hilang | **berat** |
+| 3 | Menganggap `gofmt -l` menandai berkas saya | Ia menandai **seluruh** berkas repositori — akhiran barisnya CRLF, bukan cacat format | ringan |
+
+Kesalahan nomor 2 adalah yang terpenting dicatat: **perintah pemulihan sama berbahayanya
+dengan perintah yang merusak.** Yang hilang bukan pekerjaan saya, sehingga saya tidak dapat
+melihatnya hilang — yang terlihat hanyalah diff yang kembali bersih.
+
+Pemulihannya: isi kedua berkas ditulis ulang dari catatan percakapan, diberi komentar
+`CATATAN PEMULIHAN` yang menyatakan terus terang bahwa komentar aslinya tidak dapat
+dipulihkan kata per kata. Diff akhir murni penambahan, nol baris terhapus.
+
+Kesalahan nomor 3 mengajarkan hal yang lebih kecil tetapi berulang: **alat ukur diuji
+lebih dulu pada kasus yang jelas benar.** `gofmt -l` yang menandai 100% berkas bukan
+temuan, melainkan alat yang salah dipakai.
+
+### Manfaat terhadap proyek
+
+1. **Tiga keputusan ekspor yang tidak punya padanan di sistem lama** — batas baris, berkas
+   kosong berheader, dan validasi sebelum byte pertama — diambil dengan alasan tertulis,
+   bukan diwarisi dari perilaku Pega yang justru sedang ditinggalkan.
+2. **Kekurangan modul terbaca dari mode periksa**, dan daftarnya dihitung sehingga tidak
+   dapat menjadi usang.
+3. **Satu kecelakaan lintas sesi terdokumentasi lengkap**, termasuk dua aturan kerja yang
+   diambil darinya.
+
+### Catatan untuk tahap berikutnya
+
+- Tiga kueri Non-MBU menuntut penulisan ulang `GET_INTERPOLASIPNC` (17 pita
+  `GCNM_FEE_SCALE`) dan `GET_POSISI_PROGRESS2` di Go. **Source keduanya ada** — ini
+  pekerjaan, bukan penghalang artefak.
+- Angka batas 200.000 baris adalah perkiraan yang dinyatakan sebagai perkiraan.
+  `ADR-0011` menunggu jawaban Work Owner atas "berapa baris maksimum yang wajib dilayani".
+- Bila kerja paralel berlanjut, berkas bersama (`App.tsx`, `menu/registry.ts`) sebaiknya
+  disunting dengan `Edit` bertarget sempit — tidak pernah ditulis ulang utuh, dan tidak
+  pernah dipulihkan dengan `git checkout`.
+
+## Sesi Report KPI PNC — tab KPI Admin dan pembacaan tab ketiga (2026-09-25)
+
+Lanjutan sesi 2026-09-24. Lingkup naik menjadi tiga tab.
+
+### `mattpocock-skills:grilling`
+
+**Kapan** — sebelum satu baris kode tab KPI Admin ditulis, dan sekali lagi sebelum memutuskan
+tab ketiga dibangun atau tidak.
+
+**Kenapa dipakai** — tiga tab berjudul sama ("KPI") dan mudah diperlakukan sebagai varian satu
+sama lain. Disiplin skill ini menuntut premis diuji ke bukti lebih dulu.
+
+**Keluaran yang nyata:**
+
+- Terbukti ketiganya **bukan** varian: berbeda yang dinilai, berbeda tabel sumber, berbeda bentuk
+  keluaran. Itu yang membuat `ReportKPIAdmin` dipisah, bukan dijadikan cabang di dalam satu
+  komponen.
+- Empat keanehan Pega ditemukan dan **dipertahankan** (`P-5`) alih-alih dirapikan — penyaring
+  Group Panel yang berbeda antara kartu skor dan rinciannya, rentang 2023 yang tertanam, ambang
+  SLA yang berbeda, dan enam Operator ID yang di-hardcode.
+- Satu pertanyaan yang menyelamatkan ketelusuran: *"apakah penyaring kartu skor dan penyaring
+  rinciannya benar-benar sama?"* Ternyata **tidak** — `009` hanya ada di satu sisi. Bila tidak
+  ditanyakan, saya akan menyamakannya dan angkanya berubah tanpa ada yang tahu.
+
+**Manfaat ke keputusan teknis** — keempat keanehan itu kini dikunci uji, sehingga tidak dapat
+"dibersihkan" diam-diam oleh siapa pun sesudah saya.
+
+### `mattpocock-skills:codebase-design`
+
+**Kapan** — saat memutuskan tab KPI Admin masuk ke modul `reportkpi` yang ada atau menjadi modul
+sendiri.
+
+**Keluaran** — masuk ke modul yang ada, tetapi dengan berkas, kueri, dan penyimpan tersendiri.
+Alasannya kosakata skill ini: ketiga tab berbagi **satu seam** (`Repo`) dan satu kerangka layar,
+sehingga memisahkannya menjadi modul akan menggandakan perakitan tanpa menambah apa pun. Yang
+dipisah adalah **berkasnya**, bukan modulnya.
+
+Uji deletion-nya lulus: kalau `admin_scorecard.go` dihapus, perakitan empat belas metrik beserta
+bentuk angkanya akan muncul kembali di lapisan HTTP dan di layar sekaligus.
+
+### `mattpocock-skills:domain-modeling`
+
+**Kapan** — saat menamai metrik kartu skor.
+
+**Keluaran** — istilah Pega yang menyesatkan **tidak** dibawa. Yang paling jelas: dua kolom
+berjudul sama ("Tgl Terima Dokumen") menunjuk kolom basis data yang berbeda. Judulnya
+dipertahankan (`D-13`) tetapi **kuncinya dibedakan** (`tgl_terima_dokumen` versus
+`tgl_terima_dokumen_pa`), sehingga yang tertukar akan terlihat sebagai kolom yang hilang, bukan
+sebagai angka yang berbeda.
+
+### Yang TIDAK dipakai, dan sebabnya
+
+`tdd` — uji ditulis berbarengan, bukan mendahului, karena bentuk keluarannya baru pasti setelah
+kueri Pega dibaca. `research` — seluruh fakta ada di dalam repositori; tidak ada satu pun klaim
+di sesi ini yang bersumber dari luar.
+
+### Catatan jujur tentang perkakas
+
+Saya menjalankan `npx prettier --write` pada repositori yang **tidak punya konfigurasi Prettier**,
+lalu merusak satu berkas saat mencoba mengembalikannya lewat skrip sebaris di shell. Dicatat di
+catatan pengembangan §53.3. Ini bukan skill yang gagal — ini perkakas yang tidak seharusnya
+dipanggil sama sekali.
+
+
+---
+
+## Sesi Report Klaim — tiga kueri terakhir (2026-09-25, lanjutan)
+
+### Skill yang dipakai
+
+| Skill | Dipakai | Untuk apa |
+|---|---|---|
+| `mattpocock-skills:codebase-design` | **ya** | menentukan di mana aturan fee dan progres hidup, dan bentuk `byLine` setelah cabangnya tidak lagi seragam |
+| `mattpocock-skills:grilling` | **ya**, pada diri sendiri | setiap klaim "kolom ini kosong di Pega juga" diuji ke export, bukan disimpulkan |
+| `mattpocock-skills:tdd` | **sebagian** | satu-satunya kali dalam sesi ini uji ditulis LEBIH DULU, dan itu yang paling berhasil — lihat di bawah |
+
+### `codebase-design` — dua keputusan bentuk
+
+**Aturan fee dan progres hidup di paket domain, bukan di adapter.** Pertanyaan skill ini —
+"apa yang sebenarnya bervariasi di sini" — memisahkan dua hal yang di Oracle menyatu dalam
+satu fungsi: **isi tangga fee** berubah ketika kebijakan berubah, sedangkan **cara
+menginterpolasinya** tidak. Yang pertama data, yang kedua aturan. Memindahkan keduanya ke
+adapter akan membuat aturan uang hanya dapat diuji dengan basis data.
+
+**Parameter melekat pada cabang, bukan pada laporan.** Uji deletion-nya: jika `branch` tidak
+ada, apa yang muncul kembali? Jawabannya "satu penyusun parameter yang harus tahu kueri mana
+yang sedang dipilih" — yaitu percabangan yang sama, ditulis dua kali di tempat berbeda.
+
+### Satu uji yang ditulis lebih dulu, dan hasilnya
+
+Uji "setiap kolom berkas harus punya sumber" ditulis **sebelum** memeriksa apakah ia lulus.
+Ia gagal seketika pada 167 kolom di 9 laporan — enam di antaranya cacat nyata pada pekerjaan
+yang sudah dianggap selesai dan sudah didokumentasikan sebagai selesai.
+
+Yang paling berat: **`produksi-klaim-pa` akan menghasilkan berkas 15 kolom yang seluruhnya
+kosong.** Kuerinya memakai alias rule asal (`PRODKE`, `MARKETINGNAME`, …) sementara berkasnya
+meminta nama yang sama sekali berbeda; penyalinnya di Pega adalah lima belas langkah
+Property-Set yang terlewat sepenuhnya saat dipindahkan.
+
+**Tiga hari pembacaan ulang tidak menemukannya. Satu uji yang membandingkan dua daftar
+menemukan semuanya dalam satu jalan.**
+
+Sebabnya dapat dinamai: cacat itu **tidak menghasilkan galat apa pun**. Berkasnya terunduh,
+berjudul benar, berjumlah kolom benar, dan kosong — tidak dapat dibedakan dari periode yang
+memang tidak punya data. Kelas cacat seperti ini hanya dapat ditangkap dengan membandingkan
+apa yang DIMINTA dengan apa yang DIHASILKAN, dan perbandingan itu harus dilakukan mesin.
+
+### Kesalahan sendiri pada sesi ini
+
+| # | Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|---|
+| 1 | Membandingkan nama properti dengan alias SQL **secara peka huruf** | Uji melaporkan `RESPONSENOTE` versus `ResponseNote` sebagai cacat; properti Pega tidak peka huruf | Sebelum melaporkan selisih, pastikan dulu aturan pembandingnya sama dengan aturan sistem yang dibandingkan |
+| 2 | Menulis uji `TestDuaPitaBerimpitTidakMembagiDenganNol` untuk cabang yang **tidak dapat dicapai** | Ujinya gagal; penalaran ulang menunjukkan pemilihan indeks terkecil selalu menyerapnya lebih dulu | Uji yang gagal belum tentu kode yang salah — kadang ujinya yang salah paham |
+| 3 | Menambahkan blok SQL ber-CRLF ke berkas yang seluruhnya LF | Anchor `replace` berikutnya tidak ketemu | Periksa akhiran baris berkas sebelum menambahinya, bukan sesudah gagal |
+| 4 | Memakai `VARCHAR2` di dalam `JSON_TABLE` | Ditemukan saat membaca ulang kueri Komite; **bukan** oleh penjaga SQL, yang belum mengenalnya | Penjaga hanya menangkap pola yang sudah diketahui; setiap pola baru yang ditemukan harus langsung masuk ke sana |
+
+Kesalahan nomor 4 sudah ditutup: `VARCHAR2` kini termasuk pola terlarang, dan 18
+pemakaiannya diperbaiki — empat belas di antaranya dari pekerjaan sesi sebelumnya.
+
+### Manfaat terhadap proyek
+
+1. **Seluruh 26 kueri dipindahkan.** Tidak ada lagi panel yang menolak dengan
+   `ErrQueryNotPorted`.
+2. **Enam cacat senyap ditemukan dan empat diperbaiki**, seluruhnya pada kelas yang tidak
+   menghasilkan galat.
+3. **Enam belas kolom yang tidak pernah berisi data** kini terdaftar, terkunci uji, dan dapat
+   ditanyakan ke pemilik laporannya.
+4. **Empat selisih dinyatakan di muka** alih-alih ditemukan saat gerbang 1 berjalan.
+
+### Catatan untuk tahap berikutnya
+
+- Uji `TestSetiapKolomBerkasPunyaSumber` layak ditiru di modul laporan mana pun yang
+  menulis berkas dari daftar kolom. Ia murah, dan yang ditangkapnya tidak tertangkap apa pun
+  yang lain.
+- Empat selisih §53.5 menunggu Work Owner. Dua di antaranya — hitungan FU terlambat dan hari
+  kerja Komite — **tidak dapat dibuktikan setara** dari bahan yang ada, dan itu harus
+  disampaikan apa adanya, bukan disamarkan sebagai "kemungkinan kecil berbeda".
+
+---
+
+## Sesi Report Klaim — pemeriksaan ulang "seperti Pega" (2026-09-25, lanjutan)
+
+### Skill yang dipakai
+
+| Skill | Dipakai | Untuk apa |
+|---|---|---|
+| `mattpocock-skills:grilling` | **ya**, pada pekerjaan sendiri | setiap klaim "kolom ini kosong di Pega juga" diuji ke export — dan enam di antaranya ternyata salah |
+| `mattpocock-skills:codebase-design` | **ya** | menentukan di mana perangkaian faktor dominan hidup setelah SQL terbukti tidak dapat melakukannya |
+
+### `grilling` pada diri sendiri — enam klaim yang gugur
+
+Sesi sebelumnya menyimpulkan 16 kolom "kosong juga di Pega". Instruksi Work Owner *"coba di
+cek lagi"* memaksa pemeriksaan ulang, dan **enam dari kesimpulan itu salah**.
+
+Sebabnya satu, dan patut dinamai: **model saya tentang cara Pega mengisi kolom tidak
+lengkap.** Saya hanya memeriksa alias kueri. Pega punya jalan kedua — langkah Property-Set
+di activity — dan enam kolom diisi lewat jalan itu.
+
+Empat di antaranya lebih buruk lagi: saya sudah menulisnya sebagai **konstanta**
+(`'Final'`, `'RCL'`, `'0'`) dan mencatatnya di komentar sebagai *"nilai tetap di sistem
+lama, disalin apa adanya"*. Ternyata itu hanya **cabang pertama** dari percabangan yang
+langkah-langkah berikutnya timpa.
+
+**Pelajarannya:** berhenti membaca pada langkah pertama yang cocok adalah cara paling mudah
+menghasilkan kesimpulan yang terdengar meyakinkan dan salah. Komentar saya bahkan
+menyatakan kepastian — *"disalin apa adanya"* — atas sesuatu yang tidak saya periksa habis.
+
+### `codebase-design` — satu keputusan yang dipaksa oleh bukti
+
+Kolom "Dominan Factor" mula-mula saya tulis sebagai `STRING_AGG` di SQL, mengikuti padanan
+yang Steering §4 tetapkan. Pemeriksaan sederhana menjatuhkannya: **Oracle 19c tidak punya
+`STRING_AGG`**, dan itulah basis data yang dipakai hari ini.
+
+Pertanyaan skill ini — "di mana aturan ini seharusnya hidup" — menjawabnya: perangkaian
+teks adalah aturan pembentukan, bukan pengambilan data. Ia pindah ke paket domain, mengikuti
+pola yang sudah dipakai tiga kali (kalender libur, tangga fee, nama tahapan progres).
+
+Hasil sampingannya lebih berharga daripada kolomnya sendiri: **satu padanan di Steering
+terbukti tidak dapat dijalankan**, dan itu diangkat sebagai temuan alih-alih ditambal diam-
+diam di satu kueri.
+
+### Kesalahan sendiri pada sesi ini
+
+| # | Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|---|
+| 1 | Menyimpulkan empat kolom TAT adalah konstanta setelah membaca langkah pertama | Sapuan yang memodelkan Property-Set | Berhenti pada kecocokan pertama menghasilkan kepastian palsu |
+| 2 | Memperbaiki cacat Pega tanpa diminta, lima kali | Ralat Work Owner | "Terlihat jelas salah ketik" bukan izin mengubah isi berkas yang dipakai orang |
+| 3 | Memakai `STRING_AGG` karena Steering menyebutnya | Pemeriksaan terhadap versi Oracle yang dipakai | Padanan di dokumen pun perlu diuji terhadap basis data yang benar-benar dijalankan |
+| 4 | Memakai heuristik "prakondisi terdekat" untuk memasangkan langkah dengan syaratnya | Hasilnya memasangkan syarat yang sama pada dua langkah berbeda | Heuristik yang tidak dapat divalidasi tidak boleh menjadi dasar kesimpulan — pada satu kolom (`CityID`) saya berhenti dan menyatakan tidak dapat dipastikan |
+
+Kesalahan nomor 2 adalah yang paling penting dicatat, karena ia berulang: pada §50.3 saya
+juga "menyelaraskan" alias `IsCFS`, dan mencatatnya sebagai perbaikan yang wajar. Ralat hari
+ini mencabut keduanya sekaligus.
+
+### Manfaat terhadap proyek
+
+1. **Enam cacat pemindahan diperbaiki**, empat di antaranya kolom yang isinya salah — bukan
+   kosong. Kolom yang salah isi jauh lebih berbahaya daripada kolom kosong.
+2. **Lima perubahan isi berkas yang tidak diminta dicabut**, dan selisih yang menunggu
+   persetujuan turun dari empat menjadi dua.
+3. **Sapuan dua arah menghasilkan nol selisih**: tidak ada kolom Pega yang terlewat, dan
+   tidak ada kolom yang kita isi sendiri.
+4. **Satu padanan Steering terbukti tidak dapat dijalankan**, dan diangkat sebagai temuan.
+
+### Catatan untuk tahap berikutnya
+
+- Sapuan "dua jalan pengisian" layak dijadikan perkakas tetap bila modul laporan lain
+  dibangun. Ia menemukan enam cacat yang tidak ditemukan pembacaan manual berhari-hari.
+- `CityID` pada TAT punya cabang ketiga (`OccupationCode + CloseClaimNote`) yang syaratnya
+  bergantung pada properti yang tidak pernah di-set. Saya **tidak** mengubahnya, dan
+  **tidak** menyatakannya mati — yang dapat dipastikan hanyalah bahwa saya tidak dapat
+  memastikannya.
+
+## Sesi Report KPI PNC — tab KPI PIC Teknik (2026-09-25)
+
+Penutup modul Report KPI PNC. Ketiga tab selesai.
+
+### `mattpocock-skills:grilling`
+
+**Kapan** — dua kali. Pertama saat memeriksa ulang isi `M_KPI_PNC` yang dilampirkan Work
+Owner; kedua sebelum memutuskan cacat yang ditemukan direplikasi atau diperbaiki.
+
+**Keluaran yang paling berharga — satu pertanyaan yang tidak akan terpikir tanpa disiplin
+ini:** *"tangga nilainya naik atau turun, dan angka yang dikirim ke sana artinya apa?"*
+
+Masing-masing tampak wajar sendirian. Tangga 0–20 → 5 wajar untuk "persentase terlambat".
+Angka "% tepat waktu" wajar sebagai keluaran. **Yang janggal adalah pasangannya**, dan itu
+hanya terlihat bila keduanya ditanyakan bersamaan.
+
+Tiga bukti pendukungnya semuanya berupa **hal yang tidak terpakai atau ditambal** — variabel
+mati yang menghitung rasio yang benar, tambalan `@if(... >= 100, 5, ...)`, dan penulisan
+persentase 99 alih-alih 100. Pelajaran yang saya catat: **kode mati dan tambalan khusus
+adalah tanda paling jujur bahwa ada yang salah di sebelahnya.**
+
+**Manfaat ke keputusan teknis** — temuannya menghasilkan gejala yang dapat **diperiksa Work
+Owner sendiri di Pega hari ini** (dua PIC sama-sama "99%" dengan nilai 5 dan 1), sehingga ia
+tidak perlu mempercayai pembacaan saya atas kode.
+
+### `mattpocock-skills:codebase-design`
+
+**Kapan** — saat memutuskan di mana perakitan keempat komponen tinggal.
+
+**Keluaran** — di `usecase`, bukan di SQL dan bukan di layar. Kosakata skill ini yang
+memutuskan: repositori mengembalikan **tanggalnya**, bukan kesimpulan tepat-atau-tidak, karena
+penentuan itu menempuh kalender hari kerja — dan kalender adalah **aturan bisnis** (`D-50`),
+bukan pengambilan data.
+
+Uji deletion-nya lulus: kalau `picteknik_score.go` dihapus, ketiga pembulatan beserta tambalan
+100% akan muncul kembali di lapisan HTTP dan di layar sekaligus.
+
+Skill ini juga yang menahan saya memecah tab ini menjadi modul sendiri. Ia berbagi seam
+`Repo` dan kerangka layar dengan kedua tab lain; yang dipisah adalah **berkasnya**, bukan
+modulnya.
+
+### `mattpocock-skills:domain-modeling`
+
+**Kapan** — saat menamai bentuk data mentahnya.
+
+**Keluaran** — nama Pega yang menyesatkan **tidak** dibawa. Yang paling jelas: kolom
+`STSKLAIM` pada kueri progres tidak menyiratkan apa pun tentang isinya; yang menjelaskannya
+adalah nama variabel penerimanya, `local.tdkterlambat`. Di sini ia bernama `OnTime`, dan
+asal-usulnya ditulis di komentar supaya penelusuran balik ke Pega tetap mungkin.
+
+Hal yang sama pada `.Country` / `.CountryID` / `.ClaimNo` / `.ClaimAmount` — empat properti
+Pega yang dipakai ulang untuk total, tercapai, persen, dan nilai. Keempatnya diberi nama yang
+menyebut isinya.
+
+### Yang TIDAK dipakai, dan sebabnya
+
+`tdd` — uji ditulis berbarengan, bukan mendahului, karena bentuk keluarannya baru pasti
+setelah keempat sub-activity Pega dibaca. `research` — seluruh fakta dari dalam repositori
+ditambah satu lampiran Work Owner; tidak ada klaim yang bersumber dari luar.
+
+### Catatan cara kerja yang saya pertahankan dari sesi sebelumnya
+
+Tidak menjalankan pemformat apa pun (repositori ini tidak punya konfigurasinya), dan tidak
+memperbaiki berkas dengan skrip sebaris lewat shell bila isinya memuat tanda kutip. Skrip
+bantu ditulis ke berkas scratchpad lebih dulu, lalu dijalankan dari sana.

@@ -355,6 +355,31 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+  // MENU_ID 84 "Report KPI PNC", di bawah kelompok REPORT.
+  //
+  // Rutenya `/report-kpi`, bukan `/report-kpi-pnc`: akhiran "PNC" dibuang karena seluruh
+  // aplikasi ini adalah Claim PNC — sama seperti `masterstatus` membuang "Klaim" dari
+  // "Master Status Klaim" (`D-81`).
+  //
+  // JANGAN tertukar dengan MENU_ID 83 "Report Adjuster", yang MENU_PROGRAM-nya memang
+  // KOSONG di basis data dan karena itu tidak dapat dipetakan sama sekali.
+  //
+  // CATATAN PEMULIHAN: baris ini sempat TERHAPUS pada 2026-09-25 oleh `git checkout`
+  // yang dijalankan sesi lain untuk membatalkan pemformatan ulang Prettier. Kodenya
+  // dipulihkan apa adanya; komentar aslinya tidak dapat dipulihkan utuh.
+  ReportKPIHarness: '/report-kpi',
+  // MENU_ID 85 "Report Klaim", di bawah kelompok REPORT.
+  //
+  // Harness-nya `PNCTATReport` — dan namanya menyesatkan: ia BUKAN layar laporan TAT
+  // melainkan **halaman peluncur berisi 28 panel laporan**, yang REPORT TAT hanya salah
+  // satunya. Nama harness itu tampaknya tertinggal dari saat panelnya masih satu.
+  //
+  // "REPORT ADJUSTER" juga muncul sebagai salah satu dari 28 panel di dalam layar ini,
+  // dan itu hal yang BERBEDA dari butir menu MENU_ID 83. Panel itu pun terhalang: kedua
+  // Report Definition-nya tidak ada di export (`R-16`).
+  //
+  // Rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`).
+  PNCTATReport: '/report-klaim',
 }
 
 /**

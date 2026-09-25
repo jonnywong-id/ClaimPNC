@@ -66,6 +66,8 @@ import (
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/portal"
+	"claim-pnc/internal/reportkpi"
+	"claim-pnc/internal/reportklaim"
 	"claim-pnc/spa"
 
 	authhttp "claim-pnc/internal/auth/http"
@@ -205,6 +207,14 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	reportkpihttp "claim-pnc/internal/reportkpi/http"
+	reportkpimemory "claim-pnc/internal/reportkpi/repo/memory"
+	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
+	reportkpiusecase "claim-pnc/internal/reportkpi/usecase"
+	reportklaimhttp "claim-pnc/internal/reportklaim/http"
+	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
+	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
+	reportklaimusecase "claim-pnc/internal/reportklaim/usecase"
 )
 
 // defaultEnvFile dibaca bila ada. Nilai yang sudah ada di lingkungan proses menang atas
@@ -827,6 +837,55 @@ func run() error {
 			FallbackErrorWriter: inboxrclpuclhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Report KPI PNC (`MENU_ID 84`), tab KPI Adjuster.
+	//
+	// Jembatan pemanggilnya membawa LOGIN, dan di sini login benar-benar TIDAK dipakai
+	// menyaring apa pun — laporannya pandangan penyelia atas seluruh adjuster, sama seperti
+	// di Pega. Identitasnya dipakai untuk JEJAK, beserta penyaring yang dipilihnya (lihat
+	// `internal/reportkpi/usecase`).
+	reportKPIHandler := reportkpihttp.NewHandler(
+		reportkpihttp.Options{
+			Service: assembly.reportKPI,
+			GetCaller: func(ctx context.Context) (reportkpihttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return reportkpihttp.Caller{}, false
+				}
+				return reportkpihttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: reportkpihttp.ErrorWriter(writePortalAwareError),
+		})
+
+	// Report Klaim. Identitas pemanggilnya TIDAK menyaring satu baris pun — laporan ini
+	// memang laporan lintas cabang, sama seperti di Pega. Ia dipakai untuk JEJAK: siapa
+	// mengunduh laporan apa, kapan, dengan penyaring apa.
+	reportKlaimHandler, err := reportklaimhttp.NewHandler(
+		reportklaimhttp.Options{
+			Service: assembly.reportKlaim,
+			Caller: func(ctx context.Context) (reportklaim.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return reportklaim.Caller{}, false
+				}
+				return reportklaim.Caller{
+					Login: baseCtx.User.Login,
+					Name:  baseCtx.User.Name,
+				}, true
+			},
+			Logger:        logger,
+			WriteResponse: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			WriteError: reportklaimhttp.ErrorWriter(writePortalAwareError),
+		})
+	if err != nil {
+		return err
+	}
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -1173,6 +1232,15 @@ func run() error {
 				inboxrclpuclhttp.Mount(
 					protected, rclPUCLHandler, activePortalDeps)
 
+				// Report KPI PNC memuat penilaian kinerja adjuster yang bekerja untuk
+				// SATU badan hukum. Rutenya karena itu menuntut portal — termasuk rute
+				// keterangan layarnya, supaya layar tidak tergambar separuh sebelum
+				// penolakannya sampai.
+				reportkpihttp.Mount(protected, reportKPIHandler, activePortalDeps)
+				// Katalognya pun menuntut portal, supaya layar tidak tergambar lalu
+				// tombolnya ditolak setelah pengguna mengisi rentang tanggal.
+				reportklaimhttp.Mount(protected, reportKlaimHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -1349,6 +1417,8 @@ type assembly struct {
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 	inboxRCLPUCL            *inboxrclpuclusecase.Service
+	reportKPI               *reportkpiusecase.Service
+	reportKlaim             *reportklaimusecase.Service
 
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
@@ -1436,6 +1506,8 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 	rclPUCLSelector            inboxrclpucl.RepoSelector
+	reportKPISelector          reportkpi.RepoSelector
+	reportKlaimSelector        reportklaim.RepoSelector
 
 	// inboxProgressClaimSelector memilih penyimpanan progres klaim milik satu portal.
 	//
@@ -1940,6 +2012,43 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Report KPI PNC (`MENU_ID 84`), tab KPI Adjuster.
+	//
+	// Logger WAJIB, dan alasannya berbeda dari modul inbox di atasnya: yang dibaca layar
+	// ini bukan pekerjaan melainkan PENILAIAN KINERJA adjuster yang dapat dinamai, dan
+	// laporannya tidak disaring per pengguna sama sekali. Selama pemeriksaan peran belum
+	// ada (`TKT-F3-004`), jejak yang menyebut siapa membukanya — beserta adjuster dan
+	// periode yang dipilihnya — adalah satu-satunya kontrol pengimbang (`D-59`).
+	reportKPIService, err := reportkpiusecase.NewService(
+		reportkpiusecase.Options{
+			RepoSelector: store.reportKPISelector,
+			Logger:       logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Report Klaim (`MENU_ID 85`), 28 panel ekspor.
+	//
+	// Audit sengaja BELUM diisi, dan itu bukan kelalaian melainkan keadaan yang dicatat:
+	// `S-5` adalah modul tersendiri yang belum ada, dan seam-nya dibuat justru supaya
+	// pemasangannya kelak tidak menyentuh satu baris pun aturan di dalam modul ini.
+	//
+	// Akibatnya harus disadari. Berkas dari modul ini memuat data nasabah LINTAS CABANG,
+	// dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang karena tidak ada
+	// pemisahan tugas. Sampai `S-5` ada, yang tersisa hanyalah baris log biasa dari
+	// lapisan HTTP — cukup untuk menelusuri, tidak cukup untuk dipertanggungjawabkan.
+	reportKlaimService, err := reportklaimusecase.NewService(
+		reportklaimusecase.Options{
+			RepoSelector: store.reportKlaimSelector,
+			Clock:        clock.System{},
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Logger disuntikkan dengan alasan yang mirip, tetapi ambangnya berbeda: yang diawasi
 	// di sini adalah rekap per PIC, satu-satunya bagian layar ini yang TIDAK dipaginasi —
 	// mengikuti sistem lama yang juga tidak memaginasinya.
@@ -2060,6 +2169,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
 		inboxRCLPUCL:              rclPUCLService,
+		reportKPI:                 reportKPIService,
+		reportKlaim:               reportKlaimService,
 		inboxProgressClaim:        inboxProgressClaimService,
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
 		inboxLaporanKlaim:         claimReportService,
@@ -2234,6 +2345,26 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		}
 		logger.Info("koneksi portal terbuka", slog.Any("portal", pool.Available()))
 
+		// Koneksi KEDUA tiap portal — pengganti DB Link `@ASMD` yang `R-03` belum
+		// sediakan API-nya (keputusan Work Owner 2026-09-24).
+		//
+		// Kegagalannya TIDAK PERNAH menghentikan start, dan ketiadaannya bukan galat:
+		// aplikasi berjalan penuh, dan yang hilang hanyalah kolom laporan yang
+		// membutuhkannya — kolom yang lalu dikosongkan dan ditandai di layar.
+		//
+		// Keadaan itu tetap DICATAT di log saat start supaya tidak lolos tanpa disadari,
+		// persis perlakuan yang sama pada blok Kasir dan SMTP.
+		anekaPool := db.NewOptionalPool(ctx, anekaParameters(cfg), func(alias string, err error) {
+			logger.Warn("koneksi kedua portal tidak tersedia",
+				slog.String("portal", alias),
+				slog.String("sebab", err.Error()))
+		})
+		if tersedia := anekaPool.Available(); len(tersedia) > 0 {
+			logger.Info("koneksi kedua portal terbuka", slog.Any("portal", tersedia))
+		} else {
+			logger.Warn("tidak ada koneksi kedua portal yang terbuka; " +
+				"kolom laporan yang bersumber dari sana akan dikosongkan (R-03)")
+		}
 		primary := pool.Primary()
 		store.legacy = sqlstore.NewLegacy(primary)
 		store.portal = portalsql.NewRepo(primary)
@@ -2276,7 +2407,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// secara harfiah, dan penutupannya `TKT-F6-002`.
 		store.komiteInbox = komitesql.NewInboxRepo(primary)
 		store.komiteDecision = komitesql.NewDecisionRepo(primary)
-		store.close = pool.Close
+
+		// KEDUA kumpulan koneksi ditutup bersamaan. Menutup yang pertama saja akan
+		// meninggalkan koneksi kedua tetap terbuka saat aplikasi berhenti — kebocoran
+		// yang tidak terlihat sebagai galat, dan baru terbaca sebagai sesi menggantung
+		// di sisi basis data.
+		store.close = func() {
+			pool.Close()
+			anekaPool.Close()
+		}
 
 		// Setiap permintaan memilih koneksi entitasnya sendiri. Portal yang tidak
 		// dikenal atau koneksinya belum hidup menghasilkan galat dari For(), TIDAK
@@ -2601,6 +2740,41 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxmanagerreceivepuclsql.NewRepo(conn), nil
 		}
 
+		store.reportKPISelector = func(alias string) (reportkpi.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return reportkpisql.NewRepo(conn), nil
+		}
+
+		// Report Klaim adalah satu-satunya modul yang menerima DUA koneksi: basis data
+		// portalnya, dan koneksi KEDUA portal yang sama (`ANEKA_<PORTAL_ALIAS>_*`) —
+		// pengganti DB Link `@ASMD` yang `R-03` belum sediakan API-nya.
+		//
+		// Koneksi keduanya BOLEH tidak ada, dan ketiadaannya tidak menggagalkan apa pun:
+		// yang hilang hanyalah kolom laporan yang bersumber dari sana, dan kolom itu
+		// dikosongkan serta ditandai. Karena itu kegagalan For() di sini diterjemahkan
+		// menjadi nil — bukan dilewatkan diam-diam, melainkan dinyatakan sebagai "tidak
+		// ada koneksi kedua", keadaan yang memang sudah ditangani repo.
+		//
+		// Yang TIDAK boleh gagal diam-diam adalah koneksi portalnya sendiri; galatnya
+		// dikembalikan apa adanya, tidak pernah dialihkan ke koneksi utama.
+		store.reportKlaimSelector = func(alias string) (reportklaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			if !anekaPool.Has(alias) {
+				return reportklaimsql.NewRepo(conn, nil), nil
+			}
+			second, err := anekaPool.For(alias)
+			if err != nil {
+				return reportklaimsql.NewRepo(conn, nil), nil
+			}
+			return reportklaimsql.NewRepo(conn, second), nil
+		}
+
 		store.rclPUCLSelector = func(alias string) (inboxrclpucl.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -2775,6 +2949,8 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// benar-benar bekerja.
 		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
 		store.rclPUCLSelector = rclPUCLSelectorMemory(cfg.PrimaryPortal)
+		store.reportKPISelector = reportKPISelectorMemory(cfg.PrimaryPortal)
+		store.reportKlaimSelector = reportklaimmemory.Selector(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
 	}
@@ -3711,15 +3887,33 @@ func buildIdentity(cfg config.Config, production bool, legacy *sqlstore.Legacy) 
 // portalParameters mengubah konfigurasi portal menjadi parameter koneksi, melewati
 // portal yang variabel wajibnya belum terisi.
 func portalParameters(cfg config.Config) []db.Parameter {
-	alias := make([]string, 0, len(cfg.Portal))
-	for a := range cfg.Portal {
+	return databaseParameters(cfg.Portal)
+}
+
+// anekaParameters menyusun parameter koneksi KEDUA tiap portal.
+//
+// Kumpulan ini boleh kosong, dan itu keadaan yang sah — lihat config.anekaPrefix dan
+// db.NewOptionalPool. Yang belum lengkap dilewati dengan diam, sama seperti portal yang
+// belum lengkap: pengisiannya berjalan bertahap.
+func anekaParameters(cfg config.Config) []db.Parameter {
+	return databaseParameters(cfg.Aneka)
+}
+
+// databaseParameters mengubah peta konfigurasi menjadi parameter koneksi, terurut.
+//
+// Terurut supaya urutan pembukaan koneksi — dan karena itu urutan barisnya di log —
+// tidak berubah-ubah antar start. Peta Go tidak menjamin urutan, dan log yang barisnya
+// berpindah-pindah membuat perbandingan dua start menjadi pekerjaan tersendiri.
+func databaseParameters(source map[string]config.Database) []db.Parameter {
+	alias := make([]string, 0, len(source))
+	for a := range source {
 		alias = append(alias, a)
 	}
 	sort.Strings(alias)
 
 	parameter := make([]db.Parameter, 0, len(alias))
 	for _, a := range alias {
-		b := cfg.Portal[a]
+		b := source[a]
 		if !b.Complete() {
 			continue
 		}
@@ -3900,6 +4094,37 @@ func rclPUCLSelectorMemory(primaryAlias string) inboxrclpucl.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxrclpuclmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// reportKPISelectorMemory menyusun penyimpanan Report KPI PNC di memori; alasannya sama
+// dengan claimTreatyPropSelectorMemory di atas.
+//
+// Isi contohnya dipilih supaya EMPAT keadaan yang paling mudah salah dapat dilihat langsung
+// di layar pengembangan, bukan hanya di uji: satu adjuster yang punya kedua tipe sekaligus,
+// komponen yang belum dinilai, satu nilai yang bukan angka, dan dua baris tepat di tepi
+// rentang periode. Ditambah dua baris yang sengaja berada DI LUAR periode contoh — tanpa
+// baris yang tertolak, layar tidak dapat menunjukkan bahwa penyaringnya bekerja.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func reportKPISelectorMemory(primaryAlias string) reportkpi.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]reportkpi.Repo{}
+
+	return func(alias string) (reportkpi.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := reportkpimemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

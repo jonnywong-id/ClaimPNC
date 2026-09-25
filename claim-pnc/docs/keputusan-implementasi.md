@@ -10371,3 +10371,1068 @@ dan keempatnya punya tampilan — termasuk yang dulu tidak ada:
 
 Alasannya bukan selera: bentuk layar ini tidak bergantung pada data — ia tetap kedua bagian
 dengan isian yang sama, dan sembilan di antaranya memang tidak pernah terisi (§47.2).
+
+## 49. Koneksi kedua per portal menggantikan DB Link (2026-09-24)
+
+### Keputusan Work Owner
+
+Diajukan sebagai pertanyaan: empat kolom "Lama proses" pada REPORT TAT bergantung pada
+kalender libur `GENERAL.HRD_LBR` lewat DB Link `@ASMD`, yang `R-03` belum sediakan API
+penggantinya. Tiga perlakuan ditawarkan; **Work Owner memilih jalan keempat**:
+
+> *"jika berupa sub query maka tetap gunakan db link, selain itu gunakan connection
+> langsung ke database … Siapkan untuk connect ke database sesuai kolom portal_alias pada
+> file .env dan diulang sebanyak portal yang ada, diawali dengan nama
+> ANEKA_&lt;portal_alias&gt;_xxxx"*
+
+### Aturannya, dan bagaimana ia dibaca
+
+| Bentuk pemakaian DB Link di kueri asli | Perlakuan |
+|---|---|
+| **Sub-query** — `(SELECT … FROM x@ASMD …) AS "Kolom"` | **tetap memakai DB Link**, apa adanya |
+| Selain itu — JOIN, atau kueri tersendiri | **koneksi langsung** ke basis data tersebut |
+
+Penerapannya pada modul Report Klaim:
+
+| Tempat | Bentuk | Perlakuan |
+|---|---|---|
+| `BroswseKlaimByRegisterDate` kolom `POLICYRANGE` — `collection.mst_det_sales@ASMD` | sub-query | DB Link dipertahankan |
+| `ExportDetailMitraReport` — `general.lst_mitra@asmd` sebagai INNER JOIN | JOIN | koneksi langsung |
+| `CheckHoliday_SQL` — `GENERAL.HRD_LBR@ASMD`, dipanggil `GCNMTimeDifferenceWorkCalender_Act` | kueri tersendiri | koneksi langsung |
+
+### Bentuk konfigurasinya
+
+Satu keluarga variabel baru, **berpasangan dengan** `POOLDATA_<ALIAS>_*` yang sudah ada:
+
+```
+ANEKA_<PORTAL_ALIAS>_HOST
+ANEKA_<PORTAL_ALIAS>_PORT       (baku 1521)
+ANEKA_<PORTAL_ALIAS>_SERVICE
+ANEKA_<PORTAL_ALIAS>_PENGGUNA
+ANEKA_<PORTAL_ALIAS>_SANDI
+```
+
+Alias ditemukan dengan **memindai lingkungan**, cara yang sama persis dengan portal —
+menambah entitas tetap cukup menambah baris `.env` tanpa menyentuh kode (`ADR-0030`:
+daftar portal adalah data).
+
+### Empat hal yang ditetapkan, dan alasannya
+
+1. **Per portal, bukan satu untuk semua.** Koneksi kedua milik ASI tidak boleh melayani
+   permintaan ASM. Kalau boleh, pemisahan yang dijaga di tingkat koneksi bocor lewat pintu
+   belakang — dan itu `R-20` secara harfiah.
+
+2. **Opsional, dan ketiadaannya bukan galat.** Portal yang belum diisi tetap berjalan
+   penuh; yang hilang hanyalah kolom laporan yang membutuhkannya. Ia memakai
+   `db.NewOptionalPool` yang **tidak pernah** mengembalikan galat — berbeda dari
+   `db.NewPool` yang mengenal portal utama dan kegagalannya fatal.
+
+3. **Dicatat di log saat start.** Ketiadaan koneksi kedua ditulis sebagai peringatan,
+   persis perlakuan blok Kasir dan SMTP. Konfigurasi yang belum diisi tidak boleh lolos
+   tanpa disadari lalu terbaca sebagai "laporannya memang kosong".
+
+4. **Alias yang tidak punya portal DITOLAK saat start.** `ANEKA_ASMM_*` tanpa
+   `POOLDATA_ASMM_*` hampir pasti salah ketik, dan tanpa pemeriksaan ini ia lolos diam-diam:
+   bloknya terbaca, tidak pernah dipakai, dan laporannya tetap mengosongkan kolom seolah
+   bloknya belum diisi.
+
+### Yang ini buka
+
+Dua laporan yang sebelumnya ditandai terhalang menjadi **dapat dibangun**:
+
+| Laporan | Sebelumnya | Sesudah |
+|---|---|---|
+| **REPORT TAT** | empat kolom "Lama proses" tidak dapat dihitung | kalender libur dibaca lewat koneksi kedua; perhitungan hari kerja ditulis di Go sesuai `D-50` |
+| **REPORT MITRA** | penyaring barisnya menempuh DB Link | daftar mitra dibaca lewat koneksi kedua |
+
+Satu hal pada REPORT MITRA **tetap terbuka**: kolom "Atasan" di kueri aslinya adalah nama
+orang yang ditulis sebagai literal di dalam SQL — salah satu dari 24 Operator ID hardcode
+yang `D-15` haruskan menjadi master data, dan tidak ada sumber penggantinya di export.
+
+### Berkas yang disentuh
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/platform/config/config.go` | `anekaPrefix`, `Config.Aneka`, `Database.Prefix`, `loadDatabases` yang dipakai bersama |
+| `internal/platform/config/config_test.go` | 5 uji baru; `cleanEnv` ikut membersihkan `ANEKA_` |
+| `internal/platform/db/oracle.go` | `NewOptionalPool`, `Pool.Has` |
+| `cmd/claimpnc/main.go` | `anekaParameters`, pembukaan kumpulan opsional, penutupan kedua kumpulan bersamaan |
+| `.env.example` dan `.env` | blok `ANEKA_*` untuk keenam portal |
+
+`Database.Prefix` ditambahkan supaya `Missing()` menyebut **nama variabel yang
+sebenarnya**. Tanpa itu, blok ANEKA yang kurang satu baris dilaporkan sebagai POOLDATA
+yang kurang — dan operator memperbaiki baris yang sudah benar.
+
+---
+
+## 50. Modul Report KPI PNC — tab KPI Adjuster (2026-09-24)
+
+Rujukannya `Harness/ReportKPIHarness-Harness.xml` (`MENU_ID 84` — "Report KPI PNC"), yang
+memuat satu section: `Section/ReportKPI_Section-Section.xml`, 1,7 MB.
+
+### 50.1 Layarnya tiga tab; yang dibangun satu
+
+Ketiga tab terbaca dari `pyTitle` layout group section itu, beserta offsetnya:
+
+| Tab | offset | Grid | Activity |
+|---|---|---|---|
+| KPI PIC Teknik | `:170000` | Data KPI PIC Teknik | `PNCReportKPI_act` |
+| **KPI Adjuster** | `:399910` | Summary + Detail KPI Adjuster | `PNCReportKPIAdjuster_act` |
+| KPI Admin | `:869593` | Data KPI | `PNCReportKPIAdmin_Act`, `..._khususPA` |
+
+**Keputusan Work Owner 2026-09-24: KPI Adjuster lebih dulu.** Alasannya bukan selera
+melainkan penghalang — kedua tab lain bertumpu pada tiga hal yang belum ada, dan tab
+Adjuster tidak menyentuh satu pun dari ketiganya:
+
+| Penghalang | Menghalangi | Rujukan |
+|---|---|---|
+| `DATAMINING.GET_WORKING_HOURS@ASMD` — DB link, dipakai **18 kali di 7 berkas** | PIC Teknik, Admin | `R-03`, `D-25`, `D-50` |
+| Isi `POOLDATA.M_KPI_PNC` — tangga penilaian, **tidak ada di export** | PIC Teknik | `R-16` |
+| **Enam operator di-hardcode** sebagai penentu siapa yang ikut dihitung | Admin | `D-15` |
+
+Keenam operator itu ada di `RDB List/BrowseDataKPIAdmin-SQL.xml`
+(`SOPHIANOVITAEVELYN_1`, `SOPHIANOVITAEVELYN`, `RUTHCLARA`) dan
+`BrowseDataKPIAdmin_PA-SQL.xml` (`IRMANOPITAPURBA_1`, `IRMANOPITAPURBA`,
+`YUNIARPAMORSUARI`). Kuerinya juga menuliskan **nama koordinator dan NIK sebagai literal di
+dalam SELECT**, ditambah bobot `0.45`/`0.40` dan pembagi `(3/5)*90`. Seluruhnya menuntut
+master data yang belum ada.
+
+Kedua tab itu tetap DIGAMBAR dalam keadaan nonaktif beserta sebabnya. Menyembunyikannya
+akan membuat layar terlihat seperti layar satu-tab, dan pengguna yang terbiasa tiga tab di
+Pega melaporkannya sebagai fitur yang hilang.
+
+### 50.2 Temuan yang mengubah bentuk modul: Detail BUKAN hasil kueri
+
+Penelusuran menemukan bahwa **hanya TIGA kueri yang membaca
+`POOLDATA.DETAIL_KPI_ADJUSTER`**, dan ketiganya kueri RINGKASAN:
+`GetSummaryKPIAdjuster`, `GetSummaryKPIAdjusterALL`, `GetSummaryKPIAdjusterKuartal`. Tidak
+satu pun membacanya per kasus.
+
+Artinya grid **Detail KPI Adjuster** di Pega **tidak dibaca dari tabel**. Ia digambar dari
+halaman clipboard yang baru saja DIHITUNG `PNCReportKPIAdjuster_act`: activity itu
+mendaftar kasus survei (`GetDataCaseSurvey`, `GetDataCaseSurveyALL`), membuka tiap objek
+kerjanya, memanggil empat sub-activity penilai, lalu **MENULIS** hasilnya lewat
+`CallProcedureInsertKPISurvey` → `Database/INSERT_KPIADJUSTER.prc`. Grid Summary barulah
+merata-ratakan tabel itu.
+
+**Keputusan: modul ini MEMBACA tabel itu saja.** Dua dasarnya:
+
+1. **`P-1`.** Selama masa paralel tepat satu sistem yang menulis sebuah tabel, dan
+   penulisnya hari ini Pega.
+2. **Penilaiannya tidak dapat direproduksi setia.** Keempat sub-activity penilainya
+   berjumlah ~900 KB langkah Java, dan ambang nilainya hidup di `POOLDATA.M_KPI_PNC` yang
+   isinya tidak ada di export — keadaan yang sama persis dengan `GCNM_FEE_SCALE` pada `B-5`.
+
+Akibat yang diterima: **kasus survei yang belum pernah dihitung Pega belum muncul.** Itu
+dinyatakan sebagai selisih terencana pertama, bukan dibiarkan ditemukan sendiri.
+
+### 50.3 DDL efektif tabelnya dibaca dari procedure penulisnya
+
+`POOLDATA.DETAIL_KPI_ADJUSTER` tidak punya DDL di export (`R-08`). Ketiga belas kolomnya
+dibaca dari `Database/INSERT_KPIADJUSTER.prc` — satu-satunya artefak yang MENULIS tabel itu,
+dan karena itu menyebut seluruh kolomnya lengkap:
+
+```
+ADJUSTER · CASEID · SURVEYLAP · IMMEDIATEADVICE · PRELIMINARYADVICE · INTERIM
+PROGRESS · KOMUNIKASI · PROPOSE · FINALREPORT · NILAI · TIPE · TANGGAL
+```
+
+Procedure itu pula yang membuktikan **kesembilan komponennya bertipe TEKS**
+(`in varchar2`) — yang menjelaskan kenapa kueri Pega membungkus setiap satunya dengan
+`to_number(...)`.
+
+### 50.4 `NILAI` adalah kolom tersendiri, bukan jumlah kedelapan komponen
+
+Mudah disalahpahami, dan salah pahamnya mahal: bila layar menghitungnya sendiri, angkanya
+akan BERBEDA dari Pega tanpa satu pun galat. Pega merata-ratakan kolom `NILAI` seperti
+kolom lain (`round(avg(to_number(nilai)),2)`), dan cara `INSERT_KPIADJUSTER` mengisinya
+ditentukan activity penilai yang tidak dibangun di sini. Ia DIBACA, tidak pernah dihitung.
+
+### 50.5 `TO_NUMBER` dibiarkan apa adanya — dan itu keputusan, bukan kelalaian
+
+Oracle 12.2+ menyediakan `TO_NUMBER(x DEFAULT NULL ON CONVERSION ERROR)`, yang akan membuat
+satu baris rusak diabaikan alih-alih menggagalkan laporan. Ia sengaja **tidak** dipakai:
+
+1. **Ia mengubah ANGKA, bukan hanya penanganan galat.** `AVG` mengabaikan NULL, sehingga
+   baris rusak hilang dari pembagi dan rata-ratanya BERGESER tanpa seorang pun tahu. `P-5`
+   menuntut hasil yang sama kecuali untuk perbaikan yang diputuskan eksplisit, dan ini
+   bukan salah satu dari 13 butir `D-49`.
+2. **Kegagalan `ORA-01722` itu keras dan terlihat.** Angka yang bergeser diam-diam jauh
+   lebih berbahaya pada laporan penilaian kinerja daripada laporan yang menolak tampil.
+3. **Ia khas Oracle 12.2+**, sedangkan `D-20` menetapkan satu set SQL yang juga berjalan di
+   PostgreSQL 17.
+
+Keputusan itu dijaga uji (`TestKonversiAngkaTidakDiperlunak`): siapa pun yang
+menambahkannya kelak akan melihat ujinya gagal dan membaca alasannya.
+
+### 50.6 Periode menjadi WAJIB — selisih pada cara galat disampaikan
+
+Di Pega, kedua tanggal disisipkan langsung ke teks SQL lewat `{ASIS:}`, sehingga
+mengosongkannya menghasilkan `to_date` atas teks kosong dan galat basis data mentah yang
+sampai ke pengguna. Preconditionnya hanya menjaga tipe FINAL dan ALL; OUTSTANDING tidak
+dijaga sama sekali.
+
+Di sini keduanya diperiksa lebih dulu, dan yang sampai ke pengguna adalah kalimat yang
+menyebut isian mana yang kurang. **Itu selisih pada cara galat disampaikan, bukan pada
+hasil** — rentang yang sah menghasilkan baris yang sama persis. Pola yang sama sudah
+dipakai modul Inbox RCL/PUCL pada laporan hariannya.
+
+### 50.7 Isi dropdown Adjuster diambil dari tabel penilaian, bukan dari master surveyor
+
+`Activity/GetFilterKPI-Act.xml` mengisinya dari `V_D_SURVEYORS` lewat RDB list
+**`BrowseAdjsuterExternal` — yang tidak ada di export** (`R-16`). Bentuk kuerinya tidak
+diketahui.
+
+Yang diketahui pasti adalah cara nilainya dipakai: `and adjuster='<pilihan>'` terhadap
+kolom `ADJUSTER` tabel penilaian. Mengambil daftarnya dari kolom yang SAMA dengan yang
+disaring menutup satu kelas kegagalan seluruhnya — tidak akan pernah ada pilihan dropdown
+yang menghasilkan grid kosong karena namanya dieja berbeda di dua tabel.
+
+Selisihnya dinyatakan: adjuster yang terdaftar di master tetapi belum punya satu pun
+penilaian TIDAK muncul di dropdown.
+
+### 50.8 Satu kueri menggantikan dua, dan kolom TIPE ditambahkan
+
+Pega memakai dua rule terpisah: `GetSummaryKPIAdjuster` (satu tipe) dan
+`GetSummaryKPIAdjusterALL` (`UNION ALL` dua kelompok, dengan tipe ditulis sebagai literal).
+Di sini keduanya dilayani SATU kueri; tipe ALL menjadi bind `NULL` pada penyaring
+`(:1 IS NULL OR k.TIPE = :1)`, dan pembedaan barisnya jatuh dari `GROUP BY k.ADJUSTER,
+k.TIPE`.
+
+Akibatnya satu hal yang perlu disadari, dan dinyatakan sebagai selisih terencana: **pada
+tipe ALL, Pega selalu menghasilkan kedua kelompok meski salah satunya kosong**, sedangkan
+di sini kelompok tanpa baris tidak muncul. Yang tidak muncul adalah kelompok TANPA DATA —
+bukan kelompok bernilai nol.
+
+**Kolom `TIPE` hanya digambar pada tipe ALL — dan itu KOREKSI atas rancangan pertama.**
+
+Rancangan pertama menggambarnya selalu, dengan alasan "susunan kolom tidak berubah-ubah di
+tengah pemakaian", dan mencatatnya sebagai kolom tambahan yang tidak ada di Pega. **Itu
+keliru.** Work Owner menetapkan 2026-09-25 agar layar mengikuti Pega, dan pembacaan ulang
+kedua rule membuktikan Pega memang punya kolom itu — tetapi hanya pada satu rule:
+
+```
+GetSummaryKPIAdjuster-SQL.xml     SELECT adjuster as "UserTeknisGroup",              ← tanpa kolom tipe
+GetSummaryKPIAdjusterALL-SQL.xml  SELECT adjuster as "UserTeknisGroup",
+                                         'OUTSTANDING' "StatusWork", …               ← DENGAN kolom tipe
+                                  UNION ALL
+                                  SELECT adjuster as "UserTeknisGroup",
+                                         'FINAL' "StatusWork", …
+```
+
+Kolomnya ditulis sebagai **literal**, bukan dibaca dari tabel — ia ada justru karena
+`UNION ALL` menggabungkan dua kelompok. Pada tipe tunggal ia tidak berarti apa-apa: seluruh
+barisnya bernilai sama.
+
+Penandanya `Column.OnlyOnCombinedType`, disaring `Grid.ColumnsFor(reportType)`. Layar dan
+berkas ekspor bertanya kepada penanda yang SAMA, sehingga isi berkas dan isi layar tidak
+dapat berselisih.
+
+Judulnya tetap **"TIPE"**, bukan alias Pega-nya. Di sana kolom literal itu dialiaskan
+`StatusWork`, dan alias itu menyesatkan: isinya bukan status kerja klaim melainkan kelompok
+mana barisnya berasal (`D-19`).
+
+### 50.9 Penamaan modul
+
+Folder backend `internal/reportkpi`, frontend `src/modules/report-kpi`, rute `/report-kpi`.
+
+**Ditetapkan Work Owner 2026-09-25: ikuti Pega.** Nama itu SUDAH sama dengan judul harness
+Pega — `pyLabel` pada `ReportKPIHarness-Harness.xml` berbunyi **"Report KPI"** — sehingga
+tidak ada yang berubah.
+
+Dua sumber Pega menyebutnya berbeda, dan keduanya tetap dipakai apa adanya di tempatnya
+masing-masing:
+
+| Sumber | Bunyinya | Dipakai sebagai |
+|---|---|---|
+| `pyLabel` harness | **Report KPI** | judul layar dan nama folder |
+| `MENU_DESC` (`MENU_ID 84`) | **Report KPI PNC** | teks butir menu, dibaca dari basis data |
+
+Butir menunya karena itu tetap berbunyi "Report KPI PNC" di layar — ia tidak ditulis di
+kode sama sekali.
+
+### 50.10 Yang dinyatakan sebagai selisih terencana
+
+Delapan butir, dikirim server dan digambar di layar sebagai panel yang dapat dibuka
+(`D-54` menuntut setiap selisih diklasifikasikan, bukan sekadar muncul):
+
+1. Layar MEMBACA saja; perhitungan ulang masih milik Pega (`P-1`).
+2. Kasus yang belum pernah dihitung Pega belum muncul.
+3. Isi dropdown Adjuster dari tabel penilaian, bukan master surveyor.
+4. Periode wajib untuk ketiga tipe report.
+5. Tipe ALL menghasilkan dua baris per adjuster, dibedakan kolom TIPE yang di Pega pun ada
+   pada kueri itu; pada tipe tunggal kolomnya tidak digambar.
+6. `NILAI` kolom tersendiri, bukan jumlah kedelapan komponen.
+7. Nilai kosong digambar sebagai tanda hubung, bukan 0.
+8. Grid Detail dipaginasi server; layar lama memuat seluruhnya ke clipboard, dan
+   laporannya terpotong di 500 baris (`ADR-0011`).
+
+### 50.11 Yang TIDAK dikerjakan, dan sebabnya
+
+| Hal | Sebab |
+|---|---|
+| Tab KPI PIC Teknik dan KPI Admin | §50.1 |
+| Perhitungan ulang penilaian (tombol Cari yang MENULIS) | `P-1` + `M_KPI_PNC` tidak ada |
+| `GetSummaryKPIAdjusterKuartal` — ringkasan per TAHUN | Tidak ada grid di section yang menggambarnya; ia tampaknya memasok bagan, dan komponen bagannya tidak ada di export |
+| Ekspor TAT tingkat klaim (`EksportDataAllKPIPICKlaim`, 775 KB, ~70 kolom) | Keputusan Work Owner 2026-09-24: CSV salinan grid dulu. Ia milik tab PIC Teknik |
+| Koneksi `ANEKA_<ALIAS>_*` | Tab ini tidak menyentuh satu pun DB link. Konfigurasinya sudah disiapkan sesi lain (§49) dan menunggu tab yang membutuhkannya |
+
+### 50.12 Yang perlu dipastikan sebelum dipakai terhadap Oracle
+
+`-periksa` menjawab ketiganya:
+
+1. Tabelnya terbaca akun aplikasi. Tidak ada migrasi yang perlu dijalankan.
+2. Tabelnya berisi. Kosong bukan kegagalan — Pega baru mengisinya ketika seseorang membuka
+   tab itu di sana — tetapi ia perlu DISEBUT, karena layar kosong karena tabel kosong dan
+   layar kosong karena penyaring keliru terlihat sama persis bagi pengguna.
+3. **Nilai `TIPE` yang benar-benar ada.** Kedua tipe yang dikenal modul dibaca dari LITERAL
+   di dalam `GetSummaryKPIAdjusterALL-SQL.xml`, bukan dari master. Bila produksi memuat
+   nilai ketiga, barisnya tidak akan pernah terlihat — tanpa satu pun galat. Inilah alasan
+   utama pemeriksaannya ada.
+
+---
+
+## 51. Report Klaim — batas ekspor, bentuk layar, dan dua koneksi (2026-09-25)
+
+Empat keputusan implementasi yang diambil saat menyelesaikan modul Report Klaim. Ketiganya
+yang pertama menyangkut hal yang **tidak ada padanannya** di sistem lama.
+
+### 51.1 Batas ekspor 200.000 baris, dan pemotongannya ditulis di dalam berkas
+
+**Keputusan.** Ekspor berhenti pada 200.000 baris, dan baris terakhir berkasnya adalah
+penanda `-- BERKAS DIPOTONG PADA 200.000 BARIS …`.
+
+**Kenapa ada batas sama sekali.** `pyMaxRecords=500` terpasang pada **54 dari 56** laporan
+lama, sehingga kebutuhan ekspor bervolume besar **belum pernah benar-benar dilayani**
+(`15-NFR` §3.2). Menghapus batas itu adalah penambahan kemampuan, dan kapasitasnya
+dirancang **tanpa data historis yang sahih** — angka pemakaian selama ini selalu terpotong
+di 500. Tanpa batas apa pun, satu permintaan atas rentang tanggal yang lebar dapat menahan
+koneksi selama puluhan menit.
+
+**Kenapa 200.000 dan bukan angka lain.** Ia perkiraan yang dinyatakan sebagai perkiraan,
+bukan angka yang diturunkan dari pengukuran — pengukurannya belum mungkin. `ADR-0011`
+mencatat "berapa baris maksimum yang wajib dilayani satu ekspor" sebagai pertanyaan
+terbuka; angka ini ditaruh sebagai konstanta bernama supaya jawabannya kelak mengubah satu
+baris.
+
+**Kenapa pemotongannya ditulis.** Memotong diam-diam menghasilkan berkas yang terlihat
+utuh dan isinya kurang. Itu persis kelas kegagalan `pyMaxRecords=500` yang sedang kita
+tinggalkan — bedanya yang lama tidak memberi tahu sama sekali.
+
+**Konsekuensi yang diterima.** Penanda itu adalah baris yang **bukan data**, sehingga
+berkas yang terpotong tidak dapat langsung disedot ke lembar kerja tanpa membuang baris
+terakhirnya. Itu disengaja: berkas yang menolak dipakai begitu saja lebih baik daripada
+berkas yang diam-diam kurang.
+
+### 51.2 Berkas tanpa baris tetap berisi header
+
+**Keputusan.** Hasil kosong menghasilkan berkas berisi **satu baris judul kolom**, bukan
+berkas nol byte.
+
+**Sebabnya.** Berkas nol byte tidak dapat dibedakan dari unduhan yang gagal separuh jalan,
+dan keduanya menuntut tindakan yang berbeda dari pengguna. Satu baris judul kolom
+menyatakan: kueri berjalan sampai selesai, dan hasilnya memang kosong.
+
+### 51.3 Validasi selesai sebelum satu byte pun ditulis
+
+**Keputusan.** Pencarian laporan, pemeriksaan tombol, dan pemeriksaan penyaring dijalankan
+**sebelum** status dan header dikirim. Penulisan header CSV terjadi pada baris pertama
+yang benar-benar datang.
+
+**Sebabnya bukan kerapian.** Begitu status 200 dan `Content-Disposition` terkirim,
+penolakan tidak dapat lagi disampaikan sebagai galat — peramban sudah menyimpan berkasnya,
+dan pesan galat akan mendarat **sebagai isi berkas CSV**. Pengguna memperoleh berkas
+bernama benar yang isinya pesan kesalahan.
+
+### 51.4 Kegagalan koneksi kedua TIDAK menggagalkan permintaan
+
+**Keputusan.** Pada pemilih penyimpanan, kegagalan membuka koneksi kedua
+(`ANEKA_<PORTAL_ALIAS>_*`) diterjemahkan menjadi `nil`, sementara kegagalan koneksi portal
+dikembalikan apa adanya.
+
+**Kenapa keduanya diperlakukan berbeda.** Keduanya adalah kegagalan yang berbeda derajat:
+
+| Koneksi | Bila tidak ada | Akibatnya |
+|---|---|---|
+| Portal | laporan **tidak dapat dijalankan sama sekali** | permintaan ditolak |
+| Kedua | **kolom hari kerja** pada Report TAT tidak dapat dihitung | kolomnya ditandai tidak diketahui; laporan tetap terunduh |
+
+Menolak seluruh permintaan karena koneksi kedua tidak ada berarti 27 panel yang tidak
+membutuhkannya ikut mati. Menjatuhkannya ke koneksi portal juga tidak boleh: tabel
+kalender libur memang tidak ada di sana, dan galatnya akan terbaca sebagai objek hilang.
+
+**Yang membuat ini bukan menelan galat.** Kolom yang tidak dapat dihitung ditandai **tidak
+diketahui**, bukan diisi nol. Nol hari kerja adalah angka yang masuk akal dan salah; tanda
+"tidak diketahui" tidak dapat disalahartikan. Keadaannya juga dicatat di log saat start
+dan disebut mode periksa.
+
+### 51.5 Daftar laporan yang belum dipindahkan DIHITUNG, bukan ditulis
+
+**Keputusan.** `NotPorted()` menghitung pasangan laporan × lini bisnis yang kuerinya tidak
+ada, dari rencana dan berkas `.sql` yang benar-benar ada.
+
+**Sebabnya.** Daftar tulisan tangan akan tetap menyebut nama yang sudah selesai
+dipindahkan. Yang dibaca orang saat memasang aplikasi adalah laporan kesiapan itu, dan
+laporan kesiapan yang usang lebih buruk daripada tidak ada — orang mempercayainya.
+
+Satu uji mengunci agar daftar hitung itu sepakat dengan daftar yang dikunci di uji kueri;
+dua sumber yang tidak sepakat berarti salah satunya sudah usang.
+
+## 52. Report KPI PNC — tab KPI Admin, dan peta lengkap tab ketiga (2026-09-25)
+
+Melanjutkan §50. Work Owner menjawab tiga pertanyaan terbuka di sana dengan *"1. ikutin PEGA
+aja, 2. juga ikutin PEGA juga gapapa"*, lalu *"bikin semua modul Report KPI PNC"* — sehingga
+lingkupnya naik dari satu tab menjadi tiga.
+
+Bagian ini mencatat tab **KPI Admin** yang sudah dibangun, dan hasil pembacaan tab **KPI PIC
+Teknik** yang belum.
+
+---
+
+### 52.1 Tab KPI Admin mengukur hal yang berbeda dari tab Adjuster
+
+Ini yang paling mudah salah dibaca dari namanya. Ketiga tab berjudul "KPI", tetapi yang dinilai
+berbeda orang, berbeda sumber data, dan berbeda bentuk keluarannya:
+
+| Tab | Yang dinilai | Sumber | Bentuk keluaran |
+|---|---|---|---|
+| KPI Adjuster | adjuster **eksternal** | `POOLDATA.DETAIL_KPI_ADJUSTER` | dua tabel |
+| KPI Admin | tim **admin registrasi** | `T_CLAIM_PNC` + `T_CLAIM_ADJUSTMENT` | kartu skor + satu tabel |
+| KPI PIC Teknik | **PIC Teknik** | `PEGA_DASHBOARDPNC` + `GCNM_PROGRESS_CLAIM` | kartu skor per PIC dan per Leader |
+
+Karena itu tab KPI Admin **tidak** dibuat sebagai varian tab Adjuster. Ia komponen tersendiri
+(`ReportKPIAdmin.tsx`), dengan penyaring, kolom, dan selisih terencananya sendiri.
+
+---
+
+### 52.2 Kartu skor, bukan tabel satu baris
+
+Keluaran `GetDataKPIAdmin` adalah **satu baris berisi empat belas kolom** — total klaim, rasio,
+nilai, subtotal, total, dan kesimpulan. Di Pega ia digambar sebagai grid.
+
+Di sini ia digambar sebagai **kartu**: tabel empat belas kolom dengan satu baris memaksa
+pengguna menggulir menyamping untuk membaca satu penilaian, sedangkan kartu skor justru dibaca
+dari atas ke bawah. Ini selisih **tampilan**, bukan selisih angka, dan sudah dinyatakan di panel
+selisih terencana.
+
+---
+
+### 52.3 Empat keanehan Pega yang DIPERTAHANKAN, dan masing-masing dijaga satu uji
+
+`P-5` menuntut hasil yang sama, dan keempat hal berikut akan tampak seperti kelalaian bila
+dibaca tanpa keterangan. Karena itu tiap-tiapnya dikunci satu uji yang akan gagal bila
+seseorang "merapikannya".
+
+| # | Yang dipertahankan | Uji penjaga |
+|---|---|---|
+| 1 | Kartu skor NON-MBU menyaring Group Panel `('003','004','006','009')`, sedangkan rincian klaimnya `('003','004','006')` — **`009` hanya ada di satu sisi** | `TestPenyaringGroupPanelKartuSkorDanRincianMemangBerbeda` |
+| 2 | Kueri PA memuat rentang **1 Jan – 10 Nov 2023** yang tertanam di dalam teksnya, di luar periode yang dipilih pengguna | `TestRentang2023YangTertanamTetapAda` |
+| 3 | Ambang SLA NON-MBU `> 1` hari, PA `> 0` hari | `TestAmbangSLABerbedaAntarKelompok` |
+| 4 | Enam Operator ID yang di-hardcode sebagai penyaring tim | `TestOperatorYangDiHardcodeTetapApaAdanya` |
+
+Keempatnya adalah kandidat `D-15` — nilai bisnis yang seharusnya menjadi master data. Tetapi
+`P-5` berlaku lebih dulu: memindahkannya ke master **sekarang** akan mengubah angka sebelum
+gerbang 1 pernah dijalankan, sehingga selisihnya tidak dapat lagi dibedakan dari cacat.
+
+Satu lagi yang dipertahankan dan perlu disebut terpisah: nama koordinator yang **ditulis di
+dalam teks kueri berbeda** dari yang ditampilkan Pega, karena activity-nya menimpanya sesudahnya.
+Keduanya dibawa apa adanya, dan yang di kueri ditampilkan di keterangan layar supaya penguji
+gerbang 1 tidak melaporkannya sebagai kekeliruan.
+
+---
+
+### 52.4 Satu-satunya penyimpangan yang disengaja: `NULLIF`
+
+Kueri Pega membagi tanpa penjagaan. Pada periode tanpa satu pun klaim, pembaginya nol dan Oracle
+melemparkan `ORA-01476` — layarnya galat, bukan kosong.
+
+Di sini pembaginya dijaga `NULLIF`, sehingga hasilnya `NULL`. Layar menggambarnya sebagai **tanda
+hubung**, bukan `0%`.
+
+Perbedaan antara keduanya nyata pada kartu penilaian kinerja: `0%` menyatakan kinerjanya nol,
+sedangkan tanda hubung menyatakan **tidak ada yang dapat dinilai**. Menggambar yang pertama untuk
+yang kedua adalah tuduhan, bukan angka.
+
+Ini satu-satunya tempat kueri admin menyimpang dari Pega, dan ia dinyatakan di panel selisih
+terencana.
+
+---
+
+### 52.5 Judul kolom yang sama untuk kolom yang berbeda
+
+Grid rincian punya dua kolom berjudul **"Tgl Terima Dokumen"** — satu pada kelompok NON-MBU
+(`TRANSFERDATE`), satu pada kelompok PA (`RECEIVEDATE`). Judulnya sama karena begitulah layar
+lama menamainya (`D-13`).
+
+Karena itu kolom disaring `hanya_kelompok`, dan penyaringnya **tidak boleh dilewati**: bila
+dilewati, kedua kolom bernama sama tergambar berdampingan dan tidak ada yang dapat membedakannya.
+Dikunci uji `TestKolomRincianAdminBerbedaAntarKelompok` di domain dan satu uji layar yang
+memastikan judul itu muncul **tepat sekali**.
+
+---
+
+### 52.6 Tab KPI PIC Teknik — sudah terpetakan, belum dibangun
+
+Pembacaan tab ketiga sudah tuntas sampai ke rumusnya. Yang berikut BUKAN dugaan — seluruhnya
+terbaca dari export.
+
+**Empat komponen**, masing-masing ditulis ke `TempKPI.pxResults` dengan penanda `TKA` 1–4:
+
+| TKA | Label di layar | Total | Tercapai |
+|---|---|---|---|
+| 1 | Update Status Progress (max terlambat 25%) | `NOAKSEP` dari `GetProgressForKPIPIC` | `STSKLAIM` |
+| 2 | Analisa Klaim (max 10 hari) | cacah `DataAnalisaPIC` | yang selisih harinya di bawah ambang |
+| 3 | Akseptasi Klaim ( 1 hari ) | cacah `DataAkseptasi` | idem |
+| 4 | SLA Klaim | cacah `TempSLAPIC` | idem |
+
+**Rumus persentase**, sama pada keempatnya:
+
+```
+persen = (Total == 0) ? 0 : round(Tercapai / Total, 3) * 100
+```
+
+**Nilai** diambil dari tabel pita `POOLDATA.M_KPI_PNC` lewat `GetNilaiKPIPIC`:
+
+```sql
+SELECT NILAI, NOTE FROM pooldata.M_KPI_PNC
+ WHERE JOB = ? AND BOTTOM <= ? AND TOP >= ?
+```
+
+dengan `JOB` bernilai `UPDATE PROGRESS KLAIM`, `ANALISA KLAIM`, `AKSEPTASI KLAIM`, atau
+`SLA KLAIM`.
+
+**Hanya komponen Progress yang memakai pembobotan**, lewat `GetBobotNilaiKPIPNC` dengan
+`Bobot = 15`:
+
+```
+nilaiakhir = round( round(round(Tercapai/Total, 2) * 100 / 20, 2) * round(Bobot/5, 2), 2 )
+```
+
+Pembulatan di setiap langkah itu **ikut menentukan hasilnya**, sehingga ia harus direplikasi
+langkah demi langkah — bukan disederhanakan menjadi satu ekspresi.
+
+**Penyaring Group Panel per lini**, dari `PNCReportKPI_act`:
+
+| Lini | Penyaring |
+|---|---|
+| NONMBU | `GROUP_PANEL in ('003','004','006') AND groupbisnisid NOT IN ('09','11','16','25')` |
+| PA | `GROUP_PANEL in ('002')` |
+| TRAVEL | `GROUP_PANEL in ('005')` |
+| BONDING | `groupbisnisid IN ('09','11','16','25')` |
+
+---
+
+### 52.7 Empat hal pada tab ketiga yang harus diputuskan sebelum ia dibangun
+
+Bukan hambatan teknis — keempatnya menuntut jawaban dari luar tim pengembang.
+
+**Pertama — isi `POOLDATA.M_KPI_PNC` tidak ada di export.** Kuerinya diketahui dan tabelnya hidup
+di produksi, sehingga nilainya dapat dibaca saat berjalan. Tetapi **tanpa isinya, tab itu tidak
+dapat diuji kesetaraannya** maupun diuji dengan penyimpan di memori: setiap nilai pada kartu
+skornya berasal dari sana. Perlu diminta ke DBA, satu `SELECT` saja.
+
+**Kedua — dua label berselisih untuk komponen yang sama.** `PNCReportKPI_act` menulis
+"Update Status Progress (max terlambat **20%**)" sebagai baris Leader, sedangkan
+`GetReportKPI_Progress` menulis "…max terlambat **25%**" untuk baris PIC. Salah satunya keliru,
+dan Pega menampilkan keduanya berdampingan hari ini. Perlu ditetapkan Work Owner mana yang benar.
+
+**Ketiga — satu perhitungan membagi angka dengan dirinya sendiri.** Pada agregasi SLA,
+`PNCReportKPI_act` menghitung `@divide(.Country, .Country) * 100` — yang **selalu 100%**, berapa
+pun isinya, dan galat bila nol. Dugaan kuatnya pembilangnya seharusnya `.CountryID`, seperti pada
+baris sejenis di tempat lain (`@Math.divide(.CountryID, .Country, 4) * 100`). Ini cacat yang
+menentukan angka penilaian kinerja, sehingga tidak boleh diperbaiki diam-diam — ia masuk kelas
+yang sama dengan sepuluh cacat pada `D-49`, dan penyelesaiannya keputusan Work Owner.
+
+**Keempat — penentuan "tepat waktu" menempuh kalender hari kerja.** Ketiga komponen selain
+Progress memanggil `GCNMTimeDifferenceWorkCalender_Act`, yang membaca hari libur dari
+`GENERAL.HRD_LBR@ASMD` lewat DB link. Per ketetapan Work Owner pada §50, pemakaian di dalam
+sub-kueri **tetap memakai DB link** — jadi jalurnya sudah jelas; yang belum ada adalah ambang
+harinya, yang datang dari `GetDaySurveyAdjuster`.
+
+**Satu Operator ID lagi yang di-hardcode** ditemukan di jalur ini — `BAMBANGSETIADJIGUNAWAN`,
+ditulis sebagai nama Leader di `PNCReportKPI_act`. Ia menambah daftar 24 Operator ID pada `D-15`.
+
+
+---
+
+## 52. Report Klaim — dua fungsi tersimpan naik ke Go, dan kolom tanpa sumber (2026-09-25)
+
+Lima keputusan implementasi saat memindahkan tiga kueri Non-MBU terakhir.
+
+### 52.1 Master dibaca sekali per laporan, bukan sekali per baris
+
+**Keputusan.** `GCNM_FEE_SCALE` (17 pita) dan `GCNM_MST_PROGRESS` dibaca **satu kali** saat
+penghitung kolom turunan disusun, lalu dipakai ulang untuk setiap baris.
+
+**Sebabnya.** `Get_InterpolasiPNC` menjalankan **tiga kueri setiap kali dipanggil**, dan ia
+dipanggil sekali per baris settlement. Pada laporan berisi puluhan ribu baris itu puluhan
+ribu kali tiga kueri terhadap tabel 17 baris. Polanya sama dengan kalender libur pada §50.2,
+dan seam `deriveBuilder` memang dibuat untuk ini: ia mengembalikan FUNGSI, sehingga bahan
+yang mahal diambil sekali di luar perulangan.
+
+**Konsekuensi yang diterima.** Master yang berubah di tengah pengaliran satu laporan tidak
+ikut terbaca. Itu justru yang dikehendaki: satu berkas dihitung dengan satu tangga fee, bukan
+sebagian dengan tangga lama dan sebagian dengan tangga baru.
+
+### 52.2 Kegagalan master mengosongkan satu kolom, tidak menjatuhkan laporan
+
+**Keputusan.** Master yang tidak terbaca menghasilkan `Unavailable…`, dan kolom yang
+bergantung padanya menjadi **sel kosong**.
+
+**Sebabnya.** Sistem lama memakai `SELECT … INTO`, sehingga satu kode tahapan yang tidak ada
+di master melempar `NO_DATA_FOUND` dan **menggagalkan seluruh laporan**. Satu baris rusak
+membuat puluhan ribu baris lain tidak terunduh — kerugian yang jauh lebih besar daripada
+satu sel yang hilang.
+
+**Yang tidak dilakukan: menjawab nol.** Nol pada kolom fee terbaca sebagai "adjuster tidak
+dibayar", dan itu angka yang salah, bukan angka yang hilang. Pembedaan yang sama sudah
+dipakai pada kolom hari kerja (§50.2) dan kolom usia (§50.3).
+
+**Satu pengecualian yang disengaja.** Kode tahapan progres yang tidak dikenal master
+**dikeluarkan apa adanya**, bukan dikosongkan. Ia terlihat tidak wajar di antara nama-nama
+tahapan, dan itu memang yang dikehendaki: kekurangan master terbaca, tanpa menjatuhkan
+laporan.
+
+### 52.3 Dua panel berbagi satu kueri, dibedakan parameter
+
+**Keputusan.** Close Klaim dan Temporary Close Klaim Non-MBU memakai **satu** kueri bernama,
+dengan parameter ketiga `'true'`/`'false'`.
+
+**Sebabnya.** Di Pega pun satu rule melayani keduanya; pembedanya disisipkan sebagai potongan
+teks SQL dari langkah activity. Penyisipan teks itulah yang dilarang Coding Standards §4.3 —
+tetapi *pemisahannya menjadi dua kueri* akan menghasilkan 190 baris yang identik kecuali satu,
+dan salinan seperti itu menyimpang begitu salah satunya disunting.
+
+**Konsekuensi struktural.** `byLine` diubah sehingga **parameter melekat pada cabang**, bukan
+pada laporan. Sebelumnya kedua cabang berbagi satu penyusun parameter, dan itu memaksa kueri
+Non-MBU menerima bind yang tidak dipakainya — jumlah bind yang tidak cocok adalah galat saat
+dijalankan, dan galatnya baru muncul ketika seseorang menekan tombolnya.
+
+### 52.4 Kolom yang tidak pernah berisi data didaftar, bukan diisi
+
+**Keputusan.** Enam belas kolom pada tujuh panel yang **tidak punya ekspresi apa pun** di
+kueri aslinya didaftar di `kolomTanpaSumber`, dan dibiarkan kosong.
+
+**Sebabnya.** Tiga hal yang berbeda terlihat sama di berkas keluaran: kolom yang datanya
+memang kosong, kolom yang aliasnya salah ketik, dan kolom yang tidak pernah punya sumber.
+Yang kedua adalah cacat yang harus diperbaiki; yang ketiga adalah keadaan yang harus
+diketahui pemilik laporan.
+
+**Kenapa tidak ditebak.** Kolom "OR ASM" pada Data Komite tampak jelas menuntut `PRSN_OR` —
+tetapi "tampak jelas" bukan bukti, dan yang dihasilkannya adalah angka uang. Menebaknya
+berarti mengarang.
+
+**Kenapa didaftar, bukan dibiarkan.** Daftar itu adalah satu-satunya pengecualian yang
+diterima uji kolom, dan ujinya **menolak dari dua arah**: nama yang ternyata punya sumber
+harus dibuang. Dengan begitu ia tidak dapat menjadi catatan usang yang menyembunyikan
+kemajuan — perlakuan yang sama dengan `kueriBelumDipindahkan`.
+
+### 52.5 Uji kolom membandingkan dua daftar, bukan memeriksa satu
+
+**Keputusan.** `TestSetiapKolomBerkasPunyaSumber` membandingkan kolom katalog dengan alias
+kueri **ditambah kunci yang benar-benar ditulis penghitung kolom turunan** — penghitungnya
+dijalankan atas baris kosong, bukan didaftar.
+
+**Sebabnya.** Daftar tulisan tangan menyimpang begitu sebuah kolom turunan ditambahkan, dan
+menyimpangnya tidak terdeteksi apa pun. Menjalankan penghitungnya membuat kedua sisi
+perbandingan berasal dari kode yang sungguh-sungguh berjalan.
+
+**Perbandingannya mengabaikan huruf besar-kecil**, karena properti Pega tidak peka huruf.
+Tanpa itu, `RESPONSENOTE` dan `ResponseNote` akan dilaporkan sebagai cacat padahal keduanya
+cocok — dan laporan palsu sebanyak itu membuat ujinya diabaikan.
+
+**Hasilnya pada hari pertama:** empat cacat pada pekerjaan yang sudah dianggap selesai,
+termasuk satu laporan yang seluruh lima belas kolomnya akan kosong. Tidak satu pun
+menghasilkan galat; seluruhnya hanya menghasilkan berkas yang terlihat benar.
+
+---
+
+## 53. Cacat Pega dibiarkan seperti Pega (2026-09-25)
+
+**Menyupersede §52.4 pada bagian yang menyangkut penyelarasan alias.**
+
+### 53.1 Keputusan
+
+Work Owner, 2026-09-25: *"tolong benerin cacatnya, kalo emang dari PEGA gapapa, seperti
+PEGA, coba di cek lagi"*.
+
+Yang mengikat sejak itu:
+
+| Jenis cacat | Perlakuan |
+|---|---|
+| **Cacat pemindahan** — Pega menghasilkan, kita tidak | **diperbaiki** |
+| **Cacat Pega** — Pega pun tidak menghasilkannya | **dibiarkan**, dan **dicatat** |
+
+### 53.2 Kenapa ini bukan sekadar soal selera
+
+Setiap penyelarasan alias mengubah **isi berkas yang sudah dipakai**. Kolom yang selama
+bertahun-tahun kosong tiba-tiba terisi, dan berkas kerja di sisi pengguna yang membaca
+menurut posisi kolom ikut berubah artinya. Itu bukan perbaikan kecil melainkan selisih yang
+menuntut persetujuan (`D-54`) — dan persetujuan itu tidak diberikan.
+
+Ada alasan kedua yang lebih dalam: **kita tidak tahu kolom itu seharusnya berisi apa.**
+Alias `month CopyFrom` memang tampak seperti salah ketik dari `CopyFrom`, tetapi "tampak
+seperti" bukan bukti. Yang pasti hanyalah: di Pega ia kosong.
+
+### 53.3 Yang menggantikan perbaikan
+
+Bukan mengisi kolomnya, melainkan **mencatat ketiadaannya**: `kolomTanpaSumber` mendaftar
+setiap kolom berkas yang tidak pernah terisi, beserta sebabnya — alias salah ketik, atau
+memang tidak ada ekspresi apa pun.
+
+Daftar itu **terkunci dua arah** oleh `TestSetiapKolomBerkasPunyaSumber`:
+
+- kolom yang tidak punya sumber DAN tidak terdaftar → uji gagal;
+- nama yang terdaftar tetapi ternyata PUNYA sumber → uji gagal.
+
+Yang kedua yang membuatnya tidak dapat menjadi catatan usang. Perlakuan yang sama dengan
+`kueriBelumDipindahkan`.
+
+**Ini yang berubah dari sistem lama.** Isinya sama persis; yang baru adalah bahwa sekarang
+ada satu tempat yang menyatakan kolom mana yang memang tidak akan pernah terisi, dan ada
+mesin yang menjaga pernyataan itu tetap benar.
+
+### 53.4 Konstanta bernama untuk angka yang di-hardcode Pega
+
+Dua angka dibawa apa adanya dari `GET_INTERPOLASIPNC.fnc` dan diberi nama:
+
+| Konstanta | Angka | Asalnya |
+|---|---|---|
+| `FeeBeforeFirstBand` | 1.650.000 | `ehasil := 1650000` |
+| `TopBandIndex` | 17 | `WHERE INDEX_FEE = 17` |
+
+Yang kedua sempat diganti menjadi "pita ber-indeks terbesar" supaya tetap benar bila master
+bertambah. Penggantian itu dicabut.
+
+**Akibat yang disadari:** bila master kelak berisi 18 pita, seluruh nilai di atas pita ke-18
+diekstrapolasi dari pita ke-17 — jawaban yang salah tanpa satu pun tanda. Konstanta bernama
+berdiri supaya perbaikannya kelak berupa suntingan satu baris, bukan pencarian angka 17 di
+tengah perhitungan.
+
+### 53.5 Batas keputusan ini: yang tidak punya bentuk sah untuk disalin
+
+"Seperti Pega" mengandaikan ada bentuk Pega yang dapat disalin. Pada dua tempat, tidak ada:
+
+1. **Dua kolom "Jumlah FU Terlambat"** pada Close Klaim Non-MBU. Pernyataan aslinya memakai
+   alias yang menaungi dirinya sendiri dan merujuk kolom yang tidak ada di tabel itu. Yang
+   ditulis di sini adalah MAKSUDNYA — dihitung per klaim.
+
+2. **Dua kolom hari kerja** pada Data Komite. Fungsinya hidup di basis data lain dan
+   source-nya tidak ada; `D-50` pun menetapkan logikanya ditulis ulang di Go.
+
+Keduanya tetap menjadi selisih yang menunggu persetujuan Work Owner (`D-54`), dan keduanya
+**tidak dapat dibuktikan setara**.
+
+### 53.6 Perangkaian teks tidak punya padanan portabel
+
+`09-DATABASE-STRATEGY.md` §4 menetapkan `LISTAGG(...)` → `STRING_AGG(...)`. Padanan itu
+**tidak dapat dijalankan**: Oracle 19c tidak punya `STRING_AGG`, dan PostgreSQL tidak punya
+`LISTAGG`.
+
+Keputusannya: **perangkaian teks dikerjakan di Go**, dengan pola yang sudah dipakai tiga
+kali di modul ini — bahan dibaca sekali per laporan, aturannya hidup di paket domain.
+
+Ini temuan terhadap Steering, dan diangkat ke Work Owner. `§4` tidak disunting sepihak.
+
+## 54. Report KPI PNC — tab KPI PIC Teknik, dan tiga cacat yang direplikasi (2026-09-25)
+
+Melanjutkan §52. Work Owner melampirkan isi `POOLDATA.M_KPI_PNC`, yang menutup dua penghalang
+di §52.7 sekaligus — dan memunculkan satu temuan yang lebih berat dari ketiganya.
+
+Arahan yang mengikat bab ini: *"sesuai PEGA apa adanya, langsung ke kolom kan gak pake json
+lagi"*.
+
+---
+
+### 54.1 Yang dibuka oleh isi tabel
+
+| Penghalang §52.7 | Status |
+|---|---|
+| Isi `M_KPI_PNC` tidak ada di export | **tertutup** — 20 baris `TIPE='PIC'` diterima |
+| Ambang hari tidak diketahui | **tertutup** — ada di kolom `DAY`, bukan di rule terpisah |
+| Dua label berselisih (20% versus 25%) | tetap terbuka — dibawa apa adanya |
+| Pembagian angka dengan dirinya sendiri | tetap terbuka — direplikasi, dinyatakan |
+
+Kolom `DAY` ternyata menyimpan ambangnya: **10 hari** untuk Analisa, **1 hari** untuk
+Akseptasi, **390** untuk SLA Leader dan **399** untuk SLA Member. Kolom `NOTE` pada baris SLA
+berisi `LEADER`/`MEMBER`, dan itu cocok dengan `TempAdjuster.ReporterName := "and note = '" +
+local.timgroup + "'"` di `GetReportKPI_SLA`.
+
+---
+
+### 54.2 Temuan utama: dua tangga nilai tersusun TERBALIK
+
+Ini yang paling berakibat, dan ia tidak akan terlihat tanpa isi tabelnya.
+
+| JOB | Arah tangga | Yang dikirim activity | Cocok? |
+|---|---|---|---|
+| `ANALISA KLAIM` | menaik — 80–100 → 5 | % tepat waktu | ✔ |
+| `AKSEPTASI KLAIM` | menaik — 80–100 → 5 | % tepat waktu | ✔ |
+| **`UPDATE PROGRESS KLAIM`** | **menurun — 0–20 → 5** | % **tidak terlambat** | ✘ |
+| **`SLA KLAIM`** | **menurun — 0–20 → 5** | % **memenuhi SLA** | ✘ |
+
+Tangga menurun berarti tabelnya disusun untuk **persentase TERLAMBAT** — sejalan dengan label
+komponennya sendiri, "max terlambat 25%". Tetapi `GetReportKPI_Progress` mengirim kebalikannya:
+
+```
+local.tdkterlambat  := STSKLAIM                              // cacah TIDAK terlambat
+local.bobotprogress := tdkterlambat / totalprogress * 100    // % TEPAT WAKTU
+TempSearch.pyLabel  := local.bobotprogress                   // ← ini yang dicari ke tangga
+```
+
+Akibatnya PIC yang 95% tepat waktu jatuh ke pita 35–100 dan bernilai **1**, sedangkan yang 10%
+tepat waktu jatuh ke pita 0–20 dan bernilai **5**.
+
+**Tiga hal menguatkan bahwa ini cacat, bukan pembacaan yang keliru:**
+
+1. Satu baris di bawahnya menghitung rasio terlambat yang BENAR —
+   `Local.nilaibobot := (total − tdkterlambat) / total` — lalu **tidak pernah dipakai**. Nilai
+   mati, persis di tempat yang salah.
+2. Kasus 100% **ditambal dengan tangan**: `@if(bobotprogress >= 100, 5, <nilai pita>)`.
+   Tambalan itu hanya masuk akal bila pencarian normalnya memberi jawaban keliru di sana.
+3. Tambalan yang sama menuliskan persentasenya sebagai **99**, bukan 100.
+
+**Gejala yang dapat diperiksa langsung di Pega hari ini:** dua PIC yang sama-sama tampil
+"99%" akan bernilai **5** dan **1** — yang pertama sebenarnya 100% dan dibulatkan turun oleh
+tambalan, yang kedua benar-benar 99%.
+
+**Keputusan:** direplikasi apa adanya (`P-5`), dinyatakan sebagai selisih terencana, dan
+diusulkan menjadi butir perbaikan eksplisit berikutnya pada `D-49`. Dikunci tiga uji yang akan
+gagal bila seseorang "memperbaikinya" tanpa keputusan Work Owner.
+
+---
+
+### 54.3 Perakitan pindah ke Go, dan itu bukan pilihan gaya
+
+Di sistem lama nilai tab ini **tidak dihitung oleh kueri**. Kueri hanya mengembalikan baris
+mentah; yang menghitung adalah langkah-langkah activity — empat sub-activity, masing-masing
+mengulang per klaim, memanggil kalender hari kerja, lalu mencacah yang tepat waktu.
+
+`D-02` menetapkan basis data menjadi penyimpanan murni, sehingga perakitannya naik ke
+`usecase/picteknik.go`. Yang wajib dijaga adalah hasilnya (`P-5`), dan itulah yang diuji —
+delapan uji perakitan menjalankan seluruh jalurnya, bukan hanya rumusnya.
+
+**Satu perubahan yang tidak terlihat pengguna:** keempat kelompok kueri dijalankan **sekali
+untuk seluruh PIC**, bukan sekali per orang. Pada lini dengan dua puluh petugas, sistem lama
+menempuh delapan puluh perjalanan ke basis data untuk satu layar. Penyaringnya memang hanya
+berbeda pada nama PIC-nya, sehingga hasilnya sama.
+
+Hal yang sama berlaku untuk hari libur: diambil sekali untuk seluruh periode, bukan di dalam
+perulangan per klaim.
+
+---
+
+### 54.4 Rumusnya direplikasi LANGKAH DEMI LANGKAH, termasuk pembulatannya
+
+`@divide(x, y, n)` pada Pega membulatkan ke `n` desimal **setiap kali dipanggil**, dan rumus
+pembobotan memanggilnya tiga kali berturut-turut:
+
+```
+nilai  := round(round(tercapai/total, 2) * 100 / 20, 2)
+bobot  := round(bobot/5, 2)
+hasil  := round(nilai * bobot, 2)
+```
+
+Menyederhanakannya menjadi satu ekspresi mengubah angka pada digit terakhir — cukup untuk
+membuat uji kesetaraan melaporkan selisih yang tidak akan pernah dapat dijelaskan.
+
+Hal yang sama pada persentase: `round(tercapai/total, 3) * 100`, dibulatkan **sebelum**
+dikalikan 100. Dua dari tiga menjadi `66,7`, bukan `66,667`. Membalik urutannya menggeser
+hasilnya tepat di titik batas pita — dan titik batas itulah yang menentukan nilai seseorang
+naik atau turun satu angka.
+
+---
+
+### 54.5 Penyaring lini bisnis TIDAK dapat dijadikan parameter
+
+Keempat lini bukan empat nilai pada kolom yang sama:
+
+| Lini | Penyaring |
+|---|---|
+| NONMBU | `GROUP_PANEL IN ('003','004','006')` **dan** `GROUPBISNISID NOT IN ('09','11','16','25')` |
+| PA | `GROUP_PANEL IN ('002')` |
+| TRAVEL | `GROUP_PANEL IN ('005')` |
+| BONDING | `GROUPBISNISID IN ('09','11','16','25')` — **tidak menyentuh GROUP_PANEL** |
+
+Non-MBU dan Bonding saling meniadakan pada kolom yang BERBEDA. Bentuk predikatnya berbeda,
+bukan hanya isinya.
+
+Penggantinya: penanda `/*LINE_FILTER*/` di berkas `.sql`, diganti potongan tetap dari daftar
+**tertutup** di dalam kode, dipilih oleh kode lini yang sudah divalidasi. Tidak ada satu pun
+nilai dari pengguna yang menyentuh teks SQL.
+
+**Lini yang tidak dikenal menghasilkan `AND 1 = 0` — menolak semua baris, bukan meloloskan
+semuanya.** Penyaring yang hilang akan menampilkan angka seluruh lini kepada peminta satu
+lini, dan kekeliruan semacam itu tidak terlihat sebagai galat. Dikunci satu uji.
+
+---
+
+### 54.6 Membaca kolom langsung, tanpa JSON
+
+Arahan Work Owner *"langsung ke kolom kan gak pake json lagi"* terpenuhi apa adanya: kedelapan
+kueri tab ini membaca kolom relasional — `T_CLAIM_PNC`, `T_CLAIM_ADJUSTMENT`,
+`PEGA_DASHBOARDPNC`, `GCNM_PROGRESS_CLAIM`, `MST_USER_TEKNIK`, `M_KPI_PNC`. **Nol `JSON_VALUE`
+dan nol `JSON_TABLE`**, sehingga `DB-3` tidak tertekan sama sekali di jalur ini.
+
+Empat penajaman terhadap kueri lama, seluruhnya `D-20`:
+
+| Yang diganti | Penggantinya | Sebabnya |
+|---|---|---|
+| `trunc(kolom) >= … AND trunc(kolom) <= …` | `>= :1 AND < :2 + INTERVAL '1' DAY` | `TRUNC` pada kolom mematikan index |
+| `rownum` | `FETCH FIRST … ROWS ONLY` | portabilitas |
+| `TO_CHAR` untuk tampilan | pemformatan di Go | portabilitas |
+| `kolom + 1` pada tanggal | `+ INTERVAL '1' DAY` | portabilitas |
+
+Satu `TO_CHAR` **dipertahankan**, pada kueri hari libur — ia membandingkan **nama hari**, bukan
+memformat tampilan, dan larangannya menyangkut pemformatan.
+
+---
+
+### 54.7 Tiga penajaman pada kueri tangga nilai
+
+Kueri lama `GetNilaiKPIPIC` berbunyi:
+
+```sql
+SELECT NILAI, NOTE FROM pooldata.M_KPI_PNC
+ WHERE JOB = ? AND BOTTOM <= ? AND TOP >= ?
+```
+
+Tiga hal ditambahkan, dan ketiganya menutup kegagalan yang **tidak menimbulkan galat**:
+
+1. **`TIPE = 'PIC'`.** Kueri lama tidak menyaringnya. Hari ini belum menggigit karena nama JOB
+   milik PIC dan ADJUSTER kebetulan tidak bertabrakan — tetapi satu baris ADJUSTER baru
+   bernama sama akan mengubah nilai seseorang.
+2. **`NILAI IS NOT NULL`.** Seluruh baris `TIPE='ADJUSTER'` berkolom `NILAI` kosong; tanpa ini
+   baris semacam itu terbaca sebagai nol.
+3. **`ORDER BY ID`.** Pita bertetangga **bertindih** di titik batasnya — nilai 20 memenuhi pita
+   0–20 dan 20–25 sekaligus — dan kueri lama tidak punya urutan sama sekali. Hasil Pega di
+   sana bergantung pada urutan baris yang kebetulan dikembalikan Oracle.
+
+Yang ketiga adalah **penyempitan perilaku**, bukan perubahan: salah satu dari dua jawaban yang
+sama-sama mungkin di Pega menjadi satu-satunya jawaban di sini. Dinyatakan sebagai selisih
+terencana.
+
+---
+
+### 54.8 Satu lapis agregasi sengaja TIDAK dibangun
+
+Sistem lama punya satu rekapitulasi lagi di atas baris Leader — per kelompok tim, dengan
+pembagi **2**, **4**, dan **5** pada tempat yang berbeda di `PNCReportKPI_act`. Syarat kapan
+masing-masing pembagi berlaku **tidak dapat ditentukan dari export**.
+
+Ia **ditinggalkan, bukan ditebak**, dan dinyatakan di panel selisih. Menebaknya berarti
+menghasilkan angka penilaian kinerja yang tampak sah dan tidak ada yang tahu asalnya — persis
+yang dilarang prinsip No Shortcuts.
+
+---
+
+### 54.9 Dua hardcode `D-15` baru yang ditemukan di jalur ini
+
+1. **Dua petugas dikecualikan dari penilaian SLA** dengan mencocokkan NAMA ORANG di dalam
+   rule — `@contains(.UserTeknis, …)`, pencocokan **sebagian** nama. Keduanya tetap dinilai
+   pada ketiga komponen lain. Namanya **ditampilkan di layar**: pengecualian yang tidak
+   terlihat adalah pengecualian yang tidak dapat dipertanyakan.
+2. **Ambang 1 hari pada jalur Akseptasi baris LEADER ditulis langsung di dalam rule**, alih-alih
+   dibaca dari kolom `DAY`. Keduanya kebetulan bernilai sama hari ini; yang dipakai di sini
+   adalah yang dari tabel.
+
+---
+
+### 54.10 Mode periksa mendapat pemeriksaan tangga nilai
+
+`checkReportKPIPICTeknik` membaca keempat tangga dan melaporkan **arahnya dari DATA**, bukan
+dari asumsi. Bila kelak isi tabel produksi diperbaiki, pemeriksaan inilah yang pertama
+menunjukkannya — dan ia langsung menyebut bahwa butir selisih terencana tentang tangga
+terbalik perlu dicabut.
+
+Ia juga melaporkan lubang dan tumpang tindih antar pita.
+
+---
+
+### 54.11 Yang perlu dipastikan sebelum dipakai terhadap Oracle
+
+1. **Kolom `NEXT_FOLLOWUP` bertipe apa.** Kueri progres membandingkannya dengan
+   `+ INTERVAL '1' DAY`; bila ia `VARCHAR2`, perbandingannya tidak akan berjalan.
+2. **`GENERAL.HRD_LBR` dapat dibaca tanpa DB link.** Kueri hari libur menulisnya tanpa `@ASMD`.
+   Bila ternyata hanya tersedia lewat DB link, kuerinya perlu memakai koneksi kedua — jalur
+   itu sudah ada (`ANEKA_<ALIAS>_*`).
+3. **Ambang SLA 390 dan 399 satuannya hari atau jam.** Angkanya janggal sebagai hari kerja
+   (390 hari kerja lebih dari satu setengah tahun). Bila satuannya jam, perhitungannya perlu
+   disesuaikan — tetapi `GCNMTimeDifferenceWorkCalender_Act` bernama "hari kerja", dan itu
+   yang direplikasi sampai ada bukti lain.
+4. **`GROUPBISNISID` ada di `PEGA_DASHBOARDPNC` dan `T_CLAIM_PNC`.** Penyaring Non-MBU dan
+   Bonding memakainya di keempat kueri.
+
+### 54.12 Ketiga cacat diputuskan TETAP mengikuti Pega (2026-09-25)
+
+Ketiga butir pada §54.2, §54.7, dan agregasi SLA diangkat ke Work Owner beserta gejala yang
+dapat diperiksa langsung di Pega. Jawabannya:
+
+> *"kalo semua nya uda sesuai PEGA biarkan saja apa adanya"*
+
+**Keputusan:** ketiganya **tetap**. Tidak ada kode yang diubah — yang berubah hanya statusnya,
+dari "diusulkan sebagai butir `P-5` berikutnya" menjadi **berlaku**.
+
+| Butir | Status |
+|---|---|
+| Tangga `UPDATE PROGRESS KLAIM` dan `SLA KLAIM` tersusun terbalik | **tetap** |
+| Tambalan 100% pada Progress (persen ditulis 99, nilai dipaksa 5) | **tetap** |
+| Agregasi SLA Leader membagi angka dengan dirinya sendiri | **tetap** |
+| Dua label berselisih — baris PIC 25%, baris Leader 20% | **tetap**, keduanya dibawa |
+
+**Kenapa ini perlu dicatat meski tidak ada kode yang berubah.** Panel selisih dan komentar
+kode sebelumnya berbunyi *"sampai diputuskan Work Owner"* — kalimat yang membuat pembaca
+berikutnya mengira angkanya akan berubah, dan berpotensi membuatnya "merapikan" kode itu
+sebagai pekerjaan yang tertinggal. Kalimatnya diganti menjadi pernyataan bahwa ketiganya
+**berlaku**, dan bahwa mengubahnya kelak memerlukan keputusan baru.
+
+Berkas yang disunting: `internal/reportkpi/screen.go` (komentar + satu butir pembuka pada
+panel selisih) · `README.md`. Tidak ada satu pun rumus, kueri, maupun uji yang berubah.
+
+**Satu hal yang TIDAK tercakup keputusan ini.** Pertanyaan satuan ambang SLA — 390 dan 399
+itu hari atau jam — **bukan** pertanyaan "diperbaiki atau tidak", melainkan "sudah terbaca
+benar atau belum". Bila satuannya ternyata jam, yang ada sekarang justru **tidak** sesuai
+Pega. Ia tetap terbuka sebagai verifikasi, bersama tiga hal lain di §54.11.
+
+### 54.13 Panel selisih terencana DIHAPUS dari layar (2026-09-25)
+
+Work Owner: *"Selisih terencana terhadap layar Peganya tolong di hapus dong"*, menyusul
+keputusan §54.12 bahwa seluruhnya mengikuti Pega apa adanya.
+
+**Keputusan:** ketiga panel dihapus dari layar — tab Adjuster, tab Admin, dan tab PIC Teknik.
+
+**Yang DIHAPUS hanyalah tampilannya.** Ini pembedaan yang menentukan, dan ia disengaja:
+
+| Tempat | Nasib |
+|---|---|
+| Panel `<details>` di ketiga layar | **dihapus** |
+| Konstanta `PlannedDifferences`, `AdminPlannedDifferences`, `PICTeknikPlannedDifferences` | **tetap** |
+| Field `selisih_terencana*` pada jawaban `GET /api/report-kpi/tab` | **tetap dikirim** |
+| Uraiannya di dokumen ini | **tetap** |
+| Penanda `↓` pada baris bertangga menurun | **tetap** |
+
+**Kenapa tidak dihapus sampai ke akarnya.** `D-54` menuntut setiap selisih
+**diklasifikasikan**, bukan ditampilkan — tuntutan itu menyangkut proses migrasi dan penguji
+gerbang 1, bukan pengguna harian. Menghapusnya dari kontrak API dan dari kode akan
+menghilangkan rekaman yang justru dituntut, sedangkan menghapusnya dari layar tidak.
+
+Jadi penguji gerbang 1 tetap dapat membacanya — lewat `/api/report-kpi/tab` atau lewat
+dokumen — sementara layar hariannya bersih.
+
+**Penanda `↓` dipertahankan** karena ia bukan panel: ia melekat pada barisnya sendiri, dan
+setelah panelnya hilang ia menjadi satu-satunya keterangan yang tersisa di layar untuk nilai
+yang berlawanan arah. Bila Work Owner menghendaki layar benar-benar tanpa tambahan apa pun,
+penanda itu perlu dicabut lewat keputusan tersendiri.
+
+**Ujinya diganti, bukan dihapus.** Tiga uji kini menegaskan panelnya **tidak muncul**, dan
+satu uji menegaskan penanda `↓` **tetap ada**. Menghapus ujinya akan membuat panel yang kelak
+ditambahkan kembali lolos tanpa ada yang menyadarinya.
+
+**Konsekuensi yang diterima secara sadar.** Tab KPI PIC Teknik menampilkan PIC yang 95% tepat
+waktu dengan nilai 1. Tanpa panel, pemakai yang pertama kali melihatnya kemungkinan besar
+melaporkannya sebagai kerusakan. Yang tersisa untuk menjawabnya: penanda `↓` beserta
+tooltip-nya, dan dokumen ini.
+
+Berkas yang disunting: `ReportKPIPage.tsx` · `ReportKPIAdmin.tsx` · `ReportKPIPICTeknik.tsx` ·
+`ReportKPIPage.test.tsx` · `README.md`. Tidak ada satu pun rumus, kueri, atau berkas backend
+yang berubah.
