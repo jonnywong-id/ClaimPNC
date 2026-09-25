@@ -11156,3 +11156,195 @@ penyimpanan SESI.
 Saya mengoreksinya sebelum melaporkan, tetapi ia dicatat: membaca satu nilai konfigurasi tanpa
 membaca fungsi yang memakainya adalah cara yang sama dengan membaca nama kolom tanpa membaca
 kuerinya.
+
+## 55. Sesi kedua puluh lima — modul Inbox Salvage (2026-09-25)
+
+Permintaan Work Owner: *"lanjutkan untuk penambahan modul Inbox Inbox Salvage, cek secara
+penuh aplikasi existing pada dokumen File InboxSalvage-Harness.xml jadikan ini sebagai
+referensi."*
+
+### 55.1 Harness 423 KB yang hampir tidak memuat apa pun — lagi
+
+Pola yang sama dengan modul Inbox Komunikasi Cabang (§48.1): keenam `pyCaption` harness
+hanya berisi `"Label"`. Yang berguna adalah **indeks rujukan rule** di dalamnya:
+
+```
+Section        InboxSalvage · InboxSalvageASM · InboxSalvageInsurtech
+Activity       GCNMCountSalvage_act · SetDataSalavage_act
+Data Transform CNMShowInsertSalvage_dt
+Field value    pyButtonLabel Tambah / Refresh
+               pyCaption Status Salvage / Jumlah
+               pyCaption Inbox Salvage Asuransi Sinarmas / … Insurtech
+pyPageSize     20
+```
+
+Kedua judul layar itu sudah menjawab satu hal sebelum satu section pun dibuka: layar ini
+**bercabang menurut PORTAL**, bukan menurut tab. Harness memilih di antara keduanya dengan
+`TempGetApp.LSC_ID != 'SIMASNET'` — menyambung langsung ke `D-75`/`ADR-0030`.
+
+### 55.2 Tiga belas daftar, tetapi hanya TIGA kueri
+
+Inilah temuan yang menentukan bentuk seluruh modul. Pembacaan pertama atas
+`InboxSalvageASM-Section.xml` (3,5 MB) menemukan **±10 grid**, dan itu terbaca seperti
+sepuluh pekerjaan. Penelusuran ke `SetDataSalavage_act` membuktikan sebaliknya:
+
+| Keluarga | Kueri | Melayani | Kolom |
+|---|---|---|---|
+| A | `GcnmSalvageData_OS_SQL` | Salvage Outstanding | 4 |
+| B | `GcnmSalvageData_ekonomisdanTba` | Ekonomis · TBA · Tidak Ekonomis · Tidak Ada Salvage · Buyback | 4 |
+| C | `GcnmSalvageData_CloseOs_SQL` | Balai Lelang · Checker · Rejected · Diterima · Ditolak · Request · Histori | 6–11 |
+
+Yang membedakan daftar di dalam satu keluarga hanyalah penyaring yang disisipkan
+`{ASIS:…}`. Tanpa temuan ini, parity penuh akan terbaca sebagai pekerjaan sepuluh kali
+lipat daripada sebenarnya — dan pertanyaan cakupan ke Work Owner akan disusun dengan pilihan
+yang salah.
+
+### 55.3 Kekeliruan saya yang paling berakibat: satu langkah punya BANYAK precondition
+
+Pengurai langkah activity yang saya tulis menyimpan **hanya precondition terakhir** per
+langkah. Akibatnya pembacaan pertama menghasilkan kesimpulan yang mustahil:
+
+```
+langkah 40  GcnmSalvageData_CloseOs_SQL    IF tipe2 != 3   -> RUN
+langkah 41  GcnmSalvageData_ekonomisdanTba IF tipe  != 1   -> RUN
+```
+
+Keduanya menulis ke `BrowsePage=TempData`, sehingga untuk tab Checker langkah 41 akan
+**menimpa** hasil langkah 40 — dan grid Checker akan menampilkan daftar klaim, bukan
+pengajuan salvage. Layarnya jelas tidak begitu.
+
+Yang saya lakukan: **tidak** menerima kesimpulan itu, melainkan membaca XML mentahnya. Di
+sana terlihat `pyStepsPreCondParams` punya **dua `rowdata`**, bukan satu:
+
+```
+langkah 40  IF tipe ∈ {2,3,4,5,11,15}  DAN  tipe2 ≠ 3
+langkah 41  IF tipe2 ∈ {3,4,5}          DAN  tipe  ≠ 1
+```
+
+Dengan pembacaan yang benar, tidak ada penimpaan sama sekali, dan pemetaan tab menjadi
+konsisten. Pengurai diperbaiki, dan **seluruh analisis percabangan diulang** dari awal.
+
+> Pelajaran yang layak dicatat, dan ia bukan yang pertama: kesimpulan yang **mustahil
+> menurut layar yang terlihat** hampir selalu berarti alat bacanya yang salah, bukan
+> sistemnya yang aneh. Sama dengan pelajaran alat ukur `.docx` pada sesi keempat — angka
+> yang tidak masuk akal diperiksa ke alatnya lebih dulu.
+
+### 55.4 Arah precondition diuji ke langkah yang maknanya tidak mungkin ambigu
+
+Sebelum memakai nilai `WhenTrue`/`WhenFalse`, saya menguji artinya ke langkah 4:
+
+```
+Call SetDataSalavage_act_ASI   IF LSC_ID == "SIMASNET"   T=2 F=3
+```
+
+Langkah itu **wajib** berjalan saat benar — ia varian portal Insurtech. Karena itu `2` =
+jalankan dan `3` = lewati, dan langkah ber-`T=3 F=2` berjalan saat kondisinya SALAH.
+
+Menebaknya akan membalik arti **17 percabangan** sekaligus.
+
+### 55.5 Empat cacat sistem lama yang ditemukan, dan perlakuannya
+
+| Cacat | Bukti | Perlakuan |
+|---|---|---|
+| Pencacah "Outstanding" menghitung `STSSALVAGE IN ('3','5')`, daftarnya menyaring `IS NULL` | `CountSalvage_sql11OS` vs langkah 26 | **direplikasi** (`P-5`) |
+| `GetCountSalvage_OS` — total paginasi tab Outstanding — tanpa penyaring `STSSALVAGE` sama sekali | kueri itu sendiri | **direplikasi** (`P-5`) |
+| Baris "Salvage Diterima"/"Salvage Ditolak" ditulis ke `TempALLSalvage.pxResults(1).pxResults(<APPEND>)` — daftar BERSARANG | langkah 21, 23 | **diperbaiki** |
+| Tab "Salvage Ditolak" (`tipe=16`) tidak pernah menjalankan kueri apa pun | langkah 40 menyebut 2,3,4,5,11,15 — **bukan 16**; langkah 49 melewatinya | **diperbaiki** |
+
+Pembedaannya mengikuti keputusan Work Owner: yang **berjalan** dan angkanya dibaca orang
+setiap hari direplikasi; yang **tidak pernah berjalan sebagaimana dimaksud penulisnya**
+diperbaiki, karena tidak ada perilaku yang perlu dijaga.
+
+Dua yang pertama dinyatakan ke pengguna lewat `selisih_terencana`, dan **dijaga uji** —
+`TestOutstandingCounterAndItsListDisagreeOnPurpose` gagal bila seseorang "memperbaikinya".
+
+Satu selisih ketiga sejenis ditemukan menyusul: pencacah "Histori Salvage" menghitung
+`STSTRANSFER IN ('1','6')` sementara daftarnya tidak menyaring sama sekali. Direplikasi
+dengan alasan yang sama.
+
+### 55.6 Dua nama orang yang menentukan isi tabel ringkas
+
+Penelusuran precondition pencacah menemukan syarat yang tidak terduga:
+
+```
+langkah 18  "Checker"           dilewati BAGI dua nama operator tertentu
+langkah 21  "Salvage Diterima"  hanya BAGI kedua nama itu
+langkah 23  "Salvage Ditolak"   hanya BAGI kedua nama itu
+```
+
+Artinya **dua orang melihat tabel ringkas yang berbeda dari semua orang lain**. `D-15`
+melarang nilai bisnis di-hardcode, dan nama orang sebagai penentu perilaku adalah tepat yang
+dilarangnya — keduanya termasuk 24 Operator ID yang `F-4` hapus. Ketiga baris karena itu
+tergambar untuk semua pengguna, dan selisihnya dinyatakan.
+
+Namanya **tidak direproduksi** di kode maupun dokumen: `D-69` membolehkannya, tetapi tidak
+ada gunanya — yang perlu diketahui pembaca adalah bahwa syaratnya nama orang, bukan nama
+siapa.
+
+### 55.7 Jawaban Work Owner yang berupa pengalihan, dan apa yang tersingkap karenanya
+
+Pertanyaan tentang perlakuan aksi tulis dijawab dengan perintah menelusuri tiga jalur:
+`CNMShowInsertSalvage_dt`, flow action `UploadDetailSalvage`, dan "rejected checker sama
+seperti 13 daftar itu".
+
+Penelusurannya **mengubah pemahaman saya tentang kedua jalur pertama**:
+
+| Jalur | Dugaan saat pertanyaan disusun | Yang terbukti |
+|---|---|---|
+| `CNMShowInsertSalvage_dt` | menyimpan salvage | **8 langkah, nol tulis** — ia pembersih form + penanda mode `"Insert"` |
+| `UploadDetailSalvage` | unggah dokumen ke storage | `pxUploadCSVResults` → salin CSV berkolom `Item·Quantity·Satuan·REMARKS` ke grid **di dalam form**; **nol tulis** |
+
+Keduanya persiapan form di sisi klien. Penyimpanan sesungguhnya ada di `SetStsSalvagePNC_act`
+(31 langkah) yang **tidak disebut** — dan itu diangkat sebagai pertanyaan lanjutan alih-alih
+ditebak. Jawabannya: *"di bangun di sesi section TambahData_Salvage"*.
+
+Ini pengalaman yang sama dengan §48.6: jawaban yang bukan jawaban atas pertanyaannya sering
+kali adalah **perintah menelusuri jalur yang belum tertelusur**, dan hasilnya mengubah
+pertanyaannya sendiri.
+
+### 55.8 Cacat kontrak saya sendiri, ditemukan uji frontend
+
+DTO galat validasi saya memakai `json:"isian"`. Uji layar gagal, dan penyebabnya bukan
+ujinya: `APIError.violations()` di `api/client.ts` hanya membaca `field` atau `kolom` —
+
+```ts
+const column = item.field ?? item.kolom
+```
+
+Nama di luar keduanya **sampai ke layar tetapi tidak pernah terbaca**, sehingga pelanggaran
+hilang tanpa satu pun galat dan pengguna menerima pesan umum alih-alih tanda di isiannya.
+Diperbaiki menjadi `field`.
+
+Temuan sampingan yang **tidak saya sentuh**: `inboxkomunikasicabang/http/dto.go:304` memakai
+`json:"isian"` pula — sehingga pelanggaran per isian modul itu kemungkinan tidak pernah
+tergambar di isiannya. Ia di luar lingkup sesi ini dan dilaporkan, bukan diperbaiki
+diam-diam.
+
+### 55.9 Hasil verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./internal/inboxsalvage/... ./cmd/...` | bersih |
+| `gofmt -l internal/inboxsalvage` | bersih |
+| `go test ./...` | **seluruhnya lulus** |
+| Uji modul ini | **64 Go + 13 Vitest**, seluruhnya lulus |
+| `npm run build` | bundel terbentuk |
+| `npx tsc --noEmit` | **tetap 120 galat**, seluruhnya pra-ada di modul tim lain — modul ini menambah **nol** |
+| `npx vitest run` | 29 gagal, **seluruhnya pra-ada** |
+
+Angka Vitest **diperiksa, bukan diasumsikan**. `App.tsx` yang saya sunting diimpor setiap uji
+layar, sehingga satu kekeliruan di sana akan tampak seperti kerusakan modul lain. Suntingan
+`App.tsx` dan `registry.ts` **di-stash sementara** lalu suite dijalankan ulang:
+
+```
+tanpa suntingan saya : 42 gagal / 607 lulus (649)
+dengan suntingan saya: 29 gagal / 620 lulus (649)
+```
+
+Selisih 13 adalah uji modul ini, yang tanpa rutenya memang gagal. Baseline modul lain
+**tetap 29**.
+
+Empat berkas `cmd/claimpnc` dilaporkan `gofmt -l` sebagai tidak rapi. Itu **pra-ada**,
+dibuktikan dengan men-stash suntingan saya dan menjalankan `gofmt -l` lagi — keempatnya tetap
+terdaftar. Tidak disentuh (Isolasi Protektif).

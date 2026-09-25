@@ -4498,3 +4498,78 @@ Ditambah satu hal yang memperburuk keduanya: `Section/DETAILKOMUNIKASICABANG_ACT
    hanyalah sisa percakapannya — dan tidak ada apa pun di layar yang menandainya. Tiga sesi
    berturut-turut menemukan kelas cacat yang sama: tombol yang hilang, nomor `MAX()` yang
    bentrok, dan utas yang terpotong.
+
+## Sesi 2026-09-25 — modul Inbox Salvage
+
+### Skill yang dipakai
+
+| Skill | Kapan | Alasan memakainya | Keluaran |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis, dan sekali lagi setelah jawaban pertama | Cakupan modul ini **tidak dapat disimpulkan dari bukti** — tiga belas daftar dengan dua jalur tulis, dan pilihan cakupan mengubah apa yang dibangun. Enam pertanyaan diajukan dalam dua putaran, seluruhnya dengan pilihan jawaban dan rekomendasi | 6 keputusan Work Owner, tercatat di `keputusan-implementasi.md` §55.1 |
+| `mattpocock-skills:domain-modeling` | saat menulis `inboxsalvage.go` dan `tab.go` | Kueri layar ini mengalihnamakan **seluruh** kolomnya menjadi nama properti klaim yang sudah ada, dan dua alias menyatakan hal yang SALAH. Tanpa penajaman istilah, alias itu akan terbawa ke kontrak API dan ke layar | Pemetaan alias → isi sebenarnya, ditulis di kepala `inboxsalvage.go` dan `inboxsalvage.sql` |
+| `mattpocock-skills:codebase-design` | saat memutuskan bentuk `Tab.Family` dan seam `Repo` | Tiga belas daftar dapat dibangun sebagai tiga belas jalur atau sebagai tiga. Prinsip "satu adapter berarti seam hipotetis" dipakai terbalik: menanyakan apa yang benar-benar **bervariasi** antardaftar | `Family` sebagai data, satu `Repo.List` untuk ketiga keluarga |
+
+### Manfaat yang dapat ditunjuk
+
+**`grilling` menyelamatkan cakupan dari salah ukur.** Pertanyaan pertama disusun setelah
+menemukan bahwa tiga belas daftar hanya memakai tiga kueri. Tanpa temuan itu, pilihan yang
+saya tawarkan akan berupa "bangun 3 daftar dulu" — dan Work Owner akan memilih cakupan yang
+jauh lebih kecil daripada yang sebenarnya murah.
+
+**`grilling` juga yang membuat jawaban-pengalihan tertangani dengan benar.** Jawaban kedua
+Work Owner bukan jawaban atas pertanyaannya melainkan perintah menelusuri tiga jalur.
+Disiplin skill ini — kerjakan *frontier*, jangan menebak yang prasyaratnya belum selesai —
+membuat saya menelusurinya lebih dulu, dan penelusuran itu **membatalkan dugaan saya
+sendiri**: kedua jalur ternyata tidak menulis apa pun.
+
+**`domain-modeling` menutup jebakan alias yang paling berbahaya.** Dua alias di kueri ini
+menyatakan hal yang salah:
+
+```
+IDSALVAGE -> "ClaimNo"     bukan nomor klaim
+TGLINPUT  -> "DateOfLoss"  bukan tanggal kejadian
+```
+
+Alias yang sama (`"DateOfLoss"`) berarti hal yang **berbeda** di dua keluarga kueri pada
+layar yang sama. Menyalinnya akan menampilkan tanggal yang salah tanpa satu pun galat.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Pengurai langkah activity menyimpan **hanya satu precondition** per langkah | Kesimpulannya **mustahil** menurut layar yang terlihat: grid Checker akan menampilkan daftar klaim | Kesimpulan yang mustahil berarti alat bacanya yang salah, bukan sistemnya yang aneh |
+| `aliasesOf` pada uji berhenti di `FROM` sub-kueri | Uji gagal menyebut alias yang terpotong, bukan alias yang bergeser | Kegagalan uji dibaca ke **sebabnya**, bukan langsung ke kodenya |
+| DTO galat memakai `json:"isian"` | Uji layar gagal — `violations()` hanya membaca `field` atau `kolom` | Kontrak yang tidak diuji ujung-ke-ujung adalah kontrak yang belum ada |
+| Menguraikan berkas unggahan dari `r.Body` setelah `FormFile` membacanya | Ditemukan saat membaca ulang sebelum build, bukan oleh uji | Badan permintaan hanya dapat dibaca sekali |
+
+Ketiga kesalahan pertama tertangkap **oleh alat**, bukan oleh pembacaan ulang. Yang keempat
+tertangkap pembacaan — dan itu yang paling tidak dapat diandalkan.
+
+### Teknik yang dipakai tanpa skill terpasang
+
+**Menguji arti enum ke kasus yang maknanya tidak mungkin ambigu.** Nilai
+`WhenTrue`/`WhenFalse` pada precondition Pega tidak berlabel. Alih-alih menebak, saya
+mencari langkah yang artinya pasti — `Call SetDataSalavage_act_ASI IF LSC_ID == "SIMASNET"`,
+yang **wajib** berjalan saat benar — dan membaca enumnya dari sana.
+
+Menebaknya akan membalik arti 17 percabangan sekaligus.
+
+**Menyusun data contoh supaya setiap aturan yang dapat salah PUNYA baris yang
+membuktikannya.** Bukan "layarnya terisi" melainkan: satu klaim yang sudah selesai (untuk
+membuktikan hanya satu daftar menyaring status kerja), satu pengajuan ber-nilai akseptasi
+NOL (untuk membuktikan "Status Lelang" membaca nilainya), dua pengajuan milik PIC berbeda
+(supaya penyaring kepemilikan yang hilang terlihat sebagai baris tambahan, bukan sebagai
+daftar kosong yang dapat lolos).
+
+**Membuktikan baseline uji, bukan mengasumsikannya.** `App.tsx` diimpor setiap uji layar,
+sehingga satu kekeliruan di sana tampak seperti kerusakan modul lain. Suntingan di-stash,
+suite dijalankan ulang, dan selisihnya dihitung: 42 − 13 = 29, sama dengan baseline.
+
+### Catatan untuk tahap berikutnya
+
+- Mode UBAH sudah ada di `Repo.Create` tetapi **belum ada tombolnya** di layar.
+  `Section/DetailDataSalvage2` belum ditelusuri sama sekali.
+- Portal Insurtech menuntut `SetDataSalavage_act_ASI`, `SetStsSalvagePNC_act_ASI`, dan
+  `GetDataSalvage_Insurtech` dibaca — ketiganya ada di export.
+- `PNC_SALVAGE.PIC` diisi penyimpan, bukan PIC Teknik klaim. Ditinjau ulang saat nomor klaim
+  mulai divalidasi keberadaannya.

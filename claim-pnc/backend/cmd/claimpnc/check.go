@@ -42,6 +42,8 @@ import (
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
+	"claim-pnc/internal/inboxsalvage"
+	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
 	masterdominanfactorsql "claim-pnc/internal/masterdominanfactor/repo/sqlstore"
 	masterpenyebabkerugiansql "claim-pnc/internal/masterpenyebabkerugian/repo/sqlstore"
 	masterpicteknikdirectory "claim-pnc/internal/masterpicteknik/directory"
@@ -118,6 +120,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
+	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
 	checkKomunikasiCabang(ctx,
 		inboxkomunikasicabangsql.NewRepo(primary),
 		inboxkomunikasicabangsql.NewBranchResolver(primary),
@@ -1699,4 +1702,98 @@ func checkCloseClaim(
 	print("            Catatan: akun aplikasi hanya perlu SELECT dan INSERT. Hak UPDATE dan")
 	print("            DELETE sengaja TIDAK diberikan — yang memindahkan STATUS ke")
 	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
+}
+
+// checkSalvage memeriksa kesiapan modul Inbox Salvage.
+//
+// # Kenapa pemeriksaannya BERBEDA dari modul inbox lain
+//
+// Karena modul ini MENULIS. Modul inbox lain hanya membutuhkan hak SELECT; modul ini
+// membutuhkan SELECT, INSERT, dan UPDATE atas dua tabel — dan hak yang kurang baru
+// ketahuan saat petugas menekan Submit, yakni pada saat yang paling buruk.
+//
+// Pemeriksaan di sini TIDAK menulis apa pun. Ia membaca katalog kolom dan menjalankan
+// ketiga keluarga kueri, lalu menyatakan apa yang harus diperiksa DBA bila salah satunya
+// gagal. Menguji hak tulis dengan benar-benar menulis akan meninggalkan baris percobaan di
+// tabel produksi.
+func checkSalvage(
+	ctx context.Context,
+	repo *inboxsalvagesql.Repo,
+	print func(string, ...any),
+) {
+	found, err := repo.Ready(ctx)
+	if err != nil {
+		print("  [BELUM] Katalog kolom Inbox Salvage tidak dapat dibaca: %v", err)
+		print("            Periksa hak SELECT akun aplikasi atas ALL_TAB_COLUMNS.")
+		return
+	}
+
+	// Sembilan kolom diperiksa — seluruh kolom yang dibaca grid keluarga C.
+	const wantedColumns = 9
+	if found < wantedColumns {
+		print("  [BELUM] POOLDATA.PNC_SALVAGE hanya punya %d dari %d kolom yang dibaca",
+			found, wantedColumns)
+		print("            Nama kolom modul ini dibaca dari kueri Pega, bukan dari DDL —")
+		print("            yang belum pernah diterima (`R-08`). Bila kolomnya memang")
+		print("            bernama lain, kuerinya yang harus disesuaikan, bukan tabelnya.")
+		return
+	}
+	print("  [ok]    POOLDATA.PNC_SALVAGE punya kesembilan kolom yang dibaca grid")
+
+	caller := inboxsalvage.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxsalvage.Pagination{Page: 1, Size: 5}
+
+	// KETIGA keluarga kueri dijalankan, bukan satu.
+	//
+	// Ketiganya membaca TABEL YANG BERBEDA — keluarga A dan B membaca T_CLAIM_PNC,
+	// keluarga C membaca PNC_SALVAGE beserta agregat DETAIL_PNC_SALVAGE — sehingga satu
+	// kueri yang berhasil tidak menyatakan apa pun tentang dua lainnya.
+	perFamily := map[inboxsalvage.Family]int{}
+	failed := false
+
+	for _, tab := range inboxsalvage.Tabs() {
+		// Cukup SATU tab per keluarga: yang berbeda antartab di dalam satu keluarga
+		// hanyalah nilai penyaringnya, bukan bentuk kuerinya.
+		if _, already := perFamily[tab.Family]; already {
+			continue
+		}
+
+		query, err := inboxsalvage.NewQuery(
+			inboxsalvage.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat disusun: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat dibaca: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+		perFamily[tab.Family] = result.Total
+	}
+
+	if !failed {
+		print("  [ok]    Ketiga keluarga kueri Inbox Salvage dapat dijalankan")
+		for family, total := range perFamily {
+			print("            keluarga %-12s %d baris", family, total)
+		}
+	}
+
+	counts, err := repo.Counts(ctx, caller)
+	if err != nil {
+		print("  [BELUM] Tabel ringkas Inbox Salvage tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    Tabel ringkas Inbox Salvage dapat dihitung (%d baris)", len(counts))
+
+	print("            CATATAN — angka ringkas TIDAK selalu sama dengan jumlah baris")
+	print("            daftarnya. Tiga baris menghitung populasi yang BERBEDA dari daftar")
+	print("            yang dibukanya, dan itu keadaan di Pega yang sengaja direplikasi")
+	print("            (`P-5`). Lihat inboxsalvage.CountRows.")
+	print("            HAK TULIS TIDAK DIUJI di sini — mengujinya berarti menulis baris")
+	print("            percobaan. Akun aplikasi membutuhkan INSERT dan UPDATE atas")
+	print("            POOLDATA.PNC_SALVAGE dan INSERT atas POOLDATA.DETAIL_PNC_SALVAGE.")
 }

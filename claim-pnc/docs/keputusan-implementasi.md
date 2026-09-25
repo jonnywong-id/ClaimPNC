@@ -9355,3 +9355,234 @@ Dengan `adapter_identitas: hcq`, **seluruh modul memakai Oracle sungguhan** mesk
 
 Layar ini karena itu sudah berjalan di atas data nyata, dan itulah sebabnya tebakan §52 dan
 §53 dapat diuji hari ini juga alih-alih menunggu.
+
+## 55. Modul Inbox Salvage (2026-09-25, sesi kedua puluh lima)
+
+Lingkup: `MENU_ID 71`, pengganti `Harness/InboxSalvage`. Portal ASM saja.
+
+---
+
+### 55.1 Pertanyaan yang diajukan, dan jawabannya
+
+Enam pertanyaan dalam dua putaran. Putaran kedua lahir karena jawaban putaran pertama
+berupa **pengalihan** — perintah menelusuri jalur yang belum tertelusur — dan penelusurannya
+mengubah pertanyaannya sendiri.
+
+| # | Pertanyaan | Jawaban | Akibatnya pada kode |
+|---|---|---|---|
+| 1 | Cakupan daftar | **Seluruh 13 daftar, baca-saja** | Tiga keluarga kueri dibangun penuh; `Tab.Family` memilih kueri |
+| 2 | Perlakuan aksi tulis | **dialihkan** — "tambah menjalankan DT `CNMShowInsertSalvage_dt` dan section `TambahData_Salvage`; upload file menjalankan flow action `UploadDetailSalvage`; rejected checker sama seperti 13 daftar itu" | Ketiganya ditelusuri lebih dulu; lihat §55.3 |
+| 3 | Portal Insurtech | **ASM dulu, Insurtech menyusul** | `TransferStatusOnSubmit = "3"`; selisihnya dinyatakan |
+| 4 | Perlakuan tiga cacat | **Cacat 3 diperbaiki; cacat 1 & 2 direplikasi** | Lihat §55.4 |
+| 5 | Sejauh mana Submit dibangun | **"di bangun di sesi section TambahData_Salvage"** | `Repo.Create` menulis `PNC_SALVAGE` + `DETAIL_PNC_SALVAGE` |
+| 6 | Cacat `IDSALVAGE = NULL` | **Diperbaiki — sudah diputuskan di `P-5` butir 12** | `update_salvage` tidak menulis `IDSALVAGE` sama sekali |
+
+---
+
+### 55.2 Keputusan desain
+
+#### 55.2.1 Tiga belas daftar dilayani TIGA kueri, bukan tiga belas
+
+Temuan yang menentukan seluruh bentuk modul. Yang membedakan daftar di dalam satu keluarga
+hanyalah penyaring yang disisipkan `{ASIS:…}` ke dalam kueri yang sama.
+
+`Tab.Family` menyatakannya sebagai data, dan `claimPlan`/`listSalvage` memilih kueri
+darinya. Akibatnya penambahan daftar kelak cukup menambah satu entri di `tab.go` — tanpa
+menyentuh SQL maupun repo.
+
+#### 55.2.2 Kode tab berbentuk KATA, sementara Pega memakai angka
+
+Karena angkanya **tidak unik**: `Param.tipe` dan `Param.tipe2` adalah dua ruang kode yang
+berbeda dan keduanya memuat `1`…`5`. Memakai angka telanjang berarti `1` dapat berarti
+"Salvage Outstanding" atau "Ekonomis" tergantung ruang mana yang dimaksud.
+
+Angka aslinya tidak dibuang — ia tetap ada sebagai `LegacyTipe`/`LegacyTipe2`, dan dipakai
+memetakan baris pencacah ke tab. `TabForLegacy` memeriksa `tipe2` **lebih dulu**, karena
+baris keluarga B mengisi keduanya sekaligus; memeriksa `tipe` lebih dulu akan membuka daftar
+yang salah tanpa satu pun galat.
+
+Dua nilai yang mudah menjebak, keduanya diberi komentar di tempatnya:
+
+- Histori Salvage masuk dengan `tipe = 6`, lalu langkah 15 **menulis ulangnya** menjadi 2.
+  Yang disimpan adalah kode MASUKNYA.
+- Request Balai Lelang mengisi KEDUA kode (`tipe` 11 dan `tipe2` 7) — satu-satunya tab yang
+  begitu.
+
+#### 55.2.3 Satu tipe `Row` untuk tiga keluarga yang kolomnya berbeda
+
+Yang menentukan kolom mana yang digambar adalah `Tab.Columns`, bukan tipe barisnya. Tiga
+tipe akan memaksa tiga jalur di seam Repo, tiga penyusun DTO, dan tiga penggambar di layar —
+sementara yang benar-benar berbeda hanyalah daftar kolomnya.
+
+Preseden yang sama sudah ada di Inbox Manager Receive / PUCL.
+
+#### 55.2.4 Nilai uang tetap TEKS dari basis data sampai layar
+
+`D-51` menetapkan nilai uang disimpan presisi penuh dan hanya dibulatkan saat ditampilkan.
+Karena itu:
+
+- `Form.MinimumValue` dan kawan-kawannya bertipe `string`, bukan `float64`;
+- `NewForm` hanya **memeriksa** bentuknya dengan `ParseFloat`, dan meneruskan teks aslinya;
+- DTO mengirimnya sebagai string, bukan angka JSON — angka JSON melewati bilangan pecahan
+  biner JavaScript, yang membulatkannya sebelum pembulatan yang disengaja sempat terjadi;
+- pembulatan terjadi tepat satu kali, di `formatMoney` pada layar.
+
+#### 55.2.5 Agregat detail diambil SATU kueri, bukan satu per baris
+
+Sistem lama menjalankan `PNCSalvageGetChekerDataKlaimAllData` sekali untuk **setiap** baris
+pada tiga daftar — dua puluh satu kueri untuk satu halaman berisi dua puluh baris. Di sini
+ia sub-kueri berkorelasi di dalam kueri daftar.
+
+Angkanya sama persis; yang berubah hanya jumlah perjalanan ke basis data. Dinyatakan sebagai
+selisih terencana supaya tidak terbaca sebagai perubahan hasil.
+
+#### 55.2.6 Satu transaksi untuk pengajuan beserta seluruh detailnya
+
+`D-68` memindahkan kepemilikan transaksi ke Go. Sistem lama menempuh jalur ini lewat dua
+procedure yang meng-`COMMIT` sendiri — sekali untuk pengajuannya, sekali untuk **setiap**
+baris detail — sehingga kegagalan di tengah meninggalkan pengajuan tanpa detail, atau detail
+sebagian.
+
+Konsekuensinya untuk uji kesetaraan disadari: keadaan akhir **saat gagal** berbeda, dan itu
+selisih yang disengaja (`14-TESTING-STRATEGY.md` §6.4).
+
+#### 55.2.7 Pencarian memakai `LIKE` + `ESCAPE`, dan kedua cabangnya digabung ATAU
+
+Satu kueri melayani ketujuh daftar keluarga C beserta keempat ragam pencariannya, tanpa
+merangkai teks SQL sama sekali. Nilai `%` berarti "jangan saring kolom ini".
+
+Tiga hal yang mudah salah dan karenanya diuji:
+
+- kedua cabang pencarian digabung **ATAU**, bukan DAN — penyaring tab Checker di Pega
+  berbunyi `and (a.noklaim = '…' or a.pic = '…')`;
+- `ESCAPE` wajib, supaya `%` yang **diketik pengguna** tidak berlaku sebagai wildcard pada
+  daftar yang pencariannya cocok persis;
+- tab yang hanya mencari nomor klaim **mematikan** cabang PIC dengan pola yang tidak pernah
+  cocok — membiarkannya `%` akan membuat pencarian tidak menyaring apa pun.
+
+---
+
+### 55.3 Dua jalur yang Work Owner tunjuk, dan apa yang sebenarnya ada di sana
+
+Keduanya ternyata **tidak menulis apa pun**, dan itu mengubah bentuk yang dibangun.
+
+| Jalur | Isi sebenarnya | Padanannya di sini |
+|---|---|---|
+| `CNMShowInsertSalvage_dt` | 8 langkah: `REMOVE` lima halaman klipboard, `SET pyNote="Insert"`, `SET FlagReject=4` | keadaan awal `emptyForm` di `TambahSalvageForm` |
+| `UploadDetailSalvage` (FA) | `pxUploadCSVResults` → aktivitas 3 langkah yang menyalin CSV ke `DetailSalvage.Data` | `ParseUpload` + `Handler.Upload`, jawaban **200** bukan 201 |
+
+Penyimpanan sesungguhnya ada di `SetStsSalvagePNC_act` (31 langkah), yang tidak disebut
+dalam jawaban. Ia diangkat sebagai pertanyaan lanjutan, dan jawabannya menjadi dasar
+`Repo.Create`.
+
+**Empat langkah `SetStsSalvagePNC_act` TIDAK dibangun**, dan keempatnya menembak sesuatu di
+luar basis data ini:
+
+| Langkah | Isi | Alasan |
+|---|---|---|
+| 14 | `UploadDocumentToGoogleStorage` | penyimpanan berkas eksternal; `SET_ATTACHFILETEMPSALVAGE` masih salah satu dari 2 procedure yang belum diterima DBA (`R-01`) |
+| 19 | `Insert_salvageToSimasBid` | sistem luar balai lelang |
+| 23 | `UploadingFileUntukSendByEmail` | kirim email; penerima notifikasi belum menjadi master data (`F-4`) |
+| 26 | procedure penyisip JSON | sinkronisasi `JSON_KLAIM` |
+
+Ketiadaannya **dinyatakan ke pengguna** pada pesan keberhasilan penyimpanan, bukan
+disamarkan — pengguna yang tidak diberi tahu akan menunggu jawaban balai lelang yang tidak
+pernah datang.
+
+---
+
+### 55.4 Cacat sistem lama: mana yang direplikasi, mana yang diperbaiki
+
+Pembedaannya mengikuti prinsip yang sama dengan §48.8 modul Inbox Komunikasi Cabang: yang
+**berjalan** dan angkanya dibaca orang setiap hari direplikasi; yang **tidak pernah berjalan
+sebagaimana dimaksud penulisnya** diperbaiki.
+
+| # | Cacat | Perlakuan | Dijaga |
+|---|---|---|---|
+| 1 | Pencacah "Outstanding" ≠ daftarnya | replikasi | `TestOutstandingCounterAndItsListDisagreeOnPurpose` |
+| 2 | Total paginasi tab Outstanding tanpa penyaring | replikasi | selisih terencana |
+| 3 | Baris pencacah ke daftar BERSARANG | perbaikan | `CountRows` menggambar ketiganya |
+| 4 | Tab `tipe=16` tanpa kueri apa pun | perbaikan | `TestSalvageDitolakHasRowsHereEvenThoughLegacyNeverRanItsQuery` |
+| 5 | Pencacah "Histori" ≠ daftarnya | replikasi | `TestHistoriCounterAndItsListDisagreeOnPurpose` |
+| 6 | `IDSALVAGE` tertimpa kosong saat update | perbaikan (`P-5` butir 12) | `TestUpdateNeverWritesTheSalvageIDColumn` |
+| 7 | Dua nama operator menentukan baris pencacah | perbaikan (`D-15`) | selisih terencana |
+
+Butir 1, 2, dan 5 **sengaja dijaga uji**. Bila seseorang "memperbaikinya", ujinyalah yang
+gagal lebih dulu — bukan pengguna yang melaporkannya sebagai perubahan angka.
+
+---
+
+### 55.5 Penyimpangan yang disadari
+
+#### 55.5.1 Kolom "Aging" berisi hari KALENDER, bukan hari kerja
+
+Sistem lama menghitungnya lewat `GET_WORKING_HOURS` yang hidup di basis data lain lewat DB
+Link. `D-50` menetapkan perhitungannya ditulis ulang di Go karena ia aturan bisnis, dan
+`D-25` mengganti DB Link dengan pemanggilan API. Keduanya menunggu kalender libur menjadi
+master data (`F-4`).
+
+Sampai itu tiba, angkanya **lebih besar** daripada di Pega untuk setiap baris yang melewati
+akhir pekan atau hari libur. Dinyatakan.
+
+Yang **tidak** dikompromikan: tanggal yang tidak terbaca menghasilkan teks KOSONG, bukan
+`"0 day"`. Menyamakannya mengulang cacat `GETSELISIHJAM` — butir 13 `P-5`.
+
+#### 55.5.2 `PNC_SALVAGE.PIC` diisi PENYIMPAN, bukan PIC Teknik klaim
+
+Sistem lama mengambilnya dari `pyWorkPage.ClaimData.UserTeknis` — PIC Teknik yang tercatat
+pada klaimnya. Di sini yang tercatat adalah orang yang menekan Submit.
+
+Perbedaannya **nyata**, dan tempatnya satu: daftar "Request Balai Lelang" menyaring kolom
+yang sama. Bila penyimpan bukan PIC Teknik klaimnya, pengajuan itu akan muncul di daftar
+penyimpan alih-alih di daftar PIC Teknik.
+
+Dibiarkan begitu karena membaca PIC Teknik klaim menuntut satu kueri tambahan ke
+`T_CLAIM_PNC` pada jalur tulis, dan nomor klaim pada form **belum divalidasi keberadaannya**
+— yang berarti kueri itu dapat mengembalikan kosong dan meninggalkan `PIC` kosong pula.
+Dicatat sebagai hal yang harus ditinjau saat nomor klaim mulai divalidasi.
+
+#### 55.5.3 Ekspor mengunduh salinan daftar, bukan berkas rincian
+
+`ExportDataSalvageForm_pncsalvage` menjalankan kueri yang **berbeda** dari kueri grid: ia
+menggabungkan pengajuan dengan setiap barang di dalamnya, sehingga satu pengajuan menjadi
+banyak baris, dan kolomnya memuat nama barang, nama pemenang lelang, status terjual berlima
+keadaan, serta nama surveyor.
+
+Yang dibangun adalah ekspor grid. Ekspor rincian belum, dan itu dinyatakan.
+
+#### 55.5.4 Nomor ID salvage masih `MAX + 1`
+
+Pola itu mewarisi cacat yang sama dengan procedure-nya: dua penyimpanan bersamaan dapat
+membaca nilai maksimum yang sama.
+
+Yang **ditutup**: pembacaannya berada di dalam transaksi yang sama dengan penyisipannya,
+sehingga benturan berakhir sebagai galat kunci ganda — bukan dua baris ber-ID sama yang
+keduanya tersimpan.
+
+Yang **tidak ditutup**: benturannya sendiri. Menghapusnya menuntut sequence, dan memindahkan
+penomoran yang sudah berjalan di produksi ke sequence adalah keputusan tersendiri.
+
+---
+
+### 55.6 Yang sengaja TIDAK dibangun
+
+| Hal | Alasan |
+|---|---|
+| Portal Insurtech | keputusan Work Owner; isinya berbeda (tanpa Request Balai Lelang, `SetStsSalvagePNC_act_ASI` terpisah, `STSTRANSFER` awal berbeda) |
+| Tombol Approve / Reject / Send To BalaiLelang | mengubah status pengajuan; dua di antaranya menembak sistem luar. Tombolnya digambar, aksinya menjawab **501** beralasan |
+| Grafik lingkaran di samping tabel ringkas | activity pencacah menyusun dua daftar berbeda — baris bernilai nol dibuang dari grafik tetapi tetap di tabel. Yang dibangun tabelnya, karena itulah yang memuat angka dan tautannya |
+| Mode UBAH pada form | jalur `Repo.Create` sudah menanganinya (`FormModeUpdate`), tetapi layarnya belum menggambar tombol Ubah — `DetailDataSalvage2` belum ditelusuri |
+| Ekspor rincian per barang | lihat §55.5.3 |
+
+---
+
+### 55.7 Cacat kontrak yang ditemukan pada diri sendiri
+
+DTO galat validasi semula memakai `json:"isian"`. `APIError.violations()` di frontend hanya
+membaca `field` atau `kolom`, sehingga pelanggaran per isian **sampai ke layar tetapi tidak
+pernah terbaca** — pengguna menerima pesan umum alih-alih tanda di isian yang salah.
+
+Ditemukan uji layar, bukan review. Diperbaiki menjadi `field`.
+
+Temuan sampingan yang **tidak disentuh**: `inboxkomunikasicabang/http/dto.go:304` memakai
+`json:"isian"` pula. Ia di luar lingkup sesi ini; dilaporkan, bukan diperbaiki diam-diam.

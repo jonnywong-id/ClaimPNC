@@ -39,6 +39,7 @@ import (
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxrclpucl"
+	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
 	"claim-pnc/internal/masterdominanfactor"
@@ -109,6 +110,10 @@ import (
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxrclpuclusecase "claim-pnc/internal/inboxrclpucl/usecase"
+	inboxsalvagehttp "claim-pnc/internal/inboxsalvage/http"
+	inboxsalvagememory "claim-pnc/internal/inboxsalvage/repo/memory"
+	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
+	inboxsalvageusecase "claim-pnc/internal/inboxsalvage/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
@@ -695,6 +700,35 @@ func run() error {
 			FallbackErrorWriter: inboxkomunikasicabanghttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox Salvage. Jembatan pemanggilnya membawa LOGIN, dan di modul ini ia MENYARING —
+	// bukan sekadar mengisi jejak.
+	//
+	// Dua tempat memakainya. Daftar "Request Balai Lelang" menampilkan pengajuan yang
+	// `PNC_SALVAGE.PIC`-nya pemanggil sendiri, dan pencacahnya disaring dengan cara yang
+	// sama. Memakai NIK di sini akan membuat daftar itu kosong bagi setiap pengguna —
+	// kolomnya menyimpan Operator ID, bukan NIK.
+	//
+	// Ia pula yang menjadi `PIC` pengajuan yang disimpan lewat tombol Submit. Sistem lama
+	// mengambilnya dari PIC Teknik yang tercatat pada klaimnya; di sini yang tercatat
+	// adalah orang yang menyimpannya. Perbedaannya nyata pada daftar "Request Balai
+	// Lelang", dan ia dicatat di `keputusan-implementasi.md`.
+	salvageHandler := inboxsalvagehttp.NewHandler(
+		inboxsalvagehttp.Options{
+			Service: assembly.inboxSalvage,
+			GetCaller: func(ctx context.Context) (inboxsalvagehttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxsalvagehttp.Caller{}, false
+				}
+				return inboxsalvagehttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxsalvagehttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Inbox Progress Claim. Jembatan pemanggilnya juga membawa LOGIN: itulah yang
 	// dicocokkan ke `PEGA_DASHBOARDPNC.PIC` dan `MST_USER_TEKNIK.OPERATOR_ID`, dan
 	// memakai NIK di sini akan membuat rekap per PIC kosong bagi setiap pengguna.
@@ -990,6 +1024,15 @@ func run() error {
 				inboxkomunikasicabanghttp.Mount(
 					protected, komunikasiCabangHandler, activePortalDeps)
 
+				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
+				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut
+				// portal karena alasan yang sama dengan modul inbox lain, dan satu
+				// alasan tambahan yang khas modul ini: ia MENULIS. Permintaan simpan
+				// yang jatuh ke koneksi bawaan tidak sekadar menampilkan data entitas
+				// lain — ia menyisipkan baris ke dalamnya (`R-20`).
+				inboxsalvagehttp.Mount(
+					protected, salvageHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -1119,6 +1162,14 @@ type assembly struct {
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
 	inboxRCLPUCL            *inboxrclpuclusecase.Service
 
+	// inboxSalvage melayani layar Inbox Salvage (`MENU_ID 71`).
+	//
+	// Ia satu-satunya modul inbox yang MENULIS. Dua tabelnya —
+	// `POOLDATA.PNC_SALVAGE` dan `POOLDATA.DETAIL_PNC_SALVAGE` — dimiliki modul ini selama
+	// masa paralel, karena seluruh penulisnya di Pega adalah layar yang digantikannya
+	// (`P-1`).
+	inboxSalvage *inboxsalvageusecase.Service
+
 	// inboxKomunikasiCabang melayani layar Inbox Komunikasi Cabang (`MENU_ID 70`).
 	//
 	// Berbeda dari modul inbox di atasnya, layar ini DISARING menurut cabang pemanggilnya —
@@ -1211,6 +1262,13 @@ type storage struct {
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
 	rclPUCLSelector            inboxrclpucl.RepoSelector
+
+	// salvageSelector memilih penyimpanan salvage milik satu portal.
+	//
+	// Taruhannya lebih besar daripada selector di atasnya, dan alasannya satu: modul ini
+	// menulis. Portal yang salah di sini bukan sekadar menampilkan data entitas lain — ia
+	// menyisipkan baris ke dalamnya.
+	salvageSelector inboxsalvage.RepoSelector
 
 	// komunikasiCabangSelector memilih penyimpanan percakapan milik satu portal.
 	komunikasiCabangSelector inboxkomunikasicabang.RepoSelector
@@ -1569,6 +1627,25 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	salvageService, err := inboxsalvageusecase.NewService(
+		inboxsalvageusecase.Options{
+			RepoSelector: store.salvageSelector,
+
+			// Logger WAJIB, dan di modul ini alasannya paling kuat di antara seluruh
+			// modul inbox: ia MENULIS nilai uang.
+			//
+			// `D-59` menetapkan satuan izin adalah menu dan TIDAK ada pemisahan tugas
+			// formal — orang yang sama dapat membuat pengajuan salvage dan, bila perannya
+			// memiliki menunya, menyetujuinya. Tidak ada kontrol teknis yang
+			// mencegahnya, sehingga jejak inilah satu-satunya kontrol pengimbang yang
+			// tersisa.
+			Logger: logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	komunikasiCabangService, err := inboxkomunikasicabangusecase.NewService(
 		inboxkomunikasicabangusecase.Options{
 			RepoSelector: store.komunikasiCabangSelector,
@@ -1717,6 +1794,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxClaimTreatyNonProp: claimTreatyNonPropService,
 		inboxManagerReceivePUCL: managerReceivePUCLService,
 		inboxRCLPUCL:            rclPUCLService,
+		inboxSalvage:            salvageService,
 		inboxKomunikasiCabang:   komunikasiCabangService,
 		inboxProgressClaim:      inboxProgressClaimService,
 		inboxAnalystDoctor:      inboxAnalystDoctorService,
@@ -2121,6 +2199,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxrclpuclsql.NewRepo(conn), nil
 		}
 
+		store.salvageSelector = func(alias string) (inboxsalvage.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxsalvagesql.NewRepo(conn), nil
+		}
+
 		store.komunikasiCabangSelector = func(
 			alias string,
 		) (inboxkomunikasicabang.Repo, error) {
@@ -2268,6 +2354,10 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// benar-benar bekerja.
 		store.managerReceivePUCLSelector = managerReceivePUCLSelectorMemory(cfg.PrimaryPortal)
 		store.rclPUCLSelector = rclPUCLSelectorMemory(cfg.PrimaryPortal)
+		// Sembilan pengajuan salvage dan delapan klaim contoh, disusun supaya KETIGA BELAS
+		// daftarnya punya isi — daftar yang kosong saat pengembangan berarti penyaringnya
+		// salah, bukan datanya habis, dan tanpa isi keduanya terlihat sama.
+		store.salvageSelector = salvageSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh percakapan contoh ikut dimuat, empat di antaranya SENGAJA tertolak —
 		// percakapan yang sudah ditutup, yang tanpa pengirim, yang tanpa pesan, dan yang
 		// milik cabang lain. Tanpa keempatnya, penyaring yang hilang tidak akan ketahuan
@@ -3039,6 +3129,49 @@ func rclPUCLSelectorMemory(primaryAlias string) inboxrclpucl.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxrclpuclmemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// salvageSelectorMemory menyusun penyimpanan Inbox Salvage di memori; alasannya sama
+// dengan rclPUCLSelectorMemory di atas.
+//
+// Isi contohnya disusun supaya KETIGA BELAS daftarnya punya baris, dan beberapa baris punya
+// tugas khusus yang tidak terlihat dari jumlahnya:
+//
+//   - satu klaim yang sudah SELESAI, untuk membuktikan hanya daftar Salvage Outstanding
+//     yang menyaring status kerja;
+//   - satu pengajuan ber-`NILAIAKSEP` NOL, untuk membuktikan "Status Lelang" membaca
+//     NILAINYA — bukan sekadar keberadaannya;
+//   - dua pengajuan berstatus 7 milik PIC yang BERBEDA, sehingga penyaring "hanya milik
+//     saya" pada daftar Request Balai Lelang terlihat gagal sebagai baris tambahan alih-alih
+//     sebagai daftar kosong;
+//   - satu pengajuan berstatus 6, yang tidak punya daftar sendiri tetapi IKUT terhitung
+//     pencacah "Histori Salvage" — itulah yang membuat selisih antara pencacah dan daftarnya
+//     terlihat.
+//
+// Berbeda dari modul inbox lain, penyimpanan ini MENERIMA TULISAN. Satu Store dipegang
+// seluruh permintaan satu portal, sehingga pengajuan yang disimpan lewat tombol Submit
+// langsung muncul di daftar Checker pada permintaan berikutnya — persis seperti di Oracle.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func salvageSelectorMemory(primaryAlias string) inboxsalvage.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxsalvage.Repo{}
+
+	return func(alias string) (inboxsalvage.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxsalvagememory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}
