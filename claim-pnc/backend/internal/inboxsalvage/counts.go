@@ -59,6 +59,14 @@ type CountRow struct {
 
 	// OwnedByCaller menyatakan hitungan ini dibatasi baris milik pemanggil.
 	OwnedByCaller bool
+
+	// HiddenReason menyatakan baris ini TIDAK digambar, beserta alasannya.
+	//
+	// Kosong berarti digambar. Nilainya memakai konstanta yang sama dengan Tab, sebab
+	// alasannya memang sama — dan keduanya harus berubah bersamaan: baris pencacah tanpa
+	// daftarnya adalah angka yang tidak dapat ditindaklanjuti, dan daftar tanpa baris
+	// pencacahnya tidak dapat ditemukan.
+	HiddenReason string
 }
 
 // CountRows adalah keempat belas baris pencacah, berurutan seperti tampilnya.
@@ -90,6 +98,21 @@ type CountRow struct {
 // tidak ada gunanya di sini: yang perlu diketahui pembaca adalah bahwa syaratnya nama
 // orang, bukan nama siapa.
 func CountRows() []CountRow {
+	result := []CountRow{}
+	for _, row := range allCountRows() {
+		if row.HiddenReason == "" {
+			result = append(result, row)
+		}
+	}
+	return result
+}
+
+// AllCountRows adalah SELURUH baris pencacah, termasuk yang tidak digambar.
+//
+// Dipakai uji dan penelusuran, bukan oleh layar.
+func AllCountRows() []CountRow { return allCountRows() }
+
+func allCountRows() []CountRow {
 	return []CountRow{
 		{
 			// `CountSalvage_sql11OS` — dan perhatikan ia menghitung STSSALVAGE 3 atau 5,
@@ -109,6 +132,7 @@ func CountRows() []CountRow {
 			// `CountSalvage_sql11` alias "CityID" — STSTRANSFER 3 ATAU 5, sementara
 			// daftar Checker menyaring 3 saja.
 			Label:            "Checker",
+			HiddenReason:     HiddenManagerOnly,
 			Tab:              TabChecker,
 			Source:           CountFromSalvage,
 			TransferStatuses: []string{"3", "5"},
@@ -116,6 +140,7 @@ func CountRows() []CountRow {
 		{
 			// `CountSalvageDiterimaSalvage`.
 			Label:            "Salvage Diterima",
+			HiddenReason:     HiddenManagerOnly,
 			Tab:              TabSalvageDiterima,
 			Source:           CountFromSalvage,
 			TransferStatuses: []string{"3"},
@@ -123,6 +148,7 @@ func CountRows() []CountRow {
 		{
 			// `CountSalvageDitolakSalvage`.
 			Label:            "Salvage Ditolak",
+			HiddenReason:     HiddenManagerOnly,
 			Tab:              TabSalvageDitolak,
 			Source:           CountFromSalvage,
 			TransferStatuses: []string{"5"},
@@ -145,6 +171,7 @@ func CountRows() []CountRow {
 			// `CountSalvage_sql11` alias "EmailBroker" — satu-satunya hitungan yang
 			// dibatasi pemanggil.
 			Label:            "Request Balai Lelang",
+			HiddenReason:     HiddenNotOnScreen,
 			Tab:              TabRequestBalai,
 			Source:           CountFromSalvage,
 			TransferStatuses: []string{"7"},
@@ -186,9 +213,10 @@ func CountRows() []CountRow {
 			// Baris ini TIDAK menuju daftar mana pun, dan itu keadaan di Pega: tidak ada
 			// satu pun tab yang menerima kodenya. Ia tetap digambar karena activity
 			// pencacah menggambarnya tanpa syarat apa pun.
-			Label:  "Tidak Terjual",
-			Tab:    "",
-			Source: CountFromSalvageDetail,
+			Label:        "Tidak Terjual",
+			HiddenReason: HiddenNotOnScreen,
+			Tab:          "",
+			Source:       CountFromSalvageDetail,
 		},
 	}
 }

@@ -154,6 +154,26 @@ func TestTheTwoSearchBranchesAreJoinedWithOr(t *testing.T) {
 		text, "kedua cabang pencarian tidak digabung dengan OR")
 }
 
+// Kolom bertipe NUMBER yang masuk ke `COALESCE` bersama sentinel teks WAJIB dibungkus
+// `TO_CHAR`.
+//
+// Tanpa itu Oracle menjawab `ORA-00932: inconsistent datatypes: expected NUMBER got CHAR`,
+// dan galat itu menjatuhkan KETUJUH daftar keluarga C sekaligus — sementara pencacah tetap
+// berjalan, sehingga layar tampak separuh hidup dan sebabnya tidak terbaca dari gejalanya.
+//
+// Uji ini menjaga bentuknya, bukan menebak tipenya: `TO_CHAR` aman untuk kolom teks maupun
+// angka, sehingga ia benar apa pun tipe sebenarnya — yang memang belum diketahui, karena
+// DDL `PNC_SALVAGE` belum pernah diterima (`R-08`).
+func TestNumericColumnsAreMadeTypeSafeBeforeCoalesceWithText(t *testing.T) {
+	text := query("list_salvage")
+
+	require.Contains(t, text, "COALESCE(TO_CHAR(a.STSTRANSFER), '~')",
+		"STSTRANSFER bertipe NUMBER; COALESCE dengan sentinel teks menuntut TO_CHAR")
+
+	require.NotContains(t, text, "COALESCE(a.STSTRANSFER",
+		"bentuk tanpa TO_CHAR menjatuhkan ketujuh daftar keluarga C")
+}
+
 // Kueri pembaruan TIDAK BOLEH menulis `IDSALVAGE`.
 //
 // Inilah butir 12 daftar perbaikan `P-5` (`D-49` #9): procedure lama menimpa kunci barisnya
@@ -304,4 +324,130 @@ func highestBind(text string) int {
 		}
 	}
 	return highest
+}
+
+// Panel Detail Salvage memakai dua kueri yang dijalankan berurutan atas satu ID.
+func TestDetailQueriesExist(t *testing.T) {
+	for _, name := range []string{"detail_header", "detail_items"} {
+		require.NotPanics(t, func() { query(name) }, "kueri %q tidak ada", name)
+		require.NotEmpty(t, strings.TrimSpace(query(name)))
+	}
+}
+
+// Alias GANDA pada kueri kepala panel dipisah, bukan dibawa apa adanya.
+//
+// `RDB List/GcnmSetSalvageData_SQL-SQL.xml` mengaliaskan DUA kolom yang berbeda menjadi
+// `"AreaClaimId"` — jumlah barang, dan penanda pengajuan sebelum 17 Juli 2023. Oracle
+// menerimanya; yang membaca hasilnya tidak, karena satu nama hanya dapat menunjuk satu
+// kolom dan yang terbaca adalah yang kebetulan terakhir.
+//
+// Ini kelas cacat yang sama dengan alias ganda `UserName` di §48.4, dan seperti di sana ia
+// DIPERBAIKI, bukan direplikasi: keduanya digambar di layar sebagai isian yang berbeda,
+// sehingga membawanya apa adanya berarti salah satunya pasti salah.
+//
+// Uji ini gagal bila seseorang menyalin ulang alias Pega ke dalam kueri kita.
+func TestDetailHeaderHasNoDuplicateAlias(t *testing.T) {
+	seen := map[string]int{}
+	for _, alias := range aliasesOf(query("detail_header")) {
+		seen[strings.ToUpper(alias)]++
+	}
+
+	for alias, count := range seen {
+		require.Equalf(t, 1, count,
+			"alias %q muncul %d kali pada detail_header — satu nama hanya dapat "+
+				"menunjuk satu kolom", alias, count)
+	}
+
+	// Kedua penggantinya memang ada, sehingga uji di atas tidak dapat lulus hanya dengan
+	// membuang salah satu kolomnya.
+	text := strings.ToUpper(query("detail_header"))
+	require.Contains(t, text, "AS QUANTITY")
+	require.Contains(t, text, "AS LEGACY_FLAG")
+	require.NotContains(t, text, "AREACLAIMID")
+}
+
+// Kedua kueri panel menyaring dengan parameter, bukan dengan nilai yang dirangkai.
+func TestDetailQueriesBindTheirParameters(t *testing.T) {
+	for _, name := range []string{"detail_header", "detail_items"} {
+		text := query(name)
+		require.Contains(t, text, ":1", "kueri %q tidak mengikat parameter", name)
+		require.Contains(t, text, ":2", "kueri %q tidak mengikat parameter", name)
+	}
+}
+
+// Panel rincian yang dibuka dari baris KLAIM memakai dua kueri tambahan.
+func TestClaimKeyedDetailQueriesExist(t *testing.T) {
+	for _, name := range []string{"claim_header", "latest_salvage_of_claim"} {
+		require.NotPanics(t, func() { query(name) }, "kueri %q tidak ada", name)
+
+		text := query(name)
+		require.NotEmpty(t, strings.TrimSpace(text))
+		require.Contains(t, text, ":1", "kueri %q tidak mengikat parameter", name)
+	}
+}
+
+// Pencarian pengajuan terakhir memakai MAX, bukan urutan lalu ambil satu.
+//
+// Bedanya nyata: `IDSALVAGE` numerik, dan `ORDER BY` atas kolom yang terbaca sebagai teks
+// akan menempatkan 9 di atas 10. Kueri lama pun memakai `max(IDSALVAGE)`
+// (`SetDataDetailSalvage_act` langkah 18), dan uji ini menjaganya tidak berubah menjadi
+// pengurutan.
+func TestLatestSalvageOfClaimUsesMaxNotOrdering(t *testing.T) {
+	text := strings.ToUpper(query("latest_salvage_of_claim"))
+
+	require.Contains(t, text, "MAX(")
+	require.NotContains(t, text, "ORDER BY")
+	require.Contains(t, text, "DETAIL_PNC_SALVAGE")
+}
+
+// Kepala panel klaim TIDAK membawa penyaring populasi daftar Salvage Outstanding.
+//
+// `GcnmSalvageData_OS_SQL` menyaring STATUSWORK, GROUPPANEL, dan BUSINESSCODE untuk
+// menyusun populasi SATU daftar. Panel rincian dibuka dari KEENAM daftar berbasis klaim,
+// sehingga membawa penyaring itu akan membuat baris yang tampil di daftar lain menjawab
+// "tidak ditemukan" — padahal barisnya baru saja digambar di layar yang sama.
+//
+// Selisih ini disengaja, dan uji ini yang menjaganya tidak "diperbaiki" kembali.
+func TestClaimHeaderDoesNotCarryTheOutstandingPopulationFilter(t *testing.T) {
+	text := strings.ToUpper(query("claim_header"))
+
+	require.NotContains(t, text, "STATUSWORK")
+	require.NotContains(t, text, "GROUPPANEL")
+	require.NotContains(t, text, "BUSINESSCODE")
+	require.Contains(t, text, "T_CLAIM_PNC")
+}
+
+// Grid "Detail History Salvage" punya kueri tersendiri, terikat parameter.
+func TestSalvageHistoryQueryExistsAndBindsItsParameter(t *testing.T) {
+	require.NotPanics(t, func() { query("salvage_history_of_claim") })
+
+	text := query("salvage_history_of_claim")
+	require.Contains(t, text, ":1")
+	require.Contains(t, strings.ToUpper(text), "PNC_SALVAGE")
+	require.Contains(t, strings.ToUpper(text), "ORDER BY")
+}
+
+// Penerjemahan `STSTRANSFER` menjadi kalimat TIDAK dilakukan di dalam SQL.
+//
+// Kueri lama menempuh `CASE WHEN` yang menghasilkan "Sudah Aksep Checker", "Salvage
+// Waive", dan seterusnya. Pemetaan itu dipindahkan ke Go, tempat ia dapat diuji tanpa
+// basis data — dan tempat pertentangannya dengan dua pemetaan lain atas kolom yang sama
+// tercatat.
+//
+// Uji ini gagal bila seseorang menyalin kembali `CASE WHEN`-nya ke dalam kueri.
+func TestHistoryQueryDoesNotTranslateStatusIntoSentences(t *testing.T) {
+	text := strings.ToUpper(query("salvage_history_of_claim"))
+
+	for _, sentence := range []string{
+		"SUDAH AKSEP", "SUDAH AKSEPTASI", "CREATE AJD",
+		"DITERIMA DI KOMITE", "TOLAK DI KOMITE", "SALVAGE WAIVE", "OTHER",
+	} {
+		require.NotContainsf(t, text, sentence,
+			"kalimat %q harus dipetakan di Go, bukan di dalam SQL", sentence)
+	}
+
+	// Yang dikirim adalah kodenya, ditambah penanda terisi-tidaknya nomor akseptasi —
+	// karena kode 2 bercabang menurut kolom itu.
+	require.Contains(t, text, "AS TRANSFER_STATUS")
+	require.Contains(t, text, "AS HAS_ACCEPTANCE_NO")
 }

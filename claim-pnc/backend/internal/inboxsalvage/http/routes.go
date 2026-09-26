@@ -35,14 +35,17 @@ import (
 //
 // Yang membatasi taruhannya, dan keduanya perlu disebut apa adanya:
 //
-//   - Satu daftar menyaring menurut pemanggil — "Request Balai Lelang" hanya menampilkan
-//     pengajuan milik PIC yang membukanya. Kedua belas daftar lain bersama.
 //   - Setiap pembukaan DAN setiap penyimpanan DICATAT. Lihat usecase.List dan
 //     usecase.Create.
 //
-// Yang kedua bukan pengganti kewenangan; ia hanya membuat perbuatannya dapat ditelusuri
-// setelah terjadi. `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang justru
-// untuk keadaan seperti ini — dan di modul yang menulis nilai uang, itu bukan formalitas.
+// Itu bukan pengganti kewenangan; ia hanya membuat perbuatannya dapat ditelusuri setelah
+// terjadi. `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang justru untuk
+// keadaan seperti ini — dan di modul yang menulis nilai uang, itu bukan formalitas.
+//
+// Sebelumnya ada SATU pembatas berbasis pengguna: daftar "Request Balai Lelang" hanya
+// menampilkan pengajuan milik PIC yang membukanya. Daftar itu kini tidak ditawarkan
+// (lihat inboxsalvage.HiddenTabs), sehingga KESEMBILAN daftar yang tersisa bersama dan
+// pembatas itu tidak lagi ada sama sekali.
 //
 // # Kenapa jalurnya tanpa /v1
 //
@@ -63,6 +66,23 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// pengguna berpindah daftar — dan menggabungkannya akan menjalankan keempat belas
 		// hitungannya setiap kali tab dibuka.
 		perPortal.Get("/inbox-salvage/ringkas", h.Counts)
+
+		// Panel "Detail Salvage".
+		//
+		// Jalurnya memuat SEGMEN `pengajuan` supaya ia tidak bertabrakan dengan rute tetap
+		// di atasnya. Tanpa segmen itu, `/inbox-salvage/{id}` akan menangkap `daftar`,
+		// `ringkas`, dan `ekspor` sebagai ID pengajuan pada urutan pendaftaran tertentu —
+		// kelas kerusakan yang hanya muncul ketika rutenya bertambah.
+		perPortal.Get("/inbox-salvage/pengajuan/{id}", h.Detail)
+
+		// Panel yang sama, dibuka dari baris yang berupa KLAIM.
+		//
+		// Keenam daftar berbasis klaim tidak membawa ID pengajuan pada barisnya, sehingga
+		// pengajuannya dicari dari klaimnya — mengikuti `SetDataDetailSalvage_act`
+		// langkah 18. Klaim yang belum punya pengajuan tetap dijawab `200`, bukan `404`:
+		// itu keadaan yang sah, dan pada daftar Salvage Outstanding ia justru yang
+		// lazim.
+		perPortal.Get("/inbox-salvage/klaim/{no}", h.DetailByClaim)
 
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
 		// membuat unduhannya dapat dipicu tautan biasa.

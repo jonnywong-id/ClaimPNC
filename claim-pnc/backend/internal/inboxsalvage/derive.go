@@ -158,3 +158,75 @@ func parseISODate(value string) (time.Time, bool) {
 func TodayWIB() string {
 	return clock.DateWIB(time.Now().UTC()).Format(DateLayout)
 }
+
+// HistoryRow adalah satu baris grid "Detail History Salvage" — satu pengajuan milik klaim
+// yang sedang dibuka.
+//
+// Grid ini digambar pada form "Menambahkan Data Salvage", bukan pada panel rincian. Ia
+// menjawab satu pertanyaan yang tidak dapat dijawab daftar mana pun: klaim ini sudah
+// pernah diajukan salvage berapa kali, dan masing-masing berakhir di mana.
+type HistoryRow struct {
+	SalvageID    string
+	InputDate    string
+	ClaimNo      string
+	PIC          string
+	MinimumValue string
+
+	// Position adalah kalimat, bukan kode — hasil HistoryPositionOf.
+	Position string
+}
+
+// Kalimat posisi pada grid riwayat.
+//
+// Nilainya disalin APA ADANYA dari `CASE WHEN` di `GetHistoriKlaimPNCSalvage_hist`,
+// termasuk ejaannya. Memperbaikinya — "Ajd" jelas singkatan Adjustment — akan membuat
+// petugas yang membandingkan layar baru dengan Pega berdampingan membaca kalimat yang
+// berbeda untuk keadaan yang sama (`D-13`).
+const (
+	HistoryAcceptedByChecker = "Sudah Aksep Checker"
+	HistoryAccepted          = "Sudah Akseptasi"
+	HistoryAdjustmentCreated = "Create Ajd Salvage"
+	HistoryApprovedByKomite  = "Salvage Diterima di Komite"
+	HistoryRejectedByKomite  = "Salvage Tolak di Komite"
+	HistoryWaived            = "Salvage Waive"
+	HistoryOther             = "OTHER"
+)
+
+// HistoryPositionOf menerjemahkan `STSTRANSFER` menjadi kalimat pada grid riwayat.
+//
+// # Ini pemetaan KETIGA atas kolom yang sama, dan ketiganya berbeda
+//
+//	penyaring daftar   -> menentukan baris muncul di daftar mana (tab.go)
+//	"Posisi Salvage"   -> nama daftar tempat pengajuan berada (PositionLabelOf)
+//	grid riwayat ini   -> kalimat yang menceritakan apa yang sudah terjadi
+//
+// Ketiganya tidak dapat disatukan tanpa mengubah salah satunya, dan mengubahnya berarti
+// mengubah apa yang dibaca pengguna.
+//
+// # Kode 2 bercabang, dan itu bukan kelalaian
+//
+// `STSTRANSFER = 2` berarti "sudah diakseptasi" HANYA bila nomor akseptasinya terisi. Bila
+// kosong, pengajuannya baru sampai pada pembuatan adjustment. Keduanya keadaan yang
+// berbeda, dan kueri lama memang membedakannya.
+func HistoryPositionOf(transferStatus string, hasAcceptanceNo bool) string {
+	switch strings.TrimSpace(transferStatus) {
+	case "1":
+		return HistoryAcceptedByChecker
+	case "2":
+		if hasAcceptanceNo {
+			return HistoryAccepted
+		}
+		return HistoryAdjustmentCreated
+	case "3":
+		return HistoryApprovedByKomite
+	case "5":
+		return HistoryRejectedByKomite
+	case "6":
+		return HistoryWaived
+	default:
+		// Termasuk kode 4 dan 7 — keduanya dipakai sebagai penyaring daftar, tetapi kueri
+		// riwayat lama tidak memberinya kalimat. Dibawa apa adanya (`P-5`): mengarang
+		// kalimat untuk keduanya berarti menampilkan keterangan yang tidak pernah ada.
+		return HistoryOther
+	}
+}

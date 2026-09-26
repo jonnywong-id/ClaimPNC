@@ -27,6 +27,13 @@ package memory
 // Ia dipakai uji untuk memastikan penyaring "hanya milik saya" benar-benar menyaring:
 // daftar itu berisi baris milik PIC ini DAN milik PIC lain, sehingga penyaring yang lupa
 // dipasang akan terlihat sebagai baris tambahan, bukan sebagai daftar kosong.
+// SampleClaimWithoutSalvage adalah klaim contoh yang BELUM punya pengajuan salvage.
+//
+// Diberi nama supaya uji dapat menunjuknya tanpa mengandalkan kebetulan — bila kelak ada
+// yang menambahkan pengajuan untuk klaim ini, uji yang memakainya akan gagal dan menyebut
+// alasannya, alih-alih diam-diam menguji hal lain.
+const SampleClaimWithoutSalvage = "PNC-2049"
+
 const SampleCallerPIC = "SITIRAHAYU"
 
 // sampleOtherPIC memiliki baris pada daftar yang sama, dan tidak boleh terlihat oleh
@@ -62,6 +69,23 @@ func NewSampleStore() *Store {
 // selisih yang memang ada di Pega, dan yang sekarang dapat dilihat alih-alih dipercaya.
 func sampleClaims() []Claim {
 	return []Claim{
+		{
+			// Klaim yang BELUM punya satu pun pengajuan salvage.
+			//
+			// Ia ada supaya panel rincian yang dibuka dari daftar berbasis klaim punya
+			// kasus nyata untuk keadaan yang paling lazim di daftar Salvage Outstanding:
+			// klaim yang salvage-nya belum diajukan sama sekali.
+			//
+			// Tanpa baris ini, seluruh uji panel akan berjalan atas klaim yang kebetulan
+			// selalu punya pengajuan — dan keadaan yang justru paling sering dilihat
+			// pengguna tidak pernah teruji.
+			ClaimNo:      SampleClaimWithoutSalvage,
+			PIC:          SampleCallerPIC,
+			BusinessName: "Fire",
+			LossDate:     "2026-09-12",
+			ObjectName:   "Ruko Dua Lantai",
+			WorkStatus:   "Open",
+		},
 		{
 			ClaimNo:      "PNC-2041",
 			PIC:          SampleCallerPIC,

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxsalvage/usecase"
 	"claim-pnc/internal/portal"
@@ -322,4 +324,84 @@ func positiveNumber(raw string) int {
 		return 0
 	}
 	return value
+}
+
+// Detail menangani GET /api/inbox-salvage/pengajuan/{id}.
+//
+// Ia melayani panel "Detail Salvage" — layar yang di Pega dibuka lewat
+// `SetDataDetailSalvage_act`, dan yang isinya berasal dari DUA kueri: satu baris kepala dan
+// satu daftar barang.
+//
+// # Kenapa ID-nya di jalur, bukan di parameter query
+//
+// Karena ia MENUNJUK satu pengajuan, bukan menyaring daftar. Jalur yang menunjuk sumber daya
+// tunggal membuat jawaban 404 punya arti yang jelas — pengajuannya tidak ada — sedangkan
+// parameter query yang tidak cocok hanya menghasilkan daftar kosong.
+//
+// # Yang TIDAK diperiksa di sini
+//
+// Apakah pemanggil berhak melihat pengajuan INI. SELURUH daftar yang ditawarkan layar
+// memang bersama, sehingga pemeriksaan per baris tidak punya dasar di Pega.
+//
+// Satu-satunya daftar yang pernah menyaring menurut PIC — "Request Balai Lelang" — kini
+// tidak ditawarkan. Akibatnya modul ini TIDAK punya satu pun pembatas berbasis pengguna,
+// dan jejak audit menjadi satu-satunya kontrol yang tersisa (`D-59`).
+//
+// Itu perilaku Pega pula: `SetDataDetailSalvage_act` tidak memeriksa pemanggil sama sekali.
+// Ia dipertahankan (`P-5`), dan yang mengimbanginya adalah pencatatan setiap pembukaan
+// (`D-59`). Bila kelak `TKT-F3-004` menetapkan pemeriksaan per baris, tempatnya di usecase,
+// bukan di sini.
+func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	h.detail(w, r, active, caller, inboxsalvage.DetailKeySubmission,
+		chi.URLParam(r, "id"))
+}
+
+// DetailByClaim menangani GET /api/inbox-salvage/klaim/{no}.
+//
+// Ia melayani keenam daftar yang barisnya KLAIM. Barisnya tidak membawa ID pengajuan sama
+// sekali — kueri yang memasoknya membaca `T_CLAIM_PNC` dan tidak mengambil satu pun kolom
+// dari `PNC_SALVAGE` — sehingga pengajuannya dicari dari klaimnya.
+//
+// Rute TERSENDIRI, bukan satu rute dengan penanda jenis di parameter query. Alasannya:
+// nomor klaim dan ID pengajuan adalah dua ruang nilai yang berbeda, dan satu rute yang
+// menerima keduanya akan menjawab "tidak ditemukan" untuk nilai yang sebenarnya sah pada
+// ruang yang lain — pesan yang menyesatkan justru di layar tempat nomor klaim dan ID
+// pengajuan sudah sering tertukar oleh alias Pega yang menyesatkan.
+func (h *Handler) DetailByClaim(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	h.detail(w, r, active, caller, inboxsalvage.DetailKeyClaim,
+		chi.URLParam(r, "no"))
+}
+
+// detail adalah badan bersama kedua rute rincian.
+func (h *Handler) detail(
+	w http.ResponseWriter,
+	r *http.Request,
+	active portal.Portal,
+	caller inboxsalvage.Caller,
+	key inboxsalvage.DetailKey,
+	reference string,
+) {
+	clean := strings.TrimSpace(reference)
+	if clean == "" {
+		h.writeError(w, r, inboxsalvage.ErrRowNotFound)
+		return
+	}
+
+	detail, err := h.service.Detail(r.Context(), active.Alias, caller, key, clean)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toDetailResponse(detail, active.Alias))
 }

@@ -7,14 +7,53 @@ import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
 
+import { DataTable, type Column } from '@/components/DataTable'
+
 import { useCreateSalvage, useUploadSalvageDetail } from './api'
-import type { CreateRequest, DetailItem, StatusOption } from './types'
+import type {
+  CreateRequest,
+  DetailItem,
+  HistoryRow,
+  StatusOption,
+} from './types'
+
+/**
+ * Isian yang sudah diketahui saat form dibuka dari sebuah baris klaim.
+ *
+ * Ketiganya berasal dari klaimnya, bukan diketik: di layar lama ketiganya tergambar
+ * berlatar abu — terisi dan tidak dapat diubah, karena yang menentukannya adalah klaim
+ * yang barusan dipilih.
+ */
+export type Prefill = {
+  nomor_klaim: string
+  nama_object: string
+  nama_coverage: string
+}
 
 type Props = {
   statusOptions: StatusOption[]
   uploadColumns: string[]
   onClose: () => void
   onSaved: (message: string) => void
+
+  /**
+   * Isian yang sudah diketahui. Tanpa ini form dibuka kosong — jalur tombol "Tambah".
+   *
+   * Dengan ini, form dibuka dari sebuah baris klaim: ketiga isiannya terisi dan
+   * dikunci, supaya pengajuan tidak dapat tersimpan atas klaim yang berbeda dari baris
+   * yang diklik.
+   */
+  prefill?: Prefill
+
+  /**
+   * Isi grid "Detail History Salvage" — seluruh pengajuan milik klaim ini.
+   *
+   * Grid ini ADA di layar lama, dan ia menjawab pertanyaan yang tidak dapat dijawab
+   * daftar mana pun: klaim ini sudah pernah diajukan berapa kali, dan masing-masing
+   * berakhir di mana. Tanpa itu, petugas dapat mengajukan salvage kedua atas klaim yang
+   * pengajuan pertamanya masih berjalan tanpa pernah melihatnya.
+   */
+  history?: HistoryRow[]
 }
 
 /** Isian form dalam bentuk yang dipegang komponen ini. */
@@ -77,8 +116,17 @@ export function TambahSalvageForm({
   uploadColumns,
   onClose,
   onSaved,
+  prefill,
+  history = [],
 }: Props) {
-  const [form, setForm] = useState<FormState>(emptyForm)
+  // Prefill dipakai sebagai keadaan AWAL, bukan disalin ulang setiap render.
+  //
+  // Komponen ini dibongkar dan dipasang kembali setiap kali form dibuka — sehingga nilai
+  // awalnya selalu segar, dan isian yang sudah diketik pengguna tidak pernah tertimpa
+  // oleh jawaban server yang datang belakangan.
+  const [form, setForm] = useState<FormState>(() =>
+    prefill === undefined ? emptyForm : { ...emptyForm, ...prefill },
+  )
   const [items, setItems] = useState<DetailItem[]>([])
   const [uploadNote, setUploadNote] = useState('')
 
@@ -145,6 +193,11 @@ export function TambahSalvageForm({
           Menambahkan Data Salvage
         </h2>
         <p className="mt-1 text-sm text-slate-600">
+          {prefill === undefined ? null : (
+            <>
+              Untuk klaim <strong>{prefill.nomor_klaim}</strong>.{' '}
+            </>
+          )}
           Pengajuan yang disimpan langsung masuk antrean <strong>Checker</strong>.
         </p>
       </div>
@@ -166,6 +219,7 @@ export function TambahSalvageForm({
           value={form.nomor_klaim}
           onChange={(event) => set('nomor_klaim', event.target.value)}
           failure={violations['nomor_klaim']}
+          readOnly={prefill !== undefined}
           required
         />
         <FormField
@@ -174,6 +228,7 @@ export function TambahSalvageForm({
           value={form.nama_object}
           onChange={(event) => set('nama_object', event.target.value)}
           failure={violations['nama_object']}
+          readOnly={prefill !== undefined}
           required
         />
         <FormField
@@ -182,6 +237,7 @@ export function TambahSalvageForm({
           value={form.nama_coverage}
           onChange={(event) => set('nama_coverage', event.target.value)}
           failure={violations['nama_coverage']}
+          readOnly={prefill !== undefined}
           required
         />
 
@@ -334,6 +390,8 @@ export function TambahSalvageForm({
         }
         failure={violations['detail_item_salvage']}
       />
+
+      <RiwayatSalvage rows={history} />
 
       <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
         <Button type="submit" disabled={create.isPending}>
@@ -502,4 +560,52 @@ function today(): string {
   const bulan = String(now.getMonth() + 1).padStart(2, '0')
   const tanggal = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${bulan}-${tanggal}`
+}
+
+const HISTORY_COLUMNS: Column<HistoryRow>[] = [
+  {
+    key: 'tanggal_input',
+    title: 'Tanggal Input',
+    width: '10rem',
+    value: (row) => row.tanggal_input,
+  },
+  { key: 'no_klaim', title: 'Nomor Klaim', width: '10rem', value: (row) => row.no_klaim },
+  { key: 'pic', title: 'PIC', width: '12rem', value: (row) => row.pic },
+  {
+    key: 'nilai_minimum',
+    title: 'Nilai Minimum',
+    width: '10rem',
+    alignRight: true,
+    value: (row) => row.nilai_minimum,
+  },
+  {
+    key: 'posisi_salvage',
+    title: 'Posisi Salvage',
+    width: '14rem',
+    value: (row) => row.posisi_salvage,
+  },
+]
+
+/**
+ * Grid "Detail History Salvage".
+ *
+ * Ia digambar SELALU, termasuk ketika kosong — kekosongannya adalah keterangan, bukan
+ * ketiadaan: ia menyatakan klaim ini belum pernah diajukan salvage sama sekali.
+ * Menyembunyikan gridnya akan membuat keadaan itu tidak dapat dibedakan dari grid yang
+ * gagal dimuat.
+ */
+function RiwayatSalvage({ rows }: { rows: HistoryRow[] }) {
+  return (
+    <section aria-label="Detail History Salvage">
+      <h3 className="mb-3 text-sm font-semibold text-slate-800">Detail History Salvage</h3>
+
+      <DataTable
+        columns={HISTORY_COLUMNS}
+        rows={rows}
+        rowKey={(row) => row.id_salvage}
+        emptyMessage="Klaim ini belum pernah diajukan salvage."
+        hideSearch
+      />
+    </section>
+  )
 }

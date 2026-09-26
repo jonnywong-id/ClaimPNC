@@ -120,6 +120,15 @@ export type Tab = {
 
   /** Keterangan yang berlaku pada daftar ini saja. */
   catatan_daftar?: string
+
+  /**
+   * Dengan APA panel rincian dibuka pada daftar ini.
+   *
+   * KETIGA BELAS daftar punya tombol Detail — itu keadaan di layar lama. Yang berbeda
+   * adalah kuncinya: `'pengajuan'` pada tujuh daftar yang barisnya pengajuan, `'klaim'`
+   * pada enam daftar yang barisnya klaim dan tidak membawa ID pengajuan sama sekali.
+   */
+  kunci_rincian: DetailKey
 }
 
 /** Satu pilihan daftar "Status Salvage" pada form Tambah. */
@@ -234,4 +243,135 @@ export type CreateResponse = {
 export type UploadResponse = {
   detail_item_salvage: DetailItem[]
   pesan: string
+}
+
+/**
+ * Satu baris grid "Detail History Salvage".
+ *
+ * Judul kolomnya di layar lama: Tanggal Input · Nomor Klaim · PIC · Nilai Minimum ·
+ * Posisi Salvage.
+ */
+export type HistoryRow = {
+  id_salvage: string
+  tanggal_input: string
+  no_klaim: string
+  pic: string
+
+  /** Berjudul "Nilai Minimum" di grid ini, "Estimasi" di panel rincian. Kolomnya sama. */
+  nilai_minimum: string
+
+  /**
+   * Sudah berupa kalimat — "Sudah Aksep Checker", "Salvage Waive", dan seterusnya.
+   *
+   * Pemetaannya BERBEDA dari "Posisi Salvage" pada panel rincian, meski keduanya berasal
+   * dari kolom yang sama.
+   */
+  posisi_salvage: string
+}
+
+/** Kunci yang dipakai membuka panel rincian. */
+export type DetailKey = 'pengajuan' | 'klaim'
+
+/** Satu baris grid "Detail Pengajuan Salvage" pada panel Detail. */
+export type DetailBarang = {
+  nama_barang: string
+
+  /**
+   * Jumlah dan satuan datang TERPISAH.
+   *
+   * Kueri lama merangkainya di dalam SQL (`count(namabarang) || ' ' || satuan`), sehingga
+   * jumlahnya berhenti menjadi angka dan tidak lagi dapat diratakan ke kanan. Di sini
+   * keduanya dikirim sendiri-sendiri, dan layar yang merangkainya.
+   */
+  jumlah: number
+  satuan: string
+
+  total_nilai: string
+
+  /** Sudah kalimat, bukan kode — "Terjual" / "Tidak terjual" / "Waiting approval". */
+  status_terjual: string
+
+  nama_pemenang: string
+  no_akseptasi: string
+  nilai_akseptasi: string
+  remark: string
+}
+
+/**
+ * Isi panel "Detail Salvage".
+ *
+ * Nama isian mengikuti judul di layar lama (`Section/DataDetail_Salvage-Section.xml`),
+ * supaya petugas yang membandingkannya dengan Pega berdampingan membaca kata yang sama
+ * (`D-13`).
+ */
+export type DetailResponse = {
+  id_salvage: string
+  no_klaim: string
+  nama_bisnis: string
+
+  /**
+   * Klaim ini benar-benar punya pengajuan salvage.
+   *
+   * Selalu benar bila panel dibuka dari baris pengajuan. Dapat SALAH bila dibuka dari
+   * baris klaim — dan pada daftar Salvage Outstanding ia justru yang lazim, sebab daftar
+   * itu berisi klaim yang salvage-nya belum ditandai sama sekali.
+   */
+  ada_pengajuan: boolean
+
+  /** Berasal dari KLAIM, bukan dari pengajuan. Terisi pada jalur kunci `'klaim'`. */
+  pic: string
+  tanggal_kejadian: string
+
+  tanggal_input_salvage: string
+  jenis_salvage: string
+  quantity_salvage: string
+  estimasi: string
+  lokasi_salvage: string
+
+  tanggal_transfer_ga: string
+
+  /** Kode `STSTRANSFER` apa adanya — untuk penelusuran, bukan untuk dibaca. */
+  kode_posisi_salvage: string
+  /** Label posisinya — inilah yang digambar. */
+  posisi_salvage: string
+
+  tanggal_akseptasi: string
+  no_akseptasi: string
+  remark: string
+  mata_uang: string
+
+  nama_object: string
+  nama_coverage: string
+  nilai_salvage: string
+
+  email: string
+  nilai_penawaran: string
+  nama_pemenang: string
+  tanggal_lelang: string
+
+  nama_pic_survey: string
+  no_telp_pic_survey: string
+  email_pic_survey: string
+
+  lokasi_salvage_di_jabodetabek: boolean
+
+  /**
+   * Penanda pengajuan sebelum 17 Juli 2023.
+   *
+   * ARTINYA tidak diketahui — tidak ada satu pun rule di export yang memakainya selain
+   * menggambarnya. Layar menyebutnya apa adanya tanpa menafsirkannya.
+   */
+  pengajuan_sebelum_juli_2023: boolean
+
+  barang: DetailBarang[]
+
+  /**
+   * SELURUH pengajuan salvage milik klaim ini, terbaru lebih dulu.
+   *
+   * Digambar pada form "Menambahkan Data Salvage" sebagai grid "Detail History Salvage".
+   * Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
+   */
+  riwayat: HistoryRow[]
+
+  portal: string
 }

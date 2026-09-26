@@ -441,6 +441,211 @@ type StatusCount struct {
 // ErrRowNotFound berarti baris yang diminta tidak ada.
 var ErrRowNotFound = errors.New("inboxsalvage: baris salvage tidak ditemukan")
 
+// Detail adalah isi panel **"Detail Salvage"**, yang di Pega terbuka lewat tombol bernama
+// sama pada grid.
+//
+// # Apa yang digantikan
+//
+//	Section/DataDetail_Salvage-Section.xml   lima belas isian di bawah
+//	RDB List/GcnmSetSalvageData_SQL-SQL.xml  kueri kepalanya
+//	RDB List/GetDetailSalvage-SQL.xml        kueri daftar barangnya
+//
+// # Kenapa ia tipe TERSENDIRI, bukan Row yang diperlebar
+//
+// Karena isinya memang berbeda, dan enam isian di sini TIDAK ADA di grid mana pun: tanggal
+// transfer GA, tanggal akseptasi, mata uang, nama pemenang lelang, tanggal lelang, dan
+// nilai penawaran. Memperlebar Row berarti menarik keenamnya pada setiap baris daftar —
+// dua puluh kali per halaman — untuk sesuatu yang hanya dibaca saat satu baris dibuka.
+type Detail struct {
+	SalvageID string
+	ClaimNo   string
+
+	// HasSubmission menyatakan klaim ini benar-benar punya pengajuan salvage.
+	//
+	// Selalu benar bila panel dibuka dari baris PENGAJUAN. Dapat salah bila dibuka dari
+	// baris KLAIM: enam daftar berbasis klaim menampilkan klaim yang salvage-nya belum
+	// tentu pernah diajukan — daftar Salvage Outstanding bahkan menampilkan klaim yang
+	// justru BELUM ditandai punya salvage sama sekali.
+	//
+	// Bila salah, seluruh isian yang berasal dari `PNC_SALVAGE` kosong dan hanya isian
+	// klaimnya yang terisi. Layar menyatakannya sebagai kalimat, bukan sebagai panel
+	// yang tampak gagal dimuat.
+	HasSubmission bool
+
+	// History adalah SELURUH pengajuan salvage milik klaim ini, terbaru lebih dulu.
+	//
+	// Ia digambar sebagai grid "Detail History Salvage" pada form "Menambahkan Data
+	// Salvage" — bukan pada panel rincian. Isinya menjawab pertanyaan yang tidak dapat
+	// dijawab daftar mana pun: klaim ini sudah pernah diajukan berapa kali, dan
+	// masing-masing berakhir di mana.
+	//
+	// Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
+	History []HistoryRow
+
+	// PIC dan LossDate berasal dari KLAIM, bukan dari pengajuan.
+	//
+	// Keduanya hanya terisi bila panel dibuka dari baris klaim — pada jalur itu keduanya
+	// satu-satunya isian yang pasti ada, dan tanpanya panel klaim tanpa pengajuan akan
+	// kosong seluruhnya.
+	PIC      string
+	LossDate string
+
+	// BusinessName adalah lini bisnis klaimnya, diambil sub-kueri ke `T_CLAIM_PNC`.
+	//
+	// Ia satu-satunya isian panel ini yang TIDAK berasal dari `PNC_SALVAGE`.
+	BusinessName string
+
+	InputDate     string // "Tanggal Input Salvage" <- TGLINPUT
+	SalvageType   string // "Jenis Salvage"         <- JENISSALVAGE
+	Quantity      string // "Quantity Salvage"      <- QUANTITYSALVAGE
+	EstimateValue string // "Estimasi"            <- ESTIMASINILAI
+	Location      string // "Lokasi Salvage"        <- LOKASISALVAGE
+
+	// TransferGADate — "Tanggal Transfer GA" <- TGLTRANSFERGA.
+	//
+	// Kosong pada pengajuan yang dibuat modul ini: kolomnya sengaja tidak diisi saat
+	// menyimpan, karena ia menandai pengajuan yang sudah BENAR-BENAR dikirim ke bagian
+	// umum — bukan yang baru dibuat. Lihat catatan pada insert_salvage.
+	TransferGADate string
+
+	// TransferStatus <- STSTRANSFER, dan Position adalah labelnya.
+	//
+	// Keduanya dibawa: kodenya untuk penelusuran, labelnya untuk dibaca. Label diturunkan
+	// dari tab yang menyaring kode itu — lihat PositionLabelOf.
+	TransferStatus string
+	Position       string
+
+	AcceptanceDate string // "Tanggal Akseptasi" <- TGLAKSEPTASI
+	AcceptanceNo   string // "No Akseptasi"      <- NOAKSEPTASI
+	Remark         string // "Remark"            <- REMARK
+	Currency       string // "Mata Uang"         <- CURRENCY
+
+	ObjectID     string
+	ObjectName   string // "Nama Object"   <- OBJECTNAME
+	CoverageID   string
+	CoverageName string // "Nama Coverage" <- COVERAGENAME
+
+	// AcceptedValue — "Nilai Salvage" <- NILAIAKSEP.
+	//
+	// Kolom yang sama menentukan "Status Lelang" pada grid. Di panel ini ia digambar
+	// sebagai nilai, bukan sebagai status.
+	AcceptedValue string
+
+	Email       string
+	OfferValue  string // NILAIPENAWARAN
+	WinnerName  string // PEMENANGNAME
+	AuctionDate string // TANGGALLELANG
+
+	SurveyorName  string // PICSURVEY
+	SurveyorPhone string // NOTELP
+	SurveyorEmail string // EMAILSURVEY
+
+	InJabodetabek bool // ISJABODATABEK
+
+	// LegacyBeforeJuly2023 menandai pengajuan yang dibuat SEBELUM 17 Juli 2023.
+	//
+	// Kueri lama menghitungnya dengan `case when trunc(b.tglinput) < to_date('17/07/2023')`.
+	// Apa yang dibedakannya tidak terbaca dari export mana pun — tidak ada rule yang
+	// memakainya selain menggambarnya. Ia dibawa apa adanya, dan artinya ditanyakan bila
+	// kelak ada yang membutuhkannya.
+	LegacyBeforeJuly2023 bool
+
+	// Items adalah daftar barang pada pengajuan ini.
+	Items []DetailBarang
+}
+
+// DetailBarang adalah satu baris grid barang pada panel Detail Salvage.
+//
+// Barisnya DIKELOMPOKKAN menurut nama barang dan satuan — `GetDetailSalvage` memakai
+// `GROUP BY`, sehingga dua baris `DETAIL_PNC_SALVAGE` bernama sama menyatu menjadi satu
+// baris berjumlah dua. Itu perilaku layar lama apa adanya.
+type DetailBarang struct {
+	// Name — "Nama Barang" <- NAMABARANG.
+	Name string
+
+	// Quantity adalah teks berbentuk `"<jumlah> <satuan>"`, hasil
+	// `count(namabarang) || ' ' || satuan` pada kueri lama.
+	//
+	// Ia dirangkai DI BASIS DATA di sistem lama; di sini keduanya diambil terpisah lalu
+	// dirangkai di Go, supaya jumlah dan satuannya tetap dapat dibaca sendiri-sendiri.
+	Count int
+	Unit  string
+
+	// TotalValue adalah `sum(HARGAITEM)` — jumlah kolom yang namanya menyebut HARGA tetapi
+	// isinya JUMLAH ITEM. Lihat catatan pada DetailItem.Quantity.
+	TotalValue string
+
+	// SoldStatus adalah label `STATUSTERJUAL`.
+	SoldStatus string
+
+	WinnerName    string // PEMENANGSALVAGE
+	AcceptanceNo  string // NOAKSEPTASI
+	AcceptedValue string // NILAIAKSEPTASI
+	Remark        string // REMARK
+}
+
+// PositionLabelOf menerjemahkan `STSTRANSFER` menjadi teks "Posisi Salvage".
+//
+// # Dari mana labelnya
+//
+// Dari TAB yang menyaring kode itu — bukan dari master, karena tidak ada master yang
+// menerjemahkan `STSTRANSFER` di export mana pun. Dengan begitu label di panel detail dan
+// nama daftar tempat barisnya muncul selalu menyebut hal yang sama, dan keduanya tidak
+// dapat berselisih.
+//
+// Kode yang tidak punya tab dikembalikan APA ADANYA, bukan diganti teks kosong maupun
+// "tidak dikenal". Satu kode memang begitu — `6`, yang ikut terhitung pencacah "Histori
+// Salvage" tetapi tidak punya daftar sendiri. Menyembunyikannya akan membuat panelnya
+// tampak kehilangan data.
+func PositionLabelOf(status string) string {
+	clean := strings.TrimSpace(status)
+	if clean == "" {
+		return ""
+	}
+	for _, tab := range tabs {
+		if tab.TransferStatus == clean {
+			return tab.Name
+		}
+	}
+	return clean
+}
+
+// Teks kolom "Status Terjual" pada grid barang.
+//
+// Keempatnya DISALIN HARFIAH dari `RDB List/GetDetailSalvage-SQL.xml`.
+//
+// # Peringatan: kolom yang sama dipetakan BERBEDA di kueri lain
+//
+// `GetDataSalvagefromPNC_salvage` — kueri tombol Export Data — memetakan kolom yang sama
+// menjadi LIMA keadaan, dan salah satunya bertabrakan:
+//
+//	kode   panel Detail Salvage   kueri ekspor
+//	----   --------------------   -----------------------
+//	'1'    Terjual                Terjual
+//	'0'    Tidak terjual          Tidak terjual
+//	'2'    (tidak dipetakan)      Waiting approval waive
+//	'3'    Waiting approval       Rejected waive
+//	NULL   Belum terjual          Belum terjual
+//
+// Kode `'3'` berarti hal yang BERLAWANAN di kedua tempat. Yang dipakai di sini adalah
+// pemetaan panel detail, karena itulah kueri panel ini. Selisihnya dinyatakan.
+func SoldStatusOf(code string) string {
+	switch strings.TrimSpace(code) {
+	case "1":
+		return "Terjual"
+	case "0":
+		return "Tidak terjual"
+	case "3":
+		return "Waiting approval"
+	case "":
+		return "Belum terjual"
+	default:
+		// `ELSE '-'` pada kueri lama. Kode `'2'` jatuh ke sini, dan itu memang yang
+		// terjadi di Pega.
+		return "-"
+	}
+}
+
 // Repo adalah seam ke penyimpanan.
 //
 // # Kenapa ia MENULIS, berbeda dari modul inbox lain
@@ -472,6 +677,31 @@ type Repo interface {
 	// Ia terpisah dari List karena memang kueri yang berbeda — sepuluh kueri di sistem
 	// lama, satu di sini. Lihat CountsQuery.
 	Counts(ctx context.Context, caller Caller) ([]StatusCount, error)
+
+	// Detail mengembalikan isi panel "Detail Salvage" untuk satu pengajuan.
+	//
+	// Kuncinya ID salvage — parameter yang sama dengan `TempInsert.Password` di sistem
+	// lama.
+	//
+	// ID yang tidak ditemukan menghasilkan ErrRowNotFound, BUKAN nilai kosong: pengajuan
+	// yang tidak ada dan pengajuan yang seluruh isiannya kosong terlihat sama di layar,
+	// dan hanya yang pertama yang merupakan kekeliruan.
+	Detail(ctx context.Context, salvageID string) (Detail, error)
+
+	// DetailByClaim membaca rincian lewat NOMOR KLAIM, bukan lewat ID pengajuan.
+	//
+	// Dibutuhkan keenam daftar berbasis klaim: barisnya tidak membawa ID pengajuan sama
+	// sekali — kueri yang memasoknya (`GcnmSalvageData_OS_SQL` dan
+	// `GcnmSalvageData_ekonomisdanTba`) membaca `T_CLAIM_PNC` dan tidak mengambil satu
+	// pun kolom dari `PNC_SALVAGE`.
+	//
+	// Pengajuan yang dipilih adalah yang TERAKHIR milik klaim itu, mengikuti
+	// `SetDataDetailSalvage_act` langkah 18 pada jalur `param.tipe == 1`.
+	//
+	// Klaim tanpa pengajuan BUKAN galat: ia menghasilkan Detail ber-HasSubmission salah,
+	// bukan ErrRowNotFound. Yang menghasilkan ErrRowNotFound hanyalah nomor klaim yang
+	// tidak ada.
+	DetailByClaim(ctx context.Context, claimNo string) (Detail, error)
 
 	// Create menyimpan satu pengajuan salvage beserta detail itemnya.
 	//

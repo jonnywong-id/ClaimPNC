@@ -8,7 +8,13 @@ import { AppRoute } from '@/app/App'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { CountsResponse, MetadataResponse, SalvageRow, Tab } from './types'
+import type {
+  CountsResponse,
+  DetailResponse,
+  MetadataResponse,
+  SalvageRow,
+  Tab,
+} from './types'
 
 const PATH = '/api/inbox-salvage'
 const META_PATH = `${PATH}/daftar`
@@ -49,6 +55,9 @@ const TAB_OUTSTANDING: Tab = {
   pencarian_cocok_persis: false,
   catatan_daftar:
     'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah baris di sini.',
+
+  // Barisnya KLAIM — rincian dibuka dengan NOMOR KLAIM.
+  kunci_rincian: 'klaim',
 }
 
 /** Daftar Checker — grid terlebar, dan pencariannya COCOK PERSIS. */
@@ -68,6 +77,9 @@ const TAB_CHECKER: Tab = {
   label_pencarian: 'CARI NO KLAIM ATAU PIC',
   pencarian_cocok_persis: true,
   catatan_daftar: 'Pencarian di daftar ini COCOK PERSIS, bukan mengandung.',
+
+  // Barisnya PENGAJUAN — rincian dibuka dengan ID PENGAJUAN.
+  kunci_rincian: 'pengajuan',
 }
 
 const METADATA: MetadataResponse = {
@@ -144,6 +156,79 @@ const BARIS_CHECKER: SalvageRow = {
   catatan: '',
 }
 
+const DETAIL_PATH = `${PATH}/pengajuan/103`
+
+/** Rincian satu pengajuan, sebagaimana dijawab `GET /api/inbox-salvage/pengajuan/{id}`. */
+const DETAIL: DetailResponse = {
+  id_salvage: '103',
+  no_klaim: 'PNC-700071',
+  nama_bisnis: 'Property All Risk',
+  ada_pengajuan: true,
+  pic: 'SITIRAHAYU',
+  tanggal_kejadian: '2026-09-01',
+
+  tanggal_input_salvage: '2026-09-09',
+  jenis_salvage: 'Drum Kosong',
+  quantity_salvage: '24',
+  estimasi: '1800000',
+  lokasi_salvage: 'Gudang Cakung',
+
+  tanggal_transfer_ga: '2026-09-10',
+
+  // Kode dan labelnya dikirim bersamaan, dan uji di bawah membuktikan yang DIGAMBAR
+  // sebagai posisi adalah labelnya.
+  kode_posisi_salvage: '3',
+  posisi_salvage: 'Checker',
+
+  tanggal_akseptasi: '',
+  no_akseptasi: '',
+  remark: 'Menunggu keputusan checker',
+  mata_uang: 'IDR',
+
+  nama_object: 'Gudang Blok C',
+  nama_coverage: 'Property All Risk',
+  nilai_salvage: '',
+
+  email: 'salvage.pusat@example.invalid',
+  nilai_penawaran: '',
+  nama_pemenang: '',
+  tanggal_lelang: '',
+
+  nama_pic_survey: 'Petugas Survey Contoh',
+  no_telp_pic_survey: '0210000000',
+  email_pic_survey: 'survey.contoh@example.invalid',
+
+  lokasi_salvage_di_jabodetabek: true,
+  pengajuan_sebelum_juli_2023: false,
+
+  riwayat: [
+    {
+      id_salvage: '103',
+      tanggal_input: '2026-09-09',
+      no_klaim: 'PNC-700071',
+      pic: 'SITIRAHAYU',
+      nilai_minimum: '1800000',
+      posisi_salvage: 'Salvage Diterima di Komite',
+    },
+  ],
+
+  barang: [
+    {
+      nama_barang: 'Drum 200L',
+      jumlah: 12,
+      satuan: 'unit',
+      total_nilai: '1200000',
+      status_terjual: 'Belum terjual',
+      nama_pemenang: '',
+      no_akseptasi: '-',
+      nilai_akseptasi: '',
+      remark: '',
+    },
+  ],
+
+  portal: 'ASM',
+}
+
 type Call = { url: string; init?: RequestInit | undefined }
 
 let calls: Call[] = []
@@ -171,6 +256,14 @@ function stubDefaultFetch() {
   stubFetch((url) => {
     if (url === META_PATH) return jsonResponse(200, METADATA)
     if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+    if (url === DETAIL_PATH) return jsonResponse(200, DETAIL)
+
+    // Jalur klaim dijawab dengan pengajuan yang ADA, supaya uji panel di bawah menguji
+    // panelnya. Keadaan sebaliknya — klaim tanpa pengajuan — diuji terpisah, dengan
+    // peladen tiruannya sendiri.
+    if (url.startsWith(`${PATH}/klaim/`)) {
+      return jsonResponse(200, { ...DETAIL, no_klaim: BARIS.no_klaim })
+    }
 
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('PIC\nPETUGASCONTOH\n', {
@@ -295,6 +388,13 @@ it('mengklik baris tabel ringkas membuka daftarnya', async () => {
  * Satu baris pencacah TIDAK menuju daftar mana pun — di Pega pun tidak ada tab yang
  * menerimanya. Ia harus digambar sebagai teks, bukan tombol yang tidak melakukan apa-apa.
  */
+// Peladen sekarang TIDAK mengirim baris tanpa daftar — satu-satunya yang begitu ("Tidak
+// Terjual") tidak lagi digambar, sebab layar Pega sungguhan pun tidak menampilkannya.
+//
+// Uji ini tetap ada sebagai kontrak komponen: StatusSummary harus menggambar baris tanpa
+// daftar sebagai teks biasa, bukan sebagai tombol yang menuju kekosongan. Bila baris
+// seperti itu kembali — dan tiga daftar memang akan kembali begitu kewenangan berbasis
+// peran ada — perilakunya sudah terjaga.
 it('baris ringkas yang tidak punya daftar TIDAK dapat diklik', async () => {
   stubDefaultFetch()
   await renderLoaded()
@@ -477,4 +577,213 @@ it('permintaan daftar membawa header portal', async () => {
     const header = new Headers(terakhir?.init?.headers)
     expect(header.get('X-Portal')).toBe('ASM')
   })
+})
+
+it('kolom aksi Detail digambar pada SETIAP daftar, bukan hanya sebagian', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  // Salvage Outstanding berbaris KLAIM, dan tombolnya tetap ada — di layar lama pun
+  // tombol Detail tersebar di seluruh grid.
+  expect(await screen.findByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Detail' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('tab', { name: /Checker/ }))
+
+  expect(await screen.findByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Detail' })).toBeInTheDocument()
+})
+
+it('daftar berbasis klaim membuka rincian dengan NOMOR KLAIM', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+  await screen.findByRole('region', { name: 'Detail Salvage' })
+
+  // Rute yang ditembak menyebut jenis kuncinya. Nomor klaim dan ID pengajuan adalah dua
+  // ruang nilai yang berbeda; satu rute untuk keduanya akan menjawab "tidak ditemukan"
+  // untuk nilai yang sebenarnya sah pada ruang yang lain.
+  const hit = [...calls].reverse().find((c) => c.url.startsWith(`${PATH}/klaim/`))
+  expect(hit?.url).toBe(`${PATH}/klaim/${encodeURIComponent(BARIS.no_klaim)}`)
+})
+
+it('klaim yang belum punya pengajuan membuka form Tambah, bukan panel rincian', async () => {
+  stubFetch((url) => {
+    if (url === META_PATH) return jsonResponse(200, METADATA)
+    if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+
+    if (url.startsWith(`${PATH}/klaim/`)) {
+      return jsonResponse(200, {
+        ...DETAIL,
+        id_salvage: '',
+        no_klaim: BARIS.no_klaim,
+        nama_object: 'Gudang Blok C',
+        nama_coverage: 'Property All Risk',
+        ada_pengajuan: false,
+        barang: [],
+        riwayat: [],
+      })
+    }
+
+    return jsonResponse(200, {
+      daftar: TAB_OUTSTANDING,
+      baris: [BARIS],
+      paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+      cari: '',
+      portal: 'ASM',
+    })
+  })
+
+  await renderLoaded()
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+
+  // Bukan panel rincian — form pengajuan, seperti di layar lama.
+  const form = await screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
+  expect(screen.queryByRole('region', { name: 'Detail Salvage' })).not.toBeInTheDocument()
+
+  // Isian yang berasal dari klaimnya sudah terisi dan TIDAK dapat diubah: pengajuan tidak
+  // boleh tersimpan atas klaim yang berbeda dari baris yang diklik.
+  const nomor = within(form).getByLabelText(/Nomor Klaim/)
+  expect(nomor).toHaveValue(BARIS.no_klaim)
+  expect(nomor).toHaveAttribute('readonly')
+
+  expect(within(form).getByLabelText(/Nama Object/)).toHaveValue('Gudang Blok C')
+
+  // Grid riwayat tetap digambar meski kosong — kekosongannya adalah keterangan.
+  const riwayat = within(form).getByRole('region', { name: 'Detail History Salvage' })
+  expect(within(riwayat).getByText(/belum pernah diajukan salvage/)).toBeInTheDocument()
+})
+
+it('grid Detail History Salvage menggambar pengajuan sebelumnya milik klaim itu', async () => {
+  stubFetch((url) => {
+    if (url === META_PATH) return jsonResponse(200, METADATA)
+    if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+
+    if (url.startsWith(`${PATH}/klaim/`)) {
+      return jsonResponse(200, {
+        ...DETAIL,
+        id_salvage: '',
+        no_klaim: BARIS.no_klaim,
+        ada_pengajuan: false,
+        barang: [],
+        riwayat: [
+          {
+            id_salvage: '77',
+            tanggal_input: '2026-04-19',
+            no_klaim: BARIS.no_klaim,
+            pic: 'ELLENSUPRIYATI',
+            nilai_minimum: '10000',
+            posisi_salvage: 'Salvage Waive',
+          },
+        ],
+      })
+    }
+
+    return jsonResponse(200, {
+      daftar: TAB_OUTSTANDING,
+      baris: [BARIS],
+      paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+      cari: '',
+      portal: 'ASM',
+    })
+  })
+
+  await renderLoaded()
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+
+  const form = await screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
+  const riwayat = within(form).getByRole('region', { name: 'Detail History Salvage' })
+
+  expect(within(riwayat).getByText('ELLENSUPRIYATI')).toBeInTheDocument()
+
+  // Posisinya berupa KALIMAT, bukan kode. Pemetaannya berbeda dari "Posisi Salvage" pada
+  // panel rincian, meski keduanya berasal dari kolom yang sama.
+  expect(within(riwayat).getByText('Salvage Waive')).toBeInTheDocument()
+})
+
+it('membuka panel Detail Salvage dan menutupnya kembali', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  await userEvent.click(screen.getByRole('tab', { name: /Checker/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+
+  const panel = await screen.findByRole('region', { name: 'Detail Salvage' })
+
+  const hit = [...calls].reverse().find((c) => c.url.startsWith(`${PATH}/pengajuan/`))
+  expect(hit?.url).toBe(`${PATH}/pengajuan/103`)
+
+  expect(within(panel).getByText('Gudang Cakung')).toBeInTheDocument()
+  expect(within(panel).getByText('Menunggu keputusan checker')).toBeInTheDocument()
+
+  // Grid barang ikut tergambar, dan jumlah serta satuannya dirangkai DI LAYAR — di layar
+  // lama keduanya dirangkai di dalam SQL, dan sejak itu jumlahnya berhenti menjadi angka.
+  expect(within(panel).getByText('Drum 200L')).toBeInTheDocument()
+  expect(within(panel).getByText('12 unit')).toBeInTheDocument()
+
+  await userEvent.click(within(panel).getByRole('button', { name: 'Tutup' }))
+  expect(screen.queryByRole('region', { name: 'Detail Salvage' })).not.toBeInTheDocument()
+})
+
+it('menggambar posisi salvage sebagai NAMA, bukan sebagai kodenya', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  await userEvent.click(screen.getByRole('tab', { name: /Checker/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+
+  const panel = await screen.findByRole('region', { name: 'Detail Salvage' })
+
+  // Namanya yang dibaca; kodenya tetap tampil kecil di sebelahnya untuk penelusuran ke
+  // Pega — bukan menggantikan namanya.
+  expect(within(panel).getByText('Checker')).toBeInTheDocument()
+  expect(within(panel).getByText('kode 3')).toBeInTheDocument()
+})
+
+it('berpindah daftar menutup panel Detail yang sedang terbuka', async () => {
+  stubDefaultFetch()
+  await renderLoaded()
+
+  await userEvent.click(screen.getByRole('tab', { name: /Checker/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+  await screen.findByRole('region', { name: 'Detail Salvage' })
+
+  await userEvent.click(screen.getByRole('tab', { name: /Salvage Outstanding/ }))
+
+  // Rincian yang tetap terbuka di bawah daftar lain akan terbaca seolah milik baris yang
+  // sekarang tampil.
+  expect(screen.queryByRole('region', { name: 'Detail Salvage' })).not.toBeInTheDocument()
+})
+
+it('menjelaskan pengajuan yang tidak ada pada entitas yang sedang dipilih', async () => {
+  stubFetch((url) => {
+    if (url === META_PATH) return jsonResponse(200, METADATA)
+    if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+
+    if (url === DETAIL_PATH) {
+      return jsonResponse(404, {
+        kode: 'pengajuan_tidak_ditemukan',
+        pesan:
+          'Pengajuan salvage tidak ditemukan pada entitas yang sedang dipilih. ' +
+          'Periksa pilihan portal di bilah atas.',
+      })
+    }
+
+    return jsonResponse(200, {
+      daftar: TAB_CHECKER,
+      baris: [BARIS_CHECKER],
+      paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+      cari: '',
+      portal: 'ASM',
+    })
+  })
+
+  await renderLoaded()
+
+  await userEvent.click(screen.getByRole('tab', { name: /Checker/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+
+  expect(await screen.findByText('Detail tidak dapat dibuka')).toBeInTheDocument()
+  expect(screen.getByText(/Periksa pilihan portal/)).toBeInTheDocument()
 })

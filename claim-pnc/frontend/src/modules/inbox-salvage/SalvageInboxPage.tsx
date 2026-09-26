@@ -8,16 +8,18 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
+import { DetailSalvagePanel } from './DetailSalvagePanel'
 import { SalvageTabs } from './SalvageTabs'
 import { StatusSummary } from './StatusSummary'
 import { TambahSalvageForm } from './TambahSalvageForm'
 import {
   useExportSalvage,
   useSalvageCounts,
+  useSalvageDetail,
   useSalvageList,
   useSalvageMetadata,
 } from './api'
-import type { SalvageRow, Tab, TabColumn } from './types'
+import type { DetailKey, SalvageRow, Tab, TabColumn } from './types'
 
 /**
  * Inbox Salvage — menu `MENU_ID 71`, pengganti harness `InboxSalvage`.
@@ -67,6 +69,14 @@ export function SalvageInboxPage() {
   const [adding, setAdding] = useState(false)
   const [saved, setSaved] = useState('')
 
+  // Pengajuan yang panel rinciannya sedang terbuka; kosong berarti tertutup.
+  //
+  // Ia state komponen, BUKAN bagian alamat seperti daftar dan halaman. Alasannya: rincian
+  // dibuka untuk dibaca sekali lalu ditutup, bukan untuk ditinggalkan dan kembali — dan
+  // menaruhnya di alamat membuat tombol "kembali" peramban menutup panel alih-alih
+  // meninggalkan layar, yang bukan yang diharapkan orang.
+  const [opened, setOpened] = useState<{ key: DetailKey; reference: string } | null>(null)
+
   const tabCode = params.get('daftar') ?? ''
   const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
   const search = params.get('cari') ?? ''
@@ -81,6 +91,21 @@ export function SalvageInboxPage() {
 
   const list = useSalvageList(active, page, search, meta.isSuccess)
   const exporting = useExportSalvage()
+
+  // Permintaan rincian dipegang HALAMAN, bukan panelnya.
+  //
+  // Sebabnya: jawabannya menentukan APA yang digambar. Klaim yang belum punya pengajuan
+  // masuk ke form "Menambahkan Data Salvage" — seperti di layar lama — bukan ke panel
+  // rincian. Bila panelnya yang menembak server, keputusan itu diambil sesudah panelnya
+  // terlanjur tergambar, dan permintaan yang sama berjalan dua kali.
+  const detail = useSalvageDetail(opened?.key ?? 'pengajuan', opened?.reference ?? '')
+
+  // Klaim tanpa pengajuan tidak dibuka sebagai panel, melainkan sebagai form pengajuan
+  // baru yang sudah terisi klaimnya.
+  const creatingFor =
+    opened !== null && detail.data !== undefined && !detail.data.ada_pengajuan
+      ? detail.data
+      : null
 
   /** Berpindah daftar mengembalikan ke halaman pertama DAN mengosongkan pencarian. */
   function selectTab(code: string) {
@@ -101,6 +126,11 @@ export function SalvageInboxPage() {
       },
       { replace: true },
     )
+
+    // Panel rincian ikut ditutup. Pengajuan yang sedang dibuka adalah milik daftar yang
+    // baru saja ditinggalkan, dan membiarkannya terbuka di bawah daftar lain membuat
+    // rincian itu terbaca seolah milik baris yang sekarang tampil.
+    setOpened(null)
   }
 
   function setPage(next: number) {
@@ -176,7 +206,29 @@ export function SalvageInboxPage() {
         isLoading={counts.isLoading}
       />
 
-      {adding ? (
+      {creatingFor !== null ? (
+        <TambahSalvageForm
+          // Kunci memaksa form DIBONGKAR dan dipasang ulang saat berpindah klaim.
+          //
+          // Tanpanya, isian yang sudah diketik untuk klaim sebelumnya akan tertinggal di
+          // form yang sekarang menyebut klaim lain — pengajuan yang tersimpan atas klaim
+          // yang salah, tanpa satu pun tanda.
+          key={creatingFor.no_klaim}
+          statusOptions={meta.data?.pilihan_status_salvage ?? []}
+          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
+          prefill={{
+            nomor_klaim: creatingFor.no_klaim,
+            nama_object: creatingFor.nama_object,
+            nama_coverage: creatingFor.nama_coverage,
+          }}
+          history={creatingFor.riwayat}
+          onClose={() => setOpened(null)}
+          onSaved={(message) => {
+            setSaved(message)
+            setOpened(null)
+          }}
+        />
+      ) : adding ? (
         <TambahSalvageForm
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
           uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
@@ -200,7 +252,7 @@ export function SalvageInboxPage() {
           )}
 
           <DataTable<SalvageRow>
-            columns={columnsOf(tab)}
+            columns={columnsOf(tab, (key, reference) => setOpened({ key, reference }))}
             rows={list.data?.baris ?? []}
             rowKey={(row) => `${row.referensi}-${row.no_klaim}`}
             label={`Daftar ${tab?.nama ?? 'salvage'}`}
@@ -254,6 +306,18 @@ export function SalvageInboxPage() {
             }
           />
 
+          {opened !== null && (
+            <DetailSalvagePanel
+              detailKey={opened.key}
+              reference={opened.reference}
+              data={detail.data}
+              isPending={detail.isPending}
+              isError={detail.isError}
+              error={detail.error}
+              onClose={() => setOpened(null)}
+            />
+          )}
+
           {exporting.error != null && (
             <ErrorMessage
               title="Berkas ekspor tidak dapat diambil"
@@ -300,16 +364,52 @@ function Frame({ children }: { children: ReactNode }) {
  * Yang tetap milik layar adalah cara satu sel DIGAMBAR: tanggal diformat, nilai uang
  * diratakan kanan. Keduanya urusan tampilan, bukan urusan bentuk data.
  */
-function columnsOf(tab: Tab | undefined): Column<SalvageRow>[] {
+function columnsOf(
+  tab: Tab | undefined,
+  onOpenDetail: (key: DetailKey, reference: string) => void,
+): Column<SalvageRow>[] {
   if (!tab) return []
 
-  return tab.kolom.map((column) => ({
+  const columns: Column<SalvageRow>[] = tab.kolom.map((column) => ({
     key: column.kunci,
     title: column.judul,
     value: (row) => valueOf(row, column.kunci),
     render: (row) => renderCell(row, column),
     alignRight: column.angka,
   }))
+
+  // Kolom aksi ada di KETIGA BELAS daftar — itu keadaan di layar lama, tempat sebelas
+  // tombol `SetDataDetailSalvage_act` tersebar di seluruh grid-nya.
+  //
+  // Yang berbeda hanyalah KUNCI yang dikirimkannya: ID pengajuan pada tujuh daftar yang
+  // barisnya pengajuan, nomor klaim pada enam daftar yang barisnya klaim dan tidak
+  // membawa ID pengajuan sama sekali.
+  columns.push({
+    key: 'aksi',
+    title: 'Aksi',
+    width: '8rem',
+    noSort: true,
+    alignRight: true,
+    value: () => '',
+    render: (row) => {
+      const reference =
+        tab.kunci_rincian === 'klaim' ? row.no_klaim : row.id_salvage
+
+      if (reference === '') return <span className="text-slate-400">—</span>
+
+      return (
+        <Button
+          type="button"
+          tone="halus"
+          onClick={() => onOpenDetail(tab.kunci_rincian, reference)}
+        >
+          Detail
+        </Button>
+      )
+    },
+  })
+
+  return columns
 }
 
 /** valueOf mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */

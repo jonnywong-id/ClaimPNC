@@ -133,6 +133,17 @@ type TabDTO struct {
 
 	// Notice adalah keterangan yang berlaku pada daftar ini saja.
 	Notice string `json:"catatan_daftar,omitempty"`
+
+	// DetailKey menyatakan dengan APA panel rincian dibuka pada daftar ini.
+	//
+	// SETIAP daftar punya tombol Detail — itu keadaan di Pega. Yang berbeda adalah
+	// kuncinya: `"pengajuan"` pada ketujuh daftar berbaris pengajuan, `"klaim"` pada
+	// keenam daftar berbaris klaim, yang barisnya tidak membawa ID pengajuan sama sekali.
+	//
+	// Layar memakainya untuk memilih rute mana yang ditembak dan isian mana yang dikirim
+	// sebagai kunci. Menyimpulkannya di layar berarti pengetahuan yang sama hidup di dua
+	// tempat, dan yang satu akan tertinggal.
+	DetailKey string `json:"kunci_rincian"`
 }
 
 func toTabDTO(tab inboxsalvage.Tab) TabDTO {
@@ -153,6 +164,7 @@ func toTabDTO(tab inboxsalvage.Tab) TabDTO {
 		SearchLabel: tab.SearchLabel,
 		SearchExact: tab.SearchExact,
 		Notice:      tab.Notice,
+		DetailKey:   string(inboxsalvage.DetailKeyOf(tab.Family)),
 	}
 }
 
@@ -418,4 +430,187 @@ type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
 	Details []ViolationDTO `json:"detail,omitempty"`
+}
+
+// DetailBarangDTO adalah satu baris grid barang pada panel Detail Salvage.
+type DetailBarangDTO struct {
+	Name string `json:"nama_barang"`
+
+	// Count dan Unit datang TERPISAH, meski layar lama merangkainya di dalam SQL
+	// (`count(namabarang) || ' ' || satuan`). Dipisah supaya jumlahnya dapat diratakan
+	// sebagai angka dan satuannya tetap terbaca sendiri.
+	Count int    `json:"jumlah"`
+	Unit  string `json:"satuan"`
+
+	TotalValue    string `json:"total_nilai"`
+	SoldStatus    string `json:"status_terjual"`
+	WinnerName    string `json:"nama_pemenang"`
+	AcceptanceNo  string `json:"no_akseptasi"`
+	AcceptedValue string `json:"nilai_akseptasi"`
+	Remark        string `json:"remark"`
+}
+
+// HistoryRowDTO adalah satu baris grid "Detail History Salvage".
+//
+// Judul kolomnya di layar lama: Tanggal Input · Nomor Klaim · PIC · Nilai Minimum ·
+// Posisi Salvage.
+type HistoryRowDTO struct {
+	SalvageID string `json:"id_salvage"`
+	InputDate string `json:"tanggal_input"`
+	ClaimNo   string `json:"no_klaim"`
+	PIC       string `json:"pic"`
+
+	// MinimumValue berjudul "Nilai Minimum" di grid, sementara kolom yang sama berjudul
+	// "Estimasi" pada panel rincian. Judulnya berbeda; kolomnya sama.
+	MinimumValue string `json:"nilai_minimum"`
+
+	// Position sudah berupa kalimat — "Sudah Aksep Checker", "Salvage Waive", dan
+	// seterusnya. Pemetaannya BERBEDA dari "Posisi Salvage" pada panel rincian, meski
+	// keduanya berasal dari kolom yang sama.
+	Position string `json:"posisi_salvage"`
+}
+
+// DetailResponse adalah isi panel "Detail Salvage".
+//
+// Nama field mengikuti judul isian pada `Section/DataDetail_Salvage-Section.xml` (`D-13`).
+type DetailResponse struct {
+	SalvageID string `json:"id_salvage"`
+	ClaimNo   string `json:"no_klaim"`
+
+	// HasSubmission menyatakan klaim ini benar-benar punya pengajuan salvage.
+	//
+	// Selalu benar bila panel dibuka dari baris pengajuan. Dapat SALAH bila dibuka dari
+	// baris klaim — dan pada daftar Salvage Outstanding ia justru yang lazim, sebab
+	// daftar itu berisi klaim yang salvage-nya belum ditandai sama sekali.
+	//
+	// Layar memakainya untuk menyatakan keadaannya sebagai kalimat, alih-alih menggambar
+	// panel yang seluruh isiannya kosong dan terbaca seperti gagal dimuat.
+	HasSubmission bool `json:"ada_pengajuan"`
+
+	// PIC dan LossDate berasal dari KLAIM, bukan dari pengajuan.
+	PIC      string `json:"pic"`
+	LossDate string `json:"tanggal_kejadian"`
+
+	// BusinessName adalah lini bisnis klaimnya — satu-satunya isian panel ini yang tidak
+	// berasal dari tabel salvage.
+	BusinessName string `json:"nama_bisnis"`
+
+	InputDate     string `json:"tanggal_input_salvage"`
+	SalvageType   string `json:"jenis_salvage"`
+	Quantity      string `json:"quantity_salvage"`
+	EstimateValue string `json:"estimasi"`
+	Location      string `json:"lokasi_salvage"`
+
+	TransferGADate string `json:"tanggal_transfer_ga"`
+
+	// TransferStatus adalah KODE, Position adalah labelnya. Keduanya dikirim: kodenya
+	// untuk penelusuran ke Pega, labelnya untuk dibaca.
+	TransferStatus string `json:"kode_posisi_salvage"`
+	Position       string `json:"posisi_salvage"`
+
+	AcceptanceDate string `json:"tanggal_akseptasi"`
+	AcceptanceNo   string `json:"no_akseptasi"`
+	Remark         string `json:"remark"`
+	Currency       string `json:"mata_uang"`
+
+	ObjectName   string `json:"nama_object"`
+	CoverageName string `json:"nama_coverage"`
+
+	// AcceptedValue adalah "Nilai Salvage". Kolom yang sama menentukan "Status Lelang"
+	// pada grid; di panel ini ia digambar sebagai nilai.
+	AcceptedValue string `json:"nilai_salvage"`
+
+	Email      string `json:"email"`
+	OfferValue string `json:"nilai_penawaran"`
+	WinnerName string `json:"nama_pemenang"`
+
+	AuctionDate string `json:"tanggal_lelang"`
+
+	SurveyorName  string `json:"nama_pic_survey"`
+	SurveyorPhone string `json:"no_telp_pic_survey"`
+	SurveyorEmail string `json:"email_pic_survey"`
+
+	InJabodetabek bool `json:"lokasi_salvage_di_jabodetabek"`
+
+	// LegacyBeforeJuly2023 menandai pengajuan yang dibuat sebelum 17 Juli 2023.
+	//
+	// ARTINYA tidak diketahui — tidak ada satu pun rule di export yang memakainya selain
+	// menggambarnya. Ia dikirim apa adanya, dan layar menyebutnya sebagai penanda tanpa
+	// menafsirkannya.
+	LegacyBeforeJuly2023 bool `json:"pengajuan_sebelum_juli_2023"`
+
+	Items []DetailBarangDTO `json:"barang"`
+
+	// History adalah SELURUH pengajuan salvage milik klaim ini, terbaru lebih dulu.
+	//
+	// Digambar pada form "Menambahkan Data Salvage" sebagai grid "Detail History
+	// Salvage". Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
+	History []HistoryRowDTO `json:"riwayat"`
+
+	Portal string `json:"portal"`
+}
+
+func toDetailResponse(detail inboxsalvage.Detail, portalAlias string) DetailResponse {
+	items := make([]DetailBarangDTO, 0, len(detail.Items))
+	for _, item := range detail.Items {
+		items = append(items, DetailBarangDTO{
+			Name:          item.Name,
+			Count:         item.Count,
+			Unit:          item.Unit,
+			TotalValue:    item.TotalValue,
+			SoldStatus:    item.SoldStatus,
+			WinnerName:    item.WinnerName,
+			AcceptanceNo:  item.AcceptanceNo,
+			AcceptedValue: item.AcceptedValue,
+			Remark:        item.Remark,
+		})
+	}
+
+	history := make([]HistoryRowDTO, 0, len(detail.History))
+	for _, row := range detail.History {
+		history = append(history, HistoryRowDTO{
+			SalvageID:    row.SalvageID,
+			InputDate:    row.InputDate,
+			ClaimNo:      row.ClaimNo,
+			PIC:          row.PIC,
+			MinimumValue: row.MinimumValue,
+			Position:     row.Position,
+		})
+	}
+
+	return DetailResponse{
+		SalvageID:            detail.SalvageID,
+		ClaimNo:              detail.ClaimNo,
+		HasSubmission:        detail.HasSubmission,
+		PIC:                  detail.PIC,
+		LossDate:             detail.LossDate,
+		BusinessName:         detail.BusinessName,
+		InputDate:            detail.InputDate,
+		SalvageType:          detail.SalvageType,
+		Quantity:             detail.Quantity,
+		EstimateValue:        detail.EstimateValue,
+		Location:             detail.Location,
+		TransferGADate:       detail.TransferGADate,
+		TransferStatus:       detail.TransferStatus,
+		Position:             detail.Position,
+		AcceptanceDate:       detail.AcceptanceDate,
+		AcceptanceNo:         detail.AcceptanceNo,
+		Remark:               detail.Remark,
+		Currency:             detail.Currency,
+		ObjectName:           detail.ObjectName,
+		CoverageName:         detail.CoverageName,
+		AcceptedValue:        detail.AcceptedValue,
+		Email:                detail.Email,
+		OfferValue:           detail.OfferValue,
+		WinnerName:           detail.WinnerName,
+		AuctionDate:          detail.AuctionDate,
+		SurveyorName:         detail.SurveyorName,
+		SurveyorPhone:        detail.SurveyorPhone,
+		SurveyorEmail:        detail.SurveyorEmail,
+		InJabodetabek:        detail.InJabodetabek,
+		LegacyBeforeJuly2023: detail.LegacyBeforeJuly2023,
+		Items:                items,
+		History:              history,
+		Portal:               portalAlias,
+	}
 }

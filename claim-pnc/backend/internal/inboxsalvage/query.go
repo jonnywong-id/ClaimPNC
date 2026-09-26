@@ -62,6 +62,28 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 		}})
 	}
 
+	return NewQueryForTab(tab, input, cleanCaller)
+}
+
+// NewQueryForTab menyusun permintaan atas daftar yang SUDAH ditemukan pemanggil.
+//
+// Ia terpisah dari NewQuery karena keduanya menjawab hal yang berbeda: NewQuery menolak
+// kode daftar yang tidak ditawarkan layar — itu pemeriksaan masukan pengguna — sedangkan
+// ini menyusun permintaannya.
+//
+// Pemisahan itu dibutuhkan keempat daftar yang tidak ditawarkan: penyaringnya tetap diuji
+// meski layar tidak menawarkannya, sebab tiga di antaranya harus kembali begitu kewenangan
+// berbasis peran ada. Penyaring yang tidak diuji selama itu akan berhenti benar tanpa ada
+// yang tahu.
+//
+// Lapisan transport TIDAK memanggilnya langsung — ia memanggil NewQuery, yang menjaga
+// pintunya.
+func NewQueryForTab(tab Tab, input QueryInput, caller Caller) (Query, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return Query{}, ErrCallerUnknown
+	}
+
 	search := strings.TrimSpace(input.Search)
 
 	// Pencarian pada tab yang TIDAK punya kotak pencarian dibuang, bukan ditolak.

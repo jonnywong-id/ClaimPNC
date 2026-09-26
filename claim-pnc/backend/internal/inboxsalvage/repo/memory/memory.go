@@ -22,6 +22,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -92,6 +93,12 @@ type Store struct {
 	salvages []Salvage
 	nextID   int
 
+	// items adalah daftar barang per ID salvage.
+	//
+	// Ia peta, bukan senarai di dalam Salvage, karena panel detail membacanya lewat ID —
+	// dan Create menambahnya tanpa menyentuh baris pengajuannya.
+	items map[string][]inboxsalvage.DetailBarang
+
 	// now memasok tanggal hari ini, dapat diganti uji.
 	//
 	// Ia ada karena kolom "Aging" dihitung terhadap hari ini, dan uji yang memakai jam
@@ -101,7 +108,11 @@ type Store struct {
 
 // NewStore membentuk penyimpanan kosong.
 func NewStore() *Store {
-	return &Store{nextID: 1, now: todayISO}
+	return &Store{
+		nextID: 1,
+		now:    todayISO,
+		items:  map[string][]inboxsalvage.DetailBarang{},
+	}
 }
 
 // Seed mengisi penyimpanan dengan data yang diberikan.
@@ -344,6 +355,191 @@ func containsValue(values []string, needle string) bool {
 	return false
 }
 
+// Detail mengembalikan isi panel "Detail Salvage" untuk satu pengajuan.
+func (s *Store) Detail(
+	ctx context.Context,
+	salvageID string,
+) (inboxsalvage.Detail, error) {
+	if err := ctx.Err(); err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	clean := strings.TrimSpace(salvageID)
+	if clean == "" {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, item := range s.salvages {
+		if item.SalvageID != clean {
+			continue
+		}
+
+		detail := inboxsalvage.Detail{
+			HasSubmission:  true,
+			SalvageID:      item.SalvageID,
+			ClaimNo:        item.ClaimNo,
+			BusinessName:   s.businessNameOf(item.ClaimNo),
+			InputDate:      item.InputDate,
+			SalvageType:    item.SalvageType,
+			Quantity:       item.Quantity,
+			EstimateValue:  item.EstimateValue,
+			Location:       item.Location,
+			TransferStatus: item.TransferStatus,
+			Position:       inboxsalvage.PositionLabelOf(item.TransferStatus),
+			AcceptanceNo:   item.AcceptanceNo,
+			Remark:         item.Remark,
+			AcceptedValue:  item.AcceptedValue,
+			Email:          item.Email,
+			Items:          []inboxsalvage.DetailBarang{},
+		}
+
+		for _, barang := range s.items[item.SalvageID] {
+			detail.Items = append(detail.Items, barang)
+		}
+
+		// historyOfLocked, BUKAN historyOf: kunci baca sudah dipegang di atas, dan
+		// `sync.RWMutex` melarang penguncian baca bertingkat — ia dapat mengunci mati
+		// bila ada penulis yang menunggu di antara keduanya.
+		detail.History = s.historyOfLocked(item.ClaimNo)
+		return detail, nil
+	}
+
+	return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+}
+
+// DetailByClaim membaca rincian lewat nomor klaim.
+//
+// Menirukan urutan repo SQL: klaim dibaca lebih dulu, lalu pengajuan TERAKHIR miliknya
+// dicari. Klaim tanpa pengajuan menghasilkan panel ber-HasSubmission salah — bukan galat.
+func (s *Store) DetailByClaim(
+	ctx context.Context,
+	claimNo string,
+) (inboxsalvage.Detail, error) {
+	if err := ctx.Err(); err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	clean := strings.TrimSpace(claimNo)
+	if clean == "" {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+
+	s.mu.RLock()
+	base := inboxsalvage.Detail{Items: []inboxsalvage.DetailBarang{}}
+	found := false
+	for _, claim := range s.claims {
+		if claim.ClaimNo != clean {
+			continue
+		}
+		found = true
+		base.ClaimNo = claim.ClaimNo
+		base.PIC = claim.PIC
+		base.BusinessName = claim.BusinessName
+		base.LossDate = claim.LossDate
+		break
+	}
+
+	base.History = s.historyOfLocked(clean)
+
+	// Pengajuan terakhir = ID tertinggi, sama seperti `MAX(IDSALVAGE)` di Oracle.
+	latest := ""
+	for _, item := range s.salvages {
+		if item.ClaimNo != clean {
+			continue
+		}
+		if latest == "" || lessID(latest, item.SalvageID) {
+			latest = item.SalvageID
+		}
+	}
+	s.mu.RUnlock()
+
+	if !found {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+	if latest == "" {
+		return base, nil
+	}
+
+	detail, err := s.Detail(ctx, latest)
+	if err != nil {
+		if errors.Is(err, inboxsalvage.ErrRowNotFound) {
+			return base, nil
+		}
+		return inboxsalvage.Detail{}, err
+	}
+
+	detail.PIC = base.PIC
+	detail.LossDate = base.LossDate
+	if detail.BusinessName == "" {
+		detail.BusinessName = base.BusinessName
+	}
+	detail.History = base.History
+
+	return detail, nil
+}
+
+// historyOfLocked menyusun grid riwayat satu klaim; pemanggil sudah memegang kunci.
+//
+// Urutannya TERBARU LEBIH DULU, sama seperti `ORDER BY TGLINPUT DESC, IDSALVAGE DESC` di
+// Oracle — bukan urutan penyimpanan. Grid ini dibaca dari atas, dan yang dicari orang
+// adalah pengajuan yang paling baru.
+func (s *Store) historyOfLocked(claimNo string) []inboxsalvage.HistoryRow {
+	history := []inboxsalvage.HistoryRow{}
+	for _, item := range s.salvages {
+		if item.ClaimNo != claimNo {
+			continue
+		}
+		history = append(history, inboxsalvage.HistoryRow{
+			SalvageID:    item.SalvageID,
+			InputDate:    item.InputDate,
+			ClaimNo:      item.ClaimNo,
+			PIC:          item.PIC,
+			MinimumValue: item.EstimateValue,
+			Position: inboxsalvage.HistoryPositionOf(
+				item.TransferStatus, strings.TrimSpace(item.AcceptanceNo) != ""),
+		})
+	}
+
+	sort.SliceStable(history, func(a, b int) bool {
+		if history[a].InputDate != history[b].InputDate {
+			return history[a].InputDate > history[b].InputDate
+		}
+		return lessID(history[b].SalvageID, history[a].SalvageID)
+	})
+
+	return history
+}
+
+// lessID membandingkan dua ID pengajuan sebagai ANGKA bila keduanya angka.
+//
+// ID salvage diterbitkan sebagai bilangan yang bertambah, sehingga perbandingan teks akan
+// menempatkan "9" di atas "10" — persis kekeliruan yang dijaga `MAX(IDSALVAGE)` di Oracle
+// karena kolomnya numerik di sana.
+func lessID(a, b string) bool {
+	na, errA := strconv.Atoi(strings.TrimSpace(a))
+	nb, errB := strconv.Atoi(strings.TrimSpace(b))
+	if errA == nil && errB == nil {
+		return na < nb
+	}
+	return a < b
+}
+
+// businessNameOf mencari lini bisnis klaim sebuah pengajuan.
+//
+// Di Oracle ia sub-kueri ke `T_CLAIM_PNC`; di sini pencarian biasa. Klaim yang tidak ada
+// menghasilkan teks kosong — sama seperti sub-kueri yang tidak menemukan baris.
+func (s *Store) businessNameOf(claimNo string) string {
+	for _, claim := range s.claims {
+		if claim.ClaimNo == claimNo {
+			return claim.BusinessName
+		}
+	}
+	return ""
+}
+
 // Create menyimpan satu pengajuan dan mengembalikan ID salvage yang terbit.
 func (s *Store) Create(ctx context.Context, form inboxsalvage.Form) (string, error) {
 	if err := ctx.Err(); err != nil {
@@ -365,6 +561,8 @@ func (s *Store) Create(ctx context.Context, form inboxsalvage.Form) (string, err
 			// barisnya sendiri menjadi kosong — butir 12 daftar perbaikan `P-5`
 			// (`D-49` #9).
 			s.salvages[index].SalvageID = form.SalvageID
+			s.items[form.SalvageID] = append(
+				s.items[form.SalvageID], barangOf(form)...)
 			return form.SalvageID, nil
 		}
 		return "", inboxsalvage.ErrRowNotFound
@@ -375,7 +573,28 @@ func (s *Store) Create(ctx context.Context, form inboxsalvage.Form) (string, err
 
 	record := applyForm(Salvage{SalvageID: id}, form)
 	s.salvages = append(s.salvages, record)
+	s.items[id] = append(s.items[id], barangOf(form)...)
 	return id, nil
+}
+
+// barangOf menerjemahkan Detail Item Salvage pada form menjadi baris panel detail.
+//
+// Nilai `STATUSTERJUAL` yang diterima baris baru adalah `NewDetailStatus` di penyimpanan
+// SQL; di sini yang disimpan adalah LABELNYA, karena penyimpanan memori tidak menyimpan
+// kodenya sama sekali.
+func barangOf(form inboxsalvage.Form) []inboxsalvage.DetailBarang {
+	barang := make([]inboxsalvage.DetailBarang, 0, len(form.Items))
+	for _, item := range form.Items {
+		barang = append(barang, inboxsalvage.DetailBarang{
+			Name:       item.Name,
+			Count:      1,
+			Unit:       item.Unit,
+			TotalValue: item.Quantity,
+			SoldStatus: inboxsalvage.SoldStatusOf("3"),
+			Remark:     item.Remarks,
+		})
+	}
+	return barang
 }
 
 // applyForm menyalin isian form ke satu baris salvage.

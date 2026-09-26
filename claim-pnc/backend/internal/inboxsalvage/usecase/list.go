@@ -57,7 +57,8 @@ func NewService(o Options) (*Service, error) {
 
 // Metadata adalah keterangan layar yang tidak bergantung isi daftar.
 type Metadata struct {
-	// Tabs adalah ketiga belas daftar beserta kolomnya.
+	// Tabs adalah daftar yang DITAWARKAN layar beserta kolomnya — sembilan dari tiga
+	// belas. Lihat inboxsalvage.HiddenTabs untuk keempat yang tidak, beserta alasannya.
 	Tabs []inboxsalvage.Tab
 
 	// DefaultTab adalah daftar yang terbuka pertama kali.
@@ -187,6 +188,70 @@ func (s *Service) Counts(
 		return nil, fmt.Errorf("mengambil tabel ringkas salvage: %w", err)
 	}
 	return counts, nil
+}
+
+// Detail mengambil isi panel "Detail Salvage" untuk satu pengajuan.
+//
+// # Kenapa ia TIDAK memeriksa apakah pengajuannya ada di daftar pemanggil
+//
+// Karena panel dibuka dengan ID, bukan lewat daftar — begitu pula di Pega, tempat tombolnya
+// mengirim `IDSALVAGE` dan tidak satu pun penyaring daftar ikut. Pengajuan yang sudah
+// berpindah status sejak daftarnya dimuat tetap harus dapat dibuka; menolaknya akan membuat
+// layar gagal justru pada keadaan yang paling sering terjadi — checker baru saja
+// menyetujuinya.
+//
+// Batas yang tetap berlaku adalah PORTAL: ID-nya dicari di basis data entitas yang sedang
+// dipilih, dan ID milik entitas lain menghasilkan "tidak ditemukan" — bukan diam-diam
+// dilayani koneksi lain (`R-20`).
+func (s *Service) Detail(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxsalvage.Caller,
+	key inboxsalvage.DetailKey,
+	reference string,
+) (inboxsalvage.Detail, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrCallerUnknown
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	var detail inboxsalvage.Detail
+	switch key {
+	case inboxsalvage.DetailKeyClaim:
+		detail, err = repo.DetailByClaim(ctx, reference)
+	default:
+		detail, err = repo.Detail(ctx, reference)
+	}
+
+	if err != nil {
+		if errors.Is(err, inboxsalvage.ErrRowNotFound) {
+			return inboxsalvage.Detail{}, err
+		}
+		return inboxsalvage.Detail{}, fmt.Errorf("mengambil detail salvage: %w", err)
+	}
+
+	if s.logger != nil {
+		// Nomor klaim TIDAK dicatat; ID pengajuan dicatat.
+		//
+		// Nomor klaim adalah data nasabah (`D-69`), sedangkan ID pengajuan adalah kunci
+		// teknis yang tidak menyebutkan siapa pun. Yang dibutuhkan penelusuran adalah
+		// "pengajuan mana yang dibuka", bukan "klaim siapa".
+		s.logger.Info("detail salvage dibuka",
+			slog.String("modul", "inbox-salvage"),
+			slog.String("kunci", string(key)),
+			slog.String("id_salvage", detail.SalvageID),
+			slog.Bool("ada_pengajuan", detail.HasSubmission),
+			slog.String("pemanggil", cleanCaller.Login),
+			slog.String("portal", portalAlias),
+			slog.Int("barang", len(detail.Items)))
+	}
+
+	return detail, nil
 }
 
 // Created adalah hasil penyimpanan satu pengajuan.

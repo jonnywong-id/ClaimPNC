@@ -255,6 +255,30 @@ OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
 -- Checker akan meloloskan `%` sebagai wildcard — padahal kueri lama memakai `=`, yang
 -- memperlakukannya sebagai huruf biasa.
 --
+-- ============================================================================
+-- KENAPA `TO_CHAR` DI SEKITAR STSTRANSFER
+-- ============================================================================
+--
+-- Karena `POOLDATA.PNC_SALVAGE.STSTRANSFER` bertipe **NUMBER**, dan `COALESCE` menuntut
+-- seluruh argumennya bertipe sama. Mencampurnya dengan sentinel `'~'` yang bertipe CHAR
+-- menghasilkan:
+--
+--   ORA-00932: inconsistent datatypes: expected NUMBER got CHAR
+--
+-- Galat itu nyata, bukan teoretis: ia menjatuhkan KETUJUH daftar keluarga C sekaligus pada
+-- 2026-09-25, sementara pencacah tetap berjalan — karena pencacah memakai `IN (:1, :2)`,
+-- yang justru mengonversi ke arah sebaliknya tanpa keberatan.
+--
+-- `TO_CHAR` dipakai, bukan mengganti sentinel menjadi angka, karena kolom yang sama
+-- dibandingkan dengan literal TEKS di seluruh rule Pega (`and a.STSTRANSFER ='3'`). Nilai
+-- penyaring di sisi Go karena itu tetap teks, dan `TO_CHAR` membuat kedua sisi bertemu di
+-- tipe yang sama — apa pun tipe kolomnya kelak, sebab `TO_CHAR` menerima masukan teks pula.
+--
+-- Pelajaran yang berlaku di luar kueri ini: tipe kolom `PNC_SALVAGE` TIDAK diketahui dari
+-- export — DDL-nya belum pernah diterima (`R-08`), dan rule Pega membandingkan kolom angka
+-- dengan literal teks di mana-mana sehingga tipenya tidak terbaca dari sana. Setiap kolom
+-- yang dipakai di dalam fungsi yang peka tipe harus dibuat aman lebih dulu.
+--
 -- Yang harus disadari: `LIKE '%'` TIDAK cocok dengan `NULL`. Itu disengaja dan benar di
 -- sini — baris `PNC_SALVAGE` yang `STSTRANSFER`-nya kosong tidak pernah muncul di daftar
 -- mana pun di Pega, karena setiap penyaringnya membandingkan dengan nilai. Satu-satunya
@@ -318,7 +342,7 @@ SELECT a.IDSALVAGE                      AS SALVAGE_ID,
   FROM POOLDATA.PNC_SALVAGE a
        INNER JOIN POOLDATA.T_CLAIM_PNC b
                ON b.CLAIMID = :1 || a.NOKLAIM
- WHERE COALESCE(a.STSTRANSFER, '~') LIKE :2 ESCAPE '\'
+ WHERE COALESCE(TO_CHAR(a.STSTRANSFER), '~') LIKE :2 ESCAPE '\'
    AND COALESCE(UPPER(a.PIC), '~') LIKE UPPER(:3) ESCAPE '\'
    AND (   UPPER(a.NOKLAIM) LIKE UPPER(:4) ESCAPE '\'
         OR COALESCE(UPPER(a.PIC), '~') LIKE UPPER(:5) ESCAPE '\')
@@ -522,3 +546,210 @@ SELECT COUNT(*)                         AS TOTAL_ROWS
    AND t.TABLE_NAME = 'PNC_SALVAGE'
    AND t.COLUMN_NAME IN ('NOKLAIM', 'IDSALVAGE', 'TGLINPUT', 'PIC', 'JENISSALVAGE',
                          'LOKASISALVAGE', 'ESTIMASINILAI', 'STSTRANSFER', 'NILAIAKSEP')
+
+-- name: detail_header
+-- Kepala panel "Detail Salvage" — satu pengajuan.
+--
+-- Bind: :1 awalan kunci Pega · :2 IDSALVAGE
+--
+-- ============================================================================
+-- CACAT KUERI LAMA YANG TIDAK DIBAWA: SATU ALIAS UNTUK DUA KOLOM
+-- ============================================================================
+--
+-- `GcnmSetSalvageData_SQL` memakai alias `"AreaClaimId"` DUA KALI:
+--
+--   b.QUANTITYSALVAGE                              AS "AreaClaimId"
+--   case when trunc(b.tglinput) < to_date(...)     AS "AreaClaimId"
+--
+-- Keduanya sah menurut Oracle, dan yang sampai ke layar hanya SATU. Akibatnya isian
+-- "Quantity Salvage" pada panel detail menampilkan penanda 1/0 — bukan jumlah barang —
+-- atau sebaliknya penanda itu yang hilang; mana yang menang bergantung pada urutan
+-- pemetaan, bukan pada keputusan siapa pun.
+--
+-- Kelas cacat yang sama sudah tercatat pada modul Inbox Komunikasi Cabang (§48.4), tempat
+-- satu alias `"UserName"` dipakai untuk nama pengirim DAN kode asal.
+--
+-- Di sini keduanya diberi alias TERSENDIRI, sehingga keduanya terbaca. Itu perbaikan atas
+-- kode yang tidak pernah berjalan sebagaimana dimaksud penulisnya — bukan perubahan
+-- perilaku yang disengaja pengguna.
+--
+-- Penanda tanggalnya sendiri dibawa apa adanya meski ARTINYA tidak diketahui: tidak ada
+-- satu pun rule di export yang memakainya selain menggambarnya.
+SELECT b.IDSALVAGE                      AS SALVAGE_ID,
+       b.NOKLAIM                        AS CLAIM_NO,
+       b.TGLINPUT                       AS INPUT_DATE,
+       b.JENISSALVAGE                   AS SALVAGE_TYPE,
+       b.QUANTITYSALVAGE                AS QUANTITY,
+       b.ESTIMASINILAI                  AS ESTIMATE_VALUE,
+       b.LOKASISALVAGE                  AS SALVAGE_LOCATION,
+       b.TGLTRANSFERGA                  AS TRANSFER_GA_DATE,
+       b.STSTRANSFER                    AS TRANSFER_STATUS,
+       b.TGLAKSEPTASI                   AS ACCEPTANCE_DATE,
+       b.NOAKSEPTASI                    AS ACCEPTANCE_NO,
+       b.REMARK                         AS REMARK,
+       b.CURRENCY                       AS CURRENCY,
+       b.OBJECTNAME                     AS OBJECT_NAME,
+       b.IDOBJECT                       AS OBJECT_ID,
+       b.COVERAGENAME                   AS COVERAGE_NAME,
+       b.IDCOVERAGE                     AS COVERAGE_ID,
+       b.NILAIAKSEP                     AS ACCEPTED_VALUE,
+       b.EMAIL                          AS EMAIL,
+       b.NILAIPENAWARAN                 AS OFFER_VALUE,
+       b.PEMENANGNAME                   AS WINNER_NAME,
+       b.TANGGALLELANG                  AS AUCTION_DATE,
+       b.PICSURVEY                      AS SURVEYOR_NAME,
+       b.NOTELP                         AS SURVEYOR_PHONE,
+       b.EMAILSURVEY                    AS SURVEYOR_EMAIL,
+       b.ISJABODATABEK                  AS IN_JABODETABEK,
+       CASE
+           WHEN TRUNC(b.TGLINPUT) < DATE '2023-07-17' THEN '1'
+           ELSE '0'
+       END                              AS LEGACY_FLAG,
+       (SELECT a.BUSINESSNAME
+          FROM POOLDATA.T_CLAIM_PNC a
+         WHERE a.CLAIMID = :1 || b.NOKLAIM)
+                                        AS BUSINESS_NAME
+  FROM POOLDATA.PNC_SALVAGE b
+ WHERE b.IDSALVAGE = :2
+
+-- name: detail_items
+-- Daftar barang pada satu pengajuan.
+--
+-- Bind: :1 NOKLAIM · :2 IDSALVAGE
+--
+-- Barisnya DIKELOMPOKKAN menurut nama barang dan satuan, persis seperti kueri lama —
+-- sehingga dua baris `DETAIL_PNC_SALVAGE` bernama sama menyatu menjadi satu baris
+-- berjumlah dua.
+--
+-- Dua hal yang dibawa apa adanya dari `GetDetailSalvage`:
+--
+--   * `SUM(HARGAITEM)` — kolom yang namanya menyebut HARGA tetapi diisi JUMLAH ITEM oleh
+--     procedure penyimpannya. Nama kolomnya tidak diubah; perubahan nama kolom menempuh
+--     `D-63`.
+--   * `COUNT(NAMABARANG)` sebagai jumlah baris yang menyatu. Ia dikirim sebagai ANGKA
+--     tersendiri di sini, bukan dirangkai dengan satuannya di dalam SQL seperti kueri
+--     lama — supaya jumlah dan satuan tetap dapat dibaca sendiri-sendiri.
+--
+-- `STATUSTERJUAL` dikirim sebagai KODE, bukan diterjemahkan di dalam SQL. Penerjemahannya
+-- ada di inboxsalvage.SoldStatusOf, tempat pemetaannya dapat diuji — dan tempat
+-- pertentangannya dengan kueri ekspor tercatat.
+SELECT d.NAMABARANG                     AS ITEM_NAME,
+       COUNT(d.NAMABARANG)              AS ITEM_COUNT,
+       d.SATUAN                         AS UNIT,
+       SUM(d.HARGAITEM)                 AS TOTAL_VALUE,
+       d.STATUSTERJUAL                  AS SOLD_STATUS,
+       d.PEMENANGSALVAGE                AS WINNER_NAME,
+       d.NOAKSEPTASI                    AS ACCEPTANCE_NO,
+       d.NILAIAKSEPTASI                 AS ACCEPTED_VALUE,
+       d.REMARK                         AS REMARK
+  FROM POOLDATA.DETAIL_PNC_SALVAGE d
+ WHERE d.NOKLAIM = :1
+   AND d.IDSALVAGE = :2
+ GROUP BY d.NAMABARANG, d.SATUAN, d.STATUSTERJUAL, d.PEMENANGSALVAGE,
+          d.NOAKSEPTASI, d.NILAIAKSEPTASI, d.REMARK
+ ORDER BY d.NAMABARANG
+
+-- name: latest_salvage_of_claim
+-- ID pengajuan salvage TERAKHIR milik sebuah klaim.
+--
+-- Bind: :1 NOKLAIM
+--
+-- ============================================================================
+-- KENAPA KUERI TERSENDIRI, BUKAN SUB-KUERI DI DALAM detail_header
+-- ============================================================================
+--
+-- Layar lama menempuhnya sebagai sub-kueri:
+--
+--   Activity/SetDataDetailSalvage_act-Act.xml langkah 18 (param.tipe == 1)
+--     tempQuery.NewEmail :=
+--       "B.IDSALVAGE in (select max(IDSALVAGE)
+--                          from POOLDATA.DETAIL_PNC_SALVAGE
+--                         where noklaim = '" + Param.CaseeID + "')"
+--
+-- Aturannya dibawa apa adanya; yang tidak dibawa adalah perangkaiannya dari nilai
+-- pengguna (`{ASIS:}`) — di sini ia parameter terikat.
+--
+-- Dipisah karena dua hal, dan keduanya menyangkut apa yang terbaca layar:
+--
+--   1. Sebagai sub-kueri, klaim yang BELUM pernah punya pengajuan menghasilkan NOL BARIS
+--      pada kepala panel — tidak dapat dibedakan dari ID pengajuan yang salah. Dipisah,
+--      keduanya menjadi dua keadaan yang berbeda: "klaim ini belum punya pengajuan" dan
+--      "pengajuan tidak ditemukan".
+--   2. Daftar kolom kepala panel tetap hidup di SATU tempat. Menyalinnya menjadi dua
+--      kueri yang berbeda hanya pada klausa WHERE berarti menunggu keduanya bergeser.
+--
+-- Yang dikembalikan boleh NULL — itulah jawabannya untuk klaim tanpa pengajuan.
+SELECT MAX(d.IDSALVAGE)                 AS SALVAGE_ID
+  FROM POOLDATA.DETAIL_PNC_SALVAGE d
+ WHERE d.NOKLAIM = :1
+
+-- name: claim_header
+-- Kepala panel untuk baris yang berupa KLAIM, bukan pengajuan.
+--
+-- Bind: :1 CLAIMNO
+--
+-- Kolomnya sama dengan yang dibaca `GcnmSalvageData_OS_SQL` — kueri yang dijalankan
+-- `SetDataDetailSalvage_act` langkah 15 pada jalur `param.tipe == 1`.
+--
+-- ============================================================================
+-- SATU SELISIH YANG DISENGAJA: PENYARING POPULASI TIDAK IKUT
+-- ============================================================================
+--
+-- `GcnmSalvageData_OS_SQL` menyaring `STATUSWORK`, `GROUPPANEL`, dan `BUSINESSCODE`
+-- sebelum menambahkan `and claimno = ...`. Penyaring itu menyusun POPULASI daftar
+-- Salvage Outstanding — dan di Pega ia ikut terbawa ke detail semata karena jalur
+-- `tipe == 1` hanya dipanggil dari grid itu.
+--
+-- Di sini panel detail dibuka dari KEENAM daftar berbasis klaim, sehingga membawa
+-- penyaring populasi satu daftar akan membuat baris yang tampil di daftar LAIN menjawab
+-- "tidak ditemukan" — padahal barisnya baru saja digambar di layar yang sama.
+--
+-- Barisnya sudah pasti ada; yang dibutuhkan panel adalah isinya, bukan pengujian ulang
+-- keanggotaannya pada sebuah daftar.
+SELECT c.CLAIMNO                        AS CLAIM_NO,
+       c.PICTEKNIK                      AS PIC,
+       c.BUSINESSNAME                   AS BUSINESS_NAME,
+       c.DATEOFLOSS                     AS LOSS_DATE
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE c.CLAIMNO = :1
+
+-- name: salvage_history_of_claim
+-- Grid "Detail History Salvage" — SELURUH pengajuan salvage milik satu klaim.
+--
+-- Bind: :1 NOKLAIM
+--
+-- Menggantikan `RDB List/GetHistoriKlaimPNCSalvage_hist-SQL.xml`, yang merangkai nomor
+-- klaim ke dalam teks SQL (`WHERE A.NOKLAIM = {tempQuery.RWID}`). Di sini ia parameter
+-- terikat.
+--
+-- ============================================================================
+-- KENAPA STSTRANSFER DIKIRIM SEBAGAI KODE, BUKAN DITERJEMAHKAN DI SINI
+-- ============================================================================
+--
+-- Kueri lama menerjemahkannya di dalam `CASE WHEN` menjadi kalimat — "Sudah Aksep
+-- Checker", "Salvage Waive", dan seterusnya. Pemetaan itu dipindahkan ke
+-- inboxsalvage.HistoryPositionOf, dan alasannya bukan kerapian:
+--
+--   * `STSTRANSFER` sudah memikul TIGA arti yang berbeda di layar ini — penyaring daftar,
+--     "Posisi Salvage" pada panel rincian, dan kalimat riwayat ini. Ketiganya TIDAK sama,
+--     dan yang ketiga bahkan memecah kode `2` menjadi dua kalimat menurut terisi-tidaknya
+--     nomor akseptasi.
+--   * Pemetaan yang hidup di dalam SQL tidak dapat diuji tanpa basis data, sementara
+--     pemetaan yang salah di sini menampilkan posisi yang keliru pada layar tanpa satu pun
+--     galat.
+--
+-- Karena kode `2` bercabang menurut nomor akseptasi, kolom itu ikut dikirim sebagai
+-- penanda terisi — bukan nilainya, karena yang dibutuhkan hanya ada-tidaknya.
+SELECT a.TGLINPUT                       AS INPUT_DATE,
+       a.NOKLAIM                        AS CLAIM_NO,
+       a.PIC                            AS PIC,
+       a.ESTIMASINILAI                  AS MINIMUM_VALUE,
+       a.STSTRANSFER                    AS TRANSFER_STATUS,
+       CASE
+           WHEN a.NOAKSEPTASI IS NULL THEN '0'
+           ELSE '1'
+       END                              AS HAS_ACCEPTANCE_NO,
+       a.IDSALVAGE                      AS SALVAGE_ID
+  FROM POOLDATA.PNC_SALVAGE a
+ WHERE a.NOKLAIM = :1
+ ORDER BY a.TGLINPUT DESC, a.IDSALVAGE DESC

@@ -8,6 +8,8 @@ import type {
   CountsResponse,
   CreateRequest,
   CreateResponse,
+  DetailKey,
+  DetailResponse,
   ListResponse,
   MetadataResponse,
   UploadResponse,
@@ -40,6 +42,13 @@ const keys = {
 
   counts: (portal: string | null, token: string | null) =>
     ['inbox-salvage', 'ringkas', portal, token] as const,
+
+  detail: (
+    portal: string | null,
+    token: string | null,
+    key: DetailKey,
+    reference: string,
+  ) => ['inbox-salvage', 'rincian', portal, token, key, reference] as const,
 }
 
 /**
@@ -282,4 +291,43 @@ function downloadBlob(blob: Blob, filename: string): void {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Hook panel "Detail Salvage" — satu pengajuan beserta barangnya.
+ *
+ * # Kenapa baru ditembak saat panelnya dibuka
+ *
+ * `salvageID` kosong berarti panelnya tertutup, dan permintaan tidak dijalankan. Mengambil
+ * rinciannya untuk setiap baris yang tampil akan menjalankan dua kueri per baris — pada
+ * halaman berisi dua puluh baris itu empat puluh kueri untuk satu panel yang mungkin tidak
+ * pernah dibuka.
+ *
+ * # Kenapa TIDAK disimpan lama di cache
+ *
+ * Isinya berubah karena perbuatan orang lain — Checker menyetujui, Balai Lelang menetapkan
+ * pemenang — dan panel yang menampilkan posisi lama akan membuat petugas mengambil
+ * keputusan atas keadaan yang sudah lewat. Ia diambil ulang setiap kali panelnya dibuka.
+ */
+export function useSalvageDetail(key: DetailKey, reference: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  // Dua rute, bukan satu rute dengan penanda jenis.
+  //
+  // Nomor klaim dan ID pengajuan adalah dua ruang nilai yang berbeda, dan satu rute yang
+  // menerima keduanya akan menjawab "tidak ditemukan" untuk nilai yang sebenarnya sah
+  // pada ruang yang lain — pesan yang menyesatkan justru di layar tempat keduanya sudah
+  // sering tertukar oleh alias Pega yang menyesatkan.
+  const path =
+    key === 'klaim'
+      ? `${PATH}/klaim/${encodeURIComponent(reference)}`
+      : `${PATH}/pengajuan/${encodeURIComponent(reference)}`
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, key, reference),
+    queryFn: () => callAPI<DetailResponse>(path, { token, portal }),
+    enabled: token !== null && portal !== null && reference !== '',
+    staleTime: 0,
+  })
 }

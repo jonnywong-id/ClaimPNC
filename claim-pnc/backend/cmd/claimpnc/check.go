@@ -1751,6 +1751,11 @@ func checkSalvage(
 	perFamily := map[inboxsalvage.Family]int{}
 	failed := false
 
+	// ID satu pengajuan sungguhan, dan satu nomor klaim sungguhan — keduanya dipakai
+	// menguji kedua jalur panel Detail di bawah.
+	sampleID := ""
+	sampleClaim := ""
+
 	for _, tab := range inboxsalvage.Tabs() {
 		// Cukup SATU tab per keluarga: yang berbeda antartab di dalam satu keluarga
 		// hanyalah nilai penyaringnya, bukan bentuk kuerinya.
@@ -1773,12 +1778,102 @@ func checkSalvage(
 			continue
 		}
 		perFamily[tab.Family] = result.Total
+
+		if tab.Family == inboxsalvage.FamilySalvage && sampleID == "" {
+			for _, row := range result.Items {
+				if row.SalvageID != "" {
+					sampleID = row.SalvageID
+					break
+				}
+			}
+		}
+
+		if tab.Family != inboxsalvage.FamilySalvage && sampleClaim == "" {
+			for _, row := range result.Items {
+				if row.ClaimNo != "" {
+					sampleClaim = row.ClaimNo
+					break
+				}
+			}
+		}
 	}
 
 	if !failed {
 		print("  [ok]    Ketiga keluarga kueri Inbox Salvage dapat dijalankan")
 		for family, total := range perFamily {
 			print("            keluarga %-12s %d baris", family, total)
+		}
+	}
+
+	// Kueri panel Detail diuji TERSENDIRI, dan alasannya bukan kelengkapan.
+	//
+	// Keduanya membaca tabel yang sama dengan daftar tetapi dengan bentuk yang berbeda —
+	// satu baris tunggal dengan dua puluh delapan kolom, dan agregat atas
+	// DETAIL_PNC_SALVAGE. Daftar yang berhasil dibaca tidak menyatakan apa pun tentang
+	// keduanya; cacat tipe data pada salah satu kolom yang HANYA dibaca panel ini tidak
+	// akan pernah muncul saat daftarnya dibuka.
+	switch {
+	case sampleID == "":
+		print("  [lewat] Panel Detail Salvage tidak diuji — tidak ada satu pun pengajuan")
+		print("            pada lima baris pertama keluarga salvage. Bukan kegagalan;")
+		print("            kuerinya belum pernah dijalankan terhadap basis data ini.")
+
+	default:
+		detail, err := repo.Detail(ctx, sampleID)
+		switch {
+		case err != nil:
+			print("  [BELUM] Panel Detail Salvage tidak dapat dibaca: %v", err)
+			print("            Kueri kepala panel membaca DUA PULUH DELAPAN kolom, di")
+			print("            antaranya kolom yang tidak dibaca daftar mana pun.")
+
+		default:
+			print("  [ok]    Panel Detail Salvage dapat dibaca (kepala dan grid barang)")
+
+			// Riwayat pengajuan ini WAJIB memuat dirinya sendiri. Nol baris di sini
+			// berarti kuerinya berjalan tetapi tidak menemukan apa-apa — dan itu
+			// kegagalan yang diam, bukan keberhasilan.
+			if len(detail.History) == 0 {
+				print("  [BELUM] Riwayat pengajuan ini KOSONG, padahal pengajuannya ada.")
+				print("            Kueri riwayat berjalan tetapi tidak menemukan barisnya")
+				print("            sendiri — periksa nama kolom NOKLAIM di PNC_SALVAGE.")
+			} else {
+				print("  [ok]    Riwayat pengajuan terbaca (%d baris, termasuk dirinya)",
+					len(detail.History))
+			}
+		}
+	}
+
+	// Jalur KEDUA panel: dibuka dari baris yang berupa klaim.
+	//
+	// Diuji tersendiri karena ia menempuh dua kueri yang TIDAK dipakai jalur pertama —
+	// pencarian pengajuan terakhir milik klaim, dan pembacaan kepala klaimnya. Keduanya
+	// menyentuh tabel yang berbeda pula: `DETAIL_PNC_SALVAGE` dan `T_CLAIM_PNC`.
+	switch {
+	case sampleClaim == "":
+		print("  [lewat] Panel Detail lewat nomor klaim tidak diuji — tidak ada satu pun")
+		print("            baris pada lima baris pertama keluarga berbasis klaim.")
+
+	default:
+		detail, err := repo.DetailByClaim(ctx, sampleClaim)
+		switch {
+		case err != nil:
+			print("  [BELUM] Panel Detail lewat nomor klaim tidak dapat dibaca: %v", err)
+			print("            Ia menempuh POOLDATA.DETAIL_PNC_SALVAGE dan")
+			print("            POOLDATA.T_CLAIM_PNC, bukan hanya POOLDATA.PNC_SALVAGE.")
+
+		case detail.HasSubmission:
+			print("  [ok]    Panel Detail lewat nomor klaim dapat dibaca (ada pengajuan)")
+
+		default:
+			print("  [ok]    Panel Detail lewat nomor klaim dapat dibaca")
+			print("            Klaim contoh belum punya pengajuan salvage — itu keadaan")
+			print("            yang SAH: klaimnya masuk ke form \"Menambahkan Data")
+			print("            Salvage\", bukan ke panel rincian.")
+		}
+
+		if err == nil {
+			print("  [ok]    Grid \"Detail History Salvage\" dapat dibaca (%d baris)",
+				len(detail.History))
 		}
 	}
 

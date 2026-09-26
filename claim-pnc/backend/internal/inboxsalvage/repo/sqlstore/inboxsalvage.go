@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"fmt"
 	"strconv"
@@ -275,6 +276,325 @@ func searchPatterns(q inboxsalvage.Query) (string, string) {
 		return pattern, pattern
 	}
 	return pattern, patternNever
+}
+
+// Detail mengembalikan isi panel "Detail Salvage" untuk satu pengajuan.
+//
+// DUA kueri, bukan satu dengan gabungan: kepala dan daftar barangnya punya kardinalitas
+// yang berbeda, dan menggabungkannya akan mengulang seluruh isian kepala pada setiap baris
+// barang. Keduanya tetap satu perjalanan pulang-pergi masing-masing — bukan satu per baris
+// seperti pada jalur checker di sistem lama.
+func (r *Repo) Detail(ctx context.Context, salvageID string) (inboxsalvage.Detail, error) {
+	clean := strings.TrimSpace(salvageID)
+	if clean == "" {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+
+	detail, err := r.detailHeader(ctx, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	items, err := r.detailItems(ctx, detail.ClaimNo, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	detail.Items = items
+
+	history, err := r.historyOfClaim(ctx, detail.ClaimNo)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	detail.History = history
+
+	return detail, nil
+}
+
+// historyOfClaim membaca grid "Detail History Salvage" satu klaim.
+func (r *Repo) historyOfClaim(
+	ctx context.Context,
+	claimNo string,
+) ([]inboxsalvage.HistoryRow, error) {
+	rows, err := r.db.QueryContext(ctx, query("salvage_history_of_claim"), claimNo)
+	if err != nil {
+		return nil, fmt.Errorf("membaca riwayat salvage klaim: %w", err)
+	}
+	defer rows.Close()
+
+	history := []inboxsalvage.HistoryRow{}
+	for rows.Next() {
+		var (
+			inputDate, no, pic, minimum sql.NullString
+			transferStatus, hasAccNo    sql.NullString
+			salvageID                   sql.NullString
+		)
+
+		if err := rows.Scan(&inputDate, &no, &pic, &minimum,
+			&transferStatus, &hasAccNo, &salvageID); err != nil {
+			return nil, fmt.Errorf("memindai riwayat salvage: %w", err)
+		}
+
+		history = append(history, inboxsalvage.HistoryRow{
+			SalvageID:    strings.TrimSpace(salvageID.String),
+			InputDate:    dateOnly(inputDate.String),
+			ClaimNo:      strings.TrimSpace(no.String),
+			PIC:          strings.TrimSpace(pic.String),
+			MinimumValue: strings.TrimSpace(minimum.String),
+			Position: inboxsalvage.HistoryPositionOf(
+				transferStatus.String, flagIsSet(hasAccNo.String)),
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("membaca riwayat salvage: %w", err)
+	}
+
+	return history, nil
+}
+
+// DetailByClaim membaca rincian lewat nomor klaim.
+//
+// Tiga langkah, dan urutannya menentukan pesan yang dilihat pengguna:
+//
+//  1. Klaimnya dibaca. Tidak ada -> ErrRowNotFound; nomor klaim yang salah memang
+//     kekeliruan, dan pada aplikasi ini penyebab tersering bukan salah ketik melainkan
+//     klaim milik entitas lain (`R-20`).
+//  2. Pengajuan TERAKHIR miliknya dicari. Tidak ada -> panel tetap dikembalikan, dengan
+//     isian klaim terisi dan HasSubmission salah. Itu keadaan yang sah, bukan kegagalan:
+//     daftar Salvage Outstanding justru berisi klaim yang salvage-nya belum diajukan.
+//  3. Kepala panel dan barangnya dibaca dengan ID itu.
+func (r *Repo) DetailByClaim(
+	ctx context.Context,
+	claimNo string,
+) (inboxsalvage.Detail, error) {
+	clean := strings.TrimSpace(claimNo)
+	if clean == "" {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+
+	base, err := r.claimHeader(ctx, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	// Riwayat dibaca SEBELUM pengajuan terakhirnya, karena ia dibutuhkan pada KEDUA
+	// cabang di bawah — termasuk cabang klaim yang belum punya pengajuan sama sekali,
+	// tempat form "Menambahkan Data Salvage" menggambarnya.
+	history, err := r.historyOfClaim(ctx, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	base.History = history
+
+	salvageID, err := r.latestSalvageOfClaim(ctx, clean)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+	if salvageID == "" {
+		return base, nil
+	}
+
+	detail, err := r.detailHeader(ctx, salvageID)
+	if err != nil {
+		// Pengajuan yang tercatat di DETAIL_PNC_SALVAGE tetapi TIDAK ada di PNC_SALVAGE
+		// adalah data yang tidak sinkron, bukan kekeliruan pengguna. Panel tetap
+		// menampilkan klaimnya, dengan keterangan bahwa pengajuannya tidak terbaca —
+		// alih-alih menolak membuka seluruh panel.
+		if errors.Is(err, inboxsalvage.ErrRowNotFound) {
+			return base, nil
+		}
+		return inboxsalvage.Detail{}, err
+	}
+
+	items, err := r.detailItems(ctx, detail.ClaimNo, salvageID)
+	if err != nil {
+		return inboxsalvage.Detail{}, err
+	}
+
+	// Isian klaim dipertahankan: kepala panel pengajuan tidak memuat PIC maupun tanggal
+	// kejadian, dan keduanya digambar pada panel yang dibuka dari daftar berbasis klaim.
+	detail.PIC = base.PIC
+	detail.LossDate = base.LossDate
+	if detail.BusinessName == "" {
+		detail.BusinessName = base.BusinessName
+	}
+	detail.Items = items
+	detail.History = base.History
+
+	return detail, nil
+}
+
+// claimHeader membaca isian yang berasal dari klaim, bukan dari pengajuan.
+func (r *Repo) claimHeader(
+	ctx context.Context,
+	claimNo string,
+) (inboxsalvage.Detail, error) {
+	var no, pic, businessName, lossDate sql.NullString
+
+	row := r.db.QueryRowContext(ctx, query("claim_header"), claimNo)
+	if err := row.Scan(&no, &pic, &businessName, &lossDate); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+		}
+		return inboxsalvage.Detail{}, fmt.Errorf("membaca klaim %q: %w", claimNo, err)
+	}
+
+	return inboxsalvage.Detail{
+		ClaimNo:      strings.TrimSpace(no.String),
+		PIC:          strings.TrimSpace(pic.String),
+		BusinessName: strings.TrimSpace(businessName.String),
+		LossDate:     dateOnly(lossDate.String),
+		Items:        []inboxsalvage.DetailBarang{},
+	}, nil
+}
+
+// latestSalvageOfClaim mencari ID pengajuan terakhir milik sebuah klaim.
+//
+// Kosong berarti klaim itu belum punya pengajuan sama sekali — bukan galat.
+func (r *Repo) latestSalvageOfClaim(
+	ctx context.Context,
+	claimNo string,
+) (string, error) {
+	var id sql.NullString
+
+	row := r.db.QueryRowContext(ctx, query("latest_salvage_of_claim"), claimNo)
+	if err := row.Scan(&id); err != nil {
+		// Agregat `MAX` selalu mengembalikan satu baris, bahkan ketika tidak ada baris
+		// yang cocok — barisnya berisi NULL. ErrNoRows karena itu tidak diharapkan;
+		// ditangani supaya perubahan kuerinya kelak tidak menjadi galat yang membingungkan.
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("mencari pengajuan terakhir klaim %q: %w", claimNo, err)
+	}
+
+	return strings.TrimSpace(id.String), nil
+}
+
+// detailHeader membaca kepala panel.
+func (r *Repo) detailHeader(
+	ctx context.Context,
+	salvageID string,
+) (inboxsalvage.Detail, error) {
+	var (
+		id, claimNo, inputDate, salvageType, quantity  sql.NullString
+		estimate, location, transferGA, transferStatus sql.NullString
+		acceptanceDate, acceptanceNo, remark, currency sql.NullString
+		objectName, objectID, coverageName, coverageID sql.NullString
+		acceptedValue, email, offerValue, winnerName   sql.NullString
+		auctionDate, surveyorName, surveyorPhone       sql.NullString
+		surveyorEmail, inJabodetabek, legacyFlag       sql.NullString
+		businessName                                   sql.NullString
+	)
+
+	err := r.db.QueryRowContext(
+		ctx, query("detail_header"), PegaWorkKeyPrefix, salvageID,
+	).Scan(
+		&id, &claimNo, &inputDate, &salvageType, &quantity,
+		&estimate, &location, &transferGA, &transferStatus,
+		&acceptanceDate, &acceptanceNo, &remark, &currency,
+		&objectName, &objectID, &coverageName, &coverageID,
+		&acceptedValue, &email, &offerValue, &winnerName,
+		&auctionDate, &surveyorName, &surveyorPhone,
+		&surveyorEmail, &inJabodetabek, &legacyFlag,
+		&businessName,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return inboxsalvage.Detail{}, inboxsalvage.ErrRowNotFound
+	}
+	if err != nil {
+		return inboxsalvage.Detail{}, fmt.Errorf(
+			"inboxsalvage/sqlstore: detail_header: %w", err)
+	}
+
+	return inboxsalvage.Detail{
+		// Baris yang terbaca dari `PNC_SALVAGE` berarti pengajuannya memang ada.
+		HasSubmission: true,
+
+		SalvageID:            id.String,
+		ClaimNo:              claimNo.String,
+		BusinessName:         businessName.String,
+		InputDate:            dateOnly(inputDate.String),
+		SalvageType:          salvageType.String,
+		Quantity:             quantity.String,
+		EstimateValue:        estimate.String,
+		Location:             location.String,
+		TransferGADate:       dateOnly(transferGA.String),
+		TransferStatus:       transferStatus.String,
+		Position:             inboxsalvage.PositionLabelOf(transferStatus.String),
+		AcceptanceDate:       dateOnly(acceptanceDate.String),
+		AcceptanceNo:         acceptanceNo.String,
+		Remark:               remark.String,
+		Currency:             currency.String,
+		ObjectID:             objectID.String,
+		ObjectName:           objectName.String,
+		CoverageID:           coverageID.String,
+		CoverageName:         coverageName.String,
+		AcceptedValue:        acceptedValue.String,
+		Email:                email.String,
+		OfferValue:           offerValue.String,
+		WinnerName:           winnerName.String,
+		AuctionDate:          dateOnly(auctionDate.String),
+		SurveyorName:         surveyorName.String,
+		SurveyorPhone:        surveyorPhone.String,
+		SurveyorEmail:        surveyorEmail.String,
+		InJabodetabek:        flagIsSet(inJabodetabek.String),
+		LegacyBeforeJuly2023: flagIsSet(legacyFlag.String),
+	}, nil
+}
+
+// detailItems membaca daftar barang pada satu pengajuan.
+func (r *Repo) detailItems(
+	ctx context.Context,
+	claimNo, salvageID string,
+) ([]inboxsalvage.DetailBarang, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_items"), claimNo, salvageID)
+	if err != nil {
+		return nil, fmt.Errorf("inboxsalvage/sqlstore: detail_items: %w", err)
+	}
+	defer rows.Close()
+
+	items := []inboxsalvage.DetailBarang{}
+	for rows.Next() {
+		var (
+			name, unit, total, soldStatus          sql.NullString
+			winner, acceptanceNo, accepted, remark sql.NullString
+			count                                  int
+		)
+		if err := rows.Scan(
+			&name, &count, &unit, &total, &soldStatus,
+			&winner, &acceptanceNo, &accepted, &remark,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"inboxsalvage/sqlstore: detail_items: memindai baris: %w", err)
+		}
+
+		items = append(items, inboxsalvage.DetailBarang{
+			Name:          name.String,
+			Count:         count,
+			Unit:          unit.String,
+			TotalValue:    total.String,
+			SoldStatus:    inboxsalvage.SoldStatusOf(soldStatus.String),
+			WinnerName:    winner.String,
+			AcceptanceNo:  acceptanceNo.String,
+			AcceptedValue: accepted.String,
+			Remark:        remark.String,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"inboxsalvage/sqlstore: detail_items: membaca hasil: %w", err)
+	}
+
+	return items, nil
+}
+
+// flagIsSet membaca penanda biner yang disimpan sebagai teks.
+//
+// Hanya `"1"` yang berarti benar. Kolomnya dapat berisi `NULL`, `"0"`, atau `"1"` — dan
+// memperlakukan apa pun yang tidak kosong sebagai benar akan membalik arti `"0"`.
+func flagIsSet(value string) bool {
+	return strings.TrimSpace(value) == "1"
 }
 
 // Counts menyusun tabel ringkas "Status Salvage / Jumlah".

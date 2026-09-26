@@ -19,8 +19,17 @@ func callerPIC() inboxsalvage.Caller {
 func list(t *testing.T, store *memory.Store, tab, search string) inboxsalvage.Page {
 	t.Helper()
 
-	query, err := inboxsalvage.NewQuery(
-		inboxsalvage.QueryInput{Tab: tab, Search: search}, callerPIC())
+	// FindAnyTab, bukan NewQuery: sebagian uji di berkas ini memeriksa penyaring daftar
+	// yang TIDAK ditawarkan layar. Penyaringnya tetap harus benar — tiga di antaranya
+	// kembali begitu kewenangan berbasis peran ada — dan penyaring yang tidak diuji akan
+	// berhenti benar tanpa ada yang tahu.
+	//
+	// Penolakan kode yang tidak ditawarkan diuji terpisah, pada NewQuery.
+	found, known := inboxsalvage.FindAnyTab(tab)
+	require.Truef(t, known, "daftar %q tidak ada sama sekali", tab)
+
+	query, err := inboxsalvage.NewQueryForTab(
+		found, inboxsalvage.QueryInput{Tab: tab, Search: search}, callerPIC())
 	require.NoError(t, err)
 
 	page, err := store.List(context.Background(), query,
@@ -51,18 +60,25 @@ func TestOutstandingListsOnlyClaimsWithNoSalvageMarkAndExcludesFinishedOnes(t *t
 	require.Contains(t, numbers, "PNC-2041")
 	require.Contains(t, numbers, "PNC-2042")
 
+	// Klaim yang belum punya pengajuan sama sekali juga masuk — penandanya kosong, dan
+	// itulah satu-satunya yang disaring daftar ini.
+	require.Contains(t, numbers, memory.SampleClaimWithoutSalvage)
+
 	// PNC-2043 penandanya kosong PULA, tetapi status kerjanya sudah selesai.
 	require.NotContains(t, numbers, "PNC-2043",
 		"klaim yang sudah selesai dikeluarkan dari daftar ini")
 
-	require.Len(t, page.Items, 2)
+	require.Len(t, page.Items, 3)
 }
 
 // Inilah selisih yang DIREPLIKASI (`P-5`), dan uji ini menjaganya tetap ada.
 //
-// Pencacah "Outstanding" menghitung `STSSALVAGE` 3 atau 5 — tiga baris pada data contoh —
-// sementara daftarnya menampilkan yang penandanya KOSONG, dua baris. Bila seseorang
-// "memperbaikinya", uji inilah yang gagal lebih dulu, bukan pengguna yang melaporkannya.
+// Pencacah "Outstanding" menghitung `STSSALVAGE` 3 atau 5, sementara daftarnya menampilkan
+// yang penandanya KOSONG. Keduanya menghitung populasi yang BERBEDA, dan pada data contoh
+// keduanya kebetulan berjumlah sama — sehingga yang diuji adalah barisnya, bukan angkanya.
+//
+// Bila seseorang "memperbaikinya", uji inilah yang gagal lebih dulu, bukan pengguna yang
+// melaporkannya.
 func TestOutstandingCounterAndItsListDisagreeOnPurpose(t *testing.T) {
 	store := memory.NewSampleStore()
 
@@ -79,9 +95,16 @@ func TestOutstandingCounterAndItsListDisagreeOnPurpose(t *testing.T) {
 	listed := list(t, store, inboxsalvage.TabOutstanding, "").Total
 
 	require.Equal(t, 3, counter, "pencacah menghitung STSSALVAGE 3 atau 5")
-	require.Equal(t, 2, listed, "daftarnya menampilkan STSSALVAGE yang kosong")
-	require.NotEqual(t, counter, listed,
-		"selisih ini ADA di Pega dan sengaja dipertahankan")
+	require.Equal(t, 3, listed, "daftarnya menampilkan STSSALVAGE yang kosong")
+
+	// Angkanya sama, ISINYA tidak. Inilah yang membuktikan keduanya menghitung populasi
+	// yang berbeda — dan yang akan gagal bila salah satunya diam-diam disamakan dengan
+	// yang lain.
+	numbers := claimNumbers(list(t, store, inboxsalvage.TabOutstanding, ""))
+	require.NotContains(t, numbers, "PNC-2044",
+		"klaim ber-STSSALVAGE 3 dihitung pencacah tetapi TIDAK ditampilkan daftarnya")
+	require.Contains(t, numbers, memory.SampleClaimWithoutSalvage,
+		"klaim tanpa penanda ditampilkan daftarnya tetapi TIDAK dihitung pencacah")
 }
 
 // Daftar "Request Balai Lelang" menyaring menurut PIC. Data contoh memuat baris milik DUA
@@ -95,7 +118,10 @@ func TestRequestBalaiLelangShowsOnlyTheCallersOwnRows(t *testing.T) {
 	require.Equal(t, memory.SampleCallerPIC, page.Items[0].PIC)
 
 	// PIC lain melihat baris yang BERBEDA, bukan baris yang sama.
-	other, err := inboxsalvage.NewQuery(
+	requestTab, known := inboxsalvage.FindAnyTab(inboxsalvage.TabRequestBalai)
+	require.True(t, known)
+
+	other, err := inboxsalvage.NewQueryForTab(requestTab,
 		inboxsalvage.QueryInput{Tab: inboxsalvage.TabRequestBalai},
 		inboxsalvage.Caller{Login: "BUDISANTOSO"})
 	require.NoError(t, err)
@@ -181,36 +207,62 @@ func TestSubmissionTypeFollowsWhetherTheRequestNoteIsFilled(t *testing.T) {
 func TestTheCatatanColumnIsAlwaysEmpty(t *testing.T) {
 	store := memory.NewSampleStore()
 
-	for _, tab := range []string{
-		inboxsalvage.TabChecker,
-		inboxsalvage.TabRejectedChecker,
-		inboxsalvage.TabRequestBalai,
-	} {
-		for _, row := range list(t, store, tab, "").Items {
-			require.Empty(t, row.Note, "kolom Catatan pada daftar %s", tab)
+	// SELURUH daftar yang ditawarkan diperiksa, bukan dua yang dipilih — kolom "Catatan"
+	// digambar pada lima daftar, dan kosongnya berlaku pada semuanya.
+	for _, tab := range inboxsalvage.Tabs() {
+		for _, row := range list(t, store, tab.Code, "").Items {
+			require.Empty(t, row.Note, "kolom Catatan pada daftar %s", tab.Code)
 		}
 	}
 }
 
-// Pencarian COCOK PERSIS pada tab Checker, MENGANDUNG pada tab lain.
-func TestSearchMatchesExactlyOnCheckerAndPartiallyElsewhere(t *testing.T) {
+// Pencarian pada daftar yang ditawarkan MENGANDUNG, bukan cocok persis.
+func TestSearchOnOfferedListsMatchesPartially(t *testing.T) {
 	store := memory.NewSampleStore()
-
-	require.Empty(t, list(t, store, inboxsalvage.TabChecker, "PNC-204").Items,
-		"separuh nomor klaim tidak cocok di tab Checker")
-	require.Len(t, list(t, store, inboxsalvage.TabChecker, "PNC-2046").Items, 1)
 
 	require.NotEmpty(t, list(t, store, inboxsalvage.TabHistori, "PNC-204").Items,
 		"separuh nomor klaim cocok di tab Histori")
 }
 
-// Satu kotak pencarian tab Checker mencari DUA kolom sekaligus.
-func TestCheckerSearchAlsoMatchesThePIC(t *testing.T) {
-	store := memory.NewSampleStore()
+// Sejak daftar dibatasi sembilan, TIDAK ADA satu pun daftar yang ditawarkan memakai
+// pencarian cocok persis maupun pencarian menurut PIC.
+//
+// Ketiganya — Checker, Salvage Diterima, Salvage Ditolak — hanya tampil bagi dua operator
+// bernama di sistem lama, dan ketiganya pula satu-satunya yang mencocokkan persis.
+//
+// Uji ini ADA supaya kenyataan itu tidak tertinggal di dokumen: selisih terencana tentang
+// "pencarian cocok persis" dan keterangannya di layar tidak berlaku bagi satu pun daftar
+// yang sekarang ditawarkan. Bila kelak ketiganya kembali, uji inilah yang gagal lebih dulu
+// dan mengingatkan keterangan itu harus dihidupkan kembali.
+func TestNoOfferedListUsesExactSearchOrSearchesByPIC(t *testing.T) {
+	for _, tab := range inboxsalvage.Tabs() {
+		require.Falsef(t, tab.SearchExact,
+			"daftar %q mencocokkan persis — keterangannya di layar harus dihidupkan", tab.Code)
+		require.Falsef(t, tab.SearchByPIC,
+			"daftar %q mencari menurut PIC", tab.Code)
+	}
 
-	page := list(t, store, inboxsalvage.TabChecker, memory.SampleCallerPIC)
-	require.Len(t, page.Items, 1)
-	require.Equal(t, memory.SampleCallerPIC, page.Items[0].PIC)
+	// Dan ketiganya memang masih tersimpan, hanya tidak ditawarkan.
+	exact := 0
+	for _, tab := range inboxsalvage.AllTabs() {
+		if tab.SearchExact {
+			exact++
+			require.NotEmpty(t, tab.HiddenReason)
+		}
+	}
+	require.Equal(t, 3, exact)
+}
+
+// TIDAK ADA satu pun daftar yang ditawarkan menyaring menurut pemanggil.
+//
+// Sebelumnya ada satu — "Request Balai Lelang" — dan ia menjadi satu-satunya pembatas
+// berbasis pengguna di modul ini. Sejak ia tidak lagi ditawarkan, KESEMBILAN daftar
+// bersama, dan jejak audit menjadi satu-satunya kontrol yang tersisa (`D-59`).
+func TestNoOfferedListIsScopedToTheCaller(t *testing.T) {
+	for _, tab := range inboxsalvage.Tabs() {
+		require.Falsef(t, tab.OwnedByCaller,
+			"daftar %q menyaring menurut pemanggil", tab.Code)
+	}
 }
 
 // Baris keluarga C diurutkan menurut tanggal input, yang TERBARU lebih dulu —
@@ -266,15 +318,28 @@ func TestCreateIssuesAnIncreasingSalvageIDAndTheRowAppearsInChecker(t *testing.T
 	require.Equal(t, "110", id, "melanjutkan ID tertinggi pada data contoh")
 
 	// Pengajuan baru LANGSUNG masuk antrean Checker di portal ASM.
-	page := list(t, store, inboxsalvage.TabChecker, "")
+	//
+	// Diperiksa lewat nilai yang TERSIMPAN, bukan lewat daftar Checker — daftar itu tidak
+	// lagi ditawarkan di layar, sementara barisnya tetap masuk antreannya. Keduanya hal
+	// yang berbeda, dan yang diuji di sini adalah yang kedua.
+	detail, err := store.Detail(context.Background(), id)
+	require.NoError(t, err)
+
+	require.Equal(t, "3", detail.TransferStatus,
+		"pengajuan baru harus bertanda ke checker")
+
+	// PIC pengaju terbaca dari grid riwayat, bukan dari kepala panel: kepala panel
+	// pengajuan memang tidak memuat PIC — kueri lamanya tidak mengambil kolom itu.
 	found := false
-	for _, row := range page.Items {
+	for _, row := range detail.History {
 		if row.SalvageID == id {
 			found = true
 			require.Equal(t, memory.SampleCallerPIC, row.PIC)
+			require.Equal(t, inboxsalvage.HistoryApprovedByKomite, row.Position,
+				"STSTRANSFER 3 pada grid riwayat berbunyi lain dari nama daftarnya")
 		}
 	}
-	require.True(t, found, "pengajuan baru tidak muncul di daftar Checker")
+	require.True(t, found, "pengajuan baru tidak muncul di riwayat klaimnya")
 }
 
 // Cacat `IDSALVAGE` yang tertimpa kosong saat pembaruan — butir 12 daftar perbaikan `P-5`
@@ -298,11 +363,11 @@ func TestUpdateKeepsTheSalvageIDInsteadOfBlankingIt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "103", id)
 
-	page := list(t, store, inboxsalvage.TabChecker, "PNC-2046")
-	require.Len(t, page.Items, 1)
-	require.Equal(t, "103", page.Items[0].SalvageID,
+	detail, err := store.Detail(context.Background(), "103")
+	require.NoError(t, err)
+	require.Equal(t, "103", detail.SalvageID,
 		"kunci barisnya tidak boleh tertimpa kosong")
-	require.Equal(t, "1900000", page.Items[0].EstimateValue,
+	require.Equal(t, "1900000", detail.EstimateValue,
 		"nilainya memang berubah")
 }
 
@@ -350,4 +415,196 @@ func claimNumbers(page inboxsalvage.Page) []string {
 		numbers = append(numbers, row.ClaimNo)
 	}
 	return numbers
+}
+
+// Panel Detail Salvage mengisi kepala panel dari pengajuannya dan lini bisnis dari klaimnya.
+//
+// Lini bisnis diuji terpisah karena ia SATU-SATUNYA isian panel yang tidak berasal dari
+// tabel salvage — di Oracle ia sub-kueri ke tabel klaim, dan sub-kueri yang tidak menemukan
+// baris menghasilkan kosong tanpa satu pun galat.
+func TestDetailReadsTheHeaderAndTheBusinessLineOfItsClaim(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	detail, err := store.Detail(context.Background(), "101")
+	require.NoError(t, err)
+
+	require.Equal(t, "101", detail.SalvageID)
+	require.Equal(t, "PNC-2044", detail.ClaimNo)
+	require.Equal(t, "Besi Tua", detail.SalvageType)
+	require.Equal(t, "Gudang Cakung", detail.Location)
+	require.NotEmpty(t, detail.BusinessName, "lini bisnis klaim tidak terbaca")
+}
+
+// "Posisi Salvage" adalah LABEL, bukan kode.
+//
+// Yang tersimpan `STSTRANSFER` berupa angka; yang dibaca pengguna nama daftarnya. Keduanya
+// dikirim, dan uji ini menjaga supaya kodenya tidak pernah ikut tergambar sebagai posisi.
+func TestDetailTranslatesTheTransferCodeIntoTheNameUsersRead(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	detail, err := store.Detail(context.Background(), "101")
+	require.NoError(t, err)
+
+	require.Equal(t, "1", detail.TransferStatus)
+	require.NotEqual(t, detail.TransferStatus, detail.Position,
+		"posisi masih berisi kodenya, bukan namanya")
+	require.NotEmpty(t, detail.Position)
+}
+
+// ID yang tidak ada menghasilkan galat TERSENDIRI, bukan panel kosong.
+//
+// Bedanya nyata di layar: panel kosong terbaca sebagai pengajuan tanpa isi, sedangkan galat
+// ini menyampaikan bahwa pengajuannya tidak ada pada entitas yang sedang dipilih — penyebab
+// yang jauh lebih sering (`R-20`).
+func TestDetailOfAnUnknownSubmissionIsNotAnEmptyPanel(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	_, err := store.Detail(context.Background(), "tidak-ada")
+	require.ErrorIs(t, err, inboxsalvage.ErrRowNotFound)
+
+	_, err = store.Detail(context.Background(), "   ")
+	require.ErrorIs(t, err, inboxsalvage.ErrRowNotFound)
+}
+
+// Pengajuan yang baru disimpan langsung dapat dibuka detailnya, lengkap dengan barangnya.
+func TestDetailOfAFreshlySavedSubmissionCarriesItsItems(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	form, err := inboxsalvage.NewForm(inboxsalvage.FormInput{
+		Mode:         inboxsalvage.FormModeInsert,
+		ClaimNo:      "PNC-2044",
+		ObjectName:   "Mesin Cetak",
+		CoverageName: "All Risk",
+		SalvageType:  "Mesin",
+		Location:     "Gudang Cakung",
+		MinimumValue: "1000000",
+		Items: []inboxsalvage.DetailItem{
+			{Name: "Rotor", Quantity: "2", Unit: "unit"},
+			{Name: "Panel", Quantity: "1", Unit: "unit"},
+		},
+	}, callerPIC())
+	require.NoError(t, err)
+
+	id, err := store.Create(context.Background(), form)
+	require.NoError(t, err)
+
+	detail, err := store.Detail(context.Background(), id)
+	require.NoError(t, err)
+
+	require.Len(t, detail.Items, 2)
+	require.Equal(t, "Rotor", detail.Items[0].Name)
+
+	// Barang yang baru disimpan BELUM terjual, dan itu harus terbaca sebagai kalimat —
+	// bukan sebagai kode "0" yang tidak berarti apa-apa bagi pembacanya.
+	require.NotEqual(t, "0", detail.Items[0].SoldStatus)
+	require.NotEmpty(t, detail.Items[0].SoldStatus)
+}
+
+// Panel rincian dapat dibuka dari baris yang berupa KLAIM, bukan hanya dari pengajuan.
+//
+// Keenam daftar berbasis klaim tidak membawa ID pengajuan pada barisnya, sehingga
+// pengajuannya dicari dari klaimnya — mengikuti `SetDataDetailSalvage_act` langkah 18.
+func TestDetailByClaimFindsTheLatestSubmissionOfThatClaim(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	byClaim, err := store.DetailByClaim(context.Background(), "PNC-2044")
+	require.NoError(t, err)
+
+	require.True(t, byClaim.HasSubmission)
+	require.Equal(t, "PNC-2044", byClaim.ClaimNo)
+
+	// Isian klaim ikut terisi — keduanya TIDAK ada pada kepala panel pengajuan, dan
+	// keduanya digambar pada panel yang dibuka dari daftar berbasis klaim.
+	require.NotEmpty(t, byClaim.PIC)
+	require.NotEmpty(t, byClaim.BusinessName)
+}
+
+// Pengajuan yang dipilih adalah yang TERAKHIR, dibandingkan sebagai angka.
+//
+// Perbandingan teks akan menempatkan "9" di atas "10" — kekeliruan yang tidak terlihat
+// sampai nomor pengajuan melewati sepuluh.
+func TestDetailByClaimPicksTheHighestSalvageIDNumerically(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	form, err := inboxsalvage.NewForm(inboxsalvage.FormInput{
+		ClaimNo:      "PNC-2044",
+		ObjectName:   "Mesin Cetak",
+		CoverageName: "All Risk",
+		SalvageType:  "Mesin",
+		MinimumValue: "1000000",
+	}, callerPIC())
+	require.NoError(t, err)
+
+	fresh, err := store.Create(context.Background(), form)
+	require.NoError(t, err)
+
+	byClaim, err := store.DetailByClaim(context.Background(), "PNC-2044")
+	require.NoError(t, err)
+	require.Equal(t, fresh, byClaim.SalvageID,
+		"pengajuan terbaru yang harus terbaca, bukan yang nomornya terbesar sebagai teks")
+}
+
+// Klaim TANPA pengajuan bukan galat — ia panel dengan isian klaim saja.
+//
+// Ini keadaan yang lazim, bukan kasus tepi: daftar Salvage Outstanding justru berisi klaim
+// yang salvage-nya belum ditandai sama sekali. Menjawabnya sebagai "tidak ditemukan" akan
+// membuat hampir setiap baris daftar itu terbaca sebagai kerusakan.
+func TestDetailByClaimOfAClaimWithoutAnySubmissionIsNotAnError(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	empty := memory.SampleClaimWithoutSalvage
+
+	byClaim, err := store.DetailByClaim(context.Background(), empty)
+	require.NoError(t, err)
+
+	require.False(t, byClaim.HasSubmission)
+	require.Equal(t, empty, byClaim.ClaimNo)
+	require.Empty(t, byClaim.SalvageID)
+	require.Empty(t, byClaim.Items)
+}
+
+// Nomor klaim yang TIDAK ada tetap galat — dan itu bedanya dengan kasus di atas.
+func TestDetailByClaimOfAnUnknownClaimIsNotFound(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	_, err := store.DetailByClaim(context.Background(), "PNC-tidak-ada")
+	require.ErrorIs(t, err, inboxsalvage.ErrRowNotFound)
+}
+
+// Grid riwayat memuat SELURUH pengajuan milik klaim itu, terbaru lebih dulu.
+func TestHistoryListsEverySubmissionOfTheClaimNewestFirst(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	// PNC-2044 punya DUA pengajuan pada data contoh — itulah sebabnya ia dipakai di sini.
+	detail, err := store.DetailByClaim(context.Background(), "PNC-2044")
+	require.NoError(t, err)
+
+	require.GreaterOrEqual(t, len(detail.History), 2,
+		"data contoh harus memuat klaim dengan lebih dari satu pengajuan")
+
+	for index := 1; index < len(detail.History); index++ {
+		require.GreaterOrEqual(t,
+			detail.History[index-1].InputDate, detail.History[index].InputDate,
+			"riwayat harus terurut terbaru lebih dulu")
+	}
+
+	for _, row := range detail.History {
+		require.Equal(t, "PNC-2044", row.ClaimNo)
+		require.NotEmpty(t, row.Position, "posisi harus berupa kalimat, bukan kosong")
+	}
+}
+
+// Klaim tanpa pengajuan punya riwayat KOSONG — bukan galat, dan bukan nil.
+//
+// Bedanya nyata di layar: senarai kosong menggambar grid beserta keterangannya, sedangkan
+// nil pada JSON menjadi `null` dan membuat grid gagal digambar sama sekali.
+func TestHistoryOfAClaimWithoutSubmissionsIsEmptyNotNil(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	detail, err := store.DetailByClaim(
+		context.Background(), memory.SampleClaimWithoutSalvage)
+	require.NoError(t, err)
+
+	require.NotNil(t, detail.History)
+	require.Empty(t, detail.History)
 }

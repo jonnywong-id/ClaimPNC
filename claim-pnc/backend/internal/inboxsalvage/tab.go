@@ -69,6 +69,45 @@ const (
 	FamilySalvage Family = "salvage"
 )
 
+// DetailKey menyatakan dengan APA panel "Detail Salvage" dibuka pada sebuah daftar.
+//
+// SETIAP daftar punya tombol Detail — itu keadaan di Pega, dan `Section/
+// InboxSalvageASM-Section.xml` memuat sebelas tombol `SetDataDetailSalvage_act` yang
+// tersebar di seluruh grid-nya. Yang berbeda bukan ada-tidaknya tombol, melainkan KUNCI
+// yang dikirimkannya.
+//
+// Setiap tombol di Pega mengirim KEDUA-DUANYA sekaligus — `Param.CaseeID` dari `.CaseID`
+// dan `Param.idsalvage` dari `.ClaimNo` (nama properti yang menyesatkan: `.ClaimNo`
+// menyimpan IDSALVAGE) — lalu activity-nya memilih yang mana menurut `param.tipe`. Di
+// sini pilihan itu dinyatakan di muka, sebagai sifat daftarnya.
+type DetailKey string
+
+const (
+	// DetailKeySubmission membuka panel dengan ID PENGAJUAN.
+	//
+	// Berlaku pada ketujuh daftar keluarga salvage, yang barisnya memang pengajuan.
+	DetailKeySubmission DetailKey = "pengajuan"
+
+	// DetailKeyClaim membuka panel dengan NOMOR KLAIM.
+	//
+	// Berlaku pada keenam daftar berbasis klaim. Barisnya tidak membawa ID pengajuan sama
+	// sekali — kueri yang memasoknya tidak mengambil satu pun kolom dari `PNC_SALVAGE` —
+	// sehingga pengajuannya dicari dari klaimnya, mengikuti `SetDataDetailSalvage_act`
+	// langkah 18.
+	DetailKeyClaim DetailKey = "klaim"
+)
+
+// DetailKeyOf menyatakan kunci rincian sebuah daftar.
+//
+// Diturunkan dari keluarga kuerinya, bukan ditulis tangan per tab: yang menentukan adalah
+// apakah barisnya membawa ID pengajuan, dan itu sifat kuerinya.
+func DetailKeyOf(family Family) DetailKey {
+	if family == FamilySalvage {
+		return DetailKeySubmission
+	}
+	return DetailKeyClaim
+}
+
 // Kode tab.
 //
 // # Kenapa kode berbentuk kata, sementara Pega memakai angka
@@ -197,7 +236,41 @@ type Tab struct {
 	// Ia berbeda dari PlannedDifferences, yang berlaku untuk seluruh layar. Kosong berarti
 	// tidak ada keterangan khusus.
 	Notice string
+
+	// HiddenReason menyatakan daftar ini TIDAK ditawarkan di layar, beserta alasannya.
+	//
+	// Kosong berarti ditawarkan. Lihat HiddenTabs untuk keempat yang tidak.
+	HiddenReason string
 }
+
+// Alasan sebuah daftar tidak ditawarkan di layar.
+//
+// Keduanya disimpan sebagai konstanta supaya alasannya ikut terbaca di tempat daftarnya
+// ditandai — bukan tersimpan di komentar yang dapat tertinggal saat penandanya berubah.
+const (
+	// HiddenManagerOnly: pencacahnya HANYA berjalan untuk dua operator bernama.
+	//
+	// `Activity/GCNMCountSalvage_act-Act.xml` langkah 18, 21, dan 23 masing-masing
+	// bersyarat `TempOperator.City == <nama operator A> || == <nama operator B>`, dengan
+	// `?RUN:JUMP` — sehingga bagi pengguna lain ketiga barisnya TIDAK PERNAH disusun.
+	//
+	// Ia tidak dapat ditegakkan sekarang: `D-15` melarang nama orang tertanam di kode,
+	// dan penggantinya — peran dari master data — menunggu `F-3` dan `F-4`. Sampai itu
+	// ada, menawarkannya kepada semua orang lebih salah daripada tidak menawarkannya.
+	HiddenManagerOnly = "hanya tampil bagi dua operator bernama di sistem lama; " +
+		"menunggu peran dari master data (F-3/F-4)"
+
+	// HiddenNotOnScreen: barisnya tidak tampil pada layar sungguhan.
+	//
+	// Langkah yang menyusunnya ada di activity pencacah, tetapi barisnya TIDAK ADA pada
+	// tangkapan layar Pega yang diberikan Work Owner 2026-09-26 — sementara sebelas baris
+	// lain, dalam urutan yang sama persis, ada.
+	//
+	// Satu-satunya pembeda yang ditemukan: langkahnya bernama blok `//`. Itu KORELASI,
+	// bukan mekanisme yang terbukti — lihat catatan pengembangan.
+	HiddenNotOnScreen = "tidak tampil pada layar sungguhan; langkah penyusunnya " +
+		"bernama blok `//`"
+)
 
 // Kolom grid, per keluarga.
 //
@@ -430,8 +503,9 @@ var tabs = []Tab{
 		LegacyTipe:     "3",
 	},
 	{
-		Code: TabChecker,
-		Name: "Checker",
+		Code:         TabChecker,
+		HiddenReason: HiddenManagerOnly,
+		Name:         "Checker",
 		Description: "Pengajuan yang menunggu KEPUTUSAN checker — `STSTRANSFER` = 3. " +
 			"Inilah antrean tempat nilai pengajuan PIC dibandingkan dengan nilai request " +
 			"balai lelang sebelum disetujui atau ditolak.",
@@ -459,8 +533,9 @@ var tabs = []Tab{
 		LegacyTipe:     "5",
 	},
 	{
-		Code: TabRequestBalai,
-		Name: "Request Balai Lelang",
+		Code:         TabRequestBalai,
+		HiddenReason: HiddenNotOnScreen,
+		Name:         "Request Balai Lelang",
 		Description: "Pengajuan yang balai lelangnya MEMINTA nilai berbeda — " +
 			"`STSTRANSFER` = 7. Hanya baris milik Anda sendiri yang tampil di sini.",
 		Family:         FamilySalvage,
@@ -479,8 +554,9 @@ var tabs = []Tab{
 			"petugas, dan itu perilaku layar lama apa adanya.",
 	},
 	{
-		Code: TabSalvageDiterima,
-		Name: "Salvage Diterima",
+		Code:         TabSalvageDiterima,
+		HiddenReason: HiddenManagerOnly,
+		Name:         "Salvage Diterima",
 		Description: "Pengajuan yang DISETUJUI checker — `STSTRANSFER` = 3. Penyaringnya " +
 			"sama persis dengan daftar Checker; di layar lama keduanya memang dua pintu " +
 			"masuk ke baris yang sama.",
@@ -497,8 +573,9 @@ var tabs = []Tab{
 			"layar lama keduanya memang dua pintu masuk ke satu kumpulan baris yang sama.",
 	},
 	{
-		Code: TabSalvageDitolak,
-		Name: "Salvage Ditolak",
+		Code:         TabSalvageDitolak,
+		HiddenReason: HiddenManagerOnly,
+		Name:         "Salvage Ditolak",
 		Description: "Pengajuan yang DITOLAK checker — `STSTRANSFER` = 5. Berbeda dari " +
 			"Rejected Checker, penolakan di sini menutup pengajuannya.",
 		Family:         FamilySalvage,
@@ -515,18 +592,65 @@ var tabs = []Tab{
 	},
 }
 
-// Tabs mengembalikan ketiga belas tab dalam urutan tampilnya.
+// Tabs mengembalikan daftar yang DITAWARKAN layar, dalam urutan tampilnya.
+//
+// Sembilan dari tiga belas. Keempat sisanya tetap tersimpan tetapi tidak ditawarkan —
+// lihat HiddenTabs beserta alasannya.
 //
 // Salinan, bukan senarai aslinya: pemanggil tidak boleh dapat mengubah daftar tab dengan
 // menulisi hasilnya.
 func Tabs() []Tab {
+	result := make([]Tab, 0, len(tabs))
+	for _, tab := range tabs {
+		if tab.HiddenReason == "" {
+			result = append(result, tab)
+		}
+	}
+	return result
+}
+
+// AllTabs adalah SELURUH daftar, termasuk yang tidak ditawarkan di layar.
+//
+// Dipakai uji dan penelusuran, bukan oleh layar. Definisi daftar yang tidak ditawarkan
+// TETAP disimpan — penyaring tiap daftar diturunkan dari pembacaan export yang mahal, dan
+// membuangnya berarti menurunkannya ulang ketika kewenangannya dapat ditegakkan.
+func AllTabs() []Tab {
 	result := make([]Tab, len(tabs))
 	copy(result, tabs)
 	return result
 }
 
-// FindTab mencari tab menurut kodenya.
+// HiddenTabs adalah daftar yang TIDAK ditawarkan di layar, beserta alasannya.
+func HiddenTabs() []Tab {
+	result := []Tab{}
+	for _, tab := range tabs {
+		if tab.HiddenReason != "" {
+			result = append(result, tab)
+		}
+	}
+	return result
+}
+
+// FindTab mencari tab menurut kodenya, HANYA di antara yang ditawarkan layar.
+//
+// Kode daftar yang tidak ditawarkan diperlakukan sama dengan kode yang tidak dikenal —
+// bukan dilayani diam-diam. Sebabnya: kode itu dapat datang dari penanda buku peramban
+// yang dibuat sebelum daftarnya ditarik, dan melayaninya berarti menampilkan daftar yang
+// sengaja tidak ditawarkan kepada orang yang kebetulan menyimpan alamatnya.
 func FindTab(code string) (Tab, bool) {
+	for _, tab := range tabs {
+		if tab.Code == code && tab.HiddenReason == "" {
+			return tab, true
+		}
+	}
+	return Tab{}, false
+}
+
+// FindAnyTab mencari tab menurut kodenya, TERMASUK yang tidak ditawarkan layar.
+//
+// Dipakai uji, perkakas penelusuran, dan pemetaan warisan — bukan oleh lapisan transport,
+// yang memakai FindTab supaya kode daftar yang tidak ditawarkan tertolak di pintu.
+func FindAnyTab(code string) (Tab, bool) {
 	for _, tab := range tabs {
 		if tab.Code == code {
 			return tab, true
@@ -712,4 +836,52 @@ var PlannedDifferences = []string{
 		"lain tidak punya daftar Request Balai Lelang. Keputusan Work Owner 2026-09-25: " +
 		"portal ASM dibangun lebih dulu supaya perbedaan keduanya terbaca sebagai " +
 		"perbedaan, bukan sebagai kerusakan.",
+
+	"Pada panel Detail Salvage, \"Quantity Salvage\" dan penanda pengajuan sebelum " +
+		"17 Juli 2023 kini menjadi DUA isian. Kueri lama mengaliaskan keduanya menjadi " +
+		"nama yang SAMA (`\"AreaClaimId\"` pada `GcnmSetSalvageData_SQL`), sehingga " +
+		"hanya satu yang benar-benar terbaca dan yang lain tergambar dengan isi milik " +
+		"tetangganya. Ia kelas cacat yang sama dengan alias ganda `UserName` yang sudah " +
+		"diperbaiki sebelumnya, dan diperbaiki karena keduanya memang digambar sebagai " +
+		"isian yang berbeda.",
+
+	"Layar menawarkan SEMBILAN daftar, bukan tiga belas — sama seperti tabel " +
+		"\"Status Salvage / Jumlah\" pada layar Pega sungguhan. Tiga daftar " +
+		"(Checker, Salvage Diterima, Salvage Ditolak) di sistem lama HANYA tampil " +
+		"bagi dua operator bernama, dan penggantinya — peran dari master data — " +
+		"menunggu F-3/F-4. Dua lagi (Request Balai Lelang, Tidak Terjual) tidak " +
+		"tampil pada layar sungguhan sama sekali. Definisi kelimanya tetap " +
+		"disimpan, tidak dibuang.",
+
+	"Karena \"Request Balai Lelang\" tidak ditawarkan, TIDAK ADA satu pun daftar " +
+		"yang menyaring menurut pengguna. Kesembilan daftar bersama, dan jejak " +
+		"audit menjadi satu-satunya kontrol yang tersisa (`D-59`). Begitu pula " +
+		"pencarian cocok persis: ketiga daftar yang memakainya termasuk yang tidak " +
+		"ditawarkan, sehingga seluruh pencarian yang tersisa bersifat mengandung.",
+
+	"Panel \"Detail Salvage\" dapat dibuka dari SETIAP daftar, sama seperti " +
+		"layar lama. Yang berbeda adalah kuncinya: tujuh daftar membukanya dengan ID " +
+		"pengajuan, enam daftar berbasis klaim membukanya dengan nomor klaim lalu " +
+		"mencari pengajuan TERAKHIR milik klaim itu. Klaim yang belum punya pengajuan " +
+		"tetap membuka panel, berisi data klaimnya saja — bukan pesan kesalahan.",
+
+	"Klaim yang BELUM punya pengajuan salvage membuka form \"Menambahkan Data " +
+		"Salvage\" yang sudah terisi klaimnya, bukan panel rincian — sama seperti " +
+		"layar lama. Nomor Klaim, Nama Object, dan Nama Coverage terisi dan TIDAK " +
+		"dapat diubah, supaya pengajuan tidak tersimpan atas klaim yang berbeda dari " +
+		"baris yang diklik.",
+
+	"Grid \"Detail History Salvage\" pada form Tambah memakai pemetaan " +
+		"`STSTRANSFER` yang BERBEDA dari \"Posisi Salvage\" pada panel rincian, meski " +
+		"keduanya berasal dari kolom yang sama. Keduanya memang berbeda di layar lama, " +
+		"dan yang ketiga bahkan memecah kode 2 menjadi dua kalimat menurut " +
+		"terisi-tidaknya nomor akseptasi. Ejaan kalimatnya disalin apa adanya, " +
+		"termasuk \"Create Ajd Salvage\".",
+
+	"Kolom \"Status Terjual\" pada grid barang memakai arti yang dipakai panel " +
+		"detailnya sendiri. Kode `3` diartikan \"Waiting approval\" mengikuti " +
+		"`GetDetailSalvage`; kueri lain di layar yang sama (`GetDataSalvagefromPNC_" +
+		"salvage`) mengartikan kode yang sama sebagai \"Rejected waive\". Keduanya " +
+		"bertentangan di dalam sistem lama, dan yang dipakai di sini adalah arti pada " +
+		"kueri yang memasok grid ini.",
 }

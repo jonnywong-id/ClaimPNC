@@ -13,8 +13,13 @@ import (
 // daftar aturan yang berlaku (`14-TESTING-STRATEGY.md` §3.2).
 
 func TestThirteenTabsExistAndEachOneNamesItsLegacyCode(t *testing.T) {
-	tabs := inboxsalvage.Tabs()
+	// SELURUH tiga belas diperiksa, termasuk empat yang tidak ditawarkan layar — definisi
+	// keempatnya tetap disimpan, dan yang disimpan harus tetap lengkap.
+	tabs := inboxsalvage.AllTabs()
 	require.Len(t, tabs, 13, "layar lama menggambar tiga belas daftar")
+
+	// Yang DITAWARKAN sembilan, sesuai layar Pega sungguhan.
+	require.Len(t, inboxsalvage.Tabs(), 9, "layar menawarkan sembilan daftar")
 
 	for _, tab := range tabs {
 		require.NotEmpty(t, tab.Code, "setiap daftar wajib punya kode")
@@ -82,11 +87,14 @@ func TestEveryCounterRowPointsAtAKnownTabOrAtNothing(t *testing.T) {
 }
 
 // Satu baris pencacah memang TIDAK menuju daftar mana pun, dan itu keadaan di Pega: tidak
-// ada tab yang menerima kodenya. Uji ini menjaganya tetap disengaja — bila kelak seseorang
+// ada tab yang menerima kodenya.
+//
+// Ia kini tidak digambar — layar Pega sungguhan tidak menampilkannya — tetapi definisinya
+// tetap disimpan, dan ketiadaan daftarnya tetap dijaga. Bila kelak seseorang
 // menghubungkannya, ia harus melakukannya dengan sadar.
 func TestTidakTerjualCounterRowDeliberatelyLeadsNowhere(t *testing.T) {
 	var found bool
-	for _, row := range inboxsalvage.CountRows() {
+	for _, row := range inboxsalvage.AllCountRows() {
 		if row.Label == "Tidak Terjual" {
 			found = true
 			require.Empty(t, row.Tab,
@@ -215,22 +223,16 @@ func TestCheckerSearchMatchesExactlyWhileOthersMatchPartially(t *testing.T) {
 	caller := inboxsalvage.Caller{Login: "SITIRAHAYU"}
 	row := inboxsalvage.Row{ClaimNo: "PNC-2044", PIC: "SITIRAHAYU"}
 
-	exact, err := inboxsalvage.NewQuery(inboxsalvage.QueryInput{
-		Tab: inboxsalvage.TabChecker, Search: "PNC-20",
-	}, caller)
+	exact, err := queryForAnyTab(t, inboxsalvage.TabChecker, "PNC-20", caller)
 	require.NoError(t, err)
 	require.False(t, exact.Matches(row), "separuh nomor klaim TIDAK cocok di tab Checker")
 
-	exactFull, err := inboxsalvage.NewQuery(inboxsalvage.QueryInput{
-		Tab: inboxsalvage.TabChecker, Search: "PNC-2044",
-	}, caller)
+	exactFull, err := queryForAnyTab(t, inboxsalvage.TabChecker, "PNC-2044", caller)
 	require.NoError(t, err)
 	require.True(t, exactFull.Matches(row))
 
 	// Satu kotak, DUA kolom: nama PIC pun cocok.
-	byPIC, err := inboxsalvage.NewQuery(inboxsalvage.QueryInput{
-		Tab: inboxsalvage.TabChecker, Search: "SITIRAHAYU",
-	}, caller)
+	byPIC, err := queryForAnyTab(t, inboxsalvage.TabChecker, "SITIRAHAYU", caller)
 	require.NoError(t, err)
 	require.True(t, byPIC.Matches(row))
 
@@ -267,4 +269,147 @@ func TestTotalPagesIsNeverZero(t *testing.T) {
 		Pagination: inboxsalvage.Pagination{Page: 1, Size: 20},
 	}
 	require.Equal(t, 3, full.TotalPages())
+}
+
+// `STSTRANSFER` dipetakan BERBEDA pada grid riwayat dibanding pada panel rincian.
+//
+// Uji ini menjaga keduanya tetap terpisah. Menyatukannya akan mengubah apa yang dibaca
+// pengguna di salah satu dari keduanya, dan tidak ada satu pun galat yang menandainya.
+func TestHistoryPositionIsADifferentMappingFromThePanelPosition(t *testing.T) {
+	cases := []struct {
+		code       string
+		acceptance bool
+		want       string
+	}{
+		{"1", false, inboxsalvage.HistoryAcceptedByChecker},
+
+		// Kode 2 BERCABANG menurut terisi-tidaknya nomor akseptasi — satu-satunya kode
+		// yang begitu, dan kueri lama memang membedakannya.
+		{"2", true, inboxsalvage.HistoryAccepted},
+		{"2", false, inboxsalvage.HistoryAdjustmentCreated},
+
+		{"3", false, inboxsalvage.HistoryApprovedByKomite},
+		{"5", false, inboxsalvage.HistoryRejectedByKomite},
+		{"6", false, inboxsalvage.HistoryWaived},
+
+		// Kode 4 dan 7 dipakai sebagai penyaring daftar, tetapi kueri riwayat lama tidak
+		// memberinya kalimat. Dibawa apa adanya (`P-5`).
+		{"4", false, inboxsalvage.HistoryOther},
+		{"7", false, inboxsalvage.HistoryOther},
+		{"", false, inboxsalvage.HistoryOther},
+		{"  3  ", false, inboxsalvage.HistoryApprovedByKomite},
+	}
+
+	for _, c := range cases {
+		require.Equalf(t, c.want,
+			inboxsalvage.HistoryPositionOf(c.code, c.acceptance),
+			"kode %q (akseptasi=%v)", c.code, c.acceptance)
+	}
+
+	// Dan pemetaannya memang BERBEDA dari panel rincian untuk kode yang sama.
+	require.NotEqual(t,
+		inboxsalvage.HistoryPositionOf("3", false),
+		inboxsalvage.PositionLabelOf("3"),
+		"kedua pemetaan tidak boleh diam-diam menjadi satu")
+}
+
+// Tabel ringkas menggambar SEMBILAN baris, persis seperti layar Pega sungguhan.
+//
+// Daftar dan urutannya disalin dari tangkapan layar yang diberikan Work Owner 2026-09-26.
+// Ia sengaja ditulis sebagai senarai harfiah, bukan diturunkan dari CountRows(): uji yang
+// menghitung ulang dari sumber yang sama dengan yang diujinya tidak membuktikan apa pun.
+func TestCounterRowsMatchTheRealPegaScreen(t *testing.T) {
+	want := []string{
+		"Outstanding",
+		"Ekonomis",
+		"Rejected Checker",
+		"Balai Lelang",
+		"Tidak Ekonomis",
+		"TBA",
+		"Tidak Ada Salvage",
+		"Salvage Buyback",
+		"Histori Salvage",
+	}
+
+	got := []string{}
+	for _, row := range inboxsalvage.CountRows() {
+		got = append(got, row.Label)
+	}
+
+	require.Equal(t, want, got)
+}
+
+// Lima baris yang TIDAK digambar tetap tersimpan, beserta alasannya.
+//
+// Menyimpannya bukan kelalaian: penyaring tiap baris diturunkan dari pembacaan export yang
+// mahal, dan tiga di antaranya harus kembali begitu kewenangan berbasis peran ada — di
+// sistem lama dua operator bernama memang melihatnya.
+func TestHiddenCounterRowsAreKeptWithTheirReason(t *testing.T) {
+	hidden := map[string]string{}
+	for _, row := range inboxsalvage.AllCountRows() {
+		if row.HiddenReason != "" {
+			hidden[row.Label] = row.HiddenReason
+		}
+	}
+
+	require.Len(t, hidden, 5)
+
+	// Ketiganya hanya tampil bagi dua operator bernama di sistem lama.
+	for _, label := range []string{"Checker", "Salvage Diterima", "Salvage Ditolak"} {
+		require.Equal(t, inboxsalvage.HiddenManagerOnly, hidden[label], label)
+	}
+
+	// Kedua ini tidak tampil pada layar sungguhan sama sekali.
+	for _, label := range []string{"Request Balai Lelang", "Tidak Terjual"} {
+		require.Equal(t, inboxsalvage.HiddenNotOnScreen, hidden[label], label)
+	}
+}
+
+// Setiap baris pencacah yang digambar MENUJU sebuah daftar yang juga ditawarkan.
+//
+// Sebelumnya ada satu baris tanpa daftar ("Tidak Terjual"), dan itu keadaan di Pega. Baris
+// itu kini tidak digambar, sehingga seluruh baris yang tersisa dapat diklik — dan uji ini
+// menjaga keduanya tidak pernah berselisih lagi: baris pencacah tanpa daftarnya adalah
+// angka yang tidak dapat ditindaklanjuti.
+func TestEveryVisibleCounterRowOpensAVisibleList(t *testing.T) {
+	for _, row := range inboxsalvage.CountRows() {
+		require.NotEmptyf(t, row.Tab, "baris %q tidak menuju daftar mana pun", row.Label)
+
+		_, exists := inboxsalvage.FindTab(row.Tab)
+		require.Truef(t, exists,
+			"baris %q menuju daftar %q yang tidak ditawarkan", row.Label, row.Tab)
+	}
+}
+
+// Kode daftar yang tidak ditawarkan diperlakukan sama dengan kode yang tidak dikenal.
+func TestHiddenTabCodesAreNotResolvable(t *testing.T) {
+	hidden := inboxsalvage.HiddenTabs()
+	require.Len(t, hidden, 4)
+
+	for _, tab := range hidden {
+		_, exists := inboxsalvage.FindTab(tab.Code)
+		require.Falsef(t, exists, "daftar %q seharusnya tidak dapat dibuka", tab.Code)
+
+		require.NotEmptyf(t, tab.HiddenReason, "daftar %q disembunyikan tanpa alasan", tab.Code)
+	}
+}
+
+// queryForAnyTab menyusun permintaan atas daftar mana pun, termasuk yang TIDAK ditawarkan
+// layar.
+//
+// Ia ada karena penyaring keempat daftar yang tidak ditawarkan tetap harus benar: tiga di
+// antaranya kembali begitu kewenangan berbasis peran ada, dan penyaring yang tidak diuji
+// selama itu akan berhenti benar tanpa ada yang tahu.
+func queryForAnyTab(
+	t *testing.T,
+	code, search string,
+	caller inboxsalvage.Caller,
+) (inboxsalvage.Query, error) {
+	t.Helper()
+
+	tab, known := inboxsalvage.FindAnyTab(code)
+	require.Truef(t, known, "daftar %q tidak ada sama sekali", code)
+
+	return inboxsalvage.NewQueryForTab(
+		tab, inboxsalvage.QueryInput{Tab: code, Search: search}, caller)
 }
