@@ -61,6 +61,7 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
+import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
@@ -1144,6 +1145,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <KomunikasiCabangPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Salvage (`MENU_ID 71`), pengganti harness `InboxSalvage`.
+
+        Ia layar pengelolaan barang sisa klaim, dan satu-satunya layar inbox yang MENULIS:
+        tombol Tambah menyimpan pengajuan salvage ke `POOLDATA.PNC_SALVAGE` beserta detail
+        itemnya. Kedua tabel itu dimiliki modul ini selama masa paralel, karena seluruh
+        penulisnya di Pega adalah layar yang digantikannya (`P-1`).
+
+        Daftar, halaman, dan kata kunci pencarian hidup di alamat — layar ini dibuka
+        berpuluh kali sehari, dan pencariannya menyaring di server sehingga ia bagian dari
+        apa yang sedang dilihat, bukan preferensi tampilan.
+      */}
+      <Route
+        path="/inbox-salvage"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SalvageInboxPage />
             </Protected>
           </SessionGuard>
         }

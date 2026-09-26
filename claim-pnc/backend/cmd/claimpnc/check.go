@@ -67,6 +67,8 @@ import (
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
+	"claim-pnc/internal/inboxsalvage"
+	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -90,9 +92,9 @@ import (
 	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
 	"claim-pnc/internal/reportkpi"
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
-	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
 )
 
@@ -202,6 +204,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
+	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
 	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
@@ -3569,6 +3572,195 @@ func checkCloseClaim(
 	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
 }
 
+// checkSalvage memeriksa kesiapan modul Inbox Salvage.
+//
+// # Kenapa pemeriksaannya BERBEDA dari modul inbox lain
+//
+// Karena modul ini MENULIS. Modul inbox lain hanya membutuhkan hak SELECT; modul ini
+// membutuhkan SELECT, INSERT, dan UPDATE atas dua tabel — dan hak yang kurang baru
+// ketahuan saat petugas menekan Submit, yakni pada saat yang paling buruk.
+//
+// Pemeriksaan di sini TIDAK menulis apa pun. Ia membaca katalog kolom dan menjalankan
+// ketiga keluarga kueri, lalu menyatakan apa yang harus diperiksa DBA bila salah satunya
+// gagal. Menguji hak tulis dengan benar-benar menulis akan meninggalkan baris percobaan di
+// tabel produksi.
+func checkSalvage(
+	ctx context.Context,
+	repo *inboxsalvagesql.Repo,
+	print func(string, ...any),
+) {
+	found, err := repo.Ready(ctx)
+	if err != nil {
+		print("  [BELUM] Katalog kolom Inbox Salvage tidak dapat dibaca: %v", err)
+		print("            Periksa hak SELECT akun aplikasi atas ALL_TAB_COLUMNS.")
+		return
+	}
+
+	// Sembilan kolom diperiksa — seluruh kolom yang dibaca grid keluarga C.
+	const wantedColumns = 9
+	if found < wantedColumns {
+		print("  [BELUM] POOLDATA.PNC_SALVAGE hanya punya %d dari %d kolom yang dibaca",
+			found, wantedColumns)
+		print("            Nama kolom modul ini dibaca dari kueri Pega, bukan dari DDL —")
+		print("            yang belum pernah diterima (`R-08`). Bila kolomnya memang")
+		print("            bernama lain, kuerinya yang harus disesuaikan, bukan tabelnya.")
+		return
+	}
+	print("  [ok]    POOLDATA.PNC_SALVAGE punya kesembilan kolom yang dibaca grid")
+
+	caller := inboxsalvage.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxsalvage.Pagination{Page: 1, Size: 5}
+
+	// KETIGA keluarga kueri dijalankan, bukan satu.
+	//
+	// Ketiganya membaca TABEL YANG BERBEDA — keluarga A dan B membaca T_CLAIM_PNC,
+	// keluarga C membaca PNC_SALVAGE beserta agregat DETAIL_PNC_SALVAGE — sehingga satu
+	// kueri yang berhasil tidak menyatakan apa pun tentang dua lainnya.
+	perFamily := map[inboxsalvage.Family]int{}
+	failed := false
+
+	// ID satu pengajuan sungguhan, dan satu nomor klaim sungguhan — keduanya dipakai
+	// menguji kedua jalur panel Detail di bawah.
+	sampleID := ""
+	sampleClaim := ""
+
+	for _, tab := range inboxsalvage.Tabs() {
+		// Cukup SATU tab per keluarga: yang berbeda antartab di dalam satu keluarga
+		// hanyalah nilai penyaringnya, bukan bentuk kuerinya.
+		if _, already := perFamily[tab.Family]; already {
+			continue
+		}
+
+		query, err := inboxsalvage.NewQuery(
+			inboxsalvage.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat disusun: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat dibaca: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+		perFamily[tab.Family] = result.Total
+
+		if tab.Family == inboxsalvage.FamilySalvage && sampleID == "" {
+			for _, row := range result.Items {
+				if row.SalvageID != "" {
+					sampleID = row.SalvageID
+					break
+				}
+			}
+		}
+
+		if tab.Family != inboxsalvage.FamilySalvage && sampleClaim == "" {
+			for _, row := range result.Items {
+				if row.ClaimNo != "" {
+					sampleClaim = row.ClaimNo
+					break
+				}
+			}
+		}
+	}
+
+	if !failed {
+		print("  [ok]    Ketiga keluarga kueri Inbox Salvage dapat dijalankan")
+		for family, total := range perFamily {
+			print("            keluarga %-12s %d baris", family, total)
+		}
+	}
+
+	// Kueri panel Detail diuji TERSENDIRI, dan alasannya bukan kelengkapan.
+	//
+	// Keduanya membaca tabel yang sama dengan daftar tetapi dengan bentuk yang berbeda —
+	// satu baris tunggal dengan dua puluh delapan kolom, dan agregat atas
+	// DETAIL_PNC_SALVAGE. Daftar yang berhasil dibaca tidak menyatakan apa pun tentang
+	// keduanya; cacat tipe data pada salah satu kolom yang HANYA dibaca panel ini tidak
+	// akan pernah muncul saat daftarnya dibuka.
+	switch {
+	case sampleID == "":
+		print("  [lewat] Panel Detail Salvage tidak diuji — tidak ada satu pun pengajuan")
+		print("            pada lima baris pertama keluarga salvage. Bukan kegagalan;")
+		print("            kuerinya belum pernah dijalankan terhadap basis data ini.")
+
+	default:
+		detail, err := repo.Detail(ctx, sampleID)
+		switch {
+		case err != nil:
+			print("  [BELUM] Panel Detail Salvage tidak dapat dibaca: %v", err)
+			print("            Kueri kepala panel membaca DUA PULUH DELAPAN kolom, di")
+			print("            antaranya kolom yang tidak dibaca daftar mana pun.")
+
+		default:
+			print("  [ok]    Panel Detail Salvage dapat dibaca (kepala dan grid barang)")
+
+			// Riwayat pengajuan ini WAJIB memuat dirinya sendiri. Nol baris di sini
+			// berarti kuerinya berjalan tetapi tidak menemukan apa-apa — dan itu
+			// kegagalan yang diam, bukan keberhasilan.
+			if len(detail.History) == 0 {
+				print("  [BELUM] Riwayat pengajuan ini KOSONG, padahal pengajuannya ada.")
+				print("            Kueri riwayat berjalan tetapi tidak menemukan barisnya")
+				print("            sendiri — periksa nama kolom NOKLAIM di PNC_SALVAGE.")
+			} else {
+				print("  [ok]    Riwayat pengajuan terbaca (%d baris, termasuk dirinya)",
+					len(detail.History))
+			}
+		}
+	}
+
+	// Jalur KEDUA panel: dibuka dari baris yang berupa klaim.
+	//
+	// Diuji tersendiri karena ia menempuh dua kueri yang TIDAK dipakai jalur pertama —
+	// pencarian pengajuan terakhir milik klaim, dan pembacaan kepala klaimnya. Keduanya
+	// menyentuh tabel yang berbeda pula: `DETAIL_PNC_SALVAGE` dan `T_CLAIM_PNC`.
+	switch {
+	case sampleClaim == "":
+		print("  [lewat] Panel Detail lewat nomor klaim tidak diuji — tidak ada satu pun")
+		print("            baris pada lima baris pertama keluarga berbasis klaim.")
+
+	default:
+		detail, err := repo.DetailByClaim(ctx, sampleClaim)
+		switch {
+		case err != nil:
+			print("  [BELUM] Panel Detail lewat nomor klaim tidak dapat dibaca: %v", err)
+			print("            Ia menempuh POOLDATA.DETAIL_PNC_SALVAGE dan")
+			print("            POOLDATA.T_CLAIM_PNC, bukan hanya POOLDATA.PNC_SALVAGE.")
+
+		case detail.HasSubmission:
+			print("  [ok]    Panel Detail lewat nomor klaim dapat dibaca (ada pengajuan)")
+
+		default:
+			print("  [ok]    Panel Detail lewat nomor klaim dapat dibaca")
+			print("            Klaim contoh belum punya pengajuan salvage — itu keadaan")
+			print("            yang SAH: klaimnya masuk ke form \"Menambahkan Data")
+			print("            Salvage\", bukan ke panel rincian.")
+		}
+
+		if err == nil {
+			print("  [ok]    Grid \"Detail History Salvage\" dapat dibaca (%d baris)",
+				len(detail.History))
+		}
+	}
+
+	counts, err := repo.Counts(ctx, caller)
+	if err != nil {
+		print("  [BELUM] Tabel ringkas Inbox Salvage tidak dapat dihitung: %v", err)
+		return
+	}
+	print("  [ok]    Tabel ringkas Inbox Salvage dapat dihitung (%d baris)", len(counts))
+
+	print("            CATATAN — angka ringkas TIDAK selalu sama dengan jumlah baris")
+	print("            daftarnya. Tiga baris menghitung populasi yang BERBEDA dari daftar")
+	print("            yang dibukanya, dan itu keadaan di Pega yang sengaja direplikasi")
+	print("            (`P-5`). Lihat inboxsalvage.CountRows.")
+	print("            HAK TULIS TIDAK DIUJI di sini — mengujinya berarti menulis baris")
+	print("            percobaan. Akun aplikasi membutuhkan INSERT dan UPDATE atas")
+	print("            POOLDATA.PNC_SALVAGE dan INSERT atas POOLDATA.DETAIL_PNC_SALVAGE.")
+}
+
 // checkReportKPI memeriksa kesiapan tab KPI Adjuster pada Report KPI PNC.
 //
 // # Apa yang benar-benar dijawab pemeriksaan ini
@@ -3789,6 +3981,7 @@ func arahDari(descending bool) string {
 	}
 	return "menaik"
 }
+
 // checkRejection melaporkan kesiapan ketiga tabel Master Penolakan Klaim.
 //
 // Ketiganya tabel WARISAN — tidak satu pun dibuat migrasi aplikasi ini, sehingga "tidak

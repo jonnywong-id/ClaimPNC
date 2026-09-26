@@ -16026,3 +16026,741 @@ mengikuti isian yang bergalat.
 **Yang ini gugurkan.** Pertanyaan §55.2 tentang "lebar penyaring" tertutup: bukan dipadatkan
 lewat grid berkolom lain, melainkan dengan mengikuti pola flex Report Klaim. Empat pilihan
 yang sempat saya ajukan tidak lagi berlaku.
+## 55. Modul Inbox Salvage (2026-09-25, sesi kedua puluh lima)
+
+Lingkup: `MENU_ID 71`, pengganti `Harness/InboxSalvage`. Portal ASM saja.
+
+---
+
+### 55.1 Pertanyaan yang diajukan, dan jawabannya
+
+Enam pertanyaan dalam dua putaran. Putaran kedua lahir karena jawaban putaran pertama
+berupa **pengalihan** — perintah menelusuri jalur yang belum tertelusur — dan penelusurannya
+mengubah pertanyaannya sendiri.
+
+| # | Pertanyaan | Jawaban | Akibatnya pada kode |
+|---|---|---|---|
+| 1 | Cakupan daftar | **Seluruh 13 daftar, baca-saja** | Tiga keluarga kueri dibangun penuh; `Tab.Family` memilih kueri |
+| 2 | Perlakuan aksi tulis | **dialihkan** — "tambah menjalankan DT `CNMShowInsertSalvage_dt` dan section `TambahData_Salvage`; upload file menjalankan flow action `UploadDetailSalvage`; rejected checker sama seperti 13 daftar itu" | Ketiganya ditelusuri lebih dulu; lihat §55.3 |
+| 3 | Portal Insurtech | **ASM dulu, Insurtech menyusul** | `TransferStatusOnSubmit = "3"`; selisihnya dinyatakan |
+| 4 | Perlakuan tiga cacat | **Cacat 3 diperbaiki; cacat 1 & 2 direplikasi** | Lihat §55.4 |
+| 5 | Sejauh mana Submit dibangun | **"di bangun di sesi section TambahData_Salvage"** | `Repo.Create` menulis `PNC_SALVAGE` + `DETAIL_PNC_SALVAGE` |
+| 6 | Cacat `IDSALVAGE = NULL` | **Diperbaiki — sudah diputuskan di `P-5` butir 12** | `update_salvage` tidak menulis `IDSALVAGE` sama sekali |
+
+---
+
+### 55.2 Keputusan desain
+
+#### 55.2.1 Tiga belas daftar dilayani TIGA kueri, bukan tiga belas
+
+Temuan yang menentukan seluruh bentuk modul. Yang membedakan daftar di dalam satu keluarga
+hanyalah penyaring yang disisipkan `{ASIS:…}` ke dalam kueri yang sama.
+
+`Tab.Family` menyatakannya sebagai data, dan `claimPlan`/`listSalvage` memilih kueri
+darinya. Akibatnya penambahan daftar kelak cukup menambah satu entri di `tab.go` — tanpa
+menyentuh SQL maupun repo.
+
+#### 55.2.2 Kode tab berbentuk KATA, sementara Pega memakai angka
+
+Karena angkanya **tidak unik**: `Param.tipe` dan `Param.tipe2` adalah dua ruang kode yang
+berbeda dan keduanya memuat `1`…`5`. Memakai angka telanjang berarti `1` dapat berarti
+"Salvage Outstanding" atau "Ekonomis" tergantung ruang mana yang dimaksud.
+
+Angka aslinya tidak dibuang — ia tetap ada sebagai `LegacyTipe`/`LegacyTipe2`, dan dipakai
+memetakan baris pencacah ke tab. `TabForLegacy` memeriksa `tipe2` **lebih dulu**, karena
+baris keluarga B mengisi keduanya sekaligus; memeriksa `tipe` lebih dulu akan membuka daftar
+yang salah tanpa satu pun galat.
+
+Dua nilai yang mudah menjebak, keduanya diberi komentar di tempatnya:
+
+- Histori Salvage masuk dengan `tipe = 6`, lalu langkah 15 **menulis ulangnya** menjadi 2.
+  Yang disimpan adalah kode MASUKNYA.
+- Request Balai Lelang mengisi KEDUA kode (`tipe` 11 dan `tipe2` 7) — satu-satunya tab yang
+  begitu.
+
+#### 55.2.3 Satu tipe `Row` untuk tiga keluarga yang kolomnya berbeda
+
+Yang menentukan kolom mana yang digambar adalah `Tab.Columns`, bukan tipe barisnya. Tiga
+tipe akan memaksa tiga jalur di seam Repo, tiga penyusun DTO, dan tiga penggambar di layar —
+sementara yang benar-benar berbeda hanyalah daftar kolomnya.
+
+Preseden yang sama sudah ada di Inbox Manager Receive / PUCL.
+
+#### 55.2.4 Nilai uang tetap TEKS dari basis data sampai layar
+
+`D-51` menetapkan nilai uang disimpan presisi penuh dan hanya dibulatkan saat ditampilkan.
+Karena itu:
+
+- `Form.MinimumValue` dan kawan-kawannya bertipe `string`, bukan `float64`;
+- `NewForm` hanya **memeriksa** bentuknya dengan `ParseFloat`, dan meneruskan teks aslinya;
+- DTO mengirimnya sebagai string, bukan angka JSON — angka JSON melewati bilangan pecahan
+  biner JavaScript, yang membulatkannya sebelum pembulatan yang disengaja sempat terjadi;
+- pembulatan terjadi tepat satu kali, di `formatMoney` pada layar.
+
+#### 55.2.5 Agregat detail diambil SATU kueri, bukan satu per baris
+
+Sistem lama menjalankan `PNCSalvageGetChekerDataKlaimAllData` sekali untuk **setiap** baris
+pada tiga daftar — dua puluh satu kueri untuk satu halaman berisi dua puluh baris. Di sini
+ia sub-kueri berkorelasi di dalam kueri daftar.
+
+Angkanya sama persis; yang berubah hanya jumlah perjalanan ke basis data. Dinyatakan sebagai
+selisih terencana supaya tidak terbaca sebagai perubahan hasil.
+
+#### 55.2.6 Satu transaksi untuk pengajuan beserta seluruh detailnya
+
+`D-68` memindahkan kepemilikan transaksi ke Go. Sistem lama menempuh jalur ini lewat dua
+procedure yang meng-`COMMIT` sendiri — sekali untuk pengajuannya, sekali untuk **setiap**
+baris detail — sehingga kegagalan di tengah meninggalkan pengajuan tanpa detail, atau detail
+sebagian.
+
+Konsekuensinya untuk uji kesetaraan disadari: keadaan akhir **saat gagal** berbeda, dan itu
+selisih yang disengaja (`14-TESTING-STRATEGY.md` §6.4).
+
+#### 55.2.7 Pencarian memakai `LIKE` + `ESCAPE`, dan kedua cabangnya digabung ATAU
+
+Satu kueri melayani ketujuh daftar keluarga C beserta keempat ragam pencariannya, tanpa
+merangkai teks SQL sama sekali. Nilai `%` berarti "jangan saring kolom ini".
+
+Tiga hal yang mudah salah dan karenanya diuji:
+
+- kedua cabang pencarian digabung **ATAU**, bukan DAN — penyaring tab Checker di Pega
+  berbunyi `and (a.noklaim = '…' or a.pic = '…')`;
+- `ESCAPE` wajib, supaya `%` yang **diketik pengguna** tidak berlaku sebagai wildcard pada
+  daftar yang pencariannya cocok persis;
+- tab yang hanya mencari nomor klaim **mematikan** cabang PIC dengan pola yang tidak pernah
+  cocok — membiarkannya `%` akan membuat pencarian tidak menyaring apa pun.
+
+---
+
+### 55.3 Dua jalur yang Work Owner tunjuk, dan apa yang sebenarnya ada di sana
+
+Keduanya ternyata **tidak menulis apa pun**, dan itu mengubah bentuk yang dibangun.
+
+| Jalur | Isi sebenarnya | Padanannya di sini |
+|---|---|---|
+| `CNMShowInsertSalvage_dt` | 8 langkah: `REMOVE` lima halaman klipboard, `SET pyNote="Insert"`, `SET FlagReject=4` | keadaan awal `emptyForm` di `TambahSalvageForm` |
+| `UploadDetailSalvage` (FA) | `pxUploadCSVResults` → aktivitas 3 langkah yang menyalin CSV ke `DetailSalvage.Data` | `ParseUpload` + `Handler.Upload`, jawaban **200** bukan 201 |
+
+Penyimpanan sesungguhnya ada di `SetStsSalvagePNC_act` (31 langkah), yang tidak disebut
+dalam jawaban. Ia diangkat sebagai pertanyaan lanjutan, dan jawabannya menjadi dasar
+`Repo.Create`.
+
+**Empat langkah `SetStsSalvagePNC_act` TIDAK dibangun**, dan keempatnya menembak sesuatu di
+luar basis data ini:
+
+| Langkah | Isi | Alasan |
+|---|---|---|
+| 14 | `UploadDocumentToGoogleStorage` | penyimpanan berkas eksternal; `SET_ATTACHFILETEMPSALVAGE` masih salah satu dari 2 procedure yang belum diterima DBA (`R-01`) |
+| 19 | `Insert_salvageToSimasBid` | sistem luar balai lelang |
+| 23 | `UploadingFileUntukSendByEmail` | kirim email; penerima notifikasi belum menjadi master data (`F-4`) |
+| 26 | procedure penyisip JSON | sinkronisasi `JSON_KLAIM` |
+
+Ketiadaannya **dinyatakan ke pengguna** pada pesan keberhasilan penyimpanan, bukan
+disamarkan — pengguna yang tidak diberi tahu akan menunggu jawaban balai lelang yang tidak
+pernah datang.
+
+---
+
+### 55.4 Cacat sistem lama: mana yang direplikasi, mana yang diperbaiki
+
+Pembedaannya mengikuti prinsip yang sama dengan §48.8 modul Inbox Komunikasi Cabang: yang
+**berjalan** dan angkanya dibaca orang setiap hari direplikasi; yang **tidak pernah berjalan
+sebagaimana dimaksud penulisnya** diperbaiki.
+
+| # | Cacat | Perlakuan | Dijaga |
+|---|---|---|---|
+| 1 | Pencacah "Outstanding" ≠ daftarnya | replikasi | `TestOutstandingCounterAndItsListDisagreeOnPurpose` |
+| 2 | Total paginasi tab Outstanding tanpa penyaring | replikasi | selisih terencana |
+| 3 | Baris pencacah ke daftar BERSARANG | perbaikan | `CountRows` menggambar ketiganya |
+| 4 | Tab `tipe=16` tanpa kueri apa pun | perbaikan | `TestSalvageDitolakHasRowsHereEvenThoughLegacyNeverRanItsQuery` |
+| 5 | Pencacah "Histori" ≠ daftarnya | replikasi | `TestHistoriCounterAndItsListDisagreeOnPurpose` |
+| 6 | `IDSALVAGE` tertimpa kosong saat update | perbaikan (`P-5` butir 12) | `TestUpdateNeverWritesTheSalvageIDColumn` |
+| 7 | Dua nama operator menentukan baris pencacah | perbaikan (`D-15`) | selisih terencana |
+
+Butir 1, 2, dan 5 **sengaja dijaga uji**. Bila seseorang "memperbaikinya", ujinyalah yang
+gagal lebih dulu — bukan pengguna yang melaporkannya sebagai perubahan angka.
+
+---
+
+### 55.5 Penyimpangan yang disadari
+
+#### 55.5.1 Kolom "Aging" berisi hari KALENDER, bukan hari kerja
+
+Sistem lama menghitungnya lewat `GET_WORKING_HOURS` yang hidup di basis data lain lewat DB
+Link. `D-50` menetapkan perhitungannya ditulis ulang di Go karena ia aturan bisnis, dan
+`D-25` mengganti DB Link dengan pemanggilan API. Keduanya menunggu kalender libur menjadi
+master data (`F-4`).
+
+Sampai itu tiba, angkanya **lebih besar** daripada di Pega untuk setiap baris yang melewati
+akhir pekan atau hari libur. Dinyatakan.
+
+Yang **tidak** dikompromikan: tanggal yang tidak terbaca menghasilkan teks KOSONG, bukan
+`"0 day"`. Menyamakannya mengulang cacat `GETSELISIHJAM` — butir 13 `P-5`.
+
+#### 55.5.2 `PNC_SALVAGE.PIC` diisi PENYIMPAN, bukan PIC Teknik klaim
+
+Sistem lama mengambilnya dari `pyWorkPage.ClaimData.UserTeknis` — PIC Teknik yang tercatat
+pada klaimnya. Di sini yang tercatat adalah orang yang menekan Submit.
+
+Perbedaannya **nyata**, dan tempatnya satu: daftar "Request Balai Lelang" menyaring kolom
+yang sama. Bila penyimpan bukan PIC Teknik klaimnya, pengajuan itu akan muncul di daftar
+penyimpan alih-alih di daftar PIC Teknik.
+
+Dibiarkan begitu karena membaca PIC Teknik klaim menuntut satu kueri tambahan ke
+`T_CLAIM_PNC` pada jalur tulis, dan nomor klaim pada form **belum divalidasi keberadaannya**
+— yang berarti kueri itu dapat mengembalikan kosong dan meninggalkan `PIC` kosong pula.
+Dicatat sebagai hal yang harus ditinjau saat nomor klaim mulai divalidasi.
+
+#### 55.5.3 Ekspor mengunduh salinan daftar, bukan berkas rincian
+
+`ExportDataSalvageForm_pncsalvage` menjalankan kueri yang **berbeda** dari kueri grid: ia
+menggabungkan pengajuan dengan setiap barang di dalamnya, sehingga satu pengajuan menjadi
+banyak baris, dan kolomnya memuat nama barang, nama pemenang lelang, status terjual berlima
+keadaan, serta nama surveyor.
+
+Yang dibangun adalah ekspor grid. Ekspor rincian belum, dan itu dinyatakan.
+
+#### 55.5.4 Nomor ID salvage masih `MAX + 1`
+
+Pola itu mewarisi cacat yang sama dengan procedure-nya: dua penyimpanan bersamaan dapat
+membaca nilai maksimum yang sama.
+
+Yang **ditutup**: pembacaannya berada di dalam transaksi yang sama dengan penyisipannya,
+sehingga benturan berakhir sebagai galat kunci ganda — bukan dua baris ber-ID sama yang
+keduanya tersimpan.
+
+Yang **tidak ditutup**: benturannya sendiri. Menghapusnya menuntut sequence, dan memindahkan
+penomoran yang sudah berjalan di produksi ke sequence adalah keputusan tersendiri.
+
+---
+
+### 55.6 Yang sengaja TIDAK dibangun
+
+| Hal | Alasan |
+|---|---|
+| Portal Insurtech | keputusan Work Owner; isinya berbeda (tanpa Request Balai Lelang, `SetStsSalvagePNC_act_ASI` terpisah, `STSTRANSFER` awal berbeda) |
+| Tombol Approve / Reject / Send To BalaiLelang | mengubah status pengajuan; dua di antaranya menembak sistem luar. Tombolnya digambar, aksinya menjawab **501** beralasan |
+| Grafik lingkaran di samping tabel ringkas | activity pencacah menyusun dua daftar berbeda — baris bernilai nol dibuang dari grafik tetapi tetap di tabel. Yang dibangun tabelnya, karena itulah yang memuat angka dan tautannya |
+| Mode UBAH pada form | jalur `Repo.Create` sudah menanganinya (`FormModeUpdate`), tetapi layarnya belum menggambar tombol Ubah — `DetailDataSalvage2` belum ditelusuri |
+| Ekspor rincian per barang | lihat §55.5.3 |
+
+---
+
+### 55.7 Cacat kontrak yang ditemukan pada diri sendiri
+
+DTO galat validasi semula memakai `json:"isian"`. `APIError.violations()` di frontend hanya
+membaca `field` atau `kolom`, sehingga pelanggaran per isian **sampai ke layar tetapi tidak
+pernah terbaca** — pengguna menerima pesan umum alih-alih tanda di isian yang salah.
+
+Ditemukan uji layar, bukan review. Diperbaiki menjadi `field`.
+
+Temuan sampingan yang **tidak disentuh**: `inboxkomunikasicabang/http/dto.go:304` memakai
+`json:"isian"` pula. Ia di luar lingkup sesi ini; dilaporkan, bukan diperbaiki diam-diam.
+
+---
+
+## 56. Detail Salvage, dan cacat tipe data pada penyaring `STSTRANSFER` (2026-09-25)
+
+Tujuh keputusan, seluruhnya diambil setelah Work Owner melaporkan dua hal sekaligus:
+ketujuh daftar keluarga C gagal dimuat, dan panel Detail Salvage belum ada.
+
+---
+
+### 56.1 Kolom numerik dijadikan teks di dalam `COALESCE`, bukan penggantinya dijadikan angka
+
+**Keadaannya.** `COALESCE(a.STSTRANSFER, <teks>)` ditolak Oracle dengan `ORA-00932`:
+`STSTRANSFER` bertipe `NUMBER`, penggantinya bertipe `CHAR`.
+
+**Dua jalan yang mungkin.**
+
+| Jalan | Akibatnya |
+|---|---|
+| Penggantinya dijadikan **angka** | Harus dipilih angka yang **tidak mungkin** dipakai `STSTRANSFER` — dan tidak ada angka seperti itu. `STSTRANSFER` diisi kode yang bertambah seiring waktu, dan angka apa pun yang dipilih hari ini dapat dipakai besok |
+| Kolomnya dijadikan **teks** | Perbandingannya memang perbandingan teks sejak awal (`LIKE` terhadap pola), sehingga tidak ada arti yang berubah |
+
+**Keputusan: kolomnya dijadikan teks.** Bukan karena lebih mudah, melainkan karena
+perbandingannya memang perbandingan teks — `TO_CHAR` hanya menuliskan apa yang sudah
+terjadi secara diam-diam.
+
+**Yang diterima sebagai akibat.** Perbandingan teks tidak dapat memakai index numerik atas
+`STSTRANSFER`, bila kelak ada. Pada tabel berisi 168 baris pengajuan hal itu tidak berarti
+apa-apa; bila tabelnya tumbuh besar, penyaringnya perlu ditulis ulang sebagai perbandingan
+angka dengan cabang tersendiri untuk tab yang tidak menyaring.
+
+**Kenapa uji penjaganya memindai SELURUH kueri, bukan satu baris itu.** Yang salah bukan
+satu baris melainkan sebuah kebiasaan: `COALESCE(kolom, <teks pengganti>)` dipakai di
+beberapa tempat di modul ini, dan hanya sebagian kolomnya numerik. Menguji satu baris
+berarti menunggu yang berikutnya.
+
+### 56.2 Alias ganda pada kepala panel DIPERBAIKI, bukan direplikasi
+
+**Keadaannya.** `GcnmSetSalvageData_SQL` mengaliaskan dua kolom berbeda — jumlah barang,
+dan penanda pengajuan lama — menjadi nama yang sama.
+
+**Kenapa ini bukan pilihan yang sulit.** Pada §48.8 dibedakan dua hal: cacat yang **berjalan
+dan angkanya dibaca orang tiap hari** direplikasi, cacat yang **tidak pernah berjalan
+sebagaimana dimaksud** diperbaiki. Alias ganda masuk kelompok kedua — salah satu dari dua
+isian itu **pasti** tergambar salah, di setiap pembukaan panel, sejak kuerinya ditulis.
+Tidak ada angka yang "dibaca orang tiap hari" untuk dipertahankan; yang ada hanya isian
+yang salah.
+
+Preseden langsungnya alias ganda `UserName` di §48.4, dan diperlakukan sama.
+
+**Yang diterima sebagai akibat.** Panel baru menampilkan **dua isian** di tempat panel lama
+menampilkan satu isian yang benar dan satu yang salah. Bagi yang membandingkan berdampingan,
+itu terbaca sebagai selisih — karena itu ia dicatat sebagai selisih terencana, bukan
+dibiarkan ditemukan.
+
+### 56.3 Arti kode yang bertentangan: dipakai arti kueri yang memasok gridnya
+
+**Keadaannya.** `STATUSTERJUAL` kode `3` berarti "Waiting approval" pada kueri yang memasok
+grid barang, dan "Rejected waive" pada kueri lain di layar yang sama.
+
+**Keputusan.** Dipakai arti pada kueri yang memasok grid ini.
+
+**Alasannya bukan memilih yang lebih benar** — tidak ada dasar untuk menyatakan salah
+satunya lebih benar. Alasannya menolak **mencampur** arti dari kueri yang berbeda: satu
+grid digambar oleh satu kueri, dan artinya harus datang dari kueri itu. Mencampurnya
+menghasilkan layar yang tidak dapat ditelusuri ke mana pun.
+
+**Yang tetap terbuka.** Mana yang benar menurut bisnis — pertanyaan untuk Work Owner,
+dicatat sebagai selisih terencana supaya tidak hilang.
+
+### 56.4 Penanda "sebelum 17 Juli 2023" digambar tanpa tafsiran
+
+**Keputusan.** Ditampilkan apa adanya, dengan kalimat yang menyatakan bahwa akibatnya tidak
+diketahui.
+
+**Tiga jalan yang ditolak.**
+
+| Jalan | Kenapa ditolak |
+|---|---|
+| Tidak ditampilkan sama sekali | Kolomnya digambar layar lama; membuangnya adalah selisih yang tidak diputuskan siapa pun |
+| Ditampilkan dengan tafsiran | Tidak ada satu pun rule di export yang memakainya selain menggambarnya. Tafsiran apa pun adalah karangan |
+| Ditampilkan sebagai angka mentah | Tidak dapat dibaca, dan orang akan menafsirkannya sendiri — persis yang hendak dihindari |
+
+**Alasannya.** Pada modul ini sudah beberapa kali terbukti bahwa arti kode **tidak boleh
+disimpulkan dari pemakaiannya** — `R-06` menutup pertanyaan yang sama untuk kode status,
+dan tiga kesimpulan yang sempat diambil dari pemakaian terbukti salah seluruhnya.
+
+### 56.5 Kewenangan per baris TIDAK diperiksa pada panel detail
+
+**Keadaannya.** `SetDataDetailSalvage_act` tidak memeriksa pemanggil sama sekali. Sebelas
+dari tiga belas daftar memang bersama; satu menyaring menurut PIC.
+
+**Keputusan.** Perilaku Pega dipertahankan (`P-5`) — panel dapat dibuka oleh siapa pun yang
+berwenang atas menunya, termasuk untuk pengajuan yang tidak muncul di daftarnya sendiri.
+
+**Yang diterima sebagai akibat, dan disebut apa adanya.** Pengajuan yang tersembunyi dari
+daftar "Request Balai Lelang" **tetap dapat dibuka** bila ID-nya diketahui. Penyaringan
+daftar itu karena itu bukan kendali akses, melainkan kenyamanan tampilan — dan harus dibaca
+demikian.
+
+**Yang mengimbanginya.** Setiap pembukaan dicatat, mengikuti `D-59` yang menjadikan jejak
+audit satu-satunya kontrol pengimbang ketika tidak ada pemisahan tugas.
+
+**Tempatnya bila kelak berubah.** Di usecase, bukan di transport. Transport tidak boleh tahu
+aturan bisnis siapa boleh melihat apa.
+
+### 56.6 Layar diberi tahu daftar mana yang punya rincian — bukan menyimpulkannya sendiri
+
+**Keadaannya.** Tujuh daftar berbaris pengajuan dan punya rincian; enam berbaris klaim dan
+tidak punya.
+
+**Tiga jalan yang dipertimbangkan.**
+
+| Jalan | Kenapa ditolak atau dipilih |
+|---|---|
+| Layar menyimpulkan dari ada-tidaknya `id_salvage` pada BARIS | Ditolak: baris yang kebetulan kosong akan menghilangkan tombolnya pada daftar yang seharusnya punya |
+| Layar menyimpulkan dari ada-tidaknya kolom `id_salvage` | Ditolak: `id_salvage` **bukan kolom grid** pada daftar mana pun — ia dikirim tanpa digambar |
+| Server menyatakannya sebagai isian tersendiri | **Dipilih** |
+
+**Alasannya.** Keluarga kueri adalah pengetahuan backend — ia dibaca dari export Pega dan
+tercatat di `tab.go`. Menyimpulkannya kembali di layar berarti pengetahuan yang sama hidup
+di dua tempat, dan yang satu akan tertinggal.
+
+**Kenapa tombolnya tidak digambar saja di semua daftar.** Karena pesan "tidak ditemukan"
+punya **arti lain yang jauh lebih penting** di aplikasi ini: ia muncul ketika ID yang benar
+dibuka pada portal yang salah (`R-20`). Membiarkan pesan itu muncul sebagai hal biasa berarti
+mengajari pengguna mengabaikannya.
+
+### 56.7 Mode periksa menguji panel detail terhadap pengajuan sungguhan
+
+**Keputusan.** `checkSalvage` mengambil satu ID dari hasil daftar keluarga C, lalu
+menjalankan kedua kueri panel terhadapnya.
+
+**Alasannya langsung dari cacat §56.1.** Kueri panel membaca **dua puluh delapan kolom**,
+sebagian **tidak dibaca daftar mana pun**. Daftar yang berhasil tidak menyatakan apa pun
+tentang panel — dan cacat tipe data pada kolom yang hanya dibaca panel tidak akan pernah
+muncul sampai seseorang membukanya.
+
+**Yang sengaja TIDAK dilakukan.** Menulis baris percobaan untuk memastikan ada pengajuan yang
+dapat diuji. Mode periksa tidak boleh menulis apa pun; bila tidak ada pengajuan, ia
+melaporkan `[lewat]` — bukan `[ok]`, sebab "belum pernah dijalankan" bukan "berhasil".
+
+---
+
+## 57. Panel rincian dibuka dari dua ruang kunci — koreksi atas §56.6 (2026-09-25)
+
+§56.6 memutuskan layar diberi tahu daftar mana yang punya rincian, dengan isian
+`punya_rincian`. Keputusan itu **benar pada mekanismenya dan salah pada premisnya**:
+premisnya menyatakan enam daftar berbasis klaim tidak punya rincian, dan Pega membuktikan
+sebaliknya.
+
+Yang dipertahankan dari §56.6: layar **diberi tahu**, tidak menyimpulkan sendiri. Yang
+diganti: isiannya, dari "punya atau tidak" menjadi "dengan apa".
+
+---
+
+### 57.1 `kunci_rincian`, bukan `punya_rincian`
+
+**Keadaannya.** Ketiga belas daftar punya tombol Detail. Yang berbeda adalah kunci yang
+dikirimkannya — ID pengajuan pada tujuh daftar, nomor klaim pada enam.
+
+**Keputusan.** Server mengirim `kunci_rincian` bernilai `"pengajuan"` atau `"klaim"`,
+diturunkan dari keluarga kueri daftarnya.
+
+**Kenapa diturunkan, bukan ditulis per tab.** Yang menentukan adalah apakah barisnya
+membawa ID pengajuan, dan itu **sifat kuerinya** — bukan pilihan bebas per daftar. Menulis
+tangan tiga belas nilai berarti tiga belas kesempatan untuk salah; menurunkannya berarti
+satu aturan yang berlaku untuk semuanya, termasuk daftar yang belum ada.
+
+### 57.2 Dua rute, bukan satu rute dengan penanda jenis
+
+**Dua jalan yang dipertimbangkan.**
+
+| Jalan | Akibatnya |
+|---|---|
+| Satu rute `/rincian/{ref}?jenis=klaim` | Nilai yang sah pada ruang lain menjawab "tidak ditemukan" — pesan yang menyesatkan |
+| Dua rute, `/pengajuan/{id}` dan `/klaim/{no}` | **Dipilih** |
+
+**Alasannya khas layar ini.** Nomor klaim dan ID pengajuan **sudah** sering tertukar di
+sini: alias kueri lama menamai `NOKLAIM` sebagai `"CaseID"` dan `IDSALVAGE` sebagai
+`"ClaimNo"`. Menambahkan satu rute yang menerima keduanya berarti menambah satu tempat lagi
+di mana tertukarnya tidak menimbulkan galat, hanya jawaban yang salah.
+
+Dengan dua rute, ID pengajuan yang dikirim ke rute klaim menjawab `404` — dan `404` di sini
+punya arti yang tepat.
+
+### 57.3 Klaim tanpa pengajuan dijawab `200`, bukan `404`
+
+**Keputusan.** Panel tetap dikembalikan, dengan `ada_pengajuan: false` dan isian klaimnya
+terisi.
+
+**Alasannya bukan kelembutan terhadap pengguna melainkan arti.** Daftar Salvage Outstanding
+**didefinisikan** sebagai klaim yang salvage-nya belum ditandai sama sekali. `404` untuk
+barisnya berarti hampir setiap baris daftar itu menjawab "tidak ditemukan" — dan `404` di
+modul ini sudah punya arti lain yang jauh lebih penting: ID yang benar dibuka pada portal
+yang salah (`R-20`).
+
+Membuat `404` menjadi jawaban yang lazim berarti mengajari pengguna mengabaikannya justru
+di tempat ia berarti.
+
+**Yang membedakan keduanya di kode:** nomor klaim yang **tidak ada** tetap `404`. Klaim yang
+ada tetapi belum punya pengajuan adalah `200`. Urutan pembacaannya — klaim dulu, pengajuan
+kemudian — yang menjaga pembedaan itu.
+
+### 57.4 Pengajuan tercatat tetapi tidak terbaca: panel tetap dibuka
+
+**Keadaannya.** `DETAIL_PNC_SALVAGE` memuat ID yang tidak ada di `PNC_SALVAGE`. Data tidak
+sinkron — mungkin, mengingat sistem lama menulis keduanya lewat procedure terpisah.
+
+**Keputusan.** Panel tetap menampilkan klaimnya, dengan `ada_pengajuan: false`.
+
+**Alasannya.** Itu bukan kekeliruan pengguna, dan menolak membuka seluruh panel
+menghukumnya untuk keadaan yang tidak dapat ia perbaiki. Data klaimnya tetap berguna.
+
+### 57.5 Penyaring populasi daftar Outstanding TIDAK dibawa ke panel
+
+**Keadaannya.** `GcnmSalvageData_OS_SQL` menyaring `STATUSWORK`, `GROUPPANEL`, dan
+`BUSINESSCODE`. Pega membawanya ke detail karena jalur `tipe == 1` hanya dipanggil dari grid
+itu.
+
+**Keputusan.** Tidak dibawa.
+
+**Alasannya.** Di sistem baru panel dibuka dari **keenam** daftar berbasis klaim. Penyaring
+populasi satu daftar akan membuat baris daftar lain menjawab "tidak ditemukan" — padahal
+barisnya baru saja digambar di layar yang sama.
+
+**Yang diterima sebagai akibat.** Bila kelak ada pemanggil yang mengirim nomor klaim
+sembarang, panel akan membukanya meski klaim itu tidak layak tampil di daftar mana pun.
+Pemeriksaan kelayakannya adalah pemeriksaan **kewenangan**, dan tempatnya bukan di sini —
+lihat §56.5.
+
+Dijaga `TestClaimHeaderDoesNotCarryTheOutstandingPopulationFilter`, supaya penyaringnya
+tidak "dikembalikan" oleh yang membandingkan dengan Pega tanpa membaca alasannya.
+
+### 57.6 Perbandingan ID sebagai ANGKA di penyimpanan memori
+
+**Keadaannya.** Oracle memakai `MAX(IDSALVAGE)` atas kolom numerik. Penyimpanan memori
+menyimpan ID sebagai teks.
+
+**Keputusan.** Penyimpanan memori membandingkannya sebagai angka bila keduanya angka.
+
+**Alasannya.** Perbandingan teks menempatkan `"9"` di atas `"10"`. Bila penyimpanan memori
+memakai perbandingan teks, uji akan lulus terhadapnya dan gagal terhadap Oracle — dan
+kegagalannya baru muncul setelah nomor pengajuan melewati sepuluh, jauh dari tempat
+sebabnya ditulis.
+
+Seam hanya berguna bila kedua adapternya menjanjikan hal yang sama.
+
+### 57.7 Data contoh diperluas, dan satu uji lama diperkuat karenanya
+
+**Keputusan.** Ditambahkan satu klaim contoh tanpa pengajuan, bernama
+`SampleClaimWithoutSalvage`.
+
+**Alasannya.** Kedelapan klaim contoh seluruhnya punya pengajuan, sehingga keadaan yang
+paling sering dilihat pengguna tidak pernah teruji.
+
+**Akibat yang tidak diperkirakan, dan yang ternyata baik.** Uji yang menjaga selisih
+pencacah "Outstanding" sebelumnya membandingkan **angka** — 3 lawan 2. Klaim baru membuat
+keduanya menjadi 3, sehingga uji itu gagal.
+
+Ia **tidak** diperbaiki dengan mengganti angkanya. Ia ditulis ulang untuk membandingkan
+**isinya**: klaim mana yang dihitung pencacah tetapi tidak ditampilkan daftarnya, dan
+sebaliknya. Angka yang kebetulan sama tidak lagi dapat menyembunyikan penyamaan kedua
+populasi — pembuktian yang lebih kuat daripada sebelumnya.
+
+---
+
+## 58. Klaim tanpa pengajuan dibawa ke form, bukan ke panel — koreksi atas §57.3 (2026-09-26)
+
+§57.3 memutuskan klaim tanpa pengajuan dijawab `200` dan digambar sebagai panel berisi data
+klaimnya. Keputusan HTTP-nya tetap benar; yang salah adalah **apa yang digambar layar**
+dengan jawaban itu.
+
+---
+
+### 58.1 Panel diganti form, dan alasannya bukan sekadar menuruti tangkapan layar
+
+**Keadaannya.** Layar lama membawa klaim tanpa pengajuan ke section `TambahData_Salvage` —
+form pengajuan, terisi klaimnya.
+
+**Keputusan.** Sama.
+
+**Alasannya berdiri sendiri, bahkan seandainya Pega tidak menunjukkannya.** Panel yang
+menyatakan "belum ada pengajuan" adalah **jalan buntu**: pengguna membacanya, menutupnya,
+menekan Tambah, lalu mengetik ulang nomor klaim yang barusan ia klik. Tiga langkah yang
+tidak menghasilkan apa pun.
+
+Dan daftar Salvage Outstanding **didefinisikan** sebagai klaim yang salvage-nya belum
+diajukan. Satu-satunya tindakan yang masuk akal di sana adalah mengajukannya.
+
+**Yang tidak berubah.** Jawaban server tetap `200` dengan `ada_pengajuan: false`. Yang
+berpindah hanyalah keputusan layar atas jawaban itu — dan itu memang tempatnya.
+
+### 58.2 Permintaan rincian pindah dari panel ke halaman
+
+**Dua jalan yang dipertimbangkan.**
+
+| Jalan | Akibatnya |
+|---|---|
+| Panel menembak sendiri, lalu memberi tahu halaman lewat callback | Panel terlanjur tergambar sebelum keputusannya diambil; permintaan yang sama berjalan dua kali bila halaman ikut membacanya |
+| Halaman menembak, panel menerima hasilnya | **Dipilih** |
+
+**Alasannya.** Jawabannya menentukan **komponen mana** yang digambar. Keputusan seperti itu
+tidak dapat dipegang komponen yang keberadaannya justru ditentukan olehnya.
+
+**Akibat yang diterima, dan yang ternyata perbaikan.** Cabang "belum ada pengajuan" di
+dalam panel **dihapus seluruhnya**. Dua tempat yang memutuskan hal yang sama adalah dua
+tempat yang akan berselisih; sekarang hanya halaman yang memutuskan.
+
+### 58.3 Pemetaan `STSTRANSFER` KETIGA dibiarkan terpisah
+
+**Keadaannya.** Grid riwayat menerjemahkan `STSTRANSFER` menjadi kalimat, dan
+pemetaannya berbeda dari dua pemetaan yang sudah ada atas kolom yang sama.
+
+**Keputusan.** Ketiganya dibiarkan terpisah.
+
+| Tempat | Perannya |
+|---|---|
+| Penyaring daftar | baris muncul di daftar yang mana |
+| "Posisi Salvage" panel rincian | nama daftar tempat pengajuan berada |
+| "Posisi Salvage" grid riwayat | kalimat yang menceritakan apa yang sudah terjadi |
+
+**Kenapa tidak disatukan.** Ketiganya tidak dapat disatukan tanpa mengubah salah satunya,
+dan mengubahnya berarti mengubah apa yang dibaca pengguna (`P-5`). Yang ketiga bahkan
+memecah kode `2` menjadi dua kalimat menurut terisi-tidaknya nomor akseptasi — pembedaan
+yang tidak ada pada dua pemetaan lain.
+
+**Yang diterima sebagai akibat.** Satu kolom dengan tiga pemetaan adalah beban pemeliharaan
+yang nyata. Ia ditandai lewat uji — `TestHistoryPositionIsADifferentMappingFromThePanelPosition`
+menuntut keduanya **berbeda** untuk kode yang sama, sehingga penyatuan diam-diam gagal
+lebih dulu.
+
+### 58.4 Kalimat posisi disalin apa adanya, termasuk ejaannya
+
+**Keadaannya.** "Create Ajd Salvage" — `Ajd` jelas singkatan Adjustment, dan jelas salah
+ketik.
+
+**Keputusan.** Disalin apa adanya.
+
+**Alasannya.** `D-13`: petugas membandingkan layar baru dengan Pega berdampingan, dan
+kalimat yang berbeda terbaca sebagai keadaan yang berbeda. Salah ketik yang diperbaiki
+adalah selisih yang tidak diputuskan siapa pun.
+
+**Begitu pula kode yang TIDAK punya kalimat.** Kode `4` dan `7` dipakai sebagai penyaring
+daftar tetapi tidak diberi kalimat oleh kueri lama; keduanya jatuh ke `OTHER`. Mengarang
+kalimat untuk keduanya berarti menampilkan keterangan yang tidak pernah ada.
+
+### 58.5 Penerjemahan dipindah dari SQL ke Go
+
+**Keputusan.** `CASE WHEN` tidak dibawa; kueri mengirim kode mentah ditambah penanda
+terisi-tidaknya nomor akseptasi.
+
+**Alasannya.** Pemetaan di dalam SQL tidak dapat diuji tanpa basis data, sementara pemetaan
+yang salah menampilkan posisi keliru tanpa satu pun galat. Di Go ia sepuluh baris uji.
+
+**Penanda, bukan nilainya.** Yang dikirim adalah `'1'`/`'0'`, bukan nomor akseptasinya,
+karena yang dibutuhkan hanya ada-tidaknya. Nomor akseptasi sendiri tidak digambar di grid
+ini.
+
+### 58.6 Tiga isian dikunci, dan form dibongkar saat berpindah klaim
+
+**Keputusan.** Nomor Klaim, Nama Object, dan Nama Coverage dikunci ketika form dibuka dari
+baris klaim. Form diberi `key={no_klaim}`.
+
+**Alasannya bukan tampilan.** Tanpa penguncian, pengguna dapat membuka form dari klaim A
+lalu mengubah nomornya menjadi klaim B — pengajuan tersimpan atas klaim yang berbeda dari
+baris yang diklik, tanpa satu pun galat. Tanpa `key`, isian yang sudah diketik untuk klaim
+sebelumnya tertinggal di form yang sekarang menyebut klaim lain. Kelas kesalahan yang sama,
+lewat dua jalan.
+
+**Yang diterima sebagai akibat.** Pengguna yang membuka form dari baris yang salah harus
+menutupnya dan membuka dari baris yang benar. Itu satu klik, dan ia jauh lebih murah
+daripada pengajuan yang tersimpan di tempat yang salah.
+
+### 58.7 Riwayat kosong dikembalikan sebagai senarai, bukan `nil`
+
+**Keputusan.** Selalu senarai, kosong bila tidak ada.
+
+**Alasannya.** `nil` menjadi `null` pada JSON, dan grid gagal digambar sama sekali — tidak
+dapat dibedakan dari grid yang gagal dimuat. Sedangkan kekosongan di sini adalah
+**keterangan**: klaim ini belum pernah diajukan salvage.
+
+Dijaga `TestHistoryOfAClaimWithoutSubmissionsIsEmptyNotNil`.
+
+### 58.8 Mode periksa memeriksa ISI, bukan hanya bahwa kuerinya berjalan
+
+**Keputusan.** Pengajuan yang dibaca panel wajib muncul di riwayatnya sendiri; nol baris
+dilaporkan sebagai `[BELUM]`.
+
+**Alasannya.** Kueri yang berjalan tetapi tidak menemukan apa pun **lulus** pada pemeriksaan
+yang hanya menguji ada-tidaknya galat. Nama kolom yang keliru pada klausa `WHERE` menghasilkan
+persis keadaan itu: nol baris, tanpa galat.
+
+Ini penerapan pelajaran yang sama dengan `ORA-00932` di §57.1 — perbedaannya, kali ini
+pemeriksaannya dipasang **sebelum** ada yang melaporkannya sebagai kerusakan.
+
+---
+
+## 59. Daftar dibatasi sembilan, dan kelimanya disimpan bukan dibuang (2026-09-26)
+
+---
+
+### 59.1 Disembunyikan, bukan dihapus
+
+**Dua jalan.**
+
+| Jalan | Akibatnya |
+|---|---|
+| Hapus kelima definisinya | Penyaring tiap daftar — pemetaan `Param.tipe`/`Param.tipe2` ke `STSTRANSFER` — hilang. Ia hasil pembacaan export yang mahal, dan sempat **salah dibaca sekali** sebelum diperbaiki (§55) |
+| Tandai tidak ditawarkan, simpan definisinya | **Dipilih** |
+
+**Alasannya.** Tiga dari lima **akan kembali** begitu kewenangan berbasis peran ada — di
+sistem lama dua operator bernama memang melihatnya. Menurunkan ulang penyaringnya nanti
+adalah kesempatan untuk salah lagi pada bacaan yang sudah pernah salah.
+
+**Yang membuat ini bukan kode mati.** Penyaring keempat daftar tersembunyi **tetap diuji**.
+Untuk itu `NewQuery` dipecah menjadi dua:
+
+| Fungsi | Perannya |
+|---|---|
+| `NewQuery` | menolak kode daftar yang tidak ditawarkan — pemeriksaan masukan pengguna |
+| `NewQueryForTab` | menyusun permintaan atas daftar yang sudah ditemukan pemanggil |
+
+Pemisahan itu berdiri sendiri, bukan kemudahan untuk uji: "menerjemahkan kode" dan
+"menyusun permintaan" memang dua hal, dan hanya yang pertama merupakan gerbang.
+
+### 59.2 `FindTab` menolak kode yang tidak ditawarkan
+
+**Keputusan.** Kode daftar tersembunyi diperlakukan **sama dengan kode yang tidak dikenal**.
+
+**Alasannya.** Kode itu dapat datang dari penanda buku peramban yang dibuat sebelum
+daftarnya ditarik. Melayaninya berarti menampilkan daftar yang sengaja tidak ditawarkan
+kepada orang yang kebetulan menyimpan alamatnya — yaitu menegakkan pembatasan hanya
+terhadap orang yang tidak tahu cara melewatinya.
+
+`FindAnyTab` disediakan untuk uji, perkakas, dan pemetaan warisan; lapisan transport tidak
+memakainya.
+
+### 59.3 Gate berbasis nama operator TIDAK ditiru
+
+**Keadaannya.** Tiga baris di Pega hanya tampil bagi dua operator bernama, dan namanya
+tertanam di dalam activity.
+
+**Keputusan.** Ketiganya tidak ditawarkan kepada siapa pun, sampai peran dari master data
+ada (`F-3`/`F-4`).
+
+**Jalan yang ditolak, dan kenapa.**
+
+| Jalan | Kenapa ditolak |
+|---|---|
+| Tiru gatenya, nama operator di kode | `D-15` melarangnya; dan nama orang di kode adalah persis utang yang modul ini sedang lunasi |
+| Tawarkan kepada semua orang | Memberi kepada semua apa yang di sistem lama dimiliki dua orang — pelonggaran kewenangan yang tidak diputuskan siapa pun |
+| Tidak ditawarkan kepada siapa pun | **Dipilih** — paling sedikit menyimpang sampai penggantinya ada |
+
+**Yang diterima sebagai akibat.** Kedua operator itu kehilangan tiga daftar yang di sistem
+lama mereka miliki. Itu selisih nyata, dan ia dicatat sebagai selisih terencana — bukan
+disembunyikan sebagai detail teknis.
+
+### 59.4 Alasan penyembunyian disimpan sebagai KONSTANTA, bukan komentar
+
+**Keputusan.** `HiddenManagerOnly` dan `HiddenNotOnScreen` sebagai konstanta, ditempelkan
+pada tiap daftar dan tiap baris pencacah.
+
+**Alasannya.** Alasan yang hidup di komentar akan tertinggal ketika penandanya berubah —
+seseorang menghapus `HiddenReason` sebuah daftar dan komentarnya tetap di sana, atau
+sebaliknya. Sebagai nilai, alasannya ikut terbaca di setiap tempat yang mendaftarnya,
+termasuk pada uji yang menuntut alasannya cocok.
+
+### 59.5 `//` disebut sebagai KORELASI, bukan mekanisme
+
+**Keadaannya.** Dua baris yang hilang tanpa syarat operator adalah dua baris yang langkah
+penyusunnya bernama blok `//`.
+
+**Keputusan.** Dicatat sebagai korelasi, dan §55 — yang menyimpulkan `//` bukan penanda
+nonaktif — **tidak dicabut**.
+
+**Alasannya.** Dua bukti tidak cukup untuk membalik sensus atas 952 pemakaian di 279
+activity. Yang dipakai sebagai dasar bukan penafsiran `//` melainkan **pengamatan**: layar
+sungguhan tidak menampilkan kedua baris itu.
+
+Di mana pembacaan rule dan pengamatan layar berselisih tentang *apa yang tampil*, pengamatan
+yang menang — dan pembacaannya dicatat sebagai belum terjelaskan, bukan dipaksa cocok.
+
+### 59.6 Dua pernyataan lama dikoreksi, dan koreksinya dijaga uji
+
+Penyembunyian membuat dua pernyataan yang sudah tertulis menjadi tidak benar:
+
+1. **"Satu daftar menyaring menurut pemanggil."** Daftar itu termasuk yang tidak
+   ditawarkan. Modul ini kini **tidak punya satu pun pembatas berbasis pengguna**.
+2. **"Pencarian cocok persis pada tiga daftar."** Ketiganya termasuk yang tidak ditawarkan.
+
+**Keputusan.** Keduanya dikoreksi di tempatnya **dan** dijaga uji yang akan **gagal ketika
+ketiga daftar itu kembali** — sehingga keterangan layarnya dihidupkan bersamaan, bukan
+tertinggal.
+
+Uji yang gagal saat sebuah fitur kembali adalah pengingat yang jauh lebih dapat diandalkan
+daripada catatan di dokumen.
+
+### 59.7 Uji yang memakai daftar tersembunyi sebagai jalan masuk ditulis ulang
+
+**Keadaannya.** Dua uji memeriksa nilai yang tersimpan, tetapi membuktikannya dengan
+mencari baris di daftar Checker.
+
+**Keputusan.** Keduanya membaca **nilai yang tersimpan** langsung.
+
+**Alasannya bukan sekadar membuatnya lulus.** Daftar Checker tidak ditawarkan; barisnya
+tetap masuk antreannya. Keduanya hal yang berbeda, dan yang diuji memang yang kedua —
+membuktikannya lewat daftar mencampurkan keduanya sejak awal.

@@ -563,6 +563,25 @@ export const MENU_ROUTES: Record<string, string> = {
   // menunya tanpa berhak tetap tidak melihat percakapan cabang lain — kecuali cabangnya
   // sendiri tidak dapat diturunkan, yang menjatuhkannya ke percakapan kantor pusat (`P-5`).
   InboxKomunikasiCabang: '/inbox-komunikasi-cabang',
+
+  // Inbox Salvage — `MENU_ID 71`, pengelolaan barang sisa klaim.
+  //
+  // Butirnya dibatasi `When/IsInboxSalvage-When.xml` di Pega; aturan itu BELUM ditegakkan
+  // (`TKT-F3-004`), dan yang menentukan siapa melihat butirnya sekarang adalah
+  // `M_OTORISASI_PNC` — sama seperti butir lain.
+  //
+  // Satu batas MEMANG sudah berlaku, dan ia bukan peran melainkan KEPEMILIKAN: daftar
+  // "Request Balai Lelang" hanya menampilkan pengajuan yang PIC-nya pemanggil sendiri,
+  // diturunkan di sisi peladen dari login. Kedua belas daftar lain bersama.
+  //
+  // Bedakan dari `MENU_ID 72` "Inbox Banding Harga Salvage" (`InboxRequestSalvage`), yang
+  // BELUM dipetakan: ia harness tersendiri dan belum dianalisis sama sekali. Menunjuk
+  // keduanya ke satu rute akan menyatukan dua layar yang di Pega memang terpisah.
+  //
+  // Layar ini melayani portal ASM. Portal Insurtech punya isi tersendiri di Pega
+  // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
+  // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
+  InboxSalvage: '/inbox-salvage',
 }
 
 /**
