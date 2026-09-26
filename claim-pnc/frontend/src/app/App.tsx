@@ -62,6 +62,8 @@ import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/Cl
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
+import { InboxPLADLAPreDLAPage } from '@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage'
+import { InboxPLADLAReasPage } from '@/modules/inbox-pla-dla/InboxPLADLAReasPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
@@ -1145,6 +1147,45 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SalvageInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox PLA, DLA, Pre DLA (`MENU_ID 44`), pengganti harness `InboxPLA_harness`.
+
+        Antrean pemberitahuan reasuransi yang sudah terbit tetapi BELUM dikirim, untuk
+        petugas internal. Tiga tab — PLA, DLA, Pre DLA — dan ketiganya BACA-SAJA: tombol
+        "Send", "Upload File Penunjang", dan "Print Pre DLA" belum dibangun (keputusan
+        Work Owner 2026-09-26).
+      */}
+      <Route
+        path="/inbox-pla-dla-pre-dla"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxPLADLAPreDLAPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox PLA DLA (`MENU_ID 45`), pengganti harness `InboxPLADLA`.
+
+        Rute TERSENDIRI dari yang di atasnya, dan itu bukan kerapian: pembacanya berbeda.
+        Layar ini milik MITRA REASURANSI — daftarnya disaring menurut kode reasuradur yang
+        dipetakan dari login pemanggil, dan petugas internal yang membukanya ditolak
+        dengan pesan yang menunjuk menu di atas.
+
+        Menunjuk kedua butir menu ke satu rute akan menyatukan dua layar yang penyaringnya
+        justru BERLAWANAN ARAH — yang satu dokumen belum terkirim, yang lain sudah.
+      */}
+      <Route
+        path="/inbox-pla-dla"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxPLADLAReasPage />
             </Protected>
           </SessionGuard>
         }

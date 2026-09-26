@@ -63,6 +63,10 @@ import (
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
+	"claim-pnc/internal/inboxpladla"
+	inboxpladlasql "claim-pnc/internal/inboxpladla/repo/sqlstore"
+	"claim-pnc/internal/inboxpladlapredla"
+	inboxpladlapredlasql "claim-pnc/internal/inboxpladlapredla/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
@@ -205,6 +209,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
+	checkPLADLAQueue(ctx, inboxpladlapredlasql.NewRepo(primary), print)
+	checkPLADLAReinsurer(ctx, inboxpladlasql.NewRepo(primary), print)
 	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
@@ -5027,4 +5033,161 @@ func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo,
 		return
 	}
 	print("  [ok]    lini bisnis %s: %s", login, line)
+}
+
+// checkPLADLAQueue menjalankan ketiga kueri daftar modul Inbox PLA, DLA, Pre DLA.
+//
+// # Kenapa KETIGANYA, bukan satu
+//
+// Karena ketiganya membaca TABEL YANG BERBEDA — `T_PLALIST`, `T_DLALIST`, dan
+// `T_PREDLALIST` — dan penyaringnya pun berbeda bentuk. Satu kueri yang berhasil tidak
+// menyatakan apa pun tentang dua lainnya, dan ketiga tabel itu tidak punya DDL di export
+// (`R-08`) sehingga nama kolomnya dibaca dari kueri Pega, bukan dari skema.
+//
+// Rentang tanggal ikut diuji pada satu daftar. Ia satu-satunya bagian yang memakai bind
+// bertipe tanggal, dan itu kelas galat yang hanya muncul di Oracle — bukan di uji yang
+// membaca teks SQL.
+func checkPLADLAQueue(
+	ctx context.Context,
+	repo *inboxpladlapredlasql.Repo,
+	print func(string, ...any),
+) {
+	caller := inboxpladlapredla.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxpladlapredla.Pagination{Page: 1, Size: 5}
+
+	sampleKey := ""
+	sampleTab := inboxpladlapredla.Tab{}
+	failed := false
+
+	for _, tab := range inboxpladlapredla.Tabs() {
+		query, err := inboxpladlapredla.NewQuery(
+			inboxpladlapredla.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat disusun: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Antrean %q tidak dapat dibaca: %v", tab.Name, err)
+			print("            Periksa POOLDATA.T_PLALIST, T_DLALIST, dan T_PREDLALIST.")
+			failed = true
+			continue
+		}
+
+		print("  [ok]    Antrean Inbox %s dapat dibaca (%d baris)", tab.Name, result.Total)
+
+		if sampleKey == "" && tab.HasDocuments() {
+			for _, row := range result.Items {
+				if row.ClaimKey != "" {
+					sampleKey = row.ClaimKey
+					sampleTab = tab
+					break
+				}
+			}
+		}
+	}
+
+	if failed {
+		return
+	}
+
+	// Rentang tanggal diuji TERPISAH, dan hanya sekali.
+	//
+	// Bentuk klausanya sama di ketiga kueri; yang diuji adalah apakah bind bertipe
+	// tanggal diterima Oracle sama sekali.
+	from := time.Now().AddDate(-1, 0, 0)
+	to := time.Now()
+	ranged, err := inboxpladlapredla.NewQuery(
+		inboxpladlapredla.QueryInput{Tab: inboxpladlapredla.DefaultTab,
+			From: &from, To: &to, Search: "PNC"},
+		caller)
+	if err != nil {
+		print("  [BELUM] Penyaring rentang tanggal tidak dapat disusun: %v", err)
+		return
+	}
+	if _, err := repo.List(ctx, ranged, page); err != nil {
+		print("  [BELUM] Penyaring rentang tanggal ditolak basis data: %v", err)
+		print("            Ia satu-satunya bind bertipe tanggal di modul ini.")
+		return
+	}
+	print("  [ok]    Penyaring rentang tanggal dan pencarian diterima basis data")
+
+	if sampleKey == "" {
+		print("  [catatan] Tidak ada baris contoh; grid rincian tidak diuji.")
+		return
+	}
+
+	if _, err := repo.Documents(ctx, sampleTab, sampleKey); err != nil {
+		print("  [BELUM] Grid rincian %q tidak dapat dibaca: %v", sampleTab.Name, err)
+		return
+	}
+	print("  [ok]    Grid rincian Inbox %s dapat dibaca", sampleTab.Name)
+}
+
+// checkPLADLAReinsurer menjalankan kueri modul Inbox PLA DLA — layar milik reasuradur.
+//
+// # Yang diuji di sini BERBEDA dari modul di atasnya
+//
+// Seluruh kuerinya menyaring lewat `POOLDATA.T_REINSURER.LOGIN`, sehingga yang dibuktikan
+// bukan hanya "kueri berjalan" melainkan juga "rantai reasuradurnya diterima". Login
+// pemeriksa TIDAK terdaftar sebagai mitra, dan itu memang yang diharapkan: daftarnya
+// menjawab nol baris, bukan galat.
+//
+// Nol baris di sini BUKAN tanda kegagalan. Yang gagal adalah kuerinya yang ditolak.
+func checkPLADLAReinsurer(
+	ctx context.Context,
+	repo *inboxpladlasql.Repo,
+	print func(string, ...any),
+) {
+	const login = "pemeriksa-kesiapan"
+
+	codes, err := repo.ReinsurerCodes(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.T_REINSURER tidak dapat dibaca: %v", err)
+		print("            Tanpa tabel itu, layar Inbox PLA DLA menolak setiap mitra.")
+		return
+	}
+	print("  [ok]    POOLDATA.T_REINSURER dapat dibaca (%d kode untuk login uji)",
+		len(codes))
+
+	// Kode contoh dipakai supaya kuerinya benar-benar dijalankan dengan penyaring yang
+	// terisi. Login pemeriksa tidak terdaftar, sehingga tanpa ini seluruh kueri berjalan
+	// dengan senarai kosong dan bagian penyaringnya tidak pernah teruji.
+	probe := codes
+	if len(probe) == 0 {
+		probe = []string{"PEMERIKSA"}
+	}
+
+	caller := inboxpladla.Caller{Login: login}
+	page := inboxpladla.Pagination{Page: 1, Size: 5}
+
+	for _, tab := range inboxpladla.Tabs() {
+		query, err := inboxpladla.NewQuery(
+			inboxpladla.QueryInput{Tab: tab.Code}, caller, probe)
+		if err != nil {
+			print("  [BELUM] Daftar reasuradur %q tidak dapat disusun: %v", tab.Name, err)
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Daftar reasuradur %q tidak dapat dibaca: %v", tab.Name, err)
+			continue
+		}
+		print("  [ok]    Daftar reasuradur %s dapat dibaca (%d baris)",
+			tab.Name, result.Total)
+
+		if _, err := repo.Counts(ctx, query); err != nil {
+			print("  [BELUM] Ringkasan status %q tidak dapat dihitung: %v", tab.Name, err)
+		}
+	}
+
+	if _, err := repo.XOL(ctx, login); err != nil {
+		print("  [BELUM] Ringkasan XOL tidak dapat dibaca: %v", err)
+		print("            Periksa POOLDATA.T_PLA_XOL dan T_DLA_XOL.")
+		return
+	}
+	print("  [ok]    Ringkasan XOL dapat dibaca")
 }

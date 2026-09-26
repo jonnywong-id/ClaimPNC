@@ -16626,3 +16626,196 @@ mencari baris di daftar Checker.
 **Alasannya bukan sekadar membuatnya lulus.** Daftar Checker tidak ditawarkan; barisnya
 tetap masuk antreannya. Keduanya hal yang berbeda, dan yang diuji memang yang kedua —
 membuktikannya lewat daftar mencampurkan keduanya sejak awal.
+
+## 60. Modul Inbox PLA, DLA, Pre DLA (`MENU_ID 44`) dan Inbox PLA DLA (`MENU_ID 45`) (2026-09-26)
+
+### 60.1 Dua modul, bukan satu — dan bukan pula satu rute untuk dua menu
+
+**Keputusan.** `MENU_ID 44` dan `MENU_ID 45` dibangun sebagai **dua paket Go dan dua modul
+frontend yang terpisah**, dengan rute yang berbeda.
+
+**Alasannya bukan kerapian.** Pembacanya berbeda dan penyaringnya berlawanan arah:
+
+| | `MENU_ID 44` | `MENU_ID 45` |
+|---|---|---|
+| Pembaca | petugas internal | mitra reasuransi |
+| Penyaring dokumen | `ISKIRIM IS NULL OR = '0'` | `ISKIRIM = '1'` |
+| Penyaring pemanggil | tidak ada | `T_REINSURER.LOGIN = <pemanggil>` |
+
+Pilihan "arahkan kedua butir menu ke satu layar" ditawarkan kepada Work Owner dan tidak
+dipilih. Bila ia dipilih, satu layar akan menampilkan gabungan dua antrean yang isinya
+justru saling meniadakan — dokumen yang sudah dikirim dan yang belum.
+
+**Konsekuensi yang diterima.** Kode tab `pla` dan `dla` ada di **kedua** modul dengan arti
+yang berlawanan. Keduanya karena itu tidak berbagi satu tipe `Tab`, dan perakitannya
+disatukan di satu berkas (`cmd/claimpnc/pladla.go`) supaya perbedaannya terbaca
+berdampingan — menukar handler-nya tidak menghasilkan satu pun galat, hanya layar yang
+menampilkan antrean salah kepada orang yang salah.
+
+### 60.2 Tombol "Send" TIDAK dibangun sebagian
+
+**Keputusan Work Owner 2026-09-26:** tombol "Send", "Upload File Penunjang", dan
+"Print Pre DLA" **tetap digambar** tetapi menjawab alasan mengapa belum dapat dijalankan.
+
+**Pilihan yang ditolak, dan mengapa.** `Activity/UpdateDetailPLA2-Act.xml` menjalankan
+empat hal berurutan:
+
+1. mengumpulkan lampiran dan MENGIRIM EMAIL ke reasuradur (`ASMSendsEmailAttachments`)
+2. memperbarui master reasuransi (`UpdateEmailReas` → `Database/UPDATEREAS.prc`)
+3. menyisipkan dokumennya (`InsertDokumenPLADLA`)
+4. menandai dokumen terkirim (`UpdatePLAList` → `ISKIRIM = '1'`)
+
+Hanya langkah 4 yang dapat dikerjakan hari ini. Mengerjakannya sendirian adalah pilihan
+**terburuk** dari ketiga opsi yang ditawarkan, dan alasannya disampaikan sebelum
+pertanyaan diajukan: `ISKIRIM` adalah **penyaring keanggotaan antrean**. Menandainya
+tanpa mengirim suratnya membuat barisnya HILANG dari antrean padahal tidak satu pun surat
+sampai ke reasuradur — dan tidak ada apa pun yang tersisa untuk memberi tahu siapa pun.
+
+Pilihan "sembunyikan tombolnya" juga ditolak: pengguna tidak akan tahu kemampuan itu ada
+di Pega dan sedang menunggu.
+
+**Jawaban HTTP-nya `501`, bukan `403` maupun `404`.** 403 menyatakan penggunanya tidak
+berwenang — padahal ia berwenang. 404 menyatakan alamatnya tidak ada, sehingga tombolnya
+terbaca sebagai kerusakan. 501 menyatakan yang sebenarnya.
+
+### 60.3 Ekspor Pre DLA MENGIKUTI penyaring layar — selisih yang disengaja
+
+**Keputusan Work Owner 2026-09-26.**
+
+`GetExportDataPreDLA` di Pega tidak menyaring apa pun: ia menarik seluruh isi
+`T_PREDLALIST` yang digabung `T_CLAIM_PNC`, mengabaikan Dari/Sampai/No Klaim yang sedang
+terisi di layar. Ekspor PLA dan DLA memakai rentang tanggalnya.
+
+Perilaku itu tidak dibawa, karena dua sebab yang berdiri sendiri:
+
+- `15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 melarang ekspor tanpa batas atas tabel berisi
+  puluhan juta baris.
+- Berkas yang isinya berbeda dari layar di atasnya lebih menyesatkan daripada berguna.
+
+Ia dinyatakan di `PlannedDifferences` dan digambar di kaki layar.
+
+### 60.4 Kolom "PIC Teknik" DITAMBAHKAN pada `MENU_ID 44`
+
+Ketiga kueri Pega mengambil `b.picteknik as BUSINESS_NAME`, tetapi tidak satu pun grid
+menggambarnya — ketiga grid hanya menggambar tujuh kolom, dan ini yang kedelapan.
+
+Ia digambar di sini. Antrean yang tidak menyebutkan penanggung jawabnya memaksa petugas
+membuka klaimnya satu per satu untuk tahu itu pekerjaan siapa.
+
+Penambahan kolom adalah selisih; ia dinyatakan, bukan disamarkan.
+
+### 60.5 Kebocoran XOL pada `MENU_ID 45` TIDAK dibawa
+
+**Ini keputusan yang paling berbobot di sesi ini.**
+
+`Activity/SetDataPLADLA-Act.xml` menetapkan `Local.loginreas` ke nama satu reasuradur
+tertentu — **satu kali, tidak pernah ditimpa** (diperiksa terhadap kedelapan kemunculannya
+di berkas itu) — lalu merangkainya ke dalam kueri grid "DATA PLA DLA XOL KLAIM".
+
+Akibatnya setiap mitra yang membuka layar itu melihat ringkasan XOL milik mitra lain.
+
+**Ia tidak ditiru.** Nilainya diturunkan dari login pemanggil, sama seperti ketiga kueri
+daftarnya. Dasarnya dua:
+
+- `D-15` melarang nilai bisnis ditulis tetap.
+- `P-5` menuntut kesetaraan perilaku, tetapi perilaku yang disetarakan di sini adalah
+  **memperlihatkan data satu pihak ketiga kepada pihak ketiga lain**. Itu bukan keanehan
+  yang layak ditiru.
+
+Selisihnya dinyatakan di `PlannedDifferences` DAN di keterangan kaki grid XOL, supaya
+mitra yang terbiasa melihat angka lama tahu mengapa angkanya berubah.
+
+### 60.6 Pemanggil yang bukan reasuradur DITOLAK, bukan dijawab daftar kosong
+
+Di Pega, petugas internal yang membuka `MENU_ID 45` melihat layar kosong tanpa satu pun
+keterangan — sama persis dengan yang dilihat mitra yang loginnya belum didaftarkan.
+
+Keduanya berarti hal yang **berbeda**, dan menempuh tindakan yang berbeda:
+
+| Keadaan | Yang harus dilakukan pengguna |
+|---|---|
+| terdaftar, belum ada klaim | menunggu |
+| tidak terdaftar | memakai menu lain, atau menghubungi administrator |
+
+Di sini yang kedua dijawab `403` dengan pesan yang **menunjuk menu yang benar**, dan
+penolakan itu menggantikan seluruh isi layar — bukan digambar sebagai galat di atas tabel
+kosong. Menggambar tabel, tombol ekspor, dan bilah tab di bawahnya hanya menawarkan
+hal-hal yang seluruhnya akan ditolak.
+
+### 60.7 Enam kejanggalan Pega yang DIBAWA, dan kenapa masing-masing
+
+| # | Kejanggalan | Kenapa dibawa |
+|---|---|---|
+| 1 | Tab Pre DLA disaring `NOAKSEP IS NULL`, bukan `ISKIRIM` | Ia **benar secara bisnis**: Pre-DLA memberitahukan nilai yang akan diaksep, sehingga ia kehilangan gunanya begitu akseptasinya terbit — bukan begitu suratnya terkirim |
+| 2 | Kolom tanggal advice kosong pada klaim yang seluruh dokumennya ber-`ISKIRIM='0'` | Memperbaikinya mengubah isi kolom pada sebagian baris tanpa ada yang memintanya |
+| 3 | `BRANCHNAME <> 'ASNET'` tanpa `OR IS NULL` | Memperbaikinya **MENAMBAH** baris ke antrean DLA |
+| 4 | Daftar Close disaring `T_PLALIST`, bukan `T_DLALIST` | Alasan bisnisnya tidak tertulis di mana pun; mengubahnya mengubah isi daftar |
+| 5 | Daftar Close memakai `IN` atas seluruh kode reasuradur; dua lainnya memakai `=` atas kode tertinggi | idem |
+| 6 | `Resolved-Rejected` tidak muncul di daftar mana pun pada `MENU_ID 45` | idem — dan akibatnya dicatat di `PlannedDifferences` supaya terlihat: klaim yang sudah dikirimi PLA lalu ditolak menghilang dari pandangan reasuradur |
+
+Keenamnya dijaga uji bernama, sehingga "perbaikan" yang tidak disengaja akan gagal di CI
+alih-alih lolos diam-diam.
+
+### 60.8 Penyaring opsional: penanda kehadiran SELALU bertipe teks
+
+Rentang tanggal dan kata kunci keduanya boleh kosong, dan satu kueri per tab melayani
+keempat kombinasinya lewat pola `(:n IS NULL OR …)` — pola yang sudah dipakai modul Inbox
+Close Claim dan Master Rekening.
+
+**Yang ditetapkan di sini:** penanda kehadirannya bertipe **teks**, tidak pernah bertipe
+tanggal. Bind yang HANYA muncul di dalam `IS NULL` tidak punya konteks tipe di dalam
+kueri, sehingga tipenya ditentukan driver — kelas galat yang hanya muncul saat kuerinya
+benar-benar dijalankan terhadap Oracle, bukan di uji yang membaca teks SQL.
+
+Bind bertipe tanggal karena itu selalu muncul di dalam perbandingan.
+`TestOnlyTextBindsAreTestedForNull` menjaganya.
+
+### 60.9 Batas atas rentang tanggal EKSKLUSIF, digeser di DOMAIN
+
+Pega memakai `trunc(a.tglpla) <= to_date(<sampai>)`. `TRUNC` pada kolom membuat index atas
+kolom itu tidak terpakai — pada tabel dokumen yang tumbuh terus, itu pemindaian penuh
+setiap kali panel pencarian dipakai.
+
+Di sini batas atasnya digeser satu hari dan dibandingkan dengan `<`. Keduanya memilih
+baris yang **sama persis**.
+
+Penggeserannya terjadi di **domain** (`NewQuery`), bukan di penyimpanan, dan itu
+disengaja: penyimpanan memori dan penyimpanan SQL karena itu menerima batas yang sudah
+sama. Lapisan transport mengembalikannya ke bentuk inklusif sebelum dikirim ke layar —
+tanpa itu, kotak "Sampai" bergeser satu hari setiap kali layar memuat ulang isinya dari
+jawaban.
+
+### 60.10 Tabel ringkas `MENU_ID 45` dihitung di basis data, bukan dari halaman
+
+Di Pega ia bukan kueri: ketiga kueri daftarnya tidak berpaginasi sama sekali, sehingga
+seluruh baris dimuat ke klipboard dan tabel ringkasnya dihitung dari senarai itu.
+
+Di sini daftarnya dipaginasi, sehingga menghitungnya dari halaman yang sedang tampil akan
+menghasilkan angka yang berubah setiap kali pengguna berpindah halaman. Ia dihitung di
+basis data, atas penyaring yang **sama persis** dengan daftarnya — dan keduanya disusun
+lewat satu fungsi (`Service.prepare`) supaya tidak dapat berselisih.
+
+Bagan batang di sebelahnya **tidak dibawa**: ia menggambarkan hal yang sama dengan tabel
+di sebelahnya, pada daftar yang biasanya berisi kurang dari sepuluh status.
+
+### 60.11 Grid rincian `MENU_ID 44` menjadi panel, bukan grid kedua yang selalu tergambar
+
+Di Pega ia grid kedua yang selalu ada di bawah antrean, kosong sampai satu baris dipilih.
+
+Di sini ia panel yang terbuka atas permintaan. Alasannya bukan selera: gridnya menembak
+satu kueri per klaim, dan grid yang selalu tergambar akan menembaknya setiap kali halaman
+berpindah meski tidak ada yang membukanya. Alur kerjanya tidak berubah.
+
+Panelnya **ditutup saat pengguna berpindah tab**: klaim yang sama punya grid rincian yang
+berbeda di tab PLA dan tab DLA — tabel yang dibacanya pun berbeda.
+
+### 60.12 Perakitan di berkas tersendiri, dan satu galat lama yang tidak disentuh
+
+`cmd/claimpnc/pladla.go` merakit keduanya, mengikuti preseden `modules.go`. `main.go`
+sudah 6.700 baris sementara `docs/Steering/07` §2 aturan 3 menyebut ~400 baris sebagai
+tanda perlu dipecah.
+
+Saat menyambungkannya, ditemukan bahwa galat dari `buildExtraServices` **tidak pernah
+diperiksa** di `main.go` — ia ditimpa deklarasi pada baris berikutnya. Ia tidak diperbaiki
+pada sesi ini; alasannya dicatat di `catatan-pengembangan.md` §61.9. Perakitan yang
+ditambahkan sesi ini memeriksa galatnya.

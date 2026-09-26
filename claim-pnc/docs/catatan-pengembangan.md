@@ -19734,3 +19734,174 @@ lagi dijalankan.
 | `tsc --noEmit`, disaring ke modul ini | **bersih** |
 | `go vet` | bersih |
 | `PENYIMPANAN=oracle -periksa` | **9 baris** pencacah |
+
+## 61. Sesi kedua puluh enam — modul Inbox PLA, DLA, Pre DLA dan Inbox PLA DLA (2026-09-26)
+
+### 61.1 Yang diminta, dan apa yang berubah setelah ditanyakan
+
+Permintaan awalnya satu layar: **Inbox PLA, DLA, Pre DLA**, dengan
+`Harness/InboxPLA_harness-Harness.xml` sebagai acuan.
+
+Pembacaan master menemukan hal yang mengubah lingkupnya. `Database/m_menu_aplikasi_pnc.csv`
+memuat **DUA butir bersebelahan** yang judulnya hampir sama:
+
+| `MENU_ID` | `MENU_DESC` | `MENU_PROGRAM` |
+|---|---|---|
+| 44 | Inbox PLA, DLA, Pre DLA | `InboxPLA_harness` |
+| 45 | Inbox PLA DLA | `InboxPLADLA` |
+
+Keduanya harness terpisah, dan yang kedua berukuran 1,6 MiB serta belum pernah dibaca.
+Pertanyaannya diajukan, dan **Work Owner memilih membangun keduanya**.
+
+### 61.2 Tiga pertanyaan konfirmasi dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Tombol "Send" menjalankan empat hal sekaligus — kirim email + lampiran, `UPDATEREAS`, sisip dokumen, lalu tandai `ISKIRIM='1'`. Tiga yang pertama menembak sistem di luar basis data. Bagaimana perlakuannya? | **Tolak dengan alasan.** Tombolnya tetap digambar tetapi menjawab sebabnya |
+| 2 | Ekspor tab Pre DLA di Pega tidak memakai penyaring sama sekali — ia menarik seluruh `T_PREDLALIST`. Ikut penyaring layar, atau tiru apa adanya? | **Ikut penyaring layar** |
+| 3 | `MENU_ID 44` saja, atau keduanya? | **Keduanya sekaligus** |
+
+Keberatan atas opsi "tandai terkirim tanpa email" disampaikan sebelum pertanyaan diajukan,
+dan alasannya dicatat di `keputusan-implementasi.md` §60.2.
+
+### 61.3 Kedua layar itu BUKAN dua versi dari satu hal
+
+Ini temuan yang menentukan bentuk keduanya, dan ia tidak terlihat dari judul menunya:
+
+| | `MENU_ID 44` | `MENU_ID 45` |
+|---|---|---|
+| Pembaca | petugas **internal** | **reasuradur** |
+| Isi | dokumen yang **BELUM** dikirim | dokumen yang **SUDAH** dikirim kepadanya |
+| Penyaring dokumen | `ISKIRIM IS NULL OR = '0'` | `ISKIRIM = '1'` |
+| Penyaring pemanggil | tidak ada — daftarnya bersama | `T_REINSURER.LOGIN = <pemanggil>` |
+| Tab | PLA · DLA · Pre DLA | PLA · DLA · Close |
+
+Penyaringnya **berlawanan arah**. Menunjuk kedua butir menu ke satu rute — pilihan ketiga
+pada pertanyaan nomor 3 — akan menggabungkan dua antrean yang isinya justru saling
+meniadakan.
+
+### 61.4 Enam kejanggalan Pega yang sengaja DIBAWA
+
+Seluruhnya `P-5`, dan masing-masing dijaga satu uji supaya tidak "diperbaiki" tanpa
+sengaja:
+
+| # | Kejanggalan | Bukti | Uji yang menjaganya |
+|---|---|---|---|
+| 1 | Tab Pre DLA disaring `NOAKSEP IS NULL`, **bukan** `ISKIRIM` | `GetPNCList_PreDLA-SQL.xml` | `TestPreDLAListFiltersOnAcceptanceNumberNotOnSentFlag` |
+| 2 | Kolom tanggal advice menyaring `ISKIRIM IS NULL` saja, sementara keanggotaan barisnya menerima `'0'` sehingga baris muncul dengan tanggal KOSONG | sub-kueri vs `EXISTS` pada kueri yang sama | `TestAnAdviceMarkedZeroAppearsButLeavesTheDateColumnEmpty` |
+| 3 | Tab DLA mengecualikan `BRANCHNAME <> 'ASNET'` **tanpa** `OR IS NULL`, sehingga klaim bercabang kosong ikut tersaring keluar | `GetPNCList_DLA-SQL.xml` | `TestAClaimWithAnEmptyBranchIsAlsoExcludedFromTheDLAList` |
+| 4 | Daftar Close (`MENU_ID 45`) disaring `T_PLALIST`, **bukan** `T_DLALIST` — meski ia daftar klaim selesai | `GetPNCList_PLADLAClose-SQL.xml` | `TestTheCloseListIsFilteredByPLANotByDLA` |
+| 5 | Daftar Close memakai `reinscode IN (…)`; dua daftar lain memakai `= (… FETCH 1)` | ketiga kueri | `TestOnlyTheCloseListMatchesEveryReinsurerCodeOfTheLogin` |
+| 6 | `Resolved-Rejected` tidak muncul di daftar mana pun pada `MENU_ID 45` | ketiga kueri | `TestARejectedClaimDisappearsFromEveryList` |
+
+Kejanggalan nomor 5 hanya dapat dibuktikan lewat login yang punya **dua** kode reasuradur.
+Data contoh penyimpanan memori karena itu memuat `REASGANDA` dengan `R900` dan `R901`, dan
+satu klaim yang PLA-nya dikirim ke kode yang **lebih rendah**.
+
+### 61.5 Satu cacat yang TIDAK dibawa, dan ia kebocoran data
+
+`Activity/SetDataPLADLA-Act.xml` menetapkan `Local.loginreas` ke nama satu reasuradur
+tertentu. Nilai itu diberikan **tepat satu kali** dan tidak pernah ditimpa — diperiksa
+dengan menelusuri kedelapan kemunculan `loginreas` di berkas itu. Ia lalu dirangkai ke
+dalam kueri grid "DATA PLA DLA XOL KLAIM".
+
+Akibatnya **setiap reasuradur yang membuka layar itu melihat ringkasan XOL milik satu
+mitra tertentu**, bukan miliknya. Itu memperlihatkan data satu pihak ketiga kepada pihak
+ketiga lain.
+
+Ia tidak dibawa. Di sistem baru nilainya diturunkan dari login pemanggil, sama seperti
+ketiga kueri daftarnya, sejalan dengan `D-15`. Selisihnya dinyatakan di layar lewat
+`PlannedDifferences` dan lewat keterangan di kaki grid XOL — bukan disamarkan.
+
+### 61.6 Apa yang dibangun
+
+Backend — dua paket:
+
+```
+internal/inboxpladlapredla/            MENU_ID 44
+  inboxpladlapredla.go  tab.go  query.go  errors.go
+  usecase/list.go
+  repo/memory/{memory,sample,memory_test}.go
+  repo/sqlstore/{inboxpladlapredla.go,inboxpladlapredla.sql,query.go,query_test.go}
+  http/{dto,errors,handler,routes,export}.go
+  inboxpladlapredla_test.go
+
+internal/inboxpladla/                  MENU_ID 45
+  (susunan yang sama)
+```
+
+Perakitan: `cmd/claimpnc/pladla.go` — berkas tersendiri, mengikuti preseden `modules.go`.
+Yang tinggal di `main.go` hanya dua field dan empat titik panggil.
+
+Frontend — dua modul:
+
+```
+src/modules/inbox-pla-dla-pre-dla/  types · api · pesan · SearchPanel · DocumentPanel · page · test
+src/modules/inbox-pla-dla/          types · api · pesan · StatusSummary · XOLPanel · page · test
+src/components/TabBar.tsx           komponen BERSAMA yang baru
+```
+
+### 61.7 Satu komponen bersama yang baru
+
+`components/TabBar.tsx` dipakai kedua layar. `SalvageTabs` pada modul Inbox Salvage
+mendahuluinya dan **tidak diubah**: modul itu sudah selesai, dan menyatukan keduanya
+sekarang berarti menyentuh layar yang tidak sedang dikerjakan.
+
+### 61.8 Empat perbedaan teknis terhadap Pega yang bukan soal tampilan
+
+| Hal | Pega | Di sini | Sebabnya |
+|---|---|---|---|
+| Paginasi | `MENU_ID 45` memuat SELURUH baris ke memori; `MENU_ID 44` menyisipkan batas baris sebagai **teks** lewat `{ASIS:Pagination.FirstRow}` | `OFFSET … FETCH NEXT` di basis data | `15-NFR` §3.2 |
+| Rentang tanggal | `trunc(a.tglpla) <= to_date(…)` | `>= :dari AND < :sampai+1hari` | `TRUNC` pada kolom mematikan index |
+| Jumlah baris | kueri penghitung **terpisah** (`CountPNCList_*`) | `COUNT(*) OVER ()` | dua tempat untuk satu penyaring |
+| Tanggal di `MENU_ID 45` | `to_char(...,'dd/mm/yyyy')` | kolom tanggal apa adanya | pengurutan teks; `09-DATABASE` §3.2 |
+
+Penyaring opsional memakai pola `(:n IS NULL OR …)`, dan **penanda kehadirannya selalu
+bertipe teks** — tidak pernah bertipe tanggal. Bind yang hanya muncul di dalam `IS NULL`
+tidak punya konteks tipe di dalam kueri, sehingga tipenya ditentukan driver; itu kelas
+galat yang hanya muncul di Oracle. Uji `TestOnlyTextBindsAreTestedForNull` menjaganya.
+
+### 61.9 Satu cacat lama yang DITEMUKAN tetapi tidak disentuh
+
+Pada `cmd/claimpnc/main.go`, galat dari `buildExtraServices` **tidak pernah diperiksa** —
+ia ditimpa deklarasi pada baris berikutnya (`workshopService, err := …`). Bila salah satu
+dari sebelas layanan itu gagal dirakit, aplikasi menyala dengan layanan bernilai nil dan
+baru panik pada permintaan pertama, alih-alih menolak menyala.
+
+Ia **tidak diperbaiki** pada sesi ini: memperbaikinya mengubah perilaku start aplikasi di
+luar lingkup yang diminta, dan bila galatnya memang sedang tidak nil hari ini, perubahan
+itu berisiko menghentikan aplikasi karena sebab yang tidak berhubungan dengan pekerjaan
+ini. Diserahkan ke Work Owner sebagai temuan.
+
+Perakitan yang ditambahkan sesi ini (`buildPLADLAServices`) **memeriksa galatnya**.
+
+### 61.10 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | **seluruhnya lulus** |
+| `tsc --noEmit` | bersih |
+| `vitest run` | **1.135 lulus, 68 berkas** |
+| `vitest run src/modules/inbox-pla-dla*` | **20 lulus** |
+
+Uji baru: **paket Go** — 14 uji domain dan 13 uji SQL serta 17 uji memori pada
+`MENU_ID 44`; 14 uji domain dan 17 uji SQL serta 15 uji memori pada `MENU_ID 45` — dan
+**20 uji frontend**.
+
+### 61.11 Yang BELUM dapat dibuktikan
+
+Kedua modul belum pernah dijalankan terhadap Oracle. Dua fungsi pemeriksa ditambahkan ke
+`cmd/claimpnc/check.go` — `checkPLADLAQueue` dan `checkPLADLAReinsurer` — dan keduanya
+menjalankan setiap kueri, termasuk penyaring rentang tanggal yang merupakan satu-satunya
+bind bertipe tanggal di modul ini.
+
+Perintahnya:
+
+```
+PENYIMPANAN=oracle ./claimpnc.exe -periksa
+```
+
+Sampai itu dijalankan, yang terbukti hanyalah bahwa teks SQL-nya konsisten dengan kode Go
+— bukan bahwa ia diterima Oracle.

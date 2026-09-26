@@ -8446,3 +8446,102 @@ jauh lebih dapat diandalkan daripada catatan di dokumen.
 **Dan dua uji lama menguat karenanya.** Keduanya memeriksa nilai yang tersimpan tetapi
 membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
 ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
+
+## Sesi 2026-09-26 (lanjutan) — modul Inbox PLA, DLA, Pre DLA dan Inbox PLA DLA
+
+### Skill yang dipakai
+
+| Skill | Kapan | Alasan memakainya |
+|---|---|---|
+| `mattpocock-skills:grilling` | Sebelum satu baris kode ditulis | Permintaan menyebut SATU layar, dan pembacaan master menemukan DUA butir menu yang judulnya hampir sama. Tiga keputusan yang jawabannya mengubah isi pekerjaan diangkat sebagai pertanyaan berpilihan, bukan diputuskan sendiri |
+| `mattpocock-skills:codebase-design` | Saat menetapkan batas kedua modul dan letak seam-nya | Pertanyaan pokoknya "satu modul atau dua" tidak dapat dijawab dari kemiripan nama; ia dijawab dari siapa pemakainya dan apa yang bervariasi |
+| `mattpocock-skills:domain-modeling` | Saat menamai kolom | Dua puluh alias Pega di kedua layar ini tidak menyatakan isinya, dan empat menyatakan hal yang SALAH |
+
+### `grilling` — tiga pertanyaan, dan satu yang mengubah lingkup
+
+**Waktu:** sebelum implementasi, setelah pembacaan export selesai.
+
+**Keluaran:** tiga pertanyaan berpilihan, seluruhnya dijawab Work Owner.
+
+Yang paling berdampak adalah pertanyaan ketiga. Ia tidak ada dalam permintaan, dan hanya
+muncul karena disiplin skill ini menuntut premis diperiksa lebih dulu: permintaan menyebut
+"modul Inbox PLA, DLA, Pre DLA", dan `Database/m_menu_aplikasi_pnc.csv` ternyata memuat
+dua butir bersebelahan — `MENU_ID 44` dan `MENU_ID 45` — dengan harness yang berbeda.
+
+Jawabannya "keduanya sekaligus", dan lingkup sesi ini menjadi dua kali lipat.
+
+**Manfaat yang terukur.** Tanpa pertanyaan itu, `MENU_ID 45` akan tetap tidak terpetakan —
+atau lebih buruk, kelak diarahkan ke layar yang penyaringnya justru berlawanan arah.
+
+Pertanyaan pertama menyertakan **keberatan beserta alasannya** sebelum pilihannya
+disajikan: opsi "tandai terkirim tanpa mengirim email" dinyatakan berbahaya di deskripsi
+opsinya sendiri, karena `ISKIRIM` adalah penyaring keanggotaan antrean. Work Owner memilih
+opsi yang direkomendasikan.
+
+### `codebase-design` — "satu adapter berarti seam hipotetis"
+
+**Waktu:** saat memutuskan bentuk kedua modul.
+
+Prinsip yang dipakai adalah **uji deletion** dan **apa yang benar-benar bervariasi**:
+
+- Keduanya TIDAK disatukan, meski kolomnya mirip dan namanya hampir sama. Yang bervariasi
+  bukan kolom melainkan **pembacanya** — dan penyaringnya berlawanan arah.
+- Seam `Repo` pada masing-masing punya **dua pengisi nyata** (SQL dan memori), sehingga ia
+  seam sungguhan, bukan abstraksi hipotetis.
+- `Repo.ReinsurerCodes` dipisah dari `Repo.List` karena keduanya menjawab pertanyaan yang
+  berbeda: "apakah pemanggil ini mitra" versus "apa isi daftarnya". Menyatukannya membuat
+  "bukan mitra" tidak dapat dibedakan dari "belum ada pekerjaan".
+- `Query.EffectiveReinsurerCodes` memusatkan perbedaan `IN` versus `=` di SATU tempat,
+  alih-alih membiarkannya tersembunyi di tiga teks SQL.
+
+**Keputusan teknis yang lahir darinya:** perakitan kedua modul ditaruh di satu berkas
+(`pladla.go`) justru KARENA modulnya terpisah — menukar handler-nya tidak menghasilkan
+galat, hanya layar yang salah untuk orang yang salah, dan merakitnya berdampingan membuat
+perbedaannya terbaca.
+
+### `domain-modeling` — dua puluh alias yang tidak dibawa
+
+**Waktu:** saat menyusun `Row`, `Document`, dan senarai kolom.
+
+Metodenya: setiap alias Pega disilangkan dengan kolom yang benar-benar dibacanya di SQL,
+lalu dinamai menurut **isinya**.
+
+Empat yang menyatakan hal yang salah, dan seluruhnya akan menampilkan kolom keliru tanpa
+satu pun galat bila disalin:
+
+| Alias | Artinya di modul lain | Artinya DI SINI |
+|---|---|---|
+| `"TSI"` | nilai pertanggungan | kunci objek kerja Pega |
+| `"POLICY_NO"` (grid rincian) | nomor polis | tanggal terima dokumen |
+| `"BRANCH_NAME"` / `"BRANCH_CODE"` | nama/kode cabang | kunci klaim / nomor klaim |
+| `"CURRENCY"` | mata uang | tipe dokumen, atau tanggal kejadian |
+
+**Manfaat yang terukur:** pemetaannya ditulis satu kali di kepala berkas `.sql` dan di
+`peta-penamaan.md`, dan diuji lewat `TestAliasOrderInSQLMatchesTheListsInGo` — satu kolom
+yang tersisip di tengah akan menggeser seluruh isi baris tanpa galat, dan uji itulah yang
+menangkapnya.
+
+### Skill yang TIDAK dipakai, dan alasannya
+
+| Skill | Alasan |
+|---|---|
+| `tdd` | Uji ditulis setelah bentuk seam-nya jelas, bukan mendahuluinya. Pada modul yang bentuknya diturunkan dari membaca export, uji yang ditulis lebih dulu akan menguji bentuk yang belum terbukti benar |
+| `prototype` | Tidak ada pertanyaan desain yang membutuhkan prototipe; seluruh pertanyaan terjawab dengan membaca export dan bertanya ke Work Owner |
+| `research` | Seluruh fakta ada di dalam repository. Tidak satu pun klaim di sesi ini bersumber dari luar |
+| `diagnosing-bugs` | Tidak ada cacat yang sedang didiagnosis. Cacat Pega yang ditemukan dicatat sebagai temuan, bukan didiagnosis |
+
+### Kesalahan sendiri pada sesi ini
+
+Satu, dan ia tertangkap uji sendiri sebelum sampai ke mana pun.
+
+**Grid XOL ditembak meski pemanggilnya sudah ditolak.** Penjagaannya semula ditulis
+`!ditolak && !list.isError` — memeriksa "belum ada galat" alih-alih menunggu keberhasilan.
+Keduanya berangkat bersamaan pada render pertama, ketika galat daftarnya belum tiba,
+sehingga pemanggil yang bukan mitra terdaftar menerima DUA penolakan untuk satu sebab.
+
+Uji `tidak menembak grid XOL ketika pemanggilnya sudah ditolak` gagal, dan penjagaannya
+diperbaiki menjadi `list.isSuccess`.
+
+Pelajaran yang sama dengan yang tercatat pada sesi sebelumnya: **penjagaan yang memeriksa
+ketiadaan galat bukan penjagaan** — pada render pertama, ketiadaan galat dan keberhasilan
+terlihat sama.

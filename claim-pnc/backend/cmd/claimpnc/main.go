@@ -1921,6 +1921,19 @@ func run() error {
 				); err != nil {
 					panic(fmt.Errorf("modul tambahan gagal dipasang: %w", err))
 				}
+
+				// Kedua modul pemberitahuan reasuransi, dirakit di pladla.go.
+				//
+				// `MENU_ID 44` memuat nama tertanggung dan nomor polis; `MENU_ID 45`
+				// memuat keduanya DAN dibaca pihak luar — mitra reasuransi. Rute
+				// keduanya menuntut portal karena alasan yang sama dengan modul inbox
+				// lain, ditambah satu yang khas pada yang kedua: permintaan yang jatuh
+				// ke koneksi bawaan tidak sekadar menampilkan data entitas lain kepada
+				// petugas sendiri — ia menampilkannya kepada mitra (`R-20`).
+				mountPLADLA(
+					protected, assembly.pladla, activePortalDeps,
+					writeJSON, writePortalAwareError, logger,
+				)
 				// Modul Komite memasang tiga kelompok rute sekaligus: master ambang di
 				// bawah master/, perhitungan penjenjangan di bawah komite/, dan Inbox
 				// Komite di bawah komite/inbox.
@@ -2250,6 +2263,10 @@ type assembly struct {
 	// extra memegang sepuluh modul yang perakitannya ada di modules.go. Ia satu field,
 	// bukan sebelas, supaya berkas ini tidak ikut tumbuh setiap kali satu modul dirakit.
 	extra extraServices
+
+	// pladla memegang kedua modul pemberitahuan reasuransi — `MENU_ID 44` Inbox PLA,
+	// DLA, Pre DLA dan `MENU_ID 45` Inbox PLA DLA. Perakitannya ada di pladla.go.
+	pladla pladlaServices
 	// inboxAutoClaim memakai pemilih repo per portal, sama seperti masterStatusProgres:
 	// POOLDATA.TMP_BATCH_AUTO_CLAIM ada di basis data SETIAP entitas (ADR-0030).
 	inboxAutoClaim *inboxautoclaimusecase.Service
@@ -2700,6 +2717,10 @@ type storage struct {
 
 	// extra memegang pemilih penyimpanan sepuluh modul yang dirakit di modules.go.
 	extra extraSelectors
+
+	// pladla memegang pemilih penyimpanan kedua modul pemberitahuan reasuransi —
+	// `MENU_ID 44` dan `MENU_ID 45` — yang dirakit di pladla.go.
+	pladla pladlaSelectors
 	// autoClaimSelector memilih penyimpanan Inbox Auto Claim milik satu portal.
 	//
 	// Alasannya sama dengan progressStatusSelector: tabelnya ada di basis data SETIAP
@@ -3152,6 +3173,12 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	pladlaService, err := buildPLADLAServices(store, logger)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	extra, err := buildExtraServices(store, logger)
 	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
 		RepoSelector: store.workshopSelector,
@@ -3543,6 +3570,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterMasking:             maskingService,
 		menu:                      menuService,
 		extra:                     extra,
+		pladla:                    pladlaService,
 		readyAliases:              store.readyAliases,
 		close:                     store.close,
 		komite:                    komiteService,
@@ -4301,6 +4329,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Kesepuluh modul yang perakitannya ada di modules.go memakai kolam koneksi yang
 		// sama, dengan jaminan yang sama pula.
 		setExtraOracleSelectors(pool, &store)
+		setPLADLAOracleSelectors(pool, &store)
 		store.inboxXOLSelector = func(alias string) (inboxxol.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -4599,6 +4628,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Oracle: bahwa "hapus" hanya menonaktifkan, dan bahwa sub modul boleh kosong.
 		store.maskingSelector = maskingSelectorMemory(cfg.PrimaryPortal)
 		setExtraMemorySelectors(cfg.PrimaryPortal, &store)
+		setPLADLAMemorySelectors(cfg.PrimaryPortal, &store)
 		store.claimReportBranch = inboxlaporanklaimmemory.NewBranchResolver(
 			inboxlaporanklaimmemory.SampleBranchOfLogin())
 
