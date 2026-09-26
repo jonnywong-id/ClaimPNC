@@ -18731,3 +18731,196 @@ Saya mengoreksinya sebelum melaporkan, tetapi ia dicatat: membaca satu nilai kon
 membaca fungsi yang memakainya adalah cara yang sama dengan membaca nama kolom tanpa membaca
 kuerinya.
 
+
+---
+
+## 55. Modul Laporan Hasil AI (`MENU_ID 82`) dibangun (2026-09-26)
+
+### 55.1 Apa yang diminta
+
+*"lanjutkan untuk penambahan modul Laporan Hasil AI — cek secara penuh aplikasi existing
+pada dokumen `Harness/Har_LaporanHasilAI-Harness.xml` jadikan ini sebagai referensi."*
+
+### 55.2 Artefak Pega yang dibaca sebelum satu baris kode ditulis
+
+Harness-nya sendiri tidak memuat isi layar; ia hanya kerangka. Yang benar-benar
+menentukan bentuk modul ini adalah lima artefak lain, dan keenamnya dibaca utuh:
+
+| Artefak | Yang didapat darinya |
+|---|---|
+| `Harness/Har_LaporanHasilAI-Harness.xml` | judul layar, daftar rule yang dirujuk, nama section |
+| `Section/SecLaporanHasilAI-Section.xml` | 2 isian tanggal · 2 tombol · 2 grid · 10 kolom rincian · 4 kolom ringkasan |
+| `Activity/SearchDataLaporanAI-Act.xml` | penyaring, pencacah, definisi CSV — **pengisi grid sekaligus pembuat berkas** |
+| `RDB List/CountAIDiterima_SQL-SQL.xml` | kuerinya, beserta `pyMemo = "work in progress"` |
+| `Database/INSERTDATAAIKLAIMPNC.prc` | daftar kolom `POOLDATA.T_CLAIM_DATA_RESULTS_AI` |
+| `RDB List/GetKomitePAditerima-SQL.xml` | bukti kelima kolom yang hilang MEMANG ada di tabel yang sama |
+
+### 55.3 Temuan yang mengubah bentuk pekerjaan: kuerinya tertinggal dari layarnya
+
+Grid menggambar **sepuluh** kolom. Kuerinya hanya menyediakan **lima** di antaranya.
+
+| kolom grid | properti yang dibaca | diisi kueri? |
+|---|---|---|
+| No Klaim | `.ClaimID` | ya |
+| Object Name | `.ObjectName` | **TIDAK** |
+| Komite Status | `.KomiteAccepted` | ya |
+| Tanggal Komite | `.TanggalComitee` | ya |
+| AI Status | `.ResultAI` | ya |
+| Tanggal AI | `.TanggalAI` | ya |
+| Note AI Terima | `.Notes` | **TIDAK** |
+| Note AI Tolak | `.NoteAkseptasi` | **TIDAK** |
+| Coverage Final | `.COVERAGE_AI_FINAL` | **TIDAK** |
+| Kategori Kronologi | `.KATEGORI_KRONOLOGI` | **TIDAK** |
+
+Dua di antaranya **nyaris** terisi: kueri memilih `NOTETERIMA AS "NoteAITerima"` dan
+`NOTETOLAK AS "NoteAITolak"`, sementara grid membaca `.Notes` dan `.NoteAkseptasi` — nama
+yang berbeda, sehingga nilainya tidak pernah sampai.
+
+Definisi CSV pada activity yang sama justru menyebut **kesepuluhnya**
+(`CSVPropHeaders`/`CSVProperties`), yang membuktikan kesepuluh kolom itu memang dimaksudkan.
+Ditambah `pyMemo = "work in progress"` pada kuerinya, kesimpulannya: **layar ini belum
+selesai di Pega**, bukan salah baca kami.
+
+### 55.4 Empat pertanyaan yang diajukan, dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Lima kolom kosong — diisi dari sumber yang benar, atau replikasi apa adanya? | **Replikasi apa adanya** |
+| 2 | Label "Tgl Input" yang sebenarnya menyaring `TANGGALKOMITE` | **Label lama apa adanya**, tanpa keterangan |
+| 3 | "No Klaim" kosong pada jenjang komite kedua ke atas | **Tiru** |
+| 4 | "Total" ringkasan = Diterima + Ditolak, bukan jumlah baris | **Tiru + tambah kolom "Menunggu"** |
+
+Rekomendasi saya berbeda pada nomor 1, 2, dan 3. Keputusan Work Owner dihormati dan
+diterapkan apa adanya; alasan setiap rekomendasi tetap tercatat di
+`keputusan-implementasi.md` §55 supaya dapat ditinjau ulang bila kelak berubah.
+
+### 55.5 Perilaku yang berhasil diekstraksi dari activity
+
+Ketiganya tidak terbaca dari harness maupun section — hanya dari `PropertiesName`/
+`PropertiesValue` dan `pyStepsPreCondParamsWhen` pada `SearchDataLaporanAI`:
+
+**Penyaringnya.** Kedua isian disusun menjadi klausa teks, lalu ditempel ke kueri:
+
+```
+TempDatalaporanAI.NoteAITerima :=
+  " AND trunc(TANGGALKOMITE) >= to_date('"+Local.awal+"','dd/mm/yyyy')
+    and trunc(TANGGALKOMITE) <= to_date('"+Local.akhir+"','dd/mm/yyyy')"
+```
+
+Yang disaring `TANGGALKOMITE`, bukan tanggal input. Dan ia pola `{Asis:…}` — celah injeksi
+yang **tidak dibawa**.
+
+**Pencacahnya.** Enam precondition, dan keenamnya persis:
+
+```
+.ResultAI=="DITERIMA"   .ResultAI=="DITOLAK"   .ResultAI==""
+.KOMITESTATUS=="1"      .KOMITESTATUS=="2"     .KOMITESTATUS!="1" && !="2"
+```
+
+**Ringkasannya.** Dua baris, ditambahkan Komite lebih dulu lalu AI, dengan
+`Total := terima + tolak` — sehingga yang menunggu **tidak** ikut.
+
+### 55.6 Kedua tombol memanggil activity yang SAMA
+
+`pyActionAPI` pada tombol "Export To Excel" berbunyi `pyActivity = SearchDataLaporanAI`,
+`pyAction = openUrlInWindow`, `flagss = 2` — identik dengan tombol "Cari Data", hanya dibuka
+di jendela baru sehingga jawabannya terunduh.
+
+Di sistem baru keduanya dipisah menjadi dua rute karena bentuk keluarannya memang dua hal
+berbeda (JSON dan CSV), tetapi penyaring dan pembacaannya sama persis — dijaga uji
+`TestExportRejectsEmptyDatesToo`.
+
+### 55.7 Yang dibangun
+
+| Lapisan | Berkas |
+|---|---|
+| Domain | `internal/laporanhasilai/laporanhasilai.go` · `errors.go` |
+| Orkestrasi | `usecase/browse.go` |
+| Penyimpanan | `repo/sqlstore/laporanhasilai.{go,sql}` · `repo/memory/{memory,sample}.go` |
+| Transport | `http/{dto,errors,handler,export,routes}.go` |
+| Antarmuka | `modules/laporan-hasil-ai/{types.ts,api.ts,LaporanHasilAIPage.tsx}` |
+| Rute & menu | `app/App.tsx` · `app/menu/registry.ts` |
+| Perakitan | `cmd/claimpnc/main.go` — 7 titik sisip |
+
+Dua rute API baru:
+
+```
+GET /api/laporan-hasil-ai?dari=&sampai=&halaman=&ukuran=   → JSON: ringkasan + rincian
+GET /api/laporan-hasil-ai/ekspor?dari=&sampai=             → CSV 10 kolom
+```
+
+**Tanpa migrasi basis data.** Kedua tabelnya — `T_CLAIM_DATA_RESULTS_AI` dan
+`T_CLAIM_KOMITE_LIST` — sudah ada dan masih ditulis Pega; modul ini hanya membacanya
+(`P-1`).
+
+### 55.8 Pengujian
+
+| Lapisan | Jumlah |
+|---|---|
+| Domain | 13 uji |
+| Orkestrasi | 14 uji |
+| Kueri SQL | 15 uji |
+| HTTP | 14 uji |
+| Antarmuka | 11 uji |
+
+Seluruh suite backend (`go test ./...`) dan frontend (1.105 uji, 66 berkas) lulus.
+
+### 55.9 Kendala, dan bagaimana ditangani
+
+| Kendala | Penanganan |
+|---|---|
+| Nama rule RDB pada langkah `RDB-List` **tidak dapat dibaca** — `pyParamArray` kosong | Nama kueri dipulihkan dari teks XML activity; `CountAIDiterima_SQL` muncul 3× di sana |
+| Subkueri `IN (SELECT MAX(B.KOMITEKE) … )` memakai alias terluar di dalam dirinya | Diurai: ia setara `EXISTS(...) AND B.TANGGALKOMITE IS NOT NULL`. Ditulis sebagai EXISTS — himpunan baris sama persis |
+| Tipe `STATUSAPPROVE` belum diketahui (`R-08`) | Dibandingkan sebagai **teks** (`= '1'`), aman pada kolom NUMBER maupun VARCHAR2 di kedua basis data |
+| Urutan `KOMITE_ID, KOMITEKE` tidak unik | `OBJECTID, COVERAGEID` ditambahkan sebagai pemutus seri — tuntutan paginasi server, bukan perubahan hasil |
+| Binary `claimpnc.exe` sedang dipakai proses berjalan | Kompilasi diverifikasi ke nama sementara lalu dibersihkan; binary produksinya menunggu peladen dihentikan |
+
+### 55.10 Satu hal yang ditemukan tetapi TIDAK disentuh
+
+`src/modules/inbox-komunikasi-cabang/KomunikasiCabangPage.test.tsx` memunculkan dua galat
+React saat suite dijalankan. Seluruh 1.105 uji tetap lulus, dan modul itu di luar lingkup
+tugas ini — dicatat, bukan diperbaiki.
+
+### 55.11 Koreksi tata letak — judul menempel ke sidebar (2026-09-26, lanjutan)
+
+Work Owner menunjukkan tangkapan layar: judul **Laporan Hasil Data AI** menempel ke tepi
+sidebar, sedangkan judul **Report Claim** menjorok ke dalam. Pertanyaannya: *"apakah
+tampilannya memang terlalu ke kiri?"*
+
+**Bukan soal grid — akar halamannya yang salah.**
+
+| | Akar halaman |
+|---|---|
+| `ReportKlaimPage.tsx:103` | `mx-auto max-w-6xl space-y-6 p-4 sm:p-6` |
+| `LaporanHasilAIPage.tsx` sebelum koreksi | `space-y-6` — **tanpa padding, tanpa batas lebar** |
+
+`<main>` pada `PageShell.tsx:57` ber-`min-w-0 flex-1 pb-16` — **tanpa padding horizontal sama
+sekali**. Setiap halaman menyediakan paddingnya sendiri, dan halaman yang lupa akan
+menempelkan isinya ke sisi sidebar. Saya lupa.
+
+**Dua hal diperbaiki**, keduanya menyamakan layar ini dengan Report Klaim sesuai arahan
+Work Owner:
+
+1. Akar halaman menjadi `mx-auto max-w-6xl space-y-6 p-4 sm:p-6`.
+2. Bilah penyaring dari `grid gap-4 sm:grid-cols-2 lg:grid-cols-3` menjadi
+   `flex flex-wrap items-start gap-6`, dengan `max-w-xs` pada kedua isian.
+
+Yang kedua menyelesaikan keluhan aslinya. Dengan tiga kolom untuk dua isian, tiap kolom
+selebar ±360 px sehingga kotak pemilih tanggal melar hampir dua kali lebar wajarnya lalu
+menyisakan satu kolom kosong. Dengan flex, keduanya berhenti di 320 px.
+
+**Satu penyimpangan dari Report Klaim, disengaja:** `items-start`, bukan `items-end`. Pesan
+galat digambar di bawah isian, dan di layar ini galatnya sering hanya mengenai salah satu
+tanggal — merapatkan dasar kedua isian akan menggeser isian yang benar ke bawah, seolah ia
+yang bermasalah.
+
+Uji tidak ada yang berubah: kesebelasnya memakai `getByLabelText` dan `getByRole`, bukan
+struktur tata letak. Seluruhnya tetap lulus, `tsc` bersih, SPA dibangun ulang.
+
+#### Yang TIDAK saya simpulkan
+
+Saya sempat menjalankan pemindaian kasar untuk menebak halaman lain yang kehilangan padding,
+dan hasilnya menyebut sekitar dua puluh berkas. **Angka itu tidak dapat dipercaya** —
+pemeriksaan ulang pada tiga berkas contoh tidak menemukan akar halaman di tempat yang
+diasumsikan pemindaiannya. Ia dicatat sebagai **dugaan yang belum diperiksa**, bukan temuan,
+dan layar di luar modul ini tidak disentuh.

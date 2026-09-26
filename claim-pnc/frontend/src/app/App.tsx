@@ -62,6 +62,7 @@ import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/Cl
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
@@ -1060,6 +1061,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <RCLPUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 82 "Laporan Hasil AI" — harness `Har_LaporanHasilAI`.
+
+        Layar baca-saja yang menyandingkan penilaian AI dengan keputusan komitenya. Dua
+        grid: ringkasan pencacah di atas, rincian baris di bawah.
+
+        Tiga hal yang ditiru dari Pega dan mudah dikira kerusakan: lima kolom yang SELALU
+        kosong, isian berlabel "Tgl Input" yang sebenarnya menyaring Tanggal Komite, dan
+        "No Klaim" yang dikosongkan pada jenjang komite kedua ke atas. Ketiganya keputusan
+        Work Owner 2026-09-26; alasannya ada di doc `LaporanHasilAIPage`.
+      */}
+      <Route
+        path="/laporan-hasil-ai"
+        element={
+          <SessionGuard>
+            <Protected>
+              <LaporanHasilAIPage />
             </Protected>
           </SessionGuard>
         }

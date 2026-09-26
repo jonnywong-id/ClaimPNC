@@ -57,6 +57,7 @@ import (
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastergroupingsparepart"
 	"claim-pnc/internal/masterkategorisparepart"
+	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterlogin"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpanel"
@@ -236,6 +237,10 @@ import (
 	masterpasalmemory "claim-pnc/internal/masterpasal/repo/memory"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpasalusecase "claim-pnc/internal/masterpasal/usecase"
+	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
+	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
+	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
+	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterpasalaihttp "claim-pnc/internal/masterpasalai/http"
 	masterpasalaimemory "claim-pnc/internal/masterpasalai/repo/memory"
 	masterpasalaisql "claim-pnc/internal/masterpasalai/repo/sqlstore"
@@ -535,6 +540,19 @@ func run() error {
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError:    masterpasalaihttp.ErrorWriter(writePortalAwareError),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Laporan Hasil AI (MENU_ID 82). Penulis galatnya dirantai, bukan diganti: modul ini
+	// punya galat validasi sendiri — kedua isian tanggal yang wajib — dan meneruskan
+	// selebihnya ke penulis galat portal dan sesi.
+	aiReportHandler, err := laporanhasilaihttp.NewHandler(laporanhasilaihttp.Options{
+		Service:             assembly.laporanHasilAI,
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: laporanhasilaihttp.ErrorWriter(writePortalAwareError),
 	})
 	if err != nil {
 		return err
@@ -1714,6 +1732,14 @@ func run() error {
 
 				// Master Pasal AI (MENU_ID 36). Baca-saja, satu rute.
 				masterpasalaihttp.Mount(protected, clauseAIHandler, activePortalDeps)
+
+				// Laporan Hasil AI (MENU_ID 82), kelompok menu REPORT. Baca-saja, dua
+				// rute: satu menjawab JSON untuk layar, satu menjawab CSV untuk unduhan.
+				//
+				// Di Pega keduanya SATU activity — tombol "Export To Excel" membuka
+				// `SearchDataLaporanAI(flagss=2)` yang sama di jendela baru. Dipisah di
+				// sini karena bentuk keluarannya memang dua hal yang berbeda.
+				laporanhasilaihttp.Mount(protected, aiReportHandler, activePortalDeps)
 				// Inbox Investigator (MENU_ID 48). Modul INBOX pertama, dan modul
 				// pertama yang berada di bawah awalan `/inbox/...` — kelompok menu
 				// tersendiri di sistem lama (`MENU_ID 2`, induk dari 30 butir).
@@ -2081,6 +2107,14 @@ type assembly struct {
 	// Pemilih repo per portal dengan alasan yang sama seperti master lain: tabelnya ada di
 	// basis data SETIAP entitas (ADR-0030).
 	masterPasalAI *masterpasalaiusecase.Service
+
+	// laporanHasilAI melayani layar Laporan Hasil AI (MENU_ID 82) — perbandingan penilaian
+	// AI dengan keputusan komite yang menyusul. Ia BACA-SAJA: kedua tombol layar lamanya
+	// memanggil activity yang sama, dan activity itu tidak memuat satu pun langkah tulis.
+	//
+	// Pemilih repo per portal: kedua tabelnya memuat nama tertanggung dan keputusan uang,
+	// dan keduanya ada di basis data SETIAP entitas (ADR-0030).
+	laporanHasilAI *laporanhasilaiusecase.Service
 
 	// masterSupplier melayani layar Master Supplier — daftar supplier rekanan beserta
 	// syarat dagangnya. Ia memakai pemilih repo per portal dengan alasan yang sama
@@ -2471,6 +2505,14 @@ type storage struct {
 	// lain — kebocoran yang justru dicegah R-20.
 	clauseAISelector masterpasalai.RepoSelector
 
+	// aiReportSelector memilih penyimpanan Laporan Hasil AI milik satu portal.
+	//
+	// POOLDATA.T_CLAIM_DATA_RESULTS_AI dan POOLDATA.T_CLAIM_KOMITE_LIST ada di basis data
+	// setiap entitas (ADR-0030). Satu repo bersama akan menampilkan penilaian AI atas
+	// klaim satu badan hukum kepada pengguna badan hukum lain — kebocoran yang justru
+	// dicegah R-20, dan di modul ini barisnya memuat keputusan uang.
+	aiReportSelector laporanhasilai.RepoSelector
+
 	// masterAutoClaimSelector memilih penyimpanan Master Auto Claim milik satu portal.
 	// POOLDATA.M_AUTO_CLAIM_PNC dan ketiga tabel acuannya ada di basis data setiap
 	// entitas.
@@ -2743,6 +2785,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	clauseAIService, err := masterpasalaiusecase.NewService(masterpasalaiusecase.Options{
 		RepoSelector: store.clauseAISelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	aiReportService, err := laporanhasilaiusecase.NewService(laporanhasilaiusecase.Options{
+		RepoSelector: store.aiReportSelector,
 	})
 	if err != nil {
 		store.close()
@@ -3431,6 +3481,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		masterStatusProgres:       progressStatusService,
 		masterStatusProgres2:      progressStatus2Service,
 		masterPasalAI:             clauseAIService,
+		laporanHasilAI:            aiReportService,
 		masterAutoClaim:           masterAutoClaimService,
 		masterBengkel:             workshopService,
 		masterPanel:               panelService,
@@ -3861,6 +3912,13 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				return nil, err
 			}
 			return masterpasalaisql.NewRepo(conn), nil
+		}
+		store.aiReportSelector = func(alias string) (laporanhasilai.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return laporanhasilaisql.NewRepo(conn), nil
 		}
 		store.causeOfLossDetailSelector = func(alias string) (detailpenyebab.Store, error) {
 			conn, err := pool.For(alias)
@@ -4420,6 +4478,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.partTypeSelector = partTypeSelectorMemory(cfg.PrimaryPortal)
 		store.surveyorLoginSelector = surveyorLoginSelectorMemory(cfg.PrimaryPortal)
 		store.clauseAISelector = clauseAISelectorMemory(cfg.PrimaryPortal)
+		store.aiReportSelector = aiReportSelectorMemory(cfg.PrimaryPortal)
 		store.causeOfLossDetailSelector = causeOfLossDetailSelectorMemory(cfg.PrimaryPortal)
 		store.reinsurerMemberSelector = reinsurerMemberSelectorMemory(cfg.PrimaryPortal)
 		store.investigatorInboxSelector = investigatorInboxSelectorMemory(cfg.PrimaryPortal)
@@ -4926,6 +4985,36 @@ func clauseAISelectorMemory(primaryAlias string) masterpasalai.RepoSelector {
 			return existing, nil
 		}
 		fresh := masterpasalaimemory.NewRepo(masterpasalaimemory.SampleClause())
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// aiReportSelectorMemory menyusun penyimpanan Laporan Hasil AI di memori.
+//
+// Alasannya sama dengan clauseAISelectorMemory: satu portal satu penyimpanan, dibuat saat
+// pertama diminta lalu dipakai kembali, dan hanya portal utama yang dilayani.
+//
+// Modul ini baca-saja, sehingga "dipakai kembali" tidak menjaga apa pun yang ditulis — ia
+// hanya menghemat pembentukan baris contoh pada setiap permintaan. Bentuknya tetap
+// disamakan dengan pemilih lain supaya tidak ada satu modul yang merakit dirinya dengan
+// cara yang berbeda tanpa alasan.
+func aiReportSelectorMemory(primaryAlias string) laporanhasilai.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]laporanhasilai.Repo{}
+
+	return func(alias string) (laporanhasilai.Repo, error) {
+		clean := strings.ToUpper(strings.TrimSpace(alias))
+		if clean != strings.ToUpper(strings.TrimSpace(primaryAlias)) {
+			return nil, fmt.Errorf("%w: portal %q tidak tersedia tanpa basis data", portal.ErrNotReady, alias)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := laporanhasilaimemory.NewRepo(laporanhasilaimemory.SampleRows()...)
 		store[clean] = fresh
 		return fresh, nil
 	}

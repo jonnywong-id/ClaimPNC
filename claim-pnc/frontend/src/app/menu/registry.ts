@@ -498,6 +498,19 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+  // MENU_ID 82 "Laporan Hasil AI", di bawah kelompok REPORT — butir PERTAMA kelompok itu.
+  //
+  // Layar ini menyandingkan penilaian AI atas sebuah klaim dengan keputusan komite yang
+  // menyusul. Rutenya `/laporan-hasil-ai`, mengikuti nama modul yang disebut Work Owner
+  // (`D-81`) — bukan nama harness-nya.
+  //
+  // JANGAN tertukar dengan MENU_ID 36 "Master Pasal AI" (`/master/pasal-ai`): keduanya
+  // menyangkut AI, tetapi yang itu master wording polis dan yang ini laporan hasil.
+  //
+  // Yang perlu diketahui sebelum membuka layarnya: LIMA dari sepuluh kolomnya SELALU
+  // kosong, karena kueri layar lamanya (`pyMemo = "work in progress"`) memang tidak
+  // memilih kolomnya. Work Owner memutuskan pada 2026-09-26 untuk menirunya apa adanya.
+  Har_LaporanHasilAI: '/laporan-hasil-ai',
   // MENU_ID 84 "Report KPI PNC", di bawah kelompok REPORT.
   //
   // Rutenya `/report-kpi`, bukan `/report-kpi-pnc`: akhiran "PNC" dibuang karena seluruh

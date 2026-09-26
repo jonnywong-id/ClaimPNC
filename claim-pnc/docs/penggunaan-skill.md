@@ -7935,3 +7935,90 @@ Ditambah satu hal yang memperburuk keduanya: `Section/DETAILKOMUNIKASICABANG_ACT
    hanyalah sisa percakapannya — dan tidak ada apa pun di layar yang menandainya. Tiga sesi
    berturut-turut menemukan kelas cacat yang sama: tombol yang hilang, nomor `MAX()` yang
    bentrok, dan utas yang terpotong.
+
+---
+
+## Sesi 2026-09-26 — modul Laporan Hasil AI (`MENU_ID 82`)
+
+### Skill yang dipakai
+
+#### 1. `mattpocock-skills:grilling` — sebelum satu baris kode ditulis
+
+**Kenapa dipakai.** Tugasnya berbunyi *"DILARANG langsung menulis kode. Pahami dan analisis
+terlebih dahulu"*, dan pembacaan artefak Pega memunculkan satu hal yang tidak dapat
+diputuskan sendiri: **kuerinya hanya mengisi 5 dari 10 kolom yang digambar grid**.
+
+Disiplin skill ini yang menentukan bentuk pertanyaannya — fakta dicari sendiri lebih dulu,
+pengguna hanya diminta memutuskan.
+
+**Yang dicari sendiri sebelum bertanya:**
+
+| Yang dibuktikan | Bagaimana |
+|---|---|
+| Kelima kolom memang tidak diisi | Membandingkan `pyValue` pada section dengan alias `SELECT` pada kuerinya, satu per satu |
+| Kesepuluhnya memang dimaksudkan | `CSVPropHeaders` dan `CSVProperties` pada activity yang sama menyebut sepuluh |
+| Kelimanya dapat dibaca dari tabel yang sama | `GetKomitePAditerima-SQL` memilih kelimanya |
+| Layarnya memang belum selesai | `pyMemo = "work in progress"` pada kuerinya |
+
+**Hasilnya.** Empat pertanyaan, seluruhnya dengan pilihan jawaban dan rekomendasi yang
+disertai alasan. Work Owner memilih berbeda dari rekomendasi saya pada tiga dari empat —
+dan itu justru bukti pertanyaannya benar-benar keputusan bisnis, bukan keputusan teknis yang
+menyamar.
+
+**Manfaat nyatanya.** Tanpa bertanya, saya akan mengisi kelima kolom itu "karena bisa" —
+dan menghasilkan layar yang berbeda dari Pega pada gerbang uji kesetaraan, tanpa satu pun
+keputusan tertulis yang menjelaskannya (`D-54`).
+
+#### 2. `mattpocock-skills:domain-modeling` — menamai ulang enam properti warisan
+
+**Kenapa dipakai.** Layar ini terikat properti klipboard kelas `Data-Adjustment` yang dipakai
+ulang dari layar lain, sehingga **namanya sama sekali tidak berhubungan dengan isinya**:
+
+```
+kolom Keputusan (ringkasan)   .BatasUmur        bukan batas umur
+kolom Total                   .NoteAITerima     bukan catatan
+kolom Diterima                .BatasLapor       bukan batas lapor
+kolom Ditolak                 .NoteKomite       bukan catatan komite
+isian Tgl Input Dari          .AnalystTransferDate
+isian Tgl Input Sampai        .DateOfLoss       bukan tanggal kejadian
+```
+
+**Yang dilakukan mengikuti skill.** Setiap nama disilangkan ke sumbernya sebelum dipakai —
+bukan diterima dari section saja. `.BatasUmur` baru terbukti berarti "Keputusan" setelah
+membaca `TempTotal.pxResults(<APPEND>).BatasUmur := "Komite"` pada activity-nya.
+
+**Hasilnya.** Enam padanan Inggris yang benar (`Tally.Subject`, `Tally.Total`, dan
+seterusnya), dan tabel pemetaan tiga kolom — layar · basis data · properti Pega — yang
+ditanam di doc `RowDTO` supaya pembaca berikutnya tidak perlu mengulang penelusurannya.
+
+#### 3. `mattpocock-skills:codebase-design` — menempatkan satu aturan di satu tempat
+
+Dipakai memutuskan **di mana** tiap aturan tinggal:
+
+| Aturan | Tempatnya | Alasan |
+|---|---|---|
+| Validasi kedua tanggal | `usecase`, sekali | Di handler ia terlewat oleh ekspor; di repo ia ditulis dua kali (sqlstore + memory) dan keduanya dapat berselisih |
+| Pengosongan No Klaim | `sqlstore`/`memory` di Go, bukan SQL | `KOMITEKE` tetap dibutuhkan utuh untuk kunci baris, dan aturannya jadi dapat diuji tanpa basis data |
+| Label Komite Status | `CommitteeLabel` di domain | Label dan pencacah ringkasan jadi tidak dapat berbeda |
+
+Uji `TestExportRejectsEmptyDatesToo` lahir langsung dari pertimbangan baris pertama.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Bagaimana tertangkap |
+|---|---|
+| Menduga nama rule RDB dapat dibaca dari langkah `RDB-List` | `pyParamArray` kosong. Nama kuerinya baru ditemukan dengan memindai teks XML activity — `CountAIDiterima_SQL` muncul 3× |
+| Membaca `B.KOMITEKE IN (SELECT MAX(B.KOMITEKE) …)` sebagai "ambil jenjang terakhir" | Membaca ulang aliasnya: `B` di dalam subkueri adalah baris TERLUAR, sehingga `MAX` mengagregasi nilai tetap. Artinya sekadar `EXISTS(...)` |
+| Menulis `Repo` dengan tipe `Context` tanpa impor | Ketahuan pada kompilasi pertama, sebelum uji ditulis |
+| Sempat berencana memakai `TRIM` pada `STATUSAPPROVE` di SQL | `TRIM` pada kolom NUMBER gagal di PostgreSQL. Diganti perbandingan teks tanpa `TRIM`, yang aman pada kedua tipe di kedua basis data |
+
+Ketiga yang pertama dicatat karena polanya sama: **membaca satu artefak tanpa menyilangkannya
+ke artefak yang memakainya**. Itu kesalahan yang sama dengan yang dicatat pada sesi 2026-09-25
+(§54.4 `catatan-pengembangan.md`), dan ia terulang.
+
+### Catatan untuk tahap berikutnya
+
+Kelima kolom kosong adalah keputusan yang **dirancang untuk dapat dibalik**. Dua uji —
+`TestFiveColumnsStayUnselected` dan `TestFiveColumnsStayEmpty` — memuat pesan gagal yang
+menyebut keputusannya beserta tanggalnya, sehingga siapa pun yang mengubahnya akan tahu ia
+sedang mengubah keputusan, bukan memperbaiki kelalaian.

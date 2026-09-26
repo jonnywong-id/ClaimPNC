@@ -4082,3 +4082,115 @@ func TestEachUtteranceCarriesExactlyTheThreeFieldsTheSectionDraws(t *testing.T)
 it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', ...)
 it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', ...)
 ```
+
+---
+
+## Tambahan 2026-09-26 — modul Laporan Hasil AI (`laporanhasilai`)
+
+Nama modul mengikuti `D-81`: folder backend `internal/laporanhasilai` (tanpa tanda hubung,
+karena Go tidak mengizinkannya), folder frontend `src/modules/laporan-hasil-ai`. Namanya
+**tidak dikarang** — ia tertulis di `Database/m_menu_aplikasi_pnc.csv` baris 77 sebagai
+`MENU_ID 82`, **"Laporan Hasil AI"**. Isinya berbahasa Inggris sesuai `D-80`.
+
+Jangan tertukar dengan `masterpasalai` (`MENU_ID 36`, "Master Pasal AI"): keduanya menyangkut
+AI, tetapi yang itu master wording polis dan yang ini laporan hasil penilaian.
+
+### Alias klipboard yang TIDAK dibawa — grid ringkasan
+
+Keempat kolom grid ringkasan terikat properti kelas `ASM-FW-GCNMFW-Data-Adjustment` yang
+dipakai ulang dari layar lain. Tidak satu pun namanya berhubungan dengan isinya (`D-19`):
+
+| Properti Pega | Kolom di layar | Isi sebenarnya | Nama di sini |
+|---|---|---|---|
+| `.BatasUmur` | Keputusan | teks `"AI"` atau `"Komite"` — bukan batas umur | `Tally.Subject` |
+| `.NoteAITerima` | Total | `terima + tolak` — bukan catatan | `Tally.Total()` |
+| `.BatasLapor` | Diterima | pencacah — bukan batas lapor | `Tally.Accepted` |
+| `.NoteKomite` | Ditolak | pencacah — bukan catatan komite | `Tally.Rejected` |
+| — | Menunggu | **kolom baru**, tidak ada di Pega | `Tally.Pending` |
+
+Arti `.BatasUmur` baru terbukti setelah membaca activity-nya, bukan section-nya:
+`TempTotal.pxResults(<APPEND>).BatasUmur := "Komite"`.
+
+### Alias klipboard yang TIDAK dibawa — grid rincian
+
+| Properti Pega | Kolom di layar | Kolom basis data | Nama di sini |
+|---|---|---|---|
+| `.ClaimID` | No Klaim | `T_CLAIM_KOMITE_LIST.NO_KLAIM` | `Row.ClaimNumber` |
+| `.ObjectName` | Object Name | `T_CLAIM_DATA_RESULTS_AI.OBJECTNAME` | `Row.ObjectName` |
+| `.KomiteAccepted` | Komite Status | `STATUSAPPROVE`, diterjemahkan | `Row.CommitteeStatus` |
+| `.TanggalComitee` | Tanggal Komite | `TANGGALKOMITE` | `Row.CommitteeDate` |
+| `.ResultAI` | AI Status | `RESULTAI` | `Row.AIStatus` |
+| `.TanggalAI` | Tanggal AI | `TGLAI` | `Row.AIDate` |
+| `.Notes` | Note AI Terima | `NOTETERIMA` | `Row.AcceptNote` |
+| `.NoteAkseptasi` | Note AI Tolak | `NOTETOLAK` | `Row.RejectNote` |
+| `.COVERAGE_AI_FINAL` | Coverage Final | `COVERAGE_AI_FINAL` | `Row.CoverageFinal` |
+| `.KATEGORI_KRONOLOGI` | Kategori Kronologi | `KATEGORI_KRONOLOGI` | `Row.ChronologyCategory` |
+
+**Lima di antaranya SELALU kosong** — `ObjectName`, `AcceptNote`, `RejectNote`,
+`CoverageFinal`, `ChronologyCategory` — karena kueri layar lamanya tidak memilih kolomnya.
+Keputusan Work Owner 2026-09-26: replikasi apa adanya.
+
+Dua baris patut disebut khusus: kueri lamanya **memilih** `NOTETERIMA AS "NoteAITerima"` dan
+`NOTETOLAK AS "NoteAITolak"`, sementara grid membaca `.Notes` dan `.NoteAkseptasi` — nama
+yang berbeda, sehingga nilainya tidak pernah sampai ke layar.
+
+### Alias isian penyaring
+
+| Properti Pega | Label di layar | Yang sebenarnya disaring | Nama di sini |
+|---|---|---|---|
+| `.AnalystTransferDate` | Tgl Input Dari | `TANGGALKOMITE` batas bawah | `Filter.From` |
+| `.DateOfLoss` | Tgl Input Sampai | `TANGGALKOMITE` batas atas | `Filter.To` |
+
+**Labelnya pun menyesatkan, bukan hanya propertinya.** "Tgl Input" menyaring **Tanggal
+Komite** — kolom yang juga digambar di grid yang sama. Label lamanya tetap dipakai apa adanya
+atas keputusan Work Owner 2026-09-26 (`D-13`).
+
+### Alias kolom kueri yang TIDAK dibawa
+
+Dari `RDB List/CountAIDiterima_SQL-SQL.xml`:
+
+| Alias kueri | Isi sebenarnya | Perlakuan |
+|---|---|---|
+| `"CaseIDKomite"` | `KOMITE_ID` | dipakai sebagai bagian `Row.ID`, aliasnya tidak dibawa |
+| `"Komiteno"` | `KOMITEKE` | idem |
+| `"BatasUmur"` (kolom luar) | cacah baris komite ber-`TANGGALKOMITE` tidak NULL | **tidak dipilih** — tidak dibaca properti mana pun |
+| `"TanggalKomite"` | `TO_CHAR(SYSDATE-7,'dd/mm/yyyy')` — **hari ini dikurangi tujuh** | **tidak dipilih** — kolom mati, dan kolom layar bernama sama justru membaca `.TanggalComitee` |
+| `"NamaKomite"` | `NAMAKOMITE` | **tidak dipilih** — tidak tergambar |
+| `"KOMITESTATUS"` | `STATUSAPPROVE` mentah | `Row.CommitteeStatusCode` |
+
+Dua baris bertanda "kolom mati" adalah contoh utang teknis §4.2 dalam bentuk yang paling
+menjebak: **dua hal berbeda bernama sama**. Kolom kueri `"TanggalKomite"` dan kolom layar
+"Tanggal Komite" tidak ada hubungannya sama sekali.
+
+### Nama rute dan berkas
+
+| Lapisan | Nama |
+|---|---|
+| Paket Go | `laporanhasilai`, `usecase`, `sqlstore`, `memory`, `laporanhasilaihttp` |
+| Rute API | `/api/laporan-hasil-ai` · `/api/laporan-hasil-ai/ekspor` |
+| Rute layar | `/laporan-hasil-ai` |
+| Kunci menu | `Har_LaporanHasilAI` — nama harness, dikirim server apa adanya |
+| Nama kueri | `report_list` · `report_count` · `report_summary` · `report_check_table` |
+| Pemilih repo di cmd | `aiReportSelector` · `aiReportSelectorMemory` |
+
+### Nama field JSON — tetap Indonesia (`D-80`)
+
+Ia kontrak, bukan nama internal. Namanya mengikuti **judul kolom di layar**:
+
+```
+no_klaim · nama_object · komite_status · kode_komite_status · tanggal_komite
+ai_status · tanggal_ai · note_ai_terima · note_ai_tolak · coverage_final
+kategori_kronologi
+```
+
+### Judul kolom berkas CSV — BERBEDA dari judul kolom layar
+
+Disalin persis dari `CSVPropHeaders`, termasuk perbedaannya. Menyeragamkannya akan terasa
+lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
+
+| Judul di layar | Judul di berkas CSV |
+|---|---|
+| Object Name | **Nama Object** |
+| Note AI Terima | **Note Terima** |
+| Note AI Tolak | **Note Tolak** |
+| Coverage Final | **Coverage AI Final** |

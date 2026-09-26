@@ -15887,3 +15887,142 @@ Dengan `adapter_identitas: hcq`, **seluruh modul memakai Oracle sungguhan** mesk
 
 Layar ini karena itu sudah berjalan di atas data nyata, dan itulah sebabnya tebakan §52 dan
 §53 dapat diuji hari ini juga alih-alih menunggu.
+
+---
+
+## 55. Modul Laporan Hasil AI — empat keputusan replikasi (2026-09-26)
+
+Modul `MENU_ID 82`, pengganti harness `Har_LaporanHasilAI`. Baca-saja: kedua tombol layar
+lamanya memanggil activity yang sama, dan activity itu tidak memuat satu pun langkah tulis.
+
+### 55.1 Keadaan yang melatari keempat keputusan
+
+Kueri layar lamanya, `RDB List/CountAIDiterima_SQL-SQL.xml`, ber-`pyMemo = "work in
+progress"` dan **hanya mengisi 5 dari 10 kolom** yang digambar grid. Lima sisanya tergambar
+kosong di Pega hari ini.
+
+Bahwa kesepuluhnya memang dimaksudkan terbukti dari dua hal pada activity yang sama:
+`CSVPropHeaders` menyebut sepuluh judul kolom, dan `CSVProperties` menyebut sepuluh properti
+yang mengisinya. Dan bahwa kelima kolomnya dapat dibaca terbukti dari
+`RDB List/GetKomitePAditerima-SQL.xml`, yang memilih `OBJECTNAME`, `NOTETERIMA`,
+`NOTETOLAK`, `COVERAGE_AI_FINAL`, dan `KATEGORI_KRONOLOGI` dari tabel yang sama.
+
+Jadi pilihannya bukan antara "bisa" dan "tidak bisa", melainkan antara **meniru layar yang
+belum selesai** dan **menyelesaikannya**. Itulah yang ditanyakan.
+
+### 55.2 Keputusan 1 — lima kolom tetap KOSONG
+
+**Diputuskan: replikasi apa adanya.** Rekomendasi saya berbeda (mengisi kesepuluhnya,
+dicatat sebagai selisih terencana `D-54`); keputusan Work Owner diterapkan.
+
+| | |
+|---|---|
+| **Apa yang dilakukan** | `report_list` tidak memilih kelima kolom itu. Kelima field domain tetap ada dan tetap dikirim ke layar sebagai teks kosong |
+| **Kenapa field-nya tetap ada** | Menghapusnya akan menghapus kolomnya dari layar, sedangkan yang diputuskan adalah **menampilkannya kosong** — bukan meniadakannya |
+| **Kenapa kolomnya tidak dipilih** | Mengambil data lalu membuangnya melanggar "SELECT menyebut kolom yang dipakai", dan membuat pembaca berikutnya mengira ada bug pemetaan |
+| **Risiko yang diterima** | Berkas ekspor memuat lima kolom kosong. Pengguna yang belum tahu akan melaporkannya sebagai kerusakan |
+| **Cara membalikkannya** | Tambahkan kelima kolom pada `report_list` dan `report_check_table`, isikan di `scanRow`, hapus `TestFiveColumnsStayUnselected` dan `TestFiveColumnsStayEmpty`. Tidak butuh artefak baru dari siapa pun |
+
+Kedua uji itu sengaja memuat pesan gagal yang menyebut keputusan ini beserta tanggalnya,
+supaya siapa pun yang mengubahnya melakukannya **secara sadar**, bukan tanpa menyadari ada
+keputusan di baliknya.
+
+### 55.3 Keputusan 2 — label "Tgl Input" dipakai apa adanya
+
+**Diputuskan: label lama, tanpa keterangan tambahan** (`D-13`). Rekomendasi saya: label lama
++ satu baris keterangan.
+
+Klausa yang disusun activity dari kedua isian itu berbunyi:
+
+```
+AND trunc(TANGGALKOMITE) >= to_date(awal) and trunc(TANGGALKOMITE) <= to_date(akhir)
+```
+
+Yang disaring `T_CLAIM_KOMITE_LIST.TANGGALKOMITE` — kolom yang **juga digambar** sebagai
+"Tanggal Komite" di grid yang sama. Properti klipboardnya pun tidak membantu:
+`.AnalystTransferDate` dan `.DateOfLoss`, keduanya warisan yang tidak ada hubungannya.
+
+Kebenarannya dicatat di doc `Filter`, di doc `LaporanHasilAIPage`, dan di sini — bukan di
+layar.
+
+### 55.4 Keputusan 3 — "No Klaim" kosong pada jenjang komite kedua ke atas
+
+**Diputuskan: tiru.** Rekomendasi saya: isi di semua baris, karena berkas CSV yang selnya
+kosong tidak dapat disaring maupun di-pivot menurut nomor klaim.
+
+Padanan `CASE WHEN B.KOMITEKE = '1' THEN B.NO_KLAIM ELSE '' END`. Diturunkan **di Go**, bukan
+di SQL, karena dua sebab: `KOMITEKE` tetap dibutuhkan utuh untuk menyusun kunci baris, dan
+aturannya dapat diuji tanpa basis data.
+
+Perbandingannya sebagai **teks** (`"1"`), mengikuti tanda kutip pada kueri lama — tipe
+kolomnya belum diketahui (`R-08`).
+
+### 55.5 Keputusan 4 — kolom "Menunggu" ditambahkan
+
+**Diputuskan: tiru `Total = Diterima + Ditolak`, dan tambahkan kolom "Menunggu".**
+
+Ini satu-satunya hal di layar ini yang **tidak ada di Pega**. Ia tidak mengubah satu pun
+angka yang sudah ada; ia hanya menampakkan sisa yang selama ini tidak tergambar.
+
+Tanpa kolom itu, ringkasan akan menyebut "Total 42" sementara grid di bawahnya memuat 47
+baris — dan tidak ada apa pun di layar yang menjelaskannya.
+
+Menunggu dihitung sebagai **sisa** (`COUNT(*) − diterima − ditolak`), bukan sebagai kondisi
+tersendiri. Dengan begitu nilai tak terduga di kolom statusnya — kode tak dikenal, NULL,
+spasi — tetap terhitung di suatu tempat alih-alih menghilang tanpa jejak.
+
+### 55.6 Keputusan teknis yang TIDAK ditanyakan, karena bukan pilihan bisnis
+
+| # | Keputusan | Alasan |
+|---|---|---|
+| 1 | `{Asis:…}` **tidak dibawa** | Penyaringnya disusun dari dua isian yang diketik pengguna lalu ditempel ke teks SQL. Larangan perangkaian (`08-TECHNICAL-STRATEGY.md` §4.3) tidak dikecualikan keputusan mana pun: yang direplikasi perilaku bisnis, bukan celah injeksi |
+| 2 | `trunc(kolom) <= akhir` → `kolom < akhir + 1 hari` | Memilih baris yang sama persis, tetap dapat memakai index, portabel ke PostgreSQL |
+| 3 | `IN (SELECT MAX(B.KOMITEKE) …)` → `EXISTS` | `B` di dalam subkueri adalah baris TERLUAR, sehingga `MAX` mengagregasi nilai tetap. Setara `EXISTS(...) AND TANGGALKOMITE IS NOT NULL`. Bentuk EXISTS memilih himpunan yang sama dengan maksud yang terbaca |
+| 4 | `TO_CHAR(SYSDATE-7,'dd/mm/yyyy') AS "TanggalKomite"` **dibuang** | Kolom mati: isinya bukan tanggal komite melainkan hari ini dikurangi tujuh, sama untuk setiap baris, dan tidak pernah tergambar |
+| 5 | `B.STATUSCASE` dan `B.NAMAKOMITE` **dibuang** | Dipilih kueri lama tetapi tidak dibaca properti mana pun di layar |
+| 6 | `STATUSAPPROVE` dibandingkan sebagai **teks** | Tipenya belum diketahui (`R-08`). Pada kolom teks, `= 1` membuat Oracle mengonversi KOLOMNYA dan gagal pada baris tak numerik. `= '1'` aman pada kedua tipe di kedua basis data |
+| 7 | `OBJECTID, COVERAGEID` ditambahkan ke `ORDER BY` | Tuntutan paginasi server: `KOMITE_ID, KOMITEKE` tidak unik, dan urutan yang tidak pasti membuat dua halaman memuat baris yang sama |
+| 8 | Kedua tanggal **WAJIB** | Layar lama pun tidak dapat berjalan tanpanya — isian kosong menghasilkan `to_date('//','dd/mm/yyyy')`. Jejaknya di `pyMemo` activity: *"bikin error pdc ORA-00907"*. Yang berubah hanya BENTUK penolakannya |
+| 9 | Ringkasan dihitung kueri agregat terpisah | Activity lama mencacah dengan menelusuri seluruh hasil di klipboard. Di sini barisnya dipaginasi; menelusuri halaman akan mencacah 50 baris dan menyebutnya total |
+| 10 | Tanggal `dd/mm/yyyy` di CSV, pemformat baku di layar | CSV meniru `.DISC`/`.DISC2` yang memang disusun activity. Layar lama menggambar teks waktu Pega mentah — artefak layar belum selesai, bukan bentuk yang dimaksudkan |
+
+### 55.7 Pemisahan antarentitas
+
+`aiReportSelector` memilih repo per portal (`ADR-0030`). Kedua tabelnya ada di basis data
+setiap entitas, dan barisnya memuat **keputusan uang** — satu repo bersama akan menampilkan
+penilaian atas klaim satu badan hukum kepada pengguna badan hukum lain (`R-20`).
+
+Dijaga `TestOtherEntitySeesItsOwnEmptiness`, yang memberi ASI nol baris dan membuktikan ia
+melihat kekosongannya sendiri, bukan data ASM.
+
+### 55.8 Pertanyaan terbuka
+
+| # | Pertanyaan | Pemilik |
+|---|---|---|
+| 1 | Apakah lima kolom kosong akan tetap kosong setelah pengguna melihatnya? | Work Owner |
+| 2 | Tipe kolom `STATUSAPPROVE` dan `KOMITEKE` — teks atau angka? | DBA (`R-08`) |
+| 3 | Apakah ada kode `STATUSAPPROVE` selain 0/1/2 di produksi? Bila ada, barisnya tergambar berlabel kosong | DBA |
+| 4 | Berapa baris maksimum yang wajib dilayani satu ekspor? Batas sementara 50.000, sama dengan modul lain | `ADR-0011` |
+
+### 55.9 Tata letak halaman mengikuti Report Klaim (2026-09-26, koreksi)
+
+Work Owner: *"ikuti seperti [Report Claim]"*, disertai tangkapan layar keduanya.
+
+| Keputusan | Nilai |
+|---|---|
+| Akar halaman | `mx-auto max-w-6xl space-y-6 p-4 sm:p-6` — sama persis `ReportKlaimPage.tsx:103` |
+| Bilah penyaring | `flex flex-wrap items-start gap-6` + `max-w-xs` per isian — pola `ReportKlaimPage.tsx:226` |
+
+**Kenapa akar halaman perlu diputuskan sama sekali.** `PageShell` tidak memberi padding
+horizontal pada `<main>`, sehingga padding adalah tanggung jawab tiap halaman. Itu keadaan
+yang mudah dilupakan, dan sekali terlupa akibatnya terlihat langsung — isi halaman menempel
+ke sidebar.
+
+**Satu penyimpangan yang disengaja:** `items-start`, bukan `items-end` seperti Report Klaim.
+Alasannya khas layar ini: validasinya dapat mengenai hanya SATU dari dua tanggal (rentang
+terbalik hanya menandai "sampai"), dan `items-end` akan menggeser isian yang benar ke bawah
+mengikuti isian yang bergalat.
+
+**Yang ini gugurkan.** Pertanyaan §55.2 tentang "lebar penyaring" tertutup: bukan dipadatkan
+lewat grid berkolom lain, melainkan dengan mengikuti pola flex Report Klaim. Empat pilihan
+yang sempat saya ajukan tidak lagi berlaku.
