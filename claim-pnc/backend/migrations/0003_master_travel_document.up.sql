@@ -1,0 +1,149 @@
+-- 0003 — Master Dokumen Travel: hak akses akun aplikasi (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+--
+-- ## TIDAK ADA PERUBAHAN SKEMA DI BERKAS INI
+--
+-- Berbeda dari migrasi 0002, berkas ini TIDAK mengubah satu pun objek: tidak ada ALTER,
+-- tidak ada CREATE, tidak ada indeks baru, dan tidak ada view yang didefinisikan ulang.
+-- Isinya hanya PEMBERIAN HAK dan kueri pemeriksaan.
+--
+-- Sebabnya dua:
+--
+--   1. POOLDATA.M_DOCTRAVEL sudah memuat kedua kolom yang dibutuhkan — DOCID dan
+--      NAMADOKUMEN. Keduanya dibaca `Report Definition/BrowseMstDocTravel_RD-RD.xml`
+--      dan ditulis `Database/DOCTRAVEL_CVG.prc`, dan modul baru tidak menambah kolom
+--      apa pun.
+--
+--   2. TIDAK ADA INDEKS UNIK atas judul dokumen, dan itu KEPUTUSAN, bukan kelalaian.
+--      Work Owner menetapkan 2026-09-21 bahwa layar ini meniru Pega apa adanya, tanpa
+--      validasi — judul kosong diterima dan judul ganda diterima. Menambahkan indeks
+--      unik di sini akan menegakkan aturan yang justru diputuskan TIDAK berlaku, dan
+--      akan GAGAL bila tabel yang ada sudah memuat judul ganda.
+--
+--      Bila keputusan itu kelak berubah, indeksnya menjadi migrasi tersendiri yang
+--      didahului pembersihan data — bukan tambahan diam-diam pada berkas ini.
+--
+--
+-- ## BERKAS INI DIJALANKAN DI SETIAP BASIS DATA ENTITAS, BUKAN HANYA SATU
+--
+-- Ini perbedaan terpenting dari migrasi 0001 dan 0002, dan yang paling mudah terlewat.
+--
+-- `D-75` menetapkan satu basis data per entitas, dan POOLDATA.M_DOCTRAVEL adalah data
+-- acuan milik satu badan hukum — daftar jenis dokumen Travel milik Asuransi Sinar Mas
+-- bukan milik Asuransi Simas Insurtech. Modul ini karena itu memilih koneksi entitas
+-- pada setiap permintaan (`ADR-0030` Opsi 1), sama seperti Master Status Progres 1.
+--
+-- Akibatnya: hak di bawah harus diberikan di SETIAP basis data entitas yang portalnya
+-- diaktifkan. Entitas yang terlewat akan menjawab dengan galat hak akses pada saat
+-- pengguna membuka layarnya — bukan saat aplikasi start.
+--
+--
+-- ## Yang HARUS diperiksa DBA sebelum menjalankan, di setiap entitas
+--
+-- 1. PASTIKAN TABELNYA ADA DAN BENTUK KOLOMNYA DIKETAHUI. DDL-nya tidak ada di export
+--    (`R-08`), sehingga lebar DOCID dan NAMADOKUMEN belum pernah diperiksa siapa pun:
+--
+--        SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE
+--          FROM ALL_TAB_COLUMNS
+--         WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'M_DOCTRAVEL'
+--         ORDER BY COLUMN_ID;
+--
+--    Hasilnya mohon dilampirkan pada permintaan perubahan ini. Lebar DOCID menentukan
+--    kapan skema penomorannya mentok — lihat bagian terakhir berkas ini.
+--
+-- 2. PASTIKAN URUTANNYA ADA. Ia yang menerbitkan nomor urut DOCID
+--    (`Database/DOCTRAVEL_CVG.prc:20`):
+--
+--        SELECT SEQUENCE_NAME, LAST_NUMBER
+--          FROM ALL_SEQUENCES
+--         WHERE SEQUENCE_OWNER = 'POOLDATA' AND SEQUENCE_NAME = 'DOCTRAVEL_SEQ';
+--
+--    Yang diharapkan satu baris. Bila tidak ada, penambahan dokumen tidak akan pernah
+--    berhasil dan modul ini tidak boleh dinyatakan siap di entitas tersebut.
+--
+-- 3. PASTIKAN BARIS SITUS ADA. Ia bagian pertama setiap DOCID
+--    (`Database/DOCTRAVEL_CVG.prc:12`):
+--
+--        SELECT ID FROM POOLDATA.M_SITE_DATABASE WHERE CURRENT_SITE = '1';
+--
+--    Yang diharapkan TEPAT SATU baris. Procedure lama menjawab ketiadaannya dengan
+--    kalimat di ErrMsg lalu berhenti seolah tidak terjadi apa-apa; aplikasi baru
+--    menjawabnya sebagai galat yang benar-benar galat.
+--
+-- 4. CATAT JUMLAH BARIS SEKARANG, sebagai pembanding setelah modul dipakai:
+--
+--        SELECT COUNT(*) FROM POOLDATA.M_DOCTRAVEL;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 1 — hak akses untuk akun aplikasi.
+--
+-- Diberikan sesempit mungkin: SELECT, INSERT, dan UPDATE. TANPA DELETE — tidak ada satu
+-- pun jalur di aplikasi yang menghapus baris master (`ADR-0012`), dan hak yang tidak
+-- diberikan tidak dapat disalahgunakan kode yang ditulis kemudian.
+--
+-- Perlakuannya sama persis dengan migrasi 0002 untuk M_STS_CLAIM.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya, dan jalankan di SETIAP basis
+-- data entitas.
+-- ---------------------------------------------------------------------------
+
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.M_DOCTRAVEL TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.M_SITE_DATABASE TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.DOCTRAVEL_SEQ TO <AKUN_APLIKASI>;
+
+
+-- ---------------------------------------------------------------------------
+-- Langkah 2 — VERIFIKASI, dijalankan dengan AKUN APLIKASI, bukan akun DBA.
+--
+-- Menjalankannya sebagai DBA akan selalu berhasil dan tidak membuktikan apa pun tentang
+-- hak yang baru diberikan.
+-- ---------------------------------------------------------------------------
+
+-- 2a. Dapatkah akun aplikasi membaca tabelnya?  DIHARAPKAN: berhasil, nol baris.
+--     Ini kueri yang sama persis dengan `travel_document_check_table` di
+--     internal/masterdokumentravel/repo/sqlstore/masterdokumentravel.sql
+--
+--     SELECT DOCID, NAMADOKUMEN FROM POOLDATA.M_DOCTRAVEL WHERE 1 = 0;
+
+-- 2b. Dapatkah akun aplikasi membaca kode situs?  DIHARAPKAN: tepat satu baris.
+--
+--     SELECT ID FROM POOLDATA.M_SITE_DATABASE WHERE CURRENT_SITE = '1';
+
+-- 2c. Dapatkah akun aplikasi mengambil nomor urut?
+--     DIHARAPKAN: berhasil, dan angkanya BERTAMBAH SATU dari LAST_NUMBER di langkah
+--     persiapan nomor 2.
+--
+--     PERHATIAN: kueri ini MENGHABISKAN satu nomor urut, dan nomor yang terpakai tidak
+--     dapat dikembalikan. Itu tidak berbahaya — satu lubang di deret DOCID tidak
+--     merusak apa pun, dan procedure lama pun meninggalkan lubang setiap kali INSERT-nya
+--     gagal. Dicatat di sini supaya tidak dikira cacat.
+--
+--     SELECT POOLDATA.DOCTRAVEL_SEQ.NEXTVAL FROM DUAL;
+
+
+-- ---------------------------------------------------------------------------
+-- Satu batas yang perlu diketahui sebelum menyetujui
+-- ---------------------------------------------------------------------------
+--
+-- DOCID dibentuk kode_situs || lpad(urutan, 5, '0'), dan penampungnya di dalam procedure
+-- lama dideklarasikan `varchar(8)` (`Database/DOCTRAVEL_CVG.prc:5`).
+--
+-- Saat urutan mencapai 100000, nomornya menjadi ENAM digit dan LPAD tidak memotongnya —
+-- ia memanjang. Dengan kode situs satu karakter, DOCID menjadi tujuh karakter dan masih
+-- muat. Dengan kode situs tiga karakter, ia menjadi sembilan dan penyisipannya akan
+-- DITOLAK dengan ORA-12899.
+--
+-- Aplikasi sengaja TIDAK memotongnya menjadi lima digit: itu akan menghasilkan DOCID
+-- GANDA — dua jenis dokumen berbagi satu kunci yang dirujuk V_LST_DOC_TRAVEL dan
+-- dokumen klaim yang sudah terunggah. Penyisipan yang gagal dengan pesan jelas jauh
+-- lebih baik.
+--
+-- Jarak ke batas itu belum dapat dihitung karena LAST_NUMBER urutan dan lebar kolom
+-- DOCID keduanya belum diketahui. Langkah persiapan nomor 1 dan 2 di atas yang
+-- menjawabnya, dan jawabannya sebaiknya dicatat sebelum modul dipakai — bukan setelah
+-- penyisipan pertama yang gagal.

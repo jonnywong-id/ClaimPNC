@@ -206,7 +206,7 @@ func (r *Repo) Insert(ctx context.Context, s mastersurveyors.Surveyor) (mastersu
 		string(clean.Status),
 		nullIfEmpty(clean.Committee),
 		nullIfEmpty(clean.CommitteeTransferred),
-		nullIfEmpty(clean.CreatedBy),
+		// CreatedBy sengaja TIDAK diikat: kolom USER_INPUT belum ada di tabelnya.
 	)
 	if err != nil {
 		return mastersurveyors.Surveyor{}, translateWriteError(err, "menyimpan surveyor")
@@ -242,9 +242,9 @@ func (r *Repo) Update(ctx context.Context, s mastersurveyors.Surveyor) error {
 		nullIfEmpty(clean.DocumentID),
 		string(clean.Status),
 		nullIfEmpty(clean.CommitteeTransferred),
-		nullTime(clean.DecidedAt),
-		nullIfEmpty(clean.Note),
-		nullIfEmpty(clean.UpdatedBy),
+		// DecidedAt, Note, dan UpdatedBy sengaja TIDAK diikat: kolomnya belum ada di
+		// POOLDATA.D_SURVEYORS, dan Pega pun tidak punya ketiganya. Lihat catatan pada
+		// `surveyor_update` di mastersurveyors.sql.
 		clean.ID,
 	)
 	if err != nil {

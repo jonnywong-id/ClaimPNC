@@ -46,6 +46,34 @@ const (
 // POOLDATA_<ALIAS>_HOST, _PORT, _SERVICE, _PENGGUNA, _SANDI.
 const portalPrefix = "POOLDATA_"
 
+// anekaPrefix adalah awalan variabel lingkungan koneksi KEDUA milik tiap portal:
+// ANEKA_<ALIAS>_HOST, _PORT, _SERVICE, _PENGGUNA, _SANDI.
+//
+// # Kenapa ada koneksi kedua sama sekali
+//
+// Sejumlah kueri laporan membaca basis data lain lewat DB Link `@ASMD` — kalender libur
+// `GENERAL.HRD_LBR`, jam kerja `DATAMINING.GET_WORKING_HOURS`, dan master mitra
+// `GENERAL.LST_MITRA`. `D-25` mengganti seluruh DB Link dengan pemanggilan API, dan API
+// penggantinya belum ada (`R-03`).
+//
+// Work Owner memutuskan 2026-09-24: **yang berupa sub-query tetap memakai DB Link; selain
+// itu memakai koneksi langsung** ke basis data yang bersangkutan. Koneksi langsung itulah
+// yang dikonfigurasi di sini.
+//
+// # Kenapa per portal, bukan satu untuk semua
+//
+// Alasannya sama dengan koneksi portal itu sendiri: satu badan hukum bukan badan hukum
+// lain (`ADR-0030`, `R-20`). Koneksi kedua milik portal ASI tidak boleh dipakai melayani
+// permintaan portal ASM — kalau boleh, pemisahan yang dijaga di tingkat koneksi bocor
+// lewat pintu belakang.
+//
+// # Ia OPSIONAL, dan ketiadaannya bukan galat
+//
+// Portal yang belum punya blok ANEKA tetap berjalan penuh; yang hilang hanyalah kolom
+// laporan yang memang membutuhkannya, dan kolom itu dikosongkan serta ditandai. Ini
+// perlakuan yang sama dengan blok Kasir dan SMTP di .env.example.
+const anekaPrefix = "ANEKA_"
+
 // defaultSessionLifetime dipilih 60 menit: docs/Steering/11-SECURITY.md §2.2 menetapkan
 // rentang 30–60 menit, dan form registrasi klaim tergolong panjang sehingga batas atas
 // rentang itu yang dipakai. Nilai final menunggu Work Owner + Security (ADR-0024).
@@ -79,6 +107,32 @@ type Config struct {
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
 	Portal map[string]Database
+
+	// Aneka memetakan alias portal ke parameter koneksi KEDUA-nya, bila ada.
+	//
+	// Kuncinya alias portal yang sama dengan Portal di atas — koneksi kedua selalu
+	// MILIK sebuah portal, tidak pernah berdiri sendiri. Alias yang muncul di sini
+	// tetapi tidak di Portal adalah salah ketik di .env, dan Validate menyebutkannya.
+	//
+	// Kosong berarti tidak ada portal yang punya koneksi kedua; itu keadaan yang sah.
+	// Lihat anekaPrefix.
+	Aneka map[string]Database
+
+	// BulkSelectExcludedBusinesses adalah kode lini bisnis yang TIDAK ikut terpilih oleh
+	// tombol "Pilih semua" pada layar Daftar Tipe Dokumen Bisnis.
+	//
+	// Di Pega kelimanya ditulis langsung di dalam rule
+	// (`Activity/SetAllBusiness-Act.xml:984`) sebagai syarat yang mengeluarkan baris dari
+	// perulangan — kelimanya lini MBU, yang aturan dokumennya tidak dikelola layar ini.
+	//
+	// `D-15` melarang nilai bisnis di dalam kode, sehingga daftarnya pindah ke sini:
+	// perilakunya sama persis dengan Pega, tetapi kelima kodenya dapat diubah tanpa
+	// menyentuh kode. Ia BELUM dapat diubah pengguna bisnis sendiri — masternya belum
+	// ada — dan itu keadaan yang sama dengan XOLCommitteeRecipients di atas.
+	//
+	// Ditulis sebagai daftar dipisah koma di BISNIS_DIKECUALIKAN_PILIH_SEMUA. Kosong
+	// berarti "Pilih semua" benar-benar memilih semuanya.
+	BulkSelectExcludedBusinesses []string
 }
 
 // Sesi memuat parameter masa hidup sesi milik aplikasi.
@@ -141,6 +195,30 @@ type SMTP struct {
 	// MEMPERBAIKI kegagalan, bukan ke pengguna yang kebetulan memicunya.
 	AlertRecipients []string
 
+	// TKARecipients adalah mailbox penerima pemberitahuan kelengkapan dokumen klaim
+	// TKA. Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_TKA.
+	//
+	// # Kenapa daftarnya TERPISAH dari AlertRecipients
+	//
+	// Keduanya punya pembaca yang berbeda. AlertRecipients adalah Tim IT, yang
+	// menerima kabar bahwa sebuah integrasi gagal dan dapat memperbaikinya.
+	// TKARecipients adalah pihak bisnis, yang menerima kabar bahwa dokumen asli satu
+	// klaim sudah lengkap — peristiwa yang sepenuhnya normal dan tidak menuntut
+	// perbaikan apa pun. Menyatukan keduanya akan mengirimi Tim IT surel setiap kali
+	// seorang petugas menyelesaikan pekerjaannya.
+	//
+	// # Ia menggantikan penerima yang di-hardcode di sistem lama
+	//
+	// `Activity/SubmitTanggalLengkapTKA-Act.xml` memilih penerimanya dengan bercabang
+	// pada tiga Operator ID yang tertanam di dalam rule — salah satu cabangnya menunjuk
+	// akun surel pribadi di jalur produksi. Percabangan itu dicabut (`D-15`, `D-67`),
+	// sebagaimana pola yang sama sudah dicabut pada `D-52` untuk penjenjangan komite.
+	//
+	// Kelak ia pindah ke master Penerima Notifikasi (`F-4`), yang memungkinkan
+	// penerimanya diubah tanpa deploy. Sampai master itu ada, variabel lingkungan
+	// adalah tempat terdekat yang memenuhi `D-15` — nilainya tidak berada di dalam kode.
+	TKARecipients []string
+
 	// XOLCommitteeRecipients adalah mailbox komite yang menerima pemberitahuan pengajuan
 	// Master XOL. Ditulis sebagai daftar dipisah koma di XOL_PENERIMA_KOMITE.
 	//
@@ -161,6 +239,18 @@ type SMTP struct {
 	XOLCommitteeRecipients []string
 
 	Timeout time.Duration
+}
+
+// TKAActive menyatakan pemberitahuan kelengkapan dokumen TKA dapat dikirim.
+//
+// Ia TERPISAH dari Active(): server surel yang sama dapat terkonfigurasi untuk peringatan
+// Tim IT tanpa punya penerima TKA, dan sebaliknya. Memakai satu penanda untuk keduanya akan
+// membuat modul yang penerimanya belum diisi tetap mencoba mengirim ke daftar kosong.
+func (s SMTP) TKAActive() bool {
+	return strings.TrimSpace(s.Host) != "" &&
+		s.Port > 0 &&
+		strings.TrimSpace(s.From) != "" &&
+		len(s.TKARecipients) > 0
 }
 
 // Aktif menyatakan konfigurasi ini cukup untuk mengirim surel.
@@ -188,6 +278,17 @@ func splitAddress(list string) []string {
 
 // Database memuat parameter koneksi satu portal. Password tidak pernah ikut tercetak.
 type Database struct {
+	// Prefix adalah awalan variabel lingkungan asal koneksi ini — portalPrefix untuk
+	// basis data portal, anekaPrefix untuk koneksi keduanya.
+	//
+	// Ia disimpan supaya Missing() menyebut NAMA VARIABEL YANG SEBENARNYA. Tanpa itu,
+	// blok ANEKA yang kurang satu baris akan dilaporkan sebagai POOLDATA yang kurang —
+	// dan operator memperbaiki baris yang sudah benar.
+	//
+	// Kosong dibaca sebagai portalPrefix, supaya Database yang dibentuk uji lama tidak
+	// berubah artinya.
+	Prefix string
+
 	Alias              string
 	Host               string
 	Port               int
@@ -210,12 +311,17 @@ func (b Database) Complete() bool {
 
 // Missing menyebut variabel lingkungan yang belum terisi untuk portal ini.
 func (b Database) Missing() []string {
+	prefix := b.Prefix
+	if prefix == "" {
+		prefix = portalPrefix
+	}
+
 	var missing []string
 	for name, value := range map[string]string{
-		portalPrefix + b.Alias + "_HOST":     b.Host,
-		portalPrefix + b.Alias + "_SERVICE":  b.Service,
-		portalPrefix + b.Alias + "_PENGGUNA": b.User,
-		portalPrefix + b.Alias + "_SANDI":    b.Password,
+		prefix + b.Alias + "_HOST":     b.Host,
+		prefix + b.Alias + "_SERVICE":  b.Service,
+		prefix + b.Alias + "_PENGGUNA": b.User,
+		prefix + b.Alias + "_SANDI":    b.Password,
 	} {
 		if value == "" {
 			missing = append(missing, name)
@@ -270,6 +376,9 @@ func Load() (Config, error) {
 	portal, portalErrs := loadPortals()
 	issues = append(issues, portalErrs...)
 
+	aneka, anekaErrs := loadAneka()
+	issues = append(issues, anekaErrs...)
+
 	k := Config{
 		Environment:     env,
 		Address:         get("APP_ALAMAT", ":8080"),
@@ -295,6 +404,7 @@ func Load() (Config, error) {
 			Password:        os.Getenv("SMTP_PASSWORD"),
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
+			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
 
 			XOLCommitteeRecipients: splitAddress(os.Getenv("XOL_PENERIMA_KOMITE")),
 
@@ -302,6 +412,15 @@ func Load() (Config, error) {
 		},
 		PrimaryPortal: primaryPortal,
 		Portal:        portal,
+		Aneka:         aneka,
+
+		// Nilai bawaannya adalah kelima kode yang benar-benar ada di
+		// `Activity/SetAllBusiness-Act.xml:984`, sehingga tanpa konfigurasi apa pun
+		// perilakunya sudah sama dengan Pega. Mengosongkannya secara sengaja tetap
+		// mungkin — cukup setel variabelnya menjadi satu spasi.
+		BulkSelectExcludedBusinesses: splitAddress(
+			get("BISNIS_DIKECUALIKAN_PILIH_SEMUA", "10028,10164,10114,10084,10093"),
+		),
 	}
 
 	issues = append(issues, checkDependencies(k)...)
@@ -347,6 +466,19 @@ func checkDependencies(k Config) []error {
 			issues = append(issues, fmt.Errorf("HCQ_LOGIN_PASSWORD wajib diisi bila IDENTITAS_ADAPTER=hcq"))
 		}
 	}
+
+	// Koneksi kedua selalu MILIK sebuah portal. Alias yang muncul di blok ANEKA tetapi
+	// tidak punya blok POOLDATA hampir pasti salah ketik — dan tanpa pemeriksaan ini ia
+	// lolos diam-diam: blok itu terbaca, tidak pernah dipakai, dan laporan yang
+	// membutuhkannya tetap mengosongkan kolomnya seolah blok itu belum diisi.
+	for alias := range k.Aneka {
+		if _, ada := k.Portal[alias]; !ada {
+			issues = append(issues, fmt.Errorf(
+				"%s%s_* terbaca, tetapi portal %q tidak punya satu pun %s%s_*; "+
+					"koneksi kedua selalu milik sebuah portal. Portal yang terbaca: %s",
+				anekaPrefix, alias, alias, portalPrefix, alias, aliasList(k.Portal)))
+		}
+	}
 	return issues
 }
 
@@ -366,34 +498,48 @@ func portalFixHint(alias string) string {
 // supaya menambah portal cukup dengan menambah lima baris di .env — tanpa menyentuh
 // kode sama sekali (ADR-0030: daftar portal adalah data, bukan konstanta).
 func loadPortals() (map[string]Database, []error) {
+	return loadDatabases(portalPrefix)
+}
+
+// loadAneka menemukan koneksi kedua tiap portal dengan cara yang sama.
+//
+// Ia memakai pemuat yang SAMA dengan portal, bukan salinannya: keduanya membaca lima
+// variabel dengan arti yang sama, dan dua pemuat berarti keduanya dapat berbeda saat
+// salah satu diubah — misalnya nilai baku porta atau umur koneksi.
+func loadAneka() (map[string]Database, []error) {
+	return loadDatabases(anekaPrefix)
+}
+
+func loadDatabases(prefix string) (map[string]Database, []error) {
 	var issues []error
 	result := map[string]Database{}
 
-	for _, alias := range aliasesFromEnvironment() {
-		port, err := getInt(portalPrefix+alias+"_PORT", 1521)
+	for _, alias := range aliasesFromEnvironment(prefix) {
+		port, err := getInt(prefix+alias+"_PORT", 1521)
 		if err != nil {
 			issues = append(issues, err)
 		}
-		maxConnections, err := getInt(portalPrefix+alias+"_MAKS_KONEKSI", 20)
+		maxConnections, err := getInt(prefix+alias+"_MAKS_KONEKSI", 20)
 		if err != nil {
 			issues = append(issues, err)
 		}
-		maksIdle, err := getInt(portalPrefix+alias+"_MAKS_IDLE", 5)
+		maksIdle, err := getInt(prefix+alias+"_MAKS_IDLE", 5)
 		if err != nil {
 			issues = append(issues, err)
 		}
-		umur, err := getDuration(portalPrefix+alias+"_UMUR_KONEKSI", 30*time.Minute)
+		umur, err := getDuration(prefix+alias+"_UMUR_KONEKSI", 30*time.Minute)
 		if err != nil {
 			issues = append(issues, err)
 		}
 
 		result[alias] = Database{
+			Prefix:             prefix,
 			Alias:              alias,
-			Host:               strings.TrimSpace(os.Getenv(portalPrefix + alias + "_HOST")),
+			Host:               strings.TrimSpace(os.Getenv(prefix + alias + "_HOST")),
 			Port:               port,
-			Service:            strings.TrimSpace(os.Getenv(portalPrefix + alias + "_SERVICE")),
-			User:               strings.TrimSpace(os.Getenv(portalPrefix + alias + "_PENGGUNA")),
-			Password:           os.Getenv(portalPrefix + alias + "_SANDI"),
+			Service:            strings.TrimSpace(os.Getenv(prefix + alias + "_SERVICE")),
+			User:               strings.TrimSpace(os.Getenv(prefix + alias + "_PENGGUNA")),
+			Password:           os.Getenv(prefix + alias + "_SANDI"),
 			MaxConnections:     maxConnections,
 			MaxIdle:            maksIdle,
 			ConnectionLifetime: umur,
@@ -402,14 +548,14 @@ func loadPortals() (map[string]Database, []error) {
 	return result, issues
 }
 
-func aliasesFromEnvironment() []string {
+func aliasesFromEnvironment(prefix string) []string {
 	ditemukan := map[string]bool{}
 	for _, rows := range os.Environ() {
 		name, _, _ := strings.Cut(rows, "=")
-		if !strings.HasPrefix(name, portalPrefix) || !strings.HasSuffix(name, "_HOST") {
+		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, "_HOST") {
 			continue
 		}
-		alias := strings.TrimSuffix(strings.TrimPrefix(name, portalPrefix), "_HOST")
+		alias := strings.TrimSuffix(strings.TrimPrefix(name, prefix), "_HOST")
 		if alias != "" && !strings.Contains(alias, "_") {
 			ditemukan[strings.ToUpper(alias)] = true
 		}
@@ -450,6 +596,7 @@ func (k Config) Summary() map[string]any {
 		"hcq_sandi_diisi":    k.HCQ.Password != "",
 		"kasir_aktif":        k.Cashier.Active(),
 		"smtp_aktif":         k.SMTP.Active(),
+		"smtp_tka_aktif":     k.SMTP.TKAActive(),
 	}
 }
 

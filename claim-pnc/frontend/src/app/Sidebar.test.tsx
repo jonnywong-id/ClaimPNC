@@ -36,7 +36,7 @@ const SAMPLE_PROFILE = {
  * apa yang harus dilakukan, sehingga penggantinya tidak perlu ditelusuri dari kegagalan
  * render yang membingungkan.
  */
-const BELUM_DIBANGUN = 'DataMemberReas'
+const BELUM_DIBANGUN = 'ReportProduksiPA_harnes'
 
 /**
  * Bentuknya meniru jawaban GET /api/menu: dua kelompok, masing-masing dengan butir yang
@@ -68,7 +68,7 @@ const MENU = {
         // Butir yang MENU_PROGRAM-nya menunjuk harness yang TIDAK ADA DI EXPORT sama
         // sekali (`K-33`, 11 dari 47 harness target). Ia dipakai sebagai contoh butir
         // yang belum ada modulnya — lihat alasannya di uji yang memakainya.
-        { id: 91, nama: 'Data Member Reas', program: BELUM_DIBANGUN, submenu: [] },
+        { id: 86, nama: 'Report Produksi Klaim PA', program: BELUM_DIBANGUN, submenu: [] },
       ],
     },
   ],
@@ -225,8 +225,10 @@ describe('butir yang belum ada modulnya', () => {
 
     await user.click(await screen.findByRole('button', { name: /REPORT/ }))
 
-    expect(screen.getByText('Data Member Reas')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Data Member Reas' })).not.toBeInTheDocument()
+    expect(screen.getByText('Report Produksi Klaim PA')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Report Produksi Klaim PA' }),
+    ).not.toBeInTheDocument()
     expect(screen.getAllByText('belum tersedia').length).toBeGreaterThan(0)
   })
 

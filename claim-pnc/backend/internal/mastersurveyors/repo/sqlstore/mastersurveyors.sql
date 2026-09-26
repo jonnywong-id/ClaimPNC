@@ -113,11 +113,11 @@ SELECT d.D_SURVEY_ID,
        d.APPROVAL,
        d.KOMITE,
        d.TRFKOMITE,
-       d.TGL_APPROVE_KOMITE,
-       d.CATATAN_KOMITE,
-       d.USER_INPUT,
-       d.TGL_INPUT,
-       d.USER_UPDATE
+       CAST(NULL AS TIMESTAMP)     AS TGL_APPROVE_KOMITE,
+       CAST(NULL AS VARCHAR(4000)) AS CATATAN_KOMITE,
+       CAST(NULL AS VARCHAR(100))  AS USER_INPUT,
+       CAST(NULL AS TIMESTAMP)     AS TGL_INPUT,
+       CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
   LEFT JOIN POOLDATA.M_SURVEYORS m ON m.M_SURVEY_ID = d.M_SURVEY_ID
  WHERE (:1 IS NULL OR d.APPROVAL = :2)
@@ -164,11 +164,11 @@ SELECT d.D_SURVEY_ID,
        d.APPROVAL,
        d.KOMITE,
        d.TRFKOMITE,
-       d.TGL_APPROVE_KOMITE,
-       d.CATATAN_KOMITE,
-       d.USER_INPUT,
-       d.TGL_INPUT,
-       d.USER_UPDATE
+       CAST(NULL AS TIMESTAMP)     AS TGL_APPROVE_KOMITE,
+       CAST(NULL AS VARCHAR(4000)) AS CATATAN_KOMITE,
+       CAST(NULL AS VARCHAR(100))  AS USER_INPUT,
+       CAST(NULL AS TIMESTAMP)     AS TGL_INPUT,
+       CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
   LEFT JOIN POOLDATA.M_SURVEYORS m ON m.M_SURVEY_ID = d.M_SURVEY_ID
  WHERE d.D_SURVEY_ID = :1
@@ -204,11 +204,11 @@ SELECT d.D_SURVEY_ID,
        d.APPROVAL,
        d.KOMITE,
        d.TRFKOMITE,
-       d.TGL_APPROVE_KOMITE,
-       d.CATATAN_KOMITE,
-       d.USER_INPUT,
-       d.TGL_INPUT,
-       d.USER_UPDATE
+       CAST(NULL AS TIMESTAMP)     AS TGL_APPROVE_KOMITE,
+       CAST(NULL AS VARCHAR(4000)) AS CATATAN_KOMITE,
+       CAST(NULL AS VARCHAR(100))  AS USER_INPUT,
+       CAST(NULL AS TIMESTAMP)     AS TGL_INPUT,
+       CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
   LEFT JOIN POOLDATA.M_SURVEYORS m ON m.M_SURVEY_ID = d.M_SURVEY_ID
  WHERE UPPER(REPLACE(d.NAME, ' ', '')) = :1
@@ -244,11 +244,11 @@ SELECT d.D_SURVEY_ID,
        d.APPROVAL,
        d.KOMITE,
        d.TRFKOMITE,
-       d.TGL_APPROVE_KOMITE,
-       d.CATATAN_KOMITE,
-       d.USER_INPUT,
-       d.TGL_INPUT,
-       d.USER_UPDATE
+       CAST(NULL AS TIMESTAMP)     AS TGL_APPROVE_KOMITE,
+       CAST(NULL AS VARCHAR(4000)) AS CATATAN_KOMITE,
+       CAST(NULL AS VARCHAR(100))  AS USER_INPUT,
+       CAST(NULL AS TIMESTAMP)     AS TGL_INPUT,
+       CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
   LEFT JOIN POOLDATA.M_SURVEYORS m ON m.M_SURVEY_ID = d.M_SURVEY_ID
  WHERE d.LOGIN_APLIKASI IS NOT NULL
@@ -288,17 +288,18 @@ SELECT POOLDATA.D_SURVEYORS_SEQ.NEXTVAL
 -- OLD_D_SURVEY_ID tidak diisi: ia jejak penomoran sistem sebelumnya, bukan field yang
 -- dikelola. TGL_INPUT memakai CURRENT_TIMESTAMP, bukan SYSDATE — `D-20` melarang SYSDATE
 -- karena tidak portabel, dan `F-5` menetapkan waktu disimpan sebagai UTC.
+-- USER_INPUT dan TGL_INPUT juga tidak diisi, dan bukan karena dilupakan: keduanya BELUM
+-- ADA di POOLDATA.D_SURVEYORS — migrasi `0004_master_surveyor` yang membuatnya, dan
+-- migrasi itu belum dijalankan. Pega pun tidak punya keduanya.
 INSERT INTO POOLDATA.D_SURVEYORS (
        D_SURVEY_ID, M_SURVEY_ID, NAME, ADDRESS, KDPOS, STATE,
        TELEPHONE, FAKSIMILE, EMAIL, OTHER_CONTACT,
        BRANCH, BRANCHNAME, LOGIN_APLIKASI, DOCID,
-       APPROVAL, KOMITE, TRFKOMITE,
-       USER_INPUT, TGL_INPUT)
+       APPROVAL, KOMITE, TRFKOMITE)
 VALUES (:1, :2, :3, :4, :5, :6,
         :7, :8, :9, :10,
         :11, :12, :13, :14,
-        :15, :16, :17,
-        :18, CURRENT_TIMESTAMP)
+        :15, :16, :17)
 
 -- name: surveyor_update
 --
@@ -310,7 +311,23 @@ VALUES (:1, :2, :3, :4, :5, :6,
 --                      `TempDetailSurveyors.KOMITE==""` pada langkah 6 — menetapkannya
 --                      ulang pada setiap penyuntingan akan memindahkan kewenangan
 --                      memutuskan ke orang lain di tengah jalan
---     USER_INPUT       pengaju pertama; yang berubah adalah USER_UPDATE
+--     USER_INPUT       pengaju pertama
+--
+-- # Tiga kolom jejak yang TIDAK ditulis, dan kenapa
+--
+-- TGL_APPROVE_KOMITE, CATATAN_KOMITE, dan USER_UPDATE **tidak ada di POOLDATA.D_SURVEYORS**
+-- — ketiganya baru dibuat migrasi `0004_master_surveyor`, dan migrasi itu belum dijalankan.
+-- Ketiganya juga tidak ada di Pega: layar lamanya tidak pernah mencatat siapa memutuskan,
+-- kapan, dan dengan catatan apa.
+--
+-- Keputusan Work Owner 2026-09-22: ikuti Pega dan tulis LANGSUNG ke kolom yang ada, bukan
+-- ke JSON. Ketiganya karena itu tidak ditulis sama sekali. Keputusan komitenya sendiri
+-- TETAP tersimpan — ia ada di kolom APPROVAL yang memang sudah ada; yang hilang hanyalah
+-- jejak siapa dan kapan.
+--
+-- Konsekuensinya diterima secara sadar dan perlu diketahui: `D-59` menjadikan jejak audit
+-- satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas. Sampai migrasi 0004
+-- dijalankan, persetujuan surveyor tidak meninggalkan jejak pelaku.
 UPDATE POOLDATA.D_SURVEYORS
    SET M_SURVEY_ID        = :1,
        NAME               = :2,
@@ -326,11 +343,8 @@ UPDATE POOLDATA.D_SURVEYORS
        LOGIN_APLIKASI     = :12,
        DOCID              = :13,
        APPROVAL           = :14,
-       TRFKOMITE          = :15,
-       TGL_APPROVE_KOMITE = :16,
-       CATATAN_KOMITE     = :17,
-       USER_UPDATE        = :18
- WHERE D_SURVEY_ID        = :19
+       TRFKOMITE          = :15
+ WHERE D_SURVEY_ID        = :16
 
 -- name: surveyor_check_table
 --
@@ -356,10 +370,10 @@ SELECT d.D_SURVEY_ID,
        d.APPROVAL,
        d.KOMITE,
        d.TRFKOMITE,
-       d.TGL_APPROVE_KOMITE,
-       d.CATATAN_KOMITE,
-       d.USER_INPUT,
-       d.TGL_INPUT,
-       d.USER_UPDATE
+       CAST(NULL AS TIMESTAMP)     AS TGL_APPROVE_KOMITE,
+       CAST(NULL AS VARCHAR(4000)) AS CATATAN_KOMITE,
+       CAST(NULL AS VARCHAR(100))  AS USER_INPUT,
+       CAST(NULL AS TIMESTAMP)     AS TGL_INPUT,
+       CAST(NULL AS VARCHAR(100))  AS USER_UPDATE
   FROM POOLDATA.D_SURVEYORS d
  WHERE 1 = 0
