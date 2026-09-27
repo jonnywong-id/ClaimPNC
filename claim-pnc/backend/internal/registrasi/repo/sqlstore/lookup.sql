@@ -104,7 +104,33 @@ SELECT
        COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchCode'),
                 JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BranchCode')),
        COALESCE(JSON_VALUE(p.POLICYDATA, '$.SpreadingStatus'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.SpreadingStatus'))
+                JSON_VALUE(p.DATA_JSONBLOB, '$.SpreadingStatus')),
+       -- Sembilan jalur berikut diisi Pega ke T_CLAIM_PNC saat klaim dibuat
+       -- (PEGA_CONVERT_JSONKLAIM_PNC.prc baris 317-373). Terverifikasi 2026-09-26 pada
+       -- 300 dokumen terbaru: tujuh terisi 296-300, CedingCoName dan OfferFacIn hanya
+       -- ada pada polis fakultatif masuk, PolicyLeader hanya pada polis member.
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BusinessCode'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BusinessCode')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.BranchName'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.BranchName')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.SourceOfBusiness'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.SourceOfBusiness')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.Quotation.SobName'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.Quotation.SobName')),
+       -- PRODKE dari KOLOM lebih dulu, isi dokumen hanya cadangan. Terverifikasi
+       -- 2026-09-26 terhadap 119 klaim Pega: dua klaim mencatat PRODKE yang hanya ada di
+       -- kolom — isi dokumennya tertinggal satu versi endorsemen.
+       COALESCE(CAST(p.PRODKE AS VARCHAR(30)),
+                JSON_VALUE(p.POLICYDATA, '$.ProdKe'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.ProdKe')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.PolicyLeader'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.PolicyLeader')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.TypeOfCoins'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.TypeOfCoins')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.CedingCoName'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.CedingCoName')),
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.OfferFacIn.PercentShare'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.OfferFacIn.PercentShare'))
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
    AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
@@ -169,3 +195,80 @@ SELECT OPERATOR_ID
 UPDATE POOLDATA.MST_USER_TEKNIK
    SET COUNTER_QUOTA = COUNTER_QUOTA + 1
  WHERE OPERATOR_ID = :1
+
+-- name: polis_koasuransi
+--
+-- Baris CoinsList dokumen polis, untuk DeriveCoinsurance. Dokumen yang dipakai sama
+-- dengan polis_ambil: baris JSON_POLIS terbaru, POLICYDATA lebih dulu, DATA_JSONBLOB
+-- bila POLICYDATA kosong. Kedua kolomnya berbeda tipe (CLOB dan BLOB), sehingga
+-- keduanya tidak dapat digabung COALESCE sebelum JSON_TABLE — karena itu dua cabang.
+--
+-- CoinsList hanya ada pada sebagian kecil polis (12 dari 300 terbaru). Tanpanya kueri
+-- ini mengembalikan nol baris, dan DeriveCoinsurance memberi bawaan Pega.
+WITH terbaru AS (
+    SELECT p.POLICYDATA, p.DATA_JSONBLOB
+      FROM POOLDATA.JSON_POLIS p
+     WHERE p.NOPOLIS = :1
+       AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)
+     ORDER BY p.TGL_INPUT DESC
+     FETCH FIRST 1 ROWS ONLY
+)
+SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.POLICYDATA, '$.CoinsList[*]' COLUMNS (
+           LEADER        VARCHAR(10)  PATH '$.Leader',
+           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
+           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
+ WHERE t.POLICYDATA IS NOT NULL
+UNION ALL
+SELECT jt.LEADER, jt.COINS_NAME, jt.PERCENT_SHARE
+  FROM terbaru t,
+       JSON_TABLE(t.DATA_JSONBLOB, '$.CoinsList[*]' COLUMNS (
+           LEADER        VARCHAR(10)  PATH '$.Leader',
+           COINS_NAME    VARCHAR(200) PATH '$.CoinsName',
+           PERCENT_SHARE VARCHAR(50)  PATH '$.PercentShare')) jt
+ WHERE t.POLICYDATA IS NULL
+
+-- ============================================================================
+-- WILAYAH KEJADIAN — daftar pilihan bertingkat layar Input Register
+-- ============================================================================
+--
+-- Sumber tiap tingkat dan alasannya ada di catatan AreaDirectory (seam.go). Tiga dari
+-- lima report definition Pega hilang dari export; tabel sumbernya dipastikan dengan
+-- menelusuri satu contoh nyata dari layar Pega sampai ke kode posnya.
+
+-- name: wilayah_negara
+SELECT ID, COUNTRY, CAST(NULL AS VARCHAR(10))
+  FROM POOLDATA.COUNTRY
+ WHERE COUNTRY IS NOT NULL
+ ORDER BY COUNTRY
+
+-- name: wilayah_provinsi
+--
+-- Disaring menurut NAMA negara. NATIONID tidak dapat dipakai: skema kodenya berbeda dari
+-- COUNTRY.ID, sehingga menyaring dengan kode negara mengosongkan daftar Indonesia.
+SELECT ID, NOTE, CAST(NULL AS VARCHAR(10))
+  FROM POOLDATA.PROVINCE
+ WHERE UPPER(NATIONNAME) = UPPER(:1)
+ ORDER BY NOTE
+
+-- name: wilayah_kota
+SELECT ID, NOTE, CAST(NULL AS VARCHAR(10))
+  FROM POOLDATA.CITYINPUT
+ WHERE PROVINCEID = :1
+ ORDER BY NOTE
+
+-- name: wilayah_kabupaten
+SELECT ID, DISTRICTNAME, CAST(NULL AS VARCHAR(10))
+  FROM POOLDATA.DISTRICTINPUT
+ WHERE CITYID = :1
+ ORDER BY DISTRICTNAME
+
+-- name: wilayah_kelurahan
+--
+-- M_RW menyimpan kelurahan sebagai dokumen JSON: ID, DistrictID, Note, ZipCode. ZipCode
+-- itulah yang Pega salin ke ClaimData.PostalCode saat kelurahan dipilih.
+SELECT ID, JSON_VALUE(JSONDATA, '$.Note'), JSON_VALUE(JSONDATA, '$.ZipCode')
+  FROM POOLDATA.M_RW
+ WHERE JSON_VALUE(JSONDATA, '$.DistrictID') = :1
+ ORDER BY 2

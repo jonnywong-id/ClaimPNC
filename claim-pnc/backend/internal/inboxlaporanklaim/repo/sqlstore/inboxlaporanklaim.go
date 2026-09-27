@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxlaporanklaim"
+	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/db"
 )
 
@@ -242,7 +243,7 @@ func (r *Repo) Get(ctx context.Context, id string) (inboxlaporanklaim.ClaimRepor
 	// ditekan — tombol yang tampak rusak, kelas kegagalan yang sudah dua kali menimpa
 	// layar ini.
 	//
-	// Awalan `RCVN.` hanya diterbitkan aplikasi ini (`D-71`), sehingga pemilihannya pasti.
+	// Awalan `RCVN` hanya diterbitkan aplikasi ini, sehingga pemilihannya pasti.
 	// Itu pula alasan awalan itu ditetapkan: asal sebuah berkas terbaca dari nomornya
 	// tanpa tabel pemetaan.
 	query := sourced("claim_report_get_body")
@@ -288,11 +289,24 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		return inboxlaporanklaim.ErrReadOnlyOrigin
 	}
 
+	// Berkas dan barisnya di T_CLAIM_PNC ditulis dalam SATU transaksi. Berkas yang
+	// tersimpan tanpa barisnya di sana — atau sebaliknya — adalah keadaan yang tampak
+	// benar di satu layar dan salah di layar lain.
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: memulai transaksi: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	// Tanggal terima dokumen disimpan sebagai TEKS berbentuk ISO. Kolomnya bertipe
 	// VARCHAR2 di tabel lama — Pega bahkan mengisinya dengan ReferenceId, bukan tanggal
 	// (Rcv_ProcInsertRecivedDocument). Baris terbitan aplikasi ini selalu ISO, sehingga
 	// pembacaannya kembali lewat TO_DATE pasti.
-	result, err := r.db.ExecContext(ctx, getQuery("claim_report_update"),
+	//
+	// Pernyataan ini berjalan LEBIH DULU: ia mengunci baris berkasnya, sehingga dua
+	// penyimpanan bersamaan atas berkas yang sama tidak dapat sama-sama menyisipkan baris
+	// di T_CLAIM_PNC — tabel itu tidak punya kunci utama yang akan menolaknya.
+	result, err := tx.ExecContext(ctx, getQuery("claim_report_update"),
 		isoDate(report.ReceivedDate),
 		nullTime(report.DateOfLoss),
 		emptyToNil(report.ReporterName),
@@ -315,17 +329,87 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q: %w", report.ID, ownTable(err))
 	}
 
-	affected, err := result.RowsAffected()
-	if err != nil {
-		// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
-		// kegagalan: pernyataannya sendiri sudah berhasil.
-		return nil
-	}
-	if affected == 0 {
+	// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
+	// kegagalan: pernyataannya sendiri sudah berhasil.
+	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
 		return inboxlaporanklaim.ErrNotFound
+	}
+
+	if err := upsertClaimRow(ctx, tx, report); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menutup transaksi simpan: %w", err)
 	}
 	return nil
 }
+
+// upsertClaimRow menuliskan baris berkas ini di POOLDATA.T_CLAIM_PNC.
+//
+// Work Owner, 2026-09-26: pembuatan RCVN ikut masuk ke T_CLAIM_PNC — seperti Pega, yang
+// menyimpan 436 baris ber-CLAIMID RCV di tabel itu. Isinya ditaruh di kolom warisan yang
+// juga dipakai baris klaim, lihat catatan pada inboxlaporanklaim.sql.
+//
+// # UPDATE lebih dulu, INSERT hanya bila tidak ada
+//
+// T_CLAIM_PNC tidak punya kunci utama, sehingga penyisipan kedua tidak akan ditolak —
+// ia akan diam-diam menjadi baris ganda. UPDATE lebih dulu membuat penyimpanan berulang
+// memperbarui baris yang sama, dan sekaligus melengkapi berkas yang dibuat sebelum
+// perubahan ini: barisnya lahir pada penyimpanan berikutnya.
+//
+// # Hanya berkas milik aplikasi ini
+//
+// Berkas Pega tidak pernah sampai ke sini (Update menolaknya lebih awal), dan kedua
+// pernyataan tetap memagari CLAIMID `RCVN%` — pagar `P-1` tidak diserahkan pada urutan
+// pemanggilan.
+func upsertClaimRow(ctx context.Context, tx *sql.Tx, report inboxlaporanklaim.ClaimReport) error {
+	if !inboxlaporanklaim.IssuedHere(report.ID) {
+		return nil
+	}
+
+	args := []any{
+		emptyToNil(report.PolicyNumber),
+		emptyToNil(report.InsuredName),
+		calendarDate(report.DateOfLoss),
+		// Langkah 14: ClaimData.ReportDate <- ReceiveDocument.ReceivedDate.
+		calendarDate(report.ReceivedDate),
+		emptyToNil(report.ReporterName),
+		emptyToNil(report.ReporterPhone),
+		emptyToNil(report.LossLocation),
+		emptyToNil(report.Chronology),
+		emptyToNil(report.BranchCode),
+		// Langkah 14: ClaimData.SubjectEmail <- ReceiveDocument.SubjectEmail.
+		emptyToNil(report.EmailSubject),
+		report.ID,
+	}
+
+	result, err := tx.ExecContext(ctx, getQuery("claim_report_pnc_update"), args...)
+	if err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: memperbarui baris %q di T_CLAIM_PNC: %w", report.ID, err)
+	}
+	if affected, err := result.RowsAffected(); err == nil && affected > 0 {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, getQuery("claim_report_pnc_insert"), args...); err != nil {
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan baris %q di T_CLAIM_PNC: %w", report.ID, err)
+	}
+	return nil
+}
+
+// calendarDate mengikat sebuah TANGGAL KALENDER ke kolom Oracle bertipe DATE.
+//
+// DATE tidak menyimpan zona; ia menyimpan jam dinding apa adanya, dan driver memasang
+// zona sesi (WIB) saat membacanya kembali. Waktu UTC yang diikat langsung akan kehilangan
+// sehari — tengah malam WIB selalu jatuh di hari sebelumnya menurut UTC (`R-12`, bab 57
+// catatan pengembangan). Karena itu tanggalnya dipotong ke tengah malam WIB lebih dulu.
+func calendarDate(t time.Time) any {
+	if t.IsZero() {
+		return nil
+	}
+	return clock.DateWIB(t)
+}
+
+
 
 // Insert menerbitkan nomor lalu menyimpan berkas baru — ke tabel milik aplikasi ini.
 //
@@ -400,6 +484,13 @@ func (r *Repo) insertOnce(
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan %q: %w", saved.ID, ownTable(err))
 	}
 
+	// Barisnya di T_CLAIM_PNC lahir bersama berkasnya, di transaksi yang sama. Bila
+	// nomornya bertabrakan dan percobaan diulang, transaksi ini dibatalkan seluruhnya —
+	// tidak ada baris tertinggal atas nomor yang tidak jadi dipakai.
+	if err := upsertClaimRow(ctx, tx, saved); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menutup transaksi sisip: %w", err)
 	}
@@ -415,6 +506,7 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 	for name, table := range map[string]string{
 		"claim_report_check_table":        "POOLDATA.T_CLAIM_RECIVEDCLAIM",
 		"claim_report_check_legacy_table": "POOLDATA.T_CLAIMLIST_ADMIN",
+		"claim_report_check_claim_row":    "POOLDATA.T_CLAIM_PNC (kolom baris berkas)",
 	} {
 		rows, err := r.db.QueryContext(ctx, getQuery(name))
 		if err != nil {

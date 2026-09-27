@@ -63,6 +63,7 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.ExchangeRateSource = registrasisql.NewExchangeRateSource(db)
 		options.Assigner = registrasisql.NewAssigner(db)
 		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
+		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
 
 		logger.Warn("modul registrasi berjalan, dengan dua sumber yang belum lengkap",
 			slog.String("penerima_kerugian_besar",
@@ -86,6 +87,7 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.ExchangeRateSource = registrasimemory.NewExchangeRateSource()
 		options.Assigner = registrasimemory.NewAssigner(registrasimemory.SampleTeams())
 		options.ClaimReportLink = registrasimemory.NewClaimReportLink()
+		options.AreaDirectory = registrasimemory.NewAreaDirectory()
 
 		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
 			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),

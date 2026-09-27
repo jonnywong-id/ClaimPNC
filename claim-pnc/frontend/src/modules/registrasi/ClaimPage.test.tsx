@@ -94,6 +94,19 @@ const ALUR = {
 }
 
 let sentBody: unknown = null
+let draftBody: unknown = null
+
+/** Master wilayah palsu: satu rangkaian nyata dari layar Pega. */
+const WILAYAH: Record<string, { id: string; nama: string; kode_pos?: string }[]> = {
+  'negara|': [
+    { id: '100009', nama: 'INDONESIA' },
+    { id: '100001', nama: 'TIMOR LESTE' },
+  ],
+  'provinsi|INDONESIA': [{ id: '10012', nama: 'DI YOGYAKARTA' }],
+  'kota|10012': [{ id: '10259', nama: 'KAB. SLEMAN' }],
+  'kabupaten|10259': [{ id: '10000925', nama: 'KEC. DEPOK' }],
+  'kelurahan|10000925': [{ id: '10004326', nama: 'KEL. CATURTUNGGAL', kode_pos: '55281' }],
+}
 
 function stubFetch(registerAnswer: () => { body: unknown; status: number }) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
@@ -101,6 +114,15 @@ function stubFetch(registerAnswer: () => { body: unknown; status: number }) {
     let status = 200
 
     if (url === '/api/registrasi/alur') body = ALUR
+    else if (url.startsWith('/api/registrasi/wilayah/')) {
+      const [path, query] = url.split('?')
+      const level = path!.split('/').pop() ?? ''
+      const parent = new URLSearchParams(query ?? '').get('induk') ?? ''
+      body = { pilihan: WILAYAH[`${level}|${parent}`] ?? [] }
+    } else if (url === '/api/registrasi/register/simpan') {
+      draftBody = init?.body ? JSON.parse(init.body as string) : null
+      body = CLAIM
+    }
     else if (url.startsWith('/api/registrasi/klaim/')) body = CLAIM
     else if (url === '/api/registrasi/register') {
       sentBody = init?.body ? JSON.parse(init.body as string) : null
@@ -135,6 +157,7 @@ function mount(component: ReactNode) {
 
 beforeEach(() => {
   sentBody = null
+  draftBody = null
   window.sessionStorage.clear()
   useSession.getState().clear()
   useSession.getState().login({
@@ -171,7 +194,7 @@ describe('layar kerja klaim', () => {
     stubFetch(() => ({ body: { ...CLAIM, klaim: { ...CLAIM.klaim, nomor: 'PNCN.26.0001' } }, status: 200 }))
     mount(<ClaimPage />)
 
-    const save = await screen.findByRole('button', { name: /Simpan dan terbitkan/ })
+    const save = await screen.findByRole('button', { name: 'Next' })
     await userEvent.setup().click(save)
 
     await waitFor(() => expect(sentBody).not.toBeNull())
@@ -205,7 +228,7 @@ describe('layar kerja klaim', () => {
     }))
     mount(<ClaimPage />)
 
-    const save = await screen.findByRole('button', { name: /Simpan dan terbitkan/ })
+    const save = await screen.findByRole('button', { name: 'Next' })
     await userEvent.setup().click(save)
 
     const slik = await screen.findByLabelText('Nomor SLIK')
@@ -221,11 +244,71 @@ describe('layar kerja klaim', () => {
     stubFetch(() => ({ body: CLAIM, status: 200 }))
     mount(<ClaimPage />)
 
-    const kembali = await screen.findByRole('button', { name: 'Kembali (Back)' })
+    const kembali = await screen.findByRole('button', { name: 'Back' })
     await userEvent.setup().click(kembali)
 
     await waitFor(() => expect(sentBody).not.toBeNull())
     expect(sentBody).toMatchObject({ kembali: true })
+  })
+
+  // Rangkaian dari tangkapan layar Pega. Memilih kelurahan mengisi Kode Pos dari master,
+  // dan Kota sampai Kode Pos baru tampil setelah Negara INDONESIA dipilih.
+  it('memilih wilayah bertingkat dan mengisi kode pos dari kelurahan', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const negara = await screen.findByLabelText('Negara')
+    expect(screen.queryByLabelText('Kota')).not.toBeInTheDocument()
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'INDONESIA' })).toBeInTheDocument())
+    await user.selectOptions(negara, '100009')
+
+    const provinsi = screen.getByLabelText('Provinsi')
+    await waitFor(() => expect(screen.getByRole('option', { name: 'DI YOGYAKARTA' })).toBeInTheDocument())
+    await user.selectOptions(provinsi, '10012')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KAB. SLEMAN' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kota'), '10259')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KEC. DEPOK' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kabupaten'), '10000925')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KEL. CATURTUNGGAL' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kelurahan'), '10004326')
+
+    expect(screen.getByLabelText('Kode Pos')).toHaveValue('55281')
+
+    await user.click(screen.getByLabelText('SUSPICIOUS'))
+    await user.type(screen.getByLabelText('Komentar Suspicious'), 'Dokumen janggal')
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => expect(sentBody).not.toBeNull())
+    expect(sentBody).toMatchObject({
+      wilayah: {
+        negara: 'INDONESIA', negara_id: '100009',
+        provinsi: 'DI YOGYAKARTA', provinsi_id: '10012',
+        kota: 'KAB. SLEMAN', kota_id: '10259',
+        kabupaten: 'KEC. DEPOK', kabupaten_id: '10000925',
+        kelurahan: 'KEL. CATURTUNGGAL', kelurahan_id: '10004326',
+        kode_pos: '55281',
+      },
+      prinsip_mengenal_nasabah: '2',
+      komentar_suspicious: 'Dokumen janggal',
+    })
+  })
+
+  // Save menyimpan TANPA menutup tahap: ia memanggil jalur simpan, bukan jalur register.
+  it('tombol Save menyimpan tanpa menutup tahap Input Register', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(draftBody).not.toBeNull())
+    expect(sentBody).toBeNull()
+    expect(draftBody).toMatchObject({ tugas_id: 'tugas-1', prinsip_mengenal_nasabah: '1', ex_gratia: false })
+    expect(await screen.findByText(/Klaim tetap di tahap Input Register/)).toBeInTheDocument()
   })
 })
 

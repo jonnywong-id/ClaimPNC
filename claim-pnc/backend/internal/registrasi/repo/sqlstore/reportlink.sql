@@ -26,9 +26,9 @@
 --
 -- Selama masa paralel, tepat satu sistem menulis sebuah baris (`ADR-0004`). Berkas milik
 -- Pega hanya boleh dibaca, dan pemisahnya adalah AWALAN KUNCI: baris terbitan aplikasi
--- ini ber-CLAIMID `RCVN.%`.
+-- ini ber-CLAIMID `RCVN%`.
 --
--- Kedua UPDATE di bawah karena itu menyaring `CLAIMID LIKE 'RCVN.%'`. Layar memang sudah
+-- Kedua UPDATE di bawah karena itu menyaring `CLAIMID LIKE 'RCVN%'`. Layar memang sudah
 -- mematikan tombolnya pada berkas Pega, tetapi layar bukan tempat menegakkan kepemilikan
 -- data — satu permintaan yang dibuat di luar layar akan melewatinya.
 --
@@ -44,7 +44,7 @@
 UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
    SET TRANSFERASM = :1
  WHERE CLAIMID = :2
-   AND CLAIMID LIKE 'RCVN.%'
+   AND CLAIMID LIKE 'RCVN%'
    AND TRANSFERASM IS NULL
 
 -- name: laporan_pasang_nomor_klaim
@@ -56,7 +56,7 @@ UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
 UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
    SET NOKLAIM = :1
  WHERE CLAIMID = :2
-   AND CLAIMID LIKE 'RCVN.%'
+   AND CLAIMID LIKE 'RCVN%'
    AND TRANSFERASM IS NOT NULL
 
 -- name: laporan_keadaan
@@ -65,8 +65,48 @@ UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
 -- Ia menjawab tiga pertanyaan sekaligus: barisnya ada atau tidak, miliknya siapa, dan
 -- kedua kolom penentu posisinya sudah terisi atau belum. Tanpa ini, satu UPDATE yang
 -- mengenai 0 baris tidak dapat dibedakan sebabnya.
-SELECT CASE WHEN CLAIMID LIKE 'RCVN.%' THEN 1 ELSE 0 END,
+SELECT CASE WHEN CLAIMID LIKE 'RCVN%' THEN 1 ELSE 0 END,
        CASE WHEN TRANSFERASM IS NULL THEN 0 ELSE 1 END,
        CASE WHEN NOKLAIM IS NULL THEN 0 ELSE 1 END
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
+ WHERE CLAIMID = :1
+
+-- name: laporan_isi
+-- Isi berkas laporan yang dibawa ke klaim saat ia dibuka.
+--
+-- Kolomnya dipilih mengikuti `Activity/CreateRegisterKlaimPNC_act.xml` langkah 14 — satu
+-- satunya tempat di sistem lama yang menyalin isi berkas RCV ke klaim:
+--
+--   DOL                  -> ClaimData.DateOfLoss
+--   TANGGALTERIMADOKUMEN -> ClaimData.ReportDate          (lihat catatan nama di bawah)
+--   NAMAPELAPOR          -> ClaimData.ReporterName        (Pega: ReceiveDocument.Sender)
+--   TLPPENGIRIM          -> ClaimData.ReporterTelp
+--   EMAILPENGIRIM        -> ClaimData.Email
+--   LOKASIKEJADIAN       -> ClaimData.Location
+--   KRONOLOGIKEJADIAN    -> ClaimData.ReportDescription
+--   ESTIMATIONVALUE      -> ClaimData.ClaimEstimate
+--   NOPOLIS              -> diperiksa, tidak disalin
+--
+-- # Kenapa TANPA pagar RCVN
+--
+-- Berbeda dari kedua UPDATE di atas, ini PEMBACAAN. Berkas milik Pega boleh dibaca — yang
+-- dilarang `P-1` adalah menulisinya. Memagari pembacaan akan membuat klaim yang dibuat
+-- dari berkas warisan lahir kosong tanpa sebab yang terlihat.
+--
+-- ESTIMATIONVALUE bertipe angka dalam RUPIAH pada tabel warisan; pemanggil mengalikan 100
+-- untuk mendapatkan SEN (`ADR-0016`). Lihat catatan satuan uang pada claim.sql.
+--
+-- # TANGGALTERIMADOKUMEN: namanya salah, tipenya teks, dan isinya berbeda per pemilik
+--
+-- Kolom ini `VARCHAR2`, dan Pega mengisinya dengan **ReferenceId — bukan tanggal**
+-- (`Rcv_ProcInsertRecivedDocument`). Baris milik aplikasi ini selalu menuliskannya dalam
+-- bentuk ISO `YYYY-MM-DD`.
+--
+-- Karena itu ia diambil APA ADANYA sebagai teks dan ditafsirkan di Go, bukan lewat
+-- `TO_DATE` seperti pada daftar berkas. `TO_DATE` di sini akan menggagalkan seluruh
+-- pembuatan klaim dengan ORA-01861 begitu berkas warisan diregistrasi — pembacaan yang
+-- memang diizinkan. Teks yang bukan tanggal diperlakukan sebagai tidak ada.
+SELECT DOL, TANGGALTERIMADOKUMEN, NAMAPELAPOR, TLPPENGIRIM, EMAILPENGIRIM,
+       LOKASIKEJADIAN, KRONOLOGIKEJADIAN, ESTIMATIONVALUE, NOPOLIS
   FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
  WHERE CLAIMID = :1

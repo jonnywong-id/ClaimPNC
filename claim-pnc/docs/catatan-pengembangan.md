@@ -10802,3 +10802,1316 @@ lebih dulu**:
 
 Backend dan frontend dibangun ulang; aplikasi menyala dengan antarmuka tertanggal
 `2026-09-24T11:16Z`. Seluruh uji backend lulus, dan 17 uji modul registrasi lulus.
+
+## 51. Nomor laporan menjadi `RCVN-xxxx`, dan kenapa berkas baru tidak tampak (2026-09-24)
+
+### 51.1 Berkas RCVN tidak hilang — ia ada di tab lain
+
+Layar Inbox Laporan Klaim membuka tab **Outstanding**, sama seperti layar lama
+(`DEFAULT_CATEGORY = 'outstanding'`, mengikuti `D-13`). Keadaan data saat ditanyakan:
+
+| Posisi | Jumlah berkas RCVN |
+|---|---|
+| Not Transferred | 11 |
+| Not Registered | 3 |
+| **Outstanding** | **0** |
+
+Jadi tab yang terbuka pertama memang kosong dari berkas baru — bukan karena datanya tidak
+tersimpan, melainkan karena **belum satu pun berkas mencapai tab itu**.
+
+Perjalanannya tiga langkah, dan hanya langkah ketiga yang membawanya ke Outstanding:
+
+```
+Buat Baru      → Not Transferred   (NOKLAIM kosong, TRANSFERASM kosong)
+Register Klaim → Not Registered    (TRANSFERASM terisi)
+nomor terbit   → Outstanding       (NOKLAIM terisi, di ujung Input Register)
+```
+
+Tiga berkas yang sudah diregistrasi berhenti di **Not Registered** karena tahap Input
+Register-nya belum ditutup — nomor klaim memang baru terbit di sana (`ADR-0009`).
+
+**Penunjuk arahnya sudah ada:** setiap tab menggambar lencana jumlah, dan
+`CategoryNotTransferred` termasuk yang dicacah. Tab "Belum diserahkan" menampilkan angkanya
+tanpa perlu dibuka.
+
+Tab bawaan **tidak diubah** — ia mengikuti layar lama, dan menggesernya adalah keputusan
+Work Owner, bukan perbaikan cacat.
+
+### 51.2 Format nomor laporan diubah
+
+Work Owner menetapkan bentuknya menjadi **`RCVN-xxxx`**, bukan `RCVN.YY.xxxx`.
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Bentuk | `RCVN.26.0001` | `RCVN-0001` |
+| Segmen tahun | ada | **tidak ada** |
+| Deret | satu per tahun | **satu deret menembus tahun** |
+
+Hilangnya segmen tahun memaksa deretnya menjadi satu. Deret per tahun tanpa segmen tahun
+akan menerbitkan nomor yang sama dua kali.
+
+### 51.3 Empat belas berkas lama tetap milik aplikasi ini
+
+Ini bagian yang paling mudah dirusak. Kepemilikan baris ditegakkan lewat **awalan kunci**
+(`P-1`): baris kita `RCVN…`, baris Pega `ASM-FW-GCNMFW-WORK …`. Pagarnya semula
+`LIKE 'RCVN.%'` — dengan titik.
+
+Membiarkannya berarti **14 berkas yang telanjur terbit mendadak terbaca sebagai milik
+Pega**, dan berkas milik Pega hanya dapat dibaca. Akibatnya berkas-berkas itu berhenti
+dapat disunting, tanpa satu pun galat yang menjelaskan sebabnya.
+
+Karena itu:
+
+- SQL menyaring `LIKE 'RCVN%'` — tanpa pemisah, sehingga kedua bentuk ikut.
+- `IssuedHere` menerima `RCVN-` **dan** `RCVN.`, tetapi **tetap menuntut pemisah**.
+  `RCVN0001` bukan nomor modul ini; memeriksa awalan saja akan meloloskan nomor apa pun
+  yang kebetulan berawalan sama. Asersi itu sudah ada sebelumnya dan **dipertahankan**,
+  bukan dibuang demi memudahkan perubahan.
+
+### 51.4 Penomoran melanjutkan, tidak mengulang
+
+Kueri nomor berikutnya membaca **kedua bentuk** sekaligus. Letak angkanya berbeda — posisi
+6 pada bentuk baru, posisi 9 pada bentuk lama — dan `CASE` memilihnya per baris:
+
+```sql
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(claimid,
+                   CASE WHEN claimid LIKE 'RCVN-%' THEN 6 ELSE 9 END))), 0) + 1
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
+ WHERE claimid LIKE 'RCVN%'
+```
+
+Membaca bentuk baru saja akan menerbitkan `RCVN-0001` sementara berkas bernomor satu sudah
+ada. Kunci utamanya memang tidak bertabrakan — keduanya teks yang berbeda — tetapi dua
+berkas yang sama-sama terbaca sebagai "nomor satu" adalah kebingungan yang tidak perlu
+dibuat.
+
+Terverifikasi terhadap Oracle: dari 14 berkas lama, nomor berikutnya **15**.
+
+### 51.5 Terbukti ujung ke ujung
+
+Satu berkas dibuat lewat jalur yang dipakai tombol "Buat Baru", dibaca kembali, lalu
+dibersihkan:
+
+```
+nomor terbit        : RCVN-0015
+asal terbaca        : claimpnc
+posisi              : Not Transferred
+dikenali milik kita : true
+dibaca kembali      : RCVN-0015 | asal: claimpnc | posisi: Not Transferred
+baris uji dibersihkan
+```
+
+Seluruh uji backend lulus; 63 uji pada modul yang disentuh lulus. Dua puluh sembilan
+kegagalan lain ada di modul `master-*` dan **sudah ada sebelum sesi ini** — cacat lama di
+cabang dev, bukan akibat perubahan ini.
+
+## 52. Baris tanpa tanggal aging menutupi halaman pertama (2026-09-24)
+
+Work Owner bertanya apakah berkas yang dibuat sesi sebelumnya benar-benar tersimpan.
+Datanya tersimpan — **15 baris**, termasuk `RCVN-0015` yang dibuatnya sendiri pukul 11:42.
+Yang salah adalah urutannya.
+
+### 52.1 Penjelasan tab saja TIDAK cukup, dan saya keliru berhenti di situ
+
+Pada bab 51 saya menjawab pertanyaan yang sama dengan menjelaskan tab: berkas baru
+berposisi "Not Transferred", sedangkan layar membuka "Outstanding". Penjelasan itu **benar
+tetapi tidak lengkap**, dan karena itu pertanyaannya kembali.
+
+Setelah kueri daftarnya benar-benar dijalankan, halaman pertama **setiap** tab berisi ini:
+
+```
+== tab belum-diserahkan — halaman 1 dari 326 ==
+   1 RCV-3143 aging: (kosong)
+   2 RCV-3136 aging: (kosong)
+   ...
+  10 RCV-3101 aging: (kosong)
+```
+
+Tidak satu pun berkas RCVN. Jadi memindah tab pun tidak akan menolong — dan itulah yang
+membuat dugaan "datanya tidak masuk tabel" sangat wajar.
+
+### 52.2 Sebabnya: Oracle menaruh NULL di ATAS pada `ORDER BY … DESC`
+
+Diuji langsung:
+
+```sql
+SELECT x FROM (1, NULL, 2) ORDER BY x DESC   -->  NULL, 2, 1
+```
+
+Kueri daftar mengurutkan `ORDER BY s.aging_at DESC, s.report_id DESC`, dan **55 baris
+warisan ber-`DATEFORAGING_1` kosong**. Kelima puluh lima baris itu naik ke atas segalanya,
+menutupi dua sampai tiga halaman pertama — sementara berkas yang baru dibuat, yang
+aging-nya justru **terisi**, terdorong ke bawahnya.
+
+Akibatnya bukan urutan yang kurang rapi. Berkas yang baru dibuat **tidak terlihat sama
+sekali** di tampilan pertama, dan dari layar itu tidak dapat dibedakan dari data yang gagal
+tersimpan.
+
+### 52.3 Perbaikannya, dan kenapa ia bukan sekadar selera
+
+```sql
+ORDER BY s.aging_at DESC NULLS LAST, s.report_id DESC
+```
+
+Baris tanpa tanggal aging **bukan** baris terbaru; ia baris yang tanggalnya **tidak
+diketahui**. Menaruhnya di atas adalah kebetulan bawaan Oracle, bukan aturan bisnis —
+tidak ada satu pun rule Pega yang menyatakan berkas tanpa tanggal harus tampil lebih dulu.
+
+`NULLS LAST` didukung Oracle maupun PostgreSQL, sehingga `D-20` tetap terpenuhi.
+Diterapkan di kedua kueri daftar — berkas biasa dan daftar komunikasi.
+
+### 52.4 Hasil sesudahnya
+
+```
+== tab belum-registrasi — halaman 1 dari 145 ==
+-> 1 RCVN-0015     aging: 2026-09-24
+-> 2 RCVN.26.0013  aging: 2026-09-24
+-> 3 RCVN.26.0009  aging: 2026-09-24
+-> 4 RCVN.26.0002  aging: 2026-09-24
+   5 RCV-3022      aging: 2026-09-01
+
+== tab semua — halaman 1 dari 1482 ==
+   1 RCV-3154      aging: 2026-09-24
+-> 4 RCVN-0015     aging: 2026-09-24
+-> 5 RCVN.26.0014  aging: 2026-09-24
+```
+
+Berkas baru kini muncul di halaman pertama setiap tab tempatnya berada, bercampur menurut
+tanggal dengan berkas Pega hari yang sama — persis seperti seharusnya.
+
+### 52.5 Penjagaannya
+
+`TestRowsWithoutAgingDateSortLast` menuntut `NULLS LAST` ada pada kedua kueri daftar.
+Dibuktikan merah lebih dulu dengan melepasnya:
+
+```
+claim_report_list_body membiarkan baris tanpa tanggal aging naik ke atas daftar
+```
+
+### 52.6 Yang saya pelajari dari pertanyaan yang berulang
+
+Pertanyaan yang sama datang dua kali, dan jawaban pertama saya **berhenti pada sebab yang
+pertama ditemukan** — tab yang berbeda — tanpa memeriksa apakah itu SATU-SATUNYA sebab.
+
+Yang seharusnya dilakukan sejak awal: menjalankan kueri daftarnya dan melihat halaman
+pertamanya, bukan menalar dari definisi tab. Sepuluh baris keluaran sudah cukup
+menunjukkan bahwa tab bukan satu-satunya masalah.
+
+## 53. Format nomor laporan dikembalikan ke `RCVN.YY.xxxx` (2026-09-25)
+
+Work Owner membatalkan perubahan bab 51: bentuk `RCVN-xxxx` dicabut, bentuk bertitik
+dipakai kembali.
+
+### 53.1 Satu pertanyaan yang diajukan lebih dulu
+
+Permintaannya ditulis `RCVN-YY-XXXX` — dengan **tanda hubung** — sementara kalimatnya
+berbunyi *"sesuai dengan sebelumnya"*, dan yang sebelumnya memakai **titik**
+(`RCVN.26.0001`).
+
+Kedua bacaan menghasilkan data yang berbeda, dan yang salah satunya menambah bentuk
+**ketiga** ke dalam tabel. Karena itu ditanyakan dulu, bukan ditebak. Jawabannya: **titik**.
+
+Menebak di sini akan berbiaya nyata — Work Owner sedang menguji, sehingga baris bernomor
+salah akan terbit sebelum kekeliruannya ketahuan.
+
+### 53.2 Tiga berkas telanjur terbit dengan bentuk sehari itu
+
+```
+RCVN.26.0001 … RCVN.26.0014   14 berkas   bentuk bertitik
+RCVN-0015, RCVN-0016, RCVN-0017   3 berkas   bentuk bertanda hubung
+```
+
+Ketiganya dibuat selama bentuk itu berlaku, dan ketiganya **tetap milik aplikasi ini**.
+
+Kalau `IssuedHere` hanya menerima bentuk bertitik, ketiga berkas itu mendadak terbaca
+sebagai milik Pega — dan berkas milik Pega hanya dapat dibaca (`P-1`). Ia akan berhenti
+dapat disunting **tanpa satu pun galat** yang menjelaskan sebabnya.
+
+### 53.3 Penerbitan dan pengenalan punya aturan yang berbeda
+
+Ini pemisahan yang disengaja, dan ia yang membuat perubahan format tidak merusak data
+lama:
+
+| Keperluan | Aturan |
+|---|---|
+| **Menerbitkan** nomor baru | hanya `RCVN.YY.xxxx` |
+| **Mengenali** milik siapa sebuah baris | `RCVN` + pemisah `.` **atau** `-` |
+
+Pemisahnya tetap wajib ada: `RCVN0001` bukan nomor modul ini.
+
+### 53.4 Nomor urut melanjutkan, dan bentuk tanpa tahun ikut dihitung
+
+Deret kembali dihitung **per tahun**, karena segmen tahun ada lagi. Tetapi ketiga berkas
+bertanda hubung **tidak punya segmen tahun**, sehingga tidak dapat disaring per tahun —
+padahal nomor urutnya sudah terpakai.
+
+Mengabaikannya berarti `0015`–`0017` diterbitkan ulang tahun ini, dan dua berkas berbeda
+akan sama-sama terbaca sebagai nomor lima belas. Karena itu ia ikut dihitung pada deret
+tahun berjalan — tahun terbitnya memang tahun ini:
+
+```sql
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(claimid,
+                   CASE WHEN claimid LIKE 'RCVN-%' THEN 6 ELSE 9 END))), 0) + 1
+  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
+ WHERE claimid LIKE 'RCVN.' || :1 || '.%'
+    OR claimid LIKE 'RCVN-%'
+```
+
+### 53.5 Terbukti terhadap Oracle
+
+```
+nomor terbit        : RCVN.26.0018
+dikenali milik kita : true
+dibaca kembali      : RCVN.26.0018 | asal: claimpnc
+RCVN-0015 milik kita: true
+baris uji dibersihkan
+```
+
+Nomornya melanjutkan dari 17, bukan mengulang dari 15.
+
+### 53.6 Yang TIDAK ikut dikembalikan
+
+Dua perbaikan yang lahir bersama perubahan format itu **tetap berlaku**, karena keduanya
+tidak ada hubungannya dengan bentuk nomor:
+
+| Perbaikan | Kenapa tetap |
+|---|---|
+| `NULLS LAST` pada urutan daftar (bab 52) | menjaga berkas baru tampak di halaman pertama |
+| Pagar kepemilikan `LIKE 'RCVN%'` tanpa pemisah | yang membuat ketiga berkas bertanda hubung tetap dapat disunting |
+
+Membatalkan yang pertama akan mengembalikan cacat yang baru saja dilaporkan Work Owner;
+membatalkan yang kedua akan mengunci tiga berkasnya sendiri.
+
+## 54. Tab bawaan Inbox Laporan Klaim menjadi "All data" (2026-09-25)
+
+### 54.1 Petunjuk Work Owner yang menutup diagnosisnya
+
+> *"Kenapa saat buat baru dan kembali ke daftar baru muncul data-data laporan barunya
+> (RCVN) pada tampilan data"*
+
+Kalimat itu yang menyelesaikan penelusuran. Dua jalan menuju daftar yang sama berperilaku
+berbeda:
+
+| Jalan | Tab yang terbuka | Berkas RCVN tampak? |
+|---|---|---|
+| Menu → Inbox Laporan Klaim | `outstanding` (bawaan) | **tidak** |
+| Form → tombol "Kembali ke daftar" | tab berkas itu sendiri (`backToListPath`) | **ya** |
+
+Jalan kedua bekerja karena bab 42 sudah memperbaikinya: tombol kembali mendarat di tab
+tempat berkasnya berada. Jalan pertama tidak pernah ikut diperbaiki.
+
+### 54.2 Kenapa tab Outstanding memang tidak akan pernah memuat berkas baru
+
+Berkas baru **selalu** lahir berposisi "Not Transferred", dan tab Outstanding menyaring
+`position = 'Outstanding'` — yang menuntut berkas sudah bernomor klaim DAN sudah
+diserahkan. Tidak ada urutan penggunaan apa pun yang membuat berkas yang baru dibuat
+muncul di sana.
+
+Jadi bukan soal urutan atau paginasi. Tabnya memang mengecualikannya.
+
+### 54.3 Kenapa "All data", bukan "Data hasn't been transferred"
+
+Keduanya membuat berkas baru tampak. Bedanya muncul setelah berkas itu bergerak:
+
+```
+Buat Baru      → Not Transferred   tampak di kedua pilihan
+Register Klaim → Not Registered    HILANG lagi bila bawaannya "belum diserahkan"
+nomor terbit   → Outstanding       hilang lagi
+```
+
+Memilih "belum diserahkan" berarti menyiapkan keluhan yang sama dalam bentuk lain: *"saya
+register, sekarang berkasnya hilang"*.
+
+"All data" memuat berkas pada tahap mana pun, terbaru lebih dulu, sehingga **tidak ada
+tahap yang membuat sebuah berkas lenyap dari tampilan pertama**.
+
+### 54.4 Ia menyimpang dari `D-13`, dan itu keputusan Work Owner
+
+Layar lama membuka "Outstanding Data" — itu tab pertama pada `categoryOrder`, dan bawaan di
+sini memang menirunya. Menyimpang darinya bukan perbaikan cacat melainkan perubahan
+perilaku, dan Work Owner memintanya secara langsung setelah melaporkan gejalanya tiga kali
+(2026-09-24 dua kali, 2026-09-25 sekali).
+
+Dicatat sebagai penyimpangan sadar, bukan diserap diam-diam.
+
+### 54.5 Satu sumber kebenaran, dua tempat pemakaian
+
+Bawaan itu semula hidup di **dua** tempat tanpa saling tahu: `DEFAULT_CATEGORY` di layar
+dan sebuah literal di `readQuery` backend. Keduanya kini menunjuk satu konstanta domain
+`inboxlaporanklaim.DefaultCategory`.
+
+Dua tempat yang harus dijaga tetap sama adalah dua tempat yang cepat atau lambat berbeda —
+pelajaran yang sama dengan bab 48.
+
+### 54.6 Penjagaannya menyatakan MAKSUD, bukan menyalin nilai
+
+`TestDefaultCategoryShowsReportsAtEveryPosition` memeriksa bahwa tab bawaan **tidak
+menyaring posisi mana pun**:
+
+```go
+require.Nil(t, argumen[1],
+    "tab bawaan %q menyaring satu posisi saja; berkas yang baru dibuat "+
+        "(Not Transferred) tidak akan tampak saat menu dibuka", DefaultCategory)
+```
+
+Uji yang sekadar menuliskan `require.Equal(t, CategoryAll, DefaultCategory)` hanya
+mengulang konstantanya dan tidak menjaga apa pun. Yang ini merah untuk **tab mana pun**
+yang menyaring posisi, apa pun namanya — dibuktikan dengan mengembalikannya ke Outstanding:
+
+```
+tab bawaan "outstanding" menyaring satu posisi saja; berkas yang baru dibuat
+(Not Transferred) tidak akan tampak saat menu dibuka
+```
+
+### 54.7 Tampilan pertama sesudahnya
+
+```
+== tab semua — halaman 1 dari 1485 ==
+-> 1 RCVN.26.0018 | Not Transferred
+-> 2 RCVN-0017    | Not Transferred
+-> 3 RCVN-0016    | Not Transferred
+   4 RCV-3154     | Not Transferred
+   5 RCV-3153     |
+   6 RCV-3152     |
+-> 7 RCVN-0015    | Not Registered
+-> 8 RCVN.26.0014 | Not Transferred
+-> 9 RCVN.26.0013 | Not Registered
+-> 10 RCVN.26.0012| Not Transferred
+
+berkas milik aplikasi ini di halaman pertama: 7
+```
+
+Termasuk `RCVN.26.0018` — berkas yang Work Owner buat sendiri pukul 01:08 dengan format
+yang baru dikembalikan, yang sekaligus membuktikan bab 53 berjalan.
+
+### 54.8 Tiga laporan, tiga sebab yang berbeda
+
+Gejala yang sama dilaporkan tiga kali, dan setiap kali sebabnya lain:
+
+| Laporan | Sebab | Perbaikan |
+|---|---|---|
+| ke-1 | tab bawaan berbeda dari tab berkas baru | dijelaskan saja — **tidak cukup** |
+| ke-2 | `NULL` aging naik ke atas pada `ORDER BY DESC` | `NULLS LAST` (bab 52) |
+| ke-3 | tab bawaan memang mengecualikan berkas baru | tab bawaan diubah |
+
+Dua kali saya berhenti pada sebab pertama yang ditemukan tanpa memeriksa apakah ia
+satu-satunya. Yang akhirnya menyelesaikannya adalah pertanyaan Work Owner sendiri — bahwa
+jalan lain menuju daftar yang sama BERHASIL. Perbedaan antara dua jalan itulah buktinya,
+dan itu tersedia sejak laporan pertama.
+
+## 55. Nomor klaim terbit saat klaim DIBUKA, bukan di ujung Input Register (2026-09-25)
+
+Work Owner melaporkan bahwa setelah menekan "Register Klaim", layar klaim terbuka dengan
+judul **"Klaim belum bernomor"** — padahal seharusnya nomor `PNCN.YY.xxxx` langsung terbit.
+
+### 55.1 Asumsi saya salah, dan buktinya ada di export
+
+Saya menulis di `Service.Start`:
+
+> *"Nomor klaim belum terbit. Di sistem lama pun demikian: shape `Start1` menuju
+> `View Polis`, dan penerbitan nomor berada di ujung tahap `Input Register`."*
+
+Kalimat itu **tidak pernah saya periksa ke export**. Setelah ditelusuri, ia keliru:
+
+| Berkas | Langkah | Isi |
+|---|---|---|
+| `CreateRegisterKlaimPNC_act.xml` | 1 | `Call CreateInputKlaim` |
+| `CreateInputKlaim-Act.xml` | 2 | `Call svcAddWorkObject` |
+| `svcAddWorkObject-Act.xml` | **9** | **`Call addWork`** — pembuatan work object Pega |
+| `CreateInputKlaim-Act.xml` | 3 | `Commit` |
+| `CreateInputKlaim-Act.xml` | 4 | `TempWork.pyNote := "ASSIGN-WORKLIST " + curWorkPage.pzInsKey + "!Register_Flow"` |
+
+`addWork` adalah tempat Pega memberi `pyID` — **sebelum** assignment pertama. Langkah 4
+sudah menyusun kunci penugasan dari `pzInsKey`, dan kunci itu memuat nomornya. Jadi nomor
+sudah ada sejak case lahir.
+
+Yang menjadi penghalang bukan kekurangan bukti melainkan **alasan yang terdengar masuk
+akal**: "polis yang dibuka sekadar untuk dilihat tidak perlu memakan satu nomor". Alasan
+itu benar sebagai prinsip, tetapi `P-5` menuntut kesetaraan perilaku — bukan penghematan
+nomor.
+
+### 55.2 Harga yang diterima, dan kenapa tetap diambil
+
+Klaim yang dibuka lalu ditinggalkan tetap memakan satu nomor, dan nomor tidak dapat
+ditarik kembali (`ADR-0009`). Deret nomor karena itu akan **berlubang**.
+
+Itu persis yang terjadi di sistem lama. Menyamainya lebih penting daripada deret yang
+rapat — dan deret berlubang tidak merusak apa pun, sedangkan layar berjudul "Klaim belum
+bernomor" membuat petugas ragu apakah tombolnya bekerja.
+
+### 55.3 Nomor terbit DI DALAM transaksi
+
+```go
+err = l.unit.Run(ctx, func(ctx context.Context) error {
+    number, err := l.number.Issue(ctx, now)   // <- di dalam
+    ...
+```
+
+Menerbitkannya di luar berarti transaksi yang gagal meninggalkan nomor yang sudah terpakai
+dan tidak pernah menjadi klaim — lubang yang muncul di surat ke tertanggung dan di PLA/DLA
+ke reasuransi, dan tidak dapat ditambal.
+
+### 55.4 Akibat berantai: berkas RCV langsung ke "Outstanding"
+
+Karena nomor sudah ada saat klaim dibuka, `AttachClaimNumber` ikut dipanggil di `Start` —
+bukan menunggu `SaveRegister`. Berkas RCV karena itu berpindah:
+
+```
+sebelum:  Not Transferred → Not Registered → (Input Register selesai) → Outstanding
+sesudah:  Not Transferred → Outstanding
+```
+
+Urutannya tetap mengikat: `MarkHandedOver` dulu, baru `AttachClaimNumber`. Terbalik akan
+menghasilkan kombinasi "NOKLAIM terisi, TRANSFERASM kosong" — yang tidak punya tab sama
+sekali.
+
+Tab "Not Registered" tidak menjadi mati: ia keadaan berkas yang diserahkan **tanpa** klaim
+dibuat, dan itu jalur yang masih ada.
+
+### 55.5 Yang TIDAK ikut pindah
+
+`ClaimStatus = StatusRegistered` (`1147` Register) **tetap** di ujung Input Register. Punya
+nomor dan berstatus Register adalah dua hal berbeda: yang pertama identitas, yang kedua
+keadaan bisnis, dan `ADR-0018` menetapkan keempat konsep status memang berpisah.
+
+Cabang penerbitan nomor di `SaveRegister` **dipertahankan sebagai jaring**, bukan dihapus:
+klaim yang dibuka sebelum perubahan ini dan belum ditutup harus tetap dapat diselesaikan
+petugasnya, bukan berhenti dengan galat.
+
+### 55.6 Empat uji yang premisnya berubah
+
+Keempatnya menuntut "tidak ada nomor" pada keadaan yang kini selalu bernomor. Yang dijaga
+diubah menjadi **nomornya tidak berubah** — invarian yang masih bermakna, karena panggilan
+`Issue` kedua akan menghasilkan nomor yang berbeda:
+
+| Uji | Dulu | Sekarang |
+|---|---|---|
+| `upToInputRegister` | nomor kosong di View Polis | nomor cocok `^PNCN\.\d{2}\.\d{4}$` |
+| `TestBackButtonReturnsToViewPolicy` | Back tidak menerbitkan nomor | Back tidak menerbitkan nomor **kedua** |
+| `TestValidationRejects…` (dinamai ulang) | validasi gagal → tanpa nomor | validasi gagal → nomor **tidak berubah** |
+| `TestFailedSaveLeavesNoRow` | tanpa nomor | nomor tidak berubah |
+
+### 55.7 Terbukti terhadap Oracle
+
+```
+NOMOR KLAIM      : PNCN.26.0001
+tahap awal       : view-polis
+tugas pertama    : view-polis | pemilik: SURYAFEBRI
+nomor pada tugas : PNCN.26.0001
+(transaksi dibatalkan — tidak ada baris tersisa)
+```
+
+Nomor ikut terbawa ke tugasnya, sehingga inbox menampilkannya tanpa membaca klaimnya.
+
+### 55.8 Kesalahan saya, dan polanya
+
+Saya menulis alasan yang meyakinkan — lengkap dengan rujukan `Start1` dan `View Polis` —
+untuk perilaku yang **tidak pernah saya periksa**. Rujukannya benar; kesimpulannya tidak.
+
+Ini bentuk lain dari pola empat sesi terakhir: yang salah bukan pembacaan bukti, melainkan
+**bagian yang tidak dibaca sama sekali** lalu diisi penalaran. Komentar yang panjang dan
+berdasar justru membuatnya tampak sudah diverifikasi.
+
+## 56. Register Klaim melompat ke Input Register, dan tugasnya milik penekannya (2026-09-25)
+
+Work Owner melampirkan tangkapan layar Pega: sesudah Register Klaim, yang muncul adalah
+assignment **InputRegister** milik petugas yang menekannya — bukan tahap View Polis, dan
+bukan milik orang lain.
+
+Layar kita menampilkan View Polis, dan menolaknya dengan *"Tugas ini bukan milik Anda."*
+Dua cacat berbeda, keduanya terbukti dari export.
+
+### 56.1 Case melompat lewat Ticket, bukan berjalan dari Start1
+
+`Activity/CreateRegisterKlaimPNC_act.xml` **langkah 27**:
+
+```
+Call SetTicket   Ticket = "setToRegister_ticket"
+```
+
+Dan pada `Flow/Register_Flow.xml`, tiket itu — `Ticket8` — menempel pada **`Assignment1`**:
+
+```
+pxObjClass = Data-MO-Activity-Assignment
+pyMOId     = Assignment1
+pyMOName   = Input Register
+pyUseCaseName = InputRegister
+```
+
+`pyUseCaseName` itu persis judul yang terbaca pada tangkapan layar Pega. Jadi case memang
+**tidak pernah melewati View Polis** pada jalur Register Klaim; ia melompat.
+
+Saya sebelumnya sudah mencatat `setToRegister_ticket` di `flow_register.go` sebagai "Ticket
+rule yang tidak ada di export" — benar, rule-nya memang hilang — lalu **berhenti di situ**.
+Tempat mendaratnya tidak pernah dicari, padahal ia ada di berkas flow yang sama yang sudah
+saya baca berkali-kali.
+
+### 56.2 Pembedanya RCVID, dan itu bukan pilihan bebas
+
+Tiket hanya dinyalakan `CreateRegisterKlaimPNC`, dan activity itu hanya berjalan dari tombol
+Register Klaim pada form Receive Document — yang selalu punya berkas asal.
+
+```
+RCVID terisi  → Input Register   (jalur tiket)
+RCVID kosong  → View Polis       (Start1, jalur alur biasa)
+```
+
+View Polis tidak dihapus: ia tetap tahap awal alurnya untuk klaim yang dibuka langsung dari
+layar registrasi.
+
+### 56.3 "Tugas ini bukan milik Anda" — router yang diabaikan
+
+Tugas Input Register jatuh ke SURYAFEBRI, sementara yang menekan tombol adalah JONNY.
+
+Sebabnya: pengisi SQL `Assigner` **mengabaikan `stage.Router`** dan menjalankan kueri beban
+PIC Teknik untuk SETIAP tahap Worklist. Kueri itu rekonstruksi `PNCTeknikRouter`
+(`BrowsePICRandomTeam-SQL.xml`), bukan `PNCAdminRouter`.
+
+Input Register memakai `PNCAdminRouter` — terbaca langsung pada `Assignment1`:
+
+```
+pyRouterProp.pyImplementation = PNCAdminRouter
+```
+
+Rule-nya tidak ada di export (`R-04`), tetapi dua hal menunjukkan perilakunya:
+
+| Bukti | Isi |
+|---|---|
+| `CreateRegisterKlaimPNC_act.xml` langkah 14 | `ClaimData.UserAdmin := OperatorID.pyUserIdentifier` |
+| `PNCAdminRouterRCV` (ADA di export) | menugaskan ke `ReceiveDocument.UserAdmin`, jatuh ke pembuat kasus |
+
+Jadi tahap Admin menugaskan ke **admin klaimnya** — petugas yang membuatnya. Di basis data
+itu kolom `ADMINKLAIM`, yang di domain bernama `CreatedBy`.
+
+### 56.4 Satu cacat ketiga yang ikut terlihat
+
+`ToCurrentOperator` juga diabaikan pengisi SQL, sehingga **View Polis** pun jatuh ke petugas
+lain. Pengisi memori sudah menanganinya sejak awal — keduanya berbeda, dan perbedaan itu
+membuat seluruh uji lulus sementara produksi berperilaku lain.
+
+Kedua pengisi kini menangani ketiga hal yang sama: Workbasket, `ToCurrentOperator`, dan
+`PNCAdminRouter`.
+
+### 56.5 Terbukti terhadap Oracle
+
+Sebelum:
+
+```
+dari Register Klaim:   tahap=view-polis      pemilik=SURYAFEBRI
+dibuka langsung:       tahap=view-polis      pemilik=SURYAFEBRI
+```
+
+Sesudah:
+
+```
+dari Register Klaim:   nomor=PNCN.26.0002 tahap=input-register  pemilik=JONNY
+dibuka langsung:       nomor=PNCN.26.0002 tahap=view-polis      pemilik=JONNY
+```
+
+### 56.6 Satu uji yang ternyata menguji cabang yang salah
+
+`TestLoadBalancingPicksLeastLoaded` memakai `RouterPNCAdmin` sebagai kendaraan untuk menguji
+algoritma `counter_quota`. Setelah tahap Admin berhenti membagi beban, uji itu merah — dan
+merahnya benar: ia menguji cabang yang namanya bukan miliknya.
+
+Diarahkan ke `RouterPNCTechnical`, yakni router yang algoritmanya memang direkonstruksi
+dari `BrowsePICRandomTeam-SQL.xml`.
+
+### 56.7 Pola yang sama, ketiga kalinya
+
+`stage.Router` sudah ada di definisi alur sejak awal — lengkap, benar, dan **tidak pernah
+dibaca** oleh pengisi SQL-nya. Sama seperti perakitan modul yang dirakit di fungsi yang
+tidak dipanggil (bab 48) dan bawaan tab yang hidup di dua tempat (bab 54): bagiannya ada,
+sambungannya tidak.
+
+Yang membuatnya lolos: pengisi memori menanganinya dengan benar, sehingga setiap uji lulus.
+Perbedaan antara dua pengisi satu seam adalah tempat yang wajib diperiksa, bukan
+diasumsikan sama.
+
+## 57. Isi berkas RCV dibawa ke klaim — dan satu hari yang hilang di sepanjang jalan (2026-09-25)
+
+Work Owner melaporkan: PNCN sudah terbit dan layarnya terbuka sendiri, **tetapi isinya
+masih banyak yang kosong** — padahal berkas RCV-nya sudah diisi.
+
+### 57.1 Langkah 14 memuat 22 pasang, bukan 9
+
+Saya sempat membaca `Activity/CreateRegisterKlaimPNC_act.xml` langkah 14 dan menghitung
+sembilan penyalinan. Pembacaan ulang atas seluruh blok `PropertiesName`/`PropertiesValue`
+memberi **22 pasang**. Yang punya kolom pada tabel berkas dibawa; sisanya dicatat sebagai
+tidak punya sumber, bukan ditinggalkan diam-diam.
+
+Yang dibawa:
+
+```
+DOL                  -> DateOfLoss
+TANGGALTERIMADOKUMEN -> ReportDate          (lihat §57.2)
+NAMAPELAPOR          -> Reporter.Name  + Relation "7" + OtherRelation
+TLPPENGIRIM          -> Reporter.Phone
+EMAILPENGIRIM        -> Reporter.Email
+LOKASIKEJADIAN       -> Location
+KRONOLOGIKEJADIAN    -> Chronology
+ESTIMATIONVALUE      -> EstimateValue       (rupiah -> sen, `ADR-0016`)
+```
+
+`ClaimData.UserAdmin ← OperatorID.pyUserIdentifier` sudah tertangani sejak bab 56 lewat
+`CreatedBy`.
+
+### 57.2 Kolom yang namanya berbohong
+
+`TANGGALTERIMADOKUMEN` **bukan** Tanggal Terima Dokumen. Langkah 14 memetakan:
+
+```
+ClaimData.ReportDate   <- @toDateTime(ReceiveDocument.ReceivedDate)   <- kolom ini
+ClaimData.DateReceived <- ReceiveDocument.DateOfSentDocument          <- TIDAK ada kolomnya
+```
+
+Saya sempat mengisinya ke `DateReceived` — mengikuti nama kolomnya. Itu salah dua kali:
+nilainya mendarat di medan yang keliru, **dan** `ReportDate` tertinggal kosong — padahal
+justru medan itu yang dipakai aturan "Tanggal Lapor ≤ DOL + 7 hari".
+
+Komentar seam saya sendiri sudah menuliskan pemetaan yang benar
+(`DateReceived ← DateOfSentDocument`) sementara kuerinya melakukan hal lain. Komentar dan
+kode tidak pernah dibaca berdampingan.
+
+Tanggal Terima Dokumen karena itu **tetap kosong**, dan itu dinyatakan — bukan diisi dari
+kolom yang kebetulan bernama mirip.
+
+### 57.3 Kolomnya teks, dan isinya berbeda menurut pemiliknya
+
+`TANGGALTERIMADOKUMEN` bertipe `VARCHAR2`, dan Pega mengisinya dengan **ReferenceId, bukan
+tanggal** (`Rcv_ProcInsertRecivedDocument`). Baris aplikasi ini selalu ISO `YYYY-MM-DD`.
+
+Karena itu ia diambil apa adanya sebagai teks dan ditafsirkan di Go. `TO_DATE` di SQL —
+seperti pada kueri daftar — akan menggagalkan **seluruh pembuatan klaim** dengan ORA-01861
+begitu berkas warisan diregistrasi, dan pembacaan berkas warisan memang diizinkan
+(`P-1` melarang menulisinya, bukan membacanya).
+
+Teks yang bukan tanggal diperlakukan sebagai tidak ada, bukan sebagai galat.
+
+### 57.4 Cacat yang baru terlihat karena datanya akhirnya berjalan: sehari hilang
+
+Pembuktian terhadap Oracle menampilkan ini:
+
+```
+berkas        DOL   2026-07-15T00:00+07:00   WIB 2026-07-15
+klaim         DOL   2026-07-14T17:00Z        WIB 2026-07-15   <- benar, instan yang sama
+dibaca ulang  DOL   2026-07-14T17:00+07:00   WIB 2026-07-14   <- SEHARI HILANG
+```
+
+Sebabnya: kolom `DATE` Oracle **tidak menyimpan zona** — ia menyimpan jam dinding apa
+adanya. Mengikat waktu UTC menuliskan jam dinding UTC (`2026-07-14 17:00`), dan driver
+memasang zona sesi (WIB) saat membacanya kembali.
+
+Ini bukan kasus tepi. Tengah malam WIB **selalu** jatuh di hari sebelumnya menurut UTC,
+sehingga cacat ini mengenai **setiap tanggal kalender**, bukan sebagian.
+
+Katalog memastikan pembedaannya:
+
+| Kolom | Tipe | Perlakuan |
+|---|---|---|
+| `DATEOFLOSS` · `REPORTDATE` · `RECEIVEDATE` · `POLIS_MULAI` · `POLIS_AKHIR` | `DATE` | jam dinding **WIB** |
+| `DIBUAT_PADA` · `DIUBAH_PADA` · `DIHAPUS_PADA` | `TIMESTAMP(6)` | tetap **UTC** (`F-5`) |
+
+Yang satu hari kerja, yang satu titik waktu. Menyeragamkan keduanya salah ke arah mana pun.
+
+Sesudah perbaikan:
+
+```
+dibaca ulang  DOL   2026-07-15T00:00+07:00   WIB 2026-07-15
+dibaca ulang  lapor 2026-09-18T00:00+07:00   WIB 2026-09-18
+```
+
+### 57.5 Penjagaannya menyebut hari yang hilang
+
+Dibuktikan merah dengan mengembalikan pengikatnya ke `t.UTC()`:
+
+```
+kolom DATE akan menyimpan jam dinding "2026-07-14 17:00", bukan "2026-07-15 00:00";
+tanggal bisnisnya 2026-07-15 akan terbaca kembali sebagai 2026-07-14 — sehari hilang (R-12)
+```
+
+Uji pasangannya menjaga arah sebaliknya: instan tetap UTC.
+
+### 57.6 Yang hanya DITAMBAHKAN, tidak menimpa
+
+Berkas yang separuh kosong tidak boleh mengosongkan nilai yang sudah ada di klaim —
+terutama mata uang dan lini bisnis yang datang dari snapshot polis (`D-04`). Berkas RCV
+lahir kosong dan boleh diregistrasi sebelum lengkap; yang kosong tetap kosong, dan gerbang
+validasi Input Register yang menuntutnya — bukan pembuatan klaimnya.
+
+### 57.7 Pola yang sama, kelima kalinya
+
+Empat sesi terakhir punya bentuk kegagalan yang sama, dan sesi ini menambah dua lagi:
+
+| Bab | Bagiannya ada | Sambungannya tidak |
+|---|---|---|
+| 48 | perakitan modul | fungsinya tidak pernah dipanggil |
+| 54 | bawaan tab | hidup di dua tempat |
+| 56 | `stage.Router` | tidak pernah dibaca pengisi SQL |
+| **57a** | komentar seam menyebut pemetaan yang benar | kuerinya mengambil kolom lain |
+| **57b** | `F-5` menetapkan UTC | kolom `DATE` tidak punya zona untuk menyimpannya |
+
+Yang menemukan keduanya bukan pembacaan ulang kode, melainkan **membaca kembali nilainya
+dari basis data** sesudah ditulis. Uji unit tidak dapat melihat 57b sama sekali: pengisi
+memori menyimpan `time.Time` apa adanya, dan hanya Oracle yang membuang zonanya.
+
+## 58. `T_CLAIM_SPREADING` mengikuti DDL Work Owner — dan pagar idempoten yang menyembunyikan cacat (2026-09-26)
+
+Work Owner menambahkan `Database/CREATE_TABLE_2.sql`: DDL tabel yang dipakai sejak
+Register Klaim sampai akseptasi, dengan `T_CLAIM_PNC` sebagai pengganti tabel kerja Pega.
+
+### 58.1 Yang cocok, dan yang tidak
+
+Setiap tabel yang DITULIS modul registrasi diuji dengan pernyataan yang benar-benar
+dipakainya, di dalam transaksi yang dibatalkan:
+
+| Tabel | Hasil |
+|---|---|
+| `T_CLAIM_PNC` | cocok — tidak ada di berkas baru, tabel warisan |
+| `T_CLAIM_OBJECTLIST` | cocok — DDL Work Owner sudah memuat kolom tambahan `0008` |
+| `T_CLAIM_OBJECTCOVERAGE` | cocok — idem |
+| **`T_CLAIM_SPREADING`** | **`ORA-00904: "URUTAN_COVERAGE": invalid identifier`** |
+
+### 58.2 Bagaimana cacat itu bisa bertahan
+
+Migrasi `0008` saya merancang `T_CLAIM_SPREADING` sendiri — kunci positional,
+`SHARE_E4` bilangan bulat — di balik pagar `IF ada = 0`. Di ASM tabel itu **sudah ada**
+dengan bentuk lain, sehingga pagarnya melewatinya tanpa suara. Tabel ada, migrasi
+"berhasil", mode `-periksa` menyatakan `[ok] dapat dibaca` — dan setiap pernyataan
+spreading modul menunjuk kolom yang tidak pernah ada.
+
+Ia belum menggigit hanya karena Register Klaim baru membuat kepala klaimnya. Ia akan
+menggigit pada simpan pertama layar Input Register yang membawa spreading.
+
+**Pagar idempoten adalah penyamar yang sempurna untuk kelas cacat ini**: ia dirancang
+untuk diam ketika tabelnya sudah ada, dan justru diam itulah yang menyembunyikan bahwa
+tabel yang ada bukan tabel yang dimaksud.
+
+### 58.3 Aturan tulis ditetapkan Work Owner
+
+Setelah temuan tentang kunci utama disampaikan (bab 58.5), Work Owner menetapkan:
+
+> *"Dari aplikasi hanya insert ke table ini jika belum ada dan tidak ada proses delete."*
+
+Akibatnya pada modul:
+
+| Sebelum | Sesudah |
+|---|---|
+| UPDATE-lalu-INSERT berdasarkan urutan | **INSERT bila belum ada** berdasarkan kunci tabel |
+| penandaan sisa (`spreading_tandai_sisa`) | **dihapus** — tidak ada proses hapus |
+| `SHARE_E4` bilangan bulat | `SHAREPERCENTAGE NUMBER(9,6)` |
+| dijodohkan ke pohon lewat urutan objek | lewat `OBJECTID` + `OBJECTCOVERAGEID` |
+
+Insert-bila-belum-ada ditulis sebagai **dua pernyataan** — periksa, lalu sisip — karena
+bentuk satu pernyataan menuntut `MERGE` (tidak sama di PostgreSQL, keputusan 2.9) atau
+`FROM DUAL` (dilarang Database Strategy §4).
+
+### 58.4 Dua medan domain yang tidak punya rumah
+
+| Medan | Perlakuan | Alasan |
+|---|---|---|
+| `Removed` | baris ber-`Removed` **tidak disisipkan** | tanpa kolom penanda, ia terbaca kembali sebagai baris berlaku dan ikut terhitung aturan 100% (`I-1`) — mengubah hasil validasi diam-diam. Sejalan dengan sistem lama yang membuang `FlagDelete = "1"` sebelum perhitungan |
+| `FacOfferItem` | **tidak disimpan** | dipakai gerbang kelengkapan Fac Out saat input; rincian Fac Offer sendiri tinggal di snapshot polis (`D-04`) |
+
+### 58.5 Kunci utama dan soft delete — temuan yang mengantar keputusan
+
+PK `(CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE)` menuntut satu baris per jenis treaty
+per coverage. Data nyata `T_SPREADINGLIST` (1.904 baris) memuat enam kelompok berulang:
+
+| Jenis | Kelompok | Penanda |
+|---|---|---|
+| `10007` | 4 | `FLAGDELETE='1'` |
+| `10003` | 2 | — |
+
+Empat yang pertama lahir dari soft delete: baris lama ditandai terhapus, baris baru
+berjenis sama ditambahkan. Steering §8.1 sudah menuliskannya — *"baris yang terhapus masih
+menempati nilai kuncinya"*.
+
+Aturan tulis Work Owner menutup persoalannya dari sisi lain: tanpa proses hapus, tidak ada
+baris terhapus yang menempati kunci, sehingga PK itu konsisten.
+
+### 58.6 Share tetap eksak dari ujung ke ujung
+
+Domain menyimpan share ×10.000 sebagai bilangan bulat; kolomnya desimal eksak. Pembagian
+lewat `float64` aman di rentang ini — galatnya ~1e-14, jauh di bawah satuan terkecil kolom
+(1e-6) — dan pembacaan kembali memakai `ROUND(SHAREPERCENTAGE * 10000)`. Terbukti terhadap
+Oracle:
+
+```
+10001  OR       share=1000000  (100.0000%)
+10015  Fac Out  share=999999   ( 99.9999%)   <- batas bawah toleransi D-51
+10003  QS       share=333333   ( 33.3333%)
+10007  ORS      share=1        (  0.0001%)   <- satuan terkecil
+baris ber-Removed: tidak tersimpan
+disimpan DUA KALI: tidak ada baris ganda, tidak ada pelanggaran kunci
+```
+
+### 58.7 `0008` dilepaskan dari tabel itu
+
+| Bagian | Sebelum | Sesudah |
+|---|---|---|
+| `up` | membuat `T_CLAIM_SPREADING` bentuk sendiri + `COMMENT` pada `SHARE_E4` | **tidak menyentuhnya** |
+| `down` | `DROP TABLE POOLDATA.T_CLAIM_SPREADING` | **tidak menyentuhnya** |
+
+Tiga alasan, masing-masing cukup sendiri:
+
+1. **Tiga portal yang belum dimigrasi** akan menerima bentuk yang keliru.
+2. **`down` akan menghapus tabel milik Work Owner** — beserta pembagian risiko setiap klaim —
+   atas nama migrasi yang tidak pernah membuatnya.
+3. **`up` sudah tidak idempoten di ASM**: `COMMENT ON COLUMN … SHARE_E4` gagal karena
+   kolomnya tidak ada.
+
+Satu DDL, satu pemilik (`D-72`).
+
+Berkas `0008` memang sudah pernah dijalankan di ASM. Mengubahnya aman karena bagian yang
+dilepas selama ini hanya pernah menjadi no-op di sana; yang berubah hanyalah apa yang akan
+terjadi di tiga portal berikutnya.
+
+### 58.8 `-periksa` memeriksa kontrak, bukan keberadaan
+
+```go
+{"POOLDATA.T_CLAIM_SPREADING", "Database/CREATE_TABLE_2.sql — milik Work Owner, dijalankan DBA (D-63)",
+    "CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE, TREATYNAME, SHAREPERCENTAGE, URUTAN"},
+```
+
+`SELECT <kolom yang ditulis modul> … WHERE 1 = 0` gagal dengan nama kolomnya bila satu saja
+hilang. Dibuktikan dengan mengembalikan dua kolom ke bentuk lama sebentar:
+
+```
+[BELUM] POOLDATA.T_CLAIM_SPREADING tidak cocok: ORA-00904: "URUTAN_COVERAGE": invalid identifier
+        Sumbernya Database/CREATE_TABLE_2.sql — milik Work Owner, dijalankan DBA (D-63).
+```
+
+Dua tabel anak lainnya ikut diperiksa dengan cara yang sama.
+
+### 58.9 Pola yang sama, dan penangkalnya
+
+Ini bentuk keenam dari pola yang sama: bagiannya ada, sambungannya tidak. Kali ini yang
+menyamarkannya adalah **pemeriksaan yang terlalu dangkal** — keberadaan tabel diperlakukan
+sebagai bukti kecocokan.
+
+Penangkalnya bukan membaca kode lebih teliti. Penangkalnya adalah **menjalankan pernyataan
+yang sebenarnya terhadap tabel yang sebenarnya** — sesuatu yang uji unit dengan pengisi
+memori tidak akan pernah lakukan.
+
+## 59. Berkas RCVN ikut masuk `T_CLAIM_PNC`, dan estimasi yang menggelembung seratus kali (2026-09-26)
+
+Work Owner meminta pembuatan RCVN ikut masuk ke `T_CLAIM_PNC`, dan pembuatan PNCN masuk
+ke tabel yang sama.
+
+### 59.1 Permintaannya berdasar: Pega memang melakukannya
+
+Isi `T_CLAIM_PNC` di ASM, dikelompokkan menurut kuncinya:
+
+| Bentuk | Baris |
+|---|---|
+| `ASM-FW-GCNMFW-WORK PNC-…` | 1.731 |
+| `ASM-FW-GCNMFW-WORK RCV-…` | **436** |
+| `CLAIMNO PNCN…` (aplikasi ini) | 4 |
+
+Pega menyimpan berkas RCV di tabel klaim, di samping klaimnya. Baris RCV itu hampir
+kosong — yang terisi hanya CLAIMID dan data koasuransi — dan `CLAIMNO`, `STATUSCLAIM`,
+`STATUSWORK` tidak pernah terisi.
+
+### 59.2 PNCN sudah masuk — yang tampak kosong adalah klaim yang dibuat lebih awal
+
+PNCN sudah ditulis ke `T_CLAIM_PNC` sejak modul registrasi berjalan, dan pemetaannya
+memakai kolom warisan (`LOCATION`, `KRONOLOGI`, `REPORTERNAME`, `PICTEKNIK`,
+`STATUSCLAIM`, …). Kolom yang terisi 0 dari 4 disebabkan dua hal, bukan pemetaan:
+
+- keempat klaim dibuat **sebelum** penyalinan isi RCV (bab 57);
+- sebagian kolom — `STATUSCLAIM`, `PICTEKNIK` — baru diisi di ujung Input Register.
+
+Satu hal yang **mungkin** terbaca sebagai "tidak masuk": `CLAIMID` baris PNCN berisi
+pengenal internal, bukan nomornya. Nomornya ada di `CLAIMNO`, sama seperti Pega
+(`CLAIMNO = PNC-996`). Mencari berdasarkan `CLAIMID` tidak akan menemukannya.
+
+### 59.3 Baris RCVN di `T_CLAIM_PNC`
+
+Ditulis modul Inbox Laporan Klaim, di **transaksi yang sama** dengan berkasnya — saat
+dibuat maupun disimpan.
+
+| Kolom | Isi | Dasar |
+|---|---|---|
+| `CLAIMID` | nomor berkas `RCVN.YY.xxxx` | seperti baris RCV Pega |
+| `NOPOLIS` `QQNAME` `DATEOFLOSS` `REPORTERNAME` `LOCATION` `KRONOLOGI` `BRANCHCODE` | isian berkas | kolom yang sama dengan baris klaim |
+| `REPORTDATE` | Tanggal Terima Dokumen berkas | langkah 14: `ReportDate ← ReceivedDate` |
+| `NO_HP` `PELAPOR_EMAIL` `NILAI_ESTIMASI_SEN` | isian berkas | kolom yang sama dengan baris klaim |
+| `CLAIMNO` `STATUSCLAIM` `STATUSWORK` `REGISTERDATE` | **kosong** | berkas bukan klaim |
+
+Kosongnya empat kolom terakhir itu yang menjaga baris berkas tidak pernah terbaca sebagai
+klaim. Setiap pembaca `T_CLAIM_PNC` di kode diperiksa:
+
+| Pembaca | Mengenali klaim lewat | Baris berkas ikut? |
+|---|---|---|
+| nomor klaim berikutnya (registrasi) | `CLAIMNO LIKE` | tidak |
+| pemeriksaan klaim ganda | `CLAIMNO` terisi + objek | tidak |
+| inbox admin | join `CLAIMNO`/`CLAIMID` ke tabel kerja Pega | tidak |
+| inbox progres | `CLAIMNO = NOKLAIM` | tidak |
+| komite | `CLAIMID = PNCCASEID` | tidak |
+| riwayat klaim, per status | `STATUSCLAIM IS NOT NULL` | tidak |
+| **riwayat klaim, cari nama tertanggung** | `QQNAME LIKE` saja | **ya — setara stub RCV Pega hari ini** |
+
+Baris terakhir bukan cacat baru: kueri itu meniru pencarian nama tertanggung yang lama
+apa adanya, dan stub RCV Pega yang bernama tertanggung sudah muncul di sana sekarang.
+
+**`T_CLAIM_PNC` tidak punya kunci utama maupun kolom wajib** — terbukti dari katalog. Tidak
+ada yang menolak baris ganda, sehingga penulisannya UPDATE lebih dulu, INSERT hanya bila
+tidak ada. Pernyataan UPDATE berkas berjalan pertama dan mengunci baris berkasnya, sehingga
+dua penyimpanan bersamaan tidak sama-sama menyisipkan.
+
+### 59.4 Estimasi menggelembung seratus kali — cacat saya kemarin
+
+Menelusuri kolom estimasi untuk baris baru membuka cacat di bab 57:
+
+```
+layar          rupiahToCents             -> SEN
+modul laporan  ESTIMATIONVALUE = :10     -> SEN, apa adanya
+registrasi     ESTIMATIONVALUE * 100     -> menganggapnya RUPIAH, dikali 100 lagi
+```
+
+Estimasi Rp 8.000.000 tiba di klaim sebagai **Rp 800.000.000** — melewati ambang komite
+tanpa satu pun galat.
+
+Yang benar adalah satuan kolom warisannya. Dari 642 baris Pega yang berestimasi, hanya 110
+berupa kelipatan 100 — **rupiah**. Dari 8 berkas RCVN, 6 kelipatan 100 — **sen**. Modul
+laporan yang melanggar kontrak kolom, bukan registrasi.
+
+Perbaikannya mengikuti `SUMTSI` pada modul registrasi: tulis `:10 / 100`, baca
+`ROUND(r.estimationvalue * 100)`. Kueri detail dan daftar yang terkena hanya membaca baris
+`RCVN%`, sehingga tampilan berkas Pega tidak berubah.
+
+Catatan bab 57 karena itu keliru pada premisnya: pemetaan "rupiah -> sen" benar untuk
+baris Pega, tetapi baris RCVN saat itu berisi sen. Rekaman bab 57 dibiarkan; yang berlaku
+adalah bab ini.
+
+### 59.5 Terbukti terhadap Oracle, di transaksi yang dibatalkan
+
+```
+baris di T_CLAIM_PNC untuk RCVN.99.9999: 1        (dibuat, lalu disimpan dua kali)
+NOPOLIS, QQNAME, REPORTERNAME, NO_HP, LOCATION, KRONOLOGI, BRANCHCODE, DIUBAH_OLEH  terisi
+DATEOFLOSS 2026-07-15   REPORTDATE 2026-09-18     (masukan UTC ikut dipotong ke WIB)
+NILAI_ESTIMASI_SEN=800000000   CLAIMNO kosong   STATUSCLAIM kosong
+ESTIMATIONVALUE (rupiah)=8000000  dibaca modul laporan=800000000 sen  dibaca registrasi=800000000 sen
+```
+
+### 59.6 Penjaga, dibuktikan merah
+
+| Uji | Merah bila |
+|---|---|
+| `TestClaimRowWritesStayOnOwnRows` | pagar `IssuedHere` dilepas — fungsi menyentuh transaksi `nil` dan panik |
+| `TestEstimateIsRupiahInLegacyColumn` | estimasi kembali ditulis `:10` — "estimasi ditulis dalam sen ke kolom yang bersatuan rupiah" |
+
+`-periksa` modul laporan kini juga memilih kolom `T_CLAIM_PNC` yang ditulisnya, bukan
+sekadar keberadaan tabel.
+
+### 59.7 Data lama dibiarkan — keputusan Work Owner
+
+| Data | Keadaan |
+|---|---|
+| 8 berkas RCVN berestimasi | masih dalam sen — tampil 100× terlalu besar sesudah perbaikan |
+| 2 klaim PNCN dari berkas itu | estimasinya sudah menggelembung 100× |
+| 20 berkas RCVN | belum punya baris di `T_CLAIM_PNC`; barisnya lahir saat disimpan lagi |
+
+Work Owner memilih membiarkannya: data uji akan dibuat ulang.
+
+## 60. `T_CLAIM_PNC` diubah Work Owner menjadi 82 kolom — modul menyesuaikan diri (2026-09-26)
+
+Work Owner melaporkan RCVN baru masuk ke `T_CLAIM_PNC`, tetapi PNCN baru tidak — dan
+meminta perbaikan dibuat **berdasarkan perubahan pada tabel itu**.
+
+### 60.1 Perubahannya, dari katalog
+
+Tidak ada berkas DDL baru di `Database/`; perubahannya langsung di tabel:
+
+```
+T_CLAIM_PNC   DDL terakhir 2026-09-26 15:31:27    97 -> 82 kolom
+```
+
+| Kolom tambahan migrasi 0007 | Nasib |
+|---|---|
+| `POLIS_MATA_UANG` `NOMOR_SLIK` `PELAPOR_HUBUNGAN` `PELAPOR_HUBUNGAN_LAIN` `PORTAL` `POLIS_JENIS_BISNIS` `FLAG_NOLL` | **dipertahankan** |
+| `TAHAP_KINI` `NILAI_ESTIMASI_SEN` `PELAPOR_EMAIL` `POLIS_MULAI` `POLIS_AKHIR` `POLIS_DEKLARASI` `POLIS_PENJAMIN_KREDIT` `FLAG_KLAIM` `STATUS_POSISI_PROGRES` `TRANSFER_COMPLIANCE` `MINTA_KEMBALI` `DIUBAH_OLEH` `DIUBAH_PADA` `DIHAPUS_PADA` | **dibuang**, tidak dipindahkan ke tabel mana pun |
+
+Pemilihannya jelas disengaja — tujuh dipertahankan satu per satu. Karena itu modul
+menyesuaikan diri, dan kolomnya **tidak** ditambahkan kembali.
+
+### 60.2 Akibatnya: dua pembuatan berhenti
+
+| Pembuatan | Gagal karena |
+|---|---|
+| **PNCN** | kueri kepala klaim menulis 14 kolom yang dibuang — `ORA-00904` di setiap Register Klaim |
+| **RCVN** | baris berkasnya menulis `PELAPOR_EMAIL`, `NILAI_ESTIMASI_SEN`, `DIUBAH_OLEH`, `DIUBAH_PADA` |
+
+RCVN yang terlihat masuk dibuat **sebelum** 15:31. Sesudahnya, Buat Baru pun gagal.
+
+Pemeriksaan pendaftaran di `-periksa` menyatakan `T_CLAIM_PNC [ok]` sepanjang itu — ia
+masih memeriksa keberadaan tabel, bukan kolom. Titik buta yang sama dengan bab 58, pada
+tabel yang belum ikut diperbaiki saat itu.
+
+### 60.3 Medan yang kolomnya dibuang: dipulihkan, diturunkan, atau hilang
+
+Setiap medan diperiksa pemakaiannya sebelum diputuskan:
+
+| Medan | Cara | Dasar |
+|---|---|---|
+| `CurrentStage` | tugas terbuka di `CPNC_TUGAS` | tahap memang milik penugasan; Pega pun tidak menyimpannya di `T_CLAIM_PNC` |
+| periode polis, polis deklarasi, penjamin kredit | dibaca ulang dari dokumen polis | kueri yang sama dengan pembukaan klaim; polis yang hilang tidak menggagalkan pembukaan |
+| `ProgressPositionStatus` | `Done` bila proses tidak lagi berjalan | keduanya berubah di baris kode yang sama, di ujung alur |
+| `ClaimFlag` | selalu `"0"` | tidak ada jalur yang mengubahnya |
+| `ComplianceTransfer`, `RequestReturn` | tidak disimpan | diisi dari masukan permintaan yang sama, tepat sebelum alur memilih tahap berikutnya |
+| `DeletedAt`, `UpdatedBy`, `UpdatedAt` | tidak disimpan | tidak pernah dibaca; jejak ubah ada di `CPNC_JEJAK_AUDIT` |
+| **`EstimateValue`** | **hilang** | tidak ada kolom maupun sumber lain |
+| **`Reporter.Email`** | **hilang** | idem |
+
+Estimasi dikirim ulang layar Input Register setiap simpan, sehingga aturan Large Loss tetap
+berjalan. Yang hilang adalah **isian awalnya** dari berkas RCV, dan nilainya sesudah klaim
+meninggalkan Input Register. Email pelapor hilang seluruhnya dari klaim; di berkas RCV-nya
+ia tetap tersimpan.
+
+Pemeriksaan klaim ganda juga kehilangan `k.DIHAPUS_PADA IS NULL` — kepala klaim tidak lagi
+punya penanda hapus; tabel anaknya masih.
+
+### 60.4 Satu perbaikan kecil yang ikut
+
+`REGISTERDATE` bertipe `DATE`. Ia selama ini diikat dalam UTC — tanggal registrasi tersimpan
+tujuh jam lebih awal (`R-12`). Kini diikat dalam jam dinding WIB, seperti baris Pega.
+
+### 60.5 Baris RCVN
+
+Empat kolom yang dibuang dilepas. `SUBJECTEMAIL` — ada di tabel dan dipetakan langkah 14
+(`SubjectEmail ← ReceiveDocument.SubjectEmail`) — ikut diisi.
+
+### 60.6 Terbukti terhadap Oracle, di transaksi yang dibatalkan
+
+```
+berkas asal RCVN.26.0002 -> PNCN terbit, dibaca ulang dari T_CLAIM_PNC:
+  tahap          input-register            <- CPNC_TUGAS
+  periode polis  terisi                    <- dokumen polis
+  tgl kejadian 2026-07-15 | tgl lapor 2026-09-18
+  pelapor, hp, hubungan 7, lokasi, kronologi, RCVID  terisi
+  terdaftar      pukul WIB saat pengujian
+
+baris RCVN di T_CLAIM_PNC: 1 baris sesudah tiga kali simpan
+  SUBJECTEMAIL terisi | CLAIMNO kosong | DOL 2026-07-15 | lapor 2026-09-18
+```
+
+### 60.7 Penjaga
+
+| Penjaga | Menangkap |
+|---|---|
+| `TestClaimHeaderQueriesUseOnlyExistingColumns` | kueri kepala klaim menyebut kolom yang dibuang — dibuktikan merah dengan mengembalikan `TAHAP_KINI` |
+| `-periksa` registrasi | kini memilih **30 kolom** yang ditulis modul dari `T_CLAIM_PNC`, bukan sekadar keberadaan tabel |
+| `-periksa` laporan | kolom baris berkas, termasuk `SUBJECTEMAIL` |
+
+### 60.8 Pelajarannya
+
+Bentuk tabel di proyek ini dapat berubah **tanpa satu pun berkas DDL** yang menyertainya.
+Ketika sesuatu yang kemarin berjalan hari ini berhenti, `all_objects.last_ddl_time` adalah
+pemeriksaan pertama — bukan kode.
+
+## 61. Baris PNCN di `T_CLAIM_PNC` diisi seperti Pega mengisinya (2026-09-26)
+
+Work Owner melaporkan data PNCN belum masuk ke `T_CLAIM_PNC`.
+
+### 61.1 Barisnya ada — isiannya yang tidak
+
+Jejak aplikasi yang dijalankan Work Owner menunjukkan `PNCN.26.0006` **sudah** tersimpan
+di `T_CLAIM_PNC` pukul 15:45, lengkap dengan tugas Input Register-nya. Yang kosong adalah
+kolom-kolom yang biasa diisi Pega saat klaim dibuat:
+
+| Kelompok | Kolom | Pega mengisi |
+|---|---|---|
+| polis | `SOBNAME` `SOBNAMEID` `BRANCHNAME` `BUSINESSCODE` `BUSINESSNAME` `PRODKE` | 91–92% |
+| koasuransi | `TYPEOFCOINS` `COINSNAME` `LEADER_MEMBER` `SHAREASM` | 92–100% |
+
+### 61.2 Sumbernya: procedure yang dulu menulis `T_CLAIM_PNC`
+
+`Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` baris 317–373 mengisi kolom-kolom itu dari
+`PolicyData` — dokumen polis yang dibekukan bersama klaimnya:
+
+| Kolom | Jalur |
+|---|---|
+| `SOBNAME`, `SOBNAMEID` | `Quotation.SobName`, `Quotation.SourceOfBusiness` |
+| `BRANCHNAME` | `Quotation.BranchName` |
+| `BUSINESSCODE`, `BUSINESSNAME` | `Quotation.BusinessCode`, `Quotation.BusinessName` |
+| `TYPEOFCOINS` | `TypeOfCoins` |
+| `COINSNAME`, `LEADER_MEMBER`, `SHAREASM` | olahan `CoinsList` |
+| `PRODKE`, `POLISLEADER` | `ProdKe`, `PolicyLeader` |
+
+Jalurnya diperiksa pada 300 dokumen polis terbaru sebelum dipakai: tujuh terisi 296–300;
+`CoinsList` hanya ada di 12.
+
+Catatan: kolom `BUSINESSCODE` Pega berasal dari `Quotation.BusinessCode`, sedangkan modul
+ini selama ini membaca `Quotation.BusinessType` ke `POLIS_JENIS_BISNIS`. Keduanya berbeda
+dan kini sama-sama tersimpan.
+
+### 61.3 Koasuransi: porting, bukan tebakan
+
+`DeriveCoinsurance` meniru baris 315–373 apa adanya, termasuk dua perilaku yang mudah
+terlewat:
+
+- **CoinsName kosong adalah NULL.** Pada NULL, `LIKE` maupun `NOT LIKE` tidak benar, sehingga
+  baris leader tanpa nama menjadi LEADER/100, bukan MEMBER. Versi pertama saya menulisnya
+  dua keadaan dan salah di kasus ini — tertangkap saat membandingkan baris demi baris.
+- **Share yang tidak pernah terisi disimpan NULL**, bukan nol.
+
+`CoinsList` dibaca lewat `JSON_TABLE`, dua cabang karena `POLICYDATA` (CLOB) dan
+`DATA_JSONBLOB` (BLOB) tidak dapat digabung `COALESCE`.
+
+### 61.4 Terbukti setara dengan Pega
+
+Hasil turunan dibandingkan dengan nilai yang **benar-benar ditulis Pega** untuk 119 klaim
+terbaru:
+
+| Kolom | Cocok |
+|---|---|
+| `SOBNAME` `SOBNAMEID` `BRANCHNAME` `BUSINESSCODE` `BUSINESSNAME` | 119/119 |
+| `TYPEOFCOINS` `COINSNAME` `LEADER_MEMBER` `SHAREASM` | 119/119 |
+| `PRODKE` | 118/119 |
+
+`PRODKE` semula 117/119. Dua selisihnya menunjukkan **kolom** `JSON_POLIS.PRODKE` memuat
+versi endorsemen yang lebih baru daripada isi dokumennya — nilai Pega sama dengan kolom.
+Kini kolom dibaca lebih dulu.
+
+Satu selisih yang tersisa adalah klaim yang di Pega ber-`PRODKE` kosong, sedangkan
+kolomnya berisi. Tidak ada satu urutan sumber yang cocok dengan kedua kasus; mengambil
+kolom lebih dulu mengisi data yang di Pega kosong, dan itu dicatat sebagai selisih yang
+diketahui (`P-5`).
+
+### 61.5 Disimpan sebagai snapshot
+
+Kesebelas kolom ditulis saat klaim dibuka dan **dibaca kembali dari baris klaimnya**, bukan
+dari dokumen polis — pembukaan berikutnya tidak berubah bila polisnya berubah (`D-04`).
+
+### 61.6 Terbukti terhadap Oracle, dibatalkan
+
+```
+RCVN.26.0022 -> PNCN terbit, dibaca ulang dari T_CLAIM_PNC:
+  SOBNAME, SOBNAMEID, BRANCHNAME, BUSINESSCODE, BUSINESSNAME, PRODKE  terisi
+  TYPEOFCOINS 0 | COINSNAME terisi | LEADER_MEMBER LEADER | SHAREASM 100
+polis berkoasuransi nyata: LEADER 51% · LEADER 65% · MEMBER 2,88%
+```
+
+`LOCATION` kosong pada PNCN itu karena berkas RCVN-nya sendiri tidak berisi lokasi.
+
+### 61.7 Yang masih kosong, dan kenapa
+
+| Kolom | Sebab |
+|---|---|
+| `RCVDATE`, `RECEIVEDATE` | sumbernya `DateOfSentDocument`, tidak punya kolom di tabel berkas |
+| `REPORTTYPE` | diisi di tahap berikutnya |
+| `STATUSCLAIM`, `PICTEKNIK`, `FINISHREGISTERDATE`, tanggal-tanggal tahap | diisi saat tahapnya dilalui |
+
+## 62. CLAIMID klaim baru = nomor PNCN-nya (2026-09-26)
+
+Work Owner melaporkan PNCN tetap tidak ditemukan di `T_CLAIM_PNC` sesudah biner baru.
+
+### 62.1 Barisnya ada — dicari di kolom yang lain
+
+Percobaan pukul 16:26 menghasilkan `PNCN.26.0007` di `T_CLAIM_PNC`, lengkap dengan kolom
+polis dari bab 61. Tetapi nomornya ada di `CLAIMNO`; `CLAIMID` berisi pengenal acak.
+
+Baris berkas RCVN ber-`CLAIMID` nomornya sendiri, sehingga Work Owner mencari PNCN dengan
+cara yang sama — dan tidak menemukannya. Keputusan 55 sudah mencatat kemungkinan ini, dan
+menundanya sebagai keputusan tersendiri. Work Owner kini memutuskannya.
+
+### 62.2 Perubahan
+
+Di `Service.Start`, sesaat sesudah nomor terbit dan **sebelum satu pun baris ditulis**:
+
+```go
+claim.ID = number
+task.ClaimID = number
+```
+
+Karena belum ada baris yang ditulis, kepala klaim, objek, coverage, spreading, tugas, dan
+jejak audit seluruhnya memakai pengenal yang sama. Pengenal acak kini tidak punya alasan:
+sejak nomor terbit saat klaim dibuka (keputusan 43), nomornya sudah unik dan sudah ada.
+
+Klaim yang dibuka sebelumnya (`PNCN.26.0001`–`0007`) **tidak diubah** dan tetap memakai
+pengenal acaknya.
+
+### 62.3 Yang diperiksa lebih dulu
+
+Alamat layar klaim menjadi `/registrasi/klaim/PNCN.26.0008` — mengandung titik. Penyaji SPA
+memakai `fs.Stat`, bukan ekstensi berkas, untuk memutuskan antara berkas statis dan
+`index.html`, dan tidak ada middleware router yang memotong "ekstensi" dari alamat API.
+
+### 62.4 Terbukti
+
+```
+Oracle, dibatalkan:
+  klaim.ID = klaim.Number = tugas.ClaimID = PNCN.26.0008
+  dicari lewat CLAIMID = nomor -> ketemu, tahap input-register, kolom polis terisi
+```
+
+`TestClaimIDIsItsNumber` merah bila `claim.ID = number` dilepas.
+
+
+## 63. Bagian Lokasi Kerugian dan tombol Next pada Input Register (2026-09-26)
+
+### 63.1 Permintaan
+
+Work Owner menunjukkan tangkapan layar Pega: di bawah isian kejadian, layar Input Register
+memuat **Lokasi Kerugian/Kejadian**, rangkaian **Negara → Provinsi → Kota → Kabupaten →
+Kelurahan → Kode Pos**, **Prinsip Mengenal Nasabah** (NORMAL/SUSPICIOUS), **Ex Gratia**
+(YES/NO), serta tombol **Cancel · Back · Save · Next**. Next melanjutkan klaim ke tahap
+input estimasi.
+
+### 63.2 Sumber di export
+
+| Hal | Sumber |
+|---|---|
+| Susunan bagian | `Section/ViewInputRegisterDetail-Section.xml` |
+| Daftar negara | `BrowseCountry_RD` → `POOLDATA.COUNTRY` |
+| Daftar kota | `BrowseCity_RD` → `CITYINPUT` disaring `PROVINCEID` |
+| Daftar provinsi · kabupaten · kelurahan | `BrowseProvince_RD`, `BrowseDistrictInputC_RD`, `BrowseRWInput_RD` — **tidak ada di export** (`R-16`); penyaringnya diturunkan dari isi tabel `PROVINCE`, `DISTRICTINPUT`, `M_RW` |
+| Kota sampai Kode Pos tampil | hanya bila `Country = 'INDONESIA'` |
+| Prinsip Mengenal Nasabah | `ClaimData.CustomerPrinciple`, bawaan `1` (NORMAL); komentar tampil bila `2` |
+
+**Satu penyaring adalah dugaan.** `PROVINCE.NATIONID` memakai skema kode yang berbeda dari
+`COUNTRY.ID`, sehingga provinsi disaring `UPPER(NATIONNAME) = UPPER(nama negara)`.
+Rule aslinya hilang; bila Tim Pega mengirimnya, penyaring ini diperiksa ulang.
+
+### 63.3 Penyimpanan — migrasi 0012
+
+`T_CLAIM_PNC` belum punya kolom untuk isian ini. Work Owner memilih menambah kolom, dan
+menugaskan agen menjalankannya di ASM. Migrasi `0012_klaim_wilayah_kyc` menambah 13 kolom
+nullable: `COUNTRY`, `COUNTRYID`, `PROVINCE`, `PROVINCEID`, `CITY`, `CITYID`,
+`DISTRICT`, `DISTRICTID`, `RW`, `RWID`, `POSTALCODE`, `CUSTOMERPRINCIPLE`,
+`SUSPICIOUSCOMMENT`. Setiap kolom hanya ditambah bila belum ada, sehingga aman diulang.
+
+Percobaan pertama gagal `PLS-00222`: konstruktor RECORD tidak tersedia di versi ini.
+Diganti daftar `TABLE OF VARCHAR2` berisi "NAMA TIPE". Sesudahnya berhasil; 13 dari 13
+kolom terbaca, dan `-periksa` kini ikut memeriksanya.
+
+### 63.4 Backend
+
+- Seam baru `AreaDirectory` (`seam.go`), dengan pelaksana SQL dan memori.
+- Rute `GET /api/registrasi/wilayah/{tingkat}?induk=…`; tingkat di luar kelima tingkat
+  ditolak 400.
+- Rute `POST /api/registrasi/register/simpan` — **Save**: menyimpan isian tanpa gerbang
+  validasi dan tanpa memindahkan tahap, dengan jejak audit `INPUT_REGISTER_DISIMPAN`.
+- **Next** memakai `SaveRegister` yang sudah ada — lengkap dengan validasi — lalu klaim
+  berpindah menurut alur: Input Estimasi untuk Non-MBU/Travel, Estimation untuk PA.
+
+### 63.5 Terbukti
+
+```
+Oracle, dibatalkan:
+  negara 259 · provinsi (INDONESIA) 77 · kota (DI YOGYAKARTA) 9
+  kabupaten (KAB. SLEMAN) 6 · kelurahan (KEC. DEPOK) 3
+  KEL. CATURTUNGGAL -> kode pos 55281   (sama dengan tangkapan layar)
+  Save menulis 13 kolom, terbaca kembali, tahap tetap input-register
+```
+
+Uji layar: rangkaian bertingkat mengisi kode pos dan mengirim seluruh isian; Save memanggil
+jalur simpan, bukan jalur register.
+
+### 63.6 Yang belum
+
+- Layar **Input Estimasi** itu sendiri belum dibangun; Next memindahkan klaim ke sana, dan
+  tahap itu sementara menampilkan tindakan tahap umum.
+- Tombol Next memakai warna utama sistem desain, bukan jingga Pega.
+- Migrasi 0012 baru dijalankan di portal ASM.

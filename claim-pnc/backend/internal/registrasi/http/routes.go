@@ -36,6 +36,15 @@ func Mount(r chi.Router, h *Handler) {
 		// gerbang validasi. Tahap lain ditutup lewat /tugas/{id}/selesai.
 		sub.Post("/register", h.SaveRegister)
 
+		// Tombol Save: menyimpan isian Input Register tanpa menutup tahapnya.
+		sub.Post("/register/simpan", h.SaveDraft)
+
+		// Daftar pilihan wilayah kejadian bertingkat: negara, provinsi, kota,
+		// kabupaten, kelurahan. Hanya membaca master.
+		sub.Get("/wilayah/{tingkat}", func(w http.ResponseWriter, r *http.Request) {
+			h.AreaOptions(w, r, chi.URLParam(r, "tingkat"))
+		})
+
 		sub.Post("/tugas/{tugasID}/ambil", func(w http.ResponseWriter, r *http.Request) {
 			h.ClaimTask(w, r, chi.URLParam(r, "tugasID"))
 		})

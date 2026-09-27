@@ -1,0 +1,320 @@
+CREATE TABLE POOLDATA.T_CLAIM_OBJECTLIST
+(
+  CLAIMID                  VARCHAR2(100 BYTE),
+  OBJECTID                 VARCHAR2(30 BYTE),
+  OBJECTNAME               VARCHAR2(4000 CHAR),
+  BRANDID                  VARCHAR2(200 BYTE),
+  BRANDNAME                VARCHAR2(2000 BYTE),
+  MODELID                  VARCHAR2(100 BYTE),
+  MODELNAME                VARCHAR2(1000 BYTE),
+  TYPEID                   VARCHAR2(20 BYTE),
+  TYPENAME                 VARCHAR2(1000 BYTE),
+  MANUFACTUREYEAR          VARCHAR2(100 BYTE),
+  ENGINENUMBER             VARCHAR2(50 BYTE),
+  CHASISSNUMBER            VARCHAR2(1000 BYTE),
+  SERIALNO                 VARCHAR2(50 BYTE),
+  SLIKNO                   VARCHAR2(50 BYTE),
+  LOCATIONID               VARCHAR2(100 BYTE),
+  INSERTDATE               DATE,
+  CONTRACTNO               VARCHAR2(1000 BYTE),
+  KODEKONDISI              VARCHAR2(100 BYTE),
+  JUMLAHHARITUNGGAKAN      NUMBER,
+  KODESEBABMACET           VARCHAR2(100 BYTE),
+  KODEKOLEKTIBILITAS       VARCHAR2(100 BYTE),
+  SUKUBUNGA                NUMBER,
+  SUMBERDANA               VARCHAR2(100 BYTE),
+  KODEJENISFASILITAS       VARCHAR2(100 BYTE),
+  NOKTP                    VARCHAR2(100 BYTE),
+  NOMORCIFDEBITUR          VARCHAR2(100 CHAR),
+  NOMORREKENINGFASILITAS   VARCHAR2(100 CHAR),
+  KETERANGAN               VARCHAR2(100 CHAR),
+  CUSTOMERTYPE             VARCHAR2(10 BYTE),
+  OBJECTGENDER             VARCHAR2(20 BYTE),
+  DATEOFBIRTH              VARCHAR2(30 BYTE),
+  ASMZIPCODE               VARCHAR2(15 BYTE),
+  ASMADDRESS               VARCHAR2(100 BYTE),
+  TELFAXNUMBER             VARCHAR2(30 BYTE),
+  URUTAN                   NUMBER(10),
+  LOKASI                   VARCHAR2(1000 BYTE),
+  DIHAPUS_PADA             TIMESTAMP(6),
+  OBJECTINDEX              NUMBER(5),
+  OBJECTSURVEYLOCATION     VARCHAR2(1000 BYTE),
+  CITYID                   VARCHAR2(20 BYTE),
+  CITY                     VARCHAR2(100 BYTE),
+  DISTRICTID               VARCHAR2(20 BYTE),
+  DISTRICT                 VARCHAR2(100 BYTE),
+  RWID                     VARCHAR2(20 BYTE),
+  RWNOTE                   VARCHAR2(100 BYTE),
+  BRANCHCODE               VARCHAR2(10 BYTE),
+  OCCUPATIONID             VARCHAR2(20 BYTE),
+  OCCUPATIONNAME           VARCHAR2(500 BYTE),
+  SURVEYORTYPE             VARCHAR2(10 BYTE),
+  CURRENCY                 VARCHAR2(10 BYTE),
+  CURRENCYAKSEP            VARCHAR2(10 BYTE),
+  NILAIOSKLAIM             NUMBER,
+  NILAIOSADJUSTER          NUMBER,
+  NILAIAKSEPALL            NUMBER,
+  NILAIADJUSTERALL         NUMBER,
+  ISKOMITEAPPROVE          NUMBER(1),
+  OBJECTIDCARD             VARCHAR2(50 BYTE),
+  OBJECTHEIGHT             NUMBER,
+  OBJECTWEIGHT             NUMBER,
+  OBJECTJOB                VARCHAR2(200 BYTE),
+  OBJECTLEFTHANDED         NUMBER(1),
+  OBJECTPARTICIPANTSTATUS  VARCHAR2(30 BYTE),
+  DIUBAH_OLEH              VARCHAR2(64 BYTE),
+  DIUBAH_PADA              TIMESTAMP(6)
+)
+
+CREATE TABLE POOLDATA.T_CLAIM_OBJECTCOVERAGE
+(
+  CLAIMID                 VARCHAR2(100 BYTE),
+  OBJECTID                VARCHAR2(30 BYTE),
+  OBJECTCOVERAGEID        VARCHAR2(30 BYTE),
+  CAUSEOFLOSSID           VARCHAR2(30 BYTE),
+  CAUSEOFLOSS             VARCHAR2(500 BYTE),
+  COVERAGEID              VARCHAR2(30 BYTE),
+  COVERAGENAME            VARCHAR2(4000 BYTE),
+  CREATEDATETIME          DATE,
+  BLASTEMAILDATE          DATE,
+  SUMTSI                  NUMBER,
+  CURICUMOFLOSS           VARCHAR2(4000 BYTE),
+  EXTENTOFLOSS            VARCHAR2(4000 BYTE),
+  INPATIENTDAY            NUMBER,
+  INPATIENTDAYMAX         NUMBER,
+  REMARKS                 VARCHAR2(4000 BYTE),
+  CURRENCY                VARCHAR2(100 BYTE),
+  LOCATIONID              VARCHAR2(100 BYTE),
+  CONTRACTNO              VARCHAR2(100 BYTE),
+  URUTAN_OBJEK            NUMBER(10),
+  URUTAN                  NUMBER(10),
+  DIHAPUS_PADA            TIMESTAMP(6),
+  OBJECTNAME              VARCHAR2(500 BYTE),
+  LEGALLIABILITY          VARCHAR2(4000 BYTE),
+  REMARKINVESTIGATION     VARCHAR2(4000 BYTE),
+  DIAGNOSE                VARCHAR2(4000 BYTE),
+  CODEDIAGNOSE            VARCHAR2(20 BYTE),
+  DESCDIAGNOSE            VARCHAR2(500 BYTE),
+  TSISUBLIMIT             NUMBER,
+  CURRENCYESTIMASI        VARCHAR2(10 BYTE),
+  TOTALESTIMASIJAMINAN    NUMBER,
+  ISCFS                   NUMBER(1),
+  ISPLA                   NUMBER(1),
+  ISANALISTRANSFER        NUMBER(1),
+  ISKOMITETRANSFER        NUMBER(1),
+  ISKOMITETRAVELTRANSFER  NUMBER(1),
+  CHECKCOVERAGE           NUMBER(1),
+  CHECKINTEREST           NUMBER(1),
+  USERBUSINESSPA          NUMBER(1),
+  TEMPRECEIVER            VARCHAR2(10 BYTE),
+  INITIALNAME             VARCHAR2(128 BYTE),
+  TANGGALCOMITEE          TIMESTAMP(6),
+  DIBUAT_OLEH             VARCHAR2(128 BYTE),
+  DIBUAT_OLEH_NAMA        VARCHAR2(128 BYTE),
+  DIUBAH_OLEH             VARCHAR2(64 BYTE),
+  DIUBAH_PADA             TIMESTAMP(6)
+)
+
+CREATE TABLE POOLDATA.T_CLAIM_ESTIMASI
+(
+  CLAIMID           VARCHAR2(100 BYTE)          NOT NULL,
+  OBJECTID          VARCHAR2(100 BYTE)          NOT NULL,
+  OBJECTCOVERAGEID  VARCHAR2(100 BYTE)          NOT NULL,
+  OBJECTITEMID      VARCHAR2(10 BYTE)           NOT NULL,
+  ESTIMASIID        VARCHAR2(10 BYTE)           NOT NULL,
+  ESTIMATIONTYPE    VARCHAR2(5 BYTE),
+  KURSID            VARCHAR2(10 BYTE),
+  CFSDATE           DATE,
+  ESTIMATIONVALUE   NUMBER,
+  KURSVALUE         NUMBER,
+  CONVERTVALUE      NUMBER,
+  INSERTDATE        DATE                        DEFAULT sysdate,
+  LOCATIONID        VARCHAR2(100 BYTE),
+  CONTRACTNO        VARCHAR2(100 BYTE),
+  KURSVALUEPOLIS    NUMBER,
+  ESTIMATIONDATE    TIMESTAMP(6),
+  PRINTFACECLAIM    NUMBER(1),
+  TRAVELID          VARCHAR2(10 BYTE),
+  DIBUAT_PADA       TIMESTAMP(6),
+  DIBUAT_OLEH       VARCHAR2(128 BYTE),
+  DIBUAT_OLEH_NAMA  VARCHAR2(128 BYTE)
+)
+
+CREATE TABLE POOLDATA.T_PLALIST
+(
+  CLAIMID            VARCHAR2(100 BYTE),
+  OBJECTID           VARCHAR2(30 BYTE),
+  OBJECTCOVERAGEID   VARCHAR2(10 BYTE),
+  NOPLA              VARCHAR2(30 BYTE),
+  PLAREINSURER       VARCHAR2(500 BYTE),
+  REVISI             VARCHAR2(10 BYTE),
+  TIPEPLA            VARCHAR2(50 BYTE),
+  TGLPLA             DATE,
+  ISKIRIM            VARCHAR2(2 BYTE),
+  TGLKIRIM           DATE,
+  NOTES              VARCHAR2(500 BYTE),
+  EMAILPLA           VARCHAR2(1000 BYTE),
+  TGLTERIMAPLA       DATE,
+  REINSCODE          VARCHAR2(20 BYTE),
+  CURRENCY           VARCHAR2(10 BYTE),
+  CURRENCYPOLIS      VARCHAR2(10 BYTE),
+  ISPLA              VARCHAR2(5 BYTE),
+  SHARESPREADING     VARCHAR2(50 BYTE),
+  PERCENTPLA         VARCHAR2(50 BYTE),
+  ESTIMASI           VARCHAR2(50 BYTE),
+  QSRI               VARCHAR2(10 BYTE),
+  QSPQS              VARCHAR2(10 BYTE),
+  LOGIN              VARCHAR2(100 BYTE),
+  COUNTRY            VARCHAR2(100 BYTE),
+  NILAIPLA           VARCHAR2(50 BYTE),
+  ESTIMASISHARE      VARCHAR2(50 BYTE),
+  JSON_PLA           CLOB,
+  LOCATIONID         VARCHAR2(10 BYTE),
+  INTEREST           VARCHAR2(1000 BYTE),
+  ESTIMATIONRESERVE  NUMBER,
+  PLACOMMITDATE      TIMESTAMP(6)
+)
+
+CREATE TABLE POOLDATA.T_CLAIM_SPREADING
+(
+  CLAIMID              VARCHAR2(200 BYTE),
+  OBJECTID             VARCHAR2(30 BYTE),
+  OBJECTCOVERAGEID     VARCHAR2(30 BYTE),
+  CONTRACTNO           VARCHAR2(100 BYTE),
+  TREATYNAME           VARCHAR2(200 BYTE),
+  TREATYTYPE           VARCHAR2(200 BYTE),
+  TREATYYEAR           VARCHAR2(200 BYTE),
+  TSISPREADED          NUMBER,
+  TREATYGROUP          VARCHAR2(200 BYTE),
+  SHAREPERCENTAGE      NUMBER(9,6),
+  URUTAN               NUMBER(10),
+  TREATYLIMIT          NUMBER,
+  TREATYLIMITPERCEN    NUMBER,
+  PREMIUMSPREADED      NUMBER,
+  PREMINET             NUMBER,
+  PERCENTTABARUFUND    NUMBER,
+  ISFILLTSISPREADED    NUMBER(1),
+  ISFILLPREMISPREADED  NUMBER(1),
+  CONSTRAINT T_CLAIM_SPREADING_PK   PRIMARY KEY
+  (CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE)
+)
+  
+CREATE TABLE POOLDATA.TC_PNC_OBJECTITEM (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    OBJECTITEMID                VARCHAR2(10)    NOT NULL,   -- urutan + 1 — sama dengan T_CLAIM_ESTIMASI.OBJECTITEMID
+    OBJECTITEMCODE              VARCHAR2(20),               -- ObjectItemID (Travel: kode manfaat, mis. 15002)
+    OBJECTITEMTYPEID            VARCHAR2(20),               -- ObjectItemTypeID (Fire)
+    OBJECTITEMNAME              VARCHAR2(500),              -- ObjectItemName
+    PROPERTYITEMGROUP           VARCHAR2(50),               -- PropertyItemGroup
+    DESKRIPSIOBJECT             VARCHAR2(4000),             -- DeskripsiObject
+    LOCATIONID                  VARCHAR2(100),              -- LocationID
+    TRAVELID                    VARCHAR2(10),               -- TravelID
+    TSIPEROBJECT                NUMBER,                     -- TSIPerObject
+    TSIPERCOVERAGE              NUMBER,                     -- TSIperCoverage
+    SUMESTIMATION               NUMBER,                     -- SumEstimation
+    GROSSVALUE                  NUMBER,                     -- GrossValue
+    DEDUCTIBLE                  NUMBER,                     -- Deductible
+    ISCFS                       NUMBER(1),                  -- IsCFS
+    DB_PLACECARRIER             VARCHAR2(1000),             -- DelayedBaggage.PlaceCarrier (gaya nama T_CLAIM_OBJECTITEMLIST)
+    DIBUAT_PADA                 TIMESTAMP,                  -- pxCreateDateTime
+    DIBUAT_OLEH                 VARCHAR2(128),              -- pxCreateOperator
+    DIBUAT_OLEH_NAMA            VARCHAR2(128),              -- pxCreateOpName
+    DIUBAH_OLEH                 VARCHAR2(64),
+    DIUBAH_PADA                 TIMESTAMP,
+    DIHAPUS_OLEH                VARCHAR2(64),
+    DIHAPUS_PADA                TIMESTAMP,                  -- soft delete (D-66)
+    CONSTRAINT PK_TC_PNC_OBJECTITEM PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID)
+);
+
+CREATE TABLE POOLDATA.TC_PNC_BAGGAGELOST (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    OBJECTITEMID                VARCHAR2(10)    NOT NULL,
+    URUTAN                      NUMBER(5)       NOT NULL,
+    ITEMDESCRIPTION             VARCHAR2(2000),             -- ItemDescription
+    PURCHASEDATE                DATE,                       -- PurchaseDate
+    PURCHASEPLACE               VARCHAR2(1000),             -- PurchasePlace
+    NETTPRICE                   NUMBER,                     -- NettPrice
+    CURRENCY                    VARCHAR2(10),               -- Currency (kode)
+    ISCFS                       NUMBER(1),                  -- IsCFS
+    REMARKS                     VARCHAR2(1000),             -- Remarks
+    DIBUAT_PADA                 TIMESTAMP,
+    DIBUAT_OLEH                 VARCHAR2(128),
+    DIBUAT_OLEH_NAMA            VARCHAR2(128),
+    DIHAPUS_OLEH                VARCHAR2(64),
+    DIHAPUS_PADA                TIMESTAMP,
+    CONSTRAINT PK_TC_PNC_BAGGAGELOST PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID, URUTAN),
+    CONSTRAINT FK_TC_PNC_BAGGAGELOST FOREIGN KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID)
+        REFERENCES POOLDATA.TC_PNC_OBJECTITEM (CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID)
+);
+
+CREATE TABLE POOLDATA.TC_PNC_COVERAGEDETAIL (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    URUTAN                      NUMBER(5)       NOT NULL,
+    COVERAGEDETAILID            VARCHAR2(20),               -- CoverageDetailID
+    COVERAGEDETAILFORM          VARCHAR2(10),               -- CoverageDetailForm
+    COVERAGEDETAILNAME          VARCHAR2(500),              -- CoverageDetailName
+    COVERAGEDETAILLIMIT         NUMBER,                     -- CoverageDetailLimit
+    DEDUCTIBLE                  NUMBER,                     -- Deductible
+    CONSTRAINT PK_TC_PNC_COVERAGEDETAIL PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, URUTAN)
+);
+
+CREATE TABLE POOLDATA.TC_PNC_CFS (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    REVISI                      NUMBER(5)       NOT NULL,   -- Revisi
+    CFSDATE                     TIMESTAMP,                  -- Date
+    FILENAME                    VARCHAR2(500),              -- FileName
+    CONSTRAINT PK_TC_PNC_CFS PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI)
+);
+
+CREATE TABLE POOLDATA.TC_PNC_CFS_ESTIMASI (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    REVISI                      NUMBER(5)       NOT NULL,
+    URUTAN                      NUMBER(5)       NOT NULL,
+    CURRENCY                    VARCHAR2(10),               -- Currency — TEKS ("IDR", "Rp."), beda dengan kode 10026 di estimasi item
+    ESTIMATIONDATE              TIMESTAMP,                  -- EstimationDate
+    ESTIMATIONVALUE             NUMBER,                     -- EstimationValue
+    CONSTRAINT PK_TC_PNC_CFS_ESTIMASI PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI, URUTAN),
+    CONSTRAINT FK_TC_PNC_CFS_ESTIMASI FOREIGN KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI)
+        REFERENCES POOLDATA.TC_PNC_CFS (CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI)
+);
+
+CREATE TABLE POOLDATA.TC_PNC_ADJUSTMENT_DOC (
+    CLAIMID                     VARCHAR2(100)   NOT NULL,
+    OBJECTID                    VARCHAR2(30)    NOT NULL,
+    OBJECTCOVERAGEID            VARCHAR2(30)    NOT NULL,
+    ADJUSTMENTID                VARCHAR2(10)    NOT NULL,
+    URUTAN                      NUMBER(5)       NOT NULL,
+    PZINSKEY                    VARCHAR2(50),               -- pzInsKey (kunci lampiran)
+    PYCATEGORY                  VARCHAR2(50),               -- pyCategory (Adjustment · AdjustmentLOD)
+    GCNMCATEGORY                VARCHAR2(50),               -- GCNMCategory
+    GCNMTYPE                    VARCHAR2(50),               -- GCNMType
+    KBRUTYPE                    VARCHAR2(20),               -- KBRUType
+    DOCUMENTCATEGORYID          VARCHAR2(20),               -- pxSessionID (berisi kode kategori, bukan sesi)
+    DOCUMENTDESCRIPTION         VARCHAR2(500),              -- pxCustomerID (berisi uraian dokumen)
+    UPLOADEDFILE                VARCHAR2(500),              -- pyUploadedFile
+    UPLOADEDFILENAME            VARCHAR2(500),              -- UploadedFileName
+    DIBUAT_PADA                 TIMESTAMP,
+    DIBUAT_OLEH                 VARCHAR2(128),
+    DIHAPUS_OLEH                VARCHAR2(64),
+    DIHAPUS_PADA                TIMESTAMP,
+    CONSTRAINT PK_TC_PNC_ADJUSTMENT_DOC PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID, URUTAN)
+);
+
+CREATE TABLE POOLDATA.T_CLAIM_SPREADING_ADJ
+(
+  CLAIMID           VARCHAR2(200 BYTE),
+  OBJECTID          VARCHAR2(30 BYTE),
+  OBJECTCOVERAGEID  VARCHAR2(30 BYTE),
+  ADJUSTMENTID      VARCHAR2(10 BYTE),
+  CONSTRAINT T_CLAIM_SPREADING_ADJ_PK PRIMARY KEY (CLAIMID, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID)
+)

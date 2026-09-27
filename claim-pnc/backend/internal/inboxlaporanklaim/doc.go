@@ -53,10 +53,10 @@
 //
 // Tabel bisnis itu juga ditulis Pega, sehingga pemisahan penulis tidak lagi dijamin oleh
 // tabel yang berbeda melainkan oleh **kunci yang berbeda**: baris Pega berkunci
-// `ASM-FW-GCNMFW-WORK <pyID>`, baris aplikasi ini berkunci `RCVN.YY.xxxx` (`D-71`).
+// `ASM-FW-GCNMFW-WORK <pyID>`, baris aplikasi ini berkunci `RCVN.YY.xxxx`.
 //
 // Karena itu setiap pernyataan tulis modul ini memagari dirinya dengan
-// `CLAIMID LIKE 'RCVN.%'` — bukan kerapian, melainkan satu-satunya hal yang mencegah satu
+// `CLAIMID LIKE 'RCVN%'` — bukan kerapian, melainkan satu-satunya hal yang mencegah satu
 // nomor yang salah menimpa berkas yang penulisnya Pega. Dijaga uji
 // TestUpdateCannotReachPegaRows.
 //
@@ -64,7 +64,7 @@
 // ditulis dua sistem.
 //
 // Asal setiap baris terbaca dari NOMORNYA (lihat ReportNumberPrefix) — bukan dari tabel
-// asalnya, karena tabelnya kini satu. Awalan `RCVN.` ditetapkan `D-71` justru untuk itu.
+// asalnya, karena tabelnya kini satu. Awalan `RCVN` ada justru untuk itu.
 //
 // # Dua akibat yang diterima secara sadar
 //

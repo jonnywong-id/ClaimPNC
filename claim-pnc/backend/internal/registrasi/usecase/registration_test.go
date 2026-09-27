@@ -20,6 +20,9 @@ import (
 // tanpa nomor ganda, dan uji yang menuntut Oracle tidak akan pernah dijalankan orang
 // sesering yang dibutuhkan.
 
+// regexpNomorKlaim adalah bentuk nomor klaim yang sah: PNCN.YY.xxxx (`D-71`).
+const regexpNomorKlaim = `^PNCN\.\d{2}\.\d{4}$`
+
 const (
 	firePolicy = "POL-FIRE-0001"
 	paPolicy   = "POL-PA-0002"
@@ -70,6 +73,7 @@ func setup(t *testing.T, roles ...string) environment {
 		Notifier:           store,
 		AuditRecorder:      store,
 		ClaimReportLink:    link,
+		AreaDirectory:      memory.NewAreaDirectory(),
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -100,7 +104,10 @@ func (l environment) upToInputRegister(t *testing.T, policyNumber string) (regis
 	start, err := l.service.Start(ctx, usecase.StartCommand{PolicyNumber: policyNumber, Portal: "ASM"}, l.caller)
 	require.NoError(t, err)
 	require.Equal(t, registrasi.StageViewPolicy, start.Claim.CurrentStage)
-	require.Empty(t, start.Claim.Number, "nomor klaim belum boleh terbit di tahap View Polis")
+	// Nomor terbit saat klaim DIBUKA, mengikuti `addWork` Pega — bukan di ujung Input
+	// Register. Lihat catatan pada Service.Start.
+	require.Regexp(t, regexpNomorKlaim, start.Claim.Number,
+		"klaim yang baru dibuka harus SUDAH bernomor")
 
 	result, err := l.service.CompleteStage(ctx, usecase.CompleteCommand{
 		TaskID: start.Task.ID,
@@ -149,10 +156,13 @@ func validInput(taskID string) usecase.RegisterCommand {
 // TestClaimReportMovesTabs menjaga satu-satunya hal yang membuat tombol Register Klaim
 // TERLIHAT bekerja oleh petugas.
 //
-// Berkas laporan menentukan tabnya dari dua kolom, dan keduanya diisi pada saat yang
-// berbeda: TRANSFERASM saat klaim dibuka, NOKLAIM saat nomornya terbit. Tanpa uji ini,
-// klaim tetap terbuat sementara berkasnya duduk diam di "Not Transferred" — persis
-// keluhan yang melahirkan seam ini, dan kegagalan yang tidak menghasilkan satu pun galat.
+// Berkas laporan menentukan tabnya dari dua kolom, dan sejak nomor terbit saat klaim
+// dibuka (2026-09-25) keduanya terisi bersamaan — sehingga berkas berpindah dari
+// "Not Transferred" LANGSUNG ke "Outstanding".
+//
+// Tanpa uji ini, klaim tetap terbuat sementara berkasnya duduk diam di "Not Transferred" —
+// persis keluhan yang melahirkan seam ini, dan kegagalan yang tidak menghasilkan satu pun
+// galat.
 func TestClaimReportMovesTabs(t *testing.T) {
 	const laporan = "RCVN.26.0001"
 
@@ -166,34 +176,37 @@ func TestClaimReportMovesTabs(t *testing.T) {
 		}, l.caller)
 		require.NoError(t, err)
 
+		// Keduanya terjadi sekaligus sejak nomor terbit saat klaim dibuka: berkas
+		// berpindah dari "Not Transferred" LANGSUNG ke "Outstanding".
 		require.True(t, l.link.HandedOver(laporan), "berkas harus pindah dari Not Transferred")
-		require.Empty(t, l.link.ClaimNumber(laporan), "nomor klaim belum terbit di tahap View Polis")
+		require.Regexp(t, regexpNomorKlaim, l.link.ClaimNumber(laporan),
+			"NOKLAIM harus terisi bersamaan, sehingga berkas mencapai Outstanding")
 	})
 
 	t.Run("nomor terbit memasang NOKLAIM", func(t *testing.T) {
 		l := setup(t)
 		ctx := context.Background()
 
+		// Klaim dari berkas RCV melompat langsung ke Input Register (setToRegister_ticket),
+		// sehingga tugas pertamanya sudah tugas Input Register.
 		start, err := l.service.Start(ctx, usecase.StartCommand{
 			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
 		}, l.caller)
 		require.NoError(t, err)
+		require.Equal(t, registrasi.StageInputRegister, start.Claim.CurrentStage)
 
-		lanjut, err := l.service.CompleteStage(ctx, usecase.CompleteCommand{
-			TaskID: start.Task.ID, Action: registrasi.ActionViewPolicy,
-		}, l.caller)
-		require.NoError(t, err)
-
-		hasil, err := l.service.SaveRegister(ctx, validInput(lanjut.NextTask.ID), l.caller)
+		hasil, err := l.service.SaveRegister(ctx, validInput(start.Task.ID), l.caller)
 		require.NoError(t, err)
 
 		require.Equal(t, hasil.Claim.Number, l.link.ClaimNumber(laporan))
 	})
 
-	// Menekan Back tidak menerbitkan nomor. Memasang nomor kosong akan membuat berkasnya
-	// lenyap dari SELURUH tab — kombinasi "NOKLAIM terisi, TRANSFERASM kosong" yang
-	// kuerinya kembalikan sebagai NULL.
-	t.Run("tombol Back tidak memasang nomor", func(t *testing.T) {
+	// Menekan Back tidak MENGUBAH tautan yang sudah dibuat saat klaim dibuka.
+	//
+	// Menarik kembali penyerahannya akan mengosongkan TRANSFERASM sementara NOKLAIM
+	// tetap terisi — kombinasi yang TIDAK punya tab, sehingga berkasnya lenyap dari
+	// seluruh daftar. Menerbitkan nomor kedua akan menautkan berkas ke klaim yang salah.
+	t.Run("tombol Back tidak mengubah tautan berkasnya", func(t *testing.T) {
 		l := setup(t)
 		ctx := context.Background()
 
@@ -201,18 +214,15 @@ func TestClaimReportMovesTabs(t *testing.T) {
 			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
 		}, l.caller)
 		require.NoError(t, err)
-		lanjut, err := l.service.CompleteStage(ctx, usecase.CompleteCommand{
-			TaskID: start.Task.ID, Action: registrasi.ActionViewPolicy,
-		}, l.caller)
-		require.NoError(t, err)
 
-		input := validInput(lanjut.NextTask.ID)
+		input := validInput(start.Task.ID)
 		input.Return = true
 		_, err = l.service.SaveRegister(ctx, input, l.caller)
 		require.NoError(t, err)
 
-		require.Empty(t, l.link.ClaimNumber(laporan))
-		require.True(t, l.link.HandedOver(laporan), "penyerahannya tidak ditarik kembali")
+		require.Equal(t, start.Claim.Number, l.link.ClaimNumber(laporan),
+			"nomor pada berkas berubah setelah Back")
+		require.True(t, l.link.HandedOver(laporan), "penyerahannya ditarik kembali")
 	})
 
 	// Klaim yang dimulai dari layar registrasi tidak punya berkas asal, dan menautkannya
@@ -277,7 +287,7 @@ func TestClaimNumberNeverDuplicated(t *testing.T) {
 
 func TestBackButtonReturnsToViewPolicy(t *testing.T) {
 	l := setup(t)
-	_, task := l.upToInputRegister(t, firePolicy)
+	klaim, task := l.upToInputRegister(t, firePolicy)
 
 	input := validInput(task.ID)
 	input.Return = true
@@ -287,16 +297,17 @@ func TestBackButtonReturnsToViewPolicy(t *testing.T) {
 
 	require.Equal(t, registrasi.StageViewPolicy, result.Claim.CurrentStage)
 	require.Equal(t, registrasi.StatusReturned, result.Claim.ClaimStatus)
-	require.Empty(t, result.Claim.Number, "tombol Back tidak boleh menerbitkan nomor klaim")
+	require.Equal(t, klaim.Number, result.Claim.Number,
+		"tombol Back menerbitkan nomor KEDUA; nomor terbit sekali saat klaim dibuka")
 
 	// Isian tetap tersimpan — petugas yang kembali tidak kehilangan pekerjaannya.
 	require.Equal(t, "Gudang A", result.Claim.Location)
 	require.Len(t, result.Claim.InsuredItem, 1)
 }
 
-func TestValidationRejectsBeforeNumberIssued(t *testing.T) {
+func TestValidationRejectsDoesNotIssueASecondNumber(t *testing.T) {
 	l := setup(t)
-	_, task := l.upToInputRegister(t, firePolicy)
+	klaim, task := l.upToInputRegister(t, firePolicy)
 
 	input := validInput(task.ID)
 	input.ReportDate = time.Date(2026, time.June, 1, 0, 0, 0, 0, clock.ZoneWIB) // sebelum kejadian
@@ -307,10 +318,10 @@ func TestValidationRejectsBeforeNumberIssued(t *testing.T) {
 	require.ErrorAs(t, err, &failure)
 	require.True(t, failure.Has(registrasi.ViolationReportDateBeforeLoss))
 
-	// Tidak ada nomor yang terbakar, dan klaim tetap di tahapnya.
+	// Tidak ada nomor KEDUA yang terbakar, dan klaim tetap di tahapnya.
 	summary, err := l.service.ViewClaim(context.Background(), task.ClaimID, l.caller)
 	require.NoError(t, err)
-	require.Empty(t, summary.Claim.Number)
+	require.Equal(t, klaim.Number, summary.Claim.Number)
 	require.Equal(t, registrasi.StageInputRegister, summary.Claim.CurrentStage)
 }
 
@@ -449,6 +460,7 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		Notifier:           failSend{},
 		AuditRecorder:      store,
 		ClaimReportLink:    memory.NewClaimReportLink(),
+		AreaDirectory:      memory.NewAreaDirectory(),
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -475,10 +487,11 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 	_, err = service.SaveRegister(ctx, input, caller)
 	require.ErrorIs(t, err, errSendFailed)
 
-	// Claim tetap di tahap Input Register, tanpa nomor, dan tanpa jejak audit tambahan.
+	// Klaim tetap di tahap Input Register, nomornya tidak berubah, dan tidak ada jejak
+	// audit tambahan.
 	summary, err := service.ViewClaim(ctx, start.Claim.ID, caller)
 	require.NoError(t, err)
-	require.Empty(t, summary.Claim.Number)
+	require.Equal(t, start.Claim.Number, summary.Claim.Number)
 	require.Equal(t, registrasi.StageInputRegister, summary.Claim.CurrentStage)
 	require.Len(t, store.AuditTrail(), traceBefore)
 }
@@ -597,15 +610,19 @@ func TestMissingExchangeRateRejectsClaim(t *testing.T) {
 
 // TestLoadBalancingPicksLeastLoaded membuktikan algoritma `counter_quota` yang
 // terbaca dari `RDB List/BrowsePICRandomTeam-SQL.xml`.
+//
+// Yang diuji PNCTeknikRouter, bukan PNCAdminRouter: sejak 2026-09-25, tahap Admin
+// menugaskan ke admin klaimnya dan tidak membagi beban sama sekali. Memakai router itu
+// di sini akan menguji cabang yang berbeda dari yang namanya sebutkan.
 func TestLoadBalancingPicksLeastLoaded(t *testing.T) {
 	assigner := memory.NewAssigner(map[string][]string{
-		registrasi.RouterPNCAdmin: {"A", "B", "C"},
+		registrasi.RouterPNCTechnical: {"A", "B", "C"},
 	})
 
 	stage := registrasi.Stage{
-		ID:     registrasi.StageInputRegister,
+		ID:     registrasi.StageSendToTechnicalPIC,
 		Queue:  registrasi.QueueWorklist,
-		Router: registrasi.RouterPNCAdmin,
+		Router: registrasi.RouterPNCTechnical,
 	}
 
 	for i := 0; i < 6; i++ {
@@ -617,4 +634,238 @@ func TestLoadBalancingPicksLeastLoaded(t *testing.T) {
 	require.Equal(t, 2, load["A"])
 	require.Equal(t, 2, load["B"])
 	require.Equal(t, 2, load["C"])
+}
+
+// TestRegisterKlaimJumpsStraightToInputRegister menjaga perilaku yang dilihat petugas tepat
+// setelah menekan tombol Register Klaim.
+//
+// # Buktinya di export
+//
+// `Activity/CreateRegisterKlaimPNC_act.xml` langkah 27 memanggil
+// `SetTicket("setToRegister_ticket")`. Di `Flow/Register_Flow.xml`, tiket itu (`Ticket8`)
+// menempel pada `Assignment1` — assignment bernama "Input Register", `pyUseCaseName`
+// InputRegister. Layar Pega yang muncul sesudahnya memang layar Register, bukan View Polis.
+//
+// # Kenapa RCVID yang membedakan
+//
+// Tiket itu HANYA dinyalakan `CreateRegisterKlaimPNC`, dan activity itu hanya berjalan dari
+// tombol Register Klaim pada form Receive Document — yang selalu punya berkas asal. Klaim
+// yang dibuka langsung dari layar registrasi tidak melewatinya, dan tetap mulai dari
+// View Polis seperti `Start1` pada alurnya.
+func TestRegisterKlaimJumpsStraightToInputRegister(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("dari berkas RCV, tugas pertama adalah Input Register", func(t *testing.T) {
+		l := setup(t)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.0001",
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, registrasi.StageInputRegister, hasil.Claim.CurrentStage,
+			"klaim dari Register Klaim harus melompat ke Input Register")
+		require.Equal(t, registrasi.StageInputRegister, hasil.Task.Stage)
+		require.Regexp(t, regexpNomorKlaim, hasil.Claim.Number)
+	})
+
+	t.Run("tanpa berkas RCV, tugas pertama tetap View Polis", func(t *testing.T) {
+		l := setup(t)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM",
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, registrasi.StageViewPolicy, hasil.Claim.CurrentStage,
+			"klaim yang dibuka langsung tidak melewati tiket, jadi mulai dari Start1")
+	})
+
+	// Tugas Input Register milik petugas yang MENEKAN tombolnya. Melemparnya ke orang lain
+	// membuat petugas tidak dapat membuka klaim yang baru saja dibuatnya sendiri — gejala
+	// yang dilaporkan Work Owner sebagai "Tugas ini bukan milik Anda".
+	t.Run("tugasnya milik petugas yang menekan tombolnya", func(t *testing.T) {
+		l := setup(t)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.0001",
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, l.caller.Identity, hasil.Task.Owner,
+			"tugas pertama bukan milik petugas yang membuat klaimnya")
+	})
+}
+
+// TestReportContentsCarryIntoTheClaim menjaga penyalinan isi berkas RCV ke klaim.
+//
+// `Activity/CreateRegisterKlaimPNC_act.xml` langkah 14 menyalin sembilan nilai sebelum
+// menyimpan klaimnya. Tanpa itu, petugas membuka layar Register yang kosong dan mengetik
+// ulang seluruh isi berkas yang baru saja diisinya — keluhan Work Owner 2026-09-25.
+func TestReportContentsCarryIntoTheClaim(t *testing.T) {
+	const laporan = "RCVN.26.0001"
+	ctx := context.Background()
+
+	isi := registrasi.ClaimReportSnapshot{
+		DateOfLoss:    time.Date(2026, time.June, 5, 0, 0, 0, 0, clock.ZoneWIB),
+		ReportDate:    time.Date(2026, time.June, 7, 0, 0, 0, 0, clock.ZoneWIB),
+		ReporterName:  "Pelapor Berkas",
+		ReporterPhone: "0800111222",
+		ReporterEmail: "pelapor@contoh.internal",
+		Location:      "Gudang B",
+		Chronology:    "Kebakaran pada gudang kedua.",
+		EstimateValue: registrasi.Rupiah(250_000_000),
+	}
+
+	t.Run("seluruh isian berkas ikut ke klaimnya", func(t *testing.T) {
+		l := setup(t)
+		l.link.SetSnapshot(laporan, isi)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+
+		k := hasil.Claim
+		require.Equal(t, isi.DateOfLoss.UTC(), k.DateOfLoss)
+		require.Equal(t, isi.ReportDate.UTC(), k.ReportDate,
+			"kolom TANGGALTERIMADOKUMEN memberi makan Tanggal LAPOR, bukan Tanggal Terima "+
+				"Dokumen; aturan \"Tanggal Lapor ≤ DOL + 7 hari\" bersandar padanya")
+		require.True(t, k.DateReceived.IsZero(),
+			"Tanggal Terima Dokumen datang dari DateOfSentDocument, yang TIDAK punya kolom "+
+				"pada tabel berkas — mengisinya berarti mengarang sumber")
+		require.Equal(t, isi.ReporterName, k.Reporter.Name)
+		require.Equal(t, isi.ReporterPhone, k.Reporter.Phone)
+		require.Equal(t, isi.ReporterEmail, k.Reporter.Email)
+		require.Equal(t, isi.Location, k.Location)
+		require.Equal(t, isi.Chronology, k.Chronology)
+		require.Equal(t, isi.EstimateValue, k.EstimateValue)
+	})
+
+	// Langkah 14 mengisi hubungan pelapor dengan "lain-lain" dan menaruh namanya sebagai
+	// keterangan. Nama pada berkas RCV adalah pengirim dokumen, bukan tertanggung sendiri.
+	t.Run("hubungan pelapor menjadi lain-lain beserta keterangannya", func(t *testing.T) {
+		l := setup(t)
+		l.link.SetSnapshot(laporan, isi)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, registrasi.RelationOther, hasil.Claim.Reporter.Relation)
+		require.Equal(t, isi.ReporterName, hasil.Claim.Reporter.OtherRelation,
+			"RelationOther menuntut keterangan; tanpa ini validasi menolak klaim yang sah")
+	})
+
+	// Berkas RCV lahir kosong dan boleh diregistrasi sebelum lengkap. Yang kosong tetap
+	// kosong, dan gerbang validasi Input Register yang menuntutnya — bukan pembuatan klaim.
+	t.Run("berkas kosong tidak menggagalkan pembuatan klaim", func(t *testing.T) {
+		l := setup(t)
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+		require.Regexp(t, regexpNomorKlaim, hasil.Claim.Number)
+		require.Empty(t, hasil.Claim.Location)
+	})
+
+	// Mata uang datang dari snapshot polis. Berkas yang separuh kosong tidak boleh
+	// mengosongkannya.
+	t.Run("nilai dari polis tidak ditimpa berkas yang kosong", func(t *testing.T) {
+		l := setup(t)
+		l.link.SetSnapshot(laporan, registrasi.ClaimReportSnapshot{Location: "Gudang B"})
+
+		hasil, err := l.service.Start(ctx, usecase.StartCommand{
+			PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan,
+		}, l.caller)
+		require.NoError(t, err)
+
+		require.Equal(t, "Gudang B", hasil.Claim.Location)
+		require.NotEmpty(t, hasil.Claim.Currency, "mata uang polis terhapus berkas kosong")
+	})
+}
+
+// TestClaimIDIsItsNumber menjaga pengenal klaim baru = nomor PNCN-nya.
+//
+// Work Owner mencari PNCN di POOLDATA.T_CLAIM_PNC lewat CLAIMID — cara yang sama dengan
+// baris berkas RCVN — dan tidak menemukannya selama CLAIMID berisi pengenal acak
+// (2026-09-26). Kepala klaim, tugasnya, dan pohon anaknya harus memakai pengenal yang sama.
+func TestClaimIDIsItsNumber(t *testing.T) {
+	l := setup(t)
+	hasil, err := l.service.Start(context.Background(), usecase.StartCommand{
+		PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.0001",
+	}, l.caller)
+	require.NoError(t, err)
+
+	require.Regexp(t, regexpNomorKlaim, hasil.Claim.Number)
+	require.Equal(t, hasil.Claim.Number, hasil.Claim.ID,
+		"CLAIMID klaim baru bukan nomor PNCN-nya; ia tidak akan ditemukan saat dicari lewat CLAIMID")
+	require.Equal(t, hasil.Claim.Number, hasil.Task.ClaimID,
+		"tugas menunjuk pengenal lain daripada klaimnya")
+}
+
+// TestSaveDraftKeepsTheStageOpen menjaga tombol Save pada layar Input Register.
+//
+// Save menyimpan work object TANPA menjalankan flow action: tahapnya tidak berpindah,
+// gerbang validasinya tidak dijalankan, dan tugasnya tetap terbuka untuk dilanjutkan.
+// Isian yang belum lengkap — di sini tanpa tanggal sama sekali — tetap tersimpan.
+func TestSaveDraftKeepsTheStageOpen(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+
+	start, err := l.service.Start(ctx, usecase.StartCommand{
+		PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.0001",
+	}, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.StageInputRegister, start.Claim.CurrentStage)
+
+	area := registrasi.Area{
+		Country: registrasi.CountryIndonesia, CountryID: "100009",
+		Province: "DI YOGYAKARTA", ProvinceID: "10012",
+		City: "KAB. SLEMAN", CityID: "10259",
+		District: "KEC. DEPOK", DistrictID: "10000925",
+		RW: "KEL. CATURTUNGGAL", RWID: "10004326",
+		PostalCode: "55281",
+	}
+	claim, err := l.service.SaveDraft(ctx, usecase.RegisterCommand{
+		TaskID:            start.Task.ID,
+		Location:          "JL. SETURAN RAYA",
+		Area:              area,
+		CustomerPrinciple: registrasi.CustomerPrincipleSuspicious,
+		SuspiciousComment: "Dokumen tidak konsisten",
+	}, l.caller)
+	require.NoError(t, err, "Save tidak boleh menjalankan gerbang validasi")
+
+	require.Equal(t, registrasi.StageInputRegister, claim.CurrentStage, "Save tidak boleh memindahkan tahap")
+	require.Equal(t, start.Claim.Number, claim.Number, "Save tidak boleh menerbitkan nomor kedua")
+
+	stored, err := l.store.Get(ctx, start.Claim.ID)
+	require.NoError(t, err)
+	require.Equal(t, area, stored.Area)
+	require.Equal(t, registrasi.CustomerPrincipleSuspicious, stored.CustomerPrinciple)
+	require.Equal(t, "Dokumen tidak konsisten", stored.SuspiciousComment)
+
+	open, err := l.store.TaskRepo().OpenTaskForClaim(ctx, start.Claim.ID)
+	require.NoError(t, err)
+	require.Equal(t, start.Task.ID, open.ID, "tugas Input Register harus tetap terbuka")
+}
+
+// Prinsip Mengenal Nasabah yang tidak dipilih tersimpan NORMAL, bukan kosong.
+//
+// Control radio Pega membawa pyDefaultValue 1. Kosong akan terbaca berbeda dari NORMAL
+// oleh SetEmailKomite, yang memeriksa CustomerPrinciple == "2".
+func TestCustomerPrincipleDefaultsToNormal(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+
+	start, err := l.service.Start(ctx, usecase.StartCommand{
+		PolicyNumber: firePolicy, Portal: "ASM", RCVID: "RCVN.26.0001",
+	}, l.caller)
+	require.NoError(t, err)
+
+	claim, err := l.service.SaveDraft(ctx, usecase.RegisterCommand{TaskID: start.Task.ID}, l.caller)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.CustomerPrincipleNormal, claim.CustomerPrinciple)
 }

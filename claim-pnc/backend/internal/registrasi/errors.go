@@ -9,6 +9,9 @@ import (
 // — cacat pemrograman atau permintaan cacat, bukan kesalahan pengguna.
 var (
 	ErrUnknownStage = errors.New("registrasi: tahap tidak dikenal")
+
+	// ErrUnknownAreaLevel menolak tingkat wilayah di luar kelima tingkat daftar pilihan.
+	ErrUnknownAreaLevel = errors.New("registrasi: tingkat wilayah tidak dikenal")
 	ErrUnknownNode  = errors.New("registrasi: simpul alur tidak dikenal")
 	ErrFlowLoop     = errors.New("registrasi: keputusan alur berputar tanpa ujung")
 )

@@ -5,7 +5,9 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import {
+  AreaLevel,
   RegistrationErrorCode,
+  type AreaOptionsResponse,
   type Violation,
   type RegisterRequest,
   type FlowResponse,
@@ -102,6 +104,45 @@ export function useSaveRegister() {
       void apiClient.invalidateQueries({ queryKey: inboxKey })
       void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
     },
+  })
+}
+
+/**
+ * Tombol Save: menyimpan isian Input Register TANPA menutup tahapnya dan tanpa
+ * menjalankan gerbang validasi — seperti Save pada layar tahap Pega.
+ */
+export function useSaveDraft() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: RegisterRequest) =>
+      callAPI<ClaimResponse>('/api/registrasi/register/simpan', { metode: 'POST', body: content, token, portal }),
+    onSuccess: (result) => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+    },
+  })
+}
+
+/**
+ * Satu tingkat daftar pilihan wilayah. Tingkat di bawah negara baru diminta setelah
+ * induknya dipilih; tanpa induk, daftarnya memang kosong.
+ */
+export function useAreaOptions(level: AreaLevel, parent: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const needsParent = level !== AreaLevel.Country
+
+  return useQuery({
+    queryKey: ['registrasi', 'wilayah', level, parent, token],
+    enabled: !needsParent || parent !== '',
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<AreaOptionsResponse>(
+        `/api/registrasi/wilayah/${level}?induk=${encodeURIComponent(parent)}`,
+        { token, portal },
+      ),
   })
 }
 

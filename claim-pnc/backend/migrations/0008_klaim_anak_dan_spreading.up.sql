@@ -1,4 +1,4 @@
--- 0008 — Kolom tambahan pada dua tabel anak klaim, dan tabel T_CLAIM_SPREADING
+-- 0008 — Kolom tambahan pada dua tabel anak klaim
 --
 -- ============================================================================
 -- KENAPA BERKAS INI ADA
@@ -35,8 +35,7 @@
 -- ============================================================================
 --
 -- Seluruh kolom NULLABLE tanpa DEFAULT — metadata saja, tidak ada baris yang ditulis
--- ulang. T_CLAIM_SPREADING adalah tabel BARU, sehingga tidak menyentuh apa pun yang
--- sedang dibaca Pega.
+-- ulang.
 --
 -- Idempoten, karena berkas ini dijalankan sekali per basis data portal (`ADR-0030`).
 
@@ -72,50 +71,21 @@ END;
 /
 
 -- ============================================================================
--- T_CLAIM_SPREADING
+-- T_CLAIM_SPREADING — SENGAJA TIDAK DIBUAT DI SINI
 -- ============================================================================
 --
--- Pembagian risiko satu coverage ke para penanggung. Total share WAJIB 100% dengan
--- toleransi empat desimal, `99,9999`–`100,0001` (`D-51`).
+-- Versi pertama berkas ini membuat T_CLAIM_SPREADING dengan bentuk rancangan sendiri
+-- (URUTAN_OBJEK, URUTAN_COVERAGE, SHARE_E4, ...). Di ASM tabel itu ternyata SUDAH ADA
+-- dengan bentuk lain, sehingga pagar IF ada = 0 melewatinya tanpa suara — dan modul
+-- menulis kolom yang tidak ada (ORA-00904), terbukti 2026-09-26.
 --
--- SHARE_E4 menyimpan share dikalikan 10.000 sebagai BILANGAN BULAT. Alasannya sama
--- dengan `ADR-0016` menyimpan uang sebagai sen: pembulatan pecahan biner membuat aturan
--- 100% gagal secara acak dan tidak dapat direproduksi — cacat yang `I-1` ada untuk
--- mencegahnya. 100% tersimpan sebagai 1000000.
+-- Bentuk tabelnya DITETAPKAN Work Owner di Database/CREATE_TABLE_2.sql, dan dijalankan
+-- lewat DBA sesuai D-63. Berkas ini tidak lagi menyentuhnya, supaya:
 --
--- Kuncinya mengikuti tabel anak yang lain: CLAIMID milik klaimnya, lalu posisi di dalam
--- pohon objek–coverage–spreading.
-DECLARE
-    ada NUMBER;
-BEGIN
-    SELECT COUNT(*) INTO ada
-      FROM all_tables WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIM_SPREADING';
+--   1. tidak ada dua versi DDL untuk satu tabel yang dapat berbeda (D-72);
+--   2. tiga portal yang belum dimigrasi tidak menerima bentuk yang keliru;
+--   3. pembatalan 0008 tidak menghapus tabel yang bukan miliknya.
+--
+-- Keberadaannya diperiksa mode -periksa, bukan diandaikan.
 
-    IF ada = 0 THEN
-        EXECUTE IMMEDIATE '
-            CREATE TABLE POOLDATA.T_CLAIM_SPREADING (
-                CLAIMID          VARCHAR2(100)  NOT NULL,
-                URUTAN_OBJEK     NUMBER(10)     NOT NULL,
-                URUTAN_COVERAGE  NUMBER(10)     NOT NULL,
-                URUTAN           NUMBER(10)     NOT NULL,
-                JENIS_TREATY     VARCHAR2(30),
-                NAMA             VARCHAR2(200),
-                SHARE_E4         NUMBER(12),
-                DIHAPUS          VARCHAR2(5),
-                OBJEK_FAC_OFFER  VARCHAR2(500),
-                DIHAPUS_PADA     TIMESTAMP,
-                CONSTRAINT PK_T_CLAIM_SPREADING
-                    PRIMARY KEY (CLAIMID, URUTAN_OBJEK, URUTAN_COVERAGE, URUTAN)
-            )';
-
-        EXECUTE IMMEDIATE
-            'CREATE INDEX POOLDATA.IX_T_CLAIM_SPREADING_KLAIM
-                 ON POOLDATA.T_CLAIM_SPREADING (CLAIMID)';
-    END IF;
-END;
-/
-
-COMMENT ON TABLE POOLDATA.T_CLAIM_SPREADING IS 'Pembagian risiko per coverage; ditulis modul Registrasi Klaim (B-2)';
-COMMENT ON COLUMN POOLDATA.T_CLAIM_SPREADING.SHARE_E4 IS 'Share x 10000 sebagai bilangan bulat; 100% = 1000000 (D-51)';
-COMMENT ON COLUMN POOLDATA.T_CLAIM_SPREADING.DIHAPUS_PADA IS 'Penanda soft delete (ADR-0012); NULL berarti baris masih berlaku';
 COMMENT ON COLUMN POOLDATA.T_CLAIM_OBJECTLIST.LOKASI IS 'Lokasi kejadian sebagai TEKS; LOCATIONID yang sudah ada berisi kode';

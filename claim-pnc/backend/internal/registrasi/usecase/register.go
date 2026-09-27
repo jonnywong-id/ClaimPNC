@@ -45,6 +45,11 @@ type RegisterCommand struct {
 	Chronology string
 	Reporter   registrasi.Reporter
 
+	// Area dan Prinsip Mengenal Nasabah — bagian bawah layar Input Register.
+	Area              registrasi.Area
+	CustomerPrinciple string
+	SuspiciousComment string
+
 	EstimateValue registrasi.Money
 	Currency      string
 	SLIKNumber    string
@@ -188,13 +193,24 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 	)
 
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
-		if !p.Return && claim.Number == "" {
-			number, err := l.number.Issue(ctx, now)
-			if err != nil {
-				return fmt.Errorf("registrasi/usecase: menerbitkan nomor klaim: %w", err)
-			}
-			claim.Number = number
+		if !p.Return {
+			// Status bisnis berpindah ke Register (`1147`) di sini — inilah tahap yang
+			// menamainya, dan ia BUKAN hal yang sama dengan punya nomor.
 			claim.ClaimStatus = registrasi.StatusRegistered
+
+			// Nomor biasanya sudah ada: sejak 2026-09-25 ia terbit saat klaim DIBUKA,
+			// mengikuti `addWork` Pega (lihat Start). Cabang di bawah karena itu hanya
+			// menjaring klaim yang dibuka sebelum perubahan itu dan belum ditutup.
+			//
+			// Ia dipertahankan, bukan dihapus: klaim lama yang sampai ke sini tanpa nomor
+			// harus tetap dapat diselesaikan petugasnya, bukan berhenti dengan galat.
+			if claim.Number == "" {
+				number, err := l.number.Issue(ctx, now)
+				if err != nil {
+					return fmt.Errorf("registrasi/usecase: menerbitkan nomor klaim: %w", err)
+				}
+				claim.Number = number
+			}
 		}
 
 		var err error
@@ -310,6 +326,19 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.Location = p.Location
 	k.Chronology = p.Chronology
 	k.Reporter = p.Reporter
+
+	k.Area = p.Area
+
+	// Prinsip Mengenal Nasabah bernilai NORMAL bila tidak dipilih.
+	//
+	// Control radio Pega membawa `pyDefaultValue` 1, sehingga isian yang tidak disentuh
+	// petugas tetap tersimpan sebagai NORMAL — bukan kosong. Kosong akan terbaca berbeda
+	// dari NORMAL oleh `SetEmailKomite`, yang hanya memeriksa "2".
+	k.CustomerPrinciple = p.CustomerPrinciple
+	if k.CustomerPrinciple == "" {
+		k.CustomerPrinciple = registrasi.CustomerPrincipleNormal
+	}
+	k.SuspiciousComment = p.SuspiciousComment
 
 	k.EstimateValue = p.EstimateValue
 	if p.Currency != "" {

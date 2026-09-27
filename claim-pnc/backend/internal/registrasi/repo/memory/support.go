@@ -293,7 +293,7 @@ func SampleTeams() map[string][]string {
 }
 
 // Assign memilih penerima tugas untuk sebuah tahap.
-func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, _ registrasi.Claim, caller string) (registrasi.Assignee, error) {
+func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim registrasi.Claim, caller string) (registrasi.Assignee, error) {
 	// Tahap Workbasket tidak memilih orang sama sekali — itu yang membuatnya antrean
 	// bersama.
 	if stage.Queue == registrasi.QueueWorkbasket {
@@ -307,6 +307,16 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, _ registras
 	}
 
 	if stage.Router == registrasi.RouterCurrentOperator {
+		return registrasi.Assignee{Operator: caller}, nil
+	}
+
+	// PNCAdminRouter menugaskan ke admin klaimnya — petugas yang membuat klaim itu.
+	// Sama seperti pengisi SQL; kedua pengisi seam ini harus sepakat, atau uji yang
+	// lulus di sini akan menyembunyikan perilaku berbeda di produksi.
+	if stage.Router == registrasi.RouterPNCAdmin {
+		if claim.CreatedBy != "" {
+			return registrasi.Assignee{Operator: claim.CreatedBy}, nil
+		}
 		return registrasi.Assignee{Operator: caller}, nil
 	}
 
@@ -386,6 +396,7 @@ type ClaimReportLink struct {
 	mu          sync.Mutex
 	handedOver  map[string]time.Time
 	claimNumber map[string]string
+	snapshot    map[string]registrasi.ClaimReportSnapshot
 }
 
 // NewClaimReportLink membentuk penaut kosong.
@@ -435,3 +446,28 @@ func (p *ClaimReportLink) ClaimNumber(reportID string) string {
 }
 
 var _ registrasi.ClaimReportLink = (*ClaimReportLink)(nil)
+
+// SetSnapshot menyiapkan isi berkas yang akan dibawa ke klaim.
+func (p *ClaimReportLink) SetSnapshot(reportID string, isi registrasi.ClaimReportSnapshot) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.snapshot == nil {
+		p.snapshot = map[string]registrasi.ClaimReportSnapshot{}
+	}
+	p.snapshot[reportID] = isi
+}
+
+// Snapshot mengembalikan isi berkas.
+//
+// Berkas yang belum disiapkan mengembalikan isi KOSONG tanpa galat — sama seperti berkas
+// yang memang belum diisi petugasnya. Menggagalkan pembuatan klaim karena berkasnya masih
+// kosong akan menolak jalur yang sah: berkas RCV lahir kosong dan boleh diregistrasi
+// sebelum seluruh isinya lengkap.
+func (p *ClaimReportLink) Snapshot(
+	_ context.Context,
+	reportID string,
+) (registrasi.ClaimReportSnapshot, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.snapshot[reportID], nil
+}

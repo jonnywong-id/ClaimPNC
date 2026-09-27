@@ -96,6 +96,36 @@ type PolicyDTO struct {
 	CreditGuarantee bool   `json:"penjamin_kredit"`
 }
 
+// AreaDTO adalah wilayah kejadian — bagian bawah layar Input Register.
+//
+// Setiap tingkat membawa kode dan nama: kode menyaring tingkat di bawahnya, nama yang
+// ditampilkan. Kota sampai Kode Pos hanya berarti bila Negara INDONESIA.
+type AreaDTO struct {
+	Country    string `json:"negara"`
+	CountryID  string `json:"negara_id"`
+	Province   string `json:"provinsi"`
+	ProvinceID string `json:"provinsi_id"`
+	City       string `json:"kota"`
+	CityID     string `json:"kota_id"`
+	District   string `json:"kabupaten"`
+	DistrictID string `json:"kabupaten_id"`
+	RW         string `json:"kelurahan"`
+	RWID       string `json:"kelurahan_id"`
+	PostalCode string `json:"kode_pos"`
+}
+
+// AreaOptionDTO adalah satu pilihan pada daftar wilayah.
+type AreaOptionDTO struct {
+	ID         string `json:"id"`
+	Name       string `json:"nama"`
+	PostalCode string `json:"kode_pos,omitempty"`
+}
+
+// AreaOptionsResponse adalah jawaban GET /api/registrasi/wilayah/{tingkat}.
+type AreaOptionsResponse struct {
+	Option []AreaOptionDTO `json:"pilihan"`
+}
+
 // ClaimDTO adalah klaim sebagaimana dilihat layar.
 type ClaimDTO struct {
 	ID     string    `json:"id"`
@@ -110,6 +140,10 @@ type ClaimDTO struct {
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
 	Reporter   ReporterDTO `json:"pelapor"`
+
+	Area              AreaDTO `json:"wilayah"`
+	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
+	SuspiciousComment string  `json:"komentar_suspicious"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
@@ -187,6 +221,10 @@ type RegisterRequest struct {
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
 	Reporter   ReporterDTO `json:"pelapor"`
+
+	Area              AreaDTO `json:"wilayah"`
+	CustomerPrinciple string  `json:"prinsip_mengenal_nasabah"`
+	SuspiciousComment string  `json:"komentar_suspicious"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`

@@ -53,6 +53,14 @@ func mapError(err error) (int, ErrorResponse) {
 				"atau pastikan polisnya sudah terbit di sistem polis.",
 		}
 
+	case errors.Is(err, registrasi.ErrUnknownAreaLevel):
+		// Tingkat wilayah adalah bagian alamat yang disusun layar, bukan isian petugas;
+		// nilai di luar kelima tingkat adalah permintaan cacat.
+		return http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: "Tingkat wilayah tidak dikenal.",
+		}
+
 	case errors.Is(err, registrasi.ErrClaimNotFound):
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeClaimNotFound,

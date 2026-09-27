@@ -191,7 +191,8 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 	}
 }
 
-// checkClaimReport melaporkan kesiapan kedua tabel Inbox Laporan Klaim.
+// checkClaimReport melaporkan kesiapan tabel Inbox Laporan Klaim, termasuk kolom
+// T_CLAIM_PNC yang ditulisnya untuk baris berkas.
 //
 // Ia memeriksa DUA hal yang sifatnya berbeda, dan membedakannya penting:
 //
@@ -210,7 +211,7 @@ func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, prin
 		print("            yang gagal, yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
 		return
 	}
-	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
+	print("  [ok]    tabel Inbox Laporan Klaim dapat dibaca, dan kolom baris berkas di T_CLAIM_PNC tersedia")
 }
 
 // checkClaimReportBranch melaporkan apakah cabang klaim petugas dapat diterjemahkan.
@@ -1440,27 +1441,58 @@ func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, 
 
 	// Tabel yang DITULIS pendaftaran. Urutannya mengikuti urutan penulisannya, supaya
 	// yang gagal lebih dulu adalah yang paling awal dibutuhkan.
+	//
+	// # Kenapa sebagian memeriksa KOLOM, bukan sekadar keberadaan tabel
+	//
+	// Pemeriksaan keberadaan saja terbukti tidak cukup. T_CLAIM_SPREADING lolos
+	// "[ok] dapat dibaca" selama modul menulis kolom yang tidak ada di sana — tabelnya
+	// memang ada, hanya bentuknya lain (ORA-00904, 2026-09-26). Yang diperiksa karena itu
+	// adalah KONTRAK: kolom yang benar-benar dipakai modul. Satu kolom yang hilang membuat
+	// SELECT ini gagal dengan nama kolomnya, jauh sebelum petugas menekan Simpan.
 	tabel := []struct {
-		nama    string
-		migrasi string
+		nama   string
+		sumber string
+		kolom  string // kosong berarti cukup keberadaan tabel
 	}{
-		{"POOLDATA.T_CLAIM_PNC", "0007 — 19 kolom tambahan"},
-		{"POOLDATA.T_CLAIM_OBJECTLIST", "0008 — 3 kolom tambahan"},
-		{"POOLDATA.T_CLAIM_OBJECTCOVERAGE", "0008 — 3 kolom tambahan"},
-		{"POOLDATA.T_CLAIM_SPREADING", "0008 — tabel baru"},
-		{"POOLDATA.CPNC_TUGAS", "0009 — tabel baru"},
-		{"POOLDATA.CPNC_JEJAK_AUDIT", "0009 — tabel baru"},
-		{"POOLDATA.CPNC_NOTIFIKASI", "0011 — tabel baru"},
+		{"POOLDATA.T_CLAIM_PNC", "tabel warisan, bentuknya ditetapkan Work Owner (diubah 2026-09-26)",
+			"CLAIMID, CLAIMNO, PORTAL, NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MATA_UANG, QQNAME, " +
+				"BRANCHCODE, DATEOFLOSS, REPORTDATE, RECEIVEDATE, LOCATION, KRONOLOGI, REPORTERNAME, NO_HP, " +
+				"REPORTADDRESS, PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN, CURRENCY, NOMOR_SLIK, EXGRATIA, " +
+				"PICTEKNIK, RCVID, RCLPUCL, STATUSWORK, STATUSCLAIM, ADMINKLAIM, REGISTERDATE, FLAG_NOLL, " +
+				"SOBNAME, SOBNAMEID, BRANCHNAME, BUSINESSCODE, BUSINESSNAME, PRODKE, TYPEOFCOINS, " +
+				"COINSNAME, LEADER_MEMBER, SHAREASM, POLISLEADER, " +
+				// Migrasi 0012 — wilayah kejadian dan Prinsip Mengenal Nasabah.
+				"COUNTRY, COUNTRYID, PROVINCE, PROVINCEID, CITY, CITYID, DISTRICT, DISTRICTID, " +
+				"RW, RWID, POSTALCODE, CUSTOMERPRINCIPLE, SUSPICIOUSCOMMENT"},
+		{"POOLDATA.T_CLAIM_OBJECTLIST", "migrasi 0008 — 3 kolom tambahan",
+			"CLAIMID, OBJECTID, OBJECTNAME, LOKASI, URUTAN, DIHAPUS_PADA"},
+		{"POOLDATA.T_CLAIM_OBJECTCOVERAGE", "migrasi 0008 — 3 kolom tambahan",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, CAUSEOFLOSSID, SUMTSI, URUTAN_OBJEK, URUTAN, DIHAPUS_PADA"},
+		{"POOLDATA.T_CLAIM_SPREADING", "Database/CREATE_TABLE_2.sql — milik Work Owner, dijalankan DBA (D-63)",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE, TREATYNAME, SHAREPERCENTAGE, URUTAN"},
+		{"POOLDATA.CPNC_TUGAS", "migrasi 0009 — tabel baru", ""},
+		{"POOLDATA.CPNC_JEJAK_AUDIT", "migrasi 0009 — tabel baru", ""},
+		{"POOLDATA.CPNC_NOTIFIKASI", "migrasi 0011 — tabel baru", ""},
 	}
 	for _, t := range tabel {
-		var jumlah int64
-		// WHERE 1 = 0 membuktikan tabelnya ada dan dapat dibaca tanpa memindai isinya.
-		err := primary.QueryRowContext(ctx,
-			"SELECT COUNT(*) FROM "+t.nama+" WHERE 1 = 0").Scan(&jumlah)
+		pilih := "COUNT(*)"
+		if t.kolom != "" {
+			pilih = t.kolom
+		}
+		// WHERE 1 = 0 membuktikan tabel dan kolomnya ada tanpa memindai isinya.
+		baris, err := primary.QueryContext(ctx,
+			"SELECT "+pilih+" FROM "+t.nama+" WHERE 1 = 0")
+		if err == nil {
+			_ = baris.Close()
+		}
 		if err != nil {
-			print("  [BELUM] %s tidak dapat dibaca: %v", t.nama, err)
-			print("            Dibuat migrasi %s. Migrasi dijalankan EMPAT KALI —", t.migrasi)
-			print("            sekali per portal (D-75).")
+			print("  [BELUM] %s tidak cocok: %v", t.nama, err)
+			print("            Sumbernya %s.", t.sumber)
+			print("            Dijalankan EMPAT KALI — sekali per portal (D-75).")
+			continue
+		}
+		if t.kolom != "" {
+			print("  [ok]    %s — kolom yang ditulis modul tersedia", t.nama)
 			continue
 		}
 		print("  [ok]    %s dapat dibaca", t.nama)

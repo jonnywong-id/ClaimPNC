@@ -241,6 +241,60 @@ func (h *Handler) SaveRegister(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(w, r, http.StatusOK, response)
 }
 
+// SaveDraft menangani POST /api/registrasi/register/simpan — tombol Save.
+//
+// Isiannya sama dengan SaveRegister, tetapi tahapnya tidak ditutup dan validasinya tidak
+// dijalankan. Lihat usecase.SaveDraft.
+func (h *Handler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body RegisterRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	command, err := registerCommand(body)
+	if err != nil {
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	claim, err := h.service.SaveDraft(r.Context(), command, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
+}
+
+// AreaOptions menangani GET /api/registrasi/wilayah/{tingkat}?induk=….
+//
+// induk adalah nilai tingkat di atasnya: nama negara untuk provinsi, kode provinsi untuk
+// kota, dan seterusnya. Negara tidak memakai induk.
+func (h *Handler) AreaOptions(w http.ResponseWriter, r *http.Request, level string) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+
+	option, err := h.service.AreaOptions(r.Context(), registrasi.AreaLevel(level), r.URL.Query().Get("induk"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	body := make([]AreaOptionDTO, 0, len(option))
+	for _, o := range option {
+		body = append(body, AreaOptionDTO{ID: o.ID, Name: o.Name, PostalCode: o.PostalCode})
+	}
+	h.writeResponse(w, r, http.StatusOK, AreaOptionsResponse{Option: body})
+}
+
 // ClaimTask menangani POST /api/registrasi/tugas/{taskID}/ambil.
 func (h *Handler) ClaimTask(w http.ResponseWriter, r *http.Request, taskID string) {
 	caller, ok := h.callerOf(w, r)
@@ -369,6 +423,16 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		DateReceived: receivedDate,
 		Location:     b.Location,
 		Chronology:   b.Chronology,
+		Area: registrasi.Area{
+			Country: b.Area.Country, CountryID: b.Area.CountryID,
+			Province: b.Area.Province, ProvinceID: b.Area.ProvinceID,
+			City: b.Area.City, CityID: b.Area.CityID,
+			District: b.Area.District, DistrictID: b.Area.DistrictID,
+			RW: b.Area.RW, RWID: b.Area.RWID,
+			PostalCode: b.Area.PostalCode,
+		},
+		CustomerPrinciple: b.CustomerPrinciple,
+		SuspiciousComment: b.SuspiciousComment,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -460,6 +524,16 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		DateReceived: formatDate(k.DateReceived),
 		Location:     k.Location,
 		Chronology:   k.Chronology,
+		Area: AreaDTO{
+			Country: k.Area.Country, CountryID: k.Area.CountryID,
+			Province: k.Area.Province, ProvinceID: k.Area.ProvinceID,
+			City: k.Area.City, CityID: k.Area.CityID,
+			District: k.Area.District, DistrictID: k.Area.DistrictID,
+			RW: k.Area.RW, RWID: k.Area.RWID,
+			PostalCode: k.Area.PostalCode,
+		},
+		CustomerPrinciple: k.CustomerPrinciple,
+		SuspiciousComment: k.SuspiciousComment,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,

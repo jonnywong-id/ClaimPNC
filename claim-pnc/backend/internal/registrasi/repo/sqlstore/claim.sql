@@ -10,12 +10,18 @@
 --   CPNC_KLAIM             -> POOLDATA.T_CLAIM_PNC
 --   CPNC_KLAIM_OBJEK       -> POOLDATA.T_CLAIM_OBJECTLIST
 --   CPNC_KLAIM_COVERAGE    -> POOLDATA.T_CLAIM_OBJECTCOVERAGE
---   CPNC_KLAIM_SPREADING   -> POOLDATA.T_CLAIM_SPREADING   (tabel BARU, migrasi 0008)
+--   CPNC_KLAIM_SPREADING   -> POOLDATA.T_CLAIM_SPREADING   (DDL Work Owner, CREATE_TABLE_2.sql)
 --
--- Sembilan belas kolom yang dimodelkan modul ini tidak ada di tabel warisan dan
--- ditambahkan migrasi `0007`; lima lagi pada tabel anak oleh `0008`. Tanpa itu,
--- pemindahan ini akan membuang data diam-diam — terberat `TAHAP_KINI`, yang menyimpan
--- tahap klaim di dalam Register_Flow.
+-- # T_CLAIM_PNC diubah Work Owner, 2026-09-26 15:31
+--
+-- Dari 97 menjadi 82 kolom. Dari kolom tambahan migrasi 0007, tujuh DIPERTAHANKAN
+-- (POLIS_MATA_UANG, NOMOR_SLIK, PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN, PORTAL,
+-- POLIS_JENIS_BISNIS, FLAG_NOLL) dan sisanya DIBUANG — termasuk tahap klaim, periode
+-- polis, estimasi, email pelapor, penanda proses, dan kolom jejak ubah/hapus.
+--
+-- Kueri di bawah menulis dan membaca 82 kolom itu saja. Medan yang kolomnya dibuang
+-- dipulihkan dari sumber lain atau diturunkan — lihat restoreDropped di claim.go.
+-- Kepala klaim karena itu juga TIDAK lagi punya penanda hapus; tabel anaknya masih.
 --
 -- ============================================================================
 -- DUA HAL YANG HARUS DIBACA SEBELUM MENYUNTING BERKAS INI
@@ -28,8 +34,7 @@
 --    sementara tabelnya kosong, dan tidak ada yang memberi tahu.
 --
 -- 2. UANG PUNYA DUA SATUAN DI BERKAS INI.
---    Domain menyimpan uang sebagai SEN (`ADR-0016`). `NILAI_ESTIMASI_SEN` menerima sen
---    apa adanya — kolomnya memang ditambahkan untuk itu. Tetapi `SUMTSI` adalah kolom
+--    Domain menyimpan uang sebagai SEN (`ADR-0016`). `SUMTSI` adalah kolom
 --    WARISAN yang dibaca Pega dan seluruh laporan lama sebagai RUPIAH — terverifikasi
 --    2026-09-24: median 45.000.000 pada mata uang terbanyak, dan 765 baris berpecahan.
 --    Karena itu TSI dibagi 100 saat ditulis dan dikalikan 100 saat dibaca. Menghapus
@@ -46,43 +51,53 @@ UPDATE POOLDATA.T_CLAIM_PNC
        NOPOLIS               = :3,
        GROUPPANEL            = :4,
        POLIS_JENIS_BISNIS    = :5,
-       POLIS_MULAI           = :6,
-       POLIS_AKHIR           = :7,
-       POLIS_DEKLARASI       = :8,
-       POLIS_MATA_UANG       = :9,
-       POLIS_PENJAMIN_KREDIT = :10,
-       QQNAME                = :11,
-       BRANCHCODE            = :12,
-       DATEOFLOSS            = :13,
-       REPORTDATE            = :14,
-       RECEIVEDATE           = :15,
-       LOCATION              = :16,
-       KRONOLOGI             = :17,
-       REPORTERNAME          = :18,
-       NO_HP                 = :19,
-       PELAPOR_EMAIL         = :20,
-       REPORTADDRESS         = :21,
-       PELAPOR_HUBUNGAN      = :22,
-       PELAPOR_HUBUNGAN_LAIN = :23,
-       NILAI_ESTIMASI_SEN    = :24,
-       CURRENCY              = :25,
-       NOMOR_SLIK            = :26,
-       EXGRATIA              = :27,
-       PICTEKNIK             = :28,
-       RCVID                 = :29,
-       RCLPUCL               = :30,
-       TRANSFER_COMPLIANCE   = :31,
-       MINTA_KEMBALI         = :32,
-       STATUSWORK            = :33,
-       STATUSCLAIM           = :34,
-       FLAG_KLAIM            = :35,
-       STATUS_POSISI_PROGRES = :36,
-       TAHAP_KINI            = :37,
-       DIUBAH_OLEH           = :38,
-       DIUBAH_PADA           = :39,
-       DIHAPUS_PADA          = :40,
-       FLAG_NOLL             = :41
- WHERE CLAIMID = :42
+       POLIS_MATA_UANG       = :6,
+       QQNAME                = :7,
+       BRANCHCODE            = :8,
+       DATEOFLOSS            = :9,
+       REPORTDATE            = :10,
+       RECEIVEDATE           = :11,
+       LOCATION              = :12,
+       KRONOLOGI             = :13,
+       REPORTERNAME          = :14,
+       NO_HP                 = :15,
+       REPORTADDRESS         = :16,
+       PELAPOR_HUBUNGAN      = :17,
+       PELAPOR_HUBUNGAN_LAIN = :18,
+       CURRENCY              = :19,
+       NOMOR_SLIK            = :20,
+       EXGRATIA              = :21,
+       PICTEKNIK             = :22,
+       RCVID                 = :23,
+       RCLPUCL               = :24,
+       STATUSWORK            = :25,
+       STATUSCLAIM           = :26,
+       FLAG_NOLL             = :27,
+       SOBNAME               = :28,
+       SOBNAMEID             = :29,
+       BRANCHNAME            = :30,
+       BUSINESSCODE          = :31,
+       BUSINESSNAME          = :32,
+       PRODKE                = :33,
+       TYPEOFCOINS           = :34,
+       COINSNAME             = :35,
+       LEADER_MEMBER         = :36,
+       SHAREASM              = :37,
+       POLISLEADER           = :38,
+       COUNTRY               = :39,
+       COUNTRYID             = :40,
+       PROVINCE              = :41,
+       PROVINCEID            = :42,
+       CITY                  = :43,
+       CITYID                = :44,
+       DISTRICT              = :45,
+       DISTRICTID            = :46,
+       RW                    = :47,
+       RWID                  = :48,
+       POSTALCODE            = :49,
+       CUSTOMERPRINCIPLE     = :50,
+       SUSPICIOUSCOMMENT     = :51
+ WHERE CLAIMID = :52
 
 -- name: klaim_sisip
 --
@@ -93,59 +108,59 @@ UPDATE POOLDATA.T_CLAIM_PNC
 -- Bedanya, klaim terbitan aplikasi ini TIDAK memakai prefix Pega (`D-22`): CLAIMID
 -- berisi pengenal internalnya, dan CLAIMNO berisi `PNCN.YY.xxxx`.
 INSERT INTO POOLDATA.T_CLAIM_PNC (
-       CLAIMNO, PORTAL,
-       NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MULAI, POLIS_AKHIR,
-       POLIS_DEKLARASI, POLIS_MATA_UANG, POLIS_PENJAMIN_KREDIT, QQNAME,
-       BRANCHCODE,
-       DATEOFLOSS, REPORTDATE, RECEIVEDATE,
-       LOCATION, KRONOLOGI,
-       REPORTERNAME, NO_HP, PELAPOR_EMAIL, REPORTADDRESS,
-       PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN,
-       NILAI_ESTIMASI_SEN, CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID,
-       RCLPUCL, TRANSFER_COMPLIANCE, MINTA_KEMBALI,
-       STATUSWORK, STATUSCLAIM, FLAG_KLAIM, STATUS_POSISI_PROGRES,
-       TAHAP_KINI,
-       DIUBAH_OLEH, DIUBAH_PADA, DIHAPUS_PADA, FLAG_NOLL,
-       CLAIMID, ADMINKLAIM, REGISTERDATE)
+       CLAIMNO, PORTAL, NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MATA_UANG,
+       QQNAME, BRANCHCODE, DATEOFLOSS, REPORTDATE, RECEIVEDATE, LOCATION,
+       KRONOLOGI, REPORTERNAME, NO_HP, REPORTADDRESS, PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN,
+       CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID, RCLPUCL,
+       STATUSWORK, STATUSCLAIM, FLAG_NOLL, SOBNAME, SOBNAMEID, BRANCHNAME,
+       BUSINESSCODE, BUSINESSNAME, PRODKE, TYPEOFCOINS, COINSNAME, LEADER_MEMBER,
+       SHAREASM, POLISLEADER, COUNTRY, COUNTRYID, PROVINCE, PROVINCEID,
+       CITY, CITYID, DISTRICT, DISTRICTID, RW, RWID,
+       POSTALCODE, CUSTOMERPRINCIPLE, SUSPICIOUSCOMMENT, CLAIMID, ADMINKLAIM, REGISTERDATE)
 VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10,
         :11, :12, :13, :14, :15, :16, :17, :18, :19, :20,
         :21, :22, :23, :24, :25, :26, :27, :28, :29, :30,
         :31, :32, :33, :34, :35, :36, :37, :38, :39, :40,
-        :41, :42, :43, :44)
+        :41, :42, :43, :44, :45, :46, :47, :48, :49, :50,
+        :51, :52, :53, :54)
 
 -- name: klaim_ambil
 SELECT CLAIMID, CLAIMNO, PORTAL,
-       NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MULAI, POLIS_AKHIR,
-       POLIS_DEKLARASI, POLIS_MATA_UANG, POLIS_PENJAMIN_KREDIT, QQNAME,
+       NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MATA_UANG, QQNAME,
        BRANCHCODE,
        DATEOFLOSS, REPORTDATE, RECEIVEDATE,
        LOCATION, KRONOLOGI,
-       REPORTERNAME, NO_HP, PELAPOR_EMAIL, REPORTADDRESS,
+       REPORTERNAME, NO_HP, REPORTADDRESS,
        PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN,
-       NILAI_ESTIMASI_SEN, CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID,
-       RCLPUCL, TRANSFER_COMPLIANCE, MINTA_KEMBALI,
-       STATUSWORK, STATUSCLAIM, FLAG_KLAIM, STATUS_POSISI_PROGRES,
-       TAHAP_KINI,
-       ADMINKLAIM, REGISTERDATE, DIUBAH_OLEH, DIUBAH_PADA, DIHAPUS_PADA,
-       FLAG_NOLL
+       CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID,
+       RCLPUCL,
+       STATUSWORK, STATUSCLAIM,
+       ADMINKLAIM, REGISTERDATE,
+       FLAG_NOLL,
+       SOBNAME, SOBNAMEID, BRANCHNAME, BUSINESSCODE, BUSINESSNAME, PRODKE, TYPEOFCOINS,
+       COINSNAME, LEADER_MEMBER, ROUND(SHAREASM * 10000), POLISLEADER,
+       COUNTRY, COUNTRYID, PROVINCE, PROVINCEID, CITY, CITYID, DISTRICT, DISTRICTID,
+       RW, RWID, POSTALCODE, CUSTOMERPRINCIPLE, SUSPICIOUSCOMMENT
   FROM POOLDATA.T_CLAIM_PNC
  WHERE CLAIMID = :1
 
 -- name: klaim_ambil_per_nomor
 SELECT CLAIMID, CLAIMNO, PORTAL,
-       NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MULAI, POLIS_AKHIR,
-       POLIS_DEKLARASI, POLIS_MATA_UANG, POLIS_PENJAMIN_KREDIT, QQNAME,
+       NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MATA_UANG, QQNAME,
        BRANCHCODE,
        DATEOFLOSS, REPORTDATE, RECEIVEDATE,
        LOCATION, KRONOLOGI,
-       REPORTERNAME, NO_HP, PELAPOR_EMAIL, REPORTADDRESS,
+       REPORTERNAME, NO_HP, REPORTADDRESS,
        PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN,
-       NILAI_ESTIMASI_SEN, CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID,
-       RCLPUCL, TRANSFER_COMPLIANCE, MINTA_KEMBALI,
-       STATUSWORK, STATUSCLAIM, FLAG_KLAIM, STATUS_POSISI_PROGRES,
-       TAHAP_KINI,
-       ADMINKLAIM, REGISTERDATE, DIUBAH_OLEH, DIUBAH_PADA, DIHAPUS_PADA,
-       FLAG_NOLL
+       CURRENCY, NOMOR_SLIK, EXGRATIA, PICTEKNIK, RCVID,
+       RCLPUCL,
+       STATUSWORK, STATUSCLAIM,
+       ADMINKLAIM, REGISTERDATE,
+       FLAG_NOLL,
+       SOBNAME, SOBNAMEID, BRANCHNAME, BUSINESSCODE, BUSINESSNAME, PRODKE, TYPEOFCOINS,
+       COINSNAME, LEADER_MEMBER, ROUND(SHAREASM * 10000), POLISLEADER,
+       COUNTRY, COUNTRYID, PROVINCE, PROVINCEID, CITY, CITYID, DISTRICT, DISTRICTID,
+       RW, RWID, POSTALCODE, CUSTOMERPRINCIPLE, SUSPICIOUSCOMMENT
   FROM POOLDATA.T_CLAIM_PNC
  WHERE CLAIMNO = :1
 
@@ -210,36 +225,63 @@ SELECT URUTAN_OBJEK, URUTAN, COVERAGEID, CAUSEOFLOSSID, SUMTSI * 100
  WHERE CLAIMID = :1 AND DIHAPUS_PADA IS NULL
  ORDER BY URUTAN_OBJEK, URUTAN
 
--- name: spreading_perbarui
-UPDATE POOLDATA.T_CLAIM_SPREADING
-   SET JENIS_TREATY = :1, NAMA = :2, SHARE_E4 = :3, DIHAPUS = :4,
-       OBJEK_FAC_OFFER = :5, DIHAPUS_PADA = NULL
- WHERE CLAIMID = :6 AND URUTAN_OBJEK = :7 AND URUTAN_COVERAGE = :8 AND URUTAN = :9
+-- ============================================================================
+-- SPREADING — insert bila belum ada, tanpa proses hapus
+-- ============================================================================
+--
+-- Bentuk tabel POOLDATA.T_CLAIM_SPREADING DITETAPKAN Work Owner (CREATE_TABLE_2.sql,
+-- 2026-09-26), dan cara menulisinya ditetapkan bersamanya: dari aplikasi hanya INSERT
+-- bila barisnya belum ada, dan TIDAK ADA proses DELETE.
+--
+-- Kuncinya (CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE) — satu baris per jenis
+-- treaty pada satu coverage. Dengan aturan tulis di atas, kunci itu konsisten: tidak ada
+-- baris yang ditandai terhapus lalu digantikan baris berjenis sama.
+--
+-- # Kenapa DUA pernyataan, bukan satu
+--
+-- Insert-bila-belum-ada dalam satu pernyataan menuntut MERGE atau FROM DUAL. Keduanya
+-- ditolak: MERGE bukan sintaks yang sama di PostgreSQL (keputusan 2.9), dan FROM DUAL
+-- dilarang Database Strategy §4. Memeriksa lebih dulu lalu menyisipkan berjalan apa
+-- adanya di kedua basis data, dan membuat aturannya terbaca di kode.
+--
+-- # Satuan share
+--
+-- Domain menyimpan share sebagai BILANGAN BULAT x 10.000 (Percent, 100% = 1.000.000)
+-- supaya toleransi 99,9999–100,0001 (D-51) tidak pernah bergantung pada pembulatan
+-- pecahan biner. Kolomnya NUMBER(9,6) — desimal eksak, cukup untuk empat desimal itu.
+-- Pembagian dilakukan di Go dan hasilnya dibulatkan kembali di SQL saat dibaca, sehingga
+-- nilai yang keluar sama persis dengan yang masuk.
+
+-- name: spreading_ada
+SELECT 1
+  FROM POOLDATA.T_CLAIM_SPREADING
+ WHERE CLAIMID = :1 AND OBJECTID = :2 AND OBJECTCOVERAGEID = :3 AND TREATYTYPE = :4
 
 -- name: spreading_sisip
 INSERT INTO POOLDATA.T_CLAIM_SPREADING
-       (JENIS_TREATY, NAMA, SHARE_E4, DIHAPUS, OBJEK_FAC_OFFER,
-        CLAIMID, URUTAN_OBJEK, URUTAN_COVERAGE, URUTAN)
-VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9)
-
--- name: spreading_tandai_sisa
-UPDATE POOLDATA.T_CLAIM_SPREADING
-   SET DIHAPUS_PADA = :1
- WHERE CLAIMID = :2 AND URUTAN_OBJEK = :3 AND URUTAN_COVERAGE = :4
-   AND URUTAN > :5 AND DIHAPUS_PADA IS NULL
+       (CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE, TREATYNAME, SHAREPERCENTAGE, URUTAN)
+VALUES (:1, :2, :3, :4, :5, :6, :7)
 
 -- name: spreading_daftar
-SELECT URUTAN_OBJEK, URUTAN_COVERAGE, URUTAN, JENIS_TREATY, NAMA, SHARE_E4, DIHAPUS, OBJEK_FAC_OFFER
+--
+-- SHAREPERCENTAGE dikembalikan ke satuan domain: dikalikan 10.000 lalu dibulatkan, supaya
+-- hasilnya bilangan bulat yang sama dengan yang disimpan pemanggil.
+--
+-- Penjodohan ke pohon memakai OBJECTID dan OBJECTCOVERAGEID — kolom yang memang ada di
+-- tabel ini — bukan urutan objek/coverage. Pemanggil menerjemahkannya lewat daftar objek
+-- yang sudah dibacanya lebih dulu.
+SELECT OBJECTID, OBJECTCOVERAGEID, URUTAN, TREATYTYPE, TREATYNAME,
+       ROUND(SHAREPERCENTAGE * 10000)
   FROM POOLDATA.T_CLAIM_SPREADING
- WHERE CLAIMID = :1 AND DIHAPUS_PADA IS NULL
- ORDER BY URUTAN_OBJEK, URUTAN_COVERAGE, URUTAN
+ WHERE CLAIMID = :1
+ ORDER BY OBJECTID, OBJECTCOVERAGEID, URUTAN
 
 -- name: klaim_cari_ganda
 -- Pemeriksaan klaim ganda.
 --
 -- Empat hal yang membuat kueri ini benar:
---   1. Klaim yang ditandai terhapus tidak ikut (ADR-0012), dan begitu pula baris objek
---      yang ditandai terhapus.
+--   1. Baris objek yang ditandai terhapus tidak ikut (ADR-0012). Kepala klaim tidak lagi
+--      punya penanda hapus sejak T_CLAIM_PNC diubah Work Owner (2026-09-26).
 --   2. Klaim yang belum bernomor tidak ikut: ia belum benar-benar terdaftar.
 --   3. Klaim yang sedang disimpan dikecualikan lewat :2, supaya penyimpanan ulang tidak
 --      menganggap dirinya sendiri duplikat.
@@ -261,7 +303,6 @@ SELECT DISTINCT k.CLAIMNO, o.OBJECTID
  WHERE k.NOPOLIS = :1
    AND k.CLAIMID <> :2
    AND k.CLAIMNO IS NOT NULL
-   AND k.DIHAPUS_PADA IS NULL
    AND o.OBJECTID = :3
    AND (:4 = 0 OR REPLACE(UPPER(k.LOCATION), ' ', '') = REPLACE(UPPER(:5), ' ', ''))
    AND (:6 = 0 OR EXISTS (

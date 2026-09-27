@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"math/big"
 	"strings"
 	"time"
 
@@ -127,11 +128,19 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		no, panel, businessCode, businessName sql.NullString
 		start, end, policyKind, currency      sql.NullString
 		insured, qqName, branch, spreading    sql.NullString
+
+		// Jalur yang diisi Pega ke T_CLAIM_PNC saat klaim dibuat.
+		quoBusinessCode, branchName, sob, sobName sql.NullString
+		prodKe, policyLeader, typeOfCoins         sql.NullString
+		cedingName, facShare                      sql.NullString
 	)
 	err := exec.QueryRowContext(ctx, loadQuery("polis_ambil"), number).Scan(
 		&no, &panel, &businessCode, &businessName,
 		&start, &end, &policyKind, &currency,
 		&insured, &qqName, &branch, &spreading,
+		&quoBusinessCode, &branchName, &sob, &sobName,
+		&prodKe, &policyLeader, &typeOfCoins,
+		&cedingName, &facShare,
 	)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -146,6 +155,12 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 	if name == "" {
 		name = strings.TrimSpace(qqName.String)
 	}
+
+	rows, err := r.coinsurance(ctx, exec, number)
+	if err != nil {
+		return registrasi.Policy{}, err
+	}
+	fac, facKnown := parsePercent(facShare.String)
 
 	return registrasi.Policy{
 		Number:        fallback(no.String, number),
@@ -173,7 +188,68 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		// CreditGuarantee tidak ada di dokumen polis. Ia ditentukan lini bisnis SPK /
 		// Asuransi Kredit, dan aturannya milik modul ini — bukan data yang dibaca.
 		CreditGuarantee: false,
+
+		// Diisi Pega ke T_CLAIM_PNC saat klaim dibuat (PEGA_CONVERT_JSONKLAIM_PNC.prc
+		// baris 317-373). Semuanya disalin apa adanya dari dokumen polis.
+		BusinessCode:         strings.TrimSpace(quoBusinessCode.String),
+		BusinessName:         strings.TrimSpace(businessName.String),
+		BranchName:           strings.TrimSpace(branchName.String),
+		SourceOfBusiness:     strings.TrimSpace(sob.String),
+		SourceOfBusinessName: strings.TrimSpace(sobName.String),
+		ProdKe:               strings.TrimSpace(prodKe.String),
+		PolicyLeader:         strings.TrimSpace(policyLeader.String),
+		TypeOfCoins:          strings.TrimSpace(typeOfCoins.String),
+
+		Coinsurance: registrasi.DeriveCoinsurance(strings.TrimSpace(typeOfCoins.String), rows,
+			strings.TrimSpace(cedingName.String), fac, facKnown),
 	}, nil
+}
+
+// coinsurance membaca baris CoinsList dokumen polis. Nol baris adalah keadaan biasa:
+// sebagian besar polis tidak berkoasuransi, dan DeriveCoinsurance memberi bawaan Pega.
+func (r *PolicyRepo) coinsurance(ctx context.Context, exec executor, number string) ([]registrasi.CoinsuranceRow, error) {
+	baris, err := exec.QueryContext(ctx, loadQuery("polis_koasuransi"), number)
+	if err != nil {
+		return nil, fmt.Errorf("registrasi/sqlstore: membaca koasuransi polis %q: %w", number, err)
+	}
+	defer func() { _ = baris.Close() }()
+
+	var out []registrasi.CoinsuranceRow
+	for baris.Next() {
+		var leader, name, share sql.NullString
+		if err := baris.Scan(&leader, &name, &share); err != nil {
+			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris koasuransi: %w", err)
+		}
+		p, ok := parsePercent(share.String)
+		out = append(out, registrasi.CoinsuranceRow{
+			Leader:       strings.TrimSpace(leader.String),
+			CoinsName:    strings.TrimSpace(name.String),
+			PercentShare: p,
+			HasShare:     ok,
+		})
+	}
+	return out, baris.Err()
+}
+
+// parsePercent membaca persentase bertipe teks pada dokumen polis ("60", "33.3333")
+// menjadi satuan 1/10000 persen, dibulatkan ke satuan terdekat. Teks yang bukan angka
+// dianggap tidak diketahui — bukan nol.
+func parsePercent(raw string) (registrasi.Percent, bool) {
+	teks := strings.TrimSpace(raw)
+	if teks == "" {
+		return 0, false
+	}
+	v, ok := new(big.Rat).SetString(teks)
+	if !ok {
+		return 0, false
+	}
+	v.Mul(v, big.NewRat(10_000, 1))
+	half := big.NewRat(1, 2)
+	if v.Sign() < 0 {
+		half.Neg(half)
+	}
+	v.Add(v, half)
+	return registrasi.Percent(new(big.Int).Quo(v.Num(), v.Denom()).Int64()), true
 }
 
 // fallback mengembalikan nilai pertama yang tidak kosong.
@@ -359,6 +435,42 @@ func (a *Assigner) Assign(
 	// kembali ke petugas yang sedang mengerjakannya.
 	if operator := strings.TrimSpace(stage.Operator); operator != "" {
 		return registrasi.Assignee{Operator: operator}, nil
+	}
+
+	// ToCurrentOperator menugaskan ke PEMANGGIL — itu arti namanya, dan pengisi memori
+	// sudah melakukannya. Tanpa cabang ini, tahap View Polis jatuh ke kueri beban PIC
+	// Teknik dan berakhir di tangan orang lain.
+	if stage.Router == registrasi.RouterCurrentOperator {
+		if operator := strings.TrimSpace(caller); operator != "" {
+			return registrasi.Assignee{Operator: operator}, nil
+		}
+		return registrasi.Assignee{}, fmt.Errorf(
+			"registrasi/sqlstore: tahap %q menuntut pemanggil, tetapi pemanggilnya kosong", stage.ID)
+	}
+
+	// PNCAdminRouter menugaskan ke ADMIN KLAIMNYA, bukan ke petugas teknis.
+	//
+	// Rule-nya tidak ada di export (`R-04`), tetapi dua hal menunjukkan perilakunya.
+	// Pertama, `Activity/CreateRegisterKlaimPNC_act.xml` langkah 14 mengisi
+	// `ClaimData.UserAdmin` dengan `OperatorID.pyUserIdentifier` — petugas yang menekan
+	// tombolnya. Kedua, kembarannya yang ADA di export, `PNCAdminRouterRCV`, menugaskan
+	// ke `ReceiveDocument.UserAdmin` dan jatuh ke pembuat kasus bila kosong.
+	//
+	// Memakai kueri beban PIC Teknik untuk tahap ini akan melempar klaim ke orang lain
+	// tepat setelah petugas menekan Register Klaim — dan petugas itu lalu tidak dapat
+	// membuka klaim yang baru saja dibuatnya sendiri.
+	//
+	// ADMINKLAIM di basis data adalah kolom yang sama dengan CreatedBy di sini.
+	if stage.Router == registrasi.RouterPNCAdmin {
+		admin := strings.TrimSpace(claim.CreatedBy)
+		if admin == "" {
+			admin = strings.TrimSpace(caller)
+		}
+		if admin == "" {
+			return registrasi.Assignee{}, fmt.Errorf(
+				"registrasi/sqlstore: tahap %q tidak punya admin klaim maupun pemanggil", stage.ID)
+		}
+		return registrasi.Assignee{Operator: admin}, nil
 	}
 
 	line := businessGroupOf(claim.Policy.Line)

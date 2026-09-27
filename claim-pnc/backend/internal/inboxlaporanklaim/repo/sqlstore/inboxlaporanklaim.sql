@@ -106,7 +106,7 @@
 --   rejected   statuswork klaim, dari ViewTableBrowseRCVReject
 --   origin     diturunkan dari AWALAN NOMOR, bukan dari tabel asal
 --
--- `origin` diturunkan dari nomor: berawalan `RCVN.` berarti terbitan aplikasi ini (lihat
+-- `origin` diturunkan dari nomor: berawalan `RCVN` berarti terbitan aplikasi ini (lihat
 -- ReportNumberPrefix di number.go), sisanya warisan Pega. Awalan itu sengaja dipilih pada
 -- `D-71` justru supaya asal sebuah berkas terbaca dari nomornya tanpa tabel pemetaan.
 --
@@ -155,7 +155,7 @@ WITH source AS (
            w.grouppanel_1        AS group_panel,
            b.businessgroupid     AS business_group,
            CASE
-               WHEN w.pyid LIKE 'RCVN.%' THEN 'claimpnc'
+               WHEN w.pyid LIKE 'RCVN%' THEN 'claimpnc'
                ELSE 'pega'
            END                   AS origin,
            CAST(NULL AS DATE)         AS received_date,
@@ -228,7 +228,7 @@ WITH source AS (
     -- aplikasi ini.
     --
     -- Pemisahannya mutlak dan tidak dapat tumpang tindih: cabang pertama menyaring
-    -- `pxobjclass`, cabang ini menyaring awalan `RCVN.` yang hanya diterbitkan aplikasi
+    -- `pxobjclass`, cabang ini menyaring awalan `RCVN` yang hanya diterbitkan aplikasi
     -- ini (`D-71`). Tidak ada satu baris pun yang dapat muncul di keduanya.
     SELECT r.claimid             AS report_id,
            r.noklaim             AS claim_number,
@@ -262,7 +262,7 @@ WITH source AS (
            r.emailpengirim       AS reporter_email,
            r.tlppengirim         AS reporter_phone,
            r.namakurirasm        AS courier_name,
-           r.estimationvalue     AS estimate_value,
+           ROUND(r.estimationvalue * 100) AS estimate_value,
            r.lokasikejadian      AS loss_location,
            r.kronologikejadian   AS chronology,
            r.rinciankerusakan    AS damage_detail,
@@ -298,7 +298,7 @@ WITH source AS (
       FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
       LEFT JOIN POOLDATA.BUSINESS b2
              ON b2.id = r.businesscode
-     WHERE r.claimid LIKE 'RCVN.%'
+     WHERE r.claimid LIKE 'RCVN%'
 )
 
 -- name: claim_report_list_body
@@ -356,7 +356,17 @@ SELECT s.report_id,
    AND (:23 IS NULL OR s.position = :24)
    AND (:25 IS NULL OR s.accepted = '1')
    AND (:26 IS NULL OR s.rejected = '1')
- ORDER BY s.aging_at DESC, s.report_id DESC
+-- NULLS LAST bukan hiasan: Oracle menaruh NULL di ATAS pada ORDER BY DESC, dan 55 baris
+-- warisan ber-DATEFORAGING_1 kosong. Tanpa ini, kelima puluh lima baris itu menutupi
+-- halaman pertama SETIAP tab, dan berkas yang baru dibuat — yang aging-nya justru terisi
+-- — terdorong ke halaman dua atau tiga. Berkas yang baru dibuat lalu tidak terlihat,
+-- dan itu tampak seperti data yang tidak tersimpan.
+--
+-- Baris tanpa tanggal aging bukan baris TERBARU; ia baris yang tanggalnya TIDAK
+-- DIKETAHUI. Menaruhnya di atas adalah kebetulan bawaan Oracle, bukan aturan bisnis.
+--
+-- NULLS LAST didukung Oracle maupun PostgreSQL, sehingga `D-20` tetap terpenuhi.
+ ORDER BY s.aging_at DESC NULLS LAST, s.report_id DESC
 OFFSET :27 ROWS FETCH NEXT :28 ROWS ONLY
 
 -- name: claim_report_count_body
@@ -435,7 +445,17 @@ SELECT s.report_id,
                   AND (:30 IS NULL OR k.komunikasistatus = :31)
                   AND (:32 IS NULL OR k.sender = :33)
                   AND (:34 IS NULL OR k.sender <> :35))
- ORDER BY s.aging_at DESC, s.report_id DESC
+-- NULLS LAST bukan hiasan: Oracle menaruh NULL di ATAS pada ORDER BY DESC, dan 55 baris
+-- warisan ber-DATEFORAGING_1 kosong. Tanpa ini, kelima puluh lima baris itu menutupi
+-- halaman pertama SETIAP tab, dan berkas yang baru dibuat — yang aging-nya justru terisi
+-- — terdorong ke halaman dua atau tiga. Berkas yang baru dibuat lalu tidak terlihat,
+-- dan itu tampak seperti data yang tidak tersimpan.
+--
+-- Baris tanpa tanggal aging bukan baris TERBARU; ia baris yang tanggalnya TIDAK
+-- DIKETAHUI. Menaruhnya di atas adalah kebetulan bawaan Oracle, bukan aturan bisnis.
+--
+-- NULLS LAST didukung Oracle maupun PostgreSQL, sehingga `D-20` tetap terpenuhi.
+ ORDER BY s.aging_at DESC NULLS LAST, s.report_id DESC
 OFFSET :36 ROWS FETCH NEXT :37 ROWS ONLY
 
 -- name: claim_report_message_count_body
@@ -594,15 +614,30 @@ SELECT DISTINCT br.basterritory
 -- sama dengan urutan angka. Penyaring membatasi pada TAHUN yang diminta, jadi pergantian
 -- tahun tidak membuat deretnya melompat.
 --
+-- # Satu bentuk lain ikut dihitung, dan alasannya
+--
+-- Bentuk `RCVN-xxxx` sempat dipakai sehari (2026-09-24) sebelum dibatalkan, dan satu
+-- berkas telanjur terbit dengannya. Ia TIDAK punya segmen tahun, sehingga tidak dapat
+-- disaring per tahun — tetapi nomor urutnya sudah terpakai.
+--
+-- Mengabaikannya berarti nomor itu diterbitkan ulang pada tahun ini, dan dua berkas
+-- berbeda akan sama-sama terbaca sebagai nomor lima belas. Karena itu ia ikut dihitung
+-- pada deret TAHUN BERJALAN — tahun terbitnya memang tahun ini.
+--
+-- Letak angkanya berbeda: posisi 6 tanpa segmen tahun, posisi 9 dengan segmen tahun.
+-- CASE memilihnya per baris, dan keduanya portabel ke PostgreSQL.
+--
 -- # Yang TIDAK dijamin kueri ini, dan bagaimana ditangani
 --
 -- Dua permintaan bersamaan dapat membaca nomor yang sama. Yang menjaganya bukan kueri ini
 -- melainkan **kunci utama tabel**: penyisipan kedua gagal dengan ORA-00001, dan Repo.Insert
 -- mengulang dengan nomor berikutnya. Menjaganya di sini — lewat penguncian baris — akan
 -- menyerialkan seluruh pembuatan berkas hanya demi kejadian yang jarang.
-SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(claimid, 9))), 0) + 1
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(claimid,
+                   CASE WHEN claimid LIKE 'RCVN-%' THEN 6 ELSE 9 END))), 0) + 1
   FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
  WHERE claimid LIKE 'RCVN.' || :1 || '.%'
+    OR claimid LIKE 'RCVN-%'
 
 -- name: claim_report_insert
 --
@@ -644,7 +679,7 @@ VALUES (:1, :2, :3, :4, :5)
 --   DIBUAT_OLEH/PADA jejak pembuatan tidak pernah ditulis ulang
 --   DIHAPUS_PADA     penghapusan dinyatakan lewat penanda (`ADR-0012`), bukan di sini
 --
--- # Penyaring awalan `RCVN.`
+-- # Penyaring awalan `RCVN`
 --
 -- Bukan kerapian melainkan penegakan `P-1`: ia memastikan pernyataan ini tidak akan
 -- pernah mengenai baris milik Pega, bahkan bila nomor yang salah sampai ke sini. Baris
@@ -658,6 +693,16 @@ VALUES (:1, :2, :3, :4, :5)
 --
 -- Ketiganya konsekuensi memakai tabel lama alih-alih tabel baru, dan dicatat di
 -- docs/keputusan-implementasi.md — bukan disembunyikan sebagai detail teknis.
+--
+-- # Satuan ESTIMATIONVALUE: RUPIAH, seperti yang diisi Pega
+--
+-- Domain dan layar memakai SEN (ADR-0016), sedangkan kolom warisan ini berisi RUPIAH:
+-- dari 642 baris Pega yang berestimasi, hanya 110 berupa kelipatan 100. Versi pertama
+-- menyimpan sen apa adanya, sehingga modul registrasi yang membacanya sebagai rupiah
+-- mengalikan seratus lagi dan estimasi klaim menggelembung seratus kali (2026-09-26).
+--
+-- Karena itu ditulis :10 / 100 di sini dan dibaca ROUND(... * 100) di kedua kueri baca,
+-- mengikuti SUMTSI pada modul registrasi.
 UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
    SET TANGGALTERIMADOKUMEN = :1,
        DOL                  = :2,
@@ -668,7 +713,7 @@ UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
        NOPOLIS              = :7,
        NAMATERTANGGUNG      = :8,
        NOREFERENSI          = :9,
-       ESTIMATIONVALUE      = :10,
+       ESTIMATIONVALUE      = :10 / 100,
        LOKASIKEJADIAN       = :11,
        SUBJECTEMAIL         = :12,
        KRONOLOGIKEJADIAN    = :13,
@@ -676,7 +721,66 @@ UPDATE POOLDATA.T_CLAIM_RECIVEDCLAIM
        ALASANBLMTRANSFER    = :15,
        KETERANGANBLMREGIST  = :16
  WHERE CLAIMID = :17
-   AND CLAIMID LIKE 'RCVN.%'
+   AND CLAIMID LIKE 'RCVN%'
+
+-- ============================================================================
+-- BERKAS RCVN DI POOLDATA.T_CLAIM_PNC
+-- ============================================================================
+--
+-- Work Owner, 2026-09-26: pembuatan RCVN ikut masuk ke T_CLAIM_PNC. Pega melakukan hal
+-- yang sama: tabel itu memuat 436 baris ber-CLAIMID ASM-FW-GCNMFW-WORK RCV-xxxx di
+-- samping baris klaimnya.
+--
+-- # Isinya: data berkas, di kolom WARISAN
+--
+-- Kolomnya dipilih mengikuti pemetaan CreateRegisterKlaimPNC_act langkah 14, yaitu
+-- kolom yang juga dipakai baris klaimnya. Dengan begitu isian yang sama berada di kolom
+-- yang sama, entah barisnya berkas atau klaim:
+--
+--   NOPOLIS  QQNAME  DATEOFLOSS  REPORTERNAME  LOCATION  KRONOLOGI  BRANCHCODE
+--   REPORTDATE        <- Tanggal Terima Dokumen berkas (langkah 14: ReportDate)
+--   NO_HP                                  <- kolom yang sama dengan baris klaim
+--   SUBJECTEMAIL      <- subjek email berkas (langkah 14: SubjectEmail)
+--
+-- Email pelapor, estimasi, dan jejak ubah TIDAK ditulis: kolomnya dibuang Work Owner
+-- dari T_CLAIM_PNC pada 2026-09-26 15:31. Ketiganya tetap tersimpan di
+-- T_CLAIM_RECIVEDCLAIM, tabel berkas itu sendiri.
+--
+-- # Yang SENGAJA dibiarkan kosong: CLAIMNO, STATUSCLAIM, STATUSWORK, REGISTERDATE
+--
+-- Berkas bukan klaim. Keempat kolom itulah yang dipakai setiap pembaca klaim untuk
+-- mengenali klaim: nomor klaim berikutnya, pemeriksaan klaim ganda, inbox, progres,
+-- dan riwayat. Selama keempatnya kosong, baris berkas tidak pernah terbaca sebagai
+-- klaim. Stub RCV milik Pega pun mengosongkannya.
+--
+-- # Pagar
+--
+-- Kedua pernyataan hanya mengenai CLAIMID berawalan RCVN, dan UPDATE juga menuntut
+-- CLAIMNO kosong. Tabel ini tidak punya kunci utama sama sekali, sehingga penjagaan
+-- terhadap baris ganda dilakukan pemanggil: UPDATE lebih dulu, INSERT hanya bila tidak
+-- ada baris yang terkena, di dalam transaksi yang sudah mengunci baris berkasnya.
+
+-- name: claim_report_pnc_update
+UPDATE POOLDATA.T_CLAIM_PNC
+   SET NOPOLIS      = :1,
+       QQNAME       = :2,
+       DATEOFLOSS   = :3,
+       REPORTDATE   = :4,
+       REPORTERNAME = :5,
+       NO_HP        = :6,
+       LOCATION     = :7,
+       KRONOLOGI    = :8,
+       BRANCHCODE   = :9,
+       SUBJECTEMAIL = :10
+ WHERE CLAIMID = :11
+   AND CLAIMID LIKE 'RCVN%'
+   AND CLAIMNO IS NULL
+
+-- name: claim_report_pnc_insert
+INSERT INTO POOLDATA.T_CLAIM_PNC
+       (NOPOLIS, QQNAME, DATEOFLOSS, REPORTDATE, REPORTERNAME, NO_HP,
+        LOCATION, KRONOLOGI, BRANCHCODE, SUBJECTEMAIL, CLAIMID)
+VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11)
 
 -- name: claim_report_check_table
 --
@@ -708,7 +812,7 @@ SELECT t.pyid
 --
 -- # Kenapa dipilih menurut AWALAN NOMOR
 --
--- Nomor berawalan `RCVN.` hanya diterbitkan aplikasi ini (`D-71`, ReportNumberPrefix).
+-- Nomor berawalan `RCVN` hanya diterbitkan aplikasi ini (ReportNumberPrefix).
 -- Pemilihannya karena itu pasti, tidak menuntut pembacaan dua tabel, dan tidak dapat
 -- salah sasaran. Lihat Repo.Get.
 --
@@ -745,7 +849,7 @@ SELECT r.claimid             AS report_id,
        r.emailpengirim       AS reporter_email,
        r.tlppengirim         AS reporter_phone,
        r.namakurirasm        AS courier_name,
-       r.estimationvalue     AS estimate_value,
+       ROUND(r.estimationvalue * 100) AS estimate_value,
        r.lokasikejadian      AS loss_location,
        r.kronologikejadian   AS chronology,
        r.rinciankerusakan    AS damage_detail,
@@ -756,4 +860,15 @@ SELECT r.claimid             AS report_id,
   LEFT JOIN POOLDATA.BUSINESS b2
          ON b2.id = r.businesscode
  WHERE r.claimid = :1
-   AND r.claimid LIKE 'RCVN.%'
+   AND r.claimid LIKE 'RCVN%'
+
+-- name: claim_report_check_claim_row
+--
+-- Kolom T_CLAIM_PNC yang ditulis modul ini untuk baris berkas. Yang diperiksa adalah
+-- KONTRAKNYA, bukan keberadaan tabel: keberadaan tabel terbukti bukan bukti kecocokan
+-- (bab 58 catatan pengembangan). Satu kolom yang hilang menggagalkan kueri ini dengan
+-- namanya, sebelum petugas menekan Simpan.
+SELECT CLAIMID, NOPOLIS, QQNAME, DATEOFLOSS, REPORTDATE, REPORTERNAME, NO_HP,
+       LOCATION, KRONOLOGI, BRANCHCODE, SUBJECTEMAIL, CLAIMNO
+  FROM POOLDATA.T_CLAIM_PNC
+ WHERE 1 = 0

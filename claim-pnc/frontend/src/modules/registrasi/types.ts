@@ -80,6 +80,54 @@ export type Policy = {
   penjamin_kredit: boolean
 }
 
+/**
+ * Wilayah kejadian — bagian bawah layar Input Register Pega
+ * (Section/ViewInputRegisterDetail-Section.xml). Setiap tingkat membawa kode dan nama:
+ * kode menyaring tingkat di bawahnya, nama yang ditampilkan.
+ */
+export type Area = {
+  negara: string
+  negara_id: string
+  provinsi: string
+  provinsi_id: string
+  kota: string
+  kota_id: string
+  kabupaten: string
+  kabupaten_id: string
+  kelurahan: string
+  kelurahan_id: string
+  kode_pos: string
+}
+
+/** Tingkat daftar pilihan wilayah, sesuai rute /api/registrasi/wilayah/{tingkat}. */
+export const AreaLevel = {
+  Country: 'negara',
+  Province: 'provinsi',
+  City: 'kota',
+  District: 'kabupaten',
+  Village: 'kelurahan',
+} as const
+export type AreaLevel = (typeof AreaLevel)[keyof typeof AreaLevel]
+
+export type AreaOption = {
+  id: string
+  nama: string
+  kode_pos?: string
+}
+
+export type AreaOptionsResponse = {
+  pilihan: AreaOption[]
+}
+
+/** Negara yang membuka isian Kota sampai Kode Pos (kondisi Country = 'INDONESIA'). */
+export const COUNTRY_INDONESIA = 'INDONESIA'
+
+/** Prinsip Mengenal Nasabah — ClaimData.CustomerPrinciple. NORMAL adalah bawaan. */
+export const CustomerPrinciple = {
+  Normal: '1',
+  Suspicious: '2',
+} as const
+
 export type Claim = {
   id: string
   nomor: string
@@ -91,6 +139,9 @@ export type Claim = {
   lokasi: string
   kronologi: string
   pelapor: Reporter
+  wilayah: Area
+  prinsip_mengenal_nasabah: string
+  komentar_suspicious: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string
@@ -179,6 +230,9 @@ export type RegisterRequest = {
   lokasi: string
   kronologi: string
   pelapor: Reporter
+  wilayah: Area
+  prinsip_mengenal_nasabah: string
+  komentar_suspicious: string
   nilai_estimasi_sen: Cents
   mata_uang: string
   nomor_slik: string

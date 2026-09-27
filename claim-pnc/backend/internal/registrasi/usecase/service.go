@@ -46,6 +46,7 @@ type Service struct {
 	notifier   registrasi.Notifier
 	audit      registrasi.AuditRecorder
 	reportLink registrasi.ClaimReportLink
+	area       registrasi.AreaDirectory
 	id         registrasi.IDGenerator
 	unit       registrasi.UnitOfWork
 	clock      clock.Clock
@@ -65,6 +66,7 @@ type Options struct {
 	Notifier           registrasi.Notifier
 	AuditRecorder      registrasi.AuditRecorder
 	ClaimReportLink    registrasi.ClaimReportLink
+	AreaDirectory      registrasi.AreaDirectory
 	IDGenerator        registrasi.IDGenerator
 	UnitOfWork         registrasi.UnitOfWork
 	Clock              clock.Clock
@@ -110,6 +112,7 @@ func NewService(o Options) (*Service, error) {
 	check("Notifier", o.Notifier != nil)
 	check("PerekamAudit", o.AuditRecorder != nil)
 	check("TautanLaporan", o.ClaimReportLink != nil)
+	check("DirektoriWilayah", o.AreaDirectory != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -130,6 +133,7 @@ func NewService(o Options) (*Service, error) {
 		notifier:         o.Notifier,
 		audit:            o.AuditRecorder,
 		reportLink:       o.ClaimReportLink,
+		area:             o.AreaDirectory,
 		id:               o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,

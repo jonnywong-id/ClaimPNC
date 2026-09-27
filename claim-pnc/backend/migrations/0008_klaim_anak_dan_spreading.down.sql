@@ -3,7 +3,10 @@
 -- BACA DULU. `DROP` di sini menghapus data yang tidak ada di tempat lain:
 --   - urutan objek dan coverage, yang menjadi dasar penandaan baris terbuang
 --   - lokasi kejadian sebagai teks — LOCATIONID hanya berisi kode, bukan penggantinya
---   - SELURUH isi T_CLAIM_SPREADING, yaitu pembagian risiko setiap klaim
+--
+-- T_CLAIM_SPREADING TIDAK disentuh. Tabel itu milik Work Owner
+-- (Database/CREATE_TABLE_2.sql), bukan dibuat berkas ini — menghapusnya di sini akan
+-- membuang pembagian risiko setiap klaim atas nama migrasi yang tidak memilikinya.
 --
 -- Berbeda dari `up`, melepas kolom menulis ulang setiap baris. Jalankan di luar jam kerja.
 --
@@ -25,12 +28,6 @@ DECLARE
 
     ada NUMBER;
 BEGIN
-    SELECT COUNT(*) INTO ada
-      FROM all_tables WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIM_SPREADING';
-    IF ada = 1 THEN
-        EXECUTE IMMEDIATE 'DROP TABLE POOLDATA.T_CLAIM_SPREADING';
-    END IF;
-
     FOR i IN 1 .. daftar.COUNT LOOP
         SELECT COUNT(*) INTO ada
           FROM all_tab_cols
