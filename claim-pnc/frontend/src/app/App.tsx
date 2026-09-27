@@ -24,6 +24,7 @@ import { DetailPage as CauseOfLossDetailPage } from '@/modules/detail-penyebab-k
 import { ReasMemberPage } from '@/modules/master-reas/ReasMemberPage'
 import { InvestigatorInboxPage } from '@/modules/inbox-investigator/InvestigatorInboxPage'
 import { ReceiveTKAInboxPage } from '@/modules/inbox-receive-tka/ReceiveTKAInboxPage'
+import { ArchiveDocumentPage } from '@/modules/archive-dokumen-klaim/ArchiveDocumentPage'
 import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
 // Dua modul mengekspor komponen bernama sama, dan keduanya memang layar "penyebab
 // kerugian" — yang satu varian Simas Online (MENU_ID 21), yang satu tingkat golongan
@@ -62,7 +63,9 @@ import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/Cl
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
+import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
+import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
@@ -585,6 +588,25 @@ export function AppRoute() {
         }
       />
       {/*
+        Archive Dokumen Klaim — `MENU_ID 77`, di bawah kelompok VIEW.
+
+        Satu rute untuk ketiga bagiannya. Bagian yang sedang dibuka adalah keadaan di
+        dalam layar, bukan alamat tersendiri: layar lama pun menampakkan dan
+        menyembunyikan ketiganya di satu halaman, dan memberi masing-masing alamat sendiri
+        akan menjanjikan tautan-dalam yang isinya bergantung pada pencarian yang belum
+        dijalankan.
+      */}
+      <Route
+        path="/archive-dokumen-klaim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ArchiveDocumentPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Tujuan tombol "Lihat Detail Klaim" pada Inbox Admin. Layar rinciannya sendiri —
         `MENU_ID 75` "View Claim" — belum dibangun; yang dipasang di sini penampung yang
         MENAMPILKAN kunci yang diterimanya, sehingga menyalakan layar itu kelak tidak
@@ -1092,6 +1114,27 @@ export function AppRoute() {
         }
       />
       {/*
+        MENU_ID 82 "Laporan Hasil AI" — harness `Har_LaporanHasilAI`.
+
+        Layar baca-saja yang menyandingkan penilaian AI dengan keputusan komitenya. Dua
+        grid: ringkasan pencacah di atas, rincian baris di bawah.
+
+        Tiga hal yang ditiru dari Pega dan mudah dikira kerusakan: lima kolom yang SELALU
+        kosong, isian berlabel "Tgl Input" yang sebenarnya menyaring Tanggal Komite, dan
+        "No Klaim" yang dikosongkan pada jenjang komite kedua ke atas. Ketiganya keputusan
+        Work Owner 2026-09-26; alasannya ada di doc `LaporanHasilAIPage`.
+      */}
+      <Route
+        path="/laporan-hasil-ai"
+        element={
+          <SessionGuard>
+            <Protected>
+              <LaporanHasilAIPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         MENU_ID 84 "Report KPI PNC" — harness `ReportKPIHarness`.
 
         CATATAN PEMULIHAN: rute ini sempat TERHAPUS pada 2026-09-25 oleh `git checkout`
@@ -1171,6 +1214,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <CaseStudyClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Salvage (`MENU_ID 71`), pengganti harness `InboxSalvage`.
+
+        Ia layar pengelolaan barang sisa klaim, dan satu-satunya layar inbox yang MENULIS:
+        tombol Tambah menyimpan pengajuan salvage ke `POOLDATA.PNC_SALVAGE` beserta detail
+        itemnya. Kedua tabel itu dimiliki modul ini selama masa paralel, karena seluruh
+        penulisnya di Pega adalah layar yang digantikannya (`P-1`).
+
+        Daftar, halaman, dan kata kunci pencarian hidup di alamat — layar ini dibuka
+        berpuluh kali sehari, dan pencariannya menyaring di server sehingga ia bagian dari
+        apa yang sedang dilihat, bukan preferensi tampilan.
+      */}
+      <Route
+        path="/inbox-salvage"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SalvageInboxPage />
             </Protected>
           </SessionGuard>
         }

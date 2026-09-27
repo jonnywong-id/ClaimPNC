@@ -350,6 +350,14 @@ export const MENU_ROUTES: Record<string, string> = {
   // `InboxRCVApp_Harness` di bawah, yang menunjuk `/inbox/laporan-klaim`.
   // MENU_ID 76 "View History Claim", di bawah kelompok VIEW.
   PNCSearchKlaim: '/riwayat-klaim',
+  // MENU_ID 77 "Archive Dokumen Klaim", di bawah kelompok VIEW, urutan 1167 — tepat
+  // sesudah View History Claim.
+  //
+  // Ia BUKAN Inbox menurut `D-79`: barisnya berkas fisik yang sudah diarsipkan, tidak
+  // hilang setelah ditindaklanjuti, dan tidak punya tenggat. Itu pula yang membedakannya
+  // dari bagian "Kirim ke Cabang" di dalamnya — yang ITU memang daftar pekerjaan, tetapi
+  // ia satu bagian dari layar ini, bukan menu tersendiri di sistem lama.
+  PNCArchiveDokumen: '/archive-dokumen-klaim',
   // MENU_ID 53 "Inbox XOL". Akumulasi klaim per perjanjian Excess of Loss beserta
   // pemberitahuan PLA/DLA kepada reasuradur. MEMBACA SAJA untuk sekarang — keempat
   // tabel yang ditulis sistem lama masih dimiliki Pega selama masa paralel (`P-1`).
@@ -517,6 +525,19 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+  // MENU_ID 82 "Laporan Hasil AI", di bawah kelompok REPORT — butir PERTAMA kelompok itu.
+  //
+  // Layar ini menyandingkan penilaian AI atas sebuah klaim dengan keputusan komite yang
+  // menyusul. Rutenya `/laporan-hasil-ai`, mengikuti nama modul yang disebut Work Owner
+  // (`D-81`) — bukan nama harness-nya.
+  //
+  // JANGAN tertukar dengan MENU_ID 36 "Master Pasal AI" (`/master/pasal-ai`): keduanya
+  // menyangkut AI, tetapi yang itu master wording polis dan yang ini laporan hasil.
+  //
+  // Yang perlu diketahui sebelum membuka layarnya: LIMA dari sepuluh kolomnya SELALU
+  // kosong, karena kueri layar lamanya (`pyMemo = "work in progress"`) memang tidak
+  // memilih kolomnya. Work Owner memutuskan pada 2026-09-26 untuk menirunya apa adanya.
+  Har_LaporanHasilAI: '/laporan-hasil-ai',
   // MENU_ID 84 "Report KPI PNC", di bawah kelompok REPORT.
   //
   // Rutenya `/report-kpi`, bukan `/report-kpi-pnc`: akhiran "PNC" dibuang karena seluruh
@@ -589,6 +610,25 @@ export const MENU_ROUTES: Record<string, string> = {
   // Layar ini pula satu-satunya layar telaah yang MENULIS: kolom catatan hasil telaah
   // pada `POOLDATA.T_CLAIM_PNC`.
   PNCStudyClaim: '/case-study-claim',
+
+  // Inbox Salvage — `MENU_ID 71`, pengelolaan barang sisa klaim.
+  //
+  // Butirnya dibatasi `When/IsInboxSalvage-When.xml` di Pega; aturan itu BELUM ditegakkan
+  // (`TKT-F3-004`), dan yang menentukan siapa melihat butirnya sekarang adalah
+  // `M_OTORISASI_PNC` — sama seperti butir lain.
+  //
+  // Satu batas MEMANG sudah berlaku, dan ia bukan peran melainkan KEPEMILIKAN: daftar
+  // "Request Balai Lelang" hanya menampilkan pengajuan yang PIC-nya pemanggil sendiri,
+  // diturunkan di sisi peladen dari login. Kedua belas daftar lain bersama.
+  //
+  // Bedakan dari `MENU_ID 72` "Inbox Banding Harga Salvage" (`InboxRequestSalvage`), yang
+  // BELUM dipetakan: ia harness tersendiri dan belum dianalisis sama sekali. Menunjuk
+  // keduanya ke satu rute akan menyatukan dua layar yang di Pega memang terpisah.
+  //
+  // Layar ini melayani portal ASM. Portal Insurtech punya isi tersendiri di Pega
+  // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
+  // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
+  InboxSalvage: '/inbox-salvage',
 }
 
 /**

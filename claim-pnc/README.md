@@ -138,6 +138,16 @@ claim-pnc/
 │   │   │   ├── repo/                    sqlstore (MST_XOL_PNC · _BUSINESS · _LAYER · _REAS),
 │   │   │   │                            memory + 4 induk contoh yang meniru keanehan produksi
 │   │   │   └── http/                    dto, galat, handler, rute
+│   │   ├── laporanhasilai/          MODUL — Laporan Hasil AI (menu 82), per portal
+│   │   │   ├── usecase/                 orkestrasi: cari (ringkasan + rincian), ekspor
+│   │   │   ├── repo/                    sqlstore (T_CLAIM_DATA_RESULTS_AI +
+│   │   │   │                            T_CLAIM_KOMITE_LIST) — hanya SELECT;
+│   │   │   │                            memory + 9 baris contoh, 3 di antaranya
+│   │   │   │                            sengaja TERSARING KELUAR
+│   │   │   └── http/                    dto, galat, handler, ekspor CSV, rute
+│   │   │                                BACA-SAJA. LIMA dari 10 kolomnya SELALU kosong —
+│   │   │                                kueri Pega-nya `work in progress` dan memang
+│   │   │                                tidak memilih kolomnya; direplikasi apa adanya
 │   │   └── platform/                config, logging, db, middleware, clock, httpserver
 │   ├── migrations/                  DDL untuk dijalankan DBA
 │   ├── spa/                         penyematan hasil build antarmuka ke binary
@@ -827,6 +837,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
 | `/inbox-rcl-pucl` | **Inbox RCL/PUCL** — butir menu 61. Antrean bersama, tiga tab |
 | `/report-kpi` | **Report KPI PNC** — butir menu 84. **Ketiga tab selesai** |
+| `/laporan-hasil-ai` | **Laporan Hasil AI** — butir menu 82, kelompok REPORT. Menyandingkan penilaian **AI** atas klaim dengan **keputusan komite** yang menyusul. Baca-saja; dua grid — ringkasan pencacah (Komite · AI) dan rincian 10 kolom, 50 baris per halaman. **LIMA dari sepuluh kolomnya SELALU kosong** — Object Name, Note AI Terima, Note AI Tolak, Coverage Final, Kategori Kronologi — karena kueri layar lamanya (`pyMemo = "work in progress"`) memang tidak memilih kolomnya; direplikasi apa adanya atas keputusan Work Owner 2026-09-26. Dua keanehan lain juga ditiru: isian berlabel **"Tgl Input" sebenarnya menyaring Tanggal Komite**, dan **"No Klaim" dikosongkan pada jenjang komite kedua ke atas**. Satu-satunya penambahan di luar Pega adalah kolom **"Menunggu"** pada ringkasan, supaya selisih antara "Total" (= Diterima + Ditolak) dan jumlah baris dapat dibaca |
 | `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |
 
 Keduanya dapat dicapai lewat **menu utama** di kerangka aplikasi — kolom samping di layar
@@ -1356,6 +1367,46 @@ barisnya tidak akan pernah terlihat tanpa satu pun galat.
 |---|---|---|
 | `profil_pemanggil_tidak_lengkap` | 409 | identitas tidak terbaca; pembukaan laporan penilaian kinerja wajib tercatat atas nama seseorang |
 | `belum_tersedia` | 501 | menghitung ulang penilaian — masih dimiliki Pega (`P-1`) |
+
+### Laporan Hasil AI
+
+Menggantikan harness `Har_LaporanHasilAI` (`MENU_ID 82`, kelompok REPORT). Keduanya menuntut
+header `X-Portal`, dan keduanya **baca-saja**.
+
+| Metode | Jalur | Keterangan |
+|---|---|---|
+| `GET` | `/api/laporan-hasil-ai` | ringkasan (2 baris) **dan** rincian (dipaginasi) dalam satu jawaban |
+| `GET` | `/api/laporan-hasil-ai/ekspor` | unduhan CSV 10 kolom, seluruh baris yang cocok |
+
+Parameternya: `dari`, `sampai` (`YYYY-MM-DD`, **keduanya wajib**), `halaman`, `ukuran`.
+
+**Kedua tanggal wajib, dan itu bukan tambahan.** Layar lama pun tidak dapat berjalan
+tanpanya: activity-nya menyusun klausa `to_date('<isian>','dd/mm/yyyy')` dari potongan teks
+isian, dan isian kosong menghasilkan `to_date('//',…)` yang ditolak Oracle. Jejaknya
+tertinggal di `pyMemo` activity itu sendiri — *"bikin error pdc ORA-00907"*. Yang berubah di
+sini hanyalah bentuk penolakannya: `422` beserta isian mana yang belum diisi, **keduanya
+sekaligus** (`P-5`).
+
+**Nama isiannya menyesatkan sejak di Pega.** `dari` dan `sampai` berlabel "Tgl Input" di
+layar, tetapi yang disaring adalah `T_CLAIM_KOMITE_LIST.TANGGALKOMITE` — kolom yang juga
+digambar sebagai "Tanggal Komite". Label lamanya dipakai apa adanya (`D-13`).
+
+Di Pega **kedua tombolnya satu rute**: "Export To Excel" memanggil
+`SearchDataLaporanAI(flagss=2)` yang sama dengan "Cari Data", hanya dibuka di jendela baru.
+Dipisah di sini karena bentuk keluarannya memang dua hal berbeda; penyaring dan pembacaannya
+tetap sama persis.
+
+Judul kolom berkas CSV **berbeda** dari judul kolom di layar pada empat tempat — `Nama
+Object`, `Note Terima`, `Note Tolak`, `Coverage AI Final` — disalin persis dari
+`CSVPropHeaders`. Menyeragamkannya akan mengubah berkas yang sudah dipakai orang.
+
+Tabel yang dibaca: `POOLDATA.T_CLAIM_DATA_RESULTS_AI` digabung
+`POOLDATA.T_CLAIM_KOMITE_LIST`. Keduanya **masih ditulis Pega** (`P-1`), dan **tidak ada
+migrasi basis data** untuk modul ini.
+
+| Kode galat | HTTP | Artinya |
+|---|---|---|
+| `validasi_gagal` | 422 | satu atau kedua tanggal belum diisi, atau rentangnya terbalik |
 
 ### Master Status Klaim
 

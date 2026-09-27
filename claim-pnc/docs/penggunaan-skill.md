@@ -6871,6 +6871,165 @@ Definition: urutannya memang sudah "baca bukti → tulis uji dari bukti → tuli
 mulai berguna pada modul yang **menulis**, tempat perilaku yang benar tidak dapat dibaca dari
 kueri mana pun.
 
+---
+
+## Sesi Archive Dokumen Klaim (2026-09-25)
+
+### Skill yang tersedia, dan yang dipakai
+
+Tidak satu pun skill Matt Pocock terpasang di lingkungan ini — sama seperti sesi-sesi
+sebelumnya. Yang dipakai adalah **tekniknya**, dan dicatat di sini apa adanya supaya tidak
+terbaca seolah skill-nya dipanggil.
+
+| Teknik | Dari skill | Kapan dipakai | Hasilnya |
+|---|---|---|---|
+| **grilling** | `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | tiga pertanyaan konfirmasi yang jawabannya mengubah pekerjaan secara berarti; dua di antaranya dijawab berbeda dari rekomendasi saya |
+| **domain-modeling** | `mattpocock-skills:domain-modeling` | saat menamai isian modul | pemetaan sebelas properti Pega yang namanya tidak menyatakan isinya, ditulis berdampingan di satu tempat |
+| **codebase-design** | `mattpocock-skills:codebase-design` | saat menentukan seam | seam `Gateway` dibuat karena ada **dua** adapter nyata, bukan satu |
+
+### `grilling` — bertanya sebelum menebak
+
+Tiga hal ditanyakan, dan pemilihannya sendiri memakai aturan skill ini: **hanya tanyakan
+yang jawabannya mengubah pekerjaan**, bukan yang punya default yang jelas.
+
+Yang ditanyakan: lingkup (satu bagian atau tiga), sumber pemilih Kode Filling yang
+masternya hilang, dan penomoran ID yang cacat.
+
+Yang **tidak** ditanyakan, karena jawabannya sudah ada di dokumen atau di kode: bentuk
+rute, letak paket, bahasa penamaan, bentuk galat. Keempatnya sudah ditetapkan `D-80`,
+`D-81`, dan pola modul yang ada.
+
+**Dua dari tiga dijawab berbeda dari rekomendasi saya.** Lingkup dijawab "seperti aplikasi
+PEGA" — ketiganya, bukan dua seperti yang saya usulkan — dan penomoran ID dijawab
+"replikasi apa adanya", menolak usul memperbaikinya. Keduanya dijalankan apa adanya.
+
+Manfaatnya terukur: tanpa pertanyaan pertama, saya akan membangun dua dari tiga bagian
+lalu harus membongkar perakitan `cmd` dan rute untuk menambahkan yang ketiga.
+
+### `domain-modeling` — menajamkan nama sebelum menulis tipe
+
+Layar ini memakai properti klipboard yang sudah ada alih-alih membuat properti baru,
+sehingga **sebelas dari lima belas** namanya tidak menyatakan isinya:
+
+```
+.AgingAmount      -> JUMLAHLEMBAR   Jumlah Lembar
+.RWID             -> TIPEDOK        Tipe Dokumen
+.TelpTertanggung  -> JENISDOK       Jenis Dokumen
+.CABANG           -> NAMABOX        Nama BOX
+.KodeCabang       -> KODEFILLING    Kode Filling
+.NIK              -> TERTANGGUNG    Nama Tertanggung
+```
+
+Teknik skill ini yang dipakai: **menyilangkan pernyataan dengan kode** sebelum menamai.
+Nama barunya diambil dari apa yang DIBACA PENGGUNA di kolom grid, bukan dari nama
+propertinya — dan ketiga arahnya ditulis berdampingan di kepala `archivedokumenklaim.sql`,
+satu-satunya tempat ketiganya dapat dibandingkan sekaligus.
+
+Tanpa langkah ini, tipe Go-nya akan membawa `AgingAmount` untuk jumlah lembar — mewariskan
+kekacauan yang justru menjadi alasan migrasi.
+
+### `codebase-design` — satu adapter berarti seam hipotetis
+
+Penyaring yang dipakai: **seam dibuat hanya bila ada dua adapter nyata.**
+
+| Seam | Adapter 1 | Adapter 2 | Nyata? |
+|---|---|---|---|
+| `Repo` | `sqlstore` | `memory` | ya |
+| `Gateway` | klien HTTP | perekam | ya |
+| `Clock` | jam sistem | jam tetap di uji | ya |
+
+Yang **tidak** dibuat: seam untuk pemilih Kode Filling. Ia sempat terpikir — sumbernya
+kelak akan berubah begitu masternya tiba — tetapi hari ini hanya ada satu pengisi, dan
+seam untuk satu pengisi adalah abstraksi yang harus dibaca tanpa memberi apa pun.
+Penggantinya satu kueri bernama yang komentarnya menjelaskan apa yang akan berubah.
+
+Uji deletion pada `Gateway`: bila dihapus, usecase harus tahu alamat, bentuk JSON, batas
+waktu, dan pembedaan "alamat belum ada" dari "layanan menolak". Ia membayar dirinya
+sendiri.
+
+### Kesalahan sendiri pada sesi ini
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Pengurai langkah activity saya memasangkan prakondisi dengan nilai **langkah berikutnya** | hasilnya tampak mustahil (PA menyembunyikan PA), jadi saya hitung ulang dengan posisi byte | hasil yang tampak mustahil layak diperiksa dengan alat kedua sebelum dipercaya — tetapi juga sebelum ditolak |
+| Menulis `formatID` sendiri, menyalin `strconv.FormatInt` | terbaca saat membaca ulang berkasnya | menulis ulang pustaka standar bukan kehati-hatian |
+| Menyisipkan `errNotUsed` hanya supaya impor `errors` tetap terpakai | terbaca saat membaca ulang | impor yang tidak dipakai dihapus, bukan dipelihara dengan variabel boneka |
+| Uji frontend mencari `PT CONTOH KEDUA` di seluruh halaman | vitest gagal: **dua** elemen cocok | pencarian yang tidak membedakan tempat akan tetap lulus meski formulirnya kosong — diperbaiki menjadi pencarian pada `<dt>`-nya |
+
+Keempatnya diperbaiki sebelum diserahkan. Yang pertama paling berharga dicatat: pengurai
+XML buatan sendiri **bukan alat ukur yang sudah tervalidasi**, dan menerima keluarannya
+tanpa pembanding adalah cara yang sama dengan tiga kesalahan alat ukur pada sesi keempat.
+
+### Teknik yang dipakai tanpa nama skill
+
+**Uji asap terhadap binary, bukan hanya uji unit.** Ketiga belas jalur dijalankan lewat
+HTTP sungguhan dengan `PENYIMPANAN=memori`, termasuk jalur penolakan. Yang hanya terbukti
+di sana: rute benar-benar terpasang di `cmd`, penolakan tanpa header portal berbentuk JSON
+dan bukan `index.html`, dan berkas yang baru disimpan langsung muncul di daftar kode
+filling — membuktikan rekonstruksi §49.2 bekerja dari ujung ke ujung.
+
+Uji unit tidak dapat membuktikan satu pun dari ketiganya.
+
+---
+
+## Sesi lanjutan Archive Dokumen Klaim — perbandingan UI (2026-09-25)
+
+### `grilling` — dipakai pada diri sendiri, dan menemukan yang saya lewatkan
+
+Pertanyaan Work Owner "apakah ada perbedaan UI" saya perlakukan sebagai pemicu
+pemeriksaan ulang, bukan sebagai pertanyaan yang dijawab dari ingatan.
+
+Teknik skill yang dipakai: **cari fakta sendiri sebelum menjawab.** Satu perintah
+menghitung `pyButtonLabel` di harness dan kedua section, dan hasilnya langsung memperlihatkan
+selisihnya — Pega 11 tombol, saya 5.
+
+Kalau pertanyaannya saya jawab dari ingatan, jawabannya akan berbunyi "hanya beda tab
+versus satu halaman" — benar pada tingkat alur, dan menyesatkan pada tingkat permukaan.
+
+Manfaat terukurnya: tiga hal yang tidak pernah saya laporkan menjadi terbuka, salah satunya
+**perbedaan perilaku** (Simpan ikut mengirim), bukan sekadar tombol yang kurang.
+
+### `grilling` — ronde kedua ke Work Owner
+
+Setelah selisihnya jelas, tiga pertanyaan diajukan. Pemilihannya memakai aturan yang sama:
+hanya tanyakan yang jawabannya mengubah pekerjaan.
+
+**Ketiganya dijawab berbeda dari rekomendasi saya**, dan ketiganya dijalankan apa adanya.
+Yang paling berarti: Work Owner memilih mereplikasi pengiriman ganda, sementara saya
+merekomendasikan memisahkannya. Keputusan itu membentuk seam `Repo` menjadi punya DUA
+operasi penyimpanan jawaban, bukan satu.
+
+### `codebase-design` — penyaring dua-adapter dipakai lagi
+
+Saat menambahkan `StoreReceipt`, godaan pertamanya adalah memberi `MarkSent` sebuah
+parameter boolean. Yang dipilih: **dua method pada seam**, satu pernyataan SQL masing-masing,
+dan satu helper bersama di dalam repo.
+
+Alasannya bukan selera: seam adalah tempat perilaku diganti, dan perbedaan
+"menandai versus tidak menandai" adalah perbedaan yang dilihat PEMANGGIL — bukan detail
+implementasi. Parameter boolean akan menyembunyikannya di tempat yang salah, dan pemanggil
+berikutnya akan mengirim `true` karena itu yang tampak lebih lengkap.
+
+### Kesalahan sendiri pada sesi ini — yang keempat dari jenis yang sama
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Melaporkan `tsc --noEmit` bersih padahal ada **dua** galat tipe | dijalankan ulang tanpa pipe | `cmd \| head` mengembalikan exit code **head**, bukan exit code cmd — "exit 0" yang saya laporkan benar dan tidak berarti apa-apa |
+| Melewatkan 6 tombol dan 1 perbedaan perilaku pada laporan §48 | pertanyaan Work Owner | membaca untuk mencari ALUR tidak sama dengan membaca untuk mencari PERMUKAAN; hitung `pyButtonLabel` lebih dulu |
+| Menulis `\n` di dalam string Python yang menghasilkan berkas TS | vitest gagal mengurai | berkas yang dibuat lewat skrip perlu dibaca ulang, bukan dipercaya karena skripnya selesai tanpa galat |
+
+Yang pertama adalah **kesalahan alat ukur keempat** pada proyek ini, dan polanya persis
+sama dengan ketiga sebelumnya (lebar tabel `.docx`, penanda korelasi harness, pengurai
+langkah activity): **hasil dipercaya tanpa memastikan alatnya benar-benar mengukur.**
+
+Aturan yang berlaku sejak sekarang: setiap alat verifikasi dijalankan **tanpa pipe**, dan
+exit code-nya dicetak eksplisit.
+
+### Satu uji yang membayar dirinya sendiri
+
+`TestTidakAdaKueriYatim` — uji dua arah antara kueri di berkas `.sql` dan kueri yang
+dipanggil kode — gagal tepat saat `store_receipt` ditambahkan tetapi belum didaftarkan.
+Ia menangkap kelalaian saya dalam hitungan detik, sebelum satu pun uji perilaku dijalankan.
 ## Sesi Report Klaim (2026-09-24)
 
 ### Skill Matt Pocock: TIDAK ADA yang terpasang di lingkungan ini
@@ -8240,3 +8399,600 @@ sekeliling sebelum mengubah.
 fakta "kedua grid identik di Pega" tidak hilang. Bila kelak salah satunya disunting
 sendirian, uji itu menyalak — dan komentarnya menjelaskan kenapa itu cacat, bukan
 keputusan.
+
+---
+
+## Sesi 2026-09-26 — modul Laporan Hasil AI (`MENU_ID 82`)
+
+### Skill yang dipakai
+
+#### 1. `mattpocock-skills:grilling` — sebelum satu baris kode ditulis
+
+**Kenapa dipakai.** Tugasnya berbunyi *"DILARANG langsung menulis kode. Pahami dan analisis
+terlebih dahulu"*, dan pembacaan artefak Pega memunculkan satu hal yang tidak dapat
+diputuskan sendiri: **kuerinya hanya mengisi 5 dari 10 kolom yang digambar grid**.
+
+Disiplin skill ini yang menentukan bentuk pertanyaannya — fakta dicari sendiri lebih dulu,
+pengguna hanya diminta memutuskan.
+
+**Yang dicari sendiri sebelum bertanya:**
+
+| Yang dibuktikan | Bagaimana |
+|---|---|
+| Kelima kolom memang tidak diisi | Membandingkan `pyValue` pada section dengan alias `SELECT` pada kuerinya, satu per satu |
+| Kesepuluhnya memang dimaksudkan | `CSVPropHeaders` dan `CSVProperties` pada activity yang sama menyebut sepuluh |
+| Kelimanya dapat dibaca dari tabel yang sama | `GetKomitePAditerima-SQL` memilih kelimanya |
+| Layarnya memang belum selesai | `pyMemo = "work in progress"` pada kuerinya |
+
+**Hasilnya.** Empat pertanyaan, seluruhnya dengan pilihan jawaban dan rekomendasi yang
+disertai alasan. Work Owner memilih berbeda dari rekomendasi saya pada tiga dari empat —
+dan itu justru bukti pertanyaannya benar-benar keputusan bisnis, bukan keputusan teknis yang
+menyamar.
+
+**Manfaat nyatanya.** Tanpa bertanya, saya akan mengisi kelima kolom itu "karena bisa" —
+dan menghasilkan layar yang berbeda dari Pega pada gerbang uji kesetaraan, tanpa satu pun
+keputusan tertulis yang menjelaskannya (`D-54`).
+
+#### 2. `mattpocock-skills:domain-modeling` — menamai ulang enam properti warisan
+
+**Kenapa dipakai.** Layar ini terikat properti klipboard kelas `Data-Adjustment` yang dipakai
+ulang dari layar lain, sehingga **namanya sama sekali tidak berhubungan dengan isinya**:
+
+```
+kolom Keputusan (ringkasan)   .BatasUmur        bukan batas umur
+kolom Total                   .NoteAITerima     bukan catatan
+kolom Diterima                .BatasLapor       bukan batas lapor
+kolom Ditolak                 .NoteKomite       bukan catatan komite
+isian Tgl Input Dari          .AnalystTransferDate
+isian Tgl Input Sampai        .DateOfLoss       bukan tanggal kejadian
+```
+
+**Yang dilakukan mengikuti skill.** Setiap nama disilangkan ke sumbernya sebelum dipakai —
+bukan diterima dari section saja. `.BatasUmur` baru terbukti berarti "Keputusan" setelah
+membaca `TempTotal.pxResults(<APPEND>).BatasUmur := "Komite"` pada activity-nya.
+
+**Hasilnya.** Enam padanan Inggris yang benar (`Tally.Subject`, `Tally.Total`, dan
+seterusnya), dan tabel pemetaan tiga kolom — layar · basis data · properti Pega — yang
+ditanam di doc `RowDTO` supaya pembaca berikutnya tidak perlu mengulang penelusurannya.
+
+#### 3. `mattpocock-skills:codebase-design` — menempatkan satu aturan di satu tempat
+
+Dipakai memutuskan **di mana** tiap aturan tinggal:
+
+| Aturan | Tempatnya | Alasan |
+|---|---|---|
+| Validasi kedua tanggal | `usecase`, sekali | Di handler ia terlewat oleh ekspor; di repo ia ditulis dua kali (sqlstore + memory) dan keduanya dapat berselisih |
+| Pengosongan No Klaim | `sqlstore`/`memory` di Go, bukan SQL | `KOMITEKE` tetap dibutuhkan utuh untuk kunci baris, dan aturannya jadi dapat diuji tanpa basis data |
+| Label Komite Status | `CommitteeLabel` di domain | Label dan pencacah ringkasan jadi tidak dapat berbeda |
+
+Uji `TestExportRejectsEmptyDatesToo` lahir langsung dari pertimbangan baris pertama.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Bagaimana tertangkap |
+|---|---|
+| Menduga nama rule RDB dapat dibaca dari langkah `RDB-List` | `pyParamArray` kosong. Nama kuerinya baru ditemukan dengan memindai teks XML activity — `CountAIDiterima_SQL` muncul 3× |
+| Membaca `B.KOMITEKE IN (SELECT MAX(B.KOMITEKE) …)` sebagai "ambil jenjang terakhir" | Membaca ulang aliasnya: `B` di dalam subkueri adalah baris TERLUAR, sehingga `MAX` mengagregasi nilai tetap. Artinya sekadar `EXISTS(...)` |
+| Menulis `Repo` dengan tipe `Context` tanpa impor | Ketahuan pada kompilasi pertama, sebelum uji ditulis |
+| Sempat berencana memakai `TRIM` pada `STATUSAPPROVE` di SQL | `TRIM` pada kolom NUMBER gagal di PostgreSQL. Diganti perbandingan teks tanpa `TRIM`, yang aman pada kedua tipe di kedua basis data |
+
+Ketiga yang pertama dicatat karena polanya sama: **membaca satu artefak tanpa menyilangkannya
+ke artefak yang memakainya**. Itu kesalahan yang sama dengan yang dicatat pada sesi 2026-09-25
+(§54.4 `catatan-pengembangan.md`), dan ia terulang.
+
+### Catatan untuk tahap berikutnya
+
+Kelima kolom kosong adalah keputusan yang **dirancang untuk dapat dibalik**. Dua uji —
+`TestFiveColumnsStayUnselected` dan `TestFiveColumnsStayEmpty` — memuat pesan gagal yang
+menyebut keputusannya beserta tanggalnya, sehingga siapa pun yang mengubahnya akan tahu ia
+sedang mengubah keputusan, bukan memperbaiki kelalaian.
+## Sesi 2026-09-25 — modul Inbox Salvage
+
+### Skill yang dipakai
+
+| Skill | Kapan | Alasan memakainya | Keluaran |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis, dan sekali lagi setelah jawaban pertama | Cakupan modul ini **tidak dapat disimpulkan dari bukti** — tiga belas daftar dengan dua jalur tulis, dan pilihan cakupan mengubah apa yang dibangun. Enam pertanyaan diajukan dalam dua putaran, seluruhnya dengan pilihan jawaban dan rekomendasi | 6 keputusan Work Owner, tercatat di `keputusan-implementasi.md` §55.1 |
+| `mattpocock-skills:domain-modeling` | saat menulis `inboxsalvage.go` dan `tab.go` | Kueri layar ini mengalihnamakan **seluruh** kolomnya menjadi nama properti klaim yang sudah ada, dan dua alias menyatakan hal yang SALAH. Tanpa penajaman istilah, alias itu akan terbawa ke kontrak API dan ke layar | Pemetaan alias → isi sebenarnya, ditulis di kepala `inboxsalvage.go` dan `inboxsalvage.sql` |
+| `mattpocock-skills:codebase-design` | saat memutuskan bentuk `Tab.Family` dan seam `Repo` | Tiga belas daftar dapat dibangun sebagai tiga belas jalur atau sebagai tiga. Prinsip "satu adapter berarti seam hipotetis" dipakai terbalik: menanyakan apa yang benar-benar **bervariasi** antardaftar | `Family` sebagai data, satu `Repo.List` untuk ketiga keluarga |
+
+### Manfaat yang dapat ditunjuk
+
+**`grilling` menyelamatkan cakupan dari salah ukur.** Pertanyaan pertama disusun setelah
+menemukan bahwa tiga belas daftar hanya memakai tiga kueri. Tanpa temuan itu, pilihan yang
+saya tawarkan akan berupa "bangun 3 daftar dulu" — dan Work Owner akan memilih cakupan yang
+jauh lebih kecil daripada yang sebenarnya murah.
+
+**`grilling` juga yang membuat jawaban-pengalihan tertangani dengan benar.** Jawaban kedua
+Work Owner bukan jawaban atas pertanyaannya melainkan perintah menelusuri tiga jalur.
+Disiplin skill ini — kerjakan *frontier*, jangan menebak yang prasyaratnya belum selesai —
+membuat saya menelusurinya lebih dulu, dan penelusuran itu **membatalkan dugaan saya
+sendiri**: kedua jalur ternyata tidak menulis apa pun.
+
+**`domain-modeling` menutup jebakan alias yang paling berbahaya.** Dua alias di kueri ini
+menyatakan hal yang salah:
+
+```
+IDSALVAGE -> "ClaimNo"     bukan nomor klaim
+TGLINPUT  -> "DateOfLoss"  bukan tanggal kejadian
+```
+
+Alias yang sama (`"DateOfLoss"`) berarti hal yang **berbeda** di dua keluarga kueri pada
+layar yang sama. Menyalinnya akan menampilkan tanggal yang salah tanpa satu pun galat.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Bagaimana tertangkap | Pelajaran |
+|---|---|---|
+| Pengurai langkah activity menyimpan **hanya satu precondition** per langkah | Kesimpulannya **mustahil** menurut layar yang terlihat: grid Checker akan menampilkan daftar klaim | Kesimpulan yang mustahil berarti alat bacanya yang salah, bukan sistemnya yang aneh |
+| `aliasesOf` pada uji berhenti di `FROM` sub-kueri | Uji gagal menyebut alias yang terpotong, bukan alias yang bergeser | Kegagalan uji dibaca ke **sebabnya**, bukan langsung ke kodenya |
+| DTO galat memakai `json:"isian"` | Uji layar gagal — `violations()` hanya membaca `field` atau `kolom` | Kontrak yang tidak diuji ujung-ke-ujung adalah kontrak yang belum ada |
+| Menguraikan berkas unggahan dari `r.Body` setelah `FormFile` membacanya | Ditemukan saat membaca ulang sebelum build, bukan oleh uji | Badan permintaan hanya dapat dibaca sekali |
+
+Ketiga kesalahan pertama tertangkap **oleh alat**, bukan oleh pembacaan ulang. Yang keempat
+tertangkap pembacaan — dan itu yang paling tidak dapat diandalkan.
+
+### Teknik yang dipakai tanpa skill terpasang
+
+**Menguji arti enum ke kasus yang maknanya tidak mungkin ambigu.** Nilai
+`WhenTrue`/`WhenFalse` pada precondition Pega tidak berlabel. Alih-alih menebak, saya
+mencari langkah yang artinya pasti — `Call SetDataSalavage_act_ASI IF LSC_ID == "SIMASNET"`,
+yang **wajib** berjalan saat benar — dan membaca enumnya dari sana.
+
+Menebaknya akan membalik arti 17 percabangan sekaligus.
+
+**Menyusun data contoh supaya setiap aturan yang dapat salah PUNYA baris yang
+membuktikannya.** Bukan "layarnya terisi" melainkan: satu klaim yang sudah selesai (untuk
+membuktikan hanya satu daftar menyaring status kerja), satu pengajuan ber-nilai akseptasi
+NOL (untuk membuktikan "Status Lelang" membaca nilainya), dua pengajuan milik PIC berbeda
+(supaya penyaring kepemilikan yang hilang terlihat sebagai baris tambahan, bukan sebagai
+daftar kosong yang dapat lolos).
+
+**Membuktikan baseline uji, bukan mengasumsikannya.** `App.tsx` diimpor setiap uji layar,
+sehingga satu kekeliruan di sana tampak seperti kerusakan modul lain. Suntingan di-stash,
+suite dijalankan ulang, dan selisihnya dihitung: 42 − 13 = 29, sama dengan baseline.
+
+### Catatan untuk tahap berikutnya
+
+- Mode UBAH sudah ada di `Repo.Create` tetapi **belum ada tombolnya** di layar.
+  `Section/DetailDataSalvage2` belum ditelusuri sama sekali.
+- Portal Insurtech menuntut `SetDataSalavage_act_ASI`, `SetStsSalvagePNC_act_ASI`, dan
+  `GetDataSalvage_Insurtech` dibaca — ketiganya ada di export.
+- `PNC_SALVAGE.PIC` diisi penyimpan, bukan PIC Teknik klaim. Ditinjau ulang saat nomor klaim
+  mulai divalidasi keberadaannya.
+
+---
+
+## Sesi 2026-09-25 (lanjutan kedua) — tujuh daftar gagal, dan Detail Salvage
+
+### `mattpocock-skills:diagnosing-bugs`
+
+| | |
+|---|---|
+| **Kapan** | Awal sesi, setelah Work Owner melaporkan ketujuh daftar keluarga C gagal |
+| **Kenapa dipilih** | Pesan di layar sengaja tidak menyebut sebab (`11-SECURITY.md` §4.1). Menebak dari gejala akan menghabiskan waktu pada tujuh daftar yang sebenarnya satu kueri |
+| **Keluaran** | Sebab tunggal: `ORA-00932` pada `COALESCE(a.STSTRANSFER, <teks>)` |
+
+**Yang dituntut skill ini, dan yang benar-benar dilakukan:**
+
+1. **Baca galat yang sebenarnya, bukan yang ditampilkan.** Log peladen menyimpan
+   `ORA-00932 ... error occur at position: 1487`.
+2. **Pakai angka yang diberikan galat.** `position: 1487` dihitung terhadap teks kueri yang
+   benar-benar dikirim — dan jatuh tepat pada satu ekspresi. Tanpa itu, pencariannya adalah
+   membaca seluruh kueri baris per baris.
+3. **Perhatikan apa yang TIDAK gagal.** Enam daftar lain berhasil. Keenamnya memakai kueri
+   lain, dan pemisahan itu sudah menyempitkan pencarian menjadi satu berkas sebelum satu
+   baris pun dibaca.
+
+**Manfaat terukur.** Sebabnya ditemukan tanpa satu pun tebakan, dan perbaikannya menyentuh
+**satu ekspresi**, bukan tujuh daftar.
+
+**Keputusan teknis yang lahir darinya.** `TO_CHAR` di dalam `COALESCE`, beserta uji penjaga
+yang memindai **seluruh** kueri modul — karena yang salah bukan satu baris melainkan sebuah
+kebiasaan (§56.1 pada keputusan implementasi).
+
+---
+
+### `mattpocock-skills:grilling` — dipakai pada diri sendiri
+
+| | |
+|---|---|
+| **Kapan** | Setelah perbaikan ditulis, sebelum dinyatakan selesai |
+| **Kenapa dipilih** | Perbaikan yang sama sudah "selesai" dua kali sesi ini dan keduanya tidak sampai ke pengguna (§54, §56) |
+
+**Pertanyaan yang diajukan ke diri sendiri, dan jawabannya:**
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Uji mana yang akan gagal bila cacat ini kembali? | Tidak ada satu pun — uji berjalan terhadap memori dan terhadap teks SQL, bukan terhadap Oracle |
+| Kalau begitu, apa yang membuktikan perbaikannya? | Hanya menjalankannya. Karena itu `PENYIMPANAN=oracle -periksa` dijalankan, bukan `go test` saja |
+| Kenapa mode periksa sempat melaporkan "ok" tanpa menyentuh Oracle? | Karena `PENYIMPANAN` tidak diisi, dan ia jatuh ke memori. Dijalankan ulang dengan `PENYIMPANAN=oracle` |
+| Apakah antarmuka ikut terbangun ulang? | **Tidak** pada percobaan pertama. Log peladen menyebut antarmuka dibangun 07:04Z — satu jam sebelumnya |
+
+**Yang tertangkap karenanya.** Binary sempat dibangun ulang **tanpa** membangun ulang
+antarmuka, sehingga panel Detail yang baru ditulis tidak akan sampai ke peramban sama
+sekali — persis cacat §54 dan §56 dalam bentuk ketiganya. Urutannya diperbaiki menjadi
+`npm run build` lebih dulu, baru `go build`.
+
+---
+
+### `mattpocock-skills:domain-modeling`
+
+| | |
+|---|---|
+| **Kapan** | Saat membaca `GcnmSetSalvageData_SQL` untuk menyusun kepala panel |
+| **Kenapa dipilih** | Kueri lama memakai nama alias yang tidak mencerminkan isinya — keadaan yang sudah beberapa kali menimbulkan cacat di modul ini |
+
+**Yang ditemukan karena nama diperiksa satu per satu, bukan disalin:**
+
+1. **Satu alias menunjuk dua kolom.** `AreaClaimId` dipakai untuk jumlah barang **dan**
+   untuk penanda pengajuan lama. Cacat ini tidak menimbulkan galat apa pun — Oracle
+   menerimanya, dan yang terbaca hanya yang terakhir.
+2. **Satu kode punya dua arti yang bertentangan.** `STATUSTERJUAL = 3` berarti "Waiting
+   approval" pada satu kueri dan "Rejected waive" pada kueri lain di layar yang sama.
+3. **Satu kolom tanpa arti yang diketahui.** Penanda "sebelum 17 Juli 2023" digambar tetapi
+   tidak pernah dipakai — tidak ada percabangan, tidak ada perhitungan.
+
+**Manfaat terukur.** Ketiganya cacat yang **tidak menimbulkan galat** dan karena itu tidak
+akan pernah tertangkap uji mana pun. Ketiganya tertangkap karena namanya diperiksa, bukan
+disalin.
+
+**Keputusan teknis yang lahir darinya.** Alias ganda **dipisah** (§56.2), arti kode diambil
+dari kueri yang memasok gridnya (§56.3), dan penanda tanpa arti digambar **tanpa tafsiran**
+(§56.4).
+
+---
+
+### `mattpocock-skills:codebase-design`
+
+| | |
+|---|---|
+| **Kapan** | Saat menentukan siapa yang tahu daftar mana punya rincian |
+| **Kenapa dipilih** | Pertanyaannya soal **letak pengetahuan**, bukan soal tampilan |
+
+**Yang dipakai dari skill ini.** Pengetahuan tinggal di **satu tempat**, dan yang lain
+memintanya — bukan menyimpulkannya kembali. Keluarga kueri dibaca dari export Pega dan
+tercatat di `tab.go`; layar tidak punya cara mengetahuinya selain diberi tahu.
+
+Dua cara menyimpulkan sendiri diuji lebih dulu dan **keduanya salah**:
+
+| Cara | Kenapa salah |
+|---|---|
+| Melihat `id_salvage` pada barisnya | Baris yang kebetulan kosong menghilangkan tombolnya pada daftar yang seharusnya punya |
+| Melihat ada-tidaknya kolom `id_salvage` | `id_salvage` **bukan kolom grid** pada daftar mana pun — ia dikirim tanpa digambar |
+
+**Manfaat terukur.** Cara kedua sempat ditulis dan lolos kompilasi — kolomnya memang tidak
+ada, sehingga gatenya selalu bernilai salah dan kolom "Aksi" **tidak pernah** digambar.
+Tertangkap sebelum diuji, dengan memeriksa daftar kunci kolom yang benar-benar ada di
+`tab.go`.
+
+**Keputusan teknis yang lahir darinya.** Isian `punya_rincian` pada tiap daftar, diisi
+server dari keluarga kuerinya (§56.6).
+
+---
+
+## Sesi 2026-09-25 (lanjutan ketiga) — "Detail di semua daftar harus ada"
+
+Satu kalimat Work Owner membalik keputusan §57.8. Sesi ini sebagian besar berisi
+**memeriksa kembali apa yang sudah saya simpulkan**, bukan membangun hal baru.
+
+### `mattpocock-skills:grilling` — dipakai pada kesimpulan sendiri
+
+| | |
+|---|---|
+| **Kapan** | Segera setelah kalimat Work Owner, sebelum satu baris pun ditulis |
+| **Kenapa dipilih** | Work Owner menyatakan sesuatu yang bertentangan dengan keputusan yang baru saya tulis dan beri alasan. Salah satunya keliru, dan yang paling murah diperiksa adalah alasan saya sendiri |
+
+**Pertanyaan yang diajukan, dan jawabannya dari export:**
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Berapa tombol Detail yang sebenarnya ada di layar lama? | **Sebelas**, tersebar di seluruh grid — bukan tujuh |
+| Kalau baris klaim tidak punya ID pengajuan, apa yang dikirim tombolnya? | **Keduanya** — nomor klaim DAN ID pengajuan, di setiap tombol |
+| Lalu apa yang membedakan? | `param.tipe`, diisi `tempQuery.FlagReject` — penanda daftar yang sedang terbuka |
+| Apa yang dilakukan jalur klaim? | Mencari `max(IDSALVAGE)` milik klaim itu, lalu mengisi panel yang sama |
+
+**Manfaat terukur.** Kesimpulan §57.8 terbalik dalam beberapa menit, dengan bukti
+`berkas:baris` — bukan dengan menerima koreksi begitu saja maupun mempertahankannya.
+
+**Keputusan teknis yang lahir darinya.** Dua rute rincian, `kunci_rincian` menggantikan
+`punya_rincian`, dan jalur klaim yang menempuh `max(IDSALVAGE)` (§57.1–57.3 pada keputusan
+implementasi).
+
+**Kekeliruan saya yang tertangkap karenanya, dan sifatnya.** Saya menyimpulkan dari
+**bentuk data** — "baris klaim tidak membawa ID pengajuan, jadi tidak ada yang dapat
+dirinci" — tanpa memeriksa **apa yang dilakukan layar lama**. Bentuk data memang benar;
+kesimpulannya tidak mengikuti darinya.
+
+---
+
+### `mattpocock-skills:diagnosing-bugs` — pada pembaca langkah, bukan pada kode
+
+| | |
+|---|---|
+| **Kapan** | Saat hasil pembaca langkah bertentangan dengan komentar langkahnya sendiri |
+| **Kenapa dipilih** | Langkah 19 bernama "Cari Data Tipe 1" tetapi dilaporkan "dilewati saat tipe == 1". Salah satunya salah |
+
+**Yang dilakukan.** Tag mentahnya dibaca, bukan keluaran parser:
+
+```
+pyStepsPreCondParamsWhen       = param.tipe==1
+pyStepsPreCondParamsWhenTrue   = 2          -> JALANKAN
+pyStepsPreCondParamsWhenFalse  = 1          -> LOMPAT
+pyStepsPreCondParamsWhenFalsePrms = NOTIPE1 -> tujuannya
+```
+
+Nilai `1` berarti **lompat**, bukan lewati-satu-langkah. Langkah 19–20 berada di dalam
+wilayah yang dilompati, sehingga berjalan justru saat `tipe == 1`.
+
+**Manfaat terukur.** Tanpa ini, jalur klaim akan dibangun terbalik — panel klaim akan
+membaca kueri yang salah, dan kesalahannya tidak menimbulkan galat apa pun.
+
+**Ini kedua kalinya pembaca langkah menyesatkan di modul ini.** Yang pertama tercatat di
+§55: parser hanya menyimpan precondition TERAKHIR per langkah. Pelajarannya sama, dan
+sekarang ditulis sebagai aturan: **komentar langkah yang bertentangan dengan hasil parser
+adalah tanda parser-nya yang salah, bukan komentarnya.**
+
+---
+
+### `mattpocock-skills:tdd` — pada uji yang sudah ada, bukan pada kode baru
+
+| | |
+|---|---|
+| **Kapan** | Setelah kolom aksi digambar di ketiga belas daftar |
+| **Kenapa dipilih** | Uji §57 yang menjaga "hanya tujuh daftar" **tetap lulus** setelah perilakunya dibalik. Uji yang tidak gagal ketika perilakunya berubah tidak menguji apa pun |
+
+**Sebabnya, setelah ditelusuri.** Uji itu memeriksa ketiadaan kolom **sebelum tabelnya
+sempat tergambar** — pada saat itu tidak ada satu pun `columnheader` di halaman. Ia lulus
+karena halaman masih kosong.
+
+**Yang diperbaiki.** Uji diganti dengan yang **menunggu** kolomnya muncul lebih dulu, lalu
+memeriksa keduanya. Ditambah dua uji yang memeriksa **rute mana yang benar-benar ditembak**,
+karena itulah yang membedakan kedua jalur dan itu tidak terlihat dari layar.
+
+**Aturan yang ditulis dari sini:** uji yang memeriksa KETIADAAN sesuatu pada layar yang
+memuat sendiri datanya harus menunggu sesuatu yang lain muncul lebih dulu. Tanpa itu, ia
+menguji kecepatan, bukan perilaku.
+
+**Satu uji lama lagi yang ikut diperkuat.** Menambah satu klaim contoh membuat uji selisih
+pencacah "Outstanding" gagal — angkanya berubah dari 3-lawan-2 menjadi 3-lawan-3. Ia
+**tidak** diperbaiki dengan mengganti angkanya, melainkan ditulis ulang untuk membandingkan
+**isinya**: klaim mana yang dihitung tetapi tidak ditampilkan, dan sebaliknya. Uji yang
+lebih kuat daripada sebelumnya, dan itu datang dari kegagalan yang tidak diinginkan.
+
+---
+
+### `mattpocock-skills:domain-modeling`
+
+| | |
+|---|---|
+| **Kapan** | Saat menamai isian baru pada jawaban panel |
+| **Kenapa dipilih** | Modul ini sudah punya sejarah nama yang menyesatkan, dan isian baru menambah kesempatan mengulanginya |
+
+**Yang diputuskan karenanya:**
+
+| Nama | Kenapa begitu |
+|---|---|
+| `ada_pengajuan`, bukan `kosong` atau `tidak_ditemukan` | Ia menyatakan **keadaan klaim**, bukan kegagalan permintaan. Nama yang menyebut kegagalan akan mengundang layar menggambarkannya sebagai galat |
+| `kunci_rincian`, bukan `tipe_detail` | Ia menyatakan **dengan apa** panel dibuka, bukan panel jenis apa. Panelnya satu; kuncinya yang dua |
+| `pic` dan `tanggal_kejadian` dipisah dari isian pengajuan | Keduanya berasal dari KLAIM. Mencampurnya ke dalam kelompok pengajuan akan membuat panel klaim-tanpa-pengajuan tampak punya isian pengajuan |
+
+**Manfaat terukur.** Kelompok "Data Klaim" pada panel dapat digambar sendiri tanpa isian
+pengajuan sama sekali — dan uji `queryByText('Jenis Salvage')` yang menuntut ketiadaannya
+menjadi mungkin ditulis.
+
+---
+
+## Sesi 2026-09-26 — klaim tanpa pengajuan masuk ke form Tambah
+
+Work Owner menyertakan **tangkapan layar Pega**, bukan hanya kalimat. Sesi ini sebagian
+besar berisi membaca gambar itu terhadap export — memeriksa apakah yang terlihat di
+tangkapan layar memang yang dilakukan rule-nya.
+
+### `mattpocock-skills:grilling` — pada tangkapan layar
+
+| | |
+|---|---|
+| **Kapan** | Sebelum satu baris pun ditulis |
+| **Kenapa dipilih** | Tangkapan layar memperlihatkan APA yang tampil, bukan KAPAN dan MENGAPA. Membangun dari gambar saja berarti menebak keduanya |
+
+**Pertanyaan yang diajukan, dan jawabannya dari export:**
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Section apa yang terlihat di gambar? | `TambahData_Salvage` — form Tambah, bukan panel rincian |
+| Grid "Detail History Salvage" itu dari mana? | `GetHistoriKlaimPNCSalvage_hist`, dipanggil `SetDataDetailSalvage_act` langkah 23 |
+| Kapan langkah 23 berjalan? | Ketika `TempInsert.Password` KOSONG — dan `Password` adalah alias `STSTRANSFER`. Kosong = pengajuan baru |
+| Jadi grid ini milik form Tambah, bukan panel rincian? | **Ya**, dan itu membenarkan penempatannya |
+
+**Manfaat terukur.** Grid ditempatkan di form, bukan di panel rincian — dan penempatannya
+punya bukti, bukan hanya "begitu yang terlihat di gambar".
+
+**Keputusan teknis yang lahir darinya.** §58.1 pada keputusan implementasi: panel diganti
+form, dengan alasan yang berdiri sendiri bahkan seandainya Pega tidak menunjukkannya.
+
+---
+
+### `mattpocock-skills:domain-modeling`
+
+| | |
+|---|---|
+| **Kapan** | Saat membaca `GetHistoriKlaimPNCSalvage_hist` |
+| **Kenapa dipilih** | Kueri itu memetakan `STSTRANSFER` menjadi kalimat, dan kolom yang sama sudah punya dua pemetaan lain di modul ini |
+
+**Yang ditemukan karena ketiganya dibandingkan, bukan yang ketiga dibaca sendirian:**
+
+| Tempat | Perannya |
+|---|---|
+| Penyaring daftar | baris muncul di daftar yang mana |
+| "Posisi Salvage" panel rincian | nama daftar tempat pengajuan berada |
+| "Posisi Salvage" grid riwayat | kalimat yang menceritakan apa yang sudah terjadi |
+
+Ketiganya **tidak sama**, dan yang ketiga bahkan memecah kode `2` menjadi dua kalimat
+menurut terisi-tidaknya nomor akseptasi — pembedaan yang tidak ada pada dua pemetaan lain.
+
+**Manfaat terukur.** Godaan menyatukannya tertolak dengan alasan, dan penolakannya
+**dijaga uji**: `TestHistoryPositionIsADifferentMappingFromThePanelPosition` menuntut
+keduanya berbeda untuk kode yang sama, sehingga penyatuan diam-diam gagal lebih dulu.
+
+**Keputusan teknis yang lahir darinya.** Penerjemahan dipindah dari SQL ke Go, tempat
+ketiga pemetaan dapat dibandingkan dan diuji berdampingan (§58.3, §58.5).
+
+---
+
+### `mattpocock-skills:codebase-design`
+
+| | |
+|---|---|
+| **Kapan** | Saat panel rincian harus dapat digantikan form |
+| **Kenapa dipilih** | Pertanyaannya soal **siapa yang memutuskan**, bukan soal tampilan |
+
+**Yang dipakai.** Keputusan tentang **komponen mana yang digambar** tidak dapat dipegang
+komponen yang keberadaannya justru ditentukan olehnya.
+
+Panel sebelumnya menembak server sendiri. Bila ia tetap begitu dan memberi tahu halaman
+lewat callback, panelnya terlanjur tergambar sebelum keputusannya diambil — dan permintaan
+yang sama berjalan dua kali bila halaman ikut membacanya.
+
+Permintaan dipindah ke halaman; panel menjadi komponen gambar murni.
+
+**Manfaat terukur.** Cabang "belum ada pengajuan" di dalam panel **dihapus seluruhnya**.
+Dua tempat yang memutuskan hal yang sama adalah dua tempat yang akan berselisih — dan
+menghapusnya membuat panelnya lebih pendek, bukan lebih panjang.
+
+---
+
+### `mattpocock-skills:tdd` — pada mode periksa, bukan pada uji
+
+| | |
+|---|---|
+| **Kapan** | Setelah kueri riwayat berjalan terhadap Oracle dan melaporkan `[ok]` |
+| **Kenapa dipilih** | `[ok]` itu hanya berarti "tidak ada galat", dan kueri dengan nama kolom keliru pada `WHERE` juga tidak menghasilkan galat — hanya nol baris |
+
+**Yang dilakukan.** Pemeriksaannya diperkuat: pengajuan yang dibaca panel **wajib muncul di
+riwayatnya sendiri**. Nol baris di sana dilaporkan `[BELUM]`, bukan `[ok]`.
+
+Hasilnya terhadap basis data sungguhan:
+
+```
+  [ok]    Riwayat pengajuan terbaca (2 baris, termasuk dirinya)
+  [ok]    Grid "Detail History Salvage" dapat dibaca (0 baris)
+```
+
+Baris kedua kosong, dan itu benar — klaim outstanding pertama memang belum punya pengajuan.
+Baris pertama membuktikan kuerinya benar-benar menemukan barisnya.
+
+**Manfaat terukur.** Ini penerapan pelajaran `ORA-00932` (§57.1) satu langkah lebih awal:
+kali ini pemeriksaannya dipasang **sebelum** ada yang melaporkannya sebagai kerusakan.
+
+**Aturan yang ditulis dari sini:** pemeriksaan kesiapan yang hanya menguji ada-tidaknya
+galat akan meluluskan kueri yang berjalan tetapi tidak menemukan apa pun. Bila ada hasil
+yang PASTI benar — di sini: pengajuan muncul di riwayatnya sendiri — ia harus ikut diuji.
+
+---
+
+## Sesi 2026-09-26 (lanjutan) — membatasi daftar menjadi sembilan
+
+Work Owner kembali menyertakan **tangkapan layar Pega**, kali ini tabel "Status Salvage /
+Jumlah" berisi sembilan baris — sementara modul menggambar empat belas.
+
+### `mattpocock-skills:diagnosing-bugs`
+
+| | |
+|---|---|
+| **Kapan** | Segera setelah selisih 14 lawan 9 terlihat |
+| **Kenapa dipilih** | Pertanyaannya bukan "baris mana yang dibuang" melainkan "MENGAPA layar sungguhan tidak menampilkannya" — dan menjawab yang pertama tanpa yang kedua berarti menebak |
+
+**Langkah yang dituntut skill ini, dan yang dijalankan:**
+
+1. **Perhatikan apa yang TIDAK berbeda.** Membuang kelima baris menghasilkan **urutan yang
+   sama persis** dengan tangkapan layar, tanpa penyusunan ulang. Itu menguatkan bahwa
+   pembacaan urutan sudah benar dan yang berbeda hanya penyaringnya.
+2. **Cari pembedanya di sumber, bukan di gejala.** Tiga baris terbukti bersyarat
+   `TempOperator.City == <nama A> || == <nama B>` dengan `?RUN:JUMP` — hanya dua orang itu
+   yang barisnya disusun.
+3. **Perhatikan arah syaratnya.** Baris yang MUNCUL justru memakai `?SKIP:RUN` dan
+   `?JUMP:RUN` — berjalan untuk semua KECUALI kedua nama itu. Jadi kedua operator melihat
+   susunan yang **berbeda**, bukan yang lebih panjang.
+
+**Manfaat terukur.** Tiga dari lima baris punya sebab yang terbukti, dan sebab itu
+menentukan perlakuannya: ia gate kewenangan yang harus kembali, bukan baris yang salah ada.
+
+**Keputusan teknis yang lahir darinya.** §59.3 pada keputusan implementasi — gate berbasis
+nama operator tidak ditiru, ketiganya tidak ditawarkan sampai `F-3`/`F-4` ada.
+
+---
+
+### `mattpocock-skills:grilling` — pada bukti yang tidak lengkap
+
+| | |
+|---|---|
+| **Kapan** | Setelah dua baris sisa tidak punya sebab yang terbukti |
+| **Kenapa dipilih** | Godaan terbesar di titik itu adalah menerima penjelasan yang "cukup masuk akal" |
+
+**Penjelasan yang tersedia:** kedua baris itu langkahnya bernama blok `//`, dan seluruh
+baris yang muncul tidak.
+
+**Pertanyaan yang diajukan ke diri sendiri:**
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Bukankah §55 sudah menyimpulkan `//` BUKAN penanda nonaktif? | Ya — berdasarkan sensus 952 pemakaian di 279 activity |
+| Apakah dua contoh membalik sensus itu? | **Tidak** |
+| Kalau begitu apa dasar menyembunyikan kedua baris? | **Pengamatan**, bukan penafsiran: layar sungguhan tidak menampilkannya |
+
+**Manfaat terukur.** Kesimpulan lama **tidak dicabut**, dan korelasinya dicatat sebagai
+korelasi. Yang dipakai sebagai dasar adalah pengamatan — dasar yang tidak bergantung pada
+tafsiran `//` sama sekali, sehingga tetap sahih apa pun arti `//` ternyata.
+
+**Aturan yang ditulis dari sini:** di mana pembacaan rule dan pengamatan layar berselisih
+tentang APA YANG TAMPIL, pengamatan menang — dan pembacaannya dicatat sebagai belum
+terjelaskan, bukan dipaksa cocok.
+
+---
+
+### `mattpocock-skills:codebase-design`
+
+| | |
+|---|---|
+| **Kapan** | Saat empat daftar harus berhenti ditawarkan tanpa dibuang |
+| **Kenapa dipilih** | Pertanyaannya soal **letak gerbang** — siapa yang berhak menolak sebuah kode daftar |
+
+**Yang dipakai.** "Menerjemahkan kode menjadi daftar" dan "menyusun permintaan atas sebuah
+daftar" adalah dua hal, dan hanya yang pertama merupakan gerbang. `NewQuery` dipecah
+menjadi `NewQuery` (gerbang) dan `NewQueryForTab` (penyusun).
+
+**Kenapa ini bukan kemudahan untuk uji.** Pemisahannya berdiri sendiri: lapisan transport
+butuh gerbang, penyimpanan butuh penyusun. Bahwa uji kemudian dapat menguji penyaring
+daftar tersembunyi adalah **akibat**, bukan tujuan.
+
+**Manfaat terukur.** Penyaring keempat daftar tersembunyi tetap diuji — dan tiga di
+antaranya memang akan kembali. Penyaring yang tidak diuji selama itu akan berhenti benar
+tanpa ada yang tahu.
+
+---
+
+### `mattpocock-skills:tdd`
+
+| | |
+|---|---|
+| **Kapan** | Setelah dua pernyataan lama ternyata menjadi tidak benar |
+| **Kenapa dipilih** | Keduanya soal KEWENANGAN dan PERILAKU PENCARIAN — hal yang salah diam-diam, bukan yang gagal |
+
+**Yang ditemukan.** Penyembunyian membuat dua hal tidak lagi benar:
+
+1. Satu-satunya daftar yang menyaring menurut pengguna termasuk yang disembunyikan →
+   modul ini kini **tidak punya pembatas berbasis pengguna sama sekali**.
+2. **Ketiga** daftar yang mencocokkan persis termasuk yang disembunyikan → keterangan
+   "pencarian cocok persis" di layar tidak berlaku bagi satu pun daftar.
+
+**Yang dilakukan.** Keduanya bukan hanya dikoreksi di komentar, tetapi **dijaga uji yang
+akan gagal ketika ketiga daftar itu kembali**.
+
+**Manfaat terukur.** Keterangan layarnya akan dihidupkan bersamaan dengan kembalinya
+daftar, bukan tertinggal. Uji yang gagal saat sebuah fitur kembali adalah pengingat yang
+jauh lebih dapat diandalkan daripada catatan di dokumen.
+
+**Dan dua uji lama menguat karenanya.** Keduanya memeriksa nilai yang tersimpan tetapi
+membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
+ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
