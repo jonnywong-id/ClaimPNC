@@ -19,6 +19,23 @@ type Props = {
   error: unknown
 
   onClose: () => void
+
+  /**
+   * Tombol **"Upload File Penunjang"** — di ATAS grid, persis letaknya di Pega.
+   *
+   * Belum dibangun; menekannya menjawab alasannya.
+   */
+  onUpload: () => void
+
+  /**
+   * Tombol **"SEND"** — di BAWAH grid, persis letaknya di Pega.
+   *
+   * Belum dibangun; menekannya menjawab alasannya.
+   */
+  onSend: () => void
+
+  /** Sedang menunggu jawaban salah satu tombol di atas. */
+  busy: boolean
 }
 
 /**
@@ -48,13 +65,16 @@ export function DocumentPanel({
   isError,
   error,
   onClose,
+  onUpload,
+  onSend,
+  busy,
 }: Props) {
   return (
     <section
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
       aria-label={`Rincian ${daftar.nama} klaim ${baris.no_klaim}`}
     >
-      <header className="mb-4 flex items-start justify-between gap-4">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
             Detail {daftar.nama} List
@@ -64,10 +84,24 @@ export function DocumentPanel({
           </p>
         </div>
 
-        <Button type="button" tone="halus" onClick={onClose}>
-          <CloseIcon className="h-4 w-4" />
-          <span className="sr-only">Tutup rincian</span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/*
+            "Upload File Penunjang" ada di ATAS grid rincian di Pega — di antara grid
+            antrean dan grid rincian. Letaknya dipertahankan.
+
+            Ia TIDAK dinonaktifkan meski belum dibangun. Tombol yang mati tidak
+            menjelaskan apa pun; yang dibutuhkan pengguna adalah tahu MENGAPA ia belum
+            dapat dipakai, dan itu hanya sampai bila tombolnya dapat ditekan.
+          */}
+          <Button type="button" tone="kedua" onClick={onUpload} disabled={busy}>
+            Upload File Penunjang
+          </Button>
+
+          <Button type="button" tone="halus" onClick={onClose}>
+            <CloseIcon className="h-4 w-4" />
+            <span className="sr-only">Tutup rincian</span>
+          </Button>
+        </div>
       </header>
 
       <DataTable<Dokumen>
@@ -90,6 +124,23 @@ export function DocumentPanel({
           `Itu keadaan yang sah — barisnya masuk antrean karena dokumen jenis lain.`
         }
       />
+
+      {/*
+        "SEND" ada di BAWAH grid rincian di Pega, dan letaknya dipertahankan.
+
+        Ia bekerja atas SELURUH dokumen klaim yang sedang dibuka, bukan atas baris
+        terpilih: grid rinciannya tidak punya pilihan baris sama sekali —
+        `Section/InboxPLA_sect-Section.xml` memuat nol `pySelected` — dan
+        `UpdateDetailPLA2` memutari daftarnya.
+      */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button type="button" onClick={onSend} disabled={busy}>
+          {busy ? 'Memeriksa…' : 'Send'}
+        </Button>
+        <p className="text-xs text-slate-500">
+          Mengirim seluruh {daftar.nama} klaim ini ke reasuradur.
+        </p>
+      </div>
     </section>
   )
 }

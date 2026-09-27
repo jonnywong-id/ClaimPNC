@@ -289,3 +289,73 @@ SELECT 1
   FROM POOLDATA.T_CLAIM_PNC c
  WHERE c.CLAIMID = :1
  FETCH NEXT 1 ROWS ONLY
+
+-- name: print_pre_dla
+-- Panel "Print Pre DLA" — Pre-DLA satu klaim yang dokumennya SUDAH terlampir.
+--
+-- Bind: :1 kunci klaim (`T_CLAIM_PNC.CLAIMID`)
+--
+-- Sumber: `RDB List/GetPreDLAList-SQL.xml`, dikirim Work Owner 2026-09-26.
+--
+-- ============================================================================
+-- BARIS DI SINI LEBIH SEDIKIT DARIPADA PRE-DLA YANG BENAR-BENAR ADA
+-- ============================================================================
+--
+-- Gabungan ke kedua tabel lampiran Pega bukan hiasan — ia MENYARING. Pre-DLA yang belum
+-- punya berkas lampiran berkategori `DLA`, atau yang nama berkasnya tidak berpola
+-- seperti di bawah, tidak muncul sama sekali.
+--
+-- Itu memang guna panelnya: daftar Pre-DLA yang dokumennya sudah siap dikirim, bukan
+-- daftar seluruh Pre-DLA. Perilakunya dibawa apa adanya (`P-5`), dan selisih jumlah
+-- barisnya terhadap tab Pre DLA dinyatakan di layar supaya tidak terbaca sebagai
+-- kerusakan.
+--
+-- ============================================================================
+-- PENCOCOKAN NAMA BERKAS MEMAKAI POSISI KARAKTER, DAN ITU RAPUH
+-- ============================================================================
+--
+--   SUBSTR(PXATTACHNAME, -15, 11) = NODLA
+--
+-- Sebelas karakter, dihitung mundur lima belas karakter dari ujung nama berkas. Pola itu
+-- pecah begitu konvensi penamaan lampiran berubah — dan pecahnya TIDAK menghasilkan
+-- galat, hanya panel yang kosong. Ia dibawa apa adanya karena mengubahnya mengubah baris
+-- mana yang muncul, dan itu selisih yang belum diminta siapa pun.
+--
+-- `PXATTACHNAME` sengaja TIDAK dikualifikasi nama tabelnya, persis seperti kueri lama.
+-- Kolom itu ada di salah satu dari kedua tabel lampiran, dan export tidak memuat DDL
+-- keduanya (`R-08`). Menebak tabelnya berisiko memilih yang salah; membiarkannya
+-- membuat Oracle menyelesaikannya persis seperti hari ini.
+--
+-- ============================================================================
+-- PEMETAAN KOLOM — alias Pega -> alias di sini
+-- ============================================================================
+--
+--   NODLA          "NO_DLA"        ADVICE_NO        NO DLA
+--   DLAREINSURER   "DLAReinsurer"  REINSURER        DLA REINSURER
+--   TIPEDLA        "DLAType"       ADVICE_TYPE      TIPE DLA
+--   TGLKIRIM       "TglDLA"     (!) SENT_DATE       Tgl Kirim
+--   NVL(ISKIRIM)   "IsDLA"      (!) SENT            Terkirim
+--   a.PZINSKEY     "Currency"   (!) ATTACHMENT_KEY  (tidak digambar)
+--
+-- Tiga tanda (!): `"TglDLA"` berarti tanggal KIRIM, bukan tanggal Pre-DLA; `"IsDLA"`
+-- berarti penanda terkirim; dan `"Currency"` berarti kunci lampiran, bukan mata uang.
+--
+-- Tiga kolom yang diambil kueri lama TIDAK dibawa — `objectid`, `objectcoverageid`, dan
+-- `adjustmentid`, beralias `"pyID"`, `"DLAStream"`, dan `"Count"`. Tidak satu pun
+-- digambar panelnya, dan ketiganya hanya dipakai jalur tulis yang belum dibangun.
+SELECT c.NODLA                          AS ADVICE_NO,
+       c.DLAREINSURER                   AS REINSURER,
+       c.TIPEDLA                        AS ADVICE_TYPE,
+       c.TGLKIRIM                       AS SENT_DATE,
+       NVL(c.ISKIRIM, '0')              AS SENT,
+       a.PZINSKEY                       AS ATTACHMENT_KEY
+  FROM POOLDATA.T_PREDLALIST c
+  JOIN DATAPEGA.PC_LINK_ATTACHMENT b
+    ON b.PXLINKEDREFFROM = c.CLAIMID
+  JOIN DATAPEGA.PC_DATA_WORKATTACH a
+    ON a.PZINSKEY = b.PXLINKEDREFTO
+   AND a.PXREFOBJECTKEY = c.CLAIMID
+ WHERE c.CLAIMID = :1
+   AND b.PYCATEGORY = 'DLA'
+   AND SUBSTR(PXATTACHNAME, -15, 11) = c.NODLA
+ ORDER BY c.NODLA

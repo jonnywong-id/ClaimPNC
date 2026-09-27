@@ -16819,3 +16819,215 @@ Saat menyambungkannya, ditemukan bahwa galat dari `buildExtraServices` **tidak p
 diperiksa** di `main.go` — ia ditimpa deklarasi pada baris berikutnya. Ia tidak diperbaiki
 pada sesi ini; alasannya dicatat di `catatan-pengembangan.md` §61.9. Perakitan yang
 ditambahkan sesi ini memeriksa galatnya.
+
+## 61. Tombol yang belum dibangun: satu alasan per tombol — koreksi atas §60.2 (2026-09-26)
+
+### 61.1 Yang dikoreksi
+
+§60.2 menetapkan ketiga tombol **tetap digambar** dan menjawab alasannya. Pelaksanaannya
+membangun rute penolakannya saja, tanpa tombolnya — sehingga keputusan itu tidak pernah
+terjadi bagi pengguna. Dilaporkan Work Owner, dan diperbaiki.
+
+Yang berikut adalah keputusan yang lahir saat memperbaikinya.
+
+### 61.2 Alasan penolakan dibawa PER TINDAKAN, bukan satu kalimat bersama
+
+**Keputusan.** `NotAvailableError` membawa `Action`, dan setiap tindakan punya kalimatnya
+sendiri.
+
+**Sebabnya berubah begitu tombolnya ada.** Selama tidak ada tombol, satu kalimat yang
+menyebut ketiganya sudah memadai — tidak ada yang membacanya. Begitu tombolnya dapat
+ditekan, kalimat bersama itu menjadi **salah bagi dua dari tiga penekan**: pengguna yang
+menekan "Print Pre DLA" membaca penjelasan tentang email reasuradur, lalu menyimpulkan
+tombol yang ia tekan bukan tombol yang ia kira.
+
+**Isi tiap kalimat menyebut APA yang belum ada**, bukan sekadar "belum tersedia":
+penyimpanan dokumen (`D-16`), mesin dokumen (`D-11`), atau keempat langkah `UpdateDetailPLA2`.
+Ketiganya diakhiri "Kerjakan lewat Pega" — apa yang dapat dilakukan pengguna hari ini.
+
+**Sentinel `ErrWriteNotAvailable` dipertahankan** lewat `Unwrap()`, sehingga pemanggil
+yang hanya memeriksa "apakah ini penolakan tombol" tidak perlu mengenal tipe barunya.
+
+### 61.3 Inventaris tombol datang dari SERVER, sama seperti inventaris kolom
+
+**Keputusan.** `Tab.HasPrintAction` ditambahkan dan dikirim sebagai `punya_cetak`.
+
+**Alternatif yang ditolak:** layar mencocokkan `kode === 'pre-dla'`.
+
+Alasannya sama dengan `punya_rincian` pada §60: **tombol mana yang ada di sebuah daftar
+adalah hasil pembacaan export**, bukan pilihan tampilan. Ia dibaca dari posisi label
+tombol terhadap grid di dalam berkas section, dan hasil pembacaan itu tinggal di satu
+tempat — backend. Menyalinnya ke layar berarti keputusan yang sama hidup di dua tempat,
+dan yang di layar akan tertinggal saat yang pertama berubah.
+
+### 61.4 Letak tombol ditiru, tidak dikumpulkan
+
+**Keputusan.** Upload di ATAS grid rincian, Send di BAWAHnya, Print Pre DLA di bawah grid
+antrean — persis urutan di section Pega.
+
+Menggabungkan ketiganya ke dalam satu kelompok tombol di atas tabel akan lebih rapi, dan
+ditolak karena dua hal:
+
+- `D-13` menetapkan tata letak mengikuti Pega supaya pengguna tidak perlu belajar ulang.
+- "Print Pre DLA" yang berdampingan dengan "Export To Excel" adalah dua tombol yang
+  sama-sama menghasilkan berkas. Pengguna yang salah menekan akan menerima berkas yang
+  bukan yang ia maksud.
+
+### 61.5 Tombol Send bekerja atas SELURUH dokumen klaim, bukan baris terpilih
+
+**Diperiksa sebelum dibangun, bukan diasumsikan.** `pySelected` muncul **nol kali** di
+ketiga section — grid rinciannya tidak punya pilihan baris sama sekali — dan
+`UpdateDetailPLA2` memutari daftarnya.
+
+Tanpa pemeriksaan itu, tombolnya akan dibangun dengan kotak centang per baris yang tidak
+pernah ada di Pega, dan pengguna akan mengira ia dapat memilih dokumen mana yang dikirim.
+
+### 61.6 Tombolnya TIDAK dinonaktifkan, dan spanduknya bernada penolakan
+
+Tombol yang mati tidak menjelaskan apa pun. Alasan yang tidak sampai ke pengguna sama saja
+dengan tidak ada alasan — dan itu persis pilihan "sembunyikan tombolnya" yang sudah
+ditolak pada §60.2.
+
+Spanduk alasannya bernada **penolakan**, bukan gangguan: nada gangguan berarti "coba lagi
+nanti", sementara mengulang tidak akan menolong.
+
+Spanduk itu **dibuang saat pengguna berpindah tab, mencari, atau membersihkan penyaring**.
+Alasan milik tombol yang tidak ada di tab berikutnya adalah pesan yang lebih
+membingungkan daripada tidak ada pesan.
+
+### 61.7 Ketiga tombol `MENU_ID 45` sengaja TIDAK ikut digambar
+
+"Detail Claim", "Detail", dan "DLA" pada layar reasuradur bukan kasus yang sama: ketiganya
+**membuka layar lain** yang belum dianalisis, bukan aksi yang dijalankan di tempat.
+Menggambarnya berarti menggambar navigasi menuju ketiadaan, dan alasannya tidak akan dapat
+menyebut apa yang sebenarnya kurang.
+
+Bila Work Owner menghendaki ketiganya ikut digambar, layar tujuannya perlu dibaca lebih
+dulu. Itu keputusan tersendiri.
+
+## 62. Panel "Print Pre DLA": membaca, per baris, dan tahan peladen lama (2026-09-27)
+
+### 62.1 Yang dikoreksi dari §61
+
+§61.3 dan §61.4 menyatakan "Print Pre DLA" adalah satu tombol di bawah grid antrean, dan
+§61.2 memberinya alasan penolakan *"ia membangkitkan berkas PDF"*. **Keduanya salah**, dan
+keduanya dikoreksi di sini:
+
+| Pernyataan §61 | Yang benar |
+|---|---|
+| satu tombol di bawah grid | tombol **per baris** — labelnya di dalam blok berulang |
+| membangkitkan PDF | **tidak mencetak apa pun**, ia membuka daftar |
+
+Keduanya ditemukan setelah Work Owner mengirim `PNCInboxPrintPreDLA`. Kekeliruan pertama
+dapat dicegah dengan mengukur posisi bita, bukan membaca urutan kemunculan; kekeliruan
+kedua hanya dapat dicegah dengan membaca flow action-nya — dan flow action itu **tidak ada
+di export awal**.
+
+### 62.2 Panelnya dibangun, TIDAK ditolak — tetapi isi panelnya tetap ditolak
+
+**Keputusan.** "Print Pre DLA" membuka panel yang benar-benar bekerja. Yang menjawab alasan
+adalah dua tombol **di dalamnya**: "Kirim Pre DLA" dan unduh lampiran.
+
+**Alternatif yang ditolak:** menolak seluruh panelnya, seperti pada §61.
+
+Alasannya: panelnya **hanya membaca**. Tidak ada satu pun prasyarat yang belum ada —
+tabelnya terbaca, kuerinya jelas, kolomnya diketahui. Menolaknya berarti menahan kemampuan
+yang sudah dapat diberikan, dan menolak tombol yang sebenarnya bekerja adalah bentuk
+penolakan terburuk: pengguna tidak dapat membedakannya dari kerusakan.
+
+Sebaliknya, kedua tombol di dalamnya memang punya prasyarat yang belum ada — `P-1` untuk
+yang pertama, `D-16` untuk yang kedua — dan keduanya menyebutkan prasyaratnya.
+
+### 62.3 Pemisahan tindakan mengikuti APA yang menghalangi, bukan letak tombolnya
+
+`ActionPrintPreDLA` **dihapus** dan digantikan dua tindakan baru. Ini bukan penggantian
+nama: yang berubah adalah apa yang dianggap belum tersedia.
+
+`TestOpeningThePrintPanelIsNotARejectedAction` menjaganya tidak kembali. Uji itu ada karena
+kegagalannya senyap: tombol yang bekerja lalu menjawab "belum bekerja" tetap menggambar
+layar yang tampak normal, hanya membingungkan.
+
+### 62.4 Panel di BAWAH antrean, bukan modal layar penuh seperti Pega
+
+**Keputusan.** Digambar sebagai panel di bawah grid, sama dengan panel rincian PLA dan DLA.
+
+**Ia menyimpang dari `D-13`**, yang menetapkan tata letak mengikuti Pega — dan flow
+action-nya `pyModalDisplay = Full screen`. Penyimpangan itu diambil dengan dua alasan:
+
+1. Modal layar penuh **menutupi antreannya**, sehingga pengguna kehilangan konteks klaim
+   mana yang sedang ia buka.
+2. Layar ini sudah punya satu pola panel — grid rincian PLA dan DLA. Panel kedua dengan
+   pola berbeda membuat satu layar punya dua cara membuka rincian.
+
+Yang dipertahankan dari Pega adalah yang lebih penting: **nama tombolnya**, urutan
+kolomnya, judul kolomnya apa adanya (`NO DLA`, `DLA REINSURER`, `TIPE DLA`), dan letak
+"Kirim Pre DLA" di bawah grid.
+
+### 62.5 Penyaring lampiran DIBAWA, dan dijaga tiga uji
+
+**Keputusan.** Gabungan ke kedua tabel lampiran dipertahankan apa adanya, termasuk
+pencocokan `SUBSTR(PXATTACHNAME, -15, 11) = NODLA`.
+
+Ia mudah terbaca sebagai hiasan — panelnya tidak menggambar satu pun kolom lampiran
+kecuali kuncinya — padahal ia yang **menentukan baris mana yang muncul**. Menghapusnya
+membuat panel menampilkan lebih banyak baris daripada Pega tanpa satu pun galat.
+
+Tiga uji menjaganya, dan ketiganya menguji hal yang berbeda: penyaringnya masih ada,
+`PXATTACHNAME` masih tanpa kualifikasi, dan kuerinya tidak pernah menulis.
+
+### 62.6 Selisih jumlah baris dinyatakan DI PANELNYA, bukan hanya di kaki halaman
+
+**Keputusan.** Panel yang berisi menyebutkan bahwa Pre-DLA tanpa lampiran tidak muncul;
+panel yang kosong menyebutkannya lewat pesan kosongnya.
+
+Kaki halaman sudah memuatnya sebagai selisih terencana, dan itu **tidak cukup**: petugas
+yang melihat antrean menyebut tiga Pre-DLA lalu membuka panel berisi satu baris membentuk
+kesimpulan "datanya hilang" **di tempat itu juga**. Penjelasan yang berada beberapa gulir
+di bawahnya tidak pernah terbaca.
+
+Kalimatnya sengaja tidak digambar dua kali: pada panel kosong, pesan kosongnya sudah
+mengatakan hal yang sama.
+
+### 62.7 Cadangan terhadap peladen lama — pengecualian sempit atas §61.3
+
+§61.3 menetapkan inventaris tombol datang dari server, bukan disalin ke layar. Aturan itu
+**tetap berlaku**, dengan satu pengecualian yang sempit.
+
+**Keputusan.** `judulTombolBaris` jatuh ke `punya_cetak`/`punya_rincian` **hanya ketika
+`label_aksi_baris` benar-benar tidak ada dalam jawaban**.
+
+**Sebabnya adalah kegagalan yang baru saja terjadi.** Ketika peladen lebih tua daripada
+berkas layar — keadaan yang biasa terjadi bila hanya salah satu dibangun ulang — medan itu
+tidak ada, dan seluruh kolom aksi lenyap, termasuk tombol "Rincian" yang sudah lama
+bekerja. Layarnya tetap tampil normal. Tidak ada satu pun galat.
+
+**Ia bukan sumber kebenaran kedua**, dan batasnya dijaga dengan tegas: medan yang ADA
+tetapi berisi teks kosong dihormati apa adanya. Menimpanya berarti menggambar tombol yang
+server putuskan tidak ada. Dua uji menjaga kedua sisi itu.
+
+Judul cadangannya diturunkan dari medan yang sudah lama ada, bukan dari mencocokkan kode
+tab — sehingga tidak ada daftar tab yang perlu dijaga sejalan di dua tempat.
+
+### 62.8 Dua cacat kueri Pega dilaporkan, TIDAK diperbaiki
+
+Pernyataan simpannya menyaring `where nodla = …` **tanpa `claimid`**, dan pencocokan nama
+berkasnya bergantung pada posisi karakter.
+
+Yang pertama tidak dapat terulang di sini — jalur tulisnya memang tidak dibawa. Yang kedua
+ada di jalur baca, dan memperbaikinya **mengubah baris mana yang muncul**: selisih yang
+belum diminta siapa pun, dan yang tidak masuk salah satu dari tiga belas butir `P-5`.
+
+Keduanya dicatat sebagai temuan untuk Work Owner, bukan diperbaiki diam-diam.
+
+### 62.9 Dua artefak build dibangun ulang sebagai BAGIAN dari perbaikan
+
+**Keputusan.** `npm run build` dan `go build` dijalankan, dan bundel hasilnya diperiksa
+memuat jejak modulnya.
+
+Ini dicatat sebagai keputusan, bukan langkah rutin, karena **inilah penyebab utama**
+tombolnya tidak muncul — bukan kodenya. Berkas yang dijalankan bertanggal sebelum modulnya
+ditulis, dan bundelnya memuat nol jejak `inbox-pla-dla`.
+
+Pelajarannya melampaui satu tombol: **memeriksa kode tidak pernah membuktikan apa yang
+dilihat pengguna.** Yang membuktikannya adalah memeriksa artefak yang benar-benar
+dijalankan — dan itu satu perintah `grep` yang tidak pernah dijalankan pada §62.

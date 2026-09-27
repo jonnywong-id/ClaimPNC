@@ -16,6 +16,12 @@ const (
 	FieldAdviceDate   = "tanggal_advice"
 )
 
+// FieldAttachmentKey adalah kunci berkas lampiran pada baris panel "Print Pre DLA".
+//
+// Ia satu-satunya field yang tidak punya pasangan di grid rincian; sisanya memakai nama
+// yang sama karena artinya memang sama.
+const FieldAttachmentKey = "kunci_lampiran"
+
 // Nama field JSON pada baris grid rincian.
 const (
 	FieldAdviceNo     = "no_advice"
@@ -132,6 +138,36 @@ type Tab struct {
 	// belum dapat dikirim ke siapa pun, sehingga ia belum menjadi pekerjaan.
 	RequiresReinsurer bool
 
+	// HasPrintAction menyatakan setiap BARIS daftar ini punya tombol
+	// **"Print Pre DLA"**.
+	//
+	// **Tab Pre DLA saja**, dan ia tombol PER BARIS — bukan satu tombol di bawah grid.
+	// Itu terbaca dari letaknya di dalam berkas section: labelnya berada di dalam blok
+	// `pyBodyType = REPEATING` milik gridnya, berdampingan dengan kolom `BRANCH_NAME`
+	// (kunci klaim) dan `pyLocalAction = PNCInboxPrintPreDLA`.
+	//
+	// Baris itulah yang memasok kunci klaim ke modalnya; tanpa baris, panelnya tidak
+	// punya klaim untuk ditampilkan.
+	HasPrintAction bool
+
+	// PrintColumns adalah kolom panel "Print Pre DLA".
+	//
+	// Kosong berarti daftar ini tidak punya panel itu. Ia dipisahkan dari
+	// DocumentColumns karena keduanya membaca TABEL yang berbeda dan dibuka tombol yang
+	// berbeda — menyatukannya akan membuat satu senarai kolom melayani dua panel yang
+	// tidak pernah tampil bersamaan.
+	PrintColumns []Column
+
+	// RowActionLabel adalah judul tombol aksi pada setiap baris.
+	//
+	// Ia BERBEDA per daftar — "Rincian" pada PLA dan DLA, "Print Pre DLA" pada Pre DLA —
+	// dan dikirim ke layar alih-alih ditebak di sana. Layar yang menyimpulkannya dari
+	// ada-tidaknya grid rincian akan menuliskan kedua nama itu di tempat kedua, dan
+	// tempat kedua itulah yang tertinggal saat yang pertama berubah.
+	//
+	// Kosong berarti barisnya tidak punya tombol aksi sama sekali.
+	RowActionLabel string
+
 	// RequiresNoAcceptance menyatakan keanggotaan baris ditentukan `NOAKSEP IS NULL`.
 	//
 	// **Tab Pre DLA saja.** Ia dinyatakan sebagai isian TERSENDIRI, bukan disimpulkan
@@ -148,7 +184,8 @@ type Tab struct {
 // Tab Pre DLA TIDAK, dan itu bukan kelalaian pembacaan:
 // `Section/PNCInboxPreDLA_sect-Section.xml` hanya memuat SATU grid
 // (`TempPNCList.pxResults`), sementara kedua section lain memuat dua. Rincian Pre-DLA ada
-// di layar tersendiri yang dibuka tombol "Print Pre DLA", dan layar itu belum dibangun.
+// di panel tersendiri yang dibuka tombol "Print Pre DLA" pada barisnya — lihat
+// PrintColumns.
 func (t Tab) HasDocuments() bool {
 	return len(t.DocumentColumns) > 0
 }
@@ -193,6 +230,7 @@ var tabs = []Tab{
 		Columns:           queueColumns("Tanggal PLA"),
 		SearchLabel:       "No Klaim",
 		DateLabel:         "Tanggal PLA",
+		RowActionLabel:    "Rincian",
 		SentFilterApplies: true,
 		RequiresReinsurer: true,
 		DocumentColumns: []Column{
@@ -218,6 +256,7 @@ var tabs = []Tab{
 		Columns:              queueColumns("Tanggal DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal DLA",
+		RowActionLabel:       "Rincian",
 		ExcludeASNET:         true,
 		ExcludeBusinessGroup: "10008",
 		SentFilterApplies:    true,
@@ -245,6 +284,19 @@ var tabs = []Tab{
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal Pre DLA",
 		RequiresNoAcceptance: true,
+		HasPrintAction:       true,
+		RowActionLabel:       "Print Pre DLA",
+
+		// Keempat kolom panel "Print Pre DLA", mengikuti caption
+		// `Section/PrintPreDLA-Section.xml` apa adanya — termasuk yang ditulis KAPITAL
+		// di sana (`D-13`).
+		PrintColumns: []Column{
+			{Key: FieldAdviceNo, Title: "NO DLA"},
+			{Key: FieldReinsurer, Title: "DLA REINSURER"},
+			{Key: FieldAdviceType, Title: "TIPE DLA"},
+			{Key: FieldDocDate, Title: "Tgl Kirim", Date: true},
+			{Key: FieldSent, Title: "Terkirim"},
+		},
 
 		// SentFilterApplies sengaja SALAH, dan DocumentColumns sengaja kosong. Keduanya
 		// perbedaan nyata tab ini terhadap dua tab lain; lihat catatan di kepala

@@ -4171,3 +4171,38 @@ Grid XOL-nya menambah empat alias yang seluruhnya menyesatkan:
 
 Perhatikan kode `pla` dan `dla` ada di KEDUA modul dengan arti yang berlawanan. Itu
 sebabnya keduanya tidak boleh berbagi satu tipe tab.
+
+## Tambahan 2026-09-27 — panel "Print Pre DLA" (`GetPreDLAList`)
+
+Kueri `RDB List/GetPreDLAList-SQL.xml` memuat enam alias, dan **tiga di antaranya
+menyatakan hal yang salah** (`D-19`). Ketiganya berbahaya dengan cara yang sama: ia
+terbaca benar, sehingga tidak ada yang memeriksanya.
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Judul kolom | Catatan |
+|---|---|---|---|---|
+| `c.NODLA` | `"NO_DLA"` | `ADVICE_NO` · `no_advice` | NO DLA | — |
+| `c.DLAREINSURER` | `"DLAReinsurer"` | `REINSURER` · `reasuradur` | DLA REINSURER | — |
+| `c.TIPEDLA` | `"DLAType"` | `ADVICE_TYPE` · `tipe` | TIPE DLA | — |
+| `c.TGLKIRIM` | **`"TglDLA"`** | `SENT_DATE` · `tanggal_kirim` | Tgl Kirim | **(!)** tanggal KIRIM, bukan tanggal DLA — judul kolomnya di Pega sendiri sudah benar |
+| `NVL(c.ISKIRIM,'0')` | **`"IsDLA"`** | `SENT` · `terkirim` | Terkirim | **(!)** penanda terkirim, bukan "apakah DLA" |
+| `a.PZINSKEY` | **`"Currency"`** | `ATTACHMENT_KEY` · `kunci_lampiran` | — | **(!)** kunci lampiran, bukan mata uang. Tidak digambar |
+
+Tiga alias lain pada kueri itu **tidak dibawa sama sekali** — `objectid` beralias `"pyID"`,
+`objectcoverageid` beralias `"DLAStream"`, dan `adjustmentid` beralias `"Count"`. Tidak
+satu pun digambar panelnya, dan ketiganya hanya dipakai jalur tulis yang tidak dibawa.
+
+**Nama di sini mengikuti JUDUL KOLOM yang dibaca pengguna, bukan aliasnya.** Pada ketiga
+baris bertanda (!), judul kolomnya di Pega justru sudah benar sementara aliasnya tidak —
+sehingga judul adalah sumber yang lebih dapat dipercaya daripada alias.
+
+### Tindakan yang belum dibangun
+
+| Kode tindakan | Tombol Pega | Yang menghalangi |
+|---|---|---|
+| `kirim` | `SEND` | email + `UPDATEREAS.prc` + sisip dokumen |
+| `unggah-penunjang` | `Upload File Penunjang` | `D-16` |
+| `kirim-pre-dla` | `Kirim Pre DLA` (`SetTglKirimPreDLA_Act`) | `P-1` — `T_PREDLALIST` masih ditulis Pega |
+| `unduh-lampiran` | `PNCDownloadFile` | `D-16` |
+
+`cetak-pre-dla` **dihapus** dari daftar ini: tombol "Print Pre DLA" membuka panel yang
+sudah dibangun.

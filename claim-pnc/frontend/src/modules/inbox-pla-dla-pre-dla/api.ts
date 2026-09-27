@@ -4,7 +4,12 @@ import { callAPI, downloadAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { DokumenResponse, ListResponse, MetadataResponse } from './types'
+import type {
+  CetakResponse,
+  DokumenResponse,
+  ListResponse,
+  MetadataResponse,
+} from './types'
 
 const PATH = '/api/inbox-pla-dla-pre-dla'
 
@@ -51,6 +56,9 @@ const keys = {
     claimKey: string,
   ) =>
     ['inbox-pla-dla-pre-dla', 'rincian', portal, token, tab, claimKey] as const,
+
+  cetak: (portal: string | null, token: string | null, claimKey: string) =>
+    ['inbox-pla-dla-pre-dla', 'cetak', portal, token, claimKey] as const,
 }
 
 /**
@@ -168,6 +176,36 @@ export function usePLADLADokumen(tab: string, claimKey: string) {
 }
 
 /**
+ * Hook panel "Print Pre DLA" satu klaim.
+ *
+ * # Ia MEMBACA, meski tombolnya bernama "Print"
+ *
+ * Tidak ada berkas yang dihasilkan — baik di sini maupun di Pega. `PNCInboxPrintPreDLA`
+ * membuka jendela berisi daftar Pre-DLA beserta tanggal kirimnya, tidak lebih. Karena itu
+ * ia `useQuery`, bukan `useMutation`, dan alamatnya `GET`.
+ *
+ * # Kenapa TIDAK ditahan di cache
+ *
+ * Alasannya sama dengan grid rincian: isinya berubah karena perbuatan orang lain, dan
+ * panel yang menampilkan keadaan lama akan membuat petugas mengirim ulang sesuatu yang
+ * sudah terkirim.
+ */
+export function usePLADLACetak(claimKey: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  // Kunci klaim memuat SPASI, sama seperti pada grid rincian.
+  const path = `${PATH}/cetak/${encodeURIComponent(claimKey)}`
+
+  return useQuery({
+    queryKey: keys.cetak(portal, token, claimKey),
+    queryFn: () => callAPI<CetakResponse>(path, { token, portal }),
+    enabled: token !== null && portal !== null && claimKey !== '',
+    staleTime: 0,
+  })
+}
+
+/**
  * Hook tombol "Export To Excel".
  *
  * Berkasnya diambil lewat `downloadAPI`, bukan lewat tautan biasa: endpoint ini menuntut
@@ -187,6 +225,59 @@ export function useEksporPLADLA() {
         `inbox-${parameter.tab || 'pla'}.csv`,
         { token, portal },
       ),
+  })
+}
+
+/**
+ * Kode tindakan tombol yang belum dibangun.
+ *
+ * Nilainya harus sama persis dengan konstanta `Action` di
+ * `internal/inboxpladlapredla/errors.go` — server memakainya untuk memilih alasan mana
+ * yang dijawab, dan nilai yang tidak dikenal jatuh ke kalimat umum.
+ *
+ * "Print Pre DLA" TIDAK ada di sini, dan itu disengaja: tombol itu membuka panel yang
+ * sudah dibangun. Yang belum dibangun adalah dua tombol DI DALAM panelnya.
+ */
+export const Tindakan = {
+  kirim: 'kirim',
+  unggahPenunjang: 'unggah-penunjang',
+  kirimPreDLA: 'kirim-pre-dla',
+  unduhLampiran: 'unduh-lampiran',
+} as const
+
+export type TindakanValue = (typeof Tindakan)[keyof typeof Tindakan]
+
+/**
+ * Hook tombol yang belum dibangun — "Send", "Upload File Penunjang", "Kirim Pre DLA",
+ * dan unduh lampiran.
+ *
+ * # Kenapa tombolnya DITEKAN ke server, bukan dijawab layar sendiri
+ *
+ * Karena alasan mengapa sebuah tombol belum dapat dijalankan adalah keadaan SISTEM, bukan
+ * keadaan layar — dan ia berubah begitu kemampuannya dibangun. Menuliskan alasannya di
+ * layar berarti alasan yang sama hidup di dua tempat, dan yang di layar akan tertinggal
+ * pada hari tombolnya mulai bekerja.
+ *
+ * Ada alasan kedua yang sama pentingnya: penekanannya DICATAT di sisi peladen. Selama
+ * masa paralel, jejak itulah satu-satunya tanda seberapa sering tombol-tombol ini
+ * benar-benar dibutuhkan — dan itu yang menjadi dasar memutuskan mana yang dibangun
+ * lebih dulu.
+ */
+export function useTindakanPLADLA() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (input: { tindakan: TindakanValue; tab: string }) => {
+      const query = new URLSearchParams({ tindakan: input.tindakan })
+      if (input.tab) query.set('daftar', input.tab)
+
+      return callAPI<void>(`${PATH}/tindakan?${query.toString()}`, {
+        token,
+        portal,
+        metode: 'POST',
+      })
+    },
   })
 }
 

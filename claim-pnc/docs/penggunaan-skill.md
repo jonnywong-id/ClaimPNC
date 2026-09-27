@@ -8545,3 +8545,119 @@ diperbaiki menjadi `list.isSuccess`.
 Pelajaran yang sama dengan yang tercatat pada sesi sebelumnya: **penjagaan yang memeriksa
 ketiadaan galat bukan penjagaan** — pada render pertama, ketiadaan galat dan keberhasilan
 terlihat sama.
+
+## Sesi 2026-09-26 (lanjutan kedua) — tombol yang belum dibangun akhirnya digambar
+
+### Skill yang dipakai
+
+| Skill | Alasan |
+|---|---|
+| `mattpocock-skills:grilling` | Dipakai pada DIRI SENDIRI: sebelum tombolnya digambar, letak dan perilakunya diperiksa ulang ke section alih-alih ditebak dari ingatan sesi sebelumnya |
+
+### Yang diperiksa ulang, dan apa yang ditemukan
+
+Permintaannya sederhana — "tombol Send dan Print Pre DLA belum ada" — dan tergoda untuk
+langsung menambahkan dua tombol di tempat yang tampak masuk akal. Dua hal diperiksa lebih
+dulu, dan keduanya mengubah hasilnya:
+
+| Yang diperiksa | Cara | Temuan |
+|---|---|---|
+| Letak ketiga tombol | menghitung posisi label tombol terhadap posisi tiap grid di dalam berkas section | Upload di ATAS grid rincian, Send di BAWAHnya, Print Pre DLA di bawah grid antrean — bukan berkumpul di satu tempat |
+| Apakah Send bekerja atas baris terpilih | mencari `pySelected` di ketiga section | **nol kemunculan** — gridnya tidak punya pilihan baris sama sekali |
+
+Temuan kedua yang paling berdampak. Tanpa memeriksanya, tombol Send akan dibangun dengan
+kotak centang per baris yang tidak pernah ada di Pega — dan pengguna akan mengira ia dapat
+memilih dokumen mana yang dikirim.
+
+### Keputusan teknis yang lahir darinya
+
+- **Satu alasan per tombol.** Kalimat bersama yang memadai selama tidak ada tombol menjadi
+  salah begitu tombolnya dapat ditekan.
+- **`punya_cetak` dikirim server**, bukan disimpulkan layar dari kode tab — inventaris
+  tombol adalah hasil pembacaan export, sama halnya dengan daftar kolom.
+- **Letaknya ditiru, tidak dikumpulkan** (`D-13`).
+
+### Kesalahan sendiri pada sesi ini
+
+**Dua.**
+
+**Pertama, dan ia yang memicu sesi ini:** keputusan Work Owner berbunyi "tombolnya TETAP
+digambar, tetapi menjawab alasannya", dan yang dibangun hanya rute penolakannya. Rute itu
+tidak pernah dapat dicapai siapa pun, karena tidak ada tombol yang menembaknya. Bagi
+pengguna, hasilnya sama persis dengan pilihan yang justru DITOLAK — "sembunyikan
+tombolnya".
+
+Pelajarannya: **keputusan yang menyebut apa yang dilihat pengguna belum selesai sampai
+pengguna melihatnya.** Rute, log, dan catatan selisih seluruhnya ada, dan ketiganya tidak
+menggantikan satu tombol.
+
+**Kedua, tertangkap uji sendiri:** assertion pertama memakai pola
+`/Tombol "Send" belum tersedia/` dan menemukan **dua** elemen — spanduk penolakannya, dan
+daftar selisih terencana di kaki halaman yang memuat kalimat serupa. Pola yang lebih
+longgar akan lolos meski spanduknya tidak pernah tergambar.
+
+Pelajarannya sama dengan yang tercatat pada sesi-sesi sebelumnya: **uji yang cocok dengan
+dua hal tidak membuktikan salah satunya.**
+
+## Sesi 2026-09-27 — panel "Print Pre DLA" dan dua sebab tombol tidak muncul
+
+### Skill yang dipakai
+
+| Skill | Alasan dipakai | Keluarannya |
+|---|---|---|
+| `mattpocock-skills:codebase-design` | Menentukan apakah panel cetak menjadi seam baru, tipe baru, atau perluasan yang sudah ada | `PreDLADocument` menjadi tipe TERSENDIRI, bukan `Document` yang dipersempit — sumbernya tabel lain dan hanya enam kolomnya dibaca. Memakai ulang `Document` berarti mengirim lima medan yang selalu kosong, dan medan yang selalu kosong ditafsirkan layar sebagai data yang hilang |
+| `mattpocock-skills:domain-modeling` | Menamai operasi yang tombolnya bernama "Print" tetapi tidak mencetak apa pun | Metodenya dinamai `PrintList`, **bukan** `Print`. Nama `Print` akan membuat pemanggil berikutnya mengira mesin dokumen (`D-11`) sudah tersambung di jalur ini |
+| `mattpocock-skills:diagnosing-bugs` | Tombolnya tidak muncul meski §62 menyatakan sudah digambar | **Dua sebab yang berdiri sendiri** — build usang dan letak tombol yang salah. Keduanya harus diperbaiki; salah satu saja tetap menyisakan layar tanpa tombol |
+
+### Manfaat yang terukur
+
+**`diagnosing-bugs` adalah yang paling menentukan sesi ini.** Disiplinnya satu: jangan
+berhenti pada sebab pertama yang masuk akal.
+
+Sebab pertama yang saya temukan adalah letak tombol yang salah — masuk akal, dapat
+dijelaskan, dan dapat diperbaiki. Bila saya berhenti di sana, saya akan melaporkan
+perbaikan yang tidak mengubah apa pun bagi Work Owner: berkas yang dijalankan peramban
+tetap berkas 26 September, dan tombolnya tetap tidak muncul. Itu persis pola kegagalan
+§62, terulang.
+
+Yang menemukan sebab kedua adalah satu pertanyaan yang tidak menyangkut kode sama sekali:
+*apakah yang dijalankan memang hasil dari kode ini?* Jawabannya satu perintah:
+
+```
+grep -c "inbox-pla-dla" backend/spa/dist/assets/*.js   ->  0
+```
+
+**`codebase-design` mencegah penghematan yang menyesatkan.** Godaannya nyata: `Document`
+sudah ada, punya `no_advice`, `reasuradur`, `tipe`, `tanggal_kirim`, `terkirim` — lima dari
+enam kolom panel. Memakainya ulang tampak hemat. Uji penghapusan menunjukkan sebaliknya:
+kelima medan sisanya akan selalu kosong di panel ini, dan tidak ada cara membedakan
+"kosong karena tidak ada di sumbernya" dari "kosong karena datanya hilang".
+
+**`domain-modeling` menangkap nama yang berbohong.** Tombol bernama "Print" yang tidak
+mencetak apa pun adalah nama yang salah — tetapi ia nama PEGA, dan `D-13` menetapkan nama
+yang dilihat pengguna mengikuti Pega. Pemisahannya: nama di LAYAR tetap "Print Pre DLA";
+nama di KODE menjadi `PrintList`. Yang pertama kontrak dengan pengguna, yang kedua
+penjelasan bagi pembaca kode berikutnya.
+
+### Keputusan teknis yang lahir dari ketiganya
+
+| Keputusan | Skill yang mendorongnya |
+|---|---|
+| `PreDLADocument` tipe tersendiri, `printColumns` senarai alias tersendiri | `codebase-design` |
+| `PrintList`, bukan `Print`; `Printable`, bukan `Printed` | `domain-modeling` |
+| Kedua artefak build dibangun ulang dan bundelnya DIPERIKSA | `diagnosing-bugs` |
+| `judulTombolBaris` bertahan terhadap peladen lama | `diagnosing-bugs` — mode kegagalan yang sama akan terulang pada penerapan berikutnya |
+
+### Satu kesalahan saya sendiri, dan cara ia tertangkap
+
+§62 menyimpulkan letak tombol dari **urutan kemunculan** label terhadap grid di dalam
+berkas section. Kesimpulan itu benar untuk dua tombol dan salah untuk yang ketiga.
+
+Yang mengoreksinya bukan pembacaan yang lebih teliti, melainkan **alat ukur yang berbeda**:
+posisi bita tiap penanda, dibandingkan terhadap posisi pembuka dan penutup blok berulang.
+`BTN:Print Pre DLA` pada 188.341 berada di antara `BODY:REPEATING` (113.487) dan
+`BODY:ACTION` (204.908) — di dalam blok, bukan sesudahnya.
+
+Polanya sama dengan tiga kesalahan yang dicatat sesi 2026-09-26: **alat ukur dipercaya
+sebelum divalidasi.** "Urutan kemunculan" tidak pernah diuji terhadap kasus yang jelas
+benar sebelum dipakai menyimpulkan.

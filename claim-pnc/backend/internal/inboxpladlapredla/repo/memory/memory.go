@@ -105,6 +105,19 @@ type Advice struct {
 	// ReinsCode adalah `REINSCODE`. Hanya tab PLA menyaringnya — PLA yang belum menunjuk
 	// reasuradur belum dapat dikirim ke siapa pun.
 	ReinsCode string
+
+	// AttachmentKey adalah `PC_DATA_WORKATTACH.PZINSKEY` berkas lampiran yang cocok
+	// dengan Pre-DLA ini.
+	//
+	// KOSONG berarti belum ada lampiran yang cocok — dan itu menyingkirkan barisnya dari
+	// panel "Print Pre DLA" sama sekali. Di Oracle penyingkiran itu dilakukan gabungan
+	// ke dua tabel lampiran ditambah pencocokan `SUBSTR(PXATTACHNAME, -15, 11) = NODLA`;
+	// di sini AKIBATNYA yang dimodelkan, bukan mekanismenya.
+	//
+	// Memodelkan mekanismenya berarti membangun dua tabel lampiran tiruan di memori
+	// untuk menguji satu hal: baris mana yang lolos. Yang diuji tetap sama, dan
+	// ketiadaan lampiran tetap dapat diwakili.
+	AttachmentKey string
 }
 
 // Store adalah penyimpanan di memori, aman dipakai beberapa goroutine.
@@ -350,6 +363,60 @@ func (s *Store) Documents(
 		if items[i].AdviceDate != items[j].AdviceDate {
 			return items[i].AdviceDate < items[j].AdviceDate
 		}
+		return items[i].AdviceNo < items[j].AdviceNo
+	})
+
+	return items, nil
+}
+
+// PrintPreDLA mengembalikan isi panel "Print Pre DLA" satu klaim.
+//
+// Pre-DLA yang AttachmentKey-nya kosong TIDAK ikut — lihat catatan pada medan itu. Panel
+// ini karena itu dapat menampilkan LEBIH SEDIKIT baris daripada tab Pre DLA untuk klaim
+// yang sama, dan itu perilaku Pega yang dibawa apa adanya (`P-5`).
+func (s *Store) PrintPreDLA(
+	_ context.Context,
+	claimKey string,
+) ([]inboxpladlapredla.PreDLADocument, error) {
+	key := strings.TrimSpace(claimKey)
+	if key == "" {
+		return nil, inboxpladlapredla.ErrRowNotFound
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.claimExistsLocked(key) {
+		return nil, inboxpladlapredla.ErrRowNotFound
+	}
+
+	items := []inboxpladlapredla.PreDLADocument{}
+	for _, advice := range s.advices {
+		if advice.ClaimKey != key ||
+			advice.Kind != inboxpladlapredla.KindPreDLA ||
+			advice.AttachmentKey == "" {
+			continue
+		}
+
+		sent := advice.Sent
+		if sent == "" {
+			// `NVL(ISKIRIM, '0')` pada kuerinya. Panel ini menggambar kolomnya, dan
+			// kolom kosong tidak terbaca sebagai "belum terkirim" — ia terbaca sebagai
+			// data yang hilang.
+			sent = "0"
+		}
+
+		items = append(items, inboxpladlapredla.PreDLADocument{
+			AdviceNo:      advice.No,
+			Reinsurer:     advice.Reinsurer,
+			AdviceType:    advice.Type,
+			SentDate:      dateText(advice.SentDate),
+			Sent:          sent,
+			AttachmentKey: advice.AttachmentKey,
+		})
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
 		return items[i].AdviceNo < items[j].AdviceNo
 	})
 

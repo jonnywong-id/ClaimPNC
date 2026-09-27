@@ -196,6 +196,24 @@ func sampleAdvices() []Advice {
 			No: "PRE/2026/0001", Reinsurer: "Reasuransi Contoh A", Type: "OR",
 			Date: day(2026, time.January, 25), Sent: "",
 			AcceptanceNo: "", ReinsCode: "R001",
+			// Lampirannya sudah ada -> baris ini MUNCUL di panel "Print Pre DLA".
+			AttachmentKey: "ATT-PNC-1001-0001",
+		},
+		{
+			// Pre-DLA kedua pada klaim yang SAMA, tetapi TANPA lampiran.
+			//
+			// Ia muncul di tab Pre DLA — penyaring tabnya `NOAKSEP IS NULL`, dan kolom
+			// itu kosong di sini — tetapi TIDAK muncul di panel "Print Pre DLA", karena
+			// gabungan ke tabel lampiran menyingkirkannya.
+			//
+			// Pasangan ini sengaja ada pada satu klaim: tanpanya, selisih jumlah baris
+			// antara tab dan panelnya tidak pernah terwakili di data contoh, dan
+			// penyaring lampiran dapat dihapus tanpa satu pun uji gagal.
+			ClaimKey: workKey("PNC-1001"), Kind: pre,
+			No: "PRE/2026/0003", Reinsurer: "Reasuransi Contoh B", Type: "ORS",
+			Date: day(2026, time.January, 27), Sent: "",
+			AcceptanceNo: "", ReinsCode: "R002",
+			AttachmentKey: "",
 		},
 
 		// PNC-1002 — dua penolakan sekaligus.
@@ -290,6 +308,10 @@ func sampleAdvices() []Advice {
 			No: "PRE/2026/0002", Reinsurer: "Reasuransi Contoh A", Type: "OR",
 			Date: day(2026, time.February, 18), Sent: "",
 			AcceptanceNo: "AKS-2026-0002", ReinsCode: "R001",
+			// Sudah ber-Nomor Akseptasi -> keluar dari tab Pre DLA. Lampirannya tetap
+			// diisi supaya terlihat bahwa yang menyingkirkannya adalah akseptasinya,
+			// bukan ketiadaan lampiran.
+			AttachmentKey: "ATT-PNC-1009-0001",
 		},
 	}
 }

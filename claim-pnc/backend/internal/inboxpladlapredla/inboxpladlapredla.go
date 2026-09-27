@@ -277,6 +277,62 @@ type Document struct {
 	AcceptanceNo string
 }
 
+// PreDLADocument adalah satu baris panel **"Print Pre DLA"**.
+//
+// # Apa itu panel ini, dan kenapa namanya menyesatkan
+//
+// "Print Pre DLA" TIDAK mencetak apa pun. `Flow Action/PNCInboxPrintPreDLA-FA.xml`
+// membuka modal layar penuh berisi `Section/PrintPreDLA-Section.xml`, dan isinya adalah
+// daftar Pre-DLA milik satu klaim beserta tanggal kirimnya — ditambah tombol
+// **"Kirim Pre DLA"** dan tautan unduh per baris.
+//
+// Namanya dibawa apa adanya (`D-13`); yang diperbaiki adalah keterangan di layar, supaya
+// pengguna tahu yang terbuka bukan dialog cetak.
+//
+// # BARIS DI SINI LEBIH SEDIKIT DARIPADA PRE-DLA YANG BENAR-BENAR ADA
+//
+// Kueri lamanya menggabungkan `T_PREDLALIST` dengan DUA tabel lampiran Pega dan menyaring
+// nama berkasnya:
+//
+//	b.pyCategory = 'DLA'
+//	substr(pxattachname, -15, 11) = nodla
+//
+// Artinya Pre-DLA yang BELUM punya berkas lampiran — atau yang nama berkasnya tidak
+// berpola begitu — tidak muncul di panel ini sama sekali. Itu bukan kelalaian pembacaan:
+// panel ini memang daftar Pre-DLA yang dokumennya sudah siap dikirim, bukan daftar
+// seluruh Pre-DLA. Perilakunya dibawa apa adanya (`P-5`), dan dinyatakan di layar supaya
+// selisih jumlah baris terhadap tab Pre DLA tidak terbaca sebagai kerusakan.
+type PreDLADocument struct {
+	// AdviceNo — kolom **"NO DLA"** <- `T_PREDLALIST.NODLA`.
+	AdviceNo string
+
+	// Reinsurer — kolom **"DLA REINSURER"** <- `T_PREDLALIST.DLAREINSURER`.
+	Reinsurer string
+
+	// AdviceType — kolom **"TIPE DLA"** <- `T_PREDLALIST.TIPEDLA`.
+	AdviceType string
+
+	// SentDate — kolom **"Tgl Kirim"** <- `T_PREDLALIST.TGLKIRIM`.
+	//
+	// Di Pega ia kotak tanggal yang DAPAT DIUBAH: pengguna mengisinya lalu menekan
+	// "Kirim Pre DLA". Di sini ia dibaca saja — tombol itu belum dibangun.
+	SentDate string
+
+	// Sent adalah `NVL(ISKIRIM, '0')`.
+	//
+	// Kueri lamanya membungkusnya `NVL`, sehingga `NULL` dan `'0'` menjadi nilai yang
+	// SAMA di panel ini — berbeda dari grid antrean, tempat keduanya dibedakan. Bentuk
+	// itu dibawa apa adanya.
+	Sent string
+
+	// AttachmentKey adalah `PC_DATA_WORKATTACH.PZINSKEY`, beralias `"Currency"` di kueri
+	// lama.
+	//
+	// Ia kunci berkas lampirannya, dipakai tautan unduh. Aliasnya menyesatkan seperti
+	// alias lain di layar ini: ia bukan mata uang.
+	AttachmentKey string
+}
+
 // Caller adalah identitas pemanggil.
 //
 // # Ia TIDAK menyaring di layar ini
@@ -418,8 +474,19 @@ var PlannedDifferences = []string{
 	"Tombol \"Upload File Penunjang\" belum tersedia. Ia menyimpan lampiran ke " +
 		"penyimpanan dokumen internal (`D-16`), yang belum tersambung.",
 
-	"Tombol \"Print Pre DLA\" belum tersedia. Ia membangkitkan berkas PDF, dan mesin " +
-		"dokumen (`D-11`) belum dibangun.",
+	"Tombol \"Print Pre DLA\" MEMBUKA panel, tidak mencetak apa pun — sama seperti di " +
+		"Pega. Namanya menyebut \"Print\", tetapi `PNCInboxPrintPreDLA` hanya " +
+		"menampilkan daftar Pre-DLA beserta tanggal kirimnya.",
+
+	"Panel \"Print Pre DLA\" menampilkan LEBIH SEDIKIT baris daripada tab Pre DLA " +
+		"untuk klaim yang sama. Kuerinya digabung ke tabel lampiran, sehingga Pre-DLA " +
+		"yang dokumennya belum terlampir tidak muncul di sana. Itu perilaku Pega, bukan " +
+		"data yang hilang.",
+
+	"Tombol \"Kirim Pre DLA\" dan unduh lampiran di dalam panel itu belum tersedia. " +
+		"Yang pertama menulis ke tabel Pre-DLA yang masih dimiliki Pega selama masa " +
+		"paralel; yang kedua membaca penyimpanan dokumen internal (`D-16`) yang belum " +
+		"tersambung.",
 
 	"Ekspor tab Pre DLA MENGIKUTI penyaring yang sedang aktif. Di Pega " +
 		"`GetExportDataPreDLA` tidak menyaring apa pun — ia menarik seluruh isi " +
@@ -465,6 +532,16 @@ type Repo interface {
 	// dokumen menghasilkan daftar kosong tanpa galat — keduanya terlihat sama di layar,
 	// dan hanya yang pertama yang merupakan kekeliruan.
 	Documents(ctx context.Context, tab Tab, claimKey string) ([]Document, error)
+
+	// PrintPreDLA mengembalikan isi panel "Print Pre DLA" satu klaim.
+	//
+	// Kuncinya `T_CLAIM_PNC.CLAIMID` — parameter yang sama dengan `tempnoklaim.NO_DLA`
+	// di sistem lama, yang meski bernama `NO_DLA` sebenarnya berisi kunci KLAIM.
+	//
+	// Daftar kosong BUKAN galat, dan di sini ia lebih sering terjadi daripada di grid
+	// rincian: panel ini hanya memuat Pre-DLA yang sudah punya berkas lampiran. Klaim
+	// yang tidak ada tetap menghasilkan ErrRowNotFound.
+	PrintPreDLA(ctx context.Context, claimKey string) ([]PreDLADocument, error)
 }
 
 // RepoSelector memilih penyimpanan milik satu portal entitas.

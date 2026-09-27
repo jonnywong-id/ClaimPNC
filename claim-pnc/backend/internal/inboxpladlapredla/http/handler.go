@@ -165,6 +165,31 @@ func (h *Handler) Documents(w http.ResponseWriter, r *http.Request) {
 		toDocumentsResponse(documented, active.Alias))
 }
 
+// Print menjawab isi panel "Print Pre DLA" satu klaim.
+//
+// Namanya mengikuti tombolnya, tetapi ia MEMBACA saja — tidak satu pun berkas dihasilkan,
+// dan tidak satu pun baris ditulis. Lihat usecase.PrintList.
+func (h *Handler) Print(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
+	if claimKey == "" {
+		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		return
+	}
+
+	printable, err := h.service.PrintList(r.Context(), active.Alias, caller, claimKey)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, toPrintResponse(printable, active.Alias))
+}
+
 // RejectWrite menjawab aksi tulis yang belum tersedia.
 //
 // Ia sengaja BUKAN 404. Layar lama punya tiga tindakan yang belum dibangun — "Send",
@@ -177,20 +202,25 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rejected := inboxpladlapredla.NewNotAvailable(r.URL.Query().Get("tindakan"))
+
 	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda
 	// seberapa sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi
-	// dasar memutuskan kapan ia dibangun.
+	// dasar memutuskan kapan ia dibangun. Tindakannya ikut dicatat, sehingga ketiga
+	// tombol dapat dibedakan: yang paling sering ditekan yang paling layak dibangun
+	// lebih dulu.
 	if h.logger != nil {
 		h.logger.Info(
-			"aksi tulis diminta pada tindakan yang belum dibangun",
+			"tombol yang belum dibangun ditekan",
 			slog.String("modul", "inbox-pla-dla-pre-dla"),
 			slog.String("jalur", r.URL.Path),
-			slog.String("tindakan",
-				strings.TrimSpace(r.URL.Query().Get("tindakan"))),
+			slog.String("tindakan", string(rejected.Action)),
+			slog.String("daftar",
+				strings.TrimSpace(r.URL.Query().Get("daftar"))),
 		)
 	}
 
-	h.writeError(w, r, inboxpladlapredla.ErrWriteNotAvailable)
+	h.writeError(w, r, rejected)
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.

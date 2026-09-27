@@ -272,3 +272,67 @@ func dateText(value sql.NullTime) string {
 	}
 	return value.Time.Format(inboxpladlapredla.DateLayout)
 }
+
+// PrintPreDLA mengembalikan isi panel "Print Pre DLA" satu klaim.
+//
+// Sama dengan Documents, keberadaan klaimnya diperiksa LEBIH DULU. Di sini pemeriksaan itu
+// justru lebih perlu, bukan kurang: panel ini punya DUA sebab berbeda untuk kosong yang
+// keduanya sah — klaimnya belum punya Pre-DLA sama sekali, atau Pre-DLAnya ada tetapi
+// belum satu pun lampirannya cocok. Tanpa pemeriksaan pendahuluan, kunci klaim yang keliru
+// menjadi sebab KETIGA yang tidak terbedakan dari keduanya.
+func (r *Repo) PrintPreDLA(
+	ctx context.Context,
+	claimKey string,
+) ([]inboxpladlapredla.PreDLADocument, error) {
+	key := strings.TrimSpace(claimKey)
+	if key == "" {
+		return nil, inboxpladlapredla.ErrRowNotFound
+	}
+
+	var exists int
+	err := r.db.QueryRowContext(ctx, query("claim_exists"), key).Scan(&exists)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, inboxpladlapredla.ErrRowNotFound
+	case err != nil:
+		return nil, fmt.Errorf("inboxpladlapredla/sqlstore: claim_exists: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query("print_pre_dla"), key)
+	if err != nil {
+		return nil, fmt.Errorf("inboxpladlapredla/sqlstore: print_pre_dla: %w", err)
+	}
+	defer rows.Close()
+
+	items := []inboxpladlapredla.PreDLADocument{}
+	for rows.Next() {
+		var (
+			adviceNo, reinsurer, adviceType sql.NullString
+			sent, attachmentKey             sql.NullString
+			sentDate                        sql.NullTime
+		)
+
+		if err := rows.Scan(
+			&adviceNo, &reinsurer, &adviceType, &sentDate, &sent, &attachmentKey,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"inboxpladlapredla/sqlstore: print_pre_dla: memindai baris: %w", err)
+		}
+
+		items = append(items, inboxpladlapredla.PreDLADocument{
+			AdviceNo:      strings.TrimSpace(adviceNo.String),
+			Reinsurer:     strings.TrimSpace(reinsurer.String),
+			AdviceType:    strings.TrimSpace(adviceType.String),
+			SentDate:      dateText(sentDate),
+			Sent:          strings.TrimSpace(sent.String),
+			AttachmentKey: strings.TrimSpace(attachmentKey.String),
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"inboxpladlapredla/sqlstore: print_pre_dla: membaca hasil: %w", err)
+	}
+
+	return items, nil
+}

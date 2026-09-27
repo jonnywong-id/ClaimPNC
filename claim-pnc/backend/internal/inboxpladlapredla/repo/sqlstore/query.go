@@ -65,6 +65,16 @@ var documentColumns = []string{
 	"SENT", "SENT_DATE", "RECEIVED_DATE", "NOTES", "EMAIL", "ACCEPTANCE_NO",
 }
 
+// printColumns adalah keenam alias yang dikembalikan kueri panel "Print Pre DLA".
+//
+// Senarainya BUKAN bagian dari documentColumns meski keduanya menyangkut dokumen. Panel
+// ini membaca tabel lain (`T_PREDLALIST`), digabung ke kedua tabel lampiran, dan hanya
+// mengambil kolom yang benar-benar digambar — menyeragamkannya dengan documentColumns
+// berarti membawa lima kolom `NULL` yang tidak berguna.
+var printColumns = []string{
+	"ADVICE_NO", "REINSURER", "ADVICE_TYPE", "SENT_DATE", "SENT", "ATTACHMENT_KEY",
+}
+
 // listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
 var listQueries = []string{"list_pla", "list_dla", "list_pre_dla"}
 

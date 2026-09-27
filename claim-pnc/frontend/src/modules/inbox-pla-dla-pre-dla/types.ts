@@ -33,6 +33,30 @@ export type Daftar = {
    */
   punya_rincian: boolean
 
+  /** Kolom panel "Print Pre DLA". Kosong bila daftar ini tidak punya panelnya. */
+  kolom_cetak: Kolom[]
+
+  /**
+   * Menyatakan setiap BARIS daftar ini punya tombol "Print Pre DLA".
+   *
+   * Tab Pre DLA saja. Ia dikirim server, bukan disimpulkan layar dari kode daftarnya:
+   * inventaris tombol adalah hasil pembacaan export, sama halnya dengan daftar kolom.
+   */
+  punya_cetak: boolean
+
+  /**
+   * Judul tombol pada kolom aksi tiap baris.
+   *
+   * "Rincian" pada PLA dan DLA, "Print Pre DLA" pada Pre DLA — karena yang dibuka pun
+   * berbeda: dua yang pertama membuka grid rincian di bawah antrean, yang ketiga membuka
+   * panel tersendiri.
+   *
+   * OPSIONAL, dan itu bukan kelonggaran kontrak melainkan pengakuan atas kenyataan:
+   * peladen yang berjalan bisa lebih tua daripada berkas layar, dan medan ini baru ada
+   * sejak panel "Print Pre DLA" dibangun. Lihat `judulTombolBaris`.
+   */
+  label_aksi_baris?: string
+
   label_pencarian: string
 
   /**
@@ -89,6 +113,24 @@ export type Dokumen = {
   no_akseptasi: string
 }
 
+/** Satu baris panel "Print Pre DLA". */
+export type DokumenPreDLA = {
+  no_advice: string
+  reasuradur: string
+  tipe: string
+  /** Tanggal KIRIM, bukan tanggal Pre-DLA. Aliasnya di Pega (`TglDLA`) menyesatkan. */
+  tanggal_kirim: string
+  /** `NVL(ISKIRIM, '0')`: selalu `"0"` atau `"1"`, tidak pernah kosong. */
+  terkirim: string
+  /**
+   * Kunci berkas lampirannya.
+   *
+   * Tidak digambar sebagai kolom. Tombol unduh di dalam panel Pega memakainya, dan
+   * tombol itu belum dibangun di sini.
+   */
+  kunci_lampiran: string
+}
+
 export type Paginasi = {
   halaman: number
   ukuran: number
@@ -122,6 +164,13 @@ export type DokumenResponse = {
   daftar: Daftar
   kunci_klaim: string
   baris: Dokumen[]
+  portal: string
+}
+
+export type CetakResponse = {
+  daftar: Daftar
+  kunci_klaim: string
+  baris: DokumenPreDLA[]
   portal: string
 }
 

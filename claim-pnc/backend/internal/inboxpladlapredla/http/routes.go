@@ -66,13 +66,21 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// terkodekan oleh layar. Lihat Handler.Documents.
 		perPortal.Get("/inbox-pla-dla-pre-dla/klaim/{kunci}", h.Documents)
 
+		// Panel "Print Pre DLA" satu klaim (`Flow Action/PNCInboxPrintPreDLA-FA.xml`).
+		//
+		// Ia GET, dan itu bukan kelalaian meski tombolnya bernama "Print": panelnya hanya
+		// MEMBACA. Yang menulis adalah tombol "Kirim Pre DLA" DI DALAM panelnya, dan
+		// tombol itu menjawab alasan lewat rute tindakan di bawah.
+		perPortal.Get("/inbox-pla-dla-pre-dla/cetak/{kunci}", h.Print)
+
 		// Ketiga aksi tulis yang belum dibangun. Rutenya ADA supaya tombol di layar
 		// menjawab dengan alasan, bukan dengan "halaman tidak ditemukan" — lihat
 		// Handler.RejectWrite.
 		//
-		// Ketiganya menembak sesuatu di luar basis data ini: "Send" mengirim email
-		// beserta lampirannya, "Upload File Penunjang" menulis ke penyimpanan dokumen
-		// (`D-16`), dan "Print Pre DLA" membangkitkan PDF (`D-11`).
+		// Yang ditembak masing-masing berbeda: "Send" mengirim email beserta lampirannya,
+		// "Upload File Penunjang" menulis ke penyimpanan dokumen (`D-16`), "Kirim Pre DLA"
+		// menulis ke `T_PREDLALIST` yang masih dimiliki Pega (`P-1`), dan unduh lampiran
+		// membaca penyimpanan dokumen yang sama dengan unggah.
 		perPortal.Post("/inbox-pla-dla-pre-dla/tindakan", h.RejectWrite)
 	})
 }

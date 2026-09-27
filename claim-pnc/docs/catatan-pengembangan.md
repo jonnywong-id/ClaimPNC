@@ -19905,3 +19905,313 @@ PENYIMPANAN=oracle ./claimpnc.exe -periksa
 
 Sampai itu dijalankan, yang terbukti hanyalah bahwa teks SQL-nya konsisten dengan kode Go
 — bukan bahwa ia diterima Oracle.
+
+## 62. Ketiga tombol yang belum dibangun akhirnya DIGAMBAR — koreksi atas §61 (2026-09-26)
+
+### 62.1 Apa yang kurang
+
+Keputusan Work Owner pada §61.2 pertanyaan nomor 1 berbunyi: **"Tombol Send, Upload File
+Penunjang, dan Print Pre DLA TETAP digambar, tetapi menjawab alasan spesifik mengapa belum
+dapat dijalankan — persis preseden `Send To BalaiLelang` pada Inbox Salvage."**
+
+Yang dibangun pada §61 hanya SETENGAHNYA:
+
+| Bagian | Keadaan setelah §61 |
+|---|---|
+| Rute `POST /tindakan` yang menjawab `501` | **ada** |
+| Penolakan dicatat di log | **ada** |
+| Ketiadaannya dinyatakan di kaki layar | **ada** |
+| **Tombolnya sendiri di layar** | **TIDAK ADA** |
+
+Akibatnya rute penolakan itu tidak pernah dapat dicapai siapa pun: tidak ada satu pun
+tombol yang menembaknya. Bagi pengguna, keputusan "tombolnya tetap digambar" tidak terjadi
+— yang ia lihat sama saja dengan pilihan "sembunyikan tombolnya", yang justru DITOLAK.
+
+Dilaporkan Work Owner: *"button send di detail PLA list belum ada dan di Pre DLA button
+Print Pre DLA tidak ada"*.
+
+### 62.2 Letak ketiganya dibaca ulang dari section, bukan ditebak
+
+Sebelum tombolnya digambar, letaknya dipastikan dengan menghitung posisi label tombol
+terhadap posisi tiap grid di dalam berkas section:
+
+| Section | Urutan dari atas |
+|---|---|
+| `InboxPLA_sect` · `InboxDLA_sect` | Export To Excel → CARI DATA → **grid antrean** → `Upload File Penunjang` → **grid rincian** → `SEND` |
+| `PNCInboxPreDLA_sect` | Export To Excel → CARI DATA → **grid antrean** → `Print Pre DLA` |
+
+Jadi: **Upload di ATAS grid rincian, Send di BAWAHnya, dan Print Pre DLA di bawah grid
+antrean** — bukan ketiganya berkumpul di satu tempat. Letak itu ditiru.
+
+Satu hal lagi diperiksa dan mengubah rancangan tombol Send: grid rinciannya **tidak punya
+pilihan baris sama sekali** (`pySelected` nol kemunculan di ketiga section). Send karena
+itu bekerja atas SELURUH dokumen klaim yang sedang dibuka — dan `UpdateDetailPLA2` memang
+memutari daftarnya. Tanpa pemeriksaan itu, tombolnya akan dibangun dengan kotak centang
+per baris yang tidak pernah ada di Pega.
+
+### 62.3 Satu alasan per tombol, bukan satu kalimat untuk ketiganya
+
+Penolakan `501` sebelumnya menjawab satu kalimat yang menyebut ketiga tombol sekaligus.
+Itu cukup selama tidak ada tombol; begitu tombolnya ada, ia menjadi salah: pengguna yang
+menekan **"Print Pre DLA"** akan membaca penjelasan tentang email reasuradur, lalu
+menyimpulkan bahwa tombol yang ia tekan bukan tombol yang ia kira.
+
+`NotAvailableError` karena itu membawa **tindakannya**, dan setiap tindakan punya
+alasannya sendiri:
+
+| Tindakan | Yang disebut alasannya |
+|---|---|
+| `kirim` | empat langkah Pega, dan mengapa langkah keempat sendirian berbahaya |
+| `unggah-penunjang` | penyimpanan dokumen (`D-16`) belum tersambung |
+| `cetak-pre-dla` | mesin dokumen (`D-11`) belum dibangun |
+
+Ketiganya diakhiri **"Kerjakan lewat Pega"** — apa yang dapat dilakukan pengguna hari ini,
+bukan sekadar apa yang belum ada. `TestEachUnbuiltButtonAnswersItsOwnReason` menjaga
+ketiganya tetap berbeda dan tetap menyebutkan jalan keluarnya.
+
+### 62.4 Apakah sebuah tab punya tombol cetak datang dari SERVER
+
+`Tab.HasPrintAction` ditambahkan, dan dikirim sebagai `punya_cetak`.
+
+Alternatifnya — layar mencocokkan `kode === 'pre-dla'` — ditolak dengan alasan yang sama
+dengan `punya_rincian` pada §61: inventaris tombol adalah **hasil pembacaan export**, sama
+halnya dengan daftar kolom. Menyalinnya ke layar berarti keputusan yang sama hidup di dua
+tempat, dan yang di layar akan tertinggal.
+
+### 62.5 Tombolnya TIDAK dinonaktifkan
+
+Ketiganya dapat ditekan. Tombol yang mati tidak menjelaskan apa pun — dan alasan yang
+tidak sampai ke pengguna sama saja dengan tidak ada alasan.
+
+Spanduk alasannya digambar bernada **penolakan**, bukan gangguan: nada gangguan berarti
+"coba lagi nanti", sementara yang sebenarnya terjadi adalah kemampuannya memang belum
+dibangun.
+
+Spanduk itu **dibuang saat pengguna berpindah tab**. Tanpa itu, penjelasan tentang "Send"
+tetap tergambar setelah pengguna pindah ke tab Pre DLA — yang bahkan tidak punya tombol
+itu.
+
+### 62.6 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/errors.go` | `Action`, `NotAvailableError`, tiga alasan |
+| `internal/inboxpladlapredla/tab.go` | `Tab.HasPrintAction` |
+| `internal/inboxpladlapredla/http/errors.go` | memetakan alasan per tindakan |
+| `internal/inboxpladlapredla/http/handler.go` | `RejectWrite` membaca tindakannya; log menyebut tindakan dan daftar |
+| `internal/inboxpladlapredla/http/dto.go` | `punya_cetak` |
+| `modules/inbox-pla-dla-pre-dla/api.ts` | `Tindakan`, `useTindakanPLADLA` |
+| `modules/inbox-pla-dla-pre-dla/types.ts` | `punya_cetak` |
+| `modules/inbox-pla-dla-pre-dla/DocumentPanel.tsx` | tombol Upload (atas) dan Send (bawah) |
+| `modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage.tsx` | tombol Print Pre DLA, spanduk alasan, pembuangan saat pindah tab |
+
+### 62.7 Satu kesalahan uji yang ditangkap uji itu sendiri
+
+Assertion pertama memakai pola `/Tombol "Send" belum tersedia/`, dan ia **menemukan dua
+elemen**: spanduk penolakannya, DAN daftar selisih terencana di kaki halaman yang memuat
+kalimat serupa.
+
+Pola yang lebih longgar akan lolos meski spanduknya tidak pernah tergambar — uji yang
+membuktikan hal yang salah. Ia disempitkan menjadi `… belum tersedia di sistem baru`, yang
+hanya ada pada jawaban server.
+
+### 62.8 Yang MASIH belum digambar, dan kenapa dibiarkan
+
+Ketiga tombol pada `MENU_ID 45` — **"Detail Claim"**, **"Detail"**, dan **"DLA"** — juga
+belum digambar. Ia **bukan** kasus yang sama:
+
+- Ketiga tombol `MENU_ID 44` adalah **aksi** yang dijalankan di tempat. Tombolnya bermakna
+  meski aksinya belum ada, karena yang dibutuhkan pengguna adalah tahu mengapa.
+- Ketiga tombol `MENU_ID 45` **membuka layar lain** yang belum dianalisis sama sekali.
+  Menggambarnya berarti menggambar navigasi menuju ketiadaan.
+
+Bila Work Owner menghendaki ketiganya ikut digambar dengan pola yang sama, itu keputusan
+tersendiri — dan layar tujuannya perlu dianalisis lebih dulu supaya alasannya dapat
+menyebut apa yang sebenarnya kurang.
+
+### 62.9 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` modul PLA/DLA + `app` | **37 lulus** |
+
+Uji baru: **2 uji Go** (alasan per tindakan, tindakan tak dikenal) dan **5 uji frontend**
+(kedua tombol panel rincian ada · alasan per tombol berbeda · Print Pre DLA hanya di tab
+Pre DLA · alasan Print Pre DLA · spanduk dibuang saat pindah tab).
+
+## 63. Panel "Print Pre DLA" dibangun, dan DUA sebab tombolnya tidak muncul (2026-09-27)
+
+### 63.1 Apa yang dilaporkan
+
+*"button print pre dla blm muncul di inbox Pre DLA untuk folow actionya sudah saya kirim
+`PNCInboxPrintPreDLA` tolong jadikan referensi"*
+
+§62 menyatakan tombol itu sudah digambar. Ia memang sudah digambar — dan tetap tidak
+terlihat. Penelusurannya menemukan **dua sebab yang berdiri sendiri**, dan keduanya harus
+diperbaiki: memperbaiki salah satunya saja tetap menyisakan layar tanpa tombol.
+
+| # | Sebab | Bukti |
+|---|---|---|
+| 1 | **Berkas yang berjalan lebih tua daripada pekerjaannya** | `backend/claimpnc.exe` bertanggal 26 Sep 10:21 dan `backend/spa/dist/assets/index-BNQqJl-z.js` bertanggal 26 Sep 10:20 — keduanya SEBELUM modul ini ditulis. Bundel itu memuat jejak `inbox-salvage`, tetapi **nol** jejak `inbox-pla-dla` |
+| 2 | **Letak tombolnya salah** | §62 menaruhnya sebagai SATU tombol di bawah grid. Pembacaan ulang posisi bita membuktikan ia tombol **PER BARIS** |
+
+Sebab pertama yang paling menentukan: apa pun yang ditulis di kode, yang dijalankan
+peramban adalah berkas 26 September. Tombolnya tidak mungkin muncul.
+
+### 63.2 Letaknya dibuktikan dengan posisi bita, bukan dibaca sekilas
+
+§62 menyimpulkan letak tombol dari urutan kemunculan label terhadap grid. Kesimpulan itu
+benar untuk "Send" dan "Upload File Penunjang", dan **salah** untuk "Print Pre DLA".
+
+Pembuktian ulangnya memakai posisi bita di dalam `Section/PNCInboxPreDLA_sect-Section.xml`:
+
+| Penanda | Offset |
+|---|---|
+| `BODY:REPEATING` — blok berulang dibuka | 113.487 |
+| `COL:BRANCH_NAME` | ~188.200 |
+| **`BTN:Print Pre DLA`** | **188.341** |
+| `LOCALACTION:PNCInboxPrintPreDLA` | ~188.400 |
+| `BODY:ACTION` — blok berulang ditutup | 204.908 |
+
+Label tombolnya berada **DI DALAM** blok berulang, berdampingan dengan sebuah kolom dan
+dengan flow action-nya sendiri. Ia karena itu tombol per baris, bukan satu tombol untuk
+seluruh daftar.
+
+**Akibat dari salah letak itu bukan soal tata letak.** Satu tombol di bawah grid tampak
+bekerja atas SELURUH daftar, padahal ia membuka satu klaim. Pengguna yang menekannya akan
+mengira ia mencetak seluruh antrean.
+
+### 63.3 Panelnya dibangun, dan ternyata ia tidak mencetak apa pun
+
+Empat berkas yang dikirim Work Owner dibaca seluruhnya:
+
+| Berkas | Isinya |
+|---|---|
+| `Flow Action/PNCInboxPrintPreDLA-FA.xml` | modal layar penuh, merender section `PrintPreDLA` |
+| `Section/PrintPreDLA-Section.xml` | grid `tempPreDLA.pxResults`, 5 kolom, tombol `Kirim Pre DLA`, rujukan `PNCDownloadFile` |
+| `Activity/SetTglKirimPreDLA_Act-Act.xml` | mengisi `NO_DLA` dan `Date`, lalu `RDB-Save` |
+| `RDB List/GetPreDLAList-SQL.xml` | kueri baca panelnya, ditambah pernyataan simpan |
+
+**Temuan yang mengubah cara tombolnya dijelaskan ke pengguna: "Print Pre DLA" TIDAK
+MENCETAK apa pun** — di Pega sekalipun. Ia membuka jendela berisi daftar Pre-DLA beserta
+tanggal kirimnya. Tidak ada PDF, tidak ada berkas.
+
+Itu juga berarti alasan penolakan yang ditulis §62 — *"ia membangkitkan berkas PDF, dan
+mesin dokumen (`D-11`) belum dibangun"* — **salah sejak awal**. Ia menjelaskan sesuatu yang
+tidak pernah dilakukan tombol itu.
+
+### 63.4 Kuerinya MENYARING, dan penyaringnya mudah terbaca sebagai hiasan
+
+```sql
+FROM pooldata.t_predlalist c, datapega.pc_data_workattach a,
+     datapega.pc_link_attachment b
+WHERE … AND b.pyCategory = 'DLA'
+      AND substr(pxattachname, -15, 11) = nodla
+```
+
+Panelnya hanya menggambar kolom dari `T_PREDLALIST`; kedua tabel lampiran tampak tidak
+berguna. Padahal gabungan itulah yang **menentukan baris mana yang muncul**: Pre-DLA yang
+dokumennya belum terlampir **tidak masuk panel sama sekali**.
+
+Menghapusnya — yang wajar dilakukan orang yang merapikan kueri — membuat panel menampilkan
+lebih banyak baris daripada Pega, tanpa satu pun galat, dan baris tambahannya justru
+Pre-DLA yang dokumennya belum ada.
+
+Tiga uji menjaganya: `TestPrintPanelKeepsTheAttachmentFilter`,
+`TestAttachmentNameColumnStaysUnqualified`, `TestPrintPanelNeverWrites`.
+
+Selisih jumlah barisnya dinyatakan **di dalam panelnya sendiri**, bukan hanya di kaki
+halaman — petugas yang melihat antrean menyebut tiga Pre-DLA lalu membuka panel berisi
+satu baris akan menyimpulkan datanya hilang, dan kaki halaman terlalu jauh dari tempat
+kesimpulan itu terbentuk.
+
+### 63.5 `PXATTACHNAME` sengaja dibiarkan tanpa nama tabel
+
+Kolom itu dipakai tanpa kualifikasi di kueri Pega, dan **dibiarkan begitu**. Ia ada di
+salah satu dari dua tabel lampiran, dan export tidak memuat DDL keduanya (`R-08`).
+
+Menebak tabelnya berisiko memilih yang salah — dan yang salah **tidak menghasilkan galat**,
+hanya panel kosong. `TestAttachmentNameColumnStaysUnqualified` menjaga tebakan itu tidak
+masuk diam-diam saat seseorang merapikan kuerinya, dan `checkPLADLAQueue` menjalankan
+kuerinya sungguhan terhadap Oracle supaya "column ambiguously defined" terlihat lebih awal.
+
+### 63.6 Dua cacat pada kueri Pega — dilaporkan, tidak diperbaiki
+
+| # | Temuan | Akibatnya |
+|---|---|---|
+| 1 | Pernyataan simpannya `where nodla = {…}` **tanpa `claimid`** | Bila satu nomor Pre-DLA dipakai dua klaim, penandaan terkirim mengenai **kedua klaim** |
+| 2 | Pencocokan nama berkas memakai POSISI karakter (`substr(…, -15, 11)`) | Pecah begitu konvensi penamaan lampiran berubah — dan pecahnya menghasilkan panel kosong, bukan galat |
+
+Keduanya **tidak diperbaiki**: jalur tulisnya memang tidak dibawa (`P-1` — `T_PREDLALIST`
+masih dimiliki Pega), sehingga cacat pertama tidak dapat terulang di sini. Cacat kedua ada
+di jalur baca, dan memperbaikinya mengubah baris mana yang muncul — selisih yang belum
+diminta siapa pun.
+
+### 63.7 Tiga kode tindakan berubah
+
+| Sebelum | Sesudah |
+|---|---|
+| `cetak-pre-dla` **ditolak** | **dihapus dari daftar penolakan** — tombolnya membuka panel yang sudah bekerja |
+| — | `kirim-pre-dla` ditolak atas dasar `P-1` |
+| — | `unduh-lampiran` ditolak atas dasar `D-16` |
+
+`TestOpeningThePrintPanelIsNotARejectedAction` menjaga yang pertama tidak kembali: tombol
+yang bekerja lalu menjawab "belum bekerja" adalah dua pesan yang saling menyangkal dalam
+satu layar.
+
+### 63.8 Cadangan terhadap peladen yang lebih tua
+
+Kolom aksi kini digerakkan `label_aksi_baris` dari server. Itu benar — inventaris tombol
+adalah hasil pembacaan export — tetapi ia menciptakan mode kegagalan yang persis sama
+dengan yang baru saja terjadi: **bila peladen yang berjalan lebih tua daripada berkas
+layar, medan itu tidak ada, dan SELURUH kolom aksi lenyap** — termasuk tombol "Rincian"
+yang sudah lama bekerja. Tanpa satu pun galat.
+
+`judulTombolBaris` karena itu jatuh ke `punya_cetak`/`punya_rincian` — dua medan yang sudah
+lama ada — **hanya ketika medannya benar-benar tidak ada**. Medan yang ada tetapi kosong
+dihormati apa adanya: itu keputusan server bahwa daftar ini memang tidak punya tombol.
+
+Dua uji menjaga keduanya: satu meniru peladen lama, satu memastikan judul kosong yang
+sungguh dikirim tidak ditimpa.
+
+### 63.9 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | `PreDLADocument`, `Repo.PrintPreDLA`, tiga butir selisih terencana diperbarui |
+| `internal/inboxpladlapredla/tab.go` | `PrintColumns`, `RowActionLabel`, `FieldAttachmentKey`; `HasPrintAction` didokumentasikan ulang sebagai per-baris |
+| `internal/inboxpladlapredla/errors.go` | `ActionPrintPreDLA` diganti `ActionSendPreDLA` + `ActionDownloadAttachment` |
+| `…/repo/sqlstore/inboxpladlapredla.sql` · `.go` · `query.go` · `query_test.go` | kueri `print_pre_dla`, `printColumns`, implementasi, 3 uji baru |
+| `…/repo/memory/memory.go` · `sample.go` | `Advice.AttachmentKey`, `PrintPreDLA`, satu Pre-DLA contoh TANPA lampiran |
+| `…/usecase/list.go` | `Printable`, `PrintList` |
+| `…/http/dto.go` · `handler.go` · `routes.go` | `PreDLADocumentDTO`, `PrintResponse`, `Handler.Print`, rute `GET …/cetak/{kunci}` |
+| `cmd/claimpnc/check.go` | panel cetak ikut diuji kesiapannya |
+| `modules/inbox-pla-dla-pre-dla/PrintPreDLAPanel.tsx` | **baru** |
+| `modules/inbox-pla-dla-pre-dla/types.ts` · `api.ts` | `DokumenPreDLA`, `CetakResponse`, `usePLADLACetak`, kode tindakan baru |
+| `modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage.tsx` | tombol pindah ke kolom aksi per baris, `judulTombolBaris` |
+
+### 63.10 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` seluruh frontend | **1.141 lulus** (68 berkas) |
+| `vitest run` modul PLA/DLA | **18 lulus** (dari 15) |
+
+Uji baru: **4 uji Go** (3 penjaga kueri panel, 1 penjaga tindakan yang tidak lagi ditolak)
+dan **3 uji frontend** (panel terbuka dan berisi · alasan "Kirim Pre DLA" · cadangan
+peladen lama, ditambah penghormatan atas judul kosong).
+
+**Kedua artefak dibangun ulang**, dan itu bagian dari perbaikannya, bukan langkah
+tambahan:
+
+```
+frontend > npm run build      -> backend/spa/dist  (27 Sep 09:34)
+backend  > go build -o claimpnc.exe ./cmd/claimpnc  (27 Sep 09:34)
+```
+
+Bundel barunya diperiksa memuat jejak `Print Pre DLA` dan `inbox-pla-dla-pre-dla` — yang
+lama tidak memuat satu pun.

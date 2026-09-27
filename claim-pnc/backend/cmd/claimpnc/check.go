@@ -5057,6 +5057,7 @@ func checkPLADLAQueue(
 
 	sampleKey := ""
 	sampleTab := inboxpladlapredla.Tab{}
+	preDLAKey := ""
 	failed := false
 
 	for _, tab := range inboxpladlapredla.Tabs() {
@@ -5083,6 +5084,15 @@ func checkPLADLAQueue(
 				if row.ClaimKey != "" {
 					sampleKey = row.ClaimKey
 					sampleTab = tab
+					break
+				}
+			}
+		}
+
+		if preDLAKey == "" && tab.HasPrintAction {
+			for _, row := range result.Items {
+				if row.ClaimKey != "" {
+					preDLAKey = row.ClaimKey
 					break
 				}
 			}
@@ -5116,14 +5126,41 @@ func checkPLADLAQueue(
 
 	if sampleKey == "" {
 		print("  [catatan] Tidak ada baris contoh; grid rincian tidak diuji.")
+	} else if _, err := repo.Documents(ctx, sampleTab, sampleKey); err != nil {
+		print("  [BELUM] Grid rincian %q tidak dapat dibaca: %v", sampleTab.Name, err)
+	} else {
+		print("  [ok]    Grid rincian Inbox %s dapat dibaca", sampleTab.Name)
+	}
+
+	// Panel "Print Pre DLA" diuji TERPISAH, dan itu bukan pengulangan grid rincian.
+	//
+	// Ia satu-satunya kueri modul ini yang menyentuh KEDUA tabel lampiran Pega
+	// (`PC_LINK_ATTACHMENT` dan `PC_DATA_WORKATTACH`), dan satu-satunya yang memakai
+	// `PXATTACHNAME` tanpa nama tabel — kolom yang tidak diketahui milik tabel mana
+	// karena DDL keduanya tidak ada di export (`R-08`). Bila tebakan Oracle berbeda dari
+	// dugaan kami, yang muncul adalah galat "column ambiguously defined", dan itu hanya
+	// terlihat dengan menjalankannya sungguhan.
+	if preDLAKey == "" {
+		print("  [catatan] Tidak ada baris contoh Pre DLA; panel cetak tidak diuji.")
 		return
 	}
 
-	if _, err := repo.Documents(ctx, sampleTab, sampleKey); err != nil {
-		print("  [BELUM] Grid rincian %q tidak dapat dibaca: %v", sampleTab.Name, err)
+	rows, err := repo.PrintPreDLA(ctx, preDLAKey)
+	if err != nil {
+		print("  [BELUM] Panel \"Print Pre DLA\" tidak dapat dibaca: %v", err)
+		print("            Periksa PXATTACHNAME — ia dipakai tanpa nama tabel, persis " +
+			"seperti kueri Pega.")
 		return
 	}
-	print("  [ok]    Grid rincian Inbox %s dapat dibaca", sampleTab.Name)
+	print("  [ok]    Panel \"Print Pre DLA\" dapat dibaca (%d baris)", len(rows))
+
+	if len(rows) == 0 {
+		// Kosong BUKAN kegagalan: klaim itu boleh saja belum punya Pre-DLA yang
+		// lampirannya cocok. Ia dicatat supaya pemeriksa tahu bahwa penyaring
+		// lampirannya belum benar-benar terbukti melewatkan apa pun.
+		print("  [catatan] Panelnya kosong untuk klaim contoh — penyaring lampiran " +
+			"belum terbukti meloloskan baris.")
+	}
 }
 
 // checkPLADLAReinsurer menjalankan kueri modul Inbox PLA DLA — layar milik reasuradur.

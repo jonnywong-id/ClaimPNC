@@ -229,7 +229,7 @@ func TestAReversedRangeIsRejected(t *testing.T) {
 // Rentang yang hanya berbatas satu sisi DITERIMA.
 //
 // Pega tidak mengenal keadaan ini — isian kosong di sana dirangkai menjadi
-// `to_date('','dd/mm/yyyy')` lalu ditolak Oracle. Di sini ia sah, dan itu selisih yang
+// `to_date(”,'dd/mm/yyyy')` lalu ditolak Oracle. Di sini ia sah, dan itu selisih yang
 // sudah dinyatakan.
 func TestAHalfOpenRangeIsAccepted(t *testing.T) {
 	onlyFrom, err := inboxpladlapredla.NewQuery(inboxpladlapredla.QueryInput{
@@ -376,4 +376,71 @@ func TestPlannedDifferencesNameEveryMissingButton(t *testing.T) {
 	require.Contains(t, joined, "Upload File Penunjang")
 	require.Contains(t, joined, "Print Pre DLA")
 	require.Contains(t, joined, "Pre DLA")
+}
+
+// Setiap tombol yang belum dibangun menjawab alasan yang BERBEDA.
+//
+// Menjawabnya dengan satu kalimat yang sama akan membuat pengguna yang menekan
+// "Kirim Pre DLA" membaca penjelasan tentang email reasuradur — dan menyimpulkan bahwa
+// tombol yang ia tekan bukan tombol yang ia kira.
+func TestEachUnbuiltButtonAnswersItsOwnReason(t *testing.T) {
+	reasons := map[inboxpladlapredla.Action]string{}
+
+	for _, action := range []inboxpladlapredla.Action{
+		inboxpladlapredla.ActionSend,
+		inboxpladlapredla.ActionUpload,
+		inboxpladlapredla.ActionSendPreDLA,
+		inboxpladlapredla.ActionDownloadAttachment,
+	} {
+		rejected := inboxpladlapredla.NewNotAvailable(string(action))
+		require.Equal(t, action, rejected.Action)
+
+		reason := rejected.Reason()
+		require.NotEmpty(t, reason, "%s tanpa alasan", action)
+
+		for other, sama := range reasons {
+			require.NotEqual(t, sama, reason,
+				"%s dan %s menjawab kalimat yang sama", action, other)
+		}
+		reasons[action] = reason
+	}
+
+	// Masing-masing menyebut APA yang belum ada, bukan sekadar "belum tersedia".
+	require.Contains(t, reasons[inboxpladlapredla.ActionSend], "email")
+	require.Contains(t, reasons[inboxpladlapredla.ActionUpload], "penyimpanan dokumen")
+	require.Contains(t, reasons[inboxpladlapredla.ActionSendPreDLA], "satu sistem")
+	require.Contains(t,
+		reasons[inboxpladlapredla.ActionDownloadAttachment], "penyimpanan dokumen")
+
+	// Seluruhnya memberi tahu apa yang dapat dilakukan pengguna HARI INI.
+	for action, reason := range reasons {
+		require.Contains(t, reason, "lewat Pega", "%s", action)
+	}
+}
+
+// "Print Pre DLA" BUKAN lagi tindakan yang ditolak.
+//
+// Tombolnya kini membuka panel yang sudah dibangun. Bila namanya kembali masuk daftar
+// penolakan, pengguna akan menekan tombol yang bekerja lalu membaca alasan bahwa ia
+// belum bekerja — dua pesan yang saling menyangkal dalam satu layar.
+//
+// Yang ditolak adalah tombol DI DALAM panelnya, dan keduanya punya nama sendiri.
+func TestOpeningThePrintPanelIsNotARejectedAction(t *testing.T) {
+	rejected := inboxpladlapredla.NewNotAvailable("cetak-pre-dla")
+
+	require.NotEqual(t, inboxpladlapredla.Action("cetak-pre-dla"), rejected.Action,
+		"membuka panel Print Pre DLA masih terdaftar sebagai tindakan yang ditolak")
+}
+
+// Tindakan yang tidak dikenal tetap menghasilkan penolakan, bukan galat lain.
+//
+// Yang dituju pengguna memang tombol yang belum dibangun; nama tindakan yang salah ketik
+// di alamat bukan sesuatu yang perlu dibedakan di layar.
+func TestAnUnknownActionStillAnswersAsNotAvailable(t *testing.T) {
+	rejected := inboxpladlapredla.NewNotAvailable("tidak-dikenal")
+
+	require.Empty(t, rejected.Action)
+	require.NotEmpty(t, rejected.Reason())
+	require.ErrorIs(t, rejected, inboxpladlapredla.ErrWriteNotAvailable,
+		"pemanggil yang hanya memeriksa sentinelnya tidak boleh ikut berubah")
 }

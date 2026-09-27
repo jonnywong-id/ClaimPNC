@@ -18,7 +18,7 @@ func TestEveryQueryNamedInTheCodeExists(t *testing.T) {
 	names := []string{
 		"list_pla", "list_dla", "list_pre_dla",
 		"documents_pla", "documents_dla",
-		"claim_exists",
+		"claim_exists", "print_pre_dla",
 	}
 
 	for _, name := range names {
@@ -55,6 +55,9 @@ func TestAliasOrderInSQLMatchesTheListsInGo(t *testing.T) {
 		require.Equal(t, documentColumns, aliasesOf(query(name)),
 			"urutan alias kueri rincian %q bergeser", name)
 	}
+
+	require.Equal(t, printColumns, aliasesOf(query("print_pre_dla")),
+		"urutan alias kueri panel Print Pre DLA bergeser")
 }
 
 // Setiap kueri daftar WAJIB mengembalikan jumlah seluruh baris lewat `COUNT(*) OVER ()`.
@@ -233,7 +236,8 @@ func TestListQueriesUseExactlyEightBinds(t *testing.T) {
 
 // Kueri rincian memakai tepat satu bind: kunci klaimnya.
 func TestDocumentQueriesUseExactlyOneBind(t *testing.T) {
-	for _, name := range append([]string{"claim_exists"}, documentQueries...) {
+	names := append([]string{"claim_exists", "print_pre_dla"}, documentQueries...)
+	for _, name := range names {
 		require.Equal(t, 1, highestBind(query(name)),
 			"kueri %q memakai jumlah bind yang tidak diharapkan", name)
 	}
@@ -247,6 +251,52 @@ func TestDocumentQueriesAreOrdered(t *testing.T) {
 	for _, name := range documentQueries {
 		require.Contains(t, strings.ToUpper(query(name)), "ORDER BY",
 			"kueri %q tidak menentukan urutan barisnya", name)
+	}
+}
+
+// Panel "Print Pre DLA" WAJIB tetap menyaring lewat kedua tabel lampiran.
+//
+// Gabungannya mudah terbaca sebagai hiasan — panelnya toh tidak menggambar satu pun kolom
+// lampiran kecuali kuncinya. Padahal gabungan itulah yang MENENTUKAN baris mana yang
+// muncul: Pre-DLA tanpa lampiran berkategori `DLA` tidak masuk panel sama sekali.
+//
+// Menghapusnya membuat panel menampilkan LEBIH BANYAK baris daripada Pega, tanpa satu pun
+// galat — dan baris tambahannya justru Pre-DLA yang dokumennya belum ada.
+func TestPrintPanelKeepsTheAttachmentFilter(t *testing.T) {
+	text := strings.ToUpper(query("print_pre_dla"))
+
+	require.Contains(t, text, "PC_LINK_ATTACHMENT")
+	require.Contains(t, text, "PC_DATA_WORKATTACH")
+	require.Contains(t, text, "'DLA'",
+		"penyaring kategori lampiran hilang")
+	require.Contains(t, text, "SUBSTR(PXATTACHNAME, -15, 11)",
+		"pencocokan nama berkas hilang")
+}
+
+// `PXATTACHNAME` sengaja TIDAK dikualifikasi nama tabelnya, persis seperti kueri Pega.
+//
+// Kolom itu ada di salah satu dari dua tabel lampiran, dan export tidak memuat DDL
+// keduanya (`R-08`). Menebak tabelnya berisiko memilih yang salah — dan yang salah tidak
+// menghasilkan galat, hanya panel kosong. Uji ini menjaga tebakan itu tidak masuk diam-diam
+// saat seseorang merapikan kuerinya.
+func TestAttachmentNameColumnStaysUnqualified(t *testing.T) {
+	text := strings.ToUpper(query("print_pre_dla"))
+
+	require.NotContains(t, text, "A.PXATTACHNAME")
+	require.NotContains(t, text, "B.PXATTACHNAME")
+}
+
+// Panel ini HANYA MEMBACA.
+//
+// `GetPreDLAList` membawa pernyataan simpan yang menandai Pre-DLA sebagai terkirim, dan
+// pernyataan itu TIDAK dibawa: `T_PREDLALIST` masih dimiliki Pega selama masa paralel
+// (`P-1`). Uji ini menjaga jalur tulisnya tidak tersisip belakangan tanpa keputusan.
+func TestPrintPanelNeverWrites(t *testing.T) {
+	text := strings.ToUpper(query("print_pre_dla"))
+
+	for _, verb := range []string{"UPDATE ", "INSERT ", "DELETE ", "MERGE "} {
+		require.NotContains(t, text, verb,
+			"kueri panel membawa jalur tulis %q", strings.TrimSpace(verb))
 	}
 }
 

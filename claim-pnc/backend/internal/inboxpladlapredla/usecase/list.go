@@ -241,3 +241,73 @@ func (s *Service) Documents(
 
 	return Documented{Tab: tab, ClaimKey: claimKey, Items: items}, nil
 }
+
+// Printable adalah isi panel "Print Pre DLA" satu klaim.
+type Printable struct {
+	// Tab selalu tab Pre DLA, lengkap dengan PrintColumns-nya.
+	Tab inboxpladlapredla.Tab
+
+	// ClaimKey adalah kunci klaim yang diminta, setelah dipangkas.
+	ClaimKey string
+
+	// Items adalah barisnya. Kosong BUKAN galat.
+	//
+	// Kosong punya DUA sebab yang sama-sama sah: klaimnya belum punya Pre-DLA, atau
+	// Pre-DLAnya ada tetapi belum satu pun lampirannya cocok. Keduanya tidak dibedakan
+	// di sini — yang dibedakan hanyalah keduanya dari kunci klaim yang keliru, dan itu
+	// dijawab ErrRowNotFound.
+	Items []inboxpladlapredla.PreDLADocument
+}
+
+// PrintList mengambil isi panel "Print Pre DLA" satu klaim.
+//
+// Namanya sengaja BUKAN Print. Tombolnya bernama "Print Pre DLA", tetapi yang dilakukannya
+// adalah MEMBUKA DAFTAR — tidak ada satu pun berkas yang dihasilkan, baik di Pega maupun
+// di sini. Menamainya Print akan membuat pemanggil berikutnya mengira mesin dokumen
+// (`D-11`) sudah tersambung di jalur ini.
+//
+// Ia MEMBACA saja. Tombol "Kirim Pre DLA" di dalam panelnya menulis ke `T_PREDLALIST`, dan
+// tabel itu masih dimiliki Pega selama masa paralel (`P-1`) — tombolnya karena itu
+// menjawab alasan, sama seperti tombol tulis lain di modul ini.
+func (s *Service) PrintList(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxpladlapredla.Caller,
+	claimKey string,
+) (Printable, error) {
+	cleanCaller := caller.Clean()
+	if cleanCaller.Login == "" {
+		return Printable{}, inboxpladlapredla.ErrCallerUnknown
+	}
+
+	tab, known := inboxpladlapredla.FindTab("pre-dla")
+	if !known {
+		return Printable{}, fmt.Errorf(
+			"inboxpladlapredla/usecase: tab Pre DLA tidak terdaftar")
+	}
+
+	repo, err := s.repoSelector(portalAlias)
+	if err != nil {
+		return Printable{}, err
+	}
+
+	items, err := repo.PrintPreDLA(ctx, claimKey)
+	if err != nil {
+		if errors.Is(err, inboxpladlapredla.ErrRowNotFound) {
+			return Printable{}, err
+		}
+		return Printable{}, fmt.Errorf("mengambil panel Print Pre DLA: %w", err)
+	}
+
+	if s.logger != nil {
+		// Kunci klaim TIDAK dicatat — ia memuat nomor klaim, dan nomor klaim adalah data
+		// nasabah (`D-69`).
+		s.logger.Info("panel Print Pre DLA dibuka",
+			slog.String("modul", "inbox-pla-dla-pre-dla"),
+			slog.String("pemanggil", cleanCaller.Login),
+			slog.String("portal", portalAlias),
+			slog.Int("dokumen", len(items)))
+	}
+
+	return Printable{Tab: tab, ClaimKey: claimKey, Items: items}, nil
+}

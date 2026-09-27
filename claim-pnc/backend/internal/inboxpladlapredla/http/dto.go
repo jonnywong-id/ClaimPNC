@@ -112,6 +112,54 @@ func toDocumentDTO(item inboxpladlapredla.Document) DocumentDTO {
 	}
 }
 
+// PreDLADocumentDTO adalah satu baris panel "Print Pre DLA".
+//
+// Ia BUKAN DocumentDTO yang dipersempit. Sumbernya tabel lain (`T_PREDLALIST`), digabung
+// ke kedua tabel lampiran, dan hanya enam kolom yang benar-benar dibaca. Memakai ulang
+// DocumentDTO berarti mengirim lima medan yang selalu kosong — dan medan yang selalu
+// kosong akan ditafsirkan layar sebagai data yang hilang, bukan sebagai data yang memang
+// tidak ada di sumbernya.
+type PreDLADocumentDTO struct {
+	AdviceNo   string `json:"no_advice"`
+	Reinsurer  string `json:"reasuradur"`
+	AdviceType string `json:"tipe"`
+
+	// SentDate adalah `TGLKIRIM`, beralias `"TglDLA"` di Pega.
+	//
+	// Aliasnya menyesatkan: ia tanggal KIRIM, bukan tanggal DLA. Judul kolomnya di Pega
+	// sendiri sudah benar — "Tgl Kirim" — dan nama di sini mengikuti judulnya, bukan
+	// aliasnya (`D-19`).
+	SentDate string `json:"tanggal_kirim"`
+
+	// Sent adalah `NVL(ISKIRIM, '0')`: `"0"` atau `"1"`, tidak pernah kosong.
+	//
+	// Berbeda dari DocumentDTO.Sent yang membawa kosong apa adanya. Di sini kuerinya
+	// sendiri yang menggantinya, dan penggantian itu dibawa karena kolomnya DIGAMBAR —
+	// sel kosong tidak terbaca sebagai "belum terkirim".
+	Sent string `json:"terkirim"`
+
+	// AttachmentKey adalah `PC_DATA_WORKATTACH.PZINSKEY`, kunci berkas lampirannya.
+	//
+	// Ia TIDAK digambar sebagai kolom. Ia dikirim karena tombol unduh di dalam panel
+	// Pega (`PNCDownloadFile`) memakainya — dan tombol itu belum dibangun di sini,
+	// karena penyimpanan dokumen (`D-16`) belum tersambung.
+	//
+	// Kuncinya SELALU terisi: baris yang lampirannya tidak ada tidak pernah sampai ke
+	// panel ini sama sekali.
+	AttachmentKey string `json:"kunci_lampiran"`
+}
+
+func toPreDLADocumentDTO(item inboxpladlapredla.PreDLADocument) PreDLADocumentDTO {
+	return PreDLADocumentDTO{
+		AdviceNo:      item.AdviceNo,
+		Reinsurer:     item.Reinsurer,
+		AdviceType:    item.AdviceType,
+		SentDate:      item.SentDate,
+		Sent:          item.Sent,
+		AttachmentKey: item.AttachmentKey,
+	}
+}
+
 // ColumnDTO adalah satu kolom grid.
 type ColumnDTO struct {
 	Key   string `json:"kunci"`
@@ -151,6 +199,23 @@ type TabDTO struct {
 	// kolomnya kebetulan belum terisi — kegagalan yang terlihat seperti data kosong.
 	HasDocuments bool `json:"punya_rincian"`
 
+	// PrintColumns adalah kolom panel "Print Pre DLA". Kosong berarti daftar ini tidak
+	// punya panelnya.
+	PrintColumns []ColumnDTO `json:"kolom_cetak"`
+
+	// HasPrintAction menyatakan setiap BARIS daftar ini punya tombol "Print Pre DLA".
+	//
+	// Ia dikirim, bukan disimpulkan layar dari kode daftarnya: inventaris tombol adalah
+	// hasil pembacaan export, sama halnya dengan daftar kolom.
+	HasPrintAction bool `json:"punya_cetak"`
+
+	// RowActionLabel adalah judul tombol pada kolom aksi tiap baris.
+	//
+	// Ia BERBEDA per daftar — "Rincian" pada PLA dan DLA, "Print Pre DLA" pada Pre DLA —
+	// karena yang dibuka pun berbeda: dua yang pertama membuka grid rincian di bawah
+	// antrean, yang ketiga membuka panel tersendiri.
+	RowActionLabel string `json:"label_aksi_baris"`
+
 	// SearchLabel adalah judul kotak pencarian.
 	SearchLabel string `json:"label_pencarian"`
 
@@ -170,6 +235,9 @@ func toTabDTO(tab inboxpladlapredla.Tab) TabDTO {
 		Columns:         toColumnDTOs(tab.Columns),
 		DocumentColumns: toColumnDTOs(tab.DocumentColumns),
 		HasDocuments:    tab.HasDocuments(),
+		PrintColumns:    toColumnDTOs(tab.PrintColumns),
+		HasPrintAction:  tab.HasPrintAction,
+		RowActionLabel:  tab.RowActionLabel,
 		SearchLabel:     tab.SearchLabel,
 		DateLabel:       tab.DateLabel,
 	}
@@ -285,6 +353,28 @@ func toDocumentsResponse(
 	return DocumentsResponse{
 		Tab:      toTabDTO(documented.Tab),
 		ClaimKey: documented.ClaimKey,
+		Rows:     rows,
+		Portal:   portalAlias,
+	}
+}
+
+// PrintResponse adalah isi panel "Print Pre DLA" satu klaim.
+type PrintResponse struct {
+	Tab      TabDTO              `json:"daftar"`
+	ClaimKey string              `json:"kunci_klaim"`
+	Rows     []PreDLADocumentDTO `json:"baris"`
+	Portal   string              `json:"portal"`
+}
+
+func toPrintResponse(printable usecase.Printable, portalAlias string) PrintResponse {
+	rows := make([]PreDLADocumentDTO, 0, len(printable.Items))
+	for _, item := range printable.Items {
+		rows = append(rows, toPreDLADocumentDTO(item))
+	}
+
+	return PrintResponse{
+		Tab:      toTabDTO(printable.Tab),
+		ClaimKey: printable.ClaimKey,
 		Rows:     rows,
 		Portal:   portalAlias,
 	}

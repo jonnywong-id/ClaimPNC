@@ -70,7 +70,10 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 // pemanggil dapat membedakan "ini milik saya" dari "ini bukan milik saya, serahkan ke yang
 // lain" — dua hal yang tidak dapat dibedakan hanya dari status 500.
 func mapError(err error) (int, ErrorResponse, bool) {
-	var validation *inboxpladlapredla.ValidationError
+	var (
+		validation   *inboxpladlapredla.ValidationError
+		notAvailable *inboxpladlapredla.NotAvailableError
+	)
 
 	switch {
 	case errors.As(err, &validation):
@@ -129,21 +132,28 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"di sistem baru.",
 		}, true
 
-	case errors.Is(err, inboxpladlapredla.ErrWriteNotAvailable):
+	case errors.As(err, &notAvailable):
 		// 501, bukan 403 maupun 404.
 		//
 		// 403 akan menyatakan pengguna tidak berwenang — padahal ia berwenang, dan
 		// wewenangnya bukan yang menghalangi. 404 akan menyatakan alamatnya tidak ada,
 		// sehingga tombolnya terbaca sebagai kerusakan. 501 menyatakan yang sebenarnya:
 		// alamatnya ada, permintaannya sah, kemampuannya yang belum dibangun.
+		//
+		// Pesannya diambil dari TINDAKANNYA, bukan satu kalimat untuk ketiga tombol.
+		// Pengguna yang menekan "Print Pre DLA" tidak perlu membaca penjelasan tentang
+		// email reasuradur.
 		return http.StatusNotImplemented, ErrorResponse{
-			Code: CodeWriteNotAvailable,
-			Message: "Tindakan \"Send\", \"Upload File Penunjang\", dan " +
-				"\"Print Pre DLA\" belum tersedia di sistem baru. \"Send\" mengirim " +
-				"surat PLA/DLA beserta lampirannya ke reasuradur lewat email lalu " +
-				"menandainya terkirim; menandainya tanpa mengirimnya akan membuat " +
-				"barisnya hilang dari antrean padahal tidak satu pun surat sampai. " +
-				"Kerjakan lewat Pega.",
+			Code:    CodeWriteNotAvailable,
+			Message: notAvailable.Reason(),
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrWriteNotAvailable):
+		// Sentinel tanpa tindakan — jaring pengaman bagi pemanggil yang mengembalikannya
+		// langsung. Jalur di atas yang dipakai tombol.
+		return http.StatusNotImplemented, ErrorResponse{
+			Code:    CodeWriteNotAvailable,
+			Message: "Tindakan ini belum tersedia di sistem baru. Kerjakan lewat Pega.",
 		}, true
 
 	default:
