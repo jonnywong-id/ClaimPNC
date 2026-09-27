@@ -366,6 +366,17 @@ export const MENU_ROUTES: Record<string, string> = {
   // struktur treaty-nya. Keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya satu
   // di antaranya yang boleh menulis.
   Inbox_XOL_Harness: '/inbox-xol',
+  // MENU_ID 78 "Monitoring SLINK OJK", di bawah kelompok yang sama dengan butir laporan.
+  //
+  // Ia BUKAN Inbox menurut `D-79`: barisnya data acuan laporan, tidak hilang setelah
+  // ditindaklanjuti, dan tidak punya tenggat. Judul harness-nya memang berbunyi "Inbox
+  // Monitoring Slik OJK", dan itu persis kekeliruan penamaan yang `D-79` pisahkan.
+  //
+  // Dua segmen di dalam satu layar — D01 fasilitas kredit, F06 debitur individu — dan
+  // keduanya MEMBACA SAJA. Ketiga tombol tulis layar lama tidak dapat dibangun: tabel
+  // SLIK diisi jalur akseptasi dan masih dimiliki Pega (`P-1`), dan kontrak layanan
+  // pengirimannya tidak ada di export (`R-16`).
+  MonitoringSLINKOJK: '/monitoring-slink-ojk',
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //
@@ -468,6 +479,22 @@ export const MENU_ROUTES: Record<string, string> = {
   // (`D-15`); yang menentukan siapa melihat butirnya sekarang adalah `M_OTORISASI_PNC`.
   InboxCloseClaim_Harness: '/inbox-close-claim',
 
+  // MENU_ID 73 "Dashboard Claim" (`Database/m_menu_aplikasi_pnc.csv:68`).
+  //
+  // Harness-nya ADA di export dan terdaftar di
+  // `Navigation/pyCaseWorkerNavigation-Navigation.xml` sebagai butir ber-`showHarness`,
+  // sehingga keempat tile dan kuerinya terbaca dari bukti — bukan disusun ulang.
+  //
+  // Lampiran G menandainya JANGGAL karena `RD = 0` — dashboard tanpa satu pun Report
+  // Definition. Sebabnya bukan layar rusak: ia mengambil data lewat RDB List/Connect-SQL
+  // LANGSUNG, bukan lewat Report Definition. Penandaan itu karena itu terjawab.
+  //
+  // Bedakan dari `InboxOutstanding_Harness` di atas. Keduanya menampilkan klaim berjalan,
+  // tetapi yang satu menyaring `PXASSIGNEDOPERATORID` — pekerjaan MILIK PEMANGGIL — dan
+  // yang ini tidak menyaringnya sama sekali. Menunjuk keduanya ke satu rute akan membuat
+  // dashboard manajerial menampilkan pekerjaan satu orang, tanpa satu pun tanda di layar.
+  DashboardClaim_Harness: '/dashboard-claim',
+
   // MENU_ID 60 "Inbox Analyst Doctor", kelompok INBOX.
   //
   // Berbeda dari dua butir di atasnya, harness-nya ADA di export
@@ -503,8 +530,8 @@ export const MENU_ROUTES: Record<string, string> = {
   // berbeda. Menunjuk keduanya ke satu rute akan menghilangkan partisi yang justru menjadi
   // inti layar ini.
   //
-  // Bedakan pula dari `MENU_ID 62` "Inbox RCL" (`RCL_Harness`), yang BELUM dipetakan: ia
-  // harness tersendiri dan belum dianalisis sama sekali.
+  // Bedakan pula dari `MENU_ID 62` "Inbox RCL" (`RCL_Harness`) di bawah: ia harness
+  // tersendiri, antrean PER ORANG milik dokter RCL.
   //
   // Di Pega butir ini dijaga `When/IsRCLPUCL-When.xml`:
   // `(Administrators OR PncRCLPUCL) AND NOT ViewClaimPNC`. Aturan itu BELUM ditegakkan
@@ -515,6 +542,22 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+
+  // MENU_ID 62 "Inbox RCL", kelompok INBOX.
+  //
+  // Harness-nya ADA di export (`Harness/RCL_Harness-Harness.xml`) beserta section
+  // `InboxRCLDokter_Section` dan Report Definition `InboxRCLDokter_RD` — kelima judul kolom
+  // dan keempat penyaringnya terbaca dari bukti.
+  //
+  // JANGAN tertukar dengan `RCLPUCL_Harness` di atas. Yang itu antrean BERSAMA (workbasket
+  // `RCLPUCL`); yang ini antrean PER ORANG (worklist), disaring dengan identitas LAMA
+  // pemanggil (`TempOperator.City` dari `T_ACCESS_GROUP_PNC`).
+  //
+  // Di Pega butir ini dijaga `When/IsRCLPA-When.xml`:
+  // `(Administrators OR ((PNCKomite OR CaseManager) AND pyPosition = PA)) AND NOT
+  // ViewClaimPNC`. Aturan itu BELUM ditegakkan (`TKT-F3-005`); yang menentukan siapa melihat
+  // butirnya sekarang adalah `M_OTORISASI_PNC`. Peredamnya penyaring identitas di server.
+  RCL_Harness: '/inbox-rcl',
   // MENU_ID 82 "Laporan Hasil AI", di bawah kelompok REPORT — butir PERTAMA kelompok itu.
   //
   // Layar ini menyandingkan penilaian AI atas sebuah klaim dengan keputusan komite yang
@@ -580,6 +623,26 @@ export const MENU_ROUTES: Record<string, string> = {
   // menunya tanpa berhak tetap tidak melihat percakapan cabang lain — kecuali cabangnya
   // sendiri tidak dapat diturunkan, yang menjatuhkannya ke percakapan kantor pusat (`P-5`).
   InboxKomunikasiCabang: '/inbox-komunikasi-cabang',
+
+  // MENU_ID 74 "Case Study Claim", di bawah kelompok INBOX (`MENU_ID_LEADER 2`).
+  //
+  // Letak butirnya di bawah INBOX, tetapi ia BUKAN Inbox menurut `D-79`: barisnya bukan
+  // pekerjaan, tidak hilang setelah ditindaklanjuti, dan tidak punya tenggat. Yang
+  // menentukan keanggotaan daftarnya hanyalah NILAI — klaim yang salah satu baris
+  // settlement-nya melampaui Rp 5.000.000.000.
+  //
+  // Rutenya karena itu TIDAK memakai awalan `/inbox/...` seperti butir tetangganya; ia
+  // mengikuti nama BUTIR MENU apa adanya (`D-81`).
+  //
+  // JANGAN tertukar dengan `PNCSearchKlaim` (MENU_ID 76, "View History Claim") yang juga
+  // menampilkan daftar klaim. Keduanya menjawab pertanyaan yang berbeda:
+  //
+  //   View History Claim  klaim MANA yang pernah dimiliki seorang nasabah
+  //   layar ini           klaim mana yang NILAINYA besar, beserta rincian nilainya
+  //
+  // Layar ini pula satu-satunya layar telaah yang MENULIS: kolom catatan hasil telaah
+  // pada `POOLDATA.T_CLAIM_PNC`.
+  PNCStudyClaim: '/case-study-claim',
 
   // Inbox Salvage — `MENU_ID 71`, pengelolaan barang sisa klaim.
   //

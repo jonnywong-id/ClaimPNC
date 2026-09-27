@@ -7936,6 +7936,470 @@ Ditambah satu hal yang memperburuk keduanya: `Section/DETAILKOMUNIKASICABANG_ACT
    berturut-turut menemukan kelas cacat yang sama: tombol yang hilang, nomor `MAX()` yang
    bentrok, dan utas yang terpotong.
 
+## Sesi 2026-09-26 — modul Dashboard Claim
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa |
+|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menguji premis sendiri terhadap bukti, dan menolak melanjutkan ketika premisnya patah |
+| `mattpocock-skills:codebase-design` | saat menetapkan batas modul | memutuskan apa yang dipakai ulang dan apa yang dibangun baru, serta di mana seam-nya |
+| `mattpocock-skills:domain-modeling` | saat menamai ulang kolom | mengganti 12 alias menyesatkan dengan istilah `CONTEXT.md` |
+
+Sub-agen dipakai **dua**, dijalankan bersamaan, untuk memetakan pola backend dan frontend
+yang sudah berlaku. Keduanya menghasilkan laporan pola — bukan isi bisnis, yang sengaja
+dibaca sendiri karena ia sumber aturan.
+
+### `grilling` — yang paling berdampak di sesi ini
+
+Skill ini dipakai pada **diri sendiri**, bukan pada Work Owner, dan justru di situ nilainya.
+
+Saya sudah mengajukan pertanyaan lingkup dan **sudah menerima jawabannya**: "4 tile, 2 pakai
+ulang". Disiplin skill ini menuntut premis diuji ke bukti sebelum dipakai — dan pengujian itu
+membuktikan **premis pertanyaan saya sendiri keliru**:
+
+```
+inboxoutstanding/repo/sqlstore/outstanding.sql
+    AND b.pxassignedoperatorid IN {ASIS:TempOperator.CityID}   <- "My Inbox"
+
+RDB List/GcnmBrowseCase_SQL-SQL.xml
+    (tidak ada saringan operator sama sekali)                  <- dashboard
+```
+
+Dari dua modul yang saya tawarkan untuk dipakai ulang, hanya **satu** yang populasinya memang
+sama. Memakai ulang yang satu lagi akan membuat dashboard manajerial menampilkan pekerjaan
+satu orang — tanpa galat, tanpa tanda, pada layar yang dibaca untuk mengambil keputusan.
+
+**Manfaat konkret:** cacat kelas "angka salah tanpa galat" dicegah sebelum ada, dan koreksinya
+disampaikan terbuka alih-alih diserap diam-diam. Tanpa disiplin ini, jawaban yang sudah
+diterima akan dijalankan apa adanya — dan itulah cara cacat masuk.
+
+Skill yang sama juga memunculkan dua koreksi terhadap dokumen yang berlaku (`R-07` dan tanda
+JANGGAL Lampiran G, §55.2), serta ketidakkonsistenan satuan pada kedua kueri hitung survei
+(§55.7) — yang tidak akan terlihat bila kedua kueri hanya disalin.
+
+### `codebase-design` — seam yang nyata, bukan hipotetis
+
+Prinsip **satu adapter berarti seam hipotetis, dua adapter berarti seam nyata** dipakai
+sebagai penyaring. Hasilnya dua seam, keduanya dengan dua adapter sungguhan:
+
+| Seam | Adapter 1 | Adapter 2 |
+|---|---|---|
+| `Repo` | `repo/sqlstore` (Oracle) | `repo/memory` (uji + mode tanpa Oracle) |
+| `ClosedClaimReader` | `repo/closeclaim` (atas `inboxcloseclaim`) | `repo/memory` |
+
+Seam kedua itulah yang membuat pakai-ulang mungkin **tanpa** kedua modul domain saling
+impor. `dashboardclaim` dapat diuji tanpa `inboxcloseclaim` sama sekali, dan
+`inboxcloseclaim` tidak tahu layar ini ada.
+
+Skill ini juga yang menahan godaan menyatukan kedua kueri survei menjadi satu kueri
+berparameter: keduanya **berbeda syarat**, bukan berbeda nilai — penyaring lini bisnisnya
+menyaring tabel yang berbeda. Menyatukannya akan menyembunyikan perbedaan yang nyata.
+
+### `domain-modeling` — 12 alias yang tidak mencerminkan isinya
+
+| Alias Pega | Isinya sebenarnya |
+|---|---|
+| `POLICYNO AS "CityID"` | nomor polis |
+| `PYSTATUSWORK AS "NamaSurveyor"` | status proses |
+| `AdjusterPIC_1 as "City"` | PIC adjuster |
+| `pxCreateOpName AS "ClaimID"` | nama operator |
+| `a.pzinskey AS "CaseID"` | kunci klaim |
+| `userteknis_1 AS "CauseOfLoss"` | PIC Teknik |
+| subquery nomor klaim `AS "NamaDokterRCL"` | nomor klaim induk |
+
+Dua baris paling patut dicatat berdampingan: `"ClaimID"` dipakai untuk **nama operator**
+sementara `"CaseID"` dipakai untuk **kunci klaim**, dan `"CauseOfLoss"` — Penyebab Kerugian —
+sebenarnya berisi **PIC Teknik**. Membaca kueri itu berarti menebak, dan itu persis utang
+teknis §4.2 yang `D-19` hapus.
+
+Seluruhnya dinamai ulang, dan **pemetaan lamanya ditulis di kepala berkas `.sql`** supaya
+penelusuran ke sumber Pega tetap mungkin.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+| Kesalahan | Tertangkap oleh |
+|---|---|
+| Menawarkan pakai-ulang dua modul tanpa memeriksa populasinya | `grilling` — pembacaan kueri kedua modul berdampingan |
+| Uji memeriksa ketiadaan kunci `tile` pada respons metadata | ujinya gagal; respons itu memang **berisi** daftar tile. Yang diperbaiki ujinya |
+| Uji frontend memakai `getByText` untuk judul kolom | `DataTable` menggambar judul **dua kali** — `<th>` dan label kartu sempit |
+| `TRUNC(` dipakai di SQL | uji pola SQL terlarang milik modul lain; diganti `CAST(… AS DATE)` |
+
+Ketiga yang pertama punya pola yang sama: **menyimpulkan bentuk sesuatu tanpa membaca yang
+memakainya.** Itu pelajaran yang sama dengan §54.4 sesi sebelumnya, dan kali ini muncul tiga
+kali dalam satu sesi.
+
+### Pelajaran yang layak dibawa ke modul berikutnya
+
+1. **Jawaban yang sudah diterima tetap perlu premisnya diuji.**
+   Pertanyaan lingkup saya dijawab, dan jawabannya masuk akal — tetapi premis pertanyaannya
+   keliru. Menjalankan jawaban yang benar atas pertanyaan yang salah tetap menghasilkan
+   pekerjaan yang salah.
+
+2. **Nama modul yang mirip adalah tanda bahaya, bukan tanda pakai-ulang.**
+   `inboxoutstanding` dan tile OUTSTANDING; `inboxcloseclaim` dan tile CLOSE CLAIM. Yang
+   pertama tidak dapat dipakai ulang, yang kedua dapat. Yang membedakan bukan namanya
+   melainkan **populasi yang disaring kuerinya** — dan basis kode ini sudah mencatat
+   preseden yang sama sebelumnya.
+
+3. **Ketidakkonsistenan sistem lama harus diangkat, bukan disalin atau diperbaiki diam-diam.**
+   Kedua kueri hitung survei menghitung satuan yang berbeda. Menyalinnya berarti membawa
+   cacat; memperbaikinya tanpa keputusan berarti selisih tak terjelaskan pada gerbang 1.
+   Yang benar: perbaiki, **nyatakan di layar**, dan tandai menunggu persetujuan (`D-54`).
+
+4. **Periksa apakah build sudah rusak SEBELUM menyalahkan perubahan sendiri.**
+   `go build ./...` gagal 12 kali setelah wiring. `git stash` membuktikan seluruhnya sudah
+   ada di HEAD — pekerjaan rekan yang belum selesai. Satu perintah memisahkan "saya merusak"
+   dari "sudah rusak", dan tanpa itu waktu habis memperbaiki yang bukan milik sendiri.
+
+---
+
+## Sesi 2026-09-26 — membangun modul Monitoring SLINK OJK (`MENU_ID 78`)
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa |
+|---|---|---|
+| `mattpocock-skills:grilling` | sebelum satu baris kode ditulis | menekan premis lingkup ke Work Owner, dan memeriksa setiap angka ke sumbernya |
+| `mattpocock-skills:domain-modeling` | saat menyusun katalog kolom | memisahkan dua segmen yang **bernama mirip tetapi melaporkan hal berbeda** |
+| `mattpocock-skills:codebase-design` | saat menentukan bentuk modul | memutuskan kolom sebagai KATALOG, bukan field struct |
+
+### `grilling` — apa yang dihasilkannya
+
+**Fakta dicari sendiri, keputusan diserahkan ke Work Owner.** Sebelum menanyakan lingkup,
+seluruh enam tombol ditelusuri ke `pyActivity` masing-masing, dan kedua kueri dibaca sampai
+daftar SELECT-nya. Pertanyaannya diajukan dengan tabel bukti, bukan dengan "bagaimana
+menurut Bapak".
+
+Hasilnya empat keputusan (§55.2 pada catatan pengembangan), dan **satu jawaban yang tidak
+dapat dipenuhi seluruhnya** — yang disampaikan apa adanya beserta sebab per tombol alih-alih
+diserap diam-diam.
+
+**Disiplin yang paling membayar di sesi ini: memeriksa angka ke sumbernya, bukan ke dokumen
+turunan.** Yang memecahkan kebuntuan pemetaan 38 kolom F06 adalah membaca
+`CSVPropHeaders` + `CSVProperties` pada `ExportDataSlinkFOG` — satu-satunya tempat di export
+yang menyandingkan judul dengan properti secara BERPASANGAN. Tanpa itu, pemetaannya hanya
+dapat ditebak dari urutan elemen XML, dan urutan elemen XML Pega **tidak** mencerminkan
+urutan kolom di layar.
+
+Empat temuan yang lahir dari disiplin itu, ketiganya berakibat pada berkas yang dikirim ke
+**regulator**: penamaan segmen terbalik sistematis, ekspor F06 misalign 38↔34, satu kolom
+tabel mengisi dua kolom layar, dan penyaring yang dirangkai sebagai teks SQL.
+
+### `domain-modeling` — apa yang dipertajamnya
+
+Dua segmen bernama mirip dan berpenyaring sama, sehingga mudah diperlakukan sebagai dua
+tampilan dari data yang sama. Membacanya sampai ke tabel sumbernya membuktikan keduanya
+**melaporkan hal yang berbeda**:
+
+    D01  membaca T_CLAIM_SLIK_OJK       laporan yang SUDAH tersusun
+    F06  membaca T_CLAIM_OBJECTLIST     berkas klaim SUMBERNYA, calon laporan
+
+Itu yang menjelaskan mengapa jumlah kolomnya jauh berbeda, dan mengapa berpindah segmen
+harus **mengosongkan hasil** alih-alih membawanya serta — menampilkan baris segmen
+sebelumnya di bawah kepala kolom segmen baru adalah tabel yang isinya bohong.
+
+Skill ini juga yang menahan satu tebakan: `CUSTOMERTYPE` tampak mengisi "Kode Golongan
+Debitur" karena artinya berdekatan. Daftar CSV membuktikan kolom itu terikat
+`ReporterGroup` — properti yang sama sekali lain. **Kolom laporan regulator yang terisi
+SALAH lebih berbahaya daripada yang kosong: yang kosong terlihat, yang salah tidak.**
+
+### `codebase-design` — keputusan bentuk
+
+Uji yang dipakai: **apa yang terjadi bila modul ini dihapus.** Untuk katalog kolom,
+jawabannya jelas — 58 definisi kolom muncul kembali di empat tempat sekaligus (domain, DTO,
+CSV, tabel frontend), dan yang tertinggal tidak menghasilkan galat apa pun.
+
+Seam-nya dijaga tetap dangkal secara permukaan dan dalam secara isi: `Repo` punya dua method
+(`Search`, `Stream`) yang bicara dalam bahasa domain, bukan bahasa SQL. `Stream` terpisah
+dari `Search` — bukan `Search` dengan halaman raksasa — karena ekspor tidak boleh menampung
+seluruh hasilnya di memori lebih dulu.
+
+Satu adapter berarti seam hipotetis; di sini ada dua adapter nyata (SQL dan memori), dan
+yang kedua itulah yang membuat seluruh aturan modul dapat diuji tanpa basis data.
+
+### Kekeliruan saya, dan pola yang berulang
+
+**(a) Alat ukur dipercaya sebelum divalidasi.** `TestCountSharesFilterWithRows` gagal pada
+percobaan pertama dan melaporkan selisih antara kueri baris dan kueri penghitung. Kuerinya
+benar; **helper ujinya** yang salah — ia mengambil `WHERE` pertama, yang pada kueri F06
+adalah milik subkueri `EXISTS` di dalam daftar `SELECT`.
+
+Polanya sama persis dengan tiga kekeliruan yang sudah tercatat pada sesi restrukturisasi
+ticketing dan dengan §54.4: **angka yang datang dari alat ukur diperiksa dulu sebelum
+temuannya dipercaya.** Yang menyelamatkan di sini adalah ujinya berupa kode yang dapat
+dibaca ulang, bukan pengamatan yang dicatat.
+
+**(b) `git stash` dipakai di direktori kerja yang sedang disunting proses lain.** Untuk
+membuktikan kegagalan build `cmd/claimpnc` sudah ada sebelum modul ini, `main.go` di-stash
+lalu di-pop. `pop` GAGAL karena berkasnya berubah di antara keduanya, dan perubahan yang
+sudah tertulis sempat hilang seluruhnya.
+
+Dipulihkan lewat `git stash show -p` + `git apply`, dan perubahan proses lain dipertahankan.
+Yang seharusnya dilakukan sejak awal: `git show HEAD:<berkas>` ke berkas sementara lalu
+membangunnya di sana — **tidak menyentuh direktori kerja sama sekali** untuk sekadar
+membuktikan sesuatu.
+
+### Yang TIDAK dipakai, dan alasannya
+
+`tdd` tidak dipakai sebagai alur: uji ditulis SESUDAH kode, karena bentuk kodenya sendiri
+bergantung pada temuan yang baru muncul saat membaca export (pemetaan 38 kolom baru
+terpecahkan di tengah pengerjaan). Ujinya tetap ditulis sebelum modul dinyatakan selesai,
+dan satu di antaranya langsung menemukan cacat — di helper ujinya sendiri.
+
+`prototype`, `diagnosing-bugs`, `research`, dan `resolving-merge-conflicts` tidak relevan:
+tidak ada pertanyaan desain yang menuntut prototipe, tidak ada bug yang sedang didiagnosis,
+seluruh fakta ada di dalam repository, dan konflik penggabungan yang ditemukan di `main.go`
+sengaja **tidak** diselesaikan karena ia milik pekerjaan yang sedang berjalan.
+
+---
+
+## Sesi 2026-09-26 — membangun modul Case Study Claim (`MENU_ID 74`)
+
+### Skill yang dipakai
+
+| Skill | Kapan | Untuk apa | Hasilnya |
+|---|---|---|---|
+| `mattpocock-skills:grilling` | Sebelum satu baris kode ditulis | Menekan setiap premis sampai patah atau terbukti, lalu menyusun **empat** pertanyaan konfirmasi yang masing-masing punya pilihan beserta rekomendasi | Keempatnya dijawab. Satu jawaban **mengoreksi premis pertanyaannya sendiri** — lihat di bawah |
+| `mattpocock-skills:domain-modeling` | Saat memetakan 24 kolom | Menolak alias Pega masuk ke nama di kode, dan memberi nama yang menyatakan ISI | 21 dari 24 kolom beralias menyesatkan; tidak satu pun dibawa |
+| `mattpocock-skills:codebase-design` | Saat menentukan batas modul dan seam | Uji deletion pada `RemarkCell`; menentukan di mana seam `Repo` dideklarasikan | `RemarkCell` terbukti layak berdiri sendiri — ia satu-satunya sel yang punya KEADAAN |
+
+### Bagaimana `grilling` mengubah hasilnya
+
+Disiplinnya satu: **cari faktanya sendiri, serahkan keputusannya**. Empat pertanyaan
+disusun hanya setelah kueri, section, dan ketiga activity dibaca tuntas — sehingga setiap
+pilihan disertai akibatnya yang terukur, bukan "bagaimana menurut Bapak".
+
+Yang paling berharga justru pertanyaan yang **premisnya dikoreksi Work Owner**:
+
+> "Label dropdown Bisnis TIDAK ADA di export (`pyListSource=associated`, Property rule tidak
+> diekspor)."
+
+Jawabannya: *"diambil dari folder `Property/StatusReceiver_property`"*. Folder itu **memang
+belum ada** saat pertanyaan disusun — Work Owner menambahkannya. Isinya menjawab dengan
+bukti langsung, dan empat label yang tadinya akan direkonstruksi menjadi terbaca apa adanya:
+`002 PA`, `005 TRAVEL`, `346 NONMBU`, `003 BONDING`.
+
+Tanpa pertanyaan itu, keempat label akan ditebak dari Group Panel — dan tebakan untuk `003`
+akan menjadi **"Aneka"**, padahal jawabannya **BONDING**. Salah label pada dropdown penyaring
+tidak menghasilkan galat apa pun; ia hanya menampilkan lini bisnis yang berbeda dari yang
+dikira pengguna.
+
+### Kesalahan sendiri, dan bagaimana tertangkap
+
+**(a) Harapan bahwa keempat cakupan Bisnis saling lepas — SALAH.**
+
+Tertangkap uji `TestCakupanBisnisMenyaring/NONMBU`, bukan pembacaan. Harapan: NONMBU berisi
+dua baris. Kenyataan: empat — termasuk klaim BONDING.
+
+Sebabnya: kesepuluh kode BONDING tidak ada di daftar lima yang dikecualikan NONMBU, sehingga
+**setiap klaim Bonding memenuhi kedua cakupan**. Uji tersendiri ditulis untuk merekamnya
+(`TestCakupanNONMBUDanBONDINGBertumpangTindih`), dan temuannya dicatat di domain dan di
+catatan pengembangan.
+
+Ini contoh langsung dari nasihat `tdd` yang tidak dipakai sebagai alur tetapi berlaku
+sebagai prinsip: **uji yang menuliskan harapan akan menangkap harapan yang salah.**
+
+**(b) Data contoh dibuat dari kode, lalu hampir memverifikasi kode dengan dirinya sendiri.**
+
+Baris contoh pertama seluruhnya lolos penyaring. Penyimpanan contoh seperti itu tidak
+membuktikan apa pun — penyaring yang rusak pun akan tampak benar.
+
+Diperbaiki dengan menambahkan **lima baris yang sengaja tertolak**, masing-masing oleh sebab
+yang berbeda. Yang paling menentukan: `STD-0007`, bertotal Rp 8 miliar tetapi terpecah
+menjadi dua baris Rp 4 miliar. Ia satu-satunya saksi yang membedakan pembacaan ambang yang
+benar — `EXISTS` atas SATU baris — dari pembacaan "jumlah seluruh settlement". Keduanya
+menghasilkan daftar yang tampak wajar.
+
+**(c) `TO_CHAR` hampir dibawa masuk.**
+
+Kolom "Bulan Klaim" di Pega adalah `to_char(b.REGISTERDATE,'mm')`, dan salinan pertama
+membawanya apa adadanya. §4.3 melarang `TO_CHAR` untuk tampilan.
+
+Tetapi memindahkannya ke Go juga salah: mengambil bulan dari waktu yang sudah dikonversi
+WIB akan **menggeser bulan** pada registrasi di sekitar pergantian bulan — kelas kesalahan
+`R-12` yang justru hendak dicegah aturan itu. Penggantinya `EXTRACT(MONTH …)`: portabel,
+membaca nilai TERSIMPAN, dan nol di depannya ditambahkan di Go supaya keluarannya sama
+persis dengan Pega.
+
+**(d) Impor Go yang salah urut.**
+
+`gofmt` menangkapnya seketika. Bukan cacat perilaku, tetapi ia menunjukkan gunanya
+menjalankan `gofmt -l` sebelum menyatakan selesai — bukan sesudah.
+
+### Teknik yang dipakai, meski skill-nya tidak terpasang
+
+**`git worktree` untuk membuktikan sesuatu tanpa menyentuh direktori kerja.**
+
+Perlu dibuktikan bahwa `cmd/claimpnc` sudah rusak sebelum modul ini. Dua sesi sebelumnya
+memakai `git stash` untuk itu, dan salah satunya **kehilangan pekerjaan** karena berkasnya
+berubah di antara `stash` dan `pop` — tercatat di `penggunaan-skill.md` sesi sebelumnya.
+
+Di sini dipakai `git worktree add … HEAD` ke direktori sementara, lalu `go build` **di sana**.
+Direktori kerja tidak disentuh sama sekali, dan hasilnya sama meyakinkannya. Worktree-nya
+dibuang setelah terbukti.
+
+**Membaca XML 15.028 baris lewat pemetaan posisi, bukan lewat pembacaan berurutan.**
+
+Judul kolom grid Pega dan properti pengisinya terpisah ribuan baris. Keduanya diekstrak
+sebagai dua daftar **berurutan menurut nomor baris**, lalu dipasangkan satu-satu: 24 judul,
+24 properti, cocok persis. Pemasangan itu yang membuat pemetaan 24 kolom dapat dipercaya
+tanpa membaca seluruh berkasnya.
+
+### Yang TIDAK dipakai, dan alasannya
+
+`tdd` tidak dipakai sebagai alur — uji ditulis sesudah kode, karena bentuk kodenya sendiri
+bergantung pada temuan yang baru muncul saat membaca export. Ujinya tetap ditulis sebelum
+modul dinyatakan selesai, dan salah satunya langsung menemukan cacat pada harapan saya
+sendiri.
+
+`prototype`, `diagnosing-bugs`, `research`, dan `resolving-merge-conflicts` tidak relevan:
+tidak ada pertanyaan desain yang menuntut prototipe, seluruh fakta ada di dalam repository,
+dan konflik penggabungan yang ditemukan di `main.go` **bukan konflik git** melainkan
+duplikasi yang sudah ter-commit — diselesaikan dengan membuang salinan yang tidak dijaga
+uji, bukan dengan alat penyelesaian konflik.
+
+---
+
+## Sesi 2026-09-26 (lanjutan) — membangun ketiga tombol tulis Monitoring SLINK OJK
+
+### Skill yang dipakai
+
+| Skill | Untuk apa |
+|---|---|
+| `mattpocock-skills:grilling` | menguji ulang pernyataan saya sendiri bahwa ketiga tombol "tidak dapat dibangun" |
+| `mattpocock-skills:codebase-design` | memisahkan `ExportHeaders` dari `ExportSlots`, dan memutuskan seam `Sender` |
+
+### `grilling` dipakai pada pernyataan SAYA SENDIRI
+
+Permintaan Work Owner — "lanjutkan seperti PEGA" — bertabrakan dengan kesimpulan saya
+sendiri di §55.5. Yang benar dilakukan bukan mengulang kesimpulan itu, melainkan
+mengujinya.
+
+Pengujiannya satu pertanyaan: **"tidak terhubung di section" berarti apa persisnya?**
+Jawabannya ternyata jauh lebih sempit daripada "logikanya tidak ada" — dan menelusuri siapa
+yang benar-benar memanggil `InsertDataSlikOJKF06` membuka seluruhnya dalam beberapa menit.
+
+Pola kekeliruannya patut dicatat karena ini **kali ketiga** dalam rangkaian sesi ini:
+
+| Kekeliruan | Polanya |
+|---|---|
+| §55.9(a) helper uji mengambil `WHERE` pertama | berhenti pada bukti pertama yang tampak menjawab |
+| §57.1 berkas "Format File" dikira misalign | menyimpulkan satu artefak dari artefak lain yang mirip |
+| §58.1 tiga tombol dikira tidak dapat dibangun | berhenti pada ketiadaan `pyActivity` di satu berkas |
+
+Ketiganya dibuka oleh **pertanyaan Work Owner**, bukan oleh pembacaan ulang yang lebih
+teliti. Itu bukan kebetulan: pembacaan ulang cenderung mengulang jalur yang sama, sedangkan
+pertanyaan dari luar memaksa jalur yang berbeda.
+
+### `codebase-design` — dua keputusan bentuk
+
+**Pertama: `ExportHeaders` dan `ExportSlots` sengaja dipisah.** Katalog tunggal memaksa
+jumlah judul sama dengan jumlah kolom data — dan itu justru MENGHAPUS pergeseran 38↔34 yang
+sedang direplikasi. Bentuk kodenya harus mampu menyatakan ketidaksejajaran itu, bukan
+mencegahnya.
+
+**Kedua: `Sender` adalah seam, dan diperiksa DI MUKA.** Uji delesi-nya jelas: bila seam itu
+dihapus dan REST dipanggil langsung, modul ini tidak dapat diuji sama sekali tanpa layanan
+SLIK — dan layanan itu belum ada. Pemeriksaan di muka (sebelum pencatatan) lahir dari
+pertanyaan "apa yang tertinggal bila ini gagal di tengah", dan jawabannya nyata: baris
+pengiriman palsu yang tidak dapat dibedakan dari pengiriman yang gagal.
+
+### Uji yang menemukan perilaku, bukan sekadar menjaga
+
+`TestProcessCreatesReportRows` ditulis menuntut "4 baru" dan **gagal** dengan "3 baru, 1
+diperbarui". Kuerinya benar; ekspektasi saya yang salah.
+
+Sebabnya nyata dan ada di Pega: `GetCountTClaimSlikOJK` menghitung `where claimid = ?`
+**tanpa `contractno`**, sehingga fasilitas kredit KEDUA dari satu klaim sudah terhitung
+"pernah ada". Perilaku itu direplikasi dan dikunci di uji beserta alasannya.
+
+Ini kebalikan dari §55.9(a): di sana uji yang gagal karena alatnya rusak, di sini uji yang
+gagal karena **pemahaman saya** yang kurang. Keduanya menuntut pemeriksaan yang sama
+sebelum temuannya dipercaya — dan hanya salah satu yang berakhir dengan memperbaiki kode
+uji.
+
+### Yang TIDAK dipakai
+
+`tdd` tetap tidak dipakai sebagai alur, dengan alasan yang sama seperti sebelumnya: bentuk
+kodenya bergantung pada temuan yang baru muncul saat membaca export. Ujinya tetap ditulis
+sebelum modul dinyatakan selesai — dan satu di antaranya langsung menemukan perilaku yang
+tidak saya ketahui.
+
+---
+
+## Sesi 2026-09-27 — menyamakan Monitoring SLINK OJK dengan Pega
+
+### `grilling`, lagi-lagi pada pernyataan saya sendiri
+
+Permintaan Work Owner singkat: "samain semua aja". Yang mudah adalah langsung mencabut
+ketiga penambahan di §58.6. Yang benar adalah **memeriksa apakah ketiganya memang
+penambahan** — dan ternyata dua di antaranya bukan.
+
+Hasilnya mengubah pekerjaannya sama sekali: pemetaan kepala kolom menurut nama tidak perlu
+disentuh, penyaringan baris dicabut, dan sensus properti justru menemukan **tiga kolom yang
+selama ini kosong padahal Pega mengisinya**. Menyamakan dengan Pega di sini karena itu
+menambah isi tiga kolom, bukan sekadar mencabut pengaman.
+
+Manfaat yang paling nyata: bila ketiganya dicabut tanpa diperiksa, kode akan **menjauh**
+dari Pega pada satu titik (pemetaan menurut posisi) sambil mengaku mendekatinya.
+
+### Kekeliruan yang masuk ke pertanyaan, bukan hanya ke kode
+
+Pilihan yang saya sodorkan lewat `AskUserQuestion` menggambarkan Pega sebagai "gagal
+seluruhnya bila ada satu baris cacat". Pega tidak melakukan itu — ia tidak memeriksa apa
+pun. Jadi Work Owner memutuskan di atas premis yang salah.
+
+Ini pelajaran yang berbeda dari ketiga kekeliruan sebelumnya: di sana yang salah adalah
+kesimpulan saya, di sini yang salah adalah **bahan yang saya berikan untuk diputuskan orang
+lain**. Pemeriksaan bukti seharusnya mendahului penyusunan pilihan, bukan menyusulnya.
+
+Keputusannya kebetulan tidak berubah oleh koreksi ini, tetapi itu kebetulan — bukan alasan
+untuk tidak mencatatnya.
+
+### `codebase-design` — satu keputusan kecil
+
+`testServer` dipecah menjadi `testServerWithRepo` yang mengembalikan repo-nya. Tanpa itu,
+uji hanya dapat memeriksa BERAPA baris tersimpan, bukan APA isinya — dan penambahan tiga
+kolom tidak akan terjaga siapa pun.
+
+---
+
+## Sesi 2026-09-27 (lanjutan) — koreksi terhadap layar Pega yang berjalan
+
+### Bukti berjalan mengalahkan bukti berkas
+
+Tiga kali berturut-turut dalam rangkaian sesi ini saya keliru karena **menyimpulkan dari
+artefak yang salah**: dari section alih-alih dari aktivitas (§58.1), dari aktivitas yang
+mirip alih-alih dari aktivitasnya sendiri (§59.1), dan kali ini dari berkas ekspor alih-
+alih dari kueri gridnya (§60.1).
+
+Satu tangkapan layar Pega yang berjalan menutup ketiganya dalam hitungan menit, dan
+menemukan dua hal lagi yang tidak terlihat di XML sama sekali: tombol yang **labelnya ada
+tetapi tidak dirender**, dan **urutan kolom** yang berbeda dari urutan SELECT.
+
+Pelajaran yang dapat dipakai lagi: bila ada layar yang berjalan, **minta tangkapannya
+lebih dulu** — sebelum menyusun katalog kolom dari berkas mana pun.
+
+### `grilling` menyelamatkan satu perubahan yang salah arah
+
+Membaca bahwa kedua kueri Pega memakai `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, saya menukar
+tabel klaimnya. Pemeriksaan "apakah ada yang lain memakai tabel ini?" — satu `grep` —
+menunjukkan **tiga modul lain** memakai `T_CLAIMLIST_ADMIN` atas ketetapan Work Owner,
+dan catatannya bahkan sudah ada di berkas SQL modul ini sendiri.
+
+Ini kekeliruan ke arah yang **berlawanan** dengan ketiga sebelumnya: bukan gagal mengikuti
+Pega, melainkan mengikuti Pega sampai melanggar keputusan proyek yang sudah berlaku.
+Keduanya sama-sama merugikan, dan keduanya dicegah oleh pemeriksaan yang sama — memeriksa
+sekeliling sebelum mengubah.
+
+### Uji sebagai perekam keputusan, bukan hanya penjaga
+
+`TestBothGridsUseTheSameColumns` ditambahkan bukan karena ada cacat, melainkan supaya
+fakta "kedua grid identik di Pega" tidak hilang. Bila kelak salah satunya disunting
+sendirian, uji itu menyalak — dan komentarnya menjelaskan kenapa itu cacat, bukan
+keputusan.
+
 ---
 
 ## Sesi 2026-09-26 — modul Laporan Hasil AI (`MENU_ID 82`)
@@ -8945,3 +9409,35 @@ Satu pembacaan mencegah dua cacat sekaligus.
 | `migrations/0005` tahap 1 | menunggu DBA; kini **satu kolom** saja (`PXASSIGNEDORGUNIT`) |
 | Kolom `T_CLAIMLIST_ADMIN` | daftar lengkapnya **masih belum pernah dibaca dari katalog** — `kolom-t-claimlist-admin.md` menyebut jumlahnya (40) tanpa menyebut namanya. Setiap klaim "kolom X tidak ada" akan menjadi dugaan lagi sampai daftar itu ada |
 | C-1 dan C-2 di §7.5 | dua modul lain dengan cacat lini bisnis yang sama, **belum diperbaiki** |
+## Sesi 2026-09-27 — modul Inbox RCL
+
+### Tidak ada skill yang dipanggil
+
+Skill Matt Pocock (`grilling`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`)
+**tidak tersedia** di daftar skill sesi ini, sehingga tidak ada yang dipanggil. Tidak ada
+yang dicatat seolah-olah dipakai.
+
+Yang dipakai adalah preseden modul yang sudah ada, dan itu dicatat sebagai preseden —
+bukan sebagai skill:
+
+| Preseden | Diambil untuk |
+|---|---|
+| `inboxanalystdoctor` | seluruh bentuk modul, pola kolom `unexposed` + `-periksa` |
+| `inboxoutstanding` | kueri identitas lama `T_ACCESS_GROUP_PNC`, `MAX` bukan `pxResults(1)` |
+
+### Satu koreksi diri yang layak dicatat
+
+Pola yang sama dengan sesi sebelumnya — **alat ukur dipercaya sebelum divalidasi**:
+`ORA-00904` yang hanya menyebut satu kolom saya baca sebagai bukti kolom lainnya ada.
+Kueri katalog langsung membuktikan sebaliknya, dan kesimpulannya ditarik sebelum ditulis
+ke kode maupun dokumen (catatan pengembangan §61.4).
+
+**Pelajaran:** galat parser menyebut kegagalan PERTAMA, bukan satu-satunya. Keberadaan
+kolom dibuktikan dari katalog, bukan dari galat yang tidak muncul.
+
+### Lanjutan 2026-09-27 — pelajaran kedua pada hari yang sama
+
+Tetap tanpa skill (tidak tersedia). Yang menangkap cacat ORA-01008 bukan skill, melainkan
+**menjalankan kueri sungguhan terhadap Oracle** setelah `-periksa` hijau. Pelajarannya:
+pemeriksaan yang hanya mem-parse kueri tidak membuktikan kueri dapat dijalankan. Bukti
+yang sah adalah satu eksekusi nyata dengan parameter binding.

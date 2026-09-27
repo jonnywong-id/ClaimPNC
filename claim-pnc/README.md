@@ -112,6 +112,7 @@ claim-pnc/
 │   │   │   ├── notification/            seam Notifier — SMTP dan perekam
 │   │   │   └── http/                    dto, galat, handler, rute — GET + POST
 │   │   │                                Modul INBOX pertama yang MENULIS
+│   │   ├── inboxrcl/                MODUL — Inbox RCL (menu 62, antrean dokter RCL)
 │   │   ├── inboxinvestigator/       MODUL — Inbox Investigator (menu 48)
 │   │   │   ├── usecase/                 orkestrasi: daftar + hitung lama menunggu
 │   │   │   ├── repo/                    sqlstore — PC_ASM_FW_GCNMFW_WORK +
@@ -836,6 +837,7 @@ yang koneksinya hidup. Itu bagian `R-20` yang **belum** tertutup.
 | `/inbox/laporan-klaim` | **Inbox Laporan Klaim** — butir menu 64 |
 | `/inbox-manager-receive-pucl` | **Inbox Manager Receive / PUCL** — butir menu 56 |
 | `/inbox-rcl-pucl` | **Inbox RCL/PUCL** — butir menu 61. Antrean bersama, tiga tab |
+| `/inbox-rcl` | **Inbox RCL** — butir menu 62. Antrean PER ORANG milik dokter RCL, disaring dengan **identitas lama** pemanggil (`T_ACCESS_GROUP_PNC`), bukan login. Baca-saja, 5 kolom, sumber **`T_CLAIMLIST_ADMIN`** (tanpa tabel Pega). Kolomnya sudah ditambahkan (migrasi `0012`, ASM development); **antrean masih kosong sampai proses pengisi `T_CLAIMLIST_ADMIN` mengisinya** (lihat `docs/permintaan-artefak-pega.md` §6.12) |
 | `/report-kpi` | **Report KPI PNC** — butir menu 84. **Ketiga tab selesai** |
 | `/laporan-hasil-ai` | **Laporan Hasil AI** — butir menu 82, kelompok REPORT. Menyandingkan penilaian **AI** atas klaim dengan **keputusan komite** yang menyusul. Baca-saja; dua grid — ringkasan pencacah (Komite · AI) dan rincian 10 kolom, 50 baris per halaman. **LIMA dari sepuluh kolomnya SELALU kosong** — Object Name, Note AI Terima, Note AI Tolak, Coverage Final, Kategori Kronologi — karena kueri layar lamanya (`pyMemo = "work in progress"`) memang tidak memilih kolomnya; direplikasi apa adanya atas keputusan Work Owner 2026-09-26. Dua keanehan lain juga ditiru: isian berlabel **"Tgl Input" sebenarnya menyaring Tanggal Komite**, dan **"No Klaim" dikosongkan pada jenjang komite kedua ke atas**. Satu-satunya penambahan di luar Pega adalah kolom **"Menunggu"** pada ringkasan, supaya selisih antara "Total" (= Diterima + Ditolak) dan jumlah baris dapat dibaca |
 | `/inbox/laporan-klaim/{id}` | **Input Receive Document** — form isian satu berkas laporan |

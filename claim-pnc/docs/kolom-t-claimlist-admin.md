@@ -322,3 +322,17 @@ baru laporan `Export*` yang kolomnya paling banyak.
 
 **5. Isi tabelnya sampai penuh.** Sekarang 1.014 dari 7.703 klaim — **13%**. Uji kesetaraan
 gerbang 1 tidak bermakna selama sumbernya belum selengkap pembandingnya.
+
+---
+
+## G. Tambahan untuk Inbox RCL — `migrations/0012` (2026-09-27)
+
+| Kolom | Tipe | Asal di Pega | Dipakai |
+|---|---|---|---|
+| `TANGGALANALYSTSENDRCL_1` | TIMESTAMP(6) | `.ClaimData.TanggalAnalystSendRCL` — **unexposed** | penyaring + "Tanggal Masuk Inbox" |
+| `NAMADOKTERRCL_1` | VARCHAR2(128 CHAR) | `.ClaimData.NamaDokterRCL` — **unexposed** | penyaring = identitas lama |
+| `KOMENTARANALISATOR_1` | VARCHAR2(1500 CHAR) | kolom `KOMENTARANALISATOR_1` tabel kerja (45 nilai) | "Deskripsi Analyst" |
+
+Dua yang pertama tidak punya kolom di tabel Pega mana pun — proses pengisi harus membacanya
+dari blob objek kerja. Katalog 2026-09-27: tabel ini belum memuat satu pun klaim tahap RCL
+Dokter.

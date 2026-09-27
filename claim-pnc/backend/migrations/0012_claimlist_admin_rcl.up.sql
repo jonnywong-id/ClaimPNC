@@ -1,0 +1,82 @@
+-- 0012 — T_CLAIMLIST_ADMIN: tiga kolom untuk layar Inbox RCL (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- STATUS: DIJALANKAN 2026-09-27 pada ASM lingkungan development, atas persetujuan
+-- Work Owner ("tambahkan saja di tabel tersebut"). Tabel 53 -> 56 kolom. Tidak satu pun
+-- rule Pega membaca T_CLAIMLIST_ADMIN, sehingga uji Pega+Go bersamaan tidak berlaku.
+-- Entitas lain dan lingkungan lain BELUM.
+--
+-- Dijalankan DBA. Menempuh permintaan tertulis, persetujuan Work Owner, lalu
+-- pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN (`D-63`). Akun aplikasi
+-- tidak memiliki hak DDL. Lingkup: ASM lebih dulu, sama seperti 0005.
+--
+-- ============================================================================
+-- KENAPA KOLOM INI DIBUTUHKAN
+-- ============================================================================
+--
+-- Work Owner menetapkan 2026-09-27: modul Inbox RCL (`MENU_ID 62`) membaca
+-- POOLDATA.T_CLAIMLIST_ADMIN, TIDAK lagi DATAPEGA.PC_ASM_FW_GCNMFW_WORK dan
+-- PC_ASSIGN_WORKLIST.
+--
+-- `Report Definition/InboxRCLDokter_RD-RD.xml` menyaring dan menampilkan tiga
+-- properti yang TIDAK punya kolom di T_CLAIMLIST_ADMIN (katalog 2026-09-27,
+-- 53 kolom):
+--
+--   properti Pega                              peran di layar                   kolom baru
+--   ------------------------------------------ -------------------------------- -----------------------
+--   .ClaimData.TanggalAnalystSendRCL           penyaring IS NOT NULL +           TANGGALANALYSTSENDRCL_1
+--                                              kolom "Tanggal Masuk Inbox"
+--   .ClaimData.NamaDokterRCL                   penyaring = identitas lama        NAMADOKTERRCL_1
+--   .ClaimData.PUCLStatus.KomentarAnalisator   kolom "Deskripsi Analyst"         KOMENTARANALISATOR_1
+--
+-- Nama mengikuti konvensi `_1` seluruh properti ClaimData di tabel yang sama.
+--
+-- ============================================================================
+-- TIPE DAN PANJANG — dari katalog, bukan ditebak
+-- ============================================================================
+--
+--   KOMENTARANALISATOR_1     VARCHAR2(1500 CHAR)  disalin dari
+--                                                 DATAPEGA.PC_ASM_FW_GCNMFW_WORK
+--                                                 (45 nilai berbeda)
+--   NAMADOKTERRCL_1          VARCHAR2(128 CHAR)   = T_CLAIMLIST_ADMIN.PXASSIGNEDOPERATORID.
+--                                                 Ia dibandingkan dengan identitas yang
+--                                                 sama (T_ACCESS_GROUP_PNC.OLD_OPERATOR_ID,
+--                                                 VARCHAR2(50)), sehingga panjangnya
+--                                                 disamakan dengan pembandingnya
+--   TANGGALANALYSTSENDRCL_1  TIMESTAMP(6)         `pyDataType = DateTime` pada Report
+--                                                 Definition; sama dengan kolom DateTime
+--                                                 `_1` lain (DATEOFLOSS_1, TANGGALDOKLENGKAP)
+--
+-- Dua yang terakhir TIDAK ADA di tabel Pega mana pun — kedua propertinya
+-- `unexposed`, hidup di dalam blob objek kerja. Tipe keduanya karena itu
+-- diturunkan dari pemakaiannya, dan dinyatakan begitu di sini.
+--
+-- ============================================================================
+-- YANG TIDAK DISELESAIKAN BERKAS INI — DAN MENAHAN LAYARNYA
+-- ============================================================================
+--
+-- Menambah kolom tidak mengisinya. Proses pengisi T_CLAIMLIST_ADMIN harus
+-- membawa ketiganya dari objek kerja Pega (`docs/kolom-t-claimlist-admin.md`
+-- §D.1: pengisinya tidak ada di export, dan menurut Work Owner baru berjalan di
+-- lingkungan testing).
+--
+-- Dua di antaranya `unexposed`, sehingga pengisinya harus membacanya dari blob
+-- — bukan dari kolom yang dapat disalin. Siapa yang MENULIS kedua properti itu
+-- di Pega juga tidak ada di export; dugaan terkuatnya router `RouterRCLDokter`
+-- yang hilang (`R-04`).
+--
+-- Tanpa isian itu, layar Inbox RCL selalu kosong — dan itu jawaban yang benar
+-- bagi tabel yang tidak memuat klaim tahap RCL Dokter satu pun (katalog
+-- 2026-09-27: hanya Input Register, Choose Surveyor, dan Input Estimasi).
+--
+-- Tidak ada index: 1.014 baris, dan penyaring utamanya PXASSIGNEDOPERATORID
+-- yang dipakai bersama Inbox Outstanding. Ditambahkan bila pengukuran menuntut.
+
+ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN ADD (
+    TANGGALANALYSTSENDRCL_1        TIMESTAMP(6),
+    NAMADOKTERRCL_1                VARCHAR2(128 CHAR),
+    KOMENTARANALISATOR_1           VARCHAR2(1500 CHAR)
+);
