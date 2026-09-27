@@ -37,6 +37,7 @@ import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjec
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
+import { DashboardClaimPage } from '@/modules/dashboard-claim/DashboardClaimPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
 import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
@@ -60,12 +61,14 @@ import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
+import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
 import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
 import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
+import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -851,6 +854,29 @@ export function AppRoute() {
         }
       />
       {/*
+        Monitoring SLINK OJK — pemantauan laporan klaim ke OJK, pengganti harness
+        `MonitoringSLINKOJK` (`MENU_ID 78`).
+
+        Dua segmen: D01 (fasilitas kredit) membaca tabel SLIK yang SUDAH tersusun, F06
+        (debitur individu) membaca berkas klaim SUMBERNYA. Keduanya bukan dua tampilan
+        dari data yang sama.
+
+        Layar ini MEMBACA SAJA. Ketiga tombol yang menulis di layar lama tidak dapat
+        dibangun: tabel SLIK diisi jalur akseptasi dan masih dimiliki Pega selama masa
+        paralel (`P-1`), dan kontrak layanan pengiriman ke SLIK tidak ada di export
+        (`R-16`). Ketiadaannya dijelaskan di layarnya, bukan disembunyikan.
+      */}
+      <Route
+        path="/monitoring-slink-ojk"
+        element={
+          <SessionGuard>
+            <Protected>
+              <MonitoringSlinkOjkPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Claim Treaty Prop — antrean klaim treaty proporsional, pengganti harness
         `InboxClaimTreaty_Harness` (`MENU_ID 54`).
 
@@ -937,6 +963,27 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <CloseClaimPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Dashboard Claim — empat angka ringkasan beserta telusurnya.
+
+        Layar ini PANDANGAN MANAJERIAL: tidak satu pun angkanya disaring menurut siapa yang
+        membukanya. Yang ditampilkan bukan satu baris klaim melainkan gambaran menyeluruh
+        pekerjaan satu badan hukum, sehingga kewenangannya justru lebih patut dijaga
+        daripada layar yang menampilkan satu klaim.
+
+        Penegakan peran belum ada di sini maupun di server (TKT-F3-005) — rutenya baru
+        terlindungi sesi.
+      */}
+      <Route
+        path="/dashboard-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <DashboardClaimPage />
             </Protected>
           </SessionGuard>
         }
@@ -1102,6 +1149,28 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <KomunikasiCabangPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+
+      {/*
+        Case Study Claim (`MENU_ID 74`), pengganti harness `PNCStudyClaim`.
+
+        Ia SATU rute: layar lama pun satu harness tanpa layar tujuan lain — penyuntingan
+        catatan telaah terjadi DI DALAM grid, baris demi baris, bukan pada layar
+        tersendiri.
+
+        Butir menunya berada di bawah kelompok INBOX, tetapi rutenya sengaja TIDAK memakai
+        awalan `/inbox/...`: menurut `D-79` ia bukan Inbox — barisnya bukan pekerjaan dan
+        tidak punya tenggat. Yang menentukan keanggotaan daftarnya hanyalah nilai klaim.
+      */}
+      <Route
+        path="/case-study-claim"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CaseStudyClaimPage />
             </Protected>
           </SessionGuard>
         }

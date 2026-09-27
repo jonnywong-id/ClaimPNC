@@ -417,3 +417,301 @@ Kunci baris pada daftar sendiri sudah aman: `PZINSKEY` dijamin unik oleh Pega.
 | `SubmitTanggalLengkapTKA` dan `NotificationKelengkapanTKA` | sudah ada; isi surel sudah dipetakan |
 | `SendEmailNotification` | **bawaan Pega** (`Pega-IntegrationEngine`), bukan rule buatan sendiri |
 | Kunci dan indeks `POOLDATA.T_CLAIM_TKA_H` | ditarik — lihat §3.1 |
+
+---
+
+## 4. Monitoring SLINK OJK — `MENU_ID 78`
+
+| | |
+|---|---|
+| **Modul** | `internal/monitoringslinkojk` · `src/modules/monitoring-slink-ojk` |
+| **Status modul** | **SEBAGIAN** — kedua segmen dapat dipantau dan diunduh; tiga tombol tulis belum dapat dibangun |
+| **Ditujukan ke** | Tim Pega (butir 1–3) · Work Owner (butir 4–5) |
+
+### 4.1 Artefak yang diminta ke Tim Pega
+
+#### (1) Connect REST `Rest_SendDataClientBasedDebitur` — MEMBLOKIR tombol "SLIK OJK"
+
+`Activity/InsertDataSlinkOJKIndividu-Act.xml` memanggilnya lewat langkah `Connect-REST`
+untuk mengirim data debitur ke sistem SLIK, lalu menulis `id_transaction` kembali ke
+`pooldata.t_claim_slink_individu`.
+
+Berkasnya **nol kemunculan** di direktori `Connect REST/` (21 berkas, dihitung langsung).
+
+Yang dibutuhkan: endpoint, metode, bentuk badan permintaan dan jawabannya, kode galat, cara
+autentikasinya, dan batas waktunya. Tanpa kontrak itu, yang dapat dibangun hanyalah tebakan
+tentang apa yang dikirim ke sistem luar.
+
+> **Status ketiga tombol tulis berubah pada 2026-09-26.** Ketiganya semula dinyatakan tidak
+> dapat dibangun; pemeriksaan ulang membuktikan logikanya ADA, hanya tidak di section.
+> **"Proses Data Klaim" dan "Upload Data Klaim" kini berjalan penuh.** Yang tersisa dari bab
+> ini tinggal butir (1) — kontrak REST — beserta butir (2) yang lingkupnya menyempit.
+
+#### (2) Aksi lokal `UploadDataSlinkOJK` — hanya memengaruhi segmen F06
+
+`Sec_SegmentF06-Section.xml` memanggilnya sebagai aksi lokal. Rule-nya **tidak ada di
+export**. Bandingkan dengan padanannya di segmen D01, `PNCUploadDataKlaimSlikOJK`, yang
+ADA — sehingga ketiadaan yang satu ini tampak sebagai gap, bukan sebagai rancangan.
+
+**Lingkupnya kini menyempit.** Unggahan segmen D01 sudah berjalan, memakai pemetaan dari
+`PNCUploadAutoClaimSlikOJK`. Yang belum diketahui hanyalah apakah unggahan segmen F06
+memuat kolom yang BERBEDA — bila sama, rule ini tidak dibutuhkan sama sekali.
+
+#### (3) Daftar pilihan dropdown "Tipe Generate" — Rule-Obj-FieldValue
+
+Isian `.GenerateType` ada di `Sec_SegmentD01_1` sebagai dropdown, tetapi daftar pilihannya
+tidak ada di export, dan **tidak satu pun kueri maupun aktivitas membacanya**.
+
+Yang dibutuhkan: daftar pilihannya, DAN jawaban atas pertanyaan yang lebih penting —
+**apakah isian itu memang menyaring sesuatu?** Bila ya, aturannya belum pernah terbaca.
+Untuk sementara isiannya diterima dan diteruskan, tetapi tidak menyaring apa pun.
+
+### 4.2 Pertanyaan ke Work Owner
+
+#### (4) Berkas ekspor F06 di produksi — apakah memang hampir seluruhnya kosong?
+
+`ExportDataSlinkFOG` menulis **34 nama properti** yang seluruhnya properti **CIF nasabah**
+(`ASMClientID`, `pyFullName`, `ASMNIK`, `SpouseName`, …). Halaman yang diekspornya,
+`AllDataObjectSlink`, diisi `GetDataSlinkAllFOG` — yang menghasilkan alias yang **berbeda**
+(`CUSTOMERTYPE`, `OBJECTGENDER`, `DATEOFBIRTH`, `ASMZIPCODE`, `TELFAXNUMBER`, …).
+
+Hanya tiga nama yang berpadanan: `ASMAddress`, `KodeKantorCabang`, `OperasiData`.
+
+Bacaan yang paling sesuai bukti: **berkas ekspor F06 hari ini hampir seluruhnya kosong**.
+Itu **belum dipastikan** dan perlu diuji terhadap satu berkas ekspor produksi yang
+sungguhan — bukan disimpulkan dari kode saja.
+
+Bila benar, pertanyaan lanjutannya: apakah berkas itu memang dipakai melapor ke OJK, atau
+pelaporan F06 sebenarnya menempuh jalur lain?
+
+#### (5) ~~Dua selisih terencana yang menunggu persetujuan~~ — **TERJAWAB 2026-09-26**
+
+Keduanya sempat diajukan sebagai selisih terencana (`D-54`). **Work Owner memilih
+"samakan persis dengan Pega"**, sehingga keduanya **dicabut** dan tidak lagi menjadi
+selisih pada uji kesetaraan gerbang 1.
+
+| # | Semula diusulkan | Keputusan |
+|---|---|---|
+| a | Ekspor F06 dibuat sejajar 38↔38 | **direplikasi misalign** — 38 judul, 34 kolom data |
+| b | Nama berkas ekspor dibetulkan | **direplikasi tertukar** — ekspor D01 bernama "Laporan F06 SLIK OJK", dan sebaliknya |
+
+Keberatan sudah disampaikan sebelum jawaban diminta, beserta akibat paling konkretnya:
+nilai **Alamat** tercetak di bawah judul **"Jenis Kelamin"**, kode cabang di bawah
+**"Perjanjian Pisah Harta"**, operasi data di bawah **"Melanggar BMPK"**. Keputusan
+ditegaskan dan dijalankan penuh. Rinciannya di `catatan-pengembangan.md` §57 dan
+`keputusan-implementasi.md` §58.
+
+**Butir 4 di atas karena itu menjadi lebih penting, bukan kurang.** Selama bentuk berkas
+produksi belum pernah dilihat, tidak ada yang dapat memastikan replikasi ini benar-benar
+setara — yang direplikasi adalah **rule sebagaimana tertulis**, bukan keluaran yang sudah
+diperiksa.
+
+Dua cacat lain **direplikasi** dan tidak menuntut persetujuan, tetapi dicatat sebagai calon
+butir `P-5`:
+
+- Kolom "Tanggal Pembayaran" terisi `tanggalkondisi` — tabelnya tidak menyimpan tanggal
+  pembayaran sama sekali.
+- Kode kantor cabang `'001'` sebagai konstanta di dalam kueri — melanggar `D-15`; tempatnya
+  master Cabang pada `F-4`. Sudah diangkat menjadi parameter repo supaya ketika masternya
+  tiba, yang berubah hanya satu tempat.
+
+#### (6) Bagaimana tombol "SLIK OJK" memilih klaimnya — BELUM dapat dipulihkan
+
+Di Pega, `InsertDataSlinkOJKIndividu` bekerja atas **satu klaim yang sedang dibuka**
+(`pyWorkPagee.ClaimData.ClaimNo`). Layar pemantauan ini tidak punya klaim yang sedang
+dibuka, dan `Sec_SegmentD01_1` **tidak menghubungkan tombol ini ke aktivitas mana pun** —
+sehingga cara klaimnya dipilih di layar ini tidak dapat dibaca dari export.
+
+**Yang dipakai sementara:** tombolnya mengirim seluruh klaim yang cocok dengan penyaring —
+sasaran yang sama dengan "Proses Data Klaim", sehingga pelapor menekan "Cari Data" untuk
+melihat apa yang akan dikirim lebih dulu.
+
+**Yang ditanyakan:** apakah itu memang perilaku yang dimaksud, atau tombolnya semestinya
+mengirim satu klaim yang dipilih dari baris grid? Bila yang kedua, layarnya menuntut kolom
+aksi per baris yang tidak ada di layar lama (`D-13`), dan itu keputusan tersendiri.
+
+Rutenya sudah menerima kedua bentuk, sehingga jawabannya tidak menuntut perubahan besar.
+
+#### (7) Satu selisih yang BELUM pernah ditanyakan — batas baris ekspor
+
+`MaxRecords` pada `GetTempDataD01` dan `GetAllDataSumbisSlink` **kosong**: Pega tidak
+membatasi jumlah baris ekspor sama sekali. Modul ini memasang batas **200.000 baris**
+sebagai penjaga terhadap `D-10` (puluhan juta baris), dan berkas yang menyentuhnya diberi
+**baris penanda** — bukan dipotong diam-diam seperti `pyMaxRecords=500` pada laporan lain.
+
+Ia hanya menggigit di atas 200.000 baris. Bila Work Owner menghendaki tanpa batas seperti
+Pega, yang berubah satu konstanta di `http/export.go`.
+
+### 4.3 Yang TIDAK diminta, dan alasannya
+
+DDL `POOLDATA.T_CLAIM_SLIK_OJK` tidak diminta terpisah — ia bagian `R-08` yang sudah
+tercatat. Ketiadaannya **tidak memblokir** modul ini: nilai kolom dibaca sebagai `any` lalu
+diformat di satu tempat, sehingga kolom bertipe TEKS maupun TANGGAL sama-sama terlayani.
+
+Yang akan berubah ketika DDL-nya tiba hanyalah fungsi `text` di
+`repo/sqlstore/monitoringslinkojk.go` — dan hanya bila ternyata bentuk keluarannya perlu
+disesuaikan.
+
+---
+
+## 5. Case Study Claim — `MENU_ID 74`
+
+Modulnya **sudah dibangun dan dapat dijalankan**. Yang di bawah bukan penghalang, melainkan
+hal yang perlu diputuskan atau dikonfirmasi supaya modul ini tidak menyimpan asumsi diam.
+
+### 5.1 Yang perlu DIPUTUSKAN Work Owner — satu butir, dan ia menyangkut kewenangan menulis
+
+**Serah-terima kepemilikan tulis atas SATU kolom** (`D-63`):
+
+    UPDATE POOLDATA.T_CLAIM_PNC SET REMARKRECOMENDATION = … WHERE CLAIMNO = …
+
+Tabelnya milik sistem lama, dan `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem.
+Presedennya sudah berjalan — modul Inbox Receive TKA menulis `TGLDOKLENGKAP` pada tabel yang
+sama — sehingga yang dibutuhkan bukan keputusan baru melainkan **perluasan satu kolom** pada
+serah-terima yang sudah ada.
+
+Prosedurnya menempuh tiga pihak: permintaan tertulis tim pengembang, persetujuan Work Owner,
+pelaksanaan DBA.
+
+Work Owner sudah menyetujui pembangunannya pada 2026-09-26; yang belum adalah langkah
+formal di atas.
+
+### 5.2 Yang perlu DIKONFIRMASI DBA — dua kolom, keduanya bagian `R-08`
+
+Keduanya **tidak memblokir** modul ini. Ia berjalan tanpa keduanya, dan yang berubah ketika
+DDL-nya tiba hanya satu tempat masing-masing.
+
+| Kolom | Yang tidak diketahui | Akibat bila dugaannya salah |
+|---|---|---|
+| `POOLDATA.T_CLAIM_PNC.REMARKRECOMENDATION` | **Lebar kolomnya** | Batas 2.000 karakter di `errors.go` adalah pengaman yang dipilih sadar, bukan hasil pembacaan DDL. Bila lebar sebenarnya lebih kecil, catatan yang lolos pemeriksaan kami akan ditolak Oracle dengan ORA-12899 — dan pengguna melihatnya sebagai "terjadi kesalahan sistem" setelah mengetik satu halaman penuh |
+| `POOLDATA.PEGA_DASHBOARDPNC.THNREGIS` | **Tipenya** — VARCHAR2 atau NUMBER | Ia yang dibandingkan penyaring rentang. Kueri membandingkannya terhadap TEKS, persis seperti kueri lama membandingkannya terhadap keluaran `TO_CHAR`; bila ia NUMBER, Oracle mengubah teksnya dan hasilnya sama. Bila ia bertipe lain sama sekali, penyaringnya gagal — dan `claimpnc -periksa` yang akan menunjukkannya |
+
+Satu kueri katalog menjawab keduanya:
+
+    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE
+      FROM ALL_TAB_COLUMNS
+     WHERE OWNER = 'POOLDATA'
+       AND ( (TABLE_NAME = 'T_CLAIM_PNC'      AND COLUMN_NAME = 'REMARKRECOMENDATION')
+          OR (TABLE_NAME = 'PEGA_DASHBOARDPNC' AND COLUMN_NAME = 'THNREGIS') );
+
+### 5.3 Yang perlu DIKONFIRMASI tim bisnis — satu temuan, bukan permintaan artefak
+
+**Cakupan NONMBU dan BONDING pada dropdown Bisnis BERTUMPANG TINDIH.**
+
+    NONMBU   panel 003/004/006/009 MINUS lima kode bisnis
+    BONDING  panel 003 DAN sepuluh kode bisnis tertentu
+
+Kesepuluh kode BONDING tidak ada di daftar lima yang dikecualikan NONMBU, sehingga **setiap
+klaim Bonding muncul pada kedua pilihan**. Menjumlahkan hasil keempat pilihan karena itu
+menghitung sebagian klaim dua kali.
+
+Ini perilaku kueri Pega apa adanya, sudah direplikasi (`P-5`), dan **tidak menuntut
+perubahan**. Yang diminta hanyalah konfirmasi: apakah tumpang tindih itu memang dikehendaki,
+atau ia cacat lama yang selama ini tidak pernah terlihat karena tidak ada yang
+membandingkan keempat pilihan berdampingan.
+
+### 5.4 Yang TIDAK diminta, dan alasannya
+
+**Isi master kode bisnis.** Kedua daftar kode — lima yang dikecualikan NONMBU dan sepuluh
+yang membentuk BONDING — di-hardcode di dalam rule Pega, dan `D-15` menetapkannya menjadi
+master data (`F-4`). Master itu belum ada, dan keduanya tinggal di berkas `.sql` tempat
+pemetaannya ke kueri lama dapat dibaca berdampingan. Memintanya sekarang berarti meminta
+sesuatu yang belum punya tempat untuk disimpan.
+
+**Ambang Rp 5.000.000.000.** Sama halnya: ia menunggu master ambang pada `F-4`, dan sudah
+diangkat menjadi satu nilai bernama yang terlihat serta dikirim ke layar — sehingga ketika
+masternya tiba, yang berubah hanya dari mana nilai itu dibaca.
+
+**Section grid `BrowseClaimStudy`.** Tidak ada, dan tidak dibutuhkan: keduapuluh empat judul
+kolom beserta properti pengisinya terbaca lengkap dari
+`Section/PNCStudyClaim-Section.xml` — berpasangan satu-satu, 24 lawan 24.
+
+### 5.5 Keputusan Work Owner 2026-09-26 — dua dari tiga butir DITUTUP
+
+Ketiga butir di atas dibawa ke Work Owner. Jawabannya:
+
+> "2 dan 3 biarin aja seperti PEGA, nomor 1 tinggal minta DBA"
+
+| Butir | Status | Yang berlaku sekarang |
+|---|---|---|
+| §5.1 Serah-terima kepemilikan tulis | **TERBUKA** — satu-satunya yang tersisa | Permintaan tertulis ke DBA; teksnya siap kirim di §5.6 |
+| §5.2 DDL dua kolom | **DITUTUP** — tidak dikejar | Modul berjalan tanpa DDL. Lihat akibatnya di bawah |
+| §5.3 Tumpang tindih NONMBU/BONDING | **DITUTUP** — direplikasi | Tidak ada perubahan kode: itu memang yang sudah dibangun (`P-5`) |
+
+**§5.3 tidak menuntut satu baris pun berubah.** Modul sejak awal mereplikasi tumpang tindih
+itu apa adanya, dan `TestCakupanNONMBUDanBONDINGBertumpangTindih` menjaganya tetap begitu.
+Yang berubah hanyalah statusnya: dari "menunggu konfirmasi" menjadi "sudah dikonfirmasi".
+
+**§5.2 menuntut satu penambahan, dan alasannya perlu dibaca.**
+
+Menutup butir ini berarti `MaxRemarkLength = 2000` tetap menjadi **dugaan**. Pega sendiri
+tidak membatasi apa pun — `pyMaxLength` **nol kemunculan** di
+`Section/PNCStudyClaim-Section.xml` — sehingga "seperti Pega" berarti batas sebenarnya
+hanyalah lebar kolom di basis data.
+
+Bila dugaan itu terlalu longgar, Oracle menolaknya dengan **ORA-12899**, dan tanpa
+penanganan khusus galat itu sampai ke pengguna sebagai *"terjadi kesalahan pada sistem"* —
+setelah ia mengetik satu halaman penuh, tanpa satu pun petunjuk bahwa yang salah hanyalah
+panjangnya.
+
+Karena itu ditambahkan:
+
+| Yang ditambahkan | Berkas |
+|---|---|
+| `ErrRemarkRejectedByColumn` — galat domain tersendiri, dibedakan dari `ErrRemarkTooLong` | `errors.go` |
+| `isValueTooLarge` — mengenali ORA-12899 lewat NOMORNYA, bukan teks pesannya | `repo/sqlstore/casestudyclaim.go` |
+| Pemetaan ke **422** menunjuk isian `catatan`; nomor galat Oracle hanya masuk log | `http/errors.go` |
+| Tiga uji yang mengunci ketiganya | `query_test.go`, `export_test.go` |
+
+Akibatnya: DDL-nya boleh tidak pernah datang, dan pengguna tetap diberi tahu apa yang salah.
+Kemunculan galat ini di log sekaligus menjadi **bukti langsung** bahwa 2.000 terlalu longgar
+— satu-satunya cara mengetahuinya selama DDL belum ada.
+
+### 5.6 Permintaan ke DBA — siap kirim
+
+> **Perihal:** Permintaan kewenangan tulis satu kolom — modul Case Study Claim (`MENU_ID 74`)
+>
+> Modul Case Study Claim pada aplikasi Claim PNC yang baru menggantikan harness Pega
+> `PNCStudyClaim`. Salah satu fungsinya — tombol **Save** pada kolom *Remark* di setiap baris
+> — menyimpan catatan hasil telaah, persis seperti di Pega.
+>
+> Di Pega, penyimpanan itu dikerjakan `SaveRemarksRecommendation_act` lewat pernyataan:
+>
+> ```sql
+> UPDATE POOLDATA.T_CLAIM_PNC
+>    SET REMARKRECOMENDATION = :1
+>  WHERE CLAIMNO = :2
+> ```
+>
+> **Yang diminta:** kewenangan `UPDATE` bagi akun aplikasi atas **satu kolom** —
+> `POOLDATA.T_CLAIM_PNC.REMARKRECOMENDATION`. Tidak ada kolom lain yang ditulis modul ini,
+> dan tidak ada `INSERT` maupun `DELETE`.
+>
+> **Dasar:** `D-63` menetapkan perubahan kewenangan menempuh permintaan tertulis tim
+> pengembang, persetujuan Work Owner, dan pelaksanaan DBA. Persetujuan Work Owner sudah
+> diberikan pada 2026-09-26.
+>
+> **Preseden:** modul Inbox Receive TKA sudah menulis kolom `TGLDOKLENGKAP` pada tabel yang
+> sama, dengan pagar yang sama.
+>
+> **Pagar yang sudah terpasang di aplikasi:**
+>
+> - Pernyataan tulisnya **satu-satunya** di seluruh modul, dan dijaga uji otomatis yang
+>   menolak pernyataan tulis kedua masuk tanpa disadari.
+> - Jumlah baris terpengaruh **diperiksa**: lebih dari satu baris menjadi galat, bukan lewat
+>   begitu saja — karena keunikan `CLAIMNO` belum dibuktikan DDL mana pun.
+> - Setiap penyimpanan **dicatat di log** beserta pelakunya, portalnya, dan nomor klaimnya.
+>   Isi catatannya tidak ikut dicatat.
+>
+> **Sekaligus, bila memungkinkan** — tidak menghalangi, dan boleh diabaikan: lebar kolom
+> `REMARKRECOMENDATION`. Aplikasi memakai batas 2.000 karakter sebagai pengaman yang dipilih
+> sendiri; bila lebar sebenarnya lebih kecil, kiriman yang melampauinya tetap ditolak dengan
+> pesan yang benar, hanya saja penolakannya terjadi di basis data dan bukan di layar.
+>
+> ```sql
+> SELECT DATA_TYPE, DATA_LENGTH
+>   FROM ALL_TAB_COLUMNS
+>  WHERE OWNER = 'POOLDATA'
+>    AND TABLE_NAME = 'T_CLAIM_PNC'
+>    AND COLUMN_NAME = 'REMARKRECOMENDATION';
+> ```

@@ -47,6 +47,7 @@ import (
 	daftartipedokumenbisnissql "claim-pnc/internal/daftartipedokumenbisnis/repo/sqlstore"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -89,6 +90,7 @@ import (
 	mastersurveyorssql "claim-pnc/internal/mastersurveyors/repo/sqlstore"
 	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
+	monitoringslinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
 	"claim-pnc/internal/reportkpi"
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
@@ -211,6 +213,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 		print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
+	checkCaseStudyClaim(ctx, casestudyclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
 	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
@@ -218,6 +221,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 		inboxcloseclaimsql.NewRepo(primary),
 		inboxcloseclaimsql.NewRequestRepo(primary),
 		print)
+	checkMonitoringSlinkOJK(ctx, primary, print)
 
 	print("")
 	if login == "" {
@@ -293,6 +297,42 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 // Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada, dan
 // kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang tampak mirip
 // di layar tetapi perbaikannya berbeda jauh.
+// checkMonitoringSlinkOJK melaporkan kesiapan ketiga tabel modul Monitoring SLINK OJK.
+//
+// # Kenapa modul ini butuh pemeriksanya sendiri
+//
+// Ketiga tabelnya tidak disentuh modul lain mana pun. Tanpa pemeriksa, ketiadaan atau
+// salah nama kolomnya baru ketahuan ketika seorang pelapor membuka layarnya dan mendapat
+// galat 500 — dan yang gagal di sana adalah laporan ke OJK.
+//
+// Ketiganya dilaporkan TERPISAH karena akibat kegagalannya berbeda:
+//
+//   - T_CLAIM_SLIK_OJK gagal   → segmen D01 kosong sama sekali.
+//   - T_CLAIM_OBJECTLIST gagal → segmen F06 kosong sama sekali.
+//   - T_GENERAL gagal          → hanya kolom "Operasi Data" yang tidak dapat dihitung;
+//     kedua segmen lainnya tetap berjalan.
+func checkMonitoringSlinkOJK(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	results := monitoringslinkojksql.Probe(ctx, primary)
+
+	failed := 0
+	for _, result := range results {
+		if result.OK() {
+			print("  [ok]    %s", result.Name)
+			continue
+		}
+		failed++
+		print("  [BELUM] %s: %v", result.Name, result.Err)
+	}
+
+	if failed == 0 {
+		return
+	}
+	print("            Ketiganya HANYA DIBACA modul ini; yang mengisinya adalah jalur")
+	print("            akseptasi sistem lama (InsertAdjustmentList, InsertAdjustmentListKredit).")
+	print("            Bila gagal, yang kurang adalah hak baca akun aplikasi — bukan migrasi,")
+	print("            karena modul ini tidak membawa migrasi sama sekali.")
+}
+
 func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, print func(string, ...any)) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Inbox Laporan Klaim belum siap: %v", err)
@@ -4834,4 +4874,44 @@ func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo,
 		return
 	}
 	print("  [ok]    lini bisnis %s: %s", login, line)
+}
+
+// checkCaseStudyClaim membuktikan keempat tabel layar Case Study Claim dapat dibaca.
+//
+// # Kenapa pemeriksaan ini berharga
+//
+// Kuerinya menyentuh EMPAT tabel sekaligus, dan salah satunya — `T_CLAIM_ADJUSTMENT` —
+// hanya muncul di dalam subkueri. Hak baca yang kurang pada tabel itu tidak terlihat saat
+// layar dibuka: layarnya tergambar, penyaringnya terisi, dan galatnya baru muncul saat
+// pengguna menekan "Lihat Data".
+//
+// Satu kolom patut disebut khusus: `PEGA_DASHBOARDPNC.THNREGIS`. Ia yang dibandingkan
+// penyaring rentang, dan TIPENYA BELUM PERNAH DITERIMA (`R-08`). Kueri ini
+// membandingkannya terhadap teks, persis seperti kueri lama membandingkannya terhadap
+// keluaran `TO_CHAR`; bila kolomnya ternyata NUMBER, Oracle mengubah teksnya menjadi angka
+// dan hasilnya sama. Yang tidak sama adalah bila ia bertipe lain sama sekali — dan itulah
+// yang akan terlihat di sini.
+func checkCaseStudyClaim(
+	ctx context.Context,
+	repo *casestudyclaimsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel Case Study Claim tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.PEGA_DASHBOARDPNC,")
+		print("            POOLDATA.T_CLAIM_PNC, POOLDATA.BUSINESS, dan")
+		print("            POOLDATA.T_CLAIM_ADJUSTMENT. Keempatnya milik sistem lama dan")
+		print("            tidak dibuat migrasi mana pun.")
+		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
+		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
+		print("            DDL, yang belum pernah diterima (`R-08`).")
+		return
+	}
+	print("  [ok]    Keempat tabel Case Study Claim dapat dibaca")
+
+	print("            Catatan: layar ini hanya memuat klaim yang salah satu baris")
+	print("            settlement-nya melampaui Rp 5.000.000.000. Daftar yang kosong pada")
+	print("            periode tertentu karena itu jawaban yang benar, bukan kerusakan.")
+	print("            Modul ini MENULIS satu kolom — T_CLAIM_PNC.REMARKRECOMENDATION —")
+	print("            dan penulisan itu menuntut serah-terima kepemilikan tulis (`D-63`).")
 }

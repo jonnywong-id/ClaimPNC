@@ -28,11 +28,13 @@ import (
 	"claim-pnc/internal/auth/repo/memory"
 	"claim-pnc/internal/auth/repo/sqlstore"
 	"claim-pnc/internal/auth/usecase"
+	"claim-pnc/internal/casestudyclaim"
 	"claim-pnc/internal/daftardetaildokumentravel"
 	"claim-pnc/internal/daftardetailtipedokumen"
 	"claim-pnc/internal/daftarobjekdokumen"
 	"claim-pnc/internal/daftartipedokumen"
 	"claim-pnc/internal/daftartipedokumenbisnis"
+	"claim-pnc/internal/dashboardclaim"
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
@@ -76,6 +78,7 @@ import (
 	"claim-pnc/internal/mastertipesurveyors"
 	"claim-pnc/internal/masterxol"
 	"claim-pnc/internal/menu"
+	"claim-pnc/internal/monitoringslinkojk"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
@@ -108,6 +111,11 @@ import (
 	daftartipedokumenbisnismemory "claim-pnc/internal/daftartipedokumenbisnis/repo/memory"
 	daftartipedokumenbisnissql "claim-pnc/internal/daftartipedokumenbisnis/repo/sqlstore"
 	daftartipedokumenbisnisusecase "claim-pnc/internal/daftartipedokumenbisnis/usecase"
+	dashboardclaimhttp "claim-pnc/internal/dashboardclaim/http"
+	dashboardclaimcloseclaim "claim-pnc/internal/dashboardclaim/repo/closeclaim"
+	dashboardclaimmemory "claim-pnc/internal/dashboardclaim/repo/memory"
+	dashboardclaimsql "claim-pnc/internal/dashboardclaim/repo/sqlstore"
+	dashboardclaimusecase "claim-pnc/internal/dashboardclaim/usecase"
 	detailpenyebabhttp "claim-pnc/internal/detailpenyebab/http"
 	detailpenyebabmemory "claim-pnc/internal/detailpenyebab/repo/memory"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
@@ -116,6 +124,13 @@ import (
 	inboxacceptopenprotectionmemory "claim-pnc/internal/inboxacceptopenprotection/repo/memory"
 	inboxacceptopenprotectionsql "claim-pnc/internal/inboxacceptopenprotection/repo/sqlstore"
 	inboxacceptopenprotectionusecase "claim-pnc/internal/inboxacceptopenprotection/usecase"
+	casestudyclaimhttp "claim-pnc/internal/casestudyclaim/http"
+	casestudyclaimmemory "claim-pnc/internal/casestudyclaim/repo/memory"
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
+	casestudyclaimusecase "claim-pnc/internal/casestudyclaim/usecase"
+	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
+	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
+	riwayatklaimusecase "claim-pnc/internal/riwayatklaim/usecase"
 	inboxanalystdoctorhttp "claim-pnc/internal/inboxanalystdoctor/http"
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
@@ -298,6 +313,10 @@ import (
 	menumemory "claim-pnc/internal/menu/repo/memory"
 	menusql "claim-pnc/internal/menu/repo/sqlstore"
 	menuusecase "claim-pnc/internal/menu/usecase"
+	slinkojkhttp "claim-pnc/internal/monitoringslinkojk/http"
+	slinkojkmemory "claim-pnc/internal/monitoringslinkojk/repo/memory"
+	slinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
+	slinkojkusecase "claim-pnc/internal/monitoringslinkojk/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
@@ -1418,6 +1437,30 @@ func run() error {
 			FallbackErrorWriter: inboxanalystdoctorhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Case Study Claim. Jembatan pemanggilnya membawa LOGIN, dan hanya jalur TULIS yang
+	// memerlukannya.
+	//
+	// Kedua jalur bacanya tidak menyaring menurut siapa yang membukanya — kueri lama pun
+	// tidak punya satu pun penyaring operator. Yang dipakai login adalah MENCATAT siapa
+	// yang menyimpan catatan telaah: `POOLDATA.T_CLAIM_PNC` tidak punya kolom pelaku untuk
+	// `REMARKRECOMENDATION`, sehingga log adalah satu-satunya tempat identitas itu
+	// tersimpan selama `S-5` belum ada.
+	caseStudyClaimHandler := casestudyclaimhttp.NewHandler(
+		casestudyclaimhttp.Options{
+			Service: assembly.caseStudyClaim,
+			GetCaller: func(ctx context.Context) (casestudyclaimhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return casestudyclaimhttp.Caller{}, false
+				}
+				return casestudyclaimhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: casestudyclaimhttp.ErrorWriter(writePortalAwareError),
+		})
 
 	// Inbox Komunikasi Cabang. Jembatan pemanggilnya membawa LOGIN, dan di sini alasannya
 	// paling keras di antara seluruh modul inbox: login BUKAN sekadar jejak, melainkan
@@ -1431,6 +1474,28 @@ func run() error {
 	// NAMA ikut dibawa sejak 2026-09-24, ketika modul ini mulai menulis. Ia tersimpan sebagai
 	// `REPLYFROMNAME` bersama balasannya — bukan diambil lewat join saat dibaca, karena jejak
 	// yang namanya diambil lewat join berubah ketika orangnya berganti nama.
+	// Monitoring SLINK OJK (`MENU_ID 78`). Jembatan pemanggilnya membawa LOGIN saja:
+	// layar ini tidak menyaring menurut pemiliknya — ia memantau kewajiban lapor SATU
+	// entitas, dan yang memisahkan entitas adalah portal, bukan identitas.
+	//
+	// Identitasnya tetap dituntut ada. Susunan kolom laporan ke OJK beserta nomor CIF
+	// dan tanggal lahir debitur tidak boleh terbaca tanpa sesi.
+	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
+		Service: assembly.monitoringSlinkOJK,
+		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return slinkojkhttp.Caller{}, false
+			}
+			return slinkojkhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+		// pemeriksaan portal.
+		FallbackErrorWriter: slinkojkhttp.ErrorWriterFrom(writePortalAwareError),
+	})
+
 	komunikasiCabangHandler := inboxkomunikasicabanghttp.NewHandler(
 		inboxkomunikasicabanghttp.Options{
 			Service: assembly.inboxKomunikasiCabang,
@@ -1532,24 +1597,43 @@ func run() error {
 		FallbackErrorWriter: inboxcloseclaimhttp.ErrorWriter(writePortalAwareError),
 	})
 
-	// View History Claim. Jembatan pemanggilnya membawa LOGIN, bukan NIK: itulah yang
-	// dicocokkan ke kolom LOGIN pada POOLDATA.MST_PROTEKSI_DATA_PNC, dan memakai NIK di
-	// sini akan membuat setiap pengguna tampak belum terdaftar di gerbang proteksi.
-	claimHistoryHandler := riwayatklaimhttp.NewHandler(riwayatklaimhttp.Options{
-		Service: assembly.riwayatKlaim,
-		GetCaller: func(ctx context.Context) (riwayatklaimhttp.Caller, bool) {
-			baseCtx, existing := authhttp.CallerFromContext(ctx)
-			if !existing {
-				return riwayatklaimhttp.Caller{}, false
-			}
-			return riwayatklaimhttp.Caller{Login: baseCtx.User.Login}, true
-		},
-		Logger:    logger,
-		WriteJSON: writeJSON,
-		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
-		// pemeriksaan portal.
-		FallbackErrorWriter: riwayatklaimhttp.ErrorWriter(writePortalAwareError),
+	// Dashboard Claim. Ia TIDAK memerlukan jembatan pemanggil, dan itu bukan kelalaian:
+	// tidak satu pun angkanya disaring menurut siapa yang membukanya. Menyuntikkan
+	// identitas pemanggil ke sini justru akan mengundang penyaringan yang tidak diminta.
+	//
+	// Zona waktu tampilan dibiarkan pada bawaannya — Asia/Jakarta — sama seperti modul
+	// inbox di atasnya. Waktu disimpan UTC dan dikonversi SATU KALI di lapisan transport,
+	// sehingga tidak ada satu pun tempat yang menambah tujuh jam sendiri seperti
+	// `Set7Hours` sistem lama (`F-5`).
+	dashboardClaimHandler, err := dashboardclaimhttp.NewHandler(dashboardclaimhttp.Options{
+		Service:       assembly.dashboardClaim,
+		Logger:        logger,
+		WriteResponse: writeJSON,
+		WriteError: dashboardclaimhttp.WriteError(
+			logger, writeJSON, dashboardclaimhttp.ErrorWriter(writePortalAwareError),
+		),
 	})
+	if err != nil {
+		return err
+	}
+
+	// View History Claim TIDAK dirakit di sini. Ia dirakit `modules.go`, yang memiliki
+	// pemilih penyimpanan, layanan, handler, dan pemasangan rutenya secara lengkap.
+	//
+	// # Kenapa catatan ini ada
+	//
+	// Berkas ini SEMPAT merakitnya juga, dan akibatnya dua: `main.go` memakai
+	// `riwayatklaimhttp` tanpa mengimpornya — impor di Go berlaku per berkas, bukan per
+	// paket — sehingga **seluruh aplikasi tidak dapat dikompilasi**; dan seandainya
+	// terkompilasi, rutenya terdaftar DUA KALI pada router yang sama, yang membuat chi
+	// panik saat start.
+	//
+	// Yang dipertahankan adalah perakitan di `modules.go`, karena hanya ia yang dijaga
+	// uji: `TestExtraModulesMounted` menembak router yang benar-benar dirakit dan gagal
+	// begitu modulnya lepas.
+	//
+	// Kerusakan ini berasal dari penggabungan cabang, bukan dari modul mana pun. Dicatat
+	// di docs/catatan-pengembangan.md.
 
 	accountHandler := masterrekeninghttp.NewHandler(masterrekeninghttp.Options{
 		// Adapter dari pemilih layanan bertipe konkret menjadi pemilih bertipe antarmuka.
@@ -1760,11 +1844,9 @@ func run() error {
 				// perusahaan rekanan; tidak satu pun boleh terbaca tanpa sesi.
 				inboxautoclaimhttp.Mount(protected, autoClaimHandler, activePortalDeps)
 
-				// View History Claim memuat nama tertanggung, nomor polis, dan tanggal
-				// lahir peserta — satu pencarian dapat mengembalikan seluruh riwayat
-				// klaim seorang nasabah. Selain sesi, ia dijaga gerbang proteksi data
-				// yang jatahnya berkurang tiap kali layar dibuka.
-				riwayatklaimhttp.Mount(protected, claimHistoryHandler, activePortalDeps)
+				// View History Claim dipasang `modules.go`, bukan di sini — lihat
+				// catatan di tempat handler-nya dulu dirakit.
+				//
 				// Inbox Laporan Klaim. Seluruh rutenya memasang pemeriksaan portal di
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
@@ -1784,6 +1866,13 @@ func run() error {
 				// ditambah TIGA Operator ID perorangan yang tertanam di dalam rule —
 				// persis jenis hardcode yang D-15 hapus.
 				inboxcloseclaimhttp.Mount(protected, closeClaimHandler, activePortalDeps)
+				// Dashboard Claim. Pemeriksaan portal dipasang di dalam Mount, karena
+				// SELURUH rutenya menyentuh basis data entitas.
+				//
+				// Kewenangannya belum diperiksa per peran (TKT-F3-005), dan taruhannya di
+				// sini perlu dinyatakan: yang ditampilkan bukan satu baris klaim melainkan
+				// RINGKASAN seluruh pekerjaan satu badan hukum.
+				dashboardclaimhttp.Mount(protected, dashboardClaimHandler, activePortalDeps)
 				// Master Tipe Surveyors. Sama seperti di atas: pemeriksaan portal
 				// dipasang di dalam Mount, karena SELURUH rutenya menyentuh basis
 				// data entitas.
@@ -1932,6 +2021,16 @@ func run() error {
 				inboxkomunikasicabanghttp.Mount(
 					protected, komunikasiCabangHandler, activePortalDeps)
 
+				// Monitoring SLINK OJK memuat kewajiban lapor SATU badan hukum
+				// kepada OJK, beserta nomor CIF debitur, tanggal lahir, alamat,
+				// dan nomor teleponnya. Seluruh rutenya dijaga pemeriksaan portal.
+				//
+				// Ia MEMBACA SAJA: tabel T_CLAIM_SLIK_OJK diisi sistem lama pada
+				// jalur akseptasi dan tetap dimiliki Pega selama masa paralel
+				// (`P-1`), dan artefak kedua tombol pengirimnya tidak ada di
+				// export (`R-16`).
+				slinkojkhttp.Mount(protected, slinkOJKHandler, activePortalDeps)
+
 				// Inbox Progress Claim memuat nama tertanggung, nomor polis, dan
 				// catatan progres — seluruhnya milik satu badan hukum. Rutenya karena
 				// itu menuntut portal, sama seperti Inbox Admin.
@@ -1945,6 +2044,15 @@ func run() error {
 				// dari entitas yang salah.
 				inboxanalystdoctorhttp.Mount(
 					protected, inboxAnalystDoctorHandler, activePortalDeps)
+
+				// Case Study Claim memuat klaim di atas Rp 5 miliar beserta nama
+				// tertanggung, nomor polis, dan kronologinya — seluruhnya milik satu
+				// badan hukum. Rutenya menuntut portal karena alasan yang sama dengan
+				// modul di atasnya, ditambah satu yang khas: ia MENULIS. Jatuh ke koneksi
+				// bawaan di sini bukan sekadar menampilkan entitas yang salah — ia
+				// menuliskan catatan telaah ke tabel klaim entitas yang salah.
+				casestudyclaimhttp.Mount(
+					protected, caseStudyClaimHandler, activePortalDeps)
 			})
 		},
 	})
@@ -2201,12 +2309,26 @@ type assembly struct {
 	// bukan antrean bersama. Batas itu diturunkan dari login lewat BranchResolver.
 	inboxKomunikasiCabang *inboxkomunikasicabangusecase.Service
 
+	// monitoringSlinkOJK melayani layar Monitoring SLINK OJK (`MENU_ID 78`).
+	//
+	// Ia MEMBACA SAJA. Ketiga tombol tulis di layar lama tidak dapat dibangun karena
+	// artefaknya tidak ada di export — sebabnya disebut satu per satu di
+	// slinkojkhttp.Mount.
+	monitoringSlinkOJK *slinkojkusecase.Service
+
 	// inboxProgressClaim melayani layar Inbox Progress Claim (`MENU_ID 65`).
 	inboxProgressClaim *inboxprogressclaimusecase.Service
 
 	// inboxAnalystDoctor melayani layar Inbox Analyst Doctor (`MENU_ID 60`) — antrean
 	// penilaian medis milik satu petugas.
 	inboxAnalystDoctor *inboxanalystdoctorusecase.Service
+
+	// caseStudyClaim melayani layar Case Study Claim (`MENU_ID 74`).
+	//
+	// Butir menunya berada di bawah kelompok INBOX, tetapi ia BUKAN inbox menurut `D-79`:
+	// barisnya bukan pekerjaan, tidak hilang setelah ditindaklanjuti, dan tidak punya
+	// tenggat. Ia layar telaah atas klaim di atas Rp 5 miliar.
+	caseStudyClaim *casestudyclaimusecase.Service
 
 	// inboxLaporanKlaim melayani layar Inbox Laporan Klaim. Sama seperti master status
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
@@ -2222,6 +2344,18 @@ type assembly struct {
 	// nilai PYSTATUSWORK yang sama dengan arah yang berlawanan. Satu-satunya modul inbox
 	// yang MENULIS, dan yang ditulisnya bukan klaim melainkan permintaan atas klaim.
 	inboxCloseClaim *inboxcloseclaimusecase.Service
+
+	// dashboardClaim melayani layar Dashboard Claim — empat angka ringkasan beserta
+	// telusurnya.
+	//
+	// Ia PANDANGAN MANAJERIAL, bukan inbox: tidak satu pun angkanya disaring menurut
+	// operator pemegang tugas. Perbedaan itu yang membuatnya TIDAK memakai ulang
+	// inboxOutstanding di atas, meski keduanya sama-sama membaca klaim berjalan.
+	//
+	// Tile CLOSE CLAIM-nya justru memakai ulang closeClaimSelector, karena populasinya
+	// memang sama persis dengan layar Inbox Close Claim.
+	dashboardClaim *dashboardclaimusecase.Service
+
 	// inputReqProtection melayani layar Input Req Protection — permintaan pembukaan
 	// proteksi beserta form inputnya.
 	inputReqProtection *inputreqprotectionusecase.Service
@@ -2341,6 +2475,14 @@ type storage struct {
 	// komunikasiCabangSelector memilih penyimpanan percakapan milik satu portal.
 	komunikasiCabangSelector inboxkomunikasicabang.RepoSelector
 
+	// slinkOJKSelector memilih penyimpanan Monitoring SLINK OJK milik satu portal.
+	//
+	// Per portal, dengan alasan yang lebih tegas daripada modul lain: kewajiban lapor
+	// SLIK adalah kewajiban SATU badan hukum kepada OJK. Satu repo bersama akan
+	// menampilkan — dan mengekspor — kewajiban lapor entitas lain tanpa satu pun pesan
+	// galat (`R-20`, `ADR-0030`).
+	slinkOJKSelector monitoringslinkojk.RepoSelector
+
 	// komunikasiCabangBranch menerjemahkan login petugas menjadi kode cabang klaimnya.
 	//
 	// Ia SALINAN seam yang sama dengan claimReportBranch, bukan pemakaian ulangnya, dan itu
@@ -2366,6 +2508,13 @@ type storage struct {
 	// Jatuh ke koneksi bawaan di sini bukan sekadar menampilkan entitas yang salah — ia
 	// menampilkan data medis entitas yang salah.
 	inboxAnalystDoctorSelector inboxanalystdoctor.RepoSelector
+
+	// caseStudySelector memilih penyimpanan klaim telaah milik satu portal.
+	//
+	// Alasannya sama dengan selector di atasnya, ditambah satu yang khas layar ini: ia
+	// membaca EMPAT tabel sekaligus, dan salah satunya DITULISNYA. Jatuh ke koneksi bawaan
+	// di sini berarti menuliskan catatan telaah ke tabel klaim badan hukum lain (`R-20`).
+	caseStudySelector casestudyclaim.RepoSelector
 
 	// claimReportSelector memilih penyimpanan berkas laporan klaim milik satu portal.
 	//
@@ -2408,6 +2557,12 @@ type storage struct {
 	// pembelahannya mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega,
 	// yang kedua menulis tabel milik aplikasi ini sendiri (`P-1`).
 	closeClaimRequests inboxcloseclaim.RequestRepoSelector
+
+	// dashboardSelector memilih penyimpanan Dashboard Claim milik satu portal.
+	//
+	// Ia TIDAK melayani tile CLOSE CLAIM — tile itu dibaca lewat closeClaimSelector di
+	// atas, supaya kuerinya tidak disalin ke dua modul yang kelak dapat menyimpang.
+	dashboardSelector dashboardclaim.RepoSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -3246,6 +3401,26 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Case Study Claim menerima Logger, dan itu WAJIB — bukan kelengkapan.
+	//
+	// `POOLDATA.T_CLAIM_PNC` tidak punya kolom yang mencatat siapa mengubah
+	// `REMARKRECOMENDATION` maupun kapan. Selama modul jejak audit (`S-5`) belum ada, log
+	// aplikasi adalah satu-satunya tempat perubahan itu meninggalkan jejak — dan layanan
+	// yang dibentuk tanpa logger akan menulis tanpa jejak sama sekali.
+	//
+	// Ia TIDAK menerima Clock: tidak ada satu pun stempel waktu yang ditulis modul ini.
+	// Kolom yang disentuhnya hanya catatan telaah, dan tabelnya tidak punya kolom waktu
+	// untuk itu.
+	caseStudyClaimService, err := casestudyclaimusecase.NewService(
+		casestudyclaimusecase.Options{
+			RepoSelector: store.caseStudySelector,
+			Logger:       logger,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	outstandingService, err := inboxoutstandingusecase.NewService(store.outstandingSelector)
 	if err != nil {
 		store.close()
@@ -3262,6 +3437,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		Requests: store.closeClaimRequests,
 		IDs:      inboxcloseclaimmemory.IDGenerator{},
 		Clock:    clock.System{},
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Dashboard Claim. Tile CLOSE CLAIM-nya dibaca lewat penyimpanan modul DI ATAS, bukan
+	// lewat kueri sendiri.
+	//
+	// Perakitannya menempuh Repo, bukan Service, dengan alasan yang dicatat di paket
+	// adapter: Service ikut membaca permintaan ReOpen yang tertunda atas setiap baris —
+	// hasil yang tidak digambar dashboard, dari tabel yang migrasinya belum dijalankan DBA
+	// di lingkungan mana pun.
+	dashboardClosedReader, err := dashboardclaimcloseclaim.NewReader(store.closeClaimSelector)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	dashboardClaimService, err := dashboardclaimusecase.NewService(dashboardclaimusecase.Options{
+		RepoSelector: store.dashboardSelector,
+		ClosedClaim:  dashboardClosedReader,
 	})
 	if err != nil {
 		store.close()
@@ -3301,6 +3498,15 @@ komunikasiCabangService, err := inboxkomunikasicabangusecase.NewService(
 			// percakapan mana, dan siapa menutup percakapan yang tidak dapat dibuka kembali.
 			Logger: logger,
 		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Monitoring SLINK OJK (`MENU_ID 78`). MEMBACA SAJA — lihat slinkojkhttp.Mount.
+	slinkOJKService, err := slinkojkusecase.NewService(slinkojkusecase.Options{
+		RepoSelector: store.slinkOJKSelector,
+	})
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3416,13 +3622,16 @@ komunikasiCabangService, err := inboxkomunikasicabangusecase.NewService(
 		reportKPI:                 reportKPIService,
 		reportKlaim:               reportKlaimService,
 		inboxKomunikasiCabang:     komunikasiCabangService,
+		monitoringSlinkOJK:        slinkOJKService,
 		inboxProgressClaim:        inboxProgressClaimService,
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
+		caseStudyClaim:            caseStudyClaimService,
 		inboxLaporanKlaim:         claimReportService,
 		inboxOutstanding:          outstandingService,
 		inputReqProtection:        protectionRequestService,
 		inboxAcceptOpenProtection: protectionAcceptService,
 		inboxCloseClaim:           closeClaimService,
+		dashboardClaim:            dashboardClaimService,
 	}, nil
 }
 
@@ -4066,6 +4275,18 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxcloseclaimsql.NewRepo(conn), nil
 		}
 
+		// Dashboard Claim membaca basis data entitas yang sama.
+		//
+		// Ia TIDAK memuat tile CLOSE CLAIM — tile itu dilayani closeClaimSelector tepat di
+		// atas, lewat adapter yang dirakit bersama service-nya.
+		store.dashboardSelector = func(alias string) (dashboardclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return dashboardclaimsql.NewRepo(conn), nil
+		}
+
 		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
 		// klaimnya — bukan ke portal utama.
 		//
@@ -4241,6 +4462,18 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxkomunikasicabangsql.NewRepo(conn), nil
 		}
 
+		// Kode kantor cabang tidak dipasok: DefaultBranchCode dipakai, meniru literal
+		// `'001'` di dalam `GetDataSlinkAllFOG-SQL.xml`. Ia melanggar `D-15` dan
+		// tempatnya adalah master Cabang pada `F-4`; sampai master itu ada, nilainya
+		// dapat ditimpa lewat NewRepoWithBranchCode tanpa menyunting kueri.
+		store.slinkOJKSelector = func(alias string) (monitoringslinkojk.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return slinkojksql.NewRepo(conn), nil
+		}
+
 		store.inboxProgressClaimSelector = func(alias string) (inboxprogressclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -4255,6 +4488,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				return nil, err
 			}
 			return inboxanalystdoctorsql.NewRepo(conn), nil
+		}
+
+		store.caseStudySelector = func(alias string) (casestudyclaim.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return casestudyclaimsql.NewRepo(conn), nil
 		}
 
 		store.claimReportBranch = inboxlaporanklaimsql.NewBranchResolver(primary)
@@ -4404,6 +4645,19 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.closeClaimRequests = func(string) (inboxcloseclaim.RequestRepo, error) {
 			return closeClaimMemory, nil
 		}
+		// Dashboard Claim memakai contohnya SENDIRI, bukan contoh modul di atas.
+		//
+		// Contohnya mencakup kelima lini bisnis, termasuk satu klaim ber-Group Panel `009`
+		// yang sengaja ada supaya perilaku yang mudah terlewat itu terlihat saat dicoba: ia
+		// tidak tampil pada pilihan Non-MBU mana pun. Seluruh isinya karangan — lihat
+		// repo/memory/sample.go.
+		dashboardMemory := dashboardclaimmemory.NewRepo(
+			dashboardclaimmemory.SampleOutstanding(),
+			dashboardclaimmemory.SampleSurveys(),
+		)
+		store.dashboardSelector = func(string) (dashboardclaim.Repo, error) {
+			return dashboardMemory, nil
+		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
 		store.surveyorTypeSelector = surveyorTypeSelectorMemory(cfg.PrimaryPortal)
@@ -4474,8 +4728,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// milik cabang lain. Tanpa keempatnya, penyaring yang hilang tidak akan ketahuan
 		// saat pengembangan.
 		store.komunikasiCabangSelector = komunikasiCabangSelectorMemory(cfg.PrimaryPortal)
+		store.slinkOJKSelector = slinkOJKSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
+		// Sepuluh klaim contoh ikut dimuat, LIMA di antaranya sengaja tertolak — satu di
+		// bawah ambang, satu yang totalnya besar tetapi terpecah menjadi dua baris kecil,
+		// satu di luar rentang tahun, satu berkode bisnis yang dikecualikan NONMBU, dan
+		// satu berpanel di luar seluruh cakupan. Tanpa kelimanya, penyaring yang rusak
+		// tetap tampak benar saat pengembangan.
+		store.caseStudySelector = caseStudySelectorMemory(cfg.PrimaryPortal)
 	}
 
 	switch cfg.Storage {
@@ -5970,6 +6231,40 @@ func reportKPISelectorMemory(primaryAlias string) reportkpi.RepoSelector {
 // membuktikan selisih satu kolom antara grid dan pencacah benar-benar ditiru.
 //
 // Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// slinkOJKSelectorMemory menyusun penyimpanan Monitoring SLINK OJK di memori.
+//
+// Empat baris contoh segmen D01 dan tiga baris segmen F06, seluruhnya KARANGAN
+// (`D-69` — tidak ada nomor polis maupun data nasabah nyata di berkas yang di-commit).
+//
+// Isinya memegang satu janji: setiap penyaring punya baris yang cocok MAUPUN yang tidak.
+// Yang membuktikan penyaringnya bekerja bukan baris yang muncul, melainkan baris yang
+// seharusnya tidak muncul dan memang tidak muncul — di sini ada tiga: baris berlini
+// Bonding yang hanya tampak lewat pilihan "SURETY BOND", baris bertanggal Januari yang
+// hilang pada rentang Maret, dan baris yang diregistrasi pukul 23.40 di hari TERAKHIR
+// rentang, yang justru wajib IKUT.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+func slinkOJKSelectorMemory(primaryAlias string) monitoringslinkojk.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]monitoringslinkojk.Repo{}
+
+	return func(alias string) (monitoringslinkojk.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := slinkojkmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
 func komunikasiCabangSelectorMemory(primaryAlias string) inboxkomunikasicabang.RepoSelector {
 	var lock sync.Mutex
 	store := map[string]inboxkomunikasicabang.Repo{}
@@ -6452,6 +6747,38 @@ func progressStatus2SelectorMemory(parentSelector masterstatusprogres.RepoSelect
 			return existing, nil
 		}
 		fresh := masterstatusprogresmemory.NewRepo2(memoryParent, masterstatusprogresmemory.SampleList2()...)
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// caseStudySelectorMemory menyusun penyimpanan klaim telaah di memori; alasannya sama
+// dengan inboxAnalystDoctorSelectorMemory di atas.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi: perilaku penolakannya ikut teruji saat pengembangan, bukan hanya nanti.
+//
+// Satu salinan per portal, bukan satu yang dibagi — dan di modul ini alasannya paling
+// keras di antara seluruh pemilih memori: modul ini MENULIS. Berbagi penyimpanan
+// antarportal berarti catatan telaah yang disimpan lewat satu portal muncul di portal lain,
+// yaitu bentuk kebocoran yang persis dilarang `R-20`.
+func caseStudySelectorMemory(primaryAlias string) casestudyclaim.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]casestudyclaim.Repo{}
+
+	return func(alias string) (casestudyclaim.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := casestudyclaimmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}
