@@ -700,41 +700,31 @@ Modul ini **sudah berjalan**. Yang diminta di bawah bukan membuka modulnya, mela
 membuat ketiga tabnya **berbeda satu sama lain** — tanpa itu ketiganya menampilkan baris
 yang sama.
 
-### 6.1 Yang diminta ke DBA — tiga kolom
+### 6.1 Permintaan kolom DICABUT SELURUHNYA — tidak ada yang perlu ditambahkan
 
-Ketiganya sudah masuk [`migrations/0005`](../backend/migrations/0005_claimlist_admin_kolom.up.sql)
-**tahap 1** dan tinggal dijalankan. Menempuh `D-63`: permintaan tertulis, persetujuan Work
-Owner, pelaksanaan DBA, lalu diuji dengan menjalankan Pega dan Go bersamaan.
+Bagian ini semula meminta **tiga kolom** ke DBA. **Ketiganya ternyata sudah ada**, dan
+permintaannya dicabut pada hari yang sama (2026-09-27) setelah Work Owner memeriksa tabelnya.
 
-| # | Kolom | Asalnya | Akibat bila tidak ada |
-|---|---|---|---|
-| K-1 | **`PXASSIGNEDORGUNIT`** | `PC_ASSIGN_WORKLIST` | **Ketiga tab menampilkan baris yang persis sama.** Bukan layar kosong yang terlihat rusak — tiga tab yang tampak bekerja sambil menampilkan hal yang salah |
+| Kolom | Sempat diminta karena | Kenyataan |
+|---|---|---|
+| `PXASSIGNEDORGUNIT` | penyaring ketiga tab; §B.1 dokumen kolom tidak menyebutnya | **sudah ada** |
+| `PXCREATEOPNAME` | `inboxoutstanding` memakai `PXCREATEOPERATOR`, disimpulkan kolom namanya tak ada | **sudah ada** |
+| `PYORIGUSERID` | tercatat di §B.4 sebagai kolom yang harus dibawa | **sudah ada** |
 
-> **Dikoreksi 2026-09-27.** Permintaan ini semula memuat TIGA kolom. Work Owner memeriksa
-> kolom tabelnya langsung, dan dua di antaranya dikeluarkan:
->
-> | Kolom | Kenyataan |
-> |---|---|
-> | `PXCREATEOPNAME` | **sudah ada.** Saya menyimpulkannya tidak ada karena `inboxoutstanding` memakai `PXCREATEOPERATOR` — dugaan, bukan bukti |
-> | `STATUSCLAIM_1` | **tidak lagi dipakai** modul ini; Status Klaim diturunkan dari `PYSTATUSWORK`. Barisnya tetap di migrasi untuk modul lain |
->
-> Kekeliruan itu berakibat nyata bila lolos: `ALTER TABLE ... ADD` polos **gagal dengan
-> ORA-01430** pada kolom pertama yang sudah ada, dan menyisakan tabel setengah jadi.
+**Tidak ada satu kolom pun yang perlu ditambahkan untuk layar ini.** `migrations/0005` sudah
+dikembalikan ke keadaan semula.
 
-> **Panjang K-1 belum diverifikasi ke katalog.** Ia belum ikut dalam pembacaan
-> `ALL_TAB_COLUMNS` 2026-09-22. `VARCHAR2(128 CHAR)` mengikuti kolom sekerabat yang memang
-> terbaca saat itu (`PXUPDATEOPNAME`, `PXASSIGNEDUSERNAME`). **Mohon dipastikan sebelum
-> dijalankan** — kolom yang terlalu sempit memotong nilai tanpa satu pun galat.
+> **`STATUSCLAIM_1` memang belum ada**, dan pemakaiannyalah yang membuat layar ini gagal
+> dengan ORA-00904. Ia tidak lagi dipakai: Status Klaim kini diturunkan dari `PYSTATUSWORK`.
+> Barisnya tetap di `migrations/0005` tahap 1 untuk modul lain yang memintanya sejak
+> 2026-09-22.
 
-**Satu hal yang tidak selesai dengan menjalankan DDL.** Kolom yang ditambahkan **tidak
-terisi dengan sendirinya**; proses pengisi tabel harus ikut diperluas. Tanpa itu hasilnya
-sama dengan keadaan `STATUSLOCK_1` dan `REQUESTSURVEY_1` hari ini: kolomnya ada, isinya
-tidak pernah ditulis — dan ketiga tab mengembalikan nol baris **tanpa satu pun galat**.
+**Kenapa ketiganya sempat diminta.** Daftar kolom `T_CLAIMLIST_ADMIN` yang sudah ada **belum
+pernah dibaca dari katalog** — dokumen hanya mencatat jumlahnya. Ketiadaan sebuah kolom
+karena itu disimpulkan dari modul lain yang memakai kolom berbeda, dan itu bukan bukti.
 
-Perintah `PENYIMPANAN=oracle -periksa` sudah dipasangi penjaga yang gagal menyebut ketiga
-nama kolom itu, sehingga ketiadaannya ketahuan saat pemeriksaan lingkungan dan bukan saat
-petugas membuka layar. Yang **tidak** dapat dibuktikannya: apakah kolomnya benar-benar
-terisi.
+Yang tersisa sebagai permintaan nyata di bagian ini: **tidak ada**. Yang dibutuhkan hanyalah
+**L-3** di §7.6 — daftar kolom lengkapnya, supaya kekeliruan sejenis tidak terulang.
 
 ### 6.2 Dua temuan yang menyentuh modul lain — ditujukan ke **Work Owner**
 

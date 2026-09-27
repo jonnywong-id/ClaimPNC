@@ -132,21 +132,26 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		}, true
 
 	case errors.Is(err, inboxmanageradmin.ErrSourceColumnMissing):
-		// 503, bukan 500: sistemnya tidak rusak — ia menunggu perubahan basis data yang
-		// sudah diminta. Statusnya berbeda supaya pemantauan tidak mencampurnya dengan
-		// kegagalan tak terduga, dan supaya lonjakannya tidak membangunkan siapa pun.
+		// 503, bukan 500: sistemnya tidak rusak — struktur basis datanya belum sejalan
+		// dengan yang dibutuhkan layar. Statusnya berbeda supaya pemantauan tidak
+		// mencampurnya dengan kegagalan tak terduga.
 		//
-		// Pesannya menyebut KOLOMNYA. Keadaan ini berlangsung sampai DBA menjalankan
-		// migrasinya — bisa berhari-hari — dan "Terjadi kesalahan pada sistem" akan
-		// membuat setiap petugas melaporkannya sebagai kerusakan aplikasi.
+		// # Kenapa pesannya TIDAK menyebut nama kolom
+		//
+		// Karena tidak ada lagi kolom yang DIKETAHUI hilang: ketiga yang sempat diminta
+		// ternyata sudah ada (koreksi Work Owner 2026-09-27). Bila galat ini muncul
+		// sekarang, kolomnya BELUM diketahui — dan menyebut nama yang salah lebih buruk
+		// daripada tidak menyebut apa pun, karena orang akan memeriksa kolom yang baik-baik
+		// saja.
+		//
+		// Nama kolomnya ada di pesan galat Oracle, yang masuk log. Ia tidak dikirim ke
+		// peramban: rincian internal tidak pernah bocor ke klien.
 		return http.StatusServiceUnavailable, ErrorResponse{
 			Code: CodeSourceColumnMissing,
-			Message: "Antrean belum dapat ditampilkan karena penyiapan basis data belum " +
-				"selesai. Tiga kolom yang dibutuhkan layar ini — PXASSIGNEDORGUNIT, " +
-				"PXCREATEOPNAME, dan STATUSCLAIM_1 pada POOLDATA.T_CLAIMLIST_ADMIN — " +
-				"belum ditambahkan. Ini BUKAN kerusakan aplikasi dan tidak perlu " +
-				"dilaporkan berulang: penambahannya sudah diminta ke DBA lewat " +
-				"migrations/0005 tahap 1.",
+			Message: "Antrean belum dapat ditampilkan: ada kolom yang dibutuhkan layar " +
+				"ini tetapi belum ada di basis data. Ini BUKAN kerusakan aplikasi dan " +
+				"tidak dapat diperbaiki dengan mencoba lagi. Laporkan ke tim teknis — " +
+				"nama kolomnya tercatat di log server.",
 		}, true
 
 	default:

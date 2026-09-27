@@ -17541,3 +17541,67 @@ tidak tertangkap.
 
 `List` di memori kini menurunkan Status Klaim dari `WorkStatus`, dari isian yang sama dengan
 kuerinya, dan isian lamanya dibuang dari data contoh.
+
+## 65. Permintaan kolom dicabut seluruhnya — ketiganya sudah ada (2026-09-27)
+
+Koreksi ketiga Work Owner dalam satu hari, dan yang paling menentukan: **`PXASSIGNEDORGUNIT`
+sudah ada** di `T_CLAIMLIST_ADMIN`.
+
+Dengan itu, seluruh permintaan kolom untuk modul ini **gugur**:
+
+| Kolom | Disimpulkan tidak ada karena | Kenyataan |
+|---|---|---|
+| `PXASSIGNEDORGUNIT` | tidak disebut §B.1 `kolom-t-claimlist-admin.md` | **sudah ada** |
+| `PXCREATEOPNAME` | `inboxoutstanding` memakai `PXCREATEOPERATOR` | **sudah ada** |
+| `PYORIGUSERID` | tercatat §B.4 sebagai kolom yang harus dibawa | **sudah ada** |
+
+### 65.1 Yang sebenarnya menggagalkan layar
+
+Bukan ketiganya, melainkan **`STATUSCLAIM_1`** — kolom yang memang belum ada, dan yang kueri
+ini sempat pakai untuk mencari label status ke `V_STS_CLAIM`. Sejak §64 ia tidak lagi dipakai
+(Status Klaim diturunkan dari `PYSTATUSWORK`), sehingga kuerinya kini memakai **hanya kolom
+yang terbukti ada**.
+
+Layar yang masih gagal saat tangkapan layar diambil karena **binary-nya belum dibangun
+ulang**: pesannya menyebut tiga kolom, bentuk yang hanya ada sebelum koreksi §64.
+
+### 65.2 Ketiga kekeliruan berpola sama, dan polanya layak dicatat
+
+Ketiganya lahir dari **menyimpulkan ketiadaan** dari sumber yang tidak membuktikannya:
+
+| Sumber yang dipakai | Yang sebenarnya ia buktikan |
+|---|---|
+| Modul lain memakai kolom berbeda | Modul itu memilih kolom lain — **tidak lebih** |
+| Dokumen tidak menyebut kolomnya | Dokumen itu tidak lengkap — **tidak lebih** |
+| Dokumen menyebutnya sebagai "harus dibawa" | Ia ada di tabel SUMBER — bukan tentang tabel TUJUAN |
+
+Akar ketiganya satu: **daftar kolom `T_CLAIMLIST_ADMIN` belum pernah dibaca dari katalog**
+(§D.6 dokumen kolom). Selama itu, "kolom X tidak ada" hanya dapat berupa dugaan.
+
+### 65.3 Yang dicabut, dan yang tetap
+
+| Hal | Keadaan |
+|---|---|
+| `migrations/0005` | **dikembalikan ke keadaan semula** — tidak ada kolom yang ditambahkan untuk modul ini |
+| `check_column` | **dihapus** — ia menjaga kolom yang sudah ada, dan hanya melaporkan hal yang tidak perlu dikerjakan siapa pun |
+| Permintaan §6.1 ke DBA | **dicabut seluruhnya** |
+| `ErrSourceColumnMissing` | **tetap**, tetapi pesannya **tidak lagi menyebut nama kolom** |
+| `L-3` (daftar kolom lengkap) | **tetap diminta** — ia yang menutup kelas kekeliruan ini |
+
+### 65.4 Kenapa pesan galatnya berhenti menyebut nama kolom
+
+Karena tidak ada lagi kolom yang **diketahui** hilang. Bila galat itu muncul sekarang,
+kolomnya belum diketahui — dan menyebut nama yang salah **lebih buruk daripada tidak
+menyebut apa pun**, karena orang akan memeriksa kolom yang baik-baik saja.
+
+Nama kolomnya tetap terbaca di pesan Oracle yang masuk log (status 503 ≥ 500, sehingga ikut
+dicatat). Ia tidak dikirim ke peramban: rincian internal tidak pernah bocor ke klien.
+
+### 65.5 Uji yang menggantikan `check_column`
+
+`TestKueriHanyaMemakaiKolomYangTerbuktiAda` menahan `STATUSCLAIM_1` dan `V_STS_CLAIM` kembali
+dipakai, dan memastikan ketiga kolom yang sempat dicurigai **tetap dipakai** — supaya
+penghapusannya kelak tidak dianggap perbaikan.
+
+Ia tidak dapat menjaga kolom yang belum pernah dipakai. Itu hanya dapat dijaga oleh daftar
+kolom yang diminta `L-3`.

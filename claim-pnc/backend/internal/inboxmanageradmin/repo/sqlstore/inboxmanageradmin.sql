@@ -90,62 +90,32 @@
 -- dihapus. Menghapus penyaring mengubah baris yang dibaca penyelia tanpa satu pun galat.
 --
 -- ============================================================================
--- TIGA KOLOM YANG DIMINTA, DAN KENAPA KETIGANYA TIDAK BOLEH DIAKALI
+-- TIGA KOLOM YANG SEMPAT DIMINTA, DAN TERNYATA SUDAH ADA SEMUA
 -- ============================================================================
 --
--- # 1. PXASSIGNEDORGUNIT — tanpa ini ketiga tab TIDAK DAPAT DIBEDAKAN
+-- Saat modul ini dipindahkan ke tabel ini (2026-09-27), tiga kolom disimpulkan
+-- belum ada dan diminta lewat `migrations/0005`. KETIGANYA TERNYATA SUDAH ADA, dan
+-- permintaannya dicabut pada hari yang sama setelah Work Owner memeriksa tabelnya:
 --
--- Ia penyaring UTAMA layar ini, berasal dari filter `A` Report Definition:
+--   PXASSIGNEDORGUNIT  sudah ada
+--   PXCREATEOPNAME     sudah ada
+--   PYORIGUSERID       sudah ada (tidak dipakai berkas ini; tidak digambar section)
 --
---     newAssignPage.pxAssignedOrgUnit = Param.OrgUnit
+-- `STATUSCLAIM_1` juga sempat dipakai berkas ini lalu ditinggalkan: Status Klaim kini
+-- diturunkan dari `PYSTATUSWORK`, mengikuti `RDB List/BrowseClaimALL-SQL.xml` dan modul
+-- Inbox Outstanding. Kolom itu memang BELUM ada, dan pemakaiannya inilah yang membuat
+-- kueri ini sempat gagal dengan ORA-00904.
 --
--- Di sistem lama ia milik `DATAPEGA.PC_ASSIGN_WORKLIST`. Ia TIDAK ada di antara 40 kolom
--- `T_CLAIMLIST_ADMIN` dan TIDAK ikut dalam daftar kolom yang diusulkan
--- `docs/kolom-t-claimlist-admin.md` §B.1 — daftar itu membawa `PXDEADLINETIME`,
--- `PXGOALTIME`, `PYASSIGNMENTSTATUS`, dan `PXASSIGNEDUSERNAME` dari worklist, tetapi tidak
--- kolom ini.
+-- # Kenapa ketiganya sempat disimpulkan tidak ada
 --
--- Tanpanya, ketiga tab mengembalikan **baris yang persis sama** — bukan layar kosong yang
--- terlihat rusak, melainkan tiga tab yang tampak bekerja sambil menampilkan hal yang salah.
+-- Karena daftar kolom `T_CLAIMLIST_ADMIN` yang SUDAH ADA belum pernah dibaca dari
+-- katalog — `docs/kolom-t-claimlist-admin.md` mencatat jumlahnya (40) tanpa menyebut
+-- namanya. Ketiadaan sebuah kolom karena itu disimpulkan dari modul lain yang memakai
+-- kolom berbeda, dan itu bukan bukti.
 --
--- Keputusan Work Owner 2026-09-27: **kolomnya diminta ditambah**, dan ia sudah masuk
--- `migrations/0005` tahap 1. Dua kemungkinan lain sudah ditimbang dan DITOLAK:
---
---   join ke PC_ASSIGN_WORKLIST  mengembalikan kedua cacat join yang baru saja hilang
---   turunkan dari GROUPPANEL    MENGUBAH ARTI penyaringnya — `PXASSIGNEDORGUNIT` adalah
---                               unit organisasi yang MEMEGANG penugasan, bukan lini bisnis
---                               klaimnya. Keduanya tidak sama, dan itu sudah tercatat
---                               sebelum keputusan ini diambil
---
--- # 2. PXCREATEOPNAME — yang ada hanya ID-nya, bukan namanya
---
--- Kolom layar "Admin PNC" di Pega berasal dari `.pxCreateOpName` (berlabel
--- "Create Operator Name") — sebuah NAMA. `T_CLAIMLIST_ADMIN` punya `PXCREATEOPERATOR`, dan
--- itu **ID petugas**, bukan namanya; `inboxoutstanding` memetakan kolom "Admin name"-nya ke
--- sana dan menerima akibatnya.
---
--- Memakai `PXCREATEOPERATOR` di sini akan menampilkan `MORASOTARDODOTARIGAN` di tempat yang
--- di Pega berbunyi nama orang. Keputusan Work Owner 2026-09-27: **kolom namanya diminta
--- ditambah**, bukan ID-nya dipakai sebagai pengganti.
---
--- # 3. STATUSCLAIM_1 — sudah diusulkan, belum dijalankan
---
--- Ia sudah ada di `migrations/0005` tahap 1 sejak 2026-09-22 (§B.2 kolom doc), diminta modul
--- lain. Yang dibutuhkan berkas ini sama persis: KODE status yang dicari labelnya ke
--- `V_STS_CLAIM`. `STATUSLOCK_1` yang sudah ada TIDAK dapat menggantikannya — ia **kosong di
--- seluruh 1.014 baris**.
---
--- Ketiganya dijaga `check_column` di bawah, yang dijalankan perintah `-periksa` dan gagal
--- dengan pesan yang MENYEBUT NAMA KOLOMNYA — sehingga ketiadaannya ketahuan saat pemeriksaan
--- lingkungan, bukan saat petugas membuka layar.
---
--- Dua kemungkinan kegagalan, dan keduanya terlihat berbeda:
---
---   kolomnya TIDAK ADA  -> kueri gagal, `-periksa` menyebutkan namanya
---   kolomnya ADA, KOSONG -> ketiga tab mengembalikan nol baris TANPA galat apa pun
---
--- Yang kedua itu yang berbahaya, dan layar menjawabnya dengan pesan kosong yang menyebut
--- unit organisasi yang disaring — bukan "tidak ada data" yang terbaca seperti antrean sepi.
+-- Daftar lengkapnya diminta sebagai `L-3` (`permintaan-artefak-pega.md` §7.6). Sampai ia
+-- ada, setiap kolom baru yang dipakai berkas ini WAJIB ditelusuri ke modul lain yang
+-- kuerinya benar-benar berjalan — bukan ke dokumen yang menyebut kolom sumbernya.
 --
 -- ============================================================================
 -- PXOBJCLASS WAJIB DISARING — TABEL INI MEMUAT LEBIH DARI SATU KELAS KASUS
@@ -238,27 +208,6 @@ SELECT a.PZINSKEY                                   AS REFERENCE,
 SELECT 1
   FROM POOLDATA.T_CLAIMLIST_ADMIN
  WHERE 1 = 0
-
--- name: check_column
--- Memastikan SATU kolom yang diminta benar-benar sudah ditambahkan.
---
--- Ia pemeriksaan TERSENDIRI, bukan digabung ke check_table, supaya pesan gagalnya menyebut
--- satu hal saja: `PXASSIGNEDORGUNIT` satu-satunya kolom yang belum ada, dan ia menunggu
--- `migrations/0005` tahap 1 dijalankan DBA. Tanpanya ketiga tab tidak dapat dibedakan.
---
--- # Dua kolom yang SEMPAT ada di sini, dan kenapa keduanya dikeluarkan
---
--- Koreksi Work Owner 2026-09-27, sesudah kolom tabelnya diperiksa langsung:
---
---   PXCREATEOPNAME   ternyata SUDAH ADA — tidak perlu diminta, dan tidak perlu dijaga
---   STATUSCLAIM_1    tidak lagi dipakai — kolom Status Klaim kini dari PYSTATUSWORK
---
--- `1 = 0` membuatnya tidak pernah mengembalikan baris. Yang diuji adalah apakah basis data
--- MENERIMA pernyataannya — dan ia menolak dengan ORA-00904 bila kolomnya tidak ada.
-SELECT 1
-  FROM POOLDATA.T_CLAIMLIST_ADMIN
- WHERE PXASSIGNEDORGUNIT IS NOT NULL
-   AND 1 = 0
 
 -- name: line_business_for
 -- Lini bisnis seorang petugas — padanan `OperatorID.pyPosition` sistem lama.

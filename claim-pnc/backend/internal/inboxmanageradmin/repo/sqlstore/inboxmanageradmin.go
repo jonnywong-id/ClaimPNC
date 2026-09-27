@@ -77,43 +77,31 @@ func (r *Repo) List(
 // Dipanggil perintah `-periksa`. Ia tidak menyentuh satu baris pun: yang diperiksa adalah
 // hak baca dan keberadaan tabelnya.
 //
-// # Kenapa TIGA pemeriksaan, bukan satu
+// # Kenapa DUA pemeriksaan, bukan satu
 //
-// Karena ketiganya gagal dengan sebab yang berbeda dan layak dibedakan. Memisahkannya
-// membuat pesan gagalnya menyebut satu hal saja, dan itulah yang menghemat waktu orang yang
-// membacanya.
+// Karena keduanya menyentuh TABEL YANG BERBEDA dan gagal dengan sebab yang berbeda.
+// Memisahkannya membuat pesan gagalnya menyebut satu hal saja.
 //
-//  1. TABELNYA — `POOLDATA.T_CLAIMLIST_ADMIN`. Sudah dibaca modul lain, sehingga
+//  1. `POOLDATA.T_CLAIMLIST_ADMIN` — sumber antrean. Sudah dibaca modul lain, sehingga
 //     kegagalannya menunjuk koneksi atau hak akses.
 //
-//  2. SATU KOLOM yang diminta ditambahkan saat modul ini dipindahkan ke tabel itu
-//     (Work Owner 2026-09-27), menunggu `migrations/0005` tahap 1 dijalankan DBA:
-//
-//     PXASSIGNEDORGUNIT  penyaring ketiga tab — tanpanya ketiganya menampilkan hal sama
-//
-//     Dua kolom lain sempat ikut dijaga di sini dan DIKELUARKAN pada koreksi Work Owner
-//     hari yang sama: `PXCREATEOPNAME` ternyata SUDAH ADA di tabel, dan `STATUSCLAIM_1`
-//     tidak lagi dipakai karena Status Klaim kini diturunkan dari `PYSTATUSWORK`.
-//
-//  3. `M_LOGIN_PNC.LINE_BUSINESS` — tabel yang BERBEDA, milik modul Login, dan kolom yang
-//     menentukan tab mana yang boleh dibuka seorang petugas. Kolomnya sudah ada, tetapi
-//     namanya pernah salah ditulis tanpa garis bawah pada migrasi yang lalu dicabut
+//  2. `POOLDATA.M_LOGIN_PNC.LINE_BUSINESS` — milik modul Login, dan kolom yang menentukan
+//     tab mana yang boleh dibuka seorang petugas. Kolomnya sudah ada, tetapi namanya
+//     pernah salah ditulis tanpa garis bawah pada migrasi yang lalu dicabut
 //     (`migrations/0004_DICABUT.md`), sehingga ejaannya layak dijaga.
+//
+// # Kenapa TIDAK ada pemeriksaan per kolom pada tabel antrean
+//
+// Sempat ada, menjaga tiga kolom yang disimpulkan belum ditambahkan. Ketiganya ternyata
+// SUDAH ADA (koreksi Work Owner 2026-09-27), sehingga pemeriksaannya hanya melaporkan hal
+// yang tidak perlu dikerjakan siapa pun. Kolom yang benar-benar hilang tetap tertangkap —
+// lihat isMissingColumn, yang menerjemahkan ORA-00904 menjadi pesan yang terbaca.
 func (r *Repo) CheckTable(ctx context.Context) error {
 	var ignored int
 
 	err := r.db.QueryRowContext(ctx, query("check_table")).Scan(&ignored)
 	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("membaca POOLDATA.T_CLAIMLIST_ADMIN: %w", err)
-	}
-
-	err = r.db.QueryRowContext(ctx, query("check_column")).Scan(&ignored)
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf(
-			"membaca kolom PXASSIGNEDORGUNIT pada POOLDATA.T_CLAIMLIST_ADMIN — kolom "+
-				"ini diminta ditambahkan saat modul ini dipindahkan ke tabel tersebut "+
-				"dan menunggu migrations/0005 tahap 1 dijalankan DBA. Tanpanya ketiga "+
-				"tab tidak dapat dibedakan sama sekali: %w", err)
 	}
 
 	err = r.db.QueryRowContext(ctx, query("check_line_business")).Scan(&ignored)

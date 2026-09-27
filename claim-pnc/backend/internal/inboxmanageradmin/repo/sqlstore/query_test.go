@@ -16,7 +16,7 @@ import (
 // Ketiganya tidak dapat diperiksa kompilator. Yang menahan penyimpangannya hanyalah uji ini.
 
 func TestSetiapKueriYangDipakaiAda(t *testing.T) {
-	for _, name := range []string{"list_by_org_unit", "check_table", "check_column"} {
+	for _, name := range []string{"list_by_org_unit", "check_table", "check_line_business"} {
 		if _, exists := queries[name]; !exists {
 			t.Errorf("kueri %q tidak ada di berkas .sql", name)
 		}
@@ -126,31 +126,28 @@ func TestKueriTidakMerangkaiNilaiKeDalamTeksSQL(t *testing.T) {
 	}
 }
 
-func TestPemeriksaanKolomMenyebutKolomYangDiminta(t *testing.T) {
-	// Kueri ini satu-satunya alasan `-periksa` dapat menemukan ketiadaan kolomnya sebelum
-	// petugas menemukannya. Ia dipisah dari check_table dengan sengaja — lihat catatan di
-	// Repo.CheckTable.
-	text := query("check_column")
+func TestKueriHanyaMemakaiKolomYangTerbuktiAda(t *testing.T) {
+	// Menjaga kekeliruan 2026-09-27 tidak terulang: kueri sempat memakai `STATUSCLAIM_1`,
+	// kolom yang memang BELUM ada, dan seluruh layar gagal dengan ORA-00904.
+	//
+	// Ketiadaan daftar kolom `T_CLAIMLIST_ADMIN` (lihat kepala berkas .sql) membuat hal itu
+	// tidak dapat dijaga mesin. Yang dapat dijaga: kolom yang SUDAH TERBUKTI tidak ada
+	// tidak kembali dipakai diam-diam.
+	text := strings.ToUpper(query("list_by_org_unit"))
 
-	// SATU kolom, bukan tiga. Koreksi Work Owner 2026-09-27: `PXCREATEOPNAME` ternyata
-	// sudah ada di tabel, dan `STATUSCLAIM_1` tidak lagi dipakai karena Status Klaim kini
-	// diturunkan dari `PYSTATUSWORK`. Menjaga kolom yang sudah ada berarti `-periksa`
-	// melaporkan hal yang tidak perlu dikerjakan siapa pun.
-	if !strings.Contains(text, "PXASSIGNEDORGUNIT") {
-		t.Error("check_column tidak menyebut kolom PXASSIGNEDORGUNIT")
-	}
-	for _, keluar := range []string{"PXCREATEOPNAME", "STATUSCLAIM_1"} {
-		if strings.Contains(text, keluar) {
-			t.Errorf("check_column masih menjaga %s — kolom itu sudah dikeluarkan", keluar)
+	for _, belumAda := range []string{"STATUSCLAIM_1", "V_STS_CLAIM"} {
+		if strings.Contains(text, belumAda) {
+			t.Errorf("kueri memakai %q — kolom itu belum ada di T_CLAIMLIST_ADMIN", belumAda)
 		}
 	}
-	if !strings.Contains(text, "T_CLAIMLIST_ADMIN") {
-		t.Error("check_column tidak menyebut tabel T_CLAIMLIST_ADMIN")
+
+	// Ketiganya sempat disimpulkan tidak ada lalu terbukti ADA. Dipakai kembali dengan
+	// sengaja, dan disebut di sini supaya penghapusannya tidak dianggap perbaikan.
+	if !strings.Contains(text, "PXASSIGNEDORGUNIT") {
+		t.Error("kueri kehilangan penyaring PXASSIGNEDORGUNIT")
 	}
-	// `1 = 0` membuatnya tidak pernah mengembalikan baris: yang diuji adalah apakah basis
-	// data MENERIMA pernyataannya, bukan isinya.
-	if !strings.Contains(text, "1 = 0") {
-		t.Error("check_column dapat mengembalikan baris — ia seharusnya tidak menyentuh data")
+	if !strings.Contains(text, "PXCREATEOPNAME") {
+		t.Error("kueri kehilangan kolom PXCREATEOPNAME")
 	}
 }
 

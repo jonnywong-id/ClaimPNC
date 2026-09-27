@@ -73,41 +73,20 @@ Dari `PC_ASSIGN_WORKLIST`, untuk **Deadline To Temporary Close**:
 | **`PXDEADLINETIME`** | DATE | 53 |
 | `PXGOALTIME` | DATE | 53 |
 
-#### Satu kolom yang ditambahkan 2026-09-27 — layar **Inbox Manager Admin**
+#### Tidak ada kolom yang ditambahkan untuk **Inbox Manager Admin** — dan itu koreksi
 
-Ditambahkan saat modul itu dipindahkan ke tabel ini (ketetapan Work Owner). Ia masuk
-**tahap 1** karena ia menghidupkan layar, bukan melengkapi laporan.
+Modul itu sempat meminta **tiga kolom** saat dipindahkan ke tabel ini (2026-09-27).
+**Ketiganya ternyata sudah ada**, dan permintaannya dicabut pada hari yang sama setelah Work
+Owner memeriksa tabelnya:
 
-| Kolom | Tipe | Asalnya | Menghidupkan |
-|---|---|---|---|
-| **`PXASSIGNEDORGUNIT`** | VARCHAR2(128 CHAR) † | `PC_ASSIGN_WORKLIST` | **ketiga tab** Manajemen Admin — Non MBU · PA · Travel |
+| Kolom | Disimpulkan tidak ada karena | Kenyataan |
+|---|---|---|
+| `PXASSIGNEDORGUNIT` | tidak disebut §B.1 dokumen ini | **sudah ada** |
+| `PXCREATEOPNAME` | `inboxoutstanding` memakai `PXCREATEOPERATOR` | **sudah ada** |
+| `PYORIGUSERID` | tercatat di §B.4 sebagai kolom yang harus dibawa | **sudah ada** |
 
-† **Panjangnya belum diverifikasi ke katalog**, berbeda dari seluruh kolom lain di dokumen
-ini. Ia belum ikut dalam pembacaan `ALL_TAB_COLUMNS` 2026-09-22. Angka di atas mengikuti
-kolom **sekerabat** yang memang terbaca saat itu — `PXUPDATEOPNAME` dan
-`PXASSIGNEDUSERNAME`, keduanya `VARCHAR2(128 CHAR)`. **DBA dimohon memastikannya sebelum
-menjalankan**: kolom yang terlalu sempit memotong nilai tanpa satu pun galat.
-
-> **Dikoreksi pada hari yang sama.** Bagian ini semula memuat DUA kolom; `PXCREATEOPNAME`
-> dikeluarkan setelah Work Owner memeriksa tabelnya dan mendapati kolom itu **sudah ada**.
-> Ia sempat diminta karena `inboxoutstanding` memetakan "Admin name" ke `PXCREATEOPERATOR`,
-> dan dari situ disimpulkan kolom namanya tidak tersedia — **dugaan, bukan bukti**. Lihat §D.6.
-
-**`PXASSIGNEDORGUNIT` adalah yang paling berat akibatnya di seluruh daftar ini.** Ia
-satu-satunya pembeda ketiga tab layar itu — `'AdminPNC'`, `'AdminPA'`, `'AdminTRAVEL'` —
-dan berasal dari filter `A` Report Definition `ManagementAdminView`:
-
-```
-newAssignPage.pxAssignedOrgUnit = Param.OrgUnit
-```
-
-Tanpanya ketiga tab mengembalikan **baris yang persis sama**. Itu bukan layar kosong yang
-terlihat rusak, melainkan tiga tab yang tampak bekerja sambil menampilkan hal yang salah.
-
-Dua jalan pintas ditimbang dan **ditolak**: menggabung kembali ke `PC_ASSIGN_WORKLIST`
-mengembalikan dua cacat join yang justru hilang bersama pendataran (§A), dan menurunkannya
-dari `GROUPPANEL` **mengubah artinya** — kolom ini unit organisasi yang *memegang
-penugasan*, bukan *lini bisnis klaimnya*.
+Ketiganya bukti langsung untuk §D.6: **daftar kolom yang sudah ada belum pernah dibaca dari
+katalog**, sehingga dokumen ini mengusulkan menambahkan kolom yang sudah tersedia.
 
 ### B.2 Memperbaiki kolom yang sudah tampil tetapi kosong
 

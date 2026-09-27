@@ -20585,3 +20585,50 @@ ditetapkan tetap menang) · penurunan Status Klaim · **nilai asing tidak dipaks
 `migrations/0005` tahap 1 belum dijalankan DBA. Sampai itu terjadi, antrean tetap gagal —
 tetapi kini dengan pesan yang menyebut kolomnya dan menyatakan ini bukan kerusakan
 aplikasi.
+
+## 66. Permintaan kolom dicabut — ketiganya sudah ada (2026-09-27)
+
+Dipicu pertanyaan Work Owner: *"kenapa datanya kosong, seharusnya ada PNC-2856"*.
+
+### 66.1 Jawabannya
+
+Kuerinya **tidak pernah berjalan** — Oracle menolaknya di ORA-00904, sehingga
+`Total Data : 0` berarti "nol baris dibaca", bukan "nol baris cocok". Tidak ada satu klaim
+pun yang muncul, bukan hanya PNC-2856.
+
+Penyebabnya **`STATUSCLAIM_1`**, bukan ketiga kolom yang saya minta. Dan sejak §64 kolom itu
+sudah tidak dipakai — yang berjalan saat tangkapan layar diambil adalah **binary lama**,
+terbaca dari pesannya yang masih menyebut tiga kolom.
+
+### 66.2 Koreksi ketiga: `PXASSIGNEDORGUNIT` sudah ada
+
+Dengan itu seluruh permintaan kolom gugur. Rinciannya di `keputusan-implementasi.md` §65,
+termasuk pola yang menyatukan ketiga kekeliruan: **menyimpulkan ketiadaan dari sumber yang
+tidak membuktikannya**.
+
+### 66.3 Yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `migrations/0005` (3 berkas) | penambahan kolom **dicabut seluruhnya** — kembali ke keadaan semula |
+| `repo/sqlstore/*.sql` | `check_column` **dihapus**; kepala berkas mencatat ketiga koreksinya |
+| `repo/sqlstore/*.go` | `CheckTable` tinggal dua pemeriksaan, keduanya tabel berbeda |
+| `http/errors.go` | pesan 503 **tidak lagi menyebut nama kolom** |
+| `query_test.go` | `TestKueriHanyaMemakaiKolomYangTerbuktiAda` menggantikan uji `check_column` |
+| `permintaan-artefak-pega.md` §6.1 | permintaan **dicabut**; `L-3` tetap |
+| `kolom-t-claimlist-admin.md` §B.1 | ketiganya dicatat sebagai bukti langsung untuk §D.6 |
+
+### 66.4 Langkah berikutnya untuk Work Owner
+
+**Bangun ulang dan jalankan ulang aplikasinya.** Kueri sekarang hanya memakai kolom yang
+terbukti ada, sehingga antrean seharusnya termuat — dan PNC-2856 tampil bila
+`PXASSIGNEDORGUNIT`-nya bernilai `AdminPNC`.
+
+Bila setelah dibangun ulang ia tetap kosong **tanpa galat**, sebabnya bukan lagi kolom
+melainkan **isi**: entah `PXASSIGNEDORGUNIT` baris itu bukan `AdminPNC`, entah
+`PXOBJCLASS`-nya bukan `ASM-FW-GCNMFW-Work-PNC`, entah `PYSTATUSWORK`-nya sudah
+`Resolved-*`. Ketiganya dapat diperiksa satu kueri.
+
+### 66.5 Verifikasi
+
+`go build` · `go vet` bersih · `go test ./...` **seluruh paket lulus** · `gofmt` bersih.
