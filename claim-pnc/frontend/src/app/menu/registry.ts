@@ -429,6 +429,23 @@ export const MENU_ROUTES: Record<string, string> = {
   // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
   ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
 
+  // MENU_ID 57 "Inbox Manager Admin", kelompok INBOX, urutan 1147 — tepat sesudah butir di
+  // atas. Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang diambil dari
+  // DATAPEGA.PC_ASSIGN_WORKLIST, hilang begitu klaimnya selesai, dan punya tenggat berupa
+  // kolom "Lama Waktu Klaim".
+  //
+  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang BELUM
+  // dibangun dan karena itu belum dipetakan. Keduanya tidak boleh disatukan: yang ini
+  // menyaring unit organisasi penugasan lewat Report Definition `ManagementAdminView`,
+  // sedangkan induk klonnya adalah layar berbeda yang belum dibaca.
+  //
+  // Butirnya dapat terlihat oleh pengguna yang jabatannya tidak membuka satu tab pun —
+  // dan itu disengaja. Layarnya menjelaskan keadaan itu beserta jabatan yang terbaca
+  // sistem; menyembunyikan butir menunya justru akan membuat pengguna mengira menunya
+  // hilang. Penyaringan yang sesungguhnya ada di server (`TKT-F3-004` belum selesai).
+  InboxManagerAdmin_Harness: '/inbox-manager-admin',
+
+
   // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
   //
   // Di data contoh `m_otorisasi_pnc.csv`, butir ini hanya diberikan kepada grup `IT`.

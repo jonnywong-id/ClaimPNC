@@ -4194,3 +4194,101 @@ lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
 | Note AI Terima | **Note Terima** |
 | Note AI Tolak | **Note Tolak** |
 | Coverage Final | **Coverage AI Final** |
+
+
+---
+
+## Inbox Manager (`MENU_ID 58`, `UserInbox_Harness`)
+
+Modul dengan alias Pega paling menyesatkan yang pernah dipetakan sampai sesi ini. Dua kueri
+sumbernya mengaliaskan **seluruh** kolomnya ke nama yang tidak mencerminkan isinya.
+
+### Alias yang TIDAK dibawa — `BrowseStatusPenolakanKlaim2`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOTE_ST` | `City` | `catatan_induk` — alasan penolakan INDUK |
+| `NOTE_ND` | `CityID` | `catatan_baris` — alasan penolakan baris ini |
+| `ID_ND` | `District` | `referensi` / `kode` — kunci baris |
+| `ID_ST` | `CaseID` | *(tidak digambar; ia kunci induknya)* |
+| `STATUS` | `DistrictID` | `kode_status` |
+| `USER_INPUT` | `UserTeknis` | `diajukan_oleh` — pengaju, **bukan** PIC Teknik |
+| `NOTEAPPROVED` | `NoteKasir` | `alasan_penolakan` — tidak ada urusan dengan kasir |
+| *(derivasi)* | `AnaylstRemarks` | `status` — bukan catatan analis, dan salah eja |
+
+`City` dan `CityID` **tidak berpasangan**: yang satu nama induk, yang satu nama anak. Sama
+persis dengan pola yang sudah ditemukan pada Master Status Progres 2.
+
+### Alias yang TIDAK dibawa — `GetDataKonfirmasiHE`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOKLAIM` | `BRANCH_CODE` | `no_klaim` |
+| `PENGIRIM` | `BRANCH_NAME` | `pengirim` |
+| `MODEL` | `BUSINESS_CODE` | `model` |
+| `MERK` | `BUSINESS_NAME` | `merk` |
+| `TIPE` | `CURRENCY` | `tipe` |
+| `NO_RANGKA_USER` | `MARKETING` | `no_rangka` |
+| `NO_RANGKA_BENGKEL` | `POLICY_NO` | `no_rangka_bengkel` |
+
+### Alias yang TIDAK dibawa — `ShowApproveProgressKlaim`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `SUBSTR(ATASAN, …)` | `BranchName` | `cabang_atasan` |
+| `ID_AP` | `IDMaster` | `referensi` |
+| `PROGRESS1` | `ProvinceID` | *(kunci gabung, tidak digambar)* |
+| `PROGRESS2` | `Province` | *(kunci gabung, tidak digambar)* |
+| `STS_PROGRESS1` | `Notes` | `progres_1` |
+| `STS_PROGRESS2` | `NoteAkseptasi` | `progres_2` |
+| `NOKLAIM` | `ClaimID` | `no_klaim` |
+| `TGL_INPUT` | `AlasanKlaim` | `tanggal_pengajuan` |
+| `NEXTFOLLOWUP` | `BranchID` | `tenggat_tindak_lanjut` |
+| subkueri `PICTEKNIK` | `ClaimNoSRB` | `pic` |
+
+### Alias yang TIDAK dibawa — `GcnmBrowseCase_SQL`
+
+Kueri ini **tidak dipakai** modul ini — gridnya ternyata milik layar lain — tetapi aliasnya
+dicatat karena ia contoh paling ekstrem yang ditemukan sejauh ini, dan kelak akan ditemui lagi:
+
+```
+a.pyid          AS "City"          nomor case, bukan kota
+policyno        AS "Currency"      nomor polis, bukan mata uang
+qqname          AS "CityID"        nama tertanggung
+businessname    AS "District"      nama bisnis
+branchname      AS "Country"       cabang
+dateofloss_1    AS "CountryID"     tanggal kejadian
+userteknis_1    AS "CauseOfLoss"   PIC Teknik, bukan penyebab kerugian
+pxCreateOpName  AS "ClaimID"       pembuat, bukan ID klaim
+```
+
+### Nama kelompok tab — DITAMBAHKAN, tidak ada di Pega
+
+Ketiga belas tab di Pega berjajar dalam satu baris tanpa pengelompokan, dan **tiga di antaranya
+tidak berjudul**: judul kontainernya masih bernilai bawaan `Title`.
+
+| Kelompok di sistem baru | Tab |
+|---|---|
+| Dashboard | Dashboard OS · Dashboard Produktivitas Klaim · Dashboard Klaim |
+| Persetujuan Master | Master Bengkel · Panel · Sparepart · Kategori Sparepart · Tipe Sparepart · Grouping Sparepart |
+| Persetujuan Klaim | Approval Nomor Rangka Beda · Payment Klaim Akseptasi · Approval Progress Klaim · Penolakan Klaim |
+
+Judul tab yang **ada** di Pega dibawa apa adanya (`D-13`) — termasuk yang bercampur bahasa
+Inggris seperti "Approval Nomor Rangka Beda" dan "Payment Klaim Akseptasi".
+
+### Judul kolom dashboard — DITURUNKAN, karena aliasnya tidak menyatakan apa pun
+
+`GetSumBusinessDashboardProduktivitas_SQL` mengaliaskan kedelapan pencacahnya menjadi
+`BRANCHNAME`, `BUSINESSCODE`, `BUSINESSNAME`, `CLIENTID`, `EDMNO`, `FLAGEDMBATAL`,
+`FOLLOWEDPOLICY`, dan `IDPEGA`. Tidak satu pun menyatakan isinya.
+
+Judulnya diturunkan dari **predikat yang dihitungnya**, bukan dari aliasnya:
+
+| Predikat | Judul di sistem baru |
+|---|---|
+| tanpa penyaring status | Total Klaim |
+| `STSKLAIM = '1'` | Selesai |
+| `STSKLAIM = '3'` | Close |
+| `STSKLAIM NOT IN ('1','2','3')` | Outstanding |
+
+Masing-masing berpasangan "Periode Ini" dan "Tahun Lalu".

@@ -2309,6 +2309,7 @@ type assembly struct {
 	// dokumen dan klaim RCL/PUCL — karena begitulah harness `ReceiveDoucument_Harness`
 	// menyusunnya.
 	inboxManagerReceivePUCL *inboxmanagerreceivepuclusecase.Service
+
 	inboxRCLPUCL            *inboxrclpuclusecase.Service
 	reportKPI               *reportkpiusecase.Service
 	reportKlaim             *reportklaimusecase.Service
@@ -2463,6 +2464,7 @@ type storage struct {
 	// berarti memperlihatkan SELURUH antrean satu badan hukum kepada petugas badan hukum
 	// lain (`R-20`).
 	managerReceivePUCLSelector inboxmanagerreceivepucl.RepoSelector
+
 	rclPUCLSelector            inboxrclpucl.RepoSelector
 	reportKPISelector          reportkpi.RepoSelector
 	reportKlaimSelector        reportklaim.RepoSelector
@@ -6222,6 +6224,7 @@ func managerReceivePUCLSelectorMemory(
 		return fresh, nil
 	}
 }
+
 
 // rclPUCLSelectorMemory menyusun penyimpanan Inbox RCL/PUCL di memori; alasannya sama
 // dengan claimTreatyPropSelectorMemory di atas.

@@ -82,8 +82,71 @@ ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN ADD (
     STATUSCLAIM_1                  VARCHAR2(100 CHAR),   --  24 · SUMBER kolom layar "Status ASM"
     PXDEADLINETIME                 DATE,                 --  53 · tab Deadline To Temporary Close
     PXGOALTIME                     DATE,                 --  53
-    PYASSIGNMENTSTATUS             VARCHAR2(32 CHAR)     -- 344
+    PYASSIGNMENTSTATUS             VARCHAR2(32 CHAR),    -- 344
+    PXASSIGNEDORGUNIT              VARCHAR2(128 CHAR)    -- layar Inbox Manager Admin — lihat catatan
 );
+
+-- Kenapa PXASSIGNEDORGUNIT ditambahkan ke tahap 1.
+--
+-- Ditambahkan 2026-09-27 atas ketetapan Work Owner, saat modul Inbox Manager
+-- Admin dipindahkan ke tabel ini. Ia menghidupkan layar itu, jadi tempatnya
+-- memang tahap 1.
+--
+-- PXASSIGNEDORGUNIT — dari PC_ASSIGN_WORKLIST.
+--
+--   Ia satu-satunya pembeda KETIGA TAB layar itu: 'AdminPNC', 'AdminPA', dan
+--   'AdminTRAVEL'. Asalnya filter `A` Report Definition ManagementAdminView,
+--   `newAssignPage.pxAssignedOrgUnit = Param.OrgUnit`.
+--
+--   Tanpa kolom ini ketiga tab mengembalikan BARIS YANG PERSIS SAMA — bukan
+--   layar kosong yang terlihat rusak, melainkan tiga tab yang tampak bekerja
+--   sambil menampilkan hal yang salah.
+--
+--   Dua jalan pintas sudah ditimbang dan ditolak: menggabung kembali ke
+--   PC_ASSIGN_WORKLIST mengembalikan dua cacat join yang justru hilang bersama
+--   pendataran, dan menurunkannya dari GROUPPANEL MENGUBAH ARTINYA — kolom ini
+--   unit organisasi yang MEMEGANG PENUGASAN, bukan lini bisnis klaimnya.
+--
+-- TIGA KOLOM YANG DIKELUARKAN 2026-09-27 — BACA SEBELUM MENAMBAHKANNYA KEMBALI
+--
+-- Koreksi Work Owner, sesudah kolom tabelnya diperiksa langsung:
+--
+--   PXCREATEOPNAME  SUDAH ADA di T_CLAIMLIST_ADMIN (semula tahap 1)
+--   PYORIGUSERID    SUDAH ADA di T_CLAIMLIST_ADMIN (semula tahap 2)
+--
+--   STATUSCLAIM_1   tidak lagi dibutuhkan modul Inbox Manager Admin; Status
+--                   Klaim kini diturunkan dari PYSTATUSWORK. Barisnya TETAP ADA
+--                   di tahap 1 karena modul lain memintanya sejak 2026-09-22 —
+--                   yang berubah hanya siapa yang memakainya.
+--
+-- KENAPA KEDUANYA SEMPAT MASUK, DAN KENAPA ITU PENTING DISADARI
+--
+-- Daftar di berkas ini disusun dari kolom tabel SUMBER (PC_ASM_FW_GCNMFW_WORK
+-- dan PC_ASSIGN_WORKLIST), lalu diandaikan belum ada di tabel TUJUAN. Andaian
+-- itu tidak pernah diperiksa: daftar kolom T_CLAIMLIST_ADMIN yang SUDAH ADA
+-- belum pernah dibaca dari katalog — yang tercatat hanya jumlahnya, 40.
+--
+-- Akibatnya nyata bila lolos: ALTER TABLE ... ADD polos berhenti dengan
+-- ORA-01430 pada kolom pertama yang sudah ada, dan menyisakan tabel setengah
+-- jadi. Varian AMAN DIULANG memeriksa lebih dulu dan melewatinya, tetapi itu
+-- menyembunyikan gejalanya — bukan menyelesaikan sebabnya.
+--
+-- Daftar kolom lengkapnya diminta sebagai L-3 di
+-- docs/permintaan-artefak-pega.md §7.6. SEBELUM berkas ini dijalankan, DBA
+-- dimohon membandingkan seluruh nama di bawah dengan katalog — bukan hanya
+-- ketiga yang sudah ketahuan di atas.
+--
+-- PANJANG PXASSIGNEDORGUNIT BELUM DIVERIFIKASI KE KATALOG — berbeda dari seluruh
+-- kolom lain di berkas ini, yang tipenya disalin dari ALL_TAB_COLUMNS pada
+-- 2026-09-22. Ia belum ikut dalam pembacaan itu.
+--
+--   VARCHAR2(128 CHAR) dipilih mengikuti kolom SEKERABAT yang memang terbaca
+--   dari katalog itu: PXUPDATEOPNAME dan PXASSIGNEDUSERNAME, keduanya
+--   VARCHAR2(128 CHAR).
+--
+-- DBA dimohon memastikannya terhadap katalog sebelum menjalankan, dan
+-- menyesuaikan bila berbeda. Kolom yang terlalu sempit memotong nilai secara
+-- diam-diam saat pengisi tabel menulisinya.
 
 -- Kenapa STATUSCLAIM_1 masuk tahap 1 meski bukan soal tab.
 --
@@ -153,7 +216,6 @@ ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN ADD (
     PXUPDATEOPERATOR               VARCHAR2(128 CHAR),   --   111
     PXUPDATEOPNAME                 VARCHAR2(128 CHAR),   --   111
     PYLABEL                        VARCHAR2(64 CHAR),    --    17
-    PYORIGUSERID                   VARCHAR2(128 CHAR),   --    90
     PYRESOLVEDUSERID               VARCHAR2(128 CHAR),   --    56
     PYRESOLVEDTIMESTAMP            TIMESTAMP(6),         -- 3.142
     PYREOPENTIMESTAMP              TIMESTAMP(6),         --    47

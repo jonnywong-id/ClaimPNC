@@ -61,6 +61,14 @@ DECLARE
         t_kolom(1, 'PXGOALTIME',                'DATE'),
         t_kolom(1, 'PYASSIGNMENTSTATUS',        'VARCHAR2(32 CHAR)'),
 
+        -- Ditambahkan 2026-09-27 untuk layar Inbox Manager Admin.
+        -- PANJANGNYA BELUM DIVERIFIKASI ke katalog — ia mengikuti kolom
+        -- sekerabat yang terbaca 2026-09-22 (PXUPDATEOPNAME,
+        -- PXASSIGNEDUSERNAME). Lihat catatan lengkapnya di
+        -- 0005_claimlist_admin_kolom.up.sql, termasuk kenapa PXCREATEOPNAME
+        -- sempat ada di sini lalu dikeluarkan.
+        t_kolom(1, 'PXASSIGNEDORGUNIT',         'VARCHAR2(128 CHAR)'),
+
         -- ---- TAHAP 2 — identitas dan penomoran ---------------------------
         t_kolom(2, 'PXINSNAME',                 'VARCHAR2(128 CHAR)'),
         t_kolom(2, 'CASEID',                    'VARCHAR2(32 CHAR)'),
@@ -116,7 +124,6 @@ DECLARE
         t_kolom(2, 'PXUPDATEOPERATOR',          'VARCHAR2(128 CHAR)'),
         t_kolom(2, 'PXUPDATEOPNAME',            'VARCHAR2(128 CHAR)'),
         t_kolom(2, 'PYLABEL',                   'VARCHAR2(64 CHAR)'),
-        t_kolom(2, 'PYORIGUSERID',              'VARCHAR2(128 CHAR)'),
         t_kolom(2, 'PYRESOLVEDUSERID',          'VARCHAR2(128 CHAR)'),
         t_kolom(2, 'PYRESOLVEDTIMESTAMP',       'TIMESTAMP(6)'),
         t_kolom(2, 'PYREOPENTIMESTAMP',         'TIMESTAMP(6)'),

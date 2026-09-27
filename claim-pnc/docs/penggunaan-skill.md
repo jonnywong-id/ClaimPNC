@@ -8532,3 +8532,416 @@ jauh lebih dapat diandalkan daripada catatan di dokumen.
 **Dan dua uji lama menguat karenanya.** Keduanya memeriksa nilai yang tersimpan tetapi
 membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
 ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
+
+---
+
+# Penggunaan Skill — Sesi 2026-09-26 (modul Inbox Manager Admin)
+
+## Ringkasan
+
+**Tidak ada skill yang dipanggil pada sesi ini.** Seperti sesi-sesi sebelumnya, berkas ini
+mencatat kenyataan itu beserta alasan per skill — bukan daftar kosong.
+
+Satu catatan kejujuran yang perlu dibedakan, dan ia berulang setiap sesi: instruksi menuntut
+pertanyaan konfirmasi diajukan sebelum menulis kode, dan **empat pertanyaan memang diajukan**
+(tercatat di `catatan-pengembangan.md` §61.4). Itu **pemenuhan instruksi**, bukan pemakaian
+skill `grilling` — skillnya tidak dipanggil, dan menyebutnya "memakai skill" akan melebihkan
+apa yang benar-benar terjadi.
+
+## Skill yang dipertimbangkan dan alasan tidak dipakai
+
+| Skill | Kapan ia akan menolong | Kenapa tidak dipakai di sesi ini |
+|---|---|---|
+| `mattpocock-skills:grilling` | Menekan asumsi sampai patah sebelum menjadi blueprint | **Yang paling hampir dipakai di sesi ini.** Empat asumsi memang perlu ditekan, dan tiga di antaranya patah — nama `SetAssignmentInboxReg_act` yang menyiratkan penugasan padahal tidak menulis apa pun, deskripsi Report Definition yang menyebut penyaring yang tidak ada, dan `pyPosition` yang punya padanan tetapi artinya berbeda. Ketiganya patah lewat **pembacaan export**, bukan lewat ronde pertanyaan bertingkat: jawabannya ada di dalam berkas, dan yang dibutuhkan adalah membacanya sampai habis. Empat hal yang benar-benar menuntut keputusan manusia diajukan langsung bersama rekomendasi dan pilihan, tanpa ronde |
+| `mattpocock-skills:codebase-design` | Merancang modul dalam, menempatkan seam, memutuskan batas antarmuka | Bentuk modulnya **mengikuti pola yang sudah ada** — `inboxadmin` dan `inboxmanagerreceivepucl`, keduanya layar inbox bertab dengan seam yang sama persis: satu paket domain yang mendeklarasikan seamnya sendiri, `usecase/`, dua adapter `repo/`, dan `http/`. Satu keputusan kedalaman yang nyata muncul — apakah `FormatElapsed` diimpor dari modul lain atau ditulis ulang — dan itu dijawab aturan yang sudah ada (`08-TECHNICAL-STRATEGY.md` §2: modul tidak saling mengimpor), bukan oleh kosakata baru |
+| `mattpocock-skills:domain-modeling` | Menyusun atau menajamkan kosakata domain, menulis `CONTEXT.md` | Layak dipertimbangkan, dan hampir dipakai — modul ini memperkenalkan satu istilah yang belum ada di `CONTEXT.md`: **unit organisasi penugasan** (`AdminPNC`, `AdminPA`, `AdminTRAVEL`). Yang membuatnya tidak perlu: istilahnya **tidak ambigu di sumbernya** — nilainya literal di section, artinya tegas dari satu kolom. Yang menolong di sini bukan penajaman kosakata melainkan **pembacaan bukti**, dan itulah yang dikerjakan. Usulan menambahkan istilahnya ke `CONTEXT.md` dicatat di bawah |
+| `mattpocock-skills:tdd` | Membangun fitur secara test-first dengan siklus merah-hijau-refactor | Uji ditulis berdampingan dengan kode dan **menemukan satu cacat**: duplikasi baris `autoClaim` pada `extraSelectors` saat menyunting `modules.go`. Siklus formalnya tidak akan menambah apa pun di atas itu, dan acceptance criteria di sini adalah perilaku Pega yang sudah terbaca dari export — bukan spesifikasi yang perlu ditemukan lewat uji |
+| `mattpocock-skills:diagnosing-bugs` | Menelusuri bug sulit atau regresi performa | Tiga kendala yang muncul (`logging.RequestIDFrom` yang tidak ada, `gofmt -l` yang melaporkan seluruh repo, reporter vitest yang tidak dikenal) seluruhnya terbaca langsung dari pesan gagalnya. Tidak ada yang perlu ditelusuri |
+| `mattpocock-skills:research` | Meneliti pertanyaan terhadap sumber primer | Seluruh sumber primer ada di dalam repo — 2.634 berkas export. Satu-satunya pertanyaan yang jawabannya berada di luar adalah apakah `PXASSIGNEDORGUNIT` ada di basis data produksi, dan itu tidak dapat diteliti: ia menuntut koneksi Oracle, bukan sumber yang dapat dibaca |
+| `mattpocock-skills:code-review` | Meninjau perubahan terhadap standar repo dan spesifikasi asalnya | Tidak dipakai karena peninjauannya dikerjakan langsung terhadap `08-TECHNICAL-STRATEGY.md` dan `README.md` sembari menulis, dan hasilnya **diverifikasi mesin** — `go vet`, `gofmt`, `tsc --noEmit`, dan dua suite uji — bukan hanya dibaca |
+| `mattpocock-skills:prototype` · `resolving-merge-conflicts` · `wizard` · `writing-for-agents` | — | Tidak ada pertanyaan desain yang menuntut prototipe, tidak ada konflik merge, tidak ada langkah provisioning, dan dokumen sesi ini ditujukan untuk dibaca manusia |
+
+## Yang benar-benar menentukan di sesi ini, dan itu bukan skill
+
+Tiga temuan yang mengubah bentuk modul seluruhnya datang dari **membaca export sampai
+habis**, bukan dari teknik apa pun:
+
+| Temuan | Yang akan terjadi tanpanya |
+|---|---|
+| `SetAssignmentInboxReg_act` hanya satu Property-Set | Modul dibangun dengan jalur tulis yang tidak pernah ada di layar lama |
+| `pyFilterLogic` membantah `pyDescription`-nya sendiri | Penyaring `USERTEKNIS IS NULL` ditambahkan, dan baris yang hari ini terlihat hilang tanpa galat |
+| `PXASSIGNEDORGUNIT` nol kemunculan di 652 rule SQL | Kolom dipakai tanpa penjaga, dan ketiadaannya baru ketahuan saat petugas membuka layar |
+
+Yang ketiga patut dicatat khusus: ia ditemukan dengan **menghitung**, bukan dengan membaca.
+Pencarian awal memakai `grep -ril` dan menghasilkan 779 berkas untuk setiap kolom — angka
+yang tidak berarti apa-apa, karena metadata `pxCreateOpName` ada di **setiap** berkas rule
+XML. Angka yang berguna baru muncul setelah polanya dipersempit menjadi nama kolom yang
+dipakai **dengan alias tabel**.
+
+Pelajarannya sama dengan yang sudah tercatat di sesi keempat belas: **alat ukur divalidasi
+dulu pada kasus yang jelas benar**, sebelum angkanya dipercaya.
+
+## Usulan untuk `CONTEXT.md`
+
+Satu istilah layak ditambahkan, dan ia menyentuh lebih dari satu modul:
+
+**Unit Organisasi Penugasan** `[KODE]` — unit kerja yang memegang sebuah penugasan, tersimpan
+di `DATAPEGA.PC_ASSIGN_WORKLIST.PXASSIGNEDORGUNIT`. Ia **bukan** lini bisnis klaimnya:
+seorang admin PA dapat memegang klaim non-PA. Nilainya di lini admin klaim: `AdminPNC`
+(Non-MBU), `AdminPA`, `AdminTRAVEL`.
+
+Pembedaannya dari **Group Panel** perlu ditulis eksplisit, karena keduanya tampak sejalan
+dalam praktik dan menukarnya tidak menghasilkan satu pun galat.
+
+## Catatan untuk tahap berikutnya
+
+**`mattpocock-skills:codebase-design`** akan benar-benar berguna saat `FormatElapsed` layak
+diekstrak ke `internal/platform/`. Keputusan itu bukan sekadar memindahkan fungsi: ia
+menentukan apakah `internal/platform/` menjadi tempat pemformat tampilan — dan itu
+pertanyaan tentang batas lapisan, yang persis kosakata skill tersebut bantu tajamkan.
+
+---
+
+# Sesi kedua puluh tujuh — modul Inbox Manager (2026-09-27)
+
+## Ringkasan
+
+| | |
+|---|---|
+| Permintaan | tambahkan modul **Inbox Manager**, dengan `Harness/UserInbox_Harness-Harness.xml` sebagai acuan |
+| Besar modul | 13 tab — 3 dashboard, 10 antrean persetujuan; 19 rule SQL sumber |
+| Yang membedakannya | **satu-satunya layar inbox yang MENULIS** |
+
+## Skill yang dipanggil
+
+**Tidak ada.** Aturan tugas melarang memanggil skill yang tidak relevan, dan tidak satu pun
+skill terpasang cocok dengan pekerjaan ini: tidak ada kode yang di-review, tidak ada bug yang
+didiagnosis, tidak ada prototipe yang dibutuhkan, dan seluruh fakta tersedia di dalam
+repository — tidak ada yang perlu diteliti dari luar.
+
+## Teknik yang dipakai tanpa memanggil skill
+
+### `grilling` — menekan premis sampai patah, sebelum menulis kode
+
+Dipakai pada lima premis. **Empat di antaranya patah**, dan keempatnya akan menghasilkan kode
+yang salah bila diterima apa adanya.
+
+| Premis awal | Ditekan dengan | Hasil |
+|---|---|---|
+| "Harness ini layarnya" | membaca `pyInclude`-nya | **patah** — ia cangkang; isinya satu lapis lebih dalam di `InboxManager_Sec` |
+| "Grid utamanya `InboxManagerData`, diisi `GCNMGetManagerCase_Act`" | menghitung posisi kemunculan nama page di badan section | **patah** — `InboxManagerData` hanya dideklarasikan di metadata; tidak ada satu pun grid yang mengikatnya. Grid itu milik `InboxOutstandingClaim_Section`, layar lain |
+| "Enam Approval Master belum dibangun" | mencari siapa yang menulis `BENGKEL_HE.APPROVAL` | **patah** — keenamnya sudah punya tombol persetujuan di layar Master-nya, dan `keputusan-implementasi.md` §35.3 mencatatnya |
+| "Keputusannya tinggal ditulis; kolomnya sudah terbaca" | mencari rule yang benar-benar menulis `STS_AKSEP` | **patah** — rule-nya tidak ada di export. Kolomnya diketahui, NILAINYA tidak |
+| "`MCL_NAME` cabang TRAVEL sama bentuknya dengan cabang PA" | membaca teks kedua cabang berdampingan | **patah** — PA memakai `a.grouppanel_1`, TRAVEL memakai `GROUP_PANEL` tanpa alias pada tabel yang tidak punya kolom itu |
+
+Yang membuat teknik ini bekerja di sini bukan kecurigaan umum melainkan satu kebiasaan: **setiap
+kali sebuah nama tampak menjelaskan dirinya sendiri, keberadaannya diperiksa di tempat ia
+seharusnya dipakai** — bukan di tempat ia dideklarasikan. Premis kedua hanya patah karena itu.
+
+Premis keempat yang paling mahal bila lolos. Kolom `STS_AKSEP` terbaca jelas dari
+`CountNomorRangkaManager`, dan konvensi `'1'`/`'2'` dipakai di enam tabel lain pada modul yang
+sama. Menebaknya akan terasa beralasan — dan menghasilkan baris yang keluar dari antrean dengan
+keputusan yang salah, tanpa satu pun pesan galat.
+
+### `domain-modeling` — menolak alias yang menyesatkan
+
+`BrowseStatusPenolakanKlaim2` mengaliaskan kedelapan kolomnya ke nama yang tidak mencerminkan
+isinya sama sekali:
+
+```
+NOTE_ST      AS "City"            nama INDUK, bukan nama kota
+NOTE_ND      AS "CityID"          nama BARIS INI, bukan kode kota
+ID_ND        AS "District"        kunci baris, bukan kabupaten
+USER_INPUT   AS "UserTeknis"      pengaju, bukan PIC Teknik
+NOTEAPPROVED AS "NoteKasir"       tidak ada urusan dengan kasir
+```
+
+`GetDataKonfirmasiHE` tidak kalah parah — `noklaim AS "BRANCH_CODE"`, `merk AS "BUSINESS_NAME"`,
+`no_rangka_bengkel AS "POLICY_NO"`.
+
+Aturan yang dipegang sama dengan sesi kesepuluh: **yang dipetakan adalah KOLOMNYA, bukan
+aliasnya.** Aliasnya dicatat di komentar berkas `.sql` sebagai peringatan, tidak pernah dipakai
+sebagai petunjuk arti.
+
+### `codebase-design` — bentuk dibenarkan bukti, bukan simetri
+
+Tiga pertanyaan rancangan yang benar-benar baru:
+
+**Satu bentuk baris atau sepuluh?** Simetri menyarankan sepuluh — sepuluh antrean, sepuluh
+tabel. Preseden dan biaya menyarankan satu: `inboxmanagerreceivepucl` sudah menempuhnya untuk
+dua antrean yang kelas objek kerjanya berbeda, dan sepuluh bentuk berarti sepuluh percabangan di
+transport, penyimpanan, dan layar. Yang membedakan tab di layar ini adalah **kolom mana yang
+digambar**, dan itu sudah dibawa `Tab.Columns`.
+
+**Dashboard ikut bentuk itu atau terpisah?** **Terpisah**, dan bukti menang atas simetri di
+sini: baris dashboard tidak punya kunci, tidak dapat diputuskan, tidak hilang setelah
+ditindaklanjuti, dan tidak punya status. Menyatukannya akan membuat layar mampu menggambar
+tombol keputusan pada baris yang tidak punya kunci — kelas cacat yang tidak menghasilkan galat.
+
+**Di mana `ValueOf` tinggal?** Tiga tempat memerlukannya: pencarian di penyimpanan memori,
+penyusun berkas ekspor di transport, dan uji yang menjaga setiap kolom punya isian terbaca.
+Menaruhnya di repo memori memaksa transport mengimpor pengisi seam penyimpanan — pelanggaran
+arah ketergantungan `08-TECHNICAL-STRATEGY.md` §2. Ia dipindahkan ke paket domain, dan repo
+memori meneruskan ke sana.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+Empat, seluruhnya tertangkap sebelum masuk ke kode yang dijalankan.
+
+| # | Kesalahan | Yang menangkapnya |
+|---|---|---|
+| 1 | Menyimpulkan `modules.go` sudah pra-rakit modul ini, dari galat build yang menyebut `inboxmanagerusecase` | Membaca `modules.go` langsung: isinya `inboxmanageradmin`, bukan `inboxmanager`. Galatnya berasal dari berkas yang sedang disunting sesi lain |
+| 2 | Menaruh `ValueOf` di paket repo memori, lalu mengimpornya dari lapisan transport | Menulis `export.go` dan menyadari import-nya melanggar arah ketergantungan. Dipindahkan ke domain |
+| 3 | Memakai `renderHeader` pada `Column` DataTable — prop yang tidak ada | `tsc --noEmit` |
+| 4 | Menulis `method: 'POST'` pada `callAPI`, yang menerima `metode` | `tsc --noEmit` |
+
+Kesalahan 1 layak dicatat karena kesimpulannya **masuk akal dan salah**: galat kompilasi yang
+menyebut nama yang persis sedang saya tambahkan hampir selalu berarti tabrakan nama. Yang
+mengoreksinya bukan penalaran ulang melainkan **membaca berkasnya, lalu membangun ulang** —
+galatnya hilang tanpa satu pun perubahan.
+
+## Satu hal yang saya TOLAK kerjakan, dan itu disengaja
+
+Menulis pernyataan keputusan untuk `NOTIF_RANGKA_HE`, `T_CLAIM_AKSEPTASI_CHECKER`, dan
+`T_APPROVAL_PROGRESS`.
+
+Work Owner menjawab "sama seperti pega dan rekomendasi" pada pertanyaan aksi tulis, dan
+rekomendasi saya memang "boleh menulis ketiganya". Yang kemudian ditemukan adalah rule
+penulisnya **tidak ada di export** — sehingga "sama seperti Pega" tidak dapat dikerjakan: yang
+Pega lakukan di sana tidak dapat dibaca dari mana pun.
+
+Yang dikerjakan sebagai gantinya: daftarnya dibangun penuh, tombol keputusannya tidak digambar,
+dan alasan beserta pemilik penghalangnya dikirim ke layar. Itu bukan pemangkasan lingkup diam-
+diam — ia dinyatakan di layar, di `PlannedDifferences`, dan di
+`keputusan-implementasi.md` §61.3.
+
+## Catatan untuk sesi berikutnya
+
+**Modul yang paling erat hubungannya** adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`), tujuan
+tombol rincian yang belum ada di layar mana pun.
+
+**Tiga artefak yang perlu diminta ke Tim Pega**, dan ketiganya memblokir kemampuan yang layarnya
+sudah siap menerimanya:
+
+| Artefak | Membuka |
+|---|---|
+| `SetStatusAksepNoRangka` | keputusan Approval Nomor Rangka Beda |
+| `SaveApproveAkseptasiPaymentLeader_Sql` + `InsertDataAkseptasiToLeader` | keputusan Payment Klaim Akseptasi |
+| penulis `T_APPROVAL_PROGRESS.STS_APPROVE` | keputusan Approval Progress Klaim |
+
+Begitu ketiganya tiba, yang perlu diubah hanyalah `Decidable` pada tabnya, satu pernyataan
+`UPDATE` per antrean, dan satu cabang di `decisionPlanFor`. Bentuk layarnya tidak berubah sama
+sekali — tombolnya muncul dengan sendirinya.
+
+---
+
+# Sesi kedua puluh delapan — Inbox Manager Admin pindah sumber (2026-09-27)
+
+## Ringkasan
+
+Permintaan: lanjutkan modul Inbox Manager Admin, dan ganti sumber datanya dari dua tabel
+`DATAPEGA` menjadi `POOLDATA.T_CLAIMLIST_ADMIN`.
+
+Sesi ini **sangat sedikit menulis kode** dan hampir seluruhnya membaca. Yang menentukan
+hasilnya adalah satu pemetaan kolom yang dikerjakan sebelum baris pertama ditulis — dan
+pemetaan itulah yang memunculkan pertanyaan yang benar.
+
+## Skill yang dipanggil
+
+**Tidak satu pun.** Alasannya sama dengan sesi-sesi sebelumnya dan tidak berubah: seluruh
+sumber primer ada di dalam repo, dan pekerjaan sesi ini bukan merancang melainkan memetakan.
+
+| Skill | Kenapa tidak dipakai |
+|---|---|
+| `mattpocock-skills:research` | Satu-satunya pertanyaan yang jawabannya di luar repo adalah *apakah ketiga kolom ada di Oracle produksi* — dan itu menuntut koneksi basis data, bukan sumber yang dapat diteliti |
+| `mattpocock-skills:domain-modeling` | Tidak ada istilah domain baru. Kesembilan kolom layar tidak berubah sama sekali |
+| `mattpocock-skills:codebase-design` | Batas modul, seam, dan bentuk API tidak disentuh. Yang berubah hanya isi satu berkas `.sql` di balik seam yang sudah ada |
+| `mattpocock-skills:tdd` | Uji ditulis **sesudah** kuerinya, bukan sebelum — ketiganya menjaga bentuk kueri, dan bentuk itu baru diketahui sesudah pemetaan kolom selesai |
+
+## Teknik yang dipakai, dan yang benar-benar menentukan
+
+### 1. Memetakan kolom sebelum menulis, bukan sesudah kuerinya gagal
+
+Ini yang paling menentukan. Kesembilan kolom dipetakan satu per satu ke kolom yang
+**terbukti ada**, dan buktinya disebut per baris — bukan diandaikan karena namanya mirip.
+
+Sumber buktinya dua, dan keduanya dapat diperiksa ulang:
+
+| Sumber | Yang dibuktikannya |
+|---|---|
+| modul yang **sudah membaca tabel yang sama** (`inboxoutstanding`, `inboxlaporanklaim`) | kolom itu ada, karena kuerinya berjalan |
+| `kolom-t-claimlist-admin.md` — katalog Oracle 2026-09-22 | tipe, panjang, dan berapa nilai berbeda yang benar-benar terisi |
+
+Hasilnya: **tujuh terbukti ada, tiga belum**. Tanpa pemetaan ini ketiga kolom yang hilang
+baru ketahuan saat `ORA-00904` — atau lebih buruk, saat ketiga tab diam-diam menampilkan
+baris yang sama.
+
+### 2. Membedakan "tidak ada" dari "ada tetapi kosong"
+
+Keduanya menghasilkan layar yang sama-sama kosong, tetapi menuntut pekerjaan yang berbeda —
+yang pertama DDL, yang kedua perluasan proses pengisi tabel.
+
+Pembedaan itu dibawa sampai ke kode: `check_column` gagal dengan menyebut nama kolomnya
+untuk yang pertama, dan pesan antrean kosong di layar menyebut unit organisasi yang disaring
+untuk yang kedua. Ia bukan kekhawatiran teoretis — `STATUSLOCK_1` pada tabel yang sama ada
+tetapi kosong di seluruh 1.014 barisnya.
+
+### 3. Menolak jalan pintas yang mengubah arti, bukan hanya yang salah
+
+Pilihan "turunkan tab dari `GROUPPANEL`" **berjalan hari ini tanpa DDL apa pun**, dan itu
+yang membuatnya berbahaya. Yang membantahnya bukan pengujian melainkan satu baris yang sudah
+tertulis di dokumen ini sendiri (`:8589`): `PXASSIGNEDORGUNIT` adalah unit organisasi yang
+*memegang penugasan*, bukan *lini bisnis klaimnya*.
+
+Pilihan itu tetap **ditawarkan** ke Work Owner, lengkap dengan peringatan bahwa ia mengubah
+arti. Yang tidak dilakukan adalah memilihnya diam-diam karena ia paling cepat.
+
+### 4. Memeriksa asumsi modul lain, lalu tidak mengubahnya
+
+Penyaring `PXOBJCLASS` hampir dibuang dengan alasan yang sudah tertulis di
+`inboxmanager.sql:76-79` — sampai bukti yang membantahnya ditemukan di modul ketiga.
+Asumsi itu bahkan menandai dirinya sendiri *"ASUMSI INI PERLU DIKONFIRMASI"*; konfirmasinya
+kini ada, dan hasilnya berlawanan.
+
+Modul itu **tidak diubah**. Permintaan sesi ini menyebut "hanya ubah bagian ini saja", dan
+temuannya diangkat ke Work Owner alih-alih diperbaiki sepihak.
+
+### 5. Menulis uji yang menahan kemunduran, bukan yang mengulang kueri
+
+Tiga uji baru, dan yang paling berguna adalah yang **tidak** memeriksa kueri hari ini:
+`TestKueriTidakLagiMenyentuhSkemaDATAPEGA` menahan kedua tabel lama kembali lewat satu join
+yang ditambahkan "sementara" — persis cara pemindahan seperti ini biasanya batal sendiri.
+
+## Kesalahan sendiri yang tercatat sesi ini
+
+**Hampir memakai `grep` biasa terhadap export 297 MiB.** Dua perintah pertama melampaui
+batas waktu dan terpaksa dijalankan di latar. Yang menjawabnya dalam hitungan detik adalah
+perkakas `Grep` berbasis ripgrep. Ini terulang dari sesi sebelumnya, dan patut diingat:
+**pada repo ini, `grep -r` bukan pilihan.**
+
+**Sempat menduga modul ini belum ada.** Permintaannya berbunyi "lanjutkan penambahan modul",
+dan `git status` menunjukkan direktorinya *untracked* — keduanya terbaca seperti modul baru.
+Pemeriksaan isi direktorinya membantahnya: modulnya lengkap, terdaftar di `main.go`,
+`check.go`, dan registri menu. Bila dugaan itu dibiarkan, sesi ini akan menulis ulang modul
+yang sudah lulus 19 uji frontend.
+
+## Catatan untuk sesi berikutnya
+
+| Hal | Keadaan |
+|---|---|
+| `migrations/0005` tahap 1 | menunggu DBA; **tiga kolom** yang dibutuhkan modul ini ada di dalamnya |
+| Panjang `PXASSIGNEDORGUNIT` dan `PXCREATEOPNAME` | **belum diverifikasi ke katalog** — mengikuti kolom sekerabat; mohon dipastikan DBA |
+| T-1 `PXOBJCLASS` pada Inbox Manager | diangkat ke Work Owner, **belum diperbaiki** |
+| T-2 dua konvensi penamaan | diangkat ke Work Owner, **belum diputuskan** — modul berikutnya akan menebak bila dibiarkan |
+
+---
+
+## Lanjutan sesi kedua puluh delapan — koreksi sumber lini bisnis
+
+Bagian kedua sesi yang sama, dipicu **satu pertanyaan Work Owner**: *"kenapa di Pega
+kelihatan?"*
+
+### Yang menentukan: menganggap pertanyaan itu sebagai bukti, bukan sebagai keraguan
+
+Pertanyaan itu bertentangan langsung dengan yang saya tulis beberapa menit sebelumnya —
+bahwa layar kosong adalah kesetaraan dengan Pega. Yang benar dilakukan bukan menjelaskan
+ulang alasan saya, melainkan **memeriksa ulang klaimnya**.
+
+Pemeriksaannya berurutan, dan tiap langkah menyempitkan:
+
+| Langkah | Hasil |
+|---|---|
+| Baca `pyContainerVisibleWhen` ketiga kontainer | **persis seperti tercatat** — aturannya benar |
+| Kalau aturannya benar, yang salah nilainya. Dari mana nilainya? | `auth/identity.go:68` → HCQ `Placement.PositionName` |
+| Apa isi `pyPosition` di Pega? | `'NONMBU'`, `'PA'`, `'BROKER'` — **kode lini bisnis**, bukan jabatan |
+| Apakah sudah ada padanan yang benar? | `M_LOGIN_PNC.LINE_BUSINESS`, sudah dipakai `inboxoutstanding` |
+
+Empat pembacaan, dan yang ketiga yang memutuskan: dua field bernama mirip dengan **arti yang
+berbeda**, dan kemiripan namanya yang menyembunyikannya selama ini.
+
+### Kesalahan sendiri yang dicatat
+
+**Saya menyajikan cacat sebagai rancangan.** Pada §60 keadaan "tidak ada yang melihat tab"
+ditulis sebagai konsekuensi yang diterima dari "ikuti Pega apa adanya", lengkap dengan
+alasan yang terdengar masuk akal: Pega pun menyembunyikan kontainernya bagi pengguna tanpa
+`pyPosition`.
+
+Pernyataan itu **benar secara harfiah dan salah secara akibat**. Di Pega `pyPosition` hampir
+tidak pernah kosong — ia bagian dari rekaman operator yang diisi administrator. Saya
+mengambil kasus tepi dan menyajikannya sebagai kasus normal.
+
+Polanya patut diingat: **ketika sebuah cacat punya penjelasan yang rapi, penjelasan itu
+sendiri layak diuji.** Penjelasan yang rapi membuat orang berhenti bertanya — termasuk yang
+menulisnya.
+
+Yang menangkapnya bukan pengujian, bukan pembacaan ulang saya, melainkan **pengguna yang
+tahu bagaimana sistem lamanya berperilaku**. Itu pengingat bahwa untuk layar migrasi,
+pembacaan export saja tidak cukup bila kesimpulannya bertentangan dengan apa yang dilihat
+orang setiap hari.
+
+### Teknik yang dipakai: menguji bahwa jalur LAMA tidak dipakai lagi
+
+Uji yang paling berguna dari tiga yang ditambahkan bukan yang membuktikan jalur barunya
+bekerja, melainkan yang membuktikan jalur lamanya **diabaikan**:
+`TestLiniBisnisDibacaDariPenyimpananBukanDariPemanggil` sengaja mengisi `Caller` dengan nilai
+yang SALAH dan penyimpanan dengan yang BENAR.
+
+Tanpa uji seperti itu, mengembalikan satu baris di lapisan transport akan menghidupkan
+kembali cacatnya tanpa satu pun uji gagal — karena seluruh uji lain kebetulan menyetel
+keduanya dengan nilai yang sama.
+
+### Catatan untuk sesi berikutnya
+
+| Hal | Keadaan |
+|---|---|
+| `M_LOGIN_PNC.LINE_BUSINESS` | **terisi 1 dari 1 baris** — layar tetap kosong bagi petugas yang barisnya belum diisi. Permintaan pengisian di `permintaan-artefak-pega.md` §7 |
+| Modul lain yang memakai `auth.User.Position` sebagai lini bisnis | **sudah diperiksa — DUA ditemukan**, dan keduanya punya cacat yang sama. Dirinci di `permintaan-artefak-pega.md` §7.5; **tidak diubah** karena di luar lingkup yang diminta |
+
+---
+
+## Lanjutan sesi kedua puluh delapan — dua cacat lanjutan dan tiga koreksi kolom
+
+### Kesalahan sendiri, dan ketiganya berpola sama
+
+**1. Menyimpulkan ketiadaan dari ketidakpakaian.** Saya menyatakan `PXCREATEOPNAME` tidak ada
+di `T_CLAIMLIST_ADMIN` karena `inboxoutstanding` memakai `PXCREATEOPERATOR`. Itu dugaan yang
+dibungkus sebagai temuan: modul lain yang tidak memakai sebuah kolom **tidak membuktikan
+apa-apa** tentang ada-tidaknya kolom itu.
+
+Yang seharusnya saya lakukan: menyatakan terang-terangan bahwa katalognya belum dibaca untuk
+kolom ini, alih-alih menurunkan "tidak ada" dari pemetaan modul lain.
+
+**2. Menggambarkan konsekuensi lebih ringan daripada kenyataannya.** Saya menulis
+konsekuensinya "ketiga tab kosong". Kenyataannya galat keras dengan pesan yang tidak
+menjelaskan apa pun. "Kosong" dan "rusak" menuntut reaksi yang berbeda dari pengguna, dan
+saya menyamakannya.
+
+**3. Menambah seam tanpa memeriksa jalur non-produksinya.** Perbaikan lini bisnis diuji
+lengkap dan lolos, tetapi `PENYIMPANAN=memori` tidak pernah dijalankan — dan di sana tidak
+ada satu pun yang mengisi seam barunya. Uji hijau, mode pengembangan lumpuh.
+
+Polanya sama pada ketiganya: **kesimpulan yang rapi berhenti diuji.** Yang menangkap
+ketiganya bukan pengujian melainkan Work Owner — sekali lewat pertanyaan, sekali lewat
+tangkapan layar, sekali lewat koreksi kolom.
+
+### Teknik yang terbayar: membaca preseden SEBELUM menulis
+
+Sebelum menurunkan Status Klaim dari `PYSTATUSWORK`, `inboxoutstanding` dibaca lebih dulu —
+dan di sana sudah tercatat jebakan yang persis akan saya masuki: cabang `default` yang
+menghasilkan "On Progress" membuat klaim yang **sudah ditutup** berlabel masih berjalan,
+tanpa satu pun galat.
+
+Catatan itu juga menyebut bagaimana cacatnya dulu lolos: data contoh memakai nilai yang sama
+dengan kode, sehingga seluruh uji lulus terhadap data yang dikarang dari kode itu sendiri.
+Karena itu penyimpanan memori di modul ini **ikut menurunkan** Status Klaim, bukan
+menyimpannya sebagai teks siap pakai.
+
+Satu pembacaan mencegah dua cacat sekaligus.
+
+### Catatan untuk sesi berikutnya
+
+| Hal | Keadaan |
+|---|---|
+| `migrations/0005` tahap 1 | menunggu DBA; kini **satu kolom** saja (`PXASSIGNEDORGUNIT`) |
+| Kolom `T_CLAIMLIST_ADMIN` | daftar lengkapnya **masih belum pernah dibaca dari katalog** — `kolom-t-claimlist-admin.md` menyebut jumlahnya (40) tanpa menyebut namanya. Setiap klaim "kolom X tidak ada" akan menjadi dugaan lagi sampai daftar itu ada |
+| C-1 dan C-2 di §7.5 | dua modul lain dengan cacat lini bisnis yang sama, **belum diperbaiki** |

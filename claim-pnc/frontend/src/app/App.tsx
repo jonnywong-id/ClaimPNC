@@ -59,6 +59,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
 import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
@@ -1032,6 +1033,37 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ManagerReceivePUCLPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox Manager Admin (`MENU_ID 57`) — antrean registrasi klaim per unit organisasi
+        admin, dipecah menjadi tiga tab: AdminPNC, AdminPA, dan AdminTRAVEL.
+
+        Ia BERSAUDARA dekat dengan Inbox Manager Receive / PUCL tepat di atasnya — keduanya
+        pandangan penyelia, dan Report Definition-nya pun bersaudara (`ManagementAdminView`
+        lawan `ManagementRecieveView`). Yang membedakan: yang di atas membaca berkas
+        PENERIMAAN DOKUMEN, yang ini membaca KLAIM. Rutenya karena itu terpisah, dan
+        menunjuk keduanya ke satu rute akan menampilkan jenis objek kerja yang salah tanpa
+        satu pun tanda di layar.
+
+        Layar ini MEMBACA SAJA, tanpa pengecualian selain ekspor. Bahkan tombol pada kolom
+        terakhir layar lama pun tidak menulis apa-apa: activity-nya hanya menyusun kunci
+        assignment untuk dibuka.
+
+        Satu hal yang membedakannya dari SELURUH layar lain di berkas ini: ia dapat sah-sah
+        saja tidak menampilkan satu tab pun. Tab disaring menurut jabatan pengguna persis
+        seperti di Pega (keputusan Work Owner 2026-09-26), sementara jabatan di sistem baru
+        datang dari HCQ dan berisi hal seperti "IT SPECIALIST" — bukan kode lini bisnis.
+        Layarnya menjelaskan keadaan itu alih-alih tampil kosong.
+      */}
+      <Route
+        path="/inbox-manager-admin"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxManagerAdminPage />
             </Protected>
           </SessionGuard>
         }

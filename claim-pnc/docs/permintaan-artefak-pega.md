@@ -629,3 +629,278 @@ membuat duplikat, yang terlihat bukan cacat aplikasi kami melainkan dua berkas a
 satu klaim — dan itu baru ketahuan saat berkas fisiknya dicari.
 
 Ditujukan ke **tim pemilik sistem Arsip**.
+
+---
+
+## 5. Inbox Manager — `MENU_ID 58`, `UserInbox_Harness`
+
+Ditulis 2026-09-27, setelah `Section/InboxManager_Sec-Section.xml` dan kedua belas section
+turunannya dibaca seluruhnya, termasuk `pyContainerVisibleWhen` dan `pyPageListProperty`.
+
+Modul ini **sudah berjalan** untuk sepuluh dari dua belas bagiannya. Yang diminta di bawah
+membuka **dua tombol keputusan** dan **satu panel riwayat** — bukan membuka modulnya.
+
+### 5.1 Yang diminta ke Tim Pega
+
+| # | Artefak | Dirujuk oleh | Akibat bila tidak ada |
+|---|---|---|---|
+| P-1 | Rule SQL **`SetStatusAksepNoRangka`** | `Activity/UpdateStatusAksepRangka_HE`, `Activity/UpdateStatusRejectRangka_HE` — **kedua activity-nya ADA di export** | Tombol Approve/Reject pada **Approval Nomor Rangka Beda** tidak dapat dibangun. Kolom `NOTIF_RANGKA_HE.STS_AKSEP` sudah diketahui; **nilai** yang harus ditulis tidak |
+| P-2 | Rule SQL **`SaveApproveAkseptasiPaymentLeader_Sql`** | `Activity/SaveApprovalAkseptasiPaymentLeader_Act-Act.xml` — **activity-nya ADA di export**, rule yang dipanggilnya tidak | Tombol Approve/Reject pada **Payment Klaim Akseptasi** tidak dapat dibangun |
+| P-3 | Activity **`InsertDataAkseptasiToLeader`**, **`InsertLogKasir_act`**, **`TransferCashierDataASM_act`** | `Activity/TransferToKasir_act_Leader-Act.xml` | Melengkapi P-2. **Menyetujui pembayaran tanpa ketiganya akan menandai pembayaran disetujui tanpa pernah sampai ke kasir.** Ketiganya sudah tercatat hilang pada `D-55` |
+| P-4 | Rule SQL **`HistoryManagerPaymetApproval_SQL`** | `Activity/GetDataAkseptasiKlaimKasir-Act.xml`; mengisi `HistoryManager.pxResults` pada `Section/Akseptasi_PaymentLeader1` | Panel riwayat di bawah antrean Payment Klaim Akseptasi tidak dibangun |
+
+Keempatnya sudah tercakup permintaan export ulang berbasis **Product rule** (`D-39`, `R-16`).
+Yang membedakan permintaan ini dari permintaan sebelumnya: **P-1 dan P-2 punya activity
+pemanggil yang ADA di export**, sehingga bukan dugaan bahwa rule-nya pernah ada.
+
+### 5.2 Satu pertanyaan, bukan permintaan
+
+`Section/Sec_PaymentAkseptasiKlaimCase1-Section.xml` dan
+`Section/Sec_PaymentAkseptasiKlaimCase-Section.xml` **keduanya** memberi sub-tab **Approval
+Progress Klaim** syarat tampil `<pyContainerVisibleWhen>1==2</pyContainerVisibleWhen>` — syarat
+yang tidak mungkin benar.
+
+Pertanyaannya: **apakah bagian itu memang sengaja dimatikan, atau ia dimatikan sementara lalu
+terlupakan?**
+
+Kami **tidak** menampilkannya, karena Pega tidak menampilkannya. Kolom dan kuerinya tetap
+disiapkan; menghidupkannya adalah menghapus dua baris. Bila jawabannya "memang dikehendaki
+hidup", kami juga membutuhkan **rule yang menulis `T_APPROVAL_PROGRESS.STS_APPROVE`** — kueri
+daftarnya (`ShowApproveProgressKlaim`) ada, tetapi ia hanya menerjemahkan nilai `'0'`, sehingga
+nilai untuk disetujui dan ditolak tidak terbaca dari mana pun.
+
+Ditujukan ke **Work Owner**, bukan ke Tim Pega.
+
+### 5.3 Yang diminta ke DBA
+
+| # | Yang diminta | Untuk |
+|---|---|---|
+| D-1 | **DDL** tujuh tabel persetujuan: `BENGKEL_HE`, `PANEL_HE`, `SPAREPART_HE`, `GCNM_M_SPAREPART_CATEGORY`, `GCNM_M_SPAREPART_TYPE`, `SPAREPART_HE_VIN_KEY`, `MST_PENOLAKAN_KLAIM_2` | Memastikan tipe kolom status. `NULL` dan `'0'` sengaja masih dibedakan karena tanpa DDL tidak ada yang memastikan keduanya berarti sama (`R-08`) |
+| D-2 | **Hak `UPDATE`** akun aplikasi atas ketujuh tabel itu | Enam antrean master dan Penolakan Klaim sudah punya tombol keputusan; haknya **belum pernah diuji**. `-periksa` sengaja tidak mengujinya — mengujinya menuntut menulis sungguhan |
+| D-3 | **Koneksi Oracle staging** | Menjalankan `PENYIMPANAN=oracle -periksa`. Keenam kueri dashboard dan kesepuluh kueri antrean sejauh ini baru terbukti **sah secara bentuk**, bukan sah terhadap basis data |
+| D-4 | Konfirmasi **`T_APPROVAL_PROGRESS.ATASAN` selalu berbentuk `cabang/…`** | Penyaring cabang memotong di `/`; baris tanpa `/` menghasilkan cabang kosong dan tidak akan pernah muncul. Relevan hanya bila §5.2 dijawab "hidup" |
+| D-5 | Seberapa sering **`PEGA_DASHBOARDPNC.COL_DESC`** terisi | Kueri Pega menyaring `COL_DESC IS NOT NULL`. Bila kolomnya jarang terisi, pemecahan "per sebab kerugian" akan tampak kosong tanpa sebab yang terbaca pengguna |
+
+### 5.4 Yang TIDAK kami butuhkan — dicatat supaya tidak diminta berulang
+
+| Hal | Kenapa |
+|---|---|
+| API pengganti DB Link untuk `mst_det_sales@asmd` | Sempat dicatat sebagai penghalang layar ini. **Keliru**: klasifikasi Leader/Member/Fac-In ada di `GetProgressAllYearDashboarOS`, yang membacanya dari `POOLDATA.PEGA_DASHBOARDPNC` dan `POOLDATA.T_CLAIM_PNC` — keduanya lokal. Dan kueri itu melayani layar Dashboard OS yang berdiri sendiri, bukan Inbox Manager |
+| `GetYearDashboardOS`, `GetProgressAllYearDashboarOS` | Sudah ada dan sudah terbaca, tetapi tidak diikat `Section/PNCDashboardOS-Section.xml`. Keduanya milik layar Dashboard OS yang berdiri sendiri |
+| Rule pemicu tombol navigasi antar bagian | Perilakunya sudah terbaca lengkap dari `FlagManager.AlasanKlaim` 1–13 |
+
+---
+
+## 6. Inbox Manager Admin — pindah sumber ke `POOLDATA.T_CLAIMLIST_ADMIN`
+
+Ditulis 2026-09-27, sesudah Work Owner menetapkan sumber data layar ini berpindah dari
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK` + `DATAPEGA.PC_ASSIGN_WORKLIST` ke satu tabel datar.
+
+Modul ini **sudah berjalan**. Yang diminta di bawah bukan membuka modulnya, melainkan
+membuat ketiga tabnya **berbeda satu sama lain** — tanpa itu ketiganya menampilkan baris
+yang sama.
+
+### 6.1 Yang diminta ke DBA — tiga kolom
+
+Ketiganya sudah masuk [`migrations/0005`](../backend/migrations/0005_claimlist_admin_kolom.up.sql)
+**tahap 1** dan tinggal dijalankan. Menempuh `D-63`: permintaan tertulis, persetujuan Work
+Owner, pelaksanaan DBA, lalu diuji dengan menjalankan Pega dan Go bersamaan.
+
+| # | Kolom | Asalnya | Akibat bila tidak ada |
+|---|---|---|---|
+| K-1 | **`PXASSIGNEDORGUNIT`** | `PC_ASSIGN_WORKLIST` | **Ketiga tab menampilkan baris yang persis sama.** Bukan layar kosong yang terlihat rusak — tiga tab yang tampak bekerja sambil menampilkan hal yang salah |
+
+> **Dikoreksi 2026-09-27.** Permintaan ini semula memuat TIGA kolom. Work Owner memeriksa
+> kolom tabelnya langsung, dan dua di antaranya dikeluarkan:
+>
+> | Kolom | Kenyataan |
+> |---|---|
+> | `PXCREATEOPNAME` | **sudah ada.** Saya menyimpulkannya tidak ada karena `inboxoutstanding` memakai `PXCREATEOPERATOR` — dugaan, bukan bukti |
+> | `STATUSCLAIM_1` | **tidak lagi dipakai** modul ini; Status Klaim diturunkan dari `PYSTATUSWORK`. Barisnya tetap di migrasi untuk modul lain |
+>
+> Kekeliruan itu berakibat nyata bila lolos: `ALTER TABLE ... ADD` polos **gagal dengan
+> ORA-01430** pada kolom pertama yang sudah ada, dan menyisakan tabel setengah jadi.
+
+> **Panjang K-1 belum diverifikasi ke katalog.** Ia belum ikut dalam pembacaan
+> `ALL_TAB_COLUMNS` 2026-09-22. `VARCHAR2(128 CHAR)` mengikuti kolom sekerabat yang memang
+> terbaca saat itu (`PXUPDATEOPNAME`, `PXASSIGNEDUSERNAME`). **Mohon dipastikan sebelum
+> dijalankan** — kolom yang terlalu sempit memotong nilai tanpa satu pun galat.
+
+**Satu hal yang tidak selesai dengan menjalankan DDL.** Kolom yang ditambahkan **tidak
+terisi dengan sendirinya**; proses pengisi tabel harus ikut diperluas. Tanpa itu hasilnya
+sama dengan keadaan `STATUSLOCK_1` dan `REQUESTSURVEY_1` hari ini: kolomnya ada, isinya
+tidak pernah ditulis — dan ketiga tab mengembalikan nol baris **tanpa satu pun galat**.
+
+Perintah `PENYIMPANAN=oracle -periksa` sudah dipasangi penjaga yang gagal menyebut ketiga
+nama kolom itu, sehingga ketiadaannya ketahuan saat pemeriksaan lingkungan dan bukan saat
+petugas membuka layar. Yang **tidak** dapat dibuktikannya: apakah kolomnya benar-benar
+terisi.
+
+### 6.2 Dua temuan yang menyentuh modul lain — ditujukan ke **Work Owner**
+
+Keduanya ditemukan saat pemindahan ini dikerjakan. **Tidak satu pun saya ubah**, karena
+keduanya berada di luar lingkup yang diminta.
+
+**T-1 · `PXOBJCLASS` wajib disaring — tabel ini memuat lebih dari satu kelas kasus.**
+
+`inboxmanager/repo/sqlstore/inboxmanager.sql:76-79` membuang penyaring `PXOBJCLASS` dengan
+alasan *"isinya diandaikan klaim PNC saja"*, dan menandainya sendiri **"ASUMSI INI PERLU
+DIKONFIRMASI"**. Konfirmasinya kini ada, dan hasilnya **berlawanan**:
+
+| Bukti | Isi |
+|---|---|
+| `inboxlaporanklaim.sql:197-200` | menggabung tabel ini dengan syarat `t.pxobjclass = w.pxobjclass` sementara `w` disaring `'ASM-FW-GCNMFW-Work-ReceiveDocument'` — gabungan itu tidak akan pernah menghasilkan baris bila isinya hanya Work-PNC |
+| `README.md` | mencatat **142 baris RCV** di dalamnya |
+
+Akibatnya **pencacah dashboard Inbox Manager ikut menghitung baris Receive Document**,
+sehingga angka yang dibaca penyelia lebih besar daripada semestinya. Karena Receive Document
+dan klaim sama-sama punya `PYID`, tidak ada yang tampak salah.
+
+Perbaikannya satu baris `AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'` pada kesepuluh
+pencacahnya — menunggu persetujuan lingkup.
+
+**T-2 · Dua konvensi penamaan yang bertentangan untuk tabel yang sama.**
+
+| Konvensi | Dipakai | Bentuk |
+|---|---|---|
+| **A — nama asli** | `inboxoutstanding`, `inboxlaporanklaim`, `inboxmanageradmin` | `PYID` · `PYSTATUSWORK` · `USERTEKNIS_1` · `PXOBJCLASS` |
+| **B — nama baru** | `inboxmanager` | `NOKLAIM` · `STATUSWORK` · `USERTEKNIS` · `BUSINESSCODE` |
+
+Satu tabel hanya punya satu nama untuk satu kolom, jadi keduanya tidak dapat sama-sama
+benar. Konvensi A **terbukti** — ketiganya membaca kolom yang memang ada. Konvensi B adalah
+**permintaan** kolom yang belum ada.
+
+Yang perlu diputuskan: kolom Konvensi B ditambahkan dengan nama barunya, atau kuerinya
+disesuaikan ke nama yang sudah ada. Membiarkan keduanya berarti satu tabel dengan dua nama
+untuk `PYID` yang sama — dan modul berikutnya akan menebak.
+
+### 6.3 Yang TIDAK kami butuhkan — dicatat supaya tidak diminta berulang
+
+| Hal | Kenapa |
+|---|---|
+| `PXREFOBJECTKEY`, `PXREFOBJECTINSNAME` | Kunci join worklist → work object. Karena kedua tabel menyatu, keduanya menjadi `PZINSKEY` dan `PYID` yang sudah ada. Menambahkannya justru **mengembalikan** dua cacat join yang baru saja hilang |
+| Riwayat penugasan | Layar ini hanya membutuhkan unit organisasi yang **sedang** memegang, bukan yang pernah. Rata-rata 34 penugasan per klaim tidak muat dalam satu baris, dan layar ini memang tidak memintanya |
+| Kolom tampilan lain dari `PC_ASM_FW_GCNMFW_WORK` | Layar Pega menggambar **8 kolom** dari 13 isian Report Definition. Empat yang tidak digambar — `BRANCHNAME`, `DATEOFLOSS_1`, `USERTEKNIS_1`, `PYORIGUSERID` — tidak dibawa, dan tidak akan dibawa hanya karena tabelnya kebetulan memilikinya |
+
+---
+
+## 7. Inbox Manager Admin — isi `M_LOGIN_PNC.LINE_BUSINESS`
+
+Ditulis 2026-09-27, sesudah sumber lini bisnis layar itu dibetulkan.
+
+**Ini bukan permintaan artefak, dan bukan permintaan DDL.** Kolomnya **sudah ada** dan
+kodenya **sudah membacanya**. Yang diminta adalah **mengisi datanya**.
+
+### 7.1 Keadaan hari ini
+
+| Hal | Keadaan |
+|---|---|
+| Kolom `POOLDATA.M_LOGIN_PNC.LINE_BUSINESS` | **ada** — terverifikasi dari `ALL_TAB_COLUMNS` |
+| Terisi pada | **1 dari 1 baris** saat diperiksa 2026-09-24 (`migrations/0004_DICABUT.md`) |
+| Nilai yang dikenali layar | `NONMBU` · `PA` · `TRAVEL` |
+| Akibat bila kosong | petugas **tidak melihat satu tab pun** — sama seperti `pyPosition` kosong di Pega |
+
+Selama kolomnya kosong, layar menampilkan keterangan yang menyebut keadaan itu apa adanya
+("belum diisi") beserta ketiga nilai yang membuka antrean. Ia **tidak** menampilkan layar
+kosong tanpa sebab, dan **tidak** menghasilkan galat.
+
+### 7.2 Yang diminta
+
+| # | Yang diminta | Kepada |
+|---|---|---|
+| L-1 | **Isi `LINE_BUSINESS`** bagi setiap petugas admin klaim, dengan `NONMBU`, `PA`, atau `TRAVEL` | Work Owner menetapkan pemetaannya; DBA atau pengelola master pengguna mengisinya |
+| L-2 | Tetapkan **siapa yang merawatnya** ketika petugas berpindah lini bisnis | Work Owner |
+
+Padanannya di sistem lama adalah `OperatorID.pyPosition` pada rekaman operator Pega — field
+yang diisi administrator, bukan yang datang dari sistem kepegawaian. Isinya karena itu dapat
+diambil dari konfigurasi operator Pega yang berlaku sekarang.
+
+### 7.3 Kenapa ini tidak dapat diambil dari HCQ
+
+Sampai 2026-09-27 aplikasi justru mencobanya: nilainya dibaca dari
+`EmpResponse.Placement.PositionName`. Itu **jabatan kepegawaian** — "IT SPECIALIST" dan
+sejenisnya — dan tidak pernah berisi kode lini bisnis, sehingga **tidak seorang pun** melihat
+satu tab pun.
+
+Tidak ada pemetaan dari jabatan ke lini bisnis di basis data maupun di export, dan membuatnya
+berarti menebak. Karena itu nilainya disimpan sebagai **data master yang dirawat manusia**,
+persis seperti di Pega.
+
+### 7.4 Yang TIDAK diminta — dicatat supaya tidak diminta berulang
+
+| Hal | Kenapa |
+|---|---|
+| Kolom baru untuk lini bisnis | `LINE_BUSINESS` sudah ada. Menambah kolom kedua berarti dua kolom untuk satu arti, dan modul berikutnya akan menebak yang mana |
+| Migrasi `0004_login_line_business` | Sudah **dicabut** sebelum dijalankan karena namanya salah (`LINEBUSINESS` tanpa garis bawah). Jangan dihidupkan kembali |
+| Perubahan pada HCQ | Jabatan kepegawaian memang bukan lini bisnis. Yang berhenti adalah memakainya sebagai lini bisnis, bukan HCQ-nya yang perlu berubah |
+
+---
+
+### Catatan 2026-09-27 — permintaan §5 DITANGGUHKAN
+
+Modul Inbox Manager (`MENU_ID 58`) dihapus atas perintah Work Owner pada hari yang sama
+(`keputusan-implementasi.md` §66). Keempat permintaan pada §5.1 dan kelima permintaan pada §5.3
+karena itu **tidak perlu dikirim** sampai modul ini dibangun ulang.
+
+Satu butir TETAP berlaku dan bukan milik modul ini: `POOLDATA.T_CLAIMLIST_ADMIN.PXASSIGNEDORGUNIT`
+yang diminta modul **Inbox Manager Admin** (`MENU_ID 57`) dan menunggu `migrations/0005` tahap 1
+dijalankan DBA.
+
+### 7.5 Cacat yang sama ditemukan di DUA modul lain — ditujukan ke **Work Owner**
+
+Diperiksa sesudah koreksi Inbox Manager Admin selesai, karena cacatnya berpola: `pyPosition`
+Pega berisi **kode lini bisnis**, sementara `auth.User.Position` berisi **jabatan
+kepegawaian** HCQ. Setiap modul yang membandingkan keduanya akan salah.
+
+Keduanya **TIDAK diubah** — permintaan sesi ini menyebut "hanya ubah bagian ini saja".
+
+| # | Modul | Perbandingannya | Akibat |
+|---|---|---|---|
+| C-1 | **Archive Dokumen Klaim** | `BranchScopeFor(caller.Position)` pada `criteria.go:239` mencocokkan `NONMBU`/`PA`/`TRAVEL` | Selalu jatuh ke `default:` → `BranchScope{}` → **tidak ada Group Panel yang dikecualikan**. Petugas melihat **LEBIH BANYAK** daripada yang semestinya |
+| C-2 | **Daftar Tipe Dokumen Bisnis** | `usecase/manage.go:247` mencocokkan `bulkSelectPosition = "NONMBU"` | Tombol "Tambah semua bisnis NONMBU" **tidak pernah tampil** bagi siapa pun |
+
+**C-1 lebih berat daripada cacat yang baru diperbaiki**, dan arahnya berlawanan. Di Inbox
+Manager Admin akibatnya petugas melihat **terlalu sedikit** — layar kosong, dan orang
+melapor. Di Archive Dokumen Klaim akibatnya petugas melihat **terlalu banyak**, dan tidak ada
+yang melapor karena layarnya tampak bekerja.
+
+Ia **bukan `R-20`**: pemisahan antarentitas tetap dijaga `RepoSelector`, dan yang gagal adalah
+pembatasan lini bisnis **di dalam satu badan hukum**.
+
+**Perbaikannya sama dengan yang sudah dikerjakan di sini**: baca dari
+`M_LOGIN_PNC.LINE_BUSINESS` lewat seam, bukan dari sesi. Seam, kueri, dan ujinya sudah ada
+sebagai contoh di `internal/inboxmanageradmin/`.
+
+Yang diminta: **persetujuan lingkup** untuk memperbaiki keduanya. C-1 mengubah baris yang
+terlihat petugas, sehingga ia perlu diketahui lebih dulu — bukan diperbaiki diam-diam.
+
+### 7.6 Satu permintaan yang mencegah seluruh kelas kekeliruan ini
+
+| # | Yang diminta | Kepada |
+|---|---|---|
+| L-3 | **Daftar lengkap kolom `POOLDATA.T_CLAIMLIST_ADMIN`** beserta tipe dan panjangnya | DBA |
+
+Satu kueri sudah cukup:
+
+```sql
+SELECT column_name, data_type, data_length, data_precision, data_scale, nullable
+  FROM all_tab_columns
+ WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIMLIST_ADMIN'
+ ORDER BY column_id;
+```
+
+**Kenapa ini penting melebihi kolom mana pun yang diminta di atas.**
+`docs/kolom-t-claimlist-admin.md` mencatat **jumlahnya** (40 kolom) tetapi tidak pernah
+menyebut **namanya** satu per satu. Akibatnya setiap modul yang memakai tabel ini harus
+menebak apakah sebuah kolom ada — dan menebak dari sumber yang tidak membuktikan apa pun,
+yaitu modul lain yang kebetulan tidak memakainya.
+
+Dua kekeliruan pada 2026-09-27 lahir persis dari situ: `PXCREATEOPNAME` diminta padahal sudah
+ada, dan `PYORIGUSERID` dicatat tidak dibawa tanpa diketahui ia ada. Keduanya ditemukan
+Work Owner, bukan oleh pemeriksaan kami.
+
+Kekeliruan seperti itu **berakibat nyata bila lolos**: `ALTER TABLE ... ADD` polos gagal
+dengan **ORA-01430** pada kolom pertama yang sudah ada, dan menyisakan tabel setengah jadi.
+
+Dengan daftar itu di repo, setiap pertanyaan "apakah kolom X ada" terjawab dengan membaca —
+bukan dengan menyimpulkan.

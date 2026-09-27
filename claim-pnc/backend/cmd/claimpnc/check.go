@@ -60,6 +60,8 @@ import (
 	"claim-pnc/internal/inboxkomunikasicabang"
 	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	"claim-pnc/internal/inboxmanageradmin"
+	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
@@ -1166,6 +1168,7 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	rejection := masterpenolakansql.NewRepo(primary)
 	supplier := mastersuppliersql.NewRepo(primary)
 	inboxCompliance := inboxcompliancesql.NewRepo(primary)
+	inboxManagerAdmin := inboxmanageradminsql.NewRepo(primary)
 
 	// Tab Compliance dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
 	// memakai tab yang BENAR-BENAR terdaftar. Tab yang tidak ditemukan membuat kueri
@@ -1210,6 +1213,33 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 			)
 			return page.Total, err
 		}},
+		// Kueri daftarnya WAJIB ikut dijalankan di modul ini, dan alasannya lebih kuat
+		// daripada di modul lain: `list_by_org_unit` menyaring
+		// `T_CLAIMLIST_ADMIN.PXASSIGNEDORGUNIT` — kolom yang DIMINTA ditambahkan saat
+		// modul ini dipindahkan ke tabel itu (Work Owner 2026-09-27) dan menunggu
+		// `migrations/0005` tahap 1 dijalankan DBA.
+		//
+		// CheckTable sudah memeriksa ketiga kolom yang diminta tersendiri lewat
+		// `check_column`. Yang ditambahkan di sini adalah pembuktian bahwa ia benar-benar
+		// dapat dipakai sebagai penyaring pada kueri yang sesungguhnya.
+		//
+		// Yang TIDAK dapat dibuktikan perintah ini: apakah kolomnya benar-benar TERISI di
+		// produksi. Kolom yang ada tetapi selalu kosong mengembalikan nol baris tanpa satu
+		// pun galat, dan jumlah baris di bawah inilah satu-satunya petunjuknya. Itu bukan
+		// kekhawatiran teoretis: `STATUSLOCK_1` dan `REQUESTSURVEY_1` pada tabel yang sama
+		// ada tetapi kosong di seluruh 1.014 barisnya.
+		{"Inbox Manager Admin", inboxManagerAdmin.CheckTable, func(ctx context.Context) (int, error) {
+			tab, known := inboxmanageradmin.FindTab(inboxmanageradmin.TabNonMBU)
+			if !known {
+				return 0, fmt.Errorf(
+					"tab %q tidak terdaftar di inboxmanageradmin.Tabs()",
+					inboxmanageradmin.TabNonMBU)
+			}
+
+			rows, err := inboxManagerAdmin.List(ctx, inboxmanageradmin.Query{Tab: tab})
+			return len(rows), err
+		}},
+
 		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {
 			row, err := autoClaim.List(ctx, masterautoclaim.Filter{})
 			return len(row), err
@@ -1729,24 +1759,7 @@ func checkClaimTreatyNonProp(
 	}
 }
 
-// checkManagerReceivePUCL memeriksa modul Inbox Manager Receive / PUCL (`MENU_ID 56`).
-//
-// # Kenapa pemeriksaannya lebih rinci daripada modul inbox lain
-//
-// Karena TIGA hal di modul ini dibangun di atas kesimpulan yang belum dapat diverifikasi
-// tanpa basis data nyata, dan ketiganya gagal TANPA GALAT bila kesimpulannya keliru:
-//
-//   - Group Panel `002` sebagai pengganti `.ReceiveDocument.TypeOfClaim`. Bila kodenya
-//     berbeda di produksi, tab PA kosong dan seluruh isinya pindah ke tab NONMBU.
-//   - Akun antrean `RCLPUCL`. Ia diambil dari dua kueri Pega lain karena Report Definition
-//     tab itu tidak punya penyaring antrean sama sekali. Bila namanya berubah, tab RCL/PUCL
-//     kosong.
-//   - POOLDATA.T_CLAIM_RECIVEDCLAIM. Tabel itu TIDAK PERNAH DIBACA sistem lama, sehingga
-//     kelengkapan isinya belum terverifikasi. Gabungannya LEFT JOIN, sehingga tabel yang
-//     kosong menghasilkan dua kolom kosong — bukan galat.
-//
-// Ketiganya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
-// bukan saat pengguna melaporkan "tabnya kosong".
+
 func checkManagerReceivePUCL(
 	ctx context.Context,
 	repo *inboxmanagerreceivepuclsql.Repo,
