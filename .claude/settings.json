@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -vE \"^\\\\+\\\\s*//\")",
+      "Bash(git apply *)",
+      "Bash(gofmt -e claim-pnc/backend/cmd/claimpnc/main.go)"
+    ]
+  }
+}

@@ -77,8 +77,40 @@ type Props<T> = {
   isLoading?: boolean
   error?: ReactNode
 
+  /**
+   * Gambar kepala kolom meski tidak ada satu pun baris.
+   *
+   * # Kenapa opt-in, bukan bawaan
+   *
+   * Sama alasannya dengan `pageSize`: mengubahnya menjadi bawaan akan mengubah tampilan
+   * sepuluh layar master yang sudah selesai sekaligus, dan tidak satu pun memintanya.
+   *
+   * Yang memintanya adalah Master Sparepart. Grid Pega menggambar kepala kolomnya beserta
+   * `pyGridNoResultsMessage` di bawahnya saat hasilnya nol — bukan menggantinya dengan
+   * gambar kotak kosong. Work Owner meminta layar itu mengikuti Pega (2026-09-24).
+   *
+   * Bawaannya tetap `false`, sehingga layar yang belum menyalakannya berperilaku persis
+   * seperti sebelumnya.
+   */
+  showHeaderWhenEmpty?: boolean
+
   searchLabel?: string
   emptyMessage?: string
+
+  /**
+   * Kotak pencarian ditampilkan.
+   *
+   * Bawaannya `true` supaya layar yang sudah ada tidak berubah. Dimatikan oleh layar
+   * yang di Pega memang tidak punya pencarian dan diputuskan meniru Pega apa adanya —
+   * Master Dokumen Travel adalah yang pertama (keputusan Work Owner 2026-09-21).
+   *
+   * Akibatnya bertindihan dengan `hideSearch` di bawah: keduanya menyembunyikan kotak
+   * cari, hanya arah nilainya berlawanan. Keduanya lahir di cabang yang berbeda dan
+   * keduanya sudah dipakai layar yang berjalan, sehingga tidak satu pun dapat dibuang
+   * begitu saja. Penyatuannya dicatat sebagai utang teknis, bukan diselesaikan sambil
+   * menggabungkan cabang.
+   */
+  searchable?: boolean
 
   /**
    * Menyerahkan pencarian dan pengurutan ke PEMANGGIL, bukan dikerjakan komponen ini.
@@ -146,6 +178,10 @@ type Props<T> = {
    *
    * Bawaannya **tanpa paginasi** supaya layar yang belum menyalakannya berperilaku persis
    * seperti sebelumnya. Menyalakannya untuk sebuah layar cukup satu prop.
+   *
+   * Paginasi ini dikerjakan DI PERAMBAN atas baris yang sudah di tangan, sama seperti
+   * pencarian dan pengurutan. Layar yang datanya besar menuntut paginasi keyset dari
+   * server dan TIDAK boleh memakai ini (`TKT-U2-001`).
    */
   pageSize?: number
 }
@@ -244,10 +280,12 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  searchable = true,
   serverSearch,
   hideSearch = false,
   pagination,
   pageSize,
+  showHeaderWhenEmpty = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -335,7 +373,7 @@ export function DataTable<T>({
         </header>
       )}
 
-      {!hideSearch && (
+      {searchable && !hideSearch && (
         <div className="border-b border-slate-200 bg-slate-50/60 px-5 py-4">
           <label htmlFor="tabel-cari" className="sr-only">
             {searchLabel}
@@ -381,7 +419,7 @@ export function DataTable<T>({
         <div className="p-5">{error}</div>
       ) : isLoading ? (
         <LoadingState />
-      ) : visible.length === 0 ? (
+      ) : visible.length === 0 && !showHeaderWhenEmpty ? (
         <EmptyState
           pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
           saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
@@ -439,6 +477,29 @@ export function DataTable<T>({
             </thead>
 
             <tbody className="block md:table-row-group">
+              {/*
+                Baris kosong hanya muncul pada layar yang menyalakan showHeaderWhenEmpty;
+                pada layar lain cabang ini tidak pernah tercapai karena EmptyState sudah
+                menggantikan seluruh tabelnya lebih dulu.
+
+                `colSpan` memakai jumlah kolom apa adanya supaya pesannya membentang penuh
+                di tampilan meja. Di tampilan kartu tabelnya menjadi blok, dan colSpan tidak
+                berlaku — di sana pesannya tetap terbaca karena selnya pun menjadi blok.
+              */}
+              {visible.length === 0 ? (
+                <tr className="block md:table-row">
+                  <td className="block md:table-cell" colSpan={columns.length}>
+                    <EmptyState
+                      pesan={
+                        hasSearch
+                          ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
+                          : emptyMessage
+                      }
+                      saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
+                    />
+                  </td>
+                </tr>
+              ) : null}
               {shown.map((b) => (
                 <tr
                   key={rowKey(b)}
@@ -627,10 +688,19 @@ function PageBar({
  * fokus. Nomor halaman yang sedang dibuka memakai `aria-current="page"` — bukan hanya
  * warna, yang tidak terbaca pembaca layar dan tidak terbedakan oleh sekitar satu dari dua
  * belas laki-laki yang mengalami buta warna merah-hijau.
+ *
+ * # Kenapa ia DIEKSPOR, padahal hanya dipakai di dalam berkas ini
+ *
+ * Supaya layar yang datanya dipaginasi SERVER memakai paginator yang sama persis, alih-alih
+ * menggambar sendiri yang mirip. Master Pasal AI adalah yang pertama: jendela halamannya
+ * dihitung di basis data, sehingga ia tidak dapat memakai prop `pageSize` di atas — komponen
+ * ini hanya memegang baris yang sudah di tangan, sedangkan di sana barisnya memang hanya
+ * satu halaman.
+ *
+ * Tanpa ekspor ini, layar seperti itu menyalin markup-nya — dan dua paginator yang terlihat
+ * sama tetapi hidup di dua berkas akan berbeda begitu salah satunya disunting.
  */
-
-
-function Paginator({
+export function Paginator({
   firstRow,
   lastRow,
   totalRows,

@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -15,106 +14,79 @@ import (
 //
 // Yang diperiksa adalah bentuk SQL dan pengikatan parameternya — dua hal yang bila salah
 // menghasilkan kegagalan yang mahal: galat pengikatan di produksi, atau lebih buruk,
-// penyaring batas data yang tidak berlaku tanpa satu pun galat.
+// penyaring pemilik pekerjaan yang tidak berlaku tanpa satu pun galat.
 
-func TestKeduaKueriTerbacaDanMemuatPenandaScope(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count"} {
-		text := query(name)
-		require.NotEmpty(t, text, "kueri %s kosong", name)
-		require.Contains(t, text, "/*SCOPE*/", "kueri %s kehilangan penanda scope", name)
+// kueriModul adalah kedua kueri DAFTAR, dipakai hampir seluruh uji di bawah.
+var kueriModul = []string{"my_inbox_list", "my_inbox_count"}
+
+// kueriUnduhan adalah kedua kueri EXPORT.
+//
+// Ia daftar tersendiri karena syaratnya memang BERBEDA — export tidak menyaring pemilik
+// pekerjaan sama sekali. Menggabungkannya dengan kueriModul akan memaksa salah satu uji
+// dilonggarkan, dan yang dilonggarkan pasti penjaga penyaring pemilik.
+var kueriUnduhan = []string{"my_inbox_export", "my_inbox_export_count"}
+
+// kueriSemua dipakai uji struktural yang berlaku untuk seluruh kueri modul ini.
+var kueriSemua = append(append([]string{}, kueriModul...),
+	append(kueriUnduhan, "legacy_operator_for", "line_business_for")...)
+
+func TestKeduaKueriTerbaca(t *testing.T) {
+	for _, name := range kueriSemua {
+		require.NotEmpty(t, query(name), "kueri %s kosong", name)
 	}
 }
 
 func TestKomentarTidakIkutDikirimKeBasisData(t *testing.T) {
-	// Komentar baris dibuang; komentar blok /*SCOPE*/ HARUS tetap ada karena ia penanda.
-	text := query("outstanding_list")
-	require.NotContains(t, text, "-- ", "komentar baris tidak boleh ikut terkirim")
-	require.Contains(t, text, "/*SCOPE*/")
-}
-
-// Inilah uji yang menjaga janji terpenting berkas sqlstore: nilai TIDAK PERNAH dirangkai
-// ke dalam teks SQL.
-//
-// Sistem lama merangkai potongan WHERE dari properti klipboard lewat {ASIS:TempView.pyNote}
-// justru pada layar ini, dan potongan itulah yang menentukan batas data. Uji ini yang
-// membuat pernyataan "celah itu tertutup" tetap benar.
-func TestNilaiTidakPernahMasukKeTeksSQL(t *testing.T) {
-	scope := inboxoutstanding.LineScope{GroupPanels: []string{"002", "005"}}
-	statement, args := expandScope(query("outstanding_list"), scope, scopeFirstBindList)
-
-	require.NotContains(t, statement, "002", "nilai lini bocor ke teks SQL")
-	require.NotContains(t, statement, "005", "nilai lini bocor ke teks SQL")
-	require.Equal(t, []any{"002", "005"}, args, "nilainya dikirim terpisah sebagai argumen")
-}
-
-func TestScopeTanpaBatasTidakMenambahKlausaApaPun(t *testing.T) {
-	scope := inboxoutstanding.LineScope{Unrestricted: true}
-	statement, args := expandScope(query("outstanding_list"), scope, scopeFirstBindList)
-
-	require.Empty(t, args)
-	require.NotContains(t, statement, "/*SCOPE*/", "penanda harus tergantikan")
-	require.NotContains(t, statement, "POLIS_LINI IN", "tanpa batas berarti tanpa penyaring lini")
-}
-
-// Scope kosong harus gagal TERTUTUP.
-//
-// Ia hampir pasti cacat pemrograman, dan meloloskan semuanya akan mengubah cacat itu
-// menjadi kebocoran data antar lini yang tidak menghasilkan galat apa pun.
-func TestScopeKosongMenghasilkanKlausaYangTidakMeloloskanApaPun(t *testing.T) {
-	statement, args := expandScope(query("outstanding_list"), inboxoutstanding.LineScope{}, scopeFirstBindList)
-
-	require.Empty(t, args)
-	require.Contains(t, statement, "AND 1 = 0")
-}
-
-func TestPenandaScopeDimulaiDariNomorYangBenar(t *testing.T) {
-	scope := inboxoutstanding.LineScope{GroupPanels: []string{"003", "004", "006"}}
-
-	listSQL, _ := expandScope(query("outstanding_list"), scope, scopeFirstBindList)
-	require.Contains(t, listSQL, ":11, :12, :13")
-
-	countSQL, _ := expandScope(query("outstanding_count"), scope, scopeFirstBindCount)
-	require.Contains(t, countSQL, ":9, :10, :11")
-}
-
-// Uji yang menjaga konstanta scopeFirstBind* tetap sejalan dengan isi berkas .sql.
-//
-// Bila seseorang menambah penyaring baru ke SQL tanpa menggeser konstantanya, dua penanda
-// akan bertabrakan — dan tabrakannya menghasilkan hasil yang SALAH, bukan galat: nilai
-// lini akan terbaca sebagai nilai penyaring lain.
-func TestKonstantaNomorScopeSejalanDenganIsiBerkasSQL(t *testing.T) {
-	cases := []struct {
-		name      string
-		firstBind int
-	}{
-		{"outstanding_list", scopeFirstBindList},
-		{"outstanding_count", scopeFirstBindCount},
-	}
-
-	for _, c := range cases {
-		highest := highestBind(t, query(c.name))
-		require.Equal(t, c.firstBind-1, highest,
-			"kueri %s memakai :1..:%d, sehingga scope harus mulai dari :%d",
-			c.name, highest, highest+1)
+	for _, name := range kueriSemua {
+		require.NotContains(t, query(name), "-- ", "komentar baris tidak boleh ikut terkirim")
 	}
 }
 
-// highestBind mencari nomor parameter tertinggi yang dipakai sebuah pernyataan.
-func highestBind(t *testing.T, statement string) int {
-	t.Helper()
-
-	matches := regexp.MustCompile(`:(\d+)`).FindAllStringSubmatch(statement, -1)
-	require.NotEmpty(t, matches, "pernyataan tidak memakai satu pun parameter")
-
-	highest := 0
-	for _, m := range matches {
-		n, err := strconv.Atoi(m[1])
-		require.NoError(t, err)
-		if n > highest {
-			highest = n
-		}
+// Inilah uji yang menjaga janji terpenting layar ini: daftarnya TERIKAT pada pemiliknya.
+//
+// Tanpa penyaring ini, layar bernama "My Inbox" menampilkan pekerjaan SELURUH operator —
+// terisi, tampak wajar, dan salah tanpa satu pun galat.
+func TestKeduaKueriMenyaringPemilikPekerjaan(t *testing.T) {
+	for _, name := range kueriModul {
+		// DUA identitas untuk satu orang: login baru berbentuk email, klaim warisan
+		// tertugas ke nama operator Pega. Lihat Filter.AssignedToLegacy.
+		require.Contains(t, query(name), "UPPER(TRIM(k.PXASSIGNEDOPERATORID)) IN (:1, :2)",
+			"kueri %s kehilangan penyaring pemilik", name)
 	}
-	return highest
+}
+
+// Kueri UNDUHAN justru TIDAK boleh menyaring pemilik pekerjaan.
+//
+// Ini kebalikan uji di atas, dan sengaja ditulis sebagai uji tersendiri: export pernah
+// memanggil ulang daftar sehingga mewarisi penyaring itu, dan akibatnya petugas yang
+// inbox-nya kosong mengunduh berkas kosong — padahal di Pega berkasnya tetap berisi.
+func TestKueriUnduhanTidakMenyaringPemilikPekerjaan(t *testing.T) {
+	for _, name := range kueriUnduhan {
+		require.NotContains(t, query(name), "PXASSIGNEDOPERATORID) IN",
+			"kueri %s tidak boleh menyaring pemilik", name)
+		require.NotContains(t, query(name), "PXASSIGNEDOPERATORID) =",
+			"kueri %s tidak boleh menyaring pemilik", name)
+	}
+}
+
+// Repo MENOLAK permintaan tanpa pemilik, bukan menjalankannya tanpa penyaring.
+func TestPermintaanTanpaPemilikDitolak(t *testing.T) {
+	_, err := (&Repo{}).List(nil, inboxoutstanding.Filter{}) //nolint:staticcheck // ctx tidak dipakai sebelum penolakan
+	require.ErrorIs(t, err, inboxoutstanding.ErrAssigneeRequired)
+}
+
+// Tiga penyaring `BrowseInboxOutstanding1` TIDAK boleh kembali.
+//
+// Ketiganya berasal dari kueri layar LAIN — dashboard — dan `InboxRegister_RD` tidak
+// memilikinya. Membawanya berarti menyaring lebih ketat daripada layar aslinya: klaim yang
+// di Pega terlihat akan hilang di sini, tanpa galat yang menandainya.
+func TestPenyaringDariKueriYangSalahTidakTerbawa(t *testing.T) {
+	for _, name := range kueriModul {
+		text := query(name)
+		require.NotContains(t, text, "PXFLOWNAME", "kueri %s", name)
+		require.NotContains(t, text, "FixCorrespondence", "kueri %s", name)
+		require.NotContains(t, text, "ASNET", "kueri %s", name)
+	}
 }
 
 func TestPolaPencarianDiseragamkanMenjadiHurufBesar(t *testing.T) {
@@ -135,38 +107,68 @@ func TestKarakterKhususLIKEDiEscape(t *testing.T) {
 // Escaping hanya bekerja bila SQL menyatakan karakter escape-nya. Keduanya harus cocok:
 // Go meng-escape dengan backslash, SQL wajib menyebut ESCAPE '\'.
 func TestSQLMenyatakanKarakterEscapeYangSamaDenganGo(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count"} {
+	for _, name := range kueriSemua {
 		text := query(name)
-		likeCount := strings.Count(text, "LIKE")
-		escapeCount := strings.Count(text, `ESCAPE '\'`)
-		require.Equal(t, likeCount, escapeCount,
+		require.Equal(t, strings.Count(text, "LIKE"), strings.Count(text, `ESCAPE '\'`),
 			"kueri %s: setiap LIKE wajib menyebut ESCAPE '\\'", name)
 	}
 }
 
 func TestPenyaringKosongDikirimSebagaiNULL(t *testing.T) {
-	args := filterArgs(inboxoutstanding.Filter{}.Normalize())
+	args := filterArgs(inboxoutstanding.Filter{AssignedTo: "BUDI"}.Normalize())
 
-	require.Len(t, args, 8)
-	for i, a := range args {
-		require.Nil(t, a, "argumen ke-%d harus NULL saat penyaringnya kosong", i+1)
+	// Empat belas argumen: DUA identitas + satu penanda pencarian + tiga pola + empat
+	// penyaring opsional yang masing-masing dikirim dua kali.
+	require.Len(t, args, 14)
+
+	require.Equal(t, "BUDI", args[0], "identitas login TIDAK pernah NULL")
+
+	// Identitas lama yang kosong DIULANGI dengan identitas sekarang, bukan dikirim NULL.
+	// Hasil kueri sama, tetapi maksudnya terbaca tanpa menalar perilaku NULL pada IN.
+	require.Equal(t, "BUDI", args[1], "identitas lama kosong diulangi, bukan NULL")
+
+	for i, a := range args[2:] {
+		require.Nil(t, a, "argumen ke-%d harus NULL saat penyaringnya kosong", i+3)
 	}
 }
 
-func TestPenyaringTahapDanCabangDiseragamkanMenjadiHurufBesar(t *testing.T) {
+// Identitas lama benar-benar sampai ke kueri.
+//
+// Tanpa uji ini, sebuah cacat yang membuang AssignedToLegacy tidak akan tertangkap: daftar
+// tetap terisi bagi petugas yang identitasnya tidak pernah berganti — yaitu 9 dari 29
+// operator pada data ASM — dan kosong bagi 20 sisanya tanpa satu pun galat.
+func TestIdentitasLamaIkutDikirimKeKueri(t *testing.T) {
 	args := filterArgs(inboxoutstanding.Filter{
+		AssignedTo:       "orang@contoh.co.id",
+		AssignedToLegacy: "NamaOperatorLama",
+	}.Normalize())
+
+	require.Equal(t, "ORANG@CONTOH.CO.ID", args[0])
+	require.Equal(t, "NAMAOPERATORLAMA", args[1], "identitas lama diseragamkan huruf besar")
+}
+
+func TestPenyaringOpsionalDiseragamkanMenjadiHurufBesar(t *testing.T) {
+	args := filterArgs(inboxoutstanding.Filter{
+		AssignedTo: "budi",
+		GroupPanel: "002",
+		RCVID:      "rcv-1",
 		Stage:      "komite",
 		BranchCode: "jkt",
 	}.Normalize())
 
-	// Delapan argumen, bukan enam: tahap dan cabang masing-masing dikirim DUA KALI karena
-	// penandanya muncul dua kali di dalam SQL. Lihat kepala outstanding.sql.
-	require.Len(t, args, 8)
+	require.Len(t, args, 14)
 
-	require.Equal(t, "KOMITE", args[4]) // :5 IS NULL
-	require.Equal(t, "KOMITE", args[5]) // :6 perbandingan
-	require.Equal(t, "JKT", args[6])    // :7 IS NULL
-	require.Equal(t, "JKT", args[7])    // :8 perbandingan
+	require.Equal(t, "BUDI", args[0])
+	// Tiap penyaring opsional dikirim DUA KALI karena penandanya muncul dua kali di dalam
+	// SQL. Lihat kepala outstanding.sql.
+	require.Equal(t, "002", args[6])
+	require.Equal(t, "002", args[7])
+	require.Equal(t, "RCV-1", args[8])
+	require.Equal(t, "RCV-1", args[9])
+	require.Equal(t, "KOMITE", args[10])
+	require.Equal(t, "KOMITE", args[11])
+	require.Equal(t, "JKT", args[12])
+	require.Equal(t, "JKT", args[13])
 }
 
 // Tiap penanda bernomor muncul TEPAT SEKALI di dalam satu kueri.
@@ -178,7 +180,7 @@ func TestPenyaringTahapDanCabangDiseragamkanMenjadiHurufBesar(t *testing.T) {
 // Cacat itu lolos seluruh uji sampai kuerinya benar-benar menyentuh Oracle — tidak satu pun
 // kueri lain di repo ini mengulang penanda, sehingga polanya tidak pernah teruji.
 func TestPenandaBernomorTidakDiulangDalamSatuKueri(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count"} {
+	for _, name := range kueriSemua {
 		seen := map[string]int{}
 		for _, mark := range regexp.MustCompile(`:\d+`).FindAllString(bodyOnly(query(name)), -1) {
 			seen[mark]++
@@ -208,22 +210,20 @@ func bodyOnly(statement string) string {
 //
 // Bila keduanya menyimpang, pengguna melihat jumlah yang berbeda dari yang dapat
 // ditelusurinya — dan tidak ada galat yang muncul.
-func TestSyaratOutstandingSamaPadaKeduaKueri(t *testing.T) {
-	list := query("outstanding_list")
-	count := query("outstanding_count")
+func TestSyaratSamaPadaKeduaKueri(t *testing.T) {
+	list, count := query("my_inbox_list"), query("my_inbox_count")
 
-	// Kelima penyaring pertama disalin dari `BrowseInboxOutstanding1-SQL.xml:121-128`.
+	// Kelimanya disalin dari `Report Definition/InboxRegister_RD-RD.xml`.
 	for _, condition := range []string{
 		"k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
+		// DUA identitas, bukan satu — lihat Filter.AssignedToLegacy.
+		"UPPER(TRIM(k.PXASSIGNEDOPERATORID)) IN (:1, :2)",
 		"k.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')",
-		"k.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')",
-		"k.PXTASKLABEL NOT IN ('FixCorrespondence')",
-		"k.BRANCHNAME <> 'ASNET'",
-		"UPPER(TRIM(k.PXTASKLABEL)) = :6",
-		"UPPER(TRIM(k.BRANCHNAME)) = :8",
+		"UPPER(TRIM(k.GROUPPANEL_1)) = :8",
+		"UPPER(TRIM(k.PNCCASEID)) = :10",
 	} {
-		require.Contains(t, list, condition, "outstanding_list")
-		require.Contains(t, count, condition, "outstanding_count")
+		require.Contains(t, list, condition, "my_inbox_list")
+		require.Contains(t, count, condition, "my_inbox_count")
 	}
 }
 
@@ -233,7 +233,7 @@ func TestSyaratOutstandingSamaPadaKeduaKueri(t *testing.T) {
 // dibuat dan modul penulisnya belum dipasang, sehingga layar akan selalu kosong TANPA
 // GALAT. Uji ini menjaga kekeliruan itu tidak kembali diam-diam.
 func TestKeduaKueriMembacaTabelYangBenar(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count"} {
+	for _, name := range kueriModul {
 		text := query(name)
 		require.Contains(t, text, "POOLDATA.T_CLAIMLIST_ADMIN", "kueri %s", name)
 		require.NotContains(t, text, "CPNC_KLAIM", "kueri %s", name)
@@ -246,7 +246,7 @@ func TestKeduaKueriMembacaTabelYangBenar(t *testing.T) {
 // Di sistem lama kueri ini menempuh empat tabel, dan inner join-nya membuat klaim tanpa
 // assignment hilang serta klaim dengan dua assignment muncul dua kali.
 func TestKueriTidakMemakaiJoinSamaSekali(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count"} {
+	for _, name := range kueriModul {
 		text := strings.ToUpper(query(name))
 		require.NotContains(t, text, " JOIN ", "kueri %s", name)
 		require.Equal(t, 1, strings.Count(text, "FROM "), "kueri %s membaca satu tabel", name)
@@ -255,7 +255,7 @@ func TestKueriTidakMemakaiJoinSamaSekali(t *testing.T) {
 
 // SELECT * dilarang — `08-TECHNICAL-STRATEGY.md` §4.3.
 func TestTidakAdaSelectBintang(t *testing.T) {
-	for _, name := range []string{"outstanding_list", "outstanding_count", "line_business_for"} {
+	for _, name := range kueriSemua {
 		require.NotContains(t, query(name), "SELECT *", "kueri %s", name)
 	}
 }
@@ -264,7 +264,7 @@ func TestTidakAdaSelectBintang(t *testing.T) {
 func TestTidakAdaPolaSQLYangDilarang(t *testing.T) {
 	forbidden := []string{"NVL(", "ROWNUM", "SYSDATE", "DECODE(", "FROM DUAL", "(+)", "LISTAGG"}
 
-	for _, name := range []string{"outstanding_list", "outstanding_count", "line_business_for"} {
+	for _, name := range kueriSemua {
 		text := strings.ToUpper(query(name))
 		for _, pattern := range forbidden {
 			require.NotContains(t, text, pattern, "kueri %s memakai pola terlarang %s", name, pattern)

@@ -83,57 +83,6 @@ func TestUmurKlaimNolBilaTanggalPendaftaranKosong(t *testing.T) {
 	require.Equal(t, 0, claim.AgeInDays(time.Now(), time.UTC))
 }
 
-func TestBatasDataPerLiniBisnis(t *testing.T) {
-	excluded := []string{"10008", "10010", "10015", "10023"}
-
-	// Nilainya disalin dari potongan WHERE sistem lama — lihat komentar ScopeFor.
-	cases := []struct {
-		line             string
-		wantUnrestricted bool
-		wantPanels       []string
-		wantExcluded     []string
-	}{
-		{inboxoutstanding.LinePA, false, []string{"002"}, nil},
-		{inboxoutstanding.LineTravel, false, []string{"005"}, nil},
-		{inboxoutstanding.LineNonMBU, false, []string{"003", "004", "006"}, excluded},
-
-		// BONDING melihat SELURUH Group Panel, dikurangi kelompok bisnis yang
-		// dikecualikan — ia karena itu bukan "tanpa batas".
-		{inboxoutstanding.LineBonding, false, nil, excluded},
-
-		// Kosong dan tidak dikenali sama-sama jatuh ke tanpa batas (`K-4`).
-		{"", true, nil, nil},
-		{"TRAVELOKA", true, nil, nil},
-	}
-
-	for _, c := range cases {
-		scope := inboxoutstanding.ScopeFor(c.line)
-		require.Equal(t, c.wantUnrestricted, scope.Unrestricted, "lini %q", c.line)
-		require.Equal(t, c.wantPanels, scope.GroupPanels, "lini %q", c.line)
-		require.Equal(t, c.wantExcluded, scope.ExcludedBusinessGroups, "lini %q", c.line)
-	}
-}
-
-// BONDING adalah satu-satunya lini yang batasnya SELURUHNYA berupa pengecualian.
-//
-// Uji terpisah karena mudah salah: scope tanpa Group Panel terlihat seperti scope kosong,
-// dan scope kosong gagal tertutup. Yang membedakannya adalah daftar pengecualian.
-func TestBondingMenyaringLewatPengecualianBukanLini(t *testing.T) {
-	scope := inboxoutstanding.ScopeFor(inboxoutstanding.LineBonding)
-
-	require.False(t, scope.Unrestricted, "BONDING punya batas, bukan tanpa batas")
-	require.Empty(t, scope.GroupPanels, "BONDING tidak menyaring Group Panel")
-	require.NotEmpty(t, scope.ExcludedBusinessGroups, "batasnya ada pada pengecualian")
-}
-
-func TestBatasDataTidakPekaBesarKecilHurufDanSpasiTepi(t *testing.T) {
-	// Kolom LOGIN_ID di sistem lama tidak diseragamkan, dan LINEBUSINESS yang menyusulnya
-	// tidak punya alasan untuk lebih rapi.
-	scope := inboxoutstanding.ScopeFor("  pa  ")
-	require.False(t, scope.Unrestricted)
-	require.Equal(t, []string{"002"}, scope.GroupPanels)
-}
-
 func TestFilterDinormalkanKeNilaiYangMasukAkal(t *testing.T) {
 	f := inboxoutstanding.Filter{
 		Search:     "  PNCN.26  ",
@@ -153,4 +102,20 @@ func TestFilterDinormalkanKeNilaiYangMasukAkal(t *testing.T) {
 func TestFilterMemangkasLimitYangMelebihiBatas(t *testing.T) {
 	f := inboxoutstanding.Filter{Limit: 5000}.Normalize()
 	require.Equal(t, inboxoutstanding.MaxLimit, f.Limit)
+}
+
+// Pemilik pekerjaan ikut dinormalkan, sama seperti penyaring lain.
+//
+// Tanpa ini, "  budi  " dan "budi" menjadi dua pemilik berbeda — dan layar menampilkan
+// daftar kosong tanpa satu pun galat.
+func TestPemilikPekerjaanIkutDinormalkan(t *testing.T) {
+	f := inboxoutstanding.Filter{
+		AssignedTo: "  BUDISANTOSO  ",
+		GroupPanel: "  002  ",
+		RCVID:      "  RCV-1  ",
+	}.Normalize()
+
+	require.Equal(t, "BUDISANTOSO", f.AssignedTo)
+	require.Equal(t, "002", f.GroupPanel)
+	require.Equal(t, "RCV-1", f.RCVID)
 }

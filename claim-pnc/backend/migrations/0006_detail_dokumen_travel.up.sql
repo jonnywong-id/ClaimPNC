@@ -1,0 +1,237 @@
+-- 0006 — Daftar Detail Dokumen Travel: verifikasi objek dan hak akses (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+--
+-- ## BERKAS INI BUKAN HANYA PEMBERIAN HAK — IA JUGA PERMINTAAN JAWABAN
+--
+-- Berbeda dari migrasi 0003 dan 0005, berkas ini memuat PERTANYAAN yang jawabannya
+-- menentukan apakah modul dapat menyimpan sama sekali. Sebabnya satu:
+--
+--     JALUR SIMPAN LAYAR INI HILANG DARI EXPORT PEGA.
+--
+-- Tombol Simpan pada `Section/BrowseDocumentTravel-Section.xml` memanggil
+-- `CNMInsertDocumentTravel_act`, dan tombol Ubah memanggil
+-- `CNMSetDetailTravelDocument_act`. TIDAK SATU PUN ada di export (`R-16`), dan tidak ada
+-- procedure penggantinya — `DOCTRAVEL_CVG.prc` hanya melayani M_DOCTRAVEL, yaitu master
+-- INDUK yang layarnya sudah dibangun terpisah.
+--
+-- Yang dapat dibaca dari export hanyalah APA yang disimpan, bukan KE MANA. Aplikasi
+-- karena itu menulis ke nama objek yang DITURUNKAN dari nama view-nya, dan ketiga nama
+-- itu harus dikonfirmasi sebelum modul dinyatakan siap.
+--
+--
+-- ## TIDAK ADA PERUBAHAN SKEMA DI BERKAS INI
+--
+-- Tidak ada ALTER, tidak ada CREATE, tidak ada indeks baru, tidak ada view yang
+-- didefinisikan ulang. Isinya hanya KUERI PEMERIKSAAN dan PEMBERIAN HAK.
+--
+-- Bila pemeriksaan di bawah menunjukkan tabel dasar atau urutannya memang belum ada,
+-- pembuatannya menjadi MIGRASI TERSENDIRI yang didahului persetujuan Work Owner
+-- (`D-63`) — bukan tambahan diam-diam pada berkas ini.
+--
+--
+-- ## BERKAS INI DIJALANKAN DI SETIAP BASIS DATA ENTITAS, BUKAN HANYA SATU
+--
+-- `D-75` menetapkan satu basis data per entitas, dan seluruh objek di bawah adalah data
+-- acuan milik satu badan hukum — daftar kelengkapan dokumen Travel milik Asuransi Sinar
+-- Mas bukan milik Asuransi Simas Insurtech. Modul ini memilih koneksi entitas pada setiap
+-- permintaan (`ADR-0030` Opsi 1), sama seperti keempat modul master sebelumnya.
+--
+-- Entitas yang terlewat akan menjawab dengan galat hak akses pada saat pengguna membuka
+-- layarnya — bukan saat aplikasi start.
+
+
+-- ===========================================================================
+-- BAGIAN 1 — PERTANYAAN YANG HARUS DIJAWAB DBA
+--
+-- Mohon jalankan keenam kueri berikut di SETIAP basis data entitas dan LAMPIRKAN
+-- hasilnya pada permintaan perubahan ini. Seluruhnya membaca katalog; tidak satu pun
+-- menyentuh data.
+-- ===========================================================================
+
+-- 1a. Apakah kedua VIEW yang dibaca layar memang ada, dan apa nama tabel dasarnya?
+--
+--     Inilah pertanyaan terpenting di seluruh berkas ini. Aplikasi MEMBACA dari view dan
+--     MENULIS ke tabel dasarnya; bila nama tabel dasarnya berbeda dari dugaan, jalur
+--     simpan tidak akan pernah berhasil.
+--
+--     SELECT VIEW_NAME
+--       FROM ALL_VIEWS
+--      WHERE OWNER = 'POOLDATA'
+--        AND VIEW_NAME IN ('V_LST_DOC_TRAVEL', 'V_LST_DOC_TRAVEL_COVERAGE');
+--
+--     Lalu mohon lampirkan TEKS definisinya, supaya tabel dasarnya terbaca langsung:
+--
+--     SELECT VIEW_NAME, TEXT
+--       FROM ALL_VIEWS
+--      WHERE OWNER = 'POOLDATA'
+--        AND VIEW_NAME IN ('V_LST_DOC_TRAVEL', 'V_LST_DOC_TRAVEL_COVERAGE');
+
+-- 1b. Apakah tabel dasar yang diduga aplikasi memang bernama demikian?
+--
+--     Yang diduga: POOLDATA.LST_DOC_TRAVEL dan POOLDATA.LST_DOC_TRAVEL_COVERAGE.
+--     Dugaan itu diturunkan dari nama view-nya, BUKAN dibaca dari mana pun.
+--
+--     SELECT TABLE_NAME
+--       FROM ALL_TABLES
+--      WHERE OWNER = 'POOLDATA'
+--        AND TABLE_NAME LIKE 'LST_DOC_TRAVEL%';
+--
+--     Bila hasilnya kosong atau namanya berbeda, MOHON SEBUTKAN NAMA YANG BENAR. Yang
+--     perlu diubah di aplikasi hanyalah satu berkas —
+--     internal/daftardetaildokumentravel/repo/sqlstore/daftardetaildokumentravel.sql —
+--     dan tidak ada nama tabel yang tercecer di tempat lain.
+
+-- 1c. Bentuk kolom kedua tabel itu. DDL-nya tidak ada di export (`R-08`), sehingga lebar
+--     dan tipe setiap kolom belum pernah diperiksa siapa pun.
+--
+--     Yang paling perlu diketahui: apakah ID bertipe teks atau angka, dan apakah STSWAJIB
+--     serta MINUNGGAH bertipe angka. Aplikasi menulis ID sebagai TEKS lima digit
+--     berpadding nol, dan STSWAJIB sebagai ANGKA 1 atau 0.
+--
+--     SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE
+--       FROM ALL_TAB_COLUMNS
+--      WHERE OWNER = 'POOLDATA'
+--        AND TABLE_NAME LIKE 'LST_DOC_TRAVEL%'
+--      ORDER BY TABLE_NAME, COLUMN_ID;
+
+-- 1d. Apakah ada URUTAN yang menerbitkan ID baris, dan siapa namanya?
+--
+--     Yang diduga aplikasi: POOLDATA.LST_DOC_TRAVEL_SEQ. Dugaan itu diturunkan dari pola
+--     POOLDATA.DOCTRAVEL_SEQ yang dipakai master induknya, BUKAN dibaca dari mana pun.
+--
+--     SELECT SEQUENCE_NAME, LAST_NUMBER
+--       FROM ALL_SEQUENCES
+--      WHERE SEQUENCE_OWNER = 'POOLDATA'
+--        AND SEQUENCE_NAME LIKE '%DOC_TRAVEL%';
+--
+--     Bila tidak ada satu pun, mohon diberi tahu — dan mohon SEKALIGUS dikirimkan
+--     beberapa nilai ID yang sudah ada:
+--
+--     SELECT ID FROM POOLDATA.V_LST_DOC_TRAVEL
+--      WHERE ROWNUM <= 20 ORDER BY ID;
+--
+--     Bentuk ID yang benar-benar terpakai hari ini itulah yang menentukan bagaimana ID
+--     baru harus dibentuk. Aplikasi TIDAK boleh menerbitkan ID yang berbentuk lain dari
+--     yang sudah ada — `TravelDocument_act` membacanya saat klaim Travel diregistrasi.
+
+-- 1e. Nama kolom POOLDATA.M_PLANTRAVEL.
+--
+--     Tabel ini dimiliki GISFW (`D-03`) dan aplikasi HANYA MEMBACANYA. Keberadaannya
+--     terbaca dari `Activity/SetspreadingtoCoverage-Act.xml` — pembenaran peringatan di
+--     dalamnya berbunyi "ngambil data coverage bukan dari coverage travel tapi dari
+--     m_plantravel" — tetapi rule yang membacanya
+--     (`GetDataMasterCoverageTravel_m_plantravel`) TIDAK ADA di export, sehingga nama
+--     kolomnya belum pernah dilihat.
+--
+--     Aplikasi menduga PLANID, PLANNAME, COVERAGEID, dan COVERAGENAME.
+--
+--     SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH
+--       FROM ALL_TAB_COLUMNS
+--      WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'M_PLANTRAVEL'
+--      ORDER BY COLUMN_ID;
+--
+--     Bila namanya berbeda, layarnya tetap dapat dipakai — nama plan dan jaminan boleh
+--     diketik sendiri, sehingga yang hilang hanya daftar pilihannya. Itu sebabnya butir
+--     ini TIDAK memblokir, berbeda dari 1a sampai 1d.
+
+-- 1f. Jumlah baris sekarang, sebagai pembanding setelah modul dipakai.
+--
+--     SELECT COUNT(*) FROM POOLDATA.V_LST_DOC_TRAVEL;
+--     SELECT COUNT(*) FROM POOLDATA.V_LST_DOC_TRAVEL_COVERAGE;
+
+
+-- ===========================================================================
+-- BAGIAN 2 — HAK AKSES UNTUK AKUN APLIKASI
+--
+-- Diberikan sesempit mungkin. TANPA DELETE pada tabel induk — tidak ada satu pun jalur
+-- di aplikasi yang menghapus aturan dokumen (`ADR-0012`, `D-66`), dan hak yang tidak
+-- diberikan tidak dapat disalahgunakan kode yang ditulis kemudian.
+--
+-- DELETE HANYA pada tabel coverage, dan hanya karena satu sebab yang dapat diperiksa:
+-- menyimpan perubahan berarti mengganti seluruh daftar pembatasan plan sebuah aturan,
+-- dan grid di layar memang mengirim susunan akhir yang dikehendaki petugas tanpa penanda
+-- baris mana yang baru dan mana yang dibuang. Baris itu sendiri tidak memuat keterangan
+-- apa pun selain dua rujukan, sehingga membuangnya tidak menghilangkan data bernilai
+-- bisnis.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya, dan jalankan di SETIAP basis
+-- data entitas.
+--
+-- JANGAN DIJALANKAN sebelum Bagian 1 butir 1a sampai 1d terjawab: bila nama tabelnya
+-- ternyata berbeda, hak ini diberikan atas objek yang salah.
+-- ===========================================================================
+
+-- Dibaca layar:
+-- GRANT SELECT ON POOLDATA.V_LST_DOC_TRAVEL TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.V_LST_DOC_TRAVEL_COVERAGE TO <AKUN_APLIKASI>;
+
+-- Ditulis layar (nama menunggu konfirmasi butir 1b):
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.LST_DOC_TRAVEL TO <AKUN_APLIKASI>;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON POOLDATA.LST_DOC_TRAVEL_COVERAGE TO <AKUN_APLIKASI>;
+-- GRANT SELECT ON POOLDATA.LST_DOC_TRAVEL_SEQ TO <AKUN_APLIKASI>;
+
+-- Daftar pilihan, HANYA DIBACA:
+-- GRANT SELECT ON POOLDATA.M_DOCTRAVEL TO <AKUN_APLIKASI>;   -- sudah diberikan pada 0003
+-- GRANT SELECT ON POOLDATA.M_PLANTRAVEL TO <AKUN_APLIKASI>;  -- milik GISFW (D-03)
+
+
+-- ===========================================================================
+-- BAGIAN 3 — VERIFIKASI, dijalankan dengan AKUN APLIKASI, bukan akun DBA.
+--
+-- Menjalankannya sebagai DBA akan selalu berhasil dan tidak membuktikan apa pun tentang
+-- hak yang baru diberikan.
+--
+-- Ketiga butir pertama sama persis dengan kueri `*_check_table` di
+-- internal/daftardetaildokumentravel/repo/sqlstore/daftardetaildokumentravel.sql, dan
+-- dijalankan otomatis oleh `claimpnc -periksa`.
+-- ===========================================================================
+
+-- 3a. DIHARAPKAN: berhasil, nol baris.
+--
+--     SELECT ID, DOCID, DOCUMENTNAME, STSWAJIB, MINUNGGAH
+--       FROM POOLDATA.V_LST_DOC_TRAVEL WHERE 1 = 0;
+
+-- 3b. DIHARAPKAN: berhasil, nol baris.
+--
+--     SELECT ID, TRAVELDOCID, PLANID, PLANNAME, COVERAGEID, COVERAGENAME
+--       FROM POOLDATA.V_LST_DOC_TRAVEL_COVERAGE WHERE 1 = 0;
+
+-- 3c. DIHARAPKAN: berhasil, nol baris.
+--
+--     SELECT PLANID, PLANNAME, COVERAGEID, COVERAGENAME
+--       FROM POOLDATA.M_PLANTRAVEL WHERE 1 = 0;
+
+-- 3d. Dapatkah akun aplikasi mengambil nomor urut?
+--
+--     PERHATIAN: kueri ini MENGHABISKAN satu nomor urut, dan nomor yang terpakai tidak
+--     dapat dikembalikan. Itu tidak berbahaya — satu lubang di deret ID tidak merusak
+--     apa pun, dan procedure warisan pun meninggalkan lubang setiap kali INSERT-nya
+--     gagal. Dicatat di sini supaya tidak dikira cacat.
+--
+--     SELECT POOLDATA.LST_DOC_TRAVEL_SEQ.NEXTVAL FROM DUAL;
+
+
+-- ===========================================================================
+-- Dua batas yang perlu diketahui sebelum menyetujui
+-- ===========================================================================
+--
+-- 1. LEBAR ID. Aplikasi membentuk ID dari nomor urut lima digit berpadding nol, meniru
+--    satu-satunya skema penomoran yang benar-benar terbaca pada rumpun tabel ini
+--    (`DOCTRAVEL_CVG.prc:20`). Nomor di atas 99999 dikembalikan APA ADANYA, tanpa
+--    dipotong — sehingga ID ke-100000 menjadi satu karakter lebih panjang dan
+--    penyisipannya akan DITOLAK bila kolomnya terlalu sempit (ORA-12899).
+--
+--    Dipotong menjadi lima digit? Tidak. Itu menghasilkan ID GANDA, dan ID ganda di sini
+--    berarti dua aturan dokumen berbagi satu kunci yang dirujuk baris coverage lewat
+--    TRAVELDOCID. Penyisipan yang gagal dengan pesan jelas jauh lebih baik.
+--
+--    Jarak ke batas itu baru dapat dihitung setelah butir 1c dan 1d terjawab.
+--
+-- 2. URUTAN YANG SAMA UNTUK DUA TABEL. Nomor dari LST_DOC_TRAVEL_SEQ dipakai baris induk
+--    maupun baris coverage. Akibatnya deret ID pada masing-masing tabel BERLUBANG, dan
+--    itu bukan cacat. Bila DBA lebih suka dua urutan terpisah, mohon disebutkan nama
+--    keduanya — perubahannya satu baris di berkas .sql aplikasi.

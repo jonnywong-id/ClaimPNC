@@ -1,50 +1,58 @@
-// Package usecase mengorkestrasi modul Inbox Outstanding.
+// Package usecase mengorkestrasi modul My Inbox.
 //
 // Isinya satu hal, dan justru karena satu hal itulah ia layak dipisahkan dari transport:
-// MENURUNKAN BATAS DATA dari identitas pemanggil sebelum membaca klaim.
+// MENGIKAT DAFTAR KE IDENTITAS PEMANGGIL sebelum klaim dibaca.
 //
 // Menaruhnya di handler akan membuat setiap rute baru harus mengingat untuk melakukannya,
-// dan yang lupa tidak menghasilkan galat apa pun — hanya klaim lini lain yang ikut tampil.
-// Kegagalan seperti itu tidak terlihat saat dibaca maupun saat diuji secara sepintas.
+// dan yang lupa tidak menghasilkan galat apa pun — hanya pekerjaan operator lain yang ikut
+// tampil di layar bernama "My Inbox". Kegagalan seperti itu tidak terlihat saat dibaca
+// maupun saat diuji secara sepintas.
 package usecase
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"claim-pnc/internal/inboxoutstanding"
 )
 
-// Service membaca daftar klaim yang masih berjalan, terbatas pada lini yang boleh dilihat
-// pemanggil dan pada portal yang sedang dibukanya.
+// Service membaca pekerjaan milik pemanggil pada portal yang sedang dibukanya.
 type Service struct {
 	claims inboxoutstanding.RepoSelector
-	lines  inboxoutstanding.LineBusinessRepo
 }
 
-// NewService membentuk service. Keduanya wajib diisi.
+// NewService membentuk service.
 //
 // Klaim datang lewat SELECTOR, bukan repo tunggal: tabelnya ada di basis data setiap
-// entitas (`ADR-0030`). Lini bisnis datang lewat repo tunggal, dan itu disengaja —
-// `M_LOGIN_PNC` adalah master pengguna, dan satu login berlaku di keempat entitas
-// (`D-78`).
-func NewService(claims inboxoutstanding.RepoSelector, lines inboxoutstanding.LineBusinessRepo) (*Service, error) {
+// entitas (`ADR-0030`).
+//
+// # Kenapa tidak ada lagi repo lini bisnis
+//
+// Service ini sempat membaca `M_LOGIN_PNC.LINE_BUSINESS` untuk menurunkan batas data per
+// lini. Batas itu berasal dari `Activity/InboxOutstanding_Act-Act.xml` — activity layar
+// LAIN, yang tidak pernah dipanggil harness maupun section rujukan modul ini.
+//
+// `Report Definition/InboxRegister_RD-RD.xml` memperlakukan panel sebagai PARAMETER
+// (`Param.panel`), bukan sebagai pita tetap per pengguna. Yang mengikat daftar ke
+// penggunanya adalah `Param.assign` — operator pemegang tugas.
+func NewService(claims inboxoutstanding.RepoSelector) (*Service, error) {
 	if claims == nil {
 		return nil, fmt.Errorf("inboxoutstanding/usecase: pemilih repo klaim wajib diisi")
 	}
-	if lines == nil {
-		return nil, fmt.Errorf("inboxoutstanding/usecase: repo lini bisnis wajib diisi")
-	}
-	return &Service{claims: claims, lines: lines}, nil
+	return &Service{claims: claims}, nil
 }
 
 // Query adalah permintaan dari layar.
 //
-// Ia sengaja TIDAK memuat LineScope: batas data bukan sesuatu yang boleh diminta klien.
-// Yang datang dari klien hanyalah pencarian, tahap, cabang, dan paginasi; batasnya
-// diturunkan di sini dari LoginID.
+// Ia sengaja TIDAK memuat pemilik pekerjaan: siapa "saya" bukan sesuatu yang boleh diminta
+// klien. Yang datang dari klien hanyalah pencarian, penyaring opsional, dan paginasi;
+// pemiliknya diturunkan di sini dari LoginID.
 type Query struct {
 	// LoginID adalah identitas pemanggil, diambil dari sesi — bukan dari badan permintaan.
+	//
+	// Dari sinilah penyaring `PXASSIGNEDOPERATORID` diisi. Membiarkannya datang dari klien
+	// berarti siapa pun dapat membaca pekerjaan orang lain dengan mengubah satu parameter.
 	LoginID string
 
 	// PortalAlias adalah entitas yang sedang dibuka, diambil dari header `X-Portal` yang
@@ -55,44 +63,41 @@ type Query struct {
 	PortalAlias string
 
 	Search     string
+	GroupPanel string
+	RCVID      string
 	Stage      string
 	BranchCode string
-	Limit      int
-	Offset     int
+
+	// DocumentStatus diisi saat pengguna mengeklik irisan donut ringkasan.
+	DocumentStatus inboxoutstanding.DocumentStatus
+
+	Limit  int
+	Offset int
 }
 
-// Result adalah satu halaman hasil beserta batas data yang berlaku saat membacanya.
+// Result adalah satu halaman hasil.
 type Result struct {
 	Page inboxoutstanding.Page
 
-	// Scope ikut dikembalikan supaya LAYAR DAPAT MENYATAKANNYA kepada pengguna.
+	// AssignedTo adalah pemilik pekerjaan yang dipakai menyaring.
 	//
-	// Ini bukan kebocoran lapisan melainkan kebutuhan nyata: ketika seorang pengguna tidak
-	// punya lini bisnis, ia melihat klaim SELURUH lini — dan tanpa keterangan, ia tidak
-	// punya cara mengetahui bahwa yang dilihatnya lebih luas dari yang seharusnya.
-	Scope inboxoutstanding.LineScope
-
-	// LineLookupError terisi bila lini bisnis GAGAL DIBACA, bukan sekadar tidak ada.
-	//
-	// Keduanya menghasilkan Scope yang sama — tanpa batas — sehingga tanpa field ini
-	// kegagalan basis data tidak dapat dibedakan dari pengguna yang datanya memang belum
-	// diisi. Yang pertama perlu diketahui operator; yang kedua tidak.
-	//
-	// Ia sengaja BUKAN galat yang dikembalikan: mengembalikannya akan mematikan layar.
-	// Pemanggil mencatatnya, lalu melanjutkan. Lihat scopeFor.
-	LineLookupError error
+	// Ia ikut dikembalikan supaya LAYAR DAPAT MENYATAKANNYA: pengguna yang melihat daftar
+	// kosong perlu tahu bahwa yang ditampilkan memang pekerjaan miliknya, bukan hasil
+	// penyaring yang salah.
+	AssignedTo string
 }
 
-// List membaca satu halaman klaim yang masih berjalan.
+// List membaca satu halaman pekerjaan milik pemanggil.
 //
-// Urutannya mengikat: batas data ditentukan LEBIH DULU, baru klaim dibaca. Membalik
-// urutannya berarti membaca dulu lalu menyaring di memori — dan data yang tidak boleh
-// dilihat sempat berada di proses aplikasi serta ikut terhitung pada paginasi, sehingga
+// Urutannya mengikat: identitas dipastikan LEBIH DULU, baru klaim dibaca. Membalik
+// urutannya berarti membaca dulu lalu menyaring di memori — dan pekerjaan yang bukan milik
+// pemanggil sempat berada di proses aplikasi serta ikut terhitung pada paginasi, sehingga
 // bocor lewat jumlah baris (`11-SECURITY.md` §3.2).
 func (s *Service) List(ctx context.Context, q Query) (Result, error) {
-	scope, lookupErr, err := s.scopeFor(ctx, q.LoginID)
-	if err != nil {
-		return Result{}, err
+	if q.LoginID == "" {
+		// Tidak boleh terjadi: rute dilindungi sesi. Bila terjadi, ia cacat pemrograman —
+		// dan menjawabnya dengan "tampilkan semuanya" akan menyembunyikan cacat itu.
+		return Result{}, fmt.Errorf("inboxoutstanding/usecase: identitas pemanggil kosong")
 	}
 
 	// Penyimpanan dipilih menurut portal SEBELUM klaim dibaca. Galat di sini tidak
@@ -102,54 +107,155 @@ func (s *Service) List(ctx context.Context, q Query) (Result, error) {
 		return Result{}, err
 	}
 
-	page, err := claims.List(ctx, inboxoutstanding.Filter{
-		Search:     q.Search,
-		Stage:      q.Stage,
-		BranchCode: q.BranchCode,
-		Scope:      scope,
-		Limit:      q.Limit,
-		Offset:     q.Offset,
-	})
+	// Identitas LAMA dibaca sebelum klaim, dan dari portal yang sama.
+	//
+	// Login baru memakai email lewat HCC, sedangkan klaim warisan tertugas ke nama
+	// operator Pega. Tanpa langkah ini, 20 dari 29 operator pada data ASM membuka layar
+	// kosong yang tampak rapi — salah satunya menyembunyikan 79 klaim berjalan.
+	//
+	// Kegagalan membacanya DIKEMBALIKAN, tidak ditelan: melanjutkan dengan identitas
+	// tunggal akan menampilkan daftar yang tampak sah tetapi kurang.
+	legacy, err := claims.LegacyOperatorFor(ctx, q.LoginID)
+	if err != nil {
+		return Result{}, fmt.Errorf("inboxoutstanding/usecase: membaca identitas lama pemanggil: %w", err)
+	}
+
+	page, err := claims.List(ctx, q.filter(legacy))
 	if err != nil {
 		return Result{}, fmt.Errorf("inboxoutstanding/usecase: membaca daftar klaim: %w", err)
 	}
 
-	return Result{Page: page, Scope: scope, LineLookupError: lookupErr}, nil
+	return Result{Page: page, AssignedTo: q.LoginID}, nil
 }
 
-// scopeFor menurunkan batas data dari identitas pemanggil.
+// filter menyusun penyaring penyimpanan dari permintaan layar.
 //
-// Mengembalikan tiga nilai: batas yang berlaku, galat pembacaan yang DITELAN dengan
-// sengaja, dan galat yang benar-benar menghentikan permintaan.
+// Ia satu tempat supaya daftar dan ringkasan TIDAK dapat menyimpang: keduanya wajib
+// menyaring populasi yang sama, kalau tidak angka pada donut berbeda dari isi grid dan
+// tidak ada yang menandainya.
+func (q Query) filter(legacy string) inboxoutstanding.Filter {
+	return inboxoutstanding.Filter{
+		AssignedTo:       q.LoginID,
+		AssignedToLegacy: legacy,
+		Search:           q.Search,
+		GroupPanel:       q.GroupPanel,
+		RCVID:            q.RCVID,
+		Stage:            q.Stage,
+		BranchCode:       q.BranchCode,
+		DocumentStatus:   q.DocumentStatus,
+		Limit:            q.Limit,
+		Offset:           q.Offset,
+	}
+}
+
+// SummaryResult adalah ringkasan inbox beserta pemiliknya.
+type SummaryResult struct {
+	Summary inboxoutstanding.Summary
+
+	// AssignedTo ikut dikembalikan dengan alasan yang sama seperti pada Result: donut
+	// kosong punya dua sebab yang tampak sama, dan menyebut pemiliknya membedakan keduanya.
+	AssignedTo string
+}
+
+// Summary menghitung isi inbox pemanggil per status kelengkapan dokumen.
 //
-// # Kenapa galat pembacaan tidak menghentikan permintaan
-//
-// Kolom `LINEBUSINESS` belum ada sampai migrasi 0004 dijalankan DBA, sehingga pembacaannya
-// akan gagal di setiap lingkungan hari ini. Menghentikan permintaan berarti layar ini mati
-// total sampai perubahan skema selesai — padahal Work Owner menetapkan pengguna tanpa lini
-// tetap melihat data, sama seperti di Pega.
-//
-// Yang dilakukan: galat diperlakukan sama dengan "lini tidak diketahui", yaitu jatuh ke
-// Unrestricted. Hasil akhirnya persis sama dengan perilaku Pega, dan layar tetap berguna.
-//
-// KONSEKUENSI YANG DITERIMA SADAR: galat basis data yang sesungguhnya — koneksi putus,
-// tabel terkunci — menghasilkan batas data yang sama dengan pengguna tanpa lini, yaitu
-// melihat semuanya. Yang membedakannya hanyalah galat yang dikembalikan di sini, dan
-// pemanggillah yang wajib mencatatnya. Bila pemanggil mengabaikannya, kegagalan itu
-// menjadi tidak terlihat — karena itu handler WAJIB mencatat Result.LineLookupError.
-func (s *Service) scopeFor(ctx context.Context, loginID string) (scope inboxoutstanding.LineScope, lookupErr error, fatal error) {
-	if loginID == "" {
-		// Tidak boleh terjadi: rute dilindungi sesi. Bila terjadi, ia cacat pemrograman —
-		// dan menjawabnya dengan "lihat semuanya" akan menyembunyikan cacat itu.
-		return inboxoutstanding.LineScope{}, nil,
-			fmt.Errorf("inboxoutstanding/usecase: identitas pemanggil kosong")
+// Ia menempuh JALUR YANG SAMA dengan List — identitas lama dibaca lebih dulu, penyaring
+// disusun oleh Query.filter — supaya angka donut dan isi grid tidak mungkin berasal dari
+// populasi yang berbeda.
+func (s *Service) Summary(ctx context.Context, q Query) (SummaryResult, error) {
+	if q.LoginID == "" {
+		return SummaryResult{}, fmt.Errorf("inboxoutstanding/usecase: identitas pemanggil kosong")
 	}
 
-	line, err := s.lines.LineBusinessFor(ctx, loginID)
+	claims, err := s.claims(q.PortalAlias)
 	if err != nil {
-		return inboxoutstanding.ScopeFor(""),
-			fmt.Errorf("inboxoutstanding/usecase: membaca lini bisnis %q: %w", loginID, err),
-			nil
+		return SummaryResult{}, err
 	}
-	return inboxoutstanding.ScopeFor(line), nil, nil
+
+	legacy, err := claims.LegacyOperatorFor(ctx, q.LoginID)
+	if err != nil {
+		return SummaryResult{}, fmt.Errorf("inboxoutstanding/usecase: membaca identitas lama pemanggil: %w", err)
+	}
+
+	summary, err := claims.SummarizeDocumentStatus(ctx, q.filter(legacy))
+	if err != nil {
+		return SummaryResult{}, fmt.Errorf("inboxoutstanding/usecase: meringkas status dokumen: %w", err)
+	}
+
+	return SummaryResult{Summary: summary, AssignedTo: q.LoginID}, nil
+}
+
+// ExportQuery adalah permintaan unduhan CSV.
+//
+// Ia TIDAK memuat pemilik pekerjaan, dan itu bukan kelalaian. LoginID tetap ada, tetapi
+// dipakai untuk hal yang berbeda: mencari LINI BISNIS pemanggil, bukan menyaring baris
+// menurut siapa yang memegangnya.
+type ExportQuery struct {
+	// LoginID dipakai HANYA untuk membaca lini bisnis pemanggil.
+	LoginID string
+
+	// PortalAlias menentukan basis data yang dibaca — sama seperti pada Query.
+	PortalAlias string
+
+	// From dan To menyaring tanggal pendaftaran; nil berarti tidak menyaring.
+	//
+	// To bersifat EKSKLUSIF: pemanggil mengirim awal hari BERIKUTNYA.
+	From *time.Time
+	To   *time.Time
+
+	Limit  int
+	Offset int
+}
+
+// ExportResult adalah sekumpulan baris unduhan beserta cakupannya.
+type ExportResult struct {
+	Page inboxoutstanding.Page
+
+	// LineBusiness adalah cakupan yang benar-benar dipakai.
+	//
+	// Ia ikut dikembalikan supaya dapat dicatat dan, kelak, disebut pada berkasnya. Berkas
+	// 354 baris dan berkas 862 baris sama-sama tampak wajar; yang membedakan keduanya hanya
+	// cakupan ini, dan tanpa menyebutnya tidak ada cara tahu mana yang sedang dipegang.
+	LineBusiness inboxoutstanding.LineBusiness
+}
+
+// Export membaca sekumpulan baris untuk unduhan CSV.
+//
+// # Kenapa ia tidak memanggil List
+//
+// Export SEMPAT memanggil List dengan paginasi diputar. Akibatnya ia ikut terkena penyaring
+// `PXASSIGNEDOPERATORID`, sehingga petugas yang inbox-nya kosong mengunduh berkas kosong —
+// padahal `RDB List/ExportDataDetailKlaim-SQL.xml` **tidak menyaring operator sama sekali**
+// dan berkasnya di Pega tetap berisi.
+//
+// Yang membatasi export adalah cakupan lini bisnis pemanggil, dan itu dibaca di sini.
+func (s *Service) Export(ctx context.Context, q ExportQuery) (ExportResult, error) {
+	if q.LoginID == "" {
+		return ExportResult{}, fmt.Errorf("inboxoutstanding/usecase: identitas pemanggil kosong")
+	}
+
+	claims, err := s.claims(q.PortalAlias)
+	if err != nil {
+		return ExportResult{}, err
+	}
+
+	// Lini bisnis dibaca dari portal yang SAMA dengan klaimnya. Membacanya dari portal lain
+	// akan memberi cakupan satu entitas pada data entitas lain (`R-20`).
+	line, err := claims.LineBusinessFor(ctx, q.LoginID)
+	if err != nil {
+		return ExportResult{}, fmt.Errorf("inboxoutstanding/usecase: membaca lini bisnis pemanggil: %w", err)
+	}
+
+	page, err := claims.Export(ctx, inboxoutstanding.ExportFilter{
+		LineBusiness: line,
+		From:         q.From,
+		To:           q.To,
+		Limit:        q.Limit,
+		Offset:       q.Offset,
+	})
+	if err != nil {
+		return ExportResult{}, fmt.Errorf("inboxoutstanding/usecase: membaca baris export: %w", err)
+	}
+
+	return ExportResult{Page: page, LineBusiness: line}, nil
 }

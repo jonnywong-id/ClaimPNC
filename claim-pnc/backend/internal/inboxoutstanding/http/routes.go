@@ -57,6 +57,14 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 
 		outstanding.Get("/", h.List)
 
+		// Ringkasan dipisahkan dari daftar, bukan disisipkan ke dalam responsnya.
+		//
+		// Keduanya berubah pada irama yang berbeda: daftar ditembak ulang setiap kali
+		// pengguna berpindah halaman atau mengetik pencarian, sedangkan ringkasan hanya
+		// perlu berubah saat penyaring di luar status berubah. Menyatukannya berarti
+		// menghitung ulang donut pada setiap penekanan tombol paginasi.
+		outstanding.Get("/ringkasan", h.Summary)
+
 		// Unduhan dipisahkan menjadi jalurnya sendiri, bukan parameter `format=csv` pada
 		// daftar. Keduanya berbeda sifat: yang satu dipaginasi dan dibaca layar, yang lain
 		// mengalir sampai habis dan diterima sebagai berkas. Menyatukannya membuat satu

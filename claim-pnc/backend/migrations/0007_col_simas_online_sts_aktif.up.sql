@@ -1,0 +1,91 @@
+-- 0007 — Master COL Simas Online: satu kolom penanda aktif pada tabel pemetaan bisnis
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Berkas ini MENGUBAH objek milik sistem lama yang sedang melayani produksi:
+--
+--   * POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL — satu kolom ditambahkan
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (`D-63`). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ## Kenapa kolom ini dibutuhkan
+--
+-- Layar Master COL Simas Online memetakan satu penyebab kerugian ke beberapa lini bisnis,
+-- dan pemetaan itu berupa grid yang barisnya dapat DITAMBAH maupun DICABUT pengguna.
+--
+-- Menambah sudah dapat disimpan. Mencabut BELUM, dan tidak akan dapat, karena:
+--
+--   * `D-66` melarang penghapusan fisik data bernilai bisnis — DELETE tidak boleh dipakai;
+--   * POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL tidak punya satu pun kolom penanda, sehingga
+--     tidak ada cara menyatakan "baris ini sudah tidak berlaku" selain menghapusnya.
+--
+-- Akibatnya HARI INI: bisnis yang dicabut pengguna dari grid akan muncul kembali setelah
+-- layarnya dimuat ulang. Itu keadaan yang DIKETAHUI dan dicatat di
+-- `internal/mastercolsimasonline/repo/sqlstore/mastercolsimasonline.sql` — bukan cacat
+-- yang belum ketahuan.
+--
+--
+-- ## Yang sudah diperiksa langsung ke katalog (2026-09-23)
+--
+-- Berbeda dari migrasi 0004 yang ditulis tanpa melihat katalog, seluruh angka di bawah
+-- dibaca langsung dari basis data:
+--
+--   POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL
+--     M_COL_ID    VARCHAR2(4)     null=Y
+--     ID          VARCHAR2(200)   null=Y
+--     NOTE        VARCHAR2(200)   null=Y
+--     TGL_INPUT   DATE            null=Y
+--     USER_INPUT  VARCHAR2(1000)  null=Y
+--
+--     282 baris · 55 induk · tidak ada satu pun constraint PK, UK, maupun FK
+--     kolom bernama STS_AKTIF BELUM ADA, sehingga ALTER di bawah tidak akan ORA-01430
+--
+--
+-- ## Kenapa DEFAULT '1', dan kenapa baris lama ikut diisi
+--
+-- Seluruh 282 baris yang ada SEKARANG adalah pemetaan yang berlaku — tidak ada satu pun
+-- yang "sudah dicabut", karena mencabut memang belum pernah mungkin. Mengisinya dengan
+-- '1' karena itu bukan asumsi melainkan pernyataan keadaan yang sebenarnya.
+--
+-- DEFAULT '1' menjaga agar baris yang ditulis Pega — bila kelak masih ada — tetap terbaca
+-- aplikasi ini. Tanpa default, baris tanpa penanda akan ber-NULL dan hilang dari layar
+-- tanpa satu pun pesan.
+--
+-- Teks '1', bukan angka 1, mengikuti bentuk yang sudah dipakai kolom sejenis di skema ini
+-- (`STS_AKTIF` pada V_D_CAUSE_OF_LOSS, `STS_ADJ` dan `STS_AKTIF` pada EMAILKOMITE).
+--
+--
+-- ## Apa yang berubah di aplikasi SETELAH migrasi ini dijalankan
+--
+-- Tiga tempat, dan ketiganya harus berubah BERSAMAAN:
+--
+--   1. `cause_of_loss_business_list` menambahkan `AND STS_AKTIF = '1'`.
+--   2. Kueri baru `cause_of_loss_business_deactivate_all` menandai seluruh pemetaan satu
+--      induk menjadi '0' sebelum yang dipilih ditandai kembali '1'.
+--   3. `saveBusinesses` di sqlstore berganti nama menjadi `replaceBusinesses` dan
+--      memanggil kueri baru itu lebih dulu.
+--
+-- Sebelum migrasi ini dijalankan, JANGAN mengubah ketiganya — menyaring `STS_AKTIF = '1'`
+-- atas kolom yang belum ada menggagalkan SELURUH pembacaan dengan ORA-00904, dan layarnya
+-- tidak dapat dibuka sama sekali. Itu persis kegagalan yang dialami migrasi 0004 dan 0005.
+
+
+-- Langkah 1 — tambahkan kolomnya.
+ALTER TABLE POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL ADD (STS_AKTIF VARCHAR2(1) DEFAULT '1');
+
+-- Langkah 2 — isi baris yang sudah ada.
+--
+-- DEFAULT pada ALTER di atas sudah mengisi baris lama pada Oracle 11g ke atas, tetapi
+-- pernyataan ini ditulis eksplisit supaya hasilnya tidak bergantung pada versi.
+UPDATE POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL
+   SET STS_AKTIF = '1'
+ WHERE STS_AKTIF IS NULL;
+
+COMMIT;

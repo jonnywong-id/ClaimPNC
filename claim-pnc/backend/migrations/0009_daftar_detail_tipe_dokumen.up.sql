@@ -1,0 +1,276 @@
+-- 0009 — Daftar Detail Tipe Dokumen: tabel anak untuk daftar lini bisnis (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (`D-63`). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+--
+-- ============================================================================
+-- ## KEADAAN SKEMA — SUDAH DIVERIFIKASI, BUKAN DUGAAN
+-- ============================================================================
+--
+-- Katalog Oracle dibaca langsung pada 2026-09-23 (`ALL_TAB_COLUMNS`, `ALL_VIEWS`) setelah
+-- layarnya gagal memuat. Tidak ada lagi pertanyaan terbuka tentang bentuk skemanya.
+--
+-- ### Yang SUDAH ADA dan sudah benar
+--
+--   POOLDATA.LST_DET_TYPE_DOC — tabel induk, KOLOMNYA SUDAH LENGKAP:
+--
+--     ID            CHAR(5)        NOT NULL
+--     OLD_ID        CHAR(3)
+--     JSON_DATA     CLOB                      <- warisan; TIDAK diisi aplikasi Go
+--     DOC_TYPE_ID   VARCHAR2(100)
+--     DETAIL_DOCUMENT VARCHAR2(4000)
+--     STS_INSURED   VARCHAR2(100)
+--     DOC_COL_ID    VARCHAR2(1000)
+--     DOC_COL_INFO  VARCHAR2(4000)
+--     OBJ_DOC       VARCHAR2(4000)
+--     OBJ_DOC_DESC  VARCHAR2(4000)
+--     RISK          VARCHAR2(4000)
+--     TGL_EDIT      VARCHAR2(4000)            <- TEKS, bukan DATE
+--     USER_EDIT     VARCHAR2(4000)
+--
+--   POOLDATA.V_LST_DET_TYPE_DOC — SELECT KOLOM biasa dari tabel di atas. Bukan JSON,
+--   bukan join. Keputusan Work Owner "tidak lewat JSON, langsung ke kolom" karena itu
+--   SUDAH dapat dijalankan untuk baris induk, dan aplikasi menulis kesebelas kolomnya.
+--
+-- ### Yang BELUM ADA — dan inilah yang diminta berkas ini
+--
+--   POOLDATA.LST_DET_TYPE_DOC_BISNIS — TIDAK ADA di katalog.
+--
+--   Daftar lini bisnis setiap rincian dokumen masih hidup DI DALAM JSON_DATA induknya,
+--   dan view anaknya membacanya dengan JSON_TABLE:
+--
+--     CREATE VIEW POOLDATA.V_LST_DET_TYPE_DOC_BISNIS AS
+--     SELECT a.ID, a.OLD_ID,
+--            a.JSON_DATA.DOC_TYPE_ID, a.JSON_DATA.DETAIL_DOCUMENT, STSWAJIB,
+--            a.JSON_DATA.USER_EDIT, a.JSON_DATA.TGL_EDIT, BISNISID,
+--            a.JSON_DATA.STS_INSURED, MINDOC,
+--            a.JSON_DATA.DOC_COL_ID, a.JSON_DATA.OBJ_DOC, a.JSON_DATA.RISK
+--       FROM LST_DET_TYPE_DOC a,
+--            json_table(JSON_DATA, '$.DFT_BISNIS_ID[*]'
+--              COLUMNS (BISNISID VARCHAR2(10) PATH '$.ID',
+--                       STSWAJIB VARCHAR2(10) PATH '$.STS_WAJIB',
+--                       MINDOC   VARCHAR2(10) PATH '$.MIN_DOC')) AS "JT"
+--
+-- ### Akibatnya hari ini
+--
+-- Baris yang ditulis aplikasi Go mengisi KOLOM dan membiarkan JSON_DATA kosong. Karena
+-- `json_table` atas CLOB kosong tidak menghasilkan satu baris pun, rincian dokumen baru
+-- akan tampil UTUH di view induk tetapi **TANPA SATU PUN LINI BISNIS** — di layar ini
+-- maupun di Pega.
+--
+-- Itu bukan gangguan tampilan. Sembilan rule Pega membaca view anak, di antaranya
+-- `Section/ViewUploadDocument-Section.xml` dan
+-- `Activity/InsertDocumentPendukungPA_-Act.xml` — yakni jalur yang menentukan dokumen apa
+-- yang diminta pada klaim. Rincian dokumen tanpa lini bisnis berarti dokumen itu tidak
+-- pernah diminta, dan tidak ada galat apa pun yang menandainya.
+--
+-- **Sampai LANGKAH 1 selesai, layar Daftar Detail Tipe Dokumen BACA-SAJA.** Mode
+-- `claimpnc -periksa` melaporkannya sebagai [GAGAL] pada jalur tulis, dan itu memang yang
+-- harus dilihat sebelum pengguna pertama menekan Simpan.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 1 — TABEL ANAK, PEMINDAHAN ISI JSON, DAN DEFINISI ULANG VIEW
+-- ============================================================================
+--
+-- Ketiganya SATU satuan kerja. Menjalankan sebagian akan meninggalkan keadaan yang lebih
+-- buruk daripada sekarang: tabel yang ada tetapi tidak dibaca siapa pun, atau view yang
+-- membaca tabel kosong sementara isinya masih di JSON.
+--
+-- ### 1a. Tabel anak
+--
+-- Bentuk kolomnya mengikuti apa yang sudah dibaca view anak hari ini, supaya definisi
+-- ulangnya pada 1c tidak mengubah satu pun tipe yang dilihat pembacanya.
+--
+--   CREATE TABLE POOLDATA.LST_DET_TYPE_DOC_BISNIS (
+--     ID            CHAR(5)       NOT NULL,   -- rujukan ke LST_DET_TYPE_DOC.ID
+--     DFT_BISNIS_ID VARCHAR2(10),             -- BUSINESS.ID; boleh NULL (lihat catatan)
+--     STS_WAJIB     VARCHAR2(10),             -- 'Ya' / 'Tidak'  (lihat catatan)
+--     MIN_DOC       VARCHAR2(10)              -- TEKS, mengikuti JSON_TABLE hari ini
+--   );
+--
+--   CREATE INDEX POOLDATA.IX_LST_DET_TYPE_DOC_BISNIS
+--     ON POOLDATA.LST_DET_TYPE_DOC_BISNIS (ID);
+--
+-- **Tanpa primary key, dan itu disengaja.** Grid di layar lama tidak punya satu pun
+-- penanda keunikan — dua baris dengan bisnis yang sama adalah keadaan yang sah dan
+-- benar-benar ada di data lama. Menambahkan kunci unik akan menolak baris yang selama ini
+-- tersimpan.
+--
+-- **Tanpa foreign key ke LST_DET_TYPE_DOC.** Tabel induknya dipakai bersama Pega selama
+-- masa paralel (`D-21`), dan constraint baru pada tabel yang dibaca puluhan rule adalah
+-- perubahan perilaku yang tidak diminta siapa pun. Keterkaitannya dijaga aplikasi di dalam
+-- satu transaksi.
+--
+-- **DFT_BISNIS_ID boleh NULL.** Baris warisan dapat memuat bisnis yang sudah tidak ada di
+-- POOLDATA.BUSINESS, dan aplikasi sengaja menampilkannya (LEFT JOIN) supaya petugas dapat
+-- memperbaikinya — lihat `detail_business_list`.
+--
+-- **STS_WAJIB bertipe teks dan diisi 'Ya'/'Tidak'.** Buktinya
+-- `Activity/SetTypePDFAdjustment-Act.xml` yang membandingkannya HANYA dengan `"Ya"`. Data
+-- lama bercampur — dua activity lain menerima `"Ya"`, `"Tidak"`, `"1"`, dan `"0"` —
+-- sehingga aplikasi membacanya longgar dan menulisnya tegas.
+--
+-- ### 1b. Pindahkan isi JSON yang sudah ada
+--
+-- Dijalankan SEBELUM 1c, supaya view barunya tidak pernah menampilkan daftar kosong untuk
+-- baris yang sebenarnya punya lini bisnis.
+--
+--   INSERT INTO POOLDATA.LST_DET_TYPE_DOC_BISNIS (ID, DFT_BISNIS_ID, STS_WAJIB, MIN_DOC)
+--   SELECT a.ID, jt.BISNISID, jt.STSWAJIB, jt.MINDOC
+--     FROM POOLDATA.LST_DET_TYPE_DOC a,
+--          json_table(a.JSON_DATA, '$.DFT_BISNIS_ID[*]'
+--            COLUMNS (BISNISID VARCHAR2(10) PATH '$.ID',
+--                     STSWAJIB VARCHAR2(10) PATH '$.STS_WAJIB',
+--                     MINDOC   VARCHAR2(10) PATH '$.MIN_DOC')) jt;
+--
+-- Hitung lebih dulu, dan simpan angkanya untuk dibandingkan sesudahnya:
+--
+--   SELECT COUNT(*) FROM POOLDATA.LST_DET_TYPE_DOC a,
+--          json_table(a.JSON_DATA, '$.DFT_BISNIS_ID[*]'
+--            COLUMNS (BISNISID VARCHAR2(10) PATH '$.ID')) jt;
+--
+-- Pernyataan ini AMAN diulang hanya bila tabelnya dikosongkan lebih dulu; tanpa itu ia
+-- menggandakan baris.
+--
+-- ### 1c. Definisikan ulang view anak — UNTUK PEGA, bukan untuk aplikasi Go
+--
+-- Aplikasi Go membaca dan menulis **tabel anaknya langsung**, bukan view ini (keputusan
+-- Work Owner 2026-09-23). Langkah ini tetap wajib karena **sembilan rule Pega** masih
+-- membaca view-nya — di antaranya `Section/ViewUploadDocument-Section.xml` dan
+-- `Activity/InsertDocumentPendukungPA_-Act.xml`, yakni jalur yang menentukan dokumen apa
+-- yang diminta pada klaim.
+--
+-- Tanpa langkah ini, baris yang disimpan aplikasi Go tidak akan pernah terlihat Pega.
+--
+--   CREATE OR REPLACE VIEW POOLDATA.V_LST_DET_TYPE_DOC_BISNIS AS
+--   SELECT a.ID,
+--          a.OLD_ID,
+--          a.DOC_TYPE_ID,
+--          a.DETAIL_DOCUMENT,
+--          b.STS_WAJIB     AS STSWAJIB,
+--          a.USER_EDIT,
+--          a.TGL_EDIT,
+--          b.DFT_BISNIS_ID AS BISNISID,
+--          a.STS_INSURED,
+--          b.MIN_DOC       AS MINDOC,
+--          a.DOC_COL_ID,
+--          a.OBJ_DOC,
+--          a.RISK
+--     FROM POOLDATA.LST_DET_TYPE_DOC a
+--     JOIN POOLDATA.LST_DET_TYPE_DOC_BISNIS b ON b.ID = a.ID;
+--
+-- **Nama dan urutan kolom keluarannya WAJIB tidak berubah.** Sembilan rule Pega
+-- membacanya dengan nama kolom. Alias `STSWAJIB`, `BISNISID`, dan `MINDOC` karena itu
+-- dipertahankan meski nama kolom tabelnya berbeda — persis yang dihasilkan `JSON_TABLE`
+-- hari ini.
+--
+-- Kolom induk yang ikut dibawa view lama (`DOC_TYPE_ID`, `DETAIL_DOCUMENT`, `STS_INSURED`,
+-- `DOC_COL_ID`, `OBJ_DOC`, `RISK`, `USER_EDIT`, `TGL_EDIT`) dulu diambil dari JSON; kini
+-- diambil dari kolom induknya. Nilainya sama untuk baris yang JSON dan kolomnya sepakat.
+--
+-- **JOIN, bukan LEFT JOIN.** View lama pun demikian: `json_table` tidak menghasilkan baris
+-- untuk induk tanpa lini bisnis, sehingga induk seperti itu memang tidak muncul di view
+-- anak. Memakai LEFT JOIN akan memunculkan baris baru berkolom NULL yang tidak pernah ada
+-- sebelumnya, dan kesembilan pembacanya tidak disiapkan untuk itu.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 2 — HAK AKSES AKUN APLIKASI
+-- ============================================================================
+--
+--   GRANT SELECT                         ON POOLDATA.V_LST_DET_TYPE_DOC        TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.V_LST_DET_TYPE_DOC_BISNIS TO <akun>;
+--   GRANT SELECT, INSERT, UPDATE         ON POOLDATA.LST_DET_TYPE_DOC          TO <akun>;
+--   GRANT SELECT, INSERT, UPDATE, DELETE ON POOLDATA.LST_DET_TYPE_DOC_BISNIS   TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.LST_DET_TYPE_DOC_SEQ      TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.M_SITE_DATABASE           TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.V_LST_DOC_TYPE            TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.M_CAUSE_OF_LOSS           TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.V_LST_DOC_OBJ             TO <akun>;
+--   GRANT SELECT                         ON POOLDATA.BUSINESS                  TO <akun>;
+--
+-- Hak SELECT atas view induk dan keempat master rujukan SUDAH ADA — mode periksa membaca
+-- 159 baris pada 2026-09-23. Yang benar-benar baru hanyalah hak atas tabel anak.
+--
+-- DELETE hanya pada tabel ANAK, dan tidak pernah pada tabel induk.
+--
+-- # Kenapa DELETE pada tabel anak, padahal `D-66` melarang penghapusan fisik
+--
+-- Karena TIDAK ADA pembacanya yang menyaring penanda aktif, dan menambahkannya pun tidak
+-- menolong: `RDB List/GetLbuDetType-SQL.xml` membaca view anak tanpa satu pun syarat
+-- selain ID induknya. Baris yang ditandai tidak aktif akan TETAP DIBERLAKUKAN sebagai
+-- aturan dokumen pada klaim — kebalikan dari yang dimaksud petugas saat membuangnya dari
+-- grid, dan tidak terlihat sebagai galat di layar mana pun.
+--
+-- Penandaan lunak di sini lebih berbahaya daripada penghapusan. Jejak perubahannya menjadi
+-- tanggung jawab `S-5` Jejak Audit.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 3 — NASIB JSON_DATA: SUDAH DIPUTUSKAN
+-- ============================================================================
+--
+-- Keputusan Work Owner 2026-09-23: **"pakai database saja, sudah tidak pakai JSON lagi."**
+--
+-- Yang berlaku sesudah LANGKAH 1:
+--
+--   * Aplikasi Go TIDAK MEMBACA dan TIDAK MENULIS `JSON_DATA`. Baik baris induk maupun
+--     daftar lini bisnisnya diambil dari kolom dan dari tabel anak.
+--   * Kolom `JSON_DATA` pada baris lama **DIBIARKAN APA ADANYA** sebagai arsip. Ia tidak
+--     dikosongkan: `D-66` melarang penghapusan fisik data bernilai bisnis, dan LANGKAH 1b
+--     MENYALIN isinya — bukan memindahkan — sehingga bila ternyata 1b tidak lengkap,
+--     sumbernya masih utuh.
+--   * Kolomnya tidak dihapus dari tabel. Menghapusnya adalah perubahan yang tidak dapat
+--     dibatalkan pada tabel yang dibaca puluhan rule Pega, dan tidak ada yang menuntutnya.
+--
+-- Risiko yang diterima secara sadar: seseorang kelak membaca `JSON_DATA` dan mengira itu
+-- keadaan sekarang. Penangkalnya catatan di kepala berkas
+-- `internal/daftardetailtipedokumen/repo/sqlstore/daftardetailtipedokumen.sql` dan komentar
+-- pada migrasi ini — bukan penghapusan.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 3b — YANG MASIH PERLU DIPUTUSKAN: KAPAN LAYAR PEGA DIMATIKAN
+-- ============================================================================
+--
+-- `RDB List/UpdateDetTypeDoc-SQL.xml` memanggil `PEGA_LST_DET_TYPE_DOC`, yang menulis
+-- `JSON_DATA` — bukan kolom. Selama layar Pega MENU_ID 41 masih hidup:
+--
+--   * Baris yang disimpannya mengisi JSON_DATA sementara kolomnya tetap kosong, sehingga
+--     di view induk ia tampil KOSONG — dan view induk itu dibaca 34 rule.
+--   * Daftar lini bisnisnya tidak pernah masuk ke tabel anak, sehingga sesudah 1c ia
+--     hilang dari layar mana pun.
+--
+-- `P-1` karena itu menuntut layar Pega MENU_ID 41 DINONAKTIFKAN pada saat yang sama dengan
+-- LANGKAH 1 — bukan sesudahnya. Caranya sama dengan yang ditempuh master lain: mencabut
+-- butir menunya di `POOLDATA.M_OTORISASI_PNC`.
+--
+-- Ini keadaan yang sama dengan migrasi 0005, dan di sana pun celahnya tidak tertutup
+-- sampai layar keduanya dipindahkan. Bedanya: di sini akibatnya terlihat pada kelengkapan
+-- dokumen klaim, bukan pada satu kolom keterangan yang kosong.
+--
+--
+-- ============================================================================
+-- ## LANGKAH 4 — VERIFIKASI
+-- ============================================================================
+--
+--     claimpnc -periksa
+--
+-- Yang harus terbaca [ok]:
+--
+--   POOLDATA.V_LST_DET_TYPE_DOC dapat dibaca: <n> detail tipe dokumen
+--   (tanpa baris [GAGAL] pada jalur tulis)
+--
+-- Lalu, karena `P-4` menuntut yang tidak dapat digantikan mode periksa: jalankan **Pega dan
+-- Go bersamaan** terhadap skema hasil perubahan, simpan satu baris dari masing-masing, dan
+-- pastikan keduanya terbaca utuh di kedua sisi — termasuk daftar lini bisnisnya pada layar
+-- unggah dokumen klaim.

@@ -1,0 +1,35 @@
+-- 0007 — pembatalan: mencabut kembali kolom penanda aktif
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- ## Urutannya WAJIB: aplikasi lebih dulu, baru skema
+--
+-- Menjalankan DROP di bawah selagi aplikasi masih menyaring `STS_AKTIF = '1'` akan
+-- menggagalkan SELURUH pembacaan pemetaan bisnis dengan ORA-00904, dan layar Master COL
+-- Simas Online tidak dapat dibuka sama sekali.
+--
+-- Karena itu: kembalikan dulu versi aplikasi yang TIDAK menyaring kolom itu, pastikan
+-- layarnya terbuka, baru jalankan berkas ini. Urutan yang sama dengan `P-4`.
+--
+--
+-- ## Apa yang HILANG karenanya, dan itu tidak dapat dikembalikan
+--
+-- Setiap pemetaan yang sudah ditandai '0' — yaitu bisnis yang DICABUT pengguna dari grid
+-- — akan kembali terbaca sebagai pemetaan yang berlaku begitu kolomnya hilang, karena
+-- tidak ada lagi tempat menyimpan fakta bahwa ia dicabut.
+--
+-- Bukan barisnya yang hilang, melainkan KEPUTUSAN mencabutnya. Hitung lebih dulu berapa
+-- banyak yang terdampak:
+--
+--   SELECT COUNT(*) FROM POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL WHERE STS_AKTIF = '0';
+--
+-- Bila hasilnya bukan nol, keputusan mencabut kolom ini harus diambil sadar — dan
+-- barisnya sebaiknya disalin lebih dulu ke tabel arsip oleh DBA.
+--
+-- Baris itu sendiri TIDAK dihapus berkas ini. `D-66` melarang penghapusan fisik data
+-- bernilai bisnis, dan pembatalan sebuah migrasi bukan pengecualiannya.
+
+
+ALTER TABLE POOLDATA.M_CAUSE_OF_LOSS_ONLINE_DETAIL DROP (STS_AKTIF);

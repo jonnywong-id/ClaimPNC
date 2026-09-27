@@ -123,11 +123,25 @@ func TestKueriUpdateTidakMenyentuhKolomYangDimilikiSistem(t *testing.T) {
 
 	// TRFKOMITE justru HARUS ada — ia ditandai saat keputusan komite diambil.
 	require.Contains(t, assigned, "TRFKOMITE")
-	// Begitu pula ketiga kolom jejak keputusan.
+	// Begitu pula keputusan komitenya sendiri.
 	require.Contains(t, assigned, "APPROVAL")
-	require.Contains(t, assigned, "TGL_APPROVE_KOMITE")
-	require.Contains(t, assigned, "CATATAN_KOMITE")
-	require.Contains(t, assigned, "USER_UPDATE")
+
+	// Ketiga kolom JEJAK keputusan sengaja TIDAK ditulis, dan itu bukan kelalaian:
+	// TGL_APPROVE_KOMITE, CATATAN_KOMITE, dan USER_UPDATE tidak ada di
+	// POOLDATA.D_SURVEYORS. Ketiganya baru dibuat migrasi `0004_master_surveyor` yang
+	// belum dijalankan, dan Pega pun tidak punya ketiganya.
+	//
+	// Keputusan Work Owner 2026-09-22: ikuti Pega dan tulis langsung ke kolom yang ada.
+	// Menulis ketiganya membuat SELURUH penyimpanan gagal dengan ORA-00904, sehingga
+	// layarnya tidak dapat dipakai sama sekali.
+	//
+	// Yang hilang karenanya perlu diketahui: persetujuan surveyor tersimpan, tetapi tanpa
+	// jejak siapa dan kapan. `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang,
+	// sehingga uji ini akan berbalik begitu migrasi 0004 dijalankan.
+	for _, column := range []string{"TGL_APPROVE_KOMITE", "CATATAN_KOMITE", "USER_UPDATE"} {
+		require.NotContains(t, assigned, column,
+			"kolom %s belum ada di POOLDATA.D_SURVEYORS; menulisnya menggagalkan seluruh penyimpanan", column)
+	}
 }
 
 // assignedColumns mengembalikan nama kolom yang benar-benar di-SET sebuah UPDATE.

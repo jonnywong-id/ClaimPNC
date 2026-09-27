@@ -1,0 +1,335 @@
+-- 0008 — Daftar Objek Dokumen: tabel pemetaan bisnis, dan tiga nama yang masih DUGAAN
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- BERKAS INI BUKAN DDL YANG TINGGAL DIJALANKAN. Bagian 0-nya adalah DAFTAR PERTANYAAN,
+-- dan jawabannya menentukan apakah bagian 1 dan seterusnya benar sama sekali.
+--
+-- Berkas ini menyentuh objek milik sistem lama yang sedang melayani produksi:
+--
+--   * POOLDATA.LST_DOC_OBJ           — tabel dasar objek dokumen (NAMANYA DUGAAN)
+--   * POOLDATA.SET_LST_DOC_OBJ       — urutan penerbit ID      (NAMANYA DUGAAN)
+--   * POOLDATA.LST_DOC_OBJ_BUSINESS  — TABEL BARU, belum ada di mana pun
+--   * POOLDATA.V_LST_DOC_OBJ         — view pembacanya (namanya PASTI)
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (`D-63`). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+-- Ia juga harus dijalankan di BASIS DATA SETIAP ENTITAS, bukan hanya di portal utama.
+-- Tabelnya per entitas — ID-nya dibentuk dari kode situs milik basis data tempat ia
+-- diterbitkan — sehingga entitas yang terlewat akan membuat layarnya gagal justru pada
+-- portal itu saja, dan gejalanya akan tampak seperti cacat aplikasi.
+--
+--
+-- ## PERINGATAN — TIGA NAMA DI BERKAS INI ADALAH DUGAAN
+--
+-- Ini berbeda derajat dari migrasi 0005, yang hanya belum melihat katalog. Di sini yang
+-- belum diketahui bukan bentuk tabelnya, melainkan APAKAH TABELNYA BERNAMA ITU.
+--
+-- Sebabnya: jalur simpan layar `ListDocumentObject` menunjuk dua activity yang KEDUANYA
+-- HILANG dari export (`R-16`) —
+--
+--   Section/BrowseDocumentObject-Section.xml:18337   CNMInsertLstDocObj_act   (tombol Simpan)
+--   Section/BrowseDocumentObject-Section.xml:7405    SetsLstDocObjValue_act   (klik baris)
+--
+-- — dan tidak ada `PEGA_LST_DOC_OBJ.prc` di `Database/`. Yang tersedia hanya sisi BACANYA.
+--
+-- Apa yang PASTI, dan dari mana:
+--
+--   * `Report Definition/BrowseVLstDocObj_RD-RD.xml` menyebut kelas
+--     ASM-FW-GCNMFW-Int-V_LST_DOC_OBJ dengan TIGA kolom: ID, KET_DOC_OBJ, OLD_ID.
+--     Jadi view POOLDATA.V_LST_DOC_OBJ ADA, dan ketiga kolom itu ADA.
+--   * `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26` membuktikan objek dokumen DIRUJUK
+--     tabel lain lewat kolom OBJECT_DOC_ID pada POOLDATA.LST_TYPE_DOC_BUSINESS.
+--   * `RDB List/GetLBUID_SQL-SQL.xml` membuktikan bentuk pemetaan ke bisnis di rumpun yang
+--     sejenis: tabel pemetaan ber-BISNISID, di-join ke POOLDATA.BUSINESS (ID, NOTE).
+--
+-- Apa yang DUGAAN, dan dasar dugaannya:
+--
+--   * POOLDATA.LST_DOC_OBJ — diturunkan dari nama view-nya, mengikuti pasangan
+--     V_LST_DOC_TYPE -> LST_DOC_TYPE yang terbukti di `Database/PEGA_LST_DOC_TYPE.prc:23`.
+--   * POOLDATA.SET_LST_DOC_OBJ — diturunkan dari SET_LST_DOC_TYPE pada procedure yang sama
+--     (`:21`), termasuk lebar empat digitnya.
+--   * POOLDATA.LST_DOC_OBJ_BUSINESS — TIDAK diturunkan dari apa pun yang ada; ia tabel
+--     BARU yang dirancang di berkas ini. Akhiran _BUSINESS mengikuti tetangga sekeluarganya
+--     yang memang bernama begitu: LST_TYPE_DOC_BUSINESS, COVERAGE_DOC_BUSINESS,
+--     V_D_CAUSE_OF_LOSS_BUSINESS.
+--
+--
+-- ## Kenapa perubahan ini diminta
+--
+-- Layar `ListDocumentObject` (MENU_ID 43) dipindahkan ke aplikasi Go. Dua keputusan yang
+-- sudah disetujui menutup jalan lama:
+--
+--   D-02  Logika stored procedure naik ke Go; aplikasi tidak memanggil procedure.
+--   D-68  Kepemilikan transaksi pindah ke Go. Kontrak galat procedure lama tidak dibawa:
+--         pada rumpun ini parameter keluarannya bernama ErrMsg tetapi pada jalur BERHASIL
+--         ia berisi kalimat "Data Sudah Disimpan dengan ID : 1011", sehingga pemanggil
+--         tidak dapat membedakan berhasil dari gagal tanpa membaca teks.
+--
+-- Ditambah keputusan Work Owner 2026-09-23 untuk modul ini: penyimpanan langsung ke KOLOM,
+-- bukan ke JSON_DATA.
+--
+--
+-- ## `P-1` — siapa penulis tabel ini selama masa paralel
+--
+-- Pencarian di seluruh export menemukan HANYA layar ini yang menulis objek dokumen: kedua
+-- activity di atas dirujuk section layar ini saja, dan tidak ada rule lain yang menyentuh
+-- V_LST_DOC_OBJ sebagai penulis. Memindahkan layarnya karena itu memindahkan kepemilikan
+-- tabelnya secara utuh, dan `P-1` terpenuhi.
+--
+-- Ini berbeda dari migrasi 0005 untuk Master Penyebab Kerugian, yang punya DUA layar
+-- penulis dan hanya satu di antaranya yang dipindahkan. Di sini tidak ada penulis kedua
+-- yang tertinggal.
+--
+-- Yang tetap MEMBACA objek dokumen di sistem lama: layar "Detail Tipe Dokumen per Bisnis"
+-- lewat LST_TYPE_DOC_BUSINESS.OBJECT_DOC_ID. Ia hanya membaca, dan tidak terganggu selama
+-- ID setiap baris tidak berubah — yang memang dijamin aplikasi Go.
+--
+--
+-- ============================================================================
+-- LANGKAH 0 — YANG HARUS DBA JAWAB LEBIH DULU
+-- ============================================================================
+--
+-- Seluruh pernyataan di langkah berikutnya bergantung pada jawaban di sini. Jalankan
+-- kesembilan kueri berikut, dan KIRIMKAN HASILNYA sebelum satu pun DDL dijalankan.
+--
+-- 0.1 — Apa definisi view V_LST_DOC_OBJ, dan tabel apa yang dibacanya?
+--       INI PERTANYAAN TERPENTING DI BERKAS INI. Jawabannya menentukan apakah nama
+--       POOLDATA.LST_DOC_OBJ benar, dan apakah view itu membaca KOLOM atau membongkar
+--       JSON seperti V_LST_DOC_TYPE sebelum migrasi 0005.
+--
+--   SELECT DBMS_METADATA.GET_DDL('VIEW', 'V_LST_DOC_OBJ', 'POOLDATA') FROM DUAL;
+--
+-- 0.2 — Apakah tabel dasarnya benar bernama LST_DOC_OBJ, dan apa saja kolomnya?
+--
+--   SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE, DATA_DEFAULT
+--     FROM ALL_TAB_COLUMNS
+--    WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'LST_DOC_OBJ'
+--    ORDER BY COLUMN_ID;
+--
+--   DIHARAPKAN: sekurang-kurangnya ID, KET_DOC_OBJ, dan OLD_ID.
+--   BILA NOL BARIS: nama tabelnya BUKAN itu. Jangan melanjutkan; kirimkan hasil 0.1
+--   supaya nama yang benar dapat dibaca dari definisi view-nya.
+--
+-- 0.3 — Berapa lebar kolom ID? Menentukan apakah ID ke-10000 muat.
+--       Aplikasi membentuk ID sebagai kode situs + empat digit, dan bilangan di atas 9999
+--       menjadi enam karakter. Bila lebarnya lima, penyisipan ke-10000 akan ditolak dengan
+--       ORA-12899 — gagal dengan pesan jelas, bukan menyimpan ID ganda. Itu perilaku yang
+--       disengaja, tetapi angkanya perlu diketahui supaya dapat direncanakan.
+--
+--   SELECT DATA_LENGTH FROM ALL_TAB_COLUMNS
+--    WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'LST_DOC_OBJ' AND COLUMN_NAME = 'ID';
+--
+-- 0.4 — Apakah urutan SET_LST_DOC_OBJ sudah ada, dan sampai berapa?
+--
+--   SELECT SEQUENCE_NAME, LAST_NUMBER, INCREMENT_BY
+--     FROM ALL_SEQUENCES
+--    WHERE SEQUENCE_OWNER = 'POOLDATA'
+--      AND SEQUENCE_NAME LIKE '%DOC_OBJ%';
+--
+--   BILA NOL BARIS: urutannya belum ada dan dibuat di langkah 2. Nilai awalnya WAJIB
+--   diambil dari hasil 0.5, BUKAN dari 1 — memulai dari 1 akan menerbitkan ID yang
+--   bertabrakan dengan baris yang sudah ada.
+--
+-- 0.5 — Berapa nomor urut TERTINGGI yang sudah dipakai? Menentukan START WITH di langkah 2.
+--
+--   SELECT MAX(TO_NUMBER(SUBSTR(ID, 2))) AS URUT_TERTINGGI, COUNT(*) AS JUMLAH_BARIS
+--     FROM POOLDATA.V_LST_DOC_OBJ
+--    WHERE REGEXP_LIKE(ID, '^[0-9]+$');
+--
+--   Catatan: SUBSTR(ID, 2) mengasumsikan kode situs SATU digit, sebagaimana
+--   `Database/PEGA_LST_DOC_TYPE.prc:21` membentuknya. Bila kode situs di entitas ini lebih
+--   dari satu digit, sesuaikan angkanya — dan KABARKAN, karena aplikasi pun perlu tahu.
+--
+-- 0.6 — Apakah nama tabel pemetaan yang diusulkan sudah terpakai?
+--
+--   SELECT TABLE_NAME FROM ALL_TABLES
+--    WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'LST_DOC_OBJ_BUSINESS';
+--
+--   DIHARAPKAN: 0 baris. Bila ADA, JANGAN menjalankan langkah 3 — kirimkan struktur dan
+--   isinya, karena berarti pemetaan ini sudah pernah dibuat pihak lain dan tabel itulah
+--   yang harus dipakai, bukan tabel baru.
+--
+-- 0.7 — Adakah tabel pemetaan lain yang sudah menghubungkan objek dokumen ke bisnis?
+--       Ditanyakan karena layar lama JELAS menyimpan pemetaan itu — gridnya ada dan
+--       terisi — sehingga tabelnya kemungkinan SUDAH ADA dengan nama yang tidak terduga.
+--
+--   SELECT OWNER, TABLE_NAME, COLUMN_NAME
+--     FROM ALL_TAB_COLUMNS
+--    WHERE OWNER = 'POOLDATA'
+--      AND (COLUMN_NAME LIKE '%DOC_OBJ%' OR COLUMN_NAME LIKE '%OBJECT_DOC%')
+--    ORDER BY TABLE_NAME, COLUMN_ID;
+--
+--   INI PERTANYAAN PALING BERHARGA SETELAH 0.1. Bila hasilnya memuat tabel selain
+--   LST_DOC_OBJ dan LST_TYPE_DOC_BUSINESS, langkah 3 kemungkinan besar TIDAK PERLU
+--   dijalankan sama sekali.
+--
+-- 0.8 — Berapa baris LST_TYPE_DOC_BUSINESS yang merujuk objek dokumen? Menegaskan bahwa
+--       ID tidak boleh berubah dan baris tidak boleh dihapus.
+--
+--   SELECT COUNT(*) FROM POOLDATA.LST_TYPE_DOC_BUSINESS WHERE OBJECT_DOC_ID IS NOT NULL;
+--
+-- 0.9 — Apakah akun aplikasi sudah punya hak baca atas POOLDATA.BUSINESS?
+--       Tanpa itu, isian Bisnis di layar kosong — layarnya tetap dapat dipakai, tetapi
+--       tanpa saran nama.
+--
+--   SELECT PRIVILEGE FROM ALL_TAB_PRIVS
+--    WHERE TABLE_SCHEMA = 'POOLDATA' AND TABLE_NAME = 'BUSINESS'
+--      AND GRANTEE = '<akun aplikasi>';
+--
+--
+-- ============================================================================
+-- LANGKAH 1 — MEMASTIKAN KOLOM YANG DIBACA APLIKASI ADA DI TABEL DASAR
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA 0.1 membuktikan V_LST_DOC_OBJ membongkar JSON, bukan membaca kolom.
+-- Bila view-nya sudah membaca kolom, LEWATI seluruh langkah 1 — tidak ada yang perlu
+-- ditambahkan.
+--
+-- ALTER TABLE POOLDATA.LST_DOC_OBJ ADD (KET_DOC_OBJ VARCHAR2(200));
+--
+-- UPDATE POOLDATA.LST_DOC_OBJ
+--    SET KET_DOC_OBJ = JSON_VALUE(JSON_DATA, '$.KET_DOC_OBJ')
+--  WHERE JSON_DATA IS NOT NULL
+--    AND KET_DOC_OBJ IS NULL;
+-- COMMIT;
+--
+-- Verifikasi — DIHARAPKAN 0:
+--
+--   SELECT COUNT(*) FROM POOLDATA.LST_DOC_OBJ
+--    WHERE JSON_DATA IS NOT NULL AND KET_DOC_OBJ IS NULL;
+--
+-- JSON_DATA sengaja TIDAK dibuang. Ia dibiarkan berisi nilai terakhir yang ditulis Pega
+-- pada baris lama, dan kosong pada baris yang ditulis aplikasi Go. Konsekuensinya disadari:
+-- siapa pun yang masih membaca lewat JSON akan mendapat NULL untuk baris baru — dan
+-- satu-satunya pembaca seperti itu adalah procedure lama, yang sejak sekarang tidak
+-- dipanggil siapa pun.
+
+
+-- ============================================================================
+-- LANGKAH 2 — URUTAN PENERBIT ID
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA 0.4 menghasilkan NOL BARIS.
+--
+-- <URUT_TERTINGGI> diganti angka dari 0.5, DITAMBAH SATU. Memulai dari 1 akan menerbitkan
+-- ID yang bertabrakan dengan baris yang sudah ada — dan tabrakan itu tidak akan tertangkap
+-- constraint apa pun bila tabelnya tidak punya kunci primer.
+--
+-- CREATE SEQUENCE POOLDATA.SET_LST_DOC_OBJ
+--   START WITH <URUT_TERTINGGI + 1>
+--   INCREMENT BY 1
+--   NOCACHE
+--   NOCYCLE;
+
+
+-- ============================================================================
+-- LANGKAH 3 — TABEL PEMETAAN OBJEK DOKUMEN KE BISNIS
+-- ============================================================================
+--
+-- JANGAN JALANKAN bila 0.6 atau 0.7 menemukan tabel yang sudah mengerjakan hal ini.
+--
+-- ## Kenapa ada kolom URUTAN
+--
+-- Karena grid di layar mengirim susunan akhir yang disusun petugas, dan susunan itu bagian
+-- dari yang ia simpan. Tabel pemetaan pada modul Master COL Simas Online TIDAK punya kolom
+-- ini — ia tabel warisan yang sudah ada — dan akibatnya urutan yang disimpan pengguna
+-- hilang, serta dua baris bernama sama menyatu menjadi satu. Tabel ini baru, sehingga
+-- kekurangan itu tidak perlu diwarisi.
+--
+-- ## Kenapa ada kolom STS_AKTIF
+--
+-- Karena pencabutan harus dapat disimpan, sedangkan `D-66` melarang penghapusan fisik data
+-- bernilai bisnis. Pemetaan ini menyatakan kewenangan sebuah bisnis atas sebuah objek
+-- dokumen; jejak bahwa ia pernah berlaku punya arti. Tanpa kolom ini, mencabut pilihan di
+-- layar tidak akan tersimpan sama sekali — persis keadaan yang masih menjadi utang teknis
+-- pada modul Master COL Simas Online.
+--
+-- ## Kenapa BISNISID boleh NULL
+--
+-- Karena sel Bisnis di Pega memakai kontrol autocomplete yang menerima ketikan bebas
+-- (`Section/BrowseDocumentObject-Section.xml:14465`), sehingga nama di luar master memang
+-- boleh disimpan — dan nama seperti itu tidak punya ID. NOTE-lah yang selalu terisi.
+--
+-- CREATE TABLE POOLDATA.LST_DOC_OBJ_BUSINESS (
+--   ID_DOC_OBJ  VARCHAR2(10)  NOT NULL,
+--   URUTAN      NUMBER(5)     NOT NULL,
+--   BISNISID    VARCHAR2(10),
+--   NOTE        VARCHAR2(200),
+--   STS_AKTIF   VARCHAR2(1)   DEFAULT '1' NOT NULL,
+--   CONSTRAINT PK_LST_DOC_OBJ_BUSINESS PRIMARY KEY (ID_DOC_OBJ, URUTAN)
+-- );
+--
+-- Lebar ID_DOC_OBJ mengikuti lebar POOLDATA.LST_DOC_OBJ.ID dari 0.3 — SESUAIKAN bila
+-- berbeda. Lebar BISNISID mengikuti POOLDATA.BUSINESS.ID, dan NOTE mengikuti
+-- POOLDATA.BUSINESS.NOTE; keduanya perlu diperiksa:
+--
+--   SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH FROM ALL_TAB_COLUMNS
+--    WHERE OWNER = 'POOLDATA' AND TABLE_NAME = 'BUSINESS' ORDER BY COLUMN_ID;
+--
+-- ## Kunci asing ke POOLDATA.BUSINESS sengaja TIDAK dibuat
+--
+-- Ia akan menolak tepat baris yang diputuskan harus diterima: nama yang diketik bebas,
+-- yang BISNISID-nya memang kosong dan tidak ada di master. Perlakuan yang sama sudah
+-- diambil pada tabel pemetaan modul Master COL Simas Online, dengan alasan yang sama.
+--
+-- ## Index pembacaan
+--
+-- Kueri pembacanya menyaring (ID_DOC_OBJ, STS_AKTIF) lalu mengurutkan URUTAN. Kunci
+-- primernya sudah mendahului ID_DOC_OBJ, sehingga index tambahan TIDAK dibuat di awal —
+-- menambahkannya tanpa pengukuran adalah kerumitan tanpa bukti manfaat
+-- (`09-DATABASE-STRATEGY.md` §6.4).
+
+
+-- ============================================================================
+-- LANGKAH 4 — VIEW PEMBACA
+-- ============================================================================
+--
+-- JALANKAN HANYA BILA langkah 1 dijalankan, yaitu bila view-nya semula membongkar JSON.
+--
+-- CREATE OR REPLACE, bukan DROP lalu CREATE: hak akses yang sudah diberikan ke view ini
+-- bertahan, sedangkan DROP membuangnya dan setiap pembacanya gagal sampai grant-nya
+-- diberikan ulang.
+--
+-- Definisi di bawah menjaga NAMA dan URUTAN kolom sama persis dengan yang dibaca
+-- `BrowseVLstDocObj_RD` — mengubahnya akan memutus rule Pega yang masih membacanya selama
+-- masa paralel.
+--
+-- CREATE OR REPLACE VIEW POOLDATA.V_LST_DOC_OBJ (ID, KET_DOC_OBJ, OLD_ID) AS
+--   SELECT ID, KET_DOC_OBJ, OLD_ID FROM POOLDATA.LST_DOC_OBJ;
+
+
+-- ============================================================================
+-- LANGKAH 5 — HAK AKSES AKUN APLIKASI
+-- ============================================================================
+--
+-- Tanpa DELETE, dan itu bukan kelalaian: `D-66` menetapkan tidak ada penghapusan fisik data
+-- bernilai bisnis, dan aplikasi memang tidak punya satu pun pernyataan DELETE terhadap
+-- objek-objek ini. Memberikan hak yang tidak dipakai berarti membuka jalan yang tidak
+-- pernah dimaksudkan.
+--
+-- GRANT SELECT                 ON POOLDATA.V_LST_DOC_OBJ        TO <akun aplikasi>;
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.LST_DOC_OBJ          TO <akun aplikasi>;
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.LST_DOC_OBJ_BUSINESS TO <akun aplikasi>;
+-- GRANT SELECT                 ON POOLDATA.SET_LST_DOC_OBJ      TO <akun aplikasi>;
+-- GRANT SELECT                 ON POOLDATA.BUSINESS             TO <akun aplikasi>;
+-- GRANT SELECT                 ON POOLDATA.M_SITE_DATABASE      TO <akun aplikasi>;
+
+
+-- ============================================================================
+-- LANGKAH 6 — MEMBUKTIKAN HASILNYA
+-- ============================================================================
+--
+-- Jalankan `claimpnc.exe -periksa` terhadap entitas ini. Baris yang dicari:
+--
+--   [ok]    POOLDATA.V_LST_DOC_OBJ dapat dibaca: <n> objek dokumen
+--
+-- Mode periksa itu menguji KETIGA objek satu per satu — view, tabel dasar, dan tabel
+-- pemetaan — sehingga bila salah satu dugaan nama ternyata keliru, laporannya menyebut
+-- MANA yang keliru. Itulah gunanya dijalankan sebelum layarnya dibuka pengguna pertama.

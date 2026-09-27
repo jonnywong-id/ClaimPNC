@@ -7,6 +7,7 @@
 package httpserver
 
 import (
+	"encoding/json"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -38,12 +39,58 @@ func Router(b Deps) http.Handler {
 	r.Use(middleware.Log(b.Logger))
 
 	if b.MountAPI != nil {
-		r.Route("/api", b.MountAPI)
+		r.Route("/api", func(api chi.Router) {
+			// Jalur /api yang tidak cocok dijawab JSON 404 — BUKAN diteruskan ke SPA.
+			//
+			// Tanpa baris ini, `r.NotFound(spa(...))` di bawah ikut berlaku di dalam /api,
+			// sehingga alamat API yang salah ketik atau belum terdaftar dijawab
+			// `index.html` dengan status **200**. Bagi peramban itu jawaban yang berhasil;
+			// bagi klien API ia badan yang tidak dapat diurai.
+			//
+			// Akibatnya bukan galat yang terbaca, melainkan LAYAR KOSONG: `callAPI`
+			// mengembalikan `null` untuk 200 yang badannya bukan JSON, dan layar yang
+			// menunggu datanya tidak menampilkan apa pun — bukan memuat, bukan galat,
+			// bukan data. Itu pernah terjadi pada layar kerja RCL/PUCL, dan tidak ada satu
+			// pun petunjuk yang dapat dilaporkan pengguna.
+			api.NotFound(apiNotFound)
+			api.MethodNotAllowed(apiMethodNotAllowed)
+
+			b.MountAPI(api)
+		})
 	}
 	if b.SPAFiles != nil {
 		r.NotFound(spa(b.SPAFiles))
 	}
 	return r
+}
+
+// apiNotFound menjawab alamat /api yang tidak terdaftar.
+//
+// Bentuk badannya sama dengan galat modul mana pun — `kode` dan `pesan` — supaya klien
+// memperlakukannya lewat jalur yang sama, tanpa perkecualian.
+func apiNotFound(w http.ResponseWriter, r *http.Request) {
+	writeAPIError(w, http.StatusNotFound, "rute_tidak_ditemukan",
+		"Alamat API tidak dikenal: "+r.URL.Path)
+}
+
+// apiMethodNotAllowed menjawab alamat yang ada tetapi metodenya tidak dilayani.
+//
+// Dipisah dari apiNotFound karena keduanya menuntut perbaikan yang berbeda: yang satu
+// alamatnya salah, yang satu metodenya. Menjawab keduanya "tidak ditemukan" membuat
+// pemanggil mencari alamat yang sebenarnya sudah benar.
+func apiMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	writeAPIError(w, http.StatusMethodNotAllowed, "metode_tidak_dilayani",
+		"Metode "+r.Method+" tidak dilayani untuk "+r.URL.Path)
+}
+
+func writeAPIError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+
+	// Galat penulisan diabaikan dengan sengaja: badan respons sudah dimulai, sehingga tidak
+	// ada lagi yang dapat dikirimkan ke pemanggil. Yang tersisa hanyalah sambungan yang
+	// terputus, dan itu sudah tercatat middleware log.
+	_ = json.NewEncoder(w).Encode(map[string]string{"kode": code, "pesan": message})
 }
 
 // spa melayani berkas statis hasil build React.

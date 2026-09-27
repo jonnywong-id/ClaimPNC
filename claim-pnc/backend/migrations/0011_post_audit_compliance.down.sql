@@ -1,0 +1,27 @@
+-- 0011 turun — membatalkan penomoran Post Audit (Oracle 19c)
+--
+-- ============================================================================
+-- INI TIDAK MENGHAPUS DATA, TETAPI MENGHAPUS URUTANNYA.
+-- ============================================================================
+--
+-- Berbeda dari migrasi turun yang membuang tabel, berkas ini hanya membuang SEQUENCE.
+-- Baris Post Audit yang sudah terbit tetap utuh di `POOLDATA.T_CLAIM_COMPLIANCE_H` —
+-- tabelnya tidak disentuh sama sekali, baik saat naik maupun saat turun.
+--
+-- Yang hilang adalah POSISI penomorannya.
+--
+-- Bila sequence ini dibuat ulang kelak, ia akan mulai lagi dari 100001 dan
+-- **menerbitkan nomor yang sudah terpakai**. Tabelnya tidak punya primary key maupun
+-- constraint unik, sehingga basis data TIDAK akan menolaknya — dua baris bernomor sama
+-- akan hidup berdampingan, dan tab Post Audit menampilkan keduanya tanpa tanda apa pun.
+--
+-- Karena itu, sebelum menjalankan ulang migrasi naik setelah turun, nilai awalnya WAJIB
+-- disesuaikan lebih dulu:
+--
+--   SELECT MAX(TO_NUMBER(REGEXP_SUBSTR(CASEID, '\d+$')))
+--     FROM POOLDATA.T_CLAIM_COMPLIANCE_H
+--    WHERE CASEID LIKE 'CPL-1_____';
+--
+-- lalu `START WITH` diisi satu lebih besar dari hasilnya.
+
+DROP SEQUENCE POOLDATA.CPNC_POST_AUDIT_SEQ;

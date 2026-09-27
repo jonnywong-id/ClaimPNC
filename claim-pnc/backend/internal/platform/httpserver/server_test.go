@@ -1,6 +1,7 @@
 package httpserver_test
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -75,4 +76,72 @@ func TestHashedAssetsAreNotForcedOutOfCache(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.NotEqual(t, "no-store", recorder.Header().Get("Cache-Control"))
+}
+
+func TestUnknownAPIPathAnswersJSONNotFoundInsteadOfThePage(t *testing.T) {
+	// Kegagalan yang ditahan uji ini benar-benar terjadi, dan bentuknya paling buruk:
+	// LAYAR KOSONG tanpa satu pun petunjuk.
+	//
+	// Sebelum perbaikan, `r.NotFound(spa(...))` juga berlaku di dalam /api, sehingga alamat
+	// API yang belum terdaftar dijawab `index.html` dengan status 200. Klien API membaca
+	// 200, gagal mengurai HTML, lalu mengembalikan `null` — bukan melempar. Layar yang
+	// menunggu datanya tidak menampilkan apa pun: bukan memuat, bukan galat, bukan data.
+	r := httpserver.Router(httpserver.Deps{
+		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		MountAPI: func(api chi.Router) { api.Get("/ada", func(http.ResponseWriter, *http.Request) {}) },
+		SPAFiles: fstest.MapFS{
+			"index.html": &fstest.MapFile{Data: []byte("<!doctype html><html></html>")},
+		},
+	})
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/tidak-ada", nil))
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+	require.NotContains(t, rec.Body.String(), "<!doctype html")
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.Equal(t, "rute_tidak_ditemukan", body["kode"])
+	require.Contains(t, body["pesan"], "/api/tidak-ada")
+}
+
+func TestUnknownAPIMethodIsToldApart(t *testing.T) {
+	// Alamat yang benar dengan metode yang salah menuntut perbaikan yang BERBEDA dari
+	// alamat yang salah. Menjawab keduanya "tidak ditemukan" membuat pemanggil mencari
+	// alamat yang sebenarnya sudah benar.
+	r := httpserver.Router(httpserver.Deps{
+		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		MountAPI: func(api chi.Router) { api.Get("/ada", func(http.ResponseWriter, *http.Request) {}) },
+		SPAFiles: fstest.MapFS{
+			"index.html": &fstest.MapFile{Data: []byte("<!doctype html><html></html>")},
+		},
+	})
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/ada", nil))
+
+	require.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.Equal(t, "metode_tidak_dilayani", body["kode"])
+}
+
+func TestSPARoutesOutsideAPIStillFallBackToThePage(t *testing.T) {
+	// Yang TIDAK boleh ikut berubah: rute dalam milik router peramban. Memuat ulang halaman
+	// pada `/inbox-rcl-pucl/klaim/...` harus tetap menghasilkan kerangka halaman, bukan 404.
+	r := httpserver.Router(httpserver.Deps{
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		SPAFiles: fstest.MapFS{
+			"index.html": &fstest.MapFile{Data: []byte("<!doctype html><html></html>")},
+		},
+	})
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/inbox-rcl-pucl/klaim/PNC-1", nil))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "<!doctype html")
 }

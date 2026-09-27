@@ -1,0 +1,214 @@
+-- 0010 — Daftar Tipe Dokumen Bisnis: hak akses dan pemastian bentuk (Oracle 19c)
+--
+-- ============================================================================
+-- BACA SELURUH BERKAS INI SEBELUM MENJALANKAN SATU PERNYATAAN PUN.
+-- ============================================================================
+--
+-- Berkas ini menyentuh objek milik sistem lama yang sedang melayani produksi:
+--
+--   * POOLDATA.LST_TYPE_DOC_BUSINESS   dibaca tujuh rule, ditulis satu procedure
+--   * POOLDATA.COVERAGE_DOC_BUSINESS   dibaca dua rule, ditulis procedure yang sama
+--
+-- Menjalankannya menuntut permintaan perubahan skema tertulis, persetujuan Work Owner,
+-- pelaksanaan oleh DBA, dan pengujian dengan MENJALANKAN PEGA DAN GO BERSAMAAN terhadap
+-- skema hasil perubahan (`D-63`). Akun aplikasi tidak memiliki hak DDL.
+--
+-- BERKAS INI BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN.
+--
+-- Ia harus dijalankan di BASIS DATA SETIAP ENTITAS, bukan hanya di portal utama. Tabelnya
+-- per entitas — `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:22` membentuk ID dari kode
+-- situs milik basis data tempat ia berjalan — sehingga entitas yang terlewat akan membuat
+-- layarnya gagal justru pada portal itu saja, dan gejalanya akan tampak seperti cacat
+-- aplikasi.
+--
+--
+-- ## Bagaimana berkas ini BERBEDA dari migrasi 0002, 0004, dan 0005
+--
+-- Ketiganya memindahkan isi dari kolom JSON ke kolom sungguhan, dan karena itu masing-
+-- masing memuat ALTER TABLE serta CREATE OR REPLACE VIEW.
+--
+-- Berkas ini TIDAK. Tabel LST_TYPE_DOC_BUSINESS sudah berbentuk kolom sejak semula —
+-- procedure lamanya menulis sepuluh kolom bernama, bukan satu dokumen JSON:
+--
+--   INSERT INTO POOLDATA.LST_TYPE_DOC_BUSINESS
+--          (ID, BUSINESSID, DOCUMENT_TYPE_ID, OBJECT_DOC_ID, DOC_TYPE_DT_ID,
+--           DETAIL_DOKUMEN, STS_WAJIB, MIN_DOC, EDIT_DATE, USER_EDIT)
+--                                        -- PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:25-26
+--
+-- Tidak ada satu pun perpindahan data yang perlu dilakukan, dan tidak ada view yang perlu
+-- didefinisikan ulang. Yang tersisa hanyalah HAK AKSES (Bagian 2) dan sejumlah PERTANYAAN
+-- yang jawabannya menentukan apakah aplikasi dapat menyimpan sama sekali (Bagian 1).
+--
+-- Akibatnya berkas ini tidak punya titik cutover: menjalankannya tidak mengubah apa pun
+-- yang dilihat Pega.
+--
+--
+-- ## P-1 — satu tabel satu penulis
+--
+-- Layar Daftar Tipe Dokumen Bisnis adalah SATU-SATUNYA penulis kedua tabel ini di sistem
+-- lama. Pemanggil tunggal procedure-nya adalah `RDB List/UpdateDetTypeDocBusiness_SQL`,
+-- dan pemanggil rule itu adalah ketiga activity layar ini. Memindahkan layarnya karena itu
+-- memindahkan kepemilikan tabelnya secara utuh; Pega berubah menjadi pembaca saja.
+--
+-- SATU PENGECUALIAN yang harus disadari sebelum cutover: cabang ber-NOKLAIM pada
+-- procedure yang sama (`:62-71`) ditulis dari JALUR KLAIM, bukan dari layar ini. Aplikasi
+-- Go tidak pernah menulis baris ber-NOKLAIM dan tidak pernah membacanya — seluruh kueri
+-- jaminannya menyaring `NOKLAIM IS NULL`. Kedua jalur karena itu dapat hidup berdampingan
+-- di satu tabel tanpa saling menimpa.
+--
+--
+-- ============================================================================
+-- BAGIAN 1 — PERTANYAAN YANG HARUS DIJAWAB DBA
+-- ============================================================================
+--
+-- Keenamnya menentukan apakah jalur simpan berfungsi. Empat yang pertama MEMBLOKIR.
+--
+-- 1. BENTUK KEDUA TABEL. Nama kolomnya sudah terbaca dari procedure; yang belum adalah
+--    tipe dan lebarnya.
+--
+--        SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, NULLABLE
+--          FROM ALL_TAB_COLUMNS
+--         WHERE OWNER = 'POOLDATA'
+--           AND TABLE_NAME IN ('LST_TYPE_DOC_BUSINESS', 'COVERAGE_DOC_BUSINESS')
+--         ORDER BY TABLE_NAME, COLUMN_ID;
+--
+--    Tiga hal yang khusus dicari:
+--
+--    a. LEBAR ID. Kode dibentuk `kode_situs || lpad(urutan, 4, '0')`, sehingga penyisipan
+--       ke-10000 menghasilkan kode satu karakter lebih panjang. Bila kolomnya pas-pasan,
+--       penyisipan itu akan ditolak ORA-12899 — dan keputusan memperlebarnya sebaiknya
+--       diambil sebelum, bukan sesudah, penyisipan pertama yang gagal.
+--
+--    b. TIPE MIN_DOC. Aplikasi mengirimnya sebagai ANGKA. Procedure lama menerimanya
+--       sebagai VARCHAR2 dan meneruskannya apa adanya (`:2`, `:26`), sehingga tipe kolom
+--       sebenarnya belum tentu numerik. Bila ia VARCHAR2, pengurutan dan pembandingannya
+--       menjadi leksikografis — "10" lebih kecil dari "9" — dan itu harus diketahui
+--       sebelum ada yang menulis laporan atasnya.
+--
+--    c. TIPE STS_WAJIB. Aplikasi menulisnya sebagai TEKS '1' atau '0', mengikuti keenam
+--       kueri pembacanya yang seluruhnya membandingkannya dengan literal berkutip
+--       (`RDB List/BrowseRegisterCvg-SQL.xml`: `WHEN sts_wajib = '0'`). Bila kolomnya
+--       ternyata NUMBER, tulisannya tetap berhasil karena Oracle mengonversinya diam-diam
+--       — tetapi pembandingan berkutip itu menjadi konversi implisit yang mematikan
+--       pemakaian index. Laporkan bila demikian.
+--
+-- 2. POSISI URUTAN. Kode yang diterbitkan aplikasi harus MELANJUTKAN deret yang sudah ada,
+--    tidak menabraknya.
+--
+--        SELECT LAST_NUMBER FROM ALL_SEQUENCES
+--         WHERE SEQUENCE_OWNER = 'POOLDATA'
+--           AND SEQUENCE_NAME = 'LST_TYPE_DOC_BUSINESS_SEQ';
+--
+--        SELECT MAX(ID) FROM POOLDATA.LST_TYPE_DOC_BUSINESS;
+--
+--    Perhatikan namanya TIDAK berpola sama dengan modul lain: Daftar Tipe Dokumen memakai
+--    SET_LST_DOC_TYPE, modul ini memakai LST_TYPE_DOC_BUSINESS_SEQ. Keduanya dibaca dari
+--    procedure masing-masing, bukan diturunkan dari nama tabel.
+--
+-- 3. APAKAH ID BENAR-BENAR UNIK. Aplikasi memperlakukannya sebagai kunci baris — ia
+--    menyunting `WHERE ID = :1` dan menggantungkan jaminan padanya. Procedure lama pun
+--    demikian (`:41`). Tetapi tidak ada bukti di export bahwa kolomnya berconstraint unik,
+--    dan kedua kueri jaminan di sistem lama menyaring dengan ID DAN BUSINESSID sekaligus
+--    (`where a.id=b.id and a.businessid=b.businessid`) — pola yang masuk akal hanya bila
+--    ID pernah tidak unik.
+--
+--        SELECT COUNT(*) FROM (
+--            SELECT ID FROM POOLDATA.LST_TYPE_DOC_BUSINESS
+--             GROUP BY ID HAVING COUNT(*) > 1);
+--
+--    DIHARAPKAN: 0. Bila TIDAK nol, HENTIKAN — penyuntingan satu baris akan mengubah
+--    beberapa baris sekaligus, dan itu harus diputuskan Work Owner sebelum modul dipakai.
+--
+-- 4. BARIS BER-NOKLAIM. Aplikasi menyaringnya keluar, dengan anggapan baris itu milik
+--    jalur klaim. Anggapan itu perlu dibuktikan angkanya.
+--
+--        SELECT COUNT(*) AS TANPA_NOKLAIM FROM POOLDATA.COVERAGE_DOC_BUSINESS
+--         WHERE NOKLAIM IS NULL;
+--        SELECT COUNT(*) AS DENGAN_NOKLAIM FROM POOLDATA.COVERAGE_DOC_BUSINESS
+--         WHERE NOKLAIM IS NOT NULL;
+--
+--    Laporkan keduanya. Bila yang kedua NOL, tabel ini ternyata tidak pernah dipakai jalur
+--    klaim dan penyaringnya dapat disederhanakan kelak.
+--
+-- 5. TIGA KOLOM YANG TIDAK DITULIS SIAPA PUN — tidak memblokir, tetapi perlu dijawab.
+--
+--    Keenam kueri unggah dokumen MEMBACA tiga kolom yang procedure lama tidak pernah
+--    mengisinya, dan aplikasi baru pun tidak:
+--
+--        FLAGTYPES    dipakai `ORDER BY FLAGTYPES, DETAIL_DOKUMEN` — ia menentukan URUTAN
+--                     dokumen yang dilihat petugas saat meregistrasi klaim
+--        CREDENTIAL   kolom hasil `RDB List/BrowseRegisterCvg-SQL.xml`
+--        DURATION     kolom hasil pada rule yang sama
+--
+--        SELECT COUNT(*) AS TOTAL,
+--               COUNT(FLAGTYPES)  AS ADA_FLAGTYPES,
+--               COUNT(CREDENTIAL) AS ADA_CREDENTIAL,
+--               COUNT(DURATION)   AS ADA_DURATION
+--          FROM POOLDATA.LST_TYPE_DOC_BUSINESS;
+--
+--    Pertanyaannya untuk Work Owner, bukan DBA: SIAPA yang mengisi ketiganya hari ini, dan
+--    apakah layar ini seharusnya dapat mengubahnya. Selama belum dijawab, aplikasi
+--    MEMBIARKANNYA APA ADANYA — baris baru lahir dengan ketiganya kosong, persis seperti
+--    baris yang dibuat Pega hari ini.
+--
+-- 6. ARTI NILAI "-" PADA DETAIL_DOKUMEN — pertanyaan bisnis, bukan teknis.
+--
+--        SELECT COUNT(*) FROM POOLDATA.LST_TYPE_DOC_BUSINESS
+--         WHERE TRIM(DETAIL_DOKUMEN) = '-';
+--
+--    Keenam kueri unggah menyaringnya keluar (`AND b.DETAIL_DOKUMEN != '-'`), sehingga
+--    baris itu tidak pernah muncul di layar klaim mana pun. Aplikasi menirunya apa adanya
+--    (`P-5`) dan TIDAK mengubahnya menjadi sakelar aktif/non-aktif. Angkanya menjadi bahan
+--    bagi Work Owner untuk memutuskan apakah kelak ia diberi arti yang tegas.
+--
+--
+-- ============================================================================
+-- BAGIAN 2 — HAK AKSES UNTUK AKUN APLIKASI
+-- ============================================================================
+--
+-- Diberikan sesempit mungkin. TANPA DELETE pada kedua tabel: tidak ada satu pun jalur di
+-- aplikasi yang menghapus baris (`D-66`), dan hak yang tidak diberikan tidak dapat
+-- disalahgunakan kode yang ditulis kemudian.
+--
+-- Perhatikan COVERAGE_DOC_BUSINESS pun TANPA UPDATE — jaminan hanya ditambahkan, tidak
+-- pernah diubah maupun dibuang, meniru `PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:55-60` yang
+-- hanya menyisipkan bila belum ada.
+--
+-- Keempat master rujukan HANYA SELECT. Ketiganya dimiliki modul atau tim lain (`P-1`,
+-- `D-03`), dan hak tulis atasnya tidak pernah boleh diberikan ke modul ini.
+--
+-- Ganti <AKUN_APLIKASI> dengan nama akun yang sebenarnya, dan jalankan di SETIAP basis
+-- data entitas.
+
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.LST_TYPE_DOC_BUSINESS     TO <AKUN_APLIKASI>;
+-- GRANT SELECT, INSERT         ON POOLDATA.COVERAGE_DOC_BUSINESS     TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.LST_TYPE_DOC_BUSINESS_SEQ TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.M_SITE_DATABASE           TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.BUSINESS                  TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.V_LST_DOC_TYPE            TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.V_LST_DET_TYPE_DOC        TO <AKUN_APLIKASI>;
+-- GRANT SELECT                 ON POOLDATA.V_LST_DOC_OBJ             TO <AKUN_APLIKASI>;
+
+
+-- ============================================================================
+-- BAGIAN 3 — INDEX YANG DISARANKAN, BUKAN DIWAJIBKAN
+-- ============================================================================
+--
+-- Kedua kueri terpanas modul ini menyaring kolom yang sama, dan keduanya juga dipakai
+-- keenam kueri unggah dokumen di sepanjang perjalanan klaim:
+--
+--     WHERE a.BUSINESSID = :1            grid tingkat kedua layar ini
+--     WHERE ID = :1                      jaminan milik satu aturan
+--
+-- JANGAN JALANKAN sebelum Bagian 1 butir 1 memperlihatkan index apa yang SUDAH ada:
+--
+--     SELECT INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+--       FROM ALL_IND_COLUMNS
+--      WHERE TABLE_OWNER = 'POOLDATA'
+--        AND TABLE_NAME IN ('LST_TYPE_DOC_BUSINESS', 'COVERAGE_DOC_BUSINESS')
+--      ORDER BY INDEX_NAME, COLUMN_POSITION;
+--
+-- Menambahkan index yang sudah ada hanya memperlambat penulisan tanpa mempercepat apa pun.
+--
+-- CREATE INDEX POOLDATA.IX_LTDB_BUSINESSID ON POOLDATA.LST_TYPE_DOC_BUSINESS (BUSINESSID);
+-- CREATE INDEX POOLDATA.IX_CDB_ID          ON POOLDATA.COVERAGE_DOC_BUSINESS (ID);
