@@ -925,3 +925,39 @@ membuat duplikat, yang terlihat bukan cacat aplikasi kami melainkan dua berkas a
 satu klaim — dan itu baru ketahuan saat berkas fisiknya dicari.
 
 Ditujukan ke **tim pemilik sistem Arsip**.
+
+### 6.12 Dua kolom penyaring Inbox RCL — ke DBA dan Tim Pega
+
+Layar Inbox RCL (`MENU_ID 62`, `RCL_Harness`) disaring `Report Definition/InboxRCLDokter_RD`
+dengan dua properti yang Pega tandai **`unexposed`**:
+
+| Properti | Peran di layar |
+|---|---|
+| `.ClaimData.TanggalAnalystSendRCL` | penyaring `IS NOT NULL` **dan** kolom "Tanggal Masuk Inbox" |
+| `.ClaimData.NamaDokterRCL` | penyaring `= identitas lama pemanggil` |
+
+Kueri katalog 2026-09-27 (portal ASM) membuktikan **keduanya tidak punya kolom** di
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK` — tidak ada satu pun kolom berunsur `DOKTER`/`DOCTOR`.
+Yang namanya berdekatan hanya `ANALYSTTRANSFERDATE_1` (TIMESTAMP, statistik 0 nilai), dan
+itu properti lain.
+
+**Yang kami minta — pilih salah satu:**
+
+1. **DBA**: mengekspos kedua properti sebagai kolom (`TANGGALANALYSTSENDRCL_1`,
+   `NAMADOKTERRCL_1`, mengikuti konvensi `_1`), lalu mengisi ulang dari blob; **atau**
+2. **Tim Pega**: menyatakan kolom mana — bila ada — yang memang memuat kedua nilai itu.
+   Khususnya: apakah `ANALYSTTRANSFERDATE_1` diisi pada saat yang sama dengan
+   `TanggalAnalystSendRCL`?
+
+Sampai dijawab, layar itu **sengaja gagal dimuat** terhadap Oracle dengan galat yang menyebut
+kolomnya. Menghilangkan penyaringnya akan menampilkan seluruh worklist pemanggil sebagai
+antrean RCL, tanpa pesan galat. `./claimpnc.exe -periksa` melaporkan keadaannya.
+
+**Pembaruan 2026-09-27.** Work Owner menetapkan modul ini membaca `POOLDATA.T_CLAIMLIST_ADMIN`,
+bukan tabel Pega. Permintaannya kini:
+
+1. **DBA** — menjalankan `migrations/0012_claimlist_admin_rcl.up.sql` (tiga kolom).
+2. **Pemilik proses pengisi `T_CLAIMLIST_ADMIN`** — mengisi ketiganya, dan memuat klaim
+   tahap RCL Dokter (hari ini nol).
+3. **Tim Pega** — rule mana yang menulis `NamaDokterRCL` dan `TanggalAnalystSendRCL`
+   (dugaan `RouterRCLDokter`, hilang dari export), supaya pengisi tahu kapan nilainya sah.

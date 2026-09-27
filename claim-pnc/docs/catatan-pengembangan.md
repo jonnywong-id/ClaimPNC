@@ -21144,3 +21144,209 @@ lagi dijalankan.
 | `tsc --noEmit`, disaring ke modul ini | **bersih** |
 | `go vet` | bersih |
 | `PENYIMPANAN=oracle -periksa` | **9 baris** pencacah |
+
+---
+
+## 61. Modul Inbox RCL (`MENU_ID 62`) dibangun (2026-09-27)
+
+Tugas: menambah modul **Inbox RCL** dengan `Harness/RCL_Harness-Harness.xml` sebagai acuan.
+Modul Login, Home, dan seluruh Master Data **tidak disentuh**.
+
+### 61.1 Artefak yang dibaca
+
+| Artefak | Yang diambil |
+|---|---|
+| `Harness/RCL_Harness-Harness.xml` | judul "Inbox RCL", 5 `pyCaption`, activity pemuat `GetpyUserIdentifierFromTable` |
+| `Section/InboxRCLDokter_Section-Section.xml` | grid 5 sel berkepala, tautan `.pyID`, `pyRDParams assign = TempOperator.City` |
+| `Report Definition/InboxRCLDokter_RD-RD.xml` | 4 penyaring `A AND B AND C AND D`, INNER JOIN `Assign-Worklist`, urutan, `pyMaxRecords 500` |
+| `Activity/GetpyUserIdentifierFromTable-Act.xml` + `RDB List/GetOperatorID-SQL.xml` | asal `TempOperator.City` |
+| `Activity/SetAssignmentInboxRCLDoctor_act-Act.xml` | klik baris → `ASSIGN-WORKLIST <inskey>!Register_Flow` |
+| `When/IsRCLPA-When.xml` | penjaga menu `(A OR (B AND D) OR (C AND D)) AND E` |
+| `Flow/Register_Flow.xml` | asal tugas: `Assignment12` router `RouterRCLDokter` |
+
+### 61.2 Temuan yang membedakan layar ini dari seluruh inbox lain
+
+**`Param.assign` bukan login.** Ia `TempOperator.City`, yang diisi activity pemuat harness
+dari `T_ACCESS_GROUP_PNC.OLD_OPERATOR_ID` — dan hanya dari grup Administrators, PNCKomite,
+atau CaseManager, **tanpa cadangan**. Identitas yang sama menyaring dua hal: pemilik
+penugasan (A) dan nama dokter RCL (D).
+
+**Filter tanpa opsi "abaikan bila kosong".** Diperiksa langsung pada `pyFilter`: tidak ada.
+Identitas lama yang tidak ditemukan karena itu menghasilkan nol baris di Pega (Oracle
+menyamakan string kosong dengan NULL). Sistem baru tidak menjalankan kuerinya sama sekali —
+hasilnya sama, tanpa bergantung dialek.
+
+**Pemutus seri `pyID`, bukan `pzInsKey`** — berbeda dari Inbox Analyst Doctor.
+
+### 61.3 Pertanyaan & jawaban konfirmasi
+
+Tidak ada pertanyaan baru yang diajukan ke Work Owner pada sesi ini. Setiap pilihan yang
+terbuka sudah punya preseden yang disetujui:
+
+| Pilihan | Diikuti preseden |
+|---|---|
+| Properti `unexposed` → kolom `_1`, gagal keras, diperiksa `-periksa` | Inbox Analyst Doctor (Work Owner 2026-09-23) |
+| Identitas lama dari `T_ACCESS_GROUP_PNC`, `MAX` bukan `pxResults(1)` | Inbox Outstanding |
+| Kotak cari, paginasi basis data, klik baris ke `/view-claim` | enam inbox lain |
+| Baca-saja; `SendToRCLDokter` tidak dibawa | `P-1`, sama dengan Analyst Doctor |
+
+### 61.4 Dibuktikan terhadap Oracle — dan satu kesimpulan saya yang keliru
+
+`-periksa` pertama melaporkan `ORA-00904` hanya untuk `NAMADOKTERRCL_1`. Saya sempat
+menyimpulkan `TANGGALANALYSTSENDRCL_1` ada. **Itu salah**: Oracle hanya menyebut satu
+identifier per galat. Kueri katalog baca-saja (`ALL_TAB_COLUMNS`) kemudian membuktikan:
+
+| Temuan | Hasil |
+|---|---|
+| `TANGGALANALYSTSENDRCL_1`, `NAMADOKTERRCL_1` | **keduanya tidak ada**; nol kolom berunsur DOKTER/DOCTOR |
+| `KOMENTARANALISATOR_1` | ada, 45 nilai — kolom "Deskripsi Analyst" aman |
+| `ANALYSTTRANSFERDATE_1` | ada (TIMESTAMP, statistik 0 nilai) — **tidak dipakai** sebagai pengganti |
+| Operator aktif di tiga grup akses | 17; **nol** punya lebih dari satu identitas lama |
+
+Program penyelidiknya ditulis sementara di `cmd/_rclprobe`, hanya mencetak nama kolom dan
+hitungan, lalu **dihapus**. Permintaannya ke DBA/Tim Pega: `permintaan-artefak-pega.md` §6.12.
+
+### 61.5 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `backend/internal/inboxrcl/**` | **baru** — domain, galat, usecase, sqlstore (+`.sql`), memory, http, uji |
+| `backend/cmd/claimpnc/main.go` | perakitan: impor, handler, rute, field assembly/store, selector Oracle & memori |
+| `backend/cmd/claimpnc/check.go` | `checkInboxRCL` — tabel dan dua kolom |
+| `frontend/src/modules/inbox-rcl/**` | **baru** — `types.ts`, `api.ts`, `InboxRCLPage.tsx`, uji |
+| `frontend/src/app/menu/registry.ts` | `RCL_Harness: '/inbox-rcl'`; catatan RCL/PUCL dikoreksi |
+| `frontend/src/app/App.tsx` | rute `/inbox-rcl` |
+| `README.md`, `docs/permintaan-artefak-pega.md` | entri modul, §6.12 |
+
+Tidak ada perubahan basis data, migrasi, dependensi, maupun konfigurasi baru.
+
+### 61.6 Kendala
+
+| Kendala | Solusi | Dampak |
+|---|---|---|
+| Dua kolom penyaring tidak ada di Oracle | gagal keras + `-periksa` + permintaan §6.12 | layar belum dapat dipakai terhadap Oracle; berfungsi penuh terhadap memori |
+| `gofmt` mengubah `''` di komentar menjadi kutip tipografis | kalimatnya ditulis ulang | — |
+| `main.go`/`check.go` sudah tidak ter-`gofmt` sejak HEAD | dibiarkan (bukan milik tugas ini) | — |
+
+### 61.7 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go test ./...` | **lulus** |
+| `go vet` modul + cmd | bersih |
+| `vitest run src/modules/inbox-rcl` (+ `inbox-rcl-pucl` ikut tersaring) | **45 lulus** |
+| `vitest run src/app` | 12 lulus |
+| `tsc --noEmit`, disaring ke berkas yang disentuh | bersih |
+| `PENYIMPANAN=oracle -periksa` | tabel **[ok]**, kolom **[BELUM]** — sesuai dugaan |
+
+---
+
+## 62. Inbox RCL — sumber data dipindahkan ke `T_CLAIMLIST_ADMIN` (2026-09-27)
+
+### 62.1 Pertanyaan & jawaban
+
+| Pertanyaan Work Owner / jawaban | Isi |
+|---|---|
+| "Kolom `TanggalAnalystSendRCL` dan `NamaDokterRCL` ditarik dari tabel apa dan untuk apa?" | Dari objek kerja `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, di dalam blob (`unexposed`). Yang pertama menyaring klaim yang sudah dikirim analis ke dokter RCL dan tampil sebagai "Tanggal Masuk Inbox"; yang kedua menyaring klaim yang dokter RCL-nya pemanggil. Penulisnya tidak ada di export — dugaan `RouterRCLDokter` (`R-04`) |
+| Keputusan Work Owner | **Tidak memakai tabel Pega (DATAPEGA) lagi; modul ini memakai `T_CLAIMLIST_ADMIN`** |
+
+### 62.2 Diukur langsung ke katalog sebelum diubah
+
+| Temuan | Hasil |
+|---|---|
+| `T_CLAIMLIST_ADMIN` | 53 kolom (0005 tahap 1 sudah berjalan), 1.014 baris |
+| Kolom yang dibutuhkan dan ADA | `PZINSKEY`, `PYID`, `POLICYNO`, `QQNAME`, `PXCREATEDATETIME`, `PYSTATUSWORK`, `PXASSIGNEDOPERATORID`, `PXOBJCLASS` — seluruhnya terisi |
+| Kolom yang TIDAK ADA | padanan `TanggalAnalystSendRCL`, `NamaDokterRCL`, `KomentarAnalisator` |
+| Tahap yang dimuat tabel | hanya Input Register (345), Choose Surveyor (338), Input Estimasi (181) — **nol** klaim tahap RCL Dokter |
+| Worklist Pega berlabel dokter | 2 penugasan "Route to Doctor" |
+
+### 62.3 Yang diubah
+
+| Berkas | Perubahan |
+|---|---|
+| `repo/sqlstore/inboxrcl.sql` | `list_tasks` membaca `POOLDATA.T_CLAIMLIST_ADMIN k` tanpa gabungan; `check_tables`/`check_columns` tidak lagi menyentuh DATAPEGA |
+| `repo/sqlstore/inboxrcl.go` | `CheckColumns` memeriksa tiga kolom migrasi 0012 |
+| `repo/sqlstore/query_test.go` | uji baru: tidak ada `DATAPEGA.` di kueri mana pun; tabel datar tanpa `JOIN` |
+| `migrations/0012_claimlist_admin_rcl.{up,down}.sql` | **baru** — tiga kolom; tipe/panjang dari katalog. **Tidak dijalankan** (`D-63`) |
+| `cmd/claimpnc/check.go` | pesan `checkInboxRCL` menunjuk migrasi 0012 |
+| `inboxrcl.go`, `usecase/list.go` | dokumentasi paket dan keterbatasan layar |
+
+Kontrak API tidak berubah; frontend tidak disentuh. `T_ACCESS_GROUP_PNC` (POOLDATA) tetap
+dipakai untuk identitas lama.
+
+### 62.4 Hasil uji
+
+`go test ./...` **lulus** · `go vet` bersih · `-periksa` Oracle: tabel **[ok]**, kolom
+**[BELUM]** (`ORA-00904` — migrasi 0012 belum dijalankan).
+
+---
+
+## 63. Tiga kolom ditambahkan, dan cacat bind yang hanya muncul di Oracle (2026-09-27)
+
+### 63.1 Keputusan Work Owner
+
+> "untuk tiga kolom tersebut bisa tambahkan saja di table tersebut"
+
+Migrasi `0012_claimlist_admin_rcl.up.sql` dijalankan terhadap **ASM, `APP_ENV=development`**,
+lewat program sementara yang memeriksa katalog lebih dulu (aman diulang) lalu menjalankan DDL
+yang sama persis. Programnya dihapus sesudahnya.
+
+| Sebelum | Sesudah |
+|---|---|
+| 53 kolom | **56 kolom** — `TANGGALANALYSTSENDRCL_1` TIMESTAMP(6) · `NAMADOKTERRCL_1` VARCHAR2(128 CHAR) · `KOMENTARANALISATOR_1` VARCHAR2(1500 CHAR), seluruhnya nullable |
+
+Uji Pega+Go bersamaan (`D-63`) tidak berlaku: tidak ada satu pun rule Pega yang membaca
+`T_CLAIMLIST_ADMIN`. Entitas lain dan lingkungan lain **belum** dijalankan.
+
+### 63.2 Cacat yang ditemukan uji menyeluruh — ORA-01008
+
+Setelah kolom ada, `-periksa` hijau — tetapi kueri daftar yang sungguhan gagal:
+`ORA-01008: not all variables bound`. Penyebabnya kata kunci `:4` dipakai **tiga kali**,
+sedangkan godror mengikat argumen **menurut urutan kemunculan**, bukan menurut nomor
+penanda. Uji memori dan uji teks kueri tidak dapat menangkapnya; `-periksa` pun tidak, karena
+kuerinya tidak mengikat apa pun.
+
+**Perbaikan:** setiap penanda muncul tepat sekali (`:1`…`:8`); pola `LIKE` dibentuk dan
+di-escape di Go (preseden `inboxoutstanding`), dikirim dua kali. **Dikunci uji baru**
+`TestSetiapPenandaBindMunculTepatSekaliDanBerurutan`, yang gagal pada kueri lama.
+
+Dibuktikan ulang terhadap Oracle: identitas lama, daftar kosong, daftar + cari + halaman 2,
+dan kata kunci `100%_x` — seluruhnya tanpa galat, 0 baris (kolom baru belum diisi: **0 baris**
+terisi dari 1.014).
+
+### 63.3 Temuan di luar modul ini — dicatat, TIDAK diubah
+
+Mekanismenya sama dengan yang sudah ditemukan modul Case Study Claim (`casestudyclaim.sql`).
+Pemindaian seluruh `.sql`: **36 kueri di 11 modul** memakai penanda berulang.
+
+- **Inbox Analyst Doctor `list_tasks` PASTI cacat**: 8 kemunculan, 6 argumen. Pola itulah
+  yang saya salin ke modul ini.
+- 35 lainnya **belum tentu** cacat — sah bila kode Go mengirim argumen sebanyak kemunculannya.
+  Perlu diperiksa per modul.
+
+Tidak saya perbaiki karena di luar lingkup tugas ini; diserahkan ke Work Owner untuk
+diputuskan.
+
+### 63.4 Hasil uji
+
+`go test ./internal/inboxrcl/...` lulus · `go vet` bersih · Oracle ujung-ke-ujung tanpa galat.
+
+---
+
+## 64. Inbox RCL — tampilan disamakan dengan Pega (2026-09-27)
+
+Keputusan Work Owner, dari tangkapan layar `localhost:5173/inbox-rcl`:
+
+| Butir | Keputusan |
+|---|---|
+| Cacat bind di Inbox Analyst Doctor dan 35 kueri lain (§63.3) | **Dibiarkan** — "kalau memang dari Pega begitu, biarkan saja". Tidak diubah |
+| Kolom `T_CLAIMLIST_ADMIN` yang belum terisi | **Dibiarkan** seperti Pega; cukup sebagai catatan di dokumen |
+| Peringatan merah "Identitas lama Anda tidak ditemukan" | **Dihapus** — terkesan galat. Penyebabnya: akun yang dipakai tidak punya baris `T_ACCESS_GROUP_PNC` pada grup Administrators/PNCKomite/CaseManager; di Pega keadaan itu juga hanya grid kosong |
+| Panel "Perbedaan yang disengaja" dan "Yang perlu diketahui" | **Dihapus dari layar** |
+
+Layar kini hanya menampilkan grid dengan pesan kosong biasa "Tidak ada klaim RCL untuk Anda
+saat ini." Backend tetap mengirim `identitas_lama_ditemukan`, `selisih_terencana`, dan
+`keterbatasan` (kontrak API tidak diubah) — hanya tidak digambar. Isinya tercatat di §61–§63.
+
+Uji: `vitest run src/modules/inbox-rcl` **5 lulus** (uji baru memastikan peringatan dan kedua
+catatan tidak tampil) · `tsc` bersih.

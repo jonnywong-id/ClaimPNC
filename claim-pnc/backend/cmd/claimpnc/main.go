@@ -38,6 +38,7 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
+	"claim-pnc/internal/inboxrcl"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -143,6 +144,10 @@ import (
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
+	inboxrclhttp "claim-pnc/internal/inboxrcl/http"
+	inboxrclmemory "claim-pnc/internal/inboxrcl/repo/memory"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
+	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -1495,6 +1500,27 @@ func run() error {
 			FallbackErrorWriter: inboxanalystdoctorhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// Inbox RCL (`MENU_ID 62`). Jembatan pemanggilnya membawa LOGIN — tetapi berbeda dari
+	// Inbox Analyst Doctor, login itu BUKAN yang menyaring antrean. Ia hanya kunci untuk
+	// mencari identitas LAMA pemanggil di `POOLDATA.T_ACCESS_GROUP_PNC`, padanan
+	// `TempOperator.City` yang diisi `GetpyUserIdentifierFromTable` pada harness lama.
+	//
+	// Tidak ada Clock: layar ini tidak punya kolom durasi.
+	inboxRCLHandler := inboxrclhttp.NewHandler(
+		inboxrclhttp.Options{
+			Service: assembly.inboxRCL,
+			GetCaller: func(ctx context.Context) (inboxrclhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxrclhttp.Caller{}, false
+				}
+				return inboxrclhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:              logger,
+			WriteJSON:           writeJSON,
+			FallbackErrorWriter: inboxrclhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Case Study Claim. Jembatan pemanggilnya membawa LOGIN, dan hanya jalur TULIS yang
 	// memerlukannya.
 	//
@@ -2151,6 +2177,12 @@ func run() error {
 				inboxanalystdoctorhttp.Mount(
 					protected, inboxAnalystDoctorHandler, activePortalDeps)
 
+				// Inbox RCL memuat klaim Personal Accident yang ditolak atas
+				// pertimbangan medis. Identitas lama pemanggil DAN antreannya
+				// sama-sama tersimpan di basis data entitas, sehingga rutenya menuntut
+				// portal karena alasan yang sama dengan modul di atasnya.
+				inboxrclhttp.Mount(protected, inboxRCLHandler, activePortalDeps)
+
 				// Case Study Claim memuat klaim di atas Rp 5 miliar beserta nama
 				// tertanggung, nomor polis, dan kronologinya — seluruhnya milik satu
 				// badan hukum. Rutenya menuntut portal karena alasan yang sama dengan
@@ -2445,6 +2477,10 @@ type assembly struct {
 	// penilaian medis milik satu petugas.
 	inboxAnalystDoctor *inboxanalystdoctorusecase.Service
 
+	// inboxRCL melayani layar Inbox RCL (`MENU_ID 62`) — antrean penolakan medis milik
+	// satu dokter RCL, disaring dengan identitas LAMA-nya.
+	inboxRCL *inboxrclusecase.Service
+
 	// caseStudyClaim melayani layar Case Study Claim (`MENU_ID 74`).
 	//
 	// Butir menunya berada di bawah kelompok INBOX, tetapi ia BUKAN inbox menurut `D-79`:
@@ -2640,6 +2676,11 @@ type storage struct {
 	// Jatuh ke koneksi bawaan di sini bukan sekadar menampilkan entitas yang salah — ia
 	// menampilkan data medis entitas yang salah.
 	inboxAnalystDoctorSelector inboxanalystdoctor.RepoSelector
+
+	// inboxRCLSelector memilih penyimpanan antrean RCL Dokter milik satu portal. Identitas
+	// lama pemanggil pun tersimpan per entitas, sehingga keduanya dibaca dari koneksi yang
+	// sama.
+	inboxRCLSelector inboxrcl.RepoSelector
 
 	// caseStudySelector memilih penyimpanan klaim telaah milik satu portal.
 	//
@@ -3567,6 +3608,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	inboxRCLService, err := inboxrclusecase.NewService(inboxrclusecase.Options{
+		RepoSelector: store.inboxRCLSelector,
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	// Case Study Claim menerima Logger, dan itu WAJIB — bukan kelengkapan.
 	//
 	// `POOLDATA.T_CLAIM_PNC` tidak punya kolom yang mencatat siapa mengubah
@@ -3813,6 +3862,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		monitoringSlinkOJK:        slinkOJKService,
 		inboxProgressClaim:        inboxProgressClaimService,
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
+		inboxRCL:                  inboxRCLService,
 		caseStudyClaim:            caseStudyClaimService,
 		inboxLaporanKlaim:         claimReportService,
 		inboxOutstanding:          outstandingService,
@@ -4701,6 +4751,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxanalystdoctorsql.NewRepo(conn), nil
 		}
 
+		store.inboxRCLSelector = func(alias string) (inboxrcl.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxrclsql.NewRepo(conn), nil
+		}
+
 		store.caseStudySelector = func(alias string) (casestudyclaim.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -4948,6 +5006,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.slinkOJKSelector = slinkOJKSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
+		store.inboxRCLSelector = inboxRCLSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh klaim contoh ikut dimuat, LIMA di antaranya sengaja tertolak — satu di
 		// bawah ambang, satu yang totalnya besar tetapi terpecah menjadi dua baris kecil,
 		// satu di luar rentang tahun, satu berkode bisnis yang dikecualikan NONMBU, dan
@@ -6711,6 +6770,34 @@ func inboxAnalystDoctorSelectorMemory(primaryAlias string) inboxanalystdoctor.Re
 			return existing, nil
 		}
 		fresh := inboxanalystdoctormemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxRCLSelectorMemory menyusun penyimpanan antrean RCL Dokter di memori; alasannya sama
+// dengan inboxAnalystDoctorSelectorMemory di atas — hanya portal utama, satu salinan per
+// portal.
+//
+// Data contohnya memetakan login pengembangan `adminpnc` ke satu identitas lama, sehingga
+// antreannya terlihat saat masuk, dan `pictekniks` ke tanpa identitas lama, sehingga keadaan
+// "identitas lama tidak ditemukan" pun dapat dilihat.
+func inboxRCLSelectorMemory(primaryAlias string) inboxrcl.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxrcl.Repo{}
+
+	return func(alias string) (inboxrcl.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxrclmemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

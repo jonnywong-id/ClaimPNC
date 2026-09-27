@@ -49,6 +49,7 @@ import (
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
 	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
 	"claim-pnc/internal/inboxautoclaim"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
@@ -216,6 +217,7 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 		print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
+	checkInboxRCL(ctx, inboxrclsql.NewRepo(primary), print)
 	checkCaseStudyClaim(ctx, casestudyclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
@@ -3438,6 +3440,38 @@ func checkInboxAnalystDoctor(
 	print("            Catatan: antrean ini disaring dengan Operator ID pemanggil, sehingga")
 	print("            pengguna tanpa tugas Analyst Doctor melihatnya kosong — dan itu")
 	print("            jawaban yang benar, bukan kerusakan.")
+}
+
+// checkInboxRCL memastikan tabel DAN tiga kolom yang dibaca layar Inbox RCL terjangkau.
+//
+// Sumbernya POOLDATA.T_CLAIMLIST_ADMIN, bukan tabel Pega (keputusan Work Owner 2026-09-27).
+// Dua langkah, karena sebab gagalnya berbeda: hak baca, atau migrasi
+// `0012_claimlist_admin_rcl` yang belum dijalankan DBA. Dua dari tiga kolomnya PENYARING —
+// tanpanya layar tidak dapat dipakai terhadap Oracle sama sekali.
+func checkInboxRCL(
+	ctx context.Context,
+	repo *inboxrclsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel Inbox RCL tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIMLIST_ADMIN dan")
+		print("            POOLDATA.T_ACCESS_GROUP_PNC.")
+		return
+	}
+	print("  [ok]    Tabel Inbox RCL dapat dibaca (T_CLAIMLIST_ADMIN, T_ACCESS_GROUP_PNC)")
+
+	if err := repo.CheckColumns(ctx); err != nil {
+		print("  [BELUM] Kolom Inbox RCL belum ada di T_CLAIMLIST_ADMIN: %v", err)
+		print("            Jalankan migrations/0012_claimlist_admin_rcl.up.sql (DBA, D-63):")
+		print("            TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1.")
+		print("            Setelah itu proses pengisi T_CLAIMLIST_ADMIN harus mengisinya —")
+		print("            dua di antaranya `unexposed` di Pega dan hanya ada di blob.")
+		return
+	}
+	print("  [ok]    Kolom TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1 ada")
+	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
+	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
 }
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.

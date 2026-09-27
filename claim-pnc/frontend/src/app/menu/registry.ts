@@ -513,8 +513,8 @@ export const MENU_ROUTES: Record<string, string> = {
   // berbeda. Menunjuk keduanya ke satu rute akan menghilangkan partisi yang justru menjadi
   // inti layar ini.
   //
-  // Bedakan pula dari `MENU_ID 62` "Inbox RCL" (`RCL_Harness`), yang BELUM dipetakan: ia
-  // harness tersendiri dan belum dianalisis sama sekali.
+  // Bedakan pula dari `MENU_ID 62` "Inbox RCL" (`RCL_Harness`) di bawah: ia harness
+  // tersendiri, antrean PER ORANG milik dokter RCL.
   //
   // Di Pega butir ini dijaga `When/IsRCLPUCL-When.xml`:
   // `(Administrators OR PncRCLPUCL) AND NOT ViewClaimPNC`. Aturan itu BELUM ditegakkan
@@ -525,6 +525,22 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+
+  // MENU_ID 62 "Inbox RCL", kelompok INBOX.
+  //
+  // Harness-nya ADA di export (`Harness/RCL_Harness-Harness.xml`) beserta section
+  // `InboxRCLDokter_Section` dan Report Definition `InboxRCLDokter_RD` — kelima judul kolom
+  // dan keempat penyaringnya terbaca dari bukti.
+  //
+  // JANGAN tertukar dengan `RCLPUCL_Harness` di atas. Yang itu antrean BERSAMA (workbasket
+  // `RCLPUCL`); yang ini antrean PER ORANG (worklist), disaring dengan identitas LAMA
+  // pemanggil (`TempOperator.City` dari `T_ACCESS_GROUP_PNC`).
+  //
+  // Di Pega butir ini dijaga `When/IsRCLPA-When.xml`:
+  // `(Administrators OR ((PNCKomite OR CaseManager) AND pyPosition = PA)) AND NOT
+  // ViewClaimPNC`. Aturan itu BELUM ditegakkan (`TKT-F3-005`); yang menentukan siapa melihat
+  // butirnya sekarang adalah `M_OTORISASI_PNC`. Peredamnya penyaring identitas di server.
+  RCL_Harness: '/inbox-rcl',
   // MENU_ID 82 "Laporan Hasil AI", di bawah kelompok REPORT — butir PERTAMA kelompok itu.
   //
   // Layar ini menyandingkan penilaian AI atas sebuah klaim dengan keputusan komite yang

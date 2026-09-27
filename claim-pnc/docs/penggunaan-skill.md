@@ -8996,3 +8996,38 @@ jauh lebih dapat diandalkan daripada catatan di dokumen.
 **Dan dua uji lama menguat karenanya.** Keduanya memeriksa nilai yang tersimpan tetapi
 membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
 ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
+
+---
+
+## Sesi 2026-09-27 — modul Inbox RCL
+
+### Tidak ada skill yang dipanggil
+
+Skill Matt Pocock (`grilling`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`)
+**tidak tersedia** di daftar skill sesi ini, sehingga tidak ada yang dipanggil. Tidak ada
+yang dicatat seolah-olah dipakai.
+
+Yang dipakai adalah preseden modul yang sudah ada, dan itu dicatat sebagai preseden —
+bukan sebagai skill:
+
+| Preseden | Diambil untuk |
+|---|---|
+| `inboxanalystdoctor` | seluruh bentuk modul, pola kolom `unexposed` + `-periksa` |
+| `inboxoutstanding` | kueri identitas lama `T_ACCESS_GROUP_PNC`, `MAX` bukan `pxResults(1)` |
+
+### Satu koreksi diri yang layak dicatat
+
+Pola yang sama dengan sesi sebelumnya — **alat ukur dipercaya sebelum divalidasi**:
+`ORA-00904` yang hanya menyebut satu kolom saya baca sebagai bukti kolom lainnya ada.
+Kueri katalog langsung membuktikan sebaliknya, dan kesimpulannya ditarik sebelum ditulis
+ke kode maupun dokumen (catatan pengembangan §61.4).
+
+**Pelajaran:** galat parser menyebut kegagalan PERTAMA, bukan satu-satunya. Keberadaan
+kolom dibuktikan dari katalog, bukan dari galat yang tidak muncul.
+
+### Lanjutan 2026-09-27 — pelajaran kedua pada hari yang sama
+
+Tetap tanpa skill (tidak tersedia). Yang menangkap cacat ORA-01008 bukan skill, melainkan
+**menjalankan kueri sungguhan terhadap Oracle** setelah `-periksa` hijau. Pelajarannya:
+pemeriksaan yang hanya mem-parse kueri tidak membuktikan kueri dapat dijalankan. Bukti
+yang sah adalah satu eksekusi nyata dengan parameter binding.

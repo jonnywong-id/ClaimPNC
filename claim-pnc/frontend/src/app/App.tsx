@@ -38,6 +38,7 @@ import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjec
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
+import { InboxRCLPage } from '@/modules/inbox-rcl/InboxRCLPage'
 import { DashboardClaimPage } from '@/modules/dashboard-claim/DashboardClaimPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
@@ -1048,6 +1049,24 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <AnalystDoctorPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Inbox RCL — antrean penolakan medis milik SATU dokter RCL, pengganti harness
+        `RCL_Harness` (`MENU_ID 62`). Disaring dengan identitas LAMA pemanggil, bukan login.
+
+        Layar ini MEMBACA SAJA. Menyelesaikan tugasnya berarti menjalankan Flow Action
+        `SendToRCLDokter`, yang memindahkan penugasan — milik Pega selama masa paralel
+        (`P-1`). Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada.
+      */}
+      <Route
+        path="/inbox-rcl"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxRCLPage />
             </Protected>
           </SessionGuard>
         }

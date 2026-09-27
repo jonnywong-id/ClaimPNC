@@ -17552,3 +17552,64 @@ mencari baris di daftar Checker.
 **Alasannya bukan sekadar membuatnya lulus.** Daftar Checker tidak ditawarkan; barisnya
 tetap masuk antreannya. Keduanya hal yang berbeda, dan yang diuji memang yang kedua —
 membuktikannya lewat daftar mencampurkan keduanya sejak awal.
+
+---
+
+## 60. Modul Inbox RCL (2026-09-27)
+
+### 60.1 Antrean disaring identitas LAMA saja — `P-5`
+
+`InboxRCLDokter_Section` mengisi `assign = TempOperator.City`, bukan
+`OperatorID.pyUserIdentifier`. Dibawa apa adanya: login hanya kunci pencarian identitas
+lama; identitas lama yang menyaring penyaring A dan D.
+
+**Berbeda dari Inbox Outstanding** yang menambahkan identitas lama *di samping* login.
+Menyamakannya akan memberi antrean kepada pengguna yang di Pega tidak punya antrean ini.
+
+Kueri identitas lamanya **milik modul ini sendiri**, bukan memakai milik Inbox Outstanding,
+karena yang itu tidak menyaring grup akses.
+
+### 60.2 Identitas lama tidak ditemukan dinyatakan, tidak disamarkan
+
+Hasilnya tetap nol baris (`P-5`). Yang berubah hanya **cara ia dilaporkan**: jawaban API
+membawa `identitas_lama_ditemukan`, dan layar menampilkan peringatan tersendiri. Di Pega
+keadaan itu tidak dapat dibedakan dari "tidak ada pekerjaan". Dinyatakan sebagai selisih
+terencana ketiga di layar (`D-54`).
+
+### 60.3 Dua kolom `unexposed` — gagal keras, tidak ditukar
+
+Kedua kolom terbukti tidak ada di katalog. `ANALYSTTRANSFERDATE_1` yang namanya dekat
+**sengaja tidak dipakai**: menukarnya diam-diam berarti penyaring C menyaring hal lain. Pola
+dan alasannya sama dengan Inbox Analyst Doctor (§ modul itu).
+
+### 60.4 Tidak ada kolom durasi, tidak ada Clock
+
+Kelima caption harness tidak memuat durasi. Berbeda dari Analyst Doctor, tidak ada "Lama
+Waktu Klaim" yang ditambahkan — `D-13`.
+
+### 60.5 "Tanggal Masuk Inbox" berjam
+
+Propertinya `DateTime` dan section memakai kontrol `pxDateTime`, sehingga dikirim
+`YYYY-MM-DD HH:mm` WIB — dikonversi server (`R-12`).
+
+### 60.6 Utang teknis yang disadari
+
+- `TKT-F3-005`: penjaga menu `IsRCLPA` belum ditegakkan; peredamnya penyaring identitas.
+- Klik baris membuka `/view-claim`, bukan layar kerja `SendToRCLDokter` — layar kerja itu
+  menulis penugasan milik Pega (`P-1`), dan dapat dibangun terpisah bila diminta, seperti
+  layar kerja RCL/PUCL (§44 catatan pengembangan).
+
+## 61. Inbox RCL membaca `T_CLAIMLIST_ADMIN` (2026-09-27)
+
+**Keputusan Work Owner:** modul ini tidak memakai tabel Pega (DATAPEGA) lagi.
+
+1. **Gabungan ke worklist hilang.** Satu baris per klaim; klaim dengan dua penugasan terbuka
+   tidak lagi tampil dua kali. Perubahan ini sudah diterima untuk tabel yang sama sejak
+   Inbox Outstanding (`kolom-t-claimlist-admin.md` §A) — §60 butir "INNER JOIN dibawa apa
+   adanya" **tidak berlaku lagi** untuk modul ini.
+2. **Tiga kolom yang kurang diajukan lewat migrasi 0012**, bukan diakali. Kolom
+   `ANALYSTTRANSFERDATE_1` di tabel Pega tetap tidak dipakai (§60.3).
+3. **Kolom baru tidak mengisi dirinya sendiri.** Penghalang sesungguhnya adalah proses
+   pengisi `T_CLAIMLIST_ADMIN` (§D.1 dokumen kolom): ia harus membawa ketiga nilai, dua di
+   antaranya dari blob Pega, dan memuat klaim tahap RCL Dokter — hari ini nol.
+4. `T_ACCESS_GROUP_PNC` tetap sumber identitas lama; ia tabel POOLDATA, di luar keputusan ini.
