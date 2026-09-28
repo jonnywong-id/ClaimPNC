@@ -518,3 +518,62 @@ func TestDayGroupingDoesNotRelyOnDateCast(t *testing.T) {
 		})
 	}
 }
+
+// catalogColumn adalah kolom tabel batch MENURUT KATALOG ORACLE produksi, dibaca
+// `-periksa` (checkAutoClaimUploadColumns) pada 2026-09-28. DDL ketiga tabel tidak ada di
+// repo, sehingga daftar inilah satu-satunya acuan.
+var catalogColumn = map[inboxautoclaim.Source][]string{
+	inboxautoclaim.SourceKredit: {"ACCEPTNO", "AGENID", "BATCH", "CLIENTID", "CURRENCY", "FLAGM",
+		"IDKASIR", "IDPEGA", "MESSAGEKASIR", "NILAIKLAIM", "NOASURANSI", "NODEKLARASI", "NOPOLIS",
+		"PRODKE", "PROGRESS", "STSKASIR", "TANGGALBAYAR", "TGLPROSES", "TMP_MESSAGE", "TYPEKLAIM",
+		"USERINPUT"},
+	inboxautoclaim.SourceTravel: {"BATCH", "CURRENCY", "FLAGTIDAKBAYAR", "IDPEGA", "INISIALID",
+		"NILAIKLAIM", "NOAKSEPTASI", "NOPOLIS", "PRODKE", "PROGRESS", "REPORTDESCRIPTION",
+		"TGLKEJADIAN", "TGLPROSES", "TMP_MESSAGE", "USERINPUT"},
+}
+
+// Setiap kolom tabel batch yang disebut kueri sebuah tab HARUS ada di tabel tab itu.
+//
+// Cacat yang ditutupnya nyata: tombol Detail, Export, dan unggahan di tab Kredit dan Travel
+// menyebut TGLKEJADIAN, TGLLAPOR, COL_ID, … milik tabel ANEKA, dan gagal ORA-00904 di
+// produksi. Data uji memori tidak dapat menangkapnya — ia tidak mengenal kolom.
+func TestQueriesOfEachSourceNameOnlyItsOwnColumns(t *testing.T) {
+	used := map[inboxautoclaim.Source][]string{
+		inboxautoclaim.SourceKredit: {"auto_claim_line_insert_kredit"},
+		inboxautoclaim.SourceTravel: {"auto_claim_line_insert_travel"},
+	}
+	common := []string{
+		"auto_claim_batch_list", "auto_claim_batch_list_by_company", "auto_claim_batch_count",
+		"auto_claim_batch_count_by_company", "auto_claim_company_summary",
+		"auto_claim_line_list", "auto_claim_line_list_succeeded", "auto_claim_line_list_failed",
+		"auto_claim_line_count", "auto_claim_line_count_succeeded", "auto_claim_line_count_failed",
+		"auto_claim_export", "auto_claim_export_succeeded", "auto_claim_export_failed",
+		"auto_claim_batch_exists", "auto_claim_batch_number_used",
+	}
+	// Kolom milik tabel batch (A.xxx) dan kolom daftar INSERT.
+	aliased := regexp.MustCompile(`\bA\.([A-Z_]+)\b`)
+	insertList := regexp.MustCompile(`(?s)INSERT INTO \S+\s*\(([^)]*)\)`)
+
+	for source, known := range catalogColumn {
+		present := map[string]bool{}
+		for _, column := range known {
+			present[column] = true
+		}
+		for _, name := range append(common, used[source]...) {
+			text := getQueryFor(source, name)
+			var named []string
+			for _, m := range aliased.FindAllStringSubmatch(text, -1) {
+				named = append(named, m[1])
+			}
+			if m := insertList.FindStringSubmatch(text); m != nil {
+				for _, column := range strings.Split(m[1], ",") {
+					named = append(named, strings.TrimSpace(column))
+				}
+			}
+			for _, column := range named {
+				require.Truef(t, present[column],
+					"kueri %s tab %s menyebut kolom %s yang tidak ada di tabelnya", name, source, column)
+			}
+		}
+	}
+}

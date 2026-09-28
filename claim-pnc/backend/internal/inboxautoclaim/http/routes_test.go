@@ -554,8 +554,25 @@ func TestFormatUnggahanDapatDibacaTanpaMemilihPortal(t *testing.T) {
 	// belum memilih entitas.
 	p := newTestServer(t)
 
-	response, content := p.call(t, http.MethodGet, "/api/inbox-auto-claim/format-unggahan", "")
+	response, content := p.call(t, http.MethodGet, "/api/inbox-auto-claim/format-unggahan?sumber=aneka", "")
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, content["kolom_wajib"], len(inboxautoclaim.RequiredUploadColumn))
 	require.Equal(t, float64(inboxautoclaim.MaxUploadRow), content["batas_baris"])
+}
+
+func TestFormatUnggahanBerbedaPerTab(t *testing.T) {
+	// Berkas Kredit tidak punya tanggal kejadian/lapor; Travel tidak punya tanggal lapor.
+	// Petunjuk yang sama untuk ketiganya justru yang membuat berkas Kredit ditolak.
+	p := newTestServer(t)
+
+	_, kredit := p.call(t, http.MethodGet, "/api/inbox-auto-claim/format-unggahan?sumber=kredit", "")
+	require.NotContains(t, kredit["kolom_wajib"], "dateofloss")
+	require.NotContains(t, kredit["kolom_wajib"], "reportdate")
+	require.Contains(t, kredit["kolom_wajib"], "reporttype")
+	require.Equal(t, true, kredit["titik_ribuan"])
+
+	_, travel := p.call(t, http.MethodGet, "/api/inbox-auto-claim/format-unggahan?sumber=travel", "")
+	require.Contains(t, travel["kolom_wajib"], "dateofloss")
+	require.NotContains(t, travel["kolom_wajib"], "reportdate")
+	require.Equal(t, []any{"dateofloss"}, travel["kolom_tanggal"])
 }

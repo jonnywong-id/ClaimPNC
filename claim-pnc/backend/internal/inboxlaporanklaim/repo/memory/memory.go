@@ -37,6 +37,7 @@ type Repo struct {
 	region  []inboxlaporanklaim.Region
 	branch  map[string]string // kode cabang -> kode kanwil
 	message map[string][]messageRow
+	policy  map[string]inboxlaporanklaim.Policy
 
 	sequence int64
 	clock    inboxlaporanklaim.Clock
@@ -65,6 +66,9 @@ type Options struct {
 	// Message memetakan nomor register laporan ke percakapannya.
 	Message map[string][]messageRow
 
+	// Policy memetakan nomor polis ke datanya — pengganti POOLDATA.T_GENERAL.
+	Policy map[string]inboxlaporanklaim.Policy
+
 	// Clock wajib: nomor berkas baru memuat tahun terbitnya.
 	Clock inboxlaporanklaim.Clock
 }
@@ -89,11 +93,17 @@ func NewRepo(o Options) *Repo {
 		message[id] = copied
 	}
 
+	policy := map[string]inboxlaporanklaim.Policy{}
+	for number, p := range o.Policy {
+		policy[number] = p
+	}
+
 	return &Repo{
 		rows:    rows,
 		region:  region,
 		branch:  branch,
 		message: message,
+		policy:  policy,
 		clock:   o.Clock,
 	}
 }
@@ -468,3 +478,14 @@ func contains(list []string, value string) bool {
 }
 
 var _ inboxlaporanklaim.Repo = (*Repo)(nil)
+
+// FindPolicy mencari polis di peta contoh.
+func (r *Repo) FindPolicy(_ context.Context, number string) (inboxlaporanklaim.Policy, bool, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return inboxlaporanklaim.Policy{}, false, r.failure
+	}
+	p, found := r.policy[number]
+	return p, found, nil
+}

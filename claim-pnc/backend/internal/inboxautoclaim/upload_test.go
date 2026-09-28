@@ -25,7 +25,7 @@ func barisSah(polis string) string {
 func TestBerkasSahTerbacaMenjadiBarisUnggahan(t *testing.T) {
 	berkas := judulLengkap + "\n" + barisSah("0100120260001") + "\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Len(t, baris, 1)
 
@@ -51,7 +51,7 @@ func TestTitikPadaNomorPolisDibuang(t *testing.T) {
 	// terbaca sebagai "polis tidak ditemukan", bukan sebagai kesalahan penulisan.
 	berkas := judulLengkap + "\n" + barisSah("01.001.2026.0001") + "\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Equal(t, "0100120260001", baris[0].PolicyNo)
 }
@@ -63,7 +63,7 @@ func TestBerkasBerpemisahTitikKomaTerbaca(t *testing.T) {
 	berkas := strings.ReplaceAll(judulLengkap, ",", ";") + "\n" +
 		strings.ReplaceAll(barisSah("0100120260001"), ",", ";") + "\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Len(t, baris, 1)
 	require.Equal(t, "0100120260001", baris[0].PolicyNo)
@@ -74,7 +74,7 @@ func TestBerkasBerBOMTerbaca(t *testing.T) {
 	// terbaca sebagai "\ufeffpolicyno" dan berkas yang benar ditolak.
 	berkas := "\ufeff" + judulLengkap + "\n" + barisSah("0100120260001") + "\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Len(t, baris, 1)
 	require.Equal(t, "0100120260001", baris[0].PolicyNo)
@@ -85,7 +85,7 @@ func TestBarisKosongDiAkhirBerkasDiabaikan(t *testing.T) {
 	// menolak berkas yang sebenarnya benar.
 	berkas := judulLengkap + "\n" + barisSah("0100120260001") + "\n\n\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Len(t, baris, 1)
 }
@@ -93,7 +93,7 @@ func TestBarisKosongDiAkhirBerkasDiabaikan(t *testing.T) {
 func TestKolomWajibYangHilangDisebutSeluruhnya(t *testing.T) {
 	berkas := "policyno\n0100120260001\n"
 
-	_, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	_, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.Error(t, err)
 
 	pesan := err.Error()
@@ -103,7 +103,7 @@ func TestKolomWajibYangHilangDisebutSeluruhnya(t *testing.T) {
 }
 
 func TestBerkasTanpaBarisDataDitolak(t *testing.T) {
-	_, err := inboxautoclaim.ParseUpload(strings.NewReader(judulLengkap + "\n"))
+	_, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(judulLengkap+"\n"))
 	require.ErrorIs(t, err, inboxautoclaim.ErrEmptyUpload)
 }
 
@@ -115,11 +115,11 @@ func TestSeluruhKolomOpsionalBolehTidakAda(t *testing.T) {
 	berkas := "policyno,claimamount,dateofloss,reportdate\n" +
 		"0100120260001,12500000.00,03/01/2026,05/01/2026\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Equal(t, "", baris[0].CauseOfLoss)
 	require.Equal(t, "", baris[0].Keyword)
-	require.NoError(t, inboxautoclaim.CheckUploadShape(baris))
+	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris))
 }
 
 func TestJudulKolomDibacaTanpaMemandangSpasiDanBesarKecilHuruf(t *testing.T) {
@@ -128,7 +128,7 @@ func TestJudulKolomDibacaTanpaMemandangSpasiDanBesarKecilHuruf(t *testing.T) {
 	berkas := "Policy No,Claim_Amount,Date-Of-Loss,REPORTDATE\n" +
 		"0100120260001,12500000.00,03/01/2026,05/01/2026\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Equal(t, "0100120260001", baris[0].PolicyNo)
 	require.Equal(t, "12500000.00", baris[0].ClaimAmount)
@@ -142,12 +142,12 @@ func TestSeluruhPelanggaranBentukDilaporkanSekaligus(t *testing.T) {
 		"0100120260002,,03/01/2026,05/01/2026,12002,,,,,\n" +
 		"0100120260003,12500000.00,,05/01/2026,12002,,,,,\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
 	require.Len(t, baris, 3)
 
 	var validasi *inboxautoclaim.ValidationError
-	require.ErrorAs(t, inboxautoclaim.CheckUploadShape(baris), &validasi)
+	require.ErrorAs(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris), &validasi)
 	require.Len(t, validasi.Violation, 3, "ketiga baris cacat harus dilaporkan sekaligus")
 
 	pesan := validasi.Error()
@@ -164,10 +164,10 @@ func TestTanggalHarusBerformatHariBulanTahun(t *testing.T) {
 		berkas := judulLengkap + "\n" +
 			"0100120260001,12500000.00," + salah + ",05/01/2026,12002,,,,,\n"
 
-		baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+		baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 		require.NoError(t, err)
 
-		err = inboxautoclaim.CheckUploadShape(baris)
+		err = inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris)
 		require.Error(t, err, "tanggal %q seharusnya ditolak", salah)
 		require.Contains(t, err.Error(), "dd/mm/yyyy")
 	}
@@ -181,9 +181,9 @@ func TestNilaiKlaimHarusAngkaTanpaPemisahRibuan(t *testing.T) {
 		berkas := judulLengkap + "\n" +
 			"0100120260001," + salah + ",03/01/2026,05/01/2026,12002,,,,,\n"
 
-		baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+		baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 		require.NoError(t, err, "nilai %s", salah)
-		require.Error(t, inboxautoclaim.CheckUploadShape(baris),
+		require.Error(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris),
 			"nilai %s seharusnya ditolak", salah)
 	}
 }
@@ -193,9 +193,9 @@ func TestNilaiKlaimBerbentukBenarDiterima(t *testing.T) {
 		berkas := judulLengkap + "\n" +
 			"0100120260001," + benar + ",03/01/2026,05/01/2026,12002,,,,,\n"
 
-		baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+		baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 		require.NoError(t, err)
-		require.NoError(t, inboxautoclaim.CheckUploadShape(baris),
+		require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris),
 			"nilai %q seharusnya diterima", benar)
 	}
 }
@@ -206,9 +206,9 @@ func TestNilaiKlaimDesimalPenuhDipertahankanApaAdanya(t *testing.T) {
 	berkas := judulLengkap + "\n" +
 		"0100120260001,12500000.005,03/01/2026,05/01/2026,12002,,,,,\n"
 
-	baris, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.NoError(t, err)
-	require.NoError(t, inboxautoclaim.CheckUploadShape(baris))
+	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceAneka, baris))
 	require.Equal(t, "12500000.005", baris[0].ClaimAmount)
 }
 
@@ -220,7 +220,7 @@ func TestBerkasMelebihiBatasBarisDitolak(t *testing.T) {
 			"POL%06d,1000.00,03/01/2026,05/01/2026,12002,,,,,\n", i))
 	}
 
-	_, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas.String()))
+	_, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas.String()))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Pecah berkasnya")
 }
@@ -228,7 +228,7 @@ func TestBerkasMelebihiBatasBarisDitolak(t *testing.T) {
 func TestJudulKolomGandaDitolak(t *testing.T) {
 	berkas := judulLengkap + ",policyno\n" + barisSah("0100120260001") + ",0100120260002\n"
 
-	_, err := inboxautoclaim.ParseUpload(strings.NewReader(berkas))
+	_, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceAneka, strings.NewReader(berkas))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "dua kali")
 }
@@ -296,4 +296,79 @@ func TestBarisTanpaPesanDinyatakanLolos(t *testing.T) {
 	require.False(t, inboxautoclaim.UploadLine{
 		Message: inboxautoclaim.MessagePolicyNotFound,
 	}.Accepted())
+}
+
+// ---------------------------------------------------------------------------
+// Bentuk berkas per tab (laporan Work Owner 2026-09-27)
+// ---------------------------------------------------------------------------
+
+func TestBerkasKreditTanpaKolomTanggalDiterima(t *testing.T) {
+	// Berkas Asuransi Kredit TIDAK punya dateofloss maupun reportdate
+	// (InsertKlaimToTable_Kredit membaca PolicyNo, ContractNo, ClaimAmount, ReportType,
+	// FlagData, TanggalBayarKlaim). Versi sebelumnya mewajibkan keduanya untuk semua tab.
+	berkas := "PolicyNo,ContractNo,ClaimAmount,ReportType,FlagData,TanggalBayarKlaim\n" +
+		"'0100120260500,ktr-1,12.500.000,KLAIM,1,17/09/2026\n"
+
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceKredit, strings.NewReader(berkas))
+	require.NoError(t, err)
+	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceKredit, baris))
+
+	require.Equal(t, "0100120260500", baris[0].PolicyNo, "tanda kutip Excel dibuang (K:4321)")
+	require.Equal(t, "12500000", baris[0].ClaimAmount, "titik pada nilai Kredit adalah pemisah ribuan (K:3966)")
+	require.Equal(t, "KLAIM", baris[0].ReportType)
+	require.Equal(t, "17/09/2026", baris[0].PaymentDate)
+
+	message, rejected := inboxautoclaim.CheckRowForSource(inboxautoclaim.SourceKredit, baris[0])
+	require.Empty(t, message, "Kredit tidak punya proteksi tanggal")
+	require.False(t, rejected)
+}
+
+func TestBerkasKreditWajibMemuatContractNoDanReportType(t *testing.T) {
+	_, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceKredit,
+		strings.NewReader("policyno,claimamount\nP1,1\n"))
+
+	var validasi *inboxautoclaim.ValidationError
+	require.ErrorAs(t, err, &validasi)
+	require.Contains(t, validasi.Violation[0].Message, "contractno")
+	require.Contains(t, validasi.Violation[0].Message, "reporttype")
+}
+
+func TestTanggalBayarKreditBolehKosongTetapiBilaDiisiHarusDdMmYyyy(t *testing.T) {
+	kosong := []inboxautoclaim.UploadRow{{LineNumber: 2, PolicyNo: "P1", ClaimAmount: "1"}}
+	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceKredit, kosong))
+
+	salah := []inboxautoclaim.UploadRow{{LineNumber: 2, PolicyNo: "P1", ClaimAmount: "1", PaymentDate: "2026-09-17"}}
+	require.Error(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceKredit, salah))
+}
+
+func TestBerkasTravelTanpaTanggalLaporDiterima(t *testing.T) {
+	berkas := "policyno,claimamount,dateofloss,reportdescription\n" +
+		"P1,250.00,05/01/2026,Bagasi hilang di bandara\n"
+
+	baris, err := inboxautoclaim.ParseUpload(inboxautoclaim.SourceTravel, strings.NewReader(berkas))
+	require.NoError(t, err)
+	require.NoError(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceTravel, baris))
+	require.Equal(t, "250.00", baris[0].ClaimAmount, "titik pada tab selain Kredit tetap desimal")
+}
+
+func TestTravelTetapMewajibkanTanggalKejadian(t *testing.T) {
+	baris := []inboxautoclaim.UploadRow{{LineNumber: 2, PolicyNo: "P1", ClaimAmount: "1"}}
+	require.Error(t, inboxautoclaim.CheckUploadShape(inboxautoclaim.SourceTravel, baris))
+}
+
+func TestProteksiBarisPerTab(t *testing.T) {
+	terbalik := inboxautoclaim.UploadRow{DateOfLoss: "05/01/2026", ReportDate: "03/01/2026"}
+
+	// ANEKA: tanggal lapor mendahului kejadian -> disimpan GAGAL, tidak ditolak.
+	message, rejected := inboxautoclaim.CheckRowForSource(inboxautoclaim.SourceAneka, terbalik)
+	require.Equal(t, inboxautoclaim.MessageReportBeforeLoss, message)
+	require.False(t, rejected)
+
+	// Kredit dan Travel tidak membandingkan tanggal lapor sama sekali.
+	message, _ = inboxautoclaim.CheckRowForSource(inboxautoclaim.SourceKredit, terbalik)
+	require.Empty(t, message)
+
+	terbalik.ReportDescription = "Keterangan cukup panjang"
+	message, _ = inboxautoclaim.CheckRowForSource(inboxautoclaim.SourceTravel, terbalik)
+	require.Empty(t, message)
 }

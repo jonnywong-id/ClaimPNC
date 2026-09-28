@@ -10,6 +10,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/portal"
+	portalhttp "claim-pnc/internal/portal/http"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -68,7 +70,13 @@ func (h *Handler) callerOf(w http.ResponseWriter, r *http.Request) (usecase.Call
 		})
 		return usecase.Caller{}, false
 	}
-	return p, true
+	// Peran pemanggil dari POOLDATA.M_LOGIN_GROUP_PNC, dibaca sekali per permintaan.
+	resolved, err := h.service.ResolveCaller(r.Context(), p)
+	if err != nil {
+		h.failure(w, r, err)
+		return usecase.Caller{}, false
+	}
+	return resolved, true
 }
 
 func (h *Handler) readBody(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -146,9 +154,25 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Portal diambil dari portal AKTIF, bukan dari badan permintaan.
+	//
+	// Badan permintaan dikendalikan pemanggil, dan portal menentukan MILIK SIAPA data
+	// yang ditulis (`D-75`). Menerima nilainya dari sana berarti satu permintaan yang
+	// disusun tangan dapat menuliskan klaim atas nama badan hukum lain — kegagalan
+	// `R-20`, yang tidak terlihat sebagai galat karena layarnya tampak normal.
+	//
+	// Middleware ActivePortal sudah memeriksa haknya; yang dilakukan di sini hanya
+	// memakai hasilnya.
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.failure(w, r, portal.ErrNotStated)
+		return
+	}
+
 	result, err := h.service.Start(r.Context(), usecase.StartCommand{
 		PolicyNumber: body.PolicyNumber,
-		Portal:       body.Portal,
+		RCVID:        body.RCVID,
+		Portal:       active.Alias,
 	}, caller)
 	if err != nil {
 		h.failure(w, r, err)
@@ -179,6 +203,7 @@ func (h *Handler) ViewClaim(w http.ResponseWriter, r *http.Request, claimID stri
 	response := ClaimResponse{Claim: claimDTO(summary.Claim), Path: summary.Path}
 	if summary.Task != nil {
 		t := taskDTO(*summary.Task, h.service.Flow())
+		t.Workable = h.service.CanWork(*summary.Task, caller)
 		response.Task = &t
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
@@ -221,6 +246,60 @@ func (h *Handler) SaveRegister(w http.ResponseWriter, r *http.Request) {
 		response.Task = &t
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// SaveDraft menangani POST /api/registrasi/register/simpan — tombol Save.
+//
+// Isiannya sama dengan SaveRegister, tetapi tahapnya tidak ditutup dan validasinya tidak
+// dijalankan. Lihat usecase.SaveDraft.
+func (h *Handler) SaveDraft(w http.ResponseWriter, r *http.Request) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body RegisterRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	command, err := registerCommand(body)
+	if err != nil {
+		h.writeResponse(w, r, http.StatusBadRequest, ErrorResponse{
+			Code:    CodeMalformedRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	claim, err := h.service.SaveDraft(r.Context(), command, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
+}
+
+// AreaOptions menangani GET /api/registrasi/wilayah/{tingkat}?induk=….
+//
+// induk adalah nilai tingkat di atasnya: nama negara untuk provinsi, kode provinsi untuk
+// kota, dan seterusnya. Negara tidak memakai induk.
+func (h *Handler) AreaOptions(w http.ResponseWriter, r *http.Request, level string) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+
+	option, err := h.service.AreaOptions(r.Context(), registrasi.AreaLevel(level), r.URL.Query().Get("induk"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	body := make([]AreaOptionDTO, 0, len(option))
+	for _, o := range option {
+		body = append(body, AreaOptionDTO{ID: o.ID, Name: o.Name, PostalCode: o.PostalCode})
+	}
+	h.writeResponse(w, r, http.StatusOK, AreaOptionsResponse{Option: body})
 }
 
 // ClaimTask menangani POST /api/registrasi/tugas/{taskID}/ambil.
@@ -326,6 +405,7 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		for _, c := range o.Coverage {
 			cov := usecase.CoverageInput{
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSI:         registrasi.Money(c.TSICents),
 				Spreading:   make([]usecase.SpreadingInput, 0, len(c.Spreading)),
@@ -351,6 +431,16 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		DateReceived: receivedDate,
 		Location:     b.Location,
 		Chronology:   b.Chronology,
+		Area: registrasi.Area{
+			Country: b.Area.Country, CountryID: b.Area.CountryID,
+			Province: b.Area.Province, ProvinceID: b.Area.ProvinceID,
+			City: b.Area.City, CityID: b.Area.CityID,
+			District: b.Area.District, DistrictID: b.Area.DistrictID,
+			RW: b.Area.RW, RWID: b.Area.RWID,
+			PostalCode: b.Area.PostalCode,
+		},
+		CustomerPrinciple: b.CustomerPrinciple,
+		SuspiciousComment: b.SuspiciousComment,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -403,9 +493,12 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSICents:    int64(c.TSI),
 				Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
+				Item:        itemDTO(c.Item),
+				Adjustment:  settlementDTO(c.Settlement),
 			}
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
@@ -430,18 +523,32 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			Line:            string(k.Policy.Line),
 			LineName:        LineName(k.Policy.Line),
 			BusinessType:    k.Policy.BusinessType,
+			BusinessCode:    k.Policy.BusinessCode,
 			CoverageStart:   formatDate(k.Policy.CoverageStart),
 			CoverageEnd:     formatDate(k.Policy.CoverageEnd),
 			Currency:        k.Policy.Currency,
 			InsuredName:     k.Policy.InsuredName,
 			Declaration:     k.Policy.Declaration,
 			CreditGuarantee: k.Policy.CreditGuarantee,
+			CoinsType:       k.Policy.TypeOfCoins,
+			CoinsRole:       k.Policy.Coinsurance.Role,
 		},
+		Receiver:     receiverDTO(k.Receiver),
 		DateOfLoss:   formatDate(k.DateOfLoss),
 		ReportDate:   formatDate(k.ReportDate),
 		DateReceived: formatDate(k.DateReceived),
 		Location:     k.Location,
 		Chronology:   k.Chronology,
+		Area: AreaDTO{
+			Country: k.Area.Country, CountryID: k.Area.CountryID,
+			Province: k.Area.Province, ProvinceID: k.Area.ProvinceID,
+			City: k.Area.City, CityID: k.Area.CityID,
+			District: k.Area.District, DistrictID: k.Area.DistrictID,
+			RW: k.Area.RW, RWID: k.Area.RWID,
+			PostalCode: k.Area.PostalCode,
+		},
+		CustomerPrinciple: k.CustomerPrinciple,
+		SuspiciousComment: k.SuspiciousComment,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,
@@ -461,6 +568,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ComplianceTransfer:     k.ComplianceTransfer,
 		ProcessStatus:          string(k.ProcessStatus),
 		ClaimStatus:            string(k.ClaimStatus),
+		ClaimStatusName:        k.ClaimStatusName,
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,
@@ -487,4 +595,12 @@ func LineName(l registrasi.LineOfBusiness) string {
 	default:
 		return string(l)
 	}
+}
+
+func receiverDTO(receivers []registrasi.Receiver) []ReceiverDTO {
+	out := make([]ReceiverDTO, 0, len(receivers))
+	for _, r := range receivers {
+		out = append(out, ReceiverDTO{ID: r.ID, Name: r.Name, Address: r.Address, BankName: r.BankName, AccountNo: r.AccountNo})
+	}
+	return out
 }

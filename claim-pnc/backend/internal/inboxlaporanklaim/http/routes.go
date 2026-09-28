@@ -36,7 +36,7 @@ import (
 //
 // # Urutan pendaftaran
 //
-// `/ekspor` dan `/pilihan` didaftarkan SEBELUM `/{id}`. Tanpa itu keduanya terbaca
+// `/ekspor`, `/pilihan`, dan `/polis` didaftarkan SEBELUM `/{id}`. Tanpa itu ketiganya terbaca
 // sebagai nomor berkas, dan tombol Export akan menjawab "laporan tidak ditemukan".
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
@@ -46,6 +46,7 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Post("/inbox/laporan-klaim", h.Create)
 		perPortal.Get("/inbox/laporan-klaim/pilihan", h.Options)
 		perPortal.Get("/inbox/laporan-klaim/ekspor", h.Export)
+		perPortal.Get("/inbox/laporan-klaim/polis", h.Policy)
 		perPortal.Get("/inbox/laporan-klaim/{id}", h.Get)
 		perPortal.Put("/inbox/laporan-klaim/{id}", h.Save)
 	})

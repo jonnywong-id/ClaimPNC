@@ -1,9 +1,19 @@
 import { forwardRef, useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
-import { useFieldArray, useForm, type Control, type UseFormRegister } from 'react-hook-form'
-import { Link, useParams } from 'react-router-dom'
+import {
+  useFieldArray,
+  useForm,
+  type Control,
+  type UseFormRegister,
+  type UseFormSetValue,
+  type UseFormWatch,
+} from 'react-hook-form'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
+import { Button } from '@/components/Button'
 import { FormField } from '@/components/FormField'
+import { SelectField } from '@/components/SelectField'
+import { TextAreaField } from '@/components/TextAreaField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatPercent, formatRupiah, formatDate, rupiahToCents, centsToRupiah } from '@/components/format'
 
@@ -12,14 +22,37 @@ import {
   useClaim,
   useCompleteStage,
   useSaveRegister,
+  useSaveDraft,
+  useAreaOptions,
   violationsFrom,
   messagesByField,
 } from './api'
+import { EstimateForm } from './EstimateForm'
 import { StagePath } from './StagePath'
-import type { Claim, Violation, RegisterRequest, Task } from './types'
+import { SurveyorForm } from './SurveyorForm'
+import {
+  AreaLevel,
+  COUNTRY_INDONESIA,
+  CustomerPrinciple,
+  type Area,
+  type AreaOption,
+  type Claim,
+  type Violation,
+  type RegisterRequest,
+  type Task,
+} from './types'
 
 /** Pengenal tahap Input Register, satu-satunya tahap yang isiannya dimiliki modul ini. */
 const TAHAP_INPUT_REGISTER = 'input-register'
+
+/** Tahap Input Estimasi (Non-MBU dan Travel), yang isiannya dimiliki EstimateForm. */
+const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
+
+/**
+ * Tahap yang menerima klaim dari Kirim PIC Teknik — Choose Surveyor (Non-MBU) dan Send To
+ * PIC Teknik (Travel). Keduanya layar InputSurveyor, yang dimiliki SurveyorForm.
+ */
+const TAHAP_INPUT_SURVEYOR = ['pilih-surveyor', 'kirim-pic-teknik']
 
 /**
  * Layar kerja satu klaim.
@@ -48,6 +81,8 @@ export function ClaimPage() {
 
   const content = klaim.data
   const atInputRegister = content.klaim.tahap_kini === TAHAP_INPUT_REGISTER
+  const atInputEstimate = TAHAP_INPUT_ESTIMASI.includes(content.klaim.tahap_kini)
+  const atInputSurveyor = TAHAP_INPUT_SURVEYOR.includes(content.klaim.tahap_kini)
 
   return (
     <Frame>
@@ -65,7 +100,15 @@ export function ClaimPage() {
         </p>
       )}
 
-      {content.tugas && !atInputRegister && <StageActions tugas={content.tugas} />}
+      {content.tugas && !atInputRegister && !atInputEstimate && !atInputSurveyor && (
+        <StageActions tugas={content.tugas} />
+      )}
+      {content.tugas && atInputSurveyor && (
+        <SurveyorForm key={content.tugas.id} klaim={content.klaim} tugas={content.tugas} />
+      )}
+      {content.tugas && atInputEstimate && (
+        <EstimateForm key={content.tugas.id} klaim={content.klaim} tugas={content.tugas} />
+      )}
       {content.tugas && atInputRegister && <FormRegister klaim={content.klaim} tugas={content.tugas} />}
 
       {!content.tugas && content.klaim.tahap_kini !== '' && (
@@ -209,6 +252,7 @@ type SpreadingInput = {
 
 type CoverageInput = {
   id: string
+  nama: string
   penyebab_kerugian: string
   tsi: string
   spreading: SpreadingInput[]
@@ -238,7 +282,11 @@ type RegisterFormValues = {
   nomor_slik: string
   user_teknis: string
   rcv_id: string
-  ex_gratia: boolean
+  /** Radio YES / NO seperti layar Pega; dikirim ke server sebagai boolean. */
+  ex_gratia: 'YES' | 'NO'
+  wilayah: Area
+  prinsip_mengenal_nasabah: string
+  komentar_suspicious: string
   status_pucl: string
   transfer_compliance: boolean
   objek: InsuredItemInput[]
@@ -263,9 +311,11 @@ const HUBUNGAN_LAIN_LAIN = '7'
  */
 function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const save = useSaveRegister()
+  const draft = useSaveDraft()
+  const navigate = useNavigate()
   const [violations, setViolations] = useState<Violation[]>([])
 
-  const { register, control, handleSubmit, watch, reset } = useForm<RegisterFormValues>({
+  const { register, control, handleSubmit, watch, reset, setValue } = useForm<RegisterFormValues>({
     defaultValues: fromClaim(klaim),
   })
 
@@ -280,10 +330,20 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
   const submit = (content: RegisterFormValues, kembali: boolean) => {
     setViolations([])
+    draft.reset()
     save.mutate(toRequest(content, tugas.id, kembali), {
       onError: (failure) => setViolations(violationsFrom(failure)),
     })
   }
+
+  // Save menyimpan TANPA menutup tahap dan tanpa gerbang validasi (usecase.SaveDraft).
+  const saveOnly = (content: RegisterFormValues) => {
+    setViolations([])
+    save.reset()
+    draft.mutate(toRequest(content, tugas.id, false))
+  }
+
+  const busy = save.isPending || draft.isPending
 
   return (
     <form className="mt-6 space-y-6" onSubmit={handleSubmit((content) => submit(content, false))}>
@@ -316,6 +376,15 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
       )}
 
+      {draft.isSuccess && (
+        <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          Isian tersimpan. Klaim tetap di tahap Input Register sampai Anda menekan Next.
+        </div>
+      )}
+      {draft.isError && (
+        <ErrorMessage title="Isian belum tersimpan" description={errorMessage(draft.error)} tone="gangguan" />
+      )}
+
       <Section title="Data kejadian">
         <div className="grid gap-4 sm:grid-cols-3">
           <FormField id="tanggal_kejadian" label="Tanggal kejadian" type="date"
@@ -327,7 +396,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <FormField id="lokasi" label="Lokasi kejadian" failure={fieldErrors['lokasi']} {...register('lokasi')} />
           <FormField id="user_teknis" label="PIC Teknik" {...register('user_teknis')} />
         </div>
 
@@ -372,7 +440,6 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           <FormField id="rcv_id" label="ID Receive Document" {...register('rcv_id')} />
           <FormField id="status_pucl" label="Status RCL/PUCL" inputMode="numeric" {...register('status_pucl')} />
           <div className="flex items-end gap-6 pb-2">
-            <Toggle label="Ex gratia" {...register('ex_gratia')} />
             <Toggle label="Transfer Compliance" {...register('transfer_compliance')} />
           </div>
         </div>
@@ -412,30 +479,236 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <SpreadingSummary values={watch('objek')} />
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {save.isPending ? 'Menyimpan…' : 'Simpan dan terbitkan nomor klaim'}
-        </button>
-        <button
-          type="button"
-          disabled={save.isPending}
-          onClick={handleSubmit((content) => submit(content, true))}
-          className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Kembali (Back)
-        </button>
+      <LossLocationSection register={register} watch={watch} setValue={setValue} fieldErrors={fieldErrors} />
+
+      {/*
+        Susunan tombol mengikuti layar tahap Pega: Cancel dan Back di kiri, Save dan Next
+        di kanan.
+
+          Cancel  keluar tanpa menyimpan
+          Back    kembali ke View Polis (pyNote "Back")
+          Save    menyimpan tanpa menutup tahap dan tanpa gerbang validasi
+          Next    menutup Input Register lewat seluruh gerbang validasi, lalu klaim
+                  berpindah ke tahap berikutnya menurut Register_Flow — Input Estimasi
+                  untuk Non-MBU dan Travel, Estimation untuk PA
+      */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+        <div className="flex gap-2">
+          <Button type="button" tone="halus" disabled={busy} onClick={() => navigate('/registrasi')}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            tone="kedua"
+            disabled={busy}
+            onClick={handleSubmit((content) => submit(content, true))}
+          >
+            Back
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" tone="kedua" disabled={busy} onClick={handleSubmit(saveOnly)}>
+            {draft.isPending ? 'Menyimpan…' : 'Save'}
+          </Button>
+          <Button type="submit" tone="utama" disabled={busy}>
+            {save.isPending ? 'Memproses…' : 'Next'}
+          </Button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+// ── Lokasi kejadian ────────────────────────────────────────────────────────────────
+
+/**
+ * Bagian bawah layar Input Register Pega: Lokasi Kerugian/Kejadian beserta wilayahnya,
+ * Prinsip Mengenal Nasabah, dan Ex Gratia (Section/ViewInputRegisterDetail-Section.xml).
+ *
+ * # Daftar pilihan bertingkat
+ *
+ * Negara → Provinsi → Kota → Kabupaten → Kelurahan. Setiap tingkat baru dimuat setelah
+ * induknya dipilih, dan mengganti induk mengosongkan seluruh tingkat di bawahnya —
+ * kabupaten dari kota yang lama tidak boleh tertinggal di bawah kota yang baru.
+ *
+ * Memilih kelurahan mengisi Kode Pos dari master (ZipCode baris RW), dan Kode Pos tetap
+ * dapat diubah — di Pega ia isian teks biasa.
+ *
+ * Kota sampai Kode Pos hanya tampil bila Negara INDONESIA, mengikuti kondisi
+ * .ClaimData.Country = 'INDONESIA' pada section Pega.
+ */
+function LossLocationSection({
+  register,
+  watch,
+  setValue,
+  fieldErrors,
+}: {
+  register: UseFormRegister<RegisterFormValues>
+  watch: UseFormWatch<RegisterFormValues>
+  setValue: UseFormSetValue<RegisterFormValues>
+  fieldErrors: Record<string, string>
+}) {
+  const w = watch('wilayah')
+  const indonesia = (w.negara ?? '').toUpperCase() === COUNTRY_INDONESIA
+  const suspicious = watch('prinsip_mengenal_nasabah') === CustomerPrinciple.Suspicious
+
+  const countries = useAreaOptions(AreaLevel.Country, '')
+  // Provinsi disaring menurut NAMA negara — lihat catatan AreaDirectory di backend.
+  const provinces = useAreaOptions(AreaLevel.Province, w.negara ?? '')
+  const cities = useAreaOptions(AreaLevel.City, indonesia ? w.provinsi_id ?? '' : '')
+  const districts = useAreaOptions(AreaLevel.District, indonesia ? w.kota_id ?? '' : '')
+  const villages = useAreaOptions(AreaLevel.Village, indonesia ? w.kabupaten_id ?? '' : '')
+
+  const set = (field: keyof Area, value: string) =>
+    setValue(`wilayah.${field}`, value, { shouldDirty: true })
+
+  // Urutan tingkat, dari atas ke bawah. Memilih satu tingkat mengosongkan semua yang di bawahnya.
+  const levels: [keyof Area, keyof Area][] = [
+    ['negara', 'negara_id'],
+    ['provinsi', 'provinsi_id'],
+    ['kota', 'kota_id'],
+    ['kabupaten', 'kabupaten_id'],
+    ['kelurahan', 'kelurahan_id'],
+  ]
+  const pick = (index: number, option: AreaOption | undefined) => {
+    const [name, id] = levels[index]!
+    set(name, option?.nama ?? '')
+    set(id, option?.id ?? '')
+    for (const [childName, childID] of levels.slice(index + 1)) {
+      set(childName, '')
+      set(childID, '')
+    }
+    if (index >= levels.length - 1) {
+      set('kode_pos', option?.kode_pos ?? '')
+    } else {
+      set('kode_pos', '')
+    }
+  }
+
+  return (
+    <Section title="Lokasi kerugian/kejadian">
+      <TextAreaField
+        id="lokasi"
+        label="Lokasi Kerugian/Kejadian *"
+        rows={3}
+        error={fieldErrors['lokasi']}
+        {...register('lokasi')}
+      />
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <AreaSelect id="negara" label="Negara" query={countries} value={w.negara_id} currentName={w.negara}
+          onPick={(o) => pick(0, o)} />
+        <AreaSelect id="provinsi" label="Provinsi" query={provinces} value={w.provinsi_id} currentName={w.provinsi}
+          disabled={!w.negara} onPick={(o) => pick(1, o)} />
+
+        {indonesia && (
+          <>
+            <AreaSelect id="kota" label="Kota" query={cities} value={w.kota_id} currentName={w.kota}
+              disabled={!w.provinsi_id} onPick={(o) => pick(2, o)} />
+            <AreaSelect id="kabupaten" label="Kabupaten" query={districts} value={w.kabupaten_id}
+              currentName={w.kabupaten} disabled={!w.kota_id} onPick={(o) => pick(3, o)} />
+            <AreaSelect id="kelurahan" label="Kelurahan" query={villages} value={w.kelurahan_id}
+              currentName={w.kelurahan} disabled={!w.kabupaten_id} onPick={(o) => pick(4, o)} />
+            <FormField id="kode_pos" label="Kode Pos" inputMode="numeric" {...register('wilayah.kode_pos')} />
+          </>
+        )}
       </div>
 
-      <p className="text-xs text-slate-500">
-        Nomor klaim terbit hanya bila seluruh ketentuan terpenuhi, dan setelah terbit
-        tidak dapat ditarik kembali. Tombol Kembali menyimpan isian lalu mengembalikan
-        klaim ke tahap View Polis tanpa menerbitkan nomor.
-      </p>
-    </form>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <RadioGroup
+          label="Prinsip Mengenal Nasabah"
+          name="prinsip_mengenal_nasabah"
+          register={register}
+          options={[
+            { value: CustomerPrinciple.Normal, label: 'NORMAL' },
+            { value: CustomerPrinciple.Suspicious, label: 'SUSPICIOUS' },
+          ]}
+        />
+        <RadioGroup
+          label="Ex Gratia"
+          name="ex_gratia"
+          register={register}
+          options={[
+            { value: 'YES', label: 'YES' },
+            { value: 'NO', label: 'NO' },
+          ]}
+        />
+      </div>
+
+      {suspicious && (
+        <div className="mt-4">
+          <TextAreaField id="komentar_suspicious" label="Komentar Suspicious" rows={2}
+            {...register('komentar_suspicious')} />
+        </div>
+      )}
+    </Section>
+  )
+}
+
+/**
+ * Satu tingkat daftar wilayah. Nilai yang tersimpan tetapi tidak lagi ada di master
+ * tetap ditampilkan dengan namanya, supaya membuka ulang klaim lama tidak diam-diam
+ * mengosongkan isiannya.
+ */
+function AreaSelect({
+  id,
+  label,
+  query,
+  value,
+  currentName,
+  disabled,
+  onPick,
+}: {
+  id: string
+  label: string
+  query: { data?: { pilihan: AreaOption[] } | undefined; isFetching: boolean }
+  value: string | undefined
+  currentName: string | undefined
+  disabled?: boolean
+  onPick: (option: AreaOption | undefined) => void
+}) {
+  const option = query.data?.pilihan ?? []
+  const known = option.some((o) => o.id === value)
+  const list = [
+    ...(value && !known && currentName ? [{ value, label: currentName }] : []),
+    ...option.map((o) => ({ value: o.id, label: o.nama })),
+  ]
+  return (
+    <SelectField
+      id={id}
+      label={label}
+      options={list}
+      value={value ?? ''}
+      disabled={disabled}
+      emptyText={query.isFetching ? 'Memuat…' : '— pilih —'}
+      onChange={(e) => onPick(option.find((o) => o.id === e.target.value))}
+    />
+  )
+}
+
+function RadioGroup({
+  label,
+  name,
+  register,
+  options,
+}: {
+  label: string
+  name: 'prinsip_mengenal_nasabah' | 'ex_gratia'
+  register: UseFormRegister<RegisterFormValues>
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <fieldset>
+      <legend className="block text-sm font-medium text-slate-700">{label}</legend>
+      <div className="mt-2 flex gap-6">
+        {options.map((o) => (
+          <label key={o.value} className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="radio" value={o.value} className="h-4 w-4 border-slate-300" {...register(name)} />
+            {o.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   )
 }
 
@@ -503,7 +776,7 @@ function InsuredItemEditor({
       <div className="mt-3 flex gap-3">
         <button
           type="button"
-          onClick={() => coverage.append({ id: '', penyebab_kerugian: '', tsi: '', spreading: [] })}
+          onClick={() => coverage.append({ id: '', nama: '', penyebab_kerugian: '', tsi: '', spreading: [] })}
           className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
         >
           Tambah coverage
@@ -538,8 +811,9 @@ function CoverageEditor({
 
   return (
     <div className="rounded border border-slate-200 bg-white p-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <FormField id={`${nama}-id`} label="Kode coverage" {...register(`${nama}.id`)} />
+        <FormField id={`${nama}-nama`} label="Nama coverage" {...register(`${nama}.nama`)} />
         <FormField id={`${nama}-sebab`} label="Penyebab kerugian" {...register(`${nama}.penyebab_kerugian`)} />
         <FormField id={`${nama}-tsi`} label="TSI" inputMode="decimal" {...register(`${nama}.tsi`)} />
       </div>
@@ -655,6 +929,20 @@ function SpreadingSummary({ values }: { values: InsuredItemInput[] | undefined }
 
 // ── Terjemahan antara bentuk layar dan bentuk API ──────────────────────────────────
 
+const EMPTY_AREA: Area = {
+  negara: '',
+  negara_id: '',
+  provinsi: '',
+  provinsi_id: '',
+  kota: '',
+  kota_id: '',
+  kabupaten: '',
+  kabupaten_id: '',
+  kelurahan: '',
+  kelurahan_id: '',
+  kode_pos: '',
+}
+
 function fromClaim(klaim: Claim): RegisterFormValues {
   return {
     tanggal_kejadian: klaim.tanggal_kejadian,
@@ -673,7 +961,11 @@ function fromClaim(klaim: Claim): RegisterFormValues {
     nomor_slik: klaim.nomor_slik,
     user_teknis: klaim.user_teknis,
     rcv_id: klaim.rcv_id,
-    ex_gratia: klaim.ex_gratia,
+    ex_gratia: klaim.ex_gratia ? 'YES' : 'NO',
+    wilayah: { ...EMPTY_AREA, ...(klaim.wilayah ?? {}) },
+    // NORMAL adalah bawaan layar Pega (pyDefaultValue 1).
+    prinsip_mengenal_nasabah: klaim.prinsip_mengenal_nasabah || CustomerPrinciple.Normal,
+    komentar_suspicious: klaim.komentar_suspicious ?? '',
     status_pucl: klaim.status_pucl ? String(klaim.status_pucl) : '0',
     transfer_compliance: klaim.transfer_compliance,
     objek: klaim.objek.map((o) => ({
@@ -682,6 +974,7 @@ function fromClaim(klaim: Claim): RegisterFormValues {
       lokasi: o.lokasi,
       coverage: o.coverage.map((c) => ({
         id: c.id,
+        nama: c.nama ?? '',
         penyebab_kerugian: c.penyebab_kerugian,
         tsi: centsToRupiah(c.tsi_sen),
         spreading: c.spreading.map((s) => ({
@@ -715,7 +1008,12 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
     nilai_estimasi_sen: rupiahToCents(content.nilai_estimasi) || 0,
     mata_uang: content.mata_uang,
     nomor_slik: content.nomor_slik,
-    ex_gratia: content.ex_gratia,
+    ex_gratia: content.ex_gratia === 'YES',
+    wilayah: content.wilayah,
+    prinsip_mengenal_nasabah: content.prinsip_mengenal_nasabah,
+    // Komentar hanya bermakna bila SUSPICIOUS; isian yang tersembunyi tidak dikirim.
+    komentar_suspicious:
+      content.prinsip_mengenal_nasabah === CustomerPrinciple.Suspicious ? content.komentar_suspicious : '',
     user_teknis: content.user_teknis,
     rcv_id: content.rcv_id,
     status_pucl: Number(content.status_pucl) || 0,
@@ -727,6 +1025,7 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
       lokasi: o.lokasi,
       coverage: (o.coverage ?? []).map((c) => ({
         id: c.id,
+        nama: c.nama,
         penyebab_kerugian: c.penyebab_kerugian,
         tsi_sen: rupiahToCents(c.tsi) || 0,
         spreading: (c.spreading ?? []).map((s) => ({

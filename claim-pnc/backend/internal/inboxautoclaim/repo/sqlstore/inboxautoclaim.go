@@ -12,6 +12,7 @@ import (
 	"embed"
 	"fmt"
 	"strings"
+	"time"
 
 	"claim-pnc/internal/inboxautoclaim"
 )
@@ -367,29 +368,8 @@ func (r *Repo) InsertUpload(
 
 		reference := inboxautoclaim.BatchRef{CompanyCode: companyCode, BatchNumber: batchNumber}
 		for _, l := range group[companyCode] {
-			// Ketiga kolom ini menerima nilai yang SAMA: pesan galat bila baris gagal,
-			// NULL bila lolos. Yang NULL itulah yang membuat barisnya terambil pemrosesan.
-			mark := nullable(l.Message)
-
-			if _, err := tx.ExecContext(ctx, getQueryFor(source, "auto_claim_line_insert"),
-				batchNumber,
-				companyCode,
-				l.Row.PolicyNo,
-				nullable(l.ProductSeq),
-				uploadedBy,
-				mark, // IDPEGA
-				l.Row.DateOfLoss,
-				l.Row.ReportDate,
-				nil, // CURRENCY — dari snapshot polis, menunggu B-1
-				nullable(l.Row.CauseOfLoss),
-				l.Row.ClaimAmount,
-				nullable(l.Row.Reason),
-				nullable(l.Row.Keyword),
-				mark, // TMP_MESSAGE
-				mark, // NOAKSEPTASI
-				nullable(l.Row.ObjectName),
-				nullable(l.Row.FlagNoPayout),
-			); err != nil {
+			name, argument := insertStatement(source, batchNumber, companyCode, uploadedBy, l)
+			if _, err := tx.ExecContext(ctx, getQueryFor(source, name), argument...); err != nil {
 				return inboxautoclaim.UploadResult{}, fmt.Errorf(
 					"inboxautoclaim/sqlstore: menyisipkan baris %d: %w", l.Row.LineNumber, err)
 			}
@@ -452,6 +432,98 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 		_ = rows.Close()
 	}
 	return nil
+}
+
+// insertStatement memilih kueri sisip tab dan menyusun argumennya.
+//
+// Ketiga tabel batch punya susunan kolom yang BERBEDA (lihat tableColumn), sehingga
+// sisipnya tiga pernyataan — satu per tab, masing-masing disalin dari rule Pega tab itu.
+//
+// Di ketiganya, pesan kegagalan masuk ke IDPEGA, kolom akseptasi, dan TMP_MESSAGE
+// sekaligus; NULL bila baris lolos. Yang NULL itulah yang membuat barisnya terambil
+// pemrosesan.
+func insertStatement(
+	source inboxautoclaim.Source,
+	batchNumber, companyCode, uploadedBy string,
+	l inboxautoclaim.UploadLine,
+) (string, []any) {
+	mark := nullable(l.Message)
+
+	switch source {
+	case inboxautoclaim.SourceKredit:
+		return "auto_claim_line_insert_kredit", []any{
+			batchNumber,
+			companyCode,
+			l.Row.PolicyNo,
+			nullable(l.ProductSeq),
+			uploadedBy,
+			mark, // IDPEGA
+			mark, // ACCEPTNO
+			mark, // TMP_MESSAGE
+			nil,  // CURRENCY — dari snapshot polis, menunggu B-1
+			l.Row.ClaimAmount,
+			// Huruf besar mengikuti `@toUpperCase(ContractNo)` (K:4424-4431) — dan
+			// pencocokan hasilnya di Pega memakai upper(NOASURANSI).
+			nullable(strings.ToUpper(l.Row.ContractNo)),
+			nullable(l.Row.ReportType),
+			paymentDate(l.Row.PaymentDate),
+		}
+	case inboxautoclaim.SourceTravel:
+		return "auto_claim_line_insert_travel", []any{
+			batchNumber,
+			companyCode,
+			l.Row.PolicyNo,
+			nullable(l.ProductSeq),
+			uploadedBy,
+			mark, // IDPEGA
+			mark, // NOAKSEPTASI
+			mark, // TMP_MESSAGE
+			l.Row.DateOfLoss,
+			nil, // CURRENCY
+			l.Row.ClaimAmount,
+			nullable(l.Row.FlagNoPayout),
+			nullable(l.Row.ReportDescription),
+		}
+	default:
+		return "auto_claim_line_insert", []any{
+			batchNumber,
+			companyCode,
+			l.Row.PolicyNo,
+			nullable(l.ProductSeq),
+			uploadedBy,
+			mark, // IDPEGA
+			l.Row.DateOfLoss,
+			l.Row.ReportDate,
+			nil, // CURRENCY
+			nullable(l.Row.CauseOfLoss),
+			l.Row.ClaimAmount,
+			nullable(l.Row.Reason),
+			nullable(l.Row.Keyword),
+			mark, // TMP_MESSAGE
+			mark, // NOAKSEPTASI
+			nullable(l.Row.ObjectName),
+			nullable(l.Row.FlagNoPayout),
+		}
+	}
+}
+
+// paymentDate mengubah tanggal bayar klaim dd/mm/yyyy menjadi nilai tanggal, atau NULL.
+//
+// Pega mengirimnya sebagai parameter DateTime (`{InputPolis.EndDateTime DateTime}`,
+// RDB List/InsertTempAsuransiKredit-SQL.xml), sehingga kolomnya bertipe tanggal — bukan
+// teks seperti TGLKEJADIAN. Pega menempelkan JAM SAAT UNGGAH pada tanggal itu (K:4495);
+// jam itu tidak bermakna bisnis dan tidak ditiru: yang disimpan tengah malam pada tanggal
+// yang diketik pengunggah.
+//
+// Bentuknya sudah dijamin CheckUploadShape. Bila tetap tidak terbaca, NULL — lebih aman
+// daripada menyimpan tanggal yang salah.
+func paymentDate(value string) any {
+	value = strings.TrimSpace(value)
+	parsed, err := time.ParseInLocation(dateLayout, value, time.Local)
+	if value == "" || err != nil {
+		return nil
+	}
+	return parsed
 }
 
 // lineQueryName memilih pasangan kueri daftar dan hitungan sesuai penyaring hasil.
@@ -632,7 +704,15 @@ func resolveAllQueries() map[string]string {
 		if !exists {
 			panic("inboxautoclaim/sqlstore: tab tanpa tabel: " + string(source))
 		}
-		pengganti := strings.NewReplacer("{{TABEL}}", info.Table, "{{KOLOM}}", info.CompanyColumn)
+		column, exists := tableColumn[source]
+		if !exists {
+			panic("inboxautoclaim/sqlstore: tab tanpa pemetaan kolom: " + string(source))
+		}
+		pair := []string{"{{TABEL}}", info.Table, "{{KOLOM}}", info.CompanyColumn}
+		for placeholder, expression := range column {
+			pair = append(pair, placeholder, expression)
+		}
+		pengganti := strings.NewReplacer(pair...)
 		for name, text := range query {
 			isi := pengganti.Replace(text)
 			if strings.Contains(isi, "{{") {

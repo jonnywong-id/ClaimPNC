@@ -339,6 +339,28 @@ describe('daftar master bengkel', () => {
     expect(await screen.findByText('Bengkel Contoh Ditolak')).toBeInTheDocument()
     expect(screen.queryByText('rekanan tanpa login')).not.toBeInTheDocument()
   })
+
+  /*
+    Pemuatan yang GAGAL tampil sama dengan tabel yang memang kosong.
+
+    Keputusan Work Owner 2026-09-28, mengikuti Master Sparepart (2026-09-24). Uji ini
+    menguncinya supaya perubahannya kelak disengaja dan bukan tergelincir: tidak ada kotak
+    galat yang menggantikan tabelnya, kepala kolomnya tetap tergambar, dan kalimatnya sama
+    dengan keadaan nol baris.
+  */
+  it('memakai kalimat yang sama saat pemuatan gagal', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/bengkel/cabang')) return { body: BRANCHES }
+      if (call.url.startsWith('/api/master/bengkel/bank')) return { body: BANKS }
+      if (call.url.startsWith('/api/master/bengkel/kota')) return { body: CITIES }
+      return { body: { kode: 'kesalahan_sistem', pesan: 'gagal' }, status: 500 }
+    })
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'ID Bengkel' })).toBeInTheDocument()
+    expect(await screen.findByText('Data tidak ada')).toBeInTheDocument()
+  })
 })
 
 describe('paginasi', () => {

@@ -7,10 +7,17 @@ import (
 
 // ReportNumberPrefix menandai laporan yang diterbitkan aplikasi ini.
 //
-// Bentuknya `RCVN.YY.xxxx`, mengikuti keputusan `D-71` untuk nomor klaim
-// (`PNCN.YY.xxxx`) beserta alasannya: selama masa paralel, asal sebuah baris harus
-// terbaca langsung dari nomornya tanpa tabel pemetaan. Laporan warisan Pega memakai
-// `pyID` berbentuk lain dan tidak pernah diterbitkan ulang.
+// Bentuknya `RCVN.YY.xxxx`.
+//
+// Alasan awalan ini ada sama seperti pada nomor klaim (`D-71`): selama masa paralel, asal
+// sebuah baris harus terbaca langsung dari nomornya tanpa tabel pemetaan. Laporan warisan
+// Pega memakai `pyID` berbentuk lain dan tidak pernah diterbitkan ulang.
+//
+// # Satu bentuk lain hidup di data
+//
+// Bentuk `RCVN-xxxx` sempat dipakai sehari (2026-09-24) sebelum dibatalkan, dan satu
+// berkas telanjur terbit dengannya. Ia tetap milik aplikasi ini dan wajib tetap dikenali —
+// lihat IssuedHere. Yang dibandingkan di SQL karena itu awalan `RCVN` saja.
 const ReportNumberPrefix = "RCVN"
 
 // Money adalah nilai rupiah dalam SEN. Rp 1.000 = 100_000.

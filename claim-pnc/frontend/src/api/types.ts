@@ -2159,6 +2159,10 @@ export type AutoClaimUploadResponse = {
 export type AutoClaimUploadTemplateResponse = {
   kolom_wajib: string[]
   kolom_opsional: string[]
+  /** Kolom yang wajib dd/mm/yyyy pada tab ini — berbeda per bisnis. */
+  kolom_tanggal: string[]
+  /** Benar di tab Kredit: titik pada nilai klaim dibuang sebagai pemisah ribuan. */
+  titik_ribuan: boolean
   batas_baris: number
  /* Badan permintaan penambahan dan penyuntingan.
  *

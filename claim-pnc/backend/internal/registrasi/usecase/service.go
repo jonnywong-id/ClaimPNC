@@ -8,6 +8,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,18 +37,33 @@ type Caller struct {
 type Service struct {
 	flow registrasi.Definition
 
-	claim     registrasi.ClaimRepo
-	task      registrasi.TaskRepo
-	policy    registrasi.PolicyRepo
-	number    registrasi.NumberIssuer
-	parameter registrasi.Parameter
-	rate      registrasi.ExchangeRateSource
-	assigner  registrasi.Assigner
-	notifier  registrasi.Notifier
-	audit     registrasi.AuditRecorder
-	id        registrasi.IDGenerator
-	unit      registrasi.UnitOfWork
-	clock     clock.Clock
+	claim       registrasi.ClaimRepo
+	task        registrasi.TaskRepo
+	policy      registrasi.PolicyRepo
+	number      registrasi.NumberIssuer
+	parameter   registrasi.Parameter
+	rate        registrasi.ExchangeRateSource
+	assigner    registrasi.Assigner
+	notifier    registrasi.Notifier
+	audit       registrasi.AuditRecorder
+	reportLink  registrasi.ClaimReportLink
+	area        registrasi.AreaDirectory
+	items       registrasi.PolicyItemSource
+	currency    registrasi.CurrencyDirectory
+	options     registrasi.ItemOptionSource
+	records     registrasi.ClaimRecordSource
+	faceSheet   registrasi.FaceSheetSource
+	renderer    registrasi.FaceSheetRenderer
+	pla         registrasi.PLASource
+	plaRenderer registrasi.PLARenderer
+	groups      registrasi.GroupSource
+	inbox       registrasi.InboxMirror
+	accounts    registrasi.AccountDirectory
+	tiering     registrasi.CommitteeTiering
+	committees  registrasi.CommitteeStore
+	id          registrasi.IDGenerator
+	unit        registrasi.UnitOfWork
+	clock       clock.Clock
 
 	validateOnReturn bool
 }
@@ -63,9 +79,50 @@ type Options struct {
 	Assigner           registrasi.Assigner
 	Notifier           registrasi.Notifier
 	AuditRecorder      registrasi.AuditRecorder
-	IDGenerator        registrasi.IDGenerator
-	UnitOfWork         registrasi.UnitOfWork
-	Clock              clock.Clock
+	ClaimReportLink    registrasi.ClaimReportLink
+	AreaDirectory      registrasi.AreaDirectory
+
+	// PolicyItems membaca objek, coverage, dan spreading polis untuk klaim yang baru
+	// dibuka (CallActivityInputRegister).
+	PolicyItems registrasi.PolicyItemSource
+
+	// CurrencyDirectory membaca pilihan Mata Uang tahap Input Estimasi.
+	CurrencyDirectory registrasi.CurrencyDirectory
+
+	// ItemOptions membaca pilihan Objek item estimasi dari polis.
+	ItemOptions registrasi.ItemOptionSource
+
+	// ClaimRecords membaca tab Survey, Unggah Dokumen, dan Progress Claim & Komunikasi.
+	ClaimRecords registrasi.ClaimRecordSource
+
+	// FaceSheet membaca data pendamping Claim Face Sheet dan menyimpan revisinya;
+	// FaceSheetRenderer membentuk dokumennya.
+	FaceSheet         registrasi.FaceSheetSource
+	FaceSheetRenderer registrasi.FaceSheetRenderer
+
+	// PLA menerbitkan dan membaca PLA koasuransi; PLARenderer membentuk dokumennya.
+	PLA         registrasi.PLASource
+	PLARenderer registrasi.PLARenderer
+
+	// Groups membaca keanggotaan grup pengguna (POOLDATA.M_LOGIN_GROUP_PNC) — penentu
+	// peran dan tahap yang boleh dikerjakannya (access.go).
+	Groups registrasi.GroupSource
+
+	// Inbox menulis baris daftar kerja My Inbox (POOLDATA.T_CLAIMLIST_ADMIN) setiap kali
+	// klaim atau tugasnya berubah — lihat registrasi.InboxEntry.
+	Inbox registrasi.InboxMirror
+
+	// Accounts membaca Master Rekening untuk isian No Rekening penerima klaim.
+	Accounts registrasi.AccountDirectory
+
+	// CommitteeTiering menghitung penyetuju komite (modul komite); Committees menyimpan
+	// kasus komite di POOLDATA.T_CLAIM_KOMITE_LIST.
+	CommitteeTiering registrasi.CommitteeTiering
+	Committees       registrasi.CommitteeStore
+
+	IDGenerator registrasi.IDGenerator
+	UnitOfWork  registrasi.UnitOfWork
+	Clock       clock.Clock
 
 	// ValidateOnReturn menentukan apakah tombol Back ikut melewati gerbang validasi.
 	//
@@ -107,6 +164,21 @@ func NewService(o Options) (*Service, error) {
 	check("Penugasan", o.Assigner != nil)
 	check("Notifier", o.Notifier != nil)
 	check("PerekamAudit", o.AuditRecorder != nil)
+	check("TautanLaporan", o.ClaimReportLink != nil)
+	check("DirektoriWilayah", o.AreaDirectory != nil)
+	check("ObjekPolis", o.PolicyItems != nil)
+	check("DirektoriMataUang", o.CurrencyDirectory != nil)
+	check("PilihanItem", o.ItemOptions != nil)
+	check("CatatanKlaim", o.ClaimRecords != nil)
+	check("ClaimFaceSheet", o.FaceSheet != nil)
+	check("PembentukFaceSheet", o.FaceSheetRenderer != nil)
+	check("PLA", o.PLA != nil)
+	check("PembentukPLA", o.PLARenderer != nil)
+	check("GrupPengguna", o.Groups != nil)
+	check("DaftarKerja", o.Inbox != nil)
+	check("MasterRekening", o.Accounts != nil)
+	check("PenjenjanganKomite", o.CommitteeTiering != nil)
+	check("KasusKomite", o.Committees != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -126,7 +198,22 @@ func NewService(o Options) (*Service, error) {
 		assigner:         o.Assigner,
 		notifier:         o.Notifier,
 		audit:            o.AuditRecorder,
-		id:               o.IDGenerator,
+		reportLink:       o.ClaimReportLink,
+		area:             o.AreaDirectory,
+		items:            o.PolicyItems,
+		currency:         o.CurrencyDirectory,
+		options:          o.ItemOptions,
+		records:          o.ClaimRecords,
+		faceSheet:        o.FaceSheet,
+		renderer:         o.FaceSheetRenderer,
+		pla:              o.PLA,
+		plaRenderer:      o.PLARenderer,
+		groups:           o.Groups,
+		inbox:            o.Inbox,
+		accounts:         o.Accounts,
+		tiering:          o.CommitteeTiering,
+		committees:       o.Committees,
+		id:              o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,
 		validateOnReturn: o.ValidateOnReturn,
@@ -171,6 +258,10 @@ func (l *Service) advance(
 	if err != nil {
 		return nil, trace, fmt.Errorf("registrasi/usecase: menentukan penerima tahap %q: %w", stage.ID, err)
 	}
+
+	// PIC yang dipilih router ditulis ke klaim, supaya PICTEKNIK dan USERTEKNIS_1 berisi
+	// pemegang tugasnya — lihat registrasi/technicalpic.go.
+	registrasi.AdoptTechnicalPIC(fctx.claim, stage, recipients)
 
 	fresh := registrasi.NewTask(l.id.New(), *fctx.claim, stage, recipients, fctx.now)
 	fctx.claim.CurrentStage = stage.ID
@@ -241,3 +332,46 @@ type loadContext struct {
 	// action tidak diperiksa.
 	action string
 }
+
+// ResolveCaller melengkapi pemanggil dengan perannya dari POOLDATA.M_LOGIN_GROUP_PNC.
+// Transport memanggilnya sekali per permintaan, sebelum layanan mana pun dipakai.
+func (l *Service) ResolveCaller(ctx context.Context, by Caller) (Caller, error) {
+	groups, err := l.groups.GroupsOf(ctx, by.Identity)
+	if err != nil {
+		return Caller{}, err
+	}
+	by.Roles = registrasi.RolesOfGroups(append(append([]string{}, by.Roles...), groups...))
+	return by, nil
+}
+
+// canWork menyatakan pemanggil boleh mengerjakan tugas: pemiliknya, tugas belum bertuan,
+// atau ia memegang grup tahap itu (`registrasi.CanWork`).
+func (l *Service) canWork(task registrasi.Task, by Caller) bool {
+	stage, _ := l.flow.Stage(task.Stage)
+	return registrasi.CanWork(task, stage, by.Identity, by.Roles)
+}
+
+// mirrorInbox menulis ulang baris daftar kerja klaim dari keadaannya sekarang.
+//
+// Dipanggil di akhir setiap transaksi yang mengubah klaim atau tugasnya. Tugas terbuka
+// dibaca ulang di dalam transaksi itu, bukan diteruskan pemanggil, supaya satu fungsi ini
+// yang menentukan isi baris — pemanggil tidak dapat lupa menyertakan tugas yang baru lahir.
+func (l *Service) mirrorInbox(ctx context.Context, claim registrasi.Claim) error {
+	var open *registrasi.Task
+	task, err := l.task.OpenTaskForClaim(ctx, claim.ID)
+	switch {
+	case err == nil:
+		open = &task
+	case errors.Is(err, registrasi.ErrTaskNotFound):
+	default:
+		return fmt.Errorf("registrasi/usecase: membaca tugas terbuka untuk daftar kerja: %w", err)
+	}
+	if err := l.inbox.Mirror(ctx, registrasi.NewInboxEntry(claim, open, l.flow)); err != nil {
+		return fmt.Errorf("registrasi/usecase: menulis daftar kerja: %w", err)
+	}
+	return nil
+}
+
+// CanWork adalah canWork bagi transport — layar memakainya untuk mengunci isian tugas yang
+// tidak boleh dikerjakan pemanggil.
+func (l *Service) CanWork(task registrasi.Task, by Caller) bool { return l.canWork(task, by) }

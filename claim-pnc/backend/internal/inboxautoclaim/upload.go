@@ -43,6 +43,12 @@ const (
 	ColumnObjectName   = "objectname"
 	ColumnFlagNoPayout = "flagtidakbayar"
 	ColumnContractNo   = "contractno"
+
+	// Tiga kolom khusus tab Asuransi Kredit dan satu khusus Travel — lihat UploadColumnFor.
+	ColumnReportType        = "reporttype"
+	ColumnFlagData          = "flagdata"
+	ColumnPaymentDate       = "tanggalbayarklaim"
+	ColumnReportDescription = "reportdescription"
 )
 
 // RequiredUploadColumn adalah judul kolom yang WAJIB ada di berkas.
@@ -57,7 +63,7 @@ var RequiredUploadColumn = []string{
 	ColumnReportDate,
 }
 
-// OptionalUploadColumn adalah judul kolom yang boleh ada dan boleh tidak.
+// OptionalUploadColumn adalah judul kolom yang boleh ada dan boleh tidak di tab ANEKA.
 var OptionalUploadColumn = []string{
 	ColumnCauseOfLoss,
 	ColumnKeyword,
@@ -65,6 +71,50 @@ var OptionalUploadColumn = []string{
 	ColumnObjectName,
 	ColumnFlagNoPayout,
 	ColumnContractNo,
+}
+
+// UploadColumnFor menyebut kolom wajib dan opsional berkas SATU tab.
+//
+// # Kenapa berbeda per tab
+//
+// Pega punya activity unggahan TERSENDIRI per bisnis, masing-masing membaca kolom yang
+// berbeda (InboxAutoClaim/InsertKlaimToTable_*.xml):
+//
+//	Kredit  PolicyNo, ContractNo, ClaimAmount, ReportType, FlagData, TanggalBayarKlaim
+//	Travel  PolicyNo, ClaimAmount, DateOfLoss, FlagTidakBayar, ReportDescription
+//	ANEKA   PolicyNo, ContractNo, ClaimAmount, Keyword, DateOfLoss, ReportDate, CauseOfLoss,
+//	        AlasanKlaim, ObjectName, FlagTidakBayar
+//
+// Versi pertama modul ini memakai daftar ANEKA untuk ketiga tab, sehingga berkas Asuransi
+// Kredit — yang memang tidak punya tanggal kejadian maupun tanggal lapor — selalu ditolak
+// dengan "Tanggal kejadian wajib diisi" (laporan Work Owner 2026-09-27).
+//
+// ContractNo dan ReportType WAJIB di tab Kredit: activity-nya menandai hasil setiap baris
+// dengan mencocokkan upper(NOASURANSI) (GetMaxBatchAsuransiKredit), dan membedakan klaim
+// dari akseptasi lewat ReportType.
+func UploadColumnFor(source Source) (required, optional []string) {
+	switch source {
+	case SourceKredit:
+		return []string{ColumnPolicyNo, ColumnContractNo, ColumnClaimAmount, ColumnReportType},
+			[]string{ColumnFlagData, ColumnPaymentDate}
+	case SourceTravel:
+		return []string{ColumnPolicyNo, ColumnClaimAmount, ColumnDateOfLoss, ColumnReportDescription},
+			[]string{ColumnFlagNoPayout}
+	default:
+		return RequiredUploadColumn, OptionalUploadColumn
+	}
+}
+
+// DateColumnFor menyebut kolom tanggal berkas satu tab — seluruhnya dd/mm/yyyy.
+func DateColumnFor(source Source) []string {
+	switch source {
+	case SourceKredit:
+		return []string{ColumnPaymentDate}
+	case SourceTravel:
+		return []string{ColumnDateOfLoss}
+	default:
+		return []string{ColumnDateOfLoss, ColumnReportDate}
+	}
 }
 
 // Pesan hasil pemrosesan satu baris.
@@ -99,7 +149,17 @@ const (
 	//
 	// BELUM DAPAT DIPERIKSA modul ini — `CekPremiAutoKlaim` tidak ada di export.
 	MessagePremiumUnpaid = "Premi belum lunas"
+
+	// MessageReportDescriptionRequired: keterangan laporan tab Travel kosong atau terlalu
+	// pendek. Disalin harfiah dari InsertKlaimToTable_Travel (:6886). Barisnya TIDAK
+	// disisipkan — kondisinya (@length(.ReportDescription)<=10, :3976) melompat ke ERR3
+	// sebelum sisip.
+	MessageReportDescriptionRequired = "Report Description Wajib Diisi"
 )
+
+// MinReportDescription adalah panjang keterangan laporan Travel yang harus DILAMPAUI.
+// Kondisi Pega @length(.ReportDescription)<=10 ditolak, jadi yang lolos 11 karakter ke atas.
+const MinReportDescription = 10
 
 // UploadRow adalah satu baris berkas unggahan setelah dibaca dan dibersihkan.
 type UploadRow struct {
@@ -121,6 +181,14 @@ type UploadRow struct {
 	ObjectName   string
 	FlagNoPayout string
 	ContractNo   string
+
+	// ReportType, FlagData, dan PaymentDate khusus tab Kredit.
+	ReportType  string
+	FlagData    string
+	PaymentDate string
+
+	// ReportDescription khusus tab Travel.
+	ReportDescription string
 }
 
 // Resolution adalah hasil pencarian polis untuk satu baris unggahan.
@@ -198,7 +266,7 @@ type RejectedRow struct {
 // Pemisah kolom dikenali sendiri: koma dan titik koma sama-sama diterima, karena Excel
 // berlokal Indonesia menyimpan CSV dengan titik koma dan itulah perkakas yang benar-benar
 // dipakai petugas.
-func ParseUpload(source io.Reader) ([]UploadRow, error) {
+func ParseUpload(tab Source, source io.Reader) ([]UploadRow, error) {
 	content, err := io.ReadAll(io.LimitReader(source, maxUploadBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("inboxautoclaim: berkas tidak dapat dibaca: %w", err)
@@ -231,7 +299,8 @@ func ParseUpload(source io.Reader) ([]UploadRow, error) {
 		return nil, ErrEmptyUpload
 	}
 
-	index, err := readHeader(record[0])
+	required, _ := UploadColumnFor(tab)
+	index, err := readHeader(record[0], required)
 	if err != nil {
 		return nil, err
 	}
@@ -246,9 +315,12 @@ func ParseUpload(source io.Reader) ([]UploadRow, error) {
 			// +2: satu untuk baris judul, satu karena manusia menghitung dari 1.
 			LineNumber: number + 2,
 			// Titik dibuang dari nomor polis, mengikuti
-			// `InputParam.PolicyNo = @replaceAll(.PolicyNo,".","")`.
-			PolicyNo:     strings.ToUpper(strings.ReplaceAll(pick(line, index, ColumnPolicyNo), ".", "")),
-			ClaimAmount:  pick(line, index, ColumnClaimAmount),
+			// `InputParam.PolicyNo = @replaceAll(.PolicyNo,".","")`; tanda kutip tunggal
+			// dibuang mengikuti tab Kredit (K:4321) — Excel menambahkannya pada angka
+			// panjang supaya tidak diubah menjadi notasi ilmiah.
+			PolicyNo: strings.ToUpper(strings.NewReplacer(".", "", "'", "").
+				Replace(pick(line, index, ColumnPolicyNo))),
+			ClaimAmount:  claimAmountFor(tab, pick(line, index, ColumnClaimAmount)),
 			DateOfLoss:   pick(line, index, ColumnDateOfLoss),
 			ReportDate:   pick(line, index, ColumnReportDate),
 			CauseOfLoss:  pick(line, index, ColumnCauseOfLoss),
@@ -257,6 +329,11 @@ func ParseUpload(source io.Reader) ([]UploadRow, error) {
 			ObjectName:   pick(line, index, ColumnObjectName),
 			FlagNoPayout: pick(line, index, ColumnFlagNoPayout),
 			ContractNo:   pick(line, index, ColumnContractNo),
+
+			ReportType:        pick(line, index, ColumnReportType),
+			FlagData:          pick(line, index, ColumnFlagData),
+			PaymentDate:       pick(line, index, ColumnPaymentDate),
+			ReportDescription: pick(line, index, ColumnReportDescription),
 		})
 	}
 
@@ -289,7 +366,7 @@ const maxUploadBytes = 8 << 20
 // Yang menyangkut polis — perusahaan, prodke, periode, premi — TIDAK diperiksa di sini.
 // Kegagalannya tidak menolak berkas; barisnya tetap disisipkan dengan pesan pada
 // TMP_MESSAGE, persis seperti `InsertKlaimToTable_Other`.
-func CheckUploadShape(row []UploadRow) error {
+func CheckUploadShape(source Source, row []UploadRow) error {
 	var violation []Violation
 
 	for _, r := range row {
@@ -304,8 +381,22 @@ func CheckUploadShape(row []UploadRow) error {
 			})
 		}
 
-		violation = append(violation, checkDate(at(ColumnDateOfLoss), "Tanggal kejadian", r.DateOfLoss)...)
-		violation = append(violation, checkDate(at(ColumnReportDate), "Tanggal lapor", r.ReportDate)...)
+		// Pemeriksaan tanggal MENGIKUTI TAB. Kredit tidak punya tanggal kejadian maupun
+		// lapor sama sekali; Travel hanya tanggal kejadian. Tanggal bayar Kredit boleh
+		// kosong, tetapi bila diisi wajib dd/mm/yyyy: activity-nya memotong teks itu dengan
+		// posisi karakter tetap (K:4495), dan bentuk lain menghasilkan tanggal lain.
+		switch source {
+		case SourceKredit:
+			if r.PaymentDate != "" {
+				violation = append(violation,
+					checkDate(at(ColumnPaymentDate), "Tanggal bayar klaim", r.PaymentDate)...)
+			}
+		case SourceTravel:
+			violation = append(violation, checkDate(at(ColumnDateOfLoss), "Tanggal kejadian", r.DateOfLoss)...)
+		default:
+			violation = append(violation, checkDate(at(ColumnDateOfLoss), "Tanggal kejadian", r.DateOfLoss)...)
+			violation = append(violation, checkDate(at(ColumnReportDate), "Tanggal lapor", r.ReportDate)...)
+		}
 
 		switch {
 		case r.ClaimAmount == "":
@@ -325,6 +416,48 @@ func CheckUploadShape(row []UploadRow) error {
 		return &ValidationError{Violation: violation}
 	}
 	return nil
+}
+
+// CheckRowForSource menjalankan pemeriksaan baris yang KHUSUS satu tab dan tidak
+// menyentuh basis data.
+//
+// Nilai kembalinya pesan kegagalan (kosong bila lolos) dan apakah barisnya DITOLAK —
+// tidak disisipkan sama sekali — alih-alih disimpan bertanda gagal.
+//
+// Aturan yang terbukti di export (InboxAutoClaim/InsertKlaimToTable_*):
+//
+//	ANEKA   tanggal lapor tidak boleh mendahului tanggal kejadian (Other :4936) — baris
+//	        disimpan GAGAL
+//	Travel  keterangan laporan wajib lebih dari 10 karakter (Travel :3976) — baris DITOLAK;
+//	        TIDAK ada pemeriksaan tanggal lapor
+//	Kredit  TIDAK ada pemeriksaan tanggal sama sekali
+//
+// Pemeriksaan tanggal kejadian terhadap periode polis (Travel; ANEKA hanya produk hewan
+// 10166) belum dapat dijalankan — menuntut snapshot polis (B-1).
+func CheckRowForSource(source Source, row UploadRow) (message string, rejected bool) {
+	switch source {
+	case SourceTravel:
+		if len([]rune(strings.TrimSpace(row.ReportDescription))) <= MinReportDescription {
+			return MessageReportDescriptionRequired, true
+		}
+		return "", false
+	case SourceAneka:
+		return CheckDateOrder(row.DateOfLoss, row.ReportDate), false
+	default:
+		return "", false
+	}
+}
+
+// claimAmountFor menormalkan nilai klaim sesuai tab.
+//
+// Tab Kredit MEMBUANG titik dari nilai klaim (@replaceAll(.ClaimAmount,".",""), K:3966):
+// di berkas Kredit titik adalah pemisah ribuan. Tab lain memakai titik sebagai desimal.
+// Perbedaannya direplikasi apa adanya (P-5), dan pop-up unggahan menyebutkannya.
+func claimAmountFor(source Source, value string) string {
+	if source == SourceKredit {
+		return strings.ReplaceAll(value, ".", "")
+	}
+	return value
 }
 
 // CheckDateOrder memeriksa tanggal lapor tidak mendahului tanggal kejadian.
@@ -434,7 +567,7 @@ func decimalText(value string) bool {
 }
 
 // readHeader memetakan judul kolom ke posisinya.
-func readHeader(line []string) (map[string]int, error) {
+func readHeader(line []string, required []string) (map[string]int, error) {
 	index := map[string]int{}
 	for position, title := range line {
 		// Spasi, garis bawah, dan tanda hubung di dalam judul diabaikan: "Policy No",
@@ -455,7 +588,7 @@ func readHeader(line []string) (map[string]int, error) {
 	}
 
 	var missing []string
-	for _, column := range RequiredUploadColumn {
+	for _, column := range required {
 		if _, exists := index[column]; !exists {
 			missing = append(missing, column)
 		}

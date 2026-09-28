@@ -150,6 +150,12 @@ type Repo interface {
 	//
 	// Report sudah harus melewati Detail.Clean dan Detail.Check.
 	Update(ctx context.Context, report ClaimReport) error
+
+	// FindPolicy membaca data polis untuk mengisi form, dari POOLDATA.T_GENERAL portal
+	// ini. Nilai kedua false bila polisnya tidak ada — itu BUKAN galat.
+	//
+	// number sudah dirapikan NormalizePolicyNumber.
+	FindPolicy(ctx context.Context, number string) (Policy, bool, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

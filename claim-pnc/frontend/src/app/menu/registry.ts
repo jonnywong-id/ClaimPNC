@@ -455,6 +455,40 @@ export const MENU_ROUTES: Record<string, string> = {
   // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
   ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
 
+  // MENU_ID 57 "Inbox Manager Admin", kelompok INBOX, urutan 1147 — tepat sesudah butir di
+  // atas. Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang diambil dari
+  // DATAPEGA.PC_ASSIGN_WORKLIST, hilang begitu klaimnya selesai, dan punya tenggat berupa
+  // kolom "Lama Waktu Klaim".
+  //
+  // Harness-nya klon dari `UserInbox_Harness` (`MENU_ID 58` "Inbox Manager"), yang kini
+  // SUDAH dibangun dan dipetakan di bawah. Keduanya tidak boleh disatukan: yang ini
+  // menyaring unit organisasi penugasan lewat Report Definition `ManagementAdminView`,
+  // sedangkan induk klonnya adalah meja kerja penyelia berisi tiga dashboard dan sembilan
+  // antrean persetujuan — dan satu-satunya layar inbox yang MENULIS.
+  //
+  // Butirnya dapat terlihat oleh pengguna yang jabatannya tidak membuka satu tab pun —
+  // dan itu disengaja. Layarnya menjelaskan keadaan itu beserta jabatan yang terbaca
+  // sistem; menyembunyikan butir menunya justru akan membuat pengguna mengira menunya
+  // hilang. Penyaringan yang sesungguhnya ada di server (`TKT-F3-004` belum selesai).
+  InboxManagerAdmin_Harness: '/inbox-manager-admin',
+
+  // MENU_ID 58 "Inbox Manager", kelompok INBOX, urutan 1148 — tepat sesudah butir di atas.
+  //
+  // Harness-nya cangkang: satu `pyInclude` ke `Section/InboxManager_Sec`, yang menggambar
+  // ringkasan pencacah lalu menyertakan TIGA BELAS kontainer bersyarat
+  // `FlagManager.AlasanKlaim==1..13`. Isinya tiga dashboard, satu indeks, dan sembilan
+  // antrean persetujuan.
+  //
+  // Ia satu-satunya butir inbox yang layarnya MENULIS. Yang ditulisnya kolom persetujuan
+  // pada tabel POOLDATA — bukan satu pun tabel DATAPEGA, yang selama masa paralel dimiliki
+  // Pega (`P-1`).
+  //
+  // Siapa yang melihat butirnya ditentukan `M_OTORISASI_PNC`, bukan kode di sini. Itu perlu
+  // disebut karena layarnya memutuskan: `D-59` menetapkan satuan izin adalah menu dan tidak
+  // ada pemisahan tugas formal, sehingga butir menu inilah kendalinya.
+  UserInbox_Harness: '/inbox-manager',
+
+
   // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
   //
   // Di data contoh `m_otorisasi_pnc.csv`, butir ini hanya diberikan kepada grup `IT`.
@@ -660,6 +694,31 @@ export const MENU_ROUTES: Record<string, string> = {
   // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
   // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
   InboxSalvage: '/inbox-salvage',
+
+  // Inbox PLA, DLA, Pre DLA — `MENU_ID 44`, antrean pemberitahuan reasuransi yang sudah
+  // terbit tetapi BELUM dikirim.
+  //
+  // Butirnya untuk petugas INTERNAL. Ketiga daftarnya bersama — tidak satu pun kueri
+  // Pega-nya menyebut pemanggil — sehingga yang menentukan siapa melihatnya sekarang
+  // adalah `M_OTORISASI_PNC`, sama seperti butir lain (`TKT-F3-004` belum ada).
+  //
+  // Nama programnya `InboxPLA_harness`, dengan garis bawah dan huruf kecil di ujungnya.
+  // Ia disalin apa adanya dari `MENU_PROGRAM`; menormalkannya akan membuat butirnya
+  // tampak belum tersedia.
+  InboxPLA_harness: '/inbox-pla-dla-pre-dla',
+
+  // Inbox PLA DLA — `MENU_ID 45`, layar milik MITRA REASURANSI.
+  //
+  // Bedakan baik-baik dari butir di atasnya. Keduanya bersebelahan di menu dan judulnya
+  // hampir sama, tetapi penyaringnya BERLAWANAN ARAH: yang di atas menampilkan dokumen
+  // yang belum dikirim, yang ini menampilkan dokumen yang sudah dikirim — dan yang
+  // membacanya penerimanya, bukan pengirimnya.
+  //
+  // Satu batas MEMANG sudah berlaku di sini, dan ia bukan peran melainkan KEPEMILIKAN:
+  // daftarnya disaring menurut kode reasuradur yang dipetakan dari login pemanggil lewat
+  // `POOLDATA.T_REINSURER.LOGIN`. Petugas internal yang membuka butir ini ditolak dengan
+  // pesan yang menunjuk butir di atasnya.
+  InboxPLADLA: '/inbox-pla-dla',
 }
 
 /**

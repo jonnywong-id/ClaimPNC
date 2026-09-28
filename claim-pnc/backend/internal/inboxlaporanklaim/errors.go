@@ -61,6 +61,26 @@ var (
 	// ErrNotFound: berkas laporan yang diminta tidak ada.
 	ErrNotFound = errors.New("inboxlaporanklaim: laporan klaim tidak ditemukan")
 
+	// ErrStorageNotReady: tabel tempat modul ini menulis belum dibuat di basis data.
+	//
+	// Bukan galat basis data biasa, dan karena itu tidak dibiarkan jatuh ke galat umum.
+	// Ia punya satu sebab dan satu perbaikan yang pasti: migrasi `backend/migrations/`
+	// belum dijalankan DBA pada basis data portal tersebut (`D-63` — perubahan skema
+	// diminta tertulis, disetujui Work Owner, dijalankan DBA).
+	//
+	// # Kenapa ini layak punya nama sendiri
+	//
+	// Daftar laporan membaca tabel WARISAN milik Pega, sedangkan pembuatan laporan menulis
+	// ke tabel milik aplikasi ini. Bila migrasi belum jalan, keduanya berperilaku berbeda:
+	// daftarnya tampil lengkap, tombol Buat Baru gagal. Tanpa nama sendiri, kegagalan itu
+	// muncul sebagai "Terjadi kesalahan pada sistem" — kalimat yang membuat orang mencari
+	// cacat di aplikasi, padahal yang kurang ada di basis data dan perbaikannya satu
+	// perintah.
+	//
+	// Ia juga menimpa SATU portal saja: migrasi dijalankan per basis data entitas
+	// (`ADR-0030`), sehingga portal lain dapat bekerja normal pada saat yang sama.
+	ErrStorageNotReady = errors.New("inboxlaporanklaim: tabel penyimpanan belum dibuat")
+
 	// ErrReadOnlyOrigin: baris milik Pega tidak boleh ditulis aplikasi ini.
 	//
 	// Selama masa paralel, tepat satu sistem yang menulis sebuah baris (`ADR-0004`).

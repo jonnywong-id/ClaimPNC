@@ -287,24 +287,24 @@ SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.PRODKE,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.CURRENCY,
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.NILAIKLAIM,
-       A.COL_ID,
-       A.TGLKEJADIAN,
-       A.TGLLAPOR,
+       {{K_REF}},
+       {{K_DOL}},
+       {{K_LAPOR}},
        A.TGLPROSES,
-       A.NOTE,
-       A.KEYWORD,
-       A.OBJECTNAME,
-       A.FLAGTIDAKBAYAR,
+       {{K_NOTE}},
+       {{K_KEYWORD}},
+       {{K_OBJEK}},
+       {{K_FLAG}},
        A.TMP_MESSAGE,
        A.USERINPUT
   FROM {{TABEL}} A
  WHERE A.{{KOLOM}} = :1
    AND A.BATCH = :2
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 
 -- name: auto_claim_line_list_succeeded
@@ -313,25 +313,25 @@ SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.PRODKE,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.CURRENCY,
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.NILAIKLAIM,
-       A.COL_ID,
-       A.TGLKEJADIAN,
-       A.TGLLAPOR,
+       {{K_REF}},
+       {{K_DOL}},
+       {{K_LAPOR}},
        A.TGLPROSES,
-       A.NOTE,
-       A.KEYWORD,
-       A.OBJECTNAME,
-       A.FLAGTIDAKBAYAR,
+       {{K_NOTE}},
+       {{K_KEYWORD}},
+       {{K_OBJEK}},
+       {{K_FLAG}},
        A.TMP_MESSAGE,
        A.USERINPUT
   FROM {{TABEL}} A
  WHERE A.{{KOLOM}} = :1
    AND A.BATCH = :2
    AND A.TMP_MESSAGE = :3
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: auto_claim_line_list_failed
@@ -344,18 +344,18 @@ SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.PRODKE,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.CURRENCY,
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.NILAIKLAIM,
-       A.COL_ID,
-       A.TGLKEJADIAN,
-       A.TGLLAPOR,
+       {{K_REF}},
+       {{K_DOL}},
+       {{K_LAPOR}},
        A.TGLPROSES,
-       A.NOTE,
-       A.KEYWORD,
-       A.OBJECTNAME,
-       A.FLAGTIDAKBAYAR,
+       {{K_NOTE}},
+       {{K_KEYWORD}},
+       {{K_OBJEK}},
+       {{K_FLAG}},
        A.TMP_MESSAGE,
        A.USERINPUT
   FROM {{TABEL}} A
@@ -363,7 +363,7 @@ SELECT A.{{KOLOM}},
    AND A.BATCH = :2
    AND A.TMP_MESSAGE IS NOT NULL
    AND A.TMP_MESSAGE <> :3
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
 -- name: auto_claim_line_count
@@ -416,38 +416,38 @@ SELECT COUNT(1)
 SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.NILAIKLAIM,
-       A.COL_ID,
+       {{K_REF}},
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.TMP_MESSAGE
   FROM {{TABEL}} A
  WHERE A.{{KOLOM}} = :1
    AND A.BATCH = :2
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 
 -- name: auto_claim_export_succeeded
 SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.NILAIKLAIM,
-       A.COL_ID,
+       {{K_REF}},
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.TMP_MESSAGE
   FROM {{TABEL}} A
  WHERE A.{{KOLOM}} = :1
    AND A.BATCH = :2
    AND A.TMP_MESSAGE = :3
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 
 -- name: auto_claim_export_failed
 SELECT A.{{KOLOM}},
        A.NOPOLIS,
        A.IDPEGA,
-       A.NOAKSEPTASI,
+       {{K_AKSEP}},
        A.NILAIKLAIM,
-       A.COL_ID,
+       {{K_REF}},
        (SELECT M.CURRENCY FROM POOLDATA.CURRENCY M WHERE M.ID = A.CURRENCY) AS KODE_MATA_UANG,
        A.TMP_MESSAGE
   FROM {{TABEL}} A
@@ -455,7 +455,7 @@ SELECT A.{{KOLOM}},
    AND A.BATCH = :2
    AND A.TMP_MESSAGE IS NOT NULL
    AND A.TMP_MESSAGE <> :3
- ORDER BY A.NOPOLIS, A.TGLPROSES, A.TGLKEJADIAN
+ ORDER BY A.NOPOLIS, A.TGLPROSES, {{K_URUT}}
 
 -- name: auto_claim_batch_exists
 --
@@ -568,6 +568,59 @@ INSERT INTO {{TABEL}}
 VALUES (:1, :2, :3, :4, CURRENT_TIMESTAMP, :5,
         :6, :7, :8, :9, :10, :11,
         :12, :13, :14, :15, :16, :17)
+
+-- name: auto_claim_line_insert_kredit
+--
+-- Sisip satu baris unggahan tab Asuransi Kredit. HANYA dipakai tab Kredit.
+--
+-- Asal: RDB List/InsertTempAsuransiKredit-SQL.xml:103-104, dipanggil
+-- InboxAutoClaim/InsertKlaimToTable_Kredit-Act.xml:8667. Susunan kolomnya BERBEDA dari
+-- ANEKA, dan nama properti Pega yang mengisinya menyesatkan (BATCH diisi
+-- `inputcsv.PRODKE`, NILAIKLAIM diisi `inputcsv.EDMNO`, …). Pemetaan sebenarnya:
+--
+--   NOPOLIS      <- PolicyNo berkas              AGENID    <- kode perusahaan dari polis
+--   BATCH        <- nomor batch berikutnya       PRODKE    <- PRODKE dari polis
+--   NILAIKLAIM   <- ClaimAmount berkas           NOASURANSI<- ContractNo berkas, huruf besar
+--   TYPEKLAIM    <- ReportType berkas            CURRENCY  <- NULL (menunggu B-1)
+--   USERINPUT    <- operator                     TANGGALBAYAR <- TanggalBayarKlaim berkas
+--
+-- DUA KOLOM Pega yang TIDAK ditulis: PROPOSEVALUE dan DEDUCTIBLE. Keduanya tidak pernah
+-- diisi activity-nya (selalu NULL) DAN tidak ada di katalog tabel produksi — menulisnya
+-- akan menghasilkan ORA-00904.
+--
+-- Pesan gagal masuk IDPEGA, ACCEPTNO, dan TMP_MESSAGE sekaligus, mengikuti kueri update
+-- `GetMaxBatchAsuransiKredit` (`SET IDPEGA=.., ACCEPTNO=.., TMP_MESSAGE=..`). Pega
+-- menulisnya dengan UPDATE sesudah sisip; di sini keduanya satu pernyataan.
+INSERT INTO {{TABEL}}
+       (BATCH, {{KOLOM}}, NOPOLIS, PRODKE, TGLPROSES, USERINPUT,
+        IDPEGA, ACCEPTNO, TMP_MESSAGE, CURRENCY, NILAIKLAIM,
+        NOASURANSI, TYPEKLAIM, TANGGALBAYAR)
+VALUES (:1, :2, :3, :4, CURRENT_TIMESTAMP, :5,
+        :6, :7, :8, :9, :10,
+        :11, :12, :13)
+
+-- name: auto_claim_line_insert_travel
+--
+-- Sisip satu baris unggahan tab Travel. HANYA dipakai tab Travel.
+--
+-- Pega menyisipkannya lewat POOLDATA.INSERT_AUTOCLAIMTRAVEL
+-- (RDB List/InsertUpdateAutoClaimTravel-SQL.xml:87-118), yang badannya TIDAK ada di
+-- export. Pemetaan parameternya terbaca dari activity-nya
+-- (InboxAutoClaim/InsertKlaimToTable_Travel-Act.xml): tBATCH, tINISIAL, tPOLIS, tPRODKE,
+-- tUSER, tIDPEGA, tDOL, tCURRENCY, tNILAI, tMSG, tAKSEP — kolom sasarannya disesuaikan
+-- dengan katalog tabel produksi.
+--
+-- FLAGTIDAKBAYAR dan REPORTDESCRIPTION IKUT ditulis walau Pega tidak mengirimkannya ke
+-- prosedur: kolomnya ada di tabel, dan membuang keterangan yang diwajibkan pengunggah
+-- (> 10 karakter) tanpa menyimpannya tidak masuk akal. Ini penyimpangan sadar, dicatat di
+-- docs/keputusan-implementasi.md.
+INSERT INTO {{TABEL}}
+       (BATCH, {{KOLOM}}, NOPOLIS, PRODKE, TGLPROSES, USERINPUT,
+        IDPEGA, NOAKSEPTASI, TMP_MESSAGE, TGLKEJADIAN, CURRENCY, NILAIKLAIM,
+        FLAGTIDAKBAYAR, REPORTDESCRIPTION)
+VALUES (:1, :2, :3, :4, CURRENT_TIMESTAMP, :5,
+        :6, :7, :8, :9, :10, :11,
+        :12, :13)
 
 -- name: auto_claim_company_summary
 --

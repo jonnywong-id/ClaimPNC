@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +28,8 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"claim_report_next_sequence",
 		"claim_report_insert",
 		"claim_report_update",
+		"claim_report_pnc_update",
+		"claim_report_pnc_insert",
 		"claim_report_check_table",
 		"claim_report_check_legacy_table",
 	}
@@ -96,6 +99,8 @@ func TestQueriesUseParameterBinding(t *testing.T) {
 		"claim_report_get_body",
 		"claim_report_insert",
 		"claim_report_update",
+		"claim_report_pnc_update",
+		"claim_report_pnc_insert",
 	}
 	for _, name := range parameterised {
 		require.Containsf(t, getQuery(name), ":1",
@@ -118,23 +123,29 @@ func TestUpdateNeverTouchesProtectedColumns(t *testing.T) {
 	upper := strings.ToUpper(setClause)
 
 	for column, reason := range map[string]string{
-		"NO_LAPORAN":     "kunci baris; ia menyaring, tidak pernah berubah",
-		"NO_KLAIM":       "terbit saat registrasi (B-2), bukan dari form ini",
-		"KODE_CABANG":    "batas data; memindahkan berkas antarcabang bukan tindakan form ini",
-		"STS_DISERAHKAN": "perpindahan tahap adalah tindakan tersendiri",
-		"DIBUAT_OLEH":    "jejak pembuatan tidak pernah ditulis ulang",
-		"DIHAPUS_PADA":   "penghapusan dinyatakan lewat penanda (ADR-0012), bukan di sini",
+		"CLAIMID":     "kunci baris; ia menyaring, tidak pernah berubah",
+		"NOKLAIM":     "terbit saat registrasi (B-2), bukan dari form ini",
+		"KODECABANG":  "batas data; memindahkan berkas antarcabang bukan tindakan form ini",
+		"TRANSFERASM": "perpindahan tahap adalah tindakan tersendiri",
+		"USERINPUT":   "jejak pembuatan tidak pernah ditulis ulang",
 	} {
 		require.NotContainsf(t, upper, column+" ",
 			"klausa SET menyentuh %s — %s", column, reason)
 	}
 }
 
-// Berkas yang sudah ditandai terhapus tidak boleh dapat disunting lewat alamat yang masih
-// dipegang peramban seseorang.
-func TestUpdateSkipsRowsMarkedDeleted(t *testing.T) {
-	require.Contains(t, strings.ToUpper(getQuery("claim_report_update")), "DIHAPUS_PADA IS NULL",
-		"penyimpanan tidak menyaring baris yang sudah ditandai terhapus")
+// Penyimpanan tidak boleh dapat mengenai baris milik Pega.
+//
+// Sejak berkas baru ditulis ke POOLDATA.T_CLAIM_RECIVEDCLAIM — tabel yang juga ditulis
+// Pega lewat PROCINSERTDATARECIVEDKLAIM — pemisahan penulis tidak lagi dijamin oleh
+// TABEL yang berbeda, melainkan oleh KUNCI yang berbeda. Penyaring awalan inilah yang
+// menegakkan `P-1` sekarang, dan tanpanya satu nomor yang salah dapat menimpa berkas
+// yang penulisnya Pega.
+func TestUpdateCannotReachPegaRows(t *testing.T) {
+	upper := strings.ToUpper(getQuery("claim_report_update"))
+
+	require.Contains(t, upper, "LIKE 'RCVN%'",
+		"penyimpanan tidak memagari dirinya pada berkas terbitan aplikasi ini")
 }
 
 // Modul ini TIDAK MENULIS satu baris pun ke tabel milik Pega.
@@ -145,6 +156,13 @@ func TestUpdateSkipsRowsMarkedDeleted(t *testing.T) {
 //
 // Uji ini membaca SELURUH kueri dan memastikan tidak satu pun pernyataan pengubah
 // menyentuh tabel warisan.
+//
+// # Satu tabel bersama yang BOLEH ditulis: POOLDATA.T_CLAIM_PNC
+//
+// Work Owner, 2026-09-26: pembuatan RCVN ikut masuk ke T_CLAIM_PNC. Tabel itu bukan tabel
+// kerja Pega melainkan tabel bersama yang dipisah menurut awalan kunci — Pega menulis
+// baris `ASM-FW-GCNMFW-WORK …`, aplikasi ini menulis baris `RCVN…`. Pagarnya dijaga
+// TestClaimRowWritesStayOnOwnRows, bukan dengan melarang tabelnya.
 func TestNoQueryWritesToLegacyPegaTable(t *testing.T) {
 	writing := []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE "}
 
@@ -308,26 +326,29 @@ func TestOnlyExplicitlyInactiveRowsAreHidden(t *testing.T) {
 func TestOriginIsDerivedFromTheNumberPrefix(t *testing.T) {
 	source := getQuery("claim_report_source")
 
-	require.Contains(t, source, inboxlaporanklaim.ReportNumberPrefix+".",
+	// Awalan diperiksa TANPA pemisahnya: dua bentuk hidup berdampingan — `RCVN-xxxx` yang
+	// berlaku sekarang dan `RCVN.YY.xxxx` pada berkas yang telanjur terbit — dan SQL
+	// menyaring keduanya sekaligus lewat `LIKE 'RCVN%'`.
+	require.Contains(t, source, "'"+inboxlaporanklaim.ReportNumberPrefix+"%'",
 		"awalan nomor pada SQL tidak lagi sama dengan ReportNumberPrefix")
 	require.Contains(t, source, "'claimpnc'")
 	require.Contains(t, source, "'pega'")
 }
 
-// Berkas terbitan aplikasi ini dibaca dari tabelnya sendiri, dan pembacaannya menghormati
-// soft delete (ADR-0012).
+// Berkas terbitan aplikasi ini dibaca dari tabel bisnis yang sama dengan yang dipakai
+// Pega, dan pembacaannya dipagari pada berkas milik sendiri.
 //
 // Jalur ini ada supaya berkas yang BARU DIBUAT dapat dibuka sebelum proses pengisi
 // T_CLAIMLIST_ADMIN menyalinnya. Tanpa itu, "Buat Baru" membuka form yang menjawab
 // "tidak ditemukan".
-func TestOwnReportIsReadFromItsOwnTable(t *testing.T) {
+func TestOwnReportIsReadFromTheBusinessTable(t *testing.T) {
 	own := strings.ToUpper(getQuery("claim_report_get_own_body"))
 
-	require.Contains(t, own, "POOLDATA.CPNC_LAPORAN_KLAIM")
+	require.Contains(t, own, "POOLDATA.T_CLAIM_RECIVEDCLAIM")
 	require.NotContains(t, own, "T_CLAIMLIST_ADMIN",
 		"pembacaan berkas sendiri ikut bergantung pada tabel yang diisi proses lain")
-	require.Contains(t, own, "DIHAPUS_PADA IS NULL",
-		"pembacaan berkas sendiri tidak menyaring baris yang ditandai terhapus")
+	require.Contains(t, own, "LIKE 'RCVN%'",
+		"pembacaan berkas sendiri tidak dipagari pada berkas terbitan aplikasi ini")
 }
 
 // Kedua jalur pembacaan satu berkas dibaca scanDetailRow yang sama, dan ia membaca secara
@@ -538,4 +559,110 @@ func whereClause(text string) string {
 		clean.WriteRune(r)
 	}
 	return strings.Join(strings.Fields(clean.String()), " ")
+}
+
+// Baris tanpa tanggal aging TIDAK boleh naik ke atas daftar.
+//
+// # Kegagalan yang ia cegah
+//
+// Oracle menaruh NULL di ATAS pada `ORDER BY ... DESC`, dan 55 baris warisan
+// ber-DATEFORAGING_1 kosong. Tanpa NULLS LAST, kelima puluh lima baris itu menutupi
+// halaman pertama SETIAP tab, dan berkas yang baru dibuat — yang aging-nya justru
+// terisi — terdorong ke halaman dua atau tiga.
+//
+// Akibatnya bukan sekadar urutan yang kurang rapi: berkas yang baru dibuat tidak terlihat
+// sama sekali di tampilan pertama, dan itu tampak seperti data yang tidak tersimpan. Work
+// Owner melaporkannya dua kali (2026-09-24) dengan dugaan yang wajar — "apakah datanya
+// tidak masuk tabel".
+//
+// NULLS LAST didukung Oracle maupun PostgreSQL, sehingga `D-20` tetap terpenuhi.
+func TestRowsWithoutAgingDateSortLast(t *testing.T) {
+	for _, name := range []string{"claim_report_list_body", "claim_report_message_body"} {
+		upper := strings.ToUpper(getQuery(name))
+
+		require.Contains(t, upper, "ORDER BY",
+			"%s tidak punya urutan sama sekali", name)
+		require.Contains(t, upper, "NULLS LAST",
+			"%s membiarkan baris tanpa tanggal aging naik ke atas daftar", name)
+	}
+}
+
+// Tab bawaan WAJIB memuat berkas pada setiap posisi, termasuk yang baru dibuat.
+//
+// # Kegagalan yang ia cegah
+//
+// Berkas baru selalu lahir berposisi "Not Transferred". Selama tab bawaan menyaring satu
+// posisi tertentu, berkas yang baru dibuat tidak tampak saat menu dibuka — dan dari layar
+// itu tidak dapat dibedakan dari data yang gagal tersimpan.
+//
+// Gejalanya menyesatkan: menekan "Buat Baru" lalu kembali ke daftar MENAMPILKAN berkasnya,
+// karena tombol kembali mendarat di tab berkas itu sendiri. Membuka menunya dari awal
+// tidak. Work Owner melaporkannya tiga kali dengan dugaan yang wajar — "apakah datanya
+// tidak masuk tabel".
+//
+// Uji ini menyatakan MAKSUDNYA, bukan menyalin nilai konstantanya: mengganti tab bawaan ke
+// tab lain yang menyaring posisi akan membuatnya merah, apa pun nama tab itu.
+func TestDefaultCategoryShowsReportsAtEveryPosition(t *testing.T) {
+	argumen := categoryArguments(inboxlaporanklaim.DefaultCategory)
+
+	// Susunannya: excludeResolved, position, position, accepted, rejected.
+	require.Len(t, argumen, 5)
+	require.Nil(t, argumen[1],
+		"tab bawaan %q menyaring satu posisi saja; berkas yang baru dibuat "+
+			"(Not Transferred) tidak akan tampak saat menu dibuka", inboxlaporanklaim.DefaultCategory)
+	require.Nil(t, argumen[3], "tab bawaan menyaring berkas yang sudah diakseptasi")
+	require.Nil(t, argumen[4], "tab bawaan menyaring berkas yang ditolak")
+}
+
+// Baris berkas di T_CLAIM_PNC tidak pernah mengenai baris milik Pega, maupun baris klaim.
+//
+// T_CLAIM_PNC dimiliki bersama: Pega menulis baris `ASM-FW-GCNMFW-WORK …`, modul
+// registrasi menulis baris klaim ber-CLAIMNO `PNCN…`, dan modul ini menulis baris berkas
+// ber-CLAIMID `RCVN…`. Tabelnya tidak punya kunci utama, sehingga tidak ada yang menolak
+// pernyataan yang salah sasaran — pagarnya harus ada di pernyataannya sendiri.
+func TestClaimRowWritesStayOnOwnRows(t *testing.T) {
+	update := strings.ToUpper(getQuery("claim_report_pnc_update"))
+	require.Contains(t, update, "LIKE 'RCVN%'",
+		"pembaruan baris T_CLAIM_PNC tidak memagari dirinya pada berkas aplikasi ini")
+	require.Contains(t, update, "CLAIMNO IS NULL",
+		"pembaruan baris T_CLAIM_PNC dapat mengenai baris KLAIM yang kebetulan ber-CLAIMID sama")
+
+	// INSERT tidak dapat memagari dirinya dengan WHERE; pagarnya ada di pemanggil.
+	// Transaksinya sengaja nil: bila pagar itu hilang, fungsi ini menyentuh transaksi
+	// dan uji ini panik — kegagalan yang tidak mungkin terlewat.
+	for _, id := range []string{"ASM-FW-GCNMFW-WORK RCV-3154", "RCV-3154", "PNCN.26.0001", ""} {
+		require.NotPanicsf(t, func() {
+			err := upsertClaimRow(context.Background(), nil,
+				inboxlaporanklaim.ClaimReport{ID: id})
+			require.NoError(t, err)
+		}, "berkas %q bukan milik aplikasi ini, tetapi tetap sampai ke T_CLAIM_PNC", id)
+	}
+}
+
+// Estimasi di ESTIMATIONVALUE bersatuan RUPIAH, sedangkan domain bersatuan SEN.
+//
+// Versi pertama menyimpan sen apa adanya ke kolom warisan itu. Modul registrasi yang
+// membacanya sebagai rupiah mengalikan seratus lagi, sehingga estimasi Rp 8.000.000 tiba
+// di klaim sebagai Rp 800.000.000 — melewati ambang komite tanpa satu pun galat.
+//
+// Uji ini menjaga KEDUA sisinya: penulisan membagi 100, dan setiap pembacaan mengalikan
+// 100. Salah satu tanpa yang lain sama salahnya dengan tidak keduanya.
+func TestEstimateIsRupiahInLegacyColumn(t *testing.T) {
+	spasi := regexp.MustCompile(`\s+`)
+
+	update := spasi.ReplaceAllString(strings.ToUpper(getQuery("claim_report_update")), " ")
+	require.Contains(t, update, "ESTIMATIONVALUE = :10 / 100",
+		"estimasi ditulis dalam sen ke kolom yang bersatuan rupiah")
+
+	dibaca := 0
+	for name, text := range query {
+		upper := spasi.ReplaceAllString(strings.ToUpper(text), " ")
+		if !strings.Contains(upper, "R.ESTIMATIONVALUE") || strings.Contains(upper, "UPDATE ") {
+			continue
+		}
+		dibaca++
+		require.Containsf(t, upper, "ROUND(R.ESTIMATIONVALUE * 100)",
+			"kueri %q membaca ESTIMATIONVALUE tanpa mengubah rupiah menjadi sen", name)
+	}
+	require.Positive(t, dibaca, "tidak ada kueri yang membaca estimasi; uji ini tidak menjaga apa pun")
 }

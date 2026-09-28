@@ -79,6 +79,30 @@ type categoryDefinition struct {
 // Urutannya BUKAN urutan angka warisan, dan itu memang yang terjadi di sana: tab kedua
 // adalah param.Note 9. Menata ulangnya menjadi terurut angka akan mengubah tempat yang
 // sudah dihafal petugas.
+// DefaultCategory adalah tab yang terbuka saat layar dibuka tanpa menyebut tab.
+//
+// # Kenapa BUKAN tab pertama Pega
+//
+// Layar lama membuka "Outstanding Data", dan nilai ini semula menirunya (`D-13`).
+// Akibatnya berkas yang baru dibuat TIDAK TAMPAK saat menu dibuka — berkas baru selalu
+// lahir berposisi "Not Transferred", sedangkan tab Outstanding hanya memuat berkas yang
+// sudah bernomor klaim.
+//
+// Work Owner melaporkannya tiga kali dengan dugaan yang wajar: datanya dikira tidak
+// tersimpan. Gejalanya memang menyesatkan — menekan "Buat Baru" lalu kembali ke daftar
+// MENAMPILKAN berkasnya, karena tombol kembali mendarat di tab berkas itu sendiri.
+//
+// # Kenapa CategoryAll, bukan CategoryNotTransferred
+//
+// Tab "belum diserahkan" juga membuat berkas baru tampak, tetapi hanya sampai berkas itu
+// diregistrasi — sesudahnya ia berpindah tab dan hilang lagi dari tampilan pertama. Itu
+// bentuk lain dari keluhan yang sama.
+//
+// CategoryAll memuat berkas pada tahap mana pun, sehingga tidak ada tahap yang membuat
+// sebuah berkas lenyap dari tampilan pertama. Dijaga
+// TestDefaultCategoryShowsReportsAtEveryPosition.
+const DefaultCategory = CategoryAll
+
 var categoryOrder = []categoryDefinition{
 	{CategoryOutstanding, "Outstanding Data", "1", "ViewTableBrowseClaimRegister"},
 	{CategoryUnregistered, "Unregistered data", "9", "ViewTableBrowseClaimNotRegister"},
