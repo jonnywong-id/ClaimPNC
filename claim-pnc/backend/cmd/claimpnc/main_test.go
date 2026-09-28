@@ -1,6 +1,11 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
+	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -139,4 +144,105 @@ func TestMemoryStoreIsReused(t *testing.T) {
 	second, err := selector("asm") // huruf kecil harus menunjuk penyimpanan yang sama
 	require.NoError(t, err)
 	require.Same(t, first, second)
+}
+
+// Modul Case Study Claim ikut terpasang saat perakitan.
+//
+// # Kenapa uji ini ada
+//
+// Modul dapat hidup lengkap — usecase, penyimpanan, handler, dan ujinya sendiri LULUS —
+// tetapi tidak pernah dirakit, sehingga layarnya menjawab 404. Uji modul tidak dapat
+// menangkap itu: ia menguji modulnya, bukan apakah modulnya dipakai.
+//
+// Kegagalan seperti itu bukan kemungkinan teoretis di repo ini. Sepuluh modul pernah hidup
+// berbulan-bulan tanpa satu pun rutenya terdaftar, dan `TestExtraModulesMounted` di
+// `modules_test.go` lahir karenanya.
+func TestCaseStudyClaimAssembled(t *testing.T) {
+	result, err := build(devConfig(), logging.New(0))
+	require.NoError(t, err)
+	t.Cleanup(result.close)
+
+	require.NotNil(t, result.caseStudyClaim)
+}
+
+// Penyimpanan Case Study Claim di memori MENOLAK portal selain portal utama.
+//
+// Penolakan itu yang membuat perilaku pengembangan sama dengan produksi: memilih entitas
+// yang koneksinya belum hidup menghasilkan galat di keduanya, bukan diam-diam dilayani
+// basis data entitas lain (`R-20`).
+//
+// Taruhannya di modul ini lebih besar daripada modul baca: ia MENULIS catatan telaah ke
+// tabel klaim, sehingga jatuh ke entitas yang salah bukan sekadar menampilkan data yang
+// salah — ia menuliskannya.
+func TestCaseStudySelectorMemoryRejectsOtherPortals(t *testing.T) {
+	selector := caseStudySelectorMemory("ASM")
+
+	repo, err := selector("ASM")
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	for _, alias := range []string{"ASI", "SMAS", "TIDAKADA", ""} {
+		_, err := selector(alias)
+		require.Errorf(t, err,
+			"portal %q tidak boleh dilayani tanpa koneksi basis datanya sendiri", alias)
+	}
+}
+
+// Penyimpanan Case Study Claim di memori dipakai kembali antarpermintaan.
+//
+// Bila dibuat ulang, catatan telaah yang baru disimpan akan hilang pada permintaan
+// berikutnya — dan layarnya tampak rusak tanpa sebab yang terlihat.
+func TestCaseStudyMemoryStoreIsReused(t *testing.T) {
+	selector := caseStudySelectorMemory("ASM")
+
+	first, err := selector("ASM")
+	require.NoError(t, err)
+	second, err := selector("asm") // huruf kecil harus menunjuk penyimpanan yang sama
+	require.NoError(t, err)
+	require.Same(t, first, second)
+}
+
+// fakeConnector membuka *sql.DB tanpa pernah menyentuh basis data.
+//
+// database/sql tidak menghubungi driver sampai kueri pertama, sehingga ini cukup untuk
+// menguji PERAKITAN — yang diuji adalah daftar seam, bukan SQL-nya.
+type fakeConnector struct{}
+
+func (fakeConnector) Connect(context.Context) (driver.Conn, error) {
+	return nil, errors.New("uji perakitan: koneksi tidak pernah dipakai")
+}
+func (fakeConnector) Driver() driver.Driver { return nil }
+
+// TestRegistrationAssemblesOnBothBranches menjaga daftar seam modul Registrasi tetap utuh
+// di KEDUA cabang perakitannya.
+//
+// # Kenapa uji ini ada
+//
+// Pada 2026-09-24 seam `ClaimReportLink` ditambahkan ke `assembleRegistration`, sementara
+// `build` merakit modulnya SENDIRI dengan daftar seam terpisah. Yang disunting adalah
+// daftar yang tidak pernah dipanggil, dan akibatnya baru terlihat saat aplikasi
+// dijalankan:
+//
+//	gagal menjalankan aplikasi: registrasi/usecase: seam belum terpasang: [TautanLaporan]
+//
+// Build tetap bersih — `go vet` tidak menandai fungsi yang tidak terpakai — dan seluruh
+// uji lulus, karena uji usecase merakit layanannya sendiri. Duplikasinya sudah dihapus;
+// uji ini menjaga agar seam baru tidak lolos lagi tanpa ketahuan.
+func TestRegistrationAssemblesOnBothBranches(t *testing.T) {
+	logger := logging.New(slog.LevelError)
+
+	t.Run("tanpa Oracle", func(t *testing.T) {
+		service, err := assembleRegistration(nil, logger)
+		require.NoError(t, err)
+		require.NotNil(t, service)
+	})
+
+	t.Run("dengan Oracle", func(t *testing.T) {
+		db := sql.OpenDB(fakeConnector{})
+		defer db.Close()
+
+		service, err := assembleRegistration(db, logger)
+		require.NoError(t, err)
+		require.NotNil(t, service)
+	})
 }

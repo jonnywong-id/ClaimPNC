@@ -313,6 +313,56 @@ func TestPerusahaanDiturunkanDariPolisBukanDariBerkas(t *testing.T) {
 	}
 }
 
+func TestUnggahanKreditTidakTerkenaProteksiTanggal(t *testing.T) {
+	// Laporan Work Owner 2026-09-27: berkas Asuransi Kredit ditolak karena tanggal
+	// kejadian dan tanggal lapor. Berkas Kredit memang TIDAK punya kedua kolom itu, dan
+	// InsertKlaimToTable_Kredit tidak memeriksa tanggal apa pun.
+	service, _ := layananContoh(t)
+
+	hasil, err := service.Upload(context.Background(), "ASM", inboxautoclaim.SourceKredit,
+		[]inboxautoclaim.UploadRow{{
+			LineNumber: 2, PolicyNo: "0100120260500", ClaimAmount: "12500000",
+			ContractNo: "KTR-1", ReportType: "KLAIM",
+		}}, "ADMINPNC")
+	require.NoError(t, err)
+	require.Empty(t, hasil.Rejected)
+	require.Len(t, hasil.Batch, 1)
+	require.Equal(t, 1, hasil.Batch[0].Succeeded, "baris Kredit tanpa tanggal harus lolos")
+}
+
+func TestUnggahanTravelTidakMembandingkanTanggalLapor(t *testing.T) {
+	// Travel hanya punya tanggal kejadian; tanggal lapor kosong bukan kegagalan.
+	service, _ := layananContoh(t)
+
+	hasil, err := service.Upload(context.Background(), "ASM", inboxautoclaim.SourceTravel,
+		[]inboxautoclaim.UploadRow{{
+			LineNumber: 2, PolicyNo: "0100120260500", ClaimAmount: "250.00",
+			DateOfLoss: "05/01/2026", ReportDescription: "Bagasi hilang di bandara",
+		}}, "ADMINPNC")
+	require.NoError(t, err)
+	require.Empty(t, hasil.Rejected)
+	require.Equal(t, 1, hasil.Batch[0].Succeeded)
+}
+
+func TestUnggahanTravelMenolakKeteranganLaporanPendek(t *testing.T) {
+	// InsertKlaimToTable_Travel :3976 — `@length(.ReportDescription)<=10` melompat ke ERR3
+	// sebelum sisip: barisnya TIDAK tersimpan.
+	service, _ := layananContoh(t)
+
+	hasil, err := service.Upload(context.Background(), "ASM", inboxautoclaim.SourceTravel,
+		[]inboxautoclaim.UploadRow{
+			{LineNumber: 2, PolicyNo: "0100120260500", ClaimAmount: "1", DateOfLoss: "05/01/2026",
+				ReportDescription: "1234567890"},
+			{LineNumber: 3, PolicyNo: "0100120260500", ClaimAmount: "1", DateOfLoss: "05/01/2026",
+				ReportDescription: "12345678901"},
+		}, "ADMINPNC")
+	require.NoError(t, err)
+	require.Len(t, hasil.Rejected, 1)
+	require.Equal(t, 2, hasil.Rejected[0].LineNumber)
+	require.Equal(t, inboxautoclaim.MessageReportDescriptionRequired, hasil.Rejected[0].Message)
+	require.Equal(t, 1, hasil.Rows)
+}
+
 func TestBarisUnggahanYangLolosBelumDiproses(t *testing.T) {
 	// Inilah yang membuat batch baru terambil pemrosesan: IDPEGA, NOAKSEPTASI, dan
 	// TMP_MESSAGE harus kosong.

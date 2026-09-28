@@ -76,6 +76,46 @@ func NewPool(ctx context.Context, primary string, parameter []Parameter, record 
 	return k, nil
 }
 
+// NewOptionalPool membuka koneksi yang boleh TIDAK ADA satu pun.
+//
+// # Bedanya dengan NewPool, dan kenapa perlu jenis kedua
+//
+// NewPool mengenal portal utama yang kegagalannya fatal — tanpa basis datanya, aplikasi
+// tidak dapat melayani satu permintaan pun. Kumpulan ini tidak punya yang seperti itu.
+//
+// Ia dipakai koneksi KEDUA tiap portal (`ANEKA_<ALIAS>_*`), pengganti DB Link yang
+// `R-03` belum sediakan API-nya. Ketiadaannya bukan keadaan darurat: aplikasi tetap
+// berjalan penuh, dan yang hilang hanyalah kolom laporan yang membutuhkannya — kolom
+// yang lalu dikosongkan dan ditandai di layar.
+//
+// Karena itu ia TIDAK PERNAH mengembalikan galat. Kegagalan tiap koneksi dilaporkan
+// lewat record supaya tercatat di log, bukan menghentikan start.
+func NewOptionalPool(ctx context.Context, parameter []Parameter, record func(alias string, err error)) *Pool {
+	k := &Pool{connections: map[string]*sql.DB{}}
+
+	for _, p := range parameter {
+		connections, err := Open(ctx, p)
+		if err != nil {
+			if record != nil {
+				record(p.Alias, err)
+			}
+			continue
+		}
+		k.connections[p.Alias] = connections
+	}
+	return k
+}
+
+// Has menyatakan apakah sebuah alias punya koneksi yang hidup.
+//
+// Ia ada supaya pemanggil dapat MENANYAKAN ketersediaan tanpa memicu galat. Pada
+// kumpulan opsional, tidak adanya koneksi adalah jawaban yang sah — bukan kesalahan yang
+// harus ditangani.
+func (k *Pool) Has(alias string) bool {
+	_, existing := k.connections[strings.ToUpper(strings.TrimSpace(alias))]
+	return existing
+}
+
 // Primary mengembalikan koneksi portal utama. Ia selalu ada bila Pool terbentuk.
 func (k *Pool) Primary() *sql.DB { return k.connections[k.primary] }
 

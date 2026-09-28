@@ -85,6 +85,35 @@ ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN ADD (
     PYASSIGNMENTSTATUS             VARCHAR2(32 CHAR)     -- 344
 );
 
+-- TIGA KOLOM YANG SEMPAT DITAMBAHKAN 2026-09-27 LALU DICABUT SELURUHNYA
+--
+-- Modul Inbox Manager Admin sempat meminta tiga kolom saat dipindahkan ke tabel
+-- ini. KETIGANYA TERNYATA SUDAH ADA, dan permintaannya dicabut pada hari yang
+-- sama setelah Work Owner memeriksa tabelnya:
+--
+--   PXCREATEOPNAME     sudah ada
+--   PYORIGUSERID       sudah ada (sempat diminta di tahap 2)
+--   PXASSIGNEDORGUNIT  sudah ada
+--
+-- Tidak ada satu kolom pun yang ditambahkan berkas ini untuk modul tersebut.
+--
+-- KENAPA KETIGANYA SEMPAT MASUK, DAN KENAPA ITU PENTING DISADARI
+--
+-- Daftar di berkas ini disusun dari kolom tabel SUMBER (PC_ASM_FW_GCNMFW_WORK
+-- dan PC_ASSIGN_WORKLIST), lalu diandaikan belum ada di tabel TUJUAN. Andaian
+-- itu tidak pernah diperiksa: daftar kolom T_CLAIMLIST_ADMIN yang SUDAH ADA
+-- belum pernah dibaca dari katalog — yang tercatat hanya jumlahnya, 40.
+--
+-- Akibatnya nyata bila lolos: ALTER TABLE ... ADD polos berhenti dengan
+-- ORA-01430 pada kolom pertama yang sudah ada, dan menyisakan tabel setengah
+-- jadi. Varian AMAN DIULANG memeriksa lebih dulu dan melewatinya, tetapi itu
+-- menyembunyikan gejalanya — bukan menyelesaikan sebabnya.
+--
+-- Daftar kolom lengkapnya diminta sebagai L-3 di
+-- docs/permintaan-artefak-pega.md §7.6. SEBELUM berkas ini dijalankan, DBA
+-- dimohon membandingkan SELURUH nama di bawah dengan katalog — ketiga di atas
+-- membuktikan daftar ini belum pernah diperiksa terhadap tabel tujuannya.
+
 -- Kenapa STATUSCLAIM_1 masuk tahap 1 meski bukan soal tab.
 --
 -- Kolom layar "Status ASM" hari ini dipetakan ke STATUSLOCK_1, dan kolom itu
@@ -153,7 +182,6 @@ ALTER TABLE POOLDATA.T_CLAIMLIST_ADMIN ADD (
     PXUPDATEOPERATOR               VARCHAR2(128 CHAR),   --   111
     PXUPDATEOPNAME                 VARCHAR2(128 CHAR),   --   111
     PYLABEL                        VARCHAR2(64 CHAR),    --    17
-    PYORIGUSERID                   VARCHAR2(128 CHAR),   --    90
     PYRESOLVEDUSERID               VARCHAR2(128 CHAR),   --    56
     PYRESOLVEDTIMESTAMP            TIMESTAMP(6),         -- 3.142
     PYREOPENTIMESTAMP              TIMESTAMP(6),         --    47

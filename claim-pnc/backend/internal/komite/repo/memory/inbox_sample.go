@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"claim-pnc/internal/komite"
-	"claim-pnc/internal/platform/money"
 )
 
 // SampleOperator adalah pemilik seluruh kasus contoh.
@@ -51,23 +50,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Property All Risk",
 			SourceOfBusiness: "Direct",
 			BranchName:       "Jakarta Pusat",
-			GroupPanel:       "006",
-			ClaimPIC:         "PICTEKNIK1",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -9),
 			CreatedAt:        base.AddDate(0, 0, -9),
 			WorkStatus:       "Open",
-			CommitteeKind:    komite.CommitteeKindOf("2", "5"),
-			ClaimValue:       money.FromRupiah(45_000_000),
-			ASMShareValue:    money.FromRupiah(31_500_000),
-			ORValue:          money.FromRupiah(22_500_000),
 			LegacyOutcome:    komite.OutcomePending,
-			LegacyTier:       1,
-
-			AIResult:        "DITERIMA",
-			AINoteAccepted:  "Dokumen lengkap dan kronologi sesuai polis.",
-			AIAssessedAt:    base.AddDate(0, 0, -9),
-			HasAIAssessment: true,
 		},
 		{
 			CaseID:           "K-2602",
@@ -77,29 +64,15 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Marine Cargo",
 			SourceOfBusiness: "Broker",
 			BranchName:       "Surabaya",
-			GroupPanel:       "004",
-			ClaimPIC:         "PICTEKNIK2",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -1),
 			CreatedAt:        base.AddDate(0, 0, -1),
 			WorkStatus:       "Open",
-			CommitteeKind:    komite.CommitteeKindOf("2", "2"),
-			ClaimValue:       money.FromRupiah(18_750_000),
-			ASMShareValue:    money.FromRupiah(18_750_000),
-			ORValue:          money.FromRupiah(9_375_000),
 			LegacyOutcome:    komite.OutcomePending,
-			LegacyTier:       1,
-
-			AIResult:        "DITOLAK",
-			AINoteRejected:  "Tanggal lapor melewati batas tujuh hari.",
-			AIAssessedAt:    base.AddDate(0, 0, -1),
-			HasAIAssessment: true,
 		},
 		{
-			// Tanpa penilaian AI sama sekali. Ia WAJIB tetap muncul: kueri lama
-			// menyambungkan `T_CLAIM_DATA_RESULTS_AI` dengan OUTER JOIN
-			// (`A.pyID = AI.KOMITE(+)`), dan mengubahnya menjadi INNER akan membuat
-			// pekerjaan menghilang tanpa satu pun tanda.
+			// Kasus ketiga menguji urutan "terlama di atas" berada di tengah, bukan di
+			// ujung — sehingga uji urutan tidak lulus hanya karena kebetulan.
 			CaseID:           "K-2603",
 			ClaimNumber:      "PNCN.26.0103",
 			PolicyNumber:     "POL-ANEKA-0022",
@@ -107,18 +80,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Aneka",
 			SourceOfBusiness: "Direct",
 			BranchName:       "Bandung",
-			GroupPanel:       "003",
-			ClaimPIC:         "PICTEKNIK1",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -4),
 			CreatedAt:        base.AddDate(0, 0, -4),
 			WorkStatus:       "Open",
-			CommitteeKind:    komite.CommitteeKindOf("1", ""),
-			ClaimValue:       money.FromRupiah(7_200_000),
-			ASMShareValue:    money.FromRupiah(7_200_000),
 			LegacyOutcome:    komite.OutcomePending,
-			LegacyTier:       1,
-			HasAIAssessment:  false,
 		},
 		{
 			CaseID:           "K-2604",
@@ -128,23 +94,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Personal Accident",
 			SourceOfBusiness: "Bancassurance",
 			BranchName:       "Medan",
-			GroupPanel:       "002",
-			ClaimPIC:         "PICTEKNIK3",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -21),
 			CreatedAt:        base.AddDate(0, 0, -21),
 			WorkStatus:       komite.StatusResolved,
-			CommitteeKind:    komite.CommitteeKindOf("2", "1"),
-			ClaimValue:       money.FromRupiah(9_500_000),
-			ASMShareValue:    money.FromRupiah(9_500_000),
-			CommitteeNote:    "Disetujui sesuai hasil survei.",
 			LegacyOutcome:    komite.OutcomeApproved,
-			LegacyTier:       1,
-
-			AIResult:        "DITERIMA",
-			AINoteAccepted:  "Sesuai manfaat polis.",
-			AIAssessedAt:    base.AddDate(0, 0, -21),
-			HasAIAssessment: true,
 		},
 		{
 			CaseID:           "K-2605",
@@ -154,19 +108,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Travel",
 			SourceOfBusiness: "Online",
 			BranchName:       "Denpasar",
-			GroupPanel:       "005",
-			ClaimPIC:         "PICTEKNIK2",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -30),
 			CreatedAt:        base.AddDate(0, 0, -30),
 			WorkStatus:       komite.StatusResolved,
-			CommitteeKind:    komite.CommitteeKindOf("2", "6"),
-			ClaimValue:       money.FromRupiah(3_400_000),
-			ASMShareValue:    money.FromRupiah(3_400_000),
-			CommitteeNote:    "Kejadian di luar periode pertanggungan.",
 			LegacyOutcome:    komite.OutcomeRejected,
-			LegacyTier:       1,
-			HasAIAssessment:  false,
 		},
 		{
 			// Milik orang lain. Ia ada supaya setiap pengujian inbox membuktikan
@@ -178,18 +124,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Property All Risk",
 			SourceOfBusiness: "Direct",
 			BranchName:       "Semarang",
-			GroupPanel:       "006",
-			ClaimPIC:         "PICTEKNIK4",
 			AssignedOperator: "INDRAGUNAWAN",
 			CommitteeDate:    base.AddDate(0, 0, -12),
 			CreatedAt:        base.AddDate(0, 0, -12),
 			WorkStatus:       "Open",
-			CommitteeKind:    komite.CommitteeKindOf("2", "5"),
-			ClaimValue:       money.FromRupiah(320_000_000),
-			ASMShareValue:    money.FromRupiah(160_000_000),
 			LegacyOutcome:    komite.OutcomePending,
-			LegacyTier:       2,
-			HasAIAssessment:  false,
 		},
 		{
 			// Sudah tuntas di Pega tetapi tidak punya keputusan tercatat sama sekali.
@@ -203,16 +142,11 @@ func SampleCases() []komite.CommitteeCase {
 			BusinessName:     "Aneka",
 			SourceOfBusiness: "Direct",
 			BranchName:       "Makassar",
-			GroupPanel:       "009",
-			ClaimPIC:         "PICTEKNIK1",
 			AssignedOperator: SampleOperator,
 			CommitteeDate:    base.AddDate(0, 0, -45),
 			CreatedAt:        base.AddDate(0, 0, -45),
 			WorkStatus:       komite.StatusResolved,
-			CommitteeKind:    komite.CommitteeKindOf("4", ""),
-			ClaimValue:       money.FromRupiah(1_100_000),
 			LegacyOutcome:    komite.OutcomePending,
-			HasAIAssessment:  false,
 		},
 	}
 }

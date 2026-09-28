@@ -304,14 +304,32 @@ func (h *Handler) prepare(
 // kategori dan lini bisnis — tetap ditolak bila tidak dikenal, dan penolakannya terjadi
 // di lapisan usecase.
 //
-// Kategori yang tidak disebut sama sekali jatuh ke tab pertama layar, sama seperti
-// membuka layarnya di Pega.
+// Kategori yang tidak disebut sama sekali jatuh ke tab "All data".
+//
+// # Kenapa BUKAN tab pertama Pega
+//
+// Layar lama membuka "Outstanding Data", dan bawaan di sini semula menirunya (`D-13`).
+// Akibatnya berkas yang baru dibuat TIDAK TAMPAK saat menu dibuka: berkas baru selalu
+// lahir berposisi "Not Transferred", dan tab Outstanding hanya memuat berkas yang sudah
+// bernomor klaim.
+//
+// Work Owner melaporkannya tiga kali (2026-09-24, 2026-09-25) dengan dugaan yang wajar —
+// datanya dikira tidak tersimpan — dan meminta perilakunya diubah.
+//
+// # Kenapa "All data", bukan "Data hasn't been transferred"
+//
+// Tab "belum diserahkan" juga membuat berkas baru tampak, tetapi hanya sampai berkas itu
+// diregistrasi — sesudahnya ia berpindah tab dan menghilang lagi dari tampilan pertama.
+// Itu bentuk lain dari keluhan yang sama.
+//
+// "All data" memuat SELURUH berkas pada tahap mana pun, diurutkan terbaru lebih dulu,
+// sehingga tidak ada tahap yang membuat sebuah berkas lenyap dari tampilan pertama.
 func readQuery(r *http.Request) usecase.Query {
 	value := r.URL.Query()
 
 	category := strings.TrimSpace(value.Get("kategori"))
 	if category == "" {
-		category = string(inboxlaporanklaim.CategoryOutstanding)
+		category = string(inboxlaporanklaim.DefaultCategory)
 	}
 
 	return usecase.Query{

@@ -347,7 +347,26 @@ type DecisionRepo interface {
 	ListForCases(ctx context.Context, caseIDs []string) (map[string][]Decision, error)
 
 	// Record menyimpan satu keputusan. Ia tidak pernah menimpa apa pun.
+	//
+	// Mengembalikan ErrDecisionStoreUnavailable bila jejaknya belum dapat dipakai.
 	Record(ctx context.Context, d Decision) error
+
+	// Available menjawab apakah jejak keputusan dapat dibaca dan ditulis saat ini.
+	//
+	// # Kenapa ia bagian dari seam, bukan urusan dalam adapter
+	//
+	// Jawabannya menentukan APA YANG DILIHAT PENGGUNA, bukan sekadar cara adapter
+	// bekerja. Ketika jejaknya belum tersedia, layar tetap menampilkan daftar pekerjaan
+	// dari sistem lama tetapi TIDAK dapat mencatat keputusan — dan pengguna berhak tahu
+	// itu sebelum menekan tombol, bukan sesudahnya.
+	//
+	// Pada Oracle ia menjawab apakah migrasi `0004` sudah dijalankan DBA; pada adapter
+	// memori ia selalu benar, karena penyimpanannya memang tidak dapat setengah ada.
+	//
+	// Ia sengaja mengembalikan bool, bukan error: pemanggilnya tidak dapat berbuat
+	// apa-apa atas sebab ketidaktersediaannya, dan sebab yang sebenarnya dilaporkan mode
+	// `-periksa` yang memang dibuat untuk menjelaskannya.
+	Available(ctx context.Context) bool
 }
 
 // IDGenerator adalah seam ke pembangkit pengenal keputusan.

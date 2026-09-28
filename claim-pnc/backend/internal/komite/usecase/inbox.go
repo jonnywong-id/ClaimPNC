@@ -83,6 +83,17 @@ type InboxResult struct {
 	// dapat berbeda dari jam server — dan Aging yang dihitung dua kali dengan dua jam
 	// yang berbeda menghasilkan dua angka untuk satu kenyataan.
 	Now time.Time
+
+	// DecisionsAvailable menyatakan apakah keputusan dapat dicatat saat ini.
+	//
+	// Ketika ia salah, layar masih menampilkan daftar pekerjaan yang sebenarnya — kasus,
+	// nilai klaim, penilaian AI, dan riwayat keputusan sistem lama seluruhnya berada di
+	// tabel warisan — tetapi tombol keputusan TIDAK akan dapat menyimpan apa pun.
+	//
+	// Ia dikirim ke layar supaya keterbatasan itu terbaca SEBELUM tombol ditekan. Pada
+	// layar yang menyetujui uang klaim, mengetahui bahwa keputusan tidak tercatat di mana
+	// pun jauh lebih penting daripada kerapian tampilan.
+	DecisionsAvailable bool
 }
 
 // Inbox membaca satu halaman inbox milik seorang anggota komite.
@@ -115,10 +126,11 @@ func (s *InboxService) Inbox(ctx context.Context, f komite.InboxFilter) (InboxRe
 	}
 
 	return InboxResult{
-		Cases:   cases,
-		Total:   page.Total,
-		Summary: summary,
-		Now:     s.now(),
+		Cases:              cases,
+		Total:              page.Total,
+		Summary:            summary,
+		Now:                s.now(),
+		DecisionsAvailable: s.decisions.Available(ctx),
 	}, nil
 }
 

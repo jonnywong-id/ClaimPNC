@@ -140,13 +140,19 @@ func TestIssuedHereDistinguishesOriginFromNumberAlone(t *testing.T) {
 	if !inboxlaporanklaim.IssuedHere("RCVN.26.0001") {
 		t.Fatal("nomor terbitan sendiri tidak dikenali")
 	}
+	// Bentuk `RCVN-xxxx` sempat dipakai sehari (2026-09-24) sebelum dibatalkan, dan satu
+	// berkas telanjur terbit dengannya. Ia TETAP milik aplikasi ini: berkas yang terbaca
+	// sebagai milik Pega berhenti dapat disunting (`P-1`), tanpa galat yang menjelaskannya.
+	if !inboxlaporanklaim.IssuedHere("RCVN-0015") {
+		t.Fatal("berkas bentuk sehari itu tidak lagi dikenali sebagai terbitan sendiri")
+	}
 	if inboxlaporanklaim.IssuedHere("RCV-0001") {
 		t.Fatal("nomor warisan dikenali sebagai terbitan sendiri")
 	}
-	// Awalan tanpa titik bukan nomor modul ini; tanpa titiknya, nomor warisan yang
-	// kebetulan berawalan sama akan ikut terbaca.
+	// Awalan tanpa PEMISAH bukan nomor modul ini. Memeriksa awalan saja akan
+	// meloloskan nomor apa pun yang kebetulan berawalan sama.
 	if inboxlaporanklaim.IssuedHere("RCVN0001") {
-		t.Fatal("nomor tanpa titik dikenali sebagai terbitan sendiri")
+		t.Fatal("nomor tanpa pemisah dikenali sebagai terbitan sendiri")
 	}
 }
 

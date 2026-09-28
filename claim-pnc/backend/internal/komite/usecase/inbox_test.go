@@ -93,24 +93,32 @@ func TestKotakOutstandingMengecualikanCaseYangSudahTuntasDiPega(t *testing.T) {
 	require.NotContains(t, nomorKasus(hasil), "K-2604", "yang sudah diputuskan di Pega bukan pekerjaan")
 }
 
-// Kasus TANPA penilaian AI tetap muncul.
+// Kolom yang TIDAK lagi ditampilkan memang tidak ada di kontrak.
 //
-// Kueri lama menyambungkan `T_CLAIM_DATA_RESULTS_AI` dengan OUTER JOIN
-// (`A.pyID = AI.KOMITE(+)`). Mengubahnya menjadi INNER akan membuat pekerjaan menghilang
-// dari inbox tanpa satu pun tanda — kelas cacat paling mahal yang bisa ada di sini.
-func TestKasusTanpaPenilaianAITetapMuncul(t *testing.T) {
+// Sejak 2026-09-28 layar ini mengikuti `InboxRegisterKomite_RD` apa adanya: sembilan
+// kolom, tanpa nilai uang, tanpa tipe komite, tanpa penilaian AI. Ketiganya berasal dari
+// `ShowKomiteTerimaTolakNonMBU` — jalur Non-MBU yang bukan sumber layar ini.
+//
+// Uji ini menjaga kesembilan kolom itu benar-benar terisi. Kolom yang diam-diam kosong
+// pada sebuah inbox lebih berbahaya daripada kolom yang tidak ada: yang pertama terbaca
+// sebagai data, yang kedua terbaca sebagai ketiadaan.
+func TestKesembilanKolomRDTerisi(t *testing.T) {
 	layanan, _ := layananInbox(t)
 
 	hasil, err := layanan.Inbox(context.Background(), penyaring(komite.InboxOutstanding))
 	require.NoError(t, err)
-	require.Contains(t, nomorKasus(hasil), "K-2603")
+	require.NotEmpty(t, hasil.Cases)
 
-	for _, c := range hasil.Cases {
-		if c.CaseID == "K-2603" {
-			require.False(t, c.HasAIAssessment)
-			require.Empty(t, c.AIResult)
-		}
-	}
+	c := hasil.Cases[0]
+	require.NotEmpty(t, c.CaseID)
+	require.NotEmpty(t, c.ClaimNumber)
+	require.NotEmpty(t, c.PolicyNumber)
+	require.NotEmpty(t, c.InsuredName)
+	require.NotEmpty(t, c.BusinessName)
+	require.NotEmpty(t, c.SourceOfBusiness)
+	require.NotEmpty(t, c.BranchName)
+	require.False(t, c.CommitteeDate.IsZero())
+	require.Positive(t, c.AgingDays(hasil.Now))
 }
 
 // Riwayat keputusan yang dibuat di PEGA tetap terbaca selama masa paralel.
@@ -390,6 +398,95 @@ func TestGalatPenyimpananDiteruskan(t *testing.T) {
 
 	_, err := layanan.Inbox(context.Background(), penyaring(komite.InboxOutstanding))
 	require.ErrorIs(t, err, gagal)
+}
+
+// jejakBelumSiap adalah penyimpanan keputusan yang BELUM dapat dipakai.
+//
+// Ia meniru keadaan nyata pada Oracle hari ini: `POOLDATA.CPNC_KOMITE_KEPUTUSAN` dibuat
+// migrasi `0004`, dan migrasi menempuh `D-63` sehingga hanya DBA yang dapat
+// menjalankannya. Sampai itu terjadi, jejaknya tidak ada — sementara 1.542 kasus komite
+// di tabel warisan tetap ada dan tetap harus terbaca.
+type jejakBelumSiap struct{ *memory.InboxStore }
+
+func (jejakBelumSiap) Available(context.Context) bool { return false }
+
+func (jejakBelumSiap) ListForCases(
+	context.Context, []string,
+) (map[string][]komite.Decision, error) {
+	// Tidak ada tabel berarti tidak ada satu pun keputusan yang dapat tercatat di sana —
+	// dan "belum ada keputusan" adalah jawaban yang benar, bukan kegagalan.
+	return map[string][]komite.Decision{}, nil
+}
+
+func (jejakBelumSiap) Record(context.Context, komite.Decision) error {
+	return komite.ErrDecisionStoreUnavailable
+}
+
+func layananInboxTanpaJejak(t *testing.T) *usecase.InboxService {
+	t.Helper()
+
+	penyimpanan := memory.NewSampleInboxStore()
+	layanan, err := usecase.NewInboxService(usecase.InboxOptions{
+		Cases:     penyimpanan,
+		Decisions: jejakBelumSiap{penyimpanan},
+		IDs:       memory.IDGenerator{},
+		Clock:     clock.FixedAt(sekarangUji),
+	})
+	require.NoError(t, err)
+	return layanan
+}
+
+// Daftar pekerjaan TETAP TERBACA meski jejak keputusan belum dapat dipakai.
+//
+// Ini inti perbaikan 2026-09-28. Sebelumnya ketiadaan satu tabel pelengkap mematikan
+// SELURUH layar dengan `ORA-00942`, padahal yang hilang hanyalah kolom keputusannya —
+// kasusnya sendiri, nilai klaimnya, dan riwayat keputusan Pega seluruhnya berada di tabel
+// warisan yang baik-baik saja.
+func TestDaftarTetapTerbacaMeskiJejakKeputusanBelumSiap(t *testing.T) {
+	layanan := layananInboxTanpaJejak(t)
+
+	hasil, err := layanan.Inbox(context.Background(), penyaring(komite.InboxOutstanding))
+	require.NoError(t, err)
+	require.NotEmpty(t, hasil.Cases, "daftar pekerjaan seharusnya tetap terbaca")
+
+	// Dan layar diberi tahu keadaannya, supaya ia dapat mengatakannya kepada pengguna
+	// SEBELUM tombol keputusan ditekan.
+	require.False(t, hasil.DecisionsAvailable)
+}
+
+// Riwayat keputusan PEGA tetap terbaca, karena ia memang tidak berasal dari tabel kita.
+func TestRiwayatPegaTetapTerbacaMeskiJejakKeputusanBelumSiap(t *testing.T) {
+	layanan := layananInboxTanpaJejak(t)
+
+	hasil, err := layanan.Inbox(context.Background(), penyaring(komite.InboxAccepted))
+	require.NoError(t, err)
+	require.NotEmpty(t, hasil.Cases, "riwayat warisan seharusnya tetap terbaca")
+}
+
+// Keputusan yang tidak dapat dicatat harus DITOLAK dengan galat yang menyebut sebabnya.
+//
+// Yang paling berbahaya di sini bukan kegagalannya, melainkan kegagalan yang tampak
+// seperti keberhasilan: pada layar yang menyetujui uang klaim, pengguna wajib tahu bahwa
+// keputusannya belum tersimpan di mana pun.
+func TestKeputusanDitolakSaatJejakBelumSiap(t *testing.T) {
+	layanan := layananInboxTanpaJejak(t)
+
+	_, err := layanan.Decide(context.Background(), komite.DecisionCommand{
+		CaseID: "K-2601",
+		Kind:   komite.DecisionApprove,
+		Note:   "",
+	}, pemeranUji())
+
+	require.ErrorIs(t, err, komite.ErrDecisionStoreUnavailable)
+}
+
+// Ketersediaan yang normal tetap dilaporkan apa adanya.
+func TestJejakKeputusanYangSiapDilaporkanTersedia(t *testing.T) {
+	layanan, _ := layananInbox(t)
+
+	hasil, err := layanan.Inbox(context.Background(), penyaring(komite.InboxOutstanding))
+	require.NoError(t, err)
+	require.True(t, hasil.DecisionsAvailable)
 }
 
 func TestBahanYangTidakLengkapDitolakSaatStart(t *testing.T) {

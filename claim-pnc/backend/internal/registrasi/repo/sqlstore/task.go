@@ -118,7 +118,7 @@ func (r *TaskStore) OpenTaskForClaim(ctx context.Context, claimID string) (regis
 // dan menyusun `IN` sepanjang daftar berarti teks SQL yang berbeda pada setiap
 // pemanggilan — rencana eksekusi yang tidak pernah dipakai ulang, dan satu langkah lebih
 // dekat ke perangkaian nilai ke dalam teks SQL.
-func (r *TaskStore) Inbox(ctx context.Context, operator string, workbasket []string) ([]registrasi.Task, error) {
+func (r *TaskStore) Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]registrasi.Task, error) {
 	exec := executorFrom(ctx, r.db)
 
 	result, err := r.collect(ctx, exec, "tugas_inbox_milik_saya", operator)
@@ -131,18 +131,27 @@ func (r *TaskStore) Inbox(ctx context.Context, operator string, workbasket []str
 		seen[t.ID] = true
 	}
 
-	for _, w := range workbasket {
-		queue, err := r.collect(ctx, exec, "tugas_inbox_antrean", w)
-		if err != nil {
-			return nil, err
-		}
-		for _, t := range queue {
-			if seen[t.ID] {
-				continue
+	add := func(queryName string, values []string) error {
+		for _, v := range values {
+			rows, err := r.collect(ctx, exec, queryName, v)
+			if err != nil {
+				return err
 			}
-			seen[t.ID] = true
-			result = append(result, t)
+			for _, t := range rows {
+				if seen[t.ID] {
+					continue
+				}
+				seen[t.ID] = true
+				result = append(result, t)
+			}
 		}
+		return nil
+	}
+	if err := add("tugas_inbox_antrean", workbasket); err != nil {
+		return nil, err
+	}
+	if err := add("tugas_inbox_tahap_grup", stages); err != nil {
+		return nil, err
 	}
 
 	sort.Slice(result, func(i, j int) bool {

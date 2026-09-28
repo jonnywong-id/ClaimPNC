@@ -12,11 +12,33 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { ReloadIcon, ScaleIcon } from '@/components/Icon'
-import { formatRupiah } from '@/lib/money'
 
 import { DecisionPanel } from './DecisionPanel'
 import { InboxTabs } from './InboxTabs'
 import { useDecide, useInboxList } from './api'
+
+/**
+ * formatTanggal menggambar tanggal untuk manusia.
+ *
+ * Konversi zona waktu terjadi DI SINI, di tempat waktu ditampilkan — satu-satunya tempat
+ * yang boleh melakukannya (`08-TECHNICAL-STRATEGY.md` §4.4). Tidak ada penambahan 7 jam
+ * manual di mana pun; `Asia/Jakarta` disebut namanya supaya hasilnya tidak bergantung pada
+ * zona waktu mesin pengguna.
+ *
+ * Bentuknya disamakan dengan Inbox Investigator dan Master Penolakan Klaim, supaya ketiga
+ * layar tidak terasa dirakit dari tiga aplikasi berbeda.
+ */
+function formatTanggal(value: string | undefined): string {
+  if (!value) return '—'
+  const saat = new Date(value)
+  if (Number.isNaN(saat.getTime())) return '—'
+  return saat.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 /**
  * Layar Inbox Komite.
@@ -28,8 +50,10 @@ import { useDecide, useInboxList } from './api'
  *
  * | Hal | Sumbernya |
  * |---|---|
- * | Tiga kotak: Outstanding, Diterima, Ditolak | `Section/InboxKomite_section-Section.xml` |
- * | Kolom daftar | `GetKomitePAOutstanding`, `ShowKomiteTerimaTolakNonMBU` |
+ * | Tiga kotak: Outstanding, Diterima, Ditolak | `Activity/SetDataKomitePNC_Act-Act.xml` |
+ * | Kesembilan kolom daftar | `Report Definition/InboxRegisterKomite_RD-RD.xml` |
+ * | Kesimpulan Diterima/Ditolak | `GetKomitePAditerima`, kolom `STATUSAPPROVE` |
+ * | Hanya case sejak tahun 2024 | penyaring `F1` pada RD |
  * | "Cari" berdasarkan No Komite / No Klaim | prompt pencarian pada section |
  * | "Tgl Input Dari" dan "Tgl Input Sampai" | isian tanggal pada section |
  * | Yang paling lama menunggu di atas | `ORDER BY "AgingKomite" DESC` |
@@ -40,6 +64,7 @@ import { useDecide, useInboxList } from './api'
  * | Hal | Pega | Di sini |
  * |---|---|---|
  * | Nama kolom | `.IBNR`, `.pyScore`, `.DraftWordingID` | nama yang sesuai isinya (`D-19`) |
+ * | Tgl Komite | `.Komite.DateOfComitee` dari blob | `TANGGALKOMITE`, jatuh ke tanggal input |
  * | Tiga grid bertumpuk | seluruhnya tampil sekaligus | tab, supaya pekerjaan terbaca lebih dulu |
  * | Keputusan | `AcceptStatus` tanpa keterangan | tiga pilihan beserta akibatnya |
  * | Catatan pada tolak | boleh kosong | wajib |
@@ -65,6 +90,16 @@ export function InboxKomitePage() {
 
   const data = list.data
   const rows = data?.kasus ?? []
+
+  /**
+   * Apakah keputusan dapat dicatat saat ini.
+   *
+   * Selama halaman pertama masih dimuat, `data` belum ada dan jawabannya dianggap
+   * TERSEDIA — bukan sebaliknya. Menganggapnya tidak tersedia akan membuat tombol
+   * berkedip nonaktif lalu aktif pada setiap pembukaan layar, dan kedipan itu
+   * mengajarkan pengguna untuk mengabaikan keadaan nonaktif yang sesungguhnya.
+   */
+  const decisionsAvailable = data?.jejak_keputusan_tersedia !== false
 
   function changeKind(next: Kind) {
     setKind(next)
@@ -124,30 +159,12 @@ export function InboxKomitePage() {
       ),
     },
     {
-      key: 'tipe',
-      title: 'Tipe komite',
+      key: 'tgl-komite',
+      title: 'Tgl komite',
       width: '9rem',
-      value: (c) => c.tipe_komite ?? '',
-      render: (c) => <span className="text-slate-700">{c.tipe_komite || '—'}</span>,
-    },
-    {
-      key: 'nilai',
-      title: 'Nilai klaim',
-      width: '11rem',
-      alignRight: true,
-      value: (c) => c.nilai_klaim,
+      value: (c) => c.tanggal_komite ?? '',
       render: (c) => (
-        <div className="min-w-0 text-right">
-          <p className="truncate font-semibold tabular-nums text-slate-900">
-            {formatRupiah(c.nilai_klaim)}
-          </p>
-          <p
-            className="truncate text-xs tabular-nums text-slate-500"
-            title="Nilai ASM share — di sistem lama tersimpan pada property bernama IBNR"
-          >
-            ASM {formatRupiah(c.nilai_asm_share)}
-          </p>
-        </div>
+        <span className="tabular-nums text-slate-700">{formatTanggal(c.tanggal_komite)}</span>
       ),
     },
     {
@@ -179,6 +196,12 @@ export function InboxKomitePage() {
             <Button
               tone="utama"
               onClick={() => setDeciding(c)}
+              disabled={!decisionsAvailable}
+              title={
+                decisionsAvailable
+                  ? undefined
+                  : 'Jejak keputusan belum dibuat di basis data — keputusan tidak akan tersimpan.'
+              }
               aria-label={`Beri keputusan komite untuk kasus ${c.nomor_case}`}
             >
               Putuskan
@@ -211,6 +234,29 @@ export function InboxKomitePage() {
           tertinggi atas nilai klaim.
         </p>
       </header>
+
+      {/*
+        Keterbatasan dinyatakan di ATAS, sebelum daftar dan sebelum tombol apa pun.
+
+        Ketika jejak keputusan belum ada, daftar di bawah TETAP benar — ia dibaca dari
+        tabel warisan — tetapi tidak satu pun keputusan dapat tersimpan. Pada layar yang
+        menyetujui uang klaim, menemukan itu SETELAH menekan tombol adalah kegagalan yang
+        jauh lebih mahal daripada satu kotak pemberitahuan yang mengganggu.
+      */}
+      {data?.jejak_keputusan_tersedia === false && (
+        <div className="mb-5">
+          <ErrorMessage
+            tone="gangguan"
+            title="Keputusan komite belum dapat dicatat"
+            description={
+              'Daftar kasus di bawah tetap benar dan dibaca dari sistem lama, tetapi tabel ' +
+              'jejak keputusannya belum dibuat di basis data — sehingga kotak Diterima dan ' +
+              'Ditolak hanya memuat riwayat keputusan Pega, dan tombol keputusan tidak akan ' +
+              'menyimpan apa pun. Hubungi DBA untuk menjalankan migrasi 0004.'
+            }
+          />
+        </div>
+      )}
 
       <div className="mb-5">
         <InboxTabs

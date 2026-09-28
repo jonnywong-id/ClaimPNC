@@ -1,75 +1,28 @@
 import { useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type AutoClaimBatch, type AutoClaimUploadResponse } from '@/api/types'
+import type { AutoClaimUploadResponse } from '@/api/types'
 import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
 
-import { useAutoClaimBatchList, useAutoClaimTabList, useExportAutoClaim } from './api'
-import { BatchDetail } from './BatchDetail'
-import { CompanySummary } from './CompanySummary'
+import { useAutoClaimTabList, useRefreshAutoClaim } from './api'
+import { CompanyTable } from './CompanyTable'
 import { SourceTab } from './SourceTab'
 import { UploadForm } from './UploadForm'
-
-/** Batch yang sedang dibuka rinciannya. */
-type OpenedBatch = { company: string; companyName: string; batch: string }
-
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
-  }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data klaim dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar batch tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar batch tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
-}
 
 /**
  * Layar Inbox Auto Claim.
  *
- * Pengganti `Harness/InboxAutoClaim-Harness.xml` atas POOLDATA.TMP_BATCH_AUTO_CLAIM.
- * Judul, susunan kolom, penyaring, dan tombolnya mengikuti layar lama (`D-13`: alur dan
- * tata letak ditiru supaya pengguna tidak perlu belajar ulang):
+ * Pengganti `InboxAutoClaim/InboxAutoClaim-Harness.xml`. Susunannya dari atas:
  *
- *   - Judul "INBOX AUTO CLAIM"      — `Section/Inbox_AS_KREDIT_Sect-Section.xml`
- *   - Penyaring "Nama Perusahaan"   — section yang sama
- *   - Grid 9 kolom                  — section yang sama, urutan kolomnya dipertahankan
- *   - Paginasi First/Prev/Next/Last — `Section/ButtonPagingInbox-Section.xml`
- *   - Tujuh tombol                  — section yang sama
+ *   - tiga tab jenis klaim (Asuransi Kredit · ANEKA · Travel), masing-masing satu tabel;
+ *   - tabel perusahaan selebar layar dengan pencarian dan paginasi;
+ *   - baris perusahaan yang diklik MELAR menampilkan grid batch 9 kolom layar lama
+ *     (`Section/Inbox_AS_KREDIT_Sect-Section.xml`), dan tombol Detail pada grid itu
+ *     membuka rincian baris di tempat yang sama.
+ *
+ * Bentuk tabel-dengan-baris-melar itu keputusan Work Owner 2026-09-27, menggantikan donut
+ * dan grid panjang di bawahnya. Kolom grid batch dan tombolnya tidak berubah (`D-13`).
  *
  * # TIGA DARI TUJUH TOMBOL BELUM DAPAT DIKERJAKAN, DAN ITU DINYATAKAN DI LAYAR
  *
@@ -91,200 +44,16 @@ export function AutoClaimInboxPage() {
   // Tab yang sedang terbuka. Bawaannya datang dari server supaya layar tidak memuat
   // daftar tab-nya sendiri.
   const [source, setSource] = useState('')
-
-  const [company, setCompany] = useState('')
-  const [page, setPage] = useState(1)
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [opened, setOpened] = useState<OpenedBatch | null>(null)
   const [uploadNote, setUploadNote] = useState<AutoClaimUploadResponse | null>(null)
 
   const tabList = useAutoClaimTabList()
   const activeSource = source === '' ? (tabList.data?.bawaan ?? '') : source
-  const activeTable = tabList.data?.tab.find((t) => t.kode === activeSource)?.tabel ?? ''
+  const activeTab = tabList.data?.tab.find((t) => t.kode === activeSource)
+  const activeTable = activeTab?.tabel ?? ''
+  const activeLabel = activeTab?.label ?? ''
 
-  const list = useAutoClaimBatchList(activeSource, company, page)
-  const exportFile = useExportAutoClaim()
-
-  // Berpindah tab mengosongkan penyaring perusahaan dan menutup rincian yang terbuka.
-  //
-  // Bukan kerapian: ketiga tab membaca TABEL yang berbeda, sehingga kode perusahaan yang
-  // dipilih pada satu tab belum tentu ada di tab lain — dan rincian batch yang terbuka
-  // pasti tidak ada. Membawanya ikut berpindah akan menampilkan tabel kosong atau galat
-  // "batch tidak ditemukan" yang sebabnya tidak terbaca di layar.
-  function changeSource(value: string) {
-    setSource(value)
-    setCompany('')
-    setPage(1)
-    setOpened(null)
-    exportFile.reset()
-  }
-
-  function changeCompany(value: string) {
-    setCompany(value)
-    // Halaman dikembalikan ke 1 setiap kali penyaring berubah. Tanpa itu, menyaring
-    // perusahaan yang hanya punya satu halaman sementara pengguna berada di halaman 3
-    // akan menampilkan tabel kosong yang tampak seperti "tidak ada data".
-    setPage(1)
-    setOpened(null)
-  }
-
-  function openDetail(row: AutoClaimBatch) {
-    exportFile.reset()
-    setOpened({ company: row.kode_perusahaan, companyName: row.nama_perusahaan, batch: row.batch })
-  }
-
-  const columns: Column<AutoClaimBatch>[] = [
-    {
-      key: 'kode',
-      title: 'KODE',
-      width: '6rem',
-      value: (row) => row.kode_perusahaan,
-    },
-    {
-      key: 'perusahaan',
-      title: 'Nama Perusahaan',
-      value: (row) => `${row.nama_perusahaan} ${row.kode_perusahaan}`,
-      render: (row) =>
-        row.nama_perusahaan === '' ? (
-          // Kode yang tidak ada di Master Auto Claim ditandai terang-terangan. Baris
-          // seperti ini TIDAK AKAN PERNAH berhasil diproses — pencarian penerima klaim
-          // membaca master yang sama — jadi petugas perlu melihatnya, bukan menebak
-          // kenapa kolomnya kosong.
-          <span className="flex flex-col">
-            <span className="text-slate-500">Tidak terdaftar di Master Auto Claim</span>
-            <span className="text-xs text-amber-700">
-              Kode {row.kode_perusahaan} perlu didaftarkan
-            </span>
-          </span>
-        ) : (
-          row.nama_perusahaan
-        ),
-    },
-    { key: 'batch', title: 'Batch', width: '5.5rem', value: (row) => row.batch },
-    {
-      // Kolom ini bagian KUNCI PENGELOMPOKAN, bukan tambahan tampilan. Grid Pega
-      // mengelompokkan menurut (batch, inisialid, userinput, nama_penerima, tanggal
-      // tglproses), sehingga satu nomor batch yang diunggah pada dua tanggal berbeda
-      // tampil sebagai DUA baris. Tanpa kolomnya, kedua baris itu tampak kembar dan
-      // petugas tidak punya cara membedakannya.
-      key: 'tanggal',
-      title: 'Tgl Proses',
-      width: '7rem',
-      value: (row) => row.tanggal_proses,
-      render: (row) => <span className="tabular-nums">{row.tanggal_proses}</span>,
-    },
-    {
-      key: 'upload',
-      title: 'Di Upload',
-      width: '6rem',
-      alignRight: true,
-      value: (row) => String(row.jumlah_upload),
-      render: (row) => <span className="tabular-nums">{row.jumlah_upload}</span>,
-    },
-    {
-      key: 'proses',
-      title: 'Diproses',
-      width: '7rem',
-      alignRight: true,
-      value: (row) => String(row.jumlah_proses),
-      render: (row) => (
-        <span className="tabular-nums">
-          {row.jumlah_proses}
-          {/* Sisa yang belum diproses disebut di sini, bukan sebagai kolom kesembilan:
-              ia selisih dua kolom yang sudah ada, dan kolom baru akan memperlebar grid
-              tanpa menambah informasi. */}
-          {row.jumlah_belum_proses > 0 && (
-            <span className="ml-1.5 text-xs font-normal text-amber-700">
-              +{row.jumlah_belum_proses} menunggu
-            </span>
-          )}
-        </span>
-      ),
-    },
-    {
-      key: 'berhasil',
-      title: 'Berhasil',
-      width: '6rem',
-      alignRight: true,
-      value: (row) => String(row.jumlah_berhasil),
-      render: (row) => (
-        <span className="tabular-nums font-medium text-emerald-700">{row.jumlah_berhasil}</span>
-      ),
-    },
-    {
-      key: 'gagal',
-      title: 'Gagal',
-      width: '5.5rem',
-      alignRight: true,
-      value: (row) => String(row.jumlah_gagal),
-      render: (row) => (
-        <span
-          className={
-            row.jumlah_gagal > 0
-              ? 'tabular-nums font-medium text-red-700'
-              : 'tabular-nums text-slate-400'
-          }
-        >
-          {row.jumlah_gagal}
-        </span>
-      ),
-    },
-    {
-      key: 'user',
-      title: 'User Upload',
-      width: '9rem',
-      value: (row) => row.user_upload,
-    },
-    {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '17rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <span className="inline-flex flex-wrap justify-end gap-1.5">
-          <Button
-            tone="kedua"
-            onClick={() => openDetail(row)}
-            aria-label={`Detail batch ${row.batch} ${row.kode_perusahaan}`}
-          >
-            Detail
-          </Button>
-          <Button
-            tone="kedua"
-            disabled={row.jumlah_berhasil === 0 || exportFile.isPending}
-            aria-label={`Export berhasil batch ${row.batch} ${row.kode_perusahaan}`}
-            onClick={() =>
-              exportFile.mutate({
-                company: row.kode_perusahaan,
-                source: activeSource,
-                batch: row.batch,
-                hasil: 'berhasil',
-              })
-            }
-          >
-            Export Berhasil
-          </Button>
-          <Button
-            tone="kedua"
-            disabled={row.jumlah_gagal === 0 || exportFile.isPending}
-            aria-label={`Export gagal batch ${row.batch} ${row.kode_perusahaan}`}
-            onClick={() =>
-              exportFile.mutate({
-                source: activeSource,
-                company: row.kode_perusahaan,
-                batch: row.batch,
-                hasil: 'gagal',
-              })
-            }
-          >
-            Export Gagal
-          </Button>
-        </span>
-      ),
-    },
-  ]
+  const reload = useRefreshAutoClaim()
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -296,8 +65,8 @@ export function AutoClaimInboxPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => void list.refetch()} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button tone="kedua" onClick={reload.refresh} disabled={reload.isFetching}>
+            {reload.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
           <Button tone="utama" onClick={() => setUploadOpen(true)} disabled={uploadOpen}>
             Upload Data Klaim
@@ -306,35 +75,27 @@ export function AutoClaimInboxPage() {
       </header>
 
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas: <span className="font-medium text-slate-700">{portal ?? '—'}</span>
       </p>
 
-      {/* Tab duduk di atas segalanya, seperti pada harness lama: ia memilih TABEL yang
-          dibaca seluruh layar, bukan menyaring isi tabel yang sama. */}
+      {/* Tab duduk di atas segalanya: ia memilih TABEL yang dibaca seluruh layar, bukan
+          menyaring isi tabel yang sama. */}
       <div className="mt-4">
-        <SourceTab tab={tabList.data?.tab ?? []} selected={activeSource} onSelect={changeSource} />
+        <SourceTab tab={tabList.data?.tab ?? []} selected={activeSource} onSelect={setSource} />
       </div>
-
-      {/* Panel ringkasan duduk DI ATAS grid dan sekaligus menjadi SATU-SATUNYA penyaring
-          perusahaan — dropdown yang dulu ada di bilah judul grid sudah dibuang (keputusan
-          Work Owner 2026-09-20), mengikuti layar Pega yang juga tidak punya dropdown.
-          Baris "All" pada tabel ringkasan inilah cara membatalkan penyaringnya. */}
-      <CompanySummary source={activeSource} selected={company} onSelect={changeCompany} />
 
       <PendingActions />
 
       {uploadOpen && (
-        <section className="mt-5">
-          <UploadForm
-            source={activeSource}
-            onClose={() => setUploadOpen(false)}
-            onUploaded={(result) => {
-              setUploadNote(result)
-              setUploadOpen(false)
-            }}
-          />
-        </section>
+        <UploadForm
+          source={activeSource}
+          sourceLabel={activeLabel}
+          onClose={() => setUploadOpen(false)}
+          onUploaded={(result) => {
+            setUploadNote(result)
+            setUploadOpen(false)
+          }}
+        />
       )}
 
       {uploadNote && (
@@ -410,82 +171,20 @@ export function AutoClaimInboxPage() {
         </div>
       )}
 
-      {exportFile.isError && (
+      {portal === null ? (
         <div className="mt-5">
-          <ErrorMessage
-            title="Berkas gagal diunduh"
-            description={
-              exportFile.error instanceof APIError
-                ? exportFile.error.message
-                : 'Periksa koneksi jaringan Anda, lalu coba lagi.'
-            }
-            tone={exportFile.error instanceof NetworkError ? 'gangguan' : 'penolakan'}
-          />
-        </div>
-      )}
-
-      <section className="mt-6">
-        {portal === null ? (
           <ErrorMessage
             title="Portal entitas belum dipilih"
             description="Data klaim dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
             tone="penolakan"
           />
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={list.data?.batch ?? []}
-            // Tanggal proses ikut menjadi kunci baris karena ia bagian kunci
-            // pengelompokan: tanpa itu, dua baris yang nomor batch-nya sama akan berbagi
-            // kunci React dan salah satunya tidak terbarui saat data berubah.
-            rowKey={(row) => `${row.kode_perusahaan}-${row.batch}-${row.tanggal_proses}`}
-            isLoading={list.isPending}
-            title="Daftar Batch"
-            // Diberi nama karena layar ini memuat DUA tabel. Tanpa nama, pembaca layar
-            // membacakan keduanya hanya sebagai "tabel".
-            label="Daftar batch"
-            // Nama tabelnya datang bersama tabnya, tidak diketik di sini: ketiga tab
-            // membaca tabel yang berbeda, dan teks tetap akan salah pada dua dari tiga.
-            description={`Sumber: ${activeTable === '' ? '…' : activeTable}`}
-            // Pencarian di peramban disembunyikan: ia hanya menyaring halaman yang sedang
-            // tampil, dan pengguna mengira ia mencari ke seluruh data.
-            hideSearch
-            emptyMessage={
-              company === ''
-                ? 'Belum ada batch klaim pada entitas ini.'
-                : 'Perusahaan ini belum punya batch klaim.'
-            }
-            pagination={{
-              page: list.data?.paginasi.halaman ?? page,
-              size: list.data?.paginasi.ukuran ?? 15,
-              total: list.data?.paginasi.total ?? 0,
-              totalPage: list.data?.paginasi.total_halaman ?? 0,
-              onPageChange: setPage,
-              isLoading: list.isFetching,
-            }}
-          />
-        )}
-      </section>
-
-      {opened && (
-        <BatchDetail
-          company={opened.company}
-          companyName={opened.companyName}
-          source={activeSource}
-          batch={opened.batch}
-          onClose={() => setOpened(null)}
-        />
+        </div>
+      ) : activeSource === '' ? null : (
+        // `key` pada tab membuat berpindah tab MEMASANG ULANG tabelnya: kata kunci,
+        // halaman, dan baris yang terbuka ikut hilang. Bukan kerapian — ketiga tab
+        // membaca tabel berbeda, dan kode perusahaan yang terbuka di satu tab belum tentu
+        // ada di tab lain.
+        <CompanyTable key={activeSource} source={activeSource} table={activeTable} />
       )}
     </main>
   )

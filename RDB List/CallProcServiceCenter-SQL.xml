@@ -1,0 +1,372 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxMoveFromSystem/>
+<pyJavaStream/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceDateProp/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pyValueChanged>false</pyValueChanged>
+<pyRequestType>CallProcServiceCenter</pyRequestType>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMergeSynchronized>20231026T011815.152 GMT</pxMergeSynchronized>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedRuleSetVersion/>
+<pyTemporaryObject/>
+<pyWorkKey/>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pxHostId>jboss26</pxHostId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyHandlerFlow/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CallProcServiceCenter</pxTabLabel>
+<pxInstanceLockedKey/>
+<pyBrowseSQL>DECLARE 
+  status VARCHAR2(32767); 
+  IDPega VARCHAR2(32767); 
+  tlogin VARCHAR2(32767);  
+  tnopolis VARCHAR2(32767);  
+  tclaimno VARCHAR2(32767); 
+  tstart DATE; 
+  tend DATE;
+  tqqname VARCHAR2(32767);   
+  tserialno VARCHAR2(32767);  
+  tquotation VARCHAR2(32767); 
+  tbill VARCHAR2(32767); 
+  timei VARCHAR2(32767); 
+  tnohp VARCHAR2(32767); 
+  tgaransi VARCHAR2(32767);  
+  tpic VARCHAR2(32767); 
+  tanalisa VARCHAR2(32767); 
+  tserivcefee NUMBER; 
+  tsparepart NUMBER; 
+  totherfee NUMBER; 
+  tsts_approval VARCHAR2(32767); 
+  tremark VARCHAR2(32767);
+  tPrincipal_Bill_No   VARCHAR2(32767); 
+  tInsurance           VARCHAR2(32767); 
+  tInsurance_Bill_No   VARCHAR2(32767); 
+  tCollect_Point       VARCHAR2(32767); 
+  tRepair_Point        VARCHAR2(32767); 
+  tProd_Group          VARCHAR2(32767); 
+  tProd_Category       VARCHAR2(32767); 
+  tBrand               VARCHAR2(32767); 
+  tModel               VARCHAR2(32767); 
+  tColour              VARCHAR2(32767); 
+  tIs_Delivery         VARCHAR2(32767); 
+  tQuotation_Amount    NUMBER; 
+  tReason              VARCHAR2(32767); 
+  tCancelled_Reason    VARCHAR2(32767); 
+  tEstimated_Pickup_Date DATE; 
+  tPickup_Courier_Date DATE; 
+  tDevice              VARCHAR2(32767); 
+  tSymptom_Code        VARCHAR2(32767); 
+  tSymptom_Desc        VARCHAR2(32767); 
+  tCust_Arrival        VARCHAR2(32767); 
+  tCust_Name           VARCHAR2(32767); 
+  tStatus              VARCHAR2(32767); 
+  tDownPayment         NUMBER; 
+  tDP_No               VARCHAR2(32767); 
+  tDP_Method           VARCHAR2(32767); 
+  tAcknowledge_Date    DATE; 
+  tAssigned_Date       DATE; 
+  tCompleted_Date      DATE; 
+  tRelease_Date        DATE; 
+  tInvoice_Date        DATE; 
+  tDeskCharger         VARCHAR2(32767); 
+  tCarKit              VARCHAR2(32767); 
+  tRemovableAntenna    VARCHAR2(32767); 
+  tHeadSet             VARCHAR2(32767); 
+  tBattery             VARCHAR2(32767); 
+  tSimCard             VARCHAR2(32767); 
+  tExtraCover          VARCHAR2(32767); 
+  tBatteryCover        VARCHAR2(32767); 
+  tLCD_text            VARCHAR2(32767); 
+  tType     VARCHAR2(32767); 
+  tDol      DATE;
+  tObject      VARCHAR2(32767); 
+  tNote      VARCHAR2(32767); 
+  tRepairID     VARCHAR2(32767); 
+  tkomite VARCHAR2(32767); 
+  ErrMsg  VARCHAR2(32767); 
+  ttotalfee NUMBER;
+   tdeliveryfee NUMBER;
+   ttax NUMBER; 
+   tppn NUMBER; 
+   tsukucadang NUMBER; 
+   tDeductible   NUMBER;
+    tExcess   NUMBER; 
+  ttotalfeeap NUMBER;
+   tdeliveryfeeap NUMBER;
+   ttaxap NUMBER; 
+   tppnap NUMBER; 
+   tsukucadangap NUMBER; 
+   tDeductibleap  NUMBER;
+    tExcessap  NUMBER; 
+   tchargerchabel  VARCHAR2(32767); 
+  tboxunit  VARCHAR2(32767); 
+tcase  VARCHAR2(32767); 
+taccesorlainya  VARCHAR2(32767); 
+tnoktp VARCHAR2(20);
+tittemwarranty VARCHAR2(32767);
+
+BEGIN 
+  status :={TempSC.pyNote};
+  IDPega := {TempSC.pyID};
+  tlogin := {TempSC.UserId};
+  tnopolis := {TempSC.PolicyNo};  
+  tclaimno := {TempSC.ClaimNo}; 
+  tpic := {TempSC.UserTeknis}; 
+  tbill := {TempSC.ReferenceId};
+  tInsurance := {TempSC.BusinessID};
+  tInsurance_Bill_No := {TempSC.ContractNo};
+  tnohp := {TempSC.TelpTertanggung}; 
+  tCust_Name := {TempSC.UserName};
+  tBrand := {TempSC.ClaimNoSRB};
+  tquotation := {TempSC.CountryID}; 
+  tColour := {TempSC.Conveyance};
+  tDevice := {TempSC.District};
+  timei := {TempSC.ClientID}; 
+tModel := {TempSC.BranchName};
+  tObject := {TempSC.ObjectName};
+  tserialno := {TempSC.IDMaster}; 
+  tRepairID := {TempSC.RepairID};
+ tDP_No :={TempSC.FlagASO};
+  tDP_Method:= {TempSC.FlagNOLL};
+tPrincipal_Bill_No := {TempSC.BranchID};
+tCollect_Point := {TempSC.BusinessName};
+tIs_Delivery := {TempSC.CopyFrom};
+ tRepair_Point := {TempSC.CASEDB};
+  tProd_Group  :={TempSC.CauseOfLoss};
+  tProd_Category  :={TempSC.CauseOfLossID}; 
+  tstart := {TempSC.StartDateTreaty DateTime}; 
+  tend := {TempSC.EndDateTreaty DateTime};
+  tSymptom_Code := {TempSC.Email};
+  tSymptom_Desc := {TempSC.ReportDescription};
+   tAcknowledge_Date := {TempSC.ReportDate DateTime};
+  tAssigned_Date := {TempSC.TransferPICDate DateTime};
+ tRelease_Date := {TempSC.DateForAging DateTime};
+  tInvoice_Date := {TempSC.AdminTransferDate DateTime};
+  tCompleted_Date := {TempSC.RegisterDate DateTime};
+ tEstimated_Pickup_Date := {TempSC.AnalystTransferDate DateTime};
+  tCancelled_Reason := {TempSC.DistrictID};
+ tanalisa := {TempSC.Usulan}; 
+  tReason := {TempSC.CreateFrom};
+ tkomite := {TempSC.TreatyName};
+ tStatus := {TempSC.Status};
+ ttotalfee := {NILAIEstimasi.NilaiClaim};
+  tQuotation_Amount := {TempSC.CountryID};
+ tdeliveryfee := {NILAIEstimasi.biayatransportasi};
+ ttax := {NILAIEstimasi.Biayajasa}; 
+ tppn := {NILAIEstimasi.biayappn};
+ tDeductible :={NILAIEstimasi.NilaiClaimDeductible};
+ tsukucadang := {NILAIEstimasi.NilaiSukuCadang};
+tExcess := {NILAIEstimasi.biayaexcess};
+tDownPayment := {NILAIEstimasi.DownPayment};
+tserivcefee :={NILAIEstimasi.SerivceFee};
+  tgaransi := {TempSC.StatusClaim};  
+ ttotalfeeap := {NILAIEstimasi.NilaiClaimAccept};
+   tdeliveryfeeap := {NILAIEstimasi.Biayatransportasiaccept};
+   ttaxap := {NILAIEstimasi.BiayajasaAccept};
+   tppnap := {NILAIEstimasi.BiayappnAccept};
+   tsukucadangap := {NILAIEstimasi.NilaiSukuCadangAccapt};
+   tDeductibleap  := {NILAIEstimasi.NilaiClaimDeductibleAccept};
+    tExcessap  := {NILAIEstimasi.Biayaexcessaccept};
+tDeskCharger := {TempSC.IsCloseFile};
+  tanalisa := {TempSC.ReportDescription}; 
+tRemovableAntenna := {TempSC.IsKomiteTransfer};
+tCarKit := {TempSC.IsKomiteFinalTransfer};
+tHeadSet := {TempSC.IsPLA};
+tBattery := {TempSC.IsReservedClaim};
+tSimCard := {TempSC.IsSendPremi};
+tLCD_text := {TempSC.IsUploadKlaim};
+tExtraCover := {TempSC.IsTransferAnalisator};
+tchargerchabel := {TempSC.AppointedSVY};
+tboxunit :={TempSC.AppointedADJID};
+tcase :={TempSC.AppointedADJ};
+taccesorlainya :={TempSC.ConsultantID};
+tCust_Arrival := {TempSC.EmailTertanggung};
+tnoktp := {TempSC.NoKTP};
+tittemwarranty :={TempSC.StatusClaim};
+tType := {TempSC.RefNo};
+tBatteryCover:= {TempSC.IsTransferPIC};
+tPickup_Courier_Date:={TempSC.FinishRegisterDate DateTime};
+tsts_approval := {TempSC.Keyword};
+  
+  POOLDATA.PEGA_PORTAL_REKANAN (status, IDPega, tlogin, tnopolis, tclaimno, tstart, tend, tqqname, tserialno, tquotation, tbill, timei, tnohp, tgaransi,  tpic, tanalisa, tserivcefee, tsparepart, ttax, totherfee,tsts_approval, tdeliveryfee, ttotalfee, tremark, tPrincipal_Bill_No, tInsurance, tInsurance_Bill_No, tCollect_Point, tRepair_Point, tProd_Group, 
+  tProd_Category, tBrand, tModel, tColour, tIs_Delivery, tQuotation_Amount, tReason, tCancelled_Reason, tEstimated_Pickup_Date, tPickup_Courier_Date, tDevice, tSymptom_Code, tSymptom_Desc, tCust_Arrival, tCust_Name, tStatus, tDownPayment, tDP_No, tDP_Method, tAcknowledge_Date, tAssigned_Date, tCompleted_Date, tRelease_Date, tInvoice_Date, tDeskCharger, tCarKit, tRemovableAntenna, tHeadSet, tBattery, tSimCard, tExtraCover, tBatteryCover, tLCD_text, tType, tDol, tExcess, tObject, tNote,tRepairID,tkomite, tDeductible, tnoktp,tittemwarranty,taccesorlainya,tcase,tboxunit,tchargerchabel,
+tExcessap,tDeductibleap,tsukucadangap,tppnap,ttaxap,tdeliveryfeeap,ttotalfeeap,
+tsukucadang,tppn,{TempSC.ErrorNotes},{OutputSC.ResponseNote out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyInterface/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDeleteSQL/>
+<pyCircumstanceVal/>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM CallProcServiceCenter</pyRuleName>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-BENGKEL_HE GCNM!UPDATEBENGKELHE #20200908T033246.795 GMT</pzOriginalInstanceKey>
+<pySaveSQL>insert into POOLDATA.T_DOC_SC
+(id,insertdate,documentid)
+values
+({docSurvey.IDSurvey},sysdate,{docSurvey.IDIndex})</pySaveSQL>
+<pxOriginalRuleSet>GCNMFWInt</pxOriginalRuleSet>
+<pyMemo>dones</pyMemo>
+<pyRuleFormStatusTime>20260928T070957.901 GMT</pyRuleFormStatusTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyOpenSQL/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateDateTime>20240110T125814.512 GMT</pxUpdateDateTime>
+<pyRuleEnds/>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalCreateOperator/>
+<pxSaveDateTime>20240110T125814.520 GMT</pxSaveDateTime>
+<pyLabelOld>Call Procedure Service Center</pyLabelOld>
+<pyCircumstanceType/>
+<pyStatus/>
+<pxCommitDateTime>20240202T104314.000 GMT</pxCommitDateTime>
+<pyBaseRule>false</pyBaseRule>
+<pyRelativePath/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDate/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxCreateDateTime>20231111T090206.298 GMT</pxCreateDateTime>
+<pyCheckInRuleSet/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!CALLPROCSERVICECENTER</pxInsName>
+<pyTemplateInputBox/>
+<pyDescription/>
+<pyStreamName/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyWindowTitle/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleStarts/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20231111T090206.298 GMT</pzInsKey>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceTemplate/>
+<pyRuleParamsStreamName/>
+<pyShowJavaWindowName>GeneratedJava20260928T070957.925 GMT</pyShowJavaWindowName>
+<pzChecksum>1051149948</pzChecksum>
+<pxOriginalCreateOpName/>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!CALLPROCSERVICECENTER</pxInsId>
+<pxInstanceLockedDateTime/>
+<pySpecialtyComponentData/>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateSystemID/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyLabel>Call Procedure Service Center</pyLabel>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxOriginalCreateDateTime/>
+<pyDocumentTitle/>
+<pxInstanceLockedBy/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20231111T090206.298 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pxMoveImportDateTime>20240202T104313.860 GMT</pxMoveImportDateTime>
+<pyTemplate/>
+<pyFormPost/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyCircumstanceProp/>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyDeletedObject/>
+<pxSiblingCount/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20231111T090206.298 GMT</pzInsKey>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20230725T025040.746 GMT</pzInsKey>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-05 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20230428T024843.373 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyRulePage>
+</pyRulePage>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyPropertyPane>false</pyPropertyPane>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyBack>true</pyBack>
+<pyDelete>false</pyDelete>
+<pyBranchOut>false</pyBranchOut>
+<pyAvailability>false</pyAvailability>
+<pyRestore>false</pyRestore>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+</pyToolBarSettings>
+</pagedata>

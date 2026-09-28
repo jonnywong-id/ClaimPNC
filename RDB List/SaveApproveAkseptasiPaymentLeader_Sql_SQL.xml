@@ -1,0 +1,195 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSiblingCount/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL @BASECLASS GCNM!GETDATAAKSEPTASILEADERKLAIMNONMBU #20240429T030355.617 GMT</pzOriginalInstanceKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedRuleSet/>
+<pyRuleStarts/>
+<pyMethodStatus/>
+<pyShowJavaWindowName>GeneratedJava20260928T020025.858 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pxUpdateOpName>MARIATRIELSA</pxUpdateOpName>
+<pyRuleName>@baseclass GCNM SaveApproveAkseptasiPaymentLeader_Sql</pyRuleName>
+<pyRuleEnds/>
+<pyCircumstanceType/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxInsName>@BASECLASS!GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL</pxInsName>
+<pyRelativePath/>
+<pxUpdateOperator>MARIATRIELSA</pxUpdateOperator>
+<pzDocumentKey>RULE-CONNECT-SQL @BASECLASS GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL #20240828T101538.093 GMT</pzDocumentKey>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceDate/>
+<pyInterface/>
+<pyOpenSQL/>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pySaveSQL/>
+<pzChecksum>-1002760731</pzChecksum>
+<pyTemplate/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDescription/>
+<pxTabLabel>@baseclass GCNM SaveApproveAkseptasiPaymentLeader_Sql</pxTabLabel>
+<pyLabelOld>SaveApproveAkseptasiPaymentLeader_Sql</pyLabelOld>
+<pyIsFromManageChangeLP/>
+<pyHandlerFlow/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pyDeletedObject/>
+<pyDocumentTitle/>
+<pyUsage/>
+<pyDeleteSQL/>
+<pxCreateOperator>MARIATRIELSA</pxCreateOperator>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyMemo>done tambah kondisi</pyMemo>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxInsId>@BASECLASS!GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL</pxInsId>
+<pyFormPost/>
+<pxCreateDateTime>20240828T101538.093 GMT</pxCreateDateTime>
+<pxHostId>jboss10372</pxHostId>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceProp/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRequestType>SaveApproveAkseptasiPaymentLeader_Sql</pyRequestType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL #20240828T101538.093 GMT</pzInsKey>
+<pxMergeSynchronized>20240618T113543.498 GMT</pxMergeSynchronized>
+<pxOriginalCreateOperator/>
+<pxCreateOpName>MARIATRIELSA</pxCreateOpName>
+<pyBrowseSQL>update  pooldata.T_CLAIM_AKSEPTASI_CHECKER set 
+STSAPP = {TEMPADJUSTMENT.AcceptanceStatus},
+NOTEAPPROVE= {TEMPADJUSTMENT.RemarkManager},
+TGLAPPROVE= sysdate,
+PICNOTES={TEMPADJUSTMENT.RemarkAcceptedLeader}
+WHERE NOAKSEPTASI = {TEMPADJUSTMENT.AcceptedNo}  and STSAPP ='0'</pyBrowseSQL>
+<pyRuleParamsStreamName/>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>MARIATRIELSA@</pySPRuleSetName>
+<pxSaveDateTime>20240829T014741.453 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pyStatus/>
+<pyJavaStream/>
+<pyCheckInRuleSet/>
+<pyCircumstanceDateProp/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceTemplate/>
+<pyRuleFormStatusTime>20260928T020025.833 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxInstanceLockedDateTime/>
+<pxInstanceLockedBy/>
+<pxMoveFromSystem/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pxInstanceLockedCreateDateTime/>
+<pyWindowTitle/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyLabel>SaveApproveAkseptasiPaymentLeader_Sql</pyLabel>
+<pxUpdateDateTime>20240829T014741.438 GMT</pxUpdateDateTime>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceVal/>
+<pyTemplateInputBox/>
+<pxMoveImportDateTime>20241223T123620.985 GMT</pxMoveImportDateTime>
+<pyClassName>@baseclass</pyClassName>
+<pyTemporaryObject/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxOriginalCreateOpName/>
+<pyStreamName/>
+<pxInstanceLockedKey/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL #20240828T101538.093 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL #20240614T080505.163 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyLabel>01-03-06 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-05 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL @BASECLASS GCNM!SAVEAPPROVEAKSEPTASIPAYMENTLEADER_SQL #20240429T091134.386 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyBack>true</pyBack>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pyCheckIn>false</pyCheckIn>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckOut>true</pyCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCompareVersion/>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyRuleData>true</pyRuleData>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySiblings>true</pySiblings>
+<pyUsesInheritance>false</pyUsesInheritance>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

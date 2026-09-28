@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { ClaimReportFormPage } from './ClaimReportFormPage'
+import { backToListPath, ClaimReportFormPage } from './ClaimReportFormPage'
 
 const ISIAN_KOSONG = {
   tanggal_terima_dokumen: '',
@@ -60,6 +60,23 @@ function berkas(over: Record<string, unknown> = {}) {
   }
 }
 
+/** Jawaban pencarian polis; bawaannya polis yang tidak ditemukan. */
+function polis(over: Record<string, unknown> = {}) {
+  return {
+    nomor_polis: '',
+    ditemukan: false,
+    tertanggung: '',
+    kode_bisnis: '',
+    nama_bisnis: '',
+    nomor_rujukan: '',
+    group_panel: '',
+    syariah: false,
+    pesan: [],
+    memblokir: false,
+    ...over,
+  }
+}
+
 type Call = { url: string; method: string; body: unknown }
 
 let calls: Call[] = []
@@ -93,6 +110,7 @@ function show(id = 'RCVN.26.0001') {
         <Routes>
           <Route path="/inbox/laporan-klaim/:id" element={<ClaimReportFormPage />} />
           <Route path="/inbox/laporan-klaim" element={<div data-testid="daftar" />} />
+          <Route path="/registrasi/klaim/:klaimID" element={<div data-testid="klaim" />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -153,7 +171,11 @@ describe('form Input Receive Document', () => {
   })
 
   it('mengirim seluruh isian sebagai PUT, dan uang dalam sen', async () => {
-    installFetch(() => ({ body: berkas() }))
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'POL-CONTOH-1', pesan: [{ kode: 'polis_tidak_tersedia', pesan: 'Nomor Polis tidak tersedia', memblokir: false }] }) }
+        : { body: berkas() },
+    )
     show()
 
     await screen.findByLabelText('Nomor Polis')
@@ -264,5 +286,163 @@ describe('form Input Receive Document', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kembali ke daftar' }))
 
     expect(await screen.findByTestId('daftar')).toBeInTheDocument()
+  })
+})
+
+describe('kembali ke daftar', () => {
+  // Berkas yang baru dibuat berposisi "Not Transferred", sedangkan daftar selalu
+  // terbuka di Outstanding. Tanpa pemetaan ini petugas kembali ke tab yang TIDAK
+  // memuat berkasnya, lalu menyimpulkan pembuatannya gagal — padahal barisnya
+  // tersimpan (keluhan Work Owner, 2026-09-24).
+  it('membuka tab tempat berkas itu benar-benar berada', () => {
+    expect(backToListPath('Not Transferred')).toContain('kategori=belum-diserahkan')
+    expect(backToListPath('Not Registered')).toContain('kategori=belum-registrasi')
+    expect(backToListPath('Outstanding')).toContain('kategori=outstanding')
+  })
+
+  // Posisi yang tidak dikenali TIDAK ditebak. Menebak akan membuka tab yang salah,
+  // dan itu persis kegagalan yang fungsi ini ada untuk menutupnya.
+  it('jatuh ke tab bawaan bila posisinya tidak dikenali', () => {
+    expect(backToListPath(undefined)).toBe('/inbox/laporan-klaim')
+    expect(backToListPath('Entah Apa')).toBe('/inbox/laporan-klaim')
+  })
+})
+
+describe('tombol Register Klaim', () => {
+  // Tombol ini ADA di layar lama (Section/InputReceiveDocument_sect.xml, memanggil
+  // CreateRegisterKlaimPNC, yang langkah pertamanya Call CreateInputKlaim). Sejak
+  // 2026-09-24 ia bekerja: memanggil POST /api/registrasi/klaim.
+  //
+  // Yang diuji di sini adalah tautannya, bukan isi modul registrasi. Nomor laporan WAJIB
+  // ikut terkirim — itulah yang mengisi RCVID pada klaim, dan tanpanya baris RCV-nya tidak
+  // pernah berpindah keluar dari tab "Not Transferred".
+  it('mengirim nomor polis beserta nomor laporan asalnya', async () => {
+    installFetch((call) =>
+      call.url.includes('/api/registrasi/klaim')
+        ? { body: { klaim: { id: 'KLM-1', nomor: 'PNCN.26.0007' } } }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    await waitFor(() => {
+      const kirim = calls.find((c) => c.url.includes('/api/registrasi/klaim'))
+      expect(kirim?.method).toBe('POST')
+      expect(kirim?.body).toEqual({
+        nomor_polis: '01.002.2026.00001',
+        nomor_laporan: 'RCVN.26.0001',
+      })
+    })
+  })
+
+  // Setelah klaim terbit, petugas dibawa ke klaimnya — bukan ditinggalkan di form laporan
+  // tanpa tanda apa pun bahwa sesuatu terjadi.
+  it('membuka klaim yang baru terbit', async () => {
+    installFetch((call) =>
+      call.url.includes('/api/registrasi/klaim')
+        ? { body: { klaim: { id: 'KLM-1', nomor: 'PNCN.26.0007' } } }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    expect(await screen.findByTestId('klaim')).toBeInTheDocument()
+  })
+
+  // Berkas milik Pega hanya dapat dibaca (P-1). Mendaftarkan klaim MENULIS ke berkas itu —
+  // NOKLAIM-nya terisi — sehingga tombol ini tunduk pada kewenangan yang sama dengan
+  // Simpan. Kewenangannya datang dari server, bukan disimpulkan layar.
+  it('mati pada berkas yang hanya dapat dibaca', async () => {
+    installFetch(() => ({ body: berkas({ dapat_disunting: false }) }))
+    show()
+
+    expect(await screen.findByRole('button', { name: 'Register Klaim' })).toBeDisabled()
+  })
+
+  // Nomor polis kosong ditolak SEBELUM permintaan berangkat: registrasi mengambil snapshot
+  // polis, dan snapshot tidak dapat diambil tanpa nomornya. Menolaknya di layar memberi
+  // petugas kalimat yang dapat ditindaklanjuti, bukan galat server.
+  it('menolak tanpa nomor polis, tanpa memanggil server', async () => {
+    installFetch(() => ({ body: berkas() }))
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    expect(await screen.findByText(/Nomor Polis harus diisi/)).toBeInTheDocument()
+    expect(calls.some((c) => c.url.includes('/api/registrasi/klaim'))).toBe(false)
+  })
+
+  // Pengganti PolisReceiveInternalExternal: meninggalkan isian Nomor Polis mengisi data
+  // polisnya, dan nomornya dirapikan (huruf besar, tanpa titik).
+  it('mengisi data polis otomatis saat Nomor Polis ditinggalkan', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? {
+            body: polis({
+              nomor_polis: '12600000245315',
+              ditemukan: true,
+              tertanggung: 'PT CONTOH',
+              nama_bisnis: 'ALL RISK',
+              nomor_rujukan: 'REF-1',
+              group_panel: '003',
+            }),
+          }
+        : { body: berkas() },
+    )
+    show()
+
+    const field = await screen.findByLabelText('Nomor Polis')
+    await userEvent.type(field, '1260.0000.2453.15')
+    await userEvent.tab()
+
+    await waitFor(() => expect(screen.getByLabelText('Nama Tertanggung')).toHaveValue('PT CONTOH'))
+    expect(screen.getByLabelText('Nomor Polis')).toHaveValue('12600000245315')
+    expect(screen.getByLabelText('Nama Bisnis')).toHaveValue('ALL RISK')
+    expect(screen.getByLabelText('No. Referensi/Placing Slip')).toHaveValue('REF-1')
+    expect(calls.some((c) => c.url.includes('/polis?nomor=1260.0000.2453.15'))).toBe(true)
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeEnabled()
+  })
+
+  it('mematikan Simpan dan Register Klaim untuk polis Syariah', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? {
+            body: polis({
+              nomor_polis: '12600000000002',
+              ditemukan: true,
+              syariah: true,
+              memblokir: true,
+              pesan: [{ kode: 'polis_syariah', pesan: 'Polis Syariah harus registrasi klaim melalui Pega SMAS', memblokir: true }],
+            }),
+          }
+        : { body: berkas() },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), '12600000000002{Enter}')
+
+    expect(await screen.findByText('Polis Syariah harus registrasi klaim melalui Pega SMAS')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Register Klaim' })).toBeDisabled()
+  })
+
+  // Seperti langkah 12 activity lama: polis yang tidak ditemukan MENGOSONGKAN isian polis,
+  // tetapi tidak memblokir — laporan boleh masuk sebelum polisnya terbit.
+  it('mengosongkan isian polis bila polis tidak ditemukan, tanpa memblokir', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'X1', pesan: [{ kode: 'polis_tidak_tersedia', pesan: 'Nomor Polis tidak tersedia', memblokir: false }] }) }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, tertanggung: 'SISA LAMA' } }) },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), 'x1')
+    await userEvent.tab()
+
+    expect(await screen.findByText('Nomor Polis tidak tersedia')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nama Tertanggung')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeEnabled()
   })
 })

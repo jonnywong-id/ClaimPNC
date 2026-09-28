@@ -51,11 +51,13 @@ func (r *InboxRepo) ListCases(ctx context.Context, f komite.InboxFilter) (komite
 	}
 
 	var total int
-	if err := r.db.QueryRowContext(ctx, query("inbox_count"), countArgs(f)...).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(
+		ctx, query("inbox_count"), filterArgs(f)...,
+	).Scan(&total); err != nil {
 		return komite.InboxPage{}, fmt.Errorf("komite/sqlstore: menghitung inbox: %w", err)
 	}
 
-	args := append(countArgs(f), f.Offset, f.Limit)
+	args := append(filterArgs(f), f.Offset, f.Limit)
 	rows, err := r.db.QueryContext(ctx, query("inbox_list"), args...)
 	if err != nil {
 		return komite.InboxPage{}, fmt.Errorf("komite/sqlstore: membaca inbox: %w", err)
@@ -132,18 +134,23 @@ func (r *InboxRepo) CheckTables(ctx context.Context) error {
 	return rows.Err()
 }
 
-// countArgs menyusun argumen penyaring sesuai urutan penanda pada inbox_count.
+// filterArgs menyusun argumen penyaring sesuai urutan penanda pada inbox_count.
 //
 // Urutannya WAJIB sama dengan inbox_list sampai penanda terakhir sebelum paginasi —
-// itulah sebabnya inbox_list memakai daftar yang sama lalu menambahkan offset dan limit
-// di belakangnya. Menyusun dua daftar terpisah akan membuat keduanya berbeda diam-diam.
-func countArgs(f komite.InboxFilter) []any {
+// itulah sebabnya inbox_list memakai daftar yang sama lalu menambahkan offset dan limit di
+// belakangnya. Menyusun dua daftar terpisah akan membuat keduanya berbeda diam-diam.
+//
+// Operator disebut SEKALI. Kuerinya menyaring pemilik di satu tempat — pada INNER JOIN ke
+// `PC_ASSIGN_WORKLIST`, persis seperti `InboxRegisterKomite_RD` — bukan di dua tempat
+// seperti bentuk sebelumnya.
+func filterArgs(f komite.InboxFilter) []any {
 	kind := string(f.Kind)
 	search := nilIfEmpty(searchPattern(f.Search))
 	from, to := dateBounds(f)
 
 	return []any{
-		f.Operator, f.Operator, f.Operator,
+		f.Operator,
+		komite.InboxEarliestCreatedAt(),
 		kind, kind, kind,
 		search, search, search,
 		from, from,
@@ -157,7 +164,8 @@ func summaryArgs(f komite.InboxFilter) []any {
 	from, to := dateBounds(f)
 
 	return []any{
-		f.Operator, f.Operator, f.Operator,
+		f.Operator,
+		komite.InboxEarliestCreatedAt(),
 		search, search, search,
 		from, from,
 		to, to,
@@ -225,98 +233,34 @@ func scanCase(row scanner) (komite.CommitteeCase, error) {
 		businessName     any
 		sourceOfBusiness any
 		branchName       any
-		groupPanel       any
-		claimPIC         any
 		assignedOperator any
 		committeeDate    sql.NullTime
 		createdAt        sql.NullTime
 		workStatus       any
-		typeKomite       any
-		paymentType      any
-		claimValue       any
-		asmShareValue    any
-		orValue          any
-		committeeNote    any
 		legacyApprove    any
-		legacyTier       any
-		aiResult         any
-		aiNoteAccepted   any
-		aiNoteRejected   any
-		aiAssessedAt     sql.NullTime
-		aiPresent        any
 	)
 
 	if err := row.Scan(
 		&caseID, &claimNumber, &policyNumber, &insuredName, &businessName,
-		&sourceOfBusiness, &branchName, &groupPanel, &claimPIC, &assignedOperator,
-		&committeeDate, &createdAt, &workStatus,
-		&typeKomite, &paymentType,
-		&claimValue, &asmShareValue, &orValue,
-		&committeeNote, &legacyApprove, &legacyTier,
-		&aiResult, &aiNoteAccepted, &aiNoteRejected, &aiAssessedAt, &aiPresent,
+		&sourceOfBusiness, &branchName, &assignedOperator,
+		&committeeDate, &createdAt, &workStatus, &legacyApprove,
 	); err != nil {
 		return komite.CommitteeCase{}, err
 	}
 
-	id := toText(caseID)
-
-	// Nilai uang TIDAK boleh gagal diam-diam. Berbeda dari kolom keterangan, ia yang
-	// dibaca anggota komite saat memutuskan — dan nol yang seharusnya empat puluh lima
-	// juta adalah kesalahan yang tidak terlihat keliru.
-	claim, err := moneyOrZero(claimValue)
-	if err != nil {
-		return komite.CommitteeCase{}, fmt.Errorf("nilai klaim kasus %s: %w", id, err)
-	}
-	share, err := moneyOrZero(asmShareValue)
-	if err != nil {
-		return komite.CommitteeCase{}, fmt.Errorf("nilai ASM share kasus %s: %w", id, err)
-	}
-	orShare, err := moneyOrZero(orValue)
-	if err != nil {
-		return komite.CommitteeCase{}, fmt.Errorf("nilai OR ASM kasus %s: %w", id, err)
-	}
-
-	// Jenjang yang tidak terbaca TIDAK menggagalkan barisnya. Ia keterangan pelengkap —
-	// jenjang yang tercatat di Pega — dan menahan seluruh pekerjaan seseorang karena satu
-	// kolom pelengkap bermasalah adalah pertukaran yang jelas keliru.
-	tier, tierErr := toInt(legacyTier)
-	if tierErr != nil {
-		tier = 0
-	}
-
 	found := komite.CommitteeCase{
-		CaseID:           id,
+		CaseID:           toText(caseID),
 		ClaimNumber:      toText(claimNumber),
 		PolicyNumber:     toText(policyNumber),
 		InsuredName:      toText(insuredName),
 		BusinessName:     toText(businessName),
 		SourceOfBusiness: toText(sourceOfBusiness),
 		BranchName:       toText(branchName),
-		GroupPanel:       toText(groupPanel),
-		ClaimPIC:         toText(claimPIC),
 		AssignedOperator: toText(assignedOperator),
 		CommitteeDate:    committeeDate.Time,
 		CreatedAt:        createdAt.Time,
 		WorkStatus:       toText(workStatus),
-
-		// Tipe Komite diturunkan di GO, bukan di SQL. Bentuk aslinya menjalankan ENAM
-		// subkueri berkorelasi ke tabel yang sama untuk satu baris; di sini ia satu tabel
-		// keputusan yang dapat diuji tanpa basis data.
-		CommitteeKind: komite.CommitteeKindOf(toText(typeKomite), toText(paymentType)),
-
-		ClaimValue:    claim,
-		ASMShareValue: share,
-		ORValue:       orShare,
-
-		CommitteeNote: toText(committeeNote),
-		LegacyOutcome: legacyOutcome(toText(legacyApprove)),
-		LegacyTier:    tier,
-
-		AIResult:        toText(aiResult),
-		AINoteAccepted:  toText(aiNoteAccepted),
-		AINoteRejected:  toText(aiNoteRejected),
-		AIAssessedAt:    aiAssessedAt.Time,
-		HasAIAssessment: toFlag(aiPresent),
+		LegacyOutcome:    legacyOutcome(toText(legacyApprove)),
 	}
 	return found.Normalized(), nil
 }

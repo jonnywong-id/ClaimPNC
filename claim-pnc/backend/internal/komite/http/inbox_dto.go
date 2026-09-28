@@ -7,12 +7,32 @@ package komitehttp
 
 // CommitteeCaseDTO adalah satu baris Inbox Komite.
 //
-// # Nama field di sini SUDAH benar, berbeda dari property Pega yang digantikannya
+// # Kesembilan kolomnya diambil dari InboxRegisterKomite_RD, bukan dikarang
 //
-// Layar lama menampilkan kolom yang sama lewat property yang namanya tidak mencerminkan
-// isinya sama sekali — `.IBNR` untuk Nilai ASM Share, `.pyScore` untuk Nilai OR ASM,
-// `.DraftWordingID` untuk PIC Klaim, `.StatusKlaim` untuk Tipe Komite. Kontrak ini
-// memutus warisan itu (`D-19`); pemetaan ke kolom aslinya hanya ada di repo/sqlstore.
+// Work Owner menetapkan 2026-09-28 bahwa data komite dimunculkan `InboxRegisterKomite_RD`
+// dan `SetDataKomitePNC_Act`. Grid pada `Section/InboxKomite_section` menampilkan tepat
+// kolom-kolom di bawah:
+//
+//	Nomor Case     .pyID
+//	Nomor Klaim    .CoverID
+//	Tgl Komite     .Komite.DateOfComitee
+//	Nomor Polis    .POLICYNO
+//	Nama Bisnis    .BUSINESSNAME
+//	Cabang         .BranchName
+//	Sumber Bisnis  .SOBNAME
+//	Tertanggung    .QQNAME
+//	Aging Komite   pxDifferenceInDays(.pxCreateDateTime, sekarang)
+//
+// # Yang SENGAJA tidak ada di sini
+//
+// Nilai klaim, Nilai ASM Share, Nilai OR ASM, Tipe Komite, PIC Klaim, dan penilaian AI.
+// Tidak satu pun ada di RD; yang menampilkannya di sistem lama adalah
+// `ShowKomiteTerimaTolakNonMBU` — jalur **Non-MBU**, yang `SetDataKomitePNC_Act` serahkan
+// ke `SetDataKomiteNonMBU_Act` dan yang bukan sumber layar ini.
+//
+// Menghapusnya bukan pemangkasan fitur melainkan koreksi: menampilkan nilai uang yang
+// tidak pernah ada di layar aslinya berarti menambah angka yang tidak dapat diuji
+// kesetaraannya terhadap apa pun.
 type CommitteeCaseDTO struct {
 	CaseID      string `json:"nomor_case"`
 	ClaimNumber string `json:"nomor_klaim"`
@@ -22,8 +42,6 @@ type CommitteeCaseDTO struct {
 	BusinessName     string `json:"nama_bisnis"`
 	SourceOfBusiness string `json:"sumber_bisnis"`
 	BranchName       string `json:"cabang"`
-	GroupPanel       string `json:"group_panel,omitempty"`
-	ClaimPIC         string `json:"pic_klaim,omitempty"`
 
 	// CommitteeDate dan CreatedAt dikirim sebagai RFC 3339 dalam UTC.
 	//
@@ -41,36 +59,13 @@ type CommitteeCaseDTO struct {
 	// berbeda dari jam server. Satu kenyataan tidak boleh punya dua umur.
 	AgingDays int `json:"aging_komite"`
 
-	WorkStatus    string `json:"status_kerja,omitempty"`
-	CommitteeKind string `json:"tipe_komite,omitempty"`
+	WorkStatus string `json:"status_kerja,omitempty"`
 
-	// Ketiga nilai uang dikirim sebagai TEKS desimal kanonik — "45000000.00" — bukan
-	// angka JSON. Angka JSON adalah floating point ganda di hampir seluruh peramban, dan
-	// mengirim nilai uang lewatnya berarti menyerahkan ketepatannya kepada pembulatan
-	// biner. `I-12` menetapkan nilai uang disimpan presisi penuh; kontrak ini menjaganya
-	// sampai ke layar.
-	ClaimValue    string `json:"nilai_klaim"`
-	ASMShareValue string `json:"nilai_asm_share"`
-	ORValue       string `json:"nilai_or_asm"`
-
-	CommitteeNote string `json:"note_komite,omitempty"`
-
-	// Penilaian AI. HasAIAssessment membedakan "belum dinilai" dari "dinilai dengan
-	// hasil kosong" — dua keadaan yang tidak boleh terbaca sama, karena kasus tanpa
-	// penilaian AI tetap wajib dikerjakan komite.
-	HasAIAssessment bool   `json:"ada_penilaian_ai"`
-	AIResult        string `json:"jawaban_ai,omitempty"`
-	AINoteAccepted  string `json:"note_ai_diterima,omitempty"`
-	AINoteRejected  string `json:"note_ai_ditolak,omitempty"`
-	AIAssessedAt    string `json:"tanggal_ai,omitempty"`
-
-	// LegacyOutcome adalah keputusan yang tercatat DI PEGA, dan LegacyTier jenjang yang
-	// tercatat di sana.
+	// LegacyOutcome adalah keputusan yang tercatat DI PEGA, diturunkan dari
+	// `T_CLAIM_KOMITE_LIST.STATUSAPPROVE` persis seperti `GetKomitePAditerima`.
 	//
-	// Keduanya dikirim berdampingan dengan Progress — bukan menggantikannya — karena
-	// selama masa paralel keduanya dapat berbeda, dan perbedaan itu harus TERLIHAT.
+	// Ia bukan sekadar keterangan: inilah yang menentukan isi kotak Diterima dan Ditolak.
 	LegacyOutcome string `json:"keputusan_pega,omitempty"`
-	LegacyTier    int    `json:"jenjang_pega,omitempty"`
 
 	Progress ProgressDTO `json:"penjenjangan"`
 }
@@ -164,6 +159,21 @@ type InboxListResponse struct {
 
 	// Now adalah jam server yang dipakai menghitung Aging.
 	Now string `json:"sekarang"`
+
+	// DecisionsAvailable menyatakan apakah keputusan dapat dicatat saat ini.
+	//
+	// Salah berarti jejak keputusan belum dapat dipakai — `POOLDATA.CPNC_KOMITE_KEPUTUSAN`
+	// dibuat migrasi `0004`, dan migrasi menempuh `D-63` sehingga hanya DBA yang dapat
+	// menjalankannya.
+	//
+	// Dalam keadaan itu daftar di atas TETAP berisi pekerjaan yang sebenarnya, dibaca dari
+	// tabel warisan; yang tidak tersedia hanyalah pencatatan keputusannya. Layar WAJIB
+	// menyatakannya kepada pengguna sebelum tombol ditekan — bukan membiarkannya
+	// ditemukan sebagai kegagalan setelah keputusan diambil.
+	//
+	// Tanpa `omitempty`: penandanya harus selalu ada. Nilai `false` yang hilang dari
+	// respons tidak dapat dibedakan dari versi server lama oleh klien mana pun.
+	DecisionsAvailable bool `json:"jejak_keputusan_tersedia"`
 }
 
 // CommitteeCaseResponse adalah jawaban satu kasus — detail maupun sesudah keputusan.

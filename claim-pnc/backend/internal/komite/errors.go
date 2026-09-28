@@ -37,6 +37,22 @@ var (
 	// keduanya menekan tombol. Tanpa pemeriksaan ini, keputusan kedua akan tercatat
 	// sebagai jenjang yang sama dua kali — dan penjenjangan berhenti dapat dipercaya.
 	ErrDecisionClosed = errors.New("komite: komite pada kasus ini sudah selesai")
+
+	// ErrDecisionStoreUnavailable berarti tabel jejak keputusan belum dapat dipakai —
+	// belum dibuat, atau ada tetapi tidak dapat dibaca akun aplikasi.
+	//
+	// # Kenapa ia galat tersendiri, bukan galat basis data yang diteruskan apa adanya
+	//
+	// `POOLDATA.CPNC_KOMITE_KEPUTUSAN` dibuat migrasi `0004`, dan migrasi menempuh
+	// `D-63`: permintaan tertulis, persetujuan Work Owner, pelaksanaan DBA. Selama ia
+	// belum dijalankan, tabelnya tidak ada — dan itu keadaan yang DAPAT DIPERKIRAKAN,
+	// bukan kerusakan.
+	//
+	// Membiarkannya muncul sebagai `ORA-00942` menjadikannya galat `500` bertuliskan
+	// "Terjadi kesalahan pada sistem" — kalimat yang tidak menyebut apa yang kurang dan
+	// tidak menyebut siapa yang dapat melengkapinya. Dibedakan di sini, layar dapat
+	// mengatakan hal yang sebenarnya dan orang yang membacanya tahu harus meminta apa.
+	ErrDecisionStoreUnavailable = errors.New("komite: tabel jejak keputusan komite belum dapat dipakai")
 )
 
 // Field yang dapat membawa pelanggaran validasi. Nilainya dipakai apa adanya lapisan

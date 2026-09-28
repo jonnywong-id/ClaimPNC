@@ -20,6 +20,7 @@ type SpreadingInput struct {
 // CoverageInput adalah satu jaminan pada sebuah objek.
 type CoverageInput struct {
 	ID          string
+	Name        string
 	CauseOfLoss string
 	TSI         registrasi.Money
 	Spreading   []SpreadingInput
@@ -44,6 +45,11 @@ type RegisterCommand struct {
 	Location   string
 	Chronology string
 	Reporter   registrasi.Reporter
+
+	// Area dan Prinsip Mengenal Nasabah — bagian bawah layar Input Register.
+	Area              registrasi.Area
+	CustomerPrinciple string
+	SuspiciousComment string
 
 	EstimateValue registrasi.Money
 	Currency      string
@@ -106,7 +112,7 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 	if err != nil {
 		return RegisterResult{}, err
 	}
-	if task.Owned() && task.Owner != by.Identity {
+	if !l.canWork(task, by) {
 		return RegisterResult{}, registrasi.ErrNotTaskOwner
 	}
 
@@ -135,6 +141,14 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		recipients  []string
 	)
 	if !p.Return {
+		// InputRegister_act: daftar penerima klaim dikosongkan lalu diisi satu penerima
+		// bawaan dari polis (QQName dan alamat kirim pertama) — lihat DefaultReceiver.
+		policy, err := l.policy.Get(ctx, claim.Policy.Number)
+		if err != nil {
+			return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca polis untuk penerima klaim: %w", err)
+		}
+		claim.Receiver = []registrasi.Receiver{registrasi.DefaultReceiver(policy)}
+
 		rate, err := l.rate.Find(ctx, claim.Currency, claim.DateOfLoss)
 		if err != nil {
 			return RegisterResult{}, err
@@ -146,13 +160,29 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 			return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca ambang large losses: %w", err)
 		}
 		// Ambang dilampaui berarti LEBIH BESAR, bukan sama dengan. Sistem lama memakai
-		// `> 1000000000` (langkah 53), dan `TKT-B02-004` menegaskan nilai TEPAT pada
-		// threshold tidak memicu apa pun.
+		// `> 1000000000` pada precondition langkah 4 dan langkah 10
+		// `Activity/SendEmailLargeLoss_act.xml`, dan `TKT-B02-004` menegaskan nilai TEPAT
+		// pada threshold tidak memicu apa pun.
 		if rupiahValue > threshold {
 			largeLoss = true
+
+			// Penerima yang belum lengkap TIDAK menggagalkan pendaftaran.
+			//
+			// Ini mengikuti sistem lama, bukan melonggarkannya. Di sana penerima dirakit
+			// dari LIMA sumber — UW menurut Group Panel, jajaran pimpinan, email PIC
+			// teknis klaim, daftar akunting, dan email cabang/GL/Pincab dari sebuah
+			// kueri — lalu disambung menjadi satu string (langkah 7 dan 8). Satu sumber
+			// yang kosong hanya membuat sambungannya lebih pendek; ia tidak pernah
+			// menghentikan registrasi.
+			//
+			// Memperlakukan master yang belum diisi sebagai galat akan MENOLAK setiap
+			// klaim di atas Rp 1 miliar — perilaku yang tidak ada di sistem lama, dan
+			// yang akibatnya jauh lebih besar daripada pemberitahuan tanpa tujuan.
+			// Peristiwanya tetap terbit dan tercatat; yang kosong adalah daftar
+			// penerimanya, dan itu terlihat di jejak audit maupun di mode periksa.
 			recipients, err = l.parameter.LargeLossRecipients(ctx, claim.Policy.Line)
 			if err != nil {
-				return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca penerima large losses: %w", err)
+				recipients = nil
 			}
 		}
 
@@ -172,13 +202,24 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 	)
 
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
-		if !p.Return && claim.Number == "" {
-			number, err := l.number.Issue(ctx, now)
-			if err != nil {
-				return fmt.Errorf("registrasi/usecase: menerbitkan nomor klaim: %w", err)
-			}
-			claim.Number = number
+		if !p.Return {
+			// Status bisnis berpindah ke Register (`1147`) di sini — inilah tahap yang
+			// menamainya, dan ia BUKAN hal yang sama dengan punya nomor.
 			claim.ClaimStatus = registrasi.StatusRegistered
+
+			// Nomor biasanya sudah ada: sejak 2026-09-25 ia terbit saat klaim DIBUKA,
+			// mengikuti `addWork` Pega (lihat Start). Cabang di bawah karena itu hanya
+			// menjaring klaim yang dibuka sebelum perubahan itu dan belum ditutup.
+			//
+			// Ia dipertahankan, bukan dihapus: klaim lama yang sampai ke sini tanpa nomor
+			// harus tetap dapat diselesaikan petugasnya, bukan berhenti dengan galat.
+			if claim.Number == "" {
+				number, err := l.number.Issue(ctx, now)
+				if err != nil {
+					return fmt.Errorf("registrasi/usecase: menerbitkan nomor klaim: %w", err)
+				}
+				claim.Number = number
+			}
 		}
 
 		var err error
@@ -205,6 +246,9 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 				return err
 			}
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		if err := l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     claim.ID,
 			ClaimNumber: claim.Number,
@@ -215,17 +259,42 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		}); err != nil {
 			return err
 		}
+		// Nomor klaim baru terbit di atas, jadi inilah saat berkas laporannya dapat
+		// dipasangi NOKLAIM — yang memindahkannya ke "Outstanding".
+		//
+		// Hanya pada pendaftaran maju: menekan Back tidak menerbitkan nomor, dan
+		// memasang nomor kosong akan membuat berkasnya lenyap dari seluruh tab.
+		if !p.Return && claim.RCVID != "" && claim.Number != "" {
+			if err := l.reportLink.AttachClaimNumber(ctx, claim.RCVID, claim.Number); err != nil {
+				return err
+			}
+		}
+
 		if !largeLoss {
 			return nil
 		}
-		return l.notifier.Send(ctx, registrasi.Notification{
+		// Revisi ditentukan oleh keadaan SEBELUM pemberitahuan ini terbit, lalu
+		// penandanya dinaikkan — urutan yang sama dengan langkah 7/8 lalu langkah 11.
+		revision := claim.LargeLossNoticed
+		if err := l.notifier.Send(ctx, registrasi.Notification{
 			Kind:         registrasi.NotificationLargeLoss,
 			ClaimNumber:  claim.Number,
 			PolicyNumber: claim.Policy.Number,
 			Recipients:   recipients,
 			RupiahValue:  rupiahValue,
+			Revision:     revision,
 			At:           now,
-		})
+		}); err != nil {
+			return err
+		}
+		if revision {
+			return nil
+		}
+		// Penanda disimpan lewat Save kedua, bukan dengan memindahkan Save ke belakang:
+		// urutannya harus tetap simpan-klaim → tugas → audit → beritahu, dan keduanya
+		// berada di dalam transaksi yang sama sehingga tidak dapat terpisah.
+		claim.LargeLossNoticed = true
+		return l.claim.Save(ctx, claim)
 	})
 	if err != nil {
 		return RegisterResult{}, err
@@ -270,6 +339,19 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.Chronology = p.Chronology
 	k.Reporter = p.Reporter
 
+	k.Area = p.Area
+
+	// Prinsip Mengenal Nasabah bernilai NORMAL bila tidak dipilih.
+	//
+	// Control radio Pega membawa `pyDefaultValue` 1, sehingga isian yang tidak disentuh
+	// petugas tetap tersimpan sebagai NORMAL — bukan kosong. Kosong akan terbaca berbeda
+	// dari NORMAL oleh `SetEmailKomite`, yang hanya memeriksa "2".
+	k.CustomerPrinciple = p.CustomerPrinciple
+	if k.CustomerPrinciple == "" {
+		k.CustomerPrinciple = registrasi.CustomerPrincipleNormal
+	}
+	k.SuspiciousComment = p.SuspiciousComment
+
 	k.EstimateValue = p.EstimateValue
 	if p.Currency != "" {
 		k.Currency = p.Currency
@@ -277,23 +359,41 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.SLIKNumber = p.SLIKNumber
 	k.ExGratia = p.ExGratia
 	k.TechnicalPIC = p.TechnicalPIC
-	k.RCVID = p.RCVID
+
+	// RCVID hanya DITAMBAHKAN, tidak pernah dikosongkan oleh form ini.
+	//
+	// Tautan ke berkas Receive Document dibuat saat klaim dibuka, dan form Input Register
+	// tidak memilikinya. Menimpanya apa adanya membuat layar yang tidak mengirim medan ini
+	// MEMUTUS tautannya — dan akibatnya baru terlihat jauh kemudian, sebagai berkas yang
+	// tidak pernah berpindah dari "Not Registered" ke "Outstanding".
+	if p.RCVID != "" {
+		k.RCVID = p.RCVID
+	}
 
 	k.PUCLStatus = p.PUCLStatus
 	k.ComplianceTransfer = p.ComplianceTransfer
 	k.RequestReturn = p.Return
 
+	// Item dan estimasi milik tahap Input Estimasi, dan adjustment milik tahap InputSurveyor;
+	// layar Input Register tidak membawa keduanya.
+	// Coverage yang tetap sama (objek dan kode coverage sama pada posisi yang sama)
+	// mempertahankannya, supaya kembali ke Input Register tidak menghapus estimasi.
+	previous := k.InsuredItem
+
 	k.InsuredItem = make([]registrasi.InsuredItem, 0, len(p.InsuredItem))
-	for _, o := range p.InsuredItem {
+	for i, o := range p.InsuredItem {
 		insuredItem := registrasi.InsuredItem{
 			ID:       o.ID,
 			Name:     o.Name,
 			Location: o.Location,
 			Coverage: make([]registrasi.Coverage, 0, len(o.Coverage)),
 		}
-		for _, c := range o.Coverage {
+		for j, c := range o.Coverage {
 			coverage := registrasi.Coverage{
+				Item:        keptItems(previous, i, j, o.ID, c.ID),
+				Settlement:  keptSettlement(previous, i, j, o.ID, c.ID),
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSI:         c.TSI,
 				Spreading:   make([]registrasi.Spreading, 0, len(c.Spreading)),
@@ -320,4 +420,26 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 
 	k.UpdatedBy = by.Identity
 	k.UpdatedAt = now
+}
+
+// keptItems mengembalikan item coverage sebelumnya bila objek dan coverage-nya sama.
+func keptItems(previous []registrasi.InsuredItem, i, j int, objectID, coverageID string) []registrasi.ObjectItem {
+	if i >= len(previous) || previous[i].ID != objectID || j >= len(previous[i].Coverage) {
+		return nil
+	}
+	if previous[i].Coverage[j].ID != coverageID {
+		return nil
+	}
+	return previous[i].Coverage[j].Item
+}
+
+// keptSettlement mengembalikan adjustment coverage sebelumnya dengan aturan yang sama.
+func keptSettlement(previous []registrasi.InsuredItem, i, j int, objectID, coverageID string) []registrasi.SettlementLine {
+	if i >= len(previous) || previous[i].ID != objectID || j >= len(previous[i].Coverage) {
+		return nil
+	}
+	if previous[i].Coverage[j].ID != coverageID {
+		return nil
+	}
+	return previous[i].Coverage[j].Settlement
 }

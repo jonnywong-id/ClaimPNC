@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
 import type {
@@ -104,10 +104,8 @@ export function useAutoClaimTabList() {
 /**
  * Hook ringkasan jumlah batch per perusahaan.
  *
- * Kunci cache-nya TIDAK memuat penyaring perusahaan, dengan sengaja: ringkasan selalu
- * memperlihatkan SELURUH perusahaan, termasuk saat grid sedang disaring. Kalau ia ikut
- * tersaring, grafiknya menyusut menjadi satu irisan penuh setiap kali pengguna memilih
- * perusahaan — dan panel itu berhenti berguna sebagai alat berpindah antarperusahaan.
+ * Inilah isi tabel perusahaan. Ia dikirim UTUH — tanpa paginasi server — sehingga
+ * pencarian dan paginasi tabel perusahaan dikerjakan di peramban atas seluruh barisnya.
  */
 export function useAutoClaimSummary(source: string) {
   const token = useSession((state) => state.token)
@@ -123,6 +121,27 @@ export function useAutoClaimSummary(source: string) {
     // Sama seperti daftar batch: menunggu tabnya diketahui lebih dulu.
     enabled: token !== null && portal !== null && source !== '',
   })
+}
+
+/**
+ * Hook tombol Refresh.
+ *
+ * Memuat ulang KETIGA lapis sekaligus — daftar perusahaan, grid batch yang terbuka, dan
+ * rincian baris. Menyegarkan satu lapis saja membuat angka di baris perusahaan berselisih
+ * dengan grid di dalamnya, dan selisih itu terbaca sebagai kerusakan.
+ */
+export function useRefreshAutoClaim() {
+  const client = useQueryClient()
+  const fetching = useIsFetching({ queryKey: ['inbox-auto-claim-ringkasan'] })
+
+  return {
+    isFetching: fetching > 0,
+    refresh: () => {
+      void client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
+      void client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
+      void client.invalidateQueries({ queryKey: ['inbox-auto-claim-detail'] })
+    },
+  }
 }
 
 /** Hook rincian satu batch. */
@@ -152,13 +171,19 @@ export function useAutoClaimLineList(source: string, company: string, batch: str
  * server, tidak disalin ke sini — bila flow action Pega yang asli akhirnya tiba dan judul
  * kolomnya berbeda, yang berubah hanya satu tempat.
  */
-export function useAutoClaimUploadTemplate() {
+export function useAutoClaimUploadTemplate(source: string) {
   const token = useSession((state) => state.token)
 
   return useQuery({
-    queryKey: ['inbox-auto-claim-format', token],
-    queryFn: () => callAPI<AutoClaimUploadTemplateResponse>(ROUTE_TEMPLATE, { token }),
-    enabled: token !== null,
+    // Tab ikut menjadi kunci: bentuk berkas BERBEDA per bisnis — Kredit tanpa tanggal
+    // kejadian/lapor, Travel tanpa tanggal lapor.
+    queryKey: ['inbox-auto-claim-format', token, source],
+    queryFn: () =>
+      callAPI<AutoClaimUploadTemplateResponse>(
+        `${ROUTE_TEMPLATE}?sumber=${encodeURIComponent(source)}`,
+        { token },
+      ),
+    enabled: token !== null && source !== '',
     // Bentuknya tetap selama aplikasi berjalan; memuatnya ulang setiap kali form dibuka
     // hanya menambah permintaan tanpa menambah apa pun.
     staleTime: 60 * 60 * 1000,

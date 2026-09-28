@@ -16,12 +16,20 @@ func cleanEnv(t *testing.T) {
 	for _, name := range []string{
 		"APP_ENV", "APP_ALAMAT", "IDENTITAS_ADAPTER", "PENYIMPANAN", "PORTAL_UTAMA",
 		"SESI_MASA_BERLAKU", "HCQ_LOGIN_USER", "HCQ_LOGIN_PASSWORD",
+		"REAS_LOGIN_PENGEMBANGAN", "REAS_MITRA_PENGEMBANGAN",
 	} {
 		t.Setenv(name, "")
 		require.NoError(t, os.Unsetenv(name))
 	}
 	for _, rows := range os.Environ() {
 		if len(rows) > 9 && rows[:9] == "POOLDATA_" {
+			name := rows[:index(rows, '=')]
+			require.NoError(t, os.Unsetenv(name))
+		}
+		// Koneksi kedua ikut dibersihkan. Tanpa ini, satu uji yang memasangnya akan
+		// mewariskannya ke uji berikutnya — dan uji yang menuntut "tanpa koneksi kedua"
+		// akan lulus atau gagal menurut urutan jalannya.
+		if len(rows) > 6 && rows[:6] == "ANEKA_" {
 			name := rows[:index(rows, '=')]
 			require.NoError(t, os.Unsetenv(name))
 		}
@@ -224,4 +232,202 @@ func TestConfigErrorNamesHowToFixIt(t *testing.T) {
 	require.Contains(t, err.Error(), "PENYIMPANAN=memori", "menyebut jalan keluar tanpa basis data")
 	require.Contains(t, err.Error(), "direktori kerja",
 		"menyebut jebakan .env dibaca relatif terhadap direktori kerja")
+}
+
+// setAneka memasang koneksi KEDUA milik sebuah portal — pengganti DB Link (`R-03`),
+// keputusan Work Owner 2026-09-24.
+func setAneka(t *testing.T, alias string) {
+	t.Helper()
+	t.Setenv("ANEKA_"+alias+"_HOST", "aneka-host-"+alias)
+	t.Setenv("ANEKA_"+alias+"_SERVICE", "aneka-svc-"+alias)
+	t.Setenv("ANEKA_"+alias+"_PENGGUNA", "aneka-user-"+alias)
+	t.Setenv("ANEKA_"+alias+"_SANDI", "aneka-sandi-"+alias)
+}
+
+// Koneksi kedua ditemukan dengan cara yang sama dengan portal: memindai lingkungan.
+// Menambah entitas tetap cukup dengan menambah baris .env, tanpa menyentuh kode.
+func TestKoneksiKeduaDitemukanDariLingkungan(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	setPortal(t, "ASI")
+	setAneka(t, "ASM")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+
+	require.Equal(t, "aneka-host-ASM", cfg.Aneka["ASM"].Host)
+	require.Equal(t, 1521, cfg.Aneka["ASM"].Port, "port punya nilai baku yang sama dengan portal")
+	require.True(t, cfg.Aneka["ASM"].Complete())
+
+	// Portal yang belum punya blok ANEKA bukan galat — ia hanya belum punya koneksi
+	// kedua, dan laporan yang membutuhkannya mengosongkan kolomnya.
+	_, ada := cfg.Aneka["ASI"]
+	require.False(t, ada)
+}
+
+// Seluruh portal boleh tanpa koneksi kedua. Itu keadaan yang sah, bukan konfigurasi
+// yang belum selesai — dan aplikasi tetap harus start.
+func TestTanpaKoneksiKeduaSamaSekaliTetapSah(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Empty(t, cfg.Aneka)
+}
+
+// Koneksi kedua selalu MILIK sebuah portal. Alias yang tidak punya blok POOLDATA hampir
+// pasti salah ketik, dan tanpa pemeriksaan ini ia lolos diam-diam: bloknya terbaca,
+// tidak pernah dipakai, dan laporannya tetap kosong seolah belum diisi.
+func TestKoneksiKeduaTanpaPortalDitolak(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	setAneka(t, "ASMM") // salah ketik
+
+	_, err := config.Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ANEKA_ASMM_*")
+	require.Contains(t, err.Error(), "POOLDATA_ASMM_*")
+}
+
+// Pesan "yang missing" harus menyebut NAMA VARIABEL YANG SEBENARNYA. Bila ia menyebut
+// POOLDATA_ padahal yang kurang ANEKA_, operator akan memperbaiki baris yang sudah benar.
+func TestKoneksiKeduaYangBelumLengkapMenyebutVariabelnyaSendiri(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("ANEKA_ASM_HOST", "aneka-host")
+
+	cfg, err := config.Load()
+	require.NoError(t, err, "koneksi kedua yang belum lengkap BUKAN galat start")
+
+	second := cfg.Aneka["ASM"]
+	require.False(t, second.Complete())
+	require.Contains(t, second.Missing(), "ANEKA_ASM_SERVICE")
+	require.Contains(t, second.Missing(), "ANEKA_ASM_PENGGUNA")
+	require.Contains(t, second.Missing(), "ANEKA_ASM_SANDI")
+	require.NotContains(t, second.Missing(), "POOLDATA_ASM_SERVICE")
+}
+
+// Login mitra pada data contoh hanya sah bersama penyimpanan MEMORI.
+//
+// Di Oracle ia tidak berpengaruh apa pun — yang menentukan mitra di sana adalah
+// `POOLDATA.T_REINSURER`, bukan data contoh. Isian yang diabaikan diam-diam lebih
+// berbahaya daripada penolakan: pengembang yang menyetelnya akan menunggu layar terbuka
+// dan tidak pernah mendapat petunjuk mengapa ia tetap ditolak.
+func TestDevelopmentReinsurerLoginIsRefusedOnOracle(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "JONNY")
+
+	_, err := config.Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "REAS_LOGIN_PENGEMBANGAN")
+	require.Contains(t, err.Error(), "REAS_MITRA_PENGEMBANGAN",
+		"pesannya harus menunjuk jalan keluar yang benar-benar ada")
+	require.Contains(t, err.Error(), "TIDAK dapat",
+		"pesan lama menyuruh mendaftar lewat menu Master Reas; menu itu HANYA MEMBACA — "+
+			"tidak ada satu pun INSERT di internal/masterreas")
+}
+
+// Jalur yang kemarin lolos tanpa suara: memori + HCQ.
+//
+// # Kenapa uji ini ada
+//
+// `IDENTITAS_ADAPTER=hcq` menarik SELURUH modul ke Oracle walau `PENYIMPANAN=memori`.
+// Penjagaan sebelumnya hanya memeriksa `PENYIMPANAN`, sehingga setelan ini dinyatakan
+// baik sementara `REAS_LOGIN_PENGEMBANGAN` tidak dipakai sama sekali — dan layarnya tetap
+// menolak dengan kalimat yang sama seperti sebelum isian itu diisi.
+//
+// Itu persis kegagalan yang isian ini seharusnya cegah. Uji ini menjaganya agar tidak
+// kembali.
+func TestDevelopmentReinsurerLoginIsRefusedOnMemoryWithRealIdentity(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "memori")
+	t.Setenv("IDENTITAS_ADAPTER", "hcq")
+	t.Setenv("HCQ_LOGIN_USER", "pengguna")
+	t.Setenv("HCQ_LOGIN_PASSWORD", "sandi")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "JONNY")
+
+	_, err := config.Load()
+	require.Error(t, err,
+		"setelan ini membaca Oracle sungguhan; isian itu sendirian tidak berpengaruh")
+	require.Contains(t, err.Error(), "REAS_MITRA_PENGEMBANGAN")
+}
+
+// Bersama login mitra yang dipinjam, setelan yang sama DITERIMA.
+func TestABorrowedPartnerLoginIsAcceptedAlongsideRealIdentity(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "memori")
+	t.Setenv("IDENTITAS_ADAPTER", "hcq")
+	t.Setenv("HCQ_LOGIN_USER", "pengguna")
+	t.Setenv("HCQ_LOGIN_PASSWORD", "sandi")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "JONNY")
+	t.Setenv("REAS_MITRA_PENGEMBANGAN", "  TUGUREASURANSIINDONESIA  ")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Equal(t, "JONNY", cfg.DevelopmentReinsurerLogin)
+	require.Equal(t, "TUGUREASURANSIINDONESIA", cfg.DevelopmentReinsurerPartner)
+}
+
+// Login mitra tanpa login yang meminjamnya ditolak — tidak ada yang memakainya.
+func TestABorrowedPartnerWithoutABorrowerIsRefused(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "memori")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_MITRA_PENGEMBANGAN", "TUGUREASURANSIINDONESIA")
+
+	_, err := config.Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "REAS_LOGIN_PENGEMBANGAN kosong")
+}
+
+// Keduanya ditolak di luar `APP_ENV=development`.
+//
+// Bukan karena kebocoran baca, melainkan karena layar ini MENULIS: balasan komunikasi
+// akan tercatat atas nama mitra yang dipinjam, dan jejak audit adalah satu-satunya
+// kontrol pengimbang yang tersisa (`D-59`).
+func TestBorrowingIsRefusedOutsideDevelopment(t *testing.T) {
+	for _, env := range []string{"staging", "test"} {
+		t.Run(env, func(t *testing.T) {
+			cleanEnv(t)
+			t.Setenv("APP_ENV", env)
+			t.Setenv("PENYIMPANAN", "memori")
+			t.Setenv("PORTAL_UTAMA", "ASM")
+			setPortal(t, "ASM")
+			t.Setenv("REAS_LOGIN_PENGEMBANGAN", "JONNY")
+
+			_, err := config.Load()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "APP_ENV=development")
+		})
+	}
+}
+
+// Pada penyimpanan memori ia diterima dan terbaca apa adanya.
+func TestDevelopmentReinsurerLoginIsAcceptedOnMemoryStorage(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "memori")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "  JONNY  ")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Equal(t, "JONNY", cfg.DevelopmentReinsurerLogin, "spasi di ujung dipangkas")
 }

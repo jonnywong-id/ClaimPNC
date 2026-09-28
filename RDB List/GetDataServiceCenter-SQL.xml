@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedDateTime/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveFromSystem/>
+<pyLabel>Get Data Service Center</pyLabel>
+<pyRuleParamsStreamName/>
+<pyRelativePath/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceTemplate/>
+<pxOriginalCreateDateTime/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateDateTime>20240108T071306.335 GMT</pxCreateDateTime>
+<pyBrowseSQL>SELECT JSON_VALUE (a.JSONIN, '$.Bill') as "ReferenceId",
+          JSON_VALUE (a.JSONIN, '$.Principal_Bill_No') as "BranchID",
+          JSON_VALUE (a.JSONIN, '$.Insurance') as "BusinessID",
+          JSON_VALUE (a.JSONIN, '$.Insurance_Bill_No') as "ContractNo", 
+          JSON_VALUE (a.JSONIN, '$.Collect_Point') as "BusinessName",
+          JSON_VALUE (a.JSONIN, '$.Repair_Point') as "CASEDB",
+          JSON_VALUE (a.JSONIN, '$.Prod_Group') as "CauseOfLoss",
+          JSON_VALUE (a.JSONIN, '$.Prod_Category') as "CauseOfLossID",
+          JSON_VALUE (a.JSONIN, '$.Brand') as "ClaimNoSRB",
+          JSON_VALUE (a.JSONIN, '$.Imei') as "ClientID",
+          JSON_VALUE (a.JSONIN, '$.Model') as "BranchName",
+          JSON_VALUE (a.JSONIN, '$.Colour') as "Conveyance",
+          JSON_VALUE (a.JSONIN, '$.Is_Delivery') as "CopyFrom",
+          JSON_VALUE (a.JSONIN, '$.Quotation_Amount') as "CountryID",
+          JSON_VALUE (a.JSONIN, '$.Reason') as "CreateFrom",
+          JSON_VALUE (a.JSONIN, '$.Cancelled_Reason') as "DistrictID",
+          JSON_VALUE (a.JSONIN, '$.Estimated_Pickup_Date') as "AnalystTransferDate",
+          JSON_VALUE (a.JSONIN, '$.Pickup_Courier_Date') as "FinishRegisterDate",
+          JSON_VALUE (a.JSONIN, '$.SerialNo') as "IDMaster",
+          JSON_VALUE (a.JSONIN, '$.Device') as "District",
+          JSON_VALUE (a.JSONIN, '$.Warranty_Type') as "StatusClaim",
+          JSON_VALUE (a.JSONIN, '$.Start_Date') as "StartDateTreaty",
+          JSON_VALUE (a.JSONIN, '$.End_Date') as "EndDateTreaty",
+          JSON_VALUE (a.JSONIN, '$.Symptom_Code') as "Email",
+          JSON_VALUE (a.JSONIN, '$.Symptom_Desc') as "ReportDescription",
+          JSON_VALUE (a.JSONIN, '$.Cust_Arrival') as "EmailTertanggung",
+          JSON_VALUE (a.JSONIN, '$.Cust_Name') as "UserName",
+          JSON_VALUE (a.JSONIN, '$.Phone') as "TelpTertanggung",
+          JSON_VALUE (a.JSONIN, '$.DP') as "ExGratiaNote",
+          JSON_VALUE (a.JSONIN, '$.DP_No') as "FlagASO",
+          JSON_VALUE (a.JSONIN, '$.Serial_no') as "IDMaster",
+          JSON_VALUE (a.JSONIN, '$.DP_Method') as "FlagNOLL",
+          JSON_VALUE (a.JSONIN, '$.AcknowledgeBy') as "UserTeknis",
+          JSON_VALUE (a.JSONIN, '$.Acknowledge_Date') as "ReportDate",
+          JSON_VALUE (a.JSONIN, '$.Assigned_Date') as "TransferPICDate",
+          JSON_VALUE (a.JSONIN, '$.Completed_Date') as "RegisterDate",
+          JSON_VALUE (a.JSONIN, '$.Release_Date') as "DateForAging",
+          JSON_VALUE (a.JSONIN, '$.Invoice_Date') as "AdminTransferDate",
+          JSON_VALUE (a.JSONIN, '$.DeskCharger') as "IsCloseFile",
+          JSON_VALUE (a.JSONIN, '$.CarKit') as "IsKomiteFinalTransfer",
+          JSON_VALUE (a.JSONIN, '$.RemovableAntenna') as "IsKomiteTransfer",
+          JSON_VALUE (a.JSONIN, '$.HeadSet') as "IsPLA",
+          JSON_VALUE (a.JSONIN, '$.Battery') as "IsReservedClaim",
+          JSON_VALUE (a.JSONIN, '$.SimCard') as "IsSendPremi", 
+          JSON_VALUE (a.JSONIN, '$.ExtraCover') as "IsTransferAnalisator",
+          JSON_VALUE (a.JSONIN, '$.BatteryCover') as "IsTransferPIC",
+          JSON_VALUE (a.JSONIN, '$.LCD_text') as "IsUploadKlaim",
+          JSON_VALUE (a.JSONIN, '$.Labor') as "ClaimAmount",
+          JSON_VALUE (a.JSONIN, '$.Parts') as "EstimationValue",
+          JSON_VALUE (a.JSONIN, '$.Transportation') as "Message",
+          JSON_VALUE (a.JSONIN, '$.Others') as "Amount",
+          JSON_VALUE (a.JSONIN, '$.Tax') as "ClaimEstimate",
+          JSON_VALUE (a.JSONIN, '$.Invoice_Amount') as "Type",
+          JSON_VALUE (a.JSONIN, '$.Remark') as "Remark",
+          JSON_VALUE (a.JSONIN, '$.Suku_Cadang') as "ResponseNote",
+          JSON_VALUE (a.JSONIN, '$.PPN') as "ResponseNoteDocKasir",
+          JSON_VALUE (a.JSONIN, '$.Accessories_lainya') as "City",
+          JSON_VALUE (a.JSONIN, '$.Case') as "AppointedADJ",
+          JSON_VALUE (a.JSONIN, '$.Boxunit') as "AppointedADJID",
+          JSON_VALUE (a.JSONIN, '$.CharCabel') as "AppointedSVY",
+          JSON_VALUE (a.JSONIN, '$.NoKTP') as "NoKTP"
+     FROM pooldata.service_log_nonmbu a
+    WHERE a.id = {servicelog.pyID} AND a.category ={servicelog.COVERAGENAME}</pyBrowseSQL>
+<pyDescription/>
+<pyMethodStatus/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxInstanceLockedRuleSetVersion/>
+<pxOriginalCreateOpName/>
+<pyHandlerFlow/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETDATASERVICECENTER #20240108T071306.335 GMT</pzInsKey>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pzChecksum>-1464976118</pzChecksum>
+<pxSaveDateTime>20240110T125822.858 GMT</pxSaveDateTime>
+<pySpecialtyComponentData/>
+<pyInterface/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyTemporaryObject/>
+<pyCircumstanceDefinition/>
+<pxMergeSynchronized>20230911T041807.232 GMT</pxMergeSynchronized>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRequestType>GetDataServiceCenter</pyRequestType>
+<pyCircumstanceDateProp/>
+<pxInsName>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETDATASERVICECENTER</pxInsName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyClassName>ASM-FW-GCNMFW-Int-T_GENERAL</pyClassName>
+<pxMoveImportDateTime>20240202T104313.864 GMT</pxMoveImportDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsId>ASM-FW-GCNMFW-INT-T_GENERAL!GCNM!GETDATASERVICECENTER</pxInsId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedBy/>
+<pxTabLabel>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetDataServiceCenter</pxTabLabel>
+<pyCircumstanceProp/>
+<pyRuleName>ASM-FW-GCNMFW-Int-T_GENERAL GCNM GetDataServiceCenter</pyRuleName>
+<pxSiblingCount/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pyRuleFormStatusTime>20260928T071648.848 GMT</pyRuleFormStatusTime>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyStatus/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplateInputBox/>
+<pyOpenSQL/>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!CALLPROCSERVICECENTER #20230725T025040.746 GMT</pzOriginalInstanceKey>
+<pyFormPost/>
+<pxInstanceLockedRuleSet/>
+<pxOriginalCreateSystemID/>
+<pyUsage/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyJavaStream/>
+<pyTemplate/>
+<pyShowJavaWindowName>GeneratedJava20260928T071648.873 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxOriginalCreateOperator/>
+<pyIsFromManageChangeLP/>
+<pyWorkKey/>
+<pyStreamName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxCommitDateTime>20240202T104314.000 GMT</pxCommitDateTime>
+<pyCircumstanceType/>
+<pxUpdateDateTime>20240110T125822.830 GMT</pxUpdateDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxHostId>jboss26</pxHostId>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETDATASERVICECENTER #20240108T071306.335 GMT</pzDocumentKey>
+<pyMemo>dones</pyMemo>
+<pyBaseRule>false</pyBaseRule>
+<pyLabelOld>Get Data Service Center</pyLabelOld>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCheckInRuleSet/>
+<pyCircumstanceVal/>
+<pyDeleteSQL/>
+<pyWindowTitle/>
+<pySaveSQL/>
+<pyCircumstanceDate/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyNew>true</pyNew>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCompareVersion/>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyRun>false</pyRun>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyFavorites>true</pyFavorites>
+<pySaveAs>true</pySaveAs>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRulePage>
+</pyRulePage>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETDATASERVICECENTER #20240108T071306.335 GMT</pzInsKey>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-T_GENERAL GCNM!GETDATASERVICECENTER #20230808T101111.506 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-02-07 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>
