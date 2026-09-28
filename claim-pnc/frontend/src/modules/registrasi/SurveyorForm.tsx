@@ -5,7 +5,9 @@ import { formatDate, formatPercent } from '@/components/format'
 import { useSession } from '@/app/session'
 
 import { useCurrencies } from './api'
+import { CommitteeStatus, TransferCommitteeButton } from './Committee'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
+import { ReceiverTab } from './ReceiverTab'
 import { SettlementDetail, SettlementEditor } from './SettlementEditor'
 import {
   EstimationType,
@@ -52,8 +54,9 @@ function claimEstimate(c: Coverage): number {
  * Pega dari Work Owner dan section tampilan yang ada (`ViewInputEstimasiDetail`,
  * `ViewShowReceiver`).
  *
- * Layar ini membaca, kecuali satu tombol: Tambah pada grid Adjustment, yang membuka baris
- * isian di dalam grid itu (SettlementEditor). Tombol lain yang memproses klaim tampil
+ * Layar ini membaca, kecuali dua isian: Tambah pada grid Adjustment, yang membuka baris
+ * isian di dalam grid itu (SettlementEditor), dan grid Penerima Klaim yang barisnya dibuka
+ * menjadi panel InputReceiver (ReceiverTab). Tombol lain yang memproses klaim tampil
  * tetapi mati sampai prosesnya dibangun.
  */
 
@@ -194,7 +197,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         <div>
           <TabList items={SUB_TABS} current={subTab} onSelect={setSubTab} label="Sub-tab Estimasi & Adjustment" />
           {subTab === 'Estimasi Pembayaran' && <EstimateView klaim={klaim} currencies={currencyList} />}
-          {subTab === 'Penerima Klaim' && <ReceiverView klaim={klaim} />}
+          {subTab === 'Penerima Klaim' && <ReceiverTab klaim={klaim} tugas={tugas} lockedReason={notice} />}
           {subTab === 'Adjustment & Akseptasi' && <AdjustmentView klaim={klaim} tugas={tugas} identity={identity} currencies={currencyList} />}
         </div>
       )}
@@ -390,35 +393,6 @@ function EstimateView({ klaim, currencies }: { klaim: Claim; currencies: Currenc
   )
 }
 
-// ── Sub-tab Penerima Klaim — ViewShowReceiver (.ClaimData.ReceiverClaim) ───────────
-
-/**
- * Kolom mengikuti `ViewShowReceiver`: Nama dan Alamat. Penerimanya dibentuk saat Input
- * Register disubmit (`InputRegister_act`: satu penerima dari QQName dan alamat kirim polis).
- */
-function ReceiverView({ klaim }: { klaim: Claim }) {
-  const receivers = klaim.penerima_klaim ?? []
-  return (
-    <table className="mt-3 w-full border-collapse text-sm">
-      <caption className="sr-only">Penerima klaim</caption>
-      <Head columns={['', 'Nama', 'Alamat']} />
-      <tbody>
-        {receivers.length === 0 ? (
-          <Empty span={3} />
-        ) : (
-          receivers.map((r, n) => (
-            <tr key={r.id || n} className="border-b border-slate-100 align-top">
-              <td className="p-2">{n + 1}</td>
-              <td className="p-2">{r.nama || '—'}</td>
-              <td className="p-2">{r.alamat || '—'}</td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  )
-}
-
 // ── Sub-tab Adjustment & Akseptasi ─────────────────────────────────────────────────
 
 /** Adjustment sudah diakseptasi komite (STATUSAKSEPTASI 1). */
@@ -496,6 +470,10 @@ function AdjustmentView({
                               <tr>
                                 <td colSpan={4} className="p-2">
                                   <SettlementGrid
+                                    claimID={klaim.id}
+                                    taskID={tugas.id}
+                                    object={i + 1}
+                                    coverage={j + 1}
                                     name={c.nama}
                                     lines={c.adjustment ?? []}
                                     currencies={currencies}
@@ -540,6 +518,10 @@ function AdjustmentView({
 }
 
 function SettlementGrid({
+  claimID,
+  taskID,
+  object,
+  coverage,
   name,
   lines,
   currencies,
@@ -551,6 +533,11 @@ function SettlementGrid({
   editor,
   lockedReason,
 }: {
+  claimID: string
+  taskID: string
+  /** Objek dan jaminan berbasis 1 — alamat baris untuk Transfer Komite. */
+  object: number
+  coverage: number
   name: string
   lines: Settlement[]
   currencies: CurrencyOption[]
@@ -612,18 +599,19 @@ function SettlementGrid({
                 </button>
               </td>
               <td className="p-2">
-                <button
-                  type="button"
-                  disabled
-                  title="Transfer Komite belum dibangun."
-                  className="rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
-                >
-                  Transfer Komite
-                </button>
+                <TransferCommitteeButton
+                  claimID={claimID}
+                  taskID={taskID}
+                  object={object}
+                  coverage={coverage}
+                  adjustment={n + 1}
+                  line={s}
+                  lockedReason={lockedReason}
+                />
               </td>
               <td className="p-2">{s.nama_tipe_pembayaran}</td>
               <td className="p-2 text-xs">
-                {accepted(s) ? `Diakseptasi${s.nomor_akseptasi ? ` · ${s.nomor_akseptasi}` : ''}` : 'Belum ditransfer'}
+                <CommitteeStatus line={s} />
               </td>
               <td className="p-2" />
             </tr>

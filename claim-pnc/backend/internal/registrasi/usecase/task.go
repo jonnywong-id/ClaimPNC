@@ -38,6 +38,16 @@ func (l *Service) ClaimTask(ctx context.Context, taskID string, by Caller) (regi
 			return err
 		}
 		result = task
+
+		// Mengambil tugas Workbasket mengisi pemiliknya — dan pemilik itulah yang membuat
+		// klaimnya muncul di My Inbox orang yang mengambilnya.
+		claim, err := l.claim.Get(ctx, task.ClaimID)
+		if err != nil {
+			return err
+		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     task.ClaimID,
 			ClaimNumber: task.ClaimNumber,
@@ -135,6 +145,9 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 				return err
 			}
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     claim.ID,
 			ClaimNumber: claim.Number,
@@ -155,6 +168,13 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 // dilaluinya.
 func (l *Service) ViewClaim(ctx context.Context, claimID string, by Caller) (ClaimSummary, error) {
 	claim, err := l.claim.Get(ctx, claimID)
+	if errors.Is(err, registrasi.ErrClaimNotFound) {
+		// Layar lain — My Inbox, yang membaca T_CLAIMLIST_ADMIN berkunci nomor klaim —
+		// membuka klaim lewat NOMORNYA. Klaim yang dibuka sebelum pengenal disamakan dengan
+		// nomor (2026-09-26) masih berpengenal acak, jadi nomornya dicoba bila pengenal
+		// tidak ditemukan.
+		claim, err = l.claim.GetByNumber(ctx, claimID)
+	}
 	if err != nil {
 		return ClaimSummary{}, err
 	}

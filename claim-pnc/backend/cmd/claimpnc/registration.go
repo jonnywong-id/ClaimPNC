@@ -6,10 +6,14 @@ import (
 	"os"
 	"strings"
 
+	komitesql "claim-pnc/internal/komite/repo/sqlstore"
+	komiteusecase "claim-pnc/internal/komite/usecase"
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/random"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/facesheetpdf"
 	"claim-pnc/internal/registrasi/plapdf"
+	"claim-pnc/internal/registrasi/repo/komitelink"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
 	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
@@ -75,6 +79,20 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
 		options.PLA = registrasisql.NewPLAStore(db)
 		options.Groups = registrasisql.NewGroupStore(db)
+		options.Inbox = registrasisql.NewInboxEntryStore(db)
+		options.Accounts = registrasisql.NewAccountDirectory(db)
+		options.Committees = registrasisql.NewCommitteeStore(db)
+
+		// Penjenjangan komite membaca POOLDATA.EMAILKOMITE lewat modul komite, di atas
+		// koneksi yang sama dengan klaimnya.
+		tiering, err := komiteusecase.NewService(komiteusecase.Options{
+			Repo:       komitesql.NewRepo(db),
+			Randomizer: random.System{},
+		})
+		if err != nil {
+			return nil, err
+		}
+		options.CommitteeTiering = komitelink.New(tiering)
 
 		logger.Warn("modul registrasi berjalan, dengan dua sumber yang belum lengkap",
 			slog.String("penerima_kerugian_besar",
@@ -106,6 +124,10 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.FaceSheet = registrasimemory.NewFaceSheet()
 		options.PLA = registrasimemory.NewPLA()
 		options.Groups = registrasimemory.Groups{}
+		options.Inbox = registrasimemory.NewInboxEntries()
+		options.Accounts = registrasimemory.NewAccounts()
+		options.Committees = registrasimemory.NewCommittees()
+		options.CommitteeTiering = registrasimemory.NewCommitteeTiering()
 
 		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
 			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),

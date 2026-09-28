@@ -108,8 +108,20 @@ type SettlementLine struct {
 	AcceptanceStatus string
 	AcceptedNo       string
 
+	// CommitteeCaseID (CASEIDKOMITE) terisi begitu baris ditransfer ke komite; baris yang
+	// sudah ditransfer tidak dapat ditransfer ulang (`IsKomiteTransfer := 1`).
+	// CommitteeTransferredAt (ANALYST_TFKOMITEDATE, `TanggalComitee`) dan CommitteeDecidedAt
+	// (ACCEPTANCE_DATECOMITEE, `AcceptedDateKomite`) — PEGA_CONVERT_JSONKLAIM_PNC.prc
+	// baris 1095–1099.
+	CommitteeCaseID        string
+	CommitteeTransferredAt time.Time
+	CommitteeDecidedAt     time.Time
+
 	CreatedAt time.Time
 }
+
+// Transferred menyatakan baris sudah ditransfer ke komite.
+func (s SettlementLine) Transferred() bool { return strings.TrimSpace(s.CommitteeCaseID) != "" }
 
 // AdjusterFee adalah komponen fee adjuster (`SetValueAdjusterFee`). Tidak satu pun punya
 // kolom di T_CLAIM_ADJUSTMENT; yang tersimpan hanya hasilnya di GROSSVALUE.

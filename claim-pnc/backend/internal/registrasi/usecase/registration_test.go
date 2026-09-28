@@ -55,6 +55,7 @@ type environment struct {
 	clock     *clock.Fixed
 	pla       *memory.PLA
 	groups    memory.Groups
+	inbox     *memory.InboxEntries
 	caller    usecase.Caller
 }
 
@@ -68,6 +69,7 @@ func setup(t *testing.T, roles ...string) environment {
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
 	pla := memory.NewPLA()
 	groups := memory.Groups{}
+	inbox := memory.NewInboxEntries()
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
@@ -90,6 +92,10 @@ func setup(t *testing.T, roles ...string) environment {
 		PLA:                pla,
 		PLARenderer:        plapdf.Renderer{},
 		Groups:             groups,
+		Inbox:              inbox,
+		Accounts:           memory.NewAccounts(),
+		CommitteeTiering:   memory.NewCommitteeTiering(),
+		Committees:         memory.NewCommittees(),
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -104,6 +110,7 @@ func setup(t *testing.T, roles ...string) environment {
 		clock:     clock,
 		pla:       pla,
 		groups:    groups,
+		inbox:     inbox,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -153,7 +160,7 @@ func validInput(taskID string) usecase.RegisterCommand {
 		},
 		EstimateValue: registrasi.Rupiah(10_000_000),
 		Currency:      "IDR",
-		TechnicalPIC:  "TEKNIK01",
+		TechnicalPIC:  testOperator,
 		InsuredItem: []usecase.InsuredItemInput{{
 			ID:       "OBJ-1",
 			Name:     "Gudang",
@@ -469,6 +476,7 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 	policyItems := memory.NewPolicyItems(nil)
 
 	groups := memory.Groups{}
+	inbox := memory.NewInboxEntries()
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
 		TaskRepo:           store.TaskRepo(),
@@ -490,6 +498,10 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		PLA:                memory.NewPLA(),
 		PLARenderer:        plapdf.Renderer{},
 		Groups:             groups,
+		Inbox:              inbox,
+		Accounts:           memory.NewAccounts(),
+		CommitteeTiering:   memory.NewCommitteeTiering(),
+		Committees:         memory.NewCommittees(),
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
