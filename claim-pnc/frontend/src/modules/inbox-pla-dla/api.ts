@@ -1,10 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, downloadAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import type {
+  BalasResponse,
+  DetailResponse,
+  DokumenResponse,
   ListResponse,
   MetadataResponse,
   RingkasResponse,
@@ -42,6 +45,18 @@ const keys = {
 
   xol: (portal: string | null, token: string | null) =>
     ['inbox-pla-dla', 'xol', portal, token] as const,
+
+  detail: (portal: string | null, token: string | null, kunci: string) =>
+    ['inbox-pla-dla', 'rincian', portal, token, kunci] as const,
+
+  dokumen: (
+    portal: string | null,
+    token: string | null,
+    kunci: string,
+    nomor: string,
+    jenis: string,
+  ) =>
+    ['inbox-pla-dla', 'dokumen', portal, token, kunci, nomor, jenis] as const,
 }
 
 /** Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana. */
@@ -155,6 +170,150 @@ export function useEksporReas() {
         `inbox-pla-dla-${parameter.tab || 'pla'}.csv`,
         { token, portal },
       ),
+  })
+}
+
+/* ==========================================================================
+ * LAYAR RINCIAN — tombol "Detail Claim"
+ * ========================================================================== */
+
+/**
+ * Hook isi layar rincian satu klaim.
+ *
+ * Keempat bagiannya — kepala klaim, grid PLA, grid DLA, riwayat komunikasi — datang dalam
+ * SATU permintaan. `10-API-STRATEGY.md` §1 menuntutnya: satu layar sebaiknya dilayani satu
+ * permintaan, justru supaya layar baru tidak terasa lebih lambat daripada Pega yang
+ * merender seluruh layar sekaligus.
+ */
+export function useRincianKlaim(kunci: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.detail(portal, token, kunci),
+    queryFn: () =>
+      callAPI<DetailResponse>(`${PATH}/klaim/${encodeURIComponent(kunci)}`, {
+        token,
+        portal,
+      }),
+    enabled: enabled && kunci !== '' && token !== null && portal !== null,
+    staleTime: 15 * 1000,
+  })
+}
+
+/**
+ * Hook dokumen satu nomor pemberitahuan — tombol "Dokumen" pada baris PLA/DLA.
+ *
+ * Ia TIDAK ikut permintaan rincian, dan itu disengaja: kuncinya adalah nomor
+ * pemberitahuan, bukan klaimnya. Satu klaim dapat punya banyak PLA dan banyak DLA, dan
+ * mengambil dokumen seluruhnya di muka berarti membaca isi tabel lampiran untuk baris yang
+ * mungkin tidak pernah dibuka siapa pun.
+ */
+export function useDokumenPemberitahuan(
+  kunci: string,
+  nomor: string,
+  jenis: string,
+) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.dokumen(portal, token, kunci, nomor, jenis),
+    queryFn: () => {
+      const query = new URLSearchParams({ nomor, jenis })
+      return callAPI<DokumenResponse>(
+        `${PATH}/klaim/${encodeURIComponent(kunci)}/dokumen?${query.toString()}`,
+        { token, portal },
+      )
+    },
+    enabled:
+      kunci !== '' &&
+      nomor !== '' &&
+      jenis !== '' &&
+      token !== null &&
+      portal !== null,
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Hook unduh satu dokumen.
+ *
+ * Berkasnya diambil lewat `downloadAPI` karena endpoint ini menuntut header
+ * `Authorization` dan `X-Portal`, dan `<a href>` tidak membawa keduanya.
+ */
+export function useUnduhDokumen(kunci: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (dokumen: { id: string; nama: string }) =>
+      downloadAPI(
+        `${PATH}/klaim/${encodeURIComponent(kunci)}/dokumen/` +
+          encodeURIComponent(dokumen.id),
+        dokumen.nama || 'dokumen',
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Hook tombol **"Balas Pesan"** — satu-satunya operasi TULIS di modul ini.
+ *
+ * Rinciannya dimuat ULANG setelah balasannya tersimpan, bukan ditambal di sisi layar.
+ * Yang berubah bukan hanya isi balasannya: percakapannya berpindah menjadi "sudah
+ * dijawab", tombol balasnya hilang, dan pada daftar induk barisnya berpindah tab. Menebak
+ * seluruh akibat itu di layar berarti menyalin aturan peladen ke tempat kedua.
+ */
+export function useBalasKomunikasi(kunci: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (isian: { percakapan: string; balasan: string }) =>
+      callAPI<BalasResponse>(
+        `${PATH}/klaim/${encodeURIComponent(kunci)}/komunikasi/balas`,
+        {
+          token,
+          portal,
+          metode: 'POST',
+          body: isian,
+        },
+      ),
+
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: keys.detail(portal, token, kunci),
+      })
+      // Daftar induk ikut berubah: percakapan yang dijawab berpindah dari tab
+      // "Terkirim — Belum Dijawab" ke "Terkirim — Sudah Dijawab".
+      void client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'baris'] })
+      void client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'ringkas'] })
+    },
+  })
+}
+
+/**
+ * Hook kedua tombol yang belum dibangun — "Download ALL PLA" dan "Download ALL DLA".
+ *
+ * Ia SELALU gagal; yang dibacanya adalah alasannya. Tombolnya tetap digambar karena tombol
+ * yang mati tidak menjelaskan apa pun, dan alasan yang tidak sampai ke pengguna sama saja
+ * dengan tidak ada alasan.
+ */
+export function useTindakanBelumTersedia() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (tindakan: string) => {
+      const query = new URLSearchParams({ tindakan })
+      return callAPI<unknown>(`${PATH}/tindakan?${query.toString()}`, {
+        token,
+        portal,
+        metode: 'POST',
+      })
+    },
   })
 }
 

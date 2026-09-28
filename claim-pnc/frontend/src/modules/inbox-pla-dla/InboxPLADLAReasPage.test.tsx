@@ -39,19 +39,43 @@ const METADATA = {
       kode: 'pla',
       nama: 'PLA',
       keterangan: 'PLA sudah dikirimkan kepada Anda, DLA belum.',
+      jenis: 'daftar-klaim',
       kolom: KOLOM,
+      punya_rincian: true,
     },
     {
       kode: 'dla',
-      nama: 'DLA',
+      nama: 'PLA & DLA',
       keterangan: 'DLA sudah dikirimkan kepada Anda.',
+      jenis: 'daftar-klaim',
       kolom: KOLOM,
+      punya_rincian: true,
     },
     {
       kode: 'close',
-      nama: 'Close',
+      nama: 'CLOSE CLAIM',
       keterangan: 'Klaim yang sudah selesai.',
+      jenis: 'daftar-klaim',
       kolom: KOLOM,
+      punya_rincian: true,
+    },
+    {
+      kode: 'komunikasi-masuk',
+      nama: 'Komunikasi Masuk',
+      keterangan: 'Ada pesan untuk Anda yang belum Anda jawab.',
+      jenis: 'daftar-klaim',
+      kolom: KOLOM,
+      punya_rincian: true,
+    },
+    {
+      // Tampilan XOL BUKAN daftar klaim: ia tidak punya baris, tidak punya tabel
+      // ringkas, dan tidak disaring kotak pencarian. Penandanya datang dari SERVER.
+      kode: 'xol',
+      nama: 'DATA PLA DLA XOL KLAIM',
+      keterangan: 'Ringkasan pemberitahuan XOL yang sudah dikirimkan kepada Anda.',
+      jenis: 'xol',
+      kolom: KOLOM_XOL,
+      punya_rincian: false,
     },
   ],
   daftar_bawaan: 'pla',
@@ -199,13 +223,24 @@ afterEach(() => {
 })
 
 describe('layar Inbox PLA DLA milik reasuradur', () => {
-  it('menggambar ketiga tab beserta kolom yang dikirim server', async () => {
+  it('menggambar SELURUH tampilan beserta kolom yang dikirim server', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
+    // Judulnya diambil APA ADANYA dari Pega (`D-13`) — termasuk "PLA & DLA" dan
+    // "CLOSE CLAIM", yang sebelum 2026-09-28 dinamai "DLA" dan "Close".
     expect(await screen.findByRole('tab', { name: 'PLA' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'DLA' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Close' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'PLA & DLA' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'CLOSE CLAIM' })).toBeInTheDocument()
+
+    // Ketiga daftar komunikasi dan tampilan XOL baru dibangun 2026-09-28. Sebelumnya
+    // keempatnya ada di Pega tanpa satu pun tab yang menuju ke sana.
+    expect(
+      screen.getByRole('tab', { name: 'Komunikasi Masuk' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /DATA PLA DLA XOL KLAIM/ }),
+    ).toBeInTheDocument()
 
     for (const kolom of KOLOM) {
       expect(
@@ -238,17 +273,29 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     expect(await screen.findByText('9999')).toBeInTheDocument()
   })
 
-  it('menggambar grid DATA PLA DLA XOL KLAIM beserta keterangan asal isinya', async () => {
+  it('menggambar grid XOL hanya setelah tampilannya DIPILIH', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
-    expect(
-      await screen.findByText('DATA PLA DLA XOL KLAIM'),
-    ).toBeInTheDocument()
+    await screen.findByText('PNC-2001')
 
-    // Gridnya diambil SETELAH daftarnya berhasil, sehingga barisnya menyusul —
-    // judulnya sudah tergambar lebih dulu.
+    // Sebelum tabnya dibuka, gridnya TIDAK tergambar dan permintaannya tidak dikirim.
+    //
+    // Di Pega pun begitu: wadahnya bersyarat `TempView.CityID==7`. Sebelum 2026-09-28
+    // panel ini digambar permanen di kaki halaman, sehingga gabungan dua tabel XOL
+    // dijalankan pada setiap pembukaan layar — termasuk bagi mitra yang tidak pernah
+    // membukanya.
+    expect(calls.some((call) => call.url.includes('/xol'))).toBe(false)
+
+    await userEvent.click(
+      screen.getByRole('tab', { name: /DATA PLA DLA XOL KLAIM/ }),
+    )
+
     expect(await screen.findByText('Kebakaran')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(calls.some((call) => call.url.includes('/xol'))).toBe(true)
+    })
 
     // Keterangan ini yang memberi tahu mitra mengapa angkanya berbeda dari Pega.
     expect(
@@ -256,7 +303,7 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     ).toBeInTheDocument()
   })
 
-  it('mengambil ringkasan dan XOL lewat permintaan TERSENDIRI', async () => {
+  it('mengambil ringkasan lewat permintaan TERSENDIRI dari daftarnya', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
@@ -264,7 +311,6 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
 
     await waitFor(() => {
       expect(calls.some((call) => call.url.includes('/ringkas'))).toBe(true)
-      expect(calls.some((call) => call.url.includes('/xol'))).toBe(true)
     })
   })
 

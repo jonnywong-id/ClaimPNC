@@ -41,12 +41,19 @@ const SampleSecondLogin = "REASGANDA"
 //	PNC-2005  Resolved-Completed + menunggu tutup       -> muncul di DLA, status 1139
 //	PNC-2006  Resolved-Rejected                         -> TIDAK muncul di daftar mana pun
 //	PNC-2007  tanpa baris tabel kerja Pega              -> muncul di PLA, TIDAK di DLA
+//	PNC-2009  lini Personal Accident TANPA pemberitahuan -> HANYA di daftar komunikasi
+//
+// Baris terakhir itu satu-satunya yang membuktikan DUA perbedaan sekaligus antara daftar
+// komunikasi dan daftar pemberitahuan: ia lini `002` yang ketiga daftar pemberitahuan
+// kecualikan, dan ia tidak punya satu pun PLA maupun DLA.
 func NewSampleStore() *Store {
 	store := NewStore()
 	store.Seed(
 		sampleClaims(), sampleAdvices(),
 		sampleReinsurers(), sampleXOL(), sampleLabels(),
 	)
+	store.SeedMessages(sampleMessages())
+	store.SeedDocuments(sampleDocuments())
 	return store
 }
 
@@ -180,6 +187,23 @@ func sampleClaims() []Claim {
 			PICTeknik:    "SITI", CloseNote: "Ditutup",
 			WorkStatus: "Resolved-Completed", StatusCode: "1163", HasWorkRow: true,
 		},
+		{
+			// Lini PERSONAL ACCIDENT (`002`), TANPA satu pun pemberitahuan.
+			//
+			// Ia tidak akan pernah muncul di ketiga daftar pemberitahuan — keduanya
+			// karena lini bisnisnya dikecualikan DAN karena tidak ada PLA maupun DLA
+			// yang dikirimkan. Ia muncul HANYA di daftar komunikasi.
+			//
+			// Tanpa baris ini, kedua perbedaan itu tidak dapat dibuktikan: menambahkan
+			// penyaring `grouppanel` ke kueri komunikasi akan lolos setiap uji.
+			Key: workKey("PNC-2009"), No: "PNC-2009",
+			PolicyNo: "POL-2026-2009", Insured: "PT Contoh Sembilan",
+			BusinessName: "PERSONAL ACCIDENT", GroupPanel: "002",
+			RegisterDate: day(2026, time.January, 13),
+			LossDate:     day(2026, time.January, 10),
+			PICTeknik:    "BUDI",
+			WorkStatus:   "Open", StatusCode: "1147", HasWorkRow: true,
+		},
 	}
 }
 
@@ -197,12 +221,29 @@ func sampleAdvices() []Advice {
 			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001",
 			ReinsCode: "R100", Revision: 0,
 			Sent: sent1, SentDate: date1, Email: mail1,
+			Type: "Treaty", Amount: "125000000.00",
+			AdviceDate: day(2026, time.January, 14),
 		},
 		{
 			// Revisi lebih tinggi -> nomor INILAH yang digambar kolom "No PLA".
 			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001-R1",
 			ReinsCode: "R100", Revision: 1,
 			Sent: sent1, SentDate: date1, Email: mail1,
+			Type: "Treaty", Amount: "140000000.00",
+			AdviceDate: day(2026, time.January, 15),
+		},
+		{
+			// Milik reasuradur LAIN pada klaim yang SAMA.
+			//
+			// Ia tidak boleh terlihat di grid rincian PNC-2001. Di Pega ia justru
+			// terlihat: gridnya dimuat dari objek kerja klaim, yang memuat seluruh
+			// mitra beserta nilai masing-masing. Tanpa baris ini, selisih itu tidak
+			// dapat dibuktikan.
+			ClaimKey: workKey("PNC-2001"), Kind: "pla", No: "PLA/2026/2001-LAIN",
+			ReinsCode: "R900", Revision: 0,
+			Sent: sent1, SentDate: date1, Email: mail1,
+			Type: "Fac Out", Amount: "99000000.00",
+			AdviceDate: day(2026, time.January, 14),
 		},
 
 		// PNC-2002 — PLA dan DLA keduanya terkirim.
@@ -210,11 +251,26 @@ func sampleAdvices() []Advice {
 			ClaimKey: workKey("PNC-2002"), Kind: "pla", No: "PLA/2026/2002",
 			ReinsCode: "R100", Revision: 0,
 			Sent: sent1, SentDate: date1, Email: mail1,
+			Type: "Treaty", Amount: "75000000.00",
+			AdviceDate: day(2026, time.January, 14),
 		},
 		{
 			ClaimKey: workKey("PNC-2002"), Kind: "dla", No: "DLA/2026/2002",
 			ReinsCode: "R100", Revision: 0,
 			Sent: sent1, SentDate: date1, Email: mail1,
+			Type: "Treaty", Amount: "70000000.00",
+			AcceptanceNo: "AKS/2026/2002",
+			AdviceDate:   day(2026, time.January, 16),
+		},
+		{
+			// BELUM terkirim — ia tidak boleh muncul di grid rincian.
+			//
+			// Grid Pega memuatnya; di sini tidak. Lihat PlannedDifferences.
+			ClaimKey: workKey("PNC-2002"), Kind: "dla", No: "DLA/2026/2002-DRAF",
+			ReinsCode: "R100", Revision: 0,
+			Sent: "0",
+			Type: "Treaty", Amount: "70000000.00",
+			AdviceDate: day(2026, time.January, 17),
 		},
 
 		// PNC-2003 — PLA terkirim; klaimnya sudah selesai.
@@ -294,6 +350,122 @@ func sampleXOL() []XOL {
 			Kind: "DLA", ReinsCode: "R100", Year: "2026",
 			CauseOfLoss: "Pencurian", Sent: false,
 			InsertDate: day(2026, time.March, 5),
+		},
+	}
+}
+
+// sampleMessages adalah percakapan contoh pada `POOLDATA.M_KOMUNIKASI_PNC`.
+//
+// # Setiap baris menjawab satu penyaring
+//
+//	KOM-01  masuk, belum dijawab      -> tab "Komunikasi Masuk"
+//	KOM-02  terkirim, belum dijawab   -> tab "Terkirim — Belum Dijawab"
+//	KOM-03  terkirim, sudah dijawab   -> tab "Terkirim — Sudah Dijawab"
+//	KOM-04  milik mitra LAIN          -> TIDAK terlihat di tab mana pun
+//	KOM-05  pada klaim PA tanpa PLA   -> membuktikan daftar komunikasi tidak mengecualikan
+//	                                     lini bisnis dan tidak menuntut pemberitahuan
+//
+// Isi pesannya KARANGAN. Percakapan nyata memuat tulisan manusia yang dapat menyebut nomor
+// polis dan nama tertanggung, dan keduanya tidak pernah disalin ke berkas yang di-commit
+// (`D-69`).
+func sampleMessages() []Message {
+	return []Message{
+		{
+			ID: "KOM-01", ClaimKey: workKey("PNC-2001"),
+			SenderLogin: "BUDI", SenderName: "Budi Santoso",
+			RecipientCode: SampleReinsurerLogin,
+			Message:       "Mohon konfirmasi nilai estimasi pada PLA terlampir.",
+			CreatedAt:     day(2026, time.February, 2),
+			Status:        "0",
+		},
+		{
+			ID: "KOM-02", ClaimKey: workKey("PNC-2002"),
+			SenderLogin: SampleReinsurerLogin, SenderName: "Mitra Contoh",
+			RecipientCode: "BUDI",
+			Message:       "Kami meminta rincian perhitungan share pada DLA ini.",
+			CreatedAt:     day(2026, time.February, 3),
+			Status:        "0",
+		},
+		{
+			ID: "KOM-03", ClaimKey: workKey("PNC-2002"),
+			SenderLogin: SampleReinsurerLogin, SenderName: "Mitra Contoh",
+			RecipientCode: "SITI",
+			Message:       "Apakah dokumen pendukung sudah lengkap?",
+			CreatedAt:     day(2026, time.February, 4),
+			Reply:         "Sudah lengkap, terima kasih.",
+			ReplierLogin:  "SITI", ReplierName: "Siti Aminah",
+			RepliedAt: day(2026, time.February, 5),
+			Status:    "1",
+		},
+		{
+			// Antara petugas dan mitra LAIN. Ia tidak menyangkut pemanggil sama sekali,
+			// dan karena itu tidak boleh terlihat — termasuk di layar rincian.
+			ID: "KOM-04", ClaimKey: workKey("PNC-2001"),
+			SenderLogin: "BUDI", SenderName: "Budi Santoso",
+			RecipientCode: SampleSecondLogin,
+			Message:       "Percakapan ini bukan untuk mitra contoh.",
+			CreatedAt:     day(2026, time.February, 6),
+			Status:        "0",
+		},
+		{
+			// Klaim lini Personal Accident yang TIDAK punya satu pun pemberitahuan.
+			ID: "KOM-05", ClaimKey: workKey("PNC-2009"),
+			SenderLogin: "BUDI", SenderName: "Budi Santoso",
+			RecipientCode: SampleReinsurerLogin,
+			Message:       "Mohon tanggapan atas klaim kecelakaan diri ini.",
+			CreatedAt:     day(2026, time.February, 7),
+			Status:        "0",
+		},
+	}
+}
+
+// sampleDocuments adalah dokumen reasuransi contoh.
+//
+// # Setiap baris menjawab satu penyaring pula
+//
+//	DOK-01  milik pemanggil, PLA terkirim   -> terlihat
+//	DOK-02  milik pemanggil, DLA terkirim   -> terlihat pada jenis DLA
+//	DOK-03  `LOGIN` milik mitra LAIN        -> TIDAK terlihat  (penyaring `D-73`/Work Owner)
+//	DOK-04  nomornya BELUM terkirim         -> TIDAK terlihat
+//
+// DOK-03 yang paling penting: ia satu-satunya yang membuktikan penyaring `T_DOC_REAS.LOGIN`
+// benar-benar bekerja. `GetDokumenReas` tidak memakainya, dan penambahannya diputuskan
+// Work Owner pada 2026-09-28.
+func sampleDocuments() []Document {
+	return []Document{
+		{
+			ID: "DOK-01", ClaimKey: workKey("PNC-2001"),
+			AdviceNo: "PLA/2026/2001-R1", Kind: "PLA",
+			Login:    SampleReinsurerLogin,
+			Category: "Dokumen Klaim", SubCategory: "Laporan Kerugian",
+			Name: "laporan-kerugian.pdf", MimeType: "application/pdf",
+			Content: []byte("%PDF-1.4 contoh laporan kerugian"),
+		},
+		{
+			ID: "DOK-02", ClaimKey: workKey("PNC-2002"),
+			AdviceNo: "DLA/2026/2002", Kind: "DLA",
+			Login:    SampleReinsurerLogin,
+			Category: "Dokumen Klaim", SubCategory: "Perhitungan Akseptasi",
+			Name: "perhitungan-akseptasi.pdf", MimeType: "application/pdf",
+			Content: []byte("%PDF-1.4 contoh perhitungan akseptasi"),
+		},
+		{
+			// Tercatat atas nama mitra LAIN pada nomor pemberitahuan yang sama.
+			ID: "DOK-03", ClaimKey: workKey("PNC-2001"),
+			AdviceNo: "PLA/2026/2001-R1", Kind: "PLA",
+			Login:    SampleSecondLogin,
+			Category: "Dokumen Klaim", SubCategory: "Laporan Kerugian",
+			Name: "milik-mitra-lain.pdf", MimeType: "application/pdf",
+			Content: []byte("%PDF-1.4 tidak boleh terlihat"),
+		},
+		{
+			// Nomornya ada, tetapi pemberitahuannya BELUM terkirim.
+			ID: "DOK-04", ClaimKey: workKey("PNC-2002"),
+			AdviceNo: "DLA/2026/2002-DRAF", Kind: "DLA",
+			Login:    SampleReinsurerLogin,
+			Category: "Dokumen Klaim", SubCategory: "Draf",
+			Name: "draf.pdf", MimeType: "application/pdf",
+			Content: []byte("%PDF-1.4 draf"),
 		},
 	}
 }

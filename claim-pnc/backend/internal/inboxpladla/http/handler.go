@@ -25,6 +25,12 @@ type Caller struct {
 	// layar kosong bagi SETIAP reasuradur — dan kosongnya tidak dapat dibedakan dari
 	// "belum ada pekerjaan".
 	Login string
+
+	// Name adalah nama yang dibaca manusia.
+	//
+	// Ia tidak menyaring apa pun; satu-satunya pemakainya adalah kolom nama pembalas pada
+	// balasan komunikasi. Boleh kosong.
+	Name string
 }
 
 // CallerReader membaca identitas pemanggil dari konteks permintaan.
@@ -147,25 +153,31 @@ func (h *Handler) XOL(w http.ResponseWriter, r *http.Request) {
 
 // RejectWrite menjawab tombol yang belum tersedia.
 //
-// Ia sengaja BUKAN 404. Ketiga tombolnya — "Detail Claim", "Detail", dan "DLA" — tergambar
-// di layar, dan tombol yang dijawab "halaman tidak ditemukan" terbaca sebagai kerusakan.
+// Ia sengaja BUKAN 404. Kedua tombolnya — "Download ALL PLA" dan "Download ALL DLA" —
+// tergambar di layar rincian, dan tombol yang dijawab "halaman tidak ditemukan" terbaca
+// sebagai kerusakan.
+//
+// Tindakannya DIBACA dari alamat, supaya alasan yang dijawab menyebut tombol yang
+// benar-benar ditekan. Satu kalimat untuk keduanya akan membuat pengguna yang menekan
+// "Download ALL DLA" membaca penjelasan tentang PLA.
 func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 	if _, exists := portalhttp.ActivePortalFrom(r.Context()); !exists {
 		h.writeError(w, r, portal.ErrNotStated)
 		return
 	}
 
+	action := strings.TrimSpace(r.URL.Query().Get("tindakan"))
+
 	if h.logger != nil {
 		h.logger.Info(
 			"tindakan diminta pada tombol yang belum dibangun",
 			slog.String("modul", "inbox-pla-dla"),
 			slog.String("jalur", r.URL.Path),
-			slog.String("tindakan",
-				strings.TrimSpace(r.URL.Query().Get("tindakan"))),
+			slog.String("tindakan", action),
 		)
 	}
 
-	h.writeError(w, r, inboxpladla.ErrWriteNotAvailable)
+	h.writeError(w, r, h.service.RejectAction(action))
 }
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
@@ -198,7 +210,7 @@ func (h *Handler) readCaller(r *http.Request) (inboxpladla.Caller, bool) {
 	if !exists {
 		return inboxpladla.Caller{}, false
 	}
-	return inboxpladla.Caller{Login: caller.Login}, true
+	return inboxpladla.Caller{Login: caller.Login, Name: caller.Name}, true
 }
 
 // readFilter membaca isian penyaring dari parameter query.

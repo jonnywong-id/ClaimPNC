@@ -19257,3 +19257,113 @@ Propertinya `DateTime` dan section memakai kontrol `pxDateTime`, sehingga dikiri
    pengisi `T_CLAIMLIST_ADMIN` (§D.1 dokumen kolom): ia harus membawa ketiga nilai, dua di
    antaranya dari blob Pega, dan memuat klaim tahap RCL Dokter — hari ini nol.
 4. `T_ACCESS_GROUP_PNC` tetap sumber identitas lama; ia tabel POOLDATA, di luar keputusan ini.
+
+---
+
+## 67. Inbox PLA DLA dilengkapi — tujuh tampilan, layar rincian, dan satu operasi tulis (2026-09-28)
+
+`MENU_ID 45` sudah ada sejak sesi kedua puluh enam. Sesi ini menutup selisihnya terhadap
+`Harness/InboxPLADLA-Harness.xml`, yang ternyata jauh lebih besar daripada yang dicatat
+§62.8.
+
+### 67.1 Layarnya punya TUJUH tampilan, bukan tiga
+
+Seluruhnya dikendalikan satu nilai — `TempView.CityID`, yang `SetDataPLADLA` terima sebagai
+`param.tipe`. Percabangannya terbaca langsung dari activity itu:
+
+| tipe | Judul di Pega | Sumber data | Sebelum sesi ini |
+|---|---|---|---|
+| 1 | **PLA** | `GetPNCList_PLA1` | ada |
+| 2 | **PLA & DLA** | `GetPNCList_PLADLA` | ada, dinamai "DLA" |
+| 3 | **CLOSE CLAIM** | `GetPNCList_PLADLAClose` | ada, dinamai "Close" |
+| 4 | — | `BrowseCommunicationReas` · status `0` + `COMMUNICATE_TO` | **tidak ada** |
+| 5 | — | idem · status `0` + `SENDER` | **tidak ada** |
+| 6 | — | idem · status `1` + `SENDER` | **tidak ada** |
+| 7 | **DATA PLA DLA XOL KLAIM** | union `T_PLA_XOL`/`T_DLA_XOL` | ada, tetapi digambar permanen |
+
+Ketiga tampilan komunikasi tidak pernah dibangun, dan ketiadaannya **tidak terlihat dari
+layar**: tampilan yang tidak punya tab tidak pernah diminta siapa pun.
+
+### 67.2 Dua perbedaan daftar komunikasi yang DIBAWA apa adanya
+
+`BrowseCommunicationReas` berbeda dari ketiga kueri pemberitahuan pada dua hal, dan
+keduanya dibawa (`P-5`):
+
+1. **Tidak ada penyaring `GROUPPANEL`.** Ketiga daftar pemberitahuan mengecualikan `002`
+   (Personal Accident) dan `005` (Travel); kueri komunikasi tidak memuat satu pun syarat
+   itu. Akibatnya klaim PA dapat muncul di sana sementara ia tidak akan pernah muncul di
+   ketiga daftar di sebelah kiri.
+2. **Tidak ada syarat dokumen terkirim.** Sebuah klaim masuk daftar itu karena ada
+   PERCAKAPAN — bukan karena ada PLA maupun DLA. Kolom "PLA No" karena itu BOLEH kosong di
+   sana, dan itu bukan tanda kerusakan.
+
+Data contoh memuat satu baris yang membuktikan keduanya sekaligus: klaim lini `002` tanpa
+satu pun pemberitahuan. Tanpa baris itu, menambahkan penyaring `grouppanel` ke kueri
+komunikasi akan lolos setiap uji.
+
+### 67.3 Dari tiga tombol yang §62.8 tunda, hanya SATU yang nyata
+
+| Tombol | Kenyataannya di Pega | Keputusan |
+|---|---|---|
+| **"DLA"** | berada di dalam wadah ber-`pyContainerVisibleWhen` = **`1==2`** — tidak pernah tergambar | **tidak dibawa** |
+| **"Detail"** | hanya tampil bila `OperatorID.pyUserIdentifier == 'KBRU_PNC'` — satu Operator ID ditulis tetap di dalam rule | **tidak dibawa** (`D-15`) |
+| **"Detail Claim"** | nyata, ada di ketiga daftar | **dibangun** |
+
+Keterangan lama di `PlannedDifferences` — "ketiganya membuka layar rincian yang belum
+dianalisis" — **keliru untuk dua dari tiga**, dan sudah dikoreksi.
+
+### 67.4 Layar rincian: lima grid, dan satu di antaranya menulis
+
+`ViewDetailClaimReas` → `ViewShowObjectAdjReas` (713 KB). Isinya:
+
+| Grid | Kolom Pega |
+|---|---|
+| `PLAList` | No PLA · Tipe PLA · Nilai PLA · **Dokumen** |
+| `DLAList` | No DLA · Tipe DLA · Nilai DLA · No Akseptasi · **Dokumen** |
+| `tempAttachment` | Jenis Dokumen · Kategori Dokumen · Nama |
+| `tempHistoryKomunikasi` | Date · Sender · Message · Reply · **Balas Pesan** |
+
+Penyaring dokumennya akhirnya terbaca: `GetDokumenReas` menyaring
+`CLAIMID + NO_PLADLA + TIPE_PLADLA` atas `POOLDATA.T_DOC_REAS` — jadi dokumen terikat pada
+**nomor pemberitahuan**, bukan pada klaim. Itu yang menjelaskan mengapa `Param.pladla`
+tampak mati saat popup pertama dibuka: ia baru terisi setelah tombol "Dokumen" ditekan.
+
+### 67.5 Empat penyimpangan terhadap Pega, seluruhnya ke arah yang LEBIH KETAT
+
+| # | Penyimpangan | Sebabnya |
+|---|---|---|
+| 1 | Grid PLA/DLA rincian hanya menampilkan pemberitahuan **milik pemanggil** | Di Pega gridnya dimuat dari objek kerja klaim, sehingga memuat pemberitahuan SELURUH mitra beserta nilai masing-masing. Itu kelas kebocoran yang sama dengan grid XOL yang sudah ditolak §61.5 |
+| 2 | Grid PLA/DLA rincian hanya menampilkan yang **sudah terkirim** | Dokumen yang belum dikirim belum menjadi milik penerimanya |
+| 3 | Dokumen disaring pula menurut **`T_DOC_REAS.LOGIN`** | Diputuskan Work Owner 2026-09-28. `GetDokumenReas` tidak memakai kolom itu meski ia ada dan diisi `InsertDokumenPLADLA` |
+| 4 | Balasan menolak percakapan yang **sudah dijawab** | `REPLYMESSAGE` kolom TUNGGAL: balasan kedua menimpa yang pertama tanpa dapat dipulihkan. `ReplyKomunikasi` tidak memagarinya sama sekali |
+
+Penyimpangan 3 punya arah kegagalan yang disadari: bila kolom `LOGIN` pada data lama tidak
+terisi konsisten, dokumen yang di Pega terlihat akan **hilang** di sini. Arah itu yang
+dipilih — kurang, bukan lebih — pada layar yang dibaca pihak luar.
+
+### 67.6 Satu judul kolom Pega TIDAK dibawa
+
+Header pertama grid XOL di Pega berbunyi **"Date Of Loss"**, sementara kolomnya berisi
+`T_PLA_XOL.TAHUN` — sebuah tahun, bukan tanggal. `D-13` menuntut teks layar mengikuti Pega,
+tetapi ia tidak menuntut membawa judul yang menyatakan hal yang **bukan isinya**: pembacanya
+pihak luar, dan "Date Of Loss" yang berisi `2024` akan dilaporkan sebagai kerusakan data.
+
+Ketiga judul lain dibawa apa adanya, begitu pula seluruh judul kolom daftar — yang sejak
+sesi ini berbahasa Inggris persis seperti Pega (Claim No · Insured · Policy No · Business
+Name · DOL · Register Date · PIC ASM · PLA No · Claim Progress).
+
+### 67.7 Operasi TULIS pertama yang pelakunya pihak LUAR
+
+"Balas Pesan" menulis ke `POOLDATA.M_KOMUNIKASI_PNC` — tabel yang dibaca petugas internal
+lewat modul `inboxkomunikasicabang`. Di seluruh aplikasi ini, inilah penulisan pertama yang
+pelakunya bukan pegawai Asuransi Sinar Mas.
+
+`PNCReplyMessage` dan `SectionBalasKomunikasi_Reas` **hilang dari export**, tetapi bentuk
+tulisannya bukan tebakan: `RDB List/ReplyKomunikasi-SQL.xml` menyebutkan kelima kolomnya
+kata per kata, dan modul `inboxkomunikasicabang` sudah menjadi preseden lengkap untuk tabel
+yang sama.
+
+Tiga pemagaran ditambahkan pada klausa `WHERE`-nya — kunci klaim, keterlibatan pemanggil,
+dan `REPLYMESSAGE IS NULL` — dan ketiganya berada **di dalam pernyataan tulisnya sendiri**,
+bukan sebagai pemeriksaan terpisah sebelum menulis. Dua permintaan yang datang bersamaan
+akan sama-sama lolos pemeriksaan terpisah.

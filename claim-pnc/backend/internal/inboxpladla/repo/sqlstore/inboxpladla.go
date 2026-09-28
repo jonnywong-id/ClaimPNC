@@ -67,12 +67,21 @@ func (r *Repo) ReinsurerCodes(ctx context.Context, login string) ([]string, erro
 // adalah hal pertama yang dilaporkan pengguna sebagai kerusakan.
 func queriesFor(tab inboxpladla.Tab) (list string, count string, err error) {
 	switch tab.Code {
-	case "pla":
+	case inboxpladla.TabPLA:
 		return "list_pla", "count_pla", nil
-	case "dla":
+	case inboxpladla.TabPLADLA:
 		return "list_dla", "count_dla", nil
-	case "close":
+	case inboxpladla.TabClose:
 		return "list_close", "count_close", nil
+
+	case inboxpladla.TabInbound:
+		return "list_komunikasi_recipient", "count_komunikasi_recipient", nil
+
+	// Kedua tab di bawah memakai kueri yang SAMA, dan yang membedakannya adalah NILAI
+	// bind status — `0` belum dijawab, `1` sudah. Lihat komunikasi.sql.
+	case inboxpladla.TabOutbound, inboxpladla.TabAnswered:
+		return "list_komunikasi_sender", "count_komunikasi_sender", nil
+
 	default:
 		return "", "", fmt.Errorf(
 			"inboxpladla/sqlstore: daftar %q tidak dikenal", tab.Code)
@@ -234,66 +243,83 @@ func (r *Repo) XOL(
 	return items, nil
 }
 
-// filterArgs menyusun bind penyaring kueri DAFTAR, tanpa paginasi.
+// searchArgs menyusun kedua bind pencarian.
 //
-// Susunannya: penanda pencarian, pola pencarian, lalu login sebanyak yang dibutuhkan
-// kuerinya. Jumlah login BERBEDA per tab, dan perbedaannya bukan kelalaian — ia mengikuti
-// berapa kali rantai reasuradur muncul di kueri masing-masing:
-//
-//	list_pla    3  kolom No PLA · syarat PLA terkirim · syarat DLA belum terkirim
-//	list_dla    2  kolom No PLA · syarat DLA terkirim
-//	list_close  2  kolom No PLA · syarat PLA terkirim
-func filterArgs(q inboxpladla.Query) []any {
-	var (
-		searchFlag sql.NullString
-		pattern    sql.NullString
-	)
-	if q.Search != "" {
-		searchFlag = sql.NullString{String: "1", Valid: true}
-		pattern = sql.NullString{
+// Keduanya NULL ketika tidak ada kata kunci, dan penandanya BERTIPE TEKS — tidak pernah
+// bertipe tanggal maupun angka. Bind yang hanya muncul di dalam `IS NULL` tidak punya
+// konteks tipe di dalam kueri, sehingga tipenya ditentukan driver; itu kelas galat yang
+// hanya muncul di Oracle.
+func searchArgs(q inboxpladla.Query) (sql.NullString, sql.NullString) {
+	if q.Search == "" {
+		return sql.NullString{}, sql.NullString{}
+	}
+	return sql.NullString{String: "1", Valid: true},
+		sql.NullString{
 			String: "%" + strings.ToUpper(escapeLike(q.Search)) + "%",
 			Valid:  true,
 		}
+}
+
+// filterArgs menyusun bind penyaring kueri DAFTAR, tanpa paginasi.
+//
+// # URUTANNYA MENGIKUTI KEMUNCULAN PENANDA DI DALAM TEKS SQL, BUKAN NOMORNYA
+//
+// Oracle mengikat argumen menurut urutan KEMUNCULAN penanda, bukan menurut angka pada
+// `:n`. Kolom "No PLA" berada di klausa SELECT — sebelum WHERE — sehingga login untuknya
+// adalah argumen PERTAMA, bukan ketiga.
+//
+// Melupakannya tidak menghasilkan galat: setiap bind tetap terisi sesuatu. Yang terjadi
+// adalah kolom "No PLA" selalu kosong, dan pencarian tidak pernah menemukan apa pun. Cacat
+// yang sama pernah lolos di modul lain dan baru ketahuan setelah Oracle hidup
+// (`catatan-pengembangan.md` §19.14).
+//
+// Susunan per jenis daftar:
+//
+//	pemberitahuan  login · penanda · pola · login × (n-1)
+//	komunikasi     login · penanda · pola · status · login
+func filterArgs(q inboxpladla.Query) []any {
+	searchFlag, pattern := searchArgs(q)
+	login := q.Caller.Login
+
+	if q.Tab.Source == inboxpladla.SourceCommunication {
+		return []any{login, searchFlag, pattern, q.Tab.CommunicationStatus, login}
 	}
 
-	args := []any{searchFlag, pattern}
-
-	login := q.Caller.Login
-	for i := 0; i < loginBindCount(q.Tab); i++ {
+	args := []any{login, searchFlag, pattern}
+	for i := 0; i < loginBindCount(q.Tab)-1; i++ {
 		args = append(args, login)
 	}
-
 	return args
 }
 
 // countArgs menyusun bind kueri RINGKAS.
 //
 // Ia sama dengan filterArgs kecuali satu hal: kueri ringkas tidak mengambil kolom
-// "No PLA", sehingga rantai reasuradur untuk kolom itu tidak ada di sana.
+// "No PLA", sehingga rantai reasuradur untuk kolom itu tidak ada di sana — dan karena itu
+// penanda pencarianlah yang muncul pertama.
 func countArgs(q inboxpladla.Query) []any {
-	var (
-		searchFlag sql.NullString
-		pattern    sql.NullString
-	)
-	if q.Search != "" {
-		searchFlag = sql.NullString{String: "1", Valid: true}
-		pattern = sql.NullString{
-			String: "%" + strings.ToUpper(escapeLike(q.Search)) + "%",
-			Valid:  true,
-		}
+	searchFlag, pattern := searchArgs(q)
+	login := q.Caller.Login
+
+	if q.Tab.Source == inboxpladla.SourceCommunication {
+		return []any{searchFlag, pattern, q.Tab.CommunicationStatus, login}
 	}
 
 	args := []any{searchFlag, pattern}
-
-	login := q.Caller.Login
 	for i := 0; i < loginBindCount(q.Tab)-1; i++ {
 		args = append(args, login)
 	}
-
 	return args
 }
 
-// loginBindCount menyatakan berapa kali login diikat pada kueri DAFTAR sebuah tab.
+// loginBindCount menyatakan berapa kali login diikat pada kueri DAFTAR pemberitahuan.
+//
+// Jumlahnya BERBEDA per tab, dan perbedaannya bukan kelalaian — ia mengikuti berapa kali
+// rantai reasuradur muncul di kueri masing-masing:
+//
+//	list_pla    3  kolom No PLA · syarat PLA terkirim · syarat DLA belum terkirim
+//	list_dla    2  kolom No PLA · syarat DLA terkirim
+//	list_close  2  kolom No PLA · syarat PLA terkirim
 //
 // Angkanya diperiksa terhadap teks SQL di query_test.go. Tanpa uji itu, satu rantai
 // reasuradur yang ditambahkan ke SQL tanpa menambah bind di sini akan menghasilkan galat

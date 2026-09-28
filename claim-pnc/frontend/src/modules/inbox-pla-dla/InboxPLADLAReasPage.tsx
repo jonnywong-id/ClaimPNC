@@ -13,6 +13,7 @@ import {
   useReasXOL,
   type ParameterDaftar,
 } from './api'
+import { DetailKlaimPanel } from './DetailKlaimPanel'
 import { StatusSummary } from './StatusSummary'
 import { XOLPanel } from './XOLPanel'
 import { bukanReasuradur, formatTanggal, pesanGalat, pesanMuat } from './pesan'
@@ -29,11 +30,22 @@ import type { Baris, Daftar } from './types'
  * masuk.** Login pemanggil dicocokkan ke `POOLDATA.T_REINSURER.LOGIN`, dan hasil
  * pencocokan itulah yang menentukan klaim mana yang terlihat.
  *
- * Tiga tab:
+ * # TUJUH tampilan, bukan tiga
  *
- *	PLA    PLA sudah dikirimkan kepada Anda, DLA belum
- *	DLA    DLA sudah dikirimkan kepada Anda
- *	Close  klaimnya sudah selesai dan tidak lagi menunggu penutupan
+ * Seluruhnya dikendalikan satu nilai di Pega — `TempView.CityID`, yang `SetDataPLADLA`
+ * terima sebagai `param.tipe`:
+ *
+ *	PLA                       PLA sudah dikirimkan kepada Anda, DLA belum
+ *	PLA & DLA                 DLA sudah dikirimkan kepada Anda
+ *	CLOSE CLAIM               klaimnya sudah selesai dan tidak menunggu penutupan
+ *	Komunikasi Masuk          ada pesan untuk Anda yang belum Anda jawab
+ *	Terkirim — Belum Dijawab  pesan yang Anda kirim dan belum dijawab
+ *	Terkirim — Sudah Dijawab  pesan yang Anda kirim dan sudah dijawab
+ *	DATA PLA DLA XOL KLAIM    ringkasan XOL, bukan daftar klaim
+ *
+ * Ketiga daftar komunikasi dan tampilan XOL sebagai TAB baru dibangun 2026-09-28. Yang
+ * terakhir sebelumnya digambar permanen di kaki halaman; di Pega ia tampilan tersendiri
+ * (`pyContainerVisibleWhen = TempView.CityID==7`).
  *
  * # JANGAN tertukar dengan "Inbox PLA, DLA, Pre DLA" (`MENU_ID 44`)
  *
@@ -46,11 +58,15 @@ import type { Baris, Daftar } from './types'
  * menunjuk menu yang benar. Di Pega ia hanya melihat layar kosong tanpa satu pun
  * keterangan — dan menyimpulkan sistemnya rusak.
  *
- * # Layar BACA-SAJA
+ * # Layar induk BACA-SAJA; yang menulis ada di RINCIAN
  *
- * Ia baca-saja di Pega pula: keempat activity-nya hanya memuat data. Ketiga tombolnya —
- * "Detail Claim", "Detail", dan "DLA" — membuka layar rincian tersendiri yang belum
- * dianalisis, dan karena itu belum digambar di sini.
+ * Tombol **"Detail Claim"** membuka panel rincian klaim, dan di dalamnya ada satu operasi
+ * tulis: balasan komunikasi oleh mitra reasuransi.
+ *
+ * Dua tombol lain pada layar Pega TIDAK dibawa, dan keduanya bukan penundaan:
+ *
+ *	"DLA"     berada di dalam wadah bersyarat `1==2` — tidak pernah tergambar di Pega
+ *	"Detail"  hanya tampil bagi satu Operator ID yang ditulis tetap di dalam rule (`D-15`)
  */
 export function InboxPLADLAReasPage() {
   const meta = useReasMetadata()
@@ -65,18 +81,26 @@ export function InboxPLADLAReasPage() {
   const [ketikan, setKetikan] = useState('')
   const [dicari, setDicari] = useState('')
 
+  // Klaim yang rinciannya sedang terbuka. Null berarti panelnya tertutup.
+  const [rincian, setRincian] = useState<Baris | null>(null)
+
   const daftar = meta.data?.daftar ?? []
   const aktif = tab || meta.data?.daftar_bawaan || ''
   const daftarAktif = daftar.find((item) => item.kode === aktif)
+
+  // Tampilan XOL bukan daftar klaim: ia tidak punya baris, tidak punya tabel ringkas,
+  // dan tidak disaring kotak pencarian. Penandanya datang dari SERVER — layar tidak
+  // mencocokkan kodenya sendiri.
+  const tampilanXOL = daftarAktif?.jenis === 'xol'
 
   const parameter: ParameterDaftar = useMemo(
     () => ({ tab: aktif, page, cari: dicari }),
     [aktif, page, dicari],
   )
 
-  const siap = aktif !== ''
-  const list = useReasList(parameter, siap)
-  const ringkas = useReasCounts(parameter, siap)
+  const siapDaftar = aktif !== '' && !tampilanXOL
+  const list = useReasList(parameter, siapDaftar)
+  const ringkas = useReasCounts(parameter, siapDaftar)
   const ekspor = useEksporReas()
 
   // Grid XOL baru diambil SETELAH daftarnya berhasil.
@@ -90,11 +114,24 @@ export function InboxPLADLAReasPage() {
   // Biayanya satu perjalanan yang tertunda sesaat; yang ditukar dengannya adalah
   // permintaan yang sudah pasti ditolak tidak pernah dikirim sama sekali.
   const ditolak = bukanReasuradur(list.error)
-  const xol = useReasXOL(siap && list.isSuccess)
+
+  // Grid XOL diambil hanya ketika tampilannya BENAR-BENAR dibuka.
+  //
+  // Sebelumnya ia diambil pada setiap pembukaan layar karena panelnya digambar permanen.
+  // Sejak ia menjadi tampilan tersendiri — seperti di Pega — gabungan dua tabel XOL tidak
+  // lagi dijalankan untuk pengguna yang tidak pernah membukanya.
+  const xol = useReasXOL(tampilanXOL)
 
   function pilihDaftar(kode: string) {
     setTab(kode)
     setPage(1)
+
+    // Panel rincian DIBUANG saat tampilan berpindah.
+    //
+    // Tanpa ini, rincian klaim dari tab sebelumnya tetap terbuka di bawah daftar yang
+    // sudah berganti — dan pengguna membaca rincian yang tidak ada hubungannya dengan
+    // baris mana pun yang sedang ia lihat.
+    setRincian(null)
   }
 
   function cari() {
@@ -129,8 +166,11 @@ export function InboxPLADLAReasPage() {
   // Ia bukan kegagalan sementara yang layak dicoba ulang: selama pendaftarannya belum
   // diubah, jawabannya akan sama. Menggambar tabel, tombol ekspor, dan bilah tab di
   // bawahnya hanya menawarkan hal-hal yang seluruhnya akan ditolak.
-  if (ditolak) {
-    const pesan = pesanMuat(list.error)
+  // Penolakan dapat datang dari daftar MAUPUN dari grid XOL — keduanya menolak dengan
+  // sebab yang sama, dan yang mana yang menjawab lebih dulu bergantung pada tab mana yang
+  // sedang terbuka.
+  if (ditolak || bukanReasuradur(xol.error)) {
+    const pesan = pesanMuat(ditolak ? list.error : xol.error)
     return (
       <Bingkai>
         <ErrorMessage
@@ -159,81 +199,93 @@ export function InboxPLADLAReasPage() {
         <p className="text-sm text-slate-600">{daftarAktif.keterangan}</p>
       )}
 
-      <StatusSummary
-        rows={ringkas.data?.baris ?? []}
-        isLoading={ringkas.isLoading}
-      />
+      {tampilanXOL ? (
+        <XOLPanel
+          kolom={daftarAktif?.kolom ?? meta.data?.kolom_xol ?? []}
+          rows={xol.data?.baris ?? []}
+          isLoading={xol.isLoading}
+          isError={xol.isError}
+          error={xol.error}
+        />
+      ) : (
+        <>
+          <StatusSummary
+            rows={ringkas.data?.baris ?? []}
+            isLoading={ringkas.isLoading}
+          />
 
-      <DataTable<Baris>
-        columns={kolomDaftar(daftarAktif)}
-        rows={list.data?.baris ?? []}
-        rowKey={(row) => row.kunci_klaim}
-        label={`Daftar ${daftarAktif?.nama ?? ''}`}
-        isLoading={list.isLoading}
-        error={
-          list.isError ? (
+          <DataTable<Baris>
+            columns={kolomDaftar(daftarAktif, rincian, setRincian)}
+            rows={list.data?.baris ?? []}
+            rowKey={(row) => row.kunci_klaim}
+            label={`Daftar ${daftarAktif?.nama ?? ''}`}
+            isLoading={list.isLoading}
+            error={
+              list.isError ? (
+                <ErrorMessage
+                  title="Daftar tidak dapat dimuat"
+                  description={pesanGalat(list.error)}
+                  tone="gangguan"
+                />
+              ) : undefined
+            }
+            emptyMessage={pesanKosong(dicari, daftarAktif)}
+            searchLabel="Claim No"
+            serverSearch={{
+              value: ketikan,
+              onChange: setKetikan,
+              matchCount: list.data?.paginasi.total,
+            }}
+            pagination={{
+              page: list.data?.paginasi.halaman ?? 1,
+              size: list.data?.paginasi.ukuran ?? 10,
+              total: list.data?.paginasi.total ?? 0,
+              totalPage: list.data?.paginasi.total_halaman ?? 1,
+              onPageChange: setPage,
+              isLoading: list.isFetching,
+            }}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" onClick={cari} disabled={list.isFetching}>
+                  {list.isFetching ? 'Mencari…' : 'Search Data'}
+                </Button>
+                <Button
+                  type="button"
+                  tone="kedua"
+                  onClick={() => void list.refetch()}
+                  disabled={list.isFetching}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  type="button"
+                  tone="kedua"
+                  disabled={ekspor.isPending}
+                  onClick={() => ekspor.mutate(parameter)}
+                >
+                  {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+                </Button>
+              </div>
+            }
+          />
+
+          {ekspor.error != null && (
             <ErrorMessage
-              title="Daftar tidak dapat dimuat"
-              description={pesanGalat(list.error)}
+              title="Berkas ekspor tidak dapat diambil"
+              description={pesanGalat(ekspor.error)}
               tone="gangguan"
             />
-          ) : undefined
-        }
-        emptyMessage={pesanKosong(dicari)}
-        searchLabel="Claim No"
-        serverSearch={{
-          value: ketikan,
-          onChange: setKetikan,
-          matchCount: list.data?.paginasi.total,
-        }}
-        pagination={{
-          page: list.data?.paginasi.halaman ?? 1,
-          size: list.data?.paginasi.ukuran ?? 10,
-          total: list.data?.paginasi.total ?? 0,
-          totalPage: list.data?.paginasi.total_halaman ?? 1,
-          onPageChange: setPage,
-          isLoading: list.isFetching,
-        }}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={cari} disabled={list.isFetching}>
-              {list.isFetching ? 'Mencari…' : 'Search Data'}
-            </Button>
-            <Button
-              type="button"
-              tone="kedua"
-              onClick={() => void list.refetch()}
-              disabled={list.isFetching}
-            >
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              tone="kedua"
-              disabled={ekspor.isPending}
-              onClick={() => ekspor.mutate(parameter)}
-            >
-              {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
-            </Button>
-          </div>
-        }
-      />
+          )}
 
-      {ekspor.error != null && (
-        <ErrorMessage
-          title="Berkas ekspor tidak dapat diambil"
-          description={pesanGalat(ekspor.error)}
-          tone="gangguan"
-        />
+          {rincian && (
+            <DetailKlaimPanel
+              kunciKlaim={rincian.kunci_klaim}
+              nomorKlaim={rincian.no_klaim}
+              onClose={() => setRincian(null)}
+            />
+          )}
+        </>
       )}
-
-      <XOLPanel
-        kolom={meta.data?.kolom_xol ?? []}
-        rows={xol.data?.baris ?? []}
-        isLoading={xol.isLoading}
-        isError={xol.isError}
-        error={xol.error}
-      />
 
       <SelisihTerencana butir={meta.data?.selisih_terencana ?? []} />
     </Bingkai>
@@ -264,15 +316,47 @@ function Bingkai({ children }: { children: ReactNode }) {
  * `"MARKETING"` berarti nama lini bisnis, `"CURRENCY"` berarti tanggal kejadian — dan
  * menulis ulang pemetaannya di layar berarti dua tempat yang dapat bergeser.
  */
-function kolomDaftar(daftar: Daftar | undefined): Column<Baris>[] {
+function kolomDaftar(
+  daftar: Daftar | undefined,
+  rincian: Baris | null,
+  bukaRincian: (row: Baris | null) => void,
+): Column<Baris>[] {
   if (!daftar) return []
 
-  return daftar.kolom.map((item) => ({
+  const kolom: Column<Baris>[] = daftar.kolom.map((item) => ({
     key: item.kunci,
     title: item.judul,
     value: (row) => nilaiSel(row, item.kunci),
     render: (row) => gambarSel(row, item.kunci, item.tanggal),
   }))
+
+  // Apakah barisnya punya tombol rincian datang dari SERVER, bukan dicocokkan di layar.
+  if (!daftar.punya_rincian) return kolom
+
+  return [
+    ...kolom,
+    {
+      key: 'rincian',
+      title: 'Aksi',
+      noSort: true,
+      alignRight: true,
+      value: () => '',
+      render: (row) => {
+        const terbuka = rincian?.kunci_klaim === row.kunci_klaim
+
+        return (
+          <Button
+            type="button"
+            tone="kedua"
+            aria-pressed={terbuka}
+            onClick={() => bukaRincian(terbuka ? null : row)}
+          >
+            {terbuka ? 'Tutup' : 'Detail Claim'}
+          </Button>
+        )
+      },
+    },
+  ]
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
@@ -301,11 +385,23 @@ function gambarSel(row: Baris, kunci: string, tanggal: boolean) {
   return isi
 }
 
-/** pesanKosong menjelaskan MENGAPA daftarnya kosong. */
-function pesanKosong(dicari: string): string {
+/**
+ * pesanKosong menjelaskan MENGAPA daftarnya kosong.
+ *
+ * Kalimatnya berbeda antara daftar pemberitahuan dan daftar komunikasi, dan itu bukan
+ * kehalusan: keduanya kosong karena sebab yang berbeda. Satu kalimat untuk keduanya akan
+ * membuat mitra yang membuka "Komunikasi Masuk" membaca keterangan tentang pemberitahuan
+ * yang tidak ada hubungannya dengan tab itu.
+ */
+function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
   if (dicari !== '') {
     return `Tidak ada klaim yang nomornya mengandung "${dicari}" pada daftar ini.`
   }
+
+  if (daftar?.kode.startsWith('komunikasi') === true) {
+    return 'Belum ada klaim dengan komunikasi pada tahap ini yang menyangkut Anda.'
+  }
+
   return 'Belum ada klaim pada tahap ini yang pemberitahuannya dikirimkan kepada Anda.'
 }
 

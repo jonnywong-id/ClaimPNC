@@ -13,12 +13,28 @@ export type Kolom = {
   tanggal: boolean
 }
 
-/** Satu daftar beserta kolom dan keterangannya. */
+/**
+ * Bentuk sebuah tampilan.
+ *
+ * Layar Pega punya TUJUH tampilan yang dikendalikan satu nilai (`TempView.CityID`), dan
+ * tidak semuanya menggambar hal yang sama: enam menggambar daftar klaim, yang ketujuh
+ * menggambar ringkasan XOL dengan kolom dan sumber yang berbeda.
+ *
+ * Penandanya datang dari SERVER. Layar tidak menyimpulkannya sendiri dari kode tab —
+ * kesimpulan yang disalin ke layar akan tertinggal saat tampilannya bertambah.
+ */
+export type JenisTampilan = 'daftar-klaim' | 'xol'
+
+/** Satu tampilan beserta kolom dan keterangannya. */
 export type Daftar = {
   kode: string
   nama: string
   keterangan: string
+  jenis: JenisTampilan
   kolom: Kolom[]
+
+  /** Barisnya punya tombol "Detail Claim". */
+  punya_rincian: boolean
 }
 
 /** Satu baris daftar klaim. */
@@ -93,5 +109,99 @@ export type RingkasResponse = {
 
 export type XOLResponse = {
   baris: BarisXOL[]
+  portal: string
+}
+
+/* ==========================================================================
+ * LAYAR RINCIAN — tombol "Detail Claim"
+ * ========================================================================== */
+
+/** Keterangan klaim di kepala layar rincian. */
+export type KlaimRincian = {
+  kunci_klaim: string
+  no_klaim: string
+  no_polis: string
+  nama_tertanggung: string
+  nama_bisnis: string
+  tanggal_register: string
+  tanggal_kejadian: string
+  pic_teknik: string
+  kode_status: string
+  status: string
+}
+
+/** Satu baris grid PLA atau DLA pada layar rincian. */
+export type BarisPemberitahuan = {
+  /** `"PLA"` atau `"DLA"` — dipakai mengambil dokumennya. */
+  jenis: string
+
+  nomor: string
+  tipe: string
+
+  /**
+   * Nilai pemberitahuan, dikirim sebagai TEKS.
+   *
+   * Ia tidak dihitung di layar — hanya digambar — dan mengubahnya menjadi `number` akan
+   * memperkenalkan pembulatan pada nilai uang yang `D-51` larang justru untuk keadaan
+   * seperti ini.
+   */
+  nilai: string
+
+  no_akseptasi: string
+  tanggal_dokumen: string
+  tanggal_kirim: string
+}
+
+/** Satu baris grid dokumen. */
+export type BarisDokumen = {
+  id: string
+  jenis_dokumen: string
+  kategori_dokumen: string
+  nama: string
+}
+
+/** Satu baris grid riwayat komunikasi. */
+export type BarisKomunikasi = {
+  id: string
+  tanggal: string
+  pengirim: string
+  pesan: string
+  balasan: string
+  nama_pembalas: string
+  tanggal_balasan: string
+  sudah_dijawab: boolean
+
+  /**
+   * Pemanggil boleh membalas percakapan ini.
+   *
+   * Dihitung PELADEN. Layar tidak menyimpulkannya sendiri dari `sudah_dijawab`: keduanya
+   * DAPAT berbeda pada data lama, dan kesimpulan layar akan menggambar tombol balas pada
+   * percakapan yang permintaannya justru akan ditolak.
+   */
+  boleh_dibalas: boolean
+}
+
+export type DetailResponse = {
+  klaim: KlaimRincian
+  pla: BarisPemberitahuan[]
+  dla: BarisPemberitahuan[]
+  komunikasi: BarisKomunikasi[]
+
+  kolom_pla: Kolom[]
+  kolom_dla: Kolom[]
+  kolom_dokumen: Kolom[]
+  kolom_komunikasi: Kolom[]
+
+  portal: string
+}
+
+export type DokumenResponse = {
+  baris: BarisDokumen[]
+  kolom: Kolom[]
+  portal: string
+}
+
+export type BalasResponse = {
+  pesan: string
   portal: string
 }

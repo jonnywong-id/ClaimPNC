@@ -5319,6 +5319,11 @@ func checkPLADLAReinsurer(
 	page := inboxpladla.Pagination{Page: 1, Size: 5}
 
 	for _, tab := range inboxpladla.Tabs() {
+		// Tampilan XOL tidak punya daftar klaim — ia diperiksa tersendiri di bawah.
+		if !tab.IsClaimList() {
+			continue
+		}
+
 		query, err := inboxpladla.NewQuery(
 			inboxpladla.QueryInput{Tab: tab.Code}, caller, probe)
 		if err != nil {
@@ -5329,6 +5334,10 @@ func checkPLADLAReinsurer(
 		result, err := repo.List(ctx, query, page)
 		if err != nil {
 			print("  [BELUM] Daftar reasuradur %q tidak dapat dibaca: %v", tab.Name, err)
+			if tab.Source == inboxpladla.SourceCommunication {
+				print("            Ketiga daftar komunikasi membaca " +
+					"POOLDATA.M_KOMUNIKASI_PNC.")
+			}
 			continue
 		}
 		print("  [ok]    Daftar reasuradur %s dapat dibaca (%d baris)",
@@ -5345,6 +5354,86 @@ func checkPLADLAReinsurer(
 		return
 	}
 	print("  [ok]    Ringkasan XOL dapat dibaca")
+
+	checkPLADLADetail(ctx, repo, login, probe, print)
+}
+
+// checkPLADLADetail menjalankan kueri layar RINCIAN modul Inbox PLA DLA.
+//
+// # Kenapa ia terpisah, dan kenapa ia penting
+//
+// Keenam kuerinya menyentuh tabel yang TIDAK disentuh layar induknya — `T_DOC_REAS`,
+// `DATA_ATTACHFILE`, `M_KOMUNIKASI_PNC`, ditambah dua master jenis dokumen. Hak baca yang
+// kurang pada salah satunya tidak terlihat saat layar induk dibuka: daftarnya tergambar
+// lengkap, dan galatnya baru muncul ketika seorang mitra menekan "Detail Claim".
+//
+// Kunci klaim yang dipakai adalah kunci KARANGAN yang pasti tidak ada. Yang diuji adalah
+// keterbacaan tabelnya, bukan isinya — sehingga "tidak ditemukan" di sini adalah hasil
+// yang BENAR, bukan kegagalan.
+func checkPLADLADetail(
+	ctx context.Context,
+	repo *inboxpladlasql.Repo,
+	login string,
+	codes []string,
+	print func(string, ...any),
+) {
+	scope := inboxpladla.DetailScope{
+		ClaimKey:       "ASM-FW-GCNMFW-WORK PEMERIKSA-KESIAPAN",
+		Login:          login,
+		ReinsurerCodes: codes,
+	}
+
+	if _, err := repo.ClaimHeader(ctx, scope); err != nil &&
+		!errors.Is(err, inboxpladla.ErrRowNotFound) {
+		print("  [BELUM] Kepala klaim rincian tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    Kepala klaim rincian dapat dibaca")
+	}
+
+	for _, kind := range []inboxpladla.AdviceKind{
+		inboxpladla.AdviceKindPLA, inboxpladla.AdviceKindDLA,
+	} {
+		if _, err := repo.Advices(ctx, scope, kind); err != nil {
+			print("  [BELUM] Grid %s rincian tidak dapat dibaca: %v", kind, err)
+		} else {
+			print("  [ok]    Grid %s rincian dapat dibaca", kind)
+		}
+	}
+
+	if _, err := repo.Documents(
+		ctx, scope, "PEMERIKSA", inboxpladla.AdviceKindPLA,
+	); err != nil {
+		print("  [BELUM] Dokumen rincian tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_DOC_REAS,")
+		print("            POOLDATA.DATA_ATTACHFILE, POOLDATA.V_LST_DOC_TYPE, dan")
+		print("            POOLDATA.V_LST_DET_TYPE_DOC.")
+	} else {
+		print("  [ok]    Dokumen rincian dapat dibaca")
+	}
+
+	// Isi dokumen dibaca dari kolom BLOB. Hak baca atasnya dapat berbeda dari hak baca
+	// kolom lain pada tabel yang sama, dan galatnya hanya muncul saat berkasnya diunduh.
+	if _, err := repo.DocumentContent(ctx, scope, "0"); err != nil &&
+		!errors.Is(err, inboxpladla.ErrDocumentNotFound) {
+		print("  [BELUM] Isi dokumen tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    Isi dokumen dapat dibaca")
+	}
+
+	if _, err := repo.Conversations(ctx, scope); err != nil {
+		print("  [BELUM] Riwayat komunikasi tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.M_KOMUNIKASI_PNC.")
+		return
+	}
+	print("  [ok]    Riwayat komunikasi dapat dibaca")
+
+	// Pernyataan BALASAN sengaja TIDAK dijalankan.
+	//
+	// Ia satu-satunya pernyataan yang MENULIS di modul ini, dan pemeriksa kesiapan tidak
+	// boleh menulis ke tabel yang masih dimiliki Pega (`P-1`). Hak tulisnya baru akan
+	// terlihat saat seorang mitra benar-benar membalas — dan itu diterima secara sadar.
+	print("  [catatan] Hak TULIS balasan komunikasi tidak diuji di sini: " +
+		"pemeriksa kesiapan tidak menulis apa pun.")
 }
 
 // checkCaseStudyClaim membuktikan keempat tabel layar Case Study Claim dapat dibaca.

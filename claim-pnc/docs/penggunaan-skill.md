@@ -9858,3 +9858,97 @@ Tetap tanpa skill (tidak tersedia). Yang menangkap cacat ORA-01008 bukan skill, 
 **menjalankan kueri sungguhan terhadap Oracle** setelah `-periksa` hijau. Pelajarannya:
 pemeriksaan yang hanya mem-parse kueri tidak membuktikan kueri dapat dijalankan. Bukti
 yang sah adalah satu eksekusi nyata dengan parameter binding.
+
+---
+
+## Sesi 2026-09-28 — Inbox PLA DLA dilengkapi
+
+### Skill yang tersedia
+
+Diperiksa di awal sesi: **tidak satu pun skill Matt Pocock terpasang di lingkungan ini**
+(`domain-modeling`, `grilling`, `codebase-design`, dan lainnya). Keadaan ini sama dengan
+beberapa sesi terakhir, dan dicatat apa adanya — bukan diakali dengan menyebut skill yang
+tidak benar-benar dipanggil.
+
+Yang dipakai adalah **disiplinnya**, dan disiplin itu memang berasal dari skill-skill
+tersebut. Di bawah dicatat mana yang dipakai dan apa hasilnya — sebagai metode, bukan
+sebagai pemanggilan.
+
+### Disiplin `grilling` — dipakai pada DIRI SENDIRI
+
+**Alasan:** permintaannya berbunyi "cek secara penuh aplikasi existing". Catatan sesi
+sebelumnya (§62.8) sudah menyimpulkan sisa pekerjaannya, dan kesimpulan itulah yang paling
+menggoda untuk dipercaya begitu saja.
+
+**Cara:** setiap pernyataan di §62.8 diuji ulang terhadap section dan activity, bukan
+dibaca sebagai fakta.
+
+**Hasil yang tidak akan muncul tanpanya:**
+
+| Pernyataan §62.8 | Setelah diuji |
+|---|---|
+| "tiga tombol membuka layar yang belum dianalisis" | satu nyata, satu **kode mati** (`1==2`), satu **hanya untuk satu Operator ID** |
+| lingkup modul = 3 daftar + grid XOL | **7 tampilan**; tiga daftar komunikasi tidak pernah dibangun |
+
+**Manfaat langsung:** dua tombol yang akan dibangun sia-sia tidak jadi dibangun, dan tiga
+tampilan yang benar-benar hilang ditemukan.
+
+### Disiplin `domain-modeling` — penamaan tipe baru
+
+**Alasan:** tipe baru sesi ini menyentuh istilah yang sudah punya arti mapan di
+`CONTEXT.md` — PLA, DLA, Akseptasi, Komunikasi — dan alias Pega di layar ini menyesatkan
+lebih jauh daripada biasanya.
+
+**Hasil:**
+
+| Alias Pega | Isinya | Nama di sini |
+|---|---|---|
+| `.CloseClaimDate` | tanggal pesan | `Conversation.CreatedAt` |
+| `.Email` | **isi pesan** | `Conversation.Message` |
+| `.CloseClaimNote` | balasan | `Conversation.Reply` |
+| `.DATAID` (kolom grid) | jenis dokumen | `DocumentRow.SubCategory` |
+| `"Date Of Loss"` (judul) | **tahun** | kolom "Tahun" |
+
+Yang terakhir adalah satu-satunya judul Pega yang **tidak dibawa**, dan alasannya ditulis
+di tempatnya: `D-13` menuntut teks layar mengikuti Pega, tetapi tidak menuntut membawa
+judul yang menyatakan hal yang bukan isinya.
+
+### Disiplin `codebase-design` — letak batas kepemilikan
+
+**Alasan:** layar rincian menambah enam operasi yang seluruhnya menuntut batas yang sama.
+Pertanyaannya: di mana batas itu ditegakkan.
+
+**Keputusan:** `DetailScope` sebagai tipe tersendiri, disusun di SATU fungsi (`scopeOf`),
+dan diteruskan ke setiap method `Repo`. Alternatifnya — tiga parameter lepas pada enam
+tanda tangan — memberi enam kesempatan melupakan salah satunya, dan yang dilupakan tidak
+menghasilkan galat: hanya data mitra lain yang terbuka.
+
+**Prinsip yang dipakai:** batas yang menentukan keamanan diletakkan di tempat yang tidak
+dapat dilewati, bukan di tempat yang harus diingat.
+
+### Satu koreksi diri, dan ia pengulangan ketiga dari pola yang sama
+
+| Sesi | Alat ukur yang dipercaya sebelum divalidasi |
+|---|---|
+| §19.14 | penomoran bind terbaca benar oleh manusia, salah oleh Oracle |
+| lampiran §69 | `Cell.Width` Word COM; angkanya tidak bergerak saat masukannya berubah |
+| **sesi ini** | `ls` atas tujuh direktori lalu di-`grep`, dipakai membuktikan sebuah berkas TIDAK ada |
+
+Yang membedakan kali ini: alat ukurnya memberi hasil **benar pada sebagian masukan** pada
+perintah yang sama — dua berkas ditemukan, satu yang ada di direktori yang sama tidak.
+Itu membuatnya tampak bekerja.
+
+Yang mengoreksi saya adalah **Work Owner**, bukan pemeriksaan saya sendiri. Sejak itu
+setiap pernyataan ketiadaan di sesi ini dibuktikan dengan `find`, dan hasilnya ditulis
+lengkap di catatan pengembangan §70.2.
+
+**Pelajaran:** pernyataan "X tidak ada" menuntut alat yang memang dirancang mencari berkas.
+Ketiadaan tidak dapat dibuktikan oleh perintah yang kadang-kadang melewatkan hal yang ada.
+
+### Preseden modul yang dipakai — dicatat sebagai preseden, bukan skill
+
+| Preseden | Diambil untuk |
+|---|---|
+| `inboxkomunikasicabang` | bentuk tulisan balasan, arti `KOMUNIKASISTATUS`, pemetaan master jenis dokumen |
+| `inboxpladlapredla` | pola rute `/klaim/{kunci}`, `NotAvailableError` beserta alasan per tindakan |
+| `inbox-salvage` | panel rincian yang terbuka di bawah daftar, bukan popup |

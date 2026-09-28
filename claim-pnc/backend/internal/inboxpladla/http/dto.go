@@ -87,20 +87,33 @@ func toColumnDTOs(columns []inboxpladla.Column) []ColumnDTO {
 	return out
 }
 
-// TabDTO adalah satu daftar beserta kolom dan keterangannya.
+// TabDTO adalah satu tampilan beserta kolom dan keterangannya.
 type TabDTO struct {
 	Code        string      `json:"kode"`
 	Name        string      `json:"nama"`
 	Description string      `json:"keterangan"`
 	Columns     []ColumnDTO `json:"kolom"`
+
+	// Kind menyatakan BENTUK tampilannya — daftar klaim atau ringkasan XOL.
+	//
+	// Ia dikirim SERVER, bukan disimpulkan layar dari kodenya, dengan alasan yang sama
+	// seperti senarai kolom: inventaris tampilan adalah hasil pembacaan export, dan
+	// menyalinnya ke layar berarti keputusan yang sama hidup di dua tempat — dengan yang
+	// di layar tertinggal saat tampilannya bertambah.
+	Kind string `json:"jenis"`
+
+	// HasDetailAction menyatakan barisnya punya tombol "Detail Claim".
+	HasDetailAction bool `json:"punya_rincian"`
 }
 
 func toTabDTO(tab inboxpladla.Tab) TabDTO {
 	return TabDTO{
-		Code:        tab.Code,
-		Name:        tab.Name,
-		Description: tab.Description,
-		Columns:     toColumnDTOs(tab.Columns),
+		Code:            tab.Code,
+		Name:            tab.Name,
+		Description:     tab.Description,
+		Columns:         toColumnDTOs(tab.Columns),
+		Kind:            string(tab.Kind),
+		HasDetailAction: tab.HasDetailAction,
 	}
 }
 
@@ -227,6 +240,182 @@ func toXOLResponse(rows []inboxpladla.XOLRow, portalAlias string) XOLResponse {
 		})
 	}
 	return XOLResponse{Rows: out, Portal: portalAlias}
+}
+
+// ============================================================================
+// LAYAR RINCIAN — tombol "Detail Claim"
+// ============================================================================
+
+// ClaimHeaderDTO adalah keterangan klaim di kepala layar rincian.
+type ClaimHeaderDTO struct {
+	ClaimKey     string `json:"kunci_klaim"`
+	ClaimNo      string `json:"no_klaim"`
+	PolicyNo     string `json:"no_polis"`
+	Insured      string `json:"nama_tertanggung"`
+	BusinessName string `json:"nama_bisnis"`
+	RegisterDate string `json:"tanggal_register"`
+	LossDate     string `json:"tanggal_kejadian"`
+	PICTeknik    string `json:"pic_teknik"`
+	StatusCode   string `json:"kode_status"`
+	StatusLabel  string `json:"status"`
+}
+
+// AdviceRowDTO adalah satu baris grid PLA atau DLA.
+type AdviceRowDTO struct {
+	// Kind bernilai `"PLA"` atau `"DLA"`.
+	Kind string `json:"jenis"`
+
+	No   string `json:"nomor"`
+	Type string `json:"tipe"`
+
+	// Amount dikirim sebagai TEKS. Ia hanya digambar — tidak satu pun dihitung di layar —
+	// dan mengirimnya sebagai angka pecahan memperkenalkan pembulatan pada nilai uang
+	// yang `D-51` larang justru untuk keadaan seperti ini.
+	Amount string `json:"nilai"`
+
+	AcceptanceNo string `json:"no_akseptasi"`
+	AdviceDate   string `json:"tanggal_dokumen"`
+	SentDate     string `json:"tanggal_kirim"`
+}
+
+func toAdviceRowDTOs(rows []inboxpladla.AdviceRow) []AdviceRowDTO {
+	out := make([]AdviceRowDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AdviceRowDTO{
+			Kind:         string(row.Kind),
+			No:           row.No,
+			Type:         row.Type,
+			Amount:       row.Amount,
+			AcceptanceNo: row.AcceptanceNo,
+			AdviceDate:   row.AdviceDate,
+			SentDate:     row.SentDate,
+		})
+	}
+	return out
+}
+
+// DocumentRowDTO adalah satu baris grid dokumen.
+type DocumentRowDTO struct {
+	ID          string `json:"id"`
+	Category    string `json:"jenis_dokumen"`
+	SubCategory string `json:"kategori_dokumen"`
+	Name        string `json:"nama"`
+}
+
+func toDocumentDTOs(rows []inboxpladla.DocumentRow) []DocumentRowDTO {
+	out := make([]DocumentRowDTO, 0, len(rows))
+	for _, row := range rows {
+		// MimeType TIDAK ikut dikirim. Ia menentukan bagaimana berkasnya diserahkan saat
+		// diunduh, dan itu keputusan peladen — bukan keterangan yang berguna di layar.
+		out = append(out, DocumentRowDTO{
+			ID:          row.ID,
+			Category:    row.Category,
+			SubCategory: row.SubCategory,
+			Name:        row.Name,
+		})
+	}
+	return out
+}
+
+// ConversationDTO adalah satu baris grid riwayat komunikasi.
+type ConversationDTO struct {
+	ID          string `json:"id"`
+	CreatedAt   string `json:"tanggal"`
+	SenderName  string `json:"pengirim"`
+	Message     string `json:"pesan"`
+	Reply       string `json:"balasan"`
+	ReplierName string `json:"nama_pembalas"`
+	RepliedAt   string `json:"tanggal_balasan"`
+	Answered    bool   `json:"sudah_dijawab"`
+
+	// CanReply dihitung PELADEN. Layar menggambar tombol balas menurut nilai ini, bukan
+	// menurut kesimpulannya sendiri — kesimpulan layar akan menggambar tombol pada
+	// percakapan yang permintaannya akan ditolak.
+	CanReply bool `json:"boleh_dibalas"`
+}
+
+func toConversationDTOs(rows []inboxpladla.Conversation) []ConversationDTO {
+	out := make([]ConversationDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ConversationDTO{
+			ID:          row.ID,
+			CreatedAt:   row.CreatedAt,
+			SenderName:  row.SenderName,
+			Message:     row.Message,
+			Reply:       row.Reply,
+			ReplierName: row.ReplierName,
+			RepliedAt:   row.RepliedAt,
+			Answered:    row.Answered,
+			CanReply:    row.CanReply,
+		})
+	}
+	return out
+}
+
+// DetailResponse adalah seluruh isi layar rincian satu klaim.
+type DetailResponse struct {
+	Claim ClaimHeaderDTO `json:"klaim"`
+
+	PLA []AdviceRowDTO `json:"pla"`
+	DLA []AdviceRowDTO `json:"dla"`
+
+	Conversations []ConversationDTO `json:"komunikasi"`
+
+	// Kolom keempat grid dikirim bersama isinya, sama seperti pada layar induk.
+	ColumnsPLA          []ColumnDTO `json:"kolom_pla"`
+	ColumnsDLA          []ColumnDTO `json:"kolom_dla"`
+	ColumnsDocument     []ColumnDTO `json:"kolom_dokumen"`
+	ColumnsConversation []ColumnDTO `json:"kolom_komunikasi"`
+
+	Portal string `json:"portal"`
+}
+
+func toDetailResponse(detail usecase.Detail, portalAlias string) DetailResponse {
+	return DetailResponse{
+		Claim: ClaimHeaderDTO{
+			ClaimKey:     detail.Claim.Header.ClaimKey,
+			ClaimNo:      detail.Claim.Header.ClaimNo,
+			PolicyNo:     detail.Claim.Header.PolicyNo,
+			Insured:      detail.Claim.Header.Insured,
+			BusinessName: detail.Claim.Header.BusinessName,
+			RegisterDate: detail.Claim.Header.RegisterDate,
+			LossDate:     detail.Claim.Header.LossDate,
+			PICTeknik:    detail.Claim.Header.PICTeknik,
+			StatusCode:   detail.Claim.Header.StatusCode,
+			StatusLabel:  detail.Claim.Header.StatusLabel,
+		},
+		PLA:                 toAdviceRowDTOs(detail.Claim.PLA),
+		DLA:                 toAdviceRowDTOs(detail.Claim.DLA),
+		Conversations:       toConversationDTOs(detail.Claim.Conversations),
+		ColumnsPLA:          toColumnDTOs(detail.AdviceColumnsPLA),
+		ColumnsDLA:          toColumnDTOs(detail.AdviceColumnsDLA),
+		ColumnsDocument:     toColumnDTOs(detail.DocumentColumns),
+		ColumnsConversation: toColumnDTOs(detail.ConversationColumns),
+		Portal:              portalAlias,
+	}
+}
+
+// DocumentsResponse adalah isi grid dokumen satu nomor pemberitahuan.
+type DocumentsResponse struct {
+	Rows    []DocumentRowDTO `json:"baris"`
+	Columns []ColumnDTO      `json:"kolom"`
+	Portal  string           `json:"portal"`
+}
+
+// ReplyRequest adalah badan permintaan balasan komunikasi.
+type ReplyRequest struct {
+	ConversationID string `json:"percakapan"`
+	Message        string `json:"balasan"`
+}
+
+// ReplyResponse adalah jawaban balasan yang berhasil tersimpan.
+//
+// Ia membawa KALIMAT, bukan sekadar status kosong: yang membalas adalah pihak luar, dan
+// ia perlu tahu balasannya benar-benar sampai — bukan sekadar bahwa permintaannya
+// diterima.
+type ReplyResponse struct {
+	Message string `json:"pesan"`
+	Portal  string `json:"portal"`
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.

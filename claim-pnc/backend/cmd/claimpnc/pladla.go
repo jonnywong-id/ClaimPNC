@@ -263,7 +263,18 @@ func mountPLADLA(
 				if !ok {
 					return inboxpladlahttp.Caller{}, false
 				}
-				return inboxpladlahttp.Caller{Login: base.User.Login}, true
+				// NAMA ikut dibawa sejak balasan komunikasi dibangun.
+				//
+				// Ia TIDAK menyaring apa pun — yang menyaring tetap Login. Satu-satunya
+				// pemakainya adalah `M_KOMUNIKASI_PNC.REPLYFROMNAME`, kolom yang dibaca
+				// petugas internal untuk tahu balasan itu dari siapa.
+				//
+				// Nama yang kosong tidak menghalangi balasan; login-nya yang dipakai
+				// sebagai gantinya. Lihat inboxpladla.ReplyCommand.ReplierName.
+				return inboxpladlahttp.Caller{
+					Login: base.User.Login,
+					Name:  base.User.Name,
+				}, true
 			},
 			Logger:              logger,
 			WriteJSON:           inboxpladlahttp.JSONWriter(writeJSON),

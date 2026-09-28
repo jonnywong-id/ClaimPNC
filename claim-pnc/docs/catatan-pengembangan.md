@@ -23346,3 +23346,169 @@ saat ini." Backend tetap mengirim `identitas_lama_ditemukan`, `selisih_terencana
 
 Uji: `vitest run src/modules/inbox-rcl` **5 lulus** (uji baru memastikan peringatan dan kedua
 catatan tidak tampil) · `tsc` bersih.
+
+---
+
+## 70. Inbox PLA DLA dilengkapi, dan satu cacat bind lama ditemukan (2026-09-28)
+
+Keputusan desainnya ada di [`keputusan-implementasi.md`](keputusan-implementasi.md) §67;
+berkas ini merekam **prosesnya**.
+
+### 70.1 Yang diminta
+
+> "lanjutkan untuk penambahan modul Inbox PLA DLA — cek secara penuh aplikasi existing
+> pada dokumen File `InboxPLADLA-Harness.xml`, jadikan ini sebagai referensi."
+
+Modulnya sudah ada. Yang diminta karena itu adalah menutup selisihnya terhadap harness —
+dan §62.8 mencatat sisa pekerjaannya sebagai "tiga tombol yang membuka layar yang belum
+dianalisis".
+
+Pembacaan menyeluruh membuktikan catatan itu **tidak lengkap dan sebagian keliru**.
+
+### 70.2 DUA klaim saya sendiri yang salah, dan pola kesalahannya sama
+
+| Yang saya katakan | Yang benar | Bagaimana ketahuan |
+|---|---|---|
+| `ViewDetailClaimReas` dan `SetViewAttachmentReas` **tidak ada di export** | Keduanya ADA | **Work Owner mengoreksi saya** |
+| `GetDokumenReas` dan `ViewShowObjectAdjReas` tidak ada | Keduanya ada setelah Work Owner menambahkannya | Work Owner |
+
+Sebab klaim pertama: saya memeriksa keberadaan berkas dengan `ls` atas tujuh direktori lalu
+di-`grep`. Perintah itu **tidak dapat dipercaya** untuk tujuan ini — dan bukti bahwa ia
+tidak dapat dipercaya ada di hasilnya sendiri: pada loop yang sama, `FlowDetailXolKomite`
+dan `GetDLAListReas` **ditemukan**, sementara `ViewDetailClaimReas` yang berada di
+direktori yang sama **tidak**.
+
+Seluruh klaim "tidak ada" saya ulangi dengan `find -iname`, dan sejak itu setiap pernyataan
+ketiadaan di sesi ini dibuktikan dengan `find`.
+
+> **Pelajaran, dan ini pengulangan ketiga dari pola yang sama** (§19.14, lampiran §69, dan
+> sekarang): **alat ukur dipercaya sebelum divalidasi.** Yang membedakan kali ini: alat
+> ukurnya memberi hasil yang BENAR pada sebagian masukan, sehingga ia tampak bekerja.
+
+### 70.3 Tampilannya tujuh, dan tiga di antaranya tidak pernah dibangun
+
+`Activity/SetDataPLADLA-Act.xml` bercabang pada `param.tipe` dengan **tujuh** nilai. Modul
+yang ada melayani empat (1, 2, 3, dan 7); tipe **4, 5, dan 6** — ketiga daftar komunikasi
+reasuradur — tidak ada sama sekali.
+
+Ketiadaannya tidak terlihat dari layar mana pun, dan sebabnya struktural: di Pega ketujuh
+tampilan dipilih lewat **TreeGrid "Status / Jumlah"** yang angkanya dapat diklik, dan rule
+yang mengisi halaman itu (`TempPLADLA`, `TempPiePLADLA`) **tidak ada di export** — keduanya
+hanya muncul di harness dan section. Tampilan yang tidak punya tab tidak pernah diminta
+siapa pun.
+
+### 70.4 Dua tombol yang ternyata MATI di Pega
+
+| Tombol | Wadahnya | Artinya |
+|---|---|---|
+| **"DLA"** | `pyContainerVisibleWhen` bernilai `1==2` | tidak pernah tergambar — kode mati |
+| **"Detail"** | `OperatorID.pyUserIdentifier` dibandingkan dengan satu Operator ID | hanya untuk satu orang, ditulis tetap di dalam rule |
+
+Keduanya sebelumnya tercatat sebagai "belum dibangun". Keduanya **tidak akan pernah
+dibangun**, dan `PlannedDifferences` sudah menyatakan sebabnya.
+
+Satu akibat kecil yang layak disebut: `GetDataDLAReas_Act` dan `GetDLAListReas-SQL.xml` ADA
+di export dan lengkap — activity yang memuat daftar DLA beserta lampiran base64-nya —
+tetapi grid yang memakainya bersyarat `1==2`. Ia artefak yang hidup untuk layar yang mati.
+
+### 70.5 Cacat bind pada kode yang SUDAH ADA — dan ia belum pernah terlihat
+
+Saat menambahkan kueri baru, urutan penanda bind pada kueri lama diperiksa. Hasilnya: tiga
+dari delapan kueri menaruh penandanya **tidak berurutan** — `list_pla`, `list_dla`, dan
+`list_close` seluruhnya mulai dengan penanda ketiga, lalu pertama, lalu kedua.
+
+Oracle mengikat argumen menurut **urutan KEMUNCULAN** penanda, bukan menurut angka pada
+penandanya — pelajaran yang sudah tercatat §19.14 dan diukur langsung terhadap Oracle saat
+itu. Kolom "No PLA" berada di klausa SELECT, **sebelum** WHERE, sehingga penanda untuknya
+muncul pertama dan menerima argumen pertama.
+
+Akibatnya, bila modul ini dijalankan terhadap Oracle:
+
+| Keadaan | Akibat |
+|---|---|
+| Tanpa kata kunci | kolom **"PLA No" selalu KOSONG** pada ketiga daftar |
+| Dengan kata kunci | **pencarian tidak pernah menemukan apa pun** |
+
+Tidak ada satu pun galat yang muncul — setiap bind tetap terisi sesuatu. Ia lolos karena
+modul ini **belum pernah dijalankan terhadap Oracle** (§61.11), dan karena uji modul ini
+memeriksa JUMLAH bind tetapi tidak memeriksa URUTANNYA.
+
+**Perbaikannya:** penanda dinomori ulang agar urutan kemunculannya menaik, argumen Go
+disusun ulang mengikutinya, dan `TestBindMarkersAppearInAscendingOrder` ditambahkan —
+memeriksa **setiap** kueri di modul ini, bukan ketiga yang rusak.
+
+### 70.6 Satu "cacat" yang ternyata tidak berakibat apa-apa
+
+Tombol "Detail Claim" mengirim `noaksep` yang diisi `.BRANCH_NAME`, dan pada ketiga grid
+daftar `.BRANCH_NAME` beralias **PIC Teknik** — bukan nomor akseptasi.
+
+Saya melaporkannya sebagai cacat yang membuat panel dokumen selalu kosong. Pembacaan
+`SetViewAttachmentReas` seluruhnya membuktikan sebaliknya: nilainya disalin ke
+`local.noaksep` lalu **tidak pernah dibaca lagi**. Cacatnya nyata tetapi mati.
+
+Dicatat supaya pembaca berikutnya tidak menghabiskan waktu mencari akibatnya.
+
+### 70.7 Apa yang dibangun
+
+Backend — paket `internal/inboxpladla`:
+
+| Berkas | Perubahan |
+|---|---|
+| `tab.go` | ditulis ulang — 7 tampilan, `ViewKind`, `Source`, `CommunicationRole` |
+| `detail.go` | **baru** — tipe layar rincian |
+| `komunikasi.go` | **baru** — perintah balasan |
+| `inboxpladla.go` | `Caller.Name` · `DetailScope` · 6 method `Repo` baru · `PlannedDifferences` |
+| `query.go` | `Action`, `NotAvailableError`, `ErrNotAClaimList` |
+| `usecase/detail.go` | **baru** — Detail · Documents · DocumentContent · Reply |
+| `repo/memory/detail.go` | **baru** |
+| `repo/sqlstore/detail.go` | **baru** |
+| `repo/sqlstore/komunikasi.sql` · `detail.sql` | **baru** |
+| `http/detail.go` | **baru** |
+
+Frontend — modul `inbox-pla-dla`:
+
+| Berkas | Perubahan |
+|---|---|
+| `DetailKlaimPanel.tsx` | **baru** — 5 grid + form balasan |
+| `InboxPLADLAReasPage.tsx` | XOL menjadi tab · tombol "Detail Claim" · pesan kosong per jenis |
+| `api.ts` · `types.ts` | hook dan tipe rincian |
+
+### 70.8 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build ./...` | bersih |
+| `go vet ./...` | bersih |
+| `go test ./...` | **seluruhnya lulus** |
+| `tsc --noEmit` | bersih |
+| `vitest run` | **1.218 lulus, 74 berkas** |
+| `vitest run src/modules/inbox-pla-dla*` | **43 lulus** |
+
+Uji baru: **paket Go** — 8 uji domain tab, 9 uji balasan dan rincian domain, 15 uji memori
+rincian, 8 uji memori komunikasi, 9 uji SQL baru termasuk
+`TestBindMarkersAppearInAscendingOrder`; **frontend** — 9 uji panel rincian.
+
+### 70.9 Yang BELUM dapat dibuktikan
+
+Sama seperti §61.11, dan sekarang lebih luas: kueri baru belum pernah dijalankan terhadap
+Oracle. `cmd/claimpnc/check.go` diperluas — `checkPLADLADetail` menjalankan keenam kueri
+rincian, dan loop daftarnya kini mencakup ketiga daftar komunikasi.
+
+Perintahnya tetap sama seperti sebelumnya, dengan `PENYIMPANAN=oracle` dan tanda `-periksa`.
+
+**Pernyataan BALASAN sengaja tidak dijalankan pemeriksa.** Ia satu-satunya yang MENULIS, dan
+pemeriksa kesiapan tidak boleh menulis ke tabel yang masih dimiliki Pega (`P-1`). Hak
+tulisnya baru akan terlihat saat seorang mitra benar-benar membalas — dan itu diterima
+secara sadar.
+
+### 70.10 Artefak yang MASIH hilang (diverifikasi `find`)
+
+| Artefak | Menghalangi |
+|---|---|
+| `GetLinkViewDoc_Act` · `SetDocumentPLADLA` · `SetViewAttachmentReas1` | tombol "Download ALL PLA"/"DLA" — dijawab `501` beserta alasannya |
+| `SectionBalasKomunikasi_Reas` · `PNCReplyMessage` | tata letak form balasan; bentuk tulisannya terbaca dari `ReplyKomunikasi-SQL.xml` |
+| rule pengisi `TempPLADLA` / `TempPiePLADLA` | judul ketiga daftar komunikasi, dan bagan pai di layar Pega |
+| `GetSurveyorAttachment` · `GetDataAkseptasiReas_Act` | PDF polis pada popup; grid akseptasi yang bersyarat `1==2` |
+
+Judul ketiga daftar komunikasi karena itu **disusun dari penyaringnya sendiri**, bukan
+disalin — dan itu dinyatakan di `PlannedDifferences`, bukan disamarkan.
