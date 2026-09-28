@@ -118,6 +118,9 @@ func (l *Service) AddSettlement(ctx context.Context, p SettlementCommand, by Cal
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID, ClaimNumber: claim.Number, Event: "ADJUSTMENT_DITAMBAH",
 			Actor: by.Identity, At: now,

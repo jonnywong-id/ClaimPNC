@@ -565,6 +565,119 @@ describe('tahap Input Estimasi', () => {
     expect(screen.getByRole('cell', { name: 'JL. UJI NO. 1' })).toBeInTheDocument()
   })
 
+  // Baris Penerima Klaim dibuka menjadi panel InputReceiver: No Rekening membaca Master
+  // Rekening saat ditinggalkan, Email/Telepon terisi dari master, lalu Simpan mengirim penerima.
+  it('baris Penerima Klaim dibuka, No Rekening mengisi dari master, dan Simpan mengirim penerima', async () => {
+    const atSurveyor = {
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        tahap_kini: 'pilih-surveyor',
+        penerima_klaim: [{ id: '1', nama: 'TERTANGGUNG UJI', alamat: 'JL. UJI NO. 1', nama_bank: '', nomor_rekening: '' }],
+      },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    }
+    const account = {
+      nomor_rekening: '1234567890', nama: 'PT CONTOH PENERIMA', nama_bank: 'BANK CONTOH', nama_cabang_bank: 'JAKARTA',
+      alamat: 'JL. CONTOH NO. 1', id_bank: '001', email: 'penerima@contoh.internal', telepon: '',
+      tanggal_approve_kasir: '', tanggal_approve_komite: '2026-07-03',
+    }
+    const sent: { url: string; body: unknown }[] = []
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      let body: unknown = {}
+      if (url === '/api/registrasi/rekening/1234567890') body = account
+      else if (url.endsWith('/penerima')) {
+        sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        body = atSurveyor
+      } else if (url === '/api/registrasi/alur') body = ALUR
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
+      else if (url.startsWith('/api/registrasi/klaim/')) body = atSurveyor
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: 'Penerima Klaim' }))
+    const row = screen.getByRole('button', { name: 'TERTANGGUNG UJI' })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await user.click(row)
+    const pane = screen.getByRole('group', { name: 'InputReceiver' })
+
+    await user.type(within(pane).getByLabelText('No Rekening'), '1234567890')
+    await user.tab()
+    expect(await within(pane).findByText('BANK CONTOH')).toBeInTheDocument()
+    expect(within(pane).getByText('JAKARTA')).toBeInTheDocument()
+    expect(within(pane).getByText('PT CONTOH PENERIMA')).toBeInTheDocument()
+    expect(within(pane).getByText(formatDate('2026-07-03'))).toBeInTheDocument()
+    await waitFor(() => expect(within(pane).getByLabelText(/Email/)).toHaveValue('penerima@contoh.internal'))
+
+    await user.type(within(pane).getByLabelText('Telepon'), '0812')
+    await user.click(within(pane).getByRole('button', { name: 'Simpan' }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/penerima')
+    expect(sent[0]?.body).toEqual({
+      tugas_id: 'tugas-1', id: '1', nomor_rekening: '1234567890', email: 'penerima@contoh.internal', telepon: '0812',
+    })
+  })
+
+  // Transfer Komite mengirim alamat baris adjustment; baris yang sudah ditransfer menampilkan
+  // status komite per jenjang dan tombolnya mati (IsKomiteTransfer).
+  it('Transfer Komite mengirim baris adjustment, dan baris tertransfer menampilkan status komite', async () => {
+    const base = AT_ESTIMATE.klaim.objek[0]!
+    const line = {
+      tipe_pembayaran: '1', nama_tipe_pembayaran: 'Final', mata_uang: 'IDR', kurs_e4: 10_000,
+      nilai_propose_sen: 1_000_000_000, nilai_pengajuan_sen: 1_200_000_000, loc: 0, nilai_salvage_sen: 0,
+      nilai_salvage_b_sen: 0, nilai_interim_sen: 0, nilai_estimasi_sen: 0, tipe_resiko: '1',
+      persen_resiko: 100_000, nilai_resiko_sen: 100_000_000, nilai_gross_sen: 900_000_000, share_asm: 1_000_000,
+      nilai_asm_sen: 900_000_000, nilai_akseptasi_sen: 900_000_000, kronologi: '', catatan: '',
+      status_akseptasi: '', nomor_akseptasi: '',
+    }
+    const atSurveyor = (lines: unknown[]) => ({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        tahap_kini: 'pilih-surveyor',
+        objek: [{ ...base, coverage: [{ ...base.coverage[0]!, adjustment: lines }] }],
+      },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    })
+    const sent: { url: string; body: unknown }[] = []
+    let current = atSurveyor([line, { ...line, komite_id: 'KMTN-00001', status_akseptasi: '0' }])
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      let body: unknown = {}
+      if (url.endsWith('/adjustment/komite')) {
+        sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        body = { klaim: current.klaim, komite: { id: 'KMTN-00002', nomor_klaim: 'PNCN.26.0001', status: 'berjalan', anggota: [] } }
+      } else if (url === '/api/registrasi/komite/KMTN-00001') {
+        body = {
+          id: 'KMTN-00001', nomor_klaim: 'PNCN.26.0001', status: 'berjalan', menunggu: 'KOMITE01',
+          anggota: [
+            { jenjang: 1, komite: 'KOMITE01', keputusan: '0', catatan: '' },
+            { jenjang: 2, komite: 'KOMITE02', keputusan: '0', catatan: '' },
+          ],
+        }
+      } else if (url === '/api/registrasi/alur') body = ALUR
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
+      else if (url.startsWith('/api/registrasi/klaim/')) body = current
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const buttons = await screen.findAllByRole('button', { name: 'Transfer Komite' })
+    expect(buttons).toHaveLength(2)
+    expect(buttons[0]).toBeEnabled()
+    expect(buttons[1]).toBeDisabled()
+    expect(await screen.findByText(/Komite KMTN-00001 · jenjang 1\/2 menunggu KOMITE01/)).toBeInTheDocument()
+    expect(screen.getByText('Belum ditransfer')).toBeInTheDocument()
+
+    current = atSurveyor([line, line])
+    await user.click(buttons[0]!)
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/adjustment/komite')
+    expect(sent[0]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, adjustment: 1 })
+  })
+
   // Anggota grup PIC Teknik (M_LOGIN_GROUP_PNC) boleh mengerjakan tugas milik PIC lain:
   // server menyatakannya lewat dapat_dikerjakan.
   it('Choose Surveyor milik PIC lain tetapi dapat dikerjakan grup: Tambah aktif', async () => {

@@ -31,6 +31,8 @@ func (r *ClaimStore) saveSettlement(
 			int64(s.RiskValue), int64(s.Gross), int64(s.ShareASM), int64(s.Value),
 			int64(s.Accepted), int64(s.Submitted), exGratia, emptyTextAsNil(s.Chronology),
 			emptyTextAsNil(s.Notes), emptyTextAsNil(s.AcceptanceStatus), emptyTextAsNil(s.AcceptedNo),
+			emptyTextAsNil(strings.TrimSpace(s.CommitteeCaseID)), timeOrNil(s.CommitteeTransferredAt),
+			timeOrNil(s.CommitteeDecidedAt),
 		}
 		keys := []any{claimID, objectID, coverageID, adjustmentID}
 		if err := upsert(ctx, exec,
@@ -58,14 +60,15 @@ func loadSettlement(
 	for rows.Next() {
 		var (
 			objectID, coverageID, adjustmentID, paymentType, currency, riskType sql.NullString
-			exGratia, chronology, notes, status, acceptedNo                     sql.NullString
+			exGratia, chronology, notes, status, acceptedNo, committeeCase      sql.NullString
 			rate, propose, loc, salvageA, riskPercent, riskValue                sql.NullInt64
 			gross, share, value, accepted, submitted                            sql.NullInt64
+			transferredAt, decidedAt                                            sql.NullTime
 		)
 		if err := rows.Scan(&objectID, &coverageID, &adjustmentID, &paymentType, &currency,
 			&rate, &propose, &loc, &salvageA, &riskType, &riskPercent, &riskValue, &gross,
 			&share, &value, &accepted, &submitted, &exGratia, &chronology, &notes, &status,
-			&acceptedNo); err != nil {
+			&acceptedNo, &committeeCase, &transferredAt, &decidedAt); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris adjustment: %w", err)
 		}
 		c := coverageAt(strings.TrimSpace(objectID.String), strings.TrimSpace(coverageID.String))
@@ -92,6 +95,10 @@ func loadSettlement(
 			Notes:            notes.String,
 			AcceptanceStatus: strings.TrimSpace(status.String),
 			AcceptedNo:       strings.TrimSpace(acceptedNo.String),
+
+			CommitteeCaseID:        strings.TrimSpace(committeeCase.String),
+			CommitteeTransferredAt: transferredAt.Time,
+			CommitteeDecidedAt:     decidedAt.Time,
 		})
 	}
 	return rows.Err()

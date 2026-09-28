@@ -320,6 +320,11 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim regis
 		return registrasi.Assignee{Operator: caller}, nil
 	}
 
+	// Sama seperti pengisi SQL: PIC Teknik yang sudah tercatat di klaim dihormati.
+	if pic := registrasi.AssignedTechnicalPIC(stage, claim); pic != "" {
+		return registrasi.Assignee{Operator: pic}, nil
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

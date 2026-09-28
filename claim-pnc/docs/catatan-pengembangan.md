@@ -23404,3 +23404,228 @@ membiarkannya kosong (50 baris T_CLAIM_RECEIVER tanpa nama).
 
 **Belum dibawa:** menambah/mengubah penerima (sampai 5 per klaim di data Pega) beserta bank dan
 nomor rekening — section isiannya tidak ada di export; PaymentType "2" penerima (tanpa kolom).
+
+## 78. Klaim PNCN ditulis ke T_CLAIMLIST_ADMIN supaya muncul di My Inbox (2026-09-28)
+
+**Masalah.** Klaim PNCN tidak pernah muncul di My Inbox (`inboxoutstanding`, MENU_ID 51). Layar
+itu hanya membaca `POOLDATA.T_CLAIMLIST_ADMIN`, dan tabel itu diisi proses di luar Pega: tidak ada
+rule, procedure, maupun trigger di export yang menyentuhnya. Registrasi hanya menulis ke
+`T_CLAIM_PNC` dan `CPNC_TUGAS`. Hitungan sebelum perbaikan: 1.016 baris di T_CLAIMLIST_ADMIN,
+**0** ber-PYID PNCN, sementara T_CLAIM_PNC memuat 7 klaim PNCN.
+
+**Keputusan Work Owner.** Opsi B: registrasi ikut menulis baris klaim PNCN ke T_CLAIMLIST_ADMIN.
+Opsi A (kueri My Inbox menggabungkan CPNC_TUGAS) tidak dipilih.
+
+**Yang dibangun.**
+
+- Seam `registrasi.InboxMirror` dan baris domain `InboxEntry` (`registrasi/inbox_entry.go`).
+- `sqlstore.InboxEntryStore` (`inboxentry.sql`, UPDATE lalu INSERT) dan padanan memori.
+- `Service.mirrorInbox` dipanggil di dalam transaksi yang sama dengan penyimpanan klaim/tugas pada
+  delapan titik: Start, CompleteStage, ambil tugas, simpan draf Input Register, Register, simpan dan
+  tutup Input Estimasi, Claim Face Sheet, tambah adjustment. Gagal menulis daftar kerja
+  menggagalkan seluruh perubahan.
+
+**Isi kolom** — diturunkan dari data, bukan ditebak:
+
+| Kolom | Isi | Dasar |
+|---|---|---|
+| PZINSKEY, PYID | nomor PNCN | `D-22`: tanpa awalan kelas Pega |
+| PXOBJCLASS | `ASM-FW-GCNMFW-Work-PNC` | penyaring My Inbox |
+| PXFLOWNAME | `Register_Flow` | 866 baris Pega |
+| PYSTATUSWORK | `New` / `Resolved-Completed` / `Resolved-Rejected` | dari ProcessStatus |
+| PXASSIGNEDOPERATORID | pemilik tugas terbuka | penyaring My Inbox; kosong bila belum bertuan atau tanpa tugas, sama seperti 8 baris Pega yang PXTASKLABEL-nya kosong |
+| PXTASKLABEL | nama tahap | nama tahap sudah sama dengan assignment Register_Flow |
+| BUSINESSGROUPID | `POOLDATA.BUSINESS.BUSINESSGROUPID` lewat kode bisnis | sama pada 1.016 dari 1.016 baris |
+| REGISTERDATE_1 | tanggal dibuka, jam dinding WIB | 558 baris Pega sama harinya dengan PXCREATEDATETIME |
+| QQNAME | nilai yang sama dengan T_CLAIM_PNC.QQNAME | Policy.QQName tidak termuat ulang |
+
+**Sengaja tidak diisi:** OS_CATEGORY, STATUSPROGRESS1/2, AGING, DATEFORAGING_1, PXCREATEOPNAME.
+Aturan pengisinya tidak diketahui; OS_CATEGORY misalnya bernilai dua kategori berbeda pada tahap
+Input Estimasi yang sama (163 dan 16 baris).
+
+**Diverifikasi di Oracle** dalam transaksi yang di-rollback: ketujuh klaim PNCN berhasil disisipkan
+lalu diperbarui, BUSINESSGROUPID terisi, dan ketujuhnya lolos penyaring My Inbox.
+
+**Yang belum.**
+
+1. ~~Tujuh klaim PNCN yang sudah ada belum punya baris.~~ **Diisi 2026-09-28** atas persetujuan
+   Work Owner, sekali jalan dengan kode yang sama (`InboxEntryStore.Mirror`), di-commit ke portal
+   ASM: 7 klaim, 7 baris, ketujuhnya lolos penyaring My Inbox. Skrip pengisinya sementara dan
+   sudah dihapus; klaim berikutnya terisi sendiri lewat alur registrasi.
+2. **`P-1` dilanggar dengan sadar**: tabel ini kini punya dua penulis, yaitu proses pengisi yang
+   belum diketahui dan aplikasi ini. Kunci PNCN tidak bertabrakan dengan kunci Pega, tetapi bila
+   proses pengisi menghapus atau menulis ulang seluruh isi tabel, baris PNCN akan hilang tanpa
+   galat. Perlu dikonfirmasi ke DBA.
+3. Baris My Inbox belum dapat diklik untuk membuka klaim (di luar lingkup ini).
+
+## 79. PIC Teknik klaim menjadi penerima dan tercatat pada tahap teknis (2026-09-28)
+
+**Masalah.** Dua klaim PNCN di tahap Choose Surveyor dipegang SURYAFEBRI, sementara kolom PIC
+Teknik klaimnya (`T_CLAIM_PNC.PICTEKNIK`, `T_CLAIMLIST_ADMIN.USERTEKNIS_1`) kosong. Router
+`PNCTeknikRouter` hasil rekonstruksi `R-04` selalu memilih PIC Teknik dengan beban paling ringan
+dari `MST_USER_TEKNIK`, mengabaikan PIC yang sudah tercatat di klaim, dan pilihannya tidak ditulis
+kembali ke klaim.
+
+**Bukti Pega.** Dari 338 baris Choose Surveyor di T_CLAIMLIST_ADMIN, pemegang tugasnya sama dengan
+USERTEKNIS_1 pada **320** baris. Pembuat klaim hanya pada 131 baris, dan 128 di antaranya karena
+pembuatnya sekaligus PIC Teknik. Tahap teknis milik PIC Teknik klaim, bukan milik admin.
+
+**Keputusan Work Owner.** Ikuti Pega; kedua klaim tetap milik SURYAFEBRI.
+
+**Yang dibangun** (`registrasi/technicalpic.go`):
+
+- `AssignedTechnicalPIC`: pada tahap ber-router PNCTeknikRouter (Choose Surveyor, Send To Analis,
+  Send To PIC Teknik), PIC Teknik yang sudah tercatat di klaim menjadi penerima. Kedua pengisi
+  seam Assigner (SQL dan memori) memakainya. Beban PIC tidak dinaikkan karena ia tidak dipilih
+  kueri beban.
+- `AdoptTechnicalPIC`: bila klaim belum punya PIC, penerima pilihan router ditulis ke klaim
+  (`Service.advance`), sehingga PICTEKNIK dan USERTEKNIS_1 berisi pemegang tugasnya. PIC yang
+  sudah ada tidak pernah ditimpa.
+
+**Data lama.** PNCN.26.0010 dan PNCN.26.0014 diisi PIC Teknik SURYAFEBRI dari pemilik tugas
+terbukanya, lewat kode yang sama, di-commit ke portal ASM. Skrip sementaranya sudah dihapus.
+
+**Belum.** Pega mengisi UserTeknis lebih awal, lewat `getRandomTeam_act` saat klaim dibuka. Aktivitas
+itu memanggil `GetRandomTeamClaimLeader`, `GetRandomTeamGroup_act`, `GetRandomTeam2_act`, dan satu
+Connect-REST, dan belum direkonstruksi. Di sini PIC baru dipilih saat tahap teknis pertama tiba.
+Data uji `validInput` kini memakai `testOperator` sebagai PIC, karena seluruh routing uji memang
+memakai satu orang.
+
+## 80. Klaim PNCN dapat dibuka dari My Inbox (2026-09-28)
+
+Nomor klaim PNCN pada kolom **Claim no** di My Inbox (`inbox-outstanding`) kini menjadi tautan ke
+`/registrasi/klaim/{nomor}`, halaman klaim registrasi yang sama dengan yang dibuka dari Laporan
+Klaim. Klaim Pega (`PNC-…`) tidak ditautkan, karena masih dikerjakan di Pega selama masa paralel
+(`P-3`) dan halamannya belum ada di aplikasi ini.
+
+Tautannya memakai nomor klaim, karena itulah kunci baris T_CLAIMLIST_ADMIN (§78). `Service.ViewClaim`
+mencoba nomor bila pengenal tidak ditemukan, supaya klaim yang dibuka sebelum pengenal disamakan
+dengan nomor (2026-09-26) tetap terbuka. Komponen halaman klaim memakai `klaim.id` dari respons,
+bukan parameter URL, sehingga seluruh aksi berikutnya memakai pengenal yang benar.
+
+## 81. Penerima Klaim kosong pada klaim PNCN lama — diisi susulan (2026-09-28)
+
+**Masalah.** Tab Penerima Klaim PNCN.26.0014 kosong. Tampilan, DTO, dan penyimpanan
+T_CLAIM_RECEIVER sudah ada sejak §77, tetapi penerima bawaan hanya dibentuk saat Input Register
+disubmit (`SaveRegister`, bukan Back). Ketujuh klaim PNCN disubmit sebelum §77, sehingga
+T_CLAIM_RECEIVER tidak memuat satu pun baris untuk mereka.
+
+**Pengisian susulan** (probe sementara, dihapus sesudahnya), memakai jalur yang sama dengan
+register: `PolicyRepo.Get` → `DefaultReceiver` → `saveReceivers`, lalu dibaca ulang. Uji kering
+dengan rollback dulu, baru commit.
+
+| Klaim | Tahap | Hasil |
+|---|---|---|
+| PNCN.26.0010 · 0014 | pilih-surveyor | 1 penerima (nama dan alamat terisi) |
+| PNCN.26.0012 | estimasi-admin | 1 penerima (nama dan alamat terisi) |
+| PNCN.26.0008 · 0009 · 0011 · 0013 | input-register | tidak diisi — penerimanya terbentuk saat Input Register disubmit, sama seperti Pega |
+
+Tidak ada perubahan kode.
+
+## 82. Penerima Klaim dapat dibuka dan diisi — panel InputReceiver (2026-09-28)
+
+**Sumber Pega:** `Section/InputReceiver_sect.xml` (kelas `ASM-FW-GCNMFW-Data-ClaimReceiver`),
+kontainer `.FlagData==''`. Kiri: No Rekening (isian; event change memanggil
+`GetDataBankMaster(norekening)` lalu me-refresh section) · Nama Bank · Nama Cabang Bank · Tanggal
+Approve Kasir (`.TglKasirApr`) · Telepon (isian) · catatan WhatsApp. Kanan: Nama · Alamat · Email
+(isian, `pyRequiredWhen ObjectCoverageList(1).UserBusinessPA!='1'`) · Tanggal Approve Komite
+(`.TglKomite`). Tombol Simpan memanggil `SetIDReceiver` lalu me-refresh `ShowReceiver`. Jumlah
+dan kolom tipe `1==2`, Tipe Pembayaran `IsPA`, kontainer Master Rekening PA `1==2` — tidak tampil.
+
+**Tidak ada di export:** `GetDataBankMaster`, `SetIDReceiver`, section `ShowReceiver` (grid
+dengan Tambah), dan `ViewInputReceiver` (panel yang dibuka `ViewShowReceiver`).
+
+**Rekonstruksi `GetDataBankMaster` dari data** (883 penerima ber-No Rekening di JSON_KLAIM, 362
+di antaranya ada di POOLDATA.LST_ACCOUNT; hanya hitungan, tanpa nilai): NameOfBank sama 319/351,
+BranchOfBank 215/222, IDBank 208/210, Address 217/253, EmailReceiver 193/256, Telephone 128/152.
+LST_ACCOUNT punya TANGGALAPPROVEKASIR dan TANGGALAPPROVEKOMITE; tanggal di JSON sama 41/142 karena
+disalin saat dipilih dan master berubah sesudahnya. 119 penerima memakai rekening APPROVAL=0,
+sehingga status approval tidak menyaring.
+
+**Keputusan Work Owner — tanpa perubahan skema dulu.** T_CLAIM_RECEIVER hanya punya CLAIMID,
+IDRECEIVER, NAME, NAMEOFBANK, NOACCOUNT, ADDRESS. Yang tersimpan: No Rekening, Nama, Nama Bank,
+Alamat. Cabang Bank dan kedua tanggal dibaca ulang dari master saat panel dibuka. Email dan
+Telepon terisi dari master dan dapat diubah, tetapi **belum tersimpan** (layar menyatakannya).
+
+**Yang dibangun.**
+
+- `registrasi.BankAccount`, `Receiver.ApplyAccount`, `NextReceiverID`; seam `AccountDirectory`;
+  `ErrAccountNotFound`; tiga kode pelanggaran penerima.
+- `sqlstore.AccountDirectory` (`bankaccount.sql`, `rekening_ambil`: BANKID terkecil bila nomor
+  ganda) dan `memory.Accounts` (dua rekening fiktif).
+- `Service.FindAccount` dan `Service.SaveReceiver` — penjaga sama dengan grid Adjustment: tugas
+  terbuka tahap InputSurveyor, pemanggil berwenang. Penerima baru mendapat IDRECEIVER terbesar+1;
+  No Rekening wajib dan harus terdaftar; Email wajib (UserBusinessPA hanya diisi alur Komite yang
+  belum ada, jadi selalu kosong pada PNCN); jejak audit `PENERIMA_DISIMPAN`.
+- HTTP: `GET /api/registrasi/rekening/{nomor}`, `POST /api/registrasi/klaim/{klaimID}/penerima`.
+- Frontend `ReceiverTab.tsx`: baris grid dibuka (`aria-expanded`) menjadi panel InputReceiver,
+  tombol Tambah, No Rekening dibaca saat isian ditinggalkan, Simpan.
+
+**Diverifikasi:** `rekening_ambil` dijalankan ke Oracle ASM (semua kolom terbaca; nomor tak
+dikenal → ErrAccountNotFound; probe dihapus). Uji usecase baru 5, uji layar baru 1; `go vet`,
+uji registrasi, typecheck, dan 33 uji frontend registrasi lulus.
+
+**Penyimpangan yang disadari:** Nama penerima selalu diambil dari master saat disimpan (di data
+Pega sama hanya 180/351 — sebagian penerima lama memakai nama bawaan QQName). Validasi format
+email tidak diterapkan: regex `ValidasiEmailRekening` milik layar Master Rekening, bukan penerima.
+Tanggal ditampilkan dengan format tanggal aplikasi, bukan `dd/mm/yyyy` Pega.
+
+**Belum dibawa:** penyimpanan Email, Telepon, Cabang, IDBank, dan kedua tanggal (menunggu
+keputusan skema); hapus penerima (tidak ada di section).
+
+## 83. Transfer Komite dan putusan komite untuk adjustment klaim PNCN (2026-09-28)
+
+**Sumber Pega.** Section grid Adjustment (`InputEstimasi`) tidak ada di export; dua tombol
+"Transfer Komite" yang ada (`InputSpreading_sect`, `ObjectItemList_sect`) adalah transfer Ex-Gratia
+per objek (`CheckExGratiaPerObjectToKomite`). Rantai per baris adjustment direkonstruksi dari:
+
+| Rule | Isi yang dibawa |
+|---|---|
+| `ValidationTypePaymentAdj` | tipe pembayaran, Total Klaim (selain 3/4/6/7), fee adjuster; transfer hanya bila `CaseIDKomite` kosong |
+| `SetListComiteeClaimPerObjAdj` | nilai pembanding (step 28–36), `KomiteLoop := pxResultCount`, `IsKomiteTransfer := 1`, `AcceptanceStatus := 0`, `StatusClaim := 1149` |
+| `SetEmailKomite` step 15–19 | lini komite: Bonding/BondingKBG/AsuransiKredit/CustomBond/kode 10145·10168 → BONDING, Travel → TRAVEL, PA → PA, lainnya NONMBU |
+| `SetChildKomitePerAdjustment_act` | `TransferType := "2"` |
+| `InsertUpdateKomiteList` → `INSERTDATAKOMITELIST.prc` | satu baris T_CLAIM_KOMITE_LIST per anggota: NAMAKOMITE = OPERATOR_ID, KOMITEKE urut, STATUSAPPROVE 0/1/2 |
+| `KomitePost_Adjustment` | setuju → jenjang berikutnya; setuju terakhir → `AcceptanceStatus 1`; tolak → `AcceptanceStatus 2` dan sisa anggota 2 (step 31); tutup kasus (step 60); `StatusClaim := ""`; catatan ke Notes (step 32) |
+| `PEGA_CONVERT_JSONKLAIM_PNC.prc` 1095–1118 | ANALYST_TFKOMITEDATE = TanggalComitee, ACCEPTANCE_DATECOMITEE = AcceptedDateKomite, CASEIDKOMITE |
+
+**Keputusan Work Owner.** Transfer beserta putusan komite; kasus komite PNCN disimpan di
+T_CLAIM_KOMITE_LIST (NO_KLAIM sudah diperpanjang menjadi VARCHAR2(100) — diperiksa di Oracle ASM).
+
+**Bentuk data.** KOMITE_ID `KMTN-00001` (VARCHAR2(10); awalan Pega `KMT-`, 51.050 baris), nomor =
+terbesar + 1. Anggota yang ditunggu = STATUSAPPROVE 0 dengan KOMITEKE terkecil selama STATUSCASE
+New — tanpa tugas CPNC_TUGAS kedua. Nilai pembanding = AdjustmentValue × kurs (Gross bila Sinar Mas
+leader; gross fee untuk fee adjuster; Tolak Klaim atau Total Klaim < risiko sendiri tanpa nilai →
+Rp 500.000.001), dibulatkan ke atas ke rupiah. Penjenjangan memakai modul komite (`komitelink`),
+pengaju dikecualikan.
+
+**Yang dibangun.** `registrasi/committee.go`; kolom komite `SettlementLine`; `settlement.sql`
+(CASEIDKOMITE, ANALYST_TFKOMITEDATE, ACCEPTANCE_DATECOMITEE); `sqlstore.CommitteeStore`
+(`committee.sql`) dan padanan memori; `usecase` TransferCommittee, PendingCommittees, Committee,
+DecideCommittee; HTTP `POST …/klaim/{id}/adjustment/komite`, `GET …/komite`,
+`GET …/komite/{id}`, `POST …/komite/{id}/putusan`; frontend `Committee.tsx` — tombol Transfer
+Komite dan status komite di grid Adjustment, bagian Komite (Setuju/Tolak) di Inbox registrasi.
+
+**Perbaikan modul komite (izin Work Owner).** EMAILKOMITE hidup ASM (40 baris, 21 kolom) tidak
+punya STS_ABS — kolom ke-21-nya ACTIVITYFLAG — sehingga `ambang_komite_daftar` gagal ORA-00904 dan
+penjenjangan tidak pernah berjalan di Oracle. STS_ABS diganti `NULL AS STS_ABS` di dua kueri
+`threshold.sql`; kueri komite Pega pun tidak menyaringnya. Sesudahnya di Oracle: NONMBU Rp 9 jt
+1 jenjang, Rp 750 jt 2, PA Rp 75 jt 5, TRAVEL Rp 150 jt 3, BONDING 1.
+
+**Diverifikasi.** Oracle ASM, transaksi di-rollback: nomor KMTN-00001, simpan/baca/tertunda
+T_CLAIM_KOMITE_LIST (jenjang 2 baru tertunda setelah jenjang 1 setuju), kolom komite
+T_CLAIM_ADJUSTMENT PNCN.26.0014. Uji usecase baru 7, uji layar baru 2; uji registrasi, komite, cmd,
+`go vet`, typecheck, dan 35 uji frontend registrasi lulus.
+
+**Tidak dibawa, dan kenapa.**
+
+- Wajib Dominan Factor bila Penyebab Kerugian termasuk `IsCOLFire` (step 4): isian Dominan
+  Factor belum ada di aplikasi ini, jadi menegakkannya memblokir seluruh klaim kebakaran.
+- Jalur komite AI untuk kode bisnis 10027/10091 (`SetListComiteeClaimAI`) — semua lewat jalur biasa.
+- Auto-akseptasi tanpa komite (Tolak "Dibawah Resiko Sendiri", PA TKI ≤ Rp 5 jt, Bonding interim
+  negatif): catatan penolakan dan penanda TKI belum ada.
+- `STS_SURVEY = '1'` yang Pega tambahkan pada pita Non-MBU di atas Rp 100 jt: modul komite belum
+  membacanya.
+- Email ke komite dan PIC, riwayat klaim, dan progres klaim otomatis (`InsertHistoryClaimPNC`,
+  `PNCInsertProgressClaim`) — hanya jejak audit yang ditulis. Nomor akseptasi (B-10).
+- Nomor KMTN diambil dari MAX + 1: dua transfer serentak dapat memperoleh nomor yang sama.

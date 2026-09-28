@@ -8,6 +8,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,6 +57,10 @@ type Service struct {
 	pla         registrasi.PLASource
 	plaRenderer registrasi.PLARenderer
 	groups      registrasi.GroupSource
+	inbox       registrasi.InboxMirror
+	accounts    registrasi.AccountDirectory
+	tiering     registrasi.CommitteeTiering
+	committees  registrasi.CommitteeStore
 	id          registrasi.IDGenerator
 	unit        registrasi.UnitOfWork
 	clock       clock.Clock
@@ -102,6 +107,18 @@ type Options struct {
 	// Groups membaca keanggotaan grup pengguna (POOLDATA.M_LOGIN_GROUP_PNC) — penentu
 	// peran dan tahap yang boleh dikerjakannya (access.go).
 	Groups registrasi.GroupSource
+
+	// Inbox menulis baris daftar kerja My Inbox (POOLDATA.T_CLAIMLIST_ADMIN) setiap kali
+	// klaim atau tugasnya berubah — lihat registrasi.InboxEntry.
+	Inbox registrasi.InboxMirror
+
+	// Accounts membaca Master Rekening untuk isian No Rekening penerima klaim.
+	Accounts registrasi.AccountDirectory
+
+	// CommitteeTiering menghitung penyetuju komite (modul komite); Committees menyimpan
+	// kasus komite di POOLDATA.T_CLAIM_KOMITE_LIST.
+	CommitteeTiering registrasi.CommitteeTiering
+	Committees       registrasi.CommitteeStore
 
 	IDGenerator registrasi.IDGenerator
 	UnitOfWork  registrasi.UnitOfWork
@@ -158,6 +175,10 @@ func NewService(o Options) (*Service, error) {
 	check("PLA", o.PLA != nil)
 	check("PembentukPLA", o.PLARenderer != nil)
 	check("GrupPengguna", o.Groups != nil)
+	check("DaftarKerja", o.Inbox != nil)
+	check("MasterRekening", o.Accounts != nil)
+	check("PenjenjanganKomite", o.CommitteeTiering != nil)
+	check("KasusKomite", o.Committees != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -188,7 +209,11 @@ func NewService(o Options) (*Service, error) {
 		pla:              o.PLA,
 		plaRenderer:      o.PLARenderer,
 		groups:           o.Groups,
-		id:               o.IDGenerator,
+		inbox:            o.Inbox,
+		accounts:         o.Accounts,
+		tiering:          o.CommitteeTiering,
+		committees:       o.Committees,
+		id:              o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,
 		validateOnReturn: o.ValidateOnReturn,
@@ -233,6 +258,10 @@ func (l *Service) advance(
 	if err != nil {
 		return nil, trace, fmt.Errorf("registrasi/usecase: menentukan penerima tahap %q: %w", stage.ID, err)
 	}
+
+	// PIC yang dipilih router ditulis ke klaim, supaya PICTEKNIK dan USERTEKNIS_1 berisi
+	// pemegang tugasnya — lihat registrasi/technicalpic.go.
+	registrasi.AdoptTechnicalPIC(fctx.claim, stage, recipients)
 
 	fresh := registrasi.NewTask(l.id.New(), *fctx.claim, stage, recipients, fctx.now)
 	fctx.claim.CurrentStage = stage.ID
@@ -320,6 +349,27 @@ func (l *Service) ResolveCaller(ctx context.Context, by Caller) (Caller, error) 
 func (l *Service) canWork(task registrasi.Task, by Caller) bool {
 	stage, _ := l.flow.Stage(task.Stage)
 	return registrasi.CanWork(task, stage, by.Identity, by.Roles)
+}
+
+// mirrorInbox menulis ulang baris daftar kerja klaim dari keadaannya sekarang.
+//
+// Dipanggil di akhir setiap transaksi yang mengubah klaim atau tugasnya. Tugas terbuka
+// dibaca ulang di dalam transaksi itu, bukan diteruskan pemanggil, supaya satu fungsi ini
+// yang menentukan isi baris — pemanggil tidak dapat lupa menyertakan tugas yang baru lahir.
+func (l *Service) mirrorInbox(ctx context.Context, claim registrasi.Claim) error {
+	var open *registrasi.Task
+	task, err := l.task.OpenTaskForClaim(ctx, claim.ID)
+	switch {
+	case err == nil:
+		open = &task
+	case errors.Is(err, registrasi.ErrTaskNotFound):
+	default:
+		return fmt.Errorf("registrasi/usecase: membaca tugas terbuka untuk daftar kerja: %w", err)
+	}
+	if err := l.inbox.Mirror(ctx, registrasi.NewInboxEntry(claim, open, l.flow)); err != nil {
+		return fmt.Errorf("registrasi/usecase: menulis daftar kerja: %w", err)
+	}
+	return nil
 }
 
 // CanWork adalah canWork bagi transport — layar memakainya untuk mengunci isian tugas yang

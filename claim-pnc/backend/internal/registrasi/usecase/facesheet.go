@@ -78,6 +78,9 @@ func (l *Service) DownloadFaceSheet(ctx context.Context, p FaceSheetCommand, by 
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		if err := l.faceSheet.SaveRevision(ctx, registrasi.FaceSheetRevision{
 			ClaimID: claim.ID, ObjectID: object.ID, CoverageSeq: p.Coverage, Revision: revision,
 			Date: now, FileName: fileName, Reserve: sheet.Reserve,

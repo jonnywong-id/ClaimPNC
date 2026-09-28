@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -124,8 +125,20 @@ export function OutstandingPage() {
       width: '11rem',
       value: (c) => c.nomor_klaim,
       render: (c) =>
-        c.nomor_klaim ? (
-          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100">
+        isOpenableHere(c.nomor_klaim) ? (
+          // Klaim PNCN dibuka di halaman klaim registrasi aplikasi ini — lewat NOMORNYA,
+          // yang juga kunci barisnya di T_CLAIMLIST_ADMIN.
+          <Link
+            to={`/registrasi/klaim/${encodeURIComponent(c.nomor_klaim)}`}
+            className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 underline-offset-2 ring-1 ring-blue-100 hover:underline"
+          >
+            {c.nomor_klaim}
+          </Link>
+        ) : c.nomor_klaim ? (
+          <span
+            className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-blue-100"
+            title="Pega claim — open it in Pega"
+          >
             {c.nomor_klaim}
           </span>
         ) : (
@@ -468,6 +481,14 @@ function Pagination({
       </div>
     </div>
   )
+}
+
+/**
+ * Klaim yang halamannya ada di aplikasi ini: nomor `PNCN.YY.xxxx` (`D-71`). Klaim `PNC-…`
+ * masih dikerjakan di Pega selama masa paralel (`P-3`), jadi tidak ditautkan.
+ */
+export function isOpenableHere(claimNumber: string): boolean {
+  return claimNumber.startsWith('PNCN.')
 }
 
 function errorMessage(failure: unknown): string {

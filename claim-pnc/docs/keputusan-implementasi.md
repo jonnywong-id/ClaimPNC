@@ -18218,3 +18218,60 @@ klaim (IDReceiver 1) dari QQName polis — dengan cadangan TheInsured — dan al
 menyimpannya ke POOLDATA.T_CLAIM_RECEIVER untuk klaim PNCN. Tab Penerima Klaim menampilkan Nama dan
 Alamat (`ViewShowReceiver`). Isian tambah/ubah penerima belum dibangun karena section-nya tidak ada
 di export (catatan-pengembangan §77).
+
+## 98. Registrasi menulis baris klaim PNCN ke T_CLAIMLIST_ADMIN (2026-09-28)
+
+**Keputusan Work Owner (opsi B).** Supaya klaim PNCN muncul di My Inbox, registrasi menulis satu
+baris per klaim PNCN ke POOLDATA.T_CLAIMLIST_ADMIN, berkunci nomor PNCN, di dalam transaksi yang
+sama dengan penyimpanan klaim dan tugasnya. Hanya kolom yang dapat diturunkan pasti yang diisi;
+enam kolom yang aturan pengisinya tidak diketahui dibiarkan NULL. Tabel ini karenanya punya dua
+penulis, pelanggaran `P-1` yang diterima dan perlu dikonfirmasi ke DBA (catatan-pengembangan §78).
+
+## 99. Tahap PNCTeknikRouter diberikan ke PIC Teknik klaim, dan PIC pilihan router dicatat di klaim (2026-09-28)
+
+**Keputusan Work Owner (ikuti Pega).** PIC Teknik yang tercatat di klaim menjadi penerima tahap
+teknis (320 dari 338 baris Choose Surveyor Pega). Bila klaim belum punya PIC, router tetap memilih
+PIC dengan beban paling ringan, dan pilihannya ditulis ke PICTEKNIK/USERTEKNIS_1. Pemilihan awal
+lewat `getRandomTeam_act` belum direkonstruksi (catatan-pengembangan §79).
+
+## 100. My Inbox menautkan klaim PNCN ke halaman klaim registrasi, lewat nomornya (2026-09-28)
+
+**Keputusan.** Hanya nomor berawalan `PNCN.` yang ditautkan; klaim Pega tetap teks biasa (`P-3`).
+Halaman klaim menerima nomor maupun pengenal (catatan-pengembangan §80).
+
+## 101. Penerima Klaim diisi susulan hanya untuk klaim yang sudah lewat Input Register (2026-09-28)
+
+Penerima bawaan (`DefaultReceiver`) diisi susulan ke T_CLAIM_RECEIVER untuk tiga klaim PNCN yang
+sudah melewati Input Register sebelum §77 dibangun (0010, 0012, 0014). Empat klaim yang masih di
+Input Register sengaja tidak diisi: di Pega, `InputRegister_act` membentuk penerima saat submit
+(`Page-Remove` lalu satu penerima baru), jadi mengisinya lebih awal tidak sesuai perilaku Pega dan
+toh akan ditimpa saat submit. Rincian di catatan-pengembangan §81.
+
+## 102. Penerima Klaim disimpan tanpa perubahan skema; detail master dibaca ulang (2026-09-28)
+
+Work Owner memilih tidak mengubah skema dulu. T_CLAIM_RECEIVER menyimpan No Rekening, Nama, Nama
+Bank, dan Alamat; Nama Cabang Bank serta Tanggal Approve Kasir/Komite dibaca ulang dari
+POOLDATA.LST_ACCOUNT setiap panel dibuka, sehingga nilainya mengikuti master sekarang — berbeda
+dengan Pega yang menyalinnya saat rekening dipilih. Email dan Telepon diperiksa (Email wajib)
+tetapi tidak tersimpan. Bila kelak dipilih kolom baru di T_CLAIM_RECEIVER (pola 0012), cukup
+menambah kolom pada `penerima_*` dan field `Receiver`; seam dan layar tidak berubah.
+`GetDataBankMaster` direkonstruksi sebagai pembacaan LST_ACCOUNT per ACCOUNT_NO tanpa saringan
+approval, dasar datanya di catatan-pengembangan §82.
+
+## 103. Kasus komite PNCN tanpa case Work-Komite: baris T_CLAIM_KOMITE_LIST sebagai satu-satunya sumber (2026-09-28)
+
+Pega membentuk child case `Work-Komite` dan menugaskannya lewat worklist; Inbox Komite yang ada
+membaca case itu dari tabel engine Pega, sehingga komite klaim PNCN tidak pernah muncul di sana.
+Aplikasi ini tidak membentuk case: kasus komite adalah baris T_CLAIM_KOMITE_LIST ber-KOMITE_ID
+`KMTN-` (pilihan Work Owner), dan anggota yang ditunggu diturunkan dari barisnya (keputusan 0,
+KOMITEKE terkecil). Dengan itu tidak ada tugas kedua di CPNC_TUGAS yang akan merusak anggapan satu
+tugas terbuka per klaim. Putusan diberikan dari bagian Komite di Inbox registrasi, bukan dari grid
+klaim, supaya tetap dapat diputuskan meski klaim sudah berpindah tahap. Tabel itu juga ditulis Pega
+untuk kasus `KMT-`; penulis ganda dibatasi oleh awalan (P-1 per baris, bukan per tabel). Rincian di
+catatan-pengembangan §83.
+
+## 104. Modul komite: STS_ABS dibaca sebagai NULL (2026-09-28)
+
+EMAILKOMITE hidup tidak memiliki STS_ABS (CSV acuan memilikinya). Atas izin Work Owner, kueri modul
+komite membaca `NULL AS STS_ABS`; penanda tidak hadir selalu kosong. Perilaku penjenjangan tidak
+berubah karena kueri Pega tidak menyaring kolom itu.

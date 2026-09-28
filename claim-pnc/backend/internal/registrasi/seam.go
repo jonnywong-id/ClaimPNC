@@ -45,6 +45,24 @@ type TaskRepo interface {
 	Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]Task, error)
 }
 
+// InboxMirror adalah seam ke daftar kerja yang dibaca layar My Inbox
+// (POOLDATA.T_CLAIMLIST_ADMIN) — lihat inbox_entry.go.
+//
+// Ia dipanggil DI DALAM transaksi yang sama dengan penyimpanan klaim dan tugasnya, sehingga
+// baris daftar kerja tidak pernah tertinggal dari keadaan klaim: gagal menulisnya
+// menggagalkan seluruh perubahan.
+type InboxMirror interface {
+	Mirror(ctx context.Context, e InboxEntry) error
+}
+
+// AccountDirectory membaca Master Rekening (POOLDATA.LST_ACCOUNT) untuk isian No Rekening
+// penerima klaim — pengganti activity `GetDataBankMaster` yang tidak ada di export.
+type AccountDirectory interface {
+	// FindAccount mengembalikan rekening bernomor itu, atau ErrAccountNotFound. Nomor yang
+	// sama di lebih dari satu bank mengembalikan yang BANKID-nya terkecil.
+	FindAccount(ctx context.Context, number string) (BankAccount, error)
+}
+
 // PolicyRepo adalah seam ke snapshot polis.
 //
 // Kepemilikan data polis ada pada GISFW (`ADR-0006`); modul ini hanya MEMBACA. Seam-nya

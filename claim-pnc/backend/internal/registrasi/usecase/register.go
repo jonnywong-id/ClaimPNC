@@ -246,6 +246,9 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 				return err
 			}
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		if err := l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     claim.ID,
 			ClaimNumber: claim.Number,

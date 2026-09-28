@@ -47,6 +47,14 @@
 -- tidak pernah sampai ke peramban.
 --
 -- Kolom selalu disebut namanya; SELECT * dilarang. Nilai selalu lewat parameter binding.
+--
+-- # STS_ABS tidak ada di tabel hidup
+--
+-- Database/emailkomite.csv mencantumkan STS_ABS sebagai kolom ke-21, tetapi EMAILKOMITE di
+-- Oracle ASM (diperiksa 2026-09-28: 40 baris, 21 kolom) berkolom ke-21 ACTIVITYFLAG dan tidak
+-- punya STS_ABS; membacanya menggagalkan kueri dengan ORA-00904. Penanda tidak hadir karena
+-- itu selalu kosong (NULL). Tidak ada perilaku yang hilang: kueri komite Pega
+-- (EmailKomiteBerjenjang_sql dan kawan-kawannya) pun tidak pernah menyaring STS_ABS.
 
 -- name: ambang_komite_daftar
 --
@@ -66,7 +74,7 @@ SELECT ID,
        STS_ADJ,
        STS_REG,
        STS_REJECT,
-       STS_ABS
+       NULL AS STS_ABS
   FROM POOLDATA.EMAILKOMITE
  ORDER BY TYPE_BUSINESS, TYPE_KOMITE, LIMIT_BOTTOM, DEGREE, ID
 
@@ -87,6 +95,6 @@ SELECT ID,
        STS_ADJ,
        STS_REG,
        STS_REJECT,
-       STS_ABS
+       NULL AS STS_ABS
   FROM POOLDATA.EMAILKOMITE
  WHERE 1 = 0

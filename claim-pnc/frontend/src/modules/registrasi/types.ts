@@ -104,7 +104,62 @@ export type Settlement = {
   catatan: string
   status_akseptasi: string
   nomor_akseptasi: string
+  /** Terisi begitu baris ditransfer ke komite (CASEIDKOMITE); baris itu tidak dapat ditransfer ulang. */
+  komite_id?: string
+  tanggal_transfer_komite?: string
+  tanggal_putusan_komite?: string
 }
+
+/** Keputusan anggota komite (STATUSAPPROVE) dan status akseptasi hasil komite. */
+export const CommitteeDecision = {
+  pending: '0',
+  approve: '1',
+  reject: '2',
+} as const
+
+/** Satu kasus komite (baris T_CLAIM_KOMITE_LIST ber-KOMITE_ID sama). */
+export type Committee = {
+  id: string
+  nomor_klaim: string
+  status: 'berjalan' | 'disetujui' | 'ditolak'
+  /** Operator jenjang yang sedang ditunggu. */
+  menunggu?: string
+  anggota: { jenjang: number; komite: string; keputusan: string; catatan: string; tanggal_putusan?: string }[]
+}
+
+/** Badan tombol Transfer Komite. Indeks berbasis 1. */
+export type CommitteeTransferRequest = {
+  tugas_id: string
+  objek: number
+  jaminan: number
+  adjustment: number
+}
+
+export type CommitteeTransferResponse = {
+  klaim: Claim
+  komite: Committee
+}
+
+/** Satu putusan komite yang menunggu pengguna ini. */
+export type CommitteeItem = {
+  komite_id: string
+  jenjang: number
+  jumlah_jenjang: number
+  klaim_id: string
+  nomor_klaim: string
+  nomor_polis: string
+  nama_tertanggung: string
+  nama_objek: string
+  nama_coverage: string
+  adjustment: number
+  nama_tipe_pembayaran: string
+  mata_uang: string
+  nilai_asm_sen: Cents
+  nilai_komite_sen: Cents
+  tanggal_transfer: string
+}
+
+export type CommitteeListResponse = { komite: CommitteeItem[] }
 
 /** Hasil hitungan baris yang belum disimpan, beserta spreading jaminannya. */
 export type SettlementPreviewResponse = {
@@ -189,6 +244,30 @@ export type Receiver = {
   alamat: string
   nama_bank: string
   nomor_rekening: string
+}
+
+/** Satu rekening Master Rekening (POOLDATA.LST_ACCOUNT) — isian No Rekening InputReceiver. */
+export type BankAccount = {
+  nomor_rekening: string
+  nama: string
+  nama_bank: string
+  nama_cabang_bank: string
+  alamat: string
+  id_bank: string
+  email: string
+  telepon: string
+  /** Kosong bila master belum mengisinya. */
+  tanggal_approve_kasir: string
+  tanggal_approve_komite: string
+}
+
+/** Badan tombol Simpan InputReceiver. `id` kosong berarti penerima baru (tombol Tambah). */
+export type ReceiverRequest = {
+  tugas_id: string
+  id: string
+  nomor_rekening: string
+  email: string
+  telepon: string
 }
 
 export type Reporter = {

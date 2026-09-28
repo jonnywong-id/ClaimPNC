@@ -478,6 +478,12 @@ func (a *Assigner) Assign(
 		return registrasi.Assignee{Operator: admin}, nil
 	}
 
+	// PIC Teknik yang sudah tercatat di klaim dihormati (registrasi.AssignedTechnicalPIC).
+	// Bebannya tidak dinaikkan di sini: ia tidak dipilih oleh kueri beban.
+	if pic := registrasi.AssignedTechnicalPIC(stage, claim); pic != "" {
+		return registrasi.Assignee{Operator: pic}, nil
+	}
+
 	line := businessGroupOf(claim.Policy.Line)
 	exec := executorFrom(ctx, a.db)
 

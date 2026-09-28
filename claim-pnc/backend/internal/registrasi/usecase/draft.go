@@ -48,6 +48,9 @@ func (l *Service) SaveDraft(ctx context.Context, p RegisterCommand, by Caller) (
 		if err := l.claim.Save(ctx, claim); err != nil {
 			return err
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     claim.ID,
 			ClaimNumber: claim.Number,
