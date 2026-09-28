@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { APIError, callAPI } from '@/api/client'
+import { APIError, callAPI, unduhBerkas } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -13,6 +13,17 @@ import {
   type FlowResponse,
   type InboxResponse,
   type ClaimResponse,
+  type CurrenciesResponse,
+  type EstimateRequest,
+  type ItemOptionsResponse,
+  type SurveysResponse,
+  type DocumentsResponse,
+  type ProgressResponse,
+  type FaceSheetRequest,
+  type PLARequest,
+  type PLAListResponse,
+  type SettlementRequest,
+  type SettlementPreviewResponse,
   type Task,
 } from './types'
 
@@ -146,6 +157,58 @@ export function useAreaOptions(level: AreaLevel, parent: string) {
   })
 }
 
+/**
+ * Tahap Input Estimasi. `simpan` menyimpan tanpa menutup tahap (Save); tanpanya tahap
+ * ditutup — Next, atau Back bila `kembali`.
+ */
+export function useSaveEstimate(simpan: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: EstimateRequest) =>
+      callAPI<ClaimResponse>(simpan ? '/api/registrasi/estimasi/simpan' : '/api/registrasi/estimasi', {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: (result) => {
+      void apiClient.invalidateQueries({ queryKey: inboxKey })
+      void apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+    },
+  })
+}
+
+/** Pilihan Objek untuk item estimasi satu objek klaim. */
+export function useItemOptions(claimID: string, objectID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'pilihan-item', claimID, objectID, token],
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<ItemOptionsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-item?objek=${encodeURIComponent(objectID)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/** Pilihan Mata Uang dari master POOLDATA.CURRENCY. */
+export function useCurrencies() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'mata-uang', token],
+    staleTime: 10 * 60 * 1000,
+    queryFn: () => callAPI<CurrenciesResponse>('/api/registrasi/mata-uang', { token, portal }),
+  })
+}
+
 /** Mengambil tugas dari antrean bersama. */
 export function useClaimTask() {
   const token = useSession((state) => state.token)
@@ -215,4 +278,145 @@ export function messagesByField(violations: Violation[]): Record<string, string>
     result[p.field] = result[p.field] ? `${result[p.field]} ${p.pesan}` : p.pesan
   }
   return result
+}
+
+/**
+ * useClaimRecord membaca satu tab pendamping Input Estimasi: survey, dokumen, atau
+ * progres. Ketiganya hanya membaca.
+ */
+function useClaimRecord<T>(claimID: string, path: 'survey' | 'dokumen' | 'progres', enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', path, claimID, token, portal],
+    enabled,
+    queryFn: () =>
+      callAPI<T>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/${path}`, { token, portal }),
+  })
+}
+
+/** Tab Survey — T_SURVEYORLIST. */
+export function useSurveys(claimID: string, enabled = true) {
+  return useClaimRecord<SurveysResponse>(claimID, 'survey', enabled)
+}
+
+/** Tab Unggah Dokumen — checklist jenis dokumen dan berkas yang sudah diunggah. */
+export function useDocuments(claimID: string, enabled = true) {
+  return useClaimRecord<DocumentsResponse>(claimID, 'dokumen', enabled)
+}
+
+/** Tab Progress Claim & Komunikasi. */
+export function useProgressRecords(claimID: string, enabled = true) {
+  return useClaimRecord<ProgressResponse>(claimID, 'progres', enabled)
+}
+
+/**
+ * Tombol Download Claim Face Sheet: membentuk PDF satu jaminan, mencatat revisinya, dan
+ * mengunci estimasinya. Jawabannya berkas, bukan JSON.
+ */
+export function useFaceSheet(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: FaceSheetRequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/cfs`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/**
+ * Membuka layar PrintPLA_dtl: menerbitkan PLA koasuransi revisi CFS terakhir (bila belum) lalu
+ * mengembalikan daftarnya. Mutasi, bukan kueri, karena membukanya dapat menerbitkan nomor.
+ */
+export function usePLAList(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: PLARequest) =>
+      callAPI<PLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/daftar`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Menyimpan isian REMARKS PLA. */
+export function useSavePLANotes(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: PLARequest) =>
+      callAPI<PLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/catatan`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Print PLA (satu nomor) dan Print All PLA — PDF, atau ZIP bila lebih dari satu. */
+export function usePrintPLA(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: PLARequest) =>
+      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor). */
+export function useAddSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (content: SettlementRequest) =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Menghitung ulang nilai tampilan baris Adjustment tanpa menyimpan (SetNilaiResikoSendiri). */
+export function usePreviewSettlement(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: SettlementRequest) =>
+      callAPI<SettlementPreviewResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/hitung`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
 }

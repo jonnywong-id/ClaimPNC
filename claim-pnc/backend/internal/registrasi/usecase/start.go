@@ -128,6 +128,18 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		applyReport(&claim, isi)
 	}
 
+	// Objek, coverage, dan spreading diisi dari polis, seperti
+	// `Activity/CallActivityInputRegister-Act.xml` langkah 16–20 dan 41. Aturannya ada di
+	// registrasi.BuildInsuredItems; di sini hanya pengambilannya.
+	//
+	// Kegagalan membaca tabel polis MENGGAGALKAN pembukaan klaim, bukan diabaikan: klaim
+	// tanpa objek tampak seperti polis tanpa objek, dan petugas akan mengetiknya ulang.
+	source, err := l.items.Items(ctx, policy)
+	if err != nil {
+		return StartResult{}, fmt.Errorf("registrasi/usecase: membaca objek polis: %w", err)
+	}
+	claim.InsuredItem = registrasi.BuildInsuredItems(policy, claim.DateOfLoss, source)
+
 	recipients, err := l.assigner.Assign(ctx, firstStage, claim, by.Identity)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("registrasi/usecase: menentukan penerima tahap awal: %w", err)

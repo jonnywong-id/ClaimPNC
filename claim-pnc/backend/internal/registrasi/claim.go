@@ -62,6 +62,15 @@ const (
 	LineFire             LineOfBusiness = "006"
 )
 
+// IsNonMBU adalah When `IsNonMBU`: Group Panel 003, 004, 006, atau 009.
+func (l LineOfBusiness) IsNonMBU() bool {
+	switch l {
+	case LineMiscellaneous, LineMarineCargo, LineFire, "009":
+		return true
+	}
+	return false
+}
+
 // ProcessStatus adalah posisi klaim dalam alur kerja — `StatusWork` di sistem lama
 // (`ADR-0018`).
 type ProcessStatus string
@@ -78,6 +87,14 @@ const (
 // Yang disebut namanya di sini hanya kode yang benar-benar dipakai modul ini. Sisanya
 // tetap sah sebagai nilai; artinya dibaca dari master, bukan dari kode.
 type ClaimStatus string
+
+// ClaimStatusNames adalah nama sebagian kode Status Klaim (master V_STS_CLAIM), dipakai
+// penyimpanan memori. Penyimpanan SQL membaca masternya langsung.
+var ClaimStatusNames = map[ClaimStatus]string{
+	"1142": "Rejected Claim",
+	"1146": "View Polis",
+	"1147": "Register",
+}
 
 const (
 	// StatusRegistered ditetapkan saat klaim selesai didaftarkan.
@@ -126,12 +143,21 @@ type Policy struct {
 	// MBU, yang tidak dapat diturunkan dari Lini.
 	BusinessType string
 
-	CoverageStart         time.Time
-	CoverageEnd           time.Time
-	Declaration           bool
-	Currency              string
-	CreditGuarantee       bool
-	InsuredName           string
+	CoverageStart time.Time
+	CoverageEnd   time.Time
+	Declaration   bool
+
+	// Kind adalah TypeOfPolicy apa adanya. Nilai "2" adalah Open Policy, yang pada
+	// lini kargo mengubah asal spreading (lihat BuildInsuredItems).
+	Kind            string
+	Currency        string
+	CreditGuarantee bool
+	InsuredName     string
+
+	// QQName dan DeliveryAddress (DeliveryAddressList(1).ASMAddress) dipakai membentuk
+	// penerima klaim bawaan — lihat receiver.go.
+	QQName                string
+	DeliveryAddress       string
 	BranchCode            string
 	HasSpreadingAvailable bool
 
@@ -279,10 +305,19 @@ type InsuredItem struct {
 
 // Coverage adalah satu jaminan yang dipakai pada sebuah objek.
 type Coverage struct {
-	ID          string
+	ID string
+
+	// Name adalah CoverageNote polis — nama jaminan, disimpan ke COVERAGENAME.
+	Name        string
 	CauseOfLoss string
 	TSI         Money
 	Spreading   []Spreading
+
+	// Item adalah daftar item objek beserta estimasinya (tahap Input Estimasi).
+	Item []ObjectItem
+
+	// Settlement adalah AdjustmentList jaminan ini (tahap InputSurveyor) — lihat settlement.go.
+	Settlement []SettlementLine
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi
@@ -404,6 +439,9 @@ type Claim struct {
 
 	InsuredItem []InsuredItem
 
+	// Receiver adalah ClaimData.ReceiverClaim — penerima klaim (T_CLAIM_RECEIVER).
+	Receiver []Receiver
+
 	// PUCLStatus menyimpan `ClaimData.PUCLStatus.RCL_PUCL`. Nilai 2 mengarahkan klaim
 	// ke tahap RCL/PUCL (rule `IsPUCL`).
 	PUCLStatus int
@@ -421,8 +459,12 @@ type Claim struct {
 	// bukan cara menyimpannya.
 	RequestReturn bool
 
-	ProcessStatus          ProcessStatus
-	ClaimStatus            ClaimStatus
+	ProcessStatus ProcessStatus
+	ClaimStatus   ClaimStatus
+
+	// ClaimStatusName adalah nama ClaimStatus dari master V_STS_CLAIM — hanya dibaca,
+	// diisi penyimpanan.
+	ClaimStatusName        string
 	ClaimFlag              ClaimFlag
 	ProgressPositionStatus ProgressPositionStatus
 

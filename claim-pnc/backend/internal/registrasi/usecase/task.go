@@ -15,7 +15,7 @@ import (
 // antrean yang ia berwenang. Yang kedua belum menjadi pekerjaannya — ia baru menjadi
 // pekerjaannya setelah diambil.
 func (l *Service) Inbox(ctx context.Context, by Caller) ([]registrasi.Task, error) {
-	return l.task.Inbox(ctx, by.Identity, by.Workbasket)
+	return l.task.Inbox(ctx, by.Identity, by.Workbasket, l.flow.GroupStages(by.Roles))
 }
 
 // ClaimTask menjadikan pemanggil pemilik sebuah tugas Workbasket.
@@ -94,6 +94,12 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 		// Tahap Input Register punya jalannya sendiri karena ia membawa isian dan
 		// gerbang validasi. Menutupnya lewat jalur umum akan melewatkan keduanya.
 		return CompleteResult{}, fmt.Errorf("%w: tahap Input Register ditutup lewat SimpanRegister",
+			registrasi.ErrInvalidAction)
+	}
+	if claim.CurrentStage == registrasi.StageEstimateAdmin || claim.CurrentStage == registrasi.StageEstimateTravel {
+		// Sama halnya tahap Input Estimasi: ia membawa estimasi dan gerbangnya sendiri
+		// (CompleteEstimate).
+		return CompleteResult{}, fmt.Errorf("%w: tahap Input Estimasi ditutup lewat CompleteEstimate",
 			registrasi.ErrInvalidAction)
 	}
 

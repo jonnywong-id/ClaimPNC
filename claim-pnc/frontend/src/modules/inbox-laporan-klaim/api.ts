@@ -10,6 +10,7 @@ import type {
   ClaimReportOptionResponse,
   ClaimReportQuery,
   ClaimReportResponse,
+  PolicyLookupResponse,
 } from './types'
 
 const ROUTE = '/api/inbox/laporan-klaim'
@@ -139,6 +140,26 @@ export function useClaimReport(id: string) {
     queryFn: () =>
       callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, { token, portal }),
     enabled: token !== null && portal !== null && id !== '',
+  })
+}
+
+/**
+ * Pencarian polis saat isian Nomor Polis ditinggalkan.
+ *
+ * Mutation, bukan query: ia dipicu satu peristiwa di layar (seperti event `change` pada
+ * layar lama), dan hasilnya langsung disalin ke isian form — tidak ada yang perlu
+ * disimpan di cache.
+ */
+export function useLookupPolicy() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (number: string) =>
+      callAPI<PolicyLookupResponse>(`${ROUTE}/polis?nomor=${encodeURIComponent(number)}`, {
+        token,
+        portal,
+      }),
   })
 }
 

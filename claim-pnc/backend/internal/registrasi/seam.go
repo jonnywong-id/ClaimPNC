@@ -40,8 +40,9 @@ type TaskRepo interface {
 
 	// Inbox mengembalikan tugas yang layak muncul di layar seorang pengguna:
 	// tugas Worklist miliknya, ditambah tugas Workbasket yang belum bertuan pada
-	// antrean yang ia berwenang (`D-79`).
-	Inbox(ctx context.Context, operator string, workbasket []string) ([]Task, error)
+	// antrean yang ia berwenang (`D-79`), ditambah tugas Worklist terbuka pada tahap
+	// yang boleh dikerjakan grupnya (M_LOGIN_GROUP_PNC — lihat access.go).
+	Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]Task, error)
 }
 
 // PolicyRepo adalah seam ke snapshot polis.

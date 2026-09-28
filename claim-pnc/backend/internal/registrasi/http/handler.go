@@ -70,7 +70,13 @@ func (h *Handler) callerOf(w http.ResponseWriter, r *http.Request) (usecase.Call
 		})
 		return usecase.Caller{}, false
 	}
-	return p, true
+	// Peran pemanggil dari POOLDATA.M_LOGIN_GROUP_PNC, dibaca sekali per permintaan.
+	resolved, err := h.service.ResolveCaller(r.Context(), p)
+	if err != nil {
+		h.failure(w, r, err)
+		return usecase.Caller{}, false
+	}
+	return resolved, true
 }
 
 func (h *Handler) readBody(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -197,6 +203,7 @@ func (h *Handler) ViewClaim(w http.ResponseWriter, r *http.Request, claimID stri
 	response := ClaimResponse{Claim: claimDTO(summary.Claim), Path: summary.Path}
 	if summary.Task != nil {
 		t := taskDTO(*summary.Task, h.service.Flow())
+		t.Workable = h.service.CanWork(*summary.Task, caller)
 		response.Task = &t
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
@@ -398,6 +405,7 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		for _, c := range o.Coverage {
 			cov := usecase.CoverageInput{
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSI:         registrasi.Money(c.TSICents),
 				Spreading:   make([]usecase.SpreadingInput, 0, len(c.Spreading)),
@@ -485,9 +493,12 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSICents:    int64(c.TSI),
 				Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
+				Item:        itemDTO(c.Item),
+				Adjustment:  settlementDTO(c.Settlement),
 			}
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
@@ -512,13 +523,17 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			Line:            string(k.Policy.Line),
 			LineName:        LineName(k.Policy.Line),
 			BusinessType:    k.Policy.BusinessType,
+			BusinessCode:    k.Policy.BusinessCode,
 			CoverageStart:   formatDate(k.Policy.CoverageStart),
 			CoverageEnd:     formatDate(k.Policy.CoverageEnd),
 			Currency:        k.Policy.Currency,
 			InsuredName:     k.Policy.InsuredName,
 			Declaration:     k.Policy.Declaration,
 			CreditGuarantee: k.Policy.CreditGuarantee,
+			CoinsType:       k.Policy.TypeOfCoins,
+			CoinsRole:       k.Policy.Coinsurance.Role,
 		},
+		Receiver:     receiverDTO(k.Receiver),
 		DateOfLoss:   formatDate(k.DateOfLoss),
 		ReportDate:   formatDate(k.ReportDate),
 		DateReceived: formatDate(k.DateReceived),
@@ -553,6 +568,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		ComplianceTransfer:     k.ComplianceTransfer,
 		ProcessStatus:          string(k.ProcessStatus),
 		ClaimStatus:            string(k.ClaimStatus),
+		ClaimStatusName:        k.ClaimStatusName,
 		ClaimFlag:              string(k.ClaimFlag),
 		ProgressPositionStatus: string(k.ProgressPositionStatus),
 		CurrentStage:           k.CurrentStage,
@@ -579,4 +595,12 @@ func LineName(l registrasi.LineOfBusiness) string {
 	default:
 		return string(l)
 	}
+}
+
+func receiverDTO(receivers []registrasi.Receiver) []ReceiverDTO {
+	out := make([]ReceiverDTO, 0, len(receivers))
+	for _, r := range receivers {
+		out = append(out, ReceiverDTO{ID: r.ID, Name: r.Name, Address: r.Address, BankName: r.BankName, AccountNo: r.AccountNo})
+	}
+	return out
 }

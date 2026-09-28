@@ -7,6 +7,7 @@
 //   - `SELECT *` dilarang. Kolom disebut namanya.
 //   - Tidak ada `DELETE` atas data bernilai bisnis (`ADR-0012`). Baris yang tidak lagi
 //     terpakai DITANDAI, tidak dihapus.
+//
 // # Satu jebakan driver yang sudah menggigit DUA kali
 //
 // JANGAN menulis pasangan kutip yang MEMBENTANG ANTAR-BARIS di dalam komentar SQL —

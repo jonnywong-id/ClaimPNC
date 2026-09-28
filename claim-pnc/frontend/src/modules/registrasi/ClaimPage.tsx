@@ -27,7 +27,9 @@ import {
   violationsFrom,
   messagesByField,
 } from './api'
+import { EstimateForm } from './EstimateForm'
 import { StagePath } from './StagePath'
+import { SurveyorForm } from './SurveyorForm'
 import {
   AreaLevel,
   COUNTRY_INDONESIA,
@@ -42,6 +44,15 @@ import {
 
 /** Pengenal tahap Input Register, satu-satunya tahap yang isiannya dimiliki modul ini. */
 const TAHAP_INPUT_REGISTER = 'input-register'
+
+/** Tahap Input Estimasi (Non-MBU dan Travel), yang isiannya dimiliki EstimateForm. */
+const TAHAP_INPUT_ESTIMASI = ['estimasi-admin', 'estimasi-travel']
+
+/**
+ * Tahap yang menerima klaim dari Kirim PIC Teknik — Choose Surveyor (Non-MBU) dan Send To
+ * PIC Teknik (Travel). Keduanya layar InputSurveyor, yang dimiliki SurveyorForm.
+ */
+const TAHAP_INPUT_SURVEYOR = ['pilih-surveyor', 'kirim-pic-teknik']
 
 /**
  * Layar kerja satu klaim.
@@ -70,6 +81,8 @@ export function ClaimPage() {
 
   const content = klaim.data
   const atInputRegister = content.klaim.tahap_kini === TAHAP_INPUT_REGISTER
+  const atInputEstimate = TAHAP_INPUT_ESTIMASI.includes(content.klaim.tahap_kini)
+  const atInputSurveyor = TAHAP_INPUT_SURVEYOR.includes(content.klaim.tahap_kini)
 
   return (
     <Frame>
@@ -87,7 +100,15 @@ export function ClaimPage() {
         </p>
       )}
 
-      {content.tugas && !atInputRegister && <StageActions tugas={content.tugas} />}
+      {content.tugas && !atInputRegister && !atInputEstimate && !atInputSurveyor && (
+        <StageActions tugas={content.tugas} />
+      )}
+      {content.tugas && atInputSurveyor && (
+        <SurveyorForm key={content.tugas.id} klaim={content.klaim} tugas={content.tugas} />
+      )}
+      {content.tugas && atInputEstimate && (
+        <EstimateForm key={content.tugas.id} klaim={content.klaim} tugas={content.tugas} />
+      )}
       {content.tugas && atInputRegister && <FormRegister klaim={content.klaim} tugas={content.tugas} />}
 
       {!content.tugas && content.klaim.tahap_kini !== '' && (
@@ -231,6 +252,7 @@ type SpreadingInput = {
 
 type CoverageInput = {
   id: string
+  nama: string
   penyebab_kerugian: string
   tsi: string
   spreading: SpreadingInput[]
@@ -754,7 +776,7 @@ function InsuredItemEditor({
       <div className="mt-3 flex gap-3">
         <button
           type="button"
-          onClick={() => coverage.append({ id: '', penyebab_kerugian: '', tsi: '', spreading: [] })}
+          onClick={() => coverage.append({ id: '', nama: '', penyebab_kerugian: '', tsi: '', spreading: [] })}
           className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
         >
           Tambah coverage
@@ -789,8 +811,9 @@ function CoverageEditor({
 
   return (
     <div className="rounded border border-slate-200 bg-white p-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <FormField id={`${nama}-id`} label="Kode coverage" {...register(`${nama}.id`)} />
+        <FormField id={`${nama}-nama`} label="Nama coverage" {...register(`${nama}.nama`)} />
         <FormField id={`${nama}-sebab`} label="Penyebab kerugian" {...register(`${nama}.penyebab_kerugian`)} />
         <FormField id={`${nama}-tsi`} label="TSI" inputMode="decimal" {...register(`${nama}.tsi`)} />
       </div>
@@ -951,6 +974,7 @@ function fromClaim(klaim: Claim): RegisterFormValues {
       lokasi: o.lokasi,
       coverage: o.coverage.map((c) => ({
         id: c.id,
+        nama: c.nama ?? '',
         penyebab_kerugian: c.penyebab_kerugian,
         tsi: centsToRupiah(c.tsi_sen),
         spreading: c.spreading.map((s) => ({
@@ -1001,6 +1025,7 @@ function toRequest(content: RegisterFormValues, taskID: string, kembali: boolean
       lokasi: o.lokasi,
       coverage: (o.coverage ?? []).map((c) => ({
         id: c.id,
+        nama: c.nama,
         penyebab_kerugian: c.penyebab_kerugian,
         tsi_sen: rupiahToCents(c.tsi) || 0,
         spreading: (c.spreading ?? []).map((s) => ({

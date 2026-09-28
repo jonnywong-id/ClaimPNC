@@ -11,6 +11,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/plapdf"
 	"claim-pnc/internal/registrasi/repo/memory"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -51,6 +53,8 @@ type environment struct {
 	parameter *memory.Parameter
 	link      *memory.ClaimReportLink
 	clock     *clock.Fixed
+	pla       *memory.PLA
+	groups    memory.Groups
 	caller    usecase.Caller
 }
 
@@ -61,6 +65,9 @@ func setup(t *testing.T, roles ...string) environment {
 	store := memory.NewStore()
 	parameter := memory.NewParameter()
 	link := memory.NewClaimReportLink()
+	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
+	pla := memory.NewPLA()
+	groups := memory.Groups{}
 
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
@@ -74,6 +81,15 @@ func setup(t *testing.T, roles ...string) environment {
 		AuditRecorder:      store,
 		ClaimReportLink:    link,
 		AreaDirectory:      memory.NewAreaDirectory(),
+		PolicyItems:        policyItems,
+		CurrencyDirectory:  memory.CurrencyDirectory{},
+		ItemOptions:        policyItems,
+		ClaimRecords:       memory.SampleClaimRecords(),
+		FaceSheet:          memory.NewFaceSheet(),
+		FaceSheetRenderer:  facesheetpdf.Renderer{},
+		PLA:                pla,
+		PLARenderer:        plapdf.Renderer{},
+		Groups:             groups,
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,
@@ -86,6 +102,8 @@ func setup(t *testing.T, roles ...string) environment {
 		parameter: parameter,
 		link:      link,
 		clock:     clock,
+		pla:       pla,
+		groups:    groups,
 		caller: usecase.Caller{
 			Identity:   testOperator,
 			Name:       "Petugas Uji",
@@ -448,7 +466,9 @@ func (failSend) Send(context.Context, registrasi.Notification) error { return er
 func TestFailedSaveLeavesNoRow(t *testing.T) {
 	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
+	policyItems := memory.NewPolicyItems(nil)
 
+	groups := memory.Groups{}
 	service, err := usecase.NewService(usecase.Options{
 		ClaimRepo:          store,
 		TaskRepo:           store.TaskRepo(),
@@ -461,6 +481,15 @@ func TestFailedSaveLeavesNoRow(t *testing.T) {
 		AuditRecorder:      store,
 		ClaimReportLink:    memory.NewClaimReportLink(),
 		AreaDirectory:      memory.NewAreaDirectory(),
+		PolicyItems:        policyItems,
+		CurrencyDirectory:  memory.CurrencyDirectory{},
+		ItemOptions:        policyItems,
+		ClaimRecords:       memory.SampleClaimRecords(),
+		FaceSheet:          memory.NewFaceSheet(),
+		FaceSheetRenderer:  facesheetpdf.Renderer{},
+		PLA:                memory.NewPLA(),
+		PLARenderer:        plapdf.Renderer{},
+		Groups:             groups,
 		IDGenerator:        memory.IDGenerator{},
 		UnitOfWork:         store,
 		Clock:              clock,

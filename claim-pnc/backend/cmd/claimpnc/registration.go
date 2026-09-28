@@ -8,6 +8,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/plapdf"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
 	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
@@ -46,8 +48,10 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 	clock := clock.System{}
 
 	options := registrasiusecase.Options{
-		IDGenerator: idGenerator,
-		Clock:       clock,
+		IDGenerator:       idGenerator,
+		Clock:             clock,
+		FaceSheetRenderer: facesheetpdf.Renderer{},
+		PLARenderer:       plapdf.Renderer{},
 	}
 
 	if db != nil {
@@ -64,6 +68,13 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.Assigner = registrasisql.NewAssigner(db)
 		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
 		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
+		options.PolicyItems = registrasisql.NewPolicyItems(db)
+		options.CurrencyDirectory = registrasisql.NewCurrencyDirectory(db)
+		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
+		options.ClaimRecords = registrasisql.NewClaimRecords(db)
+		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
+		options.PLA = registrasisql.NewPLAStore(db)
+		options.Groups = registrasisql.NewGroupStore(db)
 
 		logger.Warn("modul registrasi berjalan, dengan dua sumber yang belum lengkap",
 			slog.String("penerima_kerugian_besar",
@@ -88,6 +99,13 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.Assigner = registrasimemory.NewAssigner(registrasimemory.SampleTeams())
 		options.ClaimReportLink = registrasimemory.NewClaimReportLink()
 		options.AreaDirectory = registrasimemory.NewAreaDirectory()
+		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
+		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
+		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
+		options.ClaimRecords = registrasimemory.SampleClaimRecords()
+		options.FaceSheet = registrasimemory.NewFaceSheet()
+		options.PLA = registrasimemory.NewPLA()
+		options.Groups = registrasimemory.Groups{}
 
 		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
 			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),

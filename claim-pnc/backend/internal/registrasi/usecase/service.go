@@ -36,20 +36,29 @@ type Caller struct {
 type Service struct {
 	flow registrasi.Definition
 
-	claim      registrasi.ClaimRepo
-	task       registrasi.TaskRepo
-	policy     registrasi.PolicyRepo
-	number     registrasi.NumberIssuer
-	parameter  registrasi.Parameter
-	rate       registrasi.ExchangeRateSource
-	assigner   registrasi.Assigner
-	notifier   registrasi.Notifier
-	audit      registrasi.AuditRecorder
-	reportLink registrasi.ClaimReportLink
-	area       registrasi.AreaDirectory
-	id         registrasi.IDGenerator
-	unit       registrasi.UnitOfWork
-	clock      clock.Clock
+	claim       registrasi.ClaimRepo
+	task        registrasi.TaskRepo
+	policy      registrasi.PolicyRepo
+	number      registrasi.NumberIssuer
+	parameter   registrasi.Parameter
+	rate        registrasi.ExchangeRateSource
+	assigner    registrasi.Assigner
+	notifier    registrasi.Notifier
+	audit       registrasi.AuditRecorder
+	reportLink  registrasi.ClaimReportLink
+	area        registrasi.AreaDirectory
+	items       registrasi.PolicyItemSource
+	currency    registrasi.CurrencyDirectory
+	options     registrasi.ItemOptionSource
+	records     registrasi.ClaimRecordSource
+	faceSheet   registrasi.FaceSheetSource
+	renderer    registrasi.FaceSheetRenderer
+	pla         registrasi.PLASource
+	plaRenderer registrasi.PLARenderer
+	groups      registrasi.GroupSource
+	id          registrasi.IDGenerator
+	unit        registrasi.UnitOfWork
+	clock       clock.Clock
 
 	validateOnReturn bool
 }
@@ -67,9 +76,36 @@ type Options struct {
 	AuditRecorder      registrasi.AuditRecorder
 	ClaimReportLink    registrasi.ClaimReportLink
 	AreaDirectory      registrasi.AreaDirectory
-	IDGenerator        registrasi.IDGenerator
-	UnitOfWork         registrasi.UnitOfWork
-	Clock              clock.Clock
+
+	// PolicyItems membaca objek, coverage, dan spreading polis untuk klaim yang baru
+	// dibuka (CallActivityInputRegister).
+	PolicyItems registrasi.PolicyItemSource
+
+	// CurrencyDirectory membaca pilihan Mata Uang tahap Input Estimasi.
+	CurrencyDirectory registrasi.CurrencyDirectory
+
+	// ItemOptions membaca pilihan Objek item estimasi dari polis.
+	ItemOptions registrasi.ItemOptionSource
+
+	// ClaimRecords membaca tab Survey, Unggah Dokumen, dan Progress Claim & Komunikasi.
+	ClaimRecords registrasi.ClaimRecordSource
+
+	// FaceSheet membaca data pendamping Claim Face Sheet dan menyimpan revisinya;
+	// FaceSheetRenderer membentuk dokumennya.
+	FaceSheet         registrasi.FaceSheetSource
+	FaceSheetRenderer registrasi.FaceSheetRenderer
+
+	// PLA menerbitkan dan membaca PLA koasuransi; PLARenderer membentuk dokumennya.
+	PLA         registrasi.PLASource
+	PLARenderer registrasi.PLARenderer
+
+	// Groups membaca keanggotaan grup pengguna (POOLDATA.M_LOGIN_GROUP_PNC) — penentu
+	// peran dan tahap yang boleh dikerjakannya (access.go).
+	Groups registrasi.GroupSource
+
+	IDGenerator registrasi.IDGenerator
+	UnitOfWork  registrasi.UnitOfWork
+	Clock       clock.Clock
 
 	// ValidateOnReturn menentukan apakah tombol Back ikut melewati gerbang validasi.
 	//
@@ -113,6 +149,15 @@ func NewService(o Options) (*Service, error) {
 	check("PerekamAudit", o.AuditRecorder != nil)
 	check("TautanLaporan", o.ClaimReportLink != nil)
 	check("DirektoriWilayah", o.AreaDirectory != nil)
+	check("ObjekPolis", o.PolicyItems != nil)
+	check("DirektoriMataUang", o.CurrencyDirectory != nil)
+	check("PilihanItem", o.ItemOptions != nil)
+	check("CatatanKlaim", o.ClaimRecords != nil)
+	check("ClaimFaceSheet", o.FaceSheet != nil)
+	check("PembentukFaceSheet", o.FaceSheetRenderer != nil)
+	check("PLA", o.PLA != nil)
+	check("PembentukPLA", o.PLARenderer != nil)
+	check("GrupPengguna", o.Groups != nil)
 	check("PembuatID", o.IDGenerator != nil)
 	check("UnitKerja", o.UnitOfWork != nil)
 	check("Jam", o.Clock != nil)
@@ -134,6 +179,15 @@ func NewService(o Options) (*Service, error) {
 		audit:            o.AuditRecorder,
 		reportLink:       o.ClaimReportLink,
 		area:             o.AreaDirectory,
+		items:            o.PolicyItems,
+		currency:         o.CurrencyDirectory,
+		options:          o.ItemOptions,
+		records:          o.ClaimRecords,
+		faceSheet:        o.FaceSheet,
+		renderer:         o.FaceSheetRenderer,
+		pla:              o.PLA,
+		plaRenderer:      o.PLARenderer,
+		groups:           o.Groups,
 		id:               o.IDGenerator,
 		unit:             o.UnitOfWork,
 		clock:            o.Clock,
@@ -249,3 +303,25 @@ type loadContext struct {
 	// action tidak diperiksa.
 	action string
 }
+
+// ResolveCaller melengkapi pemanggil dengan perannya dari POOLDATA.M_LOGIN_GROUP_PNC.
+// Transport memanggilnya sekali per permintaan, sebelum layanan mana pun dipakai.
+func (l *Service) ResolveCaller(ctx context.Context, by Caller) (Caller, error) {
+	groups, err := l.groups.GroupsOf(ctx, by.Identity)
+	if err != nil {
+		return Caller{}, err
+	}
+	by.Roles = registrasi.RolesOfGroups(append(append([]string{}, by.Roles...), groups...))
+	return by, nil
+}
+
+// canWork menyatakan pemanggil boleh mengerjakan tugas: pemiliknya, tugas belum bertuan,
+// atau ia memegang grup tahap itu (`registrasi.CanWork`).
+func (l *Service) canWork(task registrasi.Task, by Caller) bool {
+	stage, _ := l.flow.Stage(task.Stage)
+	return registrasi.CanWork(task, stage, by.Identity, by.Roles)
+}
+
+// CanWork adalah canWork bagi transport — layar memakainya untuk mengunci isian tugas yang
+// tidak boleh dikerjakan pemanggil.
+func (l *Service) CanWork(task registrasi.Task, by Caller) bool { return l.canWork(task, by) }

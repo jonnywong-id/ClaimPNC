@@ -44,7 +44,10 @@ func (r *ClaimStore) Save(ctx context.Context, k registrasi.Claim) error {
 	if err := r.saveHeader(ctx, exec, k); err != nil {
 		return err
 	}
-	return r.saveTree(ctx, exec, k)
+	if err := r.saveTree(ctx, exec, k); err != nil {
+		return err
+	}
+	return saveReceivers(ctx, exec, k.ID, k.Receiver)
 }
 
 func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi.Claim) error {
@@ -153,17 +156,25 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 			// domain sudah memilikinya di tangan.
 			if err := upsert(ctx, exec,
 				"coverage_perbarui", []any{
-					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq,
+					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, emptyTextAsNil(c.Name),
 					k.ID, itemSeq, coverageSeq},
 				"coverage_sisip", []any{
 					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, now,
-					k.ID, itemSeq, coverageSeq},
+					k.ID, itemSeq, coverageSeq, emptyTextAsNil(c.Name)},
 			); err != nil {
 				return fmt.Errorf("registrasi/sqlstore: menyimpan coverage %d.%d: %w", itemSeq, coverageSeq, err)
 			}
 
 			if err := r.saveSpreading(ctx, exec, k.ID, o.ID, coverageSeq, c.Spreading); err != nil {
 				return fmt.Errorf("registrasi/sqlstore: menyimpan spreading %d.%d: %w",
+					itemSeq, coverageSeq, err)
+			}
+			if err := r.saveItems(ctx, exec, k, o.ID, coverageSeq, c.Item, now); err != nil {
+				return fmt.Errorf("registrasi/sqlstore: menyimpan estimasi %d.%d: %w",
+					itemSeq, coverageSeq, err)
+			}
+			if err := r.saveSettlement(ctx, exec, k.ID, o.ID, coverageSeq, c.Settlement); err != nil {
+				return fmt.Errorf("registrasi/sqlstore: menyimpan adjustment %d.%d: %w",
 					itemSeq, coverageSeq, err)
 			}
 		}
@@ -398,6 +409,17 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	if err := r.loadTree(ctx, exec, &k); err != nil {
 		return registrasi.Claim{}, err
 	}
+
+	// Nama Status Klaim dari master V_STS_CLAIM, untuk ditampilkan seperti layar Pega
+	// ("Register", bukan 1147). Kode yang tidak ada di master dibiarkan tanpa nama.
+	if code := strings.TrimSpace(string(k.ClaimStatus)); code != "" {
+		var name sql.NullString
+		err := exec.QueryRowContext(ctx, loadQuery("status_nama"), code).Scan(&name)
+		if err != nil && err != sql.ErrNoRows {
+			return registrasi.Claim{}, fmt.Errorf("registrasi/sqlstore: membaca nama status klaim: %w", err)
+		}
+		k.ClaimStatusName = strings.TrimSpace(name.String)
+	}
 	return k, nil
 }
 
@@ -528,9 +550,10 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 		var (
 			itemSeq, seq      int
 			coverageID, cause sql.NullString
+			coverageName      sql.NullString
 			tsi               sql.NullInt64
 		)
-		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi); err != nil {
+		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris coverage: %w", err)
 		}
 		i, ok := itemIndex[itemSeq]
@@ -543,6 +566,7 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 		coverageIndex[[2]int{itemSeq, seq}] = len(k.InsuredItem[i].Coverage)
 		k.InsuredItem[i].Coverage = append(k.InsuredItem[i].Coverage, registrasi.Coverage{
 			ID:          coverageID.String,
+			Name:        coverageName.String,
 			CauseOfLoss: cause.String,
 			TSI:         registrasi.Money(tsi.Int64),
 		})
@@ -600,6 +624,38 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	if err := spreadingRow.Err(); err != nil {
 		return fmt.Errorf("registrasi/sqlstore: menelusuri spreading: %w", err)
 	}
+	_ = spreadingRow.Close()
+
+	coverageAt := func(objectID, coverageID string) *registrasi.Coverage {
+		itemSeq, ok := objectSeqByID[objectID]
+		if !ok {
+			return nil
+		}
+		coverageSeq, err := strconv.Atoi(coverageID)
+		if err != nil {
+			return nil
+		}
+		i, ok := itemIndex[itemSeq]
+		if !ok {
+			return nil
+		}
+		j, ok := coverageIndex[[2]int{itemSeq, coverageSeq}]
+		if !ok {
+			return nil
+		}
+		return &k.InsuredItem[i].Coverage[j]
+	}
+	if err := loadItems(ctx, exec, k, coverageAt); err != nil {
+		return err
+	}
+	if err := loadSettlement(ctx, exec, k.ID, coverageAt); err != nil {
+		return err
+	}
+	receivers, err := loadReceivers(ctx, exec, k.ID)
+	if err != nil {
+		return err
+	}
+	k.Receiver = receivers
 	return nil
 }
 

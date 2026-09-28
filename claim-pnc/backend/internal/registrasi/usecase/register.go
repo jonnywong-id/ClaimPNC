@@ -20,6 +20,7 @@ type SpreadingInput struct {
 // CoverageInput adalah satu jaminan pada sebuah objek.
 type CoverageInput struct {
 	ID          string
+	Name        string
 	CauseOfLoss string
 	TSI         registrasi.Money
 	Spreading   []SpreadingInput
@@ -111,7 +112,7 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 	if err != nil {
 		return RegisterResult{}, err
 	}
-	if task.Owned() && task.Owner != by.Identity {
+	if !l.canWork(task, by) {
 		return RegisterResult{}, registrasi.ErrNotTaskOwner
 	}
 
@@ -140,6 +141,14 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		recipients  []string
 	)
 	if !p.Return {
+		// InputRegister_act: daftar penerima klaim dikosongkan lalu diisi satu penerima
+		// bawaan dari polis (QQName dan alamat kirim pertama) — lihat DefaultReceiver.
+		policy, err := l.policy.Get(ctx, claim.Policy.Number)
+		if err != nil {
+			return RegisterResult{}, fmt.Errorf("registrasi/usecase: membaca polis untuk penerima klaim: %w", err)
+		}
+		claim.Receiver = []registrasi.Receiver{registrasi.DefaultReceiver(policy)}
+
 		rate, err := l.rate.Find(ctx, claim.Currency, claim.DateOfLoss)
 		if err != nil {
 			return RegisterResult{}, err
@@ -362,17 +371,26 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.ComplianceTransfer = p.ComplianceTransfer
 	k.RequestReturn = p.Return
 
+	// Item dan estimasi milik tahap Input Estimasi, dan adjustment milik tahap InputSurveyor;
+	// layar Input Register tidak membawa keduanya.
+	// Coverage yang tetap sama (objek dan kode coverage sama pada posisi yang sama)
+	// mempertahankannya, supaya kembali ke Input Register tidak menghapus estimasi.
+	previous := k.InsuredItem
+
 	k.InsuredItem = make([]registrasi.InsuredItem, 0, len(p.InsuredItem))
-	for _, o := range p.InsuredItem {
+	for i, o := range p.InsuredItem {
 		insuredItem := registrasi.InsuredItem{
 			ID:       o.ID,
 			Name:     o.Name,
 			Location: o.Location,
 			Coverage: make([]registrasi.Coverage, 0, len(o.Coverage)),
 		}
-		for _, c := range o.Coverage {
+		for j, c := range o.Coverage {
 			coverage := registrasi.Coverage{
+				Item:        keptItems(previous, i, j, o.ID, c.ID),
+				Settlement:  keptSettlement(previous, i, j, o.ID, c.ID),
 				ID:          c.ID,
+				Name:        c.Name,
 				CauseOfLoss: c.CauseOfLoss,
 				TSI:         c.TSI,
 				Spreading:   make([]registrasi.Spreading, 0, len(c.Spreading)),
@@ -399,4 +417,26 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 
 	k.UpdatedBy = by.Identity
 	k.UpdatedAt = now
+}
+
+// keptItems mengembalikan item coverage sebelumnya bila objek dan coverage-nya sama.
+func keptItems(previous []registrasi.InsuredItem, i, j int, objectID, coverageID string) []registrasi.ObjectItem {
+	if i >= len(previous) || previous[i].ID != objectID || j >= len(previous[i].Coverage) {
+		return nil
+	}
+	if previous[i].Coverage[j].ID != coverageID {
+		return nil
+	}
+	return previous[i].Coverage[j].Item
+}
+
+// keptSettlement mengembalikan adjustment coverage sebelumnya dengan aturan yang sama.
+func keptSettlement(previous []registrasi.InsuredItem, i, j int, objectID, coverageID string) []registrasi.SettlementLine {
+	if i >= len(previous) || previous[i].ID != objectID || j >= len(previous[i].Coverage) {
+		return nil
+	}
+	if previous[i].Coverage[j].ID != coverageID {
+		return nil
+	}
+	return previous[i].Coverage[j].Settlement
 }

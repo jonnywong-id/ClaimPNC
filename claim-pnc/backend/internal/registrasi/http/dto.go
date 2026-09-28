@@ -37,6 +37,11 @@ type TaskDTO struct {
 	// ExitAction adalah nama tindakan yang menutup tahap ini.
 	ExitAction string `json:"tindakan_keluar"`
 
+	// Workable menyatakan pemanggil boleh mengerjakan tugas ini: pemiliknya, atau pemegang
+	// grup tahapnya di M_LOGIN_GROUP_PNC. Hanya terisi pada respons satu klaim; layar
+	// memakainya untuk mengunci isian — kewenangannya tetap diperiksa server.
+	Workable bool `json:"dapat_dikerjakan"`
+
 	CreatedAt string `json:"dibuat_pada"`
 }
 
@@ -58,10 +63,21 @@ type Percent int64
 
 // CoverageDTO adalah satu jaminan pada sebuah objek.
 type CoverageDTO struct {
-	ID          string         `json:"id"`
+	ID string `json:"id"`
+
+	// Name adalah nama jaminan dari polis. Layar mengirimnya kembali apa adanya supaya
+	// tidak hilang saat klaim disimpan.
+	Name        string         `json:"nama"`
 	CauseOfLoss string         `json:"penyebab_kerugian"`
 	TSICents    int64          `json:"tsi_sen"`
 	Spreading   []SpreadingDTO `json:"spreading"`
+
+	// Item adalah item objek beserta estimasinya — hanya dikirim server. Permintaan
+	// Input Register tidak membawanya; estimasi diisi lewat EstimateRequest.
+	Item []ObjectItemDTO `json:"item,omitempty"`
+
+	// Adjustment adalah AdjustmentList jaminan ini — hanya dikirim server.
+	Adjustment []SettlementDTO `json:"adjustment,omitempty"`
 }
 
 // InsuredItemDTO adalah satu objek pertanggungan.
@@ -88,12 +104,27 @@ type PolicyDTO struct {
 	Line            string `json:"lini"`
 	LineName        string `json:"nama_lini"`
 	BusinessType    string `json:"jenis_bisnis"`
+	BusinessCode    string `json:"kode_bisnis"` // Quotation.BusinessCode — When IsAneka (10140)
 	CoverageStart   string `json:"mulai_pertanggungan"`
 	CoverageEnd     string `json:"akhir_pertanggungan"`
 	Currency        string `json:"mata_uang"`
 	InsuredName     string `json:"nama_tertanggung"`
 	Declaration     bool   `json:"deklarasi"`
 	CreditGuarantee bool   `json:"penjamin_kredit"`
+
+	// CoinsType adalah TYPEOFCOINS (0 tanpa koasuransi, 1 member, 2 leader, F fac in) dan
+	// CoinsRole LEADER_MEMBER. Layar memakainya untuk kondisi IsNoCoins tombol Print PLA.
+	CoinsType string `json:"jenis_koasuransi"`
+	CoinsRole string `json:"peran_koasuransi"`
+}
+
+// ReceiverDTO adalah satu penerima klaim — kolom T_CLAIM_RECEIVER.
+type ReceiverDTO struct {
+	ID        string `json:"id"`
+	Name      string `json:"nama"`
+	Address   string `json:"alamat"`
+	BankName  string `json:"nama_bank"`
+	AccountNo string `json:"nomor_rekening"`
 }
 
 // AreaDTO adalah wilayah kejadian — bagian bawah layar Input Register.
@@ -154,6 +185,9 @@ type ClaimDTO struct {
 
 	InsuredItem []InsuredItemDTO `json:"objek"`
 
+	// Receiver adalah penerima klaim (ClaimData.ReceiverClaim) — tab Penerima Klaim.
+	Receiver []ReceiverDTO `json:"penerima_klaim"`
+
 	PUCLStatus         int  `json:"status_pucl"`
 	ComplianceTransfer bool `json:"transfer_compliance"`
 
@@ -162,6 +196,7 @@ type ClaimDTO struct {
 	// sistem lama adalah namanya — bukan jumlahnya.
 	ProcessStatus          string `json:"status_proses"`
 	ClaimStatus            string `json:"status_klaim"`
+	ClaimStatusName        string `json:"status_klaim_nama"`
 	ClaimFlag              string `json:"flag_klaim"`
 	ProgressPositionStatus string `json:"status_posisi_progres"`
 

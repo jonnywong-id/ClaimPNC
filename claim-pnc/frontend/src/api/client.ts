@@ -348,15 +348,22 @@ export async function unduhBerkas(
   path: string,
   options: RequestOptions = {},
 ): Promise<DownloadedFile> {
-  const { token, portal } = options
+  const { metode = 'GET', body, token, portal } = options
 
   const header: Record<string, string> = {}
   if (token) header['Authorization'] = `Bearer ${token}`
   if (portal) header[HEADER_PORTAL] = portal
+  // Sebagian unduhan adalah tindakan (mis. Claim Face Sheet mencatat revisi), sehingga
+  // metode dan badan JSON ikut dibawa; bawaannya tetap GET tanpa badan.
+  if (body !== undefined) header['Content-Type'] = 'application/json'
 
   let response: Response
   try {
-    response = await fetch(path, { method: 'GET', headers: header })
+    response = await fetch(path, {
+      method: metode,
+      headers: header,
+      body: body === undefined ? null : JSON.stringify(body),
+    })
   } catch {
     throw new NetworkError()
   }

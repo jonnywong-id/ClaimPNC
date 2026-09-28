@@ -12,8 +12,8 @@ var (
 
 	// ErrUnknownAreaLevel menolak tingkat wilayah di luar kelima tingkat daftar pilihan.
 	ErrUnknownAreaLevel = errors.New("registrasi: tingkat wilayah tidak dikenal")
-	ErrUnknownNode  = errors.New("registrasi: simpul alur tidak dikenal")
-	ErrFlowLoop     = errors.New("registrasi: keputusan alur berputar tanpa ujung")
+	ErrUnknownNode      = errors.New("registrasi: simpul alur tidak dikenal")
+	ErrFlowLoop         = errors.New("registrasi: keputusan alur berputar tanpa ujung")
 )
 
 // Galat yang dikembalikan seam penyimpanan.
@@ -85,7 +85,15 @@ const (
 	ViolationSpreadingTotalNot100    ViolationCode = "total_spreading_bukan_100"
 	ViolationFacOfferIncomplete      ViolationCode = "fac_offer_tidak_lengkap"
 	ViolationEstimateExceedsTSI      ViolationCode = "estimasi_melebihi_tsi"
+	ViolationEstimateMissing         ViolationCode = "estimasi_kosong"
 	ViolationReporterStatusEmpty     ViolationCode = "status_pelapor_kosong"
+	ViolationFaceSheetMissing        ViolationCode = "belum_claim_face_sheet"
+	ViolationFaceSheetNothingNew     ViolationCode = "tidak_ada_estimasi_baru"
+	ViolationPLANeedsFaceSheet       ViolationCode = "pla_belum_cfs"
+	ViolationPLANoCoins              ViolationCode = "pla_tanpa_koasuransi"
+	ViolationPLANotLeader            ViolationCode = "pla_bukan_leader"
+	ViolationPLANoReserve            ViolationCode = "pla_tanpa_reserve"
+	ViolationSendNeedsFaceSheet      ViolationCode = "kirim_pic_belum_cfs"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta field yang menyebabkannya.

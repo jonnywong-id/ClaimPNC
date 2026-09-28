@@ -872,3 +872,21 @@ SELECT CLAIMID, NOPOLIS, QQNAME, DATEOFLOSS, REPORTDATE, REPORTERNAME, NO_HP,
        LOCATION, KRONOLOGI, BRANCHCODE, SUBJECTEMAIL, CLAIMNO
   FROM POOLDATA.T_CLAIM_PNC
  WHERE 1 = 0
+
+-- name: claim_report_policy_find
+--
+-- Data polis pengisi form Input Receive Document, dibaca saat Nomor Polis diisi.
+-- Disalin dari RDB List/BroswsePolisByPolicyNo-SQL.xml, dengan dua perbedaan:
+--
+--   1. Nilai polis lewat parameter binding, bukan perangkaian teks (bagian 4.3
+--      08-TECHNICAL-STRATEGY).
+--   2. Versi terakhir dipilih dengan ORDER BY dan FETCH FIRST 1, bukan subkueri MAX.
+--      Hasilnya sama; bila dua baris berbagi PRODKE terbesar, Pega mengambil baris
+--      pertama hasil kueri, dan di sini pun demikian.
+--
+-- Hanya kolom yang dipakai form yang dibaca.
+SELECT QQNAME, BUSINESSCODE, BUSINESSNAME, REFNO, GROUPPANEL, SYARIAHSTATUS
+  FROM POOLDATA.T_GENERAL
+ WHERE NOPOLIS = :1
+ ORDER BY TO_NUMBER(PRODKE) DESC
+ FETCH FIRST 1 ROWS ONLY

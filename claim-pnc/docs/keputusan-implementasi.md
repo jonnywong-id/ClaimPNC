@@ -17970,3 +17970,251 @@ mencari baris di daftar Checker.
 **Alasannya bukan sekadar membuatnya lulus.** Daftar Checker tidak ditawarkan; barisnya
 tetap masuk antreannya. Keduanya hal yang berbeda, dan yang diuji memang yang kedua —
 membuktikannya lewat daftar mencampurkan keduanya sejak awal.
+
+
+## 65. Pengisian data polis Input Receive Document dibaca dari T_GENERAL, tanpa konversi JSON_POLIS (2026-09-27)
+
+**Keputusan.** Pengganti `PolisReceiveInternalExternal` membaca POOLDATA.T_GENERAL, versi
+`PRODKE` terbesar, lewat seam per portal.
+
+**Konversi JSON_POLIS tidak ditiru.** Langkah 3–6 memanggil dua stored procedure. `D-02`
+melarangnya, dan JSON_POLIS milik sistem polis.
+
+**Akibat.** Polis yang belum ada di JSON_POLIS mengisi form, tetapi belum dapat didaftarkan
+sebagai klaim.
+
+## 66. "Nomor Polis tidak tersedia" tampil untuk semua pengguna dan tidak memblokir (2026-09-27)
+
+**Keputusan.** Di Pega pesannya hanya untuk access group `PNCReportClaimInternal`. Tabel
+peran belum ada (`TKT-F3-004`), sehingga pesannya ditampilkan untuk semua pengguna.
+
+**Kenapa tidak memblokir.** Pega tidak mematikan tombol untuk kasus ini: laporan boleh
+masuk sebelum polisnya terbit.
+
+## 67. Polis Syariah dan bukan-PNC juga ditolak server saat Simpan (2026-09-27)
+
+**Keputusan.** Selain tombol dimatikan di layar, `Save` menolak polis yang diblokir dengan
+pelanggaran pada `nomor_polis`.
+
+**Kenapa.** Di Pega penolakannya hanya berupa tombol mati. Penegakan di server sejalan
+dengan `D-59`: yang ditegakkan adalah server, bukan tampilan.
+
+
+## 68. Objek, coverage, dan spreading diisi saat klaim dibuka (2026-09-27)
+
+**Keputusan.** `Service.Start` membaca tabel sumber lini polis dan mengisi objek klaim lewat
+`BuildInsuredItems`, di dalam pembukaan klaim yang sama.
+
+**Kegagalan membaca tabel sumber menggagalkan pembukaan klaim.** Klaim tanpa objek tampak
+seperti polis tanpa objek, dan petugas akan mengetiknya ulang.
+
+## 69. Aneka adalah sisa, bukan kode bisnis 10140 (2026-09-27)
+
+**Keputusan.** Tabel sumber: PA/Travel ke T_PERSONLIST, Fire ke T_PROPERTYLIST, Marine ke
+T_CARGOLIST, sisanya ke T_ANEKALIST.
+
+**Kenapa.** `IsAneka` di export hanya berlaku untuk kode bisnis 10140, sedangkan data Pega
+membuktikan polis Aneka berkode lain tetap berobjek. Versi rule yang berjalan tidak ada di
+export (`R-16`).
+
+## 70. Coverage hanya disalin bila tanggal kejadian di dalam periode polis (2026-09-27)
+
+**Keputusan.** Seperti prasyarat `CompareDates` pada setiap `GetListObject*`. Klaim yang
+tanggal kejadiannya belum diketahui tetap mendapat coverage-nya, dan periode diperiksa
+gerbang validasi Input Register.
+
+## 71. Nama coverage disimpan ke COVERAGENAME (2026-09-27)
+
+**Keputusan.** `Coverage.Name` berasal dari `CoverageNote` polis, ditulis ke kolom
+COVERAGENAME yang sudah ada, dan dikirim bolak-balik ke layar supaya tidak hilang saat
+disimpan. Pega mengisi kolom yang sama dengan nilai yang sama.
+
+
+## 72. Susunan layar Input Estimasi direkonstruksi (2026-09-27)
+
+**Keputusan.** Section `InputEstimasiAdmin` tidak ada di export. Layar disusun dari jalur
+data Pega (objek → coverage → item → estimasi) dan kolom section `Estimasi`.
+
+**Status.** Rekonstruksi, bukan salinan. Ditinjau ulang bila section aslinya tiba.
+
+## 73. Item ke TC_PNC_OBJECTITEM, estimasi ke T_CLAIM_ESTIMASI (2026-09-27)
+
+**Keputusan.** Kuncinya mengikuti procedure konversi Pega: OBJECTID, urutan coverage,
+urutan item, urutan estimasi.
+
+**Estimasi tidak dapat dihapus.** T_CLAIM_ESTIMASI tidak punya penanda hapus, dan
+penghapusan fisik dilarang (`D-66`). Layanan menolak permintaan yang mengurangi jumlah
+estimasi tersimpan.
+
+## 74. Kurs estimasi pada tanggal kejadian (2026-09-27)
+
+**Keputusan.** Kurs diambil pada tanggal kejadian, bukan hari penginputan seperti
+`SetConvertValueKurs_Estimation`.
+
+**Kenapa.** `ADR-0015` dan `D-48`; perbedaannya adalah perbaikan eksplisit `D-49` butir 4.
+Satu nomor polis yang di-hardcode di activity itu tidak dibawa (`D-15`).
+
+## 75. Gerbang Next Input Estimasi (2026-09-27)
+
+**Keputusan.** Next menuntut minimal satu estimasi, setiap nilai lebih dari nol, dan polis
+berspreading (`ValidateInputEstimate_act`). Save dan Back tidak menjalankan gerbang.
+
+## 76. Tahap Input Estimasi tidak dapat ditutup lewat jalur umum (2026-09-27)
+
+**Keputusan.** `CompleteStage` menolak tahap `estimasi-admin` dan `estimasi-travel`, sama
+seperti Input Register, supaya tahap itu tidak dapat dilewati tanpa estimasi.
+
+
+## 77. Tab Estimasi Pembayaran mengikuti tangkapan layar Pega (2026-09-27)
+
+**Keputusan.** Bagian atas layar dibaca dari `InputEstimasiAdmin_SECT.xml`. Isi tab Estimasi
+Pembayaran ada di sub-section `InputEstimasiDetail` yang tidak ada di export, sehingga
+susunannya mengikuti tangkapan layar Work Owner. Menyupersede susunan keputusan 72.
+
+## 78. Pilihan Objek item estimasi dari item properti polis (lini Fire) (2026-09-27)
+
+**Keputusan.** Untuk lini Fire, pilihan Objek adalah `PropertyItemList` objek polis di
+T_PROPERTYLIST; kelompoknya disimpan ke PROPERTYITEMGROUP. Lini lain memakai isian bebas.
+
+**Status.** Sumbernya disimpulkan dari data (`BUILDING AND CONTENTS` pada tangkapan layar
+cocok dengan `ItemType`), bukan dibaca dari section yang hilang.
+
+## 79. Catatan ke PIC Teknis belum disimpan (2026-09-27)
+
+**Keputusan.** Isiannya tampil tetapi mati: T_CLAIM_PNC tidak punya kolom untuk
+`.ClaimData.Remark`. Menambah kolom adalah perubahan skema yang menempuh `D-63`.
+
+
+## 80. Tab pendamping Input Estimasi hanya membaca tabel warisan (2026-09-27)
+
+**Keputusan.** Tab Survey, Unggah Dokumen, dan Progress Claim & Komunikasi hanya membaca
+T_SURVEYORLIST, LST_TYPE_DOC_BUSINESS, DATA_ATTACHFILE, GCNM_PROGRESS_CLAIM, dan
+M_KOMUNIKASI_PNC. Tombol penulisnya dimatikan. Tabel-tabel itu milik Pega (`P-1`), dan
+penulisannya milik modul lain (`B-8`, `S-1`).
+
+## 81. Kunci klaim warisan dicocokkan dalam tiga bentuk (2026-09-27)
+
+**Keputusan.** Setiap kueri dicocokkan dengan nomor klaim, pengenal internal, dan nomor
+berawalan `ASM-FW-GCNMFW-WORK`, yang disusun di satu tempat (`Claim.Keys`, `07-MIGRATION-STRATEGY.md` §3.3).
+
+## 82. Nama jenis induk dokumen dibaca dari JSON_DATA bila kolom view kosong (2026-09-27)
+
+**Keputusan.** `COALESCE(TYPE_DOCUMENT, JSON_VALUE(JSON_DATA,'$.TYPE_DOCUMENT'))` dari
+LST_DOC_TYPE, karena kolom view-nya kosong di basis data yang diperiksa.
+
+**Status.** Sebab kolom itu kosong belum diketahui. Perlu ditanyakan ke DBA.
+
+## 83. Aturan wajib unggah dihitung di Go (2026-09-27)
+
+**Keputusan.** STS_WAJIB dibaca apa adanya. Di luar PA, wajib hanya bila OBJECT_DOC_ID termasuk
+kelompok item klaim (item bernama OTHERS tanpa kelompok dianggap OTHERS). Pada PA, wajib bila
+salah satu coverage klaim tercatat di COVERAGE_DOC_BUSINESS. Kueri lama menyisipkan daftar
+kelompok sebagai potongan SQL (`{ASIS:TempParam.BRANCH_NAME}`); di sini tidak ada yang dirangkai.
+
+## 84. Claim Face Sheet dibentuk langsung sebagai PDF di Go (2026-09-27)
+
+**Keputusan.** PDF disusun dengan `github.com/go-pdf/fpdf` (mesin di bawah maroto, `D-11`) memakai
+font dasar Times, mengikuti rule `ClaimFaceSheetHTML` dan contoh PDF. Tidak ada HTML-ke-PDF dan
+tidak ada berkas font yang perlu ikut di-deploy.
+
+**Alasan dependensi baru.** Pustaka standar Go tidak membentuk PDF; `gopdf` menuntut berkas TTF.
+
+## 85. Menekan tombol mengunci estimasi jaminan dan mencatat revisi (2026-09-27)
+
+**Keputusan.** Seluruh estimasi jaminan itu ditandai PRINTFACECLAIM = 1 dan CFSDATE, satu
+baris TC_PNC_CFS (revisi berurutan dari 0) beserta reserve per mata uang di TC_PNC_CFS_ESTIMASI
+ditulis, dan jejak audit CLAIM_FACE_SHEET dicatat — satu transaksi. PDF dibentuk sebelum
+transaksi, sehingga kegagalan pembentukan tidak meninggalkan estimasi terkunci. Tanpa estimasi
+baru, permintaan ditolak (422).
+
+**Dasar.** Pilihan Work Owner (2026-09-27): unduh dan kunci estimasi.
+
+## 86. Estimasi terkunci tidak dapat diubah; estimasi berikutnya menunggu CFS (2026-09-27)
+
+**Keputusan.** Isian layar untuk estimasi terkunci diabaikan (nilai tersimpan dipakai). Estimasi
+BARU pada sebuah item ditolak bila estimasi sebelumnya belum dibuatkan CFS — pesan
+`ValidateInputEstimate_act`: "Tidak Bisa Tambah Estimate, Belum Claim Face Sheet". Estimasi
+lama yang tersimpan sebelum aturan ini dibawa tidak ikut diperiksa.
+
+## 87. Share ASM pada spreading CFS hanya bila Sinar Mas leader (2026-09-27)
+
+**Keputusan.** Nilai spreading = reserve × share ASM × share treaty bila peran koasuransi LEADER;
+selain itu reserve × share treaty — mengikuti `CalculationCoasSpreadingSurvey`
+(`@if(Local.leader=="true", sharePercentageASM/100, 1)`). Anggota koasuransi = reserve × share.
+
+**Status.** Direkonstruksi dari activity survey/komite, dicocokkan dengan satu contoh PDF (leader).
+
+## 88. Baris CFS yang sumbernya hilang dikosongkan, bukan ditebak (2026-09-27)
+
+**Keputusan.** PAYMENTS dan PREMIUM PAID ON dicetak kosong; NATURE OF LOSS dari
+V_D_CAUSE_OF_LOSS.DESCRIPTION; PIC Admin dari DATAPEGA.PR_OPERATORS (cadangan M_LOGIN_PNC).
+Rinciannya di catatan pengembangan bab 69.
+
+## 89. PLA koasuransi direkonstruksi dari DLACoins_act dan data Pega (2026-09-27)
+
+**Keputusan.** Tombol Print PLA menerbitkan PLA COINS: penerima dan persen mengikuti
+`DLACoins_act` (perusahaan sendiri leader; anggota lain dengan share > 0 dan tanpa FlagDelete),
+hasil = reserve × % anggota. Penerbit asli `GeneratePLAListObject` belum ada di export.
+
+**Dasar.** Pilihan Work Owner (2026-09-27). Rekonstruksi cocok 38 dari 40 klaim terhadap PLA Pega.
+
+## 90. PLA ditulis ke T_PLALIST dan POOLDATA.PLA untuk klaim PNCN; nomor dari PLA_SEQ (2026-09-27)
+
+**Keputusan.** Logika `INSERT_PLADLA.prc` (cabang PLA) dan `PLA_DLA.prc` (cabang PLA) dibawa ke Go,
+tanpa memanggil procedure (`D-02`). Nomor diambil dari `POOLDATA.PLA_SEQ` karena sequence itu
+dipakai bersama Pega — pengecualian dialek yang disadari (`SELECT … NEXTVAL FROM DUAL`).
+PLA untuk revisi CFS yang sudah terbit dicetak ulang, tidak diterbitkan ulang.
+
+## 91. Nama penanda tangan PLA dari PLAHTML selama MTTD.NAME kosong (2026-09-27)
+
+**Keputusan.** Gambar tanda tangan dibaca dari POOLDATA.MTTD; namanya dari MTTD.NAME bila terisi,
+selain itu dari HTML `PLAHTML` (satu nama per entitas). Ini pengecualian `D-15` yang disadari dan
+hilang begitu DBA mengisi MTTD.NAME.
+
+## 92. Kirim PIC Teknik menutup Input Estimasi dan menuntut Claim Face Sheet di server (2026-09-27)
+
+**Keputusan.** Tombol Next pada Input Estimasi diganti tombol Kirim PIC Teknik
+(`InputEstimasiAdmin_SECT`, `finishAssignment`) yang memakai jalur `CompleteEstimate` yang sudah
+ada. Syarat `isCFS` — di Pega hanya `pyDisabledWhen` — ditegakkan juga di server sebagai pelanggaran
+`kirim_pic_belum_cfs`. Varian popup `GCNMAlertSendRequest` tidak dibawa sampai section-nya dan
+sumber `SurveyData.IsSendRequest` diketahui; log riwayat dan kronologi TAT yang dipanggil tombol
+itu belum dibawa (lihat catatan-pengembangan §73).
+
+## 93. Layar InputSurveyor dibangun dari ClaimSurvey_sect, hanya membaca (2026-09-27)
+
+**Keputusan.** Tahap Choose Surveyor dan Send To PIC Teknik memakai layar `SurveyorForm` yang
+mengikuti `Section/ClaimSurvey_sect.xml`, bukan flow action `InputSurveyor` berkelas GISFW di export.
+Tab Estimasi & Adjustment — section `InputEstimasi` tidak ada di export — direkonstruksi dari
+tangkapan layar Work Owner. Layar ini hanya membaca: tombol prosesnya tampil tetapi mati, dan
+tombol berbasis peran analis tidak ditampilkan sampai data perannya tersedia (catatan-pengembangan §74).
+
+## 94. Adjustment ditulis ke T_CLAIM_ADJUSTMENT dengan rumus SetNilaiResikoSendiri (2026-09-27)
+
+**Keputusan.** Tombol Tambah menambahkan Settlement Line ke POOLDATA.T_CLAIM_ADJUSTMENT untuk
+klaim PNCN, dihitung server dengan rumus `SetNilaiResikoSendiri` / `SetValueAdjusterFee` yang
+sudah dicocokkan ke data Pega. Tipe 1, 2, 4, 5, 6 dapat ditambahkan (pilihan Work Owner); Salvage
+tidak. Baris baru belum ditransfer komite. Teks pesan dari Pega dipakai apa adanya; pesan tambahan
+berbahasa Inggris (`D-80`). Yang tidak dibawa tercatat di catatan-pengembangan §75.
+
+## 95. Isian adjustment mengikuti InputAdjustment_sect, dihitung server tiap isian berubah (2026-09-28)
+
+**Keputusan.** Baris isian adjustment disusun menurut `InputAdjustment_sect.xml`. PROPOSE_VALUE
+diisi Nilai Pengajuan Tertanggung; tipe resiko 3 berarti "Lainnya" dengan nilai manual; gross
+Final/Interim dikurangi Salvage B dan jumlah gross Interim terakseptasi (dicocokkan ke data
+Pega). Nilai tampilan dihitung server lewat rute pratinjau. Tolak Klaim ditolak sampai
+`GetDataPenolakanKlaimMas` tersedia (catatan-pengembangan §75.2).
+
+## 96. Tugas boleh dikerjakan pemegang grup tahap dari M_LOGIN_GROUP_PNC (2026-09-28)
+
+**Keputusan Work Owner.** Selain pemiliknya, tugas Worklist boleh dikerjakan pengguna yang memegang
+grup tahap itu di POOLDATA.M_LOGIN_GROUP_PNC: `PncAdmin` untuk tahap PNCAdminRouter,
+`PNCKomiteTeknik` (dianggap PIC Teknik) untuk tahap PNCTeknikRouter. Peran pemanggil dibaca dari
+tabel yang sama per permintaan. Inbox menampilkan tugas tahap grup (catatan-pengembangan §76).
+
+## 97. Penerima klaim bawaan dibentuk saat Input Register disubmit, ditulis ke T_CLAIM_RECEIVER (2026-09-28)
+
+**Keputusan.** Mengikuti `InputRegister_act`: setiap submit Input Register mengisi satu penerima
+klaim (IDReceiver 1) dari QQName polis — dengan cadangan TheInsured — dan alamat kirim pertama, lalu
+menyimpannya ke POOLDATA.T_CLAIM_RECEIVER untuk klaim PNCN. Tab Penerima Klaim menampilkan Nama dan
+Alamat (`ViewShowReceiver`). Isian tambah/ubah penerima belum dibangun karena section-nya tidak ada
+di export (catatan-pengembangan §77).

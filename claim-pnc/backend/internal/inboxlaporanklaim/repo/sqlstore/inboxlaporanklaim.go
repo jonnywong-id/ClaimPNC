@@ -844,3 +844,30 @@ func emptyToNil(value string) any {
 }
 
 var _ inboxlaporanklaim.Repo = (*Repo)(nil)
+
+// FindPolicy membaca data polis pengisi form dari POOLDATA.T_GENERAL.
+//
+// Tabel itu milik sistem polis dan hanya dibaca; tidak ada satu pun penulisan dari sini.
+func (r *Repo) FindPolicy(ctx context.Context, number string) (inboxlaporanklaim.Policy, bool, error) {
+	var insured, businessCode, businessName, reference, panel, syariah sql.NullString
+	err := r.db.QueryRowContext(ctx, getQuery("claim_report_policy_find"), number).
+		Scan(&insured, &businessCode, &businessName, &reference, &panel, &syariah)
+	if err == sql.ErrNoRows {
+		return inboxlaporanklaim.Policy{}, false, nil
+	}
+	if err != nil {
+		return inboxlaporanklaim.Policy{}, false,
+			fmt.Errorf("inboxlaporanklaim/sqlstore: membaca polis dari T_GENERAL: %w", err)
+	}
+	return inboxlaporanklaim.Policy{
+		Number:          number,
+		InsuredName:     text(insured),
+		BusinessCode:    text(businessCode),
+		BusinessName:    text(businessName),
+		ReferenceNumber: text(reference),
+		GroupPanel:      text(panel),
+		// Pega membandingkan SYARIAHSTATUS==1; kolomnya teks, dan nilai kosong berarti
+		// bukan Syariah.
+		Syariah: text(syariah) == "1",
+	}, true, nil
+}

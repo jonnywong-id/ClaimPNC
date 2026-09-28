@@ -130,7 +130,11 @@ SELECT
        COALESCE(JSON_VALUE(p.POLICYDATA, '$.CedingCoName'),
                 JSON_VALUE(p.DATA_JSONBLOB, '$.CedingCoName')),
        COALESCE(JSON_VALUE(p.POLICYDATA, '$.OfferFacIn.PercentShare'),
-                JSON_VALUE(p.DATA_JSONBLOB, '$.OfferFacIn.PercentShare'))
+                JSON_VALUE(p.DATA_JSONBLOB, '$.OfferFacIn.PercentShare')),
+       -- Alamat penerima klaim bawaan: InputRegister_act mengisi ReceiverClaim.Address
+       -- dari .Policy.DeliveryAddressList(1).ASMAddress.
+       COALESCE(JSON_VALUE(p.POLICYDATA, '$.DeliveryAddressList[0].ASMAddress'),
+                JSON_VALUE(p.DATA_JSONBLOB, '$.DeliveryAddressList[0].ASMAddress'))
   FROM POOLDATA.JSON_POLIS p
  WHERE p.NOPOLIS = :1
    AND (p.POLICYDATA IS NOT NULL OR p.DATA_JSONBLOB IS NOT NULL)

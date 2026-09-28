@@ -22547,3 +22547,860 @@ lagi dijalankan.
 | `tsc --noEmit`, disaring ke modul ini | **bersih** |
 | `go vet` | bersih |
 | `PENYIMPANAN=oracle -periksa` | **9 baris** pencacah |
+
+## 64. Form Input Receive Document mengisi data polis otomatis (2026-09-27)
+
+### 64.1 Permintaan
+
+Work Owner meminta form Input Receive Document (berkas RCVN baru) mengisi data polis
+secara otomatis saat Nomor Polis diisi, seperti activity
+`Activity/PolisReceiveInternalExternal_ACT.xml`.
+
+### 64.2 Yang dibaca dari export
+
+Activity itu dipanggil `Section/InputReceiveDocument_sect.xml` pada event `change` isian
+Nomor Polis dan pada satu tombol Refresh. Langkah-langkahnya:
+
+| Langkah | Isi | Dibawa? |
+|---|---|---|
+| 2 | Nomor dirapikan: huruf besar, titik dibuang | ya |
+| 3–6 | Bila polis belum ada di JSON_POLIS, konversi lewat `GLADMIN.updatepolisjson` dan `POOLDATA.INSERTPOLISTOJSON` | **tidak** — stored procedure (`D-02`), dan JSON_POLIS milik sistem polis |
+| 7 | `BroswsePolisByPolicyNo`: POOLDATA.T_GENERAL, `PRODKE` terbesar | ya |
+| 8–9 | Polis Syariah: pesan dan penanda yang mematikan tombol | ya |
+| 11 | "Nomor Polis tidak tersedia", hanya untuk access group `PNCReportClaimInternal` | ya, untuk semua pengguna (tabel peran belum ada), tidak memblokir |
+| 12 | Isi QQName, PolicyNo, BusinessCode, BusinessName, BookNo (`REFNO`), GroupPanel — **juga saat tidak ditemukan**, sehingga isiannya menjadi kosong | ya |
+| 13–14 | Group Panel 001/007/008: "Aplikasi ini hanya untuk pelaporan klaim PNC." dan tombol dimatikan | ya |
+
+Tombol yang dimatikan: Simpan, Simpan & Transfer data ke ASM, dan Register Klaim
+(`pyDisabledWhen` "SyariahStatus = '1' || TempError.ErrorNotes = '1'").
+
+### 64.3 Yang dibangun
+
+- Domain `inboxlaporanklaim/policy.go`: `Policy`, `NormalizePolicyNumber`, `Notices`.
+- Seam `Repo.FindPolicy`, per portal. SQL `claim_report_policy_find`; memori berisi tiga polis
+  contoh.
+- Usecase `LookupPolicy`. `Save` kini menolak polis Syariah dan bukan-PNC di server juga.
+- Rute `GET /api/inbox/laporan-klaim/polis?nomor=…`, didaftarkan sebelum `/{id}`.
+- Layar: pencarian saat isian ditinggalkan atau Enter ditekan. Isian polis diganti hasilnya,
+  pesan tampil di bawah isian, dan Simpan serta Register Klaim dimatikan bila polisnya diblokir.
+- `-periksa` memeriksa hak baca `T_GENERAL`.
+
+### 64.4 Terbukti
+
+```
+Oracle ASM, lewat adapter SQL:
+  Aneka 003    ditemukan, tanpa pesan
+  Marine 004   ditemukan, rujukan terisi
+  PA 002       ditemukan, tanpa pesan
+  Syariah 003  polis_syariah (memblokir)
+  Motor 007    polis_bukan_pnc (memblokir)
+  tidak ada    polis_tidak_tersedia (tidak memblokir)
+```
+
+Nomor polis sampelnya sengaja tidak ditulis di sini (`D-69`).
+
+### 64.5 Yang perlu diketahui
+
+- Polis yang ada di T_GENERAL tetapi belum ada di JSON_POLIS tetap mengisi form. Namun
+  Register Klaim menolaknya dengan "Nomor Polis tidak ditemukan", karena konversi langkah
+  3–6 tidak dijalankan.
+- Pesan Syariah aslinya menyertakan alamat Pega SMAS. Alamat itu tidak ditulis di kode.
+- Berkas tersimpan yang dibuka ulang belum menghitung ulang pemblokiran sampai Nomor Polis
+  disentuh lagi. Simpan tetap ditolak server.
+
+## 65. Objek, coverage, dan spreading terisi dari polis saat PNCN dibuat (2026-09-27)
+
+### 65.1 Permintaan
+
+Work Owner meminta klaim PNCN yang baru dibuat langsung membawa objek, coverage, dan
+spreading dari polisnya, mengikuti `Activity/CallActivityInputRegister-Act.xml`.
+
+### 65.2 Yang dibaca dari export
+
+| Langkah | Activity | Isi |
+|---|---|---|
+| 18 | `GetListObjectFromDatabase` | memilih tabel sumber per lini, lalu membuang objek tanpa ID |
+| | `GetListObjectTravelPA` | POOLDATA.T_PERSONLIST, coverage di `coveragedata` (`ASMCoverage[]`) |
+| | `GetListObjectFire` | POOLDATA.T_PROPERTYLIST, satu objek per `indexobject`, coverage di `coveragelist` |
+| | `GetListObjectMarine` | POOLDATA.T_CARGOLIST, coverage di `coveragedata` |
+| | `GetListObjectAneka` | POOLDATA.T_ANEKALIST, coverage di `coveragelist` |
+| 41 | `ShowCoverage` | TSI: TSISublimit bila > 0, selain itu TSI, lalu SumTSI |
+| 41 | `SetspreadingtoCoverage` | spreading dari `SpreadingList` coverage itu: baris hapus dibuang, jenis treaty sama dijumlahkan, share ≤ 0 dibuang; kargo Open Policy tanpa spreading memakai spreading coverage pertama objek pertama |
+
+Setiap `GetListObject*` menyalin coverage hanya bila tanggal kejadian berada di dalam
+periode polis. Objeknya tetap dibuat.
+
+### 65.3 Temuan
+
+- `When/IsAneka-When.xml` di export hanya berlaku untuk kode bisnis 10140 (ruleset
+  01-01-01, kelas induk). Data membantahnya: 521 dari 561 klaim Pega Group Panel 003 berkode
+  lain tetap berobjek. Aneka karena itu diperlakukan sebagai sisa setelah PA/Travel, Fire,
+  dan Marine.
+- Klaim Pega hampir tidak punya baris di T_CLAIM_SPREADING. Spreading Pega disimpan di
+  dokumen JSON klaim, bukan di tabel itu.
+- Polis Aneka uji yang dipakai sebelumnya belum punya SpreadingList sama sekali; dokumennya
+  bertanda `FinishedSpreading = 0`. Galat "Tidak ada Spreading" pada polis itu benar.
+
+### 65.4 Yang dibangun
+
+- Domain `registrasi/policyitems.go`: `SourceOf`, `BuildInsuredItems`, seam
+  `PolicyItemSource`. `Coverage.Name` dan `Policy.Kind` ditambahkan.
+- Adapter `policyitems.go` dan `policyitems.sql`: empat kueri sumber, penguraian JSON yang
+  menerima teks maupun angka.
+- `Service.Start` mengisi `InsuredItem` sebelum klaim disimpan.
+- COVERAGENAME kini ditulis dan dibaca.
+- Layar: kolom "Nama coverage" pada setiap coverage.
+- `-periksa` memeriksa keempat tabel sumber dan COVERAGENAME.
+
+### 65.5 Terbukti
+
+```
+Oracle ASM, tanpa menulis:
+  Aneka 003   1 objek, 1 coverage, tanpa spreading (polisnya memang belum di-spread)
+  Marine 004  1 objek, 1 coverage, spreading 10007 100%
+  PA 002      1 objek, 2 coverage, spreading 10007 100% (baris 0% dibuang)
+  Fire 006    1 objek, 1 coverage, spreading 10007 100%
+Simpan klaim Marine dalam transaksi yang dibatalkan: terbaca kembali utuh, sisa baris 0.
+```
+
+### 65.6 Yang perlu diketahui
+
+- Nama treaty tidak ada di dokumen polis; hanya kodenya. Kolom nama spreading karena itu
+  kosong.
+- Versi polis yang dibaca adalah `PRODKE` snapshot klaim untuk objek maupun coverage. Kueri
+  Fire lama memakai `MAX(PRODKE)` T_GENERAL untuk objek.
+- Aturan PA untuk hari rawat inap dan pemilihan coverage ber-TSI terbesar belum dibawa;
+  keduanya milik tahap estimasi.
+- Travel mengambil plan dari master `m_plantravel`; belum dibawa.
+
+## 66. Layar Input Estimasi (2026-09-27)
+
+### 66.1 Permintaan
+
+Setelah Next di Input Register, klaim Non-MBU pindah ke tahap Input Estimasi, tetapi layar
+hanya menampilkan tombol tahap umum. Work Owner meminta layar isian estimasi sesuai alur.
+
+### 66.2 Yang dibaca dari export
+
+| Sumber | Isi |
+|---|---|
+| `Flow/Register_Flow.xml` | Assignment7 (Non-MBU) dan Assignment10 (Travel), flow action `InputEstimasi`; Back ke Input Register, Next ke Choose Surveyor (Non-MBU) atau Send To PIC Teknik (Travel) |
+| `Flow Action/InputEstimasi-FA.xml` | merender section `InputEstimasiAdmin` — **section itu tidak ada di export** (`R-16`) |
+| `Section/Estimasi-Section.xml` (kelas `Data-ObjectItem`) | kolom baris estimasi: Estimasi Ke, Tanggal Estimasi, Tipe Estimasi, Mata Uang, Nilai Estimasi, Nilai Kurs (IDR) |
+| `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` baris 1012–1046 | jalur `ObjectList → ObjectCoverageList → ObjectItemList → EstimationList` → POOLDATA.T_CLAIM_ESTIMASI |
+| `Database/CREATE_TABLE_2.sql` | TC_PNC_OBJECTITEM, tabel item objek rancangan Work Owner (sudah ada di ASM) |
+| `Activity/ValidateInputEstimate_act` | polis tanpa spreading tidak boleh diberi estimasi |
+| `Activity/SummaryEstimasiKlaimPerpolisIDR` | tipe 2 = estimasi adjuster |
+| `Activity/SetConvertValueKurs_Estimation` | mata uang bawaan = mata uang polis; kurs `getcurrencystandard(mata uang, sysdate)` |
+
+### 66.3 Yang dibangun
+
+- Domain: `ObjectItem`, `Estimation`, `Coverage.Item`, `ValidateEstimate`, seam `CurrencyDirectory`.
+- Penyimpanan: item ke TC_PNC_OBJECTITEM (penanda hapus untuk item berlebih), estimasi ke
+  T_CLAIM_ESTIMASI (hanya perbarui atau sisip).
+- Usecase: `SaveEstimate` (Save), `CompleteEstimate` (Next/Back). Jalur umum
+  `CompleteStage` kini menolak tahap Input Estimasi.
+- Input Register mempertahankan item dan estimasi coverage yang sama, supaya Back lalu
+  Next tidak menghapus estimasi.
+- Rute `POST /api/registrasi/estimasi`, `POST /api/registrasi/estimasi/simpan`,
+  `GET /api/registrasi/mata-uang`.
+- Layar `EstimateForm`: per objek dan coverage, satu item dengan tabel estimasi; tombol
+  Back, Save, Next.
+- `-periksa` memeriksa TC_PNC_OBJECTITEM, T_CLAIM_ESTIMASI, dan POOLDATA.CURRENCY.
+
+### 66.4 Terbukti
+
+```
+Oracle ASM, dalam transaksi yang dibatalkan:
+  polis Marine uji: mata uang 10001 (USD), kurs 17.753 pada tanggal kejadian
+  2 estimasi (tipe 1 dan 2) tersimpan, terbaca kembali; simpan dua kali tidak menggandakan
+  sisa baris sesudah dibatalkan: 0
+```
+
+### 66.5 Yang perlu diketahui
+
+- Susunan layar adalah rekonstruksi, karena section aslinya hilang.
+- Rincian khusus Travel (keterlambatan, bagasi, pembatalan) belum dibawa.
+- Aturan "estimasi berikutnya menunggu Claim Face Sheet" belum dibawa.
+- Estimasi yang sudah tersimpan tidak dapat dihapus, karena T_CLAIM_ESTIMASI tidak punya
+  penanda hapus.
+- Tipe estimasi 3 dan 4 ada di data Pega tetapi artinya tidak terbaca; tidak ditawarkan.
+
+## 67. Layar Input Estimasi mengikuti InputEstimasiAdmin_SECT (2026-09-27)
+
+### 67.1 Permintaan
+
+Work Owner mengirim `Section/InputEstimasiAdmin_SECT.xml` dan tangkapan layar Pega (klaim
+PNC-2794) sebagai acuan tampilan Input Estimasi.
+
+### 67.2 Yang dibaca dari section
+
+| Bagian | Sumber |
+|---|---|
+| Status Klaim | dropdown `.ClaimData.StatusClaim` |
+| Detail Premi, Detail Polis, Riwayat Klaim, Alasan Terlambat | tombol ke local action / harness lain |
+| Catatan ke PIC Teknis | `.ClaimData.Remark` |
+| Aging Amount | `.PaymentData.AgingAmount` |
+| PIC Teknis | `.ClaimData.UserTeknis` |
+| Log Transfer Klaim | grid `TempKlaim2.pxResults` (Tanggal, User, Catatan) |
+| Tab | Survey, Estimasi Pembayaran, Unggah Dokumen, Progress Claim & Komunikasi |
+
+Kelima sub-section yang dirujuknya — `InputEstimasiDetail`, `TabSurvey`, `UploadDocument`,
+`PNCProgressKomunikasi_Sec`, `InputRegisterDetail2` — **tidak ada di export**. Isi tab
+Estimasi Pembayaran karena itu mengikuti tangkapan layar: objek (Nama Objek, Lokasi Object,
+Mata Uang, Nilai Klaim, Nilai Adjuster, Informasi OS & Akseptasi) → jaminan (Jaminan, Mata
+Uang, TSI, Download Claim Face Sheet, Print PLA) → item (Objek, Deskripsi Item, Unggah
+Dokumen, Tambah/Hapus) → baris estimasi.
+
+### 67.3 Yang dibangun
+
+- Nama Status Klaim dibaca dari `V_STS_CLAIM` (`status_klaim_nama`) — layar menampilkan
+  "Register", bukan 1147.
+- Pilihan Objek item estimasi: untuk lini Fire dari `PropertyItemList` objek polis di
+  T_PROPERTYLIST (ItemType, PropertyItemGroup). Rute
+  `GET /api/registrasi/klaim/{klaimID}/pilihan-item?objek=…`. Kelompoknya disimpan ke
+  PROPERTYITEMGROUP.
+- Item yang sudah punya estimasi tidak dapat dihapus.
+- Layar `EstimateForm` ditulis ulang mengikuti susunan tangkapan layar.
+
+### 67.4 Terbukti
+
+```
+Oracle ASM:
+  PNCN.26.0012  status 1147 -> "Register"
+  polis Fire sampel, objek 1: BUILDING [BUILDING(S)], CONTENTS [OTHERS]
+                     objek 2: BUSINESS INTERRUPTION [CONSEQUENTIAL LOSS]
+```
+
+### 67.5 Yang belum
+
+- Isi tab Survey, Unggah Dokumen, dan Progress Claim & Komunikasi.
+- Tombol Detail Premi, Detail Polis, Riwayat Klaim, Alasan Terlambat, View, Download Claim
+  Face Sheet, Print PLA, Unggah Dokumen — tampil tetapi mati.
+- Catatan ke PIC Teknis tidak dapat disimpan: T_CLAIM_PNC tidak punya kolomnya.
+- Aging Amount dan Log Transfer Klaim: sumber datanya tidak ada di export.
+- Status Klaim hanya ditampilkan; mengubahnya di sini belum dibawa.
+- Pilihan Objek untuk lini selain Fire: sumbernya tidak ada; isiannya teks bebas.
+
+## 68. Tab Survey, Unggah Dokumen, Progress Claim & Komunikasi (2026-09-27)
+
+### 68.1 Permintaan
+
+Work Owner meminta ketiga tab lain pada layar Input Estimasi dibangun.
+
+### 68.2 Sumber
+
+Sub-section aslinya (`TabSurvey`, `UploadDocument`, `PNCProgressKomunikasi_Sec`) tidak ada
+di export. Susunan tab mengikuti section tampilan yang ada:
+
+| Tab | Section acuan | Sumber data |
+|---|---|---|
+| Survey | `ViewHasilSurvey` | T_SURVEYORLIST (diisi `INSERT_SURVEYORLIST.prc`) |
+| Unggah Dokumen | `ViewUploadDocument`, `RequiredDocument_act`, `RequiredDocPA`, `SetCountAttach_act` | LST_TYPE_DOC_BUSINESS + LST_DOC_TYPE, COVERAGE_DOC_BUSINESS (PA), DATA_ATTACHFILE |
+| Progress Claim | pola kueri Inbox Progress Claim | GCNM_PROGRESS_CLAIM + GCNM_MST_PROGRESS_KLAIM + GCNM_MST_PROGRESS |
+| Komunikasi | `ViewShowKomunikasi`, `GetInboxKomunikasi` | M_KOMUNIKASI_PNC, per kasus survey klaim |
+
+Rute baru, semuanya GET: `/api/registrasi/klaim/{klaimID}/survey`, `…/dokumen`, `…/progres`.
+
+### 68.3 Temuan
+
+- **Kunci klaim di tabel warisan tidak seragam.** GCNM_PROGRESS_CLAIM memakai nomor klaim
+  polos; T_SURVEYORLIST dan DATA_ATTACHFILE memakai nomor berawalan kelas Pega. Ketiga bentuk
+  dicocokkan sekaligus lewat `Claim.Keys`.
+- **Komunikasi menempel ke kasus survey, bukan ke klaim.** `GetInboxKomunikasi` menyaring
+  M_KOMUNIKASI_PNC.CASEID dengan daftar nomor SRV-… yang dirangkai sebagai potongan SQL; di sini
+  daftarnya diambil subkueri atas T_SURVEYORLIST.
+- **`POOLDATA.V_LST_DOC_TYPE.TYPE_DOCUMENT` kosong di keenam barisnya**, padahal kelima kueri
+  `Browse*_upload` menyaring dengan kolom itu. Nilainya ada di LST_DOC_TYPE.JSON_DATA. Kueri di
+  sini membaca `COALESCE(kolom, JSON_VALUE(JSON_DATA))`. Modul Arsip Dokumen Klaim juga membaca
+  view itu — tidak diubah (Isolasi Protektif), dicatat sebagai temuan.
+- "Total Sudah Diunggah" dihitung dari DATA_ATTACHFILE ber-IMAGEID, dicocokkan SUB_CATEGORY
+  dengan DOC_TYPE_DT_ID (`CountUpload` + `SetCountAttach_act`).
+
+### 68.4 Terbukti
+
+```
+Oracle ASM, satu klaim warisan yang punya komunikasi survey:
+  survey 15 · jenis dokumen 28 · lampiran 1 · progres 11 · komunikasi 6
+  checklist: REGISTER 3 · SURVEY 2 · COMMITEE 0 · PAYMENT 7 · COLLECTING DOCUMENT 10
+-periksa: 9 tabel baru [ok]
+go test ./... · vitest 1144 · build — lulus
+```
+
+### 68.5 Yang belum
+
+- Seluruh tombol yang MENULIS tampil tetapi mati: Ajukan Survey, Unggah Dokumen, Input
+  Progress Claim, Kirim Pesan/Jawab.
+- Unggah Dokumen menulis ke layanan storage eksternal (`UploadDokumenPNC`), dengan token dari
+  procedure `GENERAL.GET_TOKEN_STORAGE` (`D-02` melarang memanggilnya). Perlu keputusan Work Owner.
+- Dokumen dari kasus survey (`GetDocSurvey`) belum ikut dihitung.
+- Jalur TKA pada `RequiredDocPA` (`AND FLAG='TKA'`) belum dibawa.
+- Kode coverage klaim dianggap sama dengan COVERAGE_DOC_BUSINESS.COVERAGEID untuk PA — belum
+  diverifikasi pada klaim PA nyata.
+- Klaim PNCN belum menulis catatan progres "Auto Create Register" seperti Pega.
+- Isi kiriman permintaan survey (`.ClaimData.SurveyData`) belum ditemukan tabelnya.
+
+## 69. Tombol Download Claim Face Sheet (2026-09-27)
+
+### 69.1 Permintaan
+
+Work Owner meminta tombol "Download Claim Face Sheet" pada baris jaminan tahap Input Estimasi
+dapat dijalankan, lalu menyerahkan rule `HTML/ClaimFaceSheetHTML_html.xml` dan satu contoh PDF
+produksi. Keputusan Work Owner: tombol mengunduh PDF **dan** mengunci estimasi.
+
+### 69.2 Sumber
+
+| Bagian | Sumber |
+|---|---|
+| Tata letak dan urutan baris | `ClaimFaceSheetHTML` (kelas Work-PNC) + contoh PDF |
+| Reserve per mata uang, hanya estimasi tipe 1 | `CountTempOfEstimationBaseOnCurrency` |
+| Bagian anggota = share × nilai; share ASM hanya bila leader | `CalculationCoasSpreadingSurvey` |
+| Estimasi terkunci (`PrintFaceClaim = 1`) | section `Estimasi`/`ViewEstimasi` (`pyReadOnlyCondition`, `pyDisabledWhen`) |
+| Estimasi berikutnya menunggu CFS | `ValidateInputEstimate_act` langkah 9 |
+| Revisi `ClaimFaceSheetHTML1#1/Revisi0.pdf` | `CFSList` pada contoh `JSON_KLAIM` |
+
+Activity yang MENGISI halaman sementara template (TempDate, TempDownload, tempEstimation,
+tempSpreadingResult, TempReas1, tempCoins) tetap tidak ada di export. Isi tiap baris
+karena itu direkonstruksi; aritmetika contoh PDF cocok dengan rekonstruksinya (reserve × share
+anggota; reserve × share ASM × share treaty).
+
+Rute baru: `POST /api/registrasi/klaim/{klaimID}/cfs` — badan `{tugas_id, objek, jaminan}`,
+jawaban `application/pdf`. POST karena ia mencatat revisi dan mengunci estimasi.
+
+### 69.3 Temuan
+
+- **`TC_PNC_CFS`, `TC_PNC_CFS_ESTIMASI`, dan kolom `T_CLAIM_ESTIMASI.PRINTFACECLAIM` sudah ada**
+  di Oracle ASM (dibuat DBA dari rancangan `ddl/tc_pnc_object_tree.sql`). Penulisan tidak
+  menunggu `D-63` lagi.
+- **Halaman `TempDownload` template berkelas `V_D_CAUSE_OF_LOSS`** (kolomnya D_COL_ID, M_COL_ID,
+  DESCRIPTION, LOSS_CODE), tetapi kolom-kolomnya dipakai untuk isi lain (OBJECT, NO CHASIS,
+  PAYMENTS, CONVEYANCE). Yang dapat dipastikan hanya NATURE OF LOSS =
+  `V_D_CAUSE_OF_LOSS.DESCRIPTION` untuk `CAUSEOFLOSSID` jaminan (cocok 2.346 dari 2.556 jaminan).
+- **Nama PIC Admin**: `M_LOGIN_PNC` hanya memuat 17 dari 80 pembuat klaim 60 hari terakhir;
+  `DATAPEGA.PR_OPERATORS.PYUSERNAME` memuat 80 dari 80. Dipakai PR_OPERATORS, M_LOGIN_PNC cadangan.
+- **FacOfferList jarang terisi** di JSON_POLIS (1 polis dalam 200 hari) — bagian REINS FAC OUT
+  sering hanya berisi judul.
+
+### 69.4 Terbukti
+
+```
+Oracle ASM, satu klaim PNCN uji di tahap Input Estimasi, di dalam transaksi yang di-rollback:
+  data pendamping terbaca (polis, CoinsList 2 baris, nama PIC Admin)
+  PDF terbentuk: reserve 1 · spreading 1 · co member 2
+  di dalam transaksi: estimasi terkunci, CFSDATE terisi, revisi 0 tercatat
+  setelah rollback: tidak ada yang tertinggal
+-periksa: TC_PNC_CFS, TC_PNC_CFS_ESTIMASI, T_CLAIM_ESTIMASI (PRINTFACECLAIM, CFSDATE),
+          V_D_CAUSE_OF_LOSS, DATAPEGA.PR_OPERATORS [ok]
+go test ./... · vitest 1145 · typecheck · build — lulus
+```
+
+### 69.5 Yang belum
+
+- **PAYMENTS** (status premi) dan **PREMIUM PAID ON** (cicilan) dikosongkan: sumbernya diisi
+  activity yang hilang. Contoh JSON hanya memuat `PremiumPaymentStatus` "LUNAS", bukan "PAID".
+- **OBJECT** diisi nama objek klaim; di contoh PDF baris itu kosong, sumber aslinya tidak diketahui.
+- Baris khusus lini: NO CHASIS, CONVEYANCE (Marine), COVER RISK (PA, dari AdjustmentList),
+  SHIP NAME, TYPE DETAIL PLAN (Travel) belum dicetak.
+- Tabel kanan SPREADING (baris `FlagDelete='1'`) tidak dicetak — arti penandanya pada halaman
+  sementara tidak diketahui, dan mencetak baris terhapus menyesatkan.
+- Pembagian REINS FAC OUT ke lebih dari satu reasuradur (share Fac Out × PctShareForAllObj /
+  jumlahnya) belum diuji pada polis nyata.
+- Aturan khusus PA/Travel pada `CountTempOfEstimationBaseOnCurrency` (TSI × estimasi untuk
+  coverage lama 10035) belum dibawa.
+- PDF tidak disimpan ke storage dokumen (token storage lewat procedure, `D-02`); revisi lama
+  tidak dapat diunduh ulang — tombol mati setelah semua estimasi terkunci, seperti Pega.
+
+## 70. Tombol Print PLA — terhalang artefak (2026-09-27)
+
+### 70.1 Permintaan dan keputusan
+
+Work Owner meminta tombol Print PLA pada baris jaminan tahap Input Estimasi dapat dipakai.
+Keputusan Work Owner: aplikasi **menerbitkan dan mencatat** PLA ke `POOLDATA.T_PLALIST` untuk
+klaim PNCN saja (logika `INSERT_PLADLA` dibawa ke Go, tanpa memanggil procedure), lalu mencetak
+PDF-nya; **tidak mengirim email**.
+
+### 70.2 Yang ditemukan di export
+
+| Hal | Temuan |
+|---|---|
+| Section tombolnya | `InputEstimasiDetail` — tidak ada di export |
+| Activity penerbit PLA (penerima, nomor, nilai) | tidak ada. Tidak satu activity pun menyusun `PLAList`; padanan DLA-nya (`GenerateDLAList`) ada |
+| Template cetak PLA | tidak ada. DLA memakai stream per jenis (`DLATREATY_HTML`, `DLAFACOUT_HTML`, `DLABPPDAN_HTML`) — ketiganya juga tidak ada di folder HTML |
+| Penyimpanan | `INSERT_PLADLA.prc` cabang `PLADLA='PLA'`: satu baris T_PLALIST per penerima; catatan "Estimation only…" untuk PLA pertama, "Please see our PLA No.…" untuk berikutnya. Nomor PLA DITERIMA dari pemanggil |
+| Isi baris per penerima | `PLAList().EstimasiList()` pada JSON klaim: EstimationValue, EstimastionReserve, SharePLA, PercentPLA, ResultPLA |
+| Pengiriman | `UpdateDetailPLA2` + isi email `SendPLADLA` — tidak dibawa (keputusan Work Owner) |
+
+Pola nomor PLA di T_PLALIST portal ASM (365 hari, bentuk saja): huruf jenis + dua digit tahun +
+pencacah, total 19 karakter; revisi berakhiran ` / n`. Huruf `J` untuk COINS, `H` untuk FACOUT
+dan BPPDAN; tidak ada PLA treaty dalam setahun terakhir. Sumber pencacahnya diduga `GETNEWID` /
+`PKG_COUNTER_PRODUCTION` — dua dari 12 dependensi procedure yang belum diterima (`R-01`).
+
+### 70.3 Yang dibutuhkan sebelum dibangun
+
+1. Activity di balik tombol Print PLA (penyusun `PLAList`), atau aturannya: siapa menerima PLA
+   (anggota koasuransi, reasuradur fac out, BPPDAN, treaty) dan rumus nilainya.
+2. Template cetak PLA per jenis beserta contoh PDF-nya.
+3. Aturan nomor PLA, atau source `GETNEWID` / `PKG_COUNTER_PRODUCTION` dari DBA.
+
+### 70.4 Pembaruan — template PLA dan contoh PDF diterima (2026-09-27)
+
+Work Owner menambahkan tujuh activity daftar A (`PNCSaveButton`, `BackToRegister_act`,
+`InsertLogAdminClaimPNC`, `SearchHistoryClaim_act`, `SetViewDetailPolis_Act`,
+`GetHistoryKeterlambatan`, `CountEstimationClaimOnly`), empat template `PLAHTML`,
+`PLAHTML_FACOUT`, `PLAHTML_BPPDAN`, `PLAHTML_TREATY`, dan empat contoh PDF PLA.
+
+Yang kini terbaca:
+
+| Hal | Temuan |
+|---|---|
+| Nomor PLA | huruf jenis + dua digit tahun REGISTRASI klaim (cocok 1.313 dari 1.406) + `1` + `POOLDATA.PLA_SEQ` 15 digit (pencacah terbesar T_PLALIST = 25.814, LAST_NUMBER = 25.815); revisi ` / n` |
+| Huruf | J = COINS · H = FACOUT, BPPDAN, EQPOOL · L = TREATY |
+| Nilai | kolom angka T_PLALIST berisi 0; nilainya di `JSON_PLA.EstimasiList` (EstimastionReserve, EstimationValue, PercentPLA, SharePLA, ResultPLA) |
+| COINS | ResultPLA = reserve × % anggota |
+| FACOUT | ResultPLA = SharePLA (TSI fac reasuradur) ÷ PercentPLA (TSI bagian ASM) × reserve bagian ASM |
+| BPPDAN | ResultPLA = reserve × % BPPDAN; cabang khusus bila TSI objek > 20 M (`Tempbppdan.NoAksep`) |
+| TREATY | bercabang QS / non-QS / FACOBLIG; memakai master treaty (limit, percent share QS) |
+
+Activity PENERBIT PLA tetap tidak ada dan tidak dirujuk rule mana pun. Padanan DLA-nya ada:
+`DLACoins_act`, `DLAFacout_act`, `DLABPPDAN_act`, `DLATreaty_Act` (±33.800 baris), dan keempatnya
+mengisi halaman yang sama dengan template PLA (`TempPLASpreading`, `TempEstimasi`).
+
+### 70.5 Pembaruan — kiriman kedua (2026-09-27)
+
+Berkas yang ditambahkan adalah salinan activity DLA yang sudah ada (`GenerateDLAList`,
+`DLACoins_act`, `DLAFacout_act`, `DLAFacoutKredit_act`, `DLABPPDAN_act`, `DLATreaty_Act`,
+`DownloadDLA`, `BPPDANCekNilaiDla`) — cap waktunya sama, kecuali `DLAFacout_act` yang lebih baru
+(2026-09-11). Tidak satu pun menerbitkan PLA:
+
+- Nomor PLA dan DLA diterbitkan `RDB List/InsertPLADLA_SQL` → procedure
+  `POOLDATA.PLA_DLA(TAHUN, KODE, TIPE)`. Keempat activity DLA mengirim `TIPE = "DLA"` apa adanya;
+  pemanggil lain (`InsertAdjustmentList*`, `SetakseptasiKlaimServiceInsert`) mengirim `"ALOD"`.
+  Tidak ada pemanggil ber-`TIPE = "PLA"` di export.
+- Source `POOLDATA.PLA_DLA` tidak ada di folder `Database/`.
+- `ActKBRUForUpdateStatusKlaimRef` dan section `InputEstimasiDetail` belum ada.
+
+Tahun pada nomor DLA diambil `@CurrentDate("yy","WIB")`; pada data PLA yang ada, tahunnya cocok
+dengan tahun registrasi klaim (70.4) — perbedaan ini baru dapat dipastikan dari activity PLA-nya.
+
+### 70.6 Pembaruan — kiriman ketiga (2026-09-27)
+
+Diterima: `Database/PLA_DLA.prc`, `ActKBRUForUpdateStatusKlaimRef`, section
+`InputEstimasiDetail_sect` dan `ViewInputEstimasiDetail`, serta ulang-simpan activity DLA
+(isinya tetap `TIPE = "DLA"`).
+
+**Nomor PLA kini pasti** (`PLA_DLA.prc`, cabang `TIPE = 'PLA'`): satu baris baru di `POOLDATA.PLA`
+(KEY = `new_uuid`, KODE, ID_SITE, TAHUN, COUNT = `PLA_SEQ.NEXTVAL`), lalu
+`KODE || TAHUN || ID_SITE || LPAD(COUNT,15,'0')`. `ID_SITE` = `M_SITE_DATABASE.ID` dengan
+`CURRENT_SITE = '1'` — itulah angka `1` di tengah nomor. Procedure memanggil `select_sequence(...)`
+yang source-nya belum ada.
+
+**Tombol CFS dan Print PLA tidak ada di `InputEstimasiDetail`.** Section itu hanya grid objek
+(Nama Objek, Lokasi, Nilai Klaim, Nilai Adjuster, View, Buka Proteksi TSI). Baris jaminannya ada di
+section `ObjectCoverage` (versi input, dirujuk 16 kali oleh section `Estimasi`) — **belum ada**;
+yang ada hanya `ViewObjectCoverage` tanpa tombol. Activity penerbit PLA tetap belum ada.
+
+### 70.7 Pembaruan — section ObjectCoverage diterima (2026-09-27)
+
+`Section/ObjectCoverage_sect.xml` (baris jaminan tahap Input Estimasi) dan `Database/SELECT_SEQUENCE.prc`
+diterima. Isinya:
+
+| Tombol | Aksi | Kondisi |
+|---|---|---|
+| Download Claim Face Sheet | activity `DownloadClaimFaceSheet_act`, lalu refresh section | — |
+| Print PLA | flow action lokal `PrintPLA` | mati bila `IsNoCoins \|\| !isCFS`; tampil bila `pyWorkPage.ClaimData.KodeCabang==TempCabang.KodeCabang` |
+
+Artinya Print PLA di layar ini hanya aktif untuk polis BERKOASURANSI yang jaminannya SUDAH dibuatkan
+CFS. `select_sequence` hanya mengembalikan sequence ke nilai maksimum bila melampauinya (memanggil
+`reset_sequence`, belum ada) — bukan bagian penomoran.
+
+Belum ada di export: flow action `PrintPLA` (beserta section dan activity pasca-prosesnya),
+activity `DownloadClaimFaceSheet_act`, When `IsNoCoins` dan `isCFS`.
+
+## 71. Tombol Print PLA — PLA koasuransi (2026-09-27)
+
+### 71.1 Permintaan dan keputusan
+
+Work Owner meminta tombol Print PLA dapat dipakai dan memilih: bangun PLA COINS sekarang dari
+aturan yang terbaca (penerbit asli `GeneratePLAListObject` dan layar `PrintPLA_dtl` belum ada),
+terbitkan dan catat ke T_PLALIST untuk klaim PNCN, tanpa email.
+
+### 71.2 Sumber
+
+| Bagian | Sumber |
+|---|---|
+| Kondisi tombol | `ObjectCoverage_sect`: flow action lokal `PrintPLA`, mati bila `IsNoCoins \|\| !isCFS` |
+| Penerima | `DLACoins_act`: PLA hanya bila perusahaan sendiri LEADER; anggota lain dengan share > 0 dan tanpa FlagDelete |
+| Nilai | `JSON_PLA.EstimasiList` Pega: ResultPLA = reserve × % anggota |
+| Nomor | `PLA_DLA.prc` + `SELECT_SEQUENCE.prc`: KODE J + tahun + ID_SITE + PLA_SEQ 15 digit, dicatat di POOLDATA.PLA |
+| Catatan, kolom T_PLALIST | `INSERT_PLADLA.prc` cabang PLA; kolom angka 0, nilai di JSON_PLA |
+| Dokumen | HTML `PLAHTML`, contoh PDF COINS |
+| Tanda tangan | `SetSignatureNonMBU` (kategori PLA → BAMBANGSG / DHARMANTO), `BrowseSignatureNMBU` → POOLDATA.MTTD.JSONDATA.TTDWeb |
+
+Rute baru: `POST /api/registrasi/klaim/{klaimID}/pla` — badan `{tugas_id, objek, jaminan}`,
+jawaban PDF (satu penerima) atau ZIP (lebih dari satu), berkas `PLACOINS<nomor>.pdf`.
+
+### 71.3 Perilaku
+
+- PLA dibentuk dari revisi CFS TERAKHIR jaminan: reserve = jumlah estimasi klaim yang sudah
+  terkunci. REVISI T_PLALIST = nomor revisi CFS itu.
+- PLA yang sudah terbit untuk revisi yang sama dicetak ulang, tidak diterbitkan ulang — nomor
+  tidak terbuang. Revisi CFS berikutnya menerbitkan PLA baru dengan catatan rujukan.
+- Tahun pada nomor: tahun registrasi klaim (cocok 1.313 dari 1.406 PLA di T_PLALIST).
+- Seluruh penerbitan satu tombol dalam satu transaksi (nomor, T_PLALIST, jejak audit PLA_TERBIT).
+  Sequence Oracle tidak ikut dibatalkan bila transaksi gagal — nomor yang terlewat bukan galat.
+
+### 71.4 Terbukti
+
+```
+Oracle ASM:
+  kesetaraan penerima + persen terhadap PLA COINS revisi 0 Pega, 40 klaim terbaru:
+    cocok 38 · beda penerima 1 (kita 6, Pega 2) · polis kini tanpa CoinsList 1
+  jalur tulis di dalam transaksi yang di-rollback: nomor 19 karakter terbit, T_PLALIST
+    tersimpan dan terbaca kembali, catatan rujukan terbentuk; sesudah rollback 0 baris
+    (satu nomor PLA_SEQ terpakai uji)
+  PDF terbentuk dengan tanda tangan MTTD (PNG interlaced dinormalkan lebih dulu)
+-periksa: T_PLALIST, PLA, M_SITE_DATABASE, T_REINSURER, MTTD [ok]
+go test ./... · vitest 1146 · typecheck · build — lulus
+```
+
+### 71.5 Yang belum
+
+- Isi layar `PrintPLA_dtl` dan penerbit asli `GeneratePLAListObject` belum ada — bila layar itu
+  memuat pilihan penerima atau isian catatan, perilakunya disesuaikan setelah diterima.
+- PLA FACOUT, BPPDAN, dan TREATY tidak diterbitkan tombol ini (tombolnya khusus koasuransi).
+- Logo kop (`webweb/LogoASM.PNG`) tidak ada di export; kop dicetak tanpa logo sampai berkasnya
+  diserahkan (`plapdf.Renderer.Logo`).
+- Nama penanda tangan: POOLDATA.MTTD.NAME kosong, sehingga dipakai nama dari HTML `PLAHTML`
+  (pengecualian `D-15`, keputusan 91). Begitu DBA mengisi MTTD.NAME, nama dibaca dari sana.
+- Portal Timor-Leste (`smi`) belum punya kop dan penanda tangan tersendiri; dicetak sebagai ASM.
+
+### 71.6 Daftar yang masih belum ada di export (2026-09-27)
+
+Diperiksa lewat `pzInsKey` (definisi rule, bukan rujukan) terhadap export terbaru, untuk layar
+Input Estimasi beserta tombol CFS dan Print PLA:
+
+- Activity: `DownloadClaimFaceSheet_act`, `GeneratePLAListObject`.
+- Section: `PrintPLA_dtl`, `ObjectItemList`, `InputSpreading`, `ClaimSurvey`, `UploadDocument`,
+  `TabSurvey`, `PNCProgressKomunikasi_Sec`, `InputRegisterDetail2`.
+- Flow action: `InformasiOsDanAkseptasiKlaim`, `SetOpenTSI`, `DetailPremi`,
+  `GCNMAlertSendRequest`, `InputAlasanTerlambat`.
+- When: `IsNoCoins`, `isCFS`.
+- Berkas: logo kop `webweb/LogoASM.PNG`, `LogoInsurtech`, `LogoSmi.png`.
+- Dari DBA: source `reset_sequence` (dipanggil `SELECT_SEQUENCE.prc`); isi `POOLDATA.MTTD.NAME`.
+
+## 72. Print PLA — dialog PrintPLA_dtl (2026-09-27)
+
+### 72.1 Yang diterima
+
+`GeneratePLAListObject`, section `PrintPLA_dtl`, When `isCFS` dan `IsNoCoins`, serta flow action
+dan section lain dari daftar 71.6. Logo dikosongkan dulu (Work Owner).
+
+### 72.2 Temuan
+
+| Hal | Isi |
+|---|---|
+| `GeneratePLAListObject` | hanya pembungkus: memanggil `GeneratePLAList` (untuk GroupPanel 003/006 per lokasi objek) lalu `SetDokumenSendPLADLA_act`. **`GeneratePLAList` — penyusun daftar PLA yang sebenarnya — belum ada** |
+| `IsNoCoins` | `@SizeOfPropertyList(pyWorkPage.Policy.CoinsList) = 0` — sama dengan pemeriksaan backend |
+| `isCFS` | `.ClaimData.IsCFS_PNC = "1"` ATAU `.ClaimData.ObjectList(1).ObjectCoverageList(1).IsCFS = "1"` (diisi `DownloadClaimFaceSheet_act`). Pega hanya memeriksa jaminan PERTAMA; di sini diperiksa per jaminan — selisih yang disadari |
+| `PrintPLA_dtl` | grid `DataPLA`: NO PLA, PLA REINSURER, TIPE PLA, REMARKS (`.PLARemarks`, dapat diubah), Email, pilih; tombol Print PLA (`DownloadFireLossAdvice_act`), Print All PLA (`DownloadAllDocumentPLA`), SEND ALL PLA; kotak "Coverage/Interest AS PER ORIGINAL POLICY" (`.CheckCoverage`, `.CheckInterest`), Remarks Reserve (`.RemarksReserve`), daftar file pendukung (`SelectAllFilePLA`, `GetLinkViewDoc_Act`) |
+
+Keempat activity tombol layar itu dan `GeneratePLAList` belum ada di export.
+
+### 72.3 Yang dibangun
+
+- Tombol Print PLA membuka dialog `PLADialog` — membukanya menerbitkan PLA revisi CFS terakhir bila
+  belum ada. Grid NO PLA, PLA REINSURER, TIPE PLA, REMARKS, Email; Print PLA per baris; Print All
+  PLA (ZIP bila lebih dari satu); Simpan Remarks (`INSERT_PLADLA` cabang update: NOTES, ISPLA = 1,
+  jejak audit PLA_CATATAN). SEND ALL PLA tampil tetapi mati.
+- Rute: `POST …/pla/daftar`, `POST …/pla/catatan`, `POST …/pla` (dengan `nomor` untuk satu PLA).
+- Daftar hanya diminta sekali saat dialog dibuka, supaya dua permintaan bersamaan tidak
+  menerbitkan PLA ganda. Di sisi server belum ada kunci antar-permintaan.
+
+### 72.4 Terbukti
+
+```
+Oracle ASM, transaksi di-rollback: simpan PLA, ubah catatan, baca kembali (catatan + email) — 0 baris sesudahnya
+go test ./... · vitest 1146 · typecheck · build — lulus
+```
+
+### 72.5 Yang belum
+
+- `GeneratePLAList`, `DownloadFireLossAdvice_act`, `DownloadAllDocumentPLA`, `SelectAllFilePLA`,
+  `GetLinkViewDoc_Act`.
+- Kotak "Coverage/Interest AS PER ORIGINAL POLICY", Remarks Reserve, dan file pendukung — akibatnya
+  ditentukan activity yang belum ada.
+- Kunci server terhadap penerbitan ganda bila dua pengguna membuka dialog bersamaan.
+
+## 73. Tombol Kirim PIC Teknik menggantikan Next pada Input Estimasi (2026-09-27)
+
+**Permintaan.** Layar Pega InputEstimasi tidak punya tombol Next; tahapnya ditutup tombol
+**Kirim PIC Teknik** di baris atas, sejajar Alasan Terlambat.
+
+**Yang dibaca dari `Section/InputEstimasiAdmin_SECT.xml`.** Tombol itu ada dalam DUA sel dengan
+kondisi tampil yang saling meniadakan:
+
+| Sel | Tampil bila | Aksi klik |
+|---|---|---|
+| 5 (`:5322`, kondisi `:5901`) | `!isPA_PNC && .ClaimData.SurveyData.IsSendRequest=='1'` | `InsertHistoryClaimPNC("Transfer To PIC")` → `InsertLogAdminClaimPNC` → Data Transform `SendToPIC` → `PNCInsertMitraLog_Act` (posisi "Register Klaim") → **`finishAssignment`** |
+| berikutnya (`:6604`, kondisi `:6734`) | `!isPA_PNC && .ClaimData.SurveyData.IsSendRequest==''` | local action `GCNMAlertSendRequest` (popup "belum request survey", `pyMemo :20`) |
+
+Keduanya `pyDisabledWhen !isCFS`. When `isCFS` = `.ClaimData.IsCFS_PNC="1"` ATAU
+`ObjectList(1).ObjectCoverageList(1).IsCFS="1"`; `DownloadClaimFaceSheet_act` mengisi IsCFS_PNC
+dari jaminan yang dicetak bila masih kosong — jadi ia benar sejak CFS pertama pada jaminan mana pun.
+
+`finishAssignment` menutup flow action `InputEstimasi` → Decision5 (Non-MBU) ke **Choose Surveyor**
+atau Decision6 (Travel) ke **Send To PIC Teknik**; keduanya dirutekan PNCTeknikRouter. Jalur itu
+sudah ada di `CompleteEstimate` — tombol baru memakainya.
+
+**Yang dibangun.**
+- Frontend `EstimateForm.tsx`: tombol Kirim PIC Teknik di baris atas, mati bila belum ada estimasi
+  terkunci CFS; tombol Next dihapus. Back dan Save tetap di bawah (section punya Back dan
+  `PNCSaveButton`).
+- Backend `Claim.HasFaceSheet()` dan gerbang `ViolationSendNeedsFaceSheet` di `ValidateEstimate`:
+  Pega hanya mematikan tombol, di sini server juga menolak (`D-59`).
+- Uji: `TestSendToTechnicalPICMovesToChooseSurveyor`, `TestSendToTechnicalPICNeedsFaceSheet`, dua uji
+  layar di `ClaimPage.test.tsx`.
+
+**Yang tidak dibawa, dan alasannya.**
+
+| Hal | Alasan |
+|---|---|
+| Varian popup `GCNMAlertSendRequest` | Section popupnya tidak ada di export (flow action hanya memuat `pyStreamName`). Dan **tidak satu rule pun di export yang mengisi `SurveyData.IsSendRequest`** — sumber nilainya tidak diketahui |
+| Data Transform `SendToPIC` | Tidak ada di export; isinya tidak diketahui |
+| `InsertLogAdminClaimPNC` | Activity tidak ada di export |
+| `InsertHistoryClaimPNC` · `PNCInsertMitraLog_Act` | Keduanya memanggil procedure (`PEGA_JSON_INSERT_HISTORY_CLAIM_PNC`, `INSERT_PNCCHRONOLOGYTAT`); `D-02` melarangnya, dan belum ada tahap lain aplikasi ini yang menulis riwayat/kronologi TAT. Penggantinya sekarang jejak audit `TAHAP_DITUTUP` |
+
+## 74. Layar InputSurveyor untuk Choose Surveyor dan Send To PIC Teknik (2026-09-27)
+
+**Permintaan.** Sesudah Kirim PIC Teknik, tahap berikutnya hanya menampilkan tombol "Selesaikan"
+umum. Work Owner meminta layar InputSurveyor seperti tangkapan layar Pega.
+
+**Sumbernya.** Flow action `InputSurveyor` di export berkelas `ASM-FW-GISFW-Work-Surveyor`
+(section `InputDtlSurveyor`, tidak ada) — bukan milik PNC. Layar PNC yang cocok dengan tangkapan
+layar adalah `Section/ClaimSurvey_sect.xml` (870 KB): tombol Kirim ke Inputor, Kirim ke Admin,
+Tutup Klaim, dan field Catatan dari Inputor hanya ada di section ini.
+
+**Tombol baris atas dan kondisinya.**
+
+| Tombol | Kondisi di section | Dibawa |
+|---|---|---|
+| Claim Inquiry | `pyWorkPage.Policy.IsKBGBRISurf=='true'` | tidak — penanda BRI Surf belum ada |
+| Detail Premi · Detail Polis · Riwayat Klaim | — | tampil, mati |
+| Kirim ke RCL/PUCL | `isAnalisatorTravel` | tidak — berbasis peran analis |
+| Kirim ke Compliance | `isAnalystPA_PNC \|\| isAnalisatorTravel` | tidak — idem |
+| Kirim ke Inputor | `!isAnalystPA_PNC` | tampil, mati |
+| Kirim ke Inputor PA | `isPA_PNC && isAnalystPA_PNC` | tidak — idem |
+| Kirim ke Marketing | `IsTravel` | tampil (Travel), mati |
+| Kirim ke Admin | `IsNotTravelPA` (GroupPanel ≠ 005 dan ≠ 002) | tampil (Non-MBU), mati |
+| Kirim ke Investigator | `isAnalystPA_PNC` | tidak — idem |
+| Tutup Klaim / Reopen Klaim | `IsPendingClosed` false / true | Tutup Klaim tampil, mati |
+
+**Tab** (klaim belum pending close, bukan PNCReceive): Input Register (`InputRegisterDetail2`) ·
+judul `ClaimData.pyNote` = Estimasi & Adjustment (`InputEstimasi`) · Survey
+(`(isMarineCargo || isAneka || isFire)`, `TabSurvey`) · Investigasi (GroupPanel 002, `TabInvestigasi`)
+· Unggah Dokumen · Progress Claim & Komunikasi. When `IsAneka` menguji `BusinessCode = 10140`,
+sehingga PolicyDTO kini membawa `kode_bisnis`.
+
+**Yang dibangun** — `frontend/src/modules/registrasi/SurveyorForm.tsx`, HANYA MEMBACA:
+- Input Register versi baca: tanggal, lokasi, pelapor, PIC Teknis, kronologi, objek/jaminan/TSI/spreading.
+- Estimasi & Adjustment dengan tiga sub-tab: Estimasi Pembayaran (estimasi tersimpan beserta
+  penanda CFS), Penerima Klaim (`ViewShowReceiver`: Nama, Alamat), Adjustment & Akseptasi (objek:
+  Nama Objek, Lokasi, Currency, Nilai Akseptasi Klaim/Adjuster; jaminan: Nama Coverage, Mata Uang,
+  TSI; grid Adjustment, Transfer Komite, Tipe Pembayaran/Akseptasi Komite, Akseptasi, Tambah, Button).
+- Survey, Unggah Dokumen, Progress memakai komponen tab Input Estimasi (`EstimateTabs.tsx`).
+- `ClaimPage.tsx` memakainya untuk tahap `pilih-surveyor` dan `kirim-pic-teknik`, menggantikan
+  tombol Selesaikan umum.
+
+**Yang belum ada, dan alasannya.**
+
+| Hal | Alasan |
+|---|---|
+| Section `InputEstimasi` (tab Estimasi & Adjustment) | Tidak ada di export. Sub-tab direkonstruksi dari tangkapan layar |
+| Isi Adjustment & Akseptasi | Modul adjustment (`B-5`) belum dibangun. Nilai Akseptasi 0 adalah jumlah dari nol baris, bukan angka tebakan |
+| Penerima Klaim | `ClaimData.ReceiverClaim` belum disimpan aplikasi ini — grid kosong |
+| Status Pembayaran Premi, Aging Amount | `GetStatusPremi` mengisinya lewat Connect-REST saat Detail Premi dibuka; belum dibangun |
+| Catatan dari Inputor (`ClaimData.Remark`) | T_CLAIM_PNC belum punya kolomnya (sama dengan Input Estimasi) |
+| Proses setiap tombol | Belum dibangun; tombol tampil tetapi mati. Akibatnya klaim di tahap ini **belum dapat dimajukan** dari layar |
+| `TabInvestigasi`, `ViewHistoryClaim` | Tidak ada di export |
+
+## 75. Tombol Tambah pada grid Adjustment (2026-09-27)
+
+**Permintaan.** Tombol Tambah di tab Adjustment & Akseptasi (layar InputSurveyor) mati. Work Owner
+memilih: seluruh Tipe Pembayaran dapat ditambahkan **termasuk Adjuster Fee**; Salvage tetap mati.
+
+**Sumbernya.** Section yang memuat grid dan tombol itu (`InputEstimasi`) tidak ada di export.
+Isian dan hitungan baris dibaca dari activity yang menghitung dan memeriksa
+`.ObjectCoverageList(n).AdjustmentList(n)` (1.128 rujukan di Activity):
+
+| Activity | Yang diambil |
+|---|---|
+| `SetNilaiResikoSendiri` | LOCValue = Propose × LOC% · RiskValue (tipe 1: (Propose − LOC − SalvageA) × %, tipe 2: TSI × %, tipe 3: 0) · Final = Propose − LOC − SalvageA − Risk · Value = Gross × ShareASM |
+| `ValidationTypePaymentAdj` | pesan wajib-isi: "Silahkan Pilih Tipe Pembayaran", "Nilai Proposed Adjustment Harus Diisi" (bukan 3/4/6/7), "Tipe Resiko Harus Diisi" / "Percent Resiko Harus Diisi" (bukan 3/4/6), "Nilai Professional Fee, Survey Expenses, dan VAT Harus Diisi" (4/7) |
+| `SetValueAdjusterFee` | Gross = Professional Fee + Survey Expenses + VAT, **VAT berupa persen** (VATType 1 dari Professional Fee, 2 dari subtotal); total fee ≤ estimasi adjuster; polis TYPEOFCOINS 2 mengalikan total sekali lagi dengan share (dibawa, `P-5`) |
+| `ValidTotalEstimation` | "Total Nilai Adjustment Melebihi Estimasi" |
+| `PEGA_CONVERT_JSONKLAIM_PNC.prc` 1051–1231 | pemetaan kolom T_CLAIM_ADJUSTMENT; NILAIAKSEPTASI = AdjustmentValue bila TYPEOFCOINS 1/F, selain itu GrossValue |
+
+**Dicocokkan dengan data Pega** (47.499 baris T_CLAIM_ADJUSTMENT, hanya jumlah per kode):
+ASM_SHARE_VALUE = GROSSVALUE × ASM_SHARE pada 99,9% baris tipe 1/2/5/6; GROSSVALUE = TOTAL_CLAIM −
+LOC − NILAI_SALVAGE_A − INDIVIDUAL_RISK_VALUE pada mayoritas tipe 1/2/5/6; ASM_SHARE = SHAREASM
+klaim pada 94% baris (LEADER, MEMBER, FAC IN). Baris yang belum ditransfer komite berstatus
+akseptasi kosong, tanpa nomor akseptasi, tanpa ANALYST_TFKOMITEDATE.
+
+**Yang dibangun.**
+- Domain `registrasi/settlement.go`: `SettlementLine` (istilah CONTEXT.md untuk AdjustmentList),
+  `NewSettlementLine` (hitung + periksa), `Coverage.Settlement`.
+- Penyimpanan ke **POOLDATA.T_CLAIM_ADJUSTMENT** untuk klaim PNCN (`settlement.sql`): perbarui-atau-
+  sisip per (CLAIMID, OBJECTID, OBJECTCOVERAGEID, ADJUSTMENTID), tanpa hapus (D-66). Diverifikasi ke
+  Oracle dalam transaksi yang di-rollback (CLAIMID fiktif).
+- Usecase `AddSettlement` (hanya tahap Choose Surveyor / Send To PIC Teknik), audit
+  `ADJUSTMENT_DITAMBAH`; kurs tanggal kejadian (`D-48`) untuk mata uang baris dan polis.
+- Rute `POST /api/registrasi/klaim/{klaimID}/adjustment`; respons klaim kini membawa `adjustment`.
+- Layar: tombol Tambah membuka `SettlementDialog`; grid menampilkan baris beserta Tipe Pembayaran
+  dan status; Nilai Akseptasi objek menjumlahkan baris yang sudah diakseptasi.
+- Input Register yang disimpan ulang mempertahankan adjustment (`keptSettlement`).
+
+**Yang tidak dibawa, dan alasannya.**
+
+| Hal | Alasan |
+|---|---|
+| Salvage (tipe 3) | Alurnya `SetAdjustmentSalvage_act` milik modul Salvage — pilihan Work Owner |
+| Pengurang SalvageValue dan InterimPayment pada Gross | Diisi alur komite/salvage; tidak ada kolomnya di T_CLAIM_ADJUSTMENT |
+| Aturan PA/TKA/daily cash (`10035`), InpatientDay, OpenTSI, limit harian | Layar ini hanya Non-MBU dan Travel; OpenTSI belum ada di klaim |
+| Pita fee `GCNM_FEE_SCALE` | Masih penghalang B-5 (DBA); fee adjuster dihitung dari komponennya saja |
+| LOSS_ADJUSTER_FEE | Pada data Pega tidak sama dengan gross fee — maknanya belum diketahui, kolom dibiarkan kosong |
+| Komponen fee (Professional Fee, Survey Expenses, VAT%) | Tidak punya kolom; hanya hasilnya di GROSSVALUE |
+| Ubah/hapus baris, Transfer Komite | Belum dibangun; Transfer Komite tampil mati |
+
+**Koreksi atas §73.** Di sana `InsertLogAdminClaimPNC` ditulis "tidak ada di export". Berkasnya
+ternyata ada dengan nama `Activity/InsertLogAdminClaimPNC_act.xml` (pencarian saya memakai pola
+`-Act.xml`). Pencatatan log admin pada Kirim PIC Teknik tetap belum dibawa.
+
+### 75.1 Isian adjustment di dalam grid, bukan jendela (2026-09-28)
+
+Atas permintaan Work Owner, tombol Tambah tidak lagi membuka jendela. Baris isian
+(`SettlementEditor.tsx`, dulu `SettlementDialog.tsx`) muncul di dalam tabel Adjustment jaminan
+itu, di bawah baris yang sudah ada — seperti tambah-baris grid Pega. Selama baris isian terbuka,
+tombol Tambah jaminan itu mati; Simpan menutupnya setelah server menerima, Batal menutupnya
+tanpa menyimpan. Isian, hitungan, dan pemeriksaannya tidak berubah.
+
+### 75.2 Isian adjustment mengikuti InputAdjustment_sect (2026-09-28)
+
+`Section/InputAdjustment_sect.xml` (ditambahkan Work Owner, 2,8 MB) adalah isian satu baris
+AdjustmentList. Susunan dan kondisi tampilnya kini diikuti `SettlementEditor.tsx`:
+
+| Field | Properti | Kondisi di section |
+|---|---|---|
+| Mata Uang | `.Currency` | hanya-baca bila `IsTravel` |
+| Tipe Pembayaran* | `.PaymentType` | — |
+| Total Klaim* | `.ProposeAdjustmentValue` | tipe ≠ 3/4/7 |
+| Nilai Pengajuan Tertanggung* | `.ProposeValue` | tipe ≠ 3/4/7 |
+| Tipe Resiko Sendiri* · Persen (%) · Nilai Resiko Sendiri* | `.IndividualRiskType` · `.IndividualRiskPercentage` · `.IndividualRiskValue` | tipe ≠ 3/4/7; Persen hanya-baca bila tipe resiko 3 |
+| Lack Of Document (%) · Nilai Salvage A · Nilai Salvage B | `.LOC` · `.SalvageValueA` · `.SalvageValue` | `!IsPATRAVEL` dan tipe ≠ 3/4/7 |
+| Nilai Dalam IDR · Nilai Estimasi | `.CurrencyDol` · `.EstimationValue` | tampilan |
+| Nilai Interim | `.InterimPayment` | `IsNonMbu` dan tipe 1/2/5 |
+| Share ASM (%) · Nilai Nett Pembayaran · Nilai Yang Dibayarkan ASM | `.ShareASM` · `.GrossValue` · `.AdjustmentValue` | tampilan |
+| Status Persetujuan LOD · Tanggal Transfer LOD · Status Lunas · Tanggal Bayar Kasir | `.AcceptationStatusLOD` · `.TransferLODDate` · `.ClaimPaidStatus` · `.ClaimPaidDate` | tampilan (——) pada baris baru |
+| Professional Fee · Survey Expenses · Tipe VAT · VAT (%) · Nilai Adjuster Fee | fee adjuster | tipe 4/7 |
+| Tipe Treaty / Pembagian Persentase | `.SpreadingList` | tabel di bawah |
+
+**Tiga koreksi atas §75, dari section ini dan data Pega:**
+
+1. **PROPOSE_VALUE adalah Nilai Pengajuan Tertanggung** (`.ProposeValue`, isian wajib), bukan
+   estimasi. Nilai Estimasi hanya tampilan.
+2. **Tipe resiko 3 adalah "Lainnya"**: nilai resiko sendiri DIISI petugas, persennya nol.
+   `SetNilaiResikoSendiri` tipe 3 hanya mengenolkan persen; data Pega: 1.132 baris tipe 3
+   bernilai resiko terisi dengan persen nol.
+3. **Gross Final/Interim dikurangi Nilai Salvage B dan Nilai Interim.** InterimPayment tidak
+   diisi rule mana pun di export; rumusnya dicocokkan ke data: pada baris Final/Interim yang gross-
+   nya ≠ nilai final, 75 cocok dengan pengurangan gross Interim **terakseptasi** sebelumnya pada
+   jaminan yang sama, 1 dengan seluruh Interim. Dibawa: yang terakseptasi, Non-MBU saja.
+
+**Hitungan langsung.** Pega menjalankan `SetNilaiResikoSendiri` pada perubahan field. Padanannya
+rute `POST …/adjustment/hitung` (`PreviewSettlement`): menghitung tanpa memeriksa dan tanpa
+menyimpan; layar memanggilnya 300 ms setelah isian berhenti berubah.
+
+**Tolak Klaim dinonaktifkan.** Section mewajibkan Alasan Tolak Klaim 1 dan 2 (`.KodePenolakanST`,
+`.KodePenolakanND`, autocomplete) yang daftarnya dari activity `GetDataPenolakanKlaimMas` —
+**tidak ada di export**. Server menolak tipe 6 sampai activity itu tersedia.
+
+**Tidak dibawa:** Tipe Adjuster/FileDGT dan No Invoice (tipe 4; daftar pilihan dan kolomnya tidak
+ada) · field PA/TKA/AI · Salvage B dan Nilai Interim tidak punya kolom — yang tersimpan gross hasilnya
+· label pilihan tipe resiko 1 dan 2 (daftarnya dari definisi properti yang tidak diekspor).
+
+### 75.3 "Tugas ini bukan milik Anda" pada isian adjustment (2026-09-28)
+
+**Sebabnya.** Kirim PIC Teknik menutup Input Estimasi dan membuka tugas Choose Surveyor /
+Send To PIC Teknik yang dirutekan `PNCTeknikRouter`. Pemilihnya (`Assigner`, direkonstruksi dari
+`BrowsePICRandomTeam-SQL`) menyerahkan tugas ke **PIC Teknik berbeban paling ringan** di
+POOLDATA.MST_USER_TEKNIK — bukan ke admin yang menekan tombol. Pratinjau dan Tambah memeriksa
+pemilik tugas (`ErrNotTaskOwner`), sehingga admin yang membuka layar itu ditolak. Penolakannya
+benar; yang keliru layar yang tetap membuka isian.
+
+**Perbaikan.** `SurveyorForm` membandingkan pemilik tugas dengan pengguna aktif: bila berbeda,
+tampil keterangan "Tugas ini milik …", dan tombol Tambah mati dengan keterangan yang sama.
+Kolom "Button" pada grid Adjustment dihapus atas permintaan Work Owner (tidak dipakai).
+
+## 76. Kewenangan tugas per grup dari M_LOGIN_GROUP_PNC (2026-09-28)
+
+**Permintaan.** Peran/grup pengguna dibaca dari POOLDATA.M_LOGIN_GROUP_PNC untuk mengetahui apakah
+pengguna admin, PIC Teknik, atau lainnya. Keputusan Work Owner: **tugas boleh dikerjakan per grup**,
+dan **`PNCKomiteTeknik` dianggap PIC Teknik**.
+
+**Isi tabel saat diperiksa (ASM).** Kolom `LOGIN_ID`, `GROUP_ID`; 4 baris, seluruhnya login
+`JONNY`: `IT`, `PNCKomite`, `PNCKomiteTeknik`, `PncAdmin`. Tidak satu pun dari 26 petugas
+MST_USER_TEKNIK ada di tabel ini. Nama grup mengikuti access group Pega tanpa awalan ruleset;
+access group Pega untuk PIC Teknik sebenarnya `PncPICTeknik`, yang belum ada di tabel.
+
+**Yang dibangun.**
+- `registrasi/access.go`: seam `GroupSource`; `RolesOfGroups` (GROUP_ID → `GCNMFW:<grup>`,
+  disamakan dengan literal peran alur); `StageRole` — PNCAdminRouter → `PncAdmin`,
+  PNCTeknikRouter → `PNCKomiteTeknik`; `CanWork` — pemilik, tugas belum bertuan, atau pemegang
+  grup tahap; `GroupStages`.
+- `GroupStore` (`group.sql`, `grup_login`) — dibaca saja, pencocokan UPPER(TRIM) seperti modul menu.
+- `Service.ResolveCaller` dipanggil `callerOf` sekali per permintaan: peran pemanggil kini dari
+  tabel ini (sebelumnya kosong — sakelar `PERAN_PENGGUNA` tidak pernah dipasang). Akibatnya peran
+  alur seperti `IsAnalystDoctor` juga membaca tabel ini.
+- Enam pemeriksaan "bukan pemilik tugas" (Input Register, simpan draf, estimasi, CFS, PLA,
+  adjustment) diganti `canWork`.
+- Inbox menambah tugas Worklist terbuka pada tahap grup pemanggil (`tugas_inbox_tahap_grup`).
+- Respons klaim membawa `dapat_dikerjakan`; SurveyorForm mengunci isian berdasarkan itu.
+
+**Diverifikasi ke Oracle:** `grup_login` untuk `jonny` mengembalikan keempat grup;
+`tugas_inbox_tahap_grup` untuk `pilih-surveyor` mengembalikan 2 tugas terbuka.
+
+**Catatan.** Tahap antrean bersama (RCL/PUCL, Investigator, Compliance) tetap diatur Workbasket;
+tahap yang dirutekan ke orang bernama (Analyst Doctor) atau ke pemanggil tidak diatur grup.
+
+## 77. Adjustment tersimpan dapat dibuka; tab Penerima Klaim (2026-09-28)
+
+**Adjustment dapat dilihat kembali.** Kolom Adjustment pada grid kini tombol (▸/▾,
+`aria-expanded`); mengkliknya membuka `SettlementDetail` — tampilan baca bersusunan sama dengan
+isian InputAdjustment, beserta tabel spreading jaminan. Nilai Salvage B, Nilai Interim, dan
+komponen fee adjuster tidak punya kolom di T_CLAIM_ADJUSTMENT, sehingga tampil —— pada baris yang
+dimuat ulang; Nilai Estimasi diambil dari estimasi klaim jaminan.
+
+**Penerima Klaim.** Sumber Pega:
+
+| Bukti | Isi |
+|---|---|
+| `Section/ViewShowReceiver-Section.xml` | grid `.ClaimData.ReceiverClaim`: Nama (`.Name`), Alamat (`.Address`) |
+| `Activity/InputRegister_act-Act.xml` ±19150–19400 | tanpa syarat saat submit: `Page-Remove .ClaimData.ReceiverClaim`, lalu satu penerima — Name = `.Policy.QQName`, Address = `.Policy.DeliveryAddressList(1).ASMAddress`, PaymentType "2", IDReceiver "1" |
+| `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` 536–562 | menyalin ReceiverClaim ke T_CLAIM_RECEIVER (IDRECEIVER, NAME, NAMEOFBANK, NOACCOUNT) — ADDRESS tidak diisi |
+
+T_CLAIM_RECEIVER (ASM): kolom CLAIMID, IDRECEIVER (NOT NULL), NAME, NAMEOFBANK, NOACCOUNT,
+ADDRESS; 1.713 baris, sampai 5 penerima per klaim, 821 dengan bank terisi, ADDRESS terisi hanya 2.
+
+**Yang dibangun.** `registrasi/receiver.go` (`Receiver`, `DefaultReceiver`); `Claim.Receiver`;
+`SaveRegister` (bukan Back) membentuk satu penerima bawaan dari polis yang dibaca ulang; polis kini
+membawa `QQName` dan `DeliveryAddress` (`$.DeliveryAddressList[0].ASMAddress`); penyimpanan
+perbarui-atau-sisip ke T_CLAIM_RECEIVER (`penerima_*` di claim.sql) termasuk ADDRESS; DTO
+`penerima_klaim`; tab Penerima Klaim menampilkan Nama dan Alamat.
+
+**Diverifikasi ke Oracle:** sisip/perbarui/baca T_CLAIM_RECEIVER dalam transaksi yang di-rollback
+(CLAIMID fiktif); `polis_ambil` membaca 20 dari 20 polis klaim dengan QQName dan alamat terisi.
+
+**Penyimpangan yang disadari:** bila QQName kosong, nama tertanggung (TheInsured) dipakai — Pega
+membiarkannya kosong (50 baris T_CLAIM_RECEIVER tanpa nama).
+
+**Belum dibawa:** menambah/mengubah penerima (sampai 5 per klaim di data Pega) beserta bank dan
+nomor rekening — section isiannya tidak ada di export; PaymentType "2" penerima (tanpa kolom).

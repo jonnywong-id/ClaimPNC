@@ -60,6 +60,23 @@ function berkas(over: Record<string, unknown> = {}) {
   }
 }
 
+/** Jawaban pencarian polis; bawaannya polis yang tidak ditemukan. */
+function polis(over: Record<string, unknown> = {}) {
+  return {
+    nomor_polis: '',
+    ditemukan: false,
+    tertanggung: '',
+    kode_bisnis: '',
+    nama_bisnis: '',
+    nomor_rujukan: '',
+    group_panel: '',
+    syariah: false,
+    pesan: [],
+    memblokir: false,
+    ...over,
+  }
+}
+
 type Call = { url: string; method: string; body: unknown }
 
 let calls: Call[] = []
@@ -154,7 +171,11 @@ describe('form Input Receive Document', () => {
   })
 
   it('mengirim seluruh isian sebagai PUT, dan uang dalam sen', async () => {
-    installFetch(() => ({ body: berkas() }))
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'POL-CONTOH-1', pesan: [{ kode: 'polis_tidak_tersedia', pesan: 'Nomor Polis tidak tersedia', memblokir: false }] }) }
+        : { body: berkas() },
+    )
     show()
 
     await screen.findByLabelText('Nomor Polis')
@@ -351,5 +372,77 @@ describe('tombol Register Klaim', () => {
 
     expect(await screen.findByText(/Nomor Polis harus diisi/)).toBeInTheDocument()
     expect(calls.some((c) => c.url.includes('/api/registrasi/klaim'))).toBe(false)
+  })
+
+  // Pengganti PolisReceiveInternalExternal: meninggalkan isian Nomor Polis mengisi data
+  // polisnya, dan nomornya dirapikan (huruf besar, tanpa titik).
+  it('mengisi data polis otomatis saat Nomor Polis ditinggalkan', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? {
+            body: polis({
+              nomor_polis: '12600000245315',
+              ditemukan: true,
+              tertanggung: 'PT CONTOH',
+              nama_bisnis: 'ALL RISK',
+              nomor_rujukan: 'REF-1',
+              group_panel: '003',
+            }),
+          }
+        : { body: berkas() },
+    )
+    show()
+
+    const field = await screen.findByLabelText('Nomor Polis')
+    await userEvent.type(field, '1260.0000.2453.15')
+    await userEvent.tab()
+
+    await waitFor(() => expect(screen.getByLabelText('Nama Tertanggung')).toHaveValue('PT CONTOH'))
+    expect(screen.getByLabelText('Nomor Polis')).toHaveValue('12600000245315')
+    expect(screen.getByLabelText('Nama Bisnis')).toHaveValue('ALL RISK')
+    expect(screen.getByLabelText('No. Referensi/Placing Slip')).toHaveValue('REF-1')
+    expect(calls.some((c) => c.url.includes('/polis?nomor=1260.0000.2453.15'))).toBe(true)
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeEnabled()
+  })
+
+  it('mematikan Simpan dan Register Klaim untuk polis Syariah', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? {
+            body: polis({
+              nomor_polis: '12600000000002',
+              ditemukan: true,
+              syariah: true,
+              memblokir: true,
+              pesan: [{ kode: 'polis_syariah', pesan: 'Polis Syariah harus registrasi klaim melalui Pega SMAS', memblokir: true }],
+            }),
+          }
+        : { body: berkas() },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), '12600000000002{Enter}')
+
+    expect(await screen.findByText('Polis Syariah harus registrasi klaim melalui Pega SMAS')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Register Klaim' })).toBeDisabled()
+  })
+
+  // Seperti langkah 12 activity lama: polis yang tidak ditemukan MENGOSONGKAN isian polis,
+  // tetapi tidak memblokir — laporan boleh masuk sebelum polisnya terbit.
+  it('mengosongkan isian polis bila polis tidak ditemukan, tanpa memblokir', async () => {
+    installFetch((call) =>
+      call.url.includes('/polis?')
+        ? { body: polis({ nomor_polis: 'X1', pesan: [{ kode: 'polis_tidak_tersedia', pesan: 'Nomor Polis tidak tersedia', memblokir: false }] }) }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, tertanggung: 'SISA LAMA' } }) },
+    )
+    show()
+
+    await userEvent.type(await screen.findByLabelText('Nomor Polis'), 'x1')
+    await userEvent.tab()
+
+    expect(await screen.findByText('Nomor Polis tidak tersedia')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nama Tertanggung')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeEnabled()
   })
 })

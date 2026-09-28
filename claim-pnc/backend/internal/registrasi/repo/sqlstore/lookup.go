@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -133,6 +133,7 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		quoBusinessCode, branchName, sob, sobName sql.NullString
 		prodKe, policyLeader, typeOfCoins         sql.NullString
 		cedingName, facShare                      sql.NullString
+		deliveryAddress                           sql.NullString
 	)
 	err := exec.QueryRowContext(ctx, loadQuery("polis_ambil"), number).Scan(
 		&no, &panel, &businessCode, &businessName,
@@ -140,7 +141,7 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		&insured, &qqName, &branch, &spreading,
 		&quoBusinessCode, &branchName, &sob, &sobName,
 		&prodKe, &policyLeader, &typeOfCoins,
-		&cedingName, &facShare,
+		&cedingName, &facShare, &deliveryAddress,
 	)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -173,11 +174,15 @@ func (r *PolicyRepo) Get(ctx context.Context, policyNumber string) (registrasi.P
 		// Nilai persisnya belum dikonfirmasi pemilik bisnis, sehingga pembandingannya
 		// dipusatkan di satu fungsi yang mudah dikoreksi — bukan disebar sebagai literal.
 		Declaration: isDeclarationPolicy(policyKind.String),
+		Kind:        strings.TrimSpace(policyKind.String),
 
 		Currency:   strings.TrimSpace(currency.String),
 		BranchCode: strings.TrimSpace(branch.String),
 
 		InsuredName: name,
+
+		QQName:          strings.TrimSpace(qqName.String),
+		DeliveryAddress: strings.TrimSpace(deliveryAddress.String),
 
 		// Spreading dianggap tersedia bila dokumen menyatakannya selesai. Nilai yang
 		// tidak dikenali diperlakukan sebagai BELUM tersedia: menganggapnya tersedia

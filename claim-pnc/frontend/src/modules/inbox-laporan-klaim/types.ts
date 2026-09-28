@@ -283,3 +283,28 @@ export const ClaimReportErrorCode = {
 
 export type ClaimReportErrorCode =
   (typeof ClaimReportErrorCode)[keyof typeof ClaimReportErrorCode]
+
+/**
+ * Jawaban pencarian polis — pengganti activity `PolisReceiveInternalExternal`, yang
+ * dijalankan layar lama setiap kali isian Nomor Polis berubah.
+ */
+export type PolicyNotice = {
+  kode: string
+  pesan: string
+  /** Tombol Simpan dan Register Klaim dimatikan. */
+  memblokir: boolean
+}
+
+export type PolicyLookupResponse = {
+  /** Nomor yang sudah dirapikan: huruf besar, tanpa titik. */
+  nomor_polis: string
+  ditemukan: boolean
+  tertanggung: string
+  kode_bisnis: string
+  nama_bisnis: string
+  nomor_rujukan: string
+  group_panel: string
+  syariah: boolean
+  pesan: PolicyNotice[]
+  memblokir: boolean
+}

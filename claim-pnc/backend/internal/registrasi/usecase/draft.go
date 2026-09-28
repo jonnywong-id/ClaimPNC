@@ -36,7 +36,7 @@ func (l *Service) SaveDraft(ctx context.Context, p RegisterCommand, by Caller) (
 	if err != nil {
 		return registrasi.Claim{}, err
 	}
-	if task.Owned() && task.Owner != by.Identity {
+	if !l.canWork(task, by) {
 		return registrasi.Claim{}, registrasi.ErrNotTaskOwner
 	}
 
