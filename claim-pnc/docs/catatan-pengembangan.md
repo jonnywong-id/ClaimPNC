@@ -23512,3 +23512,41 @@ secara sadar.
 
 Judul ketiga daftar komunikasi karena itu **disusun dari penyaringnya sendiri**, bukan
 disalin — dan itu dinyatakan di `PlannedDifferences`, bukan disamarkan.
+
+### 70.11 Layar ini tidak dapat dilihat saat dikembangkan — dan sebabnya BENAR
+
+Work Owner melaporkan penolakan "Layar ini untuk mitra reasuransi" pada akun `JONNY`.
+
+Itu **bukan kerusakan**. Layar ini menyaring klaim menurut `POOLDATA.T_REINSURER.LOGIN`,
+dan pegawai internal memang bukan mitra reasuransi — pesannya bahkan menunjuk menu yang
+benar baginya. Yang jadi masalah adalah akibat sampingannya: **layar ini tidak dapat
+dilihat sama sekali saat dikembangkan**, karena setiap pengembang adalah pegawai internal.
+
+**Yang TIDAK dilakukan:** melonggarkan penyaringnya, atau memberi jalan pintas bagi login
+tertentu. Keduanya akan menghapus satu-satunya kendali yang memisahkan data antar mitra
+pada layar yang dibaca pihak luar.
+
+**Yang dilakukan:** isian `REAS_LOGIN_PENGEMBANGAN` mengganti **siapa mitra pada DATA
+CONTOH**. Aturan penyaringnya tidak disentuh; login lain tetap ditolak dengan pesan yang
+sama.
+
+| Hal | Ketetapan |
+|---|---|
+| Berlaku di mana | **hanya `PENYIMPANAN=memori`** |
+| Mengapa tidak mungkin bocor ke produksi | data contoh hanya ada di memori, dan penyimpanan memori sudah menolak berjalan bila `APP_ENV=production` — jadi pagarnya struktural, bukan pemeriksaan tambahan |
+| Bila diisi sementara `PENYIMPANAN=oracle` | aplikasi **menolak menyala**, dengan pesan yang menunjuk menu **Master Reas** sebagai cara yang benar |
+| Dicatat saat menyala | ya — `Warn` yang menyebut login penggantinya |
+
+**Satu keputusan kecil yang menentukan berguna atau tidaknya:** login itu **menggantikan**
+mitra pertama, bukan ditambahkan sebagai mitra ketiga. Menambahkannya akan membuat login
+terdaftar tetapi tanpa satu pun klaim, dokumen, maupun percakapan — dan layar yang menjawab
+"belum ada pekerjaan" terbaca sebagai perbaikan yang gagal.
+
+**Sengaja tidak ditebak:** nilai `Login` yang dibawa sesi. Dengan `IDENTITAS_ADAPTER=hcq`,
+`Login` diisi `firstNonEmpty(orang.Login, response.Login, username)` — pada karyawan ia
+dapat berupa **alamat surel**, bukan `JONNY`. Menuliskan tebakan ke dalam data contoh akan
+gagal diam-diam. Karena itu nilainya dibaca dari konfigurasi, dan cara memastikannya
+disebut di `.env.example`: buka `/api/saya` lalu baca kolom `login`.
+
+Alamat surel juga **tidak boleh** ditulis ke berkas yang di-commit (`D-69`) — alasan kedua
+mengapa nilainya berada di `.env`, bukan di `sample.go`.

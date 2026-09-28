@@ -92,7 +92,12 @@ func setPLADLAOracleSelectors(pool *db.Pool, store *storage) {
 // Hanya portal utama yang dilayani, dan alias lain DITOLAK — bukan diam-diam dialihkan.
 // Menjalankan tanpa basis data tidak boleh mengubah aturan pemisahan entitas, karena
 // justru di lingkungan itulah pelanggarannya paling mudah lolos (`R-20`).
-func setPLADLAMemorySelectors(primaryAlias string, store *storage) {
+func setPLADLAMemorySelectors(
+	primaryAlias string,
+	devReinsurerLogin string,
+	logger *slog.Logger,
+	store *storage,
+) {
 	queueStore := inboxpladlapredlamemory.NewSampleStore()
 	store.pladla.queue = func(alias string) (inboxpladlapredla.Repo, error) {
 		if err := onlyPrimary(primaryAlias, alias); err != nil {
@@ -101,21 +106,52 @@ func setPLADLAMemorySelectors(primaryAlias string, store *storage) {
 		return queueStore, nil
 	}
 
-	// Data contoh layar reasuradur memakai dua login khusus — lihat
-	// `inboxpladlamemory.SampleReinsurerLogin`. Login pengembangan biasa (`JONNY`) TIDAK
-	// terdaftar sebagai reasuradur di sana, dan layarnya karena itu menjawab penolakan
-	// yang menjelaskan sebabnya.
+	// Data contoh layar reasuradur memakai login khusus — lihat
+	// `inboxpladlamemory.SampleReinsurerLogin`. Login pengembangan biasa TIDAK terdaftar
+	// sebagai reasuradur di sana, dan layarnya karena itu menjawab penolakan yang
+	// menjelaskan sebabnya.
 	//
 	// Itu bukan kekurangan data contoh melainkan keadaan yang memang harus dapat dilihat:
 	// di produksi pun petugas internal yang membuka menu ini akan menerima jawaban yang
 	// sama, dan jawaban itulah yang paling perlu diuji dengan mata sendiri.
-	reinsurerStore := inboxpladlamemory.NewSampleStore()
+	//
+	// `REAS_LOGIN_PENGEMBANGAN` menggantikan login mitra pada data contoh, sehingga layar
+	// itu dapat dilihat tanpa melemahkan penyaringnya: aturan penyaringnya tidak
+	// disentuh, dan login lain tetap ditolak dengan pesan yang sama.
+	//
+	// Ia TIDAK dapat menyentuh data sungguhan — data contoh hanya ada pada penyimpanan
+	// memori, dan penyimpanan memori sudah menolak berjalan bila `APP_ENV=production`.
+	reinsurerStore := inboxpladlamemory.NewSampleStoreFor(devReinsurerLogin)
 	store.pladla.reinsurer = func(alias string) (inboxpladla.Repo, error) {
 		if err := onlyPrimary(primaryAlias, alias); err != nil {
 			return nil, err
 		}
 		return reinsurerStore, nil
 	}
+
+	if logger == nil {
+		return
+	}
+
+	// Penggantiannya DICATAT, bukan diam-diam.
+	//
+	// Tanpa baris ini, seorang pengembang yang melihat daftar terisi tidak punya cara
+	// mengetahui bahwa yang ia lihat adalah data contoh yang dialihkan ke namanya —
+	// bukan bukti bahwa penyaring reasuradurnya bekerja.
+	clean := strings.TrimSpace(devReinsurerLogin)
+	if clean == "" {
+		logger.Info("layar Inbox PLA DLA memakai login mitra bawaan",
+			slog.String("login_mitra", inboxpladlamemory.SampleReinsurerLogin),
+			slog.String("catatan",
+				"login lain ditolak; isi REAS_LOGIN_PENGEMBANGAN untuk melihat layarnya"))
+		return
+	}
+
+	logger.Warn("login mitra pada DATA CONTOH Inbox PLA DLA diganti",
+		slog.String("login_mitra", clean),
+		slog.String("menggantikan", inboxpladlamemory.SampleReinsurerLogin),
+		slog.String("catatan",
+			"hanya berlaku pada PENYIMPANAN=memori; tidak menyentuh POOLDATA.T_REINSURER"))
 }
 
 // buildPLADLAServices merakit layanan kedua modul.

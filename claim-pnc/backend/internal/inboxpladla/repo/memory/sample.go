@@ -1,6 +1,9 @@
 package memory
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // pegaWorkKeyPrefix adalah awalan kunci objek kerja Pega pada `T_CLAIM_PNC.CLAIMID`.
 //
@@ -47,13 +50,44 @@ const SampleSecondLogin = "REASGANDA"
 // komunikasi dan daftar pemberitahuan: ia lini `002` yang ketiga daftar pemberitahuan
 // kecualikan, dan ia tidak punya satu pun PLA maupun DLA.
 func NewSampleStore() *Store {
+	return NewSampleStoreFor(SampleReinsurerLogin)
+}
+
+// NewSampleStoreFor membentuk data contoh dengan login mitra yang DITENTUKAN pemanggil.
+//
+// # Untuk apa ia ada
+//
+// Layar Inbox PLA DLA menyaring klaim menurut `POOLDATA.T_REINSURER.LOGIN`, dan
+// penolakannya terhadap login yang tidak terdaftar adalah perilaku yang BENAR. Akibatnya,
+// di lingkungan pengembangan layar itu tidak dapat dilihat sama sekali: login pengembang
+// adalah pegawai internal, dan pegawai internal memang ditolak.
+//
+// Fungsi ini menjawabnya tanpa melemahkan penyaringnya. Yang berubah hanyalah SIAPA mitra
+// pada data contoh — aturan penyaringnya tidak disentuh, dan login lain tetap ditolak
+// dengan pesan yang sama.
+//
+// # Login itu menggantikan mitra pertama SELURUHNYA
+//
+// Bukan ditambahkan sebagai mitra ketiga. Menambahkannya akan membuat login itu terdaftar
+// tetapi TIDAK punya satu pun klaim, satu pun dokumen, maupun satu pun percakapan — dan
+// layar yang menjawab "belum ada pekerjaan" terbaca sebagai perbaikan yang gagal.
+//
+// Login KEDUA (SampleSecondLogin) tidak disentuh: ia yang membuktikan perbedaan antara
+// daftar yang mencocokkan seluruh kode reasuradur dan daftar yang hanya mencocokkan kode
+// tertinggi, dan perbedaan itu menuntut dua login yang berbeda.
+func NewSampleStoreFor(login string) *Store {
+	clean := strings.TrimSpace(login)
+	if clean == "" {
+		clean = SampleReinsurerLogin
+	}
+
 	store := NewStore()
 	store.Seed(
 		sampleClaims(), sampleAdvices(),
-		sampleReinsurers(), sampleXOL(), sampleLabels(),
+		sampleReinsurers(clean), sampleXOL(), sampleLabels(),
 	)
-	store.SeedMessages(sampleMessages())
-	store.SeedDocuments(sampleDocuments())
+	store.SeedMessages(sampleMessages(clean))
+	store.SeedDocuments(sampleDocuments(clean))
 	return store
 }
 
@@ -63,9 +97,9 @@ func NewSampleStore() *Store {
 // `reinscode IN (…)` pada daftar Close dan `reinscode = (… FETCH 1)` pada dua daftar lain
 // benar-benar dapat diuji. Tanpa login bergkode ganda, kedua bentuk itu menghasilkan
 // jawaban yang sama dan perbedaannya tidak akan pernah terlihat.
-func sampleReinsurers() []Reinsurer {
+func sampleReinsurers(login string) []Reinsurer {
 	return []Reinsurer{
-		{Code: "R100", Login: SampleReinsurerLogin},
+		{Code: "R100", Login: login},
 		{Code: "R900", Login: SampleSecondLogin},
 		{Code: "R901", Login: SampleSecondLogin},
 	}
@@ -368,19 +402,19 @@ func sampleXOL() []XOL {
 // Isi pesannya KARANGAN. Percakapan nyata memuat tulisan manusia yang dapat menyebut nomor
 // polis dan nama tertanggung, dan keduanya tidak pernah disalin ke berkas yang di-commit
 // (`D-69`).
-func sampleMessages() []Message {
+func sampleMessages(login string) []Message {
 	return []Message{
 		{
 			ID: "KOM-01", ClaimKey: workKey("PNC-2001"),
 			SenderLogin: "BUDI", SenderName: "Budi Santoso",
-			RecipientCode: SampleReinsurerLogin,
+			RecipientCode: login,
 			Message:       "Mohon konfirmasi nilai estimasi pada PLA terlampir.",
 			CreatedAt:     day(2026, time.February, 2),
 			Status:        "0",
 		},
 		{
 			ID: "KOM-02", ClaimKey: workKey("PNC-2002"),
-			SenderLogin: SampleReinsurerLogin, SenderName: "Mitra Contoh",
+			SenderLogin: login, SenderName: "Mitra Contoh",
 			RecipientCode: "BUDI",
 			Message:       "Kami meminta rincian perhitungan share pada DLA ini.",
 			CreatedAt:     day(2026, time.February, 3),
@@ -388,7 +422,7 @@ func sampleMessages() []Message {
 		},
 		{
 			ID: "KOM-03", ClaimKey: workKey("PNC-2002"),
-			SenderLogin: SampleReinsurerLogin, SenderName: "Mitra Contoh",
+			SenderLogin: login, SenderName: "Mitra Contoh",
 			RecipientCode: "SITI",
 			Message:       "Apakah dokumen pendukung sudah lengkap?",
 			CreatedAt:     day(2026, time.February, 4),
@@ -411,7 +445,7 @@ func sampleMessages() []Message {
 			// Klaim lini Personal Accident yang TIDAK punya satu pun pemberitahuan.
 			ID: "KOM-05", ClaimKey: workKey("PNC-2009"),
 			SenderLogin: "BUDI", SenderName: "Budi Santoso",
-			RecipientCode: SampleReinsurerLogin,
+			RecipientCode: login,
 			Message:       "Mohon tanggapan atas klaim kecelakaan diri ini.",
 			CreatedAt:     day(2026, time.February, 7),
 			Status:        "0",
@@ -431,12 +465,12 @@ func sampleMessages() []Message {
 // DOK-03 yang paling penting: ia satu-satunya yang membuktikan penyaring `T_DOC_REAS.LOGIN`
 // benar-benar bekerja. `GetDokumenReas` tidak memakainya, dan penambahannya diputuskan
 // Work Owner pada 2026-09-28.
-func sampleDocuments() []Document {
+func sampleDocuments(login string) []Document {
 	return []Document{
 		{
 			ID: "DOK-01", ClaimKey: workKey("PNC-2001"),
 			AdviceNo: "PLA/2026/2001-R1", Kind: "PLA",
-			Login:    SampleReinsurerLogin,
+			Login:    login,
 			Category: "Dokumen Klaim", SubCategory: "Laporan Kerugian",
 			Name: "laporan-kerugian.pdf", MimeType: "application/pdf",
 			Content: []byte("%PDF-1.4 contoh laporan kerugian"),
@@ -444,7 +478,7 @@ func sampleDocuments() []Document {
 		{
 			ID: "DOK-02", ClaimKey: workKey("PNC-2002"),
 			AdviceNo: "DLA/2026/2002", Kind: "DLA",
-			Login:    SampleReinsurerLogin,
+			Login:    login,
 			Category: "Dokumen Klaim", SubCategory: "Perhitungan Akseptasi",
 			Name: "perhitungan-akseptasi.pdf", MimeType: "application/pdf",
 			Content: []byte("%PDF-1.4 contoh perhitungan akseptasi"),
@@ -462,7 +496,7 @@ func sampleDocuments() []Document {
 			// Nomornya ada, tetapi pemberitahuannya BELUM terkirim.
 			ID: "DOK-04", ClaimKey: workKey("PNC-2002"),
 			AdviceNo: "DLA/2026/2002-DRAF", Kind: "DLA",
-			Login:    SampleReinsurerLogin,
+			Login:    login,
 			Category: "Dokumen Klaim", SubCategory: "Draf",
 			Name: "draf.pdf", MimeType: "application/pdf",
 			Content: []byte("%PDF-1.4 draf"),

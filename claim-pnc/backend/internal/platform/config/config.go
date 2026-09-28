@@ -104,6 +104,29 @@ type Config struct {
 	// konfigurasi, bukan ditulis di kode.
 	PrimaryPortal string
 
+	// DevelopmentReinsurerLogin mendaftarkan SATU login sebagai mitra reasuransi pada
+	// data contoh layar Inbox PLA DLA (`MENU_ID 45`).
+	//
+	// # Kenapa isian ini ada
+	//
+	// Layar itu menyaring klaim menurut `POOLDATA.T_REINSURER.LOGIN`, dan penolakannya
+	// terhadap login yang tidak terdaftar adalah PERILAKU YANG BENAR — bukan kerusakan.
+	// Akibatnya, di lingkungan pengembangan layar itu tidak dapat dilihat sama sekali:
+	// login pengembang adalah pegawai internal, dan pegawai internal memang ditolak.
+	//
+	// Isian ini menjawabnya tanpa melemahkan penyaringnya: ia hanya mengganti login pada
+	// DATA CONTOH, bukan melonggarkan aturan.
+	//
+	// # Ia TIDAK DAPAT berlaku di produksi
+	//
+	// Bukan karena diperiksa di sini, melainkan karena data contoh hanya ada pada
+	// `PENYIMPANAN=memori` — dan penyimpanan memori sudah menolak berjalan bila
+	// `APP_ENV=production`. Jadi tidak ada jalan bagi isian ini untuk menyentuh data
+	// sungguhan.
+	//
+	// Kosong berarti data contoh memakai login bawaannya, dan layar menolak login lain.
+	DevelopmentReinsurerLogin string
+
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
 	Portal map[string]Database
@@ -372,6 +395,18 @@ func Load() (Config, error) {
 		issues = append(issues, err)
 	}
 
+	// Login mitra pada data contoh. Namanya berbahasa Indonesia karena ia variabel
+	// lingkungan — pengecualian `D-80`: ia dipakai berkas `.env` dan skrip deployment.
+	devReinsurerLogin := strings.TrimSpace(get("REAS_LOGIN_PENGEMBANGAN", ""))
+	if devReinsurerLogin != "" && storage == StorageOracle {
+		issues = append(issues, fmt.Errorf(
+			"REAS_LOGIN_PENGEMBANGAN diisi %q sementara PENYIMPANAN=oracle; "+
+				"isian itu hanya mengganti login pada DATA CONTOH dan tidak berpengaruh "+
+				"apa pun terhadap POOLDATA.T_REINSURER. Kosongkan isiannya, atau "+
+				"daftarkan login itu sebagai mitra lewat menu Master Reas",
+			devReinsurerLogin))
+	}
+
 	primaryPortal := strings.ToUpper(strings.TrimSpace(get("PORTAL_UTAMA", defaultPrimaryPortal)))
 	portal, portalErrs := loadPortals()
 	issues = append(issues, portalErrs...)
@@ -384,6 +419,9 @@ func Load() (Config, error) {
 		Address:         get("APP_ALAMAT", ":8080"),
 		IdentityAdapter: adapter,
 		Storage:         storage,
+
+		DevelopmentReinsurerLogin: devReinsurerLogin,
+
 		Session:         Session{Lifetime: masaBerlaku},
 		HCQ: HCQ{
 			User:     strings.TrimSpace(os.Getenv("HCQ_LOGIN_USER")),

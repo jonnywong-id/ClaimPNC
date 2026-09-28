@@ -4997,7 +4997,8 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// Oracle: bahwa "hapus" hanya menonaktifkan, dan bahwa sub modul boleh kosong.
 		store.maskingSelector = maskingSelectorMemory(cfg.PrimaryPortal)
 		setExtraMemorySelectors(cfg.PrimaryPortal, &store)
-		setPLADLAMemorySelectors(cfg.PrimaryPortal, &store)
+		setPLADLAMemorySelectors(
+			cfg.PrimaryPortal, cfg.DevelopmentReinsurerLogin, logger, &store)
 		store.claimReportBranch = inboxlaporanklaimmemory.NewBranchResolver(
 			inboxlaporanklaimmemory.SampleBranchOfLogin())
 

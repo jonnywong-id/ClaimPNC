@@ -16,6 +16,7 @@ func cleanEnv(t *testing.T) {
 	for _, name := range []string{
 		"APP_ENV", "APP_ALAMAT", "IDENTITAS_ADAPTER", "PENYIMPANAN", "PORTAL_UTAMA",
 		"SESI_MASA_BERLAKU", "HCQ_LOGIN_USER", "HCQ_LOGIN_PASSWORD",
+		"REAS_LOGIN_PENGEMBANGAN",
 	} {
 		t.Setenv(name, "")
 		require.NoError(t, os.Unsetenv(name))
@@ -313,4 +314,37 @@ func TestKoneksiKeduaYangBelumLengkapMenyebutVariabelnyaSendiri(t *testing.T) {
 	require.Contains(t, second.Missing(), "ANEKA_ASM_PENGGUNA")
 	require.Contains(t, second.Missing(), "ANEKA_ASM_SANDI")
 	require.NotContains(t, second.Missing(), "POOLDATA_ASM_SERVICE")
+}
+
+// Login mitra pada data contoh hanya sah bersama penyimpanan MEMORI.
+//
+// Di Oracle ia tidak berpengaruh apa pun — yang menentukan mitra di sana adalah
+// `POOLDATA.T_REINSURER`, bukan data contoh. Isian yang diabaikan diam-diam lebih
+// berbahaya daripada penolakan: pengembang yang menyetelnya akan menunggu layar terbuka
+// dan tidak pernah mendapat petunjuk mengapa ia tetap ditolak.
+func TestDevelopmentReinsurerLoginIsRefusedOnOracle(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "oracle")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "JONNY")
+
+	_, err := config.Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "REAS_LOGIN_PENGEMBANGAN")
+	require.Contains(t, err.Error(), "Master Reas",
+		"pesannya harus menunjuk cara yang BENAR mendaftarkan mitra di Oracle")
+}
+
+// Pada penyimpanan memori ia diterima dan terbaca apa adanya.
+func TestDevelopmentReinsurerLoginIsAcceptedOnMemoryStorage(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("PENYIMPANAN", "memori")
+	t.Setenv("PORTAL_UTAMA", "ASM")
+	setPortal(t, "ASM")
+	t.Setenv("REAS_LOGIN_PENGEMBANGAN", "  JONNY  ")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Equal(t, "JONNY", cfg.DevelopmentReinsurerLogin, "spasi di ujung dipangkas")
 }

@@ -276,3 +276,83 @@ func TestAConversationOfAnotherClaimCannotBeRepliedThroughThisClaim(t *testing.T
 		store.Reply(context.Background(), scopeOfSample("PNC-2001"), command),
 		inboxpladla.ErrConversationNotFound)
 }
+
+// Login pengembangan yang ditentukan MENGGANTIKAN mitra pertama seluruhnya.
+//
+// # Kenapa uji ini ada
+//
+// Penolakan layar ini terhadap login yang tidak terdaftar adalah perilaku yang BENAR, dan
+// justru karena itu layar ini tidak dapat dilihat sama sekali di lingkungan pengembangan:
+// login pengembang adalah pegawai internal.
+//
+// `NewSampleStoreFor` menjawabnya dengan mengganti login mitra pada DATA CONTOH — bukan
+// dengan melonggarkan penyaringnya. Uji ini yang menjaga bedanya: login yang diberikan
+// mendapat SELURUH data mitra pertama, dan login lain tetap ditolak.
+func TestTheDevelopmentLoginReplacesTheFirstPartnerEntirely(t *testing.T) {
+	const dev = "JONNY"
+
+	store := memory.NewSampleStoreFor(dev)
+	ctx := context.Background()
+
+	codes, err := store.ReinsurerCodes(ctx, dev)
+	require.NoError(t, err)
+	require.Equal(t, []string{"R100"}, codes,
+		"login pengembangan harus mewarisi kode mitra pertama, bukan kode baru")
+
+	// Mitra bawaan sudah TIDAK terdaftar lagi — ia digantikan, bukan ditemani.
+	//
+	// Bila ia masih terdaftar, dua login akan berbagi kode yang sama dan tidak ada yang
+	// dapat memastikan data contoh milik siapa.
+	digantikan, err := store.ReinsurerCodes(ctx, memory.SampleReinsurerLogin)
+	require.NoError(t, err)
+	require.Empty(t, digantikan)
+
+	scope := inboxpladla.DetailScope{
+		ClaimKey:       "ASM-FW-GCNMFW-WORK PNC-2001",
+		Login:          dev,
+		ReinsurerCodes: codes,
+	}
+
+	// Ketiganya harus ikut berpindah. Mendaftarkan login saja — tanpa memindahkan
+	// datanya — menghasilkan layar yang menjawab "belum ada pekerjaan", dan itu terbaca
+	// sebagai perbaikan yang gagal.
+	header, err := store.ClaimHeader(ctx, scope)
+	require.NoError(t, err)
+	require.Equal(t, "PNC-2001", header.ClaimNo)
+
+	advices, err := store.Advices(ctx, scope, inboxpladla.AdviceKindPLA)
+	require.NoError(t, err)
+	require.NotEmpty(t, advices)
+
+	conversations, err := store.Conversations(ctx, scope)
+	require.NoError(t, err)
+	require.NotEmpty(t, conversations, "percakapan harus ikut berpindah ke login itu")
+
+	documents, err := store.Documents(
+		ctx, scope, "PLA/2026/2001-R1", inboxpladla.AdviceKindPLA)
+	require.NoError(t, err)
+	require.NotEmpty(t, documents, "dokumen harus ikut berpindah ke login itu")
+}
+
+// Login KEDUA tidak ikut berpindah.
+//
+// Ia yang membuktikan perbedaan antara daftar yang mencocokkan SELURUH kode reasuradur dan
+// daftar yang hanya mencocokkan kode tertinggi — dan perbedaan itu menuntut dua login yang
+// benar-benar berbeda.
+func TestTheSecondSampleLoginIsLeftUntouched(t *testing.T) {
+	store := memory.NewSampleStoreFor("JONNY")
+
+	codes, err := store.ReinsurerCodes(context.Background(), memory.SampleSecondLogin)
+	require.NoError(t, err)
+	require.Equal(t, []string{"R901", "R900"}, codes)
+}
+
+// Login kosong jatuh ke bawaan, bukan menghasilkan data contoh tanpa mitra sama sekali.
+func TestAnEmptyDevelopmentLoginFallsBackToTheDefault(t *testing.T) {
+	store := memory.NewSampleStoreFor("   ")
+
+	codes, err := store.ReinsurerCodes(
+		context.Background(), memory.SampleReinsurerLogin)
+	require.NoError(t, err)
+	require.Equal(t, []string{"R100"}, codes)
+}
