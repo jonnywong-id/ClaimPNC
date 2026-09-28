@@ -16462,3 +16462,1850 @@ supaya artinya tidak bergantung pada siapa yang melihat.
 Pemeriksaannya mengecualikan "ALL Case" dari penjumlahan — ia totalnya sendiri, bukan
 salah satu bagiannya — dan mengabaikan tab tanpa angka, supaya tidak lulus karena alasan
 yang salah.
+
+---
+
+## 38. Sesi kedua puluh dua — audit kesesuaian Inbox Open Protection terhadap Pega (2026-09-25)
+
+### 38.1 Yang dikatakan Work Owner
+
+Permintaan awal berbunyi *"lanjutkan untuk penambahan modul Inbox Open Protection"*, dengan
+`Harness/InputProtection_Harness-Harness.xml` sebagai rujukan.
+
+Di tengah penelusuran Work Owner menyela:
+
+> *"saya lihat sudah ada di golang, apakah sudah sesuai dengan yang di pega?"*
+
+Itu mengubah pekerjaannya: dari **menambah modul** menjadi **mengaudit modul yang sudah
+ada**. Benar demikian — harness itu sudah dimigrasikan pada sesi sebelumnya menjadi
+`inboxacceptopenprotection`. Menambahkannya lagi akan menghasilkan modul kembar.
+
+### 38.2 Kesalahan saya sendiri yang tertangkap sebelum dilaporkan
+
+Penelusuran pertama menyimpulkan harness memuat **empat grid**, karena `pyGridRDName`
+menyebut empat nama Report Definition berbeda.
+
+Itu **salah**. Yang menyatakan sebuah grid adalah `pyRDName`, bukan `pyGridRDName`:
+
+| Elemen | Artinya | Isi |
+|---|---|---|
+| `pyRDName` | **grid sungguhan** | 3 nama |
+| `pyGridRDName` | atribut pada tiap CELL | 4 nama |
+
+`InboxOpenProtection_RD` muncul hanya pada **3 cell `.PolicyNo`** sebagai sisa salin-tempel,
+dan tidak pernah sebagai `pyRDName`. Jadi gridnya **tiga**, dan implementasi Go yang hanya
+menyebut dua RD (+ satu yang tidak dibawa) sudah benar sejak awal.
+
+Pelajarannya sama dengan §37.x: **penanda yang dipakai harus diuji dulu pada kasus yang
+jelas benar.** Menghitung `pyGridRDName` terasa masuk akal sampai dibandingkan dengan
+`pyRDName`.
+
+### 38.3 Yang dibuktikan sesuai
+
+Diverifikasi ke `Section/InputProtection_Section-Section.xml` — **sumber otoritatif grid**,
+bukan ke harness yang hanya meng-embed section.
+
+| Aspek | Pega | Go | |
+|---|---|---|---|
+| Kolom grid | 7 | 7, urutan sama | ✅ |
+| Penyaring inti | `CaseID IS NOT NULL AND PolicyNo IS NOT NULL AND AcceptStatus IS NULL` | sama | ✅ |
+| PREMI / NON PREMI | `TypeProtection = '2'` / `!= '2'` | sama, satu kueri berparameter | ✅ |
+| Urutan | `CREATE_DATE DESC` | sama | ✅ |
+| Judul container | "Proteksi Klaim NON PREMI" / "PREMI" | sama | ✅ |
+| Kewenangan | `IsOpenProtectionPNC` → 5 access group | terdokumentasi benar | ✅ |
+
+Kelima access group diperiksa satu per satu dan cocok persis: `PncCollection`,
+`CaseManager`, `PncOPCGeneral`, `Administrators`, `PNCKomite`.
+
+### 38.4 Dua cacat yang ditemukan, dan diperbaiki
+
+**1. Ukuran halaman keliru — dan komentarnya mengklaim sebaliknya.**
+
+    Section/InputProtection_Section-Section.xml   <pyPageSize>20</pyPageSize>  × 3 grid
+    Go sebelum perbaikan                          DefaultLimit = 50
+
+Komentarnya berbunyi *"DefaultLimit mengikuti `pyPageSize` layar lama"* — klaim yang
+**tidak benar**. Angka 50 kemungkinan terbawa dari modul inbox lain, yang section-nya
+memang 50 (`inboxrclpucl`, `inboxanalystdoctor`). Layar ini 20.
+
+Cacat jenis ini yang paling sulit tertangkap: ia **tidak menghasilkan galat**, hanya jumlah
+baris per halaman yang berbeda dari sistem lama — dan komentar yang menyebut Pega membuat
+pembaca berikutnya percaya angkanya sudah diverifikasi.
+
+Diperbaiki di dua tempat yang **wajib sama**: `DefaultLimit` di backend (yang benar-benar
+memotong hasil) dan `PAGE_SIZE` di frontend (yang menghitung nomor halaman). Bila keduanya
+berbeda, penomoran halaman meleset tanpa gejala — dinyatakan tegas di komentar keduanya.
+
+**2. Nama kolom di komentar sudah usang.**
+
+Revisi tabel 2026-09-24 (`docs/kolom-open-protection.md` §1) mengganti tiga nama kolom. SQL
+ikut berubah; komentar tidak.
+
+| Di komentar | Kolom sebenarnya |
+|---|---|
+| `STATUS_AKSEPTASI` | `APPROVAL_STATUS` |
+| `TANGGAL_AKSEPTASI` | `RESOLVED_DATETIME` |
+| `DIAKSEP_OLEH` | `RESOLVED_BY` |
+| `RESOLVED_DATE_TIME` | `RESOLVED_DATETIME` |
+
+Disegarkan di lima berkas modul ini. Ditambah `query_test.go:77` yang menyebut
+`PROTECTION_TYPE` pada daftar kolom terlarang — diganti `PROTECTION_TYPE_ID`. Ujinya tetap
+lulus: nama lama adalah awalan nama baru, sehingga `NotContains` menangkap keduanya.
+
+### 38.5 Selisih terencana — dipastikan masih sahih, tidak diubah
+
+Tiga hal sengaja berbeda dari Pega, dan ketiganya sudah terdokumentasi sebelum sesi ini.
+Diperiksa ulang dan **tetap sahih**:
+
+1. **Antrean ketiga `askredit` tidak dibawa.** Syarat tampilnya di Pega adalah satu alamat
+   Gmail pribadi sebagai Operator ID, dan penyaringnya lebih longgar — tanpa syarat nomor
+   klaim dan tanpa syarat tipe, sehingga satu orang melihat proteksi yang tidak terlihat
+   siapa pun. Dibuang atas `D-15` dan `D-67`.
+2. **Pemisahan antrean menjadi tab pilihan pengguna**, sedangkan Pega memilihkan otomatis
+   menurut access group. Menunggu `TKT-F3-005`.
+3. **Kotak pencarian** ditambahkan; layar lama tidak punya.
+
+### 38.6 Bukti sesudah perubahan
+
+    go build ./...                                    OK
+    go test ./internal/inboxacceptopenprotection/...  ok sqlstore, ok usecase
+    npx tsc --noEmit                                  exit 0
+    npx vitest run inbox-accept-open-protection       8 passed
+
+### 38.7 Temuan di luar lingkup — dilaporkan, tidak disentuh
+
+Nama kolom usang yang sama ada juga di modul saudaranya `inputreqprotection`, yang menulis
+tabel yang sama:
+
+    http/routes.go:30-31        STATUS_AKSEPTASI, TANGGAL_AKSEPTASI, DIAKSEP_OLEH
+    inputreqprotection.go:133   STATUS_AKSEPTASI
+    inputreqprotection.go:452   ketiganya
+
+**Tidak disentuh.** Lingkup yang disetujui Work Owner adalah dua cacat pada modul akseptasi.
+Seluruhnya komentar — tidak ada akibat pada perilaku — sehingga dapat menunggu sesi yang
+memang menggarap modul itu.
+
+### 38.8 Pertanyaan lanjutan Work Owner: *"ini sudah sama dengan pega mekanismenya?"*
+
+Pertanyaan itu menggeser pemeriksaan dari **tampilan** ke **mekanisme**, dan jawabannya
+berbeda dari §38.3. Sampai §38.7 yang dibandingkan baru daftar: kolom, penyaring, urutan,
+ukuran halaman. Mekanisme kerjanya belum.
+
+#### Alur Pega, dibaca dari `Flow/CreateProtection_Flow.xml`
+
+    Start1
+      → Assignment1  InputProtection   WorkList,  ToCurrentOperator   ← inputreqprotection
+      → Assignment2  AksepProtection   WorkBasket ProtectionPNC       ← modul ini
+      → Decision1    IsAccept          when IsAcceptProtection
+           ├ Accept → End
+           └ Reject → End
+
+`When/IsAcceptProtection-When.xml` membandingkan `.AcceptStatus = "1"` — sesuai yang sudah
+tercatat.
+
+#### Yang ditemukan, dan belum tercatat di mana pun
+
+Flow action `AksepProtection` **tidak berhenti pada penandaan status**. Ia memanggil
+`Activity/InsertOpenProtectionCase-Act.xml`, yang membuka proteksi di **sistem polis
+sumber** lewat DB Link — tiga entitas:
+
+| Rule | Isi |
+|---|---|
+| `CheckProtectTable-SQL.xml` | `SELECT MBP_ID FROM general.mst_buka_proteksi@asmd` |
+| `InsertOpenPortectionCaseASM-SQL.xml` | `INSERT INTO general.mst_buka_proteksi@asmd…` |
+| `InsertOpenPortectionCase-SQL.xml` | idem `@simasnet` |
+| `InsertOpenPortectionCaseSMI-SQL.xml` | idem `@smi` |
+
+Polanya idempoten, dan rule-nya mengatakannya sendiri lewat `pyMemo`: **"Cek belum ada baru
+insert"** —
+
+    SELECT COUNT(1) INTO vCount FROM general.mst_buka_proteksi@asmd WHERE mbp_id = {…};
+    IF vCount = 0 THEN INSERT INTO general.mst_buka_proteksi@asmd (…)
+
+Activity-nya membaca `.AcceptStatus` ke `Local.acceptstatus`, jadi pembukaannya bercabang
+menurut keputusan — bukan berjalan untuk setiap submit.
+
+#### Akibatnya bagi modul ini
+
+**Persetujuan di sistem baru belum menimbulkan akibat apa pun di sistem polis.** Baris
+ditandai `APPROVAL_STATUS = '1'`, dan berhenti di situ. Di Pega, keputusan yang sama membuka
+proteksi di tiga basis data lain.
+
+Ini **bukan cacat yang dapat ditambal di modul ini**. `D-25` mengganti seluruh DB Link
+dengan API, dan "API Buka Proteksi" satu dari enam yang **belum dibangun tim pemilik sistem**
+(`R-03`). `20-DETAIL-KOMITE-DBLINK.md` §2.6 sudah menandai `GENERAL.MST_BUKA_PROTEKSI`
+sebagai **satu-satunya objek remote yang MENULIS**, dan menuntut penggantinya berupa API
+idempoten — bukan salinan berkala.
+
+Yang **salah** bukan keputusan menundanya, melainkan bahwa penundaan itu **tidak tercatat di
+satu berkas pun**: `grep MST_BUKA_PROTEKSI` pada modul, `keputusan-implementasi.md`, dan
+`kolom-open-protection.md` seluruhnya kosong. Keterbatasan yang tidak tertulis akan terbaca
+sebagai modul yang sudah selesai.
+
+Dicatat sekarang di package doc `inboxacceptopenprotection` sebagai bagian tersendiri, dengan
+kalimat penutup yang mengikat pembacaannya: **sampai API itu ada, akseptasi di sini adalah
+KEPUTUSAN, bukan pembukaan proteksi — jalur yang membuka proteksi masih Pega.**
+
+#### Ringkasan kesesuaian mekanisme
+
+| Mekanisme | Pega | Go | |
+|---|---|---|---|
+| Sumber daftar | RD atas work object, `AcceptStatus IS NULL` | tabel, `APPROVAL_STATUS IS NULL` | ✅ setara |
+| Kunci antrean bersama | assignment workbasket `ProtectionPNC` | `APPROVAL_STATUS IS NULL` di dalam `WHERE` `UPDATE` | ✅ setara akibatnya |
+| Arti keputusan | `'1'` setuju / `'2'` tolak | sama | ✅ |
+| Pemilihan antrean | otomatis per access group | tab pilihan pengguna | ⚠️ `TKT-F3-005` |
+| Antrean ketiga | ada, di-gate Operator ID | tidak dibawa | ⚠️ terencana (`D-15`, `D-67`) |
+| **Pembukaan proteksi di sistem polis** | **INSERT ke 3 DB Link** | **tidak ada** | ❌ **`R-03`** |
+
+### 38.9 Panel "Detail Perubahan" dibangun — bagian form yang hilang sejak awal
+
+Diminta Work Owner setelah §38.8: *"perbaiki Panel Detail Perubahan (OLD/NEW_DATA) hilang dan
+Object Name & Branch Name tidak ditampilkan"*.
+
+#### Apa yang hilang, dan kenapa tidak ada yang menyadarinya
+
+`Section/AcceptProtectionSection-Section.xml` membungkus sebuah container bersyarat:
+
+    :2823  pyContainerVisibleWhen  .TypeProtection==8 || .TypeProtection==7
+      :3132  ==7 -> :3134 pyTitle "Detail Perubahan DOL"
+                     :3387 .ClaimDataProtect.BeforeDateOfLoss  "Current Date Of Loss"
+                           .ClaimDataProtect.DateOfLoss        "Next Date Of Loss"
+      :4158  ==8 -> :4160 pyTitle "Detail Perubahan Cause Of Loss"
+                           .ClaimDataProtect.CauseOfLossID     "Cause Of Loss Dipilih"
+                     :7711 .D_COL_ID                           "Next Cause Of Loss"
+             :5982 .ObjectName   :6203 .BranchName   :6347 .District
+
+Bagi tipe `'7'` dan `'8'`, **melihat nilai sebelum dan sesudah ADALAH inti keputusannya** —
+itu satu-satunya alasan permintaannya diajukan. Form Go menampilkan sepuluh field lain dan
+tidak satu pun di antaranya.
+
+Kehilangannya **tidak menghasilkan galat apa pun**: form tetap terbuka, tombol Setujui dan
+Tolak tetap berfungsi, hanya panelnya yang tidak pernah muncul. Di produksi tipe `7` dipakai
+41 baris dan tipe `8` sebanyak 29 baris — bukan kasus pinggiran.
+
+#### Alasan tertulis yang ternyata keliru
+
+Komentar domain menyatakan modul ini sengaja tidak memuatnya karena *"layar akseptasi
+menampilkannya sebagai keterangan"*. Pembacaan langsung membantahnya: Pega menampilkannya
+sebagai **panel terurai berjudul sendiri**, bukan melebur ke Keterangan.
+
+> Ini pola yang sama dengan §38.4 butir 1: sebuah komentar yang menyebut Pega dan terdengar
+> seperti hasil pemeriksaan, padahal tidak pernah diperiksa. Dua kali dalam satu sesi.
+
+#### Yang dikerjakan
+
+**Backend.** `ChangeDetail` ditambahkan ke domain beserta `ShowsChangeDetail` yang meniru
+syarat tampil Pega apa adanya. Keempat kolom — `OLD_DATA`, `NEW_DATA`, `OBJECT_NAME`,
+`BRANCH_NAME` — ditarik pada `acceptance_list` **dan** `acceptance_get`, lalu diurai
+`decodeChangeDetail` menurut tipe.
+
+Dua keputusan yang layak dicatat:
+
+| Keputusan | Alasan |
+|---|---|
+| Tipe `ChangeDetail` **dideklarasikan sendiri**, bukan diimpor dari `inputreqprotection` | domain tidak boleh bergantung pada domain lain; modul ini read-only sehingga tidak butuh sisi `encode` |
+| Keempat kolom ikut di `acceptance_list` meski grid tidak menampilkannya | satu bentuk SELECT melayani satu `scanProtection`; dua SELECT yang nyaris sama akan berbeda cepat atau lambat |
+
+`tanggalTeks` (`2006-01-02`) **wajib sama** dengan konstanta senama di `inputreqprotection` —
+modul itu menulis, modul ini membaca. Dua bentuk yang tidak sepakat menghasilkan tanggal yang
+selalu gagal dibaca, dan gagalnya diam: panel tampil kosong, bukan bergalat. Dinyatakan tegas
+di komentar kedua konstanta.
+
+**Frontend.** Panel digambar sebagai pasangan **sebelum → sesudah**, dengan sisi "sesudah"
+ditandai bingkai dan ketebalan — bukan warna saja, supaya pembedanya tetap terbaca tanpa
+membedakan warna. Panah berputar menjadi menurun pada layar sempit.
+
+Keputusan tampil ada **di server** (`detail_perubahan` bernilai `null` bagi tipe lain), supaya
+kode tipe `'7'`/`'8'` tidak perlu ditafsirkan di dua tempat.
+
+**`DISTRICT` tidak dibawa.** Ia ada di form Pega tetapi **tidak punya kolom** di
+`T_CLAIM_OPENPROTECTION`. Keterbatasan data, bukan kelalaian; dicatat di kepala SQL.
+
+#### Panel tetap tampil meski kosong
+
+Baris warisan Pega **tidak punya kolom asal** untuk `OLD_DATA`/`NEW_DATA`
+(`kolom-open-protection.md` §9), sehingga seluruhnya kosong. Panelnya tetap digambar dengan
+keterangan "Rincian perubahan tidak tersedia untuk permintaan ini" — menyembunyikannya akan
+membuat permintaan perubahan tampak seolah tidak mengubah apa pun.
+
+Data contoh `repo/memory` ditambah tiga baris untuk mengunci ketiga keadaan: tipe `7` terisi,
+tipe `8` terisi, dan `OPC-216` warisan yang panelnya muncul tetapi kosong.
+
+#### Rujukan `berkas:baris` yang ternyata palsu — ditemukan tidak sengaja
+
+Saat menyunting komentar, tiga rujukan diperiksa dan **ketiganya salah**:
+
+| Tertulis | Isi sebenarnya |
+|---|---|
+| `Section/InputProtection_Section-Section.xml:25104` | **tidak ada** — berkasnya hanya 14.773 baris |
+| `:3989` | `</rowdata>` |
+| `:14717` | `</pyPreDataTransform>` |
+
+Yang benar: **`:1592`** (grid NON PREMI), **`:6036`** (grid PREMI), **`:10342`** (grid
+`askredit`). Ketiganya dikoreksi di `inboxacceptopenprotection.go` dan `AcceptQueuePage.tsx`.
+
+Temuan itu memicu pemeriksaan menyeluruh atas **seluruh** rujukan `berkas:baris` di kedua
+folder modul — membandingkan tiap nomor dengan panjang berkasnya, tanpa membaca isinya.
+Ia menemukan satu lagi: `Navigation/pyCaseWorkerNavigation-Navigation.xml:53444` pada berkas
+berisi 39.823 baris; yang benar **`:21846`**. Sesudah dikoreksi, modul ini **5 rujukan sahih,
+0 bermasalah**.
+
+> `D-46` butir 1 mensyaratkan setiap `berkas:baris` yang dikutip benar-benar ada dan isinya
+> sesuai. Rujukan di atas lolos sampai hari ini karena tidak ada yang membukanya — dan
+> rujukan yang tidak pernah dibuka tidak lebih berguna daripada tidak ada rujukan sama sekali.
+
+#### Uji yang mengunci perilakunya
+
+Backend — `TestKueriBacaMemuatDetailPerubahan` menggagalkan penghapusan keempat kolom, dan
+`TestKeduaKueriBacaMemilihKolomYangSama` menggagalkan perubahan pada satu kueri tanpa yang
+lain. Frontend — empat uji: tipe `7` menampilkan kedua nilainya, tipe `8` memakai label Cause
+Of Loss dan **bukan** label DOL, baris kosong tetap menampilkan panel, dan tipe lain tidak
+menampilkannya sama sekali.
+
+#### Bukti
+
+    go build ./...                     OK
+    go vet ./internal/inboxaccept…     bersih
+    go test ./...                      seluruhnya ok, tidak ada FAIL
+    npx tsc --noEmit                   exit 0
+    npx vitest run                     61 berkas · 1002 uji lulus
+    uji modul ini                      8 -> 12
+
+Catatan lingkungan: `npx eslint` tidak dapat dijalankan — repo tidak punya `eslint.config.*`
+(ESLint 10 tidak lagi membaca `.eslintrc.*`). Keadaan itu sudah ada sebelum sesi ini dan
+tidak disentuh.
+
+### 38.10 Access group ditegakkan — `M_LOGIN_GROUP_PNC` menutup penghalang `TKT-F3-004`
+
+Work Owner menyampaikan 2026-09-25:
+
+> *"Akses Group Baru menggunakan tabel M_LOGIN_GROUP_PNC menggunakan GROUP_ID. Isi GROUP_ID
+> seperti ACCESS GROUP PEGA tapi tanpa Prefix GCNMFW: contohnya Access group
+> "GCNMFW:PncCollection" maka GROUP_ID nya adalah "PncCollection"."*
+
+Itu menutup lubang yang menahan §38.8 dan seluruh `TKT-F3-005`: selama ini tabel peran
+**dapat dibangun tetapi tidak dapat diisi**, karena penugasan operator ke peran tidak ada di
+basis data maupun di export.
+
+#### Infrastrukturnya ternyata sudah setengah ada
+
+| Sudah ada | Keterangan |
+|---|---|
+| `POOLDATA.M_LOGIN_GROUP_PNC` | `LOGIN_ID` + `GROUP_ID`, PK gabungan — DDL di `Database/CREATE_MENU.sql` |
+| `GroupsOf(login)` | sudah dipakai modul `menu` untuk menyusun pohon menu |
+| `M_OTORISASI_PNC.LOGIN_ID_GROUP` | menerima GROUP_ID **atau** LOGIN_ID |
+
+| Belum ada | Akibatnya |
+|---|---|
+| `Caller` hanya `{User, Session}` | setiap modul harus membacanya sendiri |
+| Tidak ada middleware otorisasi | `TKT-F3-005` |
+
+Baris contoh `JONNY → IT` ditanyakan, dan Work Owner menjawab **"IT hanya contoh awal,
+abaikan"**.
+
+#### Lingkup ditetapkan Work Owner: modul ini saja
+
+> *"Access group tambahkan untuk modul ini dulu saja, jangan mengubah modul lain"*
+
+Pertanyaan pertama saya tentang lingkup dijawab *"maksudnya gimana ya?"* — pertanyaannya
+terlalu teknis. Yang membuatnya terjawab adalah menyatakan masalahnya sebagai kejadian:
+seseorang mengetik `/inbox-accept-open-protection` di peramban, dan layarnya terbuka meski
+perannya tidak berhak. Dicatat di `penggunaan-skill.md`.
+
+#### Bagaimana modul ini menegakkannya tanpa menyentuh modul lain
+
+Modul `menu` sudah membaca tabel yang sama. Mengimpornya dari sini akan membuat dua modul
+domain saling bergantung — dilarang `08-TECHNICAL-STRATEGY.md` §2. Yang dipakai:
+
+    internal/inboxacceptopenprotection/authorization.go     aturan + seam GroupReader
+    internal/inboxacceptopenprotection/repo/sqlstore/groups.{go,sql}   adapter Oracle
+    internal/inboxacceptopenprotection/repo/memory/groups.go           adapter uji
+
+Yang diulang hanyalah satu kueri sebaris; yang dihindari adalah kopling yang tidak dapat
+diurai lagi. Polanya sama dengan seam `Caller`/`GetCaller` yang sudah ada di modul ini —
+`main.go` yang menjembatani, satu arah.
+
+**Koneksi UTAMA, bukan koneksi portal.** `D-78` menetapkan satu identitas berlaku di keempat
+portal, sehingga keanggotaan group tinggal bersama identitas. Modul `menu` pun dipasang pada
+`primary`. Memasangnya per portal akan membuat kewenangan seseorang berubah mengikuti entitas
+yang sedang dibuka — dan perubahan itu tidak menghasilkan galat apa pun.
+
+#### Aturan yang ditegakkan
+
+| Dari Pega | Menjadi |
+|---|---|
+| `When/IsOpenProtectionPNC-When.xml` — 5 access group | `CanOpenScreen`; di luar itu **403** |
+| `Section/…:1592` NON PREMI bagi `!= PncCollection` | `QueuesFor` |
+| `Section/…:6036` PREMI bagi `== PncCollection` | `QueuesFor` |
+
+Tiga keputusan yang harus diambil karena **tidak punya padanan di Pega**:
+
+1. **Satu login dapat mengikuti BANYAK group — ✅ DIKONFIRMASI Work Owner, 2026-09-25:**
+   *"Satu login bisa punya banyak group iya, di tabel baru juga bisa 1 login banyak group
+   id."* Pega membandingkan `AccessGroup.pyAccessGroup` — access group aktif, TUNGGAL;
+   `M_LOGIN_GROUP_PNC` berkunci (`LOGIN_ID`, `GROUP_ID`).
+   Yang berlaku: **gabungan**, bukan salah satu — gabungan tidak pernah menghilangkan akses
+   yang di Pega ada, sedangkan memilih salah satu menuntut aturan urutan yang tidak berdasar.
+
+   | Group yang diikuti | Antrean yang terbuka |
+   |---|---|
+   | `PncCollection` | PREMI saja |
+   | `CaseManager` · `PncOPCGeneral` · `PNCKomite` · `Administrators` | NON PREMI saja |
+   | `PncCollection` + salah satu di atas | **keduanya** |
+   | di luar kelima itu, atau tidak ada | **tidak satu pun** — 403 |
+
+   Dikunci `TestKeduaGroupMembukaKeduaAntrean`.
+2. **Login tanpa satu pun group DITOLAK.** Tabel yang belum diisi menutup layar, bukan
+   membukanya. Arah sebaliknya membuat siapa pun yang berhasil masuk dapat menyetujui.
+3. **Perbandingan tidak peka huruf besar-kecil, dan awalan `GCNMFW:` ikut dibuang.** `D-58`
+   mencatat kapitalisasi Pega tidak konsisten; barisnya pun diisi manusia. Penolakan karena
+   kapitalisasi akan tampak seperti gangguan, bukan seperti keputusan.
+
+#### Pembacaan versus keputusan — sengaja berbeda ketatnya
+
+| Jalur | Menuntut |
+|---|---|
+| `Get` rincian | kewenangan atas **layar** |
+| `List` daftar | kewenangan atas **antrean yang diminta** |
+| `Decide` keputusan | kewenangan atas **antrean baris yang tersimpan** |
+
+Sebuah proteksi dapat berpindah antrean setelah tautannya disimpan — tipenya disunting
+pemohon. Menolak PEMBACAAN karenanya akan menampilkan 403 pada baris yang tadinya sah dibuka.
+Yang dijaga ketat adalah keputusannya, dan tipe yang dipakai memeriksanya diambil dari
+**yang tersimpan**, bukan dari apa pun yang dikirim klien.
+
+#### Layar: tab mengikuti hak, bukan sebaliknya
+
+Rute baru `GET /inbox-accept-open-protection/antrean` mengembalikan antrean yang boleh dibuka
+pemanggil. Layar menggambar tab dari situ — bukan menggambar keduanya lalu membiarkan satu
+dijawab 403, dan bukan menebaknya di peramban.
+
+Rute itu **tidak menuntut portal aktif**: kewenangan sama di keempat portal.
+
+Tiga keadaan punya pesannya sendiri: tidak berwenang atas layar (403), berwenang tetapi tanpa
+satu pun antrean, dan portal belum dipilih.
+
+#### Yang TIDAK berubah
+
+`D-59` tetap berlaku: tidak ada pemisahan tugas formal. Seorang yang berwenang atas layar ini
+berwenang atas **seluruh** tindakan di dalamnya, dan jejak `RESOLVED_BY` tetap satu-satunya
+kontrol pengimbang atas persetujuannya sendiri.
+
+**31 modul lain tetap terbuka.** Itu keputusan Work Owner, bukan kelalaian.
+
+#### Bukti
+
+    go build ./...        OK
+    go vet                bersih
+    go test ./...         seluruhnya lulus, tanpa FAIL
+    tsc --noEmit          exit 0
+    vitest run            61 berkas · 1004 uji lulus
+    uji modul ini         12 -> 14 frontend; +9 backend (authorization_test.go)
+
+Sembilan uji backend baru mengunci: peran di luar kelima ditolak, tanpa group ditolak, hanya
+PncCollection membuka PREMI, PncCollection tidak membuka NON PREMI, kedua group membuka
+keduanya, kapitalisasi dan awalan tidak menentukan, keputusan atas antrean yang bukan haknya
+ditolak **tanpa menyisakan perubahan**, pembacaan tidak tunduk pada antrean, dan perakitan
+tanpa pembaca group ditolak saat dibentuk.
+
+### 38.11 Tiga hal terakhir modul ini diperiksa — batas auditnya kini tertutup
+
+Sisa dari §38.8 yang saya nyatakan belum tersentuh. Ketiganya diperiksa, dan **tidak satu pun
+menuntut perubahan kode** — tetapi dua di antaranya memunculkan catatan yang belum ada.
+
+#### 1. `SetNewAssgnPageRetain` — mekanisme Pega, bukan aturan bisnis
+
+Sempat saya laporkan "TIDAK ADA di `Activity/`". Itu **salah tempat mencari**: ia
+**Data Transform**, bukan Activity — `Data Transform/SetNewAssgnPageRetain-DT.xml`.
+
+Isinya menyetel `newAssignPage.pyRetainPage` pada kelas `Assign-Worklist`; `pyRetainPage`
+properti bawaan Pega untuk menahan halaman assignment di clipboard. Dipasang sebagai
+`pyPreProcessingTransformRule` pada empat flow action (`AksepProtection`, `InputProtectionFlow`,
+`InputRegister`, `InputEstimasi`).
+
+**Tidak ada aturan bisnis di dalamnya**, dan tidak ada padanannya di sistem baru — tidak ada
+clipboard yang perlu ditahan. ✅ tidak berdampak.
+
+#### 2. Kedua Ticket — ada sebagai TUJUAN, tanpa satu pun pemicu
+
+| Berkas | Kelas | Menempel pada |
+|---|---|---|
+| `Ticket/TC_PNCInputProtection-Ticket.xml` | `…Work-OpenProtection` | Assignment1 `InputProtection` |
+| `Ticket/Akp_PNCInputProtection-Ticket.xml` | idem | Assignment2 `AksepProtection` |
+
+Keduanya dirujuk **hanya** oleh `Flow/CreateProtection_Flow.xml`. Penelusuran pemicu:
+`Obj-Set-Tickets` muncul di **dua** activity — `SetTicket-Act.xml` dan `Resolve-Act.xml` —
+dan keduanya **bawaan Pega** (`pyRuleSet = Pega-ProcessEngine`) serta **tidak menyebut**
+salah satu nama di atas.
+
+Jadi lompatan lateral ke tahap akseptasi **tidak pernah dipicu dari dalam export**. Itu
+sejalan dengan `ADR-0021`, yang mencatat 14 dari 17 nama Ticket tanpa pemicu.
+
+**Tidak berdampak pada modul ini, dan alasannya layak dinyatakan:** antrean di sistem baru
+ditentukan **keadaan kolom** (`APPROVAL_STATUS IS NULL` + lengkap), bukan posisi assignment.
+Sebuah proteksi masuk antrean karena datanya, bukan karena ada yang mendorongnya ke sana.
+Mekanismenya berbeda; akibatnya setara.
+
+#### 3. Validasi saat submit — TIDAK ADA, dan itu temuannya
+
+    pyValidateRuleName              kosong
+    FlowActionValidate              NO_VALIDATION
+    pyPostProcessingTransformRule   kosong
+
+Flow action `AksepProtection` **tidak memvalidasi apa pun**. Yang ada adalah **prakondisi
+langkah** di `InsertOpenProtectionCase`:
+
+    .TypeProtection != "" && .Keterangan != "" && .CaseID != "" && .PolicyNo != ""
+
+**Empat syarat, bukan dua.** Modul ini memeriksa dua — dan itu benar, karena keduanya diambil
+dari penyaring `InboxOpenProtection2_RD` yang menentukan isi antrean.
+
+Yang membedakan keduanya adalah **akibat tak terpenuhinya**:
+
+| | Pega | Modul ini |
+|---|---|---|
+| Syarat | 4 field | 2 field |
+| Bila tidak terpenuhi | langkah **DILEWATI** — akseptasi tetap tercatat, proteksi tidak dibuka | akseptasi **DITOLAK** (`ErrIncomplete`) |
+
+`TypeProtection` dan `Keterangan` **sengaja TIDAK ditambahkan** ke syarat akseptasi.
+Menambahkannya akan menolak akseptasi yang di Pega tetap berhasil — lebih ketat tanpa dasar,
+dan itu melanggar `P-5`. Keduanya menjadi syarat pada **adapter pembuka proteksi**, saat API
+`R-03` dibangun. Dicatat di package doc, bukan hanya di sini.
+
+#### Empat hal lain yang ikut terbaca, dan belum punya tempat
+
+Dari daftar prakondisi `InsertOpenProtectionCase`:
+
+| Prakondisi | Artinya |
+|---|---|
+| `Param.APPNAME == "ASM" \| "SIMASNET" \| "SMI"` | tiga entitas — sejalan dengan 3 INSERT DB Link di §38.8 |
+| `@LengthOfPageList(ProtectDouble.pxResults) > 1` | **pemeriksaan proteksi GANDA** |
+| `Local.typeprotection == "9"` | tipe 9 (Nama Rekening Tidak Sesuai) punya penanganan tersendiri |
+| `pxRequestor.pxReqServer == <host dev>` | hostname hardcode — satu dari 48 yang `D-15` hapus |
+
+Keempatnya milik **jalur pembukaan proteksi**, bukan jalur akseptasi. Yang paling layak
+diperhatikan saat API dibangun adalah **pemeriksaan proteksi ganda**: ia aturan bisnis, bukan
+detail teknis, dan belum tercatat di dokumen mana pun sebelum ini.
+
+#### Batas audit modul ini
+
+Dengan ketiganya diperiksa, daftar "belum tersentuh" yang saya nyatakan di §38.8 **kosong**.
+Yang tersisa pada modul ini seluruhnya menunggu pihak luar:
+
+| Sisa | Menunggu |
+|---|---|
+| Pembukaan proteksi di sistem polis | API pengganti DB Link (`R-03`) |
+| Penegakan kewenangan 31 modul lain | keputusan lingkup (`TKT-F3-005`) |
+
+### 38.12 "Pengganti Ticket untuk mengganti user yang ditugaskan" — pertanyaannya tidak punya objek
+
+Work Owner bertanya apakah Go sudah punya pengganti Ticket **untuk mengganti tujuan/user yang
+ditugaskan pada OPC** — siapa yang boleh approve.
+
+Penelusuran flow menjawabnya dengan cara yang tidak diduga: **untuk akseptasi OPC, penugasan
+perorangan tidak pernah ada, bahkan di Pega.**
+
+    Flow/CreateProtection_Flow.xml
+      InputProtection  -> WorkList   + ToCurrentOperator      milik PEMBUATNYA
+      AksepProtection  -> WorkBasket + ProtectionPNC          antrean BERSAMA
+                          + ToWorkbasket
+
+Yang menentukan siapa boleh mengakseptasi hanyalah **access group**, dan itu sudah ditegakkan
+sejak §38.10. Jadi tidak ada "tujuan/user yang ditugaskan" yang perlu diganti — objeknya
+memang tidak ada.
+
+Work Owner mengonfirmasi bahwa yang dimaksud memang **mengatur siapa boleh approve**, bukan
+mengalihkan penugasan maupun membatalkan keputusan. Karena itu **tidak ada kode yang ditulis**;
+yang dikerjakan adalah menuliskan cara mengaturnya — `kolom-open-protection.md` §10, berisi
+aturan, `INSERT`/`DELETE` siap pakai, kueri pemeriksaan, dan tiga gejala yang paling sering
+disalahartikan.
+
+#### `SetAssignmentInboxProtection_act` — bukan "ganti workbasket"
+
+`pyMemo`-nya berbunyi **"ganti workbasket"**, dan itu sempat terbaca sebagai mekanisme
+mengalihkan penugasan. Isinya membantah:
+
+    TempIns.pyNote = "ASSIGN-WORKBASKET " + param.inskey + "!CreateProtection_Flow "
+    prakondisi     : local.status == "Open"
+
+Ia **menyusun kunci assignment** supaya baris di grid dapat dibuka — mekanisme membuka
+assignment dari daftar, bukan memindahkannya ke workbasket lain. Memo itu kemungkinan catatan
+developer tentang perubahan yang pernah dilakukan, bukan uraian fungsinya.
+
+> Memo satu frasa di dalam rule bukan dokumentasi. Ia catatan untuk penulisnya sendiri, dan
+> membacanya sebagai uraian fungsi menghasilkan kesimpulan yang rapi tetapi salah.
+
+#### Yang memang belum ada, dan dinyatakan apa adanya
+
+Fungsi Ticket yang sebenarnya adalah **melompatkan proteksi ke tahap tertentu** di luar urutan
+normal — mis. mengembalikan proteksi dari akseptasi ke tahap input. Di sistem baru tidak ada
+padanannya: proteksi berpindah tahap semata karena keadaan kolomnya.
+
+    APPROVAL_STATUS IS NULL + CLAIM_NO + POLICY_NO terisi  ->  masuk antrean
+    APPROVAL_STATUS '1' atau '2'                           ->  keluar, permanen
+
+Akibatnya: **keputusan yang sudah diambil tidak dapat dikembalikan ke antrean.** Tidak ada
+"batalkan akseptasi". Dinyatakan ke Work Owner sebagai pilihan tersendiri, dan **tidak
+dipilih** — jadi ia tetap terbuka, bukan terlewat.
+
+Perlu dicatat bahwa di Pega pun kemampuan itu belum tentu terpakai: §38.11 menemukan **tidak
+ada satu pun pemicu Ticket di seluruh export**.
+
+### 38.13 `ID_CLAIM` dikoreksi — klaim Pega menyimpan IDPEGA, bukan nomor klaimnya
+
+Work Owner menyampaikan 2026-09-26:
+
+> *"untuk klaim dari pega, idnya mengikuti idpega (ASM-FW...) ketika masuk ke
+> t_claim_openprotection"*
+
+dan menegaskan aturannya saat dikonfirmasi: *"untuk claim lama masuk IDPEGA, yang baru
+IDKLAIM = NOCLAIM."*
+
+#### Cacat yang ditemukan
+
+`inputreqprotection` menulis `ID_CLAIM` **selalu sama dengan `CLAIM_NO`**, pada insert maupun
+update. Asalnya catatan 2026-09-24 — *"ClaimNo dan ClaimID berisi nilai yang sama"* — yang
+benar untuk klaim sistem baru dan **tidak berlaku** untuk klaim Pega.
+
+| Klaim yang ditaut | `CLAIM_NO` | `ID_CLAIM` tersimpan | Seharusnya |
+|---|---|---|---|
+| dari Pega | `PNC-1865` | `PNC-1865` ❌ | `ASM-FW-GCNMFW-WORK PNC-1865` |
+| sistem baru | `PNCN.26.0007` | `PNCN.26.0007` ✅ | sama |
+
+Kekeliruannya **tidak menghasilkan galat apa pun** — hanya proteksi yang menunjuk klaim
+dengan kunci yang tidak dikenali Pega.
+
+#### Datanya sudah ada, hanya tidak diambil
+
+`claim_find` sudah membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan **sudah memakai `PZINSKEY`** —
+untuk menjoin `T_CLAIM_PNC`, tidak sebagai kolom:
+
+    FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+    LEFT JOIN POOLDATA.T_CLAIM_PNC c ON c.CLAIMID = w.PZINSKEY
+
+`PZINSKEY` itulah IDPEGA-nya. Mengambilnya sebagai kolom **tidak menambah satu pun pembacaan
+tabel**.
+
+#### Yang dikerjakan
+
+    protection.sql   SELECT w.PZINSKEY ditambahkan pada claim_find
+    Claim.PegaID     field baru; KOSONG bila klaim bukan dari Pega
+    ClaimReferenceOf aturan penurunan, di domain
+    protection.go    ID_CLAIM memakai ClaimReferenceOf(claim), di insert DAN update
+
+`PZINSKEY` sengaja **tidak di-`COALESCE`** dengan `PYID`: kosongnya harus tetap terbaca sebagai
+kosong, supaya pemanggil dapat membedakan klaim Pega dari yang bukan. Menyamarkannya dengan
+nomor klaim akan membuat keduanya tampak sama — persis cacat yang sedang diperbaiki.
+
+#### Cabangnya ditentukan ADA-TIDAKNYA IDPEGA, bukan bentuk nomor
+
+Menebaknya dari awalan — `PNC-` versus `PNCN.` — **akan gagal**: dua baris warisan di produksi
+tidak berpola `PNC-` sama sekali (§1 dokumen kolom). Yang dipakai adalah keberadaan
+`PZINSKEY`, yang hanya terisi bila klaimnya memang ada di tabel kerja Pega.
+
+Pilihan itu juga membuat aturannya **tahan terhadap perluasan**: bila `claim_find` kelak ikut
+mencari klaim sistem baru, barisnya tidak punya `PZINSKEY` dan dengan sendirinya jatuh ke
+nomor klaim.
+
+#### Pembaruan ikut menghitung ulang
+
+`ID_CLAIM` dihitung ulang pada UPDATE, bukan hanya pada INSERT: pemohon dapat mengganti nomor
+klaim yang ditaut, dan `ID_CLAIM` yang tertinggal akan menunjuk klaim yang bukan lagi miliknya.
+
+#### Uji yang mengunci
+
+Enam uji baru. Lima di domain (`claimreference_test.go`): klaim Pega memakai IDPEGA, klaim
+baru memakai nomornya, **cabang ditentukan IDPEGA bukan awalan nomor**, spasi di ujung tidak
+ikut tersimpan, dan `PegaID` berisi spasi saja diperlakukan sebagai kosong. Satu di sisi SQL:
+`claim_find` wajib MEMILIH `PZINSKEY`, bukan hanya memakainya menjoin.
+
+Data contoh `repo/memory` ditambah satu klaim warisan ber-`PegaID` — tanpa itu, cabang IDPEGA
+tidak pernah terlewati saat pengembangan lokal, padahal di produksi mayoritas klaim justru
+berasal dari Pega.
+
+#### Tiga tempat yang memuat aturan lama, disegarkan
+
+`kolom-open-protection.md` §2 (dengan banner koreksi yang menyebut apa yang berubah dan
+kenapa), komentar `inputreqprotection_test.go`, dan `http/dto.go`. Yang **tidak** disunting:
+penjelasan sejarah di dalam `ClaimReferenceOf` — ia memang merekam bahwa aturannya pernah
+berbeda.
+
+#### Catatan lingkup
+
+Ini modul `inputreqprotection`, di luar lingkup yang Work Owner tetapkan pada §38.10. Izin
+diminta lebih dulu dan diberikan — *"jika iya lanjutkan"* — setelah aturannya dikonfirmasi
+ulang. Modul `inboxacceptopenprotection` tidak disentuh.
+
+#### Bukti
+
+    go build ./...                        OK
+    go vet ./internal/inputreqprotection  bersih
+    go test ./...                         seluruhnya lulus, tanpa FAIL
+    tsc --noEmit                          bersih
+    vitest (kedua modul proteksi)         2 berkas · 23 uji lulus
+
+### 38.14 Akseptasi kini menyinkronkan Tanggal Kejadian ke `T_CLAIMLIST_ADMIN`
+
+> **SASARANNYA DIKOREKSI beberapa jam kemudian menjadi `POOLDATA.T_CLAIM_PNC` — lihat §38.15.**
+> Bagian ini dibiarkan apa adanya sebagai rekaman apa yang dikerjakan saat itu dan atas dasar
+> apa. Yang berlaku sekarang adalah §38.15.
+
+Work Owner melaporkan 2026-09-26: *"kenapa setelah approval data t_claimlist_admin belum di
+update?"*, lalu menegaskan arahnya: *"case pega itu sinkron sama tabel data work itu, maunya
+untuk golang sinkron dengan t_claimlist_admin."*
+
+#### Yang terjadi sebelumnya
+
+Akseptasi menulis **tiga kolom** di `T_CLAIM_OPENPROTECTION` dan berhenti. Tabel klaim tidak
+pernah disentuh — `grep` atas seluruh backend menemukan **nol** `UPDATE`/`INSERT` ke
+`T_CLAIMLIST_ADMIN`; ia hanya pernah dibaca.
+
+#### Yang Pega lakukan, dan tidak pernah dibawa
+
+`Activity/InsertOpenProtectionCase-Act.xml` mengubah **data klaim** saat akseptasi disubmit:
+
+| Tipe | Yang diubah |
+|---|---|
+| `7` | `TempPNCOPEN.ClaimData.DateOfLoss` ← DOL baru |
+| `8` | `ObjectCoverageList(...).CauseOfLoss` dan `.CauseOfLossID` |
+| semua | `AdjustmentList(...).IsOpenProtect = "1"`, `IsWaitApprove = "0"` |
+| semua | `CatatanKlaim` — "DOL Sebelum … DOL Revisi …", "Pengajuan Diaksep/Direject Manager" |
+
+`TempPNCOPEN` adalah work object klaim, yang di Pega sinkron ke
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`. Penggantinya di sistem baru: **`POOLDATA.T_CLAIMLIST_ADMIN`**.
+
+#### Yang dikerjakan: tipe '7' saja
+
+    claimsync.go                   LossDateToApply — aturan, di DOMAIN
+    acceptance.sql                 claim_apply_loss_date
+    acceptance.go                  Decide kini TRANSAKSIONAL: proteksi + klaim
+    repo/memory/memory.go          meniru perilakunya supaya uji bermakna
+    errors.go / http/errors.go     ErrClaimNotSynced -> 409
+
+Tanggalnya **dipotong ke tengah malam**, meniru `@substring(...,0,8)+"T000000.000 GMT"`.
+Zona waktunya dipertahankan: tanggal yang dipilih adalah tanggal WIB, dan memindahkannya ke
+UTC lebih dulu akan menggeser sebagian tanggal mundur sehari (`R-12`).
+
+#### Satu SELISIH TERENCANA dari Pega — ditolak tidak mengubah klaim
+
+Di `InsertOpenProtectionCase`, perubahan DOL **tidak dijaga status persetujuan sama sekali**.
+Diperiksa menyeluruh: `Local.acceptstatus` muncul **satu kali**, hanya untuk menyusun teks
+catatan. Perubahan DOL-nya berprakondisi `Local.typeprotection=="7"` saja.
+
+Dibaca apa adanya, itu berarti **menolak permintaan perubahan DOL tetap mengubah DOL klaim**.
+Perilaku itu **tidak dibawa** — segolongan dengan `R-19`: cacat pada aturan yang mengubah data
+klaim tidak direplikasi hanya karena ada di sistem lama. Dikunci
+`TestPenolakanTIDAKMengubahTanggalKejadianKlaim`.
+
+#### Gagal menerapkan = keputusan DIBATALKAN
+
+Tabel datar baru memuat **1.014 dari 7.703 klaim**, sehingga klaim yang sah dapat belum punya
+baris di sana. Bila `UPDATE` tidak menyentuh apa pun, seluruh transaksi di-*rollback* dan
+pemanggil menerima `409` berisi sebabnya.
+
+Arah sebaliknya jauh lebih buruk: persetujuan tersimpan atas perubahan yang tidak pernah
+terjadi, tanpa satu pun gejala — petugas melihat "disetujui", klaim tetap memakai DOL lama.
+
+#### Dua hal yang TIDAK dikerjakan, dan alasannya
+
+| Tidak dikerjakan | Alasan |
+|---|---|
+| **Tipe '8'** — Cause of Loss | Targetnya level **coverage** (`T_CLAIM_OBJECTCOVERAGE`), dan `T_CLAIM_OPENPROTECTION` **tidak menyimpan** objek/coverage mana yang diubah. Pega memakai `.ObjectID` dan `.City` dari work object; kolom itu tidak ada di tabel proteksi |
+| `IsOpenProtect` / `IsWaitApprove` / `CatatanKlaim` | Ketiganya milik struktur adjustment dan riwayat komunikasi klaim — modulnya belum ada |
+
+#### Bukti
+
+    go build ./... OK · go vet bersih · go test ./... seluruhnya lulus
+    5 uji baru: persetujuan mengubah DOL (jam dibuang), penolakan tidak,
+    tipe lain tidak, klaim belum terdaftar menolak keputusan TANPA menyisakan
+    status, baris warisan tanpa tanggal baru tetap dapat disetujui
+
+### 38.15 Sasaran sinkronisasi dikoreksi ke `T_CLAIM_PNC` — dan satu perubahan yang dibatalkan hitungan sendiri
+
+Work Owner mengoreksi arahannya 2026-09-26:
+
+> *"maafkan, ternyata tabel t_claimlist_admin hanya untuk dashboard, jadi datanya tidak
+> diganti-ganti, untuk perubahan data dari open proteksi, update data di t_claim_pnc saja,
+> tolong diperbaiki, lalu untuk input protection juga ambil datanya dari t_claim_pnc ya,
+> jangan pakai t_claimlist_admin."*
+
+Arahannya memuat **dua** hal, dan keduanya diperlakukan berbeda karena bukti yang berbeda.
+
+#### Hal pertama — sasaran tulis: dikerjakan apa adanya
+
+`T_CLAIMLIST_ADMIN` adalah tabel BACA untuk dashboard. Menulisinya akan membuat dua sumber
+kebenaran untuk hal yang sama, dan yang satu menyimpang dari yang lain tanpa gejala.
+
+| Yang berubah | Menjadi |
+|---|---|
+| `claim_apply_loss_date` | `UPDATE POOLDATA.T_CLAIM_PNC SET DATEOFLOSS = :1 WHERE UPPER(TRIM(CLAIMID)) = :2` |
+| Kunci penerapan | `CLAIMID`, bukan nomor klaim — dibawa `Protection.ClaimReference` dari `ID_CLAIM` |
+| `acceptance_list` / `acceptance_get` | ikut mengambil `p.ID_CLAIM` |
+| Repo memori | dikunci ulang ke `ClaimReference` supaya ujinya bermakna |
+
+Kuncinya **bukan** nomor klaim, dan itu dijaga uji tersendiri: bagi klaim warisan `CLAIMID`
+berbentuk `ASM-FW-GCNMFW-WORK PNC-1865`, dan memakai nomor klaim sebagai kunci **tidak
+menghasilkan galat basis data** — ia hanya tidak menemukan apa pun.
+`TestKunciPenerapanAdalahIDClaimBukanNomorKlaim` mendaftarkan klaimnya **hanya** di bawah
+`CLAIMID`, lalu memastikan pencarian lewat nomor klaim gagal.
+`TestProteksiTanpaIDClaimMenolakKeputusan` menutup baris yang `ID_CLAIM`-nya kosong.
+
+#### Hal kedua — sumber baca: dicoba, diukur, dibatalkan, lalu ditegaskan ulang
+
+Bagian *"untuk input protection juga ambil datanya dari t_claim_pnc"* saya jalankan harfiah:
+`claim_find` ditulis ulang menjadi `FROM POOLDATA.T_CLAIM_PNC` saja, tanpa tabel kerja Pega.
+
+Sebelum menyatakannya selesai, akibatnya dihitung langsung ke Oracle — dan hitungan itu
+membatalkan perubahannya sendiri. **Hitungan pertama saya pun keliru**, jadi dicatat:
+
+> Angka pertama menyebut **6.361 klaim hilang**. Itu salah — ia menghitung seluruh isi
+> `PC_ASM_FW_GCNMFW_WORK`, padahal tabel itu dipakai **bersama sepuluh case type**. Dari
+> 7.716 barisnya hanya **2.639 yang klaim**; sisanya Receive Document (2.805), Komite
+> (1.542), Survey, Open Protection, Treaty, dan Compliance.
+
+Setelah disaring `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'`:
+
+| Yang diukur | Angka |
+|---|---|
+| klaim Work-PNC seluruhnya | **2.639** |
+| dapat ditemukan lewat `T_CLAIM_PNC` | **1.397** |
+| **tidak** dapat ditemukan | **1.242 — 47%** |
+
+Angka itu saya sampaikan beserta pilihannya. **Work Owner menegaskan keputusannya:**
+
+> *"jangan gunakan t_claimlist_admin sama sekali, gunakan t_claim_pnc saja"*
+> *"maksudnya cari noklaim di input req nya ke t_claim_pnc ya"*
+
+Jadi perubahannya **dikembalikan dan diterapkan**: `claim_find` membaca `T_CLAIM_PNC` saja,
+`PC_ASM_FW_GCNMFW_WORK` tidak lagi dibaca, dan `T_CLAIMLIST_ADMIN` memang tidak pernah dibaca
+modul ini. Konsekuensinya diterima secara sadar — penutupnya **melengkapi `T_CLAIM_PNC`**,
+bukan mengembalikan tabel kerja Pega.
+
+#### Kuncinya `CLAIMID`, bukan `CLAIMNO` — dan itu terukur
+
+`T_CLAIM_PNC` punya dua kolom yang sama-sama tampak seperti nomor klaim:
+
+| kolom | terisi | kembar | klaim terjangkau |
+|---|---|---|---|
+| `CLAIMNO` | 1.697 | 1 pasang | 1.349 |
+| `CLAIMID` | **2.176** | **0** | **1.397** |
+
+`CLAIMNO` kosong pada 479 baris, berulang pada satu pasang yang `CLAIMID`-nya berbeda, dan
+**berbeda isi dari nomor turunan `CLAIMID` pada 11 baris**. Memakainya berarti nomor yang
+ditampilkan dapat berbeda dari nomor yang dicari.
+
+Yang paling menentukan: `CLAIMID` adalah **kolom yang sama** dengan kunci tulis
+`UPDATE T_CLAIM_PNC ... WHERE CLAIMID = :2` saat proteksinya disetujui. Selama baca dan tulis
+memakai satu kolom, klaim yang dapat dicari pasti dapat pula diubah — tidak ada celah di mana
+pencarian berhasil tetapi penerapannya gagal.
+
+#### Prefix Pega disusun di Go, bukan dipotong di SQL
+
+Bentuk pertama yang terpikir: `SUBSTR(CLAIMID, INSTR(CLAIMID,' ') + 1)`. **Tidak diambil** —
+`INSTR(` ada di daftar pola terlarang `09-DATABASE-STRATEGY.md` §4, dan uji yang menjaganya
+memang menggagalkannya.
+
+Penggantinya yang disebut Steering, `POSITION(x IN y)`, saya uji langsung sebelum dipakai:
+
+```
+SELECT POSITION(' ' IN 'AB CD') FROM DUAL   ->   ORA-00907
+```
+
+**Oracle tidak mendukungnya.** Jadi memakai `INSTR` melanggar `D-20`, dan memakai `POSITION`
+gagal berjalan hari ini. Keduanya dihindari.
+
+`CLAIMID` ternyata hanya punya **dua bentuk**, nol bentuk ketiga, nol spasi ganda:
+
+```
+ASM-FW-GCNMFW-WORK PNC-1865   2.167 baris   klaim warisan Pega
+PNCN.26.0007                      9 baris   klaim sistem baru
+```
+
+Karena bentuknya tetap, prefix-nya disusun **di Go** dan dikirim sebagai argumen kedua:
+
+```sql
+WHERE UPPER(TRIM(c.CLAIMID)) IN (:1, :2)
+```
+
+Jangkauannya **identik** dengan bentuk `INSTR` — 1.397 klaim, diukur berdampingan — keduanya
+predikat kesamaan, dan nama kelas Pega tidak tertulis di berkas SQL sama sekali. Ia satu
+konstanta bernama `prefixKunciKlaimPega`, yang hilang bersama klaim warisannya kelak.
+
+Kedua argumen dikirim terpisah meski berasal dari satu masukan: driver mengikat menurut
+urutan **kemunculan** penanda, bukan menurut nomornya, sehingga `:1` berulang menghasilkan
+`ORA-01008` — catatan yang sudah ada di `searchArgs` dan berlaku sama di sini.
+
+#### Uji yang lama menjaga rancangan LAMA, jadi ditulis ulang
+
+Dua uji gagal setelah perubahan, dan keduanya memang **seharusnya** gagal —
+`TestPencarianKlaimMemakaiLEFTJOIN` dan `TestClaimFindMengambilPZINSKEY` menjaga bentuk yang
+baru saja ditinggalkan. Keduanya diganti penjaga rancangan baru, bukan dihapus:
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestPencarianKlaimBersumberT_CLAIM_PNC` | `T_CLAIMLIST_ADMIN` **dan** `PC_ASM_FW_GCNMFW_WORK` tidak boleh kembali |
+| `TestPencarianKlaimMencocokkanDuaBentukCLAIMID` | dua bind, dan `CLAIMNO` tidak dipakai |
+| `TestPencarianKlaimTidakMemotongDiSQL` | `INSTR`/`POSITION`/`SUBSTR` tidak kembali ke SQL |
+| `TestClaimFindMengambilCLAIMID` | `CLAIMID` utuh memang DIPILIH, bukan hanya dipakai di WHERE |
+| `TestNomorKlaimDiturunkanDariCLAIMID` | pemotongan benar untuk kedua bentuk, tahan beda huruf besar-kecil |
+
+Yang terakhir bukan kehati-hatian berlebih: data produksi menulis `ASM-FW-GCNMFW-WORK`,
+sementara nama kelas yang sama muncul sebagai `ASM-FW-GCNMFW-Work-PNC` di tempat lain.
+Pencocokan yang peka huruf akan membuat satu ejaan lolos dan ejaan lain tidak — tanpa gejala,
+karena keduanya tetap menghasilkan teks.
+
+#### Diuji langsung ke Oracle, bukan hanya dikompilasi
+
+Teks kueri yang sebenarnya dijalankan terhadap kedua bentuk `CLAIMID`:
+
+| | klaim warisan Pega | klaim sistem baru |
+|---|---|---|
+| ditemukan | ya | ya |
+| `CLAIMID` kembali utuh | ya | ya |
+| nomor turunan cocok | ya | ya |
+| NOPOLIS · QQNAME · DOL | terisi | terisi |
+| COL · Branch · Object | terisi | kosong — klaim itu memang belum punya objek |
+
+Nomor yang tidak ada menghasilkan `ErrNoRows`, bukan baris kosong — sehingga pemanggil
+menerima `ErrClaimNotFound`, bukan `Claim{}` yang tampak sah.
+
+#### Keadaan data hari ini — yang akan langsung terasa
+
+Dari 6 proteksi yang `ID_CLAIM`-nya terisi, **4 tidak ketemu** di `T_CLAIM_PNC`, dan dari
+2 proteksi tipe `'7'` **1 tidak ketemu**. Menyetujui yang satu itu akan menghasilkan `409`
+`ErrClaimNotSynced`, bukan persetujuan yang tersimpan tanpa akibat. Itu perilaku yang
+dikehendaki, tetapi perlu diketahui lebih dulu supaya tidak terbaca sebagai gangguan.
+
+#### Bukti
+
+    go build ./...        OK
+    go vet ./internal/... bersih
+    go test ./... -count=1  seluruhnya lulus, nol FAIL
+
+Verifikasi ke Oracle dijalankan lewat program sekali pakai di `cmd/tmpverify`, yang
+**dihapus** setelah hasilnya dicatat. Ia tidak dijadikan perkakas tetap: perkakas verifikasi
+yang sesungguhnya adalah `S-8`, bukan berkas yang tertinggal di `cmd/`.
+
+Keluarannya dijaga `D-69` — hanya `COUNT(*)` dan terisi/kosong. Nomor klaim contoh yang
+dipakai menguji kueri **diambil dan dipakai di dalam program**, tidak pernah dicetak; yang
+tampil hanya "ditemukan" beserta hasil perbandingannya.
+
+---
+
+## 39. Unggah dokumen penunjang — penelusuran Pega dan fondasi modulnya (2026-09-26)
+
+Work Owner: *"sama unggah dokumen penunjang di input req protection dan inbox protection kok
+hilang sama sekali, tolong diperbaiki"*, lalu *"unggah dokumen belum ada, lanjutkan"*.
+
+### 39.1 Premis saya sebelumnya SALAH untuk kedua layar ini
+
+Saya sempat menyatakan unggahnya "ke GCS seperti Pega". Penelusuran membantah itu.
+
+Di Pega, tombol unggah kedua layar adalah flow action **`SetUploadDocPUCL`**, kelas
+`ASM-FW-GCNMFW-Work-OpenProtection`, dipasang empat kali:
+
+    Section/InputProtectionSection-Section.xml:8634, :8777
+    Section/AcceptProtectionSection-Section.xml:8812, :8906
+
+Rantainya berakhir di **mesin lampiran Pega sendiri**, bukan di layanan penyimpanan:
+
+    SetUploadDocPUCL → pre  SetPreAttachmentPNC    Page-New Data-WorkAttach-File
+                     → sec  SetUploadDoc_Detl      → ASMAttachContentScreen
+                                                   → ASMAttachFilesScreen
+                     → post SaveAttachmentOPPNC    → GCNMSaveAttachments → SaveAllAttachments
+                                                   → SetCategoryAttachment
+
+Jadi berkasnya mendarat di `PC_LINK_ATTACHMENT` / `PC_DATA_WORKATTACH`. Layanan penyimpanan
+(`InsertDokumenPNC`) dipakai **di tempat lain** — Salvage lewat
+`UploadDocumentToGoogleStorage`, dan beberapa layar master lewat `PNCSaveAttachmentToDB`.
+
+### 39.2 Meski begitu, sistem baru TETAP memakai layanan penyimpanan
+
+Bukan karena meniru, melainkan karena `D-16` sudah memutuskannya lebih dulu:
+
+> *"Dokumen disimpan lewat API storage internal Sinarmas yang sudah berjalan. Database
+> aplikasi hanya menyimpan metadata dan referensi. Tiga mekanisme penyimpanan yang ada
+> sekarang disatukan menjadi satu jalur."*
+
+Meniru mesin lampiran Pega berarti membangun mekanisme **keempat** justru ketika
+keputusannya menyatukan yang tiga.
+
+Konsekuensinya dinyatakan di muka: pada uji kesetaraan, dokumen dari kedua layar ini
+**tidak akan muncul di tabel lampiran Pega**. Selisih terencana, bukan cacat.
+
+### 39.3 Satu koreksi terhadap `R-07`
+
+`UploadDocumentToGoogleStorage` tercatat sebagai salah satu dari 50 activity yang hilang.
+Ia **ada** di export sekarang (`Activity/UploadDocumentToGoogleStorage-Act.xml`) — ikut
+bertambah pada `D-45`. Angka `R-07` perlu dihitung ulang terhadap snapshot berlaku.
+
+### 39.4 Mekanisme unggah Pega, terbaca utuh
+
+`Activity/InsertDokumenPNC-Act.xml`, lima langkah berurutan:
+
+| # | Langkah | Isi |
+|---|---|---|
+| 1 | `GetAppFolder` | `select NAMA_FOLDER from general.T_FOLDER_STORAGE where APLIKASI='KLAIMPNC'` |
+| 2 | `GenerateTokenPNCDokumen` | `GENERAL.GET_TOKEN_STORAGE` → MD5 + insert `GCP_IMAGE` |
+| 3 | `UploadDokumenPNC` | `POST <app13>/api/v1/upload`, JSON, **tanpa otentikasi** |
+| 4 | `InsertDataPNCStorage` | insert `general.t_storage_image` |
+| 5 | `GetURLAndEXPDate` | baca kembali `urlpublic` dan `exp` |
+
+Muatannya delapan field — `UserInput`, `NoClaim`, `App`, `Folder`, `NamaFile`, `Image`
+(base64), `MimeType`, `Durasi`.
+
+**Tokennya tidak pernah dikirim.** Header POST hanya `Content-Type`, dan
+`pyUseAuthentication=false`. Isi `GET_TOKEN_STORAGE` membuktikannya: ia hanya menyisipkan
+baris ke `GENERAL.GCP_IMAGE`. Jadi langkah 2 adalah **jejak**, bukan otentikasi — dan justru
+karena itu tetap dibawa (`D-59`: jejak audit satu-satunya kontrol pengimbang).
+
+### 39.5 Temuan yang mengubah rancangan: tabelnya ada di basis data LAIN
+
+Diperiksa langsung: skema **`GENERAL` tidak ada** di basis data Claim PNC — `ALL_USERS` nol
+baris. Work Owner menunjukkan tempatnya:
+
+> *"general.t_storage_image@asmd.sinarmas.co.id (BUKAN POOLDATA)"*
+
+Terverifikasi lewat DB link itu:
+
+| Objek | Isi |
+|---|---|
+| `GENERAL.T_FOLDER_STORAGE` | 10 baris; `APLIKASI='KLAIMPNC'` **ada** |
+| `GENERAL.T_STORAGE_IMAGE` | **128.379** baris; **2.050** ber-`APPNAME='klaimpnc'` |
+| `GENERAL.GCP_IMAGE` | 33 baris |
+
+Hak tulisnya ada (`UPDATE ... WHERE 1=0` diterima). `NO_CLAIM` **NOT NULL** — itulah sebab
+Pega menambalnya dengan `"-"`.
+
+**Peringatan kinerja, terukur:** `GROUP BY` atas 128.379 baris lewat DB link **tidak selesai
+dalam 5 menit**. Seluruh kueri modul ini karena itu menyaring `NO_CLAIM` atau `IMAGEID`
+lebih dulu, dan tidak satu pun mengagregasi.
+
+### 39.6 Endpoint-nya tidak ada di registri, jadi ia konfigurasi
+
+`POOLDATA.GCNM_CONNECT_REST` — registri alamat layanan yang sudah dipakai HCQ — **tidak
+punya baris** untuk unggah dokumen; alamatnya tertanam di rule Pega. Maka ia menjadi
+**konfigurasi wajib tanpa nilai bawaan**, sejalan `12-CROSSCUTTING.md` §3.4 dan `R-18`.
+Nilai bawaan akan sekaligus melanggar `D-69` (hostname produksi tidak ditulis di kode).
+
+### 39.7 Yang sudah dibangun — modul `dokumenpenunjang`
+
+    internal/dokumenpenunjang/
+      dokumenpenunjang.go            aturan domain
+      seam.go                        Storage · Repo · RepoSelector · Clock
+      errors.go                      tujuh galat, masing-masing dengan sebabnya
+      usecase/service.go             lima langkah Pega, berurutan
+      repo/memory/                   adapter kedua — MEREKAM apa yang dikirim
+      repo/sqlstore/                 Oracle lewat DB link
+      storage/httpstorage/           klien layanan penyimpanan
+
+Aturan Pega yang ditiru dan dipagari uji: pembersihan nama `[^a-zA-Z0-9]` (termasuk titik
+ekstensinya — memang begitu Pega), peta tipe media 15 cabang beserta cabang bawaannya,
+folder `Doc/YYYY/MM/`, `Durasi` sebagai **angka** bukan teks, dan `NO_CLAIM` kosong → `"-"`.
+
+Satu selisih terencana: folder memakai tanggal **WIB**, bukan GMT (`F-5`). Pega menaruh
+unggahan pukul 00:00–07:00 tanggal 1 di folder bulan sebelumnya.
+
+### 39.8 Yang BELUM dikerjakan — dinyatakan, bukan disembunyikan
+
+| Belum ada | Akibatnya |
+|---|---|
+| Transport HTTP + rute | endpoint unggah/daftar belum dapat dipanggil |
+| Perakitan di `main.go` | modulnya belum hidup saat aplikasi jalan |
+| Layar di kedua halaman proteksi | tombol unggahnya belum tampak |
+| Konversi **AVIF** (`KonversiAvif`) | PNG/JPG tersimpan pada format aslinya — lebih besar, tidak salah |
+
+### 39.9 Bukti
+
+    go build ./...        OK
+    go vet ./internal/... bersih
+    go test ./... -count=1  208 paket ok, nol FAIL
+    modul baru: 71 kasus uji
+
+### 39.10 Unggah dokumen selesai dibangun — transport, perakitan, dan layar
+
+Lanjutan §39.7. Yang di sana masih "belum ada" kini terpasang.
+
+#### Transport
+
+    POST /api/klaim/{nomor}/dokumen-penunjang     unggah satu berkas
+    GET  /api/klaim/{nomor}/dokumen-penunjang     daftar dokumen klaim itu
+
+Bersarang di bawah **klaim**, bukan di bawah salah satu layar proteksi — dokumennya menempel
+pada klaim (*"Ke klaim, seperti Pega"*), dan `T_CLAIM_OPENPROTECTION` memang tidak punya satu
+pun kolom dokumen. Akibat yang dikehendaki: berkas yang diunggah dari Input Req Protection
+terlihat dari Inbox Accept Open Protection, dan sebaliknya.
+
+**Muatannya multipart, bukan JSON base64.** Pega memakai base64 karena Connect REST hanya
+bicara JSON; antara peramban dan backend kita tidak ada batasan itu. Penyandian base64 tetap
+terjadi — di adapter `httpstorage`, tepat sebelum dikirim ke layanan penyimpanan.
+
+**Tidak ada rute HAPUS.** Pega tidak punya, `D-66` menetapkan penghapusan lewat penanda
+(`DELETE_DATE` sudah ada di tabelnya), tetapi **siapa** yang boleh menghapus dokumen klaim
+belum ditetapkan — dan `D-59` menghapus pemisahan tugas, sehingga jawabannya tidak dapat
+disimpulkan sendiri.
+
+#### Tiga jenis kegagalan, tiga jawaban — dan bedanya bukan kosmetik
+
+| Keadaan | Status | Yang pengguna lakukan |
+|---|---|---|
+| permintaan cacat | `400` / `413` | perbaiki lalu ulangi |
+| layanan penyimpanan gagal | **`502`** | ulangi apa adanya — belum ada yang tersimpan |
+| metadata gagal dicatat | **`500` `tersimpan_sebagian`** | **JANGAN ulangi** — berkasnya sudah terkirim |
+
+Yang ketiga itu sebabnya `ErrMetadataGagal` tidak digabung ke galat internal biasa. Pesan
+"coba lagi" pada keadaan itu membuat pengguna mengulang berkali-kali, dan **setiap percobaan
+meninggalkan satu salinan yatim** di penyimpanan yang tidak dapat ditarik kembali.
+
+#### Alamat layanan menjadi konfigurasi, tanpa nilai bawaan
+
+`PENYIMPANAN_DOKUMEN_ALAMAT`, kosong secara baku. Dua alasan yang berdiri sendiri:
+`12-CROSSCUTTING.md` §3.4 dan `R-18` melarang endpoint tertanam di kode, dan `D-69` melarang
+hostname produksi tertulis di artefak yang di-commit.
+
+**Kosongnya TIDAK menggagalkan start.** Yang dikembalikan bukan `nil` melainkan penolak
+bernama — `nil` justru akan membuat `NewService` gagal dan mematikan seluruh aplikasi demi
+satu integrasi yang belum dikonfigurasi. Penolak itu membiarkan modulnya hidup dan menjawab
+setiap unggahan dengan sebab yang jelas.
+
+#### Layar
+
+Satu komponen, `DokumenPenunjangPanel`, dipakai **kedua** layar — sebagaimana Pega memakai
+satu flow action `SetUploadDocPUCL` untuk keduanya. Ia tinggal di modulnya sendiri, bukan di
+salah satu modul proteksi: modul fitur tidak boleh mengimpor dari modul fitur lain
+(`08-TECHNICAL-STRATEGY.md` §3 aturan 1).
+
+| Keadaan | Yang ditampilkan |
+|---|---|
+| klaim belum dipilih | penjelasan, dan **tidak** menembak server |
+| belum ada dokumen | dinyatakan, bukan panel kosong |
+| URL kosong | "tautan belum siap" — bukan tautan mati |
+| URL kedaluwarsa | "tautan kedaluwarsa", tautannya dilepas |
+| permintaan sudah diputuskan | baca-saja; daftarnya tetap terbaca |
+
+Kedaluwarsa dihitung **di server**, bukan dari jam peramban — jam yang salah membuat dua orang
+melihat status berbeda untuk dokumen yang sama.
+
+#### Dua cacat yang tertangkap oleh uji, bukan oleh pembacaan
+
+1. **Stub uji tetangga menelan jalur baru.** Panel ini ikut dirender pada form akseptasi,
+   sehingga sembilan uji di dua berkas mendadak gagal — bukan karena panelnya salah, tetapi
+   karena stub-nya menjawab jalur dokumen dengan badan daftar proteksi. Diperbaiki dengan
+   mengajari kedua stub menjawab `/dokumen-penunjang`.
+
+   Pada `ProtectionListPage.test.tsx` **urutannya menentukan**: jalurnya
+   `/api/klaim/{nomor}/dokumen-penunjang`, sehingga penyaring `/klaim/` yang ada lebih dulu
+   ikut menangkapnya.
+
+2. **`daftar.data.data.length` galat total ketika respons kehilangan `data`.** Badan respons
+   datang dari jaringan, dan `as T` pada `callAPI` tidak memeriksa apa pun saat berjalan —
+   catatan yang sudah tertulis di `src/api/client.ts` dan yang saya lewatkan. Diganti
+   `daftar.data?.data ?? []`, dan dipagari uji tersendiri.
+
+#### Bukti
+
+    backend   go build ./...  OK · go vet ./...  bersih
+              go test ./... -count=1   208 paket ok, nol FAIL
+    frontend  tsc --noEmit  bersih
+              vitest run    62 berkas, 1.016 uji, seluruhnya lulus
+              modul baru: 12 uji panel
+
+#### Yang masih belum dikerjakan
+
+| Belum ada | Akibatnya |
+|---|---|
+| Konversi **AVIF** (`KonversiAvif`) | PNG/JPG tersimpan pada format aslinya — lebih besar, tidak salah |
+| Pilihan **jenis dokumen** dari master `V_LST_DET_TYPE_DOC` (159 baris) | `TYPEIMAGE` terkirim kosong; kontraknya sudah menerima medan itu |
+| Baris `TYPESERVICE` untuk unggah di `GCNM_CONNECT_REST` | alamat masih lewat variabel lingkungan, bukan data |
+| Uji terhadap layanan penyimpanan SUNGGUHAN | hanya diuji terhadap server tiruan; alamat produksinya belum diisi di lingkungan ini |
+
+### 39.11 Konversi AVIF ditambahkan, dan alamat kedua layanan diambil dari Connect REST
+
+Work Owner 2026-09-27: *"alamat layanan ada di connect-rest pega, tambahkan juga konversi
+AVIF untuk ini"*.
+
+#### Alamatnya kini punya nilai baku — dan itu tidak melanggar §3.4
+
+Sebelumnya saya jadikan konfigurasi **tanpa** nilai baku, dengan alasan `D-69` melarang
+hostname produksi tertulis di artefak yang di-commit.
+
+Alasan itu **tidak berlaku di sini**: host `app13` sudah tertulis sejak awal di
+`docs/Steering/02-BUSINESS-UNDERSTANDING.md:238`, `docs/BRD/BRD.md:929`, dan `D-16` sendiri.
+Menuliskannya di kode tidak menambah paparan apa pun.
+
+Yang `12-CROSSCUTTING.md` §3.4 dan `R-18` larang pun bukan nilai bakunya, melainkan endpoint
+yang **tidak dapat diganti** — sebabnya dua Connect REST produksi yang menunjuk host sandbox
+tanpa seorang pun dapat mengalihkannya. Larangan itu tetap dipatuhi: keduanya dapat ditimpa
+`PENYIMPANAN_DOKUMEN_ALAMAT` dan `KONVERSI_GAMBAR_ALAMAT` per lingkungan.
+
+| Layanan | Sumber nilai baku | Jalur |
+|---|---|---|
+| Penyimpanan | `UploadDokumenPNC-ConnectREST.xml` `pyBaseURL` | `/api/v1/upload` |
+| Konversi | `KonversiAvif-ConnectREST.xml` `pyBaseURL` | `/convert-avif` |
+
+> **Yang perlu diketahui Tim Infra:** alamat layanan konversi memakai **`http://` polos**,
+> apa adanya dari rule Pega. Isi berkas — termasuk dokumen nasabah — melintas **tanpa
+> enkripsi dan tanpa otentikasi**. Tidak diubah di sini karena memaksa TLS ke layanan yang
+> belum melayaninya akan mematikan konversi; yang dilakukan adalah membuatnya dapat
+> dialihkan ke HTTPS lewat konfigurasi.
+
+#### Mekanisme konversinya, terbaca utuh
+
+`Activity/Convert_Avif-Act.xml` beserta kedua cabang pemanggilnya:
+
+| Langkah | Isi |
+|---|---|
+| Prakondisi | `MimeType` ∈ {PNG, JPG, JPEG, **PDF**} — `:672` |
+| Muatan | `{"image_base64": "<base64>"}` — halaman `DocAviff` satu field, `:694` |
+| Gagal | `Status == "false"` → `Param.ErrMsg := "Gagal Konversi Avif"`, `:1408` |
+| Berhasil | `TempAviff.City := response.image_base64`, `:1502` |
+| Cabang **gambar** | `Param.Base64 := hasil` **dan** `Param.MimeType := "Avif"` |
+| Cabang **PDF** | `Param.Base64 := hasil` saja — tipenya TETAP PDF |
+
+Tiga hal yang mudah salah bila hanya dibaca sekilas:
+
+1. **PDF ikut dikonversi**, meski hasilnya tetap PDF — layanan itu memampatkannya.
+   Menyeragamkan tipenya menjadi `image/avif` akan membuat peramban menolak membukanya.
+2. **`"Avif"` bukan tipe media**, ia ekstensi. Ia masih melewati peta 15 cabang untuk
+   menjadi `image/avif`. Melompati peta itu menghasilkan `application/Avif`.
+3. **Konversi gagal MEMBATALKAN unggahan.** Di Pega, `TempAviff.City` dibiarkan kosong lalu
+   disalin ke `Param.Base64`; yang menahan berkas kosong terunggah adalah `Page-Set-Messages`
+   di `:2649`. Meneruskan berkas **asli** juga ditolak — yang tersimpan kemudian bukan yang
+   diminta, tanpa satu pun penanda.
+
+#### Urutan langkah saya betulkan
+
+Konversi kini mendahului pencarian folder dan pencatatan izin, sesuai urutan Pega
+(`Call Convert_Avif` di ~2177, `GetAppFolder` di ~3003). Versi pertama saya menaruhnya
+sesudah — dan itu akan meninggalkan satu baris izin `GCP_IMAGE` untuk unggahan yang tidak
+pernah terjadi.
+
+#### Seam tersendiri, bukan digabung ke penyimpanan
+
+Keduanya layanan HTTP tanpa otentikasi, jadi menggabungkannya tampak hemat. Yang menahan:
+**alamatnya berbeda, dan kegagalannya berakibat berbeda** — konversi gagal membatalkan
+sebelum apa pun terkirim, penyimpanan gagal terjadi sesudahnya. Satu alamat untuk dua
+layanan juga membuat memindahkan salah satunya mustahil tanpa memindahkan keduanya.
+
+`Converter` **wajib diisi**, tidak boleh nil. Nil yang dibiarkan membuat unggahan PNG
+melewati konversi diam-diam — berhasil, tersimpan, dan berbeda dari Pega tanpa gejala.
+Lingkungan tanpa layanan konversi memasang penolak bernama, dan penolak itu **tidak**
+meneruskan berkas aslinya.
+
+#### Matinya konversi bukan matinya unggah
+
+`ConverterActive()` dipisahkan dari `Active()`. Alamat konversi yang kosong hanya menutup
+empat ekstensi; berkas lain tetap terunggah, dan `502`-nya menyebut jenis berkasnya supaya
+pengguna tidak mengira seluruh unggah sedang mati.
+
+#### Bukti
+
+    go build ./...        OK
+    go vet ./...          bersih
+    go test ./... -count=1  209 paket ok, nol FAIL
+
+Uji baru: empat ekstensi yang dikonversi versus lima yang tidak · gambar berganti tipe
+tetapi PDF tidak · konversi gagal membatalkan unggahan **dan** tidak mencatat izin · hasil
+kosong dianggap gagal · konversi mati tidak memengaruhi berkas lain · nama berkas tidak
+berubah karena konversi · sebelas uji adapter HTTP-nya.
+
+### 39.12 Fitur dimatikan sementara — tombolnya tetap tampil
+
+Work Owner 2026-09-27: *"ternyata modul gcs belum disiapkan, tolong munculkan saja dulu
+tombol unggah file penunjang tanpa fungsinya"*.
+
+#### Satu sakelar, bukan menghapus kodenya
+
+`frontend/src/modules/dokumen-penunjang/fitur.ts`:
+
+```ts
+export const FITUR_DOKUMEN_PENUNJANG_AKTIF = false
+```
+
+Menghapus kodenya berarti membangunnya lagi dari nol saat layanannya siap — dan yang hilang
+bukan hanya waktu, melainkan seluruh alasan di dalam komentarnya: kenapa PDF tidak berganti
+tipe, kenapa konversi gagal membatalkan unggahan, kenapa `"-"` dipakai saat nomor klaim
+kosong. Semuanya hasil penelusuran rule yang tidak murah diulang.
+
+Menghidupkannya kembali: satu baris.
+
+#### Yang tampil dan yang tidak
+
+| Hal | Keadaan |
+|---|---|
+| Judul "Unggah File Penunjang" | **tampil** |
+| Tombol "Pilih berkas" | **tampil, MATI** (`disabled`) |
+| Sebabnya | **disebut** — "Layanan penyimpanan dokumen belum tersedia" |
+| Input berkas | **tidak dipasang sama sekali** |
+| Permintaan ke server | **nol** — daftar maupun unggah |
+
+Tiga pilihan yang diambil sadar:
+
+1. **Tombolnya tampil, bukan disembunyikan.** Menyembunyikannya membuat layar tampak tidak
+   punya fitur unggah sama sekali, dan pertanyaan "kok hilang?" berulang.
+2. **`disabled`, bukan tombol hidup tanpa akibat.** Tombol yang ditekan tanpa hasil terbaca
+   sebagai rusak; pengguna akan menekannya berkali-kali sebelum melaporkannya.
+3. **Daftar TIDAK ditampilkan**, meski membacanya sebenarnya berjalan hari ini —
+   `GENERAL.T_STORAGE_IMAGE` sudah memuat 2.050 baris ber-`APPNAME='klaimpnc'`. Daftar
+   dokumen yang tidak dapat ditambah lebih membingungkan daripada tidak ada apa-apa:
+   pengguna akan mengira unggahnya yang gagal, bukan bahwa fiturnya memang belum ada.
+
+Input berkas sengaja tidak dipasang sama sekali, bukan sekadar disembunyikan: tombol mati
+saja tidak cukup bila input-nya masih ada di DOM dan dapat dijangkau papan ketik atau skrip.
+
+#### Kedua keadaan tetap diuji
+
+`vi.mock` berlaku untuk satu berkas utuh dan tidak dapat dibalik di tengahnya, sehingga
+ujinya dipecah dua:
+
+| Berkas | Sakelar | Isi |
+|---|---|---|
+| `DokumenPenunjangPanel.test.tsx` | `true` | 12 uji perilaku penuh |
+| `DokumenPenunjangPanel.mati.test.tsx` | `false` | 6 uji keadaan yang berlaku hari ini |
+
+Yang kedua menulis `false` **eksplisit**, bukan memakai nilai aslinya: kalau sakelarnya
+kelak dinyalakan, berkas itu harus GAGAL dan menarik perhatian — bukan diam-diam ikut
+berubah arti.
+
+Tanpa pemecahan ini, mematikan fitur akan ikut mematikan dua belas uji yang menjaganya, dan
+menghidupkannya kembali menjadi langkah yang tidak teruji sama sekali.
+
+#### Backend TIDAK disentuh
+
+Rute, adapter, dan perakitannya tetap hidup dan tetap diuji — 209 paket, nol FAIL. Yang
+mati hanyalah pemanggilnya di layar. Begitu layanan GCS siap, yang berubah satu baris di
+`fitur.ts`; tidak ada satu pun kode server yang perlu dibangun ulang.
+
+#### Bukti
+
+    backend   go test ./... -count=1   209 paket ok, nol FAIL (tidak berubah)
+    frontend  tsc --noEmit  bersih
+              vitest run    63 berkas, 1.022 uji, seluruhnya lulus
+
+---
+
+## 40. Object Name "kosong terus", dan sumber data polis (2026-09-27)
+
+Work Owner: *"cek modul inputprotection, object name dapat darimana, kenapa ketika di test
+kosong terus"*.
+
+### 40.1 Dari mana Object Name diambil
+
+`inputreqprotection/repo/sqlstore/protection.sql`, kueri `claim_find` — subkueri berkorelasi,
+baris PERTAMA menurut `OBJECTID`:
+
+```sql
+(SELECT o.OBJECTNAME FROM POOLDATA.T_CLAIM_OBJECTLIST o
+  WHERE o.CLAIMID = c.CLAIMID ORDER BY o.OBJECTID FETCH FIRST 1 ROW ONLY)
+```
+
+Rantainya utuh dan benar: `OBJECTNAME` → `Claim.ObjectName` → `nama_objek` →
+`found?.nama_objek` pada form. Tidak ada satu pun mata rantai yang putus.
+
+### 40.2 Datanya pun tidak kosong
+
+Dihitung langsung ke Oracle:
+
+| Yang diukur | Angka |
+|---|---|
+| baris `T_CLAIM_OBJECTLIST` | 2.608 |
+| — `OBJECTNAME` terisi | **2.550** |
+| klaim `T_CLAIM_PNC` | 2.196 |
+| — punya baris objek | 1.649 |
+| — **baris pertamanya ber-OBJECTNAME** | **1.600** |
+
+Jadi **73% klaim punya Object Name**. Ia tidak mungkin "kosong terus" karena datanya.
+
+### 40.3 Sebabnya dua, dan yang kedua CACAT
+
+**Pertama — `PENYIMPANAN=memori`.** Aplikasi berjalan di atas repo memori, bukan Oracle.
+Hanya empat nomor klaim yang dikenal: `PNCN.26.0007`, `.0008`, `.0009`, dan `PNC-1865`.
+Nomor klaim nyata apa pun **tidak ditemukan**. Satu di antaranya — `PNCN.26.0009` — memang
+sengaja dibuat tanpa objek.
+
+**Kedua — form TIDAK PERNAH menampilkan kegagalan pencarian.** `ProtectionForm.tsx` hanya
+membaca `claim.data ?? null`; `claim.isError` tidak diperiksa sama sekali — nol kemunculan.
+
+Akibatnya **klaim yang tidak ditemukan terlihat persis sama dengan klaim yang ditemukan
+tetapi datanya kosong**: keenam field turunan blank, tanpa satu pun pesan. Itulah yang
+membuat gejalanya terbaca sebagai "Object Name kosong", padahal No Polis, Nama Tertanggung,
+DOL, Cause of Loss, dan Branch Name ikut kosong karena sebab yang sama.
+
+**Diperbaiki.** Form kini membedakan tiga keadaan, dan nadanya berbeda karena tindak
+lanjutnya berbeda:
+
+| Keadaan | Yang tampil | Nada |
+|---|---|---|
+| sedang mencari | "Mencari data klaim…" | — |
+| `404` | "Klaim tidak ditemukan" + menyebut keenam field | penolakan — dapat diperbaiki pengguna |
+| galat lain | "Data klaim gagal dibaca" | gangguan — bukan salah pengguna |
+
+Pesan `404` menyebut **Object Name** secara eksplisit: itulah field yang ditanyakan, dan
+menyebutnya menutup dugaan bahwa field itu yang rusak.
+
+### 40.4 Nama Tertanggung, Start Date Time, End Date Time — sumbernya ditunjuk
+
+Work Owner, di tengah penelusuran yang sama:
+
+> *"nama tertanggung, startdatetime, dan enddatetime dari `select startdate, enddate,
+> theinsured from pooldata.t_general where nopolis = [nopolis opc] order by
+> to_number(prodke) desc fetch first 1 rows only`"*
+
+Ketiganya sebelumnya **dibiarkan kosong** — adapter mencatat bahwa ia "milik snapshot polis
+yang modulnya belum terpasang". Sekarang terisi.
+
+Terverifikasi: `T_GENERAL` 201.566 baris · `THEINSURED` 200.586 · `STARTDATE` dan `ENDDATE`
+masing-masing 201.501. Dari 8 proteksi ber-`POLICY_NO`, 7 polisnya ketemu.
+
+#### Urutannya NUMERIK, sebagaimana mestinya
+
+Work Owner menegaskan: *"prodke adalah varchar/char, namun isinya pasti angka, gunakan
+order by sebagaimana mestinya agar data yang diambil selalu prodke paling baru (angka
+terbesar)"*.
+
+Urutannya `CAST(TRIM(g.PRODKE) AS NUMERIC) DESC` — perbandingan ANGKA. Kolomnya memang
+`VARCHAR2(100)`, tetapi yang menentukan perpanjangan terbaru adalah nilainya sebagai
+bilangan.
+
+**Kenapa bukan `to_number(prodke)`.** Bentuk berargumen satu sah di Oracle, **tidak sah di
+PostgreSQL** — di sana `to_number` menuntut format mask. `CAST(... AS NUMERIC)` adalah
+bentuk ANSI dari hal yang sama, dan Oracle menerimanya. Diuji langsung:
+
+| Bentuk | Hasil |
+|---|---|
+| `CAST('0012' AS NUMERIC)` | OK → 12 |
+| `CAST('0012' AS NUMBER)` | OK — khas Oracle, tidak dipakai |
+| `CAST('0012' AS BIGINT)` | **ORA-00902** |
+
+**Satu belokan yang saya koreksi sendiri.** Versi pertama memakai
+`LPAD(TRIM(PRODKE), 10, '0')` — hasilnya sama hari ini, tetapi ia **trik**, bukan
+pernyataan maksud: lebar 10 dipilih dari data hari ini, dan `PRODKE` yang kelak melewati
+sepuluh digit akan salah urut DIAM-DIAM. Urutan teks polos lebih salah lagi — 13.181 baris
+berawalan nol.
+
+**Yang diukur sebelum diganti:**
+
+| Yang diukur | Angka |
+|---|---|
+| baris ber-`PRODKE` | 201.540 — `CAST` berhasil atas **semuanya** |
+| `PRODKE` bukan angka | **0** |
+| polis dengan >1 `PRODKE` | 6.639 |
+| **urutan berbeda dari `to_number`** | **0** |
+
+**Risiko yang diterima:** `CAST` adalah konversi — satu baris non-angka akan menggagalkan
+kueri. Work Owner menyatakan isinya pasti angka dan hitungan membenarkannya. Bila kelak
+muncul, yang terjadi galat yang **terlihat**, bukan urutan salah yang diam. Untuk nilai
+yang menentukan perpanjangan mana yang dipakai, gagal keras lebih baik.
+
+Kelonggaran literal `'0'` pada penjaga parameter binding — yang sempat ditambahkan demi
+`LPAD` — **dicabut kembali** pada hari yang sama. Kelonggaran yang tidak lagi dipakai akan
+membiarkan literal berikutnya lolos tanpa pertimbangan.
+
+#### Tiga subkueri, dan urutannya wajib identik
+
+Satu `LEFT JOIN ... FETCH FIRST` per baris induk menuntut lateral join, yang sintaksnya
+berbeda antara Oracle dan PostgreSQL. Tiga subkueri berkorelasi portabel di keduanya.
+
+Konsekuensinya dijaga uji: ketiganya **harus** memakai `ORDER BY` yang sama. Mengubah salah
+satunya akan menggabungkan nama tertanggung dari satu perpanjangan dengan tanggal dari
+perpanjangan lain — tanpa satu pun gejala.
+
+### 40.5 Satu penjaga yang ditulis ulang, bukan dihapus
+
+`TestKeduaKueriBacaMemilihKolomYangSama` gagal — benar, sebab daftar dan detail kini
+**sengaja** berbeda: detail menambahkan tiga kolom polis yang tidak ditampilkan daftar.
+Menambahkannya juga ke daftar berarti tiga pembacaan tambahan per baris — enam puluh untuk
+satu halaman — demi nilai yang tidak pernah dilihat.
+
+Penggantinya menyatakan aturan yang lebih tepat: **kolom daftar adalah AWALAN persis dari
+kolom detail**, ditambah penjaga kedua yang menyebut ketiga kolom tambahannya satu per satu.
+Awalan yang cocok saja tidak cukup — tanpa yang kedua, menghapus salah satu subkueri tetap
+lolos.
+
+Pemisah koma pada penjaga itu sempat salah: ia memisah pada SETIAP koma, sehingga
+`LPAD(TRIM(g.PRODKE), 10, '0')` terbaca sebagai tiga "kolom" bernama `PRODKE`, `10`, dan
+`ONLY`. Diperbaiki menjadi pemisah yang menghitung kedalaman kurung.
+
+### 40.6 Dua uji baru yang sempat gagal karena tiruannya sendiri
+
+Uji "klaim tidak ditemukan" gagal meski kodenya benar: `stubFetch` bersama **mencegat
+`/klaim/` dan selalu menjawabnya 200**, sehingga jawaban galat dari uji tidak pernah sampai.
+Catatan di kepala `stubFetch` sudah menyatakan hal itu sejak awal — *"uji yang kelak perlu
+menguji KEGAGALAN memasang `vi.stubGlobal` sendiri"* — dan itulah yang dikerjakan.
+
+### 40.7 Bukti
+
+    backend   go build ./...  OK · go vet ./...  bersih
+              go test ./... -count=1   209 paket ok, nol FAIL
+    frontend  tsc --noEmit  bersih
+              vitest run    1.025 uji, seluruhnya lulus
+
+Uji baru: klaim tidak ditemukan · gangguan pembacaan dibedakan darinya · klaim yang ADA
+tetapi tanpa Object Name tidak dianggap galat · daftar adalah awalan kolom detail · detail
+menambah tepat tiga kolom polis · ketiganya memakai urutan yang sama dan bebas `TO_NUMBER`.
+
+## 41. My Work — antrean Surveyor / Loss Adjuster (2026-09-28)
+
+Modul `inboxsurvey`, butir menu **MENU_ID 50 "My Work"**, pengganti harness
+`InboxSurvey_Harness`. Work Owner menyebutnya "Inbox Survey/Loss Adjuster".
+
+### 41.1 Artefak Pega yang dibaca
+
+| Berkas | Yang terbaca |
+|---|---|
+| `Harness/InboxSurvey_Harness-Harness.xml` (1,9 MB) | dua tab besar: **INBOX** dan **KPI** |
+| `Section/InboxSurvey_section-Section.xml` (1,8 MB) | **13 kolom**, **7 tab status**, page size **15** |
+| `Activity/SetTempLostAdjuster-Act.xml` | mesin tab — kueri mana untuk tab mana |
+| `RDB List/BrowseLossAdjuster-SQL.xml` | bentuk baris Loss Adjuster (`SURVEYORTYPE_1='2'`) |
+| `RDB List/BrowseInternalSurveyor-SQL.xml` | bentuk baris Internal Surveyor (`='1'`) |
+| `RDB List/CountOSLostAdjuster-SQL.xml` | **seluruh predikat tab**, dalam satu kueri |
+| `RDB List/GetDataCaseSurveyALL-SQL.xml` | domain nilai `ADJUSTERSTATUS_1` |
+| `RDB List/GetLoginLeaderSurveyor-SQL.xml` | jembatan login → surveyor |
+| `RDB List/GetSummaryKPIAdjuster*.xml` | ketiga bentuk ringkasan KPI |
+| `Database/INSERT_SURVEYORLIST.prc` | kolom `POOLDATA.T_SURVEYORLIST` |
+
+### 41.2 Pertanyaan dan jawaban konfirmasi
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Dari tabel mana datanya diambil? `T_CLAIMLIST_ADMIN` terbukti berisi **0** baris `Work-SurveyClaim` | **`T_SURVEYORLIST` + `T_CLAIMLIST_ADMIN`** |
+| 2 | Tab INBOX saja, atau sekaligus KPI? | **INBOX + KPI sekaligus** |
+| 3 | Siapa pemakainya — Loss Adjuster saja atau keduanya? | **Keduanya, dipilih dari identitas yang masuk** |
+| 4 | Jembatan identitas login → surveyor | **Berlapis**: `M_LOGIN_PNC` sebagai master pengguna, `MST_LOGIN_SURVEYOR` sebagai data surveyor |
+| 5 | *(pertanyaan balik)* Apakah tab Close sama dengan `STS_SURVEY` "Close Case"? | dijawab dengan bukti — lihat §41.4 |
+
+Pada pertanyaan 4 saya **mengoreksi premis pertanyaan saya sendiri** sebelum Work Owner
+menjawab: saya sempat menawarkan `M_LOGIN_PNC` sebagai kandidat, lalu menemukan
+`GetLoginLeaderSurveyor-SQL.xml` yang membuktikan Pega memakai `MST_LOGIN_SURVEYOR.LOGIN`.
+Koreksinya disampaikan, dan Work Owner memilih bentuk berlapis.
+
+### 41.3 Keputusan desain
+
+**Sumber data.** `POOLDATA.T_SURVEYORLIST` menggerakkan baris (satu baris per **janji
+survei**), `POOLDATA.T_CLAIMLIST_ADMIN` menyediakan header klaim. Kunci sambung
+`s.PNCCASEID = k.PZINSKEY`, terbaca dari `BroswseKlaimByNoSurvey-SQL.xml`.
+
+**Akibat granularitas yang diterima sadar.** `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`,
+`REFNO_1`, dan `ADJUSTERPIC_1` hidup **per klaim**, sementara di Pega keempatnya **per janji
+survei**. Klaim dengan dua janji berstatus berbeda menampilkan status yang sama pada kedua
+barisnya. Dinyatakan sebagai selisih terencana di layar.
+
+**Jembatan identitas.** `login` → `MST_LOGIN_SURVEYOR.LOGIN` → `NAMA`, lalu `NAMA`
+dicocokkan ke `T_SURVEYORLIST.SURVEYOR_NAME` dan `DETAIL_KPI_ADJUSTER.adjuster`.
+`LOGINLEADER` memberi hierarki leader→anggota: **leader melihat pekerjaan anggotanya**, yang
+menjelaskan kenapa kueri Pega membandingkan dengan `IN (…)` dan bukan satu nilai.
+
+**Cakupan dikirim sebagai satu teks berpembatas**, bukan klausa `IN` yang dirangkai.
+`INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0` dengan `:1` berbentuk
+`|NAMA SATU|NAMA DUA|`. Pembatas dipasang di **kedua sisi** supaya "BUDI" tidak cocok dengan
+"BUDIONO". Harganya: tidak dapat memakai indeks. Diterima — cakupan seorang leader berjumlah
+belasan, dan alternatifnya adalah persis celah `{ASIS:...}` yang sedang dihapus.
+
+### 41.4 Ketujuh tab, dan dari mana predikatnya
+
+Keempat kueri tab layar lama **hilang dari export** (`R-16`) — diperiksa lewat isi
+`pyRuleName`, bukan nama berkas:
+
+    BrowseOSLostAdjuster · BrowseConfirmLostAdjuster
+    BrowseCommunicationLostAdjuster · BrowseCloseLostAdjuster
+
+Yang menyelamatkan modul ini: `CountOSLostAdjuster` menghitung **ketujuh keranjang yang
+sama** dalam satu kueri lewat tujuh `SUM(CASE WHEN …)`. Predikatnya karena itu tetap terbaca.
+
+| Tab | Predikat |
+|---|---|
+| Outstanding | `ADJUSTERACCEPT_1 IS NULL` |
+| ALL | `ADJUSTERACCEPT_1 = '1'` |
+| Invoice | `+ ADJUSTERSTATUS_1 = 'Invoice Fee'` |
+| Close | `ADJUSTERSTATUS_1 = 'Close Case'` ← selisih terencana |
+| Not answered communication | komunikasi status `'0'`, sender ≠ pemanggil |
+| Not replied from ASM | status `'0'`, sender = pemanggil |
+| Replied from ASM | status `'1'`, sender = pemanggil |
+
+**Jawaban atas pertanyaan balik Work Owner.** "Close Case" **bukan** nilai `STS_SURVEY`
+melainkan nilai `ADJUSTERSTATUS_1`, terbukti dari `GetDataCaseSurveyALL-SQL.xml`:
+
+    and ADJUSTERSTATUS_1 not in ('Final Report','Close Case','Invoice Fee')
+
+Ketiganya satu keluarga, dan `'Invoice Fee'` di antaranya **persis** yang dipakai tab
+Invoice. Itu menutup pertanyaan tanpa perlu DBA — tetapi tetap **bukan** predikat yang sama
+dengan Pega, yang memakai `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim.
+Kolom itu tidak ada di tabel penggerak.
+
+### 41.5 Yang masih menunggu DBA
+
+| Kolom | Dipetakan ke | Kenapa belum pasti |
+|---|---|---|
+| `ADJUSTERPIC_1` | "Appointment No" | NAMANYA berbunyi "PIC", bukan nomor janji. Rantai buktinya putus di Browse rule yang hilang |
+| `LOSSTYPE` | "Cause Of Loss" | `BrowseLossAdjuster` tidak mengambil kolom itu sama sekali |
+
+Keduanya dipasang di kueri `check_columns`, sehingga keadaannya diketahui saat `-periksa`
+dijalankan — bukan saat seorang adjuster membuka layarnya.
+
+### 41.6 Yang TIDAK dibangun, dan dinyatakan
+
+Membuka baris untuk **mengerjakan** surveinya. Di Pega tautannya membuka
+`ASSIGN-WORKLIST <pyID>!Surveyor_Flow`; folder `Flow/` hanya memuat **empat** flow, dan itu
+bukan salah satunya. Layar ini MEMBACA saja — konsisten dengan `P-1`.
+
+### 41.7 Temuan sampingan
+
+`ASM-FW-GCNMFW-Work-SurveyClaim` adalah **case type kelima** yang tidak tercatat di Steering
+— `03-CURRENT-ARCHITECTURE.md` §1 hanya menyebut empat. Ketiadaannya di sana adalah
+kekurangan dokumen, bukan bukti ia tidak ada.
+
+### 41.8 Bukti
+
+    backend   go build ./...   OK · go vet ./...  bersih
+              go test ./...    seluruh paket ok, nol FAIL
+    frontend  tsc --noEmit     bersih
+
+Uji baru — 9 di sqlstore, 16 di memory. Yang paling berharga: ketiga tab komunikasi tidak
+tertukar (ketiganya hanya dibedakan arah pengirim dan status pesan), nama berawalan sama
+tidak ikut terbawa cakupan, tab Outstanding memakai `IS NULL` bukan `<> '1'`, dan jumlah
+pada bilah tab sepadan dengan isi tabnya.
+
+## 42. Inbox OS Claim per Cabang — `MENU_ID 69` (2026-09-28)
+
+Layar rujukan: `Harness/OutstandingKlaimperCabang_Harness-Harness.xml`. Butir menunya
+terverifikasi di `Database/m_menu_aplikasi_pnc.csv:64` —
+`1,69,"Inbox OS Claim per Cabang","OutstandingKlaimperCabang_Harness",1,2,1159`.
+
+Serahan **pertama**: daftar + ekspor. Tombol "Detail" per baris (popup
+`View_DetailKlaimCabang_Harness`) adalah serahan kedua — keputusan Work Owner, lihat §42.10.
+
+### 42.1 Artefak Pega yang dibaca
+
+| Artefak | Yang diambil darinya |
+|---|---|
+| `Harness/OutstandingKlaimperCabang_Harness-Harness.xml` | kerangka layar, kedua tombol, `pyDeferLoadRetrievalActivity` |
+| `Section/InboxOutstandingperCabang_Section-Section.xml` | 16 kolom beserta judulnya, aturan baris merah pada `pyInlineStyle` |
+| `Activity/OutstandingperCabang_PreAct-Act.xml` | urutan pemuatan, teks pita WARNING, asal `.Medicare` |
+| `RDB List/GetDataOutstandingperCabang-SQL.xml` | kueri grid |
+| `RDB List/GetDataOutstandingperCabangExport-SQL.xml` | kueri ekspor, 48 kolom |
+| `RDB List/GetNamaCabangTelepon-SQL.xml` | nama cabang pada judul |
+| `RDB List/GetProgress1Sama-SQL.xml` | penanda baris merah |
+| `Activity/ExportDataOSCabang-Act.xml` | tombol Export To Excel |
+
+**Empat dari delapan tidak ada di export saat analisis dimulai.** `OutstandingperCabang_PreAct`
+hanya dirujuk sebagai `pyDeferLoadRetrievalActivity` di harness `:492` dan section `:1241`;
+ketiga kueri yang ia panggil pun tidak ada. Keempatnya diminta dan **diterima Work Owner pada
+hari yang sama**.
+
+Tanpa keempatnya, kueri grid masih dapat disusun ulang dari varian ekspornya — keduanya klon,
+dan `pzOriginalInstanceKey` menyebutnya. Tetapi **arti `.Medicare` tidak dapat dibaca, hanya
+ditebak**, dan itu tidak dilakukan.
+
+### 42.2 Pertanyaan dan jawaban konfirmasi
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Batas data "per Cabang" diambil dari mana? | **Dari API yang di-hit saat login (HCQ); ada data cabang di outputnya** |
+| 2 | Popup Detail masuk lingkup sekarang? | **Ya — sekalian**, dengan urutan daftar + ekspor dulu, lalu Detail |
+| 3 | Isi berkas ekspor? | **Penuh, seperti SQL lama (~45 kolom)**, termasuk 24 kolom treaty |
+| 4 | Aturan baris merah (`Medicare`)? | Properti yang di-set di activity dengan kondisi; `OutstandingperCabang_PreAct` **ditambahkan**, lalu ketiga SQL-nya menyusul |
+| 5 | Apa isi `D-25`? | dijawab — lihat §42.4 |
+
+### 42.3 Keberatan yang diajukan atas jawaban 1, dan bagaimana ia ditangani
+
+Jawaban 1 diikuti, tetapi satu hal disampaikan lebih dulu karena ia **sudah pernah terjadi di
+repo ini**.
+
+`internal/inboxlaporanklaim/seam.go:40-55` merekamnya: layar Inbox Laporan Klaim memakai
+`Placement.BranchCode` dari profil HCQ, dan **daftarnya tampil KOSONG tanpa satu pun pesan
+galat** — karena kode cabang yang dipakai tabel klaim adalah `POOLDATA.BRANCH.ID`, ruang kode
+yang berbeda. Penerjemahnya, `BranchResolver`, dibangun setelah itu.
+
+Diverifikasi ke basis data: `POOLDATA.BRANCH` berisi **803 baris**, dan **94 dari 95** nilai
+`T_CLAIM_PNC.BRANCHCODE` resolve ke `BRANCH.ID`.
+
+Keputusan Work Owner tetap diikuti, dengan **dua pagar** supaya kegagalan yang sama tidak
+terulang diam-diam:
+
+1. Cabang diambil lewat seam `BranchResolver`, diisi `CallerBranch` yang membaca profil sesi.
+   Bila ternyata kodenya perlu diterjemahkan, yang diganti hanya pengisi seam — nol baris
+   aturan modul.
+2. Kode cabang yang **tidak ada di master** tidak menghentikan layar, tetapi **dicatat sebagai
+   peringatan** di log. Itu tanda paling awal bahwa ruang kodenya berbeda; pada modul lain
+   tanda itu baru muncul sebagai daftar kosong yang tidak menjelaskan dirinya.
+
+Satu temuan yang memperkuat kehati-hatian ini: aturan lama menyaring
+`c.branchcode = {OperatorID.pyTelephone}`, dan isi `PR_OPERATORS.PYTELEPHONE` diperiksa —
+**hanya 731 dari 4.173 operator** punya nilai, dan isinya bercampur antara kode cabang
+(`100297`), nomor ponsel sungguhan, dan nilai seperti `00`. Menyalinnya apa adanya berarti
+memindahkan layar kosong bagi 82% pengguna.
+
+### 42.4 Isi `D-25`, dan kenapa DB Link tetap dipakai di sini
+
+`D-25` (DECIDED) mengganti seluruh akses lintas basis data lewat DB Link dengan pemanggilan
+API, karena PostgreSQL — target akhir `D-01`/`D-24` — tidak mengenal DB Link. `R-03` mencatat
+API penggantinya kemungkinan belum ada.
+
+Ia **arah, bukan larangan hari ini**. Preseden sudah berjalan:
+`inboxlaporanklaim/repo/sqlstore/branch.sql` memakai `@asmd` dengan syarat ia berada **di balik
+seam**. Kueri ekspor di sini mengikuti preseden itu, dan pemakaiannya dibatasi uji —
+`TestOnlyExportTouchesTheDatabaseLink` menolak `@asmd` pada kueri selain ekspor, supaya DB Link
+yang padam mematikan tombol ekspor saja, bukan layarnya.
+
+Satu koreksi atas analisis awal saya: saya sempat menyimpulkan `@asmd` **tidak ada** karena ia
+tidak muncul di `ALL_DB_LINKS`. Ia link **publik**. Diuji langsung dan hidup —
+`treaty_loss@asmd` memuat 19 baris ber-`no_klaim` berawalan `PNC-`.
+
+### 42.5 Arti `.Medicare`, terjawab dari activity yang baru masuk
+
+`OutstandingperCabang_PreAct` langkah 5 mengulang setiap baris hasil, menjalankan
+`GetProgress1Sama`, lalu menyetel `.Medicare = "1"` bila ada hasilnya. Kuerinya mengambil klaim
+yang **tiga catatan progres terakhirnya bernilai `status_progress1` sama**.
+
+Jadi `.Medicare` di layar ini berarti **progres mandek** — tidak ada hubungannya dengan
+pengobatan, meski properti itu berlabel "Data Pengobatan" di layar registrasi. Kolom `MEDICARE`
+memang **tidak ada** di `T_CLAIM_PNC` (diverifikasi ke `ALL_TAB_COLUMNS`); ia properti clipboard
+yang hidup hanya selama layar terbuka. Namanya tidak dibawa; di sini ia `ProgressStalled`.
+
+**Ditulis ulang set-based.** Sistem lama menjalankan satu kueri per baris — 953 baris
+outstanding hari ini berarti 953 perjalanan ke basis data. Di sini ia satu gabungan.
+
+#### Selisih yang terukur pada penanda ini
+
+Kueri lama mengurutkan `ORDER BY tgl_input DESC, rowid DESC`. `rowid` adalah alamat penyimpanan
+**fisik** — bukan fakta bisnis, tidak ada padanannya di PostgreSQL, dan tidak dapat
+direproduksi setelah data dipindahkan. Pemisah itu benar-benar terpakai: **1.057 pasangan
+(klaim, tgl_input) kembar** ada di data hari ini.
+
+Diukur langsung:
+
+| | klaim ditandai |
+|---|---:|
+| versi PIVOT lama (dengan `rowid`) | 103 |
+| versi set-based di sini | 123 |
+| hanya di versi ini | 23 |
+| hanya di versi lama | 3 |
+
+Selisih **dua arah** itu sendiri membuktikan hasil lama tidak stabil — bila `rowid` hanyalah
+pemisah yang konsisten, selisihnya akan satu arah. `ID_UPDATE` diperiksa sebagai pengganti
+portabel dan **tidak memenuhi**: 1.374 nilai berbeda untuk 20.615 baris, jadi ia bukan
+pengenal baris.
+
+Dinyatakan lewat `PlannedDifferences`, menunggu keputusan Work Owner — bukan disembunyikan.
+
+### 42.6 Satu selisih yang menyangkut uang, direplikasi dengan sadar
+
+Kolom grid berjudul **"Reserve Claim ASM Share"**, dan nilainya bukan itu:
+
+| | rumus | kurs | share ASM |
+|---|---|---|---|
+| grid | `SUM(estimationvalue)` | tidak | **tidak** |
+| ekspor | `SUM(estimationvalue x kursvalue) x SHAREASM/100` | ya | ya |
+
+Akibatnya **angka di layar dan di berkas ekspor berbeda untuk klaim yang sama**. Mengikuti
+`P-5`, keduanya direplikasi apa adanya dan selisihnya dinyatakan ke pengguna lewat
+`selisih_terencana` — bukan dibetulkan diam-diam. Bila Work Owner memutuskan menyamakannya,
+yang berubah satu ekspresi di berkas `.sql`.
+
+### 42.7 Keputusan desain
+
+**Aging dihitung di Go, bukan di SQL.** Kueri lama memakai
+`TRUNC(SYSDATE) - TRUNC(registerdate)`, dan `TRUNC` tidak portabel. Padanan yang dianjurkan
+`09-DATABASE-STRATEGY.md` §4 — `CAST(x AS DATE)` — **tidak memangkas jam di Oracle**. Diukur
+langsung:
+
+    CAST(CURRENT_TIMESTAMP AS DATE) - CAST(registerdate AS DATE)  ->  0.8758…
+    TRUNC(SYSDATE)                  - TRUNC(registerdate)         ->  1
+
+Baris itu klaim yang terdaftar **kemarin**; dipindai ke bilangan bulat ia menjadi **nol hari**.
+Karena umur itulah yang menentukan baris merah, ia dihitung di Go terhadap tanggal WIB (`F-5`).
+Urutannya tetap di basis data: `ORDER BY registerdate ASC` identik dengan `ORDER BY aging DESC`.
+
+> **Temuan di luar lingkup, dilaporkan tanpa disentuh.** Bentuk `CAST(...)` yang sama dipakai
+> `inboxclaimtreatynonprop`, `inboxclaimtreatyprop`, `inboxadmin`, dan `riwayatklaim` untuk
+> kolom Aging mereka. Bila kolom itu dipindai ke bilangan bulat, klaim berumur satu hari
+> tampil nol hari di sana pula. Tidak diperbaiki dari sini.
+
+**Cabang kosong menghasilkan PESAN, bukan daftar kosong.** Ini meniru sistem lama, bukan
+menyimpang darinya: `OutstandingperCabang_PreAct` langkah 2 menyetel pita peringatan ketika
+`OperatorID.pyTelephone == ""`. Teksnya dibawa apa adanya (`D-13`):
+*"Belum ada Data Cabang pada Akun ini. Mohon Menghubungi Tim IT"*.
+
+Pembedaan ini penting justru karena batas data layar ini **seluruhnya cabang**: daftar kosong
+dan "Anda belum punya cabang" terlihat sama di layar, padahal yang pertama berarti tidak ada
+pekerjaan dan yang kedua berarti layarnya tidak dapat bekerja.
+
+**Nilai uang memakai `money.Money`, bukan `float64`.** `I-12` dan `09-DATABASE-STRATEGY.md` §5
+menyebutnya tidak bisa ditawar. Kueri mengembalikan **satuan terkecil** —
+`ROUND(<ekspresi> * 100)` — karena mengembalikannya sebagai rupiah berpecahan akan memaksa
+pemindai melewati `float64`, tepat bentuk yang dilarang dan yang `money.FromSQLValue` memang
+tolak. Pembulatannya nyata terpakai: 24 kolom treaty adalah hasil perkalian tiga faktor dan
+hampir selalu berpecahan.
+
+**`LISTAGG` tidak dapat diganti `STRING_AGG`.** `09-DATABASE-STRATEGY.md` §4 memetakannya
+begitu, tetapi **Oracle 19c tidak mengenal `STRING_AGG`** — tidak ada satu bentuk yang berjalan
+di kedua basis data. Perangkaian faktor dominan karena itu pindah ke Go, lewat satu kueri per
+cabang: bukan per baris (pola yang justru sedang ditinggalkan) dan bukan per halaman (yang
+menuntut daftar bind dinamis, pintu belakang menuju perangkaian teks SQL).
+
+**Faktor dominan dipasangkan lewat `CLAIMID`, bukan `CLAIMNO`.** Yang pertama unik (1.922 nilai
+berbeda untuk 1.922 baris), yang kedua **tidak** (1.515). Memasangkannya lewat nomor klaim akan
+menggabungkan faktor milik dua klaim bernomor sama — terverifikasi ke basis data.
+
+### 42.8 Perubahan API dan komponen
+
+| Lapisan | Yang ditambahkan |
+|---|---|
+| Rute | `GET /api/inbox-os-claim-per-cabang` · `GET /api/inbox-os-claim-per-cabang/ekspor` |
+| Backend | `internal/inboxosclaimpercabang/` — domain, seam, usecase, `repo/sqlstore`, `repo/memory`, `http` |
+| Frontend | `src/modules/inbox-os-claim-per-cabang/` — `types.ts`, `api.ts`, `OSClaimPerCabangPage.tsx` |
+| Menu | satu baris di `src/app/menu/registry.ts` — `OutstandingKlaimperCabang_Harness` |
+| Rute SPA | `/inbox-os-claim-per-cabang` di `src/app/App.tsx` |
+| `-periksa` | `checkOSClaimPerCabang` di `cmd/claimpnc/check.go` |
+
+**Nol perubahan pada berkas bersama.** `DataTable` tidak disentuh: pewarnaan baris dikerjakan
+lewat `render` per sel, karena menambah kemampuan pewarnaan ke komponen bersama menyentuh
+setiap layar yang memakainya.
+
+Tidak ada migrasi basis data, tidak ada dependensi baru.
+
+### 42.9 Kesalahan saya sendiri
+
+| Kesalahan | Bagaimana ketahuan |
+|---|---|
+| Menyimpulkan DB Link `@asmd` **tidak ada** karena tidak muncul di `ALL_DB_LINKS` | Ia link **publik**; diuji langsung dan hidup. Satu pertanyaan yang sudah saya ajukan ke Work Owner berdiri di atas premis yang salah, dan itu disampaikan |
+| Ekstraktor alias pada uji ikut menangkap alias **subkueri** | Uji gagal; diperbaiki dengan penopengan berbasis kedalaman kurung |
+| Nilai harapan Aging ditulis 622 hari | Uji gagal — 15 Jan 2024 ke 28 Sep 2026 adalah **987** hari. Kodenya benar, aritmetika saya yang salah |
+| Uji mengharapkan `Rp 250.000,00` | `formatRupiah` memang **membuang** desimal nol. Pemformat bersama yang benar, harapan saya yang salah |
+| Memakai `float64` untuk nilai uang di rancangan pertama | Ketahuan saat memeriksa kontrak frontend: proyek ini punya `money.Money` dan menyebutnya "tidak bisa ditawar" |
+
+Dua yang terakhir satu pola: **menulis uji dan tipe dari ingatan, bukan dari kontrak yang sudah
+ada di repo.**
+
+### 42.10 Yang TIDAK dibangun, dan dinyatakan
+
+Tombol **Detail** per baris. Ia membuka `View_DetailKlaimCabang_Harness` (775 KB) lewat
+`ViewStatusProgressCabang_act` (340 KB), dengan lima parameter: `Inskey=.ClaimNo`,
+`reserve=.EstimationValue`, `aging=.AgingKlaim`, `cob=.BusinessName`, `notepic=.Keterangan`.
+
+Work Owner menetapkan ia masuk lingkup, dengan urutan daftar + ekspor lebih dulu. Ia **tidak
+digambar sebagai tombol mati**: tombol yang tidak menjawab apa pun terbaca sebagai kerusakan.
+Ketiga isian yang ia butuhkan (`catatan_progres`, `aging_hari`, `nilai_estimasi`) sudah dikirim
+API, sehingga serahan kedua tidak perlu menyentuh backend daftar.
+
+### 42.11 Bukti
+
+Seluruh kueri dijalankan terhadap Oracle dev, bukan hanya dikompilasi:
+
+    -periksa   [ok] Kedelapan tabel OS klaim per cabang dapat dibaca
+               [ok] Tabel ekspor OS per cabang dapat dibaca, termasuk lewat DB Link
+               [ok] Cabang 100538 punya 100 klaim outstanding (5 baris dibaca)
+               [ok] Nama cabang 100538 terbaca: DANU KOMARA TIRTADJAJA
+               [info] 2 dari 5 baris contoh bertanda progres mandek
+
+    backend    go build ./...  OK · go vet ./...  bersih
+               go test ./... -count=1   216 paket ok, nol FAIL
+    frontend   tsc --noEmit  bersih
+               vitest run    1.055 uji, seluruhnya lulus (17 di antaranya modul ini)
+
+Penjaga yang ditambahkan: pola SQL terlarang (termasuk `LISTAGG`, `PIVOT`, `KEEP (`, dan
+`TO_NUMBER`) · kueri tidak pernah menulis · setiap kueri klaim menyaring menurut cabang ·
+penyaring outstanding tidak hilang · alias SQL sama dengan pemindai · alias ekspor adalah
+awalan alias grid · tepat 24 kolom treaty dan urutannya tidak tertukar · hanya ekspor yang
+menyentuh DB Link · kedua subkueri polis memakai urutan identik · umur kemarin-siang tetap
+1 hari · ambang merah `>` bukan `>=` · cabang kosong dijawab pesan, bukan daftar kosong.

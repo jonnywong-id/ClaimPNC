@@ -153,6 +153,10 @@ type responsHCQ struct {
 		Placement struct {
 			BranchName   string `json:"BranchName"`
 			BranchCode   string `json:"BranchCode"`
+			// DetailBranchCode adalah `LDC_ID` pada `GENERAL.LST_DET_CABANG@asmd`
+			// (Work Owner, 2026-09-28). Ia yang menerjemahkan identitas pegawai
+			// menjadi kode cabang yang dipakai data klaim.
+			DetailBranchCode string `json:"DetailBranchCode"`
 			PositionName string `json:"PositionName"`
 			Company      string `json:"pyCompany"`
 			Name         string `json:"Name"`
@@ -209,6 +213,7 @@ func (h *HCQ) Verify(ctx context.Context, k auth.Credential) (auth.Profile, erro
 		Company:        firstNonEmpty(orang.Company, penempatan.Company),
 		Branch:         strings.TrimSpace(penempatan.BranchName),
 		BranchCode:     strings.TrimSpace(penempatan.BranchCode),
+		DetailBranchCode: strings.TrimSpace(penempatan.DetailBranchCode),
 		Position:       strings.TrimSpace(penempatan.PositionName),
 		ActiveAtSource: penempatan.IsActive,
 	}

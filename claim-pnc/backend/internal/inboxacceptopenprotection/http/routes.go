@@ -20,8 +20,8 @@ import (
 //
 // # Tiga kolom yang ditulis, dan tidak lebih
 //
-// `PUT /{nomor}/akseptasi` menuliskan `STATUS_AKSEPTASI`, `TANGGAL_AKSEPTASI`, dan
-// `DIAKSEP_OLEH`. Tidak ada rute yang menyunting polis, klaim, tipe, maupun keterangan —
+// `PUT /{nomor}/akseptasi` menuliskan `APPROVAL_STATUS`, `RESOLVED_DATETIME`, dan
+// `RESOLVED_BY`. Tidak ada rute yang menyunting polis, klaim, tipe, maupun keterangan —
 // keempatnya dimiliki modul `inputreqprotection`, dan `P-1` menetapkan satu kolom ditulis
 // satu pemilik.
 //
@@ -34,14 +34,22 @@ import (
 // `PncCollection`, `CaseManager`, `PncOPCGeneral`, `PNCKomite`, dan `Administrators`. Di
 // dalamnya, antrean PREMI hanya tampil bagi `PncCollection`.
 //
-// Pembatasan itu BELUM ditegakkan di sini. Ia `TKT-F3-005`, yang bergantung pada tabel peran
-// `TKT-F3-004`; tabel itu dapat dibangun tetapi belum dapat diisi karena penugasan operator
-// ke peran tidak ada di basis data maupun di export (`11-SECURITY.md` §3.1).
+// **Pembatasan itu DITEGAKKAN sejak 2026-09-25**, setelah Work Owner menetapkan
+// `POOLDATA.M_LOGIN_GROUP_PNC.GROUP_ID` berisi nama access group Pega tanpa awalan
+// `GCNMFW:`. Penegakannya ada di `usecase`, bukan di sini — lihat `authorization.go`.
 //
-// Taruhannya di sini lebih besar daripada di layar baca: akseptasi adalah PERSETUJUAN atas
-// pembukaan proteksi, dan `D-59` menetapkan tidak ada pemisahan tugas formal. Sampai peran
-// tersedia, yang tersisa sebagai kontrol hanyalah jejak `DIAKSEP_OLEH`. Dicatat terbuka di
-// `docs/keputusan-implementasi.md`.
+// Penegakannya terjadi di SERVER pada setiap permintaan, sehingga mengetahui alamat rute
+// tidak lagi cukup untuk membukanya. Itu yang membedakannya dari sistem lama, yang hanya
+// menyembunyikan menu (`pyPrivilegeName` terisi pada 1 dari 902 activity).
+//
+// # Yang masih berlaku dan tidak berubah
+//
+// `D-59` tetap menetapkan tidak ada pemisahan tugas formal: seorang yang berwenang atas
+// layar ini berwenang atas SELURUH tindakan di dalamnya. Jejak `RESOLVED_BY` karena itu tetap
+// satu-satunya kontrol pengimbang atas persetujuannya sendiri.
+//
+// Penegakan serupa untuk 31 modul lain belum dikerjakan — itu `TKT-F3-005`, dan Work Owner
+// menetapkan lingkupnya modul ini dulu.
 //
 // # Seluruh rutenya menuntut portal aktif
 //
@@ -51,6 +59,10 @@ import (
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Route("/inbox-accept-open-protection", func(accept chi.Router) {
 		accept.Use(portalhttp.ActivePortal(portalDeps))
+
+		// Antrean yang boleh dibuka pemanggil. Didaftarkan SEBELUM "/{nomor}" supaya chi
+		// tidak menganggap "antrean" sebagai nomor proteksi.
+		accept.Get("/antrean", h.Queues)
 
 		accept.Get("/", h.List)
 		accept.Get("/{nomor}", h.Get)

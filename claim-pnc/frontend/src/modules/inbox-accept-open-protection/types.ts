@@ -43,6 +43,42 @@ export type Protection = {
   antrean: Queue
 }
 
+/**
+ * Isi panel "Detail Perubahan" pada form akseptasi.
+ *
+ * Panel ini hanya ada bagi tipe `'7'` (Perubahan DOL) dan `'8'` (Perubahan Cause Of Loss) —
+ * meniru `pyContainerVisibleWhen: .TypeProtection==8 || .TypeProtection==7` pada
+ * `Section/AcceptProtectionSection-Section.xml`.
+ *
+ * Bagi kedua tipe itu, melihat nilai sebelum dan sesudah ADALAH inti keputusannya. Layar
+ * tidak memutuskan sendiri kapan panel muncul: backend mengirim `null` bila tipenya tidak
+ * memunculkannya, sehingga kode tipe tidak perlu ditafsirkan di dua tempat.
+ */
+export type ChangeDetail = {
+  /** Judul panel, mengikuti `pyTitle` layar lama. */
+  judul: string
+
+  /** Dipakai tipe `'7'`. Label layar: "Current Date Of Loss" dan "Next Date Of Loss". */
+  dol_sebelum: string
+  dol_sesudah: string
+
+  /** Dipakai tipe `'8'`. Label layar: "Cause Of Loss Dipilih" dan "Next Cause Of Loss". */
+  penyebab_sebelum: string
+  penyebab_sesudah: string
+
+  nama_objek: string // "Object Name"
+  nama_cabang: string // "Branch Name"
+
+  /**
+   * Tidak ada satu pun isi yang terisi.
+   *
+   * Panelnya TETAP ditampilkan dengan keterangan, bukan disembunyikan: baris warisan Pega
+   * tidak punya kolom asal untuk kedua kolom ini, dan menyembunyikannya akan membuat
+   * permintaan perubahan tampak seolah tidak mengubah apa pun.
+   */
+  kosong: boolean
+}
+
 /** Satu proteksi beserta data polis dan keadaan akseptasinya. */
 export type ProtectionDetail = Protection & {
   nama_tertanggung: string
@@ -61,12 +97,26 @@ export type ProtectionDetail = Protection & {
    * Tombol setuju dan tolak hanya muncul ketika ia bernilai `true`.
    */
   menunggu_keputusan: boolean
+
+  /** Panel "Detail Perubahan", atau `null` bagi tipe yang tidak memunculkannya. */
+  detail_perubahan: ChangeDetail | null
 }
 
 export type ProtectionListResponse = {
   proteksi: Protection[]
   total: number
   antrean: Queue
+}
+
+/**
+ * Antrean yang boleh dibuka pemanggil, menurut access group-nya.
+ *
+ * Diturunkan server dari `POOLDATA.M_LOGIN_GROUP_PNC`. Larik KOSONG berarti berwenang atas
+ * layar tetapi tidak atas satu antrean pun — keadaan yang seharusnya tidak terjadi, tetapi
+ * dapat muncul bila master group diisi dengan nama yang tidak dikenali.
+ */
+export type QueuesResponse = {
+  antrean: Queue[]
 }
 
 /** Keputusan yang dikirim saat mengakseptasi. */

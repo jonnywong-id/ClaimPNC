@@ -36,6 +36,7 @@ import (
 	"claim-pnc/internal/detailpenyebab"
 	"claim-pnc/internal/inboxacceptopenprotection"
 	"claim-pnc/internal/inboxanalystdoctor"
+	"claim-pnc/internal/inboxsurvey"
 	"claim-pnc/internal/inboxautoclaim"
 	"claim-pnc/internal/inboxclaimtreatynonprop"
 	"claim-pnc/internal/inboxclaimtreatyprop"
@@ -43,6 +44,7 @@ import (
 	"claim-pnc/internal/inboxinvestigator"
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
+	"claim-pnc/internal/inboxosclaimpercabang"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxprogressclaim"
 	"claim-pnc/internal/inboxrclpucl"
@@ -117,6 +119,10 @@ import (
 	inboxanalystdoctormemory "claim-pnc/internal/inboxanalystdoctor/repo/memory"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
 	inboxanalystdoctorusecase "claim-pnc/internal/inboxanalystdoctor/usecase"
+	inboxsurveyhttp "claim-pnc/internal/inboxsurvey/http"
+	inboxsurveymemory "claim-pnc/internal/inboxsurvey/repo/memory"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
+	inboxsurveyusecase "claim-pnc/internal/inboxsurvey/usecase"
 	inboxautoclaimhttp "claim-pnc/internal/inboxautoclaim/http"
 	inboxautoclaimmemory "claim-pnc/internal/inboxautoclaim/repo/memory"
 	inboxautoclaimsql "claim-pnc/internal/inboxautoclaim/repo/sqlstore"
@@ -145,6 +151,10 @@ import (
 	inboxmanagerreceivepuclmemory "claim-pnc/internal/inboxmanagerreceivepucl/repo/memory"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxmanagerreceivepuclusecase "claim-pnc/internal/inboxmanagerreceivepucl/usecase"
+	inboxosclaimpercabanghttp "claim-pnc/internal/inboxosclaimpercabang/http"
+	inboxosclaimpercabangmemory "claim-pnc/internal/inboxosclaimpercabang/repo/memory"
+	inboxosclaimpercabangsql "claim-pnc/internal/inboxosclaimpercabang/repo/sqlstore"
+	inboxosclaimpercabangusecase "claim-pnc/internal/inboxosclaimpercabang/usecase"
 	inboxoutstandinghttp "claim-pnc/internal/inboxoutstanding/http"
 	inboxoutstandingmemory "claim-pnc/internal/inboxoutstanding/repo/memory"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
@@ -166,6 +176,14 @@ import (
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
 	inboxxolusecase "claim-pnc/internal/inboxxol/usecase"
+	"claim-pnc/internal/dokumenpenunjang"
+	dokumenpenunjanghttp "claim-pnc/internal/dokumenpenunjang/http"
+	dokumenpenunjangmemory "claim-pnc/internal/dokumenpenunjang/repo/memory"
+	dokumenpenunjangsql "claim-pnc/internal/dokumenpenunjang/repo/sqlstore"
+	dokumenpenunjanghttpconverter "claim-pnc/internal/dokumenpenunjang/storage/httpconverter"
+	dokumenpenunjanghttpstorage "claim-pnc/internal/dokumenpenunjang/storage/httpstorage"
+	dokumenpenunjangusecase "claim-pnc/internal/dokumenpenunjang/usecase"
+
 	"claim-pnc/internal/inputreqprotection"
 	inputreqprotectionhttp "claim-pnc/internal/inputreqprotection/http"
 	inputreqprotectionmemory "claim-pnc/internal/inputreqprotection/repo/memory"
@@ -1358,6 +1376,34 @@ func run() error {
 			FallbackErrorWriter: inboxanalystdoctorhttp.ErrorWriter(writePortalAwareError),
 		})
 
+	// My Work (MENU_ID 50). Jembatan pemanggilnya membawa LOGIN, dan di modul ini login itu
+	// menempuh satu langkah lagi sebelum menyaring apa pun: ia diterjemahkan menjadi NAMA
+	// SURVEYOR lewat `POOLDATA.MST_LOGIN_SURVEYOR.LOGIN` — pemetaan yang
+	// `RDB List/GetLoginLeaderSurveyor-SQL.xml` pakai persis begitu.
+	//
+	// Memakai NIK di sini akan membuat SETIAP pengguna terbaca sebagai bukan surveyor, dan
+	// jawabannya 403 yang menyebut sebab yang salah.
+	//
+	// Clock TIDAK disuntikkan: kolom Aging DIBACA dari basis data, bukan dihitung — berbeda
+	// dari Inbox Analyst Doctor di atasnya, yang menghitungnya sendiri karena kolomnya tidak
+	// tersedia.
+	inboxSurveyHandler := inboxsurveyhttp.NewHandler(
+		inboxsurveyhttp.Options{
+			Service: assembly.inboxSurvey,
+			GetCaller: func(ctx context.Context) (inboxsurveyhttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxsurveyhttp.Caller{}, false
+				}
+				return inboxsurveyhttp.Caller{Login: baseCtx.User.Login}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxsurveyhttp.ErrorWriter(writePortalAwareError),
+		})
+
 	outstandingHandler := inboxoutstandinghttp.NewHandler(inboxoutstandinghttp.Options{
 		Service: assembly.inboxOutstanding,
 		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
@@ -1379,6 +1425,40 @@ func run() error {
 		FallbackErrorWriter: inboxoutstandinghttp.ErrorWriter(writePortalAwareError),
 	})
 
+	// Inbox OS Claim per Cabang (`MENU_ID 69`).
+	//
+	// Jembatan pemanggilnya membawa LOGIN beserta CABANG dari profil sesi, dan yang kedua itu
+	// yang membedakannya dari seluruh modul inbox lain: batas data layar ini adalah cabang,
+	// bukan pemanggil. Cabangnya diteruskan apa adanya ke seam BranchResolver — modul yang
+	// memutuskan apa artinya, termasuk ketika ia kosong.
+	//
+	// Cabang yang kosong TIDAK membuat pemanggil dianggap tidak dikenal. Keduanya keadaan
+	// yang berbeda dan berujung pada dua pesan berbeda: masuk ulang, versus menghubungi
+	// Tim IT — pesan kedua diambil apa adanya dari layar Pega.
+	osClaimPerCabangHandler := inboxosclaimpercabanghttp.NewHandler(
+		inboxosclaimpercabanghttp.Options{
+			Service: assembly.inboxOSClaimPerCabang,
+			GetCaller: func(ctx context.Context) (inboxosclaimpercabanghttp.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(ctx)
+				if !existing {
+					return inboxosclaimpercabanghttp.Caller{}, false
+				}
+					// Yang diteruskan kode cabang RINCI, bukan BranchCode. Keduanya ada di
+					// profil dan keduanya bernama "cabang", tetapi hanya yang rinci ini yang
+					// punya pasangan di master cabang klaim (`POOLDATA.BRANCH.OLDID`).
+					// Meneruskan yang lain menghasilkan layar kosong tanpa satu pun galat.
+				return inboxosclaimpercabanghttp.Caller{
+					Login:            baseCtx.User.Login,
+					DetailBranchCode: baseCtx.User.DetailBranchCode,
+				}, true
+			},
+			Logger:    logger,
+			WriteJSON: writeJSON,
+			// Galat portal ikut dikenali, karena kedua rute modul ini berada di balik
+			// pemeriksaan portal.
+			FallbackErrorWriter: inboxosclaimpercabanghttp.ErrorWriter(writePortalAwareError),
+		})
+
 	// Input Req Protection. Pembuat permintaan diambil dari SESI, bukan dari badan
 	// permintaan — ia satu-satunya jejak siapa yang meminta pembukaan proteksi.
 	protectionRequestHandler := inputreqprotectionhttp.NewHandler(inputreqprotectionhttp.Options{
@@ -1393,6 +1473,25 @@ func run() error {
 		Logger:              logger,
 		WriteJSON:           writeJSON,
 		FallbackErrorWriter: inputreqprotectionhttp.ErrorWriter(writePortalAwareError),
+	})
+
+	// Dokumen penunjang klaim, dipakai KEDUA layar proteksi.
+	//
+	// Pengunggah diambil dari SESI, bukan dari badan permintaan: `USERINPUT` pada jejak
+	// `GCP_IMAGE` dan `UserInput` pada muatan unggah keduanya memuat siapa yang mengunggah,
+	// dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang.
+	documentHandler := dokumenpenunjanghttp.NewHandler(dokumenpenunjanghttp.Options{
+		Service: assembly.dokumenPenunjang,
+		GetCaller: func(ctx context.Context) (dokumenpenunjanghttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return dokumenpenunjanghttp.Caller{}, false
+			}
+			return dokumenpenunjanghttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: dokumenpenunjanghttp.ErrorWriter(writePortalAwareError),
 	})
 
 	// Inbox Accept Open Protection. Pelaku akseptasi juga diambil dari sesi: `D-59`
@@ -1677,8 +1776,20 @@ func run() error {
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
+				// Inbox OS Claim per Cabang memuat nomor polis, nama tertanggung, dan
+				// nilai estimasi SELURUH klaim satu cabang — bukan pekerjaan satu orang.
+				// Rute ekspornya membawa hal yang sama ditambah 24 pembagian treaty, dan
+				// justru karena berkas itu terunduh ke perangkat pengguna, pemeriksaan
+				// portalnya tidak boleh lebih longgar daripada layarnya.
+				inboxosclaimpercabanghttp.Mount(
+					protected, osClaimPerCabangHandler, activePortalDeps)
 				inputreqprotectionhttp.Mount(protected, protectionRequestHandler, activePortalDeps)
 				inboxacceptopenprotectionhttp.Mount(protected, protectionAcceptHandler, activePortalDeps)
+				// Dokumen penunjang bersarang di bawah KLAIM, bukan di bawah salah satu
+				// layar proteksi: kedua layar memanggil jalur yang sama untuk klaim yang
+				// sama, sehingga dokumen yang diunggah dari satu layar terlihat dari
+				// layar lainnya.
+				dokumenpenunjanghttp.Mount(protected, documentHandler, activePortalDeps)
 				// Inbox Close Claim — klaim yang sudah tutup, beserta permintaan
 				// membukanya kembali dan menyalinnya.
 				//
@@ -1837,6 +1948,14 @@ func run() error {
 				// dari entitas yang salah.
 				inboxanalystdoctorhttp.Mount(
 					protected, inboxAnalystDoctorHandler, activePortalDeps)
+
+				// My Work menuntut portal karena alasan yang sama, ditambah satu yang
+				// khas modul ini: jembatan identitasnya sendiri membaca basis data
+				// entitas. Portal yang salah memetakan pemanggil ke surveyor bernama
+				// sama di entitas lain — lalu SELURUH antrean yang muncul sesudahnya
+				// milik entitas itu, tanpa satu pun pesan galat.
+				inboxsurveyhttp.Mount(
+					protected, inboxSurveyHandler, activePortalDeps)
 			})
 		},
 	})
@@ -2092,6 +2211,10 @@ type assembly struct {
 	// penilaian medis milik satu petugas.
 	inboxAnalystDoctor *inboxanalystdoctorusecase.Service
 
+	// inboxSurvey melayani layar My Work (`MENU_ID 50`) — antrean kerja Surveyor dan
+	// Loss Adjuster, ditambah tab KPI adjuster.
+	inboxSurvey *inboxsurveyusecase.Service
+
 	// inboxLaporanKlaim melayani layar Inbox Laporan Klaim. Sama seperti master status
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
 	// milik satu badan hukum (ADR-0030).
@@ -2099,6 +2222,15 @@ type assembly struct {
 
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
+
+	// inboxOSClaimPerCabang melayani layar Inbox OS Claim per Cabang (`MENU_ID 69`).
+	//
+	// Jangan tertukar dengan inboxOutstanding tepat di atasnya. Keduanya menyaring klaim
+	// yang belum tuntas, tetapi batas datanya berbeda dan itulah inti masing-masing:
+	//
+	//	inboxOutstanding      pekerjaan milik PEMANGGIL   (`My Inbox`, MENU_ID 51)
+	//	inboxOSClaimPerCabang klaim milik CABANG pemanggil (MENU_ID 69)
+	inboxOSClaimPerCabang *inboxosclaimpercabangusecase.Service
 
 	// inboxCloseClaim melayani layar Inbox Close Claim — klaim yang sudah TUTUP.
 	//
@@ -2109,6 +2241,12 @@ type assembly struct {
 	// inputReqProtection melayani layar Input Req Protection — permintaan pembukaan
 	// proteksi beserta form inputnya.
 	inputReqProtection *inputreqprotectionusecase.Service
+
+	// dokumenPenunjang melayani unggah dan daftar dokumen penunjang KLAIM.
+	//
+	// Satu service untuk DUA layar proteksi: keduanya mengunggah hal yang sama ke klaim
+	// yang sama, dan dua salinan akan berbeda diam-diam begitu salah satunya diperbaiki.
+	dokumenPenunjang *dokumenpenunjangusecase.Service
 
 	// inboxAcceptOpenProtection melayani layar Inbox Accept Open Protection — antrean
 	// akseptasi atas permintaan yang sama.
@@ -2235,6 +2373,18 @@ type storage struct {
 	// menampilkan data medis entitas yang salah.
 	inboxAnalystDoctorSelector inboxanalystdoctor.RepoSelector
 
+	// inboxSurveySelector memilih penyimpanan antrean survei milik satu portal.
+	//
+	// inboxSurveyDirectorySelector memilih JEMBATAN IDENTITAS-nya, dan keduanya dipisah
+	// karena membaca tabel yang berbeda: antreannya `T_SURVEYORLIST` + `T_CLAIMLIST_ADMIN`,
+	// jembatannya `MST_LOGIN_SURVEYOR`.
+	//
+	// Keduanya WAJIB menunjuk portal yang SAMA. Jembatan yang membaca portal berbeda akan
+	// memetakan pemanggil ke surveyor bernama sama di entitas lain — lalu SELURUH antrean
+	// yang muncul sesudahnya milik entitas itu, tanpa satu pun pesan galat (`R-20`).
+	inboxSurveySelector          inboxsurvey.RepoSelector
+	inboxSurveyDirectorySelector inboxsurvey.DirectorySelector
+
 	// claimReportSelector memilih penyimpanan berkas laporan klaim milik satu portal.
 	//
 	// Alasannya sama dengan progressStatusSelector di bawah, ditambah satu yang khas
@@ -2244,6 +2394,15 @@ type storage struct {
 
 	// outstandingSelector memilih penyimpanan klaim milik satu portal.
 	outstandingSelector inboxoutstanding.RepoSelector
+
+	// osClaimPerCabangSelector memilih penyimpanan klaim outstanding per cabang milik satu
+	// portal.
+	//
+	// Ia terpisah dari outstandingSelector meski keduanya membaca `T_CLAIM_PNC`: yang satu
+	// membaca tabel datar `T_CLAIMLIST_ADMIN` dan menyaring menurut pemanggil, yang ini
+	// menggabungkan tujuh tabel dan menyaring menurut cabang. Menyatukannya akan memaksa
+	// salah satunya membayar biaya gabungan yang tidak ia butuhkan.
+	osClaimPerCabangSelector inboxosclaimpercabang.RepoSelector
 
 	// protectionRequestSelector memilih penyimpanan permintaan proteksi milik satu portal.
 	//
@@ -2256,6 +2415,37 @@ type storage struct {
 	// Ia menunjuk tabel yang SAMA dengan protectionRequestSelector; yang berbeda adalah
 	// kolom yang ditulisnya.
 	protectionAcceptSelector inboxacceptopenprotection.RepoSelector
+
+	// dokumenPenunjangSelector memilih penyimpan metadata dokumen milik satu portal.
+	//
+	// Tabelnya sendiri ada di basis data LAIN — skema GENERAL, dicapai lewat DB link — dan
+	// justru karena itu portalnya tetap menentukan: yang berbeda antar portal adalah basis
+	// data mana yang menempuh link itu.
+	dokumenPenunjangSelector dokumenpenunjang.RepoSelector
+
+	// dokumenPenunjangStorage adalah klien layanan penyimpanan dokumen.
+	//
+	// Ia TIDAK per portal: layanan penyimpanannya satu untuk seluruh entitas, dan yang
+	// membedakan milik siapa sebuah berkas adalah `NO_CLAIM` beserta basis data tempat
+	// metadatanya dicatat.
+	dokumenPenunjangStorage dokumenpenunjang.Storage
+
+	// dokumenPenunjangConverter adalah klien layanan konversi gambar.
+	//
+	// Layanan TERSENDIRI di alamat tersendiri, bukan bagian dari penyimpanan — dan
+	// kegagalannya berakibat berbeda: konversi yang gagal membatalkan unggahan sebelum apa
+	// pun terkirim.
+	dokumenPenunjangConverter dokumenpenunjang.Converter
+
+	// protectionAcceptGroups membaca access group pemanggil layar akseptasi proteksi.
+	//
+	// BUKAN pemilih per portal, dan itu perbedaan yang disengaja: `D-78` menetapkan satu
+	// identitas berlaku di keempat portal, sehingga keanggotaan group tinggal bersama
+	// identitas di basis data UTAMA — sama seperti store.menu di atas.
+	//
+	// Memasangnya per portal akan membuat kewenangan seseorang berubah mengikuti entitas
+	// yang sedang dibuka, dan perubahan itu tidak menghasilkan galat apa pun.
+	protectionAcceptGroups inboxacceptopenprotection.GroupReader
 	// claimReportBranch menerjemahkan login petugas menjadi kode cabang klaimnya.
 	//
 	// Ia TIDAK diambil dari profil HCC/HCQ: kode cabang yang dipakai layar itu adalah
@@ -3077,7 +3267,46 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// My Work menerima DUA pemilih: antrean dan jembatan identitas.
+	//
+	// Keduanya diserahkan terpisah, bukan digabung menjadi satu antarmuka, karena tabel yang
+	// dibacanya berbeda dan kepemilikannya berbeda: `MST_LOGIN_SURVEYOR` dimiliki modul
+	// Master Login (`MENU_ID 37`), dan modul ini hanya membacanya.
+	inboxSurveyService, err := inboxsurveyusecase.NewService(
+		inboxsurveyusecase.Options{
+			RepoSelector:      store.inboxSurveySelector,
+			DirectorySelector: store.inboxSurveyDirectorySelector,
+		})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	outstandingService, err := inboxoutstandingusecase.NewService(store.outstandingSelector)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Inbox OS Claim per Cabang. Cabang pemanggil diselesaikan CallerBranch, yang membacanya
+	// dari profil sesi — yakni dari jawaban API HCQ saat masuk (keputusan Work Owner
+	// 2026-09-28).
+	//
+	// Ia diletakkan di balik seam BranchResolver, dan itu bukan formalitas: layar Inbox
+	// Laporan Klaim pernah memakai `Placement.BranchCode` langsung dan daftarnya tampil
+	// KOSONG tanpa satu pun pesan galat, karena kode cabang klaim di sana adalah
+	// `POOLDATA.BRANCH.ID` — ruang kode yang berbeda. Bila hal yang sama terjadi di sini,
+	// yang diganti hanya pengisi seam ini.
+	//
+	// Jam disuntikkan karena kolom Aging dihitung di Go, bukan di SQL (`F-5`) — padanan
+	// portabel `TRUNC` tidak memangkas jam di Oracle, dan klaim yang terdaftar kemarin siang
+	// akan tampil berumur nol hari.
+	osClaimPerCabangService, err := inboxosclaimpercabangusecase.NewService(
+		inboxosclaimpercabangusecase.Options{
+			RepoSelector: store.osClaimPerCabangSelector,
+			Clock:        clock.System{},
+			Logger:       logger,
+		})
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3147,7 +3376,26 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	protectionAcceptService, err := inboxacceptopenprotectionusecase.NewService(
-		inboxacceptopenprotectionusecase.Options{Protections: store.protectionAcceptSelector},
+		inboxacceptopenprotectionusecase.Options{
+			Protections: store.protectionAcceptSelector,
+			Groups:      store.protectionAcceptGroups,
+		},
+	)
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Dokumen penunjang klaim. Jamnya diserahkan, bukan dibaca di dalam modul: waktu unggah
+	// menentukan FOLDER tujuan (`Doc/YYYY/MM/`), sehingga aturan itu hanya dapat diuji bila
+	// jamnya dapat dipatok.
+	documentService, err := dokumenpenunjangusecase.NewService(
+		dokumenpenunjangusecase.Options{
+			Repos:     store.dokumenPenunjangSelector,
+			Storage:   store.dokumenPenunjangStorage,
+			Converter: store.dokumenPenunjangConverter,
+			Clock:     clock.System{},
+		},
 	)
 	if err != nil {
 		store.close()
@@ -3208,10 +3456,13 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxRCLPUCL:              rclPUCLService,
 		inboxProgressClaim:        inboxProgressClaimService,
 		inboxAnalystDoctor:        inboxAnalystDoctorService,
+		inboxSurvey:               inboxSurveyService,
 		inboxLaporanKlaim:         claimReportService,
 		inboxOutstanding:          outstandingService,
+		inboxOSClaimPerCabang:     osClaimPerCabangService,
 		inputReqProtection:        protectionRequestService,
 		inboxAcceptOpenProtection: protectionAcceptService,
+		dokumenPenunjang:          documentService,
 		inboxCloseClaim:           closeClaimService,
 	}, nil
 }
@@ -3242,6 +3493,92 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 // Operator ID yang tertanam di dalam rule, salah satunya menunjuk akun surel pribadi di
 // jalur produksi. Percabangan itu dicabut (`D-15`, `D-67`); yang berlaku adalah satu daftar
 // dari `SMTP_PENERIMA_TKA`.
+// buildDocumentStorage membentuk klien layanan penyimpanan dokumen.
+//
+// # Alamat yang belum diisi TIDAK menggagalkan start
+//
+// Aplikasi melayani puluhan layar lain, dan satu integrasi yang belum dikonfigurasi tidak
+// boleh mematikan semuanya — pola yang sama dipakai portal yang kredensialnya belum diisi.
+//
+// Yang dikembalikan dalam keadaan itu BUKAN nil melainkan penolak bernama: `nil` akan
+// membuat `NewService` gagal, dan itu justru menggagalkan start yang hendak dihindari.
+// Penolak ini membiarkan modulnya hidup dan menjawab setiap unggahan dengan sebab yang
+// jelas — jauh lebih terbaca daripada rute yang hilang tanpa penjelasan.
+func buildDocumentStorage(cfg config.Config, logger *slog.Logger) dokumenpenunjang.Storage {
+	if !cfg.DocumentStorage.Active() {
+		logger.Warn("unggah dokumen penunjang tidak aktif",
+			slog.String("akibat",
+				"layar proteksi tetap terbuka, tetapi setiap unggahan ditolak"),
+			slog.String("perbaikan", "isi PENYIMPANAN_DOKUMEN_ALAMAT"))
+		return penyimpananBelumDikonfigurasi{}
+	}
+
+	klien, err := dokumenpenunjanghttpstorage.NewClient(dokumenpenunjanghttpstorage.Options{
+		Alamat:     cfg.DocumentStorage.BaseURL,
+		BatasWaktu: cfg.DocumentStorage.Timeout,
+	})
+	if err != nil {
+		logger.Warn("klien penyimpanan dokumen gagal dibentuk",
+			slog.String("galat", err.Error()),
+			slog.String("akibat", "setiap unggahan ditolak"))
+		return penyimpananBelumDikonfigurasi{}
+	}
+	return klien
+}
+
+// penyimpananBelumDikonfigurasi menolak setiap unggahan dengan sebab yang jelas.
+type penyimpananBelumDikonfigurasi struct{}
+
+func (penyimpananBelumDikonfigurasi) Upload(
+	context.Context,
+	dokumenpenunjang.PerintahUnggah,
+) (dokumenpenunjang.HasilUnggah, error) {
+	// Dibungkus ErrUnggahGagal supaya transport menjawab 502 dengan pesan "belum
+	// tersimpan, silakan coba lagi" — benar adanya, sebab tidak ada apa pun yang terkirim.
+	return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+		"%w: alamat layanan penyimpanan belum dikonfigurasi (PENYIMPANAN_DOKUMEN_ALAMAT)",
+		dokumenpenunjang.ErrUnggahGagal)
+}
+
+// buildImageConverter membentuk klien layanan konversi gambar.
+//
+// Terpisah dari buildDocumentStorage karena keduanya layanan yang berbeda di alamat yang
+// berbeda. Matinya konversi **tidak** mematikan unggah — yang tertutup hanyalah empat
+// ekstensi yang memang menempuhnya (PNG, JPG, JPEG, PDF).
+func buildImageConverter(cfg config.Config, logger *slog.Logger) dokumenpenunjang.Converter {
+	if !cfg.DocumentStorage.ConverterActive() {
+		logger.Warn("konversi gambar tidak aktif",
+			slog.String("akibat",
+				"unggah PNG, JPG, JPEG, dan PDF ditolak; berkas lain tetap dapat diunggah"),
+			slog.String("perbaikan", "isi KONVERSI_GAMBAR_ALAMAT"))
+		return konversiBelumDikonfigurasi{}
+	}
+
+	klien, err := dokumenpenunjanghttpconverter.NewClient(dokumenpenunjanghttpconverter.Options{
+		Alamat:     cfg.DocumentStorage.ConverterURL,
+		BatasWaktu: cfg.DocumentStorage.Timeout,
+	})
+	if err != nil {
+		logger.Warn("klien konversi gambar gagal dibentuk",
+			slog.String("galat", err.Error()),
+			slog.String("akibat", "unggah PNG, JPG, JPEG, dan PDF ditolak"))
+		return konversiBelumDikonfigurasi{}
+	}
+	return klien
+}
+
+// konversiBelumDikonfigurasi menolak setiap konversi dengan sebab yang jelas.
+//
+// Ia TIDAK meneruskan berkas aslinya. Meneruskan akan membuat gambar tersimpan pada format
+// asli tanpa satu pun penanda — berbeda dari Pega, dan tidak terlihat oleh siapa pun.
+type konversiBelumDikonfigurasi struct{}
+
+func (konversiBelumDikonfigurasi) Convert(context.Context, []byte) ([]byte, error) {
+	return nil, fmt.Errorf(
+		"%w: alamat layanan konversi belum dikonfigurasi (KONVERSI_GAMBAR_ALAMAT)",
+		dokumenpenunjang.ErrKonversiGagal)
+}
+
 func buildReceiveTKANotifier(
 	cfg config.Config,
 	logger *slog.Logger,
@@ -3795,6 +4132,19 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxoutstandingsql.NewRepo(conn), nil
 		}
 
+		// Klaim outstanding PER CABANG dibaca dengan aturan portal yang sama. Barisnya
+		// memuat nomor polis, nama tertanggung, dan nilai estimasi — dan berkas ekspornya
+		// memuat 24 pembagian treaty di atasnya, seluruhnya milik satu badan hukum.
+		store.osClaimPerCabangSelector = func(
+			alias string,
+		) (inboxosclaimpercabang.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxosclaimpercabangsql.NewRepo(conn), nil
+		}
+
 		// Repo proteksi dan repo master tipe dibentuk dari SATU koneksi yang sama, dan
 		// dikembalikan bersamaan. Memilih keduanya lewat dua pemanggilan terpisah membuka
 		// kemungkinan proteksi dibaca dari portal yang satu dan nama tipenya dari portal
@@ -3817,6 +4167,23 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			}
 			return inboxacceptopenprotectionsql.NewRepo(conn), nil
 		}
+
+		// Metadata dokumen. Tabelnya ada di skema GENERAL, yang TIDAK ada di basis data
+		// mana pun milik Claim PNC — ia dicapai lewat DB link dari koneksi portal. Karena
+		// itu selektornya tetap per portal meski tabel tujuannya satu.
+		store.dokumenPenunjangSelector = func(alias string) (dokumenpenunjang.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return dokumenpenunjangsql.NewRepo(conn), nil
+		}
+		store.dokumenPenunjangStorage = buildDocumentStorage(cfg, logger)
+		store.dokumenPenunjangConverter = buildImageConverter(cfg, logger)
+
+		// Access group dibaca dari koneksi UTAMA, bukan dari pool portal — lihat komentar
+		// pada field-nya.
+		store.protectionAcceptGroups = inboxacceptopenprotectionsql.NewGroupRepo(primary)
 
 		// Klaim TUTUP dibaca dari basis data entitasnya sendiri, dengan aturan yang sama
 		// seperti klaim berjalan di atasnya.
@@ -3974,6 +4341,28 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxanalystdoctorsql.NewRepo(conn), nil
 		}
 
+		// My Work: antrean dan jembatan identitas dibaca dari SATU koneksi yang sama.
+		//
+		// Keduanya memanggil `pool.For(alias)` sendiri-sendiri, dan itu bukan pemborosan —
+		// `pool.For` mengembalikan koneksi yang sama untuk alias yang sama. Yang dijaga
+		// adalah bahwa tidak ada satu pun jalur yang dapat membaca jembatan dari portal
+		// berbeda dengan antreannya (`R-20`).
+		store.inboxSurveySelector = func(alias string) (inboxsurvey.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxsurveysql.NewRepo(conn), nil
+		}
+
+		store.inboxSurveyDirectorySelector = func(alias string) (inboxsurvey.Directory, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxsurveysql.NewDirectory(conn), nil
+		}
+
 		store.claimReportBranch = inboxlaporanklaimsql.NewBranchResolver(primary)
 	} else {
 		store.portal = portalmemory.NewRepo(portalmemory.SampleList()...)
@@ -4075,6 +4464,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return outstandingMemory, nil
 		}
 
+		// Klaim outstanding per cabang ikut dimuat contohnya. Isinya mencakup DUA cabang,
+		// satu klaim tua, satu klaim muda yang progresnya mandek, satu klaim tanpa catatan
+		// progres, satu klaim yang sudah selesai, dan satu tanpa tanggal registrasi —
+		// sehingga batas data dan kedua syarat baris merah dapat dicoba tanpa Oracle.
+		osClaimPerCabangMemory := inboxosclaimpercabangmemory.NewSampleStore()
+		store.osClaimPerCabangSelector = func(string) (inboxosclaimpercabang.Repo, error) {
+			return osClaimPerCabangMemory, nil
+		}
+
 		// Master tipe proteksi ikut dimuat berisi kesembilan tipe yang benar-benar ada di
 		// `POOLDATA.M_CLAIM_PROTECTION_TYPE`, sehingga pilihan tipe pada form menampilkan
 		// nama yang SAMA dengan produksi tanpa Oracle. Ia salinan, bukan cadangan — tidak
@@ -4096,6 +4494,23 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.protectionAcceptSelector = func(string) (inboxacceptopenprotection.Repo, error) {
 			return protectionAcceptMemory, nil
 		}
+		store.protectionAcceptGroups = inboxacceptopenprotectionmemory.NewSampleGroupRepo()
+
+		// Dokumen penunjang: metadata DAN layanan penyimpanannya sama-sama di memori.
+		//
+		// Keduanya harus palsu bersamaan. Memakai penyimpanan sungguhan dengan metadata di
+		// memori akan mengirim berkas percobaan ke layanan produksi — dan berkas itu tidak
+		// dapat ditarik kembali.
+		//
+		// Kosong tanpa contoh, berbeda dari modul lain: dokumen contoh menuntut berkas
+		// contoh, dan berkas karangan di dalam kode tidak menjelaskan apa pun yang tidak
+		// dijelaskan oleh mengunggah satu berkas sungguhan lewat layarnya.
+		documentMemory := dokumenpenunjangmemory.NewRepo()
+		store.dokumenPenunjangSelector = func(string) (dokumenpenunjang.Repo, error) {
+			return documentMemory, nil
+		}
+		store.dokumenPenunjangStorage = dokumenpenunjangmemory.NewStorage()
+		store.dokumenPenunjangConverter = dokumenpenunjangmemory.NewConverter()
 		// Inbox Close Claim memakai SATU penyimpanan untuk klaim dan permintaannya.
 		//
 		// Berbeda dari perakitan SQL di atas, yang memisahkan keduanya karena tabelnya
@@ -4166,6 +4581,9 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.rclPUCLSelector = rclPUCLSelectorMemory(cfg.PrimaryPortal)
 		store.inboxProgressClaimSelector = inboxProgressClaimSelectorMemory(cfg.PrimaryPortal)
 		store.inboxAnalystDoctorSelector = inboxAnalystDoctorSelectorMemory(cfg.PrimaryPortal)
+		inboxSurveyRepo, inboxSurveyDirectory := inboxSurveySelectorsMemory(cfg.PrimaryPortal)
+		store.inboxSurveySelector = inboxSurveyRepo
+		store.inboxSurveyDirectorySelector = inboxSurveyDirectory
 	}
 
 	switch cfg.Storage {
@@ -5656,6 +6074,54 @@ func inboxAnalystDoctorSelectorMemory(primaryAlias string) inboxanalystdoctor.Re
 		store[clean] = fresh
 		return fresh, nil
 	}
+}
+
+// inboxSurveySelectorsMemory membentuk pemilih antrean DAN pemilih jembatan identitas My
+// Work di atas penyimpanan memori.
+//
+// # Kenapa keduanya dikembalikan sekaligus
+//
+// Karena keduanya WAJIB menunjuk penyimpanan yang SAMA untuk satu portal. `Store` memenuhi
+// Repo sekaligus Directory, sehingga membentuknya dua kali akan menghasilkan dua salinan
+// data contoh — dan identitas yang diterjemahkan salinan pertama akan dipakai menyaring
+// antrean milik salinan kedua. Hari ini keduanya berisi hal yang sama sehingga tidak ada
+// yang terlihat salah; begitu data contohnya berubah, ia menjadi cacat yang sangat sulit
+// ditelusuri.
+//
+// Mengembalikannya sebagai sepasang membuat kesalahan itu tidak mungkin terjadi.
+//
+// Satu salinan per portal, bukan satu yang dibagi — sama dengan pemilih di atasnya, dan
+// alasannya sama: berbagi penyimpanan antarportal adalah bentuk kebocoran yang persis
+// dilarang `R-20`.
+func inboxSurveySelectorsMemory(
+	primaryAlias string,
+) (inboxsurvey.RepoSelector, inboxsurvey.DirectorySelector) {
+	var lock sync.Mutex
+	store := map[string]*inboxsurveymemory.Store{}
+
+	forAlias := func(alias string) (*inboxsurveymemory.Store, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxsurveymemory.NewSampleStore()
+		store[clean] = fresh
+		return fresh, nil
+	}
+
+	repo := func(alias string) (inboxsurvey.Repo, error) {
+		return forAlias(alias)
+	}
+	directory := func(alias string) (inboxsurvey.Directory, error) {
+		return forAlias(alias)
+	}
+	return repo, directory
 }
 
 // matchPrimaryPortal menyeragamkan alias dan menolak portal selain portal utama.

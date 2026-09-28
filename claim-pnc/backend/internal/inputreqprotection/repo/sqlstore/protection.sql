@@ -340,14 +340,97 @@ UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
 -- KOSONG pada setiap klaim — dan tidak ada galat yang memberi tahu sebabnya.
 --
 -- ============================================================================
--- SELURUHNYA LEFT JOIN, DAN ITU DISENGAJA
+-- SATU TABEL KLAIM: T_CLAIM_PNC. TABEL KERJA PEGA TIDAK DIBACA LAGI
 -- ============================================================================
 --
--- Hanya 1.393 dari 2.634 klaim punya baris di `T_CLAIM_PNC`, dan 1.321 punya objek.
--- `INNER JOIN` akan membuat separuh klaim tampak TIDAK ADA — dan pengguna menerima "klaim
--- tidak ditemukan" untuk klaim yang jelas-jelas ada.
+-- Work Owner menetapkan 2026-09-26, lalu menegaskannya kembali setelah akibatnya disampaikan
+-- beserta angkanya:
 --
--- Klaim yang ditemukan tetapi tanpa DOL adalah keadaan yang sah dan ditampilkan apa adanya.
+--     "untuk input protection juga ambil datanya dari t_claim_pnc ya,
+--      jangan pakai t_claimlist_admin"
+--     "jangan gunakan t_claimlist_admin sama sekali, gunakan t_claim_pnc saja"
+--
+-- Kueri ini karena itu membaca `POOLDATA.T_CLAIM_PNC` saja sebagai sumber klaim.
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` — yang dulu menjadi tabel utamanya — **tidak dibaca lagi**,
+-- dan `T_CLAIMLIST_ADMIN` tidak pernah dibaca modul ini sama sekali.
+--
+-- Dua tabel anak tetap dibaca karena kolomnya memang hanya ada di sana, dan keduanya tabel
+-- klaim yang sama: `T_CLAIM_OBJECTCOVERAGE` (Cause of Loss) dan `T_CLAIM_OBJECTLIST`
+-- (Object Name).
+--
+-- ============================================================================
+-- AKIBATNYA TERUKUR, DAN DITERIMA SECARA SADAR
+-- ============================================================================
+--
+-- Hitungan langsung ke Oracle 2026-09-26, dibatasi `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'`
+-- (tabel kerja Pega dipakai BERSAMA sepuluh case type — dari 7.716 barisnya hanya 2.639 yang
+-- klaim):
+--
+--     klaim Work-PNC seluruhnya                         2.639
+--     DAPAT ditemukan lewat T_CLAIM_PNC                 1.397
+--     TIDAK dapat ditemukan                             1.242   47%
+--
+-- Jadi klaim yang belum punya baris di `T_CLAIM_PNC` menjawab **"klaim tidak ditemukan"**.
+-- Itu konsekuensi yang disampaikan lebih dulu beserta angkanya, dan Work Owner menegaskan
+-- pilihannya. Penutupnya adalah **melengkapi `T_CLAIM_PNC`** — bukan mengembalikan tabel
+-- kerja Pega ke dalam kueri ini.
+--
+-- ============================================================================
+-- KUNCINYA CLAIMID, BUKAN CLAIMNO
+-- ============================================================================
+--
+-- `T_CLAIM_PNC` punya DUA kolom yang sama-sama tampak seperti nomor klaim. Keduanya diukur,
+-- dan hasilnya tidak berimbang:
+--
+--     kolom            terisi    kembar   klaim terjangkau
+--     CLAIMNO           1.697         1            1.349
+--     CLAIMID           2.176         0            1.397
+--
+-- `CLAIMNO` **kosong pada 479 baris**, **berulang pada satu pasang** yang CLAIMID-nya berbeda,
+-- dan **berbeda isi dari nomor turunannya pada 11 baris**. `CLAIMID` terisi pada SETIAP baris
+-- dan tidak pernah kembar.
+--
+-- Menambahkan `OR CLAIMNO = ...` hanya menambah **satu** klaim (1.398), dengan biaya predikat
+-- yang tidak dapat memakai index. Tidak diambil.
+--
+-- **Yang paling menentukan:** kunci baca di sini menjadi kolom yang SAMA dengan kunci tulis
+-- `UPDATE POOLDATA.T_CLAIM_PNC ... WHERE CLAIMID = :2` di
+-- `inboxacceptopenprotection/claimsync.go`. Selama keduanya satu kolom, klaim yang dapat
+-- dicari pasti dapat pula diubah saat proteksinya disetujui — tidak ada celah di mana
+-- pencarian berhasil tetapi penerapannya gagal.
+--
+-- ============================================================================
+-- DUA BENTUK CLAIMID, DUA ARGUMEN — BUKAN INSTR/SUBSTR
+-- ============================================================================
+--
+-- `CLAIMID` hanya punya DUA bentuk, dan itu terukur — nol bentuk ketiga, nol spasi ganda:
+--
+--     ASM-FW-GCNMFW-WORK PNC-1865   2.167 baris   klaim warisan Pega
+--     PNCN.26.0007                      9 baris   klaim sistem baru, tanpa spasi
+--
+-- Bentuk pertama yang terpikir adalah memotong prefix-nya di dalam SQL dengan
+-- `SUBSTR(CLAIMID, INSTR(CLAIMID,' ') + 1)`. Itu **tidak diambil**, karena `INSTR` ada di
+-- daftar pola terlarang `09-DATABASE-STRATEGY.md` §4 — dan penggantinya yang disebut di sana,
+-- `POSITION(x IN y)`, **tidak didukung Oracle**. Diuji langsung:
+--
+--     SELECT POSITION(' ' IN 'AB CD') FROM DUAL   ->   ORA-00907
+--
+-- Jadi memakai `INSTR` akan melanggar `D-20`, dan memakai `POSITION` akan gagal hari ini.
+-- Keduanya dihindari: prefix disusun **di Go** dan dikirim sebagai argumen kedua, sehingga
+-- kueri ini hanya membandingkan kesamaan.
+--
+--     :1  nomor klaim                       PNC-1865
+--     :2  prefix + nomor klaim              ASM-FW-GCNMFW-WORK PNC-1865
+--
+-- Jangkauannya **identik** dengan bentuk `INSTR` — 1.397 klaim, diukur berdampingan — dan
+-- keduanya predikat kesamaan, bukan pola.
+--
+-- Argumennya dikirim DUA KALI meski nilainya berasal dari satu masukan: driver mengikat
+-- menurut urutan KEMUNCULAN penanda, bukan menurut nomornya, sehingga `:1` yang dipakai
+-- berulang menghasilkan ORA-01008.
+--
+-- Nama kelas Pega karena itu tidak tertulis di berkas SQL ini sama sekali; ia satu konstanta
+-- bernama di `protection.go`, yang hilang bersama klaim warisannya kelak.
 --
 -- ============================================================================
 -- HANYA MEMBACA
@@ -361,23 +444,34 @@ UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
 -- lewat join yang menggandakan baris: satu klaim dapat punya banyak objek dan banyak
 -- coverage, sedangkan panel Detail Perubahan hanya punya satu nilai untuk masing-masing.
 -- Pega pun menyalinnya sebagai satu nilai.
-SELECT w.PYID,
-       COALESCE(w.POLICYNO, c.NOPOLIS),
-       COALESCE(w.QQNAME, c.QQNAME),
+--
+-- ============================================================================
+-- CLAIMID DIKEMBALIKAN UTUH — ia yang menjadi ID_CLAIM
+-- ============================================================================
+--
+-- Kolom kedua adalah `CLAIMID` apa adanya, dan itulah yang disimpan sebagai
+-- `T_CLAIM_OPENPROTECTION.ID_CLAIM`:
+--
+--     klaim Pega        CLAIM_NO PNC-1865       ID_CLAIM ASM-FW-GCNMFW-WORK PNC-1865
+--     klaim sistem baru CLAIM_NO PNCN.26.0007   ID_CLAIM PNCN.26.0007
+--
+-- Ia dikembalikan UTUH dan tidak di-`COALESCE`: bentuk penuhnya yang dipakai sebagai kunci
+-- saat permintaannya disetujui. Nomor klaimnya diturunkan di Go dari kolom yang sama, jadi
+-- tidak ada kolom kedua untuk itu — satu nilai, satu sumber.
+SELECT c.CLAIMID,
+       c.NOPOLIS,
+       c.QQNAME,
        c.DATEOFLOSS,
        (SELECT cv.CAUSEOFLOSS
           FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE cv
-         WHERE cv.CLAIMID = w.PZINSKEY
+         WHERE cv.CLAIMID = c.CLAIMID
          ORDER BY cv.OBJECTID, cv.COVERAGEID
          FETCH FIRST 1 ROW ONLY),
-       COALESCE(w.BRANCHNAME, c.BRANCHNAME),
+       c.BRANCHNAME,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
-         WHERE o.CLAIMID = w.PZINSKEY
+         WHERE o.CLAIMID = c.CLAIMID
          ORDER BY o.OBJECTID
          FETCH FIRST 1 ROW ONLY)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-  LEFT JOIN POOLDATA.T_CLAIM_PNC c
-         ON c.CLAIMID = w.PZINSKEY
- WHERE UPPER(TRIM(w.PYID)) = :1
-   AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE UPPER(TRIM(c.CLAIMID)) IN (:1, :2)

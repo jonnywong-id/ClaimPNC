@@ -7,9 +7,16 @@ import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 import { ReloadIcon } from '@/components/Icon'
+import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
 
-import { PAGE_SIZE, useAcceptQueue, useDecideProtection, useProtectionDetail } from './api'
-import { protectionTypeLabel, type Protection, type Queue } from './types'
+import {
+  PAGE_SIZE,
+  useAcceptQueue,
+  useAllowedQueues,
+  useDecideProtection,
+  useProtectionDetail,
+} from './api'
+import { protectionTypeLabel, type ChangeDetail, type Protection, type Queue } from './types'
 
 /**
  * Layar Inbox Accept Open Protection.
@@ -34,7 +41,7 @@ import { protectionTypeLabel, type Protection, type Queue } from './types'
  * # Grid ketiga TIDAK dibawa
  *
  * Grid ketiga hanya muncul untuk **satu alamat Gmail pribadi**
- * (`Section/InputProtection_Section-Section.xml:25104`), dan penyaringnya lebih longgar —
+ * (`Section/InputProtection_Section-Section.xml:10342`), dan penyaringnya lebih longgar —
  * tanpa syarat nomor klaim. `D-15` melarang nilai bisnis di-hardcode dan `D-67` melarang
  * akun pribadi dibawa ke sistem baru.
  *
@@ -42,29 +49,51 @@ import { protectionTypeLabel, type Protection, type Queue } from './types'
  * ini. Bila keleluasaan itu memang dibutuhkan bisnis, ia harus kembali sebagai PERAN di
  * master data.
  *
- * # Kewenangan belum ditegakkan
+ * # Kewenangan ditegakkan sejak 2026-09-25
  *
- * Pemilihan antrean di sini adalah TAB, sedangkan di Pega ia ditentukan access group.
- * Sampai `TKT-F3-004` dapat diisi, tidak ada yang mencegah pengguna membuka antrean yang
- * bukan haknya. Dinyatakan di layar, bukan disembunyikan.
+ * Tab yang digambar hanyalah antrean yang MENJADI HAK pemanggil, dan daftarnya datang dari
+ * server — bukan ditebak di peramban. Sumbernya `POOLDATA.M_LOGIN_GROUP_PNC.GROUP_ID`, yang
+ * berisi nama access group Pega tanpa awalan `GCNMFW:`.
+ *
+ * Penegakan sesungguhnya ada di SERVER: setiap permintaan diperiksa, sehingga menyembunyikan
+ * tab hanyalah kenyamanan tampilan. Itu yang membedakannya dari sistem lama, yang hanya
+ * menyembunyikan menu.
  */
 export function AcceptQueuePage() {
-  const [queue, setQueue] = useState<Queue>('non-premi')
+  const [pickedQueue, setPickedQueue] = useState<Queue | null>(null)
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
   const [opened, setOpened] = useState<string | null>(null)
 
   const portal = useSelectedPortal((state) => state.alias)
 
-  const list = useAcceptQueue({ queue, search, offset })
+  const allowed = useAllowedQueues()
+  const allowedQueues = allowed.data?.antrean ?? []
+
+  // Antrean aktif: yang dipilih pengguna bila masih menjadi haknya, selain itu yang pertama
+  // menjadi haknya. Menahan pilihan yang sudah tidak berlaku akan menembak server untuk
+  // jawaban yang pasti 403.
+  const queue: Queue | null =
+    pickedQueue && allowedQueues.includes(pickedQueue)
+      ? pickedQueue
+      : (allowedQueues[0] ?? null)
+
+  const list = useAcceptQueue(
+    { queue: queue ?? 'non-premi', search, offset },
+    { enabled: queue !== null },
+  )
   const detail = useProtectionDetail(opened)
   const decide = useDecideProtection()
 
   const rows = list.data?.proteksi ?? []
   const total = list.data?.total ?? 0
 
+  // 403 atas daftar antrean berarti access group pemanggil tidak berwenang atas layar ini.
+  // Dibedakan dari gangguan supaya pesannya menjelaskan apa yang harus diminta pengguna.
+  const forbidden = allowed.error instanceof APIError && allowed.error.status === 403
+
   function changeQueue(next: Queue) {
-    setQueue(next)
+    setPickedQueue(next)
     // Halaman dan pencarian dikembalikan: keduanya milik antrean sebelumnya, dan
     // mempertahankannya akan menampilkan halaman empat dari daftar yang hanya punya satu.
     setOffset(0)
@@ -191,10 +220,45 @@ export function AcceptQueuePage() {
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Antrean akseptasi">
-        <QueueTab current={queue} value="non-premi" label="Proteksi Klaim NON PREMI" onPick={changeQueue} />
-        <QueueTab current={queue} value="premi" label="Proteksi Klaim PREMI" onPick={changeQueue} />
-      </div>
+      {forbidden && (
+        <div className="mt-6">
+          <ErrorMessage
+            title="Anda tidak berwenang atas layar ini"
+            description="Access group Anda tidak termasuk yang boleh mengakseptasi permintaan proteksi. Hubungi administrator bila seharusnya berhak."
+            tone="penolakan"
+          />
+        </div>
+      )}
+
+      {/*
+        Tab hanya digambar untuk antrean yang MENJADI HAK pemanggil.
+
+        Layar lama tidak punya pemilihan sama sekali — grid yang bukan haknya tidak pernah
+        dirender. Menggambar tab yang pasti dijawab 403 hanya membuat pengguna mencobanya.
+
+        Bila haknya cuma satu, tabnya tetap digambar: ia menyebutkan antrean mana yang
+        sedang dilihat, dan tanpa itu daftar PREMI tidak dapat dibedakan dari NON PREMI.
+      */}
+      {allowedQueues.length > 0 && (
+        <div className="mt-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Antrean akseptasi">
+          {allowedQueues.includes('non-premi') && (
+            <QueueTab current={queue} value="non-premi" label="Proteksi Klaim NON PREMI" onPick={changeQueue} />
+          )}
+          {allowedQueues.includes('premi') && (
+            <QueueTab current={queue} value="premi" label="Proteksi Klaim PREMI" onPick={changeQueue} />
+          )}
+        </div>
+      )}
+
+      {allowed.isSuccess && allowedQueues.length === 0 && (
+        <div className="mt-6">
+          <ErrorMessage
+            title="Tidak ada antrean yang dapat dibuka"
+            description="Access group Anda berwenang atas layar ini, tetapi tidak atas satu antrean pun. Laporkan ke administrator — kemungkinan besar keanggotaan group Anda belum lengkap."
+            tone="gangguan"
+          />
+        </div>
+      )}
 
       {opened !== null && (
         <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -252,6 +316,23 @@ export function AcceptQueuePage() {
                   <Detail label="Keterangan" value={detail.data.keterangan} />
                 </div>
               </dl>
+
+              {detail.data.detail_perubahan && (
+                <ChangeDetailPanel detail={detail.data.detail_perubahan} />
+              )}
+
+              {/*
+                Dokumen penunjang menempel pada KLAIM, bukan pada permintaan proteksinya —
+                karena itu yang diserahkan nomor klaimnya.
+
+                Permintaan yang sudah diputuskan menjadi baca-saja: dokumennya tetap perlu
+                dibuka untuk ditinjau, tetapi menambah berkas pada permintaan yang sudah
+                selesai tidak lagi bermakna.
+              */}
+              <DokumenPenunjangPanel
+                nomorKlaim={detail.data.nomor_klaim}
+                readOnly={!detail.data.menunggu_keputusan}
+              />
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 {detail.data.menunggu_keputusan ? (
@@ -348,7 +429,9 @@ function QueueTab({
   label,
   onPick,
 }: {
-  current: Queue
+  // Boleh null selama daftar antrean yang menjadi hak pemanggil belum tiba — pada saat itu
+  // belum ada tab yang aktif, dan menandai salah satunya akan keliru separuh waktu.
+  current: Queue | null
   value: Queue
   label: string
   onPick: (queue: Queue) => void
@@ -373,6 +456,110 @@ function QueueTab({
 }
 
 /** Satu pasang label dan nilai pada rincian proteksi. */
+/**
+ * Panel "Detail Perubahan" — apa yang sebenarnya diminta berubah.
+ *
+ * # Kenapa ia dipisahkan dari daftar field di atasnya
+ *
+ * Layar lama pun memisahkannya: `Section/AcceptProtectionSection-Section.xml` membungkusnya
+ * dalam container bersyarat berjudul sendiri. Bagi tipe `'7'` dan `'8'`, inilah yang
+ * ditimbang petugas — sisanya konteks.
+ *
+ * Pasangan nilai digambar sebagai **sebelum → sesudah** supaya arah perubahannya terbaca
+ * tanpa membandingkan dua label. Pada layar sempit panahnya berputar menjadi menurun; nilai
+ * yang panjang tidak boleh memaksa tabel menggeser mendatar.
+ */
+function ChangeDetailPanel({ detail }: { detail: ChangeDetail }) {
+  // Tipe '7' mengisi pasangan tanggal, tipe '8' mengisi pasangan penyebab. Keduanya tidak
+  // pernah terisi bersamaan — backend yang memastikannya.
+  const pasangan = detail.dol_sebelum || detail.dol_sesudah
+    ? {
+        label: 'Current Date Of Loss',
+        labelSesudah: 'Next Date Of Loss',
+        sebelum: detail.dol_sebelum ? formatDate(detail.dol_sebelum) : '',
+        sesudah: detail.dol_sesudah ? formatDate(detail.dol_sesudah) : '',
+      }
+    : {
+        label: 'Cause Of Loss Dipilih',
+        labelSesudah: 'Next Cause Of Loss',
+        sebelum: detail.penyebab_sebelum,
+        sesudah: detail.penyebab_sesudah,
+      }
+
+  return (
+    <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <h3 className="text-sm font-semibold text-slate-900">{detail.judul}</h3>
+
+      {detail.kosong ? (
+        // Panel tetap tampil. Menyembunyikannya akan membuat permintaan perubahan tampak
+        // seolah tidak mengubah apa pun — dan baris warisan Pega seluruhnya begini.
+        <p className="mt-2 text-sm text-slate-600">
+          Rincian perubahan tidak tersedia untuk permintaan ini.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4">
+            <ChangeSide label={pasangan.label} value={pasangan.sebelum} />
+            <div
+              aria-hidden="true"
+              className="flex items-center justify-center text-slate-400 sm:px-1"
+            >
+              <span className="sm:hidden">↓</span>
+              <span className="hidden sm:inline">→</span>
+            </div>
+            <ChangeSide label={pasangan.labelSesudah} value={pasangan.sesudah} highlight />
+          </div>
+
+          {(detail.nama_objek || detail.nama_cabang) && (
+            <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-slate-200 pt-3 sm:grid-cols-2">
+              <Detail label="Object Name" value={detail.nama_objek} />
+              <Detail label="Branch Name" value={detail.nama_cabang} />
+            </dl>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Satu sisi pasangan perubahan.
+ *
+ * Sisi "sesudah" ditandai supaya nilai yang diminta menonjol dari nilai yang berlaku
+ * sekarang — bukan dengan warna saja, melainkan dengan bingkai dan ketebalan, supaya
+ * pembedanya tetap terbaca tanpa membedakan warna.
+ */
+function ChangeSide({
+  label,
+  value,
+  highlight,
+}: {
+  label: string
+  value: string
+  highlight?: boolean
+}) {
+  return (
+    <div
+      className={
+        highlight
+          ? 'flex-1 rounded-md border-2 border-blue-300 bg-white px-3 py-2'
+          : 'flex-1 rounded-md border border-slate-200 bg-white px-3 py-2'
+      }
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p
+        className={
+          highlight
+            ? 'mt-0.5 break-words text-sm font-semibold text-slate-900'
+            : 'mt-0.5 break-words text-sm text-slate-700'
+        }
+      >
+        {value || '—'}
+      </p>
+    </div>
+  )
+}
+
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>

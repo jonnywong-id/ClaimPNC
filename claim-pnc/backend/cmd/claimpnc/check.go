@@ -17,6 +17,8 @@ import (
 	"claim-pnc/internal/inboxcloseclaim"
 	"claim-pnc/internal/inboxcompliance"
 	"claim-pnc/internal/inboxinvestigator"
+	"claim-pnc/internal/inboxosclaimpercabang"
+	inboxosclaimpercabangsql "claim-pnc/internal/inboxosclaimpercabang/repo/sqlstore"
 	"claim-pnc/internal/inboxoutstanding"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/masterautoclaim"
@@ -65,6 +67,7 @@ import (
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
+	inboxsurveysql "claim-pnc/internal/inboxsurvey/repo/sqlstore"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	mastercolsql "claim-pnc/internal/mastercolsimasonline/repo/sqlstore"
@@ -178,10 +181,12 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAssembledModules(ctx, primary, print)
 	checkClaimTreatyProp(ctx, inboxclaimtreatypropsql.NewRepo(primary), print)
 	checkClaimTreatyNonProp(ctx, inboxclaimtreatynonpropsql.NewRepo(primary), print)
+	checkOSClaimPerCabang(ctx, inboxosclaimpercabangsql.NewRepo(primary), print)
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
+	checkInboxSurvey(ctx, inboxsurveysql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
 	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
@@ -3212,6 +3217,68 @@ func checkInboxAnalystDoctor(
 	print("            jawaban yang benar, bukan kerusakan.")
 }
 
+// checkInboxSurvey memeriksa prasyarat layar My Work (MENU_ID 50) terhadap Oracle sungguhan.
+//
+// # Kenapa modul ini paling perlu diperiksa di antara seluruh inbox
+//
+// Karena ia satu-satunya yang membaca tabel yang BELUM pernah dibaca modul mana pun di
+// aplikasi ini — `POOLDATA.T_SURVEYORLIST` — dan karena sumber datanya BERGESER dari Pega:
+// layar lamanya membaca objek kerja `Work-SurveyClaim`, sementara tabel penggantinya terbukti
+// tidak memuat satu pun baris jenis itu.
+//
+// Tanpa pemeriksaan ini, yang pertama menemukan keadaan itu adalah seorang adjuster yang
+// layarnya gagal dimuat.
+func checkInboxSurvey(
+	ctx context.Context,
+	repo *inboxsurveysql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel My Work tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_SURVEYORLIST,")
+		print("            POOLDATA.T_CLAIMLIST_ADMIN, dan POOLDATA.MST_LOGIN_SURVEYOR.")
+		print("            T_SURVEYORLIST yang paling patut diperiksa: ia tabel yang BELUM")
+		print("            pernah dibaca modul mana pun, sehingga hak bacanya belum pernah")
+		print("            terbukti.")
+		return
+	}
+	print("  [ok]    Tabel My Work dapat dibaca")
+
+	if err := repo.CheckColumns(ctx); err != nil {
+		print("  [BELUM] Kolom antrean My Work tidak lengkap: %v", err)
+		print("            DUA di antaranya memang BELUM dikonfirmasi DBA:")
+		print("              ADJUSTERPIC_1  -> kolom \"Appointment No\"")
+		print("              LOSSTYPE       -> kolom \"Cause Of Loss\"")
+		print("            Yang diminta ke DBA — satu kueri katalog:")
+		print("              SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, NUM_DISTINCT")
+		print("                FROM ALL_TAB_COLUMNS WHERE OWNER = 'POOLDATA'")
+		print("                 AND ((TABLE_NAME = 'T_CLAIMLIST_ADMIN'")
+		print("                       AND COLUMN_NAME LIKE '%%ADJUSTER%%')")
+		print("                   OR (TABLE_NAME = 'T_SURVEYORLIST'")
+		print("                       AND COLUMN_NAME LIKE '%%LOSS%%'));")
+		return
+	}
+	print("  [ok]    Kolom antrean My Work ada, termasuk kolom penggerak ketujuh tabnya")
+
+	// KPI diperiksa TERAKHIR dan kegagalannya tidak menghentikan apa pun.
+	//
+	// Tab KPI membaca tabel LAIN yang diisi procedure terpisah. Ketiadaannya mengosongkan
+	// satu tab, bukan merusak layar — dan menyamakannya dengan kegagalan di atas akan
+	// membuat modul yang sebenarnya siap terbaca sebagai belum siap.
+	if err := repo.CheckKPI(ctx); err != nil {
+		print("  [catat] Tab KPI My Work belum dapat dipakai: %v", err)
+		print("            Ini TIDAK menghalangi tab INBOX. POOLDATA.DETAIL_KPI_ADJUSTER")
+		print("            diisi Database/INSERT_KPIADJUSTER.prc, dan ketiadaannya hanya")
+		print("            mengosongkan satu tab.")
+		return
+	}
+	print("  [ok]    Tabel KPI adjuster dapat dibaca")
+	print("            Catatan: antrean ini disaring NAMA SURVEYOR yang diturunkan dari")
+	print("            login lewat POOLDATA.MST_LOGIN_SURVEYOR. Pengguna yang belum")
+	print("            terdaftar di sana menerima 403 yang menyebut sebabnya — bukan")
+	print("            antrean kosong.")
+}
+
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
 //
 // Inilah satu-satunya jalan membuktikan kuerinya sah selama migrasi 0001 belum dijalankan:
@@ -4429,4 +4496,94 @@ func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo,
 		return
 	}
 	print("  [ok]    lini bisnis %s: %s", login, line)
+}
+
+// checkOSClaimPerCabang memeriksa layar Inbox OS Claim per Cabang (`MENU_ID 69`).
+//
+// Yang diperiksa tiga hal, dan ketiganya dipisah karena tindak lanjutnya berbeda:
+//
+//	tabel layar        gagal -> layarnya tidak dapat dibuka sama sekali
+//	tabel ekspor       gagal -> hanya tombol ekspor yang mati, termasuk bila DB Link padam
+//	satu halaman nyata gagal -> kuerinya berjalan tetapi ada yang tidak terbaca
+func checkOSClaimPerCabang(
+	ctx context.Context,
+	repo *inboxosclaimpercabangsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel OS klaim per cabang tidak dapat dibaca: %v", err)
+		print("            Modul ini TIDAK menuntut migrasi — seluruh tabelnya milik Pega.")
+		print("            Periksa hak SELECT akun aplikasi atas POOLDATA.T_CLAIM_PNC,")
+		print("            DATAPEGA.PC_ASM_FW_GCNMFW_WORK, POOLDATA.GCNM_PROGRESS_CLAIM,")
+		print("            POOLDATA.GCNM_MST_PROGRESS, POOLDATA.T_CLAIM_ESTIMASI,")
+		print("            POOLDATA.T_SURVEYORLIST, POOLDATA.T_CLAIM_OBJECTCOVERAGE,")
+		print("            dan POOLDATA.BRANCH.")
+		return
+	}
+	print("  [ok]    Kedelapan tabel OS klaim per cabang dapat dibaca")
+
+	// Tabel ekspor diperiksa TERPISAH, dan kegagalannya tidak menghentikan pemeriksaan.
+	// Salah satunya `treaty_loss@asmd` — DB Link yang sedang padam mematikan ekspor, bukan
+	// layarnya.
+	if err := repo.CheckExportTable(ctx); err != nil {
+		print("  [BELUM] Tabel ekspor OS per cabang tidak dapat dibaca: %v", err)
+		print("            Hanya tombol Export To Excel yang terdampak; layarnya tetap jalan.")
+		print("            Periksa DB Link asmd.sinarmas.co.id dan hak SELECT atas")
+		print("            treaty_loss, POOLDATA.T_GENERAL, POOLDATA.T_CLAIM_DOMINANFACTOR,")
+		print("            serta POOLDATA.M_DOMINAN_FACTOR.")
+	} else {
+		print("  [ok]    Tabel ekspor OS per cabang dapat dibaca, termasuk lewat DB Link")
+	}
+
+	// Satu cabang nyata diambil dari datanya sendiri, bukan dikarang: kode cabang karangan
+	// akan selalu menghasilkan nol baris, dan nol baris tidak membuktikan kuerinya berjalan.
+	branch, detailBranch, found, err := repo.AnyBranchWithClaims(ctx)
+	switch {
+	case err != nil:
+		print("  [GAGAL] Kode cabang contoh tidak dapat dibaca: %v", err)
+		return
+	case !found:
+		print("  [lewat] Tidak ada satu pun klaim outstanding; kueri daftar tidak dicoba")
+		return
+	}
+
+	// Jalurnya sama persis dengan layar: kode cabang RINCI dari HCQ, diterjemahkan lebih dulu.
+	// Memberi kueri daftar kode klaim secara langsung akan melewati terjemahan itu — dan
+	// terjemahan itulah satu-satunya langkah yang bila salah menghasilkan layar kosong tanpa
+	// satu pun galat.
+	resolved, known, err := repo.BranchOf(ctx, detailBranch)
+	switch {
+	case err != nil:
+		print("  [GAGAL] Cabang tidak dapat diterjemahkan dari kode rinci %q: %v",
+			detailBranch, err)
+		return
+	case !known:
+		print("  [GAGAL] Kode cabang rinci %q tidak dikenal POOLDATA.BRANCH", detailBranch)
+		print("            Periksa kolom OLDID; tanpa ini seluruh layar menolak pemanggil.")
+		return
+	case resolved.Code != branch:
+		print("  [GAGAL] Terjemahan cabang meleset: kode rinci %q menghasilkan %q, "+
+			"seharusnya %q", detailBranch, resolved.Code, branch)
+		return
+	}
+	print("  [ok]    Kode rinci %s diterjemahkan menjadi cabang %s (%s)",
+		detailBranch, resolved.Code, resolved.Name)
+
+	page := inboxosclaimpercabang.Pagination{Page: 1, Size: 5}
+	result, err := repo.List(ctx, inboxosclaimpercabang.Query{Branch: resolved}, page)
+	if err != nil {
+		print("  [GAGAL] Kueri daftar OS per cabang gagal: %v", err)
+		return
+	}
+	print("  [ok]    Cabang %s punya %d klaim outstanding (%d baris dibaca)",
+		branch, result.Total, len(result.Items))
+
+	stalled := 0
+	for _, item := range result.Items {
+		if item.ProgressStalled {
+			stalled++
+		}
+	}
+	print("  [info]  %d dari %d baris contoh bertanda progres mandek",
+		stalled, len(result.Items))
 }

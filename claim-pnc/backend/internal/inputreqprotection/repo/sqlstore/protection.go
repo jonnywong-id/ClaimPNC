@@ -174,9 +174,13 @@ func (r *Repo) Create(
 		// ID_CLAIM DITURUNKAN dari nomor klaim, bukan diterima dari form.
 		//
 		// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang
-		// sama. Menanyakannya dua kali akan membuat keduanya berbeda cepat atau lambat —
-		// tanpa galat, hanya proteksi yang menunjuk dua klaim berbeda.
-		nullIfEmpty(draft.ClaimNumber),
+		// sama. Itu benar untuk klaim SISTEM BARU dan tidak berlaku untuk klaim Pega, yang
+		// menyimpan IDPEGA (Work Owner, 2026-09-26) — aturan lengkapnya beserta alasannya
+		// ada di inputreqprotection.ClaimReferenceOf.
+		//
+		// Tetap DITURUNKAN, bukan ditanyakan ke form: dua isian yang wajib bersesuaian
+		// tetapi diketik terpisah akan berbeda cepat atau lambat, tanpa galat.
+		nullIfEmpty(inputreqprotection.ClaimReferenceOf(claim)),
 		nullIfEmpty(draft.Type),
 		at.UTC(),
 		nullIfEmpty(by),
@@ -235,9 +239,14 @@ func (r *Repo) Update(
 		// ID_CLAIM DITURUNKAN dari nomor klaim, bukan diterima dari form.
 		//
 		// Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang
-		// sama. Menanyakannya dua kali akan membuat keduanya berbeda cepat atau lambat —
-		// tanpa galat, hanya proteksi yang menunjuk dua klaim berbeda.
-		nullIfEmpty(draft.ClaimNumber),
+		// sama. Itu benar untuk klaim SISTEM BARU dan tidak berlaku untuk klaim Pega, yang
+		// menyimpan IDPEGA (Work Owner, 2026-09-26) — lihat
+		// inputreqprotection.ClaimReferenceOf.
+		//
+		// Pada PEMBARUAN, nilainya ikut dihitung ulang: pemohon dapat mengganti nomor klaim
+		// yang ditaut, dan ID_CLAIM yang tertinggal pada klaim lama akan menunjuk klaim
+		// yang bukan lagi miliknya.
+		nullIfEmpty(inputreqprotection.ClaimReferenceOf(claim)),
 		nullIfEmpty(draft.Type),
 		nullIfEmpty(draft.Note),
 		lama,
@@ -499,7 +508,32 @@ func (r *TypeRepo) ListTypes(ctx context.Context) ([]inputreqprotection.Protecti
 
 // ── Pencarian klaim ──────────────────────────────────────────────────────────────
 
+// prefixKunciKlaimPega adalah awalan kunci instance Pega pada `T_CLAIM_PNC.CLAIMID`.
+//
+// # Kenapa ia konstanta di Go, bukan literal di dalam SQL
+//
+// Nama kelas internal Pega yang tertanam di kunci data bisnis adalah utang teknis yang
+// `D-22` hapus untuk klaim baru — tetapi klaim warisan terlanjur membawanya, dan tidak
+// dinomori ulang. Ia karena itu tidak dapat dihindari selama masa paralel; yang dapat
+// dilakukan adalah menaruhnya di SATU tempat bernama, bukan menyebarkannya ke berkas SQL.
+//
+// Bentuknya terukur dan hanya dua (hitungan 2026-09-26 atas 2.176 baris):
+//
+//	ASM-FW-GCNMFW-WORK PNC-1865   2.167 baris   klaim warisan Pega
+//	PNCN.26.0007                      9 baris   klaim sistem baru, tanpa awalan
+//
+// Nol bentuk ketiga, nol spasi ganda. Saat klaim warisan habis, konstanta ini dan cabang
+// keduanya hilang bersamanya — dan itu terlihat sebagai satu penghapusan, bukan sebagai
+// perburuan literal di banyak kueri.
+const prefixKunciKlaimPega = "ASM-FW-GCNMFW-WORK "
+
 // ClaimRepo mencari klaim yang hendak ditaut.
+//
+// # Sumbernya T_CLAIM_PNC
+//
+// Work Owner menetapkan 2026-09-26: *"cari noklaim di input req nya ke t_claim_pnc"*, dan
+// *"jangan gunakan t_claimlist_admin sama sekali"*. Tabel kerja Pega
+// `PC_ASM_FW_GCNMFW_WORK` tidak lagi dibaca; `T_CLAIMLIST_ADMIN` tidak pernah dibaca.
 //
 // # Ia HANYA membaca
 //
@@ -513,21 +547,27 @@ type ClaimRepo struct {
 // NewClaimRepo membentuk repo pencarian klaim; db wajib koneksi portal yang dituju.
 func NewClaimRepo(db *sql.DB) *ClaimRepo { return &ClaimRepo{db: db} }
 
-// FindClaim mencari klaim menurut nomornya.
+// FindClaim mencari klaim menurut nomornya di `POOLDATA.T_CLAIM_PNC`.
+//
+// Nomor yang diketik pengguna dicocokkan ke `CLAIMID` dalam DUA bentuk sekaligus — apa
+// adanya untuk klaim sistem baru, dan berawalan untuk klaim warisan Pega. Keduanya dikirim
+// sebagai argumen terpisah karena driver mengikat menurut urutan KEMUNCULAN penanda, bukan
+// menurut nomornya; `:1` yang dipakai berulang menghasilkan ORA-01008.
 func (r *ClaimRepo) FindClaim(
 	ctx context.Context,
 	number string,
 ) (inputreqprotection.Claim, error) {
 	var (
-		id                 string
+		claimID            string
 		polis, tertanggung sql.NullString
 		dol                sql.NullTime
 		penyebab           sql.NullString
 		cabang, namaObjek  sql.NullString
 	)
 
-	err := r.db.QueryRowContext(ctx, query("claim_find"), kunci(number)).
-		Scan(&id, &polis, &tertanggung, &dol, &penyebab, &cabang, &namaObjek)
+	nomor := kunci(number)
+	err := r.db.QueryRowContext(ctx, query("claim_find"), nomor, prefixKunciKlaimPega+nomor).
+		Scan(&claimID, &polis, &tertanggung, &dol, &penyebab, &cabang, &namaObjek)
 	if errors.Is(err, sql.ErrNoRows) {
 		return inputreqprotection.Claim{}, inputreqprotection.ErrClaimNotFound
 	}
@@ -537,7 +577,13 @@ func (r *ClaimRepo) FindClaim(
 	}
 
 	klaim := inputreqprotection.Claim{
-		Number:       strings.TrimSpace(id),
+		// Number diturunkan dari CLAIMID, BUKAN dari kolom CLAIMNO. CLAIMNO kosong pada 479
+		// baris, berulang pada satu pasang, dan berbeda isi pada 11 baris — memakainya
+		// membuat nomor yang ditampilkan berbeda dari nomor yang dicari.
+		Number: nomorKlaimDari(claimID),
+		// PegaID adalah CLAIMID UTUH — nilai inilah yang disimpan sebagai ID_CLAIM dan
+		// menjadi kunci UPDATE saat proteksinya disetujui.
+		PegaID:       strings.TrimSpace(claimID),
 		PolicyNumber: teks(polis),
 		InsuredName:  teks(tertanggung),
 		CauseOfLoss:  teks(penyebab),
@@ -549,6 +595,21 @@ func (r *ClaimRepo) FindClaim(
 		klaim.LossDate = &waktu
 	}
 	return klaim, nil
+}
+
+// nomorKlaimDari memotong awalan kunci Pega, bila ada.
+//
+// Perbandingannya TIDAK peka huruf besar-kecil: `CLAIMID` pada data produksi tertulis
+// `ASM-FW-GCNMFW-WORK`, sementara nama kelas yang sama muncul juga sebagai
+// `ASM-FW-GCNMFW-Work-PNC` di tempat lain. Mencocokkan apa adanya akan membuat satu ejaan
+// lolos dan ejaan lain tidak — tanpa gejala, karena keduanya tetap menghasilkan teks.
+func nomorKlaimDari(claimID string) string {
+	rapi := strings.TrimSpace(claimID)
+	if len(rapi) > len(prefixKunciKlaimPega) &&
+		strings.EqualFold(rapi[:len(prefixKunciKlaimPega)], prefixKunciKlaimPega) {
+		return strings.TrimSpace(rapi[len(prefixKunciKlaimPega):])
+	}
+	return rapi
 }
 
 // deriveChangeDetail menyusun isi panel Detail Perubahan dari DUA sumber.

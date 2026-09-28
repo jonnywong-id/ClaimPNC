@@ -54,7 +54,33 @@
 --
 -- Kolom pembuatan — OPEN_PROTECTION_ID, POLICY_NO, CLAIM_NO, ID_CLAIM, PROTECTION_TYPE_ID, CREATE_DATE, CREATED_BY,
 -- NOTES, OLD_DATA, NEW_DATA, OBJECT_NAME, BRANCH_NAME — dimiliki modul `inputreqprotection` dan
--- TIDAK PERNAH disentuh di sini (`P-1`). Dijaga uji di query_test.go.
+-- TIDAK PERNAH DITULIS di sini (`P-1`). Dijaga uji di query_test.go.
+--
+-- ============================================================================
+-- MEMBACA BUKAN MENULIS: EMPAT KOLOM DETAIL PERUBAHAN
+-- ============================================================================
+--
+-- `P-1` mengatur siapa yang MENULIS sebuah kolom, bukan siapa yang boleh membacanya. Layar
+-- akseptasi karena itu membaca empat kolom milik modul lain:
+--
+--     OLD_DATA      NEW_DATA      OBJECT_NAME      BRANCH_NAME
+--
+-- Keempatnya mengisi panel "Detail Perubahan" pada form, yang di Pega muncul bersyarat:
+--
+--     Section/AcceptProtectionSection-Section.xml
+--       pyContainerVisibleWhen  .TypeProtection==8 || .TypeProtection==7
+--         ==7 -> "Detail Perubahan DOL"              OLD_DATA -> NEW_DATA sebagai TANGGAL
+--         ==8 -> "Detail Perubahan Cause Of Loss"    OLD_DATA -> NEW_DATA sebagai KODE
+--
+-- Bagi kedua tipe itu, melihat nilai sebelum dan sesudah ADALAH inti keputusannya. Tanpa
+-- keempat kolom ini petugas menyetujui perubahan tanpa tahu apa yang diubah.
+--
+-- Keempatnya ikut ditarik pada `acceptance_list` meski grid TIDAK menampilkannya. Itu
+-- disengaja: satu bentuk SELECT melayani satu fungsi pemindaian, dan dua SELECT yang nyaris
+-- sama akan berbeda isinya cepat atau lambat — alasan yang sama dengan penyatuan kedua
+-- antrean di atas.
+--
+-- `DISTRICT` yang juga ada di form Pega TIDAK ikut: tabelnya tidak punya kolom itu.
 
 
 -- name: acceptance_count
@@ -81,11 +107,16 @@ SELECT COUNT(*)
 SELECT p.OPEN_PROTECTION_ID,
        p.POLICY_NO,
        p.CLAIM_NO,
+       p.ID_CLAIM,
        p.PROTECTION_TYPE_ID,
        t.PROTECTION_TYPE_NAME,
        p.CREATE_DATE,
        p.NOTES,
        p.CREATED_BY,
+       p.OLD_DATA,
+       p.NEW_DATA,
+       p.OBJECT_NAME,
+       p.BRANCH_NAME,
        p.APPROVAL_STATUS,
        p.RESOLVED_DATETIME,
        p.RESOLVED_BY
@@ -113,17 +144,112 @@ OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 -- (`Flow/CreateProtection_Flow.xml` menempatkannya di workbasket ProtectionPNC), sehingga
 -- sebuah baris dapat diputuskan petugas lain kapan saja. Form harus tetap terbuka supaya
 -- pesannya dapat menyatakan keputusan siapa dan kapan — bukan sekadar "tidak ditemukan".
+--
+-- ============================================================================
+-- NAMA TERTANGGUNG, START DATE TIME, DAN END DATE TIME DARI T_GENERAL
+-- ============================================================================
+--
+-- Ketiganya sebelumnya DIBIARKAN KOSONG — adapter mencatat bahwa ia "milik snapshot polis
+-- yang modulnya belum terpasang". Work Owner menunjuk sumbernya 2026-09-27:
+--
+--     select startdate, enddate, theinsured from pooldata.t_general
+--      where nopolis = [nopolis opc]
+--      order by to_number(prodke) desc fetch first 1 rows only
+--
+-- Terverifikasi: `T_GENERAL` 201.566 baris, `THEINSURED` terisi 200.586, `STARTDATE` dan
+-- `ENDDATE` masing-masing 201.501. Dari 8 proteksi ber-`POLICY_NO`, 7 polisnya ketemu.
+--
+-- ============================================================================
+-- URUTANNYA NUMERIK, SEBAGAIMANA MESTINYA
+-- ============================================================================
+--
+-- Work Owner menetapkan 2026-09-27: *"prodke adalah varchar/char, namun isinya pasti angka,
+-- gunakan order by sebagaimana mestinya agar data yang diambil selalu prodke paling baru
+-- (angka terbesar)"*.
+--
+-- Karena itu urutannya `CAST(TRIM(g.PRODKE) AS NUMERIC) DESC` — perbandingan ANGKA, bukan
+-- teks. Kolomnya memang `VARCHAR2(100)`, tetapi yang menentukan perpanjangan terbaru adalah
+-- nilainya sebagai bilangan.
+--
+-- # Kenapa BUKAN `to_number(prodke)` seperti yang dituliskan
+--
+-- `to_number(x)` berargumen satu sah di Oracle, **tidak sah di PostgreSQL** — di sana
+-- `to_number` menuntut format mask. Ia karena itu tidak berpindah, dan `D-20` menetapkan
+-- satu set SQL untuk kedua basis data.
+--
+-- `CAST(... AS NUMERIC)` adalah bentuk ANSI dari hal yang sama, dan Oracle menerimanya —
+-- diuji langsung, bukan diandaikan:
+--
+--     CAST('0012' AS NUMERIC)    OK -> 12
+--     CAST('0012' AS NUMBER)     OK         (khas Oracle, tidak dipakai)
+--     CAST('0012' AS BIGINT)     ORA-00902  (tidak didukung)
+--
+-- # Kenapa BUKAN trik teks
+--
+-- Versi pertama memakai `LPAD(TRIM(PRODKE), 10, '0')`, yang menghasilkan urutan sama hari
+-- ini. Ia ditinggalkan karena ia **trik**, bukan pernyataan maksud: lebar 10 dipilih dari
+-- data hari ini, dan `PRODKE` yang kelak melewati sepuluh digit akan salah urut DIAM-DIAM.
+--
+-- Urutan teks POLOS lebih salah lagi — 13.181 baris ber-`PRODKE` berawalan nol.
+--
+-- # Yang diukur sebelum diganti
+--
+--     baris ber-PRODKE                           201.540   CAST berhasil atas SEMUANYA
+--     PRODKE bukan angka                               0
+--     polis dengan lebih dari satu PRODKE          6.639
+--     yang urutannya BERBEDA dari to_number             0
+--
+-- Baris yang terpilih karena itu identik dengan yang `to_number(prodke) desc` pilih, pada
+-- seluruh polis yang punya lebih dari satu perpanjangan.
+--
+-- # Risiko yang diterima
+--
+-- `CAST` adalah konversi: satu baris ber-`PRODKE` bukan angka akan menggagalkan kueri ini.
+-- Work Owner menyatakan isinya pasti angka, dan hitungan membenarkannya (nol non-angka dari
+-- 201.540). Bila kelak muncul, yang terjadi adalah galat yang TERLIHAT — bukan urutan salah
+-- yang diam. Untuk nilai yang menentukan perpanjangan mana yang dipakai, gagal keras lebih
+-- baik daripada salah diam.
+--
+-- ============================================================================
+-- TIGA SUBKUERI, BUKAN SATU JOIN
+-- ============================================================================
+--
+-- Satu `LEFT JOIN ... FETCH FIRST` tidak dapat ditulis per baris induk tanpa lateral join,
+-- yang sintaksnya berbeda antara Oracle dan PostgreSQL. Tiga subkueri berkorelasi portabel
+-- di keduanya, dan `NOPOLIS` terindeks sehingga ketiganya menempuh jalur yang sama.
+--
+-- Konsekuensinya diterima: bila sebuah polis punya beberapa PRODKE, ketiganya HARUS
+-- memilih baris yang sama — dan itu dijaga oleh `ORDER BY` yang identik. Mengubah salah
+-- satunya akan menggabungkan nama tertanggung dari satu perpanjangan dengan tanggal dari
+-- perpanjangan lain, tanpa satu pun gejala.
 SELECT p.OPEN_PROTECTION_ID,
        p.POLICY_NO,
        p.CLAIM_NO,
+       p.ID_CLAIM,
        p.PROTECTION_TYPE_ID,
        t.PROTECTION_TYPE_NAME,
        p.CREATE_DATE,
        p.NOTES,
        p.CREATED_BY,
+       p.OLD_DATA,
+       p.NEW_DATA,
+       p.OBJECT_NAME,
+       p.BRANCH_NAME,
        p.APPROVAL_STATUS,
        p.RESOLVED_DATETIME,
-       p.RESOLVED_BY
+       p.RESOLVED_BY,
+       (SELECT g.THEINSURED FROM POOLDATA.T_GENERAL g
+         WHERE UPPER(TRIM(g.NOPOLIS)) = UPPER(TRIM(p.POLICY_NO))
+         ORDER BY CAST(TRIM(g.PRODKE) AS NUMERIC) DESC
+         FETCH FIRST 1 ROW ONLY),
+       (SELECT g.STARTDATE FROM POOLDATA.T_GENERAL g
+         WHERE UPPER(TRIM(g.NOPOLIS)) = UPPER(TRIM(p.POLICY_NO))
+         ORDER BY CAST(TRIM(g.PRODKE) AS NUMERIC) DESC
+         FETCH FIRST 1 ROW ONLY),
+       (SELECT g.ENDDATE FROM POOLDATA.T_GENERAL g
+         WHERE UPPER(TRIM(g.NOPOLIS)) = UPPER(TRIM(p.POLICY_NO))
+         ORDER BY CAST(TRIM(g.PRODKE) AS NUMERIC) DESC
+         FETCH FIRST 1 ROW ONLY)
   FROM POOLDATA.T_CLAIM_OPENPROTECTION p
   LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
          ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
@@ -150,3 +276,47 @@ UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
    AND CLAIM_NO IS NOT NULL
    AND POLICY_NO IS NOT NULL
    AND (STATUS_ACTIVE IS NULL OR TRIM(STATUS_ACTIVE) = '1')
+
+
+-- name: claim_apply_loss_date
+-- Menerapkan Tanggal Kejadian baru ke data klaim.
+--
+-- ============================================================================
+-- SASARANNYA T_CLAIM_PNC, BUKAN T_CLAIMLIST_ADMIN
+-- ============================================================================
+--
+-- Di Pega, menyetujui permintaan tipe '7' mengubah `ClaimData.DateOfLoss` pada work object
+-- klaim.
+--
+-- Sasaran di sistem baru ditetapkan Work Owner 2026-09-26, setelah sempat keliru mengarah ke
+-- tabel datar:
+--
+--   > "ternyata tabel t_claimlist_admin hanya untuk dashboard, jadi datanya tidak
+--   >  diganti-ganti. untuk perubahan data dari open proteksi, update data di t_claim_pnc
+--   >  saja."
+--
+-- `T_CLAIMLIST_ADMIN` adalah tabel BACA untuk dashboard dan daftar. Menulisinya akan membuat
+-- dua sumber kebenaran untuk hal yang sama, dan yang satu akan menyimpang dari yang lain
+-- tanpa gejala.
+--
+-- ============================================================================
+-- KUNCINYA CLAIMID, BUKAN NOMOR KLAIM
+-- ============================================================================
+--
+-- `T_CLAIM_PNC` dikunci `CLAIMID`, yang berbentuk `ASM-FW-GCNMFW-WORK PNC-1865` — terbukti
+-- dari join yang dipakai modul `inputreqprotection`: `c.CLAIMID = w.PZINSKEY`.
+--
+-- Nilai itulah yang tersimpan pada `T_CLAIM_OPENPROTECTION.ID_CLAIM` (lihat
+-- `inputreqprotection.ClaimReferenceOf`). Memakai `CLAIM_NO` di sini TIDAK akan menemukan
+-- baris mana pun untuk klaim warisan — dan tidak menemukan apa pun bukan galat, melainkan
+-- diam.
+--
+-- ============================================================================
+-- JUMLAH BARIS TERSENTUH DIPERIKSA PEMANGGIL
+-- ============================================================================
+--
+-- `UPDATE` yang tidak menyentuh apa pun BUKAN galat basis data: ia keadaan yang harus
+-- dijawab pemanggil, bukan disembunyikan.
+UPDATE POOLDATA.T_CLAIM_PNC
+   SET DATEOFLOSS = :1
+ WHERE UPPER(TRIM(CLAIMID)) = :2

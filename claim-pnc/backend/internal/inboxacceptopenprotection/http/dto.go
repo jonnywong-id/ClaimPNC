@@ -5,6 +5,7 @@
 package inboxacceptopenprotectionhttp
 
 import (
+	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxacceptopenprotection"
@@ -57,6 +58,49 @@ type detailDTO struct {
 	// MenungguKeputusan diturunkan di server supaya layar tidak perlu menafsirkan kode
 	// status sendiri. Tombol setuju dan tolak hanya muncul ketika ia bernilai true.
 	MenungguKeputusan bool `json:"menunggu_keputusan"`
+
+	// DetailPerubahan berisi panel "Detail Perubahan", dan bernilai null bagi tipe yang
+	// tidak memunculkannya.
+	//
+	// Pointer, bukan struct kosong: layar membedakan "tipe ini tidak punya panel" dari
+	// "punya, tetapi isinya kosong". Yang kedua terjadi pada baris warisan Pega.
+	DetailPerubahan *detailPerubahanDTO `json:"detail_perubahan"`
+}
+
+// detailPerubahanDTO adalah isi panel "Detail Perubahan" pada form akseptasi.
+//
+// Field yang tidak berlaku bagi tipe yang sedang dibuka dikirim KOSONG, bukan dihilangkan —
+// bentuk respons yang tetap membuat layar tidak perlu menebak field mana yang ada.
+type detailPerubahanDTO struct {
+	// Judul adalah judul panel, diturunkan di server dari tipe proteksi supaya layar tidak
+	// menyimpan pemetaan kode yang kedua.
+	Judul string `json:"judul"`
+
+	// DolSebelum dan DolSesudah dipakai tipe '7'. Label layarnya "Current Date Of Loss"
+	// dan "Next Date Of Loss".
+	DolSebelum string `json:"dol_sebelum"`
+	DolSesudah string `json:"dol_sesudah"`
+
+	// PenyebabSebelum dan PenyebabSesudah dipakai tipe '8'. Label layarnya "Cause Of Loss
+	// Dipilih" dan "Next Cause Of Loss".
+	PenyebabSebelum string `json:"penyebab_sebelum"`
+	PenyebabSesudah string `json:"penyebab_sesudah"`
+
+	NamaObjek  string `json:"nama_objek"`  // "Object Name"
+	NamaCabang string `json:"nama_cabang"` // "Branch Name"
+
+	// Kosong menyatakan tidak ada satu pun isi yang terisi — panelnya tetap ditampilkan,
+	// dengan keterangan bahwa rinciannya tidak tersedia. Baris warisan Pega tidak punya
+	// kolom asal untuk kedua kolom ini.
+	Kosong bool `json:"kosong"`
+}
+
+// queuesResponse adalah badan respons daftar antrean yang boleh dibuka pemanggil.
+//
+// Dibungkus objek, bukan larik telanjang: larik di akar respons menutup kemungkinan
+// menambahkan field lain kelak tanpa merusak klien (`10-API-STRATEGY.md` §3).
+type queuesResponse struct {
+	Antrean []string `json:"antrean"`
 }
 
 // listResponse adalah badan respons daftar.
@@ -104,7 +148,47 @@ func toDetailDTO(p inboxacceptopenprotection.Protection, location *time.Location
 		TanggalAkseptasi:  formatDatePtr(p.AcceptedAt, location),
 		DiaksepOleh:       p.AcceptedBy,
 		MenungguKeputusan: p.Pending(),
+		DetailPerubahan:   toDetailPerubahanDTO(p, location),
 	}
+}
+
+// toDetailPerubahanDTO menyusun panel "Detail Perubahan", atau nil bila tipenya tidak
+// memunculkannya.
+//
+// Syaratnya meniru `pyContainerVisibleWhen: .TypeProtection==8 || .TypeProtection==7` apa
+// adanya — keputusan tampil ada di server, bukan di peramban, supaya kode tipe tidak perlu
+// ditafsirkan di dua tempat.
+func toDetailPerubahanDTO(
+	p inboxacceptopenprotection.Protection,
+	location *time.Location,
+) *detailPerubahanDTO {
+	if !inboxacceptopenprotection.ShowsChangeDetail(p.Type) {
+		return nil
+	}
+
+	d := p.Change
+
+	// Tanggal dikirim dalam bentuk yang sama dengan tanggal lain pada respons ini, bukan
+	// apa adanya dari kolom — layar memformat seluruh tanggal dengan satu cara.
+	return &detailPerubahanDTO{
+		Judul:           judulPanelPerubahan(p.Type),
+		DolSebelum:      formatDatePtr(d.LossDateBefore, location),
+		DolSesudah:      formatDatePtr(d.LossDateAfter, location),
+		PenyebabSebelum: d.CauseOfLossBefore,
+		PenyebabSesudah: d.CauseOfLossAfter,
+		NamaObjek:       d.ObjectName,
+		NamaCabang:      d.BranchName,
+		Kosong:          d.Empty(),
+	}
+}
+
+// judulPanelPerubahan mengikuti `pyTitle` kedua panel di
+// `Section/AcceptProtectionSection-Section.xml` apa adanya (`D-13`).
+func judulPanelPerubahan(protectionType string) string {
+	if strings.TrimSpace(protectionType) == inboxacceptopenprotection.TypeChangeCauseOfLoss {
+		return "Detail Perubahan Cause Of Loss"
+	}
+	return "Detail Perubahan DOL"
 }
 
 func formatDate(t time.Time, location *time.Location) string {

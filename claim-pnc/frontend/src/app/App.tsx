@@ -37,6 +37,7 @@ import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjec
 import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
 import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
 import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
+import { SurveyInboxPage } from '@/modules/inbox-survey/SurveyInboxPage'
 import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
 import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
 import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
@@ -58,6 +59,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { OSClaimPerCabangPage } from '@/modules/inbox-os-claim-per-cabang/OSClaimPerCabangPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
 import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
@@ -892,6 +894,25 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox OS Claim per Cabang (`MENU_ID 69`), pengganti harness
+        `OutstandingKlaimperCabang_Harness`.
+
+        Jangan tertukar dengan "Inbox Outstanding" (`MENU_ID 79`) yang belum punya layar,
+        maupun dengan "My Inbox" (`MENU_ID 51`) di rute `/inbox-outstanding`. Ketiganya
+        menyebut kata yang sama dan menyaring hal yang berbeda: yang ini per CABANG, yang
+        terakhir per PEMANGGIL.
+      */}
+      <Route
+        path="/inbox-os-claim-per-cabang"
+        element={
+          <SessionGuard>
+            <Protected>
+              <OSClaimPerCabangPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox Outstanding menggantikan butir menu Pega "Inbox Outstanding", yang menunjuk
         `InboxOutstanding_Harness` — harness yang TIDAK ADA di export (`K-33`).
 
@@ -976,6 +997,34 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <AnalystDoctorPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        My Work — antrean kerja Surveyor dan Loss Adjuster, pengganti harness
+        `InboxSurvey_Harness` (`MENU_ID 50`).
+
+        Layar ini MEMBACA SAJA. Menerima penugasan, menjadwal ulang survei, dan mengunggah
+        laporan seluruhnya menempuh `Surveyor_Flow` — sebuah flow yang TIDAK ADA di export,
+        dan penugasan masih dimiliki Pega selama masa paralel (`P-1`).
+
+        Ia melayani DUA populasi sekaligus — surveyor internal dan loss adjuster eksternal —
+        dan yang membedakan isinya adalah identitas yang masuk, bukan penyaring yang dipilih
+        pengguna. Keputusan Work Owner 2026-09-28.
+
+        Pemeriksaan kewenangan menu tetap `TKT-F3-005` yang belum ada. Di layar ini akibatnya
+        diredam jembatan identitas di server: login diterjemahkan menjadi nama surveyor lewat
+        `POOLDATA.MST_LOGIN_SURVEYOR`, dan pengguna yang tidak terdaftar di sana menerima 403
+        yang MENYEBUT sebabnya — bukan antrean kosong yang terbaca sebagai "tidak ada
+        pekerjaan". Itu peredam, bukan kendali.
+      */}
+      <Route
+        path="/inbox-survey"
+        element={
+          <SessionGuard>
+            <Protected>
+              <SurveyInboxPage />
             </Protected>
           </SessionGuard>
         }

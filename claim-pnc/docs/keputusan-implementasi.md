@@ -13469,3 +13469,93 @@ wajar tetapi bukan yang diminta.
 **Panel tidak lagi menghilang saat inbox kosong.** Versi pertama mengembalikan `null` pada
 `total === 0`; akibatnya petugas tanpa pekerjaan tidak dapat membedakan "tidak ada
 pekerjaan" dari "fitur tidak ada". Ia sekarang tetap tampil dengan keterangannya.
+
+## 41. My Work — sumber data bergeser, dan identitas berlapis (2026-09-28)
+
+### K-41.1 Baris digerakkan `T_SURVEYORLIST`, bukan tabel Pega
+
+**Konteks.** Seluruh kueri layar `InboxSurvey_Harness` membaca
+`DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dengan `PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`.
+Tetapi `POOLDATA.T_CLAIMLIST_ADMIN` — tabel yang Work Owner tetapkan sebagai penggantinya —
+**tidak memuat satu pun baris jenis itu**; isinya 870 `Work-PNC` dan 142
+`Work-ReceiveDocument`, sudah diverifikasi langsung ke basis data pada sesi sebelumnya.
+
+**Keputusan (Work Owner, 2026-09-28).** `POOLDATA.T_SURVEYORLIST` menggerakkan baris,
+`T_CLAIMLIST_ADMIN` menyediakan header, disambung `PNCCASEID = PZINSKEY`.
+
+**Konsekuensi yang diterima sadar.** Empat kolom yang di Pega melekat pada tiap objek survei
+kini berlaku **per klaim**: `ADJUSTERACCEPT_1`, `ADJUSTERSTATUS_1`, `REFNO_1`,
+`ADJUSTERPIC_1`. Klaim dengan dua janji survei berstatus berbeda menampilkan status yang sama
+pada kedua barisnya. Bila kelak mengganggu, penyelesaiannya adalah meminta kolom-kolom itu
+ikut dipindahkan ke `T_SURVEYORLIST` — **bukan** menebaknya di kueri.
+
+### K-41.2 Tab Close memakai `ADJUSTERSTATUS_1`, bukan status alur kerja
+
+**Konteks.** Pega menyaring `PYSTATUSWORK = 'Resolved-Completed'` milik objek SurveyClaim.
+Kolom itu tidak ada di tabel penggerak.
+
+**Keputusan.** Memakai `ADJUSTERSTATUS_1 = 'Close Case'`. Nilainya terbukti dari
+`RDB List/GetDataCaseSurveyALL-SQL.xml`, yang menyebut ketiganya berdampingan:
+`('Final Report','Close Case','Invoice Fee')`.
+
+**Ini SELISIH TERENCANA, bukan kesetaraan.** Keduanya berkorelasi tetapi bukan predikat yang
+sama: survei ber-`Close Case` yang objek kerjanya belum ditutup muncul di sini, sementara di
+Pega tidak. Dinyatakan ke pengguna lewat `PlannedDifferences` (`D-54`).
+
+### K-41.3 Identitas berlapis, tanpa perubahan skema
+
+**Keputusan (Work Owner).** `M_LOGIN_PNC.LOGIN_ID` sebagai master pengguna aplikasi,
+`POOLDATA.MST_LOGIN_SURVEYOR.LOGIN` sebagai data surveyor, dicocokkan pada nilai login yang
+sama.
+
+**Dasarnya bukti, bukan pilihan gaya.** `RDB List/GetLoginLeaderSurveyor-SQL.xml`:
+
+    select loginleader from pooldata.mst_login_surveyor
+     where login = {OperatorID.pyUserIdentifier}
+
+`LOGINLEADER` sekaligus memberi hierarki leader→anggota, yang menjelaskan kenapa kueri Pega
+membandingkan dengan `IN (…)`. **Tidak ada perubahan skema**, sehingga `D-63` tidak ditempuh.
+
+**Seam terpisah, bukan satu antarmuka.** `Directory` dipisahkan dari `Repo` karena membaca
+tabel yang berbeda dan kepemilikan yang berbeda — `MST_LOGIN_SURVEYOR` dimiliki modul Master
+Login (`MENU_ID 37`), dan modul ini hanya membacanya.
+
+### K-41.4 Pemanggil bukan surveyor → 403, bukan daftar kosong
+
+**Keputusan.** `ErrNotSurveyor` dipetakan ke **403 dengan pesan yang menyebut sebabnya**.
+
+**Alasan.** Daftar kosong dan "Anda bukan surveyor" terlihat sama di layar dan berarti hal
+yang sangat berbeda. Yang pertama terbaca sebagai "tidak ada pekerjaan hari ini" dan **tidak
+pernah dilaporkan siapa pun sebagai kerusakan** — sehingga salah pasang kewenangan akan
+bertahan sampai ada orang yang kebetulan bertanya.
+
+### K-41.5 Cakupan dikirim sebagai teks berpembatas, bukan klausa `IN`
+
+**Keputusan.** `INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0`, dengan `:1`
+berbentuk `|NAMA SATU|NAMA DUA|`.
+
+**Alasan.** Cakupan seorang leader berpanjang berubah, dan `IN (:1, :2, …)` menuntut jumlah
+bind yang tetap. Merangkai namanya ke teks SQL adalah persis celah `{ASIS:...}` yang sedang
+dihapus (§4.5).
+
+**Harganya, dan kenapa diterima.** `INSTR` tidak dapat memakai indeks pada `SURVEYOR_NAME`.
+Cakupan seorang leader berjumlah belasan, bukan ribuan. Pembatas dipasang di **kedua sisi**
+tiap nama — tanpa itu, "BUDI" cocok dengan "BUDIONO" dan seorang surveyor melihat pekerjaan
+surveyor lain yang namanya kebetulan memuat namanya.
+
+### K-41.6 Empat rute, bukan satu
+
+    /keterangan   bentuk layar   tidak menyentuh basis data
+    /jumlah-tab   bilah tab      tujuh penjumlahan, tidak berubah saat halaman berpindah
+    /kpi          tab KPI        tabel LAIN (DETAIL_KPI_ADJUSTER)
+    (akar)        daftar         satu halaman satu tab
+
+Menyatukannya akan membuat setiap penekanan tombol halaman ikut menjalankan tujuh penjumlahan
+tab dan satu ringkasan KPI — tiga pekerjaan untuk satu yang diminta.
+
+### K-41.7 Kegagalan tab KPI TIDAK menghentikan `-periksa`
+
+`POOLDATA.DETAIL_KPI_ADJUSTER` diisi `Database/INSERT_KPIADJUSTER.prc`. Ketiadaannya
+mengosongkan satu tab, bukan merusak layar — sehingga `CheckKPI` dilaporkan `[catat]`, bukan
+`[BELUM]`. Menyamakannya dengan kegagalan tabel utama akan membuat modul yang sebenarnya siap
+terbaca sebagai belum siap.

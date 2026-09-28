@@ -26,6 +26,14 @@ type User struct {
 	Position   string
 	OperatorID string
 
+	// DetailBranchCode adalah kode cabang RINCI dari HCQ — `LDC_ID` pada
+	// `GENERAL.LST_DET_CABANG@asmd`. Lihat auth.Profile.DetailBranchCode.
+	//
+	// Ia dibawa apa adanya, tidak diterjemahkan lebih dulu: penerjemahnya hidup di
+	// basis data entitas, sedangkan catatan pengguna ini milik portal utama. Modul yang
+	// membutuhkannya yang menerjemahkan, di balik seam-nya sendiri.
+	DetailBranchCode string
+
 	Active    bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -43,7 +51,10 @@ func FromProfile(p Profile, sekarang time.Time) User {
 		Branch:     p.Branch,
 		BranchCode: p.BranchCode,
 		Position:   p.Position,
-		Active:     true,
+
+		DetailBranchCode: p.DetailBranchCode,
+
+		Active: true,
 		CreatedAt:  sekarang,
 		UpdatedAt:  sekarang,
 	}
@@ -62,6 +73,7 @@ func (u *User) RefreshFrom(p Profile, sekarang time.Time) {
 	u.Company = p.Company
 	u.Branch = p.Branch
 	u.BranchCode = p.BranchCode
+	u.DetailBranchCode = p.DetailBranchCode
 	u.Position = p.Position
 	u.UpdatedAt = sekarang
 	if u.CreatedAt.IsZero() {

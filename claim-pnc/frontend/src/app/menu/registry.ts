@@ -459,6 +459,25 @@ export const MENU_ROUTES: Record<string, string> = {
   // kosong — bukan antrean orang lain. Itu peredam, bukan kendali.
   inboxAnalystDoctor_Harness: '/inbox-analyst-doctor',
 
+  // MENU_ID 50 "My Work", kelompok INBOX — antrean kerja Surveyor dan Loss Adjuster.
+  //
+  // JANGAN tertukar dengan MENU_ID 80 "Lost Adjuster" (`LostAdjuster_harness`), butir menu
+  // BERBEDA yang harness-nya tidak ada di export sama sekali dan masih tercatat di daftar
+  // tujuh butir tanpa layar di kepala berkas ini.
+  //
+  // Harness-nya ADA dan LENGKAP (`Harness/InboxSurvey_Harness-Harness.xml`, 1,9 MB) beserta
+  // section-nya, sehingga ketiga belas judul kolom dan ketujuh judul tab terbaca dari bukti.
+  // Yang TIDAK ada adalah keempat kueri tabnya — `BrowseOSLostAdjuster`,
+  // `BrowseConfirmLostAdjuster`, `BrowseCommunicationLostAdjuster`, `BrowseCloseLostAdjuster`
+  // (`R-16`) — sehingga penyaringnya dipulihkan dari `CountOSLostAdjuster` yang menghitung
+  // keranjang yang sama.
+  //
+  // Di Pega butir ini dijaga `POOLDATA.M_OTORISASI_PNC`, yang pada data contoh hanya memuat
+  // satu baris untuk MENU_ID 50 — grup `IT`. Pemeriksaan peran tetap `TKT-F3-005` yang belum
+  // ada; yang meredam akibatnya adalah jembatan identitas di server, yang menolak pengguna
+  // tak terdaftar dengan 403 yang menyebut sebabnya — bukan dengan antrean kosong.
+  InboxSurvey_Harness: '/inbox-survey',
+
   // MENU_ID 61 "Inbox RCL/PUCL", kelompok INBOX.
   //
   // Harness-nya ADA di export (`Harness/RCLPUCL_Harness-Harness.xml`) beserta keempat
@@ -490,6 +509,29 @@ export const MENU_ROUTES: Record<string, string> = {
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
   RCLPUCL_Harness: '/inbox-rcl-pucl',
+
+  // MENU_ID 69 "Inbox OS Claim per Cabang", kelompok INBOX.
+  //
+  // Harness, section, activity pemuat, dan keempat kueri SQL-nya ADA di export, sehingga
+  // ke-16 judul kolom beserta aturan pewarnaan barisnya terbaca dari bukti — bukan disusun
+  // ulang.
+  //
+  // Bedakan dari DUA butir menu lain yang menyebut kata yang sama. Ketiganya berbeda
+  // penyaringnya, dan itu satu-satunya yang perlu diingat agar tidak menyatukannya:
+  //
+  //   MENU_ID 51  "My Inbox"                 pekerjaan milik PEMANGGIL  -> /inbox-outstanding
+  //   MENU_ID 69  layar ini                  klaim milik CABANG-nya
+  //   MENU_ID 79  "Inbox Outstanding"        BELUM ada layarnya; harness-nya pun tidak ada
+  //                                          di export (`K-33`)
+  //
+  // Batas datanya CABANG, bukan peran: setiap pengguna yang dapat masuk dan punya cabang
+  // melihat seluruh klaim berjalan cabangnya. Di Pega pun begitu — tidak ada satu pun
+  // pemeriksaan privilege pada jalur ini. Pemeriksaan peran adalah `TKT-F3-004`.
+  //
+  // Pengguna yang cabangnya tidak diketahui — pengguna non-karyawan, yang di
+  // `POOLDATA.M_LOGIN_PNC` memang tidak punya kolom cabang — memperoleh PESAN, bukan daftar
+  // kosong. Itu perilaku sistem lama, bukan tambahan.
+  OutstandingKlaimperCabang_Harness: '/inbox-os-claim-per-cabang',
   // Butir menu "Input Req Protection" — permintaan pembukaan proteksi beserta form
   // inputnya, langkah PERTAMA pada `Flow/CreateProtection_Flow.xml`.
   InputReqProtection_Harness: '/input-req-protection',

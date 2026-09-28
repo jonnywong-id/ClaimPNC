@@ -67,6 +67,30 @@ type Profile struct {
 	BranchCode string // HCQ: EmpResponse.Placement.BranchCode
 	Position   string // HCQ: EmpResponse.Placement.PositionName
 
+	// DetailBranchCode adalah `EmpResponse.Placement.DetailBranchCode`.
+	//
+	// # Kenapa ia dibawa terpisah dari BranchCode
+	//
+	// Karena HCQ mengirim EMPAT nilai cabang yang berbeda pada satu respons, dan
+	// ketiganya berada di ruang kode yang tidak sama (contoh nyata dari Work Owner,
+	// lihat provider/hcq_test.go):
+	//
+	//	BranchCode        "001"           3 digit
+	//	DetailBranchCode  "001"           3 digit  <- inilah LDC_ID
+	//	NewBranchCode     "100081"        6 digit
+	//	BranchName        "KANTOR PUSAT"
+	//
+	// Work Owner menetapkan (2026-09-28) bahwa **DetailBranchCode sama dengan
+	// `LDC_ID` pada `GENERAL.LST_DET_CABANG@asmd`**, dan tabel itulah yang
+	// menerjemahkannya ke kode cabang yang dipakai data klaim lewat kolom
+	// `LDC_ID_PEGA`.
+	//
+	// Pada contoh di atas keduanya kebetulan bernilai sama. Keduanya tetap dibawa
+	// terpisah karena tidak ada yang menjamin itu berlaku untuk setiap pegawai, dan
+	// menyamakannya berarti menebak — pada nilai yang menentukan data cabang MANA yang
+	// terlihat seseorang.
+	DetailBranchCode string
+
 	// ActiveAtSource adalah EmpResponse.Placement.IsActive apa adanya.
 	//
 	// Ia DIREKAM tetapi TIDAK dipakai menolak masuk: aturan yang ditetapkan Work Owner

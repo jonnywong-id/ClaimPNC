@@ -24,6 +24,13 @@ import (
 type Repo struct {
 	mu          sync.Mutex
 	protections []inboxacceptopenprotection.Protection
+
+	// claims meniru `POOLDATA.T_CLAIM_PNC` sejauh yang disentuh modul ini:
+	// `CLAIMID` -> `DATEOFLOSS`.
+	//
+	// Dikunci CLAIMID (ID_CLAIM pada proteksi), bukan nomor klaim — sama dengan kuerinya.
+	// Klaim yang tidak terdaftar berperilaku seperti klaim yang tidak punya baris di sana.
+	claims map[string]time.Time
 }
 
 // NewRepo membentuk repo kosong.
@@ -37,6 +44,20 @@ func NewRepo() *Repo {
 func NewRepoWithSamples() *Repo {
 	r := NewRepo()
 	r.protections = sampleProtections()
+
+	// Klaim contoh, meniru baris `T_CLAIM_PNC` — dikunci CLAIMID, bukan nomor klaim.
+	//
+	// Klaim sistem baru: CLAIMID sama dengan nomor klaimnya.
+	// Baris warisan `OPC-216` menunjuk klaim Pega, yang CLAIMID-nya berawalan
+	// `ASM-FW-GCNMFW-WORK ` — sengaja TIDAK didaftarkan, supaya jalur `ErrClaimNotSynced`
+	// benar-benar terlihat saat pengembangan lokal dan bukan hanya ada di uji.
+	wib := time.FixedZone("WIB", 7*60*60)
+	for _, claimID := range []string{
+		"PNCN.26.0007", "PNCN.26.0008", "PNCN.26.0009", "PNCN.26.0010", "PNCN.26.0012",
+	} {
+		r.AddClaim(claimID, time.Date(2026, time.August, 3, 0, 0, 0, 0, wib))
+	}
+
 	return r
 }
 
@@ -164,8 +185,51 @@ func (r *Repo) Decide(
 	existing.AcceptedAt = &decidedAt
 	existing.AcceptedBy = by
 
+	// Penerapan ke klaim ditiru supaya uji atas usecase bermakna.
+	//
+	// Adapter Oracle menjalankan keduanya dalam SATU transaksi; di sini urutannya ditiru
+	// dengan menyimpan perubahan proteksi HANYA setelah penerapannya berhasil. Tanpa itu,
+	// uji akan lolos pada perilaku yang tidak pernah terjadi di produksi.
+	if tanggal, perlu := inboxacceptopenprotection.LossDateToApply(existing, d); perlu {
+		if r.claims == nil {
+			return inboxacceptopenprotection.Protection{}, inboxacceptopenprotection.ErrClaimNotSynced
+		}
+		if _, ada := r.claims[normalize(existing.ClaimReference)]; !ada {
+			return inboxacceptopenprotection.Protection{}, inboxacceptopenprotection.ErrClaimNotSynced
+		}
+		r.claims[normalize(existing.ClaimReference)] = tanggal
+	}
+
 	r.protections[index] = existing
 	return existing, nil
+}
+
+// AddClaim mendaftarkan klaim beserta Tanggal Kejadiannya, meniru satu baris
+// `POOLDATA.T_CLAIM_PNC` — dikunci CLAIMID.
+//
+// Klaim yang TIDAK didaftarkan berperilaku seperti klaim tanpa baris di sana:
+// keputusan atasnya ditolak `ErrClaimNotSynced`. Keadaan itu perlu dapat diuji — tabelnya
+// baru memuat 1.014 dari 7.703 klaim.
+func (r *Repo) AddClaim(claimID string, lossDate time.Time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.claims == nil {
+		r.claims = map[string]time.Time{}
+	}
+	r.claims[normalize(claimID)] = lossDate
+}
+
+// LossDateOf mengembalikan Tanggal Kejadian klaim yang tersimpan.
+//
+// Dipakai uji untuk membuktikan penerapannya benar-benar terjadi — bukan sekadar tidak
+// bergalat.
+func (r *Repo) LossDateOf(claimID string) (time.Time, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	t, ada := r.claims[normalize(claimID)]
+	return t, ada
 }
 
 // indexOf mencari proteksi menurut nomornya. Pemanggil WAJIB memegang kunci.
