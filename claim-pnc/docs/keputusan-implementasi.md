@@ -16764,3 +16764,76 @@ mencari baris di daftar Checker.
 **Alasannya bukan sekadar membuatnya lulus.** Daftar Checker tidak ditawarkan; barisnya
 tetap masuk antreannya. Keduanya hal yang berbeda, dan yang diuji memang yang kedua —
 membuktikannya lewat daftar mencampurkan keduanya sejak awal.
+
+## 60. Inbox Auto Claim: tabel perusahaan melar, pop-up unggahan, dan aturan per bisnis (2026-09-28)
+
+### 60.1 Tata letak — keputusan Work Owner 2026-09-27
+
+Donut dan grid batch panjang **diganti** tabel perusahaan selebar layar: kolom
+*Nama Perusahaan & Kode* paling kiri, *Jumlah Batch*, *Aksi*; kotak cari (nama **atau**
+kode) di atas; paginasi 15 perusahaan di bawah. Baris yang diklik **melar** ke bawah
+menampilkan grid batch 9 kolom layar lama beserta tombolnya; tombol Detail membuka rincian
+baris **di dalam** baris yang sama. Satu baris terbuka sekaligus.
+
+| Keputusan teknis | Alasan |
+|---|---|
+| Cari & paginasi perusahaan di **peramban** | Ringkasan dikirim server utuh (puluhan baris); yang tidak ditemukan memang tidak ada. Grid batch di dalam baris tetap dipaginasi server |
+| Tabel perusahaan ditulis lokal, bukan lewat `DataTable` | `DataTable` tidak mengenal baris melar; menambahkannya menyentuh belasan layar selesai. `Paginator` dipakai ulang supaya kaki tabelnya sama |
+| Satu baris terbuka sekaligus | Beberapa grid bertumpuk dengan kepala kolom sama membuat petugas kehilangan jejak batch milik siapa |
+| Berpindah tab memasang ulang tabel (`key`) | Kode perusahaan dan kata kunci dari tab lain tidak berlaku di tabel lain |
+| `recharts` **tetap** di `package.json` | Masih dipakai Inbox Outstanding |
+
+**Upload Data Klaim** dibuka sebagai **pop-up** (modal) seperti local action Pega, dan
+menyebut tab tujuannya.
+
+### 60.2 Berkas dan proteksi berbeda per bisnis — koreksi atas §18
+
+Laporan Work Owner: berkas Asuransi Kredit ditolak "proteksi date of loss dan report date".
+
+**Akar masalahnya:** modul ini memakai aturan `InsertKlaimToTable_Other` (ANEKA) untuk
+ketiga tab. Pega punya activity **per bisnis**, dengan kolom dan proteksi berbeda:
+
+| Aturan | Kredit | Travel | ANEKA |
+|---|---|---|---|
+| Kolom wajib | policyno, contractno, claimamount, reporttype | policyno, claimamount, dateofloss, reportdescription | policyno, claimamount, dateofloss, reportdate |
+| Tanggal lapor vs kejadian | **tidak ada** | **tidak ada** | gagal bila lapor < kejadian (Other :4936) |
+| Tanggal kejadian dalam periode polis | tidak ada | ada (Travel :5647) — **belum**, menunggu B-1 | produk hewan 10166 saja — **belum** |
+| Keterangan laporan > 10 karakter | — | baris **ditolak** (Travel :3976) | — |
+| Titik pada nilai klaim | **pemisah ribuan, dibuang** (K:3966) | desimal | desimal |
+
+Tanggal bayar Kredit (opsional) wajib dd/mm/yyyy bila diisi, disimpan ke `TANGGALBAYAR`
+(DATE) pada tengah malam — jam unggah yang ditempelkan Pega (K:4495) tidak ditiru.
+
+### 60.3 Tabel ketiga tab TIDAK sekerabat — cacat yang lebih besar dari laporannya
+
+Pemeriksaan katalog Oracle (`-periksa`, pemeriksaan baru `checkAutoClaimUploadColumns`)
+membuktikan tabel Kredit tidak punya TGLKEJADIAN, TGLLAPOR, COL_ID, NOTE, KEYWORD,
+NOAKSEPTASI, OBJECTNAME, FLAGTIDAKBAYAR, dan tabel Travel tidak punya TGLLAPOR, COL_ID, NOTE,
+KEYWORD, OBJECTNAME. Kueri **rincian, ekspor, dan sisip** menyebut kolom-kolom itu untuk
+ketiga tab — jadi selain unggahan, tombol **Detail dan Export di tab Kredit/Travel pasti
+gagal ORA-00904**. Melonggarkan proteksi tanggal saja akan mengubah penolakan menjadi galat
+500.
+
+Perbaikan: ekspresi kolom per tabel diisi dari enum tab (`repo/sqlstore/columns.go`,
+mekanisme sama dengan `{{TABEL}}`), disalin dari kueri rincian Pega per tab
+(`BrowseClaimSPK_detail_*`); kolom yang tidak ada diisi `NULL`. Sisip memakai kueri per tab
+(`auto_claim_line_insert_kredit` dari `InsertTempAsuransiKredit`, `_travel` dari parameter
+`INSERT_AUTOCLAIMTRAVEL`).
+
+Terverifikasi terhadap Oracle: ketiga tab `[ok]` kolom sisip; rincian dan ekspor batch
+pertama terbaca di ketiga tab.
+
+### 60.4 Penyimpangan sadar dari Pega
+
+| Hal | Pega | Di sini | Alasan |
+|---|---|---|---|
+| Bisnis tujuan unggahan | dipilih dari **isi baris pertama** berkas | ditentukan **tab** yang terbuka | Lebih jelas; berkas dari tab keliru ditolak dengan pesan kolom wajib, bukan dialihkan diam-diam |
+| Travel: FLAGTIDAKBAYAR, REPORTDESCRIPTION | dibaca tetapi tidak dikirim ke prosedur | **disimpan** | Kolomnya ada; membuang keterangan yang diwajibkan tidak masuk akal |
+| Kredit: PROPOSEVALUE, DEDUCTIBLE | ada di INSERT, selalu NULL | tidak ditulis | Tidak ada di katalog tabel produksi |
+
+### 60.5 Yang belum dibawa dari activity Kredit
+
+"Sudah Klaim" (objek sama pada hari sama / klaim outstanding), "Tidak bisa input
+adjustment" (ReportType bukan KLAIM), "Polis sudah dibatalkan", "Objek belum ada
+Outstanding", dan "Premi belum lunas" — seluruhnya menuntut pencarian polis/klaim yang
+menjadi lingkup B-1/B-5. Baris yang seharusnya gagal karenanya akan **lolos** saat unggah.

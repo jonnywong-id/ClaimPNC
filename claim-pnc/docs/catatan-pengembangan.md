@@ -19927,3 +19927,43 @@ lagi dijalankan.
 | `tsc --noEmit`, disaring ke modul ini | **bersih** |
 | `go vet` | bersih |
 | `PENYIMPANAN=oracle -periksa` | **9 baris** pencacah |
+
+## 61. Inbox Auto Claim: tabel melar, pop-up unggahan, kolom & proteksi per bisnis (2026-09-28)
+
+**Permintaan Work Owner (2026-09-27):** (1) tata letak tab → cari → tabel perusahaan
+selebar layar dengan paginasi dan baris melar, tanpa donut; (2) Upload Data Klaim sebagai
+pop-up seperti Pega; (3) berkas Asuransi Kredit terkena proteksi tanggal kejadian/lapor —
+"perbaiki proteksi setiap bisnis".
+
+**Pertanyaan konfirmasi:** satu pertanyaan informatif diajukan (pesan persis yang muncul),
+tetapi akar masalahnya terbukti dari export Pega dan katalog Oracle tanpa menunggu
+jawabannya. Keputusan rinci: keputusan-implementasi §60.
+
+**Perubahan:**
+
+| Lapisan | Berkas |
+|---|---|
+| Frontend | `CompanyTable.tsx`, `CompanyBatches.tsx`, `messages.ts` baru; `CompanySummary.tsx` dihapus; `AutoClaimInboxPage.tsx`, `UploadForm.tsx` (modal), `BatchDetail.tsx`, `api.ts` (`useRefreshAutoClaim`, format per tab); `api/types.ts` (+2 field) |
+| Backend domain | `upload.go`: `UploadColumnFor`, `DateColumnFor`, `CheckRowForSource`, `ParseUpload(source, …)`, `CheckUploadShape(source, …)` |
+| Backend usecase | `manage.go`: baris Travel ditolak sebelum pencarian polis; proteksi tanggal per tab |
+| Backend SQL | `columns.go` baru; placeholder kolom di kueri rincian/ekspor; dua kueri sisip baru |
+| API | `GET /format-unggahan?sumber=` kini per tab, ditambah `kolom_tanggal` dan `titik_ribuan` |
+| Periksa | `checkAutoClaimUploadColumns` (katalog), `checkAutoClaimDetail` (rincian + ekspor per tab) |
+| Basis data | tidak ada perubahan skema |
+
+**Kendala dan solusinya:**
+
+1. *Uji yang lulus secara kebetulan:* uji rute `format-unggahan` tidak menyebut tab, jatuh
+   ke Kredit yang kebetulan juga punya 4 kolom wajib. Ditulis ulang menyebut tab, ditambah
+   uji perbedaan per tab.
+2. *Kelas cacat yang tidak terlihat data uji:* repo memori tidak mengenal kolom, sehingga
+   ORA-00904 di tab Kredit/Travel lolos seluruh uji. Ditutup
+   `TestQueriesOfEachSourceNameOnlyItsOwnColumns` berisi daftar kolom katalog.
+3. *Prettier memformat ulang `types.ts` milik modul lain* (72 baris). Dikembalikan; hanya
+   +4 baris yang diterapkan.
+4. *34 kegagalan di suite frontend penuh* — timeout saat seluruh uji berjalan paralel, di
+   modul yang tidak mengimpor berkas yang diubah; lulus 59/59 dua kali saat diulang.
+
+**Hasil verifikasi:** `go test ./...` hijau; `go vet` bersih; 31/31 uji modul frontend;
+`tsc` dan `vite build` bersih; `-periksa` terhadap Oracle hijau untuk ketiga tab. Setiap uji
+baru dibuktikan merah dengan sabotase sementara.

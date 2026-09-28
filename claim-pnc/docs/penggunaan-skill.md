@@ -8532,3 +8532,26 @@ jauh lebih dapat diandalkan daripada catatan di dokumen.
 **Dan dua uji lama menguat karenanya.** Keduanya memeriksa nilai yang tersimpan tetapi
 membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
 ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
+
+## Sesi 2026-09-28 — Inbox Auto Claim: tabel melar dan aturan per bisnis
+
+### `mattpocock-skills:diagnosing-bugs` (disiplinnya diterapkan)
+
+| | |
+|---|---|
+| **Kapan** | Laporan "berkas Kredit terkena proteksi tanggal" |
+| **Kenapa dipilih** | Gejala yang dilaporkan hanya lapisan atas; perbaikan langsung ("longgarkan validasi") akan mengubah penolakan menjadi galat 500 |
+
+**Yang dilakukan.** Loop yang dapat merah dibangun lebih dulu — terhadap **katalog Oracle**,
+bukan terhadap data uji memori yang tidak mengenal kolom. Loop itu mengungkap cacat yang
+lebih besar dari laporannya: Detail dan Export tab Kredit/Travel juga pasti gagal.
+
+**Manfaat terukur.** Satu laporan menutup tiga cacat (unggah, rincian, ekspor) di dua tab,
+dan pemeriksaan katalog menjadi permanen di `-periksa`.
+
+### Sub-agen `Explore` (dua kali)
+
+Dipakai membaca activity Pega berukuran ratusan KB yang penuh metadata: aturan per bisnis,
+lalu pemetaan kolom sisip/rincian/ekspor. Temuannya **diverifikasi** terhadap katalog Oracle
+sebelum dipakai — salah satunya (PROPOSEVALUE/DEDUCTIBLE di INSERT Pega) terbukti tidak ada
+di tabel produksi, dan karena itu tidak ditulis.

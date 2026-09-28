@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -189,6 +190,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkAutoClaimTabsDiffer(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkAutoClaimPaging(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkAutoClaimEveryCompany(ctx, inboxautoclaimsql.NewRepo(primary), print)
+	checkAutoClaimUploadColumns(ctx, primary, print)
+	checkAutoClaimDetail(ctx, inboxautoclaimsql.NewRepo(primary), print)
 	checkPicTeknik(ctx, masterpictekniksql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
 	checkRecovery(ctx, masterrecoverysql.NewRepo(primary), legacy, cfg.PrimaryPortal, print)
 	checkDominantFactor(ctx, masterdominanfactorsql.NewRepo(primary), print)
@@ -1342,6 +1345,39 @@ func checkAutoClaimEveryCompany(ctx context.Context, repo *inboxautoclaimsql.Rep
 	}
 }
 
+// checkAutoClaimDetail membuka rincian dan ekspor batch pertama tiap tab.
+//
+// Menjawab cacat yang lolos seluruh uji: kueri rincian dan ekspor menyebut kolom tabel
+// ANEKA, sehingga tombol Detail dan Export di tab Kredit dan Travel gagal ORA-00904. Yang
+// dicetak hanya JUMLAH baris — bukan isinya.
+func checkAutoClaimDetail(ctx context.Context, repo *inboxautoclaimsql.Repo, print func(string, ...any)) {
+	for _, source := range inboxautoclaim.AllSource() {
+		first, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{
+			Source: source, Page: inboxautoclaim.PageRequest{Number: 1, Size: 1},
+		})
+		if err != nil || len(first.Item) == 0 {
+			print("  [lewat] rincian tab %-15s tidak ada batch untuk dibuka", source.Label())
+			continue
+		}
+		b := first.Item[0]
+		query := inboxautoclaim.LineQuery{
+			Source: source, CompanyCode: b.CompanyCode, BatchNumber: b.BatchNumber,
+			Page: inboxautoclaim.PageRequest{Number: 1, Size: 15},
+		}
+		page, err := repo.ListLine(ctx, query)
+		if err != nil {
+			print("  [BELUM] rincian tab %-15s ditolak: %v", source.Label(), err)
+			continue
+		}
+		exported, err := repo.ExportLine(ctx, query)
+		if err != nil {
+			print("  [BELUM] ekspor tab %-15s ditolak: %v", source.Label(), err)
+			continue
+		}
+		print("  [ok]    rincian tab %-15s %d baris; ekspor %d baris", source.Label(), page.Total, len(exported))
+	}
+}
+
 // checkAutoClaimPaging memastikan halaman 2 tidak mengulang baris halaman 1.
 //
 // Ini bukan kerapian. `OFFSET … FETCH NEXT` memotong hasil menurut URUTAN, dan bila
@@ -1396,6 +1432,110 @@ func checkAutoClaimPaging(ctx context.Context, repo *inboxautoclaimsql.Repo, pri
 		print("  [ok]    tab %-15s halaman 1 dan 2 tidak beririsan (%d + %d dari %d)",
 			source.Label(), len(satu.Item), len(dua.Item), satu.Total)
 	}
+}
+
+// checkAutoClaimUploadColumns memastikan setiap kolom yang ditulis unggahan ADA di tabel
+// tiap tab.
+//
+// Ketiga tab memakai satu kueri sisip yang sama (`auto_claim_insert_upload`), padahal di
+// Pega tabel Asuransi Kredit diisi dengan susunan kolom yang BERBEDA
+// (`RDB List/InsertTempAsuransiKredit-SQL.xml`: NOASURANSI, TYPEKLAIM, TANGGALBAYAR, …).
+// DDL ketiga tabel tidak ada di repo, sehingga satu-satunya cara memastikannya adalah
+// katalog basis data. Kolom yang hilang berarti unggahan ke tab itu gagal dengan galat 500,
+// bukan dengan pesan yang dapat diperbaiki pengguna.
+//
+// Yang dicetak hanya NAMA KOLOM — metadata skema, bukan data nasabah.
+func checkAutoClaimUploadColumns(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	// Kolom yang ditulis kueri sisip masing-masing tab (auto_claim_line_insert*).
+	writtenBy := map[inboxautoclaim.Source][]string{
+		inboxautoclaim.SourceAneka: {
+			"BATCH", "NOPOLIS", "PRODKE", "TGLPROSES", "USERINPUT", "IDPEGA", "TGLKEJADIAN",
+			"TGLLAPOR", "CURRENCY", "COL_ID", "NILAIKLAIM", "NOTE", "KEYWORD", "TMP_MESSAGE",
+			"NOAKSEPTASI", "OBJECTNAME", "FLAGTIDAKBAYAR",
+		},
+		inboxautoclaim.SourceKredit: {
+			"BATCH", "NOPOLIS", "PRODKE", "TGLPROSES", "USERINPUT", "IDPEGA", "ACCEPTNO",
+			"TMP_MESSAGE", "CURRENCY", "NILAIKLAIM", "NOASURANSI", "TYPEKLAIM", "TANGGALBAYAR",
+		},
+		inboxautoclaim.SourceTravel: {
+			"BATCH", "NOPOLIS", "PRODKE", "TGLPROSES", "USERINPUT", "IDPEGA", "NOAKSEPTASI",
+			"TMP_MESSAGE", "TGLKEJADIAN", "CURRENCY", "NILAIKLAIM", "FLAGTIDAKBAYAR",
+			"REPORTDESCRIPTION",
+		},
+	}
+	// Kolom yang diisi Pega tetapi TIDAK ditulis modul ini; dicetak bila ada di tabel
+	// supaya kesenjangannya terlihat, bukan dianggap galat.
+	legacyOnly := []string{"PROPOSEVALUE", "DEDUCTIBLE"}
+
+	for _, source := range inboxautoclaim.AllSource() {
+		written := writtenBy[source]
+		info, _ := source.Info()
+		owner, table, _ := strings.Cut(info.Table, ".")
+
+		rows, err := primary.QueryContext(ctx,
+			"SELECT COLUMN_NAME, DATA_TYPE FROM ALL_TAB_COLUMNS WHERE OWNER = :1 AND TABLE_NAME = :2",
+			owner, table)
+		if err != nil {
+			print("  [gagal] kolom unggahan %-7s: katalog tidak terbaca: %v", source, err)
+			continue
+		}
+		present := map[string]bool{}
+		dataType := map[string]string{}
+		for rows.Next() {
+			var name, kind string
+			if err := rows.Scan(&name, &kind); err == nil {
+				present[strings.ToUpper(name)] = true
+				dataType[strings.ToUpper(name)] = kind
+			}
+		}
+		_ = rows.Close()
+		if kind, exists := dataType["TANGGALBAYAR"]; exists {
+			// Tanggal bayar dikirim sebagai nilai tanggal (paymentDate). Bila kolomnya
+			// ternyata teks, pengirimannya harus diubah.
+			print("          TANGGALBAYAR bertipe %s", kind)
+		}
+
+		if len(present) == 0 {
+			print("  [gagal] kolom unggahan %-7s: tabel %s tidak terlihat di katalog", source, info.Table)
+			continue
+		}
+
+		var missing, extra []string
+		for _, column := range append([]string{info.CompanyColumn}, written...) {
+			if !present[column] {
+				missing = append(missing, column)
+			}
+		}
+		for _, column := range legacyOnly {
+			if present[column] {
+				extra = append(extra, column)
+			}
+		}
+
+		status := "[ok]   "
+		if len(missing) > 0 {
+			status = "[gagal]"
+		}
+		print("  %s kolom unggahan %-7s: %d kolom; tidak ada: %s; kolom Pega belum ditulis: %s",
+			status, source, len(present), listOrDash(missing), listOrDash(extra))
+		if len(missing) > 0 {
+			// Susunan tabelnya dicetak utuh: itulah yang dibutuhkan untuk memperbaikinya,
+			// dan DDL-nya tidak ada di repo.
+			all := make([]string, 0, len(present))
+			for name := range present {
+				all = append(all, name)
+			}
+			sort.Strings(all)
+			print("          kolom tabel %s: %s", info.Table, strings.Join(all, ","))
+		}
+	}
+}
+
+func listOrDash(list []string) string {
+	if len(list) == 0 {
+		return "-"
+	}
+	return strings.Join(list, ",")
 }
 
 // checkAutoClaimTabsDiffer memastikan ketiga tab benar-benar membaca tabel yang berbeda.

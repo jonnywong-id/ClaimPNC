@@ -210,7 +210,15 @@ type UploadResponse struct {
 type UploadTemplateResponse struct {
 	KolomWajib    []string `json:"kolom_wajib"`
 	KolomOpsional []string `json:"kolom_opsional"`
-	BatasBaris    int      `json:"batas_baris"`
+
+	// KolomTanggal menyebut kolom yang wajib berformat dd/mm/yyyy pada tab ini.
+	KolomTanggal []string `json:"kolom_tanggal"`
+
+	// TitikRibuan benar bila titik pada nilai klaim DIBUANG (tab Kredit), bukan dibaca
+	// sebagai desimal.
+	TitikRibuan bool `json:"titik_ribuan"`
+
+	BatasBaris int `json:"batas_baris"`
 }
 
 // TabDTO adalah satu tab pada layar.

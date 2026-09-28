@@ -388,7 +388,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = file.Close() }()
 
-	row, err := inboxautoclaim.ParseUpload(file)
+	row, err := inboxautoclaim.ParseUpload(source, file)
 	if err != nil {
 		h.writeModuleError(w, r, err)
 		return
@@ -444,15 +444,25 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UploadTemplate menangani GET /inbox-auto-claim/format-unggahan.
+// UploadTemplate menangani GET /inbox-auto-claim/format-unggahan?sumber=<tab>.
 //
 // Rutenya TIDAK dipasangi pemeriksaan portal: bentuk berkas sama untuk setiap entitas,
 // dan tidak satu baris data entitas pun dibacanya. Menuntut portal di sini akan membuat
 // petunjuk format gagal justru saat pengguna belum memilih entitas.
+//
+// Tab WAJIB disebut: bentuk berkasnya berbeda per bisnis (inboxautoclaim.UploadColumnFor),
+// dan petunjuk tab lain lebih menyesatkan daripada tidak ada petunjuk.
 func (h *Handler) UploadTemplate(w http.ResponseWriter, r *http.Request) {
+	source, ok := h.readSource(w, r)
+	if !ok {
+		return
+	}
+	required, optional := inboxautoclaim.UploadColumnFor(source)
 	h.writeResponse(w, r, http.StatusOK, UploadTemplateResponse{
-		KolomWajib:    inboxautoclaim.RequiredUploadColumn,
-		KolomOpsional: inboxautoclaim.OptionalUploadColumn,
+		KolomWajib:    required,
+		KolomOpsional: optional,
+		KolomTanggal:  inboxautoclaim.DateColumnFor(source),
+		TitikRibuan:   source == inboxautoclaim.SourceKredit,
 		BatasBaris:    inboxautoclaim.MaxUploadRow,
 	})
 }
