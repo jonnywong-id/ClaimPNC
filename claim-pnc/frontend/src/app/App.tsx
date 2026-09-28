@@ -7,6 +7,8 @@ import { TieringPage } from '@/modules/ambang-komite/TieringPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
 import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
+import { InboxServiceCenterPage } from '@/modules/inbox-service-center/InboxServiceCenterPage'
+import { ServiceCenterDetailPage } from '@/modules/inbox-service-center/ServiceCenterDetailPage'
 import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
 import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
 import { PanelPage } from '@/modules/master-panel/PanelPage'
@@ -48,6 +50,8 @@ import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPag
 import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
 import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
 import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
+import { ClaimPage as RegistrationClaimPage } from '@/modules/registrasi/ClaimPage'
+import { InboxPage as RegistrationInboxPage } from '@/modules/registrasi/InboxPage'
 import { AccountPage } from '@/modules/master-rekening/AccountPage'
 import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
 import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
@@ -61,6 +65,7 @@ import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePa
 import { XOLPage } from '@/modules/master-xol/XOLPage'
 import { LoginPage } from '@/modules/login/LoginPage'
 import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
+import { InboxManagerPage } from '@/modules/inbox-manager/InboxManagerPage'
 import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
 import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
 import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
@@ -577,6 +582,37 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <InboxCompliancePage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        MENU_ID 46 "Inbox Service Center" — klaim portal rekanan (perbaikan perangkat).
+        Harness `InboxServiceCenter` sempat TIDAK ADA di export dan menjadi salah satu
+        contoh `K-33`; ia diterima pada export susulan 2026-09-28 beserta empat section
+        tab, sembilan activity, dan delapan rule SQL-nya.
+      */}
+      <Route
+        path="/inbox-service-center"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxServiceCenterPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Rincian satu klaim — pengganti `Section/InputClaimServiceCenter-Section.xml`.
+        Didaftarkan SESUDAH jalur daftarnya supaya `/inbox-service-center` tidak tertangkap
+        sebagai sebuah id.
+      */}
+      <Route
+        path="/inbox-service-center/:id"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ServiceCenterDetailPage />
             </Protected>
           </SessionGuard>
         }
@@ -1137,6 +1173,25 @@ export function AppRoute() {
         }
       />
       {/*
+        Inbox Manager (`MENU_ID 58`) — meja kerja penyelia: tiga dashboard dan sembilan
+        antrean persetujuan dalam satu layar.
+
+        Ia INDUK KLON dari layar tepat di atasnya, bukan saudaranya: harness Inbox Manager
+        Admin adalah klon `UserInbox_Harness`. Keduanya tidak boleh disatukan — yang di atas
+        menyaring satu unit organisasi penugasan lewat Report Definition, sedangkan yang ini
+        tidak menyaring pemanggil sama sekali dan justru MENULIS kolom persetujuan.
+      */}
+      <Route
+        path="/inbox-manager"
+        element={
+          <SessionGuard>
+            <Protected>
+              <InboxManagerPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox RCL/PUCL (`MENU_ID 61`) — klaim yang ditolak atau diproses ulang.
 
         Ia BERSAUDARA dekat dengan layar tepat di atasnya, dan keduanya membaca antrean
@@ -1364,6 +1419,33 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <ClaimReportFormPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Registrasi Klaim (B-2) beserta alur Register_Flow. Dua layar: daftar tugas, dan
+        satu klaim beserta jalur tahapnya.
+
+        Alamat klaim memuat pengenalnya, sehingga satu klaim dapat dibuka kembali dari
+        tautan — alasan yang sama dengan form Input Receive Document.
+      */}
+      <Route
+        path="/registrasi"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      <Route
+        path="/registrasi/klaim/:claimID"
+        element={
+          <SessionGuard>
+            <Protected>
+              <RegistrationClaimPage />
             </Protected>
           </SessionGuard>
         }

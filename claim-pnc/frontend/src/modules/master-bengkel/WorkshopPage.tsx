@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, WorkshopStatus, type Workshop } from '@/api/types'
+import { APIError } from '@/api/client'
+import { WorkshopStatus, type Workshop } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { ErrorMessage } from '@/components/ErrorMessage'
 
 import { useCreateWorkshop, useDecideWorkshop, useSaveWorkshop, useWorkshopList } from './api'
 import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
@@ -70,46 +70,36 @@ const SUGGESTED_COLUMNS = [
   'status_order',
 ] as const
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
-
-function loadMessage(error: unknown): MessageContent {
-  if (error instanceof NetworkError) {
-    return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+/**
+ * Keterangan di dalam grid saat tidak ada satu baris pun tergambar.
+ *
+ * # Gagal dan kosong sengaja tampil sama
+ *
+ * Layar ini TIDAK membedakan "tabelnya memang kosong" dari "tabelnya gagal dibaca".
+ * Keduanya tampil identik. Pada saat tulisan ini dibuat, view `POOLDATA.BENGKEL_HE`
+ * sedang rusak di Oracle (`ORA-04063`, karena `ACCOUNT_ID` pada tabel dasarnya tidak
+ * lagi dikenali), dan layar ini menampilkannya sebagai data kosong.
+ *
+ * Keputusan Work Owner (2026-09-28), mengikuti keputusan yang sama untuk Master
+ * Sparepart pada 2026-09-24. Yang menggantikan pembedaan itu ada di dua tempat yang
+ * TIDAK dilihat pengguna:
+ *
+ *	log backend          setiap kegagalan tercatat lengkap dengan galat Oracle-nya
+ *	claimpnc -periksa    menyebut objek dan galatnya, beserta kueri katalog penjawabnya
+ *
+ * Akibat yang diterima secara sadar: pengguna tidak punya cara membedakan tab yang
+ * memang belum berisi dari basis data yang sedang rusak, sehingga kerusakan berikutnya
+ * hanya terbaca dari log — bukan dari layar.
+ *
+ * Satu pengecualian yang dipertahankan: sebelum portal dipilih, kuerinya belum pernah
+ * dijalankan sama sekali — tidak ada "hasil nol" untuk dilaporkan, dan yang dibutuhkan
+ * pengguna adalah petunjuk tindakan, bukan keterangan data.
+ */
+function emptyMessageFor(hasPortal: boolean): string {
+  if (!hasPortal) {
+    return 'Pilih portal entitas di bagian atas halaman untuk menampilkan daftarnya.'
   }
-  if (error instanceof APIError) {
-    switch (error.kode) {
-      case ErrorCode.portalNotStated:
-      case ErrorCode.portalUnknown:
-        return {
-          title: 'Portal entitas belum dipilih',
-          description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
-      case ErrorCode.portalNotReady:
-        return {
-          title: 'Basis data entitas ini belum tersedia',
-          description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-      default:
-        return {
-          title: 'Daftar bengkel tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
-    }
-  }
-  return {
-    title: 'Daftar bengkel tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+  return 'Data tidak ada'
 }
 
 /**
@@ -440,37 +430,27 @@ export function WorkshopPage() {
         </section>
       )}
 
+      {/*
+        Tabelnya digambar dalam SETIAP keadaan — termuat, kosong, gagal, bahkan sebelum
+        portal dipilih. Kolomnya karena itu selalu terlihat, persis seperti grid Pega yang
+        menggambar kepala kolomnya beserta pyGridNoResultsMessage di bawahnya.
+
+        Tidak ada lagi kotak galat yang menggantikan tabelnya: keterangan apa pun tinggal
+        di dalam grid lewat emptyMessage. Lihat emptyMessageFor untuk alasan gagal dan
+        kosong sengaja tampil sama.
+      */}
       <section className="mt-6">
-        {portal === null ? (
-          <ErrorMessage
-            title="Portal entitas belum dipilih"
-            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
-            tone="penolakan"
-          />
-        ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar bengkel…</p>
-        ) : list.isError ? (
-          (() => {
-            const message = loadMessage(list.error)
-            return (
-              <ErrorMessage
-                title={message.title}
-                description={message.description}
-                tone={message.tone}
-              />
-            )
-          })()
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id_bengkel}
-            description="Sumber: POOLDATA.BENGKEL_HE"
-            searchLabel="Cari bengkel"
-            emptyMessage={`Belum ada bengkel pada tab ${active.label}.`}
-            pageSize={PAGE_SIZE}
-          />
-        )}
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id_bengkel}
+          description="Sumber: POOLDATA.BENGKEL_HE"
+          searchLabel="Cari bengkel"
+          pageSize={PAGE_SIZE}
+          isLoading={portal !== null && list.isPending}
+          showHeaderWhenEmpty
+          emptyMessage={emptyMessageFor(portal !== null)}
+        />
       </section>
     </main>
   )

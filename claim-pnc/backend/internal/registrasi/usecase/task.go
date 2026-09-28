@@ -15,7 +15,7 @@ import (
 // antrean yang ia berwenang. Yang kedua belum menjadi pekerjaannya — ia baru menjadi
 // pekerjaannya setelah diambil.
 func (l *Service) Inbox(ctx context.Context, by Caller) ([]registrasi.Task, error) {
-	return l.task.Inbox(ctx, by.Identity, by.Workbasket)
+	return l.task.Inbox(ctx, by.Identity, by.Workbasket, l.flow.GroupStages(by.Roles))
 }
 
 // ClaimTask menjadikan pemanggil pemilik sebuah tugas Workbasket.
@@ -38,6 +38,16 @@ func (l *Service) ClaimTask(ctx context.Context, taskID string, by Caller) (regi
 			return err
 		}
 		result = task
+
+		// Mengambil tugas Workbasket mengisi pemiliknya — dan pemilik itulah yang membuat
+		// klaimnya muncul di My Inbox orang yang mengambilnya.
+		claim, err := l.claim.Get(ctx, task.ClaimID)
+		if err != nil {
+			return err
+		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     task.ClaimID,
 			ClaimNumber: task.ClaimNumber,
@@ -96,6 +106,12 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 		return CompleteResult{}, fmt.Errorf("%w: tahap Input Register ditutup lewat SimpanRegister",
 			registrasi.ErrInvalidAction)
 	}
+	if claim.CurrentStage == registrasi.StageEstimateAdmin || claim.CurrentStage == registrasi.StageEstimateTravel {
+		// Sama halnya tahap Input Estimasi: ia membawa estimasi dan gerbangnya sendiri
+		// (CompleteEstimate).
+		return CompleteResult{}, fmt.Errorf("%w: tahap Input Estimasi ditutup lewat CompleteEstimate",
+			registrasi.ErrInvalidAction)
+	}
 
 	now := l.clock.Now().UTC()
 	claim.RequestReturn = p.Return
@@ -129,6 +145,9 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 				return err
 			}
 		}
+		if err := l.mirrorInbox(ctx, claim); err != nil {
+			return err
+		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID:     claim.ID,
 			ClaimNumber: claim.Number,
@@ -149,6 +168,13 @@ func (l *Service) CompleteStage(ctx context.Context, p CompleteCommand, by Calle
 // dilaluinya.
 func (l *Service) ViewClaim(ctx context.Context, claimID string, by Caller) (ClaimSummary, error) {
 	claim, err := l.claim.Get(ctx, claimID)
+	if errors.Is(err, registrasi.ErrClaimNotFound) {
+		// Layar lain — My Inbox, yang membaca T_CLAIMLIST_ADMIN berkunci nomor klaim —
+		// membuka klaim lewat NOMORNYA. Klaim yang dibuka sebelum pengenal disamakan dengan
+		// nomor (2026-09-26) masih berpengenal acak, jadi nomornya dicoba bila pengenal
+		// tidak ditemukan.
+		claim, err = l.claim.GetByNumber(ctx, claimID)
+	}
 	if err != nil {
 		return ClaimSummary{}, err
 	}

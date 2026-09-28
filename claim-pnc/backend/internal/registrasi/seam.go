@@ -40,8 +40,27 @@ type TaskRepo interface {
 
 	// Inbox mengembalikan tugas yang layak muncul di layar seorang pengguna:
 	// tugas Worklist miliknya, ditambah tugas Workbasket yang belum bertuan pada
-	// antrean yang ia berwenang (`D-79`).
-	Inbox(ctx context.Context, operator string, workbasket []string) ([]Task, error)
+	// antrean yang ia berwenang (`D-79`), ditambah tugas Worklist terbuka pada tahap
+	// yang boleh dikerjakan grupnya (M_LOGIN_GROUP_PNC — lihat access.go).
+	Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]Task, error)
+}
+
+// InboxMirror adalah seam ke daftar kerja yang dibaca layar My Inbox
+// (POOLDATA.T_CLAIMLIST_ADMIN) — lihat inbox_entry.go.
+//
+// Ia dipanggil DI DALAM transaksi yang sama dengan penyimpanan klaim dan tugasnya, sehingga
+// baris daftar kerja tidak pernah tertinggal dari keadaan klaim: gagal menulisnya
+// menggagalkan seluruh perubahan.
+type InboxMirror interface {
+	Mirror(ctx context.Context, e InboxEntry) error
+}
+
+// AccountDirectory membaca Master Rekening (POOLDATA.LST_ACCOUNT) untuk isian No Rekening
+// penerima klaim — pengganti activity `GetDataBankMaster` yang tidak ada di export.
+type AccountDirectory interface {
+	// FindAccount mengembalikan rekening bernomor itu, atau ErrAccountNotFound. Nomor yang
+	// sama di lebih dari satu bank mengembalikan yang BANKID-nya terkecil.
+	FindAccount(ctx context.Context, number string) (BankAccount, error)
 }
 
 // PolicyRepo adalah seam ke snapshot polis.
@@ -132,6 +151,17 @@ type Notification struct {
 	// RupiahValue adalah nilai estimasi setelah konversi kurs, dalam sen.
 	RupiahValue Money
 
+	// Revision menandai pemberitahuan KEDUA dan seterusnya atas klaim yang sama.
+	//
+	// Sistem lama membedakan keduanya lewat subjek surel, bukan lewat penerima:
+	// `Activity/SendEmailLargeLoss_act.xml` langkah 7 memakai subjek
+	// "NOTICE OF LARGE LOSSES" ketika `ClaimData.FlagNOLL` masih kosong, dan langkah 8
+	// memakai "NOTICE OF LARGE LOSSES (REVISE)" ketika ia sudah bernilai "1".
+	//
+	// Perbedaannya bukan kosmetik: penerima membaca subjek untuk tahu apakah angka yang
+	// dikirim menggantikan angka sebelumnya.
+	Revision bool
+
 	At time.Time
 }
 
@@ -175,4 +205,145 @@ type AuditRecorder interface {
 // ditarik kembali.
 type IDGenerator interface {
 	New() string
+}
+
+// ClaimReportLink menautkan klaim kembali ke berkas Receive Document asalnya.
+//
+// # Kenapa seam ini ada, dan apa yang gagal tanpanya
+//
+// Berkas laporan menentukan posisinya dari DUA kolom pada
+// `POOLDATA.T_CLAIM_RECIVEDCLAIM`, dan ketiga keadaannya persis yang dipakai layar lama:
+//
+//	NOKLAIM kosong, TRANSFERASM kosong  → Not Transferred
+//	NOKLAIM kosong, TRANSFERASM terisi  → Not Registered
+//	NOKLAIM terisi, TRANSFERASM terisi  → Outstanding
+//
+// Tanpa seam ini, menekan Register Klaim BENAR-BENAR membuat klaim — tetapi berkasnya
+// tetap duduk di Not Transferred, dan petugas menyimpulkan tombolnya tidak bekerja. Itu
+// keluhan nyata (Work Owner, 2026-09-24), dan kelas kegagalan yang paling mahal: yang
+// berhasil tetapi tampak gagal.
+//
+// # Kenapa DUA method, bukan satu
+//
+// Keduanya terjadi pada saat yang berbeda. Berkas diserahkan begitu klaim dibuka,
+// sedangkan nomor klaim baru terbit di UJUNG tahap Input Register (`ADR-0009`) — sampai
+// saat itu tidak ada nomor untuk dituliskan. Menyatukannya menjadi satu method berarti
+// salah satunya dipanggil dengan nilai kosong, dan kolom yang terisi string kosong TIDAK
+// sama dengan kolom yang masih NULL bagi kueri di atas.
+//
+// # Batas yang mengikat pengisinya
+//
+// Selama masa paralel, tepat satu sistem menulis sebuah baris (`P-1`, `ADR-0004`).
+// Berkas milik Pega hanya boleh dibaca, dan pengisi WAJIB menolak menulis ke sana —
+// bukan mengandalkan layar yang sudah mematikan tombolnya.
+// ClaimReportSnapshot adalah isi berkas laporan yang DIBAWA ke klaim saat ia dibuka.
+//
+// Ia tipe milik modul ini, bukan tipe modul Inbox Laporan Klaim. Mengimpor tipe domain
+// modul lain membuat keduanya tidak dapat dipindahkan sendiri-sendiri; yang lewat seam
+// adalah bentuk yang DIBUTUHKAN registrasi, bukan bentuk yang kebetulan dimiliki
+// sumbernya.
+//
+// Isinya mengikuti `Activity/CreateRegisterKlaimPNC_act.xml` langkah 14 — satu-satunya
+// tempat di sistem lama yang menyalin isi berkas RCV ke klaim. Langkah itu memuat 22
+// pasang; yang dibawa ke sini adalah pasangan yang PUNYA kolom pada tabel berkas.
+//
+// # Satu medan klaim yang sengaja TIDAK ada di sini
+//
+// `ClaimData.DateReceived` — Tanggal Terima Dokumen — di Pega datang dari
+// `ReceiveDocument.DateOfSentDocument`, dan properti itu TIDAK punya kolom pada
+// `POOLDATA.T_CLAIM_RECIVEDCLAIM`. Tidak ada yang dapat dibawa, sehingga medannya tetap
+// kosong dan gerbang validasi Input Register yang akan menuntutnya.
+//
+// Ia sempat saya isi dari `TANGGALTERIMADOKUMEN`. Itu keliru dua kali: kolom itu menyimpan
+// `ReceivedDate`, dan `ReceivedDate` memberi makan `ReportDate` — bukan `DateReceived`.
+// Akibatnya Tanggal Lapor tertinggal kosong, padahal aturan "Tanggal Lapor ≤ DOL + 7 hari"
+// bersandar padanya.
+type ClaimReportSnapshot struct {
+	// DateOfLoss ← ReceiveDocument.TglKejadian
+	DateOfLoss time.Time
+
+	// ReportDate ← @toDateTime(ReceiveDocument.ReceivedDate)
+	//
+	// Kolomnya `TANGGALTERIMADOKUMEN`, dan namanya menyesatkan: yang tersimpan di sana
+	// adalah Tanggal Lapor, bukan Tanggal Terima Dokumen.
+	ReportDate time.Time
+
+	// ReporterName ← ReceiveDocument.Sender
+	ReporterName string
+
+	// ReporterPhone ← ReceiveDocument.TelpPengirim
+	ReporterPhone string
+
+	// ReporterEmail ← ReceiveDocument.EmailPengirim
+	ReporterEmail string
+
+	// Location ← ReceiveDocument.LokasiKejadian
+	Location string
+
+	// Chronology ← ReceiveDocument.KronologisKejadian
+	Chronology string
+
+	// EstimateValue ← ReceiveDocument.Estimasi, dalam SEN (`ADR-0016`).
+	EstimateValue Money
+
+	// PolicyNumber ← ReceiveDocument.PolicyNo
+	//
+	// Ia dibawa untuk DIPERIKSA, bukan dipakai: pemanggil sudah menyebut nomor polis,
+	// dan keduanya harus sama. Berbeda berarti berkas dan klaim menunjuk polis yang lain.
+	PolicyNumber string
+}
+
+type ClaimReportLink interface {
+	// MarkHandedOver menandai berkas sudah diserahkan untuk diregistrasi.
+	MarkHandedOver(ctx context.Context, reportID string, at time.Time) error
+
+	// AttachClaimNumber menuliskan nomor klaim yang terbit dari berkas itu.
+	AttachClaimNumber(ctx context.Context, reportID, claimNumber string) error
+
+	// Snapshot membaca isi berkas yang dibawa ke klaim.
+	//
+	// Tanpa ini, klaim lahir kosong dan petugas mengetik ulang seluruh isi berkas yang
+	// baru saja diisinya — di Pega tidak demikian, dan itu terlihat langsung di layar.
+	Snapshot(ctx context.Context, reportID string) (ClaimReportSnapshot, error)
+}
+
+// AreaLevel adalah satu tingkat daftar pilihan wilayah kejadian.
+type AreaLevel string
+
+const (
+	AreaCountry  AreaLevel = "negara"
+	AreaProvince AreaLevel = "provinsi"
+	AreaCity     AreaLevel = "kota"
+	AreaDistrict AreaLevel = "kabupaten"
+	AreaVillage  AreaLevel = "kelurahan"
+)
+
+// AreaOption adalah satu pilihan pada daftar wilayah.
+//
+// PostalCode hanya terisi pada tingkat kelurahan: memilih kelurahan mengisi Kode Pos,
+// persis seperti Pega yang memetakan `ZipCode` baris RW ke `ClaimData.PostalCode`.
+type AreaOption struct {
+	ID         string
+	Name       string
+	PostalCode string
+}
+
+// AreaDirectory membaca master wilayah untuk daftar pilihan bertingkat layar Input
+// Register.
+//
+// Tingkatnya dan sumbernya, terverifikasi 2026-09-26 dengan contoh DI YOGYAKARTA → KAB.
+// SLEMAN → KEC. DEPOK → KEL. CATURTUNGGAL → 55281:
+//
+//	negara     POOLDATA.COUNTRY         (BrowseCountry_RD, ada di export)
+//	provinsi   POOLDATA.PROVINCE        (BrowseProvince_RD HILANG dari export)
+//	kota       POOLDATA.CITYINPUT       (BrowseCity_RD, ada di export)
+//	kabupaten  POOLDATA.DISTRICTINPUT   (BrowseDistrictInputC_RD HILANG dari export)
+//	kelurahan  POOLDATA.M_RW            (BrowseRWInput_RD HILANG dari export)
+//
+// parent adalah nilai tingkat di atasnya. Khusus provinsi, ia NAMA negara, bukan kodenya:
+// PROVINCE.NATIONID memakai skema kode yang berbeda dari COUNTRY.ID (Indonesia 100009 di
+// COUNTRY, sedangkan provinsinya ber-NATIONID 100028 — kode SWEDEN di COUNTRY), sedangkan
+// NATIONNAME cocok. Report definition aslinya hilang, sehingga ini inferensi dari data.
+type AreaDirectory interface {
+	Options(ctx context.Context, level AreaLevel, parent string) ([]AreaOption, error)
 }

@@ -50,22 +50,16 @@ func (p *NumberIssuer) Issue(ctx context.Context, at time.Time) (string, error) 
 
 	year := clock.DateWIB(at).Year()
 
+	// Nomor diturunkan dari isi POOLDATA.T_CLAIM_PNC, bukan dari tabel pencacah
+	// (Work Owner, 2026-09-24). Penyaringnya menyebut tahun supaya deret tiap tahun
+	// berdiri sendiri; lihat catatan pada kueri nomor_terakhir_tahun.
+	pola := fmt.Sprintf("%s.%02d.%%", p.prefix, year%100)
+
 	var last int64
-	err := tx.QueryRowContext(ctx, loadQuery("nomor_kunci_tahun"), year).Scan(&last)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		if _, err := tx.ExecContext(ctx, loadQuery("nomor_mulai_tahun"), year); err != nil {
-			return "", fmt.Errorf("registrasi/sqlstore: memulai pencacah tahun %d: %w", year, err)
-		}
-		last = 1
-	case err != nil:
-		return "", fmt.Errorf("registrasi/sqlstore: mengunci pencacah tahun %d: %w", year, err)
-	default:
-		if _, err := tx.ExecContext(ctx, loadQuery("nomor_naikkan"), year); err != nil {
-			return "", fmt.Errorf("registrasi/sqlstore: menaikkan pencacah tahun %d: %w", year, err)
-		}
-		last++
+	if err := tx.QueryRowContext(ctx, loadQuery("nomor_terakhir_tahun"), pola).Scan(&last); err != nil {
+		return "", fmt.Errorf("registrasi/sqlstore: membaca nomor terakhir tahun %d: %w", year, err)
 	}
+	last++
 
 	// Lebar minimum empat digit, dan TUMBUH bila terlampaui. Memotong pada empat digit
 	// membuat nomor ke-10.001 menabrak nomor yang sudah terbit. Apakah lebarnya memang
@@ -127,6 +121,9 @@ func (n *Notifier) Send(ctx context.Context, m registrasi.Notification) error {
 		emptyTextAsNil(m.PolicyNumber),
 		trim(strings.Join(m.Recipients, ", "), 2000),
 		int64(m.RupiahValue),
+		// Revisi memakai "1"/kosong, bukan "Y"/"N" — sama seperti FLAG_NOLL yang
+		// menurunkannya. Lihat catatan pada flagNOLL.
+		flagNOLL(m.Revision),
 		m.At.UTC(),
 	)
 	if err != nil {

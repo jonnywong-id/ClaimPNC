@@ -52,8 +52,10 @@ import (
 	"claim-pnc/internal/inboxrclpucl"
 	"claim-pnc/internal/inboxreceivetka"
 	"claim-pnc/internal/inboxsalvage"
+	"claim-pnc/internal/inboxservicecenter"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/mastercolsimasonline"
@@ -61,7 +63,6 @@ import (
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastergroupingsparepart"
 	"claim-pnc/internal/masterkategorisparepart"
-	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterlogin"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpanel"
@@ -201,6 +202,10 @@ import (
 	inboxsalvagememory "claim-pnc/internal/inboxsalvage/repo/memory"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
 	inboxsalvageusecase "claim-pnc/internal/inboxsalvage/usecase"
+	inboxservicecenterhttp "claim-pnc/internal/inboxservicecenter/http"
+	inboxservicecentermemory "claim-pnc/internal/inboxservicecenter/repo/memory"
+	inboxservicecentersql "claim-pnc/internal/inboxservicecenter/repo/sqlstore"
+	inboxservicecenterusecase "claim-pnc/internal/inboxservicecenter/usecase"
 	inboxxolhttp "claim-pnc/internal/inboxxol/http"
 	inboxxolmemory "claim-pnc/internal/inboxxol/repo/memory"
 	inboxxolsql "claim-pnc/internal/inboxxol/repo/sqlstore"
@@ -214,6 +219,10 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
+	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
+	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
+	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
 	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
@@ -258,10 +267,6 @@ import (
 	masterpasalmemory "claim-pnc/internal/masterpasal/repo/memory"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpasalusecase "claim-pnc/internal/masterpasal/usecase"
-	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
-	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
-	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
-	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterpasalaihttp "claim-pnc/internal/masterpasalai/http"
 	masterpasalaimemory "claim-pnc/internal/masterpasalai/repo/memory"
 	masterpasalaisql "claim-pnc/internal/masterpasalai/repo/sqlstore"
@@ -341,6 +346,8 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	registrasihttp "claim-pnc/internal/registrasi/http"
+	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
@@ -1219,6 +1226,30 @@ func run() error {
 		return err
 	}
 
+	// Registrasi Klaim. Handlernya nil bila aplikasi berjalan tanpa Oracle; rutenya
+	// tidak dipasang, dan layar registrasi menjawab 404 alih-alih data karangan.
+	var registrationHandler *registrasihttp.Handler
+	if assembly.registrasi != nil {
+		registrationHandler = registrasihttp.NewHandler(registrasihttp.Options{
+			Service: assembly.registrasi,
+			Logger:  logger,
+			Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(r.Context())
+				if !existing {
+					return registrasiusecase.Caller{}, false
+				}
+				// Peran dan workbasket belum datang dari tabel peran (TKT-F3-004).
+				// Dikosongkan, BUKAN diisi tebakan: daftar workbasket menentukan tugas
+				// siapa yang terlihat, dan menebaknya berarti menebak batas data.
+				return registrasiusecase.Caller{
+					Identity: baseCtx.User.Login,
+					Name:     baseCtx.User.Name,
+				}, true
+			},
+			WriteResponse: writeJSON,
+		})
+	}
+
 	picTeknikHandler, err := masterpicteknikhttp.NewHandler(masterpicteknikhttp.Options{
 		Service:       assembly.masterPicTeknik,
 		Logger:        logger,
@@ -1277,6 +1308,29 @@ func run() error {
 		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
 		// pemeriksaan portal.
 		FallbackErrorWriter: inboxxolhttp.ErrorWriterFrom(writePortalAwareError),
+	})
+
+	// Inbox Service Center dicocokkan lewat LOGIN pengguna, bukan NIK: itulah yang tersimpan
+	// di kolom `PIC` pada POOLDATA.T_KLAIM_PORTAL_REKANAN, dan keempat tabnya menyaring
+	// menurut kolom itu.
+	//
+	// Modul ini MEMBACA SAJA, dan tidak punya rute tulis sama sekali — bukan karena layarnya
+	// memang hanya membaca, melainkan karena seluruh jalur tulisnya bermuara pada stored
+	// procedure POOLDATA.PEGA_PORTAL_REKANAN yang sumbernya tidak ada di export (`R-01`).
+	inboxServiceCenterHandler := inboxservicecenterhttp.NewHandler(inboxservicecenterhttp.Options{
+		Service: assembly.inboxServiceCenter,
+		GetCaller: func(ctx context.Context) (inboxservicecenterhttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return inboxservicecenterhttp.Caller{}, false
+			}
+			return inboxservicecenterhttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger:    logger,
+		WriteJSON: writeJSON,
+		// Galat portal ikut dikenali, karena seluruh rute modul ini berada di balik
+		// pemeriksaan portal.
+		FallbackErrorWriter: inboxservicecenterhttp.ErrorWriter(writePortalAwareError),
 	})
 	if err != nil {
 		return err
@@ -1974,6 +2028,29 @@ func run() error {
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
+
+				// Registrasi Klaim (B-2) beserta alur Register_Flow.
+				//
+				// # Kenapa dipagari portal utama, bukan dilayani seluruh portal
+				//
+				// Modul ini terikat pada SATU koneksi: seam-nya menerima *sql.DB, bukan
+				// pemilih repo per portal seperti modul inbox. Dipasang apa adanya, petugas
+				// yang sedang membuka portal Syariah akan menulis klaimnya ke basis data
+				// ASM — persis kebocoran antar badan hukum yang R-20 sebut, dan yang tidak
+				// menampakkan diri sebagai galat: layarnya tampak normal, angkanya masuk
+				// akal, yang salah hanya MILIK SIAPA data itu.
+				//
+				// Karena itu rutenya menolak portal selain portal utama. Batasnya nyata dan
+				// terlihat, bukan diserahkan pada harapan bahwa tidak ada yang berpindah.
+				// Melayani seluruh portal menuntut modulnya menerima pemilih repo — pekerjaan
+				// tersendiri, bukan penyesuaian di tempat pemasangan.
+				if registrationHandler != nil {
+					protected.Group(func(sub chi.Router) {
+						sub.Use(portalhttp.ActivePortal(activePortalDeps))
+						sub.Use(onlyPrimaryPortal(cfg.PrimaryPortal, writePortalAwareError))
+						registrasihttp.Mount(sub, registrationHandler)
+					})
+				}
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
 				inputreqprotectionhttp.Mount(protected, protectionRequestHandler, activePortalDeps)
 				inboxacceptopenprotectionhttp.Mount(protected, protectionAcceptHandler, activePortalDeps)
@@ -2103,6 +2180,12 @@ func run() error {
 				// treaty-nya — keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya
 				// satu di antaranya yang boleh menulis.
 				inboxxolhttp.Mount(protected, inboxXOLHandler, activePortalDeps)
+
+				// Inbox Service Center memuat nama nasabah beserta nomor IMEI
+				// perangkatnya — keduanya milik satu badan hukum, sehingga seluruh
+				// rutenya dijaga pemeriksaan portal, termasuk rute keterangan layarnya.
+				inboxservicecenterhttp.Mount(
+					protected, inboxServiceCenterHandler, activePortalDeps)
 
 				// Inbox Claim Treaty Prop memuat nama tertanggung dan nama Ceding Co —
 				// perusahaan asuransi yang mengalihkan risikonya kepada ASM. Keduanya
@@ -2449,6 +2532,12 @@ type assembly struct {
 	// inboxXOL melayani layar Inbox XOL (`MENU_ID 53`).
 	inboxXOL *inboxxolusecase.Service
 
+	// inboxServiceCenter melayani layar Inbox Service Center (`MENU_ID 46`).
+	//
+	// POOLDATA.T_KLAIM_PORTAL_REKANAN ada di basis data SETIAP entitas (`ADR-0030`), dan
+	// barisnya memuat nama nasabah beserta nomor IMEI perangkatnya.
+	inboxServiceCenter *inboxservicecenterusecase.Service
+
 	// inboxClaimTreatyProp melayani layar Inbox Claim Treaty Prop (`MENU_ID 54`).
 	//
 	// Kedua tabel penugasan yang dibacanya ada di basis data SETIAP entitas (`ADR-0030`),
@@ -2515,6 +2604,15 @@ type assembly struct {
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
 	// milik satu badan hukum (ADR-0030).
 	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
+
+	// registrasi melayani modul Registrasi Klaim (B-2) beserta alur Register_Flow.
+	//
+	// Ia TERIKAT PADA SATU KONEKSI, tidak memakai pemilih repo per portal seperti modul
+	// inbox. Itu bentuk modulnya, bukan pilihan di sini — dan karena itu rutenya dipagari
+	// agar hanya melayani portal utama. Lihat catatan di tempat ia dipasang.
+	//
+	// Bernilai nil bila aplikasi berjalan tanpa Oracle; rutenya tidak dipasang.
+	registrasi *registrasiusecase.Service
 
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
@@ -2634,6 +2732,15 @@ type storage struct {
 	// (`ADR-0030`). Satu repo bersama akan membaca perjanjian satu entitas dari basis
 	// data entitas lain — kebocoran lintas badan hukum yang justru dicegah `R-20`.
 	inboxXOLSelector inboxxol.RepoSelector
+
+	// inboxServiceCenterSelector memilih penyimpanan Inbox Service Center milik satu
+	// portal.
+	//
+	// Fungsi, bukan repo tunggal, dengan alasan yang sama seperti selector di atasnya:
+	// klaim portal rekanan adalah data bisnis milik satu badan hukum (`ADR-0030`), dan
+	// barisnya memuat nama nasabah — satu repo bersama akan menampilkannya lintas entitas
+	// tanpa satu pun pesan galat (`R-20`).
+	inboxServiceCenterSelector inboxservicecenter.RepoSelector
 
 	// claimTreatyPropSelector memilih penyimpanan Inbox Claim Treaty Prop milik satu
 	// portal, dengan alasan yang sama persis: barisnya memuat nama tertanggung dan nama
@@ -3320,6 +3427,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Registrasi Klaim (B-2). Dirakit HANYA bila Oracle tersedia.
+	//
+	// Modul ini menulis klaim ke POOLDATA.T_CLAIM_PNC beserta pohon objek, coverage, dan
+	// spreading di bawahnya (Work Owner, 2026-09-24). Tanpa koneksi, tidak ada satu pun
+	// adapter yang dapat diisi data sungguhan, dan mengisinya dengan data contoh berarti
+	// layar registrasi berjalan di atas polis dan kurs karangan.
+	// Perakitannya ada di assembleRegistration, dan TIDAK boleh disalin ke sini.
+	//
+	// Sebelum 2026-09-24 kedua tempat ini memuat daftar seam masing-masing, dan yang
+	// disunting adalah yang SALAH: `assembleRegistration` tidak pernah dipanggil, sehingga
+	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
+	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
+	// aplikasi dijalankan.
+	var registrationService *registrasiusecase.Service
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
+	}
+
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
 		// Waktu datang dari jam yang sama dengan modul lain, bukan dari SYSDATE basis data
@@ -3511,6 +3640,21 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	inboxXOLService, err := inboxxolusecase.NewService(inboxxolusecase.Options{
 		RepoSelector: store.inboxXOLSelector,
 	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Logger diberikan supaya pencarian yang menarik sangat banyak baris tercatat.
+	// Paginasi layar ini memang mati saat mencari — ditiru apa adanya dari Pega (`P-5`) —
+	// dan jejak di log adalah satu-satunya hal yang membuat akibatnya terlihat operator
+	// sebelum terlihat sebagai layar yang menggantung.
+	inboxServiceCenterService, err := inboxservicecenterusecase.NewService(
+		inboxservicecenterusecase.Options{
+			RepoSelector: store.inboxServiceCenterSelector,
+			Logger:       logger,
+		},
+	)
 	if err != nil {
 		store.close()
 		return assembly{}, err
@@ -3886,6 +4030,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		komiteInbox:               komiteInboxService,
 		inboxAutoClaim:            autoClaimService,
 		inboxXOL:                  inboxXOLService,
+		inboxServiceCenter:        inboxServiceCenterService,
 		inboxClaimTreatyProp:      claimTreatyPropService,
 		inboxClaimTreatyNonProp:   claimTreatyNonPropService,
 		inboxManagerReceivePUCL:   managerReceivePUCLService,
@@ -3905,6 +4050,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAcceptOpenProtection: protectionAcceptService,
 		inboxCloseClaim:           closeClaimService,
 		dashboardClaim:            dashboardClaimService,
+		registrasi:                registrationService,
 	}, nil
 }
 
@@ -4670,6 +4816,14 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return inboxxolsql.NewRepo(conn), nil
 		}
 
+		store.inboxServiceCenterSelector = func(alias string) (inboxservicecenter.Repo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxservicecentersql.NewRepo(conn), nil
+		}
+
 		store.claimTreatyPropSelector = func(alias string) (inboxclaimtreatyprop.Repo, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
@@ -5021,6 +5175,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		// itu, masuk saat pengembangan menghasilkan menu kosong yang tampak rusak.
 		store.menu = menumemory.NewDevRepo()
 		store.inboxXOLSelector = inboxXOLSelectorMemory(cfg.PrimaryPortal)
+		store.inboxServiceCenterSelector = inboxServiceCenterSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyPropSelector = claimTreatyPropSelectorMemory(cfg.PrimaryPortal)
 		store.claimTreatyNonPropSelector = claimTreatyNonPropSelectorMemory(cfg.PrimaryPortal)
 		// Sepuluh baris contoh ikut dimuat, dan lima di antaranya sengaja TIDAK muncul di
@@ -6474,6 +6629,40 @@ func inboxXOLSelectorMemory(primaryAlias string) inboxxol.RepoSelector {
 			return existing, nil
 		}
 		fresh := inboxxolmemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// inboxServiceCenterSelectorMemory menyusun penyimpanan Inbox Service Center di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali —
+// alasannya sama dengan selector memori lain di berkas ini.
+//
+// Isinya contoh yang mencakup keempat tab sekaligus, ditambah tiga baris yang justru ada
+// supaya cacat tertentu tidak dapat lolos tanpa ketahuan: satu baris ber-PIC ORANG LAIN,
+// satu TANPA tanggal input, dan dua baris pada tab Rejected yang kodenya berbeda (`2` dan
+// `3`). Seluruhnya karangan — lihat inboxservicecenter/repo/memory/sample.go.
+//
+// Hanya portal utama yang dilayani, sejalan dengan readyAliases pada cabang tanpa Oracle.
+// Memilih portal lain tanpa basis data karena itu ditolak dengan galat yang sama seperti di
+// produksi.
+func inboxServiceCenterSelectorMemory(primaryAlias string) inboxservicecenter.RepoSelector {
+	var lock sync.Mutex
+	store := map[string]inboxservicecenter.Repo{}
+
+	return func(alias string) (inboxservicecenter.Repo, error) {
+		clean, err := matchPrimaryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxservicecentermemory.NewSampleStore()
 		store[clean] = fresh
 		return fresh, nil
 	}

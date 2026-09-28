@@ -8997,6 +8997,28 @@ jauh lebih dapat diandalkan daripada catatan di dokumen.
 membuktikannya lewat daftar Checker. Ditulis ulang membaca nilainya langsung — daftar tidak
 ditawarkan, barisnya tetap masuk antreannya, dan yang diuji memang yang kedua.
 
+## Sesi 2026-09-28 — Inbox Auto Claim: tabel melar dan aturan per bisnis
+
+### `mattpocock-skills:diagnosing-bugs` (disiplinnya diterapkan)
+
+| | |
+|---|---|
+| **Kapan** | Laporan "berkas Kredit terkena proteksi tanggal" |
+| **Kenapa dipilih** | Gejala yang dilaporkan hanya lapisan atas; perbaikan langsung ("longgarkan validasi") akan mengubah penolakan menjadi galat 500 |
+
+**Yang dilakukan.** Loop yang dapat merah dibangun lebih dulu — terhadap **katalog Oracle**,
+bukan terhadap data uji memori yang tidak mengenal kolom. Loop itu mengungkap cacat yang
+lebih besar dari laporannya: Detail dan Export tab Kredit/Travel juga pasti gagal.
+
+**Manfaat terukur.** Satu laporan menutup tiga cacat (unggah, rincian, ekspor) di dua tab,
+dan pemeriksaan katalog menjadi permanen di `-periksa`.
+
+### Sub-agen `Explore` (dua kali)
+
+Dipakai membaca activity Pega berukuran ratusan KB yang penuh metadata: aturan per bisnis,
+lalu pemetaan kolom sisip/rincian/ekspor. Temuannya **diverifikasi** terhadap katalog Oracle
+sebelum dipakai — salah satunya (PROPOSEVALUE/DEDUCTIBLE di INSERT Pega) terbukti tidak ada
+di tabel produksi, dan karena itu tidak ditulis.
 ## Sesi 2026-09-26 (lanjutan) — modul Inbox PLA, DLA, Pre DLA dan Inbox PLA DLA
 
 ### Skill yang dipakai
@@ -10089,3 +10111,136 @@ Ia gagal — karena kalimat pengantar layar memang berbunyi *"…kewenangan tert
 klaim"*. Diperbaiki menjadi memeriksa **judul kolom**, yang memang yang dimaksud. Uji yang
 memeriksa terlalu luas akan menyala pada hal yang benar, dan uji seperti itu biasanya dimatikan
 orang berikutnya.
+## Sesi 2026-09-28 — modul Inbox Service Center
+
+**Skill Matt Pocock tidak tersedia di lingkungan ini** (sudah diperiksa pada sesi-sesi
+sebelumnya dan tidak berubah). Yang dipakai adalah disiplinnya, bukan perkakasnya.
+
+### `grilling` — dipakai pada premis tugas, sebelum satu baris kode ditulis
+
+Permintaan menyebut `Harness/InboxServiceCenter-Harness.xml` sebagai acuan. Alih-alih
+membukanya dan mulai bekerja, premisnya diuji lebih dulu: berkasnya **tidak ada**, dan
+ketiadaannya dibuktikan dari enam direktori rule sekaligus, bukan dari satu `ls` yang gagal.
+
+**Manfaatnya konkret:** tanpa pengujian premis itu, satu-satunya jalan meneruskan adalah
+mengarang kolom, penyaring, dan aksi layar — persis yang dilarang `CLAUDE.md` ("No Shortcuts")
+dan `D-41`. Pekerjaan dihentikan, temuan dilaporkan dengan buktinya, dan Work Owner mengirim
+export susulan. Modulnya kemudian dibangun dari bukti, bukan dari dugaan.
+
+### `codebase-design` — dipakai menentukan di mana aturan tinggal
+
+Dua keputusan batas yang lahir darinya:
+
+- **Penyaring tab bertipe sendiri** (`ApprovalFilter`) alih-alih satu kode, karena bentuknya
+  memang tiga macam dan `IS NULL` tidak dapat digabung ke daftar kode.
+- **Satu fungsi penyusun argumen** (`filterArgs`) dipakai kueri daftar DAN kueri hitung,
+  sehingga keduanya tidak dapat berselisih tanpa uji yang gagal.
+
+### `domain-modeling` — dipakai pada alias yang menyesatkan
+
+Layar ini kasus ekstrem: `DateOfLoss` berisi tanggal input, `UserName` berisi nama nasabah,
+`NoKTP` berisi IMEI, dan daftar status perbaikan disimpan di properti bernama `Country` dan
+`CountryID`. Nama-nama itu **tidak dibawa**; padanannya disusun dari arti kolomnya dan
+dipetakan tiga arah di `peta-penamaan.md` serta di kepala `inboxservicecenter.sql`.
+
+### Yang menangkap cacat pada sesi ini — bukan skill, melainkan uji
+
+Dua kali, dan keduanya layak dicatat:
+
+1. **`Tabs()` bocor.** Salinan senarai tab ternyata masih berbagi larik `Columns`, sehingga
+   pemanggil dapat mengubah judul kolom bagi seluruh permintaan berikutnya. Ditangkap
+   `TestDaftarKolomTidakDapatDiubahLewatHasilTabs` — uji yang ditulis justru untuk memastikan
+   hal yang saya kira sudah benar.
+2. **Uji berjam tiruan meracuni uji sesudahnya.** `vi.useFakeTimers()` pada uji debounce
+   membuat empat uji berikutnya kehabisan waktu, meski sudah dipulihkan di `finally`.
+   Penyebabnya: layar menunggu jeda ketikan SEKALIGUS janji fetch dan React Query. Diganti
+   jam sungguhan + `vi.waitFor`, mengikuti preseden `inbox-admin`.
+
+**Pelajaran, melanjutkan pola dua sesi sebelumnya:** yang membuktikan sesuatu bekerja adalah
+menjalankannya, bukan membacanya. Pada sesi ini ia berlaku dua arah — uji menangkap cacat
+kode, dan menjalankan uji menangkap cacat pada ujinya sendiri.
+---
+
+## Sesi 2026-09-28 — modul Inbox Manager dibangun ulang
+
+| | |
+|---|---|
+| Permintaan | tambahkan modul **Inbox Manager** dengan `Harness/UserInbox_Harness-Harness.xml` sebagai acuan; sumber data dashboard diganti `POOLDATA.T_CLAIMLIST_ADMIN` |
+| Skill Matt Pocock | **tidak satu pun tersedia** di lingkungan ini — `mattpocock-skills:*` tidak terpasang, dan pemeriksaan daftar skill sesi ini mengonfirmasinya |
+| Skill Claude yang dipakai | **memori proyek** (tiga berkas), dan itu yang paling menentukan |
+
+### Skill yang dipakai: memori proyek
+
+**Kapan.** Sebelum satu berkas pun dibaca.
+
+**Kenapa.** Tiga catatan memori berlaku langsung pada tugas ini, dan ketiganya menghemat
+pekerjaan yang sudah pernah salah:
+
+| Memori | Yang dicegahnya di sesi ini |
+|---|---|
+| `kolom-t-claimlist-admin-belum-terbaca` | Mencegah saya menyimpulkan kolom tidak ada dari modul lain — pola yang sudah keliru **tiga kali** pada 2026-09-27. Ia langsung mengarahkan ke langkah yang benar: baca katalog |
+| `membaca-section-pega` | Mengarahkan pembacaan ke `pyContainerVisibleWhen`, `pyPageListProperty`, dan `pyTitle` — bukan ke activity saja. Tanpa itu, sub-tab ber-`1==2` akan terbawa lagi, dan tiga panel akan digambar padahal section hanya mengikat dua |
+| `perintah-verifikasi-claim-pnc` | Menghemat dua jalan buntu: `gofmt -l` seluruh repo yang menyesatkan, dan `grep -r` atas akar repo yang selalu melampaui batas waktu |
+
+**Manfaat yang terukur.** Memori kedua langsung membuahkan tiga koreksi terhadap catatan §61
+modul yang sama — jumlah anak pencacah, sub-tab yang mati, dan asal label tab. Ketiganya
+ditemukan pada jam pertama, bukan setelah kode ditulis.
+
+### Teknik yang paling menentukan: membaca KATALOG, bukan menebak kolom
+
+**Apa yang dilakukan.** Sebuah program pemeriksa sementara ditulis di `cmd/kolomdump`,
+dijalankan **baca-saja** terhadap Oracle ASM, lalu **dihapus** — empat kali, masing-masing
+untuk satu pertanyaan.
+
+**Kenapa itu sepadan.** Pertanyaan "apakah kolom X ada" hanya punya satu jawaban yang sah, dan
+jawaban itu ada di katalog. Dokumen proyek menyebut jumlahnya tanpa menyebut namanya; modul
+lain hanya membuktikan kolom yang **dipakainya**, bukan yang tidak.
+
+**Yang dihasilkannya, dan tidak akan diperoleh dengan cara lain:**
+
+| Temuan | Akibat bila ditebak |
+|---|---|
+| **58 kolom, bukan 40** | Permintaan DDL untuk kolom yang sudah ada — `ALTER TABLE … ADD` polos gagal **ORA-01430** dan menyisakan tabel setengah jadi |
+| `PXFLOWNAME` dan `PXTASKLABEL` **ADA** | Penyaring alur Pega akan dihilangkan tanpa alasan, mengubah baris yang dihitung |
+| `STATUSCLAIM_1` dan tujuh kolom lain **ADA tetapi KOSONG** | Migrasi dijalankan, layar tetap kosong, dan sebabnya dicari di tempat yang salah |
+| `GROUPPANEL_1` **tidak punya satu pun `005`** | Tab TRAVEL yang mengembalikan nol baris akan dilaporkan sebagai cacat kueri |
+| **`SPAREPART_HE` adalah VIEW INVALID** | Tab-nya dibangun, gagal di produksi, dan modul Master Sparepart yang sudah jadi ikut terbukti gagal tanpa ada yang tahu sejak kapan |
+| `STSKLAIM` `1`=akseptasi, `3`=ditolak | Judul kolom dashboard dikarang |
+
+**`L-3` tertutup karenanya** — permintaan yang sudah menggantung sejak 2026-09-27.
+
+### Teknik kedua: memeriksa ULANG artefak yang baru dikirim
+
+Work Owner mengirimkan **lima artefak** dalam sesi ini sebagai jawaban atas pertanyaan
+(`SetStatusAksepNoRangka_SQL`, `SaveApproveAkseptasiPaymentLeader_Sql`, lalu tiga activity
+transfer kasir).
+
+Keduanya **tidak diterima begitu saja**. Masing-masing dibaca sampai ke pemanggilnya, dan
+pembacaan itu yang menemukan bahwa rantai transfer kasir **masih kurang dua rule SQL** —
+`UpdateChasierIDTablePembayaran` dan `GetDataMSTDetailSales` — di samping satu batas
+arsitektur yang tidak dapat diselesaikan artefak sama sekali (`P-1`).
+
+Menerima kiriman itu sebagai "sudah lengkap" akan menghasilkan tombol Setujui yang menandai
+pembayaran disetujui tanpa pernah sampai ke kasir.
+
+### Kesalahan sendiri yang tercatat sesi ini
+
+| Kesalahan | Bagaimana ketahuan | Pelajaran |
+|---|---|---|
+| **Memotong output pemeriksa dengan `head -70`** sehingga program tampak berhenti sendiri pada exit code 0 | Daftar kolomnya tepat 68 baris — `head` menutup pipa dan program menerima SIGPIPE | Saat sebuah program berhenti "diam-diam", periksa dulu apakah yang memotongnya adalah perintah saya sendiri |
+| **Menebak tiga nama kolom** antrean persetujuan (`NAMA_PANEL`, `ALAMAT_BENGKEL`, letak `NO_RANGKA`) | Diverifikasi ke `.sql` modul Master sebelum kode dijalankan — ketiganya salah | Pola yang sama dengan memori `kolom-t-claimlist-admin`: nama kolom dibuktikan dari kueri yang **berjalan**, bukan dari nama yang masuk akal |
+| **Menulis uji yang menuntut seluruh tab berhasil dimuat** | Uji gagal pada tab Master Sparepart | Yang keliru ujinya, bukan kodenya: data contoh sengaja menandai antrean itu tidak terbaca karena memang begitu keadaannya. Ujinya diperbaiki menjadi menuntut galat yang **dikenali** |
+
+Ketiganya berpola sama dengan pelajaran sesi-sesi sebelumnya — **alat atau dugaan dipercaya
+sebelum divalidasi**. Yang berbeda: ketiganya tertangkap sebelum sampai ke kode yang berjalan.
+
+### Catatan untuk sesi berikutnya
+
+1. **Program pemeriksa katalog layak dijadikan perkakas tetap**, bukan ditulis ulang tiap
+   sesi. Ia sudah ditulis empat kali dalam satu hari, dan tiap kali dihapus.
+2. **`PENYIMPANAN=oracle -periksa` belum dijalankan** untuk modul ini — kuerinya baru terbukti
+   sah terhadap katalog, bukan terbukti berjalan. Ia langkah pertama saat modul ini disentuh
+   berikutnya.
+3. **Dua temuan menyangkut modul yang sudah jadi** dan sengaja tidak disentuh:
+   `SPAREPART_HE` yang rusak, dan `PXASSIGNEDORGUNIT` yang praktis kosong. Keduanya di
+   `permintaan-artefak-pega.md`.

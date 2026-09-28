@@ -26,7 +26,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -39,6 +38,7 @@ import (
 
 	"claim-pnc/internal/inboxadmin"
 	"claim-pnc/internal/inboxcompliance"
+	"claim-pnc/internal/inboxmanager"
 	"claim-pnc/internal/inboxmanageradmin"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -60,7 +60,11 @@ import (
 	inboxcompliancememory "claim-pnc/internal/inboxcompliance/repo/memory"
 	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	inboxcomplianceusecase "claim-pnc/internal/inboxcompliance/usecase"
+	inboxmanagerhttp "claim-pnc/internal/inboxmanager/http"
 	inboxmanageradminhttp "claim-pnc/internal/inboxmanageradmin/http"
+	inboxmanagermemory "claim-pnc/internal/inboxmanager/repo/memory"
+	inboxmanagersql "claim-pnc/internal/inboxmanager/repo/sqlstore"
+	inboxmanagerusecase "claim-pnc/internal/inboxmanager/usecase"
 	inboxmanageradminmemory "claim-pnc/internal/inboxmanageradmin/repo/memory"
 	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	inboxmanageradminusecase "claim-pnc/internal/inboxmanageradmin/usecase"
@@ -93,8 +97,6 @@ import (
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	mastersupplierusecase "claim-pnc/internal/mastersupplier/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
-	registrasihttp "claim-pnc/internal/registrasi/http"
-	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	riwayatklaimhttp "claim-pnc/internal/riwayatklaim/http"
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
@@ -111,6 +113,14 @@ type extraSelectors struct {
 	inboxAdmin        inboxadmin.RepoSelector
 	inboxCompliance   inboxcompliance.RepoSelector
 	inboxManagerAdmin inboxmanageradmin.RepoSelector
+
+	// inboxManager melayani modul Inbox Manager (`MENU_ID 58`). Ia SATU-SATUNYA selector
+	// di berkas ini yang repo-nya punya operasi MENULIS, sehingga portal yang salah di
+	// sini berakibat pada data yang BERUBAH — bukan hanya pada data yang terlihat.
+	inboxManager inboxmanager.RepoSelector
+
+	// inboxManagerLine membaca lini bisnis petugas, yang menyaring ketiga dashboard-nya.
+	inboxManagerLine inboxmanager.LineBusinessRepoSelector
 
 	// inboxManagerAdminLine membaca lini bisnis petugas, yang menentukan tab mana yang
 	// boleh ia buka. Ia dipisah dari selector di atas karena membaca tabel yang BERBEDA
@@ -135,6 +145,7 @@ type extraServices struct {
 	inboxAdmin        *inboxadminusecase.Service
 	inboxCompliance   *inboxcomplianceusecase.Service
 	inboxManagerAdmin *inboxmanageradminusecase.Service
+	inboxManager      *inboxmanagerusecase.Service
 
 	autoClaim       *masterautoclaimusecase.Service
 	workshop        *masterbengkelusecase.Service
@@ -145,7 +156,6 @@ type extraServices struct {
 	sparepart       *mastersparepartusecase.Service
 	supplier        *mastersupplierusecase.Service
 	claimHistory    *riwayatklaimusecase.Service
-	registration    *registrasiusecase.Service
 }
 
 // setExtraOracleSelectors memasang pemilih di atas kolam koneksi entitas.
@@ -184,6 +194,20 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 			return nil, err
 		}
 		return inboxmanageradminsql.NewRepo(conn), nil
+	}
+	store.extra.inboxManager = func(alias string) (inboxmanager.Repo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanagersql.NewRepo(conn), nil
+	}
+	store.extra.inboxManagerLine = func(alias string) (inboxmanager.LineBusinessRepo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanagersql.NewRepo(conn), nil
 	}
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		conn, err := pool.For(alias)
@@ -307,6 +331,20 @@ func setExtraMemorySelectors(primaryAlias string, store *storage) {
 		return inboxManagerAdminStore, nil
 	}
 
+	inboxManagerStore := inboxmanagermemory.NewSampleStore()
+	store.extra.inboxManager = func(alias string) (inboxmanager.Repo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerStore, nil
+	}
+	store.extra.inboxManagerLine = func(alias string) (inboxmanager.LineBusinessRepo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerStore, nil
+	}
+
 	autoClaimRepo := masterautoclaimmemory.NewSampleRepo()
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		if err := onlyPrimary(primaryAlias, alias); err != nil {
@@ -415,6 +453,25 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
+	if result.inboxManager, err = inboxmanagerusecase.NewService(
+		inboxmanagerusecase.Options{
+			RepoSelector:         store.extra.inboxManager,
+			LineBusinessSelector: store.extra.inboxManagerLine,
+
+			// Clock menentukan bulan bawaan tab Produktivitas Klaim. Tab itu tidak dapat
+			// berjalan tanpa periode — kedelapan pencacahnya dibangun dari perbandingan
+			// dua periode.
+			Clock: clock.System{},
+
+			// Logger WAJIB terisi. Modul ini MENULIS, dan `D-59` menjadikan jejak audit
+			// satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas formal:
+			// siapa pun yang dapat membuka layar ini dapat menyetujui pengajuan yang boleh
+			// jadi diajukannya sendiri. Lihat inboxmanager/usecase.logDecision.
+			Logger: logger,
+		}); err != nil {
+		return extraServices{}, err
+	}
+
 	if result.inboxManagerAdmin, err = inboxmanageradminusecase.NewService(
 		inboxmanageradminusecase.Options{
 			RepoSelector:         store.extra.inboxManagerAdmin,
@@ -491,16 +548,10 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
-	// Registrasi dirakit fungsi tersendiri di registration.go, yang sudah ada sejak cabang
-	// asalnya. Basis datanya portal UTAMA, dan nil saat berjalan tanpa Oracle — fungsi itu
-	// menanganinya sendiri dengan beralih ke penyimpanan memori.
-	var primary *sql.DB
-	if store.legacy != nil {
-		primary = store.legacy.DB()
-	}
-	if result.registration, err = assembleRegistration(primary, logger); err != nil {
-		return extraServices{}, err
-	}
+	// Registrasi Klaim TIDAK dirakit di sini. Perakitan dan rutenya ada di main.go, yang
+	// memasangnya di belakang penjaga portal utama (R-20) dan memakai login sebagai
+	// identitas tugas. Salinan di berkas ini sempat membuat /registrasi terpasang dua kali,
+	// dan chi menolak berjalan (2026-09-27).
 
 	return result, nil
 }
@@ -593,6 +644,34 @@ func mountExtra(
 		FallbackErrorWriter: writeError,
 	})
 	inboxmanageradminhttp.Mount(protected, inboxManagerAdminHandler, portalDeps)
+
+	// Inbox Manager — `MENU_ID 58`, meja kerja penyelia.
+	//
+	// Identitasnya disusun dengan cara yang SAMA dengan modul di atas, dan alasannya sama
+	// pula: lini bisnis TIDAK diambil dari sesi melainkan dibaca usecase dari `M_LOGIN_PNC`
+	// milik portal yang aktif.
+	//
+	// Yang berbeda adalah taruhannya. Modul ini punya rute yang MENULIS, dan `Login` di
+	// bawah bukan sekadar bahan jejak log: pada dua antrean ia ikut tersimpan di kolom basis
+	// data sebagai penyetuju. Pemanggil tanpa login karena itu ditolak sebelum satu
+	// pernyataan pun dijalankan.
+	inboxManagerHandler := inboxmanagerhttp.NewHandler(inboxmanagerhttp.Options{
+		Service: service.inboxManager,
+		GetCaller: func(ctx context.Context) (inboxmanagerhttp.Caller, bool) {
+			base, ok := authhttp.CallerFromContext(ctx)
+			if !ok {
+				return inboxmanagerhttp.Caller{}, false
+			}
+			return inboxmanagerhttp.Caller{
+				Login:   base.User.Login,
+				OrgUnit: userOrgUnit(),
+			}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: writeError,
+	})
+	inboxmanagerhttp.Mount(protected, inboxManagerHandler, portalDeps)
 
 	autoClaimHandler, err := masterautoclaimhttp.NewHandler(masterautoclaimhttp.Options{
 		Service: service.autoClaim,
@@ -728,28 +807,6 @@ func mountExtra(
 		FallbackErrorWriter: writeError,
 	})
 	riwayatklaimhttp.Mount(protected, claimHistoryHandler, portalDeps)
-
-	// Registrasi membaca identitas dari PERMINTAAN, bukan dari konteks — bentuk Caller-nya
-	// memang berbeda dari modul lain. Peran dan antrean datang dari sakelar sementara di
-	// registration.go, yang menjelaskan sendiri kenapa ia bukan otorisasi.
-	registrationHandler := registrasihttp.NewHandler(registrasihttp.Options{
-		Service: service.registration,
-		Logger:  logger,
-		Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
-			base, ok := authhttp.CallerFromContext(r.Context())
-			if !ok {
-				return registrasiusecase.Caller{}, false
-			}
-			return registrasiusecase.Caller{
-				Identity:   base.User.Identity,
-				Name:       base.User.Name,
-				Roles:      userRoles(),
-				Workbasket: userWorkbaskets(),
-			}, true
-		},
-		WriteResponse: writeJSON,
-	})
-	registrasihttp.Mount(protected, registrationHandler)
 
 	return nil
 }
