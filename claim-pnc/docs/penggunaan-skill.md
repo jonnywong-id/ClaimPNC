@@ -9952,3 +9952,34 @@ Ketiadaan tidak dapat dibuktikan oleh perintah yang kadang-kadang melewatkan hal
 | `inboxkomunikasicabang` | bentuk tulisan balasan, arti `KOMUNIKASISTATUS`, pemetaan master jenis dokumen |
 | `inboxpladlapredla` | pola rute `/klaim/{kunci}`, `NotAvailableError` beserta alasan per tindakan |
 | `inbox-salvage` | panel rincian yang terbuka di bawah daftar, bukan popup |
+
+### Lanjutan 2026-09-28 — perbaikan §70.13: tidak ada skill yang dipanggil, dan itu disengaja
+
+**Skill yang dipakai: tidak ada.** Dicatat apa adanya, bukan dikosongkan.
+
+Pekerjaan pada putaran ini bukan perancangan melainkan **penelusuran sebab**: mengapa isian
+`REAS_LOGIN_PENGEMBANGAN` tidak berpengaruh padahal nilainya benar. Yang dibutuhkan adalah
+membaca `cmd/claimpnc/main.go` sampai menemukan `needsOracle`, lalu membandingkannya dengan
+syarat yang saya tulis sendiri di `config.go`. Tidak ada skill yang mempercepat itu, dan
+memanggil satu skill hanya agar kolom ini terisi akan membuat catatan ini menyesatkan.
+
+**Satu disiplin yang dipakai, dan ia berasal dari kesalahan sendiri — bukan dari skill.**
+Putaran sebelumnya saya sudah sekali menebak nilai login dan salah. Karena itu pada putaran ini
+tidak satu pun sebab dinyatakan sebelum dibuktikan dari berkas:
+
+| Pernyataan | Dibuktikan dengan |
+|---|---|
+| modul ini membaca Oracle, bukan data contoh | membaca `needsOracle` beserta letak `if`-nya di `main.go` |
+| setelan yang benar-benar dipakai | `grep` langsung ke `backend/.env` |
+| menu Master Reas tidak dapat mendaftarkan mitra | `grep -niE "insert into\|update .*set\|delete from"` — ketiga temuannya komentar |
+| "izin masuk" saja tidak akan menampilkan baris | membaca penyaring `r.LOGIN` di kueri, bukan menyimpulkan dari nama gerbangnya |
+| nilai awal `REAS_MITRA_PENGEMBANGAN` | `Local.loginreas` yang dipatok `SetDataPLADLA` untuk layar yang sama |
+
+**Yang tetap tidak dinyatakan pasti:** apakah login mitra itu ada di `POOLDATA.T_REINSURER`.
+Membuktikannya menuntut membaca Oracle, dan itu berarti mengubah setelan Work Owner — sehingga
+yang saya lakukan adalah menunjuk satu langkah di layar yang menjawabnya, bukan menebak.
+
+**Manfaat bagi proyek:** kegagalan yang sama tidak dapat terulang tanpa terdeteksi.
+`TestDevelopmentReinsurerLoginIsRefusedOnMemoryWithRealIdentity` gagal terhadap kode kemarin dan
+lulus terhadap kode hari ini — itu satu-satunya bukti yang layak dipercaya bahwa penjagaannya
+benar-benar berpindah, bukan sekadar ditulis ulang.

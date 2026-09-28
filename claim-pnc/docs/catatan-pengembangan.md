@@ -23532,9 +23532,9 @@ sama.
 
 | Hal | Ketetapan |
 |---|---|
-| Berlaku di mana | **hanya `PENYIMPANAN=memori`** |
+| Berlaku di mana | ~~hanya `PENYIMPANAN=memori`~~ — **KELIRU, dikoreksi §70.13** |
 | Mengapa tidak mungkin bocor ke produksi | data contoh hanya ada di memori, dan penyimpanan memori sudah menolak berjalan bila `APP_ENV=production` — jadi pagarnya struktural, bukan pemeriksaan tambahan |
-| Bila diisi sementara `PENYIMPANAN=oracle` | aplikasi **menolak menyala**, dengan pesan yang menunjuk menu **Master Reas** sebagai cara yang benar |
+| Bila diisi sementara `PENYIMPANAN=oracle` | aplikasi **menolak menyala**, ~~dengan pesan yang menunjuk menu **Master Reas** sebagai cara yang benar~~ — **KELIRU, dikoreksi §70.13**: menu itu hanya membaca |
 | Dicatat saat menyala | ya — `Warn` yang menyebut login penggantinya |
 
 **Satu keputusan kecil yang menentukan berguna atau tidaknya:** login itu **menggantikan**
@@ -23598,3 +23598,142 @@ tergambar tetapi selalu kosong tidak dapat dibedakan dari penyaring yang rusak.
 Pasangannya, `TestAnUnregisteredLoginIsStillRefusedOnEveryList`, menjaga agar penggantian
 login pada data contoh tidak berubah menjadi jalan pintas: yang berpindah adalah SIAPA
 mitranya, bukan longgarnya penyaring.
+
+### 70.13 Perbaikan §70.11 **tidak berlaku sama sekali** di setelan yang dipakai — dan penjagaannya justru yang gagal
+
+Work Owner melaporkan untuk **ketiga kalinya** bahwa akun `JONNY` masih ditolak, dengan kalimat
+penolakan yang sama persis seperti sebelum §70.11 dikerjakan.
+
+Ia benar. Perbaikan §70.11 **inert** di setelan proyek ini, dan yang paling patut dicatat: ia
+gagal lewat **persis mode kegagalan yang §70.11 klaim sudah ditutupnya**.
+
+#### Sebabnya
+
+`cmd/claimpnc/main.go` memilih sumber data seluruh modul dengan satu syarat:
+
+```go
+func needsOracle(cfg config.Config) bool {
+	return cfg.Storage == config.StorageOracle ||
+		cfg.IdentityAdapter == config.IdentityAdapterHCQ
+}
+```
+
+`backend/.env` proyek ini berisi `PENYIMPANAN=memori` **dan** `IDENTITAS_ADAPTER=hcq`. Suku
+kedua bernilai benar, sehingga `needsOracle` **true**, cabang Oracle yang berjalan
+(`setPLADLAOracleSelectors`, `pladla.go`), dan `NewSampleStoreFor(devReinsurerLogin)` di cabang
+`else` **tidak pernah dipanggil**.
+
+`PENYIMPANAN=memori` di berkas ini ternyata hanya menentukan **penyimpanan sesi** — `.env`-nya
+sendiri mengatakannya: migrasi 0001 belum dijalankan DBA sehingga `CPNC_PENGGUNA` dan
+`CPNC_SESI_AKTIF` belum ada. Seluruh modul bisnis tetap membaca Oracle.
+
+#### Kenapa tidak ada satu pun keluhan
+
+Penjagaan yang saya tulis di §70.11 berbunyi:
+
+```go
+if devReinsurerLogin != "" && storage == StorageOracle { ... }
+```
+
+Ia memeriksa **satu** dari dua suku `needsOracle`. Dengan `PENYIMPANAN=memori`, syaratnya salah,
+tidak ada galat, aplikasi menyala, dan `REAS_LOGIN_PENGEMBANGAN=JONNY` **diabaikan tanpa suara**.
+
+§70.11 menutup dirinya dengan kalimat *"isian yang diabaikan diam-diam lebih berbahaya daripada
+penolakan"*. Penjagaan yang ditulis untuk menegakkan kalimat itu justru menghasilkan keadaan yang
+dijelaskannya — dan biayanya nyata: Work Owner menunggu satu putaran penuh, dengan setelan yang
+sudah benar, tanpa satu pun petunjuk mengapa layarnya tetap menolak.
+
+**Pola kesalahannya sama dengan tiga kejadian sebelumnya di sesi ini** (§70.2 `ls | grep`, §70.6
+`noaksep`, dan salah baca penanda *Inbox*): sebuah syarat dipercaya **sebelum** diuji terhadap
+keadaan yang benar-benar dipakai. Bedanya, kali ini yang tidak diuji adalah syarat yang saya tulis
+sendiri satu jam sebelumnya.
+
+#### Kenapa "izin masuk" saja tidak akan pernah cukup
+
+Satu temuan yang mengubah bentuk perbaikannya. Sempat terpikir memberi `JONNY` daftar kode
+reasuradur agar gerbangnya terbuka. Itu **tidak akan menampilkan satu baris pun**: kueri layar
+menyaring dengan `LOGIN` secara langsung —
+
+```sql
+... AND r.LOGIN = :1
+```
+
+— bukan dengan daftar kode yang dibawa terpisah. Kode hanya dipakai gerbangnya
+(`ErrCallerNotAReinsurer`). Jadi membuka gerbang tanpa menyentuh login menghasilkan layar yang
+**keenam tabnya kosong**, dan kosongnya tidak dapat dibedakan dari penyaring yang rusak — keadaan
+yang `TestEveryListHasRowsForTheDevelopmentLogin` ditulis justru untuk mencegahnya.
+
+#### Yang dikerjakan
+
+| Hal | Perubahan |
+|---|---|
+| Penjagaan `config` | syaratnya disamakan dengan `needsOracle`: `storage != oracle && adapter != hcq` |
+| Jalan keluar di Oracle | isian baru `REAS_MITRA_PENGEMBANGAN` — login pengembangan **meminjam** login mitra nyata |
+| Tempat peminjaman | **satu** titik, `mountPLADLA` di `cmd/claimpnc/pladla.go` |
+| Batas lingkungan | keduanya hanya sah pada `APP_ENV=development` |
+| Pesan galat | tidak lagi menunjuk Master Reas sebagai cara mendaftar |
+
+**Kenapa peminjaman, bukan pelonggaran.** Yang berpindah adalah **siapa** mitranya, bukan
+longgarnya penyaring. Layar berjalan pada jalur yang sama persis dengan yang dipakai mitra
+sungguhan — sehingga yang terlihat di layar adalah bukti bahwa penyaringnya bekerja, bukan bukti
+bahwa ia dilewati.
+
+**Kenapa di `mountPLADLA`, bukan di lapisan repo.** Seluruh penyaring modul ini — daftar,
+ringkasan, rincian, dokumen, komunikasi — turun dari satu nilai: `Caller.Login`. Menggantinya di
+satu tempat membuat layar berjalan utuh sebagai mitra itu. Menggantinya di lapisan repo menuntut
+menyentuh sebelas method, dan **satu yang terlewat menghasilkan layar yang separuh dipinjam** —
+cacat yang tidak menimbulkan galat sama sekali.
+
+**Kenapa hanya `development`, dan ini bukan kehati-hatian berlebih.** Layar ini **menulis**:
+balasan komunikasi mengubah `POOLDATA.M_KOMUNIKASI_PNC`, tabel milik Pega (`P-1`). Di bawah
+peminjaman, balasan itu tercatat atas nama mitra yang dipinjam. `D-59` menetapkan jejak audit
+sebagai **satu-satunya kontrol pengimbang** yang tersisa setelah pemisahan tugas ditiadakan —
+memalsukan pelakunya adalah hal terakhir yang boleh terjadi di luar lingkungan pengembangan.
+Satu syarat menutupnya tanpa satu baris pun tambahan di lapisan HTTP.
+
+#### Temuan sampingan: menu Master Reas tidak dapat mendaftarkan mitra
+
+Pesan galat §70.11 menyuruh *"daftarkan login itu sebagai mitra lewat menu Master Reas"*. Itu
+**tidak dapat dilakukan**: `internal/masterreas` **hanya membaca** — sembilan kueri terdaftar
+(`reas_list`, `reas_list_search`, `reas_check_table`, dan enam `reas_count_*`), dan tiga-satunya
+kemunculan `INSERT`/`UPDATE` di seluruh modul itu adalah **komentar** yang mengutip rule Pega.
+
+Nasihat yang tidak dapat dijalankan lebih buruk daripada tidak ada nasihat: ia mengirim orang
+mencari tombol yang tidak pernah ada. Pesannya kini menyebut tiga jalan yang benar-benar ada, dan
+menyatakan secara eksplisit bahwa menu itu hanya membaca.
+
+Yang tetap berlaku: Master Reas **menampilkan** kolom `Login`, sehingga login mitra untuk
+`REAS_MITRA_PENGEMBANGAN` dapat dibaca sendiri dari layar itu — tanpa DBA, tanpa menebak.
+
+#### Nilai awal `REAS_MITRA_PENGEMBANGAN` bukan tebakan
+
+`backend/.env` diisi `TUGUREASURANSIINDONESIA`, dan dasarnya ada di export:
+`Activity/SetDataPLADLA-Act.xml` mematok `Local.loginreas = "TUGUREASURANSIINDONESIA"` di dalam
+rule-nya sendiri untuk tampilan XOL **layar ini juga**. Sistem lama memakai login itu pada layar
+yang sama, sehingga keberadaannya di `POOLDATA.T_REINSURER` hampir pasti.
+
+Bila keenam tabnya ternyata kosong, artinya mitra itu tidak punya klaim — **bukan** penyaringnya
+rusak. Bedanya dicatat di `.env` supaya tidak salah dibaca, dan gantinya cukup diambil dari menu
+Master Reas.
+
+#### Uji yang menjaganya
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestDevelopmentReinsurerLoginIsRefusedOnMemoryWithRealIdentity` | **jalur yang kemarin lolos tanpa suara** — memori + HCQ |
+| `TestABorrowedPartnerLoginIsAcceptedAlongsideRealIdentity` | setelan lengkap diterima |
+| `TestABorrowedPartnerWithoutABorrowerIsRefused` | mitra tanpa peminjam ditolak |
+| `TestBorrowingIsRefusedOutsideDevelopment` | `staging` dan `test` ditolak |
+| `TestOnlyTheNamedLoginBorrowsThePartnerIdentity` | peminjaman berlaku bagi **satu** login — bukan melonggarkan gerbang |
+| `TestAHalfFilledBorrowNeverTakesEffect` | setelan setengah terisi tidak meminjam "ke login kosong" |
+| `TestTheBorrowIgnoresCaseAndSurroundingSpaces` | satu huruf kapital tidak membuat setelan tampak diabaikan |
+
+Uji pertama adalah yang paling penting: ia gagal terhadap kode kemarin, dan lulus terhadap kode
+hari ini.
+
+#### Yang masih belum pasti, dan sengaja tidak saya nyatakan pasti
+
+Apakah `TUGUREASURANSIINDONESIA` benar-benar ada di `POOLDATA.T_REINSURER` **belum diverifikasi**
+— memastikannya menuntut membaca Oracle, dan mode `-periksa` menuntut `PENYIMPANAN=oracle`
+sehingga menjalankannya berarti mengubah setelan Work Owner. Jawabannya ada satu langkah di layar:
+buka menu Master Reas, cari kolom `Login`.

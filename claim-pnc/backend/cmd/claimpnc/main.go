@@ -2070,6 +2070,11 @@ func run() error {
 				mountPLADLA(
 					protected, assembly.pladla, activePortalDeps,
 					writeJSON, writePortalAwareError, logger,
+					newReinsurerBorrow(
+						cfg.DevelopmentReinsurerLogin,
+						cfg.DevelopmentReinsurerPartner,
+						logger,
+					),
 				)
 				// Modul Komite memasang tiga kelompok rute sekaligus: master ambang di
 				// bawah master/, perhitungan penjenjangan di bawah komite/, dan Inbox

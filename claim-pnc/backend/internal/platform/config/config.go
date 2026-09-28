@@ -117,15 +117,43 @@ type Config struct {
 	// Isian ini menjawabnya tanpa melemahkan penyaringnya: ia hanya mengganti login pada
 	// DATA CONTOH, bukan melonggarkan aturan.
 	//
-	// # Ia TIDAK DAPAT berlaku di produksi
+	// # Dua jalur, karena ada DUA sumber data
 	//
-	// Bukan karena diperiksa di sini, melainkan karena data contoh hanya ada pada
-	// `PENYIMPANAN=memori` — dan penyimpanan memori sudah menolak berjalan bila
-	// `APP_ENV=production`. Jadi tidak ada jalan bagi isian ini untuk menyentuh data
-	// sungguhan.
+	// Yang menentukan jalur mana yang berlaku bukan `PENYIMPANAN` sendirian, melainkan
+	// syarat yang sama dengan `needsOracle` di `cmd/claimpnc`: `IDENTITAS_ADAPTER=hcq`
+	// menarik SELURUH modul ke Oracle, termasuk modul ini, walau `PENYIMPANAN=memori`.
+	//
+	//	data contoh  → `PENYIMPANAN != oracle` DAN `IDENTITAS_ADAPTER != hcq`
+	//	Oracle nyata → selain itu
+	//
+	// Pada data contoh, isian ini cukup sendirian: ia mengganti login mitra pada data
+	// contoh, tanpa melonggarkan penyaringnya.
+	//
+	// Pada Oracle nyata ia TIDAK cukup, dan sebabnya bukan selera: kueri layar menyaring
+	// dengan `T_REINSURER.LOGIN` secara langsung. Memberi login ini sekadar "izin masuk"
+	// akan membuka layar yang SELURUH tabnya kosong — keadaan yang tidak dapat dibedakan
+	// dari penyaring yang rusak. Karena itu Oracle menuntut
+	// `DevelopmentReinsurerPartner`.
 	//
 	// Kosong berarti data contoh memakai login bawaannya, dan layar menolak login lain.
 	DevelopmentReinsurerLogin string
+
+	// DevelopmentReinsurerPartner adalah login mitra NYATA yang dipinjam
+	// `DevelopmentReinsurerLogin` saat modul ini membaca Oracle.
+	//
+	// Selama dipinjam, layar berjalan PERSIS sebagai mitra itu: penyaringnya tidak
+	// disentuh sama sekali, dan yang berpindah hanyalah login yang dicocokkan. Itulah
+	// sebabnya ia menguji jalur yang sama dengan yang dipakai mitra sungguhan — berbeda
+	// dari sekadar melonggarkan gerbangnya.
+	//
+	// # Hanya di `APP_ENV=development`
+	//
+	// Bukan karena kebocoran baca, melainkan karena layar ini MENULIS: balasan komunikasi
+	// mengubah `POOLDATA.M_KOMUNIKASI_PNC` — tabel milik Pega (`P-1`) — dan di bawah
+	// peminjaman, balasan itu akan tercatat atas nama mitra yang dipinjam. Jejak audit
+	// adalah satu-satunya kontrol pengimbang yang tersisa (`D-59`), sehingga memalsukan
+	// pelakunya adalah hal terakhir yang boleh terjadi di luar lingkungan pengembangan.
+	DevelopmentReinsurerPartner string
 
 	// Portal memetakan alias portal ke parameter koneksinya. Isinya ditemukan dengan
 	// memindai lingkungan, bukan dari daftar tetap.
@@ -398,13 +426,40 @@ func Load() (Config, error) {
 	// Login mitra pada data contoh. Namanya berbahasa Indonesia karena ia variabel
 	// lingkungan — pengecualian `D-80`: ia dipakai berkas `.env` dan skrip deployment.
 	devReinsurerLogin := strings.TrimSpace(get("REAS_LOGIN_PENGEMBANGAN", ""))
-	if devReinsurerLogin != "" && storage == StorageOracle {
+	devReinsurerPartner := strings.TrimSpace(get("REAS_MITRA_PENGEMBANGAN", ""))
+
+	// Syarat ini HARUS sama dengan `needsOracle` di cmd/claimpnc. Versi sebelumnya
+	// memeriksa `storage == StorageOracle` saja, dan itu keliru: dengan
+	// `PENYIMPANAN=memori` + `IDENTITAS_ADAPTER=hcq`, modul ini membaca Oracle sementara
+	// penjagaannya menyatakan semuanya baik — sehingga `REAS_LOGIN_PENGEMBANGAN`
+	// diabaikan TANPA SATU PUN keluhan. Kegagalan senyap itulah yang membuat layarnya
+	// tetap menolak meski isiannya sudah benar.
+	usesSampleData := storage != StorageOracle && adapter != IdentityAdapterHCQ
+
+	switch {
+	case devReinsurerPartner != "" && devReinsurerLogin == "":
 		issues = append(issues, fmt.Errorf(
-			"REAS_LOGIN_PENGEMBANGAN diisi %q sementara PENYIMPANAN=oracle; "+
-				"isian itu hanya mengganti login pada DATA CONTOH dan tidak berpengaruh "+
-				"apa pun terhadap POOLDATA.T_REINSURER. Kosongkan isiannya, atau "+
-				"daftarkan login itu sebagai mitra lewat menu Master Reas",
-			devReinsurerLogin))
+			"REAS_MITRA_PENGEMBANGAN diisi %q sementara REAS_LOGIN_PENGEMBANGAN kosong; "+
+				"tidak ada login yang meminjamnya. Isi keduanya, atau kosongkan keduanya",
+			devReinsurerPartner))
+
+	case (devReinsurerLogin != "" || devReinsurerPartner != "") && env != Development:
+		issues = append(issues, fmt.Errorf(
+			"REAS_LOGIN_PENGEMBANGAN/REAS_MITRA_PENGEMBANGAN hanya berlaku pada "+
+				"APP_ENV=development; sekarang %q. Kosongkan keduanya", env))
+
+	case devReinsurerLogin != "" && !usesSampleData && devReinsurerPartner == "":
+		// Inilah keadaan yang kemarin lolos tanpa suara.
+		issues = append(issues, fmt.Errorf(
+			"REAS_LOGIN_PENGEMBANGAN diisi %q, tetapi Inbox PLA DLA membaca Oracle "+
+				"sungguhan di setelan ini (PENYIMPANAN=%s, IDENTITAS_ADAPTER=%s) sehingga "+
+				"isian itu sendirian tidak berpengaruh apa pun. Pilih SATU: "+
+				"(a) isi REAS_MITRA_PENGEMBANGAN dengan satu login mitra yang sudah ada "+
+				"di POOLDATA.T_REINSURER.LOGIN, sehingga %[1]q meminjamnya; atau "+
+				"(b) setel IDENTITAS_ADAPTER=fake agar data contoh yang dipakai; atau "+
+				"(c) minta DBA menambahkan %[1]q ke POOLDATA.T_REINSURER — menu Master "+
+				"Reas TIDAK dapat melakukannya, ia hanya membaca",
+			devReinsurerLogin, storage, adapter))
 	}
 
 	primaryPortal := strings.ToUpper(strings.TrimSpace(get("PORTAL_UTAMA", defaultPrimaryPortal)))
@@ -420,7 +475,8 @@ func Load() (Config, error) {
 		IdentityAdapter: adapter,
 		Storage:         storage,
 
-		DevelopmentReinsurerLogin: devReinsurerLogin,
+		DevelopmentReinsurerLogin:   devReinsurerLogin,
+		DevelopmentReinsurerPartner: devReinsurerPartner,
 
 		Session:         Session{Lifetime: masaBerlaku},
 		HCQ: HCQ{

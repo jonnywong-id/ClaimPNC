@@ -69,6 +69,60 @@ type pladlaServices struct {
 // (`ADR-0030`). Satu repo bersama akan menampilkan pemberitahuan satu badan hukum kepada
 // petugas badan hukum lain — dan pada layar reasuradur, kepada MITRA badan hukum lain
 // (`R-20`).
+// reinsurerBorrow menyatakan SATU login pengembangan yang meminjam identitas SATU mitra
+// nyata pada layar Inbox PLA DLA.
+//
+// # Kenapa peminjaman, bukan pelonggaran gerbang
+//
+// Layar ini menyaring dengan `POOLDATA.T_REINSURER.LOGIN` secara langsung — bukan dengan
+// daftar kode yang dibawa terpisah. Memberi login pengembangan sekadar "izin masuk" akan
+// membuka layar yang SELURUH tabnya kosong, dan kosongnya tidak dapat dibedakan dari
+// penyaring yang rusak. Meminjam login mitra membuat layar berjalan pada jalur yang sama
+// persis dengan yang dipakai mitra sungguhan.
+//
+// Nilai kosong berarti tidak ada peminjaman, dan `apply` mengembalikan loginnya apa adanya.
+type reinsurerBorrow struct {
+	from string // login pengembangan
+	as   string // login mitra yang dipinjam
+}
+
+// newReinsurerBorrow menyusun peminjaman, dan MENCATATNYA.
+//
+// Catatannya bukan kelengkapan: tanpa baris ini, seorang pengembang yang melihat daftar
+// terisi tidak punya cara mengetahui bahwa yang ia lihat adalah klaim milik mitra lain.
+func newReinsurerBorrow(devLogin, partnerLogin string, logger *slog.Logger) reinsurerBorrow {
+	from := strings.TrimSpace(devLogin)
+	as := strings.TrimSpace(partnerLogin)
+	if from == "" || as == "" {
+		return reinsurerBorrow{}
+	}
+
+	if logger != nil {
+		logger.Warn("identitas mitra DIPINJAM pada layar Inbox PLA DLA",
+			slog.String("login_pengembangan", from),
+			slog.String("berjalan_sebagai", as),
+			slog.String("akibat",
+				"seluruh layar — termasuk balasan komunikasi — berjalan atas nama mitra "+
+					"itu; balasan tercatat sebagai miliknya, bukan milik pemakainya"),
+			slog.String("berlaku", "hanya APP_ENV=development"))
+	}
+
+	return reinsurerBorrow{from: from, as: as}
+}
+
+// apply mengganti login pemanggil bila ia login pengembangan yang meminjam.
+//
+// Perbandingannya MENGABAIKAN besar-kecil huruf, dengan alasan yang sama seperti `F-3`
+// menormalkan nama peran: `T_ACCESS_GROUP_PNC` dan rule Pega terbukti tidak konsisten
+// soal itu, dan setelan yang gagal karena satu huruf kapital akan terbaca seperti setelan
+// yang diabaikan — persis kesalahan yang penjagaan di `config` baru saja tutup.
+func (b reinsurerBorrow) apply(login string) string {
+	if b.from == "" || !strings.EqualFold(strings.TrimSpace(login), b.from) {
+		return login
+	}
+	return b.as
+}
+
 func setPLADLAOracleSelectors(pool *db.Pool, store *storage) {
 	store.pladla.queue = func(alias string) (inboxpladlapredla.Repo, error) {
 		conn, err := pool.For(alias)
@@ -258,6 +312,7 @@ func mountPLADLA(
 	writeJSON func(http.ResponseWriter, *http.Request, int, any),
 	writeError func(http.ResponseWriter, *http.Request, error),
 	logger *slog.Logger,
+	borrow reinsurerBorrow,
 ) {
 	// `MENU_ID 44` — antrean petugas internal.
 	//
@@ -307,8 +362,17 @@ func mountPLADLA(
 				//
 				// Nama yang kosong tidak menghalangi balasan; login-nya yang dipakai
 				// sebagai gantinya. Lihat inboxpladla.ReplyCommand.ReplierName.
+				// Peminjaman identitas mitra — hanya hidup di pengembangan.
+				//
+				// Ia dipasang DI SINI dan tidak di tempat lain, karena seluruh
+				// penyaring modul ini — daftar, ringkasan, rincian, dokumen,
+				// komunikasi — turun dari satu nilai yang sama: Login. Mengganti
+				// satu nilai di satu tempat membuat layar berjalan persis sebagai
+				// mitra itu; menggantinya di lapisan repo menuntut menyentuh
+				// sebelas method, dan satu yang terlewat menghasilkan layar yang
+				// separuh dipinjam — kelas cacat yang tidak menimbulkan galat.
 				return inboxpladlahttp.Caller{
-					Login: base.User.Login,
+					Login: borrow.apply(base.User.Login),
 					Name:  base.User.Name,
 				}, true
 			},

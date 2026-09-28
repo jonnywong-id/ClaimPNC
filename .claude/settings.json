@@ -12,7 +12,13 @@
       "Bash(grep -oE '\\\\{\"[A-Za-z ]+\"\\\\}|>[A-Z][A-Za-z ]{2,30}<' Section/InboxDLAReas_sect-Section.xml)",
       "Bash(grep -oE '>[A-Za-z][A-Za-z /_.]{2,40}<' Section/InboxDLAReas_sect-Section.xml)",
       "Bash(cd \"C:/Users/User/Documents/Migrasi *)",
-      "Bash(gofmt -w internal/inboxpladla/inboxpladla_test.go)"
+      "Bash(gofmt -w internal/inboxpladla/inboxpladla_test.go)",
+      "Bash(awk 'NR>=4099 && NR<=5010 && /^\\\\t\\\\}$|^\\\\t\\\\} else|^\\\\tif |^\\\\t\\\\/\\\\/ /' cmd/claimpnc/main.go)",
+      "Bash(awk 'NR>=4099 && NR<=5010 { if \\($0 ~ /^\\\\t\\\\}/\\) print NR\": \"$0 }' cmd/claimpnc/main.go)",
+      "Bash(sed -n '/func setPLADLAOracleSelectors/,/^}/p' cmd/claimpnc/pladla.go)",
+      "Bash(sed -n '/func setPLADLAMemorySelectors/,/^}/p' cmd/claimpnc/pladla.go)",
+      "Bash(echo \"--- exit=$? \\(kosong berarti tidak ada tulis\\) ---\")",
+      "Bash(gofmt -l cmd internal)"
     ],
     "additionalDirectories": [
       "\\tmp"
