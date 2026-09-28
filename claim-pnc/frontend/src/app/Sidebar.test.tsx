@@ -274,3 +274,55 @@ describe('keadaan selain menu terisi', () => {
     expect(screen.getByRole('link', { name: 'Beranda' })).toHaveAttribute('href', '/')
   })
 })
+
+describe('menu diperkecil menjadi rel ikon', () => {
+  function showRail(onExpandGroup: (id: number) => void) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/']}>
+          <Sidebar collapsed onExpandGroup={onExpandGroup} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('menampilkan Beranda dan satu tombol bernama per kelompok, tanpa daftar butir', async () => {
+    installFetch(() => jsonResponse(200, MENU))
+    showRail(() => {})
+
+    expect(
+      await screen.findByRole('button', { name: 'Buka kelompok menu MASTER' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Buka kelompok menu REPORT' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Beranda' })).toBeInTheDocument()
+    // Nama butir tidak digambar pada rel — tidak ada ruang, dan ikon butir tidak ada.
+    expect(screen.queryByText('Master Status Klaim')).not.toBeInTheDocument()
+  })
+
+  it('mengeklik ikon kelompok meminta menu dibentangkan pada kelompok itu', async () => {
+    installFetch(() => jsonResponse(200, MENU))
+    const expand = vi.fn()
+    showRail(expand)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buka kelompok menu REPORT' }))
+    expect(expand).toHaveBeenCalledWith(4)
+  })
+
+  it('kelompok yang diminta dari rel langsung terbuka saat menu dibentangkan', async () => {
+    installFetch(() => jsonResponse(200, MENU))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/']}>
+          <Sidebar requestedGroup={{ id: 4, seq: 1 }} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('button', { name: /REPORT/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+})

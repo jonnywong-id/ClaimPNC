@@ -214,3 +214,66 @@ export function ScaleIcon(props: Props) {
     </Base>
   )
 }
+
+/** Rumah — Beranda. */
+export function HomeIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19v-8.5Z" />
+    </Base>
+  )
+}
+
+/** Panel samping — tombol memperkecil/memperbesar menu kiri. */
+export function SidebarIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Base>
+  )
+}
+
+/** Baki masuk — kelompok menu INBOX. */
+export function InboxIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 13.5 6.2 6a1.5 1.5 0 0 1 1.4-1h8.8a1.5 1.5 0 0 1 1.4 1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18v-4.5Z" />
+      <path d="M4 13.5h4.5l1.2 2h4.6l1.2-2H20" />
+    </Base>
+  )
+}
+
+/** Grafik batang — kelompok menu REPORT. */
+export function ChartIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 20h16" />
+      <path d="M7 16v-4" />
+      <path d="M12 16V7" />
+      <path d="M17 16v-6" />
+    </Base>
+  )
+}
+
+/** Mata — kelompok menu VIEW. */
+export function EyeIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </Base>
+  )
+}
+
+/** Papan klip — kelompok menu SURVEYOR. */
+export function ClipboardIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <rect x="5.5" y="5" width="13" height="15.5" rx="2" />
+      <path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
+      <path d="M9 11h6" />
+      <path d="M9 15h4" />
+    </Base>
+  )
+}

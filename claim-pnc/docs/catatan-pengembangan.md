@@ -26862,3 +26862,23 @@ membiarkannya kosong (50 baris T_CLAIM_RECEIVER tanpa nama).
 
 **Belum dibawa:** menambah/mengubah penerima (sampai 5 per klaim di data Pega) beserta bank dan
 nomor rekening — section isiannya tidak ada di export; PaymentType "2" penerima (tanpa kolom).
+
+## 62. Inbox Auto Claim: tata letak kiri–kanan (2026-09-28)
+
+**Permintaan Work Owner:** daftar perusahaan di kiri, batch perusahaan terpilih di kanan, menggantikan accordion (contoh tampilan dilampirkan); dan daftar prasyarat proteksi unggahan yang tersisa.
+
+**Perubahan:** `CompanyBrowser.tsx` baru menggantikan `CompanyTable.tsx`; `AutoClaimInboxPage.tsx` (wadah dilebarkan); komentar `CompanyBatches.tsx`; uji modul ditulis ulang untuk bentuk kiri–kanan. Tidak ada perubahan backend, API, maupun basis data.
+
+**Verifikasi:** 30/30 uji modul; `tsc` dan `vite build` bersih. Uji pemilihan perusahaan dibuktikan merah dengan sabotase (pilihan dikunci pada perusahaan pertama → 4 uji gagal).
+
+Keputusan dan daftar prasyarat proteksi: keputusan-implementasi §61.
+
+## 63. Tema Glassmorphism Navy (2026-09-28)
+
+**Permintaan Work Owner:** gaya kaca bergradasi navy untuk seluruh aplikasi, hanya lewat CSS.
+
+**Perubahan:** `frontend/src/styles.css` saja — token warna Tailwind dipetakan ulang, latar gradasi navy, lapisan kaca (blur, transparansi, garis tepi tipis), bayangan melayang, radius lebih besar, tombol pil, `color-scheme: dark`. Tidak ada komponen, logika, API, atau basis data yang berubah.
+
+**Kendala:** (1) satu token dipakai untuk latar pekat dan teks — ditangani aturan khusus per kelas (keputusan-implementasi §62.2); (2) prettier mengubah akhir baris empat berkas modul tanpa mengubah isinya — dikembalikan.
+
+**Verifikasi:** `vite build` bersih; suite frontend penuh 1.231/1.237 dengan 6 kegagalan tak stabil di modul lain saat berjalan paralel — berkas-berkas itu lulus 75/75 saat dijalankan tersendiri, baik dengan maupun tanpa perubahan ini. **Belum diperiksa visual di peramban.**

@@ -6,7 +6,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { useSelectedPortal } from '@/app/portal'
 
 import { useAutoClaimTabList, useRefreshAutoClaim } from './api'
-import { CompanyTable } from './CompanyTable'
+import { CompanyBrowser } from './CompanyBrowser'
 import { SourceTab } from './SourceTab'
 import { UploadForm } from './UploadForm'
 
@@ -56,7 +56,7 @@ export function AutoClaimInboxPage() {
   const reload = useRefreshAutoClaim()
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Inbox Auto Claim</h1>
@@ -184,7 +184,7 @@ export function AutoClaimInboxPage() {
         // halaman, dan baris yang terbuka ikut hilang. Bukan kerapian — ketiga tab
         // membaca tabel berbeda, dan kode perusahaan yang terbuka di satu tab belum tentu
         // ada di tab lain.
-        <CompanyTable key={activeSource} source={activeSource} table={activeTable} />
+        <CompanyBrowser key={activeSource} source={activeSource} table={activeTable} />
       )}
     </main>
   )

@@ -17,18 +17,17 @@ type Props = {
 }
 
 /**
- * Daftar batch SATU perusahaan, digambar di dalam baris yang dibuka pada tabel perusahaan.
+ * Daftar batch SATU perusahaan — panel kanan pada CompanyBrowser.
  *
  * Susunan kolomnya sama dengan grid 9 kolom layar lama
- * (`Section/Inbox_AS_KREDIT_Sect-Section.xml`) — yang berubah hanya tempatnya, dari satu
- * grid panjang di bawah panel ringkasan menjadi isi baris yang melar (keputusan Work Owner
+ * (`Section/Inbox_AS_KREDIT_Sect-Section.xml`) — yang berubah hanya tempatnya: panel kanan
+ * di samping daftar perusahaan (keputusan Work Owner 2026-09-28, menggantikan baris melar
  * 2026-09-27). KODE dan Nama Perusahaan tetap ada walau perusahaannya sudah tertulis di
- * baris induknya: contoh yang disetujui memuatnya, dan baris ekspor yang disalin petugas
- * tetap lengkap tanpa harus melihat baris induk.
+ * kepala panel: contoh yang disetujui 2026-09-27 memuatnya, dan baris yang disalin
+ * petugas tetap lengkap.
  *
  * Paginasinya tetap di SERVER. Satu perusahaan dapat punya puluhan batch (DIRECT MO di tab
- * Asuransi Kredit memuat 27 pada saat ditulis), dan memuat semuanya sekaligus di dalam satu
- * baris akan mendorong perusahaan berikutnya jauh ke bawah layar.
+ * Asuransi Kredit memuat 27 pada saat ditulis).
  */
 export function CompanyBatches({ source, company, companyName }: Props) {
   const [page, setPage] = useState(1)
