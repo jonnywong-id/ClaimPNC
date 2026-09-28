@@ -1114,8 +1114,7 @@ export function AppRoute() {
         }
       />
       {/*
-
-              My Work — antrean kerja Surveyor dan Loss Adjuster, pengganti harness
+        My Work — antrean kerja Surveyor dan Loss Adjuster, pengganti harness
         `InboxSurvey_Harness` (`MENU_ID 50`).
 
         Layar ini MEMBACA SAJA. Menerima penugasan, menjadwal ulang survei, dan mengunggah
@@ -1138,6 +1137,11 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <SurveyInboxPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
         Inbox RCL — antrean penolakan medis milik SATU dokter RCL, pengganti harness
         `RCL_Harness` (`MENU_ID 62`). Disaring dengan identitas LAMA pemanggil, bukan login.
 

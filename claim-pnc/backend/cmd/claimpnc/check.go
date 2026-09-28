@@ -3770,6 +3770,12 @@ func checkInboxSurvey(
 	print("            antrean kosong.")
 }
 
+// checkInboxRCL memastikan tabel DAN tiga kolom yang dibaca layar Inbox RCL terjangkau.
+//
+// Sumbernya POOLDATA.T_CLAIMLIST_ADMIN, bukan tabel Pega (keputusan Work Owner 2026-09-27).
+// Dua langkah, karena sebab gagalnya berbeda: hak baca, atau migrasi
+// `0012_claimlist_admin_rcl` yang belum dijalankan DBA. Dua dari tiga kolomnya PENYARING —
+// tanpanya layar tidak dapat dipakai terhadap Oracle sama sekali.
 func checkInboxRCL(
 	ctx context.Context,
 	repo *inboxrclsql.Repo,
@@ -3795,6 +3801,7 @@ func checkInboxRCL(
 	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
 	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
 }
+
 
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
 //
@@ -5660,7 +5667,6 @@ func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo,
 	print("  [ok]    lini bisnis %s: %s", login, line)
 }
 
-<<<<<<< HEAD
 // checkOSClaimPerCabang memeriksa layar Inbox OS Claim per Cabang (`MENU_ID 69`).
 //
 // Yang diperiksa tiga hal, dan ketiganya dipisah karena tindak lanjutnya berbeda:
@@ -5749,7 +5755,8 @@ func checkOSClaimPerCabang(
 	}
 	print("  [info]  %d dari %d baris contoh bertanda progres mandek",
 		stalled, len(result.Items))
-=======
+}
+
 // checkPLADLAQueue menjalankan ketiga kueri daftar modul Inbox PLA, DLA, Pre DLA.
 //
 // # Kenapa KETIGANYA, bukan satu
