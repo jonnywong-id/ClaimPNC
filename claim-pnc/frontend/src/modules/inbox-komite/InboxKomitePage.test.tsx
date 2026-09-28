@@ -39,20 +39,10 @@ function kasus(partial: Partial<KomiteCase> = {}): KomiteCase {
     nama_bisnis: 'Property All Risk',
     sumber_bisnis: 'Direct',
     cabang: 'Jakarta Pusat',
-    group_panel: '006',
-    pic_klaim: 'PICTEKNIK1',
     tanggal_komite: '2026-09-11T02:00:00Z',
     tanggal_input: '2026-09-11T02:00:00Z',
     aging_komite: 9,
     status_kerja: 'Open',
-    tipe_komite: 'Adjustment',
-    nilai_klaim: '45000000.00',
-    nilai_asm_share: '31500000.00',
-    nilai_or_asm: '22500000.00',
-    ada_penilaian_ai: true,
-    jawaban_ai: 'DITERIMA',
-    note_ai_diterima: 'Dokumen lengkap.',
-    tanggal_ai: '2026-09-11T02:00:00Z',
     penjenjangan: {
       kesimpulan: 'menunggu',
       jumlah_jenjang: 0,
@@ -74,16 +64,8 @@ const SAMPLES: KomiteCase[] = [
     nomor_klaim: 'PNCN.26.0103',
     nama_tertanggung: 'CV Bina Karya',
     nama_bisnis: 'Aneka',
-    tipe_komite: 'Survey Komite',
     aging_komite: 4,
-    nilai_klaim: '7200000.00',
-    nilai_asm_share: '7200000.00',
-    nilai_or_asm: '0.00',
     // Tanpa penilaian AI — ia WAJIB tetap muncul.
-    ada_penilaian_ai: false,
-    jawaban_ai: '',
-    note_ai_diterima: '',
-    tanggal_ai: '',
   }),
 ]
 
@@ -122,6 +104,7 @@ function listBody(rows: KomiteCase[] = SAMPLES, extra: Record<string, unknown> =
     kotak: 'outstanding',
     operator: 'ELLENSUPRIYATI',
     sekarang: '2026-09-20T02:00:00Z',
+    jejak_keputusan_tersedia: true,
     ...extra,
   }
 }
@@ -192,24 +175,44 @@ afterEach(() => {
 })
 
 describe('daftar', () => {
-  it('menampilkan kasus komite beserta nilainya dari server', async () => {
+  it('menampilkan kesembilan kolom InboxRegisterKomite_RD dari server', async () => {
     stubDefaultFetch()
     renderPage()
 
     expect(await screen.findByText('PT Harapan Sentosa')).toBeInTheDocument()
     expect(screen.getByText('K-2601')).toBeInTheDocument()
     expect(screen.getByText('PNCN.26.0101')).toBeInTheDocument()
-
-    // Nilai uang diformat dari teks desimal kanonik, bukan dari angka JSON.
-    expect(screen.getByText('Rp 45.000.000')).toBeInTheDocument()
+    expect(screen.getAllByText('CONTOH-PL-000117').length).toBeGreaterThan(0)
+    expect(screen.getByText('Property All Risk')).toBeInTheDocument()
+    expect(screen.getAllByText(/Direct · Jakarta Pusat/).length).toBeGreaterThan(0)
 
     // Jumlah datang dari server, bukan dihitung ulang di layar.
     expect(screen.getByText(/2 kasus pada kotak ini/)).toBeInTheDocument()
   })
 
-  // Kasus tanpa penilaian AI WAJIB tetap muncul. Kueri lama menyambungkannya dengan OUTER
-  // JOIN; mengubahnya menjadi INNER akan membuat pekerjaan menghilang tanpa satu pun tanda.
-  it('menampilkan kasus yang belum dinilai AI', async () => {
+  // Nilai uang TIDAK boleh muncul: tidak satu pun ada di `InboxRegisterKomite_RD`, dan
+  // angka uang yang tidak pernah ada di layar aslinya tidak dapat diuji kesetaraannya
+  // terhadap apa pun — tepat pada layar tempat orang menyetujui uang.
+  it('tidak menampilkan nilai uang apa pun', async () => {
+    stubDefaultFetch()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+
+    // Diperiksa pada JUDUL KOLOM, bukan pada seluruh halaman: kalimat pengantar layar
+    // memuat frasa "nilai klaim" dan akan membuat pemeriksaan seluruh halaman menyala
+    // tanpa satu pun kolom uang benar-benar ada.
+    const judul = screen.getAllByRole('columnheader').map((h) => h.textContent ?? '')
+    expect(judul).not.toContain('Nilai klaim')
+    expect(judul).not.toContain('Tipe komite')
+
+    // Dan tidak ada satu pun angka yang tergambar sebagai rupiah.
+    expect(screen.queryByText(/^Rp\s/)).not.toBeInTheDocument()
+  })
+
+  // Baris kedua ikut tergambar. Uji ini menjaga daftar tidak diam-diam memotong dirinya
+  // sendiri pada baris pertama.
+  it('menampilkan seluruh baris pada halaman', async () => {
     stubDefaultFetch()
     renderPage()
 
@@ -447,5 +450,63 @@ describe('keadaan kosong', () => {
     renderPage()
 
     expect(await screen.findByText('Daftar kasus komite gagal dimuat')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Keadaan ketika jejak keputusan belum dapat dipakai.
+ *
+ * `POOLDATA.CPNC_KOMITE_KEPUTUSAN` dibuat migrasi `0004`, dan migrasi menempuh `D-63`
+ * sehingga hanya DBA yang dapat menjalankannya. Sebelum perbaikan 2026-09-28,
+ * ketiadaannya mematikan SELURUH layar — padahal kasusnya sendiri ada di tabel warisan.
+ */
+describe('jejak keputusan belum siap', () => {
+  function stubTanpaJejak() {
+    stubFetch((url) => {
+      if (url.startsWith(PATH)) {
+        return jsonResponse(200, listBody(SAMPLES, { jejak_keputusan_tersedia: false }))
+      }
+      return jsonResponse(200, listBody())
+    })
+  }
+
+  it('tetap menampilkan daftar pekerjaan', async () => {
+    stubTanpaJejak()
+    renderPage()
+
+    // Inilah inti perbaikannya: pekerjaannya tetap terbaca.
+    expect(await screen.findByText('PT Harapan Sentosa')).toBeInTheDocument()
+    expect(screen.getByText('K-2601')).toBeInTheDocument()
+  })
+
+  it('menyatakan keterbatasannya sebelum tombol ditekan', async () => {
+    stubTanpaJejak()
+    renderPage()
+
+    expect(await screen.findByText('Keputusan komite belum dapat dicatat')).toBeInTheDocument()
+    expect(screen.getByText(/migrasi 0004/i)).toBeInTheDocument()
+  })
+
+  // Tombol yang aktif padahal keputusannya pasti gagal adalah jebakan, bukan kemurahan
+  // hati — terlebih pada layar yang menyetujui uang klaim.
+  it('menonaktifkan tombol Putuskan', async () => {
+    stubTanpaJejak()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+    for (const tombol of screen.getAllByRole('button', { name: /Beri keputusan komite/ })) {
+      expect(tombol).toBeDisabled()
+    }
+  })
+
+  it('tidak mengganggu layar ketika jejaknya tersedia', async () => {
+    stubDefaultFetch()
+    renderPage()
+
+    await screen.findByText('PT Harapan Sentosa')
+    expect(screen.queryByText('Keputusan komite belum dapat dicatat')).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: /Beri keputusan komite/ })[0],
+    ).toBeEnabled()
   })
 })

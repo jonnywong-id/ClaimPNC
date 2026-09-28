@@ -1,11 +1,14 @@
 package sqlstore
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"claim-pnc/internal/komite"
 	"claim-pnc/internal/platform/money"
 )
 
@@ -183,11 +186,17 @@ func TestKueriDaftarInboxSelaluMenyaringPemilik(t *testing.T) {
 
 	for _, nama := range daftar {
 		t.Run(nama, func(t *testing.T) {
-			hurufBesar := strings.ToUpper(query(nama))
-			require.Containsf(t, hurufBesar, "ASSIGNED_OPERATOR",
+			rapat := bersihkanSpasi(query(nama))
+			require.Containsf(t, rapat, "w.PXASSIGNEDOPERATORID = :1",
 				"kueri %q tidak menyaring pemilik", nama)
-			require.Containsf(t, hurufBesar, "PXASSIGNEDOPERATORID",
-				"kueri %q tidak membaca penugasan worklist", nama)
+
+			// INNER, bukan LEFT. `InboxRegisterKomite_RD` memakai INNER JOIN ke
+			// `Assign-Worklist`, dan LEFT JOIN di sini akan meloloskan case yang TIDAK
+			// ditugaskan kepada siapa pun ke dalam inbox seseorang.
+			require.Containsf(t, rapat, "JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK a",
+				"kueri %q tidak menyambung penugasan ke case secara INNER", nama)
+			require.NotContainsf(t, rapat, "LEFT JOIN DATAPEGA.PC_ASSIGN_WORKLIST",
+				"kueri %q menyambung worklist secara LEFT; RD memakai INNER", nama)
 		})
 	}
 }
@@ -201,7 +210,7 @@ func TestKueriDaftarInboxSelaluMenyaringPemilik(t *testing.T) {
 func TestPenyaringDaftarDanPenghitungSama(t *testing.T) {
 	potong := func(teks string) string {
 		atas := strings.ToUpper(teks)
-		mulai := strings.LastIndex(atas, "WHERE (C.ASSIGNED_OPERATOR")
+		mulai := strings.LastIndex(atas, "WHERE (CASE")
 		require.GreaterOrEqual(t, mulai, 0, "klausa penyaring tidak ditemukan")
 
 		akhir := strings.Index(atas[mulai:], "ORDER BY")
@@ -215,6 +224,128 @@ func TestPenyaringDaftarDanPenghitungSama(t *testing.T) {
 		bersihkanSpasi(potong(query("inbox_count"))),
 		bersihkanSpasi(potong(query("inbox_list"))),
 		"penyaring inbox_list dan inbox_count berbeda")
+}
+
+// Tidak satu pun kueri daftar boleh menyentuh POOLDATA.CPNC_KOMITE_KEPUTUSAN.
+//
+// Work Owner menetapkan 2026-09-28 bahwa data komite dimunculkan `InboxRegisterKomite_RD`
+// dan `SetDataKomitePNC_Act`, dan tabel itu tidak dipakai. Ia juga tidak pernah ada di
+// Pega — ia rancangan aplikasi ini sendiri untuk MENULIS keputusan.
+//
+// Uji ini menjaga keputusan itu tetap berlaku. Menggabungkannya kembali ke kueri daftar
+// akan mengulang kegagalan 2026-09-28 persis: migrasi `0004` belum dijalankan di
+// lingkungan mana pun, sehingga satu join saja mematikan SELURUH layar dengan `ORA-00942`
+// — padahal 1.542 kasus di tabel warisan baik-baik saja.
+func TestKueriDaftarTidakMenyentuhTabelKeputusan(t *testing.T) {
+	for nama, teks := range queries {
+		if !strings.HasPrefix(nama, "inbox_") {
+			continue
+		}
+		require.NotContainsf(t, strings.ToUpper(teks), "CPNC_KOMITE_KEPUTUSAN",
+			"kueri %q menyentuh tabel keputusan; lihat catatan kepala inbox.sql", nama)
+	}
+}
+
+// Kueri daftar hanya boleh menyentuh KETIGA tabel yang kedua rule sumber sebut.
+//
+// `InboxRegisterKomite_RD` membaca kelas Work-Komite dan `Assign-Worklist`;
+// `GetKomitePAditerima` menambahkan `T_CLAIM_KOMITE_LIST` untuk kesimpulan kotak Diterima
+// dan Ditolak. Tidak ada yang keempat.
+//
+// Tabel tambahan apa pun — penilaian AI, dashboard OR, `T_CLAIM_PNC` — berarti layar ini
+// menampilkan sesuatu yang TIDAK pernah ada di layar aslinya, dan angka yang tidak dapat
+// dibandingkan dengan apa pun pada uji kesetaraan (`P-5`).
+func TestKueriDaftarHanyaMenyentuhTigaTabelSumber(t *testing.T) {
+	terlarang := []string{
+		"T_CLAIM_DATA_RESULTS_AI",
+		"PEGA_DASHBOARDPNC",
+		"T_CLAIM_PNC",
+		"BUSINESSNEW",
+	}
+
+	for nama, teks := range queries {
+		if !strings.HasPrefix(nama, "inbox_") {
+			continue
+		}
+		hurufBesar := strings.ToUpper(teks)
+		for _, tabel := range terlarang {
+			require.NotContainsf(t, hurufBesar, tabel,
+				"kueri %q menyentuh %s — bukan salah satu dari tiga tabel sumber", nama, tabel)
+		}
+	}
+}
+
+// Penyaring tahun WAJIB ada di setiap kueri daftar.
+//
+// `InboxRegisterKomite_RD` menyaring `pxYearNumber(.pxCreateDateTime) >= "2024"` sebagai
+// penyaring `F1`. Ukurannya nyata: pada basis data ASM ia menurunkan jumlah baris yang
+// lolos dari **417 menjadi 189**. Melewatkannya berarti layar menampilkan lebih dari dua
+// kali lipat pekerjaan yang pernah terlihat di Pega.
+//
+// Yang dicari adalah penandanya, bukan angkanya: batas tahunnya dikirim sebagai parameter
+// dari `komite.InboxEarliestCreatedAt`, bukan ditanam di dalam teks SQL.
+func TestKueriDaftarMenyaringTahunTerawal(t *testing.T) {
+	for _, nama := range []string{"inbox_list", "inbox_count", "inbox_summary"} {
+		t.Run(nama, func(t *testing.T) {
+			require.Containsf(t, bersihkanSpasi(query(nama)), "a.PXCREATEDATETIME >= :2",
+				"kueri %q tidak menyaring tahun terawal (penyaring F1 pada RD)", nama)
+		})
+	}
+}
+
+// Banyaknya argumen yang disusun Go WAJIB sama dengan banyaknya penanda di kuerinya.
+//
+// Selisih satu penanda tidak menimbulkan galat kompilasi; ia menggeser SELURUH nilai
+// sesudahnya ke kolom yang salah — operator terbaca sebagai kotak, kotak sebagai pola
+// pencarian — dan hasilnya kosong tanpa satu pun pesan yang menjelaskan sebabnya.
+//
+// Inilah kelas kesalahan yang paling mungkin muncul setelah kembaran `_warisan` ada,
+// karena keduanya dilayani satu fungsi penyusun argumen dengan penomoran yang berbeda.
+func TestJumlahArgumenSesuaiJumlahPenanda(t *testing.T) {
+	filter := komite.InboxFilter{Operator: "ELLENSUPRIYATI"}.Normalize()
+
+	kasus := []struct {
+		kueri   string
+		argumen int
+	}{
+		{"inbox_count", len(filterArgs(filter))},
+		{"inbox_summary", len(summaryArgs(filter))},
+
+		// Daftar menambahkan offset dan limit di belakang argumen penghitungnya.
+		{"inbox_list", len(filterArgs(filter)) + 2},
+	}
+
+	for _, k := range kasus {
+		t.Run(k.kueri, func(t *testing.T) {
+			require.Equal(t, k.argumen, penandaTertinggi(t, query(k.kueri)),
+				"jumlah argumen tidak sama dengan jumlah penanda")
+		})
+	}
+}
+
+// penandaTertinggi mengembalikan nomor penanda parameter terbesar di dalam satu kueri,
+// sekaligus menuntut penomorannya rapat — tanpa nomor yang terlewat.
+//
+// Nomor yang terlewat berarti ada argumen yang dikirim tetapi tidak pernah dipakai, dan
+// itu selalu berarti salah satu dari dua hal: penyaring yang terlupa, atau nilai yang
+// masuk ke kolom yang salah.
+func penandaTertinggi(t *testing.T, teks string) int {
+	t.Helper()
+
+	terlihat := map[int]bool{}
+	tertinggi := 0
+	for _, cocok := range regexp.MustCompile(`:(\d+)`).FindAllStringSubmatch(teks, -1) {
+		nomor, err := strconv.Atoi(cocok[1])
+		require.NoError(t, err)
+		terlihat[nomor] = true
+		if nomor > tertinggi {
+			tertinggi = nomor
+		}
+	}
+	for nomor := 1; nomor <= tertinggi; nomor++ {
+		require.Truef(t, terlihat[nomor], "penanda :%d tidak dipakai; penomorannya berlubang", nomor)
+	}
+	return tertinggi
 }
 
 // bersihkanSpasi meratakan spasi supaya perbandingan menilai ISI klausa, bukan lekukannya.

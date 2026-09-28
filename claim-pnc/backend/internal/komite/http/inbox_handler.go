@@ -140,9 +140,10 @@ func (h *InboxHandler) List(w http.ResponseWriter, r *http.Request) {
 			Accepted:    result.Summary.Accepted,
 			Rejected:    result.Summary.Rejected,
 		},
-		Kind:     string(normalized.Kind),
-		Operator: normalized.Operator,
-		Now:      result.Now.UTC().Format(time.RFC3339),
+		Kind:               string(normalized.Kind),
+		Operator:           normalized.Operator,
+		Now:                result.Now.UTC().Format(time.RFC3339),
+		DecisionsAvailable: result.DecisionsAvailable,
 	})
 }
 
@@ -297,30 +298,13 @@ func toCommitteeCaseDTO(c komite.CommitteeCase, viewer string, now time.Time) Co
 		BusinessName:     c.BusinessName,
 		SourceOfBusiness: c.SourceOfBusiness,
 		BranchName:       c.BranchName,
-		GroupPanel:       c.GroupPanel,
-		ClaimPIC:         c.ClaimPIC,
 
 		CommitteeDate: formatTime(c.CommitteeDate),
 		CreatedAt:     formatTime(c.CreatedAt),
 		AgingDays:     c.AgingDays(now),
 
 		WorkStatus:    c.WorkStatus,
-		CommitteeKind: c.CommitteeKind,
-
-		ClaimValue:    c.ClaimValue.String(),
-		ASMShareValue: c.ASMShareValue.String(),
-		ORValue:       c.ORValue.String(),
-
-		CommitteeNote: c.CommitteeNote,
-
-		HasAIAssessment: c.HasAIAssessment,
-		AIResult:        c.AIResult,
-		AINoteAccepted:  c.AINoteAccepted,
-		AINoteRejected:  c.AINoteRejected,
-		AIAssessedAt:    formatTime(c.AIAssessedAt),
-
 		LegacyOutcome: legacyOutcomeText(c.LegacyOutcome),
-		LegacyTier:    c.LegacyTier,
 
 		Progress: toProgressDTO(c.Progress, viewer),
 	}

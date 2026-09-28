@@ -25,6 +25,9 @@ const (
 	CodeCaseNotFound   = "kasus_tidak_ditemukan"
 	CodeDecisionClosed = "komite_sudah_selesai"
 	CodeMalformedBody  = "permintaan_cacat"
+
+	// CodeDecisionStoreDown dipakai ketika jejak keputusan belum dapat dipakai.
+	CodeDecisionStoreDown = "jejak_keputusan_belum_siap"
 )
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri
@@ -122,6 +125,22 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code: CodeDecisionClosed,
 			Message: "Keputusan atas kasus ini sudah tercatat. Muat ulang untuk " +
 				"melihat keadaan terbarunya.",
+		}, true
+
+	case errors.Is(err, komite.ErrDecisionStoreUnavailable):
+		// 503, bukan 500. Keduanya "bukan salah pengguna", tetapi artinya berbeda dan
+		// tindakannya pun berbeda: 500 berarti ada yang rusak dan harus diperbaiki
+		// pengembang; 503 berarti sesuatu yang memang belum terpasang, dan yang dapat
+		// memasangnya bukan orang yang sedang menatap layar.
+		//
+		// Pesannya menyebut apa yang kurang, karena pada layar yang menyetujui uang klaim
+		// pengguna WAJIB tahu bahwa keputusannya belum tercatat di mana pun — bukan
+		// menduga-duga dari kalimat "Terjadi kesalahan pada sistem".
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeDecisionStoreDown,
+			Message: "Keputusan komite belum dapat dicatat: tabel jejaknya belum " +
+				"dibuat di basis data. Daftar kasus di layar ini tetap benar dan " +
+				"dibaca dari sistem lama. Hubungi DBA untuk menjalankan migrasi 0004.",
 		}, true
 
 	case errors.Is(err, errMalformedBody):

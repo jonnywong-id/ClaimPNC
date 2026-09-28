@@ -4904,6 +4904,19 @@ export type KomiteProgress = {
  * `.IBNR` → nilai ASM share, `.pyScore` → nilai OR ASM, `.DraftWordingID` → PIC klaim,
  * `.StatusKlaim` → tipe komite (`D-19`).
  */
+/**
+ * Satu baris Inbox Komite.
+ *
+ * # Kesembilan kolomnya berasal dari `InboxRegisterKomite_RD`
+ *
+ * Work Owner menetapkan 2026-09-28 bahwa data komite dimunculkan RD itu beserta
+ * `SetDataKomitePNC_Act`. Grid pada `Section/InboxKomite_section` menampilkan tepat
+ * kolom-kolom ini — tidak lebih.
+ *
+ * Nilai klaim, ASM share, Nilai OR, tipe komite, PIC klaim, dan penilaian AI SENGAJA
+ * tidak ada: tidak satu pun ada di RD, dan yang menampilkannya di sistem lama adalah
+ * `ShowKomiteTerimaTolakNonMBU` — jalur Non-MBU yang bukan sumber layar ini.
+ */
 export type KomiteCase = {
   nomor_case: string
   nomor_klaim: string
@@ -4913,8 +4926,6 @@ export type KomiteCase = {
   nama_bisnis: string
   sumber_bisnis: string
   cabang: string
-  group_panel?: string
-  pic_klaim?: string
 
   /** RFC 3339 dalam UTC; kosong berarti belum ada, bukan tahun 1. */
   tanggal_komite?: string
@@ -4923,25 +4934,14 @@ export type KomiteCase = {
   aging_komite: number
 
   status_kerja?: string
-  tipe_komite?: string
 
-  /** Teks desimal kanonik — bukan angka JSON, yang akan dibulatkan diam-diam. */
-  nilai_klaim: string
-  nilai_asm_share: string
-  nilai_or_asm: string
-
-  note_komite?: string
-
-  /** Membedakan "belum dinilai AI" dari "dinilai dengan hasil kosong". */
-  ada_penilaian_ai: boolean
-  jawaban_ai?: string
-  note_ai_diterima?: string
-  note_ai_ditolak?: string
-  tanggal_ai?: string
-
-  /** Keputusan dan jenjang yang tercatat **di Pega**, bukan di sistem ini. */
+  /**
+   * Keputusan yang tercatat **di Pega**, bukan di sistem ini.
+   *
+   * Ia bukan sekadar keterangan: inilah yang menentukan isi kotak Diterima dan Ditolak,
+   * persis seperti `GetKomitePAditerima`.
+   */
   keputusan_pega?: KomiteOutcome
-  jenjang_pega?: number
 
   penjenjangan: KomiteProgress
 }
@@ -4971,6 +4971,22 @@ export type KomiteInboxListResponse = {
   operator: string
   /** Jam server yang dipakai menghitung aging. */
   sekarang: string
+  /**
+   * Apakah keputusan komite dapat dicatat saat ini.
+   *
+   * `false` berarti tabel jejaknya — `POOLDATA.CPNC_KOMITE_KEPUTUSAN`, dibuat migrasi
+   * `0004` — belum ada di basis data. Migrasi menempuh `D-63`, sehingga hanya DBA yang
+   * dapat menjalankannya.
+   *
+   * Dalam keadaan itu `kasus` di atas TETAP berisi pekerjaan yang sebenarnya: seluruhnya
+   * dibaca dari tabel warisan. Yang tidak tersedia hanyalah pencatatan keputusannya, dan
+   * kotak Diterima/Ditolak hanya memuat riwayat keputusan Pega.
+   *
+   * Layar WAJIB menyatakannya sebelum tombol keputusan ditekan — pada layar yang
+   * menyetujui uang klaim, mengetahui bahwa keputusan tidak akan tersimpan jauh lebih
+   * penting daripada kerapian tampilan.
+   */
+  jejak_keputusan_tersedia: boolean
 }
 
 export type KomiteCaseResponse = {
@@ -4983,6 +4999,13 @@ export const KomiteInboxErrorCode = {
   caseNotFound: 'kasus_tidak_ditemukan',
   decisionClosed: 'komite_sudah_selesai',
   malformedBody: 'permintaan_cacat',
+  /**
+   * Jejak keputusan belum dapat dipakai — migrasi `0004` belum dijalankan DBA.
+   *
+   * Dijawab `503`, bukan `500`: bukan ada yang rusak, melainkan ada yang belum
+   * terpasang — dan yang dapat memasangnya bukan orang yang sedang menatap layar.
+   */
+  decisionStoreDown: 'jejak_keputusan_belum_siap',
 } as const
 
 export type KomiteInboxErrorCode =

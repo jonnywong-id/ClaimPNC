@@ -23737,3 +23737,309 @@ Apakah `TUGUREASURANSIINDONESIA` benar-benar ada di `POOLDATA.T_REINSURER` **bel
 — memastikannya menuntut membaca Oracle, dan mode `-periksa` menuntut `PENYIMPANAN=oracle`
 sehingga menjalankannya berarti mengubah setelan Work Owner. Jawabannya ada satu langkah di layar:
 buka menu Master Reas, cari kolom `Login`.
+
+### 70.14 "NOT REPLIED FROM ASM kosong padahal ada 1 data" — kuerinya diperiksa, dan corongnya dibuat terlihat
+
+Work Owner melaporkan tab **NOT REPLIED FROM ASM** kosong sementara ia tahu ada satu baris.
+
+**Yang diperiksa lebih dulu, sebelum menyalahkan data.** Empat hal yang paling mungkin rusak
+di modul ini — dan tiga di antaranya pernah benar-benar rusak di sesi yang sama:
+
+| Diperiksa | Hasil |
+|---|---|
+| Urutan bind (`list_komunikasi_sender`) | `:1`…`:7` menaik sesuai kemunculan — **benar** |
+| Susunan argumen Go (`filterArgs`) | `login · penanda · pola · status · login` — **cocok** |
+| Urutan kolom `SELECT` lawan `rows.Scan` | tiga belas kolom, urutannya **cocok** |
+| Paginasi | `Offset() = (Page-1) * Size`; halaman 1 → offset 0 — **benar** |
+| Nilai status tab | `CommunicationNotAnswered = "0"` — **benar** |
+
+**Dibandingkan ulang dengan Pega, baris per baris.** `RDB List/BrowseCommunicationReas-SQL.xml`
+dan `Activity/SetDataPLADLA-Act.xml` dibaca ulang:
+
+| Hal | Pega | Go |
+|---|---|---|
+| tipe 5 → penyaring pihak | `"and c.sender='"+OperatorID.pyUserIdentifier+"'"` | `UPPER(TRIM(k.SENDER)) = UPPER(TRIM(:5))` |
+| tipe 5 → status | `TempView.DistrictID = "0"` | `:4` = `"0"` |
+| penyaring klaim | `a.STATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')` | sama persis |
+| pasangan klaim | `a.claimid=c.caseid` | `k.CASEID = c.CLAIMID` |
+
+Tidak ada selisih logika. **Barisnya tersaring oleh DATA, bukan oleh kueri.**
+
+**Kenapa itu tidak cukup sebagai jawaban.** Ketiga daftar komunikasi menyaring lewat empat
+syarat berturut-turut, dan "kosong" pada masing-masingnya menuntut tindakan yang sama sekali
+berbeda:
+
+| Syarat yang membuang | Artinya | Tindakannya |
+|---|---|---|
+| pihak tidak cocok | login mitra yang dipakai **bukan** pemilik percakapan | ganti `REAS_MITRA_PENGEMBANGAN` |
+| `KOMUNIKASISTATUS` NULL | datanya tidak lengkap | perbaikan di sisi data |
+| `CASEID` tanpa pasangan klaim | awalan kelas Pega tidak sama | telusuri penulisnya |
+| klaim sudah `Resolved-*` | memang sengaja disembunyikan | tidak ada |
+
+Menebaknya dari layar tidak mungkin — layar hanya dapat mengatakan "nol".
+
+**Yang dikerjakan:** `checkPLADLACommunicationFunnel` di mode `-periksa` menghitung keempat
+langkah itu sebagai **corong**, sehingga yang terbaca bukan "nol" melainkan **pada langkah mana**
+angkanya jatuh ke nol. Bila login yang diperiksa tidak muncul sebagai pihak mana pun, ia
+melanjutkan dengan menyebut **sepuluh login yang benar-benar punya percakapan** — karena
+pertanyaan berikutnya selalu "lalu login siapa", dan menebaknya satu per satu tidak masuk akal.
+
+Ia **hanya `SELECT COUNT(...)`**, sehingga aman terhadap basis data yang dipakai bersama Pega
+(`P-1`).
+
+**Dugaan terkuat, dan sengaja tidak dinyatakan sebagai kesimpulan.** Layar sedang berjalan
+dengan peminjaman `REAS_MITRA_PENGEMBANGAN=TUGUREASURANSIINDONESIA` (§70.13). Bila baris yang
+Work Owner lihat dikirim mitra lain, tab itu kosong **dan itu benar**. Corong di atas yang
+membuktikannya — bukan saya.
+
+## 71. Inbox Komite mati total — satu tabel yang belum dibuat mematikan 1.542 kasus (2026-09-28)
+
+**Laporan Work Owner:** *"Inbox Komite — Tidak dapat menghubungi server. Daftar kasus komite belum
+dapat dimuat."*
+
+### 71.1 Dua sebab, bukan satu — dan yang kedua tidak terlihat dari pesannya
+
+Pesan yang dilihat Work Owner adalah pesan `NetworkError`, dan `NetworkError` hanya dilempar ketika
+`fetch` **tidak berhasil menyambung** (`src/api/client.ts:83`). Pemeriksaan pertama membenarkannya:
+tidak ada proses yang mendengarkan di port 8080 — **backend memang sedang tidak menyala**.
+
+Tetapi menghidupkan backend **tidak akan memperbaikinya**, dan itu yang tidak terbaca dari pesan
+mana pun. Setelah binary dijalankan dan endpoint-nya ditembak, route-nya sehat; yang sakit ada di
+lapisan basis data.
+
+### 71.2 Akar masalahnya: migrasi 0004 belum pernah dijalankan
+
+Diverifikasi langsung ke Oracle, bukan disimpulkan dari kode:
+
+```
+POOLDATA.CPNC_KOMITE_KEPUTUSAN   ada=0
+SELECT dari CPNC_KOMITE_KEPUTUSAN -> ORA-00942: table or view does not exist
+kasus Work-Komite                 -> 1.542 baris
+```
+
+`migrations/0004_komite_keputusan.up.sql` menyatakannya sendiri di kepala berkas: **"BERKAS INI
+BELUM PERNAH DIJALANKAN DI LINGKUNGAN MANA PUN."** Ia menempuh `D-63` — permintaan tertulis,
+persetujuan Work Owner, pelaksanaan DBA — dan akun aplikasi tidak punya hak DDL.
+
+**Kenapa satu tabel yang belum ada mematikan seluruh layar.** Tiga dari empat kueri inbox
+menggabungkannya:
+
+| Kueri | Join ke `CPNC_KOMITE_KEPUTUSAN` | Akibat |
+|---|---|---|
+| `inbox_list` | ya (`:2` = ACTOR_LOGIN) | **gagal** |
+| `inbox_count` | ya | **gagal** |
+| `inbox_summary` | ya | **gagal** |
+| `inbox_get` | tidak | selamat |
+
+Yang hilang sebenarnya hanyalah **satu kolom pelengkap** — keputusan yang dicatat aplikasi ini.
+Kasusnya sendiri, nilai klaimnya, penilaian AI-nya, dan riwayat keputusan Pega seluruhnya ada di
+tabel warisan dan baik-baik saja. Dengan kata lain: **1.542 kasus nyata tidak terbaca karena satu
+kolom yang memang belum bisa ada.**
+
+### 71.3 Kenapa ini tidak ketahuan lebih awal
+
+Inbox Komite adalah **satu-satunya inbox yang tidak punya langkah `-periksa`**. Dan
+`inbox_check_table` yang sudah ada tidak menangkapnya — ia hanya menyentuh tabel Pega, tidak
+menyentuh tabel milik aplikasi ini sama sekali.
+
+Jadi satu-satunya cara keadaan ini terdeteksi adalah pengguna membuka layarnya dan melapor. Itu
+persis kegagalan yang mode `-periksa` dibuat untuk mencegah.
+
+### 71.4 Yang dikerjakan
+
+Work Owner memilih **jalan dengan mode terbatas**, bukan menunggu DBA dengan layar mati.
+
+**1. Kembaran kueri tanpa join keputusan.** Repo memeriksa ketersediaan tabelnya lebih dulu, lalu
+memilih kueri. Ketika belum ada, ia memakai `inbox_list_warisan`, `inbox_count_warisan`, dan
+`inbox_summary_warisan` — identik dengan aslinya kecuali pada **tiga titik**: kolom `MY_DECISION`
+menjadi `CAST(NULL AS VARCHAR(20))`, blok join dibuang, dan penanda parameter bergeser satu.
+
+Seluruh klausa penyaring **dibiarkan utuh**, termasuk ketiga cabang `MY_DECISION` yang di sana tidak
+akan pernah terpenuhi. Menyederhanakannya akan membuat kedua kueri tidak lagi dapat dibandingkan
+baris per baris.
+
+**2. Uji yang menegakkan keselarasannya, bukan disiplin manusia.**
+`TestKueriWarisanSelarasDenganKembarannya` **membangun ulang** kembarannya dari kueri aslinya lewat
+ketiga perubahan yang diizinkan, lalu menuntut hasilnya sama persis. Perubahan keempat apa pun gagal
+di situ. Ditambah `TestJumlahArgumenSesuaiJumlahPenanda`, yang menutup kelas kesalahan paling
+mungkin muncul sesudah ini: argumen yang tergeser satu penanda ke kolom yang salah.
+
+**3. Keputusan yang tidak dapat dicatat ditolak dengan jelas, bukan gagal sebagai 500.** Galat
+domain baru `komite.ErrDecisionStoreUnavailable` dipetakan ke **`503`**, dengan pesan yang menyebut
+apa yang kurang dan siapa yang dapat melengkapinya. Bedanya nyata: `500` berarti ada yang rusak,
+`503` berarti ada yang belum terpasang — dan yang dapat memasangnya bukan orang yang menatap layar.
+
+**4. Layar menyatakan keterbatasannya di ATAS, sebelum tombol apa pun.** Respons daftar membawa
+penanda `jejak_keputusan_tersedia`; ketika salah, layar menampilkan pemberitahuan dan
+**menonaktifkan tombol Putuskan**. Pada layar yang menyetujui uang klaim, menemukan bahwa keputusan
+tidak tersimpan **setelah** menekan tombol jauh lebih mahal daripada satu kotak yang mengganggu.
+
+**5. `checkKomiteInbox` ditambahkan ke mode `-periksa`.** Ia memisahkan empat sebab "daftar kosong"
+yang di layar tampak sama: tabel warisan tak terbaca · jejak keputusan belum ada · basis datanya
+memang kosong · ada kasusnya tetapi bukan milik login itu.
+
+### 71.5 Dibuktikan terhadap Oracle sungguhan, bukan hanya terhadap uji
+
+Mode `-periksa` dijalankan terhadap basis data ASM:
+
+```
+[ok]    Tabel warisan Inbox Komite dapat dibaca
+[BELUM] POOLDATA.CPNC_KOMITE_KEPUTUSAN belum dapat dipakai: ORA-00942 …
+          Jalankan migrations/0004_komite_keputusan.up.sql (DBA, `D-63`).
+[ok]    Kasus Work-Komite di basis data ini: 1542
+```
+
+Lalu repo-nya sendiri dijalankan terhadap Oracle dengan operator yang benar-benar punya kasus:
+
+```
+jejak keputusan tersedia? false
+Summarize                 -> outstanding=2 diterima=2 ditolak=0 err=<nil>
+ListCases(outstanding)    -> total=2 halaman=2 err=<nil>
+```
+
+Nol galat. **Jalur `_warisan` diterima Oracle dan mengembalikan baris yang sebenarnya.**
+
+### 71.6 Satu hal yang TERLIHAT seperti cacat tetapi bukan
+
+Kasus `KMT-9` muncul di kotak **Outstanding dan Diterima sekaligus**. Itu perilaku kanonik yang
+sudah ada, bukan akibat perubahan ini — `komite.CommitteeCase.InBox`
+(`internal/komite/inbox.go:312`) memang membolehkannya: kasus yang disetujui pada satu jenjang di
+Pega tetapi belum `Resolved-Completed` memenuhi syarat kedua kotak.
+
+Ia **tidak diperbaiki**. `P-5` menetapkan perilaku dipertahankan lebih dulu, dan ini tidak ada di
+antara 13 perbaikan eksplisit yang `D-49` setujui. Dicatat sebagai pertanyaan terbuka.
+
+### 71.7 Yang TETAP tidak dapat dikerjakan, dan harus dinyatakan terang
+
+Selama migrasi 0004 belum dijalankan DBA:
+
+| Hal | Keadaan |
+|---|---|
+| Daftar kasus, nilai klaim, penilaian AI | **berjalan penuh** |
+| Riwayat keputusan Pega di kotak Diterima/Ditolak | **berjalan penuh** |
+| Mencatat keputusan komite | **TIDAK BISA** — `503` dengan pesan yang menyebut sebabnya |
+| Kotak Diterima/Ditolak memuat keputusan aplikasi ini | **tidak** — hanya riwayat Pega |
+
+Permintaan ke DBA sudah berupa berkas yang siap dijalankan:
+`backend/migrations/0004_komite_keputusan.up.sql`. Yang dibutuhkan hanyalah persetujuan Work Owner
+dan pelaksanaan DBA menurut `D-63`.
+
+### 71.8 Catatan atas uji
+
+Backend: `go vet ./...` bersih, `go test ./...` seluruhnya lulus. Frontend: `tsc --noEmit` bersih,
+**1.222 uji di 74 berkas lulus**. Dua galat render React muncul dari
+`inbox-komunikasi-cabang/KomunikasiCabangPage.test.tsx` — modul yang **tidak disentuh** sesi ini,
+dan tidak satu pun uji gagal karenanya.
+
+### 71.9 Koreksi Work Owner: sumbernya `InboxRegisterKomite_RD` + `SetDataKomitePNC_Act` (2026-09-28)
+
+**Arahan Work Owner:** *"untuk memunculkan data komite menggunakan InboxRegisterKomite_RD dan
+activity SetDataKomitePNC_Act, tidak usah pakai table CPNC_KOMITE_KEPUTUSAN."*
+
+Ini bukan sekadar menghapus satu join — ia **mengganti sumber datanya**, dan membatalkan sebagian
+besar §71.4.
+
+#### Apa yang ternyata benar
+
+`Report Definition/InboxRegisterKomite_RD-RD.xml` dirujuk `Harness/InboxKomite_Harness` dan
+`Section/InboxKomite_section` — jadi ia memang sumber grid layar ini. Isinya jauh lebih sederhana
+daripada yang saya bangun:
+
+| Hal | Isi |
+|---|---|
+| Kelas | `ASM-FW-GCNMFW-Work-Komite` |
+| Join | **INNER** ke `Assign-Worklist` berprefix `newAssignPage`, `ON pxRefObjectKey = .pzInsKey` |
+| Logika penyaring | `(A) AND B AND F1` |
+| A | `newAssignPage.pxAssignedOperatorID = Param.assign` |
+| B | `.pyStatusWork != "Resolved-Completed"` |
+| **F1** | **`pxYearNumber(.pxCreateDateTime) >= "2024"`** |
+| Kolom | `.pyID` · `.CoverID` · `.Komite.DateOfComitee` · `.POLICYNO` · `.BUSINESSNAME` · `.BranchName` · `.SOBNAME` · `.QQNAME` · Aging |
+
+`Activity/SetDataKomitePNC_Act-Act.xml` (kelas `Data-Portal`, 18 langkah) adalah pemuat portalnya.
+Ia bercabang pada `FlagKomiteKlaims.pyCaseID`: `1` → Outstanding (`GetKomitePAOutstanding`), `2` →
+Diterima (`GetKomitePAditerima`), `3` → CariData; NONMBU/TRAVEL diteruskan ke
+`SetDataKomiteNonMBU_Act`. Blok `Terima` dan `Tolak` di dalamnya **hanya `PROPERTY-SET`** — tidak
+satu pun menulis.
+
+#### Empat hal yang hanya ketahuan dengan bertanya ke basis data
+
+| Temuan | Akibatnya |
+|---|---|
+| **`DATEOFCOMITEE` bukan kolom** — tidak ada di antara 186 kolom `PC_ASM_FW_GCNMFW_WORK` | Ia hidup di blob Pega. Penggantinya `COALESCE(TANGGALKOMITE, CAST(PXCREATEDATETIME AS DATE))`, diambil dari kedua rule itu sendiri |
+| **`COVERID` juga bukan kolom** | Sudah benar sejak awal: ia `SUBSTR(PNCCASEID, INSTR+1)` |
+| **`T_CLAIM_KOMITE_LIST` berisi 39.067.250 baris** | Subkueri ber-`GROUP BY` atas seluruh tabel — bentuk yang saya pakai sebelumnya — mengagregasi 39 juta baris pada **setiap** permintaan inbox. Diganti subkueri skalar berkorelasi pada `KOMITE_ID`, yang punya indeks `T_CLAIM_KOMITE_LIST_KMT` |
+| **Indeks `BULKPROCESSFROMLIST(PXASSIGNEDOPERATORID, PXREFOBJECTKEY)`** | Persis urutan yang kueri butuhkan — asalkan kolomnya TIDAK dibungkus `UPPER`/`TRIM`. RD memakai `=` polos; saya mengikutinya |
+
+#### Penyaring tahun bukan detail kecil
+
+Diukur langsung: penyaring A+B meloloskan **417 baris**; ditambah F1 menjadi **189**. Melewatkannya
+berarti layar menampilkan **lebih dari dua kali lipat** pekerjaan yang pernah terlihat di Pega.
+
+Ia ditaruh sebagai konstanta `komite.InboxEarliestYear` dan **dikirim sebagai parameter**, bukan
+ditanam di teks SQL — dan diubah menjadi batas waktu `>= 2024-01-01` alih-alih
+`EXTRACT(YEAR …) >= 2024`, karena kolom yang terbungkus fungsi tidak dapat memakai indeks.
+
+#### Yang dibuang, dan kenapa itu koreksi — bukan pemangkasan
+
+Nilai klaim, Nilai ASM Share, Nilai OR ASM, Tipe Komite, PIC Klaim, dan penilaian AI. Tidak satu
+pun ada di RD; yang menampilkannya di sistem lama adalah `ShowKomiteTerimaTolakNonMBU` — **jalur
+Non-MBU**, yang bukan sumber layar ini.
+
+Menampilkan angka uang yang tidak pernah ada di layar aslinya berarti menaruh angka yang tidak
+dapat diuji kesetaraannya terhadap apa pun, tepat pada layar tempat orang menyetujui uang.
+
+Pengetahuan yang ikut hilang **tidak lenyap**: `CommitteeKindOf` dan `paymentKind` dihapus, dan
+aturannya dapat dibangun ulang dari `RDB List/ShowKomiteTerimaTolakNonMBU-SQL.xml` bila jalur
+Non-MBU kelak dibangun.
+
+#### Tombol Putuskan: kodenya disimpan, tombolnya dinonaktifkan
+
+Pilihan Work Owner. Jalur tulis (`decision_insert`, `DecisionRepo.Record`, endpoint POST) tetap
+ada; karena `CPNC_KOMITE_KEPUTUSAN` belum dibuat, `tableProbe` menjawab tidak tersedia sehingga
+respons daftar membawa `jejak_keputusan_tersedia: false`, tombolnya nonaktif, dan percobaan
+mencatat dijawab **`503`**.
+
+**Satu hal yang harus diketahui siapa pun yang menghidupkannya kelak:** penyaring kotak di SQL
+sekarang **tidak mengenal** keputusan milik aplikasi ini. Selama tidak satu pun keputusan dapat
+tercatat, ia setara dengan `komite.CommitteeCase.InBox`. Begitu jalur tulis hidup, keduanya
+berselisih — kasus yang sudah diputuskan seseorang akan tetap muncul di kotak Outstanding miliknya.
+Kewajiban itu ditulis di kepala `inbox.sql`, bukan diserahkan pada ingatan.
+
+#### Dibuktikan ke Oracle sungguhan
+
+```
+CheckTables: ok (tiga tabel terbaca)
+  ELLENSUPRIYATI  out=90 diterima=0  ditolak=40
+  INDRAGUNAWAN    out=48 diterima=3  ditolak=7
+  DANIELLISWANDI  out=14 diterima=0  ditolak=6
+  case ganda pada halaman: 0
+```
+
+Kolomnya terisi data nyata — `bisnis="FIRE"`, `polis=12000000053795` — nol galat, dan **tidak ada
+baris ganda** meski RD memakai INNER JOIN tanpa dedup.
+
+Mode `-periksa` kini melaporkan corongnya:
+
+```
+[ok]    Tabel warisan Inbox Komite dapat dibaca (ketiganya)
+[BELUM] POOLDATA.CPNC_KOMITE_KEPUTUSAN belum dapat dipakai: ORA-00942 …
+[ok]    Kasus Work-Komite di basis data ini: 1542
+[ok]    Ditugaskan DAN dibuat sejak 2024: 189 — inilah yang dapat muncul di inbox
+```
+
+#### Uji yang menjaga keputusan ini
+
+| Uji | Yang dijaganya |
+|---|---|
+| `TestKueriDaftarTidakMenyentuhTabelKeputusan` | Join ke `CPNC_KOMITE_KEPUTUSAN` tidak dapat kembali diam-diam |
+| `TestKueriDaftarHanyaMenyentuhTigaTabelSumber` | Tabel keempat — AI, dashboard OR, `T_CLAIM_PNC` — ditolak |
+| `TestKueriDaftarMenyaringTahunTerawal` | Penyaring `F1` tidak dapat hilang |
+| `TestKueriDaftarInboxSelaluMenyaringPemilik` | INNER, bukan LEFT; dan `w.PXASSIGNEDOPERATORID = :1` ada |
+| `TestJumlahArgumenSesuaiJumlahPenanda` | Argumen tidak tergeser satu penanda |
+| `TestKesembilanKolomRDTerisi` | Kesembilan kolom benar-benar berisi, bukan kosong diam-diam |
+| `tidak menampilkan nilai uang apa pun` (frontend) | Kolom uang tidak dapat kembali lewat layar |
+
+#### Catatan uji
+
+Backend `go vet ./...` bersih dan seluruh `go test ./...` lulus. Frontend `tsc --noEmit` bersih,
+**1.223 uji di 74 berkas lulus**.

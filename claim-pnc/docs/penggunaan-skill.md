@@ -9983,3 +9983,109 @@ yang saya lakukan adalah menunjuk satu langkah di layar yang menjawabnya, bukan 
 `TestDevelopmentReinsurerLoginIsRefusedOnMemoryWithRealIdentity` gagal terhadap kode kemarin dan
 lulus terhadap kode hari ini — itu satu-satunya bukti yang layak dipercaya bahwa penjagaannya
 benar-benar berpindah, bukan sekadar ditulis ulang.
+
+---
+
+## Sesi 2026-09-28 (putaran kedua) — Inbox Komite "Tidak dapat menghubungi server"
+
+**Skill khusus yang dipanggil: tidak ada.** Dinyatakan apa adanya, sesuai catatan putaran
+sebelumnya: memanggil satu skill hanya agar kolom ini terisi akan membuat catatan ini menyesatkan.
+
+Yang dibutuhkan di sini bukan teknik, melainkan **menolak berhenti pada sebab pertama yang cocok**.
+Pesan yang dilihat Work Owner adalah pesan galat jaringan, dan pemeriksaan pertama membenarkannya —
+backend memang sedang mati. Berhenti di situ akan menghasilkan jawaban "nyalakan backend-nya", dan
+jawaban itu **salah**: layarnya tetap gagal setelah backend hidup.
+
+### Disiplin yang dipakai, dan urutannya
+
+| Langkah | Yang dibuktikan | Caranya |
+|---|---|---|
+| 1 | `NetworkError` hanya dari `fetch` yang gagal | membaca `api/client.ts`, bukan menyimpulkan dari teksnya |
+| 2 | backend memang tidak menyala | `Get-NetTCPConnection -LocalPort 8080` |
+| 3 | route-nya terdaftar dan sehat | menjalankan binary, lalu `curl` → `401`, bukan `404` |
+| 4 | modulnya utuh secara logika | instans kedua dengan `IDENTITAS_ADAPTER=fake` → `200` |
+| 5 | **modul ini membaca Oracle meski `PENYIMPANAN=memori`** | membaca `needsOracle` di `main.go` |
+| 6 | tabelnya memang tidak ada | kueri langsung ke Oracle → `ORA-00942`, `ada=0` |
+| 7 | kasusnya nyata dan banyak | `COUNT(1)` → **1.542 baris** |
+
+Langkah 5 adalah titik baliknya, dan ia **berasal dari putaran sebelumnya**: `needsOracle` persis
+jebakan yang sama yang membuat `REAS_LOGIN_PENGEMBANGAN` tampak tidak berpengaruh. Tanpa ingatan itu,
+langkah 4 yang menghasilkan `200` akan terbaca sebagai "modulnya baik-baik saja" dan penelusuran
+berhenti di tempat yang salah.
+
+### Satu kesimpulan yang nyaris salah, dan apa yang mencegahnya
+
+Pada verifikasi akhir, kasus `KMT-9` muncul di **dua kotak sekaligus**. Godaannya adalah
+melaporkannya sebagai cacat yang baru saja saya buat.
+
+Yang dilakukan sebagai gantinya: membaca `komite.CommitteeCase.InBox` — definisi kanonik yang
+kuerinya tiru — dan ternyata **perilaku itu memang sudah ada di sana**. Melaporkannya sebagai
+regresi akan salah; memperbaikinya diam-diam akan melanggar `P-5`. Ia dicatat sebagai pertanyaan
+terbuka.
+
+### Yang dipakai menggantikan disiplin manusia
+
+Kembaran `_warisan` berjarak ratusan baris dari aslinya di berkas yang sama, dan penyaring yang
+berbeda **tidak menimbulkan galat apa pun** — ia hanya menampilkan pekerjaan yang berbeda kepada
+orang yang menyetujui uang klaim. Karena itu `TestKueriWarisanSelarasDenganKembarannya` tidak
+sekadar membandingkan keduanya: ia **membangun ulang** kembarannya dari aslinya lewat ketiga
+perubahan yang diizinkan. Perubahan keempat apa pun gagal di situ.
+
+**Manfaat bagi proyek:** SQL yang ditulis tangan — tiga kueri panjang — tidak bergantung pada
+ketelitian saya saat menyalinnya. Uji itu gagal bila satu karakter pun menyimpang.
+
+---
+
+## Sesi 2026-09-28 (putaran ketiga) — koreksi sumber data Inbox Komite
+
+**Skill khusus yang dipanggil: tidak ada.** Sama seperti dua putaran sebelumnya, dan alasannya sama:
+yang dibutuhkan bukan teknik melainkan **membaca rule yang benar sebelum menulis kode**.
+
+### Apa yang membuat putaran ini berbeda
+
+Dua putaran sebelumnya memperbaiki kode saya sendiri. Putaran ini **membatalkan sebagian besarnya**,
+karena Work Owner menunjukkan bahwa saya membaca rule yang salah sejak awal: saya merekonstruksi
+layar dari tiga RDB List, sementara gridnya sebenarnya digerakkan sebuah Report Definition.
+
+Pelajarannya bukan "baca lebih teliti" — saya sudah membaca ketiga RDB List dengan teliti. Yang
+terlewat adalah **bertanya rule mana yang dirujuk harness dan section-nya**. Satu pencarian
+`grep -rl "InboxRegisterKomite_RD"` menjawabnya dalam hitungan detik, dan jawabannya menunjuk
+langsung ke `InboxKomite_Harness` dan `InboxKomite_section` — dua berkas yang justru saya sebut di
+kepala dokumentasi modul sebagai yang digantikan.
+
+### Disiplin yang dipakai: bertanya ke basis data sebelum menulis SQL
+
+Empat pertanyaan diajukan ke Oracle, dan **tiga di antaranya membalikkan rancangan**:
+
+| Pertanyaan | Jawaban | Akibatnya |
+|---|---|---|
+| Apakah `DATEOFCOMITEE` kolom? | **Bukan** — tidak ada di 186 kolom | Kolom RD-nya tidak dapat dibaca SQL; penggantinya diambil dari rule lain |
+| Apakah `COVERID` kolom? | **Bukan** | Menegaskan pemotongan prefix memang caranya |
+| Berapa baris `T_CLAIM_KOMITE_LIST`? | **39.067.250** | Subkueri ber-`GROUP BY` seluruh tabel diganti subkueri skalar berkorelasi |
+| Indeks apa yang ada? | `BULKPROCESSFROMLIST(PXASSIGNEDOPERATORID, …)` | `UPPER`/`TRIM` pada penyaring operator dibuang — ia mematikan indeks itu |
+
+Tanpa keempatnya, SQL-nya akan **berjalan** tetapi salah: satu kolom kosong diam-diam, dan satu
+kueri yang mengagregasi 39 juta baris setiap kali seseorang membuka layarnya.
+
+### Angka yang mengubah bobot sebuah penyaring
+
+Penyaring `F1` (tahun >= 2024) tampak seperti detail. Dihitung: **417 menjadi 189**. Menyebutkan
+angkanya membuat ia berhenti terbaca sebagai detail, dan itulah sebabnya angkanya masuk ke komentar
+kode — bukan hanya ke catatan ini.
+
+### Yang dipakai menggantikan disiplin manusia
+
+Empat uji baru menjaga keputusan ini tidak tergeser diam-diam:
+`TestKueriDaftarTidakMenyentuhTabelKeputusan` · `TestKueriDaftarHanyaMenyentuhTigaTabelSumber` ·
+`TestKueriDaftarMenyaringTahunTerawal` · dan uji frontend "tidak menampilkan nilai uang apa pun".
+
+Yang ketiga patut disebut: ia mencari **penandanya** (`a.PXCREATEDATETIME >= :2`), bukan angkanya —
+sehingga batas tahun tetap dapat pindah ke master data tanpa uji itu ikut dibongkar.
+
+### Satu kesalahan uji saya sendiri, tertangkap saat dijalankan
+
+Uji "tidak menampilkan nilai uang" saya tulis memeriksa pola "Nilai klaim" di **seluruh halaman**.
+Ia gagal — karena kalimat pengantar layar memang berbunyi *"…kewenangan tertinggi atas nilai
+klaim"*. Diperbaiki menjadi memeriksa **judul kolom**, yang memang yang dimaksud. Uji yang
+memeriksa terlalu luas akan menyala pada hal yang benar, dan uji seperti itu biasanya dimatikan
+orang berikutnya.

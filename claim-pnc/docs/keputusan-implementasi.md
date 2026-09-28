@@ -19367,3 +19367,159 @@ Tiga pemagaran ditambahkan pada klausa `WHERE`-nya — kunci klaim, keterlibatan
 dan `REPLYMESSAGE IS NULL` — dan ketiganya berada **di dalam pernyataan tulisnya sendiri**,
 bukan sebagai pemeriksaan terpisah sebelum menulis. Dua permintaan yang datang bersamaan
 akan sama-sama lolos pemeriksaan terpisah.
+
+## 68. Inbox Komite berjalan dalam mode terbatas ketika jejak keputusan belum ada (2026-09-28)
+
+**Keputusan Work Owner, 2026-09-28.**
+
+### Persoalannya
+
+`POOLDATA.CPNC_KOMITE_KEPUTUSAN` dibuat migrasi `0004`, dan migrasi menempuh `D-63`: permintaan
+tertulis, persetujuan Work Owner, pelaksanaan DBA. Akun aplikasi tidak punya hak DDL, sehingga
+aplikasi **tidak dapat membuat tabel itu sendiri** — ia hanya dapat menunggu.
+
+Tiga dari empat kueri Inbox Komite menggabungkannya, sehingga selama migrasi itu belum dijalankan
+**seluruh layar mati** dengan `ORA-00942` — sementara **1.542 kasus komite** di tabel warisan ada
+dan terbaca baik-baik saja.
+
+### Yang dipertimbangkan
+
+| Pilihan | Kenapa tidak / ya |
+|---|---|
+| Tunggu DBA, biarkan layar mati | 1.542 kasus tidak terbaca karena satu kolom pelengkap. Tidak sepadan |
+| Hanya perbaiki pesan galatnya | Lebih jujur dari sebelumnya, tetapi layarnya tetap tidak dapat dipakai |
+| **Jalan dalam mode terbatas** | **Dipilih.** Daftar dibaca dari tabel warisan; hanya pencatatan keputusannya yang tidak tersedia |
+| Tulis keputusan ke `T_CLAIM_KOMITE_LIST` | **Ditolak mentah.** Tabel itu masih ditulis Pega; `P-1` melarangnya |
+
+### Keputusannya
+
+Repo memeriksa ketersediaan tabelnya lebih dulu, lalu memilih kueri. Ketika belum ada, ia memakai
+kembaran `_warisan` yang tidak menyentuh tabel itu sama sekali, dan `MY_DECISION` selalu `NULL`.
+
+**Empat hal yang mengikat:**
+
+1. **Kembarannya hanya boleh berbeda pada tiga titik** — kolom `MY_DECISION` menjadi
+   `CAST(NULL AS VARCHAR(20))`, blok join dibuang, penanda parameter bergeser satu. Seluruh klausa
+   penyaring dibiarkan utuh, dan `TestKueriWarisanSelarasDenganKembarannya` menegakkannya dengan
+   **membangun ulang** kembarannya dari aslinya.
+
+2. **Pemeriksaannya memakai `SELECT … WHERE 1 = 0`, bukan kueri katalog.** `ALL_TABLES` milik Oracle
+   dan `information_schema` milik PostgreSQL; memakai salah satunya berarti menambah pengecualian
+   portabilitas keempat di luar tiga yang `09-DATABASE-STRATEGY.md` §3 sebut. `SELECT` biasa berjalan
+   di keduanya dan sekaligus menjawab pertanyaan yang sebenarnya — *dapatkah akun ini membacanya* —
+   sehingga tabel yang ada tetapi tak terbaca ditangani sama dengan tabel yang tidak ada.
+
+3. **Jawaban "ada" disimpan selamanya, jawaban "belum ada" hanya 30 detik.** Tabel yang sudah dibuat
+   tidak lenyap; yang belum ada justru **diharapkan** berubah. Dengan jeda pendek itu, layar pulih
+   sendiri setengah menit setelah DBA menjalankan migrasinya — **tanpa me-restart aplikasi**.
+   Aplikasi yang menuntut restart setelah perubahan skema akan membuat orang menunda menjalankannya.
+
+4. **Keterbatasannya dinyatakan, tidak disembunyikan.** Respons membawa
+   `jejak_keputusan_tersedia`; layar memberitahukannya di atas dan menonaktifkan tombol Putuskan;
+   percobaan mencatat keputusan dijawab **`503`**, bukan `500`.
+
+### Konsekuensi yang diterima secara sadar
+
+1. **Kotak Diterima dan Ditolak hanya memuat riwayat keputusan Pega** selama mode ini berlaku. Itu
+   benar — belum ada satu pun keputusan aplikasi ini yang dapat tercatat — tetapi angkanya **akan
+   berubah** setelah migrasi dijalankan, dan perubahan itu bukan cacat.
+
+2. **Ada dua jalur SQL untuk satu layar.** Itu biaya nyata pada pemeliharaan, dan satu-satunya yang
+   menahannya tetap sehat adalah uji keselarasan di atas. Bila migrasi 0004 sudah dijalankan di
+   SELURUH portal, kembaran `_warisan` beserta `tableProbe` boleh dibuang — dan sebaiknya dibuang,
+   bukan dibiarkan sebagai jalur yang tidak pernah lagi ditempuh.
+
+3. **Kegagalan basis data apa pun dibaca sebagai "belum tersedia".** Tidak menyembunyikan apa pun:
+   bila basis datanya benar-benar putus, kueri utama yang menyusul gagal juga dan layar menampilkan
+   galatnya. Yang dihindari hanyalah menebak sebab kegagalan di tempat yang tidak punya cukup
+   keterangan untuk membedakannya.
+
+### Pertanyaan terbuka
+
+**Kasus yang sama dapat muncul di dua kotak sekaligus.** `komite.CommitteeCase.InBox` membolehkan
+sebuah kasus memenuhi Outstanding **dan** Diterima — yang disetujui pada satu jenjang di Pega tetapi
+belum `Resolved-Completed`. Ini **perilaku kanonik yang sudah ada**, bukan akibat perubahan ini, dan
+`P-5` menahannya tetap begitu: ia tidak ada di antara 13 perbaikan eksplisit `D-49`. Apakah ia
+memang dikehendaki belum pernah ditanyakan kepada Work Owner.
+
+## 69. Inbox Komite bersumber dari `InboxRegisterKomite_RD` dan `SetDataKomitePNC_Act` (2026-09-28)
+
+**Keputusan Work Owner, 2026-09-28.** Ia **menggantikan sebagian §68**: bukan lagi "dua jalur kueri,
+satu dengan jejak keputusan dan satu tanpa", melainkan **satu jalur** yang tidak pernah menyentuh
+`CPNC_KOMITE_KEPUTUSAN`.
+
+### Apa yang ditetapkan
+
+Data komite dimunculkan oleh `Report Definition/InboxRegisterKomite_RD-RD.xml` dan
+`Activity/SetDataKomitePNC_Act-Act.xml`. Tabel `POOLDATA.CPNC_KOMITE_KEPUTUSAN` tidak dipakai
+untuk memunculkan data.
+
+### Kenapa ini menutup akar masalah, bukan menambalnya
+
+Tabel itu **tidak pernah ada di Pega** — ia rancangan aplikasi ini sendiri untuk *menulis*
+keputusan, dan migrasi `0004` belum pernah dijalankan di lingkungan mana pun. Menggabungkannya ke
+kueri daftar membuat ketiadaan satu tabel pelengkap mematikan seluruh layar dengan `ORA-00942`.
+
+§68 menyelesaikannya dengan kembaran kueri. Keputusan ini menyelesaikannya dengan **tidak pernah
+menggabungkannya sejak awal** — sehingga kembaran itu, `tableProbe` pada jalur baca, dan seluruh
+uji keselarasannya menjadi tidak diperlukan dan dibuang.
+
+### Konsekuensi yang mengikat
+
+1. **Sembilan kolom, tidak lebih.** Nilai klaim, ASM share, Nilai OR, tipe komite, PIC klaim, dan
+   penilaian AI dibuang dari domain, kontrak API, dan layar. Keenamnya berasal dari
+   `ShowKomiteTerimaTolakNonMBU` — jalur Non-MBU yang bukan sumber layar ini.
+
+2. **Penyaring tahun `F1` wajib ada.** `pxYearNumber(.pxCreateDateTime) >= "2024"` memotong daftar
+   dari **417 menjadi 189** baris pada ASM. Ia ditaruh di `komite.InboxEarliestYear` dan dikirim
+   sebagai parameter — **bukan** ditanam di teks SQL — supaya pemindahannya ke master data kelak
+   menyentuh satu baris. Ia melanggar `D-15`, dan pelanggaran itu disadari: `P-5` yang menentukan
+   sekarang, dan memindahkannya ke master berarti mengubah perilaku tanpa keputusan tertulis.
+
+3. **Penyaring operator TIDAK di-`UPPER` dan TIDAK di-`TRIM`.** Dua sebab yang menunjuk arah sama:
+   RD membandingkannya apa adanya (kesetaraan), dan membungkus kolomnya membuat indeks
+   `BULKPROCESSFROMLIST` tidak terpakai sementara sisi lain join-nya berisi 39 juta baris
+   (kinerja). Perapiannya dikerjakan di Go lewat `komite.OperatorKey`.
+
+4. **`T_CLAIM_KOMITE_LIST` dibaca lewat subkueri skalar berkorelasi**, bukan subkueri ber-`GROUP BY`
+   atas seluruh tabel. Tabelnya berisi **39.067.250 baris**; bentuk lama mengagregasi seluruhnya
+   pada setiap permintaan inbox.
+
+5. **Tombol Putuskan: kodenya disimpan, tombolnya dinonaktifkan.** Pilihan Work Owner. Jalur tulis
+   tetap ada dan tetap dijaga `tableProbe`; percobaan mencatat dijawab `503` dengan pesan yang
+   menyebut migrasi `0004`.
+
+### Satu utang yang harus dilunasi bersamaan dengan menghidupkan jalur tulis
+
+Penyaring kotak di SQL **tidak mengenal** keputusan milik aplikasi ini. Selama tidak satu pun
+keputusan dapat tercatat, ia setara dengan `komite.CommitteeCase.InBox` — karena di sana `decided`
+selalu salah.
+
+Begitu jalur tulis hidup, keduanya berselisih: kasus yang sudah diputuskan seseorang akan tetap
+muncul di kotak Outstanding miliknya. Kewajiban mengembalikan penyaring itu ditulis di kepala
+`repo/sqlstore/inbox.sql`, bukan diserahkan pada ingatan.
+
+### Dua kolom RD yang bukan kolom basis data
+
+Diverifikasi ke `ALL_TAB_COLUMNS`, bukan disimpulkan: `.CoverID` dan `.Komite.DateOfComitee`
+**tidak ada** di `PC_ASM_FW_GCNMFW_WORK`. Keduanya hidup di blob Pega, dan Pega dapat membacanya
+sementara SQL tidak.
+
+Penggantinya diambil dari kedua rule sumber itu sendiri, bukan dikarang:
+
+| Properti RD | Pengganti | Dari |
+|---|---|---|
+| `.CoverID` | prefix kelas Pega dipotong | `SUBSTR(PNCCASEID, INSTR+1)` pada `GetKomitePAOutstanding` |
+| `.Komite.DateOfComitee` | `COALESCE(TANGGALKOMITE, CAST(PXCREATEDATETIME AS DATE))` | `b.tanggalkomite` pada `GetKomitePAditerima`, dan `TRUNC(PXCREATEDATETIME)` pada `GetKomitePAOutstanding` |
+
+### Pertanyaan terbuka
+
+1. **Batas tahun `2024` layak menjadi master data**, bukan konstanta. Memindahkannya mengubah
+   perilaku, sehingga ia menunggu keputusan tertulis.
+2. **Kasus yang sama dapat muncul di dua kotak sekaligus** — yang disetujui pada satu jenjang di
+   Pega tetapi belum `Resolved-Completed` memenuhi Outstanding dan Diterima. Terbukti pada data
+   nyata (`KMT-3616`, INDRAGUNAWAN). Ini perilaku kanonik `InBox` yang sudah ada, bukan akibat
+   perubahan ini, dan `P-5` menahannya tetap begitu.
+3. **`BRANCHNAME` dan `SOBNAME` sebagian berisi nama orang** pada data nyata (`"RIAMA MAGDALENA"`,
+   `"HERMAWAN ST"`). Ditampilkan apa adanya sesuai pemetaan RD; apakah itu cacat data belum
+   ditanyakan.

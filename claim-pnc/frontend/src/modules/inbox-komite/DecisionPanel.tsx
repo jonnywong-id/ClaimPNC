@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { APIError, NetworkError } from '@/api/client'
-import { KomiteDecisionKind, type KomiteCase, type KomiteDecisionKind as Kind } from '@/api/types'
+import {
+  KomiteDecisionKind,
+  KomiteInboxErrorCode,
+  type KomiteCase,
+  type KomiteDecisionKind as Kind,
+} from '@/api/types'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { TextAreaField } from '@/components/TextAreaField'
-import { formatRupiah } from '@/lib/money'
 
 type Props = {
   item: KomiteCase
@@ -44,9 +48,10 @@ const CHOICES: { kind: Kind; label: string; hint: string }[] = [
  *
  * # Kenapa panel di dalam halaman, bukan dialog yang menutupi layar
  *
- * Keputusannya diambil dengan MEMBACA angka: nilai klaim, nilai ASM share, dan penilaian
- * AI. Dialog yang menutupi tabel memaksa anggota komite mengingat angka yang baru saja ia
- * lihat, dan angka yang diingat adalah angka yang dapat salah diingat.
+ * Keputusannya diambil dengan MEMBACA baris di tabel — nomor klaim, tertanggung, polis,
+ * cabang, dan berapa lama ia sudah menunggu. Dialog yang menutupi tabel memaksa anggota
+ * komite mengingat apa yang baru saja ia lihat, dan yang diingat adalah yang dapat salah
+ * diingat.
  *
  * # Ketiga keputusan ditampilkan bersamaan, beserta akibatnya
  *
@@ -139,37 +144,24 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
       </header>
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-        <Figure label="Nilai klaim" value={formatRupiah(item.nilai_klaim)} />
-        <Figure label="Nilai ASM share" value={formatRupiah(item.nilai_asm_share)} />
-        <Figure label="Nilai OR ASM" value={formatRupiah(item.nilai_or_asm)} />
+        <Figure label="Nomor polis" value={item.nomor_polis || '—'} />
+        <Figure label="Nama bisnis" value={item.nama_bisnis || '—'} />
+        <Figure label="Cabang" value={item.cabang || '—'} />
       </dl>
 
       {/*
-        Penilaian AI ditampilkan sebagai KETERANGAN, bukan sebagai anjuran. Ia satu bahan
-        pertimbangan di antara yang lain, dan layar tidak boleh menyiratkan bahwa
-        menyetujui berarti mengikutinya.
+        Nilai klaim, nilai ASM share, Nilai OR ASM, dan penilaian AI TIDAK ditampilkan di
+        sini, dan itu bukan kelalaian.
 
-        Kasus TANPA penilaian AI menyebutkannya apa adanya. Membiarkannya kosong akan
-        terbaca seperti "AI menolak", dan itu arti yang sama sekali berbeda.
+        Work Owner menetapkan 2026-09-28 bahwa layar ini bersumber dari
+        `InboxRegisterKomite_RD` dan `SetDataKomitePNC_Act`. Tidak satu pun dari keempatnya
+        ada di sana; yang menampilkannya di sistem lama adalah `ShowKomiteTerimaTolakNonMBU`
+        — jalur Non-MBU yang bukan sumber layar ini.
+
+        Menampilkan angka uang yang tidak pernah ada di layar aslinya berarti menaruh angka
+        yang tidak dapat diuji kesetaraannya terhadap apa pun, tepat pada panel tempat orang
+        memutuskan uang.
       */}
-      <div className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 p-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Penilaian AI</p>
-        {item.ada_penilaian_ai ? (
-          <>
-            <p className="mt-1 text-sm font-medium text-slate-900">{item.jawaban_ai || '—'}</p>
-            {item.note_ai_diterima && (
-              <p className="mt-1 text-sm text-slate-600">{item.note_ai_diterima}</p>
-            )}
-            {item.note_ai_ditolak && (
-              <p className="mt-1 text-sm text-slate-600">{item.note_ai_ditolak}</p>
-            )}
-          </>
-        ) : (
-          <p className="mt-1 text-sm text-slate-600">
-            Kasus ini belum dinilai AI. Itu tidak menghalangi keputusan Anda.
-          </p>
-        )}
-      </div>
 
       <fieldset className="mt-5">
         <legend className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -300,6 +292,21 @@ function DecisionError({ error }: { error: unknown }) {
       <ErrorMessage
         title="Tidak dapat menghubungi server"
         description="Keputusan belum tersimpan. Periksa koneksi lalu coba lagi."
+        tone="gangguan"
+      />
+    )
+  }
+  // Jejak keputusan belum dapat dipakai.
+  //
+  // Layar sudah menyatakannya di atas dan tombolnya dinonaktifkan, sehingga jalur ini
+  // hanya tercapai bila keadaannya berubah SETELAH halaman dimuat. Ia tetap ditangani:
+  // yang paling berbahaya di sini bukan kegagalannya, melainkan pengguna yang mengira
+  // keputusannya sudah tercatat padahal tidak tersimpan di mana pun.
+  if (error instanceof APIError && error.kode === KomiteInboxErrorCode.decisionStoreDown) {
+    return (
+      <ErrorMessage
+        title="Keputusan belum dapat dicatat"
+        description={error.message}
         tone="gangguan"
       />
     )

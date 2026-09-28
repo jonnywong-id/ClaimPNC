@@ -21,11 +21,21 @@ import (
 // aturan itu bergantung pada kehati-hatian orang yang menyuntingnya berikutnya.
 type DecisionRepo struct {
 	db *sql.DB
+
+	// tersedia menjawab apakah tabelnya sudah dibuat DBA. Lihat tersedia.go.
+	tersedia *tableProbe
 }
 
 // NewDecisionRepo membentuk repo; db wajib sudah terhubung ke basis data portal yang
 // dituju.
-func NewDecisionRepo(db *sql.DB) *DecisionRepo { return &DecisionRepo{db: db} }
+func NewDecisionRepo(db *sql.DB) *DecisionRepo {
+	return &DecisionRepo{db: db, tersedia: newTableProbe(db, "decision_check_table")}
+}
+
+// Available memenuhi seam komite.DecisionRepo.
+func (r *DecisionRepo) Available(ctx context.Context) bool {
+	return r.tersedia.available(ctx)
+}
 
 // UniqueKeyName dipakai menerjemahkan galat bentrok menjadi galat domain.
 //
@@ -55,6 +65,16 @@ func (r *DecisionRepo) ListForCases(
 	if len(unique) == 0 {
 		// Tanpa satu pun kasus tidak ada yang perlu ditanyakan — dan `IN ()` bukan SQL
 		// yang sah di dialek mana pun.
+		return map[string][]komite.Decision{}, nil
+	}
+
+	// Tabel belum ada berarti BELUM ADA SATU PUN keputusan yang dapat tercatat di sana,
+	// dan "tidak ada keputusan" adalah jawaban yang benar — bukan kegagalan.
+	//
+	// Membiarkannya menjadi galat akan mematikan daftar yang justru sudah susah payah
+	// dibuat tetap menyala oleh kembaran kueri `_warisan`: jalur ini dilewati SETIAP
+	// halaman inbox lewat withProgress.
+	if !r.tersedia.available(ctx) {
 		return map[string][]komite.Decision{}, nil
 	}
 	if len(unique) > maxCasesPerQuery {
@@ -91,6 +111,16 @@ func (r *DecisionRepo) ListForCases(
 // Ia tidak pernah menimpa apa pun: berkas kuerinya tidak memuat UPDATE maupun DELETE, dan
 // akun aplikasi tidak diberi hak untuk keduanya.
 func (r *DecisionRepo) Record(ctx context.Context, d komite.Decision) error {
+	// Diperiksa LEBIH DULU, sebelum pernyataan dikirim.
+	//
+	// Tanpa ini, keadaan "migrasi 0004 belum dijalankan" sampai ke pengguna sebagai
+	// `ORA-00942` yang dibungkus galat 500 bertuliskan "Terjadi kesalahan pada sistem" —
+	// pada layar yang menyetujui uang klaim. Yang dilihat pengguna harus menyebut apa yang
+	// kurang, karena hanya dengan begitu ia tahu keputusannya BELUM tercatat di mana pun.
+	if !r.tersedia.available(ctx) {
+		return komite.ErrDecisionStoreUnavailable
+	}
+
 	_, err := r.db.ExecContext(ctx, query("decision_insert"),
 		d.ID,
 		d.CaseID,
