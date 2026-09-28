@@ -241,13 +241,17 @@ const PendingCloseStatusCode = "1139"
 var ExcludedGroupPanels = []string{"002", "005"}
 
 // Kode keenam daftar klaim dan satu tampilan XOL.
+//
+// Kodenya mengikuti JUDULNYA, bukan penyaringnya. Kode yang menggambarkan penyaring
+// (`komunikasi-masuk`) dan judul yang menggambarkan keadaan (`NOT ANSWERED`) akan selalu
+// terbaca seperti dua hal yang berbeda — dan yang tertulis di alamat adalah kodenya.
 const (
 	TabPLA      = "pla"
 	TabPLADLA   = "dla"
 	TabClose    = "close"
-	TabInbound  = "komunikasi-masuk"
-	TabOutbound = "komunikasi-terkirim"
-	TabAnswered = "komunikasi-dijawab"
+	TabInbound  = "not-answered"
+	TabOutbound = "not-replied-from-asm"
+	TabAnswered = "replied-from-asm"
 	TabXOL      = "xol"
 )
 
@@ -316,15 +320,27 @@ func listColumnsFor() []Column {
 //	tipe 6  komunikasi dijawab  BrowseCommunicationReas  status 1, SENDER
 //	tipe 7  DATA PLA DLA XOL KLAIM
 //
-// # Judul ketiga daftar komunikasi TIDAK ada di export
+// # Judul ketiga daftar komunikasi datang dari WORK OWNER, bukan dari export
 //
-// Ketiganya dipilih lewat tabel ringkas yang berupa TreeGrid (`TempPLADLA.pxResults`),
-// dan rule yang MENGISI halaman itu tidak ada di export mana pun — tidak di section, tidak
-// di harness, tidak di `SetDataPLADLA`. Yang terbaca hanyalah nomor tipenya dari
-// percabangan activity.
+// Ketiganya dipilih lewat tabel ringkas yang berupa TreeGrid (`TempPLADLA.pxResults`), dan
+// rule yang MENGISI halaman itu tidak ada di export mana pun — tidak di section, tidak di
+// harness, tidak di `SetDataPLADLA`. Yang terbaca dari export hanyalah nomor tipenya.
 //
-// Judul di bawah karena itu DISUSUN dari penyaringnya sendiri, bukan disalin. Itu
-// dinyatakan di PlannedDifferences, bukan disamarkan.
+// Judulnya karena itu sempat DISUSUN dari penyaringnya sendiri, dan selisih itu dinyatakan
+// di PlannedDifferences. Work Owner menyebutkan ketiganya pada 2026-09-28 —
+// **NOT ANSWERED · NOT REPLIED FROM ASM · REPLIED FROM ASM** — sehingga judulnya kini
+// sama dengan layar lama dan selisih itu dicabut.
+//
+// Urutan yang disebutkan Work Owner cocok dengan urutan tipe pada `SetDataPLADLA`, dan
+// artinya cocok dengan penyaring masing-masing:
+//
+//	tipe 4  NOT ANSWERED          pesan UNTUK saya, belum SAYA jawab
+//	tipe 5  NOT REPLIED FROM ASM  pesan DARI saya, belum dijawab ASM
+//	tipe 6  REPLIED FROM ASM      pesan DARI saya, sudah dijawab ASM
+//
+// Kecocokan itu diperiksa, bukan diterima begitu saja: "NOT ANSWERED" tanpa keterangan
+// pihak berarti yang belum menjawab adalah PEMBACANYA, sementara kedua judul lain menyebut
+// ASM secara eksplisit. Itu persis pembagian `COMMUNICATE_TO` versus `SENDER`.
 var tabs = []Tab{
 	{
 		Code: TabPLA,
@@ -373,8 +389,8 @@ var tabs = []Tab{
 	},
 	{
 		Code: TabInbound,
-		Name: "Komunikasi Masuk",
-		Description: "Klaim yang punya pesan DITUJUKAN kepada Anda dan belum Anda " +
+		Name: "NOT ANSWERED",
+		Description: "Klaim yang punya pesan DITUJUKAN kepada Anda dan belum ANDA " +
 			"jawab. Bukalah rinciannya untuk membaca dan membalas pesannya. Berbeda " +
 			"dari ketiga daftar di sebelah kiri, daftar ini TIDAK mengecualikan lini " +
 			"Personal Accident maupun Travel.",
@@ -388,7 +404,7 @@ var tabs = []Tab{
 	},
 	{
 		Code: TabOutbound,
-		Name: "Terkirim — Belum Dijawab",
+		Name: "NOT REPLIED FROM ASM",
 		Description: "Klaim yang punya pesan yang ANDA kirim dan belum dijawab pihak " +
 			"Asuransi Sinar Mas.",
 		Kind:                ViewClaimList,
@@ -401,9 +417,9 @@ var tabs = []Tab{
 	},
 	{
 		Code: TabAnswered,
-		Name: "Terkirim — Sudah Dijawab",
-		Description: "Klaim yang punya pesan yang Anda kirim dan SUDAH dijawab. " +
-			"Jawabannya terbaca pada rincian klaim.",
+		Name: "REPLIED FROM ASM",
+		Description: "Klaim yang punya pesan yang Anda kirim dan SUDAH dijawab " +
+			"Asuransi Sinar Mas. Jawabannya terbaca pada rincian klaim.",
 		Kind:                ViewClaimList,
 		Columns:             listColumnsFor(),
 		Source:              SourceCommunication,

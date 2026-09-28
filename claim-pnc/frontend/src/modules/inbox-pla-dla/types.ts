@@ -25,12 +25,24 @@ export type Kolom = {
  */
 export type JenisTampilan = 'daftar-klaim' | 'xol'
 
+/**
+ * Tabel asal sebuah daftar klaim.
+ *
+ * Dipakai menjelaskan daftar yang KOSONG: "belum ada pemberitahuan" dan "belum ada
+ * komunikasi" adalah dua sebab berbeda. Ia datang dari server, bukan disimpulkan dari
+ * awalan kode tab — kesimpulan itu pecah diam-diam saat kodenya berubah.
+ *
+ * Kosong pada tampilan XOL.
+ */
+export type SumberDaftar = 'pemberitahuan' | 'komunikasi' | ''
+
 /** Satu tampilan beserta kolom dan keterangannya. */
 export type Daftar = {
   kode: string
   nama: string
   keterangan: string
   jenis: JenisTampilan
+  sumber: SumberDaftar
   kolom: Kolom[]
 
   /** Barisnya punya tombol "Detail Claim". */

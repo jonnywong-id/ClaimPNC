@@ -102,6 +102,18 @@ type TabDTO struct {
 	// di layar tertinggal saat tampilannya bertambah.
 	Kind string `json:"jenis"`
 
+	// Source menyatakan TABEL ASAL daftarnya — pemberitahuan atau percakapan.
+	//
+	// Ia dikirim karena layar membutuhkannya untuk menjelaskan daftar yang KOSONG:
+	// "belum ada pemberitahuan untuk Anda" dan "belum ada komunikasi yang menyangkut
+	// Anda" adalah dua sebab yang berbeda, dan satu kalimat untuk keduanya akan membuat
+	// mitra membaca keterangan yang tidak ada hubungannya dengan tab yang ia buka.
+	//
+	// Sebelumnya layar menyimpulkannya dari AWALAN kode tab. Itu pecah begitu kodenya
+	// berubah mengikuti judul sebenarnya — dan pecahnya tidak menghasilkan galat, hanya
+	// kalimat yang salah. Kosong pada tampilan XOL.
+	Source string `json:"sumber"`
+
 	// HasDetailAction menyatakan barisnya punya tombol "Detail Claim".
 	HasDetailAction bool `json:"punya_rincian"`
 }
@@ -113,6 +125,7 @@ func toTabDTO(tab inboxpladla.Tab) TabDTO {
 		Description:     tab.Description,
 		Columns:         toColumnDTOs(tab.Columns),
 		Kind:            string(tab.Kind),
+		Source:          string(tab.Source),
 		HasDetailAction: tab.HasDetailAction,
 	}
 }

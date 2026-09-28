@@ -40,6 +40,7 @@ const METADATA = {
       nama: 'PLA',
       keterangan: 'PLA sudah dikirimkan kepada Anda, DLA belum.',
       jenis: 'daftar-klaim',
+      sumber: 'pemberitahuan',
       kolom: KOLOM,
       punya_rincian: true,
     },
@@ -48,6 +49,7 @@ const METADATA = {
       nama: 'PLA & DLA',
       keterangan: 'DLA sudah dikirimkan kepada Anda.',
       jenis: 'daftar-klaim',
+      sumber: 'pemberitahuan',
       kolom: KOLOM,
       punya_rincian: true,
     },
@@ -56,14 +58,16 @@ const METADATA = {
       nama: 'CLOSE CLAIM',
       keterangan: 'Klaim yang sudah selesai.',
       jenis: 'daftar-klaim',
+      sumber: 'pemberitahuan',
       kolom: KOLOM,
       punya_rincian: true,
     },
     {
-      kode: 'komunikasi-masuk',
-      nama: 'Komunikasi Masuk',
+      kode: 'not-answered',
+      nama: 'NOT ANSWERED',
       keterangan: 'Ada pesan untuk Anda yang belum Anda jawab.',
       jenis: 'daftar-klaim',
+      sumber: 'komunikasi',
       kolom: KOLOM,
       punya_rincian: true,
     },
@@ -74,6 +78,7 @@ const METADATA = {
       nama: 'DATA PLA DLA XOL KLAIM',
       keterangan: 'Ringkasan pemberitahuan XOL yang sudah dikirimkan kepada Anda.',
       jenis: 'xol',
+      sumber: '',
       kolom: KOLOM_XOL,
       punya_rincian: false,
     },
@@ -236,7 +241,7 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     // Ketiga daftar komunikasi dan tampilan XOL baru dibangun 2026-09-28. Sebelumnya
     // keempatnya ada di Pega tanpa satu pun tab yang menuju ke sana.
     expect(
-      screen.getByRole('tab', { name: 'Komunikasi Masuk' }),
+      screen.getByRole('tab', { name: 'NOT ANSWERED' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('tab', { name: /DATA PLA DLA XOL KLAIM/ }),

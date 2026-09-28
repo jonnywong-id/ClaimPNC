@@ -387,11 +387,6 @@ var PlannedDifferences = []string{
 
 	"Pencarian TIDAK peka huruf besar-kecil. Kueri lama membandingkan apa adanya.",
 
-	"Judul ketiga daftar komunikasi DISUSUN di sini, bukan disalin dari Pega. Ketiganya " +
-		"dipilih lewat tabel ringkas yang berupa TreeGrid, dan rule yang mengisi " +
-		"halaman itu tidak ada di export mana pun — yang terbaca hanyalah nomor " +
-		"tipenya (4, 5, dan 6) dari percabangan `SetDataPLADLA`.",
-
 	"Ketiga daftar komunikasi TIDAK mengecualikan lini Personal Accident (`002`) maupun " +
 		"Travel (`005`), sementara ketiga daftar pemberitahuan mengecualikan keduanya. " +
 		"Itu perbedaan yang memang ada di kueri Pega — `BrowseCommunicationReas` tidak " +

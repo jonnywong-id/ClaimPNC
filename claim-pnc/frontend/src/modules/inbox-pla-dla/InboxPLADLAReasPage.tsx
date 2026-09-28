@@ -398,7 +398,10 @@ function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
     return `Tidak ada klaim yang nomornya mengandung "${dicari}" pada daftar ini.`
   }
 
-  if (daftar?.kode.startsWith('komunikasi') === true) {
+  // Sumbernya datang dari SERVER. Sebelumnya layar menyimpulkannya dari awalan kode tab,
+  // dan kesimpulan itu pecah diam-diam begitu kodenya berubah mengikuti judul sebenarnya
+  // — tanpa satu pun galat, hanya kalimat yang salah.
+  if (daftar?.sumber === 'komunikasi') {
     return 'Belum ada klaim dengan komunikasi pada tahap ini yang menyangkut Anda.'
   }
 

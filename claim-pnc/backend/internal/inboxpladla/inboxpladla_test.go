@@ -37,7 +37,7 @@ func TestTheScreenOffersSevenViews(t *testing.T) {
 	}
 	require.Equal(t, []string{
 		"pla", "dla", "close",
-		"komunikasi-masuk", "komunikasi-terkirim", "komunikasi-dijawab",
+		"not-answered", "not-replied-from-asm", "replied-from-asm",
 		"xol",
 	}, got)
 }
@@ -100,9 +100,9 @@ func TestTheCommunicationListsFilterOnConversationsOnly(t *testing.T) {
 		status string
 		role   inboxpladla.CommunicationRole
 	}{
-		"komunikasi-masuk":    {"0", inboxpladla.RoleRecipient},
-		"komunikasi-terkirim": {"0", inboxpladla.RoleSender},
-		"komunikasi-dijawab":  {"1", inboxpladla.RoleSender},
+		"not-answered":         {"0", inboxpladla.RoleRecipient},
+		"not-replied-from-asm": {"0", inboxpladla.RoleSender},
+		"replied-from-asm":     {"1", inboxpladla.RoleSender},
 	}
 
 	for code, want := range expected {

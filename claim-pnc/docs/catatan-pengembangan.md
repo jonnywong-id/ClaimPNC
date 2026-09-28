@@ -23550,3 +23550,51 @@ disebut di `.env.example`: buka `/api/saya` lalu baca kolom `login`.
 
 Alamat surel juga **tidak boleh** ditulis ke berkas yang di-commit (`D-69`) — alasan kedua
 mengapa nilainya berada di `.env`, bukan di `sample.go`.
+
+### 70.12 Judul ketiga daftar komunikasi diterima dari Work Owner — satu selisih dicabut
+
+§70.3 mencatat bahwa rule pengisi TreeGrid `TempPLADLA` hilang dari export, sehingga judul
+tipe 4, 5, dan 6 **disusun sendiri** dari penyaringnya. Selisih itu dinyatakan di
+`PlannedDifferences`.
+
+Work Owner menyebutkan ketiganya pada 2026-09-28, berurutan bersama ketiga judul yang sudah
+diketahui:
+
+| tipe | Judul karangan (dicabut) | **Judul sebenarnya** |
+|---|---|---|
+| 4 | Komunikasi Masuk | **NOT ANSWERED** |
+| 5 | Terkirim — Belum Dijawab | **NOT REPLIED FROM ASM** |
+| 6 | Terkirim — Sudah Dijawab | **REPLIED FROM ASM** |
+
+**Pemetaannya diperiksa, bukan diterima begitu saja.** Urutan yang disebutkan cocok dengan
+urutan tipe pada `SetDataPLADLA`, dan artinya cocok dengan penyaring masing-masing:
+"NOT ANSWERED" tanpa keterangan pihak berarti yang belum menjawab adalah PEMBACANYA
+(`COMMUNICATE_TO`), sementara kedua judul lain menyebut ASM secara eksplisit — persis
+pembagian `SENDER`. Tanpa kecocokan itu saya akan menanyakannya, bukan memasangnya.
+
+Akibatnya:
+
+| Hal | Perubahan |
+|---|---|
+| Judul tab | dicabut dari `PlannedDifferences` — ia bukan lagi selisih |
+| Kode tab | ikut berubah: `komunikasi-masuk` → `not-answered`, dan seterusnya |
+| Kontrak | `TabDTO` mendapat `sumber` (`pemberitahuan` / `komunikasi`) |
+
+**Kenapa kodenya ikut berubah.** Kode yang menggambarkan penyaring (`komunikasi-masuk`)
+berdampingan dengan judul yang menggambarkan keadaan (`NOT ANSWERED`) akan selalu terbaca
+seperti dua hal berbeda — dan yang tertulis di alamat adalah kodenya.
+
+**Satu cacat yang lahir dari penggantian itu, dan ditutup di tempat yang benar.** Layar
+menentukan kalimat "daftar kosong" dengan memeriksa AWALAN kode tab
+(`kode.startsWith('komunikasi')`). Penggantian kode membuatnya pecah **tanpa galat** —
+hanya kalimat yang salah bagi mitra. Penggantinya bukan awalan baru melainkan `sumber` yang
+dikirim peladen, dengan alasan yang sama seperti `jenis` dan `punya_rincian`: inventaris
+daftar adalah hasil pembacaan export, dan menyalinnya ke layar berarti keputusan yang sama
+hidup di dua tempat.
+
+**Uji baru yang menjawab permintaan aslinya.** `TestEveryListHasRowsForTheDevelopmentLogin`
+memeriksa keenam daftar **berisi** untuk satu login — bukan sekadar tidak galat. Tab yang
+tergambar tetapi selalu kosong tidak dapat dibedakan dari penyaring yang rusak.
+Pasangannya, `TestAnUnregisteredLoginIsStillRefusedOnEveryList`, menjaga agar penggantian
+login pada data contoh tidak berubah menjadi jalan pintas: yang berpindah adalah SIAPA
+mitranya, bukan longgarnya penyaring.
