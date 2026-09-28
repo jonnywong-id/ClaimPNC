@@ -73,6 +73,21 @@ Dari `PC_ASSIGN_WORKLIST`, untuk **Deadline To Temporary Close**:
 | **`PXDEADLINETIME`** | DATE | 53 |
 | `PXGOALTIME` | DATE | 53 |
 
+#### Tidak ada kolom yang ditambahkan untuk **Inbox Manager Admin** — dan itu koreksi
+
+Modul itu sempat meminta **tiga kolom** saat dipindahkan ke tabel ini (2026-09-27).
+**Ketiganya ternyata sudah ada**, dan permintaannya dicabut pada hari yang sama setelah Work
+Owner memeriksa tabelnya:
+
+| Kolom | Disimpulkan tidak ada karena | Kenyataan |
+|---|---|---|
+| `PXASSIGNEDORGUNIT` | tidak disebut §B.1 dokumen ini | **sudah ada** |
+| `PXCREATEOPNAME` | `inboxoutstanding` memakai `PXCREATEOPERATOR` | **sudah ada** |
+| `PYORIGUSERID` | tercatat di §B.4 sebagai kolom yang harus dibawa | **sudah ada** |
+
+Ketiganya bukti langsung untuk §D.6: **daftar kolom yang sudah ada belum pernah dibaca dari
+katalog**, sehingga dokumen ini mengusulkan menambahkan kolom yang sudah tersedia.
+
 ### B.2 Memperbaiki kolom yang sudah tampil tetapi kosong
 
 | Kolom | Nilai berbeda | Kenapa |
@@ -104,8 +119,13 @@ Lain-lain: `STATUSCASE_1` (3) · `STATUSKLAIM_1` (3) · `ASMSTATUS_1` (2) · `EX
 ### B.4 Jejak siapa-kapan
 
 `PXSAVEDATETIME` · `PXUPDATEDATETIME` · `PXCOMMITDATETIME` · `PXUPDATEOPERATOR` (111) ·
-`PXUPDATEOPNAME` (111) · `PYORIGUSERID` (90) · `PYRESOLVEDUSERID` (56) ·
-`PYRESOLVEDTIMESTAMP` · `PYREOPENTIMESTAMP` (47) · `PYREOPENCOUNT` (7)
+`PXUPDATEOPNAME` (111) · `PYRESOLVEDUSERID` (56) · `PYRESOLVEDTIMESTAMP` ·
+`PYREOPENTIMESTAMP` (47) · `PYREOPENCOUNT` (7)
+
+> **`PYORIGUSERID` dan `PXCREATEOPNAME` dikeluarkan dari daftar ini 2026-09-27** — keduanya
+> **sudah ada** di `T_CLAIMLIST_ADMIN` (koreksi Work Owner). Keduanya sempat tercatat di sini
+> karena daftar ini disusun dari kolom tabel SUMBER, tanpa membandingkannya dengan kolom
+> tabel TUJUAN — yang memang belum pernah dibaca. Lihat §D.6.
 
 Dari worklist: `PYASSIGNMENTSTATUS` (344) · `PXASSIGNEDUSERNAME` (981) · `PYLABEL` (16.156) ·
 `PXTASKNAME` (73) · `PYERRORMESSAGE` (100)
@@ -155,6 +175,81 @@ menimpa — dan kegagalannya tidak menghasilkan galat, hanya data yang berubah s
 
 34 assignment per klaim tidak muat dalam satu baris. Bila riwayatnya dibutuhkan — TAT per
 tahap, siapa memegang apa dan kapan — ia menuntut tabel tersendiri.
+
+**4. `PXOBJCLASS` wajib disaring — tabel ini memuat lebih dari satu kelas kasus** *(temuan
+2026-09-27)*
+
+Tabel ini **bukan** berisi klaim PNC saja. Dua bukti, keduanya dari dalam repo:
+
+| Bukti | Isi |
+|---|---|
+| `inboxlaporanklaim/repo/sqlstore/inboxlaporanklaim.sql:197-200` | menggabungnya dengan syarat `t.pxobjclass = w.pxobjclass` sementara `w` disaring `'ASM-FW-GCNMFW-Work-ReceiveDocument'` — gabungan itu **tidak akan pernah menghasilkan baris** bila isinya hanya Work-PNC |
+| `README.md` | mencatat **142 baris RCV** di dalamnya |
+
+Akibatnya setiap kueri atas tabel ini **wajib menyaring `PXOBJCLASS`**. Tanpa itu, baris
+Receive Document ikut masuk antrean klaim — dan karena keduanya sama-sama punya `PYID`,
+tidak ada yang tampak salah.
+
+> **Ini membantah satu asumsi yang sudah tertulis.**
+> `inboxmanager/repo/sqlstore/inboxmanager.sql:76-79` membuang penyaring itu dengan alasan
+> *"tabel ini dipilih Work Owner untuk melayani Claim PNC, sehingga isinya diandaikan klaim
+> PNC saja"*, dan menandainya sendiri **"ASUMSI INI PERLU DIKONFIRMASI"**. Konfirmasinya
+> kini ada, dan hasilnya **berlawanan**: pencacah dashboard modul itu ikut menghitung baris
+> Receive Document, sehingga angkanya lebih besar daripada semestinya.
+>
+> Modul Inbox Manager Admin sudah menyaringnya. Modul Inbox Manager **tidak diubah** di sesi
+> ini karena berada di luar lingkup yang diminta — diangkat ke Work Owner sebagai perbaikan
+> tersendiri.
+
+**5. Dua konvensi penamaan yang bertentangan untuk tabel yang sama** *(temuan 2026-09-27)*
+
+| Konvensi | Dipakai | Bentuk |
+|---|---|---|
+| **A — nama asli** | `inboxoutstanding`, `inboxlaporanklaim`, `inboxmanageradmin` | `PYID` · `PYSTATUSWORK` · `USERTEKNIS_1` · `PXOBJCLASS` |
+| **B — nama baru** | `inboxmanager` | `NOKLAIM` · `STATUSWORK` · `USERTEKNIS` · `BUSINESSCODE` |
+
+Keduanya tidak dapat sama-sama benar: satu tabel hanya punya satu nama untuk satu kolom.
+Konvensi A **terbukti** — ketiga modul itu membaca kolom yang memang ada. Konvensi B adalah
+**permintaan** kolom yang belum ada.
+
+Yang perlu diputuskan: apakah kolom yang diminta Konvensi B ditambahkan dengan nama barunya,
+atau kuerinya disesuaikan ke nama yang sudah ada. Membiarkan keduanya berarti satu tabel
+dengan dua nama untuk `PYID` yang sama.
+
+---
+
+**6. Daftar kolom yang SUDAH ADA tidak pernah dibaca dari katalog** *(temuan 2026-09-27)*
+
+Dokumen ini menyebut **jumlahnya** — 40 kolom, 38 terisi — tetapi **tidak pernah menyebut
+namanya**. Seluruh isinya (§A–§C) tentang kolom yang harus DITAMBAHKAN, bukan yang sudah
+ada. Dan tabel ini **nol kemunculan di seluruh export Pega**, sehingga tidak dapat dibaca
+dari sana.
+
+Akibatnya setiap pertanyaan **"apakah kolom X sudah ada?"** hanya dapat dijawab dengan
+menebak — dan sumber tebakannya biasanya modul lain yang kebetulan memakai kolom berbeda.
+Itu bukan bukti: modul yang tidak memakai sebuah kolom tidak membuktikan apa pun tentang
+ada-tidaknya kolom itu.
+
+Dua kekeliruan pada 2026-09-27 lahir persis dari situ, keduanya ditemukan Work Owner:
+
+| Kekeliruan | Kenyataan |
+|---|---|
+| `PXCREATEOPNAME` diminta ditambahkan | **sudah ada** |
+| `PYORIGUSERID` dicatat "tidak dibawa" tanpa diketahui statusnya | **sudah ada** |
+
+Yang pertama berakibat nyata bila lolos: `ALTER TABLE ... ADD` polos gagal dengan
+**ORA-01430** pada kolom pertama yang sudah ada, dan menyisakan tabel setengah jadi.
+
+Satu kueri menutup seluruh kelas kekeliruan ini:
+
+```sql
+SELECT column_name, data_type, data_length, data_precision, data_scale, nullable
+  FROM all_tab_columns
+ WHERE owner = 'POOLDATA' AND table_name = 'T_CLAIMLIST_ADMIN'
+ ORDER BY column_id;
+```
+
+Diminta sebagai **L-3** di `permintaan-artefak-pega.md` §7.6.
 
 ---
 
@@ -227,3 +322,17 @@ baru laporan `Export*` yang kolomnya paling banyak.
 
 **5. Isi tabelnya sampai penuh.** Sekarang 1.014 dari 7.703 klaim — **13%**. Uji kesetaraan
 gerbang 1 tidak bermakna selama sumbernya belum selengkap pembandingnya.
+
+---
+
+## G. Tambahan untuk Inbox RCL — `migrations/0012` (2026-09-27)
+
+| Kolom | Tipe | Asal di Pega | Dipakai |
+|---|---|---|---|
+| `TANGGALANALYSTSENDRCL_1` | TIMESTAMP(6) | `.ClaimData.TanggalAnalystSendRCL` — **unexposed** | penyaring + "Tanggal Masuk Inbox" |
+| `NAMADOKTERRCL_1` | VARCHAR2(128 CHAR) | `.ClaimData.NamaDokterRCL` — **unexposed** | penyaring = identitas lama |
+| `KOMENTARANALISATOR_1` | VARCHAR2(1500 CHAR) | kolom `KOMENTARANALISATOR_1` tabel kerja (45 nilai) | "Deskripsi Analyst" |
+
+Dua yang pertama tidak punya kolom di tabel Pega mana pun — proses pengisi harus membacanya
+dari blob objek kerja. Katalog 2026-09-27: tabel ini belum memuat satu pun klaim tahap RCL
+Dokter.

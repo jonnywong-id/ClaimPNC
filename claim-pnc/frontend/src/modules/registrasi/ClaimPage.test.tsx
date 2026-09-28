@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -47,6 +47,7 @@ const CLAIM = {
         coverage: [
           {
             id: 'CVG-1',
+            nama: 'All Risk',
             penyebab_kerugian: '11817',
             tsi_sen: 50_000_000_000,
             spreading: [
@@ -94,6 +95,19 @@ const ALUR = {
 }
 
 let sentBody: unknown = null
+let draftBody: unknown = null
+
+/** Master wilayah palsu: satu rangkaian nyata dari layar Pega. */
+const WILAYAH: Record<string, { id: string; nama: string; kode_pos?: string }[]> = {
+  'negara|': [
+    { id: '100009', nama: 'INDONESIA' },
+    { id: '100001', nama: 'TIMOR LESTE' },
+  ],
+  'provinsi|INDONESIA': [{ id: '10012', nama: 'DI YOGYAKARTA' }],
+  'kota|10012': [{ id: '10259', nama: 'KAB. SLEMAN' }],
+  'kabupaten|10259': [{ id: '10000925', nama: 'KEC. DEPOK' }],
+  'kelurahan|10000925': [{ id: '10004326', nama: 'KEL. CATURTUNGGAL', kode_pos: '55281' }],
+}
 
 function stubFetch(registerAnswer: () => { body: unknown; status: number }) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
@@ -101,6 +115,15 @@ function stubFetch(registerAnswer: () => { body: unknown; status: number }) {
     let status = 200
 
     if (url === '/api/registrasi/alur') body = ALUR
+    else if (url.startsWith('/api/registrasi/wilayah/')) {
+      const [path, query] = url.split('?')
+      const level = path!.split('/').pop() ?? ''
+      const parent = new URLSearchParams(query ?? '').get('induk') ?? ''
+      body = { pilihan: WILAYAH[`${level}|${parent}`] ?? [] }
+    } else if (url === '/api/registrasi/register/simpan') {
+      draftBody = init?.body ? JSON.parse(init.body as string) : null
+      body = CLAIM
+    }
     else if (url.startsWith('/api/registrasi/klaim/')) body = CLAIM
     else if (url === '/api/registrasi/register') {
       sentBody = init?.body ? JSON.parse(init.body as string) : null
@@ -135,6 +158,7 @@ function mount(component: ReactNode) {
 
 beforeEach(() => {
   sentBody = null
+  draftBody = null
   window.sessionStorage.clear()
   useSession.getState().clear()
   useSession.getState().login({
@@ -171,7 +195,7 @@ describe('layar kerja klaim', () => {
     stubFetch(() => ({ body: { ...CLAIM, klaim: { ...CLAIM.klaim, nomor: 'PNCN.26.0001' } }, status: 200 }))
     mount(<ClaimPage />)
 
-    const save = await screen.findByRole('button', { name: /Simpan dan terbitkan/ })
+    const save = await screen.findByRole('button', { name: 'Next' })
     await userEvent.setup().click(save)
 
     await waitFor(() => expect(sentBody).not.toBeNull())
@@ -181,8 +205,12 @@ describe('layar kerja klaim', () => {
       kembali: false,
     })
 
-    const objek = (sentBody as { objek: { coverage: { spreading: { share: number }[] }[] }[] }).objek
+    const objek = (sentBody as { objek: { coverage: { nama: string; spreading: { share: number }[] }[] }[] }).objek
     expect(objek[0]?.coverage[0]?.spreading[0]?.share).toBe(600_000)
+    // Objek dan coverage terisi dari polis saat klaim dibuka; namanya ikut kembali supaya
+    // tidak hilang saat disimpan.
+    expect(objek[0]?.coverage[0]?.nama).toBe('All Risk')
+    expect(screen.getByLabelText('Nama coverage')).toHaveValue('All Risk')
   })
 
   // Sistem lama menampilkan satu pesan, lalu pesan berikutnya setelah disimpan ulang.
@@ -205,7 +233,7 @@ describe('layar kerja klaim', () => {
     }))
     mount(<ClaimPage />)
 
-    const save = await screen.findByRole('button', { name: /Simpan dan terbitkan/ })
+    const save = await screen.findByRole('button', { name: 'Next' })
     await userEvent.setup().click(save)
 
     const slik = await screen.findByLabelText('Nomor SLIK')
@@ -221,11 +249,71 @@ describe('layar kerja klaim', () => {
     stubFetch(() => ({ body: CLAIM, status: 200 }))
     mount(<ClaimPage />)
 
-    const kembali = await screen.findByRole('button', { name: 'Kembali (Back)' })
+    const kembali = await screen.findByRole('button', { name: 'Back' })
     await userEvent.setup().click(kembali)
 
     await waitFor(() => expect(sentBody).not.toBeNull())
     expect(sentBody).toMatchObject({ kembali: true })
+  })
+
+  // Rangkaian dari tangkapan layar Pega. Memilih kelurahan mengisi Kode Pos dari master,
+  // dan Kota sampai Kode Pos baru tampil setelah Negara INDONESIA dipilih.
+  it('memilih wilayah bertingkat dan mengisi kode pos dari kelurahan', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const negara = await screen.findByLabelText('Negara')
+    expect(screen.queryByLabelText('Kota')).not.toBeInTheDocument()
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'INDONESIA' })).toBeInTheDocument())
+    await user.selectOptions(negara, '100009')
+
+    const provinsi = screen.getByLabelText('Provinsi')
+    await waitFor(() => expect(screen.getByRole('option', { name: 'DI YOGYAKARTA' })).toBeInTheDocument())
+    await user.selectOptions(provinsi, '10012')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KAB. SLEMAN' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kota'), '10259')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KEC. DEPOK' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kabupaten'), '10000925')
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'KEL. CATURTUNGGAL' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Kelurahan'), '10004326')
+
+    expect(screen.getByLabelText('Kode Pos')).toHaveValue('55281')
+
+    await user.click(screen.getByLabelText('SUSPICIOUS'))
+    await user.type(screen.getByLabelText('Komentar Suspicious'), 'Dokumen janggal')
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => expect(sentBody).not.toBeNull())
+    expect(sentBody).toMatchObject({
+      wilayah: {
+        negara: 'INDONESIA', negara_id: '100009',
+        provinsi: 'DI YOGYAKARTA', provinsi_id: '10012',
+        kota: 'KAB. SLEMAN', kota_id: '10259',
+        kabupaten: 'KEC. DEPOK', kabupaten_id: '10000925',
+        kelurahan: 'KEL. CATURTUNGGAL', kelurahan_id: '10004326',
+        kode_pos: '55281',
+      },
+      prinsip_mengenal_nasabah: '2',
+      komentar_suspicious: 'Dokumen janggal',
+    })
+  })
+
+  // Save menyimpan TANPA menutup tahap: ia memanggil jalur simpan, bukan jalur register.
+  it('tombol Save menyimpan tanpa menutup tahap Input Register', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(draftBody).not.toBeNull())
+    expect(sentBody).toBeNull()
+    expect(draftBody).toMatchObject({ tugas_id: 'tugas-1', prinsip_mengenal_nasabah: '1', ex_gratia: false })
+    expect(await screen.findByText(/Klaim tetap di tahap Input Register/)).toBeInTheDocument()
   })
 })
 
@@ -254,5 +342,505 @@ describe('pemformatan bersama', () => {
     expect(rupiahToCents('1.234,56')).toBe(123_456)
     expect(rupiahToCents('')).toBe(0)
     expect(Number.isNaN(rupiahToCents('bukan angka'))).toBe(true)
+  })
+})
+
+// Tahap Input Estimasi: klaim Non-MBU yang lolos Input Register sampai di sini, dan layar
+// yang muncul adalah isian estimasi — bukan tombol "Selesaikan" umum.
+describe('tahap Input Estimasi', () => {
+  const AT_ESTIMATE = {
+    ...CLAIM,
+    klaim: { ...CLAIM.klaim, nomor: 'PNCN.26.0012', tahap_kini: 'estimasi-admin' },
+    tugas: { ...CLAIM.tugas, tahap: 'estimasi-admin', nama_tahap: 'Input Estimasi', tindakan_keluar: 'InputEstimasi' },
+    jalur: ['estimasi-admin', 'pilih-surveyor'],
+  }
+
+  const RECORDS = {
+    survey: {
+      survey: [
+        {
+          kasus_id: 'ASM-FW-GCNMFW-WORK SRV-9', tipe: '2', nama_surveyor: 'PT ADJUSTER CONTOH', tanggal_survey: '2026-09-20',
+          lokasi_survey: '', nama_objek: 'Gudang', lokasi_objek: 'Jakarta', urutan: '1', status: 'Preliminary Advice',
+          keterangan: '', tanggal_input: '2026-09-21',
+        },
+      ],
+    },
+    dokumen: {
+      kategori: [
+        { kode: 'REGISTER', nama: 'Register', dokumen: [{ id: '14901', jenis_id: '10064', nama: 'PELAPORAN KLAIM', wajib: true, minimal: '1', terunggah: 2 }] },
+        { kode: 'SURVEY', nama: 'Survey', dokumen: [] },
+      ],
+      berkas: [
+        {
+          id: '1', nama: 'laporan.pdf', jenis_berkas: 'pdf', catatan: '', kategori: '10064', sub_kategori: '14901',
+          tersimpan: true, diunggah_oleh: 'ADMIN01', diunggah_pada: '2026-09-24T15:58:53+07:00',
+        },
+      ],
+    },
+    progres: {
+      progres: [
+        {
+          urutan: 1, tanggal_input: '2026-09-25T09:09:09+07:00', status_1: '002', status_1_nama: 'REGISTRASI', status_2: '2',
+          status_2_nama: 'POLIS BELUM ADA', keterangan: 'Auto Create Register', tindak_lanjut: '2026-10-02T09:09:09+07:00', diinput_oleh: 'ADMIN01',
+        },
+      ],
+      komunikasi: [
+        {
+          kasus_id: 'ASM-FW-GCNMFW-WORK SRV-9', id: '22', tanggal: '2026-09-26T10:00:00+07:00', pengirim: 'ADMIN SATU',
+          pesan: 'Mohon laporan survey', balasan: 'Sudah dikirim', penjawab: 'SURVEYOR', tanggal_balasan: '',
+        },
+      ],
+    },
+  }
+
+  let estimateBody: { url: string; body: unknown } | null = null
+  let itemOptions: { nama: string; kelompok: string; tsi_sen: number }[] = []
+
+  function stubEstimate(claim: unknown = AT_ESTIMATE) {
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      let body: unknown = {}
+      if (url === '/api/registrasi/alur') body = ALUR
+      else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions }
+      else if (url.endsWith('/survey')) body = RECORDS.survey
+      else if (url.endsWith('/dokumen')) body = RECORDS.dokumen
+      else if (url.endsWith('/progres')) body = RECORDS.progres
+      else if (url.startsWith('/api/registrasi/klaim/')) body = claim
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }, { id: '10001', nama: 'USD' }] }
+      else if (url.startsWith('/api/registrasi/estimasi')) {
+        estimateBody = { url, body: init?.body ? JSON.parse(init.body as string) : null }
+        body = AT_ESTIMATE
+      }
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+  }
+
+  beforeEach(() => {
+    estimateBody = null
+    itemOptions = []
+  })
+
+  // Section InputEstimasiAdmin tidak punya tombol Next: tahap ditutup Kirim PIC Teknik
+  // (finishAssignment), yang mati selama belum ada Claim Face Sheet (!isCFS).
+  it('Kirim PIC Teknik mati sebelum CFS, dan tidak ada tombol Next', async () => {
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('region', { name: 'Input Estimasi' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Selesaikan/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Objek'), 'Gudang')
+    await user.click(screen.getByRole('button', { name: 'Tambah estimasi' }))
+    await user.type(screen.getByLabelText('Nilai Estimasi'), '8.000.000')
+    expect(screen.getByRole('button', { name: 'Kirim PIC Teknik' })).toBeDisabled()
+  })
+
+  it('Kirim PIC Teknik setelah CFS menutup tahap Input Estimasi', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        objek: [
+          {
+            ...AT_ESTIMATE.klaim.objek[0]!,
+            coverage: [
+              {
+                ...AT_ESTIMATE.klaim.objek[0]!.coverage[0]!,
+                item: [
+                  {
+                    nama: 'Gudang', deskripsi: '', kelompok: '',
+                    estimasi: [{ tipe: '1', mata_uang: 'IDR', tanggal: '2026-09-27', nilai_sen: 800_000_000, kurs_e4: 10_000, nilai_idr_sen: 800_000_000, sudah_cfs: true }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const send = await screen.findByRole('button', { name: 'Kirim PIC Teknik' })
+    await waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+
+    await waitFor(() => expect(estimateBody).not.toBeNull())
+    expect(estimateBody?.url).toBe('/api/registrasi/estimasi')
+    expect(estimateBody?.body).toMatchObject({
+      tugas_id: 'tugas-1',
+      kembali: false,
+      objek: [{ coverage: [{ item: [{ nama: 'Gudang', estimasi: [{ tipe: '1', mata_uang: 'IDR', nilai_sen: 800_000_000 }] }] }] }],
+    })
+  })
+
+  // Sesudah Kirim PIC Teknik, klaim Non-MBU berada di Choose Surveyor: layar InputSurveyor
+  // (ClaimSurvey_sect), bukan tombol "Selesaikan" umum.
+  it('Choose Surveyor menampilkan layar InputSurveyor', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('region', { name: 'InputSurveyor' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Selesaikan/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kirim ke Admin' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Kirim ke Inputor' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kirim ke Marketing' })).not.toBeInTheDocument()
+
+    expect(screen.getByRole('tab', { name: 'Adjustment & Akseptasi' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('columnheader', { name: 'Nilai Akseptasi Klaim' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tambah' })).toBeEnabled()
+
+    await user.click(screen.getByRole('tab', { name: 'Penerima Klaim' }))
+    expect(screen.getByRole('columnheader', { name: 'Alamat' })).toBeInTheDocument()
+  })
+
+  // Choose Surveyor dirutekan ke PIC Teknik; bila tugas milik orang lain, Tambah dikunci
+  // dengan keterangan alih-alih ditolak server setelah diisi. Kolom "Button" tidak ada.
+  it('Choose Surveyor milik PIC Teknik lain: Tambah dikunci', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor', pemilik: 'TEKNIK01' },
+    })
+    mount(<ClaimPage />)
+
+    expect(await screen.findByText(/Tugas ini milik TEKNIK01/, { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tambah' })).toBeDisabled()
+    expect(screen.queryByRole('columnheader', { name: 'Button' })).not.toBeInTheDocument()
+  })
+
+  // Baris adjustment tersimpan dapat diklik untuk dilihat kembali; tab Penerima Klaim
+  // menampilkan penerima (ViewShowReceiver: Nama, Alamat).
+  it('adjustment tersimpan dapat dibuka, dan Penerima Klaim menampilkan penerimanya', async () => {
+    const base = AT_ESTIMATE.klaim.objek[0]!
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        tahap_kini: 'pilih-surveyor',
+        penerima_klaim: [{ id: '1', nama: 'TERTANGGUNG UJI', alamat: 'JL. UJI NO. 1', nama_bank: '', nomor_rekening: '' }],
+        objek: [
+          {
+            ...base,
+            coverage: [
+              {
+                ...base.coverage[0]!,
+                adjustment: [
+                  {
+                    tipe_pembayaran: '2', nama_tipe_pembayaran: 'Interim', mata_uang: 'IDR', kurs_e4: 10_000,
+                    nilai_propose_sen: 250_000_000, nilai_pengajuan_sen: 250_000_000, loc: 0, nilai_salvage_sen: 0,
+                    nilai_salvage_b_sen: 0, nilai_interim_sen: 0, nilai_estimasi_sen: 0, tipe_resiko: '3',
+                    persen_resiko: 0, nilai_resiko_sen: 0, nilai_gross_sen: 250_000_000, share_asm: 650_000,
+                    nilai_asm_sen: 162_500_000, nilai_akseptasi_sen: 250_000_000, kronologi: '', catatan: '',
+                    status_akseptasi: '', nomor_akseptasi: '',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const row = await screen.findByRole('button', { name: /Adjustment 1/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await user.click(row)
+    const detail = screen.getByRole('group', { name: 'Detail adjustment Interim' })
+    expect(within(detail).getByText('Lainnya')).toBeInTheDocument()
+    expect(within(detail).getByText('65,0000')).toBeInTheDocument()
+    await user.click(row)
+    expect(screen.queryByRole('group', { name: 'Detail adjustment Interim' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Penerima Klaim' }))
+    expect(screen.getByRole('cell', { name: 'TERTANGGUNG UJI' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'JL. UJI NO. 1' })).toBeInTheDocument()
+  })
+
+  // Anggota grup PIC Teknik (M_LOGIN_GROUP_PNC) boleh mengerjakan tugas milik PIC lain:
+  // server menyatakannya lewat dapat_dikerjakan.
+  it('Choose Surveyor milik PIC lain tetapi dapat dikerjakan grup: Tambah aktif', async () => {
+    stubEstimate({
+      ...AT_ESTIMATE,
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      tugas: {
+        ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor',
+        pemilik: 'TEKNIK01', dapat_dikerjakan: true,
+      },
+    })
+    mount(<ClaimPage />)
+
+    expect(await screen.findByRole('button', { name: 'Tambah' })).toBeEnabled()
+    expect(screen.queryByText(/Tugas ini milik/)).not.toBeInTheDocument()
+  })
+
+  // Tombol Tambah membuka baris isian di dalam grid Adjustment dan mengirimnya ke rute adjustment.
+  it('Tambah pada grid Adjustment mengirim isian adjustment', async () => {
+    const atSurveyor = {
+      ...AT_ESTIMATE,
+      klaim: { ...AT_ESTIMATE.klaim, tahap_kini: 'pilih-surveyor' },
+      tugas: { ...AT_ESTIMATE.tugas, tahap: 'pilih-surveyor', nama_tahap: 'Choose Surveyor', tindakan_keluar: 'InputSurveyor' },
+    }
+    let sent: { url: string; body: unknown } | null = null
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      let body: unknown = {}
+      if (url.endsWith('/adjustment/hitung')) {
+        body = {
+          adjustment: {
+            tipe_pembayaran: '1', nama_tipe_pembayaran: 'Final', mata_uang: 'IDR', kurs_e4: 10_000,
+            nilai_propose_sen: 1_000_000_000, nilai_pengajuan_sen: 1_200_000_000, loc: 0, nilai_salvage_sen: 0,
+            nilai_salvage_b_sen: 0, nilai_interim_sen: 0, nilai_estimasi_sen: 5_000_000_000, tipe_resiko: '1',
+            persen_resiko: 100_000, nilai_resiko_sen: 100_000_000, nilai_gross_sen: 900_000_000, share_asm: 345_000,
+            nilai_asm_sen: 310_500_000, nilai_akseptasi_sen: 900_000_000, kronologi: '', catatan: '',
+            status_akseptasi: '', nomor_akseptasi: '',
+          },
+          spreading: [{ jenis_treaty: '10007', nama: 'QS', share: 72_460, dihapus: false, objek_fac_offer: '' }],
+        }
+      } else if (url.endsWith('/adjustment')) {
+        sent = { url, body: init?.body ? JSON.parse(init.body as string) : null }
+        body = atSurveyor
+      } else if (url === '/api/registrasi/alur') body = ALUR
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
+      else if (url.startsWith('/api/registrasi/klaim/')) body = atSurveyor
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+    const row = screen.getByRole('group', { name: 'Adjustment baru' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.selectOptions(within(row).getByLabelText('Tipe Pembayaran'), '1')
+    await user.type(within(row).getByLabelText('Total Klaim'), '10.000.000')
+    await user.type(within(row).getByLabelText('Nilai Pengajuan Tertanggung'), '12.000.000')
+    await user.selectOptions(within(row).getByLabelText('Tipe Resiko Sendiri'), '1')
+    await user.type(within(row).getByLabelText('Persen Resiko Sendiri (%)'), '10')
+    // Nilai tampilan dihitung server (pratinjau), bukan oleh layar.
+    expect(await within(row).findByText('9.000.000,00')).toBeInTheDocument()
+    expect(within(row).getByText('34,5000')).toBeInTheDocument()
+    expect(within(row).getByRole('cell', { name: 'QS' })).toBeInTheDocument()
+    await user.click(within(row).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(sent).not.toBeNull())
+    expect(sent!.body).toMatchObject({
+      tugas_id: 'tugas-1', objek: 1, jaminan: 1, tipe_pembayaran: '1',
+      nilai_propose_sen: 1_000_000_000, nilai_pengajuan_sen: 1_200_000_000, tipe_resiko: '1', persen_resiko: 100_000,
+    })
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Adjustment baru' })).not.toBeInTheDocument())
+  })
+
+  it('Save memakai jalur simpan, Back mengirim kembali', async () => {
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan'))
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi'))
+    expect(estimateBody?.body).toMatchObject({ kembali: true })
+  })
+
+  // Download Claim Face Sheet: isian disimpan dulu, lalu PDF diminta untuk objek dan
+  // jaminan baris itu. Sesudahnya estimasi terkunci dan estimasi baru harus menunggu CFS.
+  it('Download Claim Face Sheet menyimpan, mengunduh, lalu mengunci estimasi', async () => {
+    const saved = {
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        objek: [
+          {
+            ...AT_ESTIMATE.klaim.objek[0]!,
+            coverage: [
+              {
+                ...AT_ESTIMATE.klaim.objek[0]!.coverage[0]!,
+                item: [
+                  {
+                    nama: 'Gudang', deskripsi: '', kelompok: '',
+                    estimasi: [{ tipe: '1', mata_uang: 'IDR', tanggal: '2026-09-27', nilai_sen: 800_000_000, kurs_e4: 10_000, nilai_idr_sen: 800_000_000, sudah_cfs: false }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }
+    const calls: { url: string; method: string; body: unknown }[] = []
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:cfs', revokeObjectURL: () => undefined }))
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(init.body as string) : null })
+      if (url.endsWith('/cfs')) {
+        return Promise.resolve(
+          new Response('%PDF-1.3', {
+            status: 200,
+            headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="Revisi0.pdf"' },
+          }),
+        )
+      }
+      let body: unknown = {}
+      if (url === '/api/registrasi/alur') body = ALUR
+      else if (url.includes('/pilihan-item')) body = { pilihan: [] }
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
+      else if (url.startsWith('/api/registrasi/estimasi')) body = saved
+      else if (url.startsWith('/api/registrasi/klaim/')) body = AT_ESTIMATE
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const button = await screen.findByRole('button', { name: 'Download Claim Face Sheet' })
+    expect(button).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Tambah estimasi' }))
+    await user.type(screen.getByLabelText('Nilai Estimasi'), '8.000.000')
+    expect(screen.getByRole('button', { name: 'Tambah estimasi' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Download Claim Face Sheet' }))
+
+    expect(await screen.findByText(/Claim Face Sheet diunduh/)).toBeInTheDocument()
+    const post = calls.filter((c) => c.method === 'POST').map((c) => c.url)
+    expect(post).toEqual(['/api/registrasi/estimasi/simpan', '/api/registrasi/klaim/klaim-1/cfs'])
+    expect(calls.find((c) => c.url.endsWith('/cfs'))?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1 })
+    expect(screen.getByText('Sudah CFS')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nilai Estimasi')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Tambah estimasi' })).toBeEnabled()
+  })
+
+  // Print PLA: aktif hanya untuk polis berkoasuransi yang jaminannya sudah dibuatkan CFS
+  // (IsNoCoins || !isCFS), lalu meminta dokumen untuk objek dan jaminan baris itu.
+  it('Print PLA aktif setelah CFS pada polis berkoasuransi dan mengunduh dokumennya', async () => {
+    const withCoins = (jenis: string) => ({
+      ...AT_ESTIMATE,
+      klaim: {
+        ...AT_ESTIMATE.klaim,
+        polis: { ...AT_ESTIMATE.klaim.polis, jenis_koasuransi: jenis, peran_koasuransi: 'LEADER' },
+        objek: [
+          {
+            ...AT_ESTIMATE.klaim.objek[0]!,
+            coverage: [
+              {
+                ...AT_ESTIMATE.klaim.objek[0]!.coverage[0]!,
+                item: [
+                  {
+                    nama: 'Gudang', deskripsi: '', kelompok: '',
+                    estimasi: [{ tipe: '1', mata_uang: 'IDR', tanggal: '2026-09-27', nilai_sen: 800_000_000, kurs_e4: 10_000, nilai_idr_sen: 800_000_000, sudah_cfs: true }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    let claim = withCoins('0')
+    const calls: { url: string; body: unknown }[] = []
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:pla', revokeObjectURL: () => undefined }))
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      if (url.endsWith('/pla/daftar')) {
+        calls.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        const list = { revisi_cfs: 0, baru_terbit: 1, pla: [{ nomor: 'J261000000000000001', penerima: 'ANGGOTA SATU', tipe: 'COINS', catatan: 'Estimation only.', email: '', tanggal: '2026-09-27' }] }
+        return Promise.resolve(new Response(JSON.stringify(list), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      if (url.endsWith('/pla')) {
+        calls.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        return Promise.resolve(
+          new Response('%PDF-1.3', { status: 200, headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="PLACOINSJ26.pdf"' } }),
+        )
+      }
+      let body: unknown = {}
+      if (url === '/api/registrasi/alur') body = ALUR
+      else if (url.includes('/pilihan-item')) body = { pilihan: [] }
+      else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }] }
+      else if (url.startsWith('/api/registrasi/klaim/')) body = claim
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    const first = mount(<ClaimPage />)
+    expect(await screen.findByRole('button', { name: 'Print PLA' })).toBeDisabled()
+    first.unmount()
+
+    claim = withCoins('2')
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+    const button = await screen.findByRole('button', { name: 'Print PLA' })
+    await waitFor(() => expect(button).toBeEnabled())
+    await user.click(button)
+
+    expect(await screen.findByRole('dialog', { name: 'Print PLA' })).toBeInTheDocument()
+    expect(await screen.findByText('ANGGOTA SATU')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Print All PLA' }))
+    expect(await screen.findByText('PLA diunduh.')).toBeInTheDocument()
+    expect(calls).toEqual([
+      { url: '/api/registrasi/klaim/klaim-1/pla/daftar', body: { tugas_id: 'tugas-1', objek: 1, jaminan: 1 } },
+      { url: '/api/registrasi/klaim/klaim-1/pla', body: { tugas_id: 'tugas-1', objek: 1, jaminan: 1 } },
+    ])
+  })
+
+  // Bagian atas dari InputEstimasiAdmin_SECT: Status Klaim bernama, PIC Teknis, Log Transfer
+  // Klaim, dan keempat tab dengan Estimasi Pembayaran terbuka.
+  it('menampilkan bagian atas dan tab seperti layar Pega', async () => {
+    stubEstimate()
+    mount(<ClaimPage />)
+
+    await screen.findByRole('region', { name: 'Input Estimasi' })
+    expect(screen.getByText('Catatan ke PIC Teknis')).toBeInTheDocument()
+    expect(screen.getByText('TEKNIK01')).toBeInTheDocument()
+    expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Estimasi Pembayaran' })).toHaveAttribute('aria-selected', 'true')
+    for (const label of ['Nama Objek', 'Lokasi Object', 'Nilai Klaim', 'Nilai Adjuster', 'Jaminan', 'Deskripsi Item']) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+  })
+
+  it('membaca tab Survey, Unggah Dokumen, dan Progress Claim & Komunikasi', async () => {
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('region', { name: 'Input Estimasi' })
+    await user.click(screen.getByRole('tab', { name: 'Survey' }))
+    expect(await screen.findByText('PT ADJUSTER CONTOH')).toBeInTheDocument()
+    expect(screen.getByText('SRV-9')).toBeInTheDocument()
+    expect(screen.getByText('Loss Adjuster')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Unggah Dokumen' }))
+    expect(await screen.findByText('PELAPORAN KLAIM')).toBeInTheDocument()
+    expect(screen.getByText('Ya')).toBeInTheDocument()
+    expect(screen.getByText('laporan.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unggah Dokumen' })).toBeDisabled()
+
+    await user.click(screen.getByRole('tab', { name: 'Progress Claim & Komunikasi' }))
+    expect(await screen.findByText('Auto Create Register')).toBeInTheDocument()
+    expect(screen.getByText('POLIS BELUM ADA')).toBeInTheDocument()
+    expect(screen.getByText('Mohon laporan survey')).toBeInTheDocument()
+    expect(screen.getByText('Sudah dikirim')).toBeInTheDocument()
+  })
+
+  // Lini Fire: Objek dipilih dari item properti polis, dan kelompoknya ikut terkirim.
+  it('memilih Objek dari item properti polis Fire', async () => {
+    itemOptions = [
+      { nama: 'BUILDING', kelompok: 'BUILDING(S)', tsi_sen: 0 },
+      { nama: 'CONTENTS', kelompok: 'OTHERS', tsi_sen: 0 },
+    ]
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'CONTENTS' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText('Objek'), 'CONTENTS')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(estimateBody).not.toBeNull())
+    expect(estimateBody?.body).toMatchObject({
+      objek: [{ coverage: [{ item: [{ nama: 'CONTENTS', kelompok: 'OTHERS' }] }] }],
+    })
   })
 })

@@ -97,7 +97,9 @@ func (p *Store) Get(ctx context.Context, id string) (registrasi.Claim, error) {
 	if !ok {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
 	}
-	return copyClaim(k), nil
+	result := copyClaim(k)
+	result.ClaimStatusName = registrasi.ClaimStatusNames[result.ClaimStatus]
+	return result, nil
 }
 
 // GetByNumber mengembalikan klaim berdasarkan nomor klaimnya.
@@ -208,12 +210,16 @@ func (p *Store) OpenTaskForClaim(ctx context.Context, claimID string) (registras
 }
 
 // Inbox mengembalikan pekerjaan yang menunggu seorang pengguna.
-func (p *Store) Inbox(ctx context.Context, operator string, workbasket []string) ([]registrasi.Task, error) {
+func (p *Store) Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]registrasi.Task, error) {
 	defer p.key(ctx)()
 
 	allowed := map[string]bool{}
 	for _, w := range workbasket {
 		allowed[w] = true
+	}
+	groupStage := map[string]bool{}
+	for _, s := range stages {
+		groupStage[s] = true
 	}
 
 	var result []registrasi.Task
@@ -227,6 +233,8 @@ func (p *Store) Inbox(ctx context.Context, operator string, workbasket []string)
 		case t.Queue == registrasi.QueueWorkbasket && !t.Owned() && allowed[t.Workbasket]:
 			result = append(result, t)
 		case t.Queue == registrasi.QueueWorkbasket && t.Owner == operator:
+			result = append(result, t)
+		case t.Queue == registrasi.QueueWorklist && groupStage[t.Stage]:
 			result = append(result, t)
 		}
 	}
@@ -284,8 +292,8 @@ func (t taskRepo) OpenTaskForClaim(ctx context.Context, claimID string) (registr
 	return t.p.OpenTaskForClaim(ctx, claimID)
 }
 
-func (t taskRepo) Inbox(ctx context.Context, operator string, workbasket []string) ([]registrasi.Task, error) {
-	return t.p.Inbox(ctx, operator, workbasket)
+func (t taskRepo) Inbox(ctx context.Context, operator string, workbasket, stages []string) ([]registrasi.Task, error) {
+	return t.p.Inbox(ctx, operator, workbasket, stages)
 }
 
 func sortTasks(m map[string]registrasi.Task) []registrasi.Task {
@@ -316,10 +324,12 @@ func copyClaim(k registrasi.Claim) registrasi.Claim {
 		for _, c := range o.Coverage {
 			coverage := c
 			coverage.Spreading = append([]registrasi.Spreading(nil), c.Spreading...)
+			coverage.Settlement = append([]registrasi.SettlementLine(nil), c.Settlement...)
 			insuredItem.Coverage = append(insuredItem.Coverage, coverage)
 		}
 		copy.InsuredItem = append(copy.InsuredItem, insuredItem)
 	}
+	copy.Receiver = append([]registrasi.Receiver(nil), k.Receiver...)
 	if k.DeletedAt != nil {
 		t := *k.DeletedAt
 		copy.DeletedAt = &t

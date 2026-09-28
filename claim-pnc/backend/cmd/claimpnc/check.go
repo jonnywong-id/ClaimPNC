@@ -39,8 +39,10 @@ import (
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 	"claim-pnc/internal/portal"
+	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/riwayatklaim"
 
+	casestudyclaimsql "claim-pnc/internal/casestudyclaim/repo/sqlstore"
 	daftardetaildokumentravelsql "claim-pnc/internal/daftardetaildokumentravel/repo/sqlstore"
 	daftardetailtipedokumensql "claim-pnc/internal/daftardetailtipedokumen/repo/sqlstore"
 	daftarobjekdokumensql "claim-pnc/internal/daftarobjekdokumen/repo/sqlstore"
@@ -61,10 +63,17 @@ import (
 	"claim-pnc/internal/inboxkomunikasicabang"
 	inboxkomunikasicabangsql "claim-pnc/internal/inboxkomunikasicabang/repo/sqlstore"
 	inboxlaporanklaimsql "claim-pnc/internal/inboxlaporanklaim/repo/sqlstore"
+	"claim-pnc/internal/inboxmanageradmin"
+	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
 	"claim-pnc/internal/inboxmanagerreceivepucl"
 	inboxmanagerreceivepuclsql "claim-pnc/internal/inboxmanagerreceivepucl/repo/sqlstore"
 	inboxoutstandingsql "claim-pnc/internal/inboxoutstanding/repo/sqlstore"
+	"claim-pnc/internal/inboxpladla"
+	inboxpladlasql "claim-pnc/internal/inboxpladla/repo/sqlstore"
+	"claim-pnc/internal/inboxpladlapredla"
+	inboxpladlapredlasql "claim-pnc/internal/inboxpladlapredla/repo/sqlstore"
 	inboxprogressclaimsql "claim-pnc/internal/inboxprogressclaim/repo/sqlstore"
+	inboxrclsql "claim-pnc/internal/inboxrcl/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
@@ -92,7 +101,9 @@ import (
 	mastersurveyorssql "claim-pnc/internal/mastersurveyors/repo/sqlstore"
 	mastertipesparepartsql "claim-pnc/internal/mastertipesparepart/repo/sqlstore"
 	masterxolsql "claim-pnc/internal/masterxol/repo/sqlstore"
+	monitoringslinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
 	"claim-pnc/internal/reportkpi"
 	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
@@ -208,6 +219,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkManagerReceivePUCL(ctx, inboxmanagerreceivepuclsql.NewRepo(primary), print)
 	checkRCLPUCL(ctx, inboxrclpuclsql.NewRepo(primary), print)
 	checkSalvage(ctx, inboxsalvagesql.NewRepo(primary), print)
+	checkPLADLAQueue(ctx, inboxpladlapredlasql.NewRepo(primary), print)
+	checkPLADLAReinsurer(ctx, inboxpladlasql.NewRepo(primary), print)
 	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
 	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
@@ -217,6 +230,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 		print)
 	checkInboxProgressClaim(ctx, inboxprogressclaimsql.NewRepo(primary), print)
 	checkInboxAnalystDoctor(ctx, inboxanalystdoctorsql.NewRepo(primary), print)
+	checkInboxRCL(ctx, inboxrclsql.NewRepo(primary), print)
+	checkCaseStudyClaim(ctx, casestudyclaimsql.NewRepo(primary), print)
 	checkClaimReport(ctx, inboxlaporanklaimsql.NewRepo(primary, clock.System{}), print)
 	checkOutstanding(ctx, inboxoutstandingsql.NewRepo(primary), login, print)
 	checkClaimReportBranch(ctx, inboxlaporanklaimsql.NewBranchResolver(primary), print)
@@ -224,6 +239,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 		inboxcloseclaimsql.NewRepo(primary),
 		inboxcloseclaimsql.NewRequestRepo(primary),
 		print)
+	checkMonitoringSlinkOJK(ctx, primary, print)
+	checkRegistration(ctx, primary, print)
 
 	print("")
 	if login == "" {
@@ -289,7 +306,8 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 	}
 }
 
-// checkClaimReport melaporkan kesiapan kedua tabel Inbox Laporan Klaim.
+// checkClaimReport melaporkan kesiapan tabel Inbox Laporan Klaim, termasuk kolom
+// T_CLAIM_PNC yang ditulisnya untuk baris berkas.
 //
 // Ia memeriksa DUA hal yang sifatnya berbeda, dan membedakannya penting:
 //
@@ -299,6 +317,42 @@ func checkAppTables(ctx context.Context, legacy *sqlstore.Legacy, print func(str
 // Yang pertama belum ada sampai DBA menjalankan migrasinya; yang kedua sudah ada, dan
 // kegagalannya berarti akun aplikasi tidak diberi hak baca. Dua sebab yang tampak mirip
 // di layar tetapi perbaikannya berbeda jauh.
+// checkMonitoringSlinkOJK melaporkan kesiapan ketiga tabel modul Monitoring SLINK OJK.
+//
+// # Kenapa modul ini butuh pemeriksanya sendiri
+//
+// Ketiga tabelnya tidak disentuh modul lain mana pun. Tanpa pemeriksa, ketiadaan atau
+// salah nama kolomnya baru ketahuan ketika seorang pelapor membuka layarnya dan mendapat
+// galat 500 — dan yang gagal di sana adalah laporan ke OJK.
+//
+// Ketiganya dilaporkan TERPISAH karena akibat kegagalannya berbeda:
+//
+//   - T_CLAIM_SLIK_OJK gagal   → segmen D01 kosong sama sekali.
+//   - T_CLAIM_OBJECTLIST gagal → segmen F06 kosong sama sekali.
+//   - T_GENERAL gagal          → hanya kolom "Operasi Data" yang tidak dapat dihitung;
+//     kedua segmen lainnya tetap berjalan.
+func checkMonitoringSlinkOJK(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	results := monitoringslinkojksql.Probe(ctx, primary)
+
+	failed := 0
+	for _, result := range results {
+		if result.OK() {
+			print("  [ok]    %s", result.Name)
+			continue
+		}
+		failed++
+		print("  [BELUM] %s: %v", result.Name, result.Err)
+	}
+
+	if failed == 0 {
+		return
+	}
+	print("            Ketiganya HANYA DIBACA modul ini; yang mengisinya adalah jalur")
+	print("            akseptasi sistem lama (InsertAdjustmentList, InsertAdjustmentListKredit).")
+	print("            Bila gagal, yang kurang adalah hak baca akun aplikasi — bukan migrasi,")
+	print("            karena modul ini tidak membawa migrasi sama sekali.")
+}
+
 func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, print func(string, ...any)) {
 	if err := repo.CheckTable(ctx); err != nil {
 		print("  [BELUM] Inbox Laporan Klaim belum siap: %v", err)
@@ -308,7 +362,17 @@ func checkClaimReport(ctx context.Context, repo *inboxlaporanklaimsql.Repo, prin
 		print("            yang gagal, yang kurang adalah hak baca akun aplikasi, bukan migrasinya.")
 		return
 	}
-	print("  [ok]    kedua tabel Inbox Laporan Klaim dapat dibaca")
+	print("  [ok]    tabel Inbox Laporan Klaim dapat dibaca, dan kolom baris berkas di T_CLAIM_PNC tersedia")
+
+	// Pengisian otomatis form saat Nomor Polis diisi membaca POOLDATA.T_GENERAL. Nomor
+	// kosong tidak cocok dengan baris mana pun, sehingga yang teruji hanya hak baca dan
+	// kolomnya — tidak ada data polis yang dibaca.
+	if _, _, err := repo.FindPolicy(ctx, ""); err != nil {
+		print("  [BELUM] POOLDATA.T_GENERAL tidak dapat dibaca: %v", err)
+		print("            Tanpanya, form Input Receive Document tidak dapat mengisi data polis.")
+		return
+	}
+	print("  [ok]    POOLDATA.T_GENERAL dapat dibaca — data polis form Input Receive Document")
 }
 
 // checkClaimReportBranch melaporkan apakah cabang klaim petugas dapat diterjemahkan.
@@ -1169,6 +1233,7 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	rejection := masterpenolakansql.NewRepo(primary)
 	supplier := mastersuppliersql.NewRepo(primary)
 	inboxCompliance := inboxcompliancesql.NewRepo(primary)
+	inboxManagerAdmin := inboxmanageradminsql.NewRepo(primary)
 
 	// Tab Compliance dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
 	// memakai tab yang BENAR-BENAR terdaftar. Tab yang tidak ditemukan membuat kueri
@@ -1213,6 +1278,33 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 			)
 			return page.Total, err
 		}},
+		// Kueri daftarnya WAJIB ikut dijalankan di modul ini, dan alasannya lebih kuat
+		// daripada di modul lain: `list_by_org_unit` menyaring
+		// `T_CLAIMLIST_ADMIN.PXASSIGNEDORGUNIT` — kolom yang DIMINTA ditambahkan saat
+		// modul ini dipindahkan ke tabel itu (Work Owner 2026-09-27) dan menunggu
+		// `migrations/0005` tahap 1 dijalankan DBA.
+		//
+		// CheckTable sudah memeriksa ketiga kolom yang diminta tersendiri lewat
+		// `check_column`. Yang ditambahkan di sini adalah pembuktian bahwa ia benar-benar
+		// dapat dipakai sebagai penyaring pada kueri yang sesungguhnya.
+		//
+		// Yang TIDAK dapat dibuktikan perintah ini: apakah kolomnya benar-benar TERISI di
+		// produksi. Kolom yang ada tetapi selalu kosong mengembalikan nol baris tanpa satu
+		// pun galat, dan jumlah baris di bawah inilah satu-satunya petunjuknya. Itu bukan
+		// kekhawatiran teoretis: `STATUSLOCK_1` dan `REQUESTSURVEY_1` pada tabel yang sama
+		// ada tetapi kosong di seluruh 1.014 barisnya.
+		{"Inbox Manager Admin", inboxManagerAdmin.CheckTable, func(ctx context.Context) (int, error) {
+			tab, known := inboxmanageradmin.FindTab(inboxmanageradmin.TabNonMBU)
+			if !known {
+				return 0, fmt.Errorf(
+					"tab %q tidak terdaftar di inboxmanageradmin.Tabs()",
+					inboxmanageradmin.TabNonMBU)
+			}
+
+			rows, err := inboxManagerAdmin.List(ctx, inboxmanageradmin.Query{Tab: tab})
+			return len(rows), err
+		}},
+
 		{"Master Auto Claim", autoClaim.CheckTable, func(ctx context.Context) (int, error) {
 			row, err := autoClaim.List(ctx, masterautoclaim.Filter{})
 			return len(row), err
@@ -1869,24 +1961,6 @@ func checkClaimTreatyNonProp(
 	}
 }
 
-// checkManagerReceivePUCL memeriksa modul Inbox Manager Receive / PUCL (`MENU_ID 56`).
-//
-// # Kenapa pemeriksaannya lebih rinci daripada modul inbox lain
-//
-// Karena TIGA hal di modul ini dibangun di atas kesimpulan yang belum dapat diverifikasi
-// tanpa basis data nyata, dan ketiganya gagal TANPA GALAT bila kesimpulannya keliru:
-//
-//   - Group Panel `002` sebagai pengganti `.ReceiveDocument.TypeOfClaim`. Bila kodenya
-//     berbeda di produksi, tab PA kosong dan seluruh isinya pindah ke tab NONMBU.
-//   - Akun antrean `RCLPUCL`. Ia diambil dari dua kueri Pega lain karena Report Definition
-//     tab itu tidak punya penyaring antrean sama sekali. Bila namanya berubah, tab RCL/PUCL
-//     kosong.
-//   - POOLDATA.T_CLAIM_RECIVEDCLAIM. Tabel itu TIDAK PERNAH DIBACA sistem lama, sehingga
-//     kelengkapan isinya belum terverifikasi. Gabungannya LEFT JOIN, sehingga tabel yang
-//     kosong menghasilkan dua kolom kosong — bukan galat.
-//
-// Ketiganya diperiksa di sini supaya kekeliruannya ketahuan saat `-periksa` dijalankan,
-// bukan saat pengguna melaporkan "tabnya kosong".
 func checkManagerReceivePUCL(
 	ctx context.Context,
 	repo *inboxmanagerreceivepuclsql.Repo,
@@ -3540,6 +3614,38 @@ func checkInboxAnalystDoctor(
 	print("            jawaban yang benar, bukan kerusakan.")
 }
 
+// checkInboxRCL memastikan tabel DAN tiga kolom yang dibaca layar Inbox RCL terjangkau.
+//
+// Sumbernya POOLDATA.T_CLAIMLIST_ADMIN, bukan tabel Pega (keputusan Work Owner 2026-09-27).
+// Dua langkah, karena sebab gagalnya berbeda: hak baca, atau migrasi
+// `0012_claimlist_admin_rcl` yang belum dijalankan DBA. Dua dari tiga kolomnya PENYARING —
+// tanpanya layar tidak dapat dipakai terhadap Oracle sama sekali.
+func checkInboxRCL(
+	ctx context.Context,
+	repo *inboxrclsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTables(ctx); err != nil {
+		print("  [BELUM] Tabel Inbox RCL tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.T_CLAIMLIST_ADMIN dan")
+		print("            POOLDATA.T_ACCESS_GROUP_PNC.")
+		return
+	}
+	print("  [ok]    Tabel Inbox RCL dapat dibaca (T_CLAIMLIST_ADMIN, T_ACCESS_GROUP_PNC)")
+
+	if err := repo.CheckColumns(ctx); err != nil {
+		print("  [BELUM] Kolom Inbox RCL belum ada di T_CLAIMLIST_ADMIN: %v", err)
+		print("            Jalankan migrations/0012_claimlist_admin_rcl.up.sql (DBA, D-63):")
+		print("            TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1.")
+		print("            Setelah itu proses pengisi T_CLAIMLIST_ADMIN harus mengisinya —")
+		print("            dua di antaranya `unexposed` di Pega dan hanya ada di blob.")
+		return
+	}
+	print("  [ok]    Kolom TANGGALANALYSTSENDRCL_1, NAMADOKTERRCL_1, KOMENTARANALISATOR_1 ada")
+	print("            Catatan: antrean disaring dengan identitas LAMA pemanggil")
+	print("            (T_ACCESS_GROUP_PNC, grup Administrators/PNCKomite/CaseManager).")
+}
+
 // checkOutstanding menjalankan kueri Inbox Outstanding terhadap Oracle sungguhan.
 //
 // Inilah satu-satunya jalan membuktikan kuerinya sah selama migrasi 0001 belum dijalankan:
@@ -3710,6 +3816,241 @@ func checkCloseClaim(
 	print("            Catatan: akun aplikasi hanya perlu SELECT dan INSERT. Hak UPDATE dan")
 	print("            DELETE sengaja TIDAK diberikan — yang memindahkan STATUS ke")
 	print("            'dijalankan' adalah pelaksana, dengan akunnya sendiri.")
+}
+
+// checkRegistration memeriksa modul Registrasi Klaim terhadap Oracle sungguhan.
+//
+// # Ia TIDAK mendaftarkan klaim
+//
+// Mode periksa tidak menulis apa pun, dan pendaftaran menulis ke lima tabel sekaligus.
+// Yang diperiksa di sini adalah PRASYARATNYA: tabel yang ditulisnya dapat dibaca, dan
+// ketiga sumber baca-saja menjawab.
+//
+// Seam Penugasan sengaja TIDAK dipanggil: `Assign` menaikkan pencacah beban petugas,
+// sehingga memeriksanya akan mengubah data — persis yang mode ini janjikan tidak dilakukan.
+func checkRegistration(ctx context.Context, primary *sql.DB, print func(string, ...any)) {
+	print("")
+	print("Registrasi Klaim (B-2)")
+
+	// Tabel yang DITULIS pendaftaran. Urutannya mengikuti urutan penulisannya, supaya
+	// yang gagal lebih dulu adalah yang paling awal dibutuhkan.
+	//
+	// # Kenapa sebagian memeriksa KOLOM, bukan sekadar keberadaan tabel
+	//
+	// Pemeriksaan keberadaan saja terbukti tidak cukup. T_CLAIM_SPREADING lolos
+	// "[ok] dapat dibaca" selama modul menulis kolom yang tidak ada di sana — tabelnya
+	// memang ada, hanya bentuknya lain (ORA-00904, 2026-09-26). Yang diperiksa karena itu
+	// adalah KONTRAK: kolom yang benar-benar dipakai modul. Satu kolom yang hilang membuat
+	// SELECT ini gagal dengan nama kolomnya, jauh sebelum petugas menekan Simpan.
+	tabel := []struct {
+		nama   string
+		sumber string
+		kolom  string // kosong berarti cukup keberadaan tabel
+	}{
+		{"POOLDATA.T_CLAIM_PNC", "tabel warisan, bentuknya ditetapkan Work Owner (diubah 2026-09-26)",
+			"CLAIMID, CLAIMNO, PORTAL, NOPOLIS, GROUPPANEL, POLIS_JENIS_BISNIS, POLIS_MATA_UANG, QQNAME, " +
+				"BRANCHCODE, DATEOFLOSS, REPORTDATE, RECEIVEDATE, LOCATION, KRONOLOGI, REPORTERNAME, NO_HP, " +
+				"REPORTADDRESS, PELAPOR_HUBUNGAN, PELAPOR_HUBUNGAN_LAIN, CURRENCY, NOMOR_SLIK, EXGRATIA, " +
+				"PICTEKNIK, RCVID, RCLPUCL, STATUSWORK, STATUSCLAIM, ADMINKLAIM, REGISTERDATE, FLAG_NOLL, " +
+				"SOBNAME, SOBNAMEID, BRANCHNAME, BUSINESSCODE, BUSINESSNAME, PRODKE, TYPEOFCOINS, " +
+				"COINSNAME, LEADER_MEMBER, SHAREASM, POLISLEADER, " +
+				// Migrasi 0012 — wilayah kejadian dan Prinsip Mengenal Nasabah.
+				"COUNTRY, COUNTRYID, PROVINCE, PROVINCEID, CITY, CITYID, DISTRICT, DISTRICTID, " +
+				"RW, RWID, POSTALCODE, CUSTOMERPRINCIPLE, SUSPICIOUSCOMMENT"},
+		{"POOLDATA.T_CLAIM_OBJECTLIST", "migrasi 0008 — 3 kolom tambahan",
+			"CLAIMID, OBJECTID, OBJECTNAME, LOKASI, URUTAN, DIHAPUS_PADA"},
+		{"POOLDATA.T_CLAIM_OBJECTCOVERAGE", "migrasi 0008 — 3 kolom tambahan",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, CAUSEOFLOSSID, SUMTSI, URUTAN_OBJEK, URUTAN, DIHAPUS_PADA, COVERAGENAME"},
+		// Sumber objek, coverage, dan spreading saat klaim dibuka — dibaca, tidak pernah ditulis.
+		{"POOLDATA.T_PERSONLIST", "tabel polis — objek PA dan Travel", "NOPOLIS, PRODKE, INDEXOBJECT, PYFULLNAME, COVERAGEDATA"},
+		{"POOLDATA.T_PROPERTYLIST", "tabel polis — objek Fire", "NOPOLIS, PRODKE, INDEXOBJECT, OBJECTNO, OBJECTNAME, ASMADDRESS, FLAGDELETE, COVERAGELIST, PROPERTYITEMLIST"},
+		{"POOLDATA.T_CARGOLIST", "tabel polis — objek Marine Cargo", "NOPOLIS, PRODKE, INDEXOBJECT, GOODSNAME, CONVEYANCENOTE, COVERAGEDATA"},
+		{"POOLDATA.T_ANEKALIST", "tabel polis — objek Aneka", "NOPOLIS, PRODKE, INDEXOBJECT, OBJECTNAME, ASMADDRESS, COVERAGELIST"},
+		// Tahap Input Estimasi.
+		{"POOLDATA.TC_PNC_OBJECTITEM", "Database/CREATE_TABLE_2.sql — item objek",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID, OBJECTITEMNAME, DESKRIPSIOBJECT, SUMESTIMATION, DIBUAT_OLEH, DIBUAT_PADA, DIUBAH_OLEH, DIUBAH_PADA, DIHAPUS_OLEH, DIHAPUS_PADA"},
+		{"POOLDATA.T_CLAIM_ESTIMASI", "tabel warisan — baris estimasi",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, OBJECTITEMID, ESTIMASIID, ESTIMATIONTYPE, KURSID, ESTIMATIONVALUE, KURSVALUE, CONVERTVALUE, ESTIMATIONDATE, DIBUAT_OLEH, DIBUAT_PADA, PRINTFACECLAIM, CFSDATE"},
+		// Tombol Download Claim Face Sheet.
+		{"POOLDATA.TC_PNC_CFS", "revisi Claim Face Sheet (CFSList)", "CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI, CFSDATE, FILENAME"},
+		{"POOLDATA.TC_PNC_CFS_ESTIMASI", "reserve per revisi Claim Face Sheet", "CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI, URUTAN, CURRENCY, ESTIMATIONDATE, ESTIMATIONVALUE"},
+		{"POOLDATA.V_D_CAUSE_OF_LOSS", "master penyebab kerugian — Nature of Loss (dibaca)", "D_COL_ID, DESCRIPTION"},
+		{"DATAPEGA.PR_OPERATORS", "operator Pega — nama PIC Admin (dibaca)", "PYUSERIDENTIFIER, PYUSERNAME"},
+		{"POOLDATA.M_LOGIN_PNC", "login non-karyawan — nama PIC Admin (dibaca)", "LOGIN_ID, LOGIN_NAME"},
+		// Tombol Print PLA.
+		{"POOLDATA.T_PLALIST", "PLA yang terbit (ditulis untuk klaim PNCN)", "CLAIMID, OBJECTID, OBJECTCOVERAGEID, NOPLA, NILAIPLA, PLAREINSURER, REVISI, TIPEPLA, TGLPLA, NOTES, REINSCODE, CURRENCYPOLIS, PERCENTPLA, ESTIMASI, ESTIMASISHARE, EMAILPLA, LOGIN, COUNTRY, JSON_PLA"},
+		{"POOLDATA.PLA", "log penomoran PLA (PLA_DLA.prc)", "KEY, ID_PLA, KODE, ID_SITE, TAHUN, COUNT"},
+		{"POOLDATA.M_SITE_DATABASE", "site aktif pada nomor PLA (dibaca)", "ID, CURRENT_SITE"},
+		{"POOLDATA.T_REINSURER", "master penerima PLA (dibaca)", "REINSURERID, REINSURERNAME, LOGIN, EMAIL, COUNTRY"},
+		{"POOLDATA.MTTD", "tanda tangan PLA (dibaca)", "ID, NAME, JSONDATA"},
+		{"POOLDATA.CURRENCY", "master mata uang", "ID, CURRENCY"},
+		{"POOLDATA.V_STS_CLAIM", "master status klaim", "LSC_ID, LSC_NOTE"},
+		// Tab Survey, Unggah Dokumen, Progress Claim & Komunikasi — hanya dibaca.
+		{"POOLDATA.T_SURVEYORLIST", "tabel warisan — hasil survey (dibaca)",
+			"CASEID, PNCCASEID, SURVEYTYPE, SURVEYOR_NAME, SURVEYDATE, LOCATION_SURVEY, OBJECT_NAME, LOCATION_OBJECT, INDEX_SURVEY, STS_SURVEY, KETERANGAN, TGLINPUT"},
+		{"POOLDATA.LST_TYPE_DOC_BUSINESS", "master jenis dokumen per bisnis (dibaca)",
+			"BUSINESSID, DOCUMENT_TYPE_ID, DOC_TYPE_DT_ID, DETAIL_DOKUMEN, STS_WAJIB, OBJECT_DOC_ID, MIN_DOC"},
+		{"POOLDATA.LST_DOC_TYPE", "master jenis induk dokumen (dibaca)", "ID, TYPE_DOCUMENT, JSON_DATA"},
+		{"POOLDATA.COVERAGE_DOC_BUSINESS", "master dokumen wajib per coverage PA (dibaca)", "ID, BUSINESSID, COVERAGEID"},
+		{"POOLDATA.DATA_ATTACHFILE", "tabel warisan — lampiran (dibaca)",
+			"DATAID, ATTACHNAME, ATTACHMIMETYPE, ATTACHNOTE, CATEGORY, SUB_CATEGORY, IMAGEID, INPUTOPERATOR, INPUTDATE, IDPEGA"},
+		{"POOLDATA.GCNM_PROGRESS_CLAIM", "tabel warisan — progres klaim (dibaca)",
+			"ID_UPDATE, TGL_INPUT, PNCCASEID, STATUS_PROGRESS1, STATUS_PROGRESS2, KETERANGAN, NEXT_FOLLOWUP, USER_INPUT, POSISIID"},
+		{"POOLDATA.GCNM_MST_PROGRESS_KLAIM", "master status progres 1 (dibaca)", "ID_PROGRESS, STS_PROGRESS1"},
+		{"POOLDATA.GCNM_MST_PROGRESS", "master status progres 2 (dibaca)", "ID_MST, STS_PROGRESS2"},
+		{"POOLDATA.M_KOMUNIKASI_PNC", "tabel warisan — komunikasi (dibaca)",
+			"CASEID, KOMUNIKASIID, CREATEDDATE, SENDER, SENDERNAME, MESSAGE, REPLYMESSAGE, REPLYFROMNAME, CREATEDATEREPLY, KOMUNIKASISTATUS, CASECLAIM"},
+		{"POOLDATA.T_CLAIM_SPREADING", "Database/CREATE_TABLE_2.sql — milik Work Owner, dijalankan DBA (D-63)",
+			"CLAIMID, OBJECTID, OBJECTCOVERAGEID, TREATYTYPE, TREATYNAME, SHAREPERCENTAGE, URUTAN"},
+		{"POOLDATA.CPNC_TUGAS", "migrasi 0009 — tabel baru", ""},
+		{"POOLDATA.CPNC_JEJAK_AUDIT", "migrasi 0009 — tabel baru", ""},
+		{"POOLDATA.CPNC_NOTIFIKASI", "migrasi 0011 — tabel baru", ""},
+	}
+	for _, t := range tabel {
+		pilih := "COUNT(*)"
+		if t.kolom != "" {
+			pilih = t.kolom
+		}
+		// WHERE 1 = 0 membuktikan tabel dan kolomnya ada tanpa memindai isinya.
+		baris, err := primary.QueryContext(ctx,
+			"SELECT "+pilih+" FROM "+t.nama+" WHERE 1 = 0")
+		if err == nil {
+			_ = baris.Close()
+		}
+		if err != nil {
+			print("  [BELUM] %s tidak cocok: %v", t.nama, err)
+			print("            Sumbernya %s.", t.sumber)
+			print("            Dijalankan EMPAT KALI — sekali per portal (D-75).")
+			continue
+		}
+		if t.kolom != "" {
+			print("  [ok]    %s — kolom yang ditulis modul tersedia", t.nama)
+			continue
+		}
+		print("  [ok]    %s dapat dibaca", t.nama)
+	}
+
+	// FLAG_NOLL menentukan subjek pemberitahuan berikutnya — biasa atau "(REVISE)".
+	// Tanpa kolomnya, setiap pemberitahuan terbaca sebagai yang pertama.
+	var abaikan int64
+	if err := primary.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM POOLDATA.T_CLAIM_PNC WHERE FLAG_NOLL IS NOT NULL AND 1 = 0").
+		Scan(&abaikan); err != nil {
+		print("  [BELUM] kolom FLAG_NOLL tidak ada: %v", err)
+		print("            Dibuat migrasi 0010. Tanpa kolom ini, Notice of Large Losses")
+		print("            kedua atas klaim yang sama tidak dapat ditandai sebagai revisi.")
+	} else {
+		print("  [ok]    kolom FLAG_NOLL dapat dibaca")
+	}
+
+	// Nomor klaim diturunkan dari isi T_CLAIM_PNC, bukan dari tabel pencacah (Work Owner,
+	// 2026-09-24). Mencetak nomor berikutnya membuktikan seluruh rantainya berjalan:
+	// penyaring tahun, SUBSTR, dan TO_NUMBER.
+	var terakhir int64
+	pola := fmt.Sprintf("PNCN.%02d.%%", time.Now().Year()%100)
+	err := primary.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(CLAIMNO, 9))), 0)
+		   FROM POOLDATA.T_CLAIM_PNC
+		  WHERE CLAIMNO LIKE :1`, pola).Scan(&terakhir)
+	if err != nil {
+		print("  [BELUM] nomor klaim berikutnya tidak dapat dihitung: %v", err)
+	} else {
+		print("  [ok]    nomor klaim berikutnya: PNCN.%02d.%04d",
+			time.Now().Year()%100, terakhir+1)
+	}
+
+	// Kurs. `D-48` menetapkan kurs yang dipakai adalah kurs TANGGAL KEJADIAN, dan kurs
+	// yang tidak ditemukan MENOLAK klaim — tidak ada nilai bawaan.
+	//
+	// Mata uang disebut dengan KODE ANGKA, bukan simbol ISO: 10001 USD, 10026 IDR.
+	// Itulah yang dibawa polis pada $.Currency. Memeriksanya dengan "USD" akan menjawab
+	// "tidak ada" dan jawaban itu menyesatkan.
+	kurs := registrasisql.NewExchangeRateSource(primary)
+	for _, m := range []struct{ kode, nama string }{{"10001", "USD"}, {"10026", "IDR"}} {
+		nilai, err := kurs.Find(ctx, m.kode, time.Now())
+		if err != nil {
+			print("  [BELUM] kurs %s (%s) tidak dapat dibaca: %v", m.nama, m.kode, err)
+			print("            Sumbernya POOLDATA.M_CURRENCYSTANDARD. Tanpa kurs pada tanggal")
+			print("            kejadian, klaim DITOLAK — itu perilaku yang D-48 tetapkan,")
+			print("            bukan cacat. Termasuk klaim rupiah: IDR pun dibaca dari tabel")
+			print("            ini, tanpa cabang khusus.")
+			continue
+		}
+		print("  [ok]    kurs %s (%s) terbaca: %.4f", m.nama, m.kode,
+			float64(nilai)/float64(registrasi.ExchangeRateOne))
+	}
+
+	// Ambang Notice of Large Losses dan penerimanya.
+	param := registrasisql.NewParameter(primary)
+	if ambang, err := param.LargeLossThreshold(ctx); err != nil {
+		print("  [BELUM] ambang Notice of Large Losses tidak dapat dibaca: %v", err)
+		print("            Sumbernya POOLDATA.M_PARAMETER baris PNC.AMBANG_KERUGIAN_BESAR.")
+	} else {
+		print("  [ok]    ambang Notice of Large Losses: Rp %d", int64(ambang)/100)
+	}
+	penerima, err := param.LargeLossRecipients(ctx, registrasi.LineFire)
+	if err != nil && !strings.Contains(err.Error(), "belum diisi") {
+		print("  [BELUM] penerima Notice of Large Losses tidak dapat dibaca: %v", err)
+	} else if err != nil || len(penerima) == 0 {
+		print("  [BELUM] penerima Notice of Large Losses KOSONG")
+		print("            Barisnya PNC.PENERIMA_KERUGIAN_BESAR pada POOLDATA.M_PARAMETER")
+		print("            belum diisi, dan daftarnya ditunggu dari Work Owner berupa")
+		print("            mailbox fungsional — bukan akun pribadi (D-67).")
+		print("            Pendaftaran klaim TIDAK terhalang: peristiwanya tetap terbit dan")
+		print("            tercatat, hanya tanpa tujuan. Itu mengikuti sistem lama, yang")
+		print("            merakit penerima dari lima sumber dan tidak pernah menghentikan")
+		print("            registrasi karena salah satunya kosong.")
+		print("            Satu sumber lain juga belum ada: email cabang/GL/Pincab, yang")
+		print("            di sistem lama datang dari RDB rule GetEmailCabang_SQL —")
+		print("            dirujuk 2 activity, TIDAK ADA di export (R-16).")
+	} else {
+		// Alamatnya SENGAJA tidak dicetak (`D-69`); yang perlu diketahui hanyalah
+		// daftarnya sudah terisi.
+		print("  [ok]    penerima Notice of Large Losses terisi: %d alamat", len(penerima))
+	}
+
+	// Polis dibaca dengan nomor yang pasti tidak ada. Jawaban "tidak ditemukan"
+	// membuktikan kuerinya jalan dan JSON_POLIS terbaca, TANPA menyentuh data nasabah
+	// mana pun (`D-69`).
+	polis := registrasisql.NewPolicyRepo(primary)
+	_, err = polis.Get(ctx, "PERIKSA.TIDAK.ADA")
+	switch {
+	case err == nil:
+		print("  [BELUM] POOLDATA.JSON_POLIS menjawab polis untuk nomor yang tidak ada")
+	case strings.Contains(err.Error(), "tidak ditemukan"):
+		print("  [ok]    POOLDATA.JSON_POLIS dapat dibaca")
+	default:
+		print("  [BELUM] POOLDATA.JSON_POLIS tidak dapat dibaca: %v", err)
+	}
+
+	// Tautan balik ke berkas Receive Document. Yang dilaporkan adalah sebaran posisi
+	// berkas MILIK APLIKASI INI — itulah yang berpindah saat tombol Register Klaim
+	// ditekan, dan satu-satunya tanda yang dilihat petugas bahwa tombolnya bekerja.
+	var belumDiserahkan, belumRegistrasi, outstanding, tanpaTab int64
+	err = primary.QueryRowContext(ctx, `
+		SELECT SUM(CASE WHEN TRANSFERASM IS NULL AND NOKLAIM IS NULL     THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN TRANSFERASM IS NOT NULL AND NOKLAIM IS NULL THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN TRANSFERASM IS NOT NULL AND NOKLAIM IS NOT NULL THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN TRANSFERASM IS NULL AND NOKLAIM IS NOT NULL THEN 1 ELSE 0 END)
+		  FROM POOLDATA.T_CLAIM_RECIVEDCLAIM
+		 WHERE CLAIMID LIKE 'RCVN.%'`).
+		Scan(&belumDiserahkan, &belumRegistrasi, &outstanding, &tanpaTab)
+	if err != nil {
+		print("  [BELUM] sebaran posisi berkas laporan tidak dapat dibaca: %v", err)
+	} else {
+		print("  [ok]    berkas laporan milik aplikasi ini: %d Not Transferred · %d Not Registered · %d Outstanding",
+			belumDiserahkan, belumRegistrasi, outstanding)
+		if tanpaTab > 0 {
+			// Kombinasi ini tidak dikembalikan kueri posisi mana pun, sehingga berkasnya
+			// tidak muncul di tab apa pun. Ia hanya dapat lahir bila NOKLAIM dipasang
+			// sebelum TRANSFERASM — urutan yang dijaga reportlink.sql.
+			print("  [BELUM] %d berkas ber-NOKLAIM tetapi belum diserahkan — TIDAK muncul", tanpaTab)
+			print("            di tab mana pun. Urutan penulisannya terbalik.")
+		}
+	}
+
+	print("            Seam Penugasan tidak diperiksa di sini: memanggilnya menaikkan")
+	print("            pencacah beban petugas, dan mode ini tidak menulis apa pun.")
 }
 
 // checkSalvage memeriksa kesiapan modul Inbox Salvage.
@@ -5167,4 +5508,270 @@ func checkOutstandingExport(ctx context.Context, repo *inboxoutstandingsql.Repo,
 		return
 	}
 	print("  [ok]    lini bisnis %s: %s", login, line)
+}
+
+// checkPLADLAQueue menjalankan ketiga kueri daftar modul Inbox PLA, DLA, Pre DLA.
+//
+// # Kenapa KETIGANYA, bukan satu
+//
+// Karena ketiganya membaca TABEL YANG BERBEDA — `T_PLALIST`, `T_DLALIST`, dan
+// `T_PREDLALIST` — dan penyaringnya pun berbeda bentuk. Satu kueri yang berhasil tidak
+// menyatakan apa pun tentang dua lainnya, dan ketiga tabel itu tidak punya DDL di export
+// (`R-08`) sehingga nama kolomnya dibaca dari kueri Pega, bukan dari skema.
+//
+// Rentang tanggal ikut diuji pada satu daftar. Ia satu-satunya bagian yang memakai bind
+// bertipe tanggal, dan itu kelas galat yang hanya muncul di Oracle — bukan di uji yang
+// membaca teks SQL.
+func checkPLADLAQueue(
+	ctx context.Context,
+	repo *inboxpladlapredlasql.Repo,
+	print func(string, ...any),
+) {
+	caller := inboxpladlapredla.Caller{Login: "pemeriksa-kesiapan"}
+	page := inboxpladlapredla.Pagination{Page: 1, Size: 5}
+
+	sampleKey := ""
+	sampleTab := inboxpladlapredla.Tab{}
+	preDLAKey := ""
+	failed := false
+
+	for _, tab := range inboxpladlapredla.Tabs() {
+		query, err := inboxpladlapredla.NewQuery(
+			inboxpladlapredla.QueryInput{Tab: tab.Code}, caller)
+		if err != nil {
+			print("  [BELUM] Daftar %q tidak dapat disusun: %v", tab.Name, err)
+			failed = true
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Antrean %q tidak dapat dibaca: %v", tab.Name, err)
+			print("            Periksa POOLDATA.T_PLALIST, T_DLALIST, dan T_PREDLALIST.")
+			failed = true
+			continue
+		}
+
+		print("  [ok]    Antrean Inbox %s dapat dibaca (%d baris)", tab.Name, result.Total)
+
+		if sampleKey == "" && tab.HasDocuments() {
+			for _, row := range result.Items {
+				if row.ClaimKey != "" {
+					sampleKey = row.ClaimKey
+					sampleTab = tab
+					break
+				}
+			}
+		}
+
+		if preDLAKey == "" && tab.HasPrintAction {
+			for _, row := range result.Items {
+				if row.ClaimKey != "" {
+					preDLAKey = row.ClaimKey
+					break
+				}
+			}
+		}
+	}
+
+	if failed {
+		return
+	}
+
+	// Rentang tanggal diuji TERPISAH, dan hanya sekali.
+	//
+	// Bentuk klausanya sama di ketiga kueri; yang diuji adalah apakah bind bertipe
+	// tanggal diterima Oracle sama sekali.
+	from := time.Now().AddDate(-1, 0, 0)
+	to := time.Now()
+	ranged, err := inboxpladlapredla.NewQuery(
+		inboxpladlapredla.QueryInput{Tab: inboxpladlapredla.DefaultTab,
+			From: &from, To: &to, Search: "PNC"},
+		caller)
+	if err != nil {
+		print("  [BELUM] Penyaring rentang tanggal tidak dapat disusun: %v", err)
+		return
+	}
+	if _, err := repo.List(ctx, ranged, page); err != nil {
+		print("  [BELUM] Penyaring rentang tanggal ditolak basis data: %v", err)
+		print("            Ia satu-satunya bind bertipe tanggal di modul ini.")
+		return
+	}
+	print("  [ok]    Penyaring rentang tanggal dan pencarian diterima basis data")
+
+	if sampleKey == "" {
+		print("  [catatan] Tidak ada baris contoh; grid rincian tidak diuji.")
+	} else if _, err := repo.Documents(ctx, sampleTab, sampleKey); err != nil {
+		print("  [BELUM] Grid rincian %q tidak dapat dibaca: %v", sampleTab.Name, err)
+	} else {
+		print("  [ok]    Grid rincian Inbox %s dapat dibaca", sampleTab.Name)
+	}
+
+	// Panel "Print Pre DLA" diuji TERPISAH, dan itu bukan pengulangan grid rincian.
+	//
+	// Ia satu-satunya kueri modul ini yang menyentuh KEDUA tabel lampiran Pega
+	// (`PC_LINK_ATTACHMENT` dan `PC_DATA_WORKATTACH`), dan satu-satunya yang memakai
+	// `PXATTACHNAME` tanpa nama tabel — kolom yang tidak diketahui milik tabel mana
+	// karena DDL keduanya tidak ada di export (`R-08`). Bila tebakan Oracle berbeda dari
+	// dugaan kami, yang muncul adalah galat "column ambiguously defined", dan itu hanya
+	// terlihat dengan menjalankannya sungguhan.
+	if preDLAKey == "" {
+		print("  [catatan] Tidak ada baris contoh Pre DLA; panel cetak tidak diuji.")
+		return
+	}
+
+	rows, err := repo.PrintPreDLA(ctx, preDLAKey)
+	if err != nil {
+		print("  [BELUM] Panel \"Print Pre DLA\" tidak dapat dibaca: %v", err)
+		print("            Periksa PXATTACHNAME — ia dipakai tanpa nama tabel, persis " +
+			"seperti kueri Pega.")
+		return
+	}
+	print("  [ok]    Panel \"Print Pre DLA\" dapat dibaca (%d baris)", len(rows))
+
+	if len(rows) > 0 {
+		return
+	}
+
+	// Kosong BUKAN kegagalan: klaim itu boleh saja belum punya Pre-DLA yang lampirannya
+	// cocok. Tetapi kosong punya EMPAT sebab yang tampak sama, dan menebaknya memakan
+	// waktu lebih lama daripada menghitungnya.
+	print("  [catatan] Panelnya kosong untuk klaim contoh. Menghitung tahap mana yang " +
+		"menggugurkan barisnya:")
+
+	diag, err := repo.DiagnosePrintPreDLA(ctx, preDLAKey)
+	if err != nil {
+		print("            Diagnosa tidak dapat dijalankan: %v", err)
+		return
+	}
+
+	print("            Pre-DLA pada klaim ini        : %d", diag.PreDLARows)
+	print("            NODLA tepat 11 karakter       : %d", diag.AdviceNoIs11)
+	print("            punya lampiran apa pun        : %d", diag.HasAttachment)
+	print("            lampiran berkategori 'DLA'    : %d", diag.CategoryIsDLA)
+
+	switch {
+	case diag.PreDLARows == 0:
+		print("            -> Klaim contoh memang belum punya Pre-DLA. Bukan cacat.")
+	case diag.AdviceNoIs11 == 0:
+		// Sebab ini yang paling sering, dan yang paling tidak terduga.
+		print("            -> SEBABNYA DI SINI. Pencocokan nama berkas Pega " +
+			"(SUBSTR(PXATTACHNAME,-15,11) = NODLA) hanya dapat cocok bila NODLA " +
+			"tepat 11 karakter. Tidak ada satu pun yang 11 karakter, sehingga " +
+			"panel TIDAK AKAN PERNAH berisi — di Pega sekalipun.")
+	case diag.CategoryIsDLA == 0 && diag.HasAttachment > 0:
+		print("            -> Lampirannya ada tetapi TIDAK berkategori 'DLA'.")
+	case diag.HasAttachment == 0:
+		print("            -> Belum ada lampiran sama sekali pada klaim ini.")
+	default:
+		print("            -> Ketiga tahap awal lolos, sehingga yang menggugurkan " +
+			"adalah pencocokan nama berkasnya. Periksa akhiran nama berkas: " +
+			"ia harus NODLA ditambah tepat 4 karakter, misalnya '.pdf'.")
+	}
+}
+
+// checkPLADLAReinsurer menjalankan kueri modul Inbox PLA DLA — layar milik reasuradur.
+//
+// # Yang diuji di sini BERBEDA dari modul di atasnya
+//
+// Seluruh kuerinya menyaring lewat `POOLDATA.T_REINSURER.LOGIN`, sehingga yang dibuktikan
+// bukan hanya "kueri berjalan" melainkan juga "rantai reasuradurnya diterima". Login
+// pemeriksa TIDAK terdaftar sebagai mitra, dan itu memang yang diharapkan: daftarnya
+// menjawab nol baris, bukan galat.
+//
+// Nol baris di sini BUKAN tanda kegagalan. Yang gagal adalah kuerinya yang ditolak.
+func checkPLADLAReinsurer(
+	ctx context.Context,
+	repo *inboxpladlasql.Repo,
+	print func(string, ...any),
+) {
+	const login = "pemeriksa-kesiapan"
+
+	codes, err := repo.ReinsurerCodes(ctx, login)
+	if err != nil {
+		print("  [BELUM] POOLDATA.T_REINSURER tidak dapat dibaca: %v", err)
+		print("            Tanpa tabel itu, layar Inbox PLA DLA menolak setiap mitra.")
+		return
+	}
+	print("  [ok]    POOLDATA.T_REINSURER dapat dibaca (%d kode untuk login uji)",
+		len(codes))
+
+	// Kode contoh dipakai supaya kuerinya benar-benar dijalankan dengan penyaring yang
+	// terisi. Login pemeriksa tidak terdaftar, sehingga tanpa ini seluruh kueri berjalan
+	// dengan senarai kosong dan bagian penyaringnya tidak pernah teruji.
+	probe := codes
+	if len(probe) == 0 {
+		probe = []string{"PEMERIKSA"}
+	}
+
+	caller := inboxpladla.Caller{Login: login}
+	page := inboxpladla.Pagination{Page: 1, Size: 5}
+
+	for _, tab := range inboxpladla.Tabs() {
+		query, err := inboxpladla.NewQuery(
+			inboxpladla.QueryInput{Tab: tab.Code}, caller, probe)
+		if err != nil {
+			print("  [BELUM] Daftar reasuradur %q tidak dapat disusun: %v", tab.Name, err)
+			continue
+		}
+
+		result, err := repo.List(ctx, query, page)
+		if err != nil {
+			print("  [BELUM] Daftar reasuradur %q tidak dapat dibaca: %v", tab.Name, err)
+			continue
+		}
+		print("  [ok]    Daftar reasuradur %s dapat dibaca (%d baris)",
+			tab.Name, result.Total)
+
+		if _, err := repo.Counts(ctx, query); err != nil {
+			print("  [BELUM] Ringkasan status %q tidak dapat dihitung: %v", tab.Name, err)
+		}
+	}
+
+	if _, err := repo.XOL(ctx, login); err != nil {
+		print("  [BELUM] Ringkasan XOL tidak dapat dibaca: %v", err)
+		print("            Periksa POOLDATA.T_PLA_XOL dan T_DLA_XOL.")
+		return
+	}
+	print("  [ok]    Ringkasan XOL dapat dibaca")
+}
+
+// checkCaseStudyClaim membuktikan keempat tabel layar Case Study Claim dapat dibaca.
+//
+// # Kenapa pemeriksaan ini berharga
+//
+// Kuerinya menyentuh EMPAT tabel sekaligus, dan salah satunya — `T_CLAIM_ADJUSTMENT` —
+// hanya muncul di dalam subkueri. Hak baca yang kurang pada tabel itu tidak terlihat saat
+// layar dibuka: layarnya tergambar, penyaringnya terisi, dan galatnya baru muncul saat
+// pengguna menekan "Lihat Data".
+//
+// Satu kolom patut disebut khusus: `PEGA_DASHBOARDPNC.THNREGIS`. Ia yang dibandingkan
+// penyaring rentang, dan TIPENYA BELUM PERNAH DITERIMA (`R-08`). Kueri ini
+// membandingkannya terhadap teks, persis seperti kueri lama membandingkannya terhadap
+// keluaran `TO_CHAR`; bila kolomnya ternyata NUMBER, Oracle mengubah teksnya menjadi angka
+// dan hasilnya sama. Yang tidak sama adalah bila ia bertipe lain sama sekali — dan itulah
+// yang akan terlihat di sini.
+func checkCaseStudyClaim(
+	ctx context.Context,
+	repo *casestudyclaimsql.Repo,
+	print func(string, ...any),
+) {
+	if err := repo.CheckTable(ctx); err != nil {
+		print("  [BELUM] Tabel Case Study Claim tidak dapat dibaca: %v", err)
+		print("            Dibutuhkan hak SELECT atas POOLDATA.PEGA_DASHBOARDPNC,")
+		print("            POOLDATA.T_CLAIM_PNC, POOLDATA.BUSINESS, dan")
+		print("            POOLDATA.T_CLAIM_ADJUSTMENT. Keempatnya milik sistem lama dan")
+		print("            tidak dibuat migrasi mana pun.")
+		print("            Bila galatnya menyebut KOLOM, kolom itu memang tidak ada —")
+		print("            seluruh nama kolom modul ini dibaca dari kueri Pega, bukan dari")
+		print("            DDL, yang belum pernah diterima (`R-08`).")
+		return
+	}
+	print("  [ok]    Keempat tabel Case Study Claim dapat dibaca")
+
+	print("            Catatan: layar ini hanya memuat klaim yang salah satu baris")
+	print("            settlement-nya melampaui Rp 5.000.000.000. Daftar yang kosong pada")
+	print("            periode tertentu karena itu jawaban yang benar, bukan kerusakan.")
+	print("            Modul ini MENULIS satu kolom — T_CLAIM_PNC.REMARKRECOMENDATION —")
+	print("            dan penulisan itu menuntut serah-terima kepemilikan tulis (`D-63`).")
 }

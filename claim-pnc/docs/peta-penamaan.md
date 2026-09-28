@@ -4083,6 +4083,148 @@ it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', ...
 it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', ...)
 ```
 
+## Tambahan 2026-09-26 — modul Inbox PLA, DLA, Pre DLA (`MENU_ID 44`) dan Inbox PLA DLA (`MENU_ID 45`)
+
+Dua layar, dua modul, dan keduanya dibangun bersamaan supaya perbedaannya tercatat
+berdampingan alih-alih ditemukan kemudian:
+
+| `MENU_ID` | `MENU_DESC` | `MENU_PROGRAM` | Paket Go | Folder frontend | Rute |
+|---|---|---|---|---|---|
+| 44 | Inbox PLA, DLA, Pre DLA | `InboxPLA_harness` | `inboxpladlapredla` | `inbox-pla-dla-pre-dla` | `/inbox-pla-dla-pre-dla` |
+| 45 | Inbox PLA DLA | `InboxPLADLA` | `inboxpladla` | `inbox-pla-dla` | `/inbox-pla-dla` |
+
+Nama modulnya diambil dari `MENU_DESC` apa adanya (`D-81`), bukan dikarang. Yang pertama
+panjang dan janggal dibaca; ia tetap dipakai karena itulah nama yang disebut Work Owner
+dan yang tertulis di masternya.
+
+### Alias kolom yang TIDAK dibawa — `MENU_ID 44`
+
+Ketiga kueri daftarnya mengalihnamakan kolom menjadi nama properti
+`ASM-FW-GCNMFW-Int-V_POLIS` yang sudah ada. Tujuh dari delapan tidak menyatakan isinya:
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Judul kolom |
+|---|---|---|---|
+| `T_CLAIM_PNC.CLAIMID` | `"BRANCH_NAME"` (!) | `ClaimKey` · `kunci_klaim` | *(tidak digambar)* |
+| `T_CLAIM_PNC.CLAIMNO` | `"BRANCH_CODE"` (!) | `ClaimNo` · `no_klaim` | No Klaim |
+| `T_CLAIM_PNC.NOPOLIS` | `"POLICY_NO"` | `PolicyNo` · `no_polis` | No Polis |
+| `T_CLAIM_PNC.QQNAME` | `"CUSTOMER"` | `Insured` · `nama_tertanggung` | Nama Tertanggung |
+| `T_CLAIM_PNC.REGISTERDATE` | `"START_DATE"` | `RegisterDate` · `tanggal_register` | Tanggal Register |
+| `T_CLAIM_PNC.DATEOFLOSS` | `"END_DATE"` (!) | `LossDate` · `tanggal_kejadian` | Tanggal Kejadian |
+| `T_CLAIM_PNC.PICTEKNIK` | `"BUSINESS_NAME"` (!) | `PICTeknik` · `pic_teknik` | PIC Teknik |
+| `MAX(TGLPLA/TGLDLA)` | `"pyCreateDate"` (!) | `AdviceDate` · `tanggal_advice` | Tanggal PLA/DLA/Pre DLA |
+
+`"BRANCH_NAME"` dan `"BRANCH_CODE"` dipakai berdampingan padahal tidak satu pun
+menyangkut cabang — yang pertama kunci kerja Pega, yang kedua nomor klaim.
+
+Grid rinciannya menambah satu alias yang setara berbahayanya: `TGLTERIMAPLA` beralias
+`"POLICY_NO"`. Di seluruh modul lain alias itu berarti nomor polis; di sini ia tanggal.
+
+| Kolom sebenarnya | Alias Pega | Nama di sini |
+|---|---|---|
+| `NOPLA` / `NODLA` | `"BUSINESS_CODE"` (!) | `AdviceNo` · `no_advice` |
+| `PLAREINSURER` / `DLAREINSURER` | `"BUSINESS_NAME"` (!) | `Reinsurer` · `reasuradur` |
+| `TIPEPLA` / `TIPEDLA` | `"CURRENCY"` (!) | `AdviceType` · `tipe` |
+| `T_PLALIST.REVISI` | `"TSI"` (!) | `Revision` · `revisi` |
+| `TGLPLA` / `TGLDLA` | `"START_DATE"` | `AdviceDate` · `tanggal_dokumen` |
+| `ISKIRIM` | `"MARKETING"` (!) | `Sent` · `terkirim` |
+| `TGLKIRIM` | `"END_DATE"` (!) | `SentDate` · `tanggal_kirim` |
+| `TGLTERIMAPLA` / `TGLTERIMADLA` | `"POLICY_NO"` (!) | `ReceivedDate` · `tanggal_terima` |
+| `NOTES` | `"CUSTOMER"` (!) | `Notes` · `catatan` |
+| `EMAILPLA` / `EMAILDLA` | `"BRANCH_NAME"` (!) | `Email` · `email` |
+| `T_DLALIST.NOAKSEP` | `"pyID"` | `AcceptanceNo` · `no_akseptasi` |
+
+### Alias kolom yang TIDAK dibawa — `MENU_ID 45`
+
+Sepuluh dari sebelas tidak menyatakan isinya, dan `"TSI"` untuk kunci klaim adalah yang
+paling berbahaya: di seluruh modul lain `TSI` berarti nilai pertanggungan.
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Judul kolom |
+|---|---|---|---|
+| `T_CLAIM_PNC.CLAIMID` | `"TSI"` (!) | `ClaimKey` · `kunci_klaim` | *(tidak digambar)* |
+| `T_CLAIM_PNC.CLAIMNO` | `"BRANCH_CODE"` (!) | `ClaimNo` · `no_klaim` | No Klaim |
+| `T_CLAIM_PNC.NOPOLIS` | `"POLICY_NO"` | `PolicyNo` · `no_polis` | No Polis |
+| `T_CLAIM_PNC.QQNAME` | `"pyNote"` (!) | `Insured` · `nama_tertanggung` | Nama Tertanggung |
+| `T_CLAIM_PNC.BUSINESSNAME` | `"MARKETING"` (!) | `BusinessName` · `nama_bisnis` | Bisnis |
+| `T_CLAIM_PNC.REGISTERDATE` | `"BUSINESS_NAME"` (!) | `RegisterDate` · `tanggal_register` | Tanggal Register |
+| `T_CLAIM_PNC.DATEOFLOSS` | `"CURRENCY"` (!) | `LossDate` · `tanggal_kejadian` | Tanggal Kejadian |
+| `T_CLAIM_PNC.PICTEKNIK` | `"BRANCH_NAME"` (!) | `PICTeknik` · `pic_teknik` | PIC Teknik |
+| `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1` | `"pyLabel"` | `StatusCode` · `kode_status` | Status |
+| `T_PLALIST.NOPLA` | `"BUSINESS_CODE"` (!) | `AdviceNo` · `no_pla` | No PLA |
+| `T_CLAIM_PNC.CLOSECLAIMNOTE` | `"CaseID"` (!) | `CloseNote` · `catatan_tutup` | Catatan Tutup Klaim |
+
+Grid XOL-nya menambah empat alias yang seluruhnya menyesatkan:
+
+| Kolom sebenarnya | Alias Pega | Nama di sini |
+|---|---|---|
+| `T_PLA_XOL.TAHUN` / `T_DLA_XOL.TAHUN` | `"City"` (!) | `Year` · `tahun` |
+| `CAUSEOFLOSS` | `"CityID"` (!) | `CauseOfLoss` · `penyebab_kerugian` |
+| `'PLA'` / `'DLA'` | `"Type"` | `Kind` · `jenis` |
+| `MAX(TGLINSERT)` | `"NoteKasir"` (!) | `LastInsertDate` · `tanggal_terakhir` |
+
+### Kode tab
+
+| `MENU_ID 44` | Tabel yang disaring | `MENU_ID 45` | Tabel yang disaring |
+|---|---|---|---|
+| `pla` | `T_PLALIST` — belum terkirim | `pla` | `T_PLALIST` — sudah terkirim, DLA belum |
+| `dla` | `T_DLALIST` — belum terkirim | `dla` | `T_DLALIST` — sudah terkirim |
+| `pre-dla` | `T_PREDLALIST` — belum ber-`NOAKSEP` | `close` | `T_PLALIST` — klaim sudah selesai |
+
+Perhatikan kode `pla` dan `dla` ada di KEDUA modul dengan arti yang berlawanan. Itu
+sebabnya keduanya tidak boleh berbagi satu tipe tab.
+
+## Tambahan 2026-09-27 — panel "Print Pre DLA" (`GetPreDLAList`)
+
+Kueri `RDB List/GetPreDLAList-SQL.xml` memuat enam alias, dan **tiga di antaranya
+menyatakan hal yang salah** (`D-19`). Ketiganya berbahaya dengan cara yang sama: ia
+terbaca benar, sehingga tidak ada yang memeriksanya.
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Judul kolom | Catatan |
+|---|---|---|---|---|
+| `c.NODLA` | `"NO_DLA"` | `ADVICE_NO` · `no_advice` | NO DLA | — |
+| `c.DLAREINSURER` | `"DLAReinsurer"` | `REINSURER` · `reasuradur` | DLA REINSURER | — |
+| `c.TIPEDLA` | `"DLAType"` | `ADVICE_TYPE` · `tipe` | TIPE DLA | — |
+| `c.TGLKIRIM` | **`"TglDLA"`** | `SENT_DATE` · `tanggal_kirim` | Tgl Kirim | **(!)** tanggal KIRIM, bukan tanggal DLA — judul kolomnya di Pega sendiri sudah benar |
+| `NVL(c.ISKIRIM,'0')` | **`"IsDLA"`** | `SENT` · `terkirim` | Terkirim | **(!)** penanda terkirim, bukan "apakah DLA" |
+| `a.PZINSKEY` | **`"Currency"`** | `ATTACHMENT_KEY` · `kunci_lampiran` | — | **(!)** kunci lampiran, bukan mata uang. Tidak digambar |
+
+Tiga alias lain pada kueri itu **tidak dibawa sama sekali** — `objectid` beralias `"pyID"`,
+`objectcoverageid` beralias `"DLAStream"`, dan `adjustmentid` beralias `"Count"`. Tidak
+satu pun digambar panelnya, dan ketiganya hanya dipakai jalur tulis yang tidak dibawa.
+
+**Nama di sini mengikuti JUDUL KOLOM yang dibaca pengguna, bukan aliasnya.** Pada ketiga
+baris bertanda (!), judul kolomnya di Pega justru sudah benar sementara aliasnya tidak —
+sehingga judul adalah sumber yang lebih dapat dipercaya daripada alias.
+
+### Tindakan yang belum dibangun
+
+| Kode tindakan | Tombol Pega | Yang menghalangi |
+|---|---|---|
+| `kirim` | `SEND` | email + `UPDATEREAS.prc` + sisip dokumen |
+| `unggah-penunjang` | `Upload File Penunjang` | `D-16` |
+| `kirim-pre-dla` | `Kirim Pre DLA` (`SetTglKirimPreDLA_Act`) | `P-1` — `T_PREDLALIST` masih ditulis Pega |
+| `unduh-lampiran` | `PNCDownloadFile` | `D-16` |
+
+`cetak-pre-dla` **dihapus** dari daftar ini: tombol "Print Pre DLA" membuka panel yang
+sudah dibangun.
+
+### Koreksi 2026-09-27 — alias `MARKETING` pada grid rincian
+
+`RDB List/GetPLAList-SQL.xml` dan `GetDLAList-SQL.xml` keduanya memetakan:
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Dipakai untuk |
+|---|---|---|---|
+| `ISKIRIM` | **`MARKETING`** | `SENT` · `terkirim` | kolom "Terkirim", **dan syarat tampil tombol SEND** |
+
+Aliasnya tidak menyangkut pemasaran sama sekali. Syarat `.MARKETING != '1'` pada sel
+tombol SEND karena itu berarti **"dokumen ini belum terkirim"** — dan karena `Document.Sent`
+sudah membawa kolom yang sama, tidak ada kolom baru yang perlu diambil.
+
+Dinilai domain lewat `Document.CanSend()`, dikirim per baris sebagai `boleh_kirim`.
+
+Ini alias menyesatkan **keenam** di modul ini, setelah `BRANCH_NAME` (kunci klaim),
+`BRANCH_CODE` (nomor klaim), `END_DATE` (tanggal kejadian), `TglDLA` (tanggal kirim), dan
+`Currency` (kunci lampiran).
+
 ---
 
 ## Tambahan 2026-09-26 — modul Laporan Hasil AI (`laporanhasilai`)
@@ -4194,3 +4336,101 @@ lebih rapi dan sekaligus mengubah berkas yang sudah dipakai orang:
 | Note AI Terima | **Note Terima** |
 | Note AI Tolak | **Note Tolak** |
 | Coverage Final | **Coverage AI Final** |
+
+
+---
+
+## Inbox Manager (`MENU_ID 58`, `UserInbox_Harness`)
+
+Modul dengan alias Pega paling menyesatkan yang pernah dipetakan sampai sesi ini. Dua kueri
+sumbernya mengaliaskan **seluruh** kolomnya ke nama yang tidak mencerminkan isinya.
+
+### Alias yang TIDAK dibawa — `BrowseStatusPenolakanKlaim2`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOTE_ST` | `City` | `catatan_induk` — alasan penolakan INDUK |
+| `NOTE_ND` | `CityID` | `catatan_baris` — alasan penolakan baris ini |
+| `ID_ND` | `District` | `referensi` / `kode` — kunci baris |
+| `ID_ST` | `CaseID` | *(tidak digambar; ia kunci induknya)* |
+| `STATUS` | `DistrictID` | `kode_status` |
+| `USER_INPUT` | `UserTeknis` | `diajukan_oleh` — pengaju, **bukan** PIC Teknik |
+| `NOTEAPPROVED` | `NoteKasir` | `alasan_penolakan` — tidak ada urusan dengan kasir |
+| *(derivasi)* | `AnaylstRemarks` | `status` — bukan catatan analis, dan salah eja |
+
+`City` dan `CityID` **tidak berpasangan**: yang satu nama induk, yang satu nama anak. Sama
+persis dengan pola yang sudah ditemukan pada Master Status Progres 2.
+
+### Alias yang TIDAK dibawa — `GetDataKonfirmasiHE`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `NOKLAIM` | `BRANCH_CODE` | `no_klaim` |
+| `PENGIRIM` | `BRANCH_NAME` | `pengirim` |
+| `MODEL` | `BUSINESS_CODE` | `model` |
+| `MERK` | `BUSINESS_NAME` | `merk` |
+| `TIPE` | `CURRENCY` | `tipe` |
+| `NO_RANGKA_USER` | `MARKETING` | `no_rangka` |
+| `NO_RANGKA_BENGKEL` | `POLICY_NO` | `no_rangka_bengkel` |
+
+### Alias yang TIDAK dibawa — `ShowApproveProgressKlaim`
+
+| Kolom sebenarnya | Alias Pega | Nama di sistem baru |
+|---|---|---|
+| `SUBSTR(ATASAN, …)` | `BranchName` | `cabang_atasan` |
+| `ID_AP` | `IDMaster` | `referensi` |
+| `PROGRESS1` | `ProvinceID` | *(kunci gabung, tidak digambar)* |
+| `PROGRESS2` | `Province` | *(kunci gabung, tidak digambar)* |
+| `STS_PROGRESS1` | `Notes` | `progres_1` |
+| `STS_PROGRESS2` | `NoteAkseptasi` | `progres_2` |
+| `NOKLAIM` | `ClaimID` | `no_klaim` |
+| `TGL_INPUT` | `AlasanKlaim` | `tanggal_pengajuan` |
+| `NEXTFOLLOWUP` | `BranchID` | `tenggat_tindak_lanjut` |
+| subkueri `PICTEKNIK` | `ClaimNoSRB` | `pic` |
+
+### Alias yang TIDAK dibawa — `GcnmBrowseCase_SQL`
+
+Kueri ini **tidak dipakai** modul ini — gridnya ternyata milik layar lain — tetapi aliasnya
+dicatat karena ia contoh paling ekstrem yang ditemukan sejauh ini, dan kelak akan ditemui lagi:
+
+```
+a.pyid          AS "City"          nomor case, bukan kota
+policyno        AS "Currency"      nomor polis, bukan mata uang
+qqname          AS "CityID"        nama tertanggung
+businessname    AS "District"      nama bisnis
+branchname      AS "Country"       cabang
+dateofloss_1    AS "CountryID"     tanggal kejadian
+userteknis_1    AS "CauseOfLoss"   PIC Teknik, bukan penyebab kerugian
+pxCreateOpName  AS "ClaimID"       pembuat, bukan ID klaim
+```
+
+### Nama kelompok tab — DITAMBAHKAN, tidak ada di Pega
+
+Ketiga belas tab di Pega berjajar dalam satu baris tanpa pengelompokan, dan **tiga di antaranya
+tidak berjudul**: judul kontainernya masih bernilai bawaan `Title`.
+
+| Kelompok di sistem baru | Tab |
+|---|---|
+| Dashboard | Dashboard OS · Dashboard Produktivitas Klaim · Dashboard Klaim |
+| Persetujuan Master | Master Bengkel · Panel · Sparepart · Kategori Sparepart · Tipe Sparepart · Grouping Sparepart |
+| Persetujuan Klaim | Approval Nomor Rangka Beda · Payment Klaim Akseptasi · Approval Progress Klaim · Penolakan Klaim |
+
+Judul tab yang **ada** di Pega dibawa apa adanya (`D-13`) — termasuk yang bercampur bahasa
+Inggris seperti "Approval Nomor Rangka Beda" dan "Payment Klaim Akseptasi".
+
+### Judul kolom dashboard — DITURUNKAN, karena aliasnya tidak menyatakan apa pun
+
+`GetSumBusinessDashboardProduktivitas_SQL` mengaliaskan kedelapan pencacahnya menjadi
+`BRANCHNAME`, `BUSINESSCODE`, `BUSINESSNAME`, `CLIENTID`, `EDMNO`, `FLAGEDMBATAL`,
+`FOLLOWEDPOLICY`, dan `IDPEGA`. Tidak satu pun menyatakan isinya.
+
+Judulnya diturunkan dari **predikat yang dihitungnya**, bukan dari aliasnya:
+
+| Predikat | Judul di sistem baru |
+|---|---|
+| tanpa penyaring status | Total Klaim |
+| `STSKLAIM = '1'` | Selesai |
+| `STSKLAIM = '3'` | Close |
+| `STSKLAIM NOT IN ('1','2','3')` | Outstanding |
+
+Masing-masing berpasangan "Periode Ini" dan "Tahun Lalu".

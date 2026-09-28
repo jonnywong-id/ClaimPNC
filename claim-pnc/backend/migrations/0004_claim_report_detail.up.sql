@@ -1,3 +1,18 @@
+-- =====================================================================
+-- DICABUT 2026-09-23 — JANGAN DIJALANKAN
+-- =====================================================================
+--
+-- Work Owner menetapkan berkas laporan TIDAK ditulis ke tabel milik aplikasi ini,
+-- melainkan ke POOLDATA.T_CLAIM_RECIVEDCLAIM — tabel bisnis yang sudah dipakai Pega
+-- lewat Database/PROCINSERTDATARECIVEDKLAIM.prc.
+--
+-- Berkas ini dipertahankan sebagai REKAMAN rancangan yang pernah diambil, bukan
+-- sebagai langkah pemasangan. Menjalankannya akan membuat tabel yang tidak dibaca
+-- maupun ditulis satu baris kode pun.
+--
+-- Alasan lengkapnya di docs/keputusan-implementasi.md.
+-- =====================================================================
+
 -- 0004 — Isian form Input Receive Document (Oracle 19c)
 --
 -- MENAMBAH sepuluh kolom pada POOLDATA.CPNC_LAPORAN_KLAIM. Tidak satu pun tabel milik

@@ -26,10 +26,10 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -38,6 +38,7 @@ import (
 
 	"claim-pnc/internal/inboxadmin"
 	"claim-pnc/internal/inboxcompliance"
+	"claim-pnc/internal/inboxmanageradmin"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/masterpanel"
@@ -58,6 +59,10 @@ import (
 	inboxcompliancememory "claim-pnc/internal/inboxcompliance/repo/memory"
 	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	inboxcomplianceusecase "claim-pnc/internal/inboxcompliance/usecase"
+	inboxmanageradminhttp "claim-pnc/internal/inboxmanageradmin/http"
+	inboxmanageradminmemory "claim-pnc/internal/inboxmanageradmin/repo/memory"
+	inboxmanageradminsql "claim-pnc/internal/inboxmanageradmin/repo/sqlstore"
+	inboxmanageradminusecase "claim-pnc/internal/inboxmanageradmin/usecase"
 	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
 	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
@@ -87,8 +92,6 @@ import (
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	mastersupplierusecase "claim-pnc/internal/mastersupplier/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
-	registrasihttp "claim-pnc/internal/registrasi/http"
-	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	riwayatklaimhttp "claim-pnc/internal/riwayatklaim/http"
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
@@ -102,8 +105,16 @@ import (
 // Membungkusnya menjadi pemilih di sini hanya akan memalsukan pemisahan entitas yang
 // modulnya sendiri belum punya.
 type extraSelectors struct {
-	inboxAdmin      inboxadmin.RepoSelector
-	inboxCompliance inboxcompliance.RepoSelector
+	inboxAdmin        inboxadmin.RepoSelector
+	inboxCompliance   inboxcompliance.RepoSelector
+	inboxManagerAdmin inboxmanageradmin.RepoSelector
+
+	// inboxManagerAdminLine membaca lini bisnis petugas, yang menentukan tab mana yang
+	// boleh ia buka. Ia dipisah dari selector di atas karena membaca tabel yang BERBEDA
+	// (`M_LOGIN_PNC`, milik modul Login) untuk pertanyaan yang berbeda: kewenangan, bukan
+	// antrean.
+	inboxManagerAdminLine inboxmanageradmin.LineBusinessRepoSelector
+
 	autoClaim       masterautoclaim.RepoSelector
 	workshop        masterbengkel.RepoSelector
 	panel           masterpanel.RepoSelector
@@ -118,8 +129,10 @@ type extraSelectors struct {
 
 // extraServices memegang layanan kesepuluh modul setelah terpasang.
 type extraServices struct {
-	inboxAdmin      *inboxadminusecase.Service
-	inboxCompliance *inboxcomplianceusecase.Service
+	inboxAdmin        *inboxadminusecase.Service
+	inboxCompliance   *inboxcomplianceusecase.Service
+	inboxManagerAdmin *inboxmanageradminusecase.Service
+
 	autoClaim       *masterautoclaimusecase.Service
 	workshop        *masterbengkelusecase.Service
 	panel           *masterpanelusecase.Service
@@ -129,7 +142,6 @@ type extraServices struct {
 	sparepart       *mastersparepartusecase.Service
 	supplier        *mastersupplierusecase.Service
 	claimHistory    *riwayatklaimusecase.Service
-	registration    *registrasiusecase.Service
 }
 
 // setExtraOracleSelectors memasang pemilih di atas kolam koneksi entitas.
@@ -151,6 +163,23 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 			return nil, err
 		}
 		return inboxcompliancesql.NewRepo(conn), nil
+	}
+	store.extra.inboxManagerAdmin = func(alias string) (inboxmanageradmin.Repo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanageradminsql.NewRepo(conn), nil
+	}
+	// Lini bisnis dibaca dari koneksi portal yang SAMA dengan antreannya, dan itu bukan
+	// kebetulan: `M_LOGIN_PNC` adalah tabel per entitas, sehingga membacanya dari portal
+	// lain berarti menilai kewenangan dengan data badan hukum yang salah (`R-20`).
+	store.extra.inboxManagerAdminLine = func(alias string) (inboxmanageradmin.LineBusinessRepo, error) {
+		conn, err := pool.For(alias)
+		if err != nil {
+			return nil, err
+		}
+		return inboxmanageradminsql.NewRepo(conn), nil
 	}
 	store.extra.autoClaim = func(alias string) (masterautoclaim.Store, error) {
 		conn, err := pool.For(alias)
@@ -258,6 +287,20 @@ func setExtraMemorySelectors(primaryAlias string, store *storage) {
 			return nil, err
 		}
 		return inboxComplianceStore, nil
+	}
+
+	inboxManagerAdminStore := inboxmanageradminmemory.NewSampleStore()
+	store.extra.inboxManagerAdmin = func(alias string) (inboxmanageradmin.Repo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerAdminStore, nil
+	}
+	store.extra.inboxManagerAdminLine = func(alias string) (inboxmanageradmin.LineBusinessRepo, error) {
+		if err := onlyPrimary(primaryAlias, alias); err != nil {
+			return nil, err
+		}
+		return inboxManagerAdminStore, nil
 	}
 
 	autoClaimRepo := masterautoclaimmemory.NewSampleRepo()
@@ -368,6 +411,21 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
+	if result.inboxManagerAdmin, err = inboxmanageradminusecase.NewService(
+		inboxmanageradminusecase.Options{
+			RepoSelector:         store.extra.inboxManagerAdmin,
+			LineBusinessSelector: store.extra.inboxManagerAdminLine,
+			Clock:                clock.System{},
+
+			// Logger WAJIB terisi di modul ini, berbeda dari modul yang memakainya hanya
+			// untuk peringatan. Ia yang mencatat SETIAP pembukaan antrean, dan catatan itu
+			// satu-satunya kontrol pengimbang selama pemeriksaan peran belum ada
+			// (`D-59`, `TKT-F3-004`). Lihat inboxmanageradmin/usecase.List.
+			Logger: logger,
+		}); err != nil {
+		return extraServices{}, err
+	}
+
 	if result.autoClaim, err = masterautoclaimusecase.NewService(masterautoclaimusecase.Options{
 		RepoSelector: store.extra.autoClaim,
 	}); err != nil {
@@ -429,16 +487,10 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
-	// Registrasi dirakit fungsi tersendiri di registration.go, yang sudah ada sejak cabang
-	// asalnya. Basis datanya portal UTAMA, dan nil saat berjalan tanpa Oracle — fungsi itu
-	// menanganinya sendiri dengan beralih ke penyimpanan memori.
-	var primary *sql.DB
-	if store.legacy != nil {
-		primary = store.legacy.DB()
-	}
-	if result.registration, err = assembleRegistration(primary, logger); err != nil {
-		return extraServices{}, err
-	}
+	// Registrasi Klaim TIDAK dirakit di sini. Perakitan dan rutenya ada di main.go, yang
+	// memasangnya di belakang penjaga portal utama (R-20) dan memakai login sebagai
+	// identitas tugas. Salinan di berkas ini sempat membuat /registrasi terpasang dua kali,
+	// dan chi menolak berjalan (2026-09-27).
 
 	return result, nil
 }
@@ -491,6 +543,46 @@ func mountExtra(
 		FallbackErrorWriter: inboxcompliancehttp.ErrorWriter(writeError),
 	})
 	inboxcompliancehttp.Mount(protected, inboxComplianceHandler, portalDeps)
+
+	// Jembatan Caller modul ini membawa TIGA isian, bukan satu seperti modul inbox lain.
+	//
+	// Login dipakai mencatat siapa yang membuka antrean, DAN untuk mencari lini bisnisnya.
+	// Unit organisasi menentukan pintu pengembang, mengikuti `pyContainerVisibleWhen` layar
+	// Pega apa adanya — keputusan Work Owner 2026-09-26. Padanannya di sistem baru:
+	//
+	//	OperatorID.pyPosition  ->  M_LOGIN_PNC.LINE_BUSINESS  (dibaca usecase, per portal)
+	//	OperatorID.pyOrgUnit   ->  variabel lingkungan UNIT_ORGANISASI_PENGGUNA
+	//
+	// # Yang pertama SENGAJA tidak diisi di sini, dan itu koreksi 2026-09-27
+	//
+	// Sampai tanggal itu baris ini menyalin `base.User.Position` — jabatan kepegawaian HCQ
+	// seperti "IT SPECIALIST". Nilai itu tidak pernah cocok dengan `NONMBU`/`PA`/`TRAVEL`,
+	// sehingga TIDAK SEORANG PUN melihat satu tab pun, dan layarnya tampak sengaja kosong.
+	//
+	// Keadaan itu sempat dicatat sebagai konsekuensi yang diterima. Pembacaan ulang export
+	// membantahnya: di Pega `pyPosition` terisi KODE LINI BISNIS oleh administrator, dan
+	// karena terisi, kontainernya tampil. Sekarang nilainya dibaca usecase dari
+	// `M_LOGIN_PNC` milik portal yang aktif — bukan dari sesi, karena tabel itu per entitas.
+	//
+	// Unit organisasi tetap dari variabel lingkungan dan tetap BUKAN otorisasi: ia tidak
+	// menjaga apa pun, hanya membuka ketiga tab bagi pengembang.
+	inboxManagerAdminHandler := inboxmanageradminhttp.NewHandler(inboxmanageradminhttp.Options{
+		Service: service.inboxManagerAdmin,
+		GetCaller: func(ctx context.Context) (inboxmanageradminhttp.Caller, bool) {
+			base, ok := authhttp.CallerFromContext(ctx)
+			if !ok {
+				return inboxmanageradminhttp.Caller{}, false
+			}
+			return inboxmanageradminhttp.Caller{
+				Login:   base.User.Login,
+				OrgUnit: userOrgUnit(),
+			}, true
+		},
+		Logger:              logger,
+		WriteJSON:           writeJSON,
+		FallbackErrorWriter: writeError,
+	})
+	inboxmanageradminhttp.Mount(protected, inboxManagerAdminHandler, portalDeps)
 
 	autoClaimHandler, err := masterautoclaimhttp.NewHandler(masterautoclaimhttp.Options{
 		Service: service.autoClaim,
@@ -627,27 +719,35 @@ func mountExtra(
 	})
 	riwayatklaimhttp.Mount(protected, claimHistoryHandler, portalDeps)
 
-	// Registrasi membaca identitas dari PERMINTAAN, bukan dari konteks — bentuk Caller-nya
-	// memang berbeda dari modul lain. Peran dan antrean datang dari sakelar sementara di
-	// registration.go, yang menjelaskan sendiri kenapa ia bukan otorisasi.
-	registrationHandler := registrasihttp.NewHandler(registrasihttp.Options{
-		Service: service.registration,
-		Logger:  logger,
-		Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
-			base, ok := authhttp.CallerFromContext(r.Context())
-			if !ok {
-				return registrasiusecase.Caller{}, false
-			}
-			return registrasiusecase.Caller{
-				Identity:   base.User.Identity,
-				Name:       base.User.Name,
-				Roles:      userRoles(),
-				Workbasket: userWorkbaskets(),
-			}, true
-		},
-		WriteResponse: writeJSON,
-	})
-	registrasihttp.Mount(protected, registrationHandler)
-
 	return nil
+}
+
+// userOrgUnit membaca unit organisasi pemanggil dari lingkungan.
+//
+// # Ini sakelar sementara, dan alasannya perlu dibaca sebelum dipakai
+//
+// Modul Inbox Manager Admin memisahkan ketiga tabnya menurut dua isian identitas yang di
+// sistem lama datang dari `Data-Admin-Operator-ID`: `pyPosition` dan `pyOrgUnit`. Yang
+// pertama punya padanan — `auth.User.Position`, diisi HCQ dari
+// `EmpResponse.Placement.PositionName`. Yang kedua **tidak punya padanan sama sekali**:
+// tidak ada isian unit organisasi di profil HCQ maupun di catatan pengguna lokal.
+//
+// Di layar Pega, satu nilai saja yang berarti — `Development`, yang membuka ketiga tab
+// sekaligus. Tanpa penggantinya, tidak ada seorang pun yang dapat melihat lebih dari satu
+// tab, termasuk saat modulnya diuji.
+//
+// Karena itu: satu variabel lingkungan, dibaca setiap permintaan, dipakai untuk SELURUH
+// pengguna. Bentuknya mengikuti preseden `PERAN_PENGGUNA` di registration.go, dan
+// peringatannya pun sama — **ia bukan otorisasi**. Ia tidak menjaga apa pun, dan tidak boleh
+// dikira menjaga sesuatu: mengisinya `Development` di produksi berarti setiap pengguna yang
+// dapat masuk melihat ketiga antrean.
+//
+// Begitu `TKT-F3-004` selesai dan unit organisasi datang dari catatan pengguna, fungsi ini
+// dihapus.
+//
+// Nilainya dibaca setiap permintaan, bukan sekali saat start, supaya pengembang dapat
+// mengubahnya tanpa menjalankan ulang aplikasi. Biayanya satu pembacaan variabel lingkungan
+// per permintaan, dan itu tidak terukur dibanding satu perjalanan ke basis data.
+func userOrgUnit() string {
+	return strings.TrimSpace(os.Getenv("UNIT_ORGANISASI_PENGGUNA"))
 }
