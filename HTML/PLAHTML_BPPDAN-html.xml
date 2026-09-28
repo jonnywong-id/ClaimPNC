@@ -1,0 +1,1349 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyDeleteMemo>add kop</pyDeleteMemo>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySourceStream>&lt;html&gt;
+&lt;head&gt;
+	&lt;style type="text/css"&gt;
+      h1 {margin-left:10% ; font-size: 12px;}
+      h3 {text-align: center; font-size: 12px;}
+      th {text-align: left; font-size: 12px;}
+      table{width: 100%}
+      table tr{line-height:22px;}
+      body {
+        margin: 5px;
+        padding: 0;
+        height: 400px;
+        font-family: Arial;
+        width: 595px;
+        text-align: justify;
+        font-size: 10px;
+        font:"Times New Roman";margin-top:15px; margin-bottom:20px; margin-right:45px; margin-left:55px;
+      }
+      .title {
+        padding:10%;
+        font-size:12px;
+      }
+    &lt;/style&gt;
+&lt;/head&gt;
+  
+&lt;body&gt;
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='Asm'"&gt;
+&lt;header&gt;  
+&lt;img alt="" src="webweb/LogoASM.PNG" style="max-width: 33%;"/&gt;
+&lt;/header&gt; 
+&lt;/pega:when&gt;
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='insurtech'"&gt;
+&lt;header&gt;  
+&lt;img alt="" src="webweb/LogoInsurtech.JPG" style="max-width: 33%;"/&gt;
+&lt;/header&gt; 
+&lt;/pega:when&gt;
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='smi'"&gt;
+&lt;header&gt;  
+&lt;img alt="" src="webweb/LogoSmi.png" style="max-width: 33%;"/&gt;
+&lt;/header&gt; 
+&lt;/pega:when&gt;
+  
+&lt;table width="100%" style="margin-top:15px;"&gt;
+&lt;tr&gt;
+  &lt;th colspan="3"&gt;&lt;center&gt;&lt;u&gt;&lt;h1&gt;PRELIMINARY LOSS ADVICE&lt;/h1&gt;&lt;/u&gt;&lt;/center&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+  &lt;td colspan="3"&gt;&lt;center&gt;&lt;pega:reference name="TempPLASpreading.EmailPolicy"&gt;&lt;/pega:reference&gt;&lt;/center&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th  width="30%";&gt;Reinsurer&lt;/th&gt;
+	&lt;td&gt;:&lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="TempPLASpreading.BrokerReName"&gt;&lt;/pega:reference&gt;  &lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th  width="30%";&gt;Line Of Business&lt;/th&gt;
+	&lt;th&gt;: &lt;/th&gt;
+    &lt;th&gt;&lt;pega:reference name="pyWorkPage.Policy.Quotation.BusinessName"&gt;&lt;/pega:reference&gt; &lt;/th&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th  width="30%";&gt;Policy No.&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.Policy.PolicyNo"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Claim No.&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.pyID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Name of Insured&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.Policy.QQName"&gt;&lt;/pega:reference&gt;  &lt;/td&gt;
+&lt;/tr&gt;
+  &lt;tr&gt;
+  &lt;pega:when test="tempObjeCvg.DaftarObjek!=''"&gt;
+    &lt;th width="30%";&gt;Interest&lt;/th&gt;														&lt;!--- test test --&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="tempObjeCvg.DaftarObjek"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+  &lt;/pega:when&gt;  
+    &lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Total Sum Insured&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="TempPLASpreading.FollowingPolicyNo"&gt;&lt;/pega:reference&gt; &lt;pega:reference name="tempObjeCvg.AgingAmount"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;!--&lt;tr&gt;
+    &lt;th width="30%";&gt;Location of Loss&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.Policy.CIFData.AddressList(1).ASMAddress"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+&lt;/tr&gt;--&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Policy Period&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.Policy.StartDateTime"&gt;&lt;/pega:reference&gt; To &lt;pega:reference name="pyWorkPage.Policy.EndDateTime"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Policy Condition&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="TempPLASpreading.AgingAmount"&gt;&lt;/pega:reference&gt; &lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Date of Loss&lt;/th&gt;
+	&lt;td&gt;:&lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="pyWorkPage.ClaimData.DateOfLoss"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Nature of Loss&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="tempObjeCvg.CauseOfLoss"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt; 
+ &lt;tr&gt;
+    &lt;th width="30%";&gt;Location of Loss&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="TempPLASpreading.NoPlat"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Est. Claim Amount&lt;/th&gt;
+	&lt;td&gt;:&lt;/td&gt;  
+    &lt;td&gt;
+      	&lt;table&gt;
+        &lt;pega:forEach name="TempEstimasi.pxResults"&gt;
+          &lt;pega:when test="$THIS.EstimastionReserve&gt;0"&gt;
+            &lt;tr&gt;
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.EstimastionReserve"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+            &lt;/tr&gt;
+          &lt;/pega:when&gt;
+         &lt;/pega:forEach&gt;
+        &lt;/table&gt;
+    &lt;/td&gt;
+&lt;/tr&gt; 
+&lt;tr&gt;
+  &lt;pega:when test="TempPLASpreading.AccountNo == '1'"&gt;
+    &lt;th width="30%";&gt;Est. Claim Amount (ASM Share)&lt;/th&gt;
+	&lt;td&gt;:&lt;/td&gt;  
+    &lt;td&gt;
+      	&lt;table&gt;
+        &lt;pega:forEach name="TempEstimasi.pxResults"&gt;
+          &lt;pega:when test="$THIS.EstimationValue&gt;0"&gt;
+            &lt;tr&gt;
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.EstimationValue"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+            &lt;/tr&gt;
+          &lt;/pega:when&gt;
+         &lt;/pega:forEach&gt;
+        &lt;/table&gt;
+    &lt;/td&gt;
+  &lt;/pega:when&gt;
+&lt;/tr&gt; 
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Your Share &lt;pega:reference name="TempPLASpreading.CedingCoName"&gt;&lt;/pega:reference&gt;&lt;/th&gt;
+	&lt;td&gt; : &lt;/td&gt;
+    &lt;td&gt;
+      &lt;table&gt;
+        &lt;pega:forEach name="TempEstimasi.pxResults"&gt;
+          &lt;pega:when test="$THIS.ResultPLA&gt; '0'"&gt;
+            
+            &lt;tr&gt;
+              &lt;pega:when test="Tempbppdan.NoAksep==0"&gt; &lt;!--PERHITUNGAN TSI &lt;20M--&gt;
+              &lt;pega:reference name="$THIS.SharePLA"&gt;&lt;/pega:reference&gt; % X
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.EstimationValue"&gt;&lt;/pega:reference&gt; = 
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.ResultPLA"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+              &lt;/pega:when&gt;
+              &lt;/tr&gt;
+  
+            &lt;tr&gt;
+            &lt;pega:when test="Tempbppdan.NoAksep==1"&gt; &lt;!--PERHITUNGAN TSI &gt;20M--&gt;
+            &lt;td&gt;
+              IDR &lt;pega:reference name="Tempbppdan.ConvertValue"&gt;&lt;/pega:reference&gt; /
+              &lt;pega:reference name="Tempbppdan.KursID"&gt;&lt;/pega:reference&gt; 
+              &lt;pega:reference name="Tempbppdan.EstimationValue"&gt;&lt;/pega:reference&gt; X 
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.EstimationValue"&gt;&lt;/pega:reference&gt; = 
+              &lt;pega:reference name="$THIS.Currency"&gt;&lt;/pega:reference&gt;
+              &lt;pega:reference name="$THIS.ResultPLA"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+  	      &lt;/td&gt;
+          &lt;/pega:when&gt;
+          &lt;/tr&gt;
+            
+          &lt;/pega:when&gt;
+        &lt;/pega:forEach&gt;
+      &lt;/table&gt;
+    &lt;/td&gt;
+&lt;/tr&gt; 
+&lt;tr&gt;
+    &lt;th width="30%";&gt;Remarks&lt;/th&gt;
+	&lt;td&gt;: &lt;/td&gt;
+    &lt;td&gt;&lt;pega:reference name="TempPLASpreading.Remark"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+&lt;/tr&gt;     
+&lt;/table&gt;
+&lt;table width="100%" height="50%"&gt;
+  &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;
+  &lt;td&gt;&amp;nbsp&lt;/td&gt;
+  &lt;td&gt;&amp;nbsp&lt;/td&gt;  
+  &lt;td&gt;&amp;nbsp&lt;/td&gt;
+   &lt;td width="150px" style="text-align:center;"&gt;Jakarta, &lt;pega:reference name="tempObjeCvg.City"&gt;&lt;/pega:reference&gt;  
+    &lt;br&gt;
+   &lt;img src="data:image/png;base64, &lt;p:r n='TempPDFLaterOfAssigment.ClaimData.SignatureFiles.TTD'/&gt;" width="50"
+height="65" /&gt;
+  &lt;/td&gt; 
+  &lt;/tr&gt;
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID!='insurtech'"&gt;  
+  &lt;tr&gt;
+  &lt;td colspan="3"&gt;&amp;nbsp&lt;/td&gt;
+  &lt;td width="150px" style="text-align:center;"&gt;&lt;b&gt;BAMBANG S. GUNAWAN&lt;/b&gt;&lt;/td&gt; 
+  &lt;/tr&gt;
+&lt;/pega:when&gt;
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='insurtech'"&gt;  
+  &lt;tr&gt;
+  &lt;td colspan="3"&gt;&amp;nbsp&lt;/td&gt;
+  &lt;td width="150px" style="text-align:center;"&gt;&lt;b&gt;DHARMANTO RAHARDJO&lt;/b&gt;&lt;/td&gt; 
+  &lt;/tr&gt;
+&lt;/pega:when&gt;  
+  
+  &lt;/table&gt;
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='Asm'"&gt;   
+&lt;footer&gt;
+  &lt;p style="font-size:10px; line-height: 1.2em; word-spacing: -1px; text-align: left;"&gt;&lt;b&gt;PT Asuransi Sinar Mas&lt;/b&gt;&lt;br&gt;
+    Plaza Simas, Jl.KH.Fachrudin no.18 Jakarta Pusat 10250-Indonesia&lt;br&gt;
+    24 Hour Customer Care:(021)-235-67-888; Telp:(021)-390-2141 (Hunting); Faks:(021)-390-2159/60, &lt;i&gt;www.sinarmas.co.id&lt;/i&gt;
+  &lt;p&gt;
+  &lt;/footer&gt;
+&lt;/pega:when&gt;
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='insurtech'"&gt;   
+&lt;footer&gt;
+  &lt;p style="font-size:10px; line-height: 1.2em; word-spacing: -1px; text-align: left;"&gt;&lt;b&gt;PT ASURANSI SIMAS INSURTECH&lt;/b&gt;&lt;br&gt;
+    Gedung Menara Tekno Lantai 5, Jl. K. H. Fachrudin No. 19, Jakarta, 10250 - Indonesia&lt;br&gt;
+    Telp : (021) 5050 7777  Faks : (021) 4060 0009  Email : Info@simasinsurtech.com
+  &lt;p&gt;
+  &lt;/footer&gt;
+&lt;/pega:when&gt; 
+  
+&lt;pega:when test="TempPDFLaterOfAssigment.pyID='smi'"&gt;   
+&lt;footer&gt;
+  &lt;p style="font-size:10px; line-height: 1.2em; word-spacing: -1px; text-align: left;"&gt;&lt;b&gt;Sinar Mas Insurance, S.A.&lt;/b&gt;&lt;br&gt;
+    Rua 30 de Agosto, Bidau Lecidere, Dili, Timor-Leste&lt;br&gt;
+    Phone : (670)3310899 • &lt;i&gt;www.sinarmasinsurance-timorleste.com&lt;/i&gt;
+  &lt;p&gt;
+  &lt;/footer&gt;
+&lt;/pega:when&gt; 
+&lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxUpdateOpName>ANDREW HANDOKO</pxUpdateOpName>
+<pyMemo>Done</pyMemo>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzChecksum>610661386</pzChecksum>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyReloadForm>true</pyReloadForm>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyTempText>saved</pyTempText>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!PLAHTML_BPPDAN</pxInsName>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleName>PLAHTML_BPPDAN</pyRuleName>
+<pySPRuleSetName>ANDREWHANDOKO@</pySPRuleSetName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxCreateOperator>ANDREWHANDOKO</pxCreateOperator>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyHistoryObject>false</pyHistoryObject>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzDocumentKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyStreamName>PLAHTML_BPPDAN</pyStreamName>
+<pyCompact>false</pyCompact>
+<pyRuleSetVersion>01-02-04</pyRuleSetVersion>
+<pxSaveDateTime>20230308T090407.146 GMT</pxSaveDateTime>
+<pxCreateDateTime>20230208T064128.805 GMT</pxCreateDateTime>
+<pxInsId>!PLAHTML_BPPDAN</pxInsId>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pxCommitDateTime>20230414T101651.000 GMT</pxCommitDateTime>
+<pxCreateOpName>ANDREW HANDOKO</pxCreateOpName>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxTabLabel>PLAHTML_BPPDAN</pxTabLabel>
+<pxUpdateDateTime>20230308T090407.128 GMT</pxUpdateDateTime>
+<pyRuleFormStatusTime>20260927T054359.094 GMT</pyRuleFormStatusTime>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzInsKey>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_PLAHTML_BPPDAN_Stream_20230308T082438_781_GMT</pyJavaClassName>
+<pzRuleSetVersionPatch>04</pzRuleSetVersionPatch>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230118T090522.919 GMT</pzOriginalInstanceKey>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyShowJavaWindowName>GeneratedJava20260927T054359.129 GMT</pyShowJavaWindowName>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyLabel>PLAHTML_BPPDAN</pyLabel>
+<pzIndexCount>106</pzIndexCount>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateOperator>ANDREWHANDOKO</pxUpdateOperator>
+<pxMoveImportDateTime>20230414T101650.557 GMT</pxMoveImportDateTime>
+<pxHostId>jboss10-42</pxHostId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyLabelOld>PLAHTML_BPPDAN</pyLabelOld>
+<pzStatus>valid</pzStatus>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxUnjustifiedHSWarningCount>0</pxUnjustifiedHSWarningCount>
+</pxMessageSummary>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzInsKey>
+<pyLabel>01-02-04 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230118T090522.919 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-03 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20210517T024237.740 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20210224T090412.487 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200903T075354.211 GMT</pzInsKey>
+<pyLabel>01-01-88 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-01-85 (Available)</pyLabel>
+<pxListSubscript>6</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200325T050310.611 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>7</pxListSubscript>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200323T085545.705 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxListSubscript>8</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190801T075913.329 GMT</pzInsKey>
+<pyLabel>01-01-75 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxListSubscript>9</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190717T073243.255 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-73 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxListSubscript>10</pxListSubscript>
+<pyLabel>01-01-64 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190225T041546.513 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190220T101203.132 GMT</pzInsKey>
+<pxListSubscript>11</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyValue>3</pyValue>
+<pxListSubscript>12</pxListSubscript>
+<pyLabel>01-01-54 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20181003T101057.596 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxListSubscript>13</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20181002T023420.142 GMT</pzInsKey>
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxListSubscript>14</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180807T122605.564 GMT</pzInsKey>
+<pyLabel>01-01-50 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyLabel>01-01-47 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>15</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180713T033457.460 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxListSubscript>16</pxListSubscript>
+<pyLabel>01-01-46 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180706T090208.031 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxListSubscript>17</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-37 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180417T083246.723 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxListSubscript>18</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-12 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180118T033032.741 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-11 (Available)</pyLabel>
+<pxListSubscript>19</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180117T083807.067 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxListSubscript>20</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180110T030625.168 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-08 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>21</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180108T020119.402 GMT</pzInsKey>
+<pyLabel>01-01-06 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pyValue>3</pyValue>
+<pyLabel>01-01-05 (Available)</pyLabel>
+<pxListSubscript>22</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180103T084402.920 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pxListSubscript>23</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-04 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20171220T095524.025 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyShowJava>true</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pyPreview>true</pyPreview>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyFavorites>true</pyFavorites>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningType>Maintainability</pxWarningType>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningJustifiedOperator>ANDREWHANDOKO</pxWarningJustifiedOperator>
+<pxWarningName>Referencing deprecated rule</pxWarningName>
+<pxWarningMessage>(@baseclass)pxReferencingDeprecatedRule	Use pxDisplayText</pxWarningMessage>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pyWarningJustifiedMessage>Done</pyWarningJustifiedMessage>
+<pxWarningJustifiedTime>20230208T073025.065 GMT</pxWarningJustifiedTime>
+<pxWarningCreatedTime>20230208T064343.463 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(@baseclass)pxReferencingDeprecatedRule	Use pxDisplayText</pxWarningDetails>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">53</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxPageName>TempPDFLaterOfAssigment</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">54</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageName>TempEstimasi</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Data-Estimasi</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">55</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxPageName>TempPLASpreading</pxPageName>
+<pxPageClass>ASM-FW-GISFW-Data-Policy</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">56</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>DatePage</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">57</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageName>pyTempFire</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Int-V_POLIS</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">58</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>pyWorkPage</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">59</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>tempObjeCvg</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">60</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxPageClass>ASM-FW-GCNMFW-Data-Estimasi</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxPageName>Tempbppdan</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">61</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-02-04 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230118T090522.919 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20210517T024237.740 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-92 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20210224T090412.487 GMT</pzInsKey>
+<pyLabel>01-01-91 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-88 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200903T075354.211 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-85 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200325T050310.611 GMT</pzInsKey>
+<pxListSubscript>6</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20200323T085545.705 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>7</pxListSubscript>
+<pyLabel>01-01-84 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190801T075913.329 GMT</pzInsKey>
+<pxListSubscript>8</pxListSubscript>
+<pyLabel>01-01-75 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxListSubscript>9</pxListSubscript>
+<pyLabel>01-01-73 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190717T073243.255 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190225T041546.513 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>10</pxListSubscript>
+<pyLabel>01-01-64 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyValue>3</pyValue>
+<pxListSubscript>11</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-63 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20190220T101203.132 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>12</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20181003T101057.596 GMT</pzInsKey>
+<pyLabel>01-01-54 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pyLabel>01-01-53 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>13</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20181002T023420.142 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyValue>3</pyValue>
+<pxListSubscript>14</pxListSubscript>
+<pyLabel>01-01-50 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180807T122605.564 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyLabel>01-01-47 (Available)</pyLabel>
+<pxListSubscript>15</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180713T033457.460 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-46 (Available)</pyLabel>
+<pxListSubscript>16</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180706T090208.031 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyLabel>01-01-37 (Available)</pyLabel>
+<pxListSubscript>17</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180417T083246.723 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>18</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180118T033032.741 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-12 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pyValue>3</pyValue>
+<pxListSubscript>19</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180117T083807.067 GMT</pzInsKey>
+<pyLabel>01-01-11 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxListSubscript>20</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180110T030625.168 GMT</pzInsKey>
+<pyLabel>01-01-08 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-06 (Available)</pyLabel>
+<pxListSubscript>21</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180108T020119.402 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pyLabel>01-01-05 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20180103T084402.920 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>22</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyValue>3</pyValue>
+<pyLabel>01-01-04 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20171220T095524.025 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>23</pxListSubscript>
+</rowdata>
+</pyRuleCompareList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>DatePage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesClass>ASM-FW-GISFW-Data-Policy</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempPLASpreading</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-V_POLIS</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyTempFire</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Estimasi</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>TempEstimasi</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>tempObjeCvg</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempPDFLaterOfAssigment</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Estimasi</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>Tempbppdan</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">62</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>QQNAME</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>QQName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">63</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-SIGNATURE</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Signature</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Signature</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">64</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>EMAILPOLICY</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pyRuleName>EmailPolicy</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">65</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRuleName>FollowingPolicyNo</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleFamilyName>FOLLOWINGPOLICYNO</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">66</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyRuleName>Data-Address</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>DATA-ADDRESS</pxRuleFamilyName>
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">67</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pyRuleName>AgingAmount</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>AGINGAMOUNT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">68</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>Deprecated</pyMethodStatus>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>Scalar</pyRuleName>
+<pxRuleFamilyName>SCALAR</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">69</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>NoPlat</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>NOPLAT</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">70</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>STARTDATETIME</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>StartDateTime</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">71</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">72</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyRuleName>BusinessName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>BUSINESSNAME</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Quotation</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">73</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxRuleFamilyName>AGINGAMOUNT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>AgingAmount</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">74</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pyRuleName>pxNumber</pyRuleName>
+<pxRuleFamilyName>PXNUMBER</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">75</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pyRuleName>CIFData</pyRuleName>
+<pxRuleFamilyName>CIFDATA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">76</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>CauseOfLoss</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>CAUSEOFLOSS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">77</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pxRuleFamilyName>PYID</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pyRuleName>pyID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">78</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ESTIMATIONVALUE</pxRuleFamilyName>
+<pyRuleName>EstimationValue</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Estimasi</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">79</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pyRuleName>Remark</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>REMARK</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">80</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Estimasi</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Estimasi</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-ESTIMASI</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">81</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pxRuleFamilyName>SIGNATUREFILES</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pyRuleName>SignatureFiles</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">82</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>PolicyNo</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleFamilyName>POLICYNO</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">83</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ADDRESSLIST</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pyRuleName>AddressList</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">84</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="24">
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>BROKERRENAME</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>BrokerReName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">85</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="25">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-CIF</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GISFW-Data-CIF</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">86</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="26">
+<pyRuleName>ASM-FW-GISFW-Data-Quotation</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Quotation</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-QUOTATION</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">87</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="27">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Estimasi</pxRuleClassName>
+<pxRuleFamilyName>KURSID</pxRuleFamilyName>
+<pyRuleName>KursID</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">88</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="28">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>POLICY</pxRuleFamilyName>
+<pyRuleName>Policy</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">89</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="29">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>QUOTATION</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pyRuleName>Quotation</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">90</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="30">
+<pyRuleName>pxDateTime</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXDATETIME</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">91</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="31">
+<pyRuleName>pxTextArea</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTAREA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">92</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="32">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Signature</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pyRuleName>TTD</pyRuleName>
+<pxRuleFamilyName>TTD</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">93</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="33">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pyRuleName>ASMAddress</pyRuleName>
+<pxRuleFamilyName>ASMADDRESS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">94</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="34">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>City</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>CITY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">95</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="35">
+<pxRuleFamilyName>DATEOFLOSS</pxRuleFamilyName>
+<pyRuleName>DateOfLoss</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">96</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="36">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>DaftarObjek</pyRuleName>
+<pxRuleFamilyName>DAFTAROBJEK</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">97</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="37">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ConvertValue</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Estimasi</pxRuleClassName>
+<pxRuleFamilyName>CONVERTVALUE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">98</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="38">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>EndDateTime</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleFamilyName>ENDDATETIME</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">99</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="39">
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-V_POLIS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_POLIS</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_POLIS</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">100</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="40">
+<pyRuleName>ASM-FW-GISFW-Data-Policy</pyRuleName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-POLICY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">101</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="41">
+<pxRuleFamilyName>CEDINGCONAME</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>CedingCoName</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">102</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="42">
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">103</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="43">
+<pyRuleName>ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CLAIMDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">104</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="44">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PXRESULTS</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Estimasi</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>pxResults</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">105</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningMessage>Use pxDisplayText</pxWarningMessage>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxWarningName>Referencing deprecated rule</pxWarningName>
+<pxWarningJustifiedOperator>ANDREWHANDOKO</pxWarningJustifiedOperator>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningCreatedTime>20230208T064343.463 GMT</pxWarningCreatedTime>
+<pxWarningDetails>(@baseclass)pxReferencingDeprecatedRule	Use pxDisplayText</pxWarningDetails>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC PLAHTML_BPPDAN #20230208T064128.805 GMT</pzIndexOwnerKey>
+<pxWarningJustifiedTime>20230208T073025.065 GMT</pxWarningJustifiedTime>
+<pyWarningJustifiedMessage>Done</pyWarningJustifiedMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">53</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+</pagedata>

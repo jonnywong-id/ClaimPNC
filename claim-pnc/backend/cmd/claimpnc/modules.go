@@ -26,7 +26,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -93,8 +92,6 @@ import (
 	mastersuppliersql "claim-pnc/internal/mastersupplier/repo/sqlstore"
 	mastersupplierusecase "claim-pnc/internal/mastersupplier/usecase"
 	portalhttp "claim-pnc/internal/portal/http"
-	registrasihttp "claim-pnc/internal/registrasi/http"
-	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	riwayatklaimhttp "claim-pnc/internal/riwayatklaim/http"
 	riwayatklaimmemory "claim-pnc/internal/riwayatklaim/repo/memory"
 	riwayatklaimsql "claim-pnc/internal/riwayatklaim/repo/sqlstore"
@@ -145,7 +142,6 @@ type extraServices struct {
 	sparepart       *mastersparepartusecase.Service
 	supplier        *mastersupplierusecase.Service
 	claimHistory    *riwayatklaimusecase.Service
-	registration    *registrasiusecase.Service
 }
 
 // setExtraOracleSelectors memasang pemilih di atas kolam koneksi entitas.
@@ -491,16 +487,10 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
-	// Registrasi dirakit fungsi tersendiri di registration.go, yang sudah ada sejak cabang
-	// asalnya. Basis datanya portal UTAMA, dan nil saat berjalan tanpa Oracle — fungsi itu
-	// menanganinya sendiri dengan beralih ke penyimpanan memori.
-	var primary *sql.DB
-	if store.legacy != nil {
-		primary = store.legacy.DB()
-	}
-	if result.registration, err = assembleRegistration(primary, logger); err != nil {
-		return extraServices{}, err
-	}
+	// Registrasi Klaim TIDAK dirakit di sini. Perakitan dan rutenya ada di main.go, yang
+	// memasangnya di belakang penjaga portal utama (R-20) dan memakai login sebagai
+	// identitas tugas. Salinan di berkas ini sempat membuat /registrasi terpasang dua kali,
+	// dan chi menolak berjalan (2026-09-27).
 
 	return result, nil
 }
@@ -728,28 +718,6 @@ func mountExtra(
 		FallbackErrorWriter: writeError,
 	})
 	riwayatklaimhttp.Mount(protected, claimHistoryHandler, portalDeps)
-
-	// Registrasi membaca identitas dari PERMINTAAN, bukan dari konteks — bentuk Caller-nya
-	// memang berbeda dari modul lain. Peran dan antrean datang dari sakelar sementara di
-	// registration.go, yang menjelaskan sendiri kenapa ia bukan otorisasi.
-	registrationHandler := registrasihttp.NewHandler(registrasihttp.Options{
-		Service: service.registration,
-		Logger:  logger,
-		Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
-			base, ok := authhttp.CallerFromContext(r.Context())
-			if !ok {
-				return registrasiusecase.Caller{}, false
-			}
-			return registrasiusecase.Caller{
-				Identity:   base.User.Identity,
-				Name:       base.User.Name,
-				Roles:      userRoles(),
-				Workbasket: userWorkbaskets(),
-			}, true
-		},
-		WriteResponse: writeJSON,
-	})
-	registrasihttp.Mount(protected, registrationHandler)
 
 	return nil
 }

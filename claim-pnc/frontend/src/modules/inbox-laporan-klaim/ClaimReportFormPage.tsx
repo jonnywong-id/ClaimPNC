@@ -7,8 +7,8 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
 
-import { useClaimReport, useSaveClaimReport } from './api'
-import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail } from './types'
+import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
+import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
 
 /**
  * Form **Input Receive Document** — pengganti flow action dengan nama yang sama pada
@@ -36,9 +36,13 @@ export function ClaimReportFormPage() {
 
   const berkas = useClaimReport(id)
   const simpan = useSaveClaimReport(id)
+  const daftar = useRegisterClaim()
+  const polis = useLookupPolicy()
 
   const [values, setValues] = useState<ClaimReportDetail>(EMPTY_DETAIL)
   const [estimateText, setEstimateText] = useState('')
+  const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(null)
+  const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null)
 
   // Isian form diisi SEKALI dari jawaban server, lalu menjadi milik pengguna. Menyalinnya
   // pada setiap render akan menimpa ketikan yang sedang berjalan setiap kali TanStack
@@ -52,8 +56,47 @@ export function ClaimReportFormPage() {
   const editable = berkas.data?.dapat_disunting ?? false
   const violation = simpan.error instanceof APIError ? simpan.error.violations() : {}
 
+  // Tombol yang menulis berkas dimatikan untuk polis Syariah atau bukan PNC — di layar lama
+  // `pyDisabledWhen` "SyariahStatus = '1' || TempError.ErrorNotes = '1'".
+  const policyBlocked = policyResult?.memblokir ?? false
+
   function set<K extends keyof ClaimReportDetail>(field: K, value: ClaimReportDetail[K]) {
     setValues((previous) => ({ ...previous, [field]: value }))
+  }
+
+  /**
+   * lookupPolicy menggantikan `PolisReceiveInternalExternal`: dijalankan saat isian Nomor
+   * Polis ditinggalkan atau Enter ditekan.
+   *
+   * Langkah 12 activity lama SELALU menimpa kelima isian dengan hasil pencarian, juga
+   * saat polisnya tidak ditemukan — isiannya menjadi kosong. Itu yang ditiru di sini,
+   * supaya data polis lain yang tertinggal di form tidak ikut tersimpan.
+   */
+  function lookupPolicy() {
+    const typed = values.nomor_polis.trim()
+    if (!editable) return
+    if (typed === '') {
+      // Nomor dikosongkan: pesan dan pemblokiran polis sebelumnya tidak berlaku lagi.
+      setPolicyResult(null)
+      setLookedUpNumber(null)
+      return
+    }
+    if (typed === lookedUpNumber) return
+    setLookedUpNumber(typed)
+    polis.mutate(typed, {
+      onSuccess: (result) => {
+        setPolicyResult(result)
+        setLookedUpNumber(result.nomor_polis)
+        setValues((previous) => ({
+          ...previous,
+          nomor_polis: result.nomor_polis,
+          tertanggung: result.tertanggung,
+          nama_bisnis: result.nama_bisnis,
+          nomor_rujukan: result.nomor_rujukan,
+        }))
+      },
+      onError: () => setLookedUpNumber(null),
+    })
   }
 
   if (berkas.isPending) {
@@ -185,15 +228,42 @@ export function ClaimReportFormPage() {
         </Group>
 
         <Group title="Polis dan kejadian">
-          <Field
-            id="nomor_polis"
-            label="Nomor Polis"
-            value={values.nomor_polis}
-            onChange={(e) => set('nomor_polis', e.target.value)}
-            maxLength={FIELD_LIMIT.polis}
-            error={violation['nomor_polis']}
-            disabled={!editable}
-          />
+          <div>
+            <Field
+              id="nomor_polis"
+              label="Nomor Polis"
+              value={values.nomor_polis}
+              onChange={(e) => set('nomor_polis', e.target.value)}
+              onBlur={lookupPolicy}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  lookupPolicy()
+                }
+              }}
+              maxLength={FIELD_LIMIT.polis}
+              error={violation['nomor_polis']}
+              disabled={!editable}
+              hint={polis.isPending ? 'Mencari polis…' : 'Data polis terisi otomatis setelah nomor diisi.'}
+            />
+            {polis.isError && (
+              <p className="mt-1.5 text-sm text-red-700" role="alert">
+                Data polis tidak dapat dibaca: {messageOf(polis.error)}
+              </p>
+            )}
+            {policyResult?.pesan.map((notice) => (
+              <p
+                key={notice.kode}
+                role="alert"
+                className={[
+                  'mt-1.5 text-sm',
+                  notice.memblokir ? 'text-red-700' : 'text-amber-700',
+                ].join(' ')}
+              >
+                {notice.pesan}
+              </p>
+            ))}
+          </div>
           <Field
             id="tanggal_kejadian"
             label="Tanggal Kejadian"
@@ -309,14 +379,64 @@ export function ClaimReportFormPage() {
 
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
           {editable && (
-            <Button type="submit" tone="utama" disabled={simpan.isPending}>
+            <Button type="submit" tone="utama" disabled={simpan.isPending || policyBlocked}>
               {simpan.isPending ? 'Menyimpan…' : 'Simpan'}
             </Button>
           )}
-          <Button type="button" tone="kedua" onClick={() => navigate('/inbox/laporan-klaim')}>
+          {/*
+            Register Klaim ADA di layar lama dan tempatnya di sini — tombol keempat pada
+            deret bawah `Section/InputReceiveDocument_sect.xml`, memanggil activity
+            `CreateRegisterKlaimPNC`, yang langkah pertamanya `Call CreateInputKlaim`.
+
+            Di sini ia memanggil `POST /api/registrasi/klaim`, yang mengerjakan langkah itu:
+            membuat klaim, mengambil snapshot polis, menerbitkan nomor `PNCN.YY.xxxx`, dan
+            mengisi `RCVID` dengan nomor laporan ini. Tautan balik itulah yang membuat baris
+            RCV-nya berpindah keluar dari tab "Not Transferred".
+
+            # Kenapa ia ikut mati saat berkas tidak dapat disunting
+
+            Mendaftarkan klaim MENULIS ke berkas laporan — `NOKLAIM`-nya terisi. Berkas milik
+            Pega hanya boleh dibaca selama masa paralel (`P-1`, `ADR-0004`), sehingga tombol
+            ini tunduk pada kewenangan yang sama dengan Simpan. Kewenangannya dihitung
+            server, bukan disimpulkan layar.
+
+            # Kenapa nomor polis tidak diperiksa di sini
+
+            Ia diperiksa di `useRegisterClaim`, satu tempat, supaya pesan penolakannya sama
+            dari mana pun pendaftaran dimulai.
+          */}
+          <Button
+            type="button"
+            tone="kedua"
+            disabled={!editable || daftar.isPending || policyBlocked}
+            onClick={() =>
+              daftar.mutate(
+                { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+              )
+            }
+          >
+            {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+          </Button>
+
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={() => navigate(backToListPath(berkas.data?.laporan.posisi))}
+          >
             Kembali ke daftar
           </Button>
         </div>
+
+        {daftar.isError && (
+          <div className="mt-3">
+            <ErrorMessage
+              title="Klaim tidak dapat didaftarkan"
+              description={messageOf(daftar.error)}
+              tone={toneOf(daftar.error)}
+            />
+          </div>
+        )}
       </form>
 
       <p className="mt-6 text-xs text-slate-500">
@@ -440,8 +560,46 @@ function TextArea({
   )
 }
 
+/**
+ * backToListPath mengembalikan alamat daftar pada TAB TEMPAT BERKAS INI BERADA.
+ *
+ * # Kenapa bukan sekadar kembali ke daftar
+ *
+ * Daftar selalu terbuka pada tab Outstanding — sama seperti layar lama. Berkas yang baru
+ * dibuat berposisi "Not Transferred" karena belum bernomor klaim dan belum diserahkan,
+ * sehingga ia TIDAK ada di tab itu.
+ *
+ * Akibatnya petugas yang menekan "Buat Baru" lalu kembali melihat daftar tanpa berkasnya,
+ * dan menyimpulkan pembuatannya gagal — padahal barisnya tersimpan. Itu keluhan nyata
+ * (Work Owner, 2026-09-24), dan kelas kegagalan yang paling mahal: yang berhasil tetapi
+ * tampak gagal.
+ *
+ * Posisi yang tidak dikenali mengembalikan tab bawaan, bukan menebak.
+ */
+export function backToListPath(position: string | undefined): string {
+  const tab: Record<string, string> = {
+    Outstanding: 'outstanding',
+    'Not Registered': 'belum-registrasi',
+    'Not Transferred': 'belum-diserahkan',
+  }
+  const kode = position === undefined ? undefined : tab[position]
+  return kode === undefined ? '/inbox/laporan-klaim' : `/inbox/laporan-klaim?kategori=${kode}`
+}
+
 function messageOf(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * toneOf memisahkan penolakan dari gangguan.
+ *
+ * "Nomor Polis harus diisi" adalah pekerjaan pengguna; "penyimpanan belum siap" bukan.
+ * Menggambarkan keduanya dengan warna yang sama membuat petugas mencoba memperbaiki hal
+ * yang tidak dapat mereka perbaiki.
+ */
+function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
+  if (failure instanceof APIError && failure.status >= 500) return 'gangguan'
+  return 'penolakan'
 }

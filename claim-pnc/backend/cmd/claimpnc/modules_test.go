@@ -75,7 +75,8 @@ func TestExtraModulesMounted(t *testing.T) {
 		// inboxlaporanklaim dan perakitannya pindah ke main.go, sehingga rutenya tidak
 		// lagi lewat mountExtra.
 		"GET /riwayat-klaim",
-		"POST /registrasi/klaim",
+		// Registrasi Klaim juga tidak: perakitannya di main.go, di belakang penjaga
+		// portal utama.
 	} {
 		require.True(t, registered[want],
 			"rute %q tidak terdaftar — modulnya lepas dari perakitan di modules.go", want)

@@ -90,7 +90,29 @@ func SampleOptions(clock inboxlaporanklaim.Clock) Options {
 		Region:  SampleRegions(),
 		Branch:  SampleBranches(),
 		Message: SampleMessages(now),
+		Policy:  SamplePolicies(),
 		Clock:   clock,
+	}
+}
+
+// SamplePolicies adalah tiga polis contoh: satu polis PNC, satu polis Syariah, dan satu
+// polis motor (Group Panel 007) yang bukan PNC. Nomornya karangan.
+func SamplePolicies() map[string]inboxlaporanklaim.Policy {
+	return map[string]inboxlaporanklaim.Policy{
+		"12600000000001": {
+			Number: "12600000000001", InsuredName: "PT CONTOH SEJAHTERA",
+			BusinessCode: "10039", BusinessName: "ALL RISK", ReferenceNumber: "REF-0001",
+			GroupPanel: "003",
+		},
+		"12600000000002": {
+			Number: "12600000000002", InsuredName: "CONTOH SYARIAH",
+			BusinessCode: "10028", BusinessName: "PERSONAL ACCIDENT", GroupPanel: "002",
+			Syariah: true,
+		},
+		"12600000000003": {
+			Number: "12600000000003", InsuredName: "CONTOH MOTOR",
+			BusinessCode: "20001", BusinessName: "MBU CAR", GroupPanel: "007",
+		},
 	}
 }
 

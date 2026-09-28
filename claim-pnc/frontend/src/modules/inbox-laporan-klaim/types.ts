@@ -225,8 +225,31 @@ export type ClaimReportQuery = {
   halaman: number
 }
 
-/** Tab pertama layar, sama seperti membuka layarnya di Pega. */
-export const DEFAULT_CATEGORY = 'outstanding'
+/**
+ * Tab yang terbuka saat layar pertama kali dibuka.
+ *
+ * # Kenapa "semua", bukan tab pertama Pega
+ *
+ * Layar lama membuka "Outstanding Data", dan nilai ini semula menirunya (`D-13`).
+ * Akibatnya berkas yang baru dibuat TIDAK TAMPAK saat menu dibuka — berkas baru selalu
+ * lahir berposisi "Not Transferred", sedangkan tab Outstanding hanya memuat berkas yang
+ * sudah bernomor klaim.
+ *
+ * Gejalanya menyesatkan: menekan "Buat Baru" lalu kembali ke daftar MENAMPILKAN berkasnya,
+ * karena tombol kembali mendarat di tab berkas itu sendiri. Membuka menunya dari awal
+ * tidak. Dari layar, keadaan itu tampak seperti data yang tidak tersimpan — dan memang
+ * begitulah ia dilaporkan, tiga kali.
+ *
+ * # Kenapa bukan tab "belum diserahkan"
+ *
+ * Tab itu juga membuat berkas baru tampak, tetapi hanya sampai berkas itu diregistrasi —
+ * sesudahnya ia berpindah tab dan hilang lagi dari tampilan pertama. Itu bentuk lain dari
+ * keluhan yang sama.
+ *
+ * "Semua" memuat berkas pada tahap mana pun, terbaru lebih dulu, sehingga tidak ada tahap
+ * yang membuat sebuah berkas lenyap dari tampilan pertama.
+ */
+export const DEFAULT_CATEGORY = 'semua'
 
 /** Penyaring awal saat layar pertama dibuka. */
 export const EMPTY_QUERY: ClaimReportQuery = {
@@ -260,3 +283,28 @@ export const ClaimReportErrorCode = {
 
 export type ClaimReportErrorCode =
   (typeof ClaimReportErrorCode)[keyof typeof ClaimReportErrorCode]
+
+/**
+ * Jawaban pencarian polis — pengganti activity `PolisReceiveInternalExternal`, yang
+ * dijalankan layar lama setiap kali isian Nomor Polis berubah.
+ */
+export type PolicyNotice = {
+  kode: string
+  pesan: string
+  /** Tombol Simpan dan Register Klaim dimatikan. */
+  memblokir: boolean
+}
+
+export type PolicyLookupResponse = {
+  /** Nomor yang sudah dirapikan: huruf besar, tanpa titik. */
+  nomor_polis: string
+  ditemukan: boolean
+  tertanggung: string
+  kode_bisnis: string
+  nama_bisnis: string
+  nomor_rujukan: string
+  group_panel: string
+  syariah: boolean
+  pesan: PolicyNotice[]
+  memblokir: boolean
+}

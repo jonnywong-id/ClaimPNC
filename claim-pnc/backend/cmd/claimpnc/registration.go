@@ -8,6 +8,8 @@ import (
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
+	"claim-pnc/internal/registrasi/facesheetpdf"
+	"claim-pnc/internal/registrasi/plapdf"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
 	registrasisql "claim-pnc/internal/registrasi/repo/sqlstore"
 	registrasiusecase "claim-pnc/internal/registrasi/usecase"
@@ -15,35 +17,41 @@ import (
 
 // assembleRegistration menyusun modul Registrasi Klaim di balik seam-nya masing-masing.
 //
-// # Kenapa sebagian seam SELALU memakai penyimpanan memori
+// # Tanpa Oracle, SELURUH seam memakai penyimpanan memori
 //
-// Enam seam modul ini punya pengisi SQL: klaim, tugas, nomor klaim, jejak audit,
-// pemberitahuan, dan batas transaksi. Keenamnya menulis ke tabel yang migrasi `0002`
-// buat — tabel milik aplikasi ini sendiri.
+// Bukan sebagian. Modul yang separuh membaca data nyata dan separuh membaca contoh akan
+// menghasilkan klaim yang sebagian benar — dan itu lebih sulit dikenali daripada modul
+// yang jelas berjalan atas data contoh.
 //
-// Lima seam sisanya TIDAK punya pengisi SQL, dan ketiadaannya bukan kelalaian:
+// # Dengan Oracle, sepuluh dari sebelas seam membaca data nyata
 //
-//   - PolicyRepo   → sumbernya GISFW lewat modul `B-1` yang belum ada (`ADR-0006`).
-//   - Parameter   → sumbernya master `F-4` yang belum ada (`TKT-F4-003`, `TKT-F4-005`).
-//   - ExchangeRateSource  → sumbernya master kurs `TKT-F4-004` yang belum ada (`ADR-0015`).
-//   - Penugasan   → tiga aturan routing tidak ada di export (`R-04`), dan daftar
-//     petugasnya adalah data yang belum diberikan.
-//   - IDGenerator   → tidak pernah butuh basis data.
+// Empat di antaranya baru tersambung 2026-09-24, dan sumbernya ternyata SUDAH ADA di
+// basis data meski Steering mencatatnya menunggu DBA:
 //
-// Menambal kelimanya dengan tabel karangan akan menyembunyikan bahwa modul ini belum
-// lengkap. Yang dilakukan sebagai gantinya: aplikasi MEMPERINGATKAN saat start, dengan
-// menyebut persis apa yang belum nyata.
+//   - PolicyRepo         → POOLDATA.JSON_POLIS (`D-04`; hanya dibaca, tidak pernah ditulis)
+//   - ExchangeRateSource → POOLDATA.M_CURRENCYSTANDARD (`ADR-0015`, `D-48`)
+//   - Parameter          → POOLDATA.M_PARAMETER (`F-4`)
+//   - Assigner           → beban PIC Teknik dari tabel yang sama seperti Pega (`R-04`)
+//
+// Yang TETAP di memori hanyalah `IDGenerator`, dan ia memang tidak pernah butuh basis
+// data.
+//
+// # Yang masih kosong disebutkan, bukan ditambal
+//
+// Dua seam di atas dapat menjawab "tidak ada isinya" dan itu bukan kegagalan teknis:
+// daftar penerima Notice of Large Losses (`PNC.PENERIMA_KERUGIAN_BESAR`) belum diisi Work
+// Owner, dan tiga aturan routing tidak ada di export (`R-04`) sehingga pemilihan petugas
+// direkonstruksi dari kueri beban — bukan dibaca dari rule aslinya. Keduanya diperingatkan
+// saat start supaya tidak dikira sudah lengkap.
 func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
 
 	options := registrasiusecase.Options{
-		PolicyRepo:         registrasimemory.NewPolicyStore(registrasimemory.SamplePolicies(clock.Now())...),
-		Parameter:          registrasimemory.NewParameter(),
-		ExchangeRateSource: registrasimemory.NewExchangeRateSource(),
-		Assigner:           registrasimemory.NewAssigner(registrasimemory.SampleTeams()),
-		IDGenerator:        idGenerator,
-		Clock:              clock,
+		IDGenerator:       idGenerator,
+		Clock:             clock,
+		FaceSheetRenderer: facesheetpdf.Renderer{},
+		PLARenderer:       plapdf.Renderer{},
 	}
 
 	if db != nil {
@@ -53,6 +61,29 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.AuditRecorder = registrasisql.NewAuditRecorder(db, idGenerator)
 		options.Notifier = registrasisql.NewNotifier(db, idGenerator)
 		options.UnitOfWork = registrasisql.NewUnitOfWork(db)
+
+		options.PolicyRepo = registrasisql.NewPolicyRepo(db)
+		options.Parameter = registrasisql.NewParameter(db)
+		options.ExchangeRateSource = registrasisql.NewExchangeRateSource(db)
+		options.Assigner = registrasisql.NewAssigner(db)
+		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
+		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
+		options.PolicyItems = registrasisql.NewPolicyItems(db)
+		options.CurrencyDirectory = registrasisql.NewCurrencyDirectory(db)
+		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
+		options.ClaimRecords = registrasisql.NewClaimRecords(db)
+		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
+		options.PLA = registrasisql.NewPLAStore(db)
+		options.Groups = registrasisql.NewGroupStore(db)
+
+		logger.Warn("modul registrasi berjalan, dengan dua sumber yang belum lengkap",
+			slog.String("penerima_kerugian_besar",
+				"M_PARAMETER PNC.PENERIMA_KERUGIAN_BESAR belum diisi — Notice of Large Losses "+
+					"terbit tanpa penerima"),
+			slog.String("routing",
+				"aturan pemilihan petugas direkonstruksi dari kueri beban; tiga router "+
+					"tidak ada di export (R-04)"),
+		)
 	} else {
 		store := registrasimemory.NewStore()
 		options.ClaimRepo = store
@@ -61,14 +92,25 @@ func assembleRegistration(db *sql.DB, logger *slog.Logger) (*registrasiusecase.S
 		options.AuditRecorder = store
 		options.Notifier = store
 		options.UnitOfWork = store
-	}
 
-	logger.Warn("modul registrasi berjalan dengan sumber data yang belum lengkap",
-		slog.String("polis", "contoh di memori — B-1 belum ada"),
-		slog.String("ambang_dan_penerima", "nilai bawaan — master F-4 belum ada"),
-		slog.String("kurs", "hanya IDR — master kurs belum ada"),
-		slog.String("routing", "tim contoh — tiga aturan routing tidak ada di export (R-04)"),
-	)
+		options.PolicyRepo = registrasimemory.NewPolicyStore(registrasimemory.SamplePolicies(clock.Now())...)
+		options.Parameter = registrasimemory.NewParameter()
+		options.ExchangeRateSource = registrasimemory.NewExchangeRateSource()
+		options.Assigner = registrasimemory.NewAssigner(registrasimemory.SampleTeams())
+		options.ClaimReportLink = registrasimemory.NewClaimReportLink()
+		options.AreaDirectory = registrasimemory.NewAreaDirectory()
+		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
+		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
+		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
+		options.ClaimRecords = registrasimemory.SampleClaimRecords()
+		options.FaceSheet = registrasimemory.NewFaceSheet()
+		options.PLA = registrasimemory.NewPLA()
+		options.Groups = registrasimemory.Groups{}
+
+		logger.Warn("modul registrasi berjalan ATAS DATA CONTOH — tidak ada koneksi Oracle",
+			slog.String("akibat", "klaim yang dibuat tidak tersimpan dan polisnya karangan"),
+		)
+	}
 
 	return registrasiusecase.NewService(options)
 }

@@ -275,6 +275,9 @@ func (s *Service) Save(
 	if err := cleanDetail.Check(); err != nil {
 		return inboxlaporanklaim.ClaimReport{}, err
 	}
+	if err := checkPolicy(ctx, repo, cleanDetail.PolicyNumber); err != nil {
+		return inboxlaporanklaim.ClaimReport{}, err
+	}
 
 	saved := cleanDetail.Apply(existing)
 	saved.UpdatedBy = clean.Login

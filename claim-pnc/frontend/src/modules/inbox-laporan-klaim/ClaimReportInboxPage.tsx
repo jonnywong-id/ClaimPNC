@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -41,7 +41,20 @@ import { EMPTY_QUERY, type ClaimReport, type ClaimReportQuery, type ReportCatego
  * bedanya" yang tidak punya jawaban.
  */
 export function ClaimReportInboxPage() {
-  const [query, setQuery] = useState<ClaimReportQuery>(EMPTY_QUERY)
+  // Tab awal dibaca dari ALAMAT, bukan selalu tab bawaan.
+  //
+  // Form mengembalikan petugas ke tab tempat berkasnya berada (lihat backToListPath).
+  // Tanpa ini, berkas yang baru dibuat — berposisi "Not Transferred" — tidak terlihat
+  // saat petugas kembali ke daftar yang selalu terbuka di Outstanding, dan pembuatannya
+  // tampak gagal padahal barisnya tersimpan.
+  //
+  // Alamatnya sekaligus menjadi dapat disalin dan ditandai, sama seperti alasan form
+  // dibuat sebagai rute tersendiri.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState<ClaimReportQuery>(() => {
+    const kategori = searchParams.get('kategori')
+    return kategori === null ? EMPTY_QUERY : { ...EMPTY_QUERY, kategori }
+  })
   const [keyword, setKeyword] = useState('')
 
   const navigate = useNavigate()
@@ -82,7 +95,13 @@ export function ClaimReportInboxPage() {
       <CategoryTabs
         category={category}
         active={query.kategori}
-        onSelect={(kode) => applyFilter({ kategori: kode })}
+        onSelect={(kode) => {
+          applyFilter({ kategori: kode })
+          // Alamat ikut berubah supaya memuat ulang halaman tidak melemparkan petugas
+          // kembali ke tab bawaan. `replace` dipakai agar tombol Back peramban tidak
+          // menelusuri setiap tab yang sempat dibuka.
+          setSearchParams({ kategori: kode }, { replace: true })
+        }}
       />
 
       <form
@@ -148,7 +167,7 @@ export function ClaimReportInboxPage() {
           <ErrorMessage
             title="Laporan baru tidak dapat dibuat"
             description={messageOf(create.error)}
-            tone="penolakan"
+            tone={toneOf(create.error)}
           />
         </div>
       )}
@@ -158,7 +177,7 @@ export function ClaimReportInboxPage() {
           <ErrorMessage
             title="Berkas ekspor tidak dapat diunduh"
             description={messageOf(exportData.error)}
-            tone="penolakan"
+            tone={toneOf(exportData.error)}
           />
         </div>
       )}
@@ -510,4 +529,22 @@ function messageOf(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * toneOf memilih nada pesan dari GALATNYA, bukan dari tempat pesan itu muncul.
+ *
+ * Kedua nada punya arti yang tegas (lihat ErrorMessage): `penolakan` berarti ada yang
+ * dapat pengguna perbaiki, `gangguan` berarti sistemnya yang bermasalah dan mengulang
+ * tidak menolong. Satu tombol dapat gagal karena keduanya — isian yang belum benar
+ * (422) atau tabel penyimpanan yang belum dibuat DBA (503) — sehingga nada yang dipatok
+ * di satu tempat pasti salah untuk salah satunya.
+ *
+ * Yang paling merugikan adalah arah ini: kegagalan pemasangan yang ditampilkan sebagai
+ * penolakan membuat petugas mengubah-ubah isiannya berkali-kali, padahal tidak ada
+ * isian yang salah.
+ */
+function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
+  if (failure instanceof APIError && failure.status >= 500) return 'gangguan'
+  return 'penolakan'
 }

@@ -54,6 +54,7 @@ import (
 	"claim-pnc/internal/inboxsalvage"
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
 	"claim-pnc/internal/mastercolsimasonline"
@@ -61,7 +62,6 @@ import (
 	"claim-pnc/internal/masterdominanfactor"
 	"claim-pnc/internal/mastergroupingsparepart"
 	"claim-pnc/internal/masterkategorisparepart"
-	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterlogin"
 	"claim-pnc/internal/mastermasking"
 	"claim-pnc/internal/masterpanel"
@@ -214,6 +214,10 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
+	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
+	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
+	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterautoclaimhttp "claim-pnc/internal/masterautoclaim/http"
 	masterautoclaimmemory "claim-pnc/internal/masterautoclaim/repo/memory"
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
@@ -258,10 +262,6 @@ import (
 	masterpasalmemory "claim-pnc/internal/masterpasal/repo/memory"
 	masterpasalsql "claim-pnc/internal/masterpasal/repo/sqlstore"
 	masterpasalusecase "claim-pnc/internal/masterpasal/usecase"
-	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
-	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
-	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
-	laporanhasilaiusecase "claim-pnc/internal/laporanhasilai/usecase"
 	masterpasalaihttp "claim-pnc/internal/masterpasalai/http"
 	masterpasalaimemory "claim-pnc/internal/masterpasalai/repo/memory"
 	masterpasalaisql "claim-pnc/internal/masterpasalai/repo/sqlstore"
@@ -341,6 +341,8 @@ import (
 	portalhttp "claim-pnc/internal/portal/http"
 	portalmemory "claim-pnc/internal/portal/repo/memory"
 	portalsql "claim-pnc/internal/portal/repo/sqlstore"
+	registrasihttp "claim-pnc/internal/registrasi/http"
+	registrasiusecase "claim-pnc/internal/registrasi/usecase"
 	reportklaimhttp "claim-pnc/internal/reportklaim/http"
 	reportklaimmemory "claim-pnc/internal/reportklaim/repo/memory"
 	reportklaimsql "claim-pnc/internal/reportklaim/repo/sqlstore"
@@ -1219,6 +1221,30 @@ func run() error {
 		return err
 	}
 
+	// Registrasi Klaim. Handlernya nil bila aplikasi berjalan tanpa Oracle; rutenya
+	// tidak dipasang, dan layar registrasi menjawab 404 alih-alih data karangan.
+	var registrationHandler *registrasihttp.Handler
+	if assembly.registrasi != nil {
+		registrationHandler = registrasihttp.NewHandler(registrasihttp.Options{
+			Service: assembly.registrasi,
+			Logger:  logger,
+			Caller: func(r *http.Request) (registrasiusecase.Caller, bool) {
+				baseCtx, existing := authhttp.CallerFromContext(r.Context())
+				if !existing {
+					return registrasiusecase.Caller{}, false
+				}
+				// Peran dan workbasket belum datang dari tabel peran (TKT-F3-004).
+				// Dikosongkan, BUKAN diisi tebakan: daftar workbasket menentukan tugas
+				// siapa yang terlihat, dan menebaknya berarti menebak batas data.
+				return registrasiusecase.Caller{
+					Identity: baseCtx.User.Login,
+					Name:     baseCtx.User.Name,
+				}, true
+			},
+			WriteResponse: writeJSON,
+		})
+	}
+
 	picTeknikHandler, err := masterpicteknikhttp.NewHandler(masterpicteknikhttp.Options{
 		Service:       assembly.masterPicTeknik,
 		Logger:        logger,
@@ -1974,6 +2000,29 @@ func run() error {
 				// dalam Mount — tidak satu pun yang boleh dilayani tanpa entitas yang
 				// jelas, karena setiap rutenya menyentuh basis data entitas.
 				inboxlaporanklaimhttp.Mount(protected, claimReportHandler, activePortalDeps)
+
+				// Registrasi Klaim (B-2) beserta alur Register_Flow.
+				//
+				// # Kenapa dipagari portal utama, bukan dilayani seluruh portal
+				//
+				// Modul ini terikat pada SATU koneksi: seam-nya menerima *sql.DB, bukan
+				// pemilih repo per portal seperti modul inbox. Dipasang apa adanya, petugas
+				// yang sedang membuka portal Syariah akan menulis klaimnya ke basis data
+				// ASM — persis kebocoran antar badan hukum yang R-20 sebut, dan yang tidak
+				// menampakkan diri sebagai galat: layarnya tampak normal, angkanya masuk
+				// akal, yang salah hanya MILIK SIAPA data itu.
+				//
+				// Karena itu rutenya menolak portal selain portal utama. Batasnya nyata dan
+				// terlihat, bukan diserahkan pada harapan bahwa tidak ada yang berpindah.
+				// Melayani seluruh portal menuntut modulnya menerima pemilih repo — pekerjaan
+				// tersendiri, bukan penyesuaian di tempat pemasangan.
+				if registrationHandler != nil {
+					protected.Group(func(sub chi.Router) {
+						sub.Use(portalhttp.ActivePortal(activePortalDeps))
+						sub.Use(onlyPrimaryPortal(cfg.PrimaryPortal, writePortalAwareError))
+						registrasihttp.Mount(sub, registrationHandler)
+					})
+				}
 				inboxoutstandinghttp.Mount(protected, outstandingHandler, activePortalDeps)
 				inputreqprotectionhttp.Mount(protected, protectionRequestHandler, activePortalDeps)
 				inboxacceptopenprotectionhttp.Mount(protected, protectionAcceptHandler, activePortalDeps)
@@ -2510,6 +2559,15 @@ type assembly struct {
 	// progres, ia memakai pemilih repo per portal: berkas laporan adalah data bisnis
 	// milik satu badan hukum (ADR-0030).
 	inboxLaporanKlaim *inboxlaporanklaimusecase.Service
+
+	// registrasi melayani modul Registrasi Klaim (B-2) beserta alur Register_Flow.
+	//
+	// Ia TERIKAT PADA SATU KONEKSI, tidak memakai pemilih repo per portal seperti modul
+	// inbox. Itu bentuk modulnya, bukan pilihan di sini — dan karena itu rutenya dipagari
+	// agar hanya melayani portal utama. Lihat catatan di tempat ia dipasang.
+	//
+	// Bernilai nil bila aplikasi berjalan tanpa Oracle; rutenya tidak dipasang.
+	registrasi *registrasiusecase.Service
 
 	// inboxOutstanding melayani layar Inbox Outstanding — klaim yang masih berjalan.
 	inboxOutstanding *inboxoutstandingusecase.Service
@@ -3315,6 +3373,28 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
+	// Registrasi Klaim (B-2). Dirakit HANYA bila Oracle tersedia.
+	//
+	// Modul ini menulis klaim ke POOLDATA.T_CLAIM_PNC beserta pohon objek, coverage, dan
+	// spreading di bawahnya (Work Owner, 2026-09-24). Tanpa koneksi, tidak ada satu pun
+	// adapter yang dapat diisi data sungguhan, dan mengisinya dengan data contoh berarti
+	// layar registrasi berjalan di atas polis dan kurs karangan.
+	// Perakitannya ada di assembleRegistration, dan TIDAK boleh disalin ke sini.
+	//
+	// Sebelum 2026-09-24 kedua tempat ini memuat daftar seam masing-masing, dan yang
+	// disunting adalah yang SALAH: `assembleRegistration` tidak pernah dipanggil, sehingga
+	// seam yang ditambahkan ke sana tidak pernah terpasang. Build tetap bersih — `go vet`
+	// tidak menandai fungsi yang tidak terpakai — dan kegagalannya baru muncul saat
+	// aplikasi dijalankan.
+	var registrationService *registrasiusecase.Service
+	if store.legacy != nil {
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger)
+		if err != nil {
+			store.close()
+			return assembly{}, err
+		}
+	}
+
 	maskingService, err := mastermaskingusecase.NewService(mastermaskingusecase.Options{
 		RepoSelector: store.maskingSelector,
 		// Waktu datang dari jam yang sama dengan modul lain, bukan dari SYSDATE basis data
@@ -3900,6 +3980,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxAcceptOpenProtection: protectionAcceptService,
 		inboxCloseClaim:           closeClaimService,
 		dashboardClaim:            dashboardClaimService,
+		registrasi:                registrationService,
 	}, nil
 }
 
