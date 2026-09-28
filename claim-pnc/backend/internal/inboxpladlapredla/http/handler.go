@@ -2,6 +2,8 @@ package inboxpladlapredlahttp
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -332,4 +334,80 @@ func positiveNumber(raw string) int {
 		return 0
 	}
 	return value
+}
+
+// SendPreDLA menandai satu Pre-DLA sebagai terkirim.
+//
+// # Kenapa POST, dan kenapa nomornya di BADAN permintaan
+//
+// Ia mengubah keadaan, sehingga bukan GET. Nomor Pre-DLA dikirim di badan permintaan,
+// bukan di alamat: alamat tercatat di riwayat peramban, log proxy, dan header Referer,
+// dan meski nomor Pre-DLA bukan data nasabah (`D-69`), tidak ada alasan menaruh pengenal
+// dokumen di tempat-tempat itu.
+func (h *Handler) SendPreDLA(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
+	if claimKey == "" {
+		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		return
+	}
+
+	var badan struct {
+		AdviceNo string `json:"no_advice"`
+	}
+	// Badan yang tidak dapat dibaca diperlakukan sebagai nomor kosong, bukan sebagai
+	// galat tersendiri: keduanya berujung pada pesan yang sama dan menyebut isian yang
+	// sama, dan membedakannya hanya menambah satu cabang tanpa menambah keterangan.
+	_ = json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&badan)
+
+	err := h.service.SendPreDLA(
+		r.Context(), active.Alias, caller, claimKey, badan.AdviceNo)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, map[string]string{
+		"pesan": "Pre-DLA ditandai terkirim.",
+	})
+}
+
+// SendAdvice mengirim surat PLA/DLA ke reasuradur lalu menandai dokumennya terkirim.
+//
+// Ia satu-satunya rute di modul ini yang menyentuh dunia di luar basis data, dan
+// satu-satunya yang akibatnya tidak dapat ditarik kembali.
+func (h *Handler) SendAdvice(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	claimKey := strings.TrimSpace(chi.URLParam(r, "kunci"))
+	if claimKey == "" {
+		h.writeError(w, r, inboxpladlapredla.ErrRowNotFound)
+		return
+	}
+
+	var badan struct {
+		AdviceNo string `json:"no_advice"`
+		Tab      string `json:"daftar"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&badan)
+
+	hasil, err := h.service.SendAdvice(
+		r.Context(), active.Alias, caller, badan.Tab, claimKey, badan.AdviceNo)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, SendResponse{
+		Message:     "Surat terkirim dan dokumen ditandai terkirim.",
+		Recipients:  len(hasil.Recipients),
+		Attachments: hasil.Attachments,
+	})
 }

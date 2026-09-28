@@ -58,7 +58,7 @@ func sampleClaims() []Claim {
 	return []Claim{
 		{
 			// Lengkap: punya PLA, DLA, dan Pre-DLA yang ketiganya memenuhi syarat.
-			Key: workKey("PNC-1001"), No: "PNC-1001",
+			Key: workKey("PNC-1001"), No: "PNC-1001", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0001", Insured: "PT Contoh Satu",
 			RegisterDate: day(2026, time.January, 5),
 			LossDate:     day(2026, time.January, 2),
@@ -68,7 +68,7 @@ func sampleClaims() []Claim {
 		{
 			// PLA-nya belum menunjuk reasuradur -> TIDAK masuk tab PLA.
 			// DLA-nya sudah terkirim            -> TIDAK masuk tab DLA.
-			Key: workKey("PNC-1002"), No: "PNC-1002",
+			Key: workKey("PNC-1002"), No: "PNC-1002", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0002", Insured: "PT Contoh Dua",
 			RegisterDate: day(2026, time.January, 6),
 			LossDate:     day(2026, time.January, 3),
@@ -77,7 +77,7 @@ func sampleClaims() []Claim {
 		},
 		{
 			// Personal Accident. Dikecualikan KETIGA tab meski dokumennya lengkap.
-			Key: workKey("PNC-1003"), No: "PNC-1003",
+			Key: workKey("PNC-1003"), No: "PNC-1003", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0003", Insured: "PT Contoh Tiga",
 			RegisterDate: day(2026, time.January, 7),
 			LossDate:     day(2026, time.January, 4),
@@ -86,7 +86,7 @@ func sampleClaims() []Claim {
 		},
 		{
 			// Travel. Dikecualikan ketiga tab.
-			Key: workKey("PNC-1004"), No: "PNC-1004",
+			Key: workKey("PNC-1004"), No: "PNC-1004", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0004", Insured: "PT Contoh Empat",
 			RegisterDate: day(2026, time.January, 8),
 			LossDate:     day(2026, time.January, 5),
@@ -95,7 +95,7 @@ func sampleClaims() []Claim {
 		},
 		{
 			// Cabang ASNET. Masuk tab PLA dan Pre DLA, TIDAK masuk tab DLA.
-			Key: workKey("PNC-1005"), No: "PNC-1005",
+			Key: workKey("PNC-1005"), No: "PNC-1005", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0005", Insured: "PT Contoh Lima",
 			RegisterDate: day(2026, time.February, 2),
 			LossDate:     day(2026, time.January, 20),
@@ -107,7 +107,7 @@ func sampleClaims() []Claim {
 			//
 			// Ia TIDAK masuk tab DLA, karena `NULL <> 'ASNET'` menghasilkan UNKNOWN,
 			// bukan TRUE. Itu perilaku Pega, dan klaim inilah yang menjaganya tertiru.
-			Key: workKey("PNC-1006"), No: "PNC-1006",
+			Key: workKey("PNC-1006"), No: "PNC-1006", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0006", Insured: "PT Contoh Enam",
 			RegisterDate: day(2026, time.February, 3),
 			LossDate:     day(2026, time.January, 21),
@@ -116,7 +116,7 @@ func sampleClaims() []Claim {
 		},
 		{
 			// Kelompok bisnis 10008. Dikecualikan tab DLA saja.
-			Key: workKey("PNC-1007"), No: "PNC-1007",
+			Key: workKey("PNC-1007"), No: "PNC-1007", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0007", Insured: "PT Contoh Tujuh",
 			RegisterDate: day(2026, time.February, 4),
 			LossDate:     day(2026, time.January, 22),
@@ -129,7 +129,7 @@ func sampleClaims() []Claim {
 			// Ia MUNCUL di tab PLA — penyaring keanggotaan menerima '0' — tetapi kolom
 			// "Tanggal PLA"-nya KOSONG, karena sub-kueri tanggalnya hanya menerima NULL.
 			// Kejanggalan Pega yang sengaja dibawa (`P-5`).
-			Key: workKey("PNC-1008"), No: "PNC-1008",
+			Key: workKey("PNC-1008"), No: "PNC-1008", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0008", Insured: "PT Contoh Delapan",
 			RegisterDate: day(2026, time.February, 5),
 			LossDate:     day(2026, time.January, 23),
@@ -138,7 +138,7 @@ func sampleClaims() []Claim {
 		},
 		{
 			// Pre-DLA-nya sudah ber-Nomor Akseptasi -> TIDAK masuk tab Pre DLA.
-			Key: workKey("PNC-1009"), No: "PNC-1009",
+			Key: workKey("PNC-1009"), No: "PNC-1009", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0009", Insured: "PT Contoh Sembilan",
 			RegisterDate: day(2026, time.February, 6),
 			LossDate:     day(2026, time.January, 24),
@@ -151,7 +151,7 @@ func sampleClaims() []Claim {
 			// Ia tidak muncul di tab mana pun, tetapi ADA — sehingga permintaan
 			// rinciannya dijawab daftar kosong, bukan "tidak ditemukan". Itulah satu
 			// keadaan yang membedakan kedua jawaban itu.
-			Key: workKey("PNC-1010"), No: "PNC-1010",
+			Key: workKey("PNC-1010"), No: "PNC-1010", BusinessName: "Marine Cargo",
 			PolicyNo: "POL-2026-0010", Insured: "PT Contoh Sepuluh",
 			RegisterDate: day(2026, time.February, 7),
 			LossDate:     day(2026, time.January, 25),
@@ -174,6 +174,11 @@ func sampleAdvices() []Advice {
 			No: "PLA/2026/0001", Reinsurer: "Reasuransi Contoh A", Type: "OR",
 			Revision: "0", Date: day(2026, time.January, 10),
 			Sent: "", ReinsCode: "R001", Notes: "Estimasi awal",
+			// Alamat dan negara diisi supaya tombol "SEND" dapat dijalankan sampai
+			// tuntas di lingkungan pengembangan. Negaranya INDONESIA, sehingga
+			// suratnya berbahasa Indonesia.
+			Email:          "reas-a@contoh.example",
+			ReinsurerLogin: "REASA", ReinsurerCountry: "INDONESIA",
 		},
 		{
 			ClaimKey: workKey("PNC-1001"), Kind: pla,
@@ -190,6 +195,10 @@ func sampleAdvices() []Advice {
 			Date: day(2026, time.February, 1), Sent: "",
 			AcceptanceNo: "AKS-2026-0001", ReinsCode: "R001",
 			Notes: "Nilai akseptasi final",
+			// Negaranya BUKAN Indonesia -> suratnya berbahasa Inggris. Pasangan ini
+			// sengaja ada supaya kedua bahasa terwakili di data contoh.
+			Email:          "reas-a-sg@contoh.example",
+			ReinsurerLogin: "REASASG", ReinsurerCountry: "SINGAPORE",
 		},
 		{
 			ClaimKey: workKey("PNC-1001"), Kind: pre,

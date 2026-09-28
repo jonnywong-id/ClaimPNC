@@ -8661,3 +8661,205 @@ posisi bita tiap penanda, dibandingkan terhadap posisi pembuka dan penutup blok 
 Polanya sama dengan tiga kesalahan yang dicatat sesi 2026-09-26: **alat ukur dipercaya
 sebelum divalidasi.** "Urutan kemunculan" tidak pernah diuji terhadap kasus yang jelas
 benar sebelum dipakai menyimpulkan.
+
+## Sesi 2026-09-27 (lanjutan) — "Send" per baris dan diagnosa panel kosong
+
+### Skill yang dipakai
+
+| Skill | Alasan dipakai | Keluarannya |
+|---|---|---|
+| `mattpocock-skills:diagnosing-bugs` | Dua laporan sekaligus, dan keduanya tampak seperti "tombol/data tidak muncul" | Keduanya ternyata **kelas masalah yang berbeda**: yang pertama salah baca export, yang kedua aritmetika pencocokan nama berkas |
+| `mattpocock-skills:domain-modeling` | `.MARKETING` — nama kondisi yang tidak menyatakan isinya | Ditelusuri ke `iskirim AS MARKETING`. Dinamai `CanSend()` di kode, karena itulah yang ia jawab |
+| `mattpocock-skills:codebase-design` | Diagnosa perlu menembak Oracle; apakah ia masuk seam `Repo`? | **Tidak.** Ia method pada `*sqlstore.Repo` — layar tidak memakainya, dan pengisi memori tidak perlu menjawab pertanyaan yang hanya berarti bagi skema Oracle |
+
+### Manfaat yang terukur
+
+**`diagnosing-bugs` mencegah dua kesalahan yang berlawanan arah.**
+
+Pada laporan pertama, disiplinnya menuntut bukti struktural, bukan pengamatan yang
+kebetulan cocok. §62 menyimpulkan Send bekerja atas seluruh dokumen karena `pySelected`
+nol kemunculan. Pengamatan itu **benar** — dan kesimpulannya salah. Tidak adanya kotak
+centang tidak berarti tombolnya bekerja atas semua baris; ia berarti barisnya sendiri
+yang menjadi pilihannya. Yang membuktikannya adalah batas layout: sel tombolnya berada di
+dalam blok berulang, dan syarat tampilnya membaca properti baris.
+
+Pada laporan kedua, disiplin yang sama menahan perbaikan yang salah. Panel kosong mengundang
+satu tindakan: longgarkan penyaringnya. Menghitung dulu menunjukkan penyaringnya mungkin
+**benar** — `SUBSTR(PXATTACHNAME,-15,11) = NODLA` hanya cocok bila `NODLA` tepat 11
+karakter, sehingga panelnya kosong di Pega juga. Melonggarkannya akan membuat sistem baru
+menampilkan sesuatu yang sistem lama tidak pernah tampilkan, tanpa ada yang memintanya.
+
+**`domain-modeling` menghemat pekerjaan yang hampir dikerjakan.** Melihat
+`.MARKETING != '1'`, langkah yang wajar adalah menambah kolom `MARKETING` ke kueri, ke
+tipe, ke DTO, dan ke layar. Menelusuri istilahnya lebih dulu membatalkan seluruh rantai
+itu: `MARKETING` adalah alias untuk `ISKIRIM`, dan `Document.Sent` sudah membawanya.
+**Nol kolom baru.**
+
+Ini kejadian keenam alias Pega menyesatkan di modul ini — setelah `BRANCH_NAME` yang
+berarti kunci klaim, `BRANCH_CODE` yang berarti nomor klaim, `END_DATE` yang berarti
+tanggal kejadian, `TglDLA` yang berarti tanggal kirim, dan `Currency` yang berarti kunci
+lampiran. Polanya cukup kuat untuk dijadikan aturan: **di modul ini, alias tidak pernah
+dipercaya sebelum ditelusuri ke kolom sebenarnya.**
+
+### Keputusan teknis yang lahir darinya
+
+| Keputusan | Skill |
+|---|---|
+| Send menjadi kolom aksi per baris, sel kosong bila sudah terkirim | `diagnosing-bugs` |
+| `CanSend()` di domain, `boleh_kirim` per baris — bukan perbandingan di layar | `domain-modeling` |
+| Penyaring lampiran TIDAK dilonggarkan; diagnosa ditambahkan sebagai gantinya | `diagnosing-bugs` |
+| `DiagnosePrintPreDLA` di luar seam `Repo` | `codebase-design` |
+
+### Kesalahan saya sendiri, dan polanya yang berulang
+
+§62.2 menyatakan Send bekerja atas seluruh dokumen klaim. Itu salah, dan **saya
+menuliskannya dengan yakin karena punya bukti** — bukti yang mengukur hal lain daripada
+yang saya simpulkan.
+
+Ini pola yang sama dengan tiga kesalahan sesi 2026-09-26 dan satu kesalahan §63: **alat
+ukur dipercaya sebelum divalidasi.** Kali ini bentuknya bukan alat ukur yang rusak,
+melainkan alat ukur yang benar dipakai menjawab pertanyaan yang berbeda — "adakah kotak
+centang" dipakai menjawab "apa lingkup tombolnya".
+
+Penawarnya sama seperti sebelumnya, dan kali ini dijalankan: sebelum menyimpulkan letak
+dan lingkup sebuah kontrol, tentukan **batas layout**-nya lebih dulu, lalu periksa apakah
+kontrolnya di dalam atau di luar.
+
+## Sesi 2026-09-27 (lanjutan kedua) — membaca `PNCGetListPreDla`
+
+| Skill | Alasan dipakai | Keluarannya |
+|---|---|---|
+| `mattpocock-skills:diagnosing-bugs` | Aktivitasnya tiba; apakah ia mengubah himpunan baris panel? | **Tidak.** Ia hanya memperkaya. Kueri yang sudah ditulis identik dengan Pega, sehingga panel kosong adalah kondisi DATA — dan diagnosa yang sudah ada yang menjawabnya |
+| `mattpocock-skills:domain-modeling` | `addToDate(...,"0","7","0","0")` — apakah ini disalin atau diterjemahkan? | Diterjemahkan menjadi **konversi zona**. `P-5` menuntut hasil yang sama, bukan cara yang sama — dan caranya justru utang teknis yang `F-5` hapus |
+
+### Manfaat yang terukur
+
+**`diagnosing-bugs` menahan dua kesimpulan yang salah arah.**
+
+Yang pertama: aktivitas yang baru tiba mengundang anggapan bahwa ia berisi logika yang
+saya lewatkan. Membacanya langkah demi langkah menunjukkan sebaliknya — satu-satunya
+sumber barisnya adalah kueri yang sudah saya terjemahkan.
+
+Yang kedua: parameter `Access=GCNM` sempat tampak menjanjikan sebagai penjelasan "jalan di
+Pega, kosong di sini" — koneksi basis data yang berbeda. Menghitungnya lebih dulu
+membatalkannya: `GCNM` muncul 1.160 kali berbanding `ASM` 260 kali. Ia nilai yang lazim.
+Tanpa hitungan itu, saya akan mengirim Work Owner menelusuri konfigurasi koneksi tanpa
+sebab.
+
+**`domain-modeling` mencegah utang teknis masuk lewat pintu `P-5`.** Menyalin
+`addToDate(...,"0","7","0","0")` akan terasa paling setia — dan akan membawa masuk persis
+pola yang `F-5` hapus dari 118 titik di 36 activity. Memisahkan **apa yang dihasilkan**
+dari **bagaimana ia dihasilkan** menyelesaikannya: hasil sama, cara berbeda.
+
+### Kesalahan saya sendiri, dan bentuk barunya
+
+§64.7 menyatakan DT `GetListPreDLA` "tidak ada di export". **Ia sudah ada sejak 17
+September.** Pencarian saya hanya menyapu `Activity/`, `Flow Action/`, dan `Section/`.
+
+Ini bentuk keempat dari pola yang sama: **alat ukur dipercaya sebelum divalidasi.** Kali
+ini bukan alat yang rusak dan bukan alat yang menjawab pertanyaan lain — melainkan alat
+yang **cakupannya lebih sempit daripada klaimnya**. Saya menyatakan ketiadaan di seluruh
+export berdasarkan pencarian di tiga direktori, dan tidak menyebutkan batas itu.
+
+Penawarnya: pernyataan "tidak ada di export" hanya boleh ditulis setelah pencarian
+menyapu **seluruh** export, dan cakupannya disebutkan bersama klaimnya.
+
+## Sesi 2026-09-27 (lanjutan ketiga) — tiga koreksi antarmuka
+
+| Skill | Alasan dipakai | Keluarannya |
+|---|---|---|
+| `mattpocock-skills:diagnosing-bugs` | Work Owner menyatakan rincian dibuka lewat nomor klaim | Diverifikasi ke section sebelum dikerjakan: sel `.BRANCH_CODE` ber-`pyAction = refresh`, parameter `caseId` = `.BRANCH_NAME`. **Kolom "Rincian" saya ternyata rekaan** |
+| `mattpocock-skills:codebase-design` | Perlukah medan baru untuk "nomor klaim dapat diklik"? | **Tidak.** Ia diturunkan dari `punya_rincian` yang sudah ada — yang membuka rincian adalah keberadaan rinciannya, bukan ada-tidaknya tombol |
+
+### Manfaat yang terukur
+
+**`diagnosing-bugs` dipakai pada pernyataan yang sudah benar, dan tetap berguna.** Work
+Owner sudah menyatakan perilakunya; memeriksanya tetap perlu karena yang dipertaruhkan
+bukan benar-salahnya melainkan **bentuk perubahannya di kode**. Tautan pada sel berarti
+kolom aksinya hilang seluruhnya — bukan tombolnya berpindah tempat, dan bukan pula
+keduanya hidup berdampingan.
+
+Pemeriksaan itu juga memunculkan sesuatu yang tidak ditanyakan: kolom "Rincian" tidak
+pernah ada di Pega. Ia saya tambahkan pada §61 tanpa dasar, dan bertahan empat revisi.
+
+**`codebase-design` menahan satu medan kontrak yang hampir ditambahkan.** Godaannya wajar:
+"nomor klaim dapat diklik" terasa seperti keputusan tampilan yang layak dikirim server,
+sama seperti `punya_cetak`. Uji penghapusannya menjawab sebaliknya — ia **turunan** dari
+`punya_rincian`, dan medan turunan yang dikirim terpisah adalah dua sumber kebenaran yang
+menunggu berselisih.
+
+### Kesalahan saya sendiri
+
+**Kolom "Rincian" adalah rekaan.** Saya menambahkannya pada §61 sebagai cara membuka grid
+rincian, dan tidak pernah memeriksa bagaimana Pega membukanya. Ia lolos empat revisi —
+termasuk §63 dan §64 yang justru memeriksa letak tombol lain di section yang sama.
+
+Polanya berbeda dari empat kesalahan sebelumnya, dan itu yang membuatnya patut dicatat:
+yang tiga sebelumnya adalah **alat ukur yang keliru dipercaya**. Yang ini **tidak diukur
+sama sekali**. Saya memeriksa letak tombol yang saya tahu ada di Pega ("Send", "Upload",
+"Print Pre DLA"), dan tidak pernah bertanya apakah tombol yang saya buat sendiri punya
+padanan di sana.
+
+Penawarnya: setiap kontrol di layar baru harus dapat menyebut **asalnya** — `berkas:offset`
+di export, atau keputusan tertulis yang menyatakan ia sengaja ditambahkan. Kolom "Rincian"
+tidak punya keduanya.
+
+## Sesi 2026-09-27 (lanjutan keempat) — "Kirim Pre DLA" dan "SEND" dibangun
+
+| Skill | Alasan dipakai | Keluarannya |
+|---|---|---|
+| `mattpocock-skills:grilling` | Dua tombol diminta "diperbaiki", dan yang kedua mengirim surat ke pihak luar | Dua pertanyaan berpilihan dengan **inventaris dua belas langkah** dan pratinjau kodenya. Keduanya dijawab, dan keduanya mengubah apa yang dibangun |
+| `mattpocock-skills:codebase-design` | Seam mana yang dibutuhkan pengiriman surat | **Dua** seam, bukan satu: `Notifier` dan `BodyComposer`. Keduanya berubah karena sebab yang berbeda |
+| `mattpocock-skills:diagnosing-bugs` | Kenapa tombolnya ditolak, dan apakah alasannya masih benar | Premis §61 **usang** — SMTP sudah ada di tiga modul lain. Alasan penolakannya menyebut kemampuan, padahal yang kurang adalah keputusan |
+
+### Manfaat yang terukur
+
+**`grilling` menghentikan pekerjaan yang hampir dikerjakan dengan asumsi.** "Perbaiki"
+terbaca sebagai izin membangun, dan langkah wajar berikutnya adalah membangun. Disiplin
+skill ini menuntut satu hal lebih dulu: **berapa besar sebenarnya**, dan **apa yang tidak
+dapat ditarik kembali**.
+
+Membaca `UpdateDetailPLA2` sampai habis menjawab keduanya: bukan empat langkah seperti
+yang tercatat sejak §61, melainkan dua belas — dan langkah kesepuluh mengirim surat
+beserta lampiran ke perusahaan lain. Pertanyaannya karena itu bukan "bagaimana
+membangunnya" melainkan "apakah Go boleh mengirim surat itu selagi Pega masih hidup".
+
+Menebaknya sama saja dengan mengirim surat atas nama Work Owner tanpa bertanya.
+
+**`codebase-design` memisahkan dua hal yang tampak satu.** Menyusun badan surat dan
+mengirimkannya terasa seperti satu tanggung jawab. Uji penghapusannya menunjukkan
+sebaliknya: kalimat surat berubah ketika **isinya** dipersoalkan, pengiriman berubah
+ketika **infrastrukturnya** berubah. Satu seam berarti perubahan satu kalimat menyentuh
+kode yang membuka soket.
+
+Skill yang sama menjawab pertanyaan yang lebih tajam: bolehkah memakai pengirim TIRUAN
+ketika SMTP belum siap, seperti modul lain? **Tidak** — di sini ada yang *bergantung pada
+jawabannya*. Pengirim tiruan menjawab berhasil, dan penandaan terkirim mengikuti jawaban
+itu. Pola yang aman di satu modul menjadi bencana di modul lain, dan yang membedakan
+bukan seleranya melainkan siapa yang membaca jawabannya.
+
+**`diagnosing-bugs` menemukan alasan penolakan yang sudah tidak benar.** Satu pencarian
+`grep -rl "smtp"` membatalkan premis yang bertahan sejak §61. Alasan yang salah lebih
+buruk daripada tidak ada alasan, karena ia **ditindaklanjuti**: alasan lama membuat Work
+Owner menunggu infrastruktur yang sebenarnya sudah ada.
+
+### Keputusan teknis yang lahir darinya
+
+| Keputusan | Skill |
+|---|---|
+| Urutan dibalik: surat dulu, penandaan kemudian | `grilling` — menanyakan apa yang tidak dapat ditarik kembali |
+| `Notifier` dan `BodyComposer` dipisah | `codebase-design` |
+| Pengirim NIL, bukan `Fake` | `codebase-design` — uji penghapusan pada mode kegagalan |
+| `ErrSentButNotMarked` punya tipe sendiri | `grilling` — memikirkan keadaan terburuk lebih dulu |
+| Tiga langkah Pega tidak ditebak | `grilling` — yang tidak diketahui dinyatakan, bukan diisi |
+
+### Pola yang akhirnya berhenti berulang
+
+Empat kali sesi ini saya salah menempatkan tombol — "Print Pre DLA" (§63), "Send" (§64),
+kolom "Rincian" yang ternyata rekaan (§66). Pada "Kirim Pre DLA" letaknya **diperiksa
+lebih dulu**: sel tombolnya di dalam `REPEATING` 42.697 → `ACTION` 111.588, jadi per
+baris.
+
+Yang berubah bukan ketelitian melainkan **urutannya**: batas layout ditentukan sebelum
+kodenya ditulis, bukan setelah dilaporkan. Itu penawar yang dicatat pada §64, dan ini
+pertama kalinya ia benar-benar dijalankan.

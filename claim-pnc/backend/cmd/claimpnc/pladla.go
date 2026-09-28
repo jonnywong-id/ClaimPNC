@@ -23,11 +23,14 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"claim-pnc/internal/inboxpladla"
 	"claim-pnc/internal/inboxpladlapredla"
+	inboxpladlapredlanotif "claim-pnc/internal/inboxpladlapredla/notification"
+	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
 
 	authhttp "claim-pnc/internal/auth/http"
@@ -117,6 +120,7 @@ func setPLADLAMemorySelectors(primaryAlias string, store *storage) {
 
 // buildPLADLAServices merakit layanan kedua modul.
 func buildPLADLAServices(
+	cfg config.Config,
 	store storage,
 	logger *slog.Logger,
 ) (pladlaServices, error) {
@@ -128,10 +132,69 @@ func buildPLADLAServices(
 	//
 	// Pada `MENU_ID 45`: yang membacanya PIHAK LUAR. Inilah satu-satunya layar yang sudah
 	// dibangun yang datanya keluar dari dinding perusahaan.
+	// Pengirim surat dipasang HANYA bila SMTP dikonfigurasi. Bila tidak, ia NIL.
+	//
+	// Modul lain memakai pengirim TIRUAN ketika SMTP belum siap — di sini itu akan
+	// menjadi bencana. Tombol "SEND" menandai dokumen terkirim setelah pengirimnya
+	// menjawab berhasil; pengirim tiruan yang menjawab berhasil akan membuat dokumen
+	// ditandai terkirim padahal tidak satu pun surat sampai ke reasuradur, dan barisnya
+	// hilang dari antrean tanpa jejak.
+	//
+	// Nil karena itu bukan kelalaian melainkan pagar: tombolnya menjawab alasan yang
+	// menyebut isian konfigurasi mana yang kurang.
+	// Syarat aktifnya diambil dari konfigurasi PENGIRIMNYA SENDIRI, bukan dari
+	// `cfg.SMTP.Active()`.
+	//
+	// `Active()` mensyaratkan `SMTP_PENERIMA_PERINGATAN` terisi, dan syarat itu benar
+	// untuk modul yang mengirim ke daftar penerima tetap. Modul ini tidak: penerimanya
+	// adalah reasuradur pada BARIS DOKUMEN yang sedang dikirim, dan daftar peringatan
+	// Tim IT tidak ada hubungannya.
+	//
+	// Memakai `Active()` di sini akan membuat tombol "SEND" tetap menolak meski host,
+	// port, dan alamat pengirim sudah lengkap — penolakan yang sebabnya tidak dapat
+	// ditemukan siapa pun dari membaca pesannya.
+	//
+	// Preseden yang sama sudah ada: `TKAActive()` terpisah dari `Active()` karena
+	// alasan yang persis sama.
+	konfigurasiSurat := inboxpladlapredlanotif.Config{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		Timeout:  cfg.SMTP.Timeout,
+	}
+
+	var pengirimSurat inboxpladlapredla.Notifier
+	if konfigurasiSurat.Complete() {
+		pengirimSurat = inboxpladlapredlanotif.NewSender(konfigurasiSurat)
+
+		// Pengaktifannya DICATAT, bukan diam-diam.
+		//
+		// Mulai saat ini satu penekanan tombol mengirim surat ke luar perusahaan dan
+		// tidak dapat ditarik kembali. Baris log ini yang menjawab "sejak kapan" bila
+		// kelak ada surat yang dipersoalkan.
+		logger.Info("pengiriman surat PLA/DLA AKTIF",
+			slog.String("host", cfg.SMTP.Host),
+			slog.Int("port", cfg.SMTP.Port),
+			slog.String("pengirim", cfg.SMTP.From),
+			slog.String("catatan",
+				"tombol SEND kini benar-benar mengirim surat ke reasuradur"))
+	} else {
+		logger.Warn("pengiriman surat PLA/DLA belum aktif",
+			slog.String("kurang", strings.Join(konfigurasiSurat.Missing(), ", ")),
+			slog.String("akibat",
+				"tombol SEND menolak dengan alasan, dan TIDAK ada dokumen yang "+
+					"ditandai terkirim"),
+			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, dan SMTP_DARI"))
+	}
+
 	queue, err := inboxpladlapredlausecase.NewService(
 		inboxpladlapredlausecase.Options{
 			RepoSelector: store.pladla.queue,
 			Logger:       logger,
+			Notifier:     pengirimSurat,
+			ComposeBody:  inboxpladlapredlanotif.HTMLBody,
 		})
 	if err != nil {
 		return pladlaServices{}, err

@@ -389,7 +389,6 @@ func TestEachUnbuiltButtonAnswersItsOwnReason(t *testing.T) {
 	for _, action := range []inboxpladlapredla.Action{
 		inboxpladlapredla.ActionSend,
 		inboxpladlapredla.ActionUpload,
-		inboxpladlapredla.ActionSendPreDLA,
 		inboxpladlapredla.ActionDownloadAttachment,
 	} {
 		rejected := inboxpladlapredla.NewNotAvailable(string(action))
@@ -408,14 +407,58 @@ func TestEachUnbuiltButtonAnswersItsOwnReason(t *testing.T) {
 	// Masing-masing menyebut APA yang belum ada, bukan sekadar "belum tersedia".
 	require.Contains(t, reasons[inboxpladlapredla.ActionSend], "email")
 	require.Contains(t, reasons[inboxpladlapredla.ActionUpload], "penyimpanan dokumen")
-	require.Contains(t, reasons[inboxpladlapredla.ActionSendPreDLA], "satu sistem")
+	// Alasan unduh lampiran DIKOREKSI setelah `Activity/PNCGetListPreDla-Act.xml` dibaca:
+	// berkasnya diambil `Obj-Open-By-Handle` dari tabel lampiran Pega, BUKAN dari
+	// penyimpanan dokumen eksternal (`D-16`). Ia karena itu bukan kemampuan yang belum
+	// tersedia, melainkan pekerjaan yang belum diminta — dan kalimatnya harus
+	// mengatakannya apa adanya.
 	require.Contains(t,
-		reasons[inboxpladlapredla.ActionDownloadAttachment], "penyimpanan dokumen")
+		reasons[inboxpladlapredla.ActionDownloadAttachment], "tabel lampiran Pega")
+	require.NotContains(t,
+		reasons[inboxpladlapredla.ActionDownloadAttachment], "D-16")
 
 	// Seluruhnya memberi tahu apa yang dapat dilakukan pengguna HARI INI.
 	for action, reason := range reasons {
 		require.Contains(t, reason, "lewat Pega", "%s", action)
 	}
+}
+
+// Tidak ada daftar yang punya kolom aksi "Rincian".
+//
+// Rincian PLA dan DLA dibuka dengan MENGKLIK NOMOR KLAIM, persis seperti di Pega — sel
+// `.BRANCH_CODE` di sana membawa `pyAction = refresh`. Satu-satunya tombol aksi per baris
+// yang tersisa adalah "Print Pre DLA".
+//
+// Uji ini ada karena kolom aksi mudah dikembalikan tanpa sadar: ia pernah ada, dan
+// menambahkannya kembali tidak merusak apa pun yang terlihat.
+func TestDetailIsOpenedByClickingTheClaimNumber(t *testing.T) {
+	berTombol := map[string]string{}
+
+	for _, tab := range inboxpladlapredla.Tabs() {
+		if tab.RowActionLabel != "" {
+			berTombol[tab.Code] = tab.RowActionLabel
+		}
+
+		if tab.HasDocuments() {
+			require.Empty(t, tab.RowActionLabel,
+				"daftar %q punya grid rincian, jadi nomor klaimnya yang membukanya "+
+					"— bukan tombol", tab.Code)
+		}
+	}
+
+	require.Equal(t, map[string]string{"pre-dla": "Print Pre DLA"}, berTombol)
+}
+
+// "Kirim Pre DLA" BUKAN lagi tindakan yang ditolak.
+//
+// Tombolnya kini benar-benar menandai Pre-DLA terkirim. Bila namanya kembali masuk daftar
+// penolakan, pengguna akan menekan tombol yang bekerja lalu membaca alasan bahwa ia belum
+// bekerja — dua pesan yang saling menyangkal dalam satu layar.
+func TestSendingAPreDLAIsNotARejectedAction(t *testing.T) {
+	rejected := inboxpladlapredla.NewNotAvailable("kirim-pre-dla")
+
+	require.NotEqual(t, inboxpladlapredla.Action("kirim-pre-dla"), rejected.Action,
+		"menandai Pre-DLA terkirim masih terdaftar sebagai tindakan yang ditolak")
 }
 
 // "Print Pre DLA" BUKAN lagi tindakan yang ditolak.

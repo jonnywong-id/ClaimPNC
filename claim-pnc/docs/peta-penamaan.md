@@ -4206,3 +4206,21 @@ sehingga judul adalah sumber yang lebih dapat dipercaya daripada alias.
 
 `cetak-pre-dla` **dihapus** dari daftar ini: tombol "Print Pre DLA" membuka panel yang
 sudah dibangun.
+
+### Koreksi 2026-09-27 — alias `MARKETING` pada grid rincian
+
+`RDB List/GetPLAList-SQL.xml` dan `GetDLAList-SQL.xml` keduanya memetakan:
+
+| Kolom sebenarnya | Alias Pega | Nama di sini | Dipakai untuk |
+|---|---|---|---|
+| `ISKIRIM` | **`MARKETING`** | `SENT` · `terkirim` | kolom "Terkirim", **dan syarat tampil tombol SEND** |
+
+Aliasnya tidak menyangkut pemasaran sama sekali. Syarat `.MARKETING != '1'` pada sel
+tombol SEND karena itu berarti **"dokumen ini belum terkirim"** — dan karena `Document.Sent`
+sudah membawa kolom yang sama, tidak ada kolom baru yang perlu diambil.
+
+Dinilai domain lewat `Document.CanSend()`, dikirim per baris sebagai `boleh_kirim`.
+
+Ini alias menyesatkan **keenam** di modul ini, setelah `BRANCH_NAME` (kunci klaim),
+`BRANCH_CODE` (nomor klaim), `END_DATE` (tanggal kejadian), `TglDLA` (tanggal kirim), dan
+`Currency` (kunci lampiran).

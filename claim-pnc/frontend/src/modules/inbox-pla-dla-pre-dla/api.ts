@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI, downloadAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -235,21 +235,19 @@ export function useEksporPLADLA() {
  * `internal/inboxpladlapredla/errors.go` — server memakainya untuk memilih alasan mana
  * yang dijawab, dan nilai yang tidak dikenal jatuh ke kalimat umum.
  *
- * "Print Pre DLA" TIDAK ada di sini, dan itu disengaja: tombol itu membuka panel yang
- * sudah dibangun. Yang belum dibangun adalah dua tombol DI DALAM panelnya.
+ * Dua tombol TIDAK ada di sini, dan itu disengaja: "Print Pre DLA" membuka panel, dan
+ * "Kirim Pre DLA" menandai Pre-DLA terkirim. Keduanya sudah dibangun.
  */
 export const Tindakan = {
-  kirim: 'kirim',
   unggahPenunjang: 'unggah-penunjang',
-  kirimPreDLA: 'kirim-pre-dla',
   unduhLampiran: 'unduh-lampiran',
 } as const
 
 export type TindakanValue = (typeof Tindakan)[keyof typeof Tindakan]
 
 /**
- * Hook tombol yang belum dibangun — "Send", "Upload File Penunjang", "Kirim Pre DLA",
- * dan unduh lampiran.
+ * Hook tombol yang belum dibangun — "Send", "Upload File Penunjang", dan unduh
+ * lampiran.
  *
  * # Kenapa tombolnya DITEKAN ke server, bukan dijawab layar sendiri
  *
@@ -276,6 +274,99 @@ export function useTindakanPLADLA() {
         token,
         portal,
         metode: 'POST',
+      })
+    },
+  })
+}
+
+/**
+ * Hook tombol **"Kirim Pre DLA"** — menandai SATU Pre-DLA sebagai terkirim.
+ *
+ * # Ia MENULIS, dan itu satu-satunya di modul ini
+ *
+ * Tabelnya masih ditulis Pega selama masa paralel. Konsekuensinya diterima Work Owner,
+ * dan dipagari di sisi server: Pre-DLA yang sudah terkirim dijawab `409`, bukan ditimpa.
+ *
+ * # Kenapa panelnya DIMUAT ULANG setelah berhasil
+ *
+ * Karena kolom "Terkirim" dan "Tgl Kirim" baru saja berubah di basis data, dan panel yang
+ * masih menampilkan keadaan lama akan membuat petugas menekan tombol yang sama sekali
+ * lagi. Yang dimuat ulang adalah jawaban server, bukan tebakan layar — tanggal kirimnya
+ * diisi basis data, sehingga layar tidak dapat mengetahuinya sendiri.
+ */
+export function useKirimPreDLA(claimKey: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (noAdvice: string) =>
+      callAPI<{ pesan: string }>(
+        `${PATH}/cetak/${encodeURIComponent(claimKey)}/kirim`,
+        {
+          token,
+          portal,
+          metode: 'POST',
+          body: { no_advice: noAdvice },
+        },
+      ),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: keys.cetak(portal, token, claimKey),
+      })
+    },
+  })
+}
+
+/** Hasil pengiriman surat PLA/DLA. */
+export type HasilKirim = {
+  pesan: string
+  penerima: number
+  lampiran: number
+}
+
+/**
+ * Hook tombol **"Send"** — mengirim surat PLA/DLA ke reasuradur.
+ *
+ * # Ia menyentuh dunia DI LUAR perusahaan
+ *
+ * Satu-satunya hook di modul ini yang akibatnya tidak dapat ditarik kembali. Server
+ * mengirim suratnya lebih dulu, dan baru menandai dokumennya terkirim bila suratnya
+ * berhasil — urutan yang sengaja dibalik dari Pega.
+ *
+ * # Kenapa panel rincian DIMUAT ULANG setelah berhasil
+ *
+ * Kolom "Terkirim", "Tanggal Kirim", dan "Email" baru saja berubah di basis data. Panel
+ * yang masih menampilkan keadaan lama akan membuat petugas menekan tombol yang sama
+ * sekali lagi — dan surat kedua akan sampai ke reasuradur.
+ *
+ * Antreannya ikut dimuat ulang: dokumen yang terkirim mengeluarkan klaimnya dari antrean
+ * bila itu dokumen terakhirnya.
+ */
+export function useKirimSurat(tab: string, claimKey: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (noAdvice: string) =>
+      callAPI<HasilKirim>(
+        `${PATH}/klaim/${encodeURIComponent(claimKey)}/kirim`,
+        {
+          token,
+          portal,
+          metode: 'POST',
+          body: { no_advice: noAdvice, daftar: tab },
+        },
+      ),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: keys.documents(portal, token, tab, claimKey),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['inbox-pla-dla-pre-dla', 'baris'],
       })
     },
   })

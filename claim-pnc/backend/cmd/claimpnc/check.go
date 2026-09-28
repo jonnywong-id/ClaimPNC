@@ -5154,12 +5154,44 @@ func checkPLADLAQueue(
 	}
 	print("  [ok]    Panel \"Print Pre DLA\" dapat dibaca (%d baris)", len(rows))
 
-	if len(rows) == 0 {
-		// Kosong BUKAN kegagalan: klaim itu boleh saja belum punya Pre-DLA yang
-		// lampirannya cocok. Ia dicatat supaya pemeriksa tahu bahwa penyaring
-		// lampirannya belum benar-benar terbukti melewatkan apa pun.
-		print("  [catatan] Panelnya kosong untuk klaim contoh — penyaring lampiran " +
-			"belum terbukti meloloskan baris.")
+	if len(rows) > 0 {
+		return
+	}
+
+	// Kosong BUKAN kegagalan: klaim itu boleh saja belum punya Pre-DLA yang lampirannya
+	// cocok. Tetapi kosong punya EMPAT sebab yang tampak sama, dan menebaknya memakan
+	// waktu lebih lama daripada menghitungnya.
+	print("  [catatan] Panelnya kosong untuk klaim contoh. Menghitung tahap mana yang " +
+		"menggugurkan barisnya:")
+
+	diag, err := repo.DiagnosePrintPreDLA(ctx, preDLAKey)
+	if err != nil {
+		print("            Diagnosa tidak dapat dijalankan: %v", err)
+		return
+	}
+
+	print("            Pre-DLA pada klaim ini        : %d", diag.PreDLARows)
+	print("            NODLA tepat 11 karakter       : %d", diag.AdviceNoIs11)
+	print("            punya lampiran apa pun        : %d", diag.HasAttachment)
+	print("            lampiran berkategori 'DLA'    : %d", diag.CategoryIsDLA)
+
+	switch {
+	case diag.PreDLARows == 0:
+		print("            -> Klaim contoh memang belum punya Pre-DLA. Bukan cacat.")
+	case diag.AdviceNoIs11 == 0:
+		// Sebab ini yang paling sering, dan yang paling tidak terduga.
+		print("            -> SEBABNYA DI SINI. Pencocokan nama berkas Pega " +
+			"(SUBSTR(PXATTACHNAME,-15,11) = NODLA) hanya dapat cocok bila NODLA " +
+			"tepat 11 karakter. Tidak ada satu pun yang 11 karakter, sehingga " +
+			"panel TIDAK AKAN PERNAH berisi — di Pega sekalipun.")
+	case diag.CategoryIsDLA == 0 && diag.HasAttachment > 0:
+		print("            -> Lampirannya ada tetapi TIDAK berkategori 'DLA'.")
+	case diag.HasAttachment == 0:
+		print("            -> Belum ada lampiran sama sekali pada klaim ini.")
+	default:
+		print("            -> Ketiga tahap awal lolos, sehingga yang menggugurkan " +
+			"adalah pencocokan nama berkasnya. Periksa akhiran nama berkas: " +
+			"ia harus NODLA ditambah tepat 4 karakter, misalnya '.pdf'.")
 	}
 }
 

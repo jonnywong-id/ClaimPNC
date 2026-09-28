@@ -73,6 +73,21 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// tombol itu menjawab alasan lewat rute tindakan di bawah.
 		perPortal.Get("/inbox-pla-dla-pre-dla/cetak/{kunci}", h.Print)
 
+		// **SATU-SATUNYA rute yang MENULIS di modul ini.**
+		//
+		// Ia menandai satu Pre-DLA terkirim (`SetTglKirimPreDLA_Act`). Tabelnya masih
+		// ditulis Pega selama masa paralel; konsekuensi `P-1` diterima Work Owner pada
+		// 2026-09-27 dan dipagari di sisi kueri — baris yang sudah terkirim tidak
+		// disentuh.
+		perPortal.Post("/inbox-pla-dla-pre-dla/cetak/{kunci}/kirim", h.SendPreDLA)
+
+		// **Rute yang MENGIRIM SURAT ke luar perusahaan.**
+		//
+		// Ia menggantikan tombol "SEND" (`UpdateDetailPLA2`). Urutannya dibalik dari
+		// Pega — surat dulu, penandaan kemudian — supaya tidak ada baris yang hilang
+		// dari antrean tanpa surat yang sampai. Lihat inboxpladlapredla/send.go.
+		perPortal.Post("/inbox-pla-dla-pre-dla/klaim/{kunci}/kirim", h.SendAdvice)
+
 		// Ketiga aksi tulis yang belum dibangun. Rutenya ADA supaya tombol di layar
 		// menjawab dengan alasan, bukan dengan "halaman tidak ditemukan" — lihat
 		// Handler.RejectWrite.

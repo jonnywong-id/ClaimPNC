@@ -41,6 +41,17 @@ var (
 // melainkan alasan spesifik mengapa tindakan ITU belum dapat dijalankan — dan alasannya
 // berbeda-beda, sehingga menjawabnya dengan satu kalimat yang sama untuk ketiganya akan
 // menyembunyikan apa yang sebenarnya kurang.
+// ErrPreDLAAlreadySent menyatakan Pre-DLA itu sudah terkirim sebelumnya.
+//
+// Ia BUKAN kegagalan. Dua petugas dapat menekan tombol yang sama, dan yang kedua harus
+// diberi tahu bahwa pekerjaannya sudah selesai — bukan diberi pesan kesalahan yang
+// membuatnya mencoba lagi.
+//
+// Ia juga pagar terhadap masalah `P-1`: selama Pega masih menulis tabel yang sama,
+// penandaan dari sini tidak boleh menimpa tanggal kirim yang sudah dicatat Pega.
+var ErrPreDLAAlreadySent = errors.New(
+	"inboxpladlapredla: Pre-DLA ini sudah terkirim")
+
 type Action string
 
 const (
@@ -50,14 +61,11 @@ const (
 	// ActionUpload adalah tombol **"Upload File Penunjang"** di atas grid rincian.
 	ActionUpload Action = "unggah-penunjang"
 
-	// ActionSendPreDLA adalah tombol **"Kirim Pre DLA"** DI DALAM panel "Print Pre DLA".
-	//
-	// Tombol "Print Pre DLA" sendiri BUKAN tindakan yang ditolak — ia membuka panel, dan
-	// panelnya sudah dibangun. Yang ditolak adalah tombol di dalamnya.
-	ActionSendPreDLA Action = "kirim-pre-dla"
-
 	// ActionDownloadAttachment adalah tombol unduh lampiran di dalam panel yang sama
 	// (`PNCDownloadFile` pada `Section/PrintPreDLA-Section.xml`).
+	//
+	// Berkasnya BUKAN di penyimpanan dokumen eksternal — lihat alasannya di
+	// actionReasons. Ia dapat dibangun dengan koneksi yang sudah ada.
 	ActionDownloadAttachment Action = "unduh-lampiran"
 )
 
@@ -79,14 +87,10 @@ var actionReasons = map[Action]string{
 		"menyimpan lampiran ke penyimpanan dokumen internal (`D-16`), yang belum " +
 		"tersambung. Kerjakan lewat Pega.",
 
-	ActionSendPreDLA: "Tombol \"Kirim Pre DLA\" belum tersedia di sistem baru. Ia " +
-		"menandai Pre-DLA sebagai terkirim beserta tanggalnya, dan tabel Pre-DLA " +
-		"masih DITULIS Pega selama masa paralel — hanya satu sistem yang boleh " +
-		"menulis satu tabel. Kerjakan lewat Pega.",
-
-	ActionDownloadAttachment: "Unduh lampiran belum tersedia di sistem baru. Berkasnya " +
-		"ada di penyimpanan dokumen internal (`D-16`), yang belum tersambung. " +
-		"Ambil lewat Pega.",
+	ActionDownloadAttachment: "Unduh lampiran belum dibangun. Berkasnya ada di tabel " +
+		"lampiran Pega dan dapat dibaca dengan koneksi yang sudah ada — ini " +
+		"pekerjaan yang belum diminta, bukan kemampuan yang belum tersedia. " +
+		"Ambil lewat Pega untuk sementara.",
 }
 
 // NotAvailableError menyatakan sebuah tombol ditekan yang tindakannya belum dibangun.

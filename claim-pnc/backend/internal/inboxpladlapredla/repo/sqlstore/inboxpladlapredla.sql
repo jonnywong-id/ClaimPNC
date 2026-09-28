@@ -359,3 +359,260 @@ SELECT c.NODLA                          AS ADVICE_NO,
    AND b.PYCATEGORY = 'DLA'
    AND SUBSTR(PXATTACHNAME, -15, 11) = c.NODLA
  ORDER BY c.NODLA
+
+-- name: print_pre_dla_diagnosa
+-- Menghitung berapa baris Pre-DLA yang LOLOS tiap tahap penyaring panel "Print Pre DLA".
+--
+-- Bind: :1 kunci klaim
+--
+-- Ia dipakai HANYA perintah pemeriksaan kesiapan, tidak oleh layar. Alasannya satu: panel
+-- yang kosong punya empat sebab berbeda yang semuanya tampak sama, sehingga menebak
+-- sebabnya memakan waktu lebih lama daripada menghitungnya.
+--
+-- ============================================================================
+-- TAHAP TERAKHIR YANG PALING SERING MENGGUGURKAN SEMUANYA
+-- ============================================================================
+--
+--   SUBSTR(PXATTACHNAME, -15, 11) = NODLA
+--
+-- Ia hanya dapat cocok bila `NODLA` tepat **11 karakter** DAN nama berkasnya berakhir
+-- dengan `NODLA` ditambah tepat **4 karakter** — misalnya `.pdf`:
+--
+--   nodla 11 kar + ".pdf"   -> cocok
+--   nodla 11 kar + ".jpeg"  -> TIDAK (ekornya 5 karakter)
+--   nodla 12 kar + ".pdf"   -> TIDAK (tergeser satu karakter)
+--   nodla 13 kar + ".pdf"   -> TIDAK
+--   "… (1).pdf"             -> TIDAK
+--
+-- Ketidakcocokan itu **tidak menghasilkan galat**. Ia hanya menghasilkan panel kosong.
+-- Karena itu panjang `NODLA` ikut dihitung di sini: bila kolom NODLA_11_KARAKTER bernilai
+-- nol sementara PRE_DLA_ADA tidak, sebabnya sudah pasti dan tidak perlu ditelusuri lagi.
+--
+-- `FROM DUAL` sengaja DIHINDARI meski kueri ini hanya diagnosa (`D-20`): satu
+-- pengecualian portabilitas yang dibiarkan masuk akan diikuti yang berikutnya.
+SELECT COUNT(*)                                            AS PRE_DLA_ADA,
+       COUNT(CASE WHEN LENGTH(c.NODLA) = 11
+                  THEN 1 END)                              AS NODLA_11_KARAKTER,
+       COUNT(CASE WHEN EXISTS (SELECT 1
+                                 FROM DATAPEGA.PC_LINK_ATTACHMENT b
+                                WHERE b.PXLINKEDREFFROM = c.CLAIMID)
+                  THEN 1 END)                              AS PUNYA_LAMPIRAN,
+       COUNT(CASE WHEN EXISTS (SELECT 1
+                                 FROM DATAPEGA.PC_LINK_ATTACHMENT b
+                                WHERE b.PXLINKEDREFFROM = c.CLAIMID
+                                  AND b.PYCATEGORY = 'DLA')
+                  THEN 1 END)                              AS KATEGORI_DLA
+  FROM POOLDATA.T_PREDLALIST c
+ WHERE c.CLAIMID = :1
+
+-- name: mark_pre_dla_sent
+-- Menandai SATU Pre-DLA sebagai terkirim beserta tanggalnya.
+--
+-- Bind: :1 kunci klaim · :2 nomor Pre-DLA
+--
+-- Sumber: `RDB List/GetPreDLAList-SQL.xml` bagian `pySaveSQL`, dijalankan
+-- `Activity/SetTglKirimPreDLA_Act-Act.xml` lewat `RDB-Save`.
+--
+-- ============================================================================
+-- SATU-SATUNYA KUERI TULIS DI MODUL INI — DAN IA MENYENTUH TABEL MILIK PEGA
+-- ============================================================================
+--
+-- `P-1` menetapkan satu tabel hanya boleh ditulis satu sistem selama masa paralel.
+-- `POOLDATA.T_PREDLALIST` masih ditulis Pega, sehingga kueri ini membuat keduanya menjadi
+-- penulis. Itu keputusan Work Owner 2026-09-27, diambil setelah keberatannya disampaikan.
+--
+-- Yang mengimbanginya ada di klausa `WHERE`: baris yang SUDAH terkirim tidak disentuh.
+-- Dengan begitu penandaan dari sini tidak pernah menimpa tanggal kirim yang sudah dicatat
+-- Pega, dan menekan tombol dua kali tidak menghasilkan dua tanggal yang berbeda.
+--
+-- ============================================================================
+-- TIGA PENYIMPANGAN DARI KUERI PEGA, SELURUHNYA DISENGAJA
+-- ============================================================================
+--
+-- **1. `CLAIMID` ikut menyaring.** Kueri Pega hanya menyaring `WHERE NODLA = …`, tanpa
+--    klaimnya. Bila satu nomor Pre-DLA dipakai dua klaim, penandaan itu mengenai
+--    KEDUANYA — dan kerusakannya tidak menghasilkan galat apa pun.
+--
+--    Ini bukan rekaan bentuk baru: `RDB List/UpdatePREDLAList-SQL.xml` menulis tabel yang
+--    SAMA dengan `WHERE claimid = … AND nodla = …`. Pega sendiri melakukannya di jalur
+--    lain; yang di sini yang menyimpang.
+--
+-- **2. `TGLKIRIM` diisi `CURRENT_TIMESTAMP`, bukan nilai yang dikirim layar.** Kueri Pega
+--    menerima `{updatetgldla.Date}`, dan `Section/PrintPreDLA-Section.xml:104789`
+--    menunjukkan layar mengirim `tmptglkirim = .TglDLA` — yaitu **tanggal kirim yang baru
+--    saja ditampilkan**. Pada Pre-DLA yang belum pernah dikirim, kolom itu KOSONG.
+--
+--    Jadi menekan "Kirim Pre DLA" pada Pre-DLA baru akan menandainya terkirim dengan
+--    tanggal kirim KOSONG. Itu kehilangan informasi yang tidak dapat dipulihkan, dan
+--    tidak ditiru. `UpdatePREDLAList` pada tabel yang sama memakai `sysdate`; pola itulah
+--    yang diikuti.
+--
+-- **3. `CURRENT_TIMESTAMP`, bukan `SYSDATE`.** Portabilitas (`D-20`). Keduanya sama di
+--    Oracle.
+--
+-- Waktunya diambil dari BASIS DATA, bukan dari jam aplikasi. Kolom yang sama ditulis Pega
+-- dengan `sysdate`; mengisi sebagian barisnya dengan jam aplikasi akan membuat satu kolom
+-- memuat waktu dari dua jam yang berbeda, dan selisih antarkeduanya tidak terlihat.
+UPDATE POOLDATA.T_PREDLALIST
+   SET ISKIRIM  = '1',
+       TGLKIRIM = CURRENT_TIMESTAMP
+ WHERE CLAIMID = :1
+   AND NODLA   = :2
+   AND (ISKIRIM IS NULL OR ISKIRIM <> '1')
+
+-- name: advice_for_sending_pla
+-- Satu PLA beserta keterangan reasuradur dan klaimnya, untuk menyusun suratnya.
+--
+-- Bind: :1 kunci klaim · :2 nomor PLA
+--
+-- `TYPE` pada gabungan ke `T_REINSURER` adalah **huruf pertama nomor dokumen**. Itu bukan
+-- tebakan: `RDB List/GetDataPreDLA-SQL.xml` memakai `substr(a.NODLA,0,1) = TYPE` pada
+-- sub-kueri yang membaca `LOGIN` dan `COUNTRY` dari tabel yang sama.
+--
+-- Gabungannya `LEFT JOIN`, bukan `JOIN`. Reasuradur yang belum terdaftar di master tidak
+-- boleh menghentikan pengiriman — alamatnya ada di baris dokumennya sendiri, dan master
+-- itu justru yang akan DIISI setelah suratnya terkirim.
+SELECT p.NOPLA                       AS ADVICE_NO,
+       p.TIPEPLA                     AS ADVICE_TYPE,
+       p.PLAREINSURER                AS REINSURER,
+       p.REINSCODE                   AS REINSURER_ID,
+       p.EMAILPLA                    AS EMAIL,
+       NVL(p.ISKIRIM, '0')           AS SENT,
+       r.LOGIN                       AS REINSURER_LOGIN,
+       r.COUNTRY                     AS COUNTRY,
+       c.CLAIMNO                     AS CLAIM_NO,
+       c.NOPOLIS                     AS POLICY_NO,
+       c.QQNAME                      AS INSURED,
+       c.BUSINESSNAME                AS BUSINESS,
+       c.DATEOFLOSS                  AS LOSS_DATE
+  FROM POOLDATA.T_PLALIST p
+  JOIN POOLDATA.T_CLAIM_PNC c
+    ON c.CLAIMID = p.CLAIMID
+  LEFT JOIN POOLDATA.T_REINSURER r
+    ON r.REINSURERID = p.REINSCODE
+   AND r.TYPE = SUBSTR(p.NOPLA, 1, 1)
+ WHERE p.CLAIMID = :1
+   AND p.NOPLA   = :2
+
+-- name: advice_for_sending_dla
+-- Sama dengan advice_for_sending_pla, untuk tabel DLA.
+--
+-- Urutan dan nama aliasnya WAJIB sama persis: satu pemindai melayani keduanya, dan kolom
+-- yang bergeser pada salah satunya tidak menghasilkan galat — hanya isi yang tertukar.
+SELECT d.NODLA                       AS ADVICE_NO,
+       d.TIPEDLA                     AS ADVICE_TYPE,
+       d.DLAREINSURER                AS REINSURER,
+       d.REINSCODE                   AS REINSURER_ID,
+       d.EMAILDLA                    AS EMAIL,
+       NVL(d.ISKIRIM, '0')           AS SENT,
+       r.LOGIN                       AS REINSURER_LOGIN,
+       r.COUNTRY                     AS COUNTRY,
+       c.CLAIMNO                     AS CLAIM_NO,
+       c.NOPOLIS                     AS POLICY_NO,
+       c.QQNAME                      AS INSURED,
+       c.BUSINESSNAME                AS BUSINESS,
+       c.DATEOFLOSS                  AS LOSS_DATE
+  FROM POOLDATA.T_DLALIST d
+  JOIN POOLDATA.T_CLAIM_PNC c
+    ON c.CLAIMID = d.CLAIMID
+  LEFT JOIN POOLDATA.T_REINSURER r
+    ON r.REINSURERID = d.REINSCODE
+   AND r.TYPE = SUBSTR(d.NODLA, 1, 1)
+ WHERE d.CLAIMID = :1
+   AND d.NODLA   = :2
+
+-- name: attachments_for_claim
+-- Berkas lampiran satu klaim pada satu kategori, beserta ISINYA.
+--
+-- Bind: :1 kunci klaim · :2 kategori (`PLA` atau `DLA`)
+--
+-- Sumbernya sama dengan yang dibaca `Obj-Open-By-Handle` pada
+-- `Activity/PNCGetListPreDla-Act.xml` — tabel lampiran Pega, bukan penyimpanan dokumen
+-- eksternal (`D-16`).
+--
+-- **Isinya ikut terbaca.** Itu disengaja dan berbeda dari panel "Print Pre DLA", yang
+-- hanya mengambil kuncinya: di sini isinya memang dibutuhkan, karena ia yang dilampirkan
+-- ke surat. Batasnya disadari — satu surat memuat dokumen pendukung satu klaim, bukan
+-- arsip.
+SELECT a.PXATTACHNAME                AS NAME,
+       a.PYATTACHMIMETYPE            AS MIME_TYPE,
+       a.PYATTACHSTREAM              AS CONTENT
+  FROM DATAPEGA.PC_DATA_WORKATTACH a
+  JOIN DATAPEGA.PC_LINK_ATTACHMENT b
+    ON b.PXLINKEDREFTO = a.PZINSKEY
+ WHERE a.PXREFOBJECTKEY = :1
+   AND b.PXLINKEDREFFROM = :1
+   AND b.PYCATEGORY = :2
+ ORDER BY a.PXATTACHNAME
+
+-- name: mark_advice_sent_pla
+-- Menandai satu PLA terkirim beserta tanggal dan alamat tujuannya.
+--
+-- Bind: :1 kunci klaim · :2 nomor PLA · :3 alamat tujuan
+--
+-- Sumber: `RDB List/UpdatePLAList-SQL.xml`. Bentuknya ditiru, termasuk pengisian
+-- `TGLTERIMAPLA` dengan waktu yang sama — Pega memakai `sysdate` untuk keduanya.
+--
+-- Penyaring `ISKIRIM <> '1'` DITAMBAHKAN, dengan alasan yang sama seperti pada Pre-DLA:
+-- selama Pega masih menulis tabel ini (`P-1`), penandaan dari sini tidak boleh menimpa
+-- tanggal kirim yang sudah tercatat.
+UPDATE POOLDATA.T_PLALIST
+   SET ISKIRIM      = '1',
+       TGLKIRIM     = CURRENT_TIMESTAMP,
+       TGLTERIMAPLA = CURRENT_TIMESTAMP,
+       EMAILPLA     = :3
+ WHERE CLAIMID = :1
+   AND NOPLA   = :2
+   AND (ISKIRIM IS NULL OR ISKIRIM <> '1')
+
+-- name: mark_advice_sent_dla
+-- Menandai satu DLA terkirim. Bind dan bentuknya sama dengan jalur PLA.
+UPDATE POOLDATA.T_DLALIST
+   SET ISKIRIM      = '1',
+       TGLKIRIM     = CURRENT_TIMESTAMP,
+       TGLTERIMADLA = CURRENT_TIMESTAMP,
+       EMAILDLA     = :3
+ WHERE CLAIMID = :1
+   AND NODLA   = :2
+   AND (ISKIRIM IS NULL OR ISKIRIM <> '1')
+
+-- name: update_reinsurer_email
+-- Memperbarui alamat surel satu reasuradur pada master.
+--
+-- Bind: :1 alamat · :2 REINSURERID · :3 REINSURERNAME · :4 TYPE
+--
+-- ============================================================================
+-- MENGGANTIKAN `Database/UPDATEREAS.prc` — TIGA CABANGNYA MENJADI SATU
+-- ============================================================================
+--
+-- Procedure lamanya bercabang tiga, dan ketiganya berakhir pada satu hal yang sama:
+-- alamat surel reasuradur itu diperbarui.
+--
+--   1  baris (ID, NAMA, TYPE) ada          -> UPDATE alamatnya
+--   2  ada dengan TYPE '1'                 -> UPDATE alamat DAN pindahkan TYPE-nya
+--   3  tidak ada sama sekali               -> INSERT baris baru
+--
+-- Cabang 2 dan 3 TIDAK dibawa, dan itu keputusan yang perlu disebut alasannya.
+--
+-- **Cabang 2 mengubah `TYPE` baris yang sudah ada.** `TYPE` adalah bagian kunci alami
+-- baris itu — huruf pertama nomor dokumen — dan memindahkannya berarti baris yang semula
+-- melayani satu jenis dokumen kini melayani jenis lain. Pengiriman surat bukan tempat
+-- yang tepat untuk mengubah kunci master.
+--
+-- **Cabang 3 membuat baris master baru.** Master reasuransi diisi `F-4`, bukan oleh
+-- tombol kirim. Membuat baris master sebagai efek samping pengiriman surat berarti
+-- mengisi master dari jalur yang tidak punya validasi master sama sekali — termasuk
+-- `COUNTRY` yang di procedure lama dicari lewat `SELECT ID INTO` tanpa penanganan bila
+-- negaranya tidak ditemukan.
+--
+-- Akibat yang diterima: reasuradur yang belum terdaftar di master tidak akan tercatat
+-- alamatnya. Suratnya TETAP terkirim — alamatnya diambil dari baris dokumennya, bukan
+-- dari master — dan nol baris terpengaruh di sini bukan galat.
+--
+-- Empat `COMMIT` di dalam procedure lamanya juga tidak dibawa: pernyataan ini berjalan di
+-- dalam transaksi pemanggilnya (`D-68`).
+UPDATE POOLDATA.T_REINSURER
+   SET EMAIL = :1
+ WHERE REINSURERID   = :2
+   AND REINSURERNAME = :3
+   AND TYPE          = :4

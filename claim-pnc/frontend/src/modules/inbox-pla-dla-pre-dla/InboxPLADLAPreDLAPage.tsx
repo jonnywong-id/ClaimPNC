@@ -8,6 +8,8 @@ import { TabBar } from '@/components/TabBar'
 import {
   Tindakan,
   useEksporPLADLA,
+  useKirimPreDLA,
+  useKirimSurat,
   usePLADLACetak,
   usePLADLADokumen,
   usePLADLAList,
@@ -67,9 +69,9 @@ const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
  *	Bilah tiga tab                 PLA · DLA · Pre DLA
  *	Keterangan daftar              satu kalimat, tidak ada di Pega
  *	Panel pencarian                Dari · Sampai · No Klaim · CARI DATA
- *	Grid antrean                   7 kolom + kolom aksi, paginasi 10 baris
- *	Panel bawah                    dibuka tombol pada BARIS — grid rincian pada PLA
- *	                               dan DLA, panel Print Pre DLA pada Pre DLA
+ *	Grid antrean                   7 kolom, paginasi 10 baris
+ *	Panel bawah                    PLA · DLA  -> klik NOMOR KLAIM
+ *	                               Pre DLA    -> tombol "Print Pre DLA" pada barisnya
  *	Selisih terencana              di kaki
  */
 export function InboxPLADLAPreDLAPage() {
@@ -115,6 +117,16 @@ export function InboxPLADLAPreDLAPage() {
   const dokumen = usePLADLADokumen(aktif, membukaCetak ? '' : kunciDibuka)
   const cetak = usePLADLACetak(membukaCetak ? kunciDibuka : '')
 
+  // Penandaan "Kirim Pre DLA" — satu-satunya operasi TULIS di layar ini.
+  //
+  // Ia terpisah dari `tindakan` yang melayani tombol-tombol yang belum dibangun: yang ini
+  // benar-benar bekerja, dan jawabannya bukan alasan melainkan hasil.
+  const kirimPreDLA = useKirimPreDLA(kunciDibuka)
+
+  // Pengiriman surat PLA/DLA — satu-satunya operasi di layar ini yang menyentuh dunia
+  // di luar perusahaan, dan satu-satunya yang tidak dapat ditarik kembali.
+  const kirimSurat = useKirimSurat(aktif, kunciDibuka)
+
   // Ketiga tombol yang belum dibangun memakai SATU mutation.
   //
   // Bukan tiga: yang dijawab server berbeda-beda, tetapi cara layar menanganinya sama
@@ -147,6 +159,8 @@ export function InboxPLADLAPreDLAPage() {
     // Tanpa ini, penjelasan tentang "Send" tetap tergambar setelah pengguna berpindah
     // ke tab Pre DLA — yang bahkan tidak punya tombol itu.
     tindakan.reset()
+    kirimPreDLA.reset()
+    kirimSurat.reset()
   }
 
   function cari() {
@@ -154,6 +168,8 @@ export function InboxPLADLAPreDLAPage() {
     setPage(1)
     setDibuka(null)
     tindakan.reset()
+    kirimPreDLA.reset()
+    kirimSurat.reset()
   }
 
   function bersihkan() {
@@ -162,6 +178,8 @@ export function InboxPLADLAPreDLAPage() {
     setPage(1)
     setDibuka(null)
     tindakan.reset()
+    kirimPreDLA.reset()
+    kirimSurat.reset()
   }
 
   if (meta.isPending) {
@@ -277,8 +295,14 @@ export function InboxPLADLAPreDLAPage() {
           error={dokumen.error}
           onClose={() => setDibuka(null)}
           onUpload={() => minta(Tindakan.unggahPenunjang)}
-          onSend={() => minta(Tindakan.kirim)}
-          busy={tindakan.isPending}
+          onSend={(dokumen) => kirimSurat.mutate(dokumen.no_advice)}
+          busy={tindakan.isPending || kirimSurat.isPending}
+          pesanKirim={
+            kirimSurat.isSuccess
+              ? `${kirimSurat.data.pesan} ${kirimSurat.data.penerima} penerima, ` +
+                `${kirimSurat.data.lampiran} lampiran.`
+              : ''
+          }
         />
       )}
 
@@ -291,8 +315,9 @@ export function InboxPLADLAPreDLAPage() {
           isError={cetak.isError}
           error={cetak.error}
           onClose={() => setDibuka(null)}
-          onKirim={() => minta(Tindakan.kirimPreDLA)}
-          busy={tindakan.isPending}
+          onKirim={(dokumen) => kirimPreDLA.mutate(dokumen.no_advice)}
+          busy={kirimPreDLA.isPending}
+          pesanKirim={kirimPreDLA.isSuccess ? kirimPreDLA.data.pesan : ''}
         />
       )}
 
@@ -308,6 +333,39 @@ export function InboxPLADLAPreDLAPage() {
         <ErrorMessage
           title="Tombol ini belum dapat dijalankan"
           description={pesanGalat(tindakan.error)}
+          tone="penolakan"
+        />
+      )}
+
+      {/*
+        Penolakan penandaan Pre-DLA digambar TERPISAH dari penolakan tombol yang belum
+        dibangun, dan judulnya berbeda.
+
+        Sebab yang paling sering bukan kerusakan melainkan keadaan yang sudah berubah —
+        Pre-DLA itu sudah ditandai petugas lain atau lewat Pega. "Tombol ini belum dapat
+        dijalankan" akan salah menggambarkannya, dan pengguna akan mengira layarnya rusak
+        padahal pekerjaannya justru sudah selesai.
+      */}
+      {/*
+        Kegagalan pengiriman surat digambar TERPISAH, dan judulnya menyebut suratnya.
+
+        Sebabnya bermacam-macam dan akibatnya BERBEDA: surat yang tidak terkirim sama
+        sekali aman diulang; surat yang terkirim tetapi gagal dicatat TIDAK boleh
+        diulang. Pesan dari server yang membedakannya, dan judul yang seragam akan
+        menenggelamkan perbedaan itu.
+      */}
+      {kirimSurat.error != null && (
+        <ErrorMessage
+          title="Surat tidak dapat dikirim"
+          description={pesanGalat(kirimSurat.error)}
+          tone="gangguan"
+        />
+      )}
+
+      {kirimPreDLA.error != null && (
+        <ErrorMessage
+          title="Pre-DLA tidak dapat ditandai terkirim"
+          description={pesanGalat(kirimPreDLA.error)}
           tone="penolakan"
         />
       )}
@@ -359,21 +417,36 @@ function kolomAntrean(
     key: item.kunci,
     title: item.judul,
     value: (row) => nilaiSel(row, item.kunci),
-    render: (row) => gambarSel(row, item.kunci, item.tanggal),
+    render: (row) =>
+      // Nomor klaim adalah TAUTAN yang membuka grid rincian — bukan teks biasa.
+      //
+      // Begitu pula di Pega: sel `.BRANCH_CODE` membawa `pyAction = refresh` beserta
+      // parameter `caseId` bernilai `.BRANCH_NAME`, yakni menyegarkan grid rincian
+      // dengan kunci klaim baris itu
+      // (`Section/InboxPLA_sect-Section.xml:171096`).
+      //
+      // Hanya pada daftar yang PUNYA rincian. Di tab Pre DLA nomor klaimnya teks biasa,
+      // dan yang membuka panelnya adalah tombol pada barisnya — tautan yang tidak
+      // membuka apa-apa lebih buruk daripada teks biasa.
+      item.kunci === 'no_klaim' && daftar.punya_rincian ? (
+        <button
+          type="button"
+          onClick={() => onBuka(row)}
+          className="rounded-kontrol px-1 text-left font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {nilaiSel(row, item.kunci) || '—'}
+        </button>
+      ) : (
+        gambarSel(row, item.kunci, item.tanggal)
+      ),
   }))
 
-  // Kolom aksi ada pada KETIGA daftar, tetapi tombolnya berbeda — dan judulnya datang
-  // dari server (`label_aksi_baris`), bukan ditentukan di sini.
+  // Kolom aksi hanya ada pada Pre DLA, dan judulnya datang dari server.
   //
-  //	PLA · DLA   "Rincian"         membuka grid "Detail PLA/DLA List"
-  //	Pre DLA     "Print Pre DLA"   membuka panel `PNCInboxPrintPreDLA`
-  //
-  // Ketiganya tombol PER BARIS, bukan satu tombol di bawah tabel. Pada tab Pre DLA itu
-  // terbukti dari letaknya di section: label tombolnya berada DI DALAM blok berulang,
-  // berdampingan dengan kolom `BRANCH_NAME` dan dengan `pyLocalAction`-nya sendiri.
-  //
-  // Menggambarnya sebagai satu tombol di bawah grid — seperti yang sempat dilakukan —
-  // membuatnya tampak bekerja atas seluruh daftar, padahal ia membuka SATU klaim.
+  // PLA dan DLA tidak punya kolom ini sama sekali: rinciannya dibuka dengan mengklik
+  // nomor klaim, persis seperti di Pega. Tab Pre DLA punya tombol bernama di dalam
+  // barisnya, dan letaknya terbukti dari section — label tombolnya berada DI DALAM blok
+  // berulang, berdampingan dengan `pyLocalAction`-nya sendiri.
   const judulAksi = judulTombolBaris(daftar)
 
   if (judulAksi !== '') {
@@ -423,7 +496,12 @@ function judulTombolBaris(daftar: Daftar): string {
   if (daftar.label_aksi_baris !== undefined) return daftar.label_aksi_baris
 
   if (daftar.punya_cetak) return 'Print Pre DLA'
-  if (daftar.punya_rincian) return 'Rincian'
+
+  // `punya_rincian` TIDAK lagi menghasilkan tombol.
+  //
+  // Sejak 2026-09-27 rincian dibuka dengan mengklik nomor klaim, dan cadangan yang
+  // mengembalikan 'Rincian' akan menghidupkan kembali kolom yang baru saja dihapus —
+  // pada peladen lama pengguna akan melihat DUA jalan menuju panel yang sama.
   return ''
 }
 

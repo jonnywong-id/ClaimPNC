@@ -28,14 +28,17 @@ type Props = {
   onUpload: () => void
 
   /**
-   * Tombol **"SEND"** — di BAWAH grid, persis letaknya di Pega.
+   * Tombol **"SEND"** — satu per BARIS di dalam grid, persis letaknya di Pega.
    *
    * Belum dibangun; menekannya menjawab alasannya.
    */
-  onSend: () => void
+  onSend: (dokumen: Dokumen) => void
 
   /** Sedang menunggu jawaban salah satu tombol di atas. */
   busy: boolean
+
+  /** Pesan hasil pengiriman terakhir; kosong berarti belum ada. */
+  pesanKirim?: string
 }
 
 /**
@@ -56,6 +59,24 @@ type Props = {
  * Kueri lamanya pun tidak menyaring `ISKIRIM`. Kolom "Terkirim" dan "Tanggal Kirim" justru
  * ada supaya perbedaannya terlihat — dan pada klaim yang sebagian dokumennya sudah
  * dikirim, itulah satu-satunya cara mengetahui sisa pekerjaannya.
+ *
+ * # "SEND" adalah tombol PER BARIS
+ *
+ * Di Pega ia sel di dalam grid ini (`Embed-Display-Table-Cell`), bukan tombol di bawahnya.
+ * Perbedaannya bukan tata letak: satu tombol di bawah grid mengirim SELURUH dokumen
+ * klaim, tombol per baris mengirim SATU dokumen — dan keduanya menghasilkan surat yang
+ * berbeda ke reasuradur yang berbeda.
+ *
+ * # Syarat tampilnya SENGAJA tidak dibawa
+ *
+ * Pega menyembunyikan tombol ini pada dokumen yang sudah terkirim (`.MARKETING != '1'`,
+ * dengan `MARKETING` sebagai alias untuk `ISKIRIM`). Penyembunyian itu **tidak dibawa**
+ * atas keputusan Work Owner 2026-09-27: tombolnya digambar pada setiap baris.
+ *
+ * Akibatnya kolom "Terkirim" menjadi satu-satunya penanda dokumen mana yang sudah
+ * dikirim. Hari ini tidak berbahaya — tombolnya menjawab alasan dan tidak mengirim apa
+ * pun. Ia menjadi berbahaya pada hari Send benar-benar dibangun, dan itu dicatat sebagai
+ * selisih terencana supaya tidak terlewat pada hari itu.
  */
 export function DocumentPanel({
   daftar,
@@ -68,6 +89,7 @@ export function DocumentPanel({
   onUpload,
   onSend,
   busy,
+  pesanKirim,
 }: Props) {
   return (
     <section
@@ -105,7 +127,7 @@ export function DocumentPanel({
       </header>
 
       <DataTable<Dokumen>
-        columns={kolomDokumen(daftar)}
+        columns={kolomDokumen(daftar, onSend, busy)}
         rows={data ?? []}
         rowKey={(row) => `${row.no_advice}-${row.tanggal_dokumen}`}
         label={`Rincian ${daftar.nama}`}
@@ -125,22 +147,21 @@ export function DocumentPanel({
         }
       />
 
-      {/*
-        "SEND" ada di BAWAH grid rincian di Pega, dan letaknya dipertahankan.
+      <p className="mt-3 text-xs text-slate-500">
+        Tombol <strong>Send</strong> mengirim <strong>satu</strong> {daftar.nama} beserta
+        lampirannya ke reasuradur lewat surel, lalu menandainya terkirim. Surat yang sudah
+        terkirim tidak dapat ditarik kembali — periksa kolom <strong>Terkirim</strong>
+        sebelum menekannya.
+      </p>
 
-        Ia bekerja atas SELURUH dokumen klaim yang sedang dibuka, bukan atas baris
-        terpilih: grid rinciannya tidak punya pilihan baris sama sekali —
-        `Section/InboxPLA_sect-Section.xml` memuat nol `pySelected` — dan
-        `UpdateDetailPLA2` memutari daftarnya.
-      */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={onSend} disabled={busy}>
-          {busy ? 'Memeriksa…' : 'Send'}
-        </Button>
-        <p className="text-xs text-slate-500">
-          Mengirim seluruh {daftar.nama} klaim ini ke reasuradur.
+      {pesanKirim != null && pesanKirim !== '' && (
+        <p
+          role="status"
+          className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        >
+          {pesanKirim}
         </p>
-      </div>
+      )}
     </section>
   )
 }
@@ -155,13 +176,37 @@ export function DocumentPanel({
  * bukan dari pilihan tampilan. Menuliskannya dengan tangan di sini berarti daftar yang
  * sama hidup di dua tempat.
  */
-function kolomDokumen(daftar: Daftar): Column<Dokumen>[] {
-  return daftar.kolom_rincian.map((kolom) => ({
-    key: kolom.kunci,
-    title: kolom.judul,
-    value: (row) => nilaiSel(row, kolom.kunci),
-    render: (row) => gambarSel(row, kolom.kunci, kolom.tanggal),
+function kolomDokumen(
+  daftar: Daftar,
+  onSend: (dokumen: Dokumen) => void,
+  busy: boolean,
+): Column<Dokumen>[] {
+  const kolom: Column<Dokumen>[] = daftar.kolom_rincian.map((item) => ({
+    key: item.kunci,
+    title: item.judul,
+    value: (row) => nilaiSel(row, item.kunci),
+    render: (row) => gambarSel(row, item.kunci, item.tanggal),
   }))
+
+  // Kolom "SEND" — sel tombol di dalam grid, persis seperti di Pega.
+  //
+  // Tombolnya ada pada SETIAP baris, termasuk dokumen yang sudah terkirim. Syarat tampil
+  // Pega (`.MARKETING != '1'`) sengaja tidak dibawa — lihat catatan di kepala berkas.
+  kolom.push({
+    key: 'aksi',
+    title: '',
+    width: '6rem',
+    noSort: true,
+    alignRight: true,
+    value: () => '',
+    render: (row) => (
+      <Button type="button" onClick={() => onSend(row)} disabled={busy}>
+        {busy ? '…' : 'Send'}
+      </Button>
+    ),
+  })
+
+  return kolom
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */

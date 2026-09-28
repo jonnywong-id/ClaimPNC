@@ -20215,3 +20215,820 @@ backend  > go build -o claimpnc.exe ./cmd/claimpnc  (27 Sep 09:34)
 
 Bundel barunya diperiksa memuat jejak `Print Pre DLA` dan `inbox-pla-dla-pre-dla` — yang
 lama tidak memuat satu pun.
+
+## 64. "Send" ternyata per baris, dan diagnosa panel Pre DLA yang kosong (2026-09-27)
+
+### 64.1 Apa yang dilaporkan
+
+*"Untuk send dia ada visibiltynya `.MARKETING != '1'` dia tampil per row, sama untuk print
+pre dla masih belum keluar datanya, apa yg perlu dikirim"*
+
+Dua hal berbeda. Yang pertama membatalkan pernyataan §62.2 dan §63; yang kedua adalah
+masalah data, bukan kode.
+
+### 64.2 "Send" adalah tombol PER BARIS — §62.2 dan §61.5 salah
+
+§62.2 menyatakan Send berada di BAWAH grid rincian dan bekerja atas SELURUH dokumen klaim.
+Dasarnya: `pySelected` nol kemunculan di ketiga section, sehingga gridnya dianggap tidak
+punya pilihan baris.
+
+**Pengamatan itu benar; kesimpulannya salah.** Tidak adanya kotak centang bukan berarti
+tombolnya bekerja atas semua baris — ia berarti **barisnya sendiri yang menjadi
+pilihannya**.
+
+Pembuktian ulang memakai batas layout, bukan urutan kemunculan:
+
+| Penanda | Offset |
+|---|---|
+| grid rincian dibuka — `pyBodyType = REPEATING` | 282.226 |
+| sumbernya — `pyPageListProperty = TempPLAList.pxResults` | 282.334 |
+| **sel tombol — `pyLabelPreview = SEND`, `Embed-Display-Table-Cell`** | **397.902** |
+| **syarat tampil — `pyCondition = .MARKETING != '1'`, `pyVisible = OTHER`** | **407.924** |
+| grid rincian ditutup — `pyBodyType = ACTION` | 416.244 |
+
+Selnya bertipe **sel tabel**, berada di dalam blok berulang, dan syarat tampilnya membaca
+properti BARIS. Ketiganya menunjuk hal yang sama.
+
+**Selisihnya bukan tata letak.** Satu tombol di bawah grid mengirim seluruh dokumen klaim;
+tombol per baris mengirim satu. Keduanya menghasilkan surat yang berbeda ke reasuradur
+yang berbeda.
+
+Pemeriksaan yang sama dijalankan pada "Upload File Penunjang" (offset 244.797): ia berada
+**di luar** kedua blok berulang. Letaknya tidak berubah.
+
+### 64.3 `.MARKETING` adalah `ISKIRIM` — dan datanya sudah ada
+
+Nama kondisinya menyesatkan, dan kuerinya yang membuktikan:
+
+```sql
+-- RDB List/GetPLAList-SQL.xml
+select … iskirim AS MARKETING, …
+-- RDB List/GetDLAList-SQL.xml
+select … iskirim AS MARKETING, …
+```
+
+`.MARKETING != '1'` karena itu berarti **"dokumen ini belum terkirim"**. Masuk akal secara
+bisnis: tombol kirim tidak layak ada pada dokumen yang sudah sampai ke reasuradur.
+
+Akibatnya **tidak ada kolom baru yang perlu diambil**. `Document.Sent` sudah membawa
+`ISKIRIM`, dan syaratnya menjadi `Document.CanSend()`.
+
+Dua kondisi `MARKETING` lain di section yang sama — `pyDisabledWhen = .MARKETING == '1'`
+pada sebuah kolom tanggal, dan `pyReadOnlyCondition = .MARKETING != ''` — **tidak dibawa**:
+kedua kolom itu di sini digambar baca-saja, sehingga menonaktifkannya tidak berarti apa
+pun.
+
+### 64.4 Kenapa syaratnya dinilai di SERVER, bukan `terkirim !== '1'` di layar
+
+`Document.CanSend()` dihitung domain dan dikirim per baris sebagai `boleh_kirim`.
+
+Perbandingan di layar akan bekerja hari ini dan salah pada hari aturannya berubah — dan
+aturan ini adalah **hasil pembacaan export**, sama halnya dengan daftar kolom. Ia sudah
+tersimpan di satu tempat; menyalinnya ke layar membuat dua.
+
+`TestSendIsOfferedOnlyOnDocumentsNotYetSent` menguji **kelima** bentuk nilai yang nyata —
+kosong, `"0"`, `" 0 "`, `"1"`, `" 1 "` — bukan hanya dua. Menguji `"1"` saja akan lolos
+meski nilai kosong salah ditangani, dan kosong adalah nilai yang paling sering muncul.
+
+Selnya **kosong** pada dokumen yang sudah terkirim, bukan tombol yang dinonaktifkan. Itu
+yang dilakukan Pega: syaratnya `pyVisible = OTHER`, bukan `pyDisabledWhen`.
+
+### 64.5 Panel Pre DLA kosong — sebabnya aritmetika, bukan kode
+
+Kuerinya mencocokkan nama berkas lampiran dengan nomor Pre-DLA:
+
+```sql
+SUBSTR(PXATTACHNAME, -15, 11) = NODLA
+```
+
+Sebelas karakter, diambil lima belas karakter dari ujung. Ia hanya dapat cocok bila
+**`NODLA` tepat 11 karakter** DAN nama berkasnya berakhir dengan `NODLA` ditambah **tepat
+4 karakter**:
+
+| `NODLA` | akhiran | hasil |
+|---|---|---|
+| 11 karakter | `.pdf` | **cocok** |
+| 11 karakter | `.jpeg` | tidak — ekornya 5 karakter |
+| 12 karakter | `.pdf` | tidak — tergeser satu |
+| 13 karakter (`PRE/2026/0001`) | `.pdf` | tidak |
+| apa pun | `… (1).pdf` | tidak |
+
+**Ketidakcocokan itu tidak menghasilkan galat.** Ia menghasilkan panel kosong — di Pega
+sekalipun.
+
+Jadi panel yang kosong belum tentu cacat sistem baru. Ia bisa berarti klaimnya belum punya
+Pre-DLA, lampirannya belum ada, kategorinya bukan `DLA`, atau penamaan berkasnya tidak
+berpola seperti di atas. **Keempatnya tampak sama.**
+
+### 64.6 Diagnosa ditambahkan ke perintah pemeriksaan, bukan ditebak
+
+Kueri `print_pre_dla_diagnosa` menghitung berapa baris lolos tiap tahap, dan
+`claimpnc.exe -periksa` mencetaknya beserta kesimpulannya:
+
+```
+[catatan] Panelnya kosong untuk klaim contoh. Menghitung tahap mana yang menggugurkan:
+          Pre-DLA pada klaim ini        : 3
+          NODLA tepat 11 karakter       : 0
+          punya lampiran apa pun        : 3
+          lampiran berkategori 'DLA'    : 3
+          -> SEBABNYA DI SINI. … panel TIDAK AKAN PERNAH berisi — di Pega sekalipun.
+```
+
+Ia **tidak** masuk seam `Repo`: layar tidak memanggilnya, dan pengisi memori tidak perlu
+menjawab pertanyaan yang hanya berarti bagi Oracle. Ia method pada `*sqlstore.Repo`, dan
+dipakai hanya oleh perintah pemeriksaan.
+
+`FROM DUAL` sengaja dihindari meski ini hanya diagnosa (`D-20`): satu pengecualian
+portabilitas yang dibiarkan masuk akan diikuti yang berikutnya.
+
+### 64.7 Yang BENAR-BENAR hilang dari export
+
+Satu artefak, dan ia menyangkut panel Pre DLA:
+
+> **Aktivitas yang mengisi halaman `tempPreDLA` dan menetapkan `tempnoklaim.NO_DLA`.**
+
+Buktinya ia tidak ada:
+
+| Yang dicari | Hasil |
+|---|---|
+| `tempPreDLA` di seluruh export | hanya di `Section/PrintPreDLA-Section.xml` |
+| `tempnoklaim` di seluruh export | hanya di `RDB List/GetPreDLAList-SQL.xml` |
+| aktivitas pra/pasca pada `PNCInboxPrintPreDLA-FA` | **tidak ada** |
+| rujukan aktivitas di `PNCInboxPreDLA_sect` | hanya `pyLocalAction PNCInboxPrintPreDLA` |
+
+Tanpa aktivitas itu, satu hal tidak dapat dipastikan: **apakah `tempnoklaim.NO_DLA`
+benar-benar menerima kunci klaim**, atau menerima sesuatu yang lain lalu dipetakan.
+
+Bukti tidak langsung menyatakan ia kunci klaim — `GetPNCList_PreDLA` menyandingkan
+`t_predlalist.claimid` dengan `t_claim_pnc.claimid`, dan kueri panelnya menyandingkan
+`c.claimid` dengan `a.pxRefObjectKey`. Implementasi di sini mengikuti bacaan itu.
+Aktivitasnya akan menutup keraguannya.
+
+### 64.8 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | `Document.CanSend()` |
+| `internal/inboxpladlapredla/tab.go` | `FieldCanSend` |
+| `internal/inboxpladlapredla/http/dto.go` | `boleh_kirim` per baris |
+| `…/repo/sqlstore/inboxpladlapredla.sql` · `.go` | kueri dan method diagnosa |
+| `cmd/claimpnc/check.go` | diagnosa dicetak beserta kesimpulannya |
+| `modules/inbox-pla-dla-pre-dla/DocumentPanel.tsx` | Send pindah ke kolom aksi per baris |
+| `modules/inbox-pla-dla-pre-dla/types.ts` | `boleh_kirim` |
+
+### 64.9 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` modul PLA/DLA + `app` | **32 lulus** |
+
+Uji baru: **1 Go** (kelima bentuk `ISKIRIM`) dan **2 frontend** (tepat satu tombol Send
+pada dua dokumen yang salah satunya sudah terkirim · kalimat yang menyatakan ia mengirim
+satu dokumen).
+
+Kedua artefak dibangun ulang: `spa/dist` dan `claimpnc.exe`, 27 Sep 10:03.
+
+## 65. `PNCGetListPreDla` dan DT `GetListPreDLA` dibaca — rantainya lengkap (2026-09-27)
+
+### 65.1 Yang dikirim Work Owner
+
+*"dia ada jalanin activity `PNCGetListPreDla` setelah jalan DT `GetListPreDLA` untuk
+menghasilkan `tempPreDLA`"*
+
+`Activity/PNCGetListPreDla-Act.xml` baru dikirim. **`Data Transform/GetListPreDLA-DT.xml`
+ternyata sudah ada sejak 17 September** — saya melewatkannya pada §64.7, karena pencarian
+saya hanya menyapu `Activity/`, `Flow Action/`, dan `Section/`, tidak `Data Transform/`.
+
+Itu kesalahan yang layak dicatat bentuknya: saya menyatakan sebuah artefak "tidak ada di
+export" berdasarkan pencarian yang **tidak menyapu seluruh export**. Pernyataan
+ketiadaan hanya sekuat cakupan pencariannya, dan cakupan itu tidak saya sebutkan.
+
+### 65.2 Rantai lengkapnya
+
+```
+DT GetListPreDLA        tempnoklaim.NO_DLA := Param.noklaim      (satu langkah, itu saja)
+        │
+Activity PNCGetListPreDla
+  1  Property-Set       langkah kosong, bertanda blok "//"
+  2  RDB-List           RequestType=GetPreDLAList · BrowsePage=tempPreDLA
+        │
+  3  perulangan atas tempPreDLA.pxResults
+     3.1  Property-Set  tempnoklaim.DLAType := "DLA"
+                        local.attachkey     := .Currency        (kunci lampiran)
+                        .TglDLA             := @addToDate(.TglDLA,"0","7","0","0")
+     3.2  Obj-Open-By-Handle -> WorkAttachPageName  (Data-WorkAttach-File)
+     3.3  Property-Set  .pyNote := WorkAttachPageName.pyAttachStream
+     3.4  Page-Remove   tempGetDLAAttach
+```
+
+### 65.3 Kesimpulan pokok: kueri saya SUDAH identik dengan Pega
+
+Langkah 2 menjalankan **`GetPreDLAList` yang sama persis** dengan yang saya terjemahkan.
+Langkah 3 hanya **memperkaya** baris yang sudah ada — tidak menambah, tidak membuang.
+
+Artinya himpunan barisnya ditentukan sepenuhnya oleh kuerinya, dan panel yang kosong di
+sistem baru **akan kosong juga di Pega** untuk klaim yang sama. Sebabnya ada di data, dan
+diagnosa §64.6 yang menjawabnya.
+
+Satu teori tambahan diperiksa dan **gugur**: parameter `Access=GCNM` pada langkah RDB-List
+sempat diduga menunjuk koneksi basis data yang berbeda. Hitungan atas seluruh export
+menunjukkan `GCNM` dipakai **1.160 kali** berbanding `ASM` 260 kali — ia nilai yang lazim,
+bukan pengecualian.
+
+DT-nya juga menutup satu keraguan §64.7: `tempnoklaim.NO_DLA := Param.noklaim` — parameter
+itu memang pengenal klaim yang diteruskan pemanggil, sesuai bacaan yang sudah dipakai.
+
+### 65.4 Temuan 1 — alasan unduh lampiran SALAH, dan dikoreksi
+
+Langkah 3.2 dan 3.3 membuka lampiran dengan **`Obj-Open-By-Handle`** atas kelas
+`Data-WorkAttach-File`, memakai `.Currency` (yaitu `PC_DATA_WORKATTACH.PZINSKEY`) sebagai
+handle, lalu menyalin **`pyAttachStream`** — isi berkasnya — ke `.pyNote`.
+
+Berkasnya karena itu ada di **tabel lampiran Pega**, bukan di penyimpanan dokumen
+eksternal. Alasan penolakan yang saya tulis di §63.7 — *"berkasnya ada di penyimpanan
+dokumen internal (`D-16`), yang belum tersambung"* — **keliru**.
+
+Kalimatnya diganti menjadi apa adanya: ia **pekerjaan yang belum diminta**, bukan
+kemampuan yang belum tersedia. Ia dapat dibangun dengan koneksi yang sudah ada.
+
+Perbedaannya bukan tata bahasa. Alasan lama membuat Work Owner menunggu `D-16`; alasan
+baru menyatakan keputusannya ada di tangannya sekarang.
+
+### 65.5 Temuan 2 — "Tgl Kirim" panel ini ditambah 7 jam, dan Pega TIDAK konsisten
+
+Langkah 3.1 menambahkan **7 jam** ke kolom tanggal kirim sebelum menggambarnya:
+
+```
+.TglDLA := @addToDate(.TglDLA, "0", "7", "0", "0")
+```
+
+Tujuh jam adalah selisih GMT ke WIB, sehingga `TGLKIRIM` tersimpan dalam GMT.
+
+**Yang membuatnya patut dicatat: kolom yang sama TIDAK ditambah di layar sebelah.**
+`Activity/GetDetailPLAList-Act.xml` dan `GetDetailDLAList-Act.xml` — yang mengisi grid
+rincian PLA dan DLA — keduanya memuat **nol** `addToDate`.
+
+Jadi satu tanggal kirim yang sama dapat tampak **berbeda satu hari** di dua layar yang
+bersebelahan. Itu ada di Pega, dan ditiru apa adanya (`P-5`), lalu dinyatakan sebagai
+selisih terencana supaya tidak dilaporkan sebagai kerusakan.
+
+**Sebelum temuan ini, panel saya menampilkan tanggal GMT** — menyimpang dari Pega tanpa
+ada yang menyadarinya. Selisihnya hanya muncul pada dokumen yang dikirim antara pukul
+00:00 dan 07:00 WIB, dan itu kelas cacat yang paling lama bertahan: jarang, senyap, dan
+selalu tampak seperti kekeliruan orang lain.
+
+**Penambahannya TIDAK ditulis sebagai "+7 jam".** `08-TECHNICAL-STRATEGY.md` §4.4
+melarangnya tanpa perkecualian. Yang dikerjakan adalah konversi zona: nilainya dibaca
+sebagai GMT lalu dinyatakan dalam `Asia/Jakarta`. Hasilnya sama dengan Pega hari ini, dan
+tetap benar bila aturan zonanya berubah.
+
+`TestPreDLASentDateIsRenderedInJakartaTime` menguji **batasnya**, bukan tengah hari:
+16:59:59 GMT dan 17:00:00 GMT. Menguji tengah hari saja akan lolos meski konversinya tidak
+dikerjakan sama sekali.
+
+### 65.6 Yang TIDAK dibawa dari aktivitas itu
+
+| Langkah | Diputuskan |
+|---|---|
+| 3.3 `.pyNote := pyAttachStream` | **tidak dibawa** — ia memuat ISI berkas, dan panel tidak menggambarnya. Membawanya berarti mengangkut seluruh lampiran ke peramban untuk sebuah daftar |
+| 3.1 `tempnoklaim.DLAType := "DLA"` | **tidak dibawa** — nilainya tidak dibaca siapa pun setelahnya |
+| 3.4 `Page-Remove tempGetDLAAttach` | tidak berlaku — tidak ada halaman klipboard di sini |
+
+Butir pertama yang paling penting dijelaskan: memuat isi setiap lampiran hanya untuk
+menampilkan daftar berisi lima kolom adalah biaya yang di Pega tersembunyi karena
+halamannya di sisi peladen. Di sini biayanya akan terlihat langsung sebagai jawaban
+berukuran puluhan megabita.
+
+Bila unduh lampiran kelak dibangun, ia mengambil **satu** berkas saat ditekan — bukan
+seluruhnya saat panel dibuka.
+
+### 65.7 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/errors.go` | alasan unduh lampiran dikoreksi |
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | dua butir selisih terencana |
+| `…/repo/sqlstore/inboxpladlapredla.go` | `sentDateOfPreDLAPanel`, `jakarta` |
+| `…/repo/sqlstore/query_test.go` | 2 uji konversi zona |
+| `internal/inboxpladlapredla/inboxpladlapredla_test.go` | pernyataan alasan unduh diperbarui |
+
+### 65.8 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` tiga modul terkait | **42 lulus** |
+
+Uji baru: **2 Go** (konversi zona pada batas hari, dan kolom kosong). Satu uji lama
+**gagal lebih dulu** karena alasan unduh berubah — itu tugasnya, dan pernyataannya
+diperbarui ke klaim yang benar.
+
+Kedua artefak dibangun ulang: 27 Sep 10:25.
+
+## 66. Tiga koreksi antarmuka atas permintaan Work Owner (2026-09-27)
+
+### 66.1 Yang diminta
+
+*"Send nya tidak muncul, tidak usah pakai visibility send, dan send tampilkan per row, dan
+rincian itu muncul pas klik no klaim, jadi jangan pakai kolom rincian lagi"*
+
+Tiga hal, dan **yang ketiga terbukti benar di export sebelum dikerjakan.**
+
+### 66.2 Nomor klaim adalah TAUTAN — dibuktikan dulu, bukan diterima begitu saja
+
+Sebelum kolom "Rincian" dihapus, letak pembukanya dipastikan di section. Di dalam blok
+berulang grid antrean (`REPEATING` 137.304 → `ACTION` 212.407):
+
+| Offset | Isi |
+|---|---|
+| 168.040 | sel `.BRANCH_CODE` — nomor klaim |
+| 171.096 | `pyActionLabel = Refresh` |
+| 171.227 | **`pyAction = refresh`** |
+| 171.852 | parameter **`caseId`** |
+| 171.775 | nilainya **`.BRANCH_NAME`** — kunci klaim |
+
+Jadi mengklik nomor klaim menyegarkan grid rincian dengan kunci klaim baris itu. Persis
+yang Work Owner sebutkan, dan persis bentuk API yang sudah ada: `GET …/klaim/{kunci}`.
+
+Kolom "Rincian" yang saya tambahkan **tidak pernah ada di Pega.** Ia rekaan saya.
+
+### 66.3 Yang berubah
+
+| Hal | Sebelum | Sesudah |
+|---|---|---|
+| Rincian PLA · DLA | tombol "Rincian" di kolom aksi | **klik nomor klaim** |
+| Kolom aksi PLA · DLA | ada | **tidak ada** |
+| Kolom aksi Pre DLA | tombol "Print Pre DLA" | tidak berubah |
+| Nomor klaim di tab Pre DLA | teks biasa | tetap teks biasa — tab itu tidak punya rincian |
+| Tombol SEND | hanya pada dokumen belum terkirim | **pada setiap baris** |
+
+Nomor klaim **tidak** dijadikan tautan di tab Pre DLA: tab itu tidak punya grid rincian,
+dan tautan yang tidak membuka apa-apa lebih buruk daripada teks biasa. Layar mengetahuinya
+dari `punya_rincian` — yang sudah dikirim server sejak awal, sehingga tidak ada medan baru.
+
+### 66.4 Syarat tampil SEND dicabut — konsekuensinya dicatat, bukan disamarkan
+
+`Document.CanSend()`, `FieldCanSend`, dan medan `boleh_kirim` dihapus seluruhnya.
+
+Bukti yang mendasarinya tetap benar: Pega **memang** menyembunyikan SEND pada dokumen
+terkirim (`.MARKETING != '1'`, dengan `MARKETING` sebagai alias `ISKIRIM`). Yang berubah
+adalah keputusan membawanya.
+
+**Akibatnya kolom "Terkirim" menjadi satu-satunya penanda** dokumen mana yang sudah
+dikirim. Hari ini tidak berbahaya — tombolnya menjawab alasan dan tidak mengirim apa pun.
+Ia menjadi berbahaya **pada hari Send benar-benar dibangun**: seorang petugas dapat
+mengirim ulang surat yang sudah sampai ke reasuradur, dan tidak ada apa pun yang
+mencegahnya.
+
+Karena itu ia ditulis sebagai **selisih terencana**, bukan sekadar dihapus. Selisih yang
+hanya hilang dari kode akan ditemukan kembali sebagai kejutan.
+
+### 66.5 Cadangan peladen lama ikut dikoreksi — dan ujinya yang menangkapnya
+
+`judulTombolBaris` sebelumnya mengembalikan `'Rincian'` bila `punya_rincian` bernilai
+benar dan `label_aksi_baris` tidak ada. Cadangan itu ditulis pada §63.8 untuk bertahan
+terhadap peladen yang lebih tua.
+
+Setelah kolom "Rincian" dihapus, cadangan itu **akan menghidupkannya kembali** — dan
+pengguna pada peladen lama akan melihat DUA jalan menuju panel yang sama.
+
+Cabang `punya_rincian` dihapus; hanya `punya_cetak` yang tersisa. Yang menemukannya bukan
+pembacaan ulang, melainkan **uji cadangan itu sendiri yang gagal** — dan itu memang
+gunanya ditulis.
+
+### 66.6 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | `CanSend()` dihapus; selisih terencana baru |
+| `internal/inboxpladlapredla/tab.go` | `FieldCanSend` dihapus; `RowActionLabel` kosong pada PLA dan DLA |
+| `internal/inboxpladlapredla/http/dto.go` | `boleh_kirim` dihapus |
+| `internal/inboxpladlapredla/inboxpladlapredla_test.go` | uji `CanSend` diganti uji "rincian dibuka lewat nomor klaim" |
+| `modules/inbox-pla-dla-pre-dla/types.ts` | `boleh_kirim` dihapus |
+| `modules/inbox-pla-dla-pre-dla/DocumentPanel.tsx` | SEND pada setiap baris |
+| `modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage.tsx` | nomor klaim menjadi tautan; cadangan dikoreksi |
+
+### 66.7 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` tiga modul terkait | **43 lulus** |
+
+Uji baru: **1 Go** (tidak ada daftar yang punya kolom "Rincian"; satu-satunya tombol baris
+adalah "Print Pre DLA") dan **2 frontend** (rincian dibuka lewat nomor klaim · nomor klaim
+BUKAN tautan di tab tanpa rincian). Dua uji lama ditulis ulang: SEND kini pada setiap
+baris, dan cadangan peladen lama tidak lagi menghidupkan "Rincian".
+
+**Empat uji lama gagal lebih dulu** saat perubahan diterapkan — fixture yang tertinggal
+dan cadangan yang usang. Keduanya ditemukan oleh uji, bukan oleh pembacaan.
+
+Kedua artefak dibangun ulang: 27 Sep 10:46. **Binary-nya perlu dijalankan ulang** — SPA
+disematkan ke dalamnya, sehingga layar tidak berubah sampai prosesnya di-restart.
+
+## 67. "Kirim Pre DLA" dibangun — operasi TULIS pertama modul ini (2026-09-27)
+
+### 67.1 Yang diminta
+
+Work Owner meminta dua tombol yang menjawab penolakan diperbaiki: **"Kirim Pre DLA"** dan
+**"Send"**.
+
+Yang pertama **selesai dan berfungsi**. Yang kedua ternyata bukan satu tombol melainkan
+dua belas langkah termasuk **mengirim surat beserta lampiran ke reasuradur luar** —
+inventarisnya di §67.7, dan lingkupnya ditanyakan lebih dulu.
+
+### 67.2 Tombolnya PER BARIS — tertangkap sebelum dibangun
+
+Sel tombolnya berada di dalam blok berulang panel
+(`Section/PrintPreDLA-Section.xml`, `REPEATING` 42.697 → `ACTION` 111.588), dan ia
+mengirim `tmpnodla = .NO_DLA` — nomor baris itu sendiri.
+
+Saya sempat menggambarnya sebagai satu tombol di bawah grid, sama seperti kekeliruan pada
+"Print Pre DLA" (§63) dan "Send" (§64). Kali ini batas layout diperiksa **sebelum**
+kodenya ditulis, bukan sesudah dilaporkan.
+
+Selisihnya bukan tata letak: satu tombol di bawah grid menandai seluruh Pre-DLA klaim itu
+sekaligus.
+
+### 67.3 Tiga penyimpangan dari kueri Pega, seluruhnya disengaja
+
+Kueri asalnya (`GetPreDLAList-SQL.xml`, `pySaveSQL`):
+
+```sql
+update pooldata.t_predlalist set tglkirim = {updatetgldla.Date}, iskirim='1'
+ where nodla = {updatetgldla.NO_DLA}
+```
+
+| # | Penyimpangan | Sebabnya |
+|---|---|---|
+| 1 | **`CLAIMID` ikut menyaring** | Tanpa itu, satu nomor Pre-DLA yang dipakai dua klaim akan menandai **keduanya**, tanpa galat. Bukan bentuk rekaan: `UpdatePREDLAList` menulis tabel yang SAMA dengan `claimid AND nodla` — Pega sendiri melakukannya di jalur lain |
+| 2 | **`TGLKIRIM` diisi `CURRENT_TIMESTAMP`** | Layar Pega mengirim `tmptglkirim = .TglDLA` (`PrintPreDLA-Section.xml:104789`) — yaitu tanggal kirim yang baru saja **ditampilkan**. Pada Pre-DLA yang belum pernah dikirim, kolom itu **kosong** |
+| 3 | **`ISKIRIM IS NULL OR ISKIRIM <> '1'`** | Baris yang sudah terkirim tidak disentuh |
+
+**Penyimpangan 2 menutup kehilangan data.** Menekan "Kirim Pre DLA" pada Pre-DLA baru di
+Pega akan menandainya terkirim dengan **tanggal kirim kosong** — dan tanggal itu tidak
+dapat dipulihkan. `UpdatePREDLAList` pada tabel yang sama memakai `sysdate`; pola itulah
+yang diikuti.
+
+Ketiganya **di luar 13 butir `P-5`** dan menuntut persetujuan tertulis Work Owner sebelum
+modul ini lulus gerbang 1 (`D-54`).
+
+### 67.4 `P-1`: dua penulis pada satu tabel, dan pagarnya
+
+`POOLDATA.T_PREDLALIST` masih ditulis Pega. Kueri ini menjadikan keduanya penulis —
+melanggar `P-1`. Konsekuensinya diterima Work Owner setelah keberatan disampaikan.
+
+Pagarnya ada di klausa `WHERE`: **baris yang sudah terkirim tidak disentuh**. Dengan
+begitu penandaan dari sini tidak pernah menimpa tanggal kirim yang sudah dicatat Pega,
+dan menekan tombol dua kali tidak menghasilkan dua tanggal berbeda.
+
+Bila tidak ada baris yang berubah, jawabannya **`409`**, bukan `422` dan bukan `500`:
+permintaannya benar dan sistemnya sehat — keadaannya saja yang sudah berubah. Bagi
+pengguna itu bukan kegagalan; hasil yang ia inginkan sudah tercapai, hanya bukan olehnya.
+
+### 67.5 Waktunya dari BASIS DATA, bukan jam aplikasi
+
+Kolom `TGLKIRIM` yang sama ditulis Pega dengan `sysdate`. Mengisi sebagian barisnya dengan
+jam aplikasi akan membuat satu kolom memuat waktu dari dua jam berbeda, dan selisih
+antarkeduanya tidak terlihat.
+
+`CURRENT_TIMESTAMP`, bukan `SYSDATE` — portabilitas (`D-20`); keduanya sama di Oracle.
+
+### 67.6 Nomor Pre-DLA DICATAT di log, berbeda dari operasi baca
+
+Operasi baca di modul ini sengaja tidak mencatat pengenal apa pun. Yang ini mencatat
+nomornya, karena ia **perubahan bernilai bisnis**: `D-28` mewajibkannya, dan `D-59`
+menjadikan jejak audit satu-satunya kontrol pengimbang. Tanpa nomornya, catatan itu tidak
+dapat menjawab "yang mana".
+
+Kunci klaim tetap tidak dicatat — ia memuat nomor klaim, dan itu data nasabah (`D-69`).
+Nomor Pre-DLA bukan.
+
+### 67.7 "Send" — inventarisnya, dan kenapa lingkupnya ditanyakan
+
+`Activity/UpdateDetailPLA2-Act.xml` dibaca seluruhnya. Ia **bukan** empat langkah seperti
+yang tercatat sejak §61, melainkan dua belas:
+
+| # | Langkah | Keterangan |
+|---|---|---|
+| 1 | Validasi email reasuradur tidak kosong | `local.errmsg := "Email Reinsurer Kosong"` |
+| 2 | `UpdatePLAList` / `UpdateDLAList` | tandai terkirim + email + tanggal terima |
+| 3 | `UpdateEmailReas` | perbarui master reasuransi |
+| 4 | `GCNMCreateOperator` | membuat **operator Pega** — tidak punya padanan |
+| 5 | `PNCInsertMitraLog_Act` | log mitra |
+| 6 | `InsertDokumenPLADLA` (3 putaran) | catat id dokumen yang dikirim |
+| 7 | `ASMCollectAttachments` | kumpulkan berkas lampiran |
+| 8 | Susun subjek | Indonesia atau Inggris menurut negara; ditambah tipe treaty |
+| 9 | Susun badan HTML | `SendPLADLA` / varian Inggris |
+| 10 | **`ASMSendsEmailAttachments`** | **kirim surat + lampiran ke reasuradur** |
+| 11 | `PNCInsertPLADLA` | — |
+| 12 | `Obj-Save` + `Commit` | simpan objek kerja |
+
+**Seluruh dependensinya ADA di export** — diperiksa satu per satu. Dan **SMTP sudah ada di
+kode ini** (`internal/masterxol/notification/smtp.go` dan dua modul lain), sehingga premis
+§61 bahwa "SMTP belum tersambung" **usang**.
+
+Jadi Send dapat dibangun. Yang menahan bukan kemampuan, melainkan satu keputusan yang
+bukan milik saya: **langkah 10 mengirim surat ke pihak luar, sementara Pega masih hidup dan
+dapat mengirim surat yang sama.** Itu `P-1` pada surat, bukan pada tabel — dan akibatnya
+tidak dapat ditarik kembali.
+
+Satu hal yang **tidak boleh** dilakukan apa pun jawabannya: mengerjakan langkah 2 tanpa
+langkah 10. Barisnya akan hilang dari antrean **kedua sistem** — keduanya membaca tabel
+yang sama — padahal tidak satu pun surat sampai ke reasuradur.
+
+### 67.8 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | `Repo.MarkPreDLASent` |
+| `internal/inboxpladlapredla/errors.go` | `ErrPreDLAAlreadySent`; `ActionSendPreDLA` dihapus |
+| `…/repo/sqlstore/inboxpladlapredla.sql` · `.go` · `query.go` | kueri `mark_pre_dla_sent`, `writeQueries` |
+| `…/repo/memory/memory.go` | `MarkPreDLASent`, `Store.Now` |
+| `…/usecase/list.go` | `SendPreDLA` |
+| `…/http/{errors,handler,routes}.go` | `409`, `Handler.SendPreDLA`, rute `POST …/cetak/{kunci}/kirim` |
+| `modules/inbox-pla-dla-pre-dla/api.ts` | `useKirimPreDLA` |
+| `modules/inbox-pla-dla-pre-dla/PrintPreDLAPanel.tsx` | tombol per baris, pesan hasil |
+| `modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage.tsx` | penyambungan, galat terpisah |
+
+### 67.9 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` tiga modul terkait | **44 lulus** |
+
+Uji baru: **8 Go** (tanggal tercatat · penekanan kedua tidak menimpa · nomor tak dikenal
+bukan galat · klaim tak dikenal tetap galat · hanya satu kueri menulis · kueri tulis
+bercakupan satu klaim · tidak pernah menimpa tanggal kirim · penandaan bukan tindakan yang
+ditolak) dan **2 frontend** (penandaan berhasil · `409` dijelaskan sebagai keadaan, bukan
+kerusakan).
+
+Kedua artefak dibangun ulang: 27 Sep 18:32. **Binary perlu dijalankan ulang** — SPA
+disematkan di dalamnya.
+
+## 68. Tombol "SEND" dibangun — surat keluar perusahaan (2026-09-27)
+
+### 68.1 Keputusan Work Owner
+
+Dua pertanyaan diajukan sebelum satu baris pun ditulis, dan keduanya dijawab:
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Sejauh mana Send dibangun | **Penuh — surat dikirim dari Go** |
+| Tiga penyimpangan "Kirim Pre DLA" di luar `P-5` | **Disetujui ketiganya** |
+
+Persetujuan kedua memenuhi `D-54`: cakupan `CLAIMID`, tanggal kirim dari basis data
+alih-alih nilai kosong dari layar, dan pagar anti-timpa.
+
+### 68.2 Premis §61 yang ternyata usang
+
+§61 menolak membangun Send dengan alasan **"SMTP belum tersambung"**. Itu **tidak benar**:
+`internal/masterxol/notification/smtp.go`, `internal/masterrekening/notification/smtp.go`,
+dan `internal/inboxreceivetka/notification/smtp.go` sudah ada, lengkap dengan blok `SMTP`
+di `platform/config`.
+
+Yang menahan sebenarnya bukan kemampuan melainkan **keputusan** — dan keputusan itu tidak
+pernah diajukan sampai sekarang. Alasan penolakan yang menyebut kemampuan padahal yang
+kurang adalah keputusan membuat Work Owner menunggu pihak lain tanpa sebab.
+
+### 68.3 URUTANNYA dibalik dari Pega, dan itu inti perubahannya
+
+```
+Pega     tandai terkirim -> … -> kirim surat
+Di sini  kirim surat -> bila BERHASIL -> tandai terkirim
+```
+
+Urutan Pega punya satu mode kegagalan yang tidak meninggalkan jejak apa pun: bila
+pengiriman gagal setelah penandaan, barisnya **hilang dari antrean** padahal tidak satu
+pun surat sampai. Tidak ada galat, tidak ada tanda, dan tidak ada yang mengetahuinya
+sampai reasuradur menanyakannya.
+
+Urutan di sini membalik arah kegagalannya. Pengiriman ganda merepotkan; pengiriman yang
+tidak pernah terjadi merugikan.
+
+`TestAFailedLetterMarksNothing` menjaganya, dan ia uji terpenting di modul ini.
+
+### 68.4 Lima dari dua belas langkah TIDAK dibawa
+
+| Langkah | Alasan |
+|---|---|
+| `GCNMCreateOperator` | membuat operator **Pega** — tidak ada padanannya |
+| `Obj-Save` + `Commit` objek kerja | tidak ada objek kerja Pega |
+| `PNCInsertMitraLog_Act` | menulis tabel pencatatan yang **belum dianalisis isinya** |
+| `InsertDokumenPLADLA` | idem |
+| `PNCInsertPLADLA` | idem |
+
+Tiga yang terakhir sengaja tidak ditebak. **Menulis tabel yang belum dipahami lebih buruk
+daripada tidak menulisnya** — yang pertama merusak diam-diam, yang kedua meninggalkan
+kekosongan yang terlihat.
+
+### 68.5 `UPDATEREAS.prc` ditulis ulang, dan dua dari tiga cabangnya dibuang
+
+Procedure lamanya bercabang tiga, dan keempat `COMMIT`-nya tidak dibawa (`D-68`).
+
+| Cabang | Perlakuan |
+|---|---|
+| baris (ID, NAMA, TYPE) ada → `UPDATE` alamat | **dibawa** |
+| ada dengan `TYPE='1'` → `UPDATE` alamat **dan pindahkan TYPE** | **tidak** |
+| tidak ada → `INSERT` baris master baru | **tidak** |
+
+Cabang kedua mengubah `TYPE`, yang merupakan bagian kunci alami baris itu. Cabang ketiga
+membuat baris master dari jalur yang tidak punya validasi master sama sekali — termasuk
+`SELECT ID INTO NEGARA_ID` tanpa penanganan bila negaranya tidak ditemukan.
+
+**Pengiriman surat bukan tempat mengisi master.** Akibat yang diterima: reasuradur yang
+belum terdaftar tidak tercatat alamatnya; suratnya tetap terkirim, karena alamatnya
+diambil dari baris dokumennya.
+
+### 68.6 Pengirim NIL, bukan pengirim tiruan
+
+Modul lain memakai `Fake` ketika SMTP belum dikonfigurasi. Di sini itu akan menjadi
+bencana: pengirim tiruan menjawab **berhasil**, sehingga dokumennya ditandai terkirim
+padahal tidak satu pun surat sampai — persis kegagalan yang seluruh urutan §68.3 cegah.
+
+Nil karena itu bukan kelalaian melainkan **pagar**. Tombolnya menjawab `503` yang menyebut
+isian konfigurasi mana yang kurang — bukan `501`, karena kemampuannya ADA dan yang kurang
+hanyalah konfigurasinya.
+
+### 68.7 Empat galat, empat tindakan pengguna yang berbeda
+
+| Galat | HTTP | Yang harus dilakukan pengguna |
+|---|---|---|
+| `ErrReinsurerEmailEmpty` | 422 | lengkapi alamat di master reasuransi |
+| `ErrNotifierUnavailable` | 503 | hubungi administrator |
+| `ErrLetterNotSent` | 502 | **boleh diulang** — tidak ada yang berubah |
+| `ErrSentButNotMarked` | 500 | **JANGAN diulang** — suratnya sudah sampai |
+
+Yang keempat adalah keadaan terburuk operasi ini, dan justru karena itu ia punya galatnya
+sendiri. Pesan yang hanya berbunyi "gagal" akan membuat pengguna menekan tombolnya lagi,
+dan surat kedua akan sampai ke reasuradur. Pesannya **sengaja menyebutkan apa yang sudah
+terjadi**, meski `500` biasanya menyembunyikan detail internal — menyembunyikannya di sini
+merugikan.
+
+### 68.8 Enam hal kecil yang menentukan pada surat itu sendiri
+
+| Hal | Sebabnya |
+|---|---|
+| Kolom alamat dipecah pada koma dan titik koma | isian manusia kerap memuat beberapa alamat; teks gabungan ditolak relay dan terbaca sebagai gangguan jaringan |
+| Alamat ganda dikirimi sekali, abai huruf besar-kecil | tanpa itu satu reasuradur menerima dua surat yang sama |
+| Penerima yang DITOLAK menghentikan seluruh pengiriman | surat yang sampai sebagian lalu ditandai terkirim = satu reasuradur tidak pernah menerimanya |
+| Pembatas MIME dari sumber acak kriptografis | pembatas yang dapat ditebak bisa muncul di dalam lampiran, dan suratnya terbaca rusak |
+| Subjek di-`Q-encode` bila memuat non-ASCII | subjeknya memuat nama tertanggung |
+| Pemutus baris dibuang dari nilai header | tanpa itu, satu baris baru dari nama berkas menyisipkan header baru — penyusupan header surat |
+
+Ditambah satu: **lampiran tanpa isi dilewati**, bukan dikirim sebagai berkas kosong.
+Berkas kosong yang sampai ke reasuradur tampak seperti dokumen rusak, dan penerimanya
+tidak dapat membedakannya dari kegagalan pengiriman.
+
+### 68.9 Jumlah penerima dan lampiran DIKIRIM ke layar
+
+Bukan hanya "berhasil". Petugas yang mengirim surat ke pihak luar berhak tahu berapa
+alamat yang menerima dan berapa berkas yang ikut — terutama ketika lampirannya **nol**,
+keadaan yang sah tetapi jarang diinginkan.
+
+### 68.10 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `internal/inboxpladlapredla/send.go` | **baru** — tipe, seam Notifier, subjek, validasi |
+| `internal/inboxpladlapredla/notification/smtp.go` | **baru** — pengirim SMTP + badan surat |
+| `internal/inboxpladlapredla/inboxpladlapredla.go` | tiga metode Repo baru |
+| `…/repo/sqlstore/inboxpladlapredla.sql` · `.go` | enam kueri baru, transaksi |
+| `…/repo/memory/memory.go` · `sample.go` | pengisi memori + data contoh ber-alamat |
+| `…/usecase/list.go` | `SendAdvice`, seam `BodyComposer` |
+| `…/http/{dto,errors,handler,routes}.go` | empat galat, `SendResponse`, rute |
+| `cmd/claimpnc/pladla.go` · `main.go` | penyambungan pengirim surat |
+| `modules/inbox-pla-dla-pre-dla/api.ts` · `DocumentPanel.tsx` · `InboxPLADLAPreDLAPage.tsx` | tombol, hook, pesan hasil |
+
+### 68.11 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| `tsc --noEmit` | bersih |
+| `vitest run` tiga modul terkait | **46 lulus** |
+
+Uji baru: **13 Go** — delapan pada domain (alamat kosong, sudah terkirim, pemecahan
+alamat, alamat ganda, teks bukan alamat, bahasa menurut negara, subjek, kategori lampiran)
+dan lima pada orkestrasi (**surat gagal tidak menandai apa pun**, surat terkirim sebelum
+penandaan, tanpa pengirim tidak terjadi apa-apa, tidak ada surat kedua, tab Pre DLA tidak
+dapat mengirim). Ditambah **3 frontend** (pengiriman berhasil menyebut penerima dan
+lampiran · kegagalan menyebut "mencoba lagi aman" · alasan Upload).
+
+Kedua artefak dibangun ulang: 27 Sep 22:08. **Binary perlu dijalankan ulang.**
+
+### 68.12 Yang harus disiapkan sebelum tombolnya benar-benar mengirim
+
+Tiga isian konfigurasi: `SMTP_HOST`, `SMTP_PORT`, `SMTP_DARI`. Selama belum diisi,
+tombolnya menjawab `503` yang menyebut isian mana yang kurang, dan **tidak ada dokumen
+yang ditandai terkirim**.
+
+Satu hal yang perlu diputuskan sebelum diisi di produksi: selama masa paralel, Pega juga
+dapat mengirim surat untuk dokumen yang sama. Pagar di sisi ini hanya menahan pengiriman
+ganda **dari sini** — dokumen yang sudah ditandai tidak dikirimi surat kedua. Ia tidak
+dapat menahan Pega.
+
+## 69. Pengiriman surat PLA/DLA diaktifkan (2026-09-28)
+
+### 69.1 Yang diisi
+
+Work Owner menyerahkan tiga nilai konfigurasi SMTP. Ketiganya ditulis ke **`backend/.env`**,
+yang **diabaikan git** (`claim-pnc/.gitignore:17`).
+
+`backend/.env.example` **tidak disentuh** — berkas itu ikut ter-commit, dan komentarnya
+sendiri berbunyi *"JANGAN pernah mengisi nilai nyata di berkas ini"*. Nilai nyatanya juga
+tidak dituliskan ke dokumen mana pun (`D-69`).
+
+Terverifikasi dari log start:
+
+```
+"pengiriman surat PLA/DLA AKTIF"  host=…  port=587  pengirim=…
+"catatan": "tombol SEND kini benar-benar mengirim surat ke reasuradur"
+```
+
+### 69.2 Gerbang aktifnya SALAH, dan baru ketahuan saat konfigurasinya diisi
+
+`buildPLADLAServices` semula memakai **`cfg.SMTP.Active()`**. Predikat itu mensyaratkan
+`SMTP_PENERIMA_PERINGATAN` — daftar mailbox Tim IT — dan modul ini **tidak memakainya sama
+sekali**: penerimanya adalah reasuradur pada baris dokumen yang sedang dikirim.
+
+Akibatnya tombol "SEND" akan tetap menolak meski host, port, dan alamat pengirim sudah
+lengkap. Penolakan seperti itu **tidak dapat ditemukan sebabnya dari membaca pesannya** —
+pesannya menyebut tiga isian yang justru sudah terisi.
+
+Gerbangnya dipindahkan ke `notification.Config.Complete()`, yaitu predikat milik pengirim
+itu sendiri. Preseden untuk memisahkannya sudah ada di berkas yang sama: `TKAActive()`
+terpisah dari `Active()` dengan alasan yang persis sama, dan komentarnya sudah
+menjelaskannya.
+
+Tiga uji baru menjaganya, dan salah satunya menyebut kekeliruan ini apa adanya supaya
+tidak diulang.
+
+**Yang menemukannya bukan pembacaan ulang melainkan pengisian konfigurasinya.** Cacat ini
+tidak dapat terlihat sebelum nilainya ada — uji mana pun akan lulus, karena tidak ada uji
+yang menjalankan perakitan layanan dengan konfigurasi setengah terisi.
+
+### 69.3 STARTTLS ditambahkan — port 587 membuatnya wajib dipikirkan
+
+Pengirim yang saya tulis pada §68 **tidak melakukan STARTTLS sama sekali**. Modul
+`masterrekening` melakukannya, dan pola itu terlewat.
+
+Ia lebih penting di sini daripada di modul mana pun yang sudah ada: surat ini membawa
+**nama tertanggung, nomor polis, dan berkas dokumen klaim** ke luar perusahaan. Sambungan
+terbuka berarti seluruhnya melintas jaringan tanpa enkripsi.
+
+Polanya disamakan dengan `masterrekening`:
+
+| Hal | Perlakuan |
+|---|---|
+| STARTTLS ditawarkan server | **dinegakkan** |
+| STARTTLS tidak ditawarkan | surat tetap dikirim — relay internal sering belum bersertifikat |
+| Kredensial diisi tanpa STARTTLS | **ditolak** — kredensial tidak pernah melintas sambungan terbuka |
+
+`SMTP_USER` dan `SMTP_PASSWORD` dibiarkan kosong sesuai nilai yang diserahkan, sehingga
+cabang ketiga belum berlaku hari ini.
+
+### 69.4 Satu hal yang perlu diperiksa sebelum dipakai di produksi
+
+Export Pega memuat **`UseSSL=false` pada seluruh 31 lokasi SMTP-nya**, sementara 16 di
+antaranya memakai port 587 (`R-17`). Bila relay `587` yang dipakai ternyata **tidak
+menawarkan STARTTLS**, surat PLA/DLA akan terkirim tanpa enkripsi — dan pengirim ini tidak
+akan menolaknya, karena memaksanya akan menolak relay internal yang sah.
+
+Itu keputusan yang layak diambil sadar, bukan diwarisi dari sistem lama. Dicatat di
+komentar kodenya dan di sini.
+
+### 69.5 Satu kejanggalan bacaan log yang sengaja dibiarkan
+
+Ringkasan konfigurasi saat start menuliskan **`"smtp_aktif": false`** sementara baris
+berikutnya menyatakan pengiriman PLA/DLA **AKTIF**. Keduanya benar: `smtp_aktif` mengukur
+`Active()`, yang menuntut daftar peringatan Tim IT.
+
+Ia **tidak diubah** — ringkasan itu milik bersama seluruh modul, dan mengubah artinya demi
+satu modul akan membuat empat modul lain melaporkan hal yang berbeda dari sebelumnya.
+Kedua baris itu berdampingan di log, dan yang kedua menyebut host beserta portnya, sehingga
+pembacanya tidak akan salah menyimpulkan.
+
+### 69.6 Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `backend/.env` | tiga isian SMTP (tidak ter-commit) |
+| `internal/inboxpladlapredla/notification/smtp.go` | STARTTLS + penolakan kredensial pada sambungan terbuka |
+| `internal/inboxpladlapredla/notification/smtp_test.go` | **baru** — 3 uji gerbang konfigurasi |
+| `cmd/claimpnc/pladla.go` | gerbang aktif dipindah ke `Config.Complete()`; log pengaktifan |
+
+### 69.7 Hasil uji
+
+| Uji | Hasil |
+|---|---|
+| `go build` · `go vet` · `go test ./...` | bersih, seluruhnya lulus |
+| Pengaktifan terverifikasi dari log start | ✅ |
+
+Binary dibangun ulang: 28 Sep 08:26.

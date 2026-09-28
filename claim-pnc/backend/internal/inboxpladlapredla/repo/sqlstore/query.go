@@ -75,11 +75,27 @@ var printColumns = []string{
 	"ADVICE_NO", "REINSURER", "ADVICE_TYPE", "SENT_DATE", "SENT", "ATTACHMENT_KEY",
 }
 
+// writeQueries adalah kueri yang MENULIS. Sengaja didaftarkan tersendiri.
+//
+// Modul ini nyaris seluruhnya membaca, dan satu-satunya kueri tulis mudah bertambah tanpa
+// disadari. Senarai ini dipakai query_test.go untuk memastikan tidak ada kueri tulis lain
+// yang tersisip — setiap penulisan ke tabel milik Pega menyentuh `P-1` dan menuntut
+// keputusan, bukan sekadar kode.
+var writeQueries = []string{
+	"mark_pre_dla_sent",
+	"mark_advice_sent_pla",
+	"mark_advice_sent_dla",
+	"update_reinsurer_email",
+}
+
 // listQueries adalah nama ketiga kueri daftar, dipakai uji kesesuaian alias.
 var listQueries = []string{"list_pla", "list_dla", "list_pre_dla"}
 
 // documentQueries adalah nama kedua kueri rincian, dipakai uji kesesuaian alias.
 var documentQueries = []string{"documents_pla", "documents_dla"}
+
+// sendQueries adalah kedua kueri pembaca dokumen yang akan dikirim.
+var sendQueries = []string{"advice_for_sending_pla", "advice_for_sending_dla"}
 
 // businessFilterQueries adalah kueri yang WAJIB mengecualikan Personal Accident dan
 // Travel.

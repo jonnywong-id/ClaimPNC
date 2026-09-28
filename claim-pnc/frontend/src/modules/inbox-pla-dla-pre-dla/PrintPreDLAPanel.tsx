@@ -21,14 +21,17 @@ type Props = {
   onClose: () => void
 
   /**
-   * Tombol **"Kirim Pre DLA"** — di bawah grid, persis letaknya di Pega.
+   * Tombol **"Kirim Pre DLA"** — satu per BARIS di dalam grid, persis letaknya di Pega.
    *
-   * Belum dibangun; menekannya menjawab alasannya.
+   * Menandai SATU Pre-DLA sebagai terkirim.
    */
-  onKirim: () => void
+  onKirim: (dokumen: DokumenPreDLA) => void
 
-  /** Sedang menunggu jawaban tombol di atas. */
+  /** Sedang menunggu jawaban penandaan. */
   busy: boolean
+
+  /** Pesan hasil penandaan terakhir; kosong berarti belum ada. */
+  pesanKirim?: string
 }
 
 /**
@@ -55,6 +58,22 @@ type Props = {
  * membuka panel berisi satu baris akan menyimpulkan datanya hilang, dan kaki halaman
  * terlalu jauh dari tempat kesimpulan itu terbentuk.
  *
+ * # "Kirim Pre DLA" adalah tombol PER BARIS
+ *
+ * Sel tombolnya berada di dalam blok berulang panel ini
+ * (`Section/PrintPreDLA-Section.xml`, `REPEATING` 42.697 → `ACTION` 111.588), dan ia
+ * mengirim `tmpnodla = .NO_DLA` — nomor baris itu sendiri. Satu tombol di bawah grid akan
+ * menandai seluruhnya sekaligus, dan itu operasi yang sama sekali berbeda.
+ *
+ * # Kenapa tanggal kirimnya diisi SERVER
+ *
+ * Pega mengirim `tmptglkirim = .TglDLA`, yaitu tanggal kirim yang baru saja ditampilkan.
+ * Pada Pre-DLA yang belum pernah dikirim, kolom itu KOSONG — sehingga menekan tombolnya
+ * menandai baris terkirim dengan tanggal kirim kosong. Itu kehilangan informasi yang
+ * tidak dapat dipulihkan, dan tidak ditiru: tanggalnya diisi basis data.
+ *
+ * Karena itu layar TIDAK menebak nilainya sendiri; ia memuat ulang panelnya.
+ *
  * # Kenapa panel di bawah grid, bukan modal seperti di Pega
  *
  * Flow action-nya `pyModalDisplay = Full screen`, dan itu menutupi antreannya. Di sini ia
@@ -72,6 +91,7 @@ export function PrintPreDLAPanel({
   onClose,
   onKirim,
   busy,
+  pesanKirim,
 }: Props) {
   const rows = data ?? []
 
@@ -95,7 +115,7 @@ export function PrintPreDLAPanel({
       </header>
 
       <DataTable<DokumenPreDLA>
-        columns={kolomCetak(daftar)}
+        columns={kolomCetak(daftar, onKirim, busy)}
         rows={rows}
         rowKey={(row) => `${row.no_advice}-${row.kunci_lampiran}`}
         label="Print Pre DLA"
@@ -130,22 +150,20 @@ export function PrintPreDLAPanel({
         </p>
       )}
 
-      {/*
-        "Kirim Pre DLA" ada di bawah grid di Pega (`SetTglKirimPreDLA_Act`), dan letaknya
-        dipertahankan.
+      <p className="mt-3 text-xs text-slate-500">
+        <strong>Kirim Pre DLA</strong> menandai <strong>satu</strong> Pre-DLA sebagai
+        terkirim beserta tanggalnya. Ia tidak mengirim surat — surat ke reasuradur dikirim
+        tombol <strong>Send</strong> di grid rincian PLA dan DLA.
+      </p>
 
-        Ia TIDAK dinonaktifkan meski belum dibangun: tombol yang mati tidak menjelaskan
-        apa pun, dan yang dibutuhkan pengguna adalah tahu MENGAPA — itu hanya sampai bila
-        tombolnya dapat ditekan.
-      */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={onKirim} disabled={busy}>
-          {busy ? 'Memeriksa…' : 'Kirim Pre DLA'}
-        </Button>
-        <p className="text-xs text-slate-500">
-          Menandai Pre-DLA klaim ini sebagai terkirim beserta tanggalnya.
+      {pesanKirim != null && pesanKirim !== '' && (
+        <p
+          role="status"
+          className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        >
+          {pesanKirim}
         </p>
-      </div>
+      )}
     </section>
   )
 }
@@ -157,13 +175,40 @@ export function PrintPreDLAPanel({
  * `Section/PrintPreDLA-Section.xml`, dan tempat pembacaan itu tercatat adalah backend.
  * Menuliskannya dengan tangan di sini berarti daftar yang sama hidup di dua tempat.
  */
-function kolomCetak(daftar: Daftar): Column<DokumenPreDLA>[] {
-  return daftar.kolom_cetak.map((kolom) => ({
-    key: kolom.kunci,
-    title: kolom.judul,
-    value: (row) => nilaiSel(row, kolom.kunci),
-    render: (row) => gambarSel(row, kolom.kunci, kolom.tanggal),
+function kolomCetak(
+  daftar: Daftar,
+  onKirim: (dokumen: DokumenPreDLA) => void,
+  busy: boolean,
+): Column<DokumenPreDLA>[] {
+  const kolom: Column<DokumenPreDLA>[] = daftar.kolom_cetak.map((item) => ({
+    key: item.kunci,
+    title: item.judul,
+    value: (row) => nilaiSel(row, item.kunci),
+    render: (row) => gambarSel(row, item.kunci, item.tanggal),
   }))
+
+  // Kolom "Kirim Pre DLA" — sel tombol di dalam grid, persis seperti di Pega.
+  //
+  // Selnya KOSONG pada Pre-DLA yang sudah terkirim. Berbeda dari tombol "Send" pada grid
+  // rincian — yang syarat tampilnya sengaja dicabut Work Owner — di sini menekan tombol
+  // pada baris terkirim tidak melakukan apa pun selain menghasilkan penolakan, sehingga
+  // menggambarnya hanya menjanjikan sesuatu yang tidak terjadi.
+  kolom.push({
+    key: 'aksi',
+    title: '',
+    width: '9rem',
+    noSort: true,
+    alignRight: true,
+    value: () => '',
+    render: (row) =>
+      row.terkirim === '1' ? null : (
+        <Button type="button" onClick={() => onKirim(row)} disabled={busy}>
+          {busy ? '…' : 'Kirim Pre DLA'}
+        </Button>
+      ),
+  })
+
+  return kolom
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */

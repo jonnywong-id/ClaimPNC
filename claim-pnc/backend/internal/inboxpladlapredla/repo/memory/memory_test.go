@@ -345,3 +345,67 @@ func TestAnUnknownClaimKeyIsReportedAsNotFound(t *testing.T) {
 
 	require.ErrorIs(t, err, inboxpladlapredla.ErrRowNotFound)
 }
+
+// Menandai Pre-DLA terkirim mengisi tanggalnya dan mengubah penandanya.
+func TestMarkingAPreDLASentRecordsTheDate(t *testing.T) {
+	store := memory.NewSampleStore()
+	store.Now = func() time.Time { return time.Date(2026, 3, 10, 9, 0, 0, 0, time.UTC) }
+
+	key := "ASM-FW-GCNMFW-WORK PNC-1001"
+
+	berubah, err := store.MarkPreDLASent(context.Background(), key, "PRE/2026/0001")
+	require.NoError(t, err)
+	require.True(t, berubah)
+
+	rows, err := store.PrintPreDLA(context.Background(), key)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.Equal(t, "1", rows[0].Sent)
+	require.Equal(t, "2026-03-10", rows[0].SentDate)
+}
+
+// Menekan tombol DUA KALI tidak menimpa tanggal kirim yang pertama.
+//
+// Ini pagar terhadap masalah `P-1`: selama Pega masih menulis tabel yang sama, penandaan
+// dari sini tidak boleh menghapus jejak penandaan sebelumnya — baik oleh petugas lain
+// maupun oleh Pega. Tanggal yang tertimpa tidak dapat dipulihkan.
+func TestMarkingAnAlreadySentPreDLAChangesNothing(t *testing.T) {
+	store := memory.NewSampleStore()
+	store.Now = func() time.Time { return time.Date(2026, 3, 10, 9, 0, 0, 0, time.UTC) }
+
+	key := "ASM-FW-GCNMFW-WORK PNC-1001"
+	_, err := store.MarkPreDLASent(context.Background(), key, "PRE/2026/0001")
+	require.NoError(t, err)
+
+	// Penekanan kedua memakai jam yang berbeda; bila ia menimpa, tanggalnya bergeser.
+	store.Now = func() time.Time { return time.Date(2026, 4, 1, 9, 0, 0, 0, time.UTC) }
+
+	berubah, err := store.MarkPreDLASent(context.Background(), key, "PRE/2026/0001")
+	require.NoError(t, err)
+	require.False(t, berubah, "penekanan kedua seharusnya tidak mengubah apa pun")
+
+	rows, err := store.PrintPreDLA(context.Background(), key)
+	require.NoError(t, err)
+	require.Equal(t, "2026-03-10", rows[0].SentDate, "tanggal pertama tertimpa")
+}
+
+// Nomor Pre-DLA yang tidak ada pada klaim itu tidak mengubah apa pun, dan bukan galat.
+func TestMarkingAnUnknownPreDLAChangesNothing(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	berubah, err := store.MarkPreDLASent(
+		context.Background(), "ASM-FW-GCNMFW-WORK PNC-1001", "PRE/2026/9999")
+	require.NoError(t, err)
+	require.False(t, berubah)
+}
+
+// Klaim yang tidak ada TETAP galat — ia berbeda dari nomor yang tidak ada.
+//
+// Kunci klaim yang salah hampir selalu berarti panel dibuka pada portal yang keliru
+// (`R-20`), dan itu harus terdengar berbeda dari "nomornya sudah terkirim".
+func TestMarkingOnAnUnknownClaimIsAnError(t *testing.T) {
+	store := memory.NewSampleStore()
+
+	_, err := store.MarkPreDLASent(context.Background(), "ASM-FW-GCNMFW-WORK PNC-9999", "X")
+	require.ErrorIs(t, err, inboxpladlapredla.ErrRowNotFound)
+}

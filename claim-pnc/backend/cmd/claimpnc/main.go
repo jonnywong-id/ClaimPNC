@@ -3173,7 +3173,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	pladlaService, err := buildPLADLAServices(store, logger)
+	pladlaService, err := buildPLADLAServices(cfg, store, logger)
 	if err != nil {
 		store.close()
 		return assembly{}, err

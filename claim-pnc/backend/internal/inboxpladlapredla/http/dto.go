@@ -380,6 +380,18 @@ func toPrintResponse(printable usecase.Printable, portalAlias string) PrintRespo
 	}
 }
 
+// SendResponse adalah hasil pengiriman surat PLA/DLA.
+//
+// Jumlah penerima dan lampiran DIKIRIM, bukan hanya pesan berhasil. Petugas yang menekan
+// tombol ini mengirim surat ke pihak luar, dan ia berhak tahu berapa alamat yang menerima
+// dan berapa berkas yang ikut — terutama ketika lampirannya NOL, keadaan yang sah tetapi
+// jarang diinginkan.
+type SendResponse struct {
+	Message     string `json:"pesan"`
+	Recipients  int    `json:"penerima"`
+	Attachments int    `json:"lampiran"`
+}
+
 // ViolationDTO adalah satu pelanggaran pada satu isian.
 type ViolationDTO struct {
 	Field   string `json:"field"`

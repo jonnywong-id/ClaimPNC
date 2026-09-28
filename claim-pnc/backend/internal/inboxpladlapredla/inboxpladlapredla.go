@@ -483,10 +483,23 @@ var PlannedDifferences = []string{
 		"yang dokumennya belum terlampir tidak muncul di sana. Itu perilaku Pega, bukan " +
 		"data yang hilang.",
 
-	"Tombol \"Kirim Pre DLA\" dan unduh lampiran di dalam panel itu belum tersedia. " +
+	"Tombol \"SEND\" digambar pada SETIAP baris grid rincian, termasuk dokumen yang " +
+		"sudah terkirim. Pega menyembunyikannya pada dokumen terkirim — syarat " +
+		"`.MARKETING != '1'`, dan `MARKETING` adalah alias untuk `ISKIRIM`. " +
+		"Penyembunyian itu sengaja TIDAK dibawa atas keputusan Work Owner " +
+		"2026-09-27, sehingga kolom \"Terkirim\" menjadi satu-satunya penanda " +
+		"dokumen mana yang sudah dikirim.",
+
+	"Tombol \"Kirim Pre DLA\" dan unduh lampiran di dalam panel itu belum dibangun. " +
 		"Yang pertama menulis ke tabel Pre-DLA yang masih dimiliki Pega selama masa " +
-		"paralel; yang kedua membaca penyimpanan dokumen internal (`D-16`) yang belum " +
-		"tersambung.",
+		"paralel; yang kedua membaca berkas dari tabel lampiran Pega — dapat dibangun " +
+		"dengan koneksi yang sudah ada, tetapi belum diminta.",
+
+	"Kolom \"Tgl Kirim\" pada panel \"Print Pre DLA\" digambar dalam waktu Jakarta, " +
+		"sementara kolom \"Tanggal Kirim\" pada grid rincian PLA dan DLA digambar apa " +
+		"adanya. Ketidakkonsistenan itu ADA di Pega — panel Pre-DLA menambahkan 7 jam, " +
+		"grid rincian tidak — dan ditiru apa adanya. Satu tanggal kirim karena itu " +
+		"dapat tampak berbeda satu hari di kedua layar.",
 
 	"Ekspor tab Pre DLA MENGIKUTI penyaring yang sedang aktif. Di Pega " +
 		"`GetExportDataPreDLA` tidak menyaring apa pun — ia menarik seluruh isi " +
@@ -532,6 +545,44 @@ type Repo interface {
 	// dokumen menghasilkan daftar kosong tanpa galat — keduanya terlihat sama di layar,
 	// dan hanya yang pertama yang merupakan kekeliruan.
 	Documents(ctx context.Context, tab Tab, claimKey string) ([]Document, error)
+
+	// AdviceForSending membaca satu PLA/DLA beserta keterangan reasuradur dan klaimnya.
+	//
+	// Ia mengembalikan ErrRowNotFound bila dokumennya tidak ada pada klaim itu. Membaca
+	// keduanya dalam SATU panggilan disengaja: subjek suratnya memuat keterangan klaim,
+	// dan dua panggilan terpisah membuka celah yang tidak perlu — klaim yang berubah di
+	// antara keduanya menghasilkan surat yang menyebut keadaan yang tidak pernah ada.
+	AdviceForSending(ctx context.Context, tab Tab, claimKey, adviceNo string) (
+		SendableAdvice, ClaimSummary, error)
+
+	// AttachmentsForClaim membaca berkas lampiran satu klaim pada satu kategori.
+	//
+	// Kosong BUKAN galat: klaim boleh saja belum punya dokumen pendukung, dan suratnya
+	// tetap dikirim. Pega pun tidak menghentikan pengiriman karenanya.
+	AttachmentsForClaim(ctx context.Context, claimKey, category string) (
+		[]Attachment, error)
+
+	// MarkAdviceSent menandai satu PLA/DLA terkirim DAN memperbarui master reasuransi,
+	// dalam SATU transaksi.
+	//
+	// Keduanya disatukan karena keduanya menggambarkan satu peristiwa yang sama. Sistem
+	// lama menempuhnya dengan dua pernyataan terpisah dan empat `COMMIT` di dalam
+	// `Database/UPDATEREAS.prc`; `D-68` melepaskan modul ini dari pola itu.
+	//
+	// Mengembalikan `false` bila dokumennya sudah terkirim — dan pada saat itu suratnya
+	// SUDAH terlanjur dikirim. Lihat catatan urutan di send.go.
+	MarkAdviceSent(ctx context.Context, tab Tab, claimKey, adviceNo string,
+		advice SendableAdvice) (bool, error)
+
+	// MarkPreDLASent menandai SATU Pre-DLA sebagai terkirim beserta tanggalnya.
+	//
+	// Mengembalikan `false` bila tidak ada baris yang berubah — yaitu ketika Pre-DLA itu
+	// SUDAH terkirim. Itu bukan galat: dua petugas dapat menekan tombol yang sama, dan
+	// yang kedua harus diberi tahu bahwa pekerjaannya sudah selesai, bukan diberi pesan
+	// kegagalan.
+	//
+	// Ia satu-satunya operasi TULIS di modul ini. Lihat catatan `P-1` pada kuerinya.
+	MarkPreDLASent(ctx context.Context, claimKey, adviceNo string) (bool, error)
 
 	// PrintPreDLA mengembalikan isi panel "Print Pre DLA" satu klaim.
 	//

@@ -1,10 +1,12 @@
 package sqlstore
 
 import (
+	"database/sql"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -364,4 +366,82 @@ func highestBind(text string) int {
 		}
 	}
 	return highest
+}
+
+// "Tgl Kirim" pada panel "Print Pre DLA" digambar dalam WIB, bukan GMT.
+//
+// `Activity/PNCGetListPreDla-Act.xml` menambahkan 7 jam ke kolom itu sebelum
+// menggambarnya. Tujuh jam adalah selisih GMT ke WIB, sehingga `TGLKIRIM` tersimpan GMT.
+//
+// Kasus yang diuji adalah satu-satunya yang membedakan keduanya: pukul 17:00 GMT ke atas
+// sudah berganti hari di Jakarta. Menguji tengah hari saja akan lolos meski konversinya
+// tidak dikerjakan sama sekali.
+func TestPreDLASentDateIsRenderedInJakartaTime(t *testing.T) {
+	kasus := []struct {
+		gmt      string
+		harusnya string
+	}{
+		{"2026-03-10T00:00:00Z", "2026-03-10"}, // dini hari GMT -> hari yang sama
+		{"2026-03-10T12:00:00Z", "2026-03-10"}, // tengah hari -> hari yang sama
+		{"2026-03-10T16:59:59Z", "2026-03-10"}, // tepat sebelum batas
+		{"2026-03-10T17:00:00Z", "2026-03-11"}, // tepat di batas -> BERGANTI HARI
+		{"2026-03-10T23:30:00Z", "2026-03-11"},
+	}
+
+	for _, satu := range kasus {
+		saat, err := time.Parse(time.RFC3339, satu.gmt)
+		require.NoError(t, err)
+
+		hasil := sentDateOfPreDLAPanel(sql.NullTime{Time: saat, Valid: true})
+		require.Equal(t, satu.harusnya, hasil, "GMT %s salah dikonversi", satu.gmt)
+	}
+}
+
+// Kolom kosong tetap menghasilkan teks KOSONG, bukan tanggal apa pun.
+func TestPreDLASentDateStaysEmptyWhenNotSet(t *testing.T) {
+	require.Equal(t, "", sentDateOfPreDLAPanel(sql.NullTime{}))
+}
+
+// Hanya SATU kueri yang menulis, dan ia menulis tepat satu tabel.
+//
+// Setiap penulisan ke tabel milik Pega menyentuh `P-1` dan menuntut keputusan Work Owner,
+// bukan sekadar kode. Uji ini membuat kueri tulis yang tersisip diam-diam menjadi uji yang
+// gagal, bukan temuan saat data sudah rusak.
+func TestOnlyOneQueryWrites(t *testing.T) {
+	menulis := []string{}
+
+	for name, text := range queries {
+		atas := strings.ToUpper(strings.TrimSpace(text))
+		for _, kata := range []string{"UPDATE ", "INSERT ", "DELETE ", "MERGE "} {
+			if strings.HasPrefix(atas, kata) {
+				menulis = append(menulis, name)
+				break
+			}
+		}
+	}
+
+	require.ElementsMatch(t, writeQueries, menulis)
+}
+
+// Kueri tulisnya WAJIB menyaring kunci klaim, bukan nomor Pre-DLA saja.
+//
+// Kueri Pega hanya menyaring `WHERE NODLA = …`. Bila satu nomor dipakai dua klaim,
+// penandaannya mengenai keduanya — dan kerusakan itu tidak menghasilkan galat apa pun.
+func TestTheWriteQueryIsScopedToOneClaim(t *testing.T) {
+	text := strings.ToUpper(query("mark_pre_dla_sent"))
+
+	require.Contains(t, text, "CLAIMID = :1")
+	require.Contains(t, text, "NODLA   = :2")
+	require.Equal(t, 2, highestBind(query("mark_pre_dla_sent")))
+}
+
+// Kueri tulisnya TIDAK menyentuh baris yang sudah terkirim.
+//
+// Tanpa penyaring itu, penekanan kedua akan menimpa tanggal kirim yang sudah dicatat —
+// oleh petugas lain, atau oleh Pega. Tanggal yang tertimpa tidak dapat dipulihkan, dan
+// itulah pagar utama terhadap dua penulis pada satu tabel (`P-1`).
+func TestTheWriteQueryNeverOverwritesAnExistingSendDate(t *testing.T) {
+	text := strings.ToUpper(query("mark_pre_dla_sent"))
+
+	require.Contains(t, text, "ISKIRIM IS NULL OR ISKIRIM <> '1'")
 }

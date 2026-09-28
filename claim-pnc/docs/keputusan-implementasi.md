@@ -17031,3 +17031,404 @@ ditulis, dan bundelnya memuat nol jejak `inbox-pla-dla`.
 Pelajarannya melampaui satu tombol: **memeriksa kode tidak pernah membuktikan apa yang
 dilihat pengguna.** Yang membuktikannya adalah memeriksa artefak yang benar-benar
 dijalankan — dan itu satu perintah `grep` yang tidak pernah dijalankan pada §62.
+
+## 63. Syarat tampil per baris, dan diagnosa yang dipilih alih-alih perubahan perilaku (2026-09-27)
+
+### 63.1 Syarat tampil dinilai di SERVER, dikirim per baris
+
+**Keputusan.** `Document.CanSend()` dihitung domain dan dikirim sebagai `boleh_kirim` pada
+setiap baris grid rincian.
+
+**Alternatif yang ditolak:** layar membandingkan `terkirim !== '1'`.
+
+Alasannya sama dengan `punya_rincian` (§61.3) dan `label_aksi_baris` (§62.3), tetapi di
+sini taruhannya lebih tinggi: yang dikendalikan bukan tata letak melainkan **apakah
+seorang petugas dapat mengirim ulang surat yang sudah sampai ke reasuradur**.
+
+Syarat itu adalah hasil pembacaan export — `pyCondition = .MARKETING != '1'` pada sel
+tombolnya, dengan `MARKETING` sebagai alias untuk `ISKIRIM`. Ia sudah tersimpan di satu
+tempat; menyalinnya ke layar membuat dua, dan yang di layar akan tertinggal.
+
+### 63.2 Sel KOSONG, bukan tombol yang dinonaktifkan
+
+**Keputusan.** Pada dokumen yang sudah terkirim, selnya kosong.
+
+Pega memakai `pyVisible = OTHER`, bukan `pyDisabledWhen` — dan pada section yang sama
+`pyDisabledWhen` memang dipakai untuk hal lain, sehingga pemilihannya di sini disengaja.
+
+Ini **berlawanan** dengan keputusan §61.6, yang menolak menonaktifkan tombol karena tombol
+mati tidak menjelaskan apa pun. Keduanya tetap konsisten, dan pembedanya adalah apa yang
+perlu dijelaskan:
+
+| Keadaan | Perlakuan | Sebab |
+|---|---|---|
+| kemampuannya **belum dibangun** | tombol hidup, menjawab alasan | pengguna perlu tahu mengapa |
+| **tidak berlaku** untuk baris ini | tombol tidak ada | tidak ada yang perlu dijelaskan — dokumennya memang sudah terkirim, dan kolom "Terkirim" sudah mengatakannya |
+
+### 63.3 Kolom aksi SELALU digambar, meski sebagian selnya kosong
+
+**Keputusan.** Kolomnya ada pada setiap grid rincian, apa pun isi halamannya.
+
+Kolom yang muncul dan menghilang menurut isi halaman membuat lebar tabel berubah setiap
+kali pengguna berpindah klaim. Sel kosong lebih tenang dibaca daripada tabel yang
+bergeser.
+
+### 63.4 Panel Pre DLA yang kosong: DIAGNOSA, bukan pelonggaran penyaring
+
+**Keputusan.** Penyaring lampirannya **tidak disentuh**. Yang ditambahkan adalah kueri
+diagnosa yang menghitung berapa baris lolos tiap tahap, dijalankan perintah pemeriksaan.
+
+**Alternatif yang ditolak:** melonggarkan pencocokan nama berkas supaya panelnya berisi.
+
+Godaannya nyata — pencocokan `SUBSTR(PXATTACHNAME, -15, 11) = NODLA` jelas rapuh, dan
+melonggarkannya akan langsung "memperbaiki" keluhan. Ia ditolak karena dua hal:
+
+1. **Ia mengubah baris mana yang muncul**, dan itu selisih di luar tiga belas butir `P-5`
+   — yang menurut `D-54` menuntut persetujuan Work Owner tertulis.
+2. **Panel yang kosong mungkin memang benar.** Bila `NODLA` di produksi bukan 11 karakter,
+   panelnya kosong di Pega juga — dan melonggarkannya di sini akan membuat sistem baru
+   menampilkan sesuatu yang sistem lama tidak pernah tampilkan, tanpa ada yang memintanya.
+
+Yang dibutuhkan bukan lebih banyak baris, melainkan **tahu mengapa tidak ada**.
+
+### 63.5 Diagnosa TIDAK masuk seam `Repo`
+
+**Keputusan.** `DiagnosePrintPreDLA` adalah method pada `*sqlstore.Repo`, bukan anggota
+interface `inboxpladlapredla.Repo`.
+
+Layar tidak pernah memanggilnya, dan pengisi memori tidak perlu menjawab pertanyaan yang
+hanya berarti bagi Oracle — panjang `NODLA` dan kategori lampiran adalah persoalan skema,
+bukan persoalan domain. Menaruhnya di seam berarti memaksa setiap pengisi berikutnya
+memilikinya.
+
+### 63.6 `FROM DUAL` dihindari meski hanya untuk diagnosa
+
+Kueri diagnosa paling ringkas ditulis sebagai `SELECT (sub), (sub) FROM DUAL`. Bentuk itu
+**ditolak** (`D-20`), dan diganti agregasi atas `T_PREDLALIST` sendiri.
+
+Alasannya bukan kemurnian: satu pengecualian portabilitas yang dibiarkan masuk karena
+"ini hanya diagnosa" akan diikuti yang berikutnya dengan alasan yang sama. Pemeriksaan
+pola SQL terlarang di CI tidak mengenal kata "hanya".
+
+Bentuk penggantinya juga lebih berguna — ia menghitung per baris Pre-DLA, bukan per tahap
+lepas, sehingga panjang `NODLA` dapat ikut dihitung di kolom yang sama.
+
+### 63.7 Satu artefak diminta, dan alasannya disebutkan
+
+Aktivitas yang mengisi `tempPreDLA` **tidak ada di export**, dan tanpa itu satu hal tetap
+berupa bacaan: apakah `tempnoklaim.NO_DLA` benar-benar menerima kunci klaim.
+
+Implementasi **tidak menunggu** artefak itu. Bukti tidak langsung cukup kuat —
+`GetPNCList_PreDLA` menyandingkan `t_predlalist.claimid` dengan `t_claim_pnc.claimid` —
+dan menahan pekerjaan atas keraguan yang dapat diverifikasi belakangan akan memperlambat
+tanpa menambah kepastian. Bacaannya dicatat, dan aktivitasnya diminta untuk menutupnya.
+
+## 64. Zona waktu panel Pre DLA, dan alasan yang dikoreksi setelah aktivitasnya dibaca (2026-09-27)
+
+### 64.1 Ketidakkonsistenan zona waktu Pega DITIRU, bukan diseragamkan
+
+**Keputusan.** "Tgl Kirim" pada panel "Print Pre DLA" digambar dalam WIB; "Tanggal Kirim"
+pada grid rincian PLA dan DLA digambar apa adanya.
+
+Keduanya kolom `TGLKIRIM` yang sama, dan Pega memperlakukannya berbeda: panel Pre-DLA
+menambahkan 7 jam (`PNCGetListPreDla` langkah 3.1), grid rincian tidak sama sekali —
+`GetDetailPLAList` dan `GetDetailDLAList` memuat nol `addToDate`.
+
+**Alternatif yang ditolak:** menyeragamkan keduanya ke WIB.
+
+Menyeragamkan terasa jelas benar, dan justru itu bahayanya. Ia menggeser tanggal pada
+salah satu dari dua layar — selisih di luar tiga belas butir `P-5`, yang menurut `D-54`
+menuntut persetujuan Work Owner tertulis. Ia juga akan membuat uji kesetaraan gerbang 1
+melaporkan selisih yang tidak dapat dipetakan ke butir mana pun.
+
+Ketidakkonsistenannya dinyatakan sebagai selisih terencana, supaya yang menemukannya tahu
+ia disengaja.
+
+### 64.2 Konversi zona, BUKAN penambahan tujuh jam
+
+**Keputusan.** Nilainya dibaca sebagai GMT lalu dinyatakan dalam `Asia/Jakarta`.
+
+`08-TECHNICAL-STRATEGY.md` §4.4 melarang penambahan 7 jam manual tanpa perkecualian —
+itulah utang teknis yang `F-5` hapus, dan menyalin `addToDate(...,"0","7","0","0")` apa
+adanya berarti membawanya masuk lewat pintu belakang dengan alasan `P-5`.
+
+`P-5` menuntut **hasil** yang sama, bukan **cara** yang sama. Konversi zona menghasilkan
+angka yang sama hari ini, dan tetap benar bila aturan zonanya berubah.
+
+Zonanya disebut **namanya**, bukan offset tetap, dengan jatuhan ke UTC+7 bila namanya
+tidak dikenal sistem. Jatuhannya aman: WIB memang UTC+7 sepanjang tahun.
+
+### 64.3 Nilainya diperlakukan GMT SECARA EKSPLISIT, bukan mengikuti zona sesi
+
+**Keputusan.** Komponen tanggal dan jamnya dibaca apa adanya, lalu dinyatakan UTC.
+
+Membiarkannya mengikuti zona sesi basis data akan bekerja di satu lingkungan dan salah di
+lingkungan lain **tanpa satu pun tanda** — zona sesi dapat berbeda antara staging dan
+produksi. Ini kelas cacat `R-12`, dan ia tidak pernah menghasilkan galat.
+
+Apakah driver mengembalikan kolom ini ber-zona atau polos **belum diuji terhadap Oracle
+sungguhan** (`R-08` — DDL-nya tidak ada). Ketidaktahuan itu dicatat, bukan disamarkan
+dengan menyerahkan keputusannya kepada driver.
+
+### 64.4 Isi lampiran TIDAK dibawa ke layar
+
+Langkah 3.3 aktivitasnya menyalin `pyAttachStream` — isi berkasnya — ke setiap baris.
+
+**Tidak dibawa.** Panel menggambar lima kolom teks; memuat isi setiap lampiran untuk itu
+adalah biaya yang di Pega tersembunyi karena halamannya di sisi peladen, dan yang di sini
+akan terlihat langsung sebagai jawaban berukuran puluhan megabita.
+
+Bila unduh lampiran kelak dibangun, ia mengambil **satu** berkas saat ditekan.
+
+### 64.5 Alasan penolakan yang terbukti salah DIGANTI, bukan diperhalus
+
+§63.7 menyatakan unduh lampiran menunggu penyimpanan dokumen `D-16`. Aktivitasnya
+membuktikan sebaliknya: berkasnya diambil `Obj-Open-By-Handle` dari tabel lampiran Pega,
+terbaca dengan koneksi yang sudah ada.
+
+Kalimatnya diganti menjadi apa adanya — **pekerjaan yang belum diminta**, bukan kemampuan
+yang belum tersedia.
+
+Perbedaannya bukan tata bahasa: alasan lama membuat Work Owner menunggu pihak lain,
+alasan baru menyatakan keputusannya ada di tangannya sekarang. Alasan yang salah lebih
+buruk daripada tidak ada alasan, karena ia ditindaklanjuti.
+
+## 65. Nomor klaim sebagai pembuka rincian, dan syarat tampil yang dicabut (2026-09-27)
+
+### 65.1 Kolom "Rincian" DIHAPUS — ia rekaan, bukan bacaan
+
+**Keputusan.** Rincian PLA dan DLA dibuka dengan mengklik nomor klaim. Tidak ada kolom
+aksi pada kedua tab itu.
+
+Kolom "Rincian" yang saya tambahkan **tidak pernah ada di Pega**. Yang ada di sana adalah
+sel `.BRANCH_CODE` ber-`pyAction = refresh` dengan parameter `caseId` bernilai
+`.BRANCH_NAME` — nomor klaimnya memang tautan.
+
+Bukti itu dicari **sebelum** perubahan dikerjakan, bukan sesudahnya. Work Owner sudah
+menyatakan perilakunya, dan memeriksanya tetap perlu karena yang dipertaruhkan bukan
+benar-salahnya melainkan **letak pembukanya di kode**: tautan pada sel berarti kolomnya
+hilang seluruhnya, bukan tombolnya yang berpindah tempat.
+
+### 65.2 Tautannya HANYA pada tab yang punya rincian
+
+**Keputusan.** Di tab Pre DLA nomor klaim tetap teks biasa.
+
+Tab itu tidak punya grid rincian — di Pega pun tidak — dan yang membuka panelnya adalah
+tombol pada barisnya. Tautan yang tidak membuka apa-apa lebih buruk daripada teks biasa:
+ia menjanjikan sesuatu, lalu tidak menepatinya, dan pengguna menyimpulkan layarnya rusak.
+
+Layar mengetahuinya dari `punya_rincian`, yang sudah dikirim server sejak awal. **Tidak
+ada medan baru**: yang membuka rincian adalah keberadaan rinciannya, bukan ada-tidaknya
+tombol.
+
+### 65.3 Syarat tampil SEND dicabut, dan konsekuensinya DITULIS
+
+**Keputusan Work Owner.** SEND digambar pada setiap baris, termasuk dokumen terkirim.
+
+Buktinya tetap berdiri — Pega memang menyembunyikannya. Yang berubah adalah keputusan
+membawanya, dan itu kewenangan Work Owner.
+
+**Yang tidak boleh ikut hilang adalah konsekuensinya.** Tanpa syarat itu, kolom "Terkirim"
+menjadi satu-satunya penanda dokumen mana yang sudah dikirim. Hari ini tidak berbahaya;
+tombolnya menjawab alasan. Ia menjadi berbahaya pada hari Send dibangun — pengiriman ulang
+surat ke reasuradur, tanpa kontrol teknis apa pun.
+
+Karena itu ia ditulis sebagai selisih terencana, bukan sekadar dihapus dari kode.
+Menghapusnya diam-diam berarti pada hari Send dibangun tidak ada satu pun catatan yang
+mengingatkan bahwa pagarnya pernah ada dan sengaja dilepas.
+
+### 65.4 Medannya dihapus SELURUHNYA, bukan dibiarkan tidak terpakai
+
+`CanSend()`, `FieldCanSend`, dan `boleh_kirim` dihapus dari domain, DTO, dan kontrak layar.
+
+**Alternatif yang ditolak:** membiarkan `boleh_kirim` tetap dikirim tanpa dipakai.
+
+Medan kontrak yang tidak terpakai mengundang pemakaian berikutnya yang tidak konsisten —
+satu layar menghormatinya, satu lagi tidak, dan keduanya tampak benar. Bila kelak
+syaratnya dikembalikan, ia dikembalikan utuh beserta keputusannya.
+
+### 65.5 Cadangan peladen lama yang menjadi USANG oleh keputusan ini
+
+`judulTombolBaris` (§62.7) mengembalikan `'Rincian'` pada peladen lama. Setelah kolom itu
+dihapus, cadangan yang sama **menghidupkannya kembali** — dua jalan menuju panel yang sama.
+
+Cabangnya dihapus. Yang perlu dicatat bukan perbaikannya melainkan **cara ia ditemukan**:
+uji cadangan itu sendiri yang gagal. Cadangan ditulis untuk menahan kegagalan yang pernah
+terjadi, dan ujinya ternyata juga menahan cadangan itu sendiri menjadi usang.
+
+Ini alasan konkret mengapa perilaku cadangan layak diuji, bukan hanya ditulis.
+
+## 66. Pengiriman surat PLA/DLA: urutan, pagar, dan yang sengaja tidak ditulis (2026-09-27)
+
+### 66.1 Urutan DIBALIK dari Pega — keputusan terpenting di modul ini
+
+**Keputusan.** Surat dikirim lebih dulu; dokumennya ditandai terkirim hanya bila
+pengiriman berhasil. Pega menempuhnya terbalik.
+
+**Alternatif yang ditolak:** meniru urutan Pega demi `P-5`.
+
+`P-5` menuntut hasil yang sama, dan pada jalur berhasil kedua urutan menghasilkan hasil
+yang sama persis. Yang berbeda hanyalah **arah kegagalannya**:
+
+| Urutan | Bila gagal di tengah |
+|---|---|
+| Pega | baris **hilang dari antrean**, tidak ada surat yang sampai, tidak ada jejak |
+| Di sini | baris **tetap di antrean**, tidak ada surat yang sampai, dapat diulang |
+
+Yang pertama adalah kegagalan senyap pada uang dan kewajiban kepada reasuradur. Yang
+kedua merepotkan. Menirunya berarti menyalin satu-satunya bagian dari operasi ini yang
+tidak layak disalin.
+
+Selisihnya dicatat sebagai selisih terencana, dan `TestAFailedLetterMarksNothing`
+menjaganya.
+
+### 66.2 Pengirim NIL, bukan pengirim tiruan — berbeda dari modul lain
+
+**Keputusan.** Bila SMTP belum dikonfigurasi, `Notifier` bernilai nil dan tombolnya
+menjawab `503`.
+
+Modul Master Rekening memakai `Fake` dalam keadaan yang sama, dan pola itu **sengaja tidak
+diikuti**. Di sana pengirim tiruan berarti "Tim IT tidak diberi tahu"; di sini ia berarti
+**pengirim yang menjawab berhasil tanpa mengirim apa pun** — dan penandaan terkirim
+bergantung pada jawaban itu. Hasilnya persis kegagalan yang §66.1 cegah.
+
+Perbedaan ini layak dicatat karena ia tampak seperti ketidakkonsistenan. Ia bukan:
+pengirim tiruan aman ketika kegagalannya hanya berarti "tidak ada yang diberi tahu", dan
+berbahaya ketika ada yang **bergantung pada jawabannya**.
+
+### 66.3 `503`, bukan `501`
+
+Kemampuannya **ada**; yang kurang konfigurasinya. `501` berarti belum dibangun, dan itu
+akan membuat administrator mencari kode yang tidak perlu ditulis. Pesannya menyebut isian
+mana yang kurang, bukan sekadar "belum tersedia".
+
+### 66.4 Galat "terkirim tetapi gagal dicatat" punya tipe sendiri
+
+**Keputusan.** `ErrSentButNotMarked`, dan pesannya **menyebutkan bahwa suratnya sudah
+terkirim** meski ia `500`.
+
+`11-CROSSCUTTING.md` §1.2 aturan 5 melarang membocorkan detail internal pada `500`.
+Larangan itu melindungi dari kebocoran struktur sistem; di sini yang disampaikan bukan
+struktur melainkan **apa yang sudah terjadi di dunia nyata**.
+
+Pengguna yang membaca "gagal" akan menekan tombolnya lagi, dan surat kedua akan sampai ke
+reasuradur. Menyembunyikan penyebabnya melindungi sistem; menyembunyikan akibatnya
+merugikan orang.
+
+### 66.5 Tiga langkah Pega TIDAK ditebak
+
+`PNCInsertMitraLog_Act`, `InsertDokumenPLADLA`, dan `PNCInsertPLADLA` menulis tabel
+pencatatan yang isinya belum dianalisis.
+
+**Keputusan.** Ketiganya tidak dibawa, dan ketiadaannya dinyatakan.
+
+Menulis tabel yang belum dipahami lebih buruk daripada tidak menulisnya: yang pertama
+merusak diam-diam dan baru terlihat ketika seseorang membaca tabelnya, yang kedua
+meninggalkan kekosongan yang terlihat dan dapat diisi kemudian.
+
+### 66.6 `UPDATEREAS` kehilangan dua dari tiga cabangnya
+
+**Keputusan.** Hanya cabang "perbarui alamat pada baris yang sudah ada" yang dibawa.
+
+Cabang yang **memindahkan `TYPE`** mengubah bagian kunci alami sebuah baris master.
+Cabang yang **menyisipkan baris master baru** mengisi master dari jalur yang tidak punya
+validasi master sama sekali.
+
+Alasan yang sama menaungi keduanya: **pengiriman surat bukan tempat mengubah master.**
+Master reasuransi diisi `F-4`, dan efek samping dari tombol kirim bukan penggantinya.
+
+Akibat yang diterima dan dinyatakan: reasuradur yang belum terdaftar tidak tercatat
+alamatnya. Suratnya tetap terkirim — alamatnya datang dari baris dokumennya, bukan dari
+master.
+
+### 66.7 `BodyComposer` dipisahkan dari `Notifier`
+
+**Keputusan.** Penyusunan badan surat adalah seam tersendiri.
+
+Keduanya berubah karena sebab yang berbeda: badan surat berubah ketika **isinya**
+dipersoalkan, pengiriman berubah ketika **infrastrukturnya** berubah. Menyatukannya
+membuat perubahan satu kalimat menyentuh kode yang membuka soket.
+
+### 66.8 Penerima yang ditolak menghentikan SELURUH pengiriman
+
+**Keputusan.** Satu `RCPT TO` yang ditolak membatalkan surat itu, bukan dilewati.
+
+Melanjutkan ke penerima berikutnya menghasilkan surat yang sampai **sebagian** — lalu
+dokumennya ditandai terkirim, padahal salah satu reasuradur tidak pernah menerimanya. Itu
+kegagalan senyap yang sama dengan §66.1, hanya pada skala yang lebih kecil.
+
+### 66.9 Data contoh diberi alamat, dan dua bahasa terwakili
+
+Advice contoh diberi alamat `contoh.example` beserta negaranya: satu `INDONESIA`, satu
+`SINGAPORE`.
+
+Tanpa alamat, seluruh alur Send berhenti di pemeriksaan pertama dan pengembang tidak
+pernah melihat sisanya. Dua negara yang berbeda memastikan **kedua bahasa surat** benar
+terwakili — bukan hanya yang kebetulan dipakai baris pertama.
+
+Domainnya `contoh.example`, yang dijamin tidak pernah menjadi domain nyata (`D-69`).
+
+## 67. Gerbang aktif pengiriman surat: predikat milik pengirimnya sendiri (2026-09-28)
+
+### 67.1 `cfg.SMTP.Active()` TIDAK dipakai, dan itu bukan ketidakkonsistenan
+
+**Keputusan.** Aktif-tidaknya pengiriman surat PLA/DLA ditentukan
+`notification.Config.Complete()` — host, port, dan alamat pengirim — bukan
+`cfg.SMTP.Active()`.
+
+`Active()` mensyaratkan `SMTP_PENERIMA_PERINGATAN` terisi. Syarat itu benar untuk modul
+yang mengirim ke **daftar penerima tetap**: pengirim tanpa tujuan memang tidak aktif.
+Modul ini tidak punya daftar seperti itu — penerimanya adalah reasuradur pada baris
+dokumen yang sedang dikirim.
+
+Memakainya akan membuat tombol "SEND" menolak dengan pesan yang menyebut tiga isian yang
+justru **sudah terisi**. Penolakan yang sebabnya tidak dapat ditemukan dari membaca
+pesannya adalah bentuk kegagalan terburuk pada konfigurasi.
+
+Preseden pemisahannya sudah ada di berkas yang sama: `TKAActive()` terpisah dari
+`Active()` dengan alasan yang persis sama, dan komentarnya sudah menuliskannya.
+
+### 67.2 Predikatnya tinggal di PENGIRIM, bukan ditambahkan ke config
+
+**Alternatif yang ditolak:** menambahkan `PLADLAActive()` ke `platform/config`, mengikuti
+pola `Active()` dan `TKAActive()`.
+
+Ia ditolak karena akan menghasilkan **dua tempat** yang menyatakan syarat yang sama:
+`Config.Complete()` di pengirimnya — yang sudah ada dan dipakai pengirim itu sendiri
+untuk menolak — dan `PLADLAActive()` di config. Keduanya dapat berselisih, dan yang
+berselisih akan menghasilkan pengirim yang dipasang tetapi menolak, atau tidak dipasang
+padahal bisa.
+
+Syarat sebuah pengirim dapat mengirim adalah pengetahuan milik pengirim itu.
+
+### 67.3 STARTTLS: dinegakkan bila ditawarkan, tidak dipaksakan
+
+**Keputusan.** Pola `masterrekening` diikuti apa adanya.
+
+Memaksanya akan menolak relay internal yang belum bersertifikat — konfigurasi yang sah
+dan lazim. Yang dipaksakan justru sebaliknya: **kredensial tidak pernah dikirim lewat
+sambungan terbuka**.
+
+Konsekuensi yang diterima dan dinyatakan: bila relay tidak menawarkan STARTTLS, surat
+yang membawa nama tertanggung, nomor polis, dan berkas dokumen klaim akan melintas tanpa
+enkripsi. Export Pega memuat `UseSSL=false` pada seluruh 31 lokasi SMTP-nya (`R-17`),
+sehingga itu keadaan yang nyata mungkin — dan layak diperiksa sebelum produksi, bukan
+diwarisi.
+
+### 67.4 Pengaktifannya DICATAT di log
+
+**Keputusan.** Satu baris `INFO` saat start, menyebut host, port, dan alamat pengirim.
+
+Mulai saat itu satu penekanan tombol mengirim surat ke luar perusahaan dan tidak dapat
+ditarik kembali. Baris itu yang menjawab **"sejak kapan"** bila kelak ada surat yang
+dipersoalkan — pertanyaan yang tidak dapat dijawab oleh apa pun selain log start.
+
+### 67.5 `"smtp_aktif": false` pada ringkasan start dibiarkan
+
+Ringkasan konfigurasi menuliskan `smtp_aktif: false` sementara pengiriman PLA/DLA aktif.
+Keduanya benar, dan **tidak diubah**.
+
+Ringkasan itu milik bersama seluruh modul. Mengubah artinya demi satu modul akan membuat
+empat modul lain melaporkan hal yang berbeda dari sebelumnya — perubahan yang jauh lebih
+besar daripada kebingungan yang dihindarinya. Kedua baris berdampingan di log, dan yang
+kedua menyebut host beserta portnya.

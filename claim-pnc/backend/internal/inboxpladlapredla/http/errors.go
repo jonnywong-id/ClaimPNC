@@ -19,6 +19,11 @@ const (
 	CodeWriteNotAvailable = "belum_tersedia"
 	CodeRowNotFound       = "klaim_tidak_ditemukan"
 	CodeNoDocumentGrid    = "rincian_tidak_ada_di_daftar_ini"
+	CodeAlreadySent       = "pre_dla_sudah_terkirim"
+	CodeAdviceSent        = "dokumen_sudah_terkirim"
+	CodeReinsurerNoEmail  = "email_reasuradur_kosong"
+	CodeLetterNotSent     = "surat_tidak_terkirim"
+	CodeSentButNotMarked  = "surat_terkirim_tanpa_catatan"
 	CodeInternalError     = "galat_internal"
 )
 
@@ -117,6 +122,76 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Message: "Klaim tidak ditemukan pada entitas yang sedang dipilih. Periksa " +
 				"pilihan portal di bilah atas — klaim milik entitas lain tidak dapat " +
 				"dibuka dari sini.",
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrSentButNotMarked):
+		// 500, dan pesannya menyebut bahwa suratnya SUDAH terkirim.
+		//
+		// Ini keadaan terburuk operasi ini: surat sampai, catatannya tidak. Pesan yang
+		// hanya berbunyi "gagal" akan membuat pengguna menekan tombolnya lagi, dan surat
+		// kedua akan sampai ke reasuradur.
+		//
+		// Ia `500` karena memang ada yang rusak dan bukan salah pengguna — tetapi
+		// pesannya SENGAJA membocorkan satu hal yang biasanya disembunyikan pada `500`:
+		// apa yang sudah terjadi. Menyembunyikannya di sini merugikan.
+		return http.StatusInternalServerError, ErrorResponse{
+			Code:    CodeSentButNotMarked,
+			Message: err.Error(),
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrNotifierUnavailable):
+		// 503, bukan 501.
+		//
+		// Kemampuannya ADA — yang belum ada adalah konfigurasinya. `501` berarti "belum
+		// dibangun", dan itu akan membuat administrator mencari kode yang tidak perlu
+		// ditulis. Pesannya menyebut isian mana yang kurang.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeLetterNotSent,
+			Message: "Pengiriman surat belum dapat dijalankan: " + err.Error() +
+				". Hubungi administrator Claim PNC untuk melengkapi sambungan surel.",
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrLetterNotSent):
+		// 502 — kegagalan sistem DI LUAR sistem ini.
+		//
+		// Yang penting bagi pengguna bukan sebabnya melainkan akibatnya: tidak ada surat
+		// yang terkirim, dan tidak ada yang tercatat. Mengulang aman.
+		return http.StatusBadGateway, ErrorResponse{
+			Code: CodeLetterNotSent,
+			Message: "Surat tidak terkirim, dan dokumennya TIDAK ditandai terkirim. " +
+				"Tidak ada yang berubah — mencoba lagi aman. Rincian: " + err.Error(),
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrReinsurerEmailEmpty):
+		// 422 — isian yang belum lengkap, bukan kerusakan.
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code: CodeReinsurerNoEmail,
+			Message: "Alamat surel reasuradur pada dokumen ini masih kosong, sehingga " +
+				"suratnya tidak dapat dikirim. Lengkapi lewat master reasuransi.",
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrAdviceAlreadySent):
+		return http.StatusConflict, ErrorResponse{
+			Code: CodeAdviceSent,
+			Message: "Dokumen ini sudah terkirim. Tidak ada surat kedua yang dikirim. " +
+				"Muat ulang rinciannya untuk melihat keadaan terkini.",
+		}, true
+
+	case errors.Is(err, inboxpladlapredla.ErrPreDLAAlreadySent):
+		// 409, bukan 422 dan bukan 500.
+		//
+		// Permintaannya benar dan sistemnya sehat — keadaannya saja yang sudah berubah.
+		// Itu persis arti `409` pada `10-API-STRATEGY.md` §5: konflik keadaan, bukan
+		// isian yang salah.
+		//
+		// Ia bukan kegagalan bagi pengguna: hasil yang ia inginkan sudah tercapai, hanya
+		// bukan olehnya. Pesannya menyebut apa yang harus dilakukan — muat ulang — bukan
+		// menyuruhnya mencoba lagi.
+		return http.StatusConflict, ErrorResponse{
+			Code: CodeAlreadySent,
+			Message: "Pre-DLA ini sudah ditandai terkirim, mungkin oleh petugas lain " +
+				"atau lewat Pega. Tanggal kirim yang sudah tercatat tidak ditimpa. " +
+				"Muat ulang panelnya untuk melihat keadaan terkini.",
 		}, true
 
 	case errors.Is(err, inboxpladlapredla.ErrDocumentsNotOnTab):

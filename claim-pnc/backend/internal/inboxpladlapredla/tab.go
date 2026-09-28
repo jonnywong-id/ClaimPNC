@@ -160,12 +160,18 @@ type Tab struct {
 
 	// RowActionLabel adalah judul tombol aksi pada setiap baris.
 	//
-	// Ia BERBEDA per daftar — "Rincian" pada PLA dan DLA, "Print Pre DLA" pada Pre DLA —
-	// dan dikirim ke layar alih-alih ditebak di sana. Layar yang menyimpulkannya dari
-	// ada-tidaknya grid rincian akan menuliskan kedua nama itu di tempat kedua, dan
-	// tempat kedua itulah yang tertinggal saat yang pertama berubah.
+	// **KOSONG pada PLA dan DLA**: keduanya tidak punya kolom aksi sama sekali —
+	// rinciannya dibuka dengan MENGKLIK NOMOR KLAIM.
 	//
-	// Kosong berarti barisnya tidak punya tombol aksi sama sekali.
+	// Itu perilaku Pega, dan terbaca dari `Section/InboxPLA_sect-Section.xml:171096`:
+	// sel `.BRANCH_CODE` membawa `pyAction = refresh` beserta parameter `caseId`
+	// bernilai `.BRANCH_NAME` — menyegarkan grid rincian dengan kunci klaim baris itu.
+	// Nomor klaimnya memang tautan di sana, bukan teks biasa.
+	//
+	// Terisi hanya pada Pre DLA, yang punya tombol bernama di dalam barisnya.
+	//
+	// Layar mengetahui nomor klaim dapat diklik dari HasDocuments, BUKAN dari medan ini:
+	// yang membuka rincian adalah keberadaan rinciannya, bukan ada-tidaknya tombol.
 	RowActionLabel string
 
 	// RequiresNoAcceptance menyatakan keanggotaan baris ditentukan `NOAKSEP IS NULL`.
@@ -230,7 +236,6 @@ var tabs = []Tab{
 		Columns:           queueColumns("Tanggal PLA"),
 		SearchLabel:       "No Klaim",
 		DateLabel:         "Tanggal PLA",
-		RowActionLabel:    "Rincian",
 		SentFilterApplies: true,
 		RequiresReinsurer: true,
 		DocumentColumns: []Column{
@@ -256,7 +261,6 @@ var tabs = []Tab{
 		Columns:              queueColumns("Tanggal DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal DLA",
-		RowActionLabel:       "Rincian",
 		ExcludeASNET:         true,
 		ExcludeBusinessGroup: "10008",
 		SentFilterApplies:    true,

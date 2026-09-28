@@ -52,7 +52,7 @@ const METADATA = {
       punya_rincian: true,
       kolom_cetak: [],
       punya_cetak: false,
-      label_aksi_baris: 'Rincian',
+      label_aksi_baris: '',
       label_pencarian: 'No Klaim',
       label_tanggal: 'Tanggal PLA',
     },
@@ -65,7 +65,7 @@ const METADATA = {
       punya_rincian: true,
       kolom_cetak: [],
       punya_cetak: false,
-      label_aksi_baris: 'Rincian',
+      label_aksi_baris: '',
       label_pencarian: 'No Klaim',
       label_tanggal: 'Tanggal DLA',
     },
@@ -150,12 +150,9 @@ function tolakan(url: string): { kode: string; pesan: string } {
   const tindakan = new URL(url, 'http://contoh').searchParams.get('tindakan')
 
   const alasan: Record<string, string> = {
-    kirim: 'Tombol "Send" belum tersedia di sistem baru. Kerjakan lewat Pega.',
     'unggah-penunjang':
       'Tombol "Upload File Penunjang" belum tersedia di sistem baru. ' +
       'Kerjakan lewat Pega.',
-    'kirim-pre-dla':
-      'Tombol "Kirim Pre DLA" belum tersedia di sistem baru. Kerjakan lewat Pega.',
     'unduh-lampiran':
       'Unduh lampiran belum tersedia di sistem baru. Ambil lewat Pega.',
   }
@@ -170,6 +167,20 @@ function tolakan(url: string): { kode: string; pesan: string } {
 function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
   return (call) => {
     if (call.url.includes('/daftar')) return { body: METADATA }
+
+    if (call.url.includes('/cetak/') && call.url.includes('/kirim')) {
+      return { body: { pesan: 'Pre-DLA ditandai terkirim.' } }
+    }
+
+    if (call.url.includes('/klaim/') && call.url.includes('/kirim')) {
+      return {
+        body: {
+          pesan: 'Surat terkirim dan dokumen ditandai terkirim.',
+          penerima: 1,
+          lampiran: 2,
+        },
+      }
+    }
 
     if (call.url.includes('/tindakan')) {
       return { body: tolakan(call.url), status: 501 }
@@ -188,6 +199,15 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               tanggal_kirim: '',
               terkirim: '0',
               kunci_lampiran: 'ATT-0001',
+            },
+            {
+              // Sudah terkirim -> tidak punya tombol.
+              no_advice: 'PRE/2026/0002',
+              reasuradur: 'Reasuransi Contoh B',
+              tipe: 'ORS',
+              tanggal_kirim: '2026-03-10',
+              terkirim: '1',
+              kunci_lampiran: 'ATT-0002',
             },
           ],
           portal: 'ASM',
@@ -209,6 +229,20 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               tanggal_dokumen: '2026-01-10',
               terkirim: '',
               tanggal_kirim: '',
+              tanggal_terima: '',
+              catatan: '',
+              email: '',
+              no_akseptasi: '',
+            },
+            {
+              // Dokumen yang SUDAH terkirim — tombol Send tidak digambar padanya.
+              no_advice: 'PLA/2026/0002',
+              reasuradur: 'Reasuransi Contoh B',
+              tipe: 'ORS',
+              revisi: '0',
+              tanggal_dokumen: '2026-01-12',
+              terkirim: '1',
+              tanggal_kirim: '2026-01-13',
               tanggal_terima: '',
               catatan: '',
               email: '',
@@ -346,22 +380,43 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     ).toBeInTheDocument()
   })
 
-  it('mengganti JUDUL tombol baris menurut daftar, bukan menghapusnya', async () => {
+  it('membuka rincian lewat NOMOR KLAIM, bukan lewat kolom aksi', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    expect(
-      await screen.findAllByRole('button', { name: 'Rincian' }),
-    ).not.toHaveLength(0)
+    // Tidak ada kolom aksi pada PLA dan DLA sama sekali.
+    //
+    // Di Pega pun begitu: sel `.BRANCH_CODE` membawa `pyAction = refresh` dengan
+    // parameter `caseId` — nomor klaimnya tautan, bukan teks di sebelah tombol.
+    expect(await screen.findByRole('button', { name: 'PNC-1001' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rincian' })).toBeNull()
 
+    await userEvent.click(screen.getByRole('button', { name: 'PNC-1001' }))
+
+    // Kunci klaim memuat SPASI; tanpa pengodean, alamatnya terpotong di spasi itu.
+    await waitFor(() => {
+      expect(
+        calls.some((call) =>
+          call.url.includes('/klaim/ASM-FW-GCNMFW-WORK%20PNC-1001'),
+        ),
+      ).toBe(true)
+    })
+    expect(await screen.findByText('Detail PLA List')).toBeInTheDocument()
+  })
+
+  it('TIDAK menjadikan nomor klaim tautan pada tab tanpa rincian', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP]))
+    tampilkan()
+
+    await screen.findByRole('button', { name: 'PNC-1001' })
     await userEvent.click(screen.getByRole('tab', { name: 'Pre DLA' }))
 
-    // Tab Pre DLA tidak punya grid rincian — di Pega pun tidak — tetapi ia PUNYA tombol
-    // barisnya sendiri. Judulnya datang dari server (`label_aksi_baris`), sehingga
-    // layar tidak perlu mencocokkan kode tab untuk mengetahuinya.
+    // Tab Pre DLA tidak punya grid rincian. Tautan yang tidak membuka apa-apa lebih
+    // buruk daripada teks biasa — yang membuka panelnya adalah tombol pada barisnya.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Rincian' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'PNC-1001' })).toBeNull()
     })
+    expect(screen.getByText('PNC-1001')).toBeInTheDocument()
     expect(
       await screen.findAllByRole('button', { name: 'Print Pre DLA' }),
     ).not.toHaveLength(0)
@@ -371,9 +426,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    const [tombol] = await screen.findAllByRole('button', { name: 'Rincian' })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
 
     await waitFor(() => {
       // Kunci klaim memuat SPASI. Tanpa pengodean, alamatnya terpotong di spasi itu dan
@@ -392,9 +445,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    const [tombol] = await screen.findAllByRole('button', { name: 'Rincian' })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
     expect(await screen.findByText('Detail PLA List')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'DLA' }))
@@ -426,9 +477,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    const [tombol] = await screen.findAllByRole('button', { name: 'Rincian' })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
 
     await screen.findByText('Detail PLA List')
 
@@ -436,30 +485,45 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     expect(
       screen.getByRole('button', { name: 'Upload File Penunjang' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
   })
 
-  it('menjawab ALASAN milik tombol yang ditekan, bukan satu kalimat untuk ketiganya', async () => {
+  it('MENGIRIM surat saat Send ditekan, dan menyebut hasilnya', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    const [tombol] = await screen.findAllByRole('button', { name: 'Rincian' })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
     await screen.findByText('Detail PLA List')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    const [kirim] = screen.getAllByRole('button', { name: 'Send' })
+    expect(kirim).toBeDefined()
+    await userEvent.click(kirim as HTMLElement)
 
-    // Kalimatnya disempitkan ke "di sistem baru" dengan sengaja: daftar selisih
-    // terencana di kaki halaman juga memuat kalimat tentang "Send", dan pola yang lebih
-    // longgar akan menemukan keduanya — lalu lolos meski spanduk penolakannya tidak
-    // pernah tergambar.
+    // Nomor dokumen dan daftarnya dikirim di BADAN permintaan, bukan di alamat.
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) =>
+            call.method === 'POST' &&
+            call.url.includes('/klaim/ASM-FW-GCNMFW-WORK%20PNC-1001/kirim'),
+        ),
+      ).toBe(true)
+    })
+
+    // Jumlah penerima dan lampiran DISEBUTKAN. Petugas yang mengirim surat ke pihak
+    // luar berhak tahu berapa alamat yang menerima dan berapa berkas yang ikut —
+    // terutama ketika lampirannya nol.
     expect(
-      await screen.findByText(/Tombol "Send" belum tersedia di sistem baru/),
+      await screen.findByText(/1 penerima, 2 lampiran/),
     ).toBeInTheDocument()
-    expect(
-      await screen.findByText('Tombol ini belum dapat dijalankan'),
-    ).toBeInTheDocument()
+  })
+
+  it('menjawab alasan "Upload File Penunjang" yang memang belum dibangun', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP]))
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+    await screen.findByText('Detail PLA List')
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Upload File Penunjang' }),
@@ -469,6 +533,76 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
       await screen.findByText(
         /Tombol "Upload File Penunjang" belum tersedia di sistem baru/,
       ),
+    ).toBeInTheDocument()
+  })
+
+  it('TIDAK menandai terkirim ketika suratnya gagal dikirim', async () => {
+    installFetch((call) => {
+      if (call.url.includes('/klaim/') && call.url.includes('/kirim')) {
+        return {
+          body: {
+            kode: 'surat_tidak_terkirim',
+            pesan:
+              'Surat tidak terkirim, dan dokumennya TIDAK ditandai terkirim. ' +
+              'Tidak ada yang berubah — mencoba lagi aman.',
+          },
+          status: 502,
+        }
+      }
+      return jawabanBiasa([BARIS_LENGKAP])(call)
+    })
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+    await screen.findByText('Detail PLA List')
+
+    const [kirim] = screen.getAllByRole('button', { name: 'Send' })
+    expect(kirim).toBeDefined()
+    await userEvent.click(kirim as HTMLElement)
+
+    // Pesannya menyebut bahwa TIDAK ada yang berubah. Itu yang membedakannya dari
+    // kegagalan setelah surat terkirim — yang justru tidak boleh diulang.
+    expect(
+      await screen.findByText('Surat tidak dapat dikirim'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/mencoba lagi aman/)).toBeInTheDocument()
+  })
+
+  it('menggambar SEND pada SETIAP baris, termasuk yang sudah terkirim', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP]))
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+
+    const panel = await screen.findByRole('region', {
+      name: /Rincian PLA klaim PNC-1001/,
+    })
+
+    // Dua dokumen, salah satunya sudah terkirim — dan keduanya tetap punya tombol.
+    //
+    // Pega menyembunyikannya pada dokumen terkirim (`.MARKETING != '1'`). Penyembunyian
+    // itu sengaja tidak dibawa atas keputusan Work Owner 2026-09-27, sehingga kolom
+    // "Terkirim" menjadi satu-satunya penanda.
+    expect(within(panel).getByText('PLA/2026/0001')).toBeInTheDocument()
+    expect(within(panel).getByText('PLA/2026/0002')).toBeInTheDocument()
+    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+  })
+
+  it('mengirim SATU dokumen, bukan seluruh dokumen klaim', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP]))
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+
+    const panel = await screen.findByRole('region', {
+      name: /Rincian PLA klaim PNC-1001/,
+    })
+
+    // Kalimat di bawah grid menyatakannya, karena selisihnya bukan tata letak: satu
+    // tombol di bawah grid mengirim SELURUH dokumen klaim, tombol per baris mengirim
+    // satu. Keduanya menghasilkan surat yang berbeda ke reasuradur yang berbeda.
+    expect(
+      within(panel).getByText(/tidak dapat ditarik kembali/),
     ).toBeInTheDocument()
   })
 
@@ -531,50 +665,104 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     ).toBe(false)
   })
 
-  it('menjawab alasan "Kirim Pre DLA" dari DALAM panelnya', async () => {
+  it('MENANDAI Pre-DLA terkirim dari dalam panelnya', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
     await screen.findByText('PNC-1001')
     await userEvent.click(screen.getByRole('tab', { name: 'Pre DLA' }))
 
-    const [tombol] = await screen.findAllByRole('button', {
+    const [buka] = await screen.findAllByRole('button', {
       name: 'Print Pre DLA',
     })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    expect(buka).toBeDefined()
+    await userEvent.click(buka as HTMLElement)
+
+    const panel = await screen.findByRole('region', {
+      name: /Print Pre DLA klaim PNC-1001/,
+    })
+
+    // Dua Pre-DLA, satu sudah terkirim — dan hanya yang belum punya tombol.
+    //
+    // Berbeda dari tombol "Send" pada grid rincian, yang syarat tampilnya dicabut Work
+    // Owner. Di sini menekan tombol pada baris terkirim hanya menghasilkan penolakan,
+    // sehingga menggambarnya menjanjikan sesuatu yang tidak terjadi.
+    expect(
+      within(panel).getAllByRole('button', { name: 'Kirim Pre DLA' }),
+    ).toHaveLength(1)
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Kirim Pre DLA' }),
+      within(panel).getByRole('button', { name: 'Kirim Pre DLA' }),
     )
 
-    expect(
-      await screen.findByText(
-        /Tombol "Kirim Pre DLA" belum tersedia di sistem baru/,
-      ),
-    ).toBeInTheDocument()
-
+    // Nomornya dikirim di BADAN permintaan, bukan di alamat.
     await waitFor(() => {
       expect(
         calls.some(
           (call) =>
             call.method === 'POST' &&
-            call.url.includes('tindakan=kirim-pre-dla'),
+            call.url.includes('/cetak/ASM-FW-GCNMFW-WORK%20PNC-1001/kirim'),
         ),
       ).toBe(true)
     })
+
+    expect(
+      await screen.findByText('Pre-DLA ditandai terkirim.'),
+    ).toBeInTheDocument()
+  })
+
+  it('menjelaskan Pre-DLA yang SUDAH ditandai orang lain, bukan menyebutnya rusak', async () => {
+    installFetch((call) => {
+      if (call.url.includes('/kirim')) {
+        return {
+          body: {
+            kode: 'pre_dla_sudah_terkirim',
+            pesan:
+              'Pre-DLA ini sudah ditandai terkirim, mungkin oleh petugas lain atau ' +
+              'lewat Pega. Muat ulang panelnya untuk melihat keadaan terkini.',
+          },
+          status: 409,
+        }
+      }
+      return jawabanBiasa([BARIS_LENGKAP])(call)
+    })
+    tampilkan()
+
+    await screen.findByText('PNC-1001')
+    await userEvent.click(screen.getByRole('tab', { name: 'Pre DLA' }))
+
+    const [buka] = await screen.findAllByRole('button', {
+      name: 'Print Pre DLA',
+    })
+    expect(buka).toBeDefined()
+    await userEvent.click(buka as HTMLElement)
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Kirim Pre DLA' }),
+    )
+
+    // Judulnya BUKAN "Tombol ini belum dapat dijalankan": tombolnya berfungsi, dan
+    // pekerjaannya justru sudah selesai. Judul yang salah membuat pengguna mengira
+    // layarnya rusak.
+    expect(
+      await screen.findByText('Pre-DLA tidak dapat ditandai terkirim'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Tombol ini belum dapat dijalankan')).toBeNull()
+    expect(
+      screen.getByText(/sudah ditandai terkirim, mungkin oleh petugas lain/),
+    ).toBeInTheDocument()
   })
 
   it('membuang alasan penolakan saat pengguna berpindah tab', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
-    const [tombol] = await screen.findAllByRole('button', { name: 'Rincian' })
-    expect(tombol).toBeDefined()
-    await userEvent.click(tombol as HTMLElement)
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
     await screen.findByText('Detail PLA List')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Upload File Penunjang' }),
+    )
     await screen.findByText('Tombol ini belum dapat dijalankan')
 
     await userEvent.click(screen.getByRole('tab', { name: 'Pre DLA' }))
@@ -586,12 +774,15 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     })
   })
 
-  it('tetap menggambar tombol baris saat peladen LEBIH TUA dari layar', async () => {
+  it('tetap menggambar Print Pre DLA saat peladen LEBIH TUA dari layar', async () => {
     // Jawaban peladen yang belum mengenal `label_aksi_baris` sama sekali — keadaan yang
     // terjadi ketika hanya berkas layar yang dibangun ulang.
     //
     // Ini menguji kegagalan yang BENAR-BENAR pernah terjadi: tombolnya lenyap tanpa satu
     // pun galat, dan yang melihatnya menyimpulkan tombolnya belum dibangun.
+    //
+    // Cadangannya TIDAK lagi menghidupkan 'Rincian': sejak rincian dibuka lewat nomor
+    // klaim, mengembalikannya akan memberi pengguna DUA jalan menuju panel yang sama.
     const lama = {
       ...METADATA,
       daftar: METADATA.daftar.map((tab) => {
@@ -606,9 +797,10 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     })
     tampilkan()
 
-    expect(
-      await screen.findAllByRole('button', { name: 'Rincian' }),
-    ).not.toHaveLength(0)
+    // Nomor klaimnya tetap tautan — itu diturunkan dari `punya_rincian`, yang sudah ada
+    // di peladen lama.
+    expect(await screen.findByRole('button', { name: 'PNC-1001' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rincian' })).toBeNull()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Pre DLA' }))
 
